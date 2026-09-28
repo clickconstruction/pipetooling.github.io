@@ -18,7 +18,7 @@ import type { EstimateLineItemNormalized } from './estimateLineItemNormalize'
 
 export type QuickEstimateBranch = 'change_order' | 'estimate'
 
-export type QuickEstimateStage = 'kind' | 'job' | 'customer' | 'work' | 'cost' | 'review' | 'done'
+export type QuickEstimateStage = 'resume' | 'kind' | 'job' | 'customer' | 'work' | 'cost' | 'review' | 'done'
 
 /** Flow v2 (v2.2314): where Back lands from each stage (null = no Back shown). */
 export function quickEstimateBackTarget(
@@ -188,3 +188,156 @@ export function quickEstimateDraftTitle(branch: QuickEstimateBranch, freeTypedCu
   const who = freeTypedCustomer.trim()
   return who ? `Field estimate — ${who}` : ''
 }
+
+/* ---------- resume a half-done write-up (v2.4076) ---------- */
+
+/** The wizard-only marker on an `estimates` row (`field_write_up`); NULL on every office-made estimate. */
+export type QuickEstimateFieldWriteUp = {
+  started_at: string
+  job: { id: string; hcp: string; name: string; address: string; customer_id: string | null } | null
+  phone?: string
+  free_customer?: string
+  dismissed_at?: string | null
+}
+
+/** The columns the resume check reads off a draft. */
+export type QuickEstimateDraftRow = {
+  id: string
+  estimate_number: number | null
+  doc_kind: string | null
+  customer_id: string | null
+  change_order_fields: unknown
+  line_items_snapshot: unknown
+  field_write_up: unknown
+  updated_at: string | null
+  estimate_field_photos?: Array<{ id: string }> | null
+}
+
+/** A draft parsed back into the wizard's fields. */
+export type QuickEstimateResumeState = {
+  id: string
+  estimateNumber: number | null
+  branch: QuickEstimateBranch
+  job: NonNullable<QuickEstimateFieldWriteUp['job']>
+  customerId: string | null
+  description: string
+  coReason: string
+  coImpact: string
+  coResponseBy: string
+  ballparkText: string
+  phone: string
+  freeTypedCustomer: string
+  photoCount: number
+  startedAt: string
+  updatedAt: string | null
+  /** Something was typed, priced or photographed — an empty draft is not worth a prompt. */
+  hasContent: boolean
+}
+
+const JOB_LINE = /^Job: .*$/
+const PHONE_LINE = /^Phone: (.*)$/
+const BALLPARK_LINE = /^Field ballpark: ~\$([\d,]+(?:\.\d{1,2})?)/
+
+/**
+ * The change description as the wizard stores it is "Job: …" and "Phone: …" paragraphs ahead of
+ * what the person typed; this hands back the typed part and the phone.
+ */
+export function quickEstimateSplitChangeDescription(text: string): { phone: string; description: string } {
+  const parts = (text ?? '').split(/\n\n/)
+  let phone = ''
+  const rest: string[] = []
+  for (const part of parts) {
+    const t = part.trim()
+    if (JOB_LINE.test(t)) continue
+    const m = PHONE_LINE.exec(t)
+    if (m && !phone) {
+      phone = (m[1] ?? '').trim()
+      continue
+    }
+    if (t) rest.push(t)
+  }
+  return { phone, description: rest.join('\n\n') }
+}
+
+function asRecord(v: unknown): Record<string, unknown> | null {
+  return v != null && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : null
+}
+const str = (v: unknown): string => (typeof v === 'string' ? v : '')
+
+/**
+ * The wizard's fields, read back off one of its own drafts — null for a row the wizard did not
+ * start (no marker) or one the person already left to the office (`dismissed_at`).
+ */
+export function quickEstimateResumeFromDraft(row: QuickEstimateDraftRow): QuickEstimateResumeState | null {
+  const marker = asRecord(row.field_write_up)
+  if (!marker || typeof marker.started_at !== 'string') return null
+  if (typeof marker.dismissed_at === 'string' && marker.dismissed_at) return null
+  const branch: QuickEstimateBranch = row.doc_kind === 'change_order' ? 'change_order' : 'estimate'
+  const jobRaw = asRecord(marker.job)
+  const job = jobRaw && typeof jobRaw.id === 'string'
+    ? { id: jobRaw.id, hcp: str(jobRaw.hcp), name: str(jobRaw.name), address: str(jobRaw.address), customer_id: typeof jobRaw.customer_id === 'string' ? jobRaw.customer_id : null }
+    : null
+  const co = asRecord(row.change_order_fields)
+  const lines = Array.isArray(row.line_items_snapshot) ? (row.line_items_snapshot as unknown[]) : []
+  let description = ''
+  let phone = str(marker.phone)
+  let ballparkText = ''
+  if (branch === 'change_order') {
+    const split = quickEstimateSplitChangeDescription(str(co?.description_of_change))
+    description = split.description
+    if (!phone) phone = split.phone
+  }
+  for (const l of lines) {
+    const line = asRecord(l)
+    if (!line) continue
+    const item = str(line.line_item)
+    if (item === 'Field write-up' && branch === 'estimate') description = str(line.description).trim()
+    const bp = BALLPARK_LINE.exec(item)
+    if (bp && bp[1]) ballparkText = bp[1].replace(/,/g, '')
+  }
+  const coReason = str(co?.reason_for_change).trim()
+  const coImpact = str(co?.impact_on_schedule).trim()
+  const coResponseBy = str(co?.response_requested_by).trim()
+  const photoCount = Array.isArray(row.estimate_field_photos) ? row.estimate_field_photos.length : 0
+  return {
+    id: row.id,
+    estimateNumber: row.estimate_number ?? null,
+    branch,
+    job: job ?? { id: '', hcp: '', name: '', address: '', customer_id: null },
+    customerId: row.customer_id ?? null,
+    description,
+    coReason,
+    coImpact,
+    coResponseBy,
+    ballparkText,
+    phone,
+    freeTypedCustomer: str(marker.free_customer),
+    photoCount,
+    startedAt: marker.started_at,
+    updatedAt: row.updated_at ?? null,
+    hasContent: Boolean(description || coReason || coImpact || ballparkText || photoCount > 0),
+  }
+}
+
+/** The first draft worth a prompt: newest first, wizard-started, not left to the office, with something in it. */
+export function quickEstimateResumeCandidate(rows: QuickEstimateDraftRow[]): QuickEstimateResumeState | null {
+  for (const row of rows) {
+    const state = quickEstimateResumeFromDraft(row)
+    if (state?.hasContent) return state
+  }
+  return null
+}
+
+/** "started 2 h ago" / "started Mon 2:10 pm" — what the prompt says under the job line. */
+export function quickEstimateResumeAge(startedAtIso: string, nowIso: string): string {
+  const started = Date.parse(startedAtIso)
+  const now = Date.parse(nowIso)
+  if (!Number.isFinite(started) || !Number.isFinite(now)) return ''
+  const mins = Math.max(0, Math.round((now - started) / 60000))
+  if (mins < 60) return `started ${mins} min ago`
+  const hours = Math.round(mins / 60)
+  if (hours < 24) return `started ${hours} h ago`
+  const days = Math.round(hours / 24)
+  return `started ${days} day${days === 1 ? '' : 's'} ago`
+}
+

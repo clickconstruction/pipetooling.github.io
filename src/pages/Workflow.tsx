@@ -1,86 +1,55 @@
-import { useEffect, useState, useRef, useMemo, type ReactNode } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { parsePercentCompleteInput } from '../lib/parsePercentCompleteInput'
 import { useAuth } from '../hooks/useAuth'
 import { useToastContext } from '../contexts/ToastContext'
 import { useEditProjectModal } from '../contexts/EditProjectModalContext'
-import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
+import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { canCreateJobsLedgerRow } from '../lib/jobsLedgerCreateRole'
 import { formatProjectNumberLabel } from '../lib/projectNumberLabel'
-import { buildWorkflowMoneyFlow, type WorkflowMoneyMarker } from '../lib/workflowMoneyFlow'
-import {
-  balanceColor,
-  formatSignedWholeDollars as railAmount,
-  itemsTotalByStep,
-  ledgerTotalForSteps,
-  sumAmounts,
-  workflowMoneyTotals,
-} from '../lib/workflowMoneyTotals'
 import {
   addInvoiceToStep as addInvoiceToStepRow,
   addPOToStep as addPOToStepRow,
   deleteLineItemRow,
-  formatLineItemDate,
   importPastedLineItems,
   loadFinalizedPOOptions,
   loadInvoiceDetail,
   loadPODetail,
   loadSupplyHouseInvoiceOptions,
-  normalizeUrl,
   saveLineItem as saveLineItemRow,
   type AvailableInvoiceOption,
   type AvailablePOOption,
   type InvoiceDetail,
   type PODetail,
 } from '../lib/projectsForecastStageLineItems'
-import {
-  daysBetween,
-  daysOpen,
-  expectedDueState,
-  formatAmount,
-  formatDateShort,
-  formatDatetime,
-  formatScheduledDateShort,
-} from '../lib/workflow/workflowFormat'
 import { getStepStatusStyle } from '../lib/workflow/stepStatusStyle'
 import { useProjectSuperintendents } from '../hooks/useProjectSuperintendents'
 import { WorkflowSuperintendentsStrip } from '../components/workflow/WorkflowSuperintendentsStrip'
 import { useProjectJobs } from '../hooks/useProjectJobs'
-import { useWorkflowProjections, type WorkflowProjection as Projection } from '../hooks/useWorkflowProjections'
+import { useWorkflowProjections } from '../hooks/useWorkflowProjections'
 import { WorkflowJobsStrip } from '../components/workflow/WorkflowJobsStrip'
 import { WorkflowSubsStrip } from '../components/workflow/WorkflowSubsStrip'
 import { WorkflowLineItemModals } from '../components/workflow/WorkflowLineItemModals'
 import { WorkflowFinancialsPanel } from '../components/workflow/WorkflowFinancialsPanel'
-import { isRowDefaultCollapsed, isSectionDefaultExpanded, isStepEmpty as isStepEmptyOf } from '../lib/workflow/stageCardDefaults'
-import { buildStageDisplayItems } from '../lib/workflow/stageDisplayItems'
-import { stageCardPills, wordCount } from '../lib/workflow/stageCardPills'
-import {
-  expectedDatesProblems,
-  expectedEndChanged,
-  expectedLengthChanged,
-  expectedStartChanged,
-  seedExpectedDates,
-} from '../lib/workflow/expectedDatesLinkage'
-import { planStepTransition, type StepLifecyclePlan } from '../lib/workflow/stepLifecycle'
+import { WorkflowStepLifecycleModals, type ExpectedDatesWindow } from '../components/workflow/WorkflowStepLifecycleModals'
+import { WorkflowStagesList } from '../components/workflow/WorkflowStagesList'
+import { useWorkflowTemplates } from '../hooks/useWorkflowTemplates'
+import { isStepEmpty as isStepEmptyOf } from '../lib/workflow/stageCardDefaults'
+import { seedExpectedDates } from '../lib/workflow/expectedDatesLinkage'
+import { planStepTransition } from '../lib/workflow/stepLifecycle'
 import { buildProjectSubRoster } from '../lib/workflow/projectSubRoster'
 import { notifyAssignedDefaultsOnAssign, NOTIFY_ASSIGNED_ALL_ON } from '../lib/workflow/stepAssignment'
 import { useWorkflowRoster } from '../hooks/useWorkflowRoster'
-import { StepCommitmentPanel } from '../components/workflow/StepCommitmentPanel'
+import { useWorkflowStepsEngine } from '../hooks/useWorkflowStepsEngine'
+import { useWorkflowStepWrites } from '../hooks/useWorkflowStepWrites'
 import { StepFormModal } from '../components/workflow/StepFormModal'
-import { PersonDisplayWithContact, type PersonContactInfo } from '../components/workflow/PersonDisplayWithContact'
-import type { StepCommitmentRow } from '../lib/workflow/stepCommitments'
-import { sendStepLifecycleNotifications } from '../lib/workflow/stepLifecycleNotifications'
+import type { PersonContactInfo } from '../components/workflow/PersonDisplayWithContact'
 import { toDatetimeLocal, fromDatetimeLocal } from '../utils/datetimeLocal'
-import { ymdDaysBetween, ymdFromDateLike } from '../utils/dateUtils'
-import { ageChipStyle } from '../lib/ageState'
 import type { Database } from '../types/database'
 import { telHrefFor } from '../lib/phoneContact'
 
 type Step = Database['public']['Tables']['project_workflow_steps']['Row']
-type Project = Database['public']['Tables']['projects']['Row']
 type Workflow = Database['public']['Tables']['project_workflows']['Row']
-type StepAction = Database['public']['Tables']['project_workflow_step_actions']['Row']
 type LineItem = Database['public']['Tables']['workflow_step_line_items']['Row']
 
 export default function Workflow() {
@@ -88,13 +57,27 @@ export default function Workflow() {
   const navigate = useNavigate()
   const editProjectModal = useEditProjectModal()
   const { user: authUser } = useAuth()
-  const { userRole, currentUserName, roster, userNames, personContacts, subIdentity } = useWorkflowRoster(authUser?.id)
+  const rosterApi = useWorkflowRoster(authUser?.id)
+  const { userRole, currentUserName, roster, subIdentity } = rosterApi
+  const engine = useWorkflowStepsEngine({ projectId, authUserId: authUser?.id, userRole, currentUserName })
+  const {
+    project,
+    workflow,
+    setWorkflow,
+    steps,
+    setSteps,
+    loading,
+    error,
+    setError,
+    lineItems,
+    ensureWorkflow,
+    loadProject,
+    loadLineItemsForSteps,
+    refreshSteps,
+    executeLifecyclePlan,
+    findPreviousStep,
+  } = engine
   const { showToast } = useToastContext()
-  const [project, setProject] = useState<Project | null>(null)
-  const [workflow, setWorkflow] = useState<Workflow | null>(null)
-  const [steps, setSteps] = useState<Step[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
 
   const [stepForm, setStepForm] = useState<{ open: boolean; step: Step | null; depends_on_step_id?: string | null; insertAfterStepId?: string | null }>({ open: false, step: null })
   const [rejectStep, setRejectStep] = useState<{ step: Step; reason: string } | null>(null)
@@ -102,25 +85,9 @@ export default function Workflow() {
   const [setStartStep, setSetStartStep] = useState<{ step: Step; startDateTime: string } | null>(null)
   const [assignPersonStep, setAssignPersonStep] = useState<Step | null>(null)
   const [assignPersonFilter, setAssignPersonFilter] = useState('')
-  const [commitmentsByStep, setCommitmentsByStep] = useState<Record<string, StepCommitmentRow[]>>({})
-  const [commitmentPaymentsByLaborJobId, setCommitmentPaymentsByLaborJobId] = useState<Record<string, Array<{ amount: number }>>>({})
-  const [userSubscriptions, setUserSubscriptions] = useState<Record<string, { notify_when_started: boolean; notify_when_complete: boolean; notify_when_reopened: boolean }>>({})
-  const [stepActions, setStepActions] = useState<Record<string, StepAction[]>>({})
   const [personContactModal, setPersonContactModal] = useState<PersonContactInfo | null>(null)
-  const [expectedDatesStep, setExpectedDatesStep] = useState<{
-    step: Step
-    expectedStart: string
-    expectedEnd: string
-    lengthDays: string
-    updateNextStage: boolean
-    hasNextStage: boolean
-    seededFromPrior: boolean
-  } | null>(null)
+  const [expectedDatesStep, setExpectedDatesStep] = useState<ExpectedDatesWindow | null>(null)
 
-  const [templates, setTemplates] = useState<{ id: string; name: string }[]>([])
-  const [selectedTemplateId, setSelectedTemplateId] = useState('')
-  const [creatingFromTemplate, setCreatingFromTemplate] = useState(false)
-  const [lineItems, setLineItems] = useState<Record<string, LineItem[]>>({})
   const [editingLineItem, setEditingLineItem] = useState<{
     stepId: string
     item: LineItem | null
@@ -138,25 +105,19 @@ export default function Workflow() {
   const [addingInvoiceToStep, setAddingInvoiceToStep] = useState<string | null>(null)
   const [availableInvoices, setAvailableInvoices] = useState<AvailableInvoiceOption[]>([])
   const [viewingInvoice, setViewingInvoice] = useState<InvoiceDetail | null>(null)
-  /** Inline money markers (v2.1194): projection ids whose between-card row is expanded. */
-  const [expandedProjectionIds, setExpandedProjectionIds] = useState<Set<string>>(new Set())
-  /** Ledger rail (v2.1195): the left balance column needs real horizontal room. */
-  const [wideForLedger, setWideForLedger] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 1100)
-  useEffect(() => {
-    const onResize = () => setWideForLedger(window.innerWidth >= 1100)
-    window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
-  }, [])
-  const [sectionExpanded, setSectionExpanded] = useState<Record<string, boolean>>({})
   const [rowCollapsed, setRowCollapsed] = useState<Record<string, boolean>>({})
   const [oldStagesCollapsed, setOldStagesCollapsed] = useState(false)
+  const stepWrites = useWorkflowStepWrites(engine, { authUserId: authUser?.id, showToast, onApproved: onStepApproved })
+  const { markStarted, deleteStep, assignPerson } = stepWrites
 
   const canManageStages = userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole) || userRole === 'superintendent'
   const isDevOrMaster = userRole === 'dev' || userRole === 'master_technician'
   const canSeePrivateNotesAndApprove = userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole) || userRole === 'superintendent'
   const canAssignSuperintendents = userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole)
-  const { projections, editingProjection, setEditingProjection, openEditProjection, saveProjection, deleteProjection } =
+  const projectionsApi =
     useWorkflowProjections({ workflowId: workflow?.id, projectId, userRole, ensureWorkflow, onError: setError })
+  const { projections, editingProjection, setEditingProjection, openEditProjection, saveProjection, deleteProjection } = projectionsApi
+  const templatesApi = useWorkflowTemplates(engine, projectId)
   const superintendents = useProjectSuperintendents(projectId, canAssignSuperintendents, setError)
   // "+ Create Job" was a dead door for superintendents (v2.2848): the jobs_ledger INSERT policy refuses them.
   const canCreateJobs = canCreateJobsLedgerRow(userRole)
@@ -164,184 +125,6 @@ export default function Workflow() {
 
   function isStepEmpty(step: Step): boolean {
     return isStepEmptyOf(step, lineItems[step.id]?.length ?? 0)
-  }
-
-  // Mutex to prevent concurrent ensureWorkflow calls for the same project
-  const ensureWorkflowPromises = useRef<Map<string, Promise<string | null>>>(new Map())
-  
-  // Track which workflow_id we've already loaded steps for to prevent redundant loads
-  const lastLoadedWorkflowId = useRef<string | null>(null)
-
-  async function ensureWorkflow(pid: string) {
-    // Check if there's already a pending call for this project
-    const existingPromise = ensureWorkflowPromises.current.get(pid)
-    if (existingPromise) {
-      console.log(`Waiting for existing ensureWorkflow call for project ${pid}`)
-      return existingPromise
-    }
-    
-    // Create new promise and store it
-    const promise = (async (): Promise<string | null> => {
-      try {
-        // First, try to find existing workflow
-        const { data: wfs, error: queryError } = await supabase.from('project_workflows').select('*').eq('project_id', pid)
-        if (queryError) {
-          console.error('Error querying workflows:', queryError)
-          setError(`Failed to load workflow: ${queryError.message}`)
-          return null
-        }
-        if (wfs && wfs.length > 0) {
-          // Use the first workflow found (should only be one per project)
-          const existingWorkflow = wfs[0] as Workflow
-          setWorkflow(existingWorkflow)
-          console.log(`Found existing workflow ${existingWorkflow.id} for project ${pid}`)
-          return existingWorkflow.id
-        }
-        // No workflow exists, create one
-        const { data: proj, error: projError } = await supabase.from('projects').select('name').eq('id', pid).single()
-        if (projError) {
-          console.error('Error loading project:', projError)
-          setError(`Failed to load project: ${projError.message}`)
-          return null
-        }
-        const name = (proj as { name?: string } | null)?.name ? `${(proj as { name: string }).name} workflow` : 'Workflow'
-        const { data: inserted, error: insertError } = await supabase.from('project_workflows').insert({ project_id: pid, name, status: 'draft' }).select().single()
-        if (insertError) {
-          // If insert failed, it might be because another call created it concurrently
-          // Query again to find the existing workflow
-          console.log(`Insert failed for project ${pid}, querying again:`, insertError.message)
-          const { data: wfsRetry, error: retryError } = await supabase.from('project_workflows').select('*').eq('project_id', pid)
-          if (retryError) {
-            console.error('Error querying workflows on retry:', retryError)
-            setError(`Failed to create workflow: ${insertError.message}`)
-            return null
-          }
-          if (wfsRetry && wfsRetry.length > 0) {
-            // Found it! Another call must have created it
-            const existingWorkflow = wfsRetry[0] as Workflow
-            setWorkflow(existingWorkflow)
-            console.log(`Found existing workflow ${existingWorkflow.id} for project ${pid} (after insert conflict)`)
-            return existingWorkflow.id
-          }
-          // Still not found, return error
-          console.error('Error creating workflow:', insertError)
-          setError(`Failed to create workflow: ${insertError.message}`)
-          return null
-        }
-        const w = inserted as Workflow
-        setWorkflow(w)
-        console.log(`Created new workflow ${w.id} for project ${pid}`)
-        return w.id
-      } finally {
-        // Remove from map when done (success or failure)
-        ensureWorkflowPromises.current.delete(pid)
-      }
-    })()
-    
-    ensureWorkflowPromises.current.set(pid, promise)
-    return promise
-  }
-
-  async function loadProject(pid: string): Promise<boolean> {
-    const { data, error: e } = await supabase
-      .from('projects')
-      .select('*')
-      .eq('id', pid)
-      .single()
-    if (e) {
-      setError(e.message)
-      setLoading(false)
-      return false
-    }
-
-    const projectData = data as Project
-    setProject(projectData)
-    return true
-  }
-
-  async function loadSteps(wfId: string) {
-    console.log(`loadSteps: Loading steps for workflow_id ${wfId}`)
-    // Only subcontractors are filtered to assigned steps
-    // Assistants see all stages (RLS handles access control via master adoption)
-    let query = supabase
-      .from('project_workflow_steps')
-      .select('*')
-      .eq('workflow_id', wfId)
-    
-    // Only subcontractors are filtered to assigned steps
-    // Assistants see all stages (RLS handles access control via master adoption)
-    if (isSubcontractorLikeRole(userRole) && currentUserName) {
-      query = query.eq('assigned_to_name', currentUserName)
-    }
-    
-    const { data, error: e } = await query.order('sequence_order', { ascending: true })
-    if (e) {
-      setError(`Failed to load steps: ${e.message}`)
-      console.error('Error loading steps:', e)
-      return
-    }
-    const stepData = (data as Step[]) ?? []
-    console.log(`Loaded ${stepData.length} steps for workflow ${wfId}`)
-    
-    // Only subcontractors need this check (assistants see all stages if they have project access)
-    if (isSubcontractorLikeRole(userRole) && stepData.length === 0) {
-      setError('You do not have access to this workflow. You can only view workflows where you are assigned to at least one step.')
-      setSteps([])
-      // Track that we've loaded steps for this workflow_id (even if empty)
-      lastLoadedWorkflowId.current = wfId
-      return
-    }
-    
-    setSteps(stepData)
-    
-    // Track that we've loaded steps for this workflow_id
-    lastLoadedWorkflowId.current = wfId
-    
-    if (stepData.length > 0) {
-      const stepIds = stepData.map((s) => s.id)
-      
-      // Load user subscriptions for these steps
-      if (authUser?.id) {
-        const { data: subs } = await supabase
-          .from('step_subscriptions')
-          .select('step_id, notify_when_started, notify_when_complete, notify_when_reopened')
-          .eq('user_id', authUser.id)
-          .in('step_id', stepIds)
-        if (subs) {
-          const subsMap: Record<string, { notify_when_started: boolean; notify_when_complete: boolean; notify_when_reopened: boolean }> = {}
-          subs.forEach((sub) => {
-            subsMap[sub.step_id] = {
-              notify_when_started: sub.notify_when_started ?? false,
-              notify_when_complete: sub.notify_when_complete ?? false,
-              notify_when_reopened: sub.notify_when_reopened ?? false,
-            }
-          })
-          setUserSubscriptions(subsMap)
-        }
-      }
-      
-      // Load actions for these steps (limit to prevent huge result sets)
-      const { data: actions } = await supabase
-        .from('project_workflow_step_actions')
-        .select('*')
-        .in('step_id', stepIds)
-        .order('performed_at', { ascending: false })
-        .limit(100)
-      if (actions) {
-        const actionsMap: Record<string, StepAction[]> = {}
-        actions.forEach((action) => {
-          if (action && action.step_id) {
-            const stepId = action.step_id
-            if (!actionsMap[stepId]) {
-              actionsMap[stepId] = []
-            }
-            actionsMap[stepId].push(action)
-          }
-        })
-        setStepActions(actionsMap)
-      }
-      
-    }
   }
 
   async function loadFinalizedPOs() {
@@ -414,139 +197,6 @@ export default function Workflow() {
     }
   }
 
-  // Step commitments (RUN_SUBS_PLAN PR 2.2). Fail-soft: before the 2.1
-  // migration is pushed the select errors and the panel simply never renders.
-  async function loadCommitmentsForSteps(stepIds: string[]) {
-    if (!canManageStages) return
-    if (stepIds.length === 0) {
-      setCommitmentsByStep({})
-      return
-    }
-    const { data, error } = await supabase.from('step_commitments').select('*').in('step_id', stepIds)
-    if (error) return
-    const rows = (data ?? []) as StepCommitmentRow[]
-    const byStep: Record<string, StepCommitmentRow[]> = {}
-    const laborJobIds: string[] = []
-    rows.forEach((r) => {
-      // Sheet-anchored work orders (v2.2785) have no step; the `.in('step_id')` query never returns them.
-      if (!r.step_id) return
-      ;(byStep[r.step_id] ??= []).push(r)
-      if (r.labor_job_id) laborJobIds.push(r.labor_job_id)
-    })
-    setCommitmentsByStep(byStep)
-    if (laborJobIds.length > 0) {
-      const { data: pays } = await supabase
-        .from('people_labor_job_payments')
-        .select('job_id, amount')
-        .in('job_id', laborJobIds)
-      const byJob: Record<string, Array<{ amount: number }>> = {}
-      for (const p of (pays ?? []) as Array<{ job_id: string; amount: number }>) {
-        ;(byJob[p.job_id] ??= []).push({ amount: Number(p.amount) })
-      }
-      setCommitmentPaymentsByLaborJobId(byJob)
-    } else {
-      setCommitmentPaymentsByLaborJobId({})
-    }
-  }
-
-  async function loadLineItemsForSteps(stepIds: string[]) {
-    if (userRole !== 'dev' && userRole !== 'master_technician' && !isAssistantLike(userRole) && userRole !== 'superintendent') return
-    if (stepIds.length === 0) {
-      setLineItems({})
-      return
-    }
-    
-    try {
-      const { data: items, error } = await supabase
-        .from('workflow_step_line_items')
-        .select('*')
-        .in('step_id', stepIds)
-        .order('sequence_order', { ascending: true })
-      
-      if (error) {
-        console.error('Error loading line items:', error)
-        // Don't show error to user for RLS/permission issues, just log and continue
-        if (error.code !== 'PGRST116' && error.message && !error.message.includes('permission')) {
-          setError(`Failed to load line items: ${error.message}`)
-        }
-        setLineItems({})
-        return
-      }
-      
-      if (items) {
-        const itemsMap: Record<string, LineItem[]> = {}
-        items.forEach((item) => {
-          if (item && item.step_id) {
-            const stepId = item.step_id
-            if (!itemsMap[stepId]) {
-              itemsMap[stepId] = []
-            }
-            itemsMap[stepId].push(item as LineItem)
-          }
-        })
-        setLineItems(itemsMap)
-      } else {
-        setLineItems({})
-      }
-    } catch (err) {
-      console.error('Exception loading line items:', err)
-      setLineItems({})
-    }
-  }
-
-  useEffect(() => {
-    if (!projectId) {
-      setLoading(false)
-      lastLoadedWorkflowId.current = null
-      return
-    }
-    // Skip redundant run: we already have project, workflow, and steps for this project.
-    // Exception: subcontractors must re-run when userRole becomes available (filter by assigned steps).
-    if (project?.id === projectId && workflow?.id && lastLoadedWorkflowId.current === workflow.id && !isSubcontractorLikeRole(userRole)) {
-      setLoading(false)
-      return
-    }
-    let cancelled = false
-    ;(async () => {
-      // Reset tracking when projectId changes (new project = need to load)
-      if (project?.id !== projectId) lastLoadedWorkflowId.current = null
-      // Run loadProject and ensureWorkflow in parallel (saves ~1 round-trip)
-      const [projectOk, wfIdOrNull] = await Promise.all([
-        loadProject(projectId),
-        workflow?.id ? Promise.resolve(workflow.id) : ensureWorkflow(projectId),
-      ])
-      if (cancelled) return
-      if (!projectOk) return
-      const wfId = wfIdOrNull
-      if (cancelled) return
-      if (!wfId) {
-        setLoading(false)
-        return
-      }
-      // Skip loadSteps if we've already loaded for this workflow_id
-      if (lastLoadedWorkflowId.current !== wfId) {
-        await loadSteps(wfId)
-      }
-      if (!cancelled) {
-        setLoading(false)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [projectId, userRole, currentUserName, workflow?.id])
-
-  // Load line items when steps and userRole are available (staggered to reduce concurrent DB load)
-  useEffect(() => {
-    if (steps.length > 0 && (userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole) || userRole === 'superintendent')) {
-      const stepIds = steps.map(s => s.id)
-      const t = setTimeout(() => { loadLineItemsForSteps(stepIds); void loadCommitmentsForSteps(stepIds) }, 50)
-      return () => clearTimeout(t)
-    } else {
-      setLineItems({})
-    }
-  }, [steps, userRole])
-
   // Load finalized purchase orders and supply house invoices for adding to steps (staggered to run after projections)
   useEffect(() => {
     if (userRole === 'dev' || userRole === 'master_technician') {
@@ -573,115 +223,6 @@ export default function Workflow() {
     }
   }, [steps, loading])
 
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase.from('workflow_templates').select('id, name').order('name')
-      setTemplates((data as { id: string; name: string }[]) ?? [])
-    })()
-  }, [])
-
-  async function refreshSteps(): Promise<string | null> {
-    let workflowId: string | null = workflow?.id ?? null
-    if (!workflowId && projectId) {
-      workflowId = await ensureWorkflow(projectId)
-      console.log(`refreshSteps: Using workflow_id ${workflowId} from ensureWorkflow for project ${projectId}`)
-      // Ensure workflow state matches the returned workflow_id
-      if (workflowId && workflow?.id !== workflowId) {
-        // State might be out of sync, reload workflow to ensure consistency
-        const { data: wf } = await supabase.from('project_workflows').select('*').eq('id', workflowId).single()
-        if (wf) {
-          setWorkflow(wf as Workflow)
-          console.log(`refreshSteps: Updated workflow state to match workflow_id ${workflowId}`)
-        }
-      }
-    } else {
-      console.log(`refreshSteps: Using workflow_id ${workflowId} from state for project ${projectId}`)
-    }
-    if (!workflowId) {
-      return 'No workflow ID'
-    }
-    // Force reload by resetting tracking - refreshSteps should always reload
-    lastLoadedWorkflowId.current = null
-    await loadSteps(workflowId)
-    return null
-  }
-
-  async function getCurrentUserName(): Promise<string> {
-    if (!authUser?.id) return 'Unknown'
-    const { data: userData } = await supabase
-      .from('users')
-      .select('name, email')
-      .eq('id', authUser.id)
-      .single()
-    if (userData) {
-      return (userData as { name: string | null; email: string | null }).name || (userData as { name: string | null; email: string | null }).email || 'Unknown'
-    }
-    return 'Unknown'
-  }
-
-  async function recordAction(stepId: string, actionType: 'started' | 'completed' | 'approved' | 'rejected' | 'reopened' | 'skipped', notes?: string | null) {
-    const performedBy = await getCurrentUserName()
-    const performedAt = new Date().toISOString()
-    const { data, error } = await supabase
-      .from('project_workflow_step_actions')
-      .insert({
-        step_id: stepId,
-        action_type: actionType,
-        performed_by: performedBy,
-        performed_at: performedAt,
-        notes: notes || null,
-      })
-      .select()
-      .single()
-    if (error) {
-      console.error('Failed to record step action', actionType, error)
-    }
-    if (!error && data) {
-      // Update local state
-      setStepActions((prev) => {
-        const current = prev[stepId] || []
-        return { ...prev, [stepId]: [data as StepAction, ...current] }
-      })
-    }
-  }
-
-  // Lifecycle notifications live in the shared sender (RUN_SUBS_PLAN PR 0.1);
-  // this wrapper pins the page's project/workflow guard and session identity.
-  async function sendWorkflowNotifications(
-    step: Step,
-    actionType: 'started' | 'completed' | 'approved' | 'rejected' | 'reopened'
-  ) {
-    if (!project || !workflow) return
-    await sendStepLifecycleNotifications({
-      step,
-      actionType,
-      projectId: project.id,
-      projectName: project.name,
-      currentUserId: authUser?.id ?? null,
-    })
-  }
-
-  // Run a planned lifecycle transition: sequential column updates (first
-  // failure aborts and surfaces), action-ledger rows, then fire-and-forget
-  // notifications resolved against the in-memory step objects.
-  async function executeLifecyclePlan(plan: StepLifecyclePlan, stepsById: Map<string, Step>): Promise<boolean> {
-    for (const u of plan.updates) {
-      const { error } = await supabase.from('project_workflow_steps').update(u.update).eq('id', u.stepId)
-      if (error) {
-        setError(`Failed to update step: ${error.message}`)
-        return false
-      }
-    }
-    for (const a of plan.actions) {
-      await recordAction(a.stepId, a.actionType, a.notes)
-    }
-    for (const n of plan.notifications) {
-      const s = stepsById.get(n.stepId)
-      if (s) void sendWorkflowNotifications({ ...s, ...(n.stepOverrides ?? {}) } as Step, n.actionType)
-    }
-    return true
-  }
-
   async function openAddStep(insertAfterStepId?: string) {
     setStepForm({ open: true, step: null, insertAfterStepId: insertAfterStepId ?? null })
   }
@@ -694,56 +235,6 @@ export default function Workflow() {
 
   function closeStepForm() {
     setStepForm({ open: false, step: null, insertAfterStepId: null })
-  }
-
-  async function createFromTemplate() {
-    if (!selectedTemplateId) return
-    // Ensure we have a workflow_id - fetch from DB if state isn't ready
-    let workflowId: string | null = workflow?.id ?? null
-    if (!workflowId && projectId) {
-      workflowId = await ensureWorkflow(projectId)
-    }
-    if (!workflowId) {
-      setError('Workflow not found. Please refresh the page.')
-      return
-    }
-    setCreatingFromTemplate(true)
-    setError(null)
-    const { data: tSteps, error: tStepsErr } = await supabase
-      .from('workflow_template_steps')
-      .select('sequence_order, name')
-      .eq('template_id', selectedTemplateId)
-      .order('sequence_order', { ascending: true })
-    if (tStepsErr) {
-      setError(`Failed to load template steps: ${tStepsErr.message}`)
-      setCreatingFromTemplate(false)
-      return
-    }
-    if (tSteps && tSteps.length > 0) {
-      let insertedCount = 0
-      for (const t of tSteps as { sequence_order: number; name: string }[]) {
-        const { data: inserted, error: insErr } = await supabase.from('project_workflow_steps').insert({
-          workflow_id: workflowId,
-          sequence_order: t.sequence_order,
-          name: t.name,
-          status: 'pending',
-        }).select('id')
-        if (insErr) {
-          setError(`Failed to insert step "${t.name}": ${insErr.message}`)
-          setCreatingFromTemplate(false)
-          return
-        }
-        if (inserted && inserted.length > 0) {
-          insertedCount++
-        }
-      }
-      console.log(`Created ${insertedCount} steps from template`)
-    }
-    setCreatingFromTemplate(false)
-    const refreshErr = await refreshSteps()
-    if (refreshErr) {
-      setError(`Steps created but failed to refresh: ${refreshErr}`)
-    }
   }
 
   async function copyStep(step: Step) {
@@ -947,29 +438,6 @@ export default function Workflow() {
     }
   }
 
-  function findPreviousStep(step: Step): Step | null {
-    const sortedSteps = [...steps].sort((a, b) => a.sequence_order - b.sequence_order)
-    const currentIndex = sortedSteps.findIndex((s) => s.id === step.id)
-    return currentIndex > 0 ? (sortedSteps[currentIndex - 1] ?? null) : null
-  }
-
-  function findNextStep(step: Step): Step | null {
-    const sortedSteps = [...steps].sort((a, b) => a.sequence_order - b.sequence_order)
-    const currentIndex = sortedSteps.findIndex((s) => s.id === step.id)
-    return currentIndex >= 0 && currentIndex < sortedSteps.length - 1 ? (sortedSteps[currentIndex + 1] ?? null) : null
-  }
-
-  async function markStarted(step: Step, startDateTime?: string) {
-    const plan = planStepTransition({
-      transition: 'start',
-      step,
-      nowIso: new Date().toISOString(),
-      startedAtIso: (startDateTime ? fromDatetimeLocal(startDateTime) : undefined) ?? undefined,
-    })
-    if (!(await executeLifecyclePlan(plan, new Map([[step.id, step]])))) return
-    await refreshSteps()
-  }
-
   async function submitSetStart() {
     if (!setStartStep) return
     await markStarted(setStartStep.step, setStartStep.startDateTime)
@@ -987,25 +455,6 @@ export default function Workflow() {
       hasNextStage: seed.hasNextStage,
       seededFromPrior: seed.seededFromPrior,
     })
-  }
-
-  // Persist an inline percent-complete edit from the expanded stage card. Mirrors
-  // `submitExpectedDates` (single-column update + optimistic `setSteps` merge). The Forecast
-  // Specific tab has its own equivalent — both surfaces commit identically because the
-  // user's keystrokes flow through the shared `parsePercentCompleteInput` helper before
-  // landing here.
-  async function updatePercentComplete(step: Step, value: number | null) {
-    const { error } = await supabase
-      .from('project_workflow_steps')
-      .update({ percent_complete: value })
-      .eq('id', step.id)
-    if (error) {
-      showToast(`Failed to save % complete: ${error.message}`, 'error')
-      return
-    }
-    setSteps((prev) =>
-      prev.map((s) => (s.id === step.id ? { ...s, percent_complete: value } : s)),
-    )
   }
 
   async function submitExpectedDates() {
@@ -1075,117 +524,6 @@ export default function Workflow() {
     )
     setExpectedDatesStep(null)
   }
-
-  async function markCompleted(step: Step) {
-    const nextStep = findNextStep(step)
-    const plan = planStepTransition({ transition: 'complete', step, nextStep, nowIso: new Date().toISOString() })
-    const stepsById = new Map([[step.id, step]])
-    if (nextStep) stepsById.set(nextStep.id, nextStep)
-    if (!(await executeLifecyclePlan(plan, stepsById))) return
-    await refreshSteps()
-  }
-
-  async function markApproved(step: Step) {
-    const approvedByName = await getCurrentUserName()
-    const nextStep = findNextStep(step)
-    const plan = planStepTransition({
-      transition: 'approve',
-      step,
-      nextStep,
-      approvedByName,
-      nowIso: new Date().toISOString(),
-    })
-    const stepsById = new Map([[step.id, step]])
-    if (nextStep) stepsById.set(nextStep.id, nextStep)
-    if (!(await executeLifecyclePlan(plan, stepsById))) return
-
-    await refreshSteps()
-
-    // v2.1189: after approving, tuck this card away and take the user to the
-    // next stage — collapse the approved card (explicit, in case it was
-    // manually expanded), expand the next card (pending defaults collapsed),
-    // and scroll it into view once the refreshed list has painted.
-    setRowCollapsed((prev) => ({
-      ...prev,
-      [step.id]: true,
-      ...(nextStep ? { [nextStep.id]: false } : {}),
-    }))
-    if (nextStep) {
-      const nextStepId = nextStep.id
-      window.setTimeout(() => {
-        document.getElementById(`step-${nextStepId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      }, 120)
-    }
-  }
-
-  async function markReopened(step: Step) {
-    const plan = planStepTransition({ transition: 'reopen', step, nowIso: new Date().toISOString() })
-    if (!(await executeLifecyclePlan(plan, new Map([[step.id, step]])))) return
-    await refreshSteps()
-  }
-
-  async function updateNotifyAssigned(step: Step, field: 'notify_assigned_when_started' | 'notify_assigned_when_complete' | 'notify_assigned_when_reopened', value: boolean) {
-    const { error } = await supabase.from('project_workflow_steps').update({ [field]: value }).eq('id', step.id)
-    if (error) {
-      setError(`Failed to update notification setting: ${error.message}`)
-      return
-    }
-    await refreshSteps()
-  }
-
-  async function updateCrossStepNotify(step: Step, field: 'notify_next_assignee_when_complete_or_approved' | 'notify_prior_assignee_when_rejected', value: boolean) {
-    const { error } = await supabase.from('project_workflow_steps').update({ [field]: value }).eq('id', step.id)
-    if (error) {
-      setError(`Failed to update notification setting: ${error.message}`)
-      return
-    }
-    await refreshSteps()
-  }
-
-  async function updateNotifyMe(step: Step, field: 'notify_when_started' | 'notify_when_complete' | 'notify_when_reopened', value: boolean) {
-    if (!authUser?.id) return
-    const current = userSubscriptions[step.id]
-    const payload = {
-      step_id: step.id,
-      user_id: authUser.id,
-      notify_when_started: field === 'notify_when_started' ? value : (current?.notify_when_started ?? false),
-      notify_when_complete: field === 'notify_when_complete' ? value : (current?.notify_when_complete ?? false),
-      notify_when_reopened: field === 'notify_when_reopened' ? value : (current?.notify_when_reopened ?? false),
-    }
-    if (current) {
-      await supabase.from('step_subscriptions').update(payload).eq('step_id', step.id).eq('user_id', authUser.id)
-    } else {
-      await supabase.from('step_subscriptions').insert(payload)
-    }
-    setUserSubscriptions((prev) => ({ ...prev, [step.id]: payload }))
-  }
-
-  async function updateNotes(step: Step, notes: string) {
-    const trimmed = notes.trim() || null
-    let err = (await supabase.rpc('update_step_notes', { p_step_id: step.id, p_notes: trimmed ?? '' })).error
-    if (err?.message?.includes('Could not find the function')) {
-      err = (await supabase.from('project_workflow_steps').update({ notes: trimmed }).eq('id', step.id)).error
-    }
-    if (err) {
-      setError(`Failed to update notes: ${err.message}`)
-      return
-    }
-    await refreshSteps()
-  }
-
-  async function updatePrivateNotes(step: Step, privateNotes: string) {
-    const trimmed = privateNotes.trim() || null
-    let err = (await supabase.rpc('update_step_private_notes', { p_step_id: step.id, p_private_notes: trimmed ?? '' })).error
-    if (err?.message?.includes('Could not find the function')) {
-      err = (await supabase.from('project_workflow_steps').update({ private_notes: trimmed }).eq('id', step.id)).error
-    }
-    if (err) {
-      setError(`Failed to update private notes: ${err.message}`)
-      return
-    }
-    await refreshSteps()
-  }
-
 
   async function saveLineItem(stepId: string, item: LineItem | null, link: string, memo: string, amount: string, itemDate: string) {
     const error = await saveLineItemRow({ stepId, item, link, memo, amount, itemDate, existing: lineItems[stepId] || [] })
@@ -1260,88 +598,28 @@ export default function Workflow() {
     if (ok) await refreshSteps()
   }
 
-  async function deleteStep(step: Step) {
-    setError(null)
-    
-    try {
-      // Delete dependencies where this step is the source
-      const { error: depErr1 } = await supabase
-        .from('workflow_step_dependencies')
-        .delete()
-        .eq('step_id', step.id)
-      
-      if (depErr1) {
-        throw new Error(`Failed to delete step dependencies: ${depErr1.message}`)
-      }
-      
-      // Delete dependencies where this step is the target
-      const { error: depErr2 } = await supabase
-        .from('workflow_step_dependencies')
-        .delete()
-        .eq('depends_on_step_id', step.id)
-      
-      if (depErr2) {
-        throw new Error(`Failed to delete reverse dependencies: ${depErr2.message}`)
-      }
-      
-      // Delete the step itself
-      const { error: delErr } = await supabase
-        .from('project_workflow_steps')
-        .delete()
-        .eq('id', step.id)
-      
-      if (delErr) {
-        throw new Error(`Failed to delete step: ${delErr.message}`)
-      }
-      
-      await refreshSteps()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete step')
+  // v2.1189: after approving, tuck this card away and take the user to the
+  // next stage — collapse the approved card (explicit, in case it was
+  // manually expanded), expand the next card (pending defaults collapsed),
+  // and scroll it into view once the refreshed list has painted.
+  function onStepApproved(step: Step, nextStep: Step | null) {
+    setRowCollapsed((prev) => ({
+      ...prev,
+      [step.id]: true,
+      ...(nextStep ? { [nextStep.id]: false } : {}),
+    }))
+    if (nextStep) {
+      const nextStepId = nextStep.id
+      window.setTimeout(() => {
+        document.getElementById(`step-${nextStepId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }, 120)
     }
   }
 
-  async function assignPerson(step: Step, name: string | null, personId?: string | null) {
-    const previousName = step.assigned_to_name
+  // The picker closes first, then the assignment runs (optimistic, reverted on a refusal).
+  function assignPersonFromPicker(step: Step, name: string | null, personId?: string | null) {
     setAssignPersonStep(null)
-    setSteps((prev) =>
-      prev.map((s) => (s.id === step.id ? { ...s, assigned_to_name: name } : s))
-    )
-    // Prefer the 3-arg RPC (writes assigned_person_id too; explicit id wins for
-    // duplicate roster names). Fall back to the legacy RPC, then the direct
-    // update — the DB trigger resolves the person id on both fallbacks.
-    let err: { message: string } | null = null
-    const rpcRes = await supabase.rpc('update_step_assignment', {
-      p_step_id: step.id,
-      p_assigned_to_name: name ?? '',
-      p_person_id: personId ?? undefined,
-    })
-    err = rpcRes.error
-    if (err?.message?.includes('Could not find the function')) {
-      const legacyRes = await supabase.rpc('update_step_assigned_to', {
-        p_step_id: step.id,
-        p_assigned_to_name: name ?? '',
-      })
-      err = legacyRes.error
-    }
-    if (err?.message?.includes('Could not find the function')) {
-      const directRes = await supabase.from('project_workflow_steps').update({ assigned_to_name: name ?? '' }).eq('id', step.id)
-      err = directRes.error
-    }
-    if (err) {
-      setSteps((prev) =>
-        prev.map((s) => (s.id === step.id ? { ...s, assigned_to_name: previousName } : s))
-      )
-      setError(`Failed to assign person: ${err.message}`)
-      return
-    }
-    // First assignee on this step → the three "notify the assigned person"
-    // toggles turn on (J31-4 P2, v2.2900). Best-effort: the assignment already
-    // landed, so a refused toggle write is not an assignment failure.
-    const notifyPatch = notifyAssignedDefaultsOnAssign(previousName, name)
-    if (notifyPatch) {
-      await supabase.from('project_workflow_steps').update(notifyPatch).eq('id', step.id)
-    }
-    refreshSteps()
+    return assignPerson(step, name, personId)
   }
 
   const projectSubRoster = useMemo(
@@ -1475,1030 +753,39 @@ export default function Workflow() {
         />
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 0, alignItems: 'center' }}>
-        {steps.length === 0 ? (
-          <div>
-            {canManageStages ? (
-              <>
-                <p style={{ marginBottom: '1rem' }}>No steps yet. Add a step or create from a template.</p>
-                {templates.length > 0 && (
-                  <div style={{ padding: '1rem', border: '1px solid var(--border)', borderRadius: 8, marginBottom: '1rem', maxWidth: 400 }}>
-                    <strong style={{ display: 'block', marginBottom: 8 }}>Create from template</strong>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                      <select
-                        value={selectedTemplateId}
-                        onChange={(e) => setSelectedTemplateId(e.target.value)}
-                        style={{ padding: '0.5rem', flex: 1, minWidth: 160 }}
-                      >
-                        <option value="">Select a template</option>
-                        {templates.map((t) => (
-                          <option key={t.id} value={t.id}>{t.name}</option>
-                        ))}
-                      </select>
-                      <button
-                        type="button"
-                        onClick={createFromTemplate}
-                        disabled={!selectedTemplateId || creatingFromTemplate}
-                        title={!selectedTemplateId ? 'Select a template' : undefined}
-                        className="wf-btn-primary"
-                      >
-                        {creatingFromTemplate ? 'Creating...' : 'Create from template'}
-                      </button>
-                      {!selectedTemplateId && !creatingFromTemplate && (
-                        <span style={{ fontSize: '0.8rem', color: '#FF6600', marginLeft: '0.5rem' }}>Select a template</span>
-                      )}
-                    </div>
-                  </div>
-                )}
-                <p>Or <button type="button" onClick={() => openAddStep()} className="wf-btn-link">add a step</button> to build from scratch.</p>
-              </>
-            ) : (
-              <p style={{ marginBottom: '1rem' }}>No steps assigned to you in this workflow.</p>
-            )}
-          </div>
-        ) : (() => {
-          const displayItems = buildStageDisplayItems(steps, oldStagesCollapsed)
-          // Money flow (v2.1194): projections anchored to steps render as inline
-          // markers with running projected/spent totals. Dev/master only — same
-          // visibility as the top Projections panel.
-          const orderedStepIds = [...steps].sort((a, b) => (a.sequence_order ?? 0) - (b.sequence_order ?? 0)).map((st) => st.id)
-          const itemsTotalByStepId = itemsTotalByStep(orderedStepIds, lineItems)
-          const moneyFlow = isDevOrMaster
-            ? buildWorkflowMoneyFlow(orderedStepIds, projections, itemsTotalByStepId)
-            : { beforeByStep: {}, afterByStep: {}, stepProjectedTotal: {}, stepBalance: {} }
-          // Ledger rail (v2.1195): a left balance column aligned to every card and
-          // marker, plus a sticky margin/balance summary. Wide viewports only —
-          // narrow screens keep the marker pills.
-          const {
-            projectionsTotal,
-            ledgerTotal,
-            marginPct,
-            balance: balanceNow,
-            hasMoney,
-          } = workflowMoneyTotals(sumAmounts(projections), ledgerTotalForSteps(orderedStepIds, itemsTotalByStepId))
-          const showLedgerRail = isDevOrMaster && wideForLedger && hasMoney
-          const RAIL_W = 150
-          const railGutter = (value: number | null) =>
-            showLedgerRail ? (
-              <div
-                style={{
-                  width: RAIL_W,
-                  flexShrink: 0,
-                  boxSizing: 'border-box',
-                  textAlign: 'right',
-                  paddingRight: 14,
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  whiteSpace: 'nowrap',
-                  fontVariantNumeric: 'tabular-nums',
-                  color: value == null ? 'var(--text-faint)' : balanceColor(value),
-                  borderRight: '2px solid var(--border)',
-                  alignSelf: 'stretch',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'flex-end',
-                }}
-              >
-                {value == null ? '' : railAmount(value)}
-              </div>
-            ) : null
-          const railRow = (value: number | null, content: ReactNode, centerContent = false, key?: string) =>
-            showLedgerRail ? (
-              <div key={key} style={{ display: 'flex', width: '100%', alignItems: 'stretch' }}>
-                {railGutter(value)}
-                <div
-                  style={{
-                    flex: 1,
-                    minWidth: 0,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: centerContent ? 'center' : 'stretch',
-                    justifyContent: 'center',
-                  }}
-                >
-                  {content}
-                </div>
-              </div>
-            ) : (
-              content
-            )
-          const stickyLedgerCard = showLedgerRail ? (
-            <div key="ledger-sticky" style={{ alignSelf: 'flex-start', position: 'sticky', top: 60, zIndex: 5, marginBottom: 8 }}>
-              <div
-                style={{
-                  width: RAIL_W - 16,
-                  boxSizing: 'border-box',
-                  border: '1px solid var(--border-strong)',
-                  borderRadius: 8,
-                  background: 'var(--surface)',
-                  padding: '0.5rem 0.65rem',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                }}
-              >
-                <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>Project margin</div>
-                <div style={{ fontSize: '1.05rem', fontWeight: 700, color: marginPct == null ? 'var(--text-muted)' : balanceColor(marginPct) }}>
-                  {marginPct == null ? '—' : `${marginPct.toFixed(1)}%`}
-                </div>
-                <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginTop: 4 }}>Balance</div>
-                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: balanceColor(balanceNow), fontVariantNumeric: 'tabular-nums' }}>
-                  {railAmount(balanceNow)}
-                </div>
-                <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.4 }}>
-                  proj {railAmount(projectionsTotal)}
-                  <br />
-                  spent {railAmount(-ledgerTotal)}
-                </div>
-              </div>
-            </div>
-          ) : null
-          const renderMoneyMarker = (m: WorkflowMoneyMarker<Projection>) => {
-            const p = m.projection
-            const expanded = expandedProjectionIds.has(p.id)
-            const toggle = () =>
-              setExpandedProjectionIds((prev) => {
-                const next = new Set(prev)
-                if (next.has(p.id)) next.delete(p.id)
-                else next.add(p.id)
-                return next
-              })
-            const anchorStep = steps.find((st) => st.id === p.step_id)
-            return (
-              <div key={p.id} style={{ alignSelf: 'stretch', display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '0.25rem' }}>
-                <button
-                  type="button"
-                  onClick={toggle}
-                  aria-expanded={expanded}
-                  title="Projection — click for details"
-                  style={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    alignItems: 'center',
-                    gap: '0.45rem',
-                    maxWidth: 'min(100%, 640px)',
-                    padding: '0.2rem 0.6rem',
-                    border: 'none',
-                    background: 'none',
-                    cursor: 'pointer',
-                    fontFamily: 'inherit',
-                    fontSize: '0.8125rem',
-                    color: 'var(--text-700)',
-                  }}
-                >
-                  <span aria-hidden style={{ fontWeight: 700, color: 'var(--text-green-700)' }}>$</span>
-                  <span style={{ color: 'var(--text-muted)' }}>Projection · {p.memo}</span>
-                  <span style={{ fontWeight: 600, color: 'var(--text-green-700)', whiteSpace: 'nowrap' }}>{formatAmount(p.amount)}</span>
-                  <span style={{ padding: '0.1rem 0.5rem', borderRadius: 999, background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', fontSize: '0.6875rem', whiteSpace: 'nowrap' }}>
-                    projected to here {formatAmount(m.runningProjected)}
-                  </span>
-                  <span style={{ padding: '0.1rem 0.5rem', borderRadius: 999, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', fontSize: '0.6875rem', whiteSpace: 'nowrap' }}>
-                    spent {formatAmount(m.runningSpent)}
-                  </span>
-                  <span aria-hidden style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{expanded ? '▼' : '▶'}</span>
-                </button>
-                {expanded && (
-                  <div style={{ border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', padding: '0.5rem 0.75rem', fontSize: '0.8125rem', maxWidth: 'min(100%, 480px)', width: '100%', boxSizing: 'border-box' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', fontWeight: 600 }}>
-                      <span>{p.stage_name}{p.memo ? ` — ${p.memo}` : ''}</span>
-                      <span style={{ color: 'var(--text-green-700)', whiteSpace: 'nowrap' }}>{formatAmount(p.amount)}</span>
-                    </div>
-                    <div style={{ color: 'var(--text-muted)', marginTop: 2 }}>
-                      {p.placement === 'before' ? 'before' : 'after'} · {anchorStep?.name ?? 'step'}
-                    </div>
-                    <div style={{ display: 'flex', gap: '0.75rem', marginTop: 6 }}>
-                      <button type="button" onClick={() => openEditProjection(p)} className="wf-btn-ghost" style={{ fontSize: '0.75rem' }}>Edit</button>
-                      <button type="button" onClick={() => deleteProjection(p.id)} className="wf-btn-danger" style={{ fontSize: '0.75rem' }}>Delete</button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )
-          }
-          return (<>
-          {stickyLedgerCard}
-          {displayItems.map((item, index) => {
-            if (item.type === 'summary') {
-              return (
-                <div key="old-stages-summary" id="old-stages-summary">
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setOldStagesCollapsed(false)}
-                    onKeyDown={(e) => e.key === 'Enter' && setOldStagesCollapsed(false)}
-                    style={{
-                      padding: '0.5rem 0',
-                      marginBottom: '0.25rem',
-                      fontSize: '0.8125rem',
-                      color: 'var(--text-muted)',
-                      cursor: 'pointer',
-                      textAlign: 'center',
-                    }}
-                  >
-                    {item.count} previous {item.count === 1 ? 'step' : 'steps'} · Started {formatDateShort(item.firstStarted)}
-                  </div>
-                </div>
-              )
-            }
-            const s = item.step
-            const isCollapsed = rowCollapsed[s.id] ?? isRowDefaultCollapsed(s)
-            const stepBal = moneyFlow.stepBalance[s.id]
-            const stepBalValue = showLedgerRail && stepBal ? stepBal.projected - stepBal.spent : null
-            return (
-            <div
-              key={s.id}
-              id={`step-${s.id}`}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: showLedgerRail ? 'stretch' : isCollapsed ? 'center' : 'stretch',
-                alignSelf: showLedgerRail ? 'stretch' : isCollapsed ? 'center' : 'stretch',
-                width: showLedgerRail ? '100%' : isCollapsed ? 'fit-content' : '100%',
-              }}
-            >
-              {(moneyFlow.beforeByStep[s.id] ?? []).map((m) =>
-                railRow(m.runningProjected - m.runningSpent, renderMoneyMarker(m), true, `rail-${m.projection.id}`),
-              )}
-              {railRow(stepBalValue, (
-              <div
-                style={{
-                  border: '1px solid var(--border-sky)',
-                  borderRadius: 8,
-                  padding: '0.5rem 0.75rem',
-                  marginBottom: '0.25rem',
-                  background: 'var(--surface)',
-                  ...(isCollapsed && { display: 'inline-block', width: 'fit-content', maxWidth: 'min(100%, 520px)', borderLeft: `9px solid ${getStepStatusStyle(s.status).color}` }),
-                  ...(!isCollapsed && s.status === 'in_progress' && { background: 'var(--bg-orange-tint)', borderLeft: '4px solid #E87600' }),
-                }}
-              >
-                {(() => {
-                  const toggleRow = () => setRowCollapsed((p) => ({ ...p, [s.id]: !(p[s.id] ?? isRowDefaultCollapsed(s)) }))
-                  return (
-                    <>
-                {/* Row 1: Chevron · Title · status · Assigned [Assign] [Notify] */}
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      onClick={(e) => { if (!(e.target as HTMLElement).closest('button, [data-stop]')) toggleRow() }}
-                      onKeyDown={(e) => e.key === 'Enter' && toggleRow()}
-                      style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', marginBottom: 4, fontSize: '0.8125rem', cursor: 'pointer', ...(isCollapsed && { minWidth: 0 }) }}
-                    >
-                      <span style={{ fontSize: '0.75rem', minWidth: 16 }}>{isCollapsed ? '\u25B6' : '\u25BC'}</span>
-                      <span style={{ fontWeight: isCollapsed ? getStepStatusStyle(s.status).fontWeight : 600, color: isCollapsed ? getStepStatusStyle(s.status).color : 'var(--text-strong)' }}>{s.name}</span>
-                      <span style={{ color: 'var(--text-faint)' }}>·</span>
-                      <span style={{ color: s.status === 'rejected' ? '#b91c1c' : s.status === 'skipped' ? 'var(--text-muted)' : 'var(--text-700)', fontWeight: s.status === 'rejected' ? 500 : 'normal' }}>
-                        {s.status === 'rejected' ? 'Previous work incomplete' : s.status === 'skipped' ? 'Skipped' : s.status}{s.status === 'rejected' && s.rejection_reason ? ` - ${s.rejection_reason}` : ''}{s.status === 'skipped' && s.skipped_reason ? ` - ${s.skipped_reason}` : ''}{s.status === 'in_progress' && (() => {
-                          const d = daysOpen(s.started_at, s.ended_at)
-                          return d != null ? ` · ${d === 1 ? '1 day' : `${d} days`} open` : null
-                        })()}
-                      </span>
-                      <span style={{ color: 'var(--text-faint)' }}>·</span>
-                      <span style={{ color: 'var(--text-700)' }}>
-                        <PersonDisplayWithContact name={s.assigned_to_name} contacts={personContacts} userNames={userNames} onOpenContact={setPersonContactModal} />
-                      </span>
-                      {canManageStages && !isCollapsed && (
-                        <button type="button" data-stop onClick={(e) => { e.stopPropagation(); setAssignPersonStep(s) }} className="wf-btn-ghost">Assign</button>
-                      )}
-                      {((canManageStages || s.assigned_to_name === currentUserName) || (stepActions[s.id]?.length ?? 0) > 0) && !isCollapsed && (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
-                          {(canManageStages || s.assigned_to_name === currentUserName) && (() => {
-                            const key = `${s.id}-notify`
-                            const defaultExpanded = isSectionDefaultExpanded(s, 'notify')
-                            const isExpanded = sectionExpanded[key] ?? defaultExpanded
-                            return (
-                              <span
-                                role="button"
-                                tabIndex={0}
-                                data-stop
-                                onClick={(e) => { e.stopPropagation(); setSectionExpanded((p) => ({ ...p, [key]: !isExpanded })) }}
-                                onKeyDown={(e) => e.key === 'Enter' && setSectionExpanded((p) => ({ ...p, [key]: !isExpanded }))}
-                                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 500, cursor: 'pointer', color: 'var(--text-muted)' }}
-                              >
-                                <span style={{ fontSize: '0.75rem', minWidth: 14 }}>{isExpanded ? '\u25BC' : '\u25B6'}</span>
-                                <span>Notify</span>
-                              </span>
-                            )
-                          })()}
-                          {stepActions[s.id] && stepActions[s.id]!.length > 0 && (() => {
-                            const key = `${s.id}-actionLedger`
-                            const isExpanded = sectionExpanded[key] ?? false
-                            const count = stepActions[s.id]!.length
-                            return (
-                              <span
-                                role="button"
-                                tabIndex={0}
-                                data-stop
-                                onClick={(e) => { e.stopPropagation(); setSectionExpanded((p) => ({ ...p, [key]: !isExpanded })) }}
-                                onKeyDown={(e) => e.key === 'Enter' && setSectionExpanded((p) => ({ ...p, [key]: !isExpanded }))}
-                                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 500, cursor: 'pointer', color: 'var(--text-muted)' }}
-                              >
-                                <span style={{ fontSize: '0.75rem', minWidth: 14 }}>{isExpanded ? '\u25BC' : '\u25B6'}</span>
-                                <span>Action Ledger ({count})</span>
-                              </span>
-                            )
-                          })()}
-                        </span>
-                      )}
-                      {isCollapsed && (() => {
-                        const pillStyle = { display: 'inline-flex' as const, alignItems: 'center' as const, padding: '0.15rem 0.4rem', borderRadius: 4, fontSize: '0.7rem', color: 'var(--text-muted)', background: 'var(--bg-muted)' }
-                        const expectedPillStyle = { ...pillStyle, background: 'var(--bg-blue-tint)', color: '#1e3a8a' }
-                        const {
-                          itemCount: count,
-                          itemsTotal: total,
-                          notesWords,
-                          privateWords,
-                          daysPrefix,
-                          hasExpected,
-                        } = stageCardPills(s, lineItems[s.id] || [])
-                        // Expected dates against today (journey-map #40 / J31-5): a window months
-                        // past no longer reads calm blue — red "N days late", amber on the due day.
-                        const due = hasExpected ? expectedDueState(s) : null
-                        const duePillStyle = due && due.state !== 'fresh'
-                          ? { ...pillStyle, ...ageChipStyle(due.state), fontWeight: 600 }
-                          : expectedPillStyle
-                        return (
-                          <div style={{ flexBasis: '100%', minWidth: 0, marginTop: 4, marginLeft: 20, display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center', alignSelf: 'flex-start' }}>
-                            <span style={pillStyle}>
-                              {daysPrefix}{formatDateShort(s.started_at)} → {formatDateShort(s.ended_at)}
-                            </span>
-                            {hasExpected && (
-                              <span style={duePillStyle} title={due?.label ? `Expected start → Expected end · ${due.label}` : 'Expected start → Expected end'}>
-                                Exp: {formatScheduledDateShort(s.scheduled_start_date)} → {formatScheduledDateShort(s.scheduled_end_date)}
-                                {due?.label ? ` · ${due.label}` : null}
-                              </span>
-                            )}
-                            {canManageStages && count > 0 && (
-                              <span style={pillStyle}>
-                                {count} {count === 1 ? 'item' : 'items'} · {formatAmount(total)}
-                              </span>
-                            )}
-                            {notesWords > 0 && (
-                              <span style={pillStyle}>Notes: {notesWords}</span>
-                            )}
-                            {canSeePrivateNotesAndApprove && privateWords > 0 && (
-                              <span style={pillStyle}>Office: {privateWords}</span>
-                            )}
-                          </div>
-                        )
-                      })()}
-                    </div>
-                {/* Row 2: Action buttons - only visible when expanded and user can act */}
-                {((canManageStages || s.assigned_to_name === currentUserName) && !isCollapsed) && (
-                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center', marginBottom: 4 }}>
-                    {(s.status === 'pending' || s.status === 'in_progress') && (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500 }}>Technician:</span>
-                        {s.status === 'pending' && (
-                          <button type="button" onClick={() => setSetStartStep({ step: s, startDateTime: toDatetimeLocal(new Date().toISOString()) })} className="wf-btn-info">
-                            Set Start
-                          </button>
-                        )}
-                        <button type="button" onClick={() => markCompleted(s)} className="wf-btn-success">
-                          Mark Complete
-                        </button>
-                      </span>
-                    )}
-                    {canSeePrivateNotesAndApprove && (s.status === 'pending' || s.status === 'in_progress') && (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginLeft: 12, paddingLeft: 12, borderLeft: '1px solid var(--border)' }}>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500 }}>Office:</span>
-                        <button type="button" onClick={() => markApproved(s)} className="wf-btn-info">
-                          Approve
-                        </button>
-                        <button type="button" onClick={() => setRejectStep({ step: s, reason: '' })} className="wf-btn-danger">
-                          Send Back: Previous Work Incomplete
-                        </button>
-                        <button type="button" onClick={() => setSkipStep({ step: s, reason: '' })} className="wf-btn-secondary" style={{ color: 'var(--text-amber-800)' }}>
-                          Skip
-                        </button>
-                      </span>
-                    )}
-                    {!isCollapsed && (
-                      <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        Start: {formatDateShort(s.started_at)}{' \u00B7 '}End: {formatDateShort(s.ended_at)}
-                        {s.status === 'in_progress' ? null : (() => {
-                          const d = daysBetween(s.started_at, s.ended_at)
-                          return d != null ? ` · open for ${d === 1 ? '1 day' : `${d} days`}` : null
-                        })()}
-                      </span>
-                    )}
-                  </div>
-                )}
-                {/* Row 2b: Expected (planned) start/end - always visible when expanded */}
-                {!isCollapsed && (() => {
-                  const canEditExpected = canManageStages || s.assigned_to_name === currentUserName
-                  const startYmd = ymdFromDateLike(s.scheduled_start_date)
-                  const endYmd = ymdFromDateLike(s.scheduled_end_date)
-                  const lengthDays = startYmd && endYmd ? ymdDaysBetween(startYmd, endYmd) : null
-                  const lengthLabel = lengthDays != null
-                    ? lengthDays === 1
-                      ? '1 day planned'
-                      : `${lengthDays} days planned`
-                    : null
-                  const linkButtonStyle = {
-                    padding: 0,
-                    background: 'transparent',
-                    border: 'none',
-                    color: 'var(--text-link)',
-                    textDecoration: 'underline',
-                    cursor: 'pointer',
-                    font: 'inherit',
-                  } as const
-                  const renderField = (ymd: string, label: string) => {
-                    if (ymd) {
-                      const text = formatScheduledDateShort(ymd)
-                      return canEditExpected ? (
-                        <button
-                          type="button"
-                          onClick={() => openExpectedDates(s)}
-                          style={linkButtonStyle}
-                          title={`Edit expected ${label}`}
-                          aria-label={`Edit expected ${label}`}
-                        >
-                          {text}
-                        </button>
-                      ) : (
-                        <span>{text}</span>
-                      )
-                    }
-                    return canEditExpected ? (
-                      <button
-                        type="button"
-                        onClick={() => openExpectedDates(s)}
-                        style={linkButtonStyle}
-                        title={`Set expected ${label}`}
-                        aria-label={`Set expected ${label}`}
-                      >
-                        set
-                      </button>
-                    ) : (
-                      <span>{'\u2014'}</span>
-                    )
-                  }
-                  const due = startYmd || endYmd ? expectedDueState(s) : null
-                  return (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginBottom: 4, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                      <span style={{ marginLeft: 'auto' }}>
-                        Expected: Start {renderField(startYmd, 'start')}
-                        {' \u00B7 '}
-                        End {renderField(endYmd, 'end')}
-                        {lengthLabel ? ` · ${lengthLabel}` : null}
-                        {due?.label ? (
-                          <span style={{ marginLeft: 4, fontWeight: 600, color: due.state === 'red' ? 'var(--text-red-700)' : 'var(--text-amber-800)' }}>
-                            · {due.label}
-                          </span>
-                        ) : null}
-                      </span>
-                    </div>
-                  )
-                })()}
-                {/* Row 2c: Percent complete - same edit gate as Expected dates (assignee
-                    or manager). Uncontrolled input re-keys off the persisted value so a
-                    Forecast Specific edit elsewhere propagates here automatically. Empty
-                    field == null in the DB (== "not tracked"). */}
-                {!isCollapsed && (() => {
-                  const canEditPct = canManageStages || s.assigned_to_name === currentUserName
-                  const pct = s.percent_complete ?? null
-                  return (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginBottom: 4, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                      <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                        Complete:{' '}
-                        {canEditPct ? (
-                          <>
-                            <input
-                              key={`pct-workflow-${s.id}-${pct ?? 'null'}`}
-                              type="number"
-                              // `no-spinner` matches the Forecast Specific gutter cell —
-                              // hides the browser's up/down stepper arrows for a quieter
-                              // input that fits the small `Complete:` row.
-                              className="no-spinner"
-                              min={0}
-                              max={100}
-                              inputMode="numeric"
-                              defaultValue={pct == null ? '' : String(pct)}
-                              placeholder="—"
-                              aria-label={`Percent complete for ${s.name}`}
-                              title="Optional 0-100 progress estimate. Leave empty when not tracked."
-                              onBlur={(e) => {
-                                const next = parsePercentCompleteInput(e.currentTarget.value)
-                                if (next === pct) return
-                                void updatePercentComplete(s, next)
-                              }}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur()
-                              }}
-                              style={{
-                                width: '3rem',
-                                padding: '0.1rem 0.25rem',
-                                fontSize: '0.75rem',
-                                textAlign: 'right',
-                                border: 'none',
-                                borderBottom: '1px solid var(--border-strong)',
-                                borderRadius: 0,
-                                background: 'transparent',
-                                color: 'var(--text-slate-900)',
-                              }}
-                            />
-                            <span style={{ color: 'var(--text-muted)' }}>%</span>
-                          </>
-                        ) : (
-                          <span style={{ color: pct == null ? 'var(--text-slate-400)' : 'var(--text-slate-900)' }}>
-                            {pct == null ? '\u2014' : `${pct}%`}
-                          </span>
-                        )}
-                      </span>
-                    </div>
-                  )
-                })()}
-                {/* Collapsed body - hidden when collapsed */}
-                {!isCollapsed && (
-                <>
-                {s.next_step_rejected_notice && (s.status === 'pending' || s.status === 'in_progress') && (
-                  <div style={{
-                    background: '#b91c1c',
-                    marginLeft: '-0.75rem',
-                    marginRight: '-0.75rem',
-                    padding: '0.5rem calc(1.5rem + 0.75rem)',
-                    marginBottom: 4,
-                    fontSize: '0.8125rem',
-                    color: '#ffffff',
-                    fontStyle: 'italic',
-                    textAlign: 'center',
-                  }}>
-                    Next stage <strong style={{ textDecoration: 'underline' }}>{s.next_step_rejected_notice}</strong> rejected, this stage must be re-completed.
-                    {s.next_step_rejection_reason && (
-                      <div style={{ marginTop: 2, fontWeight: 600, fontStyle: 'normal', color: '#ffffff' }}>Reason: {s.next_step_rejection_reason}</div>
-                    )}
-                  </div>
-                )}
-                {/* Notify expanded content */}
-                {(canManageStages || s.assigned_to_name === currentUserName) && (() => {
-                  const key = `${s.id}-notify`
-                  const defaultExpanded = isSectionDefaultExpanded(s, 'notify')
-                  const isExpanded = sectionExpanded[key] ?? defaultExpanded
-                  return isExpanded ? (
-                              <>
-                      <table style={{ borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
-                        <thead>
-                          <tr>
-                            <th style={{ textAlign: 'left', padding: '0.25rem 0.5rem', fontWeight: 500 }}></th>
-                            {canManageStages && (
-                              <th style={{ textAlign: 'center', padding: '0.25rem 0.5rem', fontWeight: 500 }}>ASSIGNED</th>
-                            )}
-                            <th style={{ textAlign: 'center', padding: '0.25rem 0.5rem', fontWeight: 500 }}>ME</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr>
-                            <td style={{ padding: '0.25rem 0.5rem', textAlign: 'right' }}>started</td>
-                            {canManageStages && (
-                              <td style={{ padding: '0.25rem 0.5rem', textAlign: 'center' }}>
-                                <input
-                                  type="checkbox"
-                                  checked={!!s.notify_assigned_when_started}
-                                  onChange={(e) => updateNotifyAssigned(s, 'notify_assigned_when_started', e.target.checked)}
-                                  style={{ cursor: 'pointer' }}
-                                />
-                              </td>
-                            )}
-                            <td style={{ padding: '0.25rem 0.5rem', textAlign: 'center' }}>
-                              <input
-                                type="checkbox"
-                                checked={!!userSubscriptions[s.id]?.notify_when_started}
-                                onChange={(e) => updateNotifyMe(s, 'notify_when_started', e.target.checked)}
-                                style={{ cursor: 'pointer' }}
-                              />
-                            </td>
-                          </tr>
-                          <tr>
-                            <td style={{ padding: '0.25rem 0.5rem', textAlign: 'right' }}>complete</td>
-                            {canManageStages && (
-                              <td style={{ padding: '0.25rem 0.5rem', textAlign: 'center' }}>
-                                <input
-                                  type="checkbox"
-                                  checked={!!s.notify_assigned_when_complete}
-                                  onChange={(e) => updateNotifyAssigned(s, 'notify_assigned_when_complete', e.target.checked)}
-                                  style={{ cursor: 'pointer' }}
-                                />
-                              </td>
-                            )}
-                            <td style={{ padding: '0.25rem 0.5rem', textAlign: 'center' }}>
-                              <input
-                                type="checkbox"
-                                checked={!!userSubscriptions[s.id]?.notify_when_complete}
-                                onChange={(e) => updateNotifyMe(s, 'notify_when_complete', e.target.checked)}
-                                style={{ cursor: 'pointer' }}
-                              />
-                            </td>
-                          </tr>
-                          <tr>
-                            <td style={{ padding: '0.25rem 0.5rem', textAlign: 'right' }}>re-opened</td>
-                            {canManageStages && (
-                              <td style={{ padding: '0.25rem 0.5rem', textAlign: 'center' }}>
-                                <input
-                                  type="checkbox"
-                                  checked={!!s.notify_assigned_when_reopened}
-                                  onChange={(e) => updateNotifyAssigned(s, 'notify_assigned_when_reopened', e.target.checked)}
-                                  style={{ cursor: 'pointer' }}
-                                />
-                              </td>
-                            )}
-                            <td style={{ padding: '0.25rem 0.5rem', textAlign: 'center' }}>
-                              <input
-                                type="checkbox"
-                                checked={!!userSubscriptions[s.id]?.notify_when_reopened}
-                                onChange={(e) => updateNotifyMe(s, 'notify_when_reopened', e.target.checked)}
-                                style={{ cursor: 'pointer' }}
-                              />
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                      {canManageStages && (
-                        <div style={{ marginTop: '0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                            <input
-                              type="checkbox"
-                              checked={s.notify_next_assignee_when_complete_or_approved !== false}
-                              onChange={(e) => updateCrossStepNotify(s, 'notify_next_assignee_when_complete_or_approved', e.target.checked)}
-                              style={{ cursor: 'pointer' }}
-                            />
-                            Notify next card assignee when complete or approved
-                          </label>
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', marginTop: '0.25rem' }}>
-                            <input
-                              type="checkbox"
-                              checked={s.notify_prior_assignee_when_rejected !== false}
-                              onChange={(e) => updateCrossStepNotify(s, 'notify_prior_assignee_when_rejected', e.target.checked)}
-                              style={{ cursor: 'pointer' }}
-                            />
-                            Notify prior card assignee when marked incomplete
-                          </label>
-                        </div>
-                      )}
-                              </>
-                    ) : null
-                  })()}
-                {s.status === 'approved' && s.approved_by && s.approved_at && (
-                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-green-600)', marginBottom: 4, fontWeight: 500 }}>
-                    Approved by {s.approved_by} on {formatDatetime(s.approved_at)}
-                  </div>
-                )}
-                {stepActions[s.id] && stepActions[s.id]!.length > 0 && (() => {
-                  const key = `${s.id}-actionLedger`
-                  const isExpanded = sectionExpanded[key] ?? false
-                  return isExpanded ? (
-                    <div style={{ marginBottom: 4, padding: '0.5rem 0.6rem', background: 'var(--bg-subtle)', borderRadius: 4, border: '1px solid var(--border)' }}>
-                      {stepActions[s.id]!.map((action) => (
-                        <div key={action.id} style={{ marginBottom: '0.25rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                          <span style={{ fontWeight: 500, textTransform: 'capitalize', color: 'var(--text-700)' }}>{action.action_type === 'rejected' ? 'Previous work incomplete' : action.action_type === 'skipped' ? 'Skipped' : action.action_type}</span>
-                          {' by '}
-                          <span style={{ fontWeight: 500 }}>{action.performed_by}</span>
-                          {' on '}
-                          <span>{formatDatetime(action.performed_at)}</span>
-                          {action.notes && (
-                            <div style={{ marginTop: 2, marginLeft: '1rem', fontStyle: 'italic', color: 'var(--text-faint)' }}>
-                              {action.notes}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  ) : null
-                })()}
-                <div style={{ marginBottom: 4 }}>
-                  {(() => {
-                    const key = `${s.id}-notes`
-                    const defaultExpanded = isSectionDefaultExpanded(s, 'notes')
-                    const stored = sectionExpanded[key]
-                    const isExpanded = stored ?? defaultExpanded
-                    return (
-                      <>
-                        <div
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => setSectionExpanded((p) => ({ ...p, [key]: !isExpanded }))}
-                          onKeyDown={(e) => e.key === 'Enter' && setSectionExpanded((p) => ({ ...p, [key]: !isExpanded }))}
-                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 2, fontWeight: 500, cursor: 'pointer', fontSize: '0.8125rem' }}
-                        >
-                          <span style={{ fontSize: '0.75rem', minWidth: 16 }}>{isExpanded ? '\u25BC' : '\u25B6'}</span>
-                          <span>Notes for Tech ({wordCount(s.notes)} words)</span>
-                        </div>
-                        {isExpanded && (
-                          <textarea
-                            id={`notes-${s.id}`}
-                            key={`notes-${s.id}-${s.notes ?? ''}`}
-                            defaultValue={s.notes ?? ''}
-                            onBlur={(e) => updateNotes(s, e.target.value)}
-                            placeholder="Add notes (visible to everyone who can see this step, including the assigned technician)"
-                            rows={2}
-                            style={{ width: '100%', padding: '0.35rem', fontSize: '0.8125rem', border: '1px solid var(--border)', borderRadius: 4 }}
-                          />
-                        )}
-                      </>
-                    )
-                  })()}
-                </div>
-                {/* Notes for Office - dev/master/assistant/superintendent */}
-                {canSeePrivateNotesAndApprove && (
-                  <div style={{ marginBottom: 4 }}>
-                    {(() => {
-                      const key = `${s.id}-privateNotes`
-                      const defaultExpanded = isSectionDefaultExpanded(s, 'privateNotes')
-                      const isExpanded = sectionExpanded[key] ?? defaultExpanded
-                      return (
-                        <>
-                          <div
-                            role="button"
-                            tabIndex={0}
-                            onClick={() => setSectionExpanded((p) => ({ ...p, [key]: !isExpanded }))}
-                            onKeyDown={(e) => e.key === 'Enter' && setSectionExpanded((p) => ({ ...p, [key]: !isExpanded }))}
-                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 2, fontWeight: 500, color: 'var(--text-sky-700)', cursor: 'pointer', fontSize: '0.8125rem' }}
-                          >
-                            <span style={{ fontSize: '0.75rem', minWidth: 16, color: 'var(--text-strong)' }}>{isExpanded ? '\u25BC' : '\u25B6'}</span>
-                            <span>Notes for Office ({wordCount(s.private_notes)} words)</span>
-                          </div>
-                          {isExpanded && (
-                            <textarea
-                              id={`private-notes-${s.id}`}
-                              key={`private-notes-${s.id}-${s.private_notes ?? ''}`}
-                              defaultValue={s.private_notes ?? ''}
-                              onBlur={(e) => updatePrivateNotes(s, e.target.value)}
-                              placeholder="Add private notes visible to masters, assistants, and superintendents..."
-                              rows={2}
-                              style={{ width: '100%', padding: '0.35rem', fontSize: '0.8125rem', border: '1px solid var(--border-sky)', borderRadius: 4, background: 'var(--surface)' }}
-                            />
-                          )}
-                        </>
-                      )
-                    })()}
-                  </div>
-                )}
-                
-                {/* Money drawer (v2.1194) - dev/master: this step's anchored projections + actual items */}
-                {isDevOrMaster && (() => {
-                  const key = `${s.id}-money`
-                  const isExpanded = sectionExpanded[key] ?? false
-                  const beforeProjs = (moneyFlow.beforeByStep[s.id] ?? []).map((m) => m.projection)
-                  const afterProjs = (moneyFlow.afterByStep[s.id] ?? []).map((m) => m.projection)
-                  const projectedTotal = moneyFlow.stepProjectedTotal[s.id] ?? 0
-                  const itemsTotal = itemsTotalByStepId[s.id] ?? 0
-                  return (
-                    <div style={{ marginBottom: 4 }}>
-                      <div
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => setSectionExpanded((p) => ({ ...p, [key]: !isExpanded }))}
-                        onKeyDown={(e) => e.key === 'Enter' && setSectionExpanded((p) => ({ ...p, [key]: !isExpanded }))}
-                        style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: 2, cursor: 'pointer' }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8125rem' }}>
-                          <span style={{ fontSize: '0.75rem', minWidth: 16 }}>{isExpanded ? '▼' : '▶'}</span>
-                          <span style={{ fontWeight: 500, color: 'var(--text-green-700)' }}>
-                            Money
-                            {projectedTotal !== 0 && <> · {formatAmount(projectedTotal)} projected</>}
-                            {itemsTotal !== 0 && <> · {formatAmount(itemsTotal)} items</>}
-                          </span>
-                        </div>
-                      </div>
-                      {isExpanded && (
-                        <div style={{ fontSize: '0.8125rem', maxWidth: 480, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          {beforeProjs.length === 0 && afterProjs.length === 0 && (
-                            <div style={{ color: 'var(--text-muted)', textAlign: 'center' }}>No projections attached to this step.</div>
-                          )}
-                          {[...beforeProjs.map((p) => ({ p, tag: 'before' })), ...afterProjs.map((p) => ({ p, tag: 'after' }))].map(({ p, tag }) => (
-                            <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              <span style={{ color: 'var(--text-muted)', width: 42, flexShrink: 0 }}>{tag}</span>
-                              <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.memo}</span>
-                              <span style={{ fontWeight: 600, color: 'var(--text-green-700)', whiteSpace: 'nowrap' }}>{formatAmount(p.amount)}</span>
-                              <button type="button" onClick={() => openEditProjection(p)} className="wf-btn-ghost" style={{ fontSize: '0.75rem' }}>Edit</button>
-                            </div>
-                          ))}
-                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', borderTop: '1px dashed var(--border)', paddingTop: 4, color: 'var(--text-muted)' }}>
-                            <span>Line items (actual)</span>
-                            <span>{formatAmount(itemsTotal)}</span>
-                          </div>
-                          <div style={{ textAlign: 'center' }}>
-                            <button
-                              type="button"
-                              onClick={() => openEditProjection(null, { step_id: s.id, placement: 'after' })}
-                              className="wf-btn-ghost"
-                              style={{ fontSize: '0.75rem' }}
-                            >
-                              + Add projection here
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })()}
-
-                {/* Sub work orders (step commitments) - RUN_SUBS_PLAN PR 2.2 */}
-                {canManageStages && (
-                  <StepCommitmentPanel
-                    stepId={s.id}
-                    stepStatus={s.status}
-                    stepName={s.name}
-                    stepScheduledStart={s.scheduled_start_date}
-                    stepScheduledEnd={s.scheduled_end_date}
-                    projectId={project.id}
-                    projectName={project.name}
-                    offeredByName={currentUserName ?? 'The office'}
-                    commitments={commitmentsByStep[s.id] ?? []}
-                    paymentsByLaborJobId={commitmentPaymentsByLaborJobId}
-                    roster={roster.filter((r): r is { name: string; personId: string } => !!r.personId)}
-                    isSuperintendentOnly={userRole === 'superintendent'}
-                    onChanged={() => void loadCommitmentsForSteps(steps.map((st) => st.id))}
-                    onError={(m) => setError(m)}
-                  />
-                )}
-
-                {/* Line Items For Office - dev/master/assistant */}
-                {canManageStages && (
-                  <div style={{ marginBottom: 4 }}>
-                    {(() => {
-                      const key = `${s.id}-lineItems`
-                      const defaultExpanded = isSectionDefaultExpanded(s, 'lineItems')
-                      const stored = sectionExpanded[key]
-                      const isExpanded = stored ?? defaultExpanded
-                      return (
-                        <>
-                          <div
-                            role="button"
-                            tabIndex={0}
-                            onClick={() => setSectionExpanded((p) => ({ ...p, [key]: !isExpanded }))}
-                            onKeyDown={(e) => e.key === 'Enter' && setSectionExpanded((p) => ({ ...p, [key]: !isExpanded }))}
-                            style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: 2, cursor: 'pointer' }}
-                          >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8125rem' }}>
-                              <span style={{ fontSize: '0.75rem', minWidth: 16 }}>{isExpanded ? '\u25BC' : '\u25B6'}</span>
-                              <span style={{ fontWeight: 500, color: 'var(--text-sky-700)' }}>
-                                Line Items For Office
-                                {!isExpanded && (
-                                  <> | {formatAmount((lineItems[s.id] || []).reduce((sum, item) => sum + (item.amount || 0), 0))}</>
-                                )}
-                              </span>
-                            </div>
-                          </div>
-                          {isExpanded && (
-                            <>
-                    {(lineItems[s.id] && lineItems[s.id]!.length > 0 ? (
-                      <div style={{ display: 'flex', justifyContent: 'center' }}>
-                        <div style={{ fontSize: '0.8125rem', background: 'var(--surface)', border: '1px solid var(--border-sky)', borderRadius: 4, overflow: 'hidden', width: 'fit-content' }} onClick={(e) => e.stopPropagation()}>
-                        <table style={{ borderCollapse: 'collapse' }}>
-                          <thead>
-                            <tr>
-                              <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem', fontWeight: 600, borderBottom: '1px solid var(--border-sky)' }}>Memo</th>
-                              <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem', fontWeight: 600, borderBottom: '1px solid var(--border-sky)', whiteSpace: 'nowrap' }}>Date</th>
-                              <th style={{ textAlign: 'right', padding: '0.35rem 0.5rem', fontWeight: 600, borderBottom: '1px solid var(--border-sky)' }}>Amount</th>
-                              <th style={{ width: 1, padding: '0.35rem 0.5rem', borderBottom: '1px solid var(--border-sky)' }}></th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {lineItems[s.id]!.map((item, idx) => {
-                              const isLast = idx === lineItems[s.id]!.length - 1
-                              const rowBorder = isLast ? 'none' : '1px solid var(--border-sky)'
-                              return (
-                              <tr key={item.id}>
-                                <td style={{ padding: '0.35rem 0.5rem', borderBottom: rowBorder, verticalAlign: 'middle' }}>
-                                  {item.link && item.link.trim() && normalizeUrl(item.link) ? (
-                                    <a
-                                      href={normalizeUrl(item.link)}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      onClick={(e) => e.stopPropagation()}
-                                      style={{ color: 'var(--text-link)', textDecoration: 'underline' }}
-                                      title={item.link}
-                                    >
-                                      {item.memo}
-                                    </a>
-                                  ) : (
-                                    <span>{item.memo}</span>
-                                  )}
-                                </td>
-                                <td style={{ padding: '0.35rem 0.5rem', borderBottom: rowBorder, verticalAlign: 'middle', fontSize: '0.8125rem', color: 'var(--text-600)', whiteSpace: 'nowrap' }}>
-                                  {formatLineItemDate(item.item_date)}
-                                </td>
-                                <td style={{ padding: '0.35rem 0.5rem', borderBottom: rowBorder, textAlign: 'right', color: (item.amount || 0) < 0 ? 'var(--text-red-700)' : 'var(--text-700)', fontWeight: 500, verticalAlign: 'middle' }}>
-                                  {formatAmount(item.amount)}
-                                </td>
-                                <td style={{ padding: '0.35rem 0.5rem', borderBottom: rowBorder, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
-                                  <div style={{ display: 'flex', gap: '0.2rem', justifyContent: 'flex-end' }}>
-                                    {item.purchase_order_id && (
-                                      <button
-                                        type="button"
-                                        onClick={(e) => { e.stopPropagation(); loadPODetails(item.purchase_order_id!) }}
-                                        className="wf-btn-secondary wf-btn-secondary-blue"
-                                      >
-                                        View PO
-                                      </button>
-                                    )}
-                                    {item.supply_house_invoice_id && (
-                                      <button
-                                        type="button"
-                                        onClick={(e) => { e.stopPropagation(); loadInvoiceDetails(item.supply_house_invoice_id!) }}
-                                        className="wf-btn-secondary wf-btn-secondary-blue"
-                                      >
-                                        View Invoice
-                                      </button>
-                                    )}
-                                    <button
-                                      type="button"
-                                      onClick={(e) => { e.stopPropagation(); openEditLineItem(s.id, item) }}
-                                      title="Edit"
-                                      aria-label="Edit"
-                                      style={{ padding: 0, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-700)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                                    >
-                                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
-                                        <path d="M535.6 85.7C513.7 63.8 478.3 63.8 456.4 85.7L432 110.1L529.9 208L554.3 183.6C576.2 161.7 576.2 126.3 554.3 104.4L535.6 85.7zM236.4 305.7C230.3 311.8 225.6 319.3 222.9 327.6L193.3 416.4C190.4 425 192.7 434.5 199.1 441C205.5 447.5 215 449.7 223.7 446.8L312.5 417.2C320.7 414.5 328.2 409.8 334.4 403.7L496 241.9L398.1 144L236.4 305.7zM160 128C107 128 64 171 64 224L64 480C64 533 107 576 160 576L416 576C469 576 512 533 512 480L512 384C512 366.3 497.7 352 480 352C462.3 352 448 366.3 448 384L448 480C448 497.7 433.7 512 416 512L160 512C142.3 512 128 497.7 128 480L128 224C128 206.3 142.3 192 160 192L256 192C273.7 192 288 177.7 288 160C288 142.3 273.7 128 256 128L160 128z"/>
-                                      </svg>
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={(e) => { e.stopPropagation(); setConfirmDeleteLineItem({ item, stepName: s.name }) }}
-                                      title="Delete"
-                                      aria-label="Delete"
-                                      style={{ padding: 0, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-red-800)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                                    >
-                                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
-                                        <path d="M232.7 69.9L224 96L128 96C110.3 96 96 110.3 96 128C96 145.7 110.3 160 128 160L512 160C529.7 160 544 145.7 544 128C544 110.3 529.7 96 512 96L416 96L407.3 69.9C402.9 56.8 390.7 48 376.9 48L263.1 48C249.3 48 237.1 56.8 232.7 69.9zM512 208L128 208L149.1 531.1C150.7 556.4 171.7 576 197 576L443 576C468.3 576 489.3 556.4 490.9 531.1L512 208z"/>
-                                      </svg>
-                                    </button>
-                                  </div>
-                                </td>
-                              </tr>
-                            )})}
-                          </tbody>
-                        </table>
-                        </div>
-                      </div>
-                    ) : (
-                      <p style={{ fontSize: '0.8125rem', color: 'var(--text-amber-800)', margin: 0, fontStyle: 'italic', textAlign: 'center' }}>No line items yet. Click "Add Line Item" to add one.</p>
-                    ))}
-                              <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }} onClick={(e) => e.stopPropagation()}>
-                                <button
-                                  type="button"
-                                  onClick={() => openEditLineItem(s.id, null)}
-                                  className="wf-btn-success-soft"
-                                >
-                                  + Add Line Item
-                                </button>
-                                {availableInvoices.length > 0 && (
-                                  <button
-                                    type="button"
-                                    onClick={() => setAddingInvoiceToStep(s.id)}
-                                    className="wf-btn-success-soft"
-                                  >
-                                    + Add Supply House Invoice
-                                  </button>
-                                )}
-                                {availablePOs.length > 0 && (
-                                  <button
-                                    type="button"
-                                    onClick={() => setAddingPOToStep(s.id)}
-                                    className="wf-btn-success-soft"
-                                  >
-                                    + Add PO
-                                  </button>
-                                )}
-                              </div>
-                            </>
-                          )}
-                        </>
-                      )
-                    })()}
-                  </div>
-                )}
-                <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
-                  {canManageStages && (
-                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                      <button type="button" onClick={() => openEditStep(s)} className="wf-btn-ghost">Edit</button>
-                      <button type="button" onClick={() => { setConfirmDeleteStep(s); setDeleteStepConfirmText('') }} className="wf-btn-danger">Delete</button>
-                    </div>
-                  )}
-                  {(s.status === 'completed' || s.status === 'approved' || s.status === 'rejected' || s.status === 'skipped') && canManageStages && (
-                    <button type="button" onClick={() => markReopened(s)} className="wf-btn-ghost">
-                      Re-open
-                    </button>
-                  )}
-                </div>
-                </>
-                )}
-                    </>
-                  )
-                })()}
-              </div>
-              ), isCollapsed)}
-              {(moneyFlow.afterByStep[s.id] ?? []).map((m) =>
-                railRow(m.runningProjected - m.runningSpent, renderMoneyMarker(m), true, `rail-${m.projection.id}`),
-              )}
-              {index < displayItems.length - 1 &&
-                railRow(null, <div style={{ textAlign: 'center', marginBottom: '0.15rem', color: 'var(--text-faint)' }}>{"\u2193"}</div>)}
-            </div>
-            )
-          })}
-          </>)
-        })()
-        }
-      </div>
+      <WorkflowStagesList
+        engine={engine}
+        writes={stepWrites}
+        projections={projectionsApi}
+        roster={rosterApi}
+        templates={templatesApi}
+        project={project}
+        canManageStages={canManageStages}
+        canSeePrivateNotesAndApprove={canSeePrivateNotesAndApprove}
+        isDevOrMaster={isDevOrMaster}
+        oldStagesCollapsed={oldStagesCollapsed}
+        setOldStagesCollapsed={setOldStagesCollapsed}
+        rowCollapsed={rowCollapsed}
+        setRowCollapsed={setRowCollapsed}
+        openAddStep={openAddStep}
+        openEditStep={openEditStep}
+        openExpectedDates={openExpectedDates}
+        setAssignPersonStep={setAssignPersonStep}
+        setRejectStep={setRejectStep}
+        setSkipStep={setSkipStep}
+        setSetStartStep={setSetStartStep}
+        setConfirmDeleteStep={setConfirmDeleteStep}
+        setDeleteStepConfirmText={setDeleteStepConfirmText}
+        setPersonContactModal={setPersonContactModal}
+        openEditLineItem={openEditLineItem}
+        setConfirmDeleteLineItem={setConfirmDeleteLineItem}
+        setAddingPOToStep={setAddingPOToStep}
+        setAddingInvoiceToStep={setAddingInvoiceToStep}
+        loadPODetails={loadPODetails}
+        loadInvoiceDetails={loadInvoiceDetails}
+        availablePOs={availablePOs}
+        availableInvoices={availableInvoices}
+      />
 
       {stepForm.open && (
         <StepFormModal
@@ -2515,296 +802,34 @@ export default function Workflow() {
         />
       )}
 
-      {confirmDeleteStep && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
-            <h3 style={{ marginTop: 0 }}>Delete step: {confirmDeleteStep.name}?</h3>
-            {isStepEmpty(confirmDeleteStep) ? (
-              <p style={{ marginBottom: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>This step has no assignee, notes, or line items.</p>
-            ) : (
-              <>
-                <p style={{ marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                  This step has content (assignee, notes, line items, or has been started). Deleting removes it and its related data — a dev can put it back for 90 days from Settings → Data &amp; migration → Recently deleted.
-                </p>
-                <p style={{ marginBottom: 8, fontSize: '0.875rem' }}>Type &quot;{confirmDeleteStep.name}&quot; to confirm:</p>
-                <input
-                  value={deleteStepConfirmText}
-                  onChange={(e) => setDeleteStepConfirmText(e.target.value)}
-                  placeholder={confirmDeleteStep.name}
-                  style={{ width: '100%', padding: '0.5rem', marginBottom: '1rem' }}
-                />
-              </>
-            )}
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                type="button"
-                onClick={async () => {
-                  await deleteStep(confirmDeleteStep)
-                  setConfirmDeleteStep(null)
-                  setDeleteStepConfirmText('')
-                }}
-                disabled={!isStepEmpty(confirmDeleteStep) && deleteStepConfirmText.trim() !== confirmDeleteStep.name}
-                className="wf-btn-modal-primary wf-btn-danger-style"
-              >
-                Delete
-              </button>
-              <button type="button" onClick={() => { setConfirmDeleteStep(null); setDeleteStepConfirmText('') }} className="wf-btn-modal-secondary">
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {rejectStep && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
-            <h3 style={{ marginTop: 0 }}>Previous work incomplete: {rejectStep.step.name}</h3>
-            <label style={{ display: 'block', marginBottom: 4 }}>Reason and Proposed Remedy</label>
-            <textarea
-              value={rejectStep.reason}
-              onChange={(e) => setRejectStep((r) => r ? { ...r, reason: e.target.value } : null)}
-              rows={3}
-              style={{ width: '100%', padding: '0.5rem', marginBottom: '1rem' }}
-              placeholder="What is wrong and how should it be fixed (optional)"
-            />
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button type="button" onClick={submitReject} className="wf-btn-modal-primary wf-btn-danger-style">Send Back: Previous Work Incomplete</button>
-              <button type="button" onClick={() => setRejectStep(null)} className="wf-btn-modal-secondary">Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {skipStep && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
-            <h3 style={{ marginTop: 0 }}>Skip step: {skipStep.step.name}</h3>
-            <label style={{ display: 'block', marginBottom: 4 }}>Why is this step being skipped?</label>
-            <textarea
-              value={skipStep.reason}
-              onChange={(e) => setSkipStep((r) => r ? { ...r, reason: e.target.value } : null)}
-              rows={4}
-              style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }}
-              placeholder="e.g. Client waived inspection, combined with prior step, not applicable..."
-            />
-            <div style={{ marginBottom: '1rem' }}>
-              <button type="button" onClick={() => setSkipStep((s) => s ? { ...s, reason: 'Not relevant' } : null)} className="wf-btn-ghost" style={{ fontSize: '0.8125rem' }}>
-                Not relevant
-              </button>
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button type="button" onClick={submitSkip} disabled={!skipStep.reason.trim()} className="wf-btn-modal-primary" style={skipStep.reason.trim() ? {} : { opacity: 0.5, cursor: 'not-allowed' }}>
-                Skip
-              </button>
-              <button type="button" onClick={() => setSkipStep(null)} className="wf-btn-modal-secondary">Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {setStartStep && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
-            <h3 style={{ marginTop: 0 }}>Set Start Time: {setStartStep.step.name}</h3>
-            <label htmlFor="start-datetime" style={{ display: 'block', marginBottom: 4 }}>Start Date & Time</label>
-            <input
-              id="start-datetime"
-              type="datetime-local"
-              value={setStartStep.startDateTime}
-              onChange={(e) => setSetStartStep((s) => s ? { ...s, startDateTime: e.target.value } : null)}
-              style={{ width: '100%', padding: '0.5rem', marginBottom: '1rem' }}
-            />
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button type="button" onClick={submitSetStart} className="wf-btn-modal-primary">Set Start</button>
-              <button type="button" onClick={() => setSetStartStep(null)} className="wf-btn-modal-secondary">Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {expectedDatesStep && (() => {
-        const current = expectedDatesStep
-        const setField = (patch: Partial<typeof current>) => {
-          setExpectedDatesStep((prev) => (prev ? { ...prev, ...patch } : null))
-        }
-        const handleStartChange = (value: string) => {
-          setField({ ...expectedStartChanged(current, value), seededFromPrior: false })
-        }
-        const handleEndChange = (value: string) => {
-          setField(expectedEndChanged(current, value))
-        }
-        const handleLengthChange = (value: string) => {
-          setField(expectedLengthChanged(current, value))
-        }
-        const { lengthInvalid, endBeforeStart } = expectedDatesProblems(current)
-        return (
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label={`Expected dates for ${current.step.name}`}
-            onClick={() => setExpectedDatesStep(null)}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}
-          >
-            <div
-              onClick={(e) => e.stopPropagation()}
-              style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 340, maxWidth: '95%' }}
-            >
-              <h3 style={{ marginTop: 0, marginBottom: '0.25rem' }}>Expected dates: {current.step.name}</h3>
-              <p style={{ marginTop: 0, marginBottom: '1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                Plan the expected start and end. Type a length in days to auto-compute the end from the start.
-              </p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <span style={{ fontSize: '0.8125rem', color: 'var(--text-700)' }}>Expected start</span>
-                  <input
-                    type="date"
-                    value={current.expectedStart}
-                    onChange={(e) => handleStartChange(e.target.value)}
-                    style={{ padding: '0.5rem', borderRadius: 6, border: '1px solid var(--border-strong)' }}
-                  />
-                </label>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <span style={{ fontSize: '0.8125rem', color: 'var(--text-700)' }}>Expected end</span>
-                  <input
-                    type="date"
-                    value={current.expectedEnd}
-                    onChange={(e) => handleEndChange(e.target.value)}
-                    style={{ padding: '0.5rem', borderRadius: 6, border: '1px solid var(--border-strong)' }}
-                  />
-                </label>
-              </div>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: '0.75rem' }}>
-                <span style={{ fontSize: '0.8125rem', color: 'var(--text-700)' }}>
-                  Length (days){' '}
-                  <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>· auto-computes end from start</span>
-                </span>
-                <input
-                  type="number"
-                  min={0}
-                  step={1}
-                  inputMode="numeric"
-                  placeholder="e.g. 5"
-                  value={current.lengthDays}
-                  onChange={(e) => handleLengthChange(e.target.value)}
-                  style={{ padding: '0.5rem', borderRadius: 6, border: '1px solid var(--border-strong)', maxWidth: 160 }}
-                />
-              </label>
-              {current.seededFromPrior && (
-                <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.75rem', color: '#1e3a8a' }}>
-                  Start was prefilled from the previous stage's expected end.
-                </p>
-              )}
-              {lengthInvalid && (
-                <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.75rem', color: 'var(--text-red-700)' }}>
-                  Length must be a non-negative number.
-                </p>
-              )}
-              {endBeforeStart && (
-                <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.75rem', color: 'var(--text-red-700)' }}>
-                  Expected end is before expected start.
-                </p>
-              )}
-              {current.hasNextStage && (
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '1rem', fontSize: '0.8125rem', color: 'var(--text-700)' }}>
-                  <input
-                    type="checkbox"
-                    checked={current.updateNextStage}
-                    onChange={(e) => setField({ updateNextStage: e.target.checked })}
-                  />
-                  Also set the next step's expected start to this step's expected end
-                </label>
-              )}
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                <button
-                  type="button"
-                  onClick={clearExpectedDates}
-                  className="wf-btn-modal-secondary"
-                  disabled={!current.step.scheduled_start_date && !current.step.scheduled_end_date}
-                  title="Remove the expected start and end from this step"
-                >
-                  Clear
-                </button>
-                <button type="button" onClick={() => setExpectedDatesStep(null)} className="wf-btn-modal-secondary">
-                  Cancel
-                </button>
-                <button type="button" onClick={submitExpectedDates} className="wf-btn-modal-primary">
-                  Save
-                </button>
-              </div>
-            </div>
-          </div>
-        )
-      })()}
-
-      {assignPersonStep && (
-        <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}
-          onClick={() => { setAssignPersonStep(null); setAssignPersonFilter('') }}
-        >
-          <div
-            style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 280, maxWidth: 400, maxHeight: '80vh', display: 'flex', flexDirection: 'column', color: 'var(--text-strong)' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{ marginTop: 0, color: 'var(--text-strong)', flexShrink: 0 }}>Add person to: {assignPersonStep.name}</h3>
-            <p style={{ fontSize: '0.875rem', color: 'var(--text-strong)', marginBottom: '0.75rem', flexShrink: 0 }}>Choose from your roster.</p>
-            {(roster.length > 5 || currentUserName) && (
-              <input
-                type="search"
-                placeholder="Filter..."
-                value={assignPersonFilter}
-                onChange={(e) => setAssignPersonFilter(e.target.value)}
-                autoFocus
-                style={{ width: '100%', padding: '0.5rem', marginBottom: '0.75rem', borderRadius: 6, border: '1px solid var(--border)', flexShrink: 0 }}
-              />
-            )}
-            <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', marginBottom: '1rem' }}>
-              {roster.length === 0 && !currentUserName ? (
-                <p style={{ color: 'var(--text-strong)' }}>No people in your roster yet. Add them on the People page.</p>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {(() => {
-                    const q = assignPersonFilter.trim().toLowerCase()
-                    const matches = (name: string) => !q || name.toLowerCase().includes(q)
-                  return (
-                    <>
-                  {/* Always show current user first */}
-                  {currentUserName && matches(currentUserName) && (
-                    <button
-                      key="current-user"
-                      type="button"
-                      onClick={() => assignPerson(assignPersonStep, currentUserName)}
-                      style={{ padding: '0.5rem 0.75rem', textAlign: 'left', background: 'var(--bg-blue-tint)', border: '1px solid #2563eb', borderRadius: 6, cursor: 'pointer', color: 'var(--text-strong)', fontWeight: 500 }}
-                    >
-                      {currentUserName} (You)
-                    </button>
-                  )}
-                  {/* Show rest of roster, excluding current user if already in roster */}
-                  {roster
-                    .filter((r) => r.name !== currentUserName && matches(r.name))
-                    .map((r, i) => (
-                      <button
-                        key={`${r.name}-${i}`}
-                        type="button"
-                        onClick={() => assignPerson(assignPersonStep, r.name, r.personId ?? null)}
-                        style={{ padding: '0.5rem 0.75rem', textAlign: 'left', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer', color: 'var(--text-strong)' }}
-                      >
-                        {r.name}
-                      </button>
-                    ))}
-                    </>
-                  )
-                  })()}
-                </div>
-              )}
-            </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', flexShrink: 0, paddingTop: '0.5rem', borderTop: '1px solid var(--border)' }}>
-              <button type="button" onClick={() => assignPerson(assignPersonStep, null)} className="wf-btn-modal-secondary">Clear</button>
-              <button type="button" onClick={() => { setAssignPersonStep(null); setAssignPersonFilter('') }} className="wf-btn-modal-secondary">Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <WorkflowStepLifecycleModals
+        confirmDeleteStep={confirmDeleteStep}
+        setConfirmDeleteStep={setConfirmDeleteStep}
+        deleteStepConfirmText={deleteStepConfirmText}
+        setDeleteStepConfirmText={setDeleteStepConfirmText}
+        isStepEmpty={isStepEmpty}
+        deleteStep={deleteStep}
+        rejectStep={rejectStep}
+        setRejectStep={setRejectStep}
+        submitReject={submitReject}
+        skipStep={skipStep}
+        setSkipStep={setSkipStep}
+        submitSkip={submitSkip}
+        setStartStep={setStartStep}
+        setSetStartStep={setSetStartStep}
+        submitSetStart={submitSetStart}
+        expectedDatesStep={expectedDatesStep}
+        setExpectedDatesStep={setExpectedDatesStep}
+        submitExpectedDates={submitExpectedDates}
+        clearExpectedDates={clearExpectedDates}
+        assignPersonStep={assignPersonStep}
+        setAssignPersonStep={setAssignPersonStep}
+        assignPersonFilter={assignPersonFilter}
+        setAssignPersonFilter={setAssignPersonFilter}
+        assignPersonFromPicker={assignPersonFromPicker}
+        roster={roster}
+        currentUserName={currentUserName}
+      />
 
       {editingProjection && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
