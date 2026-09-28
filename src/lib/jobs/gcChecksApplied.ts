@@ -197,6 +197,13 @@ export function checkNumberText(reference: string | null | undefined): string {
 }
 
 const numberKey = (reference: string | null | undefined): string => checkNumberText(reference).toLowerCase().replace(/[^a-z0-9]/g, '')
+/** The fold key keeps a deposit id — one deposit's allocations share it — where the display number drops it. */
+const foldNumberKey = (reference: string | null | undefined): string =>
+  (reference ?? '')
+    .trim()
+    .replace(/^#\s*/, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
 
 export function checkLabel(kind: CheckKind, number: string): string {
   if (number) return `#${number}`
@@ -288,7 +295,7 @@ function paymentShares(f: JobFacts, p: ChecksPaymentIn): Array<{ invoice: SentBi
 }
 
 function foldKey(p: ChecksPaymentIn): string {
-  const n = numberKey(p.reference_number)
+  const n = foldNumberKey(p.reference_number)
   if (n) return `ref:${n}|${ymd(p.paid_on) ?? ''}`
   if ((p.mercury_transaction_id ?? '').trim()) return `dep:${p.mercury_transaction_id}`
   return `pay:${p.id}`
