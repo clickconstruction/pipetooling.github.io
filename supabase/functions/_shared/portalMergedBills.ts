@@ -32,6 +32,8 @@ export type PortalJobRow = {
   bill_to_party?: string | null
   /** Share this bill (v2.3375): the job's memory — decides the invoice-less shell remainder. */
   show_bills_to_other_party?: boolean | null
+  /** Your payments (v2.4053): the retainage the GC holds, for the by-job roll-up. */
+  lien_retainage_held?: number | null
 }
 
 export type PortalInvoiceRow = {
@@ -62,6 +64,8 @@ export type PortalPaymentRow = {
   /** Optional detail (v2.2313): when present, per-payment rows render on the statement. */
   paid_on?: string | null
   payment_type?: string | null
+  /** The check number (v2.4053) — the customer's own, so it rides on the method label: "check #48211". */
+  reference_number?: string | null
   sequence_order?: number | null
 }
 
@@ -137,6 +141,14 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100
 }
 
+/** "check #48211" when the office recorded the number (v2.4053); the bare type otherwise; 'Payment' when there is neither. */
+export function portalPaymentMethod(p: Pick<PortalPaymentRow, 'payment_type' | 'reference_number'>): string {
+  const type = (p.payment_type ?? '').trim()
+  const ref = (p.reference_number ?? '').trim().replace(/^#\s*/, '')
+  if (type && ref) return `${type} #${ref}`
+  return type || (ref ? `#${ref}` : 'Payment')
+}
+
 /** Per-bill paid totals and payment rows under the oldest-bill-first rule (v2.3592), grouped by job. */
 function attributePortalPayments(invoices: readonly PortalInvoiceRow[], payments: readonly PortalPaymentRow[]): {
   paymentsByInvoice: Map<string, number>
@@ -161,7 +173,7 @@ function attributePortalPayments(invoices: readonly PortalInvoiceRow[], payments
       paymentsByInvoice.set(inv.id, round2(b.applied))
       const rows = b.slices.map((s) => ({
         date: (s.payment.paid_on ?? '').trim() ? String(s.payment.paid_on).slice(0, 10) : null,
-        method: (s.payment.payment_type ?? '').trim() || 'Payment',
+        method: portalPaymentMethod(s.payment),
         amount: round2(s.amount),
       }))
       rows.sort((a, b2) => (a.date ?? '9999').localeCompare(b2.date ?? '9999'))
