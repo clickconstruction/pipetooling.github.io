@@ -88,8 +88,6 @@ import {
 } from './my-time-day-editor/MyTimeMergeSegmentsModal'
 import { useToastContext } from '../contexts/ToastContext'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
-import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
-import { formatBidLedgerSummaryLine, formatJobLedgerSummaryLine } from '../lib/ledgerDisplayPrefixes'
 import { CLOCK_SESSION_DAY_EDITOR_SELECT } from '../lib/clockSessionSelect'
 import { supabase } from '../lib/supabase'
 import { formatErrorMessage, DatabaseError, withSupabaseRetry } from '../utils/errorHandling'
@@ -117,18 +115,15 @@ import {
   MyTimeNcnsPrecloseDialog,
 } from './my-time-day-editor/MyTimeNcnsDialogs'
 import { MyTimeRejectSessionDialog } from './my-time-day-editor/MyTimeRejectSessionDialog'
+import { useMyTimeJobBidLabels } from './my-time-day-editor/useMyTimeJobBidLabels'
 import { useMyTimeNcnsFlow } from './my-time-day-editor/useMyTimeNcnsFlow'
+import { useMyTimeSalaryPrefetch } from './my-time-day-editor/useMyTimeSalaryPrefetch'
 import {
   MyTimeNotComingInButton,
   MyTimeNotComingInConfirm,
 } from './my-time-day-editor/MyTimeNotComingInConfirm'
 import { partitionMixedClusterSingleSegmentToRowIntervals } from '../lib/myTimeMixedClusterSingleSegmentPartition'
-import { syncSalaryClockSessionsForUserDay } from '../lib/salaryScheduleSync'
-import {
-  resolveCalendarWorkday,
-  UNPAID_TIME_OFF_LABEL,
-} from '../lib/resolveCalendarWorkday'
-import type { Database } from '../types/database'
+import { emptyDayLine } from '../lib/myTimeSalaryPrefetch'
 
 export type { DayEditorSession }
 
@@ -261,7 +256,6 @@ export function DashboardMyTimeDayEditorModal({
 }: Props) {
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
-  const prefixMap = useLedgerPrefixMap()
   void _editableRangeProp
   const fenceOverridden = saveableRangeOverride != null
   const saveableRange = saveableRangeOverride ?? getThisAndLastWeekRange()
@@ -310,10 +304,6 @@ export function DashboardMyTimeDayEditorModal({
   const [sessionsFetchError, setSessionsFetchError] = useState<string | null>(null)
   const [resolvedSubjectLabel, setResolvedSubjectLabel] = useState<string | null>(null)
   const [sessionsFetchNonce, setSessionsFetchNonce] = useState(0)
-  const salaryStripPrefetchDoneKeyRef = useRef<string | null>(null)
-  const [salarySchedulePrefetchBusy, setSalarySchedulePrefetchBusy] = useState(false)
-  const [stripEmptyDayHint, setStripEmptyDayHint] = useState<'time_off' | 'no_work' | null>(null)
-  const [stripTimeOffLabel, setStripTimeOffLabel] = useState<string>(UNPAID_TIME_OFF_LABEL)
   const [forceClockOutSession, setForceClockOutSession] = useState<DayEditorSession | null>(null)
   const [adjustTimesSession, setAdjustTimesSession] = useState<DayEditorSession | null>(null)
   const [addDisjointOpen, setAddDisjointOpen] = useState<{
@@ -577,11 +567,6 @@ export function DashboardMyTimeDayEditorModal({
     }
   }, [sessionsProp.length, inSaveableRange, effectiveSubjectUserId, dateStr, sessionsFetchNonce])
 
-  useEffect(() => {
-    salaryStripPrefetchDoneKeyRef.current = null
-    setStripEmptyDayHint(null)
-  }, [dateStr, effectiveSubjectUserId])
-
   const fetchDaySessionsForEditor = useCallback(async (): Promise<DayEditorSession[]> => {
     if (!effectiveSubjectUserId || !dateStr) return []
     const data = await withSupabaseRetry(
@@ -604,119 +589,22 @@ export function DashboardMyTimeDayEditorModal({
   }, [sessionsProp, fetchedSessions])
   const pendingAuthForFetch = sessionsProp.length === 0 && !subjectUserIdProp && !authReady
 
-  useEffect(() => {
-    if (!prefetchSalarySessionsWhenEmpty) return
-    if (sessionsProp.length > 0) return
-    if (sessionsLoading) return
-    if (fetchedSessions === null) return
-    if (fetchedSessions.length > 0) return
-    if (!inSaveableRange || !effectiveSubjectUserId) return
-
-    const key = `${effectiveSubjectUserId}|${dateStr}`
-    if (salaryStripPrefetchDoneKeyRef.current === key) return
-    salaryStripPrefetchDoneKeyRef.current = key
-
-    let cancelled = false
-    setSalarySchedulePrefetchBusy(true)
-    setStripEmptyDayHint(null)
-
-    type TemplateRow = Database['public']['Tables']['salary_work_schedule_templates']['Row']
-    type OverrideRow = Database['public']['Tables']['salary_work_schedule_day_overrides']['Row']
-    type TimeOffRow = Database['public']['Tables']['user_time_off']['Row']
-
-    void (async () => {
-      try {
-        const templateRes = await withSupabaseRetry(
-          async () =>
-            supabase.from('salary_work_schedule_templates').select('*').eq('user_id', effectiveSubjectUserId).maybeSingle(),
-          'my time strip salary template probe',
-        )
-        if (cancelled) return
-        const tmpl = templateRes as TemplateRow | null
-        if (!tmpl) {
-          setSalarySchedulePrefetchBusy(false)
-          return
-        }
-
-        const [overrideRes, timeOffRes] = await Promise.all([
-          withSupabaseRetry(
-            async () =>
-              supabase
-                .from('salary_work_schedule_day_overrides')
-                .select('*')
-                .eq('user_id', effectiveSubjectUserId)
-                .eq('work_date', dateStr)
-                .maybeSingle(),
-            'my time strip salary day override',
-          ),
-          withSupabaseRetry(
-            async () =>
-              supabase
-                .from('user_time_off')
-                .select('*')
-                .eq('user_id', effectiveSubjectUserId)
-                .lte('start_date', dateStr)
-                .gte('end_date', dateStr),
-            'my time strip user time off',
-          ),
-        ])
-        if (cancelled) return
-
-        const overrideRow = overrideRes as OverrideRow | null
-        const timeOffRows = (timeOffRes ?? []) as TimeOffRow[]
-        const resolution = resolveCalendarWorkday({
-          workDateYmd: dateStr,
-          timeOffRows,
-          template: tmpl,
-          overrideForDate: overrideRow,
-        })
-
-        if (resolution.kind === 'time_off') {
-          setStripTimeOffLabel(resolution.kindLabel)
-          setStripEmptyDayHint('time_off')
-          setSalarySchedulePrefetchBusy(false)
-          return
-        }
-        if (resolution.kind === 'none') {
-          setStripEmptyDayHint('no_work')
-          setSalarySchedulePrefetchBusy(false)
-          return
-        }
-
-        const { error } = await syncSalaryClockSessionsForUserDay(effectiveSubjectUserId, dateStr)
-        if (cancelled) return
-        if (error) {
-          showToast(error, 'error')
-          setSalarySchedulePrefetchBusy(false)
-          return
-        }
-        setSessionsFetchNonce((n) => n + 1)
-        setSalarySchedulePrefetchBusy(false)
-      } catch (e: unknown) {
-        if (!cancelled) {
-          showToast(formatErrorMessage(e, 'Could not sync salary sessions'), 'error')
-          setSalarySchedulePrefetchBusy(false)
-        }
-      }
-    })()
-
-    return () => {
-      cancelled = true
-    }
-  }, [
-    prefetchSalarySessionsWhenEmpty,
-    sessionsProp.length,
+  const bumpSessionsFetchNonce = useCallback(() => setSessionsFetchNonce((n) => n + 1), [])
+  const {
+    busy: salarySchedulePrefetchBusy,
+    emptyDayHint: stripEmptyDayHint,
+    timeOffLabel: stripTimeOffLabel,
+  } = useMyTimeSalaryPrefetch({
+    enabled: prefetchSalarySessionsWhenEmpty,
+    sessionsControlledByParent: sessionsProp.length > 0,
     sessionsLoading,
     fetchedSessions,
+    resolvedSessionCount: resolvedSessions.length,
     inSaveableRange,
     effectiveSubjectUserId,
     dateStr,
-    showToast,
-  ])
-
-  useEffect(() => {
-    if (resolvedSessions.length > 0) setStripEmptyDayHint(null)
-  }, [resolvedSessions.length])
+    onSessionsInvalidated: bumpSessionsFetchNonce,
+  })
 
   const sortedSessions = useMemo(
     () =>
@@ -741,103 +629,13 @@ export function DashboardMyTimeDayEditorModal({
     onClose,
   })
 
-  const [extraJobLabels, setExtraJobLabels] = useState<Record<string, string>>({})
-  const [extraBidLabels, setExtraBidLabels] = useState<Record<string, string>>({})
-
-  useEffect(() => {
-    setExtraJobLabels({})
-    setExtraBidLabels({})
-  }, [effectiveSubjectUserId, dateStr])
-
-  const jobLabelsRef = useRef(jobLabels)
-  const bidLabelsRef = useRef(bidLabels)
-  jobLabelsRef.current = jobLabels
-  bidLabelsRef.current = bidLabels
-  const jobLabelsSerialized = JSON.stringify(jobLabels)
-  const bidLabelsSerialized = JSON.stringify(bidLabels)
-
-  useEffect(() => {
-    if (sortedSessions.length === 0) return
-    const mergedJob = { ...jobLabelsRef.current, ...extraJobLabels }
-    const mergedBid = { ...bidLabelsRef.current, ...extraBidLabels }
-    const jobIds = [...new Set(sortedSessions.map((s) => s.job_ledger_id).filter(Boolean))] as string[]
-    const bidIds = [...new Set(sortedSessions.map((s) => s.bid_id).filter(Boolean))] as string[]
-    const needJobs = jobIds.filter((id) => !mergedJob[id])
-    const needBids = bidIds.filter((id) => !mergedBid[id])
-    if (needJobs.length === 0 && needBids.length === 0) return
-
-    let cancelled = false
-    void (async () => {
-      try {
-        type JobRow = {
-          id: string
-          hcp_number: string
-          click_number: string
-          job_name: string
-          job_address: string
-          service_type_id: string | null
-        }
-        type BidRow = {
-          id: string
-          bid_number: string
-          project_name: string
-          address: string
-          service_type_id: string | null
-        }
-        const [jobsData, bidsData] = await Promise.all([
-          needJobs.length > 0
-            ? withSupabaseRetry(
-                () => supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: needJobs }),
-                'my time editor job labels'
-              )
-            : Promise.resolve([]),
-          needBids.length > 0
-            ? withSupabaseRetry(
-                () => supabase.rpc('get_bids_by_ids', { p_bid_ids: needBids }),
-                'my time editor bid labels'
-              )
-            : Promise.resolve([]),
-        ])
-        if (cancelled) return
-        const rows = (jobsData ?? []) as JobRow[]
-        const byJobId = new Map(rows.map((j) => [j.id, j]))
-        const nextJ: Record<string, string> = {}
-        for (const id of needJobs) {
-          const j = byJobId.get(id)
-          nextJ[id] = j
-            ? formatJobLedgerSummaryLine(prefixMap, j.service_type_id, j.hcp_number, j.job_name, j.job_address, j.click_number)
-            : `Job ${id.slice(0, 8)}…`
-        }
-        const bidRows = (bidsData ?? []) as BidRow[]
-        const byBidId = new Map(bidRows.map((b) => [b.id, b]))
-        const nextB: Record<string, string> = {}
-        for (const id of needBids) {
-          const b = byBidId.get(id)
-          nextB[id] = b
-            ? formatBidLedgerSummaryLine(prefixMap, b.service_type_id, b.bid_number, b.project_name, b.address)
-            : `Bid ${id.slice(0, 8)}…`
-        }
-        if (Object.keys(nextJ).length > 0) setExtraJobLabels((prev) => ({ ...prev, ...nextJ }))
-        if (Object.keys(nextB).length > 0) setExtraBidLabels((prev) => ({ ...prev, ...nextB }))
-      } catch {
-        const nextJ: Record<string, string> = {}
-        for (const id of needJobs) nextJ[id] = `Job ${id.slice(0, 8)}…`
-        const nextB: Record<string, string> = {}
-        for (const id of needBids) nextB[id] = `Bid ${id.slice(0, 8)}…`
-        if (needJobs.length > 0) setExtraJobLabels((prev) => ({ ...prev, ...nextJ }))
-        if (needBids.length > 0) setExtraBidLabels((prev) => ({ ...prev, ...nextB }))
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [sortedSessions, extraJobLabels, extraBidLabels, jobLabelsSerialized, bidLabelsSerialized, prefixMap])
-
-  const mergedJobLabels = useMemo(
-    () => ({ ...jobLabels, ...extraJobLabels }),
-    [jobLabels, extraJobLabels]
-  )
-  const mergedBidLabels = useMemo(() => ({ ...bidLabels, ...extraBidLabels }), [bidLabels, extraBidLabels])
+  const { mergedJobLabels, mergedBidLabels } = useMyTimeJobBidLabels({
+    sortedSessions,
+    jobLabels,
+    bidLabels,
+    effectiveSubjectUserId,
+    dateStr,
+  })
 
   const sessionsKey = useMemo(
     () =>
@@ -2416,11 +2214,7 @@ export function DashboardMyTimeDayEditorModal({
           <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading sessions…</p>
         ) : resolvedSessions.length === 0 ? (
           <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-            {stripEmptyDayHint === 'time_off'
-              ? `No sessions this day — ${stripTimeOffLabel}.`
-              : stripEmptyDayHint === 'no_work'
-                ? 'No scheduled work this day (e.g. weekend or no shift blocks).'
-                : 'No sessions this day.'}
+            {emptyDayLine(stripEmptyDayHint, stripTimeOffLabel)}
           </p>
         ) : (
           <>
