@@ -1,4 +1,5 @@
 import { formatYmdShort } from './gcChecksApplied'
+import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 
 /**
  * Sending back a Stripe-hosted billed line when Stripe still shows it paid
@@ -53,7 +54,7 @@ export function oobMarkPaidOnWords(d: StripeDetailForSendBack | null | undefined
   if (!d) return null
   if (d.oob_paid_on && /^\d{4}-\d{2}-\d{2}$/.test(d.oob_paid_on)) return formatYmdShort(d.oob_paid_on)
   if (d.paid_at != null && Number.isFinite(d.paid_at)) {
-    return new Date(d.paid_at * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Chicago' })
+    return new Date(d.paid_at * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: APP_CALENDAR_TZ })
   }
   return null
 }
