@@ -5,7 +5,7 @@ roles: all
 keywords: profile, name, phone, push notifications, pinned pages, tabs
 order: 2
 ---
-Settings is where you manage your own profile and notifications. On a desktop the pages sit in a list down the left side, grouped **You** (Your account, Your dashboard), **Company** (settings named after the page they affect, for office roles), **System**, and **Help**, with a search box on top and the last tabs you opened as chips; on a phone the same list is a dropdown. The page opens on the tab you used last. Which tabs you see depends on your role — every user gets the You group plus **Activity logs**, **Guides**, and **Release notes** — and the list says when more tabs are for masters and devs.
+Settings is where you manage your own profile and notifications. On a desktop the pages sit in a list down the left side, grouped **You** (Your account, Your dashboard), **Company** (settings named after the page they affect, for office roles), **System**, and **Help**, with a search box on top, the last tabs you opened as chips, and — for devs and leaders — the **View as…** and **Punch list** doors just under the search, on every tab; on a phone the same list is a dropdown. The page opens on the tab you used last. Which tabs you see depends on your role — every user gets the You group plus **Activity logs**, **Guides**, and **Release notes** — and the list says when more tabs are for masters and devs.
 
 Here's the whole flow in 30 seconds — gear menu → Settings, then the sections this guide walks through:
 

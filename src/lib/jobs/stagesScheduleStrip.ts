@@ -97,6 +97,20 @@ export function buildTwoWeekStrip(args: {
   return { cells, laterCount, bookedInWindow, workedInWindow }
 }
 
+/**
+ * The cells grouped by week — this week, then next — so each week draws as
+ * its own run and the break between them is a real gap, never a cell pushed
+ * into its neighbour (v2.4042: next week's Monday sat on its Tuesday).
+ */
+export function stripWeeks(cells: readonly StagesStripCell[]): StagesStripCell[][] {
+  const weeks: StagesStripCell[][] = []
+  for (const c of cells) {
+    if (c.weekStart || weeks.length === 0) weeks.push([])
+    weeks[weeks.length - 1]!.push(c)
+  }
+  return weeks
+}
+
 export type StagesWhen =
   | {
       kind: 'scheduled'

@@ -72,7 +72,6 @@ import { useFarmModeEnabled } from '../hooks/useFarmModeEnabled'
 import { FARM_MODE_EXIT_CONTROL, farmModeBounceTarget } from '../lib/farmModeToggle'
 import { FarmModeChip } from './FarmModeChip'
 import { canOpenRoadmap } from '../lib/roadmapVisibility'
-import { canOpenPunchList, PUNCH_LIST_PATH } from '../lib/todos/punchListAccess'
 import { usePinModeEnabled } from '../hooks/usePinModeEnabled'
 import {
   HEADER_ASK_ESTIMATING_LABEL,
@@ -94,7 +93,6 @@ import { DispatchModeFooter, DispatchModeFooterLive, DISPATCH_MODE_FOOTER_HEIGHT
 import { PhoneDockMoreSheet, type PhoneDockModeRow } from './dispatchMode/PhoneDockMoreSheet'
 import { PHONE_DOCK_CHANGED_EVENT, readPhoneDockSlotsRaw, resolveDockSlots, swapDockSlot, writePhoneDockSlots } from '../lib/phoneDock'
 import { IMPERSONATION_CHROME_BUTTON_STYLE, impersonationReturnPath, readImpersonationStash } from '../lib/impersonationSession'
-import { ViewAsPanel } from './layout/ViewAsPanel'
 import { useIsPartner } from '../hooks/useIsPartner'
 import { PartnerStatementNavLink } from './partner/PartnerStatementNavLink'
 import BodyScrollLockSentinel from './BodyScrollLockSentinel'
@@ -201,8 +199,6 @@ export default function Layout() {
     () => typeof window !== 'undefined' && !!localStorage.getItem(IMPERSONATION_KEY)
   )
   const [gearOpen, setGearOpen] = useState(false)
-  // View as (v2.3608): the gear-menu door, dev only; the panel imitates through loginAsUser.
-  const [viewAsOpen, setViewAsOpen] = useState(false)
   const gearRef = useRef<HTMLDivElement>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -553,12 +549,6 @@ export default function Layout() {
   const tallyIcon = (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1em" height="1em" fill="currentColor" aria-hidden="true" style={{ verticalAlign: 'middle' }}>
       <path d="M541.4 162.6C549 155 561.7 156.9 565.5 166.9C572.3 184.6 576 203.9 576 224C576 312.4 504.4 384 416 384C398.5 384 381.6 381.2 365.8 376L178.9 562.9C150.8 591 105.2 591 77.1 562.9C49 534.8 49 489.2 77.1 461.1L264 274.2C258.8 258.4 256 241.6 256 224C256 135.6 327.6 64 416 64C436.1 64 455.4 67.7 473.1 74.5C483.1 78.3 484.9 91 477.4 98.6L388.7 187.3C385.7 190.3 384 194.4 384 198.6L384 240C384 248.8 391.2 256 400 256L441.4 256C445.6 256 449.7 254.3 452.7 251.3L541.4 162.6z" />
-    </svg>
-  )
-  // Deposit glyph (arrow down into a tray), same 640-grid style as the other nav icons.
-  const accountsReceivableIcon = (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1em" height="1em" fill="currentColor" aria-hidden="true" style={{ verticalAlign: 'middle' }}>
-      <path d="M320 448 L200 320 L272 320 L272 96 L368 96 L368 320 L440 320 Z M96 416 L160 416 L160 512 L480 512 L480 416 L544 416 L544 512 C544 547.3 515.3 576 480 576 L160 576 C124.7 576 96 547.3 96 512 Z" />
     </svg>
   )
   // Handshake glyph (Font Awesome handshake-simple), same 640-grid style as the other nav icons.
@@ -1772,28 +1762,6 @@ export default function Layout() {
                     Banking
                   </NavLink>
                 )}
-                {(role === 'dev' || isAssistantLike(role) || role === 'master_technician') && !farmModeActive && (
-                  <NavLink
-                    to="/accounts-receivable"
-                    onClick={() => setGearOpen(false)}
-                    style={({ isActive }) => ({
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.35rem',
-                      padding: '0.5rem 1rem',
-                      textDecoration: 'none',
-                      color: 'inherit',
-                      borderBottom: '1px solid var(--chrome-border)',
-                      boxSizing: 'border-box',
-                      ...(isActive && { fontWeight: 600 }),
-                    })}
-                    title="Accounts Receivable"
-                    aria-label="Accounts Receivable"
-                  >
-                    {accountsReceivableIcon}
-                    Accounts Receivable
-                  </NavLink>
-                )}
                 {!farmModeActive && (
                   <NavLink
                     to="/tally"
@@ -1836,38 +1804,6 @@ export default function Layout() {
                 >
                   {calendarNavIcon}
                   Calendar
-                </NavLink>
-                )}
-                {!farmModeActive && role === 'dev' && !impersonating && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setGearOpen(false)
-                    setViewAsOpen(true)
-                  }}
-                  style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.5rem 1rem', background: 'none', border: 'none', borderBottom: '1px solid var(--chrome-border)', color: 'inherit', font: 'inherit', cursor: 'pointer' }}
-                  title="View this page as a role's sample account or as a person — the real session; Exit brings you back here"
-                  aria-label="View as"
-                >
-                  View as…
-                </button>
-                )}
-                {!farmModeActive && canOpenPunchList(role) && (
-                <NavLink
-                  to={PUNCH_LIST_PATH}
-                  onClick={() => setGearOpen(false)}
-                  style={({ isActive }) => ({
-                    display: 'block',
-                    padding: '0.5rem 1rem',
-                    textDecoration: 'none',
-                    color: 'inherit',
-                    borderBottom: '1px solid var(--chrome-border)',
-                    ...(isActive && { fontWeight: 600 }),
-                  })}
-                  title="Punch list — the to-do board, rendered from the repo"
-                  aria-label="Punch list"
-                >
-                  Punch list
                 </NavLink>
                 )}
                 {!farmModeActive && (
@@ -1996,7 +1932,6 @@ export default function Layout() {
         </span>
       </nav>
       {headerSearchEligible ? <HeaderGlobalSearchNavLayer /> : null}
-      {viewAsOpen ? <ViewAsPanel onClose={() => setViewAsOpen(false)} /> : null}
       </div>
       <main
         className="appMain"
@@ -2284,7 +2219,6 @@ export default function Layout() {
           onSwap={(index, key) => writePhoneDockSlots(authUser?.id, swapDockSlot(phoneDockSlots, index, key))}
           onReset={() => writePhoneDockSlots(authUser?.id, null)}
           modes={phoneDockModes}
-          showPunchList={!farmModeActive && canOpenPunchList(role)}
           onSignOut={signOutEverywhere}
         />
       ) : null}
