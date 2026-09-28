@@ -15,7 +15,7 @@ import { mapCountRowsByFixture } from '../../lib/bids/mapCountRowsByFixture'
 import { searchPriceBookEntries, seedPricingAssignmentSearch, type AssignMatchMode, type PriceBookSearchResult } from '../../lib/bids/priceBookAssignSearch'
 import { SpotlightTour, spotlightTourStepsPresent, type SpotlightTourStep } from '../SpotlightTour'
 import { bidVersionRowsKey, scenarioCardRevenues } from '../../lib/bids/scenarioCardRevenues'
-import { scenarioPackageRows, scenarioPricingRows, scenarioRevenue } from '../../lib/bids/scenarioPricingRows'
+import { scenarioPricingRows, scenarioRevenue } from '../../lib/bids/scenarioPricingRows'
 import { loadScenarioInputs, scenarioBidVersionIdOf, type ScenarioInputs } from '../../lib/bids/loadScenarioInputs'
 import { readPreviewStash, writePreviewStash } from '../../lib/bids/workbenchPreviewStash'
 import { cellEditSeed, impliedUnitPrice, type WorkbenchCellField } from '../../lib/bids/workbenchCellSolve'
@@ -58,12 +58,9 @@ import { PricingQuoteModals } from './PricingQuoteModals'
 import { usePricingQuoteDesk } from '../../hooks/usePricingQuoteDesk'
 import { AdoptBidModal } from './AdoptBidModal'
 import { PricingShareMenu } from './PricingShareMenu'
-import {
-  printPricingPage as printPricingPageDoc,
-  printAllPricingPages as printAllPricingPagesDoc,
-  buildPricingCsvForBid,
-  type PricingPrintContext,
-} from '../../lib/bidDocuments/pricingPage'
+import { PricingStarChooserDialog } from './PricingStarChooserDialog'
+import { useStarAwareShare } from '../../hooks/useStarAwareShare'
+import { pricingNameOf } from '../../lib/bids/starAwareShare'
 import type { ComputeBidPricingRowsResult } from '../../lib/bidPricingRowCalculations'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
@@ -712,8 +709,6 @@ export function BidsPricingTab({
   // Disables the toolbar price-book dropdown while a clone/switch is in flight (avoids double-submit).
   const [pricebookSwitchBusy, setPricebookSwitchBusy] = useState(false)
   const [savingUnitPriceOverride, setSavingUnitPriceOverride] = useState<string | null>(null)
-  // Package and send (Pricing tab → "Package and send" modal — left of CSV)
-  const [packageSendOpen, setPackageSendOpen] = useState(false)
   // Region P6: the quotes / RFQ / robot doors — the open flags, the bid's requests, the header
   // chip and the two one-shot URL doors live in the hook; the windows are PricingQuoteModals.
   const quoteDesk = usePricingQuoteDesk({ selectedBid: selectedBidForPricing, canPackageAndSendBidPricing })
@@ -729,11 +724,6 @@ export function BidsPricingTab({
     setQuotesCompareOpen,
     setRfqDeskOpen,
   } = quoteDesk
-  // F2 (v2.2120): Share / Print / CSV honor the ★. When the scenario you're viewing isn't the
-  // customer's, a chooser asks which price to use; picking ★ loads that scenario's prices on
-  // the fly (no view switch), so "the ★ is what the customer sees — Cover Letter, Share, Print,
-  // and the bid value all use it" is finally true end to end.
-  const [starChooser, setStarChooser] = useState<'share' | 'print' | 'csv' | null>(null)
   // F6b (v2.2133): "Adopt an existing bid" — fold a board bid into this package as a version.
   const [adoptOpen, setAdoptOpen] = useState(false)
   // G1 (v2.2154): price options per GC — GC names for the structure bar, the "Another price" modal,
@@ -760,9 +750,6 @@ export function BidsPricingTab({
     return b?.customers?.name ?? b?.bids_gc_builders?.name ?? 'the GC'
   }
   const shortGc = (name: string) => name
-  /** v2.3685: 'both' (share only) sends the ★ price with the viewed one under it. */
-  const [starChoice, setStarChoice] = useState<'star' | 'viewed' | 'both'>('star')
-  const [starBusy, setStarBusy] = useState(false)
   /** Unpriced solo bids hide the status band; the ＋ Add price door re-homes to the solver line (artifact 0a627c7c). */
   const wbSolverEnd: { node: React.ReactNode } = { node: null }
   wbSolverEnd.node = null
@@ -834,8 +821,6 @@ export function BidsPricingTab({
 
   /** v2.2203: the Workbench structure bar lives behind the (i) beside the bid name. */
   const [wbInfoOpen, setWbInfoOpen] = useState(false)
-  type SharePricing = { pricingId: string; name: string; rows: PackageAndSendPricingRowInput[]; totalRevenue: number }
-  const [shareOverride, setShareOverride] = useState<(SharePricing & { also?: SharePricing | null }) | null>(null)
 
   // Close price book modals when service type changes
   useEffect(() => {
@@ -1577,147 +1562,10 @@ export function BidsPricingTab({
     }
   }
 
-  function buildPricingPrintContext(): PricingPrintContext | null {
-    if (!selectedBidForPricing) return null
-    return {
-      bid: selectedBidForPricing,
-      priceBookVersions,
-      priceBookEntries,
-      selectedPricingVersionId,
-      countRows: pricingCountRows,
-      costEstimate: pricingCostEstimate,
-      laborRows: pricingLaborRows,
-      materialTotalRoughIn: pricingMaterialTotalRoughIn,
-      materialTotalTopOut: pricingMaterialTotalTopOut,
-      materialTotalTrimSet: pricingMaterialTotalTrimSet,
-      laborRate: pricingLaborRate,
-      fixtureMaterialsFromTakeoff: pricingFixtureMaterialsFromTakeoff,
-      viewModel: 'price',
-      assignments: bidPricingAssignments,
-      customPrices: bidCountRowCustomPrices,
-      submissionHides: bidCountRowSubmissionHides,
-      taxPercent: parseFloat(costEstimatePOModalTaxPercent || '8.25') || 0,
-      directCostRows: pricingDirectCostRows,
-      teamLaborCost: selectedBidForPricing.id ? (new Map(teamLaborDataForBids.map((r) => [r.bidId, r.bidCost])).get(selectedBidForPricing.id) ?? 0) : 0,
-    }
-  }
-
   /** The per-scenario inputs for a scenario that isn't the one on screen — `lib/bids/loadScenarioInputs` (v2.3856), with this tab's scenarios and on-screen version. */
   function loadScenarioInputsFor(bidId: string, pricingId: string): Promise<ScenarioInputs> {
     return loadScenarioInputs(supabase, { bidId, pricingId, scenarioBidVersionId: scenarioBidVersionIdOf(priceBookVersions, pricingId), selectedBidVersionId })
   }
-  /** Same math as useBidPricingRows.pricingPackageSource, for an arbitrary scenario's inputs — the one kernel (v2.3853). */
-  function packageRowsFromInputs(pricingId: string, inputs: ScenarioInputs): { rows: PackageAndSendPricingRowInput[]; totalRevenue: number } {
-    return scenarioPackageRows(
-      scenarioPricingRows({
-        scenarioId: pricingId,
-        countRows: inputs.countRows ?? pricingCountRows,
-        entries: inputs.entries,
-        assignments: inputs.assignments,
-        customPrices: inputs.customPrices,
-        hides: inputs.hides,
-        costs: {
-          laborRows: pricingLaborRows,
-          totalMaterials: (pricingMaterialTotalRoughIn ?? 0) + (pricingMaterialTotalTopOut ?? 0) + (pricingMaterialTotalTrimSet ?? 0),
-          laborRate: pricingLaborRate ?? 0,
-          taxPercent: parseFloat(costEstimatePOModalTaxPercent || '8.25') || 0,
-          materialsFromTakeoffByCountRowId: pricingFixtureMaterialsFromTakeoff,
-        },
-      }),
-    )
-  }
-  function buildPricingPrintContextFor(pricingId: string, inputs: ScenarioInputs): PricingPrintContext | null {
-    const ctx = buildPricingPrintContext()
-    if (!ctx) return null
-    return { ...ctx, selectedPricingVersionId: pricingId, countRows: inputs.countRows ?? ctx.countRows, priceBookEntries: inputs.entries, assignments: inputs.assignments, customPrices: inputs.customPrices, submissionHides: inputs.hides }
-  }
-  function printPricingPageWith(ctx: PricingPrintContext) {
-    printPricingPageDoc(ctx)
-  }
-  /** Share / Print / CSV entry point: ask which price when the viewed scenario isn't the ★. */
-  function requestWithStarCheck(action: 'share' | 'print' | 'csv') {
-    const starId = selectedBidForPricing?.selected_price_book_version_id ?? null
-    if (starId && selectedPricingVersionId && starId !== selectedPricingVersionId) {
-      setStarChoice('star')
-      setStarChooser(action)
-      return
-    }
-    void runStarAwareAction(action, 'viewed')
-  }
-  /** `choice`: the ★ price, the viewed one, or (share only) both — ★ first, the viewed one under it. */
-  async function runStarAwareAction(action: 'share' | 'print' | 'csv', choice: 'star' | 'viewed' | 'both') {
-    const bid = selectedBidForPricing
-    if (!bid) return
-    const starId = bid.selected_price_book_version_id ?? null
-    if (choice === 'viewed' || !starId || starId === selectedPricingVersionId) {
-      setStarChooser(null)
-      if (action === 'share') {
-        setShareOverride(null)
-        setPackageSendOpen(true)
-        return
-      }
-      const ctx = buildPricingPrintContext()
-      if (!ctx) return
-      if (action === 'print') printPricingPageWith(ctx)
-      else downloadPricingCsvWith(ctx)
-      return
-    }
-    setStarBusy(true)
-    try {
-      const inputs = await loadScenarioInputsFor(bid.id, starId)
-      if (action === 'share') {
-        const pkg = packageRowsFromInputs(starId, inputs)
-        const also: SharePricing | null =
-          choice === 'both' && action === 'share' && selectedPricingVersionId && pricingPackageSource
-            ? { pricingId: selectedPricingVersionId, name: priceBookVersions.find((v) => v.id === selectedPricingVersionId)?.name ?? '—', rows: pricingPackageSource.rows, totalRevenue: pricingPackageSource.totalRevenue }
-            : null
-        setShareOverride({ pricingId: starId, name: priceBookVersions.find((v) => v.id === starId)?.name ?? '—', rows: pkg.rows, totalRevenue: pkg.totalRevenue, also })
-        setPackageSendOpen(true)
-      } else {
-        const ctx = buildPricingPrintContextFor(starId, inputs)
-        if (!ctx) return
-        if (action === 'print') printPricingPageWith(ctx)
-        else downloadPricingCsvWith(ctx)
-      }
-    } finally {
-      setStarBusy(false)
-      setStarChooser(null)
-    }
-  }
-
-  function printPricingPage() {
-    requestWithStarCheck('print')
-  }
-
-  function downloadPricingCsv() {
-    requestWithStarCheck('csv')
-  }
-
-  function downloadPricingCsvWith(ctx: PricingPrintContext) {
-    const teamLaborCostByBidId = new Map(teamLaborDataForBids.map((r) => [r.bidId, r.bidCost]))
-    const teamLaborCost = teamLaborCostByBidId.get(ctx.bid.id) ?? 0
-    const result = buildPricingCsvForBid(ctx, teamLaborCost)
-    if (!result) {
-      showToast('Select a price and make sure Counts and Labor are set up.', 'info')
-      return
-    }
-    const blob = new Blob([`\uFEFF${result.csv}`], { type: 'text/csv;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = result.filename
-    a.click()
-    URL.revokeObjectURL(url)
-    showToast('Pricing exported to CSV.', 'success')
-  }
-
-  async function printAllPricingPages() {
-    const ctx = buildPricingPrintContext()
-    if (!ctx) return
-    const err = await printAllPricingPagesDoc(ctx)
-    if (err) setError(err)
-  }
-
   const bidsScopedForPricing = onlyMyBids ? bids.filter(isMyBid) : bids
   const filteredBidsForPricing: BidWithBuilder[] = filterBidsForPicker(bidsScopedForPricing, pricingSearchQuery, ledgerPrefixMap)
 
@@ -2389,6 +2237,52 @@ export function BidsPricingTab({
     () => directCostRowsFromTables({ equipment: pricingEquipmentRows, permit: pricingPermitRows, sub: pricingSubcontractorRows, waste: pricingWasteRows, other: pricingOtherRows }),
     [pricingEquipmentRows, pricingPermitRows, pricingSubcontractorRows, pricingWasteRows, pricingOtherRows],
   )
+
+  // Region P7: Share / Print / CSV and the ★ chooser — the five values and the handlers live in
+  // the hook (called here, after the direct-cost rows it reads); the chooser is
+  // PricingStarChooserDialog, and the Package-and-send window below reads `shareOverride`.
+  const {
+    packageSendOpen,
+    setPackageSendOpen,
+    shareOverride,
+    setShareOverride,
+    starChooser,
+    setStarChooser,
+    starChoice,
+    setStarChoice,
+    starBusy,
+    requestWithStarCheck,
+    runStarAwareAction,
+    printPricingPage,
+    downloadPricingCsv,
+    printAllPricingPages,
+  } = useStarAwareShare({
+    inputs: selectedBidForPricing
+      ? {
+          bid: selectedBidForPricing,
+          priceBookVersions,
+          priceBookEntries,
+          selectedPricingVersionId,
+          countRows: pricingCountRows,
+          costEstimate: pricingCostEstimate,
+          laborRows: pricingLaborRows,
+          materialTotalRoughIn: pricingMaterialTotalRoughIn,
+          materialTotalTopOut: pricingMaterialTotalTopOut,
+          materialTotalTrimSet: pricingMaterialTotalTrimSet,
+          laborRate: pricingLaborRate,
+          fixtureMaterialsFromTakeoff: pricingFixtureMaterialsFromTakeoff,
+          assignments: bidPricingAssignments,
+          customPrices: bidCountRowCustomPrices,
+          submissionHides: bidCountRowSubmissionHides,
+          taxPercent: parseFloat(costEstimatePOModalTaxPercent || '8.25') || 0,
+          directCostRows: pricingDirectCostRows,
+          teamLaborDataForBids,
+        }
+      : null,
+    selectedBidVersionId,
+    pricingPackageSource,
+    setError,
+  })
 
   function derivePricingWorkbench() {
     if (!selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate) return null
@@ -4665,49 +4559,18 @@ export function BidsPricingTab({
           }}
         />
       ) : null}
-      {starChooser && selectedBidForPricing ? (() => {
-        const starId = selectedBidForPricing.selected_price_book_version_id ?? null
-        const starName = priceBookVersions.find((v) => v.id === starId)?.name ?? '—'
-        const viewedName = priceBookVersions.find((v) => v.id === selectedPricingVersionId)?.name ?? '—'
-        const verb = starChooser === 'share' ? 'Send' : starChooser === 'print' ? 'Print' : 'Export'
-        const radio = (on: boolean): React.CSSProperties => ({ display: 'flex', gap: '0.6rem', alignItems: 'flex-start', padding: '0.5rem 0.6rem', border: on ? '1px solid #3b82f6' : '1px solid var(--border)', background: on ? 'var(--bg-blue-tint)' : 'transparent', borderRadius: 8, cursor: 'pointer', marginTop: '0.35rem', font: 'inherit', color: 'inherit', width: '100%', textAlign: 'left' })
-        return (
-          <div
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}
-            onClick={() => !starBusy && setStarChooser(null)}
-          >
-            <div
-              role="dialog"
-              aria-label={`${verb} which price?`}
-              style={{ background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 12, padding: '1rem 1.1rem', maxWidth: 460, width: '92%', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 style={{ margin: '0 0 0.2rem', fontSize: '1.02rem' }}>{verb} which price?</h3>
-              <p style={{ margin: '0 0 0.6rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>You're viewing {viewedName}; the customer's price is ★ {starName}.</p>
-              <button type="button" style={radio(starChoice === 'star')} onClick={() => setStarChoice('star')}>
-                <input type="radio" readOnly checked={starChoice === 'star'} style={{ marginTop: '0.2rem' }} />
-                <span><b style={{ display: 'block', fontSize: '0.9rem' }}>Customer's price — ★ {starName}</b><span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>What the Cover Letter and the bid value use.</span></span>
-              </button>
-              <button type="button" style={radio(starChoice === 'viewed')} onClick={() => setStarChoice('viewed')}>
-                <input type="radio" readOnly checked={starChoice === 'viewed'} style={{ marginTop: '0.2rem' }} />
-                <span><b style={{ display: 'block', fontSize: '0.9rem' }}>The one you're viewing — {viewedName}</b><span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>For a teammate to check. Not what the GC sees.</span></span>
-              </button>
-              {starChooser === 'share' ? (
-                <button type="button" style={radio(starChoice === 'both')} onClick={() => setStarChoice('both')}>
-                  <input type="radio" readOnly checked={starChoice === 'both'} style={{ marginTop: '0.2rem' }} />
-                  <span><b style={{ display: 'block', fontSize: '0.9rem' }}>Both — ★ {starName} and {viewedName}</b><span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>One package: the customer's price first, {viewedName} under it. Text, mail or send it the same way.</span></span>
-                </button>
-              ) : null}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.4rem', marginTop: '0.8rem' }}>
-                <button type="button" onClick={() => setStarChooser(null)} disabled={starBusy} style={{ font: 'inherit', fontSize: '0.85rem', padding: '0.4rem 0.8rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--bg-muted)', color: 'var(--text-strong)', cursor: 'pointer' }}>Cancel</button>
-                <button type="button" onClick={() => void runStarAwareAction(starChooser, starChoice)} disabled={starBusy} style={{ font: 'inherit', fontSize: '0.85rem', padding: '0.4rem 0.9rem', border: 'none', borderRadius: 6, background: '#3b82f6', color: '#fff', cursor: starBusy ? 'wait' : 'pointer' }}>
-                  {starBusy ? 'Loading…' : `${verb} ${starChoice === 'star' ? `★ ${starName}` : starChoice === 'both' ? 'both' : viewedName}`}
-                </button>
-              </div>
-            </div>
-          </div>
-        )
-      })() : null}
+      {starChooser && selectedBidForPricing ? (
+        <PricingStarChooserDialog
+          action={starChooser}
+          choice={starChoice}
+          busy={starBusy}
+          starName={pricingNameOf(priceBookVersions, selectedBidForPricing.selected_price_book_version_id ?? null)}
+          viewedName={pricingNameOf(priceBookVersions, selectedPricingVersionId)}
+          onChoose={setStarChoice}
+          onCancel={() => setStarChooser(null)}
+          onConfirm={() => void runStarAwareAction(starChooser, starChoice)}
+        />
+      ) : null}
 
       <PricingQuoteModals
         desk={quoteDesk}
