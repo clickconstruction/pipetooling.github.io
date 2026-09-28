@@ -50,27 +50,12 @@ import { BidSentAttestationModal } from '../components/bids/BidSentAttestationMo
 import { BidsBidBoardTab } from '../components/bids/BidsBidBoardTab'
 import { BidRfiTab } from '../components/bids/BidRfiTab'
 import { BidsAuditsTab } from '../components/bids/BidsAuditsTab'
-import { RobotStatusSheet } from '../components/bids/RobotStatusSheet'
-import { RobotNeedsSheet, type RobotOpenQuestion } from '../components/bids/RobotNeedsSheet'
 import { BID_FORM_FOCUS_ELEMENT_ID, type BidFormFocus } from '../lib/bids/bidFormFocus'
-import {
-  BEST_EFFORT_GAP_NOTE_PREFIX,
-  envelopeParamBidNumber,
-  estimatorLaneQuestions,
-  latestShadowRunByBidNumber,
-  openRobotQuestionsByBidId,
-  robotQuestionsWaitingCount,
-  scoredShadowRunFor,
-  sourceIdByTwinId,
-  twinBidBySourceId as pairTwinBidsBySourceId,
-  type OpenRobotQuestionRow,
-} from '../lib/bids/robotLayer'
+import { envelopeParamBidNumber } from '../lib/bids/robotLayer'
+import { useBidRobotLayer } from '../hooks/useBidRobotLayer'
+import { BidsRobotOverlays } from '../components/bids/BidsRobotOverlays'
 import type { BidFlowDoor, BidFlowStep } from '../lib/bids/bidFlow'
 import { landOnBidFlowTarget, landOnElement, parseLandingParam } from '../lib/bids/bidFlowLanding'
-import { robotRowState, type RobotRowInput } from '../lib/bids/robotRowState'
-import type { ShadowRunRow } from '../lib/bids/shadowStory'
-import { RobotBidComparisonModal } from '../components/bids/RobotBidComparisonModal'
-import { RobotReferenceGradeModal } from '../components/bids/RobotReferenceGradeModal'
 import { BidsRobotQueueTab } from '../components/bids/BidsRobotQueueTab'
 import { BidsRobotMirrorTab } from '../components/bids/BidsRobotMirrorTab'
 import { BidsRobotScoreboardTab } from '../components/bids/BidsRobotScoreboardTab'
@@ -83,12 +68,8 @@ import { bidTradeToSwitchTo } from '../lib/bids/bidTradeSwitch'
 import { getSubmissionSectionKey } from '../lib/bids/submissionSections'
 import { followupLensCaption, followupLenses, followupNeedsReasonChipShows, robotLensBarShows, robotLenses } from '../lib/bids/bidsLenses'
 import { BidsLensBar } from '../components/bids/BidsLensBar'
-import { RobotEnvelopeModal } from '../components/bids/RobotEnvelopeModal'
-import { envelopeRefusal, envelopeRunFromShadow, isRevisionAfterReveal, robotReviewRevisionNote, type EnvelopeRun } from '../lib/bids/robotEnvelope'
-import { mirrorRunReviewable, type RobotMirrorRun } from '../lib/bids/robotMirror'
-import { bestEffortGap, bestEffortGapNote } from '../lib/bids/bestEffort'
 import { useBidAuditsPendingCount } from '../hooks/useBidAuditsPendingCount'
-import { canWorkRobotAudits, ROBOT_AUDIT_ROLES } from '../lib/bids/bidAudits'
+import { canWorkRobotAudits } from '../lib/bids/bidAudits'
 import { BidSubmissionFollowupTab } from '../components/bids/BidSubmissionFollowupTab'
 import { BidsBidCostsTab } from '../components/bids/BidsBidCostsTab'
 import { canSeeBidCostDollars, canSeeBidCosts } from '../lib/bids/bidPursuit'
@@ -501,86 +482,30 @@ export default function Bids() {
     }
   }, [myRole, boardBidIdsKey, jobsByBidGen])
 
-  // Robot readiness (v2.2530): source bid id → its twin copy, for the board icon's
-  // "robot bid exists" state. Pairing is stamped by twin-mcp at open time.
-  const twinBidBySourceId = useMemo(() => pairTwinBidsBySourceId(robotBids), [robotBids])
-  // v2.3222: the Robot Board mirrors OUR bids (one row per bid with a robot run); the lens
-  // label carries that count, reported by the mirror once its runs load.
-  const [robotMirrorCount, setRobotMirrorCount] = useState<number | null>(null)
-
-  // v2.2547: counts/pricing presence for decided bids (grade badge inputs).
-  const [referencePresence, setReferencePresence] = useState<ReadonlyMap<string, { hasCounts: boolean; hasPricing: boolean }>>(() => new Map())
-  const [robotGradeBid, setRobotGradeBid] = useState<BidWithBuilder | null>(null)
-  useEffect(() => {
-    if (!authUser?.id) return
-    let cancelled = false
-    void (async () => {
-      const { data } = await (supabase as unknown as import('@supabase/supabase-js').SupabaseClient).rpc('list_reference_presence')
-      if (cancelled || !data) return
-      setReferencePresence(new Map((data as Array<{ bid_id: string; has_counts: boolean; has_pricing: boolean }>).map((r) => [r.bid_id, { hasCounts: r.has_counts, hasPricing: r.has_pricing }])))
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [authUser?.id])
-
-  // v2.3200: the robot icon's two sheets — status (the robot is on it) and needs
-  // (the robot is waiting on a person). One kernel input per row, built here.
-  // Keep the id, not the row: the sheets read the LIVE row so a write (front of
-  // the line, an answered question) shows in the open sheet without reopening it.
-  const [robotStatusBidId, setRobotStatusBidId] = useState<string | null>(null)
-  const [robotNeedsBidId, setRobotNeedsBidId] = useState<string | null>(null)
-  const robotStatusBid = useMemo(() => (robotStatusBidId ? (bids.find((b) => b.id === robotStatusBidId) ?? null) : null), [bids, robotStatusBidId])
-  const robotNeedsBid = useMemo(() => (robotNeedsBidId ? (bids.find((b) => b.id === robotNeedsBidId) ?? null) : null), [bids, robotNeedsBidId])
-  const setRobotStatusBid = useCallback((bid: BidWithBuilder | null) => setRobotStatusBidId(bid?.id ?? null), [])
-  const setRobotNeedsBid = useCallback((bid: BidWithBuilder | null) => setRobotNeedsBidId(bid?.id ?? null), [])
-  // Shadow runs by reference bid number (list_shadow_runs never returns a sealed
-  // total, so nothing here can anchor a number). Latest run per reference wins.
-  const [shadowRunByBidNumber, setShadowRunByBidNumber] = useState<ReadonlyMap<string, ShadowRunRow>>(() => new Map())
-  const [shadowRunsGen, setShadowRunsGen] = useState(0)
-  useEffect(() => {
-    if (!authUser?.id) return
-    let cancelled = false
-    void (async () => {
-      try {
-        const { data, error } = await (supabase as unknown as import('@supabase/supabase-js').SupabaseClient).rpc('list_shadow_runs')
-        if (error || cancelled) return
-        setShadowRunByBidNumber(latestShadowRunByBidNumber((data ?? []) as ShadowRunRow[]))
-      } catch {
-        // RLS-closed or RPC missing: rows fall back to queued / working from the twin pairing.
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [authUser?.id, shadowRunsGen])
-  // Open estimator-audience questions the robots asked about a bid — the row's
-  // "needs something" state. Same table the Audits tab answers from; fail-soft.
-  const canAnswerRobotQuestions = (ROBOT_AUDIT_ROLES as readonly string[]).includes(myRole ?? '')
-  const [openRobotQuestionRows, setOpenRobotQuestionRows] = useState<readonly OpenRobotQuestionRow[]>([])
-  const loadRobotQuestions = useCallback(async () => {
-    if (!canAnswerRobotQuestions) return
-    try {
-      // select('*') so choices / recommended (v2.3210) and kind (v2.3212) ride
-      // along once their migrations land; before that they are simply absent.
-      const { data, error } = await (supabase as unknown as import('@supabase/supabase-js').SupabaseClient)
-        .from('twin_questions')
-        .select('*')
-        .eq('status', 'open')
-        .not('about_bid_id', 'is', null)
-        .order('created_at', { ascending: true })
-        .limit(500)
-      if (error) return
-      setOpenRobotQuestionRows(estimatorLaneQuestions((data ?? []) as OpenRobotQuestionRow[]))
-    } catch {
-      // RLS-closed: no questions surface on the board.
-    }
-  }, [canAnswerRobotQuestions])
-  // v2.3212: a plans ask filed on the robot's shell sits on the HUMAN bid (lib/bids/robotLayer).
-  const openQuestionsByBidId = useMemo<ReadonlyMap<string, RobotOpenQuestion[]>>(
-    () => openRobotQuestionsByBidId(openRobotQuestionRows, sourceIdByTwinId(robotBids)),
-    [openRobotQuestionRows, robotBids],
-  )
+  // The robot layer (hooks/useBidRobotLayer): the twin pairing, shadow runs, the robots' open
+  // questions and the writes behind the robot icon; BidsRobotOverlays draws its five windows.
+  const robot = useBidRobotLayer({ authUserId: authUser?.id, myRole, bids, setBids, robotBids, serviceTypes, showToast })
+  const {
+    twinBidBySourceId,
+    robotMirrorCount,
+    setRobotMirrorCount,
+    referencePresence,
+    setRobotGradeBid,
+    setRobotStatusBid,
+    setRobotNeedsBid,
+    setRobotNeedsBidId,
+    robotRowInputFor,
+    robotRowStateForScoreboard,
+    robotQuestionsWaiting,
+    robotRowStateFor,
+    setRobotComparePair,
+    focusAuditId,
+    setFocusAuditId,
+    offerRobotEnvelope,
+    openEnvelopeFromMirror,
+    noteBestEffortGap,
+    noteRobotReviewRevision,
+  } = robot
   // Deep link from Standing rulings (v2.3212): /bids?tab=bid-board&bidId=…&robot=needs
   // opens that bid's robot needs sheet once the bid is in hand, then drops the flag.
   useEffect(() => {
@@ -597,7 +522,7 @@ export default function Bids() {
       next.delete('robot')
       return next
     }, { replace: true })
-  }, [location.search, bids, setSearchParams])
+  }, [location.search, bids, setSearchParams, setRobotNeedsBidId])
   // Landing from a URL (v2.3216): /bids?tab=…&bidId=…&focus=<element-id[,fallback]> —
   // the same landing the strip's doors do, so a link can point at a field.
   useEffect(() => {
@@ -613,124 +538,6 @@ export default function Bids() {
       return next
     }, { replace: true })
   }, [location.search, bids, setSearchParams])
-  useEffect(() => {
-    void loadRobotQuestions()
-  }, [loadRobotQuestions])
-  const answerRobotQuestion = useCallback(async (questionId: string, text: string, opts?: { rerunBidId?: string }): Promise<boolean> => {
-    const { data: rows, error } = await (supabase as unknown as import('@supabase/supabase-js').SupabaseClient)
-      .from('twin_questions')
-      .update({ status: 'answered', answer: text, answered_by: authUser?.id ?? null, answered_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-      .eq('id', questionId)
-      .eq('status', 'open')
-      .select('id')
-    if (error) {
-      showToast(`Couldn't save the answer: ${error.message}`, 'error')
-      return false
-    }
-    if ((rows ?? []).length === 0) {
-      showToast('Already answered elsewhere — refreshing.', 'error')
-      await loadRobotQuestions()
-      return false
-    }
-    // v2.3223: "Attached — rerun" on a plans ask also puts the HUMAN bid at the
-    // front of the next robot batch — the same stamp as the green robot icon —
-    // so the fix is acted on, not just recorded. Best-effort: the answer is
-    // already saved; a refused stamp is reported and the person can use the icon.
-    let rerun: 'stamped' | 'refused' | null = null
-    if (opts?.rerunBidId) {
-      const patch = { robot_requested_at: new Date().toISOString(), robot_requested_by: authUser?.id ?? null }
-      const { data: updRows, error: updErr } = await supabase.from('bids').update(patch).eq('id', opts.rerunBidId).select('id')
-      if (updErr || bidUpdateRefused(updRows)) rerun = 'refused'
-      else {
-        rerun = 'stamped'
-        setBids((prev) => prev.map((b) => (b.id === opts.rerunBidId ? { ...b, ...patch } : b)))
-      }
-    }
-    showToast(
-      rerun === 'stamped'
-        ? 'Answer saved — the robot goes again, front of the line next batch.'
-        : rerun === 'refused'
-          ? 'Answer saved, but the rerun request did not stick — use the robot icon to move it up.'
-          : 'Answer saved — the robot reads it on its next run.',
-      rerun === 'refused' ? 'error' : 'success',
-    )
-    await loadRobotQuestions()
-    return true
-  }, [authUser?.id, loadRobotQuestions, showToast])
-  const serviceTypeNameById = useMemo(() => new Map(serviceTypes.map((st) => [st.id, st.name])), [serviceTypes])
-  const robotRowInputFor = useCallback(
-    (bid: BidWithBuilder): RobotRowInput => ({
-      bid,
-      serviceTypeName: serviceTypeNameById.get(bid.service_type_id) ?? null,
-      twinBidNumber: twinBidBySourceId.get(bid.id)?.bid_number ?? null,
-      run: shadowRunByBidNumber.get((bid.bid_number ?? '').trim()) ?? null,
-      openQuestions: openQuestionsByBidId.get(bid.id)?.length ?? 0,
-      plansAsks: openQuestionsByBidId.get(bid.id)?.filter((q) => q.kind === 'plans').length ?? 0,
-      presence: referencePresence.get(bid.id) ?? null,
-    }),
-    [serviceTypeNameById, twinBidBySourceId, shadowRunByBidNumber, openQuestionsByBidId, referencePresence],
-  )
-  // Scoreboard (v2.3221): the "Your part" strip reads the icon's own kernel, so
-  // the strip and the row can never disagree; questions waiting on anyone are
-  // the estimator lane minus plans asks (those sit on the bid as a need).
-  const robotRowStateForScoreboard = useCallback(
-    (bid: { id: string }) => {
-      const row = bids.find((b) => b.id === bid.id)
-      return row ? robotRowState(robotRowInputFor(row)) : { kind: 'none' as const, title: '' }
-    },
-    [bids, robotRowInputFor],
-  )
-  const robotQuestionsWaiting = useMemo(() => robotQuestionsWaitingCount(openRobotQuestionRows), [openRobotQuestionRows])
-  /** v2.3225: the icon's state for a human bid — the Robot Board mirror lists live bids with no run from it. */
-  const robotRowStateFor = useCallback((bid: BidWithBuilder) => robotRowState(robotRowInputFor(bid)), [robotRowInputFor])
-  const [robotComparePair, setRobotComparePair] = useState<{ source: BidWithBuilder; twin: BidWithBuilder } | null>(null)
-
-  // v2.3222: the robot's envelope, opened at send. The trigger scored the shadow the instant
-  // the row saved with value + date, so a reveal after that save cannot move the score. Once
-  // per bid per session; the bid's estimator (or a dev); never on a sealed run.
-  const [robotEnvelope, setRobotEnvelope] = useState<{ bid: BidWithBuilder; run: EnvelopeRun } | null>(null)
-  const envelopeOfferedRef = useRef<Set<string>>(new Set())
-  // The Audits lens opens on this card (a mirror row's "Open audit", the envelope's "Full audit").
-  const [focusAuditId, setFocusAuditId] = useState<string | null>(null)
-  const bidsRef = useRef(bids)
-  bidsRef.current = bids
-  const offerRobotEnvelope = useCallback(
-    async (bidId: string, opts?: { force?: boolean }) => {
-      try {
-        const { data: fresh } = await supabase
-          .from('bids')
-          .select('id, bid_number, estimator_id, bid_date_sent, bid_value, selected_bid_version_id, project_name')
-          .eq('id', bidId)
-          .maybeSingle()
-        if (!fresh) return
-        const number = (fresh.bid_number ?? '').trim()
-        const untyped = supabase as unknown as import('@supabase/supabase-js').SupabaseClient
-        // v2.3234: a recorded best effort opens the envelope before send (fail-soft: no table → no record).
-        const bestEffort = await untyped.from('bid_best_efforts').select('value').eq('bid_id', bidId).maybeSingle().then((r) => (r.data as { value: number | string } | null)?.value ?? null, () => null)
-        const { data: runs } = await untyped.rpc('list_shadow_runs')
-        const run = scoredShadowRunFor((runs ?? []) as ShadowRunRow[], number)
-        const refusal = envelopeRefusal({ ...fresh, best_effort_value: bestEffort }, { userId: authUser?.id ?? null, role: myRole }, run?.status ?? null, envelopeOfferedRef.current)
-        if (refusal && !(opts?.force && (refusal === 'already-offered' || refusal === 'not-estimator'))) return
-        if (!run) return
-        envelopeOfferedRef.current.add(bidId)
-        const row = bidsRef.current.find((b) => b.id === bidId)
-        setRobotEnvelope({ bid: { ...(row ?? ({} as BidWithBuilder)), ...fresh } as BidWithBuilder, run: envelopeRunFromShadow(run) })
-        setShadowRunsGen((g) => g + 1)
-      } catch {
-        // The envelope is a courtesy on top of a save that already succeeded — never an error.
-      }
-    },
-    [authUser?.id, myRole],
-  )
-  // A Robot Board row's "Review now": the same envelope, on a scored or audited run whose audit still waits (sent bids only).
-  const openEnvelopeFromMirror = useCallback((source: BidWithBuilder, run: RobotMirrorRun) => {
-    // v2.3234: a run scored against the recorded best effort opens before send too.
-    if (!(source.bid_date_sent || run.scoredAgainst === 'best_effort') || !mirrorRunReviewable(run)) return
-    setRobotEnvelope({
-      bid: source,
-      run: { kind: run.kind, shellNumber: run.shellNumber, robotTotal: run.robotTotal, ourValue: run.ourValue, deltaPct: run.deltaPct, at: run.at || null, teacherName: run.teacherName, practice: run.practice, scoredAgainst: run.scoredAgainst ?? null },
-    })
-  }, [])
   // Dev door (v2.3222): /bids?envelope=<bid number> force-opens the envelope on that bid's scored shadow — support and testing, never for estimators.
   useEffect(() => {
     const params = new URLSearchParams(location.search)
@@ -745,62 +552,6 @@ export default function Bids() {
     }, { replace: true })
     void offerRobotEnvelope(target.id, { force: true })
   }, [location.search, bids, myRole, setSearchParams, offerRobotEnvelope])
-  // v2.3234: at send, the sent value against the recorded best effort — the robot's measured move on this bid, once, on the ledger.
-  const noteBestEffortGap = useCallback(async (bidId: string) => {
-    try {
-      const untyped = supabase as unknown as import('@supabase/supabase-js').SupabaseClient
-      const [{ data: be }, { data: fresh }] = await Promise.all([
-        untyped.from('bid_best_efforts').select('value').eq('bid_id', bidId).maybeSingle(),
-        supabase.from('bids').select('bid_number, bid_value, bid_date_sent').eq('id', bidId).maybeSingle(),
-      ])
-      if (!be || !fresh?.bid_date_sent) return
-      const gap = bestEffortGap((be as { value: number | string }).value, fresh.bid_value)
-      if (!gap) return
-      const { count } = await supabase.from('bids_submission_entries').select('id', { count: 'exact', head: true }).eq('bid_id', bidId).like('notes', `${BEST_EFFORT_GAP_NOTE_PREFIX}%`)
-      if ((count ?? 0) > 0) return
-      const run = shadowRunByBidNumber.get((fresh.bid_number ?? '').trim()) ?? null
-      await supabase.from('bids_submission_entries').insert({ bid_id: bidId, notes: bestEffortGapNote(gap, run?.locked_total != null ? Number(run.locked_total) : null), created_by: authUser?.id ?? null })
-    } catch {
-      // The note is the story; the send already succeeded.
-    }
-  }, [shadowRunByBidNumber, authUser?.id])
-  // Bid value changed after the robot's number was in view: on the ledger by name (never contamination — the score stays as taken).
-  const noteRobotReviewRevision = useCallback(
-    async (bid: BidWithBuilder, nextValue: number | string | null | undefined) => {
-      const run = shadowRunByBidNumber.get((bid.bid_number ?? '').trim()) ?? null
-      if (!isRevisionAfterReveal({ wasSentBefore: !!bid.bid_date_sent, prevValue: bid.bid_value, nextValue, runStatus: run?.status ?? null })) return
-      const text = robotReviewRevisionNote(bid.bid_value, nextValue ?? null, run?.locked_total != null ? Number(run.locked_total) : null)
-      if (!text) return
-      await supabase.from('bids_submission_entries').insert({ bid_id: bid.id, notes: text, created_by: authUser?.id ?? null })
-    },
-    [shadowRunByBidNumber, authUser?.id],
-  )
-
-  // v2.2542: yellow robot click requests a robot bid (green); green withdraws.
-  // Optimistic local patch + DB write; the dev Queue lens reads the same columns.
-  const toggleRobotRequest = useCallback(async (bid: BidWithBuilder) => {
-    const requesting = !bid.robot_requested_at
-    const patch = requesting
-      ? { robot_requested_at: new Date().toISOString(), robot_requested_by: authUser?.id ?? null }
-      : { robot_requested_at: null, robot_requested_by: null }
-    setBids((prev) => prev.map((b) => (b.id === bid.id ? { ...b, ...patch } : b)))
-    const { data: updRows, error: updErr } = await supabase.from('bids').update(patch).eq('id', bid.id).select('id')
-    if (updErr || bidUpdateRefused(updRows)) {
-      setBids((prev) =>
-        prev.map((b) =>
-          b.id === bid.id
-            ? { ...b, robot_requested_at: bid.robot_requested_at, robot_requested_by: bid.robot_requested_by }
-            : b,
-        ),
-      )
-      showToast(updErr ? `Couldn't ${requesting ? 'request' : 'withdraw'} the robot bid: ${updErr.message}` : BID_UPDATE_NOT_APPLIED_MESSAGE, 'error')
-      return
-    }
-    showToast(
-      requesting ? 'Moved to the front of the next robot batch.' : 'Back in line with the other bids.',
-      'success',
-    )
-  }, [authUser?.id, showToast])
   // Audits tab gating (v2.2517): tab shows whenever audits exist; label carries the
   // pending count so a waiting robot bid is visible from anywhere on the Bids page.
   // Presence follows the robot-audit audience (v2.2920): the bid_audits write set,
@@ -3427,48 +3178,7 @@ export default function Bids() {
         />
       )}
 
-      {/* v2.3222: the robot's envelope, opened at send — after the row saved with value + date. */}
-      <RobotEnvelopeModal
-        bid={robotEnvelope?.bid ?? null}
-        run={robotEnvelope?.run ?? null}
-        authUser={authUser}
-        onClose={() => setRobotEnvelope(null)}
-        onOpenAudits={(auditId) => { setRobotEnvelope(null); setFocusAuditId(auditId); selectBidsTab('audits') }}
-      />
-
-      <RobotStatusSheet
-        input={robotStatusBid ? { ...robotRowInputFor(robotStatusBid), bid: robotStatusBid } : null}
-        twin={robotStatusBid ? (twinBidBySourceId.get(robotStatusBid.id) ?? null) : null}
-        onClose={() => setRobotStatusBid(null)}
-        // v2.3222: shells no longer list on any board — the robot's bid opens on its Counts tab.
-        onOpenRobotBoard={(twin) => { setRobotStatusBid(null); selectBidAndSyncUrl(twin as BidWithBuilder, 'counts') }}
-        onCompare={(twin, source) => { setRobotStatusBid(null); setRobotComparePair({ source: source as BidWithBuilder, twin: twin as BidWithBuilder }) }}
-        onToggleRequest={(bid) => { void toggleRobotRequest(bid as BidWithBuilder); setShadowRunsGen((g) => g + 1) }}
-        onOpenQuestions={() => { setRobotStatusBid(null); selectBidsTab('audits') }}
-      />
-
-      <RobotNeedsSheet
-        bid={robotNeedsBid}
-        questions={robotNeedsBid ? (openQuestionsByBidId.get(robotNeedsBid.id) ?? []) : []}
-        onClose={() => setRobotNeedsBid(null)}
-        onEditBid={(bid, opts) => openEditBid(bid as BidWithBuilder, opts)}
-        onAnswer={answerRobotQuestion}
-      />
-
-      <RobotReferenceGradeModal
-        bid={robotGradeBid}
-        presence={robotGradeBid ? (referencePresence.get(robotGradeBid.id) ?? null) : null}
-        onClose={() => setRobotGradeBid(null)}
-        onEditBid={(bid) => openEditBid(bid as BidWithBuilder)}
-      />
-
-      <RobotBidComparisonModal
-        pair={robotComparePair}
-        onClose={() => setRobotComparePair(null)}
-        onOpenBidTab={(bid, tab) => selectBidAndSyncUrl(bid as BidWithBuilder, tab)}
-        // v2.3222: the robot's bid opens on its Counts tab — shells no longer list on a board.
-        onOpenRobotBoard={(twin) => selectBidAndSyncUrl(twin as BidWithBuilder, 'counts')}
-      />
+      <BidsRobotOverlays robot={robot} authUser={authUser} selectBidsTab={selectBidsTab} selectBidAndSyncUrl={selectBidAndSyncUrl} openEditBid={openEditBid} />
 
       {/* Builder Review Tab */}
       {isFollowupLens(activeTab) && (
