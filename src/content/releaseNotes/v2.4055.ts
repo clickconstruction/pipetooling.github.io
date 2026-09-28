@@ -3,11 +3,13 @@ import type { ReleaseNote } from '../../lib/releaseNotes'
 const note: ReleaseNote = {
   version: 'v2.4055',
   date: '2026-09-28',
-  title: 'The job window counts card charges the way Job Summary does',
-  kind: 'fix',
+  title: 'Takeoffs: look a part up on Google from its line',
+  kind: 'feature',
+  roles: ['dev', 'master_technician', 'assistant', 'estimator'],
   highlights: [
-    'A job’s card charges in the job window no longer count Internal Transfers, or a charge that is already on a supply-house invoice — so its parts cost and profit match its Job Summary row.',
-    'The card charges left out still show in the list, each with a note saying why.',
+    'Every part name on Bids → Takeoffs ends with a small magnifier. Click it and a new tab opens with a Google search for that name, exactly as written on the line.',
+    'It is on each part inside an assembly and at the right end of a single part line’s name box, in both Sheet and One at a time. Fixtures and assembly names do not get one.',
+    'An ordinary link, so ⌘-click, middle-click and open-in-new-tab all work. The takeoff stays where it was and nothing on the bid changes.',
   ],
 }
 
