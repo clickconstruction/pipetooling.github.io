@@ -216,3 +216,60 @@ export function coverageFromCompareRows(rows: ReadonlyArray<CompareRow>): {
 export function rfqReopenStatus(args: { hasQuote: boolean }): 'sent' | 'quoted' {
   return args.hasQuote ? 'quoted' : 'sent'
 }
+
+/* ---- The Pricing header's read (v2.2636), as rows → what the chip and compose need ---- */
+
+/** A `bid_rfqs` row as the Pricing header selects it (drafts are filtered out by the query). */
+export type PricingRfqRow = {
+  id: string
+  status: string | null
+  supply_house_id: string | null
+  sent_to: string | null
+  sent_email: string | null
+  resend_email_id: string | null
+  created_at: string
+  viewed_at: string | null
+  last_reminded_at: string | null
+  reminder_count: number | null
+  needed_by: string | null
+}
+
+/** The `email_send_log` rows for those requests, as the header selects them. */
+export type RfqEmailEventRow = { resend_email_id: string | null; last_event: string | null }
+
+/** The resend ids to look up in `email_send_log` — one per request that was emailed. */
+export function rfqResendEmailIds(rows: ReadonlyArray<Pick<PricingRfqRow, 'resend_email_id'>>): string[] {
+  return rows.map((r) => r.resend_email_id).filter((x): x is string => !!x)
+}
+
+/** resend id → last delivery event; a row with no id or no event yet is skipped, the last row for an id wins. */
+export function rfqEmailEventsById(logs: ReadonlyArray<RfqEmailEventRow>): Map<string, string> {
+  const eventById = new Map<string, string>()
+  for (const l of logs) if (l.resend_email_id && l.last_event) eventById.set(l.resend_email_id, l.last_event)
+  return eventById
+}
+
+/** The houses with a request still out (status `sent`) — compose marks them so a second ask is a choice. */
+export function openRfqHouseIdsFromRows(rows: ReadonlyArray<Pick<PricingRfqRow, 'status' | 'supply_house_id'>>): Set<string> {
+  return new Set(rows.filter((r) => r.status === 'sent' && r.supply_house_id).map((r) => r.supply_house_id as string))
+}
+
+/**
+ * The header chip's requests. The header never loads scope lines (the desk reads its own), a
+ * missing status reads `sent` and a missing reminder count 0.
+ */
+export function deskRfqsFromRows(rows: ReadonlyArray<PricingRfqRow>, eventById: ReadonlyMap<string, string>): DeskRfq[] {
+  return rows.map((r) => ({
+    id: r.id,
+    houseName: r.sent_to,
+    sentEmail: r.sent_email,
+    status: (r.status ?? 'sent') as DeskRfq['status'],
+    createdAt: r.created_at,
+    viewedAt: r.viewed_at,
+    lastRemindedAt: r.last_reminded_at,
+    reminderCount: r.reminder_count ?? 0,
+    neededBy: r.needed_by,
+    emailLastEvent: r.resend_email_id ? (eventById.get(r.resend_email_id) ?? null) : null,
+    scopeLines: [],
+  }))
+}

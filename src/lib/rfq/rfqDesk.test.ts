@@ -1,6 +1,19 @@
 import { describe, expect, it } from 'vitest'
 
-import { canNudge, coverageFromCompareRows, deriveRfqChip, deriveRfqTrail, rfqReopenStatus, scopeDriftCount, type DeskRfq } from './rfqDesk'
+import {
+  canNudge,
+  coverageFromCompareRows,
+  deriveRfqChip,
+  deriveRfqTrail,
+  deskRfqsFromRows,
+  openRfqHouseIdsFromRows,
+  rfqEmailEventsById,
+  rfqReopenStatus,
+  rfqResendEmailIds,
+  scopeDriftCount,
+  type DeskRfq,
+  type PricingRfqRow,
+} from './rfqDesk'
 import { type CompareRow } from './quoteCompare'
 
 const base: DeskRfq = {
@@ -145,5 +158,82 @@ describe('rfqReopenStatus', () => {
   })
   it('a closed request with no quote reopens as sent — the link works again', () => {
     expect(rfqReopenStatus({ hasQuote: false })).toBe('sent')
+  })
+})
+
+describe('the Pricing header read: rows → chip requests', () => {
+  const row = (over: Partial<PricingRfqRow> = {}): PricingRfqRow => ({
+    id: 'r1',
+    status: 'sent',
+    supply_house_id: 'h1',
+    sent_to: 'Moore Supply',
+    sent_email: 'danny@moore.com',
+    resend_email_id: 're_1',
+    created_at: '2026-09-01T12:00:00Z',
+    viewed_at: null,
+    last_reminded_at: null,
+    reminder_count: 2,
+    needed_by: '2026-09-12',
+    ...over,
+  })
+
+  it('looks up one resend id per emailed request and skips copied links', () => {
+    expect(rfqResendEmailIds([row(), row({ id: 'r2', resend_email_id: null }), row({ id: 'r3', resend_email_id: 're_3' })])).toEqual(['re_1', 're_3'])
+    expect(rfqResendEmailIds([])).toEqual([])
+  })
+
+  it('maps a resend id to its last event; rows with no id or no event are skipped and the last row wins', () => {
+    const m = rfqEmailEventsById([
+      { resend_email_id: 're_1', last_event: 'delivered' },
+      { resend_email_id: null, last_event: 'bounced' },
+      { resend_email_id: 're_2', last_event: null },
+      { resend_email_id: 're_1', last_event: 'opened' },
+    ])
+    expect([...m.entries()]).toEqual([['re_1', 'opened']])
+  })
+
+  it('names the houses with a request still out: sent only, and only with a house', () => {
+    const ids = openRfqHouseIdsFromRows([
+      row(),
+      row({ id: 'r2', supply_house_id: 'h2', status: 'quoted' }),
+      row({ id: 'r3', supply_house_id: null }),
+      row({ id: 'r4', supply_house_id: 'h1' }),
+      row({ id: 'r5', supply_house_id: 'h5', status: 'closed' }),
+    ])
+    expect([...ids]).toEqual(['h1'])
+  })
+
+  it('shapes a row for the chip: the email event by resend id, no scope lines', () => {
+    const [d] = deskRfqsFromRows([row()], new Map([['re_1', 'delivered']]))
+    expect(d).toEqual({
+      id: 'r1',
+      houseName: 'Moore Supply',
+      sentEmail: 'danny@moore.com',
+      status: 'sent',
+      createdAt: '2026-09-01T12:00:00Z',
+      viewedAt: null,
+      lastRemindedAt: null,
+      reminderCount: 2,
+      neededBy: '2026-09-12',
+      emailLastEvent: 'delivered',
+      scopeLines: [],
+    })
+  })
+
+  it('reads a missing status as sent, a missing reminder count as 0 and an unknown or absent resend id as no event', () => {
+    const out = deskRfqsFromRows(
+      [row({ status: null, reminder_count: null, resend_email_id: 're_9' }), row({ id: 'r2', resend_email_id: null })],
+      new Map([['re_1', 'delivered']]),
+    )
+    expect(out.map((d) => [d.status, d.reminderCount, d.emailLastEvent])).toEqual([
+      ['sent', 0, null],
+      ['sent', 2, null],
+    ])
+  })
+
+  it('feeds the chip: two requests out with one bounced reads as the desk chip in red', () => {
+    const chip = deriveRfqChip(deskRfqsFromRows([row(), row({ id: 'r2', resend_email_id: 're_2' })], new Map([['re_2', 'bounced']])), 0)
+    expect(chip.kind).toBe('desk')
+    expect(chip.kind === 'desk' ? chip.tone : null).toBe('red')
   })
 })
