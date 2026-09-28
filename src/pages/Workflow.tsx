@@ -22,7 +22,6 @@ import {
   addInvoiceToStep as addInvoiceToStepRow,
   addPOToStep as addPOToStepRow,
   deleteLineItemRow,
-  filterAvailableInvoices,
   formatLineItemDate,
   importPastedLineItems,
   loadFinalizedPOOptions,
@@ -51,6 +50,7 @@ import { WorkflowSuperintendentsStrip } from '../components/workflow/WorkflowSup
 import { useProjectJobs } from '../hooks/useProjectJobs'
 import { WorkflowJobsStrip } from '../components/workflow/WorkflowJobsStrip'
 import { WorkflowSubsStrip } from '../components/workflow/WorkflowSubsStrip'
+import { WorkflowLineItemModals } from '../components/workflow/WorkflowLineItemModals'
 import { isRowDefaultCollapsed, isSectionDefaultExpanded, isStepEmpty as isStepEmptyOf } from '../lib/workflow/stageCardDefaults'
 import { buildStageDisplayItems } from '../lib/workflow/stageDisplayItems'
 import { stageCardPills, wordCount } from '../lib/workflow/stageCardPills'
@@ -133,7 +133,6 @@ export default function Workflow() {
     amount: string
     itemDate: string
   } | null>(null)
-  const [lineItemPasteImporting, setLineItemPasteImporting] = useState(false)
   const [confirmDeleteLineItem, setConfirmDeleteLineItem] = useState<{ item: LineItem; stepName: string } | null>(null)
   const [confirmDeleteStep, setConfirmDeleteStep] = useState<Step | null>(null)
   const [deleteStepConfirmText, setDeleteStepConfirmText] = useState('')
@@ -143,7 +142,6 @@ export default function Workflow() {
   const [availablePOs, setAvailablePOs] = useState<AvailablePOOption[]>([])
   const [addingInvoiceToStep, setAddingInvoiceToStep] = useState<string | null>(null)
   const [availableInvoices, setAvailableInvoices] = useState<AvailableInvoiceOption[]>([])
-  const [invoiceSearchText, setInvoiceSearchText] = useState('')
   const [viewingInvoice, setViewingInvoice] = useState<InvoiceDetail | null>(null)
   const [editingProjection, setEditingProjection] = useState<{ item: Projection | null; stage_name: string; memo: string; amount: string; step_id: string; placement: 'before' | 'after' } | null>(null)
   /** Inline money markers (v2.1194): projection ids whose between-card row is expanded. */
@@ -417,7 +415,6 @@ export default function Workflow() {
       setError(error)
     } else {
       setAddingInvoiceToStep(null)
-      setInvoiceSearchText('')
       await reloadAfterLineItemWrite()
     }
   }
@@ -1426,24 +1423,6 @@ export default function Workflow() {
     setEditingLineItem(null)
     setError(null)
     await reloadAfterLineItemWrite()
-  }
-
-  async function importLineItemsFromClipboard() {
-    if (!editingLineItem || editingLineItem.item !== null) return
-    setError(null)
-    setLineItemPasteImporting(true)
-    try {
-      const text = await navigator.clipboard.readText()
-      await importLineItemsFromPaste(editingLineItem.stepId, text)
-    } catch (e) {
-      setError(
-        e instanceof Error
-          ? e.message
-          : 'Could not read clipboard. Use HTTPS (or localhost) and allow clipboard access when prompted.'
-      )
-    } finally {
-      setLineItemPasteImporting(false)
-    }
   }
 
   async function deleteLineItem(itemId: string) {
@@ -2918,40 +2897,6 @@ export default function Workflow() {
         />
       )}
 
-      {confirmDeleteLineItem && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
-            <h3 style={{ marginTop: 0 }}>Delete line item?</h3>
-            <p style={{ marginBottom: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              {confirmDeleteLineItem.item.memo}
-              {confirmDeleteLineItem.item.amount != null && (
-                <span> — {formatAmount(confirmDeleteLineItem.item.amount)}</span>
-              )}
-              {confirmDeleteLineItem.item.item_date && (
-                <span style={{ display: 'block', marginTop: 4 }}>
-                  Date: {formatLineItemDate(confirmDeleteLineItem.item.item_date)}
-                </span>
-              )}
-            </p>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                type="button"
-                onClick={async () => {
-                  await deleteLineItem(confirmDeleteLineItem.item.id)
-                  setConfirmDeleteLineItem(null)
-                }}
-                className="wf-btn-modal-primary wf-btn-danger-style"
-              >
-                Delete
-              </button>
-              <button type="button" onClick={() => setConfirmDeleteLineItem(null)} className="wf-btn-modal-secondary">
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {confirmDeleteStep && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
           <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
@@ -3243,108 +3188,6 @@ export default function Workflow() {
         </div>
       )}
 
-      {editingLineItem && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 360 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '1rem' }}>
-              <h3 style={{ margin: 0, flex: 1 }}>{editingLineItem.item ? 'Edit' : 'Add'} Line Item</h3>
-              {!editingLineItem.item && (
-                <button
-                  type="button"
-                  onClick={() => void importLineItemsFromClipboard()}
-                  disabled={lineItemPasteImporting}
-                  title="Import tab-separated rows from clipboard (date, memo, amount per line)"
-                  aria-label="Import line items from clipboard"
-                  className="wf-btn-modal-secondary"
-                  style={{
-                    padding: '0.35rem 0.5rem',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                    opacity: lineItemPasteImporting ? 0.6 : 1,
-                  }}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={22} height={22} fill="currentColor" aria-hidden>
-                    <path d="M360 160L280 160C266.7 160 256 149.3 256 136C256 122.7 266.7 112 280 112L360 112C373.3 112 384 122.7 384 136C384 149.3 373.3 160 360 160zM360 208C397.1 208 427.6 180 431.6 144L448 144C456.8 144 464 151.2 464 160L464 512C464 520.8 456.8 528 448 528L192 528C183.2 528 176 520.8 176 512L176 160C176 151.2 183.2 144 192 144L208.4 144C212.4 180 242.9 208 280 208L360 208zM419.9 96C407 76.7 385 64 360 64L280 64C255 64 233 76.7 220.1 96L192 96C156.7 96 128 124.7 128 160L128 512C128 547.3 156.7 576 192 576L448 576C483.3 576 512 547.3 512 512L512 160C512 124.7 483.3 96 448 96L419.9 96z" />
-                  </svg>
-                </button>
-              )}
-            </div>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault()
-                saveLineItem(
-                  editingLineItem.stepId,
-                  editingLineItem.item,
-                  editingLineItem.link,
-                  editingLineItem.memo,
-                  editingLineItem.amount,
-                  editingLineItem.itemDate
-                )
-              }}
-            >
-              <div style={{ marginBottom: '1rem' }}>
-                <label htmlFor="line-item-date" style={{ display: 'block', marginBottom: 4 }}>Date (optional)</label>
-                <input
-                  id="line-item-date"
-                  type="date"
-                  value={editingLineItem.itemDate}
-                  onChange={(e) => setEditingLineItem({ ...editingLineItem, itemDate: e.target.value })}
-                  style={{ width: '100%', padding: '0.5rem' }}
-                />
-              </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label htmlFor="line-item-link" style={{ display: 'block', marginBottom: 4 }}>Link (optional)</label>
-                <input
-                  id="line-item-link"
-                  type="url"
-                  value={editingLineItem.link}
-                  onChange={(e) => setEditingLineItem({ ...editingLineItem, link: e.target.value })}
-                  placeholder="https://..."
-                  pattern="https?://.*"
-                  style={{ width: '100%', padding: '0.5rem' }}
-                />
-                {editingLineItem.link && editingLineItem.link.trim() && !editingLineItem.link.trim().match(/^https?:\/\//i) && (
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-red-600)', marginTop: '0.25rem' }}>
-                    Link should start with http:// or https://
-                  </div>
-                )}
-              </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label htmlFor="line-item-memo" style={{ display: 'block', marginBottom: 4 }}>Memo *</label>
-                <input
-                  id="line-item-memo"
-                  type="text"
-                  value={editingLineItem.memo}
-                  onChange={(e) => setEditingLineItem({ ...editingLineItem, memo: e.target.value })}
-                  required
-                  placeholder="e.g. Materials, Labor, Equipment"
-                  style={{ width: '100%', padding: '0.5rem' }}
-                />
-              </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label htmlFor="line-item-amount" style={{ display: 'block', marginBottom: 4 }}>Amount *</label>
-                <input
-                  id="line-item-amount"
-                  type="number"
-                  step="0.01"
-                  value={editingLineItem.amount}
-                  onChange={(e) => setEditingLineItem({ ...editingLineItem, amount: e.target.value })}
-                  required
-                  placeholder="0.00 (negative allowed)"
-                  style={{ width: '100%', padding: '0.5rem' }}
-                />
-              </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button type="submit" className="wf-btn-modal-primary">Save</button>
-                <button type="button" onClick={() => setEditingLineItem(null)} className="wf-btn-modal-secondary">Cancel</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
       {editingProjection && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
           <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
@@ -3440,193 +3283,28 @@ export default function Workflow() {
         </div>
       )}
 
-      {/* Add Purchase Order to Step Modal */}
-      {addingPOToStep && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: '90%', maxHeight: '90vh', overflow: 'auto' }}>
-            <h3 style={{ marginTop: 0 }}>Add Purchase Order to Step</h3>
-            {availablePOs.length === 0 ? (
-              <p style={{ color: 'var(--text-muted)' }}>No finalized purchase orders available. Go to Materials page to create and finalize purchase orders.</p>
-            ) : (
-              <div style={{ marginTop: '1rem' }}>
-                <div style={{ border: '1px solid var(--border)', borderRadius: 4, maxHeight: '400px', overflow: 'auto' }}>
-                  {availablePOs.map(po => (
-                    <div
-                      key={po.id}
-                      onClick={() => addPOToStep(addingPOToStep, po.id)}
-                      style={{
-                        padding: '1rem',
-                        borderBottom: '1px solid var(--border)',
-                        cursor: 'pointer',
-                        background: 'var(--surface)',
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-subtle)'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = 'var(--surface)'}
-                    >
-                      <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{po.name}</div>
-                      <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>${po.total.toFixed(2)}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                onClick={() => setAddingPOToStep(null)}
-                className="wf-btn-modal-secondary"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Add Supply House Invoice to Step Modal */}
-      {addingInvoiceToStep && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: '90%', maxHeight: '90vh', overflow: 'auto' }}>
-            <h3 style={{ marginTop: 0 }}>Add Supply House Invoice to Step</h3>
-            {availableInvoices.length === 0 ? (
-              <p style={{ color: 'var(--text-muted)' }}>No supply house invoices available. Add invoices in Materials → Supply Houses.</p>
-            ) : (
-              <div style={{ marginTop: '1rem' }}>
-                <input
-                  type="search"
-                  placeholder="Search by invoice #, supply house, amount, date, PO #, paid/unpaid..."
-                  value={invoiceSearchText}
-                  onChange={(e) => setInvoiceSearchText(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', marginBottom: '0.75rem', borderRadius: 6, border: '1px solid var(--border)' }}
-                />
-                <div style={{ border: '1px solid var(--border)', borderRadius: 4, maxHeight: '400px', overflow: 'auto' }}>
-                  {(() => {
-                    const filtered = filterAvailableInvoices(availableInvoices, invoiceSearchText)
-                    if (filtered.length === 0) {
-                      return <p style={{ padding: '1rem', color: 'var(--text-muted)' }}>No matching invoices.</p>
-                    }
-                    return filtered.map(inv => (
-                      <div
-                        key={inv.id}
-                        onClick={() => addInvoiceToStep(addingInvoiceToStep, inv.id)}
-                        style={{
-                          padding: '1rem',
-                          borderBottom: '1px solid var(--border)',
-                          cursor: 'pointer',
-                          background: 'var(--surface)',
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-subtle)'}
-                        onMouseLeave={(e) => e.currentTarget.style.background = 'var(--surface)'}
-                      >
-                        {/* Primary: supply house, date, amount, PO */}
-                        <div style={{ fontWeight: 600, marginBottom: '0.25rem', fontSize: '0.875rem' }}>
-                          {inv.supply_house_name}
-                          <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> · {formatDateShort(inv.invoice_date)} · ${inv.amount.toFixed(2)}</span>
-                          {inv.purchase_order_number && <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> · {inv.purchase_order_number}</span>}
-                        </div>
-                        {/* Secondary: invoice #, due, paid */}
-                        <div style={{ fontSize: '0.8125rem', color: 'var(--text-faint)', display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem' }}>
-                          <span>#{inv.invoice_number}</span>
-                          {inv.due_date && <span>Due {formatDateShort(inv.due_date)}</span>}
-                          {inv.is_paid && <span style={{ color: 'var(--text-green-600)', fontWeight: 500 }}>Paid</span>}
-                        </div>
-                      </div>
-                    ))
-                  })()}
-                </div>
-              </div>
-            )}
-            <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                onClick={() => { setAddingInvoiceToStep(null); setInvoiceSearchText('') }}
-                className="wf-btn-modal-secondary"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* View Purchase Order Details Modal */}
-      {viewingPO && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: 8, maxWidth: '800px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
-            <h2 style={{ marginBottom: '1rem' }}>{viewingPO.name}</h2>
-            <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden', marginBottom: '1rem' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead style={{ background: 'var(--bg-subtle)' }}>
-                  <tr>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Part</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Quantity</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Supply House</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Price</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {viewingPO.items.map((item, idx) => (
-                    <tr key={idx} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={{ padding: '0.75rem' }}>{item.part.name}</td>
-                      <td style={{ padding: '0.75rem' }}>{item.quantity}</td>
-                      <td style={{ padding: '0.75rem' }}>{item.supply_house?.name || '-'}</td>
-                      <td style={{ padding: '0.75rem' }}>${item.price_at_time.toFixed(2)}</td>
-                      <td style={{ padding: '0.75rem', fontWeight: 600 }}>${(item.price_at_time * item.quantity).toFixed(2)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot style={{ background: 'var(--bg-subtle)' }}>
-                  <tr>
-                    <td colSpan={4} style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 600 }}>Grand Total:</td>
-                    <td style={{ padding: '0.75rem', fontWeight: 600 }}>
-                      ${viewingPO.items.reduce((sum, item) => sum + (item.price_at_time * item.quantity), 0).toFixed(2)}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                onClick={() => setViewingPO(null)}
-                className="wf-btn-modal-secondary"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* View Supply House Invoice Details Modal */}
-      {viewingInvoice && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: 8, minWidth: 320, maxWidth: '90%' }}>
-            <h2 style={{ marginBottom: '1rem' }}>Invoice #{viewingInvoice.invoice_number}</h2>
-            <div style={{ marginBottom: '1rem', fontSize: '0.9375rem' }}>
-              <div style={{ marginBottom: '0.5rem' }}><strong>Supply House:</strong> {viewingInvoice.supply_house_name}</div>
-              <div style={{ marginBottom: '0.5rem' }}><strong>Amount:</strong> {formatAmount(viewingInvoice.amount)}</div>
-              {viewingInvoice.link && (
-                <div>
-                  <a href={normalizeUrl(viewingInvoice.link)} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-blue-500)' }}>
-                    View invoice link
-                  </a>
-                </div>
-              )}
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                onClick={() => setViewingInvoice(null)}
-                className="wf-btn-modal-secondary"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <WorkflowLineItemModals
+        confirmDeleteLineItem={confirmDeleteLineItem}
+        onDeleteLineItem={deleteLineItem}
+        onCloseDeleteLineItem={() => setConfirmDeleteLineItem(null)}
+        editingLineItem={editingLineItem}
+        onChangeEditingLineItem={setEditingLineItem}
+        onSaveLineItem={saveLineItem}
+        onImportPastedLineItems={importLineItemsFromPaste}
+        onError={setError}
+        addingPOToStep={addingPOToStep}
+        availablePOs={availablePOs}
+        onAddPOToStep={addPOToStep}
+        onCloseAddPO={() => setAddingPOToStep(null)}
+        addingInvoiceToStep={addingInvoiceToStep}
+        availableInvoices={availableInvoices}
+        onAddInvoiceToStep={addInvoiceToStep}
+        onCloseAddInvoice={() => setAddingInvoiceToStep(null)}
+        viewingPO={viewingPO}
+        onCloseViewPO={() => setViewingPO(null)}
+        viewingInvoice={viewingInvoice}
+        onCloseViewInvoice={() => setViewingInvoice(null)}
+      />
 
       {/* Person Contact Info Modal */}
       {personContactModal && (
