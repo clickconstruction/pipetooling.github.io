@@ -175,3 +175,31 @@ export function expectedManpowerJobGroupPayrollEstimate(
   }
   return sum
 }
+
+export type ExpectedManpowerStats = {
+  personHours: number
+  distinctPeople: number
+  jobCount: number
+}
+
+/**
+ * The headline over the Expected Manpower table: the hours, the people and
+ * the jobs in the rows shown. A person or a job counts once however many
+ * blocks they have; null when there are no rows.
+ */
+export function expectedManpowerStatsForRows(rows: readonly ExpectedManpowerDayRow[]): ExpectedManpowerStats | null {
+  if (rows.length === 0) return null
+  let personHours = 0
+  const people = new Set<string>()
+  const jobs = new Set<string>()
+  for (const r of rows) {
+    personHours += r.personHours
+    people.add(r.assigneeUserId)
+    jobs.add(r.jobId)
+  }
+  return {
+    personHours,
+    distinctPeople: people.size,
+    jobCount: jobs.size,
+  }
+}

@@ -20,6 +20,7 @@ import {
   expectedManpowerPersonHoursTotalForDayKeys,
   expectedManpowerRowsForDay,
   expectedManpowerRowsForVisibleDays,
+  expectedManpowerStatsForRows,
   formatExpectedManpowerPersonHours,
   HUB_EXPECTED_MANPOWER_ALL_WEEK,
 } from '../../lib/scheduleDispatchExpectedManpower'
@@ -34,7 +35,6 @@ import type { LinkedCopyMode } from '../../lib/scheduleDispatchLinkedCopy'
 import type { DispatchSwimLanesData } from '../../lib/dispatchSwimLanes'
 import {
   buildSwimLaneDisplaySections,
-  personMatchesLaneQuery,
   summarizeExpectedManpowerByLane,
 } from '../../lib/dispatchSwimLaneSections'
 import type { LinkedGroupCardAccent } from '../../lib/scheduleDispatchLinkedGroupPalette'
@@ -64,6 +64,13 @@ import {
 import { scheduleDispatchMobileNamePill } from '../../lib/scheduleDispatchMobileNamePill'
 import { hubPeopleSalarySuffix, hubPeopleToolbarIconBtn } from '../../lib/scheduleDispatch/hubChromeStyle'
 import { hubDayColumnHeaderLabel, shortDowLabel } from '../../lib/scheduleDispatch/hubDayLabels'
+import {
+  countBlocksMissingNoteForDay,
+  filterHubJobsPanelBidRows,
+  filterHubJobsPanelRows,
+  filterHubPeopleBySearch,
+  filterHubPeopleWithBlocks,
+} from '../../lib/scheduleDispatch/hubPanels'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { HubPeoplePhoneBoard, PhonePeopleViewSwitch } from './HubPeoplePhoneBoard'
 import { ScheduleBlockSheet } from './ScheduleBlockSheet'
@@ -186,29 +193,13 @@ function HubJobsPanel({
     }
   }, [jobsViewMenuOpen])
 
-  const filteredRows = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    let list = rows
-    if (q) {
-      list = list.filter(
-        (r) =>
-          (r.hcp_number ?? '').toLowerCase().includes(q) ||
-          (r.job_name ?? '').toLowerCase().includes(q) ||
-          r.displayTitle.toLowerCase().includes(q),
-      )
-    }
-    if (onlyWithBlocks) {
-      list = list.filter((r) => r.totalBlocks > 0)
-    }
-    return list
-  }, [rows, search, onlyWithBlocks])
+  const filteredRows = useMemo(
+    () => filterHubJobsPanelRows(rows, search, onlyWithBlocks),
+    [rows, search, onlyWithBlocks],
+  )
 
   // Bid rows exist only because they have blocks, so the "only with blocks" filter is moot for them.
-  const filteredBidRows = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    if (!q) return bidRows
-    return bidRows.filter((r) => r.displayTitle.toLowerCase().includes(q))
-  }, [bidRows, search])
+  const filteredBidRows = useMemo(() => filterHubJobsPanelBidRows(bidRows, search), [bidRows, search])
 
   return (
     <>
@@ -1944,22 +1935,10 @@ function HubPeoplePanel({
     [expectedManpowerDayRows],
   )
 
-  const expectedManpowerDayStats = useMemo(() => {
-    if (expectedManpowerDayRows.length === 0) return null
-    let personHours = 0
-    const people = new Set<string>()
-    const jobs = new Set<string>()
-    for (const r of expectedManpowerDayRows) {
-      personHours += r.personHours
-      people.add(r.assigneeUserId)
-      jobs.add(r.jobId)
-    }
-    return {
-      personHours,
-      distinctPeople: people.size,
-      jobCount: jobs.size,
-    }
-  }, [expectedManpowerDayRows])
+  const expectedManpowerDayStats = useMemo(
+    () => expectedManpowerStatsForRows(expectedManpowerDayRows),
+    [expectedManpowerDayRows],
+  )
 
   /** Hidden (RLS-excluded) blocks in the current manpower selection; null when nothing is hidden. */
   const expectedManpowerHiddenSelection = useMemo(() => {
@@ -2031,26 +2010,15 @@ function HubPeoplePanel({
     }
   }, [hubExpectedManpowerDayKey, expectedManpowerJobGroups])
 
-  const afterBlockFilter = useMemo(() => {
-    if (!onlyWithBlocksThisWeek) return allPeopleRows
-    return allPeopleRows.filter((row) => userIdsWithBlocksThisWeek.has(row.userId))
-  }, [allPeopleRows, onlyWithBlocksThisWeek, userIdsWithBlocksThisWeek])
+  const afterBlockFilter = useMemo(
+    () => filterHubPeopleWithBlocks(allPeopleRows, onlyWithBlocksThisWeek, userIdsWithBlocksThisWeek),
+    [allPeopleRows, onlyWithBlocksThisWeek, userIdsWithBlocksThisWeek],
+  )
 
-  const filteredAssignees = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    if (!q) return afterBlockFilter
-    return afterBlockFilter.filter((row) => {
-      if (row.displayName.toLowerCase().includes(q)) return true
-      if (swimLanes && personMatchesLaneQuery(row.userId, q, swimLanes)) return true
-      for (const dk of visibleDayKeys) {
-        const blocks = personDayBlocks.get(hubPersonDayKey(row.userId, dk)) ?? []
-        for (const b of blocks) {
-          if (getJobDisplayTitle(scheduleBlockAnchorId(b)).toLowerCase().includes(q)) return true
-        }
-      }
-      return false
-    })
-  }, [afterBlockFilter, search, visibleDayKeys, personDayBlocks, getJobDisplayTitle, swimLanes])
+  const filteredAssignees = useMemo(
+    () => filterHubPeopleBySearch(afterBlockFilter, search, { visibleDayKeys, personDayBlocks, getJobDisplayTitle, swimLanes }),
+    [afterBlockFilter, search, visibleDayKeys, personDayBlocks, getJobDisplayTitle, swimLanes],
+  )
 
   /** Person-header sort cycle: swim lanes (default) ↔ alphabetical ↔ grouped by role like the Day view. Per-device; an explicit pick sticks. */
   const PEOPLE_SORT_STORAGE_KEY = 'pipetooling_dispatch_people_sort_v1'
@@ -2142,33 +2110,26 @@ function HubPeoplePanel({
 
   const { requirementForBlock: noteRequirementForBlockFromContext } = useDispatchNoteRequirements()
 
-  const missingNoteCount = useMemo(() => {
-    if (!missingNoteDayYmd) return 0
-    // Past-day columns: the missing-notes indicator is part of the "needs attention"
-    // surface alongside per-card colors, and both gate on `block.work_date < scheduleTodayYmd`
-    // returning to default. History never lights up red.
-    if (missingNoteDayYmd < scheduleTodayYmd) return 0
-    let n = 0
-    for (const person of filteredAssignees) {
-      const blocks = personDayBlocks.get(hubPersonDayKey(person.userId, missingNoteDayYmd)) ?? []
-      for (const b of blocks) {
-        if (b.note) continue
-        const req = noteRequirementForBlockFromContext({
-          userId: person.userId,
-          jobId: b.job_id,
-        })
-        if (req === 'skip') continue
-        n++
-      }
-    }
-    return n
-  }, [
-    missingNoteDayYmd,
-    scheduleTodayYmd,
-    filteredAssignees,
-    personDayBlocks,
-    noteRequirementForBlockFromContext,
-  ])
+  // Past-day columns: the missing-notes indicator is part of the "needs attention"
+  // surface alongside per-card colors, and both gate on `block.work_date < scheduleTodayYmd`
+  // returning to default. History never lights up red.
+  const missingNoteCount = useMemo(
+    () =>
+      countBlocksMissingNoteForDay(
+        missingNoteDayYmd,
+        scheduleTodayYmd,
+        filteredAssignees,
+        personDayBlocks,
+        noteRequirementForBlockFromContext,
+      ),
+    [
+      missingNoteDayYmd,
+      scheduleTodayYmd,
+      filteredAssignees,
+      personDayBlocks,
+      noteRequirementForBlockFromContext,
+    ],
+  )
 
   return (
     <>
