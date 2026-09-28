@@ -35,7 +35,7 @@ last_updated: 2026-09-25
 The office opens GC Review from the Stages board's Billed section. There they:
 - read **Billed Awaiting Payment grouped by GC/Builder** (or by Development) with bill-out dates and ages
 - **certify** each GC's group on Wednesdays
-- run the **weekly statement round**: a personal email for each GC over $10k, from an assigned sender, marked "Sent it" or "Spoke with them"
+- work **This week's GCs**: every GC with a balance, three steps a row (Check · Send · Word), grouped by the account man to ask — whoever is signed in works every row
 - watch the **temperature board**
 - manage **scheduled and standing statement emails**
 - send any GC's statement through **Draft Message** (app email, send now or scheduled), **Copy**, **Print** or the **portal link**, and open the GC's unpaid invoices as one PDF (**Print unpaid invoices**)
@@ -85,7 +85,7 @@ The office opens GC Review from the Stages board's Billed section. There they:
 
 ### Key structural differences from the page maps
 
-1. **One scrolling panel plus eight stacked overlays (five of them inline).** The main panel (z 60) holds every inline region. The Draft Message and Share all dialogs (z 61), the Share menu (backdrop 62 / menu 63), the round overlay and Mark sent dialog (z 64) are **inline JSX**. `GcSenderRoundCard` (64), `GcStatementSendHistoryModal` (64) and `GcReviewCertifyModal` (70) are extracted. Nothing handles Escape.
+1. **One scrolling panel plus seven stacked overlays (five of them inline).** The main panel (z 60) holds every inline region. The Draft Message and Share all dialogs (z 61), the Share menu (backdrop 62 / menu 63), the round overlay and Mark sent dialog (z 64) are **inline JSX**. `GcStatementSendHistoryModal` (64) and `GcReviewCertifyModal` (70) are extracted. Nothing handles Escape.
 2. **It stays mounted while closed.** The parent renders it unconditionally, and `return null` sits after the hooks, so **all 56 states survive close and reopen** while the Stages tab stays active: `groupBy`, `includeCollections`, a half-typed standing form, `roundStartTotal`. They reset only when the Stages tab goes inactive (the parent's `{active && …}` block unmounts the modal) or unmounts. The `open`-gated effects refetch on every open.
 3. **Two rollups over the same rows.** `rollup` (492–495) is what the panel shows, following the Group-by pill and Include Collections. `roundRollup` (500–503) is always **by GC and active-only**, and it feeds certification, rounds, the temperature board and the week strip (comment 504–510, v2.2764).
 4. **The parent owns transport, the statement print and copy.** The modal owns the unpaid-invoices PDF (it reads the jobs itself), scheduling (`gc_statement_email_requests`), round marks, certifications (in the child), sender assignment and the round-email chains.
@@ -111,8 +111,8 @@ Render regions in JSX order (all ranges @ `a05cef4c4`). Status: `extracted` mean
 | 1 | Header + Group-by pill | 760–807; pill `anyDevelopment ?` 765–791; `groupByPillStyle` 719–729 | 48 | 0 · 1 (`groupBy`) · 1 | none | low | inline |
 | 2 | Wednesday strip | `!byDevelopment && certProgress.gcs > 0` 808–834 | 27 | `certProgress` 557 | `gcReviewWeekProgress` ✓ | low | inline |
 | 3 | Toolbar: Include Collections · Share all · Print all | 835–897 (Share all opener 846–896) | 63 | 0 · 6 (`shareAll*` reset) · 0 | none | low | inline |
-| 4 | Weekly statement rounds card | `!byDevelopment && roundItems.length > 0` 900–1195 | 296 | 10 · 9 · 7 | kernels ✓; chip mapping ✗ | **med-high** | inline |
-| 4a | ↳ Round rows: sender, assign, chip | `roundItems.map` 937–1046 (assign 944–970, chip 972–1044) | 110 | `assigningGcId`, `boardRowByGc` | ✗ (inline chip state machine) | med | inline |
+| 4 | This week's GCs (the worklist) + the round-email box | `<GcWorklistPanel>`; round email `!byDevelopment && roundItems.length > 0` | panel 262 + email ~140 | `worklist`, `assigningGcId`, `markSentDefaultAction`, 4 pointer setters | `gcWorklist` ✓ (18), panel render ✓ (4) | med | **extracted** (rows) · inline (email) |
+| 4a | ↳ Worklist rows: three steps, account man, undo | `GcWorklistPanel.tsx` | 262 | props only | render ✓ | low | **extracted** |
 | 4b | ↳ Round email | `authUser?.id` 1054–1193 | 140 | 7 · 5 · 4 | `statementRoundEmail` ✓; client ✗ | med | inline |
 | 5 | Temperature board | `<GcTemperatureBoard>` 1196–1206 | 11 | `boardRows`, `boardWeeks`, `setHistoryGc` | kernel ✓; component ✗ | low | **extracted** |
 | 6 | Scheduled statement sends | `pendingSends.length > 0` 1207–1267 | 61 | 2 · 0 · 7 | `gcStatementStandingCopies` ✓, `gcStatementSchedule` ✓; `canCancelStatementRequest` ✗ | med | inline |
@@ -127,7 +127,7 @@ Render regions in JSX order (all ranges @ `a05cef4c4`). Status: `extracted` mean
 | 11a | ↳ Standing copies (dev) | `isDev ?` 2201–2343 + handlers 415–485 | 143 + 71 | 7 · 4 · 6 | `planStandingCopyEdit` ✓; `applyStandingPlan` ✗ | med | inline |
 | 12 | Certify modal | `<GcReviewCertifyModal>` 2347–2362 | 16 | `certifyGroup` | ✗ | low | **extracted** (241) |
 | 13 | Mark sent dialog | `markSentGroup && …` 2363–2395 | 33 | 3 · 1 · 1 · `GcStatementMarkSentForm` | form ✓ | low | inline host |
-| 14 | Sender card | `<GcSenderRoundCard>` IIFE 2396–2436 | 41 | 2 · 3 · 2 | ✗ | low | **extracted** (204) |
+| 14 | ~~Sender card~~ | retired with the rounds panel — nothing opened it once the chips went | — | — | — | — | **retired** |
 | 15 | Send history | `<GcStatementSendHistoryModal>` 2437–2439 | 3 | `historyGc` | ✗ | low | **extracted** (116) |
 | M | `ScheduleWhenControls` | module 101–200 (render 133–199; `pill` 122–132) | 100 | props only | ✗ | low | inline (module scope) |
 
@@ -160,8 +160,7 @@ Render regions in JSX order (all ranges @ `a05cef4c4`). Status: `extracted` mean
 | `certifyGroup` | 334 | Certify / Re-certify 1387, 1399 | `GcReviewCertifyModal` 2347 |
 | `markSentGroup` | 355 | Share → Mark sent… 1489 | dialog 2363 |
 | `historyGc` | 356 | last-sent pill 1310; temperature pill 1334; `GcTemperatureBoard.onOpenGc` 1204 | `GcStatementSendHistoryModal` 2437 |
-| `senderCard` | 358 | sender tally 915; round chip 996 | `GcSenderRoundCard` 2396 |
-| `assigningGcId` | 352 | assign link 964; chip 993; `GcSenderRoundCard.onAssign` 2430 | select 944–970 |
+| `assigningGcId` | 352 | the worklist's account-man link | the worklist's select |
 | `shareMenuGroupKey` | 319 | Share button 1412 | one menu open at a time across all groups |
 
 **Data engine: the statement round.** `certRows` + `roundMarks` + `boardMarks` + `roundSenders` (4 states, 2 refreshers `refreshCerts` / `refreshRoundMarks`, 3 open-gated effects 340 / 380 / 516), derived over `roundRollup` into `roundItems` / `roundSummary` / `boardRows` / `temperatureByGc` / `mergedLastSent` / `certProgress`, and read by regions 2, 4, 5, 7a, 7b, 10, 13 and 14. **`markRound` 581–609 is the single write path** for the overlay (1986 Skip, 1999 Sent it), the Mark sent dialog (2386) and the **Draft Message auto-mark** (1870–1873). This engine is **triplicated across surfaces** (see [Hazards](#hazards)), so it is the hook seam to build (#8).
@@ -186,23 +185,20 @@ Render regions in JSX order (all ranges @ `a05cef4c4`). Status: `extracted` mean
 - **State:** it owns none (`groupBy`, `includeCollections` and the `shareAll*` openers are shared).
 - **Approach:** after #6 the Share all opener collapses to `setShareAllOpen(true)`. That is the dialog's mount-init, and it is what lets regions 1–3 become one presentational `GcReviewHeader` (~140 lines) with no owned state. It is optional and low value.
 
-### 4. Weekly statement rounds card (inline, 296 lines)
+### 4. This week's GCs (extracted) + the round-email box (inline)
 
-- **Render:** 900–1195. Header with a per-sender tally (908–922 → `setSenderCard`) and **Start round (N)** (924–935: `roundStartTotal`, `roundOpen`). Rows (937–1046):
-  - The GC name, `$amount` and sender.
-  - The **assign** select (944–970) lists 4 roles and has no email check. It calls `assignSender` and is gated by `canCertify`.
-  - The **state chip** (972–1044) has a click rule:
-    - `needs_sender` or no sender → undo the mark, or open assign (canCertify only).
-    - Anything else → the sender card.
-  - The chip's **colour, background and label are a nested ternary over 6 states**, plus the `contactedOnlyWeeks >= 2` warning from `boardRowByGc`.
-  - A footnote and `roundError`.
+- **Render:** `<GcWorklistPanel>` under the toolbar, By GC only. The modal builds `worklist` (`buildGcWorklist` over `roundRollup.groups`, this week's certs and marks, senders, account men, `mergedLastSent`) and hands the panel callbacks:
+  - **Check** → `setCertifyGroup(r.group)`; **Send** → `openEmailDialogForGroup(r.group)`; **Word** / **or mark sent** → `setMarkSentDefaultAction` + `setMarkSentGroup`; **undo** → `undoRoundMark`; a done Sent or Word pill → `setHistoryGc`.
+  - The account-man select lists 4 roles and has no email check. It calls `assignSender` and is gated by `canCertify`.
+  - Every write goes through `markRound`, which merges with the week's existing mark (`mergeRoundMarkWrite`): one row holds the statement and the word.
+  - The week strip reads `worklist.counts` (checked · sent · words in).
 - **4b Round email (1054–1193):** your chain line (`formatWeekdays` / `formatMinutes(parseHhMm)`), others' chains with **edit** (canCertify), "Set it up for another sender…" select, and the form (1108–1190): Mon–Fri toggles (sorted), time, **Preview** (`fetchStatementRoundEmailPreview` → `openHtmlPreviewWindow`), **Email me a test**, Stop emailing (`saveRoundEmail([])`), Cancel, Save.
-- **Owned (moves with it):** `assigningGcId`*, `roundStartTotal`*, and the 7 round-email form states. The asterisked two cross regions (`assigningGcId` is also written by `GcSenderRoundCard.onAssign` 2430; `roundStartTotal` is read by the overlay 1920), so they go to the parent or into a hook.
-- **Shared (stays or goes to the hook):** `roundItems`, `roundSummary`, `roundBusy`, `roundError`, `boardRowByGc`, `senderCard`, `roundOpen`.
+- **Owned (moves with it):** `assigningGcId`, `markSentDefaultAction` and the 7 round-email form states.
+- **Shared (stays or goes to the hook):** `roundItems`, `roundSummary`, `roundBusy`, `roundError`, `temperatureByGc`, `roundOpen`.
 - **Handlers:** `userNameById`, `assignSender`, `markWhenLabel`, `undoRoundMark`, `openRoundEmailForm`, `saveRoundEmail`, `describeRoundMark`/`sendChannelLabel` (kernel).
 - **Data:** `customers.statement_sender_user_id` update (`setGcStatementSender`), then a senders re-read; `gc_statement_round_marks` delete (undo); `statement_round_email_requests` (`applyStatementRoundChainPlan`: **inserts, then deletes** unsent); edge `statement-round-email-dispatch` (preview / `test_send`).
-- **Tests:** `buildStatementRound` / `summarizeStatementRound` / `describeRoundMark` (14), `groupStatementRoundChains` / `planStatementRoundChainEdit` (6), `emailScheduleWeek` (20). **Untested:** the chip state→presentation mapping, the chip click rule, `statementRoundEmailClient`, `gcStatementRoundIo`.
-- **Approach:** Stage A the chip (#2). `useStatementRoundEmail` (#5) → `GcRoundEmailSection`. After `useGcStatementRound` (#8) → `GcStatementRoundsCard`.
+- **Tests:** `buildStatementRound` / `summarizeStatementRound` / `describeRoundMark` (14), `groupStatementRoundChains` / `planStatementRoundChainEdit` (6), `emailScheduleWeek` (20). `buildGcWorklist` / `worklistNextStep` / `mergeRoundMarkWrite` (18), `GcWorklistPanel.render` (4). **Untested:** `statementRoundEmailClient`, `gcStatementRoundIo`.
+- **Approach:** `useStatementRoundEmail` (#5) → `GcRoundEmailSection`; the round email, the overlay and the per-sender prompts are re-aimed at the office by punch list #49 (`to-dos/gc-review-one-operator/`), which changes this region again.
 
 ### 5. Temperature board (extracted)
 
@@ -293,7 +289,7 @@ Render regions in JSX order (all ranges @ `a05cef4c4`). Status: `extracted` mean
 
 - **`GcReviewCertifyModal`** (241 lines, z 70): `group`, `weekStartYmd`, `authUserId/Name`. `onCertified({andSend})` → `refreshCerts` and optionally `openEmailDialogForGroup`. It writes `gc_review_certifications` via `insertGcReviewCertification` + `buildGcCertSnapshot` (tested). **No render test.**
 - **Mark sent dialog** (2363–2395, inline host, z 64): header facts + `GcStatementMarkSentForm defaultChannel="text"` → `markRound`. Its backdrop is blocked while `roundBusy`.
-- **`GcSenderRoundCard`** (204 lines, z 64): `items={roundItems}`, `chain`, `heldReason` (**inline cert→reason mapping 2405–2410**), `canAct={canCertify}`, and 4 callbacks: preview → edge function, setup → `openRoundEmailForm`, assign → `setAssigningGcId`, undo → `undoRoundMark`. It self-loads `latestGcStatementMarkBy`. **No render test.** Its own `stateLabel` (59–73) re-labels the same 6 states as region 4a.
+- **`GcSenderRoundCard`** is retired (with `senderRoundQueue` and `latestGcStatementMarkBy`).
 - **`GcStatementSendHistoryModal`** (116 lines, z 64): self-loading (`listGcStatementSentHistory`, `gcStatementSendHistoryIo`). **No render test.**
 
 ### M. `ScheduleWhenControls` (module scope, 100 lines)
@@ -327,8 +323,6 @@ Render regions in JSX order (all ranges @ `a05cef4c4`). Status: `extracted` mean
 
 | Logic | Where | Target | Why |
 |---|---|---|---|
-| Round chip presentation: 6 states → colour / background / label, incl. `contactedOnlyWeeks >= 2` "⚠ spoke N wks running" | 1007–1043 | `lib/jobs/statementRoundChip.ts` (share with `GcSenderRoundCard` `stateLabel` 59–73) | two hand-kept copies of one state machine; untested |
-| Chip click rule (undo vs assign vs sender card) | 987–997 | same kernel: `roundChipAction(it, canCertify, roundBusy)` | untested branch logic |
 | Round-mark upsert payload: `skipped` nulls channel/note/temperature/expectedPayBy, default channel `'email'` | `markRound` 591–601 | `buildRoundMarkUpsert(...)` in `gcStatementRounds.ts` | the data rule sits beside IO |
 | **Statement send payloads**: per-GC (1853–1863), share-all (2168–2177: `total: grandTotal`, `jobCount` reduce), and the `{dateStr, groupBy, officePhone, portalUrl, introText}` bag built 4× (1786, 1860, 1861, 1945) | Draft Message, Share all, overlay | `buildGcStatementSendPayload` / `buildGcReviewShareAllPayload` in `gcStatementEmail.ts` | **what a GC is told they owe**: untested assembly |
 | `dateStr` (`toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'})`) | 687, 856, 1784, 1845, 1902, 2164 | `gcStatementDateStr(now)` | six copies |
@@ -363,12 +357,12 @@ Render regions in JSX order (all ranges @ `a05cef4c4`). Status: `extracted` mean
 
 ## Recommended extraction order
 
-Per the playbook, Stage A comes before Stage B for each unit, and the lowest coupling goes first. Run `npm run typecheck && npm run lint && npm test` at every step, and make only behaviour-preserving changes. **Done so far:** 16 kernels in `lib/` (above), plus 5 extracted children: `GcTemperatureBoard`, `GcReviewCertifyModal`, `GcStatementMarkSentForm`, `GcSenderRoundCard`, `GcStatementSendHistoryModal`.
+Per the playbook, Stage A comes before Stage B for each unit, and the lowest coupling goes first. Run `npm run typecheck && npm run lint && npm test` at every step, and make only behaviour-preserving changes. **Done so far:** 16 kernels in `lib/` (above), plus 5 extracted children: `GcTemperatureBoard`, `GcReviewCertifyModal`, `GcStatementMarkSentForm`, `GcWorklistPanel`, `GcStatementSendHistoryModal`.
 
 | # | Unit | Lines out (approx.) | Coupling | Risk |
 |---|---|---|---|---|
 | 1 | `ScheduleWhenControls` + `chicagoTomorrowYmd` → `src/components/jobs/GcScheduleWhenControls.tsx` + render smoke | ~105 | props only | low |
-| 2 | **Stage A, small kernels:** `statementRoundChip` (+ migrate `GcSenderRoundCard.stateLabel`), `roundChipAction`, `buildRoundMarkUpsert`, `heldReason`, `thisWeekSentMark`, `pickRoundCurrent`, office cohorts, `isEmailAddress`, `gcStatementDateStr`, a ymd label; tests | ~90 | pure | low |
+| 2 | **Stage A, small kernels:** `buildRoundMarkUpsert`, `heldReason`, `thisWeekSentMark`, `pickRoundCurrent`, office cohorts, `isEmailAddress`, `gcStatementDateStr`, a ymd label; tests | ~90 | pure | low |
 | 3 | **Stage A, send payloads:** `buildGcStatementSendPayload` + `buildGcReviewShareAllPayload` (+ the docs option bag); tests pin `total`, `jobCount`, subject fallback, portal toggle, `ccEmails` | ~50 | pure | med (money-adjacent) |
 | 4 | `useGcScheduledSends(open, ctx)` (330, 384–485: `pendingSends` + 7 standing states + handlers) → `GcScheduledSendsPanel` (1207–1267) + `GcStandingCopiesSection` (2201–2343). Keep the cancel-then-insert order and add a `// TODO` at the seam | ~110 + 61 + 143 | hook owns 8 states | low-med |
 | 5 | `useStatementRoundEmail()` (362–375, 630–669: 8 states) → `GcRoundEmailSection` (1054–1193); `GcSenderRoundCard.onSetupEmail` calls the hook's `openFor` | ~55 + 140 | 8 states; 1 cross-region opener | low-med |
@@ -410,7 +404,7 @@ Per the playbook, Stage A comes before Stage B for each unit, and the lowest cou
 9. **Side effect on Copy portal link.** `mark_customer_portal_slug_shared` permanently locks the short address on first share (569). Keep it before the clipboard write.
 10. **Portal staleness.** `CustomerPortalGlobeButton` takes only `customerId` / `customerName` / `size` (no change callback). A link minted in the globe modal does not show in the Share menu or Draft Message until GC Review is closed and reopened. This is from a code read, not verified in the browser.
 11. **URL deep links are parent-owned:** `?gcReview=1` and `?round=1[&gc=<id>]` (the `JobsStagesTab` consume-once effects 1326–1335, 1366–1378; the producers are the Dashboard banner / pinned row and the `statement-round-email-dispatch` email). The modal only sees `startInRound` / `startInRoundGcId`.
-12. **The z-ladder collides at 64.** The round overlay, Mark sent dialog, `GcSenderRoundCard` and `GcStatementSendHistoryModal` all use 64 and are mutually exclusive only by flow. The Certify modal is at 70, Edit Job (via `onOpenJob`) at 1010, and the globe modal at 1300. **No Escape handling** exists in the modal or any inline overlay.
+12. **The z-ladder collides at 64.** The round overlay, Mark sent dialog and `GcStatementSendHistoryModal` all use 64 and are mutually exclusive only by flow. The Certify modal is at 70, Edit Job (via `onOpenJob`) at 1010, and the globe modal at 1300. **No Escape handling** exists in the modal or any inline overlay.
 13. **Popup-blocker paths.** Every preview (`openHtmlPreviewWindow` at 1151, 1786, 1945, 2419) returns false when blocked and sets an error string. The print path toasts in the parent.
 14. **Cross-surface duplication.**
     - The round engine (certs + marks + senders → `buildStatementRound` / `summarizeStatementRound`) is loaded independently here (333–540), in `JobsStagesTab` (1648–1720, the stages map's seam "I") and in `usePipelineMoneyOpportunities` (100–150). They share no cache, and a mark made here refreshes only this copy.

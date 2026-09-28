@@ -46,19 +46,21 @@ export async function upsertGcStatementRoundMark(row: {
   acted_by: string
   acted_by_name: string
   /** v2.2761 — how it went out; a skip carries no channel. */
-  channel?: StatementSendChannel | null
+  channel?: StatementSendChannel | string | null
   /** v2.2761 — optional note, trimmed; empty stores NULL. On contacted: the temperature answer. */
   note?: string | null
   /** v2.2813 — the temperature read (required by the form on contacted). */
-  temperature?: Temperature | null
+  temperature?: Temperature | string | null
   /** v2.2813 — YYYY-MM-DD when they said they'd pay. */
   expected_pay_by?: string | null
+  /** The day the mark stands on; omitted or null = now. A word written over a sent mark keeps the statement's day (`mergeRoundMarkWrite`). */
+  acted_at?: string | null
 }): Promise<void> {
   const note = row.note?.trim() || null
   const { error } = await supabase
     .from('gc_statement_round_marks')
     .upsert(
-      { ...row, channel: row.channel ?? null, note, temperature: row.temperature ?? null, expected_pay_by: row.expected_pay_by || null, acted_at: new Date().toISOString() },
+      { ...row, channel: row.channel ?? null, note, temperature: row.temperature ?? null, expected_pay_by: row.expected_pay_by || null, acted_at: row.acted_at || new Date().toISOString() },
       { onConflict: 'week_start,gc_customer_id' },
     )
   if (error) throw new Error(error.message)
@@ -89,18 +91,4 @@ export async function listGcStatementSenders(gcIds: readonly string[]): Promise<
 export async function setGcStatementSender(gcCustomerId: string, userId: string | null): Promise<void> {
   const { error } = await supabase.from('customers').update({ statement_sender_user_id: userId }).eq('id', gcCustomerId)
   if (error) throw new Error(error.message)
-}
-
-/** The newest sent mark a person filed, any week (v2.2781, the sender card's "last activity"). */
-export async function latestGcStatementMarkBy(userId: string): Promise<RoundMarkRow | null> {
-  const { data, error } = await supabase
-    .from('gc_statement_round_marks')
-    .select(MARK_COLUMNS)
-    .eq('acted_by', userId)
-    .eq('action', 'sent')
-    .order('acted_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-  if (error || !data) return null
-  return data as RoundMarkRow
 }
