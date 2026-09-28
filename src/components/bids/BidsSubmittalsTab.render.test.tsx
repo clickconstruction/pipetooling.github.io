@@ -209,6 +209,32 @@ describe('BidsSubmittalsTab', () => {
     expect(screen.getAllByTestId('submittal-row')).toHaveLength(4)
   })
 
+  it('v2.4090 · by hand: the schedule door on a bid with none, and a row added by hand on a draft opens the editor with its tag and product', async () => {
+    state.revisions = []
+    state.items = []
+    state.writes = []
+    mount()
+    expect(await screen.findByText('No submittal on this bid yet')).toBeTruthy()
+    // Stage 1 offers typing the schedule beside the robot; with a schedule on the bid it reads "Add to the schedule".
+    expect(screen.getByTestId('plug-in-schedule').textContent).toBe('Add to the schedule')
+
+    state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [], shared_at: null, created_at: '2026-09-15T00:00:00Z' }]
+    state.items = [item({ id: 'it-1', tag: 'WC-1', sequence_order: 1, specified_manufacturer: 'TOTO', specified_model: 'CT708UVG', submitted_label: 'TOTO CT708UVG#01', status: 'as_specified' })]
+    state.writes = []
+    mount()
+    await screen.findAllByTestId('submittal-row')
+    fireEvent.click(screen.getByTestId('add-row-by-hand'))
+    await waitFor(() => expect(state.writes.some((w) => w.op === 'insert' && w.table === 'bid_submittal_items')).toBe(true))
+    expect(state.writes.find((w) => w.op === 'insert' && w.table === 'bid_submittal_items')!.payload).toMatchObject({ submittal_id: 'rev-1', tag: '', sequence_order: 2, status: 'missing' })
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.change(within(dialog).getByLabelText('Tag'), { target: { value: 'gi-1' } })
+    fireEvent.change(within(dialog).getByLabelText('Submitted product'), { target: { value: 'Schier GB-250 grease interceptor' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: '4+ wk' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(state.writes.some((w) => w.op === 'update' && w.table === 'bid_submittal_items')).toBe(true))
+    expect(state.writes.find((w) => w.op === 'update' && w.table === 'bid_submittal_items')!.payload).toMatchObject({ tag: 'GI-1', submitted_label: 'Schier GB-250 grease interceptor', lead_time_days: 28 })
+  })
+
   it('v2.4067 · the journey strip says where the submittal is, the first open offers the walkthrough, and the tour keeps a stop for every stage — centered when its controls are not on the page', async () => {
     state.revisions = []
     state.items = []
@@ -273,8 +299,8 @@ describe('BidsSubmittalsTab', () => {
     expect(rows).toHaveLength(3)
     expect(screen.getByTestId('revision-line').textContent).toMatch(/Rev 1 · draft · Sep 1[45] · 3 rows · 1 as specified · 1 alternate · 1 without a reason · 1 missing · 1 of 2 sheets in/)
     const tiles = screen.getByTestId('submittal-tiles').textContent ?? ''
-    expect(tiles).toMatch(/Alternates1.*1 still need a reason/)
-    expect(tiles).toMatch(/Cut sheets in1 of 2/)
+    expect(tiles).toMatch(/1 alternate · 1 without a reason/)
+    expect(tiles).toMatch(/1 of 2 sheets in/)
     expect(within(rows[0]!).getByText('say why')).toBeTruthy()
     expect(within(rows[0]!).getByText('sheet needed')).toBeTruthy()
     expect(within(rows[2]!).getByText(/✓ p\.1–2/)).toBeTruthy()
@@ -291,7 +317,8 @@ describe('BidsSubmittalsTab', () => {
     await waitFor(() => expect(state.writes.some((w) => w.op === 'update' && w.table === 'bid_submittal_items')).toBe(true))
     const upd = state.writes.find((w) => w.op === 'update' && w.table === 'bid_submittal_items')!
     expect(upd.filters).toEqual([['id', 'it-1']])
-    expect(upd.payload).toEqual({ status: 'alternate', reason_kind: 'lead_time', reason_note: null, lead_time_days: 7, sheet_file: 0, sheet_pages: [5], sheet_source: 'estimator' })
+    // A draft's editor also carries the tag and the product (v2.4090), unchanged here.
+    expect(upd.payload).toEqual({ status: 'alternate', reason_kind: 'lead_time', reason_note: null, lead_time_days: 7, sheet_file: 0, sheet_pages: [5], sheet_source: 'estimator', tag: 'DWH-1', submitted_label: 'BRADFORD WHITE RE2HP50 50 GAL' })
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
     expect(within(screen.getAllByTestId('submittal-row')[0]!).getByText('Lead time')).toBeTruthy()
   })

@@ -12,7 +12,7 @@
 
 export type JourneyStageKey = 'picks' | 'build' | 'rows' | 'package' | 'share' | 'review' | 'resubmit' | 'procure'
 export type JourneyStageStatus = 'done' | 'current' | 'waiting' | 'later'
-export type JourneyAction = 'open_pricing' | 'ask_robot_schedule' | 'build_rev1' | 'drop_vendor_pdf' | 'build_package' | 'share' | 'copy_room_link' | 'resubmit'
+export type JourneyAction = 'open_pricing' | 'plug_in_schedule' | 'ask_robot_schedule' | 'build_rev1' | 'drop_vendor_pdf' | 'build_package' | 'share' | 'copy_room_link' | 'resubmit'
 
 export type JourneyStage = {
   key: JourneyStageKey
@@ -108,9 +108,9 @@ export function submittalJourney(input: SubmittalJourneyInput): SubmittalJourney
       return finish({ kind: 'next', text: `${plural(input.scheduleTags, 'tag')} on the schedule and ${plural(input.picks, 'picked line')} are ready.`, action: 'build_rev1', actionLabel: 'Build Rev 1 from the picks' })
     }
     if (input.scheduleTags > 0) {
-      return finish({ kind: 'next', text: `${plural(input.scheduleTags, 'tag')} on the schedule, nothing picked yet. Pick a house for each part on the Pricing compare, or Rev 1 reads every tag as missing.`, action: 'open_pricing', actionLabel: 'The picks on Pricing' })
+      return finish({ kind: 'next', text: `${plural(input.scheduleTags, 'tag')} on the schedule, nothing picked yet. Pick a house for each part on the Pricing compare, or build Rev 1 now and type each row's product with Edit.`, action: 'build_rev1', actionLabel: 'Build Rev 1 and type the products' })
     }
-    return finish({ kind: 'next', text: 'No fixture schedule on this bid. Plug it in on Pricing, or let the robot read it off the plans.', action: 'ask_robot_schedule', actionLabel: 'Ask the robot to read the schedule' })
+    return finish({ kind: 'next', text: 'No fixture schedule on this bid. Type or paste it here — one tag per line, off the plans’ fixture schedule — or let the robot read it.', action: 'plug_in_schedule', actionLabel: 'Type or paste the schedule' })
   }
 
   status.build = 'done'

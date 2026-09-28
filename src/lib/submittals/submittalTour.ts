@@ -102,3 +102,23 @@ export function markSubmittalWalkthroughSeen(storage: Pick<Storage, 'setItem'> |
     // A private window or blocked storage: the offer simply shows again next time.
   }
 }
+
+const OPEN_ALL_KEY = 'pt.submittals.road.openAll'
+
+/** The road's "Open every stage" switch, remembered per device (v2.4090). Storage may be unavailable; then it reads as off. */
+export function hasOpenEveryStage(storage: Pick<Storage, 'getItem'> | null = typeof localStorage === 'undefined' ? null : localStorage): boolean {
+  try {
+    return storage?.getItem(OPEN_ALL_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+export function rememberOpenEveryStage(on: boolean, storage: Pick<Storage, 'setItem' | 'removeItem'> | null = typeof localStorage === 'undefined' ? null : localStorage): void {
+  try {
+    if (on) storage?.setItem(OPEN_ALL_KEY, '1')
+    else storage?.removeItem(OPEN_ALL_KEY)
+  } catch {
+    // Blocked storage: the switch simply does not persist.
+  }
+}

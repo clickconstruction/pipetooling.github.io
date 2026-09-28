@@ -15,12 +15,12 @@ describe('submittalJourney', () => {
   it('a fresh bid with nothing picked points at Pricing', () => {
     const j = submittalJourney({ ...base, picks: 0 })
     expect(statuses({ ...base, picks: 0 })).toBe('current,later,later,later,later,later,later,later')
-    expect(j.next).toEqual({ kind: 'next', text: '12 tags on the schedule, nothing picked yet. Pick a house for each part on the Pricing compare, or Rev 1 reads every tag as missing.', action: 'open_pricing', actionLabel: 'The picks on Pricing' })
+    expect(j.next).toEqual({ kind: 'next', text: "12 tags on the schedule, nothing picked yet. Pick a house for each part on the Pricing compare, or build Rev 1 now and type each row's product with Edit.", action: 'build_rev1', actionLabel: 'Build Rev 1 and type the products' })
   })
 
-  it('a bid with no schedule offers the robot', () => {
+  it('a bid with no schedule offers typing it first, the robot second', () => {
     const j = submittalJourney({ ...base, scheduleTags: 0, picks: 0 })
-    expect(j.next.action).toBe('ask_robot_schedule')
+    expect(j.next.action).toBe('plug_in_schedule')
     expect(j.next.text).toMatch(/No fixture schedule/)
   })
 
