@@ -10,6 +10,7 @@ import { addressLines, escapeHtml } from './htmlDoc'
 import { buildPaymentScheduleSectionLines, type PaymentScheduleRowInput } from './paymentSchedule'
 import { buildMaterialsByStageSectionLines, buildScheduleOfValuesSectionLines, scheduleOfValuesLetter, type MaterialsByStageLetterRow } from './scheduleOfValues'
 import { splitStageValues, type SovSplitInput } from './sovLaborMaterial'
+import { buildSovLinesSectionLines, type SovLine } from './sovLines'
 import type { MaterialsByStageSummary } from '../bids/materialsByStage'
 
 /** Materials by stage (v2.3673): the factored stage figures, when the bid's pill is on. */
@@ -22,11 +23,14 @@ export type CoverLetterScheduleOfValues = {
   split?: SovSplitInput | null
   /** The letter carries the total and points at the attached schedule. */
   totalOnly?: boolean
+  /** The My lines shape (v2.4070): the estimator's own lines replace the stages; `split` present = split them too. */
+  lines?: { lines: ReadonlyArray<SovLine>; ruleLaborPct: number; split: boolean } | null
 }
 
 /** The schedule-of-values lines for one letter (its own amount), or [] when there is nothing to say. */
 export function scheduleOfValuesSectionFor(sov: CoverLetterScheduleOfValues | null | undefined): string[] {
   if (!sov) return []
+  if (sov.lines) return buildSovLinesSectionLines(sov.lines.lines, { split: sov.lines.split, ruleLaborPct: sov.lines.ruleLaborPct, totalOnly: sov.totalOnly === true })
   const letter = scheduleOfValuesLetter(sov.summary, sov.amountDollars)
   if (!letter) return []
   const split = sov.split ? splitStageValues(letter, sov.split) : null

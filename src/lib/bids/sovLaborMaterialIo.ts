@@ -11,6 +11,7 @@ import { laborRowRough, laborRowTop, laborRowTrim } from './laborRowHours'
 import { STAGE_KEYS, type StageMoney } from './materialsByStage'
 import type { TakeoffStage } from './bidTakeoffHelpers'
 import { laborCostByStage, parseSovLaborSharePct, type SovStageOverride } from '../bidDocuments/sovLaborMaterial'
+import type { SovLine } from '../bidDocuments/sovLines'
 
 type Client = SupabaseClient<Database>
 
@@ -63,6 +64,26 @@ export async function loadSovStageOverrides(supabase: Client, bidId: string): Pr
     if ((STAGE_KEYS as readonly string[]).includes(r.stage)) out.set(r.stage as TakeoffStage, { labor: r.labor == null ? null : Number(r.labor), note: r.note ?? '' })
   }
   return out
+}
+
+export type SovLineRow = Database['public']['Tables']['bid_sov_lines']['Row']
+
+export function sovLineFromRow(r: Pick<SovLineRow, 'id' | 'sort_order' | 'label' | 'value' | 'labor' | 'note' | 'stage'>): SovLine {
+  return {
+    id: r.id,
+    sortOrder: r.sort_order,
+    label: r.label ?? '',
+    value: Number(r.value) || 0,
+    labor: r.labor == null ? null : Number(r.labor),
+    note: r.note ?? '',
+    stage: r.stage && (STAGE_KEYS as readonly string[]).includes(r.stage) ? (r.stage as TakeoffStage) : null,
+  }
+}
+
+/** The bid's My lines rows, in order (v2.4070). */
+export async function loadSovLines(supabase: Client, bidId: string): Promise<SovLine[]> {
+  const { data } = await supabase.from('bid_sov_lines').select('id, sort_order, label, value, labor, note, stage').eq('bid_id', bidId).order('sort_order').order('created_at')
+  return (data ?? []).map(sovLineFromRow)
 }
 
 /** Everything the split needs for one bid, in one call. */

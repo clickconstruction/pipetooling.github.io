@@ -54,7 +54,9 @@ import { loadMaterialsByStageForBid, type MaterialsByStageDocument } from '../..
 import { buildScheduleOfValuesHtml, materialsByStageLetterRows, scheduleOfValuesLetter, type MaterialsByStageLetterRow } from '../../lib/bidDocuments/scheduleOfValues'
 import { paymentRowsFromStageShares, type StageMoney } from '../../lib/bids/materialsByStage'
 import type { TakeoffStage } from '../../lib/bids/bidTakeoffHelpers'
-import { loadSovSplitInputsForBid, type SovLaborCosts } from '../../lib/bids/sovLaborMaterialIo'
+import { loadSovLines, loadSovSplitInputsForBid, type SovLaborCosts } from '../../lib/bids/sovLaborMaterialIo'
+import { buildSovLinesSheetHtml, seedLinesFromStages, type SovLine, type SovLineSeed } from '../../lib/bidDocuments/sovLines'
+import { CoverLetterSovLinesEditor } from './CoverLetterSovLinesEditor'
 import { splitStageValues, sovSplitTotals, type SovSplitInput, type SovStageOverride } from '../../lib/bidDocuments/sovLaborMaterial'
 import type {
   PriceBookVersion,
@@ -296,6 +298,9 @@ export function BidsCoverLetterTab({
   const [sovOverrides, setSovOverrides] = useState<Map<TakeoffStage, SovStageOverride>>(new Map())
   const [sovLaborDrafts, setSovLaborDrafts] = useState<Partial<Record<TakeoffStage, string>>>({})
   const [sovNoteDrafts, setSovNoteDrafts] = useState<Partial<Record<TakeoffStage, string>>>({})
+  // My lines (v2.4070): the shape on the bid and its rows (kept while the shape is By stage).
+  const [sovShape, setSovShape] = useState<'stage' | 'lines'>('stage')
+  const [sovLines, setSovLines] = useState<SovLine[]>([])
   // Org-editable cover letter text (Settings → Templates & testing → Bid Cover Letter
   // Defaults); null = use the built-in constants.
   const [orgCoverLetterDefaults, setOrgCoverLetterDefaults] = useState<{
@@ -347,6 +352,7 @@ export function BidsCoverLetterTab({
     setScheduleOfValuesEnabled(bid.include_schedule_of_values === true)
     setSovSplitEnabled(bid.sov_split_labor_material === true)
     setSovTotalOnly(bid.sov_letter_total_only === true)
+    setSovShape(bid.sov_shape === 'lines' ? 'lines' : 'stage')
     setSovLaborDrafts({})
     setSovNoteDrafts({})
     setPaymentSchedulePercentDrafts({})
@@ -479,6 +485,45 @@ export function BidsCoverLetterTab({
     }
   }, [sovSplitBidId])
 
+  // The lines are read whenever the schedule is on, so a shape switch is instant and nothing is lost either way.
+  const sovLinesBidId = scheduleOfValuesEnabled ? (selectedBidForPricing?.id ?? null) : null
+  useEffect(() => {
+    if (!sovLinesBidId) {
+      setSovLines([])
+      return
+    }
+    let cancelled = false
+    void loadSovLines(supabase, sovLinesBidId).then((rows) => {
+      if (!cancelled) setSovLines(rows)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [sovLinesBidId])
+
+  async function reloadSovLines(bidId: string) {
+    setSovLines(await loadSovLines(supabase, bidId))
+  }
+
+  /** By stage ↔ My lines. The first switch to My lines seeds the three stages as they stand now. */
+  async function setSovShapeOnBid(bid: BidWithBuilder, next: 'stage' | 'lines', seeds: SovLineSeed[] | null) {
+    if (next === sovShape) return
+    const before = sovShape
+    setSovShape(next)
+    const { data: rows, error } = await supabase.from('bids').update({ sov_shape: next }).eq('id', bid.id).select('id')
+    if (error || bidUpdateRefused(rows)) {
+      setSovShape(before)
+      showToast(error ? 'Error updating bid: ' + error.message : BID_UPDATE_NOT_APPLIED_MESSAGE, 'error')
+      return
+    }
+    if (next === 'lines' && sovLines.length === 0 && seeds && seeds.length > 0) {
+      const { error: seedErr } = await supabase.from('bid_sov_lines').insert(seeds.map((sd) => ({ bid_id: bid.id, sort_order: sd.sortOrder, label: sd.label, value: sd.value, labor: sd.labor, note: sd.note, stage: sd.stage })))
+      if (seedErr) showToast('Could not seed the lines: ' + seedErr.message, 'error')
+      await reloadSovLines(bid.id)
+    }
+    void loadBids()
+  }
+
   async function toggleSovSplit(bid: BidWithBuilder) {
     const next = !sovSplitEnabled
     setSovSplitEnabled(next)
@@ -568,6 +613,19 @@ export function BidsCoverLetterTab({
   // The full two-page schedule (the Takeoffs print) with its "Of contract" column filled from the
   // letter's amount — the Takeoffs tab has no priced total, so the column is offered from here.
   function printScheduleOfValuesOfContract(bid: BidWithBuilder, amountDollars: number, split: SovSplitInput | null) {
+    if (sovShape === 'lines') {
+      printHtmlInNewWindow(
+        buildSovLinesSheetHtml({
+          title: `${bidDisplayName(bid) || 'Bid'} — Schedule of values`,
+          subtitle: `${bid.project_name ?? ''}${bid.project_name ? ' · ' : ''}contract $${formatCurrency(amountDollars)} · for progress billing only`,
+          lines: sovLines,
+          contractAmount: amountDollars,
+          split: sovSplitEnabled,
+          ruleLaborPct: sovRuleLaborPct,
+        }),
+      )
+      return
+    }
     if (!materialsByStageDoc) return
     const summary = materialsByStageDoc.summary
     const letter = scheduleOfValuesLetter(summary, amountDollars)
@@ -1106,10 +1164,15 @@ export function BidsCoverLetterTab({
         const sovSplitInput: SovSplitInput | null = scheduleOfValuesEnabled && sovSplitEnabled && sovCosts && materialsByStageDoc
           ? { costs: { labor: sovCosts.labor, material: materialsByStageDoc.summary.scaled }, ruleLaborPct: sovRuleLaborPct, overrides: sovOverrides }
           : null
-        const scheduleOfValuesForLetter = (amountDollars: number) => scheduleOfValuesEnabled && materialsByStageDoc ? { summary: materialsByStageDoc.summary, amountDollars, split: sovSplitInput, totalOnly: sovTotalOnly } : null
+        const sovLinesForLetter = sovShape === 'lines' ? { lines: sovLines, ruleLaborPct: sovRuleLaborPct, split: sovSplitEnabled } : null
+        const scheduleOfValuesForLetter = (amountDollars: number) =>
+          scheduleOfValuesEnabled && (materialsByStageDoc || sovLinesForLetter)
+            ? { summary: materialsByStageDoc?.summary ?? { byStage: { rough_in: 0, top_out: 0, trim_set: 0 }, assignedRaw: 0 }, amountDollars, split: sovSplitInput, totalOnly: sovTotalOnly, lines: sovLinesForLetter }
+            : null
         const scheduleOfValuesPreview = scheduleOfValuesEnabled && materialsByStageDoc ? scheduleOfValuesLetter(materialsByStageDoc.summary, effectiveRevenue) : null
         const sovSplitPreview = scheduleOfValuesPreview && sovSplitInput ? splitStageValues(scheduleOfValuesPreview, sovSplitInput) : null
         const sovSplitPreviewTotals = sovSplitPreview ? sovSplitTotals(sovSplitPreview) : null
+        const sovSeeds: SovLineSeed[] | null = scheduleOfValuesPreview ? seedLinesFromStages(scheduleOfValuesPreview, sovSplitPreview) : null
         // Multi-GC (v2.1159): group bundled sections by effective GC (version
         // override ?? bid GC). The preview / Print / Copy operate on ONE
         // packet at a time, so a document mixing GCs can never exist.
@@ -1704,8 +1767,23 @@ export function BidsCoverLetterTab({
                       <BidBasisCard bid={bid} exports={bidBasisExports} />
                       {scheduleOfValuesEnabled && (
                         <div data-testid="cover-letter-schedule-of-values" style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '0.6rem 0.7rem', marginBottom: '0.7rem' }}>
-                          <span style={studioFieldLabelStyle}>Schedule of values · ${formatCurrency(effectiveRevenue)} by stage</span>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem 1rem', marginBottom: '0.45rem', fontSize: '0.78rem' }}>
+                          <span style={studioFieldLabelStyle}>Schedule of values · ${formatCurrency(effectiveRevenue)} · {sovShape === 'lines' ? 'my lines' : 'by stage'}</span>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem 1rem', marginBottom: '0.45rem', fontSize: '0.78rem', alignItems: 'center' }}>
+                            <span role="radiogroup" aria-label="Schedule shape" style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden' }}>
+                              {(['stage', 'lines'] as const).map((shape) => (
+                                <button
+                                  key={shape}
+                                  type="button"
+                                  role="radio"
+                                  aria-checked={sovShape === shape}
+                                  onClick={() => void setSovShapeOnBid(bid, shape, sovSeeds)}
+                                  title={shape === 'stage' ? 'The takeoff writes the three lines and keeps them current' : 'Your own lines, seeded from the stages the first time; kept while you are back on By stage'}
+                                  style={{ padding: '0.2rem 0.6rem', border: 'none', cursor: 'pointer', fontSize: '0.78rem', background: sovShape === shape ? '#3b82f6' : 'var(--surface)', color: sovShape === shape ? '#fff' : 'var(--text-muted)' }}
+                                >
+                                  {shape === 'stage' ? 'By stage' : 'My lines'}
+                                </button>
+                              ))}
+                            </span>
                             <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer' }} title="Each stage's value divided into labor and material by the ratio of the bid's costs; either figure can be typed over">
                               <input type="checkbox" checked={sovSplitEnabled} onChange={() => void toggleSovSplit(bid)} /> Split labor and material
                             </label>
@@ -1713,7 +1791,22 @@ export function BidsCoverLetterTab({
                               <input type="checkbox" checked={sovTotalOnly} onChange={() => void toggleSovTotalOnly(bid)} /> Letter shows the total only
                             </label>
                           </div>
-                          {materialsByStageDoc == null ? (
+                          {sovShape === 'lines' ? (
+                            <>
+                              <CoverLetterSovLinesEditor bidId={bid.id} lines={sovLines} contractAmount={effectiveRevenue} splitOn={sovSplitEnabled} ruleLaborPct={sovRuleLaborPct} seeds={sovSeeds} onChanged={() => reloadSovLines(bid.id)} />
+                              <div style={{ marginTop: '0.4rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                {sovSplitEnabled ? `A line with no labor typed takes the company labor share (${sovRuleLaborPct}%). ` : ''}
+                                <button
+                                  type="button"
+                                  onClick={() => printScheduleOfValuesOfContract(bid, effectiveRevenue, sovSplitInput)}
+                                  title="Print the schedule in the pay-application form: #, description, (labor, material,) scheduled value, notes"
+                                  style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: '0.75rem', color: 'var(--text-blue-700)', textDecoration: 'underline', textUnderlineOffset: 2 }}
+                                >
+                                  Print the schedule
+                                </button>
+                              </div>
+                            </>
+                          ) : materialsByStageDoc == null ? (
                             <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Reading the takeoff's stages…</div>
                           ) : scheduleOfValuesPreview == null ? (
                             <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
@@ -2041,7 +2134,7 @@ export function BidsCoverLetterTab({
                     <div
                       className="cl-preview"
                       data-theme="light"
-                      key={`studio-preview-${bid.id}-${coverLetterIncludeDesignDrawingPlanDateByBid[bid.id] !== false}-${coverLetterIncludeSignatureByBid[bid.id] === true}-${coverLetterIncludeFixturesPerPlanByBid[bid.id] !== false}-${coverLetterUseCustomAmountByBid[bid.id] === true ? coverLetterCustomAmountByBid[bid.id] ?? '' : ''}-${paymentScheduleEnabled}-${scheduleOfValuesEnabled}-${sovSplitEnabled}-${sovTotalOnly}-${[...sovOverrides.entries()].map(([k, v]) => `${k}:${v.labor ?? ''}:${v.note ?? ''}`).join('|')}-${paymentScheduleSorted.map((r) => `${r.timing}:${r.percent}`).join(',')}`}
+                      key={`studio-preview-${bid.id}-${coverLetterIncludeDesignDrawingPlanDateByBid[bid.id] !== false}-${coverLetterIncludeSignatureByBid[bid.id] === true}-${coverLetterIncludeFixturesPerPlanByBid[bid.id] !== false}-${coverLetterUseCustomAmountByBid[bid.id] === true ? coverLetterCustomAmountByBid[bid.id] ?? '' : ''}-${paymentScheduleEnabled}-${scheduleOfValuesEnabled}-${sovSplitEnabled}-${sovTotalOnly}-${sovShape}-${sovLines.map((l) => `${l.id}:${l.label}:${l.value}:${l.labor ?? ''}:${l.note}`).join('|')}-${[...sovOverrides.entries()].map(([k, v]) => `${k}:${v.labor ?? ''}:${v.note ?? ''}`).join('|')}-${paymentScheduleSorted.map((r) => `${r.timing}:${r.percent}`).join(',')}`}
                       style={{
                         background: 'var(--surface)',
                         color: 'var(--text-strong)',
