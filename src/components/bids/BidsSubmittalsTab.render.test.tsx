@@ -232,7 +232,7 @@ describe('BidsSubmittalsTab', () => {
     expect(screen.getByRole('dialog', { name: 'Where this submittal is' })).toBeTruthy()
     const titles: string[] = []
     const missing: string[] = []
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 13; i++) {
       const dialog = screen.getByRole('dialog')
       titles.push(dialog.getAttribute('aria-label') ?? '')
       if (within(dialog).queryByTestId('tour-missing')) missing.push(dialog.getAttribute('aria-label') ?? '')
@@ -252,6 +252,7 @@ describe('BidsSubmittalsTab', () => {
       '5 · Share the review room',
       '6 · Their calls come back here',
       '7 · Resubmit only what came back',
+      '8 · Procure: the log the GC asks for',
     ])
     // On a fresh bid with a schedule, only the strip, the source line and the Build Rev 1 card are on the page.
     expect(missing).toEqual(titles.filter((t) => !['Where this submittal is', '1 · Schedule and picks, on Pricing', '2 · Build Rev 1'].includes(t)))

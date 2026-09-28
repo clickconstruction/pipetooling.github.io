@@ -12,7 +12,7 @@ Bids → **Submittals** (the tab after Cover Letter; office and estimator roles)
 
 ## Where you are
 
-The strip under the bid name, **Where this submittal is**, shows the seven stages as pills: schedule & picks → Build Rev 1 → reasons & sheets → package → share → their call → resubmit. A ✓ is done, blue is where you are, amber is waiting on the reviewer. The line under the pills names the next thing to do and carries the button that does it, so the answer to "what now?" is always the same place. Tap a pill and the page scrolls to that stage's controls and rings them.
+The strip under the bid name, **Where this submittal is**, shows the eight stages as pills: schedule & picks → Build Rev 1 → reasons & sheets → package → share → their call → resubmit → procure. A ✓ is done, blue is where you are, amber is waiting on the reviewer. The line under the pills names the next thing to do and carries the button that does it, so the answer to "what now?" is always the same place. Tap a pill and the page scrolls to that stage's controls and rings them.
 
 New to the page? Tap {{button:outline|Walk me through it ▶}} on the strip (or the {{icon:help}} beside the bid name). It walks every stage in order, ringing what is on the page and explaining what will appear later, so you see the whole road on a fresh bid. The first time a device opens Submittals the strip offers it in a line; **Not now** puts it away for good on that device.
 
