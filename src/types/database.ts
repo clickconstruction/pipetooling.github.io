@@ -4807,6 +4807,88 @@ export type Database = {
         }
         Relationships: []
       }
+      contract_text_reviews: {
+        Row: {
+          created_at: string
+          entry_id: string
+          id: string
+          note: string | null
+          reviewed_by: string
+          reviewed_on: string
+        }
+        Insert: {
+          created_at?: string
+          entry_id: string
+          id?: string
+          note?: string | null
+          reviewed_by: string
+          reviewed_on: string
+        }
+        Update: {
+          created_at?: string
+          entry_id?: string
+          id?: string
+          note?: string | null
+          reviewed_by?: string
+          reviewed_on?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_text_reviews_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contract_text_versions: {
+        Row: {
+          body: string
+          body_format: string
+          change_kind: string
+          changed_at: string
+          changed_by: string | null
+          id: string
+          name: string | null
+          source_key: string
+          source_kind: string
+          version_date: string | null
+        }
+        Insert: {
+          body?: string
+          body_format?: string
+          change_kind: string
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          name?: string | null
+          source_key: string
+          source_kind: string
+          version_date?: string | null
+        }
+        Update: {
+          body?: string
+          body_format?: string
+          change_kind?: string
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          name?: string | null
+          source_key?: string
+          source_kind?: string
+          version_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_text_versions_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cost_batch_ops: {
         Row: {
           after_image: Json | null
@@ -7860,6 +7942,12 @@ export type Database = {
           note: string | null
           temperature: string | null
           week_start: string
+          word_at: string | null
+          word_entered_by: string | null
+          word_entered_by_name: string | null
+          word_from_name: string | null
+          word_from_user_id: string | null
+          word_heard_via: string | null
         }
         Insert: {
           acted_at?: string
@@ -7873,6 +7961,12 @@ export type Database = {
           note?: string | null
           temperature?: string | null
           week_start: string
+          word_at?: string | null
+          word_entered_by?: string | null
+          word_entered_by_name?: string | null
+          word_from_name?: string | null
+          word_from_user_id?: string | null
+          word_heard_via?: string | null
         }
         Update: {
           acted_at?: string
@@ -7886,6 +7980,12 @@ export type Database = {
           note?: string | null
           temperature?: string | null
           week_start?: string
+          word_at?: string | null
+          word_entered_by?: string | null
+          word_entered_by_name?: string | null
+          word_from_name?: string | null
+          word_from_user_id?: string | null
+          word_heard_via?: string | null
         }
         Relationships: [
           {
@@ -7900,6 +8000,159 @@ export type Database = {
             columns: ["gc_customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_statement_round_marks_word_entered_by_fkey"
+            columns: ["word_entered_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_statement_round_marks_word_from_user_id_fkey"
+            columns: ["word_from_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gc_word_ask_answers: {
+        Row: {
+          answered_at: string
+          ask_id: string
+          decided_at: string | null
+          decided_by: string | null
+          decided_by_name: string | null
+          expected_pay_by: string | null
+          gc_customer_id: string
+          id: string
+          no_change: boolean
+          note: string
+          status: string
+          temperature: string | null
+        }
+        Insert: {
+          answered_at?: string
+          ask_id: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decided_by_name?: string | null
+          expected_pay_by?: string | null
+          gc_customer_id: string
+          id?: string
+          no_change?: boolean
+          note?: string
+          status?: string
+          temperature?: string | null
+        }
+        Update: {
+          answered_at?: string
+          ask_id?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decided_by_name?: string | null
+          expected_pay_by?: string | null
+          gc_customer_id?: string
+          id?: string
+          no_change?: boolean
+          note?: string
+          status?: string
+          temperature?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_word_ask_answers_ask_id_fkey"
+            columns: ["ask_id"]
+            isOneToOne: false
+            referencedRelation: "gc_word_asks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_word_ask_answers_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_word_ask_answers_gc_customer_id_fkey"
+            columns: ["gc_customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gc_word_asks: {
+        Row: {
+          answered_at: string | null
+          created_at: string
+          created_by: string | null
+          created_by_name: string
+          emailed_at: string | null
+          emailed_to: string | null
+          expires_at: string
+          gc_ids: string[]
+          id: string
+          opened_at: string | null
+          owner_name: string
+          owner_user_id: string
+          revoked_at: string | null
+          token: string | null
+          token_hash: string | null
+          week_start: string
+        }
+        Insert: {
+          answered_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string
+          emailed_at?: string | null
+          emailed_to?: string | null
+          expires_at: string
+          gc_ids?: string[]
+          id?: string
+          opened_at?: string | null
+          owner_name?: string
+          owner_user_id: string
+          revoked_at?: string | null
+          token?: string | null
+          token_hash?: string | null
+          week_start: string
+        }
+        Update: {
+          answered_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string
+          emailed_at?: string | null
+          emailed_to?: string | null
+          expires_at?: string
+          gc_ids?: string[]
+          id?: string
+          opened_at?: string | null
+          owner_name?: string
+          owner_user_id?: string
+          revoked_at?: string | null
+          token?: string | null
+          token_hash?: string | null
+          week_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_word_asks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_word_asks_owner_user_id_fkey"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -22299,6 +22552,7 @@ export type Database = {
         Args: { p_stripe_payment_intent_id: string }
         Returns: Json
       }
+      contract_text_setting_keys: { Args: never; Returns: string[] }
       copy_workflow_step: {
         Args: { p_insert_after_sequence: number; p_step_id: string }
         Returns: Json
@@ -22811,6 +23065,7 @@ export type Database = {
       get_my_partner_ledger: { Args: { p_weeks?: number }; Returns: Json }
       get_my_partner_summary: { Args: never; Returns: Json }
       get_my_statement_round: { Args: never; Returns: Json }
+      get_my_statement_week: { Args: never; Returns: Json }
       get_paid_job_email_payload: { Args: { p_job_id: string }; Returns: Json }
       get_paid_profit_stats: { Args: never; Returns: Json }
       get_partner_bid_estimating_hours: {
@@ -22877,6 +23132,7 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: Json
       }
+      get_statement_week_for_office: { Args: never; Returns: Json }
       get_supervised_days_payload: {
         Args: { p_from: string; p_to: string }
         Returns: Json
@@ -24204,6 +24460,14 @@ export type Database = {
         Args: { p_audience?: string; p_customer_id: string; p_rotate?: boolean }
         Returns: Json
       }
+      mint_gc_word_ask: {
+        Args: {
+          p_gc_ids: string[]
+          p_owner_user_id: string
+          p_rotate?: boolean
+        }
+        Returns: Json
+      }
       mint_labor_rows_from_book: { Args: { p_bid_id: string }; Returns: number }
       mint_legal_portal_link: {
         Args: { p_firm_id: string; p_rotate?: boolean }
@@ -24586,6 +24850,7 @@ export type Database = {
         Args: { p_audience?: string; p_customer_id: string }
         Returns: Json
       }
+      revoke_gc_word_ask: { Args: { p_ask_id: string }; Returns: Json }
       revoke_legal_portal_link: { Args: { p_firm_id: string }; Returns: Json }
       revoke_sub_portal_link: { Args: { p_person_id: string }; Returns: Json }
       salary_schedule_staff_or_self_target: {
