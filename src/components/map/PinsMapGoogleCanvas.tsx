@@ -42,6 +42,7 @@ import {
 import type { PinsMapCanvasProps } from './PinsMapCanvas'
 import { clusterBounds, clusterLabel, clusterPins, clusterRadiusPx, type PinCluster } from '../../lib/map/clusterPins'
 import { mapPulseTarget } from '../../lib/map/pulseTarget'
+import { googleScrollwheelOption } from '../../lib/map/scrollZoomGate'
 
 export type PinsMapGoogleCanvasProps = PinsMapCanvasProps & {
   apiKey: string
@@ -318,9 +319,13 @@ export default function PinsMapGoogleCanvas(props: PinsMapGoogleCanvasProps) {
     }
   }, [onUnavailable])
   const first = pins[0] ?? anchor ?? null
+  // The wheel gate: the capture phase sees a press anywhere in the frame — the map, a pin, the + / − buttons.
+  const [mapClicked, setMapClicked] = useState(false)
+  const gated = props.scrollZoomAfterClick === true
+  const scrollwheel = googleScrollwheelOption({ isMobile, afterClick: gated, clicked: mapClicked })
   return (
     <GoogleCanvasBoundary onUnavailable={onUnavailable}>
-      <div ref={frameRef} style={{ width: '100%', height }}>
+      <div ref={frameRef} style={{ width: '100%', height }} onPointerDownCapture={gated && !mapClicked ? () => setMapClicked(true) : undefined}>
         <APIProvider apiKey={apiKey} onLoad={() => setLoaded(true)} onError={(e) => onUnavailable(`load: ${e instanceof Error ? e.message : String(e)}`)}>
           <GoogleMap
             style={{ width: '100%', height }}
@@ -328,6 +333,8 @@ export default function PinsMapGoogleCanvas(props: PinsMapGoogleCanvasProps) {
             defaultZoom={first ? 12 : 4}
             colorScheme={googleColorSchemeForTheme(theme)}
             gestureHandling={isMobile ? 'cooperative' : 'greedy'}
+            // Spread, so a map without the gate never sends the option at all
+            {...(scrollwheel === undefined ? {} : { scrollwheel })}
             disableDefaultUI
             zoomControl
             clickableIcons={false}

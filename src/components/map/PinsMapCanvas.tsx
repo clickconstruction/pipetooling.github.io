@@ -10,12 +10,13 @@
  * page bundles (the /map route chunk already carries it; Vite shares the
  * vendor chunk).
  */
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { Circle, CircleMarker, MapContainer, Marker, Popup, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet'
 import { clusterBounds, clusterLabel, clusterPins, clusterRadiusPx, type PinCluster } from '../../lib/map/clusterPins'
 import { mapPulseTarget } from '../../lib/map/pulseTarget'
+import { leafletScrollWheelZoom } from '../../lib/map/scrollZoomGate'
 import { mapPointsBounds, type MapPoint } from '../../lib/map/mapPointsBounds'
 import {
   MAP_CANVAS_ANCHOR_COLOR,
@@ -46,6 +47,27 @@ export type PinsMapCanvasProps = {
   clusterRingPriority?: readonly string[]
   /** v2.3251: the pin (or the cluster holding it) to ring with a pulsing halo — the Bid Board's row hover. */
   pulseId?: string | null
+  /** For a map inside a scrolling page: the wheel scrolls the page until the map is clicked once (desktop; + / − and dragging work from the start). */
+  scrollZoomAfterClick?: boolean
+}
+
+/**
+ * The wheel gate. `MapContainer` reads `scrollWheelZoom` only when it mounts, so the handler is
+ * switched on the map itself. The listener is on the capture phase: Leaflet stops a press on
+ * its + / − buttons from bubbling, and a press there counts as a click on the map.
+ */
+function ScrollZoomGate({ wheelZooms, onMapClick }: { wheelZooms: boolean; onMapClick: () => void }) {
+  const map = useMap()
+  useEffect(() => {
+    if (wheelZooms) map.scrollWheelZoom.enable()
+    else map.scrollWheelZoom.disable()
+  }, [map, wheelZooms])
+  useEffect(() => {
+    const el = map.getContainer()
+    el.addEventListener('pointerdown', onMapClick, { capture: true })
+    return () => el.removeEventListener('pointerdown', onMapClick, { capture: true })
+  }, [map, onMapClick])
+  return null
 }
 
 /** Reports the map's zoom so the cluster grid can follow it. */
@@ -118,20 +140,24 @@ const ANCHOR_ICON = L.divIcon({
   iconAnchor: [8, 8],
 })
 
-export default function PinsMapCanvas({ pins, selectedId, onSelect, renderPopup, fitSignal, height, isMobile, anchor, fitPoints, cluster = false, clusterRingPriority, pulseId }: PinsMapCanvasProps) {
+export default function PinsMapCanvas({ pins, selectedId, onSelect, renderPopup, fitSignal, height, isMobile, anchor, fitPoints, cluster = false, clusterRingPriority, pulseId, scrollZoomAfterClick = false }: PinsMapCanvasProps) {
   const first = pins[0] ?? anchor ?? null
   const [zoom, setZoom] = useState(12)
+  const [mapClicked, setMapClicked] = useState(false)
+  const markMapClicked = useCallback(() => setMapClicked(true), [])
+  const wheelZooms = leafletScrollWheelZoom({ isMobile, afterClick: scrollZoomAfterClick, clicked: mapClicked })
   const items = useMemo(() => (cluster ? clusterPins(pins, zoom, { ringPriority: clusterRingPriority }) : null), [cluster, pins, zoom, clusterRingPriority])
   const singlePins = items ? items.flatMap((i) => (i.kind === 'pin' ? [i.pin] : [])) : pins
   const clusters = items ? items.flatMap((i) => (i.kind === 'cluster' ? [i.cluster] : [])) : []
   const pulse = mapPulseTarget(pins, items, pulseId)
   const center: L.LatLngExpression = first ? [first.lat, first.lng] : [39.5, -98.35]
   return (
-    <MapContainer center={center} zoom={first ? 12 : 4} style={{ width: '100%', height }} scrollWheelZoom={!isMobile} attributionControl>
+    <MapContainer center={center} zoom={first ? 12 : 4} style={{ width: '100%', height }} scrollWheelZoom={wheelZooms} attributionControl>
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
+      {scrollZoomAfterClick && !isMobile ? <ScrollZoomGate wheelZooms={wheelZooms} onMapClick={markMapClicked} /> : null}
       <FitToPoints points={mapCanvasFitPoints(pins, anchor, fitPoints)} fitSignal={fitSignal} />
       {cluster ? <ZoomTracker onZoom={setZoom} /> : null}
       {anchor ? (
