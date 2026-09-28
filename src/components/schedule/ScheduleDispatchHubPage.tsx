@@ -63,8 +63,8 @@ import { ScheduleDispatchHub } from './ScheduleDispatchHub'
 import { ScheduleShareModal } from './ScheduleShareModal'
 import type { ScheduleDispatchCardPlacementMode, ScheduleDispatchCardPlacementVariant } from './ScheduleDispatchGrid'
 import {
-  aggregateWeekSummariesByJob,
   blocksToJobWeekSummaries,
+  buildHubMergedRows,
   buildPersonDayBlockMap,
   fetchArchivedUserIdSetForIds,
   hubPersonDayKey,
@@ -607,25 +607,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
 
   const getHubJobAddress = useCallback((id: string) => hubJobAddressById.get(id) ?? '', [hubJobAddressById])
 
-  const hubMergedRows = useMemo(() => {
-    const agg = aggregateWeekSummariesByJob(hubSummaryRows)
-    const rows = hubJobs.map((j) => {
-      const s = agg.get(j.id) ?? { total: 0, byDay: {} }
-      return {
-        ...j,
-        displayTitle: formatScheduleDispatchHubJobTitle(j.hcp_number, j.job_name, j.click_number),
-        totalBlocks: s.total,
-        byDay: { ...s.byDay },
-      }
-    })
-    rows.sort((a, b) => {
-      if (b.totalBlocks !== a.totalBlocks) return b.totalBlocks - a.totalBlocks
-      const ha = (a.hcp_number ?? '').trim()
-      const hb = (b.hcp_number ?? '').trim()
-      return hb.localeCompare(ha, undefined, { numeric: true })
-    })
-    return rows
-  }, [hubJobs, hubSummaryRows])
+  const hubMergedRows = useMemo(() => buildHubMergedRows(hubJobs, hubSummaryRows), [hubJobs, hubSummaryRows])
 
   const loadHub = useCallback(async (options?: { quiet?: boolean }) => {
     if (jobId) return

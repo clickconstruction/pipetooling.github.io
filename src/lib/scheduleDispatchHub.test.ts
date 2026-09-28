@@ -3,6 +3,7 @@ import type { JobScheduleBlockRow } from './jobScheduleBlocks'
 import {
   aggregateWeekSummariesByJob,
   blocksToJobWeekSummaries,
+  buildHubMergedRows,
   buildPersonDayBlockMap,
   buildScheduleDispatchHubRoster,
   findDuplicateJobAddress,
@@ -267,5 +268,96 @@ describe('formatScheduleDispatchHubBidTitle', () => {
     expect(formatScheduleDispatchHubBidTitle(null, 'Tower West')).toBe('Bid · Tower West')
     expect(formatScheduleDispatchHubBidTitle('375', null)).toBe('B375 · Bid')
     expect(formatScheduleDispatchHubBidTitle('', '  ')).toBe('Bid · Bid')
+  })
+})
+
+describe('buildHubMergedRows', () => {
+  const job = (id: string, hcp: string | null, over: Record<string, unknown> = {}) => ({
+    id,
+    hcp_number: hcp,
+    job_name: `Job ${id}`,
+    project_id: null,
+    ...over,
+  })
+  const blocks = (jobId: string, ...days: string[]) => days.map((work_date) => ({ job_id: jobId, work_date }))
+
+  it('gives every job its week: the total, the count per day and the identity line', () => {
+    const rows = buildHubMergedRows(
+      [job('a', '927', { job_name: 'Berg AirBnb', status: 'working', job_address: '12 Elm' })],
+      blocks('a', '2026-09-28', '2026-09-28', '2026-09-30'),
+    )
+    expect(rows).toEqual([
+      {
+        id: 'a',
+        hcp_number: '927',
+        job_name: 'Berg AirBnb',
+        project_id: null,
+        status: 'working',
+        job_address: '12 Elm',
+        displayTitle: 'J927 · Berg AirBnb',
+        totalBlocks: 3,
+        byDay: { '2026-09-28': 2, '2026-09-30': 1 },
+      },
+    ])
+  })
+
+  it('keeps a job with nothing scheduled, at zero', () => {
+    const rows = buildHubMergedRows([job('a', '927')], [])
+    expect(rows[0]).toMatchObject({ totalBlocks: 0, byDay: {} })
+  })
+
+  it('names a job with no HCP number by its Click number', () => {
+    const rows = buildHubMergedRows([job('a', null, { click_number: '4102', job_name: 'Tower West' })], [])
+    expect(rows[0]?.displayTitle).toBe('J4102 · Tower West')
+  })
+
+  it('puts the busiest job first', () => {
+    const rows = buildHubMergedRows(
+      [job('quiet', '999'), job('busy', '100'), job('middle', '500')],
+      [...blocks('busy', '2026-09-28', '2026-09-29', '2026-09-30'), ...blocks('middle', '2026-09-28')],
+    )
+    expect(rows.map((r) => r.id)).toEqual(['busy', 'middle', 'quiet'])
+  })
+
+  it('breaks a tie by HCP number, highest first, read as a number', () => {
+    const rows = buildHubMergedRows([job('a', '999'), job('b', '1000'), job('c', '85')], [])
+    expect(rows.map((r) => r.hcp_number)).toEqual(['1000', '999', '85'])
+  })
+
+  it('reads the HCP number through surrounding whitespace', () => {
+    const rows = buildHubMergedRows([job('a', ' 85 '), job('b', '900')], [])
+    expect(rows.map((r) => r.id)).toEqual(['b', 'a'])
+  })
+
+  it('puts a job with no HCP number after the ones that have one — the Click number does not rank', () => {
+    const rows = buildHubMergedRows(
+      [job('click', null, { click_number: '9999' }), job('blank', '  '), job('hcp', '12')],
+      [],
+    )
+    expect(rows.map((r) => r.id)).toEqual(['hcp', 'click', 'blank'])
+  })
+
+  it('keeps the arrival order for jobs that tie on both', () => {
+    const rows = buildHubMergedRows([job('first', '927'), job('second', '927'), job('third', '927')], [])
+    expect(rows.map((r) => r.id)).toEqual(['first', 'second', 'third'])
+  })
+
+  it('ignores blocks for a job that is not in the list', () => {
+    const rows = buildHubMergedRows([job('a', '927')], blocks('gone', '2026-09-28', '2026-09-29'))
+    expect(rows).toHaveLength(1)
+    expect(rows[0]?.totalBlocks).toBe(0)
+  })
+
+  it('leaves the jobs it was handed as they were', () => {
+    const jobs = [job('quiet', '100'), job('busy', '50')]
+    const before = JSON.parse(JSON.stringify(jobs))
+    const rows = buildHubMergedRows(jobs, blocks('busy', '2026-09-28'))
+    expect(rows.map((r) => r.id)).toEqual(['busy', 'quiet'])
+    expect(jobs).toEqual(before)
+    expect(jobs.map((j) => j.id)).toEqual(['quiet', 'busy'])
+  })
+
+  it('returns no rows for no jobs', () => {
+    expect(buildHubMergedRows([], blocks('a', '2026-09-28'))).toEqual([])
   })
 })
