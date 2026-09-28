@@ -162,6 +162,9 @@ import { usePendingHoursApprovalsNudge } from '../hooks/usePendingHoursApprovals
 import type { DayEditorSession } from '../lib/myTimeDayTimeline'
 import type { ClockSessionRow } from '../types/clockSessions'
 
+/** The People page is the one caller that needs the App Activity gate resolved. */
+const PEOPLE_PAGE_ACCESS_OPTIONS = { activityViewer: true }
+
 /** Pay History overlays: base layer; nested dialogs (e.g. Record payment from Draft Payroll) must be higher. */
 const Z_PEOPLE_PAY_MODAL = 1100
 const Z_PEOPLE_PAY_MODAL_NESTED = 1200
@@ -323,7 +326,7 @@ export default function People() {
   const hoursTabFirstLoadCycleStartedRef = useRef(false)
   const hoursTableScrollRef = useRef<HTMLDivElement>(null)
   const hoursFocusClearTimeoutRef = useRef<number | null>(null)
-  const { canAccessPay, canAccessVehicles, canAccessHours, canAccessLicenses, canAccessContracts, isDev, isAssistant, canSeePushStatus, canSeeDayBook, canPickDayBookPerson, canSeeWhosWhere, accessResolved } = usePeopleAccess(authUser?.id)
+  const { canAccessPay, canAccessVehicles, canAccessHours, canAccessLicenses, canAccessContracts, isDev, isAssistant, canSeePushStatus, canSeeDayBook, canPickDayBookPerson, canSeeWhosWhere, accessResolved, canSeeActivityTab, activityAccessResolved } = usePeopleAccess(authUser?.id, PEOPLE_PAGE_ACCESS_OPTIONS)
   const canOpenHoursTab = canAccessPay || canAccessHours
   // Role gates that say something (v2.2882): a deep link to a Pay tab this role
   // can't open toasts once and lands on Users — no more tab strip over a blank page.
@@ -336,9 +339,6 @@ export default function People() {
     authUserId: authUser?.id,
     showToast,
   })
-  const [activityAccessResolved, setActivityAccessResolved] = useState(false)
-  const [isActivityViewer, setIsActivityViewer] = useState(false)
-  const canSeeActivityTab = isDev || isActivityViewer
   const {
     payConfig,
     payConfigById,
@@ -930,46 +930,6 @@ export default function People() {
       }
     }
   }, [activeTab, canAccessHours, hoursTabLoading, hoursFocusRequest, hoursDateStart, hoursDateEnd])
-
-  useEffect(() => {
-    if (!authUser?.id) {
-      setActivityAccessResolved(false)
-      setIsActivityViewer(false)
-      return
-    }
-    let cancelled = false
-    setActivityAccessResolved(false)
-    void (async () => {
-      try {
-        const { data: me } = await supabase.from('users').select('role').eq('id', authUser.id).single()
-        const role = (me as { role?: string } | null)?.role
-        if (role === 'dev') {
-          if (!cancelled) {
-            setIsActivityViewer(false)
-            setActivityAccessResolved(true)
-          }
-          return
-        }
-        const row = await withSupabaseRetry(
-          async () =>
-            await supabase.from('user_app_activity_viewers').select('viewer_user_id').eq('viewer_user_id', authUser.id).maybeSingle(),
-          'activity viewer check'
-        )
-        if (!cancelled) {
-          setIsActivityViewer(!!row)
-          setActivityAccessResolved(true)
-        }
-      } catch {
-        if (!cancelled) {
-          setIsActivityViewer(false)
-          setActivityAccessResolved(true)
-        }
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [authUser?.id])
 
   const canEditCrewJobs = canAccessPay || (isAssistantLike(authUserRole) && canAccessHours)
 

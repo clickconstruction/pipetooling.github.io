@@ -1,14 +1,20 @@
 import { useEffect, useState } from 'react'
 import { canOpenDayBook } from '../lib/people/dayBookAccess'
 import { supabase } from '../lib/supabase'
+import { withSupabaseRetry } from '../utils/errorHandling'
 
 /**
  * Owns the access-control flags for the People page. Loads the current user's
  * role and pay/cost-matrix permissions, then exposes the resulting capability
  * flags. The parent component destructures the returned object and derives any
  * additional flags from these values.
+ *
+ * `activityViewer` (the People page only): also resolve who may open App Activity — a dev, or
+ * a user listed in `user_app_activity_viewers` — off the role this hook already reads. Every
+ * other caller leaves it off and the table is never read.
  */
-export function usePeopleAccess(authUserId: string | undefined) {
+export function usePeopleAccess(authUserId: string | undefined, options?: { activityViewer?: boolean }) {
+  const wantsActivityViewer = options?.activityViewer === true
   const [canAccessPay, setCanAccessPay] = useState(false)
   const [canAccessVehicles, setCanAccessVehicles] = useState(false)
   const [canAccessHours, setCanAccessHours] = useState(false)
@@ -33,19 +39,51 @@ export function usePeopleAccess(authUserId: string | undefined) {
    * a dev's cold deep link to Users — gate only after `accessResolved`.
    */
   const [accessResolved, setAccessResolved] = useState(false)
+  /** True once `isActivityViewer` reflects the signed-in user; the Activity tab shows Loading… until then. */
+  const [activityAccessResolved, setActivityAccessResolved] = useState(false)
+  const [isActivityViewer, setIsActivityViewer] = useState(false)
 
   useEffect(() => {
+    let cancelled = false
+    function settleActivityViewer(isViewer: boolean) {
+      if (cancelled) return
+      setIsActivityViewer(isViewer)
+      setActivityAccessResolved(true)
+    }
+    if (wantsActivityViewer) {
+      setActivityAccessResolved(false)
+      if (!authUserId) setIsActivityViewer(false)
+    }
+    async function loadActivityViewer(role: string | null) {
+      if (!authUserId) return
+      if (role === 'dev') {
+        settleActivityViewer(false)
+        return
+      }
+      try {
+        const row = await withSupabaseRetry(
+          async () =>
+            await supabase.from('user_app_activity_viewers').select('viewer_user_id').eq('viewer_user_id', authUserId).maybeSingle(),
+          'activity viewer check'
+        )
+        settleActivityViewer(!!row)
+      } catch {
+        settleActivityViewer(false)
+      }
+    }
     async function loadPayAccess() {
       if (!authUserId) return
       const [meRes, approvedRes] = await Promise.all([
         supabase.from('users').select('role').eq('id', authUserId).single(),
         supabase.from('pay_approved_masters').select('master_id'),
       ])
+      const role = (meRes.data as { role?: string } | null)?.role ?? null
       applyRole(
-        (meRes.data as { role?: string } | null)?.role ?? null,
+        role,
         new Set((approvedRes.data ?? []).map((r: { master_id: string }) => r.master_id)),
       )
       setAccessResolved(true)
+      if (wantsActivityViewer) await loadActivityViewer(role)
     }
     function applyRole(role: string | null, approvedIds: Set<string>) {
       if (!authUserId) return
@@ -102,8 +140,14 @@ export function usePeopleAccess(authUserId: string | undefined) {
         }
       }
     }
-    loadPayAccess()
-  }, [authUserId])
+    loadPayAccess().catch(() => {
+      // A failed role read leaves the pay flags as they were; the Activity tab still has to stop loading.
+      if (wantsActivityViewer) settleActivityViewer(false)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [authUserId, wantsActivityViewer])
 
   return {
     canAccessPay,
@@ -118,5 +162,7 @@ export function usePeopleAccess(authUserId: string | undefined) {
     canPickDayBookPerson,
     canSeeWhosWhere,
     accessResolved,
+    canSeeActivityTab: isDev || isActivityViewer,
+    activityAccessResolved,
   }
 }
