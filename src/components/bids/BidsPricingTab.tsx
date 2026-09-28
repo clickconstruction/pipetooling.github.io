@@ -25,13 +25,7 @@ import { normalizeMaterialsModel } from '../../lib/bids/bidTakeoffHelpers'
 import { alternateCardNumbers, sameGcAlternateVersions } from '../../lib/bids/ownTakeoffAlternates'
 import { nextSortOrder, pickActivePricing } from '../../lib/bids/pickActivePricing'
 import { versionStarringScenario } from '../../lib/bids/starredScenarioGuard'
-import {
-  loadRecentMargins,
-  normalizeMarginTarget,
-  saveRecentMargins,
-  unitPriceForTargetMargin,
-  updateRecentMargins,
-} from '../../lib/bids/applyMarginPricing'
+import { useMarginBrush } from '../../hooks/useMarginBrush'
 import { resolveCurrentPriceBookTemplateId, resolvePriceBookTemplateRoot } from '../../lib/bids/resolveCurrentPriceBookTemplateId'
 import { planBookEditBidOffer, planSiblingCarry, type BookEditBidOffer, type BookEntryPrices } from '../../lib/bids/bookEditBidOffer'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
@@ -521,167 +515,42 @@ export function BidsPricingTab({
   const [wbCellDraft, setWbCellDraft] = useState<{ rowId: string; field: WorkbenchCellField; raw: string } | null>(null)
   // Rows that just saved show a brief green "saved ✓" tag, then it fades.
   const [wbJustSaved, setWbJustSaved] = useState<Record<string, true>>({})
-  // ---- Margin brush (v2.2401, Wendi): pick up the brush, sweep across rows, each one
-  // prices at the chosen margin the instant the brush crosses it. Sweeps paint into
-  // wbPriceDrafts (live totals for free) and commit in one batch on pointer-up via the
-  // same per-row write typed prices use. Held 📌 / fixed-price / no-cost rows are skipped.
-  const [brushArmed, setBrushArmed] = useState(false)
-  const [brushMarginInput, setBrushMarginInput] = useState('50')
-  const [brushCommitting, setBrushCommitting] = useState(false)
-  const [brushStrokeCount, setBrushStrokeCount] = useState(0)
-  /** Last committed sweep: [rowId, previous saved price (null = was unpriced)] — one-level undo. */
-  const [brushUndo, setBrushUndo] = useState<Array<[string, number | null]> | null>(null)
-  const brushStrokeRef = useRef<Map<string, { prev: number | null; next: number }> | null>(null)
-  const brushPaintingRef = useRef(false)
-  const brushMarginVal = () => normalizeMarginTarget(brushMarginInput)
-  function armBrush() {
-    if (!guardPricingWrite()) return
-    setBrushMarginInput(String(recentMargins[0] ?? 50))
-    setBrushArmed(true)
-    // One tool at a time: picking up the brush folds the solver ring away.
-    if (wbSolverOpen) setAndRememberWbSolverOpen(false)
-  }
-  function cancelBrushStroke() {
-    const stroke = brushStrokeRef.current
-    brushStrokeRef.current = null
-    brushPaintingRef.current = false
-    setBrushStrokeCount(0)
-    if (stroke && stroke.size > 0) {
-      setWbPriceDrafts((prev) => {
-        const next = { ...prev }
-        for (const rowId of stroke.keys()) delete next[rowId]
-        return next
-      })
-    }
-  }
-  function disarmBrush() {
-    cancelBrushStroke()
-    setBrushArmed(false)
-    setBrushUndo(null)
-  }
-  /** One brush touch on one row — draft the margin price; skips carry no side effects. */
-  function brushPaintAt(
-    clientX: number,
-    clientY: number,
-    rowsForBrush: Array<{ countRow: { id: string }; cost: number; count: number; unitPrice: number | null; isFixedPrice: boolean }>,
-    m: number,
-  ) {
-    const stroke = brushStrokeRef.current
-    if (!stroke) return
-    const el = document.elementFromPoint(clientX, clientY)
-    const tr = el && 'closest' in el ? (el as Element).closest('tr[id^="wb-row-"]') : null
-    if (!tr) return
-    const rowId = tr.id.slice('wb-row-'.length)
-    const row = rowsForBrush.find((r) => r.countRow.id === rowId)
-    if (!row) return
-    if (!(row.cost > 0) || row.isFixedPrice || wbLocks.has(rowId)) return
-    const price = unitPriceForTargetMargin(row.cost, row.count, m)
-    if (price == null) return
-    if (!stroke.has(rowId)) {
-      stroke.set(rowId, { prev: row.unitPrice != null && row.unitPrice > 0 ? row.unitPrice : null, next: price })
-      setBrushStrokeCount([...stroke.values()].filter((v) => v.prev !== v.next).length)
-      setWbPriceDrafts((prev) => (prev[rowId] === String(price) ? prev : { ...prev, [rowId]: String(price) }))
-      setWbSolveLanding(null)
-    }
-  }
-  /** Pointer-up: write every changed row through the typed-price save, then reload once. */
-  async function endBrushStroke() {
-    if (!guardPricingWrite()) return
-    if (!brushPaintingRef.current) return
-    brushPaintingRef.current = false
-    const stroke = brushStrokeRef.current
-    brushStrokeRef.current = null
-    const clearStrokeDrafts = () => {
-      if (!stroke || stroke.size === 0) return
-      setWbPriceDrafts((prev) => {
-        const next = { ...prev }
-        for (const rowId of stroke.keys()) delete next[rowId]
-        return next
-      })
-    }
-    setBrushStrokeCount(0)
-    if (!stroke || stroke.size === 0) return
-    const changed = [...stroke.entries()].filter(([, v]) => v.prev !== v.next)
-    const bidId = selectedBidForPricing?.id
-    const versionId = selectedPricingVersionId
-    if (changed.length === 0 || !bidId || !versionId) {
-      clearStrokeDrafts()
-      return
-    }
-    const m = brushMarginVal()
-    setBrushCommitting(true)
-    try {
-      for (const [rowId, v] of changed) {
-        const err = await writeUnitPriceOverrideRow(rowId, v.next)
-        if (err) {
-          setError(err.message)
-          break
-        }
-      }
-      // Painted prices are saved prices now — drop them from any pending solver preview.
-      if (wbPreview) {
-        const nextPreview = { ...wbPreview }
-        const nextVeto = new Set(wbPreviewVeto)
-        let touched = false
-        for (const [rowId] of changed) {
-          if (rowId in nextPreview) {
-            delete nextPreview[rowId]
-            nextVeto.delete(rowId)
-            touched = true
-          }
-        }
-        if (touched) setAndStashWbPreview(versionId, Object.keys(nextPreview).length > 0 ? nextPreview : null, nextVeto)
-      }
-      await loadBidPricingAssignments(bidId, versionId)
-      await freezeSharedPricingAfterWrite()
-      if (m != null) {
-        const nextRec = updateRecentMargins(recentMargins, m)
-        setRecentMargins(nextRec)
-        saveRecentMargins(window.localStorage, nextRec)
-      }
-      setBrushUndo(changed.map(([rowId, v]) => [rowId, v.prev]))
-      showToast(`Swept ${changed.length} row${changed.length === 1 ? '' : 's'} at ${m}% — sweep again, or Esc puts the brush down.`, 'success')
-    } finally {
-      clearStrokeDrafts()
-      setBrushCommitting(false)
-    }
-  }
-  async function undoBrushSweep() {
-    if (!guardPricingWrite()) return
-    const undo = brushUndo
-    if (!undo || brushCommitting) return
-    const bidId = selectedBidForPricing?.id
-    const versionId = selectedPricingVersionId
-    if (!bidId || !versionId) return
-    setBrushCommitting(true)
-    try {
-      for (const [rowId, prev] of undo) {
-        const err = await writeUnitPriceOverrideRow(rowId, prev)
-        if (err) {
-          setError(err.message)
-          break
-        }
-      }
-      await loadBidPricingAssignments(bidId, versionId)
-      await freezeSharedPricingAfterWrite()
-      setBrushUndo(null)
-      showToast('Sweep undone.', 'success')
-    } finally {
-      setBrushCommitting(false)
-    }
-  }
-  useEffect(() => {
-    if (!brushArmed) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        cancelBrushStroke()
-        disarmBrush()
-      }
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [brushArmed])
+  // ---- Margin brush (v2.2401, Wendi): the state, the stroke, the recent margins, the handlers
+  // and the grid's pointer handlers live in the hook (the Pricing / Labor map's step 8). It is
+  // called where the brush block stood, so the Escape effect keeps its place among the tab's.
+  const {
+    brushArmed,
+    brushMarginInput,
+    setBrushMarginInput,
+    brushMargin,
+    brushCommitting,
+    brushStrokeCount,
+    brushUndo,
+    recentMargins,
+    armBrush,
+    disarmBrush,
+    undoBrushSweep,
+    gridPointerHandlers: brushGridPointerHandlers,
+  } = useMarginBrush({
+    guardPricingWrite,
+    // One tool at a time: picking up the brush folds the solver ring away. Read at click time
+    // (the solver's state is declared further down).
+    foldSolver: () => {
+      if (wbSolverOpen) setAndRememberWbSolverOpen(false)
+    },
+    wbLocks,
+    setWbPriceDrafts,
+    clearSolveLanding: () => setWbSolveLanding(null),
+    bidId: selectedBidForPricing?.id,
+    pricingVersionId: selectedPricingVersionId,
+    writePrice: writeUnitPriceOverrideRow,
+    wbPreview,
+    wbPreviewVeto,
+    setAndStashWbPreview,
+    reloadAssignments: loadBidPricingAssignments,
+    freezeAfterWrite: freezeSharedPricingAfterWrite,
+    setError,
+  })
   // The jump-to-row flash: "Where the profit lives" and the composition bar both send the
   // worksheet to a row — the filters clear, the row flashes for two seconds and scrolls in.
   const [wbFlashRowId, setWbFlashRowId] = useState<string | null>(null)
@@ -1035,9 +904,6 @@ export function BidsPricingTab({
       : await supabase.from('bid_count_row_custom_prices').insert({ bid_id: bidId, count_row_id: countRowId, price_book_version_id: versionId, unit_price: value })
     return res.error
   }
-
-  /* ---- Price by margin (v2.1769; row-by-row Margin mode v2.1772) ---- */
-  const [recentMargins, setRecentMargins] = useState<number[]>(() => loadRecentMargins(window.localStorage))
 
   function openEditPricingVersion(v: PriceBookVersion) {
     setEditingPricingVersion(v)
@@ -3441,11 +3307,11 @@ export function BidsPricingTab({
                       })()}
                       {brushArmed ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', marginTop: '0.5rem', border: '1px solid #ddd6fe', background: '#f5f3ff', color: 'var(--text-violet-700)', borderRadius: 8, padding: '0.35rem 0.7rem', fontSize: '0.78rem', fontWeight: 600 }}>
-                          <span>Sweep across rows to price them at {brushMarginVal() ?? '—'}% — held 📌, fixed-price and no-cost rows are skipped. Esc puts the brush down.</span>
+                          <span>Sweep across rows to price them at {brushMargin ?? '—'}% — held 📌, fixed-price and no-cost rows are skipped. Esc puts the brush down.</span>
                           {brushCommitting ? (
                             <span style={{ marginLeft: 'auto', fontWeight: 800 }}>Saving…</span>
                           ) : brushStrokeCount > 0 ? (
-                            <span style={{ marginLeft: 'auto', fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>Painting {brushStrokeCount} row{brushStrokeCount === 1 ? '' : 's'} @ {brushMarginVal() ?? '—'}%</span>
+                            <span style={{ marginLeft: 'auto', fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>Painting {brushStrokeCount} row{brushStrokeCount === 1 ? '' : 's'} @ {brushMargin ?? '—'}%</span>
                           ) : null}
                         </div>
                       ) : null}
@@ -3591,35 +3457,10 @@ export function BidsPricingTab({
                     <div
                       data-tour="workbench-rows"
                       // Margin brush (v2.2401): armed, the grid is a canvas — capture-phase down
-                      // starts a stroke (and keeps clicks/typing from firing), moves paint every
-                      // row the pointer crosses, up commits the batch. The cursor is the brush
-                      // itself (Font Awesome Free glyph, hotspot at the bristle edge).
-                      onPointerDownCapture={(e) => {
-                        if (!brushArmed || brushCommitting) return
-                        e.preventDefault()
-                        e.stopPropagation()
-                        const m = brushMarginVal()
-                        if (m == null) {
-                          showToast('Load the brush first — margin between 1 and 95.', 'error')
-                          return
-                        }
-                        brushPaintingRef.current = true
-                        brushStrokeRef.current = new Map()
-                        setBrushStrokeCount(0)
-                        try {
-                          e.currentTarget.setPointerCapture(e.pointerId)
-                        } catch {
-                          /* pointer capture unsupported — moves still fire while over the grid */
-                        }
-                        brushPaintAt(e.clientX, e.clientY, eff, m)
-                      }}
-                      onPointerMove={(e) => {
-                        if (!brushPaintingRef.current) return
-                        const m = brushMarginVal()
-                        if (m != null) brushPaintAt(e.clientX, e.clientY, eff, m)
-                      }}
-                      onPointerUp={() => void endBrushStroke()}
-                      onPointerCancel={() => void endBrushStroke()}
+                      // starts a stroke, moves paint every row the pointer crosses, up commits the
+                      // batch (useMarginBrush). The cursor is the brush itself (Font Awesome Free
+                      // glyph, hotspot at the bristle edge).
+                      {...brushGridPointerHandlers(eff)}
                       style={{
                         background: 'var(--surface)',
                         border: brushArmed ? '1px solid #8b5cf6' : '1px solid var(--border)',
