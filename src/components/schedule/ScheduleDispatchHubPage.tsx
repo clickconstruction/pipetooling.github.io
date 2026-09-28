@@ -78,14 +78,13 @@ import {
   fetchUserNamesForIds,
   fetchUsersTabRosterForScheduleDispatchHub,
   findDuplicateJobAddress,
-  formatScheduleDispatchHubBidTitle,
   formatScheduleDispatchHubJobTitle,
   parseHubPersonDayKey,
-  sortJobPickerRowsFinishedLast,
   type ScheduleDispatchHubBidRow,
   type ScheduleDispatchHubJobRow,
 } from '../../lib/scheduleDispatchHub'
 import { buildHourlyWageByUserId, hubWageLookupNames, type HubPayConfigWageRow } from '../../lib/scheduleDispatch/hubWages'
+import { buildHubBidPickerRows, filterHubJobPickerRows, hubJobPickerSubline } from '../../lib/scheduleDispatch/hubJobPicker'
 import {
   fetchJobSearchEvidence,
   jobSearchEvidenceModeForRole,
@@ -98,8 +97,6 @@ import { pickDayForScheduleDispatchUrl } from '../../lib/scheduleDispatchColumnF
 import {
   companyWeekStartSundayContaining,
   denverCalendarDayKey,
-  denverCalendarDaysBetweenInstantAndNow,
-  formatDenverCalendarDayShort,
   formatScheduleDispatchVisibleDateRange,
   getDefaultWeekRange,
   getScheduleDispatchVisibleDayKeys,
@@ -120,8 +117,6 @@ import {
 } from '../../lib/scheduleHiddenBlocks'
 import { clampOfficeEnsureRange, ensureOfficeScheduleBlocks } from '../../lib/dispatchOfficeRoster'
 import { saveEditedScheduleBlockTimes, saveNewScheduleBlockForPersonDay } from '../../lib/scheduleDispatchAddBlockSave'
-import { compareJobsByCreatedAtDesc } from '../../lib/assignJobPickerOrder'
-import { findJobsByNumber } from '../../lib/jobs/stagesJobNumberJump'
 import {
   RemoveScheduleBlockConfirmModal,
   validateScheduleDispatchBlockTimeRange,
@@ -143,23 +138,6 @@ import { ScheduleDispatchUndoNotComingInModal } from './ScheduleDispatchUndoNotC
 import ConfirmDialog from '../ConfirmDialog'
 import { markOffConfirmCopy, ncnsResultToasts, notComingInResultToasts } from '../../lib/scheduleDispatchNotComingInCopy'
 import { removePersonDayBlocks } from '../../lib/scheduleDispatch/removePersonDayBlocks'
-import { stripTrailingZip } from '../../lib/displayAddress'
-
-/** Picker subline: "<N>d Mon D | address" (N calendar days since the job was added, app calendar TZ). Either part optional. */
-function hubJobPickerSubline(r: { created_at?: string | null; job_address?: string | null }): string | undefined {
-  const dt = (r.created_at ?? '').trim()
-  let dateLabel = ''
-  if (dt) {
-    const d = new Date(dt)
-    if (!Number.isNaN(d.getTime())) {
-      const daysAgo = denverCalendarDaysBetweenInstantAndNow(d.getTime())
-      dateLabel = `${daysAgo}d ${formatDenverCalendarDayShort(d.getTime())}`
-    }
-  }
-  const address = stripTrailingZip(r.job_address)
-  if (dateLabel && address) return `${dateLabel} | ${address}`
-  return dateLabel || address || undefined
-}
 
 const SCHEDULE_DISPATCH_HIDE_WEEKEND_STORAGE_KEY = 'scheduleDispatchHideWeekend'
 const SCHEDULE_DISPATCH_HIGHLIGHT_LINKED_GROUPS_KEY = 'scheduleDispatchHighlightLinkedGroups'
@@ -1567,23 +1545,10 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     applyHubMultiCellJob,
   ])
 
-  const hubAssignJobPickerRows = useMemo(() => {
-    const digits = hubAssignJobPickerNumberQuery.replace(/\D/g, '')
-    if (digits !== '') return sortJobPickerRowsFinishedLast(findJobsByNumber(hubMergedRows, digits))
-    const q = hubAssignJobPickerSearch.trim().toLowerCase()
-    let list = hubMergedRows
-    if (q) {
-      list = list.filter(
-        (r) =>
-          (r.hcp_number ?? '').toLowerCase().includes(q) ||
-          (r.job_name ?? '').toLowerCase().includes(q) ||
-          r.displayTitle.toLowerCase().includes(q) ||
-          (r.job_address ?? '').toLowerCase().includes(q) ||
-          (r.customer_name ?? '').toLowerCase().includes(q),
-      )
-    }
-    return sortJobPickerRowsFinishedLast([...list].sort(compareJobsByCreatedAtDesc))
-  }, [hubMergedRows, hubAssignJobPickerSearch, hubAssignJobPickerNumberQuery])
+  const hubAssignJobPickerRows = useMemo(
+    () => filterHubJobPickerRows(hubMergedRows, hubAssignJobPickerSearch, hubAssignJobPickerNumberQuery),
+    [hubMergedRows, hubAssignJobPickerSearch, hubAssignJobPickerNumberQuery],
+  )
 
   /**
    * Bid rows for the assign picker (v2.1613): same generic row shape the modal
@@ -1591,37 +1556,10 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
    * matches bid number / project / address; the digits-only number query
    * matches bid_number.
    */
-  const hubAssignBidPickerRows = useMemo(() => {
-    const digits = hubAssignJobPickerNumberQuery.replace(/\D/g, '')
-    const q = hubAssignJobPickerSearch.trim().toLowerCase()
-    let list = hubBids
-    if (digits !== '') {
-      list = list.filter((b) => (b.bid_number ?? '').replace(/\D/g, '').includes(digits))
-    } else if (q) {
-      list = list.filter(
-        (b) =>
-          (b.bid_number ?? '').toLowerCase().includes(q) ||
-          (b.project_name ?? '').toLowerCase().includes(q) ||
-          (b.address ?? '').toLowerCase().includes(q) ||
-          formatScheduleDispatchHubBidTitle(b.bid_number, b.project_name).toLowerCase().includes(q),
-      )
-    }
-    const blocksThisWeekByBid = new Map<string, number>()
-    for (const blk of hubWeekBlocks) {
-      if (blk.bid_id != null) {
-        blocksThisWeekByBid.set(blk.bid_id, (blocksThisWeekByBid.get(blk.bid_id) ?? 0) + 1)
-      }
-    }
-    return list.map((b) => ({
-      id: `bid:${b.id}`,
-      displayTitle: formatScheduleDispatchHubBidTitle(b.bid_number, b.project_name),
-      serviceTypeName: b.service_type?.name ?? null,
-      subline: hubJobPickerSubline({ created_at: b.created_at, job_address: b.address }),
-      status: 'bid',
-      blocksThisWeek: blocksThisWeekByBid.get(b.id) ?? 0,
-      evidence: null,
-    }))
-  }, [hubBids, hubWeekBlocks, hubAssignJobPickerSearch, hubAssignJobPickerNumberQuery])
+  const hubAssignBidPickerRows = useMemo(
+    () => buildHubBidPickerRows(hubBids, hubWeekBlocks, hubAssignJobPickerSearch, hubAssignJobPickerNumberQuery),
+    [hubBids, hubWeekBlocks, hubAssignJobPickerSearch, hubAssignJobPickerNumberQuery],
+  )
 
   /** Enrich visible picker rows with money-rail evidence — short lists only, debounced, accumulating, failure-silent. */
   useEffect(() => {
