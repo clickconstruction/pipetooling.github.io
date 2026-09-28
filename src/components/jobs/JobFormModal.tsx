@@ -96,6 +96,7 @@ import {
 } from '../../lib/jobs/jobDevelopments'
 import { jobLedgerHasCustomerForBilling } from '../../lib/jobLedgerCustomerForBilling'
 import { revenueDollarsFromFixtures } from '../../lib/revenueFromJobFixtures'
+import { jobFormPaidDollars, jobFormPaymentRemovePreview, jobFormRevenueDollars } from '../../lib/jobs/jobFormMoneyTotals'
 import { buildEditJobBillingBar } from '../../lib/jobs/editJobBillingBar'
 import { MoneyLifecycleBar, PAID_COLOR, BILLED_COLOR, DRAFT_COLOR } from './MoneyLifecycleBar'
 import { useBreakOffSlider } from './useBreakOffSlider'
@@ -555,9 +556,7 @@ export default function JobFormModal({
   )
   const agreedWriteDownInvoicePaidSum = useMemo(() => {
     if (!agreedWriteDownInvoice) return 0
-    return payments
-      .filter((p) => p.invoice_id === agreedWriteDownInvoice.id)
-      .reduce((s, p) => s + (Number(p.amount) || 0), 0)
+    return jobFormPaidDollars(payments.filter((p) => p.invoice_id === agreedWriteDownInvoice.id))
   }, [agreedWriteDownInvoice, payments])
   const [materials, setMaterials] = useState<MaterialRow[]>([{ id: crypto.randomUUID(), description: '', amount: 0 }])
   const [fixturesRaw, setFixturesRaw] = useState<FixtureRow[]>([
@@ -590,7 +589,7 @@ export default function JobFormModal({
   // math, AND the revenue written on save (previously saving recomputed
   // revenue from fixtures alone, silently wiping the fee's revenue bump).
   const riderFeesDollars = useMemo(() => sumHazmatRiderFees(hazmatIncidents), [hazmatIncidents])
-  const jobTotalWithRidersDollars = jobTotalBidDollars + riderFeesDollars
+  const jobTotalWithRidersDollars = useMemo(() => jobFormRevenueDollars(fixtures, riderFeesDollars), [fixtures, riderFeesDollars])
   /** Live money-lifecycle figures for the billing header bar (fixtures total + this form's payments + the job's invoices). */
   const billingBar = useMemo(
     () =>
@@ -625,7 +624,7 @@ export default function JobFormModal({
   // ② strip, locks fully covered rows, and caps segment invoicing at the
   // slider's Remaining. Same payments+invoices basis as useBreakOffSlider.
   const segmentCoverage = useMemo(() => {
-    const paidSum = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)
+    const paidSum = jobFormPaidDollars(payments)
     return dollarCoverageForSegments({
       segments: billingSegments,
       grossDollars: jobTotalWithRidersDollars,
@@ -764,7 +763,7 @@ export default function JobFormModal({
     try {
       const fx = autosaveFixturesRef.current
       const pays = autosavePaymentsRef.current
-      const revNum = revenueDollarsFromFixtures(fx) + autosaveRiderFeesRef.current
+      const revNum = jobFormRevenueDollars(fx, autosaveRiderFeesRef.current)
       // B4 (FRAGILITY_REMEDIATION_PLAN.md): payments_made is a DB-trigger-
       // maintained cache of SUM(jobs_ledger_payments.amount) since B3 — the
       // row rewrite below keeps it in sync; the client no longer writes it.
@@ -1669,8 +1668,8 @@ export default function JobFormModal({
       customers.some((x) => x.id === customerId && !x.date_met)
     )
     if (dateMetNeeded) return true
-    const revNum = revenueDollarsFromFixtures(autosaveFixturesRef.current) + autosaveRiderFeesRef.current
-    const paymentsMadeNum = autosavePaymentsRef.current.reduce((s, p) => s + (Number(p.amount) || 0), 0)
+    const revNum = jobFormRevenueDollars(autosaveFixturesRef.current, autosaveRiderFeesRef.current)
+    const paymentsMadeNum = jobFormPaidDollars(autosavePaymentsRef.current)
     return shouldDemotePaidJobToBilled(normalizeJobsLedgerStatus(editing.status) ?? '', revNum, paymentsMadeNum)
   }
 
@@ -1690,8 +1689,8 @@ export default function JobFormModal({
     } catch (dateMetErr) {
       console.warn('customers.date_met backfill failed', dateMetErr)
     }
-    const revNum = revenueDollarsFromFixtures(autosaveFixturesRef.current) + autosaveRiderFeesRef.current
-    const paymentsMadeNum = autosavePaymentsRef.current.reduce((s, p) => s + (Number(p.amount) || 0), 0)
+    const revNum = jobFormRevenueDollars(autosaveFixturesRef.current, autosaveRiderFeesRef.current)
+    const paymentsMadeNum = jobFormPaidDollars(autosavePaymentsRef.current)
     if (shouldDemotePaidJobToBilled(normalizeJobsLedgerStatus(editing?.status) ?? '', revNum, paymentsMadeNum)) {
       try {
         const data = await withSupabaseRetry(
@@ -2528,17 +2527,10 @@ export default function JobFormModal({
     return formatCurrency(sum)
   }, [materials])
 
-  const paymentRemovePreview = useMemo(() => {
-    if (!paymentRemoveConfirmRowId) return null
-    const row = payments.find((r) => r.id === paymentRemoveConfirmRowId)
-    if (!row) return null
-    const rev = jobTotalWithRidersDollars
-    const paidSum = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)
-    const currentRem = Math.max(0, rev - paidSum)
-    const rowAmt = Number(row.amount) || 0
-    const newRem = Math.max(0, rev - (paidSum - rowAmt))
-    return { rowAmt, jobTotal: rev, currentRem, newRem }
-  }, [paymentRemoveConfirmRowId, payments, jobTotalWithRidersDollars])
+  const paymentRemovePreview = useMemo(
+    () => jobFormPaymentRemovePreview({ rowId: paymentRemoveConfirmRowId, payments, jobTotalDollars: jobTotalWithRidersDollars }),
+    [paymentRemoveConfirmRowId, payments, jobTotalWithRidersDollars],
+  )
 
   const paymentRemoveConfirmsPersistedRpc = useMemo(() => {
     if (!paymentRemoveConfirmRowId || !editing) return false
@@ -2552,8 +2544,7 @@ export default function JobFormModal({
   }, [paymentRemoveConfirmRowId, payments, editing, persistedLedgerPaymentIds])
 
   function getEditJobBillableRemaining(): number {
-    const paidSum = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)
-    return unallocatedBillableDollars(jobTotalWithRidersDollars, paidSum, editing?.invoices, payments)
+    return unallocatedBillableDollars(jobTotalWithRidersDollars, jobFormPaidDollars(payments), editing?.invoices, payments)
   }
 
   async function moveWorkingJobToReadyToBillFromEdit() {
