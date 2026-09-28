@@ -74,6 +74,7 @@ function mount(over: Partial<JobFormPaymentActionsArgs> = {}) {
     cancelPending: vi.fn(),
     isRunning: vi.fn(() => false),
     onSaved: vi.fn(),
+    paymentsRereadFromDb: vi.fn(),
   }
   const hydrated = { current: ['before'] }
   const args: JobFormPaymentActionsArgs = {
@@ -86,6 +87,7 @@ function mount(over: Partial<JobFormPaymentActionsArgs> = {}) {
     removePaymentRow: spies.removePaymentRow,
     billingAutosave: { cancelPending: spies.cancelPending, isRunning: spies.isRunning },
     hydratedPaymentIdsRef: hydrated,
+    paymentsRereadFromDb: spies.paymentsRereadFromDb,
     onSavedRef: { current: spies.onSaved },
     ...over,
   }
@@ -146,6 +148,9 @@ describe('useJobFormPaymentActions — Remove', () => {
     expect(ui.showToast).toHaveBeenCalledWith('Payment removed.', 'success')
     expect(spies.setEditing).toHaveBeenCalledWith(db.found)
     expect(spies.setPayments.mock.calls[0]?.[0]).toMatchObject([{ id: 'p-bank', amount: 500, paid_on: '2026-09-02' }])
+    // The engine is told before the rows are set, so it judges the slice as it stood.
+    expect(spies.paymentsRereadFromDb).toHaveBeenCalledWith(db.found)
+    expect(spies.paymentsRereadFromDb.mock.invocationCallOrder[0]).toBeLessThan(spies.setPayments.mock.invocationCallOrder[0] ?? 0)
     expect(spies.removePaymentRow).not.toHaveBeenCalled()
     expect(spies.onSaved).toHaveBeenCalledTimes(1)
     expect(result.current.paymentRemoveConfirmRowId).toBeNull()
@@ -207,6 +212,7 @@ describe('useJobFormPaymentActions — a payment recorded on the bill', () => {
     expect(spies.setEditing).toHaveBeenCalledWith(db.found)
     expect(spies.setPayments.mock.calls[0]?.[0]).toMatchObject([{ id: 'p-recorded', amount: 200 }])
     expect(hydrated.current).toEqual(['p-recorded'])
+    expect(spies.paymentsRereadFromDb).not.toHaveBeenCalled()
     expect(ui.showToast).toHaveBeenCalledWith('Payment recorded.', 'success')
     expect(spies.onSaved).toHaveBeenCalledTimes(1)
   })
@@ -264,6 +270,7 @@ describe('useJobFormPaymentActions — Unlink and remove', () => {
     expect(db.rpcCalls).toEqual([{ name: 'remove_jobs_ledger_payment_and_reconcile', params: { p_payment_id: 'p-bank' } }])
     expect(ui.showToast).toHaveBeenCalledWith('Payment removed from job. The bank deposit is available in Accounts Receivable again.', 'success')
     expect(spies.setEditing).toHaveBeenCalledWith(db.found)
+    expect(spies.paymentsRereadFromDb).toHaveBeenCalledWith(db.found)
     expect(spies.onSaved).toHaveBeenCalledTimes(1)
     expect(result.current.unlinkingMercuryPaymentId).toBeNull()
   })
