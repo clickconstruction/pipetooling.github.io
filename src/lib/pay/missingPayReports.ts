@@ -29,3 +29,17 @@ export function peopleMissingPayReports(input: {
     return estGross > 0 && !stub
   })
 }
+
+/** The catch-up rows that still have no report right now — a row whose week a report touches is done. */
+export function unreportedRowsStillMissing<T extends { personName: string; weekStart: string; weekEnd: string }>(
+  rows: readonly T[],
+  payStubs: readonly PayReportPeriodStub[],
+): T[] {
+  return rows.filter((r) => !payStubs.some((s) => s.person_name === r.personName && payStubOverlapsPeriod(s, r.weekStart, r.weekEnd)))
+}
+
+/** The first and last day a list of scan weeks (newest first) covers, or `null` for none. */
+export function scanWeeksRange(weeks: ReadonlyArray<{ weekStart: string; weekEnd: string }>): { scanStart: string; scanEnd: string } | null {
+  if (weeks.length === 0) return null
+  return { scanStart: weeks[weeks.length - 1]!.weekStart, scanEnd: weeks[0]!.weekEnd }
+}
