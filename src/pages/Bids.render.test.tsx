@@ -480,6 +480,29 @@ describe('Bids page render smoke — Edit Bid writes', () => {
     expect(bidWrites()).toEqual([])
   })
 
+  it('Go/no-go: the checklist opens over the bid, starts empty every time, and writes nothing', async () => {
+    await openBidOnEdit()
+    const checklist = () => screen.queryByRole('heading', { name: 'Go/no-go checklist' })
+    const boxes = () => screen.getAllByRole('checkbox', { name: /^(LOCATION|PAYMENT TERMS|BID DOCUMENTS|COMPETITION|STRENGTHS)$/ }) as HTMLInputElement[]
+    fireEvent.click(screen.getByRole('button', { name: 'Go/no-go' }))
+    expect(checklist()).toBeTruthy()
+    expect(boxes().map((b) => b.checked)).toEqual([false, false, false, false, false])
+    fireEvent.click(screen.getByRole('checkbox', { name: 'LOCATION' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'COMPETITION' }))
+    expect(boxes().map((b) => b.checked)).toEqual([true, false, false, true, false])
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    expect(checklist()).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Go/no-go' }))
+    expect(boxes().map((b) => b.checked)).toEqual([false, false, false, false, false])
+    fireEvent.click(screen.getByRole('checkbox', { name: 'STRENGTHS' }))
+    fireEvent.click(screen.getByRole('button', { name: '×' }))
+    expect(checklist()).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Go/no-go' }))
+    expect(boxes().every((b) => !b.checked)).toBe(true)
+    expect(bidWindowOpen()).toBe(true)
+    expect(smoke.writes).toEqual([])
+  })
+
   it('Open Counts on an open bid saves the pending change, closes, and lands on its Counts tab', async () => {
     await openBidOnEdit()
     fireEvent.change(projectName()!, { target: { value: 'Pondhill Building 3' } })

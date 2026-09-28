@@ -41,6 +41,8 @@ import { Database } from '../types/database'
 import type { BidWithBuilder } from '../types/bidWithBuilder'
 import { bidAttestationDisplayName } from '../lib/bidDateSentDisplay'
 import { useBidDateSentAttestation } from '../hooks/useBidDateSentAttestation'
+import { BidDeleteConfirmModal } from '../components/bids/BidDeleteConfirmModal'
+import { BidEvaluateChecklistModal } from '../components/bids/BidEvaluateChecklistModal'
 import { BidSentAttestationModal } from '../components/bids/BidSentAttestationModal'
 import { BidsBidBoardTab } from '../components/bids/BidsBidBoardTab'
 import { BidRfiTab } from '../components/bids/BidRfiTab'
@@ -116,62 +118,6 @@ import { MATERIALS_MODEL_CAPTION } from '../lib/bids/bidTakeoffHelpers'
 
 type GcBuilder = Database['public']['Tables']['bids_gc_builders']['Row']
 type Customer = Database['public']['Tables']['customers']['Row']
-
-
-
-type EvaluateChecklistItem = {
-  id: string
-  title: string
-  body: string[]
-}
-
-const evaluateChecklist: EvaluateChecklistItem[] = [
-  {
-    id: 'location',
-    title: 'LOCATION',
-    body: [
-      'Is the bid date feasible to produce a thorough and complete proposal?',
-      'If not, is the potential reward for taking on the risk objectively worth it when our project expects or start? Will present signed from providing our best work on projects we associate with?',
-      '(costs associated with traveling and supervision)',
-    ],
-  },
-  {
-    id: 'payment_terms',
-    title: 'PAYMENT TERMS',
-    body: [
-      "Are we comfortable with the payment terms? Is this a client we've worked with before?",
-      'If not, are the payment terms outlined clearly in the front end docs?',
-      "Do we know we're getting paid?",
-    ],
-  },
-  {
-    id: 'bid_documents',
-    title: 'BID DOCUMENTS',
-    body: [
-      'Are the available bid documents adequate to have a clear understanding of scope?',
-      'Is there a clear procedure for submitting and answering questions?',
-      'Is there a substantial amount of information missing where we would be forced to assume / qualify the bid?',
-    ],
-  },
-  {
-    id: 'competition',
-    title: 'COMPETITION',
-    body: [
-      'Do we know the other bidders on this project?',
-      'Are they familiar competitors? Are any bidders we know from previous projects where bidding against them could be difficult?',
-      'Are they likely to self-perform some or all of the labor that we may be sub-contracting?',
-    ],
-  },
-  {
-    id: 'strengths',
-    title: 'STRENGTHS',
-    body: [
-      'Does this project play to our strengths?',
-      'Are we able to self-perform the work to give ourselves an advantage?',
-      'Do we have specific subcontractors that we know will bid to us, with better pricing on significant scope items?',
-    ],
-  },
-]
 
 export default function Bids() {
   const { user: authUser, profileName, role: authRole } = useAuth()
@@ -313,7 +259,6 @@ export default function Bids() {
   const [bidFormServiceTypeSwitchOpen, setBidFormServiceTypeSwitchOpen] = useState(false)
   const [gcCustomerDropdownOpen, setGcCustomerDropdownOpen] = useState(false)
   const [evaluateModalOpen, setEvaluateModalOpen] = useState(false)
-  const [evaluateChecked, setEvaluateChecked] = useState<{ [key: string]: boolean }>({})
   const [showSentBidScript, setShowSentBidScript] = useState(false)
   const [showBidQuestionScript, setShowBidQuestionScript] = useState(false)
 
@@ -2483,7 +2428,7 @@ export default function Bids() {
           <BidFormModal
             open={bidFormOpen}
             editingBid={editingBid}
-            onOpenEvaluateChecklist={() => { setEvaluateChecked({}); setEvaluateModalOpen(true) }}
+            onOpenEvaluateChecklist={() => setEvaluateModalOpen(true)}
             closeBidForm={closeBidForm}
             saveBid={saveBid}
             form={bidForm}
@@ -2584,44 +2529,15 @@ export default function Bids() {
       {/* Add/Edit Contact Person modal (Builder Review) */}
       {/* Delete bid confirmation modal */}
       {deleteBidModalOpen && editingBid && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
-            <h2 style={{ marginTop: 0 }}>Delete bid</h2>
-            <p style={{ marginBottom: '1rem' }}>
-              {editingBid.project_name
-                ? <>Type the project name <strong>{editingBid.project_name}</strong> to confirm.</>
-                : 'This bid has no project name; leave the field empty to confirm.'}
-            </p>
-            <input
-              type="text"
-              value={deleteConfirmProjectName}
-              onChange={(e) => { setDeleteConfirmProjectName(e.target.value); setError(null) }}
-              placeholder={editingBid.project_name ? 'Project name' : 'No project name'}
-              disabled={deletingBid}
-              style={{ width: '100%', padding: '0.5rem', marginBottom: '1rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-              autoComplete="off"
-            />
-            {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                type="button"
-                onClick={deleteBid}
-                disabled={deletingBid || deleteConfirmProjectName.trim() !== (editingBid.project_name ?? '').trim()}
-                style={{ padding: '0.5rem 1rem', color: 'var(--text-red-700)', background: 'var(--surface)', border: '1px solid #b91c1c', borderRadius: 4, cursor: deletingBid || deleteConfirmProjectName.trim() !== (editingBid.project_name ?? '').trim() ? 'not-allowed' : 'pointer' }}
-              >
-                {deletingBid ? 'Deleting…' : 'Delete bid'}
-              </button>
-              <button
-                type="button"
-                onClick={() => { setDeleteBidModalOpen(false); setDeleteConfirmProjectName(''); setError(null) }}
-                disabled={deletingBid}
-                style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: deletingBid ? 'not-allowed' : 'pointer' }}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
+        <BidDeleteConfirmModal
+          projectName={editingBid.project_name}
+          confirmValue={deleteConfirmProjectName}
+          onConfirmValueChange={(value) => { setDeleteConfirmProjectName(value); setError(null) }}
+          error={error}
+          deleting={deletingBid}
+          onDelete={deleteBid}
+          onCancel={() => { setDeleteBidModalOpen(false); setDeleteConfirmProjectName(''); setError(null) }}
+        />
       )}
 
 
@@ -2659,70 +2575,7 @@ export default function Bids() {
       />
 
       {/* Checklist modal */}
-      {evaluateModalOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-          }}
-        >
-          <div
-            style={{
-              background: 'var(--surface)',
-              padding: '1.5rem',
-              borderRadius: 8,
-              maxWidth: 700,
-              width: '90%',
-              maxHeight: '80vh',
-              overflowY: 'auto',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-              <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Go/no-go checklist</h2>
-              <button
-                type="button"
-                onClick={() => { setEvaluateModalOpen(false); setEvaluateChecked({}) }}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1 }}
-              >
-                ×
-              </button>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {evaluateChecklist.map((item) => (
-                <div key={item.id} style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '0.75rem 1rem' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', fontWeight: 600 }}>
-                    <input
-                      type="checkbox"
-                      checked={!!evaluateChecked[item.id]}
-                      onChange={(e) =>
-                        setEvaluateChecked((prev) => ({ ...prev, [item.id]: e.target.checked }))
-                      }
-                    />
-                    <span>{item.title}</span>
-                  </label>
-                  {item.body.map((line, idx) => (
-                    <p key={idx} style={{ margin: '0.125rem 0', fontSize: '0.9rem' }}>{line}</p>
-                  ))}
-                </div>
-              ))}
-            </div>
-            <div style={{ marginTop: '0.75rem', textAlign: 'right' }}>
-              <button
-                type="button"
-                onClick={() => { setEvaluateModalOpen(false); setEvaluateChecked({}) }}
-                style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {evaluateModalOpen && <BidEvaluateChecklistModal onClose={() => setEvaluateModalOpen(false)} />}
 
       {/* Sent Bid Script modal */}
       {showSentBidScript && (
