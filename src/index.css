@@ -3390,3 +3390,10 @@ button.gcStep:hover > em { text-decoration: underline; }
     display: none;
   }
 }
+
+/* Submittals journey strip (v2.4067): a pill click scrolls to the stage's controls and rings them for a moment. */
+.submittal-journey-flash {
+  box-shadow: 0 0 0 3px #2563eb;
+  border-radius: 6px;
+  transition: box-shadow 0.2s;
+}
