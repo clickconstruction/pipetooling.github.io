@@ -2103,12 +2103,13 @@ Bids table access:
 
 ---
 
-### Submittals tables (v2.3460 · v2.3464 · v2.3465)
+### Submittals tables (v2.3460 · v2.3464 · v2.3465 · v2.4083)
 - `bid_specified_products` — one row per (bid, tag): the schedule's `manufacturer · model · description`, `fixture` (the count-row name it maps to), `source` (`pasted · robot · typed`), `confirmed_by/at`. UNIQUE (bid_id, tag).
 - `bid_quote_lines` + `alternate_reason_kind` · `alternate_reason_note` · `lead_time_days` · `availability` · `product_status_override` — the estimator's answer at the pick, written to every line of the picked cell.
 - `bid_submittals` — one revision per (bid, `rev_number`): `status` (`draft · shared · reviewed · superseded`), `title`, `note`, `package_path`, `source_files` jsonb (the dropped vendor PDFs), `shared_at/by`, `job_ledger_id`.
 - `bid_submittal_items` — one row per tag on a revision: specified × submitted, `status`, `reason_kind/note`, `lead_time_days`, `sheet_file` + `sheet_pages[]` + `sheet_source`, `carried_from_item_id`, the reviewer's `review_decision/note`, name, email, time.
 - `bid_submittal_rooms` · `bid_submittal_people` · `bid_submittal_events` (v2.3485) — the review room per bid, the people on it (role, may_decide, a personal token, how they arrived), the trail; `bid_submittal_items.reviewed_by_person_id`.
+- `bid_procurement_items` · `bid_procurement_updates` (v2.4083, `20260928204228`) — the procurement log under the rows on the newest revision (the strip's eighth pill, **Procure**): per tag (or a hand row) the ordered date, PO, the house's expected date, delivered, note; and each update sent (the snapshot, the changes since the one before, the line, who / to whom). Released = the room's approval, required = the job's stage window through the takeoff's stage, expected = ordered + lead time — derived in [`procurementLog.ts`](../src/lib/submittals/procurementLog.ts), never stored; panel [`SubmittalProcurementPanel.tsx`](../src/components/bids/SubmittalProcurementPanel.tsx).
 - Bucket `bid-submittals` (private): `<bid_id>/<submittal_id>/<index>.pdf`, `package-rev<N>.pdf`. RLS and the bucket policies: the pricing-side roles on bids `can_access_bid_for_pricing` admits (`ACCESS_CONTROL.md` → Submittals).
 
 ## Integration with Materials

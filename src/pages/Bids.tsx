@@ -40,6 +40,7 @@ import { BidsWorkingBoard } from '../components/bids/BidsWorkingBoard'
 import { BidPartyDetailModal } from '../components/bids/BidPartyDetailModal'
 import { BidFormModal } from '../components/bids/BidFormModal'
 import { useBidTradeSwitch } from '../hooks/useBidTradeSwitch'
+import { useBidWindowState } from '../hooks/useBidWindowState'
 import { BidWindowModal } from '../components/bids/BidWindowModal'
 import { BidsEstimatorsTab } from '../components/bids/BidsEstimatorsTab'
 import { Database } from '../types/database'
@@ -299,28 +300,35 @@ export default function Bids() {
   const { packetsByBid: gcPacketsByBid, noteCounts: gcNoteCounts, roomStatesByBid } = useBidGcPackets(bids, bidGcRecipientsByBidId)
 
   // Bid Board
-  const [bidFormOpen, setBidFormOpen] = useState(false)
-  // v2.2390 (Wendi): which face the Bid window opens on — Edit for every Edit-bid
-  // button (the default), Bid for bid-name clicks (they used to open the old
-  // standalone preview on this page).
-  const [bidWindowInitialTab, setBidWindowInitialTab] = useState<'bid' | 'edit'>('edit')
+  // The Bid window's own state (hooks/useBidWindowState): open, face, bid, focus, saving, close guard, refresh key, delete window.
+  const bidWindow = useBidWindowState()
+  const {
+    bidFormOpen,
+    setBidFormOpen,
+    bidWindowInitialTab,
+    setBidWindowInitialTab,
+    pendingBidFormFocus,
+    setPendingBidFormFocus,
+    editingBid,
+    setEditingBid,
+    savingBid,
+    setSavingBid,
+    bidCloseFlushState,
+    setBidCloseFlushState,
+    bidCloseFlushStateRef,
+    bidWindowRefreshKey,
+    setBidWindowRefreshKey,
+    deleteConfirmProjectName,
+    setDeleteConfirmProjectName,
+    deletingBid,
+    setDeletingBid,
+    deleteBidModalOpen,
+    setDeleteBidModalOpen,
+  } = bidWindow
   /** Projects for the bid form's linked-project picker; null = not fetched yet (lazy, on first form open). */
   const [projectsForPicker, setProjectsForPicker] = useState<Array<{ id: string; name: string | null; project_number: string | null }> | null>(null)
-  const [pendingBidFormFocus, setPendingBidFormFocus] = useState<BidFormFocus | null>(null)
-  const [editingBid, setEditingBid] = useState<BidWithBuilder | null>(null)
   const [viewingCustomer, setViewingCustomer] = useState<Customer | null>(null)
   const [viewingGcBuilder, setViewingGcBuilder] = useState<GcBuilder | null>(null)
-  const [savingBid, setSavingBid] = useState(false)
-  // Edit Bid autosave (v2.3130): the Bid window's Edit tab writes each change on its own; the
-  // close guard flushes a pending write and holds the window open when that fails.
-  const [bidCloseFlushState, setBidCloseFlushState] = useState<'idle' | 'saving' | 'error'>('idle')
-  const bidCloseFlushStateRef = useRef(bidCloseFlushState)
-  bidCloseFlushStateRef.current = bidCloseFlushState
-  /** Bumped after every autosave so the window's Bid tab re-reads the row. */
-  const [bidWindowRefreshKey, setBidWindowRefreshKey] = useState(0)
-  const [deleteConfirmProjectName, setDeleteConfirmProjectName] = useState('')
-  const [deletingBid, setDeletingBid] = useState(false)
-  const [deleteBidModalOpen, setDeleteBidModalOpen] = useState(false)
   const [bidFormServiceTypeSwitchOpen, setBidFormServiceTypeSwitchOpen] = useState(false)
   const [gcCustomerDropdownOpen, setGcCustomerDropdownOpen] = useState(false)
   const [evaluateModalOpen, setEvaluateModalOpen] = useState(false)
@@ -783,7 +791,7 @@ export default function Bids() {
       setPendingBidFormFocus(null)
     }, 50)
     return () => window.clearTimeout(timeoutId)
-  }, [bidFormOpen, pendingBidFormFocus])
+  }, [bidFormOpen, pendingBidFormFocus, setPendingBidFormFocus])
 
   const archiveWorkingBoardBid = useCallback(
     async (bidId: string) => {

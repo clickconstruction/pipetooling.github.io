@@ -219,7 +219,7 @@ describe('BidsSubmittalsTab', () => {
     mount()
     expect(await screen.findByText('No submittal on this bid yet')).toBeTruthy()
     const pills = screen.getAllByTestId('journey-stage')
-    expect(pills.map((p) => p.getAttribute('data-status'))).toEqual(['done', 'current', 'later', 'later', 'later', 'later', 'later'])
+    expect(pills.map((p) => p.getAttribute('data-status'))).toEqual(['done', 'current', 'later', 'later', 'later', 'later', 'later', 'later'])
     expect(screen.getByTestId('journey-offer')).toBeTruthy()
 
     // A pill click rings the stage's controls (the empty card is stage 2's anchor on a fresh bid).

@@ -20,6 +20,9 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { SpotlightTour } from '../SpotlightTour'
 import { SubmittalJourneyStrip } from './SubmittalJourneyStrip'
+import { SubmittalProcurementPanel } from './SubmittalProcurementPanel'
+import { procurementItemsFrom } from '../../lib/submittals/procurementLogIo'
+import type { ProcurementItemSource } from '../../lib/submittals/procurementLog'
 import { submittalJourney, type JourneyAction, type JourneyStage } from '../../lib/submittals/submittalJourney'
 import { SUBMITTAL_GUIDE_HREF, SUBMITTAL_TOUR_STEPS, hasSeenSubmittalWalkthrough, markSubmittalWalkthroughSeen } from '../../lib/submittals/submittalTour'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -133,6 +136,10 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   const [revisions, setRevisions] = useState<SubmittalRevisionRow[]>([])
   const [selectedRevId, setSelectedRevId] = useState<string | null>(null)
   const [items, setItems] = useState<SubmittalItemRow[]>([])
+  // Procure (v2.4083): the newest revision's rows as the log reads them, and the counts the strip's pill lights on.
+  const [procItems, setProcItems] = useState<ProcurementItemSource[]>([])
+  const [procCounts, setProcCounts] = useState<{ released: number; ordered: number; delivered: number; late: number } | null>(null)
+  const [companyName, setCompanyName] = useState('Click Plumbing and Electrical')
   const [prevItems, setPrevItems] = useState<SubmittalItemRow[]>([])
   const [editing, setEditing] = useState<SubmittalItemRow | null>(null)
   const fileInput = useRef<HTMLInputElement | null>(null)
@@ -313,6 +320,23 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   const reviewerFiles: ReviewerFile[] = useMemo(() => parseReviewerFiles((selectedRev as { reviewer_files?: unknown } | null)?.reviewer_files ?? null), [selectedRev])
   const tiles = useMemo(() => revisionTiles(items), [items])
   const decisions = useMemo(() => summarizeDecisions(items), [items])
+  useEffect(() => {
+    let cancelled = false
+    if (!selectedRev || newestRev?.id !== selectedRev.id) {
+      setProcItems([])
+      setProcCounts(null)
+      return
+    }
+    void procurementItemsFrom(supabase, items, selectedRev.status !== 'draft').then((rows) => {
+      if (!cancelled) setProcItems(rows)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [items, selectedRev, newestRev])
+  useEffect(() => {
+    void fetchTestReportSettings().then((st) => setCompanyName(st.companyName)).catch(() => undefined)
+  }, [])
   const prevById = useMemo(() => new Map(prevItems.map((p) => [p.id, p])), [prevItems])
   const overridesByTag = useMemo(() => {
     const out: Record<string, StatusOverride> = {}
@@ -1024,8 +1048,9 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
           : null,
         room: room ? { status: room.status, opens: events.filter((e) => e.event_type === 'view').length, identified: people.map((p) => p.name).filter((n): n is string => !!n) } : null,
         decisions: selectedRev ? decisions : null,
+        procurement: procCounts,
       }),
-    [specified.length, picks.length, selectedRev, newestRev, items.length, tiles, room, events, people, decisions],
+    [specified.length, picks.length, selectedRev, newestRev, items.length, tiles, room, events, people, decisions, procCounts],
   )
   function runJourneyAction(action: JourneyAction) {
     if (!selectedBid) return
@@ -1565,6 +1590,18 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
               </tbody>
             </table>
           </div>
+          {isNewest && bidId && selectedBid ? (
+            <SubmittalProcurementPanel
+              bidId={bidId}
+              bidLabel={bidDisplayName(selectedBid) || 'Bid'}
+              companyName={companyName}
+              items={procItems}
+              reviewerNames={people.filter((p) => p.may_decide).map((p) => p.name)}
+              currentUser={{ id: user?.id ?? null, name: profileName ?? '' }}
+              busy={busy}
+              onCounts={setProcCounts}
+            />
+          ) : null}
         </>
       ) : null}
 
