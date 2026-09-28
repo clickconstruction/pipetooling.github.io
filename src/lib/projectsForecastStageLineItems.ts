@@ -1,8 +1,8 @@
 /**
  * Projects → Forecast → Specific stage modal: Line Items For Office data layer.
  *
- * Pure data-access helpers (no React) that mirror the Workflow page's Line Items For
- * Office behavior:
+ * Pure data-access helpers (no React) for the Line Items For Office behavior. The
+ * Workflow page calls the same functions for its own line-item windows:
  *
  *   - Load `workflow_step_line_items` for one step.
  *   - Load the picker options for "+ Add Supply House Invoice" (recent invoices, joined
@@ -23,6 +23,7 @@
 import { supabase } from './supabase'
 import type { Database } from '../types/database'
 import { isSupplyCredit, SUPPLY_CREDIT_NOT_ON_STEP } from './supplyHouseDocument'
+import { parseWorkflowLineItemPaste } from './parseWorkflowLineItemPaste'
 
 export type LineItemRow = Database['public']['Tables']['workflow_step_line_items']['Row']
 
@@ -225,6 +226,31 @@ export async function saveLineItem(args: SaveLineItemArgs): Promise<string | nul
   })
   if (error) return `Failed to add line item: ${error.message}`
   return null
+}
+
+/**
+ * Line items pasted from a spreadsheet (tab-separated date, memo, amount — see
+ * `parseWorkflowLineItemPaste`). All or nothing: one unreadable line refuses
+ * the paste and nothing is written; otherwise every row goes in as one INSERT,
+ * numbered on from the step's last line item in the order pasted.
+ */
+export async function importPastedLineItems(
+  stepId: string,
+  text: string,
+  existing: readonly LineItemRow[],
+): Promise<string | null> {
+  const parsed = parseWorkflowLineItemPaste(text)
+  if (!parsed.ok) return parsed.message
+  const baseOrder = Math.max(0, ...existing.map((li) => li.sequence_order))
+  const payload = parsed.rows.map((r, i) => ({
+    step_id: stepId,
+    memo: r.memo,
+    amount: r.amount,
+    item_date: r.itemDate,
+    sequence_order: baseOrder + 1 + i,
+  }))
+  const { error } = await supabase.from('workflow_step_line_items').insert(payload)
+  return error ? `Failed to import line items: ${error.message}` : null
 }
 
 export async function deleteLineItemRow(itemId: string): Promise<string | null> {

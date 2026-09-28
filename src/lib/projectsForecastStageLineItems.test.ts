@@ -40,6 +40,7 @@ import {
   formatAmount,
   formatLineItemDate,
   formatShortIsoDate,
+  importPastedLineItems,
   loadFinalizedPOOptions,
   loadInvoiceDetail,
   loadLineItemsForStep,
@@ -153,6 +154,32 @@ describe('saveLineItem', () => {
     const del = queries.filter((x) => x.table === 'workflow_step_line_items').pop()!
     expect(del.steps.some((s) => s.method === 'delete')).toBe(true)
     expect(del.steps.find((s) => s.method === 'eq')?.args).toEqual(['id', 'li1'])
+  })
+})
+
+describe('importPastedLineItems', () => {
+  it('writes every pasted row in one insert, numbered on from the step’s last line item in the order pasted', async () => {
+    expect(await importPastedLineItems('s1', '3/23/2026\tPipe and fittings\t$1,234.56\n12/01/2026\tPermit\t85', existing)).toBeNull()
+    expect(queries).toHaveLength(1)
+    expect(args('workflow_step_line_items', 'insert')).toEqual([[[
+      { step_id: 's1', memo: 'Pipe and fittings', amount: 1234.56, item_date: '2026-03-23', sequence_order: 8 },
+      { step_id: 's1', memo: 'Permit', amount: 85, item_date: '2026-12-01', sequence_order: 9 },
+    ]]])
+  })
+  it('starts at 1 on a step with no line items', async () => {
+    expect(await importPastedLineItems('s1', '1/2/2026\tA\t1', [])).toBeNull()
+    expect(args('workflow_step_line_items', 'insert')[0]![0]).toEqual([
+      { step_id: 's1', memo: 'A', amount: 1, item_date: '2026-01-02', sequence_order: 1 },
+    ])
+  })
+  it('is all or nothing: one unreadable line refuses the paste and nothing is written', async () => {
+    expect(await importPastedLineItems('s1', '1/2/2026\tA\t1\n1/3/2026\tB\tabc', existing)).toBe('Line 2: invalid amount "abc".')
+    expect(await importPastedLineItems('s1', '', existing)).toBe('Clipboard is empty or has no lines to import.')
+    expect(queries).toHaveLength(0)
+  })
+  it('names the failed insert', async () => {
+    route = () => fail('rls')
+    expect(await importPastedLineItems('s1', '1/2/2026\tA\t1', existing)).toBe('Failed to import line items: rls')
   })
 })
 
