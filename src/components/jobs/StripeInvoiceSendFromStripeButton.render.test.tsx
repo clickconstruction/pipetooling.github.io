@@ -12,14 +12,21 @@ import { settle } from '../../test/renderSmokeMocks'
 
 const showToast = vi.fn()
 const invoke = vi.fn()
+/** The bill's copy list, as the confirm reads it off the row. */
+let copyList: string[] | null = null
 
 vi.mock('../../contexts/ToastContext', () => ({ useToastContext: () => ({ showToast }) }))
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
-  const stub = makeSupabaseStub() as Record<string, unknown>
+  const stub = makeSupabaseStub() as Record<string, unknown> & { from: (table: string) => Record<string, unknown> }
   return {
     supabase: {
       ...stub,
+      from: (table: string) => {
+        const builder = stub.from(table)
+        if (table !== 'jobs_ledger_invoices') return builder
+        return { ...builder, select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: { copy_emails: copyList }, error: null }) }) }) }
+      },
       auth: { getSession: () => Promise.resolve({ data: { session: { access_token: 'jwt' } }, error: null }) },
       functions: { invoke: (...args: unknown[]) => invoke(...args) },
     },
@@ -44,6 +51,7 @@ describe('StripeInvoiceSendFromStripeButton', () => {
     showToast.mockReset()
     invoke.mockReset()
     sessionStorage.clear()
+    copyList = null
   })
 
   it('the confirm names the address, the sender and where the customer pays', async () => {
@@ -63,6 +71,60 @@ describe('StripeInvoiceSendFromStripeButton', () => {
     fireEvent.click(screen.getByRole('button', { name: /Send Email invoice/ }))
     const dialog = await screen.findByRole('dialog')
     expect(dialog.textContent).toContain('Test mode: the bill email comes to you, not to ap@hartwell.example.')
+  })
+
+  it('the confirm lists who gets a copy', async () => {
+    copyList = ['pm@hartwell.example', 'ap@drf.example']
+    render(<StripeInvoiceSendFromStripeButton {...props} />)
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: /Send Email invoice/ }))
+    const dialog = await screen.findByRole('dialog')
+    await waitFor(() => expect(dialog.textContent).toContain('Copies from ClickTooling, same Pay link, to pm@hartwell.example, ap@drf.example.'))
+  })
+
+  it('in test mode the confirm says the copy list gets nothing', async () => {
+    copyList = ['pm@hartwell.example', 'ap@drf.example']
+    render(<StripeInvoiceSendFromStripeButton {...props} stripeModeForBilling="test" />)
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: /Send Email invoice/ }))
+    const dialog = await screen.findByRole('dialog')
+    await waitFor(() => expect(dialog.textContent).toContain('One copy comes to you too; nothing goes to pm@hartwell.example, ap@drf.example.'))
+    expect(dialog.textContent).not.toContain('Copies from ClickTooling')
+  })
+
+  it('a test bill with copies: the toast says the copy came to the sender and who got nothing', async () => {
+    invoke.mockResolvedValue({
+      data: {
+        success: true,
+        sent_by: 'clicktooling',
+        delivered_to: 'office@click.example',
+        test_redirected: true,
+        copies_sent: [],
+        copies_failed: [],
+        copies_test_to: 'office@click.example',
+        copies_held_back: ['pm@hartwell.example', 'ap@drf.example'],
+      },
+      error: null,
+    })
+    render(<StripeInvoiceSendFromStripeButton {...props} stripeModeForBilling="test" />)
+    await send()
+    await screen.findByRole('status')
+    expect(showToast).toHaveBeenCalledWith(
+      'Test bill: the email came to you (office@click.example), not the customer. The copy came to you too; nothing went to pm@hartwell.example, ap@drf.example.',
+      'success',
+    )
+    expect(showToast).toHaveBeenCalledTimes(1)
+  })
+
+  it('a test copy that could not go out: the error says the list got nothing', async () => {
+    invoke.mockResolvedValue({
+      data: { success: true, sent_by: 'clicktooling', delivered_to: 'office@click.example', test_redirected: true, copies_sent: [], copies_failed: [{ email: 'office@click.example', error: 'refused' }], copies_held_back: ['pm@hartwell.example'] },
+      error: null,
+    })
+    render(<StripeInvoiceSendFromStripeButton {...props} stripeModeForBilling="test" />)
+    await send()
+    await screen.findByRole('status')
+    expect(showToast).toHaveBeenCalledWith('The test copy could not be sent to you. Nothing went to the copy list.', 'error')
   })
 
   it('our send: the line names the address, with the copies', async () => {

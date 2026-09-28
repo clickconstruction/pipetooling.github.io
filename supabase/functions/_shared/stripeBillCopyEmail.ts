@@ -27,6 +27,8 @@ export type StripeBillCopyEmailInput = {
   companyName: string
   /** The recipient's own portal statement (v2.3362) — the payer's for the payer's people, the other party's own; null for a one-off. */
   portalUrl?: string | null
+  /** A test-mode bill's one copy goes to whoever pressed Send; this names the copy list, which it did not go to. Null on a live bill. */
+  testHeldBack?: readonly string[] | null
 }
 
 export type StripeBillCopyEmail = { subject: string; text: string; html: string }
@@ -47,6 +49,15 @@ function esc(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
+/** The banner on a test-mode copy, or '' on a live one. */
+export function stripeBillCopyTestLine(testHeldBack: readonly string[] | null | undefined): string {
+  if (testHeldBack == null) return ''
+  const held = testHeldBack.map((e) => e.trim()).filter(Boolean)
+  return held.length
+    ? `Test bill. This copy came to you instead of ${held.join(', ')}; nothing was sent to the copy list.`
+    : 'Test bill. This copy came to you; nobody else is on the copy list.'
+}
+
 export function buildStripeBillCopyEmail(input: StripeBillCopyEmailInput): StripeBillCopyEmail {
   const amount = formatCentsUsd(input.amountDueCents)
   const due = formatDueDate(input.dueDateUnix)
@@ -55,9 +66,12 @@ export function buildStripeBillCopyEmail(input: StripeBillCopyEmailInput): Strip
   const addr = input.jobAddress.trim()
   const number = input.invoiceNumber.trim()
   const portal = (input.portalUrl ?? '').trim()
-  const subject = `Copy of invoice${number ? ` #${number}` : ''}${job ? ` — ${job}` : ''}`
+  const testLine = stripeBillCopyTestLine(input.testHeldBack)
+  const subject = `${testLine ? '[Test] ' : ''}Copy of invoice${number ? ` #${number}` : ''}${job ? ` — ${job}` : ''}`
 
   const lines: string[] = [
+    testLine,
+    '',
     `This is a copy of the bill ${input.companyName} sent to ${payer}${addr ? ` for ${addr}` : ''}.`,
     '',
     `Amount due: ${amount}${due ? ` · Due ${due}` : ''}`,
@@ -70,10 +84,14 @@ export function buildStripeBillCopyEmail(input: StripeBillCopyEmailInput): Strip
     '',
     `You are receiving this because you are on the copy list for ${payer}'s bills. ${payer} was billed directly by Stripe.`,
   ]
-  const text = lines.filter((l, i, arr) => !(l === '' && arr[i - 1] === '')).join('\n')
+  const text = lines
+    .filter((l, i, arr) => !(l === '' && (i === 0 || arr[i - 1] === '')))
+    .join('\n')
+    .trimStart()
 
   const html = [
     `<div style="font-family: -apple-system, Segoe UI, Roboto, sans-serif; font-size: 15px; line-height: 1.5; color: #111827; max-width: 560px;">`,
+    testLine ? `<div style="background: #fdf3d7; color: #6b4a00; padding: 10px 14px; margin: 0 0 16px; border-radius: 6px; font-size: 13px;">${esc(testLine)}</div>` : '',
     `<p style="margin: 0 0 12px; color: #6b7280; font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em;">Copy of a bill</p>`,
     `<p style="margin: 0 0 16px;">This is a copy of the bill <strong>${esc(input.companyName)}</strong> sent to <strong>${esc(payer)}</strong>${addr ? ` for ${esc(addr)}` : ''}.</p>`,
     `<table style="border-collapse: collapse; margin: 0 0 16px;">`,

@@ -27,7 +27,7 @@ That's it — the line now has a hosted pay page and card payment, and the custo
 - **Pay now** keeps working after Stripe's own link expires.
 - The **QR code and short address** open their statement. They appear only for a customer who has a portal, and never on a bill addressed to someone else. A customer with a portal and no short address is given one on their first bill — their name plus a random tail — and you can change it from the globe.
 - Replies come to whoever pressed Send.
-- In **test mode** the email comes to you, marked as a test, and never to the customer.
+- In **test mode** the email comes to you, marked as a test, and never to the customer. The people copied on the bill get nothing either — one copy comes to you, naming who it would have gone to.
 - If our email cannot go out, Stripe sends its own instead and the toast says so. That one has no code.
 
 Settings → **What customers see** shows the email as the customer reads it.

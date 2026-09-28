@@ -5,7 +5,13 @@ import { supabase } from '../../lib/supabase'
 import type { BillingStripeModePref } from '../../lib/billingStripeModePref'
 import { stripeModeInvokeBody } from '../../lib/billingStripeModePref'
 import { readEdgeFunctionErrorBody } from '../../lib/readEdgeFunctionErrorBody'
-import { billEmailSentMessage, parseBillEmailOutcome } from '../../lib/billing/billEmailOutcome'
+import {
+  billCopiesFailedMessage,
+  billCopiesSentHint,
+  billEmailSentMessage,
+  parseBillCopiesOutcome,
+  parseBillEmailOutcome,
+} from '../../lib/billing/billEmailOutcome'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { getDispatchNoteDisplayMeta } from '../../utils/dispatchNoteDisplay'
 
@@ -232,14 +238,10 @@ export function StripeInvoiceSendFromStripeButton({
 
       const outcome = parseBillEmailOutcome(body)
       const line = billEmailSentMessage(outcome, stripeModeForBilling === 'test' ? 'test' : 'live')
-      const copiesSent = Array.isArray(body.copies_sent) ? (body.copies_sent as unknown[]).filter((e) => typeof e === 'string') : []
-      const copiesFailed = Array.isArray(body.copies_failed) ? (body.copies_failed as unknown[]).length : 0
-      const copiesHint =
-        copiesSent.length > 0 ? ` Copies went to ${copiesSent.join(', ')}.` : ''
-      showToast(`${line}${copiesHint}`, 'success')
-      if (copiesFailed > 0) {
-        showToast(`${copiesFailed} copy email${copiesFailed === 1 ? '' : 's'} failed to send — the payer's own email went out.`, 'error')
-      }
+      const copies = parseBillCopiesOutcome(body)
+      showToast(`${line}${billCopiesSentHint(copies)}`, 'success')
+      const copiesFailed = billCopiesFailedMessage(copies)
+      if (copiesFailed) showToast(copiesFailed, 'error')
       try {
         const jid = jobsLedgerInvoiceId.trim()
         const sid = stripeInvoiceId.trim()
@@ -429,12 +431,17 @@ export function StripeInvoiceSendFromStripeButton({
                       <strong>ClickTooling</strong>; they pay on <strong>Stripe</strong>.
                     </>
                   )}
-                  {copyEmails.length > 0 ? (
+                  {copyEmails.length === 0 ? null : stripeModeForBilling === 'test' ? (
+                    <>
+                      {' '}
+                      One copy comes to you too; nothing goes to <strong style={{ wordBreak: 'break-all' }}>{copyEmails.join(', ')}</strong>.
+                    </>
+                  ) : (
                     <>
                       {' '}
                       Copies from ClickTooling, same Pay link, to <strong style={{ wordBreak: 'break-all' }}>{copyEmails.join(', ')}</strong>.
                     </>
-                  ) : null}
+                  )}
                 </span>
               </div>
               <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.5 }}>

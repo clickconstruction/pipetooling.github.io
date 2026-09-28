@@ -94,7 +94,7 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     sender: 'send-stripe-invoice',
     editable: { kind: 'hardcoded' },
     subjectExample: 'Copy of invoice #1013-2609121030 — J1013 · Peterson Pretest',
-    variants: ['one email per address on the bill’s copy list, sent beside the payer’s bill email (v2.3359)'],
+    variants: ['one email per address on the bill’s copy list, sent beside the payer’s bill email (v2.3359)', 'test-mode bill ("[Test] …", one copy to whoever pressed Send, none to the copy list)'],
   },
   {
     id: 'test_report',
