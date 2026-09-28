@@ -166,11 +166,30 @@ describe('noteOnlyApprovedSafe', () => {
     expect(noteOnlyApprovedSafe(c, { boundaries: [T(0), T(2)], notes: [''] }, c[0]!, NOW)).toBe(false)
   })
 
-  it('a cluster of two rows is never safe — untouched it is two segments, merged it no longer matches its rows', () => {
+  it('a cluster of two rows left as they are is safe — the save writes notes only', () => {
     const c = [mk('a', T(0), T(1)), mk('b', T(1), T(2))]
     const last = c[1]!
-    expect(noteOnlyApprovedSafe(c, initialClusterSplitState(c, NOW), last, NOW)).toBe(false)
-    expect(noteOnlyApprovedSafe(c, { boundaries: [T(0), T(2)], notes: ['x'] }, last, NOW)).toBe(false)
+    expect(noteOnlyApprovedSafe(c, initialClusterSplitState(c, NOW), last, NOW)).toBe(true)
+    expect(noteOnlyApprovedSafe(c, { boundaries: [T(0), T(1), T(2)], notes: ['x', 'y'] }, last, NOW)).toBe(true)
+  })
+
+  it('a cluster of two rows with a seam moved, or a job chosen that is not the row’s own, is not', () => {
+    const c = [mk('a', T(0), T(1)), mk('b', T(1), T(2))]
+    const last = c[1]!
+    expect(noteOnlyApprovedSafe(c, { boundaries: [T(0), T(1.5), T(2)], notes: ['x', 'y'] }, last, NOW)).toBe(false)
+    expect(
+      noteOnlyApprovedSafe(
+        c,
+        { boundaries: [T(0), T(1), T(2)], notes: ['x', 'y'], segmentJobOverrides: { 0: { job_ledger_id: 'j9', bid_id: null } } },
+        last,
+        NOW
+      )
+    ).toBe(false)
+  })
+
+  it('a cluster of two rows merged into one part is still not safe (quirk 18)', () => {
+    const c = [mk('a', T(0), T(1)), mk('b', T(1), T(2))]
+    expect(noteOnlyApprovedSafe(c, { boundaries: [T(0), T(2)], notes: ['x'] }, c[1]!, NOW)).toBe(false)
   })
 })
 

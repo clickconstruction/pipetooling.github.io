@@ -22,6 +22,7 @@ import {
   mixedClusterSegmentsAllowPerRowPersist,
   orderedSegmentsFollowTheirRows,
   myTimeClusterPersistRpcMetadataUserMessage,
+  segmentsAreTheRowsUnchanged,
 } from './myTimeDaySavePlan'
 import {
   boundariesMatchOriginalRows,
@@ -231,6 +232,17 @@ export async function persistMyTimeDayDirtyClusters({
         )
       }
       await runSplitSeg(c[0]!.id, payloads.map(stripJobBidForSegmentRpc))
+    } else if (segmentsAreTheRowsUnchanged(c, split, nowTick)) {
+      // Only the notes changed: write them onto the rows. The split / replace RPCs delete and
+      // re-insert the rows, which takes approved hours back out of payroll.
+      for (let i = 0; i < c.length; i++) {
+        const row = c[i]!
+        const p0 = payloads[i]!
+        await withSupabaseRetry(
+          async () => supabase.from('clock_sessions').update({ notes: p0.notes }).eq('id', row.id),
+          'update clock session notes'
+        )
+      }
     } else if (clusterIsHomogeneousJobBid(c) && clusterSharesClockSessionClusterRpcMetadata(c)) {
       await runSplitCluster(c.map((s) => s.id), payloads.map(stripJobBidForSegmentRpc))
     } else if (mixedClusterSegmentsAllowPerRowPersist(c, split, nowTick)) {

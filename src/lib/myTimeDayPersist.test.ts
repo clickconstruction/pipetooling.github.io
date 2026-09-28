@@ -576,11 +576,36 @@ describe('persistMyTimeDayDirtyClusters — several parts', () => {
     expect(spies.runSplitCluster).toHaveBeenCalledTimes(1)
   })
 
-  it('same-job, same-origin rows left on their own seams, notes changed, still go to the split-cluster RPC', async () => {
+  // Before, a note edit on same-job rows went through the split-cluster RPC, which deletes and
+  // re-inserts the rows and takes their approved hours back out of payroll.
+  it('same-job, same-origin rows left on their own seams, notes changed: one note-only update per row, no RPC', async () => {
     const c = [mk('a', T(0), T(2), { job_ledger_id: 'j1' }), mk('b', T(2), T(4), { job_ledger_id: 'j1' })]
     await save([c], [{ boundaries: [T(0), T(2), T(4)], notes: ['x', 'y'] }])
+    expect(db.state.log).toStrictEqual([noteUpdate('a', 'x'), noteUpdate('b', 'y')])
+    expect(spies.runSplitCluster).not.toHaveBeenCalled()
+  })
+
+  it('the same with the last row still open: its end is the running clock, so notes only', async () => {
+    const c = [mk('a', T(0), T(2), { job_ledger_id: 'j1' }), mk('b', T(2), null, { job_ledger_id: 'j1' })]
+    await save([c], [{ boundaries: [T(0), T(2), T(8)], notes: ['x', 'y'] }])
+    expect(db.state.log).toStrictEqual([noteUpdate('a', 'x'), noteUpdate('b', 'y')])
+  })
+
+  it('the same rows with a job chosen that is not the row’s own still go to the split-cluster RPC', async () => {
+    const c = [mk('a', T(0), T(2), { job_ledger_id: 'j1' }), mk('b', T(2), T(4), { job_ledger_id: 'j1' })]
+    await save([c], [
+      { boundaries: [T(0), T(2), T(4)], notes: ['x', 'y'], segmentJobOverrides: { 1: { job_ledger_id: 'j2', bid_id: null } } },
+    ])
     expect(db.state.log).toStrictEqual([
       { op: 'rpc', rpc: 'splitCluster', target: ['a', 'b'], segments: [seg(T(0), T(2), 'x'), seg(T(2), T(4), 'y')] },
+    ])
+  })
+
+  it('the same rows with a seam moved still go to the split-cluster RPC', async () => {
+    const c = [mk('a', T(0), T(2), { job_ledger_id: 'j1' }), mk('b', T(2), T(4), { job_ledger_id: 'j1' })]
+    await save([c], [{ boundaries: [T(0), T(3), T(4)], notes: ['x', 'y'] }])
+    expect(db.state.log).toStrictEqual([
+      { op: 'rpc', rpc: 'splitCluster', target: ['a', 'b'], segments: [seg(T(0), T(3), 'x'), seg(T(3), T(4), 'y')] },
     ])
   })
 
