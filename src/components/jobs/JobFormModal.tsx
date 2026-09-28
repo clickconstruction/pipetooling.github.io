@@ -33,6 +33,7 @@ import { useJobPropertyCandidates } from '../../hooks/useJobPropertyCandidates'
 import { useStandingDiscountOffer } from '../../hooks/useStandingDiscountOffer'
 import { useJobFormInvoiceActions } from '../../hooks/useJobFormInvoiceActions'
 import { useJobFormImport, type JobImportWinningGcPick } from '../../hooks/useJobFormImport'
+import { useJobFormPaymentActions } from '../../hooks/useJobFormPaymentActions'
 import { JobFormBillJobAccountNote } from './JobFormBillJobAccountNote'
 import { sumHazmatRiderFees } from '../../lib/hazmatIncidents'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -93,8 +94,8 @@ import {
 } from '../../lib/jobs/jobDevelopments'
 import { jobLedgerHasCustomerForBilling } from '../../lib/jobLedgerCustomerForBilling'
 import { revenueDollarsFromFixtures } from '../../lib/revenueFromJobFixtures'
-import { jobFormPaidDollars, jobFormPaymentRemovePreview, jobFormRevenueDollars } from '../../lib/jobs/jobFormMoneyTotals'
-import { mergePaymentRowUpdate, paymentRemoveRefusalWords, paymentRemoveWritesNow, paymentRowsAfterRemove, planPaymentRemoveRequest, removePaymentReply } from '../../lib/jobs/jobFormPaymentActions'
+import { jobFormPaidDollars, jobFormRevenueDollars } from '../../lib/jobs/jobFormMoneyTotals'
+import { mergePaymentRowUpdate, paymentRowsAfterRemove } from '../../lib/jobs/jobFormPaymentActions'
 import { buildEditJobBillingBar } from '../../lib/jobs/editJobBillingBar'
 import { MoneyLifecycleBar, PAID_COLOR, BILLED_COLOR, DRAFT_COLOR } from './MoneyLifecycleBar'
 import { useBreakOffSlider } from './useBreakOffSlider'
@@ -157,14 +158,6 @@ import {
 import { InvoicesSectionHeading, JobFormSegmentsBar, JobFormSegmentsCreateAction } from './JobFormSegmentsBar'
 import { MultipleSegmentGeneratorModal } from './MultipleSegmentGeneratorModal'
 import type { SegmentGeneratorPayloadLine } from '../../lib/jobs/segmentGenerator'
-import {
-  canRemovePaymentRowFromForm,
-  canUnlinkMercuryPayment,
-  mercuryLinkedPaymentRow,
-  stripeHoldsPaymentReason,
-  stripeHoldsPaymentWords,
-  unlinkedPaymentToastText,
-} from '../../lib/jobs/jobFormPaymentPredicates'
 import { resolveEffectiveJobMasterUserId } from '../../lib/resolveEffectiveJobMasterUserId'
 import {
   getHideHcpFieldCached,
@@ -1309,7 +1302,36 @@ export default function JobFormModal({
   const jobPicturesLinkInputRef = useRef<HTMLInputElement | null>(null)
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [paymentRemoveConfirmRowId, setPaymentRemoveConfirmRowId] = useState<string | null>(null)
+  // The payment lines' actions (the Job form map's order #8): Remove and its confirm, the drop of
+  // a hand-typed line once its payment is recorded, Unlink and remove — with their confirm and
+  // busy states. The Escape gate below reads two of them, so the hook is called here.
+  const {
+    paymentRemoveConfirmRowId,
+    setPaymentRemoveConfirmRowId,
+    paymentRemoveRpcBusy,
+    setPaymentRemoveRpcBusy,
+    unlinkMercuryConfirmRowId,
+    setUnlinkMercuryConfirmRowId,
+    unlinkingMercuryPaymentId,
+    persistedLedgerPaymentIds,
+    paymentRemovePreview,
+    paymentRemoveConfirmsPersistedRpc,
+    requestRemovePaymentRow,
+    confirmRemovePaymentRow,
+    finishRecordPaymentOnBill,
+    confirmUnlinkMercuryFromBankRow,
+  } = useJobFormPaymentActions({
+    editing,
+    setEditing,
+    authRole,
+    payments,
+    setPayments,
+    removePaymentRow,
+    jobTotalWithRidersDollars,
+    billingAutosave,
+    hydratedPaymentIdsRef,
+    onSavedRef,
+  })
   /** v2.3576: the payment being moved to another job (Move to job…). */
   const [paymentMoveRow, setPaymentMoveRow] = useState<PaymentRow | null>(null)
   /**
@@ -1324,7 +1346,6 @@ export default function JobFormModal({
     amount: number | null
     draftRowId: string | null
   } | null>(null)
-  const [unlinkMercuryConfirmRowId, setUnlinkMercuryConfirmRowId] = useState<string | null>(null)
   const [deleteJobConfirmOpen, setDeleteJobConfirmOpen] = useState(false)
   const migrate = useJobMigrate(editing?.id ?? null)
   // Only the fields the shell's own handlers/effects touch — the rest of the
@@ -1377,8 +1398,6 @@ export default function JobFormModal({
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [escCloseBlocked, isTopmostModal])
 
-  const [unlinkingMercuryPaymentId, setUnlinkingMercuryPaymentId] = useState<string | null>(null)
-  const [paymentRemoveRpcBusy, setPaymentRemoveRpcBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const {
     materialsAccordionOpen,
@@ -1400,11 +1419,6 @@ export default function JobFormModal({
   const visibleJobFormServiceTypes = useMemo(
     () => visibleServiceTypesForJobForm(serviceTypes, meServiceTypeColumns),
     [serviceTypes, meServiceTypeColumns],
-  )
-
-  const persistedLedgerPaymentIds = useMemo(
-    () => new Set((editing?.payments ?? []).map((p) => p.id)),
-    [editing?.payments],
   )
 
   /** Include current job's type when it is not in the role-filtered list (same idea as Bids). */
@@ -2171,18 +2185,6 @@ export default function JobFormModal({
     return formatCurrency(sum)
   }, [materials])
 
-  const paymentRemovePreview = useMemo(
-    () => jobFormPaymentRemovePreview({ rowId: paymentRemoveConfirmRowId, payments, jobTotalDollars: jobTotalWithRidersDollars }),
-    [paymentRemoveConfirmRowId, payments, jobTotalWithRidersDollars],
-  )
-
-  const paymentRemoveConfirmsPersistedRpc = useMemo(() => {
-    if (!paymentRemoveConfirmRowId || !editing) return false
-    const row = payments.find((r) => r.id === paymentRemoveConfirmRowId)
-    if (!row) return false
-    return paymentRemoveWritesNow(row, editing, persistedLedgerPaymentIds)
-  }, [paymentRemoveConfirmRowId, payments, editing, persistedLedgerPaymentIds])
-
   // The invoice doors (the Job form map's order #6): every handler that writes an invoice or moves
   // the job to Ready to Bill, with its busy flag. The selection and the Bill-to editor stay here.
   const {
@@ -2243,159 +2245,6 @@ export default function JobFormModal({
 
   function removePaymentRow(id: string) {
     setPayments((prev) => paymentRowsAfterRemove(prev, id, editing, newEmptyPaymentRow))
-  }
-
-  function requestRemovePaymentRow(row: PaymentRow) {
-    const request = planPaymentRemoveRequest(row, editing, persistedLedgerPaymentIds)
-    if (request === 'nothing') return
-    if (request !== 'confirm') {
-      showToast(paymentRemoveRefusalWords(request), 'error')
-      return
-    }
-    setPaymentRemoveConfirmRowId(row.id)
-  }
-
-  async function confirmRemovePaymentRow() {
-    if (!paymentRemoveConfirmRowId || !editing) return
-    const row = payments.find((r) => r.id === paymentRemoveConfirmRowId)
-    if (!row) {
-      setPaymentRemoveConfirmRowId(null)
-      return
-    }
-
-    const persistedRpc = paymentRemoveWritesNow(row, editing, persistedLedgerPaymentIds)
-
-    if (persistedRpc) {
-      setPaymentRemoveRpcBusy(true)
-      try {
-        const raw = await withSupabaseRetry(
-          async () =>
-            supabase.rpc('remove_jobs_ledger_payment_and_reconcile', { p_payment_id: row.id }),
-          'remove_jobs_ledger_payment_and_reconcile',
-        )
-        const reply = removePaymentReply(raw)
-        if (reply.kind === 'error') {
-          showToast(reply.message, 'error')
-          return
-        }
-        if (reply.kind === 'warning') {
-          showToast(reply.message, 'warning')
-        } else {
-          showToast('Payment removed.', 'success')
-        }
-
-        const found = await fetchJobWithDetailsById(editing.id)
-        if (found) {
-          setEditing(found)
-          setPayments(paymentRowsFromJob(found))
-        }
-        setPaymentRemoveConfirmRowId(null)
-        onSavedRef.current?.()
-      } catch (e: unknown) {
-        showToast(formatPostgrestOrUnknownError(e, 'Failed to remove payment'), 'error')
-      } finally {
-        setPaymentRemoveRpcBusy(false)
-      }
-      return
-    }
-
-    if (!canRemovePaymentRowFromForm(row, editing)) {
-      setPaymentRemoveConfirmRowId(null)
-      return
-    }
-    removePaymentRow(paymentRemoveConfirmRowId)
-    setPaymentRemoveConfirmRowId(null)
-  }
-
-  /**
-   * v2.3692: the window recorded the payment (Stripe's webhook, or
-   * mark_invoice_paid, wrote the row). Drop the hand-typed draft it replaced —
-   * the billing autosave may already have persisted it under its own id, so
-   * quiet the autosave, delete by id (a never-persisted row answers "not
-   * found", which is fine), then re-read the job so the recorded row shows.
-   */
-  async function finishRecordPaymentOnBill(draftRowId: string | null) {
-    const jobId = editing?.id
-    if (!jobId) return
-    if (draftRowId) {
-      billingAutosave.cancelPending()
-      while (billingAutosave.isRunning()) await new Promise((r) => setTimeout(r, 100))
-      try {
-        const raw = await withSupabaseRetry(
-          async () => supabase.rpc('remove_jobs_ledger_payment_and_reconcile', { p_payment_id: draftRowId }),
-          'remove_jobs_ledger_payment_and_reconcile',
-        )
-        const reply = removePaymentReply(raw)
-        if (reply.kind === 'error' && reply.message !== 'Payment not found') showToast(reply.message, 'error')
-      } catch (e: unknown) {
-        showToast(formatPostgrestOrUnknownError(e, 'The payment was recorded, but the typed row could not be dropped'), 'error')
-      }
-    }
-    const found = await fetchJobWithDetailsById(jobId)
-    if (found) {
-      setEditing(found)
-      setPayments(paymentRowsFromJob(found))
-      hydratedPaymentIdsRef.current = (found.payments ?? []).map((p) => p.id)
-    }
-    showToast('Payment recorded.', 'success')
-    onSavedRef.current?.()
-  }
-
-  const executeUnlinkMercuryFromBankRow = useCallback(
-    async (row: PaymentRow) => {
-      const jobId = editing?.id
-      if (!jobId || !mercuryLinkedPaymentRow(row) || !canUnlinkMercuryPayment(authRole)) {
-        setUnlinkMercuryConfirmRowId(null)
-        return
-      }
-      const stripeHolds = stripeHoldsPaymentReason(row, editing)
-      if (stripeHolds) {
-        showToast(stripeHoldsPaymentWords(stripeHolds), 'error')
-        setUnlinkMercuryConfirmRowId(null)
-        return
-      }
-      setUnlinkingMercuryPaymentId(row.id)
-      try {
-        const raw = await withSupabaseRetry(
-          async () =>
-            supabase.rpc('remove_jobs_ledger_payment_and_reconcile', { p_payment_id: row.id }),
-          'remove_jobs_ledger_payment_and_reconcile',
-        )
-        const reply = removePaymentReply(raw)
-        if (reply.kind === 'error') {
-          showToast(reply.message, 'error')
-          return
-        }
-        if (reply.kind === 'warning') {
-          showToast(reply.message, 'warning')
-        } else {
-          showToast(unlinkedPaymentToastText(raw as { bank_failed?: boolean; bank_reason?: string; marked_returned?: boolean } | null), 'success')
-        }
-
-        const found = await fetchJobWithDetailsById(jobId)
-        if (found) {
-          setEditing(found)
-          setPayments(paymentRowsFromJob(found))
-        }
-        onSavedRef.current?.()
-      } catch (e: unknown) {
-        showToast(formatPostgrestOrUnknownError(e, 'Failed to remove payment and unlink bank'), 'error')
-      } finally {
-        setUnlinkingMercuryPaymentId(null)
-        setUnlinkMercuryConfirmRowId(null)
-      }
-    },
-    [editing, authRole, showToast],
-  )
-
-  function confirmUnlinkMercuryFromBankRow() {
-    if (!unlinkMercuryConfirmRowId) return
-    const row = payments.find((r) => r.id === unlinkMercuryConfirmRowId)
-    if (!row || !mercuryLinkedPaymentRow(row) || !canUnlinkMercuryPayment(authRole)) {
-      setUnlinkMercuryConfirmRowId(null)
-      return
-    }
-    void executeUnlinkMercuryFromBankRow(row)
   }
 
   function updateMaterialRow(id: string, updates: Partial<MaterialRow>) {
