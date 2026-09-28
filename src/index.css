@@ -3241,10 +3241,12 @@ body.my-time-boundary-dragging {
    (Check → Send → Word → Done), one row per GC with its statement folded inside, the total pinned
    under it. The panel is its own container, so a narrow window stacks a GC's steps under its name
    whatever the screen is. Blue, green and amber fills are literal status colors. */
-.gcReviewPanel { container: gc-review / inline-size; }
+/* A column as tall as its tallest tab would make it, so the window does not jump when the tab changes and the foot sits at the bottom of a short list. */
+.gcReviewPanel { container: gc-review / inline-size; display: flex; flex-direction: column; min-height: min(85vh, 36rem); }
+.gcReviewPanel > * { flex-shrink: 0; }
 .gcReviewTop { padding: 1.25rem 1.5rem 0; }
 .gcReviewSticky { position: sticky; top: 0; z-index: 2; background: var(--surface); padding: 0.35rem 1.5rem 0.75rem; border-bottom: 1px solid var(--border); box-shadow: 0 6px 12px -10px rgba(0, 0, 0, 0.35); }
-.gcReviewBody { padding: 0.25rem 1.5rem 1rem; min-height: 12rem; }
+.gcReviewBody { flex: 1 0 auto; padding: 0.25rem 1.5rem 1rem; }
 .gcReviewFoot { position: sticky; bottom: 0; z-index: 2; display: flex; align-items: center; gap: 0.5rem 0.9rem; flex-wrap: wrap; padding: 0.6rem 1.5rem; background: var(--surface); border-top: 2px solid var(--border-strong); font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
 .gcReviewFoot label { display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer; color: var(--text-muted); white-space: nowrap; }
 .gcReviewFootTotal { margin-left: auto; white-space: nowrap; }
