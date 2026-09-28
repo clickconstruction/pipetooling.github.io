@@ -8,10 +8,13 @@
 
 import { addressLines, escapeHtml } from './htmlDoc'
 import { buildPaymentScheduleSectionLines, type PaymentScheduleRowInput } from './paymentSchedule'
-import { buildMaterialsByStageSectionLines, type MaterialsByStageLetterRow } from './scheduleOfValues'
+import { buildMaterialsByStageSectionLines, buildScheduleOfValuesSectionLines, scheduleOfValuesLetter, type MaterialsByStageLetterRow } from './scheduleOfValues'
+import type { MaterialsByStageSummary } from '../bids/materialsByStage'
 
 /** Materials by stage (v2.3673): the factored stage figures, when the bid's pill is on. */
 export type CoverLetterMaterialsByStage = { rows: MaterialsByStageLetterRow[] }
+/** Schedule of values (v2.4058): the letter's amount spread by the takeoff's stage shares — each letter passes its own amount. */
+export type CoverLetterScheduleOfValues = { summary: Pick<MaterialsByStageSummary, 'byStage' | 'assignedRaw'>; amountDollars: number }
 
 /** Optional Schedule of Values section: rows + the contract amount the percents apply to. */
 export type CoverLetterPaymentSchedule = { rows: PaymentScheduleRowInput[]; amountDollars: number }
@@ -138,7 +141,8 @@ export function buildCoverLetterHtml(
   closingParagraph: string | null = null,
   alternatesBlock: CoverLetterAlternatesBlock | null = null,
   bidBasis: CoverLetterBidBasis | null = null,
-  materialsByStage: CoverLetterMaterialsByStage | null = null
+  materialsByStage: CoverLetterMaterialsByStage | null = null,
+  scheduleOfValues: CoverLetterScheduleOfValues | null = null
 ): string {
   const inclusionIndent = '     ' // 5 preceding spaces for Additional Inclusions (same as fixture header)
   const inclusionLines = inclusions.trim().split(/\n/).filter(Boolean).map((l) => inclusionIndent + '• ' + l.trim())
@@ -188,6 +192,10 @@ export function buildCoverLetterHtml(
   html += br2 + '<strong>Inclusions:</strong>' + br + escapeHtml(inclusionsBlock || '(none)').replace(/\n/g, br)
   html += br2 + '<strong>Exclusions and Scope:</strong>' + br + escapeHtml(exclusionsContent).replace(/\n/g, br)
   html += br2 + escapeHtml(termsContent).replace(/\n/g, br)
+  const sovLines = scheduleOfValues ? buildScheduleOfValuesSectionLines(scheduleOfValuesLetter(scheduleOfValues.summary, scheduleOfValues.amountDollars)) : []
+  if (sovLines.length > 0) {
+    html += br2 + '<strong>' + escapeHtml(sovLines[0] ?? '') + '</strong>' + br + sovLines.slice(1).map((l) => escapeHtml(l)).join(br)
+  }
   const scheduleLines = paymentSchedule ? buildPaymentScheduleSectionLines(paymentSchedule.rows, paymentSchedule.amountDollars) : []
   if (scheduleLines.length > 0) {
     html += br2 + '<strong>' + escapeHtml(scheduleLines[0] ?? '') + '</strong>' + br + scheduleLines.slice(1).map((l) => escapeHtml(l)).join(br)
@@ -238,7 +246,8 @@ export function buildCoverLetterText(
   closingParagraph: string | null = null,
   alternatesBlock: CoverLetterAlternatesBlock | null = null,
   bidBasis: CoverLetterBidBasis | null = null,
-  materialsByStage: CoverLetterMaterialsByStage | null = null
+  materialsByStage: CoverLetterMaterialsByStage | null = null,
+  scheduleOfValues: CoverLetterScheduleOfValues | null = null
 ): string {
   const inclusionIndent = '     ' // 5 preceding spaces for Additional Inclusions (same as fixture header)
   const inclusionLines = inclusions.trim().split(/\n/).filter(Boolean).map((l) => inclusionIndent + '• ' + l.trim())
@@ -286,6 +295,10 @@ export function buildCoverLetterText(
     exclusions.trim() ? exclusionLines.join('\n') : DEFAULT_EXCLUSIONS.trim().split(/\n/).filter(Boolean).map((l) => exclusionIndent + '• ' + l.trim()).join('\n'),
     '',
     terms.trim() ? termsLines.join('\n') : DEFAULT_TERMS_AND_WARRANTY,
+    ...(() => {
+      const sov = scheduleOfValues ? buildScheduleOfValuesSectionLines(scheduleOfValuesLetter(scheduleOfValues.summary, scheduleOfValues.amountDollars)) : []
+      return sov.length > 0 ? ['', ...sov] : []
+    })(),
     ...(paymentSchedule && paymentSchedule.rows.length > 0
       ? ['', ...buildPaymentScheduleSectionLines(paymentSchedule.rows, paymentSchedule.amountDollars)]
       : []),

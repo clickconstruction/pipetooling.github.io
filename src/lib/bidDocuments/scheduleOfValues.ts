@@ -23,6 +23,8 @@ import type { TakeoffStage } from '../bids/bidTakeoffHelpers'
 
 export const MATERIALS_BY_STAGE_HEADING = 'Materials by stage:'
 
+const money = (n: number) => `$${formatCurrency(n)}`
+
 export type MaterialsByStageLetterRow = { label: string; amountFormatted: string }
 
 /** The three letter rows, in stage order, skipping a stage with nothing in it. */
@@ -34,6 +36,78 @@ export function materialsByStageLetterRows(summary: Pick<MaterialsByStageSummary
 export function buildMaterialsByStageSectionLines(rows: ReadonlyArray<MaterialsByStageLetterRow>): string[] {
   if (rows.length === 0) return []
   return [MATERIALS_BY_STAGE_HEADING, ...rows.map((r) => `${r.label} — ${r.amountFormatted}`)]
+}
+
+/* ─────────────── the schedule of values in the letter (v2.4058) ─────────────── */
+
+export const SCHEDULE_OF_VALUES_HEADING = 'Schedule of values:'
+
+export type ScheduleOfValuesLetterRow = {
+  stage: TakeoffStage
+  label: string
+  /** Dollars of the contract, reconciled so the rows add to the amount to the cent. */
+  amount: number
+  amountFormatted: string
+  /** 0–100, one decimal in `shareFormatted`. */
+  sharePct: number
+  shareFormatted: string
+}
+
+export type ScheduleOfValuesLetter = {
+  rows: ScheduleOfValuesLetterRow[]
+  /** The three stages in dollars (a stage with nothing in it is 0), for the printed "Of contract" column. */
+  scaled: StageMoney
+  total: number
+  totalFormatted: string
+}
+
+/**
+ * The contract amount spread across the stages by each one's share of the staged
+ * material (`scaleToContract`'s rule), then reconciled to whole cents with the
+ * largest-remainder method so the rows add to the amount exactly — a GC checks the
+ * total first. A stage with nothing staged in it gets no row. Null when nothing is
+ * staged or the amount is not positive.
+ */
+export function scheduleOfValuesLetter(
+  summary: Pick<MaterialsByStageSummary, 'byStage' | 'assignedRaw'>,
+  contractAmount: number,
+): ScheduleOfValuesLetter | null {
+  if (!(summary.assignedRaw > 0) || !Number.isFinite(contractAmount) || contractAmount <= 0) return null
+  const totalCents = Math.round(contractAmount * 100)
+  const exact = STAGE_KEYS.map((k) => (totalCents * summary.byStage[k]) / summary.assignedRaw)
+  const floors = exact.map((c) => Math.floor(c))
+  let left = totalCents - floors.reduce((a, b) => a + b, 0)
+  const order = exact
+    .map((c, i) => ({ i, frac: c - Math.floor(c) }))
+    .sort((a, b) => b.frac - a.frac || a.i - b.i)
+  for (const { i } of order) {
+    if (left <= 0) break
+    floors[i] = (floors[i] ?? 0) + 1
+    left -= 1
+  }
+  const scaled: StageMoney = { rough_in: 0, top_out: 0, trim_set: 0 }
+  STAGE_KEYS.forEach((k, i) => {
+    scaled[k] = (floors[i] ?? 0) / 100
+  })
+  const rows: ScheduleOfValuesLetterRow[] = STAGE_KEYS.filter((k) => summary.byStage[k] > 0).map((k) => {
+    const sharePct = (summary.byStage[k] / summary.assignedRaw) * 100
+    return {
+      stage: k,
+      label: STAGE_LABELS[k],
+      amount: scaled[k],
+      amountFormatted: money(scaled[k]),
+      sharePct,
+      shareFormatted: `${(Math.round(sharePct * 10) / 10).toFixed(1)}%`,
+    }
+  })
+  const total = totalCents / 100
+  return { rows, scaled, total, totalFormatted: money(total) }
+}
+
+/** `['Schedule of values:', 'Rough In — $35,596.80 (41.2%)', …, 'Total — $86,400.00']`; [] when there is nothing to say. */
+export function buildScheduleOfValuesSectionLines(letter: ScheduleOfValuesLetter | null | undefined): string[] {
+  if (!letter || letter.rows.length === 0) return []
+  return [SCHEDULE_OF_VALUES_HEADING, ...letter.rows.map((r) => `${r.label} — ${r.amountFormatted} (${r.shareFormatted})`), `Total — ${letter.totalFormatted}`]
 }
 
 /**
@@ -91,7 +165,6 @@ export type ScheduleOfValuesInput = {
 
 const cell = 'padding:0.4rem 0.5rem; border-bottom:1px solid #e5e7eb; vertical-align:top'
 const num = `${cell}; text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums`
-const money = (n: number) => `$${formatCurrency(n)}`
 
 export function buildScheduleOfValuesHtml(input: ScheduleOfValuesInput): string {
   const { summary } = input

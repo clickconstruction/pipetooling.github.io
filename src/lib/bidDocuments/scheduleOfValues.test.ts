@@ -3,9 +3,11 @@ import { computeMaterialsByStage, scaleToContract, stageWeights } from '../bids/
 import {
   buildMaterialsByStageSectionLines,
   buildScheduleOfValuesHtml,
+  buildScheduleOfValuesSectionLines,
   fixtureNamesByStage,
   fixtureStageText,
   materialsByStageLetterRows,
+  scheduleOfValuesLetter,
 } from './scheduleOfValues'
 
 const summary = computeMaterialsByStage({
@@ -41,6 +43,52 @@ describe('the letter section', () => {
     ])
     expect(buildMaterialsByStageSectionLines(rows)).toEqual(['Materials by stage:', 'Rough In — $450.00', 'Trim Set — $1,050.00'])
     expect(buildMaterialsByStageSectionLines([])).toEqual([])
+  })
+})
+
+describe('the schedule of values in the letter (v2.4058)', () => {
+  it('spreads the amount by the stage shares and adds to it to the cent', () => {
+    // 41.2 / 33.5 / 25.3 of $86,400: each stage a fraction of a cent off, reconciled by largest remainder.
+    const letter = scheduleOfValuesLetter({ byStage: { rough_in: 412, top_out: 335, trim_set: 253 }, assignedRaw: 1000 }, 86400)!
+    expect(letter.rows.map((r) => [r.label, r.amountFormatted, r.shareFormatted])).toEqual([
+      ['Rough In', '$35,596.80', '41.2%'],
+      ['Top Out', '$28,944.00', '33.5%'],
+      ['Trim Set', '$21,859.20', '25.3%'],
+    ])
+    expect(letter.totalFormatted).toBe('$86,400.00')
+    expect(letter.rows.reduce((a, r) => a + r.amount, 0)).toBeCloseTo(86400, 2)
+  })
+
+  it('puts the leftover cents on the rows with the largest remainders', () => {
+    // A third each of $100.00 is 3,333.33… cents: two rows get 33.33, the first gets the extra cent.
+    const letter = scheduleOfValuesLetter({ byStage: { rough_in: 1, top_out: 1, trim_set: 1 }, assignedRaw: 3 }, 100)!
+    expect(letter.rows.map((r) => r.amountFormatted)).toEqual(['$33.34', '$33.33', '$33.33'])
+    expect(letter.rows.reduce((a, r) => a + Math.round(r.amount * 100), 0)).toBe(10000)
+    expect(letter.scaled).toEqual({ rough_in: 33.34, top_out: 33.33, trim_set: 33.33 })
+  })
+
+  it('skips a stage with nothing staged in it and keeps it at zero in the scaled money', () => {
+    const letter = scheduleOfValuesLetter({ byStage: { rough_in: 300, top_out: 0, trim_set: 100 }, assignedRaw: 400 }, 1000)!
+    expect(letter.rows.map((r) => r.label)).toEqual(['Rough In', 'Trim Set'])
+    expect(letter.scaled).toEqual({ rough_in: 750, top_out: 0, trim_set: 250 })
+  })
+
+  it('is null when nothing is staged or the amount is not positive', () => {
+    expect(scheduleOfValuesLetter({ byStage: { rough_in: 0, top_out: 0, trim_set: 0 }, assignedRaw: 0 }, 1000)).toBeNull()
+    expect(scheduleOfValuesLetter({ byStage: { rough_in: 1, top_out: 0, trim_set: 0 }, assignedRaw: 1 }, 0)).toBeNull()
+    expect(scheduleOfValuesLetter({ byStage: { rough_in: 1, top_out: 0, trim_set: 0 }, assignedRaw: 1 }, Number.NaN)).toBeNull()
+  })
+
+  it('words the section with the share beside each line and a total, or says nothing', () => {
+    const letter = scheduleOfValuesLetter({ byStage: { rough_in: 412, top_out: 335, trim_set: 253 }, assignedRaw: 1000 }, 86400)
+    expect(buildScheduleOfValuesSectionLines(letter)).toEqual([
+      'Schedule of values:',
+      'Rough In — $35,596.80 (41.2%)',
+      'Top Out — $28,944.00 (33.5%)',
+      'Trim Set — $21,859.20 (25.3%)',
+      'Total — $86,400.00',
+    ])
+    expect(buildScheduleOfValuesSectionLines(null)).toEqual([])
   })
 })
 
