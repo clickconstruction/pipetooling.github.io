@@ -29,7 +29,7 @@ import {
   showJobDetailProfitSection,
 } from '../../lib/jobDetailModalRole'
 import { buildJobProfitSummary } from '../../lib/jobs/jobProfitSummary'
-import { mercuryCardTotalFromLines, tallyPartsTotalFromLines } from '../../lib/fetchJobMaterialsCostSnapshot'
+import { jobCardChargesCountedFromLines, tallyPartsTotalFromLines } from '../../lib/fetchJobMaterialsCostSnapshot'
 import {
   scheduleFormatDateLongNoWeekday,
   scheduleFormatWeekdayOnly,
@@ -886,7 +886,7 @@ export default function DetailJobModal({
     return buildJobProfitSummary({
       revenue: fullJob.revenue != null ? Number(fullJob.revenue) : null,
       supplyInvoiceTotal: materialsSnapshot.supplyInvoiceTotal,
-      cardChargesTotal: mercuryCardTotalFromLines(materialsSnapshot.mercuryAllocLines),
+      cardChargesTotal: jobCardChargesCountedFromLines(materialsSnapshot.mercuryAllocLines, materialsSnapshot.cardExclusions),
       tallyPartsTotal: tallyPartsTotalFromLines(materialsSnapshot.tallyPartLines),
       otherChargesTotal: (fullJob.materials ?? []).reduce(
         (s: number, m: { amount: number | string | null }) => s + (Number(m.amount) || 0),
@@ -907,7 +907,7 @@ export default function DetailJobModal({
     const partsTotal =
       snap && !partsFailed
         ? snap.supplyInvoiceTotal +
-          mercuryCardTotalFromLines(snap.mercuryAllocLines) +
+          jobCardChargesCountedFromLines(snap.mercuryAllocLines, snap.cardExclusions) +
           tallyPartsTotalFromLines(snap.tallyPartLines) +
           (fullJob?.materials ?? []).reduce((sum, m) => sum + (Number(m.amount) || 0), 0)
         : null

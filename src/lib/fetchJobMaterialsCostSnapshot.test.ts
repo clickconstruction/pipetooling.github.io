@@ -46,8 +46,19 @@ vi.mock('../utils/errorHandling', () => ({
 }))
 // The mapper that reads the card id lives in the shared kernel since the parts-cost lift, so the stub targets that module.
 vi.mock('../../supabase/functions/_shared/mercuryRawDebitCard', () => ({ mercuryDebitCardIdFromRaw: (raw: { cardId?: string } | null) => raw?.cardId ?? null }))
+// The one card rule's lookups (Internal Transfers, invoice links) have their own suite; here they are handed in.
+const cardExclusions = vi.fn()
+vi.mock('./jobs/loadCardChargeExclusions', () => ({ loadCardChargeExclusions: (ids: unknown) => cardExclusions(ids) }))
 
-import { fetchJobMaterialsCostSnapshot, jobAccountSplitFromLines, mercuryCardTotalFromLines, tallyPartsTotalFromLines } from './fetchJobMaterialsCostSnapshot'
+import {
+  fetchJobMaterialsCostSnapshot,
+  jobAccountSplitFromLines,
+  jobCardChargesCountedFromLines,
+  jobCardLineStatus,
+  mercuryCardTotalFromLines,
+  tallyPartsTotalFromLines,
+} from './fetchJobMaterialsCostSnapshot'
+import { EMPTY_CARD_CHARGE_EXCLUSIONS } from './jobs/cardChargeAllocationFilter'
 
 const argsOf = (steps: Step[], m: string) => steps.filter((s) => s.method === m).map((s) => s.args)
 const call = (name: string) => calls.find((c) => c.name === name)!
@@ -75,6 +86,7 @@ const full: Record<string, unknown> = {
 beforeEach(() => {
   calls.length = 0
   route = (_k, name) => full[name] ?? []
+  cardExclusions.mockReset().mockResolvedValue(EMPTY_CARD_CHARGE_EXCLUSIONS)
 })
 
 describe('fetchJobMaterialsCostSnapshot', () => {
@@ -95,10 +107,13 @@ describe('fetchJobMaterialsCostSnapshot', () => {
       { pct: 10, invoiceNumber: 'INV-3', invoiceDate: '', invoiceAmount: 0, allocatedAmount: 0, supplyHouseName: null, isPaid: false, onJobAccount: false },
     ])
     expect(snap.mercuryAllocLines).toEqual([
-      { id: 'a1', allocationAmount: -45.25, note: 'PVC', postedAt: '2026-09-02', counterpartyName: 'Home Depot', debitCardId: 'card-a' },
-      { id: 'a2', allocationAmount: 10, note: null, postedAt: null, counterpartyName: null, debitCardId: null },
-      { id: 'a3', allocationAmount: 5, note: 'orphan', postedAt: null, counterpartyName: null, debitCardId: null },
+      { id: 'a1', mercuryTransactionId: 'tx1', allocationAmount: -45.25, note: 'PVC', postedAt: '2026-09-02', counterpartyName: 'Home Depot', debitCardId: 'card-a' },
+      { id: 'a2', mercuryTransactionId: 'tx2', allocationAmount: 10, note: null, postedAt: null, counterpartyName: null, debitCardId: null },
+      { id: 'a3', mercuryTransactionId: 'tx3', allocationAmount: 5, note: 'orphan', postedAt: null, counterpartyName: null, debitCardId: null },
     ])
+    // The one card rule is looked up for the job's transactions, once each.
+    expect(cardExclusions).toHaveBeenCalledWith(['tx1', 'tx2', 'tx3'])
+    expect(snap.cardExclusions).toBe(EMPTY_CARD_CHARGE_EXCLUSIONS)
     expect(snap.tallyPartLines).toEqual([
       { id: 't1', fixtureName: 'Lavatory', quantity: 2, partName: ' 1/2 PEX ', lineTotal: 7, createdAt: '2026-09-03T12:00:00Z', createdByName: 'Ana' },
       { id: 't2', fixtureName: '', quantity: 3, partName: null, lineTotal: 120, createdAt: null, createdByName: null },
@@ -122,6 +137,7 @@ describe('fetchJobMaterialsCostSnapshot', () => {
       supplyInvoiceLines: [],
       mercuryAllocLines: [],
       mercuryFetchFailed: false,
+      cardExclusions: EMPTY_CARD_CHARGE_EXCLUSIONS,
       tallyPartLines: [],
       tallyFetchFailed: false,
     })
@@ -191,5 +207,56 @@ describe('jobAccountSplitFromLines', () => {
         line({ allocatedAmount: -900, onJobAccount: true }),
       ]),
     ).toEqual({ unpaidTotal: 900, unpaidOnJobAccount: 900 })
+  })
+})
+
+describe('the Job window’s card charges — Jobs → Job Summary’s rule', () => {
+  const lines = [
+    { id: 'buy', mercuryTransactionId: 'tx-buy', allocationAmount: -100, note: null, postedAt: null, counterpartyName: 'Ferguson', debitCardId: null },
+    { id: 'transfer', mercuryTransactionId: 'tx-transfer', allocationAmount: -500, note: null, postedAt: null, counterpartyName: 'Mercury', debitCardId: null },
+    { id: 'invoiced', mercuryTransactionId: 'tx-invoiced', allocationAmount: -40, note: 'on INV-7', postedAt: null, counterpartyName: 'Morrison', debitCardId: null },
+    { id: 'refund', mercuryTransactionId: 'tx-refund', allocationAmount: 15, note: null, postedAt: null, counterpartyName: 'Ferguson', debitCardId: null },
+  ]
+  const exclusions = {
+    bucketByTxId: new Map([['tx-transfer', 'internal_transfer']]),
+    invoiceLinkedTxIds: new Set(['tx-invoiced']),
+  }
+
+  it('leaves an Internal Transfer out, and counts a charge that is also on a supply invoice once — under the invoice', () => {
+    expect(mercuryCardTotalFromLines(lines)).toBe(100 + 500 + 40 - 15) // what is attached
+    expect(jobCardChargesCountedFromLines(lines, exclusions)).toBe(100 - 15) // what the job cost
+  })
+
+  it('with no lookups everything counts, as before', () => {
+    expect(jobCardChargesCountedFromLines(lines)).toBe(mercuryCardTotalFromLines(lines))
+    expect(jobCardChargesCountedFromLines(lines, EMPTY_CARD_CHARGE_EXCLUSIONS)).toBe(625)
+  })
+
+  it('says why a line is not in the total', () => {
+    expect(lines.map((l) => jobCardLineStatus(l, exclusions))).toEqual(['counts', 'internal_transfer', 'invoice_linked', 'counts'])
+    expect(jobCardLineStatus(lines[1]!)).toBe('counts')
+  })
+
+  it('clamps the invoice-linked slice to what counts, as Job Summary does', () => {
+    const onlyRefundAndInvoiced = [lines[2]!, { ...lines[3]!, allocationAmount: 60 }]
+    // $40 invoice-linked and a $60 refund: counted −$20, and Job Summary's clamp takes the whole −$20 off — $0.
+    expect(jobCardChargesCountedFromLines(onlyRefundAndInvoiced, exclusions)).toBe(0)
+  })
+
+  it('a line with no transaction counts', () => {
+    expect(jobCardLineStatus({ ...lines[0]!, mercuryTransactionId: null }, exclusions)).toBe('counts')
+  })
+
+  it('a failed lookup leaves the lines counted as before', async () => {
+    cardExclusions.mockRejectedValue(new Error('rls'))
+    const snap = await fetchJobMaterialsCostSnapshot('j1')
+    expect(snap.cardExclusions).toBe(EMPTY_CARD_CHARGE_EXCLUSIONS)
+    expect(snap.mercuryAllocLines).toHaveLength(3)
+  })
+
+  it('no card lines, no lookup', async () => {
+    route = (_k, name) => (name === 'mercury_transaction_job_allocations' ? [] : (full[name] ?? []))
+    await fetchJobMaterialsCostSnapshot('j1')
+    expect(cardExclusions).toHaveBeenCalledWith([])
   })
 })

@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   fetchJobMaterialsCostSnapshot,
-  mercuryCardTotalFromLines,
+  jobCardChargesCountedFromLines,
   type JobMercuryAllocLine,
   type JobSupplyInvoiceLine,
   type JobTallyPartLine,
 } from '../../lib/fetchJobMaterialsCostSnapshot'
+import type { CardChargeExclusions } from '../../lib/jobs/cardChargeAllocationFilter'
 
 export type MaterialsAccordionKey = 'supply' | 'mercury' | 'tally' | 'billed'
 
@@ -23,6 +24,7 @@ export function useJobCostSnapshot(jobId: string | null) {
   const [supplyInvoiceLines, setSupplyInvoiceLines] = useState<JobSupplyInvoiceLine[]>([])
   const [mercuryAllocLines, setMercuryAllocLines] = useState<JobMercuryAllocLine[]>([])
   const [mercuryFetchFailed, setMercuryFetchFailed] = useState(false)
+  const [mercuryCardExclusions, setMercuryCardExclusions] = useState<CardChargeExclusions | undefined>(undefined)
   const [tallyPartLines, setTallyPartLines] = useState<JobTallyPartLine[]>([])
   const [tallyFetchFailed, setTallyFetchFailed] = useState(false)
 
@@ -34,6 +36,7 @@ export function useJobCostSnapshot(jobId: string | null) {
       setSupplyInvoiceLines([])
       setMercuryAllocLines([])
       setMercuryFetchFailed(false)
+      setMercuryCardExclusions(undefined)
       setTallyPartLines([])
       setTallyFetchFailed(false)
       setMaterialsAccordionOpen('billed')
@@ -55,6 +58,7 @@ export function useJobCostSnapshot(jobId: string | null) {
         setSupplyInvoiceLines(snap.supplyInvoiceLines)
         setMercuryAllocLines(snap.mercuryAllocLines)
         setMercuryFetchFailed(snap.mercuryFetchFailed)
+        setMercuryCardExclusions(snap.cardExclusions)
         setTallyPartLines(snap.tallyPartLines)
         setTallyFetchFailed(snap.tallyFetchFailed)
       } finally {
@@ -67,9 +71,11 @@ export function useJobCostSnapshot(jobId: string | null) {
     }
   }, [jobId])
 
+  // Signed cost (a refund nets, v2.3519) under Job Summary's rule (v2.2692): Internal
+  // Transfers out, an invoice-linked charge counted once.
   const mercuryCardTotal = useMemo(
-    () => mercuryCardTotalFromLines(mercuryAllocLines), // signed cost — a refund nets (v2.3519)
-    [mercuryAllocLines],
+    () => jobCardChargesCountedFromLines(mercuryAllocLines, mercuryCardExclusions),
+    [mercuryAllocLines, mercuryCardExclusions],
   )
 
   const tallyPartsTotal = useMemo(() => tallyPartLines.reduce((s, l) => s + l.lineTotal, 0), [tallyPartLines])
@@ -86,6 +92,7 @@ export function useJobCostSnapshot(jobId: string | null) {
     supplyInvoiceLines,
     mercuryAllocLines,
     mercuryFetchFailed,
+    mercuryCardExclusions,
     tallyPartLines,
     tallyFetchFailed,
     mercuryCardTotal,
