@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { GcReviewGroup } from '../gcReviewRollup'
 import type { RoundMarkRow } from './gcStatementRounds'
-import { buildTemperatureBoard, latestTemperatureByGc, trailingWeekStarts } from './temperatureBoard'
+import { buildTemperatureBoard, latestExpectedPayByGc, latestTemperatureByGc, trailingWeekStarts } from './temperatureBoard'
 
 const group = (gcId: string, subtotal: number): GcReviewGroup => ({ key: gcId, gcId, gcName: `GC ${gcId}`, isNoGc: false, rows: [], subtotal, jobCount: 1, oldestAgeDays: 10 })
 const mark = (gc: string, week: string, action: RoundMarkRow['action'], over: Partial<RoundMarkRow> = {}): RoundMarkRow => ({
@@ -76,6 +76,24 @@ describe('latestTemperatureByGc', () => {
       mark('a', '2026-08-31', 'sent', { temperature: 'cool', acted_by_name: 'Taunya', acted_at: '2026-09-01T10:00:00Z', word_from_name: 'Malachi', word_entered_by_name: 'Taunya', word_at: '2026-09-03T09:00:00Z' }),
     ])
     expect(m.get('a')).toEqual({ temperature: 'cool', at: '2026-09-03T09:00:00Z', by: 'Malachi', enteredBy: 'Taunya', note: null })
+  })
+})
+
+describe('latestExpectedPayByGc', () => {
+  it('keeps the date on the newest word that gave one, by the word’s own day', () => {
+    const m = latestExpectedPayByGc([
+      mark('a', '2026-08-24', 'contacted', { expected_pay_by: '2026-09-05', acted_at: '2026-08-25T10:00:00Z' }),
+      mark('a', '2026-08-31', 'contacted', { expected_pay_by: '2026-09-20', acted_at: '2026-09-01T10:00:00Z', word_at: '2026-09-03T09:00:00Z' }),
+      mark('a', '2026-08-31', 'sent', { acted_at: '2026-09-04T10:00:00Z' }),
+      mark('b', '2026-08-31', 'contacted', { temperature: 'warm' }),
+    ])
+    expect([...m]).toEqual([['a', '2026-09-20']])
+  })
+
+  it('reads a GC under the round’s line, which the board leaves out', () => {
+    const marks = [mark('small', '2026-08-31', 'contacted', { temperature: 'warm', note: 'Pays Friday.', expected_pay_by: '2026-09-04' })]
+    expect(buildTemperatureBoard({ groups: [group('small', 142.5)], marks, senders: new Map(), accountMen: new Map(), weekStarts: weeks, threshold: 10000 })).toEqual([])
+    expect(latestExpectedPayByGc(marks).get('small')).toBe('2026-09-04')
   })
 })
 

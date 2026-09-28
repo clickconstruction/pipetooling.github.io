@@ -100,6 +100,22 @@ export function buildTemperatureBoard(input: {
 }
 
 /** Newest temperature per GC (any action) — the header pills and the chase sort read this. */
+/**
+ * The pay date on the newest word that gave one, per GC — every GC with a
+ * mark, under the round's line too. The board itself lists only the GCs over
+ * it, so the worklist row and the GC's header read the date from here.
+ */
+export function latestExpectedPayByGc(marks: readonly RoundMarkRow[]): Map<string, string> {
+  const newest = new Map<string, { payBy: string; at: string }>()
+  for (const m of marks) {
+    if (!m.expected_pay_by) continue
+    const at = markWordAt(m)
+    const prev = newest.get(m.gc_customer_id)
+    if (!prev || at > prev.at) newest.set(m.gc_customer_id, { payBy: m.expected_pay_by, at })
+  }
+  return new Map([...newest].map(([gcId, v]) => [gcId, v.payBy] as const))
+}
+
 export function latestTemperatureByGc(marks: readonly RoundMarkRow[]): Map<string, { temperature: Temperature; at: string; by: string; enteredBy: string | null; note: string | null }> {
   const out = new Map<string, { temperature: Temperature; at: string; by: string; enteredBy: string | null; note: string | null }>()
   for (const m of marks) {
