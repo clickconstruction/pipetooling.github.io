@@ -24,7 +24,7 @@ import {
   type PortalBill,
   type PortalPayload,
 } from '../lib/portal/portalPayload'
-import { groupPortalBillsByJob, portalBillBilledAmount, PORTAL_GENERIC_PAYMENT_METHOD, type PortalJobGroup } from '../lib/portal/portalJobGroups'
+import { groupPortalBillsByJob, portalBillBilledAmount, portalBillPaidByWords, PORTAL_GENERIC_PAYMENT_METHOD, type PortalJobGroup } from '../lib/portal/portalJobGroups'
 import { PORTAL_SHORT_ORIGIN, portalShortUrl } from '../lib/portal/portalShortOrigin'
 import {
   paidFlipDetected,
@@ -790,8 +790,12 @@ function PortalBillRow({ bill, todayYmd, isLast }: { bill: PortalBill; todayYmd:
             <span style={{ color: MUTED, fontVariantNumeric: 'tabular-nums' }}>
               {formatPortalUsd(portalBillBilledAmount(bill))}
             </span>
+            <br />
           </>
         )}
+        {/* What paid this bill and when (v2.4044) — the answer to "did you get
+            our check?" before it is asked; an open bill says so plainly. */}
+        <span data-bill-paid-by>{portalBillPaidByWords(bill, { usd: formatPortalUsd, date: formatPortalDate })}</span>
       </span>
       <span data-bill-amount style={{ textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{formatPortalUsd(bill.amount)}</span>
       {bill.payUrl ? (

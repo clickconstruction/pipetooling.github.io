@@ -29,7 +29,7 @@ const eventStamp = (iso: string | null) =>
 /**
  * A GC's bills as lines to dig into (the certify checklist, the call sheet):
  * the job, when it was billed and how long ago (red at 90 days), what is
- * still owed. The job link opens Job Detail on top; the chevron drops the
+ * still owed, and under the line what paid the bill (v2.4044). The job link opens Job Detail on top; the chevron drops the
  * job's recent activity under the line (list_job_activity_events, the latest
  * four, newest first) — read once per job and kept while the list is open.
  */
@@ -116,6 +116,11 @@ export default function GcBillLines({ rows, onOpenJobDetail, leading, pending, s
                 {isExpanded ? '▴' : '▾'}
               </button>
             </div>
+            {r.paidBy ? (
+              <div data-testid="gc-bill-paid-by" style={{ padding: `0 0.6rem ${compact ? '0.25rem' : '0.4rem'} ${leading ? '2.3rem' : '0.6rem'}`, background: 'var(--bg-subtle)', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                {r.paidBy}
+              </div>
+            ) : null}
             {isExpanded && (
               <div style={{ padding: `0.45rem 0.6rem 0.55rem ${leading ? '2.3rem' : '0.6rem'}`, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                 {!activity || activity.loading ? (

@@ -61,6 +61,38 @@ export function portalPaymentMethodLabel(method: string): string {
   return m
 }
 
+const joinList = (items: string[]): string => (items.length <= 1 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`)
+
+/**
+ * The line under a bill (v2.4044): what paid it and when, and what is still
+ * open — "paid $12,000.00 by check on Sep 24 · $1,333.00 still open" — or
+ * "nothing applied yet". When the rows cannot account for the paid total
+ * (job-remainder bills carry only the aggregate) it says "so far" and names
+ * no payment, so the arithmetic never lies.
+ */
+export function portalBillPaidByWords(
+  bill: Pick<PortalBill, 'amount' | 'payments' | 'totalPaid'>,
+  fmt: { usd: (n: number) => string; date: (ymd: string | null) => string | null },
+): string {
+  if (bill.totalPaid <= 0.005) return 'nothing applied yet'
+  const rowsTotal = round2(bill.payments.reduce((s, p) => s + p.amount, 0))
+  const open = bill.amount > 0.005 ? ` · ${fmt.usd(bill.amount)} still open` : ''
+  if (Math.abs(rowsTotal - bill.totalPaid) > 0.005) return `paid ${fmt.usd(bill.totalPaid)} so far${open}`
+  const labels = [
+    ...new Set(
+      bill.payments
+        .map((p) => {
+          const method = portalPaymentMethodLabel(p.method)
+          const when = fmt.date(p.date)
+          return [method === PORTAL_GENERIC_PAYMENT_METHOD ? '' : method, when ? `on ${when}` : ''].filter(Boolean).join(' ')
+        })
+        .filter(Boolean),
+    ),
+  ]
+  const by = labels.length > 0 ? ` by ${joinList(labels)}` : ''
+  return open ? `paid ${fmt.usd(bill.totalPaid)}${by}${open}` : `paid in full${by}`
+}
+
 /** What this bill was originally billed: its open amount plus what's been paid on it. */
 export function portalBillBilledAmount(bill: PortalBill): number {
   return round2(bill.amount + bill.totalPaid)

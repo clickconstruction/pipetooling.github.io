@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { PortalBill } from './portalPayload'
 import {
+  portalBillPaidByWords,
   groupPortalBillsByJob,
   portalBillBilledAmount,
   portalPaymentMethodLabel,
@@ -128,5 +129,20 @@ describe('groupPortalBillsByJob', () => {
     ])
     expect(groups[0]?.asGc).toBe(true)
     expect(groups[0]?.ownerName).toBe('Dana Fields')
+  })
+})
+
+describe('portalBillPaidByWords', () => {
+  const fmt = { usd: (n: number) => `$${n.toFixed(2)}`, date: (ymd: string | null) => (ymd ? `D${ymd.slice(5)}` : null) }
+  const bill = (over: Partial<Pick<PortalBill, 'amount' | 'payments' | 'totalPaid'>>) => ({ amount: 1333, payments: [], totalPaid: 0, ...over })
+  it('an open bill nothing has paid says so', () => {
+    expect(portalBillPaidByWords(bill({}), fmt)).toBe('nothing applied yet')
+  })
+  it('names what paid it and when, and what is still open', () => {
+    expect(portalBillPaidByWords(bill({ totalPaid: 12000, payments: [{ date: '2026-09-24', method: 'check', amount: 12000 }] }), fmt)).toBe('paid $12000.00 by check on D09-24 · $1333.00 still open')
+    expect(portalBillPaidByWords(bill({ amount: 0, totalPaid: 500, payments: [{ date: '2026-09-01', method: 'other', amount: 200 }, { date: '2026-09-03', method: 'ach', amount: 300 }] }), fmt)).toBe('paid in full by on D09-01 and ach on D09-03')
+  })
+  it('says "so far" and names nothing when the rows cannot account for the paid total', () => {
+    expect(portalBillPaidByWords(bill({ totalPaid: 900, payments: [{ date: '2026-09-24', method: 'check', amount: 400 }] }), fmt)).toBe('paid $900.00 so far · $1333.00 still open')
   })
 })

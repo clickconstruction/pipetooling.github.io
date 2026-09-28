@@ -40,6 +40,12 @@ describe('buildGcStatementReportHtml', () => {
     expect(html).not.toContain('Total:') // no grand total for a single section
   })
 
+  it('says under the job what paid the bill, when the row carries it', () => {
+    const html = buildGcStatementReportHtml([group({ rows: [{ ...group().rows[0]!, paidBy: '$2,000.00 paid by #4821 on Sep 10 · $658.00 still open' }] })])
+    expect(html).toContain('$2,000.00 paid by #4821 on Sep 10 · $658.00 still open')
+    expect(buildGcStatementReportHtml([group()])).not.toContain('still open')
+  })
+
   it('multiple groups title as GC Review and append a grand total', () => {
     const html = buildGcStatementReportHtml(
       [group(), group({ key: 'no-gc', gcId: null, gcName: 'No GC set', isNoGc: true, subtotal: 42, rows: [], jobCount: 0, oldestAgeDays: null })],
