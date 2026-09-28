@@ -23,7 +23,10 @@ export interface JobFormAutosaveSlice {
    * until clean or failed. Caller wraps in withOperationTimeout.
    */
   flushForClose: () => Promise<CloseFlushOutcome>
-  /** Refresh the baseline after an external full save persisted this slice. */
+  /**
+   * Refresh the baseline after an external write persisted this slice, and
+   * drop the debounce those rows started — what is on screen is what is saved.
+   */
   markSavedNow: () => void
   /** Drop the baseline — job deleted or closing without saving. */
   clearBaseline: () => void
@@ -135,6 +138,7 @@ export function useJobFormAutosaveSlice(params: {
   }
 
   function markSavedNow() {
+    cancelTimer()
     const id = jobIdRef.current
     if (id) baselineRef.current = { jobId: id, json: sliceJsonRef.current }
     setStatus('idle')

@@ -170,6 +170,17 @@ export function useJobFormAutosaveEngine(args: JobFormAutosaveEngineArgs): JobFo
     billingAutosave.markSavedNow()
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the nonce is the trigger; the hook reads the latest slice JSON from its ref
   }, [rebaselineBillingNonce])
+  /**
+   * The form just took rows it re-read from the DB: have the billing slice
+   * treat them as saved, on the render that carries them. Not when the slice
+   * had an edit waiting or a save in flight — the re-read does not hold that
+   * edit, so the save it is owed still has to run.
+   */
+  const billingRereadFromDb = useCallback(() => {
+    if (billingAutosave.isDirty() || billingAutosave.isRunning()) return
+    setRebaselineBillingNonce((n) => n + 1)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- both calls read the slice's refs, which outlive the render
+  }, [])
   const rehydrateFixturesFromDb = useCallback(async (jobId: string) => {
     const found = await fetchJobWithDetailsById(jobId)
     if (!found) return
@@ -177,7 +188,7 @@ export function useJobFormAutosaveEngine(args: JobFormAutosaveEngineArgs): JobFo
     const rows = fixtureRowsFromDb(found.fixtures)
     setFixtures(rows.length > 0 ? rows : [{ id: crypto.randomUUID(), name: '', count: 1, line_unit_price: null, line_description: '', invoice_id: null }])
     persistedDiscountSnapshotRef.current = discountSnapshot(rows)
-    setRebaselineBillingNonce((n) => n + 1)
+    billingRereadFromDb()
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the dependency list it had in the form; both setters are stable
   }, [setFixtures])
 
