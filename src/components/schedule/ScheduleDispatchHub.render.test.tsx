@@ -152,4 +152,28 @@ describe('ScheduleDispatchHub phone layout (v2.1240, toggle removed v2.1242)', (
     fireEvent.click(screen.getByLabelText('More schedule tools'))
     expect(await screen.findByText('Visible hours…')).toBeTruthy()
   })
+
+  it('the People tab draws Expected Manpower under the grid, and the page hears the day pick', async () => {
+    const onHubExpectedManpowerDayChange = vi.fn()
+    renderWithProviders(
+      <ScheduleDispatchHub
+        {...makeProps({
+          showExpectedManpower: true,
+          hubExpectedManpowerDayKey: '2026-07-27',
+          onHubExpectedManpowerDayChange,
+        })}
+      />,
+    )
+    await settle()
+    expect(screen.getByRole('heading', { name: 'Expected Manpower' })).toBeTruthy()
+    expect(screen.getByText('No schedule blocks for Mon (07/27).')).toBeTruthy()
+    fireEvent.click(screen.getByRole('tab', { name: 'All week' }))
+    expect(onHubExpectedManpowerDayChange).toHaveBeenCalledTimes(1)
+  })
+
+  it('an embed that turns Expected Manpower off draws none of it', async () => {
+    renderWithProviders(<ScheduleDispatchHub {...makeProps({ hubExpectedManpowerDayKey: '2026-07-27' })} />)
+    await settle()
+    expect(screen.queryByRole('heading', { name: 'Expected Manpower' })).toBeNull()
+  })
 })
