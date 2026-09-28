@@ -22,21 +22,28 @@ vi.mock('../../hooks/useIsMobile', () => ({ useIsMobile: () => false }))
 const driveScan = vi.hoisted(() => ({ files: [] as unknown[] }))
 /** Live `job_contracts` rows (v2.3707): a draft typed earlier, for the amount-differs case. Empty by default. */
 const contractRows = vi.hoisted(() => ({ rows: [] as Record<string, unknown>[] }))
+/** The Contract Book's customer documents (v2.3965): the standard terms the sweep sends with. Empty by default — the built-in wording. */
+const templateRows = vi.hoisted(() => ({ rows: [] as Record<string, unknown>[] }))
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
   const stub = makeSupabaseStub() as { from: (table: string) => unknown }
   // A chainable builder over the fixture rows: any point in the chain resolves them; .maybeSingle() the first.
-  const rowsBuilder = (single: boolean): Record<string, unknown> => {
+  const rowsBuilder = (source: { rows: Record<string, unknown>[] }, single: boolean): Record<string, unknown> => {
     const b: Record<string, unknown> = {}
     for (const m of ['select', 'eq', 'in', 'is', 'order', 'limit']) b[m] = () => b
-    b.maybeSingle = () => rowsBuilder(true)
-    b.then = (ok?: (v: unknown) => unknown, ko?: (e: unknown) => unknown) => Promise.resolve({ data: single ? (contractRows.rows[0] ?? null) : contractRows.rows, error: null }).then(ok, ko)
+    b.maybeSingle = () => rowsBuilder(source, true)
+    b.then = (ok?: (v: unknown) => unknown, ko?: (e: unknown) => unknown) => Promise.resolve({ data: single ? (source.rows[0] ?? null) : source.rows, error: null }).then(ok, ko)
     return b
   }
   return {
     supabase: {
       ...stub,
-      from: (table: string) => (table === 'job_contracts' && contractRows.rows.length > 0 ? rowsBuilder(false) : stub.from(table)),
+      from: (table: string) =>
+        table === 'job_contracts' && contractRows.rows.length > 0
+          ? rowsBuilder(contractRows, false)
+          : table === 'contract_template_documents' && templateRows.rows.length > 0
+            ? rowsBuilder(templateRows, false)
+            : stub.from(table),
       functions: { invoke: async () => ({ data: { ok: true, files: driveScan.files }, error: null }) },
     },
   }
@@ -54,9 +61,13 @@ vi.mock('../../lib/jobs/jobContractQuickSend', () => ({
 const saveSpy = vi.fn((input: { existing: unknown; payload: { job_id: string; fields: { scope_lines: string[]; amount_cents: number | null } } }) =>
   Promise.resolve({ id: 'd1', job_id: input.payload.job_id, status: 'draft', revision: 1, fields: input.payload.fields, body_html: 'terms', body_format: 'plain', template_name: 'Built-in service agreement terms', recipient_name: null, recipient_email: null, created_at: '2026-09-14T00:00:00Z', updated_at: null, last_sent_at: null }),
 )
+/** The terms-only write before a hand-off (v2.3965): answers with the draft on the template's wording. */
+const refreshSpy = vi.fn((input: { existing: Record<string, unknown>; template: { id: string; book_body_html: string } | null }) =>
+  Promise.resolve({ ...input.existing, body_html: input.template?.book_body_html ?? input.existing.body_html }),
+)
 vi.mock('../../lib/jobs/jobContractDraftWrite', async () => {
   const actual = await vi.importActual<typeof import('../../lib/jobs/jobContractDraftWrite')>('../../lib/jobs/jobContractDraftWrite')
-  return { ...actual, saveJobContractDraft: (input: never) => saveSpy(input) }
+  return { ...actual, saveJobContractDraft: (input: never) => saveSpy(input), refreshJobContractDraftTerms: (input: never) => refreshSpy(input) }
 })
 
 vi.mock('../../lib/jobs/contractDraftPdf', () => ({
@@ -416,6 +427,44 @@ describe('JobsContractSweepModal', () => {
       expect(screen.getByTestId('sweep-way-go-next').textContent).toBe('Email PDF & next')
     } finally {
       contractRows.rows = []
+    }
+  })
+
+  it('an unsent draft follows its Book document: the pane shows the current wording and the hand-off writes it; another document’s draft keeps its own (v2.3965)', async () => {
+    const draft = { id: 'd523', job_id: 'j523', status: 'draft', revision: 1, voided_at: null, fields: { scope_lines: ['14 × Water closet'], amount_cents: 12_360_000, payment_terms_key: 'half_down', payment_terms_text: '' }, body_html: 'Late payment accrues 1% a month.', body_format: 'plain', template_document_id: 't1', template_name: 'Service agreement', template_version_date: '2026-09-20', recipient_name: null, recipient_email: null, created_at: '2026-09-14T00:00:00Z', updated_at: null, last_sent_at: null }
+    templateRows.rows = [{ id: 't1', document_name: 'Service agreement', book_body_html: 'Late payment accrues 1.5% a month.', book_body_format: 'plain', book_version_date: '2026-09-27' }]
+    contractRows.rows = [draft]
+    handedSpy.mockClear()
+    saveSpy.mockClear()
+    refreshSpy.mockClear()
+    try {
+      const onSent = vi.fn()
+      const first = mount(onSent)
+      const frame = () => (screen.getByTitle('The agreement as the customer will see it') as HTMLIFrameElement).getAttribute('srcdoc') ?? ''
+      // The draft was written a week ago; the Book says 1.5% now — that is what will go out, so that is what shows.
+      await waitFor(() => expect(frame()).toContain('Late payment accrues 1.5% a month.'))
+      expect(frame()).not.toContain('Late payment accrues 1% a month.')
+      expect(screen.getByTestId('sweep-pane-job').textContent).toContain('J523')
+      // Nothing typed: the hand-off still brings the record up to the wording on the page, and only the terms.
+      fireEvent.click(within(screen.getByTestId('sweep-signing-ways')).getByRole('radio', { name: /Download to print/ }))
+      fireEvent.click(screen.getByRole('button', { name: 'Download & next' }))
+      await waitFor(() => expect(onSent).toHaveBeenCalled())
+      expect(saveSpy).not.toHaveBeenCalled()
+      expect(refreshSpy).toHaveBeenCalledTimes(1)
+      expect(refreshSpy.mock.calls[0]![0].existing.id).toBe('d523')
+      expect(refreshSpy.mock.calls[0]![0].template?.id).toBe('t1')
+      expect((handedSpy.mock.calls[0]![0].row as unknown as { body_html: string }).body_html).toBe('Late payment accrues 1.5% a month.')
+      first.unmount()
+
+      // A draft the office wrote from a different document in the Contract window is left as it reads.
+      contractRows.rows = [{ ...draft, template_document_id: 't9', template_name: 'Commercial agreement' }]
+      mount()
+      await waitFor(() => expect(frame()).toContain('Late payment accrues 1% a month.'))
+      expect(frame()).toContain('Commercial agreement')
+      expect(frame()).not.toContain('Late payment accrues 1.5% a month.')
+    } finally {
+      contractRows.rows = []
+      templateRows.rows = []
     }
   })
 

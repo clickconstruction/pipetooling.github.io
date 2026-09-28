@@ -9,7 +9,9 @@ import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
-import { buildJobContractPrefill, DEFAULT_JOB_CONTRACT_TERMS_PLAIN, type EstimateLineForPrefill } from './jobContractDocument'
+import { buildJobContractPrefill, type EstimateLineForPrefill } from './jobContractDocument'
+import { jobContractTermsFromTemplate } from './jobContractDraftTerms'
+import { refreshJobContractDraftTerms } from './jobContractDraftWrite'
 import type { JobContractRow } from './jobContractLifecycle'
 
 export type QuickSendTemplate = Pick<
@@ -46,7 +48,11 @@ export async function quickSendJobContract(input: {
       .limit(1)
       .maybeSingle()
     let row = (existing ?? null) as JobContractRow | null
-    if (!row) {
+    if (row) {
+      // A reused draft written from this same Book document takes its current wording before it goes out;
+      // a refresh that fails throws and stops the send — the old wording is never what reaches the customer.
+      row = await refreshJobContractDraftTerms({ existing: row, template })
+    } else {
       const fields = buildJobContractPrefill({ job, estimateLines: input.estimateLines ?? [], acceptedTotalCents: input.acceptedTotalCents ?? null })
       row = await withSupabaseRetry<JobContractRow>(
         () =>
@@ -56,11 +62,7 @@ export async function quickSendJobContract(input: {
               job_id: job.id,
               status: 'draft',
               fields: fields as unknown as Database['public']['Tables']['job_contracts']['Insert']['fields'],
-              body_html: template ? template.book_body_html ?? '' : DEFAULT_JOB_CONTRACT_TERMS_PLAIN,
-              body_format: template ? template.book_body_format : 'plain',
-              template_document_id: template?.id ?? null,
-              template_name: template ? template.document_name : 'Built-in service agreement terms',
-              template_version_date: template?.book_version_date ?? null,
+              ...jobContractTermsFromTemplate(template),
               recipient_name: input.recipientName.trim() || job.customer_name || null,
               recipient_email: email,
               recipient_phone: job.customer_phone ?? null,
