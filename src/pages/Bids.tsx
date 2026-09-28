@@ -44,15 +44,9 @@ import { BidWindowModal } from '../components/bids/BidWindowModal'
 import { BidsEstimatorsTab } from '../components/bids/BidsEstimatorsTab'
 import { Database } from '../types/database'
 import type { BidWithBuilder, EstimatorUser } from '../types/bidWithBuilder'
-import type { BidDateSentAttestationPayload } from '../types/bidDateSentAttestation'
-import { bidAttestationDisplayName, normalizeBidDateInput } from '../lib/bidDateSentDisplay'
-import {
-  bidDateSentAttestationMerge,
-  bidDateSentAttestationPromptDate,
-  bidDateSentAttestationSaveError,
-  bidDateSentInputDropsPending,
-  buildBidDateSentAttestationPayload,
-} from '../lib/bids/bidDateSentAttestation'
+import { bidAttestationDisplayName } from '../lib/bidDateSentDisplay'
+import { useBidDateSentAttestation } from '../hooks/useBidDateSentAttestation'
+import { BidSentAttestationModal } from '../components/bids/BidSentAttestationModal'
 import { BidsBidBoardTab } from '../components/bids/BidsBidBoardTab'
 import { BidRfiTab } from '../components/bids/BidRfiTab'
 import { BidsAuditsTab } from '../components/bids/BidsAuditsTab'
@@ -362,21 +356,9 @@ export default function Bids() {
       !!authUser?.id && (bid.account_manager_id === authUser.id || bid.estimator_id === authUser.id),
     [authUser?.id],
   )
-  const [bidDateSent, setBidDateSent] = useState('')
-  const savedBidDateSentRef = useRef('')
-  const [bidSentAttestModalOpen, setBidSentAttestModalOpen] = useState(false)
-  const [pendingBidDateSentForModal, setPendingBidDateSentForModal] = useState('')
-  const [bidSentAckEmail, setBidSentAckEmail] = useState(false)
-  const [bidSentAckPhone, setBidSentAckPhone] = useState(false)
-  const [bidSentAckHonesty, setBidSentAckHonesty] = useState(false)
-  const [bidSentAckEmailAt, setBidSentAckEmailAt] = useState<string | null>(null)
-  const [bidSentAckPhoneAt, setBidSentAckPhoneAt] = useState<string | null>(null)
-  const [bidSentAckHonestyAt, setBidSentAckHonestyAt] = useState<string | null>(null)
-  const [pendingBidDateSentAttestation, setPendingBidDateSentAttestation] =
-    useState<BidDateSentAttestationPayload | null>(null)
-  const [pendingAttestationForDate, setPendingAttestationForDate] = useState<string | null>(null)
-  const [bidSentAttestFollowupNoteDraft, setBidSentAttestFollowupNoteDraft] = useState('')
-  const [pendingBidSentFollowupSubmissionNote, setPendingBidSentFollowupSubmissionNote] = useState<string | null>(null)
+  // Bid Date Sent: the field, the checklist a new date needs, the note typed with it (hooks/useBidDateSentAttestation).
+  const attestation = useBidDateSentAttestation({ serverBidDateSent: editingBid?.bid_date_sent ?? null, userId: authUser?.id ?? null })
+  const bidDateSent = attestation.bidDateSent
 
   const bidForm = useBidEditForm()
   const {
@@ -2074,11 +2056,9 @@ export default function Bids() {
 
 
   function openNewBid() {
-    clearBidDateSentAttestationFlow()
-    savedBidDateSentRef.current = ''
+    attestation.resetTo('')
     setEditingBid(null)
     bidForm.reset({ serviceTypeId: selectedServiceTypeId, accountManagerId: authUser?.id ?? '' })
-    setBidDateSent('')
     setPendingBidFormFocus(null)
     setBidFormOpen(true)
     setError(null)
@@ -2086,26 +2066,22 @@ export default function Bids() {
 
   /** Projects card "+ Bid" deep link: new bid pre-linked to the project, name seeded from it. */
   function openNewBidFromProject(project: { id: string; name: string | null } | null) {
-    clearBidDateSentAttestationFlow()
-    savedBidDateSentRef.current = ''
+    attestation.resetTo('')
     setEditingBid(null)
     bidForm.reset({ serviceTypeId: selectedServiceTypeId, accountManagerId: authUser?.id ?? '', project })
-    setBidDateSent('')
     setPendingBidFormFocus(null)
     setBidFormOpen(true)
     setError(null)
   }
 
   function openNewBidWithCustomer(customer: Customer) {
-    clearBidDateSentAttestationFlow()
-    savedBidDateSentRef.current = ''
+    attestation.resetTo('')
     setEditingBid(null)
     bidForm.reset({
       serviceTypeId: selectedServiceTypeId,
       accountManagerId: authUser?.id ?? '',
       customer: { id: customer.id, address: customer.address ?? null, display: getCustomerDisplay(customer) },
     })
-    setBidDateSent('')
     setPendingBidFormFocus(null)
     setBidFormOpen(true)
     setError(null)
@@ -2113,7 +2089,6 @@ export default function Bids() {
 
   function openEditBid(bid: BidWithBuilder, opts?: { focus?: BidFormFocus; tab?: 'bid' | 'edit' }) {
     setBidWindowInitialTab(opts?.tab ?? 'edit')
-    clearBidDateSentAttestationFlow()
     setEditingBid(bid)
     let nextGcCustomerId = ''
     let nextGcCustomerSearch = ''
@@ -2128,27 +2103,11 @@ export default function Bids() {
       gcCustomerSearch: nextGcCustomerSearch,
       fallbackServiceTypeId: selectedServiceTypeId,
     })
-    setBidDateSent(bid.bid_date_sent ?? '')
-    savedBidDateSentRef.current = normalizeBidDateInput(bid.bid_date_sent)
+    attestation.resetTo(bid.bid_date_sent)
     setDeleteConfirmProjectName('')
     setPendingBidFormFocus(opts?.focus ?? null)
     setBidFormOpen(true)
     setError(null)
-  }
-
-  function clearBidDateSentAttestationFlow() {
-    setBidSentAttestModalOpen(false)
-    setPendingBidDateSentForModal('')
-    setBidSentAckEmail(false)
-    setBidSentAckPhone(false)
-    setBidSentAckHonesty(false)
-    setBidSentAckEmailAt(null)
-    setBidSentAckPhoneAt(null)
-    setBidSentAckHonestyAt(null)
-    setPendingBidDateSentAttestation(null)
-    setPendingAttestationForDate(null)
-    setBidSentAttestFollowupNoteDraft('')
-    setPendingBidSentFollowupSubmissionNote(null)
   }
 
   function closeBidForm() {
@@ -2160,7 +2119,7 @@ export default function Bids() {
     setDeletingBid(false)
     setDeleteBidModalOpen(false)
     setBidServiceTypeSwitchSiblings({})
-    clearBidDateSentAttestationFlow()
+    attestation.clearFlow()
   }
 
   async function saveLossReasonFromLostSummaryModal(
@@ -2276,102 +2235,6 @@ export default function Bids() {
     })
   }
 
-  /** What the attestation rules (lib/bids/bidDateSentAttestation) read: the field, the saved date, the confirmed checklist. */
-  function bidDateSentAttestationState() {
-    return {
-      bidDateSent,
-      serverBidDateSent: editingBid ? editingBid.bid_date_sent : null,
-      pending: pendingBidDateSentAttestation,
-      pendingForDate: pendingAttestationForDate,
-    }
-  }
-
-  function getBidDateSentAttestationPayloadMerge(): Record<string, string | null> {
-    return bidDateSentAttestationMerge(bidDateSentAttestationState())
-  }
-
-  function validateBidDateSentAttestationForSave(): string | null {
-    return bidDateSentAttestationSaveError(bidDateSentAttestationState())
-  }
-
-  /** Opens attestation modal once when the committed date differs from last saved; reverts field to baseline until confirmed. */
-  function promptBidDateSentAttestationIfNeeded(proposedRaw: string): boolean {
-    const baseline = savedBidDateSentRef.current
-    const proposedNorm = bidDateSentAttestationPromptDate({
-      modalOpen: bidSentAttestModalOpen,
-      proposedRaw,
-      baseline,
-      pending: pendingBidDateSentAttestation,
-      pendingForDate: pendingAttestationForDate,
-    })
-    if (!proposedNorm) return false
-
-    setPendingBidDateSentForModal(proposedNorm)
-    setBidSentAckEmail(false)
-    setBidSentAckPhone(false)
-    setBidSentAckHonesty(false)
-    setBidSentAckEmailAt(null)
-    setBidSentAckPhoneAt(null)
-    setBidSentAckHonestyAt(null)
-    setBidSentAttestFollowupNoteDraft('')
-    setBidSentAttestModalOpen(true)
-    setBidDateSent(baseline || '')
-    return true
-  }
-
-  function handleBidDateSentInputChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const v = e.target.value
-    setBidDateSent(v)
-    if (bidDateSentInputDropsPending({ value: v, baseline: savedBidDateSentRef.current, pendingForDate: pendingAttestationForDate })) {
-      setPendingBidDateSentAttestation(null)
-      setPendingAttestationForDate(null)
-      setPendingBidSentFollowupSubmissionNote(null)
-    }
-  }
-
-  function handleBidDateSentBlur(e: React.FocusEvent<HTMLInputElement>) {
-    promptBidDateSentAttestationIfNeeded(e.target.value)
-  }
-
-  function cancelBidSentAttestationModal() {
-    setBidSentAttestModalOpen(false)
-    setPendingBidDateSentForModal('')
-    setBidSentAckEmail(false)
-    setBidSentAckPhone(false)
-    setBidSentAckHonesty(false)
-    setBidSentAckEmailAt(null)
-    setBidSentAckPhoneAt(null)
-    setBidSentAckHonestyAt(null)
-    setBidSentAttestFollowupNoteDraft('')
-  }
-
-  function confirmBidSentAttestationModal() {
-    if (!authUser?.id) return
-    if (!bidSentAckEmail || !bidSentAckPhone || !bidSentAckHonesty) return
-    const payload = buildBidDateSentAttestationPayload({
-      userId: authUser.id,
-      confirmedAt: new Date().toISOString(),
-      ackEmailAt: bidSentAckEmailAt,
-      ackPhoneAt: bidSentAckPhoneAt,
-      ackHonestyAt: bidSentAckHonestyAt,
-    })
-    const pendingDate = pendingBidDateSentForModal
-    const trimmedFollowup = bidSentAttestFollowupNoteDraft.trim()
-    setPendingBidDateSentAttestation(payload)
-    setPendingAttestationForDate(pendingDate)
-    setBidDateSent(pendingDate)
-    setBidSentAttestModalOpen(false)
-    setPendingBidDateSentForModal('')
-    setBidSentAckEmail(false)
-    setBidSentAckPhone(false)
-    setBidSentAckHonesty(false)
-    setBidSentAckEmailAt(null)
-    setBidSentAckPhoneAt(null)
-    setBidSentAckHonestyAt(null)
-    setBidSentAttestFollowupNoteDraft('')
-    setPendingBidSentFollowupSubmissionNote(trimmedFollowup || null)
-  }
-
   async function insertPendingBidSentFollowupSubmissionNoteAfterSave(bidId: string, noteText: string | null) {
     const trimmed = noteText?.trim() ?? ''
     if (!trimmed || !authUser?.id) return
@@ -2480,17 +2343,17 @@ export default function Bids() {
     const bid = editingBid
     if (!bid || !authUser?.id) return true
     const written = bidForm.values
-    const attestErr = validateBidDateSentAttestationForSave()
-    const payloadWithAttest = { ...buildBidPayload(), ...getBidDateSentAttestationPayloadMerge() }
+    const attestErr = attestation.validateForSave()
+    const payloadWithAttest = { ...buildBidPayload(), ...attestation.getPayloadMerge() }
     const updatePayload = pruneUnchangedBidUpdateFields(payloadWithAttest, {
       current: written,
       initial: bidForm.initialValues,
-      bidDateSent: { current: bidDateSent, initial: savedBidDateSentRef.current },
+      bidDateSent: { current: bidDateSent, initial: attestation.savedBidDateSent() },
     })
     if (attestErr) delete updatePayload.bid_date_sent
     const dateWritten = 'bid_date_sent' in updatePayload
     const outcomeWritten = 'outcome' in updatePayload
-    const followupNote = dateWritten ? pendingBidSentFollowupSubmissionNote : null
+    const followupNote = dateWritten ? attestation.pendingFollowupNote : null
     const wroteSomething = Object.keys(updatePayload).length > 0
     if (wroteSomething) {
       const { data: updatedRows, error: err } = await supabase.from('bids').update(updatePayload).eq('id', bid.id).select('id')
@@ -2507,10 +2370,7 @@ export default function Bids() {
     // The values this pass wrote are the new baseline; the sent date's baseline moves only when it went through.
     bidForm.markSaved(written)
     if (dateWritten) {
-      savedBidDateSentRef.current = normalizeBidDateInput(bidDateSent)
-      setPendingBidDateSentAttestation(null)
-      setPendingAttestationForDate(null)
-      setPendingBidSentFollowupSubmissionNote(null)
+      attestation.markSaved()
     }
     if (outcomeWritten) {
       const nextOutcome = normalizedOutcomePayload(written.outcome)
@@ -2557,12 +2417,12 @@ export default function Bids() {
     jobId: bidFormOpen && editingBid ? editingBid.id : null,
     sliceJson: bidAutosaveSliceJson(bidForm.values, {
       bidDateSent,
-      attestedAt: pendingBidDateSentAttestation?.bid_date_sent_attested_at ?? null,
-      followupNote: pendingBidSentFollowupSubmissionNote,
+      attestedAt: attestation.pending?.bid_date_sent_attested_at ?? null,
+      followupNote: attestation.pendingFollowupNote,
     }),
     save: autosaveBid,
     // Required fields blank → hold (an invalid row must never persist); the attestation modal owns the form while open.
-    enabled: bidForm.canSubmit && !bidSentAttestModalOpen && !savingBid,
+    enabled: bidForm.canSubmit && !attestation.modalOpen && !savingBid,
   })
 
   // A tab switch or phone backgrounding never reaches the close guard — flush the pending debounce then.
@@ -2622,11 +2482,11 @@ export default function Bids() {
       setError('Project Name is required.')
       return
     }
-    if (promptBidDateSentAttestationIfNeeded(bidDateSent)) {
+    if (attestation.promptIfNeeded(bidDateSent)) {
       setError(null)
       return
     }
-    const attestSaveErr = validateBidDateSentAttestationForSave()
+    const attestSaveErr = attestation.validateForSave()
     if (attestSaveErr) {
       setError(attestSaveErr)
       return
@@ -2634,8 +2494,8 @@ export default function Bids() {
     setSavingBid(true)
     setError(null)
     const payload = await createPayloadWithDistance()
-    const payloadWithAttest = { ...payload, ...getBidDateSentAttestationPayloadMerge() }
-    const followupNoteToSave = pendingBidSentFollowupSubmissionNote
+    const payloadWithAttest = { ...payload, ...attestation.getPayloadMerge() }
+    const followupNoteToSave = attestation.pendingFollowupNote
     let bidIdForFollowup: string | null = null
     if (editingBid) {
       // Dirty fields only: an untouched Save must not write stale form values over
@@ -2643,7 +2503,7 @@ export default function Bids() {
       const updatePayload = pruneUnchangedBidUpdateFields(payloadWithAttest, {
         current: bidForm.values,
         initial: bidForm.initialValues,
-        bidDateSent: { current: bidDateSent, initial: savedBidDateSentRef.current },
+        bidDateSent: { current: bidDateSent, initial: attestation.savedBidDateSent() },
       })
       if (Object.keys(updatePayload).length > 0) {
         const { data: updatedRows, error: err } = await supabase
@@ -2677,10 +2537,7 @@ export default function Bids() {
       }
       bidIdForFollowup = (inserted as { id: string } | null)?.id ?? null
     }
-    savedBidDateSentRef.current = normalizeBidDateInput(bidDateSent)
-    setPendingBidDateSentAttestation(null)
-    setPendingAttestationForDate(null)
-    setPendingBidSentFollowupSubmissionNote(null)
+    attestation.markSaved()
     const previousOutcomeForNote = editingBid ? (editingBid.outcome ?? null) : null
     const nextOutcomeForNote = normalizedOutcomePayload(outcome)
     if (bidIdForFollowup) {
@@ -2709,11 +2566,11 @@ export default function Bids() {
       setError('Project Name is required.')
       return
     }
-    if (promptBidDateSentAttestationIfNeeded(bidDateSent)) {
+    if (attestation.promptIfNeeded(bidDateSent)) {
       setError(null)
       return
     }
-    const attestSaveErrCounts = validateBidDateSentAttestationForSave()
+    const attestSaveErrCounts = attestation.validateForSave()
     if (attestSaveErrCounts) {
       setError(attestSaveErrCounts)
       return
@@ -2731,8 +2588,8 @@ export default function Bids() {
     // New Bid: Create and open counts.
     setSavingBid(true)
     setError(null)
-    const payloadWithAttestCounts = { ...(await createPayloadWithDistance()), ...getBidDateSentAttestationPayloadMerge() }
-    const followupNoteToSaveCounts = pendingBidSentFollowupSubmissionNote
+    const payloadWithAttestCounts = { ...(await createPayloadWithDistance()), ...attestation.getPayloadMerge() }
+    const followupNoteToSaveCounts = attestation.pendingFollowupNote
     const { data: inserted, error: err } = await supabase
       .from('bids')
       .insert({ ...payloadWithAttestCounts, created_by: authUser.id, materials_model: 'rough' })
@@ -2744,10 +2601,7 @@ export default function Bids() {
       return
     }
     const bidId = (inserted as { id: string }).id
-    savedBidDateSentRef.current = normalizeBidDateInput(bidDateSent)
-    setPendingBidDateSentAttestation(null)
-    setPendingAttestationForDate(null)
-    setPendingBidSentFollowupSubmissionNote(null)
+    attestation.markSaved()
     await insertOutcomeChangeBidNoteAfterSave({
       bidId,
       previousOutcome: null,
@@ -4222,20 +4076,18 @@ export default function Bids() {
             myRole={myRole === 'controller' ? 'assistant' : myRole}
             visibleServiceTypes={visibleServiceTypes}
             bidDateSent={bidDateSent}
-            handleBidDateSentInputChange={handleBidDateSentInputChange}
-            handleBidDateSentBlur={handleBidDateSentBlur}
+            handleBidDateSentInputChange={attestation.handleInputChange}
+            handleBidDateSentBlur={attestation.handleBlur}
             onGcRollupDateChanged={(d) => {
               // v2.2407: the per-GC panel rewrote the derived roll-up in the DB — mirror it into
               // the form state so Save writes the same value and attestation never trips.
               const norm = d ?? ''
-              setBidDateSent(norm)
-              savedBidDateSentRef.current = normalizeBidDateInput(norm)
-              clearBidDateSentAttestationFlow()
+              attestation.resetTo(norm)
               const sentBidId = editingBid?.id ?? null
               void loadBids().then(() => { if (sentBidId && norm) void offerRobotEnvelope(sentBidId) })
             }}
-            pendingAttestationForDate={pendingAttestationForDate}
-            pendingBidDateSentAttestation={pendingBidDateSentAttestation}
+            pendingAttestationForDate={attestation.pendingForDate}
+            pendingBidDateSentAttestation={attestation.pending}
             gcCustomerDropdownOpen={gcCustomerDropdownOpen}
             setGcCustomerDropdownOpen={setGcCustomerDropdownOpen}
             customers={customers}
@@ -4297,7 +4149,7 @@ export default function Bids() {
               escBlocked={
                 deleteBidModalOpen ||
                 evaluateModalOpen ||
-                bidSentAttestModalOpen ||
+                attestation.modalOpen ||
                 bidFormServiceTypeSwitchOpen ||
                 gcCustomerDropdownOpen
               }
@@ -4309,138 +4161,8 @@ export default function Bids() {
         return bidFormModalElement
       })()}
 
-      {bidSentAttestModalOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1001,
-          }}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="bid-sent-attest-title"
-            style={{
-              background: 'var(--surface)',
-              padding: '1.5rem 2rem',
-              borderRadius: 8,
-              maxWidth: '520px',
-              width: '90%',
-              maxHeight: '90vh',
-              overflow: 'auto',
-              boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
-            }}
-          >
-            <h2 id="bid-sent-attest-title" style={{ marginTop: 0, marginBottom: '0.75rem', fontSize: '1.125rem' }}>
-              Confirm bid sent
-            </h2>
-            <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              Check each statement when it applies. You must confirm all three before the new sent date is applied.
-            </p>
-            {[
-              {
-                key: 'email' as const,
-                checked: bidSentAckEmail,
-                setChecked: setBidSentAckEmail,
-                checkedAt: bidSentAckEmailAt,
-                setAt: setBidSentAckEmailAt,
-                label: 'I sent the bid via email and the client knew it was coming',
-              },
-              {
-                key: 'phone' as const,
-                checked: bidSentAckPhone,
-                setChecked: setBidSentAckPhone,
-                checkedAt: bidSentAckPhoneAt,
-                setAt: setBidSentAckPhoneAt,
-                label: 'I followed up with a phone call',
-              },
-              {
-                key: 'honesty' as const,
-                checked: bidSentAckHonesty,
-                setChecked: setBidSentAckHonesty,
-                checkedAt: bidSentAckHonestyAt,
-                setAt: setBidSentAckHonestyAt,
-                label: 'I understand that lying about this will result in my suspension',
-              },
-            ].map((row) => (
-              <div key={row.key} style={{ marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid var(--border)' }}>
-                <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem' }}>
-                  <input
-                    type="checkbox"
-                    checked={row.checked}
-                    onChange={(e) => {
-                      const on = e.target.checked
-                      row.setChecked(on)
-                      if (on) row.setAt(new Date().toISOString())
-                      else row.setAt(null)
-                    }}
-                    style={{ marginTop: '0.2rem' }}
-                  />
-                  <span>{row.label}</span>
-                </label>
-                {row.checked && row.checkedAt && authUser?.id ? (
-                  <div style={{ marginLeft: '1.5rem', marginTop: '0.35rem', fontSize: '0.8125rem', color: 'var(--text-700)' }}>
-                    {bidAttestationDisplayName(estimatorUsers, authUser.id)} ·{' '}
-                    {new Date(row.checkedAt).toLocaleString(undefined, {
-                      dateStyle: 'short',
-                      timeStyle: 'short',
-                    })}
-                  </div>
-                ) : null}
-              </div>
-            ))}
-            <div style={{ marginTop: '1rem', marginBottom: '0.25rem' }}>
-              <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)', marginBottom: '0.35rem' }}>
-                Adds to bid note:
-              </div>
-              <textarea
-                value={bidSentAttestFollowupNoteDraft}
-                onChange={(e) => setBidSentAttestFollowupNoteDraft(e.target.value)}
-                placeholder="What happened when you called them or left a voicemail?"
-                rows={3}
-                style={{
-                  width: '100%',
-                  boxSizing: 'border-box',
-                  padding: '0.5rem',
-                  fontSize: '0.875rem',
-                  border: '1px solid var(--border-strong)',
-                  borderRadius: 4,
-                  resize: 'vertical',
-                  fontFamily: 'inherit',
-                }}
-              />
-            </div>
-            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1.25rem' }}>
-              <button
-                type="button"
-                onClick={cancelBidSentAttestationModal}
-                style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={!bidSentAckEmail || !bidSentAckPhone || !bidSentAckHonesty || !authUser?.id}
-                onClick={confirmBidSentAttestationModal}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: !bidSentAckEmail || !bidSentAckPhone || !bidSentAckHonesty ? '#9ca3af' : '#2563eb',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 4,
-                  cursor: !bidSentAckEmail || !bidSentAckPhone || !bidSentAckHonesty ? 'not-allowed' : 'pointer',
-                }}
-              >
-                Confirm sent date
-              </button>
-            </div>
-          </div>
-        </div>
+      {attestation.modalOpen && (
+        <BidSentAttestationModal modal={attestation.modal} signerName={authUser?.id ? bidAttestationDisplayName(estimatorUsers, authUser.id) : null} />
       )}
 
       {/* Add/Edit Contact Person modal (Builder Review) */}
