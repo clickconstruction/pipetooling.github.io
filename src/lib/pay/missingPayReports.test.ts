@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { payStubOverlapsPeriod, peopleMissingPayReports } from './missingPayReports'
+import { payStubOverlapsPeriod, peopleMissingPayReports, scanWeeksRange, unreportedRowsStillMissing } from './missingPayReports'
 
 const start = '2026-09-20'
 const end = '2026-09-26'
@@ -63,5 +63,36 @@ describe('peopleMissingPayReports', () => {
   it('is empty with no people or no days', () => {
     expect(peopleMissingPayReports({ people: [], payStubs: [], start, end, days, costForPersonDate: costs({}) })).toEqual([])
     expect(peopleMissingPayReports({ people: ['Alex'], payStubs: [], start, end, days: [], costForPersonDate: costs({ Alex: 240 }) })).toEqual([])
+  })
+})
+
+describe('unreportedRowsStillMissing', () => {
+  const rows = [
+    { personName: 'Alex', weekStart: '2026-09-06', weekEnd: '2026-09-12', hours: 40, estGross: 1200 },
+    { personName: 'Alex', weekStart: '2026-09-13', weekEnd: '2026-09-19', hours: 32, estGross: 960 },
+    { personName: 'Sam', weekStart: '2026-09-13', weekEnd: '2026-09-19', hours: 40, estGross: 1000 },
+  ]
+
+  it('keeps every row when no report touches its week', () => {
+    expect(unreportedRowsStillMissing(rows, [])).toEqual(rows)
+  })
+
+  it('drops the row a report now covers, for that person and that week only', () => {
+    const payStubs = [{ person_name: 'Alex', period_start: '2026-09-13', period_end: '2026-09-19' }]
+    expect(unreportedRowsStillMissing(rows, payStubs)).toEqual([rows[0], rows[2]])
+  })
+})
+
+describe('scanWeeksRange', () => {
+  it('runs from the oldest week\'s start to the newest week\'s end', () => {
+    const weeks = [
+      { weekStart: '2026-09-13', weekEnd: '2026-09-19' },
+      { weekStart: '2026-09-06', weekEnd: '2026-09-12' },
+    ]
+    expect(scanWeeksRange(weeks)).toEqual({ scanStart: '2026-09-06', scanEnd: '2026-09-19' })
+  })
+
+  it('is null for no weeks', () => {
+    expect(scanWeeksRange([])).toBeNull()
   })
 })

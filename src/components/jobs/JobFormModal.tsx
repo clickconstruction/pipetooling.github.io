@@ -33,6 +33,8 @@ import { useJobPropertyCandidates } from '../../hooks/useJobPropertyCandidates'
 import { useStandingDiscountOffer } from '../../hooks/useStandingDiscountOffer'
 import { useJobFormInvoiceActions } from '../../hooks/useJobFormInvoiceActions'
 import { useJobFormImport, type JobImportWinningGcPick } from '../../hooks/useJobFormImport'
+import { useJobFormPaymentActions } from '../../hooks/useJobFormPaymentActions'
+import { useJobFormAutosaveEngine } from '../../hooks/useJobFormAutosaveEngine'
 import { JobFormBillJobAccountNote } from './JobFormBillJobAccountNote'
 import { sumHazmatRiderFees } from '../../lib/hazmatIncidents'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -45,20 +47,9 @@ import {
   withSupabaseRetry,
 } from '../../utils/errorHandling'
 import {
-  buildBillingSliceJson,
-  buildEditJobIdentityUpdatePayload,
-  buildIdentitySliceJson,
-  buildMaterialsSliceJson,
-  buildTeamSliceJson,
-  diffTeamMemberIds,
-  fixtureInsertRows,
   identitySliceReadyToSave,
-  materialInsertRows,
-  paymentInsertRows,
-  shouldDemotePaidJobToBilled,
   type JobIdentityFormFields,
 } from '../../lib/jobs/jobFormAutosaveSlices'
-import { diffPaymentRows } from '../../lib/jobs/paymentRowsDiff'
 import { composePctAutoNoteBody } from '../../lib/jobs/stagesPctNote'
 import { postJobThreadNoteBody } from '../../lib/jobs/postJobThreadNote'
 import {
@@ -69,16 +60,8 @@ import {
   type JobFormUndoSnapshot,
 } from '../../lib/jobs/jobFormUndo'
 import { jobFormAutosaveAggregate, jobFormFooterShowsDelete, type JobFormCloseFlushState } from '../../lib/jobs/jobFormFooter'
-import { useJobFormAutosaveSlice } from './useJobFormAutosaveSlice'
-import { notifyDispatchRequestsChanged } from '../../lib/dispatchRequestHelpers'
-import {
-  JOB_DISPATCH_AUTO_CLOSE_NOTES,
-  pickJobDispatchAutoCloses,
-  type JobDispatchAutoCloseAction,
-} from '../../lib/jobDispatchAutoClose'
-import { notifyDispatchRequestClosure } from '../../lib/dispatchRequestClosure'
 import { JobFormSourceEstimateBanner } from './JobFormSourceEstimateBanner'
-import type { Database, Json } from '../../types/database'
+import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { resolveCustomerIdForJobPayload, resolveGcCustomerIdForJobPayload } from '../../lib/jobLedgerCustomer'
 import { PickWinningGcModal } from './PickWinningGcModal'
@@ -93,8 +76,10 @@ import {
 } from '../../lib/jobs/jobDevelopments'
 import { jobLedgerHasCustomerForBilling } from '../../lib/jobLedgerCustomerForBilling'
 import { revenueDollarsFromFixtures } from '../../lib/revenueFromJobFixtures'
-import { jobFormPaidDollars, jobFormPaymentRemovePreview, jobFormRevenueDollars } from '../../lib/jobs/jobFormMoneyTotals'
-import { mergePaymentRowUpdate, paymentRemoveRefusalWords, paymentRemoveWritesNow, paymentRowsAfterRemove, planPaymentRemoveRequest, removePaymentReply } from '../../lib/jobs/jobFormPaymentActions'
+import { jobFormPaidDollars, jobFormRevenueDollars } from '../../lib/jobs/jobFormMoneyTotals'
+import { mergePaymentRowUpdate, paymentRowsAfterRemove } from '../../lib/jobs/jobFormPaymentActions'
+import { writeNewJobChildRows } from '../../lib/jobs/jobFormSliceWrites'
+import { closeDateMetBackfillNeeded, closeDemoteToBilledNeeded } from '../../lib/jobs/jobFormCloseSideEffects'
 import { buildEditJobBillingBar } from '../../lib/jobs/editJobBillingBar'
 import { MoneyLifecycleBar, PAID_COLOR, BILLED_COLOR, DRAFT_COLOR } from './MoneyLifecycleBar'
 import { useBreakOffSlider } from './useBreakOffSlider'
@@ -106,7 +91,7 @@ import { useJobStagePlanInputs } from '../../hooks/useJobStagePlanInputs'
 import { drawLabelsByInvoiceId, stagePlanFromForm } from '../../lib/jobs/stagePlanForm'
 import { fixtureRowsFromDb } from '../../lib/jobs/jobFormFixtureHydrate'
 import { applyTargetJobTotal, discountRowIsLocked, isDiscountRow, newDiscountFixtureRow, syncDiscountRows } from '../../lib/jobs/discountLine'
-import { diffDiscountSnapshots, discountSnapshot, type DiscountSnapshotEntry } from '../../lib/jobs/discountActivity'
+import { discountSnapshot } from '../../lib/jobs/discountActivity'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { JobFormStagesGroup } from './JobFormStagesGroup'
 import { JobFormStagesDrawer } from './JobFormStagesDrawer'
@@ -157,14 +142,6 @@ import {
 import { InvoicesSectionHeading, JobFormSegmentsBar, JobFormSegmentsCreateAction } from './JobFormSegmentsBar'
 import { MultipleSegmentGeneratorModal } from './MultipleSegmentGeneratorModal'
 import type { SegmentGeneratorPayloadLine } from '../../lib/jobs/segmentGenerator'
-import {
-  canRemovePaymentRowFromForm,
-  canUnlinkMercuryPayment,
-  mercuryLinkedPaymentRow,
-  stripeHoldsPaymentReason,
-  stripeHoldsPaymentWords,
-  unlinkedPaymentToastText,
-} from '../../lib/jobs/jobFormPaymentPredicates'
 import { resolveEffectiveJobMasterUserId } from '../../lib/resolveEffectiveJobMasterUserId'
 import {
   getHideHcpFieldCached,
@@ -179,7 +156,6 @@ import BilledPaymentConfirmationModal from './BilledPaymentConfirmationModal'
 import UndoStripePartPaymentModal from './UndoStripePartPaymentModal'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 import { findInvoiceWithJobFromJobs } from '../../lib/invoiceWithJobFromJobList'
-import { normalizeJobsLedgerStatus } from '../../lib/jobsLedgerStatusPipeline'
 import { mercuryCardTotalFromLines, tallyPartsTotalFromLines } from '../../lib/fetchJobMaterialsCostSnapshot'
 import JobProjectLinkChoiceModal from './JobProjectLinkChoiceModal'
 import JobBidLinkChoiceModal, { type JobBidLinkOption } from './JobBidLinkChoiceModal'
@@ -206,7 +182,6 @@ import { JobFormCreateCustomerModal } from './JobFormCreateCustomerModal'
 import { extractContactFromCustomer, getCustomerDisplay } from '../../lib/jobs/jobFormCustomerDisplay'
 import { formatJobFormBidLinkTitle } from '../../lib/jobs/jobFormBidLinkTitle'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
-import { BID_OUTCOME_DERIVED_TOAST_MS, bidOutcomeDerivedMessage, shouldAnnounceDerivedOutcome } from '../../lib/bids/bidOutcomeFromJob'
 
 type CustomerRow = Database['public']['Tables']['customers']['Row']
 type UserRow = { id: string; name: string; email: string | null; role: string }
@@ -691,130 +666,6 @@ export default function JobFormModal({
     setNewInvoiceAmountInputFocused(false)
   }
 
-  const billingMoneySliceJson = useMemo(() => buildBillingSliceJson(fixtures, payments), [fixtures, payments])
-  const autosaveFixturesRef = useRef(fixtures)
-  autosaveFixturesRef.current = fixtures
-  const autosavePaymentsRef = useRef(payments)
-  autosavePaymentsRef.current = payments
-  /**
-   * B5: ids of the payment rows this form last knew to be persisted —
-   * hydration ids on load/refresh, then each successful billing-slice
-   * persist's upsert ids. Drives diffPaymentRows so the slice deletes only
-   * rows the form owns; rows born mid-edit (e.g. a Stripe webhook payment)
-   * are invisible to the diff and survive autosaves. Deliberately NOT reset
-   * by Undo — it tracks DB reality, not form state.
-   */
-  const hydratedPaymentIdsRef = useRef<string[]>([])
-  const autosaveRiderFeesRef = useRef(riderFeesDollars)
-  autosaveRiderFeesRef.current = riderFeesDollars
-  const autosaveJobIdRef = useRef<string | null>(null)
-  autosaveJobIdRef.current = editing?.id ?? null
-  /**
-   * Discount trail (v2.3256): the discount rows as last PERSISTED (hydration,
-   * then each successful billing-slice write). After a write, the diff
-   * against the new rows logs discount_added / _changed / _removed through
-   * `log_job_discount_event` — one event per real change, never per
-   * keystroke. Best-effort: a failed log never fails the save.
-   */
-  const persistedDiscountSnapshotRef = useRef<DiscountSnapshotEntry[]>([])
-
-  /**
-   * The billing-slice WRITES — the same delete+reinsert sequence as always
-   * (payloads now built by the jobFormAutosaveSlices kernel). Baseline,
-   * debounce, and in-flight bookkeeping live in useJobFormAutosaveSlice.
-   */
-  async function persistBillingSlice(): Promise<boolean> {
-    const jobId = autosaveJobIdRef.current
-    if (!jobId) return true
-    try {
-      const fx = autosaveFixturesRef.current
-      const pays = autosavePaymentsRef.current
-      const revNum = jobFormRevenueDollars(fx, autosaveRiderFeesRef.current)
-      // B4 (FRAGILITY_REMEDIATION_PLAN.md): payments_made is a DB-trigger-
-      // maintained cache of SUM(jobs_ledger_payments.amount) since B3 — the
-      // row rewrite below keeps it in sync; the client no longer writes it.
-      const { error: updErr } = await supabase
-        .from('jobs_ledger')
-        .update({ revenue: revNum })
-        .eq('id', jobId)
-      if (updErr) throw updErr
-      // B5: diff instead of delete-all+reinsert — stable row ids (no
-      // activity-event churn) and rows born mid-edit survive.
-      const { deleteIds, upserts } = diffPaymentRows(jobId, hydratedPaymentIdsRef.current, pays)
-      if (deleteIds.length > 0) {
-        const { error: delPayErr } = await supabase
-          .from('jobs_ledger_payments')
-          .delete()
-          .in('id', deleteIds)
-          .eq('job_id', jobId)
-        if (delPayErr) throw delPayErr
-      }
-      if (upserts.length > 0) {
-        const { error: upsertPayErr } = await supabase
-          .from('jobs_ledger_payments')
-          .upsert(upserts, { onConflict: 'id' })
-        if (upsertPayErr) throw upsertPayErr
-      }
-      hydratedPaymentIdsRef.current = upserts.map((u) => u.id)
-      const { error: delFixErr } = await supabase.from('jobs_ledger_fixtures').delete().eq('job_id', jobId)
-      if (delFixErr) throw delFixErr
-      for (const row of fixtureInsertRows(jobId, fx)) {
-        const { error: insFixErr } = await supabase.from('jobs_ledger_fixtures').insert(row)
-        if (insFixErr) throw insFixErr
-      }
-      const nextDiscounts = discountSnapshot(fx)
-      const discountEvents = diffDiscountSnapshots(persistedDiscountSnapshotRef.current, nextDiscounts)
-      persistedDiscountSnapshotRef.current = nextDiscounts
-      for (const ev of discountEvents) {
-        void supabase
-          .rpc('log_job_discount_event', { p_job_id: jobId, p_event_type: ev.event_type, p_summary: ev.summary, p_detail: ev.detail as Json })
-          .then(({ error }) => {
-            if (error) console.warn('log_job_discount_event failed', error)
-          })
-      }
-      return true
-    } catch (autosaveErr) {
-      showToast(
-        `Autosave failed: ${autosaveErr instanceof Error ? autosaveErr.message : String(autosaveErr)}`,
-        'error',
-      )
-      return false
-    }
-  }
-
-  const billingAutosave = useJobFormAutosaveSlice({
-    jobId: editing?.id ?? null,
-    sliceJson: billingMoneySliceJson,
-    save: persistBillingSlice,
-    onSaved: () => onSavedRef.current?.(),
-  })
-  const billingAutosaveStatus = billingAutosave.status
-  const flushBillingAutosave = billingAutosave.flush
-  /**
-   * Discount tools (v2.3268): Bill Customer wrote a discount row straight to
-   * the DB (apply_job_discount) while this form is open. Re-read the rows so
-   * the next delete+reinsert keeps them, and re-baseline the billing slice on
-   * the render that carries the new rows — otherwise the autosave would fire
-   * on state that already matches the DB.
-   */
-  const [rebaselineBillingNonce, setRebaselineBillingNonce] = useState(0)
-  useEffect(() => {
-    if (rebaselineBillingNonce === 0) return
-    billingAutosave.markSavedNow()
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- the nonce is the trigger; the hook reads the latest slice JSON from its ref
-  }, [rebaselineBillingNonce])
-  const rehydrateFixturesFromDb = useCallback(async (jobId: string) => {
-    const found = await fetchJobWithDetailsById(jobId)
-    if (!found) return
-    setEditing(found)
-    const rows = fixtureRowsFromDb(found.fixtures)
-    setFixtures(rows.length > 0 ? rows : [{ id: crypto.randomUUID(), name: '', count: 1, line_unit_price: null, line_description: '', invoice_id: null }])
-    persistedDiscountSnapshotRef.current = discountSnapshot(rows)
-    setRebaselineBillingNonce((n) => n + 1)
-  }, [setFixtures])
-
-  // ---- Identity / materials / team autosave slices (v2.1079) ---------------
-
   // Who pays (v2.3353): a GC that "pays as GC by default" flips a fresh job to GC
   // pays the moment it is picked (or imported from a won bid). Judged once per
   // GC id, only when the customers row is loaded, never over a saved choice.
@@ -854,11 +705,6 @@ export default function JobFormModal({
     accountManagerRelationship,
     customerAddressId,
   }
-  const identityFieldsRef = useRef(identityFields)
-  identityFieldsRef.current = identityFields
-  const identitySliceJson = buildIdentitySliceJson(identityFields)
-  const projectsRef = useRef(projects)
-  projectsRef.current = projects
   const customersRef = useRef(customers)
   customersRef.current = customers
   const partyIdsRef = useRef({ customerId, gcCustomerId })
@@ -895,160 +741,9 @@ export default function JobFormModal({
       showToast(jobPartyMoveNotice(r.moved, customersRef.current.find((c) => c.id === next)?.name) ?? '', 'info', 7000)
     }
   }, [showToast])
-  const developmentsRef = useRef(developments)
-  developmentsRef.current = developments
-  const editingMasterUserIdRef = useRef<string | null>(null)
-  editingMasterUserIdRef.current = editing?.master_user_id ?? null
-  /** Last PERSISTED pictures link — drives the blank→set dispatch auto-close. */
-  const persistedPicturesLinkRef = useRef('')
-  /** Last saved customer phone — a blank→set transition auto-closes the job's red-phone request. */
-  const persistedCustomerPhoneRef = useRef('')
-  /** v2.3069: the bid the row last carried — a changed link is when the trigger moves the bid, and when we tell the person. */
-  const persistedBidIdRef = useRef('')
-
   // Property-record candidates (v2.2638): the job customer's + GC's saved addresses. Called here,
   // where the loader's effect always ran, so the order of the form's effects is unchanged.
   const { propertyCandidates, setPropertyCandidates } = useJobPropertyCandidates({ customerId, gcCustomerId, customerAddressId, setCustomerAddressId })
-
-  /**
-   * Retire this job's open dispatch request of one kind (`link_job_pictures` /
-   * `add_job_phone`) after the matching field went blank→set, then tell each
-   * requester (v2.2880, journey-map #25). RLS lets only devs / dispatch members
-   * update the rows, so for anyone else the update quietly matches nothing —
-   * `.select()` tells us which rows actually closed, and only those notify.
-   */
-  async function autoCloseJobDispatchRequests(jobId: string, action: JobDispatchAutoCloseAction): Promise<void> {
-    if (!authUser?.id) return
-    const closedNote = JOB_DISPATCH_AUTO_CLOSE_NOTES[action]
-    try {
-      const closedRows = await withSupabaseRetry<Array<{ id: string; from_user_id: string; title: string }>>(
-        async () =>
-          supabase
-            .from('dispatch_requests')
-            .update({
-              status: 'closed',
-              closed_at: new Date().toISOString(),
-              closed_by_user_id: authUser.id,
-              closed_note: closedNote,
-            })
-            .eq('job_ledger_id', jobId)
-            .eq('pending_action', action)
-            .eq('status', 'open')
-            .select('id, from_user_id, title'),
-        `auto-close ${action} dispatch requests`,
-      )
-      notifyDispatchRequestsChanged()
-      for (const row of closedRows ?? []) {
-        void notifyDispatchRequestClosure({
-          request: row,
-          note: closedNote,
-          mode: 'closed',
-          userId: authUser.id,
-          role: authRole,
-        })
-      }
-    } catch (closeErr) {
-      console.warn('auto-close dispatch_requests failed', closeErr)
-    }
-  }
-
-  /**
-   * v2.3069: the DB trigger `jobs_ledger_bid_outcome_from_job` marks a bid Started or
-   * complete the moment a job carries its id. The owner asked that the person be told:
-   * read the bid before and after our own write, toast only when the outcome moved.
-   */
-  type BidOutcomeRead = { outcome: unknown; bid_number: string | null; project_name: string | null }
-  async function readBidOutcomeForToast(id: string): Promise<BidOutcomeRead | null> {
-    const { data } = await supabase.from('bids').select('outcome, bid_number, project_name').eq('id', id).maybeSingle()
-    return (data as BidOutcomeRead | null) ?? null
-  }
-  function announceDerivedBidOutcome(before: BidOutcomeRead | null, after: BidOutcomeRead | null): void {
-    if (!shouldAnnounceDerivedOutcome(before?.outcome, after?.outcome)) return
-    showToast(bidOutcomeDerivedMessage({ bidNumber: after?.bid_number, projectName: after?.project_name, before: before?.outcome }), 'success', BID_OUTCOME_DERIVED_TOAST_MS)
-  }
-
-  async function persistIdentitySlice(): Promise<boolean> {
-    const jobId = autosaveJobIdRef.current
-    const existingMaster = editingMasterUserIdRef.current
-    if (!jobId || !existingMaster) return true
-    const fields = identityFieldsRef.current
-    try {
-      const proj = fields.projectId ? projectsRef.current.find((p) => p.id === fields.projectId) : null
-      const payload = buildEditJobIdentityUpdatePayload({
-        fields,
-        existingJobMasterUserId: existingMaster,
-        projectMasterUserId: proj?.master_user_id ?? null,
-        customers: customersRef.current,
-        developments: developmentsRef.current,
-      })
-      const nextBidId = fields.bidId.trim()
-      const bidLinkChanged = nextBidId !== persistedBidIdRef.current
-      const bidBefore = bidLinkChanged && nextBidId ? await readBidOutcomeForToast(nextBidId) : null
-      const { error: updErr } = await supabase.from('jobs_ledger').update(payload).eq('id', jobId)
-      if (updErr) throw updErr
-      if (bidLinkChanged) {
-        persistedBidIdRef.current = nextBidId
-        if (nextBidId) announceDerivedBidOutcome(bidBefore, await readBidOutcomeForToast(nextBidId))
-      }
-      const newPicturesLink = fields.jobPicturesLink.trim()
-      const newPhone = fields.customerPhone.trim()
-      const autoCloses = pickJobDispatchAutoCloses({
-        prevPicturesLink: persistedPicturesLinkRef.current,
-        nextPicturesLink: newPicturesLink,
-        prevPhone: persistedCustomerPhoneRef.current,
-        nextPhone: newPhone,
-      })
-      for (const action of autoCloses) {
-        await autoCloseJobDispatchRequests(jobId, action)
-      }
-      persistedPicturesLinkRef.current = newPicturesLink
-      persistedCustomerPhoneRef.current = newPhone
-      return true
-    } catch (identityErr) {
-      showToast(
-        `Autosave failed: ${identityErr instanceof Error ? identityErr.message : String(identityErr)}`,
-        'error',
-      )
-      return false
-    }
-  }
-
-  const identityAutosave = useJobFormAutosaveSlice({
-    jobId: editing?.id ?? null,
-    sliceJson: identitySliceJson,
-    save: persistIdentitySlice,
-    enabled: identitySliceReadyToSave(identityFields),
-    onSaved: () => onSavedRef.current?.(),
-  })
-
-  // Materials: same delete+reinsert shape as the billing slice.
-  const materialsSliceJson = buildMaterialsSliceJson(materials)
-  const autosaveMaterialsRef = useRef(materials)
-  autosaveMaterialsRef.current = materials
-
-  async function persistMaterialsSlice(): Promise<boolean> {
-    const jobId = autosaveJobIdRef.current
-    if (!jobId) return true
-    try {
-      const { error: delMatErr } = await supabase.from('jobs_ledger_materials').delete().eq('job_id', jobId)
-      if (delMatErr) throw delMatErr
-      for (const row of materialInsertRows(jobId, autosaveMaterialsRef.current)) {
-        const { error: insMatErr } = await supabase.from('jobs_ledger_materials').insert(row)
-        if (insMatErr) throw insMatErr
-      }
-      return true
-    } catch (matErr) {
-      showToast(`Autosave failed: ${matErr instanceof Error ? matErr.message : String(matErr)}`, 'error')
-      return false
-    }
-  }
-
-  const materialsAutosave = useJobFormAutosaveSlice({
-    jobId: editing?.id ?? null,
-    sliceJson: materialsSliceJson,
-    save: persistMaterialsSlice,
-    onSaved: () => onSavedRef.current?.(),
-  })
 
   // Team: already-incremental diff writes; short debounce batches rapid toggles.
   const [teamMemberIds, setTeamMemberIds] = useState<string[]>([])
@@ -1060,59 +755,51 @@ export default function JobFormModal({
       setAccountManagerRelationship(null)
     }
   }, [accountManagerUserId, teamMemberIds])
-  const teamSliceJson = buildTeamSliceJson(teamMemberIds)
-  const autosaveTeamIdsRef = useRef(teamMemberIds)
-  autosaveTeamIdsRef.current = teamMemberIds
-
-  async function persistTeamSlice(): Promise<boolean> {
-    const jobId = autosaveJobIdRef.current
-    if (!jobId) return true
-    try {
-      const { data: existingTeam, error: teamReadErr } = await supabase
-        .from('jobs_ledger_team_members')
-        .select('user_id')
-        .eq('job_id', jobId)
-      if (teamReadErr) throw teamReadErr
-      const { toAdd, toRemove } = diffTeamMemberIds(
-        autosaveTeamIdsRef.current,
-        (existingTeam ?? []).map((t: { user_id: string }) => t.user_id),
-      )
-      for (const uid of toAdd) {
-        const { error: insErr } = await supabase.from('jobs_ledger_team_members').insert({ job_id: jobId, user_id: uid })
-        if (insErr) throw insErr
-      }
-      for (const uid of toRemove) {
-        const { error: delErr } = await supabase
-          .from('jobs_ledger_team_members')
-          .delete()
-          .eq('job_id', jobId)
-          .eq('user_id', uid)
-        if (delErr) throw delErr
-      }
-      return true
-    } catch (teamErr) {
-      showToast(`Autosave failed: ${teamErr instanceof Error ? teamErr.message : String(teamErr)}`, 'error')
-      return false
-    }
-  }
-
-  const teamAutosave = useJobFormAutosaveSlice({
-    jobId: editing?.id ?? null,
-    sliceJson: teamSliceJson,
-    save: persistTeamSlice,
-    debounceMs: 400,
-    onSaved: () => onSavedRef.current?.(),
+  // The save engine (the Job form map's order #9): the four edit-mode autosave slices — billing,
+  // identity, materials, team, registered in that order — with their mirror refs and writers.
+  // Called here, once every field they carry is declared; the fields stay the form's.
+  const {
+    billingMoneySliceJson,
+    identitySliceJson,
+    materialsSliceJson,
+    teamSliceJson,
+    autosaveFixturesRef,
+    autosavePaymentsRef,
+    autosaveRiderFeesRef,
+    autosaveMaterialsRef,
+    autosaveTeamIdsRef,
+    identityFieldsRef,
+    hydratedPaymentIdsRef,
+    persistedDiscountSnapshotRef,
+    persistedPicturesLinkRef,
+    persistedCustomerPhoneRef,
+    persistedBidIdRef,
+    billingAutosave,
+    billingAutosaveStatus,
+    flushBillingAutosave,
+    identityAutosave,
+    editAutosaveSlices,
+    flushAllAutosaveSlicesRef,
+    rehydrateFixturesFromDb,
+    readBidOutcomeForToast,
+    announceDerivedBidOutcome,
+  } = useJobFormAutosaveEngine({
+    editing,
+    setEditing,
+    authUser,
+    authRole,
+    fixtures,
+    setFixtures,
+    payments,
+    riderFeesDollars,
+    materials,
+    teamMemberIds,
+    identityFields,
+    projects,
+    customers,
+    developments,
+    onSavedRef,
   })
-
-  /** Every edit-mode autosave slice, in close-flush order. */
-  const editAutosaveSlices = [billingAutosave, identityAutosave, materialsAutosave, teamAutosave]
-
-  /** Flush every dirty enabled slice (visibility handler, best-effort). */
-  async function flushAllAutosaveSlices(): Promise<void> {
-    for (const slice of editAutosaveSlices) await slice.flush()
-  }
-  const flushAllAutosaveSlicesRef = useRef(flushAllAutosaveSlices)
-  flushAllAutosaveSlicesRef.current = flushAllAutosaveSlices
 
   // ---- Undo-to-opened (v2.1081) --------------------------------------------
   // Snapshot every slice's form state on hydrate, re-based whenever the job's
@@ -1309,7 +996,36 @@ export default function JobFormModal({
   const jobPicturesLinkInputRef = useRef<HTMLInputElement | null>(null)
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [paymentRemoveConfirmRowId, setPaymentRemoveConfirmRowId] = useState<string | null>(null)
+  // The payment lines' actions (the Job form map's order #8): Remove and its confirm, the drop of
+  // a hand-typed line once its payment is recorded, Unlink and remove — with their confirm and
+  // busy states. The Escape gate below reads two of them, so the hook is called here.
+  const {
+    paymentRemoveConfirmRowId,
+    setPaymentRemoveConfirmRowId,
+    paymentRemoveRpcBusy,
+    setPaymentRemoveRpcBusy,
+    unlinkMercuryConfirmRowId,
+    setUnlinkMercuryConfirmRowId,
+    unlinkingMercuryPaymentId,
+    persistedLedgerPaymentIds,
+    paymentRemovePreview,
+    paymentRemoveConfirmsPersistedRpc,
+    requestRemovePaymentRow,
+    confirmRemovePaymentRow,
+    finishRecordPaymentOnBill,
+    confirmUnlinkMercuryFromBankRow,
+  } = useJobFormPaymentActions({
+    editing,
+    setEditing,
+    authRole,
+    payments,
+    setPayments,
+    removePaymentRow,
+    jobTotalWithRidersDollars,
+    billingAutosave,
+    hydratedPaymentIdsRef,
+    onSavedRef,
+  })
   /** v2.3576: the payment being moved to another job (Move to job…). */
   const [paymentMoveRow, setPaymentMoveRow] = useState<PaymentRow | null>(null)
   /**
@@ -1324,7 +1040,6 @@ export default function JobFormModal({
     amount: number | null
     draftRowId: string | null
   } | null>(null)
-  const [unlinkMercuryConfirmRowId, setUnlinkMercuryConfirmRowId] = useState<string | null>(null)
   const [deleteJobConfirmOpen, setDeleteJobConfirmOpen] = useState(false)
   const migrate = useJobMigrate(editing?.id ?? null)
   // Only the fields the shell's own handlers/effects touch — the rest of the
@@ -1377,8 +1092,6 @@ export default function JobFormModal({
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [escCloseBlocked, isTopmostModal])
 
-  const [unlinkingMercuryPaymentId, setUnlinkingMercuryPaymentId] = useState<string | null>(null)
-  const [paymentRemoveRpcBusy, setPaymentRemoveRpcBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const {
     materialsAccordionOpen,
@@ -1400,11 +1113,6 @@ export default function JobFormModal({
   const visibleJobFormServiceTypes = useMemo(
     () => visibleServiceTypesForJobForm(serviceTypes, meServiceTypeColumns),
     [serviceTypes, meServiceTypeColumns],
-  )
-
-  const persistedLedgerPaymentIds = useMemo(
-    () => new Set((editing?.payments ?? []).map((p) => p.id)),
-    [editing?.payments],
   )
 
   /** Include current job's type when it is not in the role-filtered list (same idea as Bids). */
@@ -1626,15 +1334,8 @@ export default function JobFormModal({
    */
   function editCloseSideEffectsNeeded(): boolean {
     if (!editing?.id) return false
-    const dateMetNeeded = !!(
-      customerId &&
-      dateMet.trim() &&
-      customers.some((x) => x.id === customerId && !x.date_met)
-    )
-    if (dateMetNeeded) return true
-    const revNum = jobFormRevenueDollars(autosaveFixturesRef.current, autosaveRiderFeesRef.current)
-    const paymentsMadeNum = jobFormPaidDollars(autosavePaymentsRef.current)
-    return shouldDemotePaidJobToBilled(normalizeJobsLedgerStatus(editing.status) ?? '', revNum, paymentsMadeNum)
+    if (closeDateMetBackfillNeeded({ customerId, dateMet, customers })) return true
+    return closeDemoteToBilledNeeded({ status: editing.status, fixtures: autosaveFixturesRef.current, riderFeesDollars: autosaveRiderFeesRef.current, payments: autosavePaymentsRef.current })
   }
 
   /** The Save-button side effects, now run at close time (best-effort: they toast on failure but never block the close). */
@@ -1653,9 +1354,7 @@ export default function JobFormModal({
     } catch (dateMetErr) {
       console.warn('customers.date_met backfill failed', dateMetErr)
     }
-    const revNum = jobFormRevenueDollars(autosaveFixturesRef.current, autosaveRiderFeesRef.current)
-    const paymentsMadeNum = jobFormPaidDollars(autosavePaymentsRef.current)
-    if (shouldDemotePaidJobToBilled(normalizeJobsLedgerStatus(editing?.status) ?? '', revNum, paymentsMadeNum)) {
+    if (closeDemoteToBilledNeeded({ status: editing?.status, fixtures: autosaveFixturesRef.current, riderFeesDollars: autosaveRiderFeesRef.current, payments: autosavePaymentsRef.current })) {
       try {
         const data = await withSupabaseRetry(
           async () => supabase.rpc('update_job_status', { p_job_id: jobId, p_to_status: 'billed' }),
@@ -2171,18 +1870,6 @@ export default function JobFormModal({
     return formatCurrency(sum)
   }, [materials])
 
-  const paymentRemovePreview = useMemo(
-    () => jobFormPaymentRemovePreview({ rowId: paymentRemoveConfirmRowId, payments, jobTotalDollars: jobTotalWithRidersDollars }),
-    [paymentRemoveConfirmRowId, payments, jobTotalWithRidersDollars],
-  )
-
-  const paymentRemoveConfirmsPersistedRpc = useMemo(() => {
-    if (!paymentRemoveConfirmRowId || !editing) return false
-    const row = payments.find((r) => r.id === paymentRemoveConfirmRowId)
-    if (!row) return false
-    return paymentRemoveWritesNow(row, editing, persistedLedgerPaymentIds)
-  }, [paymentRemoveConfirmRowId, payments, editing, persistedLedgerPaymentIds])
-
   // The invoice doors (the Job form map's order #6): every handler that writes an invoice or moves
   // the job to Ready to Bill, with its busy flag. The selection and the Bill-to editor stay here.
   const {
@@ -2243,159 +1930,6 @@ export default function JobFormModal({
 
   function removePaymentRow(id: string) {
     setPayments((prev) => paymentRowsAfterRemove(prev, id, editing, newEmptyPaymentRow))
-  }
-
-  function requestRemovePaymentRow(row: PaymentRow) {
-    const request = planPaymentRemoveRequest(row, editing, persistedLedgerPaymentIds)
-    if (request === 'nothing') return
-    if (request !== 'confirm') {
-      showToast(paymentRemoveRefusalWords(request), 'error')
-      return
-    }
-    setPaymentRemoveConfirmRowId(row.id)
-  }
-
-  async function confirmRemovePaymentRow() {
-    if (!paymentRemoveConfirmRowId || !editing) return
-    const row = payments.find((r) => r.id === paymentRemoveConfirmRowId)
-    if (!row) {
-      setPaymentRemoveConfirmRowId(null)
-      return
-    }
-
-    const persistedRpc = paymentRemoveWritesNow(row, editing, persistedLedgerPaymentIds)
-
-    if (persistedRpc) {
-      setPaymentRemoveRpcBusy(true)
-      try {
-        const raw = await withSupabaseRetry(
-          async () =>
-            supabase.rpc('remove_jobs_ledger_payment_and_reconcile', { p_payment_id: row.id }),
-          'remove_jobs_ledger_payment_and_reconcile',
-        )
-        const reply = removePaymentReply(raw)
-        if (reply.kind === 'error') {
-          showToast(reply.message, 'error')
-          return
-        }
-        if (reply.kind === 'warning') {
-          showToast(reply.message, 'warning')
-        } else {
-          showToast('Payment removed.', 'success')
-        }
-
-        const found = await fetchJobWithDetailsById(editing.id)
-        if (found) {
-          setEditing(found)
-          setPayments(paymentRowsFromJob(found))
-        }
-        setPaymentRemoveConfirmRowId(null)
-        onSavedRef.current?.()
-      } catch (e: unknown) {
-        showToast(formatPostgrestOrUnknownError(e, 'Failed to remove payment'), 'error')
-      } finally {
-        setPaymentRemoveRpcBusy(false)
-      }
-      return
-    }
-
-    if (!canRemovePaymentRowFromForm(row, editing)) {
-      setPaymentRemoveConfirmRowId(null)
-      return
-    }
-    removePaymentRow(paymentRemoveConfirmRowId)
-    setPaymentRemoveConfirmRowId(null)
-  }
-
-  /**
-   * v2.3692: the window recorded the payment (Stripe's webhook, or
-   * mark_invoice_paid, wrote the row). Drop the hand-typed draft it replaced —
-   * the billing autosave may already have persisted it under its own id, so
-   * quiet the autosave, delete by id (a never-persisted row answers "not
-   * found", which is fine), then re-read the job so the recorded row shows.
-   */
-  async function finishRecordPaymentOnBill(draftRowId: string | null) {
-    const jobId = editing?.id
-    if (!jobId) return
-    if (draftRowId) {
-      billingAutosave.cancelPending()
-      while (billingAutosave.isRunning()) await new Promise((r) => setTimeout(r, 100))
-      try {
-        const raw = await withSupabaseRetry(
-          async () => supabase.rpc('remove_jobs_ledger_payment_and_reconcile', { p_payment_id: draftRowId }),
-          'remove_jobs_ledger_payment_and_reconcile',
-        )
-        const reply = removePaymentReply(raw)
-        if (reply.kind === 'error' && reply.message !== 'Payment not found') showToast(reply.message, 'error')
-      } catch (e: unknown) {
-        showToast(formatPostgrestOrUnknownError(e, 'The payment was recorded, but the typed row could not be dropped'), 'error')
-      }
-    }
-    const found = await fetchJobWithDetailsById(jobId)
-    if (found) {
-      setEditing(found)
-      setPayments(paymentRowsFromJob(found))
-      hydratedPaymentIdsRef.current = (found.payments ?? []).map((p) => p.id)
-    }
-    showToast('Payment recorded.', 'success')
-    onSavedRef.current?.()
-  }
-
-  const executeUnlinkMercuryFromBankRow = useCallback(
-    async (row: PaymentRow) => {
-      const jobId = editing?.id
-      if (!jobId || !mercuryLinkedPaymentRow(row) || !canUnlinkMercuryPayment(authRole)) {
-        setUnlinkMercuryConfirmRowId(null)
-        return
-      }
-      const stripeHolds = stripeHoldsPaymentReason(row, editing)
-      if (stripeHolds) {
-        showToast(stripeHoldsPaymentWords(stripeHolds), 'error')
-        setUnlinkMercuryConfirmRowId(null)
-        return
-      }
-      setUnlinkingMercuryPaymentId(row.id)
-      try {
-        const raw = await withSupabaseRetry(
-          async () =>
-            supabase.rpc('remove_jobs_ledger_payment_and_reconcile', { p_payment_id: row.id }),
-          'remove_jobs_ledger_payment_and_reconcile',
-        )
-        const reply = removePaymentReply(raw)
-        if (reply.kind === 'error') {
-          showToast(reply.message, 'error')
-          return
-        }
-        if (reply.kind === 'warning') {
-          showToast(reply.message, 'warning')
-        } else {
-          showToast(unlinkedPaymentToastText(raw as { bank_failed?: boolean; bank_reason?: string; marked_returned?: boolean } | null), 'success')
-        }
-
-        const found = await fetchJobWithDetailsById(jobId)
-        if (found) {
-          setEditing(found)
-          setPayments(paymentRowsFromJob(found))
-        }
-        onSavedRef.current?.()
-      } catch (e: unknown) {
-        showToast(formatPostgrestOrUnknownError(e, 'Failed to remove payment and unlink bank'), 'error')
-      } finally {
-        setUnlinkingMercuryPaymentId(null)
-        setUnlinkMercuryConfirmRowId(null)
-      }
-    },
-    [editing, authRole, showToast],
-  )
-
-  function confirmUnlinkMercuryFromBankRow() {
-    if (!unlinkMercuryConfirmRowId) return
-    const row = payments.find((r) => r.id === unlinkMercuryConfirmRowId)
-    if (!row || !mercuryLinkedPaymentRow(row) || !canUnlinkMercuryPayment(authRole)) {
-      setUnlinkMercuryConfirmRowId(null)
-      return
-    }
-    void executeUnlinkMercuryFromBankRow(row)
   }
 
   function updateMaterialRow(id: string, updates: Partial<MaterialRow>) {
@@ -2691,18 +2225,7 @@ export default function JobFormModal({
       if (insertErr) throw insertErr
       const jobId = inserted?.id
       if (jobId) {
-        for (const row of paymentInsertRows(jobId, payments)) {
-          await supabase.from('jobs_ledger_payments').insert(row)
-        }
-        for (const row of materialInsertRows(jobId, materials)) {
-          await supabase.from('jobs_ledger_materials').insert(row)
-        }
-        for (const row of fixtureInsertRows(jobId, fixtures)) {
-          await supabase.from('jobs_ledger_fixtures').insert(row)
-        }
-        for (const uid of teamMemberIds) {
-          await supabase.from('jobs_ledger_team_members').insert({ job_id: jobId, user_id: uid })
-        }
+        await writeNewJobChildRows(supabase, { jobId, payments, materials, fixtures, teamMemberIds })
         onCreatedJobIdRef.current?.(jobId)
         // Tier-1 #8: a job's birth is unloggable in job_activity_events without a migration (no client
         // INSERT policy, no AFTER INSERT trigger on jobs_ledger) — record it as telemetry for now, and

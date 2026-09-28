@@ -8,7 +8,7 @@ covers:
   - src/components/jobs/JobsGcReviewModal.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-09-25
+last_updated: 2026-09-28
 ---
 
 ## Overview
@@ -33,11 +33,12 @@ last_updated: 2026-09-25
 ### What the user does
 
 The office opens GC Review from the Stages board's Billed section. There they:
-- read **Billed Awaiting Payment grouped by GC/Builder** (or by Development) with bill-out dates and ages
+- read where the week stands on the **stage track** (Check → Send → Word → Done), pinned over the list, and press a stage to see the GCs waiting there
+- read **Billed Awaiting Payment grouped by GC/Builder** (or by Development): one row per group, its bills with bill-out dates and ages folded inside
 - **certify** each GC's group on Wednesdays
 - work **This week's GCs**: every GC with a balance, three steps a row (Check · Send · Word), grouped by the account man to ask — whoever is signed in works every row
-- watch the **temperature board**
-- manage **scheduled and standing statement emails**
+- watch the **temperature board** (the Temperature tab)
+- manage **scheduled and standing statement emails** (the Scheduled tab)
 - send any GC's statement through **Draft Message** (app email, send now or scheduled), **Copy**, **Print** or the **portal link**, and open the GC's unpaid invoices as one PDF (**Print unpaid invoices**)
 - **Share all**: print or email the whole report
 
@@ -85,7 +86,7 @@ The office opens GC Review from the Stages board's Billed section. There they:
 
 ### Key structural differences from the page maps
 
-1. **One scrolling panel plus seven stacked overlays (four of them inline).** The main panel (z 60) holds every inline region. The Draft Message and Share all dialogs (z 61), the Share menu (backdrop 62 / menu 63), the Mark sent dialog (z 64) are **inline JSX**. `GcCallSheetModal` (64), `GcStatementSendHistoryModal` (64) and `GcReviewCertifyModal` (70) are extracted. Nothing handles Escape.
+1. **One scrolling panel plus seven stacked overlays (four of them inline).** The main panel (z 60) holds every inline region: a title block that scrolls away, a sticky block (the tabs with Share all / Print all, and the stage track), the open tab's body, and a sticky foot (Include Collections, Total outstanding). It is the `gc-review` container, so `.gcReview*` / `.gcStage*` / `.gcStep*` in `src/index.css` follow the panel's width, not the screen's. The Draft Message and Share all dialogs (z 61), the Share menu (backdrop 62 / menu 63), the Mark sent dialog (z 64) are **inline JSX**. `GcCallSheetModal` (64), `GcStatementSendHistoryModal` (64) and `GcReviewCertifyModal` (70) are extracted. Nothing handles Escape.
 2. **It stays mounted while closed.** The parent renders it unconditionally, and `return null` sits after the hooks, so **all 56 states survive close and reopen** while the Stages tab stays active: `groupBy`, `includeCollections`, a half-typed standing form, `roundStartTotal`. They reset only when the Stages tab goes inactive (the parent's `{active && …}` block unmounts the modal) or unmounts. The `open`-gated effects refetch on every open.
 3. **Two rollups over the same rows.** `rollup` (492–495) is what the panel shows, following the Group-by pill and Include Collections. `roundRollup` (500–503) is always **by GC and active-only**, and it feeds certification, rounds, the temperature board and the week strip (comment 504–510, v2.2764).
 4. **The parent owns transport, the statement print and copy.** The modal owns the unpaid-invoices PDF (it reads the jobs itself), scheduling (`gc_statement_email_requests`), round marks, certifications (in the child), sender assignment and the round-email chains.
@@ -107,20 +108,20 @@ Render regions in JSX order (all ranges @ `a05cef4c4`). Status: `extracted` mean
 
 | # | Region | Anchor (symbol + lines) | ~Lines | Coupling (block reads · writes · handlers) | Tests | Risk | Status |
 |---|---|---|---|---|---|---|---|
-| 0 | Shell: overlay + panel | `role="dialog"` 731–759; `if (!open) return null` 717; `useBodyScrollLock(open)` 339 | 30 | backdrop → `onClose` | none | low | shell |
+| 0 | Shell: overlay + panel (`.gcReviewPanel`: top · sticky · body · foot) | `role="dialog"` 731–759; `if (!open) return null` 717; `useBodyScrollLock(open)` 339 | 30 | backdrop → `onClose`; `tab`, `stage`, `expandedKeys` | `JobsGcReviewModal.render` ✓ (7) | low | shell |
 | 1 | Header + Group-by pill | 760–807; pill `anyDevelopment ?` 765–791; `groupByPillStyle` 719–729 | 48 | 0 · 1 (`groupBy`) · 1 | none | low | inline |
-| 2 | Wednesday strip | `!byDevelopment && certProgress.gcs > 0` 808–834 | 27 | `certProgress` 557 | `gcReviewWeekProgress` ✓ | low | inline |
-| 3 | Toolbar: Include Collections · Share all · Print all | 835–897 (Share all opener 846–896) | 63 | 0 · 6 (`shareAll*` reset) · 0 | none | low | inline |
+| 2 | Stage track (replaced the Wednesday strip) | `<GcStageTrack>` in the sticky block; `showTrack` = By GC and a GC in the week | 88 | `buildGcStageTrack(worklist)`, `stage` | `gcReviewStages` ✓ (17), track render ✓ (4) | low | **extracted** |
+| 3 | Tabs (This week · Temperature · Scheduled) with Share all · Print all; Include Collections is in the foot (region 8) | `.gcReviewTabs`; Share all opener | 63 | `tab` · 6 (`shareAll*` reset) · 0 | modal render ✓ | low | inline |
 | 4 | This week's GCs (the worklist) + the round-email box | `<GcWorklistPanel>`; round email `!byDevelopment && roundItems.length > 0` | panel 262 + email ~140 | `worklist`, `assigningGcId`, `markSentDefaultAction`, 4 pointer setters | `gcWorklist` ✓ (18), panel render ✓ (4) | med | **extracted** (rows) · inline (email) |
-| 4a | ↳ Worklist rows: three steps, account man, undo | `GcWorklistPanel.tsx` | 262 | props only | render ✓ | low | **extracted** |
+| 4a | ↳ Worklist rows: three steps as one line, the next step's button, the statement folded inside (account man, or mark sent, undo) | `GcWorklistPanel.tsx` over `GcReviewRow.tsx` | 401 + 58 | props only; `stage` filters through `gcWorklistAtStage` | render ✓ (12) | low | **extracted** |
 | 4b | ↳ Round email | `authUser?.id` 1054–1193 | 140 | 7 · 5 · 4 | `statementRoundEmail` ✓; client ✗ | med | inline |
 | 5 | Temperature board | `<GcTemperatureBoard>` 1196–1206 | 11 | `boardRows`, `boardWeeks`, `setHistoryGc` | kernel ✓; component ✗ | low | **extracted** |
 | 6 | Scheduled statement sends | `pendingSends.length > 0` 1207–1267 | 61 | 2 · 0 · 7 | `gcStatementStandingCopies` ✓, `gcStatementSchedule` ✓; `canCancelStatementRequest` ✗ | med | inline |
-| 7 | GC groups list | `rollup.groups.map` 1268–1636 | 369 | 1 · 4 · 5 · children `EntityIcon`, `CustomerPortalGlobeButton` | `gcReviewRollup` ✓ | med | inline |
+| 7 | A group's statement, folded inside its row | `groupDetail(g)`; a worklist row opens its `statementByGc` group, `otherGroups` (Collections-only GCs, the no-GC bucket, every development) get a `GcReviewRow` of their own | 369 | 1 · 4 · 5 · children `CustomerPortalGlobeButton` | `gcReviewRollup` ✓; modal render ✓ | med | inline |
 | 7a | ↳ Pills: last-sent · temperature · cert | 1299–1323 · 1324–1348 · 1349–1375 | 77 | `historyGc` | `gcReviewCertification` ✓ | low | inline |
 | 7b | ↳ Actions: Certify + Share menu | `!g.isNoGc` 1376–1551 (menu 1430–1528) | 176 | `shareMenuGroupKey`, `certifyGroup`, `markSentGroup` | ✗ | med | inline |
 | 7c | ↳ Job table | 1559–1633 (job link → `onOpenJob` 1591–1616) | 75 | — | ✗ | low | inline |
-| 8 | Grand total line | 1637–1650 | 14 | `rollup.grandTotal` | `gcReviewRollup` ✓ | low | inline |
+| 8 | Foot: Include Collections · Total outstanding (sticky) | `.gcReviewFoot` | 14 | `includeCollections`, `rollup.grandTotal` | `gcReviewRollup` ✓; modal render ✓ | low | inline |
 | 9 | **Draft Message dialog** | `emailDialogGroup ?` 1652–1895 + `openEmailDialogForGroup` 686–707 + `emailSendGuard` 709–716 | 244 + 31 | 13 · 11 · 3 · children `TeammateEmailChips`, `ScheduleWhenControls` | builders/guard/CC ✓; **payload assembly ✗** | **high** | inline |
 | 10 | Call sheet (replaced the round overlay) | `callSheetGroupKey && …` IIFE → `<GcCallSheetModal>`; `saveCallSheet` | modal 215 | `worklist`, `boardRowByGc`, `wordSources`, `roundBusy`, `roundError` | `gcCallSheet` ✓ (10), `payPromise` ✓ (7), render ✓ (4) | med | **extracted** |
 | 11 | Share all dialog | `shareAllOpen ?` 2034–2346 (Email once 2080–2200) | 170 | 17 · 13 · 7 (whole block, incl. 11a) | builders ✓; payload ✗ | **med-high** | inline |
@@ -174,23 +175,24 @@ Render regions in JSX order (all ranges @ `a05cef4c4`). Status: `extracted` mean
 
 - **Render:** 731–759. Fixed overlay `zIndex: 60`, panel `maxWidth: 720`, `maxHeight: 85vh`, own scroll. Backdrop click → `onClose` (744–746).
 - **Owns permanently:** props, `useAuth`, `useToastContext`, `useBodyScrollLock(open)` (v2.2144), `useGcPortalLinks`, the view state + rollups, the pointers above, the z-ladder (60 / 61 / 62–63 / 64 / 70), and the tail modal wiring.
-- **Tests:** no render test mounts `JobsGcReviewModal`, and no e2e spec opens it (`git grep` over `*.test.*` and `e2e/`: 0 hits).
+- **View state:** `tab` (`week` · `temperature` · `scheduled`), `stage` (the track's filter) and `expandedKeys` (open rows, by GC id, else group key). `stage` and `tab` reset when `open` goes false; open rows survive, like the rest of the state.
+- **Tests:** `JobsGcReviewModal.render.test.tsx` (7) mounts the modal over mocked IO: the track and one row per GC, a row opening onto its bills, a stage narrowing the list and clearing on close, the next step opening its window, a Collections-only GC, the tabs, and a reader with no step buttons. No e2e spec opens it.
 
-### 1–3. Header, Wednesday strip, toolbar
+### 1–3. Header, stage track, tabs
 
-- **Header (760–807):** `EntityIcon` (`DevelopmentHouseIcon` / `GcHardHatIcon`, 718), a By GC / By Development pill (only when `anyDevelopment`), ✕, and a subtitle.
-- **Strip (808–834):** "N of M certified · K sent", a green bar `Math.round(certified/gcs*100)`, and only under By GC.
-- **Toolbar (835–897):** Include Collections checkbox with `rollup.collectionsCount` / `collectionsTotal` (844). Share all (848–877) resets 6 `shareAll*` states and seeds the subject via `gcReviewShareAllEmailSubject`. Print all → `onPrint(rollup.groups, effectiveGroupBy)`.
+- **Header (760–807):** `EntityIcon` (`DevelopmentHouseIcon` / `GcHardHatIcon`, 718), a By GC / By Development pill (only when `anyDevelopment`) and ✕, in the title block that scrolls away.
+- **Stage track:** `GcStageTrack` over `buildGcStageTrack(worklist)` (`lib/jobs/gcReviewStages.ts`): three stops and Done, each with the GCs waiting there (a row's `next`) and the step's done / owed; the pin is the first stop with a GC waiting. A stop sets `stage`; the list under it is `gcWorklistAtStage`. Only under By GC, only on the This week tab.
+- **Tabs:** `tabs` is built per render — Temperature only with `boardRows`, Scheduled only with pending sends or the week's-list email; a tab that is gone falls back to This week. Include Collections with `rollup.collectionsCount` / `collectionsTotal` sits in the foot. Share all (848–877) resets 6 `shareAll*` states and seeds the subject via `gcReviewShareAllEmailSubject`. Print all → `onPrint(rollup.groups, effectiveGroupBy)`.
 - **State:** it owns none (`groupBy`, `includeCollections` and the `shareAll*` openers are shared).
 - **Approach:** after #6 the Share all opener collapses to `setShareAllOpen(true)`. That is the dialog's mount-init, and it is what lets regions 1–3 become one presentational `GcReviewHeader` (~140 lines) with no owned state. It is optional and low value.
 
 ### 4. This week's GCs (extracted) + the round-email box (inline)
 
-- **Render:** `<GcWorklistPanel>` under the toolbar, By GC only. The modal builds `worklist` (`buildGcWorklist` over `roundRollup.groups`, this week's certs and marks, senders, account men, `mergedLastSent`) and hands the panel callbacks:
+- **Render:** `<GcWorklistPanel>` on the This week tab, By GC only; the round-email box is on the Scheduled tab. The modal builds `worklist` (`buildGcWorklist` over `roundRollup.groups`, this week's certs and marks, senders, account men, `mergedLastSent`) and hands the panel callbacks:
   - **Check** → `setCertifyGroup(r.group)`; **Send** → `openEmailDialogForGroup(r.group)`; **Word** / **or mark sent** → `setMarkSentDefaultAction` + `setMarkSentGroup`; **undo** → `undoRoundMark`; a done Sent or Word pill → `setHistoryGc`.
   - The account-man select lists 4 roles and has no email check. It calls `assignSender` and is gated by `canCertify`.
   - Every write goes through `markRound`, which merges with the week's existing mark (`mergeRoundMarkWrite`): one row holds the statement and the word.
-  - The week strip reads `worklist.counts` (checked · sent · words in).
+  - The stage track reads the same worklist (`buildGcStageTrack`).
 - **4b Round email (1054–1193):** your chain line (`formatWeekdays` / `formatMinutes(parseHhMm)`), others' chains with **edit** (canCertify), "Set it up for another sender…" select, and the form (1108–1190): Mon–Fri toggles (sorted), time, **Preview** (`fetchStatementRoundEmailPreview` → `openHtmlPreviewWindow`), **Email me a test**, Stop emailing (`saveRoundEmail([])`), Cancel, Save.
 - **Owned (moves with it):** `assigningGcId`, `markSentDefaultAction` and the 7 round-email form states.
 - **Shared (stays or goes to the hook):** `worklist`, `roundBusy`, `roundError`, `temperatureByGc`, `boardRowByGc`.
@@ -213,10 +215,10 @@ Render regions in JSX order (all ranges @ `a05cef4c4`). Status: `extracted` mean
 - **Tests:** `groupStandingCopies` ✓ (in `gcStatementStandingCopies.test`, 10), `describePendingGcStatementSend` ✓ (1 of `gcStatementSchedule.test`'s 7). **`canCancelStatementRequest` is untested**; it is a pure predicate living in an IO file.
 - **Approach:** `useGcScheduledSends(open)` hook first (#4), then a presentational `GcScheduledSendsPanel`.
 
-### 7. GC groups list (inline, 369 lines)
+### 7. A group's statement (inline, 369 lines)
 
-- **Render:** 1268–1636, one card per `rollup.groups` entry (1271–1635), or "No billed jobs awaiting payment." Header row:
-  - Name plus `CustomerPortalGlobeButton` (1293–1298, By GC only).
+- **Render:** `groupDetail(g)`, drawn inside an opened `GcReviewRow` — nothing is drawn for a closed row. The row itself carries the name, `$subtotal` · jobs · oldest d. "No billed jobs awaiting payment." when the rollup is empty. Chips and actions:
+  - `CustomerPortalGlobeButton` (By GC only).
   - **7a pills:**
     - last-sent 1299–1323: `thisWeekSentMark`, `gcReviewSentThisWeek`, → `historyGc`
     - temperature + "pays by" 1324–1348: `TEMP_PILL`, **inline UTC ymd parse**
@@ -225,12 +227,11 @@ Render regions in JSX order (all ranges @ `a05cef4c4`). Status: `extracted` mean
     - Certify / Re-certify (canCertify, on `certGroupByGc`)
     - the Share menu (1409–1529): Draft Message, Copy (`onCopyForEmail`), Print, **Print unpaid invoices** (`printUnpaidInvoices` → `planGcUnpaidInvoicePrint` + `openGcUnpaidInvoicesPdfInNewTab`; `invoicePrintGroupKey` disables the item while one PDF builds), **Mark sent / spoke with them…** (canCertify), and Portal → `copyPortalLink` or the "No portal link yet" hint
     - else (`g.isNoGc`: the no-GC / no-development group) a print-only icon (1532–1550)
-  - A stats line: jobs · `$subtotal` · oldest d (1554–1557).
   - **7c table:** customer (+ Collections badge), job (`onOpenJob` link when provided), billed-on, days, remaining.
 - **Owned:** `shareMenuGroupKey`. It is one-at-a-time across groups, so it stays in the parent unless the menu becomes per-card local state (a behaviour change, since two menus could be open).
 - **Shared:** `byDevelopment`, `effectiveGroupBy`, `certGroupByGc`, `certsByGc`, `mergedLastSent`, `temperatureByGc`, `boardRowByGc`, `portalLinkFor`, and the 4 pointer setters.
 - **Data:** read-only except `copyPortalLink` → **rpc `mark_customer_portal_slug_shared`** (locks the short slug on first share), then `refreshPortalLinks`.
-- **Tests:** `buildGcReviewRollup` (9: totals, collections, development grouping), `gcGroupCertStatus` / `gcReviewSentThisWeek` (10), `gcPortalLinkCaption` (5), `gcUnpaidInvoicePrint` (10: which bills, which are left out, the message), `CustomerPortalGlobeButton.render` (5). **The card itself is untested.**
+- **Tests:** `buildGcReviewRollup` (9: totals, collections, development grouping), `gcGroupCertStatus` / `gcReviewSentThisWeek` (10), `gcPortalLinkCaption` (5), `gcUnpaidInvoicePrint` (10: which bills, which are left out, the message), `CustomerPortalGlobeButton.render` (5). The opened row is covered by `JobsGcReviewModal.render`.
 - **Approach:** `GcReviewGroupSection` (#10) with a callbacks bag. Take the pill IIFEs through small presentational helpers first.
 
 ### 9. Draft Message dialog (inline, 244 + 31 lines; money-adjacent send)

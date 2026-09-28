@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 /**
  * Render smoke for the GC Review worklist: a GC assigned to someone else is
- * still the signed-in person's to work, each step opens its own door, and a
- * statement cannot be sent before the bills are checked.
+ * still the signed-in person's to work, each step opens its own door, a
+ * statement cannot be sent before the bills are checked, a row opens onto its
+ * statement, and a stage picked on the track narrows the list.
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
@@ -30,7 +31,7 @@ const worklist = buildGcWorklist({
 })
 
 function renderPanel(over: Partial<ComponentProps<typeof GcWorklistPanel>> = {}) {
-  const handlers = { onCheck: vi.fn(), onSend: vi.fn(), onMarkSent: vi.fn(), onWord: vi.fn(), onUndoMark: vi.fn(), onOpenHistory: vi.fn(), onStartAssign: vi.fn(), onAssign: vi.fn(), onCancelAssign: vi.fn(), onOpenCallSheet: vi.fn() }
+  const handlers = { onCheck: vi.fn(), onSend: vi.fn(), onMarkSent: vi.fn(), onWord: vi.fn(), onUndoMark: vi.fn(), onOpenHistory: vi.fn(), onStartAssign: vi.fn(), onAssign: vi.fn(), onCancelAssign: vi.fn(), onOpenCallSheet: vi.fn(), onToggle: vi.fn(), onClearStage: vi.fn() }
   render(
     <GcWorklistPanel
       worklist={worklist}
@@ -42,6 +43,8 @@ function renderPanel(over: Partial<ComponentProps<typeof GcWorklistPanel>> = {})
       lastWordByGc={new Map()}
       assignableUsers={[{ id: 'u-malachi', name: 'Malachi' }]}
       assigningGcId={null}
+      expanded={new Set(['knight'])}
+      renderDetail={(r) => <p>bills of {r.gcName}</p>}
       {...handlers}
       {...over}
     />,
@@ -57,35 +60,41 @@ describe('GcWorklistPanel', () => {
     expect(screen.getByText('Ask Malachi')).toBeTruthy()
     expect(screen.getByText('Under $10,000')).toBeTruthy()
     expect(screen.getAllByTestId('gc-worklist-row')).toHaveLength(3)
-    expect(screen.getByText('0 of 3 done')).toBeTruthy()
   })
 
   it('a checked GC offers Send and the word; each opens its own door', () => {
     const h = renderPanel()
     const knight = within(rowFor('Knight Contracting'))
-    expect(knight.getByText('✓ Checked')).toBeTruthy()
+    expect(knight.getByText('Checked')).toBeTruthy()
+    // The next step is the row's one button; the same door is on its dot.
     fireEvent.click(knight.getByRole('button', { name: 'Send' }))
+    fireEvent.click(knight.getByRole('button', { name: 'Send step: next' }))
+    expect(h.onSend).toHaveBeenCalledTimes(2)
     expect(h.onSend).toHaveBeenCalledWith(expect.objectContaining({ gcId: 'knight' }))
-    fireEvent.click(knight.getByRole('button', { name: 'Word' }))
+    // The word can come in before the statement goes out.
+    fireEvent.click(knight.getByRole('button', { name: 'Word step: to do' }))
     expect(h.onWord).toHaveBeenCalledWith(expect.objectContaining({ gcId: 'knight' }))
     fireEvent.click(knight.getByRole('button', { name: 'or mark sent' }))
     expect(h.onMarkSent).toHaveBeenCalledWith(expect.objectContaining({ gcId: 'knight' }))
   })
 
   it('an unchecked GC cannot be sent — Check comes first', () => {
-    const h = renderPanel()
+    const h = renderPanel({ expanded: new Set(['knight', 'loberg']) })
     const loberg = within(rowFor('Loberg Contracting'))
-    expect(loberg.queryByRole('button', { name: 'Send' })).toBeNull()
+    expect(loberg.queryByRole('button', { name: /^Send/ })).toBeNull()
     expect(loberg.queryByRole('button', { name: 'or mark sent' })).toBeNull()
-    fireEvent.click(loberg.getByRole('button', { name: 'Check' }))
+    fireEvent.click(loberg.getByRole('button', { name: 'Check bills' }))
     expect(h.onCheck).toHaveBeenCalledWith(expect.objectContaining({ gcId: 'loberg' }))
   })
 
   it('someone who cannot act reads the list and gets no buttons', () => {
     renderPanel({ canAct: false })
-    expect(screen.queryByRole('button', { name: 'Send' })).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Check' })).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Word' })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Send/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Check/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Word/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Get the word' })).toBeNull()
+    // Reading a row's bills is not acting.
+    expect(screen.getByRole('button', { name: 'Hide Knight Contracting’s bills' })).toBeTruthy()
   })
 
   it('offers a call sheet for an account man’s GCs, never for the ones under the line', () => {
@@ -109,5 +118,50 @@ describe('GcWorklistPanel', () => {
   it('never offers a link for your own accounts, or before the database has it', () => {
     renderPanel({ authUserId: 'u-malachi', onAskByLink: vi.fn() })
     expect(screen.queryByRole('button', { name: /Ask by link/ })).toBeNull()
+  })
+
+  it('a row opens onto its statement; the links that were on the row are inside it', () => {
+    const h = renderPanel()
+    const knight = within(rowFor('Knight Contracting'))
+    expect(knight.getByText('bills of Knight Contracting')).toBeTruthy()
+    expect(knight.getByText(/account man: Malachi/)).toBeTruthy()
+    expect(knight.getByRole('button', { name: 'change account man' })).toBeTruthy()
+    // A closed row shows neither.
+    const loberg = within(rowFor('Loberg Contracting'))
+    expect(loberg.queryByText('bills of Loberg Contracting')).toBeNull()
+    fireEvent.click(loberg.getByRole('button', { name: 'Show Loberg Contracting’s bills' }))
+    expect(h.onToggle).toHaveBeenCalledWith(expect.objectContaining({ gcId: 'loberg' }))
+  })
+
+  it('a click on the row opens it; a click on a control inside it does not', () => {
+    const h = renderPanel()
+    fireEvent.click(within(rowFor('Loberg Contracting')).getByText('Loberg Contracting'))
+    expect(h.onToggle).toHaveBeenCalledTimes(1)
+    fireEvent.click(within(rowFor('Knight Contracting')).getByRole('button', { name: 'Send' }))
+    fireEvent.click(within(rowFor('Knight Contracting')).getByText('bills of Knight Contracting'))
+    expect(h.onToggle).toHaveBeenCalledTimes(1)
+  })
+
+  it('says what the statement on screen owes, not only the active bills', () => {
+    renderPanel({ statementByGc: new Map([['knight', { ...group('knight', 'Knight Contracting', 31500), jobCount: 3 }]]) })
+    expect(within(rowFor('Knight Contracting')).getByText(/\$31,500\.00 · 3 jobs · oldest 41d/)).toBeTruthy()
+  })
+
+  it('a stage picked on the track narrows the list to the GCs waiting there', () => {
+    const h = renderPanel({ stage: 'send' })
+    expect(screen.getAllByTestId('gc-worklist-row')).toHaveLength(1)
+    expect(rowFor('Knight Contracting')).toBeTruthy()
+    const line = screen.getByRole('status')
+    expect(line.textContent).toContain('1 of 3 GCs — checked and waiting to go out · $26,000.00')
+    // The group still says what it holds, not what the filter left of it.
+    expect(screen.getByText(/2 GCs · \$48,000\.00/)).toBeTruthy()
+    fireEvent.click(within(line).getByRole('button', { name: 'Show all 3' }))
+    expect(h.onClearStage).toHaveBeenCalled()
+  })
+
+  it('a stage nobody is at says so', () => {
+    renderPanel({ stage: 'word' })
+    expect(screen.queryAllByTestId('gc-worklist-row')).toHaveLength(0)
+    expect(screen.getByText('No GC is sent and waiting on the word.')).toBeTruthy()
   })
 })
