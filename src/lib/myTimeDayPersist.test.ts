@@ -64,6 +64,7 @@ vi.mock('../utils/errorHandling', async (importOriginal) => {
 
 import * as leader from './leaderClockSessionSplit'
 import {
+  MY_TIME_DRAFT_IN_BLOCK_EDITED_MESSAGE,
   MY_TIME_SALARY_SYNC_SAVED_NOTE,
   myTimeDayPersistRpcs,
   persistMyTimeDayDirtyClusters,
@@ -298,10 +299,67 @@ describe('persistMyTimeDayDirtyClusters — skips and guards', () => {
     expect(db.state.log).toStrictEqual([])
   })
 
-  it('refuses a split block that holds a draft row beside a saved one', async () => {
+  // A new session touching a saved one joins its block. Before, the untouched block was refused
+  // as "splitting a draft", and merged it sent the draft id to the replace RPC.
+  it('a new session beside a saved one, left as they are: the new one is inserted, the saved one gets its note', async () => {
+    const c = [mk('a', T(0), T(2), { job_ledger_id: 'j1' }), mk(DRAFT_ID, T(2), T(4), { job_ledger_id: 'j2' })]
+    await expect(save([c], [{ boundaries: [T(0), T(2), T(4)], notes: ['x', ' y '] }])).resolves.toStrictEqual({
+      salarySyncMayAdjust: false,
+    })
+    expect(db.state.log).toStrictEqual([
+      noteUpdate('a', 'x'),
+      {
+        op: 'insert',
+        table: 'clock_sessions',
+        label: 'insert draft clock session from people hours',
+        values: {
+          user_id: 'user-1',
+          work_date: EDITOR_DATE,
+          clocked_in_at: iso(T(2)),
+          clocked_out_at: iso(T(4)),
+          notes: 'y',
+          job_ledger_id: 'j2',
+          bid_id: null,
+        },
+      },
+    ])
+    expect(spies.runSplitCluster).not.toHaveBeenCalled()
+    expect(spies.runReplaceMixed).not.toHaveBeenCalled()
+  })
+
+  it('a new session before a saved one saves in row order: the insert, then the note', async () => {
+    const c = [mk(DRAFT_ID, T(0), T(2)), mk('b', T(2), T(4))]
+    await save([c], [{ boundaries: [T(0), T(2), T(4)], notes: ['x', 'y'] }])
+    expect(db.state.log.map((w) => (w as { op: string }).op)).toStrictEqual(['insert', 'update'])
+  })
+
+  it('a new session split or with its seam moved beside a saved one is refused, and nothing is written', async () => {
     const c = [mk('a', T(0), T(2)), mk(DRAFT_ID, T(2), T(4))]
-    await expectRefused(save([c], [{ boundaries: [T(0), T(2), T(4)], notes: ['x', 'y'] }]), DRAFT_SPLIT_REFUSAL)
+    await expectRefused(
+      save([c], [{ boundaries: [T(0), T(2), T(3), T(4)], notes: ['x', 'y', 'z'] }]),
+      MY_TIME_DRAFT_IN_BLOCK_EDITED_MESSAGE,
+    )
+    await expectRefused(
+      save([c], [{ boundaries: [T(0), T(1.5), T(4)], notes: ['x', 'y'] }]),
+      MY_TIME_DRAFT_IN_BLOCK_EDITED_MESSAGE,
+    )
     expect(db.state.log).toStrictEqual([])
+  })
+
+  it('a new session in a block with no subject user is refused before the saved row is touched', async () => {
+    const c = [mk('a', T(0), T(2)), mk(DRAFT_ID, T(2), T(4))]
+    await expectRefused(
+      save([c], [{ boundaries: [T(0), T(2), T(4)], notes: ['x', 'y'] }], { effectiveSubjectUserId: null }),
+      'Missing subject user for new clock session.',
+    )
+    // The saved row comes first and its note is written before the insert is refused.
+    expect(db.state.log).toStrictEqual([noteUpdate('a', 'x')])
+  })
+
+  it('the refusal message', () => {
+    expect(MY_TIME_DRAFT_IN_BLOCK_EDITED_MESSAGE).toBe(
+      'A new session can’t be split or merged with the session beside it before it is saved. Undo that change and Save, then edit again.',
+    )
   })
 })
 
@@ -520,17 +578,10 @@ describe('persistMyTimeDayDirtyClusters — one part, several rows', () => {
     ])
   })
 
-  it('a draft row beside a saved one, merged into one part, reaches the replace RPC with the draft id', async () => {
+  it('a new session merged with a saved one into one part is refused, and the replace RPC is not called', async () => {
     const c = [mk('a', T(0), T(2)), mk(DRAFT_ID, T(2), T(4))]
-    await save([c], [{ boundaries: [T(0), T(4)], notes: ['merged'] }])
-    expect(db.state.log).toStrictEqual([
-      {
-        op: 'rpc',
-        rpc: 'replaceMixed',
-        target: ['a', DRAFT_ID],
-        segments: [seg(T(0), T(4), 'merged', { job_ledger_id: null, bid_id: null })],
-      },
-    ])
+    await expectRefused(save([c], [{ boundaries: [T(0), T(4)], notes: ['merged'] }]), MY_TIME_DRAFT_IN_BLOCK_EDITED_MESSAGE)
+    expect(db.state.log).toStrictEqual([])
   })
 })
 

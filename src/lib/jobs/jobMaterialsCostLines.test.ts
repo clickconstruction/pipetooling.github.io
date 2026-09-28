@@ -33,11 +33,11 @@ describe('jobMaterialsCostLines — the mappers the browser and dev-mcp share', 
 
   it('maps card allocations and reads the card id out of the bank transaction', () => {
     const lines = mercuryLinesFromRows([
-      { id: 'a1', amount: '-45.25', note: 'PVC', mercury_transactions: { posted_at: '2026-09-02', counterparty_name: 'Home Depot', raw: { details: { debitCardInfo: { id: '0A1B2C3D-0000-4000-8000-000000000001' } } } } },
+      { id: 'a1', mercury_transaction_id: 'tx1', amount: '-45.25', note: 'PVC', mercury_transactions: { posted_at: '2026-09-02', counterparty_name: 'Home Depot', raw: { details: { debitCardInfo: { id: '0A1B2C3D-0000-4000-8000-000000000001' } } } } },
       { id: 'a2', amount: 10, mercury_transactions: null },
     ])
-    expect(lines[0]).toEqual({ id: 'a1', allocationAmount: -45.25, note: 'PVC', postedAt: '2026-09-02', counterpartyName: 'Home Depot', debitCardId: '0a1b2c3d-0000-4000-8000-000000000001' })
-    expect(lines[1]).toEqual({ id: 'a2', allocationAmount: 10, note: null, postedAt: null, counterpartyName: null, debitCardId: null })
+    expect(lines[0]).toEqual({ id: 'a1', mercuryTransactionId: 'tx1', allocationAmount: -45.25, note: 'PVC', postedAt: '2026-09-02', counterpartyName: 'Home Depot', debitCardId: '0a1b2c3d-0000-4000-8000-000000000001' })
+    expect(lines[1]).toEqual({ id: 'a2', mercuryTransactionId: null, allocationAmount: 10, note: null, postedAt: null, counterpartyName: null, debitCardId: null })
     expect(mercuryCardTotalFromLines(lines)).toBeCloseTo(mercuryCardTotalFromLines([lines[0]!]) + mercuryCardTotalFromLines([lines[1]!]))
   })
 

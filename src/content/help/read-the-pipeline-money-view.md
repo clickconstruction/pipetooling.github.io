@@ -14,6 +14,23 @@ The **Jobs → Pipeline** tab opens with the money story: four answer cards and 
 - **In collections** — the difficult money. Click to jump to Collections.
 - **Collected · last 8 wks** — payments recorded each week, with a trend line. Devs and leaders only; other roles see three cards.
 
+## Does the money land before the lien dies?
+
+Every row in **Billed** and **Collections** carries a short runway under its money bar. Today is the tick at the left. The **green dot** is when the customer is expected to pay — the GC's date from the statement round, a promise on record, or the pay-speed estimate the {{chip:green|expected Oct 3}} chip reads. The **flag** is the last day a lien affidavit can be filed for the job's last work month. The run between them is the verdict:
+
+- **Green** — room. *pay Oct 3 → lien Oct 15 · 12 d of room*. The money is due before the flag; waiting costs nothing.
+- **Red hatching** — the flag comes first. *lien Nov 16 → pay Nov 20 · file first*. Wait for the money and you lose the lien: file the affidavit, or get the payment date moved.
+- **No dot** — nobody has said when. *no pay date · lien Oct 15* over *17 d to the flag*, amber inside three weeks, red inside one.
+- **No track, one red line** — *lien gone · window closed Sep 15*. The lien is gone; the money is still owed.
+
+The sentence is two lines — the dates, then the verdict — and a door: click it and the job's **Lien window** opens on its timeline, where the last work month, the property kind and the statute are spelled out. Hover it for the same in a line.
+
+:::example A house with no property kind set
+The runway shows the **residential** date — a month earlier than commercial — and the hover says *Property kind is not set, so the earlier (residential) date is shown*. That is the safe reading: a house read as commercial is a lien lost a month late. Open the job's Edit tab → **Property record** and pick {{button:outline|Residential}} or {{button:outline|Non-residential}} to confirm it.
+:::
+
+On a phone the row's one chip carries the verdict — {{chip:red|file first}}, {{chip:red|lien gone}}, {{chip:yellow|lien in 17 d}}, {{chip:green|12 d of room}} — once the flag is inside three weeks or the money is due after it; a tap opens the Lien window.
+
 ## Today's Money Opportunities
 
 Below the cards, the system writes your to-do list from the live numbers — each row says what, why, and has a button that jumps to the right spot:

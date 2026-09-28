@@ -233,7 +233,7 @@ describe('JobFormPaymentsTable — cash on a Stripe bill (v2.3692)', () => {
     expect(screen.queryByText('Undo part payment')).toBeNull()
   })
 
-  // v2.4062: a whole-bill out-of-band mark (Mark Paid · check) on a bill still Paid offers "Check didn't clear…";
+  // v2.4072: a whole-bill out-of-band mark (Mark Paid · check) on a bill still Paid offers "Check didn't clear…";
   // the same row on a bill already back to Billed, or a credit-note row, does not.
   it('a Stripe-held check payment on a Paid bill offers Check didn’t clear…, a Billed bill does not', () => {
     const asked: string[] = []

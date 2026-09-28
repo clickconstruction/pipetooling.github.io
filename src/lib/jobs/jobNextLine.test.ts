@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { abbreviateTimeSince, advanceConsequence, jobNextLine, phoneRowPasses, type JobNextLineInput } from './jobNextLine'
+import { buildLienPayRunway } from './lienPayRunway'
 import type { ProgressPaymentView } from './progressPaymentCell'
 import type { StagesMoneyBarModel } from '../stagesMoneyBar'
 import type { JobCrewPosition } from './jobCrewPosition'
@@ -77,6 +78,19 @@ const base = (over: Partial<JobNextLineInput> = {}): JobNextLineInput => ({
 })
 
 describe('jobNextLine — the chip, first match wins', () => {
+  it('the lien runway takes the chip once it bites — before quiet days and the late-pay chip (v2.4051)', () => {
+    const runway = buildLienPayRunway({ todayYmd: '2026-09-23', openBalance: 8200, lastWorkYmd: '2026-07-20', propertyKind: 'residential', expectedPayYmd: '2026-10-20', filedYmd: null, releasedYmd: null })
+    const chip = jobNextLine(base({ stage: 'billed', quietDays: 9, lienRunway: runway })).chip
+    expect(chip).toMatchObject({ label: 'file first', tone: 'red', action: 'lien' })
+    expect(chip?.title).toContain('Tap to open the Lien window.')
+  })
+
+  it('a far lien flag leaves the chip to the older facts', () => {
+    const runway = buildLienPayRunway({ todayYmd: '2026-09-23', openBalance: 8200, lastWorkYmd: '2026-09-02', propertyKind: 'non_residential', expectedPayYmd: null, filedYmd: null, releasedYmd: null })
+    expect(runway.state).toBe('no_pay')
+    expect(jobNextLine(base({ stage: 'billed', quietDays: 9, lienRunway: runway })).chip?.label).toBe('quiet 9 d')
+  })
+
   it('no bid value beats everything', () => {
     const n = jobNextLine(base({ view: view({ mode: 'nobid' }), billSentAlert: { sentAt: null, label: 'x', title: 't' }, quietDays: 20 }))
     expect(n.chip).toMatchObject({ label: 'no bid value', tone: 'red', action: 'no-bid' })

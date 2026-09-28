@@ -783,6 +783,7 @@ export default function JobFormModal({
     editAutosaveSlices,
     flushAllAutosaveSlicesRef,
     rehydrateFixturesFromDb,
+    paymentsRereadFromDb,
     readBidOutcomeForToast,
     announceDerivedBidOutcome,
   } = useJobFormAutosaveEngine({
@@ -1026,6 +1027,7 @@ export default function JobFormModal({
     jobTotalWithRidersDollars,
     billingAutosave,
     hydratedPaymentIdsRef,
+    paymentsRereadFromDb,
     onSavedRef,
   })
   /** v2.3576: the payment being moved to another job (Move to job…). */
@@ -1037,7 +1039,7 @@ export default function JobFormModal({
    */
   /** v2.3695: the locked Stripe row whose part payment is being undone. */
   const [undoPartPaymentRow, setUndoPartPaymentRow] = useState<PaymentRow | null>(null)
-  // v2.4062: "Check didn't clear…" on a whole-bill out-of-band mark — opens the Undo window with the send-back on.
+  // v2.4072: "Check didn't clear…" on a whole-bill out-of-band mark — opens the Undo window with the send-back on.
   const [checkDidNotClearRow, setCheckDidNotClearRow] = useState<PaymentRow | null>(null)
   const [recordPaymentTarget, setRecordPaymentTarget] = useState<{
     inv: JobsLedgerInvoiceRow
@@ -1106,6 +1108,9 @@ export default function JobFormModal({
     supplyInvoiceLines,
     mercuryAllocLines,
     mercuryFetchFailed,
+    mercuryCardExclusions,
+    mercuryCardCostLines,
+    mercuryCardTagByTxId,
     tallyPartLines,
     tallyFetchFailed,
     mercuryCardTotal,
@@ -3095,6 +3100,7 @@ export default function JobFormModal({
                   if (!editing) return
                   const found = await fetchJobWithDetailsById(editing.id)
                   if (found) {
+                    paymentsRereadFromDb(found)
                     setEditing(found)
                     setPayments(paymentRowsFromJob(found))
                   }
@@ -3124,6 +3130,9 @@ export default function JobFormModal({
             mercuryCardTotal={mercuryCardTotal}
             mercuryFetchFailed={mercuryFetchFailed}
             mercuryAllocLines={mercuryAllocLines}
+            mercuryCardExclusions={mercuryCardExclusions}
+            mercuryCardCostLines={mercuryCardCostLines}
+            mercuryCardTagByTxId={mercuryCardTagByTxId}
             tallyPartsTotal={tallyPartsTotal}
             tallyFetchFailed={tallyFetchFailed}
             tallyPartLines={tallyPartLines}

@@ -23,7 +23,7 @@ export function stripeModeForBillingFromRole(authRole: string | null): BillingSt
 
 export type VoidStripeInvoiceForRevertOk = {
   ok: true
-  /** What the function did in Stripe; `reverse_oob_mark` = a paid-by-check mark reversed with a credit note (v2.4062). */
+  /** What the function did in Stripe; `reverse_oob_mark` = a paid-by-check mark reversed with a credit note (v2.4072). */
   stripeAction: string | null
   stripeCreditNoteId: string | null
 }
@@ -59,7 +59,7 @@ export async function invokeVoidStripeInvoiceForRevert(params: {
 }
 
 /**
- * v2.4062 — the whole send-back of one Stripe-hosted billed line, in order:
+ * v2.4072 — the whole send-back of one Stripe-hosted billed line, in order:
  * the edge function (void, delete, or reverse our own paid-by-check mark with
  * a credit note), then the ledger row, then the job to Ready to Bill when no
  * billed line remains. View bill's confirm and the Undo out-of-band payment

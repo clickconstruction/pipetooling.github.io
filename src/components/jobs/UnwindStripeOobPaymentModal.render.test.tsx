@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Undo out-of-band payment (v2.4062): the send-back is on by default, the
+ * Undo out-of-band payment (v2.4072): the send-back is on by default, the
  * reason can be prefilled by the door that opened it, and after the undo the
  * bill line is sent back through the one send-back path — or not, when the
  * box is unticked. Wiring-level only; the words live in

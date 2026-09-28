@@ -21,7 +21,7 @@ import {
 import { SearchableSelect, type SearchableSelectOption } from '../SearchableSelect'
 import { fetchAllRows } from '../../lib/supabasePaging'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { checkSupabaseError, formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 
 const MODAL_Z = 10050
 
@@ -147,19 +147,19 @@ export function SpecSectionAuditModal({ open, onClose }: { open: boolean; onClos
         (r) => r.match_kind === 'exact' && r.pattern.trim().toLowerCase() === row.fixture.toLowerCase(),
       )
       if (existing) {
-        const { error } = await supabase
+        const res = await supabase
           .from('spec_section_match_rules')
           .update({ section_code: sectionCode, priority: AUDIT_PIN_PRIORITY })
           .eq('id', existing.id)
-        if (error) throw error
+        checkSupabaseError(res, 'save the rule')
       } else {
-        const { error } = await supabase.from('spec_section_match_rules').insert({
+        const res = await supabase.from('spec_section_match_rules').insert({
           pattern: row.fixture,
           match_kind: 'exact',
           section_code: sectionCode,
           priority: AUDIT_PIN_PRIORITY,
         })
-        if (error) throw error
+        checkSupabaseError(res, 'save the rule')
       }
       // Refresh rules only — the name list is unchanged; classification re-runs locally.
       const rules = await withSupabaseRetry(
@@ -173,7 +173,7 @@ export function SpecSectionAuditModal({ open, onClose }: { open: boolean; onClos
         return next
       })
     } catch (err) {
-      setPinError(err instanceof Error ? err.message : 'Could not save the rule.')
+      setPinError(formatErrorMessage(err, 'Could not save the rule.'))
     } finally {
       setPinBusy(null)
     }
