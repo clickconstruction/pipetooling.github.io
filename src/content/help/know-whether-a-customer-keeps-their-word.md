@@ -2,7 +2,7 @@
 title: know whether a customer keeps their word
 category: Billing & Money
 roles: dev, master_technician, assistant, controller, primary
-keywords: promise, promised date, kept, broken promise, late, their word, pay by, re-promised, payment promise, reliability, they said, tell us when, portal
+keywords: promise, promised date, kept, broken promise, late, their word, pay by, re-promised, payment promise, reliability, they said, tell us when, portal, never said that, wrong entry, take off the record, void
 ---
 When a customer says "we'll pay by the 25th," that sentence is now a record, not a memory. Every promised date is kept forever, and the app works out on its own whether the money came when they said it would.
 
@@ -20,6 +20,21 @@ Tanya at Done Right says the cheque run is Friday. On the row, click {{chip:gray
 :::
 
 Each promise remembers who at the customer said it, who on our side heard it, and when. Changing the date on a row does **not** overwrite the old promise: the first one stays on record and the new one is a second promise on the same bill — the modal says so. Clearing a promised date takes it off the chip but keeps the promise in the record — it was still said.
+
+## Taking a wrong promise off the record
+
+A promise entered on the wrong bill, or with a date nobody gave, should not count against the customer. Open {{chip:gray|They said…}} on the Billed row: under the form, **On record for this bill** lists every promise made on it — the day, who said it and how, who heard it, and the day it was written down.
+
+:::example On record for this bill · 2 promises
+**Oct 9 · on the board** — {{chip:red|never said that}}
+Tanya, their office · by phone · heard by Robert · written Sep 28
+**Sep 25** — {{chip:red|never said that}}
+by text · heard by Taunya · written Sep 10
+:::
+
+- {{chip:red|never said that}} asks once, then takes that promise off the record. It stops counting for or against the customer.
+- When it is the promise the board is showing, the date comes off the board too and the row goes back to the estimate. An older date is not put back.
+- **Changed their mind is not "never said that".** When a customer moves the date, save the new date — the earlier promise stays, and counts as broken. That is the record working.
 
 ## The one rule
 
@@ -71,4 +86,4 @@ Meadowbrook has kept one promise in five and slips about three weeks. On Custome
 - **Record or clear a promise:** dev, master technician, assistant, controller. Customers record their own from the portal.
 - **See promises and records:** the roles above plus primary.
 - **Set payment terms:** dev, master technician, assistant, controller. Everyone who can open New Bid or New Job sees the bar.
-- **"They never said that":** a promise can be voided by the roles that record them. Voiding hides it from the record; it is not deleted.
+- **"They never said that":** the roles that record a promise can take one off the record. It is hidden from the record, not deleted.

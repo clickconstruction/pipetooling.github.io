@@ -134,6 +134,30 @@ export function parsePaymentPromisesRpc(raw: unknown): PaymentPromise[] | null {
   return out
 }
 
+/** The promises on record for one job, newest first — what "They said…" lists under its form. */
+export function promisesOnJob(promises: readonly PaymentPromise[] | null | undefined, jobId: string): PaymentPromise[] {
+  return (promises ?? []).filter((p) => p.jobId === jobId).sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0))
+}
+
+const CHANNEL_WORDS: Record<PromiseChannel, string> = { phone: 'by phone', text: 'by text', email: 'by email', in_person: 'in person', portal: 'on their statement page', backfill: 'from the old record' }
+
+/** Who said it, how, and who heard it — "Tanya, their office · by phone · heard by Robert". */
+export function promiseSaidLine(p: Pick<PaymentPromise, 'saidBy' | 'channel' | 'heardByName' | 'source'>): string {
+  const who = p.source === 'customer' ? 'the customer' : p.saidBy
+  const heard = p.source === 'customer' ? null : p.heardByName ? `heard by ${p.heardByName}` : null
+  return [who, p.channel ? CHANNEL_WORDS[p.channel] : null, heard].filter(Boolean).join(' · ')
+}
+
+/**
+ * "They never said that" on the promise the board is showing takes the date
+ * off the board too — unless another promise still on record names the same
+ * day. An older date is not put back: that would be a promise nobody made.
+ */
+export function voidTakesDateOffBoard(voided: Pick<PaymentPromise, 'id' | 'promisedYmd'>, boardYmd: string | null | undefined, onJob: readonly Pick<PaymentPromise, 'id' | 'promisedYmd'>[]): boolean {
+  if (!boardYmd || voided.promisedYmd !== boardYmd) return false
+  return !onJob.some((p) => p.id !== voided.id && p.promisedYmd === boardYmd)
+}
+
 /** Defensive parse of list_payment_promise_records (null on gate-refused / malformed). */
 export function parsePromiseRecordsRpc(raw: unknown): PromiseRecordInput[] | null {
   if (!Array.isArray(raw)) return null

@@ -1,8 +1,12 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
-import type { PromiseChannel } from '../../lib/jobs/paymentPromises'
+import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
+import { parsePaymentPromisesRpc, promisesOnJob, voidTakesDateOffBoard, type PaymentPromise, type PromiseChannel } from '../../lib/jobs/paymentPromises'
+import { clearJobPromisedPayDate, voidJobPaymentPromise } from '../../lib/jobs/paymentChaseIo'
+import PromiseRecordList from './PromiseRecordList'
 
 /**
  * "They said…" on a Billed Awaiting Payment row: record the payment date the
@@ -11,6 +15,10 @@ import type { PromiseChannel } from '../../lib/jobs/paymentPromises'
  * chip and in the payment forecast, and every date named stays on record
  * ("Their Word" PR 2) — a changed date is a second promise, not an edit.
  * Clearing returns the row to the estimate; the promise stays in the record.
+ *
+ * Under the form, the promises on record for the bill. "never said that"
+ * voids one — a wrong entry. When it is the one the board shows, the date
+ * comes off the board with it.
  */
 const CHANNELS: ReadonlyArray<{ key: PromiseChannel; label: string }> = [
   { key: 'phone', label: 'Phone' },
@@ -45,6 +53,51 @@ export default function SetPromisedPayDateModal({
   const [saidBy, setSaidBy] = useState('')
   const [channel, setChannel] = useState<PromiseChannel>('phone')
   const [saving, setSaving] = useState(false)
+  const confirmDialog = useConfirmDialog()
+  const [onRecord, setOnRecord] = useState<PaymentPromise[]>([])
+  const [voidingId, setVoidingId] = useState<string | null>(null)
+  /** The date the board shows now: the one the modal opened with, until a void takes it off. */
+  const [boardYmd, setBoardYmd] = useState<string | null>(initialYmd)
+
+  const loadOnRecord = useCallback(async () => {
+    try {
+      const { data } = await supabase.rpc('list_job_payment_promises' as never)
+      setOnRecord(promisesOnJob(parsePaymentPromisesRpc(data as unknown), jobId))
+    } catch {
+      // the record is an extra — the form works without it
+    }
+  }, [jobId])
+  useEffect(() => {
+    void loadOnRecord()
+  }, [loadOnRecord])
+
+  const neverSaid = async (promise: PaymentPromise) => {
+    const day = formatYmdMonthDay(promise.promisedYmd)
+    const offBoard = voidTakesDateOffBoard(promise, boardYmd, onRecord)
+    const ok = await confirmDialog({
+      title: `They never said ${day}?`,
+      message: `This takes the promise off the record for ${jobLabel}, so it does not count for or against them.${offBoard ? ' The date comes off the board too.' : ''} Use it for a wrong entry. If they changed the date, save the new date instead.`,
+      confirmLabel: 'Never said that',
+      danger: true,
+    })
+    if (!ok) return
+    setVoidingId(promise.id)
+    try {
+      await voidJobPaymentPromise(promise.id)
+      if (offBoard) {
+        await clearJobPromisedPayDate(jobId)
+        setBoardYmd(null)
+        setYmd('')
+      }
+      showToast(offBoard ? `${day} is off the record and off the board.` : `${day} is off the record.`, 'success')
+      onSaved()
+      await loadOnRecord()
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not take the promise off the record'), 'error')
+    } finally {
+      setVoidingId(null)
+    }
+  }
 
   const submit = async (dateOrNull: string | null) => {
     setSaving(true)
@@ -98,12 +151,12 @@ export default function SetPromisedPayDateModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{ background: 'var(--surface)', padding: '1.25rem 1.5rem', borderRadius: 8, width: 'min(440px, calc(100vw - 2rem))' }}
+        style={{ background: 'var(--surface)', padding: '1.25rem 1.5rem', borderRadius: 8, width: 'min(440px, calc(100vw - 2rem))', maxHeight: '92vh', overflowY: 'auto', boxSizing: 'border-box' }}
       >
         <h2 style={{ margin: 0, fontSize: '1.05rem' }}>They said…</h2>
         <p style={{ margin: '0.35rem 0 0.85rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           {jobLabel} — the date the customer said this bill will be paid. It replaces the estimate on the board, and every
-          date they name stays on record{initialYmd ? ' — a new date counts the earlier one as broken' : ''}.
+          date they name stays on record{boardYmd ? ' — a new date counts the earlier one as broken' : ''}.
         </p>
         <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 4 }}>
           Pay by
@@ -146,7 +199,7 @@ export default function SetPromisedPayDateModal({
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', marginTop: '1rem' }}>
           <div>
-            {initialYmd ? (
+            {boardYmd ? (
               <button
                 type="button"
                 onClick={() => void submit(null)}
@@ -177,6 +230,7 @@ export default function SetPromisedPayDateModal({
             </button>
           </div>
         </div>
+        <PromiseRecordList promises={onRecord} boardYmd={boardYmd} busyId={voidingId} onNeverSaid={(p) => void neverSaid(p)} />
       </div>
     </div>
   )

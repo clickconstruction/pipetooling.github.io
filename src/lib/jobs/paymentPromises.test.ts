@@ -13,6 +13,10 @@ import {
   promiseDeadlineYmd,
   type PromiseRecordInput,
   promiseSlipByCustomer,
+  promiseSaidLine,
+  promisesOnJob,
+  voidTakesDateOffBoard,
+  type PaymentPromise,
 } from './paymentPromises'
 
 const TODAY = '2026-09-11'
@@ -225,5 +229,45 @@ describe('promiseSlipByCustomer (v2.3862)', () => {
     expect(promiseSlipByCustomer(records)).toEqual({ 'c-late': 4, 'c-day': 1 })
     expect(promiseSlipByCustomer(new Map())).toEqual({})
     expect(promiseSlipByCustomer(null)).toBeNull()
+  })
+})
+
+describe('the record under "They said…"', () => {
+  const said = (id: string, jobId: string, promisedYmd: string, createdAt: string, over: Partial<PaymentPromise> = {}): PaymentPromise => ({
+    id,
+    jobId,
+    customerId: 'c1',
+    promisedYmd,
+    saidBy: null,
+    heardByName: 'Robert',
+    channel: 'phone',
+    source: 'office',
+    note: null,
+    createdAt,
+    ...over,
+  })
+
+  it('lists one job’s promises, newest first', () => {
+    const all = [said('p1', 'j1', '2026-09-25', '2026-09-10T15:00:00Z'), said('p2', 'j2', '2026-10-02', '2026-09-20T15:00:00Z'), said('p3', 'j1', '2026-10-09', '2026-09-28T15:00:00Z')]
+    expect(promisesOnJob(all, 'j1').map((p) => p.id)).toEqual(['p3', 'p1'])
+    expect(promisesOnJob(null, 'j1')).toEqual([])
+  })
+
+  it('says who said it, how, and who heard it', () => {
+    expect(promiseSaidLine(said('p', 'j', '2026-10-09', '', { saidBy: 'Tanya, their office' }))).toBe('Tanya, their office · by phone · heard by Robert')
+    expect(promiseSaidLine(said('p', 'j', '2026-10-09', '', { channel: null }))).toBe('heard by Robert')
+    expect(promiseSaidLine(said('p', 'j', '2026-10-09', '', { source: 'customer', channel: 'portal', heardByName: null }))).toBe('the customer · on their statement page')
+  })
+
+  it('voiding the promise on the board takes its date off the board', () => {
+    const onJob = [said('p3', 'j1', '2026-10-09', '2026-09-28T15:00:00Z'), said('p1', 'j1', '2026-09-25', '2026-09-10T15:00:00Z')]
+    expect(voidTakesDateOffBoard(onJob[0]!, '2026-10-09', onJob)).toBe(true)
+  })
+
+  it('an older promise, or one whose day another promise still names, leaves the board alone', () => {
+    const onJob = [said('p3', 'j1', '2026-10-09', '2026-09-28T15:00:00Z'), said('p2', 'j1', '2026-10-09', '2026-09-27T15:00:00Z'), said('p1', 'j1', '2026-09-25', '2026-09-10T15:00:00Z')]
+    expect(voidTakesDateOffBoard(onJob[2]!, '2026-10-09', onJob)).toBe(false)
+    expect(voidTakesDateOffBoard(onJob[0]!, '2026-10-09', onJob)).toBe(false)
+    expect(voidTakesDateOffBoard(onJob[0]!, null, onJob)).toBe(false)
   })
 })
