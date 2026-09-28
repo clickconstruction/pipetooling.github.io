@@ -27,6 +27,8 @@ Applying a deposit also gives it the **Income** label in Banking, so the P&L cou
 - Initials work: a check deposited as "DRF" finds **Done Right Foundation**. Check services often put the real customer in the deposit memo — that's read too, and the header says so ("Memo mentions…").
 - No clear match? You still get the **Matches deposit amount** row (any bill equal to the deposit, whoever it belongs to) and the full searchable picker.
 
+**Give it the whole screen.** The button between **⋯** and **Close** takes the window full screen — the deposits and the match pane split the whole width — and it opens the way you left it. Press it again for the window.
+
 ## Clear the obvious ones in one pass
 
 When deposits each match exactly one open bill to the cent, a green bar appears above the deposit list:

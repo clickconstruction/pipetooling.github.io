@@ -941,4 +941,21 @@ describe('LienDeskModal the owner’s call and the piles (v2.3767)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Check the project ›' }))
     expect(onOpenEditJob).toHaveBeenCalledWith('j650', 'lien-contract')
   })
+
+  it('the title-bar toggle fills the screen and remembers it; a second press restores the window (v2.4065)', async () => {
+    window.localStorage.removeItem('modal_full_screen_lien-desk')
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} />)
+    const panel = document.querySelector('[data-lien-desk-panel]') as HTMLElement
+    expect(panel.style.borderRadius).toBe('10px')
+    const toggle = await screen.findByRole('button', { name: 'Full screen' })
+    expect(toggle.getAttribute('aria-pressed')).toBe('false')
+    fireEvent.click(toggle)
+    expect(panel.style.borderRadius).toBe('0')
+    expect(screen.getByRole('button', { name: 'Back to a window' }).getAttribute('aria-pressed')).toBe('true')
+    expect(window.localStorage.getItem('modal_full_screen_lien-desk')).toBe('1')
+    fireEvent.click(screen.getByRole('button', { name: 'Back to a window' }))
+    expect(panel.style.borderRadius).toBe('10px')
+    expect(screen.getByRole('button', { name: 'Full screen' })).toBeTruthy()
+    expect(window.localStorage.getItem('modal_full_screen_lien-desk')).toBeNull()
+  })
 })
