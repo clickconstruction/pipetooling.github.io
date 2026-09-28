@@ -781,6 +781,7 @@ export default function JobFormModal({
     editAutosaveSlices,
     flushAllAutosaveSlicesRef,
     rehydrateFixturesFromDb,
+    paymentsRereadFromDb,
     readBidOutcomeForToast,
     announceDerivedBidOutcome,
   } = useJobFormAutosaveEngine({
@@ -1024,6 +1025,7 @@ export default function JobFormModal({
     jobTotalWithRidersDollars,
     billingAutosave,
     hydratedPaymentIdsRef,
+    paymentsRereadFromDb,
     onSavedRef,
   })
   /** v2.3576: the payment being moved to another job (Move to job…). */
@@ -3064,6 +3066,7 @@ export default function JobFormModal({
                   if (!editing) return
                   const found = await fetchJobWithDetailsById(editing.id)
                   if (found) {
+                    paymentsRereadFromDb(found)
                     setEditing(found)
                     setPayments(paymentRowsFromJob(found))
                   }

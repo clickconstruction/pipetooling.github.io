@@ -34,6 +34,11 @@ export type JobFormPaymentActionsArgs = {
   billingAutosave: Pick<JobFormAutosaveSlice, 'cancelPending' | 'isRunning'>
   /** The payment ids the billing slice last read or wrote — its next diff starts from them. */
   hydratedPaymentIdsRef: MutableRefObject<string[]>
+  /**
+   * The engine's, for the re-read after a removal: the payments that came back are the saved
+   * ones, and the billing slice takes them as saved rather than writing them again.
+   */
+  paymentsRereadFromDb: (found: Pick<JobWithDetails, 'payments'>) => void
   onSavedRef: MutableRefObject<(() => void) | null | undefined>
 }
 
@@ -65,7 +70,7 @@ export type JobFormPaymentActions = {
  * The payment lines themselves, and the three payment windows' open states, stay the form's.
  */
 export function useJobFormPaymentActions(args: JobFormPaymentActionsArgs): JobFormPaymentActions {
-  const { editing, setEditing, authRole, payments, setPayments, removePaymentRow, jobTotalWithRidersDollars, billingAutosave, hydratedPaymentIdsRef, onSavedRef } = args
+  const { editing, setEditing, authRole, payments, setPayments, removePaymentRow, jobTotalWithRidersDollars, billingAutosave, hydratedPaymentIdsRef, paymentsRereadFromDb, onSavedRef } = args
   const { showToast } = useToastContext()
   const [paymentRemoveConfirmRowId, setPaymentRemoveConfirmRowId] = useState<string | null>(null)
   const [unlinkMercuryConfirmRowId, setUnlinkMercuryConfirmRowId] = useState<string | null>(null)
@@ -130,6 +135,7 @@ export function useJobFormPaymentActions(args: JobFormPaymentActionsArgs): JobFo
 
         const found = await fetchJobWithDetailsById(editing.id)
         if (found) {
+          paymentsRereadFromDb(found)
           setEditing(found)
           setPayments(paymentRowsFromJob(found))
         }
@@ -218,6 +224,7 @@ export function useJobFormPaymentActions(args: JobFormPaymentActionsArgs): JobFo
 
         const found = await fetchJobWithDetailsById(jobId)
         if (found) {
+          paymentsRereadFromDb(found)
           setEditing(found)
           setPayments(paymentRowsFromJob(found))
         }
@@ -229,7 +236,7 @@ export function useJobFormPaymentActions(args: JobFormPaymentActionsArgs): JobFo
         setUnlinkMercuryConfirmRowId(null)
       }
     },
-    [editing, authRole, showToast],
+    [editing, authRole, showToast, paymentsRereadFromDb],
   )
 
   function confirmUnlinkMercuryFromBankRow() {
