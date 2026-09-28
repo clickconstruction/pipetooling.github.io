@@ -8,8 +8,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
  */
 type Step = { method: string; args: unknown[] }
 const updates: Array<{ table: string; steps: Step[] }> = []
+const dbRpcs: Array<{ fn: string; args: unknown }> = []
 vi.mock('./supabase', () => ({
   supabase: {
+    rpc: (fn: string, args: unknown) => {
+      dbRpcs.push({ fn, args })
+      return Promise.resolve({ data: null, error: null })
+    },
     from: (table: string) => {
       const steps: Step[] = []
       updates.push({ table, steps })
@@ -66,6 +71,7 @@ const updateArgs = () => updates.map((u) => ({ table: u.table, set: u.steps.find
 
 beforeEach(() => {
   updates.length = 0
+  dbRpcs.length = 0
 })
 
 describe('persistMyTimeClusterAndGetSegmentIds', () => {
@@ -149,6 +155,33 @@ describe('persistMyTimeClusterAndGetSegmentIds', () => {
     const [sentIds, sent] = r.runReplaceMixed.mock.calls[0]! as [string[], Array<{ job_ledger_id: string | null }>]
     expect(sentIds).toEqual(['a', 'b', 'c'])
     expect(sent.map((p) => p.job_ledger_id)).toEqual(['j1', 'j1', 'j2'])
+  })
+
+  it('approved rows whose seam moved are updated in place, then the day’s payroll hours are resynced once', async () => {
+    const approved = { approved_at: '2026-09-08T00:00:00.000Z' }
+    const c = [row('a', 8, 10, approved), row('b', 10, 12, { job_ledger_id: 'j2', ...approved })]
+    await persistMyTimeClusterAndGetSegmentIds(
+      c,
+      { boundaries: [ms(8), ms(11), ms(12)], notes: ['x', 'y'] },
+      [payload(8, 11, 'x'), payload(11, 12, 'y')],
+      now,
+      rpcs(),
+    )
+    expect(updates).toHaveLength(2)
+    expect(dbRpcs).toEqual([{ fn: 'recompute_people_hours_after_session_edit', args: { p_session_id: 'b' } }])
+  })
+
+  it('pending rows whose seam moved do not resync payroll hours', async () => {
+    const c = [row('a', 8, 10), row('b', 10, 12, { job_ledger_id: 'j2' })]
+    await persistMyTimeClusterAndGetSegmentIds(
+      c,
+      { boundaries: [ms(8), ms(11), ms(12)], notes: ['x', 'y'] },
+      [payload(8, 11, 'x'), payload(11, 12, 'y')],
+      now,
+      rpcs(),
+    )
+    expect(updates).toHaveLength(2)
+    expect(dbRpcs).toEqual([])
   })
 
   it('a mixed cluster whose segments straddle rows is replaced as a whole with per-segment job allocations', async () => {

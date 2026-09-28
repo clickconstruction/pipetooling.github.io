@@ -14,6 +14,7 @@ type Written =
   | { op: 'insert'; table: string; label: string; values: unknown }
   | { op: 'update'; table: string; label: string; values: unknown; match: Record<string, unknown> }
   | { op: 'rpc'; rpc: 'splitSeg' | 'splitCluster' | 'replaceMixed'; target: string | string[]; segments: unknown }
+  | { op: 'dbRpc'; fn: string; label: string; args: unknown }
 
 const db = vi.hoisted(() => {
   const state = {
@@ -36,6 +37,7 @@ const db = vi.hoisted(() => {
 
 vi.mock('./supabase', () => ({
   supabase: {
+    rpc: (fn: string, args: unknown) => db.settle({ op: 'dbRpc', fn, label: db.state.label, args }),
     from: (table: string) => ({
       insert: (values: unknown) => db.settle({ op: 'insert', table, label: db.state.label, values }),
       update: (values: unknown) => ({
@@ -1036,6 +1038,79 @@ describe('persistMyTimeDayDirtyClusters — across clusters', () => {
     expect(spies.runSplitSeg).not.toHaveBeenCalled()
     expect(spies.runSplitCluster).not.toHaveBeenCalled()
     expect(spies.runReplaceMixed).not.toHaveBeenCalled()
+  })
+})
+
+describe('persistMyTimeDayDirtyClusters — payroll hours after an approved row’s times change', () => {
+  const APPROVED = { approved_at: '2026-01-06T00:00:00Z' }
+  const recompute = (id: string): Written => ({
+    op: 'dbRpc',
+    fn: 'recompute_people_hours_after_session_edit',
+    label: 'recompute people_hours after my time save',
+    args: { p_session_id: id },
+  })
+
+  it('a seam moved between approved rows: the times, then one resync of the day', async () => {
+    const c = [mk('a', T(0), T(2), { job_ledger_id: 'j1', ...APPROVED }), mk('b', T(2), T(4), { job_ledger_id: 'j2', ...APPROVED })]
+    await save([c], [{ boundaries: [T(0), T(3), T(4)], notes: ['x', 'y'] }])
+    expect(db.state.log).toStrictEqual([timesUpdate('a', T(0), T(3), 'x'), timesUpdate('b', T(3), T(4), 'y'), recompute('b')])
+  })
+
+  it('only the approved row counts: a pending row re-cut beside it still resyncs, keyed on the approved one', async () => {
+    const c = [mk('a', T(0), T(2), { job_ledger_id: 'j1', ...APPROVED }), mk('b', T(2), T(4), { job_ledger_id: 'j2' })]
+    await save([c], [{ boundaries: [T(0), T(3), T(4)], notes: ['x', 'y'] }])
+    expect(db.state.log.at(-1)).toStrictEqual(recompute('a'))
+  })
+
+  it('the People → Hours seed writing an approved row’s times resyncs', async () => {
+    const c = [mk('a', T(0), T(4), APPROVED)]
+    await save([c], [{ boundaries: [T(0), T(4)], notes: ['x'] }], { peopleHoursGridProportionalSeed: true })
+    expect(db.state.log.map((w) => w.op)).toStrictEqual(['update', 'dbRpc'])
+    expect(db.state.log.at(-1)).toStrictEqual(recompute('a'))
+  })
+
+  it('punch and salary approved rows merged into one part resync', async () => {
+    const c = [mk('a', T(0), T(2), APPROVED), salary('s', T(2), T(4), 1, APPROVED)]
+    await save([c], [{ boundaries: [T(0), T(4)], notes: ['x'] }])
+    expect(db.state.log.at(-1)).toStrictEqual(recompute('s'))
+  })
+
+  it('pending rows re-cut do not resync — there is nothing approved to count', async () => {
+    await save([twoJobs()], [{ boundaries: [T(0), T(3), T(4)], notes: ['x', 'y'] }])
+    expect(db.state.log.some((w) => w.op === 'dbRpc')).toBe(false)
+  })
+
+  it('a notes-only save of approved rows does not resync', async () => {
+    const c = [mk('a', T(0), T(2), { job_ledger_id: 'j1', ...APPROVED }), mk('b', T(2), T(4), { job_ledger_id: 'j2', ...APPROVED })]
+    await save([c], [{ boundaries: [T(0), T(2), T(4)], notes: ['x', 'y'] }])
+    expect(db.state.log).toStrictEqual([noteUpdate('a', 'x'), noteUpdate('b', 'y')])
+  })
+
+  it('an approved row split by the RPC does not resync here — the RPC keeps payroll hours itself', async () => {
+    await save([[mk('a', T(0), T(4), APPROVED)]], [{ boundaries: [T(0), T(2), T(4)], notes: ['x', 'y'] }])
+    expect(db.state.log.map((w) => w.op)).toStrictEqual(['rpc'])
+  })
+
+  it('two clusters with approved rows re-cut resync once, after every write', async () => {
+    const first = [mk('a', T(0), T(2), { job_ledger_id: 'j1', ...APPROVED }), mk('b', T(2), T(4), { job_ledger_id: 'j2', ...APPROVED })]
+    const second = [mk('c', T(5), T(6), { job_ledger_id: 'j1', ...APPROVED }), mk('d', T(6), T(7), { job_ledger_id: 'j2', ...APPROVED })]
+    await save(
+      [first, second],
+      [
+        { boundaries: [T(0), T(3), T(4)], notes: ['x', 'y'] },
+        { boundaries: [T(5), T(6.5), T(7)], notes: ['z', 'w'] },
+      ],
+    )
+    expect(db.state.log.map((w) => w.op)).toStrictEqual(['update', 'update', 'update', 'update', 'dbRpc'])
+    expect(db.state.log.at(-1)).toStrictEqual(recompute('d'))
+  })
+
+  it('a refused resync rejects the save; the rows written before it stay written', async () => {
+    const c = [mk('a', T(0), T(2), { job_ledger_id: 'j1', ...APPROVED }), mk('b', T(2), T(4), { job_ledger_id: 'j2', ...APPROVED })]
+    const refusal = { message: 'Access denied' }
+    db.state.refuse.set(3, refusal)
+    await expect(save([c], [{ boundaries: [T(0), T(3), T(4)], notes: ['x', 'y'] }])).rejects.toBe(refusal)
+    expect(db.state.log.map((w) => w.op)).toStrictEqual(['update', 'update', 'dbRpc'])
   })
 })
 

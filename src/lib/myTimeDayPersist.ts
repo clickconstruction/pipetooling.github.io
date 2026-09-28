@@ -131,6 +131,8 @@ export async function persistMyTimeDayDirtyClusters({
 }: PersistMyTimeDayInput): Promise<{ salarySyncMayAdjust: boolean }> {
   const { runSplitSeg, runSplitCluster, runReplaceMixed } = rpcs
   let showSalarySyncAfterPartitionSave = false
+  /** An approved row whose times a direct UPDATE changed: payroll hours are resynced once, at the end. */
+  let approvedRowTimesChangedId: string | null = null
   for (const clusterId of dirty) {
     const c = sessionClusters.find((x) => sessionClusterId(x) === clusterId)
     if (!c?.length) continue
@@ -196,6 +198,7 @@ export async function persistMyTimeDayDirtyClusters({
                 .eq('id', row.id),
             'update clock session times from people hours proportional seed',
           )
+          if (row.approved_at) approvedRowTimesChangedId = row.id
         } else {
           await withSupabaseRetry(
             async () => supabase.from('clock_sessions').update({ notes: payloads[0]!.notes }).eq('id', row.id),
@@ -231,6 +234,7 @@ export async function persistMyTimeDayDirtyClusters({
                 .eq('id', row.id),
             'update clock session times after mixed cross-row merge partition',
           )
+          if (row.approved_at) approvedRowTimesChangedId = row.id
         }
       } else {
         const mixed = attachAllocationsToPayloads(payloads, c, split, nowTick)
@@ -288,6 +292,7 @@ export async function persistMyTimeDayDirtyClusters({
                   .eq('id', row.id),
               'update clock session times'
             )
+            if (row.approved_at) approvedRowTimesChangedId = row.id
           }
         }
       } else {
@@ -334,6 +339,7 @@ export async function persistMyTimeDayDirtyClusters({
                     .eq('id', row.id),
                 'update clock session times'
               )
+              if (row.approved_at) approvedRowTimesChangedId = row.id
             }
           } else {
             await runSplitSeg(row.id, rowPayloads.map(stripJobBidForSegmentRpc))
@@ -369,6 +375,7 @@ export async function persistMyTimeDayDirtyClusters({
               .eq('id', row.id),
           'update clock session times after mixed coalesced partition save',
         )
+        if (row.approved_at) approvedRowTimesChangedId = row.id
       }
     } else {
       // Rows that share origin and salary segment, cut out of line with each other: rebuild.
@@ -380,6 +387,17 @@ export async function persistMyTimeDayDirtyClusters({
     if (c.some((s) => s.origin === 'salary_schedule') && !segmentsAreTheRowsUnchanged(c, split, nowTick)) {
       showSalarySyncAfterPartitionSave = true
     }
+  }
+  // people_hours moves only on approve (+) and reject / revoke (−). A direct UPDATE of an approved
+  // row's times changes neither, so the day's payroll hours stayed at the old sum. Resync the day
+  // from its approved sessions — once, and only when an approved row's times were written. (The
+  // split / replace RPCs keep people_hours themselves; a notes-only update changes no hours.)
+  if (approvedRowTimesChangedId) {
+    const sessionId = approvedRowTimesChangedId
+    await withSupabaseRetry(
+      async () => supabase.rpc('recompute_people_hours_after_session_edit', { p_session_id: sessionId }),
+      'recompute people_hours after my time save',
+    )
   }
   return { salarySyncMayAdjust: showSalarySyncAfterPartitionSave }
 }
