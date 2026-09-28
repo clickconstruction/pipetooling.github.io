@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildStripeBillCopyEmail, formatCentsUsd, formatDueDate } from '../../../supabase/functions/_shared/stripeBillCopyEmail'
+import { buildStripeBillCopyEmail, formatCentsUsd, formatDueDate, stripeBillCopyTestLine } from '../../../supabase/functions/_shared/stripeBillCopyEmail'
 
 const base = {
   payerName: 'Josh Peterson',
@@ -36,6 +36,31 @@ describe('buildStripeBillCopyEmail', () => {
     expect(with_.text).toContain('See your statement any time: https://my.clickplumbing.com/done-right-x7kq')
     expect(with_.html).toContain('href="https://my.clickplumbing.com/done-right-x7kq"')
     expect(buildStripeBillCopyEmail(base).text).not.toContain('See your statement')
+  })
+  it('a live copy carries no test mark', () => {
+    for (const out of [buildStripeBillCopyEmail(base), buildStripeBillCopyEmail({ ...base, testHeldBack: null })]) {
+      expect(out.subject.startsWith('Copy of invoice')).toBe(true)
+      expect(out.text.startsWith('This is a copy of the bill')).toBe(true)
+      expect(`${out.text}${out.html}`).not.toContain('Test bill')
+    }
+  })
+  it('a test copy is marked in the subject and names the addresses it did not go to', () => {
+    const out = buildStripeBillCopyEmail({ ...base, testHeldBack: ['pm@hartwell.example', 'ap@drf.example'] })
+    const line = 'Test bill. This copy came to you instead of pm@hartwell.example, ap@drf.example; nothing was sent to the copy list.'
+    expect(out.subject).toBe('[Test] Copy of invoice #1013-2609121030 — J1013 · Peterson Pretest')
+    expect(out.text.startsWith(`${line}\n\nThis is a copy of the bill`)).toBe(true)
+    expect(out.html).toContain(line)
+    expect(out.html.indexOf(line)).toBeLessThan(out.html.indexOf('Copy of a bill'))
+  })
+  it('a test copy with nobody held back still says it is a test', () => {
+    expect(stripeBillCopyTestLine([])).toBe('Test bill. This copy came to you; nobody else is on the copy list.')
+    expect(stripeBillCopyTestLine([' ', ''])).toBe('Test bill. This copy came to you; nobody else is on the copy list.')
+    expect(stripeBillCopyTestLine(null)).toBe('')
+    expect(stripeBillCopyTestLine(undefined)).toBe('')
+    expect(buildStripeBillCopyEmail({ ...base, testHeldBack: [] }).subject.startsWith('[Test] ')).toBe(true)
+  })
+  it('escapes a held-back address in the HTML', () => {
+    expect(buildStripeBillCopyEmail({ ...base, testHeldBack: ['a<b>@x.example'] }).html).toContain('a&lt;b&gt;@x.example')
   })
   it('escapes HTML in names', () => {
     const out = buildStripeBillCopyEmail({ ...base, payerName: 'A <b>&</b> Sons' })

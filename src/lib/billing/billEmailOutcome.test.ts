@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { billEmailSentMessage, parseBillEmailOutcome } from './billEmailOutcome'
+import { billCopiesFailedMessage, billCopiesSentHint, billEmailSentMessage, parseBillCopiesOutcome, parseBillEmailOutcome } from './billEmailOutcome'
 
 describe('parseBillEmailOutcome', () => {
   it('reads our send and where it went', () => {
@@ -42,5 +42,68 @@ describe('billEmailSentMessage', () => {
         'Stripe sent the invoice email — ours could not go out, so this one has no account code.',
       )
     }
+  })
+})
+
+describe('parseBillCopiesOutcome', () => {
+  it('a live bill: who got a copy and how many failed', () => {
+    expect(parseBillCopiesOutcome({ copies_sent: [' pm@hartwell.example ', 7, ''], copies_failed: [{ email: 'ap@drf.example', error: 'bounced' }] })).toEqual({
+      sent: ['pm@hartwell.example'],
+      failedCount: 1,
+      testTo: null,
+      heldBack: null,
+    })
+  })
+  it('an answer that names no copies is a bill with none', () => {
+    for (const body of [null, undefined, 'ok', {}, { success: true }]) {
+      expect(parseBillCopiesOutcome(body)).toEqual({ sent: [], failedCount: 0, testTo: null, heldBack: null })
+    }
+  })
+  it('a test bill: where the one copy went and who was held back', () => {
+    expect(parseBillCopiesOutcome({ copies_sent: [], copies_failed: [], copies_test_to: 'office@click.example', copies_held_back: ['pm@hartwell.example', 'ap@drf.example'] })).toEqual({
+      sent: [],
+      failedCount: 0,
+      testTo: 'office@click.example',
+      heldBack: ['pm@hartwell.example', 'ap@drf.example'],
+    })
+  })
+  it('a test bill is one even when nothing is held back or nothing went out', () => {
+    expect(parseBillCopiesOutcome({ copies_test_to: 'office@click.example', copies_held_back: [] }).heldBack).toEqual([])
+    expect(parseBillCopiesOutcome({ copies_skipped: 'test_without_sender' }).heldBack).toEqual([])
+    expect(parseBillCopiesOutcome({ copies_skipped: 'no_resend_key' }).heldBack).toBeNull()
+  })
+})
+
+describe('billCopiesSentHint', () => {
+  const none = { sent: [], failedCount: 0, testTo: null, heldBack: null }
+  it('a live bill names who got a copy, or says nothing', () => {
+    expect(billCopiesSentHint({ ...none, sent: ['pm@hartwell.example', 'ap@drf.example'] })).toBe(' Copies went to pm@hartwell.example, ap@drf.example.')
+    expect(billCopiesSentHint(none)).toBe('')
+  })
+  it('a test bill says the copy came to the sender and names who got nothing', () => {
+    expect(billCopiesSentHint({ ...none, testTo: 'office@click.example', heldBack: ['pm@hartwell.example', 'ap@drf.example'] })).toBe(
+      ' The copy came to you too; nothing went to pm@hartwell.example, ap@drf.example.',
+    )
+    expect(billCopiesSentHint({ ...none, testTo: 'office@click.example', heldBack: [] })).toBe(' The copy came to you too.')
+  })
+  it('a test bill whose copy did not go out still names who got nothing', () => {
+    expect(billCopiesSentHint({ ...none, heldBack: ['pm@hartwell.example'] })).toBe(' No copy went out; nothing went to pm@hartwell.example.')
+    expect(billCopiesSentHint({ ...none, heldBack: [] })).toBe('')
+  })
+  it('a test bill never reads as copies sent to the list', () => {
+    expect(billCopiesSentHint({ ...none, sent: ['pm@hartwell.example'], testTo: 'office@click.example', heldBack: ['pm@hartwell.example'] })).not.toContain('Copies went to')
+  })
+})
+
+describe('billCopiesFailedMessage', () => {
+  it('is null when nothing failed', () => {
+    expect(billCopiesFailedMessage({ sent: ['pm@hartwell.example'], failedCount: 0, testTo: null, heldBack: null })).toBeNull()
+  })
+  it('counts the copies a live bill could not send', () => {
+    expect(billCopiesFailedMessage({ sent: [], failedCount: 1, testTo: null, heldBack: null })).toBe('1 copy email failed to send — the payer\'s own email went out.')
+    expect(billCopiesFailedMessage({ sent: [], failedCount: 2, testTo: null, heldBack: null })).toBe('2 copy emails failed to send — the payer\'s own email went out.')
+  })
+  it('a test bill says its copy was the sender’s, and that the list got nothing', () => {
+    expect(billCopiesFailedMessage({ sent: [], failedCount: 1, testTo: null, heldBack: ['pm@hartwell.example'] })).toBe('The test copy could not be sent to you. Nothing went to the copy list.')
   })
 })
