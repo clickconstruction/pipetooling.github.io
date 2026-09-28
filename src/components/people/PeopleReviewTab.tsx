@@ -1002,19 +1002,12 @@ export default function PeopleReviewTab({
    * Panel-mode entry point: owns the request-id guard (out-of-order responses
    * are dropped), error surfacing (`reviewError`), and the loading flag's
    * `finally` (a rejected query no longer strands the panel on "Loading…").
-   * The legacy `forTeamSummary` path passes straight through — its caller
-   * handles its own errors and it touches no panel state.
    */
-  async function loadReviewData(
-    personName: string,
-    forTeamSummary?: boolean,
-    onlyPaidJobs?: boolean
-  ): Promise<{ allocatedRevenue: number; allocatedProfit: number; hoursRows: Array<{ work_date: string; hours: number }>; totalHoursPaidJobs?: number } | void> {
-    if (forTeamSummary) return loadReviewDataCore(personName, forTeamSummary, onlyPaidJobs)
+  async function loadReviewData(personName: string, onlyPaidJobs?: boolean): Promise<void> {
     const reqId = ++reviewReqIdRef.current
     setReviewError(null)
     try {
-      return await loadReviewDataCore(personName, false, onlyPaidJobs, reqId)
+      await loadReviewDataCore(personName, onlyPaidJobs, reqId)
     } catch (e) {
       if (reviewReqIdRef.current === reqId) setReviewError(formatErrorMessage(e))
     } finally {
@@ -1022,26 +1015,19 @@ export default function PeopleReviewTab({
     }
   }
 
-  async function loadReviewDataCore(
-    personName: string,
-    forTeamSummary?: boolean,
-    onlyPaidJobs?: boolean,
-    reqId?: number
-  ): Promise<{ allocatedRevenue: number; allocatedProfit: number; hoursRows: Array<{ work_date: string; hours: number }>; totalHoursPaidJobs?: number } | void> {
+  async function loadReviewDataCore(personName: string, onlyPaidJobs: boolean | undefined, reqId: number): Promise<void> {
     const [start, end] = getReviewDateRange()
-    if (!forTeamSummary) {
-      setReviewLoading(true)
-      setReviewLaborJobs([])
-      setReviewCrewJobs([])
-      setReviewAllocatedRevenue(0)
-      setReviewAllocatedProfit(0)
-      setReviewHours([])
-      setReviewReports([])
-      setReviewTasks([])
-      setReviewTasksOutstanding([])
-      setReviewLaborByJobAndPerson({})
-      setReviewLaborBreakdownContext(null)
-    }
+    setReviewLoading(true)
+    setReviewLaborJobs([])
+    setReviewCrewJobs([])
+    setReviewAllocatedRevenue(0)
+    setReviewAllocatedProfit(0)
+    setReviewHours([])
+    setReviewReports([])
+    setReviewTasks([])
+    setReviewTasksOutstanding([])
+    setReviewLaborByJobAndPerson({})
+    setReviewLaborBreakdownContext(null)
 
     // Trimmed comparison: payConfig keys carry whitespace variance and a
     // trailing space here used to silently blank Tasks/Reports for the person.
@@ -1090,8 +1076,8 @@ export default function PeopleReviewTab({
       paged((f, t) => supabase.from('people_crew_jobs').select('work_date, person_name, person_id, job_assignments').gte('work_date', lookbackStart).order('work_date').order('person_name').range(f, t), 'load review lifetime crew days'),
       supabase.from('people_hours').select('work_date, hours').eq('person_name', personName).gte('work_date', start).lte('work_date', end),
       // list_reports_with_job_info has a deterministic ORDER BY (created_at), so .range() pages are stable.
-      forTeamSummary ? Promise.resolve({ data: [] }) : paged((f, t) => supabase.rpc('list_reports_with_job_info').range(f, t), 'load review reports'),
-      userId && !forTeamSummary
+      paged((f, t) => supabase.rpc('list_reports_with_job_info').range(f, t), 'load review reports'),
+      userId
         ? supabase
             .from('checklist_instances')
             .select('id, checklist_item_id, scheduled_date, completed_at, checklist_items(title, links), checklist_instance_assignees!inner(user_id)')
@@ -1103,7 +1089,7 @@ export default function PeopleReviewTab({
             .gte('completed_at', new Date(start + 'T00:00:00').toISOString())
             .lt('completed_at', new Date(new Date(end + 'T00:00:00').getTime() + 86_400_000).toISOString())
         : Promise.resolve({ data: [] }),
-      userId && !forTeamSummary
+      userId
         ? supabase
             .from('checklist_instances')
             .select('id, checklist_item_id, scheduled_date, completed_at, checklist_items(title, links), checklist_instance_assignees!inner(user_id)')
@@ -1132,9 +1118,7 @@ export default function PeopleReviewTab({
     const laborRows = allLaborRowsForCostAllTime.filter(
       (r) => laborJobMatchesPerson(r, junctionJobIds, personName) && r.job_date != null && r.job_date >= start && r.job_date <= end,
     )
-    const personLaborRowsAllTime = forTeamSummary
-      ? ([] as typeof allLaborRowsForCostAllTime)
-      : allLaborRowsForCostAllTime.filter((r) => laborJobMatchesPerson(r, junctionJobIds, personName))
+    const personLaborRowsAllTime = allLaborRowsForCostAllTime.filter((r) => laborJobMatchesPerson(r, junctionJobIds, personName))
     const crewRows = (crewRes.data ?? []) as Array<{ work_date: string; person_name: string; person_id: string | null; job_assignments: CrewJobAssignment[] }>
     const allCrewRowsForCostAllTime = (allCrewResForCostAllTime.data ?? []) as Array<{ work_date: string; person_name: string; person_id: string | null; job_assignments: CrewJobAssignment[] }>
     const hoursRows = (hoursRes.data ?? []) as Array<{ work_date: string; hours: number }>
@@ -1577,9 +1561,9 @@ export default function PeopleReviewTab({
     const lookbackEnd = ymdAddYears(end, 1)
 
     const [allLaborRes, allCrewRes, allHoursRes2] = await Promise.all([
-      forTeamSummary || !(laborLinkIds.length > 0 || crewJobIds.size > 0) ? Promise.resolve({ data: [] }) : paged((f, t) => supabase.from('people_labor_jobs').select('id, job_number, job_ledger_id, job_date').gte('job_date', lookbackStart2Y).lte('job_date', lookbackEnd).order('id').range(f, t), 'load review windowed labor jobs'),
-      forTeamSummary ? Promise.resolve({ data: [] }) : paged((f, t) => supabase.from('people_crew_jobs').select('work_date, person_name, person_id, job_assignments').gte('work_date', lookbackStart2Y).lte('work_date', lookbackEnd).order('work_date').order('person_name').range(f, t), 'load review windowed crew days'),
-      forTeamSummary ? Promise.resolve({ data: [] }) : paged((f, t) => supabase.from('people_hours').select('person_name, work_date, hours').gte('work_date', lookbackStart2Y).lte('work_date', lookbackEnd).order('work_date').order('person_name').range(f, t), 'load review windowed hours'),
+      !(laborLinkIds.length > 0 || crewJobIds.size > 0) ? Promise.resolve({ data: [] }) : paged((f, t) => supabase.from('people_labor_jobs').select('id, job_number, job_ledger_id, job_date').gte('job_date', lookbackStart2Y).lte('job_date', lookbackEnd).order('id').range(f, t), 'load review windowed labor jobs'),
+      paged((f, t) => supabase.from('people_crew_jobs').select('work_date, person_name, person_id, job_assignments').gte('work_date', lookbackStart2Y).lte('work_date', lookbackEnd).order('work_date').order('person_name').range(f, t), 'load review windowed crew days'),
+      paged((f, t) => supabase.from('people_hours').select('person_name, work_date, hours').gte('work_date', lookbackStart2Y).lte('work_date', lookbackEnd).order('work_date').order('person_name').range(f, t), 'load review windowed hours'),
     ])
     throwIfQueryError([allLaborRes, allCrewRes, allHoursRes2], 'load review lifetime hours')
     const allLaborRows = (allLaborRes.data ?? []) as Array<{ id: string; job_number: string | null; job_ledger_id: string | null; job_date: string | null }>
@@ -1684,17 +1668,6 @@ export default function PeopleReviewTab({
       allocatedProfit += revenueBeforeOverhead * ratio
     }
 
-    if (forTeamSummary) {
-      return {
-        allocatedRevenue,
-        allocatedProfit,
-        hoursRows: hoursRows.map((r) => ({ work_date: r.work_date, hours: r.hours })),
-        ...(usePaidOnly && {
-          totalHoursPaidJobs: laborJobs.reduce((s, j) => s + j.hours, 0) + crewJobs.reduce((s, j) => s + j.hours, 0),
-        }),
-      }
-    }
-
     for (const j of laborJobs) {
       j.totalJobHours = j.job_id ? (totalHoursOnJob.get(j.job_id) ?? 0) : 0
       j.userTotalHoursOnJob = j.job_id ? (personHoursOnJobAllTime.get(j.job_id) ?? 0) : 0
@@ -1724,7 +1697,7 @@ export default function PeopleReviewTab({
 
     // Drop stale responses: if a newer load started (person/period switch)
     // while this one was in flight, its writes must not land.
-    if (reqId !== undefined && reviewReqIdRef.current !== reqId) return
+    if (reviewReqIdRef.current !== reqId) return
 
     setReviewLaborJobs(laborJobs)
     setReviewCrewJobs(crewJobs)
@@ -1767,7 +1740,7 @@ export default function PeopleReviewTab({
       return
     }
     const personName = showPeopleForReview[selectedReviewPersonIndex]
-    if (personName) void loadReviewData(personName, false, reviewOnlyPaidInFull)
+    if (personName) void loadReviewData(personName, reviewOnlyPaidInFull)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedReviewPersonIndex, reviewPeriod, reviewCustomRangeStart, reviewCustomRangeEnd, reviewOnlyPaidInFull, showPeopleForReview, users])
 
@@ -2653,7 +2626,7 @@ export default function PeopleReviewTab({
                 type="button"
                 onClick={() => {
                   const p = showPeopleForReview[selectedReviewPersonIndex]
-                  if (p) void loadReviewData(p, false, reviewOnlyPaidInFull)
+                  if (p) void loadReviewData(p, reviewOnlyPaidInFull)
                 }}
                 style={{
                   padding: '0.35rem 0.9rem',
