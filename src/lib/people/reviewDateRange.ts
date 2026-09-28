@@ -72,3 +72,20 @@ export function computeReviewDateRange(
   // last_two_weeks: the two full weeks before this one (Sunday → Saturday).
   return [ymdAddDays(thisWeekSunday, -14), ymdAddDays(thisWeekSunday, -1)]
 }
+
+const REVIEW_PERIOD_LABELS: Record<ReviewPeriod, string> = {
+  today: 'Today',
+  yesterday: 'Yesterday',
+  this_week: 'This week (running)',
+  last_week: 'Last week',
+  last_two_weeks: 'Last two weeks',
+  last_30_days: 'Last 30 days',
+  last_90_days: 'Last 90 days',
+  this_year: 'This year',
+  custom: 'Custom range',
+}
+
+/** "Last 30 days (2026-08-05 – 2026-09-03)" — the period's name with its inclusive range. */
+export function reviewPeriodLabel(period: ReviewPeriod, range: readonly [string, string]): string {
+  return `${REVIEW_PERIOD_LABELS[period]} (${range[0]} – ${range[1]})`
+}

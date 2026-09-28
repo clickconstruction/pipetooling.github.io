@@ -25,7 +25,8 @@ import { loadCardChargeExclusions } from '../../lib/jobs/loadCardChargeExclusion
 import { netCardChargesByJobId } from '../../lib/jobs/netCardChargesByJob'
 import { reviewJobEarned, reviewShareRatio } from '../../lib/people/reviewEarned'
 import { parseReviewDoor, reviewDoorPersonIndex } from '../../lib/people/reviewDoor'
-import { computeReviewDateRange, ymdAddYears, type ReviewPeriod as ReviewPeriodKind } from '../../lib/people/reviewDateRange'
+import { computeReviewDateRange, reviewPeriodLabel, ymdAddYears, type ReviewPeriod as ReviewPeriodKind } from '../../lib/people/reviewDateRange'
+import { buildTeamSummaryCacheKey } from '../../lib/people/teamSummaryCacheKey'
 import type { Person, UserRow } from '../../hooks/usePeopleRoster'
 import {
   approvedClosedSessionHours,
@@ -122,11 +123,6 @@ function paged<T>(
 }
 
 /**
- * Sign-aware cents-precision money: -$244.16 instead of $-244.16 (fmtMoney's
- * sign idiom, formatCurrency's decimals). For the Jobs Worked cells that can
- * legitimately go negative.
- */
-/**
  * A sheet row's job: its link (`people_labor_jobs.job_ledger_id`, v2.3068). The number is
  * display text — the number fallback was retired once every sheet carried a link.
  */
@@ -151,6 +147,11 @@ async function fetchJobStatusesByIds(jobIds: string[]): Promise<Map<string, stri
   return out
 }
 
+/**
+ * Sign-aware cents-precision money: -$244.16 instead of $-244.16 (fmtMoney's
+ * sign idiom, formatCurrency's decimals). For the Jobs Worked cells that can
+ * legitimately go negative.
+ */
 function signedCurrency(n: number): string {
   return `${n < 0 ? '-$' : '$'}${formatCurrency(Math.abs(n))}`
 }
@@ -197,9 +198,6 @@ export default function PeopleReviewTab({
   const { role: authRole } = useAuth()
   const prefixMap = useLedgerPrefixMap()
 
-  // Shared HH:MM(:SS) formatter — a private verbatim copy of the parent's
-  // `decimalToHms` (also duplicated in quickfill/HoursSection.tsx). Pure, no
-  // closure deps; kept local so the review tab doesn't need it as a prop.
   // Review tab state. v2.542 — `last_month` was a misnomer (it's really 30 days
   // rolling back from today, not the previous calendar month) so we renamed the
   // value to `last_30_days` and added a few common period scopes plus a custom
@@ -215,7 +213,7 @@ export default function PeopleReviewTab({
   // when the user first selects Custom from the dropdown (see UI below).
   const [reviewCustomRangeStart, setReviewCustomRangeStart] = useState<string>('')
   const [reviewCustomRangeEnd, setReviewCustomRangeEnd] = useState<string>('')
-  // The Vectors → Review door (v2.3366): `?tab=review&person=&from=&to=` sets the
+  // The Vectors → Review door (v2.3366): `?tab=review&review_person=&review_from=&review_to=` sets the
   // period once and selects the person once the roster is in. Read at mount so a
   // later period change or click is never overridden.
   const reviewDoorRef = useRef<{ person: string; applied: boolean } | null>(
@@ -905,9 +903,9 @@ export default function PeopleReviewTab({
     ) {
       return
     }
-    // Drilldown protection: if a modal is open inside the iframe, defer the
-    // rebuild until the user closes it. We mark pending and the message
-    // handler will bump `teamSummaryDrainTick` to re-run this effect.
+    // Drilldown protection: if a drilldown is open over the Team Summary,
+    // defer the rebuild until the user closes it. We mark pending and the
+    // page's close handler bumps `teamSummaryDrainTick` to re-run this effect.
     if (teamSummaryModalOpenRef.current) {
       teamSummaryRefreshPendingRef.current = true
       return
@@ -1715,7 +1713,7 @@ export default function PeopleReviewTab({
     if (showPeopleForReview.length === 0) return
     // Default state for the new toggleable Team Summary: nothing selected.
     // The detail panel below the table only renders once the user clicks a
-    // name in the iframe (handled in onMessage below).
+    // name in the table (`handleInlineTogglePerson`).
     if (selectedReviewPersonIndex < 0) return
     // Clamp when the roster shrinks (member removed from pay config) so the
     // index can't dangle past the end. Selecting `-1` is the only way to
@@ -2151,38 +2149,14 @@ export default function PeopleReviewTab({
   }
 
   // Snapshot of the inputs that determine `loadTeamSummaryData`'s output,
-  // joined into a single string so the popup path can compare cheaply. We
-  // sort the roster + payConfig keys so member order can't drift the key.
-  function buildTeamSummaryCacheKey(): string {
+  // joined into a single string so the popup path can compare cheaply.
+  function teamSummaryCacheKey(): string {
     const [start, end] = getReviewDateRange()
-    const roster = [...showPeopleForReview].sort().join(',')
-    // payConfig sig: name → salary flag + wage. Catches wage-only edits that
-    // wouldn't otherwise change `showPeopleForReview` membership.
-    const pc = Object.keys(payConfig)
-      .sort()
-      .map((n) => {
-        const cfg = payConfig[n]
-        if (!cfg) return `${n}:?`
-        return `${n}:${cfg.is_salary ? 's' : 'h'}${cfg.hourly_wage ?? ''}`
-      })
-      .join('|')
-    return [start, end, reviewOnlyPaidInFull ? '1' : '0', roster, pc].join('::')
+    return buildTeamSummaryCacheKey({ start, end, onlyPaidInFull: reviewOnlyPaidInFull, roster: showPeopleForReview, payConfig })
   }
 
   function getReviewPeriodLabel(): string {
-    const [start, end] = getReviewDateRange()
-    const labels: Record<ReviewPeriod, string> = {
-      today: 'Today',
-      yesterday: 'Yesterday',
-      this_week: 'This week (running)',
-      last_week: 'Last week',
-      last_two_weeks: 'Last two weeks',
-      last_30_days: 'Last 30 days',
-      last_90_days: 'Last 90 days',
-      this_year: 'This year',
-      custom: 'Custom range',
-    }
-    return `${labels[reviewPeriod]} (${start} – ${end})`
+    return reviewPeriodLabel(reviewPeriod, getReviewDateRange())
   }
 
   function openTeamSummaryWindow(target: 'popup' | 'inline' = 'popup') {
@@ -2204,7 +2178,7 @@ export default function PeopleReviewTab({
     // for the exact same inputs, reuse those rows instead of issuing a fresh
     // `loadTeamSummaryData()`. Embedded refreshes always re-fetch since the
     // inline path *is* the cache source.
-    const currentCacheKey = buildTeamSummaryCacheKey()
+    const currentCacheKey = teamSummaryCacheKey()
     const cached = teamSummaryDataCacheRef.current
     const canReuseCache = !isEmbedded && cached != null && cached.cacheKey === currentCacheKey
     if (isEmbedded) {
@@ -2236,7 +2210,7 @@ export default function PeopleReviewTab({
         // Populate the cache only on the inline path — that's the surface
         // a popup-click would later read from. Stamp it with the cache key
         // we computed *before* the load so a dep-driven cache invalidation
-        // mid-load still results in `cached.cacheKey !== buildTeamSummaryCacheKey()`
+        // mid-load still results in `cached.cacheKey !== teamSummaryCacheKey()`
         // on the next popup click.
         if (isEmbedded) {
           teamSummaryDataCacheRef.current = { rows, cacheKey: currentCacheKey }

@@ -40,7 +40,8 @@ import {
   KIND_TO_USER_ROLE,
   KINDS,
 } from '../components/people/peopleUsersTabShared'
-import { PeopleHoursTeams, type PeopleHoursTeam } from '../components/people/PeopleHoursTeams'
+import { PeopleHoursTeams } from '../components/people/PeopleHoursTeams'
+import { usePeopleHoursTeams } from '../hooks/usePeopleHoursTeams'
 import { PeopleHoursDueSummaries } from '../components/people/PeopleHoursDueSummaries'
 import { PeopleHoursSessions } from '../components/people/PeopleHoursSessions'
 import { PeopleHoursWeekRange } from '../components/people/PeopleHoursWeekRange'
@@ -82,7 +83,7 @@ import {
   type UsePeopleRosterDeps,
 } from '../hooks/usePeopleRoster'
 import { useUsersTabTags } from '../hooks/useUsersTabTags'
-import { isPayStubFullyPaid, type PayStubPaymentRow } from '../lib/payStubPayments'
+import { isPayStubFullyPaid } from '../lib/payStubPayments'
 import {
   employeeCreditDraftFromPayment,
   parsePayStubPaymentAmount,
@@ -90,8 +91,8 @@ import {
   payStubPaymentAmountDefault,
   payStubPaymentExcess,
   planPayStubPayment,
-  type PayStubLineMaps,
 } from '../lib/pay/recordPayStubPayment'
+import { usePayStubsData } from '../hooks/usePayStubsData'
 import { type PersonOffsetInitialDraft, PersonOffsetFormModal } from '../components/pay/PersonOffsetFormModal'
 import { DraftPayrollModal } from '../components/pay/DraftPayrollModal'
 import { HoursApprovedNudgeChip } from '../components/people/HoursApprovedNudgeChip'
@@ -101,7 +102,6 @@ import { HirePersonModal } from '../components/people/HirePersonModal'
 import { scanWeeksBefore, unreportedPayrollWeeks, type UnreportedWeekRow } from '../lib/unreportedPayrollWeeks'
 import { PayrollForecastModal, type PayrollForecastUnpaidRow } from '../components/pay/PayrollForecastModal'
 import { DraftPayrollPersonHoursBreakdownModal } from '../components/pay/DraftPayrollPersonHoursBreakdownModal'
-import type { PayStubAdditionalLineRow, PayStubDeductionRow } from '../lib/payStubDeductions'
 import {
   bucketSessionHoursByDay,
   shouldUseDualRate,
@@ -437,18 +437,27 @@ export default function People() {
   /** Live mirror of hoursDaysCorrect so usePeopleHoursData.saveHours can guard against locked days. */
   const hoursDaysCorrectRef = useRef(hoursDaysCorrect)
   hoursDaysCorrectRef.current = hoursDaysCorrect
-  const [teams, setTeams] = useState<PeopleHoursTeam[]>([])
   const [hoursDisplayOrder, setHoursDisplayOrder] = useState<Record<string, number>>({})
-  const [teamPeriodStart, setTeamPeriodStart] = useState(() => {
-    const d = new Date()
-    const start = new Date(d)
-    start.setDate(d.getDate() - 6)
-    return localCalendarDayKey(start)
-  })
-  const [teamPeriodEnd, setTeamPeriodEnd] = useState(() => todayYmdInAppTz())
-  const [showMaxHoursTeams, setShowMaxHoursTeams] = useState(false)
-  const [teamToDelete, setTeamToDelete] = useState<{ id: string; name: string } | null>(null)
-  const [teamDeletingId, setTeamDeletingId] = useState<string | null>(null)
+  const {
+    setTeams,
+    teamsFiltered,
+    teamPeriodStart,
+    setTeamPeriodStart,
+    teamPeriodEnd,
+    setTeamPeriodEnd,
+    showMaxHoursTeams,
+    setShowMaxHoursTeams,
+    teamToDelete,
+    setTeamToDelete,
+    teamDeletingId,
+    loadTeams,
+    addTeam,
+    updateTeamName,
+    addTeamMember,
+    removeTeamMember,
+    deleteTeam,
+    getCostForPersonDateTeams,
+  } = usePeopleHoursTeams({ canAccessPay, setError, archivedUserNames, payConfig, getCostForPersonDate })
   const [hoursDateStart, setHoursDateStart] = useState(() => {
     const d = new Date()
     const day = d.getDay()
@@ -457,22 +466,20 @@ export default function People() {
     return localCalendarDayKey(start)
   })
   // Pay History tab state
-  type PayStubsLoadSnapshot = {
-    stubs: PayStubRow[]
-    paymentsByStubId: Record<string, PayStubPaymentRow[]>
-    deductionsByStubId: Record<string, PayStubDeductionRow[]>
-    additionalByStubId: Record<string, PayStubAdditionalLineRow[]>
-  }
-  const [payStubs, setPayStubs] = useState<PayStubRow[]>([])
-  const [payStubPaymentsByStubId, setPayStubPaymentsByStubId] = useState<Record<string, PayStubPaymentRow[]>>({})
+  const {
+    payStubs,
+    payStubPaymentsByStubId,
+    payStubDeductionsByStubId,
+    payStubAdditionalByStubId,
+    payStubLineMaps,
+    loadPayStubs,
+    deletePayStub,
+    deletingPayStubId,
+    payStubDeleteConfirm,
+    setPayStubDeleteConfirm,
+  } = usePayStubsData({ canAccessPay, setError })
   // Ledger Actions → View: in-app pay-stub viewer (full built HTML document + modal title).
   const [payStubViewModal, setPayStubViewModal] = useState<{ title: string; html: string } | null>(null)
-  const [payStubDeductionsByStubId, setPayStubDeductionsByStubId] = useState<Record<string, PayStubDeductionRow[]>>({})
-  const [payStubAdditionalByStubId, setPayStubAdditionalByStubId] = useState<Record<string, PayStubAdditionalLineRow[]>>({})
-  const payStubLineMaps = useMemo<PayStubLineMaps>(
-    () => ({ paymentsByStubId: payStubPaymentsByStubId, deductionsByStubId: payStubDeductionsByStubId, additionalByStubId: payStubAdditionalByStubId }),
-    [payStubPaymentsByStubId, payStubDeductionsByStubId, payStubAdditionalByStubId],
-  )
   const [payStubPeriodStart, setPayStubPeriodStart] = useState(() => {
     const d = new Date()
     const day = d.getDay()
@@ -487,7 +494,6 @@ export default function People() {
     start.setDate(d.getDate() - day + 6)
     return localCalendarDayKey(start)
   })
-  const [deletingPayStubId, setDeletingPayStubId] = useState<string | null>(null)
   const [markingPayStubId, setMarkingPayStubId] = useState<string | null>(null)
   const [generatingPayStubPerson, setGeneratingPayStubPerson] = useState<string | null>(null)
   const [bulkGeneratingPayStubs, setBulkGeneratingPayStubs] = useState(false)
@@ -525,7 +531,6 @@ export default function People() {
   const [hoursFocusRequest, setHoursFocusRequest] = useState<{ workDate: string; personName: string } | null>(null)
   const [hoursFlashWorkDate, setHoursFlashWorkDate] = useState<string | null>(null)
   const [hoursFlashPersonName, setHoursFlashPersonName] = useState<string | null>(null)
-  const [payStubDeleteConfirm, setPayStubDeleteConfirm] = useState<PayStubRow | null>(null)
   /** Draft Payroll "Generate remaining" confirm (replaces the old window.confirm); candidates snapshot at request time. */
   const [bulkGenerateConfirm, setBulkGenerateConfirm] = useState<{ start: string; end: string; candidates: string[] } | null>(null)
   const [payStubMarkPaidTarget, setPayStubMarkPaidTarget] = useState<PayStubRow | null>(null)
@@ -1265,97 +1270,6 @@ export default function People() {
     }
   }
 
-  async function loadPayStubs(): Promise<PayStubsLoadSnapshot | null> {
-    if (!canAccessPay) return null
-    try {
-      const data = await withSupabaseRetry(
-        async () =>
-          await supabase
-            .from('pay_stubs')
-            .select('id, person_name, period_start, period_end, hours_total, gross_pay, created_at, paid_at, paid_by, paid_note')
-            .order('created_at', { ascending: false }),
-        'load pay reports'
-      )
-      const stubs = (data ?? []) as PayStubRow[]
-      setPayStubs(stubs)
-      const ids = stubs.map((s) => s.id)
-      if (ids.length === 0) {
-        setPayStubPaymentsByStubId({})
-        setPayStubDeductionsByStubId({})
-        setPayStubAdditionalByStubId({})
-        return {
-          stubs: [],
-          paymentsByStubId: {},
-          deductionsByStubId: {},
-          additionalByStubId: {},
-        }
-      }
-      const byStub: Record<string, PayStubPaymentRow[]> = {}
-      const dedByStub: Record<string, PayStubDeductionRow[]> = {}
-      const addByStub: Record<string, PayStubAdditionalLineRow[]> = {}
-      const chunkSize = 200
-      for (let i = 0; i < ids.length; i += chunkSize) {
-        const chunk = ids.slice(i, i + chunkSize)
-        const [payments, deductions, additional] = await Promise.all([
-          withSupabaseRetry(
-            async () =>
-              await supabase
-                .from('pay_stub_payments')
-                .select('id, pay_stub_id, amount, paid_at, memo, created_at, created_by')
-                .in('pay_stub_id', chunk)
-                .order('paid_at', { ascending: true }),
-            'load pay report payments',
-          ),
-          withSupabaseRetry(
-            async () =>
-              await supabase
-                .from('pay_stub_deductions')
-                .select('id, pay_stub_id, amount, source, person_offset_id, description, created_at, created_by')
-                .in('pay_stub_id', chunk)
-                .order('created_at', { ascending: true }),
-            'load pay report deductions',
-          ),
-          withSupabaseRetry(
-            async () =>
-              await supabase
-                .from('pay_stub_additional_lines')
-                .select('id, pay_stub_id, description, quantity, rate, line_total, created_at, created_by, source_clock_session_id')
-                .in('pay_stub_id', chunk)
-                .order('created_at', { ascending: true }),
-            'load pay report additional lines',
-          ),
-        ])
-        for (const p of (payments ?? []) as PayStubPaymentRow[]) {
-          const list = byStub[p.pay_stub_id] ?? []
-          list.push(p)
-          byStub[p.pay_stub_id] = list
-        }
-        for (const d of (deductions ?? []) as PayStubDeductionRow[]) {
-          const list = dedByStub[d.pay_stub_id] ?? []
-          list.push(d)
-          dedByStub[d.pay_stub_id] = list
-        }
-        for (const a of (additional ?? []) as PayStubAdditionalLineRow[]) {
-          const list = addByStub[a.pay_stub_id] ?? []
-          list.push(a)
-          addByStub[a.pay_stub_id] = list
-        }
-      }
-      setPayStubPaymentsByStubId(byStub)
-      setPayStubDeductionsByStubId(dedByStub)
-      setPayStubAdditionalByStubId(addByStub)
-      return {
-        stubs,
-        paymentsByStubId: byStub,
-        deductionsByStubId: dedByStub,
-        additionalByStubId: addByStub,
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load pay reports')
-      return null
-    }
-  }
-
   async function generatePayStub(
     personNameArg: string,
     options?: { openPreview?: boolean; periodStart?: string; periodEnd?: string },
@@ -1499,34 +1413,6 @@ export default function People() {
     openPayStubWindow(await buildPayStubViewHtml(stub), true)
   }
 
-  async function deletePayStub(stub: PayStubRow) {
-    setDeletingPayStubId(stub.id)
-    setError(null)
-    const { error: err } = await supabase.from('pay_stubs').delete().eq('id', stub.id)
-    if (err) {
-      setError(err.message)
-    } else {
-      setPayStubs((prev) => prev.filter((s) => s.id !== stub.id))
-      setPayStubPaymentsByStubId((prev) => {
-        const next = { ...prev }
-        delete next[stub.id]
-        return next
-      })
-      setPayStubDeductionsByStubId((prev) => {
-        const next = { ...prev }
-        delete next[stub.id]
-        return next
-      })
-      setPayStubAdditionalByStubId((prev) => {
-        const next = { ...prev }
-        delete next[stub.id]
-        return next
-      })
-      setPayStubDeleteConfirm(null)
-    }
-    setDeletingPayStubId(null)
-  }
-
   function openPayStubMarkPaidModal(stub: PayStubRow) {
     setPayStubMarkPaidTarget(stub)
     setPayStubMarkPaidDate(todayYyyyMmDdLocal())
@@ -1608,22 +1494,6 @@ export default function People() {
       setError(isPaySourceDuplicateError(e) ? PAY_SOURCE_DUPLICATE_MESSAGE : e instanceof Error ? e.message : 'Failed to record payment')
     }
     setMarkingPayStubId(null)
-  }
-
-  async function loadTeams() {
-    if (!canAccessPay) return
-    const [teamsRes, membersRes] = await Promise.all([
-      supabase.from('people_teams').select('id, name, sequence_order').order('sequence_order', { ascending: true }),
-      supabase.from('people_team_members').select('team_id, person_name'),
-    ])
-    if (teamsRes.error) return
-    const teamList = (teamsRes.data ?? []) as Array<{ id: string; name: string; sequence_order: number }>
-    const membersByTeam = new Map<string, string[]>()
-    for (const m of (membersRes.data ?? []) as Array<{ team_id: string; person_name: string }>) {
-      if (!membersByTeam.has(m.team_id)) membersByTeam.set(m.team_id, [])
-      membersByTeam.get(m.team_id)!.push(m.person_name)
-    }
-    setTeams(teamList.map((t) => ({ id: t.id, name: t.name, members: membersByTeam.get(t.id) ?? [] })))
   }
 
   useEffect(() => {
@@ -1980,49 +1850,6 @@ export default function People() {
     }
   }
 
-  async function addTeam() {
-    if (!canAccessPay) return
-    const { data, error } = await supabase.from('people_teams').insert({ name: 'New Team', sequence_order: teams.length }).select('id').single()
-    if (error) setError(error.message)
-    else if (data) setTeams((prev) => [...prev, { id: (data as { id: string }).id, name: 'New Team', members: [] }])
-  }
-
-  async function updateTeamName(teamId: string, name: string) {
-    if (!canAccessPay) return
-    const { error } = await supabase.from('people_teams').update({ name }).eq('id', teamId)
-    if (error) setError(error.message)
-    else setTeams((prev) => prev.map((t) => (t.id === teamId ? { ...t, name } : t)))
-  }
-
-  async function addTeamMember(teamId: string, personName: string) {
-    if (!canAccessPay) return
-    const { error } = await supabase.from('people_team_members').insert({ team_id: teamId, person_name: personName })
-    if (error) setError(error.message)
-    else setTeams((prev) => prev.map((t) => (t.id === teamId ? { ...t, members: [...t.members, personName] } : t)))
-  }
-
-  async function removeTeamMember(teamId: string, personName: string) {
-    if (!canAccessPay) return
-    const { error } = await supabase.from('people_team_members').delete().eq('team_id', teamId).eq('person_name', personName)
-    if (error) setError(error.message)
-    else setTeams((prev) => prev.map((t) => (t.id === teamId ? { ...t, members: t.members.filter((m) => m !== personName) } : t)))
-  }
-
-  async function deleteTeam(teamId: string) {
-    if (!canAccessPay) return
-    setTeamDeletingId(teamId)
-    setError(null)
-    const { error } = await supabase.from('people_teams').delete().eq('id', teamId)
-    if (error) {
-      setError(error.message)
-      setTeamDeletingId(null)
-      return
-    }
-    setTeams((prev) => prev.filter((t) => t.id !== teamId))
-    setTeamToDelete(null)
-    setTeamDeletingId(null)
-  }
-
   function getHoursForPersonDate(personName: string, workDate: string): number {
     const row = peopleHours.find((h) => h.person_name === personName && h.work_date === workDate)
     return row?.hours ?? 0
@@ -2293,15 +2120,6 @@ export default function People() {
     }
   }
 
-  function getCostForPersonDateTeams(personName: string, workDate: string): number {
-    if (!showMaxHoursTeams) return getCostForPersonDate(personName, workDate)
-    const cfg = payConfig[personName]
-    const wage = cfg?.hourly_wage ?? 0
-    const day = new Date(workDate + 'T12:00:00').getDay()
-    if (day >= 1 && day <= 5) return wage * 8
-    return getCostForPersonDate(personName, workDate)
-  }
-
   /** Widens Hours tab range if needed so a payroll-modal date can appear as a column (en-CA strings sort chronologically). Never widens below the assistant floor. */
   function ensureHoursRangeIncludesDate(workDate: string) {
     if (workDate < hoursDateStart) setHoursDateStartClamped(workDate)
@@ -2357,15 +2175,6 @@ export default function People() {
     })
     return rows
   }, [payStubs, payStubLineMaps])
-
-  const teamsFiltered = useMemo(
-    () =>
-      teams.map((t) => ({
-        ...t,
-        members: t.members.filter((m) => !archivedUserNames.has(m.trim())),
-      })),
-    [teams, archivedUserNames]
-  )
 
   function shiftHoursWeek(delta: number) {
     const dStart = new Date(hoursDateStart + 'T12:00:00')

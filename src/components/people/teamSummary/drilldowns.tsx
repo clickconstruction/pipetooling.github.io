@@ -1,7 +1,7 @@
-// All 11 drilldown body components for the Team Summary modal.
+// The drilldown body components for the Team Summary modal.
 //
 // Each component takes the structured data already computed by
-// `derivePersonTeamSummary` in `People.tsx` (Hours/Gross/Net/Profit
+// `derivePersonTeamSummary` in `lib/people` (Hours/Gross/Net/Profit
 // breakdowns, per-bucket session lines, overhead rate decomposition)
 // and renders the same content the iframe HTML-string version did,
 // translated to JSX. Behavior parity is the goal — no math changes.

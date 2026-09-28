@@ -12,8 +12,8 @@
  *     stamp the FK column so the Workflow page's "View PO" / "View Invoice" buttons
  *     keep working.
  *   - Load detail snapshots for the View PO / View Invoice popovers.
- *   - Small URL / amount / date formatters that the section UI reuses verbatim from
- *     Workflow's local helpers so the visual output matches.
+ *   - Small URL / amount / date formatters for the section UI; the Workflow page
+ *     imports the URL and date ones so the visual output matches.
  *
  * All errors are returned as `string | null` (or the strict `Result` shape on the more
  * complex actions) so callers can render them with the existing Toast / inline-error
@@ -341,9 +341,9 @@ export async function loadInvoiceDetail(invoiceId: string): Promise<{
 }
 
 // ──────────────────────────────────────────────────────────────────────────────────────
-// Small display helpers — copy/pasted from Workflow.tsx so the section's visual output
-// matches exactly. Marked exported so the section UI + any future tests can pull from
-// one source of truth.
+// Small display helpers, shared with the Workflow page so the two screens print the
+// same thing: Workflow.tsx imports `normalizeUrl` and `formatLineItemDate` from here
+// (it keeps its own `formatAmount` — accounting parentheses, not this minus sign).
 // ──────────────────────────────────────────────────────────────────────────────────────
 
 export function normalizeUrl(url: string | null | undefined): string {

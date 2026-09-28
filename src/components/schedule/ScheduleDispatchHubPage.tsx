@@ -82,6 +82,7 @@ import {
   type ScheduleDispatchHubBidRow,
   type ScheduleDispatchHubJobRow,
 } from '../../lib/scheduleDispatchHub'
+import { buildHourlyWageByUserId, hubWageLookupNames, type HubPayConfigWageRow } from '../../lib/scheduleDispatch/hubWages'
 import {
   fetchJobSearchEvidence,
   jobSearchEvidenceModeForRole,
@@ -137,7 +138,8 @@ import {
 import { computeLatenessByCell, fetchClockInsForUsersInRange, type PersonDayLateness } from '../../lib/scheduleLateness'
 import { ScheduleDispatchUndoNotComingInModal } from './ScheduleDispatchUndoNotComingInModal'
 import ConfirmDialog from '../ConfirmDialog'
-import { markOffConfirmCopy } from '../../lib/scheduleDispatchNotComingInCopy'
+import { markOffConfirmCopy, ncnsResultToasts, notComingInResultToasts } from '../../lib/scheduleDispatchNotComingInCopy'
+import { removePersonDayBlocks } from '../../lib/scheduleDispatch/removePersonDayBlocks'
 import { stripTrailingZip } from '../../lib/displayAddress'
 
 /** Picker subline: "<N>d Mon D | address" (N calendar days since the job was added, app calendar TZ). Either part optional. */
@@ -760,12 +762,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
       const nameMap = nameRes.data
       const wagesPromise: Promise<Map<string, number>> = (async () => {
         if (!canShowHubExpectedManpowerPayroll) return new Map()
-        const names = new Set<string>()
-        for (const uid of rosterIds) {
-          const raw = nameMap.get(uid)?.trim()
-          if (raw && raw !== 'Unknown') names.add(raw)
-        }
-        const nameList = [...names]
+        const nameList = hubWageLookupNames(rosterIds, nameMap)
         if (nameList.length === 0) return new Map()
         const payData = await withSupabaseRetry(
           async () =>
@@ -775,19 +772,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
               .in('person_name', nameList),
           'scheduleDispatchHubPeoplePayWages',
         )
-        const wageByName = new Map<string, number>()
-        for (const r of (payData ?? []) as Array<{ person_name: string; hourly_wage: number | null }>) {
-          const pn = r.person_name?.trim()
-          if (!pn) continue
-          const w = r.hourly_wage
-          wageByName.set(pn, typeof w === 'number' && Number.isFinite(w) ? w : 0)
-        }
-        const wageByUserId = new Map<string, number>()
-        for (const uid of rosterIds) {
-          const nm = nameMap.get(uid)?.trim()
-          wageByUserId.set(uid, nm ? (wageByName.get(nm) ?? 0) : 0)
-        }
-        return wageByUserId
+        return buildHourlyWageByUserId((payData ?? []) as HubPayConfigWageRow[], rosterIds, nameMap)
       })()
 
       const [salariedResult, wagesResult] = await Promise.allSettled([
@@ -1891,48 +1876,16 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
       return
     }
 
-    let removedCount = 0
-    let removalFailures = 0
-    if (existingBlockIds.length > 0) {
-      const settled = await Promise.all(
-        existingBlockIds.map(async (id) => {
-          const { error } = await deleteJobScheduleBlock(id)
-          return { id, error }
-        }),
-      )
-      removedCount = settled.filter((r) => !r.error).length
-      removalFailures = settled.length - removedCount
-    }
-
-    if (result.alreadyMarked) {
-      showToast(
-        `${personName} already had unpaid time off on ${workDateYmd}.${
-          removedCount > 0
-            ? ` Removed ${removedCount} schedule block${removedCount === 1 ? '' : 's'} for the day.`
-            : ''
-        }`,
-        'warning',
-      )
-    } else {
-      showToast(
-        `Marked ${personName} as not coming in (${workDateYmd}).${
-          removedCount > 0
-            ? ` Removed ${removedCount} schedule block${removedCount === 1 ? '' : 's'} for the day.`
-            : ''
-        }`,
-        'success',
-      )
-      if (result.syncWarning) {
-        showToast(`Salary sync: ${result.syncWarning}`, 'warning')
-      }
-    }
-    if (removalFailures > 0) {
-      showToast(
-        `${removalFailures} schedule block${
-          removalFailures === 1 ? '' : 's'
-        } could not be removed; please remove manually.`,
-        'warning',
-      )
+    const { removed, failed } = await removePersonDayBlocks(existingBlockIds)
+    for (const t of notComingInResultToasts({
+      personName,
+      workDateYmd,
+      alreadyMarked: result.alreadyMarked,
+      syncWarning: result.alreadyMarked ? undefined : result.syncWarning,
+      removed,
+      failed,
+    })) {
+      showToast(t.message, t.tone)
     }
 
     if (jobId) {
@@ -2007,40 +1960,17 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
           workDateYmd,
           note: NO_CALL_NO_SHOW_NOTE,
         })
-        let removedCount = 0
-        let removalFailures = 0
-        if (existingBlockIds.length > 0) {
-          const settled = await Promise.all(
-            existingBlockIds.map(async (id) => {
-              const { error } = await deleteJobScheduleBlock(id)
-              return { id, error }
-            }),
-          )
-          removedCount = settled.filter((r) => !r.error).length
-          removalFailures = settled.length - removedCount
-        }
-
-        const parts = [`NCNS recorded for ${personName} (${workDateYmd}).`]
-        if (row.rejected_count > 0) {
-          parts.push(`${row.rejected_count} clock session${row.rejected_count === 1 ? '' : 's'} rejected.`)
-        }
-        if (row.had_approved_sessions) parts.push('Approved hours were unwound.')
-        if (removedCount > 0) {
-          parts.push(`Removed ${removedCount} schedule block${removedCount === 1 ? '' : 's'}.`)
-        }
-        showToast(parts.join(' '), 'success')
-        if (!timeOff.ok) {
-          showToast(`Day-off marking failed: ${timeOff.message} (the incident is recorded).`, 'warning')
-        } else if (timeOff.alreadyMarked) {
-          showToast(`${personName} already had time off recorded for the day.`, 'warning')
-        } else if (timeOff.syncWarning) {
-          showToast(`Salary sync: ${timeOff.syncWarning}`, 'warning')
-        }
-        if (removalFailures > 0) {
-          showToast(
-            `${removalFailures} schedule block${removalFailures === 1 ? '' : 's'} could not be removed; please remove manually.`,
-            'warning',
-          )
+        const { removed, failed } = await removePersonDayBlocks(existingBlockIds)
+        for (const t of ncnsResultToasts({
+          personName,
+          workDateYmd,
+          rejectedCount: row.rejected_count,
+          hadApprovedSessions: row.had_approved_sessions,
+          removed,
+          failed,
+          timeOff,
+        })) {
+          showToast(t.message, t.tone)
         }
 
         if (jobId) {
