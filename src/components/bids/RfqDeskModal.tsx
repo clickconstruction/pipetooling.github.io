@@ -24,7 +24,7 @@ import {
 } from '../../lib/rfq/rfqDesk'
 import { buildQuoteComparison, type CompareQuote } from '../../lib/rfq/quoteCompare'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { checkSupabaseError, formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { useAuth } from '../../hooks/useAuth'
@@ -129,6 +129,10 @@ export function RfqDeskModal({
   const confirmDialog = useConfirmDialog()
   const { user: authUser, role: authRole } = useAuth()
   const [loading, setLoading] = useState(true)
+  /** Why the last load failed; the desk shows it in place of the list (an empty list would read as "no requests"). */
+  const [loadError, setLoadError] = useState<string | null>(null)
+  /** The delivery read failed: rows show as sent, so a bounce may be missing. */
+  const [deliveryUnknown, setDeliveryUnknown] = useState(false)
   const [rfqs, setRfqs] = useState<DeskRow[]>([])
   /** rfq ids that already have a quote on file — a reopened one goes back to `quoted`. */
   const [quotedRfqIds, setQuotedRfqIds] = useState<Set<string>>(new Set())
@@ -140,6 +144,7 @@ export function RfqDeskModal({
 
   const load = useCallback(async () => {
     setLoading(true)
+    setLoadError(null)
     try {
       // v2.3175: outside rows (recorded on Edit Bid) ride along with their house name and
       // links. Until that migration is pushed the wider select errors on the unknown
@@ -179,15 +184,18 @@ export function RfqDeskModal({
       ])
       const resendIds = (rfqRows ?? []).map((r) => r.resend_email_id).filter((x): x is string => !!x)
       const eventById = new Map<string, string>()
+      let deliveryFailed = false
       if (resendIds.length > 0) {
-        const { data: logs } = await supabase
+        const { data: logs, error: logErr } = await supabase
           .from('email_send_log')
           .select('resend_email_id, last_event')
           .in('resend_email_id', resendIds)
+        deliveryFailed = logErr != null
         for (const l of logs ?? []) {
           if (l.resend_email_id && l.last_event) eventById.set(l.resend_email_id, l.last_event)
         }
       }
+      setDeliveryUnknown(deliveryFailed)
       setRfqs(
         (rfqRows ?? []).map((r) => {
           const scope = (r.scope ?? {}) as { lines?: Array<{ fixture?: string; count?: number }> }
@@ -233,11 +241,11 @@ export function RfqDeskModal({
           })),
       )
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not load the desk.', 'error')
+      setLoadError(formatErrorMessage(err, "Couldn't load the price requests."))
     } finally {
       setLoading(false)
     }
-  }, [bidId, showToast])
+  }, [bidId])
 
   useEffect(() => {
     if (!open) return
@@ -296,13 +304,13 @@ export function RfqDeskModal({
     setBusy(rfq.id)
     try {
       if (mode === 'close') {
-        const { error } = await supabase.from('bid_rfqs').update({ status: 'closed' }).eq('id', rfq.id)
-        if (error) throw error
+        const res = await supabase.from('bid_rfqs').update({ status: 'closed' }).eq('id', rfq.id)
+        checkSupabaseError(res, 'close the link')
         showToast(`Closed the link for ${rfq.houseName ?? 'that vendor'} — the page now says so. Reopen it from the closed list if you change your mind.`, 'success')
       } else if (mode === 'reopen') {
         const next = rfqReopenStatus({ hasQuote: quotedRfqIds.has(rfq.id) })
-        const { error } = await supabase.from('bid_rfqs').update({ status: next }).eq('id', rfq.id)
-        if (error) throw error
+        const res = await supabase.from('bid_rfqs').update({ status: next }).eq('id', rfq.id)
+        checkSupabaseError(res, 'reopen the link')
         showToast(`Reopened the link for ${rfq.houseName ?? 'that vendor'} — the page works again.`, 'success')
       } else {
         const { data, error } = await supabase.functions.invoke('send-rfq-email', {
@@ -315,7 +323,7 @@ export function RfqDeskModal({
       await load()
       onChanged()
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'That didn’t go through.', 'error')
+      showToast(formatErrorMessage(err, 'That didn’t go through.'), 'error')
     } finally {
       setBusy(null)
     }
@@ -379,8 +387,16 @@ export function RfqDeskModal({
           </div>
         ) : null}
 
+        {deliveryUnknown && !loading && !loadError ? (
+          <p style={{ ...smallMuted, margin: 0 }}>Couldn’t read the email delivery status — a bounced request may show as sent.</p>
+        ) : null}
         {loading ? (
           <p style={{ margin: 0, color: 'var(--text-muted)' }}>Loading requests…</p>
+        ) : loadError ? (
+          <div role="alert" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+            <p style={{ margin: 0, color: 'var(--text-red-700)' }}>{loadError}</p>
+            <button type="button" style={ghostBtn} onClick={() => void load()}>Retry</button>
+          </div>
         ) : rfqs.length === 0 ? (
           <p style={{ margin: 0, color: 'var(--text-muted)' }}>No price requests on this bid yet — scope a list and send one.</p>
         ) : (

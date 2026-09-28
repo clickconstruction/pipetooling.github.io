@@ -10,7 +10,7 @@ import { createPortal } from 'react-dom'
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { fetchSupplyHousePickerRows } from '../../lib/supplyHousePickerRows'
 import { housesForBidTrade, tradesByHouse, type HouseTradeLink } from '../../lib/materials/supplyHouseTrades'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -93,8 +93,14 @@ export function RfqComposeModal({
   const [previewIdx, setPreviewIdx] = useState(0)
   const [previewing, setPreviewing] = useState(false)
 
+  // Why the supply houses did not load, shown in place of the list (an empty list would read
+  // as "no supply house matches"); Retry bumps the nonce to run the read again.
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [loadNonce, setLoadNonce] = useState(0)
+
   useEffect(() => {
     if (!open) return
+    setLoadError(null)
     setPicked(new Set())
     setSel({})
     setNeededBy('')
@@ -125,15 +131,22 @@ export function RfqComposeModal({
         if (cancelled) return
         setHouses(houseRows)
         void (async () => {
-          const [{ data: bidRow }, { data: links, error: linkErr }] = await Promise.all([
-            supabase.from('bids').select('service_type_id, service_types(name)').eq('id', bidId).maybeSingle(),
-            supabase.from('supply_house_service_types' as never).select('supply_house_id, service_type_id'),
-          ])
-          if (cancelled) return
-          const st = (bidRow as { service_type_id: string | null; service_types: { name: string } | null } | null)
-          setBidTrade(st?.service_type_id ? { id: st.service_type_id, name: st.service_types?.name ?? 'this trade' } : null)
-          setTradeLinks(linkErr ? [] : ((links ?? []) as HouseTradeLink[]))
-          setShowAllTrades(false)
+          try {
+            const [{ data: bidRow }, { data: links, error: linkErr }] = await Promise.all([
+              supabase.from('bids').select('service_type_id, service_types(name)').eq('id', bidId).maybeSingle(),
+              supabase.from('supply_house_service_types' as never).select('supply_house_id, service_type_id'),
+            ])
+            if (cancelled) return
+            const st = (bidRow as { service_type_id: string | null; service_types: { name: string } | null } | null)
+            setBidTrade(st?.service_type_id ? { id: st.service_type_id, name: st.service_types?.name ?? 'this trade' } : null)
+            setTradeLinks(linkErr ? [] : ((links ?? []) as HouseTradeLink[]))
+            setShowAllTrades(false)
+          } catch {
+            // The trade is only a filter: without it every house is listed.
+            if (cancelled) return
+            setBidTrade(null)
+            setTradeLinks([])
+          }
         })()
         const byHouse: Record<string, Array<{ id: string; name: string; email: string; label: string | null; isDefault: boolean }>> = {}
         for (const c of contactRows ?? []) {
@@ -141,14 +154,16 @@ export function RfqComposeModal({
           ;(byHouse[c.supply_house_id] ??= []).push({ id: c.id, name: c.name ?? c.label ?? c.email, email: c.email, label: c.label, isDefault: c.is_default })
         }
         setContacts(byHouse)
-      } catch {
-        if (!cancelled) setHouses([])
+      } catch (err) {
+        if (cancelled) return
+        setHouses([])
+        setLoadError(formatErrorMessage(err, "Couldn't load the supply houses."))
       }
     })()
     return () => {
       cancelled = true
     }
-  }, [open])
+  }, [open, loadNonce, bidId])
 
   useEffect(() => {
     if (!open) return
@@ -417,7 +432,16 @@ export function RfqComposeModal({
               </div>
             )
           })}
-          {visibleHouses.length === 0 ? <p style={{ ...smallMuted, margin: 0 }}>No supply house matches that.</p> : null}
+          {loadError ? (
+            <div role="alert" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+              <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>{loadError}</p>
+              <button type="button" onClick={() => setLoadNonce((n) => n + 1)} style={{ padding: '0.3rem 0.7rem', background: 'var(--surface)', color: 'var(--text-base)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem' }}>
+                Retry
+              </button>
+            </div>
+          ) : visibleHouses.length === 0 ? (
+            <p style={{ ...smallMuted, margin: 0 }}>No supply house matches that.</p>
+          ) : null}
         </div>
 
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>

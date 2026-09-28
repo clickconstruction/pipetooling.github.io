@@ -27,6 +27,8 @@ const state = vi.hoisted(() => ({
   bid: null as unknown,
   links: [] as unknown[],
   houseLoads: 0,
+  /** Set to make the supply house read fail. */
+  housesError: null as Error | null,
   tablesRead: [] as string[],
   invoked: [] as unknown[],
   insertedContacts: [] as unknown[],
@@ -41,7 +43,7 @@ vi.mock('../../hooks/useAuth', () => ({
 vi.mock('../../lib/supplyHousePickerRows', () => ({
   fetchSupplyHousePickerRows: () => {
     state.houseLoads += 1
-    return Promise.resolve(state.houses)
+    return state.housesError ? Promise.reject(state.housesError) : Promise.resolve(state.houses)
   },
 }))
 
@@ -146,6 +148,7 @@ describe('RfqComposeModal', () => {
       { supply_house_id: 'h-john', service_type_id: 'st-hvac' },
     ]
     state.houseLoads = 0
+    state.housesError = null
     state.tablesRead = []
     state.invoked = []
     state.insertedContacts = []
@@ -292,6 +295,21 @@ describe('RfqComposeModal', () => {
     expect(onSent).not.toHaveBeenCalled()
     expect(onClose).not.toHaveBeenCalled()
     expect(state.insertedContacts).toEqual([])
+  })
+
+  it('a supply house read that fails says why in place of the list, and Retry reads again', async () => {
+    state.housesError = new Error('supply_houses read refused')
+    await renderSettled(modal(), { loaded: () => screen.findByRole('alert') })
+    expect(screen.getByRole('alert').textContent).toContain('supply_houses read refused')
+    expect(screen.queryByText('No supply house matches that.')).toBeNull()
+    expect(previewButton().disabled).toBe(true)
+
+    state.housesError = null
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    expect(await screen.findByText(/Plumbing supply houses/)).toBeTruthy()
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(screen.getByRole('checkbox', { name: 'Send to Ferguson' })).toBeTruthy()
+    expect(state.houseLoads).toBe(2)
   })
 
   it('reports onClose from the Close button and from Escape', async () => {

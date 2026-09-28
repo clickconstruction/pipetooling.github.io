@@ -7,7 +7,7 @@
  * pasted reply becomes lines matched against the bid's rows, with what could
  * not be matched said out loud; Save waits for a house and a savable line; the
  * save writes the quote, its lines and the price memory, then reports; a
- * failed save says so and reports nothing; a dropped file flows through the
+ * refused save says why and reports nothing; a dropped file flows through the
  * paste box, and one that cannot be read says so; and every way out calls
  * onClose.
  *
@@ -165,10 +165,11 @@ describe('PlugInQuotesModal', () => {
     expect(screen.queryByText('pick a supply house…')).toBeNull()
   })
 
-  it('still opens, with an empty picker, when the supply house load fails', async () => {
-    fetchHouses.mockRejectedValue(new Error('network down'))
+  it('still opens, with an empty picker, when the supply house load fails — and says the list did not load', async () => {
+    fetchHouses.mockRejectedValue(new Error('supply_houses read refused'))
     await mountModal()
     expect(screen.getByRole('heading', { name: 'Plug in quotes' })).toBeTruthy()
+    expect(await screen.findByText('supply_houses read refused')).toBeTruthy()
     showHouseList()
     expect(await screen.findByText('No matches')).toBeTruthy()
   })
@@ -288,7 +289,7 @@ describe('PlugInQuotesModal', () => {
     expect(await screen.findByText('Quote saved — 3 lines from Ferguson.')).toBeTruthy()
   })
 
-  it('says a save failed, writes no lines and does not report saved', async () => {
+  it('says why a save was refused, writes no lines and does not report saved', async () => {
     state.quoteError = { message: 'new row violates row-level security policy', code: '42501', details: null, hint: null }
     const onSaved = vi.fn()
     const onClose = vi.fn()
@@ -298,8 +299,8 @@ describe('PlugInQuotesModal', () => {
     await waitFor(() => expect(saveButton().disabled).toBe(false))
 
     fireEvent.click(saveButton())
-    // The refusal arrives as a plain object, so the window says only that the save failed.
-    expect(await screen.findByText(/^Could not save/)).toBeTruthy()
+    // The refusal arrives as a plain object; the window still says why.
+    expect(await screen.findByText("You don't have permission to save the quote.")).toBeTruthy()
     // The window stays open on the same lines, ready for another try.
     await waitFor(() => expect(saveButton().disabled).toBe(false))
     expect(screen.getByText(/3 savable lines/)).toBeTruthy()
