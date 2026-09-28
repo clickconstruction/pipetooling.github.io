@@ -470,6 +470,48 @@ export function sessionClusterId(sessions: DayEditorSession[]): string {
   return sessions.map((x) => x.id).join('|')
 }
 
+/** The span a cluster's strip draws: first clock-in to last clock-out, or to `nowMs` while the last row is open. */
+export function clusterStripRangeMs(c: DayEditorSession[], nowMs: number): { t0: number; t1: number } {
+  const first = c[0]!
+  const last = c[c.length - 1]!
+  return {
+    t0: new Date(first.clocked_in_at).getTime(),
+    t1: last.clocked_out_at ? new Date(last.clocked_out_at).getTime() : nowMs,
+  }
+}
+
+/** Pointer Y relative to the strip's top, held inside the strip. */
+export function clampStripY(y: number, height: number): number {
+  return Math.min(Math.max(0, y), height)
+}
+
+/** Strip-local Y → instant, linear over the strip. A strip with no height maps every Y to `t0`. */
+export function stripYToMs(input: { y: number; height: number; t0: number; t1: number }): number {
+  const { height, t0, t1 } = input
+  const y = clampStripY(input.y, height)
+  return t0 + (height > 0 ? (y / height) * (t1 - t0) : 0)
+}
+
+/**
+ * Boundary drag → instant. Relative to where the handle was grabbed: the boundary moves by the
+ * pointer's travel since `grabY`, from `originMs`, so grabbing a handle off-center does not jump it.
+ */
+export function stripDragYToMs(input: {
+  y: number
+  grabY: number
+  originMs: number
+  height: number
+  t0: number
+  t1: number
+}): number {
+  const { grabY, originMs, height, t0, t1 } = input
+  const spanMs = t1 - t0
+  const stripY = clampStripY(input.y, height)
+  const originPx = spanMs > 0 && height > 0 ? ((originMs - t0) / spanMs) * height : 0
+  const adjustedPx = clampStripY(stripY - grabY + originPx, height)
+  return t0 + (height > 0 ? (adjustedPx / height) * spanMs : 0)
+}
+
 export type TimelineGap = { type: 'gap'; startMs: number; endMs: number }
 export type TimelineSessionClusterBlock = {
   type: 'sessionCluster'
