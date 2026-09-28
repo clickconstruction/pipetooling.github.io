@@ -72,3 +72,94 @@ export function markOffConfirmCopy(target: NotComingInCopyTarget): MarkOffConfir
     confirmLabel: 'Mark not coming in',
   }
 }
+
+/** One toast the hub raises after a day is marked off; the page raises them in order. */
+export interface NotComingInToast {
+  message: string
+  tone: 'success' | 'warning'
+}
+
+function blocksNoun(count: number): string {
+  return `schedule block${count === 1 ? '' : 's'}`
+}
+
+/** The last toast of both flows: blocks the delete could not remove. Null when every delete went through. */
+export function blocksNotRemovedToast(failed: number): NotComingInToast | null {
+  if (failed <= 0) return null
+  return { message: `${failed} ${blocksNoun(failed)} could not be removed; please remove manually.`, tone: 'warning' }
+}
+
+export interface NotComingInResultInput {
+  personName: string
+  workDateYmd: string
+  /** The day already had time off — nothing was written, but the blocks were still cleared. */
+  alreadyMarked: boolean
+  syncWarning?: string
+  removed: number
+  failed: number
+}
+
+/**
+ * What the hub says after "Not coming in" (the assign picker and the
+ * empty-cell `off` button): the mark, then the salary sync's warning, then
+ * the blocks that would not go.
+ */
+export function notComingInResultToasts(input: NotComingInResultInput): NotComingInToast[] {
+  const { personName, workDateYmd, removed } = input
+  const removedNote = removed > 0 ? ` Removed ${removed} ${blocksNoun(removed)} for the day.` : ''
+  const toasts: NotComingInToast[] = []
+  if (input.alreadyMarked) {
+    toasts.push({
+      message: `${personName} already had unpaid time off on ${workDateYmd}.${removedNote}`,
+      tone: 'warning',
+    })
+  } else {
+    toasts.push({ message: `Marked ${personName} as not coming in (${workDateYmd}).${removedNote}`, tone: 'success' })
+    if (input.syncWarning) toasts.push({ message: `Salary sync: ${input.syncWarning}`, tone: 'warning' })
+  }
+  const notRemoved = blocksNotRemovedToast(input.failed)
+  if (notRemoved) toasts.push(notRemoved)
+  return toasts
+}
+
+export interface NcnsResultInput {
+  personName: string
+  workDateYmd: string
+  rejectedCount: number
+  hadApprovedSessions: boolean
+  removed: number
+  failed: number
+  /** How the day-off marking that follows the incident came out. */
+  timeOff:
+    | { ok: true; alreadyMarked: boolean; syncWarning?: string }
+    | { ok: false; message: string }
+}
+
+/**
+ * What the hub says after a no-call-no-show is recorded: the incident with
+ * what it did, then how the day-off marking went, then the blocks that would
+ * not go. The incident is on record by the time any of this is said.
+ */
+export function ncnsResultToasts(input: NcnsResultInput): NotComingInToast[] {
+  const { personName, workDateYmd, rejectedCount, removed, timeOff } = input
+  const parts = [`NCNS recorded for ${personName} (${workDateYmd}).`]
+  if (rejectedCount > 0) {
+    parts.push(`${rejectedCount} clock session${rejectedCount === 1 ? '' : 's'} rejected.`)
+  }
+  if (input.hadApprovedSessions) parts.push('Approved hours were unwound.')
+  if (removed > 0) parts.push(`Removed ${removed} ${blocksNoun(removed)}.`)
+  const toasts: NotComingInToast[] = [{ message: parts.join(' '), tone: 'success' }]
+  if (!timeOff.ok) {
+    toasts.push({
+      message: `Day-off marking failed: ${timeOff.message} (the incident is recorded).`,
+      tone: 'warning',
+    })
+  } else if (timeOff.alreadyMarked) {
+    toasts.push({ message: `${personName} already had time off recorded for the day.`, tone: 'warning' })
+  } else if (timeOff.syncWarning) {
+    toasts.push({ message: `Salary sync: ${timeOff.syncWarning}`, tone: 'warning' })
+  }
+  const notRemoved = blocksNotRemovedToast(input.failed)
+  if (notRemoved) toasts.push(notRemoved)
+  return toasts
+}
