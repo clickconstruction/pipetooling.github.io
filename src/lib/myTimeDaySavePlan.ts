@@ -374,6 +374,27 @@ export function orderedSegmentsFollowTheirRows(
   return true
 }
 
+/**
+ * The parts are the rows as they are: one per row, each starting and ending where its row does (an
+ * open last row's end is the running clock, so it is not compared), and any job chosen for a part
+ * is its row's own. Saving such a block only changes notes.
+ */
+export function segmentsAreTheRowsUnchanged(
+  c: DayEditorSession[],
+  split: SplitEditorState,
+  nowMs: number,
+  eps: number = CLUSTER_CONTIGUITY_EPS_MS
+): boolean {
+  if (c.length < 1 || split.boundaries.length - 1 !== c.length) return false
+  for (let i = 0; i < c.length; i++) {
+    const row = c[i]!
+    const { lo, hi } = sessionRowIntervalMs(row, nowMs)
+    if (Math.abs(split.boundaries[i]! - lo) > eps) return false
+    if (row.clocked_out_at && Math.abs(split.boundaries[i + 1]! - hi) > eps) return false
+  }
+  return orderedSegmentsFollowTheirRows(c, split, nowMs, eps)
+}
+
 /** Mixed punch/salary: per-row persist when each segment fits some old row interval, or one segment per row in order that still follows its row (seam slides). */
 export function mixedClusterSegmentsAllowPerRowPersist(
   c: DayEditorSession[],

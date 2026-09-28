@@ -3,6 +3,7 @@
  * Save has to write, and whether a change to approved hours is safe without the confirm. Pure.
  */
 import { buildPayloads, singleSegmentTimesMatchSession } from './myTimeDayEditorPayloads'
+import { segmentsAreTheRowsUnchanged } from './myTimeDaySavePlan'
 import {
   boundariesMatchOriginalRows,
   sessionClusterId,
@@ -19,9 +20,13 @@ export function noteOnlyApprovedSafe(
   nowMs: number
 ): boolean {
   const payloads = buildPayloads(last, split, nowMs)
-  if (!payloads || payloads.length !== 1) return false
-  if (c.length === 1) return singleSegmentTimesMatchSession(c[0]!, split)
-  return boundariesMatchOriginalRows(c, split, nowMs)
+  if (!payloads) return false
+  if (payloads.length === 1) {
+    if (c.length === 1) return singleSegmentTimesMatchSession(c[0]!, split)
+    return boundariesMatchOriginalRows(c, split, nowMs)
+  }
+  // Several rows, each part its row unchanged: the save writes notes only.
+  return c.length > 1 && segmentsAreTheRowsUnchanged(c, split, nowMs)
 }
 
 /** Open sessions: exclude last boundary from compare so clock ticks do not look dirty. */
