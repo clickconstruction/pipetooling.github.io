@@ -4,18 +4,21 @@ import {
   buildCallSheet,
   buildCallSheetPrintHtml,
   callSheetAnswers,
+  callSheetBillsLabel,
+  callSheetBillsSummary,
   callSheetDraftProblem,
   callSheetWeekEnds,
   isNoChangeNote,
   noChangeNote,
   type CallSheetDraft,
 } from './gcCallSheet'
+import type { GcReviewRow } from '../gcReviewRollup'
 import type { GcWorklistRow } from './gcWorklist'
 
 const TODAY = '2026-09-27'
 
 const row = (gcId: string, amount: number, over: Partial<GcWorklistRow> = {}): GcWorklistRow =>
-  ({ gcId, gcName: `GC ${gcId}`, amount, jobCount: 2, oldestAgeDays: 40, ownerUserId: 'u-malachi', checked: 'done', sent: false, word: false, skipped: false, overLine: true, next: 'send', mark: null, group: {} as never, ...over }) as GcWorklistRow
+  ({ gcId, gcName: `GC ${gcId}`, amount, jobCount: 2, oldestAgeDays: 40, ownerUserId: 'u-malachi', checked: 'done', sent: false, word: false, skipped: false, overLine: true, next: 'send', mark: null, group: { rows: [] } as never, ...over }) as GcWorklistRow
 
 const board = (over: Record<string, unknown> = {}) => ({ now: 'warm' as const, nowAt: '2026-09-18T15:00:00Z', nowBy: 'Malachi', lastWord: { note: 'Check run is the 20th.', by: 'Malachi', at: '2026-09-18T15:00:00Z', action: 'contacted' }, expectedPayBy: '2026-09-20', ...over })
 
@@ -109,5 +112,81 @@ describe('the printed sheet', () => {
     expect(html).toContain('“Check run is the 20th.”')
     expect(html).toContain('week ends 2026-09-25')
     expect(html).toContain('data-theme="light"')
+  })
+})
+
+const bill = (key: string, jobId: string, remaining: number, ageDays: number | null, over: Partial<GcReviewRow> = {}): GcReviewRow => ({
+  key,
+  jobId,
+  hcp: key,
+  jobName: `Job ${key}`,
+  jobAddress: '',
+  customerName: 'Cust',
+  referenceDateDisplay: 'Sep 2, 2026',
+  ageDays,
+  remaining,
+  inCollections: false,
+  ...over,
+})
+
+describe('the bills behind a total', () => {
+  const bills = [bill('651', 'j1', 8780, 7), bill('186', 'j2', 6200.1, 35), bill('790', 'j3', 1712.5, 136), bill('791', 'j3', 300.2, 90)]
+
+  it('a row carries its GC’s bills in the statement’s order, each with the date its job was promised', () => {
+    const sheet = buildCallSheet({
+      group: { ownerUserId: 'u-malachi', rows: [row('rmc', 16992.8, { group: { rows: bills } as never })] },
+      boardRowByGc: new Map(),
+      todayYmd: TODAY,
+      promisedPayDates: { j1: { promisedYmd: '2026-09-15' }, j2: { promisedYmd: 'soon' } },
+    })
+    expect(sheet.rows[0]?.bills?.map((b) => [b.key, b.promisedYmd])).toEqual([
+      ['651', '2026-09-15'],
+      ['186', null],
+      ['790', null],
+      ['791', null],
+    ])
+    expect(sheet.rows[0]?.collections).toEqual([])
+  })
+
+  it('the bills come to the total on the row', () => {
+    const sheet = buildCallSheet({ group: { ownerUserId: null, rows: [row('rmc', 16992.8, { group: { rows: bills } as never })] }, boardRowByGc: new Map(), todayYmd: TODAY })
+    expect(callSheetBillsSummary(sheet.rows[0]!.bills!).total).toBe(sheet.rows[0]!.amount)
+  })
+
+  it('lists the GC’s Collections bills apart — they are owed, and not in the total', () => {
+    const inCollections = [bill('412', 'j9', 1712.5, 200, { inCollections: true })]
+    const sheet = buildCallSheet({
+      group: { ownerUserId: null, rows: [row('rmc', 16992.8, { group: { rows: bills } as never }), row('other', 500, { group: { rows: [bill('1', 'j5', 500, 3)] } as never })] },
+      boardRowByGc: new Map(),
+      todayYmd: TODAY,
+      collectionsByGc: new Map([['rmc', inCollections]]),
+    })
+    expect(sheet.rows[0]?.collections?.map((b) => b.key)).toEqual(['412'])
+    expect(sheet.rows[0]?.amount).toBe(16992.8)
+    expect(sheet.total).toBe(17492.8)
+    expect(sheet.rows[1]?.collections).toEqual([])
+  })
+
+  it('sums in cents, counts the jobs, and says how much is 90 days old or more', () => {
+    expect(callSheetBillsSummary(bills.map((b) => ({ ...b, promisedYmd: b.jobId === 'j1' ? '2026-09-15' : null })))).toEqual({
+      count: 4,
+      jobs: 3,
+      total: 16992.8,
+      old: { count: 2, total: 2012.7 },
+      promised: 1,
+    })
+    expect(callSheetBillsSummary([])).toEqual({ count: 0, jobs: 0, total: 0, old: { count: 0, total: 0 }, promised: 0 })
+  })
+
+  it('a bill with no bill-out date is not called old', () => {
+    expect(callSheetBillsSummary([{ jobId: 'j1', remaining: 100, ageDays: null, promisedYmd: null }]).old).toEqual({ count: 0, total: 0 })
+  })
+
+  it('reads as one line', () => {
+    const money = (n: number) => `$${n.toFixed(2)}`
+    expect(callSheetBillsLabel({ count: 19, jobs: 12, total: 84601, old: { count: 4, total: 39490 }, promised: 0 }, money)).toBe('19 bills on 12 jobs · 4 over 90 days, $39490.00')
+    expect(callSheetBillsLabel({ count: 2, jobs: 2, total: 100, old: { count: 0, total: 0 }, promised: 0 }, money)).toBe('2 bills')
+    expect(callSheetBillsLabel({ count: 1, jobs: 1, total: 100, old: { count: 1, total: 100 }, promised: 0 }, money)).toBe('1 bill · 1 over 90 days, $100.00')
+    expect(callSheetBillsLabel({ count: 3, jobs: 1, total: 100, old: { count: 0, total: 0 }, promised: 0 }, money)).toBe('3 bills on 1 job')
   })
 })

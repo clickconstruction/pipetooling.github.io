@@ -27,6 +27,7 @@ vi.mock('../../hooks/useGcPortalLinks', () => ({ useGcPortalLinks: () => ({ link
 vi.mock('../customers/CustomerPortalGlobeButton', () => ({ default: () => null }))
 // jsdom has no window.scrollTo for the lock's release.
 vi.mock('../../hooks/useBodyScrollLock', () => ({ useBodyScrollLock: () => {} }))
+vi.mock('../../lib/fetchJobActivityEventsForJobLedger', () => ({ fetchJobActivityEventsForJobLedger: vi.fn(async () => ({ data: [], error: null })) }))
 
 const certs = vi.hoisted(() => ({ rows: [] as unknown[] }))
 const marks = vi.hoisted(() => ({ rows: [] as unknown[] }))
@@ -191,5 +192,51 @@ describe('JobsGcReviewModal', () => {
     expect(rows()).toHaveLength(3)
     expect(screen.queryByRole('button', { name: 'Check bills' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Send' })).toBeNull()
+  })
+
+  it('the call sheet carries each GC’s bills, and a bill opens its job over the sheet', async () => {
+    const onOpenJobDetail = vi.fn()
+    await open({ onOpenJobDetail })
+    fireEvent.click(screen.getByRole('button', { name: /Call sheet/ }))
+    const sheet = within(await screen.findByRole('dialog', { name: /^Call sheet/ }))
+    const knight = within(sheet.getAllByTestId('gc-call-sheet-row').find((el) => within(el).queryByText('Knight Contracting'))!)
+    fireEvent.click(knight.getByRole('button', { name: 'Show Knight Contracting’s bills' }))
+    expect(knight.getByText('1 bill — what Knight Contracting owes').nextElementSibling?.textContent).toBe('$26,000.00')
+    fireEvent.click(knight.getByRole('button', { name: '651 · Palomino Trail' }))
+    expect(onOpenJobDetail).toHaveBeenCalledWith('j-knight')
+    expect(sheet.getAllByTestId('gc-call-sheet-row')).toHaveLength(3)
+  })
+
+  it('a GC’s Collections bills are on its call sheet, outside its total', async () => {
+    const knightInCollections = invRow('i-knight-old', job({ id: 'j-knight-old', gcCustomer: KNIGHT, hcp_number: '412', job_name: 'Heron Ct' }), 1500)
+    await open({ collectionsRows: [...collectionsRows, knightInCollections] })
+    fireEvent.click(screen.getByRole('button', { name: /Call sheet/ }))
+    const sheet = within(await screen.findByRole('dialog', { name: /^Call sheet/ }))
+    const knight = within(sheet.getAllByTestId('gc-call-sheet-row').find((el) => within(el).queryByText('Knight Contracting'))!)
+    fireEvent.click(knight.getByRole('button', { name: 'Show Knight Contracting’s bills' }))
+    expect(knight.getAllByTestId('gc-bill-line')).toHaveLength(2)
+    expect(knight.getByText(/not in the \$26,000\.00 above: \$1,500\.00/)).toBeTruthy()
+  })
+
+  it('By Development lists each development once, with its bills inside and no track', async () => {
+    const SAGE = { id: 'dev-sage', name: 'Sage Meadows' }
+    const rowsWithDevelopment = [
+      invRow('i-knight', job({ id: 'j-knight', gcCustomer: KNIGHT, development: SAGE, hcp_number: '651', job_name: 'Palomino Trail' }), 26000),
+      invRow('i-loberg', job({ id: 'j-loberg', gcCustomer: LOBERG, hcp_number: '186', job_name: 'Quarry Bend' }), 22000),
+    ]
+    await renderSettled(<JobsGcReviewModal {...props({ billedActiveRows: rowsWithDevelopment, collectionsRows: [] })} />, { loaded: () => screen.findByRole('button', { name: /^Send: 1 to send/ }) })
+    fireEvent.click(screen.getByRole('button', { name: 'By Development' }))
+    expect(screen.queryByRole('group', { name: 'Where this week stands' })).toBeNull()
+    expect(screen.queryAllByTestId('gc-worklist-row')).toHaveLength(0)
+    expect(screen.getByRole('tab', { name: /Developments/ })).toBeTruthy()
+    expect(screen.queryByRole('tab', { name: 'Temperature' })).toBeNull()
+    const groups = screen.getAllByTestId('gc-review-other-row')
+    expect(groups.map((g) => within(g).getAllByText(/Sage Meadows|No development set/)[0]?.textContent)).toEqual(['Sage Meadows', 'No development set'])
+    fireEvent.click(within(groups[0]!).getByRole('button', { name: 'Show Sage Meadows’s bills' }))
+    expect(within(screen.getAllByTestId('gc-review-other-row')[0]!).getByText(/651 · Palomino Trail/)).toBeTruthy()
+    expect(screen.getByText('Total outstanding').textContent).toContain('$48,000.00')
+    // Back under By GC the track is there again.
+    fireEvent.click(screen.getByRole('button', { name: 'By GC' }))
+    expect(screen.getByRole('group', { name: 'Where this week stands' })).toBeTruthy()
   })
 })

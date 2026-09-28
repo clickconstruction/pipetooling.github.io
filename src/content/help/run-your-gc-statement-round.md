@@ -2,7 +2,7 @@
 title: run your weekly GC statement round
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: gc statement, round, stage, stage track, you are here, where am I, progress, filter, tabs, ask by link, link, no sign-in, text, call sheet, worklist, whose word, account man, no change, promised, late, scheduled sends, what went out, lane, duplicate, cancel, certify, sent it, mark sent, text, call, note, send history, personal email, outstanding, weekly, sender, gc review, sign off, email me my round, morning email, dashboard, needs you, send from the app, sender card, as they see it, reassign, undo, spoke with them, contacted, temperature, hot, warm, cool, cold, temperature board, pays by, account man, pay date, promise, they said, choose bills, this friday, end of month
+keywords: gc statement, round, bills, invoices, where does it save, dig in, job detail, activity, stage, stage track, you are here, where am I, progress, filter, tabs, ask by link, link, no sign-in, text, call sheet, worklist, whose word, account man, no change, promised, late, scheduled sends, what went out, lane, duplicate, cancel, certify, sent it, mark sent, text, call, note, send history, personal email, outstanding, weekly, sender, gc review, sign off, email me my round, morning email, dashboard, needs you, send from the app, sender card, as they see it, reassign, undo, spoke with them, contacted, temperature, hot, warm, cool, cold, temperature board, pays by, account man, pay date, promise, they said, choose bills, this friday, end of month
 ---
 GC Review opens on **This week's GCs** — one list of every GC with a balance, and three steps on each row: **Check** the bills, **Send** the statement, write down the **Word** (where the GC stands). Whoever is at the keyboard works every row; the GCs are grouped by the **account man** who knows them, so one call to him covers his group. The app never emails a GC on its own initiative — only when a person presses Send or sets up a schedule.
 
@@ -77,12 +77,35 @@ Last word Sep 18 · warm · Malachi · “Check run is the 20th.”
 :::
 
 - The GCs that broke a promise come first, then the ones with no word yet.
+- **The bills behind each total are one click away.** Under a GC's total, tap **▸ 18 bills on 12 jobs · 1 over 90 days, $4,421.26**. The bills open under the answer, so what you are typing stays in view. {{button:outline|Show all bills}} at the top opens every GC's at once.
 - Fill a row as he answers: the temperature, the sentence, the date. **A row you leave blank is left alone.** A row you start needs both a temperature and a sentence. A date still ahead goes on every bill that GC owes, as a promise.
 - **no change** repeats the last read and its pay date for a quiet week. It is allowed once — after a "no change", the next word needs a fresh sentence.
 - At the bottom, **Whose word** is already the account man; pick how you heard it. {{button:blue|Save 3 answers}} writes them all.
 - {{button:outline|🖨 Print sheet}} prints the list with room to write, for a call away from the desk.
 
 Saving a word never marks a statement sent.
+
+:::example A GC's bills, opened
+**813 · Reliant Health- Electrical** · billed Jun 25, 2026 · 95d {{chip:red|said Sep 15 · late}} **$4,421.26** ▾
+**898 · Reliant Health** · billed Jul 6, 2026 · 84d **$3,600.00** ▾
+**18 bills — what Knight Contracting owes** · **$27,499.49**
+:::
+
+- The bills come to the total on the row. A bill 90 days old or more reads red.
+- **Dig in without losing the sheet.** The job's name opens the job on top — its bill, its costs, its history — and closing it brings you back to the sheet with everything you typed still there. The **▾** at the end of a line drops that job's latest activity under it.
+- {{chip:red|said Sep 15 · late}} is the date that job was promised, red once it has passed.
+- Bills in **Collections** are listed under the others, apart: they are owed, and they are not in the row's total, because the week's round counts active bills only. That is why a GC's total on the sheet can be less than on its row in GC Review while **Include Collections** is ticked.
+
+### Where the answers go
+
+{{button:blue|Save 3 answers}} writes each answered GC's **word for this week** — the temperature, the sentence, the pay date, whose word it is, how you heard it, and that you entered it. Nothing else on the sheet is saved, and a row you left blank is not touched. From then on the word shows:
+
+- on the GC's row in GC Review — the chip beside its name and its green **Word** dot;
+- on the **Temperature** tab and in **What went out**;
+- on the next call sheet, as *Last word*;
+- and a pay date that is today or later goes on each of that GC's bills as a promise (see *The date goes on their bills*).
+
+A GC has one word a week: saving again for the same GC this week replaces it. **undo** in the GC's opened row clears the word (and a statement marked sent that week with it); a pay date already filed on the bills stays on them.
 
 ## No call at all: ask by link
 
