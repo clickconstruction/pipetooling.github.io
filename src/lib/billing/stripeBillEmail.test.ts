@@ -1,12 +1,7 @@
 import { describe, expect, it } from 'vitest'
 // Deno edge module (supabase/functions/_shared) — the pure builder, tested here.
-import {
-  BILL_EMAIL_QR_CONTENT_ID,
-  buildStripeBillEmail,
-  portalAddressInWords,
-  stripeBillEmailSubject,
-  type StripeBillEmailInput,
-} from '../../../supabase/functions/_shared/stripeBillEmail'
+import { buildStripeBillEmail, stripeBillEmailSubject, type StripeBillEmailInput } from '../../../supabase/functions/_shared/stripeBillEmail'
+import { PORTAL_QR_CONTENT_ID } from '../../../supabase/functions/_shared/portalAccountCard'
 
 const SHORT = 'https://my.clickplumbing.com/hartwell-homes-k7x2'
 const TOKEN = `https://clicktooling.com/portal?t=${'7c1e09ab34f25d60'.repeat(4)}`
@@ -23,7 +18,7 @@ const base: StripeBillEmailInput = {
   invoicePdfUrl: 'https://pay.stripe.com/invoice/acct_x/live_abc/pdf',
   pdfAttached: true,
   portalUrl: SHORT,
-  qrImgSrc: `cid:${BILL_EMAIL_QR_CONTENT_ID}`,
+  qrImgSrc: `cid:${PORTAL_QR_CONTENT_ID}`,
   canReply: true,
 }
 
@@ -117,18 +112,6 @@ describe('buildStripeBillEmail (the bill email the payer reads)', () => {
     expect(out.html).toContain('Hello A &lt;b&gt;&amp; Sons,')
     expect(out.html).toContain('1 &quot;Main&quot; St')
     expect(out.html).not.toContain('<b>&')
-  })
-})
-
-describe('portalAddressInWords', () => {
-  it('drops the scheme and a trailing slash', () => {
-    expect(portalAddressInWords('https://my.clickplumbing.com/knight-x7kq/')).toBe('my.clickplumbing.com/knight-x7kq')
-  })
-  it('is null for nothing, a token address and an address too long to read', () => {
-    expect(portalAddressInWords(null)).toBeNull()
-    expect(portalAddressInWords(' ')).toBeNull()
-    expect(portalAddressInWords(TOKEN)).toBeNull()
-    expect(portalAddressInWords(`https://my.clickplumbing.com/${'a'.repeat(60)}`)).toBeNull()
   })
 })
 

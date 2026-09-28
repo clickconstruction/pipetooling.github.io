@@ -9,7 +9,8 @@ import { loadPortalReturnUrl } from '../_shared/customerPortalReturnUrl.ts'
 import { ensurePortalShortAddress } from '../_shared/portalShortAddress.ts'
 import { billEmailSenderFromEnv, planBillEmail, type BillEmailOutcome, type BillEmailPlan } from '../_shared/billEmailPlan.ts'
 import { copyEmailsFromRow, planBillCopies, type BillCopiesOutcome } from '../_shared/billCopyPlan.ts'
-import { BILL_EMAIL_QR_CONTENT_ID, BILL_EMAIL_QR_FILENAME, buildStripeBillEmail } from '../_shared/stripeBillEmail.ts'
+import { buildStripeBillEmail } from '../_shared/stripeBillEmail.ts'
+import { PORTAL_QR_CONTENT_ID, PORTAL_QR_FILENAME } from '../_shared/portalAccountCard.ts'
 import { qrMatrix } from '../_shared/qrMatrix.ts'
 import { bytesToBase64, qrPngBytes } from '../_shared/qrPng.ts'
 import { payLinkAddress } from '../_shared/payLink.ts'
@@ -193,12 +194,25 @@ async function sendBillCopies(args: {
     console.error('send-stripe-invoice: test bill copy failed', res.error)
     return { copies_sent: [], copies_failed: [{ email: plan.to, error: res.error ?? 'send failed' }], ...heldBack }
   }
+  // Each statement's code is drawn once (the payer's people share one, the other party has its
+  // own) and rides as an inline attachment on every copy that points at that statement.
+  const qrByPortal = new Map<string, string | null>()
+  const qrFor = (portalUrl: string): string | null => {
+    if (!qrByPortal.has(portalUrl)) {
+      const modules = qrMatrix(portalUrl)
+      qrByPortal.set(portalUrl, modules ? bytesToBase64(qrPngBytes(modules)) : null)
+    }
+    return qrByPortal.get(portalUrl) ?? null
+  }
   const sent: string[] = []
   const failed: Array<{ email: string; error: string }> = []
   for (const to of plan.to) {
-    const email = buildStripeBillCopyEmail({ ...emailBase, portalUrl: portalByEmail.get(to) ?? null })
+    const portalUrl = portalByEmail.get(to) ?? null
+    const qr = portalUrl ? qrFor(portalUrl) : null
+    const email = buildStripeBillCopyEmail({ ...emailBase, portalUrl, qrImgSrc: qr ? `cid:${PORTAL_QR_CONTENT_ID}` : null })
     const res = await sendEmailViaResend(to, email.subject, email.text, email.html, resendApiKey, {
       ...(args.callerEmail ? { replyTo: args.callerEmail } : {}),
+      ...(qr ? { attachments: [{ filename: PORTAL_QR_FILENAME, content: qr, content_id: PORTAL_QR_CONTENT_ID }] } : {}),
       emailType: 'stripe_bill_copy',
     })
     if (res.success) sent.push(to)
@@ -271,7 +285,7 @@ async function sendOwnBillEmail(args: {
 
     const attachments: Array<{ filename: string; content: string; content_id?: string }> = []
     const modules = portalUrl ? qrMatrix(portalUrl) : null
-    if (modules) attachments.push({ filename: BILL_EMAIL_QR_FILENAME, content: bytesToBase64(qrPngBytes(modules)), content_id: BILL_EMAIL_QR_CONTENT_ID })
+    if (modules) attachments.push({ filename: PORTAL_QR_FILENAME, content: bytesToBase64(qrPngBytes(modules)), content_id: PORTAL_QR_CONTENT_ID })
     const pdfUrl = (args.inv.invoice_pdf ?? '').trim() || null
     const pdf = pdfUrl ? await fetchInvoicePdfBase64(pdfUrl) : null
     const number = (args.inv.number ?? '').trim()
@@ -289,7 +303,7 @@ async function sendOwnBillEmail(args: {
       invoicePdfUrl: pdfUrl,
       pdfAttached: pdf != null,
       portalUrl,
-      qrImgSrc: modules ? `cid:${BILL_EMAIL_QR_CONTENT_ID}` : null,
+      qrImgSrc: modules ? `cid:${PORTAL_QR_CONTENT_ID}` : null,
       canReply: Boolean(args.callerEmail),
       testIntendedFor: args.plan.testIntendedFor,
     })

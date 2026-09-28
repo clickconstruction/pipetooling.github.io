@@ -10,18 +10,10 @@
  * `src/lib/billing/stripeBillEmail.test.ts`.
  */
 import { formatCentsUsd, formatDueDate } from './stripeBillCopyEmail.ts'
-
-/** The Content-ID the code rides under as an inline attachment; the HTML reads it as `cid:`. */
-export const BILL_EMAIL_QR_CONTENT_ID = 'portal-qr'
-export const BILL_EMAIL_QR_FILENAME = 'your-account-qr.png'
-/** The code's side in the email, in CSS pixels; the file is drawn larger so it stays sharp. */
-export const BILL_EMAIL_QR_DISPLAY_PX = 120
-/** A statement address longer than this is not worth printing in words — the link says "Open your statement". */
-export const BILL_EMAIL_ADDRESS_MAX_CHARS = 48
+import { portalAccountCardHtml } from './portalAccountCard.ts'
 
 const INK = '#16283c'
 const COPPER = '#b0662f'
-const CREAM = '#f6f3ec'
 const MUTED = '#5b6676'
 const RULE = '#e4dfd3'
 
@@ -58,15 +50,6 @@ function esc(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
-/** The statement address in words ("my.clickplumbing.com/hartwell-homes-k7x2"), or null when it is too long to read. */
-export function portalAddressInWords(portalUrl: string | null | undefined): string | null {
-  const url = (portalUrl ?? '').trim()
-  // A token address keeps its key in the query; in words without it, it would lead nowhere.
-  if (!url || /[?#]/.test(url)) return null
-  const words = url.replace(/^https?:\/\//i, '').replace(/\/+$/, '')
-  return words && words.length <= BILL_EMAIL_ADDRESS_MAX_CHARS ? words : null
-}
-
 export function stripeBillEmailSubject(input: Pick<StripeBillEmailInput, 'companyName' | 'invoiceNumber' | 'testIntendedFor'>): string {
   const number = input.invoiceNumber.trim()
   const subject = `Invoice${number ? ` #${number}` : ''} from ${input.companyName}`
@@ -81,9 +64,7 @@ export function buildStripeBillEmail(input: StripeBillEmailInput): StripeBillEma
   const number = input.invoiceNumber.trim()
   const phone = input.companyPhone.trim()
   const portal = (input.portalUrl ?? '').trim()
-  const words = portalAddressInWords(portal)
   const pdf = (input.invoicePdfUrl ?? '').trim()
-  const qr = portal ? (input.qrImgSrc ?? '').trim() : ''
   const testFor = (input.testIntendedFor ?? '').trim()
   const invoiceLine = number ? `Invoice #${number}` : 'Invoice'
   const questions = [phone ? `call ${phone}` : '', input.canReply ? 'reply to this email' : ''].filter(Boolean).join(' or ')
@@ -114,24 +95,6 @@ export function buildStripeBillEmail(input: StripeBillEmailInput): StripeBillEma
     .join('\n')
     .trim()
 
-  const accountText = [
-    `<div style="font-weight: 600; color: ${INK};">Your account, any time</div>`,
-    words
-      ? `<div style="margin: 2px 0 0; word-break: break-all;"><a href="${esc(portal)}" style="color: ${COPPER}; font-weight: 600; text-decoration: none;">${esc(words)}</a></div>`
-      : `<div style="margin: 2px 0 0;"><a href="${esc(portal)}" style="color: ${COPPER}; font-weight: 600;">Open your statement</a></div>`,
-    `<div style="margin: 4px 0 0; color: ${MUTED}; font-size: 13px;">Every open bill and payment, with no login.${qr ? ' Scan the code with your phone camera.' : ''}</div>`,
-  ].join('')
-  const accountCard = portal
-    ? [
-        `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 0 0 20px; background: ${CREAM}; border-radius: 8px;"><tr>`,
-        qr
-          ? `<td width="${BILL_EMAIL_QR_DISPLAY_PX}" valign="middle" style="padding: 14px 0 14px 14px;"><a href="${esc(portal)}"><img src="${esc(qr)}" width="${BILL_EMAIL_QR_DISPLAY_PX}" height="${BILL_EMAIL_QR_DISPLAY_PX}" alt="QR code for ${esc(words ?? 'your statement')}" style="display: block; border: 0; border-radius: 4px;"></a></td>`
-          : '',
-        `<td valign="middle" style="padding: 14px 16px; font-size: 15px; line-height: 1.45;">${accountText}</td>`,
-        `</tr></table>`,
-      ].join('')
-    : ''
-
   const html = [
     `<div style="font-family: -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.5; color: ${INK}; max-width: 560px; margin: 0 auto; background: #ffffff;">`,
     testLine ? `<div style="background: #fdf3d7; color: #6b4a00; padding: 10px 20px; font-size: 13px;">${esc(testLine)}</div>` : '',
@@ -146,7 +109,7 @@ export function buildStripeBillEmail(input: StripeBillEmailInput): StripeBillEma
     `<p style="margin: 0 0 20px; color: ${MUTED}; font-size: 13px;">Card or bank transfer, on Stripe's secure page.${
       input.pdfAttached ? ' The invoice is attached as a PDF.' : pdf ? ` <a href="${esc(pdf)}" style="color: ${COPPER};">Download the invoice PDF</a>` : ''
     }</p>`,
-    accountCard,
+    portalAccountCardHtml(portal, input.qrImgSrc),
     `<div style="border-top: 1px solid ${RULE}; padding: 14px 0 18px; color: ${MUTED}; font-size: 13px;">${
       questions ? `Questions? ${esc(questions.charAt(0).toUpperCase() + questions.slice(1))}.` : esc(input.companyName)
     }</div>`,
