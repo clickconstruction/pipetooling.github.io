@@ -375,13 +375,50 @@ describe('useJobFormAutosaveEngine — re-reading the line items', () => {
     expect(result.current.engine.persistedDiscountSnapshotRef.current.length).toBe(1)
     expect(result.current.engine.billingAutosave.isDirty()).toBe(false)
     expect(result.current.engine.billingAutosaveStatus).toBe('idle')
-    // As it has always been: the debounce the new rows started is not cancelled by the
-    // re-baseline, so 1.2 s later the slice writes the same rows once more — and, the discount
-    // snapshot already matching, logs nothing.
+    // The re-baseline drops the debounce the new rows started: nothing is written back.
     db.steps.length = 0
+    await tick(5_000)
+    expect(db.steps).toEqual([])
+    expect(result.current.engine.billingAutosaveStatus).toBe('idle')
+  })
+
+  it('an edit made after the re-read saves as any edit does', async () => {
+    db.found = { id: 'job-1', master_user_id: 'master-1', fixtures: [{ id: 'f1', name: 'Rough-in', count: 1, line_unit_price: 1_000, line_description: '', invoice_id: null, sequence_order: 0 }] }
+    const base = mount().args
+    cleanup()
+    const { result } = renderHook(() => {
+      const [fixtures, setFixtures] = useState(base.fixtures)
+      return { engine: useJobFormAutosaveEngine({ ...base, fixtures, setFixtures }), setFixtures }
+    })
+    await act(() => result.current.engine.rehydrateFixturesFromDb('job-1'))
+    await tick(5_000)
+    expect(db.steps).toEqual([])
+    act(() => result.current.setFixtures([fixture('f1', 'Rough-in', 1_250)]))
     await tick(1_200)
+    expect(db.steps[0]?.payload).toEqual({ revenue: 1_250 })
+  })
+
+  it('keeps the save an unsaved edit is owed: a payment typed just before the re-read is still written', async () => {
+    db.found = { id: 'job-1', master_user_id: 'master-1', fixtures: [{ id: 'f1', name: 'Rough-in', count: 1, line_unit_price: 1_000, line_description: '', invoice_id: null, sequence_order: 0 }, { id: 'd1', name: 'Discount', count: 1, line_unit_price: -100, line_description: '', invoice_id: null, sequence_order: 1, line_kind: 'discount' }] }
+    const base = mount().args
+    cleanup()
+    const { result } = renderHook(() => {
+      const [fixtures, setFixtures] = useState(base.fixtures)
+      const [payments, setPayments] = useState(base.payments)
+      return { engine: useJobFormAutosaveEngine({ ...base, fixtures, setFixtures, payments }), setPayments }
+    })
+    act(() => result.current.setPayments([pay('p1', 300), pay('p2', 50)]))
+    await tick(600)
+    expect(result.current.engine.billingAutosave.isDirty()).toBe(true)
+    await act(() => result.current.engine.rehydrateFixturesFromDb('job-1'))
+    expect(result.current.engine.billingAutosave.isDirty()).toBe(true)
+    await tick(1_199)
+    expect(db.steps).toEqual([])
+    await tick(1)
     expect(seq()).toEqual(['update:jobs_ledger', 'upsert:jobs_ledger_payments', 'delete:jobs_ledger_fixtures', 'insert:jobs_ledger_fixtures', 'insert:jobs_ledger_fixtures'])
-    expect(db.steps.filter((s: Step) => s.op === 'rpc')).toEqual([])
+    expect((db.steps[1]?.payload as Array<{ id: string }>).map((r) => r.id)).toEqual(['p1', 'p2'])
+    expect(result.current.engine.billingAutosave.isDirty()).toBe(false)
+    expect(result.current.engine.billingAutosaveStatus).toBe('saved')
   })
 
   it('does nothing when the job cannot be read', async () => {
