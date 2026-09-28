@@ -14,15 +14,16 @@ import { pricingLockChipText, pricingLockState, pricingLockedMessage, readRevise
 import { mapCountRowsByFixture } from '../../lib/bids/mapCountRowsByFixture'
 import { searchPriceBookEntries, seedPricingAssignmentSearch, type AssignMatchMode, type PriceBookSearchResult } from '../../lib/bids/priceBookAssignSearch'
 import { SpotlightTour } from '../SpotlightTour'
-import { bidVersionRowsKey, scenarioCardRevenues } from '../../lib/bids/scenarioCardRevenues'
-import { scenarioPricingRows, scenarioRevenue } from '../../lib/bids/scenarioPricingRows'
+import { scenarioPricingRows } from '../../lib/bids/scenarioPricingRows'
 import { loadScenarioInputs, scenarioBidVersionIdOf, type ScenarioInputs } from '../../lib/bids/loadScenarioInputs'
 import { readPreviewStash, writePreviewStash } from '../../lib/bids/workbenchPreviewStash'
 import { cellEditSeed, impliedUnitPrice, type WorkbenchCellField } from '../../lib/bids/workbenchCellSolve'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
-import { roughMaterialsTotalWithRounding, type RoughLineDbRow } from '../../lib/bids/takeoffOrderRounding'
-import { normalizeMaterialsModel } from '../../lib/bids/bidTakeoffHelpers'
-import { alternateCardNumbers, sameGcAlternateVersions } from '../../lib/bids/ownTakeoffAlternates'
+import { useAlternateVersionData, useGcNamesById, useScenarioCardRevenues } from '../../hooks/usePricingCardsData'
+import { AddPriceDoorButton, PricingCardsRow } from './PricingCardsRow'
+import { cardRevenue, cardsRowMode, cardsRowScenarios, copySourceFor } from '../../lib/bids/pricingCardsRow'
+import { gcNameForVersion as gcNameForVersionOf } from '../../lib/bids/pricingCardsData'
+import { sameGcAlternateVersions } from '../../lib/bids/ownTakeoffAlternates'
 import { nextSortOrder, pickActivePricing } from '../../lib/bids/pickActivePricing'
 import { versionStarringScenario } from '../../lib/bids/starredScenarioGuard'
 import { useMarginBrush } from '../../hooks/useMarginBrush'
@@ -565,9 +566,6 @@ export function BidsPricingTab({
   }
   const [wbCopyingPrices, setWbCopyingPrices] = useState(false)
   const [wbFillingBook, setWbFillingBook] = useState(false)
-  // Iteration 2 — scenarios: revenue per bid-owned Pricing (the cover-letter
-  // bundle computation, one per scenario card). Keyed by pricing version id.
-  const [wbScenarioRevenue, setWbScenarioRevenue] = useState<Record<string, number>>({})
   const [wbCloning, setWbCloning] = useState(false)
   /** The "＋ New price or version…" door (v2.2104, renamed v2.2110): one button asking "price point or sendable bid?" */
   const [wbVariantDoorOpen, setWbVariantDoorOpen] = useState(false)
@@ -593,31 +591,15 @@ export function BidsPricingTab({
   const [adoptOpen, setAdoptOpen] = useState(false)
   // G1 (v2.2154): price options per GC — GC names for the structure bar, the "Another price" modal,
   // and the offered-as-alternate toggle (price_book_versions.include_in_submission, scoped per version).
-  const [gcNamesById, setGcNamesById] = useState<Record<string, string>>({})
+  const gcNamesById = useGcNamesById(bidVersions)
   const [addPriceOpen, setAddPriceOpen] = useState<{ name: string; fromId: string | null; offer: boolean } | null>(null)
   const [copyingGcPrice, setCopyingGcPrice] = useState(false)
-  useEffect(() => {
-    const ids = [...new Set(bidVersions.map((v) => v.customer_id).filter((id): id is string => !!id))].filter((id) => gcNamesById[id] === undefined)
-    if (ids.length === 0) return
-    let cancelled = false
-    void (async () => {
-      const { data } = await supabase.from('customers').select('id, name').in('id', ids)
-      if (cancelled || !data) return
-      setGcNamesById((prev) => { const next = { ...prev }; for (const c of data) next[c.id] = c.name ?? '—'; return next })
-    })()
-    return () => { cancelled = true }
-  }, [bidVersions, gcNamesById])
-  /** The GC a version's letter goes to: its own override, else the bid's GC. */
+  /** The GC a version's letter goes to: its own override, else the bid's GC (`lib/bids/pricingCardsData`). */
   function gcNameForVersion(versionId: string | null): string {
-    const v = versionId ? bidVersions.find((x) => x.id === versionId) : undefined
-    if (v?.customer_id) return gcNamesById[v.customer_id] ?? '…'
-    const b = selectedBidForPricing as (BidWithBuilder & { customers?: { name?: string | null } | null; bids_gc_builders?: { name?: string | null } | null }) | null
-    return b?.customers?.name ?? b?.bids_gc_builders?.name ?? 'the GC'
+    const bid = selectedBidForPricing as (BidWithBuilder & { customers?: { name?: string | null } | null; bids_gc_builders?: { name?: string | null } | null }) | null
+    return gcNameForVersionOf({ bidVersions, gcNamesById, bid, versionId })
   }
   const shortGc = (name: string) => name
-  /** Unpriced solo bids hide the status band; the ＋ Add price door re-homes to the solver line (artifact 0a627c7c). */
-  const wbSolverEnd: { node: React.ReactNode } = { node: null }
-  wbSolverEnd.node = null
 
   /** The ▾ beside Solve — holds the rarely-used "Price unpriced only" (batch 2, artifact 11c68afc). */
   const [solveMenuOpen, setSolveMenuOpen] = useState(false)
@@ -1428,59 +1410,16 @@ export function BidsPricingTab({
   const bidsScopedForPricing = onlyMyBids ? bids.filter(isMyBid) : bids
   const filteredBidsForPricing: BidWithBuilder[] = filterBidsForPicker(bidsScopedForPricing, pricingSearchQuery, ledgerPrefixMap)
 
-  // Iteration 2 — per-scenario revenue. Mirrors the cover-letter bundle
-  // computation: for each bid-owned Pricing, fetch its entries + overlays and
-  // run the shared calc kernel; cost is scenario-independent. A scenario of
-  // another bid version prices that version's own count rows (v2.3841 —
-  // it read $0 against the on-screen rows).
-  useEffect(() => {
-    const bid = selectedBidForPricing
-    const versionIds = priceBookVersions.map((v) => v.id)
-    if (!bid || versionIds.length < 2 || pricingCountRows.length === 0) {
-      setWbScenarioRevenue({})
-      return
-    }
-    const activeKey = bidVersionRowsKey(selectedBidVersionId)
-    const needsOtherRows = priceBookVersions.some((v) => bidVersionRowsKey(v.bid_version_id) !== activeKey)
-    let cancelled = false
-    void (async () => {
-      const [entriesRes, assignRes, customRes, hidesRes, rowsRes] = await Promise.all([
-        supabase.from('price_book_entries').select('*, fixture_types(name)').in('version_id', versionIds),
-        supabase.from('bid_pricing_assignments').select('*').eq('bid_id', bid.id).in('price_book_version_id', versionIds),
-        supabase.from('bid_count_row_custom_prices').select('*').eq('bid_id', bid.id).in('price_book_version_id', versionIds),
-        supabase.from('bid_count_row_submission_hides').select('*').eq('bid_id', bid.id).in('price_book_version_id', versionIds),
-        needsOtherRows
-          ? supabase.from('bids_count_rows').select('id, fixture, count, bid_version_id').eq('bid_id', bid.id)
-          : Promise.resolve({ data: [] as Array<Pick<BidCountRow, 'id' | 'fixture' | 'count' | 'bid_version_id'>>, error: null }),
-      ])
-      if (cancelled) return
-      const countRowsByBidVersion = new Map<string, Array<Pick<BidCountRow, 'id' | 'fixture' | 'count' | 'bid_version_id'>>>()
-      if (!rowsRes.error) {
-        for (const r of (rowsRes.data as Array<Pick<BidCountRow, 'id' | 'fixture' | 'count' | 'bid_version_id'>> | null) ?? []) {
-          const key = bidVersionRowsKey(r.bid_version_id)
-          if (key === activeKey) continue
-          const list = countRowsByBidVersion.get(key)
-          if (list) list.push(r)
-          else countRowsByBidVersion.set(key, [r])
-        }
-      }
-      setWbScenarioRevenue(
-        scenarioCardRevenues({
-          scenarios: priceBookVersions,
-          activeBidVersionId: selectedBidVersionId,
-          activeCountRows: pricingCountRows,
-          countRowsByBidVersion,
-          entries: (entriesRes.data as PriceBookEntryWithFixture[]) ?? [],
-          assignments: (assignRes.data as BidPricingAssignment[]) ?? [],
-          customPrices: (customRes.data as BidCountRowCustomPrice[]) ?? [],
-          hides: (hidesRes.data as BidCountRowSubmissionHide[]) ?? [],
-        }),
-      )
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [selectedBidForPricing?.id, selectedBidVersionId, priceBookVersions, pricingCountRows, bidPricingAssignments, bidCountRowCustomPrices])
+  // Iteration 2 — per-scenario revenue for each card, each scenario priced on its own bid
+  // version's rows (the read sits where its effect stood).
+  const wbScenarioRevenue = useScenarioCardRevenues({
+    bidId: selectedBidForPricing?.id,
+    selectedBidVersionId,
+    priceBookVersions,
+    pricingCountRows,
+    bidPricingAssignments,
+    bidCountRowCustomPrices,
+  })
 
   // Iteration 3 — win/loss calibration history for this service type (the read sits where its
   // effect stood, so the tab's effects run in the order they did).
@@ -1540,55 +1479,14 @@ export function BidsPricingTab({
   /* ---- Own-takeoff alternates (v2.2404, Wendi) ---- */
   /** Per alternate-version card data: its ★'s revenue on ITS counts, and its own pre-tax
       takeoff materials ('rough' model only — the exact model's POs are bid-wide). */
-  const [altVersionData, setAltVersionData] = useState<Record<string, { revenue: number | null; materials: number | null }>>({})
+  const altVersionData = useAlternateVersionData({
+    bidId: selectedBidForPricing?.id,
+    selectedBidVersionId,
+    bidVersions,
+    loadInputs: loadScenarioInputsFor,
+  })
   const [addOwnTakeoffOpen, setAddOwnTakeoffOpen] = useState<{ name: string } | null>(null)
   const [creatingOwnTakeoffAlt, setCreatingOwnTakeoffAlt] = useState(false)
-  useEffect(() => {
-    const bid = selectedBidForPricing
-    if (!bid) return
-    const alts = sameGcAlternateVersions(bidVersions, selectedBidVersionId)
-    if (alts.length === 0) {
-      setAltVersionData({})
-      return
-    }
-    let cancelled = false
-    void (async () => {
-      const { data: bidMeta } = await supabase.from('bids').select('materials_model').eq('id', bid.id).maybeSingle()
-      const mm = normalizeMaterialsModel((bidMeta as { materials_model?: string } | null)?.materials_model)
-      const out: Record<string, { revenue: number | null; materials: number | null }> = {}
-      await Promise.all(
-        alts.map(async (v) => {
-          const [countsRes, roughRes] = await Promise.all([
-            supabase.from('bids_count_rows').select('*').eq('bid_id', bid.id).eq('bid_version_id', v.id).order('sequence_order', { ascending: true }),
-            mm === 'rough'
-              ? supabase.from('bids_takeoff_rough_part_lines').select('count_row_id, part_id, quantity, unit_price, order_increment, order_increment_unit').eq('bid_id', bid.id).eq('bid_version_id', v.id)
-              : Promise.resolve({ data: null }),
-          ])
-          const counts = (countsRes.data as BidCountRow[] | null) ?? []
-          let materials: number | null = null
-          if (mm === 'rough' && roughRes.data) {
-            const lines = roughRes.data as RoughLineDbRow[]
-            // v2.3407: with the sticks, the same number the engine and the strip show.
-            materials = roughMaterialsTotalWithRounding(lines, new Map(counts.map((c) => [c.id, c.count]))).total
-          }
-          let revenue: number | null = null
-          const starId = v.starred_price_book_version_id ?? null
-          if (starId && counts.length > 0) {
-            // The Map modal's per-version revenue: the pricing kernel on the version's
-            // own counts, prices only (no labor/materials → revenue).
-            const inputs = await loadScenarioInputsFor(bid.id, starId)
-            revenue = scenarioRevenue({ scenarioId: starId, countRows: counts, entries: inputs.entries, assignments: inputs.assignments, customPrices: inputs.customPrices, hides: inputs.hides })
-          }
-          out[v.id] = { revenue, materials }
-        }),
-      )
-      if (!cancelled) setAltVersionData(out)
-    })()
-    return () => {
-      cancelled = true
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedBidForPricing?.id, selectedBidVersionId, bidVersions])
   /** The ＋ Add price door's new choice: a same-GC version marked Alternate — its own
       counts + takeoff + prices, cloned from the active version (clone-all, v2.2395). */
   async function createOwnTakeoffAlternate(name: string) {
@@ -2538,439 +2436,60 @@ export function BidsPricingTab({
                   : wbShowUnpricedOnly
                     ? eff.filter((r) => r.effUnit == null && r.cost > 0)
                     : eff
-                const fmtM = (n: number) => `$${formatCurrency(n)}`
+                // The price cards row (v2.2404): its cards, its layout, and the solver line's ＋ Add
+                // price door while a solo bid is unpriced (artifact 0a627c7c) — `lib/bids/pricingCardsRow`.
+                const cardScenarios = cardsRowScenarios({ priceBookVersions, selectedBidVersionId, selectedPricingVersionId })
+                const cardAltVersions = sameGcAlternateVersions(bidVersions, selectedBidVersionId)
+                const cardRevenueOf = (id: string) => cardRevenue(id, { selectedPricingVersionId, effRevenue, scenarioRevenue: wbScenarioRevenue })
+                const cardsMode = cardsRowMode({
+                  scenarioCount: cardScenarios.length,
+                  alternateCount: cardAltVersions.length,
+                  bidVersionCount: bidVersions.length,
+                  soloRevenue: cardScenarios.length === 1 ? cardRevenueOf(cardScenarios[0]!.id) : null,
+                })
+                const solverEndDoor = cardsMode === 'soloUnpriced' ? <AddPriceDoorButton cloning={wbCloning} onOpenDoor={() => setWbVariantDoorOpen(true)} /> : null
                 return (
                   <>
-                    {(() => {
-                      const all = [...priceBookVersions].sort((a, b) => a.sort_order - b.sort_order)
-                      // v2.2404: the row is "what this GC receives" — scope to the ACTIVE version's
-                      // price options (own-takeoff alternates join as version cards below). Falls
-                      // back to the unscoped list when scoping would empty the row (legacy pointers).
-                      const scoped = selectedBidVersionId ? all.filter((p) => p.bid_version_id === selectedBidVersionId) : all.filter((p) => p.bid_version_id == null)
-                      const owned = scoped.length > 0 ? scoped : all
-                      // Legacy bids: the active pricing can be a shared (non-bid-owned)
-                      // version — still show it as a card so Duplicate can birth the
-                      // first real scenario.
-                      const scenarios = owned.length > 0
-                        ? owned
-                        : selectedPricingVersionId
-                          ? [{ id: selectedPricingVersionId, name: 'Standard prices', sort_order: 0 } as (typeof owned)[number]]
-                          : []
-                      const altVersions = sameGcAlternateVersions(bidVersions, selectedBidVersionId)
-                      if (scenarios.length === 0 && altVersions.length === 0) return null
-                      const revOf = (id: string) => (id === selectedPricingVersionId ? effRevenue : (wbScenarioRevenue[id] ?? null))
-                      const starred = scenarios.find((s) => s.id === customerFacingPricingId) ?? null
-                      // "Copy prices from …" source for an empty viewed scenario: the ★ if priced, else any priced one.
-                      const copySource =
-                        starred && (revOf(starred.id) ?? 0) > 0 && starred.id !== selectedPricingVersionId
-                          ? starred
-                          : scenarios.find((s) => s.id !== selectedPricingVersionId && (revOf(s.id) ?? 0) > 0) ?? null
-                      const cardBtnStyle: React.CSSProperties = { font: 'inherit', fontSize: '0.72rem', padding: '0.18rem 0.5rem', borderRadius: 5, border: '1px solid var(--border-strong)', background: 'var(--bg-muted)', color: 'var(--text-700)', cursor: 'pointer' }
-                      // v2.2104: one creation door for both variant kinds, and the whole
-                      // hierarchy collapses to a single line while it has nothing to say.
-                      const doorBtn = (
-                        <button
-                          type="button"
-                          onClick={() => setWbVariantDoorOpen(true)}
-                          disabled={wbCloning}
-                          style={{ font: 'inherit', fontSize: '0.82rem', fontWeight: 600, padding: '0.42rem 0.85rem', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--bg-blue-tint)', color: 'var(--text-link)', cursor: wbCloning ? 'wait' : 'pointer', whiteSpace: 'nowrap' }}
-                        >
-                          {wbCloning ? 'Duplicating…' : (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
-                              <span aria-hidden style={{ fontSize: '1.05rem', lineHeight: 1 }}>＋</span>
-                              <span style={{ textAlign: 'left', lineHeight: 1.25 }}>Add<br />price</span>
-                            </span>
-                          )}
-                        </button>
-                      )
-                      const doorOptStyle: React.CSSProperties = { display: 'flex', gap: '0.7rem', alignItems: 'flex-start', width: '100%', textAlign: 'left', font: 'inherit', border: '1px solid var(--border)', borderRadius: 10, padding: '0.7rem 0.8rem', background: 'var(--surface)', cursor: 'pointer', marginBottom: '0.55rem' }
-                      const doorModal = wbVariantDoorOpen ? (
-                        <div
-                          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}
-                          onClick={() => setWbVariantDoorOpen(false)}
-                        >
-                          <div
-                            role="dialog"
-                            aria-label="Add a price or GC"
-                            style={{ background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 12, padding: '1rem 1.1rem', maxWidth: 440, width: '92%', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <h3 style={{ margin: '0 0 0.2rem', fontSize: '1.02rem' }}>Add a price or GC</h3>
-                            <p style={{ margin: '0 0 0.8rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>What do you want?</p>
-                            <button
-                              type="button"
-                              style={doorOptStyle}
-                              onClick={() => {
-                                setWbVariantDoorOpen(false)
-                                setAddPriceOpen({ name: '', fromId: selectedPricingVersionId, offer: true })
-                              }}
-                            >
-                              <span style={{ fontSize: '1.2rem', lineHeight: 1.2 }}>💲</span>
-                              <span>
-                                <b style={{ display: 'block', fontSize: '0.92rem' }}>Another price for {selectedBidVersionId ? shortGc(gcNameForVersion(selectedBidVersionId)) : 'this GC'}</b>
-                                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                  Offer it as an alternate on their letter, or keep it to compare. The GC sees the ★ and what you offer — nothing else. Same takeoff, different numbers.
-                                </span>
-                              </span>
-                            </button>
-                            {/* v2.2404 (Wendi): an alternate that CHANGES MATERIALS gets its own takeoff —
-                                a same-GC version marked Alternate, so its margin costs against its parts. */}
-                            <button
-                              type="button"
-                              style={{ ...doorOptStyle, border: '1.5px solid #0d9488' }}
-                              onClick={() => {
-                                setWbVariantDoorOpen(false)
-                                setAddOwnTakeoffOpen({ name: '' })
-                              }}
-                            >
-                              <span style={{ fontSize: '1.2rem', lineHeight: 1.2 }}>📐</span>
-                              <span>
-                                <b style={{ display: 'block', fontSize: '0.92rem' }}>Alternate with its own takeoff</b>
-                                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                  For "in lieu of" work that changes materials — PEX for copper, cast iron for PVC. Starts as a copy of this bid's counts, takeoff and prices; swap the materials and the margin follows. Lands on their letter as an alternate.
-                                </span>
-                              </span>
-                            </button>
-                            <button
-                              type="button"
-                              style={doorOptStyle}
-                              onClick={() => {
-                                setWbVariantDoorOpen(false)
-                                window.dispatchEvent(new Event('bid-version-picker-open-add-gc'))
-                              }}
-                            >
-                              <span style={{ fontSize: '1.2rem', lineHeight: 1.2 }}>📦</span>
-                              <span>
-                                <b style={{ display: 'block', fontSize: '0.92rem' }}>Another GC</b>
-                                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                  Send this bid to another GC — its own packet, starting as a copy of this one's counts, takeoff and prices.
-                                </span>
-                              </span>
-                            </button>
-                            <button
-                              type="button"
-                              style={doorOptStyle}
-                              onClick={() => {
-                                setWbVariantDoorOpen(false)
-                                setAdoptOpen(true)
-                              }}
-                            >
-                              <span style={{ fontSize: '1.2rem', lineHeight: 1.2 }}>⤵</span>
-                              <span>
-                                <b style={{ display: 'block', fontSize: '0.92rem' }}>Adopt an existing bid</b>
-                                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                  Pull a bid already on the board in as one of this bid's packets. Its counts, prices and sent history come with it; its old row retires.
-                                </span>
-                              </span>
-                            </button>
-                            <div style={{ textAlign: 'right' }}>
-                              <button
-                                type="button"
-                                onClick={() => setWbVariantDoorOpen(false)}
-                                style={{ font: 'inherit', fontSize: '0.8rem', padding: '0.35rem 0.8rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--bg-muted)', color: 'var(--text-strong)', cursor: 'pointer' }}
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ) : null
-                      // v2.2404: name the own-takeoff alternate — the door's teal choice lands here.
-                      const ownTakeoffModal = addOwnTakeoffOpen ? (
-                        <div
-                          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}
-                          onClick={() => !creatingOwnTakeoffAlt && setAddOwnTakeoffOpen(null)}
-                        >
-                          <div
-                            role="dialog"
-                            aria-label="Alternate with its own takeoff"
-                            style={{ background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 12, padding: '1rem 1.1rem', maxWidth: 460, width: '92%', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <h3 style={{ margin: '0 0 0.2rem', fontSize: '1.02rem' }}>📐 Alternate with its own takeoff</h3>
-                            <p style={{ margin: '0 0 0.8rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                              Starts as a copy of this bid's counts, takeoff and prices for {shortGc(gcNameForVersion(selectedBidVersionId))}. Swap the materials in Takeoffs and the margin follows. It lands on their letter as an alternate.
-                            </p>
-                            <label style={{ display: 'block', marginBottom: '0.8rem' }}>
-                              <span style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 600, fontSize: '0.85rem' }}>Name</span>
-                              <input
-                                autoFocus
-                                value={addOwnTakeoffOpen.name}
-                                onChange={(e) => setAddOwnTakeoffOpen({ name: e.target.value })}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') void createOwnTakeoffAlternate(addOwnTakeoffOpen.name)
-                                  else if (e.key === 'Escape') setAddOwnTakeoffOpen(null)
-                                }}
-                                placeholder="e.g. PEX in lieu of copper"
-                                style={{ width: '100%', padding: '0.45rem 0.55rem', border: '1px solid var(--border-strong)', borderRadius: 6, boxSizing: 'border-box', font: 'inherit', background: 'var(--surface)', color: 'var(--text-strong)' }}
-                              />
-                            </label>
-                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-                              <button
-                                type="button"
-                                onClick={() => setAddOwnTakeoffOpen(null)}
-                                disabled={creatingOwnTakeoffAlt}
-                                style={{ font: 'inherit', fontSize: '0.8rem', padding: '0.35rem 0.8rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--bg-muted)', color: 'var(--text-strong)', cursor: 'pointer' }}
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => void createOwnTakeoffAlternate(addOwnTakeoffOpen.name)}
-                                disabled={creatingOwnTakeoffAlt || !addOwnTakeoffOpen.name.trim()}
-                                style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 600, padding: '0.35rem 0.9rem', border: 'none', borderRadius: 6, background: '#0d9488', color: '#fff', cursor: creatingOwnTakeoffAlt ? 'wait' : 'pointer', opacity: !addOwnTakeoffOpen.name.trim() ? 0.6 : 1 }}
-                              >
-                                {creatingOwnTakeoffAlt ? 'Creating…' : 'Create the alternate'}
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ) : null
-                      const solo = scenarios.length === 1 && bidVersions.length <= 1
-                      if (solo) {
-                        const v = scenarios[0]!
-                        const rev = revOf(v.id)
-                        const m = rev != null && rev > 0 ? (rev - totalCost) / rev : null
-                        const unpriced = rev === 0
-                        const isCustomerFacing = v.id === customerFacingPricingId
-                        if (unpriced) {
-                          // Nothing priced yet: skip the status band entirely — the solver is the next move
-                          // and sits first; ＋ Add price rides at the solver line's end (artifact 0a627c7c).
-                          wbSolverEnd.node = doorBtn
-                          return <>{doorModal}{ownTakeoffModal}</>
-                        }
-                        return (
-                          <>
-                            <div
-                              data-tour="workbench-scenarios"
-                              style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', flexWrap: 'wrap', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.5rem 0.9rem', marginBottom: '0.9rem' }}
-                            >
-                              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>One GC · one price</span>
-                              {isCustomerFacing ? (
-                                <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-green-600)' }}>★ base · the GC sees this</span>
-                              ) : null}
-                              <b style={{ fontSize: '0.85rem' }}>{v.name}</b>
-                              {unpriced ? (
-                                <>
-                                  <span style={{ fontSize: '0.66rem', fontWeight: 700, color: 'var(--text-amber-700)', border: '1px solid var(--border)', background: 'var(--bg-amber-tint)', borderRadius: 999, padding: '0.1rem 0.5rem' }}>
-                                    No prices yet
-                                  </span>
-                                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>— price below or use the solver</span>
-                                </>
-                              ) : (
-                                <>
-                                  <b style={{ fontSize: '0.9rem', fontVariantNumeric: 'tabular-nums' }}>{rev != null ? fmtM(rev) : '…'}</b>
-                                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
-                                    {m == null ? '' : `${Math.round(m * 100)}% margin · profit ${fmtM((rev ?? 0) - totalCost)}`}
-                                  </span>
-                                </>
-                              )}
-                              {!isCustomerFacing && !unpriced ? (
-                                <button type="button" onClick={() => void makeScenarioCustomerFacing(v, rev)} style={cardBtnStyle}>
-                                  ☆ Make base…
-                                </button>
-                              ) : null}
-                              <span style={{ flex: 1 }} />
-                              {doorBtn}
-                            </div>
-                            {doorModal}
-                            {ownTakeoffModal}
-                          </>
-                        )
-                      }
-                      return (
-                        <>
-                          {/* v2.2204: the whole set of price options sits in one quiet gray tray. */}
-                          <div data-tour="workbench-scenarios" style={{ display: 'flex', gap: '0.5rem', alignItems: 'stretch', margin: '0.85rem 0 0.9rem', flexWrap: 'wrap', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 12, padding: '0.6rem' }}>
-                            {scenarios.map((v) => {
-                              const viewing = v.id === selectedPricingVersionId
-                              const isCustomerFacing = v.id === customerFacingPricingId
-                              const rev = revOf(v.id)
-                              const m = rev != null && rev > 0 ? (rev - totalCost) / rev : null
-                              const unpriced = rev === 0
-                              const offered = !isCustomerFacing && !unpriced && (v as { include_in_submission?: boolean }).include_in_submission === true
-                              return (
-                                <div
-                                  key={v.id}
-                                  onClick={() => { if (!viewing) viewWorkbenchScenario(v.id) }}
-                                  title={viewing ? 'The price open on this Workbench' : 'View this price (doesn’t change what the GC sees)'}
-                                  style={{
-                                    flex: '1 1 215px', minWidth: 215, maxWidth: 300, textAlign: 'left', font: 'inherit',
-                                    background: isCustomerFacing ? 'var(--bg-green-tint)' : 'var(--surface)',
-                                    border: viewing ? '1px solid #3b82f6' : isCustomerFacing ? '1px solid var(--border-green)' : '1px solid var(--border)',
-                                    boxShadow: viewing ? '0 0 0 1px #3b82f6' : 'none',
-                                    borderRadius: 10, padding: '0.5rem 0.75rem 0', cursor: viewing ? 'default' : 'pointer', position: 'relative',
-                                    display: 'flex', flexDirection: 'column',
-                                  }}
-                                >
-                                  {/* v2.2203: state tabs sit on the card's top edge — blue Viewing, green ★ Submittal; side by side when both. */}
-                                  {(viewing || isCustomerFacing) ? (
-                                    <span style={{ position: 'absolute', top: '-0.72rem', left: '0.6rem', display: 'inline-flex', gap: '0.3rem' }}>
-                                      {viewing ? (
-                                        <span style={{ fontSize: '0.64rem', fontWeight: 700, whiteSpace: 'nowrap', color: '#fff', background: '#3b82f6', borderRadius: 999, padding: '0.14rem 0.55rem', boxShadow: '0 1px 4px rgba(15, 23, 42, 0.18)' }}>Viewing</span>
-                                      ) : null}
-                                      {isCustomerFacing ? (
-                                        <span style={{ fontSize: '0.64rem', fontWeight: 700, whiteSpace: 'nowrap', color: '#fff', background: '#16a34a', borderRadius: 999, padding: '0.14rem 0.55rem', boxShadow: '0 1px 4px rgba(15, 23, 42, 0.18)' }}>★ Submittal</span>
-                                      ) : null}
-                                    </span>
-                                  ) : null}
-                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.4rem' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', minWidth: 0 }}>
-                                      <span style={{ fontSize: '0.8rem', fontWeight: 700, overflowWrap: 'anywhere' }}>{v.name}</span>
-                                      <button
-                                        type="button"
-                                        onClick={(e) => { e.stopPropagation(); setPricingEdit({ id: v.id, name: v.name }) }}
-                                        title="Rename or delete this price"
-                                        aria-label={`Edit ${v.name}`}
-                                        style={{ padding: '0 0.1rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.72rem', color: 'var(--text-muted)', flex: '0 0 auto' }}
-                                      >
-                                        ✎
-                                      </button>
-                                    </div>
-                                    {unpriced ? (
-                                      <span style={{ fontSize: '0.62rem', fontWeight: 700, whiteSpace: 'nowrap', color: 'var(--text-amber-700)', border: '1px solid var(--border)', background: 'var(--bg-amber-tint)', borderRadius: 999, padding: '0.05rem 0.45rem' }}>No prices yet</span>
-                                    ) : null}
-                                  </div>
-                                  <div style={{ fontSize: '0.92rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: unpriced ? 'var(--text-muted)' : undefined }}>{rev != null ? fmtM(rev) : '…'}</div>
-                                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', marginBottom: '0.4rem' }}>
-                                    {m == null ? '—' : `${Math.round(m * 100)}% margin · profit ${fmtM((rev ?? 0) - totalCost)}`}
-                                  </div>
-                                  {unpriced && viewing && copySource ? (
-                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-amber-700)', marginTop: '0.25rem' }}>
-                                      Start pricing:{' '}
-                                      <button
-                                        type="button"
-                                        disabled={wbCopyingPrices}
-                                        onClick={(e) => { e.stopPropagation(); void copyPricesIntoViewedScenario(copySource.id) }}
-                                        style={{ font: 'inherit', fontSize: '0.7rem', padding: 0, border: 'none', background: 'none', color: 'var(--text-amber-700)', textDecoration: 'underline', cursor: wbCopyingPrices ? 'wait' : 'pointer' }}
-                                      >
-                                        {wbCopyingPrices ? 'copying…' : `copy prices from ${copySource.name}`}
-                                      </button>{' '}
-                                      or use the solver below.
-                                    </div>
-                                  ) : null}
-                                  {/* v2.2203 (option 1): the footer answers "who sees this price?" and carries the actions. */}
-                                  {(() => {
-                                    const linkStyle: React.CSSProperties = { font: 'inherit', fontSize: '0.66rem', fontWeight: 600, padding: 0, border: 'none', background: 'none', cursor: 'pointer', textDecoration: 'underline', color: 'inherit', whiteSpace: 'nowrap' }
-                                    const footBase: React.CSSProperties = { margin: 'auto -0.75rem 0', padding: '0.26rem 0.7rem', borderTop: '1px solid var(--border)', borderRadius: '0 0 9px 9px', fontSize: '0.66rem', display: 'flex', alignItems: 'center', gap: '0.3rem 0.55rem', flexWrap: 'wrap', marginTop: 'auto' }
-                                    if (isCustomerFacing) {
-                                      return (
-                                        <div style={{ ...footBase, background: 'var(--bg-green-100)', color: 'var(--text-emerald-800)', fontWeight: 700 }}>
-                                          ★ The price on their letter
-                                        </div>
-                                      )
-                                    }
-                                    if (unpriced) {
-                                      return (
-                                        <div style={{ ...footBase, background: 'var(--bg-subtle)', color: 'var(--text-muted)' }}>
-                                          Only you see this
-                                        </div>
-                                      )
-                                    }
-                                    return (
-                                      <div style={{ ...footBase, ...(offered ? { background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', fontWeight: 600 } : { background: 'var(--bg-subtle)', color: 'var(--text-muted)' }) }}>
-                                        <span style={{ whiteSpace: 'nowrap' }}>{offered ? 'On their letter · alternate' : 'Only you see this'}</span>
-                                        <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: '0.55rem', whiteSpace: 'nowrap' }}>
-                                          <button type="button" style={linkStyle} title={offered ? 'Take this price off their letter' : 'Add this price to their letter as an alternate — same counts, no new version'} onClick={(e) => { e.stopPropagation(); void setScenarioOffered(v, !offered); window.dispatchEvent(new Event('bid-version-picker-reload')) }}>
-                                            {offered ? 'stop offering' : 'offer as alternate'}
-                                          </button>
-                                          <button type="button" style={linkStyle} title="Make this the ★ price their letter is built on" onClick={(e) => { e.stopPropagation(); void makeScenarioCustomerFacing(v, rev); window.dispatchEvent(new Event('bid-version-picker-reload')) }}>
-                                            ☆ make base
-                                          </button>
-                                        </span>
-                                      </div>
-                                    )
-                                  })()}
-                                </div>
-                              )
-                            })}
-                            {/* v2.2404 (Wendi): same-GC alternates with their OWN takeoff ride the row as
-                                version cards — margin costed from THEIR materials, not the base's. */}
-                            {altVersions.map((av) => {
-                              const d = altVersionData[av.id]
-                              const nums = alternateCardNumbers({
-                                revenue: d?.revenue ?? null,
-                                altMaterials: d?.materials ?? null,
-                                baseMaterials: derived.totalMaterials,
-                                baseTotalCost: totalCost,
-                              })
-                              const inLetter = (av as { include_in_submission?: boolean | null }).include_in_submission === true
-                              const unpricedAlt = d != null && (d.revenue == null || d.revenue === 0)
-                              return (
-                                <div
-                                  key={av.id}
-                                  onClick={() => onSwitchBidVersion(av.id)}
-                                  title="Open this alternate — its own counts and takeoff; the Workbench costs against ITS materials"
-                                  style={{
-                                    flex: '1 1 215px', minWidth: 215, maxWidth: 300, textAlign: 'left', font: 'inherit',
-                                    background: 'var(--surface)', border: '1px solid #0d9488',
-                                    borderRadius: 10, padding: '0.5rem 0.75rem 0', cursor: 'pointer', position: 'relative',
-                                    display: 'flex', flexDirection: 'column',
-                                  }}
-                                >
-                                  <span style={{ position: 'absolute', top: '-0.72rem', left: '0.6rem', display: 'inline-flex', gap: '0.3rem' }}>
-                                    <span style={{ fontSize: '0.64rem', fontWeight: 700, whiteSpace: 'nowrap', color: '#fff', background: '#0d9488', borderRadius: 999, padding: '0.14rem 0.55rem', boxShadow: '0 1px 4px rgba(15, 23, 42, 0.18)' }}>📐 own takeoff</span>
-                                  </span>
-                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.4rem' }}>
-                                    <span style={{ fontSize: '0.8rem', fontWeight: 700, overflowWrap: 'anywhere' }}>{av.name}</span>
-                                    {unpricedAlt ? (
-                                      <span style={{ fontSize: '0.62rem', fontWeight: 700, whiteSpace: 'nowrap', color: 'var(--text-amber-700)', border: '1px solid var(--border)', background: 'var(--bg-amber-tint)', borderRadius: 999, padding: '0.05rem 0.45rem' }}>No prices yet</span>
-                                    ) : null}
-                                  </div>
-                                  <div style={{ fontSize: '0.92rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: unpricedAlt ? 'var(--text-muted)' : undefined }}>
-                                    {d == null ? '…' : d.revenue != null ? fmtM(d.revenue) : '—'}
-                                  </div>
-                                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
-                                    {nums.margin != null ? (
-                                      <>
-                                        <span style={{ fontWeight: 700, color: mColor(nums.margin) }}>{Math.round(nums.margin * 100)}% margin</span>
-                                        {` · profit ${fmtM(nums.profit ?? 0)}`}
-                                      </>
-                                    ) : (
-                                      '—'
-                                    )}
-                                  </div>
-                                  <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', margin: '0.2rem 0 0.4rem' }}>
-                                    {d == null
-                                      ? ''
-                                      : d.materials != null
-                                        ? (
-                                          <>
-                                            Materials {fmtM(d.materials)}
-                                            {nums.materialsDelta != null && nums.materialsDelta !== 0 ? (
-                                              <span style={{ fontWeight: 600, color: nums.materialsDelta < 0 ? 'var(--text-green-600)' : 'var(--text-amber-700)' }}>
-                                                {` · ${nums.materialsDelta < 0 ? '−' : '+'}${fmtM(Math.abs(nums.materialsDelta))} vs base`}
-                                              </span>
-                                            ) : null}
-                                            {' · '}
-                                            <button
-                                              type="button"
-                                              onClick={(e) => {
-                                                e.stopPropagation()
-                                                onSwitchBidVersion(av.id)
-                                                if (selectedBidForPricing) onNavigateBidToTab(selectedBidForPricing, 'takeoffs')
-                                              }}
-                                              style={{ font: 'inherit', fontSize: '0.68rem', fontWeight: 600, padding: 0, border: 'none', background: 'none', cursor: 'pointer', textDecoration: 'underline', color: 'var(--text-link)' }}
-                                            >
-                                              open its takeoff →
-                                            </button>
-                                          </>
-                                        )
-                                        : 'Materials · shared POs (exact model)'}
-                                  </div>
-                                  <div style={{ margin: 'auto -0.75rem 0', padding: '0.26rem 0.7rem', borderTop: '1px solid var(--border)', borderRadius: '0 0 9px 9px', fontSize: '0.66rem', display: 'flex', alignItems: 'center', gap: '0.3rem 0.55rem', flexWrap: 'wrap', ...(inLetter ? { background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', fontWeight: 600 } : { background: 'var(--bg-subtle)', color: 'var(--text-muted)' }) }}>
-                                    {inLetter ? 'On their letter · alternate' : 'Only you see this'}
-                                  </div>
-                                </div>
-                              )
-                            })}
-                            <div style={{ flex: '0 0 auto', alignSelf: 'center' }}>{doorBtn}</div>
-                          </div>
-                          {doorModal}
-                          {ownTakeoffModal}
-                        </>
-                      )
-                    })()}
+                    {cardsMode !== 'none' ? (
+                      <PricingCardsRow
+                        mode={cardsMode}
+                        scenarios={cardScenarios}
+                        altVersions={cardAltVersions}
+                        selectedPricingVersionId={selectedPricingVersionId}
+                        customerFacingPricingId={customerFacingPricingId}
+                        revenueOf={cardRevenueOf}
+                        totalCost={totalCost}
+                        baseMaterials={derived.totalMaterials}
+                        altVersionData={altVersionData}
+                        marginColor={mColor}
+                        copySource={copySourceFor({ scenarios: cardScenarios, starredId: customerFacingPricingId, viewingId: selectedPricingVersionId, revenueOf: cardRevenueOf })}
+                        cloning={wbCloning}
+                        copyingPrices={wbCopyingPrices}
+                        doorOpen={wbVariantDoorOpen}
+                        doorGcLabel={selectedBidVersionId ? shortGc(gcNameForVersion(selectedBidVersionId)) : 'this GC'}
+                        onOpenDoor={() => setWbVariantDoorOpen(true)}
+                        onCloseDoor={() => setWbVariantDoorOpen(false)}
+                        onAnotherPrice={() => setAddPriceOpen({ name: '', fromId: selectedPricingVersionId, offer: true })}
+                        onOwnTakeoff={() => setAddOwnTakeoffOpen({ name: '' })}
+                        onAdopt={() => setAdoptOpen(true)}
+                        ownTakeoff={addOwnTakeoffOpen}
+                        creatingOwnTakeoff={creatingOwnTakeoffAlt}
+                        ownTakeoffGcLabel={shortGc(gcNameForVersion(selectedBidVersionId))}
+                        onOwnTakeoffName={(name) => setAddOwnTakeoffOpen({ name })}
+                        onCancelOwnTakeoff={() => setAddOwnTakeoffOpen(null)}
+                        onCreateOwnTakeoff={(name) => void createOwnTakeoffAlternate(name)}
+                        onView={viewWorkbenchScenario}
+                        onEdit={setPricingEdit}
+                        onMakeBase={(v, rev) => void makeScenarioCustomerFacing(v, rev)}
+                        onSetOffered={(v, offered) => void setScenarioOffered(v, offered)}
+                        onCopyPrices={(sourceId) => void copyPricesIntoViewedScenario(sourceId)}
+                        onOpenAlternate={(id) => onSwitchBidVersion(id)}
+                        onOpenAlternateTakeoff={(id) => {
+                          onSwitchBidVersion(id)
+                          if (selectedBidForPricing) onNavigateBidToTab(selectedBidForPricing, 'takeoffs')
+                        }}
+                      />
+                    ) : null}
                     <div
                       data-tour="workbench-summary"
                       style={{
@@ -3147,7 +2666,7 @@ export function BidsPricingTab({
                               // preview's actions stay on the strip; folding can never hide unsaved work.
                               rightCluster(
                                 <>
-                                  {wbSolverEnd.node}
+                                  {solverEndDoor}
                                   {brushControl}
                                   <button
                                     type="button"
@@ -3294,7 +2813,7 @@ export function BidsPricingTab({
                                 </span>
                                 {rightCluster(
                                   <>
-                                    {wbSolverEnd.node}
+                                    {solverEndDoor}
                                     {restoredChip}
                                     {previewControl}
                                   </>,

@@ -335,4 +335,20 @@ describe('GcOnNoticeModal', () => {
     await settle()
     expect(screen.getByText(/No job with unpaid work names Harborline Builders/)).toBeTruthy()
   })
+
+  it('the title-bar toggle fills the screen and remembers it; a second press restores the window (v2.4065)', async () => {
+    window.localStorage.removeItem('modal_full_screen_gc-on-notice')
+    renderWithProviders(<GcOnNoticeModal {...baseProps} authRole="master_technician" />)
+    const panel = document.querySelector('[data-gc-on-notice-panel]') as HTMLElement
+    expect(panel.style.borderRadius).toBe('10px')
+    const toggle = await screen.findByRole('button', { name: 'Full screen' })
+    fireEvent.click(toggle)
+    expect(panel.style.borderRadius).toBe('0')
+    expect(screen.getByRole('button', { name: 'Back to a window' }).getAttribute('aria-pressed')).toBe('true')
+    expect(window.localStorage.getItem('modal_full_screen_gc-on-notice')).toBe('1')
+    fireEvent.click(screen.getByRole('button', { name: 'Back to a window' }))
+    expect(panel.style.borderRadius).toBe('10px')
+    expect(window.localStorage.getItem('modal_full_screen_gc-on-notice')).toBeNull()
+    await settle()
+  })
 })

@@ -67,6 +67,7 @@ Applied now to $6,400.00 on 210 Maple Ct · 1058 Maple Ct, Invoice 1 of 1, which
 - **Before you type, the newest checks** — often the one they are asking about.
 - **A check recorded without its number** wears a {{chip:yellow|no number}} chip and is found by its amount or its day. Add the number on Edit Job → Payments received and the next search finds it by number.
 - A bill the owner pays on a GC's job is never counted as the GC's money.
+- {{button:outline|🖨 Print the sheet}} prints **where the checks went** for the last twelve months — every payment, where it sits now, what moved, what came in and is not yet on a bill, and where each job stands (billed, paid by, last applied, retainage held, still open; the open total matches the statement). **show all** widens it to every payment on record. {{button:outline|CSV}} downloads the same rows, one per applied line, for a bookkeeper who reconciles in a spreadsheet.
 
 ## The word
 

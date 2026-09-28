@@ -2,15 +2,18 @@
 /**
  * Render smoke for Find a check: the newest checks show before anything is
  * typed, a number or an amount finds the check and reads out where it sits
- * and how it got there, and a miss says what else to try.
+ * and how it got there, a miss says what else to try, and the sheet prints
+ * or downloads for the period.
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import GcFindCheckModal from './GcFindCheckModal'
 import type { GcChecksInputs } from '../../lib/jobs/gcChecksAppliedIo'
 
-const io = vi.hoisted(() => ({ fetch: vi.fn() }))
+const io = vi.hoisted(() => ({ fetch: vi.fn(), print: vi.fn((_html: string) => true) }))
 vi.mock('../../lib/jobs/gcChecksAppliedIo', () => ({ fetchGcChecksInputs: io.fetch }))
+vi.mock('../../lib/jobsDocuments/printWindow', () => ({ openHtmlPrintWindow: io.print }))
+vi.mock('../../lib/formatJobDetailModalDateYmd', () => ({ todayYmdChicago: () => '2026-09-28' }))
 
 const inputs: GcChecksInputs = {
   jobs: [
@@ -73,6 +76,52 @@ describe('GcFindCheckModal', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Close Find a check' }))
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it('prints the sheet for the last twelve months, widens to everything, and downloads the CSV', async () => {
+    io.fetch.mockResolvedValue({
+      ...inputs,
+      jobs: [
+        ...inputs.jobs,
+        {
+          id: 'old',
+          click_number: '900',
+          job_name: 'Old job',
+          job_address: '1 Old Rd',
+          customer_id: 'owner',
+          gc_customer_id: 'gc-1',
+          bill_to_party: 'gc',
+          lien_retainage_held: null,
+          invoices: [{ id: 'old-1', job_id: 'old', sequence_order: 1, amount: 100, status: 'paid', billed_at: '2024-01-01' }],
+          payments: [{ id: 'p0', job_id: 'old', invoice_id: 'old-1', amount: 100, paid_on: '2024-02-01', payment_type: 'check', reference_number: '1' }],
+        },
+      ],
+    })
+    io.print.mockClear()
+    render(<GcFindCheckModal gcId="gc-1" gcName="Structura Builders" onClose={() => {}} />)
+    expect(await screen.findByText(/The sheet: 2 payments since Sep 28, 2025/)).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: '🖨 Print the sheet' }))
+    expect(io.print).toHaveBeenCalledTimes(1)
+    const html = io.print.mock.calls[0]![0]
+    expect(html).toContain('Structura Builders — where your checks were applied')
+    expect(html).toContain('Since Sep 28, 2025 · as of Sep 28, 2026')
+    expect(html).toContain('1 earlier payment is not on this sheet')
+
+    fireEvent.click(screen.getByRole('button', { name: 'show all 3' }))
+    expect(screen.getByText(/The sheet: 3 payments on record/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: '🖨 Print the sheet' }))
+    expect(io.print.mock.calls[1]![0]).toContain('Every payment on record')
+
+    const createObjectURL = vi.fn(() => 'blob:sheet')
+    const revokeObjectURL = vi.fn()
+    Object.assign(URL, { createObjectURL, revokeObjectURL })
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    fireEvent.click(screen.getByRole('button', { name: 'CSV' }))
+    expect(createObjectURL).toHaveBeenCalledTimes(1)
+    expect(click).toHaveBeenCalledTimes(1)
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:sheet')
+    click.mockRestore()
   })
 
   it('says when the read failed', async () => {

@@ -2715,6 +2715,7 @@ export type Database = {
           id: string
           include_materials_by_stage: boolean
           include_payment_schedule: boolean
+          include_schedule_of_values: boolean
           itb_links: Json
           last_contact: string | null
           loss_category: string | null
@@ -2795,6 +2796,7 @@ export type Database = {
           id?: string
           include_materials_by_stage?: boolean
           include_payment_schedule?: boolean
+          include_schedule_of_values?: boolean
           itb_links?: Json
           last_contact?: string | null
           loss_category?: string | null
@@ -2875,6 +2877,7 @@ export type Database = {
           id?: string
           include_materials_by_stage?: boolean
           include_payment_schedule?: boolean
+          include_schedule_of_values?: boolean
           itb_links?: Json
           last_contact?: string | null
           loss_category?: string | null
