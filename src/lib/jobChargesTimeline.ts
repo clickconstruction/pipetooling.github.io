@@ -19,6 +19,8 @@ export type JobChargeSource =
   | 'team_labor'
   | 'sub_labor'
   | 'mercury_card'
+  /** A card charge in the fuel family's tag (punch list #52) — the card stream's fuel, dated by purchase. */
+  | 'fuel'
   | 'supply_house'
   | 'tally_part'
   | 'billed_material'
@@ -27,6 +29,7 @@ export const JOB_CHARGE_SOURCE_META: Record<JobChargeSource, { icon: string; nam
   team_labor: { icon: '👷', name: 'Team labor' },
   sub_labor: { icon: '🔧', name: 'Sub labor' },
   mercury_card: { icon: '💳', name: 'Card charge' },
+  fuel: { icon: '⛽', name: 'Fuel' },
   supply_house: { icon: '🧾', name: 'Supply house invoice' },
   tally_part: { icon: '📦', name: 'Tally part' },
   billed_material: { icon: '🧱', name: 'Other job charge' },
@@ -164,12 +167,18 @@ export type JobChargeEventsInput = {
   }>
   /** One entry per sub-labor job; caller precomputes amount via `laborJobSubCost`. */
   subLabor: Array<{ dateKey: string | null; amount: number; assignedToName: string }>
-  /** Mercury allocations; caller takes `Math.abs(amount)` (parity with partsPerPersonCostSummary). */
+  /**
+   * Mercury allocations the job's parts cost counts (the one card rule, v2.2692: no Internal
+   * Transfers, no charge already counted on a supply-house invoice), each at its signed cost
+   * (`cardChargeCostUsd` — a refund is negative and comes off). `fuel` = the charge is in the
+   * fuel family's tag: it becomes the ⛽ stream (punch list #52).
+   */
   mercury: Array<{
     dateKey: string | null
     amount: number
     counterpartyName: string | null
     attributionDisplayName: string | null
+    fuel?: boolean
   }>
   supplyHouse: Array<{
     dateKey: string | null
@@ -215,7 +224,7 @@ export function buildJobChargeEvents(input: JobChargeEventsInput): JobChargeEven
   for (const m of input.mercury) {
     const who = m.attributionDisplayName ? ` (${m.attributionDisplayName})` : ''
     events.push({
-      source: 'mercury_card',
+      source: m.fuel ? 'fuel' : 'mercury_card',
       dateKey: m.dateKey,
       amount: m.amount,
       label: `${m.counterpartyName || 'Card charge'}${who}`,

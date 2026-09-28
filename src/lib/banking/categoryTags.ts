@@ -169,3 +169,11 @@ export function categoryTagForCharge(
   const byCat = lookups.tagIdByCategory.get(key)
   return byCat ? (lookups.tagsById.get(byCat) ?? null) : null
 }
+
+/**
+ * The fuel family's tag (Wheels v2.2735, the job timeline's ⛽ stream): the seeded
+ * `fuel_vehicle` family, else the first tag whose name says fuel. Null when neither exists.
+ */
+export function pickFuelTag(tags: readonly CategoryTagRow[]): CategoryTagRow | null {
+  return tags.find((t) => t.default_key === 'fuel_vehicle') ?? tags.find((t) => /fuel/i.test(t.name)) ?? null
+}

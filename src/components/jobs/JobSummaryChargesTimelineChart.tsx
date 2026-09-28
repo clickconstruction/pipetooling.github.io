@@ -12,6 +12,7 @@
  * end-of-line value labels. Data shaping lives in the pure kernel
  * `src/lib/jobChargesTimeline.ts` (unit-tested); this component only adapts props and renders.
  */
+import { cardEventRowsFromJobSummaryRows } from '../../lib/jobs/jobCardChargeEvents'
 import { useMemo, useState } from 'react'
 import {
   Area,
@@ -342,12 +343,8 @@ export default function JobSummaryChargesTimelineChart({
         assignedToName: lj.assigned_to_name,
       })),
       mercury: mercuryNeeded
-        ? (mercuryRows ?? []).map((m) => ({
-            dateKey: toYmd(m.mercury_transactions?.posted_at),
-            amount: Math.abs(m.amount),
-            counterpartyName: m.mercury_transactions?.counterparty_name ?? null,
-            attributionDisplayName: m.attributionDisplayName,
-          }))
+        ? // The row's parts cost's rule, signed, fuel as its own ⛽ stream — so the line ends on it.
+          cardEventRowsFromJobSummaryRows(mercuryRows ?? [], toYmd)
         : [],
       supplyHouse: invoicesNeeded
         ? (invoiceLines ?? []).map((l) => ({
