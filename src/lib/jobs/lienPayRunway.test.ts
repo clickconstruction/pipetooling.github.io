@@ -43,6 +43,18 @@ describe('buildLienPayRunway', () => {
     expect(buildLienPayRunway(input({ openBalance: 0 })).state).toBe('none')
     expect(buildLienPayRunway(input({ filedYmd: '2026-09-20', releasedYmd: '2026-09-27' })).state).toBe('none')
     expect(buildLienPayRunway(input({ lastWorkYmd: null })).state).toBe('none')
+    expect(buildLienPayRunway(input({ lastWorkYmd: null, createdAt: '' })).state).toBe('none')
+  })
+
+  it('no clock hours: the creation month stands in, as on the Lien desk, and the hover says so', () => {
+    const r = buildLienPayRunway(input({ lastWorkYmd: null, createdAt: '2026-07-03T15:20:00Z' }))
+    expect(r.state).toBe('no_pay')
+    expect(r.datedFromCreation).toBe(true)
+    expect(r.lienByYmd).toBe('2026-10-15')
+    expect(r.title).toContain('dated from the job’s creation · no clock hours')
+    const worked = buildLienPayRunway(input({ lastWorkYmd: '2026-07-20', createdAt: '2026-03-01T00:00:00Z' }))
+    expect(worked.datedFromCreation).toBe(false)
+    expect(worked.title).toContain('approved hours')
   })
 
   it('room: the pay dot lands before the flag, the run between them is green', () => {

@@ -52,12 +52,11 @@ export default function LienPayRunway({
     padding: 0,
     cursor: onOpen ? 'pointer' : 'default',
     textAlign: 'center',
-    lineHeight: 1.25,
+    lineHeight: 1.3,
     alignSelf: 'center',
-    whiteSpace: 'nowrap',
+    // The sentence wraps at its separators in the 13rem table column (v2.4051): a clipped verdict is no verdict.
+    whiteSpace: 'normal',
     maxWidth: '100%',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
     fontVariantNumeric: 'tabular-nums',
   }
   const words = (

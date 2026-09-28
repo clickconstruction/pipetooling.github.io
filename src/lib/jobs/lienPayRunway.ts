@@ -1,5 +1,6 @@
 import { filingDeadlineForMonth } from './lienDeadlines'
 import { formatYmdMonthDay } from './billedExpectedPay'
+import { DATED_FROM_CREATION_WORDS } from './lienDesk'
 
 /**
  * The lien runway (v2.4051): does the money land before the lien dies?
@@ -14,7 +15,8 @@ import { formatYmdMonthDay } from './billedExpectedPay'
  * Rules, in order:
  * - nothing open, or a filed affidavit released → nothing to draw;
  * - an affidavit on file → "lien filed <day>", the pay dot alone;
- * - no last work month → nothing (the clock has no basis yet);
+ * - no last work month → the job's creation month stands in, as on the Lien
+ *   desk (`datedFromCreation`); with neither, nothing;
  * - the window already closed → "lien gone · window closed <day>";
  * - a pay date after the flag → "file first";
  * - a pay date before the flag → "N d of room";
@@ -34,6 +36,8 @@ export type LienRunwayInput = {
   openBalance: number
   /** The job's last work date (latest approved clock session); '' / null when none. */
   lastWorkYmd: string | null | undefined
+  /** The job's creation instant — the month that stands in when there are no clock hours (the Lien desk's rule). */
+  createdAt?: string | null
   /** '' | 'residential' | 'non_residential' from the property record. */
   propertyKind: string
   /** The expected-pay date from `billedExpectedPayModel` (the GC's word, a promise, or the pay-speed estimate); null when none. */
@@ -70,6 +74,8 @@ export type LienPayRunway = {
   daysToLien: number | null
   /** The residential date is shown because the property kind is not set. */
   kindAssumed: boolean
+  /** No clock hours — the clock counts from the month the job was created. */
+  datedFromCreation: boolean
   /** The right-edge label under the track ('' when there is no track). */
   endLabel: string
   marks: LienRunwayMarks | null
@@ -89,6 +95,7 @@ const NONE: LienPayRunway = {
   lienByYmd: '',
   daysToLien: null,
   kindAssumed: false,
+  datedFromCreation: false,
   endLabel: '',
   marks: null,
   sortKey: Number.MAX_SAFE_INTEGER,
@@ -131,11 +138,12 @@ function daysWords(n: number): string {
 
 const KIND_ASSUMED_NOTE = 'Property kind is not set, so the earlier (residential) date is shown — set the kind on the property record to confirm.'
 
-function basisWords(lastWorkYmd: string, propertyKind: string, kindAssumed: boolean): string {
+function basisWords(lastWorkYmd: string, propertyKind: string, kindAssumed: boolean, datedFromCreation: boolean): string {
   const month = new Date(`${lastWorkYmd.slice(0, 7)}-15T12:00:00Z`).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })
   const nth = kindAssumed || propertyKind === 'residential' ? '3rd' : '4th'
   const kindWords = kindAssumed ? 'residential assumed' : propertyKind === 'residential' ? 'residential' : 'commercial'
-  return `Counts from the last work month (${month}, approved hours) · ${kindWords}: the 15th of the ${nth} month after (§ 53.052)`
+  const from = datedFromCreation ? `${month}, ${DATED_FROM_CREATION_WORDS}` : `${month}, approved hours`
+  return `Counts from the last work month (${from}) · ${kindWords}: the 15th of the ${nth} month after (§ 53.052)`
 }
 
 export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
@@ -157,12 +165,15 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
     }
   }
 
-  const lastWork = (input.lastWorkYmd ?? '').trim().slice(0, 10)
+  const worked = (input.lastWorkYmd ?? '').trim().slice(0, 10)
+  const created = (input.createdAt ?? '').trim().slice(0, 10)
+  const datedFromCreation = !/^\d{4}-\d{2}-\d{2}$/.test(worked) && /^\d{4}-\d{2}-\d{2}$/.test(created)
+  const lastWork = datedFromCreation ? created : worked
   const { ymd: lienBy, kindAssumed } = lienByForJob(lastWork, input.propertyKind)
   if (!lienBy) return NONE
   const daysToLien = daysBetweenYmd(today, lienBy)
   if (daysToLien == null) return NONE
-  const basis = basisWords(lastWork, input.propertyKind, kindAssumed)
+  const basis = basisWords(lastWork, input.propertyKind, kindAssumed, datedFromCreation)
   const kindNote = kindAssumed ? ` ${KIND_ASSUMED_NOTE}` : ''
   const lienWords = formatYmdMonthDay(lienBy)
 
@@ -177,6 +188,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       lienByYmd: lienBy,
       daysToLien,
       kindAssumed,
+      datedFromCreation,
       sortKey: 2_000_000 + daysToLien,
     }
   }
@@ -203,6 +215,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       lienByYmd: lienBy,
       daysToLien,
       kindAssumed,
+      datedFromCreation,
       endLabel,
       marks: { endDays, pay: { days: livePay, pct: pct(livePay) }, lien: lienMark, gap: { fromPct: lienMark.pct, toPct: pct(livePay), kind: 'short' } },
       sortKey: daysToLien,
@@ -220,6 +233,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       lienByYmd: lienBy,
       daysToLien,
       kindAssumed,
+      datedFromCreation,
       endLabel,
       marks: { endDays, pay: { days: livePay, pct: pct(livePay) }, lien: lienMark, gap: { fromPct: pct(livePay), toPct: lienMark.pct, kind: 'room' } },
       sortKey: 1_000_000 + daysToLien,
@@ -237,6 +251,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
     lienByYmd: lienBy,
     daysToLien,
     kindAssumed,
+    datedFromCreation,
     endLabel,
     marks: { endDays, pay: null, lien: lienMark, gap: null },
     sortKey: 500_000 + daysToLien,

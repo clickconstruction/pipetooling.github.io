@@ -1125,6 +1125,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         todayYmd,
         openBalance: Math.max(0, Number(job.revenue ?? 0) - Number(job.payments_made ?? 0)),
         lastWorkYmd: job.last_work_date ?? null,
+        createdAt: job.created_at ?? null,
         propertyKind: clock.propertyKind,
         expectedPayYmd: model?.expectedYmd ?? null,
         filedYmd: clock.filedYmd,
