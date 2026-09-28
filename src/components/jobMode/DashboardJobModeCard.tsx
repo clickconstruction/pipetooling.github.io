@@ -27,6 +27,9 @@ import JobModeAdvanceNotesModal, {
   type JobModeAdvanceDestination,
 } from './JobModeAdvanceNotesModal'
 import JobModeDetailsSection from './JobModeDetailsSection'
+import { useQuickEstimateDoor } from '../../hooks/useQuickEstimateDoor'
+import { QuickEstimateWizard } from '../estimates/QuickEstimateWizard'
+import { WriteUpChangeGlyph } from '../dashboard/dashboardJobRowShared'
 import { scheduleDispatchWeekUrl } from '../../lib/scheduleDispatchDayLink'
 
 type LeaveReportJobPick = {
@@ -805,6 +808,13 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
   const leaveDisabledReason = leaveReportDisabledReason()
   const leaveDisabled = leaveDisabledReason !== null
 
+  /** Write up a change (v2.4057): a quiet link under the action row, on the clocked-in job or the one ready to start. */
+  const writeUpChangeDoor = useQuickEstimateDoor(userId, role)
+  const [writeUpChangeOpen, setWriteUpChangeOpen] = useState(false)
+  const writeUpChangeJobId =
+    leaveReportTarget?.id ??
+    (picked.state === 'not-clocked-in-with-schedule' && picked.nextBlock ? picked.nextBlock.job_id : null)
+
   return (
     <div style={cardWrap}>
       {loading ? (
@@ -975,6 +985,21 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
           Turnaway — not ready / not home
         </button>
       </div>
+      {!loading && writeUpChangeDoor && writeUpChangeJobId ? (
+        <button
+          type="button"
+          style={{ ...quietClockOutBtn, color: 'var(--text-link)', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
+          aria-label="Write up a change"
+          title="Write up a change on this job — extra work the customer asked for"
+          onClick={() => setWriteUpChangeOpen(true)}
+        >
+          <WriteUpChangeGlyph size={16} />
+          Write up a change
+        </button>
+      ) : null}
+      {writeUpChangeOpen && writeUpChangeJobId ? (
+        <QuickEstimateWizard open initialJobId={writeUpChangeJobId} onClose={() => setWriteUpChangeOpen(false)} />
+      ) : null}
       {!loading && openSession && canClockOut && rightButton.kind !== 'wrap-up' ? (
         <button
           type="button"

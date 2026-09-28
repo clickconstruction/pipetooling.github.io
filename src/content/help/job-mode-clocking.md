@@ -2,7 +2,7 @@
 title: clock in and out with Job Mode
 category: Field Work
 roles: subcontractor, helpers, superintendent, master_technician
-keywords: clock in, clock out, job mode, time tracking, leave report, next job, my requests, dispatch answered
+keywords: write up a change, change order, clock in, clock out, job mode, time tracking, leave report, next job, my requests, dispatch answered
 order: 10
 ---
 Job Mode turns the Dashboard into one big card built for working in the field: it shows your current job, your next scheduled job, and big buttons for the things you actually do on site.
@@ -131,3 +131,7 @@ With Job Mode on, a tab bar pins to the bottom of the screen — everything on i
 
 - Clock into the job you're physically working on — switching is one tap, and accurate time keeps everyone's numbers right.
 - Leave a report before you head out. It takes under a minute and saves phone calls later.
+
+## Extra work the customer asked for
+
+If you switched **Write up a change from the field** on in Settings, a small **Write up a change** link sits under the card's buttons. It opens the write-up already on the job you're clocked into (see *write up a change order from the field*).

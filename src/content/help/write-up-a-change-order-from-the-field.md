@@ -10,6 +10,7 @@ You're on a job and the customer says "while you're here…" — the scope just 
 
 1. Go to {{icon:gear}} **Settings → Dashboard & alerts** and check {{chip:yellow|Write up a change from the field}}. It's off by default.
 2. Every job in your Dashboard's **My Schedule** now carries a paper-and-pencil square beside **Leave Report**, and a small **Write up a change on another job, or new work** link sits under the list.
+3. The same paper-and-pencil sits in the **Job window**'s icon row (any tab, before ⚙), and in **Job Mode** a **Write up a change** link sits under the card's buttons for the job you're clocked into. Every door opens the write-up already on that job.
 
 :::example A job on your day
 {{button:gray|Leave Report}} {{button:blue|Update % done}} {{button:gray|📝}}
