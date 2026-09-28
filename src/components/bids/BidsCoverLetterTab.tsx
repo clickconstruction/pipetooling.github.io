@@ -39,6 +39,7 @@ import {
   DEFAULT_TERMS_AND_WARRANTY,
   DEFAULT_EXCLUSIONS,
 } from '../../lib/bidDocuments/coverLetter'
+import { effectiveCoverLetterWording } from '../../lib/bidDocuments/coverLetterWording'
 import { computeBidPricingRows, coverLetterTotalsFromPricingRows } from '../../lib/bidPricingRowCalculations'
 import { submissionHiddenIdsForVersion } from '../../lib/bids/submissionHides'
 import { defaultGcPacketForActiveVersion, groupSectionsByEffectiveGc, resolveSingleLetterGc, letterGcDiffersFromBid, versionGcOverrideMap, type BidVersionGcRow, type GcPacketCustomer } from '../../lib/bids/coverLetterGcPackets'
@@ -935,6 +936,10 @@ export function BidsCoverLetterTab({
         const exclusionsDisplay = coverLetterExclusionsByBid[bid.id] ?? orgCoverLetterDefaults.exclusions ?? DEFAULT_EXCLUSIONS
         const terms = coverLetterTermsByBid[bid.id] ?? orgCoverLetterDefaults.terms ?? ''
         const termsDisplay = coverLetterTermsByBid[bid.id] ?? orgCoverLetterDefaults.terms ?? DEFAULT_TERMS_AND_WARRANTY
+        // The bid room hides an empty block where the letter prints the built-in wording, so the
+        // room is handed the wording the letter resolves to, never the raw text.
+        const roomExclusions = effectiveCoverLetterWording({ perBid: coverLetterExclusionsByBid[bid.id], orgDefault: orgCoverLetterDefaults.exclusions, builtIn: DEFAULT_EXCLUSIONS })
+        const roomTerms = effectiveCoverLetterWording({ perBid: coverLetterTermsByBid[bid.id], orgDefault: orgCoverLetterDefaults.terms, builtIn: DEFAULT_TERMS_AND_WARRANTY })
         const designDrawingPlanDateFormatted = (coverLetterIncludeDesignDrawingPlanDateByBid[bid.id] !== false && bid.design_drawing_plan_date) ? formatDesignDrawingPlanDate(bid.design_drawing_plan_date) : null
         // The Design Drawings Plan Date and Fixtures-per-plan toggles are independent:
         // each is included strictly per its own checkbox (one, the other, both, or none).
@@ -1283,8 +1288,8 @@ export function BidsCoverLetterTab({
                                     : [{ name: 'Base bid', isAlternate: false, revenueSum: headlineAmount, fixtureRows }]
                                 }
                                 inclusions={inclusions}
-                                exclusions={exclusions}
-                                terms={terms}
+                                exclusions={roomExclusions}
+                                terms={roomTerms}
                                 crmCustomerId={bid.customers?.id ?? null}
                                 onFirstLinkSent={() => void markSentTodaySimple(bid.id, headlineAmount, 'room', bid.bid_date_sent ?? null)}
                                 open={roomOpenByKey[`${bid.id}:own`] ?? false}
@@ -1419,8 +1424,8 @@ export function BidsCoverLetterTab({
                                 serviceTypeName={serviceTypeName}
                                 sections={gcSections.map((s) => ({ name: s.name, isAlternate: s.isAlternate, revenueSum: s.revenueSum, fixtureRows: s.fixtureRows }))}
                                 inclusions={inclusions}
-                                exclusions={exclusions}
-                                terms={terms}
+                                exclusions={roomExclusions}
+                                terms={roomTerms}
                                 crmCustomerId={selectedKey === 'bid-default' ? bid.customers?.id ?? null : selectedKey}
                                 onFirstLinkSent={() => void markSentToday(bid.id, gcSections.filter((s) => !s.offeredPricingId), headlineAmount > 0 ? headlineAmount : null, { isOwnGc: !multi || selectedKey === 'bid-default', currentDateSent: bid.bid_date_sent ?? null, lane: 'room' })}
                                 open={roomOpenByKey[`${bid.id}:${selectedKey}`] ?? false}
