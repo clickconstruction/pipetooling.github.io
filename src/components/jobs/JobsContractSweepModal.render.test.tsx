@@ -487,13 +487,13 @@ describe('JobsContractSweepModal', () => {
   it('full screen is three columns: the paper leaves the pane for its own column and the pane keeps what was typed; Back to a window puts it back (v2.4049)', async () => {
     window.localStorage.removeItem('modal_full_screen_contract-sweep')
     mount()
-    await waitFor(() => expect(screen.getByTestId('sweep-pane')).toBeTruthy())
+    // The pane's boxes land once the selected job's draft has been read — wait for the scope box, not the pane (CI is slower than a laptop).
+    const scope = (await screen.findByLabelText('Scope — one line per item')) as HTMLTextAreaElement
     const pane = screen.getByTestId('sweep-pane')
     const grid = screen.getByTestId('sweep-grid')
     // In a window the paper ends the pane.
     expect(pane.contains(screen.getByTestId('sweep-paper'))).toBe(true)
     expect(grid.getAttribute('data-full-screen')).toBeNull()
-    const scope = screen.getByLabelText('Scope — one line per item') as HTMLTextAreaElement
     fireEvent.change(scope, { target: { value: 'Rough-in and top-out' } })
 
     fireEvent.click(screen.getByRole('button', { name: 'Full screen' }))
