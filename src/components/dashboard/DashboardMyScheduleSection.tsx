@@ -32,6 +32,7 @@ import {
   JOB_ROW_REPORT_CHIP_STYLE,
   ReportFileGlyph,
   jobCardMobileActionButtonStyle,
+  WriteUpChangeGlyph,
 } from './dashboardJobRowShared'
 
 export type DashboardMyScheduleSectionProps = {
@@ -77,6 +78,13 @@ export type DashboardMyScheduleSectionProps = {
   }) => void
   /** Re-fetches the schedule engine after a self-schedule add/move/remove (v2.1568). */
   reloadSubSchedule?: () => void
+  /**
+   * Write up a change (v2.4047): opens the Quick Estimate wizard on this job (a block's
+   * paper-and-pencil square) or with no job (the quiet link under the days — another job,
+   * or new work for someone else). Absent when the person has not switched the door on
+   * (Settings → Dashboard & alerts) or their role cannot write one up.
+   */
+  onWriteUpChange?: (jobId: string | null) => void
 }
 
 /**
@@ -209,6 +217,7 @@ export function DashboardMyScheduleSection({
   setViewReportsJob,
   setLeaveReportJob,
   reloadSubSchedule,
+  onWriteUpChange,
 }: DashboardMyScheduleSectionProps) {
   const jobDetailModal = useJobDetailModal()
   const { user: authUser } = useAuth()
@@ -679,7 +688,8 @@ export function DashboardMyScheduleSection({
                               which === 'today' &&
                               blockJobId != null &&
                               (isSubcontractorLikeRole(role) || role === 'superintendent')
-                            if (!canReport && !canUpdate) return null
+                            const canWriteUp = onWriteUpChange != null && blockJobId != null
+                            if (!canReport && !canUpdate && !canWriteUp) return null
                             const ended = canUpdate
                               ? isScheduleBlockEnded(b.work_date, b.time_end, subScheduleDayPartition.todayYmd, nowHm)
                               : false
@@ -730,6 +740,23 @@ export function DashboardMyScheduleSection({
                                     Update % done
                                   </button>
                                 ) : null}
+                                {canWriteUp ? (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      onWriteUpChange(blockJobId)
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter' || e.key === ' ') e.stopPropagation()
+                                    }}
+                                    title="Write up a change on this job"
+                                    aria-label="Write up a change"
+                                    style={{ ...jobCardMobileActionButtonStyle('ghost'), flex: '0 0 44px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                  >
+                                    <WriteUpChangeGlyph />
+                                  </button>
+                                ) : null}
                               </div>
                             )
                           })()}
@@ -743,6 +770,18 @@ export function DashboardMyScheduleSection({
           })}
         </>
       )}
+      {onWriteUpChange ? (
+        // The wizard's other doors (v2.4047): a job that is not on your day, or new work for someone else.
+        <div style={{ marginTop: '0.75rem', textAlign: 'center' }}>
+          <button
+            type="button"
+            onClick={() => onWriteUpChange(null)}
+            style={{ minHeight: 36, padding: '0 0.5rem', border: 'none', background: 'none', color: 'var(--text-link)', font: 'inherit', fontSize: '0.8125rem', cursor: 'pointer' }}
+          >
+            Write up a change on another job, or new work
+          </button>
+        </div>
+      ) : null}
       {callModal ? (
         <CallCustomerModal
           phone={callModal.phone}
