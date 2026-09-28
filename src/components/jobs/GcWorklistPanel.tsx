@@ -29,6 +29,8 @@ type Props = {
   onWord: (row: GcWorklistRow) => void
   onUndoMark: (row: GcWorklistRow) => void
   onOpenHistory: (row: GcWorklistRow) => void
+  /** One account man's GCs on one sheet — one call, one save. */
+  onOpenCallSheet: (group: GcWorklistGroup) => void
 }
 
 const pillBase: CSSProperties = {
@@ -76,6 +78,7 @@ export default function GcWorklistPanel({
   onWord,
   onUndoMark,
   onOpenHistory,
+  onOpenCallSheet,
 }: Props) {
   if (worklist.groups.length === 0) return null
 
@@ -176,6 +179,16 @@ export default function GcWorklistPanel({
             <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: g.open === 0 ? 'var(--text-green-800)' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>
               {g.open === 0 ? 'all done ✓' : `${g.open} to do`}
             </span>
+            {canAct && g.kind !== 'under_line' ? (
+              <button
+                type="button"
+                onClick={() => onOpenCallSheet(g)}
+                title={g.kind === 'owner' && g.ownerUserId !== authUserId ? `One call to ${userNameById(g.ownerUserId)} — fill in every GC’s word on one sheet` : 'Fill in every GC’s word on one sheet'}
+                style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 700, padding: '0.12rem 0.6rem', borderRadius: 4, border: '1px solid var(--border-blue)', background: 'var(--surface)', color: 'var(--text-blue-700)', cursor: 'pointer', whiteSpace: 'nowrap' }}
+              >
+                <span aria-hidden>📞</span> Call sheet
+              </button>
+            ) : null}
           </div>
           {g.rows.map((r) => {
             const last = lastWordByGc.get(r.gcId)

@@ -2,7 +2,7 @@
 name: "GC Review for one operator: the assistant drives, the account man is the source"
 number: 49
 group: ready
-status: steps 1–2 shipped v2.3950 / v2.3954 / v2.3957 · migration 20260928032427 waits on db push · steps 3–6 on the train · step 7 waits on an owner call
+status: steps 1–3 shipped v2.3950 / v2.3954 / v2.3957 / v2.3959 · migration 20260928032427 waits on db push · steps 4–6 on the train · step 7 waits on an owner call
 summary: >
   The weekly statement round was built for the account man opening the app. Only the assistant
   works GC Review; when the knowledge is his, she phones him and types the answer in. So the
@@ -10,10 +10,10 @@ summary: >
   keyboard: one worklist (Check · Send · Word per GC, grouped by who to ask), the account man's
   word recorded as his with who entered it, a call sheet for one call per account man, check and
   send from the row, broken promises in red, and the prompts re-aimed at the office.
-next: Apply migration 20260928032427 (`bash scripts/db-push.sh`), then step 3 — the call sheet.
+next: Apply migration 20260928032427 (`bash scripts/db-push.sh`), then step 4 — check & send from the row, with where replies go.
 size: S–M · M · M · S–M · S · M · L
 blocker: none for steps 2–6. Step 7 needs the owner's answer — is the phone call a cost or the point?
-ver: v2.3950 · v2.3954 · v2.3957
+ver: v2.3950 · v2.3954 · v2.3957 · v2.3959
 opinion: build 1–6 in order; hold 7 until the call sheet has run a few weeks.
 ---
 
@@ -49,8 +49,8 @@ Kept: a statement never goes out unchecked; the app never emails a GC on its own
 |---|---|---|
 | 1 | The worklist in place of the rounds panel; the sender card retired; one mark holds the statement and the word (`mergeRoundMarkWrite`) | shipped v2.3950 |
 | 2 | Whose word — `gc_statement_round_marks` keeps the source beside who entered it; the form asks; every display reads it | shipped v2.3954 (migration) + v2.3957 (client) |
-| 3 | The call sheet — one account man's GCs, answers inline, one save, printable | next |
-| 4 | Check & send from the row, "Replies go to" (`send-gc-statement-email`) | |
+| 3 | The call sheet — one account man's GCs, answers inline, one save, printable; `payPromiseStatus` | shipped v2.3959 |
+| 4 | Check & send from the row, "Replies go to" (`send-gc-statement-email`) | next |
 | 5 | Broken promises — a passed pay-by date with money open turns red and sorts first | |
 | 6 | Prompts re-aimed — Pipeline card, Dashboard row, morning email to the office; Start round and the per-sender email retire | |
 | 7 | Ask without a call — a tokened page the account man answers from his phone | owner call |

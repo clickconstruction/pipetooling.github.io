@@ -2,7 +2,7 @@
 title: run your weekly GC statement round
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: gc statement, round, scheduled sends, what went out, lane, duplicate, cancel, certify, sent it, mark sent, text, call, note, send history, personal email, outstanding, weekly, sender, gc review, sign off, email me my round, morning email, dashboard, needs you, send from the app, sender card, as they see it, reassign, undo, spoke with them, contacted, temperature, hot, warm, cool, cold, temperature board, pays by, account man
+keywords: gc statement, round, call sheet, worklist, whose word, account man, no change, promised, late, scheduled sends, what went out, lane, duplicate, cancel, certify, sent it, mark sent, text, call, note, send history, personal email, outstanding, weekly, sender, gc review, sign off, email me my round, morning email, dashboard, needs you, send from the app, sender card, as they see it, reassign, undo, spoke with them, contacted, temperature, hot, warm, cool, cold, temperature board, pays by, account man
 ---
 GC Review opens on **This week's GCs** — one list of every GC with a balance, and three steps on each row: **Check** the bills, **Send** the statement, write down the **Word** (where the GC stands). Whoever is at the keyboard works every row; the GCs are grouped by the **account man** who knows them, so one call to him covers his group. The app never emails a GC on its own initiative — only when a person presses Send or sets up a schedule.
 
@@ -49,6 +49,24 @@ The word is the account man's read of the GC, and you can take it in any order �
 {{chip:yellow|warm · Thu · Malachi}} — entered by Taunya. His read shows as his on the GC's header, the Temperature board and What went out; your name stays beside it as the person who wrote it down.
 :::
  A word written after the statement keeps the statement's day and how it went out; a statement sent after the word keeps the read, its sentence and the pay date.
+
+## One call, one sheet
+
+Seven of Malachi's GCs are seven questions for one phone call. Tap {{button:outline-blue|📞 Call sheet}} on his group:
+
+:::example The sheet
+**Knight Contracting** · $26,000 · oldest 41d · {{chip:red|promised Sep 20 — 7 days late}}
+Last word Sep 18 · warm · Malachi · “Check run is the 20th.”
+{{chip:gray|Hot}} {{chip:gray|Warm}} {{chip:blue|Cool}} {{chip:gray|Cold}} · *Missed the 20th, now says the 10th.* · Oct 10
+:::
+
+- The GCs that broke a promise come first, then the ones with no word yet.
+- Fill a row as he answers: the temperature, the sentence, the date. **A row you leave blank is left alone.** A row you start needs both a temperature and a sentence.
+- **no change** repeats the last read and its pay date for a quiet week. It is allowed once — after a "no change", the next word needs a fresh sentence.
+- At the bottom, **Whose word** is already the account man; pick how you heard it. {{button:blue|Save 3 answers}} writes them all.
+- {{button:outline|🖨 Print sheet}} prints the list with room to write, for a call away from the desk.
+
+Saving a word never marks a statement sent.
 
 ## Start round, from the Dashboard or the Pipeline
 
