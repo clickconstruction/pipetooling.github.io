@@ -191,7 +191,16 @@ const coBadgeStyle = (isCO: boolean): CSSProperties => ({
   color: isCO ? 'var(--text-amber-800)' : 'var(--text-blue-700)',
 })
 
-export function QuickEstimateWizard({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function QuickEstimateWizard({
+  open,
+  onClose,
+  initialJobId = null,
+}: {
+  open: boolean
+  onClose: () => void
+  /** A door that already knows the job (v2.4047: a My Schedule block's Write up a change) — skips "What are you writing up?" and "Which job is it on?". */
+  initialJobId?: string | null
+}) {
   const { user, role } = useAuth()
   const { showToast } = useToastContext()
 
@@ -302,6 +311,35 @@ export function QuickEstimateWizard({ open, onClose }: { open: boolean; onClose:
       cancelled = true
     }
   }, [open, user?.id])
+
+  /* ---------- a door that knows the job (v2.4047) ---------- */
+
+  const openRef = useRef(open)
+  openRef.current = open
+  const seededJobRef = useRef<string | null>(null)
+  const goWorkFromJobRef = useRef<((job: WizardJob | null) => Promise<void>) | null>(null)
+  useEffect(() => {
+    if (!open) {
+      seededJobRef.current = null
+      return
+    }
+    if (!initialJobId || !user?.id || seededJobRef.current === initialJobId || estimateIdRef.current) return
+    seededJobRef.current = initialJobId
+    void (async () => {
+      const { data } = await supabase
+        .from('jobs_ledger')
+        .select('id, hcp_number, job_name, job_address, customer_id')
+        .eq('id', initialJobId)
+        .maybeSingle()
+      if (!openRef.current) return
+      const j = data as { id: string; hcp_number: string | null; job_name: string | null; job_address: string | null; customer_id: string | null } | null
+      if (!j) {
+        seededJobRef.current = null
+        return
+      }
+      await goWorkFromJobRef.current?.({ id: j.id, hcp: j.hcp_number ?? '', name: j.job_name ?? '', address: j.job_address ?? '', customerId: j.customer_id, day: null })
+    })()
+  }, [open, initialJobId, user?.id])
 
   /* ---------- "a different job…" search ---------- */
 
@@ -563,6 +601,8 @@ export function QuickEstimateWizard({ open, onClose }: { open: boolean; onClose:
     [ensureDraft],
   )
 
+  goWorkFromJobRef.current = goWorkFromJob
+
   const goWorkFromCustomer = useCallback(
     async (customer: WizardCustomer | null) => {
       setBusy(true)
@@ -685,7 +725,7 @@ export function QuickEstimateWizard({ open, onClose }: { open: boolean; onClose:
         if (e.target === e.currentTarget) closeAndKeep()
       }}
     >
-      <div role="dialog" aria-modal="true" aria-label="Estimate/Change Order" style={sheetStyle}>
+      <div role="dialog" aria-modal="true" aria-label="Write up a change" style={sheetStyle}>
         <div
           style={{
             display: 'flex',
@@ -696,7 +736,7 @@ export function QuickEstimateWizard({ open, onClose }: { open: boolean; onClose:
             borderBottom: '1px solid var(--border)',
           }}
         >
-          <strong style={{ fontSize: '0.95rem' }}>Estimate/Change Order</strong>
+          <strong style={{ fontSize: '0.95rem' }}>Write up a change</strong>
           <button
             type="button"
             aria-label="Save and close"
@@ -729,7 +769,10 @@ export function QuickEstimateWizard({ open, onClose }: { open: boolean; onClose:
             </button>
           )}
 
-          {stage === 'kind' && (
+          {stage === 'kind' && initialJobId != null && (
+            <p style={subStyle}>Opening the job…</p>
+          )}
+          {stage === 'kind' && initialJobId == null && (
             <>
               <h2 style={qStyle}>What are you writing up?</h2>
               <button type="button" style={bigOptionStyle} disabled={busy} onClick={() => void chooseKind('change_order')}>
