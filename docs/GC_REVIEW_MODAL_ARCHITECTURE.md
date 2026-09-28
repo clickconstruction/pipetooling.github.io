@@ -80,12 +80,12 @@ The office opens GC Review from the Stages board's Billed section. There they:
 | Weekly statement rounds card | 900–1195 | 296 |
 | ↳ Round email ("Email me my round") | 1054–1193 | 140 |
 | Draft Message dialog (`emailDialogGroup`) | 1652–1895 | 244 |
-| Round overlay (`roundOpen`) | 1896–2033 | 138 |
+| ~~Round overlay~~ | retired — the worklist and the call sheet do its job | — |
 | `ScheduleWhenControls` (module scope) | 101–200 | 100 |
 
 ### Key structural differences from the page maps
 
-1. **One scrolling panel plus seven stacked overlays (five of them inline).** The main panel (z 60) holds every inline region. The Draft Message and Share all dialogs (z 61), the Share menu (backdrop 62 / menu 63), the round overlay and Mark sent dialog (z 64) are **inline JSX**. `GcStatementSendHistoryModal` (64) and `GcReviewCertifyModal` (70) are extracted. Nothing handles Escape.
+1. **One scrolling panel plus seven stacked overlays (four of them inline).** The main panel (z 60) holds every inline region. The Draft Message and Share all dialogs (z 61), the Share menu (backdrop 62 / menu 63), the Mark sent dialog (z 64) are **inline JSX**. `GcCallSheetModal` (64), `GcStatementSendHistoryModal` (64) and `GcReviewCertifyModal` (70) are extracted. Nothing handles Escape.
 2. **It stays mounted while closed.** The parent renders it unconditionally, and `return null` sits after the hooks, so **all 56 states survive close and reopen** while the Stages tab stays active: `groupBy`, `includeCollections`, a half-typed standing form, `roundStartTotal`. They reset only when the Stages tab goes inactive (the parent's `{active && …}` block unmounts the modal) or unmounts. The `open`-gated effects refetch on every open.
 3. **Two rollups over the same rows.** `rollup` (492–495) is what the panel shows, following the Group-by pill and Include Collections. `roundRollup` (500–503) is always **by GC and active-only**, and it feeds certification, rounds, the temperature board and the week strip (comment 504–510, v2.2764).
 4. **The parent owns transport, the statement print and copy.** The modal owns the unpaid-invoices PDF (it reads the jobs itself), scheduling (`gc_statement_email_requests`), round marks, certifications (in the child), sender assignment and the round-email chains.
@@ -122,7 +122,7 @@ Render regions in JSX order (all ranges @ `a05cef4c4`). Status: `extracted` mean
 | 7c | ↳ Job table | 1559–1633 (job link → `onOpenJob` 1591–1616) | 75 | — | ✗ | low | inline |
 | 8 | Grand total line | 1637–1650 | 14 | `rollup.grandTotal` | `gcReviewRollup` ✓ | low | inline |
 | 9 | **Draft Message dialog** | `emailDialogGroup ?` 1652–1895 + `openEmailDialogForGroup` 686–707 + `emailSendGuard` 709–716 | 244 + 31 | 13 · 11 · 3 · children `TeammateEmailChips`, `ScheduleWhenControls` | builders/guard/CC ✓; **payload assembly ✗** | **high** | inline |
-| 10 | Round overlay | `roundOpen ?` IIFE 1896–2033 | 138 | 7 · 4 · 3 · child `GcStatementMarkSentForm` | form render ✓ (2); overlay ✗ | med | inline |
+| 10 | Call sheet (replaced the round overlay) | `callSheetGroupKey && …` IIFE → `<GcCallSheetModal>`; `saveCallSheet` | modal 215 | `worklist`, `boardRowByGc`, `wordSources`, `roundBusy`, `roundError` | `gcCallSheet` ✓ (10), `payPromise` ✓ (7), render ✓ (4) | med | **extracted** |
 | 11 | Share all dialog | `shareAllOpen ?` 2034–2346 (Email once 2080–2200) | 170 | 17 · 13 · 7 (whole block, incl. 11a) | builders ✓; payload ✗ | **med-high** | inline |
 | 11a | ↳ Standing copies (dev) | `isDev ?` 2201–2343 + handlers 415–485 | 143 + 71 | 7 · 4 · 6 | `planStandingCopyEdit` ✓; `applyStandingPlan` ✗ | med | inline |
 | 12 | Certify modal | `<GcReviewCertifyModal>` 2347–2362 | 16 | `certifyGroup` | ✗ | low | **extracted** (241) |
@@ -139,7 +139,7 @@ Render regions in JSX order (all ranges @ `a05cef4c4`). Status: `extracted` mean
 | Certification loader | `certWeekStart` 332, `certRows` 333, `refreshCerts` 335–337, effect 340–342, `certsByGc` 497, `certGroupByGc` 511, `certProgress` 557 | `certRows` | `gc_review_certifications` (select) | `gcReviewCertification` 10; IO ✗ | → `useGcStatementRound` (#8) |
 | Round engine | `roundMarks`/`boardMarks`/`roundSenders` 344–347, `refreshRoundMarks` 376–379, effect 380–382, senders effect 516–525, `roundGcIds` 512–515, `accountMen` 526, `mergedLastSent` 527, `roundItems` 528–531, `roundSummary` 532, `boardWeeks` 534, `boardRows` 535–538, `boardRowByGc` 539, `temperatureByGc` 540 | 3 data states | `gc_statement_round_marks` (select ×2), `customers.statement_sender_user_id` (select) | `gcStatementRounds` 14, `temperatureBoard` 4; IO ✗ | → `useGcStatementRound` (#8) |
 | Round writes | `markRound` 581–609, `undoRoundMark` 619–629, `assignSender` 670–680, `thisWeekSentMark` 611–614, `markWhenLabel` 615–618, `userNameById` 579, `authUserName` 578 | `roundBusy`, `roundError`, `roundSenders`, `assigningGcId` | `gc_statement_round_marks` upsert/delete; `customers` update | ✗ (upsert payload rule 597–600 inline) | Stage A (#2), then the hook (#8) |
-| Round deep link | `roundFocusGcId` 542, effect 543–548; round↔dialog effect 549–556 | `roundOpen`, `roundFocusGcId`, `emailFromRoundGcId` | — | ✗ | **stays** (pointer plumbing) |
+| Deep link to one GC | `focusGcId` prop, `focusedGcId`, the focus effect | `callSheetGroupKey` | — | ✗ | **stays** (pointer plumbing) |
 | Scheduled sends | `pendingSends` 330, effect 391–403, `refreshPendingSends` 404–406, `standingGroups` 407, `standingRowIds` 408, `canCancelRow`/`canCancelStanding`/`requesterNameOf`/`requesterOf` 410–413 | `pendingSends` | `gc_statement_email_requests` (select, delete) | `groupStandingCopies` ✓; `canCancelStatementRequest` ✗ | → `useGcScheduledSends` (#4) |
 | Standing copies form | 7 states 384–390, `standingPickableUsers` 415–417, `standingUserByEmail` 418–419, `resetStandingForm` 420–427, `applyStandingPlan` 428–431, `submitStanding` 432–462, `editStanding` 463–471, `removeStanding` 472–485 | 7 standing states | `gc_statement_email_requests` (delete then insert) | `planStandingCopyEdit` ✓; apply loop ✗ | → `useGcScheduledSends` (#4) |
 | Round email chains | `roundEmailRows` 362 + 7 form states 363–369, `refreshRoundEmailRows` 370–372, effect 373–375, `roundEmailChains` 630, `myRoundEmailChain` 631, `roundEmailPickableUsers` 632–634, `openRoundEmailForm` 635–643, `saveRoundEmail` 644–669 | 8 states | `statement_round_email_requests` (select/insert/delete); edge `statement-round-email-dispatch` | `statementRoundEmail` 6; client ✗ | → `useStatementRoundEmail` (#5) |
@@ -155,8 +155,7 @@ Render regions in JSX order (all ranges @ `a05cef4c4`). Status: `extracted` mean
 | Pointer | Line | Set by | Consumed by |
 |---|---|---|---|
 | `emailDialogGroup` | 297 | Share menu Draft Message 1455; round overlay "Send from the app…" 1967; `GcReviewCertifyModal.onCertified({andSend})` 2358 (all via `openEmailDialogForGroup`) | dialog 1652; `emailSendGuard` 709; effect 549 |
-| `emailFromRoundGcId` | 360 | overlay 1965 | effect 549–556 (reopens the overlay when the dialog closes) |
-| `roundOpen` | 348 | Start round 924–935; effect 543; effect 549; overlay close 1909/2022 | overlay 1896 |
+| `callSheetGroupKey` | — | the worklist's Call sheet button; the focus effect (`?round=1&gc=`) | `GcCallSheetModal` |
 | `certifyGroup` | 334 | Certify / Re-certify 1387, 1399 | `GcReviewCertifyModal` 2347 |
 | `markSentGroup` | 355 | Share → Mark sent… 1489 | dialog 2363 |
 | `historyGc` | 356 | last-sent pill 1310; temperature pill 1334; `GcTemperatureBoard.onOpenGc` 1204 | `GcStatementSendHistoryModal` 2437 |
@@ -194,7 +193,7 @@ Render regions in JSX order (all ranges @ `a05cef4c4`). Status: `extracted` mean
   - The week strip reads `worklist.counts` (checked · sent · words in).
 - **4b Round email (1054–1193):** your chain line (`formatWeekdays` / `formatMinutes(parseHhMm)`), others' chains with **edit** (canCertify), "Set it up for another sender…" select, and the form (1108–1190): Mon–Fri toggles (sorted), time, **Preview** (`fetchStatementRoundEmailPreview` → `openHtmlPreviewWindow`), **Email me a test**, Stop emailing (`saveRoundEmail([])`), Cancel, Save.
 - **Owned (moves with it):** `assigningGcId`, `markSentDefaultAction` and the 7 round-email form states.
-- **Shared (stays or goes to the hook):** `roundItems`, `roundSummary`, `roundBusy`, `roundError`, `temperatureByGc`, `roundOpen`.
+- **Shared (stays or goes to the hook):** `worklist`, `roundBusy`, `roundError`, `temperatureByGc`, `boardRowByGc`.
 - **Handlers:** `userNameById`, `assignSender`, `markWhenLabel`, `undoRoundMark`, `openRoundEmailForm`, `saveRoundEmail`, `describeRoundMark`/`sendChannelLabel` (kernel).
 - **Data:** `customers.statement_sender_user_id` update (`setGcStatementSender`), then a senders re-read; `gc_statement_round_marks` delete (undo); `statement_round_email_requests` (`applyStatementRoundChainPlan`: **inserts, then deletes** unsent); edge `statement-round-email-dispatch` (preview / `test_send`).
 - **Tests:** `buildStatementRound` / `summarizeStatementRound` / `describeRoundMark` (14), `groupStatementRoundChains` / `planStatementRoundChainEdit` (6), `emailScheduleWeek` (20). `buildGcWorklist` / `worklistNextStep` / `mergeRoundMarkWrite` (18), `GcWorklistPanel.render` (4). **Untested:** `statementRoundEmailClient`, `gcStatementRoundIo`.
@@ -248,27 +247,20 @@ Render regions in JSX order (all ranges @ `a05cef4c4`). Status: `extracted` mean
     - schedule branch 1808–1844: CC validate → `buildGcStatementRequestInsert` → `scheduleGcStatementSend` → `refreshPendingSends`
     - send-now branch 1845–1877: CC validate → `onSendStatement({gcCustomerId, gcName, groupBy, toEmail, ccEmails, subject, emailHtml, emailText, total: g.subtotal, jobCount})`; on ok → close, and **if the GC is in the round and not yet `sent` → `markRound(gcId,'sent',{channel:'email', note:'Sent from the app'})`**
 - **Opener:** `openEmailDialogForGroup` 686–707 resets 9 states and fires `resolveEmailWording('gc_statement_scheduled', …)`. The template subject replaces the default **only while untouched** (705), and there is no cancel guard.
-- **Owned (move with it):** `emailDialogTo`, `emailDialogCcText`, `emailDialogSubject`, `emailSending`, `emailError`, `emailIncludePortal`, `emailIntroText`, `emailWhen`, `emailSendDate`, `emailSendTime`, `emailRepeatWeekly` (11). **Stays:** `emailDialogGroup`, `emailFromRoundGcId`.
+- **Owned (move with it):** `emailDialogTo`, `emailDialogCcText`, `emailDialogSubject`, `emailSending`, `emailError`, `emailIncludePortal`, `emailReplyToUserId` (Replies go to — `defaultReplyToUserId`), `emailIntroText`, `emailWhen`, `emailSendDate`, `emailSendTime`, `emailRepeatWeekly` (11). **Stays:** `emailDialogGroup`, `emailFromRoundGcId`.
 - **Guard:** `emailSendGuard` = `gcStatementSendGuard({ totalOwedCents: dollarsToCents(subtotal), emailSending, hasAddress: <inline regex 713>, scheduled })`. It blocks a **$0 send-now** (the dispatcher's own skip) and leaves scheduling on $0 allowed.
 - **Data:** `gc_statement_email_requests` insert (schedule). Send-now goes through the parent → edge `send-gc-statement-email`. `email_templates` (wording). The issuer phone is read **synchronously at click** (`getPhysicalInvoiceIssuerForDocument()`).
 - **Tests:** `gcStatementEmail` (14: html/text/preview/subject), `gcStatementSendGuard` (8), `gcStatementCc` (6), `teammateEmailChips` (8), `emailWording` (5), `gcStatementSchedule` (7). **Untested:** the payload assembly (1853–1863: which total, which subject fallback, portal on/off), the auto-mark rule, and the `TeammateEmailChips` component.
 - **Risk:** **high.** It emails an outside GC a dollar total under the company name, and it writes a round mark as a side effect.
 - **Approach:** Stage A the payload builder first (#3). Then `GcDraftMessageDialog` (#7), conditionally mounted so the 11 states init from `group` (this replaces the reset in `openEmailDialogForGroup`), with `onSent(group)` doing the auto-mark in the parent.
 
-### 10. Round overlay (inline, 138 lines)
+### 10. Call sheet (extracted; replaced the round overlay)
 
-- **Render:** 1896–2033 (z 64; backdrop closes). `current` = `roundFocusGcId` match in `readyForUser`, else `readyForUser[0]` (1898–1900); `remaining` and "N sent" are relative to `roundStartTotal`. The body shows To (`emailForGc`), Last sent, and these actions:
-  - Preview statement (1940–1952)
-  - **Copy for email** → `onCopyForEmail(current.group,'gc',…)`
-  - **Send from the app…** → `setEmailFromRoundGcId` + close + `openEmailDialogForGroup`
-  - **Sent it ✓** → inline `GcStatementMarkSentForm` (1992–2006) → `markRound(...m)`
-  - **Skip** → `markRound(gcId,'skipped')`
-
-  When the round is done it shows "Round done 🎉" (2014–2027).
-- **Owned:** `roundSentFormOpen`. **Shared:** `roundOpen`, `roundFocusGcId`, `emailFromRoundGcId` (set at 1965), `roundStartTotal`, `roundBusy`, `roundError`, `certRows` (it recomputes `latestCertByGc(certRows)` at 1901; `certsByGc` already holds it), `mergedLastSent`, `portalLinkFor`.
-- **Gate gap:** Sent it / Skip / Start round are **not** `canCertify`-gated, so RLS on `gc_statement_round_marks` (4 office roles; primary reads only) is the wall, surfaced through `roundError`.
-- **Tests:** `GcStatementMarkSentForm.render` (2). The overlay itself is untested.
-- **Approach:** `GcRoundOverlay` after #8, together with the Mark sent dialog (13): both host `GcStatementMarkSentForm` and call `markRound`.
+- **Render:** `GcCallSheetModal` (z 64), mounted while `callSheetGroupKey` names a worklist group. The modal builds the sheet per render — `buildCallSheet({ group, boardRowByGc, todayYmd })` — and owns nothing of it; the component owns the drafts, the source select and how it was heard.
+- **Save:** `saveCallSheet(answers, word)` upserts each answer through `mergeRoundMarkWrite` (a word over a sent mark keeps it sent), refreshes once, names any GC that failed and keeps the rest.
+- **Print:** `buildCallSheetPrintHtml` → `openHtmlPrintWindow`.
+- **Tests:** `gcCallSheet` (10), `payPromise` (7), `GcCallSheetModal.render` (4). `saveCallSheet` itself is untested.
+- **The round overlay is retired** with `roundOpen`, `roundFocusGcId`, `roundSentFormOpen`, `emailFromRoundGcId` and the dialog↔overlay bounce effect.
 
 ### 11. Share all dialog (inline, 170 + 143 lines)
 
@@ -367,7 +359,7 @@ Per the playbook, Stage A comes before Stage B for each unit, and the lowest cou
 | 4 | `useGcScheduledSends(open, ctx)` (330, 384–485: `pendingSends` + 7 standing states + handlers) → `GcScheduledSendsPanel` (1207–1267) + `GcStandingCopiesSection` (2201–2343). Keep the cancel-then-insert order and add a `// TODO` at the seam | ~110 + 61 + 143 | hook owns 8 states | low-med |
 | 5 | `useStatementRoundEmail()` (362–375, 630–669: 8 states) → `GcRoundEmailSection` (1054–1193); `GcSenderRoundCard.onSetupEmail` calls the hook's `openFor` | ~55 + 140 | 8 states; 1 cross-region opener | low-med |
 | 6 | `GcReviewShareAllDialog` (2034–2200), conditionally mounted; its 8 non-flag states init on mount (replaces the opener reset 850–861) | ~170 | `rollup`, `includeCollections`, `onSendStatement`, `refreshPendingSends` | med-high |
-| 7 | `GcDraftMessageDialog` (1652–1895 + 686–716), conditionally mounted on `emailDialogGroup`; 11 states move; `onSent(group)` → parent auto-mark; `emailFromRoundGcId` + effect 549 stay | ~275 | 13 reads today → ~8 props + 3 callbacks | **high** |
+| 7 | `GcDraftMessageDialog` (1652–1895 + 686–716), conditionally mounted on `emailDialogGroup`; 11 states move; `onSent(group)` → parent auto-mark; `emailReplyToUserId` moves with it | ~275 | 13 reads today → ~8 props + 3 callbacks | **high** |
 | 8 | **`useGcStatementRound({open, billedActiveRows, collectionsRows, lastSentByGcId, weekStart})`**: certs, marks, board marks, senders, 2 refreshers (`refreshCerts`, `refreshRoundMarks`), effects 340 / 380 / 516, the 10 derived memos, `markRound` / `undoRoundMark` / `assignSender`, `roundBusy` / `roundError`. Build it here first; a later PR can move `JobsStagesTab` 1648–1720 and `usePipelineMoneyOpportunities` 100–150 onto it | ~200 | read by 8 regions | med-high |
 | 9 | `GcStatementRoundsCard` (900–1053) + `GcRoundOverlay` (1896–2033) + `GcMarkSentDialog` (2363–2395), all on the #8 hook | ~155 + 138 + 33 | pointer setters as callbacks | med |
 | 10 | `GcReviewGroupSection` (1271–1635) with a callbacks bag; `shareMenuGroupKey` stays in the parent (one menu open) | ~365 | ~15 props | med |
@@ -385,7 +377,7 @@ Per the playbook, Stage A comes before Stage B for each unit, and the lowest cou
 2. **Certification basis must stay on `roundRollup`** (active-only, by GC; 500–511). Reading `rollup` instead would flip certified GCs to "changed since certified" whenever Include Collections toggles (the v2.2764 rationale at 504–510).
 3. **Auto-mark on app send** (1870–1873). It reads `roundItems` from the send closure. Any dialog extraction must still call the parent's `markRound`, or rounds stop reflecting app sends.
 4. **Effects whose deps make moves risky:**
-   - 549–556 bounces `emailDialogGroup` ↔ `roundOpen` via `emailFromRoundGcId`. All three must live in the same component.
+   - (The dialog ↔ round-overlay bounce went with the overlay.)
    - 543–548 re-fires on `[open, startInRound, startInRoundGcId]`.
    - The senders effect 516–525 keys on the `roundGcIds` memo identity, which comes from `roundRollup`, which re-derives when the parent's rows change (e.g. after `onOpenJob` → `loadJobs`).
    - The loader effects (340, 373, 380, 391, 516) are gated on `open`, and there is **no cancellation** in `refreshCerts` / `refreshRoundMarks` / `refreshRoundEmailRows` (only 391–403 and 516–525 carry a `cancelled` flag).
