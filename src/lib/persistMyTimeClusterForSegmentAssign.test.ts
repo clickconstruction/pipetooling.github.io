@@ -134,6 +134,23 @@ describe('persistMyTimeClusterAndGetSegmentIds', () => {
     await expect(persistMyTimeClusterAndGetSegmentIds(c, { boundaries: [ms(8), ms(9), ms(10), ms(12)], notes: ['', '', ''] }, [payload(8, 9), payload(9, 10), payload(10, 12)], now, r)).rejects.toThrow('Row split did not return one id per sub-segment')
   })
 
+  it('a split in one row and a merge across the next two is replaced as a whole, not written part i onto row i (quirk 25)', async () => {
+    const r = rpcs()
+    const c = [row('a', 8, 10), row('b', 10, 12, { job_ledger_id: 'j2' }), row('c', 12, 14)]
+    const split = {
+      boundaries: [ms(8), ms(9), ms(10), ms(14)],
+      notes: ['p', 'q', 'r'],
+      segmentJobOverrides: { 2: { job_ledger_id: 'j2', bid_id: null } },
+    }
+    const ids = await persistMyTimeClusterAndGetSegmentIds(c, split, [payload(8, 9, 'p'), payload(9, 10, 'q'), payload(10, 14, 'r')], now, r)
+    expect(ids).toEqual(['mx-0', 'mx-1', 'mx-2'])
+    expect(updates).toEqual([])
+    expect(r.runReplaceMixed).toHaveBeenCalledTimes(1)
+    const [sentIds, sent] = r.runReplaceMixed.mock.calls[0]! as [string[], Array<{ job_ledger_id: string | null }>]
+    expect(sentIds).toEqual(['a', 'b', 'c'])
+    expect(sent.map((p) => p.job_ledger_id)).toEqual(['j1', 'j1', 'j2'])
+  })
+
   it('a mixed cluster whose segments straddle rows is replaced as a whole with per-segment job allocations', async () => {
     const r = rpcs()
     const c = [row('a', 8, 10), row('b', 10, 12, { job_ledger_id: 'j2' })]

@@ -3,12 +3,12 @@ import { stripJobBidForSegmentRpc } from './myTimeDayEditorPayloads'
 import {
   attachAllocationsToPayloads,
   mixedClusterSegmentsAllowPerRowPersist,
+  orderedSegmentsFollowTheirRows,
   myTimeClusterPersistRpcMetadataUserMessage,
 } from './myTimeDaySavePlan'
 import {
   clusterIsHomogeneousJobBid,
   clusterSharesClockSessionClusterRpcMetadata,
-  everySegmentAssignablePerRowOrdered,
   segmentContainedInRow,
   sessionRowIntervalMs,
   CLUSTER_CONTIGUITY_EPS_MS,
@@ -62,7 +62,7 @@ export async function persistMyTimeClusterAndGetSegmentIds(
   if (mixedClusterSegmentsAllowPerRowPersist(c, split, nowTick)) {
     const segmentIds: (string | undefined)[] = new Array(n)
     const useOrderedRowSegment =
-      everySegmentAssignablePerRowOrdered(c, split, nowTick) && n === c.length
+      orderedSegmentsFollowTheirRows(c, split, nowTick) && n === c.length
     if (useOrderedRowSegment) {
       for (let rowIdx = 0; rowIdx < c.length; rowIdx++) {
         const row = c[rowIdx]!

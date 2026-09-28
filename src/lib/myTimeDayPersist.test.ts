@@ -653,24 +653,98 @@ describe('persistMyTimeDayDirtyClusters — several parts', () => {
     ])
   })
 
-  it('as many parts as rows: part i is written onto row i, whichever row it sat in', async () => {
+  // Quirk 25: split one row and merge the next two, and there is one part per row again —
+  // but the parts no longer line up with the rows. Before the fix the save wrote part i onto row i:
+  // a 0–1 h, b 1–2 h, c 2–6 h — job j2 lost an hour and moved onto time that was j1's, and the job
+  // chosen for the merged part was dropped. Now it rebuilds the block with the replace RPC.
+  it('a split in one row and a merge across the next two rebuilds the block, keeping each part’s job', async () => {
     const c = [...twoJobs(), mk('c', T(4), T(6), { job_ledger_id: 'j1' })]
-    // Row a split in two, rows b and c merged into one part: three parts over three rows. Row b (job
-    // j2) moves to the second half of what was row a, and row c takes all of what was rows b and c.
-    await expect(
-      save([c], [
-        {
-          boundaries: [T(0), T(1), T(2), T(6)],
-          notes: ['p', 'q', 'r'],
-          segmentJobOverrides: { 2: { job_ledger_id: 'j2', bid_id: null } },
-        },
-      ]),
-    ).resolves.toStrictEqual({ salarySyncMayAdjust: false })
+    const split: SplitEditorState = {
+      boundaries: [T(0), T(1), T(2), T(6)],
+      notes: ['p', 'q', 'r'],
+      segmentJobOverrides: { 2: { job_ledger_id: 'j2', bid_id: null } },
+    }
+    await expect(save([c], [split])).resolves.toStrictEqual({ salarySyncMayAdjust: false })
     expect(db.state.log).toStrictEqual([
-      timesUpdate('a', T(0), T(1), 'p'),
-      timesUpdate('b', T(1), T(2), 'q'),
-      timesUpdate('c', T(2), T(6), 'r'),
+      {
+        op: 'rpc',
+        rpc: 'replaceMixed',
+        target: ['a', 'b', 'c'],
+        segments: [
+          seg(T(0), T(1), 'p', { job_ledger_id: 'j1', bid_id: null }),
+          seg(T(1), T(2), 'q', { job_ledger_id: 'j1', bid_id: null }),
+          seg(T(2), T(6), 'r', { job_ledger_id: 'j2', bid_id: null }),
+        ],
+      },
     ])
+  })
+
+  it('the same split and merge with no job chosen: each part takes the job of the row it covers most', async () => {
+    const c = [...twoJobs(), mk('c', T(4), T(6), { job_ledger_id: 'j1' })]
+    await save([c], [{ boundaries: [T(0), T(1), T(2), T(6)], notes: ['p', 'q', 'r'] }])
+    expect(db.state.log).toStrictEqual([
+      {
+        op: 'rpc',
+        rpc: 'replaceMixed',
+        target: ['a', 'b', 'c'],
+        segments: [
+          seg(T(0), T(1), 'p', { job_ledger_id: 'j1', bid_id: null }),
+          seg(T(1), T(2), 'q', { job_ledger_id: 'j1', bid_id: null }),
+          // 2–6 h covers b (j2) for 2 h and c (j1) for 2 h; the tie goes to the earlier row.
+          seg(T(2), T(6), 'r', { job_ledger_id: 'j2', bid_id: null }),
+        ],
+      },
+    ])
+  })
+
+  it('a merge that keeps each part in its own row, choosing that row’s job, still slides the seams row by row', async () => {
+    const c = [...twoJobs(), mk('c', T(4), T(6), { job_ledger_id: 'j1' })]
+    // Split b at 3 h, then merge its second half into c choosing c's own job (j1): three parts,
+    // each still sharing time with its own row.
+    await save([c], [
+      {
+        boundaries: [T(0), T(2), T(3), T(6)],
+        notes: ['p', 'q', 'r'],
+        segmentJobOverrides: { 2: { job_ledger_id: 'j1', bid_id: null } },
+      },
+    ])
+    expect(db.state.log).toStrictEqual([
+      noteUpdate('a', 'p'),
+      timesUpdate('b', T(2), T(3), 'q'),
+      timesUpdate('c', T(3), T(6), 'r'),
+    ])
+  })
+
+  it('the same merge choosing the other row’s job rebuilds the block, so the chosen job is written', async () => {
+    const c = [...twoJobs(), mk('c', T(4), T(6), { job_ledger_id: 'j1' })]
+    await save([c], [
+      {
+        boundaries: [T(0), T(2), T(3), T(6)],
+        notes: ['p', 'q', 'r'],
+        segmentJobOverrides: { 2: { job_ledger_id: 'j2', bid_id: null } },
+      },
+    ])
+    expect(db.state.log).toStrictEqual([
+      {
+        op: 'rpc',
+        rpc: 'replaceMixed',
+        target: ['a', 'b', 'c'],
+        segments: [
+          seg(T(0), T(2), 'p', { job_ledger_id: 'j1', bid_id: null }),
+          seg(T(2), T(3), 'q', { job_ledger_id: 'j2', bid_id: null }),
+          seg(T(3), T(6), 'r', { job_ledger_id: 'j2', bid_id: null }),
+        ],
+      },
+    ])
+  })
+
+  it('punch and salary rows cut out of line with their rows are refused, not written row by row', async () => {
+    const c = [mk('a', T(0), T(2)), salary('b', T(2), T(4), 1), mk('c', T(4), T(6))]
+    await expectRefused(
+      save([c], [{ boundaries: [T(0), T(1), T(2), T(6)], notes: ['p', 'q', 'r'] }]),
+      myTimeClusterPersistRpcMetadataUserMessage(c),
+    )
+    expect(db.state.log).toStrictEqual([])
   })
 
   it('a row no part sits inside is left as it was', async () => {
