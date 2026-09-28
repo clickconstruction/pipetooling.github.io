@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * v2.4066: the Workflow page's six step windows as a component. A harness holds the windows' state
+ * v2.4081: the Workflow page's six step windows as a component. A harness holds the windows' state
  * the way the page does, so typing behaves as it does there. Pins the seam — nothing drawn while
  * every window is closed; delete asks for the step's name only when it has content, and resets
  * on close; Send Back and Skip hand their reason back (Skip only with one, "Not relevant" fills
