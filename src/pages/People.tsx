@@ -83,6 +83,7 @@ import { useUsersTabTags } from '../hooks/useUsersTabTags'
 import { isPayStubFullyPaid } from '../lib/payStubPayments'
 import { payStubBalance } from '../lib/pay/recordPayStubPayment'
 import { usePayStubsData } from '../hooks/usePayStubsData'
+import { peopleMissingPayReports } from '../lib/pay/missingPayReports'
 import { RecordPayStubPaymentModal } from '../components/pay/RecordPayStubPaymentModal'
 import { useRecordPayStubPayment } from '../hooks/useRecordPayStubPayment'
 import { DraftPayrollModal } from '../components/pay/DraftPayrollModal'
@@ -1255,11 +1256,14 @@ export default function People() {
       showToast('Invalid date range.', 'warning')
       return
     }
-    const days = getDaysInRange(start, end)
-    const candidates = showPeopleForHours.filter((person) => {
-      const stub = payStubs.find((s) => s.person_name === person && s.period_start <= end && s.period_end >= start)
-      const estGross = days.reduce((s, d) => s + getCostForPersonDate(person, d), 0)
-      return estGross > 0 && !stub
+    // Priced the way the preview and the report are (v2.3979), so the list is the window's own count.
+    const candidates = peopleMissingPayReports({
+      people: showPeopleForHours,
+      payStubs,
+      start,
+      end,
+      days: getDaysInRange(start, end),
+      costForPersonDate: getPayrollCostForPersonDate,
     })
     if (candidates.length === 0) {
       showToast('No missing pay reports with hours for this period.', 'info')
@@ -2521,7 +2525,7 @@ export default function People() {
               Generate {bulkGenerateConfirm.candidates.length} pay report(s) for {bulkGenerateConfirm.start} through {bulkGenerateConfirm.end}?
             </p>
             <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              People who already have a report for this period are skipped.
+              People who already have a report for this period are skipped, and so is anyone whose week comes to $0.
             </p>
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
               <button
