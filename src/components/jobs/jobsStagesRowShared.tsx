@@ -1294,7 +1294,7 @@ export function renderStagesQuickActionsStack(ctx: StagesRowRenderContext, job: 
 
 /**
  * Job-cell activity footer (v2.1555): the survivors of the Activity column's
- * removal — invoice jump chips, the Stripe emailed/Resend hint, and the
+ * removal — invoice jump chips, the bill emailed/Resend hint, and the
  * Reports button — rendered at the bottom of the Job cell in both Stages
  * tables. The note-count chevron rides the job-name line via
  * renderStagesThreadExpandButton; the mobile card list keeps its own zones.
@@ -1303,7 +1303,7 @@ export function renderStagesJobCellActivityFooter(
   ctx: StagesRowRenderContext,
   job: JobWithDetails,
   opts?: {
-    /** Billing line whose Stripe emailed/Resend hint shows under the job. */
+    /** Billing line whose bill emailed/Resend hint shows under the job. */
     billingLineForStripeHint?: JobsLedgerInvoice | null
     /** Billed merged rows render the Reports pill higher in the Job cell (v2.1155). */
     hideReportsButton?: boolean
@@ -1390,7 +1390,7 @@ export function renderStagesJobCellActivityFooter(
     // them instead of overflowing into the next column (v2.1042).
     return (
       <div
-        title={`Stripe emailed the customer ${sentMeta.weekdayTimeChicago} (${sentMeta.daysAgoLabel})`}
+        title={`The bill was emailed to the customer ${sentMeta.weekdayTimeChicago} (${sentMeta.daysAgoLabel})`}
         style={{
           display: 'flex',
           flexWrap: 'wrap',

@@ -29,6 +29,7 @@ import {
 } from '../_shared/paidJobBillGuard.ts'
 import { stripeInvoiceFooter } from '../_shared/stripeInvoiceFooterPortalLink.ts'
 import { loadPortalReturnUrl } from '../_shared/customerPortalReturnUrl.ts'
+import { ensurePortalShortAddress } from '../_shared/portalShortAddress.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -545,7 +546,11 @@ serve(async (req) => {
     // `footer` — hosted page, PDF and receipt. Custom footers keep priority
     // (the line is appended only within the 5000-char cap). Only for the job
     // customer themselves: an alternate payer (bill_to) is not the portal
-    // holder and must never be handed the customer's key.
+    // holder and must never be handed the customer's key. A customer with a
+    // portal and no short address is assigned one first, so the line reads
+    // my.clickplumbing.com/<name>-<tail> rather than the 64-character token
+    // (live bills only — a test bill must not change a customer's record).
+    if (!billToEmail && stripeMode !== 'test') await ensurePortalShortAddress(admin, customer_id, user.id)
     const portalReturnUrl = billToEmail
       ? null
       : await loadPortalReturnUrl(

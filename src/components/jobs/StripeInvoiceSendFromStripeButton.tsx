@@ -5,12 +5,13 @@ import { supabase } from '../../lib/supabase'
 import type { BillingStripeModePref } from '../../lib/billingStripeModePref'
 import { stripeModeInvokeBody } from '../../lib/billingStripeModePref'
 import { readEdgeFunctionErrorBody } from '../../lib/readEdgeFunctionErrorBody'
+import { billEmailSentMessage, parseBillEmailOutcome } from '../../lib/billing/billEmailOutcome'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { getDispatchNoteDisplayMeta } from '../../utils/dispatchNoteDisplay'
 
 const CONFIRM_MODAL_Z = 120000
 
-/** Survives parent remount after `onSent` (e.g. refetch) so the inline success line stays visible. */
+/** Survives parent remount after `onSent` (e.g. refetch) so the inline success line stays visible; holds the line itself. */
 function stripeEmailSentSessionKey(jobsLedgerInvoiceId: string, stripeInvoiceId: string): string {
   return `pt-stripe-invoice-email-sent:${jobsLedgerInvoiceId}:${stripeInvoiceId}`
 }
@@ -20,7 +21,7 @@ export type StripeInvoiceSendFromStripeButtonProps = {
   stripeInvoiceId: string
   customerEmail: string | null
   stripeModeForBilling: BillingStripeModePref
-  /** After Stripe accepts send (e.g. refetch invoice details). */
+  /** After the bill email went out (e.g. refetch invoice details). */
   onSent?: () => void
   compact?: boolean
   /** Default: "Send Email invoice". The chip's indigo "stripe" tag already says who sends — don't repeat "from Stripe" here. */
@@ -62,14 +63,15 @@ export function StripeInvoiceSendFromStripeButton({
   const { showToast } = useToastContext()
   const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
-  const [sendSucceeded, setSendSucceeded] = useState(false)
+  /** The success line of the last send (who sent it, where it went); null before one. */
+  const [sentLine, setSentLine] = useState<string | null>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [sendHistoryLoading, setSendHistoryLoading] = useState(false)
   const [sendHistoryError, setSendHistoryError] = useState<string | null>(null)
   const [sendHistoryAt, setSendHistoryAt] = useState<string[]>([])
   /** Copies each logged send reached (v2.3362), keyed by the send's sent_at. */
   const [sendHistoryCopies, setSendHistoryCopies] = useState<Record<string, string[]>>({})
-  /** Bills also go to (v2.3359): who gets a copy from ClickTooling when Stripe sends. */
+  /** Bills also go to (v2.3359): who gets a copy from ClickTooling beside the payer's bill email. */
   const [copyEmails, setCopyEmails] = useState<string[]>([])
 
   const emailHint = (customerEmail ?? '').trim()
@@ -90,15 +92,17 @@ export function StripeInvoiceSendFromStripeButton({
   useEffect(() => {
     const jid = jobsLedgerInvoiceId.trim()
     const sid = stripeInvoiceId.trim()
-    let fromSession = false
+    let fromSession: string | null = null
     try {
       if (jid && sid) {
-        fromSession = sessionStorage.getItem(stripeEmailSentSessionKey(jid, sid)) === '1'
+        const kept = sessionStorage.getItem(stripeEmailSentSessionKey(jid, sid))
+        // '1' is a send recorded before the line itself was kept.
+        fromSession = kept === '1' ? 'The bill email went out.' : kept || null
       }
     } catch {
       /* private mode */
     }
-    setSendSucceeded(fromSession)
+    setSentLine(fromSession)
   }, [jobsLedgerInvoiceId, stripeInvoiceId])
 
   useEffect(() => {
@@ -186,7 +190,7 @@ export function StripeInvoiceSendFromStripeButton({
     } catch {
       /* private mode */
     }
-    setSendSucceeded(false)
+    setSentLine(null)
     try {
       const { data: auth } = await supabase.auth.getSession()
       const token = auth.session?.access_token
@@ -206,7 +210,7 @@ export function StripeInvoiceSendFromStripeButton({
 
       if (fnErr) {
         const detail = await readEdgeFunctionErrorBody(fnErr)
-        const msg = detail ?? formatErrorMessage(fnErr, 'Could not send from Stripe')
+        const msg = detail ?? formatErrorMessage(fnErr, 'Could not send the bill email')
         setSendError(msg)
         showToast(msg, 'error')
         return
@@ -226,31 +230,29 @@ export function StripeInvoiceSendFromStripeButton({
         return
       }
 
-      const testHint =
-        stripeModeForBilling === 'test'
-          ? ' Test mode: Stripe does not deliver a real customer email, but the send succeeded.'
-          : ''
+      const outcome = parseBillEmailOutcome(body)
+      const line = billEmailSentMessage(outcome, stripeModeForBilling === 'test' ? 'test' : 'live')
       const copiesSent = Array.isArray(body.copies_sent) ? (body.copies_sent as unknown[]).filter((e) => typeof e === 'string') : []
       const copiesFailed = Array.isArray(body.copies_failed) ? (body.copies_failed as unknown[]).length : 0
       const copiesHint =
         copiesSent.length > 0 ? ` Copies went to ${copiesSent.join(', ')}.` : ''
-      showToast(`Stripe sent the invoice email.${copiesHint}${testHint}`, 'success')
+      showToast(`${line}${copiesHint}`, 'success')
       if (copiesFailed > 0) {
-        showToast(`${copiesFailed} copy email${copiesFailed === 1 ? '' : 's'} failed to send — Stripe's own email went out.`, 'error')
+        showToast(`${copiesFailed} copy email${copiesFailed === 1 ? '' : 's'} failed to send — the payer's own email went out.`, 'error')
       }
       try {
         const jid = jobsLedgerInvoiceId.trim()
         const sid = stripeInvoiceId.trim()
         if (jid && sid) {
-          sessionStorage.setItem(stripeEmailSentSessionKey(jid, sid), '1')
+          sessionStorage.setItem(stripeEmailSentSessionKey(jid, sid), line)
         }
       } catch {
         /* private mode */
       }
-      setSendSucceeded(true)
+      setSentLine(line)
       onSent?.()
     } catch (e) {
-      const msg = formatErrorMessage(e, 'Could not send from Stripe')
+      const msg = formatErrorMessage(e, 'Could not send the bill email')
       setSendError(msg)
       showToast(msg, 'error')
     } finally {
@@ -380,7 +382,7 @@ export function StripeInvoiceSendFromStripeButton({
                   lineHeight: 1.4,
                 }}
               >
-                Have Stripe email this invoice?
+                Email this invoice?
               </h2>
               <div
                 style={{
@@ -416,8 +418,17 @@ export function StripeInvoiceSendFromStripeButton({
                   S
                 </span>
                 <span>
-                  Sent by <strong>Stripe</strong> to <strong style={{ wordBreak: 'break-all' }}>{emailLine}</strong> —
-                  not from ClickTooling.
+                  {stripeModeForBilling === 'test' ? (
+                    <>
+                      <strong>Test mode:</strong> the bill email comes to <strong>you</strong>, not to{' '}
+                      <strong style={{ wordBreak: 'break-all' }}>{emailLine}</strong>.
+                    </>
+                  ) : (
+                    <>
+                      The bill email goes to <strong style={{ wordBreak: 'break-all' }}>{emailLine}</strong> from{' '}
+                      <strong>ClickTooling</strong>; they pay on <strong>Stripe</strong>.
+                    </>
+                  )}
                   {copyEmails.length > 0 ? (
                     <>
                       {' '}
@@ -427,8 +438,9 @@ export function StripeInvoiceSendFromStripeButton({
                 </span>
               </div>
               <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.5 }}>
-                It&rsquo;s the invoice email with the payment link — sending it again doesn&rsquo;t create a new
-                bill or charge anything.
+                It carries the amount, a Pay now button, the invoice PDF and — when they have a portal — the QR code
+                and short address of their statement. Sending it again doesn&rsquo;t create a new bill or charge
+                anything. If ours can&rsquo;t go out, Stripe sends its own.
               </p>
               <div
                 style={{
@@ -520,7 +532,7 @@ export function StripeInvoiceSendFromStripeButton({
                     fontWeight: 600,
                   }}
                 >
-                  Yes, have Stripe send it
+                  Yes, send it
                 </button>
               </div>
             </div>
@@ -529,12 +541,7 @@ export function StripeInvoiceSendFromStripeButton({
         )
       : null
 
-  const sendSuccessLine =
-    stripeModeForBilling === 'test'
-      ? 'Stripe sent the invoice email. Test mode: Stripe does not deliver a real customer email, but the send succeeded.'
-      : 'Stripe sent the invoice email.'
-
-  const showGreen = sendSucceeded && !sendError && !hideInlineSuccessLine
+  const showGreen = sentLine != null && !sendError && !hideInlineSuccessLine
   const btnDisabled = !canTry || sending || sendDisabled
 
   return (
@@ -564,7 +571,7 @@ export function StripeInvoiceSendFromStripeButton({
             maxWidth: micro ? 'min(16rem, 100%)' : undefined,
           }}
         >
-          {sendSuccessLine}
+          {sentLine}
         </p>
       ) : null}
       {sendError ? (

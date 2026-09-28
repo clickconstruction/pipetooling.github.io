@@ -6,7 +6,7 @@ keywords: customer portal, portal link, portal address, custom link, globe, pay 
 ---
 Every customer (and GC) can have a private, no-login **portal page**: one merged account statement — their own jobs *and* the properties they GC, each of those tagged {{chip:yellow|AS GC}} with the owner's name — with {{button:blue|Pay online}} buttons, plus "request a visit" / "ask us to bid" forms that land straight in the dispatch inbox.
 
-Once a customer has a portal, every new Stripe bill's footer ends with *See your updated statement any time at my.clickplumbing.com/…* — so after paying on Stripe's page they have one tap back to their statement, which refreshes itself and shows **Payment received — statement updated** when the bill has cleared. Your own footer text stays exactly as you typed it; the line is added after it.
+Once a customer has a portal, every new Stripe bill's footer ends with *See your updated statement any time at my.clickplumbing.com/…* — so after paying on Stripe's page they have one tap back to their statement, which refreshes itself and shows **Payment received — statement updated** when the bill has cleared. Your own footer text stays exactly as you typed it; the line is added after it. The bill email carries the same address with a **QR code**. If they have no short address yet, their first bill gives them one — their name plus a random tail — already locked, since it has gone out; you can still change it from the gear.
 
 ## The portal address
 

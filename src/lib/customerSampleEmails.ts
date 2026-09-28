@@ -23,7 +23,11 @@ import { buildRfqEmail } from './rfqEmail'
 import { composeJobAccountEmail } from './supplyHouseJobAccount'
 import { buildLegalConfirmEmail, buildLegalDigestEmail, buildLegalNowEmail } from './legalEmails'
 import { SAMPLE_FIRM, SAMPLE_HOUSE, SAMPLE_RFQ_LINES } from '../../supabase/functions/_shared/customerSampleFixtures'
-import { LEGAL_CONFIRMED_SAMPLE_PATH, LEGAL_PORTAL_SAMPLE_PATH } from './customerJourneys'
+import { LEGAL_CONFIRMED_SAMPLE_PATH, LEGAL_PORTAL_SAMPLE_PATH, PAY_SAMPLE_PATH } from './customerJourneys'
+import { buildStripeBillEmail } from '../../supabase/functions/_shared/stripeBillEmail'
+import { qrMatrix } from '../../supabase/functions/_shared/qrMatrix'
+import { bytesToBase64, qrPngBytes } from '../../supabase/functions/_shared/qrPng'
+import { SAMPLE_JOB } from './journeys/paperSamples'
 
 export type { AppSettingRow }
 
@@ -267,6 +271,31 @@ export function buildSampleLegalEmail(id: 'legal-confirm' | 'legal-now' | 'legal
   })
 }
 
+/**
+ * The bill email a payer gets for a Stripe bill: the send function's own builder and its own
+ * QR code, over the sample job. A real send carries the code as an inline attachment; a
+ * browser cannot load `cid:`, so the sample inlines the same file as a data URL.
+ */
+export function buildSampleBillEmail(ctx: SampleEmailContext): BuiltEmail {
+  const portalUrl = `${PORTAL_SHORT_ORIGIN}${SAMPLE_HOMEOWNER.portalSlug}`
+  const modules = qrMatrix(portalUrl)
+  return buildStripeBillEmail({
+    companyName: PORTAL_COMPANY.name,
+    companyPhone: PORTAL_COMPANY.phone,
+    payerName: SAMPLE_HOMEOWNER.name,
+    jobAddress: SAMPLE_JOB.address,
+    invoiceNumber: `${SAMPLE_JOB.number}-${ctx.todayYmd.slice(2).replace(/-/g, '')}0930`,
+    amountDueCents: SAMPLE_JOB.amount * 100,
+    dueDateUnix: Date.parse(`${ymdPlusDays(ctx.todayYmd, 14)}T18:00:00Z`) / 1000,
+    payUrl: `${ctx.origin}${PAY_SAMPLE_PATH}`,
+    invoicePdfUrl: null,
+    pdfAttached: true,
+    portalUrl,
+    qrImgSrc: modules ? `data:image/png;base64,${bytesToBase64(qrPngBytes(modules))}` : null,
+    canReply: ctx.sender != null,
+  })
+}
+
 export function buildSampleEmail(id: SampleEmailId, ctx: SampleEmailContext): { subject: string; html: string; text: string } {
   if (id === 'estimate') return buildSampleEstimateEmail(ctx)
   if (id === 'contract') return buildSampleContractEmail(ctx)
@@ -280,5 +309,6 @@ export function buildSampleEmail(id: SampleEmailId, ctx: SampleEmailContext): { 
   if (id === 'rfq-request') return buildSampleRfqEmail(ctx)
   if (id === 'job-account') return buildSampleJobAccountEmail(ctx)
   if (id === 'legal-confirm' || id === 'legal-now' || id === 'legal-digest') return buildSampleLegalEmail(id, ctx)
+  if (id === 'bill-email') return buildSampleBillEmail(ctx)
   return buildSampleBidRoomEmail(ctx, id === 'bid-room-revised')
 }

@@ -453,7 +453,7 @@ function cardStripeEmailedHint(ctx: StagesRowRenderContext, job: JobWithDetails,
   const stripePaid = String(line.stripe_invoice_status ?? '').toLowerCase() === 'paid'
   return (
     <div
-      title={`Stripe emailed the customer ${sentMeta.weekdayTimeChicago} (${sentMeta.daysAgoLabel})`}
+      title={`The bill was emailed to the customer ${sentMeta.weekdayTimeChicago} (${sentMeta.daysAgoLabel})`}
       style={{ display: 'flex', justifyContent: 'flex-end', flexWrap: 'wrap', alignItems: 'center', gap: '0.3rem', fontSize: '0.6875rem', color: 'var(--text-muted)' }}
     >
       <span style={{ whiteSpace: 'nowrap' }}>✉ Sent {sentMeta.daysAgoLabel}</span>

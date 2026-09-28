@@ -47,6 +47,18 @@ describe('sample emails (What customers see)', () => {
     expect(m.replyTo).toBe('wendi@clickplumbing.com')
     expect(buildSampleEmail('contract', { ...ctx, sender: null }).html).toContain('Sent to you by Click Plumbing and Electrical')
   })
+  it('the bill email is the send function\'s builder, with its own QR code inlined', () => {
+    const m = buildSampleEmail('bill-email', ctx)
+    expect(m.subject).toBe('Invoice #1042-2609040930 from Click Plumbing and Electrical')
+    expect(m.html).toContain('Hello Sam Sample,')
+    expect(m.html).toContain('$1,850.00')
+    expect(m.html).toContain('Due Sep 18, 2026')
+    expect(m.html).toContain('href="https://clicktooling.com/pay/sample"')
+    expect(m.html).toContain('>my.clickplumbing.com/sam-sample</a>')
+    expect(m.html).toContain('<img src="data:image/png;base64,iVBORw0KGgo')
+    expect(m.html).toContain('reply to this email')
+    expect(buildSampleEmail('bill-email', { ...ctx, sender: null }).html).not.toContain('reply to this email')
+  })
   it('falls back to the fixture text when a setting is blank', () => {
     const m = buildSampleBidRoomEmail({ ...ctx, rows: [] }, false)
     expect(m.html).toContain('Pricing is good for 30 days.')

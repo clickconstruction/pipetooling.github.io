@@ -12,7 +12,25 @@ Billed something outside Stripe — HouseCall Pro, a paper invoice — and now w
 2. Click {{button:blue|⚡ Make Stripe bill}} — it appears on billed lines that aren't Stripe yet.
 3. The confirm shows the amount, the customer, a **live preview of the exact Stripe invoice**, and the promise that matters: *billed date stays put*. Click {{button:blue|Create Stripe bill}}.
 
-That's it — the line now has a hosted pay page and card payment, and the customer's portal statement swaps its check-reference box for {{button:blue|Pay online}} on its own. **Nothing is emailed** by converting; send it from Stripe afterward if you want, like any Stripe bill.
+That's it — the line now has a hosted pay page and card payment, and the customer's portal statement swaps its check-reference box for {{button:blue|Pay online}} on its own. **Nothing is emailed** by converting; send it afterward if you want, like any Stripe bill.
+
+## What the customer gets when you send it
+
+{{button:purple|stripe}}{{button:amber|Send Email invoice}} sends the bill email from ClickTooling — the purple tag means it is a Stripe bill, so they pay on Stripe's page.
+
+:::example The bill email
+**Invoice #1042-2610120930** for 100 Sample St — **$1,850.00**, due Oct 12, 2026
+{{button:amber|Pay now}} — card or bank transfer; the invoice is attached as a PDF
+**Your account, any time** — a QR code beside `my.clickplumbing.com/sam-sample-k7x2`
+:::
+
+- **Pay now** keeps working after Stripe's own link expires.
+- The **QR code and short address** open their statement. They appear only for a customer who has a portal, and never on a bill addressed to someone else. A customer with a portal and no short address is given one on their first bill — their name plus a random tail — and you can change it from the globe.
+- Replies come to whoever pressed Send.
+- In **test mode** the email comes to you, marked as a test, and never to the customer.
+- If our email cannot go out, Stripe sends its own instead and the toast says so. That one has no code.
+
+Settings → **What customers see** shows the email as the customer reads it.
 
 ## The paperwork dates
 
