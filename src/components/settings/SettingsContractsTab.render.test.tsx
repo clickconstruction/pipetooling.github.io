@@ -180,7 +180,8 @@ describe('SettingsContractsTab', () => {
     fireEvent.click(card.getByRole('button', { name: 'Mark reviewed' }))
     fireEvent.change(within(screen.getByTestId('contract-review-form-esign-consent')).getByLabelText('Review note'), { target: { value: '  Read with counsel.  ' } })
     fireEvent.click(card.getByRole('button', { name: 'Save the review' }))
-    await waitFor(() => expect(screen.getByTestId('contract-review-esign-consent').textContent).toContain('Reviewed '))
+    // Named at once, without a reload: the names were read before this review existed.
+    await waitFor(() => expect(screen.getByTestId('contract-review-esign-consent').textContent).toContain('by Smoke Dev.'))
     expect(screen.getByTestId('contract-review-esign-consent').textContent).toContain('Read with counsel.')
     expect(writes).toContainEqual({ table: 'contract_text_reviews', op: 'insert', row: { entry_id: 'esign-consent', reviewed_on: today, reviewed_by: SMOKE_AUTH_USER_ID, note: 'Read with counsel.' } })
     // Marked today by the person looking: it can be taken back. Someone else's review cannot.

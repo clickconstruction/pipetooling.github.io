@@ -111,7 +111,7 @@ export function SettingsContractsTab({ role, onOpenEditor, onOpenStep }: Setting
   const [lastSent, setLastSent] = useState<ContractLastSentData | null>(null)
   const [history, setHistory] = useState<ContractHistoryData | null>(null)
   const [historyOpen, setHistoryOpen] = useState<ReadonlySet<string>>(() => new Set())
-  const { user } = useAuth()
+  const { user, profileName } = useAuth()
   const { showToast } = useToastContext()
   const [loadError, setLoadError] = useState<string | null>(null)
   const [picked, setPicked] = useState<string[]>([])
@@ -188,7 +188,14 @@ export function SettingsContractsTab({ role, onOpenEditor, onOpenStep }: Setting
     if (!user?.id) return false
     try {
       const row = await markContractReviewed({ entryId, userId: user.id, note })
-      setHistory((prev) => ({ ...(prev ?? EMPTY_CONTRACT_HISTORY), reviews: [row, ...(prev?.reviews ?? [])] }))
+      setHistory((prev) => {
+        const base = prev ?? EMPTY_CONTRACT_HISTORY
+        // The names were read before this review existed; the person who just marked it is the one looking.
+        const names = new Map(base.names)
+        const me = (profileName ?? '').trim()
+        if (me && !names.has(row.reviewed_by)) names.set(row.reviewed_by, me)
+        return { ...base, names, reviews: [row, ...base.reviews] }
+      })
       showToast('Review saved.', 'success')
       return true
     } catch (e) {

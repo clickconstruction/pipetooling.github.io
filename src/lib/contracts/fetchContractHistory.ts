@@ -49,7 +49,7 @@ export async function fetchContractHistory(): Promise<ContractHistoryData> {
 /** The office read this entry today. Returns the row as saved. */
 export async function markContractReviewed(input: { entryId: string; userId: string; note: string }): Promise<ContractTextReview> {
   const note = input.note.trim().slice(0, REVIEW_NOTE_MAX)
-  const row = await withSupabaseRetry(
+  const row = await withSupabaseRetry<ContractTextReview>(
     () =>
       supabase
         .from('contract_text_reviews')
@@ -58,7 +58,7 @@ export async function markContractReviewed(input: { entryId: string; userId: str
         .single(),
     'contracts tab: mark reviewed',
   )
-  return row as ContractTextReview
+  return row
 }
 
 /** Take back a review marked by mistake (the person who marked it, or a dev). */
