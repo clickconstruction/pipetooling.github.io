@@ -14,6 +14,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ComponentProps,
   type CSSProperties,
   type Dispatch,
   type ForwardedRef,
@@ -2400,6 +2401,159 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     setWhenInvoiceBillModalDate,
     }
 
+  /** Working → Ready to Bill: ham moves straight through; otherwise the two-box confirm (the section passes the phone board's consequence line; the deck does not). */
+  const readyToBillFromWorking = (j: JobWithDetails, consequence?: string) =>
+    stagesHamMode
+      ? (nudgeMissingBillingEmail(j.id), void moveJobToReadyToBillWithStripePrep(j.id))
+      : (setReadyForBillingChecked1(false), setReadyForBillingChecked2(false), setReadyForBillingJob({ id: j.id, hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—', jobName: j.job_name ?? '—', consequence }))
+  /**
+   * Each stage's moves, send-backs and labels — built once and spread at both the board's
+   * sections and the follow-up deck's rows (the Stages map's step 6), so the two copies
+   * cannot drift. Paid in Full has no deck row and keeps its props at its site.
+   */
+  const stagesSectionActionProps = {
+    waiting: {
+      actionLabel: 'Move to Working',
+      onAction: (j) => void updateJobStatus(j.id, 'working'),
+      showTimeOpen: true,
+      onSendBack: undefined,
+      onSendBackSimple: undefined,
+      showPctComplete: true,
+    } satisfies Partial<ComponentProps<typeof JobsStagesTable>>,
+    working: {
+      actionLabel: 'Ready to Bill',
+      onAction: (j) => readyToBillFromWorking(j),
+      showTimeOpen: true,
+      onSendBack: undefined,
+      onSendBackSimple: stagesHamMode
+        ? (j) => void updateJobStatus(j.id, 'waiting')
+        : (j) => setSendBackConfirmJob({ id: j.id, toStatus: 'waiting' }),
+      sendBackLabel: 'Mark Waiting',
+      showPctComplete: true,
+    } satisfies Partial<ComponentProps<typeof JobsStagesTable>>,
+    readyToBill: {
+      actionLabel: 'Bill Customer',
+      onJobAction: (j) => {
+        if (!jobLedgerHasCustomerForBilling(j.customer_id)) {
+          showToast('Link this job to a customer before billing.', 'error')
+          openEdit(j, { billingCustomerHighlight: true })
+          return
+        }
+        billCustomer?.openBillCustomer({
+          payload: { kind: 'job', job: jobBillingContextFromJob(j) },
+          onSuccess: async () => {
+            await loadJobs()
+            followMovedJob(j.id, 'billed')
+          },
+          onAfterEnsureSuccess: async () => {
+            await loadJobs()
+          },
+        })
+      },
+      onInvoiceAction: (inv) => {
+        if (!jobLedgerHasCustomerForBilling(inv.job.customer_id)) {
+          showToast('Link this job to a customer before billing.', 'error')
+          openEdit(inv.job, { billingCustomerHighlight: true })
+          return
+        }
+        billCustomer?.openBillCustomer({
+          payload: {
+            kind: 'invoice',
+            job: jobBillingContextFromJob(inv.job),
+            // Memo + bundle flag drive the modal's standalone-charge
+            // pre-fill (riders: hazmat fee, trip charge).
+            invoice: {
+              id: inv.id,
+              amount: inv.amount,
+              status: inv.status,
+              stripe_invoice_memo: inv.stripe_invoice_memo ?? null,
+              is_primary_rtb_bundle: inv.is_primary_rtb_bundle ?? null,
+            },
+          },
+          onSuccess: async () => {
+            await loadJobs()
+            followMovedJob(inv.job.id, 'billed')
+          },
+          onAfterEnsureSuccess: async () => {
+            await loadJobs()
+          },
+        })
+      },
+      onJobSendBack: (j) =>
+        stagesHamMode
+          ? void updateJobStatus(j.id, 'working')
+          : (setSendBackChecked(false),
+            setSendBackJob({
+              id: j.id,
+              hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—',
+              jobName: j.job_name ?? '—',
+              toStatus: 'working',
+              rtbDraftCount: sendBackJobBillingContext(j.invoices).rtbDraftCount,
+              billing: sendBackJobBillingContext(j.invoices),
+            })),
+      onInvoiceSendBack: (inv) => stagesHamMode ? deleteInvoice(inv.id) : (setSendBackChecked(false), setSendBackInvoice({ inv, action: 'delete' })),
+      showRemaining: true,
+      showTimeOpen: true,
+      showCreatePartialInvoice: true,
+      jobSendBackLabel: 'Send Job Back',
+      invoiceBundleActionLabel: DELETE_DRAFT_BILL_LABEL,
+      invoiceStandaloneActionLabel: DELETE_DRAFT_BILL_LABEL,
+    } satisfies Partial<ComponentProps<typeof JobsStagesUnifiedTable>>,
+    billed: {
+      actionLabel: 'Mark Paid',
+      onJobAction: (j) => setMarkPaidJob(j),
+      onInvoiceAction: (inv) => setMarkPaidInvoice(inv),
+      onViewBill: (inv) => setViewBillInvoice(inv),
+      showClickTooling: false,
+      onOpenLienTooling: (ctx) =>
+        setLienInstrumentsModal({ job: ctx.job, invoice: ctx.invoice }),
+      onJobSendBack: (j) =>
+        stagesHamMode
+          ? (nudgeMissingBillingEmail(j.id), void moveJobToReadyToBillWithStripePrep(j.id))
+          : (setSendBackChecked(false),
+            setSendBackJob({
+              id: j.id,
+              hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—',
+              jobName: j.job_name ?? '—',
+              toStatus: 'ready_to_bill',
+              rtbDraftCount: 0,
+            })),
+      onInvoiceSendBack: (inv) =>
+        stagesHamMode
+          ? void revertBilledInvoiceToReadyToBill(inv)
+          : (setSendBackChecked(false), setSendBackInvoice({ inv, action: 'revert' })),
+      showRemaining: true,
+      showTimeOpen: true,
+      sendBackBelowRemaining: true,
+      showCreatePartialInvoice: false,
+      invoiceBundleActionLabel: 'Send back',
+      onJobMoveToCollections: stagesGates.canManageCollections(authRole)
+        ? (j) => {
+            setCollectionsNoteDraft('')
+            setCollectionsConfirm({ job: j, direction: 'to' })
+          }
+        : undefined,
+    } satisfies Partial<ComponentProps<typeof JobsStagesUnifiedTable>>,
+    collections: {
+      actionLabel: 'Mark Paid',
+      onJobAction: (j) => setMarkPaidJob(j),
+      onInvoiceAction: (inv) => setMarkPaidInvoice(inv),
+      onViewBill: (inv) => setViewBillInvoice(inv),
+      showClickTooling: false,
+      onOpenLienTooling: (ctx) =>
+        setLienInstrumentsModal({ job: ctx.job, invoice: ctx.invoice }),
+      onJobSendBack: (j) => setCollectionsConfirm({ job: j, direction: 'from' }),
+      onInvoiceSendBack: (inv) => setCollectionsConfirm({ job: inv.job, direction: 'from' }),
+      showRemaining: true,
+      showTimeOpen: true,
+      sendBackBelowRemaining: true,
+      showCreatePartialInvoice: false,
+      jobSendBackLabel: 'Send back to Billed',
+      invoiceBundleActionLabel: 'Send back to Billed',
+      invoiceStandaloneActionLabel: 'Send back to Billed',
+      jobNoteLine: collectionsNoteLine,
+    } satisfies Partial<ComponentProps<typeof JobsStagesUnifiedTable>>,
+  }
   const renderFollowupStageRow = (jobId: string): JobsFollowupStageRowResult | null => {
     const job = jobs.find((x) => x.id === jobId)
     if (!job) return null
@@ -2424,12 +2578,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         <StagesSectionList
           hideHeader
           jobList={[job]}
-          actionLabel={'Move to Working'}
-          onAction={(j) => void updateJobStatus(j.id, 'working')}
-          showTimeOpen={true}
-          onSendBack={undefined}
-          onSendBackSimple={undefined}
-          showPctComplete={true}
+          {...stagesSectionActionProps.waiting}
           {...stagesTableShared}
         />
       ) }
@@ -2439,18 +2588,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         <StagesSectionList
           hideHeader
           jobList={[job]}
-          actionLabel={'Ready to Bill'}
-          onAction={(j) =>
-            stagesHamMode
-              ? (nudgeMissingBillingEmail(j.id), void moveJobToReadyToBillWithStripePrep(j.id))
-              : (setReadyForBillingChecked1(false), setReadyForBillingChecked2(false), setReadyForBillingJob({ id: j.id, hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—', jobName: j.job_name ?? '—' }))}
-          showTimeOpen={true}
-          onSendBack={undefined}
-          onSendBackSimple={stagesHamMode
-            ? (j) => void updateJobStatus(j.id, 'waiting')
-            : (j) => setSendBackConfirmJob({ id: j.id, toStatus: 'waiting' })}
-          sendBackLabel={'Mark Waiting'}
-          showPctComplete={true}
+          {...stagesSectionActionProps.working}
           {...stagesTableShared}
         />
       ) }
@@ -2462,70 +2600,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         <StagesUnifiedSectionList
           hideHeader
           rows={rows}
-          actionLabel={'Bill Customer'}
-          onJobAction={(j) => {
-            if (!jobLedgerHasCustomerForBilling(j.customer_id)) {
-              showToast('Link this job to a customer before billing.', 'error')
-              openEdit(j, { billingCustomerHighlight: true })
-              return
-            }
-            billCustomer?.openBillCustomer({
-              payload: { kind: 'job', job: jobBillingContextFromJob(j) },
-              onSuccess: async () => {
-                await loadJobs()
-                followMovedJob(j.id, 'billed')
-              },
-              onAfterEnsureSuccess: async () => {
-                await loadJobs()
-              },
-            })
-          }}
-          onInvoiceAction={(inv) => {
-            if (!jobLedgerHasCustomerForBilling(inv.job.customer_id)) {
-              showToast('Link this job to a customer before billing.', 'error')
-              openEdit(inv.job, { billingCustomerHighlight: true })
-              return
-            }
-            billCustomer?.openBillCustomer({
-              payload: {
-                kind: 'invoice',
-                job: jobBillingContextFromJob(inv.job),
-                invoice: {
-                  id: inv.id,
-                  amount: inv.amount,
-                  status: inv.status,
-                  stripe_invoice_memo: inv.stripe_invoice_memo ?? null,
-                  is_primary_rtb_bundle: inv.is_primary_rtb_bundle ?? null,
-                },
-              },
-              onSuccess: async () => {
-                await loadJobs()
-                followMovedJob(inv.job.id, 'billed')
-              },
-              onAfterEnsureSuccess: async () => {
-                await loadJobs()
-              },
-            })
-          }}
-          onJobSendBack={(j) =>
-            stagesHamMode
-              ? void updateJobStatus(j.id, 'working')
-              : (setSendBackChecked(false),
-                setSendBackJob({
-                  id: j.id,
-                  hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—',
-                  jobName: j.job_name ?? '—',
-                  toStatus: 'working',
-                  rtbDraftCount: sendBackJobBillingContext(j.invoices).rtbDraftCount,
-                  billing: sendBackJobBillingContext(j.invoices),
-                }))}
-          onInvoiceSendBack={(inv) => stagesHamMode ? deleteInvoice(inv.id) : (setSendBackChecked(false), setSendBackInvoice({ inv, action: 'delete' }))}
-          showRemaining={true}
-          showTimeOpen={true}
-          showCreatePartialInvoice={true}
-          jobSendBackLabel={'Send Job Back'}
-          invoiceBundleActionLabel={DELETE_DRAFT_BILL_LABEL}
-          invoiceStandaloneActionLabel={DELETE_DRAFT_BILL_LABEL}
+          {...stagesSectionActionProps.readyToBill}
           {...stagesUnifiedTableShared}
         />
       ) }
@@ -2537,23 +2612,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         <StagesUnifiedSectionList
           hideHeader
           rows={rows}
-          actionLabel={'Mark Paid'}
-          onJobAction={(j) => setMarkPaidJob(j)}
-          onInvoiceAction={(inv) => setMarkPaidInvoice(inv)}
-          onViewBill={(inv) => setViewBillInvoice(inv)}
-          showClickTooling={false}
-          onOpenLienTooling={(ctx) =>
-            setLienInstrumentsModal({ job: ctx.job, invoice: ctx.invoice })}
-          onJobSendBack={(j) => setCollectionsConfirm({ job: j, direction: 'from' })}
-          onInvoiceSendBack={(inv) => setCollectionsConfirm({ job: inv.job, direction: 'from' })}
-          showRemaining={true}
-          showTimeOpen={true}
-          sendBackBelowRemaining={true}
-          showCreatePartialInvoice={false}
-          jobSendBackLabel={'Send back to Billed'}
-          invoiceBundleActionLabel={'Send back to Billed'}
-          invoiceStandaloneActionLabel={'Send back to Billed'}
-          jobNoteLine={collectionsNoteLine}
+          {...stagesSectionActionProps.collections}
           {...stagesUnifiedTableShared}
         />
       ) }
@@ -2565,39 +2624,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         <StagesUnifiedSectionList
           hideHeader
           rows={rows}
-          actionLabel={'Mark Paid'}
-          onJobAction={(j) => setMarkPaidJob(j)}
-          onInvoiceAction={(inv) => setMarkPaidInvoice(inv)}
-          onViewBill={(inv) => setViewBillInvoice(inv)}
-          showClickTooling={false}
-          onOpenLienTooling={(ctx) =>
-            setLienInstrumentsModal({ job: ctx.job, invoice: ctx.invoice })}
-          onJobSendBack={(j) =>
-            stagesHamMode
-              ? (nudgeMissingBillingEmail(j.id), void moveJobToReadyToBillWithStripePrep(j.id))
-              : (setSendBackChecked(false),
-                setSendBackJob({
-                  id: j.id,
-                  hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—',
-                  jobName: j.job_name ?? '—',
-                  toStatus: 'ready_to_bill',
-                  rtbDraftCount: 0,
-                }))}
-          onInvoiceSendBack={(inv) =>
-            stagesHamMode
-              ? void revertBilledInvoiceToReadyToBill(inv)
-              : (setSendBackChecked(false), setSendBackInvoice({ inv, action: 'revert' }))}
-          showRemaining={true}
-          showTimeOpen={true}
-          sendBackBelowRemaining={true}
-          showCreatePartialInvoice={false}
-          invoiceBundleActionLabel={'Send back'}
-          onJobMoveToCollections={stagesGates.canManageCollections(authRole)
-            ? (j) => {
-                setCollectionsNoteDraft('')
-                setCollectionsConfirm({ job: j, direction: 'to' })
-              }
-            : undefined}
+          {...stagesSectionActionProps.billed}
           {...stagesUnifiedTableShared}
         />
       ) }
@@ -3315,12 +3342,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     jobList={waiting}
                     phoneRows={phoneRowsFor('waiting')}
                     onToggleProgressSort={onToggleProgressSort}
-                    actionLabel={'Move to Working'}
-                    onAction={(j) => void updateJobStatus(j.id, 'working')}
-                    showTimeOpen={true}
-                    onSendBack={undefined}
-                    onSendBackSimple={undefined}
-                    showPctComplete={true}
+                    {...stagesSectionActionProps.waiting}
                     openNewReportForJob={openNewReportForJob}
                   />
                 )}
@@ -3381,18 +3403,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     jobList={workingShown}
                     phoneRows={phoneRowsFor('working')}
                     onToggleProgressSort={onToggleProgressSort}
-                    actionLabel={'Ready to Bill'}
-                    onAction={(j) =>
-                      stagesHamMode
-                        ? (nudgeMissingBillingEmail(j.id), void moveJobToReadyToBillWithStripePrep(j.id))
-                        : (setReadyForBillingChecked1(false), setReadyForBillingChecked2(false), setReadyForBillingJob({ id: j.id, hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—', jobName: j.job_name ?? '—', consequence: phoneBoard ? phoneRowsFor('working')?.advanceConsequence(j, null) : undefined }))}
-                    showTimeOpen={true}
-                    onSendBack={undefined}
-                    onSendBackSimple={stagesHamMode
-                      ? (j) => void updateJobStatus(j.id, 'waiting')
-                      : (j) => setSendBackConfirmJob({ id: j.id, toStatus: 'waiting' })}
-                    sendBackLabel={'Mark Waiting'}
-                    showPctComplete={true}
+                    {...stagesSectionActionProps.working}
+                    onAction={(j) => readyToBillFromWorking(j, phoneBoard ? phoneRowsFor('working')?.advanceConsequence(j, null) : undefined)}
                     openNewReportForJob={openNewReportForJob}
                   />
                 )}
@@ -3433,72 +3445,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     rows={readyToBillRows}
                     phoneRows={phoneRowsFor('ready_to_bill')}
                     onToggleProgressSort={onToggleProgressSort}
-                    actionLabel={'Bill Customer'}
-                    onJobAction={(j) => {
-                      if (!jobLedgerHasCustomerForBilling(j.customer_id)) {
-                        showToast('Link this job to a customer before billing.', 'error')
-                        openEdit(j, { billingCustomerHighlight: true })
-                        return
-                      }
-                      billCustomer?.openBillCustomer({
-                        payload: { kind: 'job', job: jobBillingContextFromJob(j) },
-                        onSuccess: async () => {
-                          await loadJobs()
-                          followMovedJob(j.id, 'billed')
-                        },
-                        onAfterEnsureSuccess: async () => {
-                          await loadJobs()
-                        },
-                      })
-                    }}
-                    onInvoiceAction={(inv) => {
-                      if (!jobLedgerHasCustomerForBilling(inv.job.customer_id)) {
-                        showToast('Link this job to a customer before billing.', 'error')
-                        openEdit(inv.job, { billingCustomerHighlight: true })
-                        return
-                      }
-                      billCustomer?.openBillCustomer({
-                        payload: {
-                          kind: 'invoice',
-                          job: jobBillingContextFromJob(inv.job),
-                          // Memo + bundle flag drive the modal's standalone-charge
-                          // pre-fill (riders: hazmat fee, trip charge).
-                          invoice: {
-                            id: inv.id,
-                            amount: inv.amount,
-                            status: inv.status,
-                            stripe_invoice_memo: inv.stripe_invoice_memo ?? null,
-                            is_primary_rtb_bundle: inv.is_primary_rtb_bundle ?? null,
-                          },
-                        },
-                        onSuccess: async () => {
-                          await loadJobs()
-                          followMovedJob(inv.job.id, 'billed')
-                        },
-                        onAfterEnsureSuccess: async () => {
-                          await loadJobs()
-                        },
-                      })
-                    }}
-                    onJobSendBack={(j) =>
-                      stagesHamMode
-                        ? void updateJobStatus(j.id, 'working')
-                        : (setSendBackChecked(false),
-                          setSendBackJob({
-                            id: j.id,
-                            hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—',
-                            jobName: j.job_name ?? '—',
-                            toStatus: 'working',
-                            rtbDraftCount: sendBackJobBillingContext(j.invoices).rtbDraftCount,
-                            billing: sendBackJobBillingContext(j.invoices),
-                          }))}
-                    onInvoiceSendBack={(inv) => stagesHamMode ? deleteInvoice(inv.id) : (setSendBackChecked(false), setSendBackInvoice({ inv, action: 'delete' }))}
-                    showRemaining={true}
-                    showTimeOpen={true}
-                    showCreatePartialInvoice={true}
-                    jobSendBackLabel={'Send Job Back'}
-                    invoiceBundleActionLabel={DELETE_DRAFT_BILL_LABEL}
-                    invoiceStandaloneActionLabel={DELETE_DRAFT_BILL_LABEL}
+                    {...stagesSectionActionProps.readyToBill}
                     openNewReportForJob={openNewReportForJob}
                   />
                 )}
@@ -3717,39 +3664,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     phoneRows={phoneRowsFor('billed')}
                     onToggleProgressSort={onToggleProgressSort}
                     billedExpectedPayChip={billedExpectedPayChipRenderer}
-                    actionLabel={'Mark Paid'}
-                    onJobAction={(j) => setMarkPaidJob(j)}
-                    onInvoiceAction={(inv) => setMarkPaidInvoice(inv)}
-                    onViewBill={(inv) => setViewBillInvoice(inv)}
-                    showClickTooling={false}
-                    onOpenLienTooling={(ctx) =>
-                      setLienInstrumentsModal({ job: ctx.job, invoice: ctx.invoice })}
-                    onJobSendBack={(j) =>
-                      stagesHamMode
-                        ? (nudgeMissingBillingEmail(j.id), void moveJobToReadyToBillWithStripePrep(j.id))
-                        : (setSendBackChecked(false),
-                          setSendBackJob({
-                            id: j.id,
-                            hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—',
-                            jobName: j.job_name ?? '—',
-                            toStatus: 'ready_to_bill',
-                            rtbDraftCount: 0,
-                          }))}
-                    onInvoiceSendBack={(inv) =>
-                      stagesHamMode
-                        ? void revertBilledInvoiceToReadyToBill(inv)
-                        : (setSendBackChecked(false), setSendBackInvoice({ inv, action: 'revert' }))}
-                    showRemaining={true}
-                    showTimeOpen={true}
-                    sendBackBelowRemaining={true}
-                    showCreatePartialInvoice={false}
-                    invoiceBundleActionLabel={'Send back'}
-                    onJobMoveToCollections={canManageCollections
-                      ? (j) => {
-                          setCollectionsNoteDraft('')
-                          setCollectionsConfirm({ job: j, direction: 'to' })
-                        }
-                      : undefined}
+                    {...stagesSectionActionProps.billed}
                     openNewReportForJob={openNewReportForJob}
                   />
                 )}
@@ -3819,23 +3734,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     rows={collectionsRows}
                     phoneRows={phoneRowsFor('collections')}
                     onToggleProgressSort={onToggleProgressSort}
-                    actionLabel={'Mark Paid'}
-                    onJobAction={(j) => setMarkPaidJob(j)}
-                    onInvoiceAction={(inv) => setMarkPaidInvoice(inv)}
-                    onViewBill={(inv) => setViewBillInvoice(inv)}
-                    showClickTooling={false}
-                    onOpenLienTooling={(ctx) =>
-                      setLienInstrumentsModal({ job: ctx.job, invoice: ctx.invoice })}
-                    onJobSendBack={(j) => setCollectionsConfirm({ job: j, direction: 'from' })}
-                    onInvoiceSendBack={(inv) => setCollectionsConfirm({ job: inv.job, direction: 'from' })}
-                    showRemaining={true}
-                    showTimeOpen={true}
-                    sendBackBelowRemaining={true}
-                    showCreatePartialInvoice={false}
-                    jobSendBackLabel={'Send back to Billed'}
-                    invoiceBundleActionLabel={'Send back to Billed'}
-                    invoiceStandaloneActionLabel={'Send back to Billed'}
-                    jobNoteLine={collectionsNoteLine}
+                    {...stagesSectionActionProps.collections}
                     openNewReportForJob={openNewReportForJob}
                   />
                 ))}
