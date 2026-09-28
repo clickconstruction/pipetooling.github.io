@@ -16,8 +16,10 @@ export type LienDeskMoneyCardPile = { key: LienDeskPile; label: string; count: n
 
 /** The deadline chip (v2.3822): the earliest window as one colored chip, the sentence behind it as the hover. */
 export type LienDeskMoneyCardDeadline = {
-  /** "closed Sep 15 · RMC- Dudley Mason" · "by Oct 15 · in 20 days · 6 notices" · "today · Southern Post" */
+  /** "closed Sep 15" · "6 notices by Oct 15 · in 20 days" · "today" — the count leads, the GCs are `who` (v2.4054) */
   label: string
+  /** The GCs on that day — "Southern Post", "Michael Holub +6" — drawn as a chip of their own (v2.4054). */
+  who: string | null
   tone: 'red' | 'amber' | 'gray'
   /** The old first sentence plus the mail-by warning, for the hover. */
   hover: string
@@ -92,10 +94,12 @@ export function buildLienDeskMoneyCard(summary: LienDeskNeedsYou | null | undefi
     const names = next.deadline === earliest && next.notices > 0 ? next.gcNames : []
     const who = names.length === 0 ? '' : names.length === 1 ? names[0]! : `${names[0]} +${names.length - 1}`
     const many = next.deadline === earliest && next.notices > 1 ? `${next.notices} notices` : ''
-    const tail = [who, many].filter(Boolean).join(' · ')
-    const label = closed ? `closed ${day}${tail ? ` · ${tail}` : ''}` : `${soon === 0 ? 'today' : soon === 1 ? 'tomorrow' : `by ${day} · in ${soon} days`}${tail ? ` · ${tail}` : ''}`
+    // v2.4054: the chip leads with the count and the day, and the GCs are a chip of their
+    // own — so the count is never the part a narrow card cuts off ("15 noti…").
+    const when = closed ? `closed ${day}` : soon === 0 ? 'today' : soon === 1 ? 'tomorrow' : `by ${day} · in ${soon} days`
+    const label = many ? `${many} ${when}` : when
     const hover = `${parts[0] ?? ''}${closed ? ' — the notice goes out as information; the lien right on that work is gone' : day ? ` — mail by ${day} or the lien right on that work is gone` : ''}`
-    deadline = { label, tone, hover, pile: leaderFirst ? 'awaiting' : 'to_draft' }
+    deadline = { label, who: who || null, tone, hover, pile: leaderFirst ? 'awaiting' : 'to_draft' }
   }
   return { claim, why, count, tone, title, piles, deadline }
 }
