@@ -67,7 +67,7 @@ import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { buildPayStubHtml, openPayStubWindow } from '../lib/peopleDocuments/buildPayStubHtml'
 import { PayStubViewModal } from '../components/pay/PayStubViewModal'
-import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
+import { withSupabaseRetry } from '../utils/errorHandling'
 import { usePeopleAccess } from '../hooks/usePeopleAccess'
 import { useCrewJobMap } from '../hooks/useCrewJobMap'
 import { usePayConfig } from '../hooks/usePayConfig'
@@ -84,6 +84,7 @@ import { isPayStubFullyPaid } from '../lib/payStubPayments'
 import { payStubBalance } from '../lib/pay/recordPayStubPayment'
 import { usePayStubsData } from '../hooks/usePayStubsData'
 import { usePayrollPreviewPricing } from '../hooks/usePayrollPreviewPricing'
+import { useDraftPayrollPendingApprovals } from '../hooks/useDraftPayrollPendingApprovals'
 import { peopleMissingPayReports } from '../lib/pay/missingPayReports'
 import { RecordPayStubPaymentModal } from '../components/pay/RecordPayStubPaymentModal'
 import { useRecordPayStubPayment } from '../hooks/useRecordPayStubPayment'
@@ -489,9 +490,6 @@ export default function People() {
   }
   const [forecastModalOpen, setForecastModalOpen] = useState(false)
   const [draftPayrollHoursBreakdownPerson, setDraftPayrollHoursBreakdownPerson] = useState<string | null>(null)
-  const [draftPayrollPendingApprovalCount, setDraftPayrollPendingApprovalCount] = useState<number | null>(null)
-  const [draftPayrollPendingApprovalLoading, setDraftPayrollPendingApprovalLoading] = useState(false)
-  const [draftPayrollPendingApprovalError, setDraftPayrollPendingApprovalError] = useState<string | null>(null)
   const draftPayrollRealtimeSnapRef = useRef({
     draftOpen: false,
     activeTab: '' as string,
@@ -499,6 +497,11 @@ export default function People() {
     periodStart: '',
     periodEnd: '',
   })
+  const { draftPayrollPendingApprovalCount, draftPayrollPendingApprovalLoading, draftPayrollPendingApprovalError, loadDraftPayrollPendingApprovals } =
+    useDraftPayrollPendingApprovals({ draftOpen: draftPayrollModalOpen, canAccessPay, periodStart: payStubPeriodStart, periodEnd: payStubPeriodEnd })
+  /** The clock-session realtime feed re-counts through this, so it always calls the newest loader. */
+  const loadDraftPayrollPendingApprovalsRef = useRef(loadDraftPayrollPendingApprovals)
+  loadDraftPayrollPendingApprovalsRef.current = loadDraftPayrollPendingApprovals
   const [hoursFocusRequest, setHoursFocusRequest] = useState<{ workDate: string; personName: string } | null>(null)
   const [hoursFlashWorkDate, setHoursFlashWorkDate] = useState<string | null>(null)
   const [hoursFlashPersonName, setHoursFlashPersonName] = useState<string | null>(null)
@@ -1117,44 +1120,6 @@ export default function People() {
     }
   }
 
-  const draftPayrollPendingFetchIdRef = useRef(0)
-  const loadDraftPayrollPendingApprovalsRef = useRef<(periodStart: string, periodEnd: string) => void>(() => {})
-
-  const loadDraftPayrollPendingApprovals = useCallback(async (periodStart: string, periodEnd: string) => {
-    if (!canAccessPay || periodStart > periodEnd) return
-    const fetchId = ++draftPayrollPendingFetchIdRef.current
-    setDraftPayrollPendingApprovalLoading(true)
-    setDraftPayrollPendingApprovalError(null)
-    try {
-      const count = await withSupabaseRetry(
-        async () => {
-          const result = await supabase
-            .from('clock_sessions')
-            .select('*', { count: 'exact', head: true })
-            .is('approved_at', null)
-            .is('rejected_at', null)
-            .gte('work_date', periodStart)
-            .lte('work_date', periodEnd)
-          if (result.error) return { data: null as number | null, error: result.error }
-          return { data: result.count ?? 0, error: null }
-        },
-        'draft payroll pending approvals count',
-      )
-      if (fetchId !== draftPayrollPendingFetchIdRef.current) return
-      setDraftPayrollPendingApprovalCount(count)
-    } catch (e) {
-      if (fetchId !== draftPayrollPendingFetchIdRef.current) return
-      setDraftPayrollPendingApprovalError(formatErrorMessage(e, 'Could not load pending approvals'))
-      setDraftPayrollPendingApprovalCount(null)
-    } finally {
-      if (fetchId === draftPayrollPendingFetchIdRef.current) {
-        setDraftPayrollPendingApprovalLoading(false)
-      }
-    }
-  }, [canAccessPay])
-
-  loadDraftPayrollPendingApprovalsRef.current = loadDraftPayrollPendingApprovals
-
   async function loadHoursDaysCorrect(start: string, end: string) {
     if (!canAccessHours && !canAccessPay) return
     const { data, error } = await (supabase as any)
@@ -1456,26 +1421,6 @@ export default function People() {
       setHoursMyTimeEditor((prev) => (prev?.payrollOrigin ? null : prev))
     }
   }, [draftPayrollModalOpen])
-
-  useEffect(() => {
-    if (!draftPayrollModalOpen || !canAccessPay) {
-      if (!draftPayrollModalOpen) {
-        setDraftPayrollPendingApprovalCount(null)
-        setDraftPayrollPendingApprovalLoading(false)
-        setDraftPayrollPendingApprovalError(null)
-      }
-      return
-    }
-    if (payStubPeriodStart > payStubPeriodEnd) {
-      setDraftPayrollPendingApprovalCount(null)
-      setDraftPayrollPendingApprovalLoading(false)
-      return
-    }
-    const t = setTimeout(() => {
-      void loadDraftPayrollPendingApprovals(payStubPeriodStart, payStubPeriodEnd)
-    }, 80)
-    return () => clearTimeout(t)
-  }, [draftPayrollModalOpen, canAccessPay, payStubPeriodStart, payStubPeriodEnd, loadDraftPayrollPendingApprovals])
 
   useEffect(() => {
     if (activeTab === 'review' && isDev) {
