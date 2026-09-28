@@ -5,7 +5,8 @@ import { useBidCrewRate } from '../../hooks/useBidCrewRate'
 import { useJobBaseline } from '../../hooks/useJobBaseline'
 import { useJobBudget } from '../../hooks/useJobBudget'
 import { useJobBurnOverhead } from '../../hooks/useJobBurnOverhead'
-import { useJobChargesTimelineInputs } from '../../hooks/useJobChargesTimelineInputs'
+import { useJobChargesTimelineInputs, type JobChargesTimelineInputsState } from '../../hooks/useJobChargesTimelineInputs'
+import { withLiveJobFormValues, type JobCostsLiveValues } from '../../lib/jobs/jobCostsLiveInputs'
 import { resolveJobBudget, spendByComponent } from '../../lib/jobs/jobBudget'
 import { buildCostsVerdict } from '../../lib/jobs/jobCostsVerdict'
 import { JOB_SUMMARY_VIEW_STORAGE_KEY, readJobSummaryViewPrefs } from '../../lib/jobs/jobSummaryLedgerView'
@@ -48,17 +49,21 @@ function readDetailPref(): boolean {
   }
 }
 
-export function JobCostsTabCharts({ job, includeTeamLabor, teamPeople = null }: { job: JobWithDetails; includeTeamLabor: boolean; /** People who clocked on the job (the baseline strip). */ teamPeople?: number | null }) {
+export function JobCostsTabCharts({ job, includeTeamLabor, teamPeople = null, live = null }: { job: JobWithDetails; includeTeamLabor: boolean; /** People who clocked on the job (the baseline strip). */ teamPeople?: number | null; /** The open form's own price and other job charges — the tab reads these over the loaded job's, so it follows what was typed without a reopen. Memoize it. */ live?: JobCostsLiveValues | null }) {
   const { user, role } = useAuth()
   const navigate = useNavigate()
-  const inputsState = useJobChargesTimelineInputs(job, includeTeamLabor)
+  const loadedInputsState = useJobChargesTimelineInputs(job, includeTeamLabor)
+  const inputsState = useMemo<JobChargesTimelineInputsState>(
+    () => (loadedInputsState.kind === 'ready' && live ? { kind: 'ready', inputs: withLiveJobFormValues(loadedInputsState.inputs, live) } : loadedInputsState),
+    [loadedInputsState, live],
+  )
   // ONE overhead load (v2.3271): the verdict, the chart and the Cost Timeline read the same share.
   const overheadState = useJobBurnOverhead(includeTeamLabor && inputsState.kind === 'ready', job.id, firstEventYmdOf(inputsState))
   const budget = useJobBudget(job.id, job.bid_id ?? null, includeTeamLabor)
   const kept = useJobBaseline(job.id, includeTeamLabor)
   const { crewRate } = useBidCrewRate(includeTeamLabor)
   const inputs = inputsState.kind === 'ready' ? inputsState.inputs : null
-  const priceUsd = inputs?.revenue ?? (job.revenue != null ? Number(job.revenue) : null)
+  const priceUsd = inputs?.revenue ?? live?.priceUsd ?? (job.revenue != null ? Number(job.revenue) : null)
   const resolved = useMemo(() => resolveJobBudget({ row: budget.row, priceUsd, targetMarginPct: readTargetMarginPct() }), [budget.row, priceUsd])
   const canWrite = role === 'dev' || role === 'assistant' || role === 'controller' || role === 'master_technician'
   const pctDone = useMemo(() => {

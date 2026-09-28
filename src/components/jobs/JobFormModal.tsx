@@ -3077,7 +3077,7 @@ export default function JobFormModal({
               lines, and the parts accordions. Its own window tab (owner call);
               the standalone form still shows it after Bill. */}
           <div style={{ display: !embedded || embeddedRegion === 'costs' ? 'flex' : 'none', flexDirection: 'column', gap: '0.75rem' }}>
-          <JobFormLaborCostPanel editing={editing} editJobTeamLaborRow={editJobTeamLaborRow} />
+          <JobFormLaborCostPanel editing={editing} editJobTeamLaborRow={editJobTeamLaborRow} livePriceUsd={jobTotalWithRidersDollars} liveMaterials={materials} />
           <JobFormPartsCostSection
             editing={editing}
             hideTitle={!!editing?.id}
