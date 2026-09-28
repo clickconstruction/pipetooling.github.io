@@ -439,3 +439,32 @@ export function aggregateWeekSummariesByJob(
   }
   return m
 }
+
+/**
+ * The hub's job rows for the week: every job with its block counts and its
+ * identity line, busiest first. Jobs with the same number of blocks go by HCP
+ * number, highest first, read as a number ("1000" before "999"); a job with no
+ * HCP number comes after the ones that have one.
+ */
+export function buildHubMergedRows(
+  jobs: readonly ScheduleDispatchHubJobRow[],
+  summaryRows: JobScheduleBlockWeekSummaryRow[],
+): ScheduleDispatchHubMergedRow[] {
+  const agg = aggregateWeekSummariesByJob(summaryRows)
+  const rows = jobs.map((j) => {
+    const s = agg.get(j.id) ?? { total: 0, byDay: {} }
+    return {
+      ...j,
+      displayTitle: formatScheduleDispatchHubJobTitle(j.hcp_number, j.job_name, j.click_number),
+      totalBlocks: s.total,
+      byDay: { ...s.byDay },
+    }
+  })
+  rows.sort((a, b) => {
+    if (b.totalBlocks !== a.totalBlocks) return b.totalBlocks - a.totalBlocks
+    const ha = (a.hcp_number ?? '').trim()
+    const hb = (b.hcp_number ?? '').trim()
+    return hb.localeCompare(ha, undefined, { numeric: true })
+  })
+  return rows
+}
