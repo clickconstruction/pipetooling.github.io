@@ -7,16 +7,22 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import GcCallSheetModal from './GcCallSheetModal'
-import type { CallSheet } from '../../lib/jobs/gcCallSheet'
+import type { CallSheet, CallSheetBill } from '../../lib/jobs/gcCallSheet'
+
+vi.mock('../../lib/fetchJobActivityEventsForJobLedger', () => ({ fetchJobActivityEventsForJobLedger: vi.fn(async () => ({ data: [], error: null })) }))
+
+const bill = (key: string, remaining: number, ageDays: number, over: Partial<CallSheetBill> = {}): CallSheetBill => ({ key, jobId: `job-${key}`, hcp: key, jobName: 'Reliant Health', jobAddress: '', customerName: 'Cust', referenceDateDisplay: 'Jul 6, 2026', ageDays, remaining, inCollections: false, promisedYmd: null, ...over })
 
 const sheet: CallSheet = {
   ownerUserId: 'u-malachi',
   total: 56000,
   rows: [
-    { gcId: 'knight', gcName: 'Knight Contracting', amount: 26000, oldestAgeDays: 41, lastWord: { temperature: 'warm', note: 'Check run is the 20th.', by: 'Malachi', at: '2026-09-18T15:00:00Z' }, promise: { payBy: '2026-09-20', late: true, daysLate: 7 }, wordIn: false, noChangeAllowed: true },
+    { gcId: 'knight', gcName: 'Knight Contracting', amount: 26000, oldestAgeDays: 41, lastWord: { temperature: 'warm', note: 'Check run is the 20th.', by: 'Malachi', at: '2026-09-18T15:00:00Z' }, promise: { payBy: '2026-09-20', late: true, daysLate: 7 }, wordIn: false, noChangeAllowed: true, bills: [bill('813', 4421.26, 95, { promisedYmd: '2026-09-15' }), bill('898', 21578.74, 84)], collections: [bill('412', 1712.5, 200, { inCollections: true })] },
     { gcId: 'loberg', gcName: 'Loberg Contracting', amount: 30000, oldestAgeDays: 19, lastWord: null, promise: null, wordIn: false, noChangeAllowed: false },
   ],
 }
+
+const onOpenJobDetail = vi.fn()
 
 function renderSheet(initialDrafts?: Record<string, { temperature: 'hot' | 'warm' | 'cool' | 'cold' | null; note: string; payBy: string; noChange: boolean }>) {
   const onSave = vi.fn()
@@ -31,6 +37,8 @@ function renderSheet(initialDrafts?: Record<string, { temperature: 'hot' | 'warm
         { id: 'u-malachi', name: 'Malachi' },
       ]}
       initialDrafts={initialDrafts}
+      todayYmd="2026-09-28"
+      onOpenJobDetail={onOpenJobDetail}
       busy={false}
       error={null}
       onSave={onSave}
@@ -95,5 +103,41 @@ describe('GcCallSheetModal', () => {
       wordFrom: { userId: 'u-malachi', name: 'Malachi' },
       heardVia: 'link',
     })
+  })
+
+  it('a total opens onto the bills behind it, and they come to the total', () => {
+    renderSheet()
+    const knight = rowFor('Knight Contracting')
+    expect(screen.queryAllByTestId('gc-bill-line')).toHaveLength(0)
+    fireEvent.click(knight.getByRole('button', { name: 'Show Knight Contracting’s bills' }))
+    expect(knight.getByRole('button', { name: 'Hide Knight Contracting’s bills' }).textContent).toContain('2 bills · 1 over 90 days, $4,421.26 · 1 more in Collections')
+    expect(knight.getAllByTestId('gc-bill-line')).toHaveLength(3)
+    expect(knight.getByText('2 bills — what Knight Contracting owes').nextElementSibling?.textContent).toBe('$26,000.00')
+    expect(knight.getByText(/said Sep 15 · late/)).toBeTruthy()
+    // The Collections bill is listed apart, and said to be outside the total.
+    expect(knight.getByText(/owed too, and not in the \$26,000\.00 above: \$1,712\.50/)).toBeTruthy()
+    fireEvent.click(knight.getByRole('button', { name: 'Hide Knight Contracting’s bills' }))
+    expect(screen.queryAllByTestId('gc-bill-line')).toHaveLength(0)
+  })
+
+  it('a bill opens its job, and what was typed stays on the sheet', () => {
+    renderSheet()
+    const knight = rowFor('Knight Contracting')
+    fireEvent.click(knight.getByRole('radio', { name: 'Cool' }))
+    fireEvent.change(knight.getByLabelText('What was said about Knight Contracting'), { target: { value: 'Missed the 15th, now says the 10th.' } })
+    fireEvent.click(knight.getByRole('button', { name: 'Show Knight Contracting’s bills' }))
+    fireEvent.click(knight.getByRole('button', { name: '813 · Reliant Health' }))
+    expect(onOpenJobDetail).toHaveBeenCalledWith('job-813')
+    expect((knight.getByLabelText('What was said about Knight Contracting') as HTMLInputElement).value).toBe('Missed the 15th, now says the 10th.')
+    expect(screen.getByRole('button', { name: 'Save 1 answer' })).toBeTruthy()
+  })
+
+  it('Show all bills opens every GC that has any; a GC with none has nothing to open', () => {
+    renderSheet()
+    expect(rowFor('Loberg Contracting').queryByRole('button', { name: /bills$/ })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Show all bills' }))
+    expect(screen.getAllByTestId('gc-call-sheet-bills')).toHaveLength(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Hide all bills' }))
+    expect(screen.queryAllByTestId('gc-call-sheet-bills')).toHaveLength(0)
   })
 })

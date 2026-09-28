@@ -9,7 +9,7 @@ covers:
   - src/components/SupplyHousesTab.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-09-25
+last_updated: 2026-09-28
 ---
 
 ## Overview
@@ -146,7 +146,7 @@ Page-level modals: `PartFormModal` (extracted; opened from Parts Book, Assembly 
 
 - **Parent JSX:** `<MaterialsAssemblyBookTab active={…}>` 1687–1747 (59 props); the Add Item modal renders inside it independent of `active`.
 - **Parent-owned:** `editingItemQuantityId/Value`; the Add Item modal cluster (218–228) + `closeAddItemModal`/`handleAddItemFromModal` (881–959; merges quantity into an existing part row); `updateItemQuantity` (779–799), `removeItemFromTemplate` (961–975, also PO Builder); template CRUD (694–777; the openers go to this tab only, save/delete live in the page's Template Form modal); derived `filteredTemplates`/`calculateAssemblyCost` (R11). `handlePartSaved` (651–662) writes `addItemModalPartId`/`SearchQuery`/`DropdownOpen` when the part form was opened from the Add Item modal — why the cluster stays page-owned. The tab also writes shared state through raw setters: `setEditingPart`/`setPartFormOpen` (its part rows open the form directly, not via `openEditPart`), `setViewingPartPrices`, `setExpandedPartId` and `setActiveTab` (→ `parts-book`).
-- **Inside `useMaterialsAssemblies`:** `materialTemplates`, `selectedTemplate`, `templateItems`, shared filters (`templateSearchQuery`, `filterAssemblyTypeIds`, `filterIncludeEmpty`, dropdown open + ref — rendered by both assembly tabs), `allTemplateItemsForStats`, `partIdToLowestPrice`, `loadMaterialTemplates`/`loadTemplateItems`/`loadAllTemplateItemsForStats`. Data: `material_templates`, `material_template_items`, `material_parts`, `material_part_prices`. The parent triggers `loadTemplateItems` on `selectedTemplate` (497–501) and stats on `assemblies-po || assembly-book` (503–507).
+- **Inside `useMaterialsAssemblies`:** `materialTemplates`, `selectedTemplate`, `templateItems`, shared filters (`templateSearchQuery`, `filterAssemblyTypeIds`, `filterIncludeEmpty`, dropdown open + ref — rendered by both assembly tabs), `allTemplateItemsForStats`, `partIdToLowestPrice`, `loadMaterialTemplates`/`loadTemplateItems`/`loadAllTemplateItemsForStats`. Data: `material_templates`, `material_template_items`, `material_parts`, `material_part_prices`; the stats read and its lowest prices page through [`assemblyItems.ts`](../src/lib/materials/assemblyItems.ts). The parent triggers `loadTemplateItems` on `selectedTemplate` (497–501) and stats on `assemblies-po || assembly-book` (503–507).
 - **Inside the tab:** [`TemplatePricesManager`](../src/components/materials/TemplatePricesManager.tsx) (bundle prices, `material_template_prices`; also rendered by PO Builder); pickers via `filterPartsByQuery`/`filterTemplatesByQuery`.
 - **External coupling:** `?addAssembly=true` (429–442). Bundle prices feed Bids takeoffs.
 - **Status:** Done (v2.1290). Stage A landed (`assemblyCost.ts`, `materialsFilters.ts`, v2.1276); the page-level `filteredTemplates` (empty/type filter + search incl. type name, no limit) is still inline (591–607).
@@ -305,7 +305,7 @@ Open candidates at a05cef4c4:
 | R13 template CRUD, `addItemToTemplate` qty-merge, `handleAddItemFromModal` | none | all |
 | R14 PO actions | `materialPOUtils.test.ts` (7), `poItemDetails.test.ts` (9), `poPrint.test.ts` (9) | **`updatePartPriceInBook` (0 ⇒ DELETE), `addPartPriceFromPOModal`, `updatePOItemSupplyHouse` optimistic 4-way write — untested price writes** |
 | Price coverage stats | `supplyHouseStats.test.ts` (3) | the render test asserts the opener button; the modal is never opened |
-| Children | `MaterialsPoGeneratorTab.render.test.tsx`, `StatedNeedEditor.render.test.tsx`; kernels `materialsFilters` (13), `partPrices` (5), `partsCatalog` (9), `jobAccountsFlow` (22), `supplyHouseDirectory` (13) | the other 6 tab components and the 3 seam hooks have no own tests (page smoke only) |
+| Children | `MaterialsPoGeneratorTab.render.test.tsx`, `StatedNeedEditor.render.test.tsx`; kernels `materialsFilters` (13), `partPrices` (5), `partsCatalog` (9), `assemblyItems` (10), `jobAccountsFlow` (22), `supplyHouseDirectory` (13) | the other 6 tab components and the 3 seam hooks have no own tests (page smoke only) |
 | SupplyHousesTab mount | Materials render test (dev: Directory + Accounts payable headings; estimator: Directory alone) | **Quickfill mount (`SupplyHousesSection`) — none** |
 | S7 summary aggregation + header total | none | **money math, untested** |
 | Aging map, sort | `supplyHouseAging.test.ts` (16, incl. credits + job-account share), `supplyHouseSummarySort.test.ts` (6) | render |

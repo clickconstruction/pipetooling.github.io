@@ -1,8 +1,8 @@
 ---
 name: "GC Review for one operator: the assistant drives, the account man is the source"
 number: 49
-group: close
-status: steps 1–7 shipped v2.3950 / v2.3954 / v2.3957 / v2.3959 / v2.3960 / v2.3961 / v2.3971 / v2.3976 / v2.3985 · three migrations wait on db push · three edge functions wait on a deploy
+group: waiting
+status: steps 1–7 shipped v2.3950 / v2.3954 / v2.3957 / v2.3959 / v2.3960 / v2.3961 / v2.3971 / v2.3976 / v2.3985 · migrations applied and the three functions deployed 2026-09-28
 summary: >
   The weekly statement round was built for the account man opening the app. Only the assistant
   works GC Review; when the knowledge is his, she phones him and types the answer in. So the
@@ -10,9 +10,9 @@ summary: >
   keyboard: one worklist (Check · Send · Word per GC, grouped by who to ask), the account man's
   word recorded as his with who entered it, a call sheet for one call per account man, check and
   send from the row, broken promises in red, and the prompts re-aimed at the office.
-next: Apply the three migrations (`bash scripts/db-push.sh`), the `chore(types)` PR, deploy `gc-word-ask`, `send-gc-statement-email` and `statement-round-email-dispatch`; then run a week on it and retire this to-do.
+next: Run a Wednesday on it. Then drop the `as never` casts in `gcWordAskIo.ts` / `statementRoundEmailClient.ts` (the types have the new tables), retire `get_statement_round_for_user` / `get_my_statement_round`, and retire this to-do.
 size: S–M · M · M · S–M · S · M · L
-blocker: the deploys need a checkout with `.env.local`.
+blocker: none — it needs a week of use.
 ver: v2.3950 · v2.3954 · v2.3957 · v2.3959 · v2.3960 · v2.3961 · v2.3971 · v2.3976 · v2.3985
 opinion: built; apply the deploys and watch one Wednesday before retiring the old per-sender database functions.
 ---
@@ -63,6 +63,10 @@ Kept: a statement never goes out unchecked; the app never emails a GC on its own
 - Tables: `gc_statement_round_marks`, `gc_review_certifications`, `customers.statement_sender_user_id`, `statement_round_email_requests`
 - Server: `get_statement_round_for_user`, edge `statement-round-email-dispatch`, `send-gc-statement-email`
 - Prompts: `PipelineMoneyOpportunities.tsx`, `usePipelineMoneyOpportunities.ts`, `dashboardNeedsYou.ts`, `useStatementRoundNudge.ts`
+
+## Where it stands
+
+Everything is live as of 2026-09-28: the four migrations of that day are applied, `gc-word-ask`, `send-gc-statement-email` and `statement-round-email-dispatch` are deployed and answer, and a dead link answers 404 with the office's words. Checked in the app on real data, read-only: the week's list, the call sheet ("Stamps Malachi's word — entered by …"), the Ask by link dialog, and Print unpaid invoices (RMC- Dudley Mason, 21 pages). Not yet exercised on real data, because each writes: minting a link, his answers, saving a call sheet, a send with Replies go to.
 
 ## How to verify
 

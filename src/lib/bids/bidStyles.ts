@@ -18,7 +18,10 @@ export function bidsTabStyle(active: boolean, tabId: string) {
   const base = tabStyle(active)
   if (HIGHLIGHTED_TABS.includes(tabId as (typeof HIGHLIGHTED_TABS)[number])) {
     // Highlighted tabs keep safety orange: filled orange box when active, orange text otherwise.
-    return active ? { ...base, background: SAFETY_ORANGE } : { ...base, fontWeight: 600, color: SAFETY_ORANGE }
+    // `backgroundColor`, never the `background` shorthand: the shorthand resets the base's
+    // `backgroundClip: 'padding-box'`, so the open orange tab filled its full height instead
+    // of the slim pill, and stayed mis-clipped after it closed (see lib/pageTabStyle).
+    return active ? { ...base, backgroundColor: SAFETY_ORANGE } : { ...base, fontWeight: 600, color: SAFETY_ORANGE }
   }
   return base
 }

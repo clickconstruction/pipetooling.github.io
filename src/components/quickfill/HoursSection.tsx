@@ -25,6 +25,7 @@ import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { localCalendarDayKey } from '../../utils/dateUtils'
 import { buildPayRosterIndex, fetchRosterPeople, isPayRosterRow, type PayRosterIndex } from '../../lib/people/rosterPeople'
+import { EMPTY_HOURS_ROSTER_MESSAGE } from '../../lib/people/hoursGridRoster'
 
 /** Narrow view of the canonical pay-config row (single source of truth for field types). */
 type PayConfigRow = Pick<PayConfigRowFull, 'person_name' | 'person_id' | 'is_salary' | 'record_hours_but_salary'>
@@ -614,7 +615,7 @@ export function HoursSection() {
             )}
           />
           {showPeopleForHours.length === 0 ? (
-            <p style={{ color: 'var(--text-muted)' }}>No people with Show in Hours selected. Go to People → Hours and open People pay config; check Show in Hours for people to track.</p>
+            <p style={{ color: 'var(--text-muted)' }}>{EMPTY_HOURS_ROSTER_MESSAGE}</p>
           ) : (
             <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 4 }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem', tableLayout: 'fixed' }}>

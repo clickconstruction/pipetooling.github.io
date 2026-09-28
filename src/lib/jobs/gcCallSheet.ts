@@ -5,16 +5,26 @@
  * rows go in; the modal owns the drafts, GC Review owns the writes.
  */
 import { addDaysYmd } from '../emailSchedule/emailScheduleWeek'
+import type { GcReviewRow } from '../gcReviewRollup'
+import type { PromisedPayDate } from './billedExpectedPay'
 import type { GcWorklistGroup } from './gcWorklist'
 import { isTemperature, type StatementSendChannel, type Temperature } from './gcStatementRounds'
 import type { TemperatureBoardRow } from './temperatureBoard'
 import { payPromiseLabel, payPromiseStatus, type PayPromise } from './payPromise'
 import { isNoChangeNote, noChangeNote } from '../gcWordAsk'
 
+/** One line of a GC's statement, with the date that job was last promised. */
+export type CallSheetBill = GcReviewRow & { promisedYmd: string | null }
+
 export type CallSheetRow = {
   gcId: string
   gcName: string
+  /** What the GC owes on active bills — the sum of `bills`. */
   amount: number
+  /** The bills behind `amount`, in the statement's order. Absent when the sheet was built without them. */
+  bills?: CallSheetBill[]
+  /** The GC's bills in Collections: owed, and not part of `amount` — the week's round works active bills only. */
+  collections?: CallSheetBill[]
   oldestAgeDays: number | null
   /** The newest word on record, this week's included. */
   lastWord: { temperature: Temperature | null; note: string; by: string; at: string } | null
@@ -34,7 +44,15 @@ export function buildCallSheet(input: {
   group: Pick<GcWorklistGroup, 'ownerUserId' | 'rows'>
   boardRowByGc: ReadonlyMap<string, Pick<TemperatureBoardRow, 'now' | 'nowAt' | 'nowBy' | 'lastWord' | 'expectedPayBy'>>
   todayYmd: string
+  /** The date each job was last promised (the Stages board's map), shown on its bill. */
+  promisedPayDates?: Readonly<Record<string, Pick<PromisedPayDate, 'promisedYmd'>>> | null
+  /** Each GC's bills in Collections, listed under its active ones. */
+  collectionsByGc?: ReadonlyMap<string, readonly GcReviewRow[]>
 }): CallSheet {
+  const asBill = (r: GcReviewRow): CallSheetBill => {
+    const promised = input.promisedPayDates?.[r.jobId]?.promisedYmd ?? null
+    return { ...r, promisedYmd: promised && /^\d{4}-\d{2}-\d{2}$/.test(promised) ? promised : null }
+  }
   const rows: CallSheetRow[] = input.group.rows
     .filter((r) => !r.skipped)
     .map((r) => {
@@ -44,6 +62,8 @@ export function buildCallSheet(input: {
         gcId: r.gcId,
         gcName: r.gcName,
         amount: r.amount,
+        bills: r.group.rows.map(asBill),
+        collections: (input.collectionsByGc?.get(r.gcId) ?? []).map(asBill),
         oldestAgeDays: r.oldestAgeDays,
         lastWord,
         promise: payPromiseStatus(b?.expectedPayBy, input.todayYmd, r.amount),
@@ -54,6 +74,32 @@ export function buildCallSheet(input: {
   // The call goes where the money is: broken promises, then no word yet, then the largest balance.
   rows.sort((a, b) => Number(b.promise?.late ?? false) - Number(a.promise?.late ?? false) || Number(a.wordIn) - Number(b.wordIn) || b.amount - a.amount)
   return { ownerUserId: input.group.ownerUserId, rows, total: rows.reduce((t, r) => t + r.amount, 0) }
+}
+
+/** Bills this old are what a call is about. */
+export const CALL_SHEET_OLD_BILL_DAYS = 90
+
+export type CallSheetBillsSummary = { count: number; jobs: number; total: number; old: { count: number; total: number }; promised: number }
+
+/** What a GC's bills come to: how many, on how many jobs, how much of it is over 90 days, how many carry a promised date. */
+export function callSheetBillsSummary(bills: ReadonlyArray<Pick<CallSheetBill, 'jobId' | 'remaining' | 'ageDays' | 'promisedYmd'>>): CallSheetBillsSummary {
+  const old = bills.filter((b) => b.ageDays != null && b.ageDays >= CALL_SHEET_OLD_BILL_DAYS)
+  const cents = (rows: ReadonlyArray<{ remaining: number }>) => rows.reduce((t, b) => t + Math.round(b.remaining * 100), 0) / 100
+  return {
+    count: bills.length,
+    jobs: new Set(bills.map((b) => b.jobId)).size,
+    total: cents(bills),
+    old: { count: old.length, total: cents(old) },
+    promised: bills.filter((b) => b.promisedYmd).length,
+  }
+}
+
+/** "19 bills on 12 jobs · 4 over 90 days, $39,490.00" — the line that opens a GC's bills. */
+export function callSheetBillsLabel(s: CallSheetBillsSummary, money: (n: number) => string): string {
+  const bills = `${s.count} bill${s.count === 1 ? '' : 's'}`
+  const jobs = s.jobs !== s.count ? ` on ${s.jobs} job${s.jobs === 1 ? '' : 's'}` : ''
+  const old = s.old.count > 0 ? ` · ${s.old.count} over ${CALL_SHEET_OLD_BILL_DAYS} days, ${money(s.old.total)}` : ''
+  return `${bills}${jobs}${old}`
 }
 
 export type CallSheetDraft = { temperature: Temperature | null; note: string; payBy: string; noChange: boolean }

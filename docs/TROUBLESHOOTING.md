@@ -136,7 +136,7 @@ In this repo, **Cursor** loads **[`.cursor/rules/supabase-incident-triage.mdc`](
 **Cause**: PostgREST answers every read that sets no `limit` with the first `max_rows` (1,000) rows and a 200. Tables cross the cap quietly as the business grows — `material_parts` (Plumbing) did in June 2026 and the Takeoffs part search lost "DI…" through Z until v2.2755. The tripwire in [`src/lib/supabaseRowCapTripwire.ts`](../src/lib/supabaseRowCapTripwire.ts) (wired into the client in `src/lib/supabase.ts`, v2.2756) inspects every response's `Content-Range` and reports the first hit per table per session.
 
 **Fix** (pick one, at the call site the message's `path` points to):
-1. **Page it** — `fetchAllRows` / `fetchAllRowsChunkedIn` from [`src/lib/supabasePaging.ts`](../src/lib/supabasePaging.ts) with a stable `.order()`; add a regression test with the fake-cap client (pattern: `src/lib/materials/partsCatalog.test.ts`).
+1. **Page it** — `fetchAllRows` / `fetchAllRowsChunkedIn` from [`src/lib/supabasePaging.ts`](../src/lib/supabasePaging.ts) with a stable `.order()`; add a regression test with the fake-cap client (`makeFakeRowCapSupabase` in `src/test/fakeRowCapSupabase.ts`; pattern: `src/lib/bids/partAssemblyIndexIo.test.ts`).
 2. **Bound it** — `.limit(n)`, `.in('id', ids)`, or a narrower filter, when the surface only ever needs a slice.
 3. **Prove it isn't capped** — `select('…', { count: 'exact' })`: a known total ≤ 1,000 silences the tripwire, because exactly 1,000 real rows is then a fact, not a symptom.
 

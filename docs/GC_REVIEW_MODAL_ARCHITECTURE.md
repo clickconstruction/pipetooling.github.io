@@ -67,7 +67,7 @@ The office opens GC Review from the Stages board's Billed section. There they:
 | `isDev` | `authRole === 'dev'` | gates Standing copies only |
 | `canCertify` | `stagesGates.isStagesOfficeRole(authRole)`: dev · master_technician · assistant · controller | gates certify, assign, Mark sent, round-email edits for others |
 | `onOpenJob?` | `tryOpenEditJob(jobId, { onSaved: loadJobs + refreshCustomers… })` | Edit Job (z 1010) stacks over GC Review (z 60), and the refetch re-derives the rollup in place |
-| `onOpenJobDetail?` | `jobDetailModal.openJobDetail` | passed through to `GcReviewCertifyModal` |
+| `onOpenJobDetail?` | `jobDetailModal.openJobDetail` | passed through to `GcReviewCertifyModal` and `GcCallSheetModal` |
 | `startInRound?`, `startInRoundGcId?` | `gcReviewStartRound`, `gcReviewRoundGcId` | effect 543–548 |
 
 ### Monster blocks (fact sheet, ≥ 100 lines)
@@ -123,10 +123,10 @@ Render regions in JSX order (all ranges @ `a05cef4c4`). Status: `extracted` mean
 | 7c | ↳ Job table | 1559–1633 (job link → `onOpenJob` 1591–1616) | 75 | — | ✗ | low | inline |
 | 8 | Foot: Include Collections · Total outstanding (sticky) | `.gcReviewFoot` | 14 | `includeCollections`, `rollup.grandTotal` | `gcReviewRollup` ✓; modal render ✓ | low | inline |
 | 9 | **Draft Message dialog** | `emailDialogGroup ?` 1652–1895 + `openEmailDialogForGroup` 686–707 + `emailSendGuard` 709–716 | 244 + 31 | 13 · 11 · 3 · children `TeammateEmailChips`, `ScheduleWhenControls` | builders/guard/CC ✓; **payload assembly ✗** | **high** | inline |
-| 10 | Call sheet (replaced the round overlay) | `callSheetGroupKey && …` IIFE → `<GcCallSheetModal>`; `saveCallSheet` | modal 215 | `worklist`, `boardRowByGc`, `wordSources`, `roundBusy`, `roundError` | `gcCallSheet` ✓ (10), `payPromise` ✓ (7), render ✓ (4) | med | **extracted** |
+| 10 | Call sheet (replaced the round overlay) | `callSheetGroupKey && …` IIFE → `<GcCallSheetModal>`; `saveCallSheet` | modal 215 | `worklist`, `boardRowByGc`, `promisedPayDates`, `collectionsByGc`, `wordSources`, `onOpenJobDetail`, `roundBusy`, `roundError` | `gcCallSheet` ✓ (10), `payPromise` ✓ (7), render ✓ (4) | med | **extracted** |
 | 11 | Share all dialog | `shareAllOpen ?` 2034–2346 (Email once 2080–2200) | 170 | 17 · 13 · 7 (whole block, incl. 11a) | builders ✓; payload ✗ | **med-high** | inline |
 | 11a | ↳ Standing copies (dev) | `isDev ?` 2201–2343 + handlers 415–485 | 143 + 71 | 7 · 4 · 6 | `planStandingCopyEdit` ✓; `applyStandingPlan` ✗ | med | inline |
-| 12 | Certify modal | `<GcReviewCertifyModal>` 2347–2362 | 16 | `certifyGroup` | ✗ | low | **extracted** (241) |
+| 12 | Certify modal | `<GcReviewCertifyModal>` 2347–2362 | 16 | `certifyGroup` | render ✓ (3) | low | **extracted** (167, over `GcBillLines`) |
 | 13 | Mark sent dialog | `markSentGroup && …` 2363–2395 | 33 | 3 · 1 · 1 · `GcStatementMarkSentForm` | form ✓ | low | inline host |
 | 14 | ~~Sender card~~ | retired with the rounds panel — nothing opened it once the chips went | — | — | — | — | **retired** |
 | 15 | Send history | `<GcStatementSendHistoryModal>` 2437–2439 | 3 | `historyGc` | ✗ | low | **extracted** (116) |
@@ -257,7 +257,7 @@ Render regions in JSX order (all ranges @ `a05cef4c4`). Status: `extracted` mean
 
 ### 10. Call sheet (extracted; replaced the round overlay)
 
-- **Render:** `GcCallSheetModal` (z 64), mounted while `callSheetGroupKey` names a worklist group. The modal builds the sheet per render — `buildCallSheet({ group, boardRowByGc, todayYmd })` — and owns nothing of it; the component owns the drafts, the source select and how it was heard.
+- **Render:** `GcCallSheetModal` (z 64), mounted while `callSheetGroupKey` names a worklist group. The modal builds the sheet per render — `buildCallSheet({ group, boardRowByGc, todayYmd, promisedPayDates, collectionsByGc })` (each row carries the bills behind its total, from the worklist row's own group, and the GC's Collections bills apart; `GcBillLines` draws them, and a bill's job link is `onOpenJobDetail`) — and owns nothing of it; the component owns the drafts, the source select and how it was heard.
 - **Save:** `saveCallSheet(answers, word)` upserts each answer through `mergeRoundMarkWrite` (a word over a sent mark keeps it sent), refreshes once, names any GC that failed and keeps the rest.
 - **Print:** `buildCallSheetPrintHtml` → `openHtmlPrintWindow`.
 - **Ask by link** (punch list #49, step 7): `wordAsks` (loaded on open through `listGcWordAsks`; `wordAsksOn` stays false until the tables exist) feeds the worklist's **Ask by link** / **answered N — review** buttons. `GcWordAskDialog` (z 64) mints, copies, emails and revokes through `wordAskStep`; review opens this same call sheet with `initialDrafts` (`callSheetFromLink`), and `saveCallSheet` marks the saved answers `accepted`.
@@ -281,7 +281,7 @@ Render regions in JSX order (all ranges @ `a05cef4c4`). Status: `extracted` mean
 
 ### 12–15. Tail modals: extracted children
 
-- **`GcReviewCertifyModal`** (241 lines, z 70): `group`, `weekStartYmd`, `authUserId/Name`. `onCertified({andSend})` → `refreshCerts` and optionally `openEmailDialogForGroup`. It writes `gc_review_certifications` via `insertGcReviewCertification` + `buildGcCertSnapshot` (tested). **No render test.**
+- **`GcReviewCertifyModal`** (167 lines, z 70; its bill lines, the job link and the activity dropdown are `GcBillLines`, shared with the call sheet): `group`, `weekStartYmd`, `authUserId/Name`. `onCertified({andSend})` → `refreshCerts` and optionally `openEmailDialogForGroup`. It writes `gc_review_certifications` via `insertGcReviewCertification` + `buildGcCertSnapshot` (tested). **No render test.**
 - **Mark sent dialog** (2363–2395, inline host, z 64): header facts + `GcStatementMarkSentForm defaultChannel="text"` → `markRound`. Its backdrop is blocked while `roundBusy`. With `canFilePromises` the form is given the group's bills (`gcWordBills`) and `markRound` files the pay date on the jobs it returns (`addJobPaymentPromisesSettled`); `saveCallSheet` does the same for every bill of each answered GC.
 - **`GcSenderRoundCard`** is retired (with `senderRoundQueue` and `latestGcStatementMarkBy`).
 - **`GcStatementSendHistoryModal`** (116 lines, z 64): self-loading (`listGcStatementSentHistory`, `gcStatementSendHistoryIo`). **No render test.**

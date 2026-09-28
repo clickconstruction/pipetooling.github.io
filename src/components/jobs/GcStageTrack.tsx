@@ -25,6 +25,8 @@ export default function GcStageTrack({ track, stage, onPick }: Props) {
       {track.stops.map((s) => {
         const here = track.here === s.key
         const label = gcStageStopLabel(s)
+        // The count is drawn as a number and its words, so a narrow window can keep the number alone.
+        const words = s.complete ? label : s.waiting === 0 ? 'waiting' : label.replace(/^\d+\s*/, '')
         return (
           <span key={s.key} className="gcStageLeg">
             <button
@@ -47,7 +49,7 @@ export default function GcStageTrack({ track, stage, onPick }: Props) {
               </span>
               <span className="gcStageCount">
                 <span className="gcStageCountN">{s.complete ? '✓' : s.waiting}</span>
-                <span className="gcStageCountWords">{s.complete ? ` ${label}` : ` ${label.replace(/^\d+\s*/, '')}`}</span>
+                <span className="gcStageCountWords"> {words}</span>
               </span>
               <span className="gcStageProgress">
                 <span className="gcStageBar" aria-hidden>

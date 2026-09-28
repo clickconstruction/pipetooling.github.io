@@ -67,7 +67,7 @@ Pick one person and an **Estimating** strip appears under the totals: sent, afte
 
 - **Devs and controllers** see everyone, with dollar amounts. Nobody else can open the Day book for now — the tab, the line on Crew Day and the door on Bids are hidden for every other role, and the server refuses the read regardless.
 
-The address bar carries the range and the person, so a manager can send a link to one person's week.
+The address bar carries the range and the person, so a manager can send a link to one person's week. Switch to another tab and the range leaves the address bar with the Day book; come back and it opens on the week you left.
 
 ## What it is not
 

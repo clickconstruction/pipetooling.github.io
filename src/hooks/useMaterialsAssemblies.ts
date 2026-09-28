@@ -2,6 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Database } from '../types/database'
 import { fetchPricesForParts } from '../lib/materials/partPrices'
+import {
+  loadAssemblyItemLinksForTemplates,
+  loadLowestPriceByPartId,
+  partIdsOfAssemblyItems,
+  type AssemblyItemLink,
+} from '../lib/materials/assemblyItems'
 import type { PartType, PartWithPrices } from './useMaterialsCatalog'
 
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
@@ -35,7 +41,7 @@ export function useMaterialsAssemblies({
   const [filterIncludeEmpty, setFilterIncludeEmpty] = useState(false)
   const [filterAssemblyTypeDropdownOpen, setFilterAssemblyTypeDropdownOpen] = useState(false)
   const [templateItems, setTemplateItems] = useState<TemplateItemWithDetails[]>([])
-  const [allTemplateItemsForStats, setAllTemplateItemsForStats] = useState<Array<{ template_id: string; item_type: string; part_id: string | null; nested_template_id: string | null; quantity: number }>>([])
+  const [allTemplateItemsForStats, setAllTemplateItemsForStats] = useState<AssemblyItemLink[]>([])
   const [partIdToLowestPrice, setPartIdToLowestPrice] = useState<Record<string, number>>({})
   const filterAssemblyTypeDropdownRef = useRef<HTMLDivElement>(null)
 
@@ -136,31 +142,18 @@ export function useMaterialsAssemblies({
       return
     }
 
-    const { data, error } = await supabase
-      .from('material_template_items')
-      .select('template_id, item_type, part_id, nested_template_id, quantity')
-      .in('template_id', templateIds)
-    if (!error && data) {
-      const items = data as Array<{ template_id: string; item_type: string; part_id: string | null; nested_template_id: string | null; quantity: number }>
-      setAllTemplateItemsForStats(items)
-      const partIds = [...new Set(items.filter(i => i.item_type === 'part' && i.part_id).map(i => i.part_id as string))]
-      if (partIds.length > 0) {
-        const { data: pricesData } = await supabase
-          .from('material_part_prices')
-          .select('part_id, price')
-          .in('part_id', partIds)
-        const map: Record<string, number> = {}
-        for (const row of (pricesData ?? []) as { part_id: string; price: number }[]) {
-          const pid = row.part_id
-          const existing = map[pid]
-          if (existing === undefined || row.price < existing) map[pid] = row.price
-        }
-        setPartIdToLowestPrice(map)
-      } else {
-        setPartIdToLowestPrice({})
-      }
-    } else {
+    let items: AssemblyItemLink[]
+    try {
+      items = await loadAssemblyItemLinksForTemplates(supabase, templateIds)
+    } catch {
       setAllTemplateItemsForStats([])
+      setPartIdToLowestPrice({})
+      return
+    }
+    setAllTemplateItemsForStats(items)
+    try {
+      setPartIdToLowestPrice(await loadLowestPriceByPartId(supabase, partIdsOfAssemblyItems(items)))
+    } catch {
       setPartIdToLowestPrice({})
     }
   }

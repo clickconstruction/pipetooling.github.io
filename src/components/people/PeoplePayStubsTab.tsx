@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { USERS_TAB_PAY_LENS_PATH } from '../../lib/people/usersTabLens'
+import { EMPTY_HOURS_ROSTER_MESSAGE } from '../../lib/people/hoursGridRoster'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
@@ -657,7 +658,7 @@ export default function PeoplePayStubsTab({
                       disabled={draftPayrollDisabled}
                       title={
                         draftPayrollDisabled
-                          ? 'Open People pay config and check Show in Hours for people to track'
+                          ? EMPTY_HOURS_ROSTER_MESSAGE
                           : undefined
                       }
                       style={{

@@ -1,16 +1,15 @@
 import { useState } from 'react'
-import type { GcReviewGroup, GcReviewRow } from '../../lib/gcReviewRollup'
+import type { GcReviewGroup } from '../../lib/gcReviewRollup'
 import { buildGcCertSnapshot } from '../../lib/jobs/gcReviewCertification'
 import { insertGcReviewCertification } from '../../lib/gcReviewCertifications'
-import { fetchJobActivityEventsForJobLedger } from '../../lib/fetchJobActivityEventsForJobLedger'
-import type { JobActivityEventRpcRow } from '../../lib/jobActivityEventsFromRpc'
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
+import GcBillLines from './GcBillLines'
 
 /**
  * Wednesday GC certification checklist (v2.1983, from the owner's mockup):
  * every row in the GC's group is checked off one by one before the group can
- * be certified. Each row's chevron drops down the job's recent activity
- * inline (list_job_activity_events, newest first), and the job link opens
+ * be certified. Each row (`GcBillLines`) has a chevron that drops down the
+ * job's recent activity inline, and a job link that opens
  * Job Detail ON TOP (the Detail modal's overlay outranks this one) — the
  * checklist keeps its check state while the certifier digs in and comes back.
  * Check only / Check & send… unlock only when every row is checked. Check &
@@ -37,8 +36,6 @@ export default function GcReviewCertifyModal({
   onOpenJobDetail?: (jobId: string) => void
 }) {
   const [checked, setChecked] = useState<ReadonlySet<string>>(new Set())
-  const [expandedKey, setExpandedKey] = useState<string | null>(null)
-  const [activityByJob, setActivityByJob] = useState<Record<string, { loading: boolean; rows: JobActivityEventRpcRow[] }>>({})
   const [note, setNote] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -53,18 +50,6 @@ export default function GcReviewCertifyModal({
       else next.add(key)
       return next
     })
-  }
-
-  function toggleActivity(row: GcReviewRow) {
-    const opening = expandedKey !== row.key
-    setExpandedKey(opening ? row.key : null)
-    if (opening && !activityByJob[row.jobId]) {
-      setActivityByJob((prev) => ({ ...prev, [row.jobId]: { loading: true, rows: [] } }))
-      void fetchJobActivityEventsForJobLedger(row.jobId).then(({ data }) => {
-        // Oldest-first from the RPC — the dropdown shows the latest few, newest first.
-        setActivityByJob((prev) => ({ ...prev, [row.jobId]: { loading: false, rows: data.slice(-4).reverse() } }))
-      })
-    }
   }
 
   async function certify(andSend: boolean) {
@@ -88,13 +73,6 @@ export default function GcReviewCertifyModal({
       setSaving(false)
     }
   }
-
-  const eventStamp = (iso: string | null) =>
-    iso
-      ? new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) +
-        ' ' +
-        new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
-      : ''
 
   return (
     <div
@@ -126,73 +104,20 @@ export default function GcReviewCertifyModal({
           Check off each bill as you confirm it belongs to this GC and the amount is right. Open the activity or the job itself if anything looks off.
         </p>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-          {group.rows.map((r) => {
-            const isChecked = checked.has(r.key)
-            const isExpanded = expandedKey === r.key
-            const activity = activityByJob[r.jobId]
-            return (
-              <div key={r.key} style={{ border: `1px solid ${isExpanded ? 'var(--border-strong)' : 'var(--border)'}`, borderRadius: 6, overflow: 'hidden' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.45rem 0.6rem', background: 'var(--bg-subtle)' }}>
-                  <input
-                    type="checkbox"
-                    checked={isChecked}
-                    onChange={() => toggleRow(r.key)}
-                    aria-label={`Reviewed ${r.hcp} ${r.jobName}`}
-                    style={{ width: 16, height: 16, cursor: 'pointer', flexShrink: 0 }}
-                  />
-                  {onOpenJobDetail ? (
-                    <button
-                      type="button"
-                      onClick={() => onOpenJobDetail(r.jobId)}
-                      title="Open Job Detail on top — the checklist keeps your progress"
-                      style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', font: 'inherit', fontWeight: 600, color: 'var(--text-blue-700)', textDecoration: 'underline', textUnderlineOffset: '2px', whiteSpace: 'nowrap' }}
-                    >
-                      {r.hcp} · {r.jobName || '—'}
-                    </button>
-                  ) : (
-                    <span style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
-                      {r.hcp} · {r.jobName || '—'}
-                    </span>
-                  )}
-                  <span style={{ fontSize: '0.72rem', color: r.ageDays != null && r.ageDays >= 90 ? 'var(--text-red-600)' : 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {r.ageDays != null ? `billed ${r.referenceDateDisplay} · ${r.ageDays}d` : 'no bill-out date'}
-                  </span>
-                  <span style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums', fontSize: '0.8125rem', fontWeight: isChecked ? 400 : 600, whiteSpace: 'nowrap' }}>
-                    ${formatCurrency(r.remaining)}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => toggleActivity(r)}
-                    aria-expanded={isExpanded}
-                    aria-label={`Recent activity for ${r.hcp}`}
-                    title="Recent activity"
-                    style={{ padding: '0.1rem 0.3rem', border: 'none', background: 'none', cursor: 'pointer', color: isExpanded ? 'var(--text-link)' : 'var(--text-muted)', flexShrink: 0 }}
-                  >
-                    {isExpanded ? '▴' : '▾'}
-                  </button>
-                </div>
-                {isExpanded && (
-                  <div style={{ padding: '0.45rem 0.6rem 0.55rem 2.3rem', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                    {!activity || activity.loading ? (
-                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Loading activity…</span>
-                    ) : activity.rows.length === 0 ? (
-                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>No activity recorded on this job yet.</span>
-                    ) : (
-                      activity.rows.map((ev) => (
-                        <div key={ev.id} style={{ fontSize: '0.72rem', lineHeight: 1.45 }}>
-                          <span style={{ color: 'var(--text-faint)' }}>{eventStamp(ev.occurred_at)}</span>{' '}
-                          <strong style={{ color: 'var(--text-700)' }}>{ev.actor_name || '—'}</strong>{' '}
-                          <span style={{ color: 'var(--text-muted)' }}>{ev.summary || ev.event_type}</span>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
+        <GcBillLines
+          rows={group.rows}
+          onOpenJobDetail={onOpenJobDetail}
+          pending={(r) => !checked.has(r.key)}
+          leading={(r) => (
+            <input
+              type="checkbox"
+              checked={checked.has(r.key)}
+              onChange={() => toggleRow(r.key)}
+              aria-label={`Reviewed ${r.hcp} ${r.jobName}`}
+              style={{ width: 16, height: 16, cursor: 'pointer', flexShrink: 0 }}
+            />
+          )}
+        />
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <label htmlFor="gc-cert-note" style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>

@@ -33,6 +33,12 @@ describe('JobFormPaymentRemoveConfirm', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
+  it('a line that was only typed says autosave carries the change — the form has no Save button to press', async () => {
+    await renderSettled(<JobFormPaymentRemoveConfirm open preview={preview} confirmsPersistedRpc={false} busy={false} onCancel={() => {}} onConfirm={() => {}} zIndex={1011} />, { loaded: () => screen.findByText('Remove payment?') })
+    expect(screen.getByText(/leaves the form now, and the job saves the change by itself/)).toBeTruthy()
+    expect(screen.queryByText(/updates the database immediately/)).toBeNull()
+    expect(screen.queryByText(/click/i)).toBeNull()
+  })
   it('the form-only copy when the remove is not persisted; the confirm is disabled while busy or with no preview', async () => {
     await renderSettled(<JobFormPaymentRemoveConfirm open preview={null} confirmsPersistedRpc={false} busy onCancel={() => {}} onConfirm={() => {}} zIndex={1011} />, { loaded: () => screen.findByText('Remove payment?') })
     expect(screen.getByText('This payment line is no longer available.')).toBeTruthy()

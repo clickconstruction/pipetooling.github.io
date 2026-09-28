@@ -17,6 +17,7 @@ import {
 } from '../../lib/payStubDeductions'
 import { draftPayrollRowCashDue } from '../../lib/draftPayrollPreviewCost'
 import { peopleMissingPayReports } from '../../lib/pay/missingPayReports'
+import { EMPTY_HOURS_ROSTER_MESSAGE } from '../../lib/people/hoursGridRoster'
 import { PayStubDeleteIcon } from './PayStubDeleteIcon'
 import { isoWeekNumberFromGregorianYmd, localCalendarDayKey, ymdAddDays } from '../../utils/dateUtils'
 
@@ -484,7 +485,7 @@ export function DraftPayrollModal({
           ) : null}
           {peopleNames.length === 0 ? (
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
-              No people with Show in Hours selected. In Hours, open People pay config and check Show in Hours for people to track.
+              {EMPTY_HOURS_ROSTER_MESSAGE}
             </p>
           ) : (
             <>
