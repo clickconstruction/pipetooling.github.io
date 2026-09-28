@@ -232,6 +232,50 @@ describe('JobFormPaymentsTable — cash on a Stripe bill (v2.3692)', () => {
     )
     expect(screen.queryByText('Undo part payment')).toBeNull()
   })
+
+  // v2.4082: a whole-bill out-of-band mark (Mark Paid · check) on a bill still Paid offers "Check didn't clear…";
+  // the same row on a bill already back to Billed, or a credit-note row, does not.
+  it('a Stripe-held check payment on a Paid bill offers Check didn’t clear…, a Billed bill does not', () => {
+    const asked: string[] = []
+    const base = jobWithOneStripeBill()
+    const paidJob = { ...base, invoices: [{ ...base.invoices[0], status: 'paid', stripe_invoice_status: 'paid' }] } as unknown as JobWithDetails
+    const { unmount } = renderWithProviders(
+      <JobFormPaymentsTable
+        editing={paidJob}
+        payments={[paymentRow({ id: 'p-check', amount: 1500, invoice_id: 'inv-s', payment_type: 'Check' })]}
+        persistedLedgerPaymentIds={new Set(['p-check'])}
+        unlinkingMercuryPaymentId={null}
+        updatePaymentRow={() => {}}
+        addPaymentRow={() => {}}
+        requestRemovePaymentRow={() => {}}
+        requestMovePaymentRow={() => {}}
+        setUnlinkMercuryConfirmRowId={() => {}}
+        setBillViewInvoice={() => {}}
+        requestCheckDidNotClear={(row) => asked.push(row.id)}
+      />,
+    )
+    fireEvent.click(screen.getByText("Check didn't clear…"))
+    expect(asked).toEqual(['p-check'])
+    expect(screen.queryByLabelText('Remove payment row')).toBeNull()
+    unmount()
+    const billedAgain = { ...base, invoices: [{ ...base.invoices[0], status: 'billed', stripe_invoice_status: 'paid' }] } as unknown as JobWithDetails
+    renderWithProviders(
+      <JobFormPaymentsTable
+        editing={billedAgain}
+        payments={[paymentRow({ id: 'p-check', amount: 1500, invoice_id: 'inv-s', payment_type: 'Check' })]}
+        persistedLedgerPaymentIds={new Set(['p-check'])}
+        unlinkingMercuryPaymentId={null}
+        updatePaymentRow={() => {}}
+        addPaymentRow={() => {}}
+        requestRemovePaymentRow={() => {}}
+        requestMovePaymentRow={() => {}}
+        setUnlinkMercuryConfirmRowId={() => {}}
+        setBillViewInvoice={() => {}}
+        requestCheckDidNotClear={(row) => asked.push(row.id)}
+      />,
+    )
+    expect(screen.queryByText("Check didn't clear…")).toBeNull()
+  })
 })
 
 describe('JobFormPaymentsTable — Move to job… (v2.3576)', () => {

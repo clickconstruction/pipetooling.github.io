@@ -3521,6 +3521,8 @@ interface RecordStripeInvoiceOobBody {
 
 > **v2.1116 — row-authoritative Stripe mode (A3)**: the invoice row's `stripe_mode` (v2.1114) now decides which Stripe mode this function operates in; an explicitly requested `stripe_mode` that disagrees returns **409 `stripe_mode_mismatch`** with no side effects. NULL-mode legacy rows fall back to the requested/default mode. Redeploy required.
 
+> **v2.4082 — the client ends with the re-bill**: Stripe keeps the credited invoice `paid`, so the pay link is dead after any unwind. `UnwindStripeOobPaymentModal` now runs **void-stripe-invoice-for-revert** (which finds the credit note already on the invoice and issues none) through `sendBackStripeBilledLine` after this function succeeds, unless its *send back* box is unticked; the function itself is unchanged.
+
 > **v2.3695 — undo one part payment (`payment_id`)**: with `payment_id` in the body the function voids that row's `stripe_credit_note_id` (idempotent when already void), deletes the `jobs_ledger_payments` row with the service role, and writes a `stripe_oob_payment_reverts` audit row (reason prefixed *Part payment of $X undone:*). Requires the bill still **Billed** (a bill paid in full afterwards says to undo the whole payment instead) and RLS `SELECT` on the payment row. Response: `{ success, partial: true, stripe_credit_note_id, payment_id }`; on a delete failure after the void, 502 with a warning that the row remains. Needs `SUPABASE_SERVICE_ROLE_KEY`. Redeploy required.
 
 **Purpose**: Undo a **PipeTooling-recorded** Stripe **out-of-band** close: requires Stripe Invoice metadata **`pt_payment_type`** (set by **record-stripe-invoice-out-of-band-payment**) and **no** Stripe **`charge`** on the invoice (rejects normal card/ACH collects). Computes the credit amount as Stripe **`amount_paid`** when it is a positive number; when OOB leaves **`status = paid`** but **`amount_paid`** is **0**, uses invoice **`total`** instead. Creates a Stripe **credit note** for that amount minus existing credit notes on the invoice; when the path used **`total`** ( **`amount_paid`** not positive), sets **`out_of_band_amount`** on **`creditNotes.create`** to the new note amount so the sum of refund / **`credit_amount`** / **`out_of_band_amount`** matches Stripe’s **`post_payment_amount`**. Then calls RPC **`revert_stripe_oob_invoice_payment`** to remove **`jobs_ledger_payments`** for that invoice, set **`jobs_ledger_invoices.status`** to **`billed`**, recompute **`jobs_ledger.payments_made`**, optionally **`update_job_status`** **`paid`→`billed`**, append **`stripe_oob_payment_reverts`**, and reset **`job_collect_payment_flows`** from **`terminal_completed`** to **`approved_for_terminal`** when the **`stripe_invoice_id`** matches.
@@ -3668,6 +3670,8 @@ Amounts are in **cents**, matching Stripe invoice objects.
 
 ### void-stripe-invoice-for-revert
 
+> **v2.4082 — a paid-by-check mark is reversed, not refused**: a Stripe invoice that is **`paid`** with **`amount_paid` 0** and no **`charge`** holds only ClickTooling's own out-of-band mark (Mark Paid · check/cash, or the AR auto-close). The function now issues an **out-of-band credit note** for the total less live credit notes already on the invoice (so a bill unwound through **reverse-stripe-invoice-out-of-band-payment** first gets no second note), deletes the row as usual, and writes a **`removed`** event to **`jobs_ledger_payment_events`** (**`payment_id`** null, the mark's `pt_paid_on` / `pt_payment_type` / `pt_reference`, reason `oob_mark_reversed: …`) — the **`stripe_oob_payment_reverts`** audit would cascade away with the invoice. Response adds **`stripe_action: 'reverse_oob_mark'`** and **`stripe_credit_note_id`**. Real money in Stripe (**`amount_paid` &gt; 0** or a charge) still **409**s, worded *refund it in the Stripe Dashboard*. Redeploy required.
+
 > **v2.1116 — row-authoritative Stripe mode (A3)**: the invoice row's `stripe_mode` (v2.1114) now decides which Stripe mode this function operates in; an explicitly requested `stripe_mode` that disagrees returns **409 `stripe_mode_mismatch`** with no side effects. NULL-mode legacy rows fall back to the requested/default mode. Redeploy required.
 
 **Purpose**: When sending a **billed** **`jobs_ledger_invoices`** row back to **Ready to Bill**, void or delete the Stripe invoice (draft delete, open → void), then clear Stripe columns and set **`status = ready_to_bill`**. Prevents leaving a collectible Stripe invoice after the in-app send-back.
@@ -3693,24 +3697,24 @@ interface Body {
 { "success": true, "stripe_action": "void" }
 ```
 
-**`stripe_action`**: `delete_draft` | `void` | `noop` | `noop_missing` | `db_only_no_stripe_id` (Stripe channel but no stored `stripe_invoice_id`).
+**`stripe_action`**: `delete_draft` | `void` | `noop` | `noop_missing` | `reverse_oob_mark` (v2.4082: our out-of-band paid mark reversed with a credit note; `stripe_credit_note_id` carries it) | `db_only_no_stripe_id` (Stripe channel but no stored `stripe_invoice_id`).
 
 #### Errors
 
 - **400** — Not **`billed`**, missing Stripe id when not Stripe channel, etc.
 - **403** — Invoice not found / RLS.
-- **409** — Stripe invoice **paid** or has **`amount_paid` &gt; 0**, or status not voidable automatically.
+- **409** — Stripe invoice paid by card/ACH (**`amount_paid` &gt; 0** or a charge), or status not voidable automatically. A `paid` invoice with nothing paid through Stripe is reversed instead (v2.4082).
 - **502** — Stripe API error (other than missing invoice).
 
 #### Behavior
 
 1. Requires row **`status = billed`** and Stripe-backed (**`stripe_invoice_id`** set and/or **`external_send_channel = stripe`**).
 2. If channel is Stripe but **`stripe_invoice_id`** is empty, clears Stripe-related DB fields and sets **RTB** only (**no** Stripe API call).
-3. Otherwise **retrieve** invoice: **draft** → **delete**; **open** (and **`amount_paid === 0`**) → **void**; **void** / **uncollectible** → DB update only; **paid** / payments → **409**.
+3. Otherwise **retrieve** invoice: **paid** with **`amount_paid` 0** and no charge → out-of-band **credit note** + `removed` payment event (v2.4082); **draft** → **delete**; **open** (and **`amount_paid === 0`**) → **void**; **void** / **uncollectible** → DB update only; paid by card/ACH → **409**.
 4. If Stripe returns **resource missing** for the invoice id, still clears DB (idempotent).
 5. Service-role **UPDATE** clears **`stripe_invoice_id`**, **`hosted_invoice_url`**, **`stripe_invoice_status`**, **`stripe_invoice_memo`**, **`external_send_channel`**, **`external_send_note`**, **`sent_to_customer_at`**, **`billed_at`**, sets **`ready_to_bill`**.
 
-**Client**: [`src/lib/voidStripeInvoiceForRevert.ts`](../src/lib/voidStripeInvoiceForRevert.ts); Jobs/Dashboard send-back and job-level billed → RTB pre-flight.
+**Client**: [`src/lib/voidStripeInvoiceForRevert.ts`](../src/lib/voidStripeInvoiceForRevert.ts) — `sendBackStripeBilledLine` (v2.4082) runs this function, the row removal and the job's move to Ready to Bill as one path for View bill's confirm and the Undo out-of-band payment modal; Jobs/Dashboard send-back and job-level billed → RTB pre-flight.
 
 **Deploy**: `supabase functions deploy void-stripe-invoice-for-revert --no-verify-jwt` if the hosted gateway still enforces JWT.
 
