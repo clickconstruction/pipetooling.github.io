@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { APP_CALENDAR_TZ } from '../utils/dateUtils'
 import { statementWeekNudgeFromPayload } from './statementRoundEmail'
 import {
   groupOfficeWeek,
@@ -55,7 +56,7 @@ const week = (items: OfficeWeekItem[]): OfficeWeekPayload => ({
   },
 })
 
-const opts = { dateLabel: 'Sun, Sep 27', roundUrl: 'https://app.test/jobs?tab=stages&round=1', recipientName: 'Taunya Smith', recipientUserId: 'u-taunya', timeZone: 'America/Chicago' }
+const opts = { dateLabel: 'Sun, Sep 27', roundUrl: 'https://app.test/jobs?tab=stages&round=1', recipientName: 'Taunya Smith', recipientUserId: 'u-taunya', timeZone: APP_CALENDAR_TZ }
 
 const late = item('Knight <& Sons>', 26000, 'ready', { expected_pay_by: '2026-09-20', promise_late: true, days_late: 7, last_word: { note: 'Check run is the 20th.', by: 'Malachi', at: '2026-09-18T15:00:00Z', action: 'contacted', temperature: 'warm' } })
 const sample = week([late, item('Structura', 98000, 'needs_word'), item('Loberg', 22000, 'needs_certify', { owner_user_id: null, owner_name: null }), item('Harper', 30000, 'done', { owner_user_id: 'u-taunya', owner_name: 'Taunya Smith' }), item('Skipped', 12000, 'skipped')])
