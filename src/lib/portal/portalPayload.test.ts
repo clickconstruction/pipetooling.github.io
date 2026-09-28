@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { foldPortalTestReports, formatPortalDate, formatPortalUsd, parsePortalPayload, portalCertifierLine, portalDaysSinceBilled, splitPortalAddress } from './portalPayload'
+import { foldPortalTestReports, formatPortalDate, formatPortalUsd, parsePortalChecks, parsePortalPayload, portalCertifierLine, portalDaysSinceBilled, splitPortalAddress } from './portalPayload'
 
 const good = {
   company: { name: 'Click Plumbing and Electrical', cityLine: 'San Antonio, Texas', licenseLine: '', phone: '', email: '' },
@@ -253,5 +253,33 @@ describe('test reports card fold (v2.3312)', () => {
     expect(portalCertifierLine('Malachi Whites', '#RMP41130')).toBe('certified by Malachi Whites (#RMP41130)')
     expect(portalCertifierLine('Malachi Whites', '')).toBe('certified by Malachi Whites')
     expect(portalCertifierLine('  ', '#RMP41130')).toBeNull()
+  })
+})
+
+describe('parsePortalChecks (Your payments, v2.4053)', () => {
+  it('is null without the block, and keeps well-formed jobs, bills, payments and moves', () => {
+    expect(parsePortalChecks(undefined)).toBeNull()
+    expect(parsePortalChecks({ jobs: 'no' })).toBeNull()
+    const r = parsePortalChecks({
+      jobs: [
+        {
+          id: 'j1',
+          click_number: '1041',
+          job_name: 'Oak',
+          job_address: '4410 Oak Ridge Dr',
+          customer_id: 'viewer',
+          lien_retainage_held: 1333,
+          invoices: [{ id: 'i1', sequence_order: 1, amount: 9750, status: 'paid', billed_at: '2026-08-01T00:00:00Z' }, { bad: true }],
+          payments: [{ id: 'p1', invoice_id: 'i1', amount: 9750, paid_on: '2026-09-10', payment_type: 'check', reference_number: '48102' }, { id: '' }],
+        },
+        { id: '' },
+      ],
+      events: [{ id: 'e1', kind: 'moved', payment_id: 'p1', from_job_id: 'j0', to_job_id: 'j1', amount: 9750, created_at: '2026-09-26T16:00:00Z' }, { id: 'e2' }],
+    })
+    expect(r?.jobs).toHaveLength(1)
+    expect(r?.jobs[0]).toMatchObject({ id: 'j1', customer_id: 'viewer', gc_customer_id: null, bill_to_party: null, lien_retainage_held: 1333 })
+    expect(r?.jobs[0]?.invoices).toEqual([{ id: 'i1', job_id: 'j1', sequence_order: 1, amount: 9750, status: 'paid', billed_at: '2026-08-01' }])
+    expect(r?.jobs[0]?.payments).toEqual([{ id: 'p1', job_id: 'j1', invoice_id: 'i1', amount: 9750, paid_on: '2026-09-10', sent_on: null, payment_type: 'check', reference_number: '48102', sequence_order: null }])
+    expect(r?.events).toEqual([{ id: 'e1', kind: 'moved', payment_id: 'p1', from_job_id: 'j0', to_job_id: 'j1', amount: 9750, created_at: '2026-09-26T16:00:00Z' }])
   })
 })

@@ -2,7 +2,7 @@
 title: build a submittal package
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: submittal, submittals, walkthrough, tour, where you are, journey, next step, cut sheet, cut sheets, fixture schedule, specified, submitted, alternate, superseded, equal, design change, missing, accessory, revision, rev, package, vendor pdf, in lieu of, GC approval, product data
+keywords: procurement log, procurement, released, ordered, lead time, expected, required, float, order by, delivered, send update, submittal, submittals, walkthrough, tour, where you are, journey, next step, cut sheet, cut sheets, fixture schedule, specified, submitted, alternate, superseded, equal, design change, missing, accessory, revision, rev, package, vendor pdf, in lieu of, GC approval, product data
 ---
 A submittal is the list of products you will install, one row per tag on the plan's fixture schedule, with the cut sheet for each — the GC approves it before anything is ordered. In PipeTooling the rows are not typed: they are **built from the picks** you already made on the Pricing compare, so the day you pick a house the submittal is half done.
 
@@ -108,6 +108,16 @@ Three chores are reading, and the robot can do them — you confirm, it never se
 
 :::example What the robot is sure of
 A tag printed on the sheet, a model number that matches a row, a stamp that says REVISE AND RESUBMIT — sure. A hand-written mark with no tag, a page that could be two sheets — it asks you to look, and never confirms itself.
+:::
+
+## The procurement log
+
+Once the GC has approved rows, the eighth stage, {{chip:blue|8 Procure}}, is the procurement log a GC asks for — one row per tag, under the rows table on the newest revision. Nothing is typed twice: **Released** is the room's approval and its date; **Lead** is the lead time from the pick; **Required** is the day the item's stage starts on the job's schedule (a trim-set fixture by Trim Set's first day), read through the stage the takeoff gave the fixture. You type the **Ordered** date and the **PO**; **Expected** fills itself from the order date plus the lead time, and turns amber when you type the supply house's own date over it. **Float** is the days between expected and required — in the red when the item lands after its stage starts — and, for a released row you have not ordered, reads *order by* the last safe date. Tick **Delivered** when it is on site. A long-lead item with no cut sheet (a grease interceptor, a lift station) goes in with {{button:outline|+ Add item}}: its name, lead time and stage.
+
+{{button:blue|Send update…}} writes the update for you: what changed since the last one (a date that slipped, a delivery, a row sent back), who it goes to, and one line of your own. {{button:blue|Record, print and copy}} records it, opens the sheet to print or save as a PDF — changed rows first — and copies the text to paste into your email to the GC. **Updates sent** keeps every one; **Print the log** prints it as it stands. The GC does not have to wait for an update: their review room link carries a **Procurement** card with every released, ordered or delivered tag, when it lands and when its stage needs it — status and dates only, never the PO or the house.
+
+:::example What the GC reads
+BFP-1 · Watts 909 RPZ · approved 09/22 · ordered 09/25, PO 119 · 4 wk · expected **10/20 (house)** · required 10/06 · **−14 d** · "Ferguson: 10/20 earliest". The next update leads with that row.
 :::
 
 ## What comes next

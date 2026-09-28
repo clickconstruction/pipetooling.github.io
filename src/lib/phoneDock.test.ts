@@ -11,7 +11,7 @@ import {
 } from './phoneDock'
 
 describe('roleDockDefault', () => {
-  it('gives assistants and controllers Jobs · Schedule · PO · Inbox (PO in Quickfill\'s place since v2.4074)', () => {
+  it('gives assistants and controllers Jobs · Schedule · PO · Inbox (PO in Quickfill\'s place since v2.4093)', () => {
     expect(roleDockDefault('assistant')).toEqual(['jobs', 'schedule', 'po', 'inbox'])
     expect(roleDockDefault('controller')).toEqual(['jobs', 'schedule', 'po', 'inbox'])
   })

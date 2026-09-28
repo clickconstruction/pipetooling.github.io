@@ -81,7 +81,7 @@ const rowBtn: CSSProperties = {
  * the hamburger, the modes menu and the gear folded into a bottom sheet the thumb can
  * reach. Opened by the dock's More slot, or by a long-press on any slot (then it swaps).
  *
- * v2.4074 (Taunya's walk on her own iPhone): the four sit at the top of the sheet as *The dock*,
+ * v2.4093 (Taunya's walk on her own iPhone): the four sit at the top of the sheet as *The dock*,
  * and a tap on one enters the same swap mode the long-press does — the hold was the only door,
  * its hint lived inside this sheet, and on her phone it did not open. `pickIndex` is that tap;
  * the parent's `swapIndex` (the hold) wins when both are set.

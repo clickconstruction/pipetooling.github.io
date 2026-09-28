@@ -13,9 +13,11 @@ import {
   APP_SETTINGS_KEY_BID_COVER_LETTER_CLOSING,
   APP_SETTINGS_KEY_BID_COVER_LETTER_EXCLUSIONS_DEFAULT,
   APP_SETTINGS_KEY_BID_COVER_LETTER_TERMS_DEFAULT,
+  APP_SETTINGS_KEY_BID_SOV_LABOR_SHARE_PCT_V1,
   APP_SETTINGS_KEY_BID_SOV_MATERIAL_FACTOR_V1,
 } from '../../lib/appSettingsKeys'
 import { DEFAULT_SOV_MATERIAL_FACTOR, parseSovMaterialFactor } from '../../lib/bids/materialsByStage'
+import { DEFAULT_SOV_LABOR_SHARE_PCT, parseSovLaborSharePct } from '../../lib/bidDocuments/sovLaborMaterial'
 import {
   DEFAULT_COVER_LETTER_CLOSING,
   DEFAULT_EXCLUSIONS,
@@ -48,6 +50,7 @@ export default function BidCoverLetterDefaultsSettingsBlock({ openSignal = 0 }: 
   const [open, setOpen] = useState(false)
   const [values, setValues] = useState<Record<string, string>>({})
   const [factor, setFactor] = useState<string>('')
+  const [laborShare, setLaborShare] = useState<string>('')
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -57,7 +60,7 @@ export default function BidCoverLetterDefaultsSettingsBlock({ openSignal = 0 }: 
       const { data, error } = await supabase
         .from('app_settings')
         .select('key, value_text, value_num')
-        .in('key', [...FIELDS.map((f) => f.key), APP_SETTINGS_KEY_BID_SOV_MATERIAL_FACTOR_V1])
+        .in('key', [...FIELDS.map((f) => f.key), APP_SETTINGS_KEY_BID_SOV_MATERIAL_FACTOR_V1, APP_SETTINGS_KEY_BID_SOV_LABOR_SHARE_PCT_V1])
       if (error) throw error
       const next: Record<string, string> = {}
       for (const f of FIELDS) {
@@ -66,6 +69,8 @@ export default function BidCoverLetterDefaultsSettingsBlock({ openSignal = 0 }: 
       setValues(next)
       const factorRow = (data ?? []).find((r) => r.key === APP_SETTINGS_KEY_BID_SOV_MATERIAL_FACTOR_V1)
       setFactor(String(parseSovMaterialFactor(factorRow?.value_num ?? null)))
+      const shareRow = (data ?? []).find((r) => r.key === APP_SETTINGS_KEY_BID_SOV_LABOR_SHARE_PCT_V1)
+      setLaborShare(String(parseSovLaborSharePct(shareRow?.value_num ?? null)))
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not load cover letter defaults'), 'error')
     } finally {
@@ -98,6 +103,14 @@ export default function BidCoverLetterDefaultsSettingsBlock({ openSignal = 0 }: 
         .from('app_settings')
         .upsert({ key: APP_SETTINGS_KEY_BID_SOV_MATERIAL_FACTOR_V1, value_num: factorNum }, { onConflict: 'key' })
       if (factorErr) throw factorErr
+      const shareNum = Number(laborShare.replace(/,/g, '').trim())
+      if (!Number.isFinite(shareNum) || shareNum < 0 || shareNum > 100) {
+        throw new Error('The labor share must be a number from 0 to 100 (45 = 45% labor, 55% material).')
+      }
+      const { error: shareErr } = await supabase
+        .from('app_settings')
+        .upsert({ key: APP_SETTINGS_KEY_BID_SOV_LABOR_SHARE_PCT_V1, value_num: shareNum }, { onConflict: 'key' })
+      if (shareErr) throw shareErr
       showToast('Cover letter defaults saved', 'success')
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not save cover letter defaults'), 'error')
@@ -167,6 +180,17 @@ export default function BidCoverLetterDefaultsSettingsBlock({ openSignal = 0 }: 
                   onChange={(e) => setFactor(e.target.value)}
                   inputMode="decimal"
                   placeholder={String(DEFAULT_SOV_MATERIAL_FACTOR)}
+                  style={{ display: 'block', width: 120, marginTop: 4, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', fontSize: '0.8125rem', fontVariantNumeric: 'tabular-nums' }}
+                />
+              </label>
+              <label style={{ display: 'block', fontWeight: 500, fontSize: '0.875rem' }}>
+                Schedule of values labor share, % (when the letter splits labor and material and a stage has no labor hours; the rest is material)
+                <input
+                  id="bid-sov-labor-share-pct"
+                  value={laborShare}
+                  onChange={(e) => setLaborShare(e.target.value)}
+                  inputMode="decimal"
+                  placeholder={String(DEFAULT_SOV_LABOR_SHARE_PCT)}
                   style={{ display: 'block', width: 120, marginTop: 4, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', fontSize: '0.8125rem', fontVariantNumeric: 'tabular-nums' }}
                 />
               </label>

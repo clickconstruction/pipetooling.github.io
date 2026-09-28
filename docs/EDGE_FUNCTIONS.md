@@ -1156,6 +1156,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ### customer-portal
 
+> **v2.4053 — your payments** ("Where the checks went" PR 5): the payload gains `checks: { jobs, events } | null` — every sent bill (`billed` or `paid`) and every payment on the viewer's jobs, plus the `moved` rows of `jobs_ledger_payment_events` that name those payments, **pre-scoped by [`_shared/portalChecks.ts`](../supabase/functions/_shared/portalChecks.ts)** to what the viewer pays (the shared who-pays rule per bill; an unlinked payment only on a job whose every sent bill is the viewer's; no actor, no reason on a move) and stamped `customer_id: 'viewer'` so the page's kernel (`src/lib/jobs/gcChecksApplied.ts`) counts every line as theirs. The job select adds `lien_retainage_held`; the open-bill payment select adds `id, sent_on, reference_number`, and a bill's payment `method` reads *check #48211* (`portalPaymentMethod`). A read failure leaves `checks` null and the page's *Your payments* section off.
+
 > **v2.3825 — the notice on your property** (punch list #45 PR 2): the payload gains `propertyNotices` — the recorded § 53.056 notices (`job_lien_filings` kind `notice_53_056`, not voided) on jobs where the viewer is the customer and a GC is on the job, while the job still owes; one per paper (a packet is one, with its printed total), with the owner send's day, the claim, the months, the GC's, the claimant's and the signer's names (`_shared/portalPropertyNotices.ts` → `buildPortalPropertyNotices`). Sent only, never a draft; no share tick needed. A client from before reads none. **Redeploy required.**
 
 > **v2.3346 — who pays**: the job select adds `bill_to_party`, the invoice select `bill_to_party, bill_to_email, bill_to_name`; `buildPortalBills` sets `billedTo` per bill (`viewerOwesBill` in `_shared/portalBillMembership.ts`: null when the resolved payer is the viewer's customers row, else the other party's name — owners and GCs are both looked up into `partyNames`). `totalDue`, the `portal_statement_rendered` `bill_count` and the promise lookup (`owedJobIdsForViewer`) cover owed bills only; the client lists the rest under "On your jobs, billed to someone else". **Redeploy with `submit-portal-request`.**
@@ -1346,7 +1348,9 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Authentication**: none (`verify_jwt = false`) — the token is the credential; service role behind it. A `view` event is written unless the request is a staff session or carries `?preview=1` (`_shared/publicViewCounting.ts`); a personal token's view also bumps `bid_submittal_people.open_count` / `last_seen_at`. **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`.
 
-**Used by**: [`SubmittalRoom.tsx`](../src/pages/SubmittalRoom.tsx). **Deploy**: `bash scripts/deploy-functions.sh get-submittal-room` after `20260916015805` is applied.
+**Procurement (v2.4087)**: an open room's payload adds `procurement` when the office has any `bid_procurement_items` row or any tag is approved — the records without the PO, the bid's count rows and stage splits, the job's stage dates (`_shared/procurementStageDates.ts`) and the last update's `sent_at`; every `RoomRow` carries `leadTimeDays`. The page derives released / expected / required / float with the app's own kernel. Its own try/catch: a missing table leaves the card absent, never breaks the room.
+
+**Used by**: [`SubmittalRoom.tsx`](../src/pages/SubmittalRoom.tsx). **Deploy**: `bash scripts/deploy-functions.sh get-submittal-room` after `20260916015805` is applied (and again after `20260928204228` for the procurement card).
 
 
 **Stage 5a (v2.3528)** — the payload gains `messages: RoomMessage[]` (oldest first: `{ id, at, authorKind, authorName, body, kind, revNumber, tags }`; the office reads as the company name, system lines carry the person's name only inside the body) and `person.messagesThisHour`, so the page greys *Ask* at the cap. A missing table (before the migration is pushed) reads as no messages.
@@ -3521,6 +3525,8 @@ interface RecordStripeInvoiceOobBody {
 
 > **v2.1116 — row-authoritative Stripe mode (A3)**: the invoice row's `stripe_mode` (v2.1114) now decides which Stripe mode this function operates in; an explicitly requested `stripe_mode` that disagrees returns **409 `stripe_mode_mismatch`** with no side effects. NULL-mode legacy rows fall back to the requested/default mode. Redeploy required.
 
+> **v2.4082 — the client ends with the re-bill**: Stripe keeps the credited invoice `paid`, so the pay link is dead after any unwind. `UnwindStripeOobPaymentModal` now runs **void-stripe-invoice-for-revert** (which finds the credit note already on the invoice and issues none) through `sendBackStripeBilledLine` after this function succeeds, unless its *send back* box is unticked; the function itself is unchanged.
+
 > **v2.3695 — undo one part payment (`payment_id`)**: with `payment_id` in the body the function voids that row's `stripe_credit_note_id` (idempotent when already void), deletes the `jobs_ledger_payments` row with the service role, and writes a `stripe_oob_payment_reverts` audit row (reason prefixed *Part payment of $X undone:*). Requires the bill still **Billed** (a bill paid in full afterwards says to undo the whole payment instead) and RLS `SELECT` on the payment row. Response: `{ success, partial: true, stripe_credit_note_id, payment_id }`; on a delete failure after the void, 502 with a warning that the row remains. Needs `SUPABASE_SERVICE_ROLE_KEY`. Redeploy required.
 
 **Purpose**: Undo a **PipeTooling-recorded** Stripe **out-of-band** close: requires Stripe Invoice metadata **`pt_payment_type`** (set by **record-stripe-invoice-out-of-band-payment**) and **no** Stripe **`charge`** on the invoice (rejects normal card/ACH collects). Computes the credit amount as Stripe **`amount_paid`** when it is a positive number; when OOB leaves **`status = paid`** but **`amount_paid`** is **0**, uses invoice **`total`** instead. Creates a Stripe **credit note** for that amount minus existing credit notes on the invoice; when the path used **`total`** ( **`amount_paid`** not positive), sets **`out_of_band_amount`** on **`creditNotes.create`** to the new note amount so the sum of refund / **`credit_amount`** / **`out_of_band_amount`** matches Stripe’s **`post_payment_amount`**. Then calls RPC **`revert_stripe_oob_invoice_payment`** to remove **`jobs_ledger_payments`** for that invoice, set **`jobs_ledger_invoices.status`** to **`billed`**, recompute **`jobs_ledger.payments_made`**, optionally **`update_job_status`** **`paid`→`billed`**, append **`stripe_oob_payment_reverts`**, and reset **`job_collect_payment_flows`** from **`terminal_completed`** to **`approved_for_terminal`** when the **`stripe_invoice_id`** matches.
@@ -3668,6 +3674,8 @@ Amounts are in **cents**, matching Stripe invoice objects.
 
 ### void-stripe-invoice-for-revert
 
+> **v2.4082 — a paid-by-check mark is reversed, not refused**: a Stripe invoice that is **`paid`** with **`amount_paid` 0** and no **`charge`** holds only ClickTooling's own out-of-band mark (Mark Paid · check/cash, or the AR auto-close). The function now issues an **out-of-band credit note** for the total less live credit notes already on the invoice (so a bill unwound through **reverse-stripe-invoice-out-of-band-payment** first gets no second note), deletes the row as usual, and writes a **`removed`** event to **`jobs_ledger_payment_events`** (**`payment_id`** null, the mark's `pt_paid_on` / `pt_payment_type` / `pt_reference`, reason `oob_mark_reversed: …`) — the **`stripe_oob_payment_reverts`** audit would cascade away with the invoice. Response adds **`stripe_action: 'reverse_oob_mark'`** and **`stripe_credit_note_id`**. Real money in Stripe (**`amount_paid` &gt; 0** or a charge) still **409**s, worded *refund it in the Stripe Dashboard*. Redeploy required.
+
 > **v2.1116 — row-authoritative Stripe mode (A3)**: the invoice row's `stripe_mode` (v2.1114) now decides which Stripe mode this function operates in; an explicitly requested `stripe_mode` that disagrees returns **409 `stripe_mode_mismatch`** with no side effects. NULL-mode legacy rows fall back to the requested/default mode. Redeploy required.
 
 **Purpose**: When sending a **billed** **`jobs_ledger_invoices`** row back to **Ready to Bill**, void or delete the Stripe invoice (draft delete, open → void), then clear Stripe columns and set **`status = ready_to_bill`**. Prevents leaving a collectible Stripe invoice after the in-app send-back.
@@ -3693,24 +3701,24 @@ interface Body {
 { "success": true, "stripe_action": "void" }
 ```
 
-**`stripe_action`**: `delete_draft` | `void` | `noop` | `noop_missing` | `db_only_no_stripe_id` (Stripe channel but no stored `stripe_invoice_id`).
+**`stripe_action`**: `delete_draft` | `void` | `noop` | `noop_missing` | `reverse_oob_mark` (v2.4082: our out-of-band paid mark reversed with a credit note; `stripe_credit_note_id` carries it) | `db_only_no_stripe_id` (Stripe channel but no stored `stripe_invoice_id`).
 
 #### Errors
 
 - **400** — Not **`billed`**, missing Stripe id when not Stripe channel, etc.
 - **403** — Invoice not found / RLS.
-- **409** — Stripe invoice **paid** or has **`amount_paid` &gt; 0**, or status not voidable automatically.
+- **409** — Stripe invoice paid by card/ACH (**`amount_paid` &gt; 0** or a charge), or status not voidable automatically. A `paid` invoice with nothing paid through Stripe is reversed instead (v2.4082).
 - **502** — Stripe API error (other than missing invoice).
 
 #### Behavior
 
 1. Requires row **`status = billed`** and Stripe-backed (**`stripe_invoice_id`** set and/or **`external_send_channel = stripe`**).
 2. If channel is Stripe but **`stripe_invoice_id`** is empty, clears Stripe-related DB fields and sets **RTB** only (**no** Stripe API call).
-3. Otherwise **retrieve** invoice: **draft** → **delete**; **open** (and **`amount_paid === 0`**) → **void**; **void** / **uncollectible** → DB update only; **paid** / payments → **409**.
+3. Otherwise **retrieve** invoice: **paid** with **`amount_paid` 0** and no charge → out-of-band **credit note** + `removed` payment event (v2.4082); **draft** → **delete**; **open** (and **`amount_paid === 0`**) → **void**; **void** / **uncollectible** → DB update only; paid by card/ACH → **409**.
 4. If Stripe returns **resource missing** for the invoice id, still clears DB (idempotent).
 5. Service-role **UPDATE** clears **`stripe_invoice_id`**, **`hosted_invoice_url`**, **`stripe_invoice_status`**, **`stripe_invoice_memo`**, **`external_send_channel`**, **`external_send_note`**, **`sent_to_customer_at`**, **`billed_at`**, sets **`ready_to_bill`**.
 
-**Client**: [`src/lib/voidStripeInvoiceForRevert.ts`](../src/lib/voidStripeInvoiceForRevert.ts); Jobs/Dashboard send-back and job-level billed → RTB pre-flight.
+**Client**: [`src/lib/voidStripeInvoiceForRevert.ts`](../src/lib/voidStripeInvoiceForRevert.ts) — `sendBackStripeBilledLine` (v2.4082) runs this function, the row removal and the job's move to Ready to Bill as one path for View bill's confirm and the Undo out-of-band payment modal; Jobs/Dashboard send-back and job-level billed → RTB pre-flight.
 
 **Deploy**: `supabase functions deploy void-stripe-invoice-for-revert --no-verify-jwt` if the hosted gateway still enforces JWT.
 

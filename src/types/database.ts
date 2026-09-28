@@ -1321,6 +1321,119 @@ export type Database = {
           },
         ]
       }
+      bid_procurement_items: {
+        Row: {
+          bid_id: string
+          created_at: string
+          delivered_on: string | null
+          expected_on: string | null
+          id: string
+          label: string
+          lead_time_days: number | null
+          note: string
+          ordered_on: string | null
+          po_ref: string
+          sort_order: number
+          stage: string | null
+          tag: string | null
+          updated_at: string
+        }
+        Insert: {
+          bid_id: string
+          created_at?: string
+          delivered_on?: string | null
+          expected_on?: string | null
+          id?: string
+          label?: string
+          lead_time_days?: number | null
+          note?: string
+          ordered_on?: string | null
+          po_ref?: string
+          sort_order?: number
+          stage?: string | null
+          tag?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bid_id?: string
+          created_at?: string
+          delivered_on?: string | null
+          expected_on?: string | null
+          id?: string
+          label?: string
+          lead_time_days?: number | null
+          note?: string
+          ordered_on?: string | null
+          po_ref?: string
+          sort_order?: number
+          stage?: string | null
+          tag?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_procurement_items_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bid_procurement_updates: {
+        Row: {
+          bid_id: string
+          changes: Json
+          created_at: string
+          id: string
+          line: string
+          rows: Json
+          sent_at: string
+          sent_by: string | null
+          sent_by_name: string
+          sent_to: string
+        }
+        Insert: {
+          bid_id: string
+          changes?: Json
+          created_at?: string
+          id?: string
+          line?: string
+          rows?: Json
+          sent_at?: string
+          sent_by?: string | null
+          sent_by_name?: string
+          sent_to?: string
+        }
+        Update: {
+          bid_id?: string
+          changes?: Json
+          created_at?: string
+          id?: string
+          line?: string
+          rows?: Json
+          sent_at?: string
+          sent_by?: string | null
+          sent_by_name?: string
+          sent_to?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_procurement_updates_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_procurement_updates_sent_by_fkey"
+            columns: ["sent_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_quote_lines: {
         Row: {
           alternate_note: string | null
@@ -2384,6 +2497,85 @@ export type Database = {
           },
         ]
       }
+      bid_sov_lines: {
+        Row: {
+          bid_id: string
+          created_at: string
+          id: string
+          label: string
+          labor: number | null
+          note: string
+          sort_order: number
+          stage: string | null
+          updated_at: string
+          value: number
+        }
+        Insert: {
+          bid_id: string
+          created_at?: string
+          id?: string
+          label?: string
+          labor?: number | null
+          note?: string
+          sort_order?: number
+          stage?: string | null
+          updated_at?: string
+          value?: number
+        }
+        Update: {
+          bid_id?: string
+          created_at?: string
+          id?: string
+          label?: string
+          labor?: number | null
+          note?: string
+          sort_order?: number
+          stage?: string | null
+          updated_at?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_sov_lines_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bid_sov_stage_overrides: {
+        Row: {
+          bid_id: string
+          labor: number | null
+          note: string
+          stage: string
+          updated_at: string
+        }
+        Insert: {
+          bid_id: string
+          labor?: number | null
+          note?: string
+          stage: string
+          updated_at?: string
+        }
+        Update: {
+          bid_id?: string
+          labor?: number | null
+          note?: string
+          stage?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_sov_stage_overrides_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_takeoff_stage_splits: {
         Row: {
           bid_id: string
@@ -2715,6 +2907,7 @@ export type Database = {
           id: string
           include_materials_by_stage: boolean
           include_payment_schedule: boolean
+          include_schedule_of_values: boolean
           itb_links: Json
           last_contact: string | null
           loss_category: string | null
@@ -2742,7 +2935,10 @@ export type Database = {
           selected_price_book_version_id: string | null
           selected_takeoff_book_version_id: string | null
           service_type_id: string
+          sov_letter_total_only: boolean
           sov_material_factor: number | null
+          sov_shape: string
+          sov_split_labor_material: boolean
           submittals_not_needed_at: string | null
           submittals_not_needed_by: string | null
           submitted_to: string | null
@@ -2795,6 +2991,7 @@ export type Database = {
           id?: string
           include_materials_by_stage?: boolean
           include_payment_schedule?: boolean
+          include_schedule_of_values?: boolean
           itb_links?: Json
           last_contact?: string | null
           loss_category?: string | null
@@ -2822,7 +3019,10 @@ export type Database = {
           selected_price_book_version_id?: string | null
           selected_takeoff_book_version_id?: string | null
           service_type_id: string
+          sov_letter_total_only?: boolean
           sov_material_factor?: number | null
+          sov_shape?: string
+          sov_split_labor_material?: boolean
           submittals_not_needed_at?: string | null
           submittals_not_needed_by?: string | null
           submitted_to?: string | null
@@ -2875,6 +3075,7 @@ export type Database = {
           id?: string
           include_materials_by_stage?: boolean
           include_payment_schedule?: boolean
+          include_schedule_of_values?: boolean
           itb_links?: Json
           last_contact?: string | null
           loss_category?: string | null
@@ -2902,7 +3103,10 @@ export type Database = {
           selected_price_book_version_id?: string | null
           selected_takeoff_book_version_id?: string | null
           service_type_id?: string
+          sov_letter_total_only?: boolean
           sov_material_factor?: number | null
+          sov_shape?: string
+          sov_split_labor_material?: boolean
           submittals_not_needed_at?: string | null
           submittals_not_needed_by?: string | null
           submitted_to?: string | null
@@ -7108,6 +7312,7 @@ export type Database = {
           customer_id: string | null
           doc_kind: string
           estimate_number: number
+          field_write_up: Json | null
           for_address: string | null
           id: string
           internal_notes: string | null
@@ -7151,6 +7356,7 @@ export type Database = {
           customer_id?: string | null
           doc_kind?: string
           estimate_number?: number
+          field_write_up?: Json | null
           for_address?: string | null
           id?: string
           internal_notes?: string | null
@@ -7194,6 +7400,7 @@ export type Database = {
           customer_id?: string | null
           doc_kind?: string
           estimate_number?: number
+          field_write_up?: Json | null
           for_address?: string | null
           id?: string
           internal_notes?: string | null

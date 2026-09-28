@@ -38,7 +38,9 @@ import type { BreakdownJumpTarget } from '../lib/bids/bidTabRowJump'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import { BidsWorkingBoard } from '../components/bids/BidsWorkingBoard'
 import { BidPartyDetailModal } from '../components/bids/BidPartyDetailModal'
-import { BidFormModal, type BidServiceTypeSwitchSibling } from '../components/bids/BidFormModal'
+import { BidFormModal } from '../components/bids/BidFormModal'
+import { useBidTradeSwitch } from '../hooks/useBidTradeSwitch'
+import { useBidWindowState } from '../hooks/useBidWindowState'
 import { BidWindowModal } from '../components/bids/BidWindowModal'
 import { BidsEstimatorsTab } from '../components/bids/BidsEstimatorsTab'
 import { Database } from '../types/database'
@@ -298,37 +300,41 @@ export default function Bids() {
   const { packetsByBid: gcPacketsByBid, noteCounts: gcNoteCounts, roomStatesByBid } = useBidGcPackets(bids, bidGcRecipientsByBidId)
 
   // Bid Board
-  const [bidFormOpen, setBidFormOpen] = useState(false)
-  // v2.2390 (Wendi): which face the Bid window opens on — Edit for every Edit-bid
-  // button (the default), Bid for bid-name clicks (they used to open the old
-  // standalone preview on this page).
-  const [bidWindowInitialTab, setBidWindowInitialTab] = useState<'bid' | 'edit'>('edit')
+  // The Bid window's own state (hooks/useBidWindowState): open, face, bid, focus, saving, close guard, refresh key, delete window.
+  const bidWindow = useBidWindowState()
+  const {
+    bidFormOpen,
+    setBidFormOpen,
+    bidWindowInitialTab,
+    setBidWindowInitialTab,
+    pendingBidFormFocus,
+    setPendingBidFormFocus,
+    editingBid,
+    setEditingBid,
+    savingBid,
+    setSavingBid,
+    bidCloseFlushState,
+    setBidCloseFlushState,
+    bidCloseFlushStateRef,
+    bidWindowRefreshKey,
+    setBidWindowRefreshKey,
+    deleteConfirmProjectName,
+    setDeleteConfirmProjectName,
+    deletingBid,
+    setDeletingBid,
+    deleteBidModalOpen,
+    setDeleteBidModalOpen,
+  } = bidWindow
   /** Projects for the bid form's linked-project picker; null = not fetched yet (lazy, on first form open). */
   const [projectsForPicker, setProjectsForPicker] = useState<Array<{ id: string; name: string | null; project_number: string | null }> | null>(null)
-  const [pendingBidFormFocus, setPendingBidFormFocus] = useState<BidFormFocus | null>(null)
-  const [editingBid, setEditingBid] = useState<BidWithBuilder | null>(null)
   const [viewingCustomer, setViewingCustomer] = useState<Customer | null>(null)
   const [viewingGcBuilder, setViewingGcBuilder] = useState<GcBuilder | null>(null)
-  const [savingBid, setSavingBid] = useState(false)
-  // Edit Bid autosave (v2.3130): the Bid window's Edit tab writes each change on its own; the
-  // close guard flushes a pending write and holds the window open when that fails.
-  const [bidCloseFlushState, setBidCloseFlushState] = useState<'idle' | 'saving' | 'error'>('idle')
-  const bidCloseFlushStateRef = useRef(bidCloseFlushState)
-  bidCloseFlushStateRef.current = bidCloseFlushState
-  /** Bumped after every autosave so the window's Bid tab re-reads the row. */
-  const [bidWindowRefreshKey, setBidWindowRefreshKey] = useState(0)
-  const [deleteConfirmProjectName, setDeleteConfirmProjectName] = useState('')
-  const [deletingBid, setDeletingBid] = useState(false)
-  const [deleteBidModalOpen, setDeleteBidModalOpen] = useState(false)
   const [bidFormServiceTypeSwitchOpen, setBidFormServiceTypeSwitchOpen] = useState(false)
   const [gcCustomerDropdownOpen, setGcCustomerDropdownOpen] = useState(false)
   const [evaluateModalOpen, setEvaluateModalOpen] = useState(false)
   const [evaluateChecked, setEvaluateChecked] = useState<{ [key: string]: boolean }>({})
   const [showSentBidScript, setShowSentBidScript] = useState(false)
   const [showBidQuestionScript, setShowBidQuestionScript] = useState(false)
-  const [bidServiceTypeSwitchSiblings, setBidServiceTypeSwitchSiblings] = useState<
-    Record<string, BidServiceTypeSwitchSibling[]>
-  >({})
 
   // "Only my bids" filter (shared across all eight workflow tab list views): bids the
   // current user is the account manager or estimator for. On by default (v2.2704).
@@ -785,7 +791,7 @@ export default function Bids() {
       setPendingBidFormFocus(null)
     }, 50)
     return () => window.clearTimeout(timeoutId)
-  }, [bidFormOpen, pendingBidFormFocus])
+  }, [bidFormOpen, pendingBidFormFocus, setPendingBidFormFocus])
 
   const archiveWorkingBoardBid = useCallback(
     async (bidId: string) => {
@@ -1118,7 +1124,7 @@ export default function Bids() {
     setDeleteConfirmProjectName('')
     setDeletingBid(false)
     setDeleteBidModalOpen(false)
-    setBidServiceTypeSwitchSiblings({})
+    tradeSwitch.clearSiblings()
     attestation.clearFlow()
   }
 
@@ -1138,102 +1144,20 @@ export default function Bids() {
     await loadBids()
   }
 
-  async function refreshBidServiceTypeSwitchSiblings() {
-    const source = editingBid
-    const customerId = source?.customer_id
-    if (!source || !customerId) {
-      setBidServiceTypeSwitchSiblings({})
-      return
-    }
-    const pn = (source.project_name ?? '').trim().toLowerCase()
-    if (!pn) {
-      setBidServiceTypeSwitchSiblings({})
-      return
-    }
-    try {
-      const data = await withSupabaseRetry(
-        () =>
-          supabase
-            .from('bids')
-            .select('id, bid_number, service_type_id, project_name')
-            .eq('customer_id', customerId)
-            .neq('id', source.id),
-        'list sibling bids for service type switch',
-      )
-      const map: Record<string, BidServiceTypeSwitchSibling[]> = {}
-      for (const row of data ?? []) {
-        if ((row.project_name ?? '').trim().toLowerCase() !== pn) continue
-        const st = row.service_type_id
-        if (!map[st]) map[st] = []
-        map[st].push({ id: row.id, bid_number: row.bid_number })
-      }
-      setBidServiceTypeSwitchSiblings(map)
-    } catch {
-      setBidServiceTypeSwitchSiblings({})
-    }
-  }
-
-  async function duplicateBidToServiceTypeHandler(targetServiceTypeId: string) {
-    await bidAutosave.flush()
-    if (!editingBid || !authUser?.id) return
-    setSavingBid(true)
-    setError(null)
-    try {
-      const newId = await withSupabaseRetry(
-        () =>
-          supabase.rpc('duplicate_bid_to_service_type', {
-            p_source_bid_id: editingBid.id,
-            p_target_service_type_id: targetServiceTypeId,
-          }),
-        'duplicate bid to service type',
-      )
-      if (typeof newId !== 'string' || !newId) {
-        const msg = 'Duplicate did not return a new bid id.'
-        setError(msg)
-        showToast(msg, 'error')
-        return
-      }
-      const rows = await loadBids()
-      setSelectedServiceTypeId(targetServiceTypeId)
-      const fresh = rows.find((b) => b.id === newId)
-      const sameTrade = targetServiceTypeId === editingBid.service_type_id
-      if (fresh) {
-        closeBidForm()
-        openEditBid(fresh)
-        showToast(sameTrade ? 'Bid duplicated.' : 'Bid copied to the new trade.', 'success')
-      } else {
-        closeBidForm()
-        showToast('Bid copied. Refresh the page if it does not appear.', 'success')
-      }
-    } catch (e) {
-      const msg = formatErrorMessage(e)
-      setError(msg)
-      showToast(msg, 'error')
-    } finally {
-      setSavingBid(false)
-    }
-  }
-
-  async function openExistingBidFromServiceTypeSwitch(bidId: string) {
-    await bidAutosave.flush()
-    const fresh = bids.find((b) => b.id === bidId)
-    if (fresh) {
-      setSelectedServiceTypeId(fresh.service_type_id)
-      closeBidForm()
-      openEditBid(fresh)
-      return
-    }
-    void loadBids().then((rows) => {
-      const b = rows.find((x) => x.id === bidId)
-      if (b) {
-        setSelectedServiceTypeId(b.service_type_id)
-        closeBidForm()
-        openEditBid(b)
-      } else {
-        showToast('Bid not found or no access.', 'error')
-      }
-    })
-  }
+  // The trade switch (hooks/useBidTradeSwitch): the same project's bids in other trades, copy into one, open one.
+  const tradeSwitch = useBidTradeSwitch({
+    editingBid,
+    bids,
+    authUserId: authUser?.id,
+    flushAutosave: () => bidAutosave.flush(),
+    setSavingBid,
+    setError,
+    showToast,
+    loadBids,
+    setSelectedServiceTypeId,
+    closeBidForm,
+    openEditBid,
+  })
 
   async function insertPendingBidSentFollowupSubmissionNoteAfterSave(bidId: string, noteText: string | null) {
     const trimmed = noteText?.trim() ?? ''
@@ -3089,10 +3013,10 @@ export default function Bids() {
             onRequestArchiveFromUnsentWorking={
               editingBid ? () => promptArchiveWorkingBoardBid(editingBid.id) : undefined
             }
-            serviceTypeSwitchSiblings={bidServiceTypeSwitchSiblings}
-            onServiceTypeSwitchModalOpen={refreshBidServiceTypeSwitchSiblings}
-            onDuplicateBidToServiceType={duplicateBidToServiceTypeHandler}
-            onOpenExistingBidFromServiceTypeSwitch={openExistingBidFromServiceTypeSwitch}
+            serviceTypeSwitchSiblings={tradeSwitch.siblings}
+            onServiceTypeSwitchModalOpen={tradeSwitch.refreshSiblings}
+            onDuplicateBidToServiceType={tradeSwitch.duplicateToTrade}
+            onOpenExistingBidFromServiceTypeSwitch={tradeSwitch.openExistingSibling}
             embedded={Boolean(bidFormOpen && editingBid)}
             onServiceTypeSwitchOpenChange={setBidFormServiceTypeSwitchOpen}
           />

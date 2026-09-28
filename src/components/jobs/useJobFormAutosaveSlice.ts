@@ -69,6 +69,8 @@ export function useJobFormAutosaveSlice(params: {
   jobIdRef.current = jobId
   const enabledRef = useRef(enabled)
   enabledRef.current = enabled
+  const debounceMsRef = useRef(debounceMs)
+  debounceMsRef.current = debounceMs
   const saveRef = useRef(params.save)
   saveRef.current = params.save
   const onSavedRef = useRef(params.onSaved)
@@ -99,6 +101,14 @@ export function useJobFormAutosaveSlice(params: {
       baselineRef.current = { jobId: id, json: sliceWritten }
       setStatus('saved')
       onSavedRef.current?.()
+      // An edit made during this save back to the old baseline started no clock — the effect
+      // saw no change then. Against the new baseline it is one: start the clock now.
+      if (!queuedRef.current && !timerRef.current && needsFlush()) {
+        timerRef.current = setTimeout(() => {
+          timerRef.current = null
+          void runSaveRef.current()
+        }, debounceMsRef.current)
+      }
       return true
     } finally {
       runningRef.current = false
@@ -175,6 +185,9 @@ export function useJobFormAutosaveSlice(params: {
       }
     }
   }, [sliceJson, jobId, enabled, debounceMs])
+
+  // The clock a finished save starts belongs to no run of the effect above; leaving the form drops it.
+  useEffect(() => cancelTimer, [])
 
   return {
     status,

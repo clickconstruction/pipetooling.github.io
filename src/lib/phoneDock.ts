@@ -6,7 +6,7 @@
  * Today's fixed bar (Dashboard · Schedule · Inbox · Customers · PO) stays for every role
  * this file returns `null` for; the assistant's four were ranked by her own page-minutes
  * (Pipeline 64 h, Quickfill 22 h against Customers 1 h and PO 8 min over 90 days), then
- * Taunya asked for PO in Quickfill's place after a walk on her own phone (2026-09-28, v2.4074):
+ * Taunya asked for PO in Quickfill's place after a walk on her own phone (2026-09-28, v2.4093):
  * the code she reads across the counter is what she wants at her thumb; Quickfill is one tap
  * away under More.
  */

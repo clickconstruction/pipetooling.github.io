@@ -35,6 +35,7 @@ import {
 } from '../lib/portal/portalPaidFlip'
 import { CARD, COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER, PAPER_GREEN, PAPER_RED } from '../lib/portal/portalTheme'
 import { foldPortalTestReports, portalCertifierLine, type PortalTestReport } from '../lib/portal/portalPayload'
+import PortalPaymentsSection from '../components/portal/PortalPaymentsSection'
 import { phoneContact } from '../lib/phoneContact'
 
 /**
@@ -274,6 +275,7 @@ export default function CustomerPortal() {
               </div>
             )}
             <PortalStatement requestToken={state.payload.requestToken ?? token} payload={state.payload} today={today} />
+            {state.payload.checks ? <PortalPaymentsSection checks={state.payload.checks} formatUsd={formatPortalUsd} /> : null}
             <div data-screen-only>
               <PortalRequestForms token={state.payload.requestToken ?? token} payload={state.payload} />
             </div>

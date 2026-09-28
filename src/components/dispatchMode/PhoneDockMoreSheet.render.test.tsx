@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
  * Render smokes for the phone's More sheet (punch list #30): the tap-only door to changing a dock
- * slot (v2.4074 — Taunya's walk on her own iPhone: the press-and-hold never opened for her) and the
+ * slot (v2.4093 — Taunya's walk on her own iPhone: the press-and-hold never opened for her) and the
  * hold's swap mode, which the parent passes in as `swapIndex`.
  */
 import { describe, expect, it, vi } from 'vitest'
@@ -37,7 +37,7 @@ function mount(overrides: Partial<PhoneDockMoreSheetProps> = {}) {
 }
 
 describe('PhoneDockMoreSheet', () => {
-  it('opens on More with the four in The dock row, PO in the third slot (v2.4074)', () => {
+  it('opens on More with the four in The dock row, PO in the third slot (v2.4093)', () => {
     mount()
     expect(screen.getByRole('heading', { name: 'More' })).toBeTruthy()
     const row = screen.getByTestId('phone-dock-slots')

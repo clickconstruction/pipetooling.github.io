@@ -10,7 +10,9 @@
 
 import { loadJsPDF } from '../loadJsPDF'
 import { loadMaterialsByStageForBid } from '../bids/materialsByStageIo'
-import { MATERIALS_BY_STAGE_HEADING, materialsByStageLetterRows } from './scheduleOfValues'
+import { MATERIALS_BY_STAGE_HEADING, SCHEDULE_OF_VALUES_HEADING, materialsByStageLetterRows } from './scheduleOfValues'
+import { PAYMENT_SCHEDULE_HEADING } from './paymentSchedule'
+import { loadSovLaborShareDefault, loadSovLines, loadSovSplitInputsForBid } from '../bids/sovLaborMaterialIo'
 import { bidBasisClause, currentBidBasisExport, shortSheetLabels, type BidBasisExportRowLike } from '../bids/bidBasis'
 import { supabase } from '../supabase'
 import {
@@ -31,7 +33,7 @@ import {
   type BidVersionGcRow,
   type GcPacketCustomer,
 } from '../bids/coverLetterGcPackets'
-import { buildCoverLetterText, numberToWords } from './coverLetter'
+import { buildCoverLetterText, numberToWords, type CoverLetterScheduleOfValues } from './coverLetter'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import type { BidCountRow } from '../../types/bids'
 import type {
@@ -543,7 +545,7 @@ export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void
   // Schedule of Values: fetch fresh (flag + rows) so a toggle made moments ago in the
   // Cover Letter tab is reflected without threading state through the Submission tab.
   const [schedFlagRes, schedRowsRes] = await Promise.all([
-    supabase.from('bids').select('include_payment_schedule, include_materials_by_stage, sov_material_factor').eq('id', bidId).maybeSingle(),
+    supabase.from('bids').select('include_payment_schedule, include_materials_by_stage, include_schedule_of_values, sov_material_factor, sov_split_labor_material, sov_letter_total_only, sov_shape').eq('id', bidId).maybeSingle(),
     supabase.from('bid_payment_schedule_rows').select('*').eq('bid_id', bidId).order('sort_order').order('created_at'),
   ])
   const paymentScheduleRowsData = (schedRowsRes.data ?? []) as { timing: string; percent: number }[]
@@ -552,11 +554,28 @@ export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void
     : null
   // Materials by stage (v2.3673): the same fresh read; the figures come through the one door the
   // Takeoffs rail and the printed schedule use, so the PDF says what they say.
-  const stageFlags = (schedFlagRes.data ?? null) as { include_materials_by_stage?: boolean | null; sov_material_factor?: number | null } | null
-  const materialsByStage = stageFlags?.include_materials_by_stage === true
-    ? await loadMaterialsByStageForBid(supabase, { bidId, bidVersionId: activeBidVersionId ?? null, bidFactorOverride: stageFlags.sov_material_factor ?? null })
-        .then((d) => ({ rows: materialsByStageLetterRows(d.summary) }))
-        .catch(() => null)
+  const stageFlags = (schedFlagRes.data ?? null) as { include_materials_by_stage?: boolean | null; include_schedule_of_values?: boolean | null; sov_material_factor?: number | null; sov_split_labor_material?: boolean | null; sov_letter_total_only?: boolean | null; sov_shape?: string | null } | null
+  // One read serves both stage sections (the schedule of values, v2.4066, spreads the letter's amount by the same shares).
+  const stageDoc = stageFlags?.include_materials_by_stage === true || stageFlags?.include_schedule_of_values === true
+    ? await loadMaterialsByStageForBid(supabase, { bidId, bidVersionId: activeBidVersionId ?? null, bidFactorOverride: stageFlags.sov_material_factor ?? null }).catch(() => null)
+    : null
+  const materialsByStage = stageFlags?.include_materials_by_stage === true && stageDoc ? { rows: materialsByStageLetterRows(stageDoc.summary) } : null
+  // The split (v2.4075) reads the Labor tab, the subs, the company rule and the typed figures through the same door as the tab.
+  const splitInputs = stageFlags?.include_schedule_of_values === true && stageDoc && stageFlags.sov_split_labor_material === true
+    ? await loadSovSplitInputsForBid(supabase, bidId).catch(() => null)
+    : null
+  // My lines (v2.4070): the estimator's rows replace the stages; the company share is read on its own when the split is off.
+  const sovLines = stageFlags?.include_schedule_of_values === true && stageFlags.sov_shape === 'lines'
+    ? await Promise.all([loadSovLines(supabase, bidId), splitInputs ? Promise.resolve(splitInputs.ruleLaborPct) : loadSovLaborShareDefault(supabase)]).then(([lines, ruleLaborPct]) => ({ lines, ruleLaborPct })).catch(() => null)
+    : null
+  const scheduleOfValues: CoverLetterScheduleOfValues | null = stageFlags?.include_schedule_of_values === true && (stageDoc || sovLines)
+    ? {
+        summary: stageDoc?.summary ?? { byStage: { rough_in: 0, top_out: 0, trim_set: 0 }, assignedRaw: 0 },
+        amountDollars: effectiveRevenue,
+        split: splitInputs && stageDoc ? { costs: { labor: splitInputs.costs.labor, material: stageDoc.summary.scaled }, ruleLaborPct: splitInputs.ruleLaborPct, overrides: splitInputs.overrides } : null,
+        totalOnly: stageFlags.sov_letter_total_only === true,
+        lines: sovLines ? { ...sovLines, split: stageFlags.sov_split_labor_material === true } : null,
+      }
     : null
   // Bid basis (v2.3226): the same fresh read — the letter flag + the current marked-up
   // plans export — so the Approval PDF says what the letter says.
@@ -568,14 +587,14 @@ export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void
   const bidBasis = basisFlagRes.data?.bid_to_marked_plans === true && basisCurrent
     ? { clause: bidBasisClause({ planDateFormatted: designDrawingPlanDateFormatted, sheets: shortSheetLabels(basisCurrent.sheet_labels ?? [], basisCurrent.ct_project_name ?? null) }) }
     : null
-  const coverLetterText = buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, ctx.coverLetter.includeSignature, effectiveIncludeFixtures, paymentSchedule, null, null, bidBasis, materialsByStage)
+  const coverLetterText = buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, ctx.coverLetter.includeSignature, effectiveIncludeFixtures, paymentSchedule, null, null, bidBasis, materialsByStage, scheduleOfValues)
   const coverLines = coverLetterText.split('\n')
   for (const line of coverLines) {
     if (y > pageH - margin) { doc.addPage(); y = margin }
 
     const isInclusionsHeading = line === 'Inclusions:'
     const isExclusionsHeading = line === 'Exclusions and Scope:'
-    const isScheduleHeading = line === 'Schedule of Values:' || line === MATERIALS_BY_STAGE_HEADING
+    const isScheduleHeading = line === PAYMENT_SCHEDULE_HEADING || line === MATERIALS_BY_STAGE_HEADING || line === SCHEDULE_OF_VALUES_HEADING
     const makeBold = isInclusionsHeading || isExclusionsHeading || isScheduleHeading
 
     if (makeBold) {

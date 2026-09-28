@@ -20,8 +20,11 @@ import {
   type StageMoney,
 } from '../bids/materialsByStage'
 import type { TakeoffStage } from '../bids/bidTakeoffHelpers'
+import { SOV_NOTE_INDENT, sovSplitLineText, sovSplitTotals, type SovStageSplit } from './sovLaborMaterial'
 
 export const MATERIALS_BY_STAGE_HEADING = 'Materials by stage:'
+
+const money = (n: number) => `$${formatCurrency(n)}`
 
 export type MaterialsByStageLetterRow = { label: string; amountFormatted: string }
 
@@ -34,6 +37,107 @@ export function materialsByStageLetterRows(summary: Pick<MaterialsByStageSummary
 export function buildMaterialsByStageSectionLines(rows: ReadonlyArray<MaterialsByStageLetterRow>): string[] {
   if (rows.length === 0) return []
   return [MATERIALS_BY_STAGE_HEADING, ...rows.map((r) => `${r.label} — ${r.amountFormatted}`)]
+}
+
+/* ─────────────── the schedule of values in the letter (v2.4066) ─────────────── */
+
+export const SCHEDULE_OF_VALUES_HEADING = 'Schedule of values:'
+
+export type ScheduleOfValuesLetterRow = {
+  stage: TakeoffStage
+  label: string
+  /** Dollars of the contract, reconciled so the rows add to the amount to the cent. */
+  amount: number
+  amountFormatted: string
+  /** 0–100, one decimal in `shareFormatted`. */
+  sharePct: number
+  shareFormatted: string
+}
+
+export type ScheduleOfValuesLetter = {
+  rows: ScheduleOfValuesLetterRow[]
+  /** The three stages in dollars (a stage with nothing in it is 0), for the printed "Of contract" column. */
+  scaled: StageMoney
+  total: number
+  totalFormatted: string
+}
+
+/**
+ * The contract amount spread across the stages by each one's share of the staged
+ * material (`scaleToContract`'s rule), then reconciled to whole cents with the
+ * largest-remainder method so the rows add to the amount exactly — a GC checks the
+ * total first. A stage with nothing staged in it gets no row. Null when nothing is
+ * staged or the amount is not positive.
+ */
+export function scheduleOfValuesLetter(
+  summary: Pick<MaterialsByStageSummary, 'byStage' | 'assignedRaw'>,
+  contractAmount: number,
+): ScheduleOfValuesLetter | null {
+  if (!(summary.assignedRaw > 0) || !Number.isFinite(contractAmount) || contractAmount <= 0) return null
+  const totalCents = Math.round(contractAmount * 100)
+  const exact = STAGE_KEYS.map((k) => (totalCents * summary.byStage[k]) / summary.assignedRaw)
+  const floors = exact.map((c) => Math.floor(c))
+  let left = totalCents - floors.reduce((a, b) => a + b, 0)
+  const order = exact
+    .map((c, i) => ({ i, frac: c - Math.floor(c) }))
+    .sort((a, b) => b.frac - a.frac || a.i - b.i)
+  for (const { i } of order) {
+    if (left <= 0) break
+    floors[i] = (floors[i] ?? 0) + 1
+    left -= 1
+  }
+  const scaled: StageMoney = { rough_in: 0, top_out: 0, trim_set: 0 }
+  STAGE_KEYS.forEach((k, i) => {
+    scaled[k] = (floors[i] ?? 0) / 100
+  })
+  const rows: ScheduleOfValuesLetterRow[] = STAGE_KEYS.filter((k) => summary.byStage[k] > 0).map((k) => {
+    const sharePct = (summary.byStage[k] / summary.assignedRaw) * 100
+    return {
+      stage: k,
+      label: STAGE_LABELS[k],
+      amount: scaled[k],
+      amountFormatted: money(scaled[k]),
+      sharePct,
+      shareFormatted: `${(Math.round(sharePct * 10) / 10).toFixed(1)}%`,
+    }
+  })
+  const total = totalCents / 100
+  return { rows, scaled, total, totalFormatted: money(total) }
+}
+
+export type ScheduleOfValuesSectionOptions = {
+  /** Labor / material per stage (v2.4075): each line carries both figures and its note prints under it. */
+  split?: ReadonlyArray<SovStageSplit> | null
+  /** The letter carries the total and points at the attached sheet; the lines print on the sheet only. */
+  totalOnly?: boolean
+}
+
+/**
+ * `['Schedule of values:', 'Rough In — $35,596.80 (41.2%)', …, 'Total — $86,400.00']`; with a split,
+ * `'Rough In — $35,596.80 (labor $12,143.83 · material $23,452.97)'` and a note indented under its
+ * line; total only → `'See the attached schedule — $86,400.00'`. [] when there is nothing to say.
+ */
+export function buildScheduleOfValuesSectionLines(letter: ScheduleOfValuesLetter | null | undefined, options?: ScheduleOfValuesSectionOptions): string[] {
+  if (!letter || letter.rows.length === 0) return []
+  if (options?.totalOnly) return [SCHEDULE_OF_VALUES_HEADING, `See the attached schedule — ${letter.totalFormatted}`]
+  const split = options?.split
+  if (split && split.length > 0) {
+    const bySt = new Map(split.map((s) => [s.stage, s] as const))
+    const lines: string[] = [SCHEDULE_OF_VALUES_HEADING]
+    for (const r of letter.rows) {
+      const s = bySt.get(r.stage)
+      if (!s) {
+        lines.push(`${r.label} — ${r.amountFormatted} (${r.shareFormatted})`)
+        continue
+      }
+      lines.push(sovSplitLineText(s))
+      if (s.note) lines.push(`${SOV_NOTE_INDENT}${s.note}`)
+    }
+    const t = sovSplitTotals(split)
+    lines.push(`Total — ${letter.totalFormatted} (labor ${money(t.labor)} · material ${money(t.material)})`)
+    return lines
+  }
+  return [SCHEDULE_OF_VALUES_HEADING, ...letter.rows.map((r) => `${r.label} — ${r.amountFormatted} (${r.shareFormatted})`), `Total — ${letter.totalFormatted}`]
 }
 
 /**
@@ -87,16 +191,26 @@ export type ScheduleOfValuesInput = {
   unstagedNames?: string[]
   /** "Factor 1.5 is the company default." / "Factor 1.35 is this bid's own." */
   factorNote?: string | null
+  /** Labor / material per stage (v2.4075), with the contract: three more columns and a note under the stage. */
+  split?: ReadonlyArray<SovStageSplit> | null
 }
 
 const cell = 'padding:0.4rem 0.5rem; border-bottom:1px solid #e5e7eb; vertical-align:top'
 const num = `${cell}; text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums`
-const money = (n: number) => `$${formatCurrency(n)}`
 
 export function buildScheduleOfValuesHtml(input: ScheduleOfValuesInput): string {
   const { summary } = input
   const names = fixtureNamesByStage(summary.fixtures)
   const factorLabel = `× ${summary.factor}`
+  const split = input.contract && input.split && input.split.length > 0 ? new Map(input.split.map((s) => [s.stage, s] as const)) : null
+  const splitCells = (k: TakeoffStage) => {
+    if (!split) return ''
+    const s = split.get(k)
+    if (!s) return `<td style="${num}"></td><td style="${num}"></td><td style="${cell}"></td>`
+    const typed = s.source === 'typed' ? ' <span style="font-size:0.75em; color:#6b7280">(typed)</span>' : s.source === 'rule' ? ' <span style="font-size:0.75em; color:#6b7280">(rule)</span>' : ''
+    return `<td style="${num}">${money(s.labor)}${typed}</td><td style="${num}">${money(s.material)}</td><td style="${cell}; color:#4b5563; font-size:0.85em">${escapeHtml(s.note)}</td>`
+  }
+  const splitTotals = split ? sovSplitTotals([...split.values()]) : null
   const stageRows = STAGE_KEYS.map((k) => {
     const list = names[k]
     return `<tr>
@@ -106,6 +220,7 @@ export function buildScheduleOfValuesHtml(input: ScheduleOfValuesInput): string 
         <td style="${num}"><strong>${money(summary.scaled[k])}</strong></td>
         <td style="${num}">${summary.assignedRaw > 0 ? `${(Math.round(summary.sharesPct[k] * 10) / 10).toFixed(1)} %` : '—'}</td>
         ${input.contract ? `<td style="${num}"><strong>${money(input.contract.scaled[k])}</strong></td>` : ''}
+        ${splitCells(k)}
       </tr>`
   }).join('')
   const totalRow = `<tr>
@@ -115,6 +230,7 @@ export function buildScheduleOfValuesHtml(input: ScheduleOfValuesInput): string 
         <td style="${num}; border-top:1.5px solid #17191e; border-bottom:none; font-weight:700">${money(summary.totalScaled)}</td>
         <td style="${num}; border-top:1.5px solid #17191e; border-bottom:none; font-weight:700">${summary.assignedRaw > 0 ? '100 %' : '—'}</td>
         ${input.contract ? `<td style="${num}; border-top:1.5px solid #17191e; border-bottom:none; font-weight:700">${money(input.contract.amount)}</td>` : ''}
+        ${splitTotals ? `<td style="${num}; border-top:1.5px solid #17191e; border-bottom:none; font-weight:700">${money(splitTotals.labor)}</td><td style="${num}; border-top:1.5px solid #17191e; border-bottom:none; font-weight:700">${money(splitTotals.material)}</td><td style="${cell}; border-top:1.5px solid #17191e; border-bottom:none"></td>` : ''}
       </tr>`
   const th = 'text-align:left; font-size:0.75em; text-transform:uppercase; letter-spacing:0.05em; color:#6b7280; border-bottom:1.5px solid #17191e; padding:0.35rem 0.5rem'
   const thNum = `${th}; text-align:right`
@@ -125,6 +241,7 @@ export function buildScheduleOfValuesHtml(input: ScheduleOfValuesInput): string 
   footerBits.push(`Materials from the Takeoffs sheet; order rounding included.`)
   if (input.factorNote) footerBits.push(input.factorNote)
   if (input.contract) footerBits.push(`Scaled to contract: the ${money(input.contract.amount)} bid spread by each stage's share of the staged material.`)
+  if (split) footerBits.push(`Labor and material: each stage's value divided by the ratio of its labor cost (the Labor tab's hours × the rate, plus subcontractors) to its material (the takeoff × the factor); "(rule)" = the company labor share where a stage has no cost on either side; "(typed)" = the estimator's figure. For progress billing only.`)
 
   const fixtureRows = summary.fixtures
     .filter((f) => f.raw > 0)
@@ -154,7 +271,7 @@ export function buildScheduleOfValuesHtml(input: ScheduleOfValuesInput): string 
   <h1>${escapeHtml(input.title)}</h1>
   <p class="sub">${escapeHtml(input.subtitle)}</p>
   <table>
-    <thead><tr><th style="${th}">Stage</th><th style="${th}">Fixtures &amp; tie-ins</th><th style="${thNum}">Materials</th><th style="${thNum}">${escapeHtml(factorLabel)}</th><th style="${thNum}">Share</th>${input.contract ? `<th style="${thNum}">Of contract</th>` : ''}</tr></thead>
+    <thead><tr><th style="${th}">Stage</th><th style="${th}">Fixtures &amp; tie-ins</th><th style="${thNum}">Materials</th><th style="${thNum}">${escapeHtml(factorLabel)}</th><th style="${thNum}">Share</th>${input.contract ? `<th style="${thNum}">Of contract</th>` : ''}${split ? `<th style="${thNum}">Labor</th><th style="${thNum}">Material</th><th style="${th}">Notes</th>` : ''}</tr></thead>
     <tbody>${stageRows}${totalRow}</tbody>
   </table>
   <p class="foot">${footerBits.map((b) => escapeHtml(b)).join(' ')}</p>
