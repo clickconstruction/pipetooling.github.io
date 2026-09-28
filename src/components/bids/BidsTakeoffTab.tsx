@@ -33,7 +33,8 @@ import {
   MATERIALS_MODEL_CAPTION,
 } from '../../lib/bids/bidTakeoffHelpers'
 import { loadBundlePartLines, type BundlePartLine } from '../../lib/bids/assemblyBundleBreakdown'
-import { buildPartAssemblyIndex, type PartAssemblyEntry, type PartAssemblyIndexItem } from '../../lib/bids/partAssemblyIndex'
+import type { PartAssemblyEntry } from '../../lib/bids/partAssemblyIndex'
+import { loadPartAssemblyIndex } from '../../lib/bids/partAssemblyIndexIo'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
 import { BidFlowStrip } from './BidFlowStrip'
 import { deriveBidFlow, type BidFlowDoor, type BidFlowStep } from '../../lib/bids/bidFlow'
@@ -1636,11 +1637,9 @@ export function BidsTakeoffTab({
     if (normalizeMaterialsModel(selectedBidForTakeoff.materials_model) !== 'rough') return
     let cancelled = false
     void (async () => {
-      const { data, error } = await supabase
-        .from('material_template_items')
-        .select('template_id, item_type, part_id, nested_template_id, quantity')
-      if (cancelled || error || !data) return
-      setPartAssemblyIndex(buildPartAssemblyIndex(data as PartAssemblyIndexItem[]))
+      const index = await loadPartAssemblyIndex(supabase)
+      if (cancelled || !index) return
+      setPartAssemblyIndex(index)
     })()
     return () => { cancelled = true }
   }, [activeTab, selectedBidForTakeoff?.id, selectedBidForTakeoff?.materials_model, supabase, materialTemplates])
