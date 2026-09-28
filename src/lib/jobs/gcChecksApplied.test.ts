@@ -73,6 +73,7 @@ describe('paymentKind / checkLabel / labels', () => {
     expect(checkLabel('ach', '')).toBe('ACH')
     expect(checkLabel('card', '')).toBe('Card')
     expect(checkLabel('other', '')).toBe('Payment')
+    expect(checkLabel('other', '', { deposit: true })).toBe('Bank deposit')
   })
   it('leads the job label with the address, as on the statement', () => {
     expect(checksJobLabel({ hcp_number: null, click_number: '1041', job_name: 'Oak Ridge Ph 2', job_address: '4410 Oak Ridge Dr' })).toBe('4410 Oak Ridge Dr · 1041 Oak Ridge Ph 2')
@@ -170,6 +171,23 @@ describe('buildGcChecksReport', () => {
     expect(r.checks.map((c) => c.label)).toEqual(['#48211', '#7'])
     expect(r.earlierCount).toBe(1)
     expect(r.jobs.find((j) => j.jobId === 'oak')?.paidBy).toEqual(['#48102', '#48211'])
+  })
+
+  it('a bank-recorded payment folds on the deposit id but never shows it as a number', () => {
+    const dep = '170d8e0e-b2ad-11f1-96cf-4bc155fcb88b'
+    const a = job('a', { invoices: [inv('a-1', 'a', 1, 2090)], payments: [pay('pa', 'a', 2090, { invoice_id: 'a-1', reference_number: dep, paid_on: '2026-09-17' })] })
+    const b = job('b', { invoices: [inv('b-1', 'b', 1, 1980)], payments: [pay('pb', 'b', 1980, { invoice_id: 'b-1', reference_number: dep.toUpperCase(), paid_on: '2026-09-17' })] })
+    const r = buildGcChecksReport({ gcId: GC, jobs: [a, b] })
+    expect(r.checks).toHaveLength(1)
+    expect(r.checks[0]!.amount).toBe(4070)
+    expect(r.checks[0]!.number).toBe('')
+    expect(r.checks[0]!.label).toBe('check · no number recorded')
+    expect(r.checks[0]!.noNumber).toBe(true)
+    expect(findChecks(r.checks, '170d8e0e')).toEqual([])
+    const untyped = buildGcChecksReport({ gcId: GC, jobs: [{ ...a, payments: [{ ...a.payments[0]!, payment_type: null }] }] })
+    expect(untyped.checks[0]!.label).toBe('Bank deposit')
+    expect(untyped.checks[0]!.noNumber).toBe(false)
+    expect(findChecks(r.checks, '4,070').map((c) => c.amount)).toEqual([4070])
   })
 
   it('flags a check recorded without its number, one row per payment', () => {

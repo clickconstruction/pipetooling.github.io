@@ -181,20 +181,38 @@ export function paymentKind(paymentType: string | null | undefined): CheckKind {
   return 'other'
 }
 
-/** The number as the GC would say it: no leading #, no spaces around it. */
+/**
+ * A bank-recorded payment carries Mercury's transaction id in the number field
+ * (`apply_mercury_bank_payment_allocations` writes `mercury_id` there so one
+ * deposit's allocations share it): a fold key, never a check number.
+ */
+export function isDepositRef(reference: string | null | undefined): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test((reference ?? '').trim())
+}
+
+/** The number as the GC would say it: no leading #, no spaces around it; '' for a deposit id. */
 export function checkNumberText(reference: string | null | undefined): string {
-  return (reference ?? '').trim().replace(/^#\s*/, '').trim()
+  const ref = (reference ?? '').trim().replace(/^#\s*/, '').trim()
+  return isDepositRef(ref) ? '' : ref
 }
 
 const numberKey = (reference: string | null | undefined): string => checkNumberText(reference).toLowerCase().replace(/[^a-z0-9]/g, '')
+/** The fold key keeps a deposit id — one deposit's allocations share it — where the display number drops it. */
+const foldNumberKey = (reference: string | null | undefined): string =>
+  (reference ?? '')
+    .trim()
+    .replace(/^#\s*/, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
 
-export function checkLabel(kind: CheckKind, number: string): string {
+export function checkLabel(kind: CheckKind, number: string, opts?: { deposit?: boolean }): string {
   if (number) return `#${number}`
   if (kind === 'check') return 'check · no number recorded'
   if (kind === 'ach') return 'ACH'
   if (kind === 'wire') return 'Wire'
   if (kind === 'card') return 'Card'
-  return 'Payment'
+  // Recorded from a bank deposit with no type picked: say so rather than "Payment".
+  return opts?.deposit ? 'Bank deposit' : 'Payment'
 }
 
 /** The address leads, then the job number and name — the statement's row label, on one line. */
@@ -278,7 +296,7 @@ function paymentShares(f: JobFacts, p: ChecksPaymentIn): Array<{ invoice: SentBi
 }
 
 function foldKey(p: ChecksPaymentIn): string {
-  const n = numberKey(p.reference_number)
+  const n = foldNumberKey(p.reference_number)
   if (n) return `ref:${n}|${ymd(p.paid_on) ?? ''}`
   if ((p.mercury_transaction_id ?? '').trim()) return `dep:${p.mercury_transaction_id}`
   return `pay:${p.id}`
@@ -328,7 +346,7 @@ export function buildGcChecksReport(input: {
         d = {
           key,
           kind,
-          label: checkLabel(kind, number),
+          label: checkLabel(kind, number, { deposit: isDepositRef(p.reference_number) || Boolean((p.mercury_transaction_id ?? '').trim()) }),
           number,
           noNumber: kind === 'check' && !number,
           receivedYmd: null,
