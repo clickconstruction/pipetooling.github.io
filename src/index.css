@@ -3183,6 +3183,7 @@ body.my-time-boundary-dragging {
 .quickfillRoundScreen select,
 .quickfillRoundScreen textarea {
   font-size: 16px !important;
+}
 /* ── Pipeline Working header: the schedule pills + next-first sort (v2.3788) ── */
 .stagesWhenPills {
   display: inline-flex;
