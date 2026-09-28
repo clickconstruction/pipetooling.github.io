@@ -18,7 +18,7 @@ const sheet: CallSheet = {
   ],
 }
 
-function renderSheet() {
+function renderSheet(initialDrafts?: Record<string, { temperature: 'hot' | 'warm' | 'cool' | 'cold' | null; note: string; payBy: string; noChange: boolean }>) {
   const onSave = vi.fn()
   render(
     <GcCallSheetModal
@@ -30,6 +30,7 @@ function renderSheet() {
         { id: 'u-taunya', name: 'Taunya' },
         { id: 'u-malachi', name: 'Malachi' },
       ]}
+      initialDrafts={initialDrafts}
       busy={false}
       error={null}
       onSave={onSave}
@@ -80,5 +81,19 @@ describe('GcCallSheetModal', () => {
     fireEvent.click(rowFor('Knight Contracting').getByLabelText('no change'))
     fireEvent.click(screen.getByRole('button', { name: 'Save 1 answer' }))
     expect(onSave.mock.calls[0]![0]).toEqual([{ gcId: 'knight', channel: 'call', note: 'No change since Sep 18: “Check run is the 20th.”', temperature: 'warm', expectedPayBy: '2026-09-20' }])
+  })
+
+  it('opens on his answers from the link, for her to read, change and save', () => {
+    const onSave = renderSheet({ knight: { temperature: 'cool', note: 'Missed the 20th, now says the 10th.', payBy: '2026-10-10', noChange: false } })
+    expect(screen.getByText(/Malachi answered these on his link/)).toBeTruthy()
+    expect((rowFor('Knight Contracting').getByLabelText('What was said about Knight Contracting') as HTMLInputElement).value).toBe('Missed the 20th, now says the 10th.')
+    expect(screen.getByRole('radio', { name: 'His link' }).getAttribute('aria-checked')).toBe('true')
+    fireEvent.change(rowFor('Knight Contracting').getByLabelText('What was said about Knight Contracting'), { target: { value: 'Missed the 20th; says the 10th, check by mail.' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save 1 answer' }))
+    // The mark's own channel has no "link": it is filed under other, and heard via the link.
+    expect(onSave).toHaveBeenCalledWith([{ gcId: 'knight', channel: 'other', note: 'Missed the 20th; says the 10th, check by mail.', temperature: 'cool', expectedPayBy: '2026-10-10' }], {
+      wordFrom: { userId: 'u-malachi', name: 'Malachi' },
+      heardVia: 'link',
+    })
   })
 })

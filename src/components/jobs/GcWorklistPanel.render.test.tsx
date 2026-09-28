@@ -95,4 +95,19 @@ describe('GcWorklistPanel', () => {
     fireEvent.click(buttons[0]!)
     expect(h.onOpenCallSheet).toHaveBeenCalledWith(expect.objectContaining({ key: 'owner:u-malachi' }))
   })
+
+  it('offers the link for someone else’s accounts, and his answers to review when they are in', () => {
+    const onAskByLink = vi.fn()
+    const onReviewAnswers = vi.fn()
+    renderPanel({ onAskByLink, onReviewAnswers, askByOwner: new Map([['u-malachi', { statusLine: 'answered 1 of 2 · 1 waiting on you', pending: 1 }]]) })
+    fireEvent.click(screen.getByRole('button', { name: /His link/ }))
+    expect(onAskByLink).toHaveBeenCalledWith(expect.objectContaining({ key: 'owner:u-malachi' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Malachi answered 1 — review' }))
+    expect(onReviewAnswers).toHaveBeenCalledWith(expect.objectContaining({ key: 'owner:u-malachi' }))
+  })
+
+  it('never offers a link for your own accounts, or before the database has it', () => {
+    renderPanel({ authUserId: 'u-malachi', onAskByLink: vi.fn() })
+    expect(screen.queryByRole('button', { name: /Ask by link/ })).toBeNull()
+  })
 })

@@ -38,7 +38,8 @@ describe('EMAIL_CATALOG', () => {
     // +1 (v2.2743): the Signed agreements staff notice (accept-estimate · sign-bid-room).
     // +1 (v2.3359): the copy of a Stripe bill (send-stripe-invoice, one per address on copy_emails).
     // +1 (v2.3804): the "check returned" notice to the office (mercury-webhook, once per deposit).
-    expect(EMAIL_CATALOG).toHaveLength(41)
+    // +1 (v2.3985): the ask-by-link email to an account man (gc-word-ask).
+    expect(EMAIL_CATALOG).toHaveLength(42)
     for (const e of EMAIL_CATALOG) {
       expect(e.sender.trim().length).toBeGreaterThan(0)
       expect(e.subjectExample.trim().length).toBeGreaterThan(0)

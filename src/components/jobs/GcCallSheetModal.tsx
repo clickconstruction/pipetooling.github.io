@@ -19,9 +19,11 @@ type Props = {
   actorName: string
   /** People the word could have come from. */
   wordSources: ReadonlyArray<{ id: string; name: string }>
+  /** His answers from the ask-by-link page, to read, change and save. Opens the sheet in review. */
+  initialDrafts?: Readonly<Record<string, CallSheetDraft>>
   busy: boolean
   error: string | null
-  onSave: (answers: CallSheetAnswer[], word: { wordFrom: { userId: string; name: string }; heardVia: StatementSendChannel | null }) => void
+  onSave: (answers: CallSheetAnswer[], word: { wordFrom: { userId: string; name: string }; heardVia: WordHeardVia | null }) => void
   onPrint: () => void
   onClose: () => void
 }
@@ -33,6 +35,9 @@ const TEMP_TONE: Record<Temperature, { bg: string; fg: string; border: string }>
   cold: { bg: 'var(--bg-orange-tint)', fg: 'var(--text-red-700)', border: '#fecaca' },
 }
 
+/** How the word reached the person typing: one of the channels, or the ask-by-link page. */
+export type WordHeardVia = StatementSendChannel | 'link'
+
 const fieldStyle: CSSProperties = { font: 'inherit', fontSize: '0.8125rem', padding: '0.25rem 0.4rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-base)' }
 
 /**
@@ -40,10 +45,11 @@ const fieldStyle: CSSProperties = { font: 'inherit', fontSize: '0.8125rem', padd
  * save. A row left untouched is not saved; a row started must carry a read
  * and a sentence, the same bar the mark form sets.
  */
-export default function GcCallSheetModal({ sheet, ownerName, actorId, actorName, wordSources, busy, error, onSave, onPrint, onClose }: Props) {
-  const [drafts, setDrafts] = useState<Record<string, CallSheetDraft>>({})
+export default function GcCallSheetModal({ sheet, ownerName, actorId, actorName, wordSources, initialDrafts, busy, error, onSave, onPrint, onClose }: Props) {
+  const fromLink = initialDrafts != null && Object.keys(initialDrafts).length > 0
+  const [drafts, setDrafts] = useState<Record<string, CallSheetDraft>>(() => ({ ...(initialDrafts ?? {}) }))
   const [sourceId, setSourceId] = useState<string>(() => (sheet.ownerUserId && wordSources.some((u) => u.id === sheet.ownerUserId) ? sheet.ownerUserId : actorId))
-  const [heardVia, setHeardVia] = useState<StatementSendChannel>('call')
+  const [heardVia, setHeardVia] = useState<WordHeardVia>(fromLink ? 'link' : 'call')
   const [problems, setProblems] = useState<Record<string, string>>({})
 
   const source = wordSources.find((u) => u.id === sourceId) ?? { id: actorId, name: actorName }
@@ -63,7 +69,9 @@ export default function GcCallSheetModal({ sheet, ownerName, actorId, actorName,
 
   const save = () => {
     if (busy) return
-    const out = callSheetAnswers(sheet, drafts, fromSomeoneElse ? heardVia : heardVia === 'email' ? 'call' : heardVia)
+    // The mark's own channel has no "link": a word that came by the link is filed under "other", and says "link" as how it was heard.
+    const channel: StatementSendChannel = heardVia === 'link' ? 'other' : !fromSomeoneElse && heardVia === 'email' ? 'call' : heardVia
+    const out = callSheetAnswers(sheet, drafts, channel)
     setProblems(out.problems)
     if (Object.keys(out.problems).length > 0 || out.answers.length === 0) return
     onSave(out.answers, { wordFrom: { userId: source.id, name: source.name }, heardVia: fromSomeoneElse ? heardVia : null })
@@ -91,7 +99,11 @@ export default function GcCallSheetModal({ sheet, ownerName, actorId, actorName,
               ✕
             </button>
           </div>
-          <p style={{ margin: '0.15rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>One call. Fill a row as {fromSomeoneElse ? sourceFirstName : 'you go'} answers — a row you leave blank is left alone.</p>
+          <p style={{ margin: '0.15rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            {fromLink
+              ? `${sourceFirstName} answered these on his link. Read them, change what needs changing, and save — nothing is on the record until you do.`
+              : `One call. Fill a row as ${fromSomeoneElse ? sourceFirstName : 'you go'} answers — a row you leave blank is left alone.`}
+          </p>
         </div>
 
         <div style={{ overflowY: 'auto', padding: '0.2rem 1.1rem' }}>
@@ -193,7 +205,7 @@ export default function GcCallSheetModal({ sheet, ownerName, actorId, actorName,
             </select>
             <span style={{ color: 'var(--text-muted)' }}>{fromSomeoneElse ? 'heard by' : 'reached them by'}</span>
             <span role="radiogroup" aria-label={fromSomeoneElse ? 'How you heard it' : 'How you reached them'} style={{ display: 'inline-flex', gap: '0.2rem', flexWrap: 'wrap' }}>
-              {STATEMENT_SEND_CHANNELS.filter((c) => fromSomeoneElse || c.value !== 'email').map((c) => {
+              {[...STATEMENT_SEND_CHANNELS.filter((c) => fromSomeoneElse || c.value !== 'email'), ...(fromLink && fromSomeoneElse ? [{ value: 'link' as const, label: 'His link' }] : [])].map((c) => {
                 const on = c.value === heardVia
                 return (
                   <button

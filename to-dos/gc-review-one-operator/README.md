@@ -2,7 +2,7 @@
 name: "GC Review for one operator: the assistant drives, the account man is the source"
 number: 49
 group: close
-status: steps 1–6 shipped v2.3950 / v2.3954 / v2.3957 / v2.3959 / v2.3960 / v2.3961 / v2.3971 / v2.3976 · two migrations wait on db push · two edge functions wait on a deploy · step 7 waits on an owner call
+status: steps 1–7 shipped v2.3950 / v2.3954 / v2.3957 / v2.3959 / v2.3960 / v2.3961 / v2.3971 / v2.3976 / v2.3985 · three migrations wait on db push · three edge functions wait on a deploy
 summary: >
   The weekly statement round was built for the account man opening the app. Only the assistant
   works GC Review; when the knowledge is his, she phones him and types the answer in. So the
@@ -10,16 +10,16 @@ summary: >
   keyboard: one worklist (Check · Send · Word per GC, grouped by who to ask), the account man's
   word recorded as his with who entered it, a call sheet for one call per account man, check and
   send from the row, broken promises in red, and the prompts re-aimed at the office.
-next: Apply the two migrations (`bash scripts/db-push.sh`), the `chore(types)` PR, deploy `send-gc-statement-email` and `statement-round-email-dispatch`; then run a week on it and decide step 7.
+next: Apply the three migrations (`bash scripts/db-push.sh`), the `chore(types)` PR, deploy `gc-word-ask`, `send-gc-statement-email` and `statement-round-email-dispatch`; then run a week on it and retire this to-do.
 size: S–M · M · M · S–M · S · M · L
-blocker: the deploys need a checkout with `.env.local`. Step 7 needs the owner's answer — is the phone call a cost or the point?
-ver: v2.3950 · v2.3954 · v2.3957 · v2.3959 · v2.3960 · v2.3961 · v2.3971 · v2.3976
-opinion: build 1–6 in order; hold 7 until the call sheet has run a few weeks.
+blocker: the deploys need a checkout with `.env.local`.
+ver: v2.3950 · v2.3954 · v2.3957 · v2.3959 · v2.3960 · v2.3961 · v2.3971 · v2.3976 · v2.3985
+opinion: built; apply the deploys and watch one Wednesday before retiring the old per-sender database functions.
 ---
 
 # GC Review for one operator
 
-Mock-up: [`before-after.html`](./before-after.html) (names from the app, amounts illustrative).
+Mock-ups: [`before-after.html`](./before-after.html) and, for step 7, [`ask-by-link-page.html`](./ask-by-link-page.html) — the real page rendered with sample data (names from the app, amounts illustrative).
 
 ## The ask
 
@@ -39,7 +39,7 @@ The assistant is the operator for every GC; the account man is the source, not a
 1. GC replies go to the account man, with the assistant copied.
 2. The assistant answers for the round being done; the account man for his word being current.
 3. "No change" may be recorded once, then a fresh sentence is required.
-4. Step 7 (ask by link, no call) — **open**.
+4. Step 7 (ask by link, no call) — **built**: owner, 2026-09-28, "the call is a cost".
 
 Kept: a statement never goes out unchecked; the app never emails a GC on its own; one mark per GC per week.
 
@@ -54,7 +54,7 @@ Kept: a statement never goes out unchecked; the app never emails a GC on its own
 | 5 | Broken promises — a passed pay-by date with money open turns red and sorts first (`payPromise.ts`) | shipped v2.3960 |
 | 6a | Pipeline cards office-wide; Start round retired; `?round=1&gc=` opens the call sheet | shipped v2.3971 |
 | 6b | Dashboard row and morning email read an office-wide week (`get_statement_week_for_office`, `renderOfficeWeek.ts`) | shipped v2.3976 |
-| 7 | Ask without a call — a tokened page the account man answers from his phone | owner call |
+| 7 | Ask by link — a no-login page the account man answers from his phone; the office reads and saves (`gc-word-ask`, `/ask`) | shipped v2.3985 |
 
 ## Where it plugs in
 

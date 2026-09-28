@@ -75,7 +75,11 @@ import {
 } from '../../lib/statementRoundEmailClient'
 import GcStatementSendHistoryModal from './GcStatementSendHistoryModal'
 import GcWorklistPanel from './GcWorklistPanel'
-import GcCallSheetModal from './GcCallSheetModal'
+import GcCallSheetModal, { type WordHeardVia } from './GcCallSheetModal'
+import GcWordAskDialog from './GcWordAskDialog'
+import { callSheetDraftsFromAnswers, gcIdsToAskAbout, liveAskByOwner, pendingAnswersByOwner, wordAskStatusLine, type GcWordAskRow } from '../../lib/jobs/gcWordAskState'
+import { decideGcWordAnswers, emailGcWordAsk, listGcWordAsks, mintGcWordAsk, revokeGcWordAsk } from '../../lib/gcWordAskIo'
+import { wordAskTextMessage, wordAskUrl } from '../../lib/gcWordAsk'
 import { buildCallSheet, buildCallSheetPrintHtml, callSheetWeekEnds, type CallSheetAnswer } from '../../lib/jobs/gcCallSheet'
 import { payPromiseLabel, payPromiseStatus } from '../../lib/jobs/payPromise'
 import { canTakeStatementReplies, defaultReplyToUserId } from '../../lib/gcStatementReplyTo'
@@ -358,6 +362,24 @@ export function JobsGcReviewModal({
   const [historyGc, setHistoryGc] = useState<{ id: string; name: string } | null>(null)
   /** The call sheet: the worklist group it is open on. */
   const [callSheetGroupKey, setCallSheetGroupKey] = useState<string | null>(null)
+  /** The call sheet opened on an account man's answers from his link, to read and save. */
+  const [callSheetFromLink, setCallSheetFromLink] = useState(false)
+  /** Ask by link (punch list #49, step 7): the week's links with their answers; `wordAsksOn` is false until the database has the tables. */
+  const [wordAsks, setWordAsks] = useState<GcWordAskRow[]>([])
+  const [wordAsksOn, setWordAsksOn] = useState(false)
+  const [wordAskGroupKey, setWordAskGroupKey] = useState<string | null>(null)
+  const [wordAskBusy, setWordAskBusy] = useState(false)
+  const [wordAskError, setWordAskError] = useState<string | null>(null)
+  const [wordAskNotice, setWordAskNotice] = useState<string | null>(null)
+  const refreshWordAsks = useCallback(() => {
+    void listGcWordAsks(certWeekStart).then(({ asks, missing }) => {
+      setWordAsks(asks)
+      setWordAsksOn(!missing)
+    })
+  }, [certWeekStart])
+  useEffect(() => {
+    if (open) refreshWordAsks()
+  }, [open, refreshWordAsks])
   /** What the mark form opens on: a statement that went out, or the word with no statement. */
   const [markSentDefaultAction, setMarkSentDefaultAction] = useState<'sent' | 'contacted'>('sent')
   /** "Email me my round" (v2.2771, statement_round stream): pending chains + the edit form. */
@@ -652,7 +674,7 @@ export function JobsGcReviewModal({
     return ok
   }
   /** The call sheet's save: every answered row in one go. A row that fails stays on the sheet with the reason; the rest are kept. */
-  async function saveCallSheet(answers: CallSheetAnswer[], word: { wordFrom: { userId: string; name: string }; heardVia: StatementSendChannel | null }) {
+  async function saveCallSheet(answers: CallSheetAnswer[], word: { wordFrom: { userId: string; name: string }; heardVia: WordHeardVia | null }, linkAnswers: readonly { id: string; gc_customer_id: string }[] = []) {
     if (!authUser?.id) return
     setRoundBusy(true)
     setRoundError(null)
@@ -684,8 +706,41 @@ export function JobsGcReviewModal({
       setRoundError(`Could not save ${failed.join(', ')} — the rest are in. Try those again.`)
       return
     }
+    // His answers that were just saved are read; the ones she left blank stay waiting.
+    const savedGcIds = new Set(answers.map((a) => a.gcId))
+    const readIds = linkAnswers.filter((a) => savedGcIds.has(a.gc_customer_id)).map((a) => a.id)
+    if (readIds.length > 0) {
+      const decided = await decideGcWordAnswers(readIds, 'accepted', { id: authUser.id, name: authUserName })
+      if (!decided.ok) showToast(`The words are saved, but his answers still show as unread — ${decided.error ?? 'try again'}.`, 'warning')
+      refreshWordAsks()
+    }
     setCallSheetGroupKey(null)
+    setCallSheetFromLink(false)
     showToast(`${answers.length} word${answers.length === 1 ? '' : 's'} in — ${word.wordFrom.name}.`, 'success')
+  }
+  const liveWordAsks = useMemo(() => liveAskByOwner(wordAsks), [wordAsks])
+  const pendingWordAnswers = useMemo(() => pendingAnswersByOwner(wordAsks), [wordAsks])
+  const wordAskByOwner = useMemo(() => {
+    const out = new Map<string, { statusLine: string; pending: number }>()
+    const now = Date.now()
+    for (const [ownerId, ask] of liveWordAsks) out.set(ownerId, { statusLine: wordAskStatusLine(ask, now), pending: pendingWordAnswers.get(ownerId)?.length ?? 0 })
+    for (const [ownerId, pending] of pendingWordAnswers) if (!out.has(ownerId)) out.set(ownerId, { statusLine: 'the link is off', pending: pending.length })
+    return out
+  }, [liveWordAsks, pendingWordAnswers])
+  /** Runs one ask-by-link step with the dialog's busy / error / notice around it. */
+  async function wordAskStep(run: () => Promise<{ error?: string; notice?: string }>) {
+    setWordAskBusy(true)
+    setWordAskError(null)
+    setWordAskNotice(null)
+    try {
+      const r = await run()
+      if (r.error) setWordAskError(r.error)
+      if (r.notice) setWordAskNotice(r.notice)
+    } catch (e) {
+      setWordAskError(e instanceof Error ? e.message : 'That did not work — try again.')
+    }
+    refreshWordAsks()
+    setWordAskBusy(false)
   }
   /** This week's sent mark for a GC, when it is what the last-sent pill is showing (v2.2761). */
   const thisWeekSentMark = (gcId: string): RoundMarkRow | null => {
@@ -1012,6 +1067,22 @@ export function JobsGcReviewModal({
             onOpenHistory={(r) => setHistoryGc({ id: r.gcId, name: r.gcName })}
             onOpenCallSheet={(g) => {
               setRoundError(null)
+              setCallSheetFromLink(false)
+              setCallSheetGroupKey(g.key)
+            }}
+            onAskByLink={
+              wordAsksOn
+                ? (g) => {
+                    setWordAskError(null)
+                    setWordAskNotice(null)
+                    setWordAskGroupKey(g.key)
+                  }
+                : undefined
+            }
+            askByOwner={wordAskByOwner}
+            onReviewAnswers={(g) => {
+              setRoundError(null)
+              setCallSheetFromLink(true)
               setCallSheetGroupKey(g.key)
             }}
           />
@@ -2300,22 +2371,95 @@ export function JobsGcReviewModal({
             const ownerName = g.ownerUserId ? userNameById(g.ownerUserId) : null
             return (
               <GcCallSheetModal
-                key={g.key}
+                key={`${g.key}:${callSheetFromLink ? 'link' : 'call'}`}
                 sheet={sheet}
                 ownerName={ownerName}
                 actorId={authUser.id}
                 actorName={authUserName}
                 wordSources={wordSources}
+                initialDrafts={callSheetFromLink && g.ownerUserId ? callSheetDraftsFromAnswers(pendingWordAnswers.get(g.ownerUserId) ?? []) : undefined}
                 busy={roundBusy}
                 error={roundError}
-                onSave={(answers, word) => void saveCallSheet(answers, word)}
+                onSave={(answers, word) => void saveCallSheet(answers, word, callSheetFromLink && g.ownerUserId ? pendingWordAnswers.get(g.ownerUserId) ?? [] : [])}
                 onPrint={() => {
                   const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                   if (!openHtmlPrintWindow(buildCallSheetPrintHtml(sheet, { ownerName: ownerName ?? 'no account man yet', dateStr, weekEndsYmd: callSheetWeekEnds(certWeekStart) }))) {
                     showToast('Allow pop-ups to print the call sheet.', 'error')
                   }
                 }}
-                onClose={() => setCallSheetGroupKey(null)}
+                onClose={() => {
+                  setCallSheetGroupKey(null)
+                  setCallSheetFromLink(false)
+                }}
+              />
+            )
+          })()
+        : null}
+      {wordAskGroupKey && authUser?.id
+        ? (() => {
+            const g = worklist.groups.find((x) => x.key === wordAskGroupKey)
+            if (!g || !g.ownerUserId) return null
+            const ownerId = g.ownerUserId
+            const owner = users.find((u) => u.id === ownerId)
+            const ownerName = owner?.name || userNameById(ownerId)
+            const ask = liveWordAsks.get(ownerId) ?? null
+            const live = ask && new Date(ask.expires_at).getTime() > Date.now() ? ask : null
+            const url = live?.token ? wordAskUrl(window.location.origin, live.token) : null
+            const askIds = gcIdsToAskAbout(g)
+            const names = g.rows.filter((r) => askIds.includes(r.gcId)).map((r) => r.gcName)
+            const copy = async (text: string, notice: string) => {
+              try {
+                await navigator.clipboard.writeText(text)
+                return { notice }
+              } catch {
+                return { error: 'Could not copy — select the link and copy it by hand.' }
+              }
+            }
+            return (
+              <GcWordAskDialog
+                ownerName={ownerName}
+                ownerHasEmail={(owner?.email ?? '').includes('@')}
+                gcNames={names}
+                ask={live}
+                url={url}
+                busy={wordAskBusy}
+                error={wordAskError}
+                notice={wordAskNotice}
+                onMake={() =>
+                  void wordAskStep(async () => {
+                    const r = await mintGcWordAsk(ownerId, askIds)
+                    return r.ok ? { notice: 'The link is made. Text it or email it.' } : { error: r.error }
+                  })
+                }
+                onNewLink={() =>
+                  void wordAskStep(async () => {
+                    const r = await mintGcWordAsk(ownerId, askIds.length > 0 ? askIds : (live?.gc_ids ?? []), true)
+                    return r.ok ? { notice: 'New link made — the old one no longer opens.' } : { error: r.error }
+                  })
+                }
+                onCopyLink={() => void wordAskStep(async () => (url ? copy(url, 'Link copied.') : { error: 'There is no link yet.' }))}
+                onCopyText={() =>
+                  void wordAskStep(async () =>
+                    url ? copy(wordAskTextMessage({ ownerName, askedByName: authUserName, gcCount: Math.max(1, names.length || live?.gc_ids.length || 1), url }), `Copied — paste it into a text to ${ownerName.split(/\s+/)[0]}.`) : { error: 'There is no link yet.' },
+                  )
+                }
+                onEmail={() =>
+                  void wordAskStep(async () => {
+                    if (!live) return { error: 'There is no link yet.' }
+                    // Bring the link's GCs up to date before it goes out.
+                    if (askIds.length > 0) await mintGcWordAsk(ownerId, askIds)
+                    const r = await emailGcWordAsk(live.id)
+                    return r.ok ? { notice: `Emailed to ${r.emailedTo}.` } : { error: r.error }
+                  })
+                }
+                onTurnOff={() =>
+                  void wordAskStep(async () => {
+                    if (!live) return {}
+                    const r = await revokeGcWordAsk(live.id)
+                    return r.ok ? { notice: 'The link is off.' } : { error: r.error ?? 'Could not turn the link off.' }
+                  })
+                }
+                onClose={() => setWordAskGroupKey(null)}
               />
             )
           })()

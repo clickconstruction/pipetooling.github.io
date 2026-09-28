@@ -32,6 +32,12 @@ type Props = {
   onOpenHistory: (row: GcWorklistRow) => void
   /** One account man's GCs on one sheet — one call, one save. */
   onOpenCallSheet: (group: GcWorklistGroup) => void
+  /** Ask by link: send the account man a no-login link instead of calling. Omitted = not offered. */
+  onAskByLink?: (group: GcWorklistGroup) => void
+  /** Per account man: where his link stands, and how many of his answers wait on the office. */
+  askByOwner?: ReadonlyMap<string, { statusLine: string; pending: number }>
+  /** Open the call sheet on his answers, to read and save. */
+  onReviewAnswers?: (group: GcWorklistGroup) => void
 }
 
 const pillBase: CSSProperties = {
@@ -80,6 +86,9 @@ export default function GcWorklistPanel({
   onUndoMark,
   onOpenHistory,
   onOpenCallSheet,
+  onAskByLink,
+  askByOwner,
+  onReviewAnswers,
 }: Props) {
   if (worklist.groups.length === 0) return null
 
@@ -185,6 +194,36 @@ export default function GcWorklistPanel({
             <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: g.open === 0 ? 'var(--text-green-800)' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>
               {g.open === 0 ? 'all done ✓' : `${g.open} to do`}
             </span>
+            {(() => {
+              // Ask by link: only for someone else's accounts — your own you answer yourself.
+              if (!canAct || g.kind !== 'owner' || !g.ownerUserId || g.ownerUserId === authUserId) return null
+              const ask = askByOwner?.get(g.ownerUserId)
+              const first = userNameById(g.ownerUserId).split(/\s+/)[0]
+              return (
+                <>
+                  {ask && ask.pending > 0 && onReviewAnswers ? (
+                    <button
+                      type="button"
+                      onClick={() => onReviewAnswers(g)}
+                      title={`${first} answered on his link — read his answers and save them`}
+                      style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 700, padding: '0.12rem 0.6rem', borderRadius: 4, border: '1px solid var(--text-green-600)', background: 'var(--bg-green-tint)', color: 'var(--text-green-800)', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                    >
+                      {first} answered {ask.pending} — review
+                    </button>
+                  ) : null}
+                  {onAskByLink ? (
+                    <button
+                      type="button"
+                      onClick={() => onAskByLink(g)}
+                      title={ask ? `${first}’s link: ${ask.statusLine}` : `Send ${first} a link instead of calling — he answers from his phone, no sign-in`}
+                      style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 700, padding: '0.12rem 0.6rem', borderRadius: 4, border: '1px solid var(--border-blue)', background: 'var(--surface)', color: 'var(--text-blue-700)', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                    >
+                      <span aria-hidden>🔗</span> {ask ? 'His link' : 'Ask by link'}
+                    </button>
+                  ) : null}
+                </>
+              )
+            })()}
             {canAct && g.kind !== 'under_line' ? (
               <button
                 type="button"

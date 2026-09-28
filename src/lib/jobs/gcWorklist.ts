@@ -200,8 +200,8 @@ const joinNotes = (first: string | null | undefined, second: string | null | und
 export type RoundMarkWordInput = {
   fromUserId: string | null
   fromName: string
-  /** How the person entering it heard it; null when the source entered it. */
-  heardVia: StatementSendChannel | null
+  /** How the person entering it heard it — a channel, or 'link' (the ask-by-link page); null when the source entered it. */
+  heardVia: StatementSendChannel | 'link' | null
   enteredBy: string | null
   enteredByName: string
 }

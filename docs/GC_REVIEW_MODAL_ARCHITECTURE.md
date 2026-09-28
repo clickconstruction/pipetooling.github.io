@@ -259,7 +259,8 @@ Render regions in JSX order (all ranges @ `a05cef4c4`). Status: `extracted` mean
 - **Render:** `GcCallSheetModal` (z 64), mounted while `callSheetGroupKey` names a worklist group. The modal builds the sheet per render — `buildCallSheet({ group, boardRowByGc, todayYmd })` — and owns nothing of it; the component owns the drafts, the source select and how it was heard.
 - **Save:** `saveCallSheet(answers, word)` upserts each answer through `mergeRoundMarkWrite` (a word over a sent mark keeps it sent), refreshes once, names any GC that failed and keeps the rest.
 - **Print:** `buildCallSheetPrintHtml` → `openHtmlPrintWindow`.
-- **Tests:** `gcCallSheet` (10), `payPromise` (7), `GcCallSheetModal.render` (4). `saveCallSheet` itself is untested.
+- **Ask by link** (punch list #49, step 7): `wordAsks` (loaded on open through `listGcWordAsks`; `wordAsksOn` stays false until the tables exist) feeds the worklist's **Ask by link** / **answered N — review** buttons. `GcWordAskDialog` (z 64) mints, copies, emails and revokes through `wordAskStep`; review opens this same call sheet with `initialDrafts` (`callSheetFromLink`), and `saveCallSheet` marks the saved answers `accepted`.
+- **Tests:** `gcCallSheet` (10), `payPromise` (7), `gcWordAskState` (7), `GcCallSheetModal.render` (5), `GcWordAskDialog.render` (4). `saveCallSheet` and `wordAskStep` themselves are untested.
 - **The round overlay is retired** with `roundOpen`, `roundFocusGcId`, `roundSentFormOpen`, `emailFromRoundGcId` and the dialog↔overlay bounce effect.
 
 ### 11. Share all dialog (inline, 170 + 143 lines)
@@ -339,6 +340,7 @@ Render regions in JSX order (all ranges @ `a05cef4c4`). Status: `extracted` mean
   - `customer_portal_links` + `customer_portal_slugs`: select via `useGcPortalLinks`
   - `email_templates`: `resolveEmailWording`
   - `app_settings`: issuer
+  - `gc_word_asks` + `gc_word_ask_answers`: select (embedded), update of an answer's decision; rpc `mint_gc_word_ask`, `revoke_gc_word_ask`; edge `gc-word-ask` (email mode) — all through `lib/gcWordAskIo.ts`
   - `jobs_ledger` (full detail select): `fetchJobWithDetailsById`, one read per job on the statement, five at a time, only when Print unpaid invoices runs (`lib/jobs/gcUnpaidInvoicePrintIo.ts`)
 - **RPC (direct):** `mark_customer_portal_slug_shared` (569).
 - **Edge functions:** `statement-round-email-dispatch` (preview, `test_send`). `send-gc-statement-email` is **invoked by the parent** through `onSendStatement`. The scheduled dispatcher (`gc-statement-email-dispatch`) rebuilds at send time and skips an entity (per-GC / per-development) statement with nothing outstanding (233–242); a whole-report row is never skipped for amount.

@@ -820,6 +820,11 @@ verify_jwt = false
 [functions.submit-legal-portal]
 verify_jwt = false
 
+# Ask by link (punch list #49, step 7): the account man's no-login page and his answers are
+# token-authenticated; the office's "email him the link" mode verifies the caller's JWT in the handler.
+[functions.gc-word-ask]
+verify_jwt = false
+
 # The firm's emails (Legal portal train, PR 5): cron POST with X-Cron-Secret + public GET confirm/unsubscribe links.
 [functions.legal-notify-dispatch]
 verify_jwt = false

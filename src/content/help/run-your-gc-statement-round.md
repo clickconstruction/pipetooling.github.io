@@ -2,7 +2,7 @@
 title: run your weekly GC statement round
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: gc statement, round, call sheet, worklist, whose word, account man, no change, promised, late, scheduled sends, what went out, lane, duplicate, cancel, certify, sent it, mark sent, text, call, note, send history, personal email, outstanding, weekly, sender, gc review, sign off, email me my round, morning email, dashboard, needs you, send from the app, sender card, as they see it, reassign, undo, spoke with them, contacted, temperature, hot, warm, cool, cold, temperature board, pays by, account man
+keywords: gc statement, round, ask by link, link, no sign-in, text, call sheet, worklist, whose word, account man, no change, promised, late, scheduled sends, what went out, lane, duplicate, cancel, certify, sent it, mark sent, text, call, note, send history, personal email, outstanding, weekly, sender, gc review, sign off, email me my round, morning email, dashboard, needs you, send from the app, sender card, as they see it, reassign, undo, spoke with them, contacted, temperature, hot, warm, cool, cold, temperature board, pays by, account man
 ---
 GC Review opens on **This week's GCs** — one list of every GC with a balance, and three steps on each row: **Check** the bills, **Send** the statement, write down the **Word** (where the GC stands). Whoever is at the keyboard works every row; the GCs are grouped by the **account man** who knows them, so one call to him covers his group. The app never emails a GC on its own initiative — only when a person presses Send or sets up a schedule.
 
@@ -68,6 +68,24 @@ Last word Sep 18 · warm · Malachi · “Check run is the 20th.”
 - {{button:outline|🖨 Print sheet}} prints the list with room to write, for a call away from the desk.
 
 Saving a word never marks a statement sent.
+
+## No call at all: ask by link
+
+When the account man is on a job site, send him a link instead of phoning. On his group, tap {{button:outline-blue|🔗 Ask by link}}:
+
+1. {{button:blue|Make the link}}. It asks only about his GCs with **no word in this week**. Nothing is sent yet.
+2. {{button:blue|Copy a text for Malachi}} copies a short message with the link — paste it into a text. Or {{button:outline|Email it to Malachi}} sends it from the app, or {{button:outline|Copy link}}.
+3. He opens it on his phone. **No sign-in.** For each GC he sees what it owes, the last word and any broken promise, and answers with a temperature, a sentence and a pay date.
+4. His group then shows {{button:green|Malachi answered 3 — review}}. It opens the call sheet with his answers filled in. Read them, change what needs changing, and {{button:blue|Save 3 answers}}.
+
+:::example What the record says
+{{chip:blue|cool · Tue · Malachi}} — entered by Taunya, heard by his link.
+:::
+
+- **Nothing is on the record until you save.** His answers wait for you; a row you clear stays waiting.
+- The button on his group reads **His link** once there is one; hover it to see where it stands — *asked Tue · emailed · not opened yet*.
+- The link shows what his GCs owe, so it is for him only. It stops working after eight days. **turn the link off** kills it sooner; **new link** replaces it if it went to the wrong person. Answers he already gave are kept.
+- Your own accounts have no link — you answer those yourself.
 
 ## Marking a statement sent
 

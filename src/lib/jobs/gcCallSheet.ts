@@ -9,6 +9,7 @@ import type { GcWorklistGroup } from './gcWorklist'
 import { isTemperature, type StatementSendChannel, type Temperature } from './gcStatementRounds'
 import type { TemperatureBoardRow } from './temperatureBoard'
 import { payPromiseLabel, payPromiseStatus, type PayPromise } from './payPromise'
+import { isNoChangeNote, noChangeNote } from '../gcWordAsk'
 
 export type CallSheetRow = {
   gcId: string
@@ -26,18 +27,8 @@ export type CallSheetRow = {
 
 export type CallSheet = { ownerUserId: string | null; rows: CallSheetRow[]; total: number }
 
-const NO_CHANGE_PREFIX = 'No change since '
-
-/** A word that only repeated the one before it. */
-export function isNoChangeNote(note: string | null | undefined): boolean {
-  return (note ?? '').trimStart().startsWith(NO_CHANGE_PREFIX)
-}
-
-/** The sentence a "no change" writes: what it repeats, and from when — so the record still reads on its own. */
-export function noChangeNote(last: { note: string; at: string }): string {
-  const day = new Date(last.at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-  return `${NO_CHANGE_PREFIX}${day}: “${last.note.trim()}”`
-}
+// One rule for the call sheet and the ask-by-link page: what a "no change" writes, and how it is recognised.
+export { isNoChangeNote, noChangeNote }
 
 export function buildCallSheet(input: {
   group: Pick<GcWorklistGroup, 'ownerUserId' | 'rows'>

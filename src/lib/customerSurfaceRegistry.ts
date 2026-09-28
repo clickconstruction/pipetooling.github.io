@@ -57,6 +57,7 @@ export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   { kind: 'route', ref: '/q/:token', audience: 'house', steps: [HS('quote-page'), HS('quote-submitted')] },
   { kind: 'route', ref: '/legal', audience: 'firm', steps: [F('firm-portal')] },
   { kind: 'route', ref: '/legal/confirm', audience: 'firm', steps: [F('firm-confirmed-page')] },
+  { kind: 'route', ref: '/ask', audience: 'staff', exempt: 'An account man answering where his GCs stand — staff, reached by a link so he need not sign in.' },
 
   // ---- email senders (supabase/functions/*/index.ts that call Resend) ----
   { kind: 'sender', ref: 'send-estimate-to-customer', audience: 'homeowner', steps: [H('estimate-email')] },
@@ -100,6 +101,7 @@ export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   { kind: 'sender', ref: 'send-sign-in-email', audience: 'staff', exempt: 'Magic sign-in links for staff.' },
   { kind: 'sender', ref: 'send-workflow-notification', audience: 'staff', exempt: 'Workflow step notifications to app users.' },
   { kind: 'sender', ref: 'statement-round-email-dispatch', audience: 'staff', exempt: 'The office\'s "Your statement round" email.' },
+  { kind: 'sender', ref: 'gc-word-ask', audience: 'staff', exempt: 'The ask-by-link email to an account man — the office asking its own people.' },
   { kind: 'sender', ref: 'sync-resend-emails', audience: 'staff', exempt: 'Dev tooling: mirrors the Resend log.' },
   { kind: 'sender', ref: 'test-email', audience: 'staff', exempt: 'Settings → Email templates & testing.' },
   { kind: 'sender', ref: 'weekly-movement-email-dispatch', audience: 'staff', exempt: 'The office\'s weekly stage-moves report.' },

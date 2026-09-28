@@ -175,6 +175,7 @@ when_to_read:
    - [money-waiting-email-dispatch](#money-waiting-email-dispatch)
    - [crew-day-email-dispatch](#crew-day-email-dispatch)
    - [statement-round-email-dispatch](#statement-round-email-dispatch)
+   - [gc-word-ask](#gc-word-ask)
    - [send-hazmat-notice-email](#send-hazmat-notice-email)
    - [send-lien-release-email](#send-lien-release-email)
    - [send-test-report](#send-test-report)
@@ -3285,6 +3286,31 @@ interface SendPhysicalInvoiceEmailBody {
 **Cron**: pg_cron **`statement-round-email-dispatch`** at **`2-57/5 * * * *`** — co-rides the :02 lane with `gc-statement-email-dispatch` (one tenant there vs four on :04 at the time; the stagger's goal is breaking the everyone-at-once volley), vault **`PROJECT_URL`** + **`CRON_SECRET`**.
 
 **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `CRON_SECRET`, `APP_ORIGIN` (deep link; falls back to `https://clicktooling.com`).
+
+
+---
+
+### gc-word-ask
+
+**Purpose** (v2.3985, punch list #49 step 7): **ask by link**. The office sends an account man a no-login link; he says where his GCs stand; the office reads his answers and saves them as the week's word under its own sign-in. The function never writes a mark.
+
+**Endpoint**: `GET` / `POST /functions/v1/gc-word-ask`
+
+| Call | Auth | Does |
+|---|---|---|
+| `GET ?token=…` | none — the link is the capability | Returns the page: `ownerName`, `askedByName`, `weekStart`, `expiresAt`, `answeredAt`, `gcs[]` (each: what it owes, oldest bill, over 90, last word with its source, the pay-by promise, `noChangeAllowed`, his answer so far). Stamps `opened_at` once — not for `?preview=1`, not when the signed-in viewer is whoever made the link. |
+| `POST { token, answers[] }` | none | Validates with `validateWordAskAnswers` and upserts `gc_word_ask_answers` as `pending`. An answer the office already accepted is left as it is. Honeypot `website`: a filled one answers `ok` and writes nothing. |
+| `POST { mode: 'email', askId }` | caller JWT; dev / master_technician / assistant / controller | Emails the account man his link through Resend (`email_type: 'gc_word_ask'`), stamps `emailed_at` / `emailed_to`. His address is read server-side; a missing one answers 400 and tells the office to text the link. |
+
+**The link**: `gc_word_asks.token` (raw, with a sha256 fallback), minted by `mint_gc_word_ask()`; eight days, `revoked_at` turns it off; a dead link answers **404** with the same words whether it was revoked or never existed.
+
+**The GCs** come from `get_statement_week_for_office()` filtered to the ask's `gc_ids` — a GC paid down under $10,000 since the ask drops off the page.
+
+**Shared rules**: [`_shared/gcWordAsk.ts`](../supabase/functions/_shared/gcWordAsk.ts) — import-free, so the client runs the same file through `src/lib/gcWordAsk.ts` (link life, page shaping, answer validation, the email, the text message).
+
+**Deploy**: `bash scripts/deploy-functions.sh gc-word-ask`. Requires migrations `20260928032427`, `20260928040549`, `20260928045522`. `config.toml` pins `verify_jwt = false`.
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY` (email mode), `APP_ORIGIN` (the link in the email; falls back to `https://clicktooling.com`).
 
 ---
 
