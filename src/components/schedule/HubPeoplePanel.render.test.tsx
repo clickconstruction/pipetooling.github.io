@@ -353,3 +353,104 @@ describe('HubPeoplePanel — around the grid', () => {
     expect(personRows(container)).toEqual(['abraham', 'cruz', 'paige'])
   })
 })
+
+describe('HubPeoplePanel — the phone board and the grid', () => {
+  const board = () => screen.queryByTestId('hub-people-phone-board')
+  const toGrid = () => screen.queryByRole('button', { name: '▦ Show the desktop view' })
+  const toBoard = () => screen.queryByRole('button', { name: '📱 Back to the phone view' })
+
+  it('draws the board in place of the grid and its toolbar', async () => {
+    const { container } = await renderPanel({ phonePeopleView: 'board', onPhonePeopleViewChange: vi.fn() })
+    expect(board()).toBeTruthy()
+    expect(personRows(container)).toEqual([])
+    expect(screen.queryByRole('searchbox')).toBeNull()
+    expect(
+      screen.queryByRole('button', { name: 'View options: hide inactive, hide weekend, highlight linked' }),
+    ).toBeNull()
+  })
+
+  it('draws the grid when the page picks it, with the way back to the board under it', async () => {
+    const onPhonePeopleViewChange = vi.fn()
+    const { container } = await renderPanel({ phonePeopleView: 'grid', onPhonePeopleViewChange })
+    expect(board()).toBeNull()
+    expect(personRows(container)).toEqual(['abraham', 'cruz', 'paige'])
+    fireEvent.click(toBoard()!)
+    expect(onPhonePeopleViewChange).toHaveBeenCalledWith('board')
+  })
+
+  it('offers the desktop view from the board, and reports the pick to the page', async () => {
+    const onPhonePeopleViewChange = vi.fn()
+    await renderPanel({ phonePeopleView: 'board', onPhonePeopleViewChange })
+    fireEvent.click(toGrid()!)
+    expect(onPhonePeopleViewChange).toHaveBeenCalledWith('grid')
+  })
+
+  it('draws the grid and no switch for an embed, which hands it neither', async () => {
+    const { container } = await renderPanel()
+    expect(board()).toBeNull()
+    expect(toGrid()).toBeNull()
+    expect(toBoard()).toBeNull()
+    expect(personRows(container)).toHaveLength(3)
+  })
+
+  it('draws the grid when it is told "board" but given no way to change it', async () => {
+    const { container } = await renderPanel({ phonePeopleView: 'board' })
+    expect(board()).toBeNull()
+    expect(personRows(container)).toHaveLength(3)
+  })
+
+  it('puts the switch away while something is being placed', async () => {
+    const onPhonePeopleViewChange = vi.fn()
+    for (const over of [
+      { cardPlacementMode: { sourceBlockId: 'blk-1', variant: 'move' as const }, placementSourceWorkDate: MON },
+      { hubAssignJobPlacement: { jobId: 'job-2' } },
+      { linkedCopyMode: { stage: 1 as const, selectedBlockIds: new Set<string>() } },
+      { hubMultiCellAddActive: true },
+    ]) {
+      const view = await renderPanel({ phonePeopleView: 'grid', onPhonePeopleViewChange, ...over })
+      expect(toBoard()).toBeNull()
+      view.unmount()
+    }
+  })
+
+  it('drops a search and Hide Inactive left on in the grid, so the board is not thinned by them', async () => {
+    const onPhonePeopleViewChange = vi.fn()
+    const props = makeProps({ phonePeopleView: 'grid', onPhonePeopleViewChange })
+    const view = renderWithProviders(
+      <DndContext>
+        <HubPeoplePanel {...props} />
+      </DndContext>,
+    )
+    await settle()
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search person or job' }), { target: { value: 'pai' } })
+    fireEvent.click(screen.getByRole('button', { name: 'View options: hide inactive, hide weekend, highlight linked' }))
+    fireEvent.click(screen.getByLabelText('Hide Inactive'))
+    expect(personRows(view.container)).toEqual(['paige'])
+
+    view.rerender(
+      <DndContext>
+        <HubPeoplePanel {...props} phonePeopleView="board" />
+      </DndContext>,
+    )
+    await settle()
+    expect(board()).toBeTruthy()
+    // Everyone is on the board again — Cruz has no block this week and does not match "pai".
+    expect(screen.getAllByText('Cruz').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Abraham').length).toBeGreaterThan(0)
+
+    view.rerender(
+      <DndContext>
+        <HubPeoplePanel {...props} phonePeopleView="grid" />
+      </DndContext>,
+    )
+    await settle()
+    expect(personRows(view.container)).toEqual(['abraham', 'cruz', 'paige'])
+    expect((screen.getByRole('searchbox', { name: 'Search person or job' }) as HTMLInputElement).value).toBe('')
+  })
+
+  it('keeps Expected Manpower under the board', async () => {
+    await renderPanel({ phonePeopleView: 'board', onPhonePeopleViewChange: vi.fn(), showExpectedManpower: true })
+    expect(board()).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Expected Manpower' })).toBeTruthy()
+  })
+})
