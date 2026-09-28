@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef, useMemo, type ReactNode } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { parseWorkflowLineItemPaste } from '../lib/parseWorkflowLineItemPaste'
 import { parsePercentCompleteInput } from '../lib/parsePercentCompleteInput'
 import { useAuth } from '../hooks/useAuth'
 import { useToastContext } from '../contexts/ToastContext'
@@ -18,8 +17,23 @@ import {
   sumAmounts,
   workflowMoneyTotals,
 } from '../lib/workflowMoneyTotals'
-import { buildUnifiedFinancialRows, panelMoneyTotals } from '../lib/workflow/unifiedFinancialRows'
-import { filterAvailableInvoices, formatLineItemDate, normalizeUrl } from '../lib/projectsForecastStageLineItems'
+import {
+  addInvoiceToStep as addInvoiceToStepRow,
+  addPOToStep as addPOToStepRow,
+  deleteLineItemRow,
+  formatLineItemDate,
+  importPastedLineItems,
+  loadFinalizedPOOptions,
+  loadInvoiceDetail,
+  loadPODetail,
+  loadSupplyHouseInvoiceOptions,
+  normalizeUrl,
+  saveLineItem as saveLineItemRow,
+  type AvailableInvoiceOption,
+  type AvailablePOOption,
+  type InvoiceDetail,
+  type PODetail,
+} from '../lib/projectsForecastStageLineItems'
 import {
   daysBetween,
   daysOpen,
@@ -33,8 +47,11 @@ import { getStepStatusStyle } from '../lib/workflow/stepStatusStyle'
 import { useProjectSuperintendents } from '../hooks/useProjectSuperintendents'
 import { WorkflowSuperintendentsStrip } from '../components/workflow/WorkflowSuperintendentsStrip'
 import { useProjectJobs } from '../hooks/useProjectJobs'
+import { useWorkflowProjections, type WorkflowProjection as Projection } from '../hooks/useWorkflowProjections'
 import { WorkflowJobsStrip } from '../components/workflow/WorkflowJobsStrip'
 import { WorkflowSubsStrip } from '../components/workflow/WorkflowSubsStrip'
+import { WorkflowLineItemModals } from '../components/workflow/WorkflowLineItemModals'
+import { WorkflowFinancialsPanel } from '../components/workflow/WorkflowFinancialsPanel'
 import { isRowDefaultCollapsed, isSectionDefaultExpanded, isStepEmpty as isStepEmptyOf } from '../lib/workflow/stageCardDefaults'
 import { buildStageDisplayItems } from '../lib/workflow/stageDisplayItems'
 import { stageCardPills, wordCount } from '../lib/workflow/stageCardPills'
@@ -56,7 +73,6 @@ import { sendStepLifecycleNotifications } from '../lib/workflow/stepLifecycleNot
 import { toDatetimeLocal, fromDatetimeLocal } from '../utils/datetimeLocal'
 import { ymdDaysBetween, ymdFromDateLike } from '../utils/dateUtils'
 import { ageChipStyle } from '../lib/ageState'
-import { isSupplyCredit, SUPPLY_CREDIT_NOT_ON_STEP } from '../lib/supplyHouseDocument'
 import type { Database } from '../types/database'
 import { telHrefFor } from '../lib/phoneContact'
 
@@ -65,11 +81,6 @@ type Project = Database['public']['Tables']['projects']['Row']
 type Workflow = Database['public']['Tables']['project_workflows']['Row']
 type StepAction = Database['public']['Tables']['project_workflow_step_actions']['Row']
 type LineItem = Database['public']['Tables']['workflow_step_line_items']['Row']
-type Projection = Database['public']['Tables']['workflow_projections']['Row']
-type PurchaseOrder = Database['public']['Tables']['purchase_orders']['Row']
-type PurchaseOrderItem = Database['public']['Tables']['purchase_order_items']['Row']
-type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
-type MaterialPart = Database['public']['Tables']['material_parts']['Row']
 
 export default function Workflow() {
   const { projectId } = useParams()
@@ -122,19 +133,15 @@ export default function Workflow() {
     amount: string
     itemDate: string
   } | null>(null)
-  const [lineItemPasteImporting, setLineItemPasteImporting] = useState(false)
   const [confirmDeleteLineItem, setConfirmDeleteLineItem] = useState<{ item: LineItem; stepName: string } | null>(null)
   const [confirmDeleteStep, setConfirmDeleteStep] = useState<Step | null>(null)
   const [deleteStepConfirmText, setDeleteStepConfirmText] = useState('')
-  const [projections, setProjections] = useState<Projection[]>([])
-  const [viewingPO, setViewingPO] = useState<{ id: string; name: string; items: Array<{ part: { name: string }; quantity: number; supply_house: { name: string } | null; price_at_time: number }> } | null>(null)
+  const [viewingPO, setViewingPO] = useState<PODetail | null>(null)
   const [addingPOToStep, setAddingPOToStep] = useState<string | null>(null)
-  const [availablePOs, setAvailablePOs] = useState<Array<{ id: string; name: string; total: number }>>([])
+  const [availablePOs, setAvailablePOs] = useState<AvailablePOOption[]>([])
   const [addingInvoiceToStep, setAddingInvoiceToStep] = useState<string | null>(null)
-  const [availableInvoices, setAvailableInvoices] = useState<Array<{ id: string; invoice_number: string; supply_house_name: string; amount: number; invoice_date: string; due_date: string | null; is_paid: boolean; purchase_order_number: string | null }>>([])
-  const [invoiceSearchText, setInvoiceSearchText] = useState('')
-  const [viewingInvoice, setViewingInvoice] = useState<{ id: string; invoice_number: string; supply_house_name: string; amount: number; link: string | null } | null>(null)
-  const [editingProjection, setEditingProjection] = useState<{ item: Projection | null; stage_name: string; memo: string; amount: string; step_id: string; placement: 'before' | 'after' } | null>(null)
+  const [availableInvoices, setAvailableInvoices] = useState<AvailableInvoiceOption[]>([])
+  const [viewingInvoice, setViewingInvoice] = useState<InvoiceDetail | null>(null)
   /** Inline money markers (v2.1194): projection ids whose between-card row is expanded. */
   const [expandedProjectionIds, setExpandedProjectionIds] = useState<Set<string>>(new Set())
   /** Ledger rail (v2.1195): the left balance column needs real horizontal room. */
@@ -147,12 +154,13 @@ export default function Workflow() {
   const [sectionExpanded, setSectionExpanded] = useState<Record<string, boolean>>({})
   const [rowCollapsed, setRowCollapsed] = useState<Record<string, boolean>>({})
   const [oldStagesCollapsed, setOldStagesCollapsed] = useState(false)
-  const [projectionsLedgerExpanded, setProjectionsLedgerExpanded] = useState(false)
 
   const canManageStages = userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole) || userRole === 'superintendent'
   const isDevOrMaster = userRole === 'dev' || userRole === 'master_technician'
   const canSeePrivateNotesAndApprove = userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole) || userRole === 'superintendent'
   const canAssignSuperintendents = userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole)
+  const { projections, editingProjection, setEditingProjection, openEditProjection, saveProjection, deleteProjection } =
+    useWorkflowProjections({ workflowId: workflow?.id, projectId, userRole, ensureWorkflow, onError: setError })
   const superintendents = useProjectSuperintendents(projectId, canAssignSuperintendents, setError)
   // "+ Create Job" was a dead door for superintendents (v2.2848): the jobs_ledger INSERT policy refuses them.
   const canCreateJobs = canCreateJobsLedgerRow(userRole)
@@ -342,234 +350,71 @@ export default function Workflow() {
 
   async function loadFinalizedPOs() {
     if (userRole !== 'dev' && userRole !== 'master_technician') return
-    const { data, error } = await supabase
-      .from('purchase_orders')
-      .select('id, name')
-      .eq('status', 'finalized')
-      .order('created_at', { ascending: false })
-      .limit(100)
-    
+    const { options, error } = await loadFinalizedPOOptions()
     if (error) {
       console.error('Error loading POs:', error)
       return
     }
-
-    const pos = (data as Array<{ id: string; name: string }>) ?? []
-    if (pos.length === 0) {
-      setAvailablePOs([])
-      return
-    }
-
-    // Single query for all PO items (avoids N+1)
-    const poIds = pos.map((p) => p.id)
-    const { data: itemsData } = await supabase
-      .from('purchase_order_items')
-      .select('purchase_order_id, price_at_time, quantity')
-      .in('purchase_order_id', poIds)
-
-    const totalsByPo: Record<string, number> = {}
-    ;(itemsData ?? []).forEach((item: { purchase_order_id: string; price_at_time: number; quantity: number }) => {
-      const id = item.purchase_order_id
-      totalsByPo[id] = (totalsByPo[id] ?? 0) + item.price_at_time * item.quantity
-    })
-    const posWithTotals = pos.map((po) => ({ ...po, total: totalsByPo[po.id] ?? 0 }))
-
-    setAvailablePOs(posWithTotals)
+    setAvailablePOs(options)
   }
 
   async function loadSupplyHouseInvoices() {
     if (userRole !== 'dev' && userRole !== 'master_technician') return
-    const { data, error } = await supabase
-      .from('supply_house_invoices')
-      .select(`
-        id,
-        invoice_number,
-        invoice_date,
-        due_date,
-        amount,
-        is_paid,
-        purchase_order_number,
-        supply_house_id,
-        supply_houses(name)
-      `)
-      .order('invoice_date', { ascending: false })
-      .limit(100)
-
+    const { options, error } = await loadSupplyHouseInvoiceOptions()
     if (error) {
       console.error('Error loading supply house invoices:', error)
       setAvailableInvoices([])
       return
     }
-
-    const rows = (data as Array<{
-      id: string
-      invoice_number: string
-      invoice_date: string
-      due_date: string | null
-      amount: number
-      is_paid: boolean
-      purchase_order_number: string | null
-      supply_houses: { name: string } | null
-    }>) ?? []
-    setAvailableInvoices(rows.map((r) => ({
-      id: r.id,
-      invoice_number: r.invoice_number,
-      supply_house_name: r.supply_houses?.name ?? 'Unknown',
-      amount: r.amount,
-      invoice_date: r.invoice_date,
-      due_date: r.due_date,
-      is_paid: r.is_paid,
-      purchase_order_number: r.purchase_order_number,
-    })))
+    setAvailableInvoices(options)
   }
 
   async function loadPODetails(poId: string) {
-    const { data: poData, error: poError } = await supabase
-      .from('purchase_orders')
-      .select('*')
-      .eq('id', poId)
-      .single()
-    
-    if (poError) {
-      setError(`Failed to load PO: ${poError.message}`)
+    const { detail, error } = await loadPODetail(poId)
+    if (error || !detail) {
+      setError(error)
       return
     }
-
-    const { data: itemsData, error: itemsError } = await supabase
-      .from('purchase_order_items')
-      .select('*, material_parts(*), supply_houses(*)')
-      .eq('purchase_order_id', poId)
-      .order('sequence_order', { ascending: true })
-    
-    if (itemsError) {
-      setError(`Failed to load PO items: ${itemsError.message}`)
-      return
-    }
-
-    const items = (itemsData as unknown as Array<PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null }>) ?? []
-    setViewingPO({
-      id: poId,
-      name: (poData as PurchaseOrder).name,
-      items: items.map(item => ({
-        part: { name: item.material_parts.name },
-        quantity: item.quantity,
-        supply_house: item.supply_houses as { name: string } | null,
-        price_at_time: item.price_at_time,
-      })),
-    })
+    setViewingPO(detail)
   }
 
   async function loadInvoiceDetails(invoiceId: string) {
-    const { data, error } = await supabase
-      .from('supply_house_invoices')
-      .select('*, supply_houses(name)')
-      .eq('id', invoiceId)
-      .single()
-
-    if (error) {
-      setError(`Failed to load invoice: ${error.message}`)
+    const { detail, error } = await loadInvoiceDetail(invoiceId)
+    if (error || !detail) {
+      setError(error)
       return
     }
+    setViewingInvoice(detail)
+  }
 
-    const row = data as { id: string; invoice_number: string; amount: number; link: string | null; supply_houses: { name: string } | null }
-    setViewingInvoice({
-      id: row.id,
-      invoice_number: row.invoice_number,
-      supply_house_name: row.supply_houses?.name ?? 'Unknown',
-      amount: row.amount,
-      link: row.link ?? null,
-    })
+  // After a line-item write: the steps, then the line items for the roles that see them.
+  async function reloadAfterLineItemWrite() {
+    await refreshSteps()
+    if (steps.length > 0 && (userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole) || userRole === 'superintendent')) {
+      const stepIds = steps.map(s => s.id)
+      await loadLineItemsForSteps(stepIds)
+    }
   }
 
   async function addPOToStep(stepId: string, poId: string) {
     setError(null)
-    
-    // Load PO details to get total
-    const { data: itemsData } = await supabase
-      .from('purchase_order_items')
-      .select('price_at_time, quantity')
-      .eq('purchase_order_id', poId)
-    
-    const total = (itemsData ?? []).reduce((sum, item) => sum + (item.price_at_time * item.quantity), 0)
-    
-    const { data: poData } = await supabase
-      .from('purchase_orders')
-      .select('name')
-      .eq('id', poId)
-      .single()
-    
-    const poName = (poData as { name: string } | null)?.name || 'Purchase Order'
-    const itemCount = itemsData?.length || 0
-    
-    // Create line item with PO link
-    const maxOrder = Math.max(0, ...(lineItems[stepId] || []).map(li => li.sequence_order))
-    const { error } = await supabase
-      .from('workflow_step_line_items')
-      .insert({
-        step_id: stepId,
-        memo: `PO: ${poName} - ${itemCount} items, $${total.toFixed(2)} total`,
-        amount: total,
-        sequence_order: maxOrder + 1,
-        purchase_order_id: poId,
-      })
-    
+    const error = await addPOToStepRow(stepId, poId, lineItems[stepId] || [])
     if (error) {
-      setError(`Failed to add PO to step: ${error.message}`)
+      setError(error)
     } else {
       setAddingPOToStep(null)
-      await refreshSteps()
-      if (steps.length > 0 && (userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole) || userRole === 'superintendent')) {
-        const stepIds = steps.map(s => s.id)
-        await loadLineItemsForSteps(stepIds)
-      }
+      await reloadAfterLineItemWrite()
     }
   }
 
   async function addInvoiceToStep(stepId: string, invoiceId: string) {
     setError(null)
-
-    const { data: invData, error: invError } = await supabase
-      .from('supply_house_invoices')
-      .select('*, supply_houses(name)')
-      .eq('id', invoiceId)
-      .single()
-
-    if (invError || !invData) {
-      setError(`Failed to load invoice: ${invError?.message ?? 'Not found'}`)
-      return
-    }
-
-    const inv = invData as { invoice_number: string; amount: number; supply_houses: { name: string } | null }
-    // v2.3501: a credit memo is stored negative, and this path copies the amount into
-    // workflow_step_line_items where nothing knows what a credit is.
-    if (isSupplyCredit(inv.amount)) {
-      setError(SUPPLY_CREDIT_NOT_ON_STEP)
-      return
-    }
-    const supplyHouseName = inv.supply_houses?.name ?? 'Unknown'
-    const memo = `Invoice #${inv.invoice_number} - ${supplyHouseName} - $${Number(inv.amount).toFixed(2)}`
-
-    const maxOrder = Math.max(0, ...(lineItems[stepId] || []).map(li => li.sequence_order))
-    const { error } = await supabase
-      .from('workflow_step_line_items')
-      .insert({
-        step_id: stepId,
-        memo,
-        amount: inv.amount,
-        sequence_order: maxOrder + 1,
-        supply_house_invoice_id: invoiceId,
-      })
-
+    const error = await addInvoiceToStepRow(stepId, invoiceId, lineItems[stepId] || [])
     if (error) {
-      setError(`Failed to add invoice to step: ${error.message}`)
+      setError(error)
     } else {
       setAddingInvoiceToStep(null)
-      setInvoiceSearchText('')
-      await refreshSteps()
-      if (steps.length > 0 && (userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole) || userRole === 'superintendent')) {
-        const stepIds = steps.map(s => s.id)
-        await loadLineItemsForSteps(stepIds)
-      }
+      await reloadAfterLineItemWrite()
     }
   }
 
@@ -706,16 +551,6 @@ export default function Workflow() {
     }
   }, [steps, userRole])
 
-  // Load projections when workflow and userRole are available (staggered)
-  useEffect(() => {
-    if (workflow?.id && (userRole === 'dev' || userRole === 'master_technician')) {
-      const t = setTimeout(() => loadProjections(workflow.id), 100)
-      return () => clearTimeout(t)
-    } else {
-      setProjections([])
-    }
-  }, [workflow?.id, userRole])
-
   // Load finalized purchase orders and supply house invoices for adding to steps (staggered to run after projections)
   useEffect(() => {
     if (userRole === 'dev' || userRole === 'master_technician') {
@@ -726,104 +561,6 @@ export default function Workflow() {
       return () => clearTimeout(t)
     }
   }, [userRole])
-
-  async function loadProjections(workflowId: string) {
-    if (userRole !== 'dev' && userRole !== 'master_technician') return
-    const { data: items, error } = await supabase
-      .from('workflow_projections')
-      .select('*')
-      .eq('workflow_id', workflowId)
-      .order('sequence_order', { ascending: true })
-    if (error) {
-      setError(`Failed to load projections: ${error.message}`)
-      return
-    }
-    if (items) {
-      setProjections(items as Projection[])
-    }
-  }
-
-  async function saveProjection(
-    item: Projection | null,
-    stageName: string,
-    memo: string,
-    amount: string,
-    anchor?: { step_id: string; placement: 'before' | 'after' },
-  ) {
-    // Ensure we have a workflow_id - fetch from DB if state isn't ready
-    let workflowId: string | null = workflow?.id ?? null
-    if (!workflowId && projectId) {
-      workflowId = await ensureWorkflow(projectId)
-    }
-    if (!workflowId) {
-      setError('Workflow not found. Please refresh the page.')
-      return
-    }
-    
-    const amountNum = parseFloat(amount) || 0
-    if (!stageName.trim() || !memo.trim()) {
-      setError('Step name and memo are required')
-      return
-    }
-    
-    // Anchor (v2.1194): '' step means unanchored; placement only matters when anchored.
-    const anchorFields = {
-      step_id: anchor?.step_id ? anchor.step_id : null,
-      placement: anchor?.step_id ? anchor.placement : null,
-    }
-    if (item) {
-      // Update existing
-      const { error } = await supabase
-        .from('workflow_projections')
-        .update({ stage_name: stageName.trim(), memo: memo.trim(), amount: amountNum, ...anchorFields })
-        .eq('id', item.id)
-      if (error) {
-        setError(`Failed to update projection: ${error.message}`)
-        return
-      }
-    } else {
-      // Create new
-      const maxOrder = Math.max(0, ...projections.map(p => p.sequence_order))
-      const { error } = await supabase
-        .from('workflow_projections')
-        .insert({ workflow_id: workflowId, stage_name: stageName.trim(), memo: memo.trim(), amount: amountNum, sequence_order: maxOrder + 1, ...anchorFields })
-      if (error) {
-        setError(`Failed to insert projection: ${error.message}`)
-        return
-      }
-    }
-    setEditingProjection(null)
-    await loadProjections(workflowId)
-  }
-
-  async function deleteProjection(itemId: string) {
-    // Ensure we have a workflow_id - fetch from DB if state isn't ready
-    let workflowId: string | null = workflow?.id ?? null
-    if (!workflowId && projectId) {
-      workflowId = await ensureWorkflow(projectId)
-    }
-    if (!workflowId) {
-      setError('Workflow not found. Please refresh the page.')
-      return
-    }
-    await supabase.from('workflow_projections').delete().eq('id', itemId)
-    await loadProjections(workflowId)
-  }
-
-  function openEditProjection(item: Projection | null, seed?: { step_id?: string; placement?: 'before' | 'after' }) {
-    setEditingProjection({
-      item,
-      stage_name: item?.stage_name || '',
-      memo: item?.memo || '',
-      amount: item?.amount?.toString() || '',
-      step_id: item?.step_id ?? seed?.step_id ?? '',
-      placement: item?.placement === 'before' ? 'before' : (seed?.placement ?? 'after'),
-    })
-  }
-
-  function calculateProjectionsTotal(): number {
-    return panelMoneyTotals(projections, lineItems).projectionsTotal
-  }
 
   // Scroll to step when steps are loaded and hash is present
   useEffect(() => {
@@ -965,15 +702,6 @@ export default function Workflow() {
     lastLoadedWorkflowId.current = null
     await loadSteps(workflowId)
     return null
-  }
-
-  // Calculate total from all line items
-  function calculateLedgerTotal(): number {
-    return panelMoneyTotals(projections, lineItems).ledgerTotal
-  }
-
-  function buildUnifiedRows() {
-    return buildUnifiedFinancialRows(projections, steps, lineItems)
   }
 
   async function getCurrentUserName(): Promise<string> {
@@ -1558,129 +1286,34 @@ export default function Workflow() {
 
 
   async function saveLineItem(stepId: string, item: LineItem | null, link: string, memo: string, amount: string, itemDate: string) {
-    const amountNum = parseFloat(amount) || 0
-    if (!memo.trim()) {
-      setError('Memo is required')
+    const error = await saveLineItemRow({ stepId, item, link, memo, amount, itemDate, existing: lineItems[stepId] || [] })
+    if (error) {
+      setError(error)
       return
     }
-    const itemDateVal = itemDate.trim() ? itemDate.trim().slice(0, 10) : null
-
-    // Validate link format if provided
-    const trimmedLink = link.trim()
-    let finalLink: string | null = null
-    if (trimmedLink) {
-      // Use normalizeUrl for consistency with display logic
-      const normalized = normalizeUrl(trimmedLink)
-      if (normalized && normalized.trim()) {
-        finalLink = normalized
-      } else {
-        setError('Link must be a valid URL')
-        return
-      }
-    }
-    
-    if (item) {
-      // Update existing
-      const { error } = await supabase
-        .from('workflow_step_line_items')
-        .update({ link: finalLink, memo: memo.trim(), amount: amountNum, item_date: itemDateVal })
-        .eq('id', item.id)
-      if (error) {
-        setError(`Failed to update line item: ${error.message}`)
-        return
-      }
-    } else {
-      // Create new
-      const maxOrder = Math.max(0, ...(lineItems[stepId] || []).map(li => li.sequence_order))
-      const { error } = await supabase
-        .from('workflow_step_line_items')
-        .insert({
-          step_id: stepId,
-          link: finalLink,
-          memo: memo.trim(),
-          amount: amountNum,
-          sequence_order: maxOrder + 1,
-          item_date: itemDateVal,
-        })
-      if (error) {
-        setError(`Failed to insert line item: ${error.message}`)
-        return
-      }
-    }
     setEditingLineItem(null)
-    await refreshSteps()
     // Reload line items to ensure UI updates for assistants
-    if (
-      steps.length > 0 &&
-      (userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole) || userRole === 'superintendent')
-    ) {
-      const stepIds = steps.map(s => s.id)
-      await loadLineItemsForSteps(stepIds)
-    }
+    await reloadAfterLineItemWrite()
   }
 
   async function importLineItemsFromPaste(stepId: string, text: string) {
-    const parsed = parseWorkflowLineItemPaste(text)
-    if (!parsed.ok) {
-      setError(parsed.message)
-      return
-    }
-    const baseOrder = Math.max(0, ...(lineItems[stepId] || []).map((li) => li.sequence_order))
-    const payload = parsed.rows.map((r, i) => ({
-      step_id: stepId,
-      memo: r.memo,
-      amount: r.amount,
-      item_date: r.itemDate,
-      sequence_order: baseOrder + 1 + i,
-    }))
-    const { error } = await supabase.from('workflow_step_line_items').insert(payload)
+    const error = await importPastedLineItems(stepId, text, lineItems[stepId] || [])
     if (error) {
-      setError(`Failed to import line items: ${error.message}`)
+      setError(error)
       return
     }
     setEditingLineItem(null)
     setError(null)
-    await refreshSteps()
-    if (
-      steps.length > 0 &&
-      (userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole) || userRole === 'superintendent')
-    ) {
-      await loadLineItemsForSteps(steps.map((s) => s.id))
-    }
-  }
-
-  async function importLineItemsFromClipboard() {
-    if (!editingLineItem || editingLineItem.item !== null) return
-    setError(null)
-    setLineItemPasteImporting(true)
-    try {
-      const text = await navigator.clipboard.readText()
-      await importLineItemsFromPaste(editingLineItem.stepId, text)
-    } catch (e) {
-      setError(
-        e instanceof Error
-          ? e.message
-          : 'Could not read clipboard. Use HTTPS (or localhost) and allow clipboard access when prompted.'
-      )
-    } finally {
-      setLineItemPasteImporting(false)
-    }
+    await reloadAfterLineItemWrite()
   }
 
   async function deleteLineItem(itemId: string) {
-    const { error } = await supabase.from('workflow_step_line_items').delete().eq('id', itemId)
+    const error = await deleteLineItemRow(itemId)
     if (error) {
-      setError(`Failed to delete line item: ${error.message}`)
+      setError(error)
     } else {
-      await refreshSteps()
       // Reload line items to ensure UI updates for assistants
-      if (
-        steps.length > 0 &&
-        (userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole) || userRole === 'superintendent')
-      ) {
-        const stepIds = steps.map(s => s.id)
-        await loadLineItemsForSteps(stepIds)
-      }
+      await reloadAfterLineItemWrite()
     }
   }
 
@@ -1928,182 +1561,16 @@ export default function Workflow() {
 
       {/* Projections + Ledger - Summary bar and unified table */}
       {(isDevOrMaster || canManageStages) && (
-        <div style={{ marginBottom: '1rem' }}>
-          {/* Collapsible summary bar */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', padding: '0.5rem 0.75rem', background: 'var(--bg-sky-tint)', border: '1px solid var(--border-sky)', borderRadius: 8 }}>
-            {isDevOrMaster && (
-              <>
-                <span style={{ fontSize: '0.875rem', color: calculateProjectionsTotal() < 0 ? 'var(--text-red-700)' : 'var(--text-strong)', fontWeight: 500 }}>
-                  Projections: {formatAmount(calculateProjectionsTotal())}
-                </span>
-                <span style={{ fontSize: '0.875rem', color: 'var(--text-faint)' }}>|</span>
-              </>
-            )}
-            {canManageStages && (
-              <span style={{ fontSize: '0.875rem', color: calculateLedgerTotal() < 0 ? 'var(--text-red-700)' : 'var(--text-strong)', fontWeight: 500 }}>
-                Ledger: {formatAmount(calculateLedgerTotal())}
-              </span>
-            )}
-            {isDevOrMaster && (
-              <>
-                <span style={{ fontSize: '0.875rem', color: 'var(--text-faint)' }}>|</span>
-                <span
-                  style={{
-                    fontSize: '0.875rem',
-                    fontWeight: 500,
-                    color: (() => {
-                      const left = panelMoneyTotals(projections, lineItems).left
-                      return left < 0 ? '#b91c1c' : '#047857'
-                    })(),
-                  }}
-                >
-                  Left: {formatAmount(panelMoneyTotals(projections, lineItems).left)}
-                </span>
-              </>
-            )}
-            {isDevOrMaster && (
-              <button
-                type="button"
-                onClick={() => openEditProjection(null)}
-                className="wf-btn-success"
-                style={{ marginLeft: 'auto' }}
-              >
-                + Add Projection
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => setProjectionsLedgerExpanded((v) => !v)}
-              className="wf-btn-secondary wf-btn-secondary-blue"
-              style={{ marginLeft: 'auto' }}
-            >
-              {projectionsLedgerExpanded ? '\u25b2 Hide details' : '\u25be Details'}
-            </button>
-          </div>
-
-          {/* Expanded unified table */}
-          {projectionsLedgerExpanded && (() => {
-            const unifiedRows = buildUnifiedRows()
-            const hasProjections = projections.length > 0
-            const hasLedger = Object.keys(lineItems).length > 0 && !Object.values(lineItems).every((items) => items.length === 0)
-            const hasAnyData = hasProjections || hasLedger
-
-            if (!hasAnyData) {
-              return (
-                <div style={{ marginTop: '0.75rem', padding: '0.5rem 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                  No projections or ledger items.
-                  {isDevOrMaster && (
-                    <button
-                      type="button"
-                      onClick={() => openEditProjection(null)}
-                      className="wf-btn-success"
-                      style={{ marginLeft: '0.5rem' }}
-                    >
-                      Add Projection
-                    </button>
-                  )}
-                </div>
-              )
-            }
-
-            return (
-              <div style={{ marginTop: '0.75rem', padding: '0.5rem 0.75rem', background: 'var(--bg-sky-tint)', border: '1px solid var(--border-sky)', borderRadius: 8 }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '1px solid var(--border-sky)' }}>
-                      <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem', fontWeight: 600 }}>Step</th>
-                      <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem', fontWeight: 600 }}>Memo</th>
-                      {isDevOrMaster && <th style={{ textAlign: 'right', padding: '0.35rem 0.5rem', fontWeight: 600 }}>Projections</th>}
-                      <th style={{ textAlign: 'right', padding: '0.35rem 0.5rem', fontWeight: 600 }}>Ledger</th>
-                      {isDevOrMaster && <th style={{ textAlign: 'center', padding: '0.35rem 0.5rem', fontWeight: 600, width: 90 }}>Actions</th>}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {unifiedRows.map((row, idx) => (
-                      <tr key={row.projection?.id ?? row.ledgerItem?.id ?? `row-${idx}`} style={{ borderBottom: '1px solid #e0f2fe' }}>
-                        <td style={{ padding: '0.35rem 0.5rem', color: 'var(--text-strong)', fontWeight: row.stageName ? 500 : 'normal' }}>{row.stageName || '\u00a0'}</td>
-                        <td style={{ padding: '0.35rem 0.5rem', color: 'var(--text-700)' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <span>{row.memo}</span>
-                            {row.ledgerItem?.link && (
-                              <a
-                                href={normalizeUrl(row.ledgerItem.link)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{ color: 'var(--text-blue-500)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
-                                title={row.ledgerItem.link}
-                                onClick={(e) => {
-                                  e.preventDefault()
-                                  e.stopPropagation()
-                                  const normalizedLink = normalizeUrl(row.ledgerItem!.link)
-                                  if (normalizedLink) {
-                                    window.open(normalizedLink, '_blank', 'noopener,noreferrer')
-                                  }
-                                }}
-                              >
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: '12px', height: '12px', fill: 'currentColor' }}>
-                                  <path d="M451.5 160C434.9 160 418.8 164.5 404.7 172.7C388.9 156.7 370.5 143.3 350.2 133.2C378.4 109.2 414.3 96 451.5 96C537.9 96 608 166 608 252.5C608 294 591.5 333.8 562.2 363.1L491.1 434.2C461.8 463.5 422 480 380.5 480C294.1 480 224 410 224 323.5C224 322 224 320.5 224.1 319C224.6 301.3 239.3 287.4 257 287.9C274.7 288.4 288.6 303.1 288.1 320.8C288.1 321.7 288.1 322.6 288.1 323.4C288.1 374.5 329.5 415.9 380.6 415.9C405.1 415.9 428.6 406.2 446 388.8L517.1 317.7C534.4 300.4 544.2 276.8 544.2 252.3C544.2 201.2 502.8 159.8 451.7 159.8zM307.2 237.3C305.3 236.5 303.4 235.4 301.7 234.2C289.1 227.7 274.7 224 259.6 224C235.1 224 211.6 233.7 194.2 251.1L123.1 322.2C105.8 339.5 96 363.1 96 387.6C96 438.7 137.4 480.1 188.5 480.1C205 480.1 221.1 475.7 235.2 467.5C251 483.5 269.4 496.9 289.8 507C261.6 530.9 225.8 544.2 188.5 544.2C102.1 544.2 32 474.2 32 387.7C32 346.2 48.5 306.4 77.8 277.1L148.9 206C178.2 176.7 218 160.2 259.5 160.2C346.1 160.2 416 230.8 416 317.1C416 318.4 416 319.7 416 321C415.6 338.7 400.9 352.6 383.2 352.2C365.5 351.8 351.6 337.1 352 319.4C352 318.6 352 317.9 352 317.1C352 283.4 334 253.8 307.2 237.5z" />
-                                </svg>
-                              </a>
-                            )}
-                          </div>
-                        </td>
-                        {isDevOrMaster && (
-                          <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', color: (row.projectionAmount ?? 0) < 0 ? 'var(--text-red-700)' : 'var(--text-strong)', fontWeight: 500 }}>
-                            {row.projectionAmount != null ? formatAmount(row.projectionAmount) : '\u2014'}
-                          </td>
-                        )}
-                        <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', color: (row.ledgerAmount ?? 0) < 0 ? 'var(--text-red-700)' : 'var(--text-strong)', fontWeight: 500 }}>
-                          {row.ledgerAmount != null ? formatAmount(row.ledgerAmount) : '\u2014'}
-                        </td>
-                        {isDevOrMaster && (
-                          <td style={{ padding: '0.35rem 0.5rem', textAlign: 'center' }}>
-                            {row.projection ? (
-                              <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'center' }}>
-                                <button
-                                  type="button"
-                                  onClick={() => openEditProjection(row.projection)}
-                                  className="wf-btn-secondary"
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => row.projection && deleteProjection(row.projection.id)}
-                                  className="wf-btn-danger"
-                                >
-                                  Delete
-                                </button>
-                              </div>
-                            ) : (
-                              '\u00a0'
-                            )}
-                          </td>
-                        )}
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr style={{ borderTop: '2px solid #0ea5e9' }}>
-                      <td style={{ padding: '0.5rem 0.5rem', fontWeight: 600 }} colSpan={isDevOrMaster ? 2 : 2}>
-                        Total
-                      </td>
-                      {isDevOrMaster && (
-                        <td style={{ padding: '0.5rem 0.5rem', textAlign: 'right', fontWeight: 700, color: calculateProjectionsTotal() < 0 ? 'var(--text-red-700)' : 'var(--text-strong)' }}>
-                          {formatAmount(calculateProjectionsTotal())}
-                        </td>
-                      )}
-                      <td style={{ padding: '0.5rem 0.5rem', textAlign: 'right', fontWeight: 700, color: calculateLedgerTotal() < 0 ? 'var(--text-red-700)' : 'var(--text-strong)' }}>
-                        {formatAmount(calculateLedgerTotal())}
-                      </td>
-                      {isDevOrMaster && <td style={{ padding: '0.5rem 0.5rem' }} />}
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            )
-          })()}
-        </div>
+        <WorkflowFinancialsPanel
+          projections={projections}
+          steps={steps}
+          lineItems={lineItems}
+          isDevOrMaster={isDevOrMaster}
+          canManageStages={canManageStages}
+          onAddProjection={() => openEditProjection(null)}
+          onEditProjection={openEditProjection}
+          onDeleteProjection={deleteProjection}
+        />
       )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 0, alignItems: 'center' }}>
@@ -3146,40 +2613,6 @@ export default function Workflow() {
         />
       )}
 
-      {confirmDeleteLineItem && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
-            <h3 style={{ marginTop: 0 }}>Delete line item?</h3>
-            <p style={{ marginBottom: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              {confirmDeleteLineItem.item.memo}
-              {confirmDeleteLineItem.item.amount != null && (
-                <span> — {formatAmount(confirmDeleteLineItem.item.amount)}</span>
-              )}
-              {confirmDeleteLineItem.item.item_date && (
-                <span style={{ display: 'block', marginTop: 4 }}>
-                  Date: {formatLineItemDate(confirmDeleteLineItem.item.item_date)}
-                </span>
-              )}
-            </p>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                type="button"
-                onClick={async () => {
-                  await deleteLineItem(confirmDeleteLineItem.item.id)
-                  setConfirmDeleteLineItem(null)
-                }}
-                className="wf-btn-modal-primary wf-btn-danger-style"
-              >
-                Delete
-              </button>
-              <button type="button" onClick={() => setConfirmDeleteLineItem(null)} className="wf-btn-modal-secondary">
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {confirmDeleteStep && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
           <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
@@ -3471,108 +2904,6 @@ export default function Workflow() {
         </div>
       )}
 
-      {editingLineItem && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 360 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '1rem' }}>
-              <h3 style={{ margin: 0, flex: 1 }}>{editingLineItem.item ? 'Edit' : 'Add'} Line Item</h3>
-              {!editingLineItem.item && (
-                <button
-                  type="button"
-                  onClick={() => void importLineItemsFromClipboard()}
-                  disabled={lineItemPasteImporting}
-                  title="Import tab-separated rows from clipboard (date, memo, amount per line)"
-                  aria-label="Import line items from clipboard"
-                  className="wf-btn-modal-secondary"
-                  style={{
-                    padding: '0.35rem 0.5rem',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                    opacity: lineItemPasteImporting ? 0.6 : 1,
-                  }}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={22} height={22} fill="currentColor" aria-hidden>
-                    <path d="M360 160L280 160C266.7 160 256 149.3 256 136C256 122.7 266.7 112 280 112L360 112C373.3 112 384 122.7 384 136C384 149.3 373.3 160 360 160zM360 208C397.1 208 427.6 180 431.6 144L448 144C456.8 144 464 151.2 464 160L464 512C464 520.8 456.8 528 448 528L192 528C183.2 528 176 520.8 176 512L176 160C176 151.2 183.2 144 192 144L208.4 144C212.4 180 242.9 208 280 208L360 208zM419.9 96C407 76.7 385 64 360 64L280 64C255 64 233 76.7 220.1 96L192 96C156.7 96 128 124.7 128 160L128 512C128 547.3 156.7 576 192 576L448 576C483.3 576 512 547.3 512 512L512 160C512 124.7 483.3 96 448 96L419.9 96z" />
-                  </svg>
-                </button>
-              )}
-            </div>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault()
-                saveLineItem(
-                  editingLineItem.stepId,
-                  editingLineItem.item,
-                  editingLineItem.link,
-                  editingLineItem.memo,
-                  editingLineItem.amount,
-                  editingLineItem.itemDate
-                )
-              }}
-            >
-              <div style={{ marginBottom: '1rem' }}>
-                <label htmlFor="line-item-date" style={{ display: 'block', marginBottom: 4 }}>Date (optional)</label>
-                <input
-                  id="line-item-date"
-                  type="date"
-                  value={editingLineItem.itemDate}
-                  onChange={(e) => setEditingLineItem({ ...editingLineItem, itemDate: e.target.value })}
-                  style={{ width: '100%', padding: '0.5rem' }}
-                />
-              </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label htmlFor="line-item-link" style={{ display: 'block', marginBottom: 4 }}>Link (optional)</label>
-                <input
-                  id="line-item-link"
-                  type="url"
-                  value={editingLineItem.link}
-                  onChange={(e) => setEditingLineItem({ ...editingLineItem, link: e.target.value })}
-                  placeholder="https://..."
-                  pattern="https?://.*"
-                  style={{ width: '100%', padding: '0.5rem' }}
-                />
-                {editingLineItem.link && editingLineItem.link.trim() && !editingLineItem.link.trim().match(/^https?:\/\//i) && (
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-red-600)', marginTop: '0.25rem' }}>
-                    Link should start with http:// or https://
-                  </div>
-                )}
-              </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label htmlFor="line-item-memo" style={{ display: 'block', marginBottom: 4 }}>Memo *</label>
-                <input
-                  id="line-item-memo"
-                  type="text"
-                  value={editingLineItem.memo}
-                  onChange={(e) => setEditingLineItem({ ...editingLineItem, memo: e.target.value })}
-                  required
-                  placeholder="e.g. Materials, Labor, Equipment"
-                  style={{ width: '100%', padding: '0.5rem' }}
-                />
-              </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label htmlFor="line-item-amount" style={{ display: 'block', marginBottom: 4 }}>Amount *</label>
-                <input
-                  id="line-item-amount"
-                  type="number"
-                  step="0.01"
-                  value={editingLineItem.amount}
-                  onChange={(e) => setEditingLineItem({ ...editingLineItem, amount: e.target.value })}
-                  required
-                  placeholder="0.00 (negative allowed)"
-                  style={{ width: '100%', padding: '0.5rem' }}
-                />
-              </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button type="submit" className="wf-btn-modal-primary">Save</button>
-                <button type="button" onClick={() => setEditingLineItem(null)} className="wf-btn-modal-secondary">Cancel</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
       {editingProjection && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
           <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
@@ -3668,193 +2999,28 @@ export default function Workflow() {
         </div>
       )}
 
-      {/* Add Purchase Order to Step Modal */}
-      {addingPOToStep && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: '90%', maxHeight: '90vh', overflow: 'auto' }}>
-            <h3 style={{ marginTop: 0 }}>Add Purchase Order to Step</h3>
-            {availablePOs.length === 0 ? (
-              <p style={{ color: 'var(--text-muted)' }}>No finalized purchase orders available. Go to Materials page to create and finalize purchase orders.</p>
-            ) : (
-              <div style={{ marginTop: '1rem' }}>
-                <div style={{ border: '1px solid var(--border)', borderRadius: 4, maxHeight: '400px', overflow: 'auto' }}>
-                  {availablePOs.map(po => (
-                    <div
-                      key={po.id}
-                      onClick={() => addPOToStep(addingPOToStep, po.id)}
-                      style={{
-                        padding: '1rem',
-                        borderBottom: '1px solid var(--border)',
-                        cursor: 'pointer',
-                        background: 'var(--surface)',
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-subtle)'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = 'var(--surface)'}
-                    >
-                      <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{po.name}</div>
-                      <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>${po.total.toFixed(2)}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                onClick={() => setAddingPOToStep(null)}
-                className="wf-btn-modal-secondary"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Add Supply House Invoice to Step Modal */}
-      {addingInvoiceToStep && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: '90%', maxHeight: '90vh', overflow: 'auto' }}>
-            <h3 style={{ marginTop: 0 }}>Add Supply House Invoice to Step</h3>
-            {availableInvoices.length === 0 ? (
-              <p style={{ color: 'var(--text-muted)' }}>No supply house invoices available. Add invoices in Materials → Supply Houses.</p>
-            ) : (
-              <div style={{ marginTop: '1rem' }}>
-                <input
-                  type="search"
-                  placeholder="Search by invoice #, supply house, amount, date, PO #, paid/unpaid..."
-                  value={invoiceSearchText}
-                  onChange={(e) => setInvoiceSearchText(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', marginBottom: '0.75rem', borderRadius: 6, border: '1px solid var(--border)' }}
-                />
-                <div style={{ border: '1px solid var(--border)', borderRadius: 4, maxHeight: '400px', overflow: 'auto' }}>
-                  {(() => {
-                    const filtered = filterAvailableInvoices(availableInvoices, invoiceSearchText)
-                    if (filtered.length === 0) {
-                      return <p style={{ padding: '1rem', color: 'var(--text-muted)' }}>No matching invoices.</p>
-                    }
-                    return filtered.map(inv => (
-                      <div
-                        key={inv.id}
-                        onClick={() => addInvoiceToStep(addingInvoiceToStep, inv.id)}
-                        style={{
-                          padding: '1rem',
-                          borderBottom: '1px solid var(--border)',
-                          cursor: 'pointer',
-                          background: 'var(--surface)',
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-subtle)'}
-                        onMouseLeave={(e) => e.currentTarget.style.background = 'var(--surface)'}
-                      >
-                        {/* Primary: supply house, date, amount, PO */}
-                        <div style={{ fontWeight: 600, marginBottom: '0.25rem', fontSize: '0.875rem' }}>
-                          {inv.supply_house_name}
-                          <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> · {formatDateShort(inv.invoice_date)} · ${inv.amount.toFixed(2)}</span>
-                          {inv.purchase_order_number && <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> · {inv.purchase_order_number}</span>}
-                        </div>
-                        {/* Secondary: invoice #, due, paid */}
-                        <div style={{ fontSize: '0.8125rem', color: 'var(--text-faint)', display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem' }}>
-                          <span>#{inv.invoice_number}</span>
-                          {inv.due_date && <span>Due {formatDateShort(inv.due_date)}</span>}
-                          {inv.is_paid && <span style={{ color: 'var(--text-green-600)', fontWeight: 500 }}>Paid</span>}
-                        </div>
-                      </div>
-                    ))
-                  })()}
-                </div>
-              </div>
-            )}
-            <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                onClick={() => { setAddingInvoiceToStep(null); setInvoiceSearchText('') }}
-                className="wf-btn-modal-secondary"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* View Purchase Order Details Modal */}
-      {viewingPO && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: 8, maxWidth: '800px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
-            <h2 style={{ marginBottom: '1rem' }}>{viewingPO.name}</h2>
-            <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden', marginBottom: '1rem' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead style={{ background: 'var(--bg-subtle)' }}>
-                  <tr>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Part</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Quantity</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Supply House</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Price</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {viewingPO.items.map((item, idx) => (
-                    <tr key={idx} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={{ padding: '0.75rem' }}>{item.part.name}</td>
-                      <td style={{ padding: '0.75rem' }}>{item.quantity}</td>
-                      <td style={{ padding: '0.75rem' }}>{item.supply_house?.name || '-'}</td>
-                      <td style={{ padding: '0.75rem' }}>${item.price_at_time.toFixed(2)}</td>
-                      <td style={{ padding: '0.75rem', fontWeight: 600 }}>${(item.price_at_time * item.quantity).toFixed(2)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot style={{ background: 'var(--bg-subtle)' }}>
-                  <tr>
-                    <td colSpan={4} style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 600 }}>Grand Total:</td>
-                    <td style={{ padding: '0.75rem', fontWeight: 600 }}>
-                      ${viewingPO.items.reduce((sum, item) => sum + (item.price_at_time * item.quantity), 0).toFixed(2)}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                onClick={() => setViewingPO(null)}
-                className="wf-btn-modal-secondary"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* View Supply House Invoice Details Modal */}
-      {viewingInvoice && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: 8, minWidth: 320, maxWidth: '90%' }}>
-            <h2 style={{ marginBottom: '1rem' }}>Invoice #{viewingInvoice.invoice_number}</h2>
-            <div style={{ marginBottom: '1rem', fontSize: '0.9375rem' }}>
-              <div style={{ marginBottom: '0.5rem' }}><strong>Supply House:</strong> {viewingInvoice.supply_house_name}</div>
-              <div style={{ marginBottom: '0.5rem' }}><strong>Amount:</strong> {formatAmount(viewingInvoice.amount)}</div>
-              {viewingInvoice.link && (
-                <div>
-                  <a href={normalizeUrl(viewingInvoice.link)} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-blue-500)' }}>
-                    View invoice link
-                  </a>
-                </div>
-              )}
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                onClick={() => setViewingInvoice(null)}
-                className="wf-btn-modal-secondary"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <WorkflowLineItemModals
+        confirmDeleteLineItem={confirmDeleteLineItem}
+        onDeleteLineItem={deleteLineItem}
+        onCloseDeleteLineItem={() => setConfirmDeleteLineItem(null)}
+        editingLineItem={editingLineItem}
+        onChangeEditingLineItem={setEditingLineItem}
+        onSaveLineItem={saveLineItem}
+        onImportPastedLineItems={importLineItemsFromPaste}
+        onError={setError}
+        addingPOToStep={addingPOToStep}
+        availablePOs={availablePOs}
+        onAddPOToStep={addPOToStep}
+        onCloseAddPO={() => setAddingPOToStep(null)}
+        addingInvoiceToStep={addingInvoiceToStep}
+        availableInvoices={availableInvoices}
+        onAddInvoiceToStep={addInvoiceToStep}
+        onCloseAddInvoice={() => setAddingInvoiceToStep(null)}
+        viewingPO={viewingPO}
+        onCloseViewPO={() => setViewingPO(null)}
+        viewingInvoice={viewingInvoice}
+        onCloseViewInvoice={() => setViewingInvoice(null)}
+      />
 
       {/* Person Contact Info Modal */}
       {personContactModal && (
