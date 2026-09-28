@@ -116,6 +116,7 @@ import {
   MyTimeNcnsDialog,
   MyTimeNcnsPrecloseDialog,
 } from './my-time-day-editor/MyTimeNcnsDialogs'
+import { MyTimeRejectSessionDialog } from './my-time-day-editor/MyTimeRejectSessionDialog'
 import { useMyTimeNcnsFlow } from './my-time-day-editor/useMyTimeNcnsFlow'
 import {
   MyTimeNotComingInButton,
@@ -2857,126 +2858,15 @@ export function DashboardMyTimeDayEditorModal({
       />
     ) : null}
     <MyTimeNcnsPrecloseDialog flow={ncns} zIndex={1305} />
-    {rejectSessionConfirm ? (
-      <div
-        role="presentation"
-        style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(0,0,0,0.45)',
-          zIndex: 1310,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '1rem',
-        }}
-        onClick={closeRejectSessionModal}
-      >
-        <div
-          role="alertdialog"
-          aria-modal
-          aria-labelledby="reject-session-dialog-title"
-          style={{
-            background: 'var(--surface)',
-            borderRadius: 8,
-            padding: '1.25rem',
-            maxWidth: 420,
-            width: '100%',
-            boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <h3 id="reject-session-dialog-title" style={{ margin: '0 0 0.75rem 0', fontSize: '1.05rem' }}>
-            Reject clock session?
-          </h3>
-          <p
-            style={{
-              margin: '0 0 0.5rem 0',
-              fontSize: '0.8125rem',
-              color: 'var(--text-muted)',
-              fontVariantNumeric: 'tabular-nums',
-            }}
-          >
-            {formatDenverTimeOnly(new Date(rejectSessionConfirm.clocked_in_at).getTime())} –{' '}
-            {rejectSessionConfirm.clocked_out_at
-              ? formatDenverTimeOnly(new Date(rejectSessionConfirm.clocked_out_at).getTime())
-              : ''}
-            {` · ${formatWorkDateYmdWeekdayLongFriendly(dateStr)}`}
-          </p>
-          <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.5 }}>
-            This session will no longer count toward hours until restored by staff.
-          </p>
-          {rejectSessionConfirm.approved_at != null ? (
-            <p
-              style={{
-                margin: '0 0 1rem 0',
-                fontSize: '0.875rem',
-                color: 'var(--text-amber-800)',
-                background: 'var(--bg-amber-tint)',
-                border: '1px solid var(--border-amber)',
-                borderRadius: 6,
-                padding: '0.65rem 0.75rem',
-                lineHeight: 1.5,
-              }}
-            >
-              This session was already approved. Rejecting removes those hours from payroll until it is approved
-              again.
-            </p>
-          ) : null}
-          {rejectSessionError ? (
-            <p
-              role="alert"
-              style={{
-                margin: '0 0 0.75rem 0',
-                fontSize: '0.8125rem',
-                color: 'var(--text-red-700)',
-                background: 'var(--bg-red-tint)',
-                border: '1px solid #fecaca',
-                borderRadius: 6,
-                padding: '0.5rem 0.65rem',
-                lineHeight: 1.45,
-              }}
-            >
-              {rejectSessionError}
-            </p>
-          ) : null}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              disabled={rejectSessionBusyId != null}
-              onClick={closeRejectSessionModal}
-              style={{
-                padding: '0.45rem 0.85rem',
-                fontSize: '0.875rem',
-                border: '1px solid var(--border-strong)',
-                borderRadius: 6,
-                background: 'var(--surface)',
-                cursor: rejectSessionBusyId != null ? 'not-allowed' : 'pointer',
-              }}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              disabled={rejectSessionBusyId != null}
-              onClick={() => void confirmRejectSession(rejectSessionConfirm)}
-              style={{
-                padding: '0.45rem 0.85rem',
-                fontSize: '0.875rem',
-                fontWeight: 600,
-                border: '1px solid #dc2626',
-                borderRadius: 6,
-                background: 'var(--bg-red-tint)',
-                color: 'var(--text-red-700)',
-                cursor: rejectSessionBusyId != null ? 'not-allowed' : 'pointer',
-              }}
-            >
-              {rejectSessionBusyId != null ? 'Rejecting…' : 'Reject session'}
-            </button>
-          </div>
-        </div>
-      </div>
-    ) : null}
+    <MyTimeRejectSessionDialog
+      session={rejectSessionConfirm}
+      dateLabel={formatWorkDateYmdWeekdayLongFriendly(dateStr)}
+      busy={rejectSessionBusyId != null}
+      error={rejectSessionError}
+      onCancel={closeRejectSessionModal}
+      onConfirm={(session) => void confirmRejectSession(session)}
+      zIndex={1310}
+    />
     <MyTimeNcnsDialog
       flow={ncns}
       personLabel={modalTitlePerson}
