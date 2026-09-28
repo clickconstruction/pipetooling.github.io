@@ -8,14 +8,14 @@ covers:
   - src/components/jobs/JobFormModal.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-09-27
+last_updated: 2026-09-28
 ---
 
 ## Overview
 
 **Line numbers are exact as of `a05cef4c4` and rot with every commit — search the symbol, not the number.** Regenerate the facts with `npm run map -- src/components/jobs/JobFormModal.tsx` before trusting a range.
 
-[`src/components/jobs/JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx) is **5,457 lines**: one default-exported component `JobFormModal` (309–5457, 5,149 lines; render 3919–5456, 1,538 lines) over a module scope of types, `FOCUS_FIELD_RING` and the z-index ladder (27–307) — **0 module functions**. Census: **97 `useState` · 30 effects · 37 `useMemo` · 12 `useCallback` · 39 `useRef` · 21 custom-hook calls**; 133 local imports, 40 child components in the render. Churn: **150 commits in 90 days**, last `a05cef4c4` (2026-09-25) — the hottest modal in the repo; run `npm run sessions` before touching it.
+[`src/components/jobs/JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx) is **3,372 lines** since the extraction order's nine moves (2026-09-26 to 09-28, v2.3871–v2.3973): 79 `useState` · 24 effects · 33 `useMemo` · 7 `useCallback` · 23 `useRef` · 23 custom-hook calls. The regions and line ranges below describe the file before those moves, at `mapped_at` — refresh them with `npm run map` before cutting anything further. At `mapped_at` it was **5,457 lines**: one default-exported component `JobFormModal` (309–5457, 5,149 lines; render 3919–5456, 1,538 lines) over a module scope of types, `FOCUS_FIELD_RING` and the z-index ladder (27–307) — **0 module functions**. Census: **97 `useState` · 30 effects · 37 `useMemo` · 12 `useCallback` · 39 `useRef` · 21 custom-hook calls**; 133 local imports, 40 child components in the render. Churn: **150 commits in 90 days**, last `a05cef4c4` (2026-09-25) — the hottest modal in the repo; run `npm run sessions` before touching it.
 
 **Size history:** ~7,137 lines at v2.736 (map written) → 3,767 right after the v2.1094 section wave (~4,100 by the #1009 catch-up) → 5,242 at this map's previous touch (6857dfe20, v2.3478) → 5,457 now. **Every section extraction held** — the regrowth is new logic landing in the shell: Stage Plan (PRs 2–4 + the portal-link mint, v2.3517), who-pays / GC party (v2.3345–v2.3403), discount rows + standing offer (v2.3252–v2.3272), payer carves (v2.3349), property record (v2.2638+), payment actions (Move v2.3576, Record payment on bill v2.3692, Undo part payment v2.3695, returned deposits v2.3784/v2.3795), the New Job discard guard (Tier-2 #42), and the focus-row doors (v2.3667/v2.3697/v2.3819). Since 6857dfe20: 11 commits, +230/−15.
 
