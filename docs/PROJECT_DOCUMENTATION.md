@@ -2758,7 +2758,7 @@ The page behind any modal, sheet, or dialog is frozen **app-wide without per-mod
 - `/prospects` - Prospects (Customers pipeline + Team hiring board)
 - `/checklist` - Checklist (Today, History, Review, Manage) — the daily list
 - `/roadmap` - Roadmap (Goals strip + Map / Plan / Timeline; v2.2916 — was the Checklist page's Roadmap tab; dev / master / assistant-like / primary via `canOpenRoadmap`)
-- `/punch-list` - Punch list (v2.3558 — the `to-dos/` board in the app: rows from the `virtual:punch-list` module, rendered at build time from `to-dos/` by `todoBoardPlugin` (v2.3623; `npm run check:todos` in CI); mock-ups served at `/to-dos/…` by `todoMockupsPlugin`; every row opens with the to-do's `number:` — required, unique, never reused, `#n<N>` anchors the row (v2.3708); dev / master via `canOpenPunchList`; gear menu)
+- `/punch-list` - Punch list (v2.3558 — the `to-dos/` board in the app: rows from the `virtual:punch-list` module, rendered at build time from `to-dos/` by `todoBoardPlugin` (v2.3623; `npm run check:todos` in CI); mock-ups served at `/to-dos/…` by `todoMockupsPlugin`; every row opens with the to-do's `number:` — required, unique, never reused, `#n<N>` anchors the row (v2.3708); dev / master via `canOpenPunchList`; the door is the Punch list chip under the Settings rail's search box, v2.4041 — it left the gear menu and the phone dock's More sheet then)
 - `/tally` - Job parts tally
 - `/help` - Help guides
 - `/templates` - Template management (dev)

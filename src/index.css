@@ -2718,6 +2718,9 @@ body.my-time-boundary-dragging {
 .settingsRail--narrow { border-bottom: 1px solid var(--border); padding-bottom: 0.9rem; }
 .settingsRailHead { display: flex; align-items: baseline; gap: 0.6rem; }
 .settingsRailTitle { margin: 0; font-size: 1.35rem; }
+.settingsRailDoors { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.settingsRailDoor { font: inherit; font-size: 0.8rem; font-weight: 600; line-height: 1.4; padding: 0.18rem 0.65rem; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); cursor: pointer; text-decoration: none; }
+.settingsRailDoor:hover, .settingsRailDoor:focus-visible { background: var(--sunken); outline: none; }
 .settingsRailRecent { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; }
 .settingsRailRecentWord { font-size: 0.72rem; color: var(--text-muted); margin-right: 0.15rem; }
 .settingsRailChip { font: inherit; font-size: 0.78rem; padding: 0.1rem 0.55rem; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--text-strong); cursor: pointer; }
