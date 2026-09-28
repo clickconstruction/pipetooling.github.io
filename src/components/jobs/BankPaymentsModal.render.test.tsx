@@ -7,7 +7,8 @@
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { installDomShims, renderWithProviders } from '../../test/renderSmokeMocks'
+installDomShims()
 import BankPaymentsModal from './BankPaymentsModal'
 import { buildBilledStageRows } from '../../lib/jobsStagesBoard'
 import type { JobWithDetails } from '../../types/jobWithDetails'
@@ -128,5 +129,22 @@ describe('BankPaymentsModal (render smoke)', () => {
     // Un-ticking the pair disables Apply.
     fireEvent.click(screen.getByRole('checkbox', { name: /Include 1,625\.00 from WEISS SERVICES LLC/ }))
     expect((screen.getByRole('button', { name: /Apply 0 deposits/ }) as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('the title-bar toggle fills the screen and remembers it; a second press restores the window (v2.4065)', async () => {
+    window.localStorage.removeItem('modal_full_screen_accounts-receivable')
+    renderWithProviders(<BankPaymentsModal open onClose={() => {}} authUserId="smoke-auth-user-1" authRole="dev" billedRows={buildBilledStageRows([billedJob()], [])} onApplied={() => {}} />)
+    const panel = document.querySelector('[data-accounts-receivable-panel]') as HTMLElement
+    expect(panel.style.borderRadius).toBe('8px')
+    const toggle = await screen.findByRole('button', { name: 'Full screen' })
+    fireEvent.click(toggle)
+    expect(panel.style.borderRadius).toBe('0')
+    expect(panel.style.maxWidth).toBe('none')
+    expect(screen.getByRole('button', { name: 'Back to a window' }).getAttribute('aria-pressed')).toBe('true')
+    expect(window.localStorage.getItem('modal_full_screen_accounts-receivable')).toBe('1')
+    fireEvent.click(screen.getByRole('button', { name: 'Back to a window' }))
+    expect(panel.style.borderRadius).toBe('8px')
+    expect(window.localStorage.getItem('modal_full_screen_accounts-receivable')).toBeNull()
+    await waitFor(() => expect(screen.getByText(/their open bills/)).toBeTruthy())
   })
 })
