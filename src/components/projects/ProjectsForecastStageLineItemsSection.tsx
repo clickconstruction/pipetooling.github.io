@@ -36,6 +36,7 @@ import {
   addInvoiceToStep,
   addPOToStep,
   deleteLineItemRow,
+  filterAvailableInvoices,
   formatAmount,
   formatLineItemDate,
   formatShortIsoDate,
@@ -634,19 +635,7 @@ export function ProjectsForecastStageLineItemsSection({ stepId, stepName, myRole
                 }}
               >
                 {(() => {
-                  const q = invoiceSearch.trim().toLowerCase()
-                  const filtered = q
-                    ? availableInvoices.filter(
-                        (inv) =>
-                          inv.invoice_number.toLowerCase().includes(q) ||
-                          inv.supply_house_name.toLowerCase().includes(q) ||
-                          String(inv.amount).includes(q) ||
-                          inv.invoice_date.toLowerCase().includes(q) ||
-                          (inv.purchase_order_number?.toLowerCase().includes(q) ?? false) ||
-                          (q === 'paid' && inv.is_paid) ||
-                          (q === 'unpaid' && !inv.is_paid),
-                      )
-                    : availableInvoices
+                  const filtered = filterAvailableInvoices(availableInvoices, invoiceSearch)
                   if (filtered.length === 0) {
                     return (
                       <p style={{ padding: '1rem', color: 'var(--text-muted)', margin: 0 }}>

@@ -36,6 +36,7 @@ import {
   addInvoiceToStep,
   addPOToStep,
   deleteLineItemRow,
+  filterAvailableInvoices,
   formatAmount,
   formatLineItemDate,
   formatShortIsoDate,
@@ -46,6 +47,7 @@ import {
   loadSupplyHouseInvoiceOptions,
   normalizeUrl,
   saveLineItem,
+  type AvailableInvoiceOption,
   type LineItemRow,
 } from './projectsForecastStageLineItems'
 
@@ -260,5 +262,73 @@ describe('display helpers (copied from Workflow so the section matches)', () => 
     expect(formatShortIsoDate('2026-09-07T12:00:00')).toMatch(/^9\/7\/26$/)
     expect(formatShortIsoDate('')).toBe('—')
     expect(formatShortIsoDate(undefined)).toBe('—')
+  })
+})
+
+type Inv = Omit<AvailableInvoiceOption, 'due_date'>
+
+const searchInvoices: Inv[] = [
+  { id: 'a', invoice_number: 'INV-1001', supply_house_name: 'Ferguson', amount: 1250.5, invoice_date: '2026-09-07', is_paid: true, purchase_order_number: 'PO-77' },
+  { id: 'b', invoice_number: 'S-2040', supply_house_name: 'Moore Supply', amount: 85, invoice_date: '2026-08-15', is_paid: false, purchase_order_number: null },
+  { id: 'c', invoice_number: 'INV-1002', supply_house_name: 'Paid Rite Plumbing Supply', amount: -40, invoice_date: '2026-09-20', is_paid: false, purchase_order_number: 'PO-80' },
+]
+
+const invoiceIds = (query: string) => filterAvailableInvoices(searchInvoices, query).map((i) => i.id)
+
+describe('filterAvailableInvoices', () => {
+  it('lists every invoice for a blank search', () => {
+    expect(invoiceIds('')).toEqual(['a', 'b', 'c'])
+    expect(invoiceIds('   ')).toEqual(['a', 'b', 'c'])
+  })
+
+  it('finds by invoice number, whatever the case or the spaces around it', () => {
+    expect(invoiceIds('inv-100')).toEqual(['a', 'c'])
+    expect(invoiceIds('  S-2040 ')).toEqual(['b'])
+  })
+
+  it('finds by supply house', () => {
+    expect(invoiceIds('moore')).toEqual(['b'])
+  })
+
+  it('finds by PO number, and skips invoices that have none', () => {
+    expect(invoiceIds('po-8')).toEqual(['c'])
+    expect(invoiceIds('po-')).toEqual(['a', 'c'])
+  })
+
+  it('finds by invoice date as written', () => {
+    expect(invoiceIds('2026-09')).toEqual(['a', 'c'])
+    expect(invoiceIds('08-15')).toEqual(['b'])
+  })
+
+  it('finds by amount as the number prints — no thousands separator, no trailing zero', () => {
+    expect(invoiceIds('1250.5')).toEqual(['a'])
+    expect(invoiceIds('1,250')).toEqual([])
+    expect(invoiceIds('1250.50')).toEqual([])
+    expect(invoiceIds('-40')).toEqual(['c'])
+  })
+
+  it('“paid” picks the paid invoices, plus any whose text holds the word', () => {
+    // 'a' by its paid flag; 'c' is unpaid, but its supply house is "Paid Rite…".
+    expect(invoiceIds('paid')).toEqual(['a', 'c'])
+  })
+
+  it('“unpaid” picks the unpaid invoices and never the paid ones', () => {
+    expect(invoiceIds('unpaid')).toEqual(['b', 'c'])
+    expect(invoiceIds('UNPAID')).toEqual(['b', 'c'])
+  })
+
+  it('reads the two words only when they are the whole search', () => {
+    expect(invoiceIds('unpaid ferguson')).toEqual([])
+    expect(invoiceIds('pai')).toEqual(['c'])
+  })
+
+  it('is empty when nothing matches', () => {
+    expect(invoiceIds('zzz')).toEqual([])
+  })
+
+  it('hands back a new list and the same invoice objects', () => {
+    const all = filterAvailableInvoices(searchInvoices, '')
+    expect(all).not.toBe(searchInvoices)
+    expect(all[0]).toBe(searchInvoices[0])
   })
 })

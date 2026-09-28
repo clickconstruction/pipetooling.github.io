@@ -107,6 +107,36 @@ export async function loadFinalizedPOOptions(): Promise<{
   }
 }
 
+/**
+ * The search box on the Add Supply House Invoice picker (the Workflow page and
+ * the Forecast stage modal share it).
+ *
+ * A row matches when the text is found in its invoice number, supply house,
+ * amount, invoice date or PO number. The words `paid` and `unpaid` — typed
+ * whole, nothing else — also pick rows by their paid flag. (`unpaid` is never
+ * caught by `paid` here: the word has to be the entire search.)
+ */
+export function filterAvailableInvoices<
+  I extends Pick<
+    AvailableInvoiceOption,
+    'invoice_number' | 'supply_house_name' | 'amount' | 'invoice_date' | 'is_paid' | 'purchase_order_number'
+  >,
+>(invoices: ReadonlyArray<I>, query: string): I[] {
+  const q = query.trim().toLowerCase()
+  return q
+    ? invoices.filter(
+        (inv) =>
+          inv.invoice_number.toLowerCase().includes(q) ||
+          inv.supply_house_name.toLowerCase().includes(q) ||
+          String(inv.amount).includes(q) ||
+          inv.invoice_date.toLowerCase().includes(q) ||
+          (inv.purchase_order_number?.toLowerCase().includes(q) ?? false) ||
+          (q === 'paid' && inv.is_paid) ||
+          (q === 'unpaid' && !inv.is_paid),
+      )
+    : [...invoices]
+}
+
 export async function loadSupplyHouseInvoiceOptions(): Promise<{
   options: AvailableInvoiceOption[]
   error: string | null
