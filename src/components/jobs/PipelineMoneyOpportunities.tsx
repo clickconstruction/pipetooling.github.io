@@ -96,7 +96,11 @@ const badgeStyle: CSSProperties = {
 }
 
 /** The chip on line two (v2.3822): a door of its own. Red and amber are the desk's tones; `quiet` is a caveat, dashed. */
-function OpportunityChip({ label, tone = 'plain', title, onClick, testId }: { label: string; tone?: 'red' | 'amber' | 'plain' | 'quiet'; title?: string; onClick?: () => void; testId?: string }) {
+/**
+ * `fact` (v2.4054): the part of the chip that must never be cut. The label shrinks
+ * and takes the ellipsis; the fact keeps its width — "≈ J922 Michael Palmer (Ivan Ko… · 56% spent at 30% done".
+ */
+function OpportunityChip({ label, fact, tone = 'plain', title, onClick, testId }: { label: string; fact?: string; tone?: 'red' | 'amber' | 'plain' | 'quiet'; title?: string; onClick?: () => void; testId?: string }) {
   const c =
     tone === 'red'
       ? { bg: 'var(--bg-red-tint)', fg: 'var(--text-red-700)', bd: '#fecaca' }
@@ -119,14 +123,23 @@ function OpportunityChip({ label, tone = 'plain', title, onClick, testId }: { la
     maxWidth: '100%',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
+    ...(fact ? { display: 'inline-flex', alignItems: 'center', minWidth: 0 } : null),
   }
+  const body = fact ? (
+    <>
+      <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
+      <span style={{ flex: 'none' }}>{fact}</span>
+    </>
+  ) : (
+    label
+  )
   return onClick ? (
     <button type="button" onClick={onClick} title={title} style={style} data-testid={testId ?? 'opportunity-chip'} data-tone={tone}>
-      {label}
+      {body}
     </button>
   ) : (
     <span title={title} style={style} data-testid={testId ?? 'opportunity-chip'} data-tone={tone}>
-      {label}
+      {body}
     </span>
   )
 }
@@ -265,6 +278,9 @@ export function PipelineMoneyOpportunities({
                 {lienNotices.deadline ? (
                   <OpportunityChip label={lienNotices.deadline.label} tone={lienNotices.deadline.tone === 'gray' ? 'plain' : lienNotices.deadline.tone} title={lienNotices.deadline.hover} onClick={() => onOpenLienDesk(lienNotices.deadline!.pile)} testId="pipeline-lien-deadline-chip" />
                 ) : null}
+                {lienNotices.deadline?.who ? (
+                  <OpportunityChip label={lienNotices.deadline.who} tone="quiet" title={lienNotices.deadline.hover} onClick={() => onOpenLienDesk(lienNotices.deadline!.pile)} testId="pipeline-lien-who-chip" />
+                ) : null}
               </span>
             </OpportunityCard>
           ) : null}
@@ -284,7 +300,8 @@ export function PipelineMoneyOpportunities({
                 {burnAlert.worst.map((w) => (
                   <OpportunityChip
                     key={w.jobId}
-                    label={`${w.glyph} ${w.label} · ${Math.round(w.spentPct)}% spent at ${Math.round(w.pct)}% done`}
+                    label={`${w.glyph} ${w.label}`}
+                    fact={` · ${Math.round(w.spentPct)}% spent at ${Math.round(w.pct)}% done`}
                     tone="red"
                     title={`${w.footing === 'assumed' ? '≈ against an assumed budget — no bid or typed budget on the job. ' : w.footing === 'typed' ? '✎ against the budget typed on the job. ' : '◆ against the bid. '}Opens the job on its Costs tab.`}
                     onClick={() => onOpenBurnJob(w.jobId)}
