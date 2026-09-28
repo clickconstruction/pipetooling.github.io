@@ -18,11 +18,7 @@ import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import {
   deleteJobScheduleBlock,
   fetchJobScheduleBlocksForHubDateRange,
-  fetchScheduleBlocksForAssigneesOnDay,
-  insertJobScheduleBlock,
-  newJobScheduleSharedBlockGroupId,
   isScheduleBidAnchorId,
-  scheduleBlockAnchorFromId,
   scheduleBlockAnchorId,
   updateJobScheduleBlock,
   updateJobScheduleBlockGroup,
@@ -31,11 +27,7 @@ import {
 } from '../../lib/jobScheduleBlocks'
 import { buildLinkedGroupAccentMap } from '../../lib/scheduleDispatchLinkedGroupPalette'
 import { dispatchMinutesToHHmm, timeInputToPg } from '../../lib/dispatchAddBlockTime'
-import {
-  scheduleBlockToRange,
-  scheduleOverlapsAny,
-  scheduleTimeToMinutesFromMidnight,
-} from '../../lib/jobScheduleOverlap'
+import { scheduleTimeToMinutesFromMidnight } from '../../lib/jobScheduleOverlap'
 import {
   defaultNewBlockRangeInFirstGap,
   type AddBlockTimelineSegment,
@@ -79,13 +71,17 @@ import {
   fetchUsersTabRosterForScheduleDispatchHub,
   findDuplicateJobAddress,
   formatScheduleDispatchHubJobTitle,
-  parseHubPersonDayKey,
   type ScheduleDispatchHubBidRow,
   type ScheduleDispatchHubJobRow,
 } from '../../lib/scheduleDispatchHub'
 import { buildHourlyWageByUserId, hubWageLookupNames, type HubPayConfigWageRow } from '../../lib/scheduleDispatch/hubWages'
 import { buildHubBidPickerRows, filterHubJobPickerRows, hubJobPickerSubline } from '../../lib/scheduleDispatch/hubJobPicker'
-import { summarizeMultiCellAddResult } from '../../lib/scheduleDispatch/multiCellAdd'
+import {
+  MULTI_CELL_ADD_TIME_END,
+  MULTI_CELL_ADD_TIME_START,
+  addJobToHubCells,
+  summarizeMultiCellAddResult,
+} from '../../lib/scheduleDispatch/multiCellAdd'
 import {
   fetchJobSearchEvidence,
   jobSearchEvidenceModeForRole,
@@ -747,56 +743,13 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
         showToast('No cells selected.', 'info')
         return
       }
-      const rangeErr = validateScheduleDispatchBlockTimeRange('08:00', '16:00')
+      const rangeErr = validateScheduleDispatchBlockTimeRange(MULTI_CELL_ADD_TIME_START, MULTI_CELL_ADD_TIME_END)
       if (rangeErr) {
         showToast(rangeErr, 'error')
         return
       }
-      const ts = timeInputToPg('08:00')
-      const te = timeInputToPg('16:00')
-      const candidate = scheduleBlockToRange(ts, te)
-
-      let added = 0
-      let skippedOverlap = 0
-      let failed = 0
-
-      for (const key of selectionKeys) {
-        const parsed = parseHubPersonDayKey(key)
-        if (!parsed) {
-          failed++
-          continue
-        }
-        const { assigneeUserId, workDate } = parsed
-        const { data: dayBlocks, error: dayErr } = await fetchScheduleBlocksForAssigneesOnDay(
-          [assigneeUserId],
-          workDate,
-        )
-        if (dayErr) {
-          failed++
-          continue
-        }
-        if (scheduleOverlapsAny(candidate, dayBlocks, undefined)) {
-          skippedOverlap++
-          continue
-        }
-        const { error: insErr } = await insertJobScheduleBlock({
-          ...scheduleBlockAnchorFromId(targetJobId),
-          assignee_user_id: assigneeUserId,
-          work_date: workDate,
-          time_start: ts,
-          time_end: te,
-          note: null,
-          created_by: createdBy,
-          shared_block_group_id: newJobScheduleSharedBlockGroupId(),
-        })
-        if (insErr) {
-          failed++
-        } else {
-          added++
-        }
-      }
-
-      const summary = summarizeMultiCellAddResult({ added, skippedOverlap, failed })
+      const counts = await addJobToHubCells({ targetJobId, selectionKeys, createdBy })
+      const summary = summarizeMultiCellAddResult(counts)
       showToast(summary.message, summary.tone)
 
       setHubMultiCellAddActive(false)
