@@ -10,7 +10,7 @@
 
 import { emailLogStatusChip, type EmailLogStatusChip } from '../emailSendLog'
 import { GC_STATEMENT_EMAIL_TYPES } from '../gcStatementSendDedupe'
-import { sendChannelLabel, type RoundMarkRow } from './gcStatementRounds'
+import { markWordByline, sendChannelLabel, type RoundMarkRow } from './gcStatementRounds'
 
 /** A `gc_statement_emails` row for one GC (the columns the list reads). */
 export type GcStatementAppSendRow = {
@@ -77,6 +77,8 @@ export type GcStatementHistoryEntry = {
   /** App sends only: Resend delivery state as a chip; null when the log row is missing. */
   status: EmailLogStatusChip | null
   temperature: string | null
+  /** On a statement that also carries a read: whose read it is. Null when the row's "who" already says. */
+  wordBy: string | null
   expectedPayBy: string | null
   note: string | null
 }
@@ -103,7 +105,9 @@ export function buildGcStatementSendHistory(
       kind: m.action === 'contacted' ? 'spoke' : 'statement',
       lane: 'personal',
       laneLabel: statementLaneLabel('personal', m.channel),
-      who: m.acted_by_name || '—',
+      // A word names whose it is; a statement names whoever marked it sent, and its read keeps its own source.
+      who: m.action === 'contacted' ? markWordByline(m) : m.acted_by_name || '—',
+      wordBy: m.action === 'sent' && m.temperature && m.word_from_name?.trim() ? markWordByline(m) : null,
       recipient: null,
       total: null,
       status: null,
@@ -126,6 +130,7 @@ export function buildGcStatementSendHistory(
       total: Number.isFinite(e.total) ? e.total : null,
       status: log ? emailLogStatusChip(log.last_event) : null,
       temperature: null,
+      wordBy: null,
       expectedPayBy: null,
       note: null,
     })

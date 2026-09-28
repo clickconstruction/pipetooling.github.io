@@ -39,7 +39,16 @@ Structura · $48,000 · oldest 58d {{chip:green|✓ Checked}} {{chip:green|✓ S
 
 ## The word
 
-The word is the account man's read of the GC, and you can take it in any order — before the statement goes out or after. Tap {{button:outline|Word}}, pick **how** you heard and **their temperature**, write the sentence, and add the date they said they'd pay. A word written after the statement keeps the statement's day and how it went out; a statement sent after the word keeps the read, its sentence and the pay date.
+The word is the account man's read of the GC, and you can take it in any order — before the statement goes out or after. Tap {{button:outline|Word}}:
+
+1. **Whose word is this?** — the GC's account man is already picked. Change it to someone else, or to **Mine — I talked to Knight** when you reached the GC yourself.
+2. **How did you hear it from Malachi?** — {{chip:blue|Call}} {{chip:gray|Text}} {{chip:gray|In person}} {{chip:gray|Email}} {{chip:gray|Other}}.
+3. **Their temperature**, the sentence, and the date they said they'd pay.
+
+:::example What the record says
+{{chip:yellow|warm · Thu · Malachi}} — entered by Taunya. His read shows as his on the GC's header, the Temperature board and What went out; your name stays beside it as the person who wrote it down.
+:::
+ A word written after the statement keeps the statement's day and how it went out; a statement sent after the word keeps the read, its sentence and the pay date.
 
 ## Start round, from the Dashboard or the Pipeline
 
@@ -91,7 +100,7 @@ Under This week's GCs, the **Temperature board** lists every GC in the round, co
 Not every statement goes out in the round, or by email. If you texted a GC their statement, walked one over, or talked it through on a call, record it from the GC's group header: **Share → Mark sent…**. The same form opens (Text is preselected), and the mark counts everywhere a send counts — the last-sent pill, the week's progress, the Dashboard nudges. It works for any GC, including ones under $10,000 that never join a round.
 
 :::example What gets kept
-Every mark keeps **who** marked it, **when**, **how** it went out, and the **note** — for posterity. One mark per GC per week holds both the statement and the word; whichever you record second keeps the first.
+Every mark keeps **who** marked it, **when**, **how** it went out, and the **note** — and for the word, **whose** it is and who entered it — for posterity. One mark per GC per week holds both the statement and the word; whichever you record second keeps the first.
 :::
 
 ## Seeing what was sent before — "What went out"

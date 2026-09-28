@@ -152,6 +152,16 @@ const joinNotes = (first: string | null | undefined, second: string | null | und
   return parts.length > 0 ? [...new Set(parts)].join('\n') : null
 }
 
+/** Who a word came from and who typed it, as the form and the signed-in user give them. */
+export type RoundMarkWordInput = {
+  fromUserId: string | null
+  fromName: string
+  /** How the person entering it heard it; null when the source entered it. */
+  heardVia: StatementSendChannel | null
+  enteredBy: string | null
+  enteredByName: string
+}
+
 export type RoundMarkWrite = {
   action: RoundMarkAction
   channel: StatementSendChannel | string | null
@@ -160,6 +170,13 @@ export type RoundMarkWrite = {
   expected_pay_by: string | null
   /** Set when the statement's own day must stand (a word written over a sent mark); null = now. */
   acted_at: string | null
+  word_from_user_id: string | null
+  word_from_name: string | null
+  word_heard_via: string | null
+  word_entered_by: string | null
+  word_entered_by_name: string | null
+  /** The word's own day: now for a word written in this save, the old word's day when a send keeps it. */
+  word_at: string | null
 }
 
 /**
@@ -171,24 +188,61 @@ export type RoundMarkWrite = {
  * "Sent from the app" never crowds out a sentence. A skip is simply replaced.
  */
 export function mergeRoundMarkWrite(
-  existing: Pick<RoundMarkRow, 'action' | 'channel' | 'note' | 'temperature' | 'expected_pay_by' | 'acted_at'> | null,
-  incoming: { action: RoundMarkAction; channel?: StatementSendChannel | null; note?: string | null; temperature?: Temperature | null; expectedPayBy?: string | null },
+  existing:
+    | (Pick<RoundMarkRow, 'action' | 'channel' | 'note' | 'temperature' | 'expected_pay_by' | 'acted_at' | 'acted_by' | 'acted_by_name'> &
+        Partial<Pick<RoundMarkRow, 'word_from_user_id' | 'word_from_name' | 'word_heard_via' | 'word_entered_by' | 'word_entered_by_name' | 'word_at'>>)
+    | null,
+  incoming: {
+    action: RoundMarkAction
+    channel?: StatementSendChannel | null
+    note?: string | null
+    temperature?: Temperature | null
+    expectedPayBy?: string | null
+    word?: RoundMarkWordInput | null
+  },
+  nowIso = new Date().toISOString(),
 ): RoundMarkWrite {
   const note = incoming.note?.trim() || null
+  const noWord = { word_from_user_id: null, word_from_name: null, word_heard_via: null, word_entered_by: null, word_entered_by_name: null, word_at: null }
+  const skipped = incoming.action === 'skipped'
+  const carriesWord = !skipped && (incoming.action === 'contacted' || isTemperature(incoming.temperature))
+  const incomingWord = carriesWord
+    ? {
+        word_from_user_id: incoming.word?.fromUserId ?? null,
+        word_from_name: incoming.word?.fromName.trim() || null,
+        word_heard_via: incoming.word?.heardVia ?? null,
+        word_entered_by: incoming.word?.enteredBy ?? null,
+        word_entered_by_name: incoming.word?.enteredByName.trim() || null,
+        word_at: nowIso,
+      }
+    : noWord
   const plain: RoundMarkWrite = {
     action: incoming.action,
-    channel: incoming.action === 'skipped' ? null : (incoming.channel ?? 'email'),
-    note: incoming.action === 'skipped' ? null : note,
-    temperature: incoming.action === 'skipped' ? null : (incoming.temperature ?? null),
-    expected_pay_by: incoming.action === 'skipped' ? null : incoming.expectedPayBy || null,
+    channel: skipped ? null : (incoming.channel ?? 'email'),
+    note: skipped ? null : note,
+    temperature: skipped ? null : (incoming.temperature ?? null),
+    expected_pay_by: skipped ? null : incoming.expectedPayBy || null,
     acted_at: null,
+    ...incomingWord,
   }
-  if (!existing || incoming.action === 'skipped' || existing.action === 'skipped') return plain
+  if (!existing || skipped || existing.action === 'skipped') return plain
   if (incoming.action === 'contacted' && existing.action === 'sent') {
     return { ...plain, action: 'sent', channel: existing.channel ?? 'email', note: joinNotes(note, existing.note), acted_at: existing.acted_at }
   }
   if (incoming.action === 'sent' && markCarriesWord(existing) && !incoming.temperature) {
-    return { ...plain, note: joinNotes(existing.note, note), temperature: existing.temperature, expected_pay_by: plain.expected_pay_by ?? existing.expected_pay_by }
+    return {
+      ...plain,
+      note: joinNotes(existing.note, note),
+      temperature: existing.temperature,
+      expected_pay_by: plain.expected_pay_by ?? existing.expected_pay_by,
+      // The word keeps its own source and day. A word from before the columns was its marker's.
+      word_from_user_id: existing.word_from_user_id ?? (existing.word_from_name ? null : existing.acted_by),
+      word_from_name: existing.word_from_name ?? (existing.acted_by_name || null),
+      word_heard_via: existing.word_heard_via ?? null,
+      word_entered_by: existing.word_entered_by ?? existing.acted_by,
+      word_entered_by_name: existing.word_entered_by_name ?? (existing.acted_by_name || null),
+      word_at: existing.word_at ?? existing.acted_at,
+    }
   }
   return plain
 }

@@ -68,6 +68,28 @@ describe('latestTemperatureByGc', () => {
       mark('a', '2026-08-31', 'sent'),
       mark('a', '2026-08-31', 'contacted', { temperature: 'cold', acted_at: '2026-09-02T10:00:00Z', note: 'upset' }),
     ])
-    expect(m.get('a')).toEqual({ temperature: 'cold', at: '2026-09-02T10:00:00Z', by: 'Malachi', note: 'upset' })
+    expect(m.get('a')).toEqual({ temperature: 'cold', at: '2026-09-02T10:00:00Z', by: 'Malachi', enteredBy: null, note: 'upset' })
+  })
+
+  it('names whose read it is, who entered it, and the word’s own day', () => {
+    const m = latestTemperatureByGc([
+      mark('a', '2026-08-31', 'sent', { temperature: 'cool', acted_by_name: 'Taunya', acted_at: '2026-09-01T10:00:00Z', word_from_name: 'Malachi', word_entered_by_name: 'Taunya', word_at: '2026-09-03T09:00:00Z' }),
+    ])
+    expect(m.get('a')).toEqual({ temperature: 'cool', at: '2026-09-03T09:00:00Z', by: 'Malachi', enteredBy: 'Taunya', note: null })
+  })
+})
+
+describe('the board reads the word’s own source (punch list #49)', () => {
+  it('shows the account man’s read as his, with who entered it', () => {
+    const rows = buildTemperatureBoard({
+      groups: [group('a', 40000)],
+      marks: [mark('a', '2026-08-31', 'contacted', { temperature: 'warm', note: 'Check run is the 10th.', acted_by_name: 'Taunya', word_from_name: 'Malachi', word_entered_by_name: 'Taunya' })],
+      senders: new Map(),
+      accountMen: new Map(),
+      weekStarts: weeks,
+      threshold: 10000,
+    })
+    expect(rows[0]?.nowBy).toBe('Malachi — entered by Taunya')
+    expect(rows[0]?.lastWord?.by).toBe('Malachi — entered by Taunya')
   })
 })

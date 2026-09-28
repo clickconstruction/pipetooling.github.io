@@ -178,33 +178,83 @@ describe('markCarriesWord', () => {
   })
 })
 
+const NOW = '2026-09-25T18:00:00.000Z'
+const NO_WORD = { word_from_user_id: null, word_from_name: null, word_heard_via: null, word_entered_by: null, word_entered_by_name: null, word_at: null }
+const FROM_MALACHI = { fromUserId: 'u-malachi', fromName: 'Malachi', heardVia: 'call' as const, enteredBy: 'u-taunya', enteredByName: 'Taunya' }
+
 describe('mergeRoundMarkWrite', () => {
   it('writes a first mark as given', () => {
-    expect(mergeRoundMarkWrite(null, { action: 'sent', channel: 'text', note: ' Texted Dave ' })).toEqual({
+    expect(mergeRoundMarkWrite(null, { action: 'sent', channel: 'text', note: ' Texted Dave ' }, NOW)).toEqual({
       action: 'sent',
       channel: 'text',
       note: 'Texted Dave',
       temperature: null,
       expected_pay_by: null,
       acted_at: null,
+      ...NO_WORD,
+    })
+  })
+
+  it('a word keeps whose it is, how it was heard, who typed it and when', () => {
+    const out = mergeRoundMarkWrite(null, { action: 'contacted', channel: 'call', note: 'Warm — check run is the 10th.', temperature: 'warm', word: FROM_MALACHI }, NOW)
+    expect(out).toMatchObject({
+      action: 'contacted',
+      word_from_user_id: 'u-malachi',
+      word_from_name: 'Malachi',
+      word_heard_via: 'call',
+      word_entered_by: 'u-taunya',
+      word_entered_by_name: 'Taunya',
+      word_at: NOW,
+    })
+  })
+
+  it('a plain send names no source, even when the form offered one', () => {
+    expect(mergeRoundMarkWrite(null, { action: 'sent', channel: 'email', word: FROM_MALACHI }, NOW)).toMatchObject(NO_WORD)
+  })
+
+  it('a send after the word keeps the word’s source and its own day', () => {
+    const word = mark('a', 'contacted', { note: 'Cool.', temperature: 'cool', acted_at: '2026-09-22T15:00:00Z', word_from_user_id: 'u-malachi', word_from_name: 'Malachi', word_heard_via: 'call', word_entered_by: 'u-taunya', word_entered_by_name: 'Taunya', word_at: '2026-09-22T15:00:00Z' })
+    expect(mergeRoundMarkWrite(word, { action: 'sent', channel: 'email', note: APP_SEND_NOTE, word: { ...FROM_MALACHI, fromUserId: 'u-taunya', fromName: 'Taunya' } }, NOW)).toMatchObject({
+      action: 'sent',
+      temperature: 'cool',
+      word_from_user_id: 'u-malachi',
+      word_from_name: 'Malachi',
+      word_heard_via: 'call',
+      word_at: '2026-09-22T15:00:00Z',
+    })
+  })
+
+  it('a word from before the columns stays its marker’s when a send keeps it', () => {
+    const old = mark('a', 'contacted', { note: 'Warm.', temperature: 'warm', acted_by: 'u-malachi', acted_by_name: 'Malachi', acted_at: '2026-09-22T15:00:00Z' })
+    expect(mergeRoundMarkWrite(old, { action: 'sent', channel: 'email' }, NOW)).toMatchObject({
+      word_from_user_id: 'u-malachi',
+      word_from_name: 'Malachi',
+      word_entered_by: 'u-malachi',
+      word_at: '2026-09-22T15:00:00Z',
     })
   })
 
   it('a word written after the statement keeps it sent, on the day it went out', () => {
     const sent = mark('a', 'sent', { channel: 'email', note: APP_SEND_NOTE, acted_at: '2026-09-23T15:00:00Z' })
-    expect(mergeRoundMarkWrite(sent, { action: 'contacted', channel: 'call', note: 'Warm — check run is the 10th.', temperature: 'warm', expectedPayBy: '2026-10-10' })).toEqual({
+    expect(mergeRoundMarkWrite(sent, { action: 'contacted', channel: 'call', note: 'Warm — check run is the 10th.', temperature: 'warm', expectedPayBy: '2026-10-10', word: FROM_MALACHI }, NOW)).toEqual({
       action: 'sent',
       channel: 'email',
       note: 'Warm — check run is the 10th.',
       temperature: 'warm',
       expected_pay_by: '2026-10-10',
       acted_at: '2026-09-23T15:00:00Z',
+      word_from_user_id: 'u-malachi',
+      word_from_name: 'Malachi',
+      word_heard_via: 'call',
+      word_entered_by: 'u-taunya',
+      word_entered_by_name: 'Taunya',
+      word_at: NOW,
     })
   })
 
   it('a statement sent after the word keeps the read, its sentence and the pay date', () => {
     const word = mark('a', 'contacted', { channel: 'call', note: 'Cool — dodging the date.', temperature: 'cool', expected_pay_by: '2026-10-02' })
-    expect(mergeRoundMarkWrite(word, { action: 'sent', channel: 'email', note: APP_SEND_NOTE })).toEqual({
+    expect(mergeRoundMarkWrite(word, { action: 'sent', channel: 'email', note: APP_SEND_NOTE }, NOW)).toMatchObject({
       action: 'sent',
       channel: 'email',
       note: 'Cool — dodging the date.',
@@ -229,7 +279,7 @@ describe('mergeRoundMarkWrite', () => {
 
   it('a skip clears the mark, and a mark over a skip starts clean', () => {
     const word = mark('a', 'contacted', { note: 'Warm.', temperature: 'warm' })
-    expect(mergeRoundMarkWrite(word, { action: 'skipped' })).toEqual({ action: 'skipped', channel: null, note: null, temperature: null, expected_pay_by: null, acted_at: null })
+    expect(mergeRoundMarkWrite(word, { action: 'skipped' })).toEqual({ action: 'skipped', channel: null, note: null, temperature: null, expected_pay_by: null, acted_at: null, ...NO_WORD })
     expect(mergeRoundMarkWrite(mark('a', 'skipped'), { action: 'sent', channel: 'email' }).action).toBe('sent')
   })
 })
