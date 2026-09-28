@@ -1,7 +1,7 @@
 import type { ReleaseNote } from '../../lib/releaseNotes'
 
 const note: ReleaseNote = {
-  version: 'v2.4063',
+  version: 'v2.4068',
   date: '2026-09-28',
   title: 'Write up a change: pick a half-done write-up back up',
   kind: 'feature',
