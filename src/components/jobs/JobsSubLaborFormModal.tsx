@@ -77,6 +77,15 @@ import { LABOR_ASSIGNED_DELIMITER } from '../../lib/combinePeople'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 /**
+ * The sheet form's overlay stands where the app's modal shell stands (1100), above the phone
+ * dock (`DISPATCH_MODE_FOOTER_Z_INDEX`, 1000): at 50 the dock drew over the form's last 60 px on a
+ * phone, and Save sits there (v2.4073, punch list #30 — Taunya's phone walk). The dialogs the form
+ * opens on top of itself stand one step higher.
+ */
+const SHEET_FORM_Z = 1100
+const SHEET_FORM_INNER_Z = 1110
+
+/**
  * Imperative handle the parent (Jobs.tsx) uses to drive the always-mounted modal.
  * Form state lives inside this component and survives open/close, exactly as it
  * did when the modal was inline in Jobs.tsx.
@@ -1247,7 +1256,7 @@ function JobsSubLaborFormModalInner(
   return (
     <>
       {(laborModalOpen || editingLaborJob) && (
-        <div style={{ position: 'fixed', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
+        <div style={{ position: 'fixed', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: SHEET_FORM_Z }}>
           <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, width: 'min(400px, calc(100vw - 2rem))', maxWidth: '90vw', maxHeight: 'min(90vh, 100%)', overflow: 'auto' }}>
             <h2 style={{ marginTop: 0 }}>{editingLaborJob ? 'Edit Sub Labor' : 'New Sub Labor'}</h2>
             <form
@@ -2473,7 +2482,7 @@ function JobsSubLaborFormModalInner(
       )}
 
       {showAddSubcontractorModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: SHEET_FORM_INNER_Z }}>
           <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
             <h3 style={{ marginTop: 0 }}>Add Sub</h3>
             {addSubcontractorError && (
@@ -2548,7 +2557,7 @@ function JobsSubLaborFormModalInner(
       )}
 
       {laborEntryFormOpen && laborBookEntriesVersionId && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }} onClick={closeLaborEntryForm}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: SHEET_FORM_Z }} onClick={closeLaborEntryForm}>
           <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.5rem', minWidth: 360, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }} onClick={(e) => e.stopPropagation()}>
             <h3 style={{ margin: '0 0 1rem' }}>{editingLaborEntry ? 'Edit entry' : 'New entry'}</h3>
             {error && (
