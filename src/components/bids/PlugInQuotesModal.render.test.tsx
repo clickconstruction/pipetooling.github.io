@@ -7,7 +7,7 @@
  * pasted reply becomes lines matched against the bid's rows, with what could
  * not be matched said out loud; Save waits for a house and a savable line; the
  * save writes the quote, its lines and the price memory, then reports; a
- * failed save says so and reports nothing; a dropped file flows through the
+ * refused save says why and reports nothing; a dropped file flows through the
  * paste box, and one that cannot be read says so; and every way out calls
  * onClose.
  *
@@ -28,7 +28,14 @@ const state: {
   memory: Array<{ rows: Row[]; options: unknown }>
   /** supabase-js hands a refused write back as a plain object parsed from the response, not an Error. */
   quoteError: { message: string; code: string; details: string | null; hint: string | null } | null
-} = { quotes: [], lines: [], memory: [], quoteError: null }
+  /** Set to make the lines insert, the take-back delete or the price memory upsert fail. */
+  linesError: { message: string; code: string } | null
+  deleteError: { message: string; code: string } | null
+  memoryError: { message: string; code: string } | null
+  /** Quote ids handed out, and the ones taken back. */
+  quoteIds: string[]
+  deleted: string[]
+} = { quotes: [], lines: [], memory: [], quoteError: null, linesError: null, deleteError: null, memoryError: null, quoteIds: [], deleted: [] }
 
 const { fetchHouses } = vi.hoisted(() => ({
   fetchHouses: vi.fn<() => Promise<Array<{ id: string; name: string }>>>(),
@@ -48,15 +55,25 @@ vi.mock('../../lib/supabase', () => ({
               single: () => {
                 if (state.quoteError) return Promise.resolve({ data: null, error: state.quoteError })
                 state.quotes.push(row)
-                return Promise.resolve({ data: { id: 'q-new' }, error: null })
+                const id = `q-${state.quotes.length}`
+                state.quoteIds.push(id)
+                return Promise.resolve({ data: { id }, error: null })
               },
             }),
+          }),
+          delete: () => ({
+            eq: (_col: string, id: string) => {
+              if (state.deleteError) return Promise.resolve({ data: null, error: state.deleteError })
+              state.deleted.push(id)
+              return Promise.resolve({ data: null, error: null })
+            },
           }),
         }
       }
       if (table === 'bid_quote_lines') {
         return {
           insert: (rows: Row[]) => {
+            if (state.linesError) return Promise.resolve({ data: null, error: state.linesError })
             state.lines.push(rows)
             return Promise.resolve({ data: null, error: null })
           },
@@ -65,6 +82,7 @@ vi.mock('../../lib/supabase', () => ({
       if (table === 'supply_house_fixture_prices') {
         return {
           upsert: (rows: Row[], options: unknown) => {
+            if (state.memoryError) return Promise.resolve({ data: null, error: state.memoryError })
             state.memory.push({ rows, options })
             return Promise.resolve({ data: null, error: null })
           },
@@ -135,6 +153,11 @@ beforeEach(() => {
   state.lines = []
   state.memory = []
   state.quoteError = null
+  state.linesError = null
+  state.deleteError = null
+  state.memoryError = null
+  state.quoteIds = []
+  state.deleted = []
   fetchHouses.mockReset()
   fetchHouses.mockResolvedValue(HOUSES)
 })
@@ -165,10 +188,11 @@ describe('PlugInQuotesModal', () => {
     expect(screen.queryByText('pick a supply house…')).toBeNull()
   })
 
-  it('still opens, with an empty picker, when the supply house load fails', async () => {
-    fetchHouses.mockRejectedValue(new Error('network down'))
+  it('still opens, with an empty picker, when the supply house load fails — and says the list did not load', async () => {
+    fetchHouses.mockRejectedValue(new Error('supply_houses read refused'))
     await mountModal()
     expect(screen.getByRole('heading', { name: 'Plug in quotes' })).toBeTruthy()
+    expect(await screen.findByText('supply_houses read refused')).toBeTruthy()
     showHouseList()
     expect(await screen.findByText('No matches')).toBeTruthy()
   })
@@ -252,7 +276,7 @@ describe('PlugInQuotesModal', () => {
     // The priced line that sits on no fixture is left out of the quote.
     expect(state.lines).toHaveLength(1)
     const written = state.lines[0] ?? []
-    expect(written.map((l) => l.quote_id)).toEqual(['q-new', 'q-new', 'q-new'])
+    expect(written.map((l) => l.quote_id)).toEqual(['q-1', 'q-1', 'q-1'])
     expect(
       written.map((l) => ({
         fixture: l.fixture,
@@ -288,7 +312,7 @@ describe('PlugInQuotesModal', () => {
     expect(await screen.findByText('Quote saved — 3 lines from Ferguson.')).toBeTruthy()
   })
 
-  it('says a save failed, writes no lines and does not report saved', async () => {
+  it('says why a save was refused, writes no lines and does not report saved', async () => {
     state.quoteError = { message: 'new row violates row-level security policy', code: '42501', details: null, hint: null }
     const onSaved = vi.fn()
     const onClose = vi.fn()
@@ -298,8 +322,8 @@ describe('PlugInQuotesModal', () => {
     await waitFor(() => expect(saveButton().disabled).toBe(false))
 
     fireEvent.click(saveButton())
-    // The refusal arrives as a plain object, so the window says only that the save failed.
-    expect(await screen.findByText(/^Could not save/)).toBeTruthy()
+    // The refusal arrives as a plain object; the window still says why.
+    expect(await screen.findByText("You don't have permission to save the quote.")).toBeTruthy()
     // The window stays open on the same lines, ready for another try.
     await waitFor(() => expect(saveButton().disabled).toBe(false))
     expect(screen.getByText(/3 savable lines/)).toBeTruthy()
@@ -307,6 +331,79 @@ describe('PlugInQuotesModal', () => {
     expect(state.memory).toEqual([])
     expect(onSaved).not.toHaveBeenCalled()
     expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('hand-added lines keep their own keys after one is removed: typing fills one row, Remove removes one', async () => {
+    await mountModal()
+    const add = screen.getByRole('button', { name: '+ Add a line by hand' })
+    fireEvent.click(add)
+    fireEvent.click(add)
+    fireEvent.click(screen.getAllByRole('button', { name: 'Remove line' })[0]!)
+    fireEvent.click(add)
+    const prices = () => screen.getAllByPlaceholderText('0.00').map((el) => (el as HTMLInputElement).value)
+    expect(prices()).toEqual(['', ''])
+
+    fireEvent.change(screen.getAllByPlaceholderText('0.00')[0]!, { target: { value: '5.00' } })
+    expect(prices()).toEqual(['5.00', ''])
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Remove line' })[0]!)
+    expect(screen.getAllByRole('button', { name: 'Remove line' })).toHaveLength(1)
+    expect(prices()).toEqual([''])
+  })
+
+  it('lines that fail to save take the quote back, say why, and a retry saves one quote', async () => {
+    state.linesError = { message: 'value too long for type character varying(200)', code: '22001' }
+    const onSaved = vi.fn()
+    await mountModal({ onSaved })
+    await pickHouse('Ferguson')
+    pasteAndMatch(REPLY)
+    await waitFor(() => expect(saveButton().disabled).toBe(false))
+
+    fireEvent.click(saveButton())
+    expect(await screen.findByText('Failed to save the quote lines: value too long for type character varying(200)')).toBeTruthy()
+    expect(state.quoteIds).toEqual(['q-1'])
+    expect(state.deleted).toEqual(['q-1'])
+    expect(onSaved).not.toHaveBeenCalled()
+
+    state.linesError = null
+    await waitFor(() => expect(saveButton().disabled).toBe(false))
+    fireEvent.click(saveButton())
+    await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1))
+    // Two inserts, one taken back: one quote is left, with its lines.
+    expect(state.quoteIds).toEqual(['q-1', 'q-2'])
+    expect(state.deleted).toEqual(['q-1'])
+    expect(state.lines).toHaveLength(1)
+    expect(state.lines[0]?.every((l) => l.quote_id === 'q-2')).toBe(true)
+  })
+
+  it('when the take-back fails too, it says an empty quote was left', async () => {
+    state.linesError = { message: 'value too long for type character varying(200)', code: '22001' }
+    state.deleteError = { message: 'permission denied for table bid_quotes', code: '42501' }
+    await mountModal()
+    await pickHouse('Ferguson')
+    pasteAndMatch(REPLY)
+    await waitFor(() => expect(saveButton().disabled).toBe(false))
+    fireEvent.click(saveButton())
+    expect(await screen.findByText('An empty quote from Ferguson was left on the bid — its lines could not be saved.')).toBeTruthy()
+    expect(state.deleted).toEqual([])
+  })
+
+  it('a price memory that fails to update keeps the saved quote, says so, and closes', async () => {
+    state.memoryError = { message: 'deadlock detected', code: '40P01' }
+    const onSaved = vi.fn()
+    const onClose = vi.fn()
+    await mountModal({ onSaved, onClose })
+    await pickHouse('Ferguson')
+    pasteAndMatch(REPLY)
+    await waitFor(() => expect(saveButton().disabled).toBe(false))
+
+    fireEvent.click(saveButton())
+    await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1))
+    expect(onClose).toHaveBeenCalledTimes(1)
+    expect(await screen.findByText(/Ferguson's price memory did not update/)).toBeTruthy()
+    expect(state.quoteIds).toEqual(['q-1'])
+    expect(state.deleted).toEqual([])
+    expect(state.lines).toHaveLength(1)
   })
 
   it('reads a dropped file through the paste box, and says so when it cannot read one', async () => {

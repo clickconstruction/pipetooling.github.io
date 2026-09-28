@@ -1,5 +1,7 @@
 import { supabase } from './supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
+import { EMPTY_CARD_CHARGE_EXCLUSIONS, type CardChargeExclusions } from './jobs/cardChargeAllocationFilter'
+import { loadCardChargeExclusions } from './jobs/loadCardChargeExclusions'
 import {
   mercuryLinesFromRows,
   supplyInvoiceTotalFromRows,
@@ -15,8 +17,12 @@ import {
 // get_job computes the same parts cost; this file is the browser's reads around them.
 export {
   jobAccountSplitFromLines,
+  jobCardChargesCountedFromLines,
+  jobCardLineStatus,
+  jobCardLineStatusNote,
   mercuryCardTotalFromLines,
   tallyPartsTotalFromLines,
+  type JobCardLineStatus,
   type JobMaterialsCostSnapshot,
   type JobMercuryAllocLine,
   type JobSupplyInvoiceLine,
@@ -72,6 +78,17 @@ export async function fetchJobMaterialsCostSnapshot(jobId: string): Promise<JobM
     mercuryLines = []
   }
 
+  // The one card rule's lookups (Jobs → Job Summary's, v2.2692). Each degrades to "everything
+  // counts" on its own when RLS hides it; a throw here leaves the lines counted as before.
+  let cardExclusions: CardChargeExclusions = EMPTY_CARD_CHARGE_EXCLUSIONS
+  try {
+    cardExclusions = await loadCardChargeExclusions([
+      ...new Set(mercuryLines.map((l) => l.mercuryTransactionId).filter((id): id is string => !!id)),
+    ])
+  } catch {
+    cardExclusions = EMPTY_CARD_CHARGE_EXCLUSIONS
+  }
+
   let tallyLines: JobTallyPartLine[] = []
   let tallyFailed = false
   try {
@@ -91,6 +108,7 @@ export async function fetchJobMaterialsCostSnapshot(jobId: string): Promise<JobM
     supplyInvoiceLines: supplyLines,
     mercuryAllocLines: mercuryLines,
     mercuryFetchFailed: mercuryFailed,
+    cardExclusions,
     tallyPartLines: tallyLines,
     tallyFetchFailed: tallyFailed,
   }

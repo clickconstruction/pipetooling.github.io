@@ -12,7 +12,7 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'r
 
 import { parseFixtureSchedule, type ParsedScheduleLine } from '../../lib/submittals/parseFixtureSchedule'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { checkSupabaseError, formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 
@@ -124,11 +124,17 @@ export function PlugInScheduleModal({
   const [existingCount, setExistingCount] = useState(0)
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(false)
+  /**
+   * Why the read of what is already on the bid failed. Until it loads, pasting and saving are
+   * off: a save upserts on (bid, tag), so it could replace rows the estimator never saw.
+   */
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const fixtures = useMemo(() => rows.map((r) => ({ id: r.id, fixture: r.fixture })), [rows])
 
   const loadExisting = useCallback(async () => {
     setLoading(true)
+    setLoadError(null)
     try {
       const data = await withSupabaseRetry(
         () => supabase.from('bid_specified_products').select('tag, fixture, manufacturer, model, description').eq('bid_id', bidId).order('tag'),
@@ -137,9 +143,10 @@ export function PlugInScheduleModal({
       const list = (data ?? []) as ExistingRow[]
       setExistingCount(list.length)
       setDrafts(list.map(fromExisting))
-    } catch {
+    } catch (err) {
       setExistingCount(0)
       setDrafts([])
+      setLoadError(formatErrorMessage(err, "Couldn't load what is already on the bid."))
     } finally {
       setLoading(false)
     }
@@ -196,13 +203,13 @@ export function PlugInScheduleModal({
         created_by: user?.id ?? null,
         updated_at: new Date().toISOString(),
       }))
-      const { error } = await supabase.from('bid_specified_products').upsert(payload, { onConflict: 'bid_id,tag' })
-      if (error) throw error
+      const res = await supabase.from('bid_specified_products').upsert(payload, { onConflict: 'bid_id,tag' })
+      checkSupabaseError(res, 'save the specified products')
       showToast(`${ready.length} specified product${ready.length === 1 ? '' : 's'} saved on the bid.`, 'success')
       onSaved()
       onClose()
     } catch (e) {
-      showToast(`Could not save: ${e instanceof Error ? e.message : String(e)}`, 'error')
+      showToast(formatErrorMessage(e, 'Could not save the specified products.'), 'error')
     } finally {
       setSaving(false)
     }
@@ -234,10 +241,10 @@ export function PlugInScheduleModal({
           style={{ ...cellInput, fontFamily: 'ui-monospace, Menlo, monospace', fontSize: '0.75rem', resize: 'vertical' }}
         />
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <button type="button" onClick={match} disabled={!raw.trim()} style={{ padding: '0.4rem 0.85rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: raw.trim() ? 'pointer' : 'default', font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, opacity: raw.trim() ? 1 : 0.5 }}>
+          <button type="button" onClick={match} disabled={!raw.trim() || loading || loadError != null} style={{ padding: '0.4rem 0.85rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: raw.trim() ? 'pointer' : 'default', font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, opacity: raw.trim() ? 1 : 0.5 }}>
             Match to tags
           </button>
-          <button type="button" onClick={addBlank} style={{ padding: '0.4rem 0.7rem', background: 'var(--surface)', color: 'var(--text-base)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem' }}>
+          <button type="button" onClick={addBlank} disabled={loading || loadError != null} style={{ padding: '0.4rem 0.7rem', background: 'var(--surface)', color: 'var(--text-base)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem' }}>
             + Add a tag by hand
           </button>
           {skipped.length > 0 ? <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{skipped.length} header or blank line{skipped.length === 1 ? '' : 's'} skipped</span> : null}
@@ -245,6 +252,13 @@ export function PlugInScheduleModal({
 
         {loading ? (
           <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.8125rem' }}>Loading what is already on the bid…</p>
+        ) : loadError ? (
+          <div role="alert" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+            <p style={{ margin: 0, color: 'var(--text-red-700)', fontSize: '0.8125rem' }}>{loadError} Matching and saving are off until it loads, so nothing on the bid is replaced unseen.</p>
+            <button type="button" onClick={() => void loadExisting()} style={{ padding: '0.3rem 0.7rem', background: 'var(--surface)', color: 'var(--text-base)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem' }}>
+              Retry
+            </button>
+          </div>
         ) : drafts.length > 0 ? (
           <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '5.5rem 1.2fr 1fr 1.4fr 1.2fr 3rem 1.6rem', gap: '0.4rem', alignItems: 'center', padding: '0.3rem 0.6rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)', fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
@@ -283,7 +297,7 @@ export function PlugInScheduleModal({
           </span>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <button type="button" onClick={onClose} style={{ padding: '0.4rem 0.85rem', background: 'var(--surface)', color: 'var(--text-base)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem' }}>Cancel</button>
-            <button type="button" onClick={() => void save()} disabled={saving || drafts.length === 0} style={{ padding: '0.4rem 0.85rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: saving ? 'default' : 'pointer', font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, opacity: saving || drafts.length === 0 ? 0.6 : 1 }}>
+            <button type="button" onClick={() => void save()} disabled={saving || drafts.length === 0 || loading || loadError != null} style={{ padding: '0.4rem 0.85rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: saving ? 'default' : 'pointer', font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, opacity: saving || drafts.length === 0 ? 0.6 : 1 }}>
               {saving ? 'Saving…' : `Save ${drafts.filter((d) => d.tag).length} specified products`}
             </button>
           </div>

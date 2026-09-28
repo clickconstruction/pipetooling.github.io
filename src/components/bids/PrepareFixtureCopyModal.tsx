@@ -30,7 +30,7 @@ import { buildBidFixtureCountsText } from '../../lib/buildBidFixtureCountsText'
 import { AUDIT_PIN_PRIORITY } from '../../lib/specSectionAudit'
 import { SearchableSelect, type SearchableSelectOption } from '../SearchableSelect'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { checkSupabaseError, formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { fetchSupplyHousePickerRows } from '../../lib/supplyHousePickerRows'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
@@ -177,8 +177,11 @@ export function PrepareFixtureCopyModal({
         // Tier-2 #19 (J34-N2): quote-able houses only — insurers and payee-only vendors are hidden.
         const rows = await fetchSupplyHousePickerRows()
         if (!cancelled) setHouses(rows)
-      } catch {
-        if (!cancelled) setHouses([])
+      } catch (err) {
+        if (cancelled) return
+        setHouses([])
+        // An empty picker would read as "no supply houses" — say that the list did not load.
+        showToast(formatErrorMessage(err, "Couldn't load the supply houses — close this and open it again."), 'error')
       }
     })()
     return () => {
@@ -294,16 +297,16 @@ export function PrepareFixtureCopyModal({
     try {
       const existing = ruleRows.find((r) => r.match_kind === 'exact' && r.pattern.trim().toLowerCase() === name.toLowerCase())
       if (existing) {
-        const { error } = await supabase
+        const res = await supabase
           .from('spec_section_match_rules')
           .update({ section_code: sectionCode, priority: AUDIT_PIN_PRIORITY })
           .eq('id', existing.id)
-        if (error) throw error
+        checkSupabaseError(res, 'save the rule')
       } else {
-        const { error } = await supabase
+        const res = await supabase
           .from('spec_section_match_rules')
           .insert({ pattern: name, match_kind: 'exact', section_code: sectionCode, priority: AUDIT_PIN_PRIORITY })
-        if (error) throw error
+        checkSupabaseError(res, 'save the rule')
       }
       const rules = await withSupabaseRetry(
         () => supabase.from('spec_section_match_rules').select('id, pattern, match_kind, section_code, priority'),
@@ -316,7 +319,7 @@ export function PrepareFixtureCopyModal({
         return next
       })
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not save the rule.', 'error')
+      showToast(formatErrorMessage(err, 'Could not save the rule.'), 'error')
     } finally {
       setPinBusy(null)
     }
@@ -403,7 +406,7 @@ export function PrepareFixtureCopyModal({
   async function mintRfqRow(draft: NonNullable<typeof linkDraft>, state: RfqCopyLaneState) {
     if (!quoteLink || !rfqCopyLaneMayInsert(state)) return
     try {
-      const { error } = await supabase.from('bid_rfqs').insert({
+      const res = await supabase.from('bid_rfqs').insert({
         bid_id: quoteLink.bidId,
         bid_version_id: quoteLink.bidVersionId,
         supply_house_id: draft.houseId,
@@ -414,11 +417,11 @@ export function PrepareFixtureCopyModal({
         status: 'sent',
         created_by: authUser?.id ?? null,
       })
-      if (error) throw error
+      checkSupabaseError(res, 'save the price request')
     } catch (err) {
       setLane(rfqCopyLaneNext(state, 'insert_failed'))
       showToast(
-        `The link is on your clipboard but the request could not be saved — tap Save quote link to try again (same link). ${err instanceof Error ? err.message : ''}`.trim(),
+        `The link is on your clipboard but the request could not be saved — tap Save quote link to try again (same link). ${formatErrorMessage(err, '')}`.trim(),
         'error',
       )
       return

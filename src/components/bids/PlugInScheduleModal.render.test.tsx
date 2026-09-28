@@ -8,7 +8,7 @@
  * the `rows` prop's count rows; a pasted tag replaces the saved row of the
  * same tag; Save is disabled with no lines and upserts `bid_specified_products`
  * on (bid, tag) with the payload the lines build, then reports onSaved and
- * onClose; a refused save says so and reports neither.
+ * onClose; a refused save says why and reports neither.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
@@ -24,7 +24,9 @@ const state: {
   upserts: Array<{ rows: Array<Record<string, unknown>>; options: unknown }>
   /** supabase-js hands a refused write back as a plain object, not an Error. */
   upsertError: { message: string; code: string } | null
-} = { existing: [], reads: [], upserts: [], upsertError: null }
+  /** Set to make the read of what is already on the bid fail. */
+  readError: { message: string; code: string } | null
+} = { existing: [], reads: [], upserts: [], upsertError: null, readError: null }
 
 vi.mock('../../hooks/useAuth', () => ({
   useAuth: () => ({ user: { id: 'wendi', email: 'wendi@x.test' }, profileName: 'Wendi', role: 'estimator' }),
@@ -37,7 +39,7 @@ vi.mock('../../lib/supabase', () => ({
         eq: (column: string, value: string) => ({
           order: (orderBy: string) => {
             state.reads.push({ table, columns, column, value, orderBy })
-            return Promise.resolve({ data: state.existing, error: null })
+            return Promise.resolve(state.readError ? { data: null, error: state.readError } : { data: state.existing, error: null })
           },
         }),
       }),
@@ -66,6 +68,7 @@ const SCHEDULE = [
 beforeEach(() => {
   state.existing = []
   state.reads = []
+  state.readError = null
   state.upserts = []
   state.upsertError = null
 })
@@ -191,18 +194,39 @@ describe('PlugInScheduleModal', () => {
     expect(await screen.findByText('4 specified products saved on the bid.')).toBeTruthy()
   })
 
-  it('a refused save shows the error, keeps the window and its lines, and reports nothing', async () => {
+  it('a refused save says why, keeps the window and its lines, and reports nothing', async () => {
     state.upsertError = { message: 'new row violates row-level security policy', code: '42501' }
     const { onClose, onSaved } = await openModal()
     paste(SCHEDULE)
     fireEvent.click(screen.getByRole('button', { name: /^Save 3 specified products$/ }))
-    expect(await screen.findByText(/^Could not save:/)).toBeTruthy()
+    expect(await screen.findByText("You don't have permission to save the specified products.")).toBeTruthy()
     expect(state.upserts).toHaveLength(1)
     expect(onSaved).not.toHaveBeenCalled()
     expect(onClose).not.toHaveBeenCalled()
     // Still open, the lines intact, and Save can be pressed again.
     expect(valuesOf('Tag')).toEqual(['WC-1', 'LAV-1', 'ET-1'])
     await waitFor(() => expect((screen.getByRole('button', { name: /^Save 3 specified products$/ }) as HTMLButtonElement).disabled).toBe(false))
+  })
+
+  it('a read that fails says why, keeps matching and saving off so nothing is replaced unseen, and Retry reads again', async () => {
+    // A non-transient code, so the retry helper answers at once.
+    state.readError = { message: 'canceling statement due to lock timeout', code: 'P0001' }
+    state.existing = [{ tag: 'WC-1', fixture: 'Toilet', manufacturer: 'Kohler', model: 'K-4325', description: null }]
+    await renderSettled(<PlugInScheduleModal open onClose={vi.fn()} onSaved={vi.fn()} bidId="b359" bidLabel="BP359" rows={rows} />, {
+      loaded: () => screen.findByRole('alert'),
+    })
+    expect(screen.getByRole('alert').textContent).toContain("Couldn't load specified products: canceling statement due to lock timeout")
+    expect(screen.queryByText(/Nothing on the bid yet/)).toBeNull()
+    fireEvent.change(screen.getByPlaceholderText(/WATER CLOSET, WALL HUNG/), { target: { value: SCHEDULE } })
+    expect((screen.getByRole('button', { name: 'Match to tags' }) as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByRole('button', { name: '+ Add a tag by hand' }) as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByRole('button', { name: /^Save / }) as HTMLButtonElement).disabled).toBe(true)
+
+    state.readError = null
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    await waitFor(() => expect(valuesOf('Tag')).toEqual(['WC-1']))
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect((screen.getByRole('button', { name: 'Match to tags' }) as HTMLButtonElement).disabled).toBe(false)
   })
 
   it('Close, Cancel and a press on the backdrop each report onClose; a press inside the window does not', async () => {

@@ -64,7 +64,8 @@ import {
 } from '../lib/workflow/expectedDatesLinkage'
 import { planStepTransition, type StepLifecyclePlan } from '../lib/workflow/stepLifecycle'
 import { buildProjectSubRoster } from '../lib/workflow/projectSubRoster'
-import { WORKFLOW_ASSIGNABLE_USER_ROLES, buildWorkflowUserRoster, notifyAssignedDefaultsOnAssign, NOTIFY_ASSIGNED_ALL_ON } from '../lib/workflow/stepAssignment'
+import { notifyAssignedDefaultsOnAssign, NOTIFY_ASSIGNED_ALL_ON } from '../lib/workflow/stepAssignment'
+import { useWorkflowRoster } from '../hooks/useWorkflowRoster'
 import { StepCommitmentPanel } from '../components/workflow/StepCommitmentPanel'
 import { StepFormModal } from '../components/workflow/StepFormModal'
 import { PersonDisplayWithContact, type PersonContactInfo } from '../components/workflow/PersonDisplayWithContact'
@@ -87,6 +88,7 @@ export default function Workflow() {
   const navigate = useNavigate()
   const editProjectModal = useEditProjectModal()
   const { user: authUser } = useAuth()
+  const { userRole, currentUserName, roster, userNames, personContacts, subIdentity } = useWorkflowRoster(authUser?.id)
   const { showToast } = useToastContext()
   const [project, setProject] = useState<Project | null>(null)
   const [workflow, setWorkflow] = useState<Workflow | null>(null)
@@ -100,15 +102,10 @@ export default function Workflow() {
   const [setStartStep, setSetStartStep] = useState<{ step: Step; startDateTime: string } | null>(null)
   const [assignPersonStep, setAssignPersonStep] = useState<Step | null>(null)
   const [assignPersonFilter, setAssignPersonFilter] = useState('')
-  const [roster, setRoster] = useState<{ name: string; personId?: string | null }[]>([])
-  const [subIdentity, setSubIdentity] = useState<{ ids: Set<string>; namesLower: Set<string> }>({ ids: new Set(), namesLower: new Set() })
   const [commitmentsByStep, setCommitmentsByStep] = useState<Record<string, StepCommitmentRow[]>>({})
   const [commitmentPaymentsByLaborJobId, setCommitmentPaymentsByLaborJobId] = useState<Record<string, Array<{ amount: number }>>>({})
-  const [currentUserName, setCurrentUserName] = useState<string | null>(null)
   const [userSubscriptions, setUserSubscriptions] = useState<Record<string, { notify_when_started: boolean; notify_when_complete: boolean; notify_when_reopened: boolean }>>({})
   const [stepActions, setStepActions] = useState<Record<string, StepAction[]>>({})
-  const [personContacts, setPersonContacts] = useState<Record<string, { email: string | null; phone: string | null }>>({})
-  const [userNames, setUserNames] = useState<Set<string>>(new Set())
   const [personContactModal, setPersonContactModal] = useState<PersonContactInfo | null>(null)
   const [expectedDatesStep, setExpectedDatesStep] = useState<{
     step: Step
@@ -123,7 +120,6 @@ export default function Workflow() {
   const [templates, setTemplates] = useState<{ id: string; name: string }[]>([])
   const [selectedTemplateId, setSelectedTemplateId] = useState('')
   const [creatingFromTemplate, setCreatingFromTemplate] = useState(false)
-  const [userRole, setUserRole] = useState<'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'helpers' | 'superintendent' | null>(null)
   const [lineItems, setLineItems] = useState<Record<string, LineItem[]>>({})
   const [editingLineItem, setEditingLineItem] = useState<{
     stepId: string
@@ -583,100 +579,6 @@ export default function Workflow() {
       setTemplates((data as { id: string; name: string }[]) ?? [])
     })()
   }, [])
-
-  useEffect(() => {
-    if (!authUser?.id) return
-    ;(async () => {
-      // Load user role and name
-      const { data: userData } = await supabase
-        .from('users')
-        .select('role, name, email')
-        .eq('id', authUser.id)
-        .single()
-      if (userData) {
-        setUserRole((userData as { role: 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'helpers' | 'superintendent' }).role)
-        const userName = (userData as { name: string | null; email: string | null }).name || (userData as { name: string | null; email: string | null }).email
-        setCurrentUserName(userName)
-      }
-
-      const role = (userData as { role: string } | null)?.role
-      let peopleRes: { data: { id: string; name: string; email: string | null; phone: string | null; kind: string }[] | null }
-      type WorkflowUserRead = { name: string | null; email: string | null; role: string | null; archived_at: string | null; is_digital_twin: boolean | null }
-      let usersRes: { data: WorkflowUserRead[] | null }
-
-      // One users read for every viewer (J31-N3, v2.2900): the superintendent
-      // branch used to fetch only sub/helper/primary, so every office assignee
-      // rendered "(not a user)" and could not be picked. The role list is the
-      // shared kernel's; RLS trims what each viewer may actually see.
-      const usersQuery = supabase
-        .from('users')
-        .select('name, email, role, archived_at, is_digital_twin')
-        .in('role', WORKFLOW_ASSIGNABLE_USER_ROLES as Database['public']['Enums']['user_role'][])
-      if (role === 'superintendent') {
-        const { data: adopted } = await supabase
-          .from('master_superintendents')
-          .select('master_id')
-          .eq('superintendent_id', authUser.id)
-        const adoptedMasterIds = (adopted ?? []).map((r) => r.master_id)
-        ;[peopleRes, usersRes] = await Promise.all([
-          adoptedMasterIds.length > 0
-            ? supabase.from('people').select('id, name, email, phone, kind').is('archived_at', null).in('master_user_id', adoptedMasterIds).order('name')
-            : { data: [] as { id: string; name: string; email: string | null; phone: string | null; kind: string }[] },
-          usersQuery,
-        ])
-      } else {
-        ;[peopleRes, usersRes] = await Promise.all([
-          supabase.from('people').select('id, name, email, phone, kind').is('archived_at', null).eq('master_user_id', authUser.id).order('name'),
-          usersQuery,
-        ])
-      }
-      const fromPeople = (peopleRes.data as { id: string; name: string; email: string | null; phone: string | null; kind: string }[] | null) ?? []
-      const fromUsers = (usersRes.data as WorkflowUserRead[] | null) ?? []
-      // Picker offers active accounts only (twins/archived drop out, #19);
-      // userNames keeps every readable account so no held step looks like a ghost.
-      const { roster: activeUsers, userNamesLower } = buildWorkflowUserRoster(fromUsers)
-      // people-sourced entries carry their roster id so assignment can write
-      // assigned_person_id explicitly (users-sourced entries resolve server-side)
-      const rosterEntries = [
-        ...activeUsers.filter((r): r is WorkflowUserRead & { name: string } => !!r.name).map((r) => ({ name: r.name, personId: null as string | null })),
-        ...fromPeople.filter((r) => !!r.name).map((r) => ({ name: r.name, personId: r.id })),
-      ].sort((a, b) => a.name.localeCompare(b.name))
-      setRoster(rosterEntries)
-      setUserNames(userNamesLower)
-      
-      // Build contact map
-      const contacts: Record<string, { email: string | null; phone: string | null }> = {}
-      fromPeople.forEach((p) => {
-        if (p.name) {
-          contacts[p.name] = { email: p.email, phone: p.phone }
-        }
-      })
-      fromUsers.forEach((u) => {
-        if (u.name) {
-          // Only set if not already set (people take precedence)
-          if (!contacts[u.name]) {
-            contacts[u.name] = { email: u.email, phone: null }
-          }
-        }
-      })
-      setPersonContacts(contacts)
-
-      // Sub identity for the header "Subs" strip: roster ids of kind='sub'
-      // plus subcontractor-role login names (person-id first, name fallback).
-      const subIds = new Set<string>()
-      const subNamesLower = new Set<string>()
-      fromPeople.forEach((p) => {
-        if (p.kind === 'sub') {
-          subIds.add(p.id)
-          if (p.name) subNamesLower.add(p.name.trim().toLowerCase())
-        }
-      })
-      fromUsers.forEach((u) => {
-        if (u.role === 'subcontractor' && u.name) subNamesLower.add(u.name.trim().toLowerCase())
-      })
-      setSubIdentity({ ids: subIds, namesLower: subNamesLower })
-    })()
-  }, [authUser?.id])
 
   async function refreshSteps(): Promise<string | null> {
     let workflowId: string | null = workflow?.id ?? null

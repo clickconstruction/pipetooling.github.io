@@ -376,6 +376,13 @@ describe('PrepareFixtureCopyModal', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
+  it('a supply house list that cannot load says so instead of showing an empty picker', async () => {
+    mocks.fetchHouses.mockImplementationOnce(() => Promise.reject(new Error('supply_houses read refused')))
+    await mountLoaded({ quoteLink: QUOTE_LINK })
+    expect(await screen.findByText('supply_houses read refused')).toBeTruthy()
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Copy with quote link' }).disabled).toBe(true)
+  })
+
   it('a ledger that cannot load says so and still copies the flat list', async () => {
     state.rulesError = { message: 'permission denied for table spec_section_match_rules', code: '42501' } satisfies ResultError
     const { onClose } = await mountLoaded({}, () => screen.findByRole('button', { name: 'Copy the flat list anyway' }))
