@@ -138,7 +138,7 @@ import {
   breakOffPrefillAmountStringFromJob,
   unallocatedBillableDollars,
 } from '../../lib/jobs/jobFormBreakOff'
-import { ensureRemainderResyncOutcome } from '../../lib/jobs/ensureRtbRemainderResult'
+import { draftInvoiceErrorMessage, linkFixturesToInvoiceByPositions, writeDraftInvoice } from '../../lib/jobs/draftInvoiceWrite'
 import type {
   FixtureRow,
   JobFormServiceType,
@@ -2646,49 +2646,28 @@ export default function JobFormModal({
       await flushBillingAutosave()
       const positions = selectedSegmentSequencePositions(fixturesNow, selection)
       const linkedRowIds = new Set(linkableSelectedIds(fixturesNow, selection))
+      const jobId = editing.id
       const nextOrder = (editing.invoices ?? []).length
-      const { data: created, error: insErr } = await supabase
-        .from('jobs_ledger_invoices')
-        .insert({
-          job_id: editing.id,
-          amount: netDollars,
-          status: 'ready_to_bill',
-          sequence_order: nextOrder,
-          estimated_bill_date: null,
-          is_primary_rtb_bundle: false,
-        })
-        .select('id')
-        .single()
-      if (insErr) throw insErr
-      const newInvoiceId = (created as { id: string }).id
-      if (positions.length > 0) {
-        const { error: linkErr } = await supabase
-          .from('jobs_ledger_fixtures')
-          .update({ invoice_id: newInvoiceId })
-          .eq('job_id', editing.id)
-          .in('sequence_order', positions)
-        if (linkErr) throw linkErr
-      }
-      // Mirror the links into local state so the next delete+reinsert keeps
-      // them (the refetch below re-hydrates editing, not the fixtures state).
-      setFixtures((prev) => prev.map((r) => (linkedRowIds.has(r.id) ? { ...r, invoice_id: newInvoiceId } : r)))
-      // The invoice above is already written — a failed remainder re-sync must
-      // not read as a failed create (it did for Taunya on job 978: the RPC's
-      // zero-remainder envelope surfaced as "Nothing left to bill" with a
-      // stale screen while her invoice existed). Refetch either way; report a
-      // real re-sync failure alongside the created invoice, not instead of it.
-      let ensureFailure: string | null = null
-      if (editing.status === 'ready_to_bill') {
-        const raw = await withSupabaseRetry(
-          () =>
-            supabase.rpc('ensure_single_ready_to_bill_invoice_for_job', {
-              p_job_id: editing.id,
-            }),
-          'ensure RTB remainder after segment invoice'
-        )
-        const outcome = ensureRemainderResyncOutcome(raw)
-        if (!outcome.ok) ensureFailure = outcome.error
-      }
+      // The invoice is written before the re-sync runs — a failed remainder
+      // re-sync must not read as a failed create (it did for Taunya on job 978:
+      // the RPC's zero-remainder envelope surfaced as "Nothing left to bill"
+      // with a stale screen while her invoice existed). Refetch either way;
+      // report a real re-sync failure alongside the created invoice, not
+      // instead of it.
+      const { invoiceId: newInvoiceId, ensureFailure } = await writeDraftInvoice(supabase, {
+        jobId,
+        amount: netDollars,
+        sequenceOrder: nextOrder,
+        jobStatus: editing.status,
+        resyncLabel: 'ensure RTB remainder after segment invoice',
+        afterInsert: async (invoiceId) => {
+          const { error: linkErr } = await linkFixturesToInvoiceByPositions(supabase, { jobId, invoiceId, positions })
+          if (linkErr) throw linkErr
+          // Mirror the links into local state so the next delete+reinsert keeps
+          // them (the refetch below re-hydrates editing, not the fixtures state).
+          setFixtures((prev) => prev.map((r) => (linkedRowIds.has(r.id) ? { ...r, invoice_id: invoiceId } : r)))
+        },
+      })
       const found = await fetchJobWithDetailsById(editing.id)
       if (found) {
         setEditing(found)
@@ -2707,10 +2686,7 @@ export default function JobFormModal({
       }
       return newInvoiceId
     } catch (e: unknown) {
-      const err = e as { message?: string; details?: string; hint?: string }
-      const msg = err?.message || 'Failed to create invoice from segments'
-      const extra = [err?.details, err?.hint].filter(Boolean).join(' ')
-      setError(extra ? `${msg}. ${extra}` : msg)
+      setError(draftInvoiceErrorMessage(e, 'Failed to create invoice from segments'))
       return null
     } finally {
       setCreatingSegmentInvoice(false)
@@ -2819,62 +2795,39 @@ export default function JobFormModal({
       // match this fixtures array, same contract as the segment-select path.
       const fixturesNow = autosaveFixturesRef.current
       const segmentMatch = exactSingleSegmentMatchForAmount(fixturesNow, segmentCoverage, amountToUseCents)
+      const jobId = editing.id
       const nextOrder = (editing.invoices ?? []).length
-      const { data: created, error: err } = await supabase
-        .from('jobs_ledger_invoices')
-        .insert({
-          job_id: editing.id,
-          amount: amountToUse,
-          status: 'ready_to_bill',
-          sequence_order: nextOrder,
-          estimated_bill_date: null,
-          is_primary_rtb_bundle: false,
-        })
-        .select('id')
-        .single()
-      if (err) throw err
-      const newInvoiceId = (created as { id: string }).id
-      if (segmentMatch) {
-        const positions = selectedSegmentSequencePositions(fixturesNow, new Set([segmentMatch.fixtureId]))
-        const { error: linkErr } =
-          positions.length > 0
-            ? await supabase
-                .from('jobs_ledger_fixtures')
-                .update({ invoice_id: newInvoiceId })
-                .eq('job_id', editing.id)
-                .in('sequence_order', positions)
-            : { error: null }
-        if (linkErr) {
-          // The invoice itself is fine — it just bills as an unlinked dollar
-          // carve (whole-job prorated lines), exactly as before this feature.
-          showToast(
-            `Invoice created, but it could not be attached to "${segmentMatch.label}" — the bill will list all line items prorated.`,
-            'error',
-          )
-        } else {
-          setFixtures((prev) =>
-            prev.map((r) => (r.id === segmentMatch.fixtureId ? { ...r, invoice_id: newInvoiceId } : r)),
-          )
-          showToast(
-            `Billed as "${segmentMatch.label}" — the amount matched that stage exactly, so the bill lists just that line.`,
-            'success',
-          )
-        }
-      }
-      // Invoice already written — a failed remainder re-sync is reported, not
-      // treated as a failed create (fully-allocated envelopes are success).
-      let ensureFailure: string | null = null
-      if (editing.status === 'ready_to_bill') {
-        const raw = await withSupabaseRetry(
-          () =>
-            supabase.rpc('ensure_single_ready_to_bill_invoice_for_job', {
-              p_job_id: editing.id,
-            }),
-          'ensure RTB remainder after partial invoice'
-        )
-        const outcome = ensureRemainderResyncOutcome(raw)
-        if (!outcome.ok) ensureFailure = outcome.error
-      }
+      // Invoice already written when the re-sync runs — a failed remainder
+      // re-sync is reported, not treated as a failed create (fully-allocated
+      // envelopes are success).
+      const { ensureFailure } = await writeDraftInvoice(supabase, {
+        jobId,
+        amount: amountToUse,
+        sequenceOrder: nextOrder,
+        jobStatus: editing.status,
+        resyncLabel: 'ensure RTB remainder after partial invoice',
+        afterInsert: async (newInvoiceId) => {
+          if (!segmentMatch) return
+          const positions = selectedSegmentSequencePositions(fixturesNow, new Set([segmentMatch.fixtureId]))
+          const { error: linkErr } = await linkFixturesToInvoiceByPositions(supabase, { jobId, invoiceId: newInvoiceId, positions })
+          if (linkErr) {
+            // The invoice itself is fine — it just bills as an unlinked dollar
+            // carve (whole-job prorated lines), exactly as before this feature.
+            showToast(
+              `Invoice created, but it could not be attached to "${segmentMatch.label}" — the bill will list all line items prorated.`,
+              'error',
+            )
+          } else {
+            setFixtures((prev) =>
+              prev.map((r) => (r.id === segmentMatch.fixtureId ? { ...r, invoice_id: newInvoiceId } : r)),
+            )
+            showToast(
+              `Billed as "${segmentMatch.label}" — the amount matched that stage exactly, so the bill lists just that line.`,
+              'success',
+            )
+          }
+        },
+      })
       const found = await fetchJobWithDetailsById(editing.id)
       if (found) {
         setEditing(found)
@@ -2889,10 +2842,7 @@ export default function JobFormModal({
         setError(`Invoice created, but the remainder draft did not re-sync: ${ensureFailure}`)
       }
     } catch (e: unknown) {
-      const err = e as { message?: string; details?: string; hint?: string }
-      const msg = err?.message || 'Failed to create invoice'
-      const extra = [err?.details, err?.hint].filter(Boolean).join(' ')
-      setError(extra ? `${msg}. ${extra}` : msg)
+      setError(draftInvoiceErrorMessage(e, 'Failed to create invoice'))
     } finally {
       setCreatingInvoice(false)
     }
@@ -2937,39 +2887,23 @@ export default function JobFormModal({
         ? `Biohazard remediation fee — incident ${m[2]}/${m[3]}/${m[1]}`
         : 'Biohazard remediation fee'
       const nextOrder = invoices.length
-      const { data: created, error: insErr } = await supabase
-        .from('jobs_ledger_invoices')
-        .insert({
-          job_id: editing.id,
-          amount: fee,
-          status: 'ready_to_bill',
-          sequence_order: nextOrder,
-          estimated_bill_date: null,
-          is_primary_rtb_bundle: false,
-          stripe_invoice_memo: memo,
-        })
-        .select('id')
-        .single()
-      if (insErr) throw insErr
-      const newInvoiceId = (created as { id: string }).id
-      const linkRes = await linkHazmatFeeIncidentToInvoice(row.id, newInvoiceId)
-      if (!linkRes.ok) {
-        throw new Error(linkRes.error ?? 'Fee invoice created, but linking the incident to it failed')
-      }
-      // Fee invoice + link already written — fully-allocated envelopes are
-      // success; only a real re-sync failure is surfaced (after the refetch).
-      let ensureFailure: string | null = null
-      if (editing.status === 'ready_to_bill') {
-        const raw = await withSupabaseRetry(
-          () =>
-            supabase.rpc('ensure_single_ready_to_bill_invoice_for_job', {
-              p_job_id: editing.id,
-            }),
-          'ensure RTB remainder after fee split'
-        )
-        const outcome = ensureRemainderResyncOutcome(raw)
-        if (!outcome.ok) ensureFailure = outcome.error
-      }
+      // Fee invoice + link already written when the re-sync runs —
+      // fully-allocated envelopes are success; only a real re-sync failure is
+      // surfaced (after the refetch).
+      const { invoiceId: newInvoiceId, ensureFailure } = await writeDraftInvoice(supabase, {
+        jobId: editing.id,
+        amount: fee,
+        sequenceOrder: nextOrder,
+        memo,
+        jobStatus: editing.status,
+        resyncLabel: 'ensure RTB remainder after fee split',
+        afterInsert: async (invoiceId) => {
+          const linkRes = await linkHazmatFeeIncidentToInvoice(row.id, invoiceId)
+          if (!linkRes.ok) {
+            throw new Error(linkRes.error ?? 'Fee invoice created, but linking the incident to it failed')
+          }
+        },
+      })
       const found = await fetchJobWithDetailsById(editing.id)
       if (found) {
         setEditing(found)
@@ -2991,10 +2925,7 @@ export default function JobFormModal({
         bill_to_phone: null,
       })
     } catch (e: unknown) {
-      const err = e as { message?: string; details?: string; hint?: string }
-      const msg = err?.message || 'Failed to split the fee to its own invoice'
-      const extra = [err?.details, err?.hint].filter(Boolean).join(' ')
-      setError(extra ? `${msg}. ${extra}` : msg)
+      setError(draftInvoiceErrorMessage(e, 'Failed to split the fee to its own invoice'))
     } finally {
       setBillingFeeSeparatelyId(null)
     }
