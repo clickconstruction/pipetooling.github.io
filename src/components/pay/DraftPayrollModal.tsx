@@ -16,6 +16,7 @@ import {
   sumPayStubDeductionAmounts,
 } from '../../lib/payStubDeductions'
 import { draftPayrollRowCashDue } from '../../lib/draftPayrollPreviewCost'
+import { peopleMissingPayReports } from '../../lib/pay/missingPayReports'
 import { PayStubDeleteIcon } from './PayStubDeleteIcon'
 import { isoWeekNumberFromGregorianYmd, localCalendarDayKey, ymdAddDays } from '../../utils/dateUtils'
 
@@ -247,11 +248,7 @@ export function DraftPayrollModal({
     if (estGross > 0) return sum + estGross
     return sum
   }, 0)
-  const bulkMissingCount = peopleNames.filter((person) => {
-    const stub = payStubs.find((s) => s.person_name === person && s.period_start <= end && s.period_end >= start)
-    const estGross = days.reduce((s, d) => s + getCostForPersonDate(person, d), 0)
-    return estGross > 0 && !stub
-  }).length
+  const bulkMissingCount = peopleMissingPayReports({ people: peopleNames, payStubs, start, end, days, costForPersonDate: getCostForPersonDate }).length
 
   const filteredPeople =
     showZeroHours
@@ -553,7 +550,7 @@ export function DraftPayrollModal({
                   </button>
                 ) : null}
                 <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-                  {bulkMissingCount === 0 ? 'No one needs a report for this period.' : `${bulkMissingCount} with hours and no report yet`}
+                  {bulkMissingCount === 0 ? 'No one needs a report for this period.' : `${bulkMissingCount} with pay due and no report yet`}
                 </span>
               </div>
               {/* T5-03 (J7-9): the pointer across the Draft Payroll → Tally seam, once every report exists. */}
