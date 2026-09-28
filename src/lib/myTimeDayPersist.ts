@@ -20,6 +20,7 @@ import {
   attachAllocationsToPayloads,
   coalescedMixedClusterPartitionForSave,
   mixedClusterSegmentsAllowPerRowPersist,
+  orderedSegmentsFollowTheirRows,
   myTimeClusterPersistRpcMetadataUserMessage,
 } from './myTimeDaySavePlan'
 import {
@@ -27,7 +28,6 @@ import {
   CLUSTER_CONTIGUITY_EPS_MS,
   clusterIsHomogeneousJobBid,
   clusterSharesClockSessionClusterRpcMetadata,
-  everySegmentAssignablePerRowOrdered,
   segmentContainedInRow,
   sessionClusterId,
   sessionRowIntervalMs,
@@ -235,7 +235,7 @@ export async function persistMyTimeDayDirtyClusters({
       await runSplitCluster(c.map((s) => s.id), payloads.map(stripJobBidForSegmentRpc))
     } else if (mixedClusterSegmentsAllowPerRowPersist(c, split, nowTick)) {
       const useOrderedRowSegment =
-        everySegmentAssignablePerRowOrdered(c, split, nowTick) && payloads.length === c.length
+        orderedSegmentsFollowTheirRows(c, split, nowTick) && payloads.length === c.length
       if (useOrderedRowSegment) {
         for (let rowIdx = 0; rowIdx < c.length; rowIdx++) {
           const row = c[rowIdx]!

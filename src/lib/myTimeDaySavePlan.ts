@@ -340,7 +340,41 @@ export function everySegmentFullyInsideSomeRow(
   return true
 }
 
-/** Mixed punch/salary: per-row persist when each segment fits some old row interval, or one segment per row in order inside the cluster hull (seam slides). */
+/**
+ * One part per row, in order, where part i is still row i: it shares time with row i, and a job
+ * chosen for it is row i's own. Only then may a save write part i onto row i (the seams slid).
+ *
+ * A split inside one row plus a merge across two others also leaves one part per row, but the
+ * parts no longer line up with the rows: writing them row by row moved one job's hours onto time
+ * that was another job's, and dropped the job chosen for the merged part (MY_TIME_DAY_EDITOR_MODAL
+ * map, quirk 25). Those saves go to the replace / partition paths instead.
+ */
+export function orderedSegmentsFollowTheirRows(
+  c: DayEditorSession[],
+  split: SplitEditorState,
+  nowMs: number,
+  eps: number = CLUSTER_CONTIGUITY_EPS_MS
+): boolean {
+  if (!everySegmentAssignablePerRowOrdered(c, split, nowMs, eps)) return false
+  for (let i = 0; i < c.length; i++) {
+    const row = c[i]!
+    const { lo, hi } = sessionRowIntervalMs(row, nowMs)
+    const segLo = split.boundaries[i]!
+    const segHi = split.boundaries[i + 1]!
+    if (Math.min(segHi, hi) - Math.max(segLo, lo) <= eps) return false
+    const chosen = split.segmentJobOverrides?.[i]
+    if (
+      chosen &&
+      ((chosen.job_ledger_id ?? null) !== (row.job_ledger_id ?? null) ||
+        (chosen.bid_id ?? null) !== (row.bid_id ?? null))
+    ) {
+      return false
+    }
+  }
+  return true
+}
+
+/** Mixed punch/salary: per-row persist when each segment fits some old row interval, or one segment per row in order that still follows its row (seam slides). */
 export function mixedClusterSegmentsAllowPerRowPersist(
   c: DayEditorSession[],
   split: SplitEditorState,
@@ -371,7 +405,7 @@ export function mixedClusterSegmentsAllowPerRowPersist(
   ) {
     return false
   }
-  return everySegmentFullyInsideSomeRow(c, split, nowMs, eps) || everySegmentAssignablePerRowOrdered(c, split, nowMs, eps)
+  return everySegmentFullyInsideSomeRow(c, split, nowMs, eps) || orderedSegmentsFollowTheirRows(c, split, nowMs, eps)
 }
 
 /** True when a single-segment mixed-metadata cluster cannot be affine-partitioned onto rows (min duration / hull). */
@@ -415,6 +449,9 @@ export function coalescedMixedClusterPartitionForSave(
 
   if (Math.abs(split.boundaries[0]! - hullLo) > eps) return null
   if (Math.abs(split.boundaries[split.boundaries.length - 1]! - hullEnd) > eps) return null
+  // One part per row is written part i onto row i — only while each part still follows its row
+  // (quirk 25). Otherwise the rows cannot be rebuilt (their metadata differs), so the save refuses.
+  if (nSeg === c.length && !orderedSegmentsFollowTheirRows(c, split, nowMs)) return null
 
   const part = partitionMixedClusterEditorSegmentsToRowNotes(c, split.boundaries, nowMs, segmentNotes)
   if (!part) return null
