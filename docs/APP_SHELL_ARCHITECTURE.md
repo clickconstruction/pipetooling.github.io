@@ -153,7 +153,7 @@ The shell is everything around a page. `App.tsx` decides which of **69 `<Route>`
 | Bid (`/bids?new=true`) | — | — | — | — | ✓ | — | — | — | 1177–1193 |
 | Gear: Job Mode toggle | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 1323 (`canLeaveJobFieldReport`) |
 | Gear: Dispatch Mode · PO tab | D·PO | D·PO | D·PO | D | — | — | — | — | 1374, 1423 |
-| Gear: Farm · Pin · Dark · Tally · Calendar · Help · Settings · Sign out · Hard Reload | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 1472–1634, 1797–1950 |
+| Gear: Farm · Pin · Dark · Calendar · Help · Settings · Sign out · Hard Reload (Job Parts Tally moved to the Settings rail, v2.4061) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 1472–1634, 1797–1950 |
 | Gear: Documents | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — | 1658–1686 |
 | Gear: Banking (`canAccessBanking`) — the AR link left the menu in v2.4041 | B | B | — | B | — | — | — | — | 1753–1774 |
 | Gear: Partnerships · Global Reload (View as… moved to the Settings rail, v2.4041) | ✓ | — | — | — | — | — | — | — | 1636, 1952 |
@@ -241,7 +241,7 @@ The shell is everything around a page. `App.tsx` decides which of **69 `<Route>`
 
 ### H. Gear menu + View as
 
-- **Render:** 1286–1977, hidden while `phoneDockActive`. The menu (`data-navtrack="gear-menu"`, 1307–1975) has three parts. Mode toggles 1323–1635 (Job, Dispatch, PO tab, Farm, Pin, Dark, then the "Auto (dark 8pm–4am)" reset row when `themeOverride !== null`, 1614). Page links 1636–1909 (Partnerships, Documents, Materials/Checklist/Map on a phone, Banking, Job Parts Tally, Calendar, Help, Settings — Accounts Receivable, View as… and Punch list left the menu in v2.4041; the last two are the Settings rail's doors, `lib/settingsRailDoors.ts`, and `ViewAsPanel` now mounts from `Settings.tsx`). Session actions 1910–1973 (Sign out → `signOutEverywhere`, Hard Reload → `hardReloadFromRoot`, dev Global Reload → `forceReload.forceEveryoneToReload()`). `ViewAsPanel` mounts at 1999, outside `<nav>`.
+- **Render:** 1286–1977, hidden while `phoneDockActive`. The menu (`data-navtrack="gear-menu"`, 1307–1975) has three parts. Mode toggles 1323–1635 (Job, Dispatch, PO tab, Farm, Pin, Dark, then the "Auto (dark 8pm–4am)" reset row when `themeOverride !== null`, 1614). Page links 1636–1909 (Partnerships, Documents, Materials/Checklist/Map on a phone, Banking, Calendar, Help, Settings — Accounts Receivable, View as… and Punch list left the menu in v2.4041 and Job Parts Tally in v2.4061; the last three are the Settings rail's doors, `lib/settingsRailDoors.ts`, and `ViewAsPanel` now mounts from `Settings.tsx`). Session actions 1910–1973 (Sign out → `signOutEverywhere`, Hard Reload → `hardReloadFromRoot`, dev Global Reload → `forceReload.forceEveryoneToReload()`). `ViewAsPanel` mounts at 1999, outside `<nav>`.
 - **Owned state:** `gearOpen` 203, `gearRef` 206 (`viewAsOpen` left with the door, v2.4041). **Shared:** click-outside effect 381–397, which also closes `menuOpen` and `pinForOpen`.
 - **Reads:** role, `authUser`, all E flags and setters, `theme`/`themeOverride`, `isMobile`, `canShow*`, `farmModeActive`, `impersonating`, `forceReload`.
 - **Tests:** `ViewAsPanel.render.test.tsx` (1), `bankingAccess.test.ts` (4). `punchListAccess.ts` and `canLeaveJobFieldReport.ts` have no test. The menu itself is untested.
