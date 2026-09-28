@@ -30,27 +30,21 @@ import { scheduleFormatWindow } from '../../lib/jobScheduleChicago'
 import { SCHEDULE_DISPATCH_DRAG_DISABLED_READONLY_MESSAGE } from '../../lib/scheduleDispatchDragHelp'
 import { scheduleDispatchCellDroppableId } from '../../lib/scheduleDispatchDnd'
 import { APP_CALENDAR_TZ, referenceDateForWorkDateYmd } from '../../utils/dateUtils'
+import { hubPeopleSalarySuffix } from '../../lib/scheduleDispatch/hubChromeStyle'
+import { shortDowLabel } from '../../lib/scheduleDispatch/hubDayLabels'
 import { ScheduleDispatchPlusCopyMenu } from './ScheduleDispatchPlusCopyMenu'
 import { ScheduleDispatchWeekNav } from './ScheduleDispatchWeekNav'
 
 function formatDayHeader(dateKey: string): { dow: string; md: string } {
   const d = referenceDateForWorkDateYmd(dateKey)
   return {
-    dow: new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: APP_CALENDAR_TZ }).format(d),
+    dow: shortDowLabel(dateKey),
     md: new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: APP_CALENDAR_TZ }).format(d),
   }
 }
 
 function cellKey(assigneeUserId: string, workDate: string): string {
   return `${assigneeUserId}\t${workDate}`
-}
-
-const scheduleGridSalarySuffix: CSSProperties = {
-  display: 'block',
-  fontSize: '0.68rem',
-  color: 'var(--text-faint)',
-  fontWeight: 400,
-  lineHeight: 1.1,
 }
 
 export type ScheduleDispatchCardPlacementVariant = 'linked' | 'unlinked' | 'move'
@@ -773,7 +767,7 @@ export function ScheduleDispatchGrid({
                           <span
                             title="Salaried (Pay settings)"
                             aria-label="Salaried (Pay settings)"
-                            style={scheduleGridSalarySuffix}
+                            style={hubPeopleSalarySuffix}
                           >
                             (s)
                           </span>
@@ -786,7 +780,7 @@ export function ScheduleDispatchGrid({
                           <span
                             title="Salaried (Pay settings)"
                             aria-label="Salaried (Pay settings)"
-                            style={scheduleGridSalarySuffix}
+                            style={hubPeopleSalarySuffix}
                           >
                             (s)
                           </span>
