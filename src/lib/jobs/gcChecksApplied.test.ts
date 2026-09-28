@@ -78,6 +78,8 @@ describe('paymentKind / checkLabel / labels', () => {
   it('leads the job label with the address, as on the statement', () => {
     expect(checksJobLabel({ hcp_number: null, click_number: '1041', job_name: 'Oak Ridge Ph 2', job_address: '4410 Oak Ridge Dr' })).toBe('4410 Oak Ridge Dr · 1041 Oak Ridge Ph 2')
     expect(checksJobLabel({ hcp_number: null, click_number: null, job_name: null, job_address: '' })).toBe('Job')
+    // A name that repeats the street adds nothing: the number stands alone.
+    expect(checksJobLabel({ hcp_number: '858', click_number: null, job_name: 'Service Visit — 9703 Lenox Hl (HCP 858)', job_address: '9703 Lenox Hl, San Antonio, TX 78255' })).toBe('9703 Lenox Hl, San Antonio, TX 78255 · 858')
     expect(formatYmdLong('2026-09-24')).toBe('Sep 24, 2026')
   })
 })
@@ -109,7 +111,7 @@ describe('buildGcChecksReport', () => {
 
   it('rolls each job up: billed, who paid it, the last check applied, retainage, what is open', () => {
     const r = buildGcChecksReport({ gcId: GC, jobs: [oak, maple] })
-    expect(r.jobs.map((j) => [j.jobLabel, j.billed, j.paidBy, j.lastApplied?.label, j.retainageHeld, j.stillOpen, j.paid])).toEqual([
+    expect(r.jobs.map((j) => [j.jobLabel, j.billed, j.paidBy.map((p) => p.label), j.lastApplied?.label, j.retainageHeld, j.stillOpen, j.paid])).toEqual([
       ['oak Main St · OAK Job oak', 37333, ['#48102', '#48211'], '#48211', 1333, 15583, false],
       ['maple Main St · MAPLE Job maple', 6400, ['#48211'], '#48211', 0, 0, true],
     ])
@@ -128,7 +130,7 @@ describe('buildGcChecksReport', () => {
     expect(c.lines.map((l) => [l.invoiceLabel, l.amount])).toEqual([
       ['Invoice 1 of 2', 11000],
       ['Invoice 2 of 2', 15000],
-      ['on the job, no bill yet', 1500],
+      ['on the job, not tied to an invoice', 1500],
     ])
     expect(r.summary.unapplied).toBe(500)
     expect(r.jobs[0]!.paid).toBe(true)
@@ -170,7 +172,7 @@ describe('buildGcChecksReport', () => {
     const r = buildGcChecksReport({ gcId: GC, jobs: [oak, maple, undated], sinceYmd: '2026-09-20' })
     expect(r.checks.map((c) => c.label)).toEqual(['#48211', '#7'])
     expect(r.earlierCount).toBe(1)
-    expect(r.jobs.find((j) => j.jobId === 'oak')?.paidBy).toEqual(['#48102', '#48211'])
+    expect(r.jobs.find((j) => j.jobId === 'oak')?.paidBy.map((p) => p.label)).toEqual(['#48102', '#48211'])
   })
 
   it('a bank-recorded payment folds on the deposit id but never shows it as a number', () => {

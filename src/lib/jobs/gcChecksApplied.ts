@@ -82,7 +82,7 @@ export type CheckLine = {
   /** "4410 Oak Ridge Dr · 1041 Oak Ridge Ph 2" — the address leads, as on the statement. */
   jobLabel: string
   invoiceId: string | null
-  /** "Invoice 2 of 3"; "on the job, no bill yet" for money no sent bill needed. */
+  /** "Invoice 2 of 3"; "on the job, not tied to an invoice" for money no sent bill needed. */
   invoiceLabel: string
   amount: number
   billPaidInFull: boolean
@@ -117,8 +117,8 @@ export type GcCheckJob = {
   /** Sent bills the GC pays, billed or paid. */
   billCount: number
   billed: number
-  /** Distinct check labels on the job, oldest first. */
-  paidBy: string[]
+  /** The distinct checks on the job, oldest first. */
+  paidBy: Array<{ label: string; receivedYmd: string | null; noNumber: boolean }>
   lastApplied: { label: string; receivedYmd: string | null } | null
   retainageHeld: number
   stillOpen: number
@@ -215,11 +215,17 @@ export function checkLabel(kind: CheckKind, number: string, opts?: { deposit?: b
   return opts?.deposit ? 'Bank deposit' : 'Payment'
 }
 
-/** The address leads, then the job number and name — the statement's row label, on one line. */
+/**
+ * The address leads, then the job number and name — the statement's row label, on one line. A
+ * name that repeats the street ("Service Visit — 9703 Lenox Hl (HCP 858)") adds nothing, so the
+ * number stands alone.
+ */
 export function checksJobLabel(job: Pick<ChecksJobIn, 'hcp_number' | 'click_number' | 'job_name' | 'job_address'>): string {
   const number = effectiveJobLedgerNumber(job.hcp_number ?? null, job.click_number ?? null)
-  const name = (job.job_name ?? '').trim()
   const address = (job.job_address ?? '').trim()
+  const street = address.split(',')[0]!.trim().toLowerCase()
+  const rawName = (job.job_name ?? '').trim()
+  const name = street.length >= 6 && rawName.toLowerCase().includes(street) ? '' : rawName
   const tail = [number, name].filter(Boolean).join(' ')
   if (address && tail) return `${address} · ${tail}`
   return address || tail || 'Job'
@@ -244,7 +250,7 @@ function sentBillsInOrder(job: ChecksJobIn): SentBill[] {
 function invoiceLabelFor(bill: SentBill | undefined, sentCount: number, invoiceId: string | null): string {
   if (bill) return `Invoice ${bill.ordinal} of ${sentCount}`
   if (invoiceId) return 'a bill not yet sent'
-  return 'on the job, no bill yet'
+  return 'on the job, not tied to an invoice'
 }
 
 /** The GC pays this bill (or, with no bill, this job's bills by its rule). */
@@ -399,9 +405,9 @@ export function buildGcChecksReport(input: {
   const jobs: GcCheckJob[] = []
   for (const f of facts.values()) {
     const gcBills = f.sent.filter((b) => gcPays(input.gcId, f.job, b))
-    const paidBy: Array<{ label: string; receivedYmd: string | null }> = []
+    const paidBy: Array<{ label: string; receivedYmd: string | null; noNumber: boolean }> = []
     for (const d of all) {
-      if (d.lines.some((l) => l.jobId === f.job.id) && !paidBy.some((x) => x.label === d.label && x.receivedYmd === d.receivedYmd)) paidBy.push({ label: d.label, receivedYmd: d.receivedYmd })
+      if (d.lines.some((l) => l.jobId === f.job.id) && !paidBy.some((x) => x.label === d.label && x.receivedYmd === d.receivedYmd)) paidBy.push({ label: d.label, receivedYmd: d.receivedYmd, noNumber: d.noNumber })
     }
     if (gcBills.length === 0 && paidBy.length === 0) continue
     paidBy.sort((a, b) => (a.receivedYmd ?? '9999').localeCompare(b.receivedYmd ?? '9999'))
@@ -412,8 +418,8 @@ export function buildGcChecksReport(input: {
       jobLabel: f.label,
       billCount: gcBills.length,
       billed,
-      paidBy: paidBy.map((x) => x.label),
-      lastApplied: paidBy.length > 0 ? paidBy[paidBy.length - 1]! : null,
+      paidBy,
+      lastApplied: paidBy.length > 0 ? { label: paidBy[paidBy.length - 1]!.label, receivedYmd: paidBy[paidBy.length - 1]!.receivedYmd } : null,
       retainageHeld: round2(Math.max(0, num(f.job.lien_retainage_held))),
       stillOpen,
       paid: billed > 0 && stillOpen <= 0.005,
