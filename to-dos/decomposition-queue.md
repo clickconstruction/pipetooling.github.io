@@ -7,14 +7,15 @@ summary: >
   The ten largest hand-written source files (3,981–6,981 lines each), ranked by what to
   decompose first — value over risk, not size alone: how often the file is edited (a hot file
   pays back soonest), untested money math inside it, and how cheap the map's first step is.
-  Each row names its map and the first PR that map recommends. The full inventory of all 60
+  Each row names its map, what has shipped and the next step that map recommends — the card
+  is the running tracker for the ten. The full inventory of all 60
   files over 1,500 lines stays in the playbook.
 next: >
   Every row has had its first PR; each row's cell below names its own next step. Two are
   left to take alone, on a quiet day: row 2's `useStagesBilledMoneyData` seam (the busiest
   file in the app) and row 3's draft-persistence seam hook (high risk — it sits on the
   autosave engine that Edit Job and Edit Bid share).
-size: S per first PR · XL for the whole queue
+size: S per PR · XL for the whole queue
 blocker: None. On the two hottest files (JobsStagesTab, Bids) check `npm run sessions` first — a feature train there means waiting for a quiet day.
 ver: v2.3820 · 3824 · 3853 · 3856 · 3857 · 3865 · 3866 · 3867 · 3868 · 3869 · 3870 · 3871 · 3872 · 3873 · 3874 · 3902 · 3903 · 3904 · 3905 · 3906 · 3907
 opinion: build — every row's first PR has shipped; keep taking each row's next step, small, tested and independent of the others.
@@ -29,7 +30,7 @@ The owner asked (2026-09-25) for the size of the ten biggest files, saved here *
 
 Measured 2026-09-25 at `6dcb6e0f8` (raw `wc -l`, blank lines and comments included; generated files — `src/types/database.ts`, the release-notes archive — left out). *Edits* = commits touching the file in the last 30 days.
 
-| Order | File | Lines | Edits (30 d) | Map | First PR (from the map) |
+| Order | File | Lines | Edits (30 d) | Map | Shipped so far · next (from the map) |
 |---|---|---|---|---|---|
 | 1 | `src/components/bids/BidsPricingTab.tsx` | 5,122 | 63 | [BIDS_PRICING_LABOR_TABS](../docs/BIDS_PRICING_LABOR_TABS_ARCHITECTURE.md) | Stage A **shipped**: the `scenarioPricingRows` kernel v2.3853 (the four copies and the hook's two converge) and `loadScenarioInputs` to `lib/bids` v2.3856; next here, the dead-code PR (row 2 of the map's order). |
 | 2 | `src/components/jobs/JobsStagesTab.tsx` | 5,108 | 83 | [JOBS_STAGES_TAB](../docs/JOBS_STAGES_TAB_ARCHITECTURE.md) | Stage-A sweep II **shipped v2.3857–v2.3865** (nine kernels, one per PR: the returned-check gate, signer fallbacks, lien focus mapping, man-hours folds, the collections note line, round / desk counts, the section header fallback, the week-dispatch URL, the deep-link table); next the `useStagesBilledMoneyData` seam. The most-edited file in the app (198 edits in 90 days, 120 `useState`). |
@@ -53,6 +54,6 @@ Measured 2026-09-25 at `6dcb6e0f8` (raw `wc -l`, blank lines and comments includ
 1. `npm run map -- --triage` — confirm the file's map is still fresh (re-measure the lines while you are there).
 2. Read the map's *Recommended extraction order*; `npm run map -- <file>` for the exact line ranges and who reads and writes each piece of state.
 3. Follow `docs/PAGE_DECOMPOSITION_PLAYBOOK.md`: Stage A (pure logic → `src/lib` + tests) before any component move, one PR per step, behavior-preserving, the map updated in the same PR.
-4. When a file's first PR ships, strike its row here; delete this to-do when the queue is empty or the owner re-ranks it.
+4. When a PR ships, add it to the file's row: what shipped, the file's new line count, and the next step the map names. The card is the running tracker (the owner, 2026-09-27) — a row stays until its map has nothing left worth cutting, and the card goes when every row has or the owner re-ranks it. A PR edits its own row's cell only; when rows run in parallel, one docs PR rolls up `status` and `ver` for the batch.
 
 Related: [#21 Decomposition residuals](./decomposition-residuals.md) — what the last two trains left on purpose (the Pricing Workbench block waits for a Workbench feature train). The playbook's *Cross-surface seams* section lists the shared kernels several of these files would adopt (the money formatter, date keys, the job-search hook).
