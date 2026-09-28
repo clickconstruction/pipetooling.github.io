@@ -37,6 +37,18 @@ export async function setJobPromisedPayDate(jobId: string, ymd: string): Promise
   if (error) throw error
 }
 
+/** Clears the promised pay date on one job; every promise made stays on record. Throws on error. */
+export async function clearJobPromisedPayDate(jobId: string): Promise<void> {
+  const { error } = await supabase.rpc('set_job_promised_pay_date' as never, { p_job_id: jobId, p_date: null } as never)
+  if (error) throw error
+}
+
+/** "They never said that": takes one promise off the record (void_job_payment_promise). It is hidden, not deleted. Throws on error. */
+export async function voidJobPaymentPromise(promiseId: string): Promise<void> {
+  const { error } = await supabase.rpc('void_job_payment_promise' as never, { p_id: promiseId } as never)
+  if (error) throw error
+}
+
 /** PostgREST's "no such function" — the Their Word migration isn't pushed yet; fall back to the legacy writer. */
 function isMissingRpc(e: unknown): boolean {
   const msg = e instanceof Error ? e.message : typeof e === 'object' && e && 'message' in e ? String((e as { message: unknown }).message) : ''
