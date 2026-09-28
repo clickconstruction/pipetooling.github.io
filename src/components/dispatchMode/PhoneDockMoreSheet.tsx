@@ -80,11 +80,21 @@ const rowBtn: CSSProperties = {
  * The phone's one menu (punch list #30, PR 1): pages first, then modes, then settings —
  * the hamburger, the modes menu and the gear folded into a bottom sheet the thumb can
  * reach. Opened by the dock's More slot, or by a long-press on any slot (then it swaps).
+ *
+ * v2.4074 (Taunya's walk on her own iPhone): the four sit at the top of the sheet as *The dock*,
+ * and a tap on one enters the same swap mode the long-press does — the hold was the only door,
+ * its hint lived inside this sheet, and on her phone it did not open. `pickIndex` is that tap;
+ * the parent's `swapIndex` (the hold) wins when both are set.
  */
 export function PhoneDockMoreSheet(props: PhoneDockMoreSheetProps) {
   const { open, swapIndex, onClose, role, userId, slots, customized, onSwap, onReset, modes, onSignOut } = props
   const navigate = useNavigate()
   const [rows, setRows] = useState<ActivityMinutesRow[] | null>(null)
+  /** The slot a tap on *The dock* row chose to change; cleared whenever the sheet closes. */
+  const [pickIndex, setPickIndex] = useState<number | null>(null)
+  useEffect(() => {
+    if (!open) setPickIndex(null)
+  }, [open])
 
   useEffect(() => {
     if (!open || !userId) return
@@ -108,14 +118,17 @@ export function PhoneDockMoreSheet(props: PhoneDockMoreSheetProps) {
 
   if (!open) return null
 
-  const swapping = swapIndex != null
-  const swapLabel = swapping ? phoneDockPage(slots[swapIndex]!).label : null
+  const swapAt = swapIndex ?? pickIndex
+  const swapping = swapAt != null
+  const swapLabel = swapping ? phoneDockPage(slots[swapAt]!).label : null
+  /** Entered by a tap in here (not the hold): the header offers a way back to More. */
+  const pickedHere = swapIndex == null && pickIndex != null
   const pages = phoneDockPagesFor(role)
   const suggested = suggestedDockPages(rows ?? [], slots, role)
 
   const pick = (page: PhoneDockPage) => {
-    if (swapping) {
-      onSwap(swapIndex, page.key)
+    if (swapAt != null) {
+      onSwap(swapAt, page.key)
       onClose()
       return
     }
@@ -210,16 +223,69 @@ export function PhoneDockMoreSheet(props: PhoneDockMoreSheetProps) {
           </h2>
           <button
             type="button"
-            onClick={onClose}
-            aria-label="Close"
+            onClick={pickedHere ? () => setPickIndex(null) : onClose}
+            aria-label={pickedHere ? 'Back to More' : 'Close'}
             style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '1rem', padding: '0.25rem 0.5rem', cursor: 'pointer' }}
           >
-            Close
+            {pickedHere ? '‹ Back' : 'Close'}
           </button>
         </div>
         <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 2 }}>
-          {swapping ? 'Tap a page to put it in that slot. A page already on the dock trades places.' : 'Long-press a dock slot to swap it for any page here.'}
+          {swapping ? 'Tap a page to put it in that slot. A page already on the dock trades places.' : 'Tap one of the four to change it — or press and hold it on the bar.'}
         </div>
+
+        {!swapping ? (
+          <>
+            <div style={sectionLabel}>The dock</div>
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${slots.length}, minmax(0, 1fr))`, gap: 8 }} data-testid="phone-dock-slots">
+              {slots.map((key, index) => {
+                const page = phoneDockPage(key)
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setPickIndex(index)}
+                    aria-label={`Change the ${page.label} slot`}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 4,
+                      padding: '0.6rem 0.25rem',
+                      minHeight: 64,
+                      background: 'var(--bg-blue-tint)',
+                      border: '1px solid var(--border-blue)',
+                      borderRadius: 10,
+                      color: 'var(--text-blue-700)',
+                      cursor: 'pointer',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      lineHeight: 1.15,
+                      textAlign: 'center',
+                      boxSizing: 'border-box',
+                    }}
+                  >
+                    <PhoneDockGlyph icon={page.icon} size={20} />
+                    <span>{page.label}</span>
+                    <span style={{ fontSize: '0.6875rem', fontWeight: 400, color: 'var(--text-muted)' }}>change</span>
+                  </button>
+                )
+              })}
+            </div>
+            {customized ? (
+              <button
+                type="button"
+                onClick={() => {
+                  onReset()
+                  onClose()
+                }}
+                style={{ ...rowBtn, padding: '0.5rem 0.25rem', borderBottom: 'none', fontSize: '0.8125rem', color: 'var(--text-muted)' }}
+              >
+                <span>Reset to the role’s four</span>
+              </button>
+            ) : null}
+          </>
+        ) : null}
 
         {suggested.length > 0 ? (
           <>
