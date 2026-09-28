@@ -68,3 +68,22 @@ export function travelSummaryFromInputs(input: {
   const hotelCost = people * nights * hotelRate
   return { people, nights, mealsRate, hotelRate, mealsCost, hotelCost, travelCost: mealsCost + hotelCost }
 }
+
+export type LaborTotal = {
+  totalHours: number
+  /** $/hour — the rate box, or 0 when empty or unparseable. */
+  rate: number
+  laborCost: number
+}
+
+/**
+ * The line under the hours table: Σ row hours × the labor rate box. A row's hours are handed
+ * in already computed (`laborRowHours`), so this file stays free of the row shape. An empty or
+ * unparseable rate is 0 here — the line shows what is typed, not the company's fallback rate.
+ */
+export function laborTotalFromInputs(input: { rowHours: ReadonlyArray<number>; laborRateInput: string }): LaborTotal {
+  const totalHours = input.rowHours.reduce((s, h) => s + h, 0)
+  const rate = input.laborRateInput.trim() === '' ? 0 : parseFloat(input.laborRateInput) || 0
+  return { totalHours, rate, laborCost: totalHours * rate }
+}
+
