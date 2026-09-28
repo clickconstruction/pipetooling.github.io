@@ -5,7 +5,7 @@ import { SubmittalJourneyStrip } from './SubmittalJourneyStrip'
 import { submittalJourney } from '../../lib/submittals/submittalJourney'
 
 describe('SubmittalJourneyStrip', () => {
-  it('draws the seven pills with their state, the next line with its button, and the first-open offer', () => {
+  it('draws the eight pills with their state, the next line with its button, and the first-open offer', () => {
     const onAction = vi.fn()
     const onGoToStage = vi.fn()
     const onWalkThrough = vi.fn()
@@ -14,7 +14,7 @@ describe('SubmittalJourneyStrip', () => {
     render(<SubmittalJourneyStrip journey={journey} busy={false} onAction={onAction} onGoToStage={onGoToStage} onWalkThrough={onWalkThrough} offerWalkThrough onDismissOffer={onDismissOffer} />)
 
     const pills = screen.getAllByTestId('journey-stage')
-    expect(pills.map((p) => p.getAttribute('data-status'))).toEqual(['done', 'done', 'current', 'later', 'later', 'later', 'later'])
+    expect(pills.map((p) => p.getAttribute('data-status'))).toEqual(['done', 'done', 'current', 'later', 'later', 'later', 'later', 'later'])
     expect(screen.getByRole('button', { name: '3 Reasons & sheets · you are here' })).toBeTruthy()
     expect(screen.getByTestId('journey-next').textContent).toMatch(/^Next: 2 rows still owe a reason · 10 rows still need a cut sheet\./)
 
@@ -42,7 +42,7 @@ describe('SubmittalJourneyStrip', () => {
 
     const done = submittalJourney({ scheduleTags: 12, picks: 14, rev: { number: 2, status: 'shared', isNewest: true, rows: 14, owesReason: 0, sheetsNeeded: 0, packageBuilt: true }, room: { status: 'open', opens: 9, identified: [] }, decisions: { decided: 14, approved: 14, open: 0, sentBack: 0, byName: ['Dana Whitfield'] } })
     render(<SubmittalJourneyStrip journey={done} busy={false} onAction={() => {}} onGoToStage={() => {}} onWalkThrough={() => {}} offerWalkThrough={false} onDismissOffer={() => {}} />)
-    expect(screen.getByTestId('journey-next').textContent).toBe('Done: Every row approved by Dana Whitfield. Nothing left to do here.')
+    expect(screen.getByTestId('journey-next').textContent).toBe('Done: Every row approved by Dana Whitfield. The procurement log is next.')
     expect(screen.getAllByRole('button').map((b) => b.textContent)).not.toContain('Share')
   })
 })
