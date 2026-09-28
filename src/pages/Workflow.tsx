@@ -31,6 +31,8 @@ import {
   formatScheduledDateShort,
 } from '../lib/workflow/workflowFormat'
 import { getStepStatusStyle } from '../lib/workflow/stepStatusStyle'
+import { useProjectSuperintendents } from '../hooks/useProjectSuperintendents'
+import { WorkflowSuperintendentsStrip } from '../components/workflow/WorkflowSuperintendentsStrip'
 import { isRowDefaultCollapsed, isSectionDefaultExpanded, isStepEmpty as isStepEmptyOf } from '../lib/workflow/stageCardDefaults'
 import { buildStageDisplayItems } from '../lib/workflow/stageDisplayItems'
 import { stageCardPills, wordCount } from '../lib/workflow/stageCardPills'
@@ -144,9 +146,6 @@ export default function Workflow() {
   const [sectionExpanded, setSectionExpanded] = useState<Record<string, boolean>>({})
   const [rowCollapsed, setRowCollapsed] = useState<Record<string, boolean>>({})
   const [oldStagesCollapsed, setOldStagesCollapsed] = useState(false)
-  const [projectSuperintendents, setProjectSuperintendents] = useState<Array<{ id: string; name: string | null; email: string | null }>>([])
-  const [allSuperintendents, setAllSuperintendents] = useState<Array<{ id: string; name: string | null; email: string | null }>>([])
-  const [projectSuperintendentSaving, setProjectSuperintendentSaving] = useState(false)
   const [projectionsLedgerExpanded, setProjectionsLedgerExpanded] = useState(false)
   const [projectJobs, setProjectJobs] = useState<Array<{ id: string; hcp_number: string; job_name: string; status: string }>>([])
 
@@ -154,6 +153,7 @@ export default function Workflow() {
   const isDevOrMaster = userRole === 'dev' || userRole === 'master_technician'
   const canSeePrivateNotesAndApprove = userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole) || userRole === 'superintendent'
   const canAssignSuperintendents = userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole)
+  const superintendents = useProjectSuperintendents(projectId, canAssignSuperintendents, setError)
   // "+ Create Job" was a dead door for superintendents (v2.2848): the jobs_ledger INSERT policy refuses them.
   const canCreateJobs = canCreateJobsLedgerRow(userRole)
 
@@ -254,23 +254,6 @@ export default function Workflow() {
     return true
   }
 
-  async function loadProjectSuperintendents(pid: string) {
-    const { data: psData, error } = await supabase.from('project_superintendents').select('superintendent_id').eq('project_id', pid)
-    if (error) {
-      console.error('Error loading project superintendents:', error)
-      setProjectSuperintendents([])
-      return
-    }
-    const ids = (psData ?? []).map((r) => r.superintendent_id).filter(Boolean)
-    if (ids.length === 0) {
-      setProjectSuperintendents([])
-      return
-    }
-    const { data: usersData } = await supabase.from('users').select('id, name, email').in('id', ids)
-    const users = (usersData ?? []) as Array<{ id: string; name: string | null; email: string | null }>
-    setProjectSuperintendents(users)
-  }
-
   async function loadProjectJobs(pid: string) {
     const { data, error } = await supabase
       .from('jobs_ledger')
@@ -282,45 +265,6 @@ export default function Workflow() {
       return
     }
     setProjectJobs((data ?? []) as Array<{ id: string; hcp_number: string; job_name: string; status: string }>)
-  }
-
-  async function loadAllSuperintendents() {
-    const { data, error } = await supabase
-      .from('users')
-      .select('id, name, email')
-      .eq('role', 'superintendent')
-      .is('archived_at', null)
-      .order('name')
-    if (error) {
-      console.error('Error loading superintendents:', error)
-      setAllSuperintendents([])
-      return
-    }
-    setAllSuperintendents((data ?? []) as Array<{ id: string; name: string | null; email: string | null }>)
-  }
-
-  async function addProjectSuperintendent(superintendentId: string) {
-    if (!projectId) return
-    setProjectSuperintendentSaving(true)
-    const { error } = await supabase.from('project_superintendents').insert({ project_id: projectId, superintendent_id: superintendentId })
-    if (error) {
-      setError(`Failed to assign superintendent: ${error.message}`)
-    } else {
-      await loadProjectSuperintendents(projectId)
-    }
-    setProjectSuperintendentSaving(false)
-  }
-
-  async function removeProjectSuperintendent(superintendentId: string) {
-    if (!projectId) return
-    setProjectSuperintendentSaving(true)
-    const { error } = await supabase.from('project_superintendents').delete().eq('project_id', projectId).eq('superintendent_id', superintendentId)
-    if (error) {
-      setError(`Failed to remove superintendent: ${error.message}`)
-    } else {
-      setProjectSuperintendents((prev) => prev.filter((s) => s.id !== superintendentId))
-    }
-    setProjectSuperintendentSaving(false)
   }
 
   async function loadSteps(wfId: string) {
@@ -794,17 +738,6 @@ export default function Workflow() {
       return () => clearTimeout(t)
     }
   }, [userRole])
-
-  // Load project superintendents and all superintendents when can assign
-  useEffect(() => {
-    if (projectId && canAssignSuperintendents) {
-      loadProjectSuperintendents(projectId)
-      loadAllSuperintendents()
-    } else {
-      setProjectSuperintendents([])
-      setAllSuperintendents([])
-    }
-  }, [projectId, canAssignSuperintendents])
 
   useEffect(() => {
     if (projectId) {
@@ -1943,59 +1876,13 @@ export default function Workflow() {
           <div>
             <h1 style={{ marginBottom: '0.5rem' }}>{project.name}{" \u2013 "}Workflow</h1>
             {canAssignSuperintendents && (
-              <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.375rem', flexWrap: 'wrap' }}>
-                <span style={{ fontWeight: 500 }}>Superintendents:</span>
-                {projectSuperintendents.length === 0 && (
-                  <span style={{ color: 'var(--text-faint)' }}>None</span>
-                )}
-                {projectSuperintendents.map((s) => (
-                  <span
-                    key={s.id}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.25rem',
-                      padding: '0.15rem 0.4rem',
-                      background: 'var(--bg-sky-100)',
-                      color: 'var(--text-sky-700)',
-                      borderRadius: 4,
-                      fontSize: '0.8125rem',
-                    }}
-                  >
-                    {s.name || s.email || 'Unknown'}
-                    <button
-                      type="button"
-                      onClick={() => removeProjectSuperintendent(s.id)}
-                      disabled={projectSuperintendentSaving}
-                      style={{ background: 'none', border: 'none', padding: 0, cursor: projectSuperintendentSaving ? 'not-allowed' : 'pointer', color: 'inherit', fontSize: '0.9em', lineHeight: 1 }}
-                      title="Remove"
-                    >
-                      {"\u00d7"}
-                    </button>
-                  </span>
-                ))}
-                <select
-                  value=""
-                  onChange={(e) => {
-                    const id = e.target.value
-                    if (id) {
-                      addProjectSuperintendent(id)
-                      e.target.value = ''
-                    }
-                  }}
-                  disabled={projectSuperintendentSaving}
-                  style={{ padding: '0.15rem 0.35rem', fontSize: '0.8125rem', border: '1px solid var(--border-sky)', borderRadius: 4, background: 'var(--surface)', minWidth: 140 }}
-                >
-                  <option value="">Add superintendent...</option>
-                  {allSuperintendents
-                    .filter((s) => !projectSuperintendents.some((ps) => ps.id === s.id))
-                    .map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name || s.email || s.id}
-                      </option>
-                    ))}
-                </select>
-              </div>
+              <WorkflowSuperintendentsStrip
+                projectSuperintendents={superintendents.projectSuperintendents}
+                allSuperintendents={superintendents.allSuperintendents}
+                saving={superintendents.saving}
+                onAdd={superintendents.addProjectSuperintendent}
+                onRemove={superintendents.removeProjectSuperintendent}
+              />
             )}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
