@@ -3,7 +3,7 @@
  *
  * Maps a `project_workflow_steps.status` (plus the synthetic `'unscheduled'` colorKey emitted
  * by `projectsForecastStageResolver`) onto the swatch the Gantt timeline renders. The status
- * colors mirror `getStepStatusStyle` from [`src/pages/Workflow.tsx`](src/pages/Workflow.tsx)
+ * colors mirror `getStepStatusStyle` from [`src/lib/workflow/stepStatusStyle.ts`](src/lib/workflow/stepStatusStyle.ts)
  * so a stage that looks orange (in progress) on Workflow looks orange in the Forecast bar.
  *
  * The `'unscheduled'` colorKey is reserved for stages with no expected dates and no actual

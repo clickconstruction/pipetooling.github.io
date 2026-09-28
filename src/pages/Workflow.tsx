@@ -21,6 +21,16 @@ import {
 } from '../lib/workflowMoneyTotals'
 import { buildUnifiedFinancialRows, panelMoneyTotals } from '../lib/workflow/unifiedFinancialRows'
 import { formatLineItemDate, normalizeUrl } from '../lib/projectsForecastStageLineItems'
+import {
+  daysBetween,
+  daysOpen,
+  expectedDueState,
+  formatAmount,
+  formatDateShort,
+  formatDatetime,
+  formatScheduledDateShort,
+} from '../lib/workflow/workflowFormat'
+import { getStepStatusStyle } from '../lib/workflow/stepStatusStyle'
 import { planStepTransition, type StepLifecyclePlan } from '../lib/workflow/stepLifecycle'
 import { buildProjectSubRoster } from '../lib/workflow/projectSubRoster'
 import { WORKFLOW_ASSIGNABLE_USER_ROLES, buildWorkflowUserRoster, notifyAssignedDefaultsOnAssign, NOTIFY_ASSIGNED_ALL_ON } from '../lib/workflow/stepAssignment'
@@ -30,14 +40,13 @@ import { PersonDisplayWithContact, type PersonContactInfo } from '../components/
 import type { StepCommitmentRow } from '../lib/workflow/stepCommitments'
 import { sendStepLifecycleNotifications } from '../lib/workflow/stepLifecycleNotifications'
 import { toDatetimeLocal, fromDatetimeLocal } from '../utils/datetimeLocal'
-import { APP_CALENDAR_TZ } from '../utils/dateUtils'
-import { ageChipStyle, dueState, type DueDescription } from '../lib/ageState'
+import { ymdAddDays, ymdDaysBetween, ymdFromDateLike } from '../utils/dateUtils'
+import { ageChipStyle } from '../lib/ageState'
 import { isSupplyCredit, SUPPLY_CREDIT_NOT_ON_STEP } from '../lib/supplyHouseDocument'
 import type { Database } from '../types/database'
 import { telHrefFor } from '../lib/phoneContact'
 
 type Step = Database['public']['Tables']['project_workflow_steps']['Row']
-type StepStatus = Step['status']
 type Project = Database['public']['Tables']['projects']['Row']
 type Workflow = Database['public']['Tables']['project_workflows']['Row']
 type StepAction = Database['public']['Tables']['project_workflow_step_actions']['Row']
@@ -47,103 +56,6 @@ type PurchaseOrder = Database['public']['Tables']['purchase_orders']['Row']
 type PurchaseOrderItem = Database['public']['Tables']['purchase_order_items']['Row']
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
-
-function formatDatetime(iso: string | null): string {
-  if (!iso) return 'unknown'
-  const date = new Date(iso)
-  const weekday = date.toLocaleDateString('en-US', { weekday: 'short', timeZone: APP_CALENDAR_TZ })
-  const dateTime = date.toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short', timeZone: APP_CALENDAR_TZ })
-  return `${weekday}, ${dateTime}`
-}
-
-function formatDateShort(iso: string | null): string {
-  if (!iso) return '\u2014'
-  return new Date(iso).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit', timeZone: APP_CALENDAR_TZ })
-}
-
-function daysOpen(startedAt: string | null, endedAt: string | null): number | null {
-  if (!startedAt || endedAt) return null
-  const start = new Date(startedAt)
-  const end = new Date()
-  const result = Math.floor((end.getTime() - start.getTime()) / 86400000)
-  return result < 0 ? null : result
-}
-
-function daysBetween(startedAt: string | null, endedAt: string | null): number | null {
-  if (!startedAt || !endedAt) return null
-  const start = new Date(startedAt)
-  const end = new Date(endedAt)
-  const result = Math.floor((end.getTime() - start.getTime()) / 86400000)
-  return result < 0 ? null : result
-}
-
-function formatAmount(amount: number | null | undefined): string {
-  const value = amount || 0
-  const absValue = Math.abs(value)
-  // Format with commas for thousands
-  const formatted = absValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-  if (value < 0) {
-    return `($${formatted})`
-  }
-  return `$${formatted}`
-}
-
-function ymdFromDateLike(value: string | null | undefined): string {
-  if (!value) return ''
-  return value.slice(0, 10)
-}
-
-function formatScheduledDateShort(value: string | null | undefined): string {
-  const ymd = ymdFromDateLike(value)
-  if (!ymd) return '\u2014'
-  const d = new Date(`${ymd}T12:00:00`)
-  if (Number.isNaN(d.getTime())) return '\u2014'
-  return d.toLocaleDateString(undefined, { month: 'numeric', day: 'numeric', year: '2-digit' })
-}
-
-/**
- * Planned window vs today for a step still in flight (journey-map #40): red
- * "N days late" once the expected end has passed, amber "due today" / "start N
- * days past" for a pending step whose start slipped. Finished steps never age.
- */
-function expectedDueState(s: { status: string; scheduled_start_date?: string | null; scheduled_end_date?: string | null }): DueDescription | null {
-  if (s.status !== 'pending' && s.status !== 'in_progress') return null
-  const todayYmd = new Date().toLocaleDateString('en-CA', { timeZone: APP_CALENDAR_TZ })
-  return dueState(ymdFromDateLike(s.scheduled_end_date), todayYmd, {
-    startYmd: ymdFromDateLike(s.scheduled_start_date),
-    started: s.status === 'in_progress',
-  })
-}
-
-function ymdAddDays(ymd: string, days: number): string {
-  if (!ymd) return ''
-  const parts = ymd.split('-').map(Number)
-  if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) return ''
-  const [y, m, d] = parts as [number, number, number]
-  const dt = new Date(y, m - 1, d)
-  dt.setDate(dt.getDate() + days)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`
-}
-
-function ymdDaysBetween(startYmd: string, endYmd: string): number | null {
-  if (!startYmd || !endYmd) return null
-  const a = startYmd.split('-').map(Number)
-  const b = endYmd.split('-').map(Number)
-  if (a.length !== 3 || b.length !== 3 || a.some((n) => Number.isNaN(n)) || b.some((n) => Number.isNaN(n))) return null
-  const [ay, am, ad] = a as [number, number, number]
-  const [by, bm, bd] = b as [number, number, number]
-  const start = new Date(ay, am - 1, ad)
-  const end = new Date(by, bm - 1, bd)
-  return Math.round((end.getTime() - start.getTime()) / 86400000)
-}
-
-function getStepStatusStyle(status: StepStatus | null): { color: string; fontWeight: 'normal' | 'bold' } {
-  if (status === 'completed' || status === 'approved') return { color: 'var(--text-green-600)', fontWeight: 'normal' }
-  if (status === 'in_progress') return { color: '#E87600', fontWeight: 'bold' }
-  if (status === 'rejected') return { color: 'var(--text-red-700)', fontWeight: 'normal' }
-  return { color: 'var(--text-muted)', fontWeight: 'normal' }
-}
 
 export default function Workflow() {
   const { projectId } = useParams()

@@ -143,6 +143,29 @@ export function ymdAddDays(ymd: string, deltaDays: number): string {
   return `${yy}-${mm}-${dd}`
 }
 
+/** The `YYYY-MM-DD` at the front of a date or timestamp string; '' for no value. Not validated. */
+export function ymdFromDateLike(value: string | null | undefined): string {
+  if (!value) return ''
+  return value.slice(0, 10)
+}
+
+/**
+ * Whole civil days from `startYmd` to `endYmd` — negative when the end is
+ * first, 0 for the same day. Null when either is blank or is not three
+ * numbers joined by dashes. Rounded, so a daylight-saving day counts as one.
+ */
+export function ymdDaysBetween(startYmd: string, endYmd: string): number | null {
+  if (!startYmd || !endYmd) return null
+  const a = startYmd.split('-').map(Number)
+  const b = endYmd.split('-').map(Number)
+  if (a.length !== 3 || b.length !== 3 || a.some((n) => Number.isNaN(n)) || b.some((n) => Number.isNaN(n))) return null
+  const [ay, am, ad] = a as [number, number, number]
+  const [by, bm, bd] = b as [number, number, number]
+  const start = new Date(ay, am - 1, ad)
+  const end = new Date(by, bm - 1, bd)
+  return Math.round((end.getTime() - start.getTime()) / 86400000)
+}
+
 /** ISO 8601 week number (1–53) for the Gregorian calendar day `YYYY-MM-DD` (UTC civil parts). Null if invalid. */
 export function isoWeekNumberFromGregorianYmd(ymd: string): number | null {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd.trim())
