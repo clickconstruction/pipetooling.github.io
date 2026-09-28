@@ -49,6 +49,7 @@ import { useNoticePayPage } from '../../hooks/useNoticePayPage'
 import { payPageBlocks, payPageSummary } from '../../lib/jobs/lienNoticePayPage'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useIsMobile } from '../../hooks/useIsMobile'
+import { ModalFullScreenButton, useModalFullScreen } from '../ModalFullScreenToggle'
 import { buildLienDeskRun, buildLienRetainageRun, runCoverNoteBlocks } from '../../lib/jobs/lienDeskRun'
 import { affidavitMonthWord, counselCoverLetterTemplate, coverLetterKindFor, fillCoverLetter, letterTwoTemplate } from '../../lib/jobs/gcOnNotice'
 import { LETTER_TWO_KINDS, letterTwoIsDue, letterTwoKindLabel, type LetterTwoKind } from '../../lib/jobs/lienLetterTwo'
@@ -229,6 +230,8 @@ export default function LienDeskModal({
 }: LienDeskModalProps) {
   const { showToast } = useToastContext()
   const isMobile = useIsMobile()
+  /** v2.4065: the title-bar toggle — the desk fills the screen above the app's bottom bar, and remembers the choice. */
+  const { fullScreen, toggle: toggleFullScreen, showToggle } = useModalFullScreen('lien-desk')
   const leader = isLeader(authRole)
   const office = isOffice(authRole)
   const [gcPickerOpen, setGcPickerOpen] = useState(false)
@@ -1835,7 +1838,8 @@ export default function LienDeskModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{ background: 'var(--surface)', borderRadius: 10, width: 'min(1140px, calc(100vw - 2rem))', maxHeight: 'calc(100dvh - 2rem - var(--app-bottom-chrome, 0px))', display: 'grid', gridTemplateRows: 'auto 1fr auto', overflow: 'hidden' }}
+        style={{ background: 'var(--surface)', borderRadius: fullScreen ? 0 : 10, width: fullScreen ? '100vw' : 'min(1140px, calc(100vw - 2rem))', height: fullScreen ? 'calc(100dvh - var(--app-bottom-chrome, 0px))' : undefined, maxHeight: fullScreen ? 'calc(100dvh - var(--app-bottom-chrome, 0px))' : 'calc(100dvh - 2rem - var(--app-bottom-chrome, 0px))', display: 'grid', gridTemplateRows: 'auto 1fr auto', overflow: 'hidden' }}
+        data-lien-desk-panel
       >
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem 0.5rem', padding: '0.7rem 2.6rem 0.6rem 1.25rem', borderBottom: '1px solid var(--border)' }}>
           <h2
@@ -1844,6 +1848,7 @@ export default function LienDeskModal({
           >
             ⏱ Lien desk
           </h2>
+          {showToggle ? <ModalFullScreenButton fullScreen={fullScreen} onToggle={toggleFullScreen} style={{ position: 'absolute', right: '3.1rem', top: '0.55rem' }} /> : null}
           <button type="button" onClick={onClose} aria-label="Close" style={{ position: 'absolute', right: '0.8rem', top: '0.5rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}>×</button>
           <div role="tablist" aria-label="Kind" style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 7, overflow: 'hidden', marginRight: '0.4rem' }}>
             {(['notice', 'affidavit', 'retainage', 'timeline'] as const).map((k) => (
