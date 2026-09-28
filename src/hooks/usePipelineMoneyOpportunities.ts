@@ -26,7 +26,8 @@ import {
 import { buildGcReviewRollup } from '../lib/gcReviewRollup'
 import { gcReviewWeekStartYmd, latestCertByGc, type GcReviewCertRow } from '../lib/jobs/gcReviewCertification'
 import { listGcReviewCertifications } from '../lib/gcReviewCertifications'
-import { buildStatementRound, deriveGcAccountMen, summarizeStatementRound, type RoundMarkRow } from '../lib/jobs/gcStatementRounds'
+import { deriveGcAccountMen, type RoundMarkRow } from '../lib/jobs/gcStatementRounds'
+import { buildGcWorklist, worklistCards } from '../lib/jobs/gcWorklist'
 import { listGcStatementRoundMarks, listGcStatementSenders } from '../lib/gcStatementRoundIo'
 import { useArBankUnallocatedCount } from './useArBankUnallocatedCount'
 import type { PipelineGcRoundCards } from '../components/jobs/PipelineMoneyOpportunities'
@@ -139,19 +140,19 @@ export function usePipelineMoneyOpportunities(opts: {
   }, [isOffice, leanBilledRows, paySpeeds, promises, touches])
   const gcRound = useMemo<PipelineGcRoundCards>(() => {
     if (!rollup || !leanBilledRows) return null
-    const items = buildStatementRound({
-      groups: rollup.groups,
-      certsByGc: latestCertByGc(certRows),
-      marks,
-      senders,
-      accountMen: deriveGcAccountMen(leanBilledRows),
-    })
-    const s = summarizeStatementRound(items, authUserId ?? null)
-    return {
-      held: s.held,
-      ready: { count: s.readyForUser.length, total: s.readyForUser.reduce((t, i) => t + i.amount, 0) },
-    }
-  }, [rollup, leanBilledRows, certRows, marks, senders, authUserId])
+    // Office-wide (punch list #49): every GC over the line, whoever its account man is. An app send marks the GC sent, so the marks alone say what is out.
+    return worklistCards(
+      buildGcWorklist({
+        groups: rollup.groups,
+        certsByGc: latestCertByGc(certRows),
+        marks,
+        senders,
+        accountMen: deriveGcAccountMen(leanBilledRows),
+        lastSentByGcId: {},
+        weekStartYmd: gcReviewWeekStartYmd(),
+      }),
+    )
+  }, [rollup, leanBilledRows, certRows, marks, senders])
 
   const cardCount =
     moves.length +
