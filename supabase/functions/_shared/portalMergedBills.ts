@@ -141,10 +141,16 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100
 }
 
-/** "check #48211" when the office recorded the number (v2.4053); the bare type otherwise; 'Payment' when there is neither. */
+/**
+ * "check #48211" when the office recorded the number (v2.4053); the bare type otherwise; 'Payment' when
+ * there is neither. A bank-recorded payment carries Mercury's transaction id in the field (a UUID —
+ * `apply_mercury_bank_payment_allocations`), which is a fold key and never a number the customer wrote;
+ * mirror of `isDepositRef` in src/lib/jobs/gcChecksApplied.ts.
+ */
 export function portalPaymentMethod(p: Pick<PortalPaymentRow, 'payment_type' | 'reference_number'>): string {
   const type = (p.payment_type ?? '').trim()
-  const ref = (p.reference_number ?? '').trim().replace(/^#\s*/, '')
+  const raw = (p.reference_number ?? '').trim().replace(/^#\s*/, '')
+  const ref = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw) ? '' : raw
   if (type && ref) return `${type} #${ref}`
   return type || (ref ? `#${ref}` : 'Payment')
 }

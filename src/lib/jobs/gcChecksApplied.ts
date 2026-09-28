@@ -181,9 +181,19 @@ export function paymentKind(paymentType: string | null | undefined): CheckKind {
   return 'other'
 }
 
-/** The number as the GC would say it: no leading #, no spaces around it. */
+/**
+ * A bank-recorded payment carries Mercury's transaction id in the number field
+ * (`apply_mercury_bank_payment_allocations` writes `mercury_id` there so one
+ * deposit's allocations share it): a fold key, never a check number.
+ */
+export function isDepositRef(reference: string | null | undefined): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test((reference ?? '').trim())
+}
+
+/** The number as the GC would say it: no leading #, no spaces around it; '' for a deposit id. */
 export function checkNumberText(reference: string | null | undefined): string {
-  return (reference ?? '').trim().replace(/^#\s*/, '').trim()
+  const ref = (reference ?? '').trim().replace(/^#\s*/, '').trim()
+  return isDepositRef(ref) ? '' : ref
 }
 
 const numberKey = (reference: string | null | undefined): string => checkNumberText(reference).toLowerCase().replace(/[^a-z0-9]/g, '')
