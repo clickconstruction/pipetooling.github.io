@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useQuickEstimateDoor } from '../../hooks/useQuickEstimateDoor'
+import { QuickEstimateWizard } from '../estimates/QuickEstimateWizard'
+import { WriteUpChangeGlyph } from '../dashboard/dashboardJobRowShared'
 import { Link, useNavigate } from 'react-router-dom'
 import { canSeeWhatCustomersSee } from '../../lib/settingsGroups'
 import { PersonJourneyStrips } from '../journeys/PersonJourneyStrips'
@@ -1238,7 +1241,11 @@ export default function DetailJobModal({
   // keep their ✕). v2.3839 adds the add-link dialog, the supply-house packet and
   // the job-account sheets, which Escape used to close Job Detail underneath.
   const [jobAccountSheetOpen, setJobAccountSheetOpen] = useState(false)
+  /** Write up a change (v2.4057): the header icon opens the Quick Estimate wizard on this job. */
+  const writeUpChangeDoor = useQuickEstimateDoor(authUser?.id, viewerAuthRole)
+  const [writeUpChangeOpen, setWriteUpChangeOpen] = useState(false)
   const detailEscBlocked =
+    writeUpChangeOpen ||
     paidEmailModalOpen ||
     reportsModalOpen ||
     jobCalendarOpen ||
@@ -1668,6 +1675,31 @@ export default function DetailJobModal({
                 >
                   <path d="M576 64L64 288L240 352L240 496L328 400L472 512L576 64z" />
                 </svg>
+              </button>
+            ) : null}
+            {writeUpChangeDoor && jobId ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setWriteUpChangeOpen(true)
+                }}
+                title="Write up a change on this job"
+                aria-label="Write up a change"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '0.35rem',
+                  margin: 0,
+                  border: 'none',
+                  background: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--text-link)',
+                  borderRadius: 4,
+                }}
+              >
+                <WriteUpChangeGlyph size={20} />
               </button>
             ) : null}
             {showDetailHeaderRightCluster ? (
@@ -2659,6 +2691,9 @@ export default function DetailJobModal({
             </div>
           </div>
         </div>
+      ) : null}
+      {writeUpChangeOpen && jobId ? (
+        <QuickEstimateWizard open initialJobId={jobId} zIndex={1100} onClose={() => setWriteUpChangeOpen(false)} />
       ) : null}
       {jobCalendarOpen && fullJob ? (
         <JobCalendarModal
