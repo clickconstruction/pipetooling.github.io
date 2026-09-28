@@ -60,10 +60,15 @@ export type GcReviewRollup = {
   collectionsTotal: number
 }
 
+/** A review row's key for its board row — how a statement row finds its bill again (the unpaid-invoices print). */
+export function gcReviewRowKey(r: StageRow): string {
+  return r.kind === 'invoice' ? r.inv.id : r.job.id
+}
+
 function toReviewRow(r: StageRow, inCollections: boolean, now: Date): GcReviewRow {
   const ref = printBilledRowReferenceDate(r, now)
   return {
-    key: r.kind === 'invoice' ? r.inv.id : r.job.id,
+    key: gcReviewRowKey(r),
     jobId: r.job.id,
     hcp: effectiveJobLedgerNumber(r.job.hcp_number, r.job.click_number) || '—',
     jobName: (r.job.job_name ?? '').trim(),

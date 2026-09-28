@@ -38,7 +38,7 @@ The office opens GC Review from the Stages board's Billed section. There they:
 - run the **weekly statement round**: a personal email for each GC over $10k, from an assigned sender, marked "Sent it" or "Spoke with them"
 - watch the **temperature board**
 - manage **scheduled and standing statement emails**
-- send any GC's statement through **Draft Message** (app email, send now or scheduled), **Copy**, **Print** or the **portal link**
+- send any GC's statement through **Draft Message** (app email, send now or scheduled), **Copy**, **Print** or the **portal link**, and open the GC's unpaid invoices as one PDF (**Print unpaid invoices**)
 - **Share all**: print or email the whole report
 
 ### Host, openers, contract
@@ -88,7 +88,7 @@ The office opens GC Review from the Stages board's Billed section. There they:
 1. **One scrolling panel plus eight stacked overlays (five of them inline).** The main panel (z 60) holds every inline region. The Draft Message and Share all dialogs (z 61), the Share menu (backdrop 62 / menu 63), the round overlay and Mark sent dialog (z 64) are **inline JSX**. `GcSenderRoundCard` (64), `GcStatementSendHistoryModal` (64) and `GcReviewCertifyModal` (70) are extracted. Nothing handles Escape.
 2. **It stays mounted while closed.** The parent renders it unconditionally, and `return null` sits after the hooks, so **all 56 states survive close and reopen** while the Stages tab stays active: `groupBy`, `includeCollections`, a half-typed standing form, `roundStartTotal`. They reset only when the Stages tab goes inactive (the parent's `{active && …}` block unmounts the modal) or unmounts. The `open`-gated effects refetch on every open.
 3. **Two rollups over the same rows.** `rollup` (492–495) is what the panel shows, following the Group-by pill and Include Collections. `roundRollup` (500–503) is always **by GC and active-only**, and it feeds certification, rounds, the temperature board and the week strip (comment 504–510, v2.2764).
-4. **The parent owns transport, print and copy.** The modal owns scheduling (`gc_statement_email_requests`), round marks, certifications (in the child), sender assignment and the round-email chains.
+4. **The parent owns transport, the statement print and copy.** The modal owns the unpaid-invoices PDF (it reads the jobs itself), scheduling (`gc_statement_email_requests`), round marks, certifications (in the child), sender assignment and the round-email chains.
 
 ### How to read a dossier
 
@@ -228,14 +228,14 @@ Render regions in JSX order (all ranges @ `a05cef4c4`). Status: `extracted` mean
     - cert 1349–1375: `gcGroupCertStatus` → Certified or "Changed since certified · ±$delta"
   - **7b actions (1376–1551):**
     - Certify / Re-certify (canCertify, on `certGroupByGc`)
-    - the Share menu (1409–1529): Draft Message, Copy (`onCopyForEmail`), Print, **Mark sent / spoke with them…** (canCertify), and Portal → `copyPortalLink` or the "No portal link yet" hint
+    - the Share menu (1409–1529): Draft Message, Copy (`onCopyForEmail`), Print, **Print unpaid invoices** (`printUnpaidInvoices` → `planGcUnpaidInvoicePrint` + `openGcUnpaidInvoicesPdfInNewTab`; `invoicePrintGroupKey` disables the item while one PDF builds), **Mark sent / spoke with them…** (canCertify), and Portal → `copyPortalLink` or the "No portal link yet" hint
     - else (`g.isNoGc`: the no-GC / no-development group) a print-only icon (1532–1550)
   - A stats line: jobs · `$subtotal` · oldest d (1554–1557).
   - **7c table:** customer (+ Collections badge), job (`onOpenJob` link when provided), billed-on, days, remaining.
 - **Owned:** `shareMenuGroupKey`. It is one-at-a-time across groups, so it stays in the parent unless the menu becomes per-card local state (a behaviour change, since two menus could be open).
 - **Shared:** `byDevelopment`, `effectiveGroupBy`, `certGroupByGc`, `certsByGc`, `mergedLastSent`, `temperatureByGc`, `boardRowByGc`, `portalLinkFor`, and the 4 pointer setters.
 - **Data:** read-only except `copyPortalLink` → **rpc `mark_customer_portal_slug_shared`** (locks the short slug on first share), then `refreshPortalLinks`.
-- **Tests:** `buildGcReviewRollup` (9: totals, collections, development grouping), `gcGroupCertStatus` / `gcReviewSentThisWeek` (10), `gcPortalLinkCaption` (5), `CustomerPortalGlobeButton.render` (5). **The card itself is untested.**
+- **Tests:** `buildGcReviewRollup` (9: totals, collections, development grouping), `gcGroupCertStatus` / `gcReviewSentThisWeek` (10), `gcPortalLinkCaption` (5), `gcUnpaidInvoicePrint` (10: which bills, which are left out, the message), `CustomerPortalGlobeButton.render` (5). **The card itself is untested.**
 - **Approach:** `GcReviewGroupSection` (#10) with a callbacks bag. Take the pill IIFEs through small presentational helpers first.
 
 ### 9. Draft Message dialog (inline, 244 + 31 lines; money-adjacent send)
@@ -353,6 +353,7 @@ Render regions in JSX order (all ranges @ `a05cef4c4`). Status: `extracted` mean
   - `customer_portal_links` + `customer_portal_slugs`: select via `useGcPortalLinks`
   - `email_templates`: `resolveEmailWording`
   - `app_settings`: issuer
+  - `jobs_ledger` (full detail select): `fetchJobWithDetailsById`, one read per job on the statement, five at a time, only when Print unpaid invoices runs (`lib/jobs/gcUnpaidInvoicePrintIo.ts`)
 - **RPC (direct):** `mark_customer_portal_slug_shared` (569).
 - **Edge functions:** `statement-round-email-dispatch` (preview, `test_send`). `send-gc-statement-email` is **invoked by the parent** through `onSendStatement`. The scheduled dispatcher (`gc-statement-email-dispatch`) rebuilds at send time and skips an entity (per-GC / per-development) statement with nothing outstanding (233–242); a whole-report row is never skipped for amount.
 - **Parent-side read:** `gc_statement_emails` (last-sent hints).
