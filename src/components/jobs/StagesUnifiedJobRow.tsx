@@ -191,6 +191,7 @@ export function StagesUnifiedJobRow({ row, t }: { row: StagesUnifiedJobRowKind; 
                   ) : null
                 })() : null}
               />
+              {t.billedLienRunway?.(row)}
               {((sendBackBelowRemaining && onJobSendBack) || onJobMoveToCollections) && (
                 <div style={stagesCellButtonRowStyle}>
                   {sendBackBelowRemaining && onJobSendBack && (
@@ -250,6 +251,7 @@ export function StagesUnifiedJobRow({ row, t }: { row: StagesUnifiedJobRowKind; 
                       )
                 }
               />
+              {t.billedLienRunway?.(row)}
               {((sendBackBelowRemaining && bundleInvWithJob != null) || onJobMoveToCollections) && (
                 <div style={stagesCellButtonRowStyle}>
                   {sendBackBelowRemaining && onInvoiceSendBack && bundleInvWithJob != null && (

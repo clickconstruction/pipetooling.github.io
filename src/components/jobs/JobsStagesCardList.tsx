@@ -1266,6 +1266,7 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
                 onStageClick={() => openEdit(j, { fixturesSectionHighlight: true })}
               />
               {props.billedExpectedPayChip?.(row)}
+              {props.billedLienRunway?.(row)}
               {inv ? cardStripeEmailedHint(ctx, j, inv) : null}
             </div>
             {cardFooterRow(ctx, j, () => setMoreActionsRow(row), showTimeOpen ? formatTimeSince(j.created_at ?? null) : null)}

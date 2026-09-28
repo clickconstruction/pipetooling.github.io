@@ -7,7 +7,7 @@ file: GLOSSARY.md
 type: Reference
 purpose: Comprehensive definitions of all domain-specific terms and technical concepts
 audience: All users (especially new developers and AI agents)
-last_updated: 2026-09-27
+last_updated: 2026-09-28
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
@@ -1541,6 +1541,9 @@ Jobs → Pipeline (**v2.3405**): the queue of § 53.056 notices the law says are
 **Letter two** (**v2.3760**, #33 PR 2): a sent notice's footer counts the days since the packet and says whether the GC paid or authorized direct pay; from day 10 the row wears *day N · letter two* (red past 14 — counsel's cadence). *Send letter two ▸* drafts counsel's paid-out or unresponsive letter on the job's notice as a second desk item (`fields.letterTwo`), sent and recorded through the usual approval and run; *The GC authorized direct pay…* notes the okay on the first packet (`fields.gcAuthorizedDirectPay`) and turns letter two off. Kernel `lienLetterTwo.ts`; the Dashboard's lien card and the GC run's claims table carry the same words.
 
 **The owner's call and the piles** (**v2.3767**, #33 PR 3 — the folder retired; counsel's memo is [`COUNSEL_MEMO_GC_ON_NOTICE_2026-09-22.md`](./COUNSEL_MEMO_GC_ON_NOTICE_2026-09-22.md)): *Record the owner's call…* on a sent notice takes the three answers the letters ask for (still owes the GC, reserved the 10% and still holds it, their contract's completion date) onto the first packet (`fields.ownerCall`, `lienOwnerCall.ts`); the Affidavits tab reads counsel's pile from them — *A* the owner still owes the GC (trap it), *B* paid but never reserved (a shared reserved-funds lien, § 53.105), *C* paid in full and holds nothing (the property lien; file now) — with the § 53.101 hold's end and the payment bond line; the GC run gains step 5, *The grid*, counsel's spreadsheet one row per job, printable.
+
+### Lien runway (Pipeline)
+The short track under every **Billed** and **Collections** row's money bar on **Jobs → Pipeline** (v2.4051): today at the left, a **green dot** where the customer is expected to pay (the expected-pay chip's date — the GC's word, a promise, or the pay-speed estimate) and a **flag** on the § 53.052 affidavit deadline for the job's last work month. Green between them = room; red hatching = the lien dies before the money lands (*file first*); no dot = no pay date; one red line = *lien gone · window closed*. The sentence under it opens the job's Lien window. A property whose kind is unset is read on the **residential** (earlier) clock and says so. Kernel `lib/jobs/lienPayRunway.ts`; facts from `useBilledLienClocks`. On a phone the row's one chip carries the verdict once the flag is inside 21 days or the money is due after it.
 ### Work months (Payment forecast)
 The chevron at the left of a **Payment forecast** row (Jobs → Pipeline → Forecast, **v2.3400**) opens the months the crew worked on that job, from its clock sessions: one line per month — the weeks as bars (height = hours, crew count above, hatched while sessions await approval), *people · hours · days · % of the job's hours*, and on a job with a GC that month's **§ 53.056 notice** date and state (*due* ≤ 7 days, *closes in Nd* ≤ 14, *notice sent*, *window closed*) with **Send notice…** opening the Lien instruments window on the notice tab. A sub row whose month is closing wears *⏱ Jun notice due tomorrow* without opening; one amber line above the buckets counts the months closing and the dollars. Texas counts lien deadlines from the month labor was furnished, never the bill date — see the guide *file a lien and never miss its deadlines*. Kernel [`forecastWorkMonths.ts`](../src/lib/jobs/forecastWorkMonths.ts), hook `useForecastWorkMonths`, panel `ForecastWorkMonthsPanel`.
 
