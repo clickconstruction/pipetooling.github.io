@@ -1,5 +1,5 @@
 /**
- * Bids → Submittals: the walkthrough's stops (v2.4067) and the first-open offer.
+ * Bids → Submittals: the walkthrough's stops (v2.4067; the Procure stop v2.4088) and the first-open offer.
  *
  * The spotlight tour stops at every stage of the process in order. A stage whose
  * controls are not on the page yet (Build Rev 1 once it is built, the room line before a
@@ -15,7 +15,7 @@ export const SUBMITTAL_TOUR_STEPS: SpotlightTourStep[] = [
   {
     anchor: 'submittals-journey',
     title: 'Where this submittal is',
-    body: 'Seven stages, from the schedule to the GC’s approval. ✓ is done, blue is you, amber is waiting on someone else. The line under the pills is the next thing to do and the button that does it.',
+    body: 'Eight stages, from the schedule to the GC’s approval and on to ordering. ✓ is done, blue is you, amber is waiting on someone else. The line under the pills is the next thing to do and the button that does it.',
   },
   {
     anchor: 'submittals-source',
@@ -81,6 +81,12 @@ export const SUBMITTAL_TOUR_STEPS: SpotlightTourStep[] = [
     title: '7 · Resubmit only what came back',
     body: 'When rows come back marked Revise or Reject, a green button starts Rev N+1 with just those rows. Fix the pick on Pricing, rebuild, share again: the same room link shows the new revision.',
     missingBody: 'New revision is always here; the “Rev N+1 from the rows sent back” form of it appears when a reviewer has sent rows back.',
+  },
+  {
+    anchor: 'submittals-procure',
+    title: '8 · Procure: the log the GC asks for',
+    body: 'One row per tag. Released is the GC’s approval, required is the day its stage starts on the job, expected is your order date plus the lead time. Type the order date and PO; a red float means it lands late, “order by” is the last safe day. Send update writes what changed, prints the sheet and copies the text for your email; the GC’s room link shows the same log.',
+    missingBody: 'The log appears under the rows once Rev 1 exists, and fills in as the GC approves rows.',
   },
 ]
 
