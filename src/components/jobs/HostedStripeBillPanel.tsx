@@ -266,7 +266,7 @@ export function HostedStripeBillPanel({
 
   const showVoidStripeHostedDisabledWhileLoading =
     voidStripeHostedFooterEligible && stripeLoading && !stripeError
-  // v2.4077: a bill Stripe shows paid only by our own check/cash mark is sent
+  // v2.4082: a bill Stripe shows paid only by our own check/cash mark is sent
   // back by reversing that mark (credit note), not refused — the words follow.
   const sendBackKind = stripeSendBackKind({
     invoiceStatus: inv.status,

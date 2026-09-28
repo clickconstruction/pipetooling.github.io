@@ -30,10 +30,10 @@ export default function UnwindStripeOobPaymentModal({
   open: boolean
   onClose: () => void
   onSuccess: (result: UnwindStripeOobResult) => void | Promise<void>
-  /** v2.4077: the reason the door was opened with (Edit Job's "Check didn't clear…" prefills it). */
+  /** v2.4082: the reason the door was opened with (Edit Job's "Check didn't clear…" prefills it). */
   initialReason?: string
   /**
-   * v2.4077: Stripe never reopens a paid invoice, so after the undo the bill can
+   * v2.4082: Stripe never reopens a paid invoice, so after the undo the bill can
    * only be collected by billing again — the send-back is on unless the host says otherwise.
    */
   sendBackDefault?: boolean

@@ -1039,7 +1039,7 @@ export default function JobFormModal({
    */
   /** v2.3695: the locked Stripe row whose part payment is being undone. */
   const [undoPartPaymentRow, setUndoPartPaymentRow] = useState<PaymentRow | null>(null)
-  // v2.4077: "Check didn't clear…" on a whole-bill out-of-band mark — opens the Undo window with the send-back on.
+  // v2.4082: "Check didn't clear…" on a whole-bill out-of-band mark — opens the Undo window with the send-back on.
   const [checkDidNotClearRow, setCheckDidNotClearRow] = useState<PaymentRow | null>(null)
   const [recordPaymentTarget, setRecordPaymentTarget] = useState<{
     inv: JobsLedgerInvoiceRow

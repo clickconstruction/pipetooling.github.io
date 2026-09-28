@@ -3,7 +3,7 @@ import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 
 /**
  * Sending back a Stripe-hosted billed line when Stripe still shows it paid
- * (v2.4077).
+ * (v2.4082).
  *
  * A bill marked paid by check through Mark Paid is closed in Stripe
  * "out of band": Stripe's status turns `paid`, `amount_paid` stays 0 and no
