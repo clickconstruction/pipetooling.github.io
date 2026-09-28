@@ -51,15 +51,9 @@ import {
   buildIdentitySliceJson,
   buildMaterialsSliceJson,
   buildTeamSliceJson,
-  diffTeamMemberIds,
-  fixtureInsertRows,
   identitySliceReadyToSave,
-  materialInsertRows,
-  paymentInsertRows,
-  shouldDemotePaidJobToBilled,
   type JobIdentityFormFields,
 } from '../../lib/jobs/jobFormAutosaveSlices'
-import { diffPaymentRows } from '../../lib/jobs/paymentRowsDiff'
 import { composePctAutoNoteBody } from '../../lib/jobs/stagesPctNote'
 import { postJobThreadNoteBody } from '../../lib/jobs/postJobThreadNote'
 import {
@@ -79,7 +73,7 @@ import {
 } from '../../lib/jobDispatchAutoClose'
 import { notifyDispatchRequestClosure } from '../../lib/dispatchRequestClosure'
 import { JobFormSourceEstimateBanner } from './JobFormSourceEstimateBanner'
-import type { Database, Json } from '../../types/database'
+import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { resolveCustomerIdForJobPayload, resolveGcCustomerIdForJobPayload } from '../../lib/jobLedgerCustomer'
 import { PickWinningGcModal } from './PickWinningGcModal'
@@ -96,6 +90,8 @@ import { jobLedgerHasCustomerForBilling } from '../../lib/jobLedgerCustomerForBi
 import { revenueDollarsFromFixtures } from '../../lib/revenueFromJobFixtures'
 import { jobFormPaidDollars, jobFormRevenueDollars } from '../../lib/jobs/jobFormMoneyTotals'
 import { mergePaymentRowUpdate, paymentRowsAfterRemove } from '../../lib/jobs/jobFormPaymentActions'
+import { autosaveFailureWords, writeBillingSlice, writeMaterialsSlice, writeNewJobChildRows, writeTeamSlice } from '../../lib/jobs/jobFormSliceWrites'
+import { closeDateMetBackfillNeeded, closeDemoteToBilledNeeded } from '../../lib/jobs/jobFormCloseSideEffects'
 import { buildEditJobBillingBar } from '../../lib/jobs/editJobBillingBar'
 import { MoneyLifecycleBar, PAID_COLOR, BILLED_COLOR, DRAFT_COLOR } from './MoneyLifecycleBar'
 import { useBreakOffSlider } from './useBreakOffSlider'
@@ -107,7 +103,7 @@ import { useJobStagePlanInputs } from '../../hooks/useJobStagePlanInputs'
 import { drawLabelsByInvoiceId, stagePlanFromForm } from '../../lib/jobs/stagePlanForm'
 import { fixtureRowsFromDb } from '../../lib/jobs/jobFormFixtureHydrate'
 import { applyTargetJobTotal, discountRowIsLocked, isDiscountRow, newDiscountFixtureRow, syncDiscountRows } from '../../lib/jobs/discountLine'
-import { diffDiscountSnapshots, discountSnapshot, type DiscountSnapshotEntry } from '../../lib/jobs/discountActivity'
+import { discountSnapshot, type DiscountSnapshotEntry } from '../../lib/jobs/discountActivity'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { JobFormStagesGroup } from './JobFormStagesGroup'
 import { JobFormStagesDrawer } from './JobFormStagesDrawer'
@@ -172,7 +168,6 @@ import BilledPaymentConfirmationModal from './BilledPaymentConfirmationModal'
 import UndoStripePartPaymentModal from './UndoStripePartPaymentModal'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 import { findInvoiceWithJobFromJobs } from '../../lib/invoiceWithJobFromJobList'
-import { normalizeJobsLedgerStatus } from '../../lib/jobsLedgerStatusPipeline'
 import { mercuryCardTotalFromLines, tallyPartsTotalFromLines } from '../../lib/fetchJobMaterialsCostSnapshot'
 import JobProjectLinkChoiceModal from './JobProjectLinkChoiceModal'
 import JobBidLinkChoiceModal, { type JobBidLinkOption } from './JobBidLinkChoiceModal'
@@ -720,57 +715,23 @@ export default function JobFormModal({
     const jobId = autosaveJobIdRef.current
     if (!jobId) return true
     try {
-      const fx = autosaveFixturesRef.current
-      const pays = autosavePaymentsRef.current
-      const revNum = jobFormRevenueDollars(fx, autosaveRiderFeesRef.current)
-      // B4 (FRAGILITY_REMEDIATION_PLAN.md): payments_made is a DB-trigger-
-      // maintained cache of SUM(jobs_ledger_payments.amount) since B3 — the
-      // row rewrite below keeps it in sync; the client no longer writes it.
-      const { error: updErr } = await supabase
-        .from('jobs_ledger')
-        .update({ revenue: revNum })
-        .eq('id', jobId)
-      if (updErr) throw updErr
-      // B5: diff instead of delete-all+reinsert — stable row ids (no
-      // activity-event churn) and rows born mid-edit survive.
-      const { deleteIds, upserts } = diffPaymentRows(jobId, hydratedPaymentIdsRef.current, pays)
-      if (deleteIds.length > 0) {
-        const { error: delPayErr } = await supabase
-          .from('jobs_ledger_payments')
-          .delete()
-          .in('id', deleteIds)
-          .eq('job_id', jobId)
-        if (delPayErr) throw delPayErr
-      }
-      if (upserts.length > 0) {
-        const { error: upsertPayErr } = await supabase
-          .from('jobs_ledger_payments')
-          .upsert(upserts, { onConflict: 'id' })
-        if (upsertPayErr) throw upsertPayErr
-      }
-      hydratedPaymentIdsRef.current = upserts.map((u) => u.id)
-      const { error: delFixErr } = await supabase.from('jobs_ledger_fixtures').delete().eq('job_id', jobId)
-      if (delFixErr) throw delFixErr
-      for (const row of fixtureInsertRows(jobId, fx)) {
-        const { error: insFixErr } = await supabase.from('jobs_ledger_fixtures').insert(row)
-        if (insFixErr) throw insFixErr
-      }
-      const nextDiscounts = discountSnapshot(fx)
-      const discountEvents = diffDiscountSnapshots(persistedDiscountSnapshotRef.current, nextDiscounts)
-      persistedDiscountSnapshotRef.current = nextDiscounts
-      for (const ev of discountEvents) {
-        void supabase
-          .rpc('log_job_discount_event', { p_job_id: jobId, p_event_type: ev.event_type, p_summary: ev.summary, p_detail: ev.detail as Json })
-          .then(({ error }) => {
-            if (error) console.warn('log_job_discount_event failed', error)
-          })
-      }
+      await writeBillingSlice(supabase, {
+        jobId,
+        fixtures: autosaveFixturesRef.current,
+        payments: autosavePaymentsRef.current,
+        riderFeesDollars: autosaveRiderFeesRef.current,
+        hydratedPaymentIds: hydratedPaymentIdsRef.current,
+        persistedDiscounts: persistedDiscountSnapshotRef.current,
+        onPaymentsWritten: (ids) => {
+          hydratedPaymentIdsRef.current = ids
+        },
+        onDiscountsWritten: (saved) => {
+          persistedDiscountSnapshotRef.current = saved
+        },
+      })
       return true
     } catch (autosaveErr) {
-      showToast(
-        `Autosave failed: ${autosaveErr instanceof Error ? autosaveErr.message : String(autosaveErr)}`,
-        'error',
-      )
+      showToast(autosaveFailureWords(autosaveErr), 'error')
       return false
     }
   }
@@ -998,10 +959,7 @@ export default function JobFormModal({
       persistedCustomerPhoneRef.current = newPhone
       return true
     } catch (identityErr) {
-      showToast(
-        `Autosave failed: ${identityErr instanceof Error ? identityErr.message : String(identityErr)}`,
-        'error',
-      )
+      showToast(autosaveFailureWords(identityErr), 'error')
       return false
     }
   }
@@ -1023,15 +981,10 @@ export default function JobFormModal({
     const jobId = autosaveJobIdRef.current
     if (!jobId) return true
     try {
-      const { error: delMatErr } = await supabase.from('jobs_ledger_materials').delete().eq('job_id', jobId)
-      if (delMatErr) throw delMatErr
-      for (const row of materialInsertRows(jobId, autosaveMaterialsRef.current)) {
-        const { error: insMatErr } = await supabase.from('jobs_ledger_materials').insert(row)
-        if (insMatErr) throw insMatErr
-      }
+      await writeMaterialsSlice(supabase, { jobId, materials: autosaveMaterialsRef.current })
       return true
     } catch (matErr) {
-      showToast(`Autosave failed: ${matErr instanceof Error ? matErr.message : String(matErr)}`, 'error')
+      showToast(autosaveFailureWords(matErr), 'error')
       return false
     }
   }
@@ -1061,30 +1014,10 @@ export default function JobFormModal({
     const jobId = autosaveJobIdRef.current
     if (!jobId) return true
     try {
-      const { data: existingTeam, error: teamReadErr } = await supabase
-        .from('jobs_ledger_team_members')
-        .select('user_id')
-        .eq('job_id', jobId)
-      if (teamReadErr) throw teamReadErr
-      const { toAdd, toRemove } = diffTeamMemberIds(
-        autosaveTeamIdsRef.current,
-        (existingTeam ?? []).map((t: { user_id: string }) => t.user_id),
-      )
-      for (const uid of toAdd) {
-        const { error: insErr } = await supabase.from('jobs_ledger_team_members').insert({ job_id: jobId, user_id: uid })
-        if (insErr) throw insErr
-      }
-      for (const uid of toRemove) {
-        const { error: delErr } = await supabase
-          .from('jobs_ledger_team_members')
-          .delete()
-          .eq('job_id', jobId)
-          .eq('user_id', uid)
-        if (delErr) throw delErr
-      }
+      await writeTeamSlice(supabase, { jobId, teamMemberIds: autosaveTeamIdsRef.current })
       return true
     } catch (teamErr) {
-      showToast(`Autosave failed: ${teamErr instanceof Error ? teamErr.message : String(teamErr)}`, 'error')
+      showToast(autosaveFailureWords(teamErr), 'error')
       return false
     }
   }
@@ -1640,15 +1573,8 @@ export default function JobFormModal({
    */
   function editCloseSideEffectsNeeded(): boolean {
     if (!editing?.id) return false
-    const dateMetNeeded = !!(
-      customerId &&
-      dateMet.trim() &&
-      customers.some((x) => x.id === customerId && !x.date_met)
-    )
-    if (dateMetNeeded) return true
-    const revNum = jobFormRevenueDollars(autosaveFixturesRef.current, autosaveRiderFeesRef.current)
-    const paymentsMadeNum = jobFormPaidDollars(autosavePaymentsRef.current)
-    return shouldDemotePaidJobToBilled(normalizeJobsLedgerStatus(editing.status) ?? '', revNum, paymentsMadeNum)
+    if (closeDateMetBackfillNeeded({ customerId, dateMet, customers })) return true
+    return closeDemoteToBilledNeeded({ status: editing.status, fixtures: autosaveFixturesRef.current, riderFeesDollars: autosaveRiderFeesRef.current, payments: autosavePaymentsRef.current })
   }
 
   /** The Save-button side effects, now run at close time (best-effort: they toast on failure but never block the close). */
@@ -1667,9 +1593,7 @@ export default function JobFormModal({
     } catch (dateMetErr) {
       console.warn('customers.date_met backfill failed', dateMetErr)
     }
-    const revNum = jobFormRevenueDollars(autosaveFixturesRef.current, autosaveRiderFeesRef.current)
-    const paymentsMadeNum = jobFormPaidDollars(autosavePaymentsRef.current)
-    if (shouldDemotePaidJobToBilled(normalizeJobsLedgerStatus(editing?.status) ?? '', revNum, paymentsMadeNum)) {
+    if (closeDemoteToBilledNeeded({ status: editing?.status, fixtures: autosaveFixturesRef.current, riderFeesDollars: autosaveRiderFeesRef.current, payments: autosavePaymentsRef.current })) {
       try {
         const data = await withSupabaseRetry(
           async () => supabase.rpc('update_job_status', { p_job_id: jobId, p_to_status: 'billed' }),
@@ -2540,18 +2464,7 @@ export default function JobFormModal({
       if (insertErr) throw insertErr
       const jobId = inserted?.id
       if (jobId) {
-        for (const row of paymentInsertRows(jobId, payments)) {
-          await supabase.from('jobs_ledger_payments').insert(row)
-        }
-        for (const row of materialInsertRows(jobId, materials)) {
-          await supabase.from('jobs_ledger_materials').insert(row)
-        }
-        for (const row of fixtureInsertRows(jobId, fixtures)) {
-          await supabase.from('jobs_ledger_fixtures').insert(row)
-        }
-        for (const uid of teamMemberIds) {
-          await supabase.from('jobs_ledger_team_members').insert({ job_id: jobId, user_id: uid })
-        }
+        await writeNewJobChildRows(supabase, { jobId, payments, materials, fixtures, teamMemberIds })
         onCreatedJobIdRef.current?.(jobId)
         // Tier-1 #8: a job's birth is unloggable in job_activity_events without a migration (no client
         // INSERT policy, no AFTER INSERT trigger on jobs_ledger) — record it as telemetry for now, and
