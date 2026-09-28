@@ -1,6 +1,4 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { PaySourcePicker } from '../components/pay/PaySourcePicker'
-import { isPaySourceDuplicateError, PAY_SOURCE_DUPLICATE_MESSAGE, paySourceWrite, type PaySourceKind } from '../lib/people/paySources'
 import { pageSubTabStyle, pageTabStyle } from '../lib/pageTabStyle'
 import {
   PEOPLE_TAB_GROUP_MEMORY_KEY,
@@ -67,7 +65,6 @@ import {
 import { useSearchParams } from 'react-router-dom'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
-import { formatCurrency } from '../lib/format'
 import { buildPayStubHtml, openPayStubWindow } from '../lib/peopleDocuments/buildPayStubHtml'
 import { PayStubViewModal } from '../components/pay/PayStubViewModal'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
@@ -84,16 +81,10 @@ import {
 } from '../hooks/usePeopleRoster'
 import { useUsersTabTags } from '../hooks/useUsersTabTags'
 import { isPayStubFullyPaid } from '../lib/payStubPayments'
-import {
-  employeeCreditDraftFromPayment,
-  parsePayStubPaymentAmount,
-  payStubBalance,
-  payStubPaymentAmountDefault,
-  payStubPaymentExcess,
-  planPayStubPayment,
-} from '../lib/pay/recordPayStubPayment'
+import { payStubBalance } from '../lib/pay/recordPayStubPayment'
 import { usePayStubsData } from '../hooks/usePayStubsData'
-import { type PersonOffsetInitialDraft, PersonOffsetFormModal } from '../components/pay/PersonOffsetFormModal'
+import { RecordPayStubPaymentModal } from '../components/pay/RecordPayStubPaymentModal'
+import { useRecordPayStubPayment } from '../hooks/useRecordPayStubPayment'
 import { DraftPayrollModal } from '../components/pay/DraftPayrollModal'
 import { HoursApprovedNudgeChip } from '../components/people/HoursApprovedNudgeChip'
 import { foldHoursApproved, type HoursApprovedNudge } from '../lib/people/payWeekLinks'
@@ -171,19 +162,9 @@ import { usePendingHoursApprovalsNudge } from '../hooks/usePendingHoursApprovals
 import type { DayEditorSession } from '../lib/myTimeDayTimeline'
 import type { ClockSessionRow } from '../types/clockSessions'
 
-function todayYyyyMmDdLocal(): string {
-  return todayYmdInAppTz()
-}
-
-function paidAtIsoFromYyyyMmDd(ymd: string): string {
-  return new Date(`${ymd}T12:00:00`).toISOString()
-}
-
 /** Pay History overlays: base layer; nested dialogs (e.g. Record payment from Draft Payroll) must be higher. */
 const Z_PEOPLE_PAY_MODAL = 1100
 const Z_PEOPLE_PAY_MODAL_NESTED = 1200
-/** Above Record payment / nested pay dialogs when opening PersonOffsetFormModal from Pay History. */
-const Z_PEOPLE_OFFSET_FORM = 1210
 /** Above Draft Payroll when opening per-person hours / job breakdown. */
 const Z_PEOPLE_DRAFT_PAYROLL_HOURS_BREAKDOWN = 1215
 
@@ -478,6 +459,8 @@ export default function People() {
     payStubDeleteConfirm,
     setPayStubDeleteConfirm,
   } = usePayStubsData({ canAccessPay, setError })
+  const recordPayment = useRecordPayStubPayment({ authUserId: authUser?.id, payStubLineMaps, loadPayStubs, setError })
+  const { markingPayStubId, openPayStubMarkPaidModal } = recordPayment
   // Ledger Actions → View: in-app pay-stub viewer (full built HTML document + modal title).
   const [payStubViewModal, setPayStubViewModal] = useState<{ title: string; html: string } | null>(null)
   const [payStubPeriodStart, setPayStubPeriodStart] = useState(() => {
@@ -494,7 +477,6 @@ export default function People() {
     start.setDate(d.getDate() - day + 6)
     return localCalendarDayKey(start)
   })
-  const [markingPayStubId, setMarkingPayStubId] = useState<string | null>(null)
   const [generatingPayStubPerson, setGeneratingPayStubPerson] = useState<string | null>(null)
   const [bulkGeneratingPayStubs, setBulkGeneratingPayStubs] = useState(false)
   const [draftPayrollModalOpen, setDraftPayrollModalOpen] = useState(false)
@@ -533,16 +515,6 @@ export default function People() {
   const [hoursFlashPersonName, setHoursFlashPersonName] = useState<string | null>(null)
   /** Draft Payroll "Generate remaining" confirm (replaces the old window.confirm); candidates snapshot at request time. */
   const [bulkGenerateConfirm, setBulkGenerateConfirm] = useState<{ start: string; end: string; candidates: string[] } | null>(null)
-  const [payStubMarkPaidTarget, setPayStubMarkPaidTarget] = useState<PayStubRow | null>(null)
-  const [payStubMarkPaidDate, setPayStubMarkPaidDate] = useState('')
-  const [payStubMarkPaidAmount, setPayStubMarkPaidAmount] = useState('')
-  const [payStubMarkPaidNote, setPayStubMarkPaidNote] = useState('')
-  /** Cash App reconcile (v2.3330): the Cash App Transaction ID, when the payment was a Cash App send — written into the memo so the next import matches it exactly. */
-  const [payStubMarkPaidCashAppId, setPayStubMarkPaidCashAppId] = useState('')
-  /** How the payment was sent (v2.3717) — written to source_kind / source_id and the memo's first words. */
-  const [payStubMarkPaidKind, setPayStubMarkPaidKind] = useState<PaySourceKind | null>(null)
-  /** After Add offset save from Record payment employee-credit path: reload stub row and reset amount to remaining. */
-  const recordPaymentRefreshAfterEmployeeCreditRef = useRef(false)
   const [hoursDateEnd, setHoursDateEnd] = useState(() => {
     const d = new Date()
     const day = d.getDay()
@@ -699,9 +671,6 @@ export default function People() {
 
   // Offset form state — only the Record-payment "employee credit" entry point lives here.
   // The Offsets tab UI (list, search, apply-to-stub, add/edit) is in PeopleOffsetsTab.
-  const [offsetFormOpen, setOffsetFormOpen] = useState(false)
-  const [offsetFormInitialCreateDraft, setOffsetFormInitialCreateDraft] = useState<PersonOffsetInitialDraft | null>(null)
-  const [, setOffsetFormError] = useState<string | null>(null)
 
   // Drilldown modal awareness: while a drilldown modal is open we defer
   // any data-driven refresh so the user's current investigation isn't
@@ -1413,89 +1382,6 @@ export default function People() {
     openPayStubWindow(await buildPayStubViewHtml(stub), true)
   }
 
-  function openPayStubMarkPaidModal(stub: PayStubRow) {
-    setPayStubMarkPaidTarget(stub)
-    setPayStubMarkPaidDate(todayYyyyMmDdLocal())
-    setPayStubMarkPaidAmount(payStubPaymentAmountDefault(payStubBalance(stub, payStubLineMaps).remaining))
-    setPayStubMarkPaidNote('')
-  }
-
-  function closePayStubMarkPaidModal() {
-    setPayStubMarkPaidTarget(null)
-    setPayStubMarkPaidDate('')
-    setPayStubMarkPaidAmount('')
-    setPayStubMarkPaidNote('')
-    setPayStubMarkPaidCashAppId('')
-    setPayStubMarkPaidKind(null)
-  }
-
-  function openEmployeeCreditFromRecordPayment() {
-    if (!payStubMarkPaidTarget) return
-    const stub = payStubMarkPaidTarget
-    recordPaymentRefreshAfterEmployeeCreditRef.current = true
-    openOffsetFormWithDraft(
-      employeeCreditDraftFromPayment({
-        stub,
-        amountText: payStubMarkPaidAmount,
-        remaining: payStubBalance(stub, payStubLineMaps).remaining,
-        memo: payStubMarkPaidNote,
-        paidDateYmd: payStubMarkPaidDate,
-        todayYmd: todayYyyyMmDdLocal(),
-      }),
-    )
-  }
-
-  async function confirmPayStubMarkPaid() {
-    if (!authUser?.id || !payStubMarkPaidTarget) return
-    const stub = payStubMarkPaidTarget
-    // The method the office picked → the two columns and the memo, the same shape record_pay_send writes (v2.3717).
-    const source = paySourceWrite(payStubMarkPaidKind, payStubMarkPaidCashAppId, payStubMarkPaidNote)
-    const cashAppId = source.source_kind === 'cashapp' ? source.source_id : null
-    const paidAt = paidAtIsoFromYyyyMmDd(payStubMarkPaidDate.trim() || todayYyyyMmDdLocal())
-    const plan = planPayStubPayment(payStubMarkPaidAmount, payStubBalance(stub, payStubLineMaps).remaining)
-    if (!plan.ok) {
-      setError(plan.error)
-      return
-    }
-    const applied = plan.applied
-    setMarkingPayStubId(stub.id)
-    setError(null)
-    try {
-      const inserted = await withSupabaseRetry(
-        async () =>
-          await supabase
-            .from('pay_stub_payments')
-            .insert({
-              pay_stub_id: stub.id,
-              amount: applied,
-              paid_at: paidAt,
-              memo: source.memo,
-              source_kind: source.source_kind,
-              source_id: source.source_id,
-              created_by: authUser.id,
-            })
-            .select('id')
-            .single(),
-        'record pay report payment'
-      )
-      // A Cash App send waiting in the reconcile queue is filed as recorded by this payment. Best-effort:
-      // the payment is already saved; a miss here only leaves the row for the next import's rule (a).
-      if (cashAppId) {
-        const paymentId = (inserted as { id: string } | null)?.id ?? null
-        await supabase
-          .from('cashapp_transactions')
-          .update({ lane: 'recorded', match_rule: 'manual', pay_stub_payment_id: paymentId, person_name: stub.person_name.trim(), decided_at: new Date().toISOString(), decided_by: authUser.id })
-          .eq('id', cashAppId)
-          .eq('lane', 'review')
-      }
-      closePayStubMarkPaidModal()
-      await loadPayStubs()
-    } catch (e) {
-      setError(isPaySourceDuplicateError(e) ? PAY_SOURCE_DUPLICATE_MESSAGE : e instanceof Error ? e.message : 'Failed to record payment')
-    }
-    setMarkingPayStubId(null)
-  }
-
   useEffect(() => {
     if (activeTab === 'hours' && canAccessPay && Object.keys(payConfig).length > 0) {
       const dups = findPersonUserDuplicates(people, users, payConfig)
@@ -1638,18 +1524,6 @@ export default function People() {
     }, 80)
     return () => clearTimeout(t)
   }, [draftPayrollModalOpen, canAccessPay, payStubPeriodStart, payStubPeriodEnd, loadDraftPayrollPendingApprovals])
-
-  function openOffsetFormWithDraft(draft: PersonOffsetInitialDraft) {
-    setOffsetFormInitialCreateDraft(draft)
-    setOffsetFormOpen(true)
-  }
-
-  function closeOffsetForm() {
-    recordPaymentRefreshAfterEmployeeCreditRef.current = false
-    setOffsetFormOpen(false)
-    setOffsetFormInitialCreateDraft(null)
-    setOffsetFormError(null)
-  }
 
   useEffect(() => {
     if (activeTab === 'review' && isDev) {
@@ -2713,118 +2587,7 @@ export default function People() {
         </div>
       )}
 
-      {payStubMarkPaidTarget && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: Z_PEOPLE_PAY_MODAL_NESTED }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 440, width: '100%' }}>
-            <h2 style={{ margin: '0 0 0.75rem', fontSize: '1.25rem' }}>Record payment</h2>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              {payStubMarkPaidTarget.person_name} · Gross ${formatCurrency(payStubMarkPaidTarget.gross_pay)}
-              {` · Net Pay $${formatCurrency(payStubBalance(payStubMarkPaidTarget, payStubLineMaps).netPay)}`}{' '}
-              · Remaining $
-              {formatCurrency(payStubBalance(payStubMarkPaidTarget, payStubLineMaps).remaining)}
-            </p>
-            <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.875rem' }}>
-              <span style={{ display: 'block', marginBottom: '0.35rem', fontWeight: 500 }}>Amount paid</span>
-              <input
-                type="text"
-                inputMode="decimal"
-                value={payStubMarkPaidAmount}
-                onChange={(e) => setPayStubMarkPaidAmount(e.target.value)}
-                placeholder="0.00"
-                style={{ padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4, width: '100%', maxWidth: 200 }}
-              />
-            </label>
-            <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
-              <strong>Confirm</strong> records up to the <strong>remaining balance</strong> shown above from this amount (partial payments allowed). If you paid more than the remainder, use <strong>Record employee credit…</strong> below; it opens <strong>Add offset</strong> on top of this dialog so you can save the excess without leaving this flow.
-            </p>
-            <label style={{ display: 'block', marginBottom: '0.75rem', fontSize: '0.875rem' }}>
-              <span style={{ display: 'block', marginBottom: '0.35rem', fontWeight: 500 }}>Paid date (sent)</span>
-              <input
-                type="date"
-                value={payStubMarkPaidDate}
-                onChange={(e) => setPayStubMarkPaidDate(e.target.value)}
-                style={{ padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4, width: '100%', maxWidth: 200 }}
-              />
-            </label>
-            <PaySourcePicker kind={payStubMarkPaidKind} onKind={setPayStubMarkPaidKind} cashAppId={payStubMarkPaidCashAppId} onCashAppId={setPayStubMarkPaidCashAppId} disabled={markingPayStubId === payStubMarkPaidTarget.id} idPrefix="record-payment" />
-            <label style={{ display: 'block', marginBottom: '1rem', fontSize: '0.875rem' }}>
-              <span style={{ display: 'block', marginBottom: '0.35rem', fontWeight: 500 }}>Note (optional)</span>
-              <textarea
-                value={payStubMarkPaidNote}
-                onChange={(e) => setPayStubMarkPaidNote(e.target.value)}
-                rows={3}
-                placeholder="e.g. check #, Venmo, GL code…"
-                style={{ padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, width: '100%', fontFamily: 'inherit', fontSize: '0.875rem', resize: 'vertical' }}
-              />
-            </label>
-            {(() => {
-              const rem = payStubBalance(payStubMarkPaidTarget, payStubLineMaps).remaining
-              const excess = payStubPaymentExcess(payStubMarkPaidAmount, rem)
-              if (excess === null) return null
-              const parsedPaid = parsePayStubPaymentAmount(payStubMarkPaidAmount)
-              return (
-                <div
-                  style={{
-                    marginBottom: '0.75rem',
-                    padding: '0.75rem',
-                    background: 'var(--bg-slate-tint)',
-                    border: '1px solid var(--border)',
-                    borderRadius: 6,
-                  }}
-                >
-                  <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: 'var(--text-slate-600)', lineHeight: 1.45 }}>
-                    You entered <strong>${formatCurrency(parsedPaid)}</strong>, which is more than the remaining balance (<strong>${formatCurrency(rem)}</strong>).{' '}
-                    <strong>Confirm</strong> will apply <strong>${formatCurrency(rem)}</strong> to this pay report.{' '}
-                    <strong>Excess:</strong> ${formatCurrency(excess)} — use the button below to open <strong>Add offset</strong> (employee credit) on top of this dialog (optional; you can confirm the payment first).
-                  </p>
-                  <button
-                    type="button"
-                    onClick={openEmployeeCreditFromRecordPayment}
-                    disabled={markingPayStubId === payStubMarkPaidTarget.id}
-                    style={{
-                      padding: '0.4rem 0.85rem',
-                      fontSize: '0.875rem',
-                      background: markingPayStubId === payStubMarkPaidTarget.id ? '#9ca3af' : '#2563eb',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: 6,
-                      cursor: markingPayStubId === payStubMarkPaidTarget.id ? 'not-allowed' : 'pointer',
-                      fontWeight: 500,
-                    }}
-                  >
-                    Record employee credit…
-                  </button>
-                </div>
-              )
-            })()}
-            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                onClick={closePayStubMarkPaidModal}
-                disabled={markingPayStubId === payStubMarkPaidTarget.id}
-                style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: markingPayStubId === payStubMarkPaidTarget.id ? 'not-allowed' : 'pointer' }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={markingPayStubId === payStubMarkPaidTarget.id}
-                onClick={() => void confirmPayStubMarkPaid()}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: markingPayStubId !== payStubMarkPaidTarget.id ? '#059669' : '#9ca3af',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 4,
-                  cursor: markingPayStubId !== payStubMarkPaidTarget.id ? 'pointer' : 'not-allowed',
-                }}
-              >
-                {markingPayStubId === payStubMarkPaidTarget.id ? 'Saving…' : 'Confirm'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <RecordPayStubPaymentModal recordPayment={recordPayment} personNameOptions={offsetPersonNameOptions} onOffsetError={(msg) => showToast(msg, 'error')} />
 
       {forecastModalOpen && activeTab === 'pay_stubs' && canAccessPay && (
         <PayrollForecastModal
@@ -3438,31 +3201,6 @@ export default function People() {
           ) : null}
         </div>
       )}
-
-      <PersonOffsetFormModal
-        open={offsetFormOpen}
-        onClose={closeOffsetForm}
-        editingOffset={null}
-        initialCreateDraft={offsetFormInitialCreateDraft}
-        zIndex={Z_PEOPLE_OFFSET_FORM}
-        personNameOptions={offsetPersonNameOptions}
-        onSaved={async () => {
-          const shouldRefreshRecordPayment = recordPaymentRefreshAfterEmployeeCreditRef.current
-          recordPaymentRefreshAfterEmployeeCreditRef.current = false
-          const recordStubId = payStubMarkPaidTarget?.id ?? null
-          setOffsetFormInitialCreateDraft(null)
-          const fresh = await loadPayStubs()
-          if (!fresh) return
-          if (recordStubId) {
-            const stub = fresh.stubs.find((s) => s.id === recordStubId)
-            if (stub) setPayStubMarkPaidTarget(stub)
-            if (shouldRefreshRecordPayment && stub) {
-              setPayStubMarkPaidAmount(payStubPaymentAmountDefault(payStubBalance(stub, fresh).remaining))
-            }
-          }
-        }}
-        onError={setOffsetFormError}
-      />
 
       {formOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }} onMouseDown={(e) => { if (e.target === e.currentTarget && !saving) closeForm() }}>
