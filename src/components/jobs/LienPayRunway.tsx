@@ -5,8 +5,8 @@ import type { LienPayRunway as LienPayRunwayModel, LienRunwayTone } from '../../
  * The lien runway under a Billed / Collections row's money bar (v2.4051):
  * today at the left, the green dot where the money is expected, the flag on
  * the last day to lien, the run between them green (room) or red-hatched
- * (the lien dies first), and one sentence under it that is a door to the
- * job's Lien window. Pure presentation — every mark and word comes from
+ * (the lien dies first), and two lines under it — the dates, then the verdict —
+ * that are a door to the job's Lien window. Pure presentation — every mark and word comes from
  * `buildLienPayRunway`.
  */
 
@@ -54,8 +54,10 @@ export default function LienPayRunway({
     textAlign: 'center',
     lineHeight: 1.3,
     alignSelf: 'center',
-    // The sentence wraps at its separators in the 13rem table column (v2.4051): a clipped verdict is no verdict.
-    whiteSpace: 'normal',
+    // Two deliberate lines — the dates, then the verdict (v2.4064); each line stays whole, none wraps mid-sentence.
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
     maxWidth: '100%',
     fontVariantNumeric: 'tabular-nums',
   }
@@ -75,8 +77,12 @@ export default function LienPayRunway({
       }
       style={wordsStyle}
     >
-      {runway.words}
-      {onOpen ? ' ›' : ''}
+      {runway.lines.map((line, i) => (
+        <span key={i} style={{ whiteSpace: 'nowrap', fontWeight: i === runway.lines.length - 1 ? 700 : 600 }}>
+          {line}
+          {onOpen && i === runway.lines.length - 1 ? ' ›' : ''}
+        </span>
+      ))}
     </button>
   )
   if (!m) {

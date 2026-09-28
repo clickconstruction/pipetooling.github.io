@@ -41,6 +41,7 @@ describe('daysBetweenYmd', () => {
 describe('buildLienPayRunway', () => {
   it('draws nothing when nothing is open, or the lien was released', () => {
     expect(buildLienPayRunway(input({ openBalance: 0 })).state).toBe('none')
+    expect(buildLienPayRunway(input({ openBalance: 0 })).lines).toEqual([])
     expect(buildLienPayRunway(input({ filedYmd: '2026-09-20', releasedYmd: '2026-09-27' })).state).toBe('none')
     expect(buildLienPayRunway(input({ lastWorkYmd: null })).state).toBe('none')
     expect(buildLienPayRunway(input({ lastWorkYmd: null, createdAt: '' })).state).toBe('none')
@@ -62,6 +63,7 @@ describe('buildLienPayRunway', () => {
     expect(r.state).toBe('room')
     expect(r.tone).toBe('green')
     expect(r.words).toBe('pay Oct 3 → lien Oct 15 · 12 d of room')
+    expect(r.lines).toEqual(['pay Oct 3 → lien Oct 15', '12 d of room'])
     expect(r.chipLabel).toBe('12 d of room')
     expect(r.lienByYmd).toBe('2026-10-15')
     expect(r.daysToLien).toBe(17)
@@ -90,6 +92,7 @@ describe('buildLienPayRunway', () => {
     expect(r.kindAssumed).toBe(true)
     expect(r.lienByYmd).toBe('2026-11-16') // Nov 15 is a Sunday
     expect(r.words).toBe('lien Nov 16 → pay Nov 20 · file first')
+    expect(r.lines).toEqual(['lien Nov 16 → pay Nov 20', 'file first'])
     expect(r.chipLabel).toBe('file first')
     expect(r.marks!.gap).toEqual({ fromPct: r.marks!.lien.pct, toPct: r.marks!.pay!.pct, kind: 'short' })
     expect(r.title).toContain('4 days before the money is expected')
@@ -101,7 +104,8 @@ describe('buildLienPayRunway', () => {
     const amber = buildLienPayRunway(input())
     expect(amber.state).toBe('no_pay')
     expect(amber.tone).toBe('amber')
-    expect(amber.words).toBe('no pay date · lien Oct 15 · 17 d')
+    expect(amber.words).toBe('no pay date · lien Oct 15 · 17 d to the flag')
+    expect(amber.lines).toEqual(['no pay date · lien Oct 15', '17 d to the flag'])
     expect(amber.chipLabel).toBe('lien in 17 d')
     expect(amber.marks!.pay).toBeNull()
     expect(amber.marks!.gap).toBeNull()
@@ -112,7 +116,8 @@ describe('buildLienPayRunway', () => {
   it('an expected pay date already past reads as no live date, and says so', () => {
     const r = buildLienPayRunway(input({ expectedPayYmd: '2026-09-20' }))
     expect(r.state).toBe('no_pay')
-    expect(r.words).toBe('pay was due Sep 20 · lien Oct 15 · 17 d')
+    expect(r.words).toBe('pay was due Sep 20 · lien Oct 15 · 17 d to the flag')
+    expect(r.lines).toEqual(['pay was due Sep 20 · lien Oct 15', '17 d to the flag'])
     expect(r.title).toContain('has passed')
   })
 
@@ -121,6 +126,7 @@ describe('buildLienPayRunway', () => {
     expect(r.state).toBe('closed')
     expect(r.tone).toBe('red')
     expect(r.words).toBe('lien gone · window closed Sep 15')
+    expect(r.lines).toEqual(['lien gone', 'window closed Sep 15'])
     expect(r.chipLabel).toBe('lien gone')
     expect(r.marks).toBeNull()
     expect(r.daysToLien).toBe(-13)
@@ -131,6 +137,7 @@ describe('buildLienPayRunway', () => {
     expect(r.state).toBe('filed')
     expect(r.tone).toBe('green')
     expect(r.words).toBe('lien filed Sep 20')
+    expect(r.lines).toEqual(['lien filed Sep 20'])
     expect(r.marks).toBeNull()
   })
 

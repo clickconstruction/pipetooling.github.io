@@ -3,12 +3,11 @@ import type { ReleaseNote } from '../../lib/releaseNotes'
 const note: ReleaseNote = {
   version: 'v2.4068',
   date: '2026-09-28',
-  title: 'Write up a change: pick a half-done write-up back up',
+  title: 'Fuel is its own line in the job window',
   kind: 'feature',
   highlights: [
-    'Close a write-up before sending it and the next time you open Write up a change it asks first: pick it back up, start fresh, or leave it for the office.',
-    'Pick it back up brings back your words, the reason and schedule notes, the ballpark, the photos and the job, and lands you on "What\'s the change?".',
-    'Start fresh keeps the old one in Estimates → Unsent and asks again next time; Leave it for the office keeps it there too but stops asking.',
+    'A job’s fuel card charges show as their own ⛽ Fuel & gas line — on the Job tab’s Costs card and in Where the money went — instead of being folded into parts.',
+    'Each fuel charge in the card charges list carries a ⛽ marker. The job’s total cost and margin are unchanged; the fuel is just no longer hidden.',
   ],
 }
 
