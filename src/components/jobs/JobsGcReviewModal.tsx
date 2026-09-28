@@ -31,7 +31,7 @@ import {
   gcReviewShareAllEmailSubject,
   gcStatementEmailSubject,
 } from '../../lib/jobsDocuments/gcStatementEmail'
-import { openHtmlPreviewWindow } from '../../lib/jobsDocuments/printWindow'
+import { openHtmlPreviewWindow, openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { resolveEmailWording } from '../../lib/emailWording'
 import { dollarsToCents, gcStatementSendGuard } from '../../lib/gcStatementSendGuard'
 import {
@@ -77,6 +77,8 @@ import {
 } from '../../lib/statementRoundEmailClient'
 import GcStatementSendHistoryModal from './GcStatementSendHistoryModal'
 import GcWorklistPanel from './GcWorklistPanel'
+import GcCallSheetModal from './GcCallSheetModal'
+import { buildCallSheet, buildCallSheetPrintHtml, callSheetWeekEnds, type CallSheetAnswer } from '../../lib/jobs/gcCallSheet'
 import { APP_SEND_NOTE, buildGcWorklist, mergeRoundMarkWrite } from '../../lib/jobs/gcWorklist'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import { TeammateEmailChips } from './TeammateEmailChips'
@@ -355,6 +357,8 @@ export function JobsGcReviewModal({
   const [roundSentFormOpen, setRoundSentFormOpen] = useState(false)
   const [markSentGroup, setMarkSentGroup] = useState<GcReviewGroup | null>(null)
   const [historyGc, setHistoryGc] = useState<{ id: string; name: string } | null>(null)
+  /** The call sheet: the worklist group it is open on. */
+  const [callSheetGroupKey, setCallSheetGroupKey] = useState<string | null>(null)
   /** What the mark form opens on: a statement that went out, or the word with no statement. */
   const [markSentDefaultAction, setMarkSentDefaultAction] = useState<'sent' | 'contacted'>('sent')
   /** Send from the app inside the round (v2.2771): which GC's Draft Message came from the overlay, so the overlay comes back after. */
@@ -646,6 +650,42 @@ export function JobsGcReviewModal({
     }
     setRoundBusy(false)
     return ok
+  }
+  /** The call sheet's save: every answered row in one go. A row that fails stays on the sheet with the reason; the rest are kept. */
+  async function saveCallSheet(answers: CallSheetAnswer[], word: { wordFrom: { userId: string; name: string }; heardVia: StatementSendChannel | null }) {
+    if (!authUser?.id) return
+    setRoundBusy(true)
+    setRoundError(null)
+    const failed: string[] = []
+    for (const a of answers) {
+      try {
+        const existing = roundMarks.find((m) => m.gc_customer_id === a.gcId) ?? null
+        await upsertGcStatementRoundMark({
+          week_start: certWeekStart,
+          gc_customer_id: a.gcId,
+          acted_by: authUser.id,
+          acted_by_name: authUserName,
+          ...mergeRoundMarkWrite(existing, {
+            action: 'contacted',
+            channel: a.channel,
+            note: a.note,
+            temperature: a.temperature,
+            expectedPayBy: a.expectedPayBy,
+            word: { fromUserId: word.wordFrom.userId, fromName: word.wordFrom.name, heardVia: word.heardVia, enteredBy: authUser.id, enteredByName: authUserName },
+          }),
+        })
+      } catch {
+        failed.push(roundRollup.groups.find((g) => g.gcId === a.gcId)?.gcName ?? 'a GC')
+      }
+    }
+    refreshRoundMarks()
+    setRoundBusy(false)
+    if (failed.length > 0) {
+      setRoundError(`Could not save ${failed.join(', ')} — the rest are in. Try those again.`)
+      return
+    }
+    setCallSheetGroupKey(null)
+    showToast(`${answers.length} word${answers.length === 1 ? '' : 's'} in — ${word.wordFrom.name}.`, 'success')
   }
   /** This week's sent mark for a GC, when it is what the last-sent pill is showing (v2.2761). */
   const thisWeekSentMark = (gcId: string): RoundMarkRow | null => {
@@ -968,6 +1008,10 @@ export function JobsGcReviewModal({
             }}
             onUndoMark={(r) => void undoRoundMark(r.gcId)}
             onOpenHistory={(r) => setHistoryGc({ id: r.gcId, name: r.gcName })}
+            onOpenCallSheet={(g) => {
+              setRoundError(null)
+              setCallSheetGroupKey(g.key)
+            }}
           />
         ) : null}
         {!byDevelopment && roundItems.length > 0 ? (
@@ -2335,6 +2379,34 @@ export function JobsGcReviewModal({
           </div>
         </div>
       ) : null}
+      {callSheetGroupKey && authUser?.id
+        ? (() => {
+            const g = worklist.groups.find((x) => x.key === callSheetGroupKey)
+            if (!g) return null
+            const sheet = buildCallSheet({ group: g, boardRowByGc, todayYmd: chicagoYmdOf(new Date()) })
+            const ownerName = g.ownerUserId ? userNameById(g.ownerUserId) : null
+            return (
+              <GcCallSheetModal
+                key={g.key}
+                sheet={sheet}
+                ownerName={ownerName}
+                actorId={authUser.id}
+                actorName={authUserName}
+                wordSources={wordSources}
+                busy={roundBusy}
+                error={roundError}
+                onSave={(answers, word) => void saveCallSheet(answers, word)}
+                onPrint={() => {
+                  const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                  if (!openHtmlPrintWindow(buildCallSheetPrintHtml(sheet, { ownerName: ownerName ?? 'no account man yet', dateStr, weekEndsYmd: callSheetWeekEnds(certWeekStart) }))) {
+                    showToast('Allow pop-ups to print the call sheet.', 'error')
+                  }
+                }}
+                onClose={() => setCallSheetGroupKey(null)}
+              />
+            )
+          })()
+        : null}
       {historyGc ? (
         <GcStatementSendHistoryModal gcId={historyGc.id} gcName={historyGc.name} onClose={() => setHistoryGc(null)} />
       ) : null}

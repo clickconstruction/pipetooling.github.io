@@ -30,7 +30,7 @@ const worklist = buildGcWorklist({
 })
 
 function renderPanel(over: Partial<ComponentProps<typeof GcWorklistPanel>> = {}) {
-  const handlers = { onCheck: vi.fn(), onSend: vi.fn(), onMarkSent: vi.fn(), onWord: vi.fn(), onUndoMark: vi.fn(), onOpenHistory: vi.fn(), onStartAssign: vi.fn(), onAssign: vi.fn(), onCancelAssign: vi.fn() }
+  const handlers = { onCheck: vi.fn(), onSend: vi.fn(), onMarkSent: vi.fn(), onWord: vi.fn(), onUndoMark: vi.fn(), onOpenHistory: vi.fn(), onStartAssign: vi.fn(), onAssign: vi.fn(), onCancelAssign: vi.fn(), onOpenCallSheet: vi.fn() }
   render(
     <GcWorklistPanel
       worklist={worklist}
@@ -86,5 +86,13 @@ describe('GcWorklistPanel', () => {
     expect(screen.queryByRole('button', { name: 'Send' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Check' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Word' })).toBeNull()
+  })
+
+  it('offers a call sheet for an account man’s GCs, never for the ones under the line', () => {
+    const h = renderPanel()
+    const buttons = screen.getAllByRole('button', { name: /Call sheet/ })
+    expect(buttons).toHaveLength(1)
+    fireEvent.click(buttons[0]!)
+    expect(h.onOpenCallSheet).toHaveBeenCalledWith(expect.objectContaining({ key: 'owner:u-malachi' }))
   })
 })
