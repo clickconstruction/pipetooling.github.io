@@ -1,19 +1,29 @@
-import { checkWasOnWords, formatYmdLong, formatYmdShort, type GcChecksReport } from '../jobs/gcChecksApplied'
+import { checkWasOnWords, formatYmdLong, formatYmdShort, type GcCheck, type GcCheckJob, type GcChecksReport } from '../jobs/gcChecksApplied'
 import { formatCurrency } from '../jobs/jobFormatting'
 import { GC_STATEMENT_COMPANY_NAME } from './gcStatementEmail'
 
 /**
- * "Where the checks went" — the sheet (v2.4050, PR 4 of the train): every
- * payment a GC sent in the period, where each sits now (one line per job and
- * bill), what moved, what came in and is not yet on a bill, and where each
- * job stands. Pure HTML builder in the GC statement print's mold (light,
- * inline styles; the window.open/print glue stays at the call site), plus the
- * same rows as a CSV for the bookkeeper who reconciles in a spreadsheet.
+ * "Where the checks went" — the sheet (v2.4050, PR 4 of the train; laid out
+ * for paper in v2.4091): every payment a GC sent in the period, where each
+ * sits now (one line per job and bill), what moved, what came in and is not
+ * yet on a bill, and where each job stands. Pure HTML builder in the GC
+ * statement print's mold (light, inline styles; the window.open/print glue
+ * stays at the call site), plus the same rows as a CSV for the bookkeeper
+ * who reconciles in a spreadsheet.
+ *
+ * Paper rules (from the first print, RMC 2026-09-28): rows never split
+ * across a page but sections may, so page 1 is not a heading over white
+ * space; a column with nothing in it is not drawn; the job column gets a
+ * third of the width; a check's lines group under the job named once; the
+ * job table is Open then Paid in full, each with its subtotal.
  */
 
 const escapeHtml = (s: string) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 const money = (n: number): string => `$${formatCurrency(n)}`
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
+const GREEN = 'color:#15803d;font-weight:600'
+const RED = 'color:#b91c1c;font-weight:600'
+const MUTED = 'color:#4b5563'
 
 export function gcChecksReportTitle(gcName: string): string {
   return `${gcName} — where your checks were applied`
@@ -23,6 +33,56 @@ export function gcChecksReportTitle(gcName: string): string {
 export function gcChecksReportSubtitle(report: Pick<GcChecksReport, 'sinceYmd'>, asOfYmd: string): string {
   const parts = [report.sinceYmd ? `Since ${formatYmdLong(report.sinceYmd)}` : 'Every payment on record', `as of ${formatYmdLong(asOfYmd)}`, GC_STATEMENT_COMPANY_NAME]
   return parts.join(' · ')
+}
+
+/** The payment column, quiet: "#48211" · "ACH" · "check, no number" — the office's orange chip stays on screen. */
+export function sheetPaymentLabel(c: Pick<GcCheck, 'label' | 'noNumber'>): string {
+  return c.noNumber ? 'check, no number' : c.label
+}
+
+/**
+ * "Paid by" as dates, not repeated labels: "#48102 Sep 10 · #48211 Sep 24",
+ * "check May 19 · check Jun 4"; four or more read "4 payments, Oct 10 – Mar 10".
+ */
+export function paidByWords(paidBy: GcCheckJob['paidBy']): string {
+  if (paidBy.length === 0) return '—'
+  const one = (p: GcCheckJob['paidBy'][number]) => {
+    const label = p.noNumber ? 'check' : p.label
+    return p.receivedYmd ? `${label} ${formatYmdShort(p.receivedYmd)}` : label
+  }
+  if (paidBy.length <= 3) return paidBy.map(one).join(' · ')
+  const dated = paidBy.filter((p) => p.receivedYmd)
+  const first = dated[0]?.receivedYmd
+  const last = dated[dated.length - 1]?.receivedYmd
+  const span = first && last ? `, ${formatYmdShort(first)} – ${formatYmdShort(last)}` : ''
+  return `${paidBy.length} payments${span}`
+}
+
+/** "#48211 · Sep 24" / "check · May 19" / "Payment · Mar 29". */
+function lastAppliedWords(j: GcCheckJob): string {
+  if (!j.lastApplied) return '—'
+  const last = j.paidBy[j.paidBy.length - 1]
+  const label = last?.noNumber ? 'check' : j.lastApplied.label
+  return j.lastApplied.receivedYmd ? `${label} · ${formatYmdShort(j.lastApplied.receivedYmd)}` : label
+}
+
+/** A check's lines grouped under each job, the job named once. */
+function appliedLinesHtml(c: GcCheck): string {
+  const byJob = new Map<string, GcCheck['lines']>()
+  for (const l of c.lines) byJob.set(l.jobLabel, [...(byJob.get(l.jobLabel) ?? []), l])
+  const groups = [...byJob.entries()].map(([jobLabel, lines]) => {
+    const jobPaid = lines.some((l) => l.jobPaidInFull)
+    const rows = lines
+      .map((l) => {
+        const tag = l.invoiceId && !jobPaid && l.billPaidInFull ? ` <span style="${GREEN}">paid in full</span>` : ''
+        return `<div style="display:flex;justify-content:space-between;gap:12px;padding-left:0.9rem"><span>${escapeHtml(l.invoiceLabel)}${tag}</span><span style="white-space:nowrap">${money(l.amount)}</span></div>`
+      })
+      .join('')
+    const head = `<div style="font-weight:600">${escapeHtml(jobLabel)}${jobPaid ? ` <span style="${GREEN}">job paid in full</span>` : ''}</div>`
+    return `<div>${head}${rows}</div>`
+  })
+  const unapplied = c.unapplied > 0.005 ? `<div style="display:flex;justify-content:space-between;gap:12px"><span style="color:#b45309;font-weight:600">not yet applied — tell us the invoice</span><span style="white-space:nowrap">${money(c.unapplied)}</span></div>` : ''
+  return `<div style="display:grid;gap:5px">${groups.join('')}${unapplied}</div>`
 }
 
 export function buildGcChecksAppliedReportHtml(gcName: string, report: GcChecksReport, opts: { asOfYmd: string }): string {
@@ -37,6 +97,9 @@ export function buildGcChecksAppliedReportHtml(gcName: string, report: GcChecksR
     .map((x) => `<span>${x}</span>`)
     .join('')
 
+  const showWasOn = report.checks.some((c) => c.wasOn.length > 0)
+  const showRetainage = report.jobs.some((j) => j.retainageHeld > 0.005)
+
   const checkRows = report.checks
     .map((c) => {
       const stamp = [
@@ -45,87 +108,77 @@ export function buildGcChecksAppliedReportHtml(gcName: string, report: GcChecksR
       ]
         .filter(Boolean)
         .join(' · ')
-      const label = c.noNumber ? `<span style="color:#b45309;font-weight:600">${escapeHtml(c.label)}</span>` : escapeHtml(c.label)
-      const lines = c.lines
-        .map((l) => {
-          const tag = l.invoiceId ? (l.jobPaidInFull ? ' <span style="color:#15803d;font-weight:600">job paid in full</span>' : l.billPaidInFull ? ' <span style="color:#15803d;font-weight:600">paid in full</span>' : '') : ''
-          return `<div style="display:flex;justify-content:space-between;gap:12px"><span>${escapeHtml(l.jobLabel)} · ${escapeHtml(l.invoiceLabel)}${tag}</span><span style="white-space:nowrap">${money(l.amount)}</span></div>`
-        })
-        .join('')
-      const unapplied = c.unapplied > 0.005 ? `<div style="display:flex;justify-content:space-between;gap:12px"><span style="color:#b45309;font-weight:600">not yet applied — tell us the invoice</span><span style="white-space:nowrap">${money(c.unapplied)}</span></div>` : ''
-      const wasOn = c.wasOn.map((m) => escapeHtml(checkWasOnWords(m))).join('<br />')
+      const label = c.noNumber ? `<span style="${MUTED}">${escapeHtml(sheetPaymentLabel(c))}</span>` : `<b>${escapeHtml(c.label)}</b>`
+      const wasOn = showWasOn ? `<td style="font-size:0.75rem;${MUTED}">${c.wasOn.map((m) => escapeHtml(checkWasOnWords(m))).join('<br />')}</td>` : ''
       return `<tr>
-        <td>${label}${stamp ? `<br /><span style="color:#4b5563">${escapeHtml(stamp)}</span>` : ''}</td>
-        <td style="text-align:center;white-space:nowrap">${c.receivedYmd ? escapeHtml(formatYmdLong(c.receivedYmd)) : '—'}</td>
+        <td>${label}${stamp ? `<br /><span style="font-size:0.75rem;${MUTED}">${escapeHtml(stamp)}</span>` : ''}</td>
+        <td style="white-space:nowrap">${c.receivedYmd ? escapeHtml(formatYmdLong(c.receivedYmd)) : '—'}</td>
         <td style="text-align:right;white-space:nowrap">${money(c.amount)}</td>
-        <td><div style="display:grid;gap:3px">${lines}${unapplied}</div></td>
-        <td style="font-size:0.75rem;color:#4b5563">${wasOn}</td>
+        <td>${appliedLinesHtml(c)}</td>${wasOn}
       </tr>`
     })
     .join('')
 
   const applied = report.summary.received - report.summary.unapplied
-  const checksTotal = `<tr style="background:#f9fafb;font-weight:600">
+  const checksTotal = `<tr class="total">
         <td colspan="2" style="text-align:right">Received${report.sinceYmd ? ` since ${escapeHtml(formatYmdShort(report.sinceYmd))}` : ''}:</td>
         <td style="text-align:right;white-space:nowrap">${money(report.summary.received)}</td>
-        <td colspan="2">${report.summary.unapplied > 0.005 ? `${money(applied)} applied · ${money(report.summary.unapplied)} not yet applied` : ''}</td>
+        <td${showWasOn ? ' colspan="2"' : ''}>${report.summary.unapplied > 0.005 ? `${money(applied)} applied · ${money(report.summary.unapplied)} not yet applied` : ''}</td>
       </tr>`
+  const checksCols = `<colgroup><col style="width:${showWasOn ? '13%' : '15%'}" /><col style="width:14%" /><col style="width:13%" /><col />${showWasOn ? '<col style="width:16%" />' : ''}</colgroup>`
+  const checksHead = `<thead><tr><th>Payment</th><th>Received</th><th style="text-align:right">Amount</th><th>Applied now to</th>${showWasOn ? '<th>Was on</th>' : ''}</tr></thead>`
 
-  const jobRows = report.jobs
-    .map(
-      (j) => `<tr>
-        <td>${escapeHtml(j.jobLabel)}<br /><span style="color:#4b5563">${plural(j.billCount, 'invoice', 'invoices')}</span></td>
+  const open = report.jobs.filter((j) => !j.paid)
+  const paid = report.jobs.filter((j) => j.paid)
+  const jobCols = `<colgroup><col style="width:${showRetainage ? '26%' : '33%'}" /><col style="width:12%" /><col style="width:20%" /><col style="width:16%" />${showRetainage ? '<col style="width:10%" />' : ''}<col style="width:12%" /></colgroup>`
+  const jobHead = `<thead><tr><th>Job</th><th style="text-align:right">Billed</th><th>Paid by</th><th>Last applied</th>${showRetainage ? '<th style="text-align:right">Retainage held</th>' : ''}<th style="text-align:right">Still open</th></tr></thead>`
+  const jobRow = (j: GcCheckJob) => `<tr>
+        <td>${escapeHtml(j.jobLabel)} <span style="font-size:0.75rem;${MUTED};white-space:nowrap">· ${plural(j.billCount, 'invoice', 'invoices')}</span></td>
         <td style="text-align:right;white-space:nowrap">${money(j.billed)}</td>
-        <td>${escapeHtml(j.paidBy.join(' · ') || '—')}</td>
-        <td style="white-space:nowrap">${j.lastApplied ? `${escapeHtml(j.lastApplied.label)}${j.lastApplied.receivedYmd ? ` · ${escapeHtml(formatYmdShort(j.lastApplied.receivedYmd))}` : ''}` : '—'}</td>
-        <td style="text-align:right;white-space:nowrap">${j.retainageHeld > 0.005 ? money(j.retainageHeld) : '—'}</td>
-        <td style="text-align:right;white-space:nowrap">${j.paid ? '<span style="color:#15803d;font-weight:600">paid</span>' : `<span style="color:#b91c1c;font-weight:600">${money(j.stillOpen)}</span>`}</td>
-      </tr>`,
-    )
-    .join('')
-
-  const openCount = report.jobs.filter((j) => !j.paid && j.stillOpen > 0.005).length
-  const jobsTotal = `<tr style="background:#f9fafb;font-weight:600">
-        <td colspan="4" style="text-align:right">Open on ${plural(openCount, 'job', 'jobs')} (matches your statement) · retainage held:</td>
-        <td style="text-align:right;white-space:nowrap">${report.summary.retainageHeld > 0.005 ? money(report.summary.retainageHeld) : '—'}</td>
+        <td>${escapeHtml(paidByWords(j.paidBy))}</td>
+        <td style="white-space:nowrap">${escapeHtml(lastAppliedWords(j))}</td>${showRetainage ? `<td style="text-align:right;white-space:nowrap">${j.retainageHeld > 0.005 ? money(j.retainageHeld) : '—'}</td>` : ''}
+        <td style="text-align:right;white-space:nowrap">${j.paid ? `<span style="${GREEN}">paid</span>` : `<span style="${RED}">${money(j.stillOpen)}</span>`}</td>
+      </tr>`
+  const colsBeforeMoney = showRetainage ? 4 : 4
+  const openTotal = `<tr class="total">
+        <td colspan="${colsBeforeMoney}" style="text-align:right">Open on ${plural(open.length, 'job', 'jobs')} (matches your statement)${showRetainage ? ' · retainage held' : ''}:</td>${showRetainage ? `<td style="text-align:right;white-space:nowrap">${money(report.summary.retainageHeld)}</td>` : ''}
         <td style="text-align:right;white-space:nowrap">${money(report.summary.stillOpen)}</td>
       </tr>`
+  const paidTotal = `<tr class="total">
+        <td colspan="${colsBeforeMoney + (showRetainage ? 1 : 0)}" style="text-align:right">${plural(paid.length, 'job', 'jobs')} paid in full · billed:</td>
+        <td style="text-align:right;white-space:nowrap">${money(paid.reduce((t, j) => t + j.billed, 0))}</td>
+      </tr>`
 
-  const earlier = report.earlierCount > 0 ? `<p style="margin:0.5rem 0 0;font-size:0.8125rem;color:#4b5563">${plural(report.earlierCount, 'earlier payment is', 'earlier payments are')} not on this sheet; the job table counts every payment.</p>` : ''
+  const earlier = report.earlierCount > 0 ? `<p class="note">${plural(report.earlierCount, 'earlier payment is', 'earlier payments are')} not on this sheet; the job table counts every payment.</p>` : ''
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>
-  body { font-family: sans-serif; margin: 1in; color: #1f2937; }
-  h1 { font-size: 1.25rem; margin-bottom: 0.15rem; }
+  body { font-family: sans-serif; margin: 0.75in; color: #1f2937; }
+  h1 { font-size: 1.25rem; margin: 0 0 0.15rem; }
   h2 { font-size: 1rem; margin: 1.1rem 0 0.2rem; }
+  h3 { font-size: 0.875rem; margin: 0.8rem 0 0.1rem; color: #4b5563; }
   p.sub { margin: 0 0 0.8rem; font-size: 0.875rem; color: #4b5563; }
-  p.note { margin: 0 0 0.35rem; font-size: 0.8125rem; color: #4b5563; }
+  p.note { margin: 0.2rem 0 0.35rem; font-size: 0.8125rem; color: #4b5563; }
   .sum { display: flex; flex-wrap: wrap; gap: 6px 22px; font-size: 0.875rem; margin: 0 0 0.5rem; padding: 0.55rem 0.7rem; background: #fafaf7; border: 1px solid #ccc; }
-  table { width: 100%; border-collapse: collapse; margin-top: 0.35rem; font-size: 0.8125rem; }
-  th, td { border: 1px solid #ccc; padding: 0.4rem 0.5rem; text-align: left; vertical-align: top; }
+  table { width: 100%; border-collapse: collapse; margin-top: 0.35rem; font-size: 0.8125rem; table-layout: fixed; }
+  th, td { border: 1px solid #ccc; padding: 0.35rem 0.45rem; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
   th { background: #f5f5f5; }
-  section { page-break-inside: avoid; }
+  thead { display: table-header-group; }
+  tr { page-break-inside: avoid; break-inside: avoid; }
+  tr.total td { background: #f9fafb; font-weight: 600; }
+  h2, h3 { page-break-after: avoid; break-after: avoid; }
   .foot { margin-top: 1rem; padding-top: 0.5rem; border-top: 1px solid #ccc; font-size: 0.8125rem; color: #4b5563; }
   @media print { body { margin: 0.5in; } }
 </style></head><body>
   <h1>${title}</h1>
   <p class="sub">${escapeHtml(gcChecksReportSubtitle(report, opts.asOfYmd))}</p>
   <div class="sum">${summary}</div>
-  <section>
-    <h2>Each payment, and where it sits now</h2>
-    <p class="note">Newest first. A check that covered more than one job has a line per job. "Was on" records a move after the check was first recorded.</p>
-    <table>
-      <thead><tr><th>Payment</th><th style="text-align:center">Received</th><th style="text-align:right">Amount</th><th>Applied now to</th><th>Was on</th></tr></thead>
-      <tbody>${checkRows}${checksTotal}</tbody>
-    </table>${earlier}
-  </section>
-  <section>
-    <h2>Where each job stands</h2>
-    <p class="note">The same payments read by job. "Last applied" is the newest payment sitting on the job today.</p>
-    <table>
-      <thead><tr><th>Job</th><th style="text-align:right">Billed</th><th>Paid by</th><th>Last applied</th><th style="text-align:right">Retainage held</th><th style="text-align:right">Still open</th></tr></thead>
-      <tbody>${jobRows}${jobsTotal}</tbody>
-    </table>
-  </section>
+  <h2>Each payment, and where it sits now</h2>
+  <p class="note">Newest first. A check that covered more than one job lists each job.${showWasOn ? ' "Was on" records a move after the check was first recorded.' : ''}</p>
+  <table>${checksCols}${checksHead}<tbody>${checkRows}${checksTotal}</tbody></table>${earlier}
+  <h2>Where each job stands</h2>
+  <p class="note">The same payments read by job. "Last applied" is the newest payment sitting on the job today.</p>
+  ${open.length > 0 ? `<h3>Open</h3><table>${jobCols}${jobHead}<tbody>${open.map(jobRow).join('')}${openTotal}</tbody></table>` : ''}
+  ${paid.length > 0 ? `<h3>Paid in full</h3><table>${jobCols}${jobHead}<tbody>${paid.map(jobRow).join('')}${paidTotal}</tbody></table>` : ''}
   <p class="foot">Questions about a check? Reply to your statement email or call the office. Your live statement, with Pay online, is on your portal link.</p>
 </body></html>`
 }
