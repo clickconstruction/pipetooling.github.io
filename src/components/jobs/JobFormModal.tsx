@@ -80,7 +80,9 @@ import { JobFormSourceEstimateBanner } from './JobFormSourceEstimateBanner'
 import type { Database, Json } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { resolveCustomerIdForJobPayload, resolveGcCustomerIdForJobPayload } from '../../lib/jobLedgerCustomer'
-import { groupVersionsByGc, resolveWinningPacket, type GcPacket } from '../../lib/bids/gcPackets'
+import { groupVersionsByGc, type GcPacket } from '../../lib/bids/gcPackets'
+import { estimateImportCustomerFields, estimateImportFixtureRows } from '../../lib/jobs/jobImportFromEstimate'
+import { bidImportCarry, bidImportCarryQuestion, bidImportEffectiveGc, bidImportFirstLine, bidImportGcOptions, bidImportLabel, bidImportWinWrite, decideBidImportGc } from '../../lib/bids/jobImportFromBid'
 import { latestSendByVersion, type VersionSendRow } from '../../lib/bids/versionSends'
 import { setGcPacketOutcome } from '../../lib/bids/gcPacketOutcome'
 import { PickWinningGcModal, type WinningGcOption } from './PickWinningGcModal'
@@ -1931,7 +1933,7 @@ export default function JobFormModal({
             .limit(5)
           const existing = ((existingRows ?? []) as Array<{ id: string; hcp_number: string | null }>).map((r) => ({ jobId: r.id, hcpNumber: r.hcp_number ?? '' }))
           if (existing.length > 0) {
-            const bidLabel = [b.bid_number ? `B${String(b.bid_number).trim()}` : null, (b.project_name ?? '').trim() || null].filter(Boolean).join(' · ') || 'this bid'
+            const bidLabel = bidImportLabel(b, 'this bid')
             const ok = await confirmDialog({
               title: 'A job already exists from this bid',
               message: secondConversionMessage(existing, bidLabel),
@@ -1971,58 +1973,39 @@ export default function JobFormModal({
             bidDateSent: b.bid_date_sent ?? null,
             recipients,
           })
-          const options: WinningGcOption[] = packets.map((p) => ({ key: p.key, customerId: p.gcId, name: p.name, sentOn: p.sentOn, value: p.sentValue, outcome: p.outcome, sharedLetter: !!p.sharedLetter }))
           // A bid with recipients but no versions has no own packet — the bid's GC is still a choice.
-          if (b.customer_id && !packets.some((p) => p.key === '')) {
-            const ownName = (customers.find((c) => c.id === b.customer_id)?.name ?? b.customers?.name ?? '').trim() || 'the GC'
-            options.unshift({ key: '', customerId: null, name: ownName, sentOn: b.bid_date_sent ?? null, value: null, outcome: null, sharedLetter: true })
+          const options: WinningGcOption[] = bidImportGcOptions({
+            packets,
+            bidCustomerId: b.customer_id,
+            cachedBidGcName: customers.find((c) => c.id === b.customer_id)?.name,
+            embeddedBidGcName: b.customers?.name,
+            bidDateSent: b.bid_date_sent ?? null,
+          })
+          const decision = decideBidImportGc(packets, options)
+          if (decision.kind === 'ask') {
+            setWinningGcPick({
+              bidId: b.id,
+              bidName: (b.project_name ?? '').trim() || (b.bid_number ?? 'This bid'),
+              options,
+              writesWin: decision.writesWin,
+              bidOutcome: b.outcome ?? null,
+              packets,
+              closeOnCancel: !!opts?.closeOnCancel,
+            })
+            return
           }
-          if (options.length === 1) sentValue = options[0]?.value ?? null
-          if (options.length > 1) {
-            const { winner, multiple } = resolveWinningPacket(packets)
-            if (winner) {
-              chosen = { key: winner.key, customerId: winner.gcId, name: winner.name, sentOn: winner.sentOn, value: winner.sentValue, outcome: winner.outcome, sharedLetter: false }
-              sentValue = winner.sentValue
-            } else {
-              setWinningGcPick({
-                bidId: b.id,
-                bidName: (b.project_name ?? '').trim() || (b.bid_number ?? 'This bid'),
-                options,
-                writesWin: !multiple,
-                bidOutcome: b.outcome ?? null,
-                packets,
-                closeOnCancel: !!opts?.closeOnCancel,
-              })
-              return
-            }
-          }
+          chosen = decision.chosen
+          sentValue = decision.sentValue
         }
         // Tier-3 B5 (J15-F8): the job used to open at $0.00 while `agreed_value` was back-filled
         // onto the bid behind the office's back. Now one question: carry the figure over as the
         // job's first line item (and, when the bid has no agreed value yet, record it there too)
         // or start at $0 — and "No" writes nothing anywhere.
-        const agreedValue = b.agreed_value == null ? null : Number(b.agreed_value)
-        const carryValue = agreedValue != null && Number.isFinite(agreedValue) && agreedValue > 0 ? agreedValue : sentValue != null && sentValue > 0 ? sentValue : null
+        const { agreedValue, carryValue } = bidImportCarry({ agreedValueRaw: b.agreed_value, sentValue })
         if (carryValue != null) {
-          const bidLabel = [b.bid_number ? `B${String(b.bid_number).trim()}` : null, (b.project_name ?? '').trim() || null].filter(Boolean).join(' · ') || 'the bid'
-          const whoseFigure = agreedValue != null ? `${bidLabel}'s agreed value` : `what ${(chosen?.name ?? b.customers?.name ?? '').trim() || 'the GC'} was sent on ${bidLabel}`
-          const carry = await confirmDialog({
-            title: `Start the job at $${formatCurrency(carryValue)}?`,
-            message: `That's ${whoseFigure}. Yes puts it on the job as the first line item${agreedValue == null ? ' and records it on the bid as the agreed value' : ''}; No starts the job at $0 and writes nothing.`,
-            confirmLabel: `Carry $${formatCurrency(carryValue)} over`,
-            cancelLabel: 'Start at $0',
-          })
+          const carry = await confirmDialog(bidImportCarryQuestion({ carryValue, agreedValue, bid: b, gcName: chosen?.name ?? b.customers?.name }))
           if (carry) {
-            setFixtures([
-              {
-                id: crypto.randomUUID(),
-                name: 'Bid price',
-                count: 1,
-                line_unit_price: carryValue,
-                line_description: agreedValue != null ? `${bidLabel} — agreed value` : `${bidLabel} — as sent`,
-                invoice_id: null,
-              },
-            ])
+            setFixtures([{ id: crypto.randomUUID(), ...bidImportFirstLine({ carryValue, agreedValue, bid: b }) }])
             setFixtureScopeExpandedById({})
             if (agreedValue == null) {
               // Conditional carry (`.is('agreed_value', null)`): zero rows is the expected already-set case, not a refused write — no guard on purpose.
@@ -2059,17 +2042,14 @@ export default function JobFormModal({
         }
         // Creating a job FROM a bid: the WINNING GC is the job's GC (per-GC Phase 3; the bid's own
         // GC when there's only one — the v2.1182 rule, now packet-aware).
-        const effGcId = chosen ? (chosen.customerId ?? b.customer_id) : b.customer_id
-        const effIsOwn = effGcId === b.customer_id
-        setLinkedBidGc(
-          effGcId
-            ? {
-                id: effGcId,
-                name:
-                  (customers.find((c) => c.id === effGcId)?.name ?? (effIsOwn ? b.customers?.name : chosen?.name) ?? '').trim() || '—',
-              }
-            : null,
-        )
+        const effGc = bidImportEffectiveGc({
+          chosen,
+          bidCustomerId: b.customer_id,
+          embeddedBidGcName: b.customers?.name,
+          cachedNameOf: (id) => customers.find((c) => c.id === id)?.name,
+        })
+        const effGcId = effGc?.id ?? null
+        setLinkedBidGc(effGc)
         // v2.3403: the GC is the GC, never also the customer. A job born from a
         // won bid is a GC job — its bills go to the GC — and the customer link
         // stays whatever the office set (usually nothing yet).
@@ -2093,19 +2073,10 @@ export default function JobFormModal({
       setWinningGcPick(null)
       if (!pick) return
       if (pick.writesWin && !opt.sharedLetter) {
-        const packet = pick.packets.find((p) => p.key === opt.key)
-        const versionIds = (packet?.versions ?? []).map((v) => v.id)
-        if (versionIds.length > 0) {
-          const packetsAfter = pick.packets.map((p) => ({
-            key: p.key,
-            name: p.name,
-            outcome: p.key === opt.key ? 'won' : p.outcome,
-            sentOn: p.sentOn,
-            versionIds: p.versions.map((v) => v.id),
-            sharedLetter: !!p.sharedLetter,
-          }))
+        const write = bidImportWinWrite(pick.packets, opt.key)
+        if (write) {
           // Tier-2 #21: the picker's sentence IS the confirm; the write snapshots the cascade so "↩ waiting" on the bid can undo it.
-          const res = await setGcPacketOutcome({ bidId: pick.bidId, bidOutcome: pick.bidOutcome, versionIds, outcome: 'won', packetsAfter, previousOutcome: packet?.outcome === 'lost' ? 'lost' : null, actor: { userId: authUser?.id, role: authRole, path: 'job-import' } })
+          const res = await setGcPacketOutcome({ bidId: pick.bidId, bidOutcome: pick.bidOutcome, versionIds: write.versionIds, outcome: 'won', packetsAfter: write.packetsAfter, previousOutcome: write.previousOutcome, actor: { userId: authUser?.id, role: authRole, path: 'job-import' } })
           if (res.error) {
             showToast(res.error, 'error')
           } else {
@@ -2158,17 +2129,7 @@ export default function JobFormModal({
         setJobAddress((e.for_address ?? '').trim())
         const lines = normalizeEstimateLineItemsFromJson(e.line_items_snapshot)
         const payload = fixturesPayloadForCreateJobFromEstimate(lines)
-        const nextFixtures: FixtureRow[] =
-          payload.length > 0
-            ? payload.map((p) => ({
-                id: crypto.randomUUID(),
-                name: p.name,
-                count: p.count,
-                line_unit_price: p.line_unit_price,
-                line_description: p.line_description ?? '',
-                invoice_id: null,
-              }))
-            : [{ id: crypto.randomUUID(), name: '', count: 1, line_unit_price: null, line_description: '', invoice_id: null }]
+        const nextFixtures: FixtureRow[] = estimateImportFixtureRows(payload, () => crypto.randomUUID())
         // A change order's credit lines arrive negative (v2.1829) — they are
         // discount rows here, not work rows the autosave would null.
         setFixtures(normalizeFormFixtureRows(nextFixtures))
@@ -2193,29 +2154,18 @@ export default function JobFormModal({
               setCustomers((prev) => (prev.some((c) => c.id === cList!.id) ? prev : [...prev, cList!]))
             }
           }
-          if (cList) {
-            setCustomerName(cList.name ?? '')
-            setDateMet(cList.date_met ? (cList.date_met.split('T')[0] ?? '') : '')
-            const ci = cList.contact_info as { phone?: string; email?: string } | null
-            if (ci) {
-              setCustomerEmail(ci.email ?? '')
-              setCustomerPhone(ci.phone ?? '')
-            } else {
-              setCustomerEmail('')
-              setCustomerPhone('')
-            }
-          } else {
-            setCustomerName('')
-            setCustomerEmail((e.customer_email ?? '').trim())
-            setCustomerPhone('')
-            setDateMet('')
-          }
+          const fields = estimateImportCustomerFields(cList, e.customer_email)
+          setCustomerName(fields.customerName)
+          setCustomerEmail(fields.customerEmail)
+          setCustomerPhone(fields.customerPhone)
+          setDateMet(fields.dateMet)
         } else {
           setCustomerId(null)
-          setCustomerName('')
-          setCustomerEmail((e.customer_email ?? '').trim())
-          setCustomerPhone('')
-          setDateMet('')
+          const fields = estimateImportCustomerFields(null, e.customer_email)
+          setCustomerName(fields.customerName)
+          setCustomerEmail(fields.customerEmail)
+          setCustomerPhone(fields.customerPhone)
+          setDateMet(fields.dateMet)
         }
         showToast('Imported from estimate.', 'success')
       } catch (err) {
