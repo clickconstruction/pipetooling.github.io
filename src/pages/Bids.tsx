@@ -3071,7 +3071,8 @@ export default function Bids() {
           deepLinkHighlightGen={bidBoardDeepLinkHighlightGen}
           onEditBid={openEditBid}
           onOpenGcBuilderOrCustomer={openGcBuilderOrCustomerModal}
-          onLastContactClick={handleLastContactClick}
+          // Set by state, so the router's gate never runs: the door goes only to roles By status stands for.
+          onLastContactClick={bidsTabOpenFor('submission-followup', myRole) ? handleLastContactClick : undefined}
           onOpenBidTab={(bid, tab) => selectBidAndSyncUrl(bid, tab)}
           onOpenBidFlowDoor={openBidFlowDoor}
           canSeePricingTabs={myRole !== 'superintendent'}
@@ -3198,7 +3199,7 @@ export default function Bids() {
           onError={setError}
           onEditBid={openEditBid}
           onNewBidWithCustomer={openNewBidWithCustomer}
-          onViewSubmissions={(bid) => { setSelectedBidForSubmission(bid); setActiveTab('submission-followup') }}
+          onViewSubmissions={bidsTabOpenFor('submission-followup', myRole) ? handleLastContactClick : undefined}
           onSetCustomers={setCustomers}
           newCustomerModal={newCustomerModal}
           editCustomerModal={editCustomerModal}
