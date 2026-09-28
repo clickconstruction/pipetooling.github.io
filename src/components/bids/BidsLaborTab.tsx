@@ -85,7 +85,6 @@ type BidsLaborTabProps = {
   bidPreview: ReturnType<typeof useBidPreview>
   error: string | null
   setError: (message: string | null) => void
-  selectedServiceTypeId: string
   /** The trade's name, beside the book ("🤖 Robot Default · Plumbing"). */
   selectedServiceTypeName?: string | null
   /** Who is looking (v2.3597): the role gates the book's writes, the id signs proposals and owns overrides. */
@@ -118,11 +117,8 @@ type BidsLaborTabProps = {
   hoursPerTrip: string
   setHoursPerTrip: Dispatch<SetStateAction<string>>
   estimatorCostUseFlat: boolean
-  setEstimatorCostUseFlat: Dispatch<SetStateAction<boolean>>
   estimatorCostPerCount: string
-  setEstimatorCostPerCount: Dispatch<SetStateAction<string>>
   estimatorCostFlatAmount: string
-  setEstimatorCostFlatAmount: Dispatch<SetStateAction<string>>
   travelPeople: string
   setTravelPeople: Dispatch<SetStateAction<string>>
   travelNights: string
@@ -143,15 +139,11 @@ type BidsLaborTabProps = {
   setOtherRows: Dispatch<SetStateAction<CostEstimateOtherRow[]>>
   laborBookVersions: LaborBookVersion[]
   laborBookEntries: LaborBookEntryWithFixture[]
-  setLaborBookEntries: Dispatch<SetStateAction<LaborBookEntryWithFixture[]>>
   selectedLaborBookVersionId: string | null
-  setSelectedLaborBookVersionId: Dispatch<SetStateAction<string | null>>
   laborBookEntriesVersionId: string | null
   setLaborBookEntriesVersionId: Dispatch<SetStateAction<string | null>>
-  loadCostEstimateData: (bidId: string, laborBookVersionId: string | null) => Promise<void>
   loadLaborBookVersions: () => Promise<void>
   loadLaborBookEntries: (versionId: string | null) => Promise<void>
-  saveBidSelectedLaborBookVersion: (bidId: string, versionId: string | null) => Promise<void>
   openMaterialsModelSwitch: (next: MaterialsModel, sourceTab: 'takeoffs' | 'labor' | 'pricing') => void
   // Callbacks
   onSelectBid: (bid: BidWithBuilder) => void

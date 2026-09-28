@@ -23,7 +23,7 @@ import type { BidPricingHistoryRow } from '../../types/database-functions'
 import { countTabsMatchedOrBeaten, marginPctToMatchTabLow } from '../../lib/bidTabCapture'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
 import { roughMaterialsTotalWithRounding, type RoughLineDbRow } from '../../lib/bids/takeoffOrderRounding'
-import { normalizeMaterialsModel, type MaterialsModel } from '../../lib/bids/bidTakeoffHelpers'
+import { normalizeMaterialsModel } from '../../lib/bids/bidTakeoffHelpers'
 import { alternateCardNumbers, sameGcAlternateVersions } from '../../lib/bids/ownTakeoffAlternates'
 import { nextSortOrder, pickActivePricing } from '../../lib/bids/pickActivePricing'
 import { versionStarringScenario } from '../../lib/bids/starredScenarioGuard'
@@ -42,8 +42,6 @@ import { deriveBidFlow, type BidFlowDoor, type BidFlowStep } from '../../lib/bid
 import { useBidFlowFacts } from '../../hooks/useBidFlowFacts'
 import { useBidFlowReview } from '../../hooks/useBidFlowReview'
 import { useBidFlowFold } from '../../hooks/useBidFlowFold'
-import { GenerateUnitCostModal } from './GenerateUnitCostModal'
-import { AssignTakeoffPartModal } from './AssignTakeoffPartModal'
 import { BidPickerStandardList } from './BidPickerStandardList'
 import { filterBidsForPicker } from '../../lib/bids/filterBidsForPicker'
 import { resolvePricingEntry } from '../../lib/bids/resolvePricingEntry'
@@ -181,7 +179,6 @@ type BidsPricingTabProps = {
   /** Re-run a failed resolve (the error panel's Retry). */
   onRetryResolve: () => void
   saveBidSelectedPriceBookVersion: (bidId: string, versionId: string | null) => Promise<void>
-  openMaterialsModelSwitch: (next: MaterialsModel, sourceTab: 'takeoffs' | 'labor' | 'pricing') => void
   // Shared pricing-rows calc (from useBidPricingRows)
   pricingRowsForGrid: ComputeBidPricingRowsResult | null
   pricingPackageSource: { rows: PackageAndSendPricingRowInput[]; totalRevenue: number } | null
@@ -318,7 +315,6 @@ export function BidsPricingTab({
   // The price-book drawer (v2.2384, owner-approved prototype): the strip chip is
   // the one door to the book. It edits the shared TEMPLATE catalog only — the
   // old "This version's prices" panel mode was added by mistake and never used.
-  const templatesMode = true
   const [wbBookDrawerOpen, setWbBookDrawerOpen] = useState(false)
   const [wbBooksExpanded, setWbBooksExpanded] = useState(false)
   const [wbPriceDisplayMode, setWbPriceDisplayMode] = useState<'combined' | 'stage'>('combined')
@@ -363,7 +359,6 @@ export function BidsPricingTab({
   // What kind of version the version-form modal is creating.
   const [pricingFormMode, setPricingFormMode] = useState<'template' | 'pricing-blank' | 'pricing-clone'>('pricing-blank')
   const [pricingCloneSourceId, setPricingCloneSourceId] = useState<string | null>(null)
-  const [addPricingMenuOpen, setAddPricingMenuOpen] = useState(false)
   const [pricingAssignmentSearches, setPricingAssignmentSearches] = useState<Record<string, string>>({})
   // Assign-search matching mode (v2.2397, Wendi: "i want exact matching as an option").
   // Similar = any word, ranked; Exact = every word must appear. Per device, both dropdowns.
@@ -458,7 +453,6 @@ export function BidsPricingTab({
   }
   const [pricingAssignmentDropdownOpen, setPricingAssignmentDropdownOpen] = useState<string | null>(null)
   const [pricingBreakdownRow, setPricingBreakdownRow] = useState<PricingBreakdownRow | null>(null)
-  const [assignTakeoffRow, setAssignTakeoffRow] = useState<{ countRowId: string; fixture: string } | null>(null)
   // Workbench (New view) state: solver PREVIEW prices (never written until Apply),
   // session-local locks, and the solver controls.
   const [wbPreview, setWbPreview] = useState<Record<string, number> | null>(null)
@@ -521,8 +515,6 @@ export function BidsPricingTab({
   const [wbTargetTotalInput, setWbTargetTotalInput] = useState('')
   /** True while the "or total" box has focus — margin solves must not overwrite her typing (v2.2403). */
   const wbTargetTotalFocusedRef = useRef(false)
-  /** Last target-total solve: what was asked vs where it landed (cleared on input edit). */
-  const [, setWbTargetSolveResult] = useState<{ target: number; landed: number } | null>(null)
   /** Last margin solve, for the landing chip under the strip: the slider pct and how
       many rows it priced. Where the bid lands (revenue/blended) reads live from the
       preview totals; cleared whenever the preview clears or a row is hand-edited. */
@@ -730,15 +722,6 @@ export function BidsPricingTab({
   const [wbVariantDoorOpen, setWbVariantDoorOpen] = useState(false)
   // Disables the toolbar price-book dropdown while a clone/switch is in flight (avoids double-submit).
   const [pricebookSwitchBusy, setPricebookSwitchBusy] = useState(false)
-  const [generateUnitCostModalParams, setGenerateUnitCostModalParams] = useState<{
-    countRowId: string
-    totalRevenue: number
-    currentRowRevenue: number
-    currentPctOfTotal: number | null
-    count: number
-    isFixedPrice: boolean
-    fixtureLabel: string
-  } | null>(null)
   const [savingUnitPriceOverride, setSavingUnitPriceOverride] = useState<string | null>(null)
   // Package and send (Pricing tab → "Package and send" modal — left of CSV)
   const [packageSendOpen, setPackageSendOpen] = useState(false)
@@ -1010,9 +993,6 @@ export function BidsPricingTab({
       if (pricingAssignmentDropdownOpen && !target.closest('[data-pricing-assignment-dropdown]')) {
         setPricingAssignmentDropdownOpen(null)
       }
-      if (addPricingMenuOpen && !target.closest('[data-add-pricing-menu]')) {
-        setAddPricingMenuOpen(false)
-      }
       if (wbBarPinnedId && !target.closest('[data-profit-bar]')) {
         setWbBarPinnedId(null)
       }
@@ -1026,15 +1006,15 @@ export function BidsPricingTab({
       document.removeEventListener('mousedown', handleClickOutside)
       document.removeEventListener('keydown', handleEscape)
     }
-  }, [pricingAssignmentDropdownOpen, addPricingMenuOpen, wbBarPinnedId])
+  }, [pricingAssignmentDropdownOpen, wbBarPinnedId])
 
   // --- Bid Pricings vs Templates panel ---
   // The Price Book panel can show either the bid's Pricings or the shared template catalog.
   // `panel*` resolve to whichever the "Templates" toggle is on. Template editing uses its own
   // `editingTemplateId` / `templateEntries` so it never disturbs the bid's active Pricing
   // (`selectedPricingVersionId` / `priceBookEntries`), which still drives the grid + cover letter.
-  const panelVersionId = templatesMode ? editingTemplateId : selectedPricingVersionId
-  const panelEntries = templatesMode ? templateEntries : priceBookEntries
+  const panelVersionId = editingTemplateId
+  const panelEntries = templateEntries
   // Which shared template the toolbar price-book dropdown shows as "current" for this bid.
   const currentPriceBookTemplateId = resolveCurrentPriceBookTemplateId({
     selectedPricingVersionId,
@@ -1065,18 +1045,15 @@ export function BidsPricingTab({
   }
 
   async function reloadPanelEntries() {
-    if (templatesMode) await loadTemplateEntries(editingTemplateId)
-    else await loadPriceBookEntries(selectedPricingVersionId)
+    await loadTemplateEntries(editingTemplateId)
   }
 
   async function reloadPanelVersions() {
-    if (templatesMode) await loadTemplatePriceBookVersions()
-    else if (selectedBidForPricing) await loadBidPricings(selectedBidForPricing.id)
+    await loadTemplatePriceBookVersions()
   }
 
   // Entering Templates mode (or template list changing): default to the first template and load its entries.
   useEffect(() => {
-    if (!templatesMode) return
     if (editingTemplateId && templatePriceBookVersions.some((t) => t.id === editingTemplateId)) {
       void loadTemplateEntries(editingTemplateId)
       return
@@ -1085,15 +1062,11 @@ export function BidsPricingTab({
     setEditingTemplateId(first?.id ?? null)
     void loadTemplateEntries(first?.id ?? null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [templatesMode, templatePriceBookVersions])
+  }, [templatePriceBookVersions])
 
   function selectPanelVersion(id: string) {
-    if (templatesMode) {
-      setEditingTemplateId(id)
-      void loadTemplateEntries(id)
-    } else if (selectedBidForPricing) {
-      void handlePricingVersionChange(selectedBidForPricing.id, id)
-    }
+    setEditingTemplateId(id)
+    void loadTemplateEntries(id)
   }
 
   // Version-form openers (the modal's Save branches on `pricingFormMode`).
@@ -1201,23 +1174,6 @@ export function BidsPricingTab({
       ? await supabase.from('bid_count_row_custom_prices').update({ unit_price: value }).eq('id', existingCustom.id)
       : await supabase.from('bid_count_row_custom_prices').insert({ bid_id: bidId, count_row_id: countRowId, price_book_version_id: versionId, unit_price: value })
     return res.error
-  }
-
-  async function updateUnitPriceOverride(countRowId: string, value: number | null) {
-    if (!guardPricingWrite()) return
-    const bidId = selectedBidForPricing?.id
-    const versionId = selectedPricingVersionId
-    if (!bidId || !versionId) return
-
-    setSavingUnitPriceOverride(countRowId)
-    const err = await writeUnitPriceOverrideRow(countRowId, value)
-
-    if (err) setError(err.message)
-    else {
-      await loadBidPricingAssignments(bidId, versionId)
-      await freezeSharedPricingAfterWrite()
-    }
-    setSavingUnitPriceOverride(null)
   }
 
   /* ---- Price by margin (v2.1769; row-by-row Margin mode v2.1772) ---- */
@@ -1564,7 +1520,7 @@ export function BidsPricingTab({
     e.preventDefault()
     const targetVersionId = entryFormTargetPricing ? selectedPricingVersionId : panelVersionId
     if (!targetVersionId) {
-      setError(entryFormTargetPricing ? 'No pricing selected' : templatesMode ? 'No template selected' : 'No pricing selected')
+      setError(entryFormTargetPricing ? 'No pricing selected' : 'No template selected')
       return
     }
     const fixtureName = pricingEntryFixtureName.trim()
@@ -1623,7 +1579,7 @@ export function BidsPricingTab({
   async function deletePricingEntry(entry: PriceBookEntryWithFixture) {
     if (
       !(await confirmDialog({
-        message: `Delete "${entry.fixture_types?.name ?? ''}" from this ${templatesMode ? 'price book' : 'pricing'}?`,
+        message: `Delete "${entry.fixture_types?.name ?? ''}" from this price book?`,
         confirmLabel: 'Delete',
         danger: true,
       }))
@@ -2425,10 +2381,8 @@ export function BidsPricingTab({
     // step over to fine-edit that number. Never while she's typing in the box itself.
     if (opts.targetTotal == null && !wbTargetTotalFocusedRef.current) {
       setWbTargetTotalInput(Math.round(sol.resultingRevenue).toLocaleString('en-US'))
-      setWbTargetSolveResult(null)
     }
     if (opts.targetTotal != null) {
-      setWbTargetSolveResult({ target: opts.targetTotal, landed: sol.resultingRevenue })
       // The slider means "margin on the costed rows" (hand-set no-cost revenue
       // stacks on top), so sync it to the costed portion of where this landed —
       // syncing to blended would jump prices on the next slider nudge.
@@ -3777,7 +3731,7 @@ export function BidsPricingTab({
                                     <span style={{ padding: '0 0.4rem 0 0.5rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>$</span>
                                     <input
                                       type="text" inputMode="decimal" placeholder="42,000" value={wbTargetTotalInput}
-                                      onChange={(e) => { setWbTargetTotalInput(e.target.value); setWbTargetSolveResult(null) }}
+                                      onChange={(e) => setWbTargetTotalInput(e.target.value)}
                                       // While she's in the box, slider solves keep their hands off it (v2.2403);
                                       // select-on-focus so stepping over from the slider is type-to-replace.
                                       onFocus={(e) => {
@@ -4648,22 +4602,6 @@ export function BidsPricingTab({
             }
           />
         )}
-        {assignTakeoffRow && selectedBidForPricing && (
-          <AssignTakeoffPartModal
-            bidId={selectedBidForPricing.id}
-            bidVersionId={selectedBidVersionId}
-            serviceTypeId={selectedBidForPricing.service_type_id ?? selectedServiceTypeId}
-            countRowId={assignTakeoffRow.countRowId}
-            fixture={assignTakeoffRow.fixture}
-            materialsModel={normalizeMaterialsModel(selectedBidForPricing.materials_model)}
-            defaultQuantity={Number(pricingCountRows.find((r) => r.id === assignTakeoffRow.countRowId)?.count) || 1}
-            onClose={() => setAssignTakeoffRow(null)}
-            onAssigned={async () => {
-              await reloadPricingForBid(selectedBidForPricing.id)
-              setAssignTakeoffRow(null)
-            }}
-          />
-        )}
         {!selectedBidForPricing && (
           <BidPickerStandardList
             bids={filteredBidsForPricing}
@@ -4712,7 +4650,6 @@ export function BidsPricingTab({
         {pricingVersionFormOpen && (
           <PricingVersionFormModal
             editing={editingPricingVersion}
-            templatesMode={templatesMode}
             formMode={pricingFormMode}
             nameInput={pricingVersionNameInput}
             onNameChange={setPricingVersionNameInput}
@@ -4808,22 +4745,6 @@ export function BidsPricingTab({
           />
         )}
       </div>
-
-      <GenerateUnitCostModal
-        open={generateUnitCostModalParams != null}
-        onClose={() => setGenerateUnitCostModalParams(null)}
-        fixtureLabel={generateUnitCostModalParams?.fixtureLabel}
-        totalRevenue={generateUnitCostModalParams?.totalRevenue ?? 0}
-        currentRowRevenue={generateUnitCostModalParams?.currentRowRevenue ?? 0}
-        currentPctOfTotal={generateUnitCostModalParams?.currentPctOfTotal ?? null}
-        count={generateUnitCostModalParams?.count ?? 0}
-        isFixedPrice={generateUnitCostModalParams?.isFixedPrice ?? false}
-        onApply={async (price) => {
-          const p = generateUnitCostModalParams
-          if (!p) return
-          await updateUnitPriceOverride(p.countRowId, price)
-        }}
-      />
 
       {addPriceOpen && selectedBidForPricing ? (() => {
         const gc = gcNameForVersion(selectedBidVersionId)

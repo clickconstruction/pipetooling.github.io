@@ -1076,13 +1076,13 @@ export default function Bids() {
     drivingCostRate, setDrivingCostRate,
     hoursPerTrip, setHoursPerTrip,
     laborBookVersions,
-    laborBookEntries, setLaborBookEntries,
+    laborBookEntries,
     selectedLaborBookVersionId, setSelectedLaborBookVersionId,
     laborBookEntriesVersionId, setLaborBookEntriesVersionId,
     costEstimateBidIdRef,
-    estimatorCostUseFlat, setEstimatorCostUseFlat,
-    estimatorCostPerCount, setEstimatorCostPerCount,
-    estimatorCostFlatAmount, setEstimatorCostFlatAmount,
+    estimatorCostUseFlat,
+    estimatorCostPerCount,
+    estimatorCostFlatAmount,
     travelPeople, setTravelPeople,
     travelNights, setTravelNights,
     travelMealsRate, setTravelMealsRate,
@@ -1121,7 +1121,7 @@ export default function Bids() {
     loadDraftPOs, loadTakeoffBookVersions, loadTakeoffBookEntries, saveBidSelectedTakeoffBookVersion,
     loadPurchaseOrdersForCostEstimate, loadCostEstimate,
     ensureCostEstimateForBid, loadCostEstimateData,
-    loadLaborBookVersions, loadLaborBookEntries, saveBidSelectedLaborBookVersion,
+    loadLaborBookVersions, loadLaborBookEntries,
     loadTemplatePriceBookVersions, loadBidPricings, loadBidVersions, loadPriceBookEntries, loadBidPricingAssignments, loadPricingDataForBid,
     saveBidSelectedPriceBookVersion, setCostEstimatePO, openMaterialsModelSwitch, confirmMaterialsModelSwitch,
   } = useBidPricingEngine({
@@ -4215,7 +4215,6 @@ export default function Bids() {
           bidPreview={bidPreviewOnBidsPage}
           error={error}
           setError={setError}
-          selectedServiceTypeId={selectedServiceTypeId}
           fixtureTypes={fixtureTypes}
           getOrCreateFixtureTypeId={getOrCreateFixtureTypeId}
           loadBids={loadBids}
@@ -4239,11 +4238,8 @@ export default function Bids() {
           hoursPerTrip={hoursPerTrip}
           setHoursPerTrip={setHoursPerTrip}
           estimatorCostUseFlat={estimatorCostUseFlat}
-          setEstimatorCostUseFlat={setEstimatorCostUseFlat}
           estimatorCostPerCount={estimatorCostPerCount}
-          setEstimatorCostPerCount={setEstimatorCostPerCount}
           estimatorCostFlatAmount={estimatorCostFlatAmount}
-          setEstimatorCostFlatAmount={setEstimatorCostFlatAmount}
           travelPeople={travelPeople}
           setTravelPeople={setTravelPeople}
           travelNights={travelNights}
@@ -4264,15 +4260,11 @@ export default function Bids() {
           setOtherRows={setCostEstimateOtherRows}
           laborBookVersions={laborBookVersions}
           laborBookEntries={laborBookEntries}
-          setLaborBookEntries={setLaborBookEntries}
           selectedLaborBookVersionId={selectedLaborBookVersionId}
-          setSelectedLaborBookVersionId={setSelectedLaborBookVersionId}
           laborBookEntriesVersionId={laborBookEntriesVersionId}
           setLaborBookEntriesVersionId={setLaborBookEntriesVersionId}
-          loadCostEstimateData={loadCostEstimateData}
           loadLaborBookVersions={loadLaborBookVersions}
           loadLaborBookEntries={loadLaborBookEntries}
-          saveBidSelectedLaborBookVersion={saveBidSelectedLaborBookVersion}
           viewerUserId={authUser?.id ?? null}
           viewerRole={authRole}
           selectedServiceTypeName={serviceTypes.find((st) => st.id === selectedServiceTypeId)?.name ?? null}
@@ -4365,7 +4357,6 @@ export default function Bids() {
           loadBidPricingAssignments={loadBidPricingAssignments}
           reloadPricingForBid={loadPricingDataForBid}
           saveBidSelectedPriceBookVersion={saveBidSelectedPriceBookVersion}
-          openMaterialsModelSwitch={openMaterialsModelSwitch}
           pricingRowsForGrid={pricingRowsForGrid}
           pricingPackageSource={pricingPackageSource}
           onSelectBid={(bid) => selectBidAndSyncUrl(bid, 'pricing')}
