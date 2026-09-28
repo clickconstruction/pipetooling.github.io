@@ -1511,6 +1511,60 @@ export type Database = {
           },
         ]
       }
+      bid_reply_book_entries: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string | null
+          created_by_name: string
+          id: string
+          kind: string
+          sign_with_sender: boolean
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string
+          id?: string
+          kind?: string
+          sign_with_sender?: boolean
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string
+          id?: string
+          kind?: string
+          sign_with_sender?: boolean
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_reply_book_entries_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_reply_book_entries_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_rfqs: {
         Row: {
           bid_id: string
@@ -22489,6 +22543,7 @@ export type Database = {
         Args: { p_job_id: string }
         Returns: boolean
       }
+      can_open_bid_reply_book: { Args: never; Returns: boolean }
       can_reach_job_for_test_report: {
         Args: { p_job_id: string }
         Returns: boolean
