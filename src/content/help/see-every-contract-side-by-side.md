@@ -27,7 +27,8 @@ Under the wording, four lines answer the questions that matter when a contract n
 
 - **The customer** — how they take it on: a signature, a checkbox, or by accepting the document it rides on.
 - **Kept in** — where the wording lives.
-- **Last changed** — the date, when one is kept.
+- **Last changed** — the day it last changed and who changed it. Wording fixed in the app changes only with an app update.
+- **Reviewed** — when someone last read it, and when the next read is due. It turns amber when it is due or has never been read.
 - **Their copy** — where the wording a customer agreed to is kept, or *None is kept*.
 - **Last sent** — on the six cards that keep a copy: whether what last went out is the wording on the card. It turns amber when it is not.
 
@@ -58,6 +59,34 @@ The wording on a card is what the next customer will get. **Last sent** is what 
 - {{button:outline|Compare what went out}} puts that copy in a column of its own, headed **What went out**, beside today's.
 
 When any card differs, the top of the tab says how many.
+
+## See what it said before
+
+{{button:outline|History (3)}} on a card opens every version on record, newest first, with the day and who changed it.
+
+- {{button:outline|Read}} opens that version in place.
+- {{button:outline|Compare}} puts it in a column headed **Before**, beside today's.
+- **What did it say on** takes a day and says which wording was in force. Use it when a customer asks what they agreed to: pick the day they accepted.
+
+:::example A customer accepted on September 15
+{{chip:gray|On Sep 15, 2026 it read as recorded Sep 1, 2026.}} {{button:outline|Compare it}}
+:::
+
+The record began on September 28, 2026. A text set before then shows *On record since Sep 28, 2026*; what it said earlier was never kept. Wording fixed in the app has no history here.
+
+## Mark a contract reviewed
+
+1. Read the card.
+2. Press {{button:outline|Mark reviewed}}.
+3. Add a note if there is one — who read it with you, what to change next time — and press {{button:blue|Save the review}}.
+
+A card is due for review a year after it was last changed or last reviewed, whichever is later. The top of the tab counts what is due.
+
+:::example The count
+{{chip:yellow|3 due for review · 12 never reviewed}}
+:::
+
+{{button:outline|Take it back}} removes a review you marked today by mistake.
 
 ## Change the wording
 

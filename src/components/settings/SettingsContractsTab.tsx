@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
-import type { UserRole } from '../../hooks/useAuth'
+import { useAuth, type UserRole } from '../../hooks/useAuth'
+import { useToastContext } from '../../contexts/ToastContext'
+import { formatErrorMessage } from '../../utils/errorHandling'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { customerJourneys, findStep } from '../../lib/customerJourneys'
 import {
@@ -30,6 +33,22 @@ import {
 } from '../../lib/contracts/customerContractCatalog'
 import { EMPTY_LAST_SENT, contractLastSent, lastSentDiffers, sentCompareKey, type ContractLastSent, type ContractLastSentData } from '../../lib/contracts/contractLastSent'
 import { fetchContractLastSent } from '../../lib/contracts/fetchContractLastSent'
+import {
+  contractSourceRef,
+  lastChanged,
+  reviewCounts,
+  reviewCountsLine,
+  reviewState,
+  versionCompareKey,
+  versionLine,
+  versionsFor,
+  type ContractTextVersion,
+  type LastChanged,
+  type ReviewState,
+} from '../../lib/contracts/contractTextHistory'
+import { EMPTY_CONTRACT_HISTORY, fetchContractHistory, markContractReviewed, removeContractReview, type ContractHistoryData } from '../../lib/contracts/fetchContractHistory'
+import { ContractCardHistory } from './ContractCardHistory'
+import { ContractCardReview } from './ContractCardReview'
 import { ContractBodyDisplay } from '../contracts/ContractBodyDisplay'
 import StandardTermsEditModal from '../jobs/StandardTermsEditModal'
 
@@ -40,7 +59,9 @@ import StandardTermsEditModal from '../jobs/StandardTermsEditModal'
  * registry is `customerContractCatalog.ts`; this tab reads the Settings texts and the Contract
  * Book's customer documents and writes nothing of its own (the Book's editor opens on the card).
  * **Last sent** sets each card against the copy frozen the last time it went out
- * (`contractLastSent.ts`), and that copy can take a column of its own.
+ * (`contractLastSent.ts`), and that copy can take a column of its own. **History** and
+ * **Mark reviewed** read `contract_text_versions` and `contract_text_reviews`
+ * (`contractTextHistory.ts`); a review is the one row this tab writes.
  */
 
 const CARD: CSSProperties = { border: '1px solid var(--border)', borderRadius: 10, background: 'var(--surface)', padding: '0.85rem 1rem' }
@@ -62,7 +83,16 @@ const STATUS_CHIP: Readonly<Record<ContractTextStatus, CSSProperties>> = {
 }
 
 /** `first`: the entry's first text carries the card's anchor (a Book with two documents makes two cards). */
-type CardModel = { entry: ContractCatalogEntry; text: ResolvedContractText; first: boolean; sent: ContractLastSent | null }
+type CardModel = {
+  entry: ContractCatalogEntry
+  text: ResolvedContractText
+  first: boolean
+  sent: ContractLastSent | null
+  /** Newest first; empty for wording with no history. */
+  versions: ContractTextVersion[]
+  changed: LastChanged | null
+  review: ReviewState
+}
 
 /** One column of Side by side: a card's wording, or what last went out for it. */
 type Column = { key: string; title: string; sub: string; body: ReactNode }
@@ -79,6 +109,10 @@ export function SettingsContractsTab({ role, onOpenEditor, onOpenStep }: Setting
   const [data, setData] = useState<ContractCatalogData | null>(null)
   // null until it is read; the cards show without it.
   const [lastSent, setLastSent] = useState<ContractLastSentData | null>(null)
+  const [history, setHistory] = useState<ContractHistoryData | null>(null)
+  const [historyOpen, setHistoryOpen] = useState<ReadonlySet<string>>(() => new Set())
+  const { user } = useAuth()
+  const { showToast } = useToastContext()
   const [loadError, setLoadError] = useState<string | null>(null)
   const [picked, setPicked] = useState<string[]>([])
   const [open, setOpen] = useState<ReadonlySet<string>>(() => new Set())
@@ -111,17 +145,69 @@ export function SettingsContractsTab({ role, onOpenEditor, onOpenStep }: Setting
       .catch(() => {
         if (!cancelled) setLastSent(EMPTY_LAST_SENT)
       })
+    void fetchContractHistory()
+      .then((rows) => {
+        if (!cancelled) setHistory(rows)
+      })
+      .catch(() => {
+        if (!cancelled) setHistory(EMPTY_CONTRACT_HISTORY)
+      })
     return () => {
       cancelled = true
     }
   }, [])
 
+  const names = history?.names
+  const nameOf = useMemo(() => (id: string | null) => (id ? names?.get(id) ?? null : null), [names])
+  const todayYmd = todayYmdInAppTz()
+
   const cards = useMemo((): CardModel[] => {
     if (!data) return []
     return CUSTOMER_CONTRACT_CATALOG.flatMap((entry) =>
-      resolveContractTexts(entry, data).map((text, i) => ({ entry, text, first: i === 0, sent: lastSent ? contractLastSent(entry, text, lastSent) : null })),
+      resolveContractTexts(entry, data).map((text, i) => {
+        const versions = versionsFor(contractSourceRef(entry, text), history?.versions ?? [])
+        const changed = lastChanged(versions, nameOf)
+        return {
+          entry,
+          text,
+          first: i === 0,
+          sent: lastSent ? contractLastSent(entry, text, lastSent) : null,
+          versions,
+          changed,
+          // A Book document's own version date dates the wording when the history cannot.
+          review: reviewState({ entryId: entry.id, reviews: history?.reviews ?? [], lastChangedYmd: changed?.ymd ?? text.doc?.book_version_date ?? null, todayYmd, nameOf }),
+        }
+      }),
     )
-  }, [data, lastSent])
+  }, [data, lastSent, history, nameOf, todayYmd])
+
+  /** One review per entry: a Book with two documents shows it on both cards and counts it once. */
+  const reviewLine = history ? reviewCountsLine(reviewCounts(cards.filter((c) => c.first).map((c) => c.review))) : null
+
+  const markReviewed = async (entryId: string, note: string): Promise<boolean> => {
+    if (!user?.id) return false
+    try {
+      const row = await markContractReviewed({ entryId, userId: user.id, note })
+      setHistory((prev) => ({ ...(prev ?? EMPTY_CONTRACT_HISTORY), reviews: [row, ...(prev?.reviews ?? [])] }))
+      showToast('Review saved.', 'success')
+      return true
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not save the review'), 'error')
+      return false
+    }
+  }
+
+  const takeBackReview = async (reviewId: string): Promise<boolean> => {
+    try {
+      await removeContractReview(reviewId)
+      setHistory((prev) => (prev ? { ...prev, reviews: prev.reviews.filter((r) => r.id !== reviewId) } : prev))
+      showToast('Review taken back.', 'success')
+      return true
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not take the review back'), 'error')
+      return false
+    }
+  }
 
   const compared = picked
     .map((key): Column | null => {
@@ -135,8 +221,12 @@ export function SettingsContractsTab({ role, onOpenEditor, onOpenStep }: Setting
         }
       }
       const from = cards.find((c) => sentCompareKey(c.text.key) === key)
-      if (!from?.sent?.sentText) return null
-      return { key, title: from.text.title, sub: `What went out · ${from.sent.sentLabel ?? ''}`, body: <Body text={from.sent.sentText} format={from.sent.sentFormat} /> }
+      if (from?.sent?.sentText) return { key, title: from.text.title, sub: `What went out · ${from.sent.sentLabel ?? ''}`, body: <Body text={from.sent.sentText} format={from.sent.sentFormat} /> }
+      for (const c of cards) {
+        const v = c.versions.find((x) => versionCompareKey(x.id) === key)
+        if (v) return { key, title: c.text.title, sub: `Before · ${versionLine(v, nameOf)}`, body: <Body text={v.body} format={v.body_format === 'html' || v.body_format === 'markdown' ? v.body_format : 'plain'} /> }
+      }
+      return null
     })
     .filter((c): c is Column => c != null)
   const differing = lastSentDiffers(cards.map((c) => c.sent))
@@ -157,6 +247,11 @@ export function SettingsContractsTab({ role, onOpenEditor, onOpenStep }: Setting
     <div>
       <div style={{ ...CARD, padding: '0.55rem 1rem', marginBottom: '0.9rem', display: 'flex', flexWrap: 'wrap', gap: '0.4rem 0.9rem', alignItems: 'center', fontSize: '0.82rem' }} data-testid="contracts-counts">
         <strong style={{ color: 'var(--text-strong)' }}>{contractCountsLine(contractCatalogCounts(cards.map((c) => c.text)))}</strong>
+        {reviewLine ? (
+          <span style={{ ...STATUS_CHIP.blank, fontSize: '0.72rem' }} data-testid="contracts-reviews">
+            {reviewLine}
+          </span>
+        ) : null}
         {differing > 0 ? (
           <span style={{ ...STATUS_CHIP.blank, fontSize: '0.72rem' }} data-testid="contracts-differing">
             {differing === 1 ? '1 card where what went out is not what the card says' : `${differing} cards where what went out is not what the card says`}
@@ -203,8 +298,10 @@ export function SettingsContractsTab({ role, onOpenEditor, onOpenStep }: Setting
               <span style={MUTED}>{CONTRACT_GROUP_HINTS[group]}</span>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 340px), 1fr))', gap: '0.75rem', alignItems: 'start' }}>
-              {inGroup.map(({ entry, text, first, sent }) => {
+              {inGroup.map(({ entry, text, first, sent, versions, changed, review }) => {
                 const action = contractEditAction(entry, text, role)
+                const showHistory = historyOpen.has(text.key)
+                const canTakeBack = review.last != null && review.last.reviewed_by === user?.id && review.last.reviewed_on === todayYmd
                 const isOpen = open.has(text.key)
                 const isPicked = picked.includes(text.key)
                 const sentKey = sentCompareKey(text.key)
@@ -233,9 +330,20 @@ export function SettingsContractsTab({ role, onOpenEditor, onOpenStep }: Setting
                       <dt style={{ color: 'var(--text-muted)' }}>Kept in</dt>
                       <dd style={{ margin: 0, color: 'var(--text-700)' }}>{contractSourceLine(entry)}</dd>
                       <dt style={{ color: 'var(--text-muted)' }}>Last changed</dt>
-                      <dd style={{ margin: 0, color: 'var(--text-700)' }}>{lastChangedLine(text)}</dd>
+                      <dd style={{ margin: 0, color: 'var(--text-700)' }} data-testid={`contract-last-changed-${text.key}`}>
+                        {changed?.line ?? lastChangedLine(text)}
+                      </dd>
                       <dt style={{ color: 'var(--text-muted)' }}>Their copy</dt>
                       <dd style={{ margin: 0, color: 'var(--text-700)' }}>{entry.copyKept ?? 'None is kept.'}</dd>
+                      {history ? (
+                        <>
+                          <dt style={{ color: 'var(--text-muted)' }}>Reviewed</dt>
+                          <dd style={{ margin: 0, color: review.status === 'ok' ? 'var(--text-700)' : 'var(--text-amber-800)' }} data-testid={`contract-review-${text.key}`}>
+                            {review.line}
+                            {review.last?.note ? <span style={{ display: 'block', color: 'var(--text-muted)' }}>“{review.last.note}”</span> : null}
+                          </dd>
+                        </>
+                      ) : null}
                       {sent ? (
                         <>
                           <dt style={{ color: 'var(--text-muted)' }}>Last sent</dt>
@@ -296,7 +404,38 @@ export function SettingsContractsTab({ role, onOpenEditor, onOpenStep }: Setting
                           Guide →
                         </Link>
                       ) : null}
+                      {versions.length > 0 ? (
+                        <button
+                          type="button"
+                          style={showHistory ? PILL_ON : PILL}
+                          aria-expanded={showHistory}
+                          onClick={() =>
+                            setHistoryOpen((prev) => {
+                              const next = new Set(prev)
+                              if (next.has(text.key)) next.delete(text.key)
+                              else next.add(text.key)
+                              return next
+                            })
+                          }
+                        >
+                          History ({versions.length})
+                        </button>
+                      ) : null}
+                      {history && user?.id ? (
+                        <ContractCardReview
+                          name={entry.name}
+                          state={review}
+                          canTakeBack={canTakeBack}
+                          cardKey={text.key}
+                          onMark={(note) => markReviewed(entry.id, note)}
+                          onTakeBack={() => (review.last ? takeBackReview(review.last.id) : Promise.resolve(false))}
+                        />
+                      ) : null}
                     </div>
+
+                    {showHistory && versions.length > 0 ? (
+                      <ContractCardHistory versions={versions} nameOf={nameOf} picked={picked} onToggleCompare={(key) => setPicked((prev) => toggleCompare(prev, key))} cardKey={text.key} />
+                    ) : null}
 
                     {entry.seenOn.length > 0 ? (
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center' }}>

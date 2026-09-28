@@ -5,11 +5,15 @@
  * read side by side.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, screen, within } from '@testing-library/react'
-import { installDomShims, renderSettled } from '../../test/renderSmokeMocks'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { SMOKE_AUTH_USER_ID, installDomShims, renderSettled, settle } from '../../test/renderSmokeMocks'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { SettingsContractsTab } from './SettingsContractsTab'
 
 const tables: Record<string, unknown[]> = {}
+/** What `.insert(...).select().single()` hands back, per table. */
+const inserted: Record<string, unknown> = {}
+const writes: Array<{ table: string; op: 'insert' | 'delete'; row?: unknown }> = []
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -19,15 +23,31 @@ vi.mock('../../lib/supabase', async () => {
     const builder = plain(table) as Record<string, unknown>
     const rows = () => Promise.resolve({ data: tables[table] ?? [], error: null, count: 0 })
     builder.then = (ok?: (v: unknown) => unknown, bad?: (e: unknown) => unknown) => rows().then(ok, bad)
+    builder.insert = (row: unknown) => {
+      writes.push({ table, op: 'insert', row })
+      return builder
+    }
+    builder.delete = () => {
+      writes.push({ table, op: 'delete' })
+      return builder
+    }
+    builder.single = () => Promise.resolve({ data: inserted[table] ?? null, error: null })
     return builder
   }
   return { supabase: stub }
+})
+
+vi.mock('../../hooks/useAuth', async () => {
+  const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
+  return useAuthModuleMock()
 })
 
 installDomShims()
 afterEach(() => {
   cleanup()
   for (const k of Object.keys(tables)) delete tables[k]
+  for (const k of Object.keys(inserted)) delete inserted[k]
+  writes.length = 0
 })
 
 const BOOK_DOC = { id: 'doc-1', document_name: 'Service agreement', book_body_html: '1. Scope. The office wording.', book_body_format: 'plain', book_version_date: '2026-09-20', updated_at: '2026-09-20T12:00:00Z' }
@@ -119,6 +139,56 @@ describe('SettingsContractsTab', () => {
     expect(panel.getByText('1. Scope. The office wording.')).toBeTruthy()
     expect(panel.getByText('1. Scope. The wording before.')).toBeTruthy()
     expect(panel.getByText(/What went out · Sent Sep 10/)).toBeTruthy()
+  })
+
+  it('dates a text from its history, reads what it said before, and answers for a day', async () => {
+    tables.app_settings = [{ key: 'bid_cover_letter_terms_default_v1', value_text: 'Net 45.' }]
+    tables.users = [{ id: 'u-taunya', name: 'Taunya' }]
+    tables.contract_text_versions = [
+      { id: 'v2', source_kind: 'app_setting', source_key: 'bid_cover_letter_terms_default_v1', name: null, body: 'Net 45.', body_format: 'plain', version_date: null, change_kind: 'changed', changed_at: '2026-09-28T18:00:00Z', changed_by: 'u-taunya' },
+      { id: 'v1', source_kind: 'app_setting', source_key: 'bid_cover_letter_terms_default_v1', name: null, body: 'Net 30.', body_format: 'plain', version_date: null, change_kind: 'baseline', changed_at: '2026-09-01T18:00:00Z', changed_by: null },
+    ]
+    await mount().view
+    const changed = await screen.findByText('Changed Sep 28, 2026 by Taunya.')
+    expect(changed.getAttribute('data-testid')).toBe('contract-last-changed-bid-terms')
+    // Wording with no history keeps its own line.
+    expect(screen.getByTestId('contract-last-changed-esign-consent').textContent).toBe('version 2')
+    const card = within(screen.getByTestId('contract-card-bid-terms'))
+    fireEvent.click(card.getByRole('button', { name: 'History (2)' }))
+    const panel = within(screen.getByTestId('contract-history-bid-terms'))
+    expect(panel.getByText(/On record since Sep 1, 2026\. Changes before that were not kept\./)).toBeTruthy()
+    fireEvent.click(panel.getAllByRole('button', { name: 'Read' })[1]!)
+    expect(panel.getByText('Net 30.')).toBeTruthy()
+    fireEvent.change(panel.getByLabelText('What did it say on'), { target: { value: '2026-09-15' } })
+    expect(screen.getByTestId('contract-in-force-bid-terms').textContent).toContain('On Sep 15, 2026 it read as recorded Sep 1, 2026.')
+    fireEvent.click(within(screen.getByTestId('contract-in-force-bid-terms')).getByRole('button', { name: 'Compare it' }))
+    expect(within(screen.getByTestId('contracts-compare')).getByText(/^Before · On record since Sep 1, 2026/)).toBeTruthy()
+    // No card without a history offers one.
+    expect(within(screen.getByTestId('contract-card-esign-consent')).queryByRole('button', { name: /^History/ })).toBeNull()
+  })
+
+  it('marks a card reviewed with a note, and takes it back', async () => {
+    const today = todayYmdInAppTz()
+    inserted.contract_text_reviews = { id: 'r-new', entry_id: 'esign-consent', reviewed_on: today, note: 'Read with counsel.', reviewed_by: SMOKE_AUTH_USER_ID, created_at: '2026-09-28T18:00:00Z' }
+    tables.contract_text_reviews = [{ id: 'r-old', entry_id: 'bid-terms', reviewed_on: '2025-01-10', note: null, reviewed_by: 'u-gone', created_at: '2025-01-10T18:00:00Z' }]
+    await mount().view
+    const before = await screen.findByTestId('contract-review-esign-consent')
+    expect(before.textContent).toBe('Never reviewed.')
+    expect(screen.getByTestId('contract-review-bid-terms').textContent).toContain('Reviewed Jan 10, 2025. Due since Jan 10, 2026.')
+    expect(screen.getByTestId('contracts-reviews').textContent).toMatch(/^1 due for review · \d+ never reviewed$/)
+    const card = within(screen.getByTestId('contract-card-esign-consent'))
+    fireEvent.click(card.getByRole('button', { name: 'Mark reviewed' }))
+    fireEvent.change(within(screen.getByTestId('contract-review-form-esign-consent')).getByLabelText('Review note'), { target: { value: '  Read with counsel.  ' } })
+    fireEvent.click(card.getByRole('button', { name: 'Save the review' }))
+    await waitFor(() => expect(screen.getByTestId('contract-review-esign-consent').textContent).toContain('Reviewed '))
+    expect(screen.getByTestId('contract-review-esign-consent').textContent).toContain('Read with counsel.')
+    expect(writes).toContainEqual({ table: 'contract_text_reviews', op: 'insert', row: { entry_id: 'esign-consent', reviewed_on: today, reviewed_by: SMOKE_AUTH_USER_ID, note: 'Read with counsel.' } })
+    // Marked today by the person looking: it can be taken back. Someone else's review cannot.
+    expect(within(screen.getByTestId('contract-card-bid-terms')).queryByRole('button', { name: 'Take it back' })).toBeNull()
+    await settle()
+    fireEvent.click(card.getByRole('button', { name: 'Take it back' }))
+    await waitFor(() => expect(screen.getByTestId('contract-review-esign-consent').textContent).toBe('Never reviewed.'))
+    expect(writes.some((w) => w.table === 'contract_text_reviews' && w.op === 'delete')).toBe(true)
   })
 
   it('reads two ticked cards side by side, and a card with no wording cannot be ticked', async () => {
