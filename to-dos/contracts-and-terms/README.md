@@ -1,22 +1,24 @@
 ---
 name: "Contracts & terms: every contract a customer signs, side by side"
 number: 50
-group: ready
-status: planned 2026-09-27 from a five-way read of the app · the build started the same sitting on `claude/contract-management-consolidation-d0947b`
+group: close
+status: planned and built 2026-09-27 / 28 · PR 1 shipped v2.3977 (the tab, Compare, the doors) · PR 2 shipped v2.3968 (the bid room gets the wording the letter prints) · PR 3 shipped v2.3965 (an unsent draft goes out with the current standard terms) · PR 4 shipped v2.3964 (consent on a change order signed in the bid room) · PR 5 shipped v2.3987 (the history tables and triggers) · PR 7 shipped v2.3992 (Last sent) · PR 6 shipped v2.3994 (History, What did it say on, Mark reviewed) — all seven built · left: a month of use, five things deliberately not built, one question for the attorney
 summary: >
   The app offers customers **eight contract texts** from Estimates, Bids and Jobs, kept five
   different ways — one Settings text, per-record boxes, built-in wording in code, the Contract
-  Book, and page state that is never saved. Only the job service agreement carries a date and a
-  frozen copy of what each customer agreed to. The ask is one place in Settings that shows them
-  side by side, says when each last changed, and opens what is being sent. The read also found
-  that what customers receive is not always what Settings says (the bid room can publish with no
-  Terms, the sweep sends old wording, a change order signed in the bid room records no consent),
-  so the plan fixes those beside the catalog and makes "what did we last send" part of the core.
+  Book, and page state that is never saved. Only the job service agreement carried a date and a
+  frozen copy of what each customer agreed to. Settings → **Contracts & terms** now shows all of
+  them side by side, with where each is kept and edited, when it last changed and what it said
+  before, when it was last read, and what last went out. The read that started it also found
+  that what customers received was not always what Settings said; three of those are fixed.
 next: >
-  PR 1 (the catalog tab) and the three gap fixes, then the history migration, then last-sent.
-size: M — seven PRs, one migration
-blocker: None. One question is the attorney's, not the app's — three independent terms texts or one master with addenda.
-opinion: build — the catalog alone would show the template while customers receive something else, so the gap fixes and last-sent are in the train, not after it
+  Use the tab for a month. Then decide two things — whether the estimate and bid terms move into
+  the Contract Book (rejected for now, see The decision), and which of the five items under
+  *Not in this train* to build. Take the interest-clause disagreement to the attorney.
+size: S — what is left is use, and five small builds if they are wanted
+blocker: A month of use. The interest clauses (45 days from the invoice; 30 days after the due date) are the attorney's call.
+ver: v2.3977 · v2.3968 · v2.3965 · v2.3964 · v2.3987 · v2.3992 · v2.3994
+opinion: your call — everything planned is built; the five items left out are each small, and the first to build is the signed copy to the customer, because the consent tells them they have one
 mockup: not required — built in the same sitting as the plan; the live tab is the drawing
 ---
 
@@ -122,6 +124,21 @@ a customer's own paper writes our terms onto the row.
 
 PRs 2–4 are independent of the rest and of each other.
 
+## Where it stands
+
+All seven PRs are built. What the tab said about production the day it shipped (2026-09-28, read
+only, as the dev login):
+
+- The estimate terms, the estimate checkbox sentence and the bid exclusions are the office's own
+  wording. **The bid terms and the bid closing were never set**, so the letter prints the
+  built-in wording.
+- **The last proposal published to a bid room (Sep 4, rev 1) went out with no Terms at all.**
+  New publishes carry them since v2.3968; that room keeps what it was published with until
+  someone presses *Publish update* on the Cover Letter.
+- The last estimate sent (Sep 24) went out with the Terms box empty.
+- The last agreement sent (Sep 23) and the last signature (Sep 22) carry today's wording.
+- The Contract Book holds one customer document, dated Sep 20.
+
 ## Not in this train
 
 - Saving the per-bid letter boxes — `src/pages/Bids.tsx` is mid-move (the Bids second pass).
@@ -129,6 +146,13 @@ PRs 2–4 are independent of the rest and of each other.
 - A signed copy to the estimate or bid signer.
 - The job agreement sample on *What customers see* reading the Book document (an edge function).
 - One master terms text — the attorney's question.
+- The proposal section of the bid room shows its own agree box and stores a consent clause that
+  ends with a checkbox sentence the signer never saw (found in PR 4; left for a decision, because
+  either fix changes what every GC sees or what is stored under consent version 2).
+- A sweep left open across an edit to the standard terms still mints **new** drafts on the
+  wording it loaded (found in PR 3; existing drafts are guarded). The fix is a re-read of the
+  document before a send.
+- Nothing outside the tab says a review is due — no Dashboard card, no email.
 
 ## How to verify
 

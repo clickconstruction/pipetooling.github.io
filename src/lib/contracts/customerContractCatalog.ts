@@ -132,6 +132,7 @@ const ESTIMATE_SIGNING_SENTENCE =
 const JOB_SIGNING_SENTENCE = 'Your signature below applies to the scope, price, and terms shown on this page.'
 const JOB_AGREE_SENTENCE = 'I agree to do business electronically and accept this agreement, its scope, price, and terms.'
 const BID_AGREE_SENTENCE = 'I agree to conduct business electronically and accept this proposal, its inclusions, exclusions, and terms.'
+const BID_CHANGE_ORDER_AGREE_SENTENCE = 'I agree to this change order and its impact on cost and schedule.'
 const BID_ACCEPTANCE_BLOCK = 'The above prices, specifications, and conditions are satisfactory and are hereby accepted. You are authorized to perform the work as specified.'
 
 function lines(parts: ReadonlyArray<readonly [string, string]>): string {
@@ -299,7 +300,7 @@ export const CUSTOMER_CONTRACT_CATALOG: readonly ContractCatalogEntry[] = [
     group: 'signed',
     area: 'signing',
     audience: 'everyone',
-    what: 'The fixed sentences beside the signature on the three signing pages.',
+    what: 'The fixed sentences beside the signature on the three signing pages, and on a change order in the bid room.',
     customerAction: 'Reads them and ticks the box before signing.',
     source: {
       kind: 'code',
@@ -308,6 +309,7 @@ export const CUSTOMER_CONTRACT_CATALOG: readonly ContractCatalogEntry[] = [
         ['Job agreement — above the signature', JOB_SIGNING_SENTENCE],
         ['Job agreement — the checkbox', JOB_AGREE_SENTENCE],
         ['Bid room — the checkbox', BID_AGREE_SENTENCE],
+        ['Bid room, a change order — the checkbox', BID_CHANGE_ORDER_AGREE_SENTENCE],
       ]),
     },
     edit: { kind: 'code', note: 'Fixed in the app.' },
@@ -320,6 +322,7 @@ export const CUSTOMER_CONTRACT_CATALOG: readonly ContractCatalogEntry[] = [
       { file: 'src/pages/JobContractSign.tsx', text: JOB_SIGNING_SENTENCE },
       { file: 'src/pages/JobContractSign.tsx', text: JOB_AGREE_SENTENCE },
       { file: 'src/pages/BidRoom.tsx', text: BID_AGREE_SENTENCE },
+      { file: 'src/pages/BidRoom.tsx', text: BID_CHANGE_ORDER_AGREE_SENTENCE },
     ],
   },
   {
