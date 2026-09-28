@@ -97,13 +97,37 @@ describe('SettingsContractsTab', () => {
     expect(onOpenStep).toHaveBeenCalledWith({ journeyId: 'homeowner', stepId: 'estimate-terms' })
   })
 
+  it('sets a card against what last went out, and gives that copy a column', async () => {
+    tables.contract_template_documents = [BOOK_DOC]
+    tables.job_contracts = [
+      { id: 'c1', status: 'sent', body_html: '1. Scope. The wording before.', body_format: 'plain', template_document_id: 'doc-1', template_version_date: '2026-09-01', last_sent_at: '2026-09-10T15:00:00Z', sent_at: '2026-09-10T15:00:00Z', signed_at: null, voided_at: null },
+      { id: 'c2', status: 'draft', body_html: '1. Scope. The wording before.', body_format: 'plain', template_document_id: 'doc-1', template_version_date: '2026-09-01', last_sent_at: null, sent_at: null, signed_at: null, voided_at: null },
+    ]
+    tables.bid_proposal_room_revisions = [{ payload: { v: 1, terms: '', exclusions: 'No concrete.' }, published_at: '2026-09-26T18:00:00Z', rev_number: 3 }]
+    await mount().view
+    const job = await screen.findByTestId('contract-last-sent-job-standard-terms:doc-1')
+    expect(job.textContent).toContain('The last agreement sent, Sep 10, 2026, carries older wording (the wording of Sep 1).')
+    expect(job.textContent).toContain('1 unsent draft still carries older wording')
+    expect(screen.getByTestId('contract-last-sent-bid-terms').textContent).toBe('The last proposal published, Sep 26, 2026 (rev 3), went out with no Terms at all.')
+    expect(screen.getByTestId('contracts-differing').textContent).toMatch(/^\d+ cards? where what went out is not what the card says$/)
+    // A card that keeps no copy says nothing about a last send.
+    expect(screen.queryByTestId('contract-last-sent-estimate-terms')).toBeNull()
+    const card = within(screen.getByTestId('contract-card-job-standard-terms:doc-1'))
+    fireEvent.click(card.getByRole('button', { name: 'Compare' }))
+    fireEvent.click(card.getByRole('button', { name: 'Compare what went out' }))
+    const panel = within(screen.getByTestId('contracts-compare'))
+    expect(panel.getByText('1. Scope. The office wording.')).toBeTruthy()
+    expect(panel.getByText('1. Scope. The wording before.')).toBeTruthy()
+    expect(panel.getByText(/What went out · Sent Sep 10/)).toBeTruthy()
+  })
+
   it('reads two ticked cards side by side, and a card with no wording cannot be ticked', async () => {
     await mount().view
     expect(screen.queryByTestId('contracts-compare')).toBeNull()
     fireEvent.click(within(screen.getByTestId('contract-card-bid-terms')).getByRole('button', { name: 'Compare' }))
     fireEvent.click(within(screen.getByTestId('contract-card-job-standard-terms')).getByRole('button', { name: 'Compare' }))
     const panel = within(screen.getByTestId('contracts-compare'))
-    expect(panel.getByText(/2 texts, each as it stands today/)).toBeTruthy()
+    expect(panel.getByText(/^2 texts\./)).toBeTruthy()
     expect(panel.getByText(/All work to be completed in a workmanlike manner/)).toBeTruthy()
     expect(panel.getByText(/1\. Scope\. Contractor agrees to perform the work/)).toBeTruthy()
     expect(within(screen.getByTestId('contract-card-estimate-terms-box')).queryByRole('button', { name: 'Compare' })).toBeNull()
