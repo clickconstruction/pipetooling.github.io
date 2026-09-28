@@ -86,6 +86,14 @@ export const jobCardMobileActionButtonStyle = (kind: 'primary' | 'due' | 'ghost'
   opacity: busy ? 0.6 : 1,
   whiteSpace: 'nowrap',
 })
+/** Paper with a pencil (v2.4047, the owner's pick): the Write up a change door on a job. Outline, 24-viewBox, stroke 2. */
+export const WriteUpChangeGlyph = ({ size = 22 }: { size?: number }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden focusable={false}>
+    <path d="M14 3v4a1 1 0 0 0 1 1h4" />
+    <path d="M17 21h-10a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v3" />
+    <path d="M18.42 15.61a2.1 2.1 0 0 1 2.97 2.97L18 22h-3v-3l3.42-3.39z" />
+  </svg>
+)
 /** Font Awesome Free 6.x — file-lines (OFL/CC-BY); the report-chip glyph. */
 export const ReportFileGlyph = ({ size = 11 }: { size?: number }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" width={Math.round(size * 0.82)} height={size} fill="currentColor" aria-hidden focusable={false}>
