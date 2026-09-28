@@ -5,7 +5,12 @@ import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { activeRosterOnly, type ActiveRosterRow } from './people/activeRoster'
 import { activeUsersQuery } from './people/fetchActiveUsers'
 import type { LedgerPrefixMap } from './ledgerDisplayPrefixes'
-import { buildBidTitleById, scheduleBlockTitle, type ScheduleBidTitleSourceRow } from './scheduleBlockTitle'
+import {
+  buildBidTitleById,
+  scheduleBidAnchorId,
+  scheduleBlockTitle,
+  type ScheduleBidTitleSourceRow,
+} from './scheduleBlockTitle'
 
 type SupabaseUserRole = Database['public']['Enums']['user_role']
 
@@ -467,4 +472,69 @@ export function buildHubMergedRows(
     return hb.localeCompare(ha, undefined, { numeric: true })
   })
   return rows
+}
+
+/**
+ * Anchor id → identity line for everything the hub can show a block on: every
+ * job by its id, every bid by its `bid:<uuid>` anchor, so an id-keyed lookup
+ * needs no branch. A bid reads as a bid visit ("Bid visit · B408 · Project").
+ * `scheduledBidTitleById` names the bids that have a block but are not on the
+ * schedulable list; a bid on the list takes its title from the list.
+ */
+export function buildHubJobTitleById(
+  jobs: readonly ScheduleDispatchHubJobRow[],
+  bids: readonly ScheduleDispatchHubBidRow[],
+  scheduledBidTitleById: ReadonlyMap<string, string>,
+): Map<string, string> {
+  const m = new Map<string, string>()
+  for (const j of jobs) {
+    m.set(j.id, formatScheduleDispatchHubJobTitle(j.hcp_number, j.job_name, j.click_number))
+  }
+  for (const [bidId, title] of scheduledBidTitleById) {
+    m.set(scheduleBidAnchorId(bidId), scheduleBlockTitle({ kind: 'bid', bidTitle: title }))
+  }
+  for (const b of bids) {
+    m.set(
+      scheduleBidAnchorId(b.id),
+      scheduleBlockTitle({ kind: 'bid', bidTitle: formatScheduleDispatchHubBidTitle(b.bid_number, b.project_name) }),
+    )
+  }
+  return m
+}
+
+/** Anchor id → address, trimmed; a job or bid with no address has no entry. */
+export function buildHubJobAddressById(
+  jobs: readonly ScheduleDispatchHubJobRow[],
+  bids: readonly ScheduleDispatchHubBidRow[],
+): Map<string, string> {
+  const m = new Map<string, string>()
+  for (const j of jobs) {
+    const a = (j.job_address ?? '').trim()
+    if (a) m.set(j.id, a)
+  }
+  for (const b of bids) {
+    const a = (b.address ?? '').trim()
+    if (a) m.set(scheduleBidAnchorId(b.id), a)
+  }
+  return m
+}
+
+export type ScheduleDispatchHubPersonRow = { userId: string; displayName: string }
+
+/**
+ * Everyone the hub's People tab lists: the team plus anyone with a block this
+ * week, one row each, archived people left out, sorted by name without regard
+ * to case or accents. A person with no name reads "Unknown".
+ */
+export function buildHubAllPeopleRows(
+  teamMemberUserIds: readonly string[],
+  weekBlocks: readonly Pick<JobScheduleBlockRow, 'assignee_user_id'>[],
+  nameByUserId: ReadonlyMap<string, string>,
+  archivedUserIds: ReadonlySet<string>,
+): ScheduleDispatchHubPersonRow[] {
+  const idSet = new Set<string>([...teamMemberUserIds, ...weekBlocks.map((b) => b.assignee_user_id)])
+  return [...idSet]
+    .filter((userId) => !archivedUserIds.has(userId))
+    .map((userId) => ({ userId, displayName: nameByUserId.get(userId) ?? 'Unknown' }))
+    .sort((a, b) => a.displayName.localeCompare(b.displayName, undefined, { sensitivity: 'base' }))
 }
