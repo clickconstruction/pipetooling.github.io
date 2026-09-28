@@ -152,7 +152,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
   // --- Pricing ---
   // `priceBookVersions` holds the SELECTED BID's Pricings (bid-scoped copies). The shared
   // master catalog (bid_id IS NULL) lives in `templatePriceBookVersions` and is shown via
-  // the Price Book panel's "Templates" toggle. `templatesMode` drives that toggle.
+  // the price-book drawer, which edits that catalog only.
   const [priceBookVersions, setPriceBookVersions] = useState<PriceBookVersion[]>([])
   const [templatePriceBookVersions, setTemplatePriceBookVersions] = useState<PriceBookVersion[]>([])
   // Per-user "last selected" price-book template for the current service type (cross-device pref).
@@ -161,7 +161,6 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
   // loaded only when the bid owns no pricing copy. Lets the fallback prefer the shared template
   // that actually holds a legacy bid's prices over the viewer's last-picked book.
   const [legacyPricingRefs, setLegacyPricingRefs] = useState<{ bidId: string; versionIds: string[] } | null>(null)
-  const [templatesMode, setTemplatesMode] = useState(false)
   const [priceBookEntries, setPriceBookEntries] = useState<PriceBookEntryWithFixture[]>([])
   const [bidPricingAssignments, setBidPricingAssignments] = useState<BidPricingAssignment[]>([])
   const [bidCountRowCustomPrices, setBidCountRowCustomPrices] = useState<BidCountRowCustomPrice[]>([])
@@ -1758,8 +1757,6 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     setPriceBookVersions,
     templatePriceBookVersions,
     setTemplatePriceBookVersions,
-    templatesMode,
-    setTemplatesMode,
     priceBookEntries,
     setPriceBookEntries,
     bidPricingAssignments,

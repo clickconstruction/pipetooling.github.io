@@ -1130,7 +1130,7 @@ created_at (timestamptz)
 - **Revenue** - From assigned price book entry (respects fixed price flag)
 - **Margin %** - `(Revenue - Cost) / Revenue × 100`
 - **% of bid revenue** - Share of priced revenue; click the percentage to **omit this fixture line** from Cover Letter combined output and Submission **Margins** (**Approval**) pricing tables. **Totals still include** the row. **Eye** icon appears **only while hidden** (**`bid_count_row_submission_hides`**, keyed by selected price-book version — **RECENT_FEATURES** **v2.499**).
-- **Unit cost** / override - Editable **`unit_price_override`** (stored on `bid_pricing_assignments` when an entry is assigned, else `bid_count_row_custom_prices`). When the unit field is empty and not saving, a **borderless** trigger opens **Generate unit selling price**: **Line share of total (%)** vs **current bid total** (**[`unitPriceFromTargetPctOfTotal`](../src/lib/unitPriceFromTargetPctOfTotal.ts)**); **Apply** uses **`updateUnitPriceOverride`** — **v2.499**; preview **New row total** / redundant-line suppression / bold count — **v2.500** (**`RECENT_FEATURES.md`**).
+- **Unit cost** / override - Editable **`unit_price_override`** (stored on `bid_pricing_assignments` when an entry is assigned, else `bid_count_row_custom_prices`). The **Generate unit selling price** window (v2.499 / v2.500) lost its opener with the Old views (v2.2707) and left in v2.3909.
 - **Flag** - Color-coded indicator
 
 **Fixed Price Feature**:
