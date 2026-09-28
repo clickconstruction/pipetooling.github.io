@@ -313,6 +313,36 @@ describe('PrepareFixtureCopyModal', () => {
     expect(recordNavClick).toHaveBeenCalledWith('wendi', 'estimator', 'rfq_link_minted', 'lane:copy')
   })
 
+  it('a second Copy with quote link after a reopen mints a fresh link for the house picked now', async () => {
+    const onRfqMinted = vi.fn()
+    const onClose = vi.fn()
+    const ui = (open: boolean) => (
+      <PrepareFixtureCopyModal open={open} onClose={onClose} bidLabel="BP398" rows={ROWS} quoteLink={QUOTE_LINK} onRfqMinted={onRfqMinted} />
+    )
+    const { rerender } = await renderSettled(ui(true), { loaded: copyButton })
+    await pickHouse('Ferguson')
+    fireEvent.click(screen.getByRole('button', { name: 'Copy with quote link' }))
+    await waitFor(() => expect(state.inserted).toHaveLength(1))
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1))
+
+    // The parent keeps the window mounted and toggles `open`, as PricingQuoteModals does.
+    rerender(ui(false))
+    rerender(ui(true))
+    await copyButton()
+    await settle()
+    await pickHouse('National Wholesale Supply')
+    fireEvent.click(screen.getByRole('button', { name: 'Copy with quote link' }))
+
+    await waitFor(() => expect(state.inserted).toHaveLength(2))
+    const [first, second] = state.inserted
+    expect(second?.supply_house_id).toBe('h-nws')
+    expect(second?.sent_to).toBe('National Wholesale Supply')
+    expect(second?.token).not.toBe(first?.token)
+    expect(writeText).toHaveBeenCalledTimes(2)
+    expect(writeText).toHaveBeenLastCalledWith(expect.stringContaining(`https://clicktooling.com/q/${String(second?.token)}`))
+    await waitFor(() => expect(onRfqMinted).toHaveBeenCalledTimes(2))
+  })
+
   it('a blocked clipboard shows the link to copy by hand and writes nothing until the user confirms; Cancel leaves no request', async () => {
     stubClipboard(() => Promise.reject(new Error('Document is not focused.')))
     const onRfqMinted = vi.fn()

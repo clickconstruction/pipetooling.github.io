@@ -160,6 +160,12 @@ export function PrepareFixtureCopyModal({
     setPicked({})
     setLinkHouseId('')
     setLinkNeededBy('')
+    // The quote-link lane starts over on every open: the parent keeps this window mounted and
+    // only toggles `open`, so a lane left at `minted` (or a draft parked in the fallback panel)
+    // would otherwise re-copy the last house's link and write no row (v2.4036).
+    setLane('idle')
+    setLinkDraft(null)
+    setMinting(false)
     void load()
   }, [open, load])
 
