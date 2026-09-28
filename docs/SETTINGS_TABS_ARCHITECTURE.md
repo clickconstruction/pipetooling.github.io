@@ -9,7 +9,7 @@ covers:
   - src/components/settings/SettingsDashboardTab.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-09-27
+last_updated: 2026-09-28
 ---
 
 > **Line numbers are exact as of `a05cef4c4`** (from `npm run map -- <file>` fact sheets) and rot with the next edit — search the symbol; the range is only a hint. Re-run `npm run map -- src/pages/Settings.tsx` (or the tab file) before trusting a range.
@@ -107,7 +107,7 @@ Tabs in `getZonedSettingsGroups` order (a dev's view). "Engine" = where the tab'
 | 14 | Activity logs (`settings-recent-push`) · System | 1112–1121 | `SettingsRecentEmailsSent` (200, dev), `SettingsRecentPushNotifications` (138) | wrapper div, kept | self-contained | 2 + 1 | — | Done |
 | 15 | Guides (`settings-guides`) · Help | 1724–1728 | `GuideBrowser` (291) | conditional, no group | self-contained | 0 | — | Done |
 | 16 | Release notes (`settings-release-notes`) · Help | 1730–1736 | `SettingsReleaseNotesSection` (111) | kept | self-contained | 1 (`role`) | — | Done |
-| — | Page shell | 1033–1109 | impersonation banner (1033–1073), `SettingsRail` (107) + `SettingsSearchBar` (166) + Sign out / Change password footer | — | parent | 7 (rail) + 2 (search) | — | **Stays** |
+| — | Page shell | 1033–1109 | impersonation banner (1033–1073), `SettingsRail` (107) + `SettingsSearchBar` (166) + the doors row (View as… / Punch list from `lib/settingsRailDoors.ts`, v2.4041; `ViewAsPanel` mounts here, `#view-as` opens it) + Sign out / Change password footer | — | parent | 8 (rail) + 2 (search) | — | **Stays** |
 | — | Page-level modals | 1677–1719 | `ReportViewModal`, `ReportEditModal`, `MyReportsModal` (all three gated `showMyReports`), `ChecklistItemMuteModal` | — | parent state 586–587, 620–624 | — | low | Opened only from Your dashboard — order #3 / #7 |
 
 ---
@@ -164,7 +164,7 @@ Nine runtime roles. `isAssistantLike` = assistant | controller; `isSubcontractor
 
 ### 0. Page shell (stays in parent)
 
-- **Render:** impersonation banner 1033–1073 (`impersonating` 625; `handleBackToMyAccount` 630–646 restores the stash and returns to `impersonationReturnPath`, v2.3606); `<div className="settingsShell">` 1075 → `SettingsRail` 1076–1109 (`groups`, `activeId`, `onSelect`, `recent`, `hiddenNote`, `search`, `footer`); content column 1110.
+- **Render:** impersonation banner 1033–1073 (`impersonating` 625; `handleBackToMyAccount` 630–646 restores the stash and returns to `impersonationReturnPath`, v2.3606); `<div className="settingsShell">` 1075 → `SettingsRail` 1076–1109 (`groups`, `activeId`, `onSelect`, `doors` (v2.4041), `recent`, `hiddenNote`, `search`, `footer`); content column 1110.
 - **Owned state:** `myRole`, `activeSettingsTab`, `recentTabs`, `loading`, `error`, `impersonating`; ref `appliedDeepLinkRef`.
 - **Supabase:** `handleSignOut` (566–574: `auth.signOut` + `sb-*` localStorage sweep), `handleBackToMyAccount` (`auth.setSession`).
 - **Coupling:** the rail footer's *Change password* calls `openPasswordChange` from `useSettingsAccount`; the search pick calls `setFinancialPinsSectionOpen`. `handleBackToMyAccount` re-implements the exit that `Layout.tsx` (469–485) also runs over the same `impersonationSession` kernel.

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { StagesUpcomingAppointment } from '../stagesUpcomingSchedule'
 import {
   buildTwoWeekStrip,
+  stripWeeks,
   deriveStagesWhen,
   describeStagesWhen,
   formatStripEnds,
@@ -106,6 +107,19 @@ describe('buildTwoWeekStrip', () => {
   it('ignores dates that are not YYYY-MM-DD', () => {
     const s = buildTwoWeekStrip({ todayYmd: TODAY, bookedYmds: ['garbage', '2026-09-23'] })
     expect(s.bookedInWindow).toBe(1)
+  })
+})
+
+describe('stripWeeks', () => {
+  it('splits the cells at the second Monday, a booked Saturday staying on its own week', () => {
+    const s = buildTwoWeekStrip({ todayYmd: TODAY, bookedYmds: ['2026-09-26'] })
+    const weeks = stripWeeks(s.cells)
+    expect(weeks.map((w) => w.map((c) => c.letter).join(''))).toEqual(['MTWTFS', 'MTWTF'])
+    expect(weeks[1]![0]!.weekStart).toBe(true)
+  })
+
+  it('is empty for an empty strip', () => {
+    expect(stripWeeks([])).toEqual([])
   })
 })
 

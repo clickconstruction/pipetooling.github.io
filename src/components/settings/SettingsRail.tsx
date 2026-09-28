@@ -4,7 +4,7 @@ import { SETTINGS_ZONE_LABELS, SETTINGS_ZONE_ORDER, type SettingsGroupDef } from
 
 /**
  * The Settings rail (v2.3539): the page's groups as one vertical list beside the setting —
- * search on top, the last tabs opened as chips, the four zones as short headings, and a plain
+ * search on top, the doors row (View as… / Punch list, v2.4041), the last tabs opened as chips, the four zones as short headings, and a plain
  * note when the role hides tabs. On a phone the same list is a select. The items keep
  * `role="tab"` and their labels, so the smoke suite finds them unchanged.
  */
@@ -17,6 +17,8 @@ export function SettingsRail(props: {
   onSelect: (id: string) => void
   /** The search bar, rendered by the page (it owns the jump logic). */
   search: ReactNode
+  /** The doors row (v2.4041): View as… / Punch list, rendered by the page (it owns the panel and the route). */
+  doors?: ReactNode
   recent: readonly SettingsGroupDef[]
   hiddenNote: string | null
   /** Sign out · Change password, rendered by the page. */
@@ -44,6 +46,7 @@ export function SettingsRail(props: {
           <h1 className="settingsRailTitle">Settings</h1>
         </div>
         {props.search}
+        {props.doors}
         {recent}
         <label className="settingsRailSelectWrap">
           <span className="settingsRailSelectLabel">Section</span>
@@ -75,6 +78,7 @@ export function SettingsRail(props: {
         <h1 className="settingsRailTitle">Settings</h1>
       </div>
       {props.search}
+      {props.doors}
       {recent}
       {SETTINGS_ZONE_ORDER.map((zone) => {
         const zoneGroups = groups.filter((g) => g.zone === zone)

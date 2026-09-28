@@ -740,6 +740,8 @@ export default function Dashboard() {
   // all-true and whose role gate excludes most field roles.
   const [quickEstimateEnabled, setQuickEstimateEnabled] = useState(false)
   const [quickEstimateOpen, setQuickEstimateOpen] = useState(false)
+  /** The job a My Schedule block opened the wizard on (v2.4047); null = the wizard asks. */
+  const [quickEstimateJobId, setQuickEstimateJobId] = useState<string | null>(null)
   useEffect(() => {
     if (!authUser?.id || !isQuickEstimateRole(role)) {
       setQuickEstimateEnabled(false)
@@ -1130,8 +1132,18 @@ export default function Dashboard() {
   const [myTimeWeekSeconds, setMyTimeWeekSeconds] = useState<number | null>(null)
   const [dispatchModeOn] = useDispatchModeEnabled(authUser?.id ?? null, isAssistantLike(role) || role === 'master_technician')
   const myScheduleHidden = hideEmptyMySchedule({ fold: phoneOffice, loading: subScheduleLoading, todayCount: subScheduleDayPartition.todayBlocks.length, tomorrowCount: subScheduleDayPartition.tomorrowBlocks.length })
+  /** Write up a change (v2.4047): the wizard's door is on each My Schedule block, not a header button.
+      Job Mode's focused view never mounts the wizard, so it gets no opener. */
+  const openWriteUpChange =
+    quickEstimateEnabled && !(jobModeEnabled && !jobModeShowFullDashboard)
+      ? (jobId: string | null) => {
+          setQuickEstimateJobId(jobId)
+          setQuickEstimateOpen(true)
+        }
+      : undefined
   const myScheduleSection = myScheduleHidden ? null : (
     <DashboardMyScheduleSection
+      onWriteUpChange={openWriteUpChange}
       reportCountByJobId={reportCountByJobId}
       setViewReportsJob={setViewReportsJob}
       role={role}
@@ -1367,7 +1379,14 @@ export default function Dashboard() {
           onChipClick={(id) => recordNavClick(authUser?.id, role, 'dock', `#${id}`)}
         />
       ) : null}
-      <QuickEstimateWizard open={quickEstimateOpen} onClose={() => setQuickEstimateOpen(false)} />
+      <QuickEstimateWizard
+        open={quickEstimateOpen}
+        initialJobId={quickEstimateJobId}
+        onClose={() => {
+          setQuickEstimateOpen(false)
+          setQuickEstimateJobId(null)
+        }}
+      />
       {showDashboardQuickButtons && quickButtonsPlacement === 'top' && (
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem', justifyContent: 'center' }}>
           {quickActionDefs.map((b) => (
@@ -1412,17 +1431,6 @@ export default function Dashboard() {
         quietSquares={phoneOffice}
         afterJobReportRow={
           <>
-            {quickEstimateEnabled && (
-              <div style={{ display: 'flex', justifyContent: 'center', margin: '0 0 1rem' }}>
-                <button
-                  type="button"
-                  onClick={() => setQuickEstimateOpen(true)}
-                  style={{ ...quickActionLinkStyle, background: '#7c3aed', border: 'none', cursor: 'pointer' }}
-                >
-                  Estimate/Change Order
-                </button>
-              </div>
-            )}
             {authUser?.id ? <DashboardYourRecordCard userId={authUser.id} role={role} displayName={clockDisplayName ?? ''} isSalary={dashboardSelfIsSalary} /> : null}
             {myScheduleSection}
           </>

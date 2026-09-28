@@ -1743,15 +1743,14 @@ export default function ClockInOutButton({
         borderRadius: 8,
         cursor: 'pointer',
         padding: 0,
-        font: 'inherit',
-        fontSize: '0.72rem',
-        fontWeight: 600,
-        lineHeight: 1.15,
-        textAlign: 'center',
       }}
     >
-      <span>quick</span>
-      <span>clock</span>
+      {/* A clock with a plus (v2.4040, the owner's pick 2026-09-28): "add time", beside Clock In — the only square in the row that carried words. */}
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={28} height={28} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }} aria-hidden>
+        <path d="M20.984 12.535a9 9 0 1 0-8.431 8.448" />
+        <path d="M12 7v5l3 3" />
+        <path d="M16 19h6M19 16v6" />
+      </svg>
     </button>
   ) : null
 

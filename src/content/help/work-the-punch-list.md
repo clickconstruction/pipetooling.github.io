@@ -2,10 +2,10 @@
 title: work the punch list of unfinished projects
 category: Office
 roles: dev, master_technician
-keywords: punch list, to-dos, to-do board, mock-ups, next up, what to build next, ready to build, owner decision, do later drop, opinion, build later drop your call, row number, item number
+keywords: punch list, to-dos, to-do board, mock-ups, next up, what to build next, ready to build, owner decision, do later drop, opinion, build later drop your call, row number, item number, settings
 order: 95
 ---
-The **Punch list** is the board of every project that was designed or partly built but is not finished — the same list that lives in the repo's `to-dos/` folder, rendered in the app so nobody has to read markdown to see what is waiting. Open it from the gear menu {{icon:help|gear}} → **Punch list**.
+The **Punch list** is the board of every project that was designed or partly built but is not finished — the same list that lives in the repo's `to-dos/` folder, rendered in the app so nobody has to read markdown to see what is waiting. Open it from Settings: **Punch list** is a chip under the search box at the top of the list, on every tab (the page itself is `/punch-list`).
 
 ## What a row tells you
 

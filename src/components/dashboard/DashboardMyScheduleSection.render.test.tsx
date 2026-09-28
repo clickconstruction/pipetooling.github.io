@@ -236,3 +236,47 @@ describe('DashboardMyScheduleSection field % done button (v2.1806)', () => {
     expect(screen.getByText('How done is this job?')).toBeTruthy()
   })
 })
+
+describe('DashboardMyScheduleSection Write up a change (v2.4047)', () => {
+  it("a block's paper-and-pencil square opens the wizard on that job", async () => {
+    const onWriteUpChange = vi.fn()
+    renderSection({ role: 'master_technician', onWriteUpChange })
+    await settle()
+    const { fireEvent } = await import('@testing-library/react')
+    fireEvent.click(screen.getByLabelText('Write up a change'))
+    expect(onWriteUpChange).toHaveBeenCalledWith(JOB_ID)
+  })
+
+  it('the link under the days opens the wizard with no job', async () => {
+    const onWriteUpChange = vi.fn()
+    renderSection({ role: 'master_technician', onWriteUpChange })
+    await settle()
+    const { fireEvent } = await import('@testing-library/react')
+    fireEvent.click(screen.getByText('Write up a change on another job, or new work'))
+    expect(onWriteUpChange).toHaveBeenCalledWith(null)
+  })
+
+  it('neither door renders without the opener (the person has not switched it on)', async () => {
+    renderSection({ role: 'master_technician' })
+    await settle()
+    expect(screen.queryByLabelText('Write up a change')).toBeNull()
+    expect(screen.queryByText('Write up a change on another job, or new work')).toBeNull()
+  })
+
+  it('a bid-anchored block gets the foot link but no square (no job to open on)', async () => {
+    renderSection({
+      role: 'master_technician',
+      onWriteUpChange: vi.fn(),
+      subScheduleDayPartition: {
+        todayYmd: TODAY,
+        tomorrowYmd: '2026-08-07',
+        todayBlocks: [block({ job_id: null, bid_id: 'bid-1' })],
+        tomorrowBlocks: [],
+      },
+      subScheduleLabels: new Map([['bid:bid-1', 'b100 · Site visit']]),
+    })
+    await settle()
+    expect(screen.queryByLabelText('Write up a change')).toBeNull()
+    expect(screen.getByText('Write up a change on another job, or new work')).toBeTruthy()
+  })
+})

@@ -9,7 +9,7 @@ covers:
   - src/components/DashboardFinancialsSection.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-09-25
+last_updated: 2026-09-28
 ---
 
 ## Overview
@@ -45,7 +45,7 @@ Sections in order of first JSX appearance in the main return (Job Mode variant f
 |---|---|---|---|---|---|---|---|---|
 | 0 | Job Mode variant | early return 1146–1236 | mostly extracted (`DashboardJobModeCard`) | 2 (`jobModeShowFullDashboard` 460, `turnawayJob` 448) | low (shares `leaveReportJob`, `pinnedQuickRowSharedProps`, `myScheduleSection`) | low | `jobModeToggle` 16, `jobModeTelemetry` 4; `DashboardJobModeCard` + `DashboardJobModeFirstRunCard` + `useJobModeEnabled` smokes | Stays (page fork); hoist the duplicated elements (quirk #15) |
 | 1 | Section dock | `dockSections` 1240–1279 + `SectionDock` 1343–1349 | extracted component; config inline | 0 (derived) + 2 child-reported flags (`myInboxDockVisible` 353, `myBidsDockHasContent` 577) | reads every section's gate | low | `dashboardSectionDock` 8 (active-chip kernel; the config is untested) | Stays in parent permanently |
-| 1b | Quick buttons (top placement) + Estimate/Change Order | top row 1351–1359; `QuickEstimateWizard` 1350; button in `afterJobReportRow` 1392–1402 | glue inline; wizard extracted | 4 (`dashboardButtonVisibility` 461, `quickButtonsPlacement` 462, `quickEstimateEnabled` 736, `quickEstimateOpen` 737) | med (`dashboardButtonVisibility.inspections` gates Upcoming inspection — quirk #9) | low | none | `useDashboardButtonPrefs` hook (merges the two `user_dashboard_buttons` reads) |
+| 1b | Quick buttons (top placement) + the Write up a change opener | top row 1351–1359; `QuickEstimateWizard` 1350; button in `afterJobReportRow` 1392–1402 | glue inline; wizard extracted | 4 (`dashboardButtonVisibility` 461, `quickButtonsPlacement` 462, `quickEstimateEnabled` 736, `quickEstimateOpen` 737) | med (`dashboardButtonVisibility.inspections` gates Upcoming inspection — quirk #9) | low | none | `useDashboardButtonPrefs` hook (merges the two `user_dashboard_buttons` reads) |
 | 1c | Trial helpers verdict (v2.3650) | lazy `DashboardTrialVerdictSection` 1361–1363 (+1171–1173 in Job Mode) | extracted (born external) | 0 | none | — | none | Done |
 | 2 | Financial notifications | `interstitial` slot 1407–1420 → `DashboardFinancialsSection` (+ `DashboardOverheadCard` for dev/master) | mount extracted; the file itself is 1,824 lines with 4 inline components ([§F](#f-dashboardfinancialssectiontsx-internal-regions)) | 0 | none (self-loads `useDashboardFinancials`) | med inside §F (untested modal partition) | kernels only (see §F); no smoke | Decompose §F |
 | 3 | Banners + tally + Job Report + pins row | [`DashboardPinnedQuickRow`](../src/components/dashboard/DashboardPinnedQuickRow.tsx) 1374–1421 (+1151 in Job Mode) via `pinnedQuickRowSharedProps` 1099–1114 | **extracted (v2.723)**; now a slot host (`clockSlot`/`afterJobReportRow`/`interstitial`) | pins + financial-pin machinery (`pinnedRoutes` 354, `financialRefreshKey` 635, 1 ref `financialPinsRealtimeTimerRef` 638) — see dossier | low (reads `readyToBillCount` from the billing seam, `dispatchAged` from the dispatch inbox) | low | `dashboardPinnedRow` 15, `dashboardNeedsYou` 70, `pinnedTabs` 18, `dashboardLostBidNudge` 9; `DashboardNeedsYouCard` smoke; no smoke for the row | `useDashboardFinancialPins` hook for the parent-side machinery |
@@ -92,7 +92,7 @@ Cross-checked against [`src/lib/canLeaveJobFieldReport.ts`](../src/lib/canLeaveJ
 | Financials (`showFinancials` 1061; same gate on Dispatch Mode home) | ✓ | ✓ | ✓ | — | — | — | — |
 | Overhead card inside Financials (v2.2676, `DashboardOverheadCard`, self-gating) | ✓ | ✓ only with pay approval (`usePeopleAccess.canAccessPay`) | — | — | — | — | — |
 | Quick action buttons (`showDashboardQuickButtons` 1063) | ✓ | ✓ | ✓ (Builder Review button master_technician-only) | — | — | — | — |
-| Estimate/Change Order button (`isQuickEstimateRole` + per-user `user_dashboard_buttons.quick_estimate` opt-in, default off) | ✓ | ✓ | — | ✓ | ✓ | ✓ | subcontractor only |
+| Write up a change — the square on each My Schedule block + the foot link (`isQuickEstimateRole` + per-user `user_dashboard_buttons.quick_estimate` opt-in, default off; v2.4047, before that a header button) | ✓ | ✓ | — | ✓ | ✓ | ✓ | subcontractor only |
 | Banners: AR bank | `canRoleSeeArBankUnallocatedDashboardBanner(role)` | | | | | | |
 | Banners: Tally stale (self) / tally icon+Job Report row | any signed-in role (`role != null`) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Banners: Tally stale staff / staff follow-up modal | ✓ | ✓ | ✓ | — | — | — | — |
@@ -144,9 +144,9 @@ Cross-checked against [`src/lib/canLeaveJobFieldReport.ts`](../src/lib/canLeaveJ
 - **Tests:** `dashboardSectionDock` 8 covers the dock's active-chip kernel (`pickActiveDashboardSection`, `clampedCenterScrollLeft`); the entry list/gates are untested.
 - **Extraction status + approach:** `SectionDock` is extracted. The config **must stay in the parent** (it reads every gate). Keep anchor `id`s stable across extractions.
 
-### 1b. Quick buttons (top placement) + Estimate/Change Order
+### 1b. Quick buttons (top placement) + the Write up a change opener
 
-- **Render location:** `QuickEstimateWizard` 1350 (always mounted, `open={quickEstimateOpen}`); top-placement quick buttons 1351–1359 (`showDashboardQuickButtons && quickButtonsPlacement === 'top'`); the purple "Estimate/Change Order" button 1392–1402 inside `afterJobReportRow` (v2.2293, renamed v2.2563). The with-pins placement renders inside `DashboardPinnedQuickRow` from the `quickActionDefs` prop.
+- **Render location:** `QuickEstimateWizard` 1350 (always mounted, `open={quickEstimateOpen}`); top-placement quick buttons 1351–1359 (`showDashboardQuickButtons && quickButtonsPlacement === 'top'`); the `openWriteUpChange` opener handed to `DashboardMyScheduleSection` as `onWriteUpChange` (v2.4047, with `quickEstimateJobId` → the wizard's `initialJobId`; until then a purple "Estimate/Change Order" button inside `afterJobReportRow`, v2.2293/v2.2563). The with-pins placement renders inside `DashboardPinnedQuickRow` from the `quickActionDefs` prop.
 - **Owned state:** `dashboardButtonVisibility` 461 (effect 713–730, `user_dashboard_buttons` for dev/master/assistant-like; defaults all-true, `builder_review` master-only), `quickButtonsPlacement` 462 (effect 758–786, `user_dashboard_preferences`, default `with_pins`), `quickEstimateEnabled` 736 (effect 738–756 — a **second** `user_dashboard_buttons` read, `button_key = 'quick_estimate'`, default OFF, `isQuickEstimateRole`), `quickEstimateOpen` 737.
 - **Derived:** `showDashboardQuickButtons` 1063, `quickActionLinkStyle` 1064–1072, `quickActionDefs` memo 1073–1090.
 - **Coupling:** `dashboardButtonVisibility?.inspections` gates Upcoming inspection (quirk #9, 1656); `quickActionDefs`/`quickButtonsPlacement`/`showDashboardQuickButtons` pass into the pinned row.
@@ -341,7 +341,7 @@ Shared modals that stay page-level (opened from 2+ sections) vs single-opener mo
 
 | Modal | Lines | Opened from | Stays / moves |
 |---|---|---|---|
-| `QuickEstimateWizard` | 1350 | Estimate/Change Order button | stays until §1b's button component |
+| `QuickEstimateWizard` | 1350 | Write up a change opener | stays until §1b's button component |
 | `CrewReviewDeck` | 1442–1450 | Rate your crew button | moves with `DashboardRateYourCrewButton` |
 | `DashboardContractSigningPromptModal` | 1451–1457 | clock-in success + salaried-visit effect | moves with `useContractSigningPrompt` (the hook returns its props) |
 | `DashboardMyTimeDayEditorModal` (`stripMyTimeEditor`) | 1499–1529 | strip (×3 mounts) + `ClockInOutButton` preview | stays (strip cluster) |

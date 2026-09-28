@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildPipelineStageBar, estimateChipsPx, fitStageChips, segmentLabel, stageBarAvailable, stageShortLabel, type PipelineStageBarFixture } from './pipelineStageBar'
+import { buildPipelineStageBar, estimateChipsPx, fitStageChips, segmentLabel, stageBarAvailable, stageShortLabel, type PipelineStageBarFixture, type StageChip } from './pipelineStageBar'
 
 // J892 Megan Connell's real line items: Rough In $15,098 · Top Out $15,098 · Trim Set $7,549 (40 / 40 / 20).
 const fx = (over: Partial<PipelineStageBarFixture & { stage_kind: string | null; progress_pct: number | null }> & { id: string; name: string }) => ({
@@ -219,6 +219,16 @@ describe('fitStageChips', () => {
       ['Trim', null],
     ])
     expect(fit.chips[1]!.title).toBe('Stage 2 · Top Out')
+  })
+
+  it('budgets a three-stage row at the calibrated 217 px — three short names need 213 px on the live board (v2.4052)', () => {
+    const chips: StageChip[] = [
+      { number: 1, state: 'live', text: 'Rough', pctText: null, title: 'Stage 1 · Rough' },
+      { number: 2, state: 'later', text: 'Top Out', pctText: null, title: 'Stage 2 · Top Out' },
+      { number: 3, state: 'later', text: 'Finish', pctText: null, title: 'Stage 3 · Finish' },
+    ]
+    // (28 + 35) + 10 + (28 + 42) + 10 + (28 + 36)
+    expect(estimateChipsPx(chips)).toBe(217)
   })
 
   it('collapses later stages first, then done ones, then clips the live name, then numbers only', () => {
