@@ -12,6 +12,7 @@ import {
   expectedManpowerPersonHoursTotalForDayKeys,
   expectedManpowerRowsForDay,
   expectedManpowerRowsForVisibleDays,
+  expectedManpowerStatsForRows,
   expectedManpowerWeekPersonHoursTotal,
   formatExpectedManpowerPersonHours,
 } from './scheduleDispatchExpectedManpower'
@@ -87,5 +88,48 @@ describe('rows', () => {
     const rows = expectedManpowerRowsForDay(blocks, '2026-09-01', title, name)
     expect(expectedManpowerJobGroupPayrollEstimate(rows, (u) => ({ u1: 30, u2: 40 })[u] ?? Number.NaN)).toBe(4 * 30 + 2 * 40)
     expect(expectedManpowerJobGroupPayrollEstimate(rows, () => 0)).toBe(0)
+  })
+})
+
+describe('expectedManpowerStatsForRows', () => {
+  const row = (blockId: string, jobId: string, assigneeUserId: string, personHours: number) => ({
+    blockId,
+    jobId,
+    assigneeUserId,
+    jobTitle: jobId,
+    personName: assigneeUserId,
+    personHours,
+    windowLabel: '',
+    timeStart: '08:00:00',
+    workDate: '2026-09-28',
+  })
+
+  it('returns null when there are no rows', () => {
+    expect(expectedManpowerStatsForRows([])).toBeNull()
+  })
+
+  it('adds the hours and counts each person and each job once', () => {
+    expect(
+      expectedManpowerStatsForRows([
+        row('1', 'J1', 'abraham', 4),
+        row('2', 'J1', 'paige', 8),
+        row('3', 'J2', 'abraham', 3.5),
+        row('4', 'bid:b9', 'abraham', 1),
+      ]),
+    ).toEqual({ personHours: 16.5, distinctPeople: 2, jobCount: 3 })
+  })
+
+  it('counts one person on one job as one of each, however many blocks', () => {
+    expect(
+      expectedManpowerStatsForRows([row('1', 'J1', 'abraham', 2), row('2', 'J1', 'abraham', 2), row('3', 'J1', 'abraham', 2)]),
+    ).toEqual({ personHours: 6, distinctPeople: 1, jobCount: 1 })
+  })
+
+  it('keeps a row with no hours in the counts', () => {
+    expect(expectedManpowerStatsForRows([row('1', 'J1', 'abraham', 0)])).toEqual({
+      personHours: 0,
+      distinctPeople: 1,
+      jobCount: 1,
+    })
   })
 })
