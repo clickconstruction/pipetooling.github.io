@@ -50,3 +50,10 @@ export function payConfigRowsForRoster(
 ): PayRosterRowRef[] {
   return Object.keys(payConfig).map((name) => ({ person_name: name, person_id: payConfig[name]?.person_id ?? null }))
 }
+
+/**
+ * What the Hours grid, Draft Payroll and Quickfill say when the roster is empty. A person is on
+ * it once they have a pay row, and that is set on the Users tab's Pay lens (v2.3702) — the
+ * "Show in Hours" tick and the pay-config window the old sentence named are both gone.
+ */
+export const EMPTY_HOURS_ROSTER_MESSAGE = 'No one has pay set up yet. Give a person a wage on People → Users → Pay and they appear here.'
