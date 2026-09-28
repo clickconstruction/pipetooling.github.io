@@ -10,7 +10,8 @@ import { DATED_FROM_CREATION_WORDS } from './lienDesk'
  * can be filed (`lienDeadlines`). Side by side they still make the reader
  * subtract; this kernel does the subtraction and returns one reading: the
  * marks for a short runway (today → the pay dot → the lien flag), the words
- * under it, the tone, and a sort key that puts the tightest runway first.
+ * under it (two lines: the dates, then the verdict), the tone, and a sort key
+ * that puts the tightest runway first.
  *
  * Rules, in order:
  * - nothing open, or a filed affidavit released → nothing to draw;
@@ -64,6 +65,8 @@ export type LienPayRunway = {
   tone: LienRunwayTone
   /** The sentence under the track — always the same shape: earlier date, arrow, later date, the gap and what it means. */
   words: string
+  /** The same sentence as the row draws it: the dates on the first line, the verdict on the second (a filed lien is one line). */
+  lines: string[]
   /** Hover text: the basis (last work month, kind, the statute) and what to do. */
   title: string
   /** The one-chip label for the phone row — short, no dates. */
@@ -90,6 +93,7 @@ const NONE: LienPayRunway = {
   state: 'none',
   tone: 'grey',
   words: '',
+  lines: [],
   title: '',
   chipLabel: '',
   lienByYmd: '',
@@ -159,6 +163,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       state: 'filed',
       tone: 'green',
       words: `lien filed ${formatYmdMonthDay(filed)}`,
+      lines: [`lien filed ${formatYmdMonthDay(filed)}`],
       title: 'The lien affidavit is on file. The money is still owed; the Lien window carries the serve-by and the year to sue.',
       chipLabel: 'lien filed',
       sortKey: 3_000_000,
@@ -183,6 +188,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       state: 'closed',
       tone: 'red',
       words: `lien gone · window closed ${lienWords}`,
+      lines: ['lien gone', `window closed ${lienWords}`],
       title: `The § 53.052 window closed ${lienWords} with nothing filed. The lien is gone; the money is still owed — Collections, or the Legal desk. ${basis}.${kindNote}`,
       chipLabel: 'lien gone',
       lienByYmd: lienBy,
@@ -210,6 +216,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       state: 'file_first',
       tone: 'red',
       words: `lien ${lienWords} → pay ${formatYmdMonthDay(payYmd)} · file first`,
+      lines: [`lien ${lienWords} → pay ${formatYmdMonthDay(payYmd)}`, 'file first'],
       title: `The lien window closes ${short} ${short === 1 ? 'day' : 'days'} before the money is expected. File the affidavit, or get the payment date moved before ${lienWords}. ${basis}.${kindNote}`,
       chipLabel: 'file first',
       lienByYmd: lienBy,
@@ -228,6 +235,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       state: 'room',
       tone: daysToLien <= LIEN_RUNWAY_RED_DAYS ? 'amber' : 'green',
       words: `pay ${formatYmdMonthDay(payYmd)} → lien ${lienWords} · ${daysWords(room)} of room`,
+      lines: [`pay ${formatYmdMonthDay(payYmd)} → lien ${lienWords}`, `${daysWords(room)} of room`],
       title: `Expected pay lands ${room} ${room === 1 ? 'day' : 'days'} before the lien window closes. Wait for the money; the lien is still there if it does not come. ${basis}.${kindNote}`,
       chipLabel: `${daysWords(room)} of room`,
       lienByYmd: lienBy,
@@ -245,7 +253,8 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
   return {
     state: 'no_pay',
     tone: urgencyTone,
-    words: `${lead} · lien ${lienWords} · ${daysWords(daysToLien)}`,
+    words: `${lead} · lien ${lienWords} · ${daysWords(daysToLien)} to the flag`,
+    lines: [`${lead} · lien ${lienWords}`, `${daysWords(daysToLien)} to the flag`],
     title: `${payPast ? `The expected pay date has passed with the balance still open.` : 'Nobody has said when this will be paid.'} The lien window closes ${lienWords}. ${basis}.${kindNote}`,
     chipLabel: `lien in ${daysWords(daysToLien)}`,
     lienByYmd: lienBy,
