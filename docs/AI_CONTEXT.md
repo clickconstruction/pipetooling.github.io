@@ -13,10 +13,10 @@
 - **Users**: 9 roles with layered access control — dev, master_technician, assistant, controller (assistant-like + payroll access), subcontractor, helpers (UI "Helper"), estimator, primary, superintendent
 - **Major systems**:
   1. **Projects/Workflows** — ongoing work tracking: customers → projects → workflow stages → line items
-  2. **Bids** — estimation: 14 tabs from Bid Board through Takeoff/Pricing to Submission and Change Orders (`docs/BIDS_SYSTEM.md`)
+  2. **Bids** — estimation: 26 tabs (`BIDS_TABS` in `src/lib/bids/bidsTabAccess.ts`) from Bid Board through Takeoff/Pricing to Submission and Change Orders (`docs/BIDS_SYSTEM.md`)
   3. **Materials** — supply houses, price book, templates, purchase orders, PO Generator ledger
   4. **Checklist** — recurring tasks: Today / History / Review / Manage / Roadmap
-- **Major subsystems**: Jobs (ledger, Stages board, billing, AR), Estimates (internal proposals + customer acceptance), Banking (Mercury + Stripe, accounting labels), People (payroll, hours, employment, contracts), Prospects (leads + Team hiring board), Schedule Dispatch, Quickfill (billing workflow), Documents, Map, Tally
+- **Major subsystems**: Jobs (ledger, Pipeline board, billing, AR, Lien desk, GC Review), Estimates (internal proposals + customer acceptance), Banking (Mercury + Stripe, accounting labels), People (payroll, hours, employment, contracts), Prospects (leads + Team hiring board), Schedule Dispatch, Quickfill (billing workflow), Documents, Map, Tally
 
 ---
 
@@ -30,28 +30,21 @@
 
 ### Access Control Patterns
 
-**Master-Assistant Adoption** (many-to-many):
-- Masters "adopt" assistants to grant access to their customers/projects
-- One assistant can work for multiple masters
-- Controlled via `master_assistants` table + RLS policies
-
-**Master-Master Sharing**:
-- Masters can share their data with other masters (assistant-level, view-only)
-- Controlled via `master_shares` table
-
-**Project Owner = Customer Owner**:
-- Projects inherit the customer's owner; enforced by trigger `cascade_customer_master_to_projects()`
+**One company** (`ONE_COMPANY_PLAN.md`, complete 2026-09-06):
+- Every office role (dev, master, assistant, controller) sees every customer, project, job, bid and estimate — no adoption, no sharing
+- `master_user_id` / `created_by` are provenance, not access; `master_assistants` / `master_shares` survive only as compatibility views over `users`, and the owner-equality triggers are no-ops
+- What stays walled is role capability and field/outsider scoping: subs and helpers see their own jobs (`jobs_ledger_team_members`), superintendents their assigned projects (`project_superintendents`), primaries and portal visitors their own money
 
 **RLS Everywhere**:
-- Every table has Row Level Security; policies check ownership, role, adoption, sharing
+- Every table has Row Level Security; policies check role and, for field/outsider roles, assignment
 - Helper/capability functions prevent timeouts and centralize role logic: `is_dev()`, `is_assistant()` (assistant + controller), `has_payroll_access()`, `can_access_project_via_step()`, `can_edit_schedule_dispatch()` (mirror of the client's `CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES`)
 - **Read-only training mode**: users flagged `users.read_only` are blocked from writes by restrictive policies and a statement trigger (the two calls every CREATE TABLE migration ends with — `../CLAUDE.md` → DB migrations)
 
 ### Data Flow
 
 ```
-Customer (has master_user_id)
-  → Project (master_user_id matches customer)
+Customer
+  → Project
     → Workflow (one per project)
       → Steps/Stages (assigned to people)
         → Line Items (financial tracking)
@@ -60,11 +53,9 @@ Customer (has master_user_id)
 
 ### Key Relationships
 
-- **Adoption**: `master_assistants(master_id, assistant_id)` — grants data access
-- **Sharing**: `master_shares(sharing_master_id, viewing_master_id)` — grants view access
-- **Ownership**: FKs to `users.id` as `master_user_id` or `created_by`
-- **Project Superintendent Assignment**: `project_superintendents(project_id, superintendent_id)`; superintendents gain access via adoption OR assignment
-- **Job–Project Link**: `jobs_ledger.project_id` (nullable FK) for multi-phase billing; job owner must match project owner when linked (trigger)
+- **Ownership columns**: `master_user_id` and `created_by` record who made a row; nothing reads them for access since one company
+- **Project Superintendent Assignment**: `project_superintendents(project_id, superintendent_id)`; superintendents see assigned projects only
+- **Job–Project Link**: `jobs_ledger.project_id` (nullable FK) for multi-phase billing
 - **Name-join fragility**: payroll config joins `trim(users.name) = people_pay_config.person_name` (no FK) — renames break sync/gating (see `SALARY_CLOCK_SESSIONS.md`)
 
 ---
@@ -79,7 +70,7 @@ Customer (has master_user_id)
 
 ### Backend
 - Supabase: PostgreSQL 17 + RLS, Auth, Edge Functions (Deno), some Realtime
-- ~409 tables; ~125 Edge Functions (`docs/EDGE_FUNCTIONS.md`)
+- ~412 tables; ~125 Edge Functions (`docs/EDGE_FUNCTIONS.md`)
 - Linked prod project: `yewfzhbofbbyvkvtaatw` ("plumbing-stage-manager"); **no staging** — migrations hit prod
 
 ### Deployment (four separate tracks — see `../CLAUDE.md`)
@@ -120,7 +111,7 @@ pipetooling.github.io/
 
 ### Large files
 
-The large-file inventory and each surface's architecture map live in `PAGE_DECOMPOSITION_PLAYBOOK.md` (start there for extraction work); both decomposition trains closed 2026-09-17 (each map carries per-region status); what was left by decision is in [`../to-dos/decomposition-residuals.md`](../to-dos/decomposition-residuals.md).
+The large-file inventory and each surface's architecture map live in `PAGE_DECOMPOSITION_PLAYBOOK.md` (start there for extraction work; every file over 1,500 lines has a map, re-read 2026-09-25). `npm run map -- <file>` prints a file's fact sheet — read it before the source. The order of work is [`../to-dos/decomposition-queue.md`](../to-dos/decomposition-queue.md) (the ten biggest files, each row's next step); what was left by decision is in [`../to-dos/decomposition-residuals.md`](../to-dos/decomposition-residuals.md).
 
 ### Core infrastructure files
 
@@ -145,13 +136,13 @@ The large-file inventory and each surface's architecture map live in `PAGE_DECOM
 
 1. Create `src/pages/MyPage.tsx`; add `<Route>` in `src/App.tsx`
 2. Update `src/components/Layout.tsx` nav + `src/lib/layoutRouteAccess.ts` role paths
-3. Ensure RLS supports the intended roles; update `ACCESS_CONTROL.md`
+3. Ensure RLS supports the intended roles; update `ACCESS_CONTROL.md` and `twins/APP_DIRECTORY.md` (CI fails when a brief names a path no route serves)
 
 ### Debugging RLS Issues
 
 1. Check the user's role in `public.users`
 2. Review the table's policies (baseline + later migrations)
-3. Verify `master_assistants` / `master_shares` relationships
+3. For a field or outsider role, verify the assignment row (`jobs_ledger_team_members`, `project_superintendents`)
 4. Consult `ACCESS_CONTROL.md` for expected permissions
 
 ### Supabase load / "crash" investigation
@@ -202,7 +193,7 @@ CREATE FUNCTION create_project_with_template(...)
 ```
 
 ### Pure Logic Kernels
-Business logic is extracted into pure `.ts` modules in `src/lib/` with colocated vitest tests (`*.test.ts`) — kernels are the primary test pattern; components stay thin. Component render smokes (`*.render.test.tsx`, jsdom + `renderWithProviders` from `src/test/renderSmokeMocks.tsx`) cover wiring-level behavior; a smoke asserts on something the data load produces (`renderSettled(ui, { loaded })` / `settle()` in the harness), never on the line after `render()` or a container `findBy*`, and never widens a `waitFor` timeout to hide the race. ~1,660 test files (~260 of them render smokes).
+Business logic is extracted into pure `.ts` modules in `src/lib/` with colocated vitest tests (`*.test.ts`) — kernels are the primary test pattern; components stay thin. Component render smokes (`*.render.test.tsx`, jsdom + `renderWithProviders` from `src/test/renderSmokeMocks.tsx`) cover wiring-level behavior; a smoke asserts on something the data load produces (`renderSettled(ui, { loaded })` / `settle()` in the harness), never on the line after `render()` or a container `findBy*`, and never widens a `waitFor` timeout to hide the race. ~1,890 test files (~350 of them render smokes).
 
 ### State Management
 - **Global**: React Context (Toast, ForceReload, modal openers, caches)
@@ -221,14 +212,14 @@ type Customer = Database['public']['Tables']['customers']['Row']
 
 ### User Roles (9)
 - **dev**: system administrator, full access
-- **master_technician** (Master): project owner/manager, creates customers/projects
-- **assistant**: support staff under masters (adoption-based access)
+- **master_technician** (labelled Leader in the app): the master plumbers — project managers and business owners
+- **assistant**: office support staff; sees every customer, project, job, bid and estimate (one company)
 - **controller**: assistant-like + dev-level money visibility and payroll access
 - **subcontractor** (Sub): external worker, sees only assigned work; optional service-type restriction
 - **helpers** (UI "Helper"): field helper, subcontractor-like access
 - **estimator**: bid specialist — Bids, Materials, Map, Calendar; optional service-type restriction
 - **primary**: client-side principal with billing visibility (Dashboard, Estimates, Jobs, Bids)
-- **superintendent**: site supervisor; access via adoption or per-project assignment
+- **superintendent**: site supervisor; assigned projects only
 
 ### Project Management
 - **Customer**: client or General Contractor (GC)
@@ -263,7 +254,7 @@ type Customer = Database['public']['Tables']['customers']['Row']
                            │ Supabase JS client
 ┌──────────────────────────┼──────────────────────────────┐
 │                 Supabase Backend (prod only)             │
-│  PostgreSQL: ~409 tables, RLS everywhere, triggers,      │
+│  PostgreSQL: ~412 tables, RLS everywhere, triggers,      │
 │    SECURITY DEFINER helpers, transaction functions       │
 │  Auth: email/password + magic links (dev-login,          │
 │    login-as-user)                                        │
@@ -305,4 +296,4 @@ See `../AGENTS.md` → Critical Constraints (authoritative list): append-only mi
 
 **For new developers**: `../README.md` for setup → this file → `PROJECT_DOCUMENTATION.md` for depth → run the app (`npm install && npm run dev`).
 
-last_updated: 2026-09-25
+last_updated: 2026-09-28

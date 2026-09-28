@@ -6,7 +6,7 @@
 
 ## Quick orientation
 
-**PipeTooling** — workflow management for master plumbers. React + TypeScript + Supabase, deployed to GitHub Pages. 9 user roles; four major systems (Projects/Workflows, Bids, Materials, Checklist) plus Jobs, Estimates, Banking, People/Payroll, Prospects, Schedule Dispatch, Documents, Map. ~409 tables, all with RLS; ~125 Edge Functions.
+**PipeTooling** — workflow management for master plumbers. React + TypeScript + Supabase, deployed to GitHub Pages. 9 user roles; four major systems (Projects/Workflows, Bids, Materials, Checklist) plus Jobs, Estimates, Banking, People/Payroll, Prospects, Schedule Dispatch, Documents, Map. ~412 tables, all with RLS; ~125 Edge Functions.
 
 ---
 
@@ -46,7 +46,7 @@ Full index: [docs/README.md](./docs/README.md). The fast pointers:
 | Edge Functions reference | `docs/EDGE_FUNCTIONS.md`; `npm run check:edge-drift` |
 | Digital twins (the robots) and the MCP servers an agent connects through | `docs/twins/HANDOFF.md` (state + operation), `docs/EDGE_FUNCTIONS.md` → twin-mcp (every verb), `docs/dev-mcp/README.md` (the dev server: read the app as yourself, GET-only), `to-dos/mcp-servers.md` (addresses, naming, what is left) |
 | Bids system | `docs/BIDS_SYSTEM.md`; the maps start at `docs/BIDS_TABS_ARCHITECTURE.md` |
-| Decomposing a large page | `docs/PAGE_DECOMPOSITION_PLAYBOOK.md`, then the per-page architecture map |
+| Decomposing a large page | `npm run map -- <file>` (the file's fact sheet — read it before the source), `docs/PAGE_DECOMPOSITION_PLAYBOOK.md`, then the per-page architecture map; the order of work is `to-dos/decomposition-queue.md` |
 | Salaried clock/schedule sync | `docs/SALARY_CLOCK_SESSIONS.md` |
 | Company timezone rules | `docs/TIME_AND_ZONES.md`; `APP_CALENDAR_TZ` in `src/utils/dateUtils.ts`; `npm run check:timezone` |
 | App looks down / crash / Supabase load | `docs/DB_FREEZE_RUNBOOK.md` first (lock pileup vs instance stall — before any restart), then `docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md` → `docs/runbooks/SUPABASE_INCIDENT_RUNBOOK.md`; capture with `scripts/capture-supabase-incident.sh` |
@@ -59,7 +59,7 @@ Full index: [docs/README.md](./docs/README.md). The fast pointers:
 ## Critical constraints (non-negotiable)
 
 1. **Migrations**: append-only; created with `supabase migration new <snake_case>` (never invent or reuse a timestamp — a version is immutable once applied); numbered from `origin/main`; opened with `SET lock_timeout = '3s';`; applied only by `supabase db push` after the file is on `main`; CREATE TABLE closed with both read-only block calls. The full rule: `CLAUDE.md` → DB migrations. CI never applies migrations. The Supabase MCP is for reads (`list_tables`, `list_migrations`, read-only `execute_sql`, logs, advisors) — never `apply_migration`, never DDL through `execute_sql`.
-2. **Always add RLS policies** — every new table needs SELECT/INSERT/UPDATE/DELETE coverage for all 9 roles.
+2. **Always add RLS policies** — every new table needs SELECT/INSERT/UPDATE/DELETE coverage for all 9 roles. A policy or function that lists roles by hand names the controller wherever it names the assistant, or calls `is_assistant()` (`docs/ACCESS_CONTROL.md`).
 3. **Regenerate types after schema changes** — `npm run gen-types:linked` (or `gen-types:local`) rewrites `src/types/database.ts`; ship it as its own `chore(types)` PR after the push.
 4. **No `any`** — TypeScript strict mode; use proper types or `unknown`.
 5. **Wrap Supabase calls** in `withSupabaseRetry()` from `@/utils/errorHandling`.
@@ -80,4 +80,4 @@ Break-glass repairs (understand what happened before running either):
 - **Remote-only version** (a ledger row with no repo file): `supabase migration repair --status reverted VERSION --linked` — edits the history table only; runs no DOWN, drops nothing.
 - **Push fails "already exists"** (DDL applied but never recorded): `supabase migration repair --status applied VERSION --linked`, then `supabase db push --linked` (`--include-all` for out-of-order timestamps).
 
-last_updated: 2026-09-25
+last_updated: 2026-09-28
