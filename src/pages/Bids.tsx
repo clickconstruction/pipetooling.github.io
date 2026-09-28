@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
-import { canSeeBidBoardJobLinks, indexJobsByBidId, type BidBoardJobLink } from '../lib/bids/bidBoardJobLinks'
+import { canSeeBidBoardJobLinks } from '../lib/bids/bidBoardJobLinks'
 import { laborBookForTrade } from '../lib/bids/laborEntryProvenance'
-import { JOB_CREATED_FROM_BID_EVENT } from '../lib/bids/wonMomentActions'
-import { useBidBoardBudgetChips } from '../hooks/useBidBoardBudgetChips'
-import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
+import { useBidBoardScope } from '../hooks/useBidBoardScope'
 import { BID_REVIEWED_EVENT } from '../lib/bids/bidReview'
 import { supabase } from '../lib/supabase'
 import {
@@ -13,8 +11,8 @@ import {
   resolveActorDisplayName,
 } from '../lib/outcomeChangeBidNote'
 import { upsertBidNotesReadWatermark } from '../lib/userBidNotesReadState'
-import { isRobotBid, partitionBidsByScope } from '../lib/bidBoardScope'
-import { bidSentCounts, withScopeLabel, type BidSentScope } from '../lib/bids/bidSentCounts'
+import { isRobotBid } from '../lib/bidBoardScope'
+import { withScopeLabel } from '../lib/bids/bidSentCounts'
 import { formatErrorMessage, OperationTimeoutError, withOperationTimeout, withSupabaseRetry } from '../utils/errorHandling'
 import { computeBidDistanceToOffice } from '../lib/bidDistanceToOffice'
 import { useAuth } from '../hooks/useAuth'
@@ -90,8 +88,6 @@ import { BidsWhyWeLostLens } from '../components/bids/BidsWhyWeLostLens'
 import { BidsCallQueueTab } from '../components/bids/BidsCallQueueTab'
 import { BidsWaitingToHearLens } from '../components/bids/BidsWaitingToHearLens'
 import { BidsJobAccountsLens } from '../components/bids/BidsJobAccountsLens'
-import { useBidBoardJobAccountStrips } from '../hooks/useBidBoardJobAccountStrips'
-import { countBidsMissingAccounts } from '../lib/bids/bidBoardJobAccounts'
 import { fetchBidGcRecipientsMap, type BidGcRecipientsMap } from '../lib/bids/bidGcRecipients'
 import { useBidGcPackets } from '../hooks/useBidGcPackets'
 import { type BidLossCategoryKey } from '../lib/bidLossCategories'
@@ -386,71 +382,18 @@ export default function Bids() {
   // without an archived filter — a bid assigned to a retired twin still belongs on the
   // Robot Board, not back among the humans.
   const [twinUserIds, setTwinUserIds] = useState<ReadonlySet<string>>(() => new Set())
-  /** People|Robots split of the board (v2.2500) — one predicate, every rollup follows. */
-  const { people: peopleBids, robots: robotBids } = useMemo(
-    () => partitionBidsByScope(bids, twinUserIds),
-    [bids, twinUserIds],
-  )
-  /**
-   * Tier-2 #20 (decision 8): the scope every number on this page lives in — the trade pill's
-   * trade, or every trade when the pill is cleared — and the ONE count kernel the Bid Board
-   * pills, the Followup lens headers and the "need a reason" chip all read (per BID; GC
-   * packets are the secondary figure). The Dashboard card reads the same kernel with `all`.
-   */
-  const sentScope = useMemo<BidSentScope>(
-    () =>
-      selectedServiceTypeId
-        ? { kind: 'trade', tradeId: selectedServiceTypeId, tradeName: serviceTypes.find((st) => st.id === selectedServiceTypeId)?.name ?? null }
-        : { kind: 'all' },
-    [selectedServiceTypeId, serviceTypes],
-  )
-  const sentCounts = useMemo(() => bidSentCounts(peopleBids, { scope: sentScope, packetsByBid: gcPacketsByBid }), [peopleBids, sentScope, gcPacketsByBid])
-  /** Lost bids in this trade with no structured loss reason yet — the Why we lost queue size (kernel: per bid). */
-  const lostBidsNeedingReasonCount = sentCounts.lostNeedingReason
-
-  // v2.2741: J#### chips on the board — only for roles that can open Jobs (estimators can't).
-  const [jobsByBidId, setJobsByBidId] = useState<Map<string, BidBoardJobLink>>(() => new Map())
-  const boardBidIdsKey = useMemo(() => [...peopleBids, ...robotBids].map((b) => b.id).sort().join(','), [peopleBids, robotBids])
-  // Tier-1 #8: a job just opened from a bid → refetch the index so the J#### chip appears without a reload.
-  const [jobsByBidGen, setJobsByBidGen] = useState(0)
-  // Won-row chips (v2.3302): the value-matched job and the estimate's state, for the board's job-link roles.
-  const bidBoardBudgetChips = useBidBoardBudgetChips([...peopleBids, ...robotBids], canSeeBidBoardJobLinks(myRole), jobsByBidGen)
-  // Job accounts (v2.3520 / PR 1b): ONE `list_bid_job_account_strip` read for every won or started bid on the
-  // page — the board's chips and header count, the Followup control's count, and the Job accounts lens all
-  // read it. (The job-created trigger moves a bid to Started the moment its job opens, so both outcomes.)
-  const jobAccountBidIds = useMemo(
-    () => [...peopleBids, ...robotBids].filter((b) => b.outcome === 'won' || b.outcome === 'started_or_complete').map((b) => b.id),
-    [peopleBids, robotBids],
-  )
-  const jobAccountStrips = useBidBoardJobAccountStrips(jobAccountBidIds, jobAccountBidIds.length > 0)
-  const jobAccountsMissingCount = useMemo(
-    () => (jobAccountStrips.loaded ? countBidsMissingAccounts(jobAccountBidIds, jobAccountStrips.byBid) : 0),
-    [jobAccountStrips.loaded, jobAccountStrips.byBid, jobAccountBidIds],
-  )
-  const confirmDialog = useConfirmDialog()
-  const linkJobToBidFromBoard = useCallback(
-    async (args: { jobId: string; bidId: string; jobLabel: string; bidLabel: string }): Promise<boolean> => {
-      const ok = await confirmDialog({
-        message: `Link ${args.jobLabel} to ${args.bidLabel}? The job is stamped with the bid and the bid's estimate becomes the job's budget (the bid reads Started). Nothing else changes.`,
-        confirmLabel: 'Link',
-      })
-      if (!ok) return false
-      const { error } = await supabase.rpc('snapshot_job_budget_from_bid', { p_job_id: args.jobId, p_bid_id: args.bidId })
-      if (error) {
-        showToast(`Could not link: ${error.message}`, 'error')
-        return false
-      }
-      showToast(`${args.jobLabel} linked to ${args.bidLabel} — its budget is the bid's estimate.`, 'success')
-      window.dispatchEvent(new CustomEvent(JOB_CREATED_FROM_BID_EVENT, { detail: { bidId: args.bidId, jobId: args.jobId } }))
-      return true
-    },
-    [confirmDialog, showToast],
-  )
-  useEffect(() => {
-    const bump = () => setJobsByBidGen((n) => n + 1)
-    window.addEventListener(JOB_CREATED_FROM_BID_EVENT, bump)
-    return () => window.removeEventListener(JOB_CREATED_FROM_BID_EVENT, bump)
-  }, [])
+  // The board's scope (hooks/useBidBoardScope): the People | Robots split, the sent counts, the job chips.
+  const {
+    peopleBids,
+    robotBids,
+    sentScope,
+    lostBidsNeedingReasonCount,
+    jobsByBidId,
+    bidBoardBudgetChips,
+    jobAccountStrips,
+    jobAccountsMissingCount,
+    linkJobToBidFromBoard,
+  } = useBidBoardScope({ bids, twinUserIds, selectedServiceTypeId, serviceTypes, gcPacketsByBid, myRole, showToast })
   // v2.3201: a bid was just marked reviewed → reload the rows so every flow strip reads the stamp.
   useEffect(() => {
     const reload = () => {
@@ -461,27 +404,6 @@ export default function Bids() {
     // loadBids reads the latest trade filter through refs/state when it runs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-  useEffect(() => {
-    void jobsByBidGen
-    if (!canSeeBidBoardJobLinks(myRole) || !boardBidIdsKey) {
-      setJobsByBidId(new Map())
-      return
-    }
-    let cancelled = false
-    const ids = boardBidIdsKey.split(',')
-    void (async () => {
-      const out: Array<{ id: string; hcp_number: string | null; bid_id: string | null; created_at: string | null }> = []
-      for (let i = 0; i < ids.length; i += 200) {
-        const { data } = await supabase.from('jobs_ledger').select('id, hcp_number, bid_id, created_at').in('bid_id', ids.slice(i, i + 200))
-        if (data) out.push(...(data as typeof out))
-      }
-      if (!cancelled) setJobsByBidId(indexJobsByBidId(out))
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [myRole, boardBidIdsKey, jobsByBidGen])
-
   // The robot layer (hooks/useBidRobotLayer): the twin pairing, shadow runs, the robots' open
   // questions and the writes behind the robot icon; BidsRobotOverlays draws its five windows.
   const robot = useBidRobotLayer({ authUserId: authUser?.id, myRole, bids, setBids, robotBids, serviceTypes, showToast })
