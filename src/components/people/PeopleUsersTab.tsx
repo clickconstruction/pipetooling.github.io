@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import type { PayConfigRow } from '../../types/peoplePayConfig'
 import type { PersonDeskSectionId } from '../../lib/people/personDeskSections'
@@ -7,10 +7,10 @@ import { UsersLensHeader, UsersTabAccountCells, UsersTabPayCells, WorkdaySchedul
 import { hasSupervisionSwitch } from '../../lib/people/supervision'
 import type { Person, PersonKind, UserRow } from '../../hooks/usePeopleRoster'
 import type { UsersTabTagAnchor, UsersTabTagsApi } from '../../hooks/useUsersTabTags'
-import type { ContractSigningTrafficLight } from '../../lib/contractSigningRollup'
 import { useOptionalPersonDesk } from '../../contexts/PersonDeskContext'
 import { usePeopleAccess } from '../../hooks/usePeopleAccess'
 import { useUsersTabSignals } from '../../hooks/useUsersTabSignals'
+import { useUsersTabRowSignals } from '../../hooks/useUsersTabRowSignals'
 import { buildRailRow, normaliseKind, type RailRow } from '../../lib/people/deskRailAttention'
 import { buildRowNeeds } from '../../lib/people/rowNeeds'
 import { UsersRailHeader } from './UsersTabStatusColumn'
@@ -34,8 +34,6 @@ import {
   type UsersTabSection,
 } from './peopleUsersTabShared'
 import CombinePeopleModal from './CombinePeopleModal'
-
-type PersonActiveProject = { id: string; name: string }
 
 type EditingUserNote = { id: string; name: string; notes: string; phone: string }
 
@@ -63,18 +61,14 @@ interface PeopleUsersTabProps {
   people: Person[]
   error: string | null
   setError: (value: string | null) => void
-  contractSigningStatusByPersonName: Record<string, ContractSigningTrafficLight>
   canAccessContracts: boolean
   canSeePushStatus: boolean
-  pushEnabledUserIds: Set<string>
-  locationEnabledUserIds: Set<string>
   canEditUserNotes: boolean
   /** v2.3611 Supervision: flip a helper's or sub's "needs supervision" switch; undefined when the viewer may not (dev / master / assistant only). */
   setNeedsSupervision?: (userId: string, needsSupervision: boolean) => void
   canCreatePeopleInRoster: boolean
   authUserId: string | undefined
   creatorNames: Record<string, string>
-  personProjects: Record<string, PersonActiveProject[]>
   archivedPeople: Array<Person & { archived_at: string }>
   usersTabTags: UsersTabTagsApi
   showToast: (message: string, type: 'success' | 'error') => void
@@ -90,12 +84,6 @@ interface PeopleUsersTabProps {
   isAlreadyUser: (email: string | null) => boolean
   invitingId: string | null
   setInviteConfirm: (person: Person | null) => void
-  loggingInAsId: string | null
-  setLoggingInAsId: (id: string | null) => void
-  externalSubProjectsExpanded: Set<string>
-  setExternalSubProjectsExpanded: Dispatch<SetStateAction<Set<string>>>
-  archivedSectionOpen: boolean
-  setArchivedSectionOpen: Dispatch<SetStateAction<boolean>>
 }
 
 export function PeopleUsersTab({
@@ -109,16 +97,13 @@ export function PeopleUsersTab({
   people,
   error,
   setError,
-  contractSigningStatusByPersonName,
   canAccessContracts,
   canSeePushStatus,
-  pushEnabledUserIds,
   canEditUserNotes,
   setNeedsSupervision,
   canCreatePeopleInRoster,
   authUserId,
   creatorNames,
-  personProjects,
   archivedPeople,
   usersTabTags,
   showToast,
@@ -133,11 +118,10 @@ export function PeopleUsersTab({
   isAlreadyUser,
   invitingId,
   setInviteConfirm,
-  loggingInAsId,
-  setLoggingInAsId,
-  archivedSectionOpen,
-  setArchivedSectionOpen,
 }: PeopleUsersTabProps) {
+  const { pushEnabledUserIds, contractSigningStatusByPersonName, personProjects } = useUsersTabRowSignals({ canSeePushStatus, canAccessContracts })
+  const [loggingInAsId, setLoggingInAsId] = useState<string | null>(null)
+  const [archivedSectionOpen, setArchivedSectionOpen] = useState(false)
   const [usersTabSearch, setUsersTabSearch] = useState('')
   const usersTabSearchQ = useMemo(() => usersTabSearch.trim().toLowerCase(), [usersTabSearch])
   /** v2.2762: roster-only rows fold behind "+ N more without a login" per kind; searching or the No-login filter opens every fold. */

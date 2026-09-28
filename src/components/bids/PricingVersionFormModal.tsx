@@ -14,7 +14,6 @@ export type PricingVersionFormMode = 'template' | 'pricing-blank' | 'pricing-clo
 
 export function PricingVersionFormModal({
   editing,
-  templatesMode,
   formMode,
   nameInput,
   onNameChange,
@@ -25,8 +24,6 @@ export function PricingVersionFormModal({
 }: {
   /** The version being renamed, or null for a new one. */
   editing: PriceBookVersion | null
-  /** The tab's Templates-vs-Bid-pricings switch — names the rename title. */
-  templatesMode: boolean
   formMode: PricingVersionFormMode
   nameInput: string
   onNameChange: (value: string) => void
@@ -55,7 +52,7 @@ export function PricingVersionFormModal({
       >
         <h3 style={{ margin: '0 0 1rem' }}>{
           editing
-            ? (templatesMode ? 'Edit template name' : 'Edit pricing name')
+            ? 'Edit template name'
             : formMode === 'template' ? 'New template'
             : formMode === 'pricing-clone' ? 'New pricing (copy)'
             : 'New pricing'

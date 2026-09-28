@@ -13,7 +13,6 @@ const version = (id: string, name: string) => ({ id, name, bid_id: null, is_robo
 function props(over: Partial<Parameters<typeof PricingVersionFormModal>[0]> = {}) {
   return {
     editing: null,
-    templatesMode: true,
     formMode: 'template' as const,
     nameInput: '',
     onNameChange: vi.fn(),
@@ -42,15 +41,15 @@ describe('PricingVersionFormModal', () => {
     expect(screen.getByText('New pricing (copy)')).toBeTruthy()
   })
 
-  it('renaming: the title follows templates mode, and Delete version is offered only off Default', () => {
+  it('renaming: the title names the template, and Delete version is offered only off Default', () => {
     const p = props({ editing: version('t2', 'WENDI'), nameInput: 'WENDI' })
     const { unmount } = render(<PricingVersionFormModal {...p} />)
     expect(screen.getByText('Edit template name')).toBeTruthy()
     fireEvent.click(screen.getByText('Delete version'))
     expect(p.onDelete).toHaveBeenCalledWith(expect.objectContaining({ id: 't2' }))
     unmount()
-    render(<PricingVersionFormModal {...props({ editing: version('t1', 'Default'), nameInput: 'Default', templatesMode: false })} />)
-    expect(screen.getByText('Edit pricing name')).toBeTruthy()
+    render(<PricingVersionFormModal {...props({ editing: version('t1', 'Default'), nameInput: 'Default' })} />)
+    expect(screen.getByText('Edit template name')).toBeTruthy()
     expect(screen.queryByText('Delete version')).toBeNull()
   })
 

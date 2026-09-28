@@ -46,6 +46,13 @@ import { Database } from '../types/database'
 import type { BidWithBuilder, EstimatorUser } from '../types/bidWithBuilder'
 import type { BidDateSentAttestationPayload } from '../types/bidDateSentAttestation'
 import { bidAttestationDisplayName, normalizeBidDateInput } from '../lib/bidDateSentDisplay'
+import {
+  bidDateSentAttestationMerge,
+  bidDateSentAttestationPromptDate,
+  bidDateSentAttestationSaveError,
+  bidDateSentInputDropsPending,
+  buildBidDateSentAttestationPayload,
+} from '../lib/bids/bidDateSentAttestation'
 import { BidsBidBoardTab } from '../components/bids/BidsBidBoardTab'
 import { BidRfiTab } from '../components/bids/BidRfiTab'
 import { BidsAuditsTab } from '../components/bids/BidsAuditsTab'
@@ -142,27 +149,6 @@ type Customer = Database['public']['Tables']['customers']['Row']
 type CustomerContact = Database['public']['Tables']['customer_contacts']['Row']
 type CustomerContactPerson = Database['public']['Tables']['customer_contact_persons']['Row']
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'controller' | 'estimator' | 'primary' | 'superintendent'
-
-const BID_DATE_SENT_ATTESTATION_NULLS: Record<
-  | 'bid_date_sent_attested_at'
-  | 'bid_date_sent_attested_by'
-  | 'bid_date_sent_ack_email_at'
-  | 'bid_date_sent_ack_email_by'
-  | 'bid_date_sent_ack_phone_at'
-  | 'bid_date_sent_ack_phone_by'
-  | 'bid_date_sent_ack_honesty_at'
-  | 'bid_date_sent_ack_honesty_by',
-  null
-> = {
-  bid_date_sent_attested_at: null,
-  bid_date_sent_attested_by: null,
-  bid_date_sent_ack_email_at: null,
-  bid_date_sent_ack_email_by: null,
-  bid_date_sent_ack_phone_at: null,
-  bid_date_sent_ack_phone_by: null,
-  bid_date_sent_ack_honesty_at: null,
-  bid_date_sent_ack_honesty_by: null,
-}
 
 interface ServiceType {
   id: string
@@ -1090,13 +1076,13 @@ export default function Bids() {
     drivingCostRate, setDrivingCostRate,
     hoursPerTrip, setHoursPerTrip,
     laborBookVersions,
-    laborBookEntries, setLaborBookEntries,
+    laborBookEntries,
     selectedLaborBookVersionId, setSelectedLaborBookVersionId,
     laborBookEntriesVersionId, setLaborBookEntriesVersionId,
     costEstimateBidIdRef,
-    estimatorCostUseFlat, setEstimatorCostUseFlat,
-    estimatorCostPerCount, setEstimatorCostPerCount,
-    estimatorCostFlatAmount, setEstimatorCostFlatAmount,
+    estimatorCostUseFlat,
+    estimatorCostPerCount,
+    estimatorCostFlatAmount,
     travelPeople, setTravelPeople,
     travelNights, setTravelNights,
     travelMealsRate, setTravelMealsRate,
@@ -1135,7 +1121,7 @@ export default function Bids() {
     loadDraftPOs, loadTakeoffBookVersions, loadTakeoffBookEntries, saveBidSelectedTakeoffBookVersion,
     loadPurchaseOrdersForCostEstimate, loadCostEstimate,
     ensureCostEstimateForBid, loadCostEstimateData,
-    loadLaborBookVersions, loadLaborBookEntries, saveBidSelectedLaborBookVersion,
+    loadLaborBookVersions, loadLaborBookEntries,
     loadTemplatePriceBookVersions, loadBidPricings, loadBidVersions, loadPriceBookEntries, loadBidPricingAssignments, loadPricingDataForBid,
     saveBidSelectedPriceBookVersion, setCostEstimatePO, openMaterialsModelSwitch, confirmMaterialsModelSwitch,
   } = useBidPricingEngine({
@@ -2325,41 +2311,35 @@ export default function Bids() {
     })
   }
 
+  /** What the attestation rules (lib/bids/bidDateSentAttestation) read: the field, the saved date, the confirmed checklist. */
+  function bidDateSentAttestationState() {
+    return {
+      bidDateSent,
+      serverBidDateSent: editingBid ? editingBid.bid_date_sent : null,
+      pending: pendingBidDateSentAttestation,
+      pendingForDate: pendingAttestationForDate,
+    }
+  }
+
   function getBidDateSentAttestationPayloadMerge(): Record<string, string | null> {
-    const d = normalizeBidDateInput(bidDateSent)
-    if (!d) {
-      return { ...BID_DATE_SENT_ATTESTATION_NULLS }
-    }
-    const serverSent = editingBid ? normalizeBidDateInput(editingBid.bid_date_sent) : ''
-    if (d !== serverSent) {
-      if (pendingBidDateSentAttestation && pendingAttestationForDate === d) {
-        return { ...pendingBidDateSentAttestation }
-      }
-      return {}
-    }
-    return {}
+    return bidDateSentAttestationMerge(bidDateSentAttestationState())
   }
 
   function validateBidDateSentAttestationForSave(): string | null {
-    const d = normalizeBidDateInput(bidDateSent)
-    const serverSent = editingBid ? normalizeBidDateInput(editingBid.bid_date_sent) : ''
-    if (!d) return null
-    if (d !== serverSent) {
-      if (!pendingBidDateSentAttestation || pendingAttestationForDate !== d) {
-        return 'Choose a new Bid Date Sent and confirm the attestation checklist, or revert the date.'
-      }
-    }
-    return null
+    return bidDateSentAttestationSaveError(bidDateSentAttestationState())
   }
 
   /** Opens attestation modal once when the committed date differs from last saved; reverts field to baseline until confirmed. */
   function promptBidDateSentAttestationIfNeeded(proposedRaw: string): boolean {
-    if (bidSentAttestModalOpen) return false
-    const proposedNorm = normalizeBidDateInput(proposedRaw)
-    if (!proposedNorm) return false
     const baseline = savedBidDateSentRef.current
-    if (proposedNorm === baseline) return false
-    if (pendingBidDateSentAttestation && pendingAttestationForDate === proposedNorm) return false
+    const proposedNorm = bidDateSentAttestationPromptDate({
+      modalOpen: bidSentAttestModalOpen,
+      proposedRaw,
+      baseline,
+      pending: pendingBidDateSentAttestation,
+      pendingForDate: pendingAttestationForDate,
+    })
+    if (!proposedNorm) return false
 
     setPendingBidDateSentForModal(proposedNorm)
     setBidSentAckEmail(false)
@@ -2376,29 +2356,8 @@ export default function Bids() {
 
   function handleBidDateSentInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     const v = e.target.value
-    const norm = normalizeBidDateInput(v)
-    const baseline = savedBidDateSentRef.current
-
-    if (!v) {
-      setBidDateSent('')
-      setPendingBidDateSentAttestation(null)
-      setPendingAttestationForDate(null)
-      setPendingBidSentFollowupSubmissionNote(null)
-      return
-    }
-
     setBidDateSent(v)
-
-    if (norm === baseline) {
-      if (pendingAttestationForDate) {
-        setPendingBidDateSentAttestation(null)
-        setPendingAttestationForDate(null)
-        setPendingBidSentFollowupSubmissionNote(null)
-      }
-      return
-    }
-
-    if (pendingAttestationForDate && pendingAttestationForDate !== norm) {
+    if (bidDateSentInputDropsPending({ value: v, baseline: savedBidDateSentRef.current, pendingForDate: pendingAttestationForDate })) {
       setPendingBidDateSentAttestation(null)
       setPendingAttestationForDate(null)
       setPendingBidSentFollowupSubmissionNote(null)
@@ -2424,21 +2383,13 @@ export default function Bids() {
   function confirmBidSentAttestationModal() {
     if (!authUser?.id) return
     if (!bidSentAckEmail || !bidSentAckPhone || !bidSentAckHonesty) return
-    const uid = authUser.id
-    const confirmedAt = new Date().toISOString()
-    const emailAt = bidSentAckEmailAt ?? confirmedAt
-    const phoneAt = bidSentAckPhoneAt ?? confirmedAt
-    const honestyAt = bidSentAckHonestyAt ?? confirmedAt
-    const payload: BidDateSentAttestationPayload = {
-      bid_date_sent_attested_at: confirmedAt,
-      bid_date_sent_attested_by: uid,
-      bid_date_sent_ack_email_at: emailAt,
-      bid_date_sent_ack_email_by: uid,
-      bid_date_sent_ack_phone_at: phoneAt,
-      bid_date_sent_ack_phone_by: uid,
-      bid_date_sent_ack_honesty_at: honestyAt,
-      bid_date_sent_ack_honesty_by: uid,
-    }
+    const payload = buildBidDateSentAttestationPayload({
+      userId: authUser.id,
+      confirmedAt: new Date().toISOString(),
+      ackEmailAt: bidSentAckEmailAt,
+      ackPhoneAt: bidSentAckPhoneAt,
+      ackHonestyAt: bidSentAckHonestyAt,
+    })
     const pendingDate = pendingBidDateSentForModal
     const trimmedFollowup = bidSentAttestFollowupNoteDraft.trim()
     setPendingBidDateSentAttestation(payload)
@@ -4264,7 +4215,6 @@ export default function Bids() {
           bidPreview={bidPreviewOnBidsPage}
           error={error}
           setError={setError}
-          selectedServiceTypeId={selectedServiceTypeId}
           fixtureTypes={fixtureTypes}
           getOrCreateFixtureTypeId={getOrCreateFixtureTypeId}
           loadBids={loadBids}
@@ -4288,11 +4238,8 @@ export default function Bids() {
           hoursPerTrip={hoursPerTrip}
           setHoursPerTrip={setHoursPerTrip}
           estimatorCostUseFlat={estimatorCostUseFlat}
-          setEstimatorCostUseFlat={setEstimatorCostUseFlat}
           estimatorCostPerCount={estimatorCostPerCount}
-          setEstimatorCostPerCount={setEstimatorCostPerCount}
           estimatorCostFlatAmount={estimatorCostFlatAmount}
-          setEstimatorCostFlatAmount={setEstimatorCostFlatAmount}
           travelPeople={travelPeople}
           setTravelPeople={setTravelPeople}
           travelNights={travelNights}
@@ -4313,15 +4260,11 @@ export default function Bids() {
           setOtherRows={setCostEstimateOtherRows}
           laborBookVersions={laborBookVersions}
           laborBookEntries={laborBookEntries}
-          setLaborBookEntries={setLaborBookEntries}
           selectedLaborBookVersionId={selectedLaborBookVersionId}
-          setSelectedLaborBookVersionId={setSelectedLaborBookVersionId}
           laborBookEntriesVersionId={laborBookEntriesVersionId}
           setLaborBookEntriesVersionId={setLaborBookEntriesVersionId}
-          loadCostEstimateData={loadCostEstimateData}
           loadLaborBookVersions={loadLaborBookVersions}
           loadLaborBookEntries={loadLaborBookEntries}
-          saveBidSelectedLaborBookVersion={saveBidSelectedLaborBookVersion}
           viewerUserId={authUser?.id ?? null}
           viewerRole={authRole}
           selectedServiceTypeName={serviceTypes.find((st) => st.id === selectedServiceTypeId)?.name ?? null}
@@ -4414,7 +4357,6 @@ export default function Bids() {
           loadBidPricingAssignments={loadBidPricingAssignments}
           reloadPricingForBid={loadPricingDataForBid}
           saveBidSelectedPriceBookVersion={saveBidSelectedPriceBookVersion}
-          openMaterialsModelSwitch={openMaterialsModelSwitch}
           pricingRowsForGrid={pricingRowsForGrid}
           pricingPackageSource={pricingPackageSource}
           onSelectBid={(bid) => selectBidAndSyncUrl(bid, 'pricing')}

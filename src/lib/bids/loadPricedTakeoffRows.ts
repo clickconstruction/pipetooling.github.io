@@ -2,7 +2,7 @@
  * A bid's priced active-version count rows — the shape `takeoffDiff` eats
  * (v2.3222, lifted from the Audits cockpit so the send-time envelope prices
  * the same way the audit card does). Unit price precedence follows the
- * Workbench's own write rule (`updateUnitPriceOverride`): an assignment's
+ * Workbench's own write rule (`writeUnitPriceOverrideRow`): an assignment's
  * override, else the row's typed price (`bid_count_row_custom_prices`, scoped to
  * the bid's active pricing), else the assigned book entry's price. v2.3239 added
  * the typed price — the Workbench saves most human prices there, so before this
