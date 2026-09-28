@@ -16,7 +16,9 @@ import { compareTags } from './buildSubmittalRows'
 import { describeLeadTime } from './leadTime'
 import { normalizeTag } from './parseFixtureSchedule'
 import type { TakeoffStage } from '../bids/bidTakeoffHelpers'
-import { STAGE_KEYS, type StageWeights } from '../bids/materialsByStage'
+import { STAGE_KEYS, defaultSplitForFixture, effectiveSplit, indexStageSplits, type StageSplitRecord, type StageWeights } from '../bids/materialsByStage'
+import type { StageDates } from '../../../supabase/functions/_shared/procurementStageDates.ts'
+export type { StageDates } from '../../../supabase/functions/_shared/procurementStageDates.ts'
 
 export type ProcurementStage = TakeoffStage
 export const PROCUREMENT_STAGE_LABELS: Record<ProcurementStage, string> = { rough_in: 'Rough In', top_out: 'Top Out', trim_set: 'Trim Set' }
@@ -91,8 +93,6 @@ export type ProcurementRecord = {
   note: string
   sortOrder: number
 }
-
-export type StageDates = Partial<Record<ProcurementStage, string>>
 
 export type ProcurementStatus = 'delivered' | 'ordered' | 'released' | 'sent_back' | 'awaiting' | 'not_submitted'
 
@@ -303,31 +303,28 @@ export function stageOfWeights(w: StageWeights | null | undefined): ProcurementS
 
 /* ────────────────────────────── the job's stage dates ────────────────────────────── */
 
-/** "Rough-in", "Underground" → rough_in; "Top out", "Above slab" → top_out; "Trim", "Finish", "Final" → trim_set. */
-export function stageOfStageName(name: string | null | undefined): ProcurementStage | null {
-  const n = (name ?? '').toLowerCase()
-  if (!n) return null
-  if (/rough|underground|slab|ground/.test(n)) return 'rough_in'
-  if (/top\s*-?\s*out|above|wall|frame/.test(n)) return 'top_out'
-  if (/trim|finish|final|set/.test(n)) return 'trim_set'
-  return null
-}
+export { stageDatesFromJob, stageOfStageName } from '../../../supabase/functions/_shared/procurementStageDates.ts'
 
-/** The earliest window start per stage across the job's Order stages (by their names). */
-export function stageDatesFromJob(fixtures: ReadonlyArray<{ id: string; name: string; stage_kind: string | null }>, windows: ReadonlyArray<{ fixture_id: string; window_start: string | null }>): StageDates {
-  const out: StageDates = {}
-  const stageByFixture = new Map<string, ProcurementStage>()
-  for (const f of fixtures) {
-    if (f.stage_kind !== 'order') continue
-    const s = stageOfStageName(f.name)
-    if (s) stageByFixture.set(f.id, s)
-  }
-  for (const w of windows) {
-    const s = stageByFixture.get(w.fixture_id)
-    const start = w.window_start ? w.window_start.slice(0, 10) : null
-    if (!s || !start) continue
-    const cur = out[s]
-    if (!cur || start < cur) out[s] = start
+/**
+ * Each tag's stage from the takeoff: the count row that carries the tag (`tagMatchesFixture`),
+ * its effective split (a hand or rule split on the fixture, else the name rule), the heaviest
+ * stage. Tags with no fixture stay unknown. Pure — the app and the GC's room card both use it.
+ */
+export function tagStagesFrom(
+  countRows: ReadonlyArray<{ id: string; fixture: string | null }>,
+  splits: ReadonlyArray<StageSplitRecord>,
+  tags: ReadonlyArray<string>,
+): Record<string, ProcurementStage | undefined> {
+  const out: Record<string, ProcurementStage | undefined> = {}
+  if (tags.length === 0) return out
+  const lookup = indexStageSplits(splits)
+  for (const tag of tags) {
+    const row = countRows.find((r) => tagMatchesFixture(tag, r.fixture))
+    if (!row) continue
+    const split = effectiveSplit(lookup, row.id)
+    const weights = split.weights ?? defaultSplitForFixture(row.fixture)?.weights ?? null
+    const stage = stageOfWeights(weights)
+    if (stage) out[tag] = stage
   }
   return out
 }
