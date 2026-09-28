@@ -66,8 +66,7 @@ import { normalizeBidNumber } from '../lib/bids/confidenceBoard'
 import { BidsRobotConsoleTab } from '../components/bids/BidsRobotConsoleTab'
 
 /** The lenses under the one 🤖 Robots tab (v2.2527); `robot-shadows` is a redirect alias, `robot-queue` / `robot-console` are dev-only. */
-const ROBOT_LENS_KEYS: ReadonlySet<string> = new Set(['robot-board', 'audits', 'robot-shadows', 'robot-queue', 'robot-scoreboard', 'robot-console'])
-const isRobotLens = (tab: string): boolean => ROBOT_LENS_KEYS.has(tab)
+import { bidsTabOpenFor, canOpenBids, isBidsTabKey, isFollowupLens, isRobotLens, resolveBidsTabRoute, type BidsTabKey } from '../lib/bids/bidsTabAccess'
 import { RobotEnvelopeModal } from '../components/bids/RobotEnvelopeModal'
 import { envelopeRefusal, envelopeRunFromShadow, isRevisionAfterReveal, robotReviewRevisionNote, type EnvelopeRun } from '../lib/bids/robotEnvelope'
 import { mirrorRunReviewable, type RobotMirrorRun } from '../lib/bids/robotMirror'
@@ -257,7 +256,7 @@ export default function Bids() {
   const { bounce: roleGateBounce } = useRoleGate(myRole, authUser?.id)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'bid-board' | 'robot-board' | 'audits' | 'robot-shadows' | 'robot-queue' | 'robot-scoreboard' | 'robot-console' | 'builder-review' | 'call-queue' | 'working' | 'bid-costs' | 'day-book' | 'estimators' | 'counts' | 'takeoffs' | 'labor' | 'pricing' | 'cover-letter' | 'submittals' | 'submission-followup' | 'why-we-lost' | 'waiting-to-hear' | 'job-accounts' | 'rfi' | 'change-order' | 'lien-release'>('bid-board')
+  const [activeTab, setActiveTab] = useState<BidsTabKey>('bid-board')
   
   // Service Types state
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
@@ -1352,7 +1351,7 @@ export default function Bids() {
     } else {
       setSuperintendentServiceTypeIds(null)
     }
-    if (role !== 'dev' && role !== 'master_technician' && !isAssistantLike(role) && role !== 'estimator' && role !== 'primary' && role !== 'superintendent') {
+    if (!canOpenBids(role)) {
       setLoading(false)
       return
     }
@@ -1650,8 +1649,6 @@ export default function Bids() {
   }, [location.search, setSearchParams])
 
   /** Journey map P-B1: the only Bids tabs a primary (customer-side principal) may hold. */
-  const PRIMARY_BIDS_TABS = ['bid-board', 'rfi', 'change-order', 'lien-release'] as const
-  const BIDS_TABS = ['bid-board', 'robot-board', 'audits', 'robot-shadows', 'robot-queue', 'robot-scoreboard', 'robot-console', 'builder-review', 'call-queue', 'working', 'bid-costs', 'day-book', 'estimators', 'counts', 'takeoffs', 'labor', 'pricing', 'cover-letter', 'submittals', 'submission-followup', 'why-we-lost', 'waiting-to-hear', 'job-accounts', 'rfi', 'change-order', 'lien-release'] as const
 
   // Lazy projects fetch for the bid form's linked-project picker (first open only).
   useEffect(() => {
@@ -1701,23 +1698,14 @@ export default function Bids() {
       return
     }
     const bidId = params.get('bidId')
-    let tab = params.get('tab')
-    // Back-compat: the Bids "Cost Estimate" tab slug was renamed to "labor".
-    if (tab === 'cost-estimate') {
-      tab = 'labor'
+    // Aliases and role gates are one decision (lib/bids/bidsTabAccess): a renamed slug
+    // (cost-estimate → labor, robot-shadows → robot-board) is written back into the URL.
+    const route = resolveBidsTabRoute(params.get('tab'), myRole)
+    const tab = route.tab
+    if (route.aliased && tab) {
       setSearchParams((p) => {
         const next = new URLSearchParams(p)
-        next.set('tab', 'labor')
-        return next
-      }, { replace: true })
-    }
-    // v2.3222: the Shadows lens folded into the Robot Board mirror — old links (the Dashboard's
-    // "Open Shadows", bookmarks) land on the mirror.
-    if (tab === 'robot-shadows') {
-      tab = 'robot-board'
-      setSearchParams((p) => {
-        const next = new URLSearchParams(p)
-        next.set('tab', 'robot-board')
+        next.set('tab', tab)
         return next
       }, { replace: true })
     }
@@ -1736,51 +1724,11 @@ export default function Bids() {
       workingDeepLinkAppliedBidIdRef.current = null
       setWorkingBoardDeepLinkBidId(null)
     }
-    if ((tab === 'robot-queue' || tab === 'robot-console') && myRole != null && myRole !== 'dev') {
-      setSearchParams((p) => {
-        const next = new URLSearchParams(p)
-        next.set('tab', 'bid-board')
-        return next
-      }, { replace: true })
-      setActiveTab('bid-board')
-      return
-    }
-    // Day book (v2.3735, to-dos/day-book PR 4b): the estimating side's door onto the same
-    // tab People has; devs and controllers for now (the RPC refuses the rest).
-    if (tab === 'day-book' && myRole != null && !canOpenDayBook(myRole)) {
-      setSearchParams((p) => {
-        const next = new URLSearchParams(p)
-        next.set('tab', 'bid-board')
-        return next
-      }, { replace: true })
-      setActiveTab('bid-board')
-      return
-    }
-    if (tab === 'bid-costs' && myRole != null && !canSeeBidCosts(myRole)) {
-      setSearchParams((p) => {
-        const next = new URLSearchParams(p)
-        next.set('tab', 'bid-board')
-        return next
-      }, { replace: true })
-      setActiveTab('bid-board')
-      return
-    }
-    if (myRole === 'primary' && tab && !PRIMARY_BIDS_TABS.includes(tab as (typeof PRIMARY_BIDS_TABS)[number])) {
-      // Journey map P-B1/P-B2/P-B3: a customer-side principal holds the board and the
-      // three customer-facing lenses (RFI, Change Order, Lien Release) — never pricing,
-      // the cover letter, followup, the estimating workbench or other builders' bids.
-      roleGateBounce('bids-office-tab', `/bids?tab=${tab}`)
-      setSearchParams((p) => {
-        const next = new URLSearchParams(p)
-        next.set('tab', 'bid-board')
-        return next
-      }, { replace: true })
-      setActiveTab('bid-board')
-      return
-    }
-    if (myRole === 'superintendent' && tab && ['pricing', 'cover-letter', 'submittals', 'submission-followup', 'why-we-lost', 'waiting-to-hear', 'job-accounts', 'call-queue'].includes(tab)) {
-      // v2.2882 (C25 J10-F12): say so, then land on the board.
-      roleGateBounce('bids-office-tab', `/bids?tab=${tab}`)
+    if (route.bounce) {
+      // A tab the role may not open lands on the Bid board. The office tabs a primary or a
+      // superintendent followed a link to say so first (v2.2882, C25 J10-F12); the dev-only
+      // robot lenses, Day book and Bid Costs rewrite without a word.
+      if (route.bounce === 'announced') roleGateBounce('bids-office-tab', `/bids?tab=${tab}`)
       setSearchParams((p) => {
         const next = new URLSearchParams(p)
         next.set('tab', 'bid-board')
@@ -1908,8 +1856,8 @@ export default function Bids() {
       }
       return
     }
-    if (tab && BIDS_TABS.includes(tab as typeof BIDS_TABS[number])) {
-      setActiveTab(tab as typeof activeTab)
+    if (isBidsTabKey(tab)) {
+      setActiveTab(tab)
     } else if (!params.get('tab')) {
       setSearchParams((p) => {
         const next = new URLSearchParams(p)
@@ -2049,7 +1997,7 @@ export default function Bids() {
   }, [location.search, bids, serviceTypes.length, selectedServiceTypeId, setSearchParams])
 
   useEffect(() => {
-    if (myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole) || myRole === 'estimator' || myRole === 'primary' || myRole === 'superintendent') {
+    if (canOpenBids(myRole)) {
       const load = async () => {
         try {
           // Load service types first
@@ -2065,7 +2013,7 @@ export default function Bids() {
   
   // Reload data when service type changes (skip when Builder Review is active; that tab loads all data)
   useEffect(() => {
-    if (selectedServiceTypeId && activeTab !== 'builder-review' && (myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole) || myRole === 'estimator' || myRole === 'primary' || myRole === 'superintendent')) {
+    if (selectedServiceTypeId && activeTab !== 'builder-review' && canOpenBids(myRole)) {
       const t = setTimeout(async () => {
         await Promise.all([loadCustomers(), loadBids(selectedServiceTypeId), loadCustomerContacts(), loadCustomerContactPersons(), loadEstimatorUsers(), loadTwinUserIds(), loadFixtureTypes(), loadTakeoffBookVersions(), loadLaborBookVersions(), loadTemplatePriceBookVersions(), loadMaterialTemplates()])
       }, 80)
@@ -2075,7 +2023,7 @@ export default function Bids() {
 
   // Load all customers and bids when Builder Review tab is active (no service type filter)
   useEffect(() => {
-    if (activeTab === 'builder-review' && (myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole) || myRole === 'estimator' || myRole === 'primary' || myRole === 'superintendent')) {
+    if (activeTab === 'builder-review' && canOpenBids(myRole)) {
       const t = setTimeout(async () => {
         await Promise.all([
           loadCustomers(),
@@ -3102,7 +3050,7 @@ export default function Bids() {
       >
         Bid Board
       </button>
-      {myRole !== 'primary' && (robotBids.length > 0 || auditGate.anyAudits) ? (
+      {bidsTabOpenFor('robot-board', myRole) && (robotBids.length > 0 || auditGate.anyAudits) ? (
         /* Pending-audit count renders as the same red inbox pill as Unsent/Working
            (v2.2531) — same "needs you" semantic, same visual language. */
         <span
@@ -3167,7 +3115,7 @@ export default function Bids() {
           ) : null}
         </span>
       ) : null}
-      {myRole !== 'primary' && (
+      {bidsTabOpenFor('builder-review', myRole) && (
       <button
         type="button"
         data-tabkey="builder-review"
@@ -3176,25 +3124,19 @@ export default function Bids() {
           // default (superintendents can't see it — they keep By builder).
           // Re-clicking while already inside keeps the lens you picked (it
           // still clears any lingering bidId, per v2.2043).
-          const inGroup =
-            activeTab === 'builder-review' ||
-            activeTab === 'call-queue' ||
-            activeTab === 'submission-followup' ||
-            activeTab === 'why-we-lost' ||
-            activeTab === 'waiting-to-hear' ||
-            activeTab === 'job-accounts'
+          const inGroup = isFollowupLens(activeTab)
           selectBidsTab(inGroup ? activeTab : myRole === 'superintendent' ? 'builder-review' : 'call-queue')
         }}
-        style={tabStyle(activeTab === 'builder-review' || activeTab === 'call-queue' || activeTab === 'submission-followup' || activeTab === 'why-we-lost' || activeTab === 'waiting-to-hear' || activeTab === 'job-accounts')}
+        style={tabStyle(isFollowupLens(activeTab))}
         title="Builder Review and Submission & Followup, merged — flip between lenses inside"
       >
         Followup
       </button>
       )}
-      {myRole !== 'primary' && bidsWorkingTabButton}
-      {myRole !== 'primary' && bidsBidCostsTabButton}
-      {myRole !== 'primary' && bidsEstimatorsTabButton}
-      {myRole !== 'primary' && bidsDayBookTabButton}
+      {bidsTabOpenFor('working', myRole) && bidsWorkingTabButton}
+      {bidsTabOpenFor('bid-costs', myRole) && bidsBidCostsTabButton}
+      {bidsTabOpenFor('estimators', myRole) && bidsEstimatorsTabButton}
+      {bidsTabOpenFor('day-book', myRole) && bidsDayBookTabButton}
     </ScrollableTabStrip>
   )
 
@@ -3342,7 +3284,7 @@ export default function Bids() {
     )
   }
 
-  if (myRole !== 'dev' && myRole !== 'master_technician' && myRole !== 'assistant' && myRole !== 'controller' && myRole !== 'estimator' && myRole !== 'primary' && myRole !== 'superintendent') {
+  if (!canOpenBids(myRole)) {
     return (
       <div style={{ padding: '2rem' }}>
         <p>You do not have access to Bids.</p>
@@ -3489,7 +3431,7 @@ export default function Bids() {
           horizontally scrollable with edge fades when they don't. */}
       <div style={{ borderBottom: '2px solid var(--border)', marginBottom: '2rem' }}>
         <ScrollableTabStrip activeKey={activeTab} ariaLabel="Bid detail tabs">
-        {myRole !== 'primary' && (
+        {bidsTabOpenFor('counts', myRole) && (
         <>
         <button
           type="button"
@@ -3517,7 +3459,7 @@ export default function Bids() {
         </button>
         </>
         )}
-        {myRole !== 'superintendent' && myRole !== 'primary' && (
+        {bidsTabOpenFor('pricing', myRole) && (
         <>
         <button
           type="button"
@@ -3547,7 +3489,7 @@ export default function Bids() {
         )}
         {/* v2.1387: Submission & Followup lives inside the merged Followup tab
             (top strip) as the "By status" lens — its standalone button is gone. */}
-        {myRole !== 'primary' && (
+        {bidsTabOpenFor('counts', myRole) && (
         <span style={{ color: 'var(--text-faint)', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
         )}
         <button
@@ -3869,7 +3811,7 @@ export default function Bids() {
       />
 
       {/* Builder Review Tab */}
-      {(activeTab === 'builder-review' || activeTab === 'call-queue' || activeTab === 'submission-followup' || activeTab === 'why-we-lost' || activeTab === 'waiting-to-hear' || activeTab === 'job-accounts') && (
+      {isFollowupLens(activeTab) && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: '0 0 0.75rem', flexWrap: 'wrap' }}>
           <div style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 8, overflow: 'hidden', fontSize: '0.875rem', background: 'var(--surface)', alignItems: 'center' }}>
             {myRole !== 'superintendent' && (
