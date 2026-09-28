@@ -77,11 +77,11 @@ What the 5,293 lines are, top to bottom. "New" = arrived after the 2026-08-03 ex
 | Error banner + materials-model switch modal | 3520–3601 | ~82 | inline modal (calls the engine's `confirmMaterialsModelSwitch`) |
 | Header, board strip, bid-detail strip | 3604–3733 | ~130 | `ScrollableTabStrip` |
 | `WorkingBoardArchiveConfirmDialog` | 3735–3740 | 6 | extracted |
-| 🤖 Robots lens bar | 3747–3867 | 121 | **inline** — 4 identical segmented buttons + dev Queue (3800–3830) |
+| 🤖 Robots lens bar | — | 7 | [`BidsLensBar`](../src/components/bids/BidsLensBar.tsx) over `robotLenses` / `robotLensBarShows` ([`lib/bids/bidsLenses.ts`](../src/lib/bids/bidsLenses.ts)) — v2.3931 |
 | Robot lens bodies (Audits 3870, Queue 3873, Scoreboard 3879–3899, Console 3902, Robot Board 3908–3929) | 3869–3929 | 61 | extracted children |
 | Bid Board | 3932–3981 | 50 | `BidsBidBoardTab` |
 | Robot overlays | 3984–4024 | 41 | `RobotEnvelopeModal`, `RobotStatusSheet`, `RobotNeedsSheet`, `RobotReferenceGradeModal`, `RobotBidComparisonModal` |
-| Followup lens bar | 4027–4194 | 168 | **inline** — 6 identical segmented buttons + chip + caption |
+| Followup lens bar | — | 24 | `BidsLensBar` over `followupLenses`; the "N need a reason" chip and the caption (`followupLensCaption`) are its children — v2.3931 |
 | Followup lens bodies | 4195–4246 | 52 | `BidsCallQueueTab`, `BidsWhyWeLostLens`, `BidsWaitingToHearLens`, `BidsJobAccountsLens` |
 | Builder Review / Working / Day book / Bid Costs / Estimators | 4247–4330 | ~85 | extracted children |
 | Counts / Takeoffs / Labor / Pricing / Cover Letter | 4333–4723 | ~390 | prop bags; `BidVersionPicker` ×4 near-identical (4336, 4386, 4558, 4659) |
@@ -156,7 +156,7 @@ Sizes are `wc -l` @ a05cef4c4. "Own map" = that file's internals are mapped else
 - **Parent-owned state (R6):** `referencePresence`, `robotGradeBid`, `robotStatusBidId`/`robotNeedsBidId` (the sheets read the **live** row by id), `shadowRunByBidNumber` + `shadowRunsGen`, `openRobotQuestionRows`, `robotComparePair`, `robotEnvelope` + `envelopeOfferedRef`, `focusAuditId`, `robotMirrorCount`, `bidsRef`.
 - **Writes:** `twin_questions` UPDATE (`answerRobotQuestion`, with optional rerun stamp on `bids.robot_requested_at`), `bids` UPDATE (`toggleRobotRequest`, optimistic + rollback via `bidUpdateRefused`), `bids_submission_entries` INSERT (`noteBestEffortGap`, `noteRobotReviewRevision`).
 - **Outbound coupling:** R14 calls them after writes — `autosaveBid` runs `noteRobotReviewRevision` (value changed, no date written, 2795) and `offerRobotEnvelope` (value or date written, 2798), `saveBid` runs only `offerRobotEnvelope` on any edit save (2966), `saveBidAndOpenCounts` runs neither, and `BidFormModal`'s `onGcRollupDateChanged` offers the envelope (4840); Cover Letter calls `noteBestEffortGap`/`offerRobotEnvelope` (4694–4696). `list_shadow_runs` is called here twice (570–592, 765) and once each, independently, by `BidsRobotMirrorTab`, `BidsRobotQueueTab`, `BidsRobotScoreboardTab`, `BidsAuditsTab`, `BidBestEffortCard`, `useBidAuditsPendingCount`, `useRobotLockedShadows`.
-- **Status:** all five lens bodies extracted; the 330-line data layer and the 121-line lens bar are parent-inline. **Hook-seam candidate** (`useBidRobotLayer`), see order step 5.
+- **Status:** all five lens bodies extracted; the 330-line data layer is parent-inline; the lens bar is `BidsLensBar` (v2.3931). **Hook-seam candidate** (`useBidRobotLayer`), see order step 5.
 
 ### `builder-review` — Builder Review
 
@@ -171,7 +171,7 @@ Sizes are `wc -l` @ a05cef4c4. "Own map" = that file's internals are mapped else
 - **Render location:** lens bar 4027–4194; bodies 4195–4246. Superintendents are bounced off all four plus `submission-followup`, `pricing`, `cover-letter`, `submittals` (router 1864–1874).
 - **Parent-owned state:** none of their own. They read `peopleBids`, `sentScope`, `gcPacketsByBid`, `lastMethodContactFromEntries` (method entries only, v2.2413), `bidGcRecipientsByBidId`, `roomStatesByBid`, `jobAccountStrips`; three take `onOpenBuilderCard={applyBuilderReviewDeepLinkFromBid}`.
 - **Chip:** "N need a reason" (4161–4179) reads `sentCounts.lostNeedingReason`.
-- **Status:** all extracted; the lens bar is inline (see order step 3).
+- **Status:** all extracted; the lens bar is `BidsLensBar` (v2.3931). The bar keeps its own role rule (`role !== 'superintendent'`), not `bidsTabOpenFor`: a Followup lens can be entered by state alone (the Bid Board's Last contact door), where the router's gates never ran.
 
 ### `working` — Unsent / Working
 
@@ -375,7 +375,7 @@ graph TD
         DB[day-book]
     end
 
-    subgraph robots["🤖 Robots group (lens bar inline)"]
+    subgraph robots["🤖 Robots group (BidsLensBar)"]
         RB[robot-board]
         AU[audits]
         RQ[robot-queue · dev]
@@ -383,7 +383,7 @@ graph TD
         RC[robot-console · dev]
     end
 
-    subgraph followup["Followup group (lens bar inline)"]
+    subgraph followup["Followup group (BidsLensBar)"]
         CQ[call-queue]
         BR[builder-review]
         SF[submission-followup]
@@ -443,7 +443,7 @@ Ordered by **value ÷ risk** for the regrown parent. Every tab is already out; w
 
 1. ~~**Dead-code + blank-run sweep**~~ — **done v2.3873**: the notes quick-edit modal (its three states, `saveNotesModal`, the JSX), `scrollToLaborDirectCosts` with its effect, the inert `contactTableRef` / `scrollToContactFromBidBoard` pair with its effect and the two doors' calls that raised the flag, the six orphaned section comments, every blank run of three or more collapsed, and the imports only they used. Mechanical, merged alone.
 2. ~~**Stage A kernels, no moves**~~ — **done v2.3903 · v2.3910 · v2.3923.** **v2.3903:** [`lib/bids/bidsTabAccess.ts`](../src/lib/bids/bidsTabAccess.ts) — `canOpenBids` (the five copies of the page allowlist), `resolveBidsTabRoute` / `bidsTabBounce` (the router's two alias rewrites and five role gates as one decision: silent or announced), `bidsTabOpenFor` (the strips' role conditions), `FOLLOWUP_LENS_KEYS` beside `ROBOT_LENS_KEYS`, and `BidsTabKey` in place of the literal union. **Done v2.3910:** [`lib/bids/bidDateSentAttestation.ts`](../src/lib/bids/bidDateSentAttestation.ts) — the attestation rules as pure functions (34 tests): `bidDateSentAttestationMerge`, `bidDateSentAttestationSaveError`, `bidDateSentAttestationPromptDate`, `bidDateSentInputDropsPending`, `buildBidDateSentAttestationPayload` and `BID_DATE_SENT_ATTESTATION_NULLS`; the page keeps the twelve states and the modal (step 4). **Done v2.3923:** both appliers read `getSubmissionSectionKey` (now tested, 5 tests); [`lib/bids/bidTradeSwitch.ts`](../src/lib/bids/bidTradeSwitch.ts) `bidTradeToSwitchTo` (7 tests) replaces the five `select('service_type_id')` fetches; `BID_WORKFLOW_TABS` / `isBidWorkflowTab` in `bidsTabAccess` replaces the router's local `bidTabs` list.
-3. **`BidsLensBar` presentational component + a version-picker helper** (≈ −300 lines, low risk): both lens bars (3747–3867, 4027–4194) are 10 copies of the same segmented button; the four `BidVersionPicker` blocks differ only in the selection and `resolvePanel`. `selectBidsTab` and all gates stay in the parent.
+3. ~~**`BidsLensBar` presentational component + a version-picker helper**~~ — **done v2.3931** (4,963 → 4,666 lines): [`BidsLensBar`](../src/components/bids/BidsLensBar.tsx) (7-case render smoke) draws both bars from [`lib/bids/bidsLenses.ts`](../src/lib/bids/bidsLenses.ts) (`robotLenses`, `followupLenses`, `robotLensBarShows`, `followupNeedsReasonChipShows`, `followupLensCaption`; 23 tests); the four `BidVersionPicker` blocks are one page-local `renderBidVersionPicker(bid, { withResolvePanel })`. `selectBidsTab` stays in the parent.
 4. **`useBidDateSentAttestation` + `BidSentAttestationModal`** (≈ −290 lines, low-med): 12 states (379–391), `clearBidDateSentAttestationFlow` (2367–2380), the rules/handlers (2507–2636), the modal (4917–5049). Returns `getPayloadMerge`/`validateForSave`/`promptIfNeeded` to the save paths, plus the pending follow-up note and a clear-after-save (all three save paths read the note and reset three pending states: 2775–2777, 2945–2947, 3012–3014) and the modal-open flag, which the autosave gate (2829) and the Bid window's `escBlocked` (4905) read. Step 2's kernel tests are in (v2.3910).
 5. **`useBidRobotLayer` hook + `BidsRobotOverlays`** (≈ −370 lines, med-low): R6 (529–858) as a hook seam returning `robotRowInputFor`, `offerRobotEnvelope`, `noteBestEffortGap`, `noteRobotReviewRevision`, `answerRobotQuestion`, `toggleRobotRequest` + sheet/modal state; the five overlays (3984–4024) move with it. Test the three in-parent reductions first. Later: one shared `list_shadow_runs` source for the seven other callers.
 6. **`useBidBoardScope` hook** (≈ −100 lines, low-med): R5 (429–527) — partition, `sentScope`/`sentCounts`, `jobsByBidId`, budget chips, job-account strips, `linkJobToBidFromBoard` (add a test for the confirm → RPC → event path).
