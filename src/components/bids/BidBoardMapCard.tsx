@@ -620,6 +620,8 @@ export function BidBoardMapCard({
                     cluster={clustered}
                     clusterRingPriority={CLUSTER_RING_PRIORITY}
                     pulseId={isMobile ? null : hoverId}
+                    // The card sits in the board's scroll: the wheel scrolls the page until the map is clicked
+                    scrollZoomAfterClick
                     // Leaflet / Google ignore a height change after mount — remount when the form flips
                     key={isMobile ? 'phone' : 'desktop'}
                   />
@@ -637,6 +639,8 @@ export function BidBoardMapCard({
                     cluster={clustered}
                     clusterRingPriority={CLUSTER_RING_PRIORITY}
                     pulseId={isMobile ? null : hoverId}
+                    // The card sits in the board's scroll: the wheel scrolls the page until the map is clicked
+                    scrollZoomAfterClick
                     // Leaflet / Google ignore a height change after mount — remount when the form flips
                     key={isMobile ? 'phone' : 'desktop'}
                   />

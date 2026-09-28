@@ -2,7 +2,7 @@
 title: see your bids on a map
 category: Office
 roles: dev, master_technician, assistant, controller, estimator, primary, superintendent
-keywords: map, bids, bid board, pins, distance, miles from the office, due, directions, where is the bid, site walk, hide map, play, tour, pause, sections one at a time
+keywords: map, bids, bid board, pins, distance, miles from the office, due, directions, where is the bid, site walk, hide map, zoom, scroll wheel, mouse wheel, zooms out, play, tour, pause, sections one at a time
 order: 67
 ---
 The Bid Board has a **Bids on a map** card between the section pills and the sections. It plots the bids the board is showing — the same list, so the search box, the trade pill above the tabs and **My bids** all change the pins. Nobody sees a pin here they couldn't already open from the board.
@@ -77,3 +77,5 @@ It works the other way too. On a desktop, rest the mouse on any bid row and that
 ## Fit all, Hide map and the Map pill
 
 The map opens on the 50-mile ring — the office, the pins inside the ring, and the ring itself — so one bid in another state doesn't zoom it out to the whole country; the far pins are still drawn, just off the first view. **Fit all** (beside **Hide map**) frames every pin and the office, near and far. There's no instruction line under the map any more; hover the **Bids on a map** title if you want the reminder of what pins, rings and chips do. **Hide map** collapses the card to its title line; the choice is remembered on that device, and **Show map** brings it back. Tapping the **Bids on a map** title does the same thing in either direction. The **Map** pill in the sticky section row jumps to the card from anywhere on the board, and shows it if it was hidden.
+
+On a desktop the mouse wheel scrolls the page when the pointer crosses the map, so you can scroll past it without the map zooming out. **Click the map once** and the wheel zooms it from then on. The **+** and **−** buttons, dragging and the pins work from the start.
