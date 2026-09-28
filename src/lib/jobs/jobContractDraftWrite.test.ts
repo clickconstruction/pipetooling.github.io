@@ -124,6 +124,16 @@ describe('saveJobContractDraft', () => {
     for (const k of TERMS_KEYS) expect(k in db.steps[0]!.payload).toBe(false)
   })
 
+  it('a caller holding an older version of the document writes the edit and leaves the newer terms alone', async () => {
+    const existing = draftRow(TERMS_NOW)
+    db.row = existing
+    const row = await saveJobContractDraft({ existing, payload: payloadWith({ ...BOOK, book_body_html: '<p>Old wording</p>', book_version_date: '2026-09-20' }), authUserId: 'u1' })
+    for (const k of TERMS_KEYS) expect(k in db.steps[0]!.payload).toBe(false)
+    expect(db.steps[0]!.payload.recipient_name).toBe('May Lee')
+    expect(row?.body_html).toBe('<p>New wording</p>')
+    expect(row?.template_version_date).toBe('2026-09-27')
+  })
+
   it('a sent row is locked: nothing is written and it comes back as it was', async () => {
     const existing = draftRow({ status: 'sent' })
     await expect(saveJobContractDraft({ existing, payload: payloadWith(BOOK), authUserId: 'u1' })).resolves.toBe(existing)
@@ -151,6 +161,12 @@ describe('refreshJobContractDraftTerms', () => {
     for (const existing of [draftRow(TERMS_NOW), draftRow({ template_document_id: 't2' }), draftRow({ template_document_id: null }), draftRow({ status: 'sent' })]) {
       await expect(refreshJobContractDraftTerms({ existing, template: BOOK })).resolves.toBe(existing)
     }
+    expect(db.steps).toEqual([])
+  })
+
+  it('writes nothing when the template in hand is older than the draft', async () => {
+    const existing = draftRow(TERMS_NOW)
+    await expect(refreshJobContractDraftTerms({ existing, template: { ...BOOK, book_body_html: '<p>Old wording</p>', book_version_date: '2026-09-20' } })).resolves.toBe(existing)
     expect(db.steps).toEqual([])
   })
 

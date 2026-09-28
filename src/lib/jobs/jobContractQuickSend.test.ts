@@ -79,6 +79,17 @@ describe('quickSendJobContract', () => {
     expect(ops()).toEqual(['read', 'update'])
   })
 
+  it('a stale template never overwrites a newer draft: nothing is written and the draft goes out as it reads', async () => {
+    // The sweep was opened on Sep 20 and still holds that wording; the draft was saved since on the Sep 27 edit.
+    const held = { ...BOOK, book_body_html: '<p>Old wording</p>', book_version_date: '2026-09-20' }
+    db.row = { ...STALE_DRAFT, ...TERMS_NOW }
+    await expect(send(held)).resolves.toMatchObject({ ok: true, emailed: true })
+    expect(ops()).toEqual(['read', 'invoke'])
+    expect(db.steps[1]).toMatchObject({ table: 'send-job-contract', payload: { contract_id: 'd1' } })
+    // The row the function reads is untouched: still the newer wording and its date.
+    expect(db.row).toMatchObject({ body_html: '<p>New wording</p>', template_version_date: '2026-09-27' })
+  })
+
   it('a draft from another document, a built-in draft and a current draft go out as they are', async () => {
     for (const row of [{ ...STALE_DRAFT, template_document_id: 't2' }, { ...STALE_DRAFT, template_document_id: null }, { ...STALE_DRAFT, ...TERMS_NOW }]) {
       db.steps = []
