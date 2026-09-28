@@ -139,6 +139,7 @@ import {
   unallocatedBillableDollars,
 } from '../../lib/jobs/jobFormBreakOff'
 import { draftInvoiceErrorMessage, linkFixturesToInvoiceByPositions, writeDraftInvoice } from '../../lib/jobs/draftInvoiceWrite'
+import { isFullRemainingAmount, planTypedInvoice, segmentSelectionBillCheck } from '../../lib/jobs/jobFormInvoiceClamps'
 import type {
   FixtureRow,
   JobFormServiceType,
@@ -2553,7 +2554,7 @@ export default function JobFormModal({
     await flushBillingAutosave()
     const remaining = getEditJobBillableRemaining()
     const amount = parseMoneyInputToNumber(newInvoiceAmount)
-    if (!(remaining > 0) || Math.round(amount * 100) !== Math.round(remaining * 100)) {
+    if (!isFullRemainingAmount(amount, remaining)) {
       setError('Enter the full unallocated amount to move this job to Ready to Bill.')
       return
     }
@@ -2626,13 +2627,14 @@ export default function JobFormModal({
       selection,
       segmentCoverage,
     )
-    if (count === 0 || !(netDollars > 0)) {
+    const selectionCheck = segmentSelectionBillCheck({ netDollars, count, remainingDollars: segmentCoverage.remainingDollars })
+    if (selectionCheck === 'empty') {
       setError('Select at least one unbilled segment first')
       return null
     }
     // Cents-exact backstop for the UI clamp (v2.1132): never invoice past the
     // slider's Remaining — dollar invoices already cover that money.
-    if (Math.round(netDollars * 100) > Math.round(segmentCoverage.remainingDollars * 100)) {
+    if (selectionCheck === 'over') {
       setError(
         `This selection would bill more than the $${formatCurrency(segmentCoverage.remainingDollars)} left on the job — void or delete an existing bill first.`,
       )
@@ -2734,23 +2736,25 @@ export default function JobFormModal({
     if (!editing) return
     // Make the DB match the on-screen totals before the invoice is written.
     await flushBillingAutosave()
-    const amount = parseMoneyInputToNumber(newInvoiceAmount)
-    if (!(amount > 0)) {
+    const plan = planTypedInvoice({
+      typedAmount: parseMoneyInputToNumber(newInvoiceAmount),
+      remainingDollars: getEditJobBillableRemaining(),
+      jobStatus: editing.status,
+    })
+    if (plan.kind === 'invalid') {
       setError('Enter a valid amount greater than 0')
       return
     }
-    const remaining = getEditJobBillableRemaining()
-    const amountToUseCents = Math.min(Math.round(amount * 100), Math.round(remaining * 100))
-    const amountToUse = amountToUseCents / 100
-    if (!(amountToUse > 0)) {
+    if (plan.kind === 'nothing-left') {
       setError('No remaining balance to bill')
       return
     }
-    if (amountToUseCents < Math.round(amount * 100)) {
+    const { amount: amountToUse, amountCents: amountToUseCents } = plan
+    if (plan.adjusted) {
       showToast(`Adjusted to remaining unallocated ($${formatCurrency(amountToUse)})`, 'info')
       setNewInvoiceAmount(String(amountToUse))
     }
-    if (editing.status === 'ready_to_bill' && Math.round(amountToUse * 100) === Math.round(remaining * 100)) {
+    if (plan.kind === 'bill-customer') {
       if (!jobLedgerHasCustomerForBilling(editing.customer_id)) {
         showToast('Link this job to a customer before billing.', 'error')
         return
