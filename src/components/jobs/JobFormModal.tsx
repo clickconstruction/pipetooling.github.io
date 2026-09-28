@@ -78,7 +78,7 @@ import { jobLedgerHasCustomerForBilling } from '../../lib/jobLedgerCustomerForBi
 import { revenueDollarsFromFixtures } from '../../lib/revenueFromJobFixtures'
 import { jobFormPaidDollars, jobFormRevenueDollars } from '../../lib/jobs/jobFormMoneyTotals'
 import { mergePaymentRowUpdate, paymentRowsAfterRemove } from '../../lib/jobs/jobFormPaymentActions'
-import { writeNewJobChildRows } from '../../lib/jobs/jobFormSliceWrites'
+import { NEW_JOB_CHILD_ROW_FAILURE_TOAST_MS, newJobChildRowFailureWords, writeNewJobChildRows } from '../../lib/jobs/jobFormSliceWrites'
 import { closeDateMetBackfillNeeded, closeDemoteToBilledNeeded } from '../../lib/jobs/jobFormCloseSideEffects'
 import { buildEditJobBillingBar } from '../../lib/jobs/editJobBillingBar'
 import { MoneyLifecycleBar, PAID_COLOR, BILLED_COLOR, DRAFT_COLOR } from './MoneyLifecycleBar'
@@ -2235,7 +2235,14 @@ export default function JobFormModal({
       if (insertErr) throw insertErr
       const jobId = inserted?.id
       if (jobId) {
-        await writeNewJobChildRows(supabase, { jobId, payments, materials, fixtures, teamMemberIds })
+        // v2.4031: a row the database refused is said, not dropped in silence. The job is saved
+        // either way, so the form still closes — staying open would invite a second Create.
+        const childRowFailures = await writeNewJobChildRows(supabase, { jobId, payments, materials, fixtures, teamMemberIds })
+        const childRowFailureWords = newJobChildRowFailureWords(childRowFailures)
+        if (childRowFailureWords) {
+          console.error('JobFormModal createJob: child rows not saved', childRowFailures)
+          showToast(childRowFailureWords, 'error', NEW_JOB_CHILD_ROW_FAILURE_TOAST_MS)
+        }
         onCreatedJobIdRef.current?.(jobId)
         // Tier-1 #8: a job's birth is unloggable in job_activity_events without a migration (no client
         // INSERT policy, no AFTER INSERT trigger on jobs_ledger) — record it as telemetry for now, and
