@@ -5,7 +5,8 @@
  * until now only `markSavedNow` had cases of its own (`useJobFormAutosaveSlice.render.test.tsx`,
  * v2.4027 — kept there). These pin the rest of what the three forms rely on: the first
  * snapshot is the baseline, a change saves once after the debounce, a disabled slice never
- * saves, a failed save stays dirty, a change during a save queues one follow-up, the close
+ * saves, a failed save stays dirty, a change during a save queues one follow-up (and one back to
+ * the value from before that save starts the clock when the save ends, v2.4084), the close
  * flush waits out a save in flight, and `clearBaseline` / `cancelPending` do what their names
  * say. The Bids page's Edit Bid controller moves out on top of this.
  */
@@ -239,6 +240,68 @@ describe('useJobFormAutosaveSlice — a change during a save', () => {
     rerender({ jobId: 'job-1', sliceJson: 'v2' })
     await act(async () => { d.calls[0]!.resolve(true) })
     expect(result.current.isDirty()).toBe(true)
+  })
+
+  it('a change back to the value from before the save still saves, on the clock after the save ends', async () => {
+    const d = deferredSave()
+    const { result, rerender } = setup({ jobId: 'job-1', sliceJson: 'v0' }, d.save)
+    rerender({ jobId: 'job-1', sliceJson: 'v1' })
+    await advance(1200)
+    // Put back while v1 is in flight: the baseline is still v0, so this looks like no change yet.
+    rerender({ jobId: 'job-1', sliceJson: 'v0' })
+    d.see('v0')
+    await advance(5000)
+    expect(d.save).toHaveBeenCalledTimes(1)
+    await act(async () => { d.calls[0]!.resolve(true) })
+    // v1 is saved and v0 is on screen: a change like any other.
+    expect(result.current.isDirty()).toBe(true)
+    await advance(1199)
+    expect(d.save).toHaveBeenCalledTimes(1)
+    await advance(1)
+    expect(d.save).toHaveBeenCalledTimes(2)
+    expect(d.calls[1]!.json).toBe('v0')
+    await act(async () => { d.calls[1]!.resolve(true) })
+    expect(result.current.isDirty()).toBe(false)
+    await advance(5000)
+    expect(d.save).toHaveBeenCalledTimes(2)
+  })
+
+  it('that clock does not start on a disabled slice, and leaving the form drops it', async () => {
+    const d = deferredSave()
+    const { rerender, unmount } = setup({ jobId: 'job-1', sliceJson: 'v0' }, d.save)
+    rerender({ jobId: 'job-1', sliceJson: 'v1' })
+    await advance(1200)
+    rerender({ jobId: 'job-1', sliceJson: 'v0', enabled: false })
+    await act(async () => { d.calls[0]!.resolve(true) })
+    await advance(5000)
+    expect(d.save).toHaveBeenCalledTimes(1)
+
+    const e = deferredSave()
+    const second = setup({ jobId: 'job-2', sliceJson: 'v0' }, e.save)
+    second.rerender({ jobId: 'job-2', sliceJson: 'v1' })
+    await advance(1200)
+    second.rerender({ jobId: 'job-2', sliceJson: 'v0' })
+    await act(async () => { e.calls[0]!.resolve(true) })
+    second.unmount()
+    unmount()
+    await advance(5000)
+    expect(e.save).toHaveBeenCalledTimes(1)
+  })
+
+  it('a change to a new value during the save is saved once, not twice', async () => {
+    const d = deferredSave()
+    const { result, rerender } = setup({ jobId: 'job-1', sliceJson: 'v0' }, d.save)
+    rerender({ jobId: 'job-1', sliceJson: 'v1' })
+    await advance(1200)
+    rerender({ jobId: 'job-1', sliceJson: 'v2' })
+    d.see('v2')
+    await act(async () => { d.calls[0]!.resolve(true) })
+    await advance(1200)
+    expect(d.save).toHaveBeenCalledTimes(2)
+    await act(async () => { d.calls[1]!.resolve(true) })
+    await advance(5000)
+    expect(d.save).toHaveBeenCalledTimes(2)
+    expect(result.current.isDirty()).toBe(false)
   })
 })
 
