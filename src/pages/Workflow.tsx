@@ -20,6 +20,7 @@ import {
   workflowMoneyTotals,
 } from '../lib/workflowMoneyTotals'
 import { buildUnifiedFinancialRows, panelMoneyTotals } from '../lib/workflow/unifiedFinancialRows'
+import { formatLineItemDate, normalizeUrl } from '../lib/projectsForecastStageLineItems'
 import { planStepTransition, type StepLifecyclePlan } from '../lib/workflow/stepLifecycle'
 import { buildProjectSubRoster } from '../lib/workflow/projectSubRoster'
 import { WORKFLOW_ASSIGNABLE_USER_ROLES, buildWorkflowUserRoster, notifyAssignedDefaultsOnAssign, NOTIFY_ASSIGNED_ALL_ON } from '../lib/workflow/stepAssignment'
@@ -85,14 +86,6 @@ function formatAmount(amount: number | null | undefined): string {
     return `($${formatted})`
   }
   return `$${formatted}`
-}
-
-function formatLineItemDate(isoDate: string | null | undefined): string {
-  if (isoDate == null || isoDate === '') return '\u2014'
-  const ymd = isoDate.slice(0, 10)
-  const d = new Date(`${ymd}T12:00:00`)
-  if (Number.isNaN(d.getTime())) return '\u2014'
-  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
 function ymdFromDateLike(value: string | null | undefined): string {
@@ -1155,33 +1148,6 @@ export default function Workflow() {
     lastLoadedWorkflowId.current = null
     await loadSteps(workflowId)
     return null
-  }
-
-  // Normalize URL to ensure it has a proper protocol
-  function normalizeUrl(url: string | null | undefined): string {
-    if (!url) return ''
-    const trimmed = url.trim()
-    if (!trimmed) return ''
-    
-    // First, check if URL already has a valid protocol with colon (most common case)
-    // This check must come first to avoid double-processing
-    if (trimmed.match(/^https?:\/\//i)) {
-      return trimmed
-    }
-    
-    // Fix common issues: if https// or http// (missing colon), fix it
-    if (trimmed.match(/^https?\/\//i)) {
-      // Replace https// with https:// or http// with http://
-      return trimmed.replace(/^(https?)\/\//i, '$1://')
-    }
-    
-    // If it starts with //, add https:
-    if (trimmed.startsWith('//')) {
-      return `https:${trimmed}`
-    }
-    
-    // Otherwise, add https://
-    return `https://${trimmed}`
   }
 
   // Calculate total from all line items
