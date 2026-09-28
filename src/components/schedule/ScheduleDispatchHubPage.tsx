@@ -82,6 +82,7 @@ import {
   type ScheduleDispatchHubBidRow,
   type ScheduleDispatchHubJobRow,
 } from '../../lib/scheduleDispatchHub'
+import { buildHourlyWageByUserId, hubWageLookupNames, type HubPayConfigWageRow } from '../../lib/scheduleDispatch/hubWages'
 import {
   fetchJobSearchEvidence,
   jobSearchEvidenceModeForRole,
@@ -760,12 +761,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
       const nameMap = nameRes.data
       const wagesPromise: Promise<Map<string, number>> = (async () => {
         if (!canShowHubExpectedManpowerPayroll) return new Map()
-        const names = new Set<string>()
-        for (const uid of rosterIds) {
-          const raw = nameMap.get(uid)?.trim()
-          if (raw && raw !== 'Unknown') names.add(raw)
-        }
-        const nameList = [...names]
+        const nameList = hubWageLookupNames(rosterIds, nameMap)
         if (nameList.length === 0) return new Map()
         const payData = await withSupabaseRetry(
           async () =>
@@ -775,19 +771,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
               .in('person_name', nameList),
           'scheduleDispatchHubPeoplePayWages',
         )
-        const wageByName = new Map<string, number>()
-        for (const r of (payData ?? []) as Array<{ person_name: string; hourly_wage: number | null }>) {
-          const pn = r.person_name?.trim()
-          if (!pn) continue
-          const w = r.hourly_wage
-          wageByName.set(pn, typeof w === 'number' && Number.isFinite(w) ? w : 0)
-        }
-        const wageByUserId = new Map<string, number>()
-        for (const uid of rosterIds) {
-          const nm = nameMap.get(uid)?.trim()
-          wageByUserId.set(uid, nm ? (wageByName.get(nm) ?? 0) : 0)
-        }
-        return wageByUserId
+        return buildHourlyWageByUserId((payData ?? []) as HubPayConfigWageRow[], rosterIds, nameMap)
       })()
 
       const [salariedResult, wagesResult] = await Promise.allSettled([
