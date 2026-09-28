@@ -20,7 +20,7 @@ import {
   workflowMoneyTotals,
 } from '../lib/workflowMoneyTotals'
 import { buildUnifiedFinancialRows, panelMoneyTotals } from '../lib/workflow/unifiedFinancialRows'
-import { formatLineItemDate, normalizeUrl } from '../lib/projectsForecastStageLineItems'
+import { filterAvailableInvoices, formatLineItemDate, normalizeUrl } from '../lib/projectsForecastStageLineItems'
 import {
   daysBetween,
   daysOpen,
@@ -34,6 +34,13 @@ import { getStepStatusStyle } from '../lib/workflow/stepStatusStyle'
 import { isRowDefaultCollapsed, isSectionDefaultExpanded, isStepEmpty as isStepEmptyOf } from '../lib/workflow/stageCardDefaults'
 import { buildStageDisplayItems } from '../lib/workflow/stageDisplayItems'
 import { stageCardPills, wordCount } from '../lib/workflow/stageCardPills'
+import {
+  expectedDatesProblems,
+  expectedEndChanged,
+  expectedLengthChanged,
+  expectedStartChanged,
+  seedExpectedDates,
+} from '../lib/workflow/expectedDatesLinkage'
 import { planStepTransition, type StepLifecyclePlan } from '../lib/workflow/stepLifecycle'
 import { buildProjectSubRoster } from '../lib/workflow/projectSubRoster'
 import { WORKFLOW_ASSIGNABLE_USER_ROLES, buildWorkflowUserRoster, notifyAssignedDefaultsOnAssign, NOTIFY_ASSIGNED_ALL_ON } from '../lib/workflow/stepAssignment'
@@ -43,7 +50,7 @@ import { PersonDisplayWithContact, type PersonContactInfo } from '../components/
 import type { StepCommitmentRow } from '../lib/workflow/stepCommitments'
 import { sendStepLifecycleNotifications } from '../lib/workflow/stepLifecycleNotifications'
 import { toDatetimeLocal, fromDatetimeLocal } from '../utils/datetimeLocal'
-import { ymdAddDays, ymdDaysBetween, ymdFromDateLike } from '../utils/dateUtils'
+import { ymdDaysBetween, ymdFromDateLike } from '../utils/dateUtils'
 import { ageChipStyle } from '../lib/ageState'
 import { isSupplyCredit, SUPPLY_CREDIT_NOT_ON_STEP } from '../lib/supplyHouseDocument'
 import type { Database } from '../types/database'
@@ -1427,23 +1434,15 @@ export default function Workflow() {
   }
 
   function openExpectedDates(step: Step) {
-    const idx = steps.findIndex((s) => s.id === step.id)
-    const prev = idx > 0 ? steps[idx - 1] : null
-    const next = idx >= 0 && idx < steps.length - 1 ? steps[idx + 1] : null
-    const currentStart = ymdFromDateLike(step.scheduled_start_date)
-    const currentEnd = ymdFromDateLike(step.scheduled_end_date)
-    const priorEnd = ymdFromDateLike(prev?.scheduled_end_date)
-    const seededFromPrior = !currentStart && !!priorEnd
-    const startVal = currentStart || priorEnd
-    const length = startVal && currentEnd ? ymdDaysBetween(startVal, currentEnd) : null
+    const seed = seedExpectedDates(steps, step)
     setExpectedDatesStep({
       step,
-      expectedStart: startVal,
-      expectedEnd: currentEnd,
-      lengthDays: length != null ? String(length) : '',
-      updateNextStage: !!next,
-      hasNextStage: !!next,
-      seededFromPrior,
+      expectedStart: seed.expectedStart,
+      expectedEnd: seed.expectedEnd,
+      lengthDays: seed.lengthDays,
+      updateNextStage: seed.hasNextStage,
+      hasNextStage: seed.hasNextStage,
+      seededFromPrior: seed.seededFromPrior,
     })
   }
 
@@ -3484,45 +3483,15 @@ export default function Workflow() {
           setExpectedDatesStep((prev) => (prev ? { ...prev, ...patch } : null))
         }
         const handleStartChange = (value: string) => {
-          const len = current.lengthDays.trim()
-          const lenNum = len === '' ? NaN : Number(len)
-          if (value && len !== '' && Number.isFinite(lenNum)) {
-            setField({ expectedStart: value, expectedEnd: ymdAddDays(value, lenNum), seededFromPrior: false })
-          } else if (value && current.expectedEnd) {
-            const newLen = ymdDaysBetween(value, current.expectedEnd)
-            setField({ expectedStart: value, lengthDays: newLen != null ? String(newLen) : '', seededFromPrior: false })
-          } else {
-            setField({ expectedStart: value, seededFromPrior: false })
-          }
+          setField({ ...expectedStartChanged(current, value), seededFromPrior: false })
         }
         const handleEndChange = (value: string) => {
-          if (value && current.expectedStart) {
-            const newLen = ymdDaysBetween(current.expectedStart, value)
-            setField({ expectedEnd: value, lengthDays: newLen != null ? String(newLen) : '' })
-          } else {
-            setField({ expectedEnd: value })
-          }
+          setField(expectedEndChanged(current, value))
         }
         const handleLengthChange = (value: string) => {
-          const trimmed = value.trim()
-          if (trimmed === '') {
-            setField({ lengthDays: '' })
-            return
-          }
-          const num = Number(trimmed)
-          if (!Number.isFinite(num)) {
-            setField({ lengthDays: value })
-            return
-          }
-          if (current.expectedStart) {
-            setField({ lengthDays: value, expectedEnd: ymdAddDays(current.expectedStart, num) })
-          } else {
-            setField({ lengthDays: value })
-          }
+          setField(expectedLengthChanged(current, value))
         }
-        const lengthNum = current.lengthDays.trim() === '' ? null : Number(current.lengthDays)
-        const lengthInvalid = current.lengthDays.trim() !== '' && (!Number.isFinite(lengthNum ?? NaN) || (lengthNum != null && lengthNum < 0))
-        const endBeforeStart = !!current.expectedStart && !!current.expectedEnd && (ymdDaysBetween(current.expectedStart, current.expectedEnd) ?? 0) < 0
+        const { lengthInvalid, endBeforeStart } = expectedDatesProblems(current)
         return (
           <div
             role="dialog"
@@ -3949,18 +3918,7 @@ export default function Workflow() {
                 />
                 <div style={{ border: '1px solid var(--border)', borderRadius: 4, maxHeight: '400px', overflow: 'auto' }}>
                   {(() => {
-                    const q = invoiceSearchText.trim().toLowerCase()
-                    const filtered = q
-                      ? availableInvoices.filter(inv =>
-                          inv.invoice_number.toLowerCase().includes(q) ||
-                          inv.supply_house_name.toLowerCase().includes(q) ||
-                          String(inv.amount).includes(q) ||
-                          inv.invoice_date.toLowerCase().includes(q) ||
-                          (inv.purchase_order_number?.toLowerCase().includes(q) ?? false) ||
-                          (q === 'paid' && inv.is_paid) ||
-                          (q === 'unpaid' && !inv.is_paid)
-                        )
-                      : availableInvoices
+                    const filtered = filterAvailableInvoices(availableInvoices, invoiceSearchText)
                     if (filtered.length === 0) {
                       return <p style={{ padding: '1rem', color: 'var(--text-muted)' }}>No matching invoices.</p>
                     }
