@@ -29,6 +29,16 @@ describe('GcStageTrack', () => {
     expect(screen.getAllByText('You are here')).toHaveLength(1)
   })
 
+  it('draws each count once: the number, then its words', () => {
+    const upstream: Track = { ...track, stops: [track.stops[0]!, { ...track.stops[1]!, waiting: 0, waitingTotal: 0, done: 0 }, { ...track.stops[2]!, waiting: 0, waitingTotal: 0, done: 14, of: 14, complete: true }] }
+    render(<GcStageTrack track={upstream} stage={null} onPick={vi.fn()} />)
+    const count = (name: RegExp) => screen.getByRole('button', { name }).querySelector('.gcStageCount')?.textContent
+    expect(count(/^Check:/)).toBe('1 to check')
+    // Nobody is waiting at Send yet — the GCs are still upstream.
+    expect(count(/^Send:/)).toBe('0 waiting')
+    expect(count(/^Word:/)).toBe('✓ all words in')
+  })
+
   it('a stop picks its stage; the stop already picked clears it', () => {
     const onPick = vi.fn()
     const { rerender } = render(<GcStageTrack track={track} stage={null} onPick={onPick} />)
