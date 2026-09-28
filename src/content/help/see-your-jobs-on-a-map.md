@@ -2,7 +2,7 @@
 title: see your jobs on a map
 category: Jobs & Scheduling
 roles: dev, master_technician, assistant, controller, subcontractor, helpers, estimator, primary, superintendent
-keywords: map, my jobs, dashboard, pins, directions, where is the job, job location, working, waiting
+keywords: map, my jobs, dashboard, pins, directions, where is the job, job location, working, waiting, zoom, scroll wheel, mouse wheel, zooms out
 order: 31
 ---
 The Dashboard has a **Your jobs on a map** card above your Assigned Jobs. It plots every active job you're on — the same jobs as your Assigned Jobs rows, plus, for a superintendent, the jobs on your assigned projects. Nobody sees a job here they couldn't already open from the Dashboard.
@@ -27,6 +27,8 @@ On a phone, tapping a pin shows the job as a bar under the map instead of a pop-
 ## Fit all and Hide map
 
 {{button:outline-blue|Fit all}} re-centers the map on every pin after you've zoomed in on one. **Hide map** collapses the card; the choice is remembered on that device, and **Show map** brings it back.
+
+On a desktop the mouse wheel scrolls the page when the pointer crosses the map, so you can scroll past it without the map zooming out. **Click the map once** and the wheel zooms it from then on. The **+** and **−** buttons, dragging and the pins work from the start.
 
 ## A job with no map location yet
 

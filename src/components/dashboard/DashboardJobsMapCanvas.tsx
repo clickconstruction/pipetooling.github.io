@@ -30,6 +30,8 @@ export type DashboardJobsMapCanvasProps = {
   height: number
   /** Phone form: no popup; the card renders the selected bar. */
   isMobile: boolean
+  /** Passed to the shared canvas: the wheel scrolls the page until the map is clicked once. */
+  scrollZoomAfterClick?: boolean
 }
 
 const POPUP_BUTTON_STYLE: React.CSSProperties = {
@@ -99,7 +101,7 @@ export function DashboardJobsMapPopupBody({
   )
 }
 
-export default function DashboardJobsMapCanvas({ pins, selectedId, onSelect, onOpenJob, onDirections, fitSignal, height, isMobile }: DashboardJobsMapCanvasProps) {
+export default function DashboardJobsMapCanvas({ pins, selectedId, onSelect, onOpenJob, onDirections, fitSignal, height, isMobile, scrollZoomAfterClick }: DashboardJobsMapCanvasProps) {
   const canvasPins = useMemo(() => dashboardJobsMapCanvasPins(pins), [pins])
   const byId = useMemo(() => new Map(pins.map((p) => [p.id, p])), [pins])
   const renderPopup = useCallback(
@@ -109,5 +111,5 @@ export default function DashboardJobsMapCanvas({ pins, selectedId, onSelect, onO
     },
     [byId, onOpenJob, onDirections],
   )
-  return <PinsMapCanvas pins={canvasPins} selectedId={selectedId} onSelect={onSelect} renderPopup={renderPopup} fitSignal={fitSignal} height={height} isMobile={isMobile} />
+  return <PinsMapCanvas pins={canvasPins} selectedId={selectedId} onSelect={onSelect} renderPopup={renderPopup} fitSignal={fitSignal} height={height} isMobile={isMobile} scrollZoomAfterClick={scrollZoomAfterClick} />
 }

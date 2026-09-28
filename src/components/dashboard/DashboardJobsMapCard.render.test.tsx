@@ -33,7 +33,7 @@ vi.mock('../../lib/openInExternalBrowser', () => ({ openInExternalBrowser: (u: s
 // The Google canvas (v2.3145) stands in the same way, plus a button that reports the API as unavailable.
 vi.mock('./DashboardJobsMapGoogleCanvas', () => ({
   default: (p: DashboardJobsMapCanvasProps & { apiKey: string; onUnavailable: (r: string) => void }) => (
-    <div data-testid="google-canvas" data-key={p.apiKey}>
+    <div data-testid="google-canvas" data-key={p.apiKey} data-scroll-gate={String(p.scrollZoomAfterClick ?? false)}>
       <button type="button" onClick={() => p.onUnavailable('load: test')}>
         google failed
       </button>
@@ -43,7 +43,7 @@ vi.mock('./DashboardJobsMapGoogleCanvas', () => ({
 // The Leaflet canvas is lazy + heavy; stand in with a list of pin buttons that drive the same callbacks.
 vi.mock('./DashboardJobsMapCanvas', () => ({
   default: (p: DashboardJobsMapCanvasProps) => (
-    <div data-testid="canvas">
+    <div data-testid="canvas" data-scroll-gate={String(p.scrollZoomAfterClick ?? false)}>
       {p.pins.map((pin) => (
         <button key={pin.id} type="button" onClick={() => p.onSelect(pin.id)}>
           pin {pin.label}
@@ -154,6 +154,17 @@ describe('DashboardJobsMapCard', () => {
     await waitFor(() => expect(screen.getByTestId('canvas')).toBeTruthy())
     expect(screen.queryByTestId('google-canvas')).toBeNull()
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('load: test'))
+    warn.mockRestore()
+  })
+
+  it('v2.3963: asks both canvases to keep the wheel for the page until the map is clicked', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_BROWSER_KEY', 'AIza-test')
+    cacheRows.mockReturnValue([{ address_normalized: '1400 oak hollow rd', lat: 30.5, lng: -97.7 }])
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    render(<DashboardJobsMapCard role="dev" assignedJobs={[row({ id: 'a' })]} superintendentJobs={[]} loading={false} isMobile={false} openJobDetailFromDashboardJobRow={openJob} />)
+    expect((await screen.findByTestId('google-canvas')).getAttribute('data-scroll-gate')).toBe('true')
+    fireEvent.click(screen.getByText('google failed'))
+    expect((await screen.findByTestId('canvas')).getAttribute('data-scroll-gate')).toBe('true')
     warn.mockRestore()
   })
 })

@@ -39,7 +39,7 @@ vi.mock('../../contexts/ToastContext', () => ({ useToastContext: () => ({ showTo
 vi.mock('../../lib/openInExternalBrowser', () => ({ openInExternalBrowser: (u: string) => openExternal(u) }))
 vi.mock('../map/PinsMapGoogleCanvas', () => ({
   default: (p: PinsMapCanvasProps & { apiKey: string; onUnavailable: (r: string) => void }) => (
-    <div data-testid="google-canvas" data-key={p.apiKey}>
+    <div data-testid="google-canvas" data-key={p.apiKey} data-scroll-gate={String(p.scrollZoomAfterClick ?? false)}>
       <button type="button" onClick={() => p.onUnavailable('load: test')}>
         google failed
       </button>
@@ -49,7 +49,7 @@ vi.mock('../map/PinsMapGoogleCanvas', () => ({
 // The Leaflet canvas is lazy + heavy; stand in with a list of pin buttons that drive the same callbacks.
 vi.mock('../map/PinsMapCanvas', () => ({
   default: (p: PinsMapCanvasProps) => (
-    <div data-testid="canvas" data-anchor={p.anchor ? `${p.anchor.label}:${(p.anchor.ringMiles ?? []).join('/')}` : ''} data-pulse={p.pulseId ?? ''}>
+    <div data-testid="canvas" data-anchor={p.anchor ? `${p.anchor.label}:${(p.anchor.ringMiles ?? []).join('/')}` : ''} data-pulse={p.pulseId ?? ''} data-scroll-gate={String(p.scrollZoomAfterClick ?? false)}>
       {p.pins.map((pin) => (
         <button key={pin.id} type="button" onClick={() => p.onSelect(pin.id)} data-color={pin.color} data-ring={pin.ringColor ?? ''}>
           pin {pin.title}
@@ -241,6 +241,15 @@ describe('BidBoardMapCard', () => {
     fireEvent.click(screen.getByText('google failed'))
     await waitFor(() => expect(screen.getByTestId('canvas')).toBeTruthy())
     expect(screen.queryByTestId('google-canvas')).toBeNull()
+  })
+
+  it('v2.3963: asks both canvases to keep the wheel for the page until the map is clicked', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_BROWSER_KEY', 'test-key')
+    cacheRows.mockReturnValue([{ address_normalized: '1400 oak hollow rd', lat: 30.76, lng: -98.23 }])
+    renderCard([bid({ id: 'a' })])
+    expect((await screen.findByTestId('google-canvas')).getAttribute('data-scroll-gate')).toBe('true')
+    fireEvent.click(screen.getByText('google failed'))
+    expect((await screen.findByTestId('canvas')).getAttribute('data-scroll-gate')).toBe('true')
   })
 
   it('Play tours the sections that have pins, two seconds each, lighting the chip; a chip click or Pause holds the view', async () => {

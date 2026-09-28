@@ -187,6 +187,8 @@ export function DashboardJobsMapCard({
                       fitSignal={fitSignal}
                       height={mapHeight}
                       isMobile={isMobile}
+                      // The card sits in the Dashboard's scroll: the wheel scrolls the page until the map is clicked
+                      scrollZoomAfterClick
                     />
                   ) : (
                     <DashboardJobsMapCanvas
@@ -198,6 +200,8 @@ export function DashboardJobsMapCard({
                       fitSignal={fitSignal}
                       height={mapHeight}
                       isMobile={isMobile}
+                      // The card sits in the Dashboard's scroll: the wheel scrolls the page until the map is clicked
+                      scrollZoomAfterClick
                     />
                   )}
                 </Suspense>

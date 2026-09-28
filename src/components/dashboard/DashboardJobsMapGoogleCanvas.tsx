@@ -20,7 +20,7 @@ export type DashboardJobsMapGoogleCanvasProps = DashboardJobsMapCanvasProps & {
   onUnavailable: (reason: string) => void
 }
 
-export default function DashboardJobsMapGoogleCanvas({ pins, selectedId, onSelect, onOpenJob, onDirections, fitSignal, height, isMobile, apiKey, onUnavailable }: DashboardJobsMapGoogleCanvasProps) {
+export default function DashboardJobsMapGoogleCanvas({ pins, selectedId, onSelect, onOpenJob, onDirections, fitSignal, height, isMobile, scrollZoomAfterClick, apiKey, onUnavailable }: DashboardJobsMapGoogleCanvasProps) {
   const canvasPins = useMemo(() => dashboardJobsMapCanvasPins(pins), [pins])
   const byId = useMemo(() => new Map(pins.map((p) => [p.id, p])), [pins])
   const renderPopup = useCallback(
@@ -41,6 +41,7 @@ export default function DashboardJobsMapGoogleCanvas({ pins, selectedId, onSelec
       fitSignal={fitSignal}
       height={height}
       isMobile={isMobile}
+      scrollZoomAfterClick={scrollZoomAfterClick}
     />
   )
 }
