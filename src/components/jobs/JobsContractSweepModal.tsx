@@ -914,8 +914,22 @@ export default function JobsContractSweepModal({
     <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{gapRows.length === 0 ? 'Nothing left to send.' : justDone && !isMobile ? 'Done — pick the next job on the left, or press Next.' : isMobile ? 'Tap a job to see its agreement.' : 'Pick a job on the left to see its agreement.'}</div>
   )
 
+  /** The agreement as the customer will see it. In a window it ends the pane; full screen (v2.4049) it is the third column, the height of the room. */
+  const paper = (fullScreen: boolean) =>
+    selected ? (
+      <div
+        style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem', opacity: filing && filing.jobId === selected.id ? 0.45 : 1, ...(fullScreen ? { display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0 } : {}) }}
+        data-testid="sweep-paper"
+      >
+        <iframe title="The agreement as the customer will see it" srcDoc={paneHtml} sandbox="" style={{ width: '100%', height: fullScreen ? 'auto' : isMobile ? '60vh' : '54vh', ...(fullScreen ? { flex: '1 1 auto', minHeight: 0 } : {}), border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', display: 'block' }} />
+        <div style={{ fontSize: '0.7rem', color: 'var(--text-faint)', textAlign: 'center', marginTop: '0.3rem' }}>Exactly what the signing page and the PDF will show{draftRow ? '' : ' — from the job’s fixtures or its accepted estimate, and the terms above'}.</div>
+      </div>
+    ) : null
+
   return (
     <ResponsiveModalShell title="Contract sweep" onRequestClose={onClose} maxWidthDesktop={1100} fullScreenKey="contract-sweep" headerAction={<ArHeaderMenu items={menuItems} ariaLabel="Contract sweep tools" />} footer={footer}>
+      {({ fullScreen }) => (
+      <>
       {/* The header says only what the tabs cannot (v2.3703): the dollars, this sitting's sends and filings, the floor, and the Drive pass while it runs. */}
       {gapRows.length > 0 ? (
         <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }} data-testid="sweep-summary">
@@ -927,9 +941,19 @@ export default function JobsContractSweepModal({
       {gapRows.length === 0 ? (
         <p style={{ margin: 0, fontSize: '0.9rem' }}>Every live job has an agreement on file, or doesn&apos;t need one. 🎉</p>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'minmax(300px, 5fr) minmax(360px, 7fr)', gap: '0.75rem', alignItems: 'start' }}>
+        /* v2.4049: full screen is three columns — the list, the agreement, its paper — each the height of the room
+           (the shell hands its children a bounded flex column), so nothing scrolls to check what goes out. */
+        <div
+          style={
+            fullScreen
+              ? { display: 'grid', gridTemplateColumns: '380px minmax(420px, 1fr) minmax(400px, 1fr)', gridTemplateRows: 'minmax(0, 1fr)', gap: '1rem', alignItems: 'stretch', flex: '1 1 auto', minHeight: 0, marginBottom: '0.75rem' }
+              : { display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'minmax(300px, 5fr) minmax(360px, 7fr)', gap: '0.75rem', alignItems: 'start' }
+          }
+          data-testid="sweep-grid"
+          data-full-screen={fullScreen ? 'true' : undefined}
+        >
           {showList ? (
-            <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', maxHeight: isMobile ? undefined : '68vh', overflowY: 'auto' }} data-testid="sweep-list">
+            <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', maxHeight: isMobile || fullScreen ? undefined : '68vh', minHeight: fullScreen ? 0 : undefined, overflowY: 'auto' }} data-testid="sweep-list">
               {/* v2.3713: four tabs wrap into two rows in a narrow column instead of clipping the last one. */}
               <div role="tablist" aria-label="Which jobs to show" style={{ display: 'flex', flexWrap: 'wrap', borderBottom: '1px solid var(--border)', background: 'var(--bg-subtle)', position: 'sticky', top: 0, zIndex: 1 }} data-testid="sweep-tabs">
                 {shownFilters.map((f) => {
@@ -1052,7 +1076,7 @@ export default function JobsContractSweepModal({
             </div>
           ) : null}
           {showPane && selected ? (
-            <div style={{ display: 'grid', gap: '0.5rem', minWidth: 0 }} data-testid="sweep-pane">
+            <div style={{ display: 'grid', gap: '0.5rem', minWidth: 0, ...(fullScreen ? { alignContent: 'start', minHeight: 0, overflowY: 'auto', paddingRight: '0.25rem' } : {}) }} data-testid="sweep-pane">
               {isMobile ? (
                 <button type="button" style={{ ...btnGhost, justifySelf: 'start' }} onClick={() => setSelectedId(null)}>
                   ← Back to the list
@@ -1289,12 +1313,10 @@ export default function JobsContractSweepModal({
                   ) : null}
                 </fieldset>
               ) : null}
-              <div style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem', opacity: filing && filing.jobId === selected.id ? 0.45 : 1 }}>
-                <iframe title="The agreement as the customer will see it" srcDoc={paneHtml} sandbox="" style={{ width: '100%', height: isMobile ? '60vh' : '54vh', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', display: 'block' }} />
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-faint)', textAlign: 'center', marginTop: '0.3rem' }}>Exactly what the signing page and the PDF will show{draftRow ? '' : ' — from the job’s fixtures or its accepted estimate, and the terms above'}.</div>
-              </div>
+              {fullScreen ? null : paper(false)}
             </div>
           ) : null}
+          {showPane && selected && fullScreen ? paper(true) : null}
         </div>
       )}
       <DriveContractsFoundModal
@@ -1338,6 +1360,8 @@ export default function JobsContractSweepModal({
         onJobChanged={onJobChanged}
         onEditJob={onEditJob}
       />
+      </>
+      )}
     </ResponsiveModalShell>
   )
 }
