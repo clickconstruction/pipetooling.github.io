@@ -2,7 +2,7 @@
 name: "Bids: the Edit Bid controller comes out of the page (the Bids map's step 9)"
 number: 51
 group: ready
-status: in progress on claude/bids-edit-controller-pr1 … pr5 (2026-09-28) — PR 1 (the map refresh + the autosave slice's own tests) is v2.4069, PR 2 (Edit Bid in the page smoke) v2.4072, PR 3 (the trade switch) v2.4074, PR 4a (the Bid window's state) v2.4086; the Bids map's steps 1–8 shipped (v2.3873 … v2.4003; the last run of them v2.3937 · v2.3953 · v2.3989 · v2.3999)
+status: in progress on claude/bids-edit-controller-pr1 … pr5 (2026-09-28) — PR 1 (the map refresh + the autosave slice's own tests) is v2.4069, PR 2 (Edit Bid in the page smoke) v2.4072, PR 3 (the trade switch) v2.4074, PR 4a (the Bid window's state) v2.4086, PR 4b (`useBidEditController`) v2.4102; the Bids map's steps 1–8 shipped (v2.3873 … v2.4003; the last run of them v2.3937 · v2.3953 · v2.3989 · v2.3999)
 summary: >
   What is left of `src/pages/Bids.tsx` region R14: opening and closing the Bid window, the
   Edit tab's autosave and its close guard, Create bid / Create and open counts, the trade
@@ -11,10 +11,9 @@ summary: >
   Rated high risk in the map: it writes bids, and it sits on `useJobFormAutosaveSlice`, the
   autosave engine Edit Job and the Estimates draft share.
 next: >
-  PR 4b — `useBidEditController` at R14's position: the doors, closeBidForm, the lost-reason
-  save, the after-save notes, the payload builders, autosave + close guard, saveBid /
-  saveBidAndOpenCounts, delete. Takes the window state (PR 4a) as one input. The quick-add
-  save, the Counts door, the party windows and the last-contact door stay in the page.
+  PR 5 — `BidDeleteConfirmModal` + `BidEvaluateChecklistModal`, the two windows' JSX out of
+  the page verbatim; delete is guarded by the page smoke (the name hold, one delete, Cancel)
+  and the controller's hook test (the handler's own name check).
 size: S (PR 1) · L (the train)
 blocker: None. Take it alone, on a quiet day — `npm run sessions` first; no other PR open on `src/pages/Bids.tsx` or on the shared autosave slice.
 ver: v2.3937 · 3953 · 3962 · 3978 · 3989 · 3999 · 4003
@@ -85,10 +84,13 @@ script windows, which belong to Submission & Followup.
    - **4a — done v2.4086.** `hooks/useBidWindowState.ts`: the window's eleven states and the close
      guard's ref as one state container, called where they were declared; the page reads the
      same names. (3-case hook test.)
-   - **4b.** The handlers, autosave and close guard as `useBidEditController`, called where
-     R14 stands, taking the window state as one input. `saveBidSubmissionQuickAdd`,
-     `openCountsForBid`, `openGcBuilderOrCustomerModal` and `handleLastContactClick` sit in
-     R14's lines but are not Edit Bid — they stay in the page and are handed in where needed.
+   - **4b — done v2.4102.** The handlers, autosave and close guard as `hooks/useBidEditController.ts`,
+     called where R14 stood, taking the window state as one input (page 3,259 → 2,795 lines).
+     `saveBidSubmissionQuickAdd`, `openCountsForBid`, `openGcBuilderOrCustomerModal`,
+     `handleLastContactClick` and `syncFreshBidIntoSelections` are not Edit Bid — they stay in the
+     page and two are handed in. The page guard gained four cases (delete, delete → Cancel, Open
+     Counts from an open bid, Create and open counts); seven breaks of the moved code, six caught
+     there and delete's own name check by the new 6-case hook test (with four more breaks of its own).
 5. **`BidDeleteConfirmModal` + `BidEvaluateChecklistModal`** — the two windows, verbatim.
 
 Each PR: the page smokes (`Bids.render.test.tsx`, `Bids.followupDoors.render.test.tsx`) pass
