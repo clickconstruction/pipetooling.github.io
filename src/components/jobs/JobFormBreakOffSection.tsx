@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { useBreakOffSlider } from './useBreakOffSlider'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { BILLED_COLOR, DRAFT_COLOR, PAID_COLOR } from './MoneyLifecycleBar'
@@ -8,7 +9,8 @@ import {
   sanitizeMoneyTyping,
 } from '../../lib/jobs/jobFormMoney'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
-import { clampTypedBreakOffAmount } from '../../lib/jobs/jobFormBreakOff'
+import { breakOffButtonAction, breakOffButtonChangedWords, breakOffPressStillMeansTheSame, clampTypedBreakOffAmount, type BreakOffButtonAction } from '../../lib/jobs/jobFormBreakOff'
+import { useToastContext } from '../../contexts/ToastContext'
 
 type JobFormBreakOffSectionProps = {
   breakOff: ReturnType<typeof useBreakOffSlider>
@@ -120,6 +122,25 @@ export function JobFormBreakOffSection({
   } = breakOff
 
   const invoiceDollars = parseMoneyInputToNumber(newInvoiceAmount)
+  const { showToast } = useToastContext()
+  // Pressing the button blurs the amount field, and the blur can cut the amount back to the whole
+  // remainder — which turns "New Invoice" into "Ready to Bill" between the press and the click.
+  // The press is remembered as what the button said when the pointer went down (v2.4015).
+  const buttonAction = breakOffButtonAction(isSendFullUnallocatedToReadyToBill)
+  const pressedActionRef = useRef<BreakOffButtonAction | null>(null)
+  const forgetPress = () => {
+    pressedActionRef.current = null
+  }
+  const onActionClick = () => {
+    const pressed = pressedActionRef.current
+    pressedActionRef.current = null
+    if (!breakOffPressStillMeansTheSame(pressed, buttonAction)) {
+      showToast(breakOffButtonChangedWords(buttonAction, invoiceDollars), 'info', 9000)
+      return
+    }
+    if (buttonAction === 'move_to_ready_to_bill') moveWorkingJobToReadyToBillFromEdit()
+    else createInvoice()
+  }
   const actionDisabled = movingJobToReadyToBill || creatingInvoice || !(invoiceDollars > 0)
   const leftAfterDollars = Math.max(0, Math.round((breakOffRemaining - Math.max(0, invoiceDollars)) * 100) / 100)
   const { paidPct, billedPct } = breakOffBillingTrackPercents.hasTotal
@@ -217,7 +238,12 @@ export function JobFormBreakOffSection({
             ) : null}
             <button
               type="button"
-              onClick={isSendFullUnallocatedToReadyToBill ? moveWorkingJobToReadyToBillFromEdit : createInvoice}
+              onPointerDown={() => {
+                pressedActionRef.current = buttonAction
+              }}
+              onPointerLeave={forgetPress}
+              onPointerCancel={forgetPress}
+              onClick={onActionClick}
               disabled={actionDisabled}
               title={isSendFullUnallocatedToReadyToBill ? 'Move job to Ready to Bill' : 'Create invoice'}
               aria-label={isSendFullUnallocatedToReadyToBill ? 'Ready to Bill' : 'New invoice'}
