@@ -1,0 +1,194 @@
+/**
+ * GC Review worklist: the week's GCs as the person at the keyboard works
+ * them — one row per GC, three steps (Checked · Sent · Word), grouped by the
+ * account man she has to ask. It replaces the statement-round panel, which
+ * handed each GC to its sender and waited; the office works every row now.
+ * Pure: the round's groups, certifications, marks and senders go in.
+ */
+import type { GcReviewGroup } from '../gcReviewRollup'
+import { gcGroupCertStatus, gcReviewSentThisWeek, type GcReviewCertRow } from './gcReviewCertification'
+import { GC_ROUND_THRESHOLD, isTemperature, type RoundMarkAction, type RoundMarkRow, type StatementSendChannel, type Temperature } from './gcStatementRounds'
+
+export type GcWorklistStep = 'check' | 'send' | 'word'
+
+export type GcWorklistRow = {
+  gcId: string
+  gcName: string
+  amount: number
+  jobCount: number
+  oldestAgeDays: number | null
+  /** The account man: the standing assignment, else the Account Man on most of the GC's jobs; null = nobody. */
+  ownerUserId: string | null
+  /** done = certified and unchanged; changed = the group moved after sign-off; todo = not certified this week. */
+  checked: 'done' | 'changed' | 'todo'
+  /** A statement went out this week — a sent mark or an app send. */
+  sent: boolean
+  /** This week's mark carries a read of the GC: a temperature, or a "spoke with them". */
+  word: boolean
+  skipped: boolean
+  /** At or over the line: the word is part of the week. Under it, check and send are the whole job. */
+  overLine: boolean
+  /** The step to do next, or null when the row is done (or skipped) for the week. */
+  next: GcWorklistStep | null
+  mark: RoundMarkRow | null
+  group: GcReviewGroup
+}
+
+export type GcWorklistGroup = {
+  key: string
+  kind: 'owner' | 'unassigned' | 'under_line'
+  ownerUserId: string | null
+  rows: GcWorklistRow[]
+  total: number
+  /** Rows with a step left this week. */
+  open: number
+}
+
+export type GcWorklist = {
+  groups: GcWorklistGroup[]
+  counts: { gcs: number; checked: number; sent: number; words: number; done: number }
+}
+
+const cents = (n: number) => Math.round(n * 100)
+
+/** A mark that carries someone's read of the GC, whatever else it records. */
+export function markCarriesWord(mark: Pick<RoundMarkRow, 'action' | 'temperature'> | null | undefined): boolean {
+  if (!mark) return false
+  return mark.action === 'contacted' || isTemperature(mark.temperature)
+}
+
+/** Check, then send, then the word; a GC under the line is done once its statement is out. */
+export function worklistNextStep(row: Pick<GcWorklistRow, 'checked' | 'sent' | 'word' | 'skipped' | 'overLine'>): GcWorklistStep | null {
+  if (row.skipped) return null
+  if (!row.sent) return row.checked === 'done' ? 'send' : 'check'
+  if (row.overLine && !row.word) return 'word'
+  return null
+}
+
+export function buildGcWorklist(input: {
+  groups: readonly GcReviewGroup[]
+  certsByGc: ReadonlyMap<string, GcReviewCertRow>
+  /** This week's marks. */
+  marks: readonly RoundMarkRow[]
+  senders: ReadonlyMap<string, string>
+  accountMen: ReadonlyMap<string, string>
+  /** Newest statement per GC — app sends merged with sent marks. */
+  lastSentByGcId: Record<string, string>
+  weekStartYmd: string
+  threshold?: number
+}): GcWorklist {
+  const threshold = input.threshold ?? GC_ROUND_THRESHOLD
+  const markByGc = new Map(input.marks.map((m) => [m.gc_customer_id, m]))
+  const rows: GcWorklistRow[] = []
+  for (const g of input.groups) {
+    if (g.isNoGc || !g.gcId) continue
+    // Nothing outstanding is nothing to check or send — the week strip leaves it out too.
+    if (cents(g.subtotal) <= 0) continue
+    const mark = markByGc.get(g.gcId) ?? null
+    const cert = gcGroupCertStatus(g, input.certsByGc.get(g.gcId)).state
+    const base = {
+      checked: cert === 'certified' ? ('done' as const) : cert === 'changed' ? ('changed' as const) : ('todo' as const),
+      sent: mark?.action === 'sent' || gcReviewSentThisWeek(input.lastSentByGcId[g.gcId], input.weekStartYmd),
+      word: markCarriesWord(mark),
+      skipped: mark?.action === 'skipped',
+      overLine: g.subtotal >= threshold,
+    }
+    rows.push({
+      gcId: g.gcId,
+      gcName: g.gcName,
+      amount: g.subtotal,
+      jobCount: g.jobCount,
+      oldestAgeDays: g.oldestAgeDays,
+      ownerUserId: input.senders.get(g.gcId) ?? input.accountMen.get(g.gcId) ?? null,
+      ...base,
+      next: worklistNextStep(base),
+      mark,
+      group: g,
+    })
+  }
+
+  const byKey = new Map<string, GcWorklistGroup>()
+  for (const r of rows) {
+    const kind: GcWorklistGroup['kind'] = !r.overLine ? 'under_line' : r.ownerUserId ? 'owner' : 'unassigned'
+    const key = kind === 'owner' ? `owner:${r.ownerUserId}` : kind
+    let group = byKey.get(key)
+    if (!group) {
+      group = { key, kind, ownerUserId: kind === 'owner' ? r.ownerUserId : null, rows: [], total: 0, open: 0 }
+      byKey.set(key, group)
+    }
+    group.rows.push(r)
+    group.total += r.amount
+    if (r.next) group.open += 1
+  }
+  // Work left first inside a group, then the largest balance.
+  for (const g of byKey.values()) g.rows.sort((a, b) => Number(b.next != null) - Number(a.next != null) || b.amount - a.amount || a.gcName.localeCompare(b.gcName))
+  const rank = (k: GcWorklistGroup['kind']) => (k === 'owner' ? 0 : k === 'unassigned' ? 1 : 2)
+  const groups = [...byKey.values()].sort((a, b) => rank(a.kind) - rank(b.kind) || b.total - a.total || a.key.localeCompare(b.key))
+
+  return {
+    groups,
+    counts: {
+      gcs: rows.length,
+      checked: rows.filter((r) => r.checked === 'done').length,
+      sent: rows.filter((r) => r.sent).length,
+      words: rows.filter((r) => r.word).length,
+      done: rows.filter((r) => r.next == null && !r.skipped).length,
+    },
+  }
+}
+
+/** The group's heading: "Ask Malachi", "No account man yet", "Under $10,000". */
+export function worklistGroupTitle(group: Pick<GcWorklistGroup, 'kind'>, ownerName: string, isYou: boolean, threshold = GC_ROUND_THRESHOLD): string {
+  if (group.kind === 'under_line') return `Under $${threshold.toLocaleString('en-US')}`
+  if (group.kind === 'unassigned') return 'No account man yet'
+  return isYou ? 'Your accounts' : `Ask ${ownerName}`
+}
+
+/** The note the app writes when a Draft Message send marks the GC sent. */
+export const APP_SEND_NOTE = 'Sent from the app'
+
+const joinNotes = (first: string | null | undefined, second: string | null | undefined): string | null => {
+  const parts = [first, second].map((n) => (n ?? '').trim()).filter((n) => n && n !== APP_SEND_NOTE)
+  return parts.length > 0 ? [...new Set(parts)].join('\n') : null
+}
+
+export type RoundMarkWrite = {
+  action: RoundMarkAction
+  channel: StatementSendChannel | string | null
+  note: string | null
+  temperature: Temperature | string | null
+  expected_pay_by: string | null
+  /** Set when the statement's own day must stand (a word written over a sent mark); null = now. */
+  acted_at: string | null
+}
+
+/**
+ * A GC has one mark a week, and the week has two things to record: the
+ * statement going out and the word coming back. Whichever is written second
+ * must not erase the first — a word over a sent mark keeps it sent (with its
+ * day and how it went out); a send over a word keeps the read, its sentence
+ * and the pay date. Notes from both are kept, the word first; the app's own
+ * "Sent from the app" never crowds out a sentence. A skip is simply replaced.
+ */
+export function mergeRoundMarkWrite(
+  existing: Pick<RoundMarkRow, 'action' | 'channel' | 'note' | 'temperature' | 'expected_pay_by' | 'acted_at'> | null,
+  incoming: { action: RoundMarkAction; channel?: StatementSendChannel | null; note?: string | null; temperature?: Temperature | null; expectedPayBy?: string | null },
+): RoundMarkWrite {
+  const note = incoming.note?.trim() || null
+  const plain: RoundMarkWrite = {
+    action: incoming.action,
+    channel: incoming.action === 'skipped' ? null : (incoming.channel ?? 'email'),
+    note: incoming.action === 'skipped' ? null : note,
+    temperature: incoming.action === 'skipped' ? null : (incoming.temperature ?? null),
+    expected_pay_by: incoming.action === 'skipped' ? null : incoming.expectedPayBy || null,
+    acted_at: null,
+  }
+  if (!existing || incoming.action === 'skipped' || existing.action === 'skipped') return plain
+  if (incoming.action === 'contacted' && existing.action === 'sent') {
+    return { ...plain, action: 'sent', channel: existing.channel ?? 'email', note: joinNotes(note, existing.note), acted_at: existing.acted_at }
+  }
+  if (incoming.action === 'sent' && markCarriesWord(existing) && !incoming.temperature) {
+    return { ...plain, note: joinNotes(existing.note, note), temperature: existing.temperature, expected_pay_by: plain.expected_pay_by ?? existing.expected_pay_by }
+  }
+  return plain
+}

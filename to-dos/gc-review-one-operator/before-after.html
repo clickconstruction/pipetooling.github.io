@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GC Review for one operator — before / after</title>
+<style>
+  :root {
+    --ground: #F3F4F6; --surface: #FFFFFF; --subtle: #F8FAFC; --ink: #111827; --muted: #6B7280;
+    --line: #E5E7EB; --line-strong: #CBD5E1; --link: #2563EB;
+    --green: #15803D; --green-bg: #DCFCE7; --red: #B91C1C; --red-bg: #FEE2E2; --amber: #B45309; --amber-bg: #FEF3C7;
+    --blue: #1D4ED8; --blue-bg: #DBEAFE;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding-block: 0 64px; padding-inline: 16px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; max-width: 30ch; }
+  .stamp { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 18px; margin: 36px 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  h2 .num { width: 24px; height: 24px; border-radius: 50%; background: var(--ink); color: #fff; font-size: 12px; display: inline-flex; align-items: center; justify-content: center; }
+  .lede { margin: 0 0 14px; color: var(--muted); max-width: 84ch; }
+  .lede b { color: var(--ink); }
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 16px; align-items: start; }
+  .panel { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; min-width: 0; }
+  .panel .cap { padding: 8px 12px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--subtle); border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .panel.after { border-color: var(--green); }
+  .panel.after .cap { background: var(--green-bg); color: var(--green); border-bottom-color: var(--green); }
+  .panel .in { padding: 12px; }
+  .sec { font-size: 13px; font-weight: 700; margin: 0 0 2px; }
+  .sub { font-size: 11.5px; color: var(--muted); margin: 0 0 8px; }
+
+  .who { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  .who .card { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; padding: 12px 14px; }
+  .who .card h3 { margin: 0 0 4px; font-size: 14px; }
+  .who .card p { margin: 0; font-size: 12.5px; color: var(--muted); }
+  .who .card p b { color: var(--ink); }
+
+  .strip { border: 1.5px solid var(--amber); background: var(--amber-bg); border-radius: 8px; padding: 7px 10px; display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: 700; margin-bottom: 10px; flex-wrap: wrap; }
+  .strip .bar { flex: 1; min-width: 60px; height: 6px; border-radius: 999px; background: #fff; overflow: hidden; border: 1px solid var(--line-strong); }
+  .strip .bar i { display: block; height: 100%; background: var(--green); }
+  .strip .lbl { color: var(--amber); }
+
+  .rrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 12.5px; flex-wrap: wrap; }
+  .rrow .nm b { font-weight: 700; }
+  .rrow .nm span { color: var(--muted); }
+  .rrow .nm a { color: var(--link); font-size: 11.5px; }
+  .chip { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--line-strong); color: var(--muted); white-space: nowrap; background: var(--surface); }
+  .chip.blue { color: var(--blue); border-color: var(--blue); background: var(--blue-bg); }
+  .chip.green { color: var(--green); border-color: var(--green); background: var(--green-bg); }
+  .chip.amber { color: var(--amber); border-color: var(--amber); background: var(--amber-bg); }
+  .chip.red { color: var(--red); border-color: var(--red); background: var(--red-bg); }
+  .chip.ghost { border-style: dashed; }
+  .foot { font-size: 11.5px; color: var(--muted); margin: 8px 0 0; }
+  .btn { display: inline-block; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 6px; border: 1px solid var(--line-strong); background: var(--surface); white-space: nowrap; }
+  .btn.pri { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .btn.sm { font-size: 11px; padding: 2px 8px; }
+  .callout { margin-top: 10px; font-size: 12.5px; padding: 8px 10px; border-radius: 6px; border: 1px dashed var(--red); background: var(--red-bg); color: var(--red); }
+  .win { margin-top: 10px; font-size: 12.5px; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--green); background: var(--green-bg); color: var(--green); }
+  .callout b, .win b { font-weight: 700; }
+
+  /* after: the worklist */
+  .grp { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 10px; background: var(--subtle); border: 1px solid var(--line); border-radius: 8px; margin: 10px 0 2px; }
+  .grp .t { font-weight: 700; font-size: 13px; }
+  .grp .t span { font-weight: 400; color: var(--muted); }
+  .grp .acts { display: flex; gap: 6px; flex-wrap: wrap; }
+  .wrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; padding: 8px 2px; border-bottom: 1px solid var(--line); font-size: 12.5px; }
+  .wrow .nm b { font-weight: 700; }
+  .wrow .meta { display: block; font-size: 11.5px; color: var(--muted); }
+  .wrow .meta .late { color: var(--red); font-weight: 700; }
+  .steps { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+  .st { font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 999px; border: 1px solid var(--line-strong); color: var(--muted); white-space: nowrap; }
+  .st.done { background: var(--green-bg); color: var(--green); border-color: var(--green); }
+  .st.next { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .wrow.late { background: linear-gradient(90deg, var(--red-bg), transparent 60%); }
+
+  /* the mark form, miniature */
+  .path { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 11.5px; color: var(--muted); margin-bottom: 8px; }
+  .path .hop { border: 1px solid var(--line-strong); border-radius: 5px; padding: 1px 7px; background: var(--subtle); color: var(--ink); font-weight: 600; }
+  .form { border: 1px solid var(--line-strong); border-radius: 8px; padding: 10px; background: var(--subtle); }
+  .form .ttl { font-weight: 700; font-size: 13px; margin-bottom: 6px; }
+  .radio { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 7px; }
+  .radio span { font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--muted); }
+  .radio span.on { background: var(--ink); color: #fff; border-color: var(--ink); font-weight: 700; }
+  .field { border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); padding: 5px 8px; font-size: 12px; color: var(--ink); min-height: 28px; }
+  .field.empty { color: var(--muted); }
+  .form .lab { font-size: 11px; color: var(--muted); margin: 6px 0 2px; }
+  .form .stampline { font-size: 11px; color: var(--muted); margin-top: 8px; display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .x7 { font-size: 22px; font-weight: 800; color: var(--red); text-align: center; margin-top: 8px; }
+  .x7 small { display: block; font-size: 11.5px; font-weight: 600; color: var(--muted); }
+
+  /* call sheet */
+  .sheet { border: 1px solid var(--line-strong); border-radius: 8px; overflow: hidden; }
+  .sheet .head { padding: 8px 10px; background: var(--ink); color: #fff; font-size: 12.5px; font-weight: 700; display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .sheet .head span { font-weight: 400; opacity: .8; }
+  .crow { padding: 8px 10px; border-bottom: 1px solid var(--line); font-size: 12px; }
+  .crow .top { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .crow .top b { font-size: 12.5px; }
+  .crow .last { font-size: 11.5px; color: var(--muted); margin: 1px 0 5px; }
+  .crow .entry { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 6px; align-items: center; }
+  .temps { display: flex; gap: 3px; }
+  .temps span { font-size: 10.5px; font-weight: 700; padding: 2px 6px; border-radius: 5px; border: 1px solid var(--line-strong); color: var(--muted); background: var(--surface); }
+  .temps .hot.on { background: var(--green-bg); color: var(--green); border-color: var(--green); }
+  .temps .warm.on { background: var(--amber-bg); color: var(--amber); border-color: var(--amber); }
+  .temps .cool.on { background: var(--blue-bg); color: var(--blue); border-color: var(--blue); }
+  .temps .cold.on { background: var(--red-bg); color: var(--red); border-color: var(--red); }
+  .sheet .bot { padding: 8px 10px; background: var(--subtle); display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 11.5px; color: var(--muted); }
+  .sheet .bot b { color: var(--ink); }
+  @media (max-width: 520px) { .crow .entry { grid-template-columns: 1fr; } }
+
+  /* bills checklist */
+  .bill { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 6px; align-items: center; font-size: 12px; padding: 4px 0; border-bottom: 1px solid var(--line); }
+  .bill .bx { width: 14px; height: 14px; border-radius: 3px; border: 1.5px solid var(--green); background: var(--green); color: #fff; font-size: 10px; line-height: 12px; text-align: center; }
+  .bill .amt { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .sendbox { margin-top: 10px; border: 1px solid var(--line-strong); border-radius: 8px; padding: 9px 10px; background: var(--subtle); font-size: 12px; }
+  .sendbox .ln { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 5px; }
+  .sendbox .k { color: var(--muted); min-width: 84px; }
+
+  table.plain { width: 100%; border-collapse: collapse; font-size: 12.5px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; }
+  table.plain th, table.plain td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.plain th { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--subtle); }
+  table.plain td b { font-weight: 700; }
+  .scroll { overflow-x: auto; }
+  .tag { font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 999px; white-space: nowrap; }
+  .tag.s { background: var(--green-bg); color: var(--green); }
+  .tag.m { background: var(--amber-bg); color: var(--amber); }
+  .tag.l { background: var(--red-bg); color: var(--red); }
+  .ask { background: var(--surface); border: 1px solid var(--amber); border-left: 4px solid var(--amber); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; font-size: 13px; }
+  .ask b { display: block; }
+  .ask span { color: var(--muted); font-size: 12.5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div>
+    <p class="eyebrow">Jobs → Stages → GC Review · proposal</p>
+    <h1>GC Review, built for the person who actually drives it</h1>
+  </div>
+  <div class="stamp">mock-up · 2026-09-27<br>nothing here is built<br>names from the app · amounts illustrative</div>
+</header>
+
+<h2>What we learned</h2>
+<p class="lede">The weekly round was designed around the <b>account man</b> opening the app, emailing his GCs from his own inbox and marking each one. In practice <b>only the assistant works this screen</b>. When the knowledge is his, she phones him and types the answer in. So the screen hands work to someone who never picks it up.</p>
+<div class="who">
+  <div class="card"><h3>The assistant — at the keyboard</h3><p>Checks the bills, sends the statements, records what was said. <b>She is the operator for every GC.</b></p></div>
+  <div class="card"><h3>The account man — on the phone</h3><p>Knows the GC: when they will pay, what they are disputing. <b>He is the source, not a user.</b></p></div>
+  <div class="card"><h3>What the record needs</h3><p>Both names. <b>Whose word it is</b> and <b>who entered it</b> — so his read is not filed as hers.</p></div>
+</div>
+
+<h2><span class="num">1</span> The top of GC Review</h2>
+<p class="lede">Today the round is a list of hand-offs. Proposed: one worklist, one row per GC, three steps on each row — <b>Checked · Sent · Word</b> — grouped by who she has to ask.</p>
+<div class="two">
+  <div class="panel">
+    <div class="cap"><span>Before · today</span><span>signed in: Taunya</span></div>
+    <div class="in">
+      <div class="strip"><span class="lbl">This week · due Wednesday</span><span class="bar"><i style="width:93%"></i></span><span>13 of 14 certified · 0 sent</span></div>
+      <p class="sec">Weekly statement rounds</p>
+      <p class="sub">GCs over $10,000 · a personal email from the assigned sender, released once certified</p>
+      <div class="rrow"><span class="nm"><b>Structura, Inc. – Austin</b> <span>· $98,000 · Malachi</span> <a>assign</a></span><span class="chip blue">in Malachi’s round</span></div>
+      <div class="rrow"><span class="nm"><b>RMC- Dudley Mason</b> <span>· $81,500 · Malachi</span> <a>assign</a></span><span class="chip blue">in Malachi’s round</span></div>
+      <div class="rrow"><span class="nm"><b>Southern Post Construction</b> <span>· $40,000 · Malachi</span> <a>assign</a></span><span class="chip blue">in Malachi’s round</span></div>
+      <div class="rrow"><span class="nm"><b>TF Harper</b> <span>· $30,000 · Malachi</span> <a>assign</a></span><span class="chip blue">in Malachi’s round</span></div>
+      <div class="rrow"><span class="nm"><b>Knight Contracting</b> <span>· $26,000 · Malachi</span> <a>assign</a></span><span class="chip blue">in Malachi’s round</span></div>
+      <p class="foot">+ 2 more · ✉ <b>Email me my round…</b> · Set it up for another sender…</p>
+      <div class="callout"><b>She has no “Start round” button.</b> It only appears for GCs assigned to the person signed in, and these are all Malachi’s. The Pipeline card, the Dashboard row and the morning email go to him too.</div>
+      <div class="callout"><b>0 sent.</b> She certified 13. The next step waits on someone who does not open the app.</div>
+    </div>
+  </div>
+
+  <div class="panel after">
+    <div class="cap"><span>After · proposed</span><span>signed in: Taunya</span></div>
+    <div class="in">
+      <div class="strip"><span class="lbl">This week · due Wednesday</span><span class="bar"><i style="width:93%"></i></span><span>13 of 14 checked · 0 sent · 0 words in</span></div>
+      <div class="grp"><span class="t">Ask Malachi <span>· 7 GCs · $312,500</span></span><span class="acts"><span class="btn pri sm">📞 Call sheet</span><span class="btn sm">Send all 7</span></span></div>
+      <div class="wrow late"><span class="nm"><b>RMC- Dudley Mason</b><span class="meta">$81,500 · oldest 196d · <span class="late">promised Sep 20 — 7 days late</span></span></span><span class="steps"><span class="st done">✓ Checked</span><span class="st next">Send</span><span class="st">Word</span></span></div>
+      <div class="wrow"><span class="nm"><b>Structura, Inc. – Austin</b><span class="meta">$98,000 · oldest 41d · last word warm, Sep 18</span></span><span class="steps"><span class="st done">✓ Checked</span><span class="st next">Send</span><span class="st">Word</span></span></div>
+      <div class="wrow"><span class="nm"><b>Southern Post Construction</b><span class="meta">$40,000 · oldest 33d · no word yet</span></span><span class="steps"><span class="st done">✓ Checked</span><span class="st next">Send</span><span class="st">Word</span></span></div>
+      <div class="wrow"><span class="nm"><b>TF Harper</b><span class="meta">$30,000 · oldest 58d · last word cool, Sep 11</span></span><span class="steps"><span class="st next">Check</span><span class="st">Send</span><span class="st">Word</span></span></div>
+      <p class="foot">+ 3 more of Malachi’s</p>
+      <div class="grp"><span class="t">Office accounts <span>· 2 GCs · $31,000</span></span><span class="acts"><span class="btn sm">Send both</span></span></div>
+      <div class="wrow"><span class="nm"><b>Loberg Contracting</b><span class="meta">$22,000 · oldest 19d · she talks to their AP herself</span></span><span class="steps"><span class="st done">✓ Checked</span><span class="st done">✓ Sent</span><span class="st done">✓ Word</span></span></div>
+      <div class="win"><b>Every GC is hers to work.</b> The row says what is next. The ones where a promise was broken float to the top.</div>
+    </div>
+  </div>
+</div>
+
+<h2><span class="num">2</span> Writing down what the account man said</h2>
+<p class="lede">This is the step she does by phone. Today it is one menu and one form per GC, and the app files his read under her name. Proposed: a call sheet — one call, one screen, one save.</p>
+<div class="two">
+  <div class="panel">
+    <div class="cap"><span>Before · today</span><span>per GC</span></div>
+    <div class="in">
+      <div class="path">scroll to the GC <span>→</span> <span class="hop">Share ▾</span> <span>→</span> <span class="hop">Mark sent / spoke with them…</span> <span>→</span> the form</div>
+      <div class="form">
+        <div class="ttl">RMC- Dudley Mason</div>
+        <div class="radio"><span>Statement sent</span><span class="on">Spoke with them · no statement</span></div>
+        <div class="radio"><span>Text</span><span class="on">Call</span><span>In person</span><span>Other</span></div>
+        <div class="lab">What’s their temperature?</div>
+        <div class="radio"><span>Hot · pay date in hand</span><span class="on">Warm · fine, no date</span><span>Cool · dodging</span><span>Cold · disputing</span></div>
+        <div class="field">Warm — Malachi says their check run is the 10th.</div>
+        <div class="lab">They expect to pay by</div>
+        <div class="field">Oct 10, 2026</div>
+        <div class="stampline"><span>Stamps <b>Taunya</b> · Sep 27 · call</span><span class="btn pri sm">Save · spoke with them</span></div>
+      </div>
+      <div class="x7">× 7<small>once for each of Malachi’s GCs</small></div>
+      <div class="callout"><b>There is nowhere to say it was Malachi’s word.</b> The form asks how she reached the GC — but she reached Malachi. Every surface then reads “warm · Thu · Taunya”.</div>
+    </div>
+  </div>
+
+  <div class="panel after">
+    <div class="cap"><span>After · proposed</span><span>one call</span></div>
+    <div class="in">
+      <div class="sheet">
+        <div class="head">Call sheet — Malachi <span>7 GCs · $312,500 · fill a row as he answers</span></div>
+        <div class="crow">
+          <div class="top"><b>RMC- Dudley Mason</b><span>$81,500 · oldest 196d</span></div>
+          <div class="last">Last word Sep 18 · warm · “check run is the 20th” — <span style="color:var(--red);font-weight:700">date passed, not paid</span></div>
+          <div class="entry"><span class="temps"><span class="hot">Hot</span><span class="warm">Warm</span><span class="cool on">Cool</span><span class="cold">Cold</span></span><span class="field">Missed the 20th, now says the 10th. Wants 868 broken out.</span><span class="field">Oct 10</span></div>
+        </div>
+        <div class="crow">
+          <div class="top"><b>Structura, Inc. – Austin</b><span>$98,000 · oldest 41d</span></div>
+          <div class="last">Last word Sep 18 · warm · “waiting on owner draw”</div>
+          <div class="entry"><span class="temps"><span class="hot on">Hot</span><span class="warm">Warm</span><span class="cool">Cool</span><span class="cold">Cold</span></span><span class="field">Draw funded Friday, check cut this week.</span><span class="field">Oct 2</span></div>
+        </div>
+        <div class="crow">
+          <div class="top"><b>Southern Post Construction</b><span>$40,000 · oldest 33d</span></div>
+          <div class="last">No word yet</div>
+          <div class="entry"><span class="temps"><span class="hot">Hot</span><span class="warm">Warm</span><span class="cool">Cool</span><span class="cold">Cold</span></span><span class="field empty">What did he say?</span><span class="field empty">pay by</span></div>
+        </div>
+        <div class="bot"><span>Whose word: <b>Malachi ▾</b> · heard by <b>phone ▾</b> · entered by <b>Taunya</b></span><span><span class="btn sm">🖨 Print sheet</span> <span class="btn pri sm">Save 2 answers</span></span></div>
+      </div>
+      <div class="win"><b>The record keeps both names.</b> “cool · Sat · Malachi — entered by Taunya”. His card, the temperature board and the send history show his read as his.</div>
+    </div>
+  </div>
+</div>
+
+<h2><span class="num">3</span> Checking the bills and sending the statement</h2>
+<p class="lede">Today these are two separate trips — the Certify window, then Share → Draft Message — and the GC’s reply lands in the inbox of whoever clicked Send. Proposed: the row opens in place, and she chooses where replies go.</p>
+<div class="two">
+  <div class="panel">
+    <div class="cap"><span>Before · today</span><span>two windows</span></div>
+    <div class="in">
+      <div class="path"><span class="hop">Certify</span> <span>→</span> tick each bill <span>→</span> <span class="hop">Certify</span> <span>→</span> close</div>
+      <div class="path"><span class="hop">Share ▾</span> <span>→</span> <span class="hop">Draft Message</span> <span>→</span> <span class="hop">Send statement</span></div>
+      <div class="sendbox">
+        <div class="ln"><span class="k">From</span><span>team@noreply.clicktooling.com</span></div>
+        <div class="ln"><span class="k">Replies go to</span><span><b>Taunya</b> — whoever clicked Send</span></div>
+        <div class="ln"><span class="k">Marked sent by</span><span><b>Taunya</b></span></div>
+      </div>
+      <div class="callout"><b>The GC replies to the assistant,</b> not to the man who knows the account. She forwards it or phones him again.</div>
+    </div>
+  </div>
+  <div class="panel after">
+    <div class="cap"><span>After · proposed</span><span>the row, opened</span></div>
+    <div class="in">
+      <p class="sec">RMC- Dudley Mason <span style="font-weight:400;color:var(--muted)">· 19 bills · $81,500</span></p>
+      <div class="bill"><span class="bx">✓</span><span>651 · Dudley Mason — 233 Palomino Trail · billed Sep 21</span><span class="amt">$8,780</span></div>
+      <div class="bill"><span class="bx">✓</span><span>186 · Dudley Mason — 574 Co Rd 660 · billed Aug 24</span><span class="amt">$6,200</span></div>
+      <div class="bill"><span class="bx">✓</span><span>790 · Dudley Mason-Terrell Rd · billed May 15</span><span class="amt">$1,712</span></div>
+      <p class="foot">+ 16 more, all ticked</p>
+      <div class="sendbox">
+        <div class="ln"><span class="k">To</span><span>their AP inbox, from the customer record</span></div>
+        <div class="ln"><span class="k">Replies go to</span><span class="radio" style="margin:0"><span class="on">Malachi, copy me</span><span>Me</span></span></div>
+        <div class="ln" style="margin:6px 0 0"><span class="btn pri">Check &amp; send statement</span><span class="btn">🖨 Print unpaid invoices</span><span class="btn">Copy</span></div>
+      </div>
+      <div class="win"><b>One stop per GC.</b> Checked and Sent turn green together. Today’s new <b>Print unpaid invoices</b> sits beside it for the GC who wants the bills themselves.</div>
+    </div>
+  </div>
+</div>
+
+<h2><span class="num">4</span> What the record says afterwards</h2>
+<div class="scroll">
+<table class="plain">
+  <tr><th>Where</th><th>Before · today</th><th>After · proposed</th></tr>
+  <tr><td><b>GC header pill</b></td><td><span class="chip amber">warm · Thu · Taunya</span></td><td><span class="chip amber">warm · Thu · Malachi</span> <span style="color:var(--muted)">entered by Taunya</span></td></tr>
+  <tr><td><b>Account man’s tally</b></td><td><span class="chip">Malachi 0/7 sent</span> — reads as if he is behind</td><td><span class="chip green">Malachi’s GCs · 7 of 7 covered</span></td></tr>
+  <tr><td><b>His activity</b></td><td>Counts only marks he typed himself, so it shows none</td><td>Counts his word, whoever typed it</td></tr>
+  <tr><td><b>A broken promise</b></td><td>A green “pays by” chip that stays green after the date passes</td><td><span class="chip red">promised Sep 20 · 7 days late</span> and the GC moves to the top</td></tr>
+  <tr><td><b>Morning email</b></td><td>To Malachi: “you’re the account man… that’s yours to fix, not the office’s”</td><td>To the assistant: “Call Malachi about 7 GCs — $312,500”, with the call sheet behind the link</td></tr>
+</table>
+</div>
+
+<h2><span class="num">5</span> What goes away, what stays</h2>
+<div class="scroll">
+<table class="plain">
+  <tr><th>Piece</th><th>Fate</th><th>Why</th></tr>
+  <tr><td>Weekly statement rounds panel, “in Malachi’s round” chips</td><td><b>Replaced</b> by the worklist</td><td>They describe a hand-off that does not happen</td></tr>
+  <tr><td>Start round walk-through</td><td><b>Replaced</b> by the call sheet and Send all</td><td>It can only walk the signed-in person’s own GCs</td></tr>
+  <tr><td>“See a round as its sender sees it” card</td><td><b>Retired</b></td><td>There is no second person’s view to look at</td></tr>
+  <tr><td>Email me my round… (one per sender)</td><td><b>Becomes</b> one office email, grouped by account man</td><td>The reader is the operator</td></tr>
+  <tr><td>Certify window, Draft Message, Mark form</td><td><b>Kept</b>, opened from the row</td><td>The checks and the wording are already right</td></tr>
+  <tr><td>Temperature board, send history, scheduled sends</td><td><b>Kept</b>, showing whose word</td><td>Same data, truer names</td></tr>
+  <tr><td>“The app never emails a GC on its own”</td><td><b>Kept</b></td><td>A person still presses Send</td></tr>
+</table>
+</div>
+
+<h2><span class="num">6</span> The order to build it</h2>
+<div class="scroll">
+<table class="plain">
+  <tr><th>#</th><th>Ships</th><th>Size</th><th>Touches</th></tr>
+  <tr><td>1</td><td><b>The worklist</b> in place of the rounds panel — every GC over the line, three steps, grouped by account man; each step opens the window that exists today</td><td><span class="tag s">S–M</span></td><td>Screen only. No database change.</td></tr>
+  <tr><td>2</td><td><b>Whose word</b> — the mark keeps the source beside who entered it; every pill, tally and email reads it</td><td><span class="tag m">M</span></td><td>One additive migration, the mark form, six displays, the round email</td></tr>
+  <tr><td>3</td><td><b>The call sheet</b> — inline answers for one account man’s GCs, one save, printable</td><td><span class="tag m">M</span></td><td>Screen, plus a batched save</td></tr>
+  <tr><td>4</td><td><b>Check &amp; send</b> from the row, with “Replies go to”</td><td><span class="tag s">S–M</span></td><td>Draft Message, the send function</td></tr>
+  <tr><td>5</td><td><b>Broken promises</b> — a passed pay-by date with money still open turns red and sorts first</td><td><span class="tag s">S</span></td><td>One tested rule, the worklist, the header pill</td></tr>
+  <tr><td>6</td><td><b>Prompts re-aimed</b> — the Pipeline card, the Dashboard row and the morning email go to the office; the old per-sender pieces retire</td><td><span class="tag m">M</span></td><td>Two cards, one email, one database function, the help guide</td></tr>
+  <tr><td>7</td><td><b>Ask without a call</b> (optional) — text the account man a link; he taps answers on his phone, no sign-in; she approves them</td><td><span class="tag l">L</span></td><td>A new tokened page. Only if the call is a cost, not the point.</td></tr>
+</table>
+</div>
+
+<h2>Yours to decide</h2>
+<div class="ask"><b>1 · Where do a GC’s replies go?</b><span>Proposed: the account man, with the assistant copied.</span></div>
+<div class="ask"><b>2 · Who answers for Wednesday?</b><span>Proposed: the assistant for the round being done; the account man for the relationship and for his word being current.</span></div>
+<div class="ask"><b>3 · May she record “no change”?</b><span>Faster on a quiet week, but it is how a record goes stale. Proposed: allowed once, then a fresh sentence is required.</span></div>
+<div class="ask"><b>4 · Is the phone call a cost or the point?</b><span>If it is a cost, step 7 removes most of it. If the call is how you keep account men engaged, skip step 7.</span></div>
+
+</div>
+</body>
+</html>

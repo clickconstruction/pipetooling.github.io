@@ -227,19 +227,6 @@ export function mergeMarksIntoLastSent(lastSentByGcId: Record<string, string>, m
 }
 
 /**
- * One sender's round as their Start round walks it (v2.2792, the sender
- * card): ready first (largest amount first — the overlay's order), then held
- * (certify / sender gaps), then this week's sent and skipped marks. `sent` /
- * `assigned` feed the "0 of 2 sent" tally, assigned-only like senderProgress.
- */
-export function senderRoundQueue(items: readonly StatementRoundItem[], senderUserId: string): { queue: StatementRoundItem[]; sent: number; assigned: number } {
-  const mine = items.filter((it) => it.senderUserId === senderUserId)
-  const rank = (s: StatementRoundState) => (s === 'ready' ? 0 : s === 'needs_certify' ? 1 : s === 'needs_sender' ? 2 : s === 'sent' ? 3 : s === 'contacted' ? 4 : 5)
-  const queue = [...mine].sort((a, b) => rank(a.state) - rank(b.state) || b.amount - a.amount)
-  return { queue, sent: mine.filter((it) => it.state === 'sent').length, assigned: mine.length }
-}
-
-/**
  * The certifier's Pipeline card headline (B6 / J20-F7). `held.count` is a
  * count of GCs — one group each waiting on certification — never of rounds,
  * and the verb agrees with it: "1 GC statement waits on sign-off — $12,700",
