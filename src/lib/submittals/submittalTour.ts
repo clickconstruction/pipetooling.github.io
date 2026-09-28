@@ -15,7 +15,7 @@ export const SUBMITTAL_TOUR_STEPS: SpotlightTourStep[] = [
   {
     anchor: 'submittals-journey',
     title: 'Where this submittal is',
-    body: 'Eight stages, from the schedule to the GC’s approval and on to ordering. ✓ is done, blue is you, amber is waiting on someone else. The line under the pills is the next thing to do and the button that does it.',
+    body: 'Eight stages, from the schedule to the GC’s approval and on to ordering. ✓ is done, blue is you, amber is waiting on someone else. The line under the pills is the next thing to do and the button that does it. The page below runs in the same order: a done stage folds to one line, the one you are on is open.',
   },
   {
     anchor: 'submittals-source',
@@ -23,8 +23,13 @@ export const SUBMITTAL_TOUR_STEPS: SpotlightTourStep[] = [
     body: 'Every row starts from a tag on the fixture schedule and the house you picked for it on the Pricing compare. Do those two things on Pricing first; nothing here is retyped from a quote.',
   },
   {
+    anchor: 'submittals-plug-in',
+    title: 'No schedule yet? Type or paste it',
+    body: 'The tags off the plans’ fixture schedule, one per line — WC-1, L-1, DWH-1 — with the make and model when the schedule gives them. No robot and no trip to Pricing. It saves to the same schedule Pricing reads.',
+  },
+  {
     anchor: 'submittals-robot',
-    title: 'No schedule yet? Let the robot read it',
+    title: 'Or let the robot read it',
     body: 'On a bid with no schedule, the robot reads the tags off the plans. You confirm each tag before it counts; the confirmed tags join the schedule on Pricing.',
     missingBody: 'This offer shows only while the bid has no schedule. This bid already has one.',
   },
@@ -49,7 +54,7 @@ export const SUBMITTAL_TOUR_STEPS: SpotlightTourStep[] = [
   {
     anchor: 'submittals-rows',
     title: '3 · Fix a row with Edit',
-    body: 'Status, the reason an alternate or a design change owes, the lead time, and the cut-sheet pages. “say why” and “sheet needed” mark the rows still owing something.',
+    body: 'Status, the reason an alternate or a design change owes, the lead time, and the cut-sheet pages. “say why” and “sheet needed” mark the rows still owing something. On a draft the editor also takes the tag and the product, so a row with no pick behind it — or a whole submittal with no picks — is typed here; + Add a row by hand starts one.',
     missingBody: 'The rows appear with Rev 1.',
   },
   {
@@ -106,5 +111,25 @@ export function markSubmittalWalkthroughSeen(storage: Pick<Storage, 'setItem'> |
     storage?.setItem(SEEN_KEY, new Date().toISOString())
   } catch {
     // A private window or blocked storage: the offer simply shows again next time.
+  }
+}
+
+const OPEN_ALL_KEY = 'pt.submittals.road.openAll'
+
+/** The road's "Open every stage" switch, remembered per device (v2.4090). Storage may be unavailable; then it reads as off. */
+export function hasOpenEveryStage(storage: Pick<Storage, 'getItem'> | null = typeof localStorage === 'undefined' ? null : localStorage): boolean {
+  try {
+    return storage?.getItem(OPEN_ALL_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+export function rememberOpenEveryStage(on: boolean, storage: Pick<Storage, 'setItem' | 'removeItem'> | null = typeof localStorage === 'undefined' ? null : localStorage): void {
+  try {
+    if (on) storage?.setItem(OPEN_ALL_KEY, '1')
+    else storage?.removeItem(OPEN_ALL_KEY)
+  } catch {
+    // Blocked storage: the switch simply does not persist.
   }
 }
