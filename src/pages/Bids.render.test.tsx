@@ -20,7 +20,7 @@ import { ToastProvider } from '../contexts/ToastContext'
 import { ConfirmDialogProvider } from '../contexts/ConfirmDialogContext'
 import { ThemeProvider } from '../contexts/ThemeContext'
 
-const smoke = vi.hoisted(() => ({ role: 'dev' as string }))
+const smoke = vi.hoisted(() => ({ role: 'dev' as string, bids: [] as Array<Record<string, unknown>> }))
 
 vi.mock('../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../test/renderSmokeMocks')
@@ -57,6 +57,7 @@ vi.mock('../lib/supabase', async () => {
       superintendent_service_type_ids: null,
     }],
     service_types: () => [{ id: 'st-1', name: 'Plumbing', sequence_order: 1 }],
+    bids: () => smoke.bids,
   }
 
   return {
@@ -93,8 +94,9 @@ function installCssEscapeShim() {
   if (!g.CSS.escape) g.CSS.escape = (value: string) => value.replace(/[^a-zA-Z0-9_-]/g, (ch) => `\\${ch}`)
 }
 
-function renderBidsAt(url: string, role: string) {
+function renderBidsAt(url: string, role: string, bids: Array<Record<string, unknown>> = []) {
   smoke.role = role
+  smoke.bids = bids
   installDomShims()
   installCssEscapeShim()
   return render((<><Bids /><LocationProbe /></>) as ReactElement, {
@@ -195,5 +197,85 @@ describe('Bids page render smoke — a refused link', () => {
 
   it('an old Shadows link lands on the Robot Board', async () => {
     expect(await landOn('robot-shadows', 'estimator')).toBe('robot-board')
+  })
+})
+
+/** One unsent bid on the account, enough of a row for the board and the workflow tabs to draw. */
+const BID = {
+  id: 'bid-1',
+  bid_number: '482',
+  project_name: 'Pondhill Building 2',
+  address: '4114 Pond Hill Rd',
+  service_type_id: 'st-1',
+  outcome: null,
+  bid_date_sent: null,
+  bid_due_date: '2026-10-01',
+  bid_value: null,
+  customer_id: null,
+  gc_builder_id: null,
+  customers: null,
+  bids_gc_builders: null,
+  estimator_id: null,
+  account_manager_id: null,
+  created_by: 'someone-else',
+  estimator: null,
+  account_manager: null,
+  adopted_into_bid_id: null,
+  working_board_archived_at: null,
+  materials_model: 'rough',
+}
+
+const currentParam = (name: string) => new URLSearchParams((currentUrl() ?? '').split('?')[1] ?? '').get(name)
+
+describe('Bids page render smoke — a link to a bid', () => {
+  it('?tab=bid-board&bidId= rings the row and drops the bidId', async () => {
+    renderBidsAt('/bids?tab=bid-board&bidId=bid-1', 'estimator', [BID])
+    await waitFor(() => expect(document.getElementById('bid-board-row-bid-1')).toBeTruthy())
+    await waitFor(() => expect(currentParam('bidId')).toBeNull())
+    expect(currentTab()).toBe('bid-board')
+    expect(document.getElementById('bid-board-row-bid-1')!.getAttribute('data-deeplink-gen')).toBe('1')
+  })
+
+  it('a bid that is not on the account keeps its link while the page looks for it', async () => {
+    renderBidsAt('/bids?tab=bid-board&bidId=bid-404', 'estimator', [BID])
+    await waitFor(() => expect(document.getElementById('bid-board-row-bid-1')).toBeTruthy())
+    await settle()
+    expect(currentParam('bidId')).toBe('bid-404')
+    expect(document.getElementById('bid-board-row-bid-1')!.getAttribute('data-deeplink-gen')).toBeNull()
+  })
+
+  it('?tab=submission-followup&bidId= lands on By status and drops the bidId', async () => {
+    renderBidsAt('/bids?tab=submission-followup&bidId=bid-1', 'estimator', [BID])
+    await waitFor(() => expect(currentParam('bidId')).toBeNull())
+    expect(currentTab()).toBe('submission-followup')
+    expect(screen.getByText(followupLensCaption('submission-followup'))).toBeTruthy()
+  })
+
+  it('?tab=builder-review&bidId= on a bid with no customer says so and drops the bidId', async () => {
+    renderBidsAt('/bids?tab=builder-review&bidId=bid-1', 'estimator', [BID])
+    expect(await screen.findByText('This bid is not linked to a customer. Builder Review lists customers.')).toBeTruthy()
+    await waitFor(() => expect(currentParam('bidId')).toBeNull())
+    expect(currentTab()).toBe('builder-review')
+  })
+
+  it.each(['counts', 'takeoffs', 'labor', 'pricing', 'cover-letter', 'submittals', 'rfi', 'change-order', 'lien-release'])('?tab=%s&bidId= opens the tab on that bid and keeps the link', async (tab) => {
+    renderBidsAt(`/bids?tab=${tab}&bidId=bid-1`, 'estimator', [BID])
+    await waitFor(() => expect(stripButton('bid-board')).toBeTruthy())
+    await waitFor(() => expect(screen.getAllByText(/Pondhill Building 2/).length).toBeGreaterThan(0))
+    await settle()
+    expect(currentTab()).toBe(tab)
+    expect(currentParam('bidId')).toBe('bid-1')
+  })
+
+  it('a superintendent’s link to Pricing on a bid bounces to the board', async () => {
+    renderBidsAt('/bids?tab=pricing&bidId=bid-1', 'superintendent', [BID])
+    await waitFor(() => expect(currentTab()).toBe('bid-board'))
+    expect(await screen.findByText(/This page is for the office/)).toBeTruthy()
+  })
+
+  it('?openBidEdit=1&bidId= opens the bid’s window and drops the flag', async () => {
+    renderBidsAt('/bids?tab=bid-board&bidId=bid-1&openBidEdit=1', 'estimator', [BID])
+    await waitFor(() => expect(currentParam('openBidEdit')).toBeNull())
+    await waitFor(() => expect(screen.getAllByRole('dialog').length).toBeGreaterThan(0))
   })
 })
