@@ -79,3 +79,38 @@ describe('Other job charges — hide-until-summoned rows', () => {
     expect(screen.getAllByLabelText('Other charge description')).toHaveLength(1)
   })
 })
+
+describe('Where the money went — fuel as its own row (punch list #52)', () => {
+  it('draws ⛽ Fuel & gas as its own row, taken out of the card charges', () => {
+    renderWithProviders(
+      <JobFormPartsCostSection
+        editing={{ id: 'job-1' } as never}
+        materialsAccordionOpen={null}
+        toggleMaterialsAccordion={() => {}}
+        jobMaterialsSnapshotLoading={false}
+        supplyInvoiceTotal={0}
+        supplyInvoiceRpcFailed={false}
+        supplyInvoiceLines={[]}
+        mercuryCardTotal={160}
+        mercuryFetchFailed={false}
+        mercuryAllocLines={[]}
+        mercuryCardCostLines={[{ tagId: 'fuel', name: 'Fuel & gas', icon: '⛽', color: 'amber', usd: 60 }]}
+        tallyPartsTotal={0}
+        tallyFetchFailed={false}
+        tallyPartLines={[]}
+        billedMaterialsTotalDisplay="0.00"
+        materials={[]}
+        addMaterialRow={() => {}}
+        updateMaterialRow={() => {}}
+        removeMaterialRow={() => {}}
+        teamLabor={{ loading: false, error: false, row: null, showOpenLink: false }}
+        subLabor={{ loading: false, error: false, data: { count: 0, total: 0 }, effectiveHcp: '', showOpenLink: false }}
+      />,
+    )
+    const table = screen.getByTestId('job-money-table')
+    const rows = [...table.querySelectorAll('tbody tr')].map((tr) => tr.textContent ?? '')
+    expect(rows.find((t) => t.startsWith('⛽ Fuel & gas'))).toContain('60.00')
+    expect(rows.find((t) => t.startsWith('Other card charges'))).toContain('100.00')
+    expect(rows[rows.length - 1]).toContain('160.00')
+  })
+})

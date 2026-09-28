@@ -49,6 +49,13 @@ vi.mock('../../supabase/functions/_shared/mercuryRawDebitCard', () => ({ mercury
 // The one card rule's lookups (Internal Transfers, invoice links) have their own suite; here they are handed in.
 const cardExclusions = vi.fn()
 vi.mock('./jobs/loadCardChargeExclusions', () => ({ loadCardChargeExclusions: (ids: unknown) => cardExclusions(ids) }))
+// The cost-line split's reads (tags, accounting labels); the classifier has its own suite.
+const categoryTags = vi.fn()
+const labelIds = vi.fn()
+vi.mock('./banking/categoryTagsData', () => ({
+  loadCategoryTags: () => categoryTags(),
+  fetchLabelIdByTxId: (ids: unknown) => labelIds(ids),
+}))
 
 import {
   fetchJobMaterialsCostSnapshot,
@@ -87,6 +94,8 @@ beforeEach(() => {
   calls.length = 0
   route = (_k, name) => full[name] ?? []
   cardExclusions.mockReset().mockResolvedValue(EMPTY_CARD_CHARGE_EXCLUSIONS)
+  categoryTags.mockReset().mockResolvedValue({ tags: [], members: [] })
+  labelIds.mockReset().mockResolvedValue(new Map())
 })
 
 describe('fetchJobMaterialsCostSnapshot', () => {
@@ -138,6 +147,8 @@ describe('fetchJobMaterialsCostSnapshot', () => {
       mercuryAllocLines: [],
       mercuryFetchFailed: false,
       cardExclusions: EMPTY_CARD_CHARGE_EXCLUSIONS,
+      cardCostLines: [],
+      cardTagByTxId: new Map(),
       tallyPartLines: [],
       tallyFetchFailed: false,
     })
@@ -258,5 +269,49 @@ describe('the Job window’s card charges — Jobs → Job Summary’s rule', ()
     route = (_k, name) => (name === 'mercury_transaction_job_allocations' ? [] : (full[name] ?? []))
     await fetchJobMaterialsCostSnapshot('j1')
     expect(cardExclusions).toHaveBeenCalledWith([])
+  })
+})
+
+describe('the Job window’s fuel line — the snapshot splits the card charges by cost-line tag', () => {
+  const FUEL = { id: 'fuel', name: 'Fuel & gas', icon: '⛽', color: 'amber' as const, sort_order: 1, default_key: 'fuel', show_as_cost_line: true, hide_from_picker: false }
+
+  it('asks for the bank category with each charge, reads the labels of the job’s transactions, and splits the fuel out', async () => {
+    categoryTags.mockResolvedValue({ tags: [FUEL], members: [{ tag_id: 'fuel', bank_category: 'Fuel', label_id: null }] })
+    route = (_k, name) => {
+      if (name !== 'mercury_transaction_job_allocations') return full[name] ?? []
+      return [
+        { id: 'g1', amount: -60, note: null, mercury_transaction_id: 'tx-gas', mercury_transactions: { posted_at: '2026-09-02', counterparty_name: 'Shell', amount: -60, raw: null, mercury_category: 'Fuel' } },
+        { id: 'p1', amount: -100, note: null, mercury_transaction_id: 'tx-pipe', mercury_transactions: [{ posted_at: '2026-09-03', counterparty_name: 'Ferguson', amount: -100, raw: null, mercury_category: { name: 'Building Supplies' } }] },
+      ]
+    }
+    const snap = await fetchJobMaterialsCostSnapshot('j1')
+    expect(String(argsOf(call('mercury_transaction_job_allocations').steps, 'select')[0]![0])).toContain('mercury_category')
+    expect(labelIds).toHaveBeenCalledWith(['tx-gas', 'tx-pipe'])
+    expect(snap.cardCostLines).toEqual([{ tagId: 'fuel', name: 'Fuel & gas', icon: '⛽', color: 'amber', usd: 60 }])
+    expect(snap.cardTagByTxId?.get('tx-gas')?.id).toBe('fuel')
+    expect(snap.cardTagByTxId?.has('tx-pipe')).toBe(false)
+  })
+
+  it('a label beats the bank category', async () => {
+    categoryTags.mockResolvedValue({ tags: [FUEL], members: [{ tag_id: 'fuel', bank_category: null, label_id: 'label-fuel' }] })
+    labelIds.mockResolvedValue(new Map([['tx1', 'label-fuel']]))
+    const snap = await fetchJobMaterialsCostSnapshot('j1')
+    // tx1, the $45.25 purchase, is labelled fuel; the $15 of refunds on no tag leave $30.25 of card charges, and the line is clamped to it.
+    expect(snap.cardCostLines).toEqual([{ tagId: 'fuel', name: 'Fuel & gas', icon: '⛽', color: 'amber', usd: 30.25 }])
+  })
+
+  it('tags or labels it cannot read leave the card charges as one line', async () => {
+    categoryTags.mockRejectedValue(new Error('rls'))
+    const snap = await fetchJobMaterialsCostSnapshot('j1')
+    expect(snap.cardCostLines).toEqual([])
+    expect(snap.mercuryAllocLines).toHaveLength(3)
+    expect(snap.mercuryFetchFailed).toBe(false)
+  })
+
+  it('a job with no card charges asks for no tags', async () => {
+    route = (_k, name) => (name === 'mercury_transaction_job_allocations' ? [] : (full[name] ?? []))
+    await fetchJobMaterialsCostSnapshot('j1')
+    expect(categoryTags).not.toHaveBeenCalled()
+    expect(labelIds).not.toHaveBeenCalled()
   })
 })

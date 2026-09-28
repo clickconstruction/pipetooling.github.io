@@ -1104,6 +1104,8 @@ export default function JobFormModal({
     mercuryAllocLines,
     mercuryFetchFailed,
     mercuryCardExclusions,
+    mercuryCardCostLines,
+    mercuryCardTagByTxId,
     tallyPartLines,
     tallyFetchFailed,
     mercuryCardTotal,
@@ -3098,6 +3100,8 @@ export default function JobFormModal({
             mercuryFetchFailed={mercuryFetchFailed}
             mercuryAllocLines={mercuryAllocLines}
             mercuryCardExclusions={mercuryCardExclusions}
+            mercuryCardCostLines={mercuryCardCostLines}
+            mercuryCardTagByTxId={mercuryCardTagByTxId}
             tallyPartsTotal={tallyPartsTotal}
             tallyFetchFailed={tallyFetchFailed}
             tallyPartLines={tallyPartLines}

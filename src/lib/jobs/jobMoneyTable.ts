@@ -7,7 +7,8 @@
  */
 import type { MaterialsAccordionKey } from '../../components/jobs/useJobCostSnapshot'
 
-export type MoneyRowKey = 'supply' | 'team' | 'card' | 'sub' | 'tally' | 'other' | 'total'
+/** `tag:<id>` is a cost-line slice of the card charges (⛽ Fuel & gas, punch list #52). */
+export type MoneyRowKey = 'supply' | 'team' | 'card' | 'sub' | 'tally' | 'other' | 'total' | `tag:${string}`
 export type MoneyRow = {
   key: MoneyRowKey
   label: string
@@ -23,6 +24,8 @@ export type MoneyInputs = {
   supplyUsd: number; supplyCount: number; supplyFailed: boolean
   teamUsd: number; teamHours: number; teamPeople: number; teamLoading: boolean; teamFailed: boolean
   cardUsd: number; cardCount: number; cardFailed: boolean
+  /** Cost-line slices of `cardUsd` (already clamped to it) — each its own row, taken out of Card charges. */
+  cardCostLines?: ReadonlyArray<{ tagId: string; name: string; icon: string; usd: number }>
   subUsd: number; subCount: number; subLoading: boolean; subFailed: boolean
   tallyUsd: number; tallyCount: number; tallyFailed: boolean
   otherUsd: number; otherCount: number
@@ -32,10 +35,14 @@ const n = (v: number): number => (Number.isFinite(v) ? v : 0)
 const plural = (count: number, one: string, many = `${one}s`): string => `${count} ${count === 1 ? one : many}`
 
 export function buildMoneyRows(i: MoneyInputs): MoneyRow[] {
+  // The slices only when the card charges loaded: a failed read has no slices to draw.
+  const slices = i.cardFailed ? [] : (i.cardCostLines ?? []).filter((l) => n(l.usd) > 0)
+  const slicedUsd = slices.reduce((s, l) => s + n(l.usd), 0)
   const rows: MoneyRow[] = [
     { key: 'supply', label: 'Supply house invoices', sub: plural(i.supplyCount, 'line'), hours: null, usd: n(i.supplyUsd), sharePct: null, state: i.supplyFailed ? 'failed' : 'ok', accordion: 'supply' },
     { key: 'team', label: 'Team labor', sub: plural(i.teamPeople, 'person', 'people'), hours: n(i.teamHours), usd: n(i.teamUsd), sharePct: null, state: i.teamLoading ? 'loading' : i.teamFailed ? 'failed' : 'ok', accordion: null },
-    { key: 'card', label: 'Card charges', sub: plural(i.cardCount, 'charge'), hours: null, usd: n(i.cardUsd), sharePct: null, state: i.cardFailed ? 'failed' : 'ok', accordion: 'mercury' },
+    { key: 'card', label: slices.length > 0 ? 'Other card charges' : 'Card charges', sub: plural(i.cardCount, 'charge'), hours: null, usd: n(i.cardUsd) - slicedUsd, sharePct: null, state: i.cardFailed ? 'failed' : 'ok', accordion: 'mercury' },
+    ...slices.map((l): MoneyRow => ({ key: `tag:${l.tagId}`, label: `${l.icon} ${l.name}`, sub: 'on the card', hours: null, usd: n(l.usd), sharePct: null, state: 'ok', accordion: 'mercury' })),
     { key: 'sub', label: 'Sub labor', sub: plural(i.subCount, 'sheet'), hours: null, usd: n(i.subUsd), sharePct: null, state: i.subLoading ? 'loading' : i.subFailed ? 'failed' : 'ok', accordion: null },
     { key: 'tally', label: 'Parts from tally', sub: plural(i.tallyCount, 'part'), hours: null, usd: n(i.tallyUsd), sharePct: null, state: i.tallyFailed ? 'failed' : 'ok', accordion: 'tally' },
     { key: 'other', label: 'Other job charges', sub: i.otherCount > 0 ? plural(i.otherCount, 'line') : '+ Add other charge below', hours: null, usd: n(i.otherUsd), sharePct: null, state: 'ok', accordion: 'billed' },

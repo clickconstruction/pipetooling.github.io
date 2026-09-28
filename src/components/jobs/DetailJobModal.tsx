@@ -917,6 +917,7 @@ export default function DetailJobModal({
     return buildJobCostsSummaryCard({
       partsTotal: materialsSnapshotLoading ? null : partsTotal,
       partsFailed,
+      cardCostLines: snap?.cardCostLines,
       wageGated: showProfitSection
         ? {
             teamLabor: teamLaborRowState.row,
