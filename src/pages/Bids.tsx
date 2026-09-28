@@ -76,6 +76,8 @@ import { BidsRobotConsoleTab } from '../components/bids/BidsRobotConsoleTab'
 import { bidsTabOpenFor, canOpenBids, isBidWorkflowTab, isBidsTabKey, isFollowupLens, isRobotLens, resolveBidsTabRoute, type BidsTabKey } from '../lib/bids/bidsTabAccess'
 import { bidTradeToSwitchTo } from '../lib/bids/bidTradeSwitch'
 import { getSubmissionSectionKey } from '../lib/bids/submissionSections'
+import { followupLensCaption, followupLenses, followupNeedsReasonChipShows, robotLensBarShows, robotLenses } from '../lib/bids/bidsLenses'
+import { BidsLensBar } from '../components/bids/BidsLensBar'
 import { RobotEnvelopeModal } from '../components/bids/RobotEnvelopeModal'
 import { envelopeRefusal, envelopeRunFromShadow, isRevisionAfterReveal, robotReviewRevisionNote, type EnvelopeRun } from '../lib/bids/robotEnvelope'
 import { mirrorRunReviewable, type RobotMirrorRun } from '../lib/bids/robotMirror'
@@ -2870,6 +2872,29 @@ export default function Bids() {
       return next
     })
   }
+
+  /** The version bar above Counts, Takeoffs, Pricing and the Cover Letter; the last two also carry the pricing resolve panel. */
+  const renderBidVersionPicker = (bid: BidWithBuilder, options?: { withResolvePanel?: boolean }) => {
+    const gcName = bid.customers?.name ?? bid.bids_gc_builders?.name ?? null
+    return (
+      <BidVersionPicker
+        onGoToCoverLetter={() => selectBidsTab('cover-letter')}
+        bidId={bid.id}
+        bidVersions={bidVersions}
+        selectedBidVersionId={selectedBidVersionId}
+        currentPricingId={selectedPricingVersionId}
+        fallbackPricingSourceId={versionClonePricingSourceId}
+        isExactMaterials={bid.materials_model === 'exact'}
+        onSwitch={(versionId) => switchActiveVersion(bid.id, versionId)}
+        reloadVersions={() => Promise.all([loadBidVersions(bid.id), loadBidPricings(bid.id)]).then(() => {})}
+        pricingSourceNames={Object.fromEntries([...priceBookVersions, ...templatePriceBookVersions].map((v) => [v.id, v.name]))}
+        bidGcName={gcName}
+        bidDateSent={bid.bid_date_sent ?? null}
+        resolvePanel={options?.withResolvePanel ? pricingResolvePanel(pricingResolve, bid.id) : undefined}
+        onOpenMap={() => openPackageMap(bid, gcName)}
+      />
+    )
+  }
   const BIDS_WORKING_TAB_LABEL = 'Unsent/Working'
 
   const { inboxCount: workingInboxCount } = useWorkingBoardInboxCount(authUser?.id, workingBoardVisibleBids)
@@ -3445,126 +3470,12 @@ export default function Bids() {
           lenses). Each lens keeps its own visibility gate; the bar only shows when
           there's more than one lens. The Shadows lens folded into the Scoreboard
           (v2.3221); its URL key still lands there. */}
-      {isRobotLens(activeTab) &&
-        [robotBids.length > 0, auditGate.anyAudits, canWorkRobotAudits(myRole)].filter(Boolean).length > 1 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: '0 0 0.75rem', flexWrap: 'wrap' }}>
-          <div style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 8, overflow: 'hidden', fontSize: '0.875rem', background: 'var(--surface)', alignItems: 'center' }}>
-            <button
-              type="button"
-              onClick={() => selectBidsTab('robot-board')}
-              title="Our bids seen through the robots — the same sections as the Bid Board, with the robot's number and how far off it was once we sent."
-              style={{
-                padding: '0.45rem 1rem',
-                border: 'none',
-                cursor: 'pointer',
-                background: activeTab === 'robot-board' ? '#3b82f6' : 'transparent',
-                color: activeTab === 'robot-board' ? 'white' : 'var(--text-700)',
-                fontWeight: activeTab === 'robot-board' ? 700 : 400,
-              }}
-            >
-              {robotMirrorCount == null ? 'Robot Board' : `Robot Board · ${robotMirrorCount}`}
-            </button>
-            <button
-              type="button"
-              onClick={() => selectBidsTab('audits')}
-              title="Robot bids awaiting a human audit — quick links, the robot's questions, and your sectioned notes in one place."
-              style={{
-                padding: '0.45rem 1rem',
-                border: 'none',
-                cursor: 'pointer',
-                background: activeTab === 'audits' ? '#3b82f6' : 'transparent',
-                color: activeTab === 'audits' ? 'white' : 'var(--text-700)',
-                fontWeight: activeTab === 'audits' ? 700 : 400,
-              }}
-            >
-              {auditGate.pending > 0 ? `Audits · ${auditGate.pending}` : 'Audits'}
-            </button>
-            {canWorkRobotAudits(myRole) && (
-              <button
-                type="button"
-                onClick={() => selectBidsTab('robot-scoreboard')}
-                title="How close the robots are to our numbers, by job type — your part, every sealed run on a live bid, and the practice runs on past bids."
-                style={{
-                  padding: '0.45rem 1rem',
-                  border: 'none',
-                  cursor: 'pointer',
-                  background: activeTab === 'robot-scoreboard' ? '#3b82f6' : 'transparent',
-                  color: activeTab === 'robot-scoreboard' ? 'white' : 'var(--text-700)',
-                  fontWeight: activeTab === 'robot-scoreboard' ? 700 : 400,
-                }}
-              >
-                Scoreboard
-              </button>
-            )}
-            {/* v2.3222: the Shadows lens folded into the Robot Board mirror; the dev Queue keeps its
-                URL (?tab=robot-queue) and opens from the Console lens (v2.3224) with the other operator tools. */}
-            {myRole === 'dev' && activeTab === 'robot-queue' && (
-              <button
-                type="button"
-                onClick={() => selectBidsTab('robot-queue')}
-                title="Dev only — every robot-able bid and the backtest candidates. Opens from the Console lens."
-                style={{
-                  padding: '0.45rem 1rem',
-                  border: 'none',
-                  cursor: 'pointer',
-                  background: '#3b82f6',
-                  color: 'white',
-                  fontWeight: 700,
-                }}
-              >
-                Queue{' '}
-                <span
-                  style={{
-                    fontSize: '0.58rem',
-                    fontWeight: 800,
-                    letterSpacing: '0.05em',
-                    padding: '0 4px',
-                    borderRadius: 3,
-                    border: '1px solid rgba(255,255,255,0.6)',
-                    color: 'white',
-                    verticalAlign: '1px',
-                  }}
-                >
-                  DEV
-                </span>
-              </button>
-            )}
-            {/* Console (v2.3224, dev): the operator's desk — the Desktop setup command and kickoff, the
-                Claude Code handoff, the queue door, operator-lane questions, the run ledger. Estimators
-                never see this pill; keys and seats stay on Settings → Digital twins. */}
-            {myRole === 'dev' && (
-              <button
-                type="button"
-                onClick={() => selectBidsTab('robot-console')}
-                title="Dev only — run the robots: the Claude Desktop setup command and kickoff, the Claude Code handoff, which bids want a robot, the robots' operator questions, and the run ledger."
-                style={{
-                  padding: '0.45rem 1rem',
-                  border: 'none',
-                  cursor: 'pointer',
-                  background: activeTab === 'robot-console' ? '#3b82f6' : 'transparent',
-                  color: activeTab === 'robot-console' ? 'white' : 'var(--text-700)',
-                  fontWeight: activeTab === 'robot-console' ? 700 : 400,
-                }}
-              >
-                Console{' '}
-                <span
-                  style={{
-                    fontSize: '0.58rem',
-                    fontWeight: 800,
-                    letterSpacing: '0.05em',
-                    padding: '0 4px',
-                    borderRadius: 3,
-                    border: activeTab === 'robot-console' ? '1px solid rgba(255,255,255,0.6)' : '1px solid #ca8a04',
-                    color: activeTab === 'robot-console' ? 'white' : 'var(--text-yellow-800)',
-                    verticalAlign: '1px',
-                  }}
-                >
-                  DEV
-                </span>
-              </button>
-            )}
-          </div>
-        </div>
+      {isRobotLens(activeTab) && robotLensBarShows({ robotBidCount: robotBids.length, anyAudits: auditGate.anyAudits, role: myRole }) && (
+        <BidsLensBar
+          lenses={robotLenses({ role: myRole, activeTab, mirrorCount: robotMirrorCount, auditsPending: auditGate.pending })}
+          activeKey={activeTab}
+          onSelect={selectBidsTab}
+        />
       )}
 
       {/* Audits Tab — the robot feedback loop's human side (v2.2517). */}
@@ -3726,140 +3637,8 @@ export default function Bids() {
 
       {/* Builder Review Tab */}
       {isFollowupLens(activeTab) && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: '0 0 0.75rem', flexWrap: 'wrap' }}>
-          <div style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 8, overflow: 'hidden', fontSize: '0.875rem', background: 'var(--surface)', alignItems: 'center' }}>
-            {myRole !== 'superintendent' && (
-              <button
-                type="button"
-                onClick={() => selectBidsTab('call-queue')}
-                style={{
-                  padding: '0.45rem 1rem',
-                  border: 'none',
-                  cursor: 'pointer',
-                  background: activeTab === 'call-queue' ? '#3b82f6' : 'transparent',
-                  color: activeTab === 'call-queue' ? 'white' : 'var(--text-700)',
-                  fontWeight: activeTab === 'call-queue' ? 700 : 400,
-                }}
-              >
-                Call queue{' '}
-                <span
-                  style={{
-                    fontSize: '0.62rem',
-                    fontWeight: 700,
-                    padding: '0.06rem 0.35rem',
-                    borderRadius: 999,
-                    background: activeTab === 'call-queue' ? 'rgba(255,255,255,0.25)' : 'var(--bg-emerald-tint)',
-                    color: activeTab === 'call-queue' ? 'white' : 'var(--text-emerald-800)',
-                    verticalAlign: '1px',
-                  }}
-                >
-                  new
-                </span>
-              </button>
-            )}
-            {myRole !== 'superintendent' && (
-              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', padding: '0 0.35rem 0 0.6rem', borderLeft: '1px solid var(--border)' }}>Old:</span>
-            )}
-            <button
-              type="button"
-              onClick={() => selectBidsTab('builder-review')}
-              style={{
-                padding: '0.45rem 1rem',
-                border: 'none',
-                cursor: 'pointer',
-                background: activeTab === 'builder-review' ? '#3b82f6' : 'transparent',
-                color: activeTab === 'builder-review' ? 'white' : 'var(--text-700)',
-                fontWeight: activeTab === 'builder-review' ? 700 : 400,
-              }}
-            >
-              By builder
-            </button>
-            {myRole !== 'superintendent' && (
-              <button
-                type="button"
-                onClick={() => selectBidsTab('submission-followup')}
-                style={{
-                  padding: '0.45rem 1rem',
-                  border: 'none',
-                  cursor: 'pointer',
-                  background: activeTab === 'submission-followup' ? '#3b82f6' : 'transparent',
-                  color: activeTab === 'submission-followup' ? 'white' : 'var(--text-700)',
-                  fontWeight: activeTab === 'submission-followup' ? 700 : 400,
-                }}
-              >
-                By status
-              </button>
-            )}
-            {myRole !== 'superintendent' && (
-              <button
-                type="button"
-                onClick={() => selectBidsTab('why-we-lost')}
-                style={{
-                  padding: '0.45rem 1rem',
-                  border: 'none',
-                  cursor: 'pointer',
-                  background: activeTab === 'why-we-lost' ? '#3b82f6' : 'transparent',
-                  color: activeTab === 'why-we-lost' ? 'white' : 'var(--text-700)',
-                  fontWeight: activeTab === 'why-we-lost' ? 700 : 400,
-                }}
-              >
-                Why we lost
-              </button>
-            )}
-            {myRole !== 'superintendent' && (
-              <button
-                type="button"
-                onClick={() => selectBidsTab('waiting-to-hear')}
-                style={{
-                  padding: '0.45rem 1rem',
-                  border: 'none',
-                  cursor: 'pointer',
-                  background: activeTab === 'waiting-to-hear' ? '#3b82f6' : 'transparent',
-                  color: activeTab === 'waiting-to-hear' ? 'white' : 'var(--text-700)',
-                  fontWeight: activeTab === 'waiting-to-hear' ? 700 : 400,
-                }}
-              >
-                Waiting to hear
-              </button>
-            )}
-            {myRole !== 'superintendent' && (
-              <button
-                type="button"
-                onClick={() => selectBidsTab('job-accounts')}
-                title="Every won job still missing a supply-house account, grouped by house — one email per house"
-                data-testid="followup-job-accounts-tab"
-                style={{
-                  padding: '0.45rem 1rem',
-                  border: 'none',
-                  cursor: 'pointer',
-                  background: activeTab === 'job-accounts' ? '#3b82f6' : 'transparent',
-                  color: activeTab === 'job-accounts' ? 'white' : 'var(--text-700)',
-                  fontWeight: activeTab === 'job-accounts' ? 700 : 400,
-                }}
-              >
-                Job accounts
-                {jobAccountsMissingCount > 0 ? (
-                  <>
-                    {' '}
-                    <span
-                      style={{
-                        fontSize: '0.62rem',
-                        fontWeight: 700,
-                        padding: '0.06rem 0.35rem',
-                        borderRadius: 999,
-                        background: activeTab === 'job-accounts' ? 'rgba(255,255,255,0.25)' : 'var(--bg-amber-tint)',
-                        color: activeTab === 'job-accounts' ? 'white' : 'var(--text-amber-800)',
-                        verticalAlign: '1px',
-                      }}
-                    >
-                      {jobAccountsMissingCount}
-                    </span>
-                  </>
-                ) : null}
-              </button>
-            )}
-          </div>
-          {myRole !== 'superintendent' && activeTab !== 'why-we-lost' && lostBidsNeedingReasonCount > 0 ? (
+        <BidsLensBar lenses={followupLenses({ role: myRole, jobAccountsMissing: jobAccountsMissingCount })} activeKey={activeTab} onSelect={selectBidsTab}>
+          {followupNeedsReasonChipShows({ role: myRole, activeTab, lostNeedingReason: lostBidsNeedingReasonCount }) ? (
             <button
               type="button"
               onClick={() => selectBidsTab('why-we-lost')}
@@ -3878,20 +3657,8 @@ export default function Bids() {
               {withScopeLabel(`${lostBidsNeedingReasonCount} need a reason`, sentScope)}
             </button>
           ) : null}
-          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-            {activeTab === 'call-queue'
-              ? 'One queue — who to call, and what each call collects. The old lenses stay next door.'
-              : activeTab === 'builder-review'
-                ? 'The call queue — every builder, oldest contact first, all trades.'
-                : activeTab === 'submission-followup'
-                  ? 'The status tables — outcome sections, followup sheets, scripts.'
-                  : activeTab === 'why-we-lost'
-                    ? 'Record and review why bids were lost — built for the Friday GC calls.'
-                    : activeTab === 'job-accounts'
-                      ? 'Every won job still missing a supply-house account — soonest first parts run first, one email per house.'
-                      : 'Chase recent sent bids for answers and bid tabs — newest first.'}
-          </span>
-        </div>
+          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{followupLensCaption(activeTab)}</span>
+        </BidsLensBar>
       )}
       {activeTab === 'call-queue' && (
         <BidsCallQueueTab
@@ -4033,23 +3800,7 @@ export default function Bids() {
       {/* Counts Tab */}
       {activeTab === 'counts' && (
         <>
-        {selectedBidForCounts && (
-          <BidVersionPicker
-            onGoToCoverLetter={() => selectBidsTab('cover-letter')}
-            bidId={selectedBidForCounts.id}
-            bidVersions={bidVersions}
-            selectedBidVersionId={selectedBidVersionId}
-            currentPricingId={selectedPricingVersionId}
-            fallbackPricingSourceId={versionClonePricingSourceId}
-            isExactMaterials={selectedBidForCounts.materials_model === 'exact'}
-            onSwitch={(versionId) => switchActiveVersion(selectedBidForCounts.id, versionId)}
-            reloadVersions={() => Promise.all([loadBidVersions(selectedBidForCounts.id), loadBidPricings(selectedBidForCounts.id)]).then(() => {})}
-            pricingSourceNames={Object.fromEntries([...priceBookVersions, ...templatePriceBookVersions].map((v) => [v.id, v.name]))}
-            bidGcName={selectedBidForCounts.customers?.name ?? selectedBidForCounts.bids_gc_builders?.name ?? null}
-            bidDateSent={selectedBidForCounts.bid_date_sent ?? null}
-            onOpenMap={() => openPackageMap(selectedBidForCounts, selectedBidForCounts.customers?.name ?? selectedBidForCounts.bids_gc_builders?.name ?? null)}
-          />
-        )}
+        {selectedBidForCounts && renderBidVersionPicker(selectedBidForCounts)}
         <BidsCountsTab
           onOpenBidFlowDoor={openBidFlowDoor}
           openImportRequest={countsImportRequest}
@@ -4083,23 +3834,7 @@ export default function Bids() {
       {/* Takeoffs Tab */}
       {activeTab === 'takeoffs' && (
         <>
-        {selectedBidForTakeoff && (
-          <BidVersionPicker
-            onGoToCoverLetter={() => selectBidsTab('cover-letter')}
-            bidId={selectedBidForTakeoff.id}
-            bidVersions={bidVersions}
-            selectedBidVersionId={selectedBidVersionId}
-            currentPricingId={selectedPricingVersionId}
-            fallbackPricingSourceId={versionClonePricingSourceId}
-            isExactMaterials={selectedBidForTakeoff.materials_model === 'exact'}
-            onSwitch={(versionId) => switchActiveVersion(selectedBidForTakeoff.id, versionId)}
-            reloadVersions={() => Promise.all([loadBidVersions(selectedBidForTakeoff.id), loadBidPricings(selectedBidForTakeoff.id)]).then(() => {})}
-            pricingSourceNames={Object.fromEntries([...priceBookVersions, ...templatePriceBookVersions].map((v) => [v.id, v.name]))}
-            bidGcName={selectedBidForTakeoff.customers?.name ?? selectedBidForTakeoff.bids_gc_builders?.name ?? null}
-            bidDateSent={selectedBidForTakeoff.bid_date_sent ?? null}
-            onOpenMap={() => openPackageMap(selectedBidForTakeoff, selectedBidForTakeoff.customers?.name ?? selectedBidForTakeoff.bids_gc_builders?.name ?? null)}
-          />
-        )}
+        {selectedBidForTakeoff && renderBidVersionPicker(selectedBidForTakeoff)}
         <BidsTakeoffTab
           onOpenBidFlowDoor={openBidFlowDoor}
           bidFlowDoorAllowed={bidFlowDoorAllowed}
@@ -4248,22 +3983,7 @@ export default function Bids() {
         {selectedBidForPricing && (
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
           <div style={{ flex: '1 1 auto', minWidth: 0 }}>
-          <BidVersionPicker
-            onGoToCoverLetter={() => selectBidsTab('cover-letter')}
-            bidId={selectedBidForPricing.id}
-            bidVersions={bidVersions}
-            selectedBidVersionId={selectedBidVersionId}
-            currentPricingId={selectedPricingVersionId}
-            fallbackPricingSourceId={versionClonePricingSourceId}
-            isExactMaterials={selectedBidForPricing.materials_model === 'exact'}
-            onSwitch={(versionId) => switchActiveVersion(selectedBidForPricing.id, versionId)}
-            reloadVersions={() => Promise.all([loadBidVersions(selectedBidForPricing.id), loadBidPricings(selectedBidForPricing.id)]).then(() => {})}
-            pricingSourceNames={Object.fromEntries([...priceBookVersions, ...templatePriceBookVersions].map((v) => [v.id, v.name]))}
-            bidGcName={selectedBidForPricing.customers?.name ?? selectedBidForPricing.bids_gc_builders?.name ?? null}
-            bidDateSent={selectedBidForPricing.bid_date_sent ?? null}
-            resolvePanel={pricingResolvePanel(pricingResolve, selectedBidForPricing.id)}
-            onOpenMap={() => openPackageMap(selectedBidForPricing, selectedBidForPricing.customers?.name ?? selectedBidForPricing.bids_gc_builders?.name ?? null)}
-          />
+          {renderBidVersionPicker(selectedBidForPricing, { withResolvePanel: true })}
           </div>
           {/* v2.2376: the Old/New pills moved beside the bid title inside BidsPricingTab (Wendi) — the old portal slot is gone. */}
           </div>
@@ -4347,24 +4067,7 @@ export default function Bids() {
       {/* Cover Letter Tab */}
       {activeTab === 'cover-letter' && (
         <>
-        {selectedBidForPricing && (
-          <BidVersionPicker
-            onGoToCoverLetter={() => selectBidsTab('cover-letter')}
-            bidId={selectedBidForPricing.id}
-            bidVersions={bidVersions}
-            selectedBidVersionId={selectedBidVersionId}
-            currentPricingId={selectedPricingVersionId}
-            fallbackPricingSourceId={versionClonePricingSourceId}
-            isExactMaterials={selectedBidForPricing.materials_model === 'exact'}
-            onSwitch={(versionId) => switchActiveVersion(selectedBidForPricing.id, versionId)}
-            reloadVersions={() => Promise.all([loadBidVersions(selectedBidForPricing.id), loadBidPricings(selectedBidForPricing.id)]).then(() => {})}
-            pricingSourceNames={Object.fromEntries([...priceBookVersions, ...templatePriceBookVersions].map((v) => [v.id, v.name]))}
-            bidGcName={selectedBidForPricing.customers?.name ?? selectedBidForPricing.bids_gc_builders?.name ?? null}
-            bidDateSent={selectedBidForPricing.bid_date_sent ?? null}
-            resolvePanel={pricingResolvePanel(pricingResolve, selectedBidForPricing.id)}
-            onOpenMap={() => openPackageMap(selectedBidForPricing, selectedBidForPricing.customers?.name ?? selectedBidForPricing.bids_gc_builders?.name ?? null)}
-          />
-        )}
+        {selectedBidForPricing && renderBidVersionPicker(selectedBidForPricing, { withResolvePanel: true })}
         <BidsCoverLetterTab
           onOpenBidFlowDoor={openBidFlowDoor}
           bidFlowDoorAllowed={bidFlowDoorAllowed}
