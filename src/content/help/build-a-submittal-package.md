@@ -2,13 +2,19 @@
 title: build a submittal package
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: submittal, submittals, cut sheet, cut sheets, fixture schedule, specified, submitted, alternate, superseded, equal, design change, missing, accessory, revision, rev, package, vendor pdf, in lieu of, GC approval, product data
+keywords: submittal, submittals, walkthrough, tour, where you are, journey, next step, cut sheet, cut sheets, fixture schedule, specified, submitted, alternate, superseded, equal, design change, missing, accessory, revision, rev, package, vendor pdf, in lieu of, GC approval, product data
 ---
 A submittal is the list of products you will install, one row per tag on the plan's fixture schedule, with the cut sheet for each — the GC approves it before anything is ordered. In PipeTooling the rows are not typed: they are **built from the picks** you already made on the Pricing compare, so the day you pick a house the submittal is half done.
 
 ## Where it lives
 
 Bids → **Submittals** (the tab after Cover Letter; office and estimator roles). Pick a bid the way you do on Pricing. The tab is a lens on the product decisions: the specified product from the schedule, the submitted product from the picked quote line, the status against the schedule, the reason and lead time you gave at the pick, and the cut-sheet pages.
+
+## Where you are
+
+The strip under the bid name, **Where this submittal is**, shows the seven stages as pills: schedule & picks → Build Rev 1 → reasons & sheets → package → share → their call → resubmit. A ✓ is done, blue is where you are, amber is waiting on the reviewer. The line under the pills names the next thing to do and carries the button that does it, so the answer to "what now?" is always the same place. Tap a pill and the page scrolls to that stage's controls and rings them.
+
+New to the page? Tap {{button:outline|Walk me through it ▶}} on the strip (or the {{icon:help}} beside the bid name). It walks every stage in order, ringing what is on the page and explaining what will appear later, so you see the whole road on a fresh bid. The first time a device opens Submittals the strip offers it in a line; **Not now** puts it away for good on that device.
 
 ## Before you build: two things on Pricing
 

@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
-import { buildGcChecksReport, checkAppliedSentence, checkHeadline, checkMoveWords, findChecks, formatYmdShort, type GcCheck } from '../../lib/jobs/gcChecksApplied'
+import { buildGcChecksReport, checkAppliedSentence, checkHeadline, checkMoveWords, findChecks, formatYmdLong, formatYmdShort, type GcCheck } from '../../lib/jobs/gcChecksApplied'
 import { fetchGcChecksInputs, type GcChecksInputs } from '../../lib/jobs/gcChecksAppliedIo'
+import { addDaysYmd } from '../../lib/emailSchedule/emailScheduleWeek'
+import { todayYmdChicago } from '../../lib/formatJobDetailModalDateYmd'
+import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
+import { buildGcChecksAppliedCsv, buildGcChecksAppliedReportHtml, gcChecksCsvFileName } from '../../lib/jobsDocuments/gcChecksAppliedReport'
 
 type Props = {
   gcId: string
@@ -11,17 +15,28 @@ type Props = {
 
 /** How many of the newest checks show before anything is typed. */
 const NEWEST_SHOWN = 5
+/** The sheet's default period: the last twelve months, since a bookkeeper reconciles a year at a time. */
+const SHEET_DAYS = 365
+
+const headerButtonStyle = { font: 'inherit', fontSize: '0.75rem', fontWeight: 600, padding: '0.25rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer' } as const
 
 /**
  * Find a check (v2.4046, "Where the checks went" PR 3): the GC is on the
  * phone — "what did you put #48211 against?" Type the number, the amount or
  * the day; the answer is the check's current home, one line per job, then
  * the moves that got it there. Before anything is typed, the newest checks.
+ * The sheet (v2.4050) prints or downloads the same facts for the period —
+ * every payment, where it sits now, what moved, what is not yet on a bill,
+ * and where each job stands.
  */
 export default function GcFindCheckModal({ gcId, gcName, onClose }: Props) {
   const [inputs, setInputs] = useState<GcChecksInputs | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
+  const [everything, setEverything] = useState(false)
+  const [note, setNote] = useState<string | null>(null)
+  const todayYmd = useMemo(() => todayYmdChicago(), [])
+  const sinceYmd = everything ? null : addDaysYmd(todayYmd, -SHEET_DAYS)
 
   useEffect(() => {
     let cancelled = false
@@ -39,7 +54,27 @@ export default function GcFindCheckModal({ gcId, gcName, onClose }: Props) {
     }
   }, [gcId])
 
+  // The search reads every payment on record; the sheet reads the period.
   const report = useMemo(() => (inputs ? buildGcChecksReport({ gcId, ...inputs }) : null), [gcId, inputs])
+  const sheet = useMemo(() => (inputs ? buildGcChecksReport({ gcId, ...inputs, sinceYmd }) : null), [gcId, inputs, sinceYmd])
+
+  function printSheet() {
+    if (!sheet) return
+    const ok = openHtmlPrintWindow(buildGcChecksAppliedReportHtml(gcName, sheet, { asOfYmd: todayYmd }))
+    setNote(ok ? null : 'The browser blocked the print window — allow pop-ups for this site and try again.')
+  }
+
+  function downloadCsv() {
+    if (!sheet) return
+    const blob = new Blob([`\uFEFF${buildGcChecksAppliedCsv(sheet)}`], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = gcChecksCsvFileName(gcName, todayYmd)
+    a.click()
+    URL.revokeObjectURL(url)
+    setNote(null)
+  }
   const trimmed = query.trim()
   const results: GcCheck[] = useMemo(() => {
     if (!report) return []
@@ -89,6 +124,35 @@ export default function GcFindCheckModal({ gcId, gcName, onClose }: Props) {
           <p style={{ margin: '0.35rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             The answer is where the check sits now, one line per job, then how it got there. An amount finds a check recorded without its number.
           </p>
+          {sheet ? (
+            <div style={{ marginTop: '0.55rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              <span style={{ flex: '1 1 14rem', minWidth: 0 }}>
+                The sheet: {sheet.checks.length} payment{sheet.checks.length === 1 ? '' : 's'}{sheet.sinceYmd ? ` since ${formatYmdLong(sheet.sinceYmd)}` : ' on record'} · ${formatCurrency(sheet.summary.received)}
+                {sheet.earlierCount > 0 ? (
+                  <>
+                    {' · '}
+                    <button type="button" onClick={() => setEverything(true)} style={{ font: 'inherit', fontSize: '0.75rem', fontWeight: 600, padding: 0, border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer' }}>
+                      show all {sheet.checks.length + sheet.earlierCount}
+                    </button>
+                  </>
+                ) : everything ? (
+                  <>
+                    {' · '}
+                    <button type="button" onClick={() => setEverything(false)} style={{ font: 'inherit', fontSize: '0.75rem', fontWeight: 600, padding: 0, border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer' }}>
+                      last 12 months
+                    </button>
+                  </>
+                ) : null}
+              </span>
+              <button type="button" onClick={printSheet} title="Print the sheet — every payment in the period, where it sits now, what moved, what is not yet on a bill, and where each job stands" style={headerButtonStyle}>
+                🖨 Print the sheet
+              </button>
+              <button type="button" onClick={downloadCsv} title="The same rows as a CSV, one per applied line, for the bookkeeper's spreadsheet" style={headerButtonStyle}>
+                CSV
+              </button>
+            </div>
+          ) : null}
+          {note ? <p style={{ margin: '0.35rem 0 0', fontSize: '0.75rem', color: 'var(--text-red-700)' }}>{note}</p> : null}
         </div>
 
         <div style={{ overflowY: 'auto', padding: '0.6rem 1.1rem 0.9rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>

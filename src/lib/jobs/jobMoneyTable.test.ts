@@ -19,4 +19,18 @@ describe('buildMoneyRows', () => {
     expect(rows[rows.length - 1]).toMatchObject({ usd: 42_599.49 + 32_814.43, sub: 'some sources did not load' })
     expect(buildMoneyRows({ ...base, supplyUsd: 0, teamUsd: 0, cardUsd: 0, subUsd: 0 }).every((r) => r.sharePct == null)).toBe(true)
   })
+  it('draws a cost line (⛽ Fuel & gas) as its own row, taken out of the card charges — the total does not move', () => {
+    const fuel = { tagId: 'fuel', name: 'Fuel & gas', icon: '⛽', usd: 1_200 }
+    const rows = buildMoneyRows({ ...base, cardCostLines: [fuel] })
+    expect(rows.find((r) => r.key === 'card')).toMatchObject({ label: 'Other card charges', usd: 3_776.72 - 1_200 })
+    expect(rows.find((r) => r.key === 'tag:fuel')).toMatchObject({ label: '⛽ Fuel & gas', usd: 1_200, accordion: 'mercury', state: 'ok' })
+    expect(rows[rows.length - 1]!.usd).toBeCloseTo(buildMoneyRows(base)[buildMoneyRows(base).length - 1]!.usd, 8)
+    expect(rows.find((r) => r.key === 'tag:fuel')!.sharePct).toBeGreaterThan(0)
+  })
+  it('without cost lines, or with the card charges failed, Card charges is one row as before', () => {
+    expect(buildMoneyRows({ ...base, cardCostLines: [] }).find((r) => r.key === 'card')).toMatchObject({ label: 'Card charges', usd: 3_776.72 })
+    const failed = buildMoneyRows({ ...base, cardFailed: true, cardCostLines: [{ tagId: 'fuel', name: 'Fuel & gas', icon: '⛽', usd: 100 }] })
+    expect(failed.some((r) => r.key.startsWith('tag:'))).toBe(false)
+    expect(buildMoneyRows({ ...base, cardCostLines: [{ tagId: 'fuel', name: 'Fuel & gas', icon: '⛽', usd: 0 }] }).some((r) => r.key.startsWith('tag:'))).toBe(false)
+  })
 })

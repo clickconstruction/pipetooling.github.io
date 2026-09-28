@@ -10,6 +10,7 @@ import {
 } from '../../lib/fetchJobMaterialsCostSnapshot'
 import { formatMercuryDebitCardIdCompact } from '../../lib/mercuryRawDebitCard'
 import { JobCardLineNoteCell } from './JobCardLineNoteCell'
+import { cardCostLinesSubtitle } from '../../lib/jobs/jobCardCostLines'
 import type { JobTeamLaborRowModel } from '../../lib/jobs/jobTeamLaborRow'
 import { roundHoursLabel } from '../../lib/jobs/jobTeamLaborRow'
 import { MaterialsCostAccordionRow } from './JobFormMaterialsCostAccordion'
@@ -202,6 +203,7 @@ export function JobDetailMaterialsCostSection({ loading, snapshot, canExpand, bi
         </MaterialsCostAccordionRow>
         <MaterialsCostAccordionRow
           title="Card charges"
+          subtitle={mercuryFetchFailed ? undefined : cardCostLinesSubtitle(snapshot?.cardCostLines)}
           totalDisplay={mercuryFetchFailed ? '—' : formatCurrency(mercuryCardTotal)}
           expanded={canExpand && openKey === 'mercury'}
           onToggle={() => toggle('mercury')}
@@ -247,7 +249,7 @@ export function JobDetailMaterialsCostSection({ loading, snapshot, canExpand, bi
                     </td>
                     <td style={{ padding: '0.5rem 0.625rem' }}>{ln.counterpartyName ?? '—'}</td>
                     <td style={{ padding: '0.5rem 0.625rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}><CardChargeCostAmount amount={ln.allocationAmount} /></td>
-                    <JobCardLineNoteCell line={ln} exclusions={mercuryCardExclusions} />
+                    <JobCardLineNoteCell line={ln} exclusions={mercuryCardExclusions} tagByTxId={snapshot?.cardTagByTxId} />
                   </tr>
                 ))}
               </tbody>

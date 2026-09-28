@@ -16,7 +16,8 @@ import { PROFIT_FIGURE_LABELS } from './profitLabels'
  */
 
 export type JobCostsSummaryLine = {
-  key: 'team' | 'sub' | 'parts' | 'margin'
+  /** `tag:<id>` is a cost-line slice of the card charges drawn under Parts (⛽ Fuel & gas, punch list #52). */
+  key: 'team' | 'sub' | 'parts' | 'margin' | `tag:${string}`
   label: string
   /** Formatted dollars, or '—' while loading / after a failed fetch. */
   value: string
@@ -43,6 +44,8 @@ export function buildJobCostsSummaryCard(args: {
   /** Parts total (supply + card + tally + other); null while loading; `failed` shows '—'. */
   partsTotal: number | null
   partsFailed: boolean
+  /** Cost-line slices of the card charges inside `partsTotal` — each its own line after Parts, taken out of it. */
+  cardCostLines?: ReadonlyArray<{ tagId: string; name: string; icon: string; usd: number }>
   /** Wage-gated block; `null` = the viewer may not see it → lines omitted. */
   wageGated: {
     teamLabor: JobTeamLaborRowModel | null
@@ -74,12 +77,20 @@ export function buildJobCostsSummaryCard(args: {
     })
   }
 
+  const slices = args.partsFailed || args.partsTotal === null ? [] : (args.cardCostLines ?? []).filter((l) => Number.isFinite(l.usd) && l.usd > 0)
+  const slicedUsd = slices.reduce((s, l) => s + l.usd, 0)
   lines.push({
     key: 'parts',
     label: 'Parts',
-    value: args.partsFailed ? '—' : args.partsTotal !== null ? usd(args.partsTotal) : '—',
-    caption: 'supply house · card · tally · other charges',
+    value: args.partsFailed ? '—' : args.partsTotal !== null ? usd(args.partsTotal - slicedUsd) : '—',
+    caption:
+      slices.length > 0
+        ? `supply house · card · tally · other charges — ${slices.map((l) => l.name.toLowerCase()).join(', ')} below`
+        : 'supply house · card · tally · other charges',
   })
+  for (const l of slices) {
+    lines.push({ key: `tag:${l.tagId}`, label: `${l.icon} ${l.name}`, value: usd(l.usd), caption: 'card charges on this job' })
+  }
 
   if (args.wageGated) {
     const g = args.wageGated

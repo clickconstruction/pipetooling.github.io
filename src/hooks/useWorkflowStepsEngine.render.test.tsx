@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * v2.4064: the Workflow page's steps engine (data half) as a hook. Pins the seam — the load
+ * v2.4077: the Workflow page's steps engine (data half) as a hook. Pins the seam — the load
  * (project and workflow together, then the steps, the viewer's subscriptions and the last 100
  * actions); a subcontractor's filtered read and its access error; the workflow found, created,
  * or adopted after a lost insert race, and one find-or-create per project at a time; line items

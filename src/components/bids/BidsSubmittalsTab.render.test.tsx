@@ -188,7 +188,9 @@ describe('BidsSubmittalsTab', () => {
     mount()
     expect(await screen.findByText('No submittal on this bid yet')).toBeTruthy()
     expect(screen.getByText(/3 tags on the schedule · 3 picked lines/)).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Build Rev 1 from the picks' }))
+    // v2.4067: the journey strip offers the same door above the card; either one builds.
+    expect(screen.getByTestId('journey-next').textContent).toBe('Next: 3 tags on the schedule and 3 picked lines are ready.Build Rev 1 from the picks')
+    fireEvent.click(screen.getAllByRole('button', { name: 'Build Rev 1 from the picks' })[1] as HTMLElement)
     await waitFor(() => expect(state.writes.filter((w) => w.op === 'insert')).toHaveLength(2))
     const rev = state.writes.find((w) => w.table === 'bid_submittals')!
     expect(rev.payload).toMatchObject({ bid_id: 'b398', rev_number: 1, status: 'draft', created_by: 'wendi' })
@@ -205,6 +207,57 @@ describe('BidsSubmittalsTab', () => {
     // The tab then shows the built revision.
     expect(await screen.findByTestId('revision-line')).toBeTruthy()
     expect(screen.getAllByTestId('submittal-row')).toHaveLength(4)
+  })
+
+  it('v2.4067 · the journey strip says where the submittal is, the first open offers the walkthrough, and the tour keeps a stop for every stage — centered when its controls are not on the page', async () => {
+    state.revisions = []
+    state.items = []
+    state.writes = []
+    window.localStorage.removeItem('pt.submittals.walkthrough.seen')
+    if (typeof window.matchMedia !== 'function') window.matchMedia = (() => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} })) as unknown as typeof window.matchMedia
+    Element.prototype.scrollIntoView = () => {}
+    mount()
+    expect(await screen.findByText('No submittal on this bid yet')).toBeTruthy()
+    const pills = screen.getAllByTestId('journey-stage')
+    expect(pills.map((p) => p.getAttribute('data-status'))).toEqual(['done', 'current', 'later', 'later', 'later', 'later', 'later'])
+    expect(screen.getByTestId('journey-offer')).toBeTruthy()
+
+    // A pill click rings the stage's controls (the empty card is stage 2's anchor on a fresh bid).
+    fireEvent.click(screen.getByRole('button', { name: '2 Build Rev 1 · you are here' }))
+    expect(document.querySelector('[data-tour="submittals-build"]')?.classList.contains('submittal-journey-flash')).toBe(true)
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Walk me through it ▶' })[0] as HTMLElement)
+    expect(screen.queryByTestId('journey-offer')).toBeNull()
+    expect(window.localStorage.getItem('pt.submittals.walkthrough.seen')).toBeTruthy()
+    expect(screen.getByRole('dialog', { name: 'Where this submittal is' })).toBeTruthy()
+    const titles: string[] = []
+    const missing: string[] = []
+    for (let i = 0; i < 12; i++) {
+      const dialog = screen.getByRole('dialog')
+      titles.push(dialog.getAttribute('aria-label') ?? '')
+      if (within(dialog).queryByTestId('tour-missing')) missing.push(dialog.getAttribute('aria-label') ?? '')
+      const next = within(dialog).queryByRole('button', { name: 'Next →' })
+      if (next) fireEvent.click(next)
+    }
+    expect(titles).toEqual([
+      'Where this submittal is',
+      '1 · Schedule and picks, on Pricing',
+      'No schedule yet? Let the robot read it',
+      '2 · Build Rev 1',
+      'Revisions',
+      'The tiles: where you stand',
+      '3 · Fix a row with Edit',
+      '3 · Cut sheets: drop the house’s PDF',
+      '4 · Build the package',
+      '5 · Share the review room',
+      '6 · Their calls come back here',
+      '7 · Resubmit only what came back',
+    ])
+    // On a fresh bid with a schedule, only the strip, the source line and the Build Rev 1 card are on the page.
+    expect(missing).toEqual(titles.filter((t) => !['Where this submittal is', '1 · Schedule and picks, on Pricing', '2 · Build Rev 1'].includes(t)))
+    expect(screen.getByRole('link', { name: 'Read the full guide: build a submittal package →' }).getAttribute('href')).toBe('/help?g=build-a-submittal-package')
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 
   it('draws the tiles and rows of a revision — say why, sheet needed, the status chips — and Edit saves the row', async () => {

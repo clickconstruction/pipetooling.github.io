@@ -25,6 +25,7 @@ import {
 } from '../../lib/bankPaymentsKindBadges'
 import { ArDepositRow } from './ar/ArDepositRow'
 import { ArHeaderMenu } from './ar/ArHeaderMenu'
+import { ModalFullScreenButton, useModalFullScreen } from '../ModalFullScreenToggle'
 import { ArDepositHeader } from './ar/ArDepositHeader'
 import { ArPayerMatches } from './ar/ArPayerMatches'
 import { ArBilledLineOption, ArBilledLineTrigger } from './ar/ArBilledLineOption'
@@ -1420,19 +1421,26 @@ export default function BankPaymentsModal({
     }
   }
 
+  /** v2.4065: the title-bar toggle — the window fills the screen above the app's bottom bar, and remembers the choice. */
+  const { fullScreen, toggle: toggleFullScreen, showToggle } = useModalFullScreen('accounts-receivable')
+
   if (!open) return null
 
   return (
     <div
       style={{
         position: 'fixed',
-        inset: 0,
+        top: 0,
+        left: 0,
+        right: 0,
+        // v2.4065: full screen, the window ends above the app's bottom bar (z 1000) instead of running under it.
+        bottom: fullScreen ? 'var(--app-bottom-chrome, 0px)' : 0,
         background: 'rgba(0,0,0,0.45)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 70,
-        padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
+        padding: fullScreen ? 0 : 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
         boxSizing: 'border-box',
       }}
       role="dialog"
@@ -1443,15 +1451,17 @@ export default function BankPaymentsModal({
         aria-busy={listBusy}
         style={{
           background: 'var(--surface)',
-          borderRadius: 8,
-          maxWidth: 980,
+          borderRadius: fullScreen ? 0 : 8,
+          maxWidth: fullScreen ? 'none' : 980,
           width: '100%',
-          maxHeight: 'min(90vh, 100%)',
+          height: fullScreen ? '100%' : undefined,
+          maxHeight: fullScreen ? '100%' : 'min(90vh, 100%)',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
-          boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
+          boxShadow: fullScreen ? 'none' : '0 10px 40px rgba(0,0,0,0.15)',
         }}
+        data-accounts-receivable-panel
       >
         <div
           style={{
@@ -1523,6 +1533,7 @@ export default function BankPaymentsModal({
                 : []),
             ]}
           />
+          {showToggle ? <ModalFullScreenButton fullScreen={fullScreen} onToggle={toggleFullScreen} /> : null}
           <button
             type="button"
             onClick={onClose}

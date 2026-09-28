@@ -26,6 +26,7 @@ import { buildJobSummaryCostBreakdownHtml } from '../lib/jobsDocuments/jobSummar
 import { buildSubLaborOutstandingByPerson, subLaborJobMatchesSearch } from '../lib/subLaborOutstanding'
 import { laborJobSubCost } from '../lib/jobs/subLaborCost'
 import { subLaborSheetsByJobId } from '../lib/jobs/subLaborByJobId'
+import { clampCostLinesToCounted } from '../lib/jobs/jobCardCostLines'
 import JobsCrewPnlTab from '../components/jobs/JobsCrewPnlTab'
 import JobsSubLaborTab, { SubLaborToolbar } from '../components/jobs/JobsSubLaborTab'
 import { JobsSubsWorkView } from '../components/jobs/JobsSubsWorkView'
@@ -1511,15 +1512,7 @@ export default function Jobs() {
         // Cost-line tag slices of the card charges that count (label's tag, else the
         // bank category's tag — the same classifier People → Review uses, v2.2725).
         // Each slice is clamped so the lines never exceed the counted card charges.
-        const tagCharges = mercuryTagChargesByJobId.get(job.id)
-        let countedLeft = Math.max(0, cardCharges - cardChargesLinkedToInvoices)
-        const costLines = costLineTags
-          .map((t) => {
-            const usd = Math.min(countedLeft, tagCharges?.get(t.id) ?? 0)
-            countedLeft -= usd
-            return { tagId: t.id, name: t.name, icon: t.icon, color: t.color, usd }
-          })
-          .filter((l) => l.usd > 0)
+        const costLines = clampCostLinesToCounted(costLineTags, mercuryTagChargesByJobId.get(job.id), cardCharges - cardChargesLinkedToInvoices)
         const totalBill = job.revenue != null ? Number(job.revenue) : 0
         const profit = totalBill - partsCost - laborCost
         const teamLaborRow = teamLaborData.find((r) => r.jobId === job.id)

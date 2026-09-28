@@ -17,6 +17,8 @@ import {
 } from '../../lib/fetchJobMaterialsCostSnapshot'
 import { MaterialsCostAccordionRow } from './JobFormMaterialsCostAccordion'
 import { JobCardLineNoteCell } from './JobCardLineNoteCell'
+import { cardCostLinesSubtitle, type JobCardCostLine } from '../../lib/jobs/jobCardCostLines'
+import type { CategoryTagRow } from '../../lib/banking/categoryTags'
 import type { CardChargeExclusions } from '../../lib/jobs/cardChargeAllocationFilter'
 import type { MaterialsAccordionKey } from './useJobCostSnapshot'
 import { JOB_FORM_SECTION_HEADER_STYLE } from '../../lib/jobFormSectionHeaderStyle'
@@ -34,6 +36,9 @@ type JobFormPartsCostSectionProps = {
   mercuryAllocLines: JobMercuryAllocLine[]
   /** The one card rule's lookups — the Note cell says why a line is not in the total. */
   mercuryCardExclusions?: CardChargeExclusions
+  /** Cost-line slices of the card charges (⛽ Fuel & gas) — their own rows in Where the money went. */
+  mercuryCardCostLines?: JobCardCostLine[]
+  mercuryCardTagByTxId?: ReadonlyMap<string, CategoryTagRow>
   tallyPartsTotal: number
   tallyFetchFailed: boolean
   tallyPartLines: JobTallyPartLine[]
@@ -72,6 +77,8 @@ export function JobFormPartsCostSection({
   mercuryFetchFailed,
   mercuryAllocLines,
   mercuryCardExclusions,
+  mercuryCardCostLines,
+  mercuryCardTagByTxId,
   tallyPartsTotal,
   tallyFetchFailed,
   tallyPartLines,
@@ -91,7 +98,7 @@ export function JobFormPartsCostSection({
     ? buildMoneyRows({
         supplyUsd: supplyInvoiceTotal, supplyCount: supplyInvoiceLines.length, supplyFailed: supplyInvoiceRpcFailed,
         teamUsd: teamLabor.row?.jobCost ?? 0, teamHours: teamLabor.row?.manHours ?? 0, teamPeople: teamLabor.row?.people.length ?? 0, teamLoading: teamLabor.loading, teamFailed: teamLabor.error,
-        cardUsd: mercuryCardTotal, cardCount: mercuryAllocLines.length, cardFailed: mercuryFetchFailed,
+        cardUsd: mercuryCardTotal, cardCount: mercuryAllocLines.length, cardFailed: mercuryFetchFailed, cardCostLines: mercuryCardCostLines,
         subUsd: subLabor.data?.total ?? 0, subCount: subLabor.data?.count ?? 0, subLoading: subLabor.loading, subFailed: subLabor.error,
         tallyUsd: tallyPartsTotal, tallyCount: tallyPartLines.length, tallyFailed: tallyFetchFailed,
         otherUsd: materials.reduce((s, m) => s + (Number(m.amount) || 0), 0), otherCount: materials.filter(materialRowHasUserContent).length,
@@ -190,6 +197,7 @@ export function JobFormPartsCostSection({
                   </MaterialsCostAccordionRow>
                   <MaterialsCostAccordionRow
                     title="Card charges"
+                    subtitle={mercuryFetchFailed ? undefined : cardCostLinesSubtitle(mercuryCardCostLines)}
                     totalDisplay={mercuryFetchFailed ? '—' : formatCurrency(mercuryCardTotal)}
                     expanded={materialsAccordionOpen === 'mercury'}
                     onToggle={() => toggleMaterialsAccordion('mercury')}
@@ -234,7 +242,7 @@ export function JobFormPartsCostSection({
                               </td>
                               <td style={{ padding: '0.5rem 0.625rem' }}>{ln.counterpartyName ?? '—'}</td>
                               <td style={{ padding: '0.5rem 0.625rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}><CardChargeCostAmount amount={ln.allocationAmount} /></td>
-                              <JobCardLineNoteCell line={ln} exclusions={mercuryCardExclusions} />
+                              <JobCardLineNoteCell line={ln} exclusions={mercuryCardExclusions} tagByTxId={mercuryCardTagByTxId} />
                             </tr>
                           ))}
                         </tbody>

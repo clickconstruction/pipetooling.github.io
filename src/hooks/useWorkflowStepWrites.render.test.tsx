@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * v2.4065: the Workflow page's window-free step writes as a hook, run against the real steps engine.
+ * v2.4078: the Workflow page's window-free step writes as a hook, run against the real steps engine.
  * Pins the seam — each lifecycle move writes and re-reads (the count is not pinned: a re-read's
  * new steps also set off the engine's own effects), and Approve hands the step and its
  * next one to onApproved only after that; a refused update stops before the re-read; the percent

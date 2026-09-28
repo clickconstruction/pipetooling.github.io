@@ -20,10 +20,10 @@ Every row in **Billed** and **Collections** carries a short runway under its mon
 
 - **Green** — room. *pay Oct 3 → lien Oct 15 · 12 d of room*. The money is due before the flag; waiting costs nothing.
 - **Red hatching** — the flag comes first. *lien Nov 16 → pay Nov 20 · file first*. Wait for the money and you lose the lien: file the affidavit, or get the payment date moved.
-- **No dot** — nobody has said when. *no pay date · lien Oct 15 · 17 d*, amber inside three weeks, red inside one.
+- **No dot** — nobody has said when. *no pay date · lien Oct 15* over *17 d to the flag*, amber inside three weeks, red inside one.
 - **No track, one red line** — *lien gone · window closed Sep 15*. The lien is gone; the money is still owed.
 
-The sentence is a door: click it and the job's **Lien window** opens on its timeline, where the last work month, the property kind and the statute are spelled out. Hover it for the same in a line.
+The sentence is two lines — the dates, then the verdict — and a door: click it and the job's **Lien window** opens on its timeline, where the last work month, the property kind and the statute are spelled out. Hover it for the same in a line.
 
 :::example A house with no property kind set
 The runway shows the **residential** date — a month earlier than commercial — and the hover says *Property kind is not set, so the earlier (residential) date is shown*. That is the safe reading: a house read as commercial is a lien lost a month late. Open the job's Edit tab → **Property record** and pick {{button:outline|Residential}} or {{button:outline|Non-residential}} to confirm it.
