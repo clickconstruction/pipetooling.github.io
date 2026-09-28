@@ -48,5 +48,5 @@ When the job is ready, open the signed record in the Estimates **Ledger** and pr
 
 ## Change orders, same link
 
-Once the job is moving, change orders join the room. Draft a CO from **Bids → Change Order** as usual, add its cost lines, and press {{button:gray|Publish to bid room}} instead of emailing a fresh link — the CO appears in the GC's room under the signed proposal, with its cost, reason, and schedule impact, and its own **Review & sign**. The room chip stays amber ({{chip:yellow|✍ signed · CO awaiting}}) until every document is answered, and each CO keeps its own signature record. Six weeks in, the GC is still using the one link they bookmarked on bid day.
+Once the job is moving, change orders join the room. Draft a CO from **Bids → Change Order** as usual, add its cost lines, and press {{button:gray|Publish to bid room}} instead of emailing a fresh link — the CO appears in the GC's room under the signed proposal, with its cost, reason, and schedule impact, and its own **Review & sign**: the GC types or draws a signature, ticks *I agree to sign electronically* and the change order's own agree box, then presses **Approve**. The room chip stays amber ({{chip:yellow|✍ signed · CO awaiting}}) until every document is answered, and each CO keeps its own signature record. Six weeks in, the GC is still using the one link they bookmarked on bid day.
 

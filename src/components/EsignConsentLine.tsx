@@ -13,6 +13,8 @@ export type EsignConsentLineProps = {
   text: EsignConsentText
   /** When set, renders the consent checkbox under the line (the surfaces with one agree box of their own pass nothing). */
   checkbox?: { checked: boolean; onChange: (checked: boolean) => void; disabled?: boolean }
+  /** Where the checkbox sits: centred (the signing modals) or at the start of the line (a left-aligned card). */
+  checkboxAlign?: 'center' | 'start'
   disabled?: boolean
   /** Extra text placed before the line, in the same paragraph (a surface's own disclosure sentence). */
   lead?: string | null
@@ -21,7 +23,7 @@ export type EsignConsentLineProps = {
 
 const MUTED: CSSProperties = { fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.45 }
 
-export function EsignConsentLine({ text, checkbox, disabled = false, lead, style }: EsignConsentLineProps) {
+export function EsignConsentLine({ text, checkbox, checkboxAlign = 'center', disabled = false, lead, style }: EsignConsentLineProps) {
   const [open, setOpen] = useState(false)
   const panelId = useId()
   return (
@@ -60,7 +62,7 @@ export function EsignConsentLine({ text, checkbox, disabled = false, lead, style
         </p>
       </div>
       {checkbox ? (
-        <div style={{ display: 'flex', justifyContent: 'center', width: '100%', marginTop: '0.6rem' }}>
+        <div style={{ display: 'flex', justifyContent: checkboxAlign === 'start' ? 'flex-start' : 'center', width: '100%', marginTop: '0.6rem' }}>
           <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', textAlign: 'left' }}>
             <input
               type="checkbox"
