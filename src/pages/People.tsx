@@ -83,7 +83,7 @@ import {
   type UsePeopleRosterDeps,
 } from '../hooks/usePeopleRoster'
 import { useUsersTabTags } from '../hooks/useUsersTabTags'
-import { isPayStubFullyPaid, type PayStubPaymentRow } from '../lib/payStubPayments'
+import { isPayStubFullyPaid } from '../lib/payStubPayments'
 import {
   employeeCreditDraftFromPayment,
   parsePayStubPaymentAmount,
@@ -91,8 +91,8 @@ import {
   payStubPaymentAmountDefault,
   payStubPaymentExcess,
   planPayStubPayment,
-  type PayStubLineMaps,
 } from '../lib/pay/recordPayStubPayment'
+import { usePayStubsData } from '../hooks/usePayStubsData'
 import { type PersonOffsetInitialDraft, PersonOffsetFormModal } from '../components/pay/PersonOffsetFormModal'
 import { DraftPayrollModal } from '../components/pay/DraftPayrollModal'
 import { HoursApprovedNudgeChip } from '../components/people/HoursApprovedNudgeChip'
@@ -102,7 +102,6 @@ import { HirePersonModal } from '../components/people/HirePersonModal'
 import { scanWeeksBefore, unreportedPayrollWeeks, type UnreportedWeekRow } from '../lib/unreportedPayrollWeeks'
 import { PayrollForecastModal, type PayrollForecastUnpaidRow } from '../components/pay/PayrollForecastModal'
 import { DraftPayrollPersonHoursBreakdownModal } from '../components/pay/DraftPayrollPersonHoursBreakdownModal'
-import type { PayStubAdditionalLineRow, PayStubDeductionRow } from '../lib/payStubDeductions'
 import {
   bucketSessionHoursByDay,
   shouldUseDualRate,
@@ -467,22 +466,20 @@ export default function People() {
     return localCalendarDayKey(start)
   })
   // Pay History tab state
-  type PayStubsLoadSnapshot = {
-    stubs: PayStubRow[]
-    paymentsByStubId: Record<string, PayStubPaymentRow[]>
-    deductionsByStubId: Record<string, PayStubDeductionRow[]>
-    additionalByStubId: Record<string, PayStubAdditionalLineRow[]>
-  }
-  const [payStubs, setPayStubs] = useState<PayStubRow[]>([])
-  const [payStubPaymentsByStubId, setPayStubPaymentsByStubId] = useState<Record<string, PayStubPaymentRow[]>>({})
+  const {
+    payStubs,
+    payStubPaymentsByStubId,
+    payStubDeductionsByStubId,
+    payStubAdditionalByStubId,
+    payStubLineMaps,
+    loadPayStubs,
+    deletePayStub,
+    deletingPayStubId,
+    payStubDeleteConfirm,
+    setPayStubDeleteConfirm,
+  } = usePayStubsData({ canAccessPay, setError })
   // Ledger Actions → View: in-app pay-stub viewer (full built HTML document + modal title).
   const [payStubViewModal, setPayStubViewModal] = useState<{ title: string; html: string } | null>(null)
-  const [payStubDeductionsByStubId, setPayStubDeductionsByStubId] = useState<Record<string, PayStubDeductionRow[]>>({})
-  const [payStubAdditionalByStubId, setPayStubAdditionalByStubId] = useState<Record<string, PayStubAdditionalLineRow[]>>({})
-  const payStubLineMaps = useMemo<PayStubLineMaps>(
-    () => ({ paymentsByStubId: payStubPaymentsByStubId, deductionsByStubId: payStubDeductionsByStubId, additionalByStubId: payStubAdditionalByStubId }),
-    [payStubPaymentsByStubId, payStubDeductionsByStubId, payStubAdditionalByStubId],
-  )
   const [payStubPeriodStart, setPayStubPeriodStart] = useState(() => {
     const d = new Date()
     const day = d.getDay()
@@ -497,7 +494,6 @@ export default function People() {
     start.setDate(d.getDate() - day + 6)
     return localCalendarDayKey(start)
   })
-  const [deletingPayStubId, setDeletingPayStubId] = useState<string | null>(null)
   const [markingPayStubId, setMarkingPayStubId] = useState<string | null>(null)
   const [generatingPayStubPerson, setGeneratingPayStubPerson] = useState<string | null>(null)
   const [bulkGeneratingPayStubs, setBulkGeneratingPayStubs] = useState(false)
@@ -535,7 +531,6 @@ export default function People() {
   const [hoursFocusRequest, setHoursFocusRequest] = useState<{ workDate: string; personName: string } | null>(null)
   const [hoursFlashWorkDate, setHoursFlashWorkDate] = useState<string | null>(null)
   const [hoursFlashPersonName, setHoursFlashPersonName] = useState<string | null>(null)
-  const [payStubDeleteConfirm, setPayStubDeleteConfirm] = useState<PayStubRow | null>(null)
   /** Draft Payroll "Generate remaining" confirm (replaces the old window.confirm); candidates snapshot at request time. */
   const [bulkGenerateConfirm, setBulkGenerateConfirm] = useState<{ start: string; end: string; candidates: string[] } | null>(null)
   const [payStubMarkPaidTarget, setPayStubMarkPaidTarget] = useState<PayStubRow | null>(null)
@@ -1275,97 +1270,6 @@ export default function People() {
     }
   }
 
-  async function loadPayStubs(): Promise<PayStubsLoadSnapshot | null> {
-    if (!canAccessPay) return null
-    try {
-      const data = await withSupabaseRetry(
-        async () =>
-          await supabase
-            .from('pay_stubs')
-            .select('id, person_name, period_start, period_end, hours_total, gross_pay, created_at, paid_at, paid_by, paid_note')
-            .order('created_at', { ascending: false }),
-        'load pay reports'
-      )
-      const stubs = (data ?? []) as PayStubRow[]
-      setPayStubs(stubs)
-      const ids = stubs.map((s) => s.id)
-      if (ids.length === 0) {
-        setPayStubPaymentsByStubId({})
-        setPayStubDeductionsByStubId({})
-        setPayStubAdditionalByStubId({})
-        return {
-          stubs: [],
-          paymentsByStubId: {},
-          deductionsByStubId: {},
-          additionalByStubId: {},
-        }
-      }
-      const byStub: Record<string, PayStubPaymentRow[]> = {}
-      const dedByStub: Record<string, PayStubDeductionRow[]> = {}
-      const addByStub: Record<string, PayStubAdditionalLineRow[]> = {}
-      const chunkSize = 200
-      for (let i = 0; i < ids.length; i += chunkSize) {
-        const chunk = ids.slice(i, i + chunkSize)
-        const [payments, deductions, additional] = await Promise.all([
-          withSupabaseRetry(
-            async () =>
-              await supabase
-                .from('pay_stub_payments')
-                .select('id, pay_stub_id, amount, paid_at, memo, created_at, created_by')
-                .in('pay_stub_id', chunk)
-                .order('paid_at', { ascending: true }),
-            'load pay report payments',
-          ),
-          withSupabaseRetry(
-            async () =>
-              await supabase
-                .from('pay_stub_deductions')
-                .select('id, pay_stub_id, amount, source, person_offset_id, description, created_at, created_by')
-                .in('pay_stub_id', chunk)
-                .order('created_at', { ascending: true }),
-            'load pay report deductions',
-          ),
-          withSupabaseRetry(
-            async () =>
-              await supabase
-                .from('pay_stub_additional_lines')
-                .select('id, pay_stub_id, description, quantity, rate, line_total, created_at, created_by, source_clock_session_id')
-                .in('pay_stub_id', chunk)
-                .order('created_at', { ascending: true }),
-            'load pay report additional lines',
-          ),
-        ])
-        for (const p of (payments ?? []) as PayStubPaymentRow[]) {
-          const list = byStub[p.pay_stub_id] ?? []
-          list.push(p)
-          byStub[p.pay_stub_id] = list
-        }
-        for (const d of (deductions ?? []) as PayStubDeductionRow[]) {
-          const list = dedByStub[d.pay_stub_id] ?? []
-          list.push(d)
-          dedByStub[d.pay_stub_id] = list
-        }
-        for (const a of (additional ?? []) as PayStubAdditionalLineRow[]) {
-          const list = addByStub[a.pay_stub_id] ?? []
-          list.push(a)
-          addByStub[a.pay_stub_id] = list
-        }
-      }
-      setPayStubPaymentsByStubId(byStub)
-      setPayStubDeductionsByStubId(dedByStub)
-      setPayStubAdditionalByStubId(addByStub)
-      return {
-        stubs,
-        paymentsByStubId: byStub,
-        deductionsByStubId: dedByStub,
-        additionalByStubId: addByStub,
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load pay reports')
-      return null
-    }
-  }
-
   async function generatePayStub(
     personNameArg: string,
     options?: { openPreview?: boolean; periodStart?: string; periodEnd?: string },
@@ -1507,34 +1411,6 @@ export default function People() {
   /** Ledger Actions → Print: the same document as viewPayStub, sent to the print dialog (one builder since v2.3874). */
   async function printPayStub(stub: PayStubRow) {
     openPayStubWindow(await buildPayStubViewHtml(stub), true)
-  }
-
-  async function deletePayStub(stub: PayStubRow) {
-    setDeletingPayStubId(stub.id)
-    setError(null)
-    const { error: err } = await supabase.from('pay_stubs').delete().eq('id', stub.id)
-    if (err) {
-      setError(err.message)
-    } else {
-      setPayStubs((prev) => prev.filter((s) => s.id !== stub.id))
-      setPayStubPaymentsByStubId((prev) => {
-        const next = { ...prev }
-        delete next[stub.id]
-        return next
-      })
-      setPayStubDeductionsByStubId((prev) => {
-        const next = { ...prev }
-        delete next[stub.id]
-        return next
-      })
-      setPayStubAdditionalByStubId((prev) => {
-        const next = { ...prev }
-        delete next[stub.id]
-        return next
-      })
-      setPayStubDeleteConfirm(null)
-    }
-    setDeletingPayStubId(null)
   }
 
   function openPayStubMarkPaidModal(stub: PayStubRow) {
