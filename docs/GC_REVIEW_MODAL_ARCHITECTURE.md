@@ -282,7 +282,7 @@ Render regions in JSX order (all ranges @ `a05cef4c4`). Status: `extracted` mean
 ### 12–15. Tail modals: extracted children
 
 - **`GcReviewCertifyModal`** (241 lines, z 70): `group`, `weekStartYmd`, `authUserId/Name`. `onCertified({andSend})` → `refreshCerts` and optionally `openEmailDialogForGroup`. It writes `gc_review_certifications` via `insertGcReviewCertification` + `buildGcCertSnapshot` (tested). **No render test.**
-- **Mark sent dialog** (2363–2395, inline host, z 64): header facts + `GcStatementMarkSentForm defaultChannel="text"` → `markRound`. Its backdrop is blocked while `roundBusy`.
+- **Mark sent dialog** (2363–2395, inline host, z 64): header facts + `GcStatementMarkSentForm defaultChannel="text"` → `markRound`. Its backdrop is blocked while `roundBusy`. With `canFilePromises` the form is given the group's bills (`gcWordBills`) and `markRound` files the pay date on the jobs it returns (`addJobPaymentPromisesSettled`); `saveCallSheet` does the same for every bill of each answered GC.
 - **`GcSenderRoundCard`** is retired (with `senderRoundQueue` and `latestGcStatementMarkBy`).
 - **`GcStatementSendHistoryModal`** (116 lines, z 64): self-loading (`listGcStatementSentHistory`, `gcStatementSendHistoryIo`). **No render test.**
 

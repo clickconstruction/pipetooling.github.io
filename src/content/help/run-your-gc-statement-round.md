@@ -2,7 +2,7 @@
 title: run your weekly GC statement round
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: gc statement, round, stage, stage track, you are here, where am I, progress, filter, tabs, ask by link, link, no sign-in, text, call sheet, worklist, whose word, account man, no change, promised, late, scheduled sends, what went out, lane, duplicate, cancel, certify, sent it, mark sent, text, call, note, send history, personal email, outstanding, weekly, sender, gc review, sign off, email me my round, morning email, dashboard, needs you, send from the app, sender card, as they see it, reassign, undo, spoke with them, contacted, temperature, hot, warm, cool, cold, temperature board, pays by, account man
+keywords: gc statement, round, stage, stage track, you are here, where am I, progress, filter, tabs, ask by link, link, no sign-in, text, call sheet, worklist, whose word, account man, no change, promised, late, scheduled sends, what went out, lane, duplicate, cancel, certify, sent it, mark sent, text, call, note, send history, personal email, outstanding, weekly, sender, gc review, sign off, email me my round, morning email, dashboard, needs you, send from the app, sender card, as they see it, reassign, undo, spoke with them, contacted, temperature, hot, warm, cool, cold, temperature board, pays by, account man, pay date, promise, they said, choose bills, this friday, end of month
 ---
 GC Review opens on **This week's GCs** — one list of every GC with a balance, and three steps on each row: **Check** the bills, **Send** the statement, write down the **Word** (where the GC stands). Whoever is at the keyboard works every row; the GCs are grouped by the **account man** who knows them, so one call to him covers his group. The app never emails a GC on its own initiative — only when a person presses Send or sets up a schedule.
 
@@ -77,7 +77,7 @@ Last word Sep 18 · warm · Malachi · “Check run is the 20th.”
 :::
 
 - The GCs that broke a promise come first, then the ones with no word yet.
-- Fill a row as he answers: the temperature, the sentence, the date. **A row you leave blank is left alone.** A row you start needs both a temperature and a sentence.
+- Fill a row as he answers: the temperature, the sentence, the date. **A row you leave blank is left alone.** A row you start needs both a temperature and a sentence. A date still ahead goes on every bill that GC owes, as a promise.
 - **no change** repeats the last read and its pay date for a quiet week. It is allowed once — after a "no change", the next word needs a fresh sentence.
 - At the bottom, **Whose word** is already the account man; pick how you heard it. {{button:blue|Save 3 answers}} writes them all.
 - {{button:outline|🖨 Print sheet}} prints the list with room to write, for a call away from the desk.
@@ -124,8 +124,23 @@ The email still comes, saying so — a quiet morning shouldn't look like a broke
 Sometimes the right move this week is a conversation, not another statement. Tap {{button:outline|Word}} on the GC's row (or **Share → Mark sent / spoke with them…** inside the opened row) — the form opens on **Spoke with them · no statement**. The form asks how (call, text, in person), then the question that matters: **What's their temperature?**
 
 - Pick one: {{chip:green|Hot · pay date in hand}} {{chip:yellow|Warm · fine, no date}} {{chip:blue|Cool · dodging the date}} {{chip:red|Cold · disputing or upset}}
+- **When did they say they'll pay?** sits right under the temperature. Tap the answer they gave — {{chip:gray|This Fri · Oct 2}} {{chip:gray|Next Fri · Oct 9}} {{chip:gray|End of Oct}} — or pick any day. When they gave a date before and it is still ahead, the first chip is {{chip:gray|Still Oct 9}}. No date is fine; pick **Hot** without one and the form reminds you that hot means they gave a date.
 - Then answer in a sentence — "Warm, Dave says the check run is the 10th" — not a word. The app won't save a blank or a one-worder; the sentence is the whole point.
-- If they gave a date, put it in **They expect to pay by**.
+
+### The date goes on their bills
+
+A date you save here is a real promise, the same record as **They said…** on the Billed row. It turns the chip green on the Stages board, moves the money in the payment forecast, and counts toward whether this GC keeps its word (see *know whether a customer keeps their word*).
+
+:::example Under the date
+**Goes on all 4 bills · $27,499.49** {{button:outline|Choose bills}}
+*1 bill had a different date — that promise goes on record as broken · 1 already says Oct 9*
+:::
+
+- The date covers **every bill the GC owes** unless you say otherwise. {{button:outline|Choose bills}} opens the list — untick the ones the date does not cover.
+- A bill that already carries that date is left alone, so saving the same word twice never counts as a second promise.
+- A bill that carried a **different** date gets the new one, and the earlier promise stays on record as broken. The form tells you how many before you save.
+- Above the form, a line says what they told you last time: {{chip:green|They said Oct 9 · 2 of 4 bills}}, or in red once it has passed with money still owed.
+- The same holds for **Statement sent** with a date, and for the call sheet: a date typed on a row goes on all of that GC's bills.
 
 :::example What it counts as
 A "spoke with them" mark fills the row's Word step for the week — {{chip:green|✓ warm}} — and leaves Send waiting. It never counts as a statement sent: the last-statement date keeps aging, and the office's "sent" count doesn't move.

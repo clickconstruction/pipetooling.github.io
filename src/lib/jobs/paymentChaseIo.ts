@@ -71,6 +71,31 @@ export async function addJobPaymentPromise(args: {
   }
 }
 
+const PROMISE_WRITES_AT_ONCE = 4
+
+/**
+ * One date on many jobs — GC Review's word, where a GC names a day for
+ * everything it owes. The same record "They said…" writes on the Stages
+ * board, and like it no chase touch. Never throws: a job that fails is
+ * returned so the caller can say which bills the date did not reach.
+ */
+export async function addJobPaymentPromisesSettled(args: {
+  jobIds: readonly string[]
+  ymd: string
+  saidBy?: string | null
+  channel?: PromiseChannel | null
+  note?: string | null
+}): Promise<{ saved: string[]; failed: string[] }> {
+  const saved: string[] = []
+  const failed: string[] = []
+  for (let i = 0; i < args.jobIds.length; i += PROMISE_WRITES_AT_ONCE) {
+    const batch = args.jobIds.slice(i, i + PROMISE_WRITES_AT_ONCE)
+    const results = await Promise.allSettled(batch.map((jobId) => addJobPaymentPromise({ jobId, ymd: args.ymd, saidBy: args.saidBy, channel: args.channel, note: args.note })))
+    results.forEach((r, n) => (r.status === 'fulfilled' ? saved : failed).push(batch[n]!))
+  }
+  return { saved, failed }
+}
+
 /**
  * The promise gesture both surfaces share: record the promise on every covered
  * job — who said it, and how (a call unless told otherwise) — AND record a

@@ -4136,6 +4136,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     setGcReviewRoundGcId(null)
                   }}
                   focusGcId={gcReviewRoundGcId}
+                  promisedPayDates={promisedPayDates}
+                  canFilePromises={canMarkPromisedPay}
+                  onPromisesChanged={() => void loadPromisedPayDates()}
                   billedActiveRows={unfilteredBoardLists.billedActiveRows}
                   collectionsRows={unfilteredBoardLists.collectionsRows}
                   users={users}
