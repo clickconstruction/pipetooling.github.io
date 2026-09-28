@@ -6,7 +6,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { resolveEstimateMasterUserId } from '../../lib/estimateMasterUser'
 import { notifyDispatchRequestsChanged } from '../../lib/dispatchRequestHelpers'
-import { scheduleDateKeyAddDays, scheduleTodayDateKey } from '../../lib/jobScheduleChicago'
+import { JOB_SCHEDULE_TIMEZONE, scheduleDateKeyAddDays, scheduleTodayDateKey } from '../../lib/jobScheduleChicago'
 import {
   parseBallparkDollars,
   quickEstimateBackTarget,
@@ -18,9 +18,13 @@ import {
   quickEstimateResumeAge,
   quickEstimateResumeCandidate,
   quickEstimateReviewRows,
+  quickEstimateSentTodayForJob,
+  quickEstimateSentTodayNote,
   quickEstimateWorkLine,
   type QuickEstimateBranch,
   type QuickEstimateDraftRow,
+  type QuickEstimateSentRow,
+  type QuickEstimateSentToday,
   type QuickEstimateFieldWriteUp,
   type QuickEstimateResumeState,
   type QuickEstimateStage,
@@ -234,6 +238,8 @@ export function QuickEstimateWizard({
   const [ballparkText, setBallparkText] = useState('')
   const [dispatchNote, setDispatchNote] = useState('')
   const [busy, setBusy] = useState(false)
+  /** Already sent one today (v2.4092): the newest write-up sent to Dispatch today for the picked job, read on the review screen. */
+  const [sentToday, setSentToday] = useState<QuickEstimateSentToday | null>(null)
   /** Resume (v2.4076): the half-done write-up on offer, and whether the check has run for this open. */
   const [resume, setResume] = useState<QuickEstimateResumeState | null>(null)
   const [resumeChecked, setResumeChecked] = useState(false)
@@ -263,6 +269,7 @@ export function QuickEstimateWizard({
     setBusy(false)
     setResume(null)
     setResumeChecked(false)
+    setSentToday(null)
     fieldWriteUpRef.current = null
     estimateIdRef.current = null
     estimateNumberRef.current = null
@@ -327,6 +334,32 @@ export function QuickEstimateWizard({
       cancelled = true
     }
   }, [open, user?.id])
+
+  /* ---------- already sent one today (v2.4092) ---------- */
+
+  useEffect(() => {
+    if (!open || stage !== 'review' || !pickedJob || !user?.id || branch !== 'change_order') {
+      setSentToday(null)
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      const { data } = await supabase
+        .from('estimates')
+        .select('id, estimate_number, sent_to_dispatch_at, field_write_up')
+        .eq('created_by', user.id)
+        .not('sent_to_dispatch_at', 'is', null)
+        .not('field_write_up', 'is', null)
+        .order('sent_to_dispatch_at', { ascending: false })
+        .limit(10)
+      if (cancelled) return
+      const rows = (data ?? []) as unknown as QuickEstimateSentRow[]
+      setSentToday(quickEstimateSentTodayForJob(rows, pickedJob.id, scheduleTodayDateKey(), (iso) => scheduleTodayDateKey(new Date(iso))))
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, stage, pickedJob, user?.id, branch])
 
   /* ---------- a half-done write-up (v2.4076) ---------- */
 
@@ -1235,6 +1268,18 @@ export function QuickEstimateWizard({
                 value={dispatchNote}
                 onChange={(e) => setDispatchNote(e.target.value)}
               />
+              {sentToday ? (
+                <p
+                  role="status"
+                  style={{ margin: 0, padding: '0.6rem 0.85rem', borderRadius: 10, background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', color: 'var(--text)', fontSize: '0.875rem' }}
+                >
+                  {quickEstimateSentTodayNote(
+                    sentToday,
+                    new Date(sentToday.sentAtIso).toLocaleTimeString('en-US', { timeZone: JOB_SCHEDULE_TIMEZONE, hour: 'numeric', minute: '2-digit' }).toLowerCase(),
+                  )}{' '}
+                  <span style={{ color: 'var(--text-muted)' }}>Send this one too if it is different work; otherwise the office already has it.</span>
+                </p>
+              ) : null}
               <button type="button" style={sendStyle} disabled={busy} onClick={() => void send()}>
                 {busy ? 'Sending…' : 'Send to Dispatch'}
               </button>
