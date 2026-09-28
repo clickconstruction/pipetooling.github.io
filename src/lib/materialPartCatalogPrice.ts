@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { withSupabaseRetry } from '@/utils/errorHandling'
+import { loadPartPriceRows } from './materials/partPrices'
 
 export type LowestPartPriceRow = {
   price: number
@@ -55,7 +56,10 @@ export async function fetchLowestPartPrice(
 }
 
 /**
- * One round-trip: lowest catalog price per part_id. Ignores empty partIds.
+ * Lowest catalog price per part_id; on equal prices the lowest price id wins.
+ * Ignores empty partIds. The read is chunked by id and paged (`loadPartPriceRows`),
+ * so every price row reaches the pick; each page has `withSupabaseRetry`'s
+ * retries. Throws on any page error — never a map of the pages that did arrive.
  */
 export async function fetchLowestPartPricesBatch(
   supabase: SupabaseClient<Database>,
@@ -65,19 +69,13 @@ export async function fetchLowestPartPricesBatch(
   const out = new Map<string, LowestPartPriceRow>()
   if (unique.length === 0) return out
 
-  const all = await withSupabaseRetry(
-    async () =>
-      await supabase
-        .from('material_part_prices')
-        .select('id, part_id, price, supply_house_id, supply_houses(name)')
-        .in('part_id', unique),
-    'fetch material part prices batch'
+  const all = await loadPartPriceRows<PriceRowWithHouse & { part_id: string }>(
+    supabase,
+    unique,
+    'id, part_id, price, supply_house_id, supply_houses(name)',
+    { label: 'fetch material part prices batch', retry: true },
   )
-  for (const row of (all ?? []) as Array<
-    PriceRowWithHouse & {
-      part_id: string
-    }
-  >) {
+  for (const row of all) {
     if (!row.part_id || !row.id) continue
     const price = Number(row.price)
     const prev = out.get(row.part_id)

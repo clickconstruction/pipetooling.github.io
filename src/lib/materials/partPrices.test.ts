@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { fetchPricesForPart, fetchPricesForParts } from './partPrices'
+import { makeFakeRowCapSupabase } from '../../test/fakeRowCapSupabase'
+import { fetchPricesForPart, fetchPricesForParts, loadPartPriceRows } from './partPrices'
 
 type Result = { data: unknown; error: unknown }
 
@@ -11,7 +12,7 @@ function makeClient(results: Result[]) {
       fromCalls++
       const result = results.shift() ?? { data: [], error: null }
       const b: Record<string, unknown> = {}
-      for (const m of ['select', 'eq', 'in', 'order', 'limit']) b[m] = () => b
+      for (const m of ['select', 'eq', 'in', 'order', 'limit', 'range']) b[m] = () => b
       b.then = (f?: (v: unknown) => unknown, r?: (e: unknown) => unknown) =>
         Promise.resolve(result).then(f, r)
       return b
@@ -54,6 +55,105 @@ describe('fetchPricesForParts', () => {
     const { client, fromCallCount } = makeClient([])
     expect((await fetchPricesForParts(client, [])).size).toBe(0)
     expect(fromCallCount()).toBe(0)
+  })
+})
+
+/**
+ * `parts` parts priced at three supply houses, house by house, dearest house
+ * first: part n costs n + 21, then n + 11, then n + 1.
+ */
+function cappedPriceRows(parts: number) {
+  return Array.from({ length: parts * 3 }, (_, i) => {
+    const house = Math.floor(i / parts)
+    const part = i % parts
+    return {
+      id: `pr${String(i).padStart(5, '0')}`,
+      part_id: `p${part}`,
+      price: part + 1 + (2 - house) * 10,
+      supply_house_id: `sh${house}`,
+      supply_houses: { id: `sh${house}`, name: ['Ferguson', 'Winsupply', 'Moore'][house] },
+    }
+  })
+}
+
+function cappedPartIds(count: number) {
+  return Array.from({ length: count }, (_, i) => `p${i}`)
+}
+
+describe('fetchPricesForParts past the 1,000-row cap', () => {
+  it('pages a 500-part chunk, so every part keeps all its prices, lowest first', async () => {
+    // 500 parts × 3 houses = 1,500 rows in ONE chunk; each part's lowest price is rows 1,000–1,499.
+    const { client, calls } = makeFakeRowCapSupabase({ material_part_prices: cappedPriceRows(500) })
+    const map = await fetchPricesForParts(client, cappedPartIds(500))
+    expect(calls.map((c) => c.range)).toEqual([[0, 999], [1000, 1999]])
+    expect(map.size).toBe(500)
+    for (let n = 0; n < 500; n++) {
+      expect(map.get(`p${n}`)?.map((p) => p.price)).toEqual([n + 1, n + 11, n + 21])
+    }
+    expect(map.get('p499')?.[0]?.supply_house.name).toBe('Moore')
+  })
+
+  it('keeps the 500-id chunks and orders every page by price, then id', async () => {
+    const { client, calls } = makeFakeRowCapSupabase({ material_part_prices: cappedPriceRows(700) })
+    const map = await fetchPricesForParts(client, cappedPartIds(700))
+    expect(calls.map((c) => [c.in?.[1].length, c.range])).toEqual([
+      [500, [0, 999]],
+      [500, [1000, 1999]],
+      [200, [0, 999]],
+    ])
+    for (const call of calls) {
+      expect(call.table).toBe('material_part_prices')
+      expect(call.select).toBe('*, supply_houses(*)')
+      expect(call.in?.[0]).toBe('part_id')
+      expect(call.order).toEqual(['price', 'id'])
+    }
+    expect(map.size).toBe(700)
+  })
+
+  it('does not throw when a chunk fails: that chunk adds no prices, the next one loads', async () => {
+    const { client, calls } = makeFakeRowCapSupabase({ material_part_prices: cappedPriceRows(700) }, { failOnCall: 1 })
+    const map = await fetchPricesForParts(client, cappedPartIds(700))
+    expect(calls).toHaveLength(2)
+    expect(map.size).toBe(200)
+    expect(map.has('p0')).toBe(false)
+    expect(map.get('p500')?.map((p) => p.price)).toEqual([501, 511, 521])
+  })
+
+  it('drops the whole chunk, not just the page, when its second page fails', async () => {
+    const { client, calls } = makeFakeRowCapSupabase({ material_part_prices: cappedPriceRows(700) }, { failOnCall: 2 })
+    const map = await fetchPricesForParts(client, cappedPartIds(700))
+    expect(calls).toHaveLength(3)
+    expect(map.size).toBe(200)
+    expect(map.has('p0')).toBe(false)
+    expect(map.has('p699')).toBe(true)
+  })
+})
+
+describe('loadPartPriceRows', () => {
+  it('returns [] without a read for no ids', async () => {
+    const { client, calls } = makeFakeRowCapSupabase({ material_part_prices: cappedPriceRows(10) })
+    expect(await loadPartPriceRows(client, [], 'part_id, price')).toEqual([])
+    expect(await loadPartPriceRows(client, [''], 'part_id, price')).toEqual([])
+    expect(calls).toHaveLength(0)
+  })
+
+  it('reads ids once each in chunks of 150, in id order unless asked for price order', async () => {
+    const { client, calls } = makeFakeRowCapSupabase({ material_part_prices: cappedPriceRows(200) })
+    const rows = await loadPartPriceRows(client, [...cappedPartIds(200), 'p0', 'p1'], 'part_id, price')
+    expect(rows).toHaveLength(600)
+    expect(calls.map((c) => [c.in?.[1].length, c.range, c.order])).toEqual([
+      [150, [0, 999], ['id']],
+      [50, [0, 999], ['id']],
+    ])
+    await loadPartPriceRows(client, ['p0'], 'part_id, price', { orderByPrice: true, chunkSize: 500 })
+    expect(calls[2]?.order).toEqual(['price', 'id'])
+  })
+
+  it('throws under the given operation name on a page error', async () => {
+    const { client } = makeFakeRowCapSupabase({ material_part_prices: cappedPriceRows(10) }, { failOnCall: 1 })
+    await expect(loadPartPriceRows(client, ['p0'], 'part_id, price', { label: 'load test prices' })).rejects.toThrow(
+      'Failed to load test prices: boom',
+    )
   })
 })
 
