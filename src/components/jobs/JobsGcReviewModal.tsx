@@ -1018,7 +1018,7 @@ export function JobsGcReviewModal({
         ) : null}
         {!byDevelopment && worklistWordsDue > 0 ? (
           <div style={{ margin: '0 auto 1rem', border: '1px solid var(--border)', borderRadius: 8, padding: '0.1rem 0.85rem 0.6rem' }}>
-            {/* Email me my round (v2.2771): the statement_round stream — a morning email of your round, rebuilt at send time. */}
+            {/* The week's list by email (statement_round stream): every GC over the line, grouped by the account man to ask, rebuilt at send time. */}
             {authUser?.id ? (
               <div style={{ marginTop: '0.5rem', fontSize: '0.8125rem' }}>
                 {!roundEmailOpen ? (
@@ -1027,7 +1027,7 @@ export function JobsGcReviewModal({
                     {myRoundEmailChain ? (
                       <>
                         <span style={{ flex: 1, minWidth: 0 }}>
-                          Your round is emailed to you {formatWeekdays(myRoundEmailChain.weekdays)} · {formatMinutes(parseHhMm(myRoundEmailChain.timeHm) ?? 0)} · weekly
+                          The week’s list is emailed to you {formatWeekdays(myRoundEmailChain.weekdays)} · {formatMinutes(parseHhMm(myRoundEmailChain.timeHm) ?? 0)} · weekly
                         </span>
                         <button type="button" onClick={() => authUser?.id && openRoundEmailForm(authUser.id)} style={{ padding: '0.1rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', color: 'var(--text-700)' }}>
                           Edit
@@ -1035,15 +1035,15 @@ export function JobsGcReviewModal({
                       </>
                     ) : (
                       <>
-                        <span style={{ flex: 1, minWidth: 0, color: 'var(--text-muted)' }}>Get your round by email on the mornings you send — nothing to open, just the list.</span>
+                        <span style={{ flex: 1, minWidth: 0, color: 'var(--text-muted)' }}>Get the week’s GCs by email on the mornings you work them — who to call, what to send, who broke a promise.</span>
                         <button type="button" onClick={() => authUser?.id && openRoundEmailForm(authUser.id)} style={{ padding: '0.15rem 0.6rem', fontSize: '0.75rem', fontWeight: 600, border: '1px solid var(--border-blue)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-blue-700)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                          Email me my round…
+                          Email me the week’s list…
                         </button>
                       </>
                     )}
                     {roundEmailChains.filter((c) => c.recipientUserId !== authUser?.id).map((c) => (
                       <span key={c.recipientUserId} style={{ width: '100%', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                        {userNameById(c.recipientUserId)} gets theirs {formatWeekdays(c.weekdays)} · {formatMinutes(parseHhMm(c.timeHm) ?? 0)}
+                        {userNameById(c.recipientUserId)} gets it {formatWeekdays(c.weekdays)} · {formatMinutes(parseHhMm(c.timeHm) ?? 0)}
                         {canCertify ? (
                           <button type="button" onClick={() => openRoundEmailForm(c.recipientUserId)} style={{ marginLeft: '0.4rem', font: 'inherit', fontSize: '0.7rem', border: 'none', background: 'none', padding: 0, color: 'var(--text-link)', cursor: 'pointer' }}>
                             edit
@@ -1053,14 +1053,14 @@ export function JobsGcReviewModal({
                     ))}
                     {canCertify && roundEmailPickableUsers.some((u) => u.id !== authUser?.id && !roundEmailChains.some((c) => c.recipientUserId === u.id)) ? (
                       <select
-                        aria-label="Set up the round email for another sender"
+                        aria-label="Set up the week’s list email for someone else"
                         value=""
                         onChange={(e) => {
                           if (e.target.value) openRoundEmailForm(e.target.value)
                         }}
                         style={{ width: '100%', font: 'inherit', fontSize: '0.75rem', padding: '0.1rem', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-muted)' }}
                       >
-                        <option value="">Set it up for another sender…</option>
+                        <option value="">Set it up for someone else…</option>
                         {roundEmailPickableUsers
                           .filter((u) => u.id !== authUser?.id && !roundEmailChains.some((c) => c.recipientUserId === u.id))
                           .map((u) => (
@@ -1082,7 +1082,7 @@ export function JobsGcReviewModal({
                     style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}
                   >
                     <div style={{ fontWeight: 600 }}>
-                      {roundEmailRecipient === authUser?.id ? 'Email me my round' : `Email ${userNameById(roundEmailRecipient)} their round`}
+                      {roundEmailRecipient === authUser?.id ? 'Email me the week’s list' : `Email ${userNameById(roundEmailRecipient)} the week’s list`}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
                       {[1, 2, 3, 4, 5].map((dow) => {
