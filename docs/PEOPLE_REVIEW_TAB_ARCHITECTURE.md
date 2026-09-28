@@ -185,8 +185,8 @@ Sub-extractions here are **children of `PeopleReviewTab`**, which remains the or
 | Card-charge rule | — | **done (v2.3394)** — `summarizeCardChargeAllocations` + `netCardChargesByJobId` (5 + 3 tests) |
 | `loadTeamReviewUnion` | component method, reads `users` by closure; calls module helpers `paged` / `throwIfQueryError` / `laborRowJobId` / `fetchJobStatusesByIds` (also used by the panel loader) | `lib/people/loadTeamReviewUnion.ts` (add `users` param; types in `teamReviewTypes.ts`; the four helpers to a shared lib module) |
 | `loadReviewDataCore` shaping (cost maps, row shaping, allocation, contributors 1737–1751) | inline, 730 lines | `lib/people/reviewPersonAllocation.ts` + tests |
-| Split partsRate (officeParts90d ÷ fieldHours90d) | 4× here (731, 746, 2336, 2407–2410) + 2× in drilldowns (522–525, 1068); null vs 0 when unloaded differs | one `splitPartsRate()` in `teamSummary/formatters.ts` (keep both null/0 call semantics) |
-| Pay-source closure (`salary`/`hourly`/`unknown`) | 3× (735–739, 750–754, 2341–2345) | `payConfigSourceFor(payConfig)` |
+| Split partsRate (officeParts90d ÷ fieldHours90d) | — | **done (v2.3917)** — `splitPartsRate` in `teamSummary/formatters.ts` + 5 tests; the tab's four copies pass its null on, the two drilldowns read null as 0. The popup's copy (`buildTeamSummaryHtml.ts` 864) is text inside the page's inline script and stays |
+| Pay-source closure (`salary`/`hourly`/`unknown`) | — | **done (v2.3917)** — `payConfigSourceFor(payConfig)` in `teamSummary/formatters.ts` + 4 tests |
 | `getReviewPeriodLabel` label map, `buildTeamSummaryCacheKey` | component functions | `reviewDateRange.ts` / `lib/people/teamSummaryCacheKey.ts` + tests |
 | Drive-cost + item-hours expressions | drive 4× (1270, 1297, 1328, 1430), item-hours 4× (1294, 1355, 1424, 1614) in the panel loader | fold into `reviewPersonAllocation` (or reuse `laborJobSubCost` internals) |
 | `stripAddressZipState` | component function | compare with `addressDisplay.compactAddressForHoursDisplay` (regexes differ — unify only with tests) |
@@ -230,7 +230,7 @@ Since the v2.1305 map: 19 commits reshaped this file — overhead pool without I
 Done: ~~`buildTeamSummaryHtml`~~ (v2.1305), ~~`reviewDateRange`~~ (v2.2688), ~~`decimalToHms` dedupe~~, ~~ranked-view kernel + components~~ (v2.2678), ~~`reviewEarned`~~ (v2.3360).
 
 1. ~~**Delete the dead `forTeamSummary` path**~~ — **done v2.3904**: the parameter, its six query stubs, the empty all-time rows and the early return left `loadReviewData`/`loadReviewDataCore`; both callers pass one argument fewer (4,167 → 4,140 lines).
-2. **Stage A sweep** — `splitPartsRate` (6 copies across both files), `payConfigSourceFor` (3), period label map, cache key; remove the orphan comments.
+2. **Stage A sweep** — ~~`splitPartsRate` (6 copies across both files), `payConfigSourceFor` (3)~~ **done v2.3917** (4,140 → 4,117 lines); left: the period label map, the cache key, the orphan comments.
 3. **`loadTeamReviewUnion` → `lib/people/`** with a `users` parameter (its four module helpers move to a shared lib module with it) — two callers; makes the union's Wheels/tag/card shaping testable with a mocked client.
 4. **`useReviewOverheadRates` hook** (A) — prefer adopting `loadOverheadPoolSnapshot` after a parity check; consumers unchanged.
 5. **Stage A: `reviewPersonAllocation` kernel + tests** (E, 1261–1751) — the largest untested money math; decide the fuel divergence in a separate fix PR.

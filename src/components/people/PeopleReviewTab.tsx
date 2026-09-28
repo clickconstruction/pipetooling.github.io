@@ -56,7 +56,7 @@ import {
   TeamSummaryInline,
   type TeamSummaryInlineHandle,
 } from './teamSummary/TeamSummaryInline'
-import { enrichTeamSummaryRowsForInline, fmtH, fmtMoney } from './teamSummary/formatters'
+import { enrichTeamSummaryRowsForInline, fmtH, fmtMoney, payConfigSourceFor, splitPartsRate } from './teamSummary/formatters'
 import type {
   OverheadRateDecomp,
   TeamSummaryBreakdown,
@@ -726,32 +726,17 @@ export default function PeopleReviewTab({
     // overhead) spread only the NON-labor overhead pool (office parts)
     // across field hours; office/bid labor is charged per-person via
     // `overheadLaborCost`. partsRate = office parts (90d) ÷ field hrs (90d).
-    const fh = reviewOverheadRates.fieldHours90d
-    const partsRate =
-      fh != null && fh > 0 ? (reviewOverheadRates.officeParts90d ?? 0) / fh : null
-    return enrichTeamSummaryRowsForInline(
-      teamSummaryRows,
-      partsRate,
-      (name) => {
-        const cfg = payConfig[name]
-        if (!cfg) return 'unknown'
-        return cfg.is_salary ? 'salary' : 'hourly'
-      },
-    )
+    const partsRate = splitPartsRate(reviewOverheadRates.officeParts90d, reviewOverheadRates.fieldHours90d)
+    return enrichTeamSummaryRowsForInline(teamSummaryRows, partsRate, payConfigSourceFor(payConfig))
   }, [teamSummaryRows, reviewOverheadRates.fieldHours90d, reviewOverheadRates.officeParts90d, payConfig])
 
   // ---- ranked view derivations (all from the enriched rows above) ----
   const reviewSplitPartsRate = useMemo(() => {
-    const fh = reviewOverheadRates.fieldHours90d
-    return fh != null && fh > 0 ? (reviewOverheadRates.officeParts90d ?? 0) / fh : null
+    return splitPartsRate(reviewOverheadRates.officeParts90d, reviewOverheadRates.fieldHours90d)
   }, [reviewOverheadRates.fieldHours90d, reviewOverheadRates.officeParts90d])
   const teamSummaryPriorBreakdowns = useMemo<TeamSummaryBreakdown[] | null>(() => {
     if (!teamSummaryPriorRows) return null
-    return enrichTeamSummaryRowsForInline(teamSummaryPriorRows, reviewSplitPartsRate, (name) => {
-      const cfg = payConfig[name]
-      if (!cfg) return 'unknown'
-      return cfg.is_salary ? 'salary' : 'hourly'
-    })
+    return enrichTeamSummaryRowsForInline(teamSummaryPriorRows, reviewSplitPartsRate, payConfigSourceFor(payConfig))
   }, [teamSummaryPriorRows, reviewSplitPartsRate, payConfig])
   const reviewVerdict = useMemo(
     () => buildReviewVerdict(teamSummaryBreakdowns, teamSummaryPriorBreakdowns, reviewCostLineTags),
@@ -2305,17 +2290,12 @@ export default function PeopleReviewTab({
           // office parts) that feeds `teamSummaryBreakdowns`. The popup
           // used to recompute Profit with the retired all-hours model here,
           // so the two windows disagreed on Profit and on row order.
-          const fh = rates.fieldHours90d
-          const partsRate = fh != null && fh > 0 ? (rates.officeParts90d ?? 0) / fh : null
+          const partsRate = splitPartsRate(rates.officeParts90d, rates.fieldHours90d)
 
           // Single payload that drives both the table render (sortable + filterable)
           // and the per-cell drilldown modals. `idx` is stable across sort/filter so
           // `breakdowns[idx]` lookups in the modal click router stay valid.
-          const breakdownsPayload = enrichTeamSummaryRowsForInline(rows, partsRate, (name) => {
-            const cfg = payConfig[name]
-            if (!cfg) return 'unknown'
-            return cfg.is_salary ? 'salary' : 'hourly'
-          })
+          const breakdownsPayload = enrichTeamSummaryRowsForInline(rows, partsRate, payConfigSourceFor(payConfig))
           // Embedded only: the currently-expanded person name (or null) so the
           // iframe paints the highlighted row on first render without a
           // postMessage round-trip. The popup window has no per-person
@@ -2377,10 +2357,7 @@ export default function PeopleReviewTab({
         const reviewTeamSummaryNoun = reviewTeamSummaryRowCount === 1 ? 'person' : 'people'
         const reviewOverheadRate = reviewOverheadRates.ratePerHour
         const reviewOverheadLoading = reviewOverheadRates.loading
-        const reviewPartsRate =
-          reviewOverheadRates.fieldHours90d != null && reviewOverheadRates.fieldHours90d > 0
-            ? (reviewOverheadRates.officeParts90d ?? 0) / reviewOverheadRates.fieldHours90d
-            : null
+        const reviewPartsRate = splitPartsRate(reviewOverheadRates.officeParts90d, reviewOverheadRates.fieldHours90d)
         const reviewOverheadMetaText = reviewOverheadLoading
           ? 'Overhead (split): loading…'
           : reviewOverheadRate == null || reviewPartsRate == null

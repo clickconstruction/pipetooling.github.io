@@ -27,6 +27,7 @@ import {
   fmtMoneyPerHr,
   fmtPct,
   fmtPct1,
+  splitPartsRate,
 } from './formatters'
 import { compactAddressForHoursDisplay } from './addressDisplay'
 import { useJobFormModal } from '../../../contexts/JobFormModalContext'
@@ -519,10 +520,7 @@ export function ProfitBody(props: {
       </div>
     )
   }
-  const partsRate =
-    overheadDecomp.fieldHours90d > 0
-      ? overheadDecomp.officeParts90d / overheadDecomp.fieldHours90d
-      : 0
+  const partsRate = splitPartsRate(overheadDecomp.officeParts90d, overheadDecomp.fieldHours90d) ?? 0
   const netRows = (entry.pb.jobs || [])
     .slice()
     .sort((a, b) => b.allocatedNet - a.allocatedNet)
@@ -1065,7 +1063,7 @@ export function OverheadBurdenBody(props: {
   const fieldHrs = entry.fieldHours || 0
   const officeParts90d = overheadDecomp.officeParts90d || 0
   const fieldHours90d = overheadDecomp.fieldHours90d || 0
-  const partsRate = fieldHours90d > 0 ? officeParts90d / fieldHours90d : 0
+  const partsRate = splitPartsRate(officeParts90d, fieldHours90d) ?? 0
   if (burden == null) {
     return (
       <div style={{ marginBottom: '0.75rem', color: 'var(--text-red-700)' }}>

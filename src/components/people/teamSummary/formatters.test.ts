@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { enrichTeamSummaryRowsForInline } from './formatters'
+import { enrichTeamSummaryRowsForInline, payConfigSourceFor, splitPartsRate } from './formatters'
 import type { TeamSummaryRow } from './types'
 
 // Minimal valid TeamSummaryRow factory — the breakdowns are empty shells
@@ -86,5 +86,58 @@ describe('enrichTeamSummaryRowsForInline — split overhead model', () => {
     const out = enrichTeamSummaryRowsForInline(rows, null, () => 'hourly')[0]!
     expect(out.overheadBurden).toBeNull()
     expect(out.profitAfterOverhead).toBeNull()
+  })
+})
+
+describe('splitPartsRate', () => {
+  it('is office parts ÷ field hours', () => {
+    expect(splitPartsRate(600, 300)).toBe(2)
+  })
+
+  it('is null until the field hours load', () => {
+    expect(splitPartsRate(600, null)).toBeNull()
+    expect(splitPartsRate(600, undefined)).toBeNull()
+  })
+
+  it('is null when the window has no field hours', () => {
+    expect(splitPartsRate(600, 0)).toBeNull()
+    expect(splitPartsRate(600, -5)).toBeNull()
+  })
+
+  it('reads unloaded office parts as 0, not as unavailable', () => {
+    expect(splitPartsRate(null, 300)).toBe(0)
+    expect(splitPartsRate(undefined, 300)).toBe(0)
+  })
+
+  it('reads as 0 for the drilldowns that draw a number', () => {
+    expect(splitPartsRate(600, 0) ?? 0).toBe(0)
+  })
+})
+
+describe('payConfigSourceFor', () => {
+  const sourceFor = payConfigSourceFor({
+    'Sal Aried': { is_salary: true },
+    'Hour Lee': { is_salary: false },
+    'No Flag': {},
+    'Null Flag': { is_salary: null },
+  })
+
+  it('names salary and hourly by the flag', () => {
+    expect(sourceFor('Sal Aried')).toBe('salary')
+    expect(sourceFor('Hour Lee')).toBe('hourly')
+  })
+
+  it('reads a missing or null flag as hourly', () => {
+    expect(sourceFor('No Flag')).toBe('hourly')
+    expect(sourceFor('Null Flag')).toBe('hourly')
+  })
+
+  it('is unknown for a person with no pay config row', () => {
+    expect(sourceFor('Nobody')).toBe('unknown')
+  })
+
+  it('matches the name exactly — no trimming, no case folding', () => {
+    expect(sourceFor('sal aried')).toBe('unknown')
+    expect(sourceFor('Sal Aried ')).toBe('unknown')
   })
 })
