@@ -46,7 +46,7 @@ describe('the letter section', () => {
   })
 })
 
-describe('the schedule of values in the letter (v2.4058)', () => {
+describe('the schedule of values in the letter (v2.4066)', () => {
   it('spreads the amount by the stage shares and adds to it to the cent', () => {
     // 41.2 / 33.5 / 25.3 of $86,400: each stage a fraction of a cent off, reconciled by largest remainder.
     const letter = scheduleOfValuesLetter({ byStage: { rough_in: 412, top_out: 335, trim_set: 253 }, assignedRaw: 1000 }, 86400)!

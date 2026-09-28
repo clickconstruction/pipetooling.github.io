@@ -429,7 +429,7 @@ describe('Materials by stage section (v2.3673)', () => {
   })
 })
 
-describe('Schedule of values section (v2.4058)', () => {
+describe('Schedule of values section (v2.4066)', () => {
   const SOV = { summary: { byStage: { rough_in: 412, top_out: 335, trim_set: 253 }, assignedRaw: 1000 }, amountDollars: 86400 }
   const STAGES = { rows: [{ label: 'Rough In', amountFormatted: '$21,340.50' }] }
   const args = ['John Doe', '123 Main St, Austin, TX 78701', 'Acme Tower', '456 Job Rd, Austin, TX 78702', 'One Hundred 00/100 Dollars', '$100.00', FIXTURES, '', '', '', null, 'Plumbing', true, true] as const

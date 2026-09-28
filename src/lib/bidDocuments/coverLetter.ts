@@ -13,7 +13,7 @@ import type { MaterialsByStageSummary } from '../bids/materialsByStage'
 
 /** Materials by stage (v2.3673): the factored stage figures, when the bid's pill is on. */
 export type CoverLetterMaterialsByStage = { rows: MaterialsByStageLetterRow[] }
-/** Schedule of values (v2.4058): the letter's amount spread by the takeoff's stage shares — each letter passes its own amount. */
+/** Schedule of values (v2.4066): the letter's amount spread by the takeoff's stage shares — each letter passes its own amount. */
 export type CoverLetterScheduleOfValues = { summary: Pick<MaterialsByStageSummary, 'byStage' | 'assignedRaw'>; amountDollars: number }
 
 /** Optional Schedule of Values section: rows + the contract amount the percents apply to. */

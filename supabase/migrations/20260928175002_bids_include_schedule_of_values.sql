@@ -1,6 +1,6 @@
 SET lock_timeout = '3s';
 
--- Cover Letter → Schedule of values pill (v2.4058): the letter spreads the bid
+-- Cover Letter → Schedule of values pill (v2.4066): the letter spreads the bid
 -- amount across Rough In / Top Out / Trim Set by the takeoff's stage shares.
 -- The pill remembers per bid, like include_payment_schedule and
 -- include_materials_by_stage. Additive; the old client ignores the column.

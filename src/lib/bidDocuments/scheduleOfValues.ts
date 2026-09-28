@@ -38,7 +38,7 @@ export function buildMaterialsByStageSectionLines(rows: ReadonlyArray<MaterialsB
   return [MATERIALS_BY_STAGE_HEADING, ...rows.map((r) => `${r.label} — ${r.amountFormatted}`)]
 }
 
-/* ─────────────── the schedule of values in the letter (v2.4058) ─────────────── */
+/* ─────────────── the schedule of values in the letter (v2.4066) ─────────────── */
 
 export const SCHEDULE_OF_VALUES_HEADING = 'Schedule of values:'
 

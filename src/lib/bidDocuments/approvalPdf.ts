@@ -554,7 +554,7 @@ export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void
   // Materials by stage (v2.3673): the same fresh read; the figures come through the one door the
   // Takeoffs rail and the printed schedule use, so the PDF says what they say.
   const stageFlags = (schedFlagRes.data ?? null) as { include_materials_by_stage?: boolean | null; include_schedule_of_values?: boolean | null; sov_material_factor?: number | null } | null
-  // One read serves both stage sections (the schedule of values, v2.4058, spreads the letter's amount by the same shares).
+  // One read serves both stage sections (the schedule of values, v2.4066, spreads the letter's amount by the same shares).
   const stageDoc = stageFlags?.include_materials_by_stage === true || stageFlags?.include_schedule_of_values === true
     ? await loadMaterialsByStageForBid(supabase, { bidId, bidVersionId: activeBidVersionId ?? null, bidFactorOverride: stageFlags.sov_material_factor ?? null }).catch(() => null)
     : null

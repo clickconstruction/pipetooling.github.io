@@ -281,7 +281,7 @@ export function BidsCoverLetterTab({
   const [materialsByStageRows, setMaterialsByStageRows] = useState<MaterialsByStageLetterRow[] | null>(null)
   // PR 4: the stages' raw shares, for "Use stage shares" on the payment schedule.
   const [materialsByStageShares, setMaterialsByStageShares] = useState<StageMoney | null>(null)
-  // Schedule of values (v2.4058): the pill (bids.include_schedule_of_values) — the letter's amount spread by
+  // Schedule of values (v2.4066): the pill (bids.include_schedule_of_values) — the letter's amount spread by
   // the takeoff's stage shares. The stage document behind it is the same read the other two pills use.
   const [scheduleOfValuesEnabled, setScheduleOfValuesEnabled] = useState(false)
   const [materialsByStageDoc, setMaterialsByStageDoc] = useState<MaterialsByStageDocument | null>(null)
@@ -991,7 +991,7 @@ export function BidsCoverLetterTab({
         const paymentSchedulePercentSum = paymentSchedulePercentTotal(paymentScheduleInputs)
         const paymentScheduleActive = paymentScheduleEnabled && paymentScheduleInputs.length > 0
         const materialsByStageForLetter = materialsByStageEnabled && materialsByStageRows && materialsByStageRows.length > 0 ? { rows: materialsByStageRows } : null
-        // Schedule of values (v2.4058): each letter spreads ITS amount — the bundle section's, the same-page headline's — by the one set of shares.
+        // Schedule of values (v2.4066): each letter spreads ITS amount — the bundle section's, the same-page headline's — by the one set of shares.
         const scheduleOfValuesForLetter = (amountDollars: number) => scheduleOfValuesEnabled && materialsByStageDoc ? { summary: materialsByStageDoc.summary, amountDollars } : null
         const scheduleOfValuesPreview = scheduleOfValuesEnabled && materialsByStageDoc ? scheduleOfValuesLetter(materialsByStageDoc.summary, effectiveRevenue) : null
         // Multi-GC (v2.1159): group bundled sections by effective GC (version

@@ -1,7 +1,7 @@
 import type { ReleaseNote } from '../../lib/releaseNotes'
 
 const note: ReleaseNote = {
-  version: 'v2.4058',
+  version: 'v2.4066',
   date: '2026-09-28',
   title: 'Cover Letter: a real Schedule of values, and the payment schedule says what it is',
   kind: 'feature',

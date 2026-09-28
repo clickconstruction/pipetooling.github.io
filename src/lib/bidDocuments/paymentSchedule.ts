@@ -1,6 +1,6 @@
 /**
  * Pure helpers for the Cover Letter payment schedule (headed "Schedule of Values:" in the
- * letter until v2.4058, when a real schedule of values — the amount by stage — joined it).
+ * letter until v2.4066, when a real schedule of values — the amount by stage — joined it).
  *
  * A schedule row = a payment timing (before start, before/after Rough In / Top Out / Trim Set)
  * + a percent of the contract amount. Rows persist in `bid_payment_schedule_rows`; the per-bid
@@ -45,7 +45,7 @@ export const PAYMENT_SCHEDULE_TIMING_LABELS: Record<PaymentScheduleTiming, strin
  */
 export type PaymentScheduleRowInput = { timing: string; percent: number }
 
-/** The letter heading (v2.4058 — was "Schedule of Values:", which now names the amount-by-stage section). */
+/** The letter heading (v2.4066 — was "Schedule of Values:", which now names the amount-by-stage section). */
 export const PAYMENT_SCHEDULE_HEADING = 'Payment schedule:'
 
 /** The company standard 30/30/30/10: 30% before each phase, 10% retainage after Trim Set. */
