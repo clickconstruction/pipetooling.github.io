@@ -37,6 +37,8 @@ import SettingsMyEmailScheduleSection from '../components/settings/SettingsMyEma
 import SettingsEmailStreamsSection from '../components/settings/SettingsEmailStreamsSection'
 import { SettingsUsageTab } from '../components/settings/SettingsUsageTab'
 import { SettingsWhatCustomersSeeTab } from '../components/settings/SettingsWhatCustomersSeeTab'
+import { SettingsContractsTab } from '../components/settings/SettingsContractsTab'
+import { ANCHOR_BID_COVER_LETTER_DEFAULTS, ANCHOR_ESTIMATE_CX_DEFAULTS, ANCHOR_ESTIMATE_PUBLIC_TERMS, CONTRACTS_TAB_ID, contractAnchorId, stepParam, type ContractStepRef } from '../lib/contracts/customerContractCatalog'
 import type { EmailStreamKey } from '../lib/emailLogStreamLink'
 import SettingsAccountBackupTrailing from '../components/settings/SettingsAccountBackupTrailing'
 import { useSettingsBackupExports } from '../hooks/useSettingsBackupExports'
@@ -960,6 +962,19 @@ export default function Settings() {
   const settingsGroupTitle = (id: string, fallback: string) => settingsGroupMeta.get(id)?.label ?? fallback
   const settingsGroupHint = (id: string) => settingsGroupMeta.get(id)?.pagesHint
 
+  // Contracts & terms: its Edit doors open a collapsed editor on Bids & materials, and its
+  // sample doors open a step on What customers see. Callbacks, not links, so the same door works
+  // twice in a row (the rail changes the tab without changing the URL).
+  const [bidCoverLetterOpenSignal, setBidCoverLetterOpenSignal] = useState(0)
+  const openContractEditorSection = useCallback(
+    (anchorId: string) => {
+      if (anchorId === ANCHOR_ESTIMATE_PUBLIC_TERMS) setEstimatePublicTermsSectionOpen(true)
+      else if (anchorId === ANCHOR_ESTIMATE_CX_DEFAULTS) setEstimateCxSectionOpen(true)
+      else if (anchorId === ANCHOR_BID_COVER_LETTER_DEFAULTS) setBidCoverLetterOpenSignal((n) => n + 1)
+    },
+    [setEstimatePublicTermsSectionOpen, setEstimateCxSectionOpen],
+  )
+
   // Deep links into Settings: /settings?tab=<group-id> and /settings#<section-anchor>
   // (dashboard banners + Calendar). Applied once per unique URL value, re-attempted
   // when the role-filtered groups arrive so a valid target isn't lost to load order.
@@ -985,6 +1000,7 @@ export default function Settings() {
       // Page pins sit inside a collapsed group on Your dashboard — open it so the
       // anchor has something to land on (Tier-2 #17).
       if (anchorId === 'settings-page-pins') setFinancialPinsSectionOpen(true)
+      openContractEditorSection(anchorId)
       // The owning tab mounts conditionally and its sections hydrate from async
       // data, so the anchor can appear well after this effect runs. Poll for it
       // (bounded, ~5s) and scroll once it exists, then stop.
@@ -999,7 +1015,7 @@ export default function Settings() {
       }
       window.setTimeout(tick, 120)
     }
-  }, [location.search, location.hash, settingsJumpGroups, setFinancialPinsSectionOpen])
+  }, [location.search, location.hash, settingsJumpGroups, setFinancialPinsSectionOpen, openContractEditorSection])
 
   useEffect(() => {
     const first = settingsJumpGroups[0]
@@ -1389,7 +1405,36 @@ export default function Settings() {
       </SettingsGroup>
 
       <SettingsGroup id="settings-what-customers-see" hidden={activeSettingsTab !== 'settings-what-customers-see'} title={settingsGroupTitle('settings-what-customers-see', 'What customers see')} description={settingsGroupHint('settings-what-customers-see')}>
-        {activeSettingsTab === 'settings-what-customers-see' && canSeeWhatCustomersSee(myRole) && <SettingsWhatCustomersSeeTab />}
+        {activeSettingsTab === 'settings-what-customers-see' && canSeeWhatCustomersSee(myRole) && (
+          <SettingsWhatCustomersSeeTab
+            onOpenContract={(entryId) => {
+              setActiveSettingsTab(CONTRACTS_TAB_ID)
+              pollScrollToSettingsAnchor(contractAnchorId(entryId))
+            }}
+          />
+        )}
+      </SettingsGroup>
+
+      <SettingsGroup id={CONTRACTS_TAB_ID} hidden={activeSettingsTab !== CONTRACTS_TAB_ID} title={settingsGroupTitle(CONTRACTS_TAB_ID, 'Contracts & terms')} description={settingsGroupHint(CONTRACTS_TAB_ID)}>
+        {/* Mounted while it is open, so it re-reads the wording each time it is opened. */}
+        {activeSettingsTab === CONTRACTS_TAB_ID && canSeeWhatCustomersSee(myRole) && (
+          <SettingsContractsTab
+            role={myRole}
+            onOpenEditor={(tabId, anchorId) => {
+              setActiveSettingsTab(tabId)
+              openContractEditorSection(anchorId)
+              pollScrollToSettingsAnchor(anchorId)
+            }}
+            onOpenStep={(ref: ContractStepRef) => {
+              const params = new URLSearchParams(location.search)
+              params.set('tab', 'settings-what-customers-see')
+              params.set('step', stepParam(ref))
+              params.delete('who')
+              navigate({ pathname: location.pathname, search: `?${params.toString()}`, hash: '' }, { replace: true })
+              setActiveSettingsTab('settings-what-customers-see')
+            }}
+          />
+        )}
       </SettingsGroup>
 
       <SettingsGroup id="settings-data" hidden={activeSettingsTab !== 'settings-data'} title={settingsGroupTitle('settings-data', 'Data & recovery')} description={settingsGroupHint('settings-data')}>
@@ -1645,7 +1690,7 @@ export default function Settings() {
       {/* v2.2088: the bid cover letter belongs with Bids, not Templates. */}
       {myRole === 'dev' && (
         <>
-          <BidCoverLetterDefaultsSettingsBlock />
+          <BidCoverLetterDefaultsSettingsBlock openSignal={bidCoverLetterOpenSignal} />
           <BidBoardValueRuleSettingsBlock />
         </>
       )}

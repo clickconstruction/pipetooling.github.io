@@ -71,6 +71,10 @@ export function getZonedSettingsGroups(myRole: UserRole | null): SettingsGroupDe
   if (canSeeWhatCustomersSee(r)) {
     groups.push({ id: 'settings-what-customers-see', label: 'What customers see', zone: 'company', pagesHint: 'Every email and page anyone outside the company gets — customers, GCs, subs, supply houses and the collections firm — rendered live with sample data, in the order they meet them.' })
   }
+  // Contracts & terms: the same people, by the document instead of by the journey.
+  if (canSeeWhatCustomersSee(r)) {
+    groups.push({ id: 'settings-contracts', label: 'Contracts & terms', zone: 'company', pagesHint: 'Every contract a customer accepts or signs, and every notice they receive — the wording side by side, where it is edited, and where the customer meets it.' })
+  }
   if (r === 'dev' || r === 'master_technician' || isAssistantLike(r) || r === 'estimator') {
     groups.push({ id: 'settings-company', label: 'Company', zone: 'company', pagesHint: 'Company documents, the office address, and the Map.' })
   }

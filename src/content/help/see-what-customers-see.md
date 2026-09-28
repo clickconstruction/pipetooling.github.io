@@ -61,7 +61,7 @@ The same strips, narrowed to one job, sit in the **Job window**: open a job and 
 
 ## Learn a step
 
-Every card opens, including a **Next release** card. Under the step's name the expanded view says **what sends it** (the button or function), **when** in the relationship it happens, and **what they can do there** — what the customer, GC, sub, house or firm can actually do on that page or from that email. {{button:outline|How to send it →}} opens the help guide for sending that surface. A new person in the office can read the whole customer journey by clicking along a strip.
+Every card opens, including a **Next release** card. Under the step's name the expanded view says **what sends it** (the button or function), **when** in the relationship it happens, and **what they can do there** — what the customer, GC, sub, house or firm can actually do on that page or from that email. {{button:outline|How to send it →}} opens the help guide for sending that surface. A step that carries contract wording lists it under **The wording on it**; each name opens its card on **Contracts & terms**. A new person in the office can read the whole customer journey by clicking along a strip.
 
 :::example An expanded step
 {{chip:gray|Agreement to sign}} · What sends it: *Jobs → Contract sweep → Send* · When: *Same day* · What they can do there: *Read the scope, the amount and the payment line, open the full terms, and sign on the page.* {{button:outline|How to send it →}}

@@ -20,12 +20,14 @@ export type StandardTermsEditModalProps = {
   doc: StandardTermsDoc
   /** Jobs still waiting in the sweep (0 when opened from one job's Contract window). */
   openJobs: number
+  /** Opened on Settings → Contracts & terms, where there is no job in hand. */
+  fromSettings?: boolean
   onClose: () => void
   /** The saved document, so the caller re-reads its terms from it. */
   onSaved: (doc: StandardTermsDoc) => void
 }
 
-export default function StandardTermsEditModal({ doc, openJobs, onClose, onSaved }: StandardTermsEditModalProps) {
+export default function StandardTermsEditModal({ doc, openJobs, fromSettings = false, onClose, onSaved }: StandardTermsEditModalProps) {
   const { showToast } = useToastContext()
   const [name, setName] = useState(doc.document_name)
   const [body, setBody] = useState(doc.book_body_html ?? '')
@@ -86,7 +88,14 @@ export default function StandardTermsEditModal({ doc, openJobs, onClose, onSaved
     <ResponsiveModalShell title="Edit standard terms" onRequestClose={onClose} maxWidthDesktop={720} zIndex={1300} footer={footer}>
       <div style={{ display: 'grid', gap: '0.7rem' }}>
         <div role="note" data-testid="standard-terms-reach" style={{ padding: '0.55rem 0.75rem', borderRadius: 8, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', fontSize: '0.8rem', lineHeight: 1.45 }}>
-          <strong>{standardTermsLabel(doc)}</strong> — {standardTermsReachLine(openJobs)} To change one job only — its scope, amount or payment line — use <em>This job</em> instead.
+          <strong>{standardTermsLabel(doc)}</strong> — {standardTermsReachLine(openJobs, fromSettings)}{' '}
+          {fromSettings ? (
+            <>To change one job only — its scope, amount or payment line — open that job&rsquo;s Contract window.</>
+          ) : (
+            <>
+              To change one job only — its scope, amount or payment line — use <em>This job</em> instead.
+            </>
+          )}
         </div>
         <label style={{ display: 'grid', gap: '0.25rem', fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-muted)' }}>
           Document name

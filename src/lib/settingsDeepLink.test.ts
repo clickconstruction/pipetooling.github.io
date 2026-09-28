@@ -47,6 +47,15 @@ describe('resolveSettingsDeepLink', () => {
     expect(resolveSettingsDeepLink('', '')).toEqual({ tabId: null, anchorId: null })
   })
 
+  it('lands a Contracts & terms card, and the editors the tab opens', () => {
+    expect(resolveSettingsDeepLink('', '#settings-contract-bid-terms')).toEqual({ tabId: 'settings-contracts', anchorId: 'settings-contract-bid-terms' })
+    expect(resolveSettingsDeepLink('?tab=settings-contracts', '#settings-contract-job-standard-terms')).toEqual({ tabId: 'settings-contracts', anchorId: 'settings-contract-job-standard-terms' })
+    // The tab's own id is still a tab, not a card.
+    expect(resolveSettingsDeepLink('', '#settings-contracts')).toEqual({ tabId: 'settings-contracts', anchorId: null })
+    expect(resolveSettingsDeepLink('', '#settings-estimate-public-terms')).toEqual({ tabId: 'settings-catalogs', anchorId: 'settings-estimate-public-terms' })
+    expect(resolveSettingsDeepLink('', '#settings-bid-cover-letter-defaults')).toEqual({ tabId: 'settings-catalogs', anchorId: 'settings-bid-cover-letter-defaults' })
+  })
+
   it('ignores unrelated query params', () => {
     expect(resolveSettingsDeepLink('?foo=1&tab=settings-templates', '')).toEqual({
       tabId: 'settings-templates',

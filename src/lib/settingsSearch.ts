@@ -32,6 +32,11 @@ export type SettingsSearchEntry = {
 export const SETTINGS_SEARCH_INDEX: readonly SettingsSearchEntry[] = [
   // What customers see (v2.2758)
   { label: 'What customers see', keywords: ['customer view', 'sample customer', 'estimate email preview', 'bid room preview', 'portal preview', 'journeys', 'what the customer sees'], tabId: 'settings-what-customers-see' },
+  // Contracts & terms
+  { label: 'Contracts & terms', keywords: ['contract', 'contracts', 'terms and conditions', 'legal wording', 'agreement', 'warranty', 'exclusions', 'what we send', 'side by side', 'compare contracts', 'lien waiver', 'esign', 'electronic signature'], tabId: 'settings-contracts' },
+  { label: 'Estimate Terms and Conditions', keywords: ['estimate terms', 'public terms', 'terms page'], tabId: 'settings-contracts', anchorId: 'settings-contract-estimate-terms' },
+  { label: 'Bid terms & warranty', keywords: ['bid terms', 'proposal terms', 'bid room terms'], tabId: 'settings-contracts', anchorId: 'settings-contract-bid-terms' },
+  { label: 'Job service agreement — standard terms', keywords: ['standard terms', 'service agreement', 'job contract terms'], tabId: 'settings-contracts', anchorId: 'settings-contract-job-standard-terms' },
   // Notifications
   { label: 'Push notifications', keywords: ['alerts', 'phone notifications', 'enable notifications'], tabId: 'settings-recent-push' },
   { label: 'Recent emails sent', keywords: ['email log', 'sent mail'], tabId: 'settings-recent-push', anchorId: 'settings-recent-emails' },

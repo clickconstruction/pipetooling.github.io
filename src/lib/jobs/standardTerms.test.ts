@@ -17,6 +17,13 @@ describe('standardTermsReachLine', () => {
     expect(standardTermsReachLine(0)).toContain("not only this job's")
     expect(standardTermsReachLine(0)).not.toContain('sweep')
   })
+
+  it('on Contracts & terms there is no job in hand, and it does not name one', () => {
+    const line = standardTermsReachLine(0, true)
+    expect(line).toContain('every agreement sent from now on.')
+    expect(line).toContain('already sent or signed keep the wording')
+    expect(line).not.toContain('this job')
+  })
 })
 
 describe('standardTermsSaveBlocker', () => {
