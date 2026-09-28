@@ -13,9 +13,10 @@ import { formatCurrency } from '../../lib/jobs/jobFormMoney'
  * inline (list_job_activity_events, newest first), and the job link opens
  * Job Detail ON TOP (the Detail modal's overlay outranks this one) — the
  * checklist keeps its check state while the certifier digs in and comes back.
- * Certify / Draft Message unlock only when every row is checked (v2.2131:
- * "Certify & send…" renamed — it certifies, then opens the statement email
- * dialog as a draft; nothing sends until the user clicks Send statement).
+ * Check only / Check & send… unlock only when every row is checked. Check &
+ * send… certifies, then opens the statement email as a draft with "Replies go
+ * to" set — nothing sends until the user clicks Send statement. (The buttons
+ * read Certify / Draft Message until the worklist, punch list #49.)
  */
 export default function GcReviewCertifyModal({
   group,
@@ -211,14 +212,14 @@ export default function GcReviewCertifyModal({
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-            {allChecked ? 'All bills reviewed — ready to certify.' : `Check off all ${group.rows.length} bills to certify`}
+            {allChecked ? 'All bills checked — sign off, or sign off and draft the statement.' : `Check off all ${group.rows.length} bills to sign off`}
           </span>
           <span style={{ display: 'flex', gap: '0.5rem' }}>
             <button type="button" onClick={onClose} disabled={saving}>
               Cancel
             </button>
             <button type="button" onClick={() => void certify(false)} disabled={!allChecked || saving} style={{ fontWeight: 600, opacity: allChecked ? 1 : 0.5 }}>
-              {saving ? 'Saving…' : 'Certify'}
+              {saving ? 'Saving…' : 'Check only'}
             </button>
             <button
               type="button"
@@ -231,7 +232,7 @@ export default function GcReviewCertifyModal({
                 color: allChecked ? '#ffffff' : 'var(--text-faint)',
               }}
             >
-              Draft Message
+              Check &amp; send…
             </button>
           </span>
         </div>

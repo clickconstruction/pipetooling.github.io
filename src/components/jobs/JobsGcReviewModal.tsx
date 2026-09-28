@@ -80,6 +80,7 @@ import GcWorklistPanel from './GcWorklistPanel'
 import GcCallSheetModal from './GcCallSheetModal'
 import { buildCallSheet, buildCallSheetPrintHtml, callSheetWeekEnds, type CallSheetAnswer } from '../../lib/jobs/gcCallSheet'
 import { payPromiseLabel, payPromiseStatus } from '../../lib/jobs/payPromise'
+import { canTakeStatementReplies, defaultReplyToUserId } from '../../lib/gcStatementReplyTo'
 import { APP_SEND_NOTE, buildGcWorklist, mergeRoundMarkWrite } from '../../lib/jobs/gcWorklist'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import { TeammateEmailChips } from './TeammateEmailChips'
@@ -231,6 +232,8 @@ export type SendGcStatementPayload = {
   emailText: string
   total: number
   jobCount: number
+  /** Who takes the GC's replies (punch list #49); omitted/null = the person sending. Someone else named = they answer "Reply" and the sender is copied. */
+  replyTo?: { id: string; name: string } | null
 }
 
 type JobsGcReviewModalProps = {
@@ -308,6 +311,8 @@ export function JobsGcReviewModal({
   const [emailError, setEmailError] = useState<string | null>(null)
   /** Draft Message: include the GC's portal card (v2.2151) — on by default whenever the GC has an active portal. */
   const [emailIncludePortal, setEmailIncludePortal] = useState(true)
+  /** Draft Message: who takes the GC's replies — the account man by default, with the sender copied. */
+  const [emailReplyToUserId, setEmailReplyToUserId] = useState('')
   /**
    * Draft Message intro (journey-map #46): the dev-saved `gc_statement_scheduled` template body,
    * rendered — the same words the scheduled dispatcher prepends, so both app-sent lanes read alike.
@@ -786,6 +791,8 @@ export function JobsGcReviewModal({
     setEmailIntroText(null)
     setEmailError(null)
     setEmailIncludePortal(true)
+    const accountManId = !byDevelopment && g.gcId ? accountManByGc.get(g.gcId) ?? null : null
+    setEmailReplyToUserId(defaultReplyToUserId(authUser?.id ?? '', users.find((u) => u.id === accountManId) ?? null))
     setEmailWhen('now')
     setEmailRepeatWeekly(false)
     // Same editable wording as the scheduled lane (Settings → Email templates → GC statement,
@@ -1768,6 +1775,35 @@ export function JobsGcReviewModal({
                 </label>
               )
             })()}
+            {(() => {
+              // Replies go to (punch list #49): the assistant sends, the account man knows the account.
+              if (byDevelopment || !authUser?.id) return null
+              const takers = users.filter((u) => canTakeStatementReplies(u)).sort((a, b) => Number(b.id === authUser.id) - Number(a.id === authUser.id) || a.name.localeCompare(b.name))
+              if (takers.length < 2) return null
+              const accountManId = emailDialogGroup.gcId ? accountManByGc.get(emailDialogGroup.gcId) ?? null : null
+              const scheduled = emailWhen === 'schedule'
+              return (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.6rem', fontSize: '0.8125rem' }}>
+                  <label htmlFor="gc-email-reply-to" style={{ fontWeight: 600 }}>
+                    Replies go to
+                  </label>
+                  <select
+                    id="gc-email-reply-to"
+                    value={scheduled ? authUser.id : emailReplyToUserId || authUser.id}
+                    disabled={emailSending || scheduled}
+                    onChange={(e) => setEmailReplyToUserId(e.target.value)}
+                    style={{ font: 'inherit', fontSize: '0.8125rem', padding: '0.2rem 0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'inherit' }}
+                  >
+                    {takers.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.id === authUser.id ? 'Me' : `${u.name}${u.id === accountManId ? ' · account man' : ''} — copy me`}
+                      </option>
+                    ))}
+                  </select>
+                  {scheduled ? <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>A scheduled send replies to whoever scheduled it.</span> : null}
+                </div>
+              )
+            })()}
             <ScheduleWhenControls
               when={emailWhen}
               setWhen={setEmailWhen}
@@ -1872,6 +1908,10 @@ export function JobsGcReviewModal({
                     emailText: buildGcStatementEmailText(g, { dateStr, officePhone: getPhysicalInvoiceIssuerForDocument().phone, portalUrl: emailIncludePortal ? portalLinkFor(g)?.url ?? null : null, introText: emailIntroText }),
                     total: g.subtotal,
                     jobCount: g.jobCount,
+                    replyTo: (() => {
+                      const taker = !byDevelopment && emailReplyToUserId && emailReplyToUserId !== authUser?.id ? users.find((u) => u.id === emailReplyToUserId) : undefined
+                      return taker ? { id: taker.id, name: taker.name } : null
+                    })(),
                   }).then((res) => {
                     setEmailSending(false)
                     if (res.ok) {

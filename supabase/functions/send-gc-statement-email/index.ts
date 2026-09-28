@@ -10,6 +10,7 @@ import {
   findDuplicateStatementSend,
   type RecentStatementSend,
 } from '../_shared/gcStatementSendDedupe.ts'
+import { resolveStatementReplyTo, type ReplyToPerson } from '../_shared/gcStatementReplyTo.ts'
 
 /**
  * Send a GC statement email (v2.1416, phase 2 of GC statements).
@@ -20,8 +21,11 @@ import {
  * through the caller's RLS (blocks cross-tenant sends); the recipient address
  * itself is office-chosen (statements often go to an AP inbox not on file).
  *
- * Sends via Resend from the EMAIL_FROM sender with the caller's email
- * as reply-to, then audits into public.gc_statement_emails with the service
+ * Sends via Resend from the EMAIL_FROM sender. Replies go to the caller,
+ * or — when the body names `reply_to_user_id` (punch list #49: an assistant
+ * sending for the account man) — to that office user, with the caller copied
+ * (`_shared/gcStatementReplyTo.ts`). The response echoes `reply_to`, so a
+ * client can tell a function from before this rule. Then audits into public.gc_statement_emails with the service
  * role (the table has no client write policies) and best-effort logs to
  * email_send_log (email_type 'gc_statement_manual' — the lane) like every
  * other app send.
@@ -101,6 +105,8 @@ serve(async (req) => {
       email_text?: string
       total?: number
       job_count?: number
+      /** Who takes the GC's replies; omitted/null = the caller. */
+      reply_to_user_id?: string | null
     }
 
     const gcCustomerId = typeof body.gc_customer_id === 'string' && body.gc_customer_id.trim() ? body.gc_customer_id.trim() : null
@@ -159,6 +165,25 @@ serve(async (req) => {
 
     const serviceClient = createClient(supabaseUrl, serviceKey)
 
+    // Replies go to (punch list #49): the caller by default; a named office user takes them and the caller is copied.
+    const replyToUserId = typeof body.reply_to_user_id === 'string' && body.reply_to_user_id.trim() ? body.reply_to_user_id.trim() : null
+    let replyToPerson: ReplyToPerson | null = null
+    if (replyToUserId && replyToUserId !== me.id) {
+      const { data: named } = await serviceClient.from('users').select('id, name, email, role').eq('id', replyToUserId).maybeSingle()
+      replyToPerson = (named as ReplyToPerson | null) ?? null
+    }
+    const replies = resolveStatementReplyTo({
+      sender: me as ReplyToPerson,
+      replyToPerson,
+      replyToMissing: !!replyToUserId && replyToUserId !== me.id && !replyToPerson,
+      toEmail,
+      ccEmails,
+    })
+    if (!replies.ok) {
+      return jsonResponse({ error: replies.error }, 400)
+    }
+    const ccAll = replies.cc
+
     // Send-time dedupe (journey-map #45): the same statement to the same
     // address inside the attended window — by this lane or the scheduled one —
     // is skipped, never emailed twice. Audit-read failures fail open: the send
@@ -190,7 +215,7 @@ serve(async (req) => {
       console.error('gc_statement_emails dedupe read failed (sending anyway)', dedupeErr)
     }
 
-    const replyTo = typeof me.email === 'string' && me.email.includes('@') ? me.email : undefined
+    const replyTo = replies.replyTo ?? undefined
     const resendResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -200,7 +225,7 @@ serve(async (req) => {
       body: JSON.stringify({
         from: EMAIL_FROM,
         to: [toEmail],
-        ...(ccEmails.length ? { cc: ccEmails } : {}),
+        ...(ccAll.length ? { cc: ccAll } : {}),
         subject,
         html: emailHtml,
         text: emailText,
@@ -215,7 +240,7 @@ serve(async (req) => {
 
     await logEmailSendBestEffort({
       resendEmailId: sent.id ?? null,
-      to: [toEmail, ...ccEmails],
+      to: [toEmail, ...ccAll],
       from: EMAIL_FROM,
       subject,
       emailType: GC_STATEMENT_EMAIL_TYPES.manual,
@@ -235,13 +260,13 @@ serve(async (req) => {
         sent_by: me.id,
         sent_by_name: typeof me.name === 'string' ? me.name : '',
         resend_email_id: sent.id ?? null,
-        cc_emails: ccEmails.length ? ccEmails : null,
+        cc_emails: ccAll.length ? ccAll : null,
       })
     } catch (auditErr) {
       console.error('gc_statement_emails audit insert failed', auditErr)
     }
 
-    return jsonResponse({ success: true, resend_email_id: sent.id ?? null })
+    return jsonResponse({ success: true, resend_email_id: sent.id ?? null, reply_to: replies.replyTo, reply_to_name: replies.replyToName, on_behalf: replies.onBehalf })
   } catch (e) {
     console.error('send-gc-statement-email error', e)
     return jsonResponse({ error: 'Internal error' }, 500)

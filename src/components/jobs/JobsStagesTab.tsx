@@ -66,6 +66,7 @@ import {
   buildGcStatementEmailText,
   gcStatementEmailSubject,
 } from '../../lib/jobsDocuments/gcStatementEmail'
+import { describeReplyToOutcome } from '../../lib/gcStatementReplyTo'
 import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerDraft, getPhysicalInvoiceIssuerForDocument } from '../../lib/physicalInvoiceIssuer'
 import { copyRichHtmlToClipboard } from '../../lib/copyRichHtmlToClipboard'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
@@ -4203,16 +4204,18 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                           email_text: p.emailText,
                           total: p.total,
                           job_count: p.jobCount,
+                          reply_to_user_id: p.replyTo?.id ?? null,
                         },
                       })
-                      const resp = data as { success?: boolean; error?: string } | null
+                      const resp = data as { success?: boolean; error?: string; reply_to?: string | null } | null
                       if (resp && typeof resp.error === 'string' && resp.error.length > 0) {
                         return { ok: false, error: resp.error }
                       }
                       if (fnErr) {
                         return { ok: false, error: fnErr.message || 'Send failed' }
                       }
-                      showToast(`Statement emailed to ${p.toEmail}.`, 'success')
+                      // The function echoes where replies go; one from before "Replies go to" echoes nothing, and the toast says so.
+                      showToast(`Statement emailed to ${p.toEmail}.${describeReplyToOutcome(p.replyTo ?? null, authUser?.id ?? '', resp?.reply_to)}`, 'success')
                       void refreshGcLastSent()
                       return { ok: true }
                     } catch (e) {
