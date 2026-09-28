@@ -274,7 +274,12 @@ export default function GcStatementMarkSentForm({
         <label htmlFor="gc-mark-pay-by" style={{ fontSize: '0.78rem', fontWeight: 700 }}>
           When did they say they’ll pay?
         </label>
-        <span style={{ fontSize: '0.72rem', color: wantsDate ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>{wantsDate ? 'Hot means they gave a date' : payBy ? '' : 'optional'}</span>
+        <span style={{ flex: 1, fontSize: '0.72rem', color: wantsDate ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>{wantsDate ? 'Hot means they gave a date' : payBy ? '' : 'optional'}</span>
+        {payBy ? (
+          <button type="button" onClick={() => setPayBy('')} style={{ padding: 0, fontSize: '0.72rem', border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer', textDecoration: 'underline' }}>
+            No date
+          </button>
+        ) : null}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
         {shortcuts.map((c) => (
@@ -289,11 +294,6 @@ export default function GcStatementMarkSentForm({
           onChange={(e) => setPayBy(e.target.value)}
           style={{ font: 'inherit', fontSize: '0.78rem', padding: '0.15rem 0.3rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'inherit' }}
         />
-        {payBy ? (
-          <button type="button" onClick={() => setPayBy('')} style={{ padding: '0.15rem 0.3rem', fontSize: '0.75rem', border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer', textDecoration: 'underline' }}>
-            No date
-          </button>
-        ) : null}
       </div>
       {cover ? (
         <div data-testid="gc-mark-promise-cover" style={{ border: '1px solid var(--border)', background: 'var(--surface)', borderRadius: 6, padding: '0.4rem 0.6rem', marginBottom: '0.5rem' }}>
