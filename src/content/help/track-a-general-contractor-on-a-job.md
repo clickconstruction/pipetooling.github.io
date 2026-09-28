@@ -2,7 +2,7 @@
 title: track a general contractor on a job
 category: Office
 roles: dev, master_technician, assistant
-keywords: GC, general contractor, builder, gc/builder, second customer, manage by gc, hard hat, stages, job customer, statement, draft message, pay online, nothing owed, portal card, email template
+keywords: GC, general contractor, builder, gc/builder, second customer, manage by gc, hard hat, stages, job customer, statement, draft message, pay online, nothing owed, portal card, email template, print unpaid invoices, print invoices, all invoices, invoice pdf
 order: 73
 ---
 A job's **customer** is who you bill. But on commercial work there's often a second party that matters day to day — the **General Contractor** running the site. You can now link a GC to any job and manage work by GC without touching billing.
@@ -42,11 +42,25 @@ Every week (due Wednesday), the office certifies each GC's group before sending 
 The group header then shows {{chip:green|✓ Certified · Taunya · 7:02 AM}} — and if a bill lands or a payment posts **after** sign-off, it flips to {{chip:yellow|Changed since certified · +$2,700}} with a Re-certify button, so a sent statement never silently drifts from what was reviewed. Certifications reset each week.
 
 **The Dashboard reminds you**: starting Wednesday, office staff see an amber card — "GC review is due today · 3 of 9 GCs certified" — that opens GC Review in one click. It turns green for the rest of Wednesday once every GC is certified and sent — by **Draft Message**, a scheduled send to that GC, or a **Sent it ✓** mark from the statement round; a "Spoke with them" mark or an "All GCs" office copy doesn't count — and stays away until the next week's ritual.
-- Every sharing action for one GC lives behind that row's {{button:outline|Share}} dropdown — **Draft Message**, **Copy**, **Print**, and (under *Portal*) **Copy portal link**. The {{icon:help|globe}} next to the GC's name is their portal, same as everywhere else.
+- Every sharing action for one GC lives behind that row's {{button:outline|Share}} dropdown — **Draft Message**, **Copy**, **Print**, **Print unpaid invoices**, and (under *Portal*) **Copy portal link**. The {{icon:help|globe}} next to the GC's name is their portal, same as everywhere else.
 
 ## Send a statement to a GC
 
 Pick **Copy** from a GC row's {{button:outline|Share}} menu — one click copies a **GC-facing statement** (job address, the date the bill was sent, and the amount owed, with a total). Paste it into Gmail, Outlook, or Apple Mail and it lands as a clean formatted table; a suggested subject line rides at the top of the copy so you can cut it into the subject field. This version is written for the GC's eyes — no internal chips or days-past-due language. **Print** in the same menu makes that GC's printable statement.
+
+## Print a GC's unpaid invoices
+
+The statement lists what is owed; sometimes the GC wants the bills themselves. Pick **Print unpaid invoices** from the GC's {{button:outline|Share}} menu and a new tab opens with **every unpaid invoice on that GC's statement as one PDF** — the same invoice you get from View bill, one after another, in the statement's order. Print it or save it from the PDF's own toolbar.
+
+- It prints what the statement shows: with **Include Collections** ticked, the hard-to-collect bills are in the stack; unticked, they are not.
+- Each job is re-read as the PDF builds, so a bill paid or sent back since you opened GC Review is left out. A part-paid bill still prints, with its payments and the balance due.
+- A row that is a job balance with no bill behind it has no invoice to print. The message that follows says how many invoices printed and names anything left out.
+
+:::example After the PDF opens
+19 unpaid invoices for RMC- Dudley Mason.
+:::
+
+If the tab does not open, allow pop-ups for the app and pick it again.
 
 Prefer the app to send it? Choose **Draft Message** from the same Share menu. The dialog pre-fills the **To** address from the GC's customer record (editable — statements often go to an AP inbox) and the subject line. A row of **teammate chips** sits above the To field — tap a name to send to that office teammate instead of typing their email; tap it again to clear, and typing any other address just works; hit {{button:blue|Send statement}} and the app emails the same table from **team@noreply.clicktooling.com** with *your* email as the reply-to, so responses land in your inbox. After a send, the row shows a small **last sent** date so the office can see at a glance which GCs have already been statemented.
 

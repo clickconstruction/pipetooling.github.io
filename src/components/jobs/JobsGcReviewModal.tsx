@@ -90,6 +90,8 @@ import CustomerPortalGlobeButton from '../customers/CustomerPortalGlobeButton'
 import { useGcPortalLinks } from '../../hooks/useGcPortalLinks'
 import { gcPortalLinkCaption } from '../../lib/portal/gcPortalLink'
 import { useToastContext } from '../../contexts/ToastContext'
+import { planGcUnpaidInvoicePrint } from '../../lib/jobs/gcUnpaidInvoicePrint'
+import { openGcUnpaidInvoicesPdfInNewTab } from '../../lib/jobs/gcUnpaidInvoicePrintIo'
 import { supabase } from '../../lib/supabase'
 
 /** Tomorrow's civil date in the company calendar zone, YYYY-MM-DD. */
@@ -574,6 +576,17 @@ export function JobsGcReviewModal({
     } catch {
       showToast('Could not copy the portal link.', 'error')
     }
+  }
+  /** Share → Print unpaid invoices: the group whose PDF is building — one at a time, so a second click cannot open a second tab. */
+  const [invoicePrintGroupKey, setInvoicePrintGroupKey] = useState<string | null>(null)
+  const printUnpaidInvoices = (g: GcReviewGroup) => {
+    if (invoicePrintGroupKey) return
+    setInvoicePrintGroupKey(g.key)
+    void openGcUnpaidInvoicesPdfInNewTab(g.gcName, planGcUnpaidInvoicePrint(g, [...billedActiveRows, ...collectionsRows]), {
+      onBlocked: () => showToast('Allow pop-ups to print the invoices.', 'error'),
+      onError: (message) => showToast(`Could not build the invoices — ${message}`, 'error'),
+      onDone: (s) => showToast(s.message, s.printed === 0 ? 'error' : s.complete ? 'success' : 'warning'),
+    }).finally(() => setInvoicePrintGroupKey(null))
   }
   const authUserName = users.find((u) => u.id === authUser?.id)?.name ?? ''
   const userNameById = (id: string | null) => (id ? users.find((u) => u.id === id)?.name || '—' : 'nobody assigned')
@@ -1480,6 +1493,18 @@ export function JobsGcReviewModal({
                             style={gcShareMenuItemStyle}
                           >
                             Print
+                          </button>
+                          <button
+                            type="button"
+                            disabled={invoicePrintGroupKey != null}
+                            onClick={() => {
+                              setShareMenuGroupKey(null)
+                              printUnpaidInvoices(g)
+                            }}
+                            title={`Open every unpaid invoice on the ${g.gcName} statement as one PDF — print or save it from there`}
+                            style={{ ...gcShareMenuItemStyle, ...(invoicePrintGroupKey != null ? { opacity: 0.6, cursor: 'default' } : null) }}
+                          >
+                            {invoicePrintGroupKey === g.key ? 'Building invoices…' : 'Print unpaid invoices'}
                           </button>
                           {!byDevelopment && g.gcId && canCertify ? (
                             <button
