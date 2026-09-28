@@ -127,7 +127,7 @@ describe('buildGcWorklist', () => {
       sent: ['done', true, false, 'word'],
       word: ['done', false, true, 'send'],
     })
-    expect(w.counts).toEqual({ gcs: 4, checked: 3, sent: 1, words: 1, done: 0 })
+    expect(w.counts).toEqual({ gcs: 4, checked: 3, sent: 1, words: 1, done: 0, late: 0 })
   })
 
   it('counts an app send this week as sent, and last week’s as not', () => {
@@ -149,6 +149,23 @@ describe('buildGcWorklist', () => {
     expect(w.groups[0]?.rows.map((r) => r.gcId)).toEqual(['big', 'small', 'done'])
     expect(w.groups[0]?.open).toBe(2)
     expect(w.counts.done).toBe(1)
+  })
+
+  it('puts a broken promise first and counts it', () => {
+    const w = build({
+      groups: [group('big', 90000), group('late', 12000), group('ahead', 50000)],
+      expectedPayByByGc: new Map([
+        ['late', '2026-09-20'],
+        ['ahead', '2026-10-10'],
+      ]),
+      todayYmd: '2026-09-27',
+    })
+    const rows = w.groups[0]!.rows
+    expect(rows.map((r) => r.gcId)).toEqual(['late', 'big', 'ahead'])
+    expect(rows[0]?.promise).toEqual({ payBy: '2026-09-20', late: true, daysLate: 7 })
+    expect(rows[2]?.promise?.late).toBe(false)
+    expect(rows[1]?.promise).toBeNull()
+    expect([w.groups[0]?.late, w.counts.late]).toEqual([1, 1])
   })
 
   it('a skipped GC is neither done nor to do', () => {

@@ -79,6 +79,7 @@ import GcStatementSendHistoryModal from './GcStatementSendHistoryModal'
 import GcWorklistPanel from './GcWorklistPanel'
 import GcCallSheetModal from './GcCallSheetModal'
 import { buildCallSheet, buildCallSheetPrintHtml, callSheetWeekEnds, type CallSheetAnswer } from '../../lib/jobs/gcCallSheet'
+import { payPromiseLabel, payPromiseStatus } from '../../lib/jobs/payPromise'
 import { APP_SEND_NOTE, buildGcWorklist, mergeRoundMarkWrite } from '../../lib/jobs/gcWorklist'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import { TeammateEmailChips } from './TeammateEmailChips'
@@ -560,9 +561,21 @@ export function JobsGcReviewModal({
     }
   }, [emailDialogGroup, emailFromRoundGcId])
   /** The week's worklist: every GC with a balance, three steps each, grouped by the account man to ask. */
+  const todayYmd = chicagoYmdOf(new Date())
   const worklist = useMemo(
-    () => buildGcWorklist({ groups: roundRollup.groups, certsByGc: latestCertByGc(certRows), marks: roundMarks, senders: roundSenders, accountMen, lastSentByGcId: mergedLastSent, weekStartYmd: certWeekStart }),
-    [roundRollup, certRows, roundMarks, roundSenders, accountMen, mergedLastSent, certWeekStart],
+    () =>
+      buildGcWorklist({
+        groups: roundRollup.groups,
+        certsByGc: latestCertByGc(certRows),
+        marks: roundMarks,
+        senders: roundSenders,
+        accountMen,
+        lastSentByGcId: mergedLastSent,
+        weekStartYmd: certWeekStart,
+        expectedPayByByGc: new Map(boardRows.map((r) => [r.gcId, r.expectedPayBy] as const)),
+        todayYmd,
+      }),
+    [roundRollup, certRows, roundMarks, roundSenders, accountMen, mergedLastSent, certWeekStart, boardRows, todayYmd],
   )
   const worklistWordsDue = worklist.groups.reduce((n, g) => n + (g.kind === 'under_line' ? 0 : g.rows.length), 0)
   /** Each GC's account man — who a word most likely came from. */
@@ -1167,6 +1180,7 @@ export function JobsGcReviewModal({
               return new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, d ?? 1)).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' })
             })}
             userNameById={userNameById}
+            todayYmd={todayYmd}
             onOpenGc={(gc) => setHistoryGc(gc)}
           />
         ) : null}
@@ -1303,11 +1317,29 @@ export function JobsGcReviewModal({
                           >
                             {t.temperature} · {new Date(t.at).toLocaleDateString('en-US', { weekday: 'short' })} · {t.by.split(/\s+/)[0]}
                           </button>
-                          {row?.expectedPayBy ? (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0.1rem 0.55rem', fontSize: '0.6875rem', fontWeight: 600, borderRadius: 9999, background: 'var(--bg-green-tint)', color: 'var(--text-green-800)', whiteSpace: 'nowrap' }} title="They said they'd pay by this date — hold them to it">
-                              pays by {(() => { const [y, m, d] = row.expectedPayBy.split('-').map(Number); return new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, d ?? 1)).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' }) })()}
-                            </span>
-                          ) : null}
+                          {(() => {
+                            // The promise (punch list #49): green while the date is ahead, red once it has passed with money still owed.
+                            const promise = payPromiseStatus(row?.expectedPayBy, todayYmd, g.subtotal)
+                            if (!promise) return null
+                            return (
+                              <span
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  padding: '0.1rem 0.55rem',
+                                  fontSize: '0.6875rem',
+                                  fontWeight: promise.late ? 700 : 600,
+                                  borderRadius: 9999,
+                                  background: promise.late ? 'var(--bg-orange-tint)' : 'var(--bg-green-tint)',
+                                  color: promise.late ? 'var(--text-red-700)' : 'var(--text-green-800)',
+                                  whiteSpace: 'nowrap',
+                                }}
+                                title={promise.late ? 'The date they gave has passed and they still owe — call them' : "They said they'd pay by this date — hold them to it"}
+                              >
+                                {payPromiseLabel(promise)}
+                              </span>
+                            )
+                          })()}
                         </>
                       )
                     })()
@@ -2383,7 +2415,7 @@ export function JobsGcReviewModal({
         ? (() => {
             const g = worklist.groups.find((x) => x.key === callSheetGroupKey)
             if (!g) return null
-            const sheet = buildCallSheet({ group: g, boardRowByGc, todayYmd: chicagoYmdOf(new Date()) })
+            const sheet = buildCallSheet({ group: g, boardRowByGc, todayYmd })
             const ownerName = g.ownerUserId ? userNameById(g.ownerUserId) : null
             return (
               <GcCallSheetModal

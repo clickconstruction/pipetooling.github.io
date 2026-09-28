@@ -36,6 +36,7 @@ Structura · $48,000 · oldest 58d {{chip:green|✓ Checked}} {{chip:green|✓ S
 - **Send stays grey until the bills are checked** — a statement never goes out unchecked. A group that changes after sign-off shows {{button:amber|Re-check}}.
 - Sent it another way — a text, your own inbox, in person? **or mark sent** beside the Send button records it.
 - **undo** on a row clears that week's mark, the statement and the word together.
+- {{chip:red|promised Sep 20 — 7 days late}} — the GC gave a pay date, it has passed, and they still owe. Those rows carry a red edge and sit at the top of their group: call them first. The day itself is not late; the day after is. The same chip shows on the GC's header and in the Temperature board.
 
 ## The word
 

@@ -1,11 +1,11 @@
 import { useState, type CSSProperties } from 'react'
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import { STATEMENT_SEND_CHANNELS, TEMPERATURES, type StatementSendChannel, type Temperature } from '../../lib/jobs/gcStatementRounds'
+import { payPromiseLabel } from '../../lib/jobs/payPromise'
 import {
   EMPTY_CALL_SHEET_DRAFT,
   callSheetAnswers,
   callSheetDraftIsEmpty,
-  payPromiseLabel,
   type CallSheet,
   type CallSheetAnswer,
   type CallSheetDraft,
