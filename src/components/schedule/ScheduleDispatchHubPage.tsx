@@ -85,6 +85,7 @@ import {
 } from '../../lib/scheduleDispatchHub'
 import { buildHourlyWageByUserId, hubWageLookupNames, type HubPayConfigWageRow } from '../../lib/scheduleDispatch/hubWages'
 import { buildHubBidPickerRows, filterHubJobPickerRows, hubJobPickerSubline } from '../../lib/scheduleDispatch/hubJobPicker'
+import { summarizeMultiCellAddResult } from '../../lib/scheduleDispatch/multiCellAdd'
 import {
   fetchJobSearchEvidence,
   jobSearchEvidenceModeForRole,
@@ -795,14 +796,8 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
         }
       }
 
-      const parts: string[] = []
-      if (added > 0) parts.push(`Added ${added} block${added === 1 ? '' : 's'}`)
-      if (skippedOverlap > 0) parts.push(`Skipped ${skippedOverlap} (overlap)`)
-      if (failed > 0) parts.push(`${failed} failed`)
-      showToast(
-        parts.length > 0 ? `${parts.join('. ')}.` : 'No blocks added.',
-        added > 0 ? 'success' : failed > 0 ? 'error' : 'info',
-      )
+      const summary = summarizeMultiCellAddResult({ added, skippedOverlap, failed })
+      showToast(summary.message, summary.tone)
 
       setHubMultiCellAddActive(false)
       setHubMultiCellAddSelection(new Set())
