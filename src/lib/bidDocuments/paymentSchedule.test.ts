@@ -94,9 +94,9 @@ describe('buildPaymentScheduleSectionLines', () => {
     expect(buildPaymentScheduleSectionLines([], 100000)).toEqual([])
   })
 
-  it('prepends the Schedule of Values heading', () => {
+  it('prepends the Payment schedule heading', () => {
     const lines = buildPaymentScheduleSectionLines(DEFAULT_PAYMENT_SCHEDULE_ROWS, 100000)
-    expect(lines[0]).toBe('Schedule of Values:')
+    expect(lines[0]).toBe('Payment schedule:')
     expect(lines).toHaveLength(5)
     expect(lines[1]).toBe('Due before Rough In: 30% — $30,000.00')
   })

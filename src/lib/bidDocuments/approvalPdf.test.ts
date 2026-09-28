@@ -258,7 +258,7 @@ describe('downloadApprovalPdf — a priced, costed, split bid', () => {
     expect(p4).toContain('Design Drawings Plan Date: 8-15-26')
     expect(p4.some((t) => t.includes('• [4] Lavatory'))).toBe(true)
     expect(p4.some((t) => t.includes('Hidden Row'))).toBe(false)
-    for (const heading of ['Inclusions:', 'Exclusions and Scope:', 'Schedule of Values:']) {
+    for (const heading of ['Inclusions:', 'Exclusions and Scope:', 'Payment schedule:']) {
       expect(call(heading), heading).toMatchObject({ font: 'bold' })
     }
     expect(FakeJsPDF.last!.calls.some((c) => c.page >= 4 && c.text === 'Acceptance of estimate')).toBe(true)
@@ -306,7 +306,7 @@ describe('downloadApprovalPdf — an unpriced, uncosted, unsplit bid with a GC f
     expect(p4.some((t) => t.includes('• Water heater'))).toBe(true) // typed inclusion survives without fixture rows
     expect(p4.some((t) => t.includes('Fixtures provided and installed'))).toBe(false)
     expect(pdf.calls.some((c) => c.text === 'Acceptance of estimate')).toBe(false)
-    expect(pdf.calls.some((c) => c.text === 'Schedule of Values:')).toBe(false)
+    expect(pdf.calls.some((c) => c.text === 'Payment schedule:')).toBe(false)
     expect(pdf.saved).toBe('Approval_Bid.pdf')
 
     // Unsplit: count rows are the bid's null-version rows.

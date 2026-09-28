@@ -7,6 +7,8 @@ import {
   type JobTallyPartLine,
 } from '../../lib/fetchJobMaterialsCostSnapshot'
 import type { CardChargeExclusions } from '../../lib/jobs/cardChargeAllocationFilter'
+import type { JobCardCostLine } from '../../lib/jobs/jobCardCostLines'
+import type { CategoryTagRow } from '../../lib/banking/categoryTags'
 
 export type MaterialsAccordionKey = 'supply' | 'mercury' | 'tally' | 'billed'
 
@@ -25,6 +27,9 @@ export function useJobCostSnapshot(jobId: string | null) {
   const [mercuryAllocLines, setMercuryAllocLines] = useState<JobMercuryAllocLine[]>([])
   const [mercuryFetchFailed, setMercuryFetchFailed] = useState(false)
   const [mercuryCardExclusions, setMercuryCardExclusions] = useState<CardChargeExclusions | undefined>(undefined)
+  // Cost-line slices of the card charges (⛽ Fuel & gas, punch list #52) and each transaction's tag.
+  const [mercuryCardCostLines, setMercuryCardCostLines] = useState<JobCardCostLine[]>([])
+  const [mercuryCardTagByTxId, setMercuryCardTagByTxId] = useState<ReadonlyMap<string, CategoryTagRow> | undefined>(undefined)
   const [tallyPartLines, setTallyPartLines] = useState<JobTallyPartLine[]>([])
   const [tallyFetchFailed, setTallyFetchFailed] = useState(false)
 
@@ -37,6 +42,8 @@ export function useJobCostSnapshot(jobId: string | null) {
       setMercuryAllocLines([])
       setMercuryFetchFailed(false)
       setMercuryCardExclusions(undefined)
+      setMercuryCardCostLines([])
+      setMercuryCardTagByTxId(undefined)
       setTallyPartLines([])
       setTallyFetchFailed(false)
       setMaterialsAccordionOpen('billed')
@@ -59,6 +66,8 @@ export function useJobCostSnapshot(jobId: string | null) {
         setMercuryAllocLines(snap.mercuryAllocLines)
         setMercuryFetchFailed(snap.mercuryFetchFailed)
         setMercuryCardExclusions(snap.cardExclusions)
+        setMercuryCardCostLines(snap.cardCostLines ?? [])
+        setMercuryCardTagByTxId(snap.cardTagByTxId)
         setTallyPartLines(snap.tallyPartLines)
         setTallyFetchFailed(snap.tallyFetchFailed)
       } finally {
@@ -93,6 +102,8 @@ export function useJobCostSnapshot(jobId: string | null) {
     mercuryAllocLines,
     mercuryFetchFailed,
     mercuryCardExclusions,
+    mercuryCardCostLines,
+    mercuryCardTagByTxId,
     tallyPartLines,
     tallyFetchFailed,
     mercuryCardTotal,

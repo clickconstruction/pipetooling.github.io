@@ -72,4 +72,25 @@ describe('Job window — Card charges by Job Summary’s rule', () => {
     fireEvent.click(cardRow())
     expect(screen.queryAllByTestId('card-line-not-counted')).toHaveLength(0)
   })
+
+  it('marks a fuel charge with its tag and names the fuel in the Card charges row', () => {
+    const fuel = { id: 'fuel', name: 'Fuel & gas', icon: '⛽', color: 'amber' as const, sort_order: 1, default_key: 'fuel', show_as_cost_line: true, hide_from_picker: false }
+    renderWithProviders(
+      <JobDetailMaterialsCostSection
+        loading={false}
+        snapshot={snapshot({
+          mercuryAllocLines: [line('buy', -100, 'Ferguson'), line('gas', -60, 'Shell')],
+          cardExclusions: undefined,
+          cardCostLines: [{ tagId: 'fuel', name: 'Fuel & gas', icon: '⛽', color: 'amber', usd: 60 }],
+          cardTagByTxId: new Map([['tx-gas', fuel]]),
+        })}
+        canExpand
+        billedMaterials={[]}
+      />,
+    )
+    expect(cardRow().textContent).toContain('includes ⛽ Fuel & gas $60.00')
+    expect(cardRow().textContent).toContain('160.00')
+    fireEvent.click(cardRow())
+    expect(screen.getAllByTestId('card-line-tag').map((t) => t.textContent)).toEqual(['⛽ Fuel & gas'])
+  })
 })
