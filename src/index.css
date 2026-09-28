@@ -3011,8 +3011,13 @@ body.my-time-boundary-dragging {
 }
 .stagesStripCells,
 .stagesStripLetters {
+  display: flex;
+  gap: 3px; /* the week break — a gap between the two weeks, not a margin on a cell (v2.4042) */
+}
+.stagesStripWeek {
   display: grid;
-  grid-template-columns: repeat(var(--strip-n, 10), var(--strip-cell, 10px));
+  grid-auto-flow: column;
+  grid-auto-columns: var(--strip-cell, 10px);
   gap: 1px;
 }
 .stagesStripCells i {
@@ -3062,10 +3067,6 @@ body.my-time-boundary-dragging {
 .stagesStripCells i.isToday {
   outline: 2px solid var(--text-700);
   outline-offset: -1px;
-}
-.stagesStripCells i.isWeekStart,
-.stagesStripLetters span.isWeekStart {
-  margin-left: 3px;
 }
 .stagesStripLetters {
   margin-top: 1px;
