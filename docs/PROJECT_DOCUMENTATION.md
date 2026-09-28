@@ -11,7 +11,7 @@ file: PROJECT_DOCUMENTATION.md
 type: Technical Reference
 purpose: Deep technical reference — schema, RLS, auth, DB functions, client patterns, gotchas; feature surfaces route to specialist docs
 audience: Developers, AI Agents, Technical Staff
-last_updated: 2026-09-27
+last_updated: 2026-09-28
 key_sections:
   - name: "Database Schema"
   - name: "Authentication & Authorization"
@@ -1837,7 +1837,7 @@ pipetooling.github.io/
 ├── public/
 │   ├── .nojekyll               # Prevents Jekyll processing
 │   ├── favicon.svg             # The app mark: solid gear, the wrench centred so its jaw reads as a C, dark on the family yellow tile (v2.3619)
-│   └── apple-touch-icon.png    # The same mark, full-bleed 180 for iOS
+│   └── apple-touch-icon.png    # The same mark, full-bleed 1024 for iOS, pulled in to 0.62 of the tile so iOS 26's glass band clears it (`npm run gen-app-icon`, v2.4095)
 ├── src/
 │   ├── components/
 │   │   ├── Layout.tsx          # Main layout with navigation
