@@ -3,6 +3,9 @@ import type { JobScheduleBlockRow } from './jobScheduleBlocks'
 import {
   aggregateWeekSummariesByJob,
   blocksToJobWeekSummaries,
+  buildHubAllPeopleRows,
+  buildHubJobAddressById,
+  buildHubJobTitleById,
   buildHubMergedRows,
   buildPersonDayBlockMap,
   buildScheduleDispatchHubRoster,
@@ -359,5 +362,140 @@ describe('buildHubMergedRows', () => {
 
   it('returns no rows for no jobs', () => {
     expect(buildHubMergedRows([], blocks('a', '2026-09-28'))).toEqual([])
+  })
+})
+
+describe('the hub lookups by anchor id', () => {
+  const hubJob = (id: string, over: Record<string, unknown> = {}) => ({
+    id,
+    hcp_number: '927',
+    job_name: 'Berg AirBnb',
+    project_id: null,
+    ...over,
+  })
+  const hubBid = (id: string, over: Record<string, unknown> = {}) => ({
+    id,
+    bid_number: '375',
+    project_name: 'Tower West',
+    address: null,
+    outcome: null,
+    created_at: '2026-09-01T12:00:00Z',
+    service_type: null,
+    ...over,
+  })
+
+  describe('buildHubJobTitleById', () => {
+    it('names a job by its id and a bid by its bid: anchor', () => {
+      const m = buildHubJobTitleById([hubJob('j1')], [hubBid('b1')], new Map())
+      expect([...m]).toEqual([
+        ['j1', 'J927 · Berg AirBnb'],
+        ['bid:b1', 'Bid visit · B375 · Tower West'],
+      ])
+    })
+
+    it('names a job with no HCP number by its Click number', () => {
+      const m = buildHubJobTitleById([hubJob('j1', { hcp_number: null, click_number: '4102' })], [], new Map())
+      expect(m.get('j1')).toBe('J4102 · Berg AirBnb')
+    })
+
+    it('names a bid that is scheduled but not on the list from the title it was handed', () => {
+      const m = buildHubJobTitleById([], [], new Map([['b9', 'B408 · Old Mill']]))
+      expect(m.get('bid:b9')).toBe('Bid visit · B408 · Old Mill')
+    })
+
+    it('says "Bid visit" alone for a scheduled bid nobody could name', () => {
+      const m = buildHubJobTitleById([], [], new Map([['b9', '  ']]))
+      expect(m.get('bid:b9')).toBe('Bid visit')
+    })
+
+    it('takes the title from the list when a bid is in both', () => {
+      const m = buildHubJobTitleById([], [hubBid('b1')], new Map([['b1', 'BP375 · Tower West (stale)']]))
+      expect(m.get('bid:b1')).toBe('Bid visit · B375 · Tower West')
+      expect(m.size).toBe(1)
+    })
+
+    it('keeps a job and a bid with the same uuid apart', () => {
+      const m = buildHubJobTitleById([hubJob('same')], [hubBid('same')], new Map())
+      expect(m.get('same')).toBe('J927 · Berg AirBnb')
+      expect(m.get('bid:same')).toBe('Bid visit · B375 · Tower West')
+    })
+
+    it('returns an empty map for nothing', () => {
+      expect(buildHubJobTitleById([], [], new Map()).size).toBe(0)
+    })
+  })
+
+  describe('buildHubJobAddressById', () => {
+    it('keys a job by its id and a bid by its bid: anchor, trimmed', () => {
+      const m = buildHubJobAddressById(
+        [hubJob('j1', { job_address: ' 12 Elm St ' })],
+        [hubBid('b1', { address: ' 400 Main ' })],
+      )
+      expect([...m]).toEqual([
+        ['j1', '12 Elm St'],
+        ['bid:b1', '400 Main'],
+      ])
+    })
+
+    it('has no entry for a missing or blank address', () => {
+      const m = buildHubJobAddressById(
+        [hubJob('j1'), hubJob('j2', { job_address: null }), hubJob('j3', { job_address: '   ' })],
+        [hubBid('b1'), hubBid('b2', { address: '  ' })],
+      )
+      expect(m.size).toBe(0)
+      expect(m.has('j3')).toBe(false)
+    })
+  })
+})
+
+describe('buildHubAllPeopleRows', () => {
+  const nameById = new Map([
+    ['a', 'abraham'],
+    ['b', 'Bo'],
+    ['c', 'Cruz'],
+    ['e', 'Élise'],
+  ])
+  const assignees = (...ids: string[]) => ids.map((assignee_user_id) => ({ assignee_user_id }))
+
+  it('lists the team and anyone with a block this week, one row each', () => {
+    const rows = buildHubAllPeopleRows(['a', 'b'], assignees('b', 'c', 'c'), nameById, new Set())
+    expect(rows).toEqual([
+      { userId: 'a', displayName: 'abraham' },
+      { userId: 'b', displayName: 'Bo' },
+      { userId: 'c', displayName: 'Cruz' },
+    ])
+  })
+
+  it('sorts by name without regard to case or accents', () => {
+    const rows = buildHubAllPeopleRows(['c', 'e', 'b', 'a'], [], nameById, new Set())
+    expect(rows.map((r) => r.displayName)).toEqual(['abraham', 'Bo', 'Cruz', 'Élise'])
+  })
+
+  it('leaves out an archived person, blocks or not', () => {
+    const rows = buildHubAllPeopleRows(['a', 'b'], assignees('c'), nameById, new Set(['b', 'c']))
+    expect(rows.map((r) => r.userId)).toEqual(['a'])
+  })
+
+  it('calls a person with no name "Unknown" and sorts them under U', () => {
+    const rows = buildHubAllPeopleRows(['zz', 'a', 'c'], [], nameById, new Set())
+    expect(rows).toEqual([
+      { userId: 'a', displayName: 'abraham' },
+      { userId: 'c', displayName: 'Cruz' },
+      { userId: 'zz', displayName: 'Unknown' },
+    ])
+  })
+
+  it('keeps the arrival order for people who share a name — the team before the assignees', () => {
+    const twins = new Map([
+      ['t1', 'Sam'],
+      ['t2', 'sam'],
+      ['t3', 'Sam'],
+    ])
+    const rows = buildHubAllPeopleRows(['t2', 't1'], assignees('t3'), twins, new Set())
+    expect(rows.map((r) => r.userId)).toEqual(['t2', 't1', 't3'])
+  })
+
+  it('returns no rows for nobody', () => {
+    expect(buildHubAllPeopleRows([], [], nameById, new Set())).toEqual([])
   })
 })

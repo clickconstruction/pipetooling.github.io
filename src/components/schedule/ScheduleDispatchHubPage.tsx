@@ -11,7 +11,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { OPEN_BID_EDIT_QUERY } from '../../contexts/BidPreviewModalContext'
 import { recordNavClick } from '../../lib/navClickTelemetry'
 import { bidOpenPath, scheduleBlockTarget } from '../../lib/scheduleBlockTarget'
-import { blocksToBidWeekMatrixRows, collectScheduledBidIds, scheduleBlockTitle } from '../../lib/scheduleBlockTitle'
+import { blocksToBidWeekMatrixRows, collectScheduledBidIds } from '../../lib/scheduleBlockTitle'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
@@ -64,6 +64,9 @@ import { ScheduleShareModal } from './ScheduleShareModal'
 import type { ScheduleDispatchCardPlacementMode, ScheduleDispatchCardPlacementVariant } from './ScheduleDispatchGrid'
 import {
   blocksToJobWeekSummaries,
+  buildHubAllPeopleRows,
+  buildHubJobAddressById,
+  buildHubJobTitleById,
   buildHubMergedRows,
   buildPersonDayBlockMap,
   fetchArchivedUserIdSetForIds,
@@ -446,32 +449,15 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
 
   const hubPersonDayBlocks = useMemo(() => buildPersonDayBlockMap(hubWeekBlocks), [hubWeekBlocks])
 
-  const hubJobTitleById = useMemo(() => {
-    const m = new Map<string, string>()
-    for (const j of hubJobs) {
-      m.set(j.id, formatScheduleDispatchHubJobTitle(j.hcp_number, j.job_name, j.click_number))
-    }
-    // Bid anchors key on their `bid:<uuid>` anchor id, so every id-keyed lookup just works.
-    // A bid visit reads as a bid visit: "Bid visit · B408 · Project" (Tier-2 #22).
-    for (const [bidId, title] of hubScheduledBidTitleById) {
-      m.set(`bid:${bidId}`, scheduleBlockTitle({ kind: 'bid', bidTitle: title }))
-    }
-    for (const b of hubBids) {
-      m.set(
-        `bid:${b.id}`,
-        scheduleBlockTitle({ kind: 'bid', bidTitle: formatScheduleDispatchHubBidTitle(b.bid_number, b.project_name) }),
-      )
-    }
-    return m
-  }, [hubJobs, hubBids, hubScheduledBidTitleById])
+  const hubJobTitleById = useMemo(
+    () => buildHubJobTitleById(hubJobs, hubBids, hubScheduledBidTitleById),
+    [hubJobs, hubBids, hubScheduledBidTitleById],
+  )
 
-  const hubAllPeopleRows = useMemo(() => {
-    const idSet = new Set<string>([...hubTeamMemberUserIds, ...hubWeekBlocks.map((b) => b.assignee_user_id)])
-    return [...idSet]
-      .filter((userId) => !hubArchivedUserIds.has(userId))
-      .map((userId) => ({ userId, displayName: hubPeopleNameById.get(userId) ?? 'Unknown' }))
-      .sort((a, b) => a.displayName.localeCompare(b.displayName, undefined, { sensitivity: 'base' }))
-  }, [hubTeamMemberUserIds, hubWeekBlocks, hubPeopleNameById, hubArchivedUserIds])
+  const hubAllPeopleRows = useMemo(
+    () => buildHubAllPeopleRows(hubTeamMemberUserIds, hubWeekBlocks, hubPeopleNameById, hubArchivedUserIds),
+    [hubTeamMemberUserIds, hubWeekBlocks, hubPeopleNameById, hubArchivedUserIds],
+  )
 
   const [hubUserTimeOffByCell, setHubUserTimeOffByCell] = useState<Map<string, UserTimeOffCellInfo>>(
     () => new Map(),
@@ -592,18 +578,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     [hubWeekBlocks, getHubJobDisplayTitle],
   )
 
-  const hubJobAddressById = useMemo(() => {
-    const m = new Map<string, string>()
-    for (const j of hubJobs) {
-      const a = (j.job_address ?? '').trim()
-      if (a) m.set(j.id, a)
-    }
-    for (const b of hubBids) {
-      const a = (b.address ?? '').trim()
-      if (a) m.set(`bid:${b.id}`, a)
-    }
-    return m
-  }, [hubJobs, hubBids])
+  const hubJobAddressById = useMemo(() => buildHubJobAddressById(hubJobs, hubBids), [hubJobs, hubBids])
 
   const getHubJobAddress = useCallback((id: string) => hubJobAddressById.get(id) ?? '', [hubJobAddressById])
 
