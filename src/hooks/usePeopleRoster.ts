@@ -53,7 +53,6 @@ export type UsePeopleRosterDeps = {
   setLoading: Dispatch<SetStateAction<boolean>>
   setError: Dispatch<SetStateAction<string | null>>
   setAuthUserRole: Dispatch<SetStateAction<string | null>>
-  loadPersonProjects: () => Promise<void>
   isDev: boolean
   authUserRole: string | null
 }
@@ -126,9 +125,6 @@ export function usePeopleRoster(
     } else {
       setCreatorNames({})
     }
-
-    // Load active projects for all people
-    await deps.loadPersonProjects()
 
     await loadArchivedPeople(myRole === 'dev')
     deps.setLoading(false)

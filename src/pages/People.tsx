@@ -115,10 +115,6 @@ import { generatePayStubRecord, type GeneratePayStubResult } from '../lib/pay/ge
 import { fetchPayReportInputs } from '../lib/pay/payReportInputs'
 import { findPersonUserDuplicates, mergePersonIntoUser } from '../lib/mergePersonUserDuplicates'
 import { buildAddSessionPeople } from '../lib/people/buildAddSessionPeople'
-import {
-  type ContractSigningTrafficLight,
-  rollupContractSigningStatusByPersonName,
-} from '../lib/contractSigningRollup'
 import { useAuth } from '../hooks/useAuth'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { useDocumentVisibility } from '../hooks/useDocumentVisibility'
@@ -232,9 +228,6 @@ const HOURS_TAB_SECTIONS_STACK: CSSProperties = {
 
 const tabStyle = pageTabStyle
 
-/** Active project rows for People Users tab “Active projects” line (workflow links use project id). */
-type PersonActiveProject = { id: string; name: string }
-
 /** `PeopleTab` (the 18 view keys) and their six groups live in `src/lib/people/peopleTabGroups.ts` (v2.2811). */
 
 /** Users tab: email/phone on its own row below the name line at ≤640px. */
@@ -305,7 +298,6 @@ export default function People() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [archivingId, setArchivingId] = useState<string | null>(null)
-  const [archivedSectionOpen, setArchivedSectionOpen] = useState(false)
   const [restoringId, setRestoringId] = useState<string | null>(null)
   const [invitingId, setInvitingId] = useState<string | null>(null)
   const [inviteConfirm, setInviteConfirm] = useState<Person | null>(null)
@@ -321,10 +313,6 @@ export default function People() {
     if (rosterFormOpenDeskAfter && personDesk?.canOpen) personDesk.open({ personId: saved.id, displayName: saved.name })
     setRosterFormInviteAfter(false)
   }
-  const [loggingInAsId, setLoggingInAsId] = useState<string | null>(null)
-  const [personProjects, setPersonProjects] = useState<Record<string, PersonActiveProject[]>>({})
-  /** People Users tab: External Subcontractor rows — expanded IDs show Active projects links */
-  const [externalSubProjectsExpanded, setExternalSubProjectsExpanded] = useState(() => new Set<string>())
   const [activeTab, setActiveTab] = useState<PeopleTab>('users')
   /** Per-group last-view memory (v2.2811): clicking a group tab lands on the view you used last there. Device-local. */
   const [tabGroupMemory, setTabGroupMemory] = useState<Partial<Record<PeopleTabGroupId, PeopleTab>>>(() => {
@@ -370,11 +358,6 @@ export default function People() {
   const [activityAccessResolved, setActivityAccessResolved] = useState(false)
   const [isActivityViewer, setIsActivityViewer] = useState(false)
   const canSeeActivityTab = isDev || isActivityViewer
-  const [pushEnabledUserIds, setPushEnabledUserIds] = useState<Set<string>>(new Set())
-  const [locationEnabledUserIds, setLocationEnabledUserIds] = useState<Set<string>>(new Set())
-  const [contractSigningStatusByPersonName, setContractSigningStatusByPersonName] = useState<
-    Record<string, ContractSigningTrafficLight>
-  >({})
   const {
     payConfig,
     payConfigById,
@@ -687,7 +670,6 @@ export default function People() {
     setLoading,
     setError,
     setAuthUserRole,
-    loadPersonProjects,
     isDev,
     authUserRole,
   }
@@ -767,78 +749,6 @@ export default function People() {
     if (activeTab !== 'hours' || !canAccessHours) return
     refreshUnassignedSessionCount()
   }, [activeTab, canAccessHours, refreshUnassignedSessionCount])
-
-  async function loadPersonProjects() {
-    // Get all steps with assigned people
-    const { data: steps, error: stepsErr } = await supabase
-      .from('project_workflow_steps')
-      .select('workflow_id, assigned_to_name')
-      .not('assigned_to_name', 'is', null)
-    if (stepsErr) {
-      console.error('Error loading steps:', stepsErr)
-      return
-    }
-    if (!steps || steps.length === 0) {
-      setPersonProjects({})
-      return
-    }
-    
-    // Get unique workflow IDs
-    const workflowIds = [...new Set((steps as Array<{ workflow_id: string }>).map((s) => s.workflow_id))]
-    
-    // Get workflows with project_id
-    const { data: workflows, error: workflowsErr } = await supabase
-      .from('project_workflows')
-      .select('id, project_id')
-      .in('id', workflowIds)
-    if (workflowsErr) {
-      console.error('Error loading workflows:', workflowsErr)
-      return
-    }
-    
-    // Get unique project IDs
-    const projectIds = [...new Set((workflows as Array<{ project_id: string }>).map((w) => w.project_id))]
-    
-    // Get active projects
-    const { data: projects, error: projectsErr } = await supabase
-      .from('projects')
-      .select('id, name')
-      .in('id', projectIds)
-      .eq('status', 'active')
-    if (projectsErr) {
-      console.error('Error loading projects:', projectsErr)
-      return
-    }
-    
-    // Build map: workflow_id -> { project id, name }
-    const workflowToProject = new Map<string, PersonActiveProject>()
-    if (workflows && projects) {
-      for (const wf of workflows as Array<{ id: string; project_id: string }>) {
-        const proj = (projects as Array<{ id: string; name: string }>).find((p) => p.id === wf.project_id)
-        if (proj) workflowToProject.set(wf.id, { id: proj.id, name: proj.name })
-      }
-    }
-
-    // Group by person name (dedupe by project id)
-    const projectsByPerson: Record<string, PersonActiveProject[]> = {}
-    if (steps) {
-      for (const step of steps as Array<{ workflow_id: string; assigned_to_name: string }>) {
-        const personName = step.assigned_to_name?.trim()
-        if (!personName) continue
-        const entry = workflowToProject.get(step.workflow_id)
-        if (!entry) continue
-        if (!projectsByPerson[personName]) projectsByPerson[personName] = []
-        if (!projectsByPerson[personName].some((p) => p.id === entry.id)) {
-          projectsByPerson[personName].push(entry)
-        }
-      }
-    }
-    for (const k of Object.keys(projectsByPerson)) {
-      const list = projectsByPerson[k]
-      if (list) list.sort((a, b) => a.name.localeCompare(b.name))
-    }
-    setPersonProjects(projectsByPerson)
-  }
 
   useEffect(() => {
     const tab = searchParams.get('tab')
@@ -1110,46 +1020,6 @@ export default function People() {
 
   const hoursAllowNcnsFromMyTime =
     isDev || authUserRole === 'master_technician' || isAssistantLike(authUserRole)
-
-  useEffect(() => {
-    if (!canSeePushStatus) return
-    supabase
-      .from('push_subscriptions')
-      .select('user_id')
-      .then(({ data }) => {
-        const ids = new Set((data ?? []).map((r: { user_id: string }) => r.user_id))
-        setPushEnabledUserIds(ids)
-      })
-  }, [canSeePushStatus])
-
-  useEffect(() => {
-    if (!isDev) return
-    // Server-side DISTINCT (v2.1176) — the old table select pulled every
-    // GPS-bearing clock_sessions row ever recorded just to build this set.
-    // Fails soft (empty set) if the RPC isn't deployed yet.
-    supabase
-      .rpc('get_location_enabled_user_ids')
-      .then(({ data }) => {
-        const ids = new Set((Array.isArray(data) ? data : []).filter((x): x is string => typeof x === 'string'))
-        setLocationEnabledUserIds(ids)
-      })
-  }, [isDev])
-
-  useEffect(() => {
-    if (!canAccessContracts) return
-    supabase
-      .from('person_contract_documents')
-      .select('person_name, contract_lineage_id, lineage_version, status')
-      .then(({ data }) => {
-        const rows = (data ?? []) as Array<{
-          person_name: string
-          contract_lineage_id: string
-          lineage_version: number
-          status: string
-        }>
-        setContractSigningStatusByPersonName(rollupContractSigningStatusByPersonName(rows))
-      })
-  }, [canAccessContracts])
 
   async function archivePerson(id: string) {
     if (
@@ -2816,11 +2686,8 @@ export default function People() {
           people={people}
           error={error}
           setError={setError}
-          contractSigningStatusByPersonName={contractSigningStatusByPersonName}
           canAccessContracts={canAccessContracts}
           canSeePushStatus={canSeePushStatus}
-          pushEnabledUserIds={pushEnabledUserIds}
-          locationEnabledUserIds={locationEnabledUserIds}
           canEditUserNotes={canEditUserNotes}
           setNeedsSupervision={canSetNeedsSupervision ? setNeedsSupervision : undefined}
           canCreatePeopleInRoster={canCreatePeopleInRoster}
@@ -2834,7 +2701,6 @@ export default function People() {
           canEditWorkdayOverrides={isDev || authUserRole === 'master_technician' || authUserRole === 'assistant' || authUserRole === 'controller'}
           authUserId={authUser?.id}
           creatorNames={creatorNames}
-          personProjects={personProjects}
           archivedPeople={archivedPeople}
           usersTabTags={usersTabTags}
           showToast={showToast}
@@ -2849,12 +2715,6 @@ export default function People() {
           isAlreadyUser={isAlreadyUser}
           invitingId={invitingId}
           setInviteConfirm={setInviteConfirm}
-          loggingInAsId={loggingInAsId}
-          setLoggingInAsId={setLoggingInAsId}
-          externalSubProjectsExpanded={externalSubProjectsExpanded}
-          setExternalSubProjectsExpanded={setExternalSubProjectsExpanded}
-          archivedSectionOpen={archivedSectionOpen}
-          setArchivedSectionOpen={setArchivedSectionOpen}
         />
       )}
 
