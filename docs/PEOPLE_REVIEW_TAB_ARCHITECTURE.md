@@ -187,7 +187,7 @@ Sub-extractions here are **children of `PeopleReviewTab`**, which remains the or
 | `loadReviewDataCore` shaping (cost maps, row shaping, allocation, contributors 1737–1751) | inline, 730 lines | `lib/people/reviewPersonAllocation.ts` + tests |
 | Split partsRate (officeParts90d ÷ fieldHours90d) | — | **done (v2.3917)** — `splitPartsRate` in `teamSummary/formatters.ts` + 5 tests; the tab's four copies pass its null on, the two drilldowns read null as 0. The popup's copy (`buildTeamSummaryHtml.ts` 864) is text inside the page's inline script and stays |
 | Pay-source closure (`salary`/`hourly`/`unknown`) | — | **done (v2.3917)** — `payConfigSourceFor(payConfig)` in `teamSummary/formatters.ts` + 4 tests |
-| `getReviewPeriodLabel` label map, `buildTeamSummaryCacheKey` | component functions | `reviewDateRange.ts` / `lib/people/teamSummaryCacheKey.ts` + tests |
+| `getReviewPeriodLabel` label map, `buildTeamSummaryCacheKey` | — | **done (v2.3924)** — `reviewPeriodLabel` in `reviewDateRange.ts` (3 tests) and `buildTeamSummaryCacheKey` in `lib/people/teamSummaryCacheKey.ts` (8 tests); the tab keeps two thin wrappers that read its state (`getReviewPeriodLabel`, `teamSummaryCacheKey`) |
 | Drive-cost + item-hours expressions | drive 4× (1270, 1297, 1328, 1430), item-hours 4× (1294, 1355, 1424, 1614) in the panel loader | fold into `reviewPersonAllocation` (or reuse `laborJobSubCost` internals) |
 | `stripAddressZipState` | component function | compare with `addressDisplay.compactAddressForHoursDisplay` (regexes differ — unify only with tests) |
 | `formatDateWithDay`, `formatHrsLabel` | component functions | `lib/people/reviewFormat.ts` + tests (check `lib/format.ts` first) |
@@ -219,7 +219,7 @@ Sub-extractions here are **children of `PeopleReviewTab`**, which remains the or
 - **Panel ≠ union on fuel card charges:** the union removes a vehicle-deal person's fuel-tag card charges (2090–2139) before the card rule; the panel loader (1399–1405) does not and has no tag cost lines — per-job parts in Jobs Worked can exceed the table's for those jobs (the headline card is unaffected; it mirrors `tsRow`).
 - **Retired cost-share wording still shown** after v2.3360/v2.3370: panel tooltips 2712, 2727, 2936–2937, 2952, 3088, 3430, 4078 describe labor-cost-share allocation; 3802 says "salaried: 8 h per weekday assumed"; popup captions `buildTeamSummaryHtml.ts` 800 and 840 say "Your cost ÷ Total labor" over columns that now show hours (777–778). The inline drilldowns were updated (400, 485).
 - **Overhead-labor wage fallback:** inline `entry.overheadWage || 0` (drilldowns 1163) vs popup `overheadWage || hourlyWage || 0`.
-- **Orphan comments:** 200–202 (a local `decimalToHms` that no longer exists), 124–128 (`signedCurrency` docblock sits above `laborRowJobId`), 218 (door params named `person/from/to`; real ones are `review_person/review_from/review_to`), 923–925 and 1759–1760 (iframe/`onMessage` era); `drilldowns.tsx` 1–7 ("All 11" bodies — there are 12; kernel "in `People.tsx`" — now `lib/people`).
+- **Orphan comments (fixed v2.3924):** the local `decimalToHms` note is gone, the `signedCurrency` docblock sits on its function, the door comment names `review_person/review_from/review_to`, the two iframe/`onMessage`-era comments say what runs now, and the `drilldowns.tsx` header no longer counts the bodies and points at `lib/people`.
 
 ## Recent churn
 
@@ -230,7 +230,7 @@ Since the v2.1305 map: 19 commits reshaped this file — overhead pool without I
 Done: ~~`buildTeamSummaryHtml`~~ (v2.1305), ~~`reviewDateRange`~~ (v2.2688), ~~`decimalToHms` dedupe~~, ~~ranked-view kernel + components~~ (v2.2678), ~~`reviewEarned`~~ (v2.3360).
 
 1. ~~**Delete the dead `forTeamSummary` path**~~ — **done v2.3904**: the parameter, its six query stubs, the empty all-time rows and the early return left `loadReviewData`/`loadReviewDataCore`; both callers pass one argument fewer (4,167 → 4,140 lines).
-2. **Stage A sweep** — ~~`splitPartsRate` (6 copies across both files), `payConfigSourceFor` (3)~~ **done v2.3917** (4,140 → 4,117 lines); left: the period label map, the cache key, the orphan comments.
+2. ~~**Stage A sweep**~~ — **done**: `splitPartsRate` (6 copies across both files) and `payConfigSourceFor` (3) in v2.3917; the period label map, the cache key and the orphan comments in v2.3924 (4,140 → 4,091 lines over the two).
 3. **`loadTeamReviewUnion` → `lib/people/`** with a `users` parameter (its four module helpers move to a shared lib module with it) — two callers; makes the union's Wheels/tag/card shaping testable with a mocked client.
 4. **`useReviewOverheadRates` hook** (A) — prefer adopting `loadOverheadPoolSnapshot` after a parity check; consumers unchanged.
 5. **Stage A: `reviewPersonAllocation` kernel + tests** (E, 1261–1751) — the largest untested money math; decide the fuel divergence in a separate fix PR.
