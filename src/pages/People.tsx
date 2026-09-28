@@ -83,6 +83,7 @@ import { useUsersTabTags } from '../hooks/useUsersTabTags'
 import { isPayStubFullyPaid } from '../lib/payStubPayments'
 import { payStubBalance } from '../lib/pay/recordPayStubPayment'
 import { usePayStubsData } from '../hooks/usePayStubsData'
+import { usePayrollPreviewPricing } from '../hooks/usePayrollPreviewPricing'
 import { peopleMissingPayReports } from '../lib/pay/missingPayReports'
 import { RecordPayStubPaymentModal } from '../components/pay/RecordPayStubPaymentModal'
 import { useRecordPayStubPayment } from '../hooks/useRecordPayStubPayment'
@@ -94,15 +95,7 @@ import { HirePersonModal } from '../components/people/HirePersonModal'
 import { scanWeeksBefore, unreportedPayrollWeeks, type UnreportedWeekRow } from '../lib/unreportedPayrollWeeks'
 import { PayrollForecastModal, type PayrollForecastUnpaidRow } from '../components/pay/PayrollForecastModal'
 import { DraftPayrollPersonHoursBreakdownModal } from '../components/pay/DraftPayrollPersonHoursBreakdownModal'
-import {
-  bucketSessionHoursByDay,
-  shouldUseDualRate,
-  summarizeStubDayBreakdown,
-  type DayBucketHours,
-  type RateSplitSessionRow,
-} from '../lib/officeJobRateSplit'
-import { draftPayrollPreviewDayCost } from '../lib/draftPayrollPreviewCost'
-import { fetchOverheadOfficeJobLedgerIdFromAppSettings } from '../lib/overheadOfficeJobSettings'
+import { summarizeStubDayBreakdown } from '../lib/officeJobRateSplit'
 import { generatePayStubRecord, type GeneratePayStubResult } from '../lib/pay/generatePayStub'
 import { fetchPayReportInputs } from '../lib/pay/payReportInputs'
 import { findPersonUserDuplicates, mergePersonIntoUser } from '../lib/mergePersonUserDuplicates'
@@ -130,12 +123,7 @@ import PeopleAppActivityPanel from '../components/people/PeopleAppActivityPanel'
 import TeamFeedbackDevSettingsBlock from '../components/team-feedback/TeamFeedbackDevSettingsBlock'
 import { SalariedWorkdaysBulkModal } from '../components/people/SalariedWorkdaysBulkModal'
 import { buildPeopleHoursManualDraftSession, isDraftPeopleHoursSessionId } from '../lib/peopleHoursManualDraftSession'
-import {
-  EMPTY_SALARIED_PAYROLL_WINDOW,
-  fetchSalariedPayrollWindows,
-  salariedHoursForDay,
-  type SalariedPayrollWindow,
-} from '../lib/salariedPayrollDays'
+import { fetchSalariedPayrollWindows, type SalariedPayrollWindow } from '../lib/salariedPayrollDays'
 import {
   buildJobBidLabelMapsFromClockRows,
   collectPeopleHoursDaySessionsForScale,
@@ -1739,104 +1727,14 @@ export default function People() {
     return wage * hrs
   }
 
-  // Draft Payroll preview must match generatePayStub: salaried hours are the flat 8/0
-  // adjusted for unpaid time off + employment window (cost matrix / grids stay flat 8/0).
-  const [draftPayrollSalaryWindows, setDraftPayrollSalaryWindows] = useState<Record<string, SalariedPayrollWindow>>({})
-
-  useEffect(() => {
-    if (!draftPayrollModalOpen || !canAccessPay) return
-    const salariedNames = Object.keys(payConfig).filter((n) => payConfig[n]?.is_salary)
-    if (salariedNames.length === 0) {
-      setDraftPayrollSalaryWindows({})
-      return
-    }
-    let cancelled = false
-    void fetchSalariedPayrollWindows(supabase, salariedNames, payStubPeriodStart, payStubPeriodEnd)
-      .then((map) => {
-        if (!cancelled) setDraftPayrollSalaryWindows(map)
-      })
-      .catch(() => {
-        if (!cancelled) setDraftPayrollSalaryWindows({})
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [draftPayrollModalOpen, canAccessPay, payStubPeriodStart, payStubPeriodEnd, payConfig])
-
-  function getPayrollEffectiveHours(personName: string, workDate: string): number {
-    const cfg = payConfig[personName]
-    if (cfg?.is_salary) {
-      return salariedHoursForDay(
-        workDate,
-        draftPayrollSalaryWindows[personName.trim()] ?? EMPTY_SALARIED_PAYROLL_WINDOW,
-      )
-    }
-    return getHoursForPersonDate(personName, workDate)
-  }
-
-  // Dual-rate preview parity (v2.1794): the Cash Due estimate must price office vs. field
-  // hours like generatePayStub does. Session-derived office/job buckets load per period for
-  // dual-rate people with a unique login user; everyone else keeps flat wage × hours (the
-  // same fallback the generator applies when no unique user matches).
-  const [draftPayrollRateBuckets, setDraftPayrollRateBuckets] = useState<
-    Record<string, Map<string, DayBucketHours>>
-  >({})
-
-  useEffect(() => {
-    if (!draftPayrollModalOpen || !canAccessPay) return
-    const dualNames = Object.keys(payConfig).filter((n) => shouldUseDualRate(payConfig[n]))
-    if (dualNames.length === 0) {
-      setDraftPayrollRateBuckets({})
-      return
-    }
-    let cancelled = false
-    void (async () => {
-      try {
-        const uidByName = new Map<string, string>()
-        for (const name of dualNames) {
-          const matches = users.filter((u) => (u.name ?? '').trim() === name.trim())
-          if (matches.length === 1) uidByName.set(name, matches[0]!.id)
-        }
-        if (uidByName.size === 0) {
-          if (!cancelled) setDraftPayrollRateBuckets({})
-          return
-        }
-        const officeJobId = await fetchOverheadOfficeJobLedgerIdFromAppSettings()
-        const { data } = await supabase
-          .from('clock_sessions')
-          .select('user_id, work_date, job_ledger_id, bid_id, clocked_in_at, clocked_out_at, approved_at, rejected_at, revoked_at')
-          .in('user_id', Array.from(uidByName.values()))
-          .gte('work_date', payStubPeriodStart)
-          .lte('work_date', payStubPeriodEnd)
-          .is('rejected_at', null)
-          .is('revoked_at', null)
-          .not('approved_at', 'is', null)
-        const rows = ((data ?? []) as Array<RateSplitSessionRow & { user_id: string }>)
-        const next: Record<string, Map<string, DayBucketHours>> = {}
-        for (const [name, uid] of uidByName) {
-          next[name] = bucketSessionHoursByDay(
-            rows.filter((r) => r.user_id === uid),
-            officeJobId,
-          )
-        }
-        if (!cancelled) setDraftPayrollRateBuckets(next)
-      } catch {
-        if (!cancelled) setDraftPayrollRateBuckets({})
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [draftPayrollModalOpen, canAccessPay, payStubPeriodStart, payStubPeriodEnd, payConfig, users])
-
-  function getPayrollCostForPersonDate(personName: string, workDate: string): number {
-    return draftPayrollPreviewDayCost({
-      cfg: payConfig[personName],
-      hours: getPayrollEffectiveHours(personName, workDate),
-      workDate,
-      bucketsByDate: draftPayrollRateBuckets[personName],
-    })
-  }
+  const { getPayrollEffectiveHours, getPayrollCostForPersonDate } = usePayrollPreviewPricing({
+    enabled: draftPayrollModalOpen && canAccessPay,
+    periodStart: payStubPeriodStart,
+    periodEnd: payStubPeriodEnd,
+    payConfig,
+    users,
+    getHoursForPersonDate,
+  })
 
   // ── Payroll catch-up (v2.2034): earlier weeks with hours but no report ──
   const [catchUpModalOpen, setCatchUpModalOpen] = useState(false)
