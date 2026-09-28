@@ -5,7 +5,14 @@
 // the rows in the browser and dev-mcp's `get_job` reads them over GET; both run these mappers,
 // so the two cannot disagree. Pure: no supabase client, no env.
 
-import { cardChargeCostUsd } from './cardChargeAllocationFilter.ts'
+import {
+  cardChargeAllocationCounts,
+  cardChargeAllocationIsInvoiceLinked,
+  cardChargeCostUsd,
+  EMPTY_CARD_CHARGE_EXCLUSIONS,
+  sumCardChargeAllocationsForJob,
+  type CardChargeExclusions,
+} from './cardChargeAllocationFilter.ts'
 import { mercuryDebitCardIdFromRaw } from './mercuryRawDebitCard.ts'
 
 export type JobSupplyInvoiceLine = {
@@ -43,6 +50,8 @@ export function jobAccountSplitFromLines(lines: JobSupplyInvoiceLine[]): { unpai
 
 export type JobMercuryAllocLine = {
   id: string
+  /** The bank transaction the allocation splits — what the one card rule looks up. */
+  mercuryTransactionId: string | null
   allocationAmount: number
   note: string | null
   postedAt: string | null
@@ -67,12 +76,52 @@ export type JobMaterialsCostSnapshot = {
   supplyInvoiceLines: JobSupplyInvoiceLine[]
   mercuryAllocLines: JobMercuryAllocLine[]
   mercuryFetchFailed: boolean
+  /** The one card rule's lookups for the card lines (Internal Transfers, invoice links). Absent = everything counts. */
+  cardExclusions?: CardChargeExclusions
   tallyPartLines: JobTallyPartLine[]
   tallyFetchFailed: boolean
 }
 
+/** Every card line's cost, whatever the one card rule says — what is attached to the job, not what it cost. */
 export function mercuryCardTotalFromLines(lines: JobMercuryAllocLine[]): number {
   return lines.reduce((s, l) => s + cardChargeCostUsd(l.allocationAmount), 0)
+}
+
+/** How one card line counts toward the job's parts under the one card rule (v2.2692). */
+export type JobCardLineStatus = 'counts' | 'internal_transfer' | 'invoice_linked'
+
+function cardRuleRow(line: JobMercuryAllocLine) {
+  return { mercury_transaction_id: line.mercuryTransactionId ?? '', amount: line.allocationAmount }
+}
+
+export function jobCardLineStatus(
+  line: JobMercuryAllocLine,
+  exclusions: CardChargeExclusions = EMPTY_CARD_CHARGE_EXCLUSIONS,
+): JobCardLineStatus {
+  const row = cardRuleRow(line)
+  if (!cardChargeAllocationCounts(row, exclusions)) return 'internal_transfer'
+  if (cardChargeAllocationIsInvoiceLinked(row, exclusions)) return 'invoice_linked'
+  return 'counts'
+}
+
+/** Why a line is not in the job's card-charge cost — null when it is. */
+export function jobCardLineStatusNote(status: JobCardLineStatus): string | null {
+  if (status === 'internal_transfer') return 'Internal Transfer — not a job cost'
+  if (status === 'invoice_linked') return 'Also on a supply-house invoice — counted there'
+  return null
+}
+
+/**
+ * The card charges a job's parts cost counts — Jobs → Job Summary's rule (v2.2692), for one
+ * job: Internal Transfers out, and a charge that is also on a supply-house invoice counted once
+ * (under the invoice), the invoice-linked slice clamped to the counted total as Job Summary does.
+ */
+export function jobCardChargesCountedFromLines(
+  lines: JobMercuryAllocLine[],
+  exclusions: CardChargeExclusions = EMPTY_CARD_CHARGE_EXCLUSIONS,
+): number {
+  const { charges, invoiceLinked } = sumCardChargeAllocationsForJob(lines.map(cardRuleRow), exclusions)
+  return charges - Math.min(charges, invoiceLinked)
 }
 
 export function tallyPartsTotalFromLines(lines: JobTallyPartLine[]): number {
@@ -123,7 +172,7 @@ export function supplyLinesFromRows(rows: readonly SupplyAllocationRow[] | null 
 }
 
 type MercuryTxEmbed = { posted_at?: string | null; counterparty_name?: string | null; amount?: Num; raw?: unknown }
-export type MercuryAllocationRow = { id: string; amount?: Num; note?: string | null; mercury_transactions?: MercuryTxEmbed | MercuryTxEmbed[] | null }
+export type MercuryAllocationRow = { id: string; mercury_transaction_id?: string | null; amount?: Num; note?: string | null; mercury_transactions?: MercuryTxEmbed | MercuryTxEmbed[] | null }
 
 /** Card-charge allocation rows (with the bank transaction embedded) → the job's card lines. */
 export function mercuryLinesFromRows(rows: readonly MercuryAllocationRow[] | null | undefined): JobMercuryAllocLine[] {
@@ -132,6 +181,7 @@ export function mercuryLinesFromRows(rows: readonly MercuryAllocationRow[] | nul
     const tx = Array.isArray(txNested) ? txNested[0] : txNested
     return {
       id: row.id,
+      mercuryTransactionId: row.mercury_transaction_id ?? null,
       allocationAmount: Number(row.amount),
       note: row.note ?? null,
       postedAt: tx?.posted_at ?? null,

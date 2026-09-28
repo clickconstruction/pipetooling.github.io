@@ -74,7 +74,6 @@ import SettingsSearchBar from '../components/settings/SettingsSearchBar'
 import { SettingsRail } from '../components/settings/SettingsRail'
 import { ViewAsPanel } from '../components/layout/ViewAsPanel'
 import { isSettingsViewAsHash, settingsRailDoors } from '../lib/settingsRailDoors'
-import { PUNCH_LIST_PATH } from '../lib/todos/punchListAccess'
 import { hiddenTabsCount, hiddenTabsNote, landingTab, readRecentTabs, recentChips, rememberTab } from '../lib/settingsRail'
 import { pollScrollToSettingsAnchor, settingsSearchGuideQuery } from '../lib/settingsSearch'
 
@@ -962,7 +961,7 @@ export default function Settings() {
   }, [myRole, estimatorServiceTypeIds, serviceTypes])
 
   const settingsJumpGroups = useMemo(() => getZonedSettingsGroups(myRole), [myRole])
-  // v2.4041: the doors under the rail's search — View as… (dev, not while imitating) and Punch list (dev + master).
+  // v2.4041 / v2.4061: the doors under the rail's search — Job Parts Tally (everyone), View as… (dev, not while imitating), Punch list (dev + master).
   const settingsDoors = settingsRailDoors(myRole, { impersonating })
   // Titles + page-hint lines come from the zoned group defs (one source of truth).
   const settingsGroupMeta = useMemo(() => new Map(settingsJumpGroups.map((g) => [g.id, g])), [settingsJumpGroups])
@@ -1112,8 +1111,8 @@ export default function Settings() {
             settingsDoors.length ? (
               <div className="settingsRailDoors" aria-label="Doors">
                 {settingsDoors.map((d) =>
-                  d.id === 'punch-list' ? (
-                    <Link key={d.id} to={PUNCH_LIST_PATH} className="settingsRailDoor" title={d.title}>
+                  d.to ? (
+                    <Link key={d.id} to={d.to} className="settingsRailDoor" title={d.title}>
                       {d.label}
                     </Link>
                   ) : (

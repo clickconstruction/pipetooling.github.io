@@ -428,3 +428,54 @@ describe('useJobFormAutosaveEngine — re-reading the line items', () => {
     expect(spies.setFixtures).not.toHaveBeenCalled()
   })
 })
+
+describe('useJobFormAutosaveEngine — re-reading the payments after a removal', () => {
+  /** The form holds the payments in state and sets them beside the engine's call, as the payment actions do. */
+  function mountHoldingPayments(payments: PaymentRow[]) {
+    const base = mount().args
+    cleanup()
+    return renderHook(() => {
+      const [rows, setPayments] = useState(payments)
+      const [fixtures, setFixtures] = useState(base.fixtures)
+      const engine = useJobFormAutosaveEngine({ ...base, fixtures, setFixtures, payments: rows })
+      const reread = (found: PaymentRow[]) => {
+        engine.paymentsRereadFromDb({ payments: found as never })
+        setPayments(found)
+      }
+      return { engine, reread, setPayments, setFixtures }
+    })
+  }
+
+  it('the payments that came back are the saved ones, and nothing is written', async () => {
+    const { result } = mountHoldingPayments([pay('p1', 300), pay('p2', 200)])
+    result.current.engine.hydratedPaymentIdsRef.current = ['p1', 'p2']
+    act(() => result.current.reread([pay('p1', 300)]))
+    expect(result.current.engine.hydratedPaymentIdsRef.current).toEqual(['p1'])
+    expect(result.current.engine.billingAutosave.isDirty()).toBe(false)
+    await tick(5_000)
+    expect(db.steps).toEqual([])
+  })
+
+  it('the next save does not ask to delete the payment that is already gone', async () => {
+    const { result } = mountHoldingPayments([pay('p1', 300), pay('p2', 200)])
+    result.current.engine.hydratedPaymentIdsRef.current = ['p1', 'p2']
+    act(() => result.current.reread([pay('p1', 300)]))
+    act(() => result.current.setFixtures([fixture('f1', 'Rough-in', 1_400)]))
+    await tick(1_200)
+    expect(seq()).toEqual(['update:jobs_ledger', 'upsert:jobs_ledger_payments', 'delete:jobs_ledger_fixtures', 'insert:jobs_ledger_fixtures'])
+  })
+
+  it('keeps the save an unsaved edit is owed: a line item typed just before is still written', async () => {
+    const { result } = mountHoldingPayments([pay('p1', 300), pay('p2', 200)])
+    result.current.engine.hydratedPaymentIdsRef.current = ['p1', 'p2']
+    act(() => result.current.setFixtures([fixture('f1', 'Rough-in', 1_400)]))
+    await tick(600)
+    act(() => result.current.reread([pay('p1', 300)]))
+    expect(result.current.engine.hydratedPaymentIdsRef.current).toEqual(['p1'])
+    expect(result.current.engine.billingAutosave.isDirty()).toBe(true)
+    await tick(1_200)
+    expect(seq()).toEqual(['update:jobs_ledger', 'upsert:jobs_ledger_payments', 'delete:jobs_ledger_fixtures', 'insert:jobs_ledger_fixtures'])
+    expect(db.steps[0]?.payload).toEqual({ revenue: 1_400 })
+    expect(result.current.engine.billingAutosave.isDirty()).toBe(false)
+  })
+})
