@@ -82,13 +82,16 @@ import {
   type UsePeopleRosterDeps,
 } from '../hooks/usePeopleRoster'
 import { useUsersTabTags } from '../hooks/useUsersTabTags'
+import { isPayStubFullyPaid, type PayStubPaymentRow } from '../lib/payStubPayments'
 import {
-  isPayStubFullyPaid,
-  PAY_STUB_PAY_FULLY_TOLERANCE,
-  remainingPayStubBalance,
-  sumPayStubPaymentAmounts,
-  type PayStubPaymentRow,
-} from '../lib/payStubPayments'
+  employeeCreditDraftFromPayment,
+  parsePayStubPaymentAmount,
+  payStubBalance,
+  payStubPaymentAmountDefault,
+  payStubPaymentExcess,
+  planPayStubPayment,
+  type PayStubLineMaps,
+} from '../lib/pay/recordPayStubPayment'
 import { type PersonOffsetInitialDraft, PersonOffsetFormModal } from '../components/pay/PersonOffsetFormModal'
 import { DraftPayrollModal } from '../components/pay/DraftPayrollModal'
 import { HoursApprovedNudgeChip } from '../components/people/HoursApprovedNudgeChip'
@@ -98,13 +101,7 @@ import { HirePersonModal } from '../components/people/HirePersonModal'
 import { scanWeeksBefore, unreportedPayrollWeeks, type UnreportedWeekRow } from '../lib/unreportedPayrollWeeks'
 import { PayrollForecastModal, type PayrollForecastUnpaidRow } from '../components/pay/PayrollForecastModal'
 import { DraftPayrollPersonHoursBreakdownModal } from '../components/pay/DraftPayrollPersonHoursBreakdownModal'
-import {
-  type PayStubAdditionalLineRow,
-  type PayStubDeductionRow,
-  stubNetPay,
-  sumPayStubAdditionalAmounts,
-  sumPayStubDeductionAmounts,
-} from '../lib/payStubDeductions'
+import type { PayStubAdditionalLineRow, PayStubDeductionRow } from '../lib/payStubDeductions'
 import {
   bucketSessionHoursByDay,
   shouldUseDualRate,
@@ -489,6 +486,10 @@ export default function People() {
   const [payStubViewModal, setPayStubViewModal] = useState<{ title: string; html: string } | null>(null)
   const [payStubDeductionsByStubId, setPayStubDeductionsByStubId] = useState<Record<string, PayStubDeductionRow[]>>({})
   const [payStubAdditionalByStubId, setPayStubAdditionalByStubId] = useState<Record<string, PayStubAdditionalLineRow[]>>({})
+  const payStubLineMaps = useMemo<PayStubLineMaps>(
+    () => ({ paymentsByStubId: payStubPaymentsByStubId, deductionsByStubId: payStubDeductionsByStubId, additionalByStubId: payStubAdditionalByStubId }),
+    [payStubPaymentsByStubId, payStubDeductionsByStubId, payStubAdditionalByStubId],
+  )
   const [payStubPeriodStart, setPayStubPeriodStart] = useState(() => {
     const d = new Date()
     const day = d.getDay()
@@ -1657,14 +1658,9 @@ export default function People() {
   }
 
   function openPayStubMarkPaidModal(stub: PayStubRow) {
-    const paidSoFar = sumPayStubPaymentAmounts(payStubPaymentsByStubId[stub.id])
-    const dedSum = sumPayStubDeductionAmounts(payStubDeductionsByStubId[stub.id])
-    const addSum = sumPayStubAdditionalAmounts(payStubAdditionalByStubId[stub.id])
-    const netPay = stubNetPay(stub.gross_pay, dedSum, addSum)
-    const remaining = remainingPayStubBalance(netPay, paidSoFar)
     setPayStubMarkPaidTarget(stub)
     setPayStubMarkPaidDate(todayYyyyMmDdLocal())
-    setPayStubMarkPaidAmount(remaining > 0 ? remaining.toFixed(2) : '')
+    setPayStubMarkPaidAmount(payStubPaymentAmountDefault(payStubBalance(stub, payStubLineMaps).remaining))
     setPayStubMarkPaidNote('')
   }
 
@@ -1680,28 +1676,17 @@ export default function People() {
   function openEmployeeCreditFromRecordPayment() {
     if (!payStubMarkPaidTarget) return
     const stub = payStubMarkPaidTarget
-    const paidSoFar = sumPayStubPaymentAmounts(payStubPaymentsByStubId[stub.id])
-    const dedSum = sumPayStubDeductionAmounts(payStubDeductionsByStubId[stub.id])
-    const addSum = sumPayStubAdditionalAmounts(payStubAdditionalByStubId[stub.id])
-    const netPay = stubNetPay(stub.gross_pay, dedSum, addSum)
-    const remaining = remainingPayStubBalance(netPay, paidSoFar)
-    const amtRaw = payStubMarkPaidAmount.trim().replace(/,/g, '')
-    const totalPaid = parseFloat(amtRaw)
-    let amountStr = ''
-    if (Number.isFinite(totalPaid) && totalPaid > remaining + PAY_STUB_PAY_FULLY_TOLERANCE) {
-      amountStr = (Math.round((totalPaid - remaining) * 100) / 100).toFixed(2)
-    }
-    const memo = payStubMarkPaidNote.trim()
-    const periodLine = `Pay period ${stub.period_start} – ${stub.period_end}`
-    const description = [memo, periodLine].filter(Boolean).join(' · ')
     recordPaymentRefreshAfterEmployeeCreditRef.current = true
-    openOffsetFormWithDraft({
-      personName: stub.person_name,
-      type: 'employee_credit',
-      amount: amountStr,
-      description,
-      occurredDate: payStubMarkPaidDate.trim() || todayYyyyMmDdLocal(),
-    })
+    openOffsetFormWithDraft(
+      employeeCreditDraftFromPayment({
+        stub,
+        amountText: payStubMarkPaidAmount,
+        remaining: payStubBalance(stub, payStubLineMaps).remaining,
+        memo: payStubMarkPaidNote,
+        paidDateYmd: payStubMarkPaidDate,
+        todayYmd: todayYyyyMmDdLocal(),
+      }),
+    )
   }
 
   async function confirmPayStubMarkPaid() {
@@ -1711,26 +1696,12 @@ export default function People() {
     const source = paySourceWrite(payStubMarkPaidKind, payStubMarkPaidCashAppId, payStubMarkPaidNote)
     const cashAppId = source.source_kind === 'cashapp' ? source.source_id : null
     const paidAt = paidAtIsoFromYyyyMmDd(payStubMarkPaidDate.trim() || todayYyyyMmDdLocal())
-    const amtRaw = payStubMarkPaidAmount.trim().replace(/,/g, '')
-    const amount = parseFloat(amtRaw)
-    const paidSoFar = sumPayStubPaymentAmounts(payStubPaymentsByStubId[stub.id])
-    const dedSumMark = sumPayStubDeductionAmounts(payStubDeductionsByStubId[stub.id])
-    const addSumMark = sumPayStubAdditionalAmounts(payStubAdditionalByStubId[stub.id])
-    const netPayMark = stubNetPay(stub.gross_pay, dedSumMark, addSumMark)
-    const remaining = remainingPayStubBalance(netPayMark, paidSoFar)
-    if (!Number.isFinite(amount) || amount <= 0) {
-      setError('Enter a valid payment amount greater than zero.')
+    const plan = planPayStubPayment(payStubMarkPaidAmount, payStubBalance(stub, payStubLineMaps).remaining)
+    if (!plan.ok) {
+      setError(plan.error)
       return
     }
-    if (remaining <= PAY_STUB_PAY_FULLY_TOLERANCE) {
-      setError('No remaining balance to apply this payment to.')
-      return
-    }
-    const applied = Math.round(Math.min(amount, remaining) * 100) / 100
-    if (applied <= 0) {
-      setError('No remaining balance to apply this payment to.')
-      return
-    }
+    const applied = plan.applied
     setMarkingPayStubId(stub.id)
     setError(null)
     try {
@@ -2496,13 +2467,8 @@ export default function People() {
   const forecastUnpaidRows = useMemo<PayrollForecastUnpaidRow[]>(() => {
     const rows: PayrollForecastUnpaidRow[] = []
     for (const stub of payStubs) {
-      const payRows = payStubPaymentsByStubId[stub.id] ?? []
-      const paidSum = sumPayStubPaymentAmounts(payRows)
-      const lessSum = sumPayStubDeductionAmounts(payStubDeductionsByStubId[stub.id] ?? [])
-      const addSumLedger = sumPayStubAdditionalAmounts(payStubAdditionalByStubId[stub.id] ?? [])
-      const netPayLedger = stubNetPay(stub.gross_pay, lessSum, addSumLedger)
-      if (isPayStubFullyPaid(netPayLedger, paidSum)) continue
-      const rem = remainingPayStubBalance(netPayLedger, paidSum)
+      const { netPay, paidSoFar, remaining: rem } = payStubBalance(stub, payStubLineMaps)
+      if (isPayStubFullyPaid(netPay, paidSoFar)) continue
       if (rem <= 0) continue
       rows.push({
         stubId: stub.id,
@@ -2520,12 +2486,7 @@ export default function People() {
       return a.personName.localeCompare(b.personName)
     })
     return rows
-  }, [
-    payStubs,
-    payStubPaymentsByStubId,
-    payStubDeductionsByStubId,
-    payStubAdditionalByStubId,
-  ])
+  }, [payStubs, payStubLineMaps])
 
   const teamsFiltered = useMemo(
     () =>
@@ -3089,24 +3050,9 @@ export default function People() {
             <h2 style={{ margin: '0 0 0.75rem', fontSize: '1.25rem' }}>Record payment</h2>
             <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               {payStubMarkPaidTarget.person_name} · Gross ${formatCurrency(payStubMarkPaidTarget.gross_pay)}
-              {` · Net Pay $${formatCurrency(
-                stubNetPay(
-                  payStubMarkPaidTarget.gross_pay,
-                  sumPayStubDeductionAmounts(payStubDeductionsByStubId[payStubMarkPaidTarget.id] ?? []),
-                  sumPayStubAdditionalAmounts(payStubAdditionalByStubId[payStubMarkPaidTarget.id] ?? []),
-                ),
-              )}`}{' '}
+              {` · Net Pay $${formatCurrency(payStubBalance(payStubMarkPaidTarget, payStubLineMaps).netPay)}`}{' '}
               · Remaining $
-              {formatCurrency(
-                remainingPayStubBalance(
-                  stubNetPay(
-                    payStubMarkPaidTarget.gross_pay,
-                    sumPayStubDeductionAmounts(payStubDeductionsByStubId[payStubMarkPaidTarget.id] ?? []),
-                    sumPayStubAdditionalAmounts(payStubAdditionalByStubId[payStubMarkPaidTarget.id] ?? []),
-                  ),
-                  sumPayStubPaymentAmounts(payStubPaymentsByStubId[payStubMarkPaidTarget.id]),
-                ),
-              )}
+              {formatCurrency(payStubBalance(payStubMarkPaidTarget, payStubLineMaps).remaining)}
             </p>
             <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.875rem' }}>
               <span style={{ display: 'block', marginBottom: '0.35rem', fontWeight: 500 }}>Amount paid</span>
@@ -3143,19 +3089,10 @@ export default function People() {
               />
             </label>
             {(() => {
-              const stub = payStubMarkPaidTarget
-              const paidSoFar = sumPayStubPaymentAmounts(payStubPaymentsByStubId[stub.id])
-              const rem = remainingPayStubBalance(
-                stubNetPay(
-                  stub.gross_pay,
-                  sumPayStubDeductionAmounts(payStubDeductionsByStubId[stub.id] ?? []),
-                  sumPayStubAdditionalAmounts(payStubAdditionalByStubId[stub.id] ?? []),
-                ),
-                paidSoFar,
-              )
-              const parsedPaid = parseFloat(payStubMarkPaidAmount.trim().replace(/,/g, ''))
-              if (!Number.isFinite(parsedPaid) || parsedPaid <= rem + PAY_STUB_PAY_FULLY_TOLERANCE) return null
-              const excess = Math.round((parsedPaid - rem) * 100) / 100
+              const rem = payStubBalance(payStubMarkPaidTarget, payStubLineMaps).remaining
+              const excess = payStubPaymentExcess(payStubMarkPaidAmount, rem)
+              if (excess === null) return null
+              const parsedPaid = parsePayStubPaymentAmount(payStubMarkPaidAmount)
               return (
                 <div
                   style={{
@@ -3851,13 +3788,7 @@ export default function People() {
             const stub = fresh.stubs.find((s) => s.id === recordStubId)
             if (stub) setPayStubMarkPaidTarget(stub)
             if (shouldRefreshRecordPayment && stub) {
-              const net = stubNetPay(
-                stub.gross_pay,
-                sumPayStubDeductionAmounts(fresh.deductionsByStubId[stub.id] ?? []),
-                sumPayStubAdditionalAmounts(fresh.additionalByStubId[stub.id] ?? []),
-              )
-              const rem = remainingPayStubBalance(net, sumPayStubPaymentAmounts(fresh.paymentsByStubId[stub.id] ?? []))
-              setPayStubMarkPaidAmount(rem > 0 ? rem.toFixed(2) : '')
+              setPayStubMarkPaidAmount(payStubPaymentAmountDefault(payStubBalance(stub, fresh).remaining))
             }
           }
         }}
