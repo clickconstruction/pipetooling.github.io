@@ -10,33 +10,33 @@ Each billed row's **View Bill** button also carries a small **PDF tail** — the
 
 ## Where this fits in the receivables routine
 
-The line under each row's bar is the reading; the doing happens in four places. Quickfill's **Billed Awaiting Payment** station is the daily look at every open bill. The Pipeline's **📞 Ask N customers when they'll pay** card (also inside Quickfill → Jobs Cleanup) is **call mode**, where the promises below get recorded. **Accounts Receivable** (`/accounts-receivable`, or {{button:blue|Match deposits}} on the Needs you card — it opens in place) is the bank-deposit matching desk: money that already landed gets applied to the bill it pays, and the row here turns green on its own. **GC Review** certifies and sends the weekly GC statements. "Who owes us?" in one figure is the Dashboard's **Accounts Receivable** card; its drill-down, this board, Quickfill and a customer's page all count the same bills.
+The dates block at the bottom of each row is the reading; the doing happens in four places. Quickfill's **Billed Awaiting Payment** station is the daily look at every open bill. The Pipeline's **📞 Ask N customers when they'll pay** card (also inside Quickfill → Jobs Cleanup) is **call mode**, where the promises below get recorded. **Accounts Receivable** (`/accounts-receivable`, or {{button:blue|Match deposits}} on the Needs you card — it opens in place) is the bank-deposit matching desk: money that already landed gets applied to the bill it pays, and the row here turns green on its own. **GC Review** certifies and sends the weekly GC statements. "Who owes us?" in one figure is the Dashboard's **Accounts Receivable** card; its drill-down, this board, Quickfill and a customer's page all count the same bills.
 
-## Reading the line
+## Reading the Expected row
 
-The line under each billed row's bar tells the bill's story — when it went out, and when the money is expected:
+Each billed row ends with the bill's dates in one block — a numbered track and a ledger under it (see *read the Pipeline money view*). The money is row ②:
 
-- *Billed Aug 4 · expect ~Sep 8* — on track, in plain grey. The date is the bill date plus this customer's usual pay speed: the **median** time between our bill going out and their payments landing, over the last 12 months.
-- *Billed Aug 4 · 12 d past expected* — in amber: the customer is now slower than **their own** history. This is the real follow-up signal: a 40-day-old bill is normal for a customer who pays in 45 days, and alarming for one who pays in 20.
+- *② Expected Sep 8 · in 12 d* — on track, in green. The date is the bill date (row ①) plus this customer's usual pay speed: the **median** time between our bill going out and their payments landing, over the last 12 months.
+- *② Expected Sep 8 · 12 d past* — in amber: the customer is now slower than **their own** history. This is the real follow-up signal: a 40-day-old bill is normal for a customer who pays in 45 days, and alarming for one who pays in 20.
 - A customer with too little payment history (fewer than 3 measured payments) gets the company-wide average instead. Treat it as a rough guess, not their norm.
 
-Hover the expectation and it spells out the math. In Collections the line reads red whatever the dates say.
+Hover the row and it spells out the math. In Collections the row reads red whatever the dates say.
 
 :::example Answering "when do we get paid on 964?"
-Find the row on Billed Awaiting Payment — the line says *Billed Aug 4 · expect ~Sep 8*. Knight Contracting usually pays about 35 days after billing, the bill went out Aug 4, so early September is the honest answer. No one has to ask the office.
+Find the row on Billed Awaiting Payment — its dates read *① Billed Aug 4* and *② Expected Sep 8 · in 12 d*. Knight Contracting usually pays about 35 days after billing, the bill went out Aug 4, so early September is the honest answer. No one has to ask the office.
 :::
 
 ## When the customer names a real date
 
-Statistics stop mattering the moment someone gives you an actual answer. When a GC says "you're on the check run for the 25th," click the expectation on the row's line (*expect ~Sep 8* or *12 d past expected*) and record it — the date, who said it, and how. The line gains *they said Sep 25* beside the estimate, and the record keeps who took the call*, so the next person with the question sees both. A date the customer named themselves from their portal statement shows as {{chip:green|✓ Promised Sep 25 · customer}}.
+Statistics stop mattering the moment someone gives you an actual answer. When a GC says "you're on the check run for the 25th," click the **Expected** row in the dates block and record it — the date, who said it, and how. The row becomes *They said Sep 25*, with the estimate as a quiet line under it, and the record keeps who took the call*, so the next person with the question sees both. A date the customer named themselves from their portal statement shows as {{chip:green|✓ Promised Sep 25 · customer}}.
 
 - A promise **overrides** the estimate everywhere, including the forecast.
-- If the promised date passes unpaid, the line reads *they said Sep 25 · 5 d past it* in amber — now you're following up on their word, not a statistic.
-- Click the expectation again to record a new date, or clear the old one. A new date does not erase the first promise: every date a customer names stays on record, and the app works out whether each one was kept — see *know whether a customer keeps their word*.
+- If the promised date passes unpaid, the row reads *They said Sep 25 · 5 d past* in amber — now you're following up on their word, not a statistic.
+- Click the row again to record a new date, or clear the old one. A new date does not erase the first promise: every date a customer names stays on record, and the app works out whether each one was kept — see *know whether a customer keeps their word*.
 
 Anyone who can see the board sees promises; marking them is for dev, leaders, and assistant-type roles.
 
-## The line under it
+## The pay history under it
 
 Below the chip, a small line reads how this customer actually pays: {{chip:gray|▂▅▃▇▂▁ Pays in 9–41d · keeps 3 of 7 · slips ~9d}}. The bars are their last six bills (days from bill to money), the range is their real spread over the last year, and the promise part appears once they have named dates — see *know whether a customer keeps their word*. The forecast uses the same record: a promise from a customer who usually slips nine days is filed nine days later than the date they gave.
 

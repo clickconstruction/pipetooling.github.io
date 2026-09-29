@@ -14,8 +14,10 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import {
+  commonHeader,
   decide,
   decisionsToWrites,
+  fileSectionTags,
   doneButtonText,
   findPagesForRow,
   initialDecisions,
@@ -46,6 +48,8 @@ type Props = {
   guesses?: ReadonlyMap<number, { tag: string; sure: boolean }>
   busy: boolean
   onDone: (writes: ItemWrite[]) => void | Promise<void>
+  /** v2.4171 · once every page is read: how many name a row, and whether the file is sectioned — for the file's line. */
+  onReads?: (reads: { namesRows: number; sectioned: boolean }) => void
   onClose: () => void
 }
 
@@ -60,7 +64,7 @@ const smallMuted: CSSProperties = { fontSize: '0.75rem', color: 'var(--text-mute
 
 type Snapshot = { decisions: WalkDecisions; page: number }
 
-export function SubmittalAssignPagesModal({ file, fileIndex, items, loadBytes, guesses, busy, onDone, onClose }: Props) {
+export function SubmittalAssignPagesModal({ file, fileIndex, items, loadBytes, guesses, busy, onDone, onReads, onClose }: Props) {
   const confirm = useConfirmDialog()
   const rows = useMemo(() => walkRowsFrom(items), [items])
   const rowIndex = useMemo(() => new Map(rows.map((r, i) => [r.id, i])), [rows])
@@ -142,6 +146,13 @@ export function SubmittalAssignPagesModal({ file, fileIndex, items, loadBytes, g
   }, [status])
 
   const reads: PageReads = useMemo(() => ({ ...readsFromGuesses(guesses, rows), ...readPages(texts, rows) }), [guesses, rows, texts])
+  const onReadsRef = useRef(onReads)
+  onReadsRef.current = onReads
+  useEffect(() => {
+    if (!textsDone) return
+    const header = commonHeader(texts)
+    onReadsRef.current?.({ namesRows: Object.values(readPages(texts, rows)).filter((r) => r.itemId !== null).length, sectioned: header ? fileSectionTags(texts, header).length > 0 : false })
+  }, [textsDone, texts, rows])
   const suggestion = useMemo(() => suggestFor(page, decisions, reads, rows), [page, decisions, reads, rows])
   const summary = useMemo(() => walkSummary(decisions, seen, pageCount, rows, wants), [decisions, seen, pageCount, rows, wants])
   const have = useMemo(() => pagesByItem(decisions), [decisions])

@@ -56,7 +56,7 @@ export const SUBMITTAL_TOUR_STEPS: SpotlightTourStep[] = [
   {
     anchor: 'submittals-drop',
     title: 'Step 3. Add the cut sheets',
-    body: 'Tap Drop a vendor PDF. Give it the supply house’s whole PDF. Tap Show the pages. Then tap a page, and tap the row it belongs to. Repeat until every row has its page.',
+    body: 'Tap Drop a vendor PDF. Give it the supply house’s whole PDF. Open the file’s pages with the arrow. Then tap a page, and tap the row it belongs to. Repeat until every row has its page.',
     missingBody: 'This button appears after you build Rev 1.',
   },
   {
@@ -136,12 +136,12 @@ export function rememberOpenEveryStage(on: boolean, storage: Pick<Storage, 'setI
  */
 export const SUBMITTAL_STAGE_ABOUT: Record<number, string> = {
   1: 'Pick where the rows come from. Each row is one product you will install.',
-  2: 'Rev 1 is the first version of your submittal. Only the newest version can be changed.',
+  2: 'Rev 1 is the first version of your submittal. A Rev 2 happens only when the GC sends rows back, or a product changes after you share.',
   3: 'Check each row. Is it the product the plans asked for? If not, say why. Add its cut sheet, the maker’s page for the product.',
   4: 'One PDF for the GC: the cover table and every cut sheet.',
   5: 'Get a link and paste it into your email to the GC.',
   6: 'The GC or the architect answers each row: Approve, Revise or Reject.',
-  7: 'Rows sent back come here. Start a new version with only those rows.',
+  7: 'Rows the GC sent back come here. Start Rev 2 with only those rows, or with every row when a product changed.',
   8: 'The order log the GC asks for: order dates, PO numbers and what is running late.',
 }
 

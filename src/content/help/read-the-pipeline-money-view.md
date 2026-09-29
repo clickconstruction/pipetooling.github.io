@@ -16,20 +16,19 @@ The **Jobs → Pipeline** tab opens with the money story: four answer cards and 
 
 ## Does the money land before the lien dies?
 
-Every row in **Billed** and **Collections** carries a short runway under its money bar. Today is the tick at the left. The **green dot** is when the customer is expected to pay — the GC's date from the statement round, a promise on record, or the pay-speed estimate the {{chip:green|expected Oct 3}} chip reads. The **flag** is the last day a lien affidavit can be filed for the job's last work month. The run between them is the verdict:
+Every row in **Billed** and **Collections** ends with the bill's dates in one block under the money legend: a short track with numbered markers, and a ledger under it that names each number — oldest first, with a right-hand column that always says *how far from today*.
 
-- **Green** — room. *pay Oct 3 → file lien by Oct 15* over *12 d of room*. The money is due before the flag; waiting costs nothing.
-- **Red hatching** — the flag comes first. *file lien by Nov 16 → pay Nov 20* over *file first*. Wait for the money and you lose the lien: file the affidavit, or get the payment date moved.
-- **No dot** — nobody has said when. *no pay date · file lien by Oct 15* over *17 d to the flag*, amber inside three weeks, red inside one.
-- **A hollow flag ahead of the lien flag** — the job has a GC, so a § 53.056 notice to the owner and the GC must go out before any lien, and none is recorded for the work month. The sentence reads *notice by Oct 15 · lien by Nov 16* over *send the notice · 17 d*; send it from the Lien desk. Once recorded, the hollow flag becomes a small check and the sentence returns to the money and the lien. A notice window that closed unsent reads *lien gone · notice window closed*. Direct homeowner jobs have no notice step and never show the mark.
-- **No track, one red line** — *lien gone* over *window closed Sep 15*. The lien is gone; the money is still owed.
+- **① Billed Sep 23 · 7 d ago** — the day the bill went out. Every clock below starts here, and the track does too: the grey run from ① to the small ▲ is the time used so far.
+- **② Expected Oct 4 · in 4 d** — when the money is expected: a date the customer named (*They said Oct 3*), else the bill date plus their usual pay speed. Amber and *1 d past* once it is behind. Click it to record what they said; the pay history (*pays in 2–8d · keeps 3 of 4*) sits under it.
+- **③ Send the notice by Oct 15 · 16 d** — on a sub job (a GC on the job) with no § 53.056 notice recorded for the work month: the one thing to do, in bold, red inside a week. Click it and the Lien window opens on the notice.
+- **④ Lien by Nov 16 · 48 d** — the last day a lien affidavit can be filed for the job's last work month. It turns bold — *File the lien by …* — when the money is expected after the window closes (a red run on the track) or the window is inside three weeks with no pay date.
+- **A green run** between ② and ④ is room: the money is due before the flag, and the line under the rows says how much — *72 d of room after they pay* — instead of asking for anything.
+- **Lien gone** (one red row, no marker) — the window closed with nothing filed, or the notice window did. The money is still owed.
 
-*File lien by* is the last day the affidavit can be filed with the county clerk, not a day to send anything.
-
-The sentence is two lines — the dates, then the verdict — and a door: click it and the job's **Lien window** opens on its timeline, where the last work month, the property kind and the statute are spelled out. Hover it for the same in a line.
+*Lien by* is the last day the affidavit can be filed with the county clerk, not a day to send anything. Every deadline row opens the job's **Lien window** on its timeline, where the last work month, the property kind and the statute are spelled out; hover a row for the same in a line.
 
 :::example A house with no property kind set
-The runway shows the **residential** date — a month earlier than commercial — and the hover says *Property kind is not set, so the earlier (residential) date is shown*. That is the safe reading: a house read as commercial is a lien lost a month late. Open the job's Edit tab → **Property record** and pick {{button:outline|Residential}} or {{button:outline|Non-residential}} to confirm it.
+The lien row shows the **residential** date — a month earlier than commercial — and the hover says *Property kind is not set, so the earlier (residential) date is shown*. That is the safe reading: a house read as commercial is a lien lost a month late. Open the job's Edit tab → **Property record** and pick {{button:outline|Residential}} or {{button:outline|Non-residential}} to confirm it.
 :::
 
 On a phone the row's one chip carries the verdict — {{chip:red|file first}}, {{chip:red|lien gone}}, {{chip:yellow|notice in 17 d}}, {{chip:yellow|lien in 17 d}}, {{chip:green|12 d of room}} — once the flag is inside three weeks or the money is due after it; a tap opens the Lien window.

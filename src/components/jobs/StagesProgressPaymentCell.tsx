@@ -1,4 +1,4 @@
-import type { WordsOverride } from './BilledWordsLine'
+import type { WordsOverride } from './StagesStageBar'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import type { StagesMoneyBarModel } from '../../lib/stagesMoneyBar'
 import type { ProgressPaymentView } from '../../lib/jobs/progressPaymentCell'
@@ -42,6 +42,8 @@ type StagesProgressPaymentCellProps = {
   view?: ProgressPaymentView | null
   /** v2.4130: on a Billed row the words line tells the bill's story (`BilledWordsLine`) instead of the crew's. */
   wordsOverride?: WordsOverride | null
+  /** v2.4168: no words under the bar (Billed rows — the dates block under the legend has them). */
+  hideWords?: boolean
   /**
    * v2.3411: a bill has gone out and no percent is recorded — the box wears a
    * red outline, "% done" turns red, and one red line under it names the send
@@ -79,7 +81,7 @@ function swatch(color?: string) {
  * total on top, a paid/unbilled bar of the total bill, and a labeled legend.
  * Pure presentation — all math comes in via the model (see stagesMoneyBar.ts).
  */
-export default function StagesProgressPaymentCell({ model, pctComplete, pctSaving, onPctCommit, footnote, onNoBidValueClick, compact = false, view = null, billSentAlert = null, onStageClick, wordsOverride = null }: StagesProgressPaymentCellProps) {
+export default function StagesProgressPaymentCell({ model, pctComplete, pctSaving, onPctCommit, footnote, onNoBidValueClick, compact = false, view = null, billSentAlert = null, onStageClick, wordsOverride = null, hideWords = false }: StagesProgressPaymentCellProps) {
   // The legend's amber and empty rows belong to the classic money reading; on a
   // job drawn as stages the bar already says which stage the money is on.
   const stageBar = view?.mode === 'stages'
@@ -217,7 +219,7 @@ export default function StagesProgressPaymentCell({ model, pctComplete, pctSavin
 
       {view ? (
         <>
-          <StagesStageBar view={view} compact={compact} onStageClick={onStageClick} wordsOverride={wordsOverride} />
+          <StagesStageBar view={view} compact={compact} onStageClick={onStageClick} wordsOverride={wordsOverride} hideWords={hideWords} />
         </>
       ) : (
       <div

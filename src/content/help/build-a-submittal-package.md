@@ -61,7 +61,7 @@ In the procurement log, rows split from one count read *counted with WC-2 on the
 
 ## Attach the cut sheets
 
-Tap {{button:outline|Drop a vendor PDF}} and give it the house's whole submittal PDF — the 31-page catalog is fine. It is stored once on the revision and appears above the table as a strip. Tap {{button:outline|Show the pages}} and every page draws as a thumbnail.
+Tap {{button:outline|Drop a vendor PDF}} and give it the house's whole submittal PDF — the 31-page catalog is fine. It is stored once on the revision and takes one line in the list above the table: the name and page count, then where it stands — *none on rows yet*, *57 of 75 on rows · 18 not used*, *trimmed · 6 pages kept · Sep 15* — with a small bar, and the actions on the right: {{button:blue|Assign pages…}}, *Done with this file* once something is on rows, and a quiet *Remove*. As the file lands the app reads it against the rows; a file whose pages name no row says so on its line — *no page names a row · not a vendor submittal?* — which is how a contract dropped by mistake gives itself away. Tap the arrow at the left of the line and every page folds out as a thumbnail.
 
 The fast way through a long file is {{button:blue|Assign pages…}} on the file's strip: a full-screen walk, one page at a time at reading size, with the answer already filled in. The app reads each page's text and, where it finds a row's model number, lights that row — *Looks like WHA-500 · its model number is on the page*. Press **Space** to say yes and move to the next page. A page that names nothing keeps the row the page before was on (*WHA-500 continues*), or offers the next row in the schedule. **Enter** or a click puts the page on a row; **X** marks a page that is not a cut sheet (the cover, the index, a terms page); **← →** move without deciding; **Backspace** undoes the last pick; type a tag or a model to find a row. The strip along the bottom colors every page by its row, so a wrong run shows before you finish, and any page is one click away. A row with nothing yet offers *find its pages*. Because the package goes to the customer, every page has to be seen: the Done button counts *23 of 75 seen* and unlocks only when every page is on a row or marked not a cut sheet. Nothing is written to the rows until Done; Cancel leaves them as they were.
 
@@ -70,7 +70,7 @@ If you would rather tap in the strip, it is one tap per page: tap the page, then
 The footer counts as you go: *6 of 31 pages on rows · 25 not used*. If you would rather type, the row's {{button:outline|Edit}} still takes a page range.
 
 :::example Six rows from one file
-NWS's submittal PDF is 31 pages. Wendi drops it, taps Show the pages, and works down the amber list: page 1 and 2 onto WC-1, 3 onto the flush valve, 5 onto DWH-1, 8 onto FD-1, 12 onto HB-3. The footer reads *6 of 31 pages on rows · 25 not used*.
+NWS's submittal PDF is 31 pages. Wendi drops it, opens the arrow, and works down the amber list: page 1 and 2 onto WC-1, 3 onto the flush valve, 5 onto DWH-1, 8 onto FD-1, 12 onto HB-3. The footer reads *6 of 31 pages on rows · 25 not used*.
 :::
 
 ## Done with a file
