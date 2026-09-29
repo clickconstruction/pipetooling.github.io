@@ -4,7 +4,7 @@ import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import { GC_STAGE_WAITING_ON, gcWorklistAtStage, type GcStageKey } from '../../lib/jobs/gcReviewStages'
 import { GC_ROUND_THRESHOLD, isTemperature, sendChannelLabel } from '../../lib/jobs/gcStatementRounds'
 import { payPromiseLabel } from '../../lib/jobs/payPromise'
-import { worklistGroupTitle, type GcWorklist, type GcWorklistGroup, type GcWorklistRow } from '../../lib/jobs/gcWorklist'
+import { underLineCount, worklistGroupTitle, type GcWorklist, type GcWorklistGroup, type GcWorklistRow } from '../../lib/jobs/gcWorklist'
 import GcReviewRow from './GcReviewRow'
 import { TEMP_PILL } from './GcTemperatureBoard'
 
@@ -205,9 +205,9 @@ export default function GcWorklistPanel({
   }
 
   /** The opened row's own line: the account man, the other way a statement goes out, undo. */
-  const rowLinks = (r: GcWorklistRow, g: GcWorklistGroup) => {
+  const rowLinks = (r: GcWorklistRow) => {
     const assign =
-      g.kind === 'under_line' ? null : assigningGcId === r.gcId ? (
+      assigningGcId === r.gcId ? (
         <select
           autoFocus
           aria-label={`Account man for ${r.gcName}`}
@@ -226,11 +226,12 @@ export default function GcWorklistPanel({
       ) : (
         <span>
           account man: {r.ownerUserId ? userNameById(r.ownerUserId) : 'nobody yet'}
+          {r.ownerSource === 'leader' ? ' (the leader, by default)' : ''}
           {canAct ? (
             <>
               {' · '}
               <button type="button" onClick={() => onStartAssign(r.gcId)} style={linkStyle} title={`Change who knows the ${r.gcName} account`}>
-                {r.ownerUserId ? 'change account man' : 'pick an account man'}
+                {r.ownerUserId && r.ownerSource !== 'leader' ? 'change account man' : 'pick an account man'}
               </button>
             </>
           ) : null}
@@ -292,14 +293,15 @@ export default function GcWorklistPanel({
               <b>{groupTitle(g)}</b>
               <span style={{ color: 'var(--text-muted)' }}>
                 · {whole.rows.length} GC{whole.rows.length === 1 ? '' : 's'} · ${formatCurrency(whole.rows.reduce((t, r) => t + owed(r), 0))}
-                {g.kind === 'under_line' ? ' · check and send; the word is optional' : ''}
+                {underLineCount(whole) > 0 ? ` · ${underLineCount(whole)} under $${GC_ROUND_THRESHOLD.toLocaleString('en-US')}, word optional` : ''}
               </span>
               <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: whole.open === 0 ? 'var(--text-green-800)' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                 {whole.open === 0 ? 'all done ✓' : `${whole.open} to do`}
               </span>
               {(() => {
                 // Ask by link: only for someone else's accounts — your own you answer yourself.
-                if (!canAct || g.kind !== 'owner' || !g.ownerUserId || g.ownerUserId === authUserId) return null
+                // A link or a call sheet asks for words — a group with only under-the-line rows has none owed.
+                if (!canAct || !g.ownerUserId || g.ownerUserId === authUserId || !whole.rows.some((r) => r.overLine)) return null
                 const ask = askByOwner?.get(g.ownerUserId)
                 const first = userNameById(g.ownerUserId).split(/\s+/)[0]
                 return (
@@ -327,11 +329,11 @@ export default function GcWorklistPanel({
                   </>
                 )
               })()}
-              {canAct && g.kind !== 'under_line' ? (
+              {canAct && whole.rows.some((r) => r.overLine) ? (
                 <button
                   type="button"
                   onClick={() => onOpenCallSheet(whole)}
-                  title={g.kind === 'owner' && g.ownerUserId !== authUserId ? `One call to ${userNameById(g.ownerUserId)} — fill in every GC’s word on one sheet` : 'Fill in every GC’s word on one sheet'}
+                  title={g.ownerUserId != null && g.ownerUserId !== authUserId ? `One call to ${userNameById(g.ownerUserId)} — fill in every GC’s word on one sheet` : 'Fill in every GC’s word on one sheet'}
                   style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 700, padding: '0.12rem 0.6rem', borderRadius: 4, border: '1px solid var(--border-blue)', background: 'var(--surface)', color: 'var(--text-blue-700)', cursor: 'pointer', whiteSpace: 'nowrap' }}
                 >
                   <span aria-hidden>📞</span> Call sheet
@@ -382,7 +384,7 @@ export default function GcWorklistPanel({
                   steps={r.skipped ? undefined : steps(r)}
                   action={action(r)}
                 >
-                  {rowLinks(r, g)}
+                  {rowLinks(r)}
                   {renderDetail?.(r)}
                 </GcReviewRow>
               )
@@ -392,8 +394,9 @@ export default function GcWorklistPanel({
       })}
       {stage && at.shown === 0 ? <p className="gcWorklistEmpty">No GC is {GC_STAGE_WAITING_ON[stage]}.</p> : null}
       <p style={{ margin: '0.6rem 0 0', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
-        A statement never goes out unchecked — a group that changes after sign-off asks for a re-check. GCs are grouped by the
-        account man who knows them, so one call covers the group. Under ${GC_ROUND_THRESHOLD.toLocaleString('en-US')} the word is optional.
+        A statement never goes out unchecked — a group that changes after sign-off asks for a re-check. Every GC files under the
+        account man who knows them, the leader by default, so one call covers the group and nothing is nobody's. Under $
+        {GC_ROUND_THRESHOLD.toLocaleString('en-US')} the word is optional.
       </p>
       {error ? <p style={{ margin: '0.3rem 0 0', fontSize: '0.75rem', color: 'var(--text-red-700)' }}>{error}</p> : null}
     </div>
