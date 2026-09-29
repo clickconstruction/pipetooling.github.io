@@ -474,8 +474,12 @@ describe('BidsSubmittalsTab', () => {
     state.items = []
     state.tasks = [{ id: 'task-1', bid_id: 'b398', submittal_id: null, kind: 'read_schedule', input: {}, result: { rows: [{ tag: 'WC-1', fixture: 'water closet', manufacturer: 'TOTO', model: 'CT708UVG#01', confidence: 0.95 }, { tag: 'HB-3', model: 'B74-CH', confidence: 0.4 }] }, status: 'ready', requested_at: '2026-09-17T10:00:00Z', claimed_at: null, finished_at: '2026-09-17T10:05:00Z', reviewed_at: null, summary: 'Read P002.' }]
     mount()
-    const panel = await screen.findByTestId('robot-schedule')
-    expect(panel.textContent).toContain('robot · read the schedule · ready · 2 tags · 1 sure · 1 want a look')
+    // v2.4109 · the state sits in the schedule card; the tags to confirm sit under the cards.
+    const card = await screen.findByTestId('robot-schedule')
+    expect(card.textContent).toContain('The robot read the schedule — confirm the tags below.')
+    expect(card.textContent).toContain('robot · read the schedule · ready · 2 tags · 1 sure · 1 want a look')
+    const panel = screen.getByTestId('robot-schedule-confirm')
+    expect(panel.textContent).toContain('The robot read 2 tags off the plans')
     expect(panel.textContent).toContain('WC-1 ✓')
     expect(screen.getByTestId('confirm-schedule').textContent).toBe('Confirm 1 · leave 1')
     fireEvent.click(screen.getByLabelText('Keep HB-3'))
@@ -492,15 +496,20 @@ describe('BidsSubmittalsTab', () => {
     state.revisions = []
     state.items = []
     state.writes = []
+    state.tasks = []
     state.noSources = true
     state.takeoff = true
     try {
       mount()
       expect(await screen.findByText('No submittal on this bid yet')).toBeTruthy()
-      expect(document.querySelector('[data-tour="submittals-source"]')?.textContent).toContain('4 fixtures on the takeoff · 0 tags on the schedule · 0 picked lines · choose from the takeoff')
+      expect(document.querySelector('[data-tour="submittals-source"]')?.textContent).toContain('4 fixtures on the takeoff · no schedule yet · choose from the takeoff')
       expect(screen.getByTestId('journey-next').textContent).toBe('Next: The takeoff has 4 fixtures, 3 with parts. Choose which ones go on the submittal and build Rev 1 from them. The plans’ schedule is optional; typing it later turns Proposed rows into As specified or Alternate.Choose from the takeoff')
       expect(screen.getByTestId('source-takeoff').textContent).toContain('The takeoff · 4 fixtures, 3 with a part')
       expect(screen.getByTestId('choose-from-takeoff').textContent).toBe('Choose from the takeoff')
+      // v2.4109 · no picks → no picks card; the robot's offer is a line in the schedule card.
+      expect(screen.queryByTestId('source-picks')).toBeNull()
+      expect(screen.getByTestId('ask-robot-schedule').textContent).toBe('ask the robot to read it off the plans')
+      expect(screen.queryByRole('button', { name: /Build Rev 1 from/ })).toBeNull()
       fireEvent.click(screen.getByTestId('build-from-takeoff'))
       const picker = await screen.findByRole('dialog', { name: 'Choose from the takeoff' })
       // Fixtures and equipment ticked; the unpriced sink and the pipe not.
