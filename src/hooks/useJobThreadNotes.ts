@@ -26,6 +26,8 @@ import { clockSessionsToActivityItems } from '../lib/jobThreadClockActivity'
 import type { JobThreadEventActivityItem } from '../lib/jobActivityEvent'
 import { fetchJobActivityEventsForJobLedger } from '../lib/fetchJobActivityEventsForJobLedger'
 import { jobActivityEventsFromRpc } from '../lib/jobActivityEventsFromRpc'
+import { parsePaymentPromisesRpc, promisesOnJob } from '../lib/jobs/paymentPromises'
+import { paymentPromisesToActivityEvents } from '../lib/jobs/promiseActivityEvents'
 import { sortJobThreadActivity } from '../lib/jobThreadActivitySort'
 
 export type { JobThreadStampKind } from '../lib/jobThreadNoteStampBody'
@@ -182,7 +184,7 @@ export function useJobThreadNotes(
       const quiet = opts?.quiet === true
       if (!quiet) setJobThreadNotesLoadingId(jobId)
       try {
-        const [notesData, reportData, blocksPack, clockPack, eventsPack] = await Promise.all([
+        const [notesData, reportData, blocksPack, clockPack, eventsPack, promisesRaw] = await Promise.all([
           withSupabaseRetry(
             async () =>
               supabase.from('jobs_ledger_thread_notes').select(THREAD_NOTE_SELECT).eq('job_id', jobId).order('created_at', {
@@ -197,14 +199,24 @@ export function useJobThreadNotes(
           fetchJobScheduleBlocksForJob(jobId),
           fetchClockSessionsForJobLedger(jobId),
           fetchJobActivityEventsForJobLedger(jobId),
+          // The job's live payment promises as feed events (v2.4103) — an extra: the thread reads without them.
+          (async (): Promise<unknown> => {
+            try {
+              const r = await supabase.rpc('list_job_payment_promises' as never)
+              return r.error ? null : (r.data as unknown)
+            } catch {
+              return null
+            }
+          })(),
         ])
         const rowsRaw = (notesData as JobThreadNoteRow[] | null) ?? []
         const reportRows = (reportData as ReportForJobLedgerRow[] | null) ?? []
         const scheduleBlockRows: JobScheduleBlockWithAssigneeName[] = blocksPack.error ? [] : blocksPack.data
         const clockRows: JobDetailClockSessionRow[] = clockPack.error ? [] : clockPack.data
-        const eventItems: JobThreadEventActivityItem[] = jobActivityEventsFromRpc(
-          eventsPack.error ? [] : eventsPack.data,
-        )
+        const eventItems: JobThreadEventActivityItem[] = [
+          ...jobActivityEventsFromRpc(eventsPack.error ? [] : eventsPack.data),
+          ...paymentPromisesToActivityEvents(promisesOnJob(parsePaymentPromisesRpc(promisesRaw), jobId)),
+        ]
 
         setJobThreadActivityByJobId((prev) => {
           const merged = buildActivityFromServer(

@@ -43,6 +43,7 @@ const ALL_TYPES: JobActivityEventType[] = [
   'discount_added',
   'discount_changed',
   'discount_removed',
+  'payment_promise',
 ]
 
 describe('JOB_ACTIVITY_EVENT_RENDER', () => {

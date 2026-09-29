@@ -45,6 +45,7 @@ export type JobActivityEventType =
   | 'discount_added'
   | 'discount_changed'
   | 'discount_removed'
+  | 'payment_promise'
 
 export type JobActivityEvent = {
   /** Stable React key + dedupe key: `ev:status:<id>` (Phase 1) / `ev:<rowid>` (Phase 2). */
@@ -135,6 +136,9 @@ export const JOB_ACTIVITY_EVENT_RENDER: Record<JobActivityEventType, EventRender
   discount_added: { tag: 'Discount', ...MONEY_GREEN, bucket: 'billing' },
   discount_changed: { tag: 'Discount', ...STATUS_AMBER, bucket: 'billing' },
   discount_removed: { tag: 'Discount', ...DANGER_RED, bucket: 'billing' },
+  // A payment promise (v2.4103) — read-side: the thread hook maps the live rows of
+  // job_payment_promises ("They said…", the GC's word on a statement round) into the feed; financial.
+  payment_promise: { tag: 'They said', ...MONEY_GREEN, bucket: 'billing' },
 }
 
 export function eventRenderMeta(type: JobActivityEventType): EventRenderMeta {
