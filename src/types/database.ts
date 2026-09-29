@@ -2916,6 +2916,7 @@ export type Database = {
           account_manager_id: string | null
           address: string | null
           adopted_into_bid_id: string | null
+          alternate_group_tags: string[]
           agreed_value: number | null
           backtest_axis: string | null
           bid_date_sent: string | null
@@ -3000,6 +3001,7 @@ export type Database = {
           account_manager_id?: string | null
           address?: string | null
           adopted_into_bid_id?: string | null
+          alternate_group_tags?: string[]
           agreed_value?: number | null
           backtest_axis?: string | null
           bid_date_sent?: string | null
@@ -3084,6 +3086,7 @@ export type Database = {
           account_manager_id?: string | null
           address?: string | null
           adopted_into_bid_id?: string | null
+          alternate_group_tags?: string[]
           agreed_value?: number | null
           backtest_axis?: string | null
           bid_date_sent?: string | null

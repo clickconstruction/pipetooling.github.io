@@ -2,7 +2,7 @@
 title: count with the Count Sheet
 category: Office
 roles: dev, master_technician, assistant, controller, estimator, superintendent
-keywords: counts, count sheet, plan page, audit, quick add, fixtures, duplicate, merge, totals, line feet, ft, unscaled, px, export, clear all
+keywords: counts, count sheet, plan page, audit, quick add, fixtures, duplicate, merge, totals, line feet, ft, unscaled, px, export, clear all, group, by group, alternate, with and without
 order: 95
 ---
 The **Bids → Counts** tab opens a selected bid straight onto the **Count Sheet**, built for checking your count against the drawings. (The classic Old table and the Old / New pills retired in September 2026 — everything it did lives on the sheet.)
@@ -18,6 +18,21 @@ Before you even pick a bid, the list leads each row with a subtle number — **h
 Items 35 · Counts 1,122 ea · 29 items · Line feet 444.74 ft · 6 line types · Plan pages cited 1 (4 no pages) — the bid has 29 counted things and six pipe runs totalling 445 feet, and four rows still need a page.
 :::
 - Flip to **By plan page** and the sheet regroups under each page — "Plan page 26 — 13 items, 12 ea · 148.5 ft" — with a red **No plan page** bucket at the bottom to clean up before submitting.
+
+- Flip to **By group** and the sheet regroups under each group — the ones CountTooling sent, or the ones you type in a row's Group cell — with **No group** between the base groups and the alternates.
+
+## Alternates — priced with and without
+
+A customer's plan set sometimes carries a section they call an **alternate**: they want the bid with it and without it. In CountTooling the estimator counts that section as a group and marks the group as an alternate; when the copy is imported here the group arrives as an alternate too. You can also mark one yourself: in **By group**, every group's heading carries an {{chip:yellow|Alternate}} switch — on, the heading turns amber and reads *Alternate: Break room · bid with and without*; off, the group is part of the base bid again.
+
+- Every row in an alternate wears a small **ALT** mark beside its group, in every view.
+- The strip gains an **Alternates** tile while any alternate holds a row.
+- Under the sheet, the two numbers the customer asked for: **Base** (every row outside the alternates) and **+ Break room** (what that alternate adds), counts and feet kept apart as always.
+- The same fixture can sit in the base and in an alternate — WC ×4 in Restroom A and WC ×1 in the Break room — and those are two rows on purpose. Quick add and a rename only call a row a duplicate when it is in the same group.
+
+:::example One alternate on a bid
+Base · 5 ea · 112.00 ft — + Break room · 1 ea · 48.50 ft. The customer's letter will say the base price, then what the break room adds.
+:::
 
 ## The Reference grade chip — what this record can teach
 

@@ -29,8 +29,8 @@ import { ModalShell } from './ModalShell'
 import { BidPickerStandardList } from './BidPickerStandardList'
 import { BidPickerSearchRow } from './BidPickerSearchRow'
 import { bidNumberMatchesQuery, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
-import { buildCountSheetPageGroups, countSheetSummary, findDuplicateFixture, parsePlanPageTokens } from '../../lib/bids/countSheet'
-import { COUNT_UNITS, COUNT_UNIT_LABEL, classifyCountRowUnit, effectiveCountUnit, formatUnitTotal, formatUnitTotals, isCountUnit, summarizeRowsByUnit, type CountUnit } from '../../lib/bids/countRowUnit'
+import { buildCountSheetGroupGroups, buildCountSheetPageGroups, countSheetAlternateTotals, countSheetSummary, findDuplicateFixture, isAlternateRow, mergeAlternateTags, parsePlanPageTokens, summarizeAlternates, toggleAlternateTag } from '../../lib/bids/countSheet'
+import { COUNT_UNITS, COUNT_UNIT_LABEL, classifyCountRowUnit, effectiveCountUnit, formatUnitTotal, formatUnitTotals, isCountUnit, sumByUnit, summarizeRowsByUnit, type CountUnit, type UnitTotals } from '../../lib/bids/countRowUnit'
 import { breakdownJumpDomId, breakdownJumpMissMessage, countsRowDomId, type BreakdownJumpTarget } from '../../lib/bids/bidTabRowJump'
 import { referenceGradeChip, referenceGradeChipApplies } from '../../lib/bids/referenceGradeChip'
 import { GRADE_COLORS } from './RobotReferenceGradeModal'
@@ -155,7 +155,11 @@ export function BidsCountsTab({
   const [clearAllCountsConfirm, setClearAllCountsConfirm] = useState('')
   const [clearAllCountsBusy, setClearAllCountsBusy] = useState(false)
   // Count Sheet (New view) state
-  const [sheetMode, setSheetMode] = useState<'list' | 'pages'>('list')
+  const [sheetMode, setSheetMode] = useState<'list' | 'pages' | 'groups'>('list')
+  // v2.4188: the bid's alternate groups (bids.alternate_group_tags), held optimistically
+  // until the parent re-reads the bid after a save (onCountSourceLinkSaved reloads it).
+  const [altTagsLocal, setAltTagsLocal] = useState<{ bidId: string; tags: string[] } | null>(null)
+  const altTags: string[] = altTagsLocal && altTagsLocal.bidId === selectedBidForCounts?.id ? altTagsLocal.tags : (selectedBidForCounts?.alternate_group_tags ?? [])
   const [sheetNoPageOnly, setSheetNoPageOnly] = useState(false)
   const [qaOpen, setQaOpen] = useState(false)
   const [qaCount, setQaCount] = useState('1')
@@ -228,6 +232,19 @@ export function BidsCountsTab({
     setQaUnit(null)
   }, [selectedBidForCounts?.id])
 
+  /** v2.4188: write the bid's alternate groups; the switch on a group's heading and the import both come here. */
+  async function saveAlternateTags(bidId: string, next: string[]): Promise<boolean> {
+    setAltTagsLocal({ bidId, tags: next })
+    const { data: rows, error } = await supabase.from('bids').update({ alternate_group_tags: next }).eq('id', bidId).select('id')
+    if (error || bidUpdateRefused(rows)) {
+      setAltTagsLocal(null)
+      showToast(formatErrorMessage(error ?? new Error(BID_UPDATE_NOT_APPLIED_MESSAGE), 'Could not save the alternate'), 'error')
+      return false
+    }
+    await onCountSourceLinkSaved?.(bidId)
+    return true
+  }
+
   async function sheetQuickAdd() {
     const bid = selectedBidForCounts
     if (!bid) return
@@ -241,7 +258,7 @@ export function BidsCountsTab({
       showToast('Enter a count above zero.', 'error')
       return
     }
-    if (findDuplicateFixture(countRows, fixture)) {
+    if (findDuplicateFixture(countRows, fixture, undefined, { alternateTags: altTags, groupTag: null })) {
       showToast('Already on this bid — use Merge, or rename the row.', 'error')
       return
     }
@@ -292,7 +309,7 @@ export function BidsCountsTab({
         return false
       }
       if (trimmed === row.fixture) return true
-      const dupRow = findDuplicateFixture(countRows, trimmed, row.id)
+      const dupRow = findDuplicateFixture(countRows, trimmed, row.id, { alternateTags: altTags, groupTag: row.group_tag })
       if (dupRow) {
         // One fixture name, one row (a duplicate forks the takeoff assignment) —
         // offer the same merge quick add gives: counts combine on the existing row.
@@ -546,9 +563,16 @@ export function BidsCountsTab({
     }
   }
 
+  /** v2.4188: " · 1 alternate: Break room (1 ea · 48.5 ft)" on the import toast, '' when the text named none. */
+  function importedAlternatesPart(rows: ReturnType<typeof parseCountsImportText>['rows'], alternateGroups: string[]): string {
+    if (alternateGroups.length === 0) return ''
+    const part = summarizeAlternates(rows.map((r, i) => ({ id: String(i), ...r })), alternateGroups)
+    return part ? ` · ${part}` : ''
+  }
+
   async function handleCountsImport() {
     setCountsImportError(null)
-    const { rows, skippedCount, sourceLink } = parseCountsImportText(countsImportText)
+    const { rows, skippedCount, sourceLink, alternateGroups } = parseCountsImportText(countsImportText)
     if (rows.length === 0) {
       setCountsImportError(skippedCount > 0 ? 'No valid rows found. Check format: Fixture, Count, Plan Page' : 'Paste or enter count rows')
       return
@@ -566,7 +590,8 @@ export function BidsCountsTab({
     setCountsImportOpen(false)
     refreshAfterCountsChange()
     const sourceLinkWritten = await persistCountSourceLink(bidId, sourceLink)
-    const msg = `Imported ${inserted} rows: ${summarizeRowsByUnit(rows)}.${skippedCount > 0 ? ` ${skippedCount} lines skipped.` : ''}`
+    if (alternateGroups.length > 0) await saveAlternateTags(bidId, mergeAlternateTags(altTags, alternateGroups))
+    const msg = `Imported ${inserted} rows: ${summarizeRowsByUnit(rows)}${importedAlternatesPart(rows, alternateGroups)}.${skippedCount > 0 ? ` ${skippedCount} lines skipped.` : ''}`
     showImportedToastWithUndo({ bidId, insertedIds, sourceLinkBefore, sourceLinkWritten, message: msg })
   }
 
@@ -576,7 +601,7 @@ export function BidsCountsTab({
     try {
       const text = await navigator.clipboard.readText()
       const trimmed = text.trim()
-      const { rows, skippedCount, sourceLink } = parseCountsImportText(trimmed)
+      const { rows, skippedCount, sourceLink, alternateGroups } = parseCountsImportText(trimmed)
       if (rows.length > 0) {
         const sourceLinkBefore = selectedBidForCounts?.count_tooling_plans_link
         const { inserted, insertedIds, error } = await insertCountRows(bidId, rows)
@@ -587,7 +612,8 @@ export function BidsCountsTab({
         }
         refreshAfterCountsChange()
         const sourceLinkWritten = await persistCountSourceLink(bidId, sourceLink)
-        const msg = `Imported ${inserted} rows: ${summarizeRowsByUnit(rows)}.${skippedCount > 0 ? ` ${skippedCount} lines skipped.` : ''}`
+        if (alternateGroups.length > 0) await saveAlternateTags(bidId, mergeAlternateTags(altTags, alternateGroups))
+        const msg = `Imported ${inserted} rows: ${summarizeRowsByUnit(rows)}${importedAlternatesPart(rows, alternateGroups)}.${skippedCount > 0 ? ` ${skippedCount} lines skipped.` : ''}`
         showImportedToastWithUndo({ bidId, insertedIds, sourceLinkBefore, sourceLinkWritten, message: msg })
         return
       }
@@ -760,7 +786,7 @@ export function BidsCountsTab({
                   id="counts-import-tooling"
                   onClick={handleCountsImportClick}
                   style={{ padding: '0.5rem 1rem', background: '#FF6600', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', textAlign: 'center' }}
-                  title="Import from clipboard or paste in dialog. Tab-delimited: Fixture, Count, Plan Page"
+                  title="Import from clipboard or paste in dialog. Tab-delimited: Fixture, Count, Plan Page. A [Group] prefix becomes the group; CountTooling's Alternate heading marks the group as an alternate."
                 >
                   Import from /Tooling
                 </button>
@@ -797,7 +823,7 @@ export function BidsCountsTab({
                   id="counts-import-tooling"
                   onClick={handleCountsImportClick}
                   style={{ padding: '0.5rem 1rem', background: '#FF6600', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', textAlign: 'center' }}
-                  title="Import from clipboard or paste in dialog. Tab-delimited: Fixture, Count, Plan Page"
+                  title="Import from clipboard or paste in dialog. Tab-delimited: Fixture, Count, Plan Page. A [Group] prefix becomes the group; CountTooling's Alternate heading marks the group as an alternate."
                 >
                   Import from /Tooling
                 </button>
@@ -814,11 +840,14 @@ export function BidsCountsTab({
             </div>
           )}
           {(() => {
-            const summary = countSheetSummary(countRows)
+            const summary = countSheetSummary(countRows, altTags)
             const groups = buildCountSheetPageGroups(countRows)
             const showGroupTag = summary.withGroupTag > 0
             const visibleRows = sheetNoPageOnly ? countRows.filter((r) => parsePlanPageTokens(r.page).length === 0) : countRows
-            const dup = findDuplicateFixture(countRows, qaFixture)
+            // v2.4188: the By group view and the base / + alternate foot.
+            const altTotals = countSheetAlternateTotals(countRows, altTags)
+            const groupGroups = buildCountSheetGroupGroups(visibleRows, altTags)
+            const dup = findDuplicateFixture(countRows, qaFixture, undefined, { alternateTags: altTags, groupTag: null })
             const sheetCell: React.CSSProperties = { padding: '0.28rem 0.5rem', borderBottom: '1px solid var(--border)' }
             /** Uncontrolled quiet input: commits on Enter/blur, Esc reverts. Keyed by the saved value so optimistic updates re-sync it. */
             const sheetEditCell = (r: BidCountRow, field: 'count' | 'fixture' | 'group_tag' | 'page', saved: string, extra?: { numeric?: boolean; nopage?: boolean; ariaLabel: string }) => (
@@ -868,7 +897,14 @@ export function BidsCountsTab({
                   </div>
                 </td>
                 <td style={sheetCell}>{sheetEditCell(r, 'fixture', r.fixture, { ariaLabel: `Fixture name for ${r.fixture}` })}</td>
-                {showGroupTag ? <td style={{ ...sheetCell, width: '9rem' }}>{sheetEditCell(r, 'group_tag', r.group_tag ?? '', { ariaLabel: `Group or tag for ${r.fixture}` })}</td> : null}
+                {showGroupTag ? (
+                  <td style={{ ...sheetCell, width: '9rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                      {sheetEditCell(r, 'group_tag', r.group_tag ?? '', { ariaLabel: `Group or tag for ${r.fixture}` })}
+                      {isAlternateRow(r, altTags) ? <span className="count-sheet-alt" title="In an alternate group — priced with and without">ALT</span> : null}
+                    </div>
+                  </td>
+                ) : null}
                 <td style={{ ...sheetCell, width: '9rem' }}>
                   {sheetEditCell(r, 'page', r.page ?? '', { nopage: parsePlanPageTokens(r.page).length === 0, ariaLabel: `Plan page for ${r.fixture}` })}
                 </td>
@@ -895,6 +931,35 @@ export function BidsCountsTab({
                 {sheetRowCells(r)}
               </tr>
             )
+            const groupHeadStyle: React.CSSProperties = { background: 'var(--bg-subtle)', fontWeight: 700, fontSize: '0.78rem', padding: '0.4rem 0.75rem', borderBottom: '1px solid var(--border)' }
+            /** v2.4188 By group: one group's heading — its name, totals and the Alternate switch — then its rows. */
+            const groupBlock = (g: { label: string; rows: BidCountRow[]; byUnit: UnitTotals; alternate: boolean }) => [
+              <tr key={`ghead-${g.label}`}>
+                <td colSpan={showGroupTag ? 5 : 4} style={{ ...groupHeadStyle, ...(g.alternate ? { background: 'var(--bg-amber-tint)', color: 'var(--text-amber-700)' } : {}) }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                    <span>
+                      {g.alternate ? 'Alternate: ' : ''}{g.label} <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>— {g.rows.length} item{g.rows.length !== 1 ? 's' : ''}, {formatUnitTotals(g.byUnit)}</span>
+                    </span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={g.alternate}
+                      aria-label={`Alternate: ${g.label}`}
+                      title={g.alternate ? 'An alternate — priced with and without. Click to fold it back into the base bid.' : 'Make this group an alternate — priced with and without.'}
+                      disabled={!selectedBidForCounts}
+                      onClick={() => { if (selectedBidForCounts) void saveAlternateTags(selectedBidForCounts.id, toggleAlternateTag(altTags, g.label, !g.alternate)) }}
+                      style={{ font: 'inherit', fontSize: '0.7rem', fontWeight: 600, padding: '0.1rem 0.55rem', borderRadius: 999, border: '1px solid ' + (g.alternate ? 'var(--text-amber-700)' : 'var(--border-strong)'), background: g.alternate ? 'var(--text-amber-700)' : 'var(--surface)', color: g.alternate ? 'white' : 'var(--text-muted)', cursor: 'pointer' }}
+                    >
+                      {g.alternate ? 'Alternate · on' : 'Alternate'}
+                    </button>
+                    {g.alternate ? <span style={{ fontWeight: 500, fontSize: '0.72rem' }}>bid with and without</span> : null}
+                  </div>
+                </td>
+              </tr>,
+              ...g.rows.map((r) => (
+                <tr key={`g-${g.label}-${r.id}`} id={countsRowDomId(r.id)} className="count-sheet-row" style={rowJumpFlashDomId === countsRowDomId(r.id) ? { background: 'var(--bg-green-100)' } : undefined}>{sheetRowCells(r)}</tr>
+              )),
+            ]
             return (
               <>
                 <div style={{ display: 'flex', flexWrap: 'wrap', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, marginBottom: '0.9rem', overflow: 'hidden' }}>
@@ -947,9 +1012,16 @@ export function BidsCountsTab({
                       ) : null}
                     </div>
                   </button>
+                  {altTotals ? (
+                    <div style={{ padding: '0.55rem 1rem', borderLeft: '1px solid var(--border)', minWidth: '7rem' }} title="Groups the customer wants priced with and without — from CountTooling's alternate heading, or the Alternate switch on a group's heading in By group">
+                      <div style={{ fontSize: '0.63rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-amber-700)' }}>Alternates</div>
+                      <div style={{ fontSize: '1.05rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{altTotals.alternates.length}</div>
+                    </div>
+                  ) : null}
                 </div>
 
                 <style>{`
+                  .count-sheet-alt { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.06em; padding: 0 0.3rem; border-radius: 3px; border: 1px solid var(--text-amber-700); color: var(--text-amber-700); line-height: 1.5; flex: 0 0 auto; }
                   .count-sheet-input {
                     font: inherit;
                     width: 100%;
@@ -978,6 +1050,9 @@ export function BidsCountsTab({
                     </button>
                     <button type="button" onClick={() => setSheetMode('pages')} style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.3rem 0.75rem', border: 'none', cursor: 'pointer', background: sheetMode === 'pages' ? '#3b82f6' : 'var(--surface)', color: sheetMode === 'pages' ? '#fff' : 'var(--text-muted)' }}>
                       By plan page
+                    </button>
+                    <button type="button" onClick={() => setSheetMode('groups')} style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.3rem 0.75rem', border: 'none', cursor: 'pointer', background: sheetMode === 'groups' ? '#3b82f6' : 'var(--surface)', color: sheetMode === 'groups' ? '#fff' : 'var(--text-muted)' }}>
+                      By group
                     </button>
                   </div>
                   {!qaOpen ? (
@@ -1116,7 +1191,22 @@ export function BidsCountsTab({
                             ))}
                           </SortableContext>
                         )
-                        : (
+                        : sheetMode === 'groups' ? (
+                          <>
+                            {groupGroups.groups.filter((g) => !g.alternate).flatMap((g) => groupBlock(g))}
+                            {groupGroups.noGroup.length > 0 ? (
+                              <>
+                                <tr>
+                                  <td colSpan={showGroupTag ? 5 : 4} style={groupHeadStyle}>
+                                    No group <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>— {groupGroups.noGroup.length} item{groupGroups.noGroup.length !== 1 ? 's' : ''}, {formatUnitTotals(sumByUnit(groupGroups.noGroup))}</span>
+                                  </td>
+                                </tr>
+                                {groupGroups.noGroup.map((r) => sheetRow(r))}
+                              </>
+                            ) : null}
+                            {groupGroups.groups.filter((g) => g.alternate).flatMap((g) => groupBlock(g))}
+                          </>
+                        ) : (
                           <>
                             {buildCountSheetPageGroups(visibleRows).pages.flatMap((g) => [
                               <tr key={`head-${g.label}`}>
@@ -1144,6 +1234,14 @@ export function BidsCountsTab({
                   </table>
                   </DndContext>
                 </div>
+                {altTotals ? (
+                  <div data-testid="count-sheet-alt-totals" style={{ marginTop: '0.5rem', padding: '0.5rem 0.9rem', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--surface)', display: 'grid', gap: '0.2rem', fontSize: '0.8rem', fontVariantNumeric: 'tabular-nums', color: 'var(--text-muted)' }}>
+                    <span><strong style={{ color: 'var(--text-strong)' }}>Base</strong> · {formatUnitTotals(altTotals.base)}</span>
+                    {altTotals.alternates.map((a) => (
+                      <span key={a.label}><strong style={{ color: 'var(--text-amber-700)' }}>+ {a.label}</strong> · {formatUnitTotals(a.byUnit)}</span>
+                    ))}
+                  </div>
+                ) : null}
                 {/* v2.2707: the Old table retired; its "Clear all counts" door moves here so the sheet keeps it. */}
                 <div style={{ marginTop: '0.75rem', display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: '0.5rem' }}>
                   <div />

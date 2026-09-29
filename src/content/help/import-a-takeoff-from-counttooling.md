@@ -2,7 +2,7 @@
 title: import a takeoff from CountTooling
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: counttooling, import, takeoff, copy to tooling, counts, line feet, ft of, unscaled, px, view link, plans link, undo import, set scale, by stage, combined
+keywords: counttooling, import, takeoff, copy to tooling, counts, line feet, ft of, unscaled, px, view link, plans link, undo import, set scale, by stage, combined, group, alternate, with and without
 order: 96
 ---
 CountTooling counts the drawings; ClickTooling prices them. The bridge is one clipboard copy — no retyping.
@@ -21,8 +21,10 @@ Open the bid in **Bids → Counts** and click {{button:outline|Import from /Tool
 
 The toast tells you what arrived: *Imported 35 rows: 29 counts (1,122 ea) · 6 line types (444.74 ft).* Each row lands with its unit set — counters as **ea**, line types as **ft**, unscaled runs as **px** — so the Count Sheet totals them apart without guessing. The view link is saved to the bid as its **CountTooling plans** link (the crosshair icon on the Bid Board), so anyone pricing it can open the marked-up drawings.
 
+CountTooling's **groups** come along: a row copied as `[Restroom A] WC` lands as **WC** in the **Restroom A** group (the Group column), so the name still matches your labor and price books. A group CountTooling marked as an **alternate** — the section a customer wants priced with and without — arrives as one here: its rows sit under `--- Alternate: Break room ---` in the copied text, the toast adds *· 1 alternate: Break room (1 ea · 48.5 ft)*, and the Count Sheet shows it apart from the base bid (see [count with the Count Sheet](?g=count-with-the-count-sheet)).
+
 :::example Reading the result
-Switch the Counts tab to {{chip:gray|New}} — the Count Sheet strip shows **Counts** and **Line feet** as separate totals, and each feet row carries a small **ft** tag. A red **Unscaled** tile means some runs came in as pixels: set the scale in CountTooling, copy again, and delete the `px of` rows.
+The Count Sheet strip shows **Counts** and **Line feet** as separate totals, and each feet row carries a small **ft** tag. A red **Unscaled** tile means some runs came in as pixels: set the scale in CountTooling, copy again, and delete the `px of` rows.
 :::
 
 ## Then pick how the materials get priced

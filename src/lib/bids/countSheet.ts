@@ -4,7 +4,7 @@
  * `page` is the existing free-text plan-page field ("5, 26, 38", "A-101", …).
  */
 
-import { emptyUnitTotals, sumByUnit, type UnitTotals } from './countRowUnit'
+import { emptyUnitTotals, formatUnitTotals, sumByUnit, type UnitTotals } from './countRowUnit'
 
 export type CountSheetRow = {
   id: string
@@ -36,14 +36,17 @@ export type CountSheetSummary = {
   byUnit: UnitTotals
   noPageCount: number
   withGroupTag: number
+  /** Alternate groups (v2.4188) that hold at least one row. */
+  alternates: number
 }
 
-export function countSheetSummary(rows: CountSheetRow[]): CountSheetSummary {
+export function countSheetSummary(rows: CountSheetRow[], alternateTags: readonly string[] = []): CountSheetSummary {
   return {
     items: rows.length,
     byUnit: sumByUnit(rows),
     noPageCount: rows.filter((r) => parsePlanPageTokens(r.page).length === 0).length,
     withGroupTag: rows.filter((r) => (r.group_tag ?? '').trim() !== '').length,
+    alternates: countSheetAlternateTotals(rows, alternateTags)?.alternates.length ?? 0,
   }
 }
 
@@ -101,8 +104,128 @@ export function buildCountSheetPageGroups<T extends CountSheetRow>(rows: T[]): {
  * Case-insensitive, trimmed match against existing fixtures — the fork-the-takeoff guard.
  * Pass `excludeId` when checking a RENAME, so the row being edited doesn't match itself.
  */
-export function findDuplicateFixture<T extends CountSheetRow>(rows: T[], name: string, excludeId?: string): T | null {
+export function findDuplicateFixture<T extends CountSheetRow>(
+  rows: T[],
+  name: string,
+  excludeId?: string,
+  /**
+   * v2.4188: the same fixture may sit in the base bid AND in an alternate group (WC ×4 in
+   * Restroom A, WC ×1 in the Break room alternate) — those are two rows on purpose, so a
+   * duplicate is only a row in the SAME scope (the same alternate group, or both base).
+   */
+  scope?: { alternateTags: readonly string[]; groupTag: string | null },
+): T | null {
   const needle = name.trim().toLowerCase()
   if (!needle) return null
-  return rows.find((r) => r.id !== excludeId && r.fixture.trim().toLowerCase() === needle) ?? null
+  const key = scope ? alternateScopeKey({ group_tag: scope.groupTag }, scope.alternateTags) : null
+  return (
+    rows.find(
+      (r) =>
+        r.id !== excludeId &&
+        r.fixture.trim().toLowerCase() === needle &&
+        (key == null || alternateScopeKey(r, scope!.alternateTags) === key),
+    ) ?? null
+  )
+}
+
+// ---- Alternates (v2.4188) --------------------------------------------------
+// A bid's `alternate_group_tags` names the count-row groups the customer wants priced with
+// and without. Membership is by group_tag, trimmed and case-insensitive; a row with no
+// group, or a group not in the list, is the base bid.
+
+export function normalizeGroupTag(tag: string | null | undefined): string {
+  return (tag ?? '').trim().toLowerCase()
+}
+
+export function isAlternateRow(row: { group_tag: string | null }, alternateTags: readonly string[]): boolean {
+  const key = normalizeGroupTag(row.group_tag)
+  return key !== '' && alternateTags.some((t) => normalizeGroupTag(t) === key)
+}
+
+/** '' for a base row, else the alternate's normalized tag — the scope name-keyed matchers compare within. */
+export function alternateScopeKey(row: { group_tag: string | null }, alternateTags: readonly string[]): string {
+  return isAlternateRow(row, alternateTags) ? normalizeGroupTag(row.group_tag) : ''
+}
+
+/** Add or remove one tag (trimmed; case-insensitive match), keeping the others' spelling and order. */
+export function toggleAlternateTag(tags: readonly string[], tag: string, on: boolean): string[] {
+  const key = normalizeGroupTag(tag)
+  const rest = tags.filter((t) => normalizeGroupTag(t) !== key)
+  if (!key) return rest
+  return on ? [...rest, tag.trim()] : rest
+}
+
+/** The import's alternate names joined onto the bid's list, without duplicates. */
+export function mergeAlternateTags(tags: readonly string[], incoming: readonly string[]): string[] {
+  let out = [...tags]
+  for (const t of incoming) if (normalizeGroupTag(t) && !out.some((x) => normalizeGroupTag(x) === normalizeGroupTag(t))) out = [...out, t.trim()]
+  return out
+}
+
+export type CountSheetGroupGroup<T extends CountSheetRow = CountSheetRow> = {
+  /** The tag as first spelled on a row. */
+  label: string
+  rows: T[]
+  byUnit: UnitTotals
+  alternate: boolean
+}
+
+/**
+ * Group rows by group_tag for the By group view: base groups first (alphabetical), then
+ * the alternates (alphabetical), so the base bid reads as one block — the order every
+ * CountTooling surface uses. Rows with no group come back apart (`noGroup`); the sheet
+ * places them between the two.
+ */
+export function buildCountSheetGroupGroups<T extends CountSheetRow>(
+  rows: T[],
+  alternateTags: readonly string[],
+): { groups: CountSheetGroupGroup<T>[]; noGroup: T[] } {
+  const byKey = new Map<string, { label: string; rows: T[] }>()
+  const noGroup: T[] = []
+  for (const r of rows) {
+    const key = normalizeGroupTag(r.group_tag)
+    if (!key) {
+      noGroup.push(r)
+      continue
+    }
+    const g = byKey.get(key) ?? { label: (r.group_tag ?? '').trim(), rows: [] }
+    g.rows.push(r)
+    byKey.set(key, g)
+  }
+  const groups = [...byKey.entries()].map(([key, g]) => ({
+    label: g.label,
+    rows: g.rows,
+    byUnit: sumByUnit(g.rows),
+    alternate: alternateTags.some((t) => normalizeGroupTag(t) === key),
+  }))
+  groups.sort((a, b) => (a.alternate !== b.alternate ? (a.alternate ? 1 : -1) : a.label.localeCompare(b.label)))
+  return { groups, noGroup }
+}
+
+export type CountSheetAlternateTotals = {
+  /** Every row outside an alternate group — the bid without any alternate. */
+  base: UnitTotals
+  /** One entry per alternate group that holds a row, alphabetical. */
+  alternates: { label: string; byUnit: UnitTotals }[]
+}
+
+/** The two numbers the customer asked for; null when no alternate group holds a row. */
+export function countSheetAlternateTotals<T extends CountSheetRow>(
+  rows: T[],
+  alternateTags: readonly string[],
+): CountSheetAlternateTotals | null {
+  if (alternateTags.length === 0) return null
+  const { groups, noGroup } = buildCountSheetGroupGroups(rows, alternateTags)
+  const alternates = groups.filter((g) => g.alternate).map((g) => ({ label: g.label, byUnit: g.byUnit }))
+  if (alternates.length === 0) return null
+  const baseRows = [...noGroup, ...groups.filter((g) => !g.alternate).flatMap((g) => g.rows)]
+  return { base: baseRows.length ? sumByUnit(baseRows) : emptyUnitTotals(), alternates }
+}
+
+/** "1 alternate: Break room (1 ea · 48.5 ft)" for the import toast; '' when none. */
+export function summarizeAlternates<T extends CountSheetRow>(rows: T[], alternateTags: readonly string[]): string {
+  const t = countSheetAlternateTotals(rows, alternateTags)
+  if (!t) return ''
+  const n = t.alternates.length
+  return `${n} alternate${n === 1 ? '' : 's'}: ${t.alternates.map((a) => `${a.label} (${formatUnitTotals(a.byUnit)})`).join(', ')}`
 }
