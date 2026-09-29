@@ -79,8 +79,8 @@ export function buildReadinessLine(i: ReadinessLineInputs): ReadinessLine {
   if (!link) {
     return {
       tone: 'idle',
-      title: 'Add the plans link and the robots will shadow this bid',
-      detail: 'A Drive file or folder the intake account can open. Nothing else is needed from you.',
+      title: 'Put the plans in the folder and the robots will shadow this bid',
+      detail: 'Make the folder with the name above, drag the PDFs in, tap Find. Nothing else is needed from you.',
       gaps: [{ key: 'plans', text: 'No plans link yet.' }],
     }
   }
@@ -98,7 +98,7 @@ export function buildReadinessLine(i: ReadinessLineInputs): ReadinessLine {
     gaps.push({
       key: 'plans-unreadable',
       text: notShared
-        ? `This ${/folder/i.test(note) ? 'folder' : 'file'} isn't shared with the intake account. Share it with ${ROBOT_INTAKE_ACCOUNT} (Viewer), then check again.`
+        ? `The robots cannot open this ${/folder/i.test(note) ? 'folder' : 'file'}. It is outside the bid folders, so share it with the robots’ Drive account, ${ROBOT_INTAKE_ACCOUNT}, as Viewer. Then Check again.`
         : note || 'The robots could not open this link.',
       copyIntake: notShared,
     })

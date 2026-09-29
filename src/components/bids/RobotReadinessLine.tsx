@@ -102,7 +102,7 @@ export function RobotReadinessLine(props: RobotReadinessLineProps) {
   async function copyIntake() {
     try {
       await navigator.clipboard.writeText(ROBOT_INTAKE_ACCOUNT)
-      showToast('Intake address copied — share the file with it as Viewer', 'success')
+      showToast('The robots’ Drive address is copied. Share the folder with it as Viewer.', 'success')
     } catch {
       showToast(ROBOT_INTAKE_ACCOUNT, 'info')
     }
@@ -138,7 +138,7 @@ export function RobotReadinessLine(props: RobotReadinessLineProps) {
                   onClick={() => void copyIntake()}
                   style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.2rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 5, background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }}
                 >
-                  Copy intake address
+                  Copy the robots’ address
                 </button>
               ) : null}
             </div>

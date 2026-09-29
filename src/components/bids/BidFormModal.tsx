@@ -20,6 +20,7 @@ import { formatProjectNumberLabel } from '../../lib/projectNumberLabel'
 import { itbLinkLabel } from '../../lib/itbLinks'
 import { computeBidDistanceToOffice } from '../../lib/bidDistanceToOffice'
 import { RobotReadinessLine } from './RobotReadinessLine'
+import { BidPlansFolderSteps } from './BidPlansFolderSteps'
 import { BidPriceRequestsTable } from './BidPriceRequestsTable'
 import { getBidServiceTypeTag } from '../../utils/unifiedJobBidSearch'
 import { BidWonJobActions } from './BidWonJobActions'
@@ -684,6 +685,38 @@ export function BidFormModal(props: BidFormModalProps) {
                   />
                 </div>
               </div>
+              {/* v2.4162 · Plans, right under the name: the robots' one required input, always a Drive link.
+                  The division folder to open, the name to copy, Find fills the link in; a pasted link is the exception. */}
+              <div style={FORM_SECTION_STYLE} data-testid="bid-form-plans-section">
+                <div style={FORM_SECTION_LABEL_STYLE}>Plans <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>· the robot reads this folder</span></div>
+                <BidPlansFolderSteps
+                  projectName={projectName}
+                  bidNumber={bidNumber}
+                  bidId={editingBid?.id ?? null}
+                  serviceTypeName={selectedServiceType?.name ?? ''}
+                  onFound={(link) => setPlansLink(link)}
+                />
+                <div style={{ marginBottom: '0.75rem' }}>
+                  <label htmlFor="bid-form-plans-link" style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Plans link <span style={{ color: 'var(--text-faint)' }}>· filled by Find, or paste a link to plans that live somewhere else</span></label>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <input id="bid-form-plans-link" type="url" value={plansLink} onChange={(e) => setPlansLink(e.target.value)} placeholder="https://drive.google.com/drive/... " style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 5 }} />
+                    <PasteButton onPaste={setPlansLink} label="Paste a link instead" />
+                  </div>
+                </div>
+                {/* v2.3142: will the robots shadow this bid? Green with the facts, amber
+                    with the fix, or neutral when opted out. Same probe the dispatcher uses. */}
+                <RobotReadinessLine
+                  plansLink={plansLink}
+                  address={address}
+                  distanceFromOffice={distanceFromOffice}
+                  bidDueDate={bidDueDate}
+                  serviceTypeId={formServiceTypeId}
+                  serviceTypeName={selectedServiceType?.name ?? ''}
+                  robotOptOut={robotOptOut}
+                  onRobotOptOutChange={setRobotOptOut}
+                  distanceBusy={distanceAutoStatus?.kind === 'busy'}
+                />
+              </div>
               <div style={FORM_SECTION_STYLE}>
                 <div style={FORM_SECTION_LABEL_STYLE}>Status &amp; dates</div>
                 <div className="bid-form-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '1rem' }}>
@@ -988,13 +1021,6 @@ export function BidFormModal(props: BidFormModalProps) {
                 </div>
                 <div className="bid-form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                   <div>
-                    <label htmlFor="bid-form-plans-link" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Job Plans</label>
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                      <input id="bid-form-plans-link" type="url" value={plansLink} onChange={(e) => setPlansLink(e.target.value)} placeholder="https://drive.google.com/drive/... " style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
-                      <PasteButton onPaste={setPlansLink} label="Paste job plans link" />
-                    </div>
-                  </div>
-                  <div>
                     <label htmlFor="bid-form-count-tooling-link" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>CountTooling Plans</label>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                       <input id="bid-form-count-tooling-link" type="url" value={countToolingPlansLink} onChange={(e) => setCountToolingPlansLink(e.target.value)} placeholder="https://counttooling.com/?t=... " style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
@@ -1012,19 +1038,6 @@ export function BidFormModal(props: BidFormModalProps) {
                     pricingHref={`/bids?tab=pricing&bidId=${editingBid.id}`}
                   />
                 ) : null}
-                {/* v2.3142: will the robots shadow this bid? Green with the facts, amber
-                    with the fix, or neutral when opted out. Same probe the dispatcher uses. */}
-                <RobotReadinessLine
-                  plansLink={plansLink}
-                  address={address}
-                  distanceFromOffice={distanceFromOffice}
-                  bidDueDate={bidDueDate}
-                  serviceTypeId={formServiceTypeId}
-                  serviceTypeName={selectedServiceType?.name ?? ''}
-                  robotOptOut={robotOptOut}
-                  onRobotOptOutChange={setRobotOptOut}
-                  distanceBusy={distanceAutoStatus?.kind === 'busy'}
-                />
                 <div className="bid-form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                   <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bid Submission</label>
