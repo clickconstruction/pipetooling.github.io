@@ -1,0 +1,399 @@
+<title>Robots Tab Redesign</title>
+<meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  /* Layout: a before/after brief in the house mock-up style — the page as it is (live 2026-09-29), the plan, three "is this the best we can do?" passes, the revised frames, the train. */
+  :root {
+    --bg: #F4F5F3; --surface: #FFFFFF; --subtle: #EEF0EC; --ink: #171A17; --muted: #5F665F; --line: #D9DDD6; --line-strong: #B8BFB5;
+    --accent: #1F5F8B; --accent-bg: #E3EEF6; --good: #1E6B3A; --good-bg: #DDEFE3; --warn: #8A5A0C; --warn-bg: #F7EBD0; --bad: #9B2C2C; --bad-bg: #F6DEDE; --seal: #5B3FA8; --seal-bg: #ECE6F8;
+    --display: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif; --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif; --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #141714; --surface: #1C201C; --subtle: #242924; --ink: #ECEFEA; --muted: #9AA39A; --line: #303630; --line-strong: #46504A; --accent: #7FB3D9; --accent-bg: #1D3140; --good: #7FD09A; --good-bg: #1B3325; --warn: #E2B76A; --warn-bg: #3A2E14; --bad: #E88E8E; --bad-bg: #3D1F1F; --seal: #B9A6E8; --seal-bg: #2A2340; color-scheme: dark; } }
+  :root[data-theme="dark"] { --bg: #141714; --surface: #1C201C; --subtle: #242924; --ink: #ECEFEA; --muted: #9AA39A; --line: #303630; --line-strong: #46504A; --accent: #7FB3D9; --accent-bg: #1D3140; --good: #7FD09A; --good-bg: #1B3325; --warn: #E2B76A; --warn-bg: #3A2E14; --bad: #E88E8E; --bad-bg: #3D1F1F; --seal: #B9A6E8; --seal-bg: #2A2340; color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 var(--body); padding-block: 0 64px; padding-inline: 20px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-family: var(--display); font-size: 26px; line-height: 1.15; text-wrap: balance; max-width: 34ch; }
+  .stamp { font-family: var(--mono); font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
+  h2 { font-family: var(--display); font-size: 19px; margin: 40px 0 6px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; text-wrap: balance; }
+  h2 .rank { font-family: var(--mono); font-size: 12px; color: var(--muted); font-weight: 500; }
+  .lede { margin: 0 0 14px; color: var(--muted); max-width: 84ch; }
+  .lede b { color: var(--ink); font-weight: 600; }
+  .tag { font-family: var(--mono); font-size: 11px; letter-spacing: .04em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .tag.draft { background: var(--bad-bg); color: var(--bad); } .tag.revised { background: var(--good-bg); color: var(--good); } .tag.ask { background: var(--warn-bg); color: var(--warn); } .tag.live { background: var(--accent-bg); color: var(--accent); }
+  .note { background: var(--surface); border: 1px solid var(--line-strong); border-left: 4px solid var(--warn); border-radius: 8px; padding: 10px 14px; margin: 14px 0; max-width: 84ch; }
+  .note b { display: block; }
+  code { font-family: var(--mono); font-size: 12px; background: var(--subtle); padding: 1px 4px; border-radius: 3px; }
+  ol.asks, ul.plain { max-width: 84ch; padding-left: 20px; margin: 10px 0 0; }
+  ol.asks li, ul.plain li { margin-bottom: 8px; }
+  ol.asks li b, ul.plain li b { font-weight: 600; }
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin: 12px 0; max-width: 980px; }
+  .fact { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+  .fact b { display: block; font-family: var(--mono); font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .fact span { color: var(--muted); font-size: 12px; }
+  .fact.bad b { color: var(--bad); }
+  /* ── the desktop frame ─────────────────────────────── */
+  .frame { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; margin: 12px 0 0; font-size: 12.5px; line-height: 1.4; }
+  .frame .chrome { background: var(--subtle); border-bottom: 1px solid var(--line); padding: 7px 12px; font-family: var(--mono); font-size: 11px; color: var(--muted); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .frame .chrome i { width: 9px; height: 9px; border-radius: 50%; background: var(--line-strong); display: inline-block; }
+  .frame .page { padding: 12px 16px 16px; }
+  .frame h3 { margin: 0 0 2px; font-size: 16px; font-family: var(--display); }
+  .frame .sub { color: var(--muted); margin: 0 0 10px; max-width: 80ch; }
+  .bar { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 0 0 8px; }
+  .bar .pill { padding: 3px 10px; border: 1px solid var(--line-strong); border-radius: 999px; font-size: 11.5px; background: var(--surface); white-space: nowrap; }
+  .bar .pill.on { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  .bar .cap { color: var(--muted); font-size: 11.5px; margin-left: 4px; }
+  .dev { font-family: var(--mono); font-size: 9px; border: 1px solid var(--line-strong); border-radius: 3px; padding: 0 3px; margin-left: 4px; }
+  .chip { display: inline-block; padding: 2px 8px; border: 1px solid var(--line-strong); border-radius: 999px; font-size: 11px; background: var(--surface); white-space: nowrap; }
+  .chip.on { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .chip.topic { background: var(--subtle); font-size: 10.5px; }
+  .btn { display: inline-block; padding: 4px 9px; border-radius: 5px; font-weight: 600; font-size: 11px; white-space: nowrap; border: 1px solid var(--line-strong); background: var(--surface); }
+  .btn.pri { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.star { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.ghost { border-style: dashed; color: var(--muted); font-weight: 400; }
+  .btn.quiet { color: var(--muted); font-weight: 400; }
+  .btn.big { padding: 9px 14px; font-size: 13px; border-radius: 7px; }
+  .btn.big .key { font-family: var(--mono); font-size: 10px; opacity: .7; margin-right: 6px; border: 1px solid currentColor; border-radius: 3px; padding: 0 4px; }
+  /* the strip */
+  .strip6 { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin: 0 0 10px; }
+  .strip6 div { border: 1px solid var(--line); border-radius: 7px; padding: 6px 9px; background: var(--subtle); min-width: 0; }
+  .strip6 b { display: block; font-family: var(--mono); font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .strip6 span { color: var(--muted); font-size: 10.5px; line-height: 1.25; display: block; }
+  .strip6 div.hot { border-color: var(--warn); background: var(--warn-bg); }
+  .strip6 div.hot b { color: var(--warn); }
+  /* rulings wall (before) */
+  .panel { border: 1px solid var(--line); border-radius: 8px; background: var(--subtle); padding: 8px 12px; margin: 0 0 10px; }
+  .panel .h { font-weight: 600; display: flex; gap: 8px; flex-wrap: wrap; align-items: baseline; }
+  .panel .h span { color: var(--muted); font-weight: 400; }
+  .qcard { border: 1px solid var(--line); border-radius: 6px; background: var(--surface); padding: 7px 10px; margin: 6px 0 0; }
+  .qcard .q { margin: 0 0 2px; }
+  .qcard .meta { color: var(--muted); font-size: 11px; margin: 0 0 5px; }
+  .qcard .taps { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+  .qcard .taps .right { margin-left: auto; display: flex; gap: 5px; }
+  .more { color: var(--muted); font-style: italic; margin: 6px 0 0; }
+  /* audit rows (before) */
+  .arow { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); padding: 6px 10px; margin: 5px 0 0; }
+  .arow b { font-size: 12px; }
+  .arow .st { font-size: 10.5px; padding: 1px 7px; border-radius: 999px; background: var(--warn-bg); color: var(--warn); }
+  .arow .st.seal { background: var(--seal-bg); color: var(--seal); }
+  .arow .d { font-family: var(--mono); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .arow .d.in { color: var(--good); } .arow .d.out { color: var(--bad); }
+  .arow .age { margin-left: auto; color: var(--muted); font-size: 11px; }
+  .arow.dashed { border-style: dashed; background: var(--subtle); color: var(--muted); }
+  /* after: header sentence + two panes */
+  .today { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; border: 1px solid var(--line-strong); border-radius: 8px; padding: 9px 12px; margin: 0 0 10px; background: var(--surface); }
+  .today p { margin: 0; flex: 1 1 380px; min-width: 0; }
+  .today p b { font-weight: 600; }
+  .qindex { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); margin: 0 0 10px; overflow: hidden; }
+  .qindex .h { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 7px 12px; background: var(--subtle); border-bottom: 1px solid var(--line); font-weight: 600; }
+  .qindex .h span { color: var(--muted); font-weight: 400; }
+  .qindex .h .btn { margin-left: auto; }
+  .qline { display: grid; grid-template-columns: 150px 1fr auto; gap: 10px; padding: 5px 12px; border-top: 1px solid var(--line); align-items: baseline; }
+  .qline:first-of-type { border-top: 0; }
+  .qline .t { font-size: 11px; color: var(--muted); font-weight: 600; }
+  .qline .x { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .qline .n { font-family: var(--mono); font-size: 10.5px; color: var(--muted); white-space: nowrap; }
+  .qline.today-q .t { color: var(--accent); }
+  .panes { display: grid; grid-template-columns: 300px 1fr; gap: 12px; align-items: start; }
+  .queue { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--surface); }
+  .queue .sec { font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 6px 10px 3px; background: var(--subtle); border-top: 1px solid var(--line); display: flex; justify-content: space-between; }
+  .queue .sec:first-child { border-top: 0; }
+  .qrow { padding: 6px 10px; border-top: 1px solid var(--line); display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; }
+  .qrow b { font-size: 12px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .qrow .why { grid-column: 1 / -1; color: var(--muted); font-size: 11px; }
+  .qrow .d { font-family: var(--mono); font-size: 11.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .qrow .d.in { color: var(--good); } .qrow .d.out { color: var(--bad); }
+  .qrow.now { background: var(--accent-bg); border-left: 3px solid var(--accent); }
+  .qrow.dim { color: var(--muted); }
+  .qrow .slate { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+  .card { border: 2px solid var(--accent); border-radius: 8px; padding: 10px 12px; background: var(--surface); min-width: 0; }
+  .card .hdr { display: flex; gap: 6px 12px; flex-wrap: wrap; align-items: baseline; margin: 0 0 6px; }
+  .card .hdr b { font-size: 13px; }
+  .card .hdr .st { font-size: 10.5px; padding: 1px 7px; border-radius: 999px; background: var(--warn-bg); color: var(--warn); }
+  .card .hdr .age { margin-left: auto; color: var(--muted); font-size: 11px; }
+  .card .links { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 8px; }
+  .sure { border-left: 3px solid var(--seal); background: var(--subtle); border-radius: 0 6px 6px 0; padding: 6px 10px; margin: 0 0 8px; }
+  .sure b { color: var(--seal); }
+  .sure .fold { color: var(--accent); }
+  .stats { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 8px; }
+  .stats div { border: 1px solid var(--line); border-radius: 6px; background: var(--subtle); padding: 4px 9px; }
+  .stats small { display: block; font-family: var(--mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .stats b { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .wf { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; font-size: 11px; margin: 0 0 8px; }
+  .wf .lbl { font-family: var(--mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .wf span.seg { border: 1px solid var(--line); border-radius: 999px; padding: 1px 7px; background: var(--subtle); }
+  .wf .neg { color: var(--bad); font-family: var(--mono); font-weight: 600; } .wf .pos { color: var(--warn); font-family: var(--mono); font-weight: 600; }
+  table.sys { border-collapse: collapse; width: 100%; max-width: 520px; font-size: 11.5px; margin: 0 0 8px; }
+  table.sys th { text-align: right; font-family: var(--mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: 2px 6px; border-bottom: 2px solid var(--line); }
+  table.sys th:first-child, table.sys td:first-child { text-align: left; }
+  table.sys td { text-align: right; padding: 3px 6px; border-bottom: 1px solid var(--line); font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  table.sys td:first-child { font-family: var(--body); }
+  .ok { color: var(--good); font-weight: 600; } .off { color: var(--bad); font-weight: 600; }
+  .bucket { font-family: var(--mono); font-size: 10px; letter-spacing: .05em; text-transform: uppercase; display: flex; gap: 8px; align-items: center; margin: 8px 0 4px; color: var(--muted); }
+  .bucket .tg { padding: 1px 6px; border-radius: 3px; font-weight: 600; }
+  .tg.missed { background: var(--bad-bg); color: var(--bad); } .tg.added { background: var(--warn-bg); color: var(--warn); } .tg.gap { background: var(--accent-bg); color: var(--accent); } .tg.six { background: var(--accent); color: #fff; }
+  .bucket .blurb { text-transform: none; letter-spacing: 0; font-family: var(--body); font-size: 11px; }
+  .drow { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center; border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; margin: 0 0 4px; font-size: 11.5px; }
+  .drow .amt { font-family: var(--mono); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .drow .amt.neg { color: var(--bad); } .drow .amt.pos { color: var(--warn); }
+  .drow .v { display: flex; gap: 4px; }
+  .drow .v .btn { padding: 2px 6px; font-size: 10px; }
+  .drow.pair { border-style: dashed; background: var(--subtle); }
+  .drow.pair .same { color: var(--muted); font-size: 11px; }
+  .drow .lbl2 { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fold { color: var(--accent); font-size: 11.5px; margin: 2px 0 8px; }
+  .composer { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; border-top: 1px solid var(--line); padding-top: 8px; margin-top: 6px; }
+  .composer .box { flex: 1 1 220px; border: 1px solid var(--line-strong); border-radius: 5px; padding: 4px 8px; color: var(--muted); min-width: 0; }
+  /* the run-through sheet */
+  .sheet { max-width: 700px; margin: 12px auto 0; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--surface); box-shadow: 0 10px 30px rgba(0,0,0,.12); overflow: hidden; }
+  .sheet .top { display: flex; gap: 10px; align-items: center; padding: 10px 16px; background: var(--subtle); border-bottom: 1px solid var(--line); font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  .sheet .top .prog { flex: 1; height: 5px; background: var(--line); border-radius: 999px; overflow: hidden; }
+  .sheet .top .prog i { display: block; width: 16%; height: 100%; background: var(--accent); }
+  .sheet .body { padding: 16px 18px 14px; }
+  .sheet .who { color: var(--muted); font-size: 12px; margin: 0 0 6px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .sheet .ask { font-size: 16px; line-height: 1.4; margin: 0 0 14px; text-wrap: pretty; }
+  .sheet .ask .robot { color: var(--seal); font-weight: 600; }
+  .sheet .taps { display: flex; flex-direction: column; gap: 7px; margin: 0 0 12px; max-width: 460px; }
+  .sheet .taps .btn.big { text-align: left; }
+  .sheet .foot { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; border-top: 1px solid var(--line); padding-top: 10px; font-size: 12px; color: var(--muted); }
+  .sheet .foot .right { margin-left: auto; display: flex; gap: 6px; }
+  /* phone frame */
+  .phone { width: 375px; max-width: 100%; margin: 12px 0 0; border: 6px solid var(--line-strong); border-radius: 26px; background: var(--surface); overflow: hidden; font-size: 12px; }
+  .phone .inner { padding: 12px 12px 14px; }
+  .phone .today { flex-direction: column; align-items: stretch; }
+  .phone .qrow b { white-space: normal; }
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; align-items: start; }
+  .cmp { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; padding: 12px 14px; }
+  .cmp h4 { margin: 0 0 6px; font-size: 13px; }
+  .cmp ul { margin: 0; padding-left: 18px; }
+  .cmp li { margin: 4px 0; }
+  table.train { border-collapse: collapse; width: 100%; font-size: 13px; margin: 10px 0 0; }
+  table.train th { text-align: left; font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: 6px 8px; border-bottom: 2px solid var(--line-strong); }
+  table.train td { padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.train td:first-child { font-family: var(--mono); white-space: nowrap; }
+  .scroll { overflow-x: auto; }
+  .kbd { font-family: var(--mono); font-size: 10px; border: 1px solid var(--line-strong); border-radius: 3px; padding: 0 4px; }
+  @media (max-width: 900px) { .panes { grid-template-columns: 1fr; } .strip6 { grid-template-columns: repeat(3, 1fr); } .qline { grid-template-columns: 1fr; gap: 2px; } .qline .x { white-space: normal; } }
+  @media (max-width: 640px) { .strip6 { grid-template-columns: repeat(2, 1fr); } .drow { grid-template-columns: 1fr; } .qcard .taps .right { margin-left: 0; } }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+<div class="wrap">
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list · draft for #63 · Bids → 🤖 Robots</p>
+    <h1>The Robots tab, worked in order — a queue for the estimator's minutes</h1>
+  </div>
+  <div class="stamp">2026-09-29 · read off the live page as dev<br>Audits · Robot Board · Scoreboard</div>
+</header>
+
+<h2><span class="rank">As it is</span> Bids → 🤖 Robots → Audits, 2026-09-29 <span class="tag live">live</span></h2>
+<p class="lede">The group lands on <b>Audits</b> whenever work is pending. The page is three things stacked: the robots' open questions (Standing rulings), a line of coaching stats, and every audit ever opened. All of it is right; none of it is in the order the estimator's time is worth. The numbers below are what the page showed today.</p>
+<div class="facts">
+  <div class="fact"><b>19</b><span>questions, in 16 cards, each with 5–6 buttons — about 96 buttons before the first audit row</span></div>
+  <div class="fact"><b>40</b><span>audit rows under them; 8 are 🔒 sealed shadows that cannot be opened</span></div>
+  <div class="fact"><b>29</b><span>of the workable audits come from two re-bid slates dated Aug 31 and Sep 5 (23–29 days old)</span></div>
+  <div class="fact bad"><b>row 32</b><span>where the page's auto-opened card sits (b410, the oldest) — the queue's top row is b468</span></div>
+  <div class="fact bad"><b>19 ≠ 15</b><span>the same question count on Audits and on the Scoreboard's Your part</span></div>
+  <div class="fact"><b>~75</b><span>verdict buttons on one open card (b476: 64 differences — 17 missed · 30 added · 17 gaps — 8 shown per bucket, 3 buttons each)</span></div>
+</div>
+<div class="frame">
+  <div class="chrome"><i></i><i></i><i></i> Bids → 🤖 Robots → Audits · desktop · as it renders today (condensed)</div>
+  <div class="page">
+    <div class="bar"><span class="pill">Robot Board · 46</span><span class="pill on">Audits · 31</span><span class="pill">Scoreboard</span><span class="pill">Console<span class="dev">DEV</span></span></div>
+    <div class="panel">
+      <div class="h">📜 Standing rulings · 19 <span>— fifteen minutes here unblocks every robot</span><span style="margin-left:auto">▾</span></div>
+      <div class="meta" style="color:var(--muted);font-size:11px;margin-top:4px">Questions about the job only — one answer lands on every open copy; the robots pull it on their next run. A robot talking about its own machine doesn't belong here: <b>Not mine</b> sends it to the operator.<br>🗂 4 bids need a different plan set — not a ruling, a fix on the bid: b494 · b488 · b378 · b323<br>🛠 8 robot problems for the operator — Robots → Console</div>
+      <div class="qcard"><p class="q"><span class="chip topic">Travel bands</span> 🤖 SpaceX BA02 restrooms, Bastrop: an $800k restroom fit-out about 50 miles from the office, months of work. What do you carry for travel on a job like this? · b499 ours b494</p><p class="meta">asked 2 times across 2 bids</p><div class="taps"><span class="btn star">★ About $4,000 · all 2</span><span class="btn">Nothing — inside the price · all 2</span><span class="btn">About $10,000 or more · all 2</span><span class="btn ghost">Something else…</span><span class="right"><span class="btn quiet">Not mine</span><span class="btn quiet">Dismiss</span></span></div></div>
+      <div class="qcard"><p class="q"><span class="chip topic">Vent model one story existing ti</span> 🤖 Shipley Do-Nuts, P1.2: a one-story kitchen TI where every fixture vents to a 2in header the length of the building, then a 3in riser to a 4in vent thru roof. Do you price that vent by the foot, or is it inside the fixture money? · b496 ours b490</p><p class="meta">asked 2 times across 2 bids</p><div class="taps"><span class="btn star">★ Footage, but only the riser · all 2</span><span class="btn">Vent as footage · all 2</span><span class="btn">Vent inside fixture money · all 2</span><span class="btn ghost">Something else…</span><span class="right"><span class="btn quiet">Not mine</span><span class="btn quiet">Dismiss</span></span></div></div>
+      <div class="qcard"><p class="q"><span class="chip topic">Kec sink connection rate</span> 🤖 Laynes 24th St (P-000): the hand sinks and 3-comp sinks are furnished with the kitchen equipment. Price each at the full sink rate or as rough-in plus final connection only? · b484 ours b483</p><p class="meta">asked once across 1 bid</p><div class="taps"><span class="btn star">★ Full sink rate $4,350 each</span><span class="btn">Rough-in + connect ~$2,000 each</span><span class="btn ghost">Something else…</span><span class="right"><span class="btn quiet">Not mine</span><span class="btn quiet">Dismiss</span></span></div></div>
+      <p class="more">… 13 more cards like these (Site grease interceptor scope · Gang restroom fixture vs footage · Package boundary · Existing rough in fixture set · Trap primer per trap · Coffee equipment connection rate · Rtu condensate scope · Commercial gas water heater rate · Price matrix toilets · Small ti absorption · Spec campus market band · Take5 ca piping scope · Take5 proto package)</p>
+    </div>
+    <p class="sub">Robot bids waiting on a human audit. The card shows where the robot and our bid differ — judge each difference with one tap, answer its questions, and it learns from every verdict.</p>
+    <div class="panel" style="padding:6px 12px">👩‍🏫 <b>Coaching record:</b> 51 notes <span style="float:right;color:var(--muted)">recent runs: <span class="off">−17.0%</span> <span class="off">−29.2%</span> <span class="off">−30.4%</span> <span class="off">+59.9%</span> <span class="ok">−2.6%</span></span></div>
+    <div class="bar"><span class="chip on">All 40</span><span class="chip">Backtests 29</span><span class="chip">Shadows 11</span><span class="chip">Asking you 12</span><span class="cap">sorted by what your verdict unblocks</span></div>
+    <div class="arow"><b>b468 · ZZ Twin BONILLA LAW FIRM (backtest R2)</b><span class="st">Awaiting your audit</span><span>draft $28,728</span><span class="d out">+27.0% vs ours</span><span style="color:var(--warn)">12 questions</span><span class="age">requested Sep 4, 11:28 PM · 24d ago</span></div>
+    <div class="arow"><b>b465 · ZZ Twin CRUNCH WILLIAM CANNON (backtest R2)</b><span class="st">Awaiting your audit</span><span>draft $314,858</span><span class="d out">−10.8% vs ours</span><span style="color:var(--warn)">12 questions</span><span class="age">24d ago</span></div>
+    <div class="arow"><b>b467 · ZZ Twin SAISD - DAVIS MS PHASE II (backtest R2)</b><span class="st">Awaiting your audit</span><span>draft $1,849,857</span><span class="d out">−33.9% vs ours</span><span style="color:var(--warn)">11 questions</span><span>4 notes</span><span class="age">24d ago</span></div>
+    <div class="arow"><b>b477 · ZZ Twin HYPER KIDZ FRANCHISE @ SAN ANTONIO (backtest R2)</b><span class="st">Awaiting your audit</span><span>draft $140,780</span><span class="d in">+5.0% vs ours</span><span style="color:var(--warn)">11 questions</span><span class="age">23d ago</span></div>
+    <div class="arow"><b>b476 · ZZ Twin MPH CASA LINDA (backtest R2)</b><span class="st">Awaiting your audit</span><span>draft $319,594</span><span class="d in">−7.9% vs ours</span><span style="color:var(--warn)">10 questions</span><span class="age">23d ago</span></div>
+    <div class="arow dashed"><b>b482 · ZZ Shadow PALMER WINERY</b><span>🔒 opens after we send b431 — seeing the robot's takeoff early could anchor our own number</span><span class="age">22d ago</span></div>
+    <div class="arow"><b>b481 · ZZ Shadow GALLOWAY PARK CONCESSION STAND BURNET</b><span class="st">Awaiting your audit</span><span>draft $158,644</span><span class="d out">−64.9% vs ours</span><span style="color:var(--warn)">9 questions</span><span class="age">23d ago</span></div>
+    <p class="more">… 33 more rows — 7 more 🔒 sealed rows mixed in, the Aug 31 slate with no questions (b414 +59.9% · b422 −57.5% · b475 +50.8% · b428 −33.9% · b413 −30.4% · …), and at row 32 the card the page opened for you: <b>b410 · ZZ Twin HAWAIIAN BROS #142</b>, the oldest audit, three screens down.</p>
+  </div>
+</div>
+
+<div class="note"><b>Three things that are wrong before any redesign</b>
+1 · <b style="display:inline">The auto-opened card is the oldest, not the first.</b> <code>BidsAuditsTab</code> picks the card to open on the first render, before the notes and draft totals that the triage order needs have loaded (<code>isUnpricedAudit(undefined)</code> is false), and then keeps that pick. Every session opens on the bottom of the queue.
+2 · <b style="display:inline">Two counts of the same questions.</b> The panel counts 19 (every open estimator question); the Scoreboard's Your part counts 15 because the robot layer only loads questions that name a bid — the four doctrine asks with no bid (Small TI absorption, Spec campus, the two Take 5 asks) fall out.
+3 · <b style="display:inline">"Recent runs" are the oldest runs.</b> The coaching strip slices the first five audits of a list sorted oldest-first.</div>
+
+<h2><span class="rank">Plan, draft 1</span> Seven PRs, the obvious ones <span class="tag draft">first draft</span></h2>
+<ol class="asks">
+  <li><b>Fix the open card</b> — pick it once the triage signals are in, re-pick until the estimator picks. One kernel, tests.</li>
+  <li><b>Captions on the Robots bar</b> — the Followup bar has a line that says what the open lens is for; the Robots bar has none.</li>
+  <li><b>Standing rulings as a run-through</b> — one question at a time, the buttons always in the same place, number keys, progress; the list beneath collapses to one line per question.</li>
+  <li><b>Now / Up next / Sealed until we send</b> — the audit list splits into the open card, the workable rows with a line that says why each is next, and a fold for the 🔒 rows.</li>
+  <li><b>Robot Board says the repeated sentence once</b> — six "No plans link" rows carry the same two-line explanation; it moves to the section header. The "4 robot shells to pair or archive" line is operator housekeeping and goes dev-only.</li>
+  <li><b>One question count</b> — Audits and the Scoreboard read the same kernel.</li>
+  <li><b>Rename the lenses</b> — Audits → Teach, Robot Board → Our bids, Scoreboard → How close.</li>
+</ol>
+
+<h2><span class="rank">Asked of it</span> Is this the best we can do? <span class="tag ask">pass 1 · the plan</span></h2>
+<ol class="asks">
+  <li><b>Is a run-through really better than a tidier list?</b> Yes, and for a reason the page already states: "fifteen minutes here unblocks every robot". A question is 40–60 words because it carries the plan context that makes it answerable, so a compact list would just be 19 expand-taps. One at a time keeps the ★ button in the same spot, gives it a number key, and hides Not mine and Dismiss in a corner. It is the shape of Wendi's productive Sep 4 pass, which the learning plan wrote the panel to reproduce. <i>Kept.</i></li>
+  <li><b>What about the card — 75 buttons is the same wall, bigger.</b> The envelope already solved this at send: "the six biggest differences with one-tap verdicts", the rest behind a fold. The audit card should take the envelope's shape and reuse its kernel. <i>Added as a PR.</i></li>
+  <li><b>Half of the "missed" rows on b476 are the same item as an "added" row.</b> <i>RENTALS/TRAVEL −$20,000 missed</i> beside <i>Travel &amp; Rentals +$19,920 added</i>; <i>EEW −$6,700</i> beside <i>Emergency Eyewash +$6,700</i>; <i>OM-1</i> beside <i>Oxygen Manifold</i>; <i>S-3</i> beside <i>Service/Mop Basin</i>. The name matcher sees two errors; the estimator judges one difference twice, and the waterfall counts it in both directions. The card should pair a missed row with an added row of the same count and dollars and offer <b>Same item</b> — one tap that teaches the alias (the twins doc's R2-BT-1 "tag aliasing" residual, from the other side). <i>Added to the card PR.</i></li>
+  <li><b>Rename the lenses?</b> "Audits", "Robot Board" and "Scoreboard" are in the guide, the glossary, the Dashboard card and three architecture docs. A caption under the bar does the same job for the reader without churning ten documents. <i>Dropped; captions stay.</i></li>
+  <li><b>"Sealed until we send" — whose wait is it?</b> The estimator's own. b499 opens when she sends b494 (due 10/01). So the fold says that, per row, with the due date: it is a reminder about her bids, not robot news. <i>Renamed the fold.</i></li>
+  <li><b>The $800k in the Travel bands question.</b> b499 is a sealed shadow of b494, which has not gone out; the question says "an $800k restroom fit-out". The takeoff rows are sealed, but the robot's size guess reached the estimator through the question text. That is a harness rule (<code>ask_question</code> already refuses a multi-decision ask), not a page layout, and the owner may not mind a size hint. <i>Moved to Your calls.</i></li>
+</ol>
+
+<h2><span class="rank">Draft 2</span> The Audits lens as a queue, on desktop <span class="tag revised">revised</span></h2>
+<p class="lede">Four things, in the order the estimator's minute is worth: <b>one sentence</b> that sizes today, <b>the questions</b> behind one button, then the <b>queue on the left</b> and <b>the open card on the right</b>, so the card is always at the top and the queue is always in view. Everything that is not hers folds. The strip of six numbers is the group's, drawn on every lens; each number is a door to the lens that works it.</p>
+<div class="frame">
+  <div class="chrome"><i></i><i></i><i></i> Bids → 🤖 Robots → Audits · 1440 px · the queue is today's list; the card is b476 as it read today, folded the new way</div>
+  <div class="page">
+    <div class="strip6">
+      <div><b>39</b><span>of our bids have a robot run</span></div>
+      <div><b>7 / 8</b><span>live plumbing bids shadowed</span></div>
+      <div><b>6</b><span>sealed, waiting on your number</span></div>
+      <div class="hot"><b>6</b><span>need a person before a robot can start</span></div>
+      <div class="hot"><b>31</b><span>audits waiting · oldest 29 d</span></div>
+      <div><b>0 / 10</b><span>kinds of job earned first drafts</span></div>
+    </div>
+    <div class="bar"><span class="pill">Robot Board · 46</span><span class="pill on">Audits · 31</span><span class="pill">Scoreboard</span><span class="pill">Console<span class="dev">DEV</span></span><span class="cap">Teach the robots — answer their questions, then judge their drafts. Every answer lands on the next run.</span></div>
+    <div class="today">
+      <p><b>Today: 19 questions, about fifteen minutes.</b> Then 31 audits — 2 from this month's shadows, 29 from the re-bid slates of Aug 31 and Sep 5. 8 more open when you send.</p>
+      <span class="btn pri big">Answer the 19 questions</span>
+    </div>
+    <div class="qindex">
+      <div class="h">Questions · 19 <span>· 12 asked today on this week's shadows · 3 asked twice</span><span class="btn quiet">Show all 19</span></div>
+      <div class="qline today-q"><span class="t">Travel bands · 2 bids</span><span class="x">SpaceX BA02 restrooms, Bastrop: about 50 miles from the office, months of work. What do you carry for travel on a job like this?</span><span class="n">★ About $4,000</span></div>
+      <div class="qline today-q"><span class="t">Vent model · 2 bids</span><span class="x">Shipley Do-Nuts, P1.2: every fixture vents to a 2in header, then a 3in riser to a 4in vent thru roof. By the foot, or inside the fixture money?</span><span class="n">★ Footage, riser only</span></div>
+      <div class="qline today-q"><span class="t">Grease interceptor · 2 bids</span><span class="x">Shipley Do-Nuts SE Military, P1.4: the GB-75, sample port and cleanout sit outside on the site sewer. Do we carry the interceptor package?</span><span class="n">★ Site contractor</span></div>
+      <div class="qline"><span class="t">Small TI absorption</span><span class="x">On jobs under about $50k the robot came in 17 to 29 percent light because it priced fixtures only. A footage allowance, or higher per-fixture prices?</span><span class="n">no pick</span></div>
+      <div class="qline" style="color:var(--muted)"><span class="t">… 12 more</span><span class="x">Also: 4 bids need a different plan set — that is a fix on the bid, on the Robot Board → <i>need a person</i>.</span><span class="n"></span></div>
+    </div>
+    <div class="panes">
+      <div class="queue">
+        <div class="sec"><span>Now</span><span>5 of 31 · you picked it</span></div>
+        <div class="qrow now"><b>MPH Casa Linda</b><span class="d in">−8%</span><span class="why">10 questions · Vet clinic, 1 of 5 in a row · re-bid Sep 5</span></div>
+        <div class="sec"><span>Up next</span><span>30 · by what your verdict unblocks</span></div>
+        <div class="qrow"><b>Bonilla Law Firm</b><span class="d out">+27%</span><span class="why">12 questions · Small tenant finish-out needs a fix first</span></div>
+        <div class="qrow"><b>Crunch William Cannon</b><span class="d out">−11%</span><span class="why">12 questions · Fitness club, 1 of 5 in a row</span></div>
+        <div class="qrow"><b>SAISD Davis MS Phase II</b><span class="d out">−34%</span><span class="why">11 questions · 4 notes · Schools &amp; libraries needs a fix first</span></div>
+        <div class="qrow"><b>Hyper Kidz San Antonio</b><span class="d in">+5%</span><span class="why">11 questions · Mid-size finish-out needs a fix first</span></div>
+        <div class="qrow"><b>Galloway Park concession</b><span class="d out">−65%</span><span class="why">9 questions · shadow, scored vs Grace · sent 09/22</span></div>
+        <div class="qrow"><b>AISD Garcia renovation</b><span class="d out">+127%</span><span class="why">8 questions · Schools &amp; libraries</span></div>
+        <div class="qrow"><b>Pepper Lunch Leander</b><span class="d out">−31%</span><span class="why">8 questions</span></div>
+        <div class="qrow"><b>Crunch Fitness Potranco</b><span class="d in">−1%</span><span class="why">8 questions · Fitness club</span></div>
+        <div class="qrow"><b>SpaceX BA-02N Architectural</b><span class="d out">+413%</span><span class="why">7 questions · Mid-size finish-out</span></div>
+        <div class="qrow"><b>Take 5 San Pedro</b><span class="d out">−63%</span><span class="why">6 questions · Oil-change franchise</span></div>
+        <div class="qrow dim"><b>Tye Preston Memorial Library</b><span class="d out">+116%</span><span class="why">no questions · Schools &amp; libraries · <span class="slate">re-bid Sep 5</span></span></div>
+        <div class="qrow dim"><b>ATI Schertz</b><span class="d out">+60%</span><span class="why">no questions · <span class="slate">slate Aug 31</span></span></div>
+        <div class="qrow dim"><b>AISD Garcia (first run)</b><span class="d out">−58%</span><span class="why">no questions · <span class="slate">slate Aug 31</span></span></div>
+        <div class="qrow dim"><b>… 16 more from the Aug 31 slate</b><span></span><span class="why">MPH Livarg · Hunter Road ×3 · HEB ×2 · TSAOG · Take 5 ×2 · Hawaiian Bros · …</span></div>
+        <div class="sec"><span>Opens when you send</span><span>8 ▸</span></div>
+        <div class="qrow dim"><b>SpaceX BA02 9 gang restrooms</b><span class="d">🔒</span><span class="why">opens when b494 goes out · due 10/01 · Wendi</span></div>
+        <div class="qrow dim"><b>Patagonia Austin</b><span class="d">🔒</span><span class="why">opens when b491 goes out · due 10/06 · Wendi</span></div>
+        <div class="qrow dim"><b>… 6 more</b><span></span><span class="why">Shipley · Promenade · Ice Bath Club · Palmer Winery · …</span></div>
+        <div class="sec"><span>Digested</span><span>show ▸</span></div>
+      </div>
+      <div class="card">
+        <div class="hdr"><b>MPH Casa Linda</b><span class="st">Awaiting your audit</span><span>robot's copy b476 · re-bid of ours b376</span><span>draft $319,594 · 72 rows</span><span style="color:var(--warn)">10 unanswered questions</span><span class="age">requested Sep 5 · 23d ago</span></div>
+        <div class="links"><span class="btn">Open takeoff (CountTooling) ↗</span><span class="btn">Open the robot's bid ↗</span><span class="btn">Open ours, b376 ↗</span></div>
+        <div class="sure"><b>🤖 Where I'm least sure:</b> Counters-first takeoff, registration-gated mains. Every sheet accounted: P-001/P-002 legend+specs (material spec recorded), PD-100 demo counted on Demo canvas (19 sinks, 4 WCs, 4 lavs — keynotes 1/2/3). <span class="fold">read the rest (about 120 more words) ▸</span></div>
+        <div class="stats"><div><small>Robot draft</small><b>$319,594</b></div><div><small>Ours (b376)</small><b>$346,881</b></div><div><small>Delta</small><b class="ok">−7.9%</b></div></div>
+        <div class="wf"><span class="lbl">Where the delta lives</span><span class="seg">missed <span class="neg">−$132,614</span></span><span class="seg">added <span class="pos">+$113,702</span></span><span class="seg">counts <span class="neg">−$69,138</span></span><span class="seg">rates <span class="pos">+$258</span></span><span class="seg">everything else <span class="pos">+$513</span></span>= <b class="off">−$27,287 vs ours</b></div>
+        <div class="bucket"><span class="tg six">The six biggest differences</span><span class="blurb">judge these first; the other 58 are under the fold</span></div>
+        <div class="drow"><span class="lbl2">ft of 2IN WASTE <span style="color:var(--muted)">· robot ×163 · ours ×471.8</span></span><span class="amt neg">−$62,311</span><span class="v"><span class="btn">✗ Robot's wrong</span><span class="btn">📋 Our record's off</span><span class="btn">✓ Both fine</span></span></div>
+        <div class="drow"><span class="lbl2">ft of 2" Vent <span style="color:var(--muted)">· robot added ×393</span></span><span class="amt pos">+$55,820</span><span class="v"><span class="btn">✗ Robot's wrong</span><span class="btn">📋 Our record's off</span><span class="btn">✓ Both fine</span></span></div>
+        <div class="drow"><span class="lbl2">ft of 1 1/2IN WASTE <span style="color:var(--muted)">· we carry ×270.1, the robot doesn't</span></span><span class="amt neg">−$33,946</span><span class="v"><span class="btn">✗ Robot's wrong</span><span class="btn">📋 Our record's off</span><span class="btn">✓ Both fine</span></span></div>
+        <div class="drow"><span class="lbl2">SS <span style="color:var(--muted)">· we carry ×4, the robot doesn't</span></span><span class="amt neg">−$21,183</span><span class="v"><span class="btn">✗ Robot's wrong</span><span class="btn">📋 Our record's off</span><span class="btn">✓ Both fine</span></span></div>
+        <div class="drow pair"><span class="lbl2">RENTALS/TRAVEL ×1 <span style="color:var(--muted)">missed −$20,000</span> &nbsp;≈&nbsp; Travel &amp; Rentals (per mile) ×249 <span style="color:var(--muted)">added +$19,920</span></span><span class="same">one item, two names?</span><span class="v"><span class="btn pri">Same item — teach the name</span><span class="btn quiet">No, two things</span></span></div>
+        <div class="drow"><span class="lbl2">Med Gas Outlet (O2/SC) <span style="color:var(--muted)">· robot added ×21</span></span><span class="amt pos">+$19,950</span><span class="v"><span class="btn">✗ Robot's wrong</span><span class="btn">📋 Our record's off</span><span class="btn">✓ Both fine</span></span></div>
+        <p class="fold">58 more differences ▸ &nbsp;·&nbsp; 3 more pairs that look like one item: EEW ↔ Emergency Eyewash · OM-1 ↔ Oxygen Manifold · S-3 ↔ Service/Mop Basin ▸ &nbsp;·&nbsp; the system table: waste + vent 0.74× · water 0.84× · fixtures 4.96× ▸</p>
+        <div class="bucket"><span class="tg gap">Its 10 questions</span><span class="blurb">the ones about this bid; a job-wide question goes to the run-through above (wording below is illustrative)</span></div>
+        <div class="drow"><span class="lbl2">🤖 P-103: the med-gas outlets in the treatment rooms — are the O2 and suction both ours?</span><span></span><span class="v"><span class="btn star">★ Both ours</span><span class="btn">O2 only</span><span class="btn">By others</span></span></div>
+        <p class="fold">9 more questions ▸</p>
+        <div class="composer"><span class="chip on">General</span><span class="chip">Counts</span><span class="chip">Footage</span><span class="chip">Pricing</span><span class="chip">Scope</span><span class="box">Anything else you'd tell a junior estimator…</span><span class="btn">Add note</span><span class="btn pri">Finish audit → next: Bonilla Law Firm</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2><span class="rank">Draft 2</span> The run-through — one question, one tap, next <span class="tag revised">revised</span></h2>
+<p class="lede"><b>Answer the 19 questions</b> opens a sheet over the page. The question is the whole screen; the robot's pick is the first big button; <span class="kbd">1</span>–<span class="kbd">4</span> tap, <span class="kbd">Enter</span> takes the ★, <span class="kbd">→</span> skips. Not mine and Dismiss sit in the corner where they cannot be hit by accident. A shared question says on whose bids the answer lands. At the end: what was saved, and the door back to the queue.</p>
+<div class="sheet">
+  <div class="top"><span>Question 3 of 19</span><span class="prog"><i></i></span><span>2 answered · ~12 min left</span><span>✕</span></div>
+  <div class="body">
+    <p class="who"><span class="chip topic">Site grease interceptor scope</span> asked on 2 bids · <b>b496 → ours b490</b> and <b>b495 → ours b489</b> · Grace's bids, sealed today</p>
+    <p class="ask"><span class="robot">🤖</span> Shipley Do-Nuts SE Military, P1.4: the Schier GB-75 grease interceptor, sample port and grade cleanout sit outside the building on the site sewer, but are on the plumbing set and fixture schedule. <b>Do we carry the interceptor package?</b></p>
+    <div class="taps">
+      <span class="btn big star"><span class="key">1</span>★ Site contractor — exclude <span style="opacity:.75;font-weight:400">· the robot's pick</span></span>
+      <span class="btn big"><span class="key">2</span>Ours — carry it</span>
+      <span class="btn big"><span class="key">3</span>Carry as an add alternate</span>
+      <span class="btn big ghost"><span class="key">4</span>Something else…</span>
+    </div>
+    <div class="foot"><span>One tap answers both open copies; the robots pull it on their next run.</span><span class="right"><span class="btn quiet">Skip →</span><span class="btn quiet">Not mine</span><span class="btn quiet">Dismiss</span></span></div>
+  </div>
+</div>
+
+<h2><span class="rank">Draft 2</span> On a phone <span class="tag revised">revised</span></h2>
+<p class="lede">The panes stack: the sentence, the button, the queue. A row opens the card full-screen with <b>Finish → next</b> at the bottom. The run-through is already a phone shape.</p>
+<div class="phone"><div class="inner">
+  <div class="bar"><span class="pill">Robot Board</span><span class="pill on">Audits · 31</span><span class="pill">Scoreboard</span></div>
+  <div class="today"><p><b>19 questions, about fifteen minutes.</b> Then 31 audits. 8 open when you send.</p><span class="btn pri big" style="text-align:center">Answer the 19 questions</span></div>
+  <div class="queue">
+    <div class="sec"><span>Now</span><span>1 of 31</span></div>
+    <div class="qrow now"><b>Bonilla Law Firm</b><span class="d out">+27%</span><span class="why">12 questions · Small TI needs a fix first</span></div>
+    <div class="sec"><span>Up next</span><span>30</span></div>
+    <div class="qrow"><b>Crunch William Cannon</b><span class="d out">−11%</span><span class="why">12 questions · Fitness club</span></div>
+    <div class="qrow"><b>SAISD Davis MS Phase II</b><span class="d out">−34%</span><span class="why">11 questions · Schools &amp; libraries</span></div>
+    <div class="qrow"><b>Hyper Kidz San Antonio</b><span class="d in">+5%</span><span class="why">11 questions</span></div>
+    <div class="sec"><span>Opens when you send</span><span>8 ▸</span></div>
+  </div>
+</div></div>
+
+<h2><span class="rank">Asked of it</span> Is this the best we can do? <span class="tag ask">pass 2 · the mock-up</span></h2>
+<ol class="asks">
+  <li><b>Is the six-number strip clutter on a work page?</b> It is one row, and it is the only place the group says the same six facts in the same words on every lens. Today the Robot Board has it, the Scoreboard rephrases three of the six in sentences, and Audits has none. <i>Kept, on every lens; each tile is a door.</i></li>
+  <li><b>Does the card still work at 1,000 px?</b> The system table and the waterfall are 520 px wide at most; the verdict rows already wrap. What loses is the 150-word "least sure" paragraph — so it folds to its first two sentences. <i>Folded.</i></li>
+  <li><b>Do queue rows need the delta?</b> The delta is why a row is next when questions tie; it stays, as the one number on the row. The robot's copy number ("b468 · ZZ Twin …") moves off the row into the card header, so the row reads as the job the estimator knows. <i>Row: name, delta, why.</i></li>
+  <li><b>Where did the coaching strip go?</b> Its two facts split: "51 notes → what they became" belongs on the Scoreboard next to the lessons; "recent runs" is already there as <i>Last 5 scored runs</i>, correctly ordered. <i>Removed from Audits.</i></li>
+  <li><b>The 29-row slate is still a wall under "Up next".</b> It is, but it is one column wide and dimmed after the rows with questions; the slate label ("re-bid Sep 5", "slate Aug 31") tells her the last 16 are one batch, not sixteen surprises. A "Skip this slate" is a real request; it is not in this draft because the owner should say whether a slate can be parked. <i>Your call.</i></li>
+  <li><b>Does the run-through answer today's questions before the old ones?</b> The panel sorts by how many times a question was asked. Today's twelve are the ones with live bids behind them and a robot waiting; the four bid-less doctrine asks have waited three weeks and can wait fifteen more minutes. <i>Order: shared first, then today's, then the rest.</i></li>
+</ol>
+
+<h2><span class="rank">The whole group</span> Dashboard → Robots → three lenses, one vocabulary <span class="tag ask">pass 3 · holistic</span></h2>
+<p class="lede">Zooming out from the Audits lens to everything the estimator meets on the way to it.</p>
+<ul class="plain">
+  <li><b>The Dashboard card leads with the cheaper thing.</b> Needs you says <i>31 robot bids are waiting on your audit · Open Audits</i>. The fifteen-minute item is the questions, and the card should say so first: <i>19 questions (about 15 min) and 31 audits</i>, one door.</li>
+  <li><b>One count kernel.</b> <code>openEstimatorQuestions(rows)</code> fed by the full open list; the panel, the Scoreboard's Your part, the Dashboard card and the group tab's badge all read it. Today three surfaces compute three ways.</li>
+  <li><b>One strip, on every lens.</b> The Robot Board's six numbers become the group's header. The Scoreboard's Your part keeps its sentences (they are the personal reading of the same six) but drops the ones the strip already says.</li>
+  <li><b>Fewer words for the same things.</b> The page uses audit, ruling, question, verdict, shadow, backtest, sealed, envelope, slate. The estimator-facing copy needs three: <i>questions</i> (the panel keeps "standing rulings" in its tooltip and the guide), <i>audits</i>, <i>sealed</i>. "Backtest R2" and "ZZ Twin" leave the rows; "re-bid" and the slate date replace them.</li>
+  <li><b>What stays exactly as it is.</b> The Bid Board's robot icon and its two sheets, the envelope at send, the Console, the Robot Board's five sections, the Scoreboard's job types and runs. The redesign is the Audits lens, the bar, and the numbers the three share.</li>
+  <li><b>Is this the best we can do?</b> Not quite — two things are left on purpose. The slate as a unit ("audit these 16 as one pass; skip the slate") is the next real gain after the queue, and it needs the owner to say whether a slate can be parked. And the questions a sealed shadow asks before its bid goes out are the only place the seal is porous; a shape rule on the harness closes it, but the owner may want the size hint. Both are Your calls below, not gaps in the draft.</li>
+</ul>
+
+<h2><span class="rank">The train</span> Six PRs, smallest first, each off fresh main</h2>
+<div class="scroll"><table class="train">
+  <tr><th>PR</th><th>What ships</th><th>Where</th><th>Size</th></tr>
+  <tr><td>1</td><td>The open card is the top of the queue; one question count for the panel, the Scoreboard, the Dashboard card and the badge; the coaching strip leaves Audits.</td><td><code>pickOpenAudit</code> kernel + <code>openEstimatorQuestions</code> in <code>robotLayer.ts</code>; <code>BidsAuditsTab</code>, <code>useBidRobotLayer</code>, <code>dashboardNeedsYou</code></td><td>S</td></tr>
+  <tr><td>2</td><td>The strip on every lens and a caption under the Robots bar; the Robot Board's repeated explanation said once per section; the shells line dev-only.</td><td><code>bidsLenses.ts</code> (<code>robotLensCaption</code>), a <code>RobotGroupStrip</code> lifted from <code>BidsRobotMirrorTab</code>, <code>Bids.tsx</code></td><td>S</td></tr>
+  <tr><td>3</td><td>The run-through sheet and the one-line index; the sentence that sizes today with its button.</td><td><code>rulingRunThrough.ts</code> (order, progress, the minute estimate), <code>RulingRunThroughSheet.tsx</code>, <code>standingRulings.ts</code> (today's vs older)</td><td>M</td></tr>
+  <tr><td>4</td><td>Now / Up next / Opens when you send; the why line (questions, job type and its gate state, the slate); rows named for the job.</td><td><code>auditQueue.ts</code> (sections, why line, slate label), the two-pane layout at ≥1151 px in <code>BidsAuditsTab</code></td><td>M</td></tr>
+  <tr><td>5</td><td>The card takes the envelope's shape: six biggest differences first, the rest and the system table under a fold; "least sure" folds to two sentences; missed ↔ added pairs offer Same item.</td><td><code>takeoffDiff.ts</code> (<code>pairAliases</code>), <code>robotEnvelope.ts</code>'s top-six reused, the alias note the digest reads</td><td>M</td></tr>
+  <tr><td>6</td><td>Guide <i>audit a robot bid</i> rewritten around the queue; glossary; the Bids tabs map.</td><td><code>src/content/help/audit-a-robot-bid.md</code>, <code>GLOSSARY.md</code>, <code>BIDS_TABS_ARCHITECTURE.md</code></td><td>S (ships with 3–5)</td></tr>
+</table></div>
+
+<h2><span class="rank">Side by side</span> What the revision changes</h2>
+<div class="grid2">
+  <div class="cmp"><h4>Today</h4><ul><li>16 question cards, ~96 buttons, before the first audit row</li><li>40 rows with the 🔒 rows mixed in; the open card at row 32</li><li>Rows named for the robot's copy (ZZ Twin …, backtest R2)</li><li>One card: ~75 verdict buttons; the same item judged twice under two names</li><li>Three lenses, three vocabularies; 19 ≠ 15</li><li>No line under the bar saying what the lens is for</li></ul></div>
+  <div class="cmp"><h4>Draft 2</h4><ul><li>One sentence sizes today; one button runs the 19 questions, one at a time, with number keys</li><li>Queue left, card right; the card is always at the top; the 🔒 rows fold as "opens when you send"</li><li>Rows named for the job, with why it is next and which slate it is from</li><li>The six biggest differences first; missed ↔ added pairs become one tap</li><li>One strip, one count kernel, three words</li><li>A caption under the bar; the Dashboard card leads with the questions</li></ul></div>
+</div>
+
+<div class="note" style="border-left-color: var(--accent)"><b>Your calls</b>1 · Can a slate be parked ("skip these 16 for now")? If yes, PR 4 grows a Skip-the-slate door and a parked fold. 2 · Should a sealed shadow's question be held until the bid goes out, or just scrubbed of dollar figures on the harness (<code>ask_question</code>'s shape check)? Today b499's question says "$800k" about unsent b494. 3 · The heading: <i>Questions · 19</i> with "standing rulings" in the tooltip, or keep <i>Standing rulings</i> as the word on the page? 4 · Two panes on desktop, or the card pinned above a short queue? The draft picks two panes. 5 · The run-through's order: shared questions first, then today's, then the older doctrine asks — or strictly newest first?</div>
+</div>
