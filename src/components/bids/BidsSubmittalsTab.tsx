@@ -51,6 +51,8 @@ import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview
 import { ProductStatusChip } from './ProductStatusChip'
 import { SubmittalItemEditDialog, type SubmittalItemPatch } from './SubmittalItemEditDialog'
 import { SubmittalSheetStrip, type ThumbState } from './SubmittalSheetStrip'
+import { SubmittalAssignPagesModal } from './SubmittalAssignPagesModal'
+import type { ItemWrite } from '../../lib/submittals/assignPagesWalk'
 import { SubmittalShareModal } from './SubmittalShareModal'
 import { anonymousOpens, asPersonHow, describeHow, describeRoomLine, describeTrail, personTrail, roomLink, ROOM_ROLE_LABELS, asRoomRole, type SubmittalEventRow, type SubmittalPersonRow, type SubmittalRoomRow, describeThreadEntry, parseRoomMessage, summarizeThread, threadOrder } from '../../lib/submittals/submittalRoom'
 import { replyToRoom } from '../../lib/submittals/replyToRoom'
@@ -204,6 +206,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   const reviewerInput = useRef<HTMLInputElement | null>(null)
   /** Stage 3a: page thumbnails per vendor file, keyed by bucket path; drawn on demand. */
   const [thumbs, setThumbs] = useState<Record<string, ThumbState>>({})
+  /** v2.4143: the file open in the Assign pages walk. */
+  const [assignFile, setAssignFile] = useState<number | null>(null)
   /** Stage 4a: the bid's review room, the people on it, the events behind the trail. */
   const [room, setRoom] = useState<SubmittalRoomRow | null>(null)
   const [people, setPeople] = useState<SubmittalPersonRow[]>([])
@@ -1018,6 +1022,20 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     }
   }
 
+  /** Assign pages · Done: every row whose pages in the file changed, written in one pass, then the rows reload. */
+  async function applyAssignWrites(writes: ItemWrite[]) {
+    if (!selectedRev) return
+    try {
+      for (const w of writes) await writeItemPages(w.itemId, w.fileIndex, w.pages)
+      setItems(await loadItems(selectedRev.id))
+      const rowsTouched = writes.filter((w) => w.pages.length > 0).length
+      showToast(writes.length === 0 ? 'Nothing changed.' : `${rowsTouched} row${rowsTouched === 1 ? '' : 's'} updated with pages from the file.`, 'success')
+      setAssignFile(null)
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not save the pages.', 'error')
+    }
+  }
+
   async function unassignPageFromItem(fileIndex: number, page: number, itemId: string) {
     const it = items.find((i) => i.id === itemId)
     if (!it || !selectedRev || it.sheet_file !== fileIndex) return
@@ -1736,6 +1754,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                     robotSeat={robotSeat}
                     onAskRobot={(i) => void askRobot('file_cut_sheets', { file_index: i, path: sourceFiles[i]?.path, name: sourceFiles[i]?.name, pages: sourceFiles[i]?.pages }, selectedRev.id)}
                     onConfirmGuesses={(i) => void confirmGuesses(i)}
+                    onAssignPages={(i) => setAssignFile(i)}
                   />
                 ) : null}
               </RoadSection>
@@ -1996,6 +2015,18 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         </div>
       ) : null}
 
+      {assignFile != null && sourceFiles[assignFile] ? (
+        <SubmittalAssignPagesModal
+          file={sourceFiles[assignFile]!}
+          fileIndex={assignFile}
+          items={items}
+          loadBytes={() => downloadFile(sourceFiles[assignFile]!.path)}
+          guesses={(() => { const f = sourceFiles[assignFile]!; const t = liveTask(tasks, 'file_cut_sheets', (inp) => inp.file_index === assignFile && (!inp.path || inp.path === f.path)); const g = t ? sheetGuessesToConfirm(t, f.pages) : null; return g ? guessByPage(g) : undefined })()}
+          busy={busy}
+          onDone={applyAssignWrites}
+          onClose={() => setAssignFile(null)}
+        />
+      ) : null}
       {editing ? <SubmittalItemEditDialog item={editing} sourceFiles={sourceFiles} people={people} canEnterDecision canEditProduct={isDraft} onSave={(p) => void saveItem(p)} onClose={() => setEditing(null)} /> : null}
       {splitRuleOpen ? <SplitRuleModal examples={splitExplanation(takeoffCandidatesForPicker)} onClose={() => setSplitRuleOpen(false)} /> : null}
       {takeoffPicker && takeoff ? (

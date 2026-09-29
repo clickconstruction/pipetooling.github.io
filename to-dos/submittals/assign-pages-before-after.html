@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Assign cut sheets — plan and mock</title>
+<style>
+  :root { --ground: #0f141c; --panel: #161c26; --panel2: #1c2431; --line: #2a3442; --line2: #3a4658; --ink: #e6eaf0; --muted: #8a97a8; --blue: #3b82f6; --blue-bg: #1e3a8a; --green: #22c55e; --amber: #f59e0b; --red: #ef4444; --paper: #ffffff; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 13px/1.45 -apple-system, "Segoe UI", system-ui, sans-serif; padding: 0 20px 60px; }
+  .wrap { max-width: 1320px; margin: 0 auto; }
+  header.top { padding: 26px 0 12px; border-bottom: 2px solid var(--line2); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 24px; line-height: 1.15; max-width: 36ch; }
+  .stamp { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 17px; margin: 30px 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; }
+  .tag.before { background: #3f1d1d; color: #fca5a5; } .tag.after { background: #14351f; color: #86efac; } .tag.best { background: #1e2f55; color: #93c5fd; }
+  .lede { margin: 0 0 12px; color: var(--muted); max-width: 95ch; } .lede b { color: var(--ink); }
+  .callouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; margin: 0 0 14px; padding: 0; list-style: none; }
+  .callouts li { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--red); border-radius: 6px; padding: 8px 10px; font-size: 12.5px; color: var(--muted); }
+  .callouts li b { display: block; color: var(--ink); }
+  .callouts.good li { border-left-color: var(--green); } .callouts.best li { border-left-color: var(--blue); }
+
+  /* the modal */
+  .modal { background: var(--panel); border: 1px solid var(--line2); border-radius: 10px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,.5); }
+  .mh { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .mh b { font-size: 14px; } .mh .file { color: var(--muted); }
+  .prog { display: flex; gap: 14px; align-items: center; color: var(--muted); font-size: 12px; }
+  .bar { width: 160px; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; } .bar i { display: block; height: 100%; background: var(--green); }
+  .btn { padding: 6px 12px; border-radius: 6px; border: 1px solid var(--line2); background: var(--panel2); color: var(--ink); font: inherit; font-weight: 500; }
+  .btn.primary { background: #16a34a; border-color: #16a34a; color: #fff; font-weight: 600; } .btn.blue { background: var(--blue); border-color: var(--blue); color: #fff; font-weight: 600; }
+  .btn.ghost { background: none; border-color: transparent; color: var(--muted); }
+  .body { display: grid; grid-template-columns: 1.15fr 1fr; gap: 0; min-height: 420px; }
+  .left { padding: 12px 14px; border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; }
+  .right { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+  .ask { background: #2a2410; border: 1px solid #7c5a10; border-radius: 8px; padding: 9px 12px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .ask.sure { background: #10281a; border-color: #1f6b3a; }
+  .ask .q { flex: 1; } .ask .q b { font-size: 14px; } .ask .q span { color: var(--muted); display: block; font-size: 12px; }
+  .key { display: inline-block; font: 11px/1 ui-monospace, Menlo, monospace; padding: 4px 6px; border: 1px solid var(--line2); border-bottom-width: 2px; border-radius: 4px; background: var(--panel2); color: var(--ink); margin-right: 4px; }
+  .pagehead { display: flex; justify-content: space-between; align-items: baseline; color: var(--muted); font-size: 12px; }
+  .paper { background: var(--paper); color: #111; border-radius: 4px; padding: 18px 22px; min-height: 300px; position: relative; font-size: 11px; box-shadow: 0 2px 8px rgba(0,0,0,.4); }
+  .paper .brand { font-weight: 800; color: #1a4d8f; font-size: 13px; letter-spacing: .04em; }
+  .paper .model { font-size: 16px; font-weight: 800; margin: 8px 0 2px; }
+  .paper .model mark { background: #fde68a; padding: 0 3px; }
+  .paper .sub { color: #444; margin-bottom: 10px; }
+  .paper .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .paper .lines i { display: block; height: 6px; background: #d9dde3; border-radius: 3px; margin: 5px 0; } .paper .lines i:nth-child(2n) { width: 82%; } .paper .lines i:nth-child(3n) { width: 64%; }
+  .paper .fig { border: 1.5px solid #333; height: 120px; position: relative; } .paper .fig:before { content: ""; position: absolute; left: 30%; top: 15%; width: 40%; height: 70%; border: 1.5px solid #333; border-radius: 40% 40% 4px 4px; }
+  .paper .tbl { margin-top: 12px; border-top: 1.5px solid #333; } .paper .tbl i { display: block; height: 7px; border-bottom: 1px solid #ccc; }
+  .paper .pn { position: absolute; right: 14px; bottom: 8px; color: #888; font-size: 10px; }
+  .list { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .filter { padding: 7px 10px; border-bottom: 1px solid var(--line); color: var(--muted); display: flex; gap: 8px; align-items: center; }
+  .filter span { flex: 1; border: 1px solid var(--line2); border-radius: 5px; padding: 4px 8px; background: var(--ground); }
+  .row { display: grid; grid-template-columns: 78px 1fr 84px; gap: 8px; padding: 6px 10px; border-bottom: 1px solid var(--line); align-items: center; font-size: 12.5px; }
+  .row:last-child { border-bottom: none; }
+  .row .t { font-weight: 700; } .row .p { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .pg { text-align: right; color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .row .pg.ok { color: #86efac; } .row .pg.need { color: var(--amber); }
+  .row.cur { background: var(--blue-bg); outline: 1px solid var(--blue); } .row.cur .p, .row.cur .pg { color: #cfe0ff; }
+  .row.next { background: #1a2230; }
+  .swatch { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+  .strip { border-top: 1px solid var(--line); padding: 8px 14px 10px; }
+  .runs { display: flex; gap: 2px; overflow: hidden; }
+  .pg1 { flex: 1; min-width: 0; text-align: center; }
+  .pg1 .th { height: 34px; border-radius: 2px; background: #cfd6e0; border: 1px solid transparent; position: relative; }
+  .pg1 .th.g { background: #3a4658; } .pg1 .th.x { background: repeating-linear-gradient(135deg, #3a4658 0 3px, #222a36 3px 6px); }
+  .pg1 .th.cur { outline: 2px solid #fff; outline-offset: 1px; }
+  .pg1 .th:after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 5px; background: var(--c, transparent); }
+  .pg1 .n { font-size: 9px; color: var(--muted); margin-top: 3px; }
+  .labels { display: flex; gap: 2px; margin-top: 3px; }
+  .labels div { flex: 1; min-width: 0; font-size: 9px; color: var(--muted); text-align: center; overflow: hidden; white-space: nowrap; }
+  .keys { display: flex; gap: 14px; flex-wrap: wrap; color: var(--muted); font-size: 11.5px; margin-top: 8px; }
+  .keys span b { color: var(--ink); font-weight: 500; }
+  .summary { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 14px; }
+  .card { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+  .card h3 { margin: 0 0 6px; font-size: 14px; } .card p { margin: 0 0 8px; color: var(--muted); }
+  .card ul { margin: 0; padding-left: 16px; color: var(--muted); } .card li b { color: var(--ink); }
+  .big { font-size: 26px; font-weight: 800; } .big small { font-size: 13px; color: var(--muted); font-weight: 500; }
+  .call { background: var(--panel); border: 1px solid var(--line2); border-radius: 10px; padding: 14px 18px; margin-top: 18px; }
+  .call h3 { margin: 0 0 6px; font-size: 15px; } .call ol { margin: 0; padding-left: 20px; } .call li { margin: 5px 0; } .call .why { color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div>
+    <p class="eyebrow">Bids → Submittals → 3 · cut sheets → <u>Assign pages</u></p>
+    <h1>Putting a 75-page vendor PDF onto 27 fixture rows without hunting</h1>
+  </div>
+  <div class="stamp">punch list #17 · Submittals<br>drawn 2026-09-29 · SpaceX BA-2 rows, page text invented</div>
+</header>
+
+<h2><span class="tag before">Before</span> Per row: pick the file, type the pages</h2>
+<p class="lede">Every row asks <i>which file, which pages?</i> To answer, the user scans 75 thumbnails the size of a stamp, reads page numbers off them, remembers "23 to 24", and types it. The hunt is the work; the typing is the tax on top. 27 rows × a hunt each.</p>
+<ul class="callouts">
+  <li><b>The question is asked from the wrong side</b>The user knows the PDF's order (it follows the schedule); the UI makes them find pages for a row instead of naming the row for a page.</li>
+  <li><b>Thumbnails are unreadable</b>At 75 across five rows, a model number is two pixels. Every decision needs a zoom nobody offers.</li>
+  <li><b>Typed page ranges</b>"3-4" is a transcription of something the user just saw — a second step that can be wrong.</li>
+  <li><b>No map of what is done</b>Which pages are already on a row? Which rows still need one? Only by reading every row's Sheet column.</li>
+</ul>
+
+<h2><span class="tag after">After</span> Assign pages: one page big, one question, the answer pre-filled</h2>
+<p class="lede">A full-screen modal from the file's strip: <b>Assign pages</b>. Left: the page, large enough to read its header. Right: the fixture rows in schedule order, the expected one lit. The page's model number was read (pdfjs text, already in the repo) and matched to the row's submitted model, so the question comes answered — <b>Space says yes and moves on</b>. A pick marks where a fixture <i>starts</i>; the pages after it inherit until the next pick. The strip along the bottom colors every page by its fixture: the map.</p>
+<ul class="callouts good">
+  <li><b>Runs, not pages</b>Space = same fixture as the last page. 75 pages become ~25 picks, most of them already right.</li>
+  <li><b>Read for you</b>"Looks like WHA-500 — Z1700-500-OV is on the page." Green when the model matched; amber when it's only the next row in order; grey when nothing was read.</li>
+  <li><b>Keys over drags</b>Space · Enter/click · ← → · Backspace · X · type a tag to filter. Drag a thumbnail onto a row still works, but nobody needs it.</li>
+  <li><b>The map</b>Colored runs with tag labels; grey = unread, hatched = not a cut sheet. Click any page to jump. Wrong runs are visible before Done.</li>
+</ul>
+
+<div class="modal">
+  <div class="mh">
+    <div><b>Assign pages</b> <span class="file">· SPACEX BA-2 CORE &amp; SHELL.pdf · 75 pages</span></div>
+    <div class="prog"><span>61 of 75 pages placed · 22 of 27 rows have a sheet · 4 not cut sheets</span><div class="bar"><i style="width:81%"></i></div></div>
+    <div><button class="btn ghost">Cancel</button> <button class="btn ghost">Undo</button> <button class="btn primary">Done — put pages on rows</button></div>
+  </div>
+  <div class="body">
+    <div class="left">
+      <div class="ask sure">
+        <div class="q"><b>Looks like WHA-500 · Zurn Z1700-500-OV hammer arrestor</b><span>Z1700-500-OV is on the page · pages 21–22 are WHA-500 too</span></div>
+        <div><span class="key">Space</span> yes, next page &nbsp; <span class="key">X</span> not a cut sheet</div>
+      </div>
+      <div class="pagehead"><span>Page <b style="color:var(--ink)">23</b> of 75 · <span class="key">←</span><span class="key">→</span> move without deciding</span><span>run started at 21 · 3rd page of WHA-500</span></div>
+      <div class="paper">
+        <div class="brand">ZURN</div>
+        <div class="model"><mark>Z1700-500-OV</mark> HAMMER ARRESTOR</div>
+        <div class="sub">Model 500 · 1" MIP · sizing per PDI WH-201 · lead-free</div>
+        <div class="cols">
+          <div class="lines"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="fig"></div>
+        </div>
+        <div class="tbl"><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="pn">Page 23 · Submittal BA-2 · rev 3</div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="list">
+        <div class="filter">Find <span>type a tag or model… (W → WHA-200, WHA-300, WHA-500, WC-1)</span></div>
+        <div class="row"><span class="t"><i class="swatch" style="background:#60a5fa"></i>DWH-1</span><span class="p">DWH1 &amp; ET assembly SPACEX</span><span class="pg ok">p. 3–6</span></div>
+        <div class="row"><span class="t"><i class="swatch" style="background:#a78bfa"></i>EWC-1</span><span class="p">Elkay EZH2O bottle filler</span><span class="pg ok">p. 7–8</span></div>
+        <div class="row"><span class="t"><i class="swatch" style="background:#f472b6"></i>FCO</span><span class="p">Zurn Z1400 floor cleanout</span><span class="pg ok">p. 9</span></div>
+        <div class="row"><span class="t"><i class="swatch" style="background:#34d399"></i>FD</span><span class="p">Zurn Z415 floor drain</span><span class="pg ok">p. 10–12</span></div>
+        <div class="row"><span class="t"><i class="swatch" style="background:#fbbf24"></i>HB-3</span><span class="p">Woodford 67 wall hydrant</span><span class="pg ok">p. 13–14</span></div>
+        <div class="row"><span class="t"><i class="swatch" style="background:#f87171"></i>LAV-1</span><span class="p">Sloan SS-3003 lavatory</span><span class="pg ok">p. 15–17</span></div>
+        <div class="row"><span class="t"><i class="swatch" style="background:#2dd4bf"></i>WHA-200</span><span class="p">Zurn Z1700-200-OV</span><span class="pg ok">p. 19</span></div>
+        <div class="row"><span class="t"><i class="swatch" style="background:#c084fc"></i>WHA-300</span><span class="p">Zurn Z1700-300-OV</span><span class="pg ok">p. 20</span></div>
+        <div class="row cur"><span class="t"><i class="swatch" style="background:#fb923c"></i>WHA-500</span><span class="p">Zurn Z1700-500-OV</span><span class="pg">p. 21–22 <b>+ this</b></span></div>
+        <div class="row next"><span class="t"><i class="swatch" style="background:#4ade80"></i>WC-1</span><span class="p">TOTO CT708 · EFV concealed valve</span><span class="pg need">no sheet yet</span></div>
+        <div class="row"><span class="t"><i class="swatch" style="background:#38bdf8"></i>UR-2</span><span class="p">TOTO UT445U urinal</span><span class="pg need">no sheet yet</span></div>
+        <div class="row"><span class="t"><i class="swatch" style="background:#e879f9"></i>12" MOP SINK</span><span class="p">Fiat MSB2424100</span><span class="pg need">no sheet yet</span></div>
+        <div class="row"><span class="t">UTILITY SINK</span><span class="p">— missing from the quote</span><span class="pg">skip</span></div>
+      </div>
+      <div style="color:var(--muted); font-size:12px">Schedule order. <b style="color:var(--ink)">Enter</b> or a click puts this page on the lit row and moves on; the row after it is already on deck because the PDF follows the schedule. Rows with a sheet stay in the list — a page can join one.</div>
+    </div>
+  </div>
+  <div class="strip">
+    <div class="runs">
+      <div class="pg1"><div class="th x"></div><div class="n">1</div></div>
+      <div class="pg1"><div class="th x"></div><div class="n">2</div></div>
+      <div class="pg1"><div class="th" style="--c:#60a5fa"></div><div class="n">3</div></div>
+      <div class="pg1"><div class="th" style="--c:#60a5fa"></div><div class="n">4</div></div>
+      <div class="pg1"><div class="th" style="--c:#60a5fa"></div><div class="n">5</div></div>
+      <div class="pg1"><div class="th" style="--c:#60a5fa"></div><div class="n">6</div></div>
+      <div class="pg1"><div class="th" style="--c:#a78bfa"></div><div class="n">7</div></div>
+      <div class="pg1"><div class="th" style="--c:#a78bfa"></div><div class="n">8</div></div>
+      <div class="pg1"><div class="th" style="--c:#f472b6"></div><div class="n">9</div></div>
+      <div class="pg1"><div class="th" style="--c:#34d399"></div><div class="n">10</div></div>
+      <div class="pg1"><div class="th" style="--c:#34d399"></div><div class="n">11</div></div>
+      <div class="pg1"><div class="th" style="--c:#34d399"></div><div class="n">12</div></div>
+      <div class="pg1"><div class="th" style="--c:#fbbf24"></div><div class="n">13</div></div>
+      <div class="pg1"><div class="th" style="--c:#fbbf24"></div><div class="n">14</div></div>
+      <div class="pg1"><div class="th" style="--c:#f87171"></div><div class="n">15</div></div>
+      <div class="pg1"><div class="th" style="--c:#f87171"></div><div class="n">16</div></div>
+      <div class="pg1"><div class="th" style="--c:#f87171"></div><div class="n">17</div></div>
+      <div class="pg1"><div class="th x"></div><div class="n">18</div></div>
+      <div class="pg1"><div class="th" style="--c:#2dd4bf"></div><div class="n">19</div></div>
+      <div class="pg1"><div class="th" style="--c:#c084fc"></div><div class="n">20</div></div>
+      <div class="pg1"><div class="th" style="--c:#fb923c"></div><div class="n">21</div></div>
+      <div class="pg1"><div class="th" style="--c:#fb923c"></div><div class="n">22</div></div>
+      <div class="pg1"><div class="th cur" style="--c:#fb923c"></div><div class="n">23</div></div>
+      <div class="pg1"><div class="th g"></div><div class="n">24</div></div>
+      <div class="pg1"><div class="th g"></div><div class="n">25</div></div>
+      <div class="pg1"><div class="th g"></div><div class="n">26</div></div>
+      <div class="pg1"><div class="th" style="--c:#4ade80"></div><div class="n">27</div></div>
+      <div class="pg1"><div class="th" style="--c:#4ade80"></div><div class="n">28</div></div>
+      <div class="pg1"><div class="th" style="--c:#38bdf8"></div><div class="n">29</div></div>
+      <div class="pg1"><div class="th" style="--c:#38bdf8"></div><div class="n">30</div></div>
+      <div class="pg1"><div class="th g"></div><div class="n">31</div></div>
+      <div class="pg1"><div class="th" style="--c:#e879f9"></div><div class="n">32</div></div>
+      <div class="pg1"><div class="th" style="--c:#e879f9"></div><div class="n">33</div></div>
+      <div class="pg1"><div class="th" style="--c:#e879f9"></div><div class="n">34</div></div>
+      <div class="pg1"><div class="th" style="--c:#60a5fa"></div><div class="n">35</div></div>
+      <div class="pg1"><div class="th" style="--c:#60a5fa"></div><div class="n">36</div></div>
+      <div class="pg1"><div class="th" style="--c:#a78bfa"></div><div class="n">37</div></div>
+      <div class="pg1"><div class="th" style="--c:#f472b6"></div><div class="n">38</div></div>
+      <div class="pg1"><div class="th" style="--c:#f472b6"></div><div class="n">39</div></div>
+      <div class="pg1"><div class="th g"></div><div class="n">40</div></div>
+      <div class="pg1"><div class="th" style="--c:#34d399"></div><div class="n">…</div></div>
+      <div class="pg1"><div class="th" style="--c:#34d399"></div><div class="n">75</div></div>
+    </div>
+    <div class="labels"><div></div><div></div><div>DWH-1</div><div></div><div></div><div></div><div>EWC-1</div><div></div><div>FCO</div><div>FD</div><div></div><div></div><div>HB-3</div><div></div><div>LAV-1</div><div></div><div></div><div></div><div>200</div><div>300</div><div>WHA-500</div><div></div><div></div><div>?</div><div>?</div><div>?</div><div>WC-1</div><div></div><div>UR-2</div><div></div><div>?</div><div>MOP</div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div>?</div><div></div><div></div></div>
+    <div class="keys"><span><b>Space</b> yes / same as last page</span><span><b>Enter</b> or click a row: this page starts that fixture</span><span><b>← →</b> move</span><span><b>Backspace</b> undo the last pick</span><span><b>X</b> not a cut sheet</span><span><b>type</b> to find a row</span><span><b>Shift+click</b> a row: this page is for both</span><span>click a page below to jump</span></div>
+  </div>
+</div>
+
+<h2><span class="tag best">The owner's call · 2026-09-29</span> Every page gets eyes on it — the summary is a progress card, not an exit</h2>
+<p class="lede">The first draft opened on a summary with "Looks right — Done" for files the reader had mostly placed. The owner said no: <b>this package goes to the customer, so the estimator reviews every page.</b> The reader still pre-fills the answer, so most pages are one Space — but Done stays locked until all 75 have been seen and each is on a row or marked not a cut sheet. What survives from the draft: the counts as a progress card, <i>Find</i> for a row with nothing (it jumps the walk to the candidate page — still reviewed there), and the robot's guesses landing in the same walk.</p>
+<ul class="callouts best">
+  <li><b>Every page seen</b>Done unlocks at 75 of 75 seen and 0 undecided. The count is on the button, so "how much is left" never needs asking.</li>
+  <li><b>Pre-filled, still reviewed</b>A read page arrives answered in green; Space confirms it and moves on. The estimator's eyes are on every page for the same reason a proof-reader reads what the spell-checker passed.</li>
+  <li><b>Find for a row</b>A row with nothing gets <i>Find</i>: pages whose text mentions its model. Clicking one jumps the walk there; the page is decided in the walk like any other.</li>
+  <li><b>The robot uses the same seat</b>"Ask the robot to split this file" already exists; its result lands as suggestions in this same summary, marked as the robot's, reviewed the same way. One surface, two readers.</li>
+</ul>
+
+<div class="modal">
+  <div class="mh">
+    <div><b>Assign pages</b> <span class="file">· SPACEX BA-2 CORE &amp; SHELL.pdf · 75 pages · read in 4 s</span></div>
+    <div><button class="btn ghost">Cancel</button> <button class="btn" style="opacity:.55" title="Every page must be seen first">Done — 23 of 75 seen</button></div>
+  </div>
+  <div class="summary">
+    <div class="card">
+      <h3><span class="big">61 <small>of 75 pages placed</small></span></h3>
+      <p>On 22 rows, by the model number printed on each page. 4 pages are the cover, the index and two blanks — left off.</p>
+      <p><span class="big" style="color:var(--amber)">9 <small>pages we couldn't read</small></span></p>
+      <p>Scans without text, or a model we didn't recognise. Pages 24–26, 31, 40, 58–61 — these arrive with only the row on deck, no green.</p>
+      <div><button class="btn blue">Continue the walk at page 24</button> <span style="color:var(--muted);font-size:12px">· 52 pages left to see</span></div>
+    </div>
+    <div class="card">
+      <h3><span class="big" style="color:var(--amber)">5 <small>rows with no page yet</small></span></h3>
+      <ul>
+        <li><b>WC-1</b> TOTO CT708 · EFV — <a style="color:#93c5fd">Find</a> → 2 pages mention CT708 (27, 28) · <a style="color:#93c5fd">take them</a></li>
+        <li><b>UR-2</b> TOTO UT445U — <a style="color:#93c5fd">Find</a> → 2 pages (29, 30)</li>
+        <li><b>12" MOP SINK</b> Fiat MSB2424100 — <a style="color:#93c5fd">Find</a> → 3 pages (32–34)</li>
+        <li><b>WHA-500</b> Zurn Z1700-500-OV — <a style="color:#93c5fd">Find</a> → 0 pages; it will be one of the 9</li>
+        <li><b>UTILITY SINK</b> — missing from the quote; no page expected</li>
+      </ul>
+      <p style="margin-top:8px">The index on page 2 lists 24 products in order — used to break ties when two rows share a model.</p>
+    </div>
+  </div>
+  <div class="strip" style="border-top:1px solid var(--line)">
+    <div class="runs">
+      <div class="pg1"><div class="th x"></div><div class="n">1</div></div>
+      <div class="pg1"><div class="th x"></div><div class="n">2</div></div>
+      <div class="pg1"><div class="th" style="--c:#60a5fa"></div><div class="n">3</div></div>
+      <div class="pg1"><div class="th" style="--c:#60a5fa"></div><div class="n">4</div></div>
+      <div class="pg1"><div class="th" style="--c:#60a5fa"></div><div class="n">5</div></div>
+      <div class="pg1"><div class="th" style="--c:#60a5fa"></div><div class="n">6</div></div>
+      <div class="pg1"><div class="th" style="--c:#a78bfa"></div><div class="n">7</div></div>
+      <div class="pg1"><div class="th" style="--c:#a78bfa"></div><div class="n">8</div></div>
+      <div class="pg1"><div class="th" style="--c:#f472b6"></div><div class="n">9</div></div>
+      <div class="pg1"><div class="th" style="--c:#34d399"></div><div class="n">10</div></div>
+      <div class="pg1"><div class="th" style="--c:#34d399"></div><div class="n">11</div></div>
+      <div class="pg1"><div class="th" style="--c:#34d399"></div><div class="n">12</div></div>
+      <div class="pg1"><div class="th" style="--c:#fbbf24"></div><div class="n">13</div></div>
+      <div class="pg1"><div class="th" style="--c:#fbbf24"></div><div class="n">14</div></div>
+      <div class="pg1"><div class="th" style="--c:#f87171"></div><div class="n">15</div></div>
+      <div class="pg1"><div class="th" style="--c:#f87171"></div><div class="n">16</div></div>
+      <div class="pg1"><div class="th" style="--c:#f87171"></div><div class="n">17</div></div>
+      <div class="pg1"><div class="th x"></div><div class="n">18</div></div>
+      <div class="pg1"><div class="th" style="--c:#2dd4bf"></div><div class="n">19</div></div>
+      <div class="pg1"><div class="th" style="--c:#c084fc"></div><div class="n">20</div></div>
+      <div class="pg1"><div class="th g"></div><div class="n">21</div></div>
+      <div class="pg1"><div class="th g"></div><div class="n">22</div></div>
+      <div class="pg1"><div class="th g"></div><div class="n">23</div></div>
+      <div class="pg1"><div class="th g"></div><div class="n">24</div></div>
+      <div class="pg1"><div class="th g"></div><div class="n">25</div></div>
+      <div class="pg1"><div class="th g"></div><div class="n">26</div></div>
+      <div class="pg1"><div class="th" style="--c:#4ade80"></div><div class="n">27</div></div>
+      <div class="pg1"><div class="th" style="--c:#4ade80"></div><div class="n">28</div></div>
+      <div class="pg1"><div class="th" style="--c:#38bdf8"></div><div class="n">29</div></div>
+      <div class="pg1"><div class="th" style="--c:#38bdf8"></div><div class="n">30</div></div>
+      <div class="pg1"><div class="th g"></div><div class="n">31</div></div>
+      <div class="pg1"><div class="th" style="--c:#e879f9"></div><div class="n">32</div></div>
+      <div class="pg1"><div class="th" style="--c:#e879f9"></div><div class="n">33</div></div>
+      <div class="pg1"><div class="th" style="--c:#e879f9"></div><div class="n">34</div></div>
+      <div class="pg1"><div class="th" style="--c:#60a5fa"></div><div class="n">35</div></div>
+      <div class="pg1"><div class="th" style="--c:#60a5fa"></div><div class="n">36</div></div>
+      <div class="pg1"><div class="th" style="--c:#a78bfa"></div><div class="n">37</div></div>
+      <div class="pg1"><div class="th" style="--c:#f472b6"></div><div class="n">38</div></div>
+      <div class="pg1"><div class="th" style="--c:#f472b6"></div><div class="n">39</div></div>
+      <div class="pg1"><div class="th g"></div><div class="n">40</div></div>
+      <div class="pg1"><div class="th" style="--c:#34d399"></div><div class="n">…</div></div>
+      <div class="pg1"><div class="th" style="--c:#34d399"></div><div class="n">75</div></div>
+    </div>
+    <div class="keys"><span>grey = couldn't read · hatched = not a cut sheet · click a page to open the walk there · hover a run for its row</span></div>
+  </div>
+</div>
+
+<div class="call">
+  <h3>The calls this drawing makes, and why</h3>
+  <ol>
+    <li><b>Page-driven, not row-driven.</b> <span class="why">The owner's instinct is right: walk the pages, name the row. The page is the thing you have to look at; the row list is short and known. Row-driven means hunting through 75 thumbnails per row.</span></li>
+    <li><b>The page is always big; Space is "yes", not "preview".</b> <span class="why">Quick-look-on-spacebar costs two actions per page (select, peek) before the decision. With the page always shown at reading size, the decision is the only action.</span></li>
+    <li><b>Picks are starts; pages inherit.</b> <span class="why">Cut sheets come in runs. Marking where a product starts is ~25 acts on a 75-page file; marking every page is 75. Same result, a third of the work — and the strip shows the runs so a wrong start is obvious.</span></li>
+    <li><b>Read the model number before asking.</b> <span class="why">pdfjs text extraction is already in the repo (the quote-reply reader); the row already holds the submitted model. When they match, the question arrives answered and the human is a checker. This is the single biggest load cut, and it needs no robot.</span></li>
+    <li><b>Every page is reviewed; the summary only reports.</b> <span class="why">Owner, 2026-09-29: the package is submitted to the customer, so the estimator sees every page. The first draft's "check only the 9 unread pages" exit is gone; the counts stay as a progress card and Done carries "N of 75 seen".</span></li>
+    <li><b>Nothing writes until Done.</b> <span class="why">The owner's rule for this surface: the dropped PDF is a working file, the record is the pages on rows (decision 2026-09-15). Done writes <code>sheet_file</code> + <code>sheet_pages</code> per row in one pass; Cancel discards; Undo is free until then.</span></li>
+    <li><b>Keys first, drag second.</b> <span class="why">Typing "W" and pressing Enter is faster and more accurate than dragging a 40-pixel thumbnail across the screen; drag stays as a discoverable extra.</span></li>
+    <li><b>One page can serve two rows.</b> <span class="why">WC-1 and WC-2 split from one count (v2.4110) share a sheet; Shift+click adds the second row instead of forcing a copy.</span></li>
+    <li><b>The robot lands in the same seat.</b> <span class="why">"Ask the robot to split this file" already exists; its output should be suggestions in this modal, not a separate result to reconcile.</span></li>
+  </ol>
+</div>
+</div>
+</body>
+</html>

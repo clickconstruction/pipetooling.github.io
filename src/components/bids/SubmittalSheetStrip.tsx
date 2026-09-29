@@ -36,6 +36,7 @@ export function SubmittalSheetStrip({
   onAskRobot,
   robotSeat,
   onConfirmGuesses,
+  onAssignPages,
 }: {
   files: SourceFile[]
   items: SubmittalItemRow[]
@@ -57,6 +58,8 @@ export function SubmittalSheetStrip({
   /** v2.4136 · the offer draws only while a seat is live; without it no offer is drawn at all. */
   robotSeat?: RobotSeatState
   onConfirmGuesses?: (fileIndex: number) => void
+  /** v2.4143 · opens the Assign pages walk for the file. */
+  onAssignPages?: (fileIndex: number) => void
 }) {
   const [picked, setPicked] = useState<{ fileIndex: number; page: number } | null>(null)
   const state = useMemo(() => assignmentsFromItems(items), [items])
@@ -83,6 +86,11 @@ export function SubmittalSheetStrip({
                 {confirmLabels?.[fileIndex] && onConfirmGuesses ? (
                   <button type="button" disabled={busy} onClick={() => onConfirmGuesses(fileIndex)} style={{ ...btn, background: '#16a34a', borderColor: '#16a34a', color: 'white', fontWeight: 600 }} data-testid="confirm-guesses">
                     {confirmLabels[fileIndex]}
+                  </button>
+                ) : null}
+                {onAssignPages ? (
+                  <button type="button" disabled={busy} onClick={() => onAssignPages(fileIndex)} style={{ ...btn, background: '#2563eb', borderColor: '#2563eb', color: 'white', fontWeight: 600 }} title="Walk every page at reading size and put each on its row — the answer pre-filled where the page names a model" data-testid="assign-pages-open">
+                    Assign pages…
                   </button>
                 ) : null}
                 {onAskRobot && robotSeat && !trimmed && !robotLines?.[fileIndex] ? <RobotOffer kind="file_cut_sheets" seat={robotSeat} busy={busy} onAsk={() => onAskRobot(fileIndex)} testId={`ask-robot-split-${fileIndex}`} /> : null}
