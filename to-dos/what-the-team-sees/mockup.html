@@ -1,0 +1,214 @@
+<title>What the Team Sees</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout: a before/after brief — the first draft, the questions asked of it, the revised tab. Each draft is a desktop frame of Settings. */
+  :root {
+    --bg: #F4F5F3; --surface: #FFFFFF; --subtle: #EEF0EC; --ink: #171A17; --muted: #5F665F; --line: #D9DDD6; --line-strong: #B8BFB5;
+    --accent: #1F5F8B; --accent-bg: #E3EEF6; --good: #1E6B3A; --good-bg: #DDEFE3; --warn: #8A5A0C; --warn-bg: #F7EBD0; --bad: #9B2C2C; --bad-bg: #F6DEDE;
+    --display: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif; --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif; --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #141714; --surface: #1C201C; --subtle: #242924; --ink: #ECEFEA; --muted: #9AA39A; --line: #303630; --line-strong: #46504A; --accent: #7FB3D9; --accent-bg: #1D3140; --good: #7FD09A; --good-bg: #1B3325; --warn: #E2B76A; --warn-bg: #3A2E14; --bad: #E88E8E; --bad-bg: #3D1F1F; color-scheme: dark; } }
+  :root[data-theme="dark"] { --bg: #141714; --surface: #1C201C; --subtle: #242924; --ink: #ECEFEA; --muted: #9AA39A; --line: #303630; --line-strong: #46504A; --accent: #7FB3D9; --accent-bg: #1D3140; --good: #7FD09A; --good-bg: #1B3325; --warn: #E2B76A; --warn-bg: #3A2E14; --bad: #E88E8E; --bad-bg: #3D1F1F; color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 var(--body); padding-block: 0 64px; padding-inline: 20px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-family: var(--display); font-size: 26px; line-height: 1.15; text-wrap: balance; max-width: 34ch; }
+  .stamp { font-family: var(--mono); font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
+  h2 { font-family: var(--display); font-size: 19px; margin: 40px 0 6px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; text-wrap: balance; }
+  h2 .rank { font-family: var(--mono); font-size: 12px; color: var(--muted); font-weight: 500; }
+  .lede { margin: 0 0 14px; color: var(--muted); max-width: 84ch; }
+  .lede b { color: var(--ink); font-weight: 600; }
+  .tag { font-family: var(--mono); font-size: 11px; letter-spacing: .04em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .tag.draft { background: var(--bad-bg); color: var(--bad); } .tag.revised { background: var(--good-bg); color: var(--good); } .tag.ask { background: var(--warn-bg); color: var(--warn); }
+  .note { background: var(--surface); border: 1px solid var(--line-strong); border-left: 4px solid var(--warn); border-radius: 8px; padding: 10px 14px; margin: 14px 0; max-width: 84ch; }
+  .note b { display: block; }
+  code { font-family: var(--mono); font-size: 12px; background: var(--subtle); padding: 1px 4px; border-radius: 3px; }
+  ol.asks { max-width: 84ch; padding-left: 20px; margin: 10px 0 0; }
+  ol.asks li { margin-bottom: 8px; }
+  ol.asks li b { font-weight: 600; }
+  /* ── the desktop frame ─────────────────────────────── */
+  .frame { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; margin: 12px 0 0; font-size: 12.5px; line-height: 1.4; }
+  .frame .chrome { background: var(--subtle); border-bottom: 1px solid var(--line); padding: 7px 12px; font-family: var(--mono); font-size: 11px; color: var(--muted); display: flex; gap: 10px; align-items: center; }
+  .frame .chrome i { width: 9px; height: 9px; border-radius: 50%; background: var(--line-strong); display: inline-block; }
+  .frame .page { padding: 14px 16px 18px; }
+  .frame h3 { margin: 0 0 2px; font-size: 18px; font-family: var(--display); }
+  .frame .sub { color: var(--muted); margin: 0 0 10px; max-width: 80ch; }
+  .count { font-family: var(--mono); font-size: 11.5px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--subtle); display: inline-block; margin: 0 0 12px; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin: 0 0 12px; }
+  .toolbar .lbl { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .chip { display: inline-block; padding: 3px 9px; border: 1px solid var(--line-strong); border-radius: 999px; font-size: 11.5px; background: var(--surface); white-space: nowrap; }
+  .chip.on { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .chip.ghost { border-style: dashed; color: var(--muted); }
+  .srch { border: 1px solid var(--line-strong); border-radius: 6px; padding: 4px 9px; color: var(--muted); min-width: 220px; background: var(--surface); }
+  /* draft 1: role strips */
+  .strip { border-top: 1px solid var(--line); padding: 10px 0 12px; }
+  .strip h4 { margin: 0 0 8px; font-size: 13px; display: flex; gap: 8px; align-items: baseline; }
+  .strip h4 span { color: var(--muted); font-weight: 400; }
+  .cards { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+  .card { flex: none; width: 150px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); padding: 7px 8px; }
+  .card.sel { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-bg); }
+  .card b { display: block; font-size: 12px; }
+  .card small { color: var(--muted); display: block; }
+  .thumb { height: 70px; border: 1px solid var(--line); border-radius: 4px; background: var(--subtle); margin: 6px 0 4px; position: relative; overflow: hidden; }
+  .thumb.live::before { content: ""; position: absolute; inset: 8px 10px auto 10px; height: 6px; background: var(--line-strong); border-radius: 2px; }
+  .thumb.live::after { content: ""; position: absolute; inset: 20px 10px 8px 10px; background: repeating-linear-gradient(180deg, var(--line) 0 3px, transparent 3px 8px); opacity: .7; }
+  .thumb.grey { display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 10px; text-align: center; padding: 6px; }
+  .expanded { border: 1px solid var(--accent); border-radius: 8px; padding: 10px 12px; margin-top: 8px; background: var(--surface); }
+  .expanded .hdr { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; margin-bottom: 8px; }
+  .expanded .hdr b { font-size: 13px; }
+  .kv { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; margin: 8px 0; }
+  .kv div { min-width: 0; } .kv small { display: block; color: var(--muted); font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; }
+  .mail { border: 1px solid var(--line-strong); border-radius: 6px; background: #FFFFFF; color: #171A17; padding: 12px 14px; max-width: 420px; font-size: 12px; }
+  .mail h5 { margin: 0 0 6px; font-size: 14px; }
+  .mail table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+  .mail td { padding: 3px 0; border-bottom: 1px solid #E5E7EB; } .mail td.r { text-align: right; }
+  .mail .foot { color: #6B7280; font-size: 11px; margin-top: 8px; }
+  .btn { display: inline-block; padding: 4px 9px; border-radius: 6px; font-weight: 600; font-size: 11px; white-space: nowrap; border: 1px solid var(--line-strong); background: var(--surface); }
+  .btn.pri { background: var(--accent); border-color: var(--accent); color: #fff; }
+  /* draft 2: the week */
+  .when { border-top: 1px solid var(--line); padding: 10px 0 4px; }
+  .when h4 { margin: 0 0 6px; font-size: 12px; font-family: var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); display: flex; gap: 10px; align-items: baseline; }
+  .when h4 span { font-family: var(--body); text-transform: none; letter-spacing: 0; font-weight: 400; }
+  .rows { display: grid; gap: 6px; }
+  .row { display: grid; grid-template-columns: 64px 1fr auto; gap: 6px 12px; align-items: start; padding: 7px 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); }
+  .row.sel { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-bg); }
+  .row .t { font-family: var(--mono); font-size: 11px; color: var(--muted); padding-top: 2px; white-space: nowrap; }
+  .row .m { min-width: 0; }
+  .row .m b { display: block; font-size: 12.5px; }
+  .row .m .subj { font-family: var(--mono); font-size: 11.5px; color: var(--ink); word-break: break-word; }
+  .row .m .from { color: var(--muted); font-size: 11.5px; }
+  .row .m .who { margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+  .row .m .who .chip { font-size: 10.5px; padding: 1px 7px; }
+  .row .s { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
+  .st { font-family: var(--mono); font-size: 10.5px; padding: 2px 7px; border-radius: 999px; white-space: nowrap; }
+  .st.live { background: var(--good-bg); color: var(--good); } .st.next { background: var(--subtle); color: var(--muted); border: 1px dashed var(--line-strong); } .st.real { background: var(--warn-bg); color: var(--warn); }
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; align-items: start; }
+  .cmp { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; padding: 12px 14px; }
+  .cmp h4 { margin: 0 0 6px; font-size: 13px; }
+  .cmp ul { margin: 0; padding-left: 18px; }
+  .cmp li { margin: 4px 0; }
+  @media (max-width: 640px) { .row { grid-template-columns: 1fr; } .row .s { align-items: flex-start; flex-direction: row; flex-wrap: wrap; } .kv { grid-template-columns: 1fr; } }
+</style>
+<div class="wrap">
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list · draft for #60 · Settings, dev-only</p>
+    <h1>What the team sees — every email a user could get, with its subject, on sample data</h1>
+  </div>
+  <div class="stamp">2026-09-29<br>25 team &amp; internal emails in the catalog<br>the customer side already exists (17 emails)</div>
+</header>
+
+<p class="lede" style="margin-top:14px">The customer-facing emails have had <b>Settings → What customers see</b> since v2.2758: every email rendered live on sample data, in the order the customer meets them, guarded by a test. The other <b>25 emails</b> — the ones the office, the leads and the field receive — have no such place. The catalog lists them with <code>{{var}}</code> subjects and a Preview button on two rows. This page shows the first draft of a tab for them, the questions asked of it, and the revised tab.</p>
+
+<h2><span class="rank">Draft 1</span> A tab that mirrors What customers see, with roles as the strips <span class="tag draft">first draft</span></h2>
+<p class="lede">The straight translation of the plan: seven role strips, one card per email, tap a card to open it. Reads well on paper.</p>
+<div class="frame">
+  <div class="chrome"><i></i><i></i><i></i> Settings → What the team sees</div>
+  <div class="page">
+    <h3>What the team sees</h3>
+    <p class="sub">Every email the app sends someone on the team — dev, master, controller, assistant, team lead, technician, estimator — rendered live with sample data.</p>
+    <div class="toolbar"><span class="lbl">Sample data</span><span class="chip on">Sample</span><span class="chip">A person</span><span class="srch">Find a user by name…</span></div>
+    <div class="strip"><h4>Controller <span>· Malachi Sample · 12 emails</span></h4>
+      <div class="cards">
+        <div class="card sel"><b>Money waiting</b><small>money-waiting-email-dispatch · daily</small><div class="thumb live"></div><small>Subject: Money waiting — {{date}}</small></div>
+        <div class="card"><b>Payment forecast</b><small>daily</small><div class="thumb grey">built on the server</div><small>Payment forecast — {{date}}</small></div>
+        <div class="card"><b>Weekly money</b><small>Mondays</small><div class="thumb grey">built on the server</div><small>Weekly money movement — week of {{week_start}}</small></div>
+        <div class="card"><b>Billed awaiting</b><small>weekly</small><div class="thumb grey">built on the server</div><small>Billed awaiting payment — {{date}}</small></div>
+        <div class="card"><b>Payment recorded</b><small>on event</small><div class="thumb grey">built on the server</div><small>Payment recorded — {{job_label}}</small></div>
+        <div class="card"><b>Check returned</b><small>on event</small><div class="thumb grey">built on the server</div><small>Check returned · $13,680 · J878…</small></div>
+        <div class="card"><b>GC word ask</b><small>Wednesdays</small><div class="thumb live"></div><small>{{first name}}, where do your 7 GCs stand?</small></div>
+      </div>
+      <div class="expanded">
+        <div class="hdr"><b>Money waiting</b><span>From: ClickTooling &lt;team@noreply.clicktooling.com&gt;</span><span>Subject: Money waiting — {{date}}</span><span class="btn">How it's sent →</span></div>
+        <div class="kv"><div><small>What sends it</small>money-waiting-email-dispatch, 7:30 every weekday</div><div><small>Who gets it</small>Controllers, master · set on Emails &amp; reports</div></div>
+        <div class="thumb grey" style="height:120px;max-width:420px">Preview — the HTML is built inside the edge function over live rows; nothing renders here yet</div>
+      </div>
+    </div>
+    <div class="strip"><h4>Master technician <span>· Wendi Sample · 15 emails</span></h4><div class="cards"><div class="card"><b>Crew day</b><small>daily</small><div class="thumb grey">built on the server</div><small>Crew day — {{date}}</small></div><div class="card"><b>Money waiting</b><small>daily</small><div class="thumb grey">built on the server</div><small>Money waiting — {{date}}</small></div><div class="card"><b>Ready to bill</b><small>on event</small><div class="thumb grey">built on the server</div><small>Ready to bill — {{job_label}}</small></div><div class="card"><b>Signed agreement</b><small>on event</small><div class="thumb live"></div><small>Knight Contracting signed $56,343</small></div><div class="card"><b>Quote accepted</b><small>on event</small><div class="thumb grey">built on the server</div><small>Quote #{{n}} accepted — {{customer}}</small></div></div></div>
+    <div class="strip"><h4>Team lead <span>· Sam Sample · 6 emails</span></h4><div class="cards"><div class="card"><b>Crew day</b><small>daily</small><div class="thumb grey">built on the server</div><small>Crew day — {{date}}</small></div><div class="card"><b>Task reminder</b><small>on event</small><div class="thumb live"></div><small>Task reminder</small></div><div class="card"><b>Schedule — day</b><small>daily</small><div class="thumb grey">built on the server</div><small>(no subject in the catalog)</small></div></div></div>
+    <div class="strip"><h4>Technician / helper <span>· 4 emails</span></h4><div class="cards"><div class="card"><b>Sign-in link</b><small>once</small><div class="thumb live"></div><small>(template — edit below)</small></div><div class="card"><b>Invitation</b><small>once</small><div class="thumb live"></div><small>(template — edit below)</small></div><div class="card"><b>Workflow notice</b><small>on event</small><div class="thumb live"></div><small>(per template)</small></div></div></div>
+    <p class="sub" style="margin:10px 0 0;color:var(--muted)">… dev · assistant · estimator strips below the fold.</p>
+  </div>
+</div>
+
+<h2><span class="rank">Asked of it</span> Is this the best we can do? <span class="tag ask">five things wrong</span></h2>
+<ol class="asks">
+  <li><b>The same email shows up three times.</b> Money waiting sits on the controller strip, the master strip and the dev strip. Roles are the wrong axis for a list: an email has many readers, but a reader has one day. The customer tab works because a homeowner meets each thing once, in order.</li>
+  <li><b>It answers "what could a role get", not "what does Malachi get".</b> Who receives a digest is set per stream on Emails &amp; reports (recipients, cadence), not by role. A sample role is a guess; a real person is the truth — the customer tab already has that toggle (<i>Sample · A person</i>) and it should mean the same thing here.</li>
+  <li><b>Subjects still say <code>{{date}}</code>.</b> The point was to see the subject line a user sees. Sample data fills it: <i>Money waiting — Tue Sep 29 · 27 unapplied deposits · $116,240</i>.</li>
+  <li><b>On day one the tab is mostly grey.</b> 14 of 25 emails build their HTML inside the edge function over live rows, so nothing renders until each is lifted into a kernel. The draft hides that behind "built on the server". The tab should count it, like the customer tab's <i>36 rendered live · 5 open as the PDF</i> line, and offer the honest fallback where it exists: <i>Email me the real one</i> (the streams already have test sends).</li>
+  <li><b>There is no "when".</b> Cards say <i>daily</i> or <i>on event</i> in small print. A team member's inbox is a clock: 7:00 crew day, 7:30 money waiting, Monday the week's money, Wednesday the GC ask. Order by the clock and the tab reads like the day it describes.</li>
+</ol>
+
+<h2><span class="rank">Draft 2</span> One person's week, in the order the inbox fills <span class="tag revised">revised</span></h2>
+<p class="lede">Pick who you are looking at — a sample role, or a real user — and the tab shows <b>their week</b>: every email they would receive, at the hour it arrives, with the subject filled in from sample data, who else gets it, and a preview where the app can build one. Each row is honest about what it can show.</p>
+<div class="frame">
+  <div class="chrome"><i></i><i></i><i></i> Settings → What the team sees</div>
+  <div class="page">
+    <h3>What the team sees</h3>
+    <p class="sub">Every email the app sends someone on the team, in the order it lands in their inbox — rendered with sample data, in a week where the sample company is busy.</p>
+    <div class="count">25 emails · 11 render live · 14 built on the server (next release) · 6 of those can be emailed to you now</div>
+    <div class="toolbar"><span class="lbl">Whose week</span><span class="chip">Dev</span><span class="chip">Master</span><span class="chip on">Controller</span><span class="chip">Assistant</span><span class="chip">Team lead</span><span class="chip">Field</span><span class="chip">Estimator</span><span class="lbl" style="margin-left:6px">or</span><span class="srch">A person: Malachi ▾</span></div>
+    <div class="toolbar"><span class="lbl">Show</span><span class="chip on">Their week</span><span class="chip">By the email</span><span class="chip ghost">Only what doesn't render yet</span></div>
+
+    <div class="when"><h4>Every morning <span>· four emails before 8:00</span></h4>
+      <div class="rows">
+        <div class="row"><div class="t">7:00</div><div class="m"><b>Crew day</b><span class="subj">Crew day — Tue Sep 29 · 4 crews out · 2 jobs waiting on parts</span><div class="from">From ClickTooling · crew-day-email-dispatch</div><div class="who"><span class="chip">Controller</span><span class="chip">Master</span><span class="chip">3 leads</span><a class="chip ghost">Change who gets it →</a></div></div><div class="s"><span class="st next">next release</span><span class="st real">Email me the real one</span></div></div>
+        <div class="row sel"><div class="t">7:30</div><div class="m"><b>Money waiting</b><span class="subj">Money waiting — Tue Sep 29 · 27 unapplied deposits · $116,240</span><div class="from">From ClickTooling · money-waiting-email-dispatch · reply-to nobody</div><div class="who"><span class="chip on">Controller</span><span class="chip">Master</span><a class="chip ghost">Change who gets it →</a></div></div><div class="s"><span class="st live">renders live</span><span class="st real">Email me this sample</span></div></div>
+        <div class="row"><div class="t">8:00</div><div class="m"><b>Payment forecast</b><span class="subj">Payment forecast — Tue Sep 29 · $84,300 expected this week · 3 promises due</span><div class="from">From ClickTooling · payment-forecast-email-dispatch</div><div class="who"><span class="chip on">Controller</span><a class="chip ghost">Change who gets it →</a></div></div><div class="s"><span class="st next">next release</span><span class="st real">Email me the real one</span></div></div>
+      </div>
+      <div class="expanded">
+        <div class="hdr"><b>Money waiting</b><span>From: ClickTooling &lt;team@noreply.clicktooling.com&gt;</span><span>Subject: Money waiting — Tue Sep 29 · 27 unapplied deposits · $116,240</span><span class="btn">How it's sent →</span><span class="btn pri">Email me this sample</span></div>
+        <div class="kv"><div><small>When</small>7:30 every weekday, Central</div><div><small>Who gets it today</small>Malachi, Wendi — set on Emails &amp; reports</div><div><small>Reflects</small>Money waiting wording (Email templates) · the Moneyfill weekly-close queues</div><div><small>Built by</small><code>_shared/moneyWaitingEmail.ts</code> (the same kernel the function runs)</div></div>
+        <div class="mail">
+          <h5>Money waiting — Tue Sep 29</h5>
+          <p style="margin:0 0 8px">Good morning Malachi. 27 deposits are in the bank and not yet applied to a bill.</p>
+          <table>
+            <tr><td>Unapplied deposits</td><td class="r">27 · $116,240.00</td></tr>
+            <tr><td>Oldest</td><td class="r">Sep 14 · RMC · $12,000.00</td></tr>
+            <tr><td>Bills waiting on a deposit</td><td class="r">9 · $61,800.00</td></tr>
+            <tr><td>Paid this week so far</td><td class="r">$38,450.00</td></tr>
+          </table>
+          <p class="foot">Open Accounts Receivable → apply. Sample data: nothing here exists in the database.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="when"><h4>When something happens <span>· sent the moment it does</span></h4>
+      <div class="rows">
+        <div class="row"><div class="t">event</div><div class="m"><b>Payment recorded</b><span class="subj">Payment recorded — J1054 · ZZ TEST Row 4 · $100.00 · Stripe</span><div class="from">From ClickTooling · paid-job-email</div><div class="who"><span class="chip on">Controller</span><span class="chip">Master</span><a class="chip ghost">Change who gets it →</a></div></div><div class="s"><span class="st next">next release</span></div></div>
+        <div class="row"><div class="t">event</div><div class="m"><b>Check returned</b><span class="subj">Check returned · $13,680 · J878 Take 5 – Seguin · Insufficient funds</span><div class="from">From ClickTooling · mercury-webhook</div><div class="who"><span class="chip on">Controller</span></div></div><div class="s"><span class="st next">next release</span></div></div>
+        <div class="row"><div class="t">event</div><div class="m"><b>Signed agreement</b><span class="subj">Knight Contracting signed $56,343 · Cedar Bend Apartments</span><div class="from">From ClickTooling · accept-estimate · sign-bid-room</div><div class="who"><span class="chip on">Controller</span><span class="chip">Master</span><span class="chip">Estimator</span></div></div><div class="s"><span class="st live">renders live</span></div></div>
+        <div class="row"><div class="t">Wed 6:00</div><div class="m"><b>GC word ask</b><span class="subj">Malachi, where do your 7 GCs stand? — $312,500 owed</span><div class="from">From ClickTooling · gc-word-ask · reply-to the office</div><div class="who"><span class="chip on">Controller</span><span class="chip">Account men</span></div></div><div class="s"><span class="st live">renders live</span></div></div>
+      </div>
+    </div>
+
+    <div class="when"><h4>Every week <span>· Mondays and Fridays</span></h4>
+      <div class="rows">
+        <div class="row"><div class="t">Mon 6:00</div><div class="m"><b>Weekly money movement</b><span class="subj">Weekly money movement — week of Sep 21 · in $212,400 · out $168,900</span><div class="from">From ClickTooling · weekly-money-email-dispatch</div><div class="who"><span class="chip on">Controller</span><span class="chip">Dev</span><a class="chip ghost">Change who gets it →</a></div></div><div class="s"><span class="st next">next release</span><span class="st real">Email me the real one</span></div></div>
+        <div class="row"><div class="t">Fri 16:00</div><div class="m"><b>Billed awaiting payment</b><span class="subj">Billed awaiting payment — Fri Oct 2 · 71 bills · $338,502</span><div class="from">From ClickTooling · billed-report-email</div><div class="who"><span class="chip on">Controller</span><span class="chip">Master</span><a class="chip ghost">Change who gets it →</a></div></div><div class="s"><span class="st next">next release</span><span class="st real">Email me the real one</span></div></div>
+      </div>
+    </div>
+
+    <div class="when"><h4>Once <span>· the first day</span></h4>
+      <div class="rows">
+        <div class="row"><div class="t">day 0</div><div class="m"><b>Invitation</b><span class="subj">You're invited to ClickTooling as a controller</span><div class="from">From ClickTooling · invite-user · wording from Email templates</div><div class="who"><span class="chip">Everyone, once</span></div></div><div class="s"><span class="st live">renders live</span></div></div>
+        <div class="row"><div class="t">any</div><div class="m"><b>Sign-in link</b><span class="subj">Your ClickTooling sign-in link</span><div class="from">From ClickTooling · send-sign-in-email · wording from Email templates</div><div class="who"><span class="chip">Everyone</span></div></div><div class="s"><span class="st live">renders live</span></div></div>
+      </div>
+    </div>
+    <p class="sub" style="margin:12px 0 0">A test reads the catalog on every change: every <code>team</code> or <code>internal</code> email has a row here or a named reason not to, so the next one cannot ship invisible.</p>
+  </div>
+</div>
+
+<h2><span class="rank">Side by side</span> What the revision changes</h2>
+<div class="grid2">
+  <div class="cmp"><h4>Draft 1</h4><ul><li>Seven role strips; digests repeat on three of them</li><li>Sample roles only</li><li>Subjects show <code>{{vars}}</code></li><li>14 grey cards with no way forward</li><li>Cadence in small print</li><li>Recipients described, not linked</li></ul></div>
+  <div class="cmp"><h4>Draft 2</h4><ul><li>One person's week; each email once, at its hour</li><li><i>A person</i> reads the real recipient settings — "what Malachi gets"</li><li>Subjects filled from the sample company's busy week</li><li>Count line + <i>next release</i> + <i>Email me the real one</i> where a test send exists</li><li>Morning · when something happens · weekly · once</li><li><i>Change who gets it →</i> lands on the stream's card on Emails &amp; reports</li></ul></div>
+</div>
+
+<div class="note"><b>What stays from the plan</b>The PR train is unchanged: PR 1 the inventory, the tab and the guard (11 previews live: the two the catalog already has, the four template emails, GC word ask, contract for signature, signed agreement, quote accepted, portal request); then one digest per PR, each lifted into a <code>_shared/*Email.ts</code> kernel with a unit test and a before/after diff of one real send. What the revision adds to PR 1: the person picker over the real recipient settings, the filled subjects, the count line, and the <i>Email me the real one</i> door on the six streams that already have a test send.</div>
+
+<div class="note" style="border-left-color: var(--accent)"><b>Your calls</b>1 · Dev only, or master too (the customer tab is dev + master + assistants)? 2 · <i>Their week</i> as the default view, with <i>By the email</i> for the catalog order? 3 · Which digest first — Money waiting is the guess. 4 · Is <i>Email me this sample</i> on live rows worth a small edge function, or is the in-page preview enough?</div>
+</div>
