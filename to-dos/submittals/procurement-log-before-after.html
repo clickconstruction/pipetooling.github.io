@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Print the log — before / after</title>
+<style>
+  :root {
+    --ground: #F3F4F6; --surface: #FFFFFF; --subtle: #F8FAFC; --ink: #111827; --muted: #6B7280;
+    --line: #E5E7EB; --line-strong: #CBD5E1; --link: #2563EB;
+    --green: #15803D; --green-bg: #DCFCE7; --red: #B91C1C; --red-bg: #FEE2E2; --amber: #B45309; --amber-bg: #FEF3C7;
+    --blue: #1D4ED8; --blue-bg: #DBEAFE; --orange: #E07030;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding: 0 20px 64px; }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; max-width: 34ch; }
+  .stamp { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 18px; margin: 34px 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; }
+  .tag.before { background: var(--red-bg); color: var(--red); }
+  .tag.after { background: var(--green-bg); color: var(--green); }
+  .tag.best { background: var(--blue-bg); color: var(--blue); }
+  .lede { margin: 0 0 14px; color: var(--muted); max-width: 90ch; }
+  .lede b { color: var(--ink); }
+  .callouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; margin: 0 0 14px; padding: 0; list-style: none; }
+  .callouts li { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--red); border-radius: 6px; padding: 8px 10px; font-size: 12.5px; }
+  .callouts.good li { border-left-color: var(--green); }
+  .callouts.best li { border-left-color: var(--blue); }
+  .callouts b { display: block; }
+
+  /* a sheet of paper */
+  .paper { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,.08); padding: 34px 40px; margin: 0 0 8px; color: #17191e; font-size: 13px; }
+  .paper table { width: 100%; border-collapse: collapse; }
+  .paper th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: #6b7280; border-bottom: 1.5px solid #17191e; padding: 5px 7px; white-space: nowrap; }
+  .paper td:first-child, .paper td:nth-child(7) { white-space: nowrap; }
+  .paper td { padding: 6px 7px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+  .paper .top td { border-bottom: none; padding-bottom: 1px; }
+  .paper .under td { padding-top: 0; padding-left: 22px; color: #4b5563; font-size: 12px; }
+  .paper .foot { color: #6b7280; font-size: 11.5px; margin-top: 14px; }
+  .late { color: #b91c1c; font-weight: 700; }
+  .gray { color: #6b7280; }
+
+  /* before */
+  .before h1 { font-size: 19px; margin: 0; }
+  .before td:nth-child(7) { white-space: normal; }
+  .before .sub { color: #6b7280; font-size: 12.5px; margin: 2px 0 14px; }
+
+  /* after: letterhead */
+  .lh { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; border-bottom: 2px solid #17191e; padding-bottom: 12px; margin-bottom: 16px; }
+  .lh img { height: 44px; }
+  .lh .co { text-align: right; font-size: 12px; line-height: 1.4; color: #374151; }
+  .lh .co b { font-size: 13px; color: #17191e; display: block; }
+  .doc-title { font-size: 20px; font-weight: 700; margin: 0; }
+  .doc-sub { color: #4b5563; margin: 2px 0 14px; }
+  .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 24px; font-size: 12.5px; margin: 0 0 16px; }
+  .meta div b { color: #6b7280; font-weight: 600; font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; display: block; }
+  .ask { border: 1px solid #f59e0b; background: #fffbeb; border-radius: 6px; padding: 10px 14px; margin: 0 0 16px; }
+  .ask b.h { display: block; margin-bottom: 4px; }
+  .ask ul { margin: 0; padding-left: 18px; }
+  .ask li { margin: 2px 0; }
+  .grp td { background: #f3f4f6; font-weight: 700; padding: 6px 7px; border-bottom: 1px solid #d1d5db; }
+  .grp td span { font-weight: 400; color: #4b5563; }
+  .chg { display: inline-block; width: 7px; height: 7px; background: #f59e0b; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+  .sign { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 40px; margin-top: 26px; font-size: 12.5px; }
+  .sign .l { border-top: 1px solid #17191e; padding-top: 4px; color: #4b5563; margin-top: 30px; }
+  .qr { display: flex; gap: 14px; align-items: center; margin-top: 18px; font-size: 12px; color: #4b5563; }
+  .qr .box { width: 64px; height: 64px; border: 1.5px solid #17191e; display: grid; grid-template-columns: repeat(6, 1fr); grid-template-rows: repeat(6, 1fr); padding: 5px; gap: 1px; }
+  .qr .box i { background: #17191e; display: block; }
+  .qr .box i:nth-child(3n+2), .qr .box i:nth-child(7n+4) { background: transparent; }
+  .call { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; padding: 14px 18px; margin-top: 18px; }
+  .call h3 { margin: 0 0 6px; font-size: 15px; }
+  .call ol { margin: 0; padding-left: 20px; }
+  .call li { margin: 4px 0; }
+  .call li b { color: var(--ink); }
+  .call .why { color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div>
+    <p class="eyebrow">Bids → Submittals → 8 · Procure → <u>Print the log</u></p>
+    <h1>The procurement log as a document the other side reads</h1>
+  </div>
+  <div class="stamp">punch list #17 · Submittals<br>drawn 2026-09-29 · rows are B482 Shipley Do-Nuts, invented dates</div>
+</header>
+
+<h2><span class="tag before">Before</span> What Print the log opens today (the real render, v2.4083)</h2>
+<p class="lede">The sheet is the office's table put on paper. It says <b>update 3 · first update</b> on a plain print, speaks in our words (<i>Revise</i>, <i>Awaiting review</i>, <i>house</i>, <i>order by</i>, a float in days), has no letterhead, no addressee, nobody signing that it is true — and the Notes column is empty even though GI-1 carries a note.</p>
+<ul class="callouts">
+  <li><b>Who is this from, and to whom?</b>No company block, no phone, no "To". The recipient's first question is unanswered.</li>
+  <li><b>"update 3 · first update"</b>Print the log reuses the update sheet with the counter still on. Two internal numbers that contradict each other.</li>
+  <li><b>Our vocabulary</b>"Revise 09/24", "Awaiting review", "(house)", "order by 10/10", "−14 d". Each needs the legend to decode; the legend is written for staff ("the submittal room", "the schedule we were given").</li>
+  <li><b>The Notes column prints the wrong thing</b>It shows what changed since the last update; on a plain print that is nothing, so the row's own note (GI-1: "Resubmitting with the GB-75…") never prints.</li>
+  <li><b>Nobody stands behind it</b>No name, no signature, no date from the person who prepared it, no "questions to".</li>
+</ul>
+<div class="paper before">
+  <h1>B482 Shipley Do-Nuts (San Antonio) — Procurement log update</h1>
+  <p class="sub">Click Plumbing and Electrical · update 3 · 09/29 · first update · required dates from the stage schedule (Rough In 10/20 · Top Out 11/10 · Trim Set 12/01)</p>
+  <table>
+    <thead><tr><th>Tag · product</th><th>Submittal</th><th>Released</th><th>Ordered</th><th>PO</th><th>Lead</th><th>Expected</th><th>Required</th><th>Float</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr class="top"><td><b>WH-1</b></td><td>Approved 09/18</td><td>09/18</td><td>09/21</td><td>48211</td><td>2 wk</td><td><b>10/05</b></td><td>10/20</td><td>15 d</td><td></td></tr>
+      <tr class="under"><td colspan="10">Rheem RTGH-95DVLN tankless water heater, 199k BTU, concentric vent <span class="gray">· Reece</span></td></tr>
+      <tr class="top"><td><b>BFP-1</b></td><td>Approved 09/18</td><td>09/18</td><td>09/22</td><td>48219</td><td>6 wk</td><td><b>11/03</b> <span class="gray">(house)</span></td><td>10/20</td><td class="late">−14 d</td><td></td></tr>
+      <tr class="under"><td colspan="10">Watts LF009M2-QT 1" RPZ backflow preventer <span class="gray">· Reece</span></td></tr>
+      <tr class="top"><td><b>WC-1</b></td><td>Awaiting review</td><td>—</td><td>—</td><td></td><td>3 wk</td><td>—</td><td>12/01</td><td></td><td></td></tr>
+      <tr class="under"><td colspan="10">American Standard 3043.001 Madera elongated flushometer bowl, ADA <span class="gray">· Reece</span></td></tr>
+      <tr class="top"><td><b>FS-1</b></td><td>Approved 09/18</td><td>09/18</td><td>—</td><td></td><td>10 days</td><td>—</td><td>10/20</td><td>order by 10/10</td><td></td></tr>
+      <tr class="under"><td colspan="10">Zurn Z1900 floor sink, 12" x 12", 3/4 grate <span class="gray">· Ferguson</span></td></tr>
+      <tr class="top"><td><b>GI-1</b></td><td>Revise 09/24</td><td>—</td><td>—</td><td></td><td>5 wk</td><td>—</td><td>10/20</td><td></td><td></td></tr>
+      <tr class="under"><td colspan="10">Schier GB-50 grease interceptor, 50 gpm <span class="gray">· Ferguson</span></td></tr>
+      <tr class="top"><td><b>L-1</b></td><td>Approved 09/18</td><td>09/18</td><td>09/15</td><td>48190</td><td>2 wk</td><td><b>09/26</b></td><td>12/01</td><td>on site</td><td></td></tr>
+      <tr class="under"><td colspan="10">Elkay LRAD2219 single-bowl ADA lavatory sink <span class="gray">· Reece</span></td></tr>
+    </tbody>
+  </table>
+  <p class="foot">Changed rows first. Released = the reviewer's approval in the submittal room. Expected = order date + lead time unless the supply house gave a date. Required = the start of the stage the item belongs to on the schedule we were given; a negative float means the item lands after its stage starts.</p>
+</div>
+
+<h2><span class="tag after">After</span> The same rows as a letter to the other side</h2>
+<p class="lede">The letterhead and the To/Re block the submittal package cover already prints (company, tagline, phone; project, address, GC, date). Plain words in every cell, the row's own note in Notes, one legend in their voice, and the preparer's signature and date at the foot (the owner: no acceptance signature — a signature and a date for the person verifying it is real). Print the log drops the update counter and says <b>as of</b> a date instead.</p>
+<ul class="callouts good">
+  <li><b>Letterhead + addressee</b>Same block as the SUBMITTAL · Rev N cover — one family of paper from one bid.</li>
+  <li><b>Status in their words</b>Approved · Awaiting your approval · Returned for revision · Ordered · Delivered. "Order by" becomes an ask: <i>approve by Oct 10 to make Rough In</i>.</li>
+  <li><b>Schedule, not float</b>"15 days ahead" / "14 days behind" / "on site Sep 26" — the number keeps its sign in words.</li>
+  <li><b>Notes are the row's notes</b>Changes get their own mark (amber dot) on an update, and stay off a plain print.</li>
+  <li><b>Verified by, not accepted by</b>The estimator who prepared it signs and dates it — the test report's certifier block. The recipient is not asked to sign a schedule.</li>
+</ul>
+<div class="paper">
+  <div class="lh">
+    <img src="../../public/brand/click-plum.png" alt="Click Plumbing">
+    <div class="co"><b>Click Plumbing and Electrical</b>Plumbing, Electrical, and HVAC<br>(512) 360-0599 · 5501 Balcones Dr A141, Austin TX 78731</div>
+  </div>
+  <p class="doc-title">Procurement log</p>
+  <p class="doc-sub">Plumbing fixtures &amp; equipment · as of September 29, 2026</p>
+  <div class="meta">
+    <div><b>Project</b>Shipley Do-Nuts · 4410 Fredericksburg Rd, San Antonio TX 78201</div>
+    <div><b>To</b>Structura General Contractors · attn. Malachi Rivera</div>
+    <div><b>Schedule you gave us</b>Rough In Oct 20 · Top Out Nov 10 · Trim Set Dec 1</div>
+    <div><b>From</b>Wendi Aguilar, Estimator · (512) 360-0599 · wendi@clickplumbing.com · ref. B482</div>
+  </div>
+  <table>
+    <thead><tr><th>Tag</th><th>Item</th><th>Submittal</th><th>Ordered</th><th>Lead time</th><th>Expected on site</th><th>Needed on site</th><th>Schedule</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td><b>WH-1</b></td><td>Rheem RTGH-95DVLN tankless water heater, 199k BTU<br><span class="gray">Reece</span></td><td>Approved Sep 18</td><td>Sep 21 · PO 48211</td><td>2 weeks</td><td><b>Oct 5</b></td><td>Oct 20 <span class="gray">Rough In</span></td><td>15 days ahead</td><td></td></tr>
+      <tr><td><b>BFP-1</b></td><td>Watts LF009M2-QT 1" RPZ backflow preventer<br><span class="gray">Reece</span></td><td>Approved Sep 18</td><td>Sep 22 · PO 48219</td><td>6 weeks</td><td><b>Nov 3</b> <span class="gray">supplier's date</span></td><td>Oct 20 <span class="gray">Rough In</span></td><td class="late">14 days behind</td><td>Can Rough In wait for the RPZ, or do we stub and set it later?</td></tr>
+      <tr><td><b>FS-1</b></td><td>Zurn Z1900 floor sink, 12" × 12", ¾ grate<br><span class="gray">Ferguson</span></td><td>Approved Sep 18</td><td>not yet</td><td>10 days</td><td>—</td><td>Oct 20 <span class="gray">Rough In</span></td><td>we order by Oct 10</td><td></td></tr>
+      <tr><td><b>GI-1</b></td><td>Schier GB-50 grease interceptor, 50 gpm<br><span class="gray">Ferguson</span></td><td>Returned for revision Sep 24</td><td>—</td><td>5 weeks</td><td>—</td><td>Oct 20 <span class="gray">Rough In</span></td><td class="late">needs approval by Sep 15 — already past</td><td>Resubmitting with the GB-75 per the civil comment</td></tr>
+      <tr><td><b>WC-1</b></td><td>American Standard 3043.001 Madera flushometer bowl, ADA<br><span class="gray">Reece</span></td><td><b>Awaiting your approval</b></td><td>—</td><td>3 weeks</td><td>—</td><td>Dec 1 <span class="gray">Trim Set</span></td><td>approve by Nov 10 to make Trim Set</td><td></td></tr>
+      <tr><td><b>L-1</b></td><td>Elkay LRAD2219 single-bowl ADA lavatory sink<br><span class="gray">Reece</span></td><td>Approved Sep 18</td><td>Sep 15 · PO 48190</td><td>2 weeks</td><td>—</td><td>Dec 1 <span class="gray">Trim Set</span></td><td>delivered Sep 26</td><td></td></tr>
+    </tbody>
+  </table>
+  <p class="foot">Submittal = your reviewer's decision on our submittal. Expected = our order date plus the supplier's lead time, or the supplier's own date where marked. Needed = the first day of that stage on the schedule you gave us. Behind = the item lands after its stage starts.</p>
+  <div class="sign">
+    <div><div class="l">Verified true and current by Wendi Aguilar, Estimator — signature</div></div>
+    <div><div class="l">Date</div></div>
+  </div>
+</div>
+
+<h2><span class="tag best">Is this the best we can do?</span> Three things the letter still gets wrong</h2>
+<p class="lede">The letter is a good record. It is not a good <b>ask</b>. A GC reads a schedule by stage, not by tag; the decisions we need are buried in a column; and a PDF is a photograph — the day after it is sent it is wrong, while the same rows already live on the GC's room card (the plan's PR 2). So: group by stage with the stage date once, put <b>What we need from you</b> above the table, and make the paper a door back to the live log.</p>
+<ul class="callouts best">
+  <li><b>Grouped by stage</b>Rough In · needed Oct 20 as a band; the rows under it are the rows that make or break that date. "Needed on site" stops repeating.</li>
+  <li><b>What we need from you, first</b>The three rows that are waiting on the recipient, each with the date it must come by. The estimator's typed line becomes the first bullet. The table is the evidence; the ask is the document.</li>
+  <li><b>A door, not a photograph</b>"This log lives at …" with a QR (the pay-QR mark, already in the repo) to the room card. Approving a row there records a typed name and email (owner decision 6).</li>
+  <li><b>An update marks change, a print does not</b>On Record, print and copy the changed rows carry an amber dot and a "since Sep 22" note; Print the log carries neither.</li>
+</ul>
+<div class="paper">
+  <div class="lh">
+    <img src="../../public/brand/click-plum.png" alt="Click Plumbing">
+    <div class="co"><b>Click Plumbing and Electrical</b>Plumbing, Electrical, and HVAC<br>(512) 360-0599 · 5501 Balcones Dr A141, Austin TX 78731</div>
+  </div>
+  <p class="doc-title">Procurement log — update 3</p>
+  <p class="doc-sub">Plumbing fixtures &amp; equipment · September 29, 2026 · changes since September 22 marked <span class="chg"></span></p>
+  <div class="meta">
+    <div><b>Project</b>Shipley Do-Nuts · 4410 Fredericksburg Rd, San Antonio TX 78201</div>
+    <div><b>To</b>Structura General Contractors · attn. Malachi Rivera</div>
+    <div><b>Schedule you gave us</b>Rough In Oct 20 · Top Out Nov 10 · Trim Set Dec 1</div>
+    <div><b>From</b>Wendi Aguilar, Estimator · (512) 360-0599 · wendi@clickplumbing.com · ref. B482</div>
+  </div>
+  <div class="ask">
+    <b class="h">What we need from you</b>
+    <ul>
+      <li><b>BFP-1</b> RPZ — the supplier now says <b>Nov 3</b>, 14 days after Rough In starts. Can Rough In wait for the RPZ, or do we stub and set it later?</li>
+      <li><b>GI-1</b> grease interceptor — returned Sep 24; we are resubmitting the GB-75 per the civil comment. At 5 weeks it needs your approval <b>this week</b> to make Oct 20.</li>
+      <li><b>WC-1</b> water closets — awaiting your approval; needed by <b>Nov 10</b> to make Trim Set.</li>
+    </ul>
+  </div>
+  <table>
+    <thead><tr><th>Tag</th><th>Item</th><th>Submittal</th><th>Ordered</th><th>Lead time</th><th>Expected on site</th><th>Schedule</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr class="grp"><td colspan="8">Rough In <span>· needed on site Oct 20 · 4 items, 1 behind</span></td></tr>
+      <tr><td><b>WH-1</b></td><td>Rheem RTGH-95DVLN tankless water heater, 199k BTU <span class="gray">· Reece</span></td><td>Approved Sep 18</td><td>Sep 21 · PO 48211</td><td>2 weeks</td><td><b>Oct 5</b></td><td>15 days ahead</td><td></td></tr>
+      <tr><td><span class="chg"></span><b>BFP-1</b></td><td>Watts LF009M2-QT 1" RPZ backflow preventer <span class="gray">· Reece</span></td><td>Approved Sep 18</td><td>Sep 22 · PO 48219</td><td>6 weeks</td><td><b>Nov 3</b> <span class="gray">supplier's date, was Oct 20</span></td><td class="late">14 days behind</td><td>see above</td></tr>
+      <tr><td><b>FS-1</b></td><td>Zurn Z1900 floor sink, 12" × 12", ¾ grate <span class="gray">· Ferguson</span></td><td>Approved Sep 18</td><td>not yet</td><td>10 days</td><td>—</td><td>we order by Oct 10</td><td></td></tr>
+      <tr><td><span class="chg"></span><b>GI-1</b></td><td>Schier GB-50 grease interceptor, 50 gpm <span class="gray">· Ferguson</span></td><td>Returned for revision Sep 24</td><td>—</td><td>5 weeks</td><td>—</td><td class="late">needs approval this week</td><td>Resubmitting with the GB-75 per the civil comment</td></tr>
+      <tr class="grp"><td colspan="8">Trim Set <span>· needed on site Dec 1 · 2 items</span></td></tr>
+      <tr><td><b>WC-1</b></td><td>American Standard 3043.001 Madera flushometer bowl, ADA <span class="gray">· Reece</span></td><td><b>Awaiting your approval</b></td><td>—</td><td>3 weeks</td><td>—</td><td>approve by Nov 10</td><td></td></tr>
+      <tr><td><b>L-1</b></td><td>Elkay LRAD2219 single-bowl ADA lavatory sink <span class="gray">· Reece</span></td><td>Approved Sep 18</td><td>Sep 15 · PO 48190</td><td>2 weeks</td><td>—</td><td>delivered Sep 26</td><td></td></tr>
+    </tbody>
+  </table>
+  <p class="foot">Submittal = your reviewer's decision on our submittal. Expected = our order date plus the supplier's lead time, or the supplier's own date where marked. Behind = the item lands after its stage starts, on the schedule you gave us.</p>
+  <div class="qr">
+    <div class="box"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <div>This log lives at <b>pipetooling.com/s/…</b> — today's dates, the cut sheets, and a place to approve or ask. Approving a row there records your name and email.</div>
+  </div>
+  <div class="sign">
+    <div><div class="l">Verified true and current by Wendi Aguilar, Estimator — signature</div></div>
+    <div><div class="l">Date</div></div>
+  </div>
+</div>
+
+<div class="call">
+  <h3>The calls this drawing makes, and why</h3>
+  <ol>
+    <li><b>The letterhead is the submittal cover's, not a new one.</b> <span class="why">Same company block, same To/Re, same brand image — the GC gets one family of paper from one bid. The panel needs the tab to pass what the cover already has (tagline, phone, project address, GC name).</span></li>
+    <li><b>Print the log and the update are two documents from one builder.</b> <span class="why">Today they are one sheet with the counter left on. A print says <i>as of</i>; an update says <i>update N · changes since</i> and marks them. Same rows, same columns.</span></li>
+    <li><b>"Order by" turns into the recipient's deadline.</b> <span class="why">Our internal last-safe-order date is, for a row they have not approved, the date their approval has to come by. That is the one number a GC acts on, so it heads the document.</span></li>
+    <li><b>Notes print the row's note; changes get a mark.</b> <span class="why">A bug today: the column named Notes prints the diff text, so a plain print loses every note the estimator typed for the GC.</span></li>
+    <li><b>The paper points at the room card.</b> <span class="why">The GC's room card is already the plan's next PR (v2.4083). A print that links to it stops being the only copy — the SpaceX problem the whole train was built to end.</span></li>
+    <li><b>The preparer signs; the recipient does not.</b> <span class="why">Owner, 2026-09-29: no acceptance signature — a signature and a date for the person verifying it is real. That is the test report's certifier block, so the settings row already holds the name; the estimator's own name comes from the session.</span></li>
+    <li><b>Who it goes to is left open.</b> <span class="why">The log was asked for by a GC and the code addresses the GC. If the owner's "vendor" is the supply house, the same sheet works with the house in To and "Expected on site" as the date they are confirming — a different ask than the GC's (approve rows), so the What-we-need block would read differently. One question for the owner.</span></li>
+  </ol>
+</div>
+</div>
+</body>
+</html>

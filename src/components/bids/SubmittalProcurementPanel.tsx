@@ -6,6 +6,7 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { printHtmlInNewWindow } from '../../lib/bidDocuments/htmlDoc'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { procurementLogCsv, procurementLogFileName, procurementLogTsv } from '../../lib/submittals/procurementLogExport'
+import { loadProcurementSheetAssets, type ProcurementSheetAssets } from '../../lib/submittals/procurementSheetAssets'
 import { describeLeadTime, parseLeadTime } from '../../lib/submittals/leadTime'
 import {
   buildProcurementLog,
@@ -24,6 +25,7 @@ import {
   type ProcurementItemSource,
   type ProcurementRecord,
   type ProcurementRow,
+  type ProcurementSheetLetterhead,
   type ProcurementStage,
   type StageDates,
 } from '../../lib/submittals/procurementLog'
@@ -39,6 +41,13 @@ type Props = {
   /** The room's identified reviewers — the default "To". */
   reviewerNames: ReadonlyArray<string>
   currentUser: { id: string | null; name: string }
+  /** The sheet's company block (v2.4122) — the test report's settings; null prints the name alone. */
+  letterhead?: Omit<ProcurementSheetLetterhead, 'logoDataUrl'> | null
+  projectAddress?: string | null
+  /** The GC the printed sheet is addressed to. */
+  gcName?: string | null
+  /** The bid's review-room link; the sheet carries it with a code. */
+  roomUrl?: string | null
   busy?: boolean
   /** The strip's Procure pill reads these. */
   onCounts?: (c: { released: number; ordered: number; delivered: number; late: number }) => void
@@ -62,7 +71,7 @@ type Draft = Partial<Record<'po' | 'note' | 'label' | 'lead', string>>
  * the delivered date and a note. Send update records a dated snapshot with what
  * changed, opens the sheet to print, and copies the text for the email.
  */
-export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items, reviewerNames, currentUser, busy = false, onCounts }: Props) {
+export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items, reviewerNames, currentUser, letterhead = null, projectAddress = null, gcName = null, roomUrl = null, busy = false, onCounts }: Props) {
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
   const [records, setRecords] = useState<ProcurementRecord[]>([])
@@ -77,6 +86,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
   const [sendTo, setSendTo] = useState('')
   const [sendLine, setSendLine] = useState('')
   const [updatesOpen, setUpdatesOpen] = useState(false)
+  const [sheetAssets, setSheetAssets] = useState<ProcurementSheetAssets>({ logoDataUrl: null, roomQrSvg: null })
 
   const tagsKey = items.map((i) => i.tag).join('|')
 
@@ -109,6 +119,17 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
       cancelled = true
     }
   }, [bidId, tagsKey, showToast])
+
+  // The logo and the room's code, fetched ahead so every print stays inside its click (see procurementSheetAssets.ts).
+  useEffect(() => {
+    let cancelled = false
+    void loadProcurementSheetAssets(roomUrl).then((a) => {
+      if (!cancelled) setSheetAssets(a)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [roomUrl])
 
   const rows = useMemo(() => buildProcurementLog({ items, records, tagStage, stageDates }), [items, records, tagStage, stageDates])
   const lastUpdate = updates[0] ?? null
@@ -215,13 +236,27 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
     }
   }
 
-  function updateInput(sentOn: string, updateNumber: number) {
-    return { bidLabel, companyName, updateNumber, sentOn, sinceOn: lastUpdate ? lastUpdate.sentAt.slice(0, 10) : null, rows, changes, line: sendLine, stageDates }
+  /** The letter's fixed part: who it is from, who it is to, where it lives (v2.4122). */
+  const letter = {
+    bidLabel,
+    companyName,
+    stageDates,
+    letterhead: letterhead ? { ...letterhead, logoDataUrl: sheetAssets.logoDataUrl } : null,
+    projectAddress,
+    gcName,
+    preparedBy: currentUser.name,
+    roomUrl,
+    roomQrSvg: sheetAssets.roomQrSvg,
   }
 
+  function updateInput(sentOn: string, updateNumber: number) {
+    return { ...letter, kind: 'update' as const, updateNumber, sentOn, sinceOn: lastUpdate ? lastUpdate.sentAt.slice(0, 10) : null, rows, changes, line: sendLine }
+  }
+
+  /** Print the log: the log as it stands — no update number, nothing marked. */
   function printLog() {
     const today = toIsoDate(new Date())
-    printHtmlInNewWindow(buildProcurementUpdateHtml({ ...updateInput(today, updates.length + 1), changes: [], line: '', sinceOn: null }))
+    printHtmlInNewWindow(buildProcurementUpdateHtml({ ...updateInput(today, updates.length + 1), kind: 'print', changes: [], line: '', sinceOn: null }))
   }
 
   /** v2.4113 · the log as a file: the printed sheet's columns, dates a sheet reads. */
@@ -421,7 +456,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
               {u.sentByName ? <span style={smallMuted}>by {u.sentByName}</span> : null}
               <span style={smallMuted}>{u.changes.length} {u.changes.length === 1 ? 'change' : 'changes'}</span>
               {u.line ? <span style={{ ...smallMuted, fontStyle: 'italic' }}>“{u.line}”</span> : null}
-              <button type="button" onClick={() => printHtmlInNewWindow(buildProcurementUpdateHtml({ bidLabel, companyName, updateNumber: updates.length - i, sentOn: u.sentAt.slice(0, 10), sinceOn: updates[i + 1] ? updates[i + 1]!.sentAt.slice(0, 10) : null, rows: rowsFromSnapshot(u.rows), changes: u.changes, line: u.line, stageDates }))} style={link}>Open</button>
+              <button type="button" onClick={() => printHtmlInNewWindow(buildProcurementUpdateHtml({ ...letter, kind: 'update', updateNumber: updates.length - i, sentOn: u.sentAt.slice(0, 10), sinceOn: updates[i + 1] ? updates[i + 1]!.sentAt.slice(0, 10) : null, rows: rowsFromSnapshot(u.rows), changes: u.changes, line: u.line }))} style={link}>Open</button>
             </div>
           ))}
         </div>

@@ -128,7 +128,7 @@ export type StagesWhen =
       lastYmd: string | null
       lastKind: 'worked' | 'scheduled' | null
     }
-  | { kind: 'done'; lastYmd: string | null }
+  | { kind: 'done'; lastYmd: string | null; lastKind: 'worked' | 'scheduled' | null }
 
 export type StagesWhenInput = {
   upcoming: StagesUpcomingAppointment | null | undefined
@@ -178,7 +178,7 @@ export function deriveStagesWhen(input: StagesWhenInput): StagesWhen {
   const pct = typeof input.pctComplete === 'number' ? input.pctComplete : null
   const pastWorking = status !== '' && status !== 'waiting' && status !== 'working'
   if ((pct != null && pct >= 100) || pastWorking) {
-    return { kind: 'done', lastYmd }
+    return { kind: 'done', lastYmd, lastKind }
   }
   return { kind: 'unscheduled', tone: status === 'waiting' ? 'muted' : 'amber', lastYmd, lastKind }
 }
@@ -248,9 +248,14 @@ export function stripLastParts(lastYmd: string | null, lastKind: 'worked' | 'sch
   return { main: formatStripDate(lastYmd), sub: joinSub(stripDistancePhrase(lastYmd, todayYmd), lastKind === 'scheduled' ? 'booked, no hrs' : 'worked') }
 }
 
-/** DONE: "Mon Sep 21" over "2 days ago · last visit"; "nothing booked" alone. */
-export function stripDoneParts(lastYmd: string | null, todayYmd: string): StripLineParts {
-  return lastYmd ? { main: formatStripDate(lastYmd), sub: joinSub(stripDistancePhrase(lastYmd, todayYmd), 'last visit') } : { main: 'nothing booked', sub: null }
+/**
+ * DONE: "Mon Sep 21" over "2 days ago · worked" / "booked, no hrs" — the same
+ * fact the LAST line carries (v2.4128; it read "last visit", which the DONE
+ * label and a past date already said); "nothing booked" alone.
+ */
+export function stripDoneParts(lastYmd: string | null, lastKind: 'worked' | 'scheduled' | null, todayYmd: string): StripLineParts {
+  if (!lastYmd) return { main: 'nothing booked', sub: null }
+  return { main: formatStripDate(lastYmd), sub: joinSub(stripDistancePhrase(lastYmd, todayYmd), lastKind === 'scheduled' ? 'booked, no hrs' : 'worked') }
 }
 
 /**
@@ -292,7 +297,7 @@ export function describeStagesWhen(when: StagesWhen): string {
     return `Next ${formatStripDate(when.nextYmd)} ${when.nextWindow} · ${when.nextNames.join(', ')}; ends ${formatStripEnds(when)}`
   }
   if (when.kind === 'done') {
-    return when.lastYmd ? `Done — last visit ${formatStripDate(when.lastYmd)}` : 'Done — nothing on the calendar'
+    return when.lastYmd ? `Done — last ${formatStripLast(when.lastYmd, when.lastKind)}` : 'Done — nothing on the calendar'
   }
   return when.lastYmd ? `Not scheduled — last ${formatStripLast(when.lastYmd, when.lastKind)}` : 'Not scheduled — never worked'
 }

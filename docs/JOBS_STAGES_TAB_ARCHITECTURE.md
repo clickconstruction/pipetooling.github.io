@@ -203,7 +203,7 @@ None of the three v2.3530 dialogs has a render test.
 ### 7. [`JobsStagesTable.tsx`](../src/components/jobs/JobsStagesTable.tsx) (513 lines — job-only sections)
 
 - Callers: the Waiting / Working / Paid sites (§4) and the deck (§4b), via `StagesSectionList`. 65 prop fields — the former `renderStagesTable` params + the shared bundle.
-- `colgroup` 9rem / flex / 14.5rem / 140 (285–291), `tableLayout: fixed`, `minWidth: STAGES_TABLE_MIN_WIDTH` (800). No Supabase. The ham-mode assigned-edit dropdown the old map named is gone; team edits go through `ManageJobPeopleModal`.
+- `colgroup` 14rem / flex / 14.5rem / 140 (285–291; Crew & Dates 9rem → 14rem in v2.4128), `tableLayout: fixed`, `minWidth: STAGES_TABLE_MIN_WIDTH` (880). No Supabase. The ham-mode assigned-edit dropdown the old map named is gone; team edits go through `ManageJobPeopleModal`.
 - Tests: `JobsStagesTable.render.test.tsx` (9).
 - **Open:** consume the shared bundle as one typed prop.
 
@@ -326,7 +326,7 @@ Already-extracted lib (add tests only where missing): `buildJobsStagesBoardLists
 8. **Bill Customer success follows the move** (`followMovedJob(id, 'billed')`) only via `onSuccess`, not `onAfterEnsureSuccess`.
 9. **Partial invoice:** the insert happens first; a failed remainder re-sync (`ensureRemainderResyncOutcome`) is reported after the reload, never rolled back.
 10. **Timers:** flash 2,600 ms; invoice scroll 200 ms; job scroll 250 ms + one 700 ms retry; return-edit banner 10 s; man-hours load 80 ms; schedule search 350 ms; server search 300 ms; thread stats 320 ms; `rtb` poller above. All deliberate.
-11. **`STAGES_TABLE_MIN_WIDTH = 800` + `tableLayout: fixed` + colgroup 9rem / flex / 14.5rem / 140** (the Progress & payment column widened to 14.5rem in v2.3462). `renderStagesExpandedRowPanel` is `position: sticky; left: 0` for phone side-scroll.
+11. **`STAGES_TABLE_MIN_WIDTH = 880` + `tableLayout: fixed` + colgroup 14rem / flex / 14.5rem / 140** (the Progress & payment column widened to 14.5rem in v2.3462; Crew & Dates to 14rem in v2.4128). `renderStagesExpandedRowPanel` is `position: sticky; left: 0` for phone side-scroll.
 12. **Per-device storage:** `jobs-stages-ham-mode`, `jobs-stages-follow-moves`, `jobs-stages-edit-mode`, `jobs-stages-mobile-cards` (unset → `max-width: 559px` media query, then the org default once loaded; a device choice wins), `jobs-stages-search-include-schedule-time` (**default off** — `parseStagesIncludeScheduleTimePref` is `raw === 'true'`), `jobs-stages-phone-overview-open`, `pipetooling_stages_sections_v2`, `pipetooling_pipeline_sort_v1` (the progress sort is session-only), `jobs-stages-exclude-filters`. All try/catch-wrapped.
 13. **Fail-soft loaders:** `loadStagesManHours` resets its load-once ref on error (retry next visit); the demand / hazmat / lien-release / contract / money loaders swallow failures — a not-yet-deployed RPC just hides the chip or card.
 14. **Paid section:** `fetchPaidJobsIfNeeded` fires via `queueMicrotask` on expand only (search no longer prefetches paid — v2.1819; the lean server search covers it). The count reads "Expand to load" until `paidJobsMergedForKey === jobsListDataKey`; during a search it counts matches (`stagesPaidHeaderSearchCount`) and the `stagesPaidSearchHint` row leads the board.

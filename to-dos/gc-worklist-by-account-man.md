@@ -29,7 +29,7 @@ mockup: not required — the same rows, regrouped; the headings already read "Ac
 
 > Perhaps long term we should sort this by account man and when no account man is listed on a job, the default is the leader.
 
-And, on the heading: *"Instead of Ask Malachi, it should say Account Man Malachi"* — shipped as #4004.
+And, on the heading: *"Instead of Ask Malachi, it should say Account Man Malachi"* — shipped v2.4097 (#4004). Nothing of the regrouping is built yet (2026-09-29): `buildGcWorklist` still makes the `under_line` group.
 
 ## Where it stands today
 

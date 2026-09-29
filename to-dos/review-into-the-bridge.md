@@ -6,14 +6,15 @@ status: >
   steps 1–2 shipped (v2.3360, v2.3366, teammate card v2.3368) · step 3 gated on the tables
   agreeing for a few weeks · second check 2026-09-18 (Sep 6–12): six of seven field people
   agree within $6; Tristen reads $5,698 on Review vs $5,899 on Vectors — a $201 gap to explain
-  before the redirect; the third week (Sep 13–19) closed 2026-09-19 — its check not yet run (2026-09-21)
+  before the redirect; the third and fourth weeks (Sep 13–19, Sep 20–26) have closed — neither check run (2026-09-29) ·
+  the tab's decomposition (v2.3904 → v2.4011) moved the loaders out of the component without changing the figures
 summary: >
   People → Review folds into the Bridge: one earned convention + the Vectors row as the door
   (v2.3360, v2.3366), retire Team Summary once the tables agree (gated). Teammates get money-free
   Needs You items only.
-next: Explain Tristen's $201 gap for Sep 6–12 (five jobs — JP1007, JP931, JP878, JP523, JP1004 — against the Bridge's per-session earned), then run the Sep 13–19 check (the week is closed); if both agree, ship the redirect.
+next: Explain Tristen's $201 gap for Sep 6–12 (five jobs — JP1007, JP931, JP878, JP523, JP1004 — against the Bridge's per-session earned), then run the Sep 13–19 and Sep 20–26 checks (both weeks are closed); if they agree, ship the redirect.
 size: M
-blocker: One gap to explain, and the Sep 13–19 check to run.
+blocker: One gap to explain, and two closed weeks' checks to run.
 ver: v2.3360 / 66 / 68
 opinion: build — once two more pay weeks agree it is a redirect and a retirement, and it removes a duplicate surface people still open.
 mockup: not required — step 3 is a redirect and a retirement once the tables agree — no new screen
@@ -41,7 +42,7 @@ Owner decision recorded the same day: no financial number reaches a teammate (`m
 
 ## Where it plugs in
 
-- Kernel of record: `src/lib/bridge/earnedRevenue.ts` (`expectedHoursForJob`) → `src/lib/people/reviewEarned.ts` (Review's adapter) → `derivePersonTeamSummary.ts` (Team Summary) and `PeopleReviewTab.tsx` `loadReviewData` (the per-person panel).
+- Kernel of record: `src/lib/bridge/earnedRevenue.ts` (`expectedHoursForJob`) → `src/lib/people/reviewEarned.ts` (Review's adapter) → `derivePersonTeamSummary.ts` (Team Summary, loaded by `loadTeamReviewUnion.ts` since v2.3955) and `loadReviewPersonData.ts` + `reviewPersonAllocation.ts` (the per-person panel's read and shaping, out of the component since v2.3981 / v2.4011).
 - Vectors: `src/lib/bridge/vectors.ts` + `loadBridgeVectors.ts` + `BridgeVectorsPanel.tsx`; the row's `userId` is the door's key; Review keys people by pay-config `person_name` (resolve through `people.account_user_id` / `users.name`).
 - Review's panel loader takes `(personName, start, end)` — the deep link needs `?person=<name>&from=<ymd>&to=<ymd>` handling in `PeopleReviewTab` (period → `custom`, select the person index).
 

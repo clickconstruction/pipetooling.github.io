@@ -108,18 +108,18 @@ export function submittalJourney(input: SubmittalJourneyInput): SubmittalJourney
   if (!rev) {
     if (havePicks) {
       status.build = 'current'
-      return finish({ kind: 'next', text: `${plural(input.scheduleTags, 'tag')} on the schedule and ${plural(input.picks, 'picked line')} are ready.`, action: 'build_rev1', actionLabel: 'Build Rev 1 from the picks' })
+      return finish({ kind: 'next', text: `${plural(input.scheduleTags, 'tag')} on the schedule and ${plural(input.picks, 'line')} picked. Ready to build Rev 1, the first version.`, action: 'build_rev1', actionLabel: 'Build Rev 1 from the picks' })
     }
     // v2.4107 · a bid priced from a takeoff: the takeoff names the products — choose which go on.
     if (input.picks === 0 && takeoffFixtures > 0) {
       status.picks = 'current'
       const withProduct = input.takeoff?.withProduct ?? 0
-      return finish({ kind: 'next', text: `The takeoff has ${plural(takeoffFixtures, 'fixture')}, ${withProduct} with parts. Choose which ones go on the submittal and build Rev 1 from them.${input.scheduleTags === 0 ? ' The plans’ schedule is optional; typing it later turns Proposed rows into As specified or Alternate.' : ''}`, action: 'choose_from_takeoff', actionLabel: 'Choose from the takeoff' })
+      return finish({ kind: 'next', text: `The takeoff has ${plural(takeoffFixtures, 'fixture')}. ${withProduct} of them have a part. Tick the ones to submit, then build Rev 1 from them.${input.scheduleTags === 0 ? ' You can type the plans’ schedule later. Then each row is checked against it.' : ''}`, action: 'choose_from_takeoff', actionLabel: 'Choose from the takeoff' })
     }
     if (input.scheduleTags > 0) {
-      return finish({ kind: 'next', text: `${plural(input.scheduleTags, 'tag')} on the schedule, nothing picked yet. Pick a house for each part on the Pricing compare, or build Rev 1 now and type each row's product with Edit.`, action: 'build_rev1', actionLabel: 'Build Rev 1 and type the products' })
+      return finish({ kind: 'next', text: `${plural(input.scheduleTags, 'tag')} on the schedule. Nothing picked yet. Pick a house for each part on Pricing. Or build Rev 1 now and type each product with Edit.`, action: 'build_rev1', actionLabel: 'Build Rev 1 and type the products' })
     }
-    return finish({ kind: 'next', text: 'No fixture schedule on this bid. Type or paste it here — one tag per line, off the plans’ fixture schedule — or let the robot read it.', action: 'plug_in_schedule', actionLabel: 'Type or paste the schedule' })
+    return finish({ kind: 'next', text: 'This bid has no fixture schedule yet. Type or paste the tags from the plans, one per line. Or let the robot read them.', action: 'plug_in_schedule', actionLabel: 'Type or paste the schedule' })
   }
 
   status.build = 'done'
@@ -128,13 +128,13 @@ export function submittalJourney(input: SubmittalJourneyInput): SubmittalJourney
     status.rows = 'done'
     status.package = rev.packageBuilt ? 'done' : 'later'
     status.share = rev.status === 'draft' ? 'later' : 'done'
-    return finish({ kind: 'done', text: `Rev ${rev.number} is the record. The newest revision is where the work is — pick it above.`, action: null, actionLabel: null })
+    return finish({ kind: 'done', text: `Rev ${rev.number} was shared. It is the record now. Pick the newest version above to keep working.`, action: null, actionLabel: null })
   }
 
   if (rev.status === 'draft') {
     if (rev.rows === 0) {
       status.rows = 'current'
-      return finish({ kind: 'next', text: 'No rows on this revision. Rebuild rows from picks once a house is picked on the Pricing compare.', action: 'open_pricing', actionLabel: 'The picks on Pricing' })
+      return finish({ kind: 'next', text: 'This version has no rows. Pick a house for each part on Pricing. Then tap Rebuild rows from picks.', action: 'open_pricing', actionLabel: 'The picks on Pricing' })
     }
     const owes = rev.owesReason + rev.sheetsNeeded
     if (owes > 0) {
@@ -142,16 +142,16 @@ export function submittalJourney(input: SubmittalJourneyInput): SubmittalJourney
       const parts: string[] = []
       if (rev.owesReason > 0) parts.push(`${plural(rev.owesReason, 'row')} still ${rev.owesReason === 1 ? 'owes' : 'owe'} a reason`)
       if (rev.sheetsNeeded > 0) parts.push(`${plural(rev.sheetsNeeded, 'row')} still ${rev.sheetsNeeded === 1 ? 'needs' : 'need'} a cut sheet`)
-      return finish({ kind: 'next', text: `${parts.join(' · ')}. Edit the rows, or drop the house's PDF and put its pages on the rows.`, action: 'drop_vendor_pdf', actionLabel: 'Drop a vendor PDF' })
+      return finish({ kind: 'next', text: `${parts.join('. ')}. Tap Edit on a row to fill it in. Or drop the house’s PDF and put its pages on the rows.`, action: 'drop_vendor_pdf', actionLabel: 'Drop a vendor PDF' })
     }
     status.rows = 'done'
     if (!rev.packageBuilt) {
       status.package = 'current'
-      return finish({ kind: 'next', text: 'Every row has its reason and its sheet. Build the package to see the cover table and the stamped sheets.', action: 'build_package', actionLabel: 'Build package' })
+      return finish({ kind: 'next', text: 'Every row has its reason and its cut sheet. Tap Build package to make the PDF for the GC.', action: 'build_package', actionLabel: 'Build package' })
     }
     status.package = 'done'
     status.share = 'current'
-    return finish({ kind: 'next', text: "Package built. Share mints the bid's review room link and copies it for the GC's email chain.", action: 'share', actionLabel: 'Share' })
+    return finish({ kind: 'next', text: 'The package is built. Tap Share to get a link for the GC.', action: 'share', actionLabel: 'Share' })
   }
 
   // Shared (or any non-draft newest revision).
@@ -163,13 +163,13 @@ export function submittalJourney(input: SubmittalJourneyInput): SubmittalJourney
     status.review = 'waiting'
     const room = input.room
     if (room && room.status === 'closed') {
-      return finish({ kind: 'waiting', text: `Rev ${rev.number} was shared and the room is closed. Reopen it above if the reviewer still owes calls.`, action: null, actionLabel: null })
+      return finish({ kind: 'waiting', text: `Rev ${rev.number} was shared. The review link is closed. Reopen it above if the reviewer still has rows to answer.`, action: null, actionLabel: null })
     }
     if (!room || room.opens === 0) {
-      return finish({ kind: 'waiting', text: `Rev ${rev.number} is shared and nobody has opened the room yet. Paste the link into the GC's email chain; they forward it to whoever reviews products.`, action: 'copy_room_link', actionLabel: 'Copy the room link' })
+      return finish({ kind: 'waiting', text: `Rev ${rev.number} is shared. Nobody has opened the link yet. Paste it into your email to the GC.`, action: 'copy_room_link', actionLabel: 'Copy the room link' })
     }
-    const who = room.identified.length > 0 ? ` · ${room.identified.join(', ')} on it` : ''
-    return finish({ kind: 'waiting', text: `Rev ${rev.number} is in the room · opened ${room.opens}×${who}. Their calls land on the rows here; a question lands on your inbox.`, action: 'copy_room_link', actionLabel: 'Copy the room link' })
+    const who = room.identified.length > 0 ? ` ${room.identified.join(', ')} ${room.identified.length === 1 ? 'is' : 'are'} on it.` : ''
+    return finish({ kind: 'waiting', text: `Rev ${rev.number} is with the GC. The link was opened ${room.opens} time${room.opens === 1 ? '' : 's'}.${who} Their answers show up on the rows here.`, action: 'copy_room_link', actionLabel: 'Copy the room link' })
   }
   status.review = 'done'
   const by = d.byName.length > 0 ? d.byName.join(', ') : 'The reviewer'
@@ -177,15 +177,38 @@ export function submittalJourney(input: SubmittalJourneyInput): SubmittalJourney
     status.resubmit = 'current'
     return finish({
       kind: 'next',
-      text: `${by} approved ${d.approved} and sent ${d.sentBack} back. Fix the pick on Pricing, then start the resubmit with only ${d.sentBack === 1 ? 'that row' : 'those rows'}.`,
+      text: `${by} approved ${d.approved} and sent ${d.sentBack} back. Fix ${d.sentBack === 1 ? 'that row' : 'those rows'}. Then tap the green button to start a new version with only ${d.sentBack === 1 ? 'that row' : 'those rows'}.`,
       action: 'resubmit',
       actionLabel: `Rev ${rev.number + 1} from the ${plural(d.sentBack, 'row')} sent back`,
     })
   }
   if (d.open > 0) {
     status.review = 'waiting'
-    return finish({ kind: 'waiting', text: `${by} approved ${d.approved} · ${plural(d.open, 'row')} still open.`, action: null, actionLabel: null })
+    return finish({ kind: 'waiting', text: `${by} approved ${d.approved}. ${plural(d.open, 'row')} still waiting for an answer.`, action: null, actionLabel: null })
   }
   status.resubmit = 'done'
-  return finish({ kind: 'done', text: `Every row approved by ${by}. The procurement log is next.`, action: null, actionLabel: null })
+  return finish({ kind: 'done', text: `${by} approved every row. Next is the order log, Step 8.`, action: null, actionLabel: null })
+}
+
+/**
+ * The four words over the pills (v2.4126): eight steps are more than a first-timer holds,
+ * four parts are how the process is talked about. Build (1–3) · Send (4–5) · Their
+ * answer (6–7) · Order (8). A group's status is its pills' — blue while one is current,
+ * amber while one waits, green once every one is done, muted until then.
+ */
+export type JourneyGroup = { label: string; stages: JourneyStage[]; status: JourneyStageStatus }
+
+export const SUBMITTAL_STAGE_GROUPS: ReadonlyArray<{ label: string; numbers: number[] }> = [
+  { label: 'Build', numbers: [1, 2, 3] },
+  { label: 'Send', numbers: [4, 5] },
+  { label: 'Their answer', numbers: [6, 7] },
+  { label: 'Order', numbers: [8] },
+]
+
+export function groupJourneyStages(stages: JourneyStage[]): JourneyGroup[] {
+  return SUBMITTAL_STAGE_GROUPS.map((g) => {
+    const own = stages.filter((s) => g.numbers.includes(s.number))
+    const status: JourneyStageStatus = own.some((s) => s.status === 'current') ? 'current' : own.some((s) => s.status === 'waiting') ? 'waiting' : own.length > 0 && own.every((s) => s.status === 'done') ? 'done' : 'later'
+    return { label: g.label, stages: own, status }
+  })
 }

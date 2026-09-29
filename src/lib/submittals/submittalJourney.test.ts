@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { submittalJourney, type SubmittalJourneyInput } from './submittalJourney'
+import { groupJourneyStages, SUBMITTAL_STAGE_GROUPS, submittalJourney, type SubmittalJourneyInput } from './submittalJourney'
 
 const base: SubmittalJourneyInput = { scheduleTags: 12, picks: 14, rev: null, room: null, decisions: null }
 const draft = (o: Partial<NonNullable<SubmittalJourneyInput['rev']>> = {}) => ({ number: 1, status: 'draft', isNewest: true, rows: 14, owesReason: 0, sheetsNeeded: 0, packageBuilt: false, ...o })
@@ -15,12 +15,12 @@ describe('submittalJourney', () => {
   it('a fresh bid with nothing picked points at Pricing', () => {
     const j = submittalJourney({ ...base, picks: 0 })
     expect(statuses({ ...base, picks: 0 })).toBe('current,later,later,later,later,later,later,later')
-    expect(j.next).toEqual({ kind: 'next', text: "12 tags on the schedule, nothing picked yet. Pick a house for each part on the Pricing compare, or build Rev 1 now and type each row's product with Edit.", action: 'build_rev1', actionLabel: 'Build Rev 1 and type the products' })
+    expect(j.next).toEqual({ kind: 'next', text: "12 tags on the schedule. Nothing picked yet. Pick a house for each part on Pricing. Or build Rev 1 now and type each product with Edit.", action: 'build_rev1', actionLabel: 'Build Rev 1 and type the products' })
   })
 
   it('v2.4107 · a bid priced from a takeoff, with no picks, is told to choose from the takeoff', () => {
     const j = submittalJourney({ ...base, scheduleTags: 0, picks: 0, takeoff: { fixtures: 26, withProduct: 22 } })
-    expect(j.next).toEqual({ kind: 'next', text: 'The takeoff has 26 fixtures, 22 with parts. Choose which ones go on the submittal and build Rev 1 from them. The plans’ schedule is optional; typing it later turns Proposed rows into As specified or Alternate.', action: 'choose_from_takeoff', actionLabel: 'Choose from the takeoff' })
+    expect(j.next).toEqual({ kind: 'next', text: 'The takeoff has 26 fixtures. 22 of them have a part. Tick the ones to submit, then build Rev 1 from them. You can type the plans’ schedule later. Then each row is checked against it.', action: 'choose_from_takeoff', actionLabel: 'Choose from the takeoff' })
     expect(statuses({ ...base, scheduleTags: 0, picks: 0, takeoff: { fixtures: 26, withProduct: 22 } })).toBe('current,later,later,later,later,later,later,later')
     // Once Rev 1 exists from the takeoff, stage 1 is done even with no picks.
     expect(statuses({ ...base, scheduleTags: 0, picks: 0, takeoff: { fixtures: 26, withProduct: 22 }, rev: draft() })).toMatch(/^done,done/)
@@ -29,7 +29,7 @@ describe('submittalJourney', () => {
   it('a bid with no schedule offers typing it first, the robot second', () => {
     const j = submittalJourney({ ...base, scheduleTags: 0, picks: 0 })
     expect(j.next.action).toBe('plug_in_schedule')
-    expect(j.next.text).toMatch(/No fixture schedule/)
+    expect(j.next.text).toMatch(/no fixture schedule yet/)
   })
 
   it('schedule and picks ready → Build Rev 1 is the step, and its pill anchors on the empty card', () => {
@@ -42,13 +42,13 @@ describe('submittalJourney', () => {
   it('a draft owing reasons and sheets → stage 3, worded with counts, Drop a vendor PDF as the door', () => {
     const i = { ...base, rev: draft({ owesReason: 2, sheetsNeeded: 10 }) }
     expect(statuses(i)).toBe('done,done,current,later,later,later,later,later')
-    expect(submittalJourney(i).next).toEqual({ kind: 'next', text: "2 rows still owe a reason · 10 rows still need a cut sheet. Edit the rows, or drop the house's PDF and put its pages on the rows.", action: 'drop_vendor_pdf', actionLabel: 'Drop a vendor PDF' })
+    expect(submittalJourney(i).next).toEqual({ kind: 'next', text: "2 rows still owe a reason. 10 rows still need a cut sheet. Tap Edit on a row to fill it in. Or drop the house’s PDF and put its pages on the rows.", action: 'drop_vendor_pdf', actionLabel: 'Drop a vendor PDF' })
     expect(submittalJourney(i).stages[1]?.anchor).toBe('submittals-revisions')
     expect(submittalJourney({ ...base, rev: draft({ owesReason: 1 }) }).next.text).toMatch(/^1 row still owes a reason\./)
   })
 
   it('a draft with no rows sends you back to the picks', () => {
-    expect(submittalJourney({ ...base, rev: draft({ rows: 0 }) }).next).toMatchObject({ action: 'open_pricing', text: expect.stringMatching(/No rows/) })
+    expect(submittalJourney({ ...base, rev: draft({ rows: 0 }) }).next).toMatchObject({ action: 'open_pricing', text: expect.stringMatching(/no rows/) })
   })
 
   it('rows complete → Build package; package built → Share', () => {
@@ -61,32 +61,75 @@ describe('submittalJourney', () => {
   it('shared and waiting: nobody opened it, or opened with names', () => {
     const shared = draft({ number: 2, status: 'shared', packageBuilt: true })
     const quiet = submittalJourney({ ...base, rev: shared, room: { status: 'open', opens: 0, identified: [] } })
-    expect(quiet.next).toMatchObject({ kind: 'waiting', action: 'copy_room_link', text: expect.stringMatching(/nobody has opened the room yet/) })
+    expect(quiet.next).toMatchObject({ kind: 'waiting', action: 'copy_room_link', text: expect.stringMatching(/Nobody has opened the link yet/) })
     expect(statuses({ ...base, rev: shared, room: { status: 'open', opens: 0, identified: [] } })).toBe('done,done,done,done,done,waiting,later,later')
     const opened = submittalJourney({ ...base, rev: shared, room: { status: 'open', opens: 5, identified: ['Dana Whitfield'] } })
-    expect(opened.next.text).toBe('Rev 2 is in the room · opened 5× · Dana Whitfield on it. Their calls land on the rows here; a question lands on your inbox.')
+    expect(opened.next.text).toBe('Rev 2 is with the GC. The link was opened 5 times. Dana Whitfield is on it. Their answers show up on the rows here.')
     const closed = submittalJourney({ ...base, rev: shared, room: { status: 'closed', opens: 5, identified: [] } })
-    expect(closed.next).toMatchObject({ kind: 'waiting', action: null, text: expect.stringMatching(/room is closed/) })
+    expect(closed.next).toMatchObject({ kind: 'waiting', action: null, text: expect.stringMatching(/link is closed/) })
   })
 
   it('rows sent back → Resubmit is the step with the Rev N+1 button', () => {
     const i = { ...base, rev: draft({ number: 2, status: 'shared', packageBuilt: true }), room: { status: 'open', opens: 9, identified: ['Dana Whitfield'] }, decisions: { decided: 14, approved: 13, open: 0, sentBack: 1, byName: ['Dana Whitfield'] } }
     expect(statuses(i)).toBe('done,done,done,done,done,done,current,current')
-    expect(submittalJourney(i).next).toEqual({ kind: 'next', text: 'Dana Whitfield approved 13 and sent 1 back. Fix the pick on Pricing, then start the resubmit with only that row.', action: 'resubmit', actionLabel: 'Rev 3 from the 1 row sent back' })
+    expect(submittalJourney(i).next).toEqual({ kind: 'next', text: 'Dana Whitfield approved 13 and sent 1 back. Fix that row. Then tap the green button to start a new version with only that row.', action: 'resubmit', actionLabel: 'Rev 3 from the 1 row sent back' })
   })
 
   it('every row approved → done; some still open → waiting', () => {
     const rev = draft({ number: 2, status: 'shared', packageBuilt: true })
     const all = submittalJourney({ ...base, rev, decisions: { decided: 14, approved: 14, open: 0, sentBack: 0, byName: ['Dana Whitfield'] } })
-    expect(all.next).toEqual({ kind: 'done', text: 'Every row approved by Dana Whitfield. The procurement log is next.', action: null, actionLabel: null })
+    expect(all.next).toEqual({ kind: 'done', text: 'Dana Whitfield approved every row. Next is the order log, Step 8.', action: null, actionLabel: null })
     expect(all.stages.slice(0, 7).every((s) => s.status === 'done')).toBe(true)
     expect(all.stages[7]!.status).toBe('current')
     const some = submittalJourney({ ...base, rev, decisions: { decided: 10, approved: 10, open: 4, sentBack: 0, byName: [] } })
-    expect(some.next).toMatchObject({ kind: 'waiting', text: 'The reviewer approved 10 · 4 rows still open.' })
+    expect(some.next).toMatchObject({ kind: 'waiting', text: 'The reviewer approved 10. 4 rows still waiting for an answer.' })
   })
 
   it('an older revision on screen is the record, not the work', () => {
     const j = submittalJourney({ ...base, rev: draft({ number: 1, status: 'shared', isNewest: false, packageBuilt: true }) })
-    expect(j.next).toMatchObject({ kind: 'done', action: null, text: expect.stringMatching(/^Rev 1 is the record/) })
+    expect(j.next).toMatchObject({ kind: 'done', action: null, text: expect.stringMatching(/^Rev 1 was shared\. It is the record now/) })
+  })
+})
+
+describe('plain words on the Next line (v2.4124)', () => {
+  const GLUE = /[—;()·]/
+  const shared = draft({ number: 2, status: 'shared', packageBuilt: true })
+  const cases: SubmittalJourneyInput[] = [
+    base,
+    { ...base, picks: 0 },
+    { ...base, scheduleTags: 0, picks: 0 },
+    { ...base, scheduleTags: 0, picks: 0, takeoff: { fixtures: 26, withProduct: 22 } },
+    { ...base, rev: draft() },
+    { ...base, rev: draft({ rows: 0 }) },
+    { ...base, rev: draft({ owesReason: 2, sheetsNeeded: 10 }) },
+    { ...base, rev: draft({ packageBuilt: true }) },
+    { ...base, rev: shared, room: { status: 'open', opens: 0, identified: [] } },
+    { ...base, rev: shared, room: { status: 'open', opens: 5, identified: ['Dana Whitfield', 'Pat Ortega'] } },
+    { ...base, rev: shared, room: { status: 'closed', opens: 5, identified: [] } },
+    { ...base, rev: shared, decisions: { decided: 14, approved: 13, open: 0, sentBack: 1, byName: ['Dana Whitfield'] } },
+    { ...base, rev: shared, decisions: { decided: 10, approved: 10, open: 4, sentBack: 0, byName: [] } },
+    { ...base, rev: shared, decisions: { decided: 14, approved: 14, open: 0, sentBack: 0, byName: ['Dana Whitfield'] } },
+    { ...base, rev: { ...draft(), isNewest: false } },
+  ]
+  it.each(cases.map((c, i) => [i, c] as const))('case %i: short sentences, nothing glued', (_i, input) => {
+    const text = submittalJourney(input).next.text
+    expect(text, text).not.toMatch(GLUE)
+    for (const s of text.split(/(?<=[.?!])\s+/)) expect(s.split(/\s+/).length, s).toBeLessThanOrEqual(20)
+  })
+})
+
+describe('the four words over the pills (v2.4126)', () => {
+  it('cover the eight stages once, in order', () => {
+    expect(SUBMITTAL_STAGE_GROUPS.flatMap((g) => g.numbers)).toEqual([1, 2, 3, 4, 5, 6, 7, 8])
+    expect(SUBMITTAL_STAGE_GROUPS.map((g) => g.label)).toEqual(['Build', 'Send', 'Their answer', 'Order'])
+  })
+  it('take their status from their pills', () => {
+    const groups = groupJourneyStages(submittalJourney({ ...base, rev: draft({ owesReason: 2 }) }).stages)
+    expect(groups.map((g) => `${g.label}:${g.status}:${g.stages.length}`)).toEqual(['Build:current:3', 'Send:later:2', 'Their answer:later:2', 'Order:later:1'])
+    const shared = draft({ number: 2, status: 'shared', packageBuilt: true })
+    const waiting = groupJourneyStages(submittalJourney({ ...base, rev: shared, room: { status: 'open', opens: 0, identified: [] } }).stages)
+    expect(waiting.map((g) => g.status)).toEqual(['done', 'done', 'waiting', 'later'])
+    const all = groupJourneyStages(submittalJourney({ ...base, rev: shared, decisions: { decided: 14, approved: 14, open: 0, sentBack: 0, byName: ['Dana Whitfield'] } }).stages)
+    expect(all.map((g) => g.status)).toEqual(['done', 'done', 'done', 'current'])
   })
 })

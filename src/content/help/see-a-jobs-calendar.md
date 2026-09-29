@@ -9,7 +9,7 @@ Every job on **Jobs → Pipeline** carries a **two-week strip** in the Crew & Da
 
 - {{chip:green|NEXT}} **Wed Sep 23**, then *tomorrow · 8–10 AM*, and {{chip:blue|ENDS}} **Fri Sep 25**, then *in 3 days · 3 visits* — the first appointment and the last day on the calendar. One visit reads *same day*.
 - {{chip:yellow|NOT SCHEDULED}} with **Last Thu Sep 17**, then *6 days ago · worked* — nothing booked from today on. On a Working job the flag is amber; on a Waiting job it is grey, because nothing booked is what Waiting means. Planners get an **Assign work…** link right under it.
-- **Done** with the last visit — nothing booked and the job is at 100 %, or already past Working.
+- **Done** with the last day on site (*worked*, or *booked, no hrs*) — nothing booked and the job is at 100 %, or already past Working.
 
 :::example A scheduled row and an unscheduled one
 ▢ ▣ ▣ ▣ ▢ · ▢ ▢ ▢ ▢ ▢ &nbsp; NEXT Wed Sep 23 · 8–10 AM &nbsp; ENDS Fri Sep 25 · 3 visits

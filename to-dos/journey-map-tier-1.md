@@ -3,7 +3,7 @@ name: "Journey map: J31-N4"
 number: 4
 group: waiting
 status: pointer
-summary: Which drift rows are closed here (re-checked 2026-09-21); the list lives in the private repo.
+summary: Which drift rows are closed here (re-checked 2026-09-29); the list lives in the private repo.
 next: Read _DRIFT-2 in the private repo first; the only Tier-1 remainder here is #5(c)'s board half (Job Summary's half shipped v2.3575).
 size: S
 blocker: Private repo context.
@@ -17,7 +17,7 @@ pointer: true
 
 The journey-map Phase 4 PR train references row numbers in its fragments. This file maps the rows already closed in this repo so the next session knows what is left without opening the private corpus.
 
-## Tier-1 rows closed in PipeTooling (as of 2026-09-06; re-checked 2026-09-21)
+## Tier-1 rows closed in PipeTooling (as of 2026-09-06; re-checked 2026-09-29)
 
 | Row | Shipped as |
 |---|---|

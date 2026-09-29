@@ -22,10 +22,15 @@ mockup: not required — a schema change — no screen changes
 
 - 2026-09-22: the People spine's planned PR 4 (`person_id` on `people_pay_config`, `people_hours`
   and `pay_stubs` with a name-fill trigger) turned out to be already in place since Phase B/B2 in
-  July (`20260722268000` / `20260722270000` / `20260730164728`; v2.3702 says so), so the writer
-  guarantee step 1 below needs exists today. The train's folder retired with v2.3705; what it left
+  July (`20260722268000` / `20260722270000` / `20260730164728`; v2.3702 says so), so the `person_id`
+  columns step 1 below needs exist today. The train's folder retired with v2.3705; what it left
   is in [`people-spine-residuals.md`](./people-spine-residuals.md). E stays on the schedule below
   (the NOT NULL, the re-PK and the cascade's retirement are still its own work).
+- 2026-09-29: one more name-keyed reader for step 3's gate — the Schedule hub's Expected Manpower
+  wages read `people_pay_config` by trimmed name (`hubWageLookupNames` / `buildHourlyWageByUserId`
+  in `src/lib/scheduleDispatch/hubWages.ts`, extracted with tests in v2.3920; that fragment names
+  "eight files that read `people_pay_config`" as the seam still unattempted). Nothing else about
+  E moved.
 
 ## What Phase E is
 

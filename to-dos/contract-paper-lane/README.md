@@ -26,8 +26,8 @@ summary: >
   nothing here sends to — their lever is the owner's customer-level agreements decision. Mock-up
   carries the rejected first pass and the five-point critique.
 next: >
-  A week of watching which
-  way the office presses (the sweep's default is the open question) — count it with the dev seat:
+  The week of watching (from 2026-09-22) has run; the count is still owed — which
+  way the office presses (the sweep's default is the open question) — read it with the dev seat:
   `read_rows job_contract_events` · `event_type = sent` · `created_at ≥ 2026-09-20` · read
   `metadata.channel` (link · pdf_email · handed). The two ZZ test jobs are gone (deleted through
   Edit Job → Delete, 2026-09-22; J1040's $1.31 of estimated labor moved to J1032). Then delete the folder.
@@ -156,7 +156,7 @@ The mock-up's *Order, smallest first* lists the same six, in the same order, wit
 - **PR 4:** after the seed, the dropdown shows *Service agreement · v. <date>*, and an existing draft's stamped `template_name` / `template_version_date` still read the same.
 - **Phone width (375 px)** on the pane — the sweep is a two-pane modal and the ways block is new furniture in it.
 - **The live pass, 2026-09-22** (`docs/recent-features/v2.3723.md`): hand-off → Void & redo → Email the PDF (received, `Agreement-J1040-to-sign.pdf` attached, the link under it) → payment line → the terms Edit door to its blocker → Edit & re-send (rev 3, same link, second email received) → Copy link (rev 4) → File the signed copy (chip **✍ On file · Google Doc**). Two of three filing attempts closed the sheet without writing — slip 2 above — so if the sheet ever "just closes", that is the sign.
-- **The pane changed after PR 6** — v2.3669 (`contract-sweep-refresh/`) opens it on the job's header with two doors, *We need a signature* / *We already have one*, runs the Drive pass on open and adds an **In Drive** tab; the footer's *Already signed? File it* link is gone. The counts above are the 2026-09-16 reading; the ways block, the terms levers and Edit & re-send are where they were.
+- **The pane changed after PR 6** — v2.3669 (`contract-sweep-refresh/`) opens it on the job's header with two doors, *We need a signature* / *We already have one*, runs the Drive pass on open and adds an **In Drive** tab; the footer's *Already signed? File it* link is gone. Since then: an unsent draft goes out with the current standard terms (v2.3965 — PR 4's Edit door no longer leaves old wording on existing drafts), and the pane has a full-screen layout with the list, the agreement and its paper side by side (v2.4045 · v2.4049). The counts above are the 2026-09-16 reading; the ways block, the terms levers and Edit & re-send are where they were.
 
 ## Gotchas
 

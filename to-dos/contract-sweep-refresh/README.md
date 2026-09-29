@@ -2,7 +2,7 @@
 name: "Contract sweep refresh: what the mock-up drew that is not built"
 number: 28
 group: close
-status: mock-up drawn twice 2026-09-21 · the core shipped the same day v2.3669 (the two doors, the Drive pass in the list, the contract field on the job) · the last four pieces redrawn 2026-09-22 after "is this the best we can do?" (`final-pass.html`) · PR 1 shipped v2.3703 (the tabs on the list, the header says each number once) · PR 2 shipped v2.3706 (the ways as one row, one primary, ⋯ More) · PR 3 shipped v2.3707 (the amount is the job's number, read out on the sweep and in the full editor; a draft typed earlier is named and blocked) · the scan's cost answered v2.3709 (one scan for the office, kept an hour; the walk eight wide) · the live look's two finds fixed v2.3713 (the save word on This job, the tabs wrap) · first look at the Drive finds 2026-09-24 (0 confident, 5 checks, two of them a contract for another address) — v2.3796 rules those out · left: the rest of the week
+status: mock-up drawn twice 2026-09-21 · the core shipped the same day v2.3669 (the two doors, the Drive pass in the list, the contract field on the job) · the last four pieces redrawn 2026-09-22 after "is this the best we can do?" (`final-pass.html`) · PR 1 shipped v2.3703 (the tabs on the list, the header says each number once) · PR 2 shipped v2.3706 (the ways as one row, one primary, ⋯ More) · PR 3 shipped v2.3707 (the amount is the job's number, read out on the sweep and in the full editor; a draft typed earlier is named and blocked) · the scan's cost answered v2.3709 (one scan for the office, kept an hour; the walk eight wide) · the live look's two finds fixed v2.3713 (the save word on This job, the tabs wrap) · first look at the Drive finds 2026-09-24 (0 confident, 5 checks, two of them a contract for another address) — v2.3796 rules those out · the pane has since gained a full-screen layout, v2.4045 · v2.4049 (not from this drawing) · the week of use ran out 2026-09-29 · left: the read of the finds, then the folder
 summary: >
   **The sweep asked how to get a signature before asking whether one is needed**, and "they
   already have a contract with us, in Drive" was a small footer link. v2.3669 made that a
@@ -17,13 +17,13 @@ summary: >
   is watching whether the Drive finds can be trusted — the first look (2026-09-24) found no green
   find yet and two amber ones pointing at paper for another address, which v2.3796 rules out.
 next: >
-  Use it for a week (from 2026-09-22). Watch one thing: whether "In Drive" finds are right often enough to trust the green ones
+  The week (from 2026-09-22) has run. One thing to read before deleting the folder: whether "In Drive" finds are right often enough to trust the green ones
   (if so, the ⋯ batch-file stays useful; if not, tighten `driveContractMatch` again — the 2026-09-24 look already
   ruled out paper for another address, v2.3796). No green find has appeared yet; the first one decides. Then delete the folder.
 size: XS — a week of use
 blocker: A week of use. The amount ships with no typed override, as recommended — say so if one is ever wanted.
-ver: v2.3669 · v2.3703 · v2.3706 · v2.3707 · v2.3709 · v2.3713 · v2.3796
-opinion: your call — everything drawn is built, the scan's cost is answered and the first look at the finds is taken; what is left is the rest of the week, then deleting the folder.
+ver: v2.3669 · v2.3703 · v2.3706 · v2.3707 · v2.3709 · v2.3713 · v2.3796 · v2.4045 · v2.4049
+opinion: your call — everything drawn is built, the scan's cost is answered, the first look at the finds is taken and the week is up; one read of the In Drive tab decides whether to tighten the matcher, then delete the folder.
 ---
 
 # Contract sweep refresh

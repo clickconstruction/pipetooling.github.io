@@ -2,7 +2,7 @@
 name: "Lien calendar: every billed job on the statute's calendar, as the Lien desk's first tab"
 number: 56
 group: ready
-status: designed 2026-09-28 (canvas boards 6–7) · PR A shipped v2.4103 (promises in the job's activity) · PRs B–D not started
+status: designed 2026-09-28 (canvas boards 6–7) · PR A shipped v2.4103 (promises in the job's activity) · PR B shipped v2.4101 (the Calendar tab shell, grouped by GC) · PRs C–D not started
 summary: >
   The lien runway (v2.4051 · v2.4064 · v2.4096) puts one job's two dates under its money bar. The
   owner wants the whole board at once: every billed job and how close it is to its notice date and
@@ -13,10 +13,10 @@ summary: >
   strip counting what lands on each 15th, a to-do line the columns write, and a key that names
   every mark. The desk widens to direct jobs (affidavit only). Promises recorded anywhere now show
   in the job's activity feed (PR A).
-next: PR B — the Lien desk widens to direct jobs and grows the Calendar tab shell (empty tab, the door from the Billed header lands on it); then PR C the body, PR D the pen.
-size: S (PR A, shipped) + M (B) + L (C) + M (D)
+next: PR C — the body: the shared axis with the 15ths as columns, every unpaid month's notice flag, the kind bracket, the density strip, the key, the today pill, the to-do sentences; then PR D the pen. The owner looks at the live shell first.
+size: S (PR A, shipped) + M (PR B, shipped) + L (C) + M (D)
 blocker: none — data already exists (useForecastWorkMonths knows each month's notice state; the runway kernel gives marks and sortKey per job; the promise RPCs exist).
-ver: v2.4051 · v2.4064 · v2.4096 · v2.4103
+ver: v2.4051 · v2.4064 · v2.4096 · v2.4103 · v2.4101
 opinion: build B → C → D in that order; C is the value, B makes it land in the right place, D is what makes the chart a tool and not a picture.
 ---
 
@@ -55,18 +55,18 @@ Open question, left for PR C: a GC pays several jobs on one check, so a pay dot 
 
 - **Kernel, exists:** `src/lib/jobs/lienPayRunway.ts` — `buildLienPayRunway` per job: states (`notice_due` · `file_first` · `room` · `no_pay` · `closed` · `filed`), marks, `sortKey`, `kindAssumed`, `datedFromCreation`. The calendar reuses it per job and reduces per GC.
 - **Month-by-month notice state, exists:** `src/hooks/useForecastWorkMonths.ts` (`buildWorkMonthsByJob` in `lib/jobs/forecastWorkMonths.ts`) — each work month's notice deadline and whether a live § 53.056 notice covers it; the Payment forecast's month panel reads it. The calendar needs this per billed job (every unpaid month, not the runway's last-month approximation).
-- **The desk, exists:** `src/components/jobs/LienDeskModal.tsx` (map: `docs/LIEN_DESK_ARCHITECTURE.md`), kinds `notice · affidavit · retainage · timeline`, data from `useLienDeskData` (GC jobs only today), piles, the run (draft → approve → send), the GC picker. The Calendar is a fifth kind, first in the row, and the desk's job query widens to direct jobs for it.
+- **The desk, exists:** `src/components/jobs/LienDeskModal.tsx` (map: `docs/LIEN_DESK_ARCHITECTURE.md`), kinds `calendar · notice · affidavit · retainage · timeline`, data from `useLienDeskData` (GC jobs only — the notice piles), piles, the run (draft → approve → send), the GC picker. The Calendar is the fifth kind, first in the row and the desk's default (PR B, v2.4101); its rows come in from the Pipeline (`JobsStagesTab` → `lienCalendarRows`, through the same `lienRunwayFor` the row uses) rather than a widened `useLienDeskData`, so the calendar and the board never disagree.
 - **Promises, exists:** `add_job_payment_promise` / `list_job_payment_promises` / `void_job_payment_promise` (`lib/jobs/paymentPromises.ts`, `SetPromisedPayDateModal.tsx`); the GC's word via `lib/jobs/gcWordPromise.ts` from GC Review. **PR A (v2.4103)** maps live promises into the job's activity feed (`lib/jobs/promiseActivityEvents.ts`, `useJobThreadNotes`).
 - **Property kind, exists:** `customer_addresses.property_kind`; the Edit Job → Property record row sets it; `lienByForJob` assumes residential when unset.
 - **Doors:** `JobsStagesTab` `setLienDesk(...)` (the Billed header's Lien desk button, the tools menu); `setLienInstrumentsModal` for a job's Lien window.
-- **New:** a shared-axis renderer (`components/jobs/lienCalendar/*`), the reduce from per-job runways to GC groups + density counts + the to-do sentences (`lib/jobs/lienCalendar.ts`, pure, tested), the popover (`SetPromisedPayDateModal`'s form as an anchored popover), the desk's widened read.
+- **Built in PR B (v2.4101):** `lib/jobs/lienCalendar.ts` (`buildLienCalendar` — the search, tightest first, one group per GC + Direct + Lien gone, each group's total and next move) and `components/jobs/LienDeskCalendarTab.tsx` (the header line, the search box, collapsible groups, one row per job with its `LienPayRunway`; a row opens the Lien window). **New:** a shared-axis renderer, the reduce grows density per 15th + the to-do sentences + every unpaid month's flag, the popover (`SetPromisedPayDateModal`'s form as an anchored popover).
 
 ## The plan
 
 | PR | What | Size | State |
 |---|---|---|---|
 | **A** | Promises in the job's activity feed — `payment_promise` event type, read-side merge in `useJobThreadNotes`. | S | **shipped v2.4103** |
-| **B** | The Lien desk widens to every billed / collections job (direct jobs carry the affidavit only; the notice piles stay GC-only) and gains the **Calendar** kind, first in the tab row, as an empty shell that lists the widened rows with their runway sentences; the Billed header's Lien desk button lands on it. | M | |
+| **B** | The **Calendar** kind, first in the tab row and the desk's landing (the ⋯ menu and the Collections header's door): every billed / collections job — direct jobs too, affidavit only — grouped by GC with a next move per group, search, rows opening the Lien window. Rows come from the Pipeline's `lienRunwayFor`, not `useLienDeskData`. | M | **shipped v2.4101** |
 | **C** | The Calendar body: `lib/jobs/lienCalendar.ts` (per-job runway → GC groups, every unpaid month's notice flag from `buildWorkMonthsByJob`, the kind bracket, density per 15th, the three to-do sentences, search), the shared-axis renderer with the one today line + pill, the key, the past gutter, rows as doors, the phone list. | L | |
 | **D** | The pen: the pay dot / dashed dot opens the "They said…" popover in place (consequence read back before Save; drag ends in the popover); the GC row's one dot writes the GC's word (`gcWordPromise`); density-bar selection → *Draft the N* hands the jobs to the desk's run; *Set kinds, biggest first* opens the property records. | M | |
 
@@ -78,4 +78,4 @@ Live data on 2026-09-28 (local build against prod rows): 64 billed runways — 4
 
 ## Where it stands
 
-Designed; PR A shipped. Next: PR B.
+Designed; PRs A and B shipped (v2.4103, v2.4101 — the 2026-09-28 census read 64 rows, 45 *send the notice*, 12 under Lien gone, as predicted). Neighbours shipped the same day: the strip's fold (v2.4111) and the run's mailing workflow (v2.4119, board 9). Next: PR C, after the owner's look at the live shell.

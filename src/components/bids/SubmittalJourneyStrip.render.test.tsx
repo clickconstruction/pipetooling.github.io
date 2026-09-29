@@ -16,7 +16,10 @@ describe('SubmittalJourneyStrip', () => {
     const pills = screen.getAllByTestId('journey-stage')
     expect(pills.map((p) => p.getAttribute('data-status'))).toEqual(['done', 'done', 'current', 'later', 'later', 'later', 'later', 'later'])
     expect(screen.getByRole('button', { name: '3 Reasons & sheets · you are here' })).toBeTruthy()
-    expect(screen.getByTestId('journey-next').textContent).toMatch(/^Next: 2 rows still owe a reason · 10 rows still need a cut sheet\./)
+    // v2.4126 · four words over the pills, each lit by its pills.
+    const groups = screen.getAllByTestId('journey-group')
+    expect(groups.map((g) => `${g.getAttribute('aria-label')}:${g.getAttribute('data-status')}:${g.querySelectorAll('[data-testid="journey-stage"]').length}`)).toEqual(['Build:current:3', 'Send:later:2', 'Their answer:later:2', 'Order:later:1'])
+    expect(screen.getByTestId('journey-next').textContent).toMatch(/^Next: 2 rows still owe a reason\. 10 rows still need a cut sheet\./)
 
     fireEvent.click(screen.getByRole('button', { name: 'Drop a vendor PDF' }))
     expect(onAction).toHaveBeenCalledWith('drop_vendor_pdf')
@@ -35,14 +38,14 @@ describe('SubmittalJourneyStrip', () => {
     const waiting = submittalJourney({ scheduleTags: 12, picks: 14, rev: { number: 2, status: 'shared', isNewest: true, rows: 14, owesReason: 0, sheetsNeeded: 0, packageBuilt: true }, room: { status: 'open', opens: 5, identified: ['Dana Whitfield'] }, decisions: null })
     const { unmount } = render(<SubmittalJourneyStrip journey={waiting} busy={false} onAction={() => {}} onGoToStage={() => {}} onWalkThrough={() => {}} offerWalkThrough={false} onDismissOffer={() => {}} />)
     expect(screen.getByRole('button', { name: '6 Their call · waiting on the reviewer' })).toBeTruthy()
-    expect(screen.getByTestId('journey-next').textContent).toMatch(/^Waiting: Rev 2 is in the room · opened 5× · Dana Whitfield on it\./)
+    expect(screen.getByTestId('journey-next').textContent).toMatch(/^Waiting: Rev 2 is with the GC\. The link was opened 5 times\. Dana Whitfield is on it\./)
     expect(screen.getByRole('button', { name: 'Copy the room link' })).toBeTruthy()
     expect(screen.queryByTestId('journey-offer')).toBeNull()
     unmount()
 
     const done = submittalJourney({ scheduleTags: 12, picks: 14, rev: { number: 2, status: 'shared', isNewest: true, rows: 14, owesReason: 0, sheetsNeeded: 0, packageBuilt: true }, room: { status: 'open', opens: 9, identified: [] }, decisions: { decided: 14, approved: 14, open: 0, sentBack: 0, byName: ['Dana Whitfield'] } })
     render(<SubmittalJourneyStrip journey={done} busy={false} onAction={() => {}} onGoToStage={() => {}} onWalkThrough={() => {}} offerWalkThrough={false} onDismissOffer={() => {}} />)
-    expect(screen.getByTestId('journey-next').textContent).toBe('Done: Every row approved by Dana Whitfield. The procurement log is next.')
+    expect(screen.getByTestId('journey-next').textContent).toBe('Done: Dana Whitfield approved every row. Next is the order log, Step 8.')
     expect(screen.getAllByRole('button').map((b) => b.textContent)).not.toContain('Share')
   })
 })

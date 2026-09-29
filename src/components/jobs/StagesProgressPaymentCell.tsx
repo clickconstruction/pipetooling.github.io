@@ -134,7 +134,14 @@ export default function StagesProgressPaymentCell({ model, pctComplete, pctSavin
                 data-bill-sent-alert={alert ? 'on' : undefined}
                 style={{
                   width: '2.75rem',
-                  padding: '0.15rem 0.25rem',
+                  // v2.4128: no vertical padding and a tight line box, so the
+                  // underline sits at the number's own bottom edge instead of a
+                  // quarter-inch under it, and the "% done · $X bid" row is one text line tall.
+                  padding: '0 0.25rem',
+                  lineHeight: 1.15,
+                  height: '1.15em',
+                  boxSizing: 'content-box',
+                  verticalAlign: 'baseline',
                   fontSize: '0.8125rem',
                   textAlign: 'center',
                   border: alert ? '2px solid var(--text-red-600)' : 'none',

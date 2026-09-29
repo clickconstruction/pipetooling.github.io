@@ -2,7 +2,15 @@ import { describe, expect, it } from 'vitest'
 import {
   addDays,
   buildProcurementLog,
+  approveBy,
   buildProcurementUpdateHtml,
+  gcScheduleWord,
+  gcSubmittalWord,
+  groupRowsByStage,
+  longDate,
+  monthDay,
+  procurementAsks,
+  stageDatesWords,
   daysBetween,
   diffProcurementLog,
   fixtureHead,
@@ -160,20 +168,126 @@ describe('updates', () => {
     expect(gone.find((c) => c.tag === 'L-1')?.text).toBe('no longer on the log')
   })
 
-  it('prints the sheet with changed rows first and the one line, and the text for the email', () => {
+  const letterhead = { companyName: 'Click Plumbing and Electrical', tagline: 'Plumbing, Electrical, and HVAC', phone: '(512) 360-0599', mailingAddress: '5501 Balcones Dr A141 Austin TX 78731', logoDataUrl: 'data:image/png;base64,AAAA' }
+  const letter = { bidLabel: 'B482 Shipley Do-Nuts', companyName: 'Click Plumbing and Electrical', stageDates, letterhead, projectAddress: '4410 Fredericksburg Rd, San Antonio TX', gcName: 'Structura', preparedBy: 'Wendi Aguilar', roomUrl: 'https://pipetooling.com/submittal?t=abc', roomQrSvg: '<svg data-qr="1"></svg>' }
+
+  it('prints an update as a letter to the GC: letterhead, To, the asks first, rows by stage, changed rows marked, the room code, the estimator’s line', () => {
     const changes = diffProcurementLog(snapshotRows(before), after)
-    const input = { bidLabel: 'B482 Shipley Do-Nuts', companyName: 'Click Plumbing and Electrical', updateNumber: 4, sentOn: '2026-09-28', sinceOn: '2026-09-21', rows: after, changes, line: 'BFP-1: can Rough In wait for the RPZ?', stageDates }
+    const input = { ...letter, kind: 'update' as const, updateNumber: 4, sentOn: '2026-09-28', sinceOn: '2026-09-21', rows: after, changes, line: 'BFP-1: can Rough In wait for the RPZ?' }
     const html = buildProcurementUpdateHtml(input)
-    expect(html).toContain('Procurement log update')
-    expect(html).toContain('update 4 · 09/28 · since 09/21')
-    expect(html).toContain('BFP-1: can Rough In wait for the RPZ?')
-    expect(html.indexOf('BFP-1')).toBeLessThan(html.indexOf('WH-1'))
-    expect(html).toContain('(house)')
-    expect(html).toContain('Rough In 10/06 · Top Out 10/27 · Trim Set 11/17')
+    expect(html).toContain('<h1>Procurement log — update 4</h1>')
+    expect(html).toContain('September 28, 2026 · changes since September 21, 2026 marked')
+    expect(html).toContain('src="data:image/png;base64,AAAA"')
+    expect(html).toContain('Plumbing, Electrical, and HVAC')
+    expect(html).toContain('<b>To</b>Structura')
+    expect(html).toContain('4410 Fredericksburg Rd, San Antonio TX')
+    expect(html).toContain('<b>Schedule you gave us</b>Rough In Oct 6 · Top Out Oct 27 · Trim Set Nov 17')
+    expect(html).toContain('<b>From</b>Wendi Aguilar · Click Plumbing and Electrical · (512) 360-0599')
+    // The estimator's line leads the asks; then the rows waiting on the GC.
+    const asks = html.slice(html.indexOf('What we need from you'), html.indexOf('<table>'))
+    expect(asks.indexOf('BFP-1: can Rough In wait for the RPZ?')).toBeLessThan(asks.indexOf('<strong>HS-1</strong>'))
+    expect(asks).toContain('<strong>HS-1</strong> Advance Tabco 7-PS-66 — returned Sep 22; needs your approval by Nov 3 to make Trim Set')
+    expect(asks).toContain('<strong>S-3</strong> Elkay sink — awaiting your approval; needs your approval by Nov 10 to make Trim Set')
+    expect(asks).toContain('<strong>Grease interceptor 750 gal</strong> — expected Nov 13, 38 days after Rough In starts')
+    // Rows by stage, the stage's date once; the rough-in group before trim set.
+    expect(html.indexOf('Rough In <span')).toBeLessThan(html.indexOf('Trim Set <span'))
+    expect(html).toContain('needed on site Oct 6 · 3 items, 2 behind')
+    expect(html).toContain('needed on site Nov 17 · 4 items')
+    // The GC's words in the cells; the changed row carries the dot and its change under the note.
+    expect(html).toContain('Returned for revision Sep 22')
+    expect(html).toContain('Awaiting your approval')
+    expect(html).toContain('supplier’s date')
+    expect(html).toContain('Sep 24 · PO 118')
+    expect(html).toContain('delivered Sep 26')
+    expect(html).toContain('<span class="dot"></span><strong>BFP-1</strong>')
+    expect(html).toContain('Ferguson: 10/20 earliest<br/><span style="color:#6b7280">since Sep 21: expected 10/23 → 10/20 (house)</span>')
+    expect(html).not.toContain('<span class="dot"></span><strong>WH-1</strong>')
+    expect(html).toContain('<svg data-qr="1"></svg>')
+    expect(html).toContain('This log lives at <b>https://pipetooling.com/submittal?t=abc</b>')
+    expect(html).toContain('Verified true and current by Wendi Aguilar, Click Plumbing and Electrical — signature')
+    // The email carries the asks and the changes.
     const text = procurementUpdateText(input)
+    expect(text).toContain('What we need from you:\n• BFP-1 Watts 909 RPZ 2": the supplier says Oct 20, 14 days after Rough In starts — Ferguson: 10/20 earliest\n• HS-1 Advance Tabco 7-PS-66: returned Sep 22; needs your approval by Nov 3 to make Trim Set')
     expect(text).toContain('Changed since the last update:')
     expect(text).toContain('• BFP-1 Watts 909 RPZ 2": expected 10/23 → 10/20 (house); Ferguson: 10/20 earliest')
     expect(text).toContain('• WH-1 A.O. Smith BTH-199: Ordered 09/24, expected 11/05, required 11/17, 12 d')
     expect(text).toContain('• FS-2 Zurn Z1900 floor sink: Delivered 09/26, required 10/06, on site')
+  })
+
+  it('Print the log says as of, marks nothing, and prints the row’s own note; without a letterhead the name stands alone', () => {
+    const changes = diffProcurementLog(snapshotRows(before), after)
+    const html = buildProcurementUpdateHtml({ ...letter, letterhead: null, roomUrl: null, roomQrSvg: null, kind: 'print', updateNumber: 4, sentOn: '2026-09-28', sinceOn: null, rows: after, changes, line: '' })
+    expect(html).toContain('<h1>Procurement log</h1>')
+    expect(html).toContain('as of September 28, 2026')
+    expect(html).not.toContain('update 4')
+    expect(html).not.toContain('class="dot"')
+    expect(html).not.toContain('since Sep')
+    expect(html).toContain('Ferguson: 10/20 earliest')
+    expect(html).toContain('<b style="font-size:1.1rem">Click Plumbing and Electrical</b>')
+    expect(html).not.toContain('This log lives at')
+    expect(html).toContain('Verified true and current by Wendi Aguilar, Click Plumbing and Electrical')
+  })
+
+  it('a sheet with no fields beyond the rows still prints (the old call shape)', () => {
+    const html = buildProcurementUpdateHtml({ bidLabel: 'B1', companyName: 'Click', updateNumber: 1, sentOn: '2026-09-28', sinceOn: null, rows: [], changes: [], line: '', stageDates: {} })
+    expect(html).toContain('No items on the log.')
+    expect(html).toContain('first update')
+    expect(html).toContain('no stage schedule yet')
+    expect(html).toContain('<b>To</b>—')
+    expect(html).toContain('Verified true and current by Click — signature')
+  })
+})
+
+describe('the GC’s words', () => {
+  const rows = buildProcurementLog({ items, records, tagStage, stageDates })
+  const byTag = (t: string) => rows.find((r) => r.tag === t)!
+
+  it('names the submittal decision and the schedule as the GC reads them', () => {
+    expect(gcSubmittalWord(byTag('WH-1'))).toBe('Approved Sep 22')
+    expect(gcSubmittalWord(byTag('HS-1'))).toBe('Returned for revision Sep 22')
+    expect(gcSubmittalWord(byTag('S-3'))).toBe('Awaiting your approval')
+    expect(gcSubmittalWord(rows.find((r) => r.isHand)!)).toBe('—')
+    expect(gcScheduleWord(byTag('WH-1'), '2026-09-28')).toBe('12 days ahead')
+    expect(gcScheduleWord(byTag('BFP-1'), '2026-09-28')).toBe('14 days behind')
+    expect(gcScheduleWord(byTag('FS-2'), '2026-09-28')).toBe('delivered Sep 26')
+    expect(gcScheduleWord(byTag('L-1'), '2026-09-28')).toBe('we order by Nov 10')
+    expect(gcScheduleWord(byTag('S-3'), '2026-09-28')).toBe('approve by Nov 10')
+    expect(gcScheduleWord(byTag('S-3'), '2026-11-10')).toBe('needs approval now')
+    expect(gcScheduleWord({ ...byTag('WH-1'), floatDays: 0 }, '2026-09-28')).toBe('on time')
+    expect(gcScheduleWord({ ...byTag('WH-1'), floatDays: -1 }, '2026-09-28')).toBe('1 day behind')
+  })
+
+  it('approve by is required minus the lead time, and null without either', () => {
+    expect(approveBy({ requiredOn: '2026-11-17', leadTimeDays: 7 })).toBe('2026-11-10')
+    expect(approveBy({ requiredOn: null, leadTimeDays: 7 })).toBeNull()
+    expect(approveBy({ requiredOn: '2026-11-17', leadTimeDays: null })).toBeNull()
+  })
+
+  it('the asks are the rows waiting on the GC, and say now once the date has passed', () => {
+    expect(procurementAsks(rows, '2026-09-28').map((a) => [a.tag ?? a.product, a.text])).toEqual([
+      ['BFP-1', 'the supplier says Oct 20, 14 days after Rough In starts — Ferguson: 10/20 earliest'],
+      ['HS-1', 'returned Sep 22; needs your approval by Nov 3 to make Trim Set'],
+      ['S-3', 'awaiting your approval; needs your approval by Nov 10 to make Trim Set'],
+      ['Grease interceptor 750 gal', 'expected Nov 13, 38 days after Rough In starts'],
+    ])
+    expect(procurementAsks(rows, '2026-11-12').find((a) => a.tag === 'S-3')?.text).toBe('awaiting your approval; needs your approval now to make Trim Set')
+    expect(procurementAsks([], '2026-09-28')).toEqual([])
+  })
+
+  it('groups the rows by stage in build order, the stage’s date on the group, no-stage rows last', () => {
+    const groups = groupRowsByStage(rows, stageDates)
+    expect(groups.map((g) => [g.label, g.neededOn, g.rows.map((r) => r.tag ?? r.product)])).toEqual([
+      ['Rough In', '2026-10-06', ['BFP-1', 'FS-2', 'Grease interceptor 750 gal']],
+      ['Trim Set', '2026-11-17', ['HS-1', 'L-1', 'S-3', 'WH-1']],
+    ])
+    const noStage = groupRowsByStage([{ ...rows[0]!, stage: null }], stageDates)
+    expect(noStage.map((g) => [g.label, g.neededOn])).toEqual([['No stage yet', null]])
+  })
+
+  it('words a date for the letter', () => {
+    expect(monthDay('2026-09-05')).toBe('Sep 5')
+    expect(longDate('2026-09-28')).toBe('September 28, 2026')
+    expect(monthDay(null)).toBe('')
+    expect(stageDatesWords({})).toBe('')
   })
 })
