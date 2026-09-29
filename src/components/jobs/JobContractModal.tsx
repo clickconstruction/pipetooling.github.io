@@ -11,6 +11,11 @@
  *
  * PR 2 — the paper is the form: the left column is the agreement as the customer sees it,
  * edited in place (JobContractPaper); no field grid and no preview button.
+ *
+ * v2.4183 — one window across states: a signed agreement (a contract we sent, a paper or link
+ * record, an estimate or bid-room acceptance) shows here too — the paper as signed on the left,
+ * the signed rail on the right — instead of the Signed agreement view. A history row's View
+ * shows that row in place; Start a new agreement… turns the window back into a draft.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { JobWithDetails } from '../../types/jobWithDetails'
@@ -23,7 +28,10 @@ import ResponsiveModalShell from '../ResponsiveModalShell'
 import JobContractFileSheet from './JobContractFileSheet'
 import StandardTermsEditModal from './StandardTermsEditModal'
 import { reopenBlocker, reopenNote, reopenUnopenedJobContract } from '../../lib/jobs/jobContractReopen'
-import JobSignedAgreementModal from './JobSignedAgreementModal'
+import JobContractSignedRail from './JobContractSignedRail'
+import { RailGroup } from './ContractRailGroup'
+import { useJobContractRecordUrls } from './JobContractRecordModal'
+import { CustomerAcceptanceRecordBody, type EstimateRecordRow } from '../estimates/CustomerAcceptanceRecordBody'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { normalizeEstimateLineItemsFromJson } from '../../lib/estimateLineItemNormalize'
 import { renderContractBodyToSafeHtml } from '../../lib/renderContractBodyToSafeHtml'
@@ -35,6 +43,7 @@ import {
   buildJobContractPrefill,
   DEFAULT_JOB_CONTRACT_TERMS_PLAIN,
   EMPTY_JOB_CONTRACT_FIELDS,
+  isGoogleDocsUrl,
   jobContractHeading,
   parseJobContractFields,
   type JobContractFields,
@@ -52,7 +61,7 @@ import {
   type JobContractRow,
 } from '../../lib/jobs/jobContractLifecycle'
 import { isAwaitingPaperCopy, isHandedAwaitingPaper, jobContractSentChannel } from '../../lib/jobs/jobContractHandoff'
-import { CONTRACT_NOT_NEEDED_REASONS } from '../../lib/jobs/jobContractCoverage'
+import { CONTRACT_NOT_NEEDED_REASONS, type JobContractCoverage } from '../../lib/jobs/jobContractCoverage'
 import { clearJobContractNotNeeded, markJobContractNotNeeded } from '../../lib/jobs/jobContractNotNeeded'
 import { handoffBlocker, markJobContractHanded } from '../../lib/jobs/jobContractHandoff'
 import { effectiveWindowWay, emailLooksValid, jobTakesTheirSubcontract, phoneLooksUsable, windowStatusPill, windowWayButton, windowWaysPlan, windowWaySentence, type PaperSend, type WindowWay } from '../../lib/jobs/contractWindowWays'
@@ -79,6 +88,10 @@ export type JobContractModalProps = {
   initialFilingOpen?: boolean
   /** v2.3707: the door beside the amount — the number is set on the job (its line items or the accepted estimate), never here. */
   onEditJob?: (job: JobWithDetails) => void
+  /** v2.4183: the job's coverage when the caller has it — an estimate / bid-room acceptance shows as the signed state. */
+  coverage?: JobContractCoverage | null
+  /** v2.4183: open on this signed row (Documents → Jobs lists every contract). */
+  initialRecordId?: string | null
 }
 
 const inputStyle: React.CSSProperties = {
@@ -114,15 +127,11 @@ function dispatchChanged() {
   }
 }
 
-/** A labelled row of the sent rail (v2.4154). Module-level so a re-render keeps the buttons mounted (v2.4175). */
-const Group = ({ label, children }: { label: string; children: React.ReactNode }) => (
-  <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
-    <span style={{ font: '700 0.66rem/1.2 inherit', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', minWidth: 78 }}>{label}</span>
-    {children}
-  </div>
-)
+type SignedCoverage = Extract<JobContractCoverage, { kind: 'signed' }>
+/** What the window shows when nothing is live: the signed row (ours or a filed record) or the acceptance behind the chip. */
+type SignedView = { source: 'contract' | 'paper'; row: JobContractRow } | { source: 'estimate' | 'bid_room'; coverage: SignedCoverage }
 
-export default function JobContractModal({ open, onClose, job, onChanged, onJobChanged, initialFilingOpen = false, onEditJob }: JobContractModalProps) {
+export default function JobContractModal({ open, onClose, job, onChanged, onJobChanged, initialFilingOpen = false, onEditJob, coverage = null, initialRecordId = null }: JobContractModalProps) {
   const { user: authUser } = useAuth()
   const { showToast } = useToastContext()
   const narrow = useMatchMedia('(max-width: 820px)')
@@ -149,6 +158,12 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
   const [lastLink, setLastLink] = useState<string | null>(null)
   const [paperOpen, setPaperOpen] = useState(false)
   const [recordRow, setRecordRow] = useState<JobContractRow | null>(null)
+  /** v2.4183: the rows have been read once this open — until then the window shows neither rail. */
+  const [rowsLoaded, setRowsLoaded] = useState(false)
+  /** v2.4183: Start a new agreement… — a fresh draft while a signed copy is on file. */
+  const [startNew, setStartNew] = useState(false)
+  /** v2.4183: the estimates row behind an acceptance, handed up by the record on the left. */
+  const [estimateRow, setEstimateRow] = useState<EstimateRecordRow | null>(null)
   /** Not needed (PR 0): undefined = read the job; null = withdrawn this session; an object = answered this session. */
   const [notNeededLocal, setNotNeededLocal] = useState<{ at: string; reason: string | null } | null | undefined>(undefined)
   const [notNeededOpen, setNotNeededOpen] = useState(false)
@@ -176,6 +191,10 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
       setRows(list)
       const live = list.find((r) => jobContractIsLive(r)) ?? null
       setLiveRow(live)
+      if (initialRecordId) {
+        const picked = list.find((r) => r.id === initialRecordId && r.signed_at) ?? null
+        if (picked) setRecordRow(picked)
+      }
       if (live) {
         const { data: ev } = await supabase
           .from('job_contract_events')
@@ -192,8 +211,10 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
       }
     } catch {
       setRows([])
+    } finally {
+      setRowsLoaded(true)
     }
-  }, [job])
+  }, [job, initialRecordId])
 
   // Open-reset.
   useEffect(() => {
@@ -210,6 +231,9 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
     setMessage('')
     setPaperOpen(initialFilingOpen)
     setRecordRow(null)
+    setRowsLoaded(false)
+    setStartNew(false)
+    setEstimateRow(null)
     setNotNeededLocal(undefined)
     setNotNeededOpen(false)
     setNotNeededReason('')
@@ -306,6 +330,26 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
 
   const editable = jobContractIsEditable(liveRow)
   const status = liveRow ? jobContractStatus(liveRow) : null
+  // v2.4183: the signed state — a history row picked to view, else (nothing live, no fresh draft asked for) the newest signed row, else the acceptance behind the chip.
+  const signedRows = rows.filter((r) => jobContractStatus(r) === 'signed')
+  const signedCoverage: SignedCoverage | null = coverage && coverage.kind === 'signed' && (coverage.source === 'estimate' || coverage.source === 'bid_room') ? coverage : null
+  const signedView: SignedView | null = recordRow
+    ? { source: recordRow.signer_mode === 'paper' ? 'paper' : 'contract', row: recordRow }
+    : liveRow || startNew || !rowsLoaded
+      ? null
+      : signedRows[0]
+        ? { source: signedRows[0].signer_mode === 'paper' ? 'paper' : 'contract', row: signedRows[0] }
+        : signedCoverage
+          ? { source: signedCoverage.source as 'estimate' | 'bid_room', coverage: signedCoverage }
+          : null
+  const shownRow = signedView && 'row' in signedView ? signedView.row : null
+  const recordUrls = useJobContractRecordUrls(shownRow, open)
+  const shownFields = useMemo(() => (shownRow ? parseJobContractFields(shownRow.fields) : null), [shownRow])
+  /** The row whose saved text the paper prints: the signed row shown, or the live row once it is out. */
+  const paperRow = shownRow ?? (liveRow && !editable ? liveRow : null)
+  const paperEditable = editable && rowsLoaded && !signedView
+  /** A record filed from an outside document: the paper prints a note, not a body it never held. */
+  const filedDoc = shownRow?.signer_mode === 'paper' && shownRow.signed_document_url ? { what: isGoogleDocsUrl(shownRow.signed_document_url) ? 'Google Doc' : 'document' } : null
   const selectedTemplate = templates.find((t) => t.id === templateId) ?? null
   const bodyHtml = selectedTemplate ? selectedTemplate.book_body_html ?? '' : DEFAULT_JOB_CONTRACT_TERMS_PLAIN
   const bodyFormat = selectedTemplate ? selectedTemplate.book_body_format : 'plain'
@@ -637,7 +681,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
 
   if (!open || !job) return null
 
-  const historyRows = rows.filter((r) => !liveRow || r.id !== liveRow.id)
+  const historyRows = rows.filter((r) => r.id !== liveRow?.id && r.id !== shownRow?.id)
   const canReopen = Boolean(liveRow) && reopenBlocker(liveRow) === null
   // v2.3629: a row handed over on paper has no link to resend — it waits for the signed page.
   const amberStrip: React.CSSProperties = { padding: '0.55rem 0.75rem', borderRadius: 8, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', fontSize: '0.8rem', lineHeight: 1.4 }
@@ -645,16 +689,16 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
     liveRow && status === 'sent' && isHandedAwaitingPaper(liveRow) ? (
       <div data-testid="contract-handed-strip" style={{ display: 'grid', gap: '0.6rem' }}>
         <div style={amberStrip}>📄 Handed over on paper {formatContractStamp(liveRow.last_sent_at ?? liveRow.sent_at) ?? ''} — waiting for the signed copy. Nothing was emailed, and no reminders go out.</div>
-        <Group label="It's back">
+        <RailGroup label="It's back">
           <button type="button" style={btnPrimary} disabled={busy != null} onClick={() => setPaperOpen(true)}>
             File the signed copy
           </button>
-        </Group>
-        <Group label="Change it">
+        </RailGroup>
+        <RailGroup label="Change it">
           <button type="button" style={{ ...btn, color: voidArmed ? 'var(--text-red-700)' : undefined }} disabled={busy != null} onClick={() => void voidAndRedo()}>
             {busy === 'void' ? 'Voiding…' : voidArmed ? 'Confirm void & redo' : 'Void & redo'}
           </button>
-        </Group>
+        </RailGroup>
       </div>
     ) : liveRow && status === 'sent' ? (
       <div style={{ display: 'grid', gap: '0.6rem' }} data-testid="contract-sent-rail">
@@ -666,7 +710,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
           {liveRow.view_count > 0 ? ` · opened ${liveRow.view_count}×` : ' · not opened yet'}
           {liveRow.public_token_expires_at ? ` · link good until ${formatContractStamp(liveRow.public_token_expires_at)?.split(',')[0] ?? ''}` : ''}
         </div>
-        <Group label="Nudge">
+        <RailGroup label="Nudge">
           {isAwaitingPaperCopy(liveRow) ? (
             <button type="button" style={btnPrimary} disabled={busy != null} onClick={() => setPaperOpen(true)} data-testid="contract-file-signed-copy">
               File the signed copy
@@ -683,13 +727,13 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
           <button type="button" style={btn} disabled={busy != null} onClick={() => void copyLink()}>
             Copy link
           </button>
-        </Group>
-        <Group label="Sign here">
+        </RailGroup>
+        <RailGroup label="Sign here">
           <button type="button" style={btn} disabled={busy != null} onClick={() => void signInPerson()}>
             Open the signing page on this device
           </button>
-        </Group>
-        <Group label="Change it">
+        </RailGroup>
+        <RailGroup label="Change it">
           {canReopen ? (
             <button type="button" style={reopenArmed ? btnPrimary : btn} disabled={busy != null} onClick={() => void editAndResend()} title="They have not opened it — unlock it here, fix it, and send again on the same link" data-testid="contract-edit-resend">
               {busy === 'reopen' ? 'Unlocking…' : reopenArmed ? 'Confirm — unlock to edit' : 'Edit & re-send'}
@@ -698,7 +742,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
           <button type="button" style={{ ...btn, color: voidArmed ? 'var(--text-red-700)' : undefined }} disabled={busy != null} onClick={() => void voidAndRedo()}>
             {busy === 'void' ? 'Voiding…' : voidArmed ? 'Confirm void & redo' : 'Void & redo'}
           </button>
-        </Group>
+        </RailGroup>
         {reopenArmed && liveRow && canReopen ? (
           <span style={{ fontSize: '0.76rem', color: 'var(--text-amber-800)' }} data-testid="contract-reopen-note">
             {reopenNote(liveRow)}{' '}
@@ -836,22 +880,26 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
     setPaperOpen(true)
   }
 
-  const signedOnFile = status === null && rows.some((r) => jobContractStatus(r) === 'signed')
+  const signedOnFile = status === null && signedRows.length > 0 && !signedView
   const pill = windowStatusPill({
-    status,
+    status: signedView ? 'signed' : status,
     channel: liveRow ? jobContractSentChannel(liveRow) : 'link',
     sentAt: liveRow?.last_sent_at ?? liveRow?.sent_at ?? null,
     viewCount: liveRow?.view_count ?? 0,
-    signedAt: liveRow?.signed_at ?? null,
-    signerName: liveRow?.signer_printed_name ?? null,
+    signedAt: signedView ? ('row' in signedView ? signedView.row.signed_at : estimateRow?.acceptor_consented_at ?? signedView.coverage.signedAt) : null,
+    signerName: signedView ? ('row' in signedView ? signedView.row.signer_printed_name : estimateRow?.acceptor_printed_name ?? signedView.coverage.signerName) : null,
+    signedVerb: signedView && !('row' in signedView) ? 'Accepted' : 'Signed',
     signedOnFile,
     notNeeded: Boolean(notNeeded) && !liveRow,
     draftSaved: autosaveState === 'saved',
     stamp: (iso) => formatContractStamp(iso)?.split(',')[0] ?? '',
   })
   const pillColors = pill.tone === 'amber' ? { background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' } : pill.tone === 'green' ? { background: 'var(--bg-green-tint)', color: 'var(--text-green-700)' } : { background: 'var(--bg-subtle)', color: 'var(--text-muted)' }
-  const clauseCount = bodyFormat === 'plain' ? (bodyHtml.match(/^\d+\. /gm) ?? []).length : 0
-  const versionLabel = selectedTemplate?.book_version_date ? formatContractStamp(`${selectedTemplate.book_version_date}T12:00:00Z`)?.split(',')[0] ?? null : null
+  const paperBodyHtml = paperRow ? paperRow.body_html ?? '' : bodyHtml
+  const paperBodyFormat = paperRow ? paperRow.body_format : bodyFormat
+  const clauseCount = paperBodyFormat === 'plain' ? (paperBodyHtml.match(/^\d+\. /gm) ?? []).length : 0
+  const paperVersionDate = paperRow ? paperRow.template_version_date : selectedTemplate?.book_version_date ?? null
+  const versionLabel = paperVersionDate ? formatContractStamp(`${paperVersionDate}T12:00:00Z`)?.split(',')[0] ?? null : null
   const linkBtn: React.CSSProperties = { background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.72rem', color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }
 
   const notNeededPanel =
@@ -913,56 +961,63 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
               ✍ A signed contract is already on file for this job (see history below). Starting a new one supersedes it only if the customer signs again.
             </div>
           ) : null}
-          {liveRow && status === 'signed' ? (
-            <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.5rem 0.75rem', borderRadius: 8, background: 'var(--bg-green-tint)', color: 'var(--text-green-700)', fontSize: '0.8rem' }}>
-              <span style={{ flex: 1, minWidth: 200 }}>✍ {jobContractSignatureAuditLine(liveRow) ?? 'Signed'}</span>
-              <button type="button" style={btn} onClick={() => setRecordRow(liveRow)}>
-                Open the signed record
-              </button>
-            </div>
-          ) : null}
 
-          {/* v2.4160: the paper is the form — the agreement as the customer sees it, edited in place. */}
-          <JobContractPaper
-            job={job}
-            jobNumber={jobNumber}
-            issuer={paperIssuer}
-            dateLabel={liveRow && !editable ? formatContractStamp(liveRow.last_sent_at ?? liveRow.created_at)?.split(',').slice(0, 2).join(',') ?? '' : new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-            revision={liveRow?.revision ?? 1}
-            editable={editable}
-            fields={fields}
-            setField={setField}
-            scopeText={scopeText}
-            applyScopeText={applyScopeText}
-            recipientName={recipientName}
-            setRecipientName={(v) => {
-              touch()
-              setRecipientName(v)
-            }}
-            amount={{
-              src: amountSrc,
-              frozenCents: fields.amount_cents,
-              drift: editable ? amountDrift : null,
-              onOpenJob: onEditJob && job ? () => onEditJob(job) : null,
-              onUseJobAmount: () => {
+          {/* v2.4175: the paper is the form — the agreement as the customer sees it, edited in place; v2.4183: as signed, or the acceptance record. */}
+          {signedView && !('row' in signedView) ? (
+            <div data-testid="contract-acceptance-record">
+              <CustomerAcceptanceRecordBody open={open} estimateId={signedView.coverage.estimateId} onLoaded={setEstimateRow} previewBanner="Record of what the customer accepted — this acceptance is the job's agreement." />
+            </div>
+          ) : (
+            <JobContractPaper
+              job={job}
+              jobNumber={jobNumber}
+              issuer={paperIssuer}
+              dateLabel={
+                paperRow
+                  ? formatContractStamp(paperRow.signed_at ?? paperRow.last_sent_at ?? paperRow.created_at)?.split(',').slice(0, 2).join(',') ?? ''
+                  : new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+              }
+              revision={paperRow?.revision ?? liveRow?.revision ?? 1}
+              editable={paperEditable}
+              fields={shownFields ?? fields}
+              setField={setField}
+              scopeText={scopeText}
+              applyScopeText={applyScopeText}
+              recipientName={shownRow ? (shownRow.signer_printed_name || shownRow.recipient_name || '') : recipientName}
+              setRecipientName={(v) => {
                 touch()
-                setField('amount_cents', amountSrc.cents)
-              },
-            }}
-            terms={{
-              name: liveRow && !editable ? liveRow.template_name ?? templateName : templateName,
-              clauseCount,
-              versionLabel,
-              bodyHtml: liveRow && !editable ? liveRow.body_html ?? '' : bodyHtml,
-              bodyFormat: liveRow && !editable ? liveRow.body_format : bodyFormat,
-              open: termsOpen,
-              onToggle: () => setTermsOpen((v) => !v),
-              onEdit: editable && selectedTemplate ? () => setTermsEditOpen(true) : null,
-              builtInNote: editable && !selectedTemplate ? 'The built-in wording, until the office adds a customer document to the Contract Book.' : null,
-            }}
-            signature={liveRow && liveRow.signed_at ? { printedName: liveRow.signer_printed_name ?? '', auditLine: jobContractSignatureAuditLine(liveRow) ?? '' } : null}
-          />
-          {templates.length > 1 && editable ? (
+                setRecipientName(v)
+              }}
+              amount={{
+                src: amountSrc,
+                frozenCents: (shownFields ?? fields).amount_cents,
+                drift: paperEditable ? amountDrift : null,
+                onOpenJob: onEditJob && job ? () => onEditJob(job) : null,
+                onUseJobAmount: () => {
+                  touch()
+                  setField('amount_cents', amountSrc.cents)
+                },
+              }}
+              terms={{
+                name: paperRow ? paperRow.template_name ?? 'Contract' : templateName,
+                clauseCount,
+                versionLabel,
+                bodyHtml: paperBodyHtml,
+                bodyFormat: paperBodyFormat,
+                open: termsOpen,
+                onToggle: () => setTermsOpen((v) => !v),
+                onEdit: paperEditable && selectedTemplate ? () => setTermsEditOpen(true) : null,
+                builtInNote: paperEditable && !selectedTemplate ? 'The built-in wording, until the office adds a customer document to the Contract Book.' : null,
+              }}
+              signature={
+                shownRow?.signed_at
+                  ? { printedName: shownRow.signer_printed_name ?? '', auditLine: jobContractSignatureAuditLine(shownRow) ?? '', imageUrl: recordUrls.signatureUrl }
+                  : null
+              }
+              filed={filedDoc}
+            />
+          )}
+          {templates.length > 1 && paperEditable ? (
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
               <span>Terms document</span>
               <select style={{ ...inputStyle, maxWidth: 360 }} value={templateId} onChange={(e) => { touch(); setTemplateId(e.target.value) }} aria-label="Standard terms document">
@@ -978,15 +1033,21 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
 
           <div style={{ display: 'flex', gap: '0.3rem 0.8rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
             <span style={{ color: autosaveState === 'error' ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
-              {!editable ? 'Locked — it is out' : autosaveState === 'saving' ? 'Saving…' : autosaveState === 'saved' ? 'Saved as you type.' : autosaveState === 'error' ? 'Save failed' : 'Saves as you type. Hover a line to see what edits.'}
+              {shownRow ? (shownRow.signed_at ? 'The agreement as signed.' : 'The agreement as sent.') : signedView ? '' : !rowsLoaded ? 'Loading…' : !editable ? 'Locked — it is out' : autosaveState === 'saving' ? 'Saving…' : autosaveState === 'saved' ? 'Saved as you type.' : autosaveState === 'error' ? 'Save failed' : 'Saves as you type. Hover a line to see what edits.'}
             </span>
-            <button type="button" style={linkBtn} disabled={busy != null} onClick={preview}>
-              Open full size
-            </button>
+            {(signedView && !('row' in signedView)) || filedDoc ? null : (
+              <button type="button" style={linkBtn} disabled={busy != null} onClick={shownRow ? () => viewHistoryRow(shownRow) : preview}>
+                Open full size
+              </button>
+            )}
+            {signedView ? null : (
+              <>
             <button type="button" style={linkBtn} disabled={busy != null} onClick={() => void downloadPdf()} title="The agreement as it reads right now, with blank Sign and Date rules — nothing is sent or recorded" data-testid="contract-download-pdf">
               {busy === 'pdf' ? 'Building…' : 'Download the PDF'}
             </button>
             <span>— records nothing; the rail's On paper does.</span>
+              </>
+            )}
           </div>
           {historyRows.length > 0 ? (
             <>
@@ -1019,7 +1080,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
         </div>
 
         <div style={{ display: 'grid', gap: '0.6rem', alignContent: 'start', minWidth: 0 }}>
-          {notNeeded ? (
+          {notNeeded && !signedView ? (
             <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', padding: '0.5rem 0.75rem', borderRadius: 8, background: 'var(--bg-subtle)', border: '1px dashed var(--border)', color: 'var(--text-muted)', fontSize: '0.8rem' }} data-testid="contract-not-needed-strip">
               <span style={{ flex: 1, minWidth: 200 }}>
                 <b style={{ color: 'var(--text-700)' }}>Not needed</b>
@@ -1032,8 +1093,31 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
               </button>
             </div>
           ) : null}
-          {sentRail}
-          {editable ? (
+          {!rowsLoaded ? <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Loading the agreement…</div> : null}
+          {signedView ? (
+            <JobContractSignedRail
+              job={job}
+              jobNumber={jobNumber}
+              source={signedView.source}
+              row={shownRow}
+              estimate={'row' in signedView ? null : { estimateId: signedView.coverage.estimateId, estimateNumber: signedView.coverage.estimateNumber, signerName: signedView.coverage.signerName, signedAt: signedView.coverage.signedAt }}
+              estimateRow={estimateRow}
+              urls={recordUrls}
+              onStartNew={
+                liveRow
+                  ? null
+                  : () => {
+                      setRecordRow(null)
+                      setStartNew(true)
+                    }
+              }
+              onOpenJob={onEditJob && job ? () => onEditJob(job) : null}
+              onBack={recordRow && (liveRow || startNew || signedRows[0]?.id !== recordRow.id) ? () => setRecordRow(null) : null}
+              onClose={onClose}
+            />
+          ) : null}
+          {signedView ? null : sentRail}
+          {paperEditable ? (
             <JobContractSigningRail
               plan={plan}
               way={way}
@@ -1070,7 +1154,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
               notNeededPanel={notNeededPanel}
             />
           ) : null}
-          {!editable && notNeededPanel}
+          {!editable && !signedView && notNeededPanel}
         </div>
       </div>
       {termsEditOpen && selectedTemplate ? (
@@ -1096,17 +1180,6 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
           onCancel={() => setPaperOpen(false)}
         />
       ) : null}
-      <JobSignedAgreementModal
-        open={recordRow != null}
-        onClose={() => setRecordRow(null)}
-        job={job}
-        coverage={
-          recordRow
-            ? { kind: 'signed', source: recordRow.signer_mode === 'paper' ? 'paper' : 'contract', signedAt: recordRow.signed_at, signerName: recordRow.signer_printed_name, contractId: recordRow.id, estimateNumber: null, estimateId: null }
-            : null
-        }
-        contractRow={recordRow}
-      />
     </ResponsiveModalShell>
   )
 }

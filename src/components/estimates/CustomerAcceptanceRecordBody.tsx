@@ -2,7 +2,7 @@
  * The accepted-estimate record, as a body (v2.2709): loads the estimate +
  * customer-experience settings + the drawn-signature URL and renders the
  * read-only EstimateAcceptBody box. `CustomerAcceptanceRecordModal` (Estimates)
- * and `JobSignedAgreementModal` (Jobs) both mount it; `onLoaded` hands the
+ * and `JobContractModal` (the Contract window's signed state, v2.4183) both mount it; `onLoaded` hands the
  * row up so the host can write its own banner and facts.
  */
 import { useEffect, useMemo, useState } from 'react'

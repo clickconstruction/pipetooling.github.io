@@ -55,6 +55,8 @@ describe('contractWindowWays — the header pill', () => {
     expect(windowStatusPill({ ...base, status: 'draft', draftSaved: true }).text).toBe('Draft · saved, nothing sent yet')
     expect(windowStatusPill({ ...base, status: 'sent', sentAt: '2026-09-12T15:00:00Z', viewCount: 2 })).toEqual({ text: 'Sent 09-12 · opened 2×', tone: 'amber' })
     expect(windowStatusPill({ ...base, status: 'sent', sentAt: '2026-09-12T15:00:00Z', channel: 'pdf_email' }).text).toBe('PDF emailed 09-12 · not opened yet')
+    expect(windowStatusPill({ ...base, status: 'signed', signedAt: '2026-09-12T15:00:00Z', signerName: 'Sam' })).toEqual({ text: '✍ Signed 09-12 · Sam', tone: 'green' })
+    expect(windowStatusPill({ ...base, status: 'signed', signedAt: '2026-09-12T15:00:00Z', signerName: 'Sam', signedVerb: 'Accepted' }).text).toBe('✍ Accepted 09-12 · Sam')
     expect(windowStatusPill({ ...base, status: 'sent', sentAt: '2026-09-12T15:00:00Z', channel: 'handed' })).toEqual({ text: 'Handed over 09-12 · awaiting the signed page', tone: 'amber' })
     expect(windowStatusPill({ ...base, status: 'signed', signedAt: '2026-09-14T15:00:00Z', signerName: 'Sam Sample' })).toEqual({ text: '✍ Signed 09-14 · Sam Sample', tone: 'green' })
     expect(windowStatusPill({ ...base, notNeeded: true }).tone).toBe('gray')

@@ -16,7 +16,6 @@ import { useJobContractCoverage } from '../../hooks/useJobContractCoverage'
 import { jobContractChipLabel, jobContractChipTitle } from '../../lib/jobs/jobContractCoverage'
 import { JobContractChip } from './JobContractChip'
 import JobContractModal from './JobContractModal'
-import JobSignedAgreementModal from './JobSignedAgreementModal'
 
 const btn: React.CSSProperties = {
   padding: '0.25rem 0.6rem',
@@ -42,7 +41,6 @@ export default function JobContractStrip({
   const { user: authUser } = useAuth()
   const { showToast } = useToastContext()
   const [modalOpen, setModalOpen] = useState(false)
-  const [recordOpen, setRecordOpen] = useState(false)
   /** The contract field (refresh, to-dos/contract-sweep-refresh): a customer who already has a contract with us — paste where it lives in Drive. */
   const [link, setLink] = useState('')
   const [filingLink, setFilingLink] = useState(false)
@@ -69,9 +67,9 @@ export default function JobContractStrip({
     }
   }
 
-  const signedRow = coverage.kind === 'signed' && coverage.contractId ? rows.find((r) => r.id === coverage.contractId) ?? null : null
   const label = jobContractChipLabel(coverage)
-  const openPrimary = () => (coverage.kind === 'signed' ? setRecordOpen(true) : setModalOpen(true))
+  // v2.4183: one window across states — a signed chip opens it on the signed state.
+  const openPrimary = () => setModalOpen(true)
   const controls = (
     <>
       <JobContractChip coverage={coverage} onClick={openPrimary} />
@@ -115,7 +113,7 @@ export default function JobContractStrip({
           Resend / manage
         </button>
       ) : coverage.kind === 'signed' ? (
-        <button type="button" style={btn} onClick={() => setRecordOpen(true)}>
+        <button type="button" style={btn} onClick={() => setModalOpen(true)}>
           View record
         </button>
       ) : null}
@@ -127,17 +125,7 @@ export default function JobContractStrip({
         }}
         job={job}
         onChanged={() => void reload()}
-      />
-      <JobSignedAgreementModal
-        open={recordOpen}
-        onClose={() => setRecordOpen(false)}
-        job={job}
-        coverage={coverage.kind === 'signed' ? coverage : null}
-        contractRow={signedRow}
-        onStartNewAgreement={() => {
-          setRecordOpen(false)
-          setModalOpen(true)
-        }}
+        coverage={coverage}
       />
     </>
   )
