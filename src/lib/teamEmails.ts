@@ -32,6 +32,7 @@ export type TeamRealPreviewStream = 'crew_day' | 'money_waiting' | 'payment_fore
 
 export type TeamSampleEmailId =
   | 'money_waiting'
+  | 'crew_day'
   | 'signed_agreement_staff'
   | 'estimate_accepted_staff'
   | 'gc_word_ask'
@@ -108,8 +109,9 @@ export const TEAM_EMAILS: readonly TeamEmail[] = [
     label: 'Crew day',
     when: { kind: 'morning', label: 'Every weekday morning', order: 1 },
     recipients: { roles: OFFICE, decidedBy: 'role', rule: 'Every dev, leader, assistant and controller — the function picks them by role.' },
-    sampleSubject: (c) => `Crew day — ${c.dateLabel}`,
-    render: { kind: 'real', stream: 'crew_day' },
+    sampleSubject: (c) => `Crew Day — ${c.dateLabel} · 6 people · 40.4 h · 3 reports · 3 flags`,
+    render: { kind: 'sample', sample: 'crew_day' },
+    real: 'crew_day',
     manage: emails('Emails & reports → Crew day'),
     reflects: ['Crew day wording (Email templates)', 'today’s dispatch'],
   },
