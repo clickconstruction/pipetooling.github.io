@@ -2,16 +2,16 @@
 name: Customer emails come from Click Plumbing and Electrical
 number: 53
 group: ready
-status: planned 2026-09-28 — nothing built
+status: planned 2026-09-28 · PR 1 shipped v2.4127 (the helper, `COMPANY_EMAIL_FROM`, the bill email and its copies) · PRs 2–3 not started
 summary: >
   Most emails the app sends a customer, a GC, a supply house or a law firm show "ClickTooling"
   as the sender in the inbox — the name of our software, not of the company the reader hired.
   Customer-facing emails should read "Click Plumbing and Electrical"; staff emails keep
   "ClickTooling" so the team can tell an app notice from a customer thread.
-next: PR 1 — one helper for the customer From mailbox, with tests; the bill email and its copies switch to it.
+next: run PR 1's live check (a test-mode bill on the ZZ TEST job; the inbox reads Click Plumbing and Electrical); then PR 2 — the rest of the customer senders + the catalog guard test.
 size: S
 blocker: None.
-opinion: build — the bill email now comes from us, so the payer's inbox says "ClickTooling" on every bill
+opinion: build on — the bill is done (v2.4127); every other customer email still says "ClickTooling" until PR 2
 mockup: not required — the change is the sender name in the inbox list; nothing in any email body moves
 ---
 
@@ -65,14 +65,14 @@ now gets the bill email from us rather than from Stripe, and the inbox shows it 
 
 | Piece | Exists | New |
 |---|---|---|
-| `_shared/emailFrom.ts` | `EMAIL_FROM` | `mailboxWithName(name, mailbox = EMAIL_FROM)` and `COMPANY_EMAIL_FROM` (= the company name on `EMAIL_FROM`'s address) |
-| `_shared/resendSendEmail.ts` | `sendEmailViaResend(…, options)` | `options.from` — defaults to `EMAIL_FROM`; the logged `from_email` follows it |
+| `_shared/emailFrom.ts` · `_shared/mailboxWithName.ts` | `EMAIL_FROM`; `mailboxWithName(name, mailbox)` and `COMPANY_EMAIL_FROM` (= the company name on `EMAIL_FROM`'s address) — shipped v2.4127 | — |
+| `_shared/resendSendEmail.ts` | `sendEmailViaResend(…, options)` with `options.from` (v2.4127) — defaults to `EMAIL_FROM`; the logged `from_email` follows it | — |
 | `src/lib/emailCatalog.ts` | `audience` per email | a guard test: every `customer` sender imports `COMPANY_EMAIL_FROM` (a source scan, like `appDirectoryCheck`) |
 | `email_send_log.from_email` | written per send | nothing — it records whatever `from` was used |
 
 ## The plan (PR train, smallest first)
 
-1. **The helper, and the bill email first.** `mailboxWithName` + `COMPANY_EMAIL_FROM` in `emailFrom.ts`
+1. **The helper, and the bill email first — shipped v2.4127.** `mailboxWithName` + `COMPANY_EMAIL_FROM` in `emailFrom.ts`
    (unit tests: a bare address, `Name <addr>`, a name with quotes or commas is quoted per RFC 5322);
    `sendEmailViaResend` takes `options.from`. `send-contract-for-signature` and
    `send-estimate-to-customer` swap their inline regex for the helper (no change in what they send).

@@ -16,7 +16,7 @@ That's it — the line now has a hosted pay page and card payment, and the custo
 
 ## What the customer gets when you send it
 
-{{button:purple|stripe}}{{button:amber|Send Email invoice}} sends the bill email from ClickTooling — the purple tag means it is a Stripe bill, so they pay on Stripe's page.
+{{button:purple|stripe}}{{button:amber|Send Email invoice}} sends the bill email from Click Plumbing and Electrical — the purple tag means it is a Stripe bill, so they pay on Stripe's page.
 
 :::example The bill email
 **Invoice #1042-2610120930** for 100 Sample St — **$1,850.00**, due Oct 12, 2026

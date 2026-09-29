@@ -1683,6 +1683,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Optional**: `ESTIMATE_PUBLIC_ORIGIN` if link base should not come from the client.
 
+**From**: the estimate's per-trade company name (*Click Plumbing* / *Click Electrical* / *Click Plumbing and Electrical*, `estimateEmailCompanyName`) on `EMAIL_FROM`'s verified address — built by `mailboxWithName` since v2.4127, unchanged in what it sends.
+
 **Email** (v2.2747): the "Letterhead" design from [`_shared/estimateEmailLetterhead.ts`](../supabase/functions/_shared/estimateEmailLetterhead.ts) (dependency-free; the app's Email preview and `src/lib/estimateEmailLetterhead.test.ts` import the same file) — subject `Estimate #N — title — $total · company` (change orders `Change order #N — …`; the subject template setting/override is no longer read), brand banner, heading + meta line (number · `for_address` · send date in `APP_CALENDAR_TZ`), the body template's first paragraph as the opener and the rest as the sign-off (a paragraph holding the accept link is dropped), a total box with *Pricing is good through* from `valid_until` — or, with 2+ options, the option table (*Our recommendation* / *Alternate*) — a bulletproof `bgcolor` button + plain-URL fallback, the acceptance-page footer lines, and *Reply to this email to reach <sender>*. **Reply-To** = the sending user's email; **From** keeps `EMAIL_FROM`'s address with the brand's company as display name.
 
 **Copy**: The body comes from **`resolveEstimateCustomerExperience`** (`supabase/functions/_shared/estimateCustomerExperience.ts`, keep in sync with `src/lib/estimateCustomerExperience.ts`) using **`app_settings`** + row **`customer_experience_overrides`** and template vars **`{{accept_url}}`**, **`{{title}}`**, **`{{estimate_number}}`**. The resolved object — with `emailSubject` replaced by the subject actually sent — is stored as **`customer_experience_sent`** on **`sent`**.
@@ -1746,7 +1748,7 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Portal lookup** (read-only, service role): exactly one non-archived **`people`** row whose `name` equals `person_name`, a **`sub_portal_slugs`** row, and an unrevoked **`sub_portal_links`** row → `https://my.clickplumbing.com/<slug>`; otherwise the band uses the no-portal wording. Nothing is minted to send an email.
 
-**Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY` (optional), `EMAIL_FROM` (address only; the display name is the company)
+**Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY` (optional), `EMAIL_FROM` (address only; the display name is the company — built by `mailboxWithName` since v2.4127, unchanged in what it sends)
 
 **Gateway**: `verify_jwt = false`; JWT validated with **`auth.getUser`** in function.
 
@@ -3374,6 +3376,8 @@ interface SendHazmatNoticeEmailBody {
 ---
 
 ### send-stripe-invoice
+> **v2.4127 — the bill comes from the company**: the bill email and every copy send as [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (`mailboxWithName`, [`_shared/mailboxWithName.ts`](../supabase/functions/_shared/mailboxWithName.ts)); `sendEmailViaResend` takes `options.from` for it and `email_send_log.from_email` records it. Staff emails keep `EMAIL_FROM`. Punch list #53, PR 1.
+
 
 > **v2.4039 — copies carry the statement's code too**: on a live bill, a copy whose address has a statement (`portalByEmail`, v2.3362) gets the same card as the payer's email — [`portalAccountCardHtml`](../supabase/functions/_shared/portalAccountCard.ts), the code as an inline PNG (`content_id: 'portal-qr'`) drawn once per statement per send. One-off addresses and a test bill's single copy carry no statement and no code. **Redeploy required.**
 

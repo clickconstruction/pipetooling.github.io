@@ -12,6 +12,7 @@ import { buildEstimateLetterheadEmail, estimateEmailCompanyName } from '../_shar
 import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
 import { buildCustomerAttachmentSentPayload } from '../_shared/estimateCustomerAttachment.ts'
 import { EMAIL_FROM } from '../_shared/emailFrom.ts'
+import { mailboxWithName } from '../_shared/mailboxWithName.ts'
 import { normalizeSharedEstimateOptions, sharedEstimateOptionTotalCents } from '../_shared/estimateOptions.ts'
 import {
   canResendEstimateLink,
@@ -252,8 +253,7 @@ serve(async (req) => {
     })
     // From keeps EMAIL_FROM's verified address; only the display name becomes the company the
     // customer knows (they never met "ClickTooling").
-    const fromAddress = /<([^>]+)>/.exec(EMAIL_FROM)?.[1]?.trim() ?? EMAIL_FROM
-    const fromMailbox = `${estimateEmailCompanyName(brand)} <${fromAddress}>`
+    const fromMailbox = mailboxWithName(estimateEmailCompanyName(brand), EMAIL_FROM)
     const sentPayload = serializableSnapshot({ ...resolved, emailSubject: mail.subject })
     const estRow = est as {
       customer_attachment_url?: string | null
