@@ -9310,15 +9310,15 @@ export type Database = {
           body_format: string
           body_html: string | null
           cc_emails: string[]
-          co_signer_name: string | null
-          co_signer_email: string | null
           co_signed_at: string | null
-          co_signer_printed_name: string | null
-          co_signer_mode: string | null
           co_signer_consented_at: string | null
+          co_signer_email: string | null
           co_signer_ip: string | null
-          co_signer_user_agent: string | null
+          co_signer_mode: string | null
+          co_signer_name: string | null
+          co_signer_printed_name: string | null
           co_signer_signature_storage_path: string | null
+          co_signer_user_agent: string | null
           created_at: string
           created_by: string | null
           fields: Json
@@ -9368,15 +9368,15 @@ export type Database = {
           body_format?: string
           body_html?: string | null
           cc_emails?: string[]
-          co_signer_name?: string | null
-          co_signer_email?: string | null
           co_signed_at?: string | null
-          co_signer_printed_name?: string | null
-          co_signer_mode?: string | null
           co_signer_consented_at?: string | null
+          co_signer_email?: string | null
           co_signer_ip?: string | null
-          co_signer_user_agent?: string | null
+          co_signer_mode?: string | null
+          co_signer_name?: string | null
+          co_signer_printed_name?: string | null
           co_signer_signature_storage_path?: string | null
+          co_signer_user_agent?: string | null
           created_at?: string
           created_by?: string | null
           fields?: Json
@@ -9426,15 +9426,15 @@ export type Database = {
           body_format?: string
           body_html?: string | null
           cc_emails?: string[]
-          co_signer_name?: string | null
-          co_signer_email?: string | null
           co_signed_at?: string | null
-          co_signer_printed_name?: string | null
-          co_signer_mode?: string | null
           co_signer_consented_at?: string | null
+          co_signer_email?: string | null
           co_signer_ip?: string | null
-          co_signer_user_agent?: string | null
+          co_signer_mode?: string | null
+          co_signer_name?: string | null
+          co_signer_printed_name?: string | null
           co_signer_signature_storage_path?: string | null
+          co_signer_user_agent?: string | null
           created_at?: string
           created_by?: string | null
           fields?: Json
