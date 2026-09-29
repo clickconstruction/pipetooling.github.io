@@ -19,6 +19,8 @@ import { sampleStateFromToken } from '../lib/customerSampleMode'
 import { SampleModeBanner } from '../components/SampleModeBanner'
 import { roomHeadline, roomSubline, ROOM_ROLES, type RoomMessage, type RoomRevision, type RoomRole, type RoomRow, type SubmittalRoomPayload } from '../../supabase/functions/_shared/submittalRoomPayload'
 import type { DecisionKind } from '../../supabase/functions/_shared/submittalReviewActions'
+import { buildProcurementLog, floatText, procurementHeadline, shortDate as logDate, statusText, tagStagesFrom, type ProcurementItemSource, type ProcurementRecord, type ProcurementStage, type StageDates } from '../lib/submittals/procurementLog'
+import type { StageSplitRecord, StageSplitSource } from '../lib/bids/materialsByStage'
 
 // The live build's env carries a trailing slash — strip it so the function URLs read one slash.
 const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string).replace(/\/+$/, '')
@@ -404,6 +406,8 @@ export default function SubmittalRoom() {
               </div>
             ) : null}
 
+            {payload.procurement && rev.current ? <ProcurementCard rev={rev} procurement={payload.procurement} companyName={payload.company.name} /> : null}
+
             {Object.keys(pending).length > 0 ? (
               <div style={{ ...card, marginTop: 10, borderColor: COPPER }} data-testid="room-pending">
                 <div style={{ ...label, color: COPPER }}>Your notes · optional</div>
@@ -535,6 +539,65 @@ export default function SubmittalRoom() {
           </form>
         </div>
       ) : null}
+    </div>
+  )
+}
+
+/**
+ * The procurement card (v2.4087): the office's log for the GC — one line per released
+ * or ordered tag with its status, when it lands and when it is needed. Status and dates
+ * only; the PO and the supply house stay on the office's screen. Derived here with the
+ * same kernel the office uses, from the pieces the room fetch carries.
+ */
+function ProcurementCard({ rev, procurement, companyName }: { rev: RoomRevision; procurement: NonNullable<SubmittalRoomPayload['procurement']>; companyName: string }) {
+  const items: ProcurementItemSource[] = rev.rows
+    .filter((r) => r.tag.trim())
+    .map((r) => ({ tag: r.tag.trim(), product: r.proposed || r.plans || '(no product)', supplyHouse: null, leadTimeDays: r.leadTimeDays ?? null, decision: r.decision ? { kind: r.decision.kind, at: r.decision.at } : null, shared: true }))
+  const records: ProcurementRecord[] = procurement.records.map((x, i) => ({ id: `room-${i}`, tag: x.tag, label: x.label, leadTimeDays: x.leadTimeDays, stage: (x.stage as ProcurementStage | null) ?? null, orderedOn: x.orderedOn, poRef: '', expectedOn: x.expectedOn, deliveredOn: x.deliveredOn, note: x.note, sortOrder: x.sortOrder }))
+  const splits: StageSplitRecord[] = procurement.splits.map((sp) => ({ countRowId: sp.countRowId, lineId: sp.lineId, partId: sp.partId, weights: { rough_in: sp.roughIn, top_out: sp.topOut, trim_set: sp.trimSet }, source: (['hand', 'rule', 'book', 'assembly'].includes(sp.source) ? sp.source : 'hand') as StageSplitSource }))
+  const tagStage = tagStagesFrom(procurement.countRows, splits, items.map((i) => i.tag))
+  const rows = buildProcurementLog({ items, records, tagStage, stageDates: procurement.stageDates as StageDates }).filter((r) => r.status !== 'not_submitted' && r.status !== 'awaiting' || r.isHand)
+  if (rows.length === 0) return null
+  const hasRequired = rows.some((r) => r.requiredOn)
+  return (
+    <div style={{ ...card, marginTop: 10 }} data-testid="room-procurement">
+      <div style={{ ...label, color: COPPER }}>Procurement</div>
+      <div style={{ ...quiet, marginTop: 4 }}>
+        {procurement.lastUpdateAt ? `Updated ${logDate(procurement.lastUpdateAt.slice(0, 10))} by ${companyName}` : `As it stands today, from ${companyName}`} · {procurementHeadline(rows)}
+      </div>
+      <div style={{ overflowX: 'auto', marginTop: 8 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', minWidth: 420 }}>
+          <thead>
+            <tr>
+              {['Tag', 'Status', 'Expected', 'Required', ''].map((h) => (
+                <th key={h} style={{ ...label, textAlign: 'left', padding: '0.25rem 0.4rem', borderBottom: '1px solid var(--border-strong)' }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.key} data-testid="room-procurement-row">
+                <td style={{ padding: '0.3rem 0.4rem', borderBottom: '1px solid var(--border)', fontWeight: 700, whiteSpace: 'nowrap' }}>{r.tag ?? '—'}<div style={{ ...quiet, fontWeight: 400 }}>{r.product}</div></td>
+                <td style={{ padding: '0.3rem 0.4rem', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{statusText(r)}</td>
+                <td style={{ padding: '0.3rem 0.4rem', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{r.deliveredOn ? '—' : r.expectedOn ? logDate(r.expectedOn) : '—'}</td>
+                <td style={{ padding: '0.3rem 0.4rem', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{r.requiredOn ? logDate(r.requiredOn) : '—'}</td>
+                <td style={{ padding: '0.3rem 0.4rem', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>
+                  {r.deliveredOn ? (
+                    <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-green-700)' }}>on site</span>
+                  ) : r.late ? (
+                    <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#b42318' }}>{Math.abs(r.floatDays ?? 0)} d late</span>
+                  ) : r.floatDays != null ? (
+                    <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-green-700)' }}>on time</span>
+                  ) : r.orderBy ? (
+                    <span style={{ ...quiet, fontSize: '0.72rem' }}>{floatText(r)}</span>
+                  ) : null}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div style={{ ...quiet, marginTop: 6 }}>{hasRequired ? 'Required = the start of the stage the item belongs to on the schedule we were given.' : 'Required dates fill in once the job’s stage schedule is set.'}</div>
     </div>
   )
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildGcChecksReport, type ChecksJobIn } from '../jobs/gcChecksApplied'
-import { GC_CHECKS_CSV_HEADER, buildGcChecksAppliedCsv, buildGcChecksAppliedReportHtml, gcChecksCsvFileName, gcChecksReportSubtitle } from './gcChecksAppliedReport'
+import { GC_CHECKS_CSV_HEADER, buildGcChecksAppliedCsv, buildGcChecksAppliedReportHtml, gcChecksCsvFileName, gcChecksReportSubtitle, paidByWords } from './gcChecksAppliedReport'
 
 const GC = 'gc-1'
 
@@ -57,20 +57,37 @@ describe('buildGcChecksAppliedReportHtml', () => {
     expect(html).toContain('<b>$500.00</b> received, not yet applied')
     expect(html).toContain('<b>$1,333.00</b> still open · of which <b>$1,333.00</b> is retainage you hold')
   })
-  it('lists each payment with its lines, its stamps and where it was', () => {
-    expect(html).toContain('#48211')
+  it('lists each payment with its lines grouped under the job, its stamps and where it was', () => {
+    expect(html).toContain('<b>#48211</b>')
     expect(html).toContain('mailed Sep 19 · deposited Sep 25')
-    expect(html).toContain('210 Maple Ct · 1058 Maple, &quot;Ct&quot; · Invoice 1 of 1 <span style="color:#15803d;font-weight:600">job paid in full</span>')
-    expect(html).toContain('4410 Oak Ridge Dr · 1041 Oak Ridge Ph 2 · Invoice 2 of 2')
+    expect(html).toContain('<div style="font-weight:600">210 Maple Ct · 1058 Maple, &quot;Ct&quot; <span style="color:#15803d;font-weight:600">job paid in full</span></div>')
+    expect(html).toContain('<div style="font-weight:600">4410 Oak Ridge Dr · 1041 Oak Ridge Ph 2</div>')
+    expect(html).toContain('padding-left:0.9rem"><span>Invoice 2 of 2</span>')
     expect(html).toContain('not yet applied — tell us the invoice')
+    expect(html).toContain('<th>Was on</th>')
     expect(html).toContain('$12,000.00 was on 210 Maple Ct · 1058 Maple, &quot;Ct&quot; until Sep 26')
     expect(html).toContain('1 earlier payment is not on this sheet')
   })
-  it('rolls each job up and reconciles the open total', () => {
-    expect(html).toContain('#47001 · #48211')
+  it('rolls each job up as Open then Paid in full, with dated paid-by words, and reconciles the open total', () => {
+    expect(html).toContain('<h3>Open</h3>')
+    expect(html).toContain('<h3>Paid in full</h3>')
+    expect(html).toContain('#47001 May 10 · #48211 Sep 24')
     expect(html).toContain('#48211 · Sep 24')
-    expect(html).toContain('Open on 1 job (matches your statement)')
+    expect(html).toContain('Open on 1 job (matches your statement) · retainage held:')
+    expect(html).toContain('1 job paid in full · billed:')
     expect(html).toContain('<span style="color:#15803d;font-weight:600">paid</span>')
+  })
+  it('draws no Was on or Retainage column when nothing would be in them, and keeps rows whole on paper', () => {
+    const bare = buildGcChecksAppliedReportHtml('GC', buildGcChecksReport({ gcId: GC, jobs: jobs.map((j) => ({ ...j, lien_retainage_held: null })) }), { asOfYmd: '2026-09-28' })
+    expect(bare).not.toContain('<th>Was on</th>')
+    expect(bare).not.toContain('Retainage held')
+    expect(bare).toContain('tr { page-break-inside: avoid; break-inside: avoid; }')
+    expect(bare).not.toContain('section { page-break-inside')
+  })
+  it('words paid-by as dates, and folds four or more into a span', () => {
+    expect(paidByWords([])).toBe('—')
+    expect(paidByWords([{ label: '#48102', receivedYmd: '2026-09-10', noNumber: false }, { label: 'check · no number recorded', receivedYmd: '2026-09-24', noNumber: true }])).toBe('#48102 Sep 10 · check Sep 24')
+    expect(paidByWords([1, 2, 3, 4].map((n) => ({ label: 'Payment', receivedYmd: `2026-0${n}-01`, noNumber: false })))).toBe('4 payments, Jan 1 – Apr 1')
   })
 })
 

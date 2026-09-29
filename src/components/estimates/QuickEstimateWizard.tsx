@@ -6,7 +6,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { resolveEstimateMasterUserId } from '../../lib/estimateMasterUser'
 import { notifyDispatchRequestsChanged } from '../../lib/dispatchRequestHelpers'
-import { scheduleDateKeyAddDays, scheduleTodayDateKey } from '../../lib/jobScheduleChicago'
+import { JOB_SCHEDULE_TIMEZONE, scheduleDateKeyAddDays, scheduleTodayDateKey } from '../../lib/jobScheduleChicago'
 import {
   parseBallparkDollars,
   quickEstimateBackTarget,
@@ -15,9 +15,18 @@ import {
   quickEstimateDispatchTitle,
   quickEstimateDraftTitle,
   quickEstimateReferenceSummary,
+  quickEstimateResumeAge,
+  quickEstimateResumeCandidate,
   quickEstimateReviewRows,
+  quickEstimateSentTodayForJob,
+  quickEstimateSentTodayNote,
   quickEstimateWorkLine,
   type QuickEstimateBranch,
+  type QuickEstimateDraftRow,
+  type QuickEstimateSentRow,
+  type QuickEstimateSentToday,
+  type QuickEstimateFieldWriteUp,
+  type QuickEstimateResumeState,
   type QuickEstimateStage,
   type QuickEstimateSummaryInput,
 } from '../../lib/quickEstimate'
@@ -229,6 +238,13 @@ export function QuickEstimateWizard({
   const [ballparkText, setBallparkText] = useState('')
   const [dispatchNote, setDispatchNote] = useState('')
   const [busy, setBusy] = useState(false)
+  /** Already sent one today (v2.4092): the newest write-up sent to Dispatch today for the picked job, read on the review screen. */
+  const [sentToday, setSentToday] = useState<QuickEstimateSentToday | null>(null)
+  /** Resume (v2.4076): the half-done write-up on offer, and whether the check has run for this open. */
+  const [resume, setResume] = useState<QuickEstimateResumeState | null>(null)
+  const [resumeChecked, setResumeChecked] = useState(false)
+  /** The wizard-only marker on the draft (`estimates.field_write_up`), kept whole so writes merge, never clobber. */
+  const fieldWriteUpRef = useRef<QuickEstimateFieldWriteUp | null>(null)
   const estimateIdRef = useRef<string | null>(null)
   const estimateNumberRef = useRef<number | null>(null)
 
@@ -251,6 +267,10 @@ export function QuickEstimateWizard({
     setBallparkText('')
     setDispatchNote('')
     setBusy(false)
+    setResume(null)
+    setResumeChecked(false)
+    setSentToday(null)
+    fieldWriteUpRef.current = null
     estimateIdRef.current = null
     estimateNumberRef.current = null
   }, [])
@@ -315,6 +335,71 @@ export function QuickEstimateWizard({
     }
   }, [open, user?.id])
 
+  /* ---------- already sent one today (v2.4092) ---------- */
+
+  useEffect(() => {
+    if (!open || stage !== 'review' || !pickedJob || !user?.id || branch !== 'change_order') {
+      setSentToday(null)
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      const { data } = await supabase
+        .from('estimates')
+        .select('id, estimate_number, sent_to_dispatch_at, field_write_up')
+        .eq('created_by', user.id)
+        .not('sent_to_dispatch_at', 'is', null)
+        .not('field_write_up', 'is', null)
+        .order('sent_to_dispatch_at', { ascending: false })
+        .limit(10)
+      if (cancelled) return
+      const rows = (data ?? []) as unknown as QuickEstimateSentRow[]
+      setSentToday(quickEstimateSentTodayForJob(rows, pickedJob.id, scheduleTodayDateKey(), (iso) => scheduleTodayDateKey(new Date(iso))))
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, stage, pickedJob, user?.id, branch])
+
+  /* ---------- a half-done write-up (v2.4076) ---------- */
+
+  useEffect(() => {
+    if (!open) {
+      setResumeChecked(false)
+      return
+    }
+    if (!user?.id || resumeChecked || estimateIdRef.current) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const { data } = await supabase
+          .from('estimates')
+          .select('id, estimate_number, doc_kind, customer_id, change_order_fields, line_items_snapshot, field_write_up, updated_at, estimate_field_photos(id)')
+          .eq('created_by', user.id)
+          .eq('status', 'draft')
+          .is('sent_to_dispatch_at', null)
+          .is('sent_at', null)
+          .not('field_write_up', 'is', null)
+          .order('updated_at', { ascending: false })
+          .limit(5)
+        if (cancelled) return
+        // interim cast until gen-types carries estimates.field_write_up
+        const candidate = quickEstimateResumeCandidate((data ?? []) as unknown as QuickEstimateDraftRow[])
+        if (candidate) {
+          setResume(candidate)
+          setStage('resume')
+        }
+      } catch {
+        // A failed read never blocks a new write-up.
+      } finally {
+        if (!cancelled) setResumeChecked(true)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, user?.id, resumeChecked])
+
   /* ---------- a door that knows the job (v2.4047) ---------- */
 
   const openRef = useRef(open)
@@ -326,7 +411,7 @@ export function QuickEstimateWizard({
       seededJobRef.current = null
       return
     }
-    if (!initialJobId || !user?.id || seededJobRef.current === initialJobId || estimateIdRef.current) return
+    if (!initialJobId || !user?.id || !resumeChecked || resume != null || seededJobRef.current === initialJobId || estimateIdRef.current) return
     seededJobRef.current = initialJobId
     void (async () => {
       const { data } = await supabase
@@ -342,7 +427,7 @@ export function QuickEstimateWizard({
       }
       await goWorkFromJobRef.current?.({ id: j.id, hcp: j.hcp_number ?? '', name: j.job_name ?? '', address: j.job_address ?? '', customerId: j.customer_id, day: null })
     })()
-  }, [open, initialJobId, user?.id])
+  }, [open, initialJobId, user?.id, resumeChecked, resume])
 
   /* ---------- "a different job…" search ---------- */
 
@@ -444,15 +529,18 @@ export function QuickEstimateWizard({
     async (branchArg: QuickEstimateBranch, opts: { job?: WizardJob | null; customer?: WizardCustomer | null }) => {
       if (!user?.id) return null
       if (estimateIdRef.current) {
-        await supabase
-          .from('estimates')
-          .update({
-            customer_id: opts.job?.customerId ?? opts.customer?.id ?? null,
-            doc_kind: branchArg,
-            ...(branchArg === 'change_order' ? {} : { change_order_fields: null }),
-          })
-          .eq('id', estimateIdRef.current)
-          .eq('status', 'draft')
+        const marker: QuickEstimateFieldWriteUp = {
+          ...(fieldWriteUpRef.current ?? { started_at: new Date().toISOString(), job: null }),
+          job: opts.job ? { id: opts.job.id, hcp: opts.job.hcp, name: opts.job.name, address: opts.job.address, customer_id: opts.job.customerId } : null,
+        }
+        fieldWriteUpRef.current = marker
+        const patch: Record<string, unknown> = {
+          customer_id: opts.job?.customerId ?? opts.customer?.id ?? null,
+          doc_kind: branchArg,
+          field_write_up: marker,
+          ...(branchArg === 'change_order' ? {} : { change_order_fields: null }),
+        }
+        await supabase.from('estimates').update(patch).eq('id', estimateIdRef.current).eq('status', 'draft')
         return estimateIdRef.current
       }
       const masterUserId = await resolveEstimateMasterUserId(user.id, role)
@@ -460,18 +548,26 @@ export function QuickEstimateWizard({
         showToast('Could not determine account owner for the draft.', 'error')
         return null
       }
+      const marker: QuickEstimateFieldWriteUp = {
+        started_at: new Date().toISOString(),
+        job: opts.job ? { id: opts.job.id, hcp: opts.job.hcp, name: opts.job.name, address: opts.job.address, customer_id: opts.job.customerId } : null,
+      }
+      fieldWriteUpRef.current = marker
+      // interim cast until gen-types carries estimates.field_write_up
+      const insertRow: Record<string, unknown> = {
+        master_user_id: masterUserId,
+        created_by: user.id,
+        title: quickEstimateDraftTitle(branchArg, freeTypedCustomer),
+        line_items_snapshot: [],
+        terms_snapshot: '',
+        total_cents: 0,
+        customer_id: opts.job?.customerId ?? opts.customer?.id ?? null,
+        field_write_up: marker,
+        ...(branchArg === 'change_order' ? { doc_kind: 'change_order', change_order_fields: {} } : {}),
+      }
       const { data, error } = await supabase
         .from('estimates')
-        .insert({
-          master_user_id: masterUserId,
-          created_by: user.id,
-          title: quickEstimateDraftTitle(branchArg, freeTypedCustomer),
-          line_items_snapshot: [],
-          terms_snapshot: '',
-          total_cents: 0,
-          customer_id: opts.job?.customerId ?? opts.customer?.id ?? null,
-          ...(branchArg === 'change_order' ? { doc_kind: 'change_order', change_order_fields: {} } : {}),
-        })
+        .insert(insertRow as never)
         .select('id, estimate_number')
         .single()
       if (error || !data) {
@@ -507,8 +603,12 @@ export function QuickEstimateWizard({
     if (branch === 'change_order') {
       patch.change_order_fields = buildCoFields()
     }
+    if (fieldWriteUpRef.current) {
+      fieldWriteUpRef.current = { ...fieldWriteUpRef.current, phone: freeTypedPhone.trim(), free_customer: freeTypedCustomer.trim() }
+      patch.field_write_up = fieldWriteUpRef.current
+    }
     await supabase.from('estimates').update(patch).eq('id', id).eq('status', 'draft')
-  }, [branch, freeTypedCustomer, buildLines, buildCoFields])
+  }, [branch, freeTypedCustomer, freeTypedPhone, buildLines, buildCoFields])
 
   /* ---------- photos ---------- */
 
@@ -605,6 +705,83 @@ export function QuickEstimateWizard({
   )
 
   goWorkFromJobRef.current = goWorkFromJob
+
+  /* ---------- resume (v2.4076) ---------- */
+
+  /** Pick it back up: the draft's fields, photos and job come back and the wizard lands on the work screen. */
+  const pickUpResume = useCallback(async () => {
+    const r = resume
+    if (!r || !user?.id) return
+    setBusy(true)
+    try {
+      estimateIdRef.current = r.id
+      estimateNumberRef.current = r.estimateNumber
+      fieldWriteUpRef.current = {
+        started_at: r.startedAt,
+        job: r.job.id ? r.job : null,
+        phone: r.phone,
+        free_customer: r.freeTypedCustomer,
+      }
+      setBranch(r.branch)
+      setPickedJob(r.job.id ? { id: r.job.id, hcp: r.job.hcp, name: r.job.name, address: r.job.address, customerId: r.job.customer_id, day: null } : null)
+      setDescription(r.description)
+      setCoReason(r.coReason)
+      setCoImpact(r.coImpact)
+      setCoResponseBy(r.coResponseBy)
+      setBallparkText(r.ballparkText)
+      setFreeTypedPhone(r.phone)
+      setFreeTypedCustomer(r.freeTypedCustomer)
+      if (r.branch === 'estimate' && r.customerId) {
+        const { data: c } = await supabase.from('customers').select('id, name, address').eq('id', r.customerId).maybeSingle()
+        const cust = c as { id: string; name: string | null; address: string | null } | null
+        setPickedCustomer(cust ? { id: cust.id, name: cust.name ?? '', address: cust.address } : null)
+      }
+      if (r.photoCount > 0) {
+        const { data: rows } = await supabase
+          .from('estimate_field_photos')
+          .select('id, storage_path, filename')
+          .eq('estimate_id', r.id)
+          .order('created_at', { ascending: true })
+        const list: WizardPhoto[] = []
+        for (const p of (rows ?? []) as Array<{ id: string; storage_path: string; filename: string | null }>) {
+          const { data: signed } = await supabase.storage.from(QUICK_ESTIMATE_PHOTO_BUCKET).createSignedUrl(p.storage_path, 3600)
+          list.push({ id: p.id, previewUrl: signed?.signedUrl ?? null, filename: p.filename ?? 'photo' })
+        }
+        setPhotos(list)
+      }
+      setResume(null)
+      setStage('work')
+    } finally {
+      setBusy(false)
+    }
+  }, [resume, user?.id])
+
+  /** Start fresh: the old draft stays in Estimates → Unsent (and is offered again next time). */
+  const startFresh = useCallback(() => {
+    setResume(null)
+    setStage('kind')
+  }, [])
+
+  /** Leave it for the office: the draft stays, but the wizard stops offering it. */
+  const leaveForOffice = useCallback(async () => {
+    const r = resume
+    if (!r) return
+    setBusy(true)
+    try {
+      const marker: QuickEstimateFieldWriteUp = {
+        started_at: r.startedAt,
+        job: r.job.id ? r.job : null,
+        phone: r.phone,
+        free_customer: r.freeTypedCustomer,
+        dismissed_at: new Date().toISOString(),
+      }
+      const patch: Record<string, unknown> = { field_write_up: marker }
+      await supabase.from('estimates').update(patch).eq('id', r.id).eq('status', 'draft')
+    } finally {
+      setBusy(false)
+      startFresh()
+    }
+  }, [resume, startFresh])
 
   const goWorkFromCustomer = useCallback(
     async (customer: WizardCustomer | null) => {
@@ -772,8 +949,40 @@ export function QuickEstimateWizard({
             </button>
           )}
 
+          {stage === 'resume' && resume && (
+            <>
+              <h2 style={qStyle}>Pick up where you left off?</h2>
+              <p style={subStyle}>You have a write-up you never sent.</p>
+              <div style={{ ...bigOptionStyle, cursor: 'default' }}>
+                <span style={{ fontWeight: 700, display: 'block', fontSize: '1rem' }}>
+                  {resume.branch === 'change_order'
+                    ? `CO${resume.job.id ? ` · ${resume.job.hcp.trim() ? `HCP ${resume.job.hcp.trim()} — ${resume.job.name}` : resume.job.name}` : ''}`
+                    : `Estimate${resume.freeTypedCustomer ? ` · ${resume.freeTypedCustomer}` : ' · new work'}`}
+                </span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block' }}>
+                  {[quickEstimateResumeAge(resume.startedAt, new Date().toISOString()), resume.photoCount > 0 ? `${resume.photoCount} photo${resume.photoCount === 1 ? '' : 's'}` : null]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </span>
+                {resume.description ? (
+                  <span style={{ fontSize: '0.85rem', display: 'block', marginTop: 6, whiteSpace: 'pre-wrap' }}>
+                    {resume.description.length > 140 ? `${resume.description.slice(0, 140)}…` : resume.description}
+                  </span>
+                ) : null}
+              </div>
+              <button type="button" style={nextStyle} disabled={busy} onClick={() => void pickUpResume()}>
+                Pick it back up
+              </button>
+              <button type="button" style={skipStyle} disabled={busy} onClick={startFresh}>
+                Start fresh — keep that one in Unsent
+              </button>
+              <button type="button" style={{ ...skipStyle, color: 'var(--text-muted)' }} disabled={busy} onClick={() => void leaveForOffice()}>
+                Leave it for the office — don't ask again
+              </button>
+            </>
+          )}
           {stage === 'kind' && initialJobId != null && (
-            <p style={subStyle}>Opening the job…</p>
+            <p style={subStyle}>{resumeChecked ? 'Opening the job…' : 'One moment…'}</p>
           )}
           {stage === 'kind' && initialJobId == null && (
             <>
@@ -1059,6 +1268,18 @@ export function QuickEstimateWizard({
                 value={dispatchNote}
                 onChange={(e) => setDispatchNote(e.target.value)}
               />
+              {sentToday ? (
+                <p
+                  role="status"
+                  style={{ margin: 0, padding: '0.6rem 0.85rem', borderRadius: 10, background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', color: 'var(--text)', fontSize: '0.875rem' }}
+                >
+                  {quickEstimateSentTodayNote(
+                    sentToday,
+                    new Date(sentToday.sentAtIso).toLocaleTimeString('en-US', { timeZone: JOB_SCHEDULE_TIMEZONE, hour: 'numeric', minute: '2-digit' }).toLowerCase(),
+                  )}{' '}
+                  <span style={{ color: 'var(--text-muted)' }}>Send this one too if it is different work; otherwise the office already has it.</span>
+                </p>
+              ) : null}
               <button type="button" style={sendStyle} disabled={busy} onClick={() => void send()}>
                 {busy ? 'Sending…' : 'Send to Dispatch'}
               </button>

@@ -33,6 +33,9 @@ export type SubmittalItemPatch = {
   sheet_file: number | null
   sheet_pages: number[]
   sheet_source: 'estimator' | null
+  /** By hand (v2.4090): the tag and the product, typed on a draft — a row with no pick behind it. */
+  tag?: string
+  submitted_label?: string | null
   /** 5b: a call entered from the reviewer's file, on their behalf. */
   entered?: EnteredChoice | null
   /** 5b: take the entered call back off the row. */
@@ -64,7 +67,9 @@ const chipButton = (on: boolean): CSSProperties => ({
 const fieldLabel: CSSProperties = { fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 const inputStyle: CSSProperties = { padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, font: 'inherit', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-strong)' }
 
-export function SubmittalItemEditDialog({ item, sourceFiles, people = [], canEnterDecision = false, onSave, onClose }: { item: SubmittalItemRow; sourceFiles: SourceFile[]; /** the room's people, for the on-behalf-of picker (5b) */ people?: SubmittalPersonRow[]; /** the revision was shared, so a reviewer's call makes sense */ canEnterDecision?: boolean; onSave: (patch: SubmittalItemPatch) => void; onClose: () => void }) {
+export function SubmittalItemEditDialog({ item, sourceFiles, people = [], canEnterDecision = false, canEditProduct = false, onSave, onClose }: { item: SubmittalItemRow; sourceFiles: SourceFile[]; /** the room's people, for the on-behalf-of picker (5b) */ people?: SubmittalPersonRow[]; /** the revision was shared, so a reviewer's call makes sense */ canEnterDecision?: boolean; /** a draft: the tag and the product can be typed (v2.4090) */ canEditProduct?: boolean; onSave: (patch: SubmittalItemPatch) => void; onClose: () => void }) {
+  const [tagText, setTagText] = useState(item.tag)
+  const [submittedText, setSubmittedText] = useState(item.submitted_label ?? [item.submitted_manufacturer, item.submitted_model].filter(Boolean).join(' '))
   // 5b · a call entered on a reviewer's behalf
   const currentDecision = asDecision(item.review_decision)
   const [enterOpen, setEnterOpen] = useState(false)
@@ -99,9 +104,16 @@ export function SubmittalItemEditDialog({ item, sourceFiles, people = [], canEnt
       <div role="dialog" aria-modal="true" aria-label={`Edit ${item.tag.trim() || 'accessory'}`} style={{ background: 'var(--surface)', borderRadius: 8, maxWidth: 600, width: '100%', boxShadow: '0 10px 40px rgba(0,0,0,0.2)', padding: '1.1rem 1.25rem 0.9rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }} onMouseDown={(e) => e.stopPropagation()}>
         <div>
           <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'var(--text-strong)' }}>{title}</h3>
-          <p style={{ margin: '0.25rem 0 0', fontSize: '0.8125rem', color: 'var(--text-base)' }}>
-            <span style={{ color: 'var(--text-muted)' }}>Submitted</span> {item.submitted_label ?? '—'}
-          </p>
+          {canEditProduct ? (
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.4rem' }}>
+              <input type="text" aria-label="Tag" placeholder="tag (WC-1)" value={tagText} onChange={(e) => setTagText(e.target.value)} style={{ padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, font: 'inherit', fontSize: '0.8125rem', width: '7rem', background: 'var(--surface)', color: 'var(--text-strong)' }} />
+              <input type="text" aria-label="Submitted product" placeholder="the product you are submitting — make, model, size" value={submittedText} onChange={(e) => setSubmittedText(e.target.value)} style={{ padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, font: 'inherit', fontSize: '0.8125rem', flex: 1, minWidth: '14rem', background: 'var(--surface)', color: 'var(--text-strong)' }} />
+            </div>
+          ) : (
+            <p style={{ margin: '0.25rem 0 0', fontSize: '0.8125rem', color: 'var(--text-base)' }}>
+              <span style={{ color: 'var(--text-muted)' }}>Submitted</span> {item.submitted_label ?? '—'}
+            </p>
+          )}
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
@@ -249,6 +261,7 @@ export function SubmittalItemEditDialog({ item, sourceFiles, people = [], canEnt
                   sheet_file: file && pages.length > 0 ? sheetFile : null,
                   sheet_pages: file ? pages : [],
                   sheet_source: file && pages.length > 0 ? 'estimator' : null,
+                  ...(canEditProduct ? { tag: tagText.trim().toUpperCase(), submitted_label: submittedText.trim() || null } : {}),
                   entered,
                   clearDecision: clearDecision && !entered,
                 })

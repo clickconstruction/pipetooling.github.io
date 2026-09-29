@@ -4,7 +4,16 @@ import { supabase } from '../../lib/supabase'
 import type { BillingStripeModePref } from '../../lib/billingStripeModePref'
 import { stripeModeInvokeBody } from '../../lib/billingStripeModePref'
 import { readEdgeFunctionErrorBody } from '../../lib/readEdgeFunctionErrorBody'
+import { sendBackStripeBilledLine } from '../../lib/voidStripeInvoiceForRevert'
 import type { InvoiceWithJobForBillView } from './HostedStripeBillPanel'
+
+/** What the modal did, for the host's toast. */
+export type UnwindStripeOobResult = {
+  /** The bill line was sent back after the undo (the job is Ready to Bill when no other billed line remains). */
+  sentBack: boolean
+  /** The undo succeeded but the send-back did not — the bill stays Billed; View bill's send-back can finish it. */
+  sendBackError?: string
+}
 
 export default function UnwindStripeOobPaymentModal({
   invoice,
@@ -12,22 +21,35 @@ export default function UnwindStripeOobPaymentModal({
   open,
   onClose,
   onSuccess,
+  initialReason,
+  sendBackDefault = true,
+  zIndex,
 }: {
-  invoice: InvoiceWithJobForBillView | null
+  invoice: Pick<InvoiceWithJobForBillView, 'id' | 'amount' | 'job_id'> | null
   stripeModeForBilling: BillingStripeModePref
   open: boolean
   onClose: () => void
-  onSuccess: () => void | Promise<void>
+  onSuccess: (result: UnwindStripeOobResult) => void | Promise<void>
+  /** v2.4082: the reason the door was opened with (Edit Job's "Check didn't clear…" prefills it). */
+  initialReason?: string
+  /**
+   * v2.4082: Stripe never reopens a paid invoice, so after the undo the bill can
+   * only be collected by billing again — the send-back is on unless the host says otherwise.
+   */
+  sendBackDefault?: boolean
+  zIndex?: number
 }) {
   const [reason, setReason] = useState('')
+  const [sendBack, setSendBack] = useState(sendBackDefault)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     if (!open) return
-    setReason('')
+    setReason(initialReason ?? '')
+    setSendBack(sendBackDefault)
     setError(null)
-  }, [open, invoice?.id])
+  }, [open, invoice?.id, initialReason, sendBackDefault])
 
   async function submit() {
     if (!invoice) return
@@ -65,7 +87,23 @@ export default function UnwindStripeOobPaymentModal({
           payload.warning ? `${payload.error} (${payload.warning})` : payload.error,
         )
       }
-      await onSuccess()
+      if (sendBack) {
+        const back = await sendBackStripeBilledLine({
+          invoiceId: invoice.id,
+          jobId: invoice.job_id,
+          stripeModeForBilling,
+          accessToken: token,
+        })
+        if (!back.ok) {
+          await onSuccess({ sentBack: false, sendBackError: back.message })
+          onClose()
+          return
+        }
+        await onSuccess({ sentBack: true })
+        onClose()
+        return
+      }
+      await onSuccess({ sentBack: false })
       onClose()
     } catch (e: unknown) {
       if (e instanceof FunctionsHttpError) {
@@ -92,7 +130,7 @@ export default function UnwindStripeOobPaymentModal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 12000,
+        zIndex: zIndex ?? 12000,
         padding: '1rem',
       }}
       onClick={onClose}
@@ -119,6 +157,23 @@ export default function UnwindStripeOobPaymentModal({
           moves the invoice back to <strong>Billed</strong> and removes the linked payment in ClickTooling. Only use
           when the customer did not actually pay or the close was a mistake.
         </p>
+        <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-700)', lineHeight: 1.5 }}>
+          Stripe keeps the old invoice as paid and reversed, so its pay link cannot be used again. To collect, the
+          bill has to be billed again with a fresh invoice.
+        </p>
+        <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer', marginBottom: '0.75rem', fontSize: '0.875rem' }}>
+          <input
+            type="checkbox"
+            checked={sendBack}
+            onChange={(e) => setSendBack(e.target.checked)}
+            style={{ marginTop: 3 }}
+            data-testid="unwind-oob-send-back"
+          />
+          <span>
+            Send the bill back to <strong>Ready to Bill</strong> so it can be billed again (recommended) — the
+            billed line is removed and Bill Customer sends a fresh invoice.
+          </span>
+        </label>
         <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
           Invoice amount:{' '}
           <strong style={{ fontVariantNumeric: 'tabular-nums' }}>
@@ -177,7 +232,7 @@ export default function UnwindStripeOobPaymentModal({
               fontWeight: 500,
             }}
           >
-            {submitting ? 'Working…' : 'Undo out-of-band payment'}
+            {submitting ? 'Working…' : sendBack ? 'Undo and send back' : 'Undo out-of-band payment'}
           </button>
         </div>
       </div>

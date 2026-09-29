@@ -6,6 +6,8 @@ import { chunkIds } from '../lib/supabasePaging'
 export type BilledLienClockJob = {
   id: string
   customer_address_id: string | null
+  /** A GC on the job — the runway then asks whether the § 53.056 notice is recorded (v2.4096). */
+  gc_customer_id: string | null
 }
 
 export type BilledLienClock = {
@@ -15,19 +17,23 @@ export type BilledLienClock = {
   filedYmd: string | null
   /** A live release of record; null when none. */
   releasedYmd: string | null
+  /** 'YYYY-MM' months the job's live § 53.056 notices say they cover (sub jobs; empty otherwise). */
+  noticedMonths: string[]
+  /** A live § 53.056 notice exists on the job, whatever months it lists. */
+  noticeOnFile: boolean
 }
 
 /**
  * The lien-clock facts the Pipeline's Billed and Collections rows need for
  * their runway (v2.4051): each job's property kind (the residential clock is
- * a month shorter) and whether an affidavit or a release is already on
- * file. Two small reads, chunked; null while loading, empty on error so the
+ * a month shorter), whether an affidavit or a release is already on file, and
+ * which months a sub job's § 53.056 notices cover (v2.4096). Two small reads, chunked; null while loading, empty on error so the
  * rows simply draw no runway. Keyed on the job ids so a re-rendered but
  * unchanged list does not refetch.
  */
 export function useBilledLienClocks(jobs: ReadonlyArray<BilledLienClockJob> | null): Record<string, BilledLienClock> | null {
   const [byJob, setByJob] = useState<Record<string, BilledLienClock> | null>(null)
-  const key = jobs ? jobs.map((j) => `${j.id}:${j.customer_address_id ?? ''}`).join('|') : ''
+  const key = jobs ? jobs.map((j) => `${j.id}:${j.customer_address_id ?? ''}:${j.gc_customer_id ?? ''}`).join('|') : ''
 
   useEffect(() => {
     if (!jobs || jobs.length === 0) {
@@ -50,19 +56,28 @@ export function useBilledLienClocks(jobs: ReadonlyArray<BilledLienClockJob> | nu
         }
         const filedByJob = new Map<string, string>()
         const releasedByJob = new Map<string, string>()
+        const noticedByJob = new Map<string, Set<string>>()
+        const noticeOnFile = new Set<string>()
         for (const chunk of chunkIds(jobIds)) {
           if (chunk.length === 0) continue
           const rows = await withSupabaseRetry(
             () =>
               supabase
                 .from('job_lien_filings')
-                .select('job_id, kind, filed_at, created_at')
+                .select('job_id, kind, filed_at, created_at, months_covered')
                 .in('job_id', chunk)
-                .in('kind', ['affidavit', 'release_of_record'])
+                .in('kind', ['affidavit', 'release_of_record', 'notice_53_056'])
                 .is('voided_at', null),
             'lien runway: filings',
           )
-          for (const r of (rows ?? []) as { job_id: string; kind: string; filed_at: string | null; created_at: string }[]) {
+          for (const r of (rows ?? []) as { job_id: string; kind: string; filed_at: string | null; created_at: string; months_covered: string[] | null }[]) {
+            if (r.kind === 'notice_53_056') {
+              noticeOnFile.add(r.job_id)
+              const set = noticedByJob.get(r.job_id) ?? new Set<string>()
+              for (const m of r.months_covered ?? []) set.add(m.slice(0, 7))
+              noticedByJob.set(r.job_id, set)
+              continue
+            }
             const when = (r.filed_at ?? r.created_at ?? '').slice(0, 10)
             if (!when) continue
             if (r.kind === 'affidavit') {
@@ -81,6 +96,8 @@ export function useBilledLienClocks(jobs: ReadonlyArray<BilledLienClockJob> | nu
             propertyKind: j.customer_address_id ? kindById.get(j.customer_address_id) ?? '' : '',
             filedYmd: filedByJob.get(j.id) ?? null,
             releasedYmd: releasedByJob.get(j.id) ?? null,
+            noticedMonths: [...(noticedByJob.get(j.id) ?? [])].sort(),
+            noticeOnFile: noticeOnFile.has(j.id),
           }
         }
         setByJob(next)

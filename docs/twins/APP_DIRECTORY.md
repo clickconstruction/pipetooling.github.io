@@ -226,8 +226,9 @@ Global search (jobs/bids/customers by name or J#/B#/C#), Inbox, Task dispatch/ad
 gear menu (theme, sign out). The 🤖 DIGITAL TWIN banner lives here when you are a twin.
 On a phone with Dispatch Mode on, an assistant / controller gets the **phone dock** instead of
 the hamburger and gear: a bottom bar of Jobs (`/jobs?tab=stages`) · Schedule
-(`/dispatch-mode/schedule`) · Quickfill · Inbox (`/dispatch-mode/inbox`) · More (a sheet with
-every page, the mode switches and Help / Settings / Sign out); hold a slot to swap it.
+(`/dispatch-mode/schedule`) · PO (`/dispatch-mode/po`) · Inbox (`/dispatch-mode/inbox`) · More (a sheet
+with *The dock* row — tap a slot there to swap it — every page, the mode switches and Help /
+Settings / Sign out); holding a slot on the bar swaps it too.
 
 ### /pay/:id — Pay a bill (public)
 What a scanned pay code opens (v2.3754): the bill's number and job, what is still owed, then

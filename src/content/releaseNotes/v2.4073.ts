@@ -3,11 +3,11 @@ import type { ReleaseNote } from '../../lib/releaseNotes'
 const note: ReleaseNote = {
   version: 'v2.4073',
   date: '2026-09-28',
-  title: 'Jobs → Stages: the billed-money figures load from their own piece',
+  title: 'Subs on a phone: the sheet form’s Save is no longer under the bottom bar',
   kind: 'fix',
   highlights: [
-    'Behind the scenes: the customer pay speeds, promised pay dates, promise records and payment-chase call log that Billed Awaiting Payment uses now load from one shared piece instead of inside the Stages page.',
-    'Nothing changes on screen: the same people see the same figures, and a figure that cannot load still just stays hidden.',
+    'Opening a sub’s sheet from Subs → Work (or → Pay) on a phone with Dispatch Mode on drew the form behind the bottom bar, so its Save button was half hidden. The form now sits above the bar, like every other sheet on a phone.',
+    'The same for the small dialogs the form opens (add a subcontractor, a book entry).',
   ],
 }
 

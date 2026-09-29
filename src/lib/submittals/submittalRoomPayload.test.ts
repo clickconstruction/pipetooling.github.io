@@ -25,7 +25,7 @@ describe('the customer\'s words', () => {
 
   it('never carries a price, a house or a chip word onto the row', () => {
     const row = roomRowFrom(item({ tag: 'DWH-1', status: 'alternate', specified_manufacturer: 'Rheem', specified_model: 'RH375', specified_description: '40 gal', submitted_label: 'BRADFORD WHITE RE2HP50 50 GAL', reason_kind: 'lead_time', lead_time_days: 7, sheet_pages: [5] }))
-    expect(row).toEqual({ id: 'i', tag: 'DWH-1', kind: 'differs', plans: 'Rheem RH375 · 40 gal', proposed: 'BRADFORD WHITE RE2HP50 50 GAL', why: 'The specified product has a long lead time · about 1 week.', performanceChange: false, sheetPages: 1, decision: null })
+    expect(row).toEqual({ id: 'i', tag: 'DWH-1', kind: 'differs', plans: 'Rheem RH375 · 40 gal', proposed: 'BRADFORD WHITE RE2HP50 50 GAL', why: 'The specified product has a long lead time · about 1 week.', performanceChange: false, sheetPages: 1, decision: null, leadTimeDays: 7 })
     expect(JSON.stringify(row)).not.toMatch(/alternate|\$|NWS/i)
   })
 

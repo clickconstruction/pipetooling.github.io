@@ -1,4 +1,4 @@
-import { filingDeadlineForMonth } from './lienDeadlines'
+import { filingDeadlineForMonth, noticeDeadlineForMonth } from './lienDeadlines'
 import { formatYmdMonthDay } from './billedExpectedPay'
 import { DATED_FROM_CREATION_WORDS } from './lienDesk'
 
@@ -16,6 +16,10 @@ import { DATED_FROM_CREATION_WORDS } from './lienDesk'
  * Rules, in order:
  * - nothing open, or a filed affidavit released → nothing to draw;
  * - an affidavit on file → "lien filed <day>", the pay dot alone;
+ * - a sub job (a GC on the job) whose § 53.056 notice for the work month is
+ *   not recorded → the notice is the first deadline: a hollow flag ahead of
+ *   the lien flag and "send the notice"; a notice window already closed
+ *   means the lien for that month is gone (v2.4096);
  * - no last work month → the job's creation month stands in, as on the Lien
  *   desk (`datedFromCreation`); with neither, nothing;
  * - the window already closed → "lien gone · window closed <day>";
@@ -28,7 +32,7 @@ import { DATED_FROM_CREATION_WORDS } from './lienDesk'
  * Pure: every input is a value another kernel or a row already carries.
  */
 
-export type LienRunwayState = 'none' | 'filed' | 'closed' | 'file_first' | 'room' | 'no_pay'
+export type LienRunwayState = 'none' | 'filed' | 'closed' | 'notice_due' | 'file_first' | 'room' | 'no_pay'
 export type LienRunwayTone = 'green' | 'amber' | 'red' | 'grey'
 
 export type LienRunwayInput = {
@@ -47,6 +51,12 @@ export type LienRunwayInput = {
   filedYmd: string | null
   /** A release of record on file (the lien is discharged). */
   releasedYmd: string | null
+  /** A GC on the job — we are a subcontractor, and § 53.056 wants a notice to the owner and the GC before any lien (v2.4096). */
+  isSub?: boolean
+  /** 'YYYY-MM' months the job's live § 53.056 notices say they cover. */
+  noticedMonths?: ReadonlyArray<string>
+  /** A live notice that lists no months still counts as the work month's notice. */
+  anyNoticeOnFile?: boolean
 }
 
 export type LienRunwayMarks = {
@@ -56,6 +66,8 @@ export type LienRunwayMarks = {
   pay: { days: number; pct: number } | null
   /** The lien flag. */
   lien: { days: number; pct: number }
+  /** A sub job's § 53.056 notice: hollow (owed) or a check (recorded); null on direct jobs or once its date is behind us. */
+  notice: { days: number; pct: number; done: boolean } | null
   /** The colored run between the two marks: 'room' (green) or 'short' (red hatching); null with one mark. */
   gap: { fromPct: number; toPct: number; kind: 'room' | 'short' } | null
 }
@@ -75,6 +87,10 @@ export type LienPayRunway = {
   lienByYmd: string
   /** Days from today to the flag (negative once closed); null when unknown. */
   daysToLien: number | null
+  /** The § 53.056 notice date for the work month on a sub job, 'YYYY-MM-DD'; '' on direct jobs or when unknown. */
+  noticeByYmd: string
+  /** Days from today to the notice date; null when there is none. */
+  daysToNotice: number | null
   /** The residential date is shown because the property kind is not set. */
   kindAssumed: boolean
   /** No clock hours — the clock counts from the month the job was created. */
@@ -82,7 +98,7 @@ export type LienPayRunway = {
   /** The right-edge label under the track ('' when there is no track). */
   endLabel: string
   marks: LienRunwayMarks | null
-  /** Ascending = tightest first: file-first rows, then flags standing alone, then rows with room; closed and filed last. */
+  /** Ascending = tightest first: notices owed and file-first rows, then flags standing alone, then rows with room; closed and filed last. */
   sortKey: number
 }
 
@@ -98,6 +114,8 @@ const NONE: LienPayRunway = {
   chipLabel: '',
   lienByYmd: '',
   daysToLien: null,
+  noticeByYmd: '',
+  daysToNotice: null,
   kindAssumed: false,
   datedFromCreation: false,
   endLabel: '',
@@ -181,18 +199,52 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
   const basis = basisWords(lastWork, input.propertyKind, kindAssumed, datedFromCreation)
   const kindNote = kindAssumed ? ` ${KIND_ASSUMED_NOTE}` : ''
   const lienWords = formatYmdMonthDay(lienBy)
+  const wordsOf = (lines: string[]) => lines.join(' · ')
+
+  // § 53.056: a sub's notice for the work month comes before any lien (v2.4096).
+  const isSub = input.isSub === true
+  const workMonth = lastWork.slice(0, 7)
+  const kindEff = input.propertyKind === 'non_residential' ? 'non_residential' : 'residential'
+  const noticeBy = isSub ? noticeDeadlineForMonth(lastWork, kindEff) : ''
+  const noticedMonths = input.noticedMonths ?? []
+  const noticeSent = isSub && (noticedMonths.includes(workMonth) || (input.anyNoticeOnFile === true && noticedMonths.length === 0))
+  const daysToNotice = noticeBy ? daysBetweenYmd(today, noticeBy) : null
+  const noticeOwed = isSub && !noticeSent && daysToNotice != null
+  const noticeWords = noticeBy ? formatYmdMonthDay(noticeBy) : ''
+  const noticeNote = isSub && noticeSent ? ' The § 53.056 notice for this month is recorded.' : ''
+
+  if (noticeOwed && daysToNotice < 0) {
+    return {
+      ...NONE,
+      state: 'closed',
+      tone: 'red',
+      words: wordsOf(['lien gone', `notice window closed ${noticeWords}`]),
+      lines: ['lien gone', `notice window closed ${noticeWords}`],
+      title: `The § 53.056 notice for this work month was due ${noticeWords} and none is recorded, so the lien for it is gone. The money is still owed — Collections, or the Legal desk. ${basis}.${kindNote}`,
+      chipLabel: 'lien gone',
+      lienByYmd: lienBy,
+      daysToLien,
+      noticeByYmd: noticeBy,
+      daysToNotice,
+      kindAssumed,
+      datedFromCreation,
+      sortKey: 2_000_000 + daysToNotice,
+    }
+  }
 
   if (daysToLien < 0) {
     return {
       ...NONE,
       state: 'closed',
       tone: 'red',
-      words: `lien gone · window closed ${lienWords}`,
+      words: wordsOf(['lien gone', `window closed ${lienWords}`]),
       lines: ['lien gone', `window closed ${lienWords}`],
       title: `The § 53.052 window closed ${lienWords} with nothing filed. The lien is gone; the money is still owed — Collections, or the Legal desk. ${basis}.${kindNote}`,
       chipLabel: 'lien gone',
       lienByYmd: lienBy,
       daysToLien,
+      noticeByYmd: noticeBy,
+      daysToNotice,
       kindAssumed,
       datedFromCreation,
       sortKey: 2_000_000 + daysToLien,
@@ -209,60 +261,92 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
   const pct = (d: number) => Math.round((1000 * d) / endDays) / 10
   const lienMark = { days: daysToLien, pct: pct(daysToLien) }
   const endLabel = formatYmdMonthDay(addDaysYmd(today, endDays))
+  const noticeMark = isSub && daysToNotice != null && daysToNotice >= 0 ? { days: daysToNotice, pct: pct(daysToNotice), done: noticeSent } : null
+  const payMark = livePay != null ? { days: livePay, pct: pct(livePay) } : null
 
-  if (livePay != null && livePay > daysToLien) {
-    const short = livePay - daysToLien
+  if (noticeOwed) {
+    const lines = [`notice by ${noticeWords} · lien by ${lienWords}`, `send the notice · ${daysWords(daysToNotice)}`]
     return {
-      state: 'file_first',
-      tone: 'red',
-      words: `lien ${lienWords} → pay ${formatYmdMonthDay(payYmd)} · file first`,
-      lines: [`lien ${lienWords} → pay ${formatYmdMonthDay(payYmd)}`, 'file first'],
-      title: `The lien window closes ${short} ${short === 1 ? 'day' : 'days'} before the money is expected. File the affidavit, or get the payment date moved before ${lienWords}. ${basis}.${kindNote}`,
-      chipLabel: 'file first',
+      state: 'notice_due',
+      tone: daysToNotice <= LIEN_RUNWAY_RED_DAYS ? 'red' : 'amber',
+      words: wordsOf(lines),
+      lines,
+      title: `A § 53.056 notice for this work month is owed to the owner and the GC by ${noticeWords}; the lien affidavit can then be filed by ${lienWords}. Send it from the Lien desk. ${basis}.${kindNote}`,
+      chipLabel: `notice in ${daysWords(daysToNotice)}`,
       lienByYmd: lienBy,
       daysToLien,
+      noticeByYmd: noticeBy,
+      daysToNotice,
       kindAssumed,
       datedFromCreation,
       endLabel,
-      marks: { endDays, pay: { days: livePay, pct: pct(livePay) }, lien: lienMark, gap: { fromPct: lienMark.pct, toPct: pct(livePay), kind: 'short' } },
+      marks: { endDays, pay: payMark, lien: lienMark, notice: noticeMark, gap: null },
+      sortKey: daysToNotice,
+    }
+  }
+
+  if (livePay != null && livePay > daysToLien) {
+    const short = livePay - daysToLien
+    const lines = [`file lien by ${lienWords} → pay ${formatYmdMonthDay(payYmd)}`, 'file first']
+    return {
+      state: 'file_first',
+      tone: 'red',
+      words: wordsOf(lines),
+      lines,
+      title: `The lien window closes ${short} ${short === 1 ? 'day' : 'days'} before the money is expected. File the affidavit, or get the payment date moved before ${lienWords}.${noticeNote} ${basis}.${kindNote}`,
+      chipLabel: 'file first',
+      lienByYmd: lienBy,
+      daysToLien,
+      noticeByYmd: noticeBy,
+      daysToNotice,
+      kindAssumed,
+      datedFromCreation,
+      endLabel,
+      marks: { endDays, pay: { days: livePay, pct: pct(livePay) }, lien: lienMark, notice: noticeMark, gap: { fromPct: lienMark.pct, toPct: pct(livePay), kind: 'short' } },
       sortKey: daysToLien,
     }
   }
 
   if (livePay != null) {
     const room = daysToLien - livePay
+    const lines = [`pay ${formatYmdMonthDay(payYmd)} → file lien by ${lienWords}`, `${daysWords(room)} of room`]
     return {
       state: 'room',
       tone: daysToLien <= LIEN_RUNWAY_RED_DAYS ? 'amber' : 'green',
-      words: `pay ${formatYmdMonthDay(payYmd)} → lien ${lienWords} · ${daysWords(room)} of room`,
-      lines: [`pay ${formatYmdMonthDay(payYmd)} → lien ${lienWords}`, `${daysWords(room)} of room`],
-      title: `Expected pay lands ${room} ${room === 1 ? 'day' : 'days'} before the lien window closes. Wait for the money; the lien is still there if it does not come. ${basis}.${kindNote}`,
+      words: wordsOf(lines),
+      lines,
+      title: `Expected pay lands ${room} ${room === 1 ? 'day' : 'days'} before the lien window closes. Wait for the money; the lien is still there if it does not come.${noticeNote} ${basis}.${kindNote}`,
       chipLabel: `${daysWords(room)} of room`,
       lienByYmd: lienBy,
       daysToLien,
+      noticeByYmd: noticeBy,
+      daysToNotice,
       kindAssumed,
       datedFromCreation,
       endLabel,
-      marks: { endDays, pay: { days: livePay, pct: pct(livePay) }, lien: lienMark, gap: { fromPct: pct(livePay), toPct: lienMark.pct, kind: 'room' } },
+      marks: { endDays, pay: { days: livePay, pct: pct(livePay) }, lien: lienMark, notice: noticeMark, gap: { fromPct: pct(livePay), toPct: lienMark.pct, kind: 'room' } },
       sortKey: 1_000_000 + daysToLien,
     }
   }
 
   const payPast = daysToPay != null && daysToPay < 0
   const lead = payPast ? `pay was due ${formatYmdMonthDay(payYmd)}` : 'no pay date'
+  const lines = [`${lead} · file lien by ${lienWords}`, `${daysWords(daysToLien)} to the flag`]
   return {
     state: 'no_pay',
     tone: urgencyTone,
-    words: `${lead} · lien ${lienWords} · ${daysWords(daysToLien)} to the flag`,
-    lines: [`${lead} · lien ${lienWords}`, `${daysWords(daysToLien)} to the flag`],
-    title: `${payPast ? `The expected pay date has passed with the balance still open.` : 'Nobody has said when this will be paid.'} The lien window closes ${lienWords}. ${basis}.${kindNote}`,
+    words: wordsOf(lines),
+    lines,
+    title: `${payPast ? `The expected pay date has passed with the balance still open.` : 'Nobody has said when this will be paid.'} The lien window closes ${lienWords}.${noticeNote} ${basis}.${kindNote}`,
     chipLabel: `lien in ${daysWords(daysToLien)}`,
     lienByYmd: lienBy,
     daysToLien,
+    noticeByYmd: noticeBy,
+    daysToNotice,
     kindAssumed,
     datedFromCreation,
     endLabel,
-    marks: { endDays, pay: null, lien: lienMark, gap: null },
+    marks: { endDays, pay: null, lien: lienMark, notice: noticeMark, gap: null },
     sortKey: 500_000 + daysToLien,
   }
 }
@@ -271,6 +355,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
 export function lienRunwayWantsTheChip(r: LienPayRunway | null | undefined): boolean {
   if (!r) return false
   if (r.state === 'file_first' || r.state === 'closed') return true
+  if (r.state === 'notice_due' && r.daysToNotice != null && r.daysToNotice <= LIEN_RUNWAY_AMBER_DAYS) return true
   if ((r.state === 'no_pay' || r.state === 'room') && r.daysToLien != null && r.daysToLien <= LIEN_RUNWAY_AMBER_DAYS) return true
   return false
 }

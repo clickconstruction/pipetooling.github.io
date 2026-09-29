@@ -60,6 +60,8 @@ export type RoomRow = {
   /** How many sheet pages this row carries in the package (0 = to follow). */
   sheetPages: number
   decision: { kind: 'approved' | 'revise' | 'rejected'; note: string | null; byName: string | null; byPersonId: string | null; at: string | null } | null
+  /** The pick's lead time in days (0 = in stock), for the procurement card (v2.4087). */
+  leadTimeDays?: number | null
 }
 
 const REASON_WORDS: Record<string, string> = {
@@ -131,6 +133,7 @@ export function roomRowFrom(item: RoomItemSource): RoomRow {
     performanceChange: item.status === 'design_change',
     sheetPages: (item.sheet_pages ?? []).length,
     decision,
+    leadTimeDays: item.lead_time_days ?? null,
   }
 }
 
@@ -199,6 +202,19 @@ export type RoomMessage = {
   tags: string[]
 }
 
+/**
+ * The procurement log's pieces for the GC's room card (v2.4087): the office's records
+ * without the PO or the house, the takeoff's count rows and stage splits (the page works
+ * out each tag's stage), the job's stage dates, and when the office last sent an update.
+ */
+export type RoomProcurement = {
+  records: Array<{ tag: string | null; label: string; leadTimeDays: number | null; stage: string | null; orderedOn: string | null; expectedOn: string | null; deliveredOn: string | null; note: string; sortOrder: number }>
+  countRows: Array<{ id: string; fixture: string | null }>
+  splits: Array<{ countRowId: string; lineId: string | null; partId: string | null; roughIn: number; topOut: number; trimSet: number; source: string }>
+  stageDates: Record<string, string>
+  lastUpdateAt: string | null
+}
+
 export type SubmittalRoomPayload = {
   status: 'open' | 'closed'
   closedAt: string | null
@@ -208,4 +224,6 @@ export type SubmittalRoomPayload = {
   revisions: RoomRevision[]
   /** Oldest first. Absent on a closed room. */
   messages?: RoomMessage[]
+  /** The procurement card's pieces (v2.4087). Absent on a closed room or when the office has no log yet. */
+  procurement?: RoomProcurement
 }
