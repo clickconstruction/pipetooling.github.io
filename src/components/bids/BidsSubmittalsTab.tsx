@@ -21,6 +21,7 @@ import { Children, Fragment, useCallback, useEffect, useLayoutEffect, useMemo, u
 import { SpotlightTour, spotlightTourStepsPresent, type SpotlightTourStep } from '../SpotlightTour'
 import { RobotOffer } from './RobotOffer'
 import { robotSeatState, type RobotSeatRow, type RobotSeatState } from '../../lib/submittals/robotOffer'
+import { describeForReviewer } from '../../lib/submittals/seeWhatTheySee'
 import { SubmittalJourneyStrip } from './SubmittalJourneyStrip'
 import { SubmittalProcurementPanel } from './SubmittalProcurementPanel'
 import { PlugInScheduleModal } from './PlugInScheduleModal'
@@ -1753,6 +1754,15 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                     </ul>
                   ) : null}
                 </div>
+                {isNewest ? (() => {
+                  // v2.4174 · see what they see, Layer 1 (#62): the reviewer's own headline and subline, from the rows as they stand — under the rows, where they are edited.
+                  const r = describeForReviewer(items, asRevisionStatus(selectedRev.status) !== 'draft')
+                  return (
+                    <p style={{ margin: '0.45rem 0 0', fontSize: '0.8125rem', color: 'var(--text-base)', lineHeight: 1.45 }} data-testid="reviewer-line">
+                      <b style={{ color: 'var(--text-strong)' }}>{r.lead}</b> {r.line} <span style={smallMuted}>{r.note}</span>
+                    </p>
+                  )
+                })() : null}
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '0.5rem' }}>
                   <button type="button" disabled={busy} onClick={() => fileInput.current?.click()} style={btn} title="Save the house's PDF on this version. Then put each page on its row" data-tour="submittals-drop">
                     Drop a vendor PDF

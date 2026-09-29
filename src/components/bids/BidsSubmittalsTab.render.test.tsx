@@ -393,6 +393,19 @@ describe('BidsSubmittalsTab', () => {
     expect(screen.queryByTestId('their-call-band')).toBeNull()
   })
 
+  it('v2.4174 · under the rows, the reviewer’s own headline for the draft as it stands (#62 Layer 1)', async () => {
+    state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: 'b398/rev-1/package-rev1.pdf', source_files: [], created_at: '2026-09-15T00:00:00Z', shared_at: null }]
+    state.items = [
+      item({ id: 'it-1', tag: 'WC-1', sequence_order: 1, specified_manufacturer: 'TOTO', specified_model: 'CT708UVG', submitted_label: 'TOTO CT708UVG#01', submitted_model: 'CT708UVG', status: 'as_specified' }),
+      item({ id: 'it-2', tag: 'DWH-1', sequence_order: 2, specified_manufacturer: 'Rheem', specified_model: 'RH375', submitted_label: 'BW RE2HP50', status: 'alternate', reason_kind: 'lead_time' }),
+    ]
+    mount()
+    await screen.findAllByTestId('submittal-row')
+    const line = screen.getByTestId('reviewer-line').textContent ?? ''
+    expect(line).toContain('The GC’s page will read: “1 row needs a call” — 1 row match the plans and is marked approved. 1 differs — each says why.')
+    expect(line).toContain('The GC sees nothing until you share.')
+  })
+
   it('draws the tiles and rows of a revision — say why, sheet needed, the status chips — and Edit saves the row', async () => {
     state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [{ path: 'b398/rev-1/0.pdf', name: 'NWS.pdf', pages: 12, house_id: null, house_name: null, trimmed_at: null }], shared_at: null, created_at: '2026-09-15T00:00:00Z' }]
     state.items = [
