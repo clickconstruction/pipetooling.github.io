@@ -18,6 +18,7 @@ import { formatContractMoney, parseJobContractFields, paymentTermsSentence, type
 import { sampleStateFromToken } from '../lib/customerSampleMode'
 import { SampleModeBanner } from '../components/SampleModeBanner'
 import { jobContractSignatureAuditLine } from '../lib/jobs/jobContractLifecycle'
+import { openFrames, signerFrames, type SignerFrameKey } from '../lib/jobs/jobContractSigners'
 import { esignConsentText } from '../lib/esignConsent'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
@@ -45,6 +46,13 @@ type ContractFetch = {
     signer_consented_at: string | null
     signature_url: string | null
     signed_pdf_url: string | null
+    /** v2.4186: the second frame, when the office named a second signer. */
+    co_signer_name?: string | null
+    co_signed_at?: string | null
+    co_signer_printed_name?: string | null
+    co_signer_mode?: string | null
+    co_signer_consented_at?: string | null
+    co_signature_url?: string | null
   }
   issuer: JobContractIssuer | null
   brand: string | null
@@ -85,7 +93,9 @@ export default function JobContractSign() {
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [termsOpen, setTermsOpen] = useState(false)
-  const [justSigned, setJustSigned] = useState<{ printedName: string; signedAt: string; mode: string } | null>(null)
+  const [justSigned, setJustSigned] = useState<{ printedName: string; signedAt: string; mode: string; signer: SignerFrameKey; complete: boolean; waitingOn: string | null } | null>(null)
+  /** v2.4186: which frame this person is signing when two are open. */
+  const [chosenFrame, setChosenFrame] = useState<SignerFrameKey | null>(null)
   // What customers see (v2.3510): the sample token renders the sample agreement; signing moves straight to the signed view and saves nothing.
   const sample = sampleStateFromToken(token)
 
@@ -135,8 +145,9 @@ export default function JobContractSign() {
 
   async function submit(payload: EstimateAcceptSubmitPayload) {
     if (!data) return
+    const signer: SignerFrameKey = chosenFrame ?? openFrames(data.contract)[0]?.key ?? 'primary'
     if (sample) {
-      setJustSigned({ printedName: payload.printedName, signedAt: new Date().toISOString(), mode: payload.mode })
+      setJustSigned({ printedName: payload.printedName, signedAt: new Date().toISOString(), mode: payload.mode, signer, complete: true, waitingOn: null })
       return
     }
     setSubmitting(true)
@@ -153,12 +164,13 @@ export default function JobContractSign() {
           ...(payload.mode === 'draw' ? { signaturePngBase64: payload.signaturePngBase64 } : {}),
           ...(payload.consent ? { esignConsent: payload.consent } : {}),
           ...(inPerson ? { mode: 'in_person' } : {}),
+          ...(signer === 'co' ? { signer: 'co' } : {}),
           public_origin: window.location.origin,
         }),
       })
-      const json = (await res.json()) as { ok?: boolean; error?: string; code?: string; signed_at?: string; mode?: string }
+      const json = (await res.json()) as { ok?: boolean; error?: string; code?: string; signed_at?: string | null; mode?: string; complete?: boolean; waiting_on?: string | null }
       if (!res.ok || !json.ok) {
-        if (json.code === 'stale_revision' || json.code === 'already_signed') {
+        if (json.code === 'stale_revision' || json.code === 'already_signed' || json.code === 'frame_signed') {
           setFormError('This agreement was just updated — here is the current version.')
           setReloadNonce((n) => n + 1)
           return
@@ -166,7 +178,13 @@ export default function JobContractSign() {
         setFormError(json.error || 'Could not record your signature. Please try again.')
         return
       }
-      setJustSigned({ printedName: payload.printedName, signedAt: json.signed_at ?? new Date().toISOString(), mode: json.mode ?? 'type' })
+      const complete = json.complete !== false
+      setJustSigned({ printedName: payload.printedName, signedAt: json.signed_at ?? new Date().toISOString(), mode: json.mode ?? 'type', signer, complete, waitingOn: json.waiting_on ?? null })
+      setPrintedName('')
+      setAgreed(false)
+      setChosenFrame(null)
+      // A frame filled while the other waits: read the row again so its frame shows signed.
+      if (!complete) setReloadNonce((n) => n + 1)
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch {
       setFormError('Could not record your signature. Check your connection and try again.')
@@ -181,15 +199,23 @@ export default function JobContractSign() {
   const c = data.contract
   const issuer = data.issuer
   const brand = parseAcceptHeaderBrand(data.brand)
-  const signed = c.status === 'signed' || justSigned != null
-  const signedName = justSigned?.printedName ?? c.signer_printed_name ?? ''
-  const signedAt = justSigned?.signedAt ?? c.signed_at
+  // v2.4186: one frame, or two when the office named a second signer; either may sign first.
+  const frames = signerFrames(c).map((f) =>
+    justSigned && justSigned.signer === f.key && !f.signedAt ? { ...f, signedAt: justSigned.signedAt, printedName: justSigned.printedName, mode: justSigned.mode, consentedAt: justSigned.signedAt } : f,
+  )
+  const open = frames.filter((f) => !(f.signedAt && f.printedName))
+  const signed = c.status === 'signed' || (justSigned?.complete ?? false) || (frames.length > 0 && open.length === 0)
+  const signedNames = frames.filter((f) => f.signedAt && f.printedName).map((f) => f.printedName ?? '')
+  const signedName = signedNames.join(' and ')
+  const signedAt = justSigned?.complete ? justSigned.signedAt : c.signed_at
   const auditLine = jobContractSignatureAuditLine({
-    signed_at: signedAt,
+    signed_at: signedAt ?? frames[0]?.signedAt ?? null,
     signer_printed_name: signedName,
     signer_mode: justSigned?.mode ?? c.signer_mode,
     signer_consented_at: justSigned ? justSigned.signedAt : c.signer_consented_at,
   })
+  const partial = !signed && frames.length > 1 && open.length === 1
+  const signingFrame = open.length === 1 ? open[0] : open.find((f) => f.key === chosenFrame) ?? null
   const amountLabel = fields.amount_cents != null ? formatContractMoney(fields.amount_cents) : 'Billed at completion'
   const scope = fields.scope_lines.map((l) => l.trim()).filter(Boolean)
   const dateLabel = (() => {
@@ -238,6 +264,10 @@ export default function JobContractSign() {
             ✍ Signed{signedName ? ` by ${signedName}` : ''}
             {justSigned ? '. Thank you — we emailed a copy to you.' : '.'}
             <div style={{ fontWeight: 400, fontSize: '0.78rem', marginTop: 2 }}>{auditLine}</div>
+          </div>
+        ) : partial ? (
+          <div role="status" style={{ marginTop: '1rem', borderRadius: 10, padding: '0.7rem 0.9rem', fontSize: '0.9rem', fontWeight: 600, background: 'var(--bg-amber-tint)', border: '1px solid var(--border)', color: 'var(--text-amber-800)' }} data-testid="contract-sign-partial">
+            ✍ {signedName} has signed{justSigned && !justSigned.complete ? ' — thank you' : ''}. Waiting on {open[0]?.expectedName || 'the other signer'}&apos;s signature to complete the agreement.
           </div>
         ) : null}
 
@@ -292,17 +322,22 @@ export default function JobContractSign() {
           {termsOpen ? 'Collapse the terms ▴' : 'Read the full terms ▾'}
         </button>
 
-        {signed ? (
-          <div style={{ marginTop: '1.2rem', borderTop: '1px solid var(--border-rule)', paddingTop: '0.4rem' }}>
+        {frames.filter((f) => f.signedAt && f.printedName).map((f) => (
+          <div key={f.key} style={{ marginTop: '1.2rem', borderTop: '1px solid var(--border-rule)', paddingTop: '0.4rem' }} data-testid={`contract-sign-frame-${f.key}`}>
             <SignedSignatureBlock
-              printedName={signedName}
-              signedAtIso={signedAt}
-              consentedAtIso={justSigned ? justSigned.signedAt : c.signer_consented_at}
+              heading={frames.length > 1 ? (f.key === 'primary' ? 'Customer signature' : `Second signature — ${f.expectedName || f.printedName || ''}`) : 'Customer signature'}
+              printedName={f.printedName ?? ''}
+              signedAtIso={f.signedAt}
+              consentedAtIso={f.consentedAt}
               consentSummary="agreed to do business electronically and to this agreement's scope, price and terms"
-              method={justSigned?.mode ?? c.signer_mode}
+              method={f.mode}
               recordId={signedRecordId('J', c.job_number, c.id)}
-              drawSignatureUrl={c.signature_url}
+              drawSignatureUrl={f.key === 'primary' ? c.signature_url : c.co_signature_url ?? null}
             />
+          </div>
+        ))}
+        {signed ? (
+          <div style={{ marginTop: '0.4rem' }}>
             {c.signed_pdf_url ? (
               <a
                 href={c.signed_pdf_url}
@@ -321,6 +356,30 @@ export default function JobContractSign() {
             {inPerson ? (
               <p style={{ margin: '0 0 0.6rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Signing in person with a Click Plumbing team member present.</p>
             ) : null}
+            {open.length > 1 ? (
+              <div style={{ marginBottom: '0.8rem' }} data-testid="contract-sign-who">
+                <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem' }}>Two signatures complete this agreement. Who is signing now?</div>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }} role="radiogroup" aria-label="Who is signing">
+                  {open.map((f) => {
+                    const on = signingFrame?.key === f.key
+                    return (
+                      <button
+                        key={f.key}
+                        type="button"
+                        role="radio"
+                        aria-checked={on}
+                        onClick={() => setChosenFrame(f.key)}
+                        data-testid={`contract-sign-as-${f.key}`}
+                        style={{ padding: '0.45rem 0.9rem', borderRadius: 999, border: `1.5px solid ${on ? 'var(--text-orange-700)' : 'var(--border-strong)'}`, background: on ? 'var(--bg-orange-tint)' : 'var(--surface)', color: 'inherit', font: 'inherit', fontSize: '0.88rem', fontWeight: 600, cursor: 'pointer' }}
+                      >
+                        {f.expectedName || (f.key === 'primary' ? 'The customer' : 'The second signer')}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            ) : null}
+            {open.length > 1 && !signingFrame ? null : (
             <ContractAcceptSignatureForm
               printedName={printedName}
               agreed={agreed}
@@ -329,12 +388,13 @@ export default function JobContractSign() {
               formError={formError}
               submitting={submitting}
               onSubmit={(p) => void submit(p)}
-              heading="Sign agreement"
+              heading={frames.length > 1 && signingFrame ? `Sign agreement — ${signingFrame.expectedName || (signingFrame.key === 'primary' ? 'the customer' : 'the second signer')}` : 'Sign agreement'}
               disclosure="Your signature below applies to the scope, price, and terms shown on this page."
               consent={esignConsentText({ audience: 'customer', documentNoun: 'this agreement' })}
               agreeLabel="I agree to do business electronically and accept this agreement, its scope, price, and terms."
               submitLabel={`Sign agreement${fields.amount_cents != null ? ` — ${amountLabel}` : ''}`}
             />
+            )}
             <p style={{ margin: '0.8rem 0 0', fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center' }}>
               Questions first?{issuer?.phone ? ` Call ${issuer.phone} or` : ''} reply to our email.
             </p>

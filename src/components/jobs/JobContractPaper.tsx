@@ -53,6 +53,11 @@ export type JobContractPaperProps = {
   signature: { printedName: string; auditLine: string; imageUrl?: string | null } | null
   /** v2.4183: a record filed from an outside document (a Google Doc, a link) — the paper prints a note in place of the body it never held. */
   filed?: { what: string } | null
+  /** v2.4186: a second signer the office names on the draft (a spouse on a homestead); '' = none. */
+  coSigner?: { name: string; email: string }
+  setCoSigner?: (v: { name: string; email: string }) => void
+  /** v2.4186: the second frame's signature, once they signed. */
+  coSignature?: { printedName: string; auditLine: string; imageUrl?: string | null } | null
 }
 
 const INK = 'var(--text-strong)'
@@ -140,11 +145,22 @@ function TextLine({ editable, value, onChange, label, ghostLabel, prefix, testId
   )
 }
 
+function SignedMark({ sig, second = false }: { sig: { printedName: string; auditLine: string; imageUrl?: string | null }; second?: boolean }) {
+  return (
+    <div style={{ fontSize: 12, color: INK_2, minWidth: 200 }} data-testid={second ? 'paper-cosignature' : undefined}>
+      {sig.imageUrl ? <img src={sig.imageUrl} alt="Signature" style={{ display: 'block', maxHeight: 56, maxWidth: 260, marginBottom: 4 }} /> : null}
+      <b style={{ color: INK }}>✍ {sig.printedName}</b>
+      <div style={{ fontSize: 11, color: INK_3 }}>{sig.auditLine}</div>
+    </div>
+  )
+}
+
 export default function JobContractPaper(p: JobContractPaperProps) {
   const [scopeEditing, setScopeEditing] = useState(false)
   const [payEditing, setPayEditing] = useState(false)
   const [datesEditing, setDatesEditing] = useState(false)
   const [nameEditing, setNameEditing] = useState(false)
+  const [coEditing, setCoEditing] = useState(false)
   const scopeRef = useAutoFocus<HTMLTextAreaElement>(scopeEditing)
   const nameRef = useAutoFocus<HTMLInputElement>(nameEditing)
   const f = p.fields
@@ -152,6 +168,7 @@ export default function JobContractPaper(p: JobContractPaperProps) {
   const amountCents = p.editable ? p.amount.src.cents : p.amount.frozenCents
   const dates = [f.start_date ? `Start: ${f.start_date}` : '', f.completion_date ? `Estimated completion: ${f.completion_date}` : ''].filter(Boolean).join(' · ')
   const issuer = p.issuer
+  const coName = (p.coSigner?.name ?? '').trim()
 
   return (
     <div data-theme="light" style={paper} data-testid="contract-paper">
@@ -329,27 +346,67 @@ export default function JobContractPaper(p: JobContractPaperProps) {
       )}
 
       <div style={{ marginTop: 22, borderTop: `1px solid ${RULE}`, paddingTop: 12 }} data-testid="paper-signature">
-        {p.signature ? (
-          <div style={{ fontSize: 12, color: INK_2 }}>
-            {p.signature.imageUrl ? <img src={p.signature.imageUrl} alt="Signature" style={{ display: 'block', maxHeight: 56, maxWidth: 260, marginBottom: 4 }} /> : null}
-            <b style={{ color: INK }}>✍ {p.signature.printedName}</b>
-            <div style={{ fontSize: 11, color: INK_3 }}>{p.signature.auditLine}</div>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
+        {/* v2.4186: one frame per signer — the recipient's, and a second when the office named one. */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+          {p.signature ? (
+            <SignedMark sig={p.signature} />
+          ) : (
             <div style={{ position: 'relative', border: `1.5px dashed ${BRAND}`, borderRadius: 6, padding: '14px 18px 10px', minWidth: 200, color: 'var(--text-faint)', fontSize: 12 }}>
               <span style={{ position: 'absolute', top: -8, left: 10, background: 'var(--surface)', padding: '0 6px', font: '700 9px/1 -apple-system, sans-serif', letterSpacing: '0.1em', textTransform: 'uppercase', color: BRAND }}>Customer</span>
               {p.recipientName.trim() || p.job.customer_name || 'The customer'} signs here
               <div style={{ fontSize: 11 }}>☐ I agree to sign electronically.</div>
             </div>
-            {issuer?.licenseLine || issuer?.companyName ? (
+          )}
+          {p.coSignature ? (
+            <SignedMark sig={p.coSignature} second />
+          ) : coName ? (
+            <div style={{ position: 'relative', border: `1.5px dashed ${BRAND}`, borderRadius: 6, padding: '14px 18px 10px', minWidth: 200, color: 'var(--text-faint)', fontSize: 12 }} data-testid="paper-cosigner-frame">
+              <span style={{ position: 'absolute', top: -8, left: 10, background: 'var(--surface)', padding: '0 6px', font: '700 9px/1 -apple-system, sans-serif', letterSpacing: '0.1em', textTransform: 'uppercase', color: BRAND }}>Second signature</span>
+              {p.editable && p.setCoSigner ? (
+                <button type="button" onClick={() => setCoEditing(true)} title="Edit — the second signer" data-testid="paper-cosigner" style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'inherit', cursor: 'pointer', textAlign: 'left' }}>
+                  {coName} signs here
+                </button>
+              ) : (
+                <>{coName} signs here</>
+              )}
+              <div style={{ fontSize: 11 }}>☐ I agree to sign electronically.</div>
+            </div>
+          ) : null}
+          {!p.signature && !p.coSignature && !coName && (issuer?.licenseLine || issuer?.companyName) ? (
               <div style={{ position: 'relative', border: `1.5px solid ${RULE}`, borderRadius: 6, padding: '14px 18px 10px', minWidth: 200, color: 'var(--text-600)', fontSize: 12 }}>
                 <span style={{ position: 'absolute', top: -8, left: 10, background: 'var(--surface)', padding: '0 6px', font: '700 9px/1 -apple-system, sans-serif', letterSpacing: '0.1em', textTransform: 'uppercase', color: INK_3 }}>Contractor</span>
                 {issuer.licenseLine || issuer.companyName}
               </div>
-            ) : null}
-          </div>
-        )}
+          ) : null}
+        </div>
+        {p.editable && p.setCoSigner ? (
+          coEditing ? (
+            <div style={{ display: 'grid', gap: 6, marginTop: 10, maxWidth: 420 }} data-testid="paper-cosigner-editor">
+              <input style={editorInput} value={p.coSigner?.name ?? ''} aria-label="Second signer's name" placeholder="Second signer's full name" onChange={(e) => p.setCoSigner!({ name: e.target.value, email: p.coSigner?.email ?? '' })} />
+              <input style={editorInput} type="email" value={p.coSigner?.email ?? ''} aria-label="Second signer's email (optional)" placeholder="Their email, if we have it (optional)" onChange={(e) => p.setCoSigner!({ name: p.coSigner?.name ?? '', email: e.target.value })} />
+              <span style={{ fontSize: 11, color: INK_3 }}>Both frames must be signed before the agreement reads signed. A homestead's improvement contract is signed by both spouses.</span>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button type="button" style={linkBtn} onClick={() => setCoEditing(false)}>
+                  Done
+                </button>
+                <button
+                  type="button"
+                  style={linkBtn}
+                  onClick={() => {
+                    p.setCoSigner!({ name: '', email: '' })
+                    setCoEditing(false)
+                  }}
+                >
+                  Remove the second signer
+                </button>
+              </div>
+            </div>
+          ) : !coName ? (
+            <button type="button" onClick={() => setCoEditing(true)} style={{ ...ghost, marginTop: 10, background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' }} data-testid="paper-cosigner-add">
+              + a second signer (both spouses sign a homestead's contract)
+            </button>
+          ) : null
+        ) : null}
       </div>
     </div>
   )

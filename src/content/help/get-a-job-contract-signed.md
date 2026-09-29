@@ -124,6 +124,12 @@ Once a job reads {{chip:green|✍ Signed}}, the chip opens the same **Contract w
 
 The line under the doors says when a copy last went out and to whom. Older signed agreements sit under **History** on the left; **View** shows one in place, with *← Back to the current agreement* in the rail.
 
+## A second signer
+
+Both spouses sign a homestead's improvement contract, and some jobs have two decision-makers. On the paper, under the customer's signature frame, press **+ a second signer** and type their full name — and their email, if you have it. The paper now shows two frames, *Sam signs here · Alex signs here*, the PDF prints two pairs of pen rules, and the customer's page shows a frame for each. Either may sign first: while both frames are open the page asks **Who is signing now?**; once one has signed, the other sees *Sam has signed — waiting on Alex's signature* and the form for their own frame. When the second signer's email is on file, they get the link the moment the first signature lands.
+
+The agreement reads {{chip:green|✍ Signed}} — and the signed copy goes out — only when both frames are filled. Until then the chip and the window's pill say **1 of 2 signed**, the window says who it is waiting on, and reminders keep going. To take the second signer off a draft, open the frame and press **Remove the second signer**; once the agreement is out, *Edit & re-send* or *Void & redo* is the way, as for any other change.
+
 ## Already have their contract? The field on the job
 
 Open the job (**Edit Job**) and find **Customer Contract**. While nothing is on file the row has a field — *Already have their contract? Paste the Drive link…*. In Google Drive use **Share → Copy link**, paste it, and press {{button:green|File it}}. The job reads {{chip:green|✍ On file · Google Doc}} everywhere — the Pipeline, the sweep, Bill Customer — and **Open the contract ↗** on that row goes straight to the file from then on. It is filed as signed by the job's customer; nothing is sent to them. For a different signer or a date, use the sheet below.

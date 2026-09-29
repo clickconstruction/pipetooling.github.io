@@ -1495,6 +1495,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ### get-job-contract
 
+> **v2.4186 — a second signer**: the payload also carries the second frame — `co_signer_name`, `co_signed_at`, `co_signer_printed_name`, `co_signer_mode`, `co_signer_consented_at`, `co_signature_url` (a signed URL for the drawn mark) — all null on a one-frame row and on the sample tokens. The page (`JobContractSign.tsx`) builds its frames from them (`lib/jobs/jobContractSigners.ts`).
+
 **Purpose**: Payload for the customer's contract page `/contract/sign?t=<token>` (Contract Desk PR 2, v2.2681). The sample tokens (`sample`, `sample-done`, v2.3510) answer with the fixture agreement; since v2.4098 its terms are the office's own — the newest customer document in the Contract Book (`contract_template_documents`, `audience = 'customer'`, newest `book_version_date` then `updated_at`) — so Settings → Contracts & terms can read a card on this page and find its wording; the fixture's stand-in terms print only when the Book holds no customer document.
 
 **Endpoint**: `GET /functions/v1/get-job-contract?t=<token>`
@@ -1510,6 +1512,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 **v2.3510 (What customers see PR 2):** the sample tokens (`sample` out for signature, `sample-done` signed) answer from `sampleJobContractResponse` in `_shared/customerSampleFixtures.ts` before any database read — no row, no view stamp, no event. The signing page shows the Sample banner and saves nothing.
 
 ### sign-job-contract
+
+> **v2.4186 — a second signer**: the body takes `signer: 'primary' | 'co'` (default `primary`). A `co` signature on a row with no `co_signer_name` is 400 `no_co_signer`; a frame already filled is 409 `frame_signed` (the page reloads to the current state). The frame's columns are written (`signer_*` or `co_signer_*`); `status: 'signed'`, `signed_at` and `next_reminder_at: null` only when the other frame is already filled. A partial frame logs `co_signed` (`metadata.signer`, `metadata.waiting_on`) and, when the other signer's email is known (`co_signer_email` or `recipient_email`), emails them *✍ <name> signed — your signature is next* with the same link, then answers `{ ok, signed_at: null, mode, complete: false, signer, waiting_on }`. The completing frame logs `signed`, builds the PDF with both frames (`coSignerName` / `coSignature`; the other frame's drawn mark fetched from the bucket), emails the customer's signed copy with the second signer in cc and the office notice naming both, and answers `{ …, complete: true }`. One-frame rows behave exactly as before.
 
 > **v2.4150 — a statutory sentence at 10 pt**: a plain body's `**…**` run prints in the signed PDF at `STATUTORY_SIZE` (10 pt, regular weight) on the terms' 9 pt baseline (`parseStatutoryRuns` / `wrapRuns` in [`_shared/jobContractPdf.ts`](../supabase/functions/_shared/jobContractPdf.ts)); the asterisks never print. **Redeploy required.**
 
@@ -1546,6 +1550,8 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 **v2.3510 (What customers see PR 2):** the reminder's subject, text and HTML come from `_shared/jobContractEmail.ts` → `buildJobContractReminderEmail`; the cron path is otherwise unchanged.
 
 ### share-job-contract
+
+> **v2.4186 — a second signer**: the unsigned PDF (`draft_pdf`, `send_to_sign`) carries `coSignerName` — from the row's `co_signer_name`, or the draft body's `co_signer_name` for a job with no row yet — so two pairs of pen rules print, each named; a signed row rebuilt from its frozen columns (no stored PDF) carries the second frame's signature.
 
 > **v2.4150**: the draft and to-sign PDFs print a plain body's `**…**` run at 10 pt, as `sign-job-contract` does. **Redeploy required.**
 

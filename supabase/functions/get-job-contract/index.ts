@@ -73,7 +73,7 @@ serve(async (req) => {
     const { data: row } = await admin
       .from('job_contracts')
       .select(
-        'id, job_id, status, revision, public_token_expires_at, recipient_name, recipient_email, fields, body_html, body_format, template_name, template_version_date, signed_at, signer_printed_name, signer_mode, signer_consented_at, signer_signature_storage_path, signed_pdf_path, voided_at, view_count, first_viewed_at, last_sent_at',
+        'id, job_id, status, revision, public_token_expires_at, recipient_name, recipient_email, fields, body_html, body_format, template_name, template_version_date, signed_at, signer_printed_name, signer_mode, signer_consented_at, signer_signature_storage_path, signed_pdf_path, voided_at, view_count, first_viewed_at, last_sent_at, co_signer_name, co_signed_at, co_signer_printed_name, co_signer_mode, co_signer_consented_at, co_signer_signature_storage_path',
       )
       .eq('public_token', token)
       .maybeSingle()
@@ -97,6 +97,12 @@ serve(async (req) => {
       signer_consented_at: string | null
       signer_signature_storage_path: string | null
       signed_pdf_path: string | null
+      co_signer_name: string | null
+      co_signed_at: string | null
+      co_signer_printed_name: string | null
+      co_signer_mode: string | null
+      co_signer_consented_at: string | null
+      co_signer_signature_storage_path: string | null
       voided_at: string | null
       view_count: number
       first_viewed_at: string | null
@@ -128,6 +134,12 @@ serve(async (req) => {
     if (c.signer_signature_storage_path) {
       const { data: signed } = await admin.storage.from(JOB_CONTRACT_BUCKET).createSignedUrl(c.signer_signature_storage_path, 3600)
       signatureUrl = signed?.signedUrl ?? null
+    }
+    // v2.4186: the second frame's drawn mark, when there is one.
+    let coSignatureUrl: string | null = null
+    if (c.co_signer_signature_storage_path) {
+      const { data: signed } = await admin.storage.from(JOB_CONTRACT_BUCKET).createSignedUrl(c.co_signer_signature_storage_path, 3600)
+      coSignatureUrl = signed?.signedUrl ?? null
     }
     let signedPdfUrl: string | null = null
     if (c.signed_pdf_path) {
@@ -172,6 +184,13 @@ serve(async (req) => {
         signer_consented_at: c.signer_consented_at,
         signature_url: signatureUrl,
         signed_pdf_url: signedPdfUrl,
+        // v2.4186: the second frame.
+        co_signer_name: c.co_signer_name,
+        co_signed_at: c.co_signed_at,
+        co_signer_printed_name: c.co_signer_printed_name,
+        co_signer_mode: c.co_signer_mode,
+        co_signer_consented_at: c.co_signer_consented_at,
+        co_signature_url: coSignatureUrl,
       },
       issuer,
       brand: 'plum',

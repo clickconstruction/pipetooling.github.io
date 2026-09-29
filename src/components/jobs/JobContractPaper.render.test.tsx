@@ -100,4 +100,47 @@ describe('JobContractPaper', () => {
     expect(within(paper).queryByTestId('paper-scope-textarea')).toBeNull()
     expect(within(paper).getByTestId('paper-signature').textContent).toContain('✍ Sam Sample')
   })
+
+  it('a second signer (v2.4186): the ghost opens the editor, the name becomes a second frame, and a signed second frame prints its mark', () => {
+    const setCoSigner = vi.fn()
+    const { rerender } = render(<JobContractPaper {...props({ coSigner: { name: '', email: '' }, setCoSigner })} />)
+    expect(screen.getByTestId('paper-signature').textContent).toContain('Sam Sample signs here')
+    fireEvent.click(screen.getByTestId('paper-cosigner-add'))
+    const editor = screen.getByTestId('paper-cosigner-editor')
+    fireEvent.change(within(editor).getByLabelText("Second signer's name"), { target: { value: 'Alex Sample' } })
+    expect(setCoSigner).toHaveBeenLastCalledWith({ name: 'Alex Sample', email: '' })
+    fireEvent.change(within(editor).getByLabelText("Second signer's email (optional)"), { target: { value: 'alex@example.com' } })
+    expect(setCoSigner).toHaveBeenLastCalledWith({ name: '', email: 'alex@example.com' })
+    // with a name: a second pen frame beside the first, the company frame steps aside
+    rerender(<JobContractPaper {...props({ coSigner: { name: 'Alex Sample', email: 'alex@example.com' }, setCoSigner })} />)
+    expect(screen.getByTestId('paper-cosigner-frame').textContent).toContain('Alex Sample signs here')
+    expect(screen.getByTestId('paper-signature').textContent).not.toContain('Malachi Whites')
+    expect(screen.queryByTestId('paper-cosigner-add')).toBeNull()
+    // locked, first frame signed, second still open → the mark and the waiting frame side by side
+    rerender(
+      <JobContractPaper
+        {...props({
+          editable: false,
+          coSigner: { name: 'Alex Sample', email: '' },
+          signature: { printedName: 'Sam Sample', auditLine: 'Signed electronically by Sam Sample (typed) · Sep 21, 2026, 9:29 AM CT' },
+        })}
+      />,
+    )
+    expect(screen.getByTestId('paper-signature').textContent).toContain('✍ Sam Sample')
+    expect(screen.getByTestId('paper-cosigner-frame').textContent).toContain('Alex Sample signs here')
+    expect(screen.queryByTestId('paper-cosigner')).toBeNull()
+    // both signed
+    rerender(
+      <JobContractPaper
+        {...props({
+          editable: false,
+          coSigner: { name: 'Alex Sample', email: '' },
+          signature: { printedName: 'Sam Sample', auditLine: 'Signed electronically by Sam Sample (typed)' },
+          coSignature: { printedName: 'Alex Sample', auditLine: 'Signed electronically by Alex Sample (drawn)', imageUrl: 'https://files.example/alex.png' },
+        })}
+      />,
+    )
+    expect(screen.getByTestId('paper-cosignature').textContent).toContain('✍ Alex Sample')
+    expect(screen.getByTestId('paper-cosignature').querySelector('img')?.getAttribute('src')).toBe('https://files.example/alex.png')
+  })
 })

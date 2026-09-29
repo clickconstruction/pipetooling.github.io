@@ -136,6 +136,8 @@ export type WindowPillInput = {
   signerName: string | null
   /** v2.4183: an estimate / bid-room acceptance reads Accepted, not Signed. */
   signedVerb?: 'Signed' | 'Accepted'
+  /** v2.4186: "1 of 2 signed" while a two-frame agreement is out; '' with one frame. */
+  frames?: string
   /** A signed contract is already on file (history) while no live row exists. */
   signedOnFile: boolean
   notNeeded: boolean
@@ -150,7 +152,7 @@ export function windowStatusPill(i: WindowPillInput): { text: string; tone: 'gra
   if (i.status === 'sent' && i.channel === 'handed') return { text: `Handed over${i.sentAt ? ` ${i.stamp(i.sentAt)}` : ''} · awaiting the signed page`, tone: 'amber' }
   if (i.status === 'sent') {
     const opened = i.viewCount > 0 ? `opened ${i.viewCount}×` : 'not opened yet'
-    return { text: `${i.channel === 'pdf_email' ? 'PDF emailed' : 'Sent'}${i.sentAt ? ` ${i.stamp(i.sentAt)}` : ''} · ${opened}`, tone: 'amber' }
+    return { text: `${i.channel === 'pdf_email' ? 'PDF emailed' : 'Sent'}${i.sentAt ? ` ${i.stamp(i.sentAt)}` : ''} · ${opened}${i.frames ? ` · ${i.frames}` : ''}`, tone: 'amber' }
   }
   if (i.notNeeded) return { text: 'Not needed · out of the count', tone: 'gray' }
   if (i.signedOnFile) return { text: 'Signed copy on file · a new agreement would supersede it', tone: 'green' }

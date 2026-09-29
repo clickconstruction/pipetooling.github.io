@@ -35,13 +35,16 @@ const kv: React.CSSProperties = { display: 'grid', gridTemplateColumns: '120px m
 const k: React.CSSProperties = { color: 'var(--text-muted)' }
 
 /** Signed URLs for the drawn signature, the stored PDF, and the paper upload. */
-export function useJobContractRecordUrls(row: JobContractRow | null, open: boolean): { signatureUrl: string | null; pdfUrl: string | null; paperUrl: string | null } {
+export function useJobContractRecordUrls(row: JobContractRow | null, open: boolean): { signatureUrl: string | null; pdfUrl: string | null; paperUrl: string | null; coSignatureUrl: string | null } {
   const [signatureUrl, setSignatureUrl] = useState<string | null>(null)
+  /** v2.4186: the second frame's drawn mark. */
+  const [coSignatureUrl, setCoSignatureUrl] = useState<string | null>(null)
   const [paperUrl, setPaperUrl] = useState<string | null>(null)
   const [pdfUrl, setPdfUrl] = useState<string | null>(null)
   useEffect(() => {
     if (!open || !row) {
       setSignatureUrl(null)
+      setCoSignatureUrl(null)
       setPaperUrl(null)
       setPdfUrl(null)
       return
@@ -52,6 +55,10 @@ export function useJobContractRecordUrls(row: JobContractRow | null, open: boole
         if (row.signer_signature_storage_path) {
           const { data } = await supabase.storage.from(JOB_CONTRACT_BUCKET).createSignedUrl(row.signer_signature_storage_path, 3600)
           if (!cancelled) setSignatureUrl(data?.signedUrl ?? null)
+        }
+        if (row.co_signer_signature_storage_path) {
+          const { data } = await supabase.storage.from(JOB_CONTRACT_BUCKET).createSignedUrl(row.co_signer_signature_storage_path, 3600)
+          if (!cancelled) setCoSignatureUrl(data?.signedUrl ?? null)
         }
         if (row.paper_upload_path) {
           const { data } = await supabase.storage.from(JOB_CONTRACT_BUCKET).createSignedUrl(row.paper_upload_path, 3600)
@@ -69,7 +76,7 @@ export function useJobContractRecordUrls(row: JobContractRow | null, open: boole
       cancelled = true
     }
   }, [open, row])
-  return { signatureUrl, pdfUrl, paperUrl }
+  return { signatureUrl, pdfUrl, paperUrl, coSignatureUrl }
 }
 
 export function buildJobContractRecordHtml(row: JobContractRow, job: JobContractRecordJob, signatureUrl: string | null): string {

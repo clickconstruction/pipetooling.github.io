@@ -68,6 +68,7 @@ import { effectiveWindowWay, emailLooksValid, jobTakesTheirSubcontract, phoneLoo
 import JobContractSigningRail from './JobContractSigningRail'
 import JobContractPaper from './JobContractPaper'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
+import { frameAsSignerRow, framesLabel, framesProgress, signerFrames } from '../../lib/jobs/jobContractSigners'
 
 type TemplateRow = Pick<
   Database['public']['Tables']['contract_template_documents']['Row'],
@@ -144,6 +145,8 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
   const [recipientName, setRecipientName] = useState('')
   const [recipientEmail, setRecipientEmail] = useState('')
   const [recipientPhone, setRecipientPhone] = useState('')
+  /** v2.4186: a second signer named on the draft (a spouse on a homestead); '' = one frame. */
+  const [coSigner, setCoSigner] = useState<{ name: string; email: string }>({ name: '', email: '' })
   const [ccText, setCcText] = useState('')
   const [message, setMessage] = useState('')
   const [remindersEnabled, setRemindersEnabled] = useState(true)
@@ -247,6 +250,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
     setRecipientName((job.customer_name ?? '').trim())
     setRecipientEmail((job.customer_email ?? '').trim())
     setRecipientPhone((job.customer_phone ?? '').trim())
+    setCoSigner({ name: '', email: '' })
     setCcText('')
     setRemindersEnabled(true)
     setTemplateId(BUILTIN_TEMPLATE_ID)
@@ -279,6 +283,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
     setRecipientName(liveRow.recipient_name ?? '')
     setRecipientEmail(liveRow.recipient_email ?? '')
     setRecipientPhone(liveRow.recipient_phone ?? '')
+    setCoSigner({ name: liveRow.co_signer_name ?? '', email: liveRow.co_signer_email ?? '' })
     setCcText((liveRow.cc_emails ?? []).join(', '))
     setRemindersEnabled(liveRow.reminders_enabled)
     setTemplateId(liveRow.template_document_id ?? BUILTIN_TEMPLATE_ID)
@@ -388,10 +393,12 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
       recipient_name: recipientName.trim() || null,
       recipient_email: recipientEmail.trim() || null,
       recipient_phone: recipientPhone.trim() || null,
+      co_signer_name: coSigner.name.trim() || null,
+      co_signer_email: coSigner.name.trim() && emailLooksValid(coSigner.email) ? coSigner.email.trim() : null,
       cc_emails: ccList,
       reminders_enabled: remindersEnabled,
     }
-  }, [job, fields, bodyHtml, bodyFormat, selectedTemplate, templateName, recipientName, recipientEmail, recipientPhone, ccList, remindersEnabled])
+  }, [job, fields, bodyHtml, bodyFormat, selectedTemplate, templateName, recipientName, recipientEmail, recipientPhone, coSigner, ccList, remindersEnabled])
 
   /** Writes the draft now (insert or update) and returns the row — the send gate uses it too. */
   const flushDraft = useCallback(async (): Promise<JobContractRow | null> => {
@@ -436,7 +443,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
     if (!open || !job || !editable || !userTouchedRef.current) return
     const t = window.setTimeout(() => void flushDraft(), 800)
     return () => window.clearTimeout(t)
-  }, [open, job, editable, fields, recipientName, recipientEmail, recipientPhone, ccText, remindersEnabled, templateId, flushDraft])
+  }, [open, job, editable, fields, recipientName, recipientEmail, recipientPhone, coSigner, ccText, remindersEnabled, templateId, flushDraft])
 
   const applyScopeText = (text: string) => {
     setScopeText(text)
@@ -710,6 +717,10 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
           {liveRow.recipient_email ? (lastSendChannel === 'link' ? ` — nothing emailed yet to ${liveRow.recipient_email}` : ` to ${liveRow.recipient_email}`) : lastSendChannel === 'link' ? ' — nothing emailed yet' : ''}
           {liveRow.send_count > 1 ? ` · ${liveRow.send_count} sends` : ''}
           {liveRow.view_count > 0 ? ` · opened ${liveRow.view_count}×` : ' · not opened yet'}
+          {(() => {
+            const fp = framesProgress(liveRow)
+            return fp ? ` · ${fp.done} of ${fp.of} signed${fp.waitingOn.length ? ` — waiting on ${fp.waitingOn.join(' and ')}` : ''}` : ''
+          })()}
           {liveRow.public_token_expires_at ? ` · link good until ${formatContractStamp(liveRow.public_token_expires_at)?.split(',')[0] ?? ''}` : ''}
         </div>
         <RailGroup label="Nudge">
@@ -891,6 +902,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
     signedAt: signedView ? ('row' in signedView ? signedView.row.signed_at : estimateRow?.acceptor_consented_at ?? signedView.coverage.signedAt) : null,
     signerName: signedView ? ('row' in signedView ? signedView.row.signer_printed_name : estimateRow?.acceptor_printed_name ?? signedView.coverage.signerName) : null,
     signedVerb: signedView && !('row' in signedView) ? 'Accepted' : 'Signed',
+    frames: liveRow ? framesLabel(liveRow) : '',
     signedOnFile,
     notNeeded: Boolean(notNeeded) && !liveRow,
     draftSaved: autosaveState === 'saved',
@@ -1014,9 +1026,25 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
               signature={
                 shownRow?.signed_at
                   ? { printedName: shownRow.signer_printed_name ?? '', auditLine: jobContractSignatureAuditLine(shownRow) ?? '', imageUrl: recordUrls.signatureUrl }
-                  : null
+                  : paperRow?.signer_printed_name && paperRow.signer_consented_at
+                    ? { printedName: paperRow.signer_printed_name, auditLine: jobContractSignatureAuditLine(frameAsSignerRow(signerFrames(paperRow)[0]!)) ?? '', imageUrl: recordUrls.signatureUrl }
+                    : null
               }
               filed={filedDoc}
+              coSigner={paperRow ? { name: paperRow.co_signer_name ?? '', email: paperRow.co_signer_email ?? '' } : coSigner}
+              setCoSigner={
+                paperEditable
+                  ? (v) => {
+                      touch()
+                      setCoSigner(v)
+                    }
+                  : undefined
+              }
+              coSignature={
+                paperRow?.co_signer_name && paperRow.co_signed_at
+                  ? { printedName: paperRow.co_signer_printed_name ?? '', auditLine: jobContractSignatureAuditLine(frameAsSignerRow(signerFrames(paperRow)[1]!)) ?? '', imageUrl: recordUrls.coSignatureUrl }
+                  : null
+              }
             />
           )}
           {templates.length > 1 && paperEditable ? (
