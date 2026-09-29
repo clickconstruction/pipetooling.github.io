@@ -134,6 +134,8 @@ export type WindowPillInput = {
   viewCount: number
   signedAt: string | null
   signerName: string | null
+  /** v2.4183: an estimate / bid-room acceptance reads Accepted, not Signed. */
+  signedVerb?: 'Signed' | 'Accepted'
   /** A signed contract is already on file (history) while no live row exists. */
   signedOnFile: boolean
   notNeeded: boolean
@@ -144,7 +146,7 @@ export type WindowPillInput = {
 
 /** The header pill: where this agreement stands, in the chip's words. */
 export function windowStatusPill(i: WindowPillInput): { text: string; tone: 'gray' | 'amber' | 'green' } {
-  if (i.status === 'signed' && i.signedAt) return { text: `✍ Signed ${i.stamp(i.signedAt)}${i.signerName ? ` · ${i.signerName}` : ''}`, tone: 'green' }
+  if (i.status === 'signed' && i.signedAt) return { text: `✍ ${i.signedVerb ?? 'Signed'} ${i.stamp(i.signedAt)}${i.signerName ? ` · ${i.signerName}` : ''}`, tone: 'green' }
   if (i.status === 'sent' && i.channel === 'handed') return { text: `Handed over${i.sentAt ? ` ${i.stamp(i.sentAt)}` : ''} · awaiting the signed page`, tone: 'amber' }
   if (i.status === 'sent') {
     const opened = i.viewCount > 0 ? `opened ${i.viewCount}×` : 'not opened yet'

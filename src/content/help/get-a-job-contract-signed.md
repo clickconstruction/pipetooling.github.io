@@ -116,9 +116,13 @@ The link never dies: it shows the signed record afterwards, a polite note if you
 
 ## View the signed record
 
-Once a job reads {{chip:green|✍ Signed}}, the chip opens the **Signed agreement** view instead of the send form — the same view whether the customer signed a contract you sent, uploaded paper, or accepted an estimate online. It shows who signed, when and how, the document exactly as signed, and where it was signed from. The signature closes the document in a slim **Signed electronically** frame with a short record ID (like `E84-9F3A2C`) — the same block on the office record, the customer's page, the printed copy and the PDF. {{button:blue|Share ▾}} holds every door: **Copy link** to the customer's page (contracts), **Email a copy…** (the signed PDF to the customer, the GC, a lender or a teammate — tap a chip or type addresses, add a note), **Text link**, **Download PDF**, **Print**, and for estimate-sourced signatures **Open estimate**. The footer shows who last received a copy, and the job's activity keeps every share. Need a fresh agreement because the scope moved? **Start a new agreement…** opens the send form; a new signature supersedes the old one.
+Once a job reads {{chip:green|✍ Signed}}, the chip opens the same **Contract window**, now on its signed state — whether the customer signed a contract you sent, the office filed paper or a Google Doc, or the customer accepted an estimate online. The left column is the agreement exactly as signed: the paper with the signature closing it (the drawn mark when they drew, then *Signed electronically by …*, the time and *consent recorded*), or the accepted estimate's record. The right column says who signed, when and how, where from and on what device, and which document at which revision, then the doors:
 
-{{gif:get-a-job-contract-signed-view.gif|A signed chip opens the Signed agreement view — the customer's accepted estimate closing with the framed signature block (mark, record ID, name and time, consent line), then Share ▾ and Email a copy… with the signed PDF attached}}
+- **Share** — {{button:blue|Email a copy…}} sends the signed PDF (or the filed link) to the customer or anyone else and records who got it; **Copy link** copies the customer's page, which now shows the signed record; **Text link** when a mobile is on file.
+- **Keep** — **Download PDF** (the stored copy, or one built on the spot), **Open uploaded copy ↗** for a paper scan, **Print / save as PDF**, and the filed **Google Doc** with its own copy-link button.
+- **Later** — {{button:outline|Start a new agreement…}} turns the window back into a fresh draft (a new signature supersedes the old one, which stays under **History**), and **Open job**; an accepted estimate adds **Open estimate #N**.
+
+The line under the doors says when a copy last went out and to whom. Older signed agreements sit under **History** on the left; **View** shows one in place, with *← Back to the current agreement* in the rail.
 
 ## Already have their contract? The field on the job
 
@@ -136,7 +140,7 @@ Have a paper scan instead? The small **Have a scan or photo instead?** link unde
 
 - **Bill Customer** and **View bill** — a strip at the top says whether an agreement is behind the bill, with {{button:blue|Send contract}} or {{button:outline|View record}} right there. Billing is when the office most often notices a missing contract.
 - **Job window → Edit** — a *Contract* row under the customer block.
-- **Documents → Jobs** — sent, signed and voided contracts list under each job; click one for the signed record: the document as signed, the signature, and who / how / when / from where, with **Print / save as PDF**.
+- **Documents → Jobs** — sent, signed and voided contracts list under each job; click a signed one to open the Contract window on that record, an unsigned one to preview it.
 
 ## Two kinds of terms
 
@@ -189,4 +193,4 @@ Customers with a portal link also see **Your agreements** on their account page:
 
 ## The signed copy
 
-The moment a customer signs on the page, the app emails them their signed copy — the PDF attached, and the same link stays live. For a paper signature nothing is emailed until you click **Share** on the signed agreement, which sends the PDF. Both show as the **Signed copy** step on the customer's *Their journey* (the Customer page and the Job window).
+The moment a customer signs on the page, the app emails them their signed copy — the PDF attached, and the same link stays live. For a paper signature nothing is emailed until you press **Email a copy…** in the Contract window's signed rail, which sends the PDF. Both show as the **Signed copy** step on the customer's *Their journey* (the Customer page and the Job window).

@@ -49,7 +49,10 @@ export type JobContractPaperProps = {
     /** Built-in wording: the sentence that says how to make it the office's. */
     builtInNote: string | null
   }
-  signature: { printedName: string; auditLine: string } | null
+  /** v2.4183: the drawn mark (a signed URL) sits above the printed name when the customer drew. */
+  signature: { printedName: string; auditLine: string; imageUrl?: string | null } | null
+  /** v2.4183: a record filed from an outside document (a Google Doc, a link) — the paper prints a note in place of the body it never held. */
+  filed?: { what: string } | null
 }
 
 const INK = 'var(--text-strong)'
@@ -182,6 +185,12 @@ export default function JobContractPaper(p: JobContractPaperProps) {
         </span>
       </div>
       {p.job.job_address ? <div style={kv}>Property: {p.job.job_address}</div> : null}
+      {p.filed ? (
+        <div style={{ ...kv, marginTop: 14, padding: '10px 12px', border: `1px dashed ${RULE}`, borderRadius: 6 }} data-testid="paper-filed-note">
+          Signed outside the app — the {p.filed.what} filed with this record is the agreement; open it from the rail.
+        </div>
+      ) : (
+        <>
       <div style={{ marginTop: 8 }}>
         <TextLine editable={p.editable} value={f.note} onChange={(v) => p.setField('note', v)} label="A line the customer reads before the work" ghostLabel="+ a line the customer reads before the work" testId="paper-note" style={{ fontSize: 13 }} />
       </div>
@@ -316,10 +325,13 @@ export default function JobContractPaper(p: JobContractPaperProps) {
         <ContractBodyDisplay format={p.terms.bodyFormat} bodyHtml={p.terms.bodyHtml} scrollStyles={{ fontSize: 11.5, color: 'var(--text-gray-800)', lineHeight: 1.5 }} />
         {!p.terms.open ? <div aria-hidden style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 44, background: 'linear-gradient(rgba(255,255,255,0), var(--surface))' }} /> : null}
       </div>
+        </>
+      )}
 
       <div style={{ marginTop: 22, borderTop: `1px solid ${RULE}`, paddingTop: 12 }} data-testid="paper-signature">
         {p.signature ? (
           <div style={{ fontSize: 12, color: INK_2 }}>
+            {p.signature.imageUrl ? <img src={p.signature.imageUrl} alt="Signature" style={{ display: 'block', maxHeight: 56, maxWidth: 260, marginBottom: 4 }} /> : null}
             <b style={{ color: INK }}>✍ {p.signature.printedName}</b>
             <div style={{ fontSize: 11, color: INK_3 }}>{p.signature.auditLine}</div>
           </div>

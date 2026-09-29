@@ -30,7 +30,8 @@ import {
 } from '../lib/jobs/lienReleaseTracking'
 import { lienReleaseChipColors, lienReleaseChips, lienReleaseSignatureAuditLine, lienReleaseStatus } from '../lib/jobs/lienReleaseLifecycle'
 import { formatContractStamp, jobContractChipColors, jobContractChips, jobContractSignatureAuditLine, type JobContractRow } from '../lib/jobs/jobContractLifecycle'
-import JobSignedAgreementModal from '../components/jobs/JobSignedAgreementModal'
+import JobContractModal from '../components/jobs/JobContractModal'
+import type { JobWithDetails } from '../types/jobWithDetails'
 import { buildJobContractRecordHtml } from '../components/jobs/JobContractRecordModal'
 import { buildLienWaiverPrintHtml, type LienWaiverSignature } from '../lib/jobsDocuments/lienWaiverRelease'
 import { openHtmlPreviewWindow } from '../lib/jobsDocuments/printWindow'
@@ -652,7 +653,8 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
   const [search, setSearch] = useState('')
   const [addDriveLinkJob, setAddDriveLinkJob] = useState<{ id: string; title: string } | null>(null)
   const [billedInvoiceModal, setBilledInvoiceModal] = useState<DocumentsJobLedgerInvoiceRow | null>(null)
-  const [contractRecord, setContractRecord] = useState<{ row: JobContractRow; job: { id: string; hcp_number: string | null; click_number: string | null; job_name: string | null; job_address: string | null; customer_name: string | null } } | null>(null)
+  /** v2.4183: a signed contract opens the Contract window on that record (the Signed agreement view folded into it). */
+  const [contractWindow, setContractWindow] = useState<{ job: JobWithDetails; recordId: string } | null>(null)
 
   const effectiveSearch = embedded ? embedSearch : search
   const filteredRows = useMemo(() => {
@@ -833,6 +835,15 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
     testReportModal.openTestReport({ job, reportId: tr.id, onChanged: () => void load() })
   }
 
+  const openContractWindow = async (jobId: string, recordId: string) => {
+    const job = await fetchJobWithDetailsById(jobId)
+    if (!job) {
+      showToast('Could not load the job for this contract', 'error')
+      return
+    }
+    setContractWindow({ job, recordId })
+  }
+
   if (!user?.id) {
     return <p style={{ color: 'var(--text-muted)' }}>Sign in to view the ledger.</p>
   }
@@ -844,16 +855,12 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
         invoice={billedInvoiceModal}
         onClose={() => setBilledInvoiceModal(null)}
       />
-      <JobSignedAgreementModal
-        open={contractRecord != null && contractRecord.row.signed_at != null}
-        onClose={() => setContractRecord(null)}
-        job={contractRecord?.job ?? null}
-        coverage={
-          contractRecord?.row.signed_at
-            ? { kind: 'signed', source: contractRecord.row.signer_mode === 'paper' ? 'paper' : 'contract', signedAt: contractRecord.row.signed_at, signerName: contractRecord.row.signer_printed_name, contractId: contractRecord.row.id, estimateNumber: null, estimateId: null }
-            : null
-        }
-        contractRow={contractRecord?.row ?? null}
+      <JobContractModal
+        open={contractWindow != null}
+        onClose={() => setContractWindow(null)}
+        job={contractWindow?.job ?? null}
+        initialRecordId={contractWindow?.recordId ?? null}
+        onChanged={() => void load()}
       />
       <DocumentsAddDriveLinkModal
         open={addDriveLinkJob != null}
@@ -1051,7 +1058,7 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
                           <button
                             type="button"
                             onClick={() => {
-                              if (con.signed_at) setContractRecord({ row: con, job: r })
+                              if (con.signed_at) void openContractWindow(r.id, con.id)
                               else if (!openHtmlPreviewWindow(buildJobContractRecordHtml(con, r, null))) showToast('Popup blocked — allow popups to view the contract.', 'error')
                             }}
                             style={{ border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', textAlign: 'left', font: 'inherit', color: 'var(--text-blue-700)', textDecoration: 'underline' }}

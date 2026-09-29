@@ -90,7 +90,6 @@ import BilledDatesLedger from './BilledDatesLedger'
 import type { BilledRowBillLine } from './JobsStagesUnifiedTable'
 import SetPromisedPayDateModal from './SetPromisedPayDateModal'
 import JobContractModal from './JobContractModal'
-import JobSignedAgreementModal, { type SignedCoverage } from './JobSignedAgreementModal'
 import { useJobContractsNudge } from '../../hooks/useJobContractsNudge'
 import { useJobCrewPositions } from '../../hooks/useJobCrewPositions'
 import type { ContractStage } from '../../lib/jobs/jobContractNudge'
@@ -840,15 +839,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const { jobContractCoverageByJobId, loadJobContractCoverage } = useJobContractCoverage(jobs, canSeeJobContracts)
   /** The Contract modal (Contract Desk PR 2) — opened from the row chip and the ✍ quick action. */
   const [jobContractModalJob, setJobContractModalJob] = useState<JobWithDetails | null>(null)
-  /** The signed-agreement view (v2.2709): a green chip opens the record, not the send form. */
-  const [signedAgreement, setSignedAgreement] = useState<{ job: JobWithDetails; coverage: SignedCoverage } | null>(null)
-  const openJobContract = canSeeJobContracts
-    ? (j: JobWithDetails) => {
-        const cov = jobContractCoverageByJobId.get(j.id)
-        if (cov && cov.kind === 'signed') setSignedAgreement({ job: j, coverage: cov })
-        else setJobContractModalJob(j)
-      }
-    : undefined
+  /** v2.4183: every chip opens the one window — a green one lands on its signed state (the window reads the coverage). */
+  const openJobContract = canSeeJobContracts ? (j: JobWithDetails) => setJobContractModalJob(j) : undefined
   /** The contract sweep (PR 4): every live job with nothing on file, one row each. ?contractSweep=1 deep-links it. */
   // Contract coverage card (v2.2738): company-wide counts per stage — the
   // board loads Billed/Collections lazily, so the card never reads off loaded rows.
@@ -4566,14 +4558,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         onChanged={() => void loadJobContractCoverage()}
         onJobChanged={() => void loadJobs()}
         onEditJob={(j) => openEdit(j)}
-      />
-      <JobSignedAgreementModal
-        open={signedAgreement != null}
-        onClose={() => setSignedAgreement(null)}
-        job={signedAgreement?.job ?? null}
-        coverage={signedAgreement?.coverage ?? null}
-        onOpenJob={signedAgreement ? () => { const j = signedAgreement.job; setSignedAgreement(null); openEdit(j) } : undefined}
-        onStartNewAgreement={signedAgreement ? () => { const j = signedAgreement.job; setSignedAgreement(null); setJobContractModalJob(j) } : undefined}
+        coverage={jobContractModalJob ? jobContractCoverageByJobId.get(jobContractModalJob.id) ?? null : null}
       />
       <JobsContractSweepModal
         open={contractSweepOpen}

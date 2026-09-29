@@ -49,7 +49,7 @@ last_updated: 2026-09-25
 | Module styles | `tableStyle` … `documentsLedgerEmbedHintStyle` 184–251, `documentsUnifiedSectionHeadingStyle` 1785–1789 | ~75 | read by all four ledgers + Search — except `documentsPageVisuallyHiddenH1Style` 237–247, read only by the router (1861) | none | inline |
 | Module pure helpers | 18 module functions (see Stage A) | ~205 | each read by one ledger (+ its search predicate) — **except `formatJobRevenueUsd` 531–534, read by Jobs (1016, 1040, 1148, predicates 603/631) and Supply (predicate 580, cell 1772)** | low, **untested** | inline |
 
-Already extracted and mounted here: [`DocumentsAddDriveLinkModal`](../src/components/documents/DocumentsAddDriveLinkModal.tsx) (248 lines; URL normalize via `normalizeCustomerAttachmentUrl` + the try/catch that toasts a thrown `onSave`), [`DocumentsJobBilledInvoiceModal`](../src/components/documents/DocumentsJobBilledInvoiceModal.tsx) (277), [`DocumentsLedgerDocIcons`](../src/components/documents/DocumentsLedgerDocIcons.tsx) (37), `CustomerAcceptanceRecordModal`, `EstimateSentDocumentModal`, `JobSignedAgreementModal`, `SettingsCompanyDocumentsSection` (278). None of these seven has a test or render test (git grep at `a05cef4c4`).
+Already extracted and mounted here: [`DocumentsAddDriveLinkModal`](../src/components/documents/DocumentsAddDriveLinkModal.tsx) (248 lines; URL normalize via `normalizeCustomerAttachmentUrl` + the try/catch that toasts a thrown `onSave`), [`DocumentsJobBilledInvoiceModal`](../src/components/documents/DocumentsJobBilledInvoiceModal.tsx) (277), [`DocumentsLedgerDocIcons`](../src/components/documents/DocumentsLedgerDocIcons.tsx) (37), `CustomerAcceptanceRecordModal`, `EstimateSentDocumentModal`, `JobContractModal` (the Contract window, on a signed record — v2.4183), `SettingsCompanyDocumentsSection` (278). None of these seven has a test or render test (git grep at `a05cef4c4`).
 
 ---
 
@@ -112,7 +112,7 @@ Already extracted and mounted here: [`DocumentsAddDriveLinkModal`](../src/compon
   5. `job_test_reports` 781–801 — all statuses, mapped through `testReportDocumentRow`; fail-soft.
 - **Handler:** `openTestReportDocument` 816–834 — `tr.door.kind === 'pdf'` (status `sent` **and** a `pdf_path`, per `testReportDocumentRow`) → `supabase.storage.from('job-test-reports').createSignedUrl(path, 300)` → `openInExternalBrowser`; otherwise (drafts, or sent without a PDF) → `fetchJobWithDetailsById` → `testReportModal.openTestReport({ job, reportId, onChanged: load })`; returns silently when the context is absent.
 - **Write:** Drive link save 865–877 — `jobs_ledger.update({ google_drive_link })` with **no `.select` / refusal check**.
-- **Render:** main row 931–1017 (Drive folder icon or **+**; `J<num> · name` title via `effectiveJobLedgerNumber` + `getBidServiceTypeTag`; `jobPickerStatusChip`; revenue); child rows: billed invoices 1018–1047 (→ `DocumentsJobBilledInvoiceModal`), contracts 1048–1077 (signed → `JobSignedAgreementModal` with an inline `coverage` literal 851–855; unsigned → `openHtmlPreviewWindow(buildJobContractRecordHtml(con, r, null))`), test reports 1078–1103, lien releases 1104–1173 (form-type fallback + typed-signature builder 1105–1117 → `buildLienWaiverPrintHtml` preview).
+- **Render:** main row 931–1017 (Drive folder icon or **+**; `J<num> · name` title via `effectiveJobLedgerNumber` + `getBidServiceTypeTag`; `jobPickerStatusChip`; revenue); child rows: billed invoices 1018–1047 (→ `DocumentsJobBilledInvoiceModal`), contracts 1048–1077 (signed → `openContractWindow` loads the job with `fetchJobWithDetailsById` and opens `JobContractModal` with `initialRecordId` — v2.4183; unsigned → `openHtmlPreviewWindow(buildJobContractRecordHtml(con, r, null))`), test reports 1078–1103, lien releases 1104–1173 (form-type fallback + typed-signature builder 1105–1117 → `buildLienWaiverPrintHtml` preview).
 - **Money:** `formatJobRevenueUsd` (531–534, **dollars**) for job revenue, invoice amounts and lien-release amounts. Display only.
 - **Links out:** `/jobs?edit=<id>` 964.
 - **Helpers:** `jobLedgerCustomerLines` 508–522, `documentsJobLedgerStatusLabel` 524–529, `formatJobRevenueUsd` 531–534, `documentsJobInvoiceMatchesSearch` 597–611, `documentsJobsRowMatchesSearch` 613–636; `TEST_REPORT_BUCKET` 506.
@@ -183,7 +183,7 @@ Already extracted kernels this page calls: tested — `jobsLedgerStatusPipeline`
 | Lien-waiver typed signature + form-type fallback | `Documents.tsx` 1105–1117; `DashboardLienReleaseQueueModal.tsx` `signatureForRow` 50 + fallback 112–114; `LienReleaseModal.tsx` `renderSignature` 591–599 | one kernel in `lib/jobs/lienReleaseLifecycle.ts` (tested file) |
 | `formatMoney(cents)` | `Documents.tsx` 52, `Estimates.tsx` 862, `BidRoom.tsx` 73, `EstimateCustomerDocument.tsx` 21, `EstimateOptionsPicker.tsx` 23 | one shared cents formatter |
 | `$Nk` compact bid value | `Documents.tsx` `formatBidValueCompact` 96; `lib/bids/bidFormatting.ts` `formatCompactCurrency` 14 (tested); `BidSubmissionFollowupExpandableDetails.tsx` 11 | import the lib one |
-| Pure helpers exported from component files | `billingTypeLabel` (`HostedStripeBillPanel.tsx` 143, only importer is Documents); `buildJobContractRecordHtml` (`JobContractRecordModal.tsx` 75, also used by `JobSignedAgreementModal`) | move to `lib/jobs/*` + tests |
+| Pure helpers exported from component files | `billingTypeLabel` (`HostedStripeBillPanel.tsx` 143, only importer is Documents); `buildJobContractRecordHtml` (`JobContractRecordModal.tsx` 75, also used by `JobContractSignedRail`) | move to `lib/jobs/*` + tests |
 | Company documents list + role gate | `SettingsCompanyDocumentsSection` in `Settings.tsx` 1185 (its Company group gated at 1178: dev / master_technician / `isAssistantLike` (assistant, controller) / estimator) and here; both role lists mirror `company_documents` RLS | shared `canSeeCompanyDocuments` |
 
 ---
@@ -202,7 +202,7 @@ Already extracted kernels this page calls: tested — `jobsLedgerStatusPipeline`
 10. **Tab bodies unmount on switch** — every tab visit re-fetches and loses its local `search`.
 11. **`?tab=company` for a role outside the list renders an empty body** (no button, no content).
 12. **Test-report PDF links live 300 s** and open in the external browser; draft opens need `TestReportModalProvider` and silently no-op without it.
-13. **Unsigned contract preview passes `signatureUrl = null`**; signed opens `JobSignedAgreementModal`.
+13. **Unsigned contract preview passes `signatureUrl = null`**; signed opens the Contract window (`JobContractModal`, `initialRecordId`) on that record (v2.4183).
 14. **Estimates status filter** is the four ledger statuses only (286).
 15. **`formatSupplyInvoiceDateYmd` noon-anchors** (`T12:00:00`) to dodge TZ shift.
 
