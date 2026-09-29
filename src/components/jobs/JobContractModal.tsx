@@ -4,6 +4,11 @@
  * autosaves from the first real edit, Send is the gate that mints the link,
  * fields lock once sent, ✕ just closes. Opened from the Pipeline row chip
  * and the ✍ quick action (PR 3 adds the Job window row and the View bill strip).
+ *
+ * v2.4154 — the rail: one question (how this one gets signed), pre-picked from what the job knows,
+ * one button whose label follows the pick, a sentence that says what it does, the two exits under
+ * it; the status pill in the title bar. The agreement's fields stay on the left until the paper
+ * becomes the form (PR 2 of the Contract window train).
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { JobWithDetails } from '../../types/jobWithDetails'
@@ -51,6 +56,11 @@ import {
 import { isAwaitingPaperCopy, isHandedAwaitingPaper, jobContractSentChannel } from '../../lib/jobs/jobContractHandoff'
 import { CONTRACT_NOT_NEEDED_REASONS } from '../../lib/jobs/jobContractCoverage'
 import { clearJobContractNotNeeded, markJobContractNotNeeded } from '../../lib/jobs/jobContractNotNeeded'
+import { handoffBlocker, markJobContractHanded } from '../../lib/jobs/jobContractHandoff'
+import { effectiveWindowWay, emailLooksValid, jobTakesTheirSubcontract, phoneLooksUsable, windowStatusPill, windowWayButton, windowWaysPlan, windowWaySentence, type PaperSend, type WindowWay } from '../../lib/jobs/contractWindowWays'
+import JobContractSigningRail from './JobContractSigningRail'
+import { ContractBodyDisplay } from '../contracts/ContractBodyDisplay'
+import { useMatchMedia } from '../../hooks/useMatchMedia'
 
 type TemplateRow = Pick<
   Database['public']['Tables']['contract_template_documents']['Row'],
@@ -111,6 +121,7 @@ function dispatchChanged() {
 export default function JobContractModal({ open, onClose, job, onChanged, onJobChanged, initialFilingOpen = false, onEditJob }: JobContractModalProps) {
   const { user: authUser } = useAuth()
   const { showToast } = useToastContext()
+  const narrow = useMatchMedia('(max-width: 820px)')
 
   const [rows, setRows] = useState<JobContractRow[]>([])
   const [liveRow, setLiveRow] = useState<JobContractRow | null>(null)
@@ -129,7 +140,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
   /** v2.3707: the estimate the customer accepted, read once per open, so the amount can say where it comes from. */
   const [acceptedEst, setAcceptedEst] = useState<{ totalCents: number | null; acceptedOn: string | null } | null>(null)
   const [autosaveState, setAutosaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
-  const [busy, setBusy] = useState<null | 'send' | 'link' | 'void' | 'preview' | 'pdf' | 'reopen'>(null)
+  const [busy, setBusy] = useState<null | 'send' | 'link' | 'void' | 'preview' | 'pdf' | 'reopen' | 'handed'>(null)
   const [voidArmed, setVoidArmed] = useState(false)
   const [lastLink, setLastLink] = useState<string | null>(null)
   const [paperOpen, setPaperOpen] = useState(false)
@@ -139,6 +150,12 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
   const [notNeededOpen, setNotNeededOpen] = useState(false)
   const [notNeededReason, setNotNeededReason] = useState('')
   const [notNeededBusy, setNotNeededBusy] = useState(false)
+  /** The rail (v2.4154): the office's pick, or null for the plan's default. */
+  const [pickedWay, setPickedWay] = useState<WindowWay | null>(null)
+  const [paperSend, setPaperSend] = useState<PaperSend>('download')
+  const [textToo, setTextToo] = useState(false)
+  const [oursShown, setOursShown] = useState(false)
+  const [termsOpen, setTermsOpen] = useState(false)
   /** Channel of the live row's latest send event: 'email' = the customer was emailed, 'link' = only minted/copied. */
   const [lastSendChannel, setLastSendChannel] = useState<'email' | 'link' | null>(null)
   const userTouchedRef = useRef(false)
@@ -192,6 +209,11 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
     setNotNeededLocal(undefined)
     setNotNeededOpen(false)
     setNotNeededReason('')
+    setPickedWay(null)
+    setPaperSend('download')
+    setTextToo(false)
+    setOursShown(false)
+    setTermsOpen(false)
     setRecipientName((job.customer_name ?? '').trim())
     setRecipientEmail((job.customer_email ?? '').trim())
     setRecipientPhone((job.customer_phone ?? '').trim())
@@ -614,65 +636,80 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
   const historyRows = rows.filter((r) => !liveRow || r.id !== liveRow.id)
   const canReopen = Boolean(liveRow) && reopenBlocker(liveRow) === null
   // v2.3629: a row handed over on paper has no link to resend — it waits for the signed page.
-  const sentStrip =
+  const Group = ({ label, children }: { label: string; children: React.ReactNode }) => (
+    <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
+      <span style={{ font: '700 0.66rem/1.2 inherit', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', minWidth: 78 }}>{label}</span>
+      {children}
+    </div>
+  )
+  const amberStrip: React.CSSProperties = { padding: '0.55rem 0.75rem', borderRadius: 8, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', fontSize: '0.8rem', lineHeight: 1.4 }
+  const sentRail =
     liveRow && status === 'sent' && isHandedAwaitingPaper(liveRow) ? (
-      <div data-testid="contract-handed-strip" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', padding: '0.55rem 0.75rem', borderRadius: 8, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', fontSize: '0.8rem', margin: '0.6rem 0' }}>
-        <span style={{ flex: 1, minWidth: 200 }}>
-          📄 Handed over on paper {formatContractStamp(liveRow.last_sent_at ?? liveRow.sent_at) ?? ''} — waiting for the signed copy. Nothing was emailed, and no reminders go out.
-        </span>
-        <button type="button" style={btnPrimary} disabled={busy != null} onClick={() => setPaperOpen(true)}>
-          File the signed copy
-        </button>
-        <button type="button" style={{ ...btn, color: voidArmed ? 'var(--text-red-700)' : undefined }} disabled={busy != null} onClick={() => void voidAndRedo()}>
-          {busy === 'void' ? 'Voiding…' : voidArmed ? 'Confirm void & redo' : 'Void & redo'}
-        </button>
+      <div data-testid="contract-handed-strip" style={{ display: 'grid', gap: '0.6rem' }}>
+        <div style={amberStrip}>📄 Handed over on paper {formatContractStamp(liveRow.last_sent_at ?? liveRow.sent_at) ?? ''} — waiting for the signed copy. Nothing was emailed, and no reminders go out.</div>
+        <Group label="It's back">
+          <button type="button" style={btnPrimary} disabled={busy != null} onClick={() => setPaperOpen(true)}>
+            File the signed copy
+          </button>
+        </Group>
+        <Group label="Change it">
+          <button type="button" style={{ ...btn, color: voidArmed ? 'var(--text-red-700)' : undefined }} disabled={busy != null} onClick={() => void voidAndRedo()}>
+            {busy === 'void' ? 'Voiding…' : voidArmed ? 'Confirm void & redo' : 'Void & redo'}
+          </button>
+        </Group>
       </div>
     ) : liveRow && status === 'sent' ? (
-      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', padding: '0.55rem 0.75rem', borderRadius: 8, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', fontSize: '0.8rem', margin: '0.6rem 0' }}>
-        <span style={{ flex: 1, minWidth: 200 }}>
+      <div style={{ display: 'grid', gap: '0.6rem' }} data-testid="contract-sent-rail">
+        <div style={amberStrip}>
           {jobContractSentChannel(liveRow) === 'pdf_email' ? '📎 PDF emailed to sign by hand ' : lastSendChannel === 'link' ? '🔗 Link copied ' : '✉ Sent '}
           {formatContractStamp(liveRow.last_sent_at ?? liveRow.sent_at) ?? ''}
           {liveRow.recipient_email ? (lastSendChannel === 'link' ? ` — nothing emailed yet to ${liveRow.recipient_email}` : ` to ${liveRow.recipient_email}`) : lastSendChannel === 'link' ? ' — nothing emailed yet' : ''}
           {liveRow.send_count > 1 ? ` · ${liveRow.send_count} sends` : ''}
           {liveRow.view_count > 0 ? ` · opened ${liveRow.view_count}×` : ' · not opened yet'}
           {liveRow.public_token_expires_at ? ` · link good until ${formatContractStamp(liveRow.public_token_expires_at)?.split(',')[0] ?? ''}` : ''}
-        </span>
-        {isAwaitingPaperCopy(liveRow) ? (
-          <button type="button" style={btnPrimary} disabled={busy != null} onClick={() => setPaperOpen(true)} data-testid="contract-file-signed-copy">
-            File the signed copy
+        </div>
+        <Group label="Nudge">
+          {isAwaitingPaperCopy(liveRow) ? (
+            <button type="button" style={btnPrimary} disabled={busy != null} onClick={() => setPaperOpen(true)} data-testid="contract-file-signed-copy">
+              File the signed copy
+            </button>
+          ) : null}
+          <button type="button" style={lastSendChannel === 'link' || !isAwaitingPaperCopy(liveRow) ? btnPrimary : btn} disabled={busy != null} onClick={() => void invokeSend('email')}>
+            {busy === 'send' ? 'Sending…' : lastSendChannel === 'link' ? 'Send by email' : 'Resend email'}
           </button>
-        ) : null}
-        <button type="button" style={lastSendChannel === 'link' ? btnPrimary : btn} disabled={busy != null} onClick={() => void invokeSend('email')}>
-          {busy === 'send' ? 'Sending…' : lastSendChannel === 'link' ? 'Send by email' : 'Resend email'}
-        </button>
-        <button type="button" style={btn} disabled={busy != null} onClick={() => void copyLink()}>
-          Copy link
-        </button>
-        {recipientPhone.trim() ? (
-          <button type="button" style={btn} disabled={busy != null} onClick={() => void textLink()}>
-            Text link
+          {recipientPhone.trim() ? (
+            <button type="button" style={btn} disabled={busy != null} onClick={() => void textLink()}>
+              Text the link
+            </button>
+          ) : null}
+          <button type="button" style={btn} disabled={busy != null} onClick={() => void copyLink()}>
+            Copy link
           </button>
-        ) : null}
-        <button type="button" style={btn} disabled={busy != null} onClick={() => void signInPerson()}>
-          Sign in person
-        </button>
-        {canReopen ? (
-          <button type="button" style={reopenArmed ? btnPrimary : btn} disabled={busy != null} onClick={() => void editAndResend()} title="They have not opened it — unlock it here, fix it, and send again on the same link" data-testid="contract-edit-resend">
-            {busy === 'reopen' ? 'Unlocking…' : reopenArmed ? 'Confirm — unlock to edit' : 'Edit & re-send'}
+        </Group>
+        <Group label="Sign here">
+          <button type="button" style={btn} disabled={busy != null} onClick={() => void signInPerson()}>
+            Open the signing page on this device
           </button>
-        ) : null}
-        <button type="button" style={{ ...btn, color: voidArmed ? 'var(--text-red-700)' : undefined }} disabled={busy != null} onClick={() => void voidAndRedo()}>
-          {busy === 'void' ? 'Voiding…' : voidArmed ? 'Confirm void & redo' : 'Void & redo'}
-        </button>
+        </Group>
+        <Group label="Change it">
+          {canReopen ? (
+            <button type="button" style={reopenArmed ? btnPrimary : btn} disabled={busy != null} onClick={() => void editAndResend()} title="They have not opened it — unlock it here, fix it, and send again on the same link" data-testid="contract-edit-resend">
+              {busy === 'reopen' ? 'Unlocking…' : reopenArmed ? 'Confirm — unlock to edit' : 'Edit & re-send'}
+            </button>
+          ) : null}
+          <button type="button" style={{ ...btn, color: voidArmed ? 'var(--text-red-700)' : undefined }} disabled={busy != null} onClick={() => void voidAndRedo()}>
+            {busy === 'void' ? 'Voiding…' : voidArmed ? 'Confirm void & redo' : 'Void & redo'}
+          </button>
+        </Group>
         {reopenArmed && liveRow && canReopen ? (
-          <span style={{ flexBasis: '100%', fontSize: '0.76rem' }} data-testid="contract-reopen-note">
+          <span style={{ fontSize: '0.76rem', color: 'var(--text-amber-800)' }} data-testid="contract-reopen-note">
             {reopenNote(liveRow)}{' '}
             <button type="button" onClick={() => setReopenArmed(false)} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'inherit', textDecoration: 'underline', cursor: 'pointer' }}>
               Never mind
             </button>
           </span>
         ) : !canReopen && liveRow && (liveRow.first_viewed_at || liveRow.view_count > 0) ? (
-          <span style={{ flexBasis: '100%', fontSize: '0.74rem', opacity: 0.85 }}>They have opened it, so it cannot be edited in place — Void &amp; redo keeps what they read on the record and starts a new revision on the same link.</span>
+          <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>They have opened it, so it cannot be edited in place — Void &amp; redo keeps what they read on the record and starts a fresh draft on the same link.</span>
         ) : null}
       </div>
     ) : null
@@ -703,290 +740,415 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
     }
   }
 
-  const footer = (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-        <button type="button" style={btn} disabled={busy != null} onClick={preview}>
-          Preview as customer
-        </button>
-        <button
-          type="button"
-          style={btn}
-          disabled={busy != null}
-          onClick={() => void downloadPdf()}
-          title="The agreement as it reads right now, with blank Sign and Date rules for a pen — nothing is sent or recorded"
-          data-testid="contract-download-pdf"
-        >
-          {busy === 'pdf' ? 'Building…' : 'Download PDF'}
-        </button>
-        {!notNeeded && !notNeededOpen ? (
-          <button
-            type="button"
-            onClick={() => setNotNeededOpen(true)}
-            disabled={busy != null || notNeededBusy}
-            title="This job needs no agreement of ours (a builder's subcontract, a service call, warranty work) — it leaves the contract count"
-            style={{ ...btn, borderColor: 'transparent', background: 'transparent', color: 'var(--text-muted)', fontWeight: 500 }}
-          >
-            Not needed…
+  // ---- The rail (v2.4154): one question, one button ----
+  const gcJob = jobTakesTheirSubcontract(job)
+  const gcName = (job.gcCustomer?.name ?? '').trim() || null
+  const emailOk = emailLooksValid(recipientEmail)
+  const phoneOk = phoneLooksUsable(recipientPhone)
+  const plan = windowWaysPlan({ emailOk, phoneOk, gcJob, gcName })
+  const way = effectiveWindowWay(plan, pickedWay)
+  const issuerForSentence = getPhysicalInvoiceIssuerForDocument()
+  const sentence = windowWaySentence({ way, paperSend, recipientName, email: recipientEmail, phone: recipientPhone, textToo, remindersEnabled, fromAddress: issuerForSentence.email || 'the office' })
+  const wayButton = windowWayButton({ way, paperSend, email: recipientEmail, phone: recipientPhone, textToo })
+
+  const openSms = (phone: string, url: string) => {
+    const digits = phone.replace(/[^\d+]/g, '')
+    const body = `Here is your service agreement for ${job.job_address || 'your project'} — review and sign here: ${url}`
+    window.location.href = `sms:${digits}?&body=${encodeURIComponent(body)}`
+  }
+  /** Send a link: email when there is one (and text too when asked), else the link by text alone. */
+  const sendLink = async () => {
+    const phone = recipientPhone.trim()
+    if (emailOk) {
+      const url = await invokeSend('email')
+      if (url && textToo && phone) openSms(phone, url)
+      return
+    }
+    if (phone) {
+      const url = lastLink ?? (await invokeSend('link'))
+      if (url) openSms(phone, url)
+    }
+  }
+  /** On paper, download: the PDF with pen rules, and the hand-off recorded so the job leaves the count (the sweep's rule, v2.3629). */
+  const downloadHanded = async () => {
+    const row = await flushDraft()
+    if (!row) {
+      showToast('Could not save the agreement.', 'error')
+      return
+    }
+    const blocker = handoffBlocker(row)
+    if (blocker) {
+      showToast(blocker, 'error')
+      return
+    }
+    await downloadPdf()
+    setBusy('handed')
+    try {
+      const handed = await markJobContractHanded({ row, authUserId: authUser?.id ?? null })
+      if (!handed) {
+        showToast('Could not record the hand-off — the agreement may already be out.', 'error')
+        return
+      }
+      showToast('Downloaded and marked as handed over — it waits for the signed copy. File it here when it comes back.', 'success')
+      hydratedRef.current = false
+      setLiveRow(null)
+      await loadRows()
+      dispatchChanged()
+      onChanged?.()
+    } finally {
+      setBusy(null)
+    }
+  }
+  /** On paper, by email: the unsigned PDF to print, sign and send back, the signing link riding along (share-job-contract send_to_sign, v2.3631). */
+  const emailPdf = async () => {
+    if (!emailOk) {
+      showToast('Enter a valid email for the PDF.', 'error')
+      return
+    }
+    const row = await flushDraft()
+    if (!row) {
+      showToast('Could not save the agreement.', 'error')
+      return
+    }
+    setBusy('send')
+    try {
+      const { data, error } = await supabase.functions.invoke('share-job-contract', {
+        body: { contract_id: row.id, mode: 'send_to_sign', recipient_email: recipientEmail.trim(), recipient_name: recipientName.trim(), public_origin: window.location.origin, message: message.trim() || undefined },
+      })
+      const res = (data ?? {}) as { ok?: boolean; error?: string }
+      if (error || !res.ok) {
+        showToast(res.error || error?.message || 'Could not send the PDF.', 'error')
+        return
+      }
+      showToast(`PDF emailed to ${recipientEmail.trim()} — they print, sign and send it back.`, 'success')
+      hydratedRef.current = false
+      setLiveRow(null)
+      await loadRows()
+      dispatchChanged()
+      onChanged?.()
+    } finally {
+      setBusy(null)
+    }
+  }
+  const goWay = () => {
+    if (way === 'link') return void sendLink()
+    if (way === 'here') return void signInPerson()
+    if (way === 'paper') return void (paperSend === 'pdf_email' ? emailPdf() : downloadHanded())
+    setPaperOpen(true)
+  }
+
+  const signedOnFile = status === null && rows.some((r) => jobContractStatus(r) === 'signed')
+  const pill = windowStatusPill({
+    status,
+    channel: liveRow ? jobContractSentChannel(liveRow) : 'link',
+    sentAt: liveRow?.last_sent_at ?? liveRow?.sent_at ?? null,
+    viewCount: liveRow?.view_count ?? 0,
+    signedAt: liveRow?.signed_at ?? null,
+    signerName: liveRow?.signer_printed_name ?? null,
+    signedOnFile,
+    notNeeded: Boolean(notNeeded) && !liveRow,
+    draftSaved: autosaveState === 'saved',
+    stamp: (iso) => formatContractStamp(iso)?.split(',')[0] ?? '',
+  })
+  const pillColors = pill.tone === 'amber' ? { background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' } : pill.tone === 'green' ? { background: 'var(--bg-green-tint)', color: 'var(--text-green-700)' } : { background: 'var(--bg-subtle)', color: 'var(--text-muted)' }
+  const clauseCount = bodyFormat === 'plain' ? (bodyHtml.match(/^\d+\. /gm) ?? []).length : 0
+  const versionLabel = selectedTemplate?.book_version_date ? formatContractStamp(`${selectedTemplate.book_version_date}T12:00:00Z`)?.split(',')[0] ?? null : null
+  const linkBtn: React.CSSProperties = { background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.72rem', color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }
+
+  const notNeededPanel =
+    notNeededOpen && !notNeeded ? (
+      <div style={{ display: 'grid', gap: '0.45rem', padding: '0.55rem 0.75rem', borderRadius: 8, background: 'var(--bg-subtle)', border: '1px solid var(--border)', fontSize: '0.8rem' }} data-testid="contract-not-needed-panel">
+        <div>
+          <b>Why doesn&apos;t this job need an agreement of ours?</b>
+          <span style={{ color: 'var(--text-muted)' }}> It leaves the count; the row reads <i>No contract · not needed</i>.</span>
+        </div>
+        <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+          {CONTRACT_NOT_NEEDED_REASONS.map((r) => {
+            const on = notNeededReason === r
+            return (
+              <button
+                key={r}
+                type="button"
+                onClick={() => setNotNeededReason(on ? '' : r)}
+                style={{ ...btn, padding: '0.25rem 0.6rem', fontSize: '0.75rem', borderRadius: 999, background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: on ? 'var(--text-blue-700)' : 'var(--text-700)', borderColor: on ? 'var(--border-blue)' : 'var(--border-strong)' }}
+              >
+                {r}
+              </button>
+            )
+          })}
+        </div>
+        <input
+          style={inputStyle}
+          value={(CONTRACT_NOT_NEEDED_REASONS as ReadonlyArray<string>).includes(notNeededReason) ? '' : notNeededReason}
+          onChange={(e) => setNotNeededReason(e.target.value)}
+          placeholder="Or say it in your own words (optional)"
+          aria-label="Reason the job needs no contract"
+        />
+        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+          <button type="button" style={btn} disabled={notNeededBusy} onClick={() => setNotNeededOpen(false)}>
+            Cancel
           </button>
-        ) : null}
-        <span style={{ fontSize: '0.75rem', color: autosaveState === 'error' ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
-          {!editable ? 'Locked — sent' : autosaveState === 'saving' ? 'Saving…' : autosaveState === 'saved' ? 'Draft saved' : autosaveState === 'error' ? 'Save failed' : ''}
-        </span>
-      </div>
-      {editable ? (
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <button type="button" style={btn} disabled={busy != null} onClick={() => void signInPerson()}>
-            Sign in person
-          </button>
-          <button type="button" style={btn} disabled={busy != null} onClick={() => void copyLink()}>
-            {busy === 'link' ? 'Minting…' : 'Copy link'}
-          </button>
-          <button type="button" style={btnPrimary} disabled={busy != null} onClick={() => void invokeSend('email')}>
-            {busy === 'send' ? 'Sending…' : 'Send by email'}
+          <button type="button" style={btnPrimary} disabled={notNeededBusy} onClick={() => void writeNotNeeded({ reason: notNeededReason })}>
+            {notNeededBusy ? 'Saving…' : 'Mark not needed'}
           </button>
         </div>
-      ) : null}
-    </div>
-  )
+      </div>
+    ) : null
 
   return (
     <ResponsiveModalShell
       title={`Contract · J${jobNumber}`}
       onRequestClose={onClose}
-      footer={footer}
-      maxWidthDesktop={760}
+      maxWidthDesktop={1000}
+      fullScreenKey="job-contract"
       headerAction={
-        <button type="button" style={btn} disabled={busy != null} onClick={() => setPaperOpen(true)} title="Already signed outside the app? File the Google Doc (or a scan) without sending anything">
-          <span aria-hidden>📄</span> File a signed contract
-        </button>
+        <span data-testid="contract-status-pill" style={{ ...pillColors, fontSize: '0.72rem', fontWeight: 600, padding: '0.15rem 0.6rem', borderRadius: 999, whiteSpace: 'nowrap' }}>
+          {pill.text}
+        </span>
       }
     >
-      <div style={{ fontSize: '0.85rem' }}>
-        <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-          {jobContractHeading(job)} · {job.customer_name || '—'}
-          {job.job_address ? ` · ${job.job_address}` : ''}
-        </div>
-        {notNeeded ? (
-          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', padding: '0.5rem 0.75rem', borderRadius: 8, background: 'var(--bg-subtle)', border: '1px dashed var(--border)', color: 'var(--text-muted)', margin: '0.6rem 0', fontSize: '0.8rem' }}>
-            <span style={{ flex: 1, minWidth: 200 }}>
-              <b style={{ color: 'var(--text-700)' }}>Not needed</b>
-              {formatContractStamp(notNeeded.at) ? ` · marked ${formatContractStamp(notNeeded.at)}` : ''}
-              {notNeeded.reason ? ` · ${notNeeded.reason}` : ''}
-              {' — this job is out of the contract count. Sending or filing an agreement still works.'}
-            </span>
-            <button type="button" style={btn} disabled={notNeededBusy} onClick={() => void writeNotNeeded(null)}>
-              {notNeededBusy ? 'Saving…' : 'Needed after all'}
-            </button>
+      <div style={{ fontSize: '0.85rem', display: 'grid', gridTemplateColumns: narrow ? 'minmax(0, 1fr)' : 'minmax(0, 1.25fr) minmax(300px, 1fr)', gap: '1rem 1.4rem', alignItems: 'start' }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+            {jobContractHeading(job)} · {job.customer_name || '—'}
+            {job.job_address ? ` · ${job.job_address}` : ''}
           </div>
-        ) : null}
-        {notNeededOpen && !notNeeded ? (
-          <div style={{ display: 'grid', gap: '0.45rem', padding: '0.55rem 0.75rem', borderRadius: 8, background: 'var(--bg-subtle)', border: '1px solid var(--border)', margin: '0.6rem 0', fontSize: '0.8rem' }}>
-            <div>
-              <b>Why doesn&apos;t this job need an agreement of ours?</b>
-              <span style={{ color: 'var(--text-muted)' }}> It leaves the count; the row reads <i>No contract · not needed</i>.</span>
+          {signedOnFile ? (
+            <div style={{ padding: '0.5rem 0.75rem', borderRadius: 8, background: 'var(--bg-green-tint)', color: 'var(--text-green-700)', margin: '0.6rem 0', fontSize: '0.8rem' }}>
+              ✍ A signed contract is already on file for this job (see history below). Starting a new one supersedes it only if the customer signs again.
             </div>
+          ) : null}
+          {liveRow && status === 'signed' ? (
+            <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.5rem 0.75rem', borderRadius: 8, background: 'var(--bg-green-tint)', color: 'var(--text-green-700)', margin: '0.6rem 0', fontSize: '0.8rem' }}>
+              <span style={{ flex: 1, minWidth: 200 }}>✍ {jobContractSignatureAuditLine(liveRow) ?? 'Signed'}</span>
+              <button type="button" style={btn} onClick={() => setRecordRow(liveRow)}>
+                Open the signed record
+              </button>
+            </div>
+          ) : null}
+
+          <div style={sectionHead}>The agreement</div>
+          <div style={rowStyle}>
+            <span style={labelStyle} title="The legal paragraphs every agreement prints — one Contract Book document. The payment line below is this job's.">Standard terms</span>
+            <div style={{ display: 'grid', gap: '0.25rem', minWidth: 0 }} data-testid="contract-terms-row">
+              {templates.length > 1 && editable ? (
+                <select style={inputStyle} value={templateId} onChange={(e) => { touch(); setTemplateId(e.target.value) }} aria-label="Standard terms document">
+                  {templates.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.document_name}
+                      {t.book_version_date ? ` · ${t.book_version_date}` : ''}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <span style={{ fontSize: '0.85rem' }}>
+                  <b>{liveRow && !editable ? liveRow.template_name ?? templateName : templateName}</b>
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.76rem' }}>
+                    {clauseCount > 0 ? ` · ${clauseCount} clauses` : ''}
+                    {versionLabel ? ` · updated ${versionLabel}` : ''}
+                  </span>
+                </span>
+              )}
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                <button type="button" style={linkBtn} onClick={() => setTermsOpen((v) => !v)} aria-expanded={termsOpen} data-testid="contract-terms-read">
+                  {termsOpen ? 'Hide the wording' : 'Read the wording'}
+                </button>
+                {editable && selectedTemplate ? (
+                  <>
+                    {' · '}
+                    <button type="button" style={linkBtn} onClick={() => setTermsEditOpen(true)} data-testid="contract-terms-edit">
+                      Edit the wording
+                    </button>
+                    {' — it changes every later agreement, not only this one'}
+                  </>
+                ) : editable ? (
+                  ' · the built-in wording, until the office adds a customer document to the Contract Book'
+                ) : null}
+              </span>
+              {termsOpen ? (
+                <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '0.5rem 0.6rem', maxHeight: 280, overflowY: 'auto', background: 'var(--bg-subtle)' }}>
+                  <ContractBodyDisplay format={liveRow && !editable ? liveRow.body_format : bodyFormat} bodyHtml={liveRow && !editable ? liveRow.body_html : bodyHtml} scrollStyles={{ fontSize: '0.78rem', color: 'var(--text-700)' }} />
+                </div>
+              ) : null}
+            </div>
+            <span style={labelStyle}>Scope</span>
+            <textarea style={{ ...inputStyle, minHeight: 84, resize: 'vertical' }} value={scopeText} disabled={!editable} onChange={(e) => applyScopeText(e.target.value)} placeholder="One line per item — what you'll do, in the customer's words" />
+            <span style={labelStyle}>Not included</span>
+            <input style={inputStyle} value={fields.exclusions} disabled={!editable} onChange={(e) => setField('exclusions', e.target.value)} placeholder="Drywall repair, painting, permits by others (optional)" />
+            <span style={labelStyle}>Amount</span>
+            {/* v2.3707: the job's number, its source and one door — never a box; a sent agreement shows what it went out with. */}
+            <div style={{ display: 'grid', gap: '0.3rem', minWidth: 0 }} data-testid="contract-amount">
+              {editable ? (
+                <div style={{ display: 'flex', gap: '0.2rem 0.6rem', alignItems: 'baseline', flexWrap: 'wrap', fontSize: '0.8rem' }}>
+                  <b style={{ fontVariantNumeric: 'tabular-nums', ...(amountSrc.cents == null ? { color: 'var(--text-muted)', fontWeight: 600 } : {}) }} data-testid="contract-amount-value">
+                    {amountSrc.cents != null ? formatContractMoney(amountSrc.cents) : 'No amount'}
+                  </b>
+                  <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>{contractAmountSourceLabel(amountSrc, (iso) => new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }))}</span>
+                  {onEditJob && job ? (
+                    <button type="button" style={{ font: 'inherit', fontSize: '0.74rem', fontWeight: 600, color: 'var(--text-link)', background: 'transparent', border: 'none', padding: 0, cursor: 'pointer' }} onClick={() => onEditJob(job)} data-testid="contract-amount-door">
+                      {contractAmountDoorLabel(amountSrc)}
+                    </button>
+                  ) : (
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>change it on the job</span>
+                  )}
+                </div>
+              ) : (
+                <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>{fields.amount_cents != null ? formatContractMoney(fields.amount_cents) : 'time & materials'}</span>
+              )}
+              {editable && amountDrift ? (
+                <div style={{ display: 'flex', gap: '0.3rem 0.6rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.35rem 0.55rem', borderRadius: 6, background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', color: 'var(--text-amber-800)', fontSize: '0.76rem' }} data-testid="contract-amount-drift">
+                  <span>
+                    This draft still says <b>{amountDrift.draftCents != null ? formatContractMoney(amountDrift.draftCents) : 'time and materials'}</b>, typed before the number came from the job.
+                  </span>
+                  <button
+                    type="button"
+                    style={{ font: 'inherit', fontSize: '0.74rem', fontWeight: 600, padding: '0.2rem 0.55rem', borderRadius: 6, border: '1px solid var(--border-amber)', background: 'var(--surface)', color: 'var(--text-amber-800)', cursor: 'pointer' }}
+                    onClick={() => {
+                      touch()
+                      setField('amount_cents', amountSrc.cents)
+                    }}
+                    data-testid="contract-amount-use-job"
+                  >
+                    Use the job's {amountSrc.cents != null ? formatContractMoney(amountSrc.cents) : 'no amount'}
+                  </button>
+                </div>
+              ) : null}
+            </div>
+            <span style={labelStyle}>Payment</span>
             <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-              {CONTRACT_NOT_NEEDED_REASONS.map((r) => {
-                const on = notNeededReason === r
+              {PAYMENT_TERMS_PRESETS.map((p) => {
+                const on = fields.payment_terms_key === p.key
                 return (
                   <button
-                    key={r}
+                    key={p.key}
                     type="button"
-                    onClick={() => setNotNeededReason(on ? '' : r)}
-                    style={{ ...btn, padding: '0.25rem 0.6rem', fontSize: '0.75rem', borderRadius: 999, background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: on ? 'var(--text-blue-700)' : 'var(--text-700)', borderColor: on ? 'var(--text-link)' : 'var(--border-strong)' }}
+                    disabled={!editable}
+                    onClick={() => setField('payment_terms_key', p.key as PaymentTermsKey)}
+                    style={{ ...btn, padding: '0.25rem 0.6rem', fontSize: '0.75rem', borderRadius: 999, background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: on ? 'var(--text-blue-700)' : 'var(--text-700)', borderColor: on ? 'var(--border-blue)' : 'var(--border-strong)' }}
                   >
-                    {r}
+                    {p.label}
                   </button>
                 )
               })}
             </div>
-            <input
-              style={inputStyle}
-              value={(CONTRACT_NOT_NEEDED_REASONS as ReadonlyArray<string>).includes(notNeededReason) ? '' : notNeededReason}
-              onChange={(e) => setNotNeededReason(e.target.value)}
-              placeholder="Or say it in your own words (optional)"
-              aria-label="Reason the job needs no contract"
-            />
-            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-              <button type="button" style={btn} disabled={notNeededBusy} onClick={() => setNotNeededOpen(false)}>
-                Cancel
-              </button>
-              <button type="button" style={btnPrimary} disabled={notNeededBusy} onClick={() => void writeNotNeeded({ reason: notNeededReason })}>
-                {notNeededBusy ? 'Saving…' : 'Mark not needed'}
-              </button>
+            {fields.payment_terms_key === 'custom' ? (
+              <>
+                <span />
+                <input style={inputStyle} value={fields.payment_terms_text} disabled={!editable} onChange={(e) => setField('payment_terms_text', e.target.value)} placeholder="Describe the payment terms" />
+              </>
+            ) : (
+              <>
+                <span />
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{paymentTermsSentence(fields)}</span>
+              </>
+            )}
+            <span style={labelStyle}>Dates</span>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <input style={{ ...inputStyle, maxWidth: 160 }} type="date" value={fields.start_date ?? ''} disabled={!editable} onChange={(e) => setField('start_date', e.target.value || null)} aria-label="Start date" />
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>to</span>
+              <input style={{ ...inputStyle, maxWidth: 160 }} type="date" value={fields.completion_date ?? ''} disabled={!editable} onChange={(e) => setField('completion_date', e.target.value || null)} aria-label="Estimated completion date" />
             </div>
+            <span style={labelStyle}>Note</span>
+            <input style={inputStyle} value={fields.note} disabled={!editable} onChange={(e) => setField('note', e.target.value)} placeholder="A line the customer reads above the terms (optional)" />
           </div>
-        ) : null}
-        {sentStrip}
-        {status === null && rows.some((r) => jobContractStatus(r) === 'signed') ? (
-          <div style={{ padding: '0.5rem 0.75rem', borderRadius: 8, background: 'var(--bg-green-tint)', color: 'var(--text-green-700)', margin: '0.6rem 0', fontSize: '0.8rem' }}>
-            ✍ A signed contract is already on file for this job (see history below). Starting a new one supersedes it only if the customer signs again.
+
+          <div style={{ display: 'flex', gap: '0.3rem 0.8rem', alignItems: 'center', flexWrap: 'wrap', margin: '0.6rem 0 0', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+            <span style={{ color: autosaveState === 'error' ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
+              {!editable ? 'Locked — it is out' : autosaveState === 'saving' ? 'Saving…' : autosaveState === 'saved' ? 'Saved as you type.' : autosaveState === 'error' ? 'Save failed' : 'Saves as you type.'}
+            </span>
+            <button type="button" style={linkBtn} disabled={busy != null} onClick={preview}>
+              Preview as customer
+            </button>
+            <button type="button" style={linkBtn} disabled={busy != null} onClick={() => void downloadPdf()} title="The agreement as it reads right now, with blank Sign and Date rules — nothing is sent or recorded" data-testid="contract-download-pdf">
+              {busy === 'pdf' ? 'Building…' : 'Download the PDF'}
+            </button>
+            <span>— records nothing; the rail's On paper does.</span>
           </div>
-        ) : null}
 
-        <div style={sectionHead}>Who signs</div>
-        <div style={rowStyle}>
-          <span style={labelStyle}>Name</span>
-          <input style={inputStyle} value={recipientName} disabled={!editable} onChange={(e) => { touch(); setRecipientName(e.target.value) }} placeholder="Customer's full name" />
-          <span style={labelStyle}>Email</span>
-          <input style={inputStyle} type="email" value={recipientEmail} disabled={!editable} onChange={(e) => { touch(); setRecipientEmail(e.target.value) }} placeholder="Where the signing link goes" />
-          <span style={labelStyle}>Mobile</span>
-          <input style={inputStyle} value={recipientPhone} disabled={!editable} onChange={(e) => { touch(); setRecipientPhone(e.target.value) }} placeholder="For texting the link (optional)" />
-          <span style={labelStyle}>Also send to</span>
-          <input style={inputStyle} value={ccText} disabled={!editable} onChange={(e) => { touch(); setCcText(e.target.value) }} placeholder="GC, spouse, property manager — comma separated (optional)" />
-        </div>
-
-        <div style={sectionHead}>What they&apos;re signing</div>
-        <div style={rowStyle}>
-          <span style={labelStyle} title="The legal paragraphs every agreement prints — one Contract Book document. The payment line below is this job's.">Standard terms</span>
-          <select style={inputStyle} value={templateId} disabled={!editable} onChange={(e) => { touch(); setTemplateId(e.target.value) }}>
-            {templates.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.document_name}
-                {t.book_version_date ? ` · v. ${t.book_version_date}` : ''}
-              </option>
-            ))}
-            <option value={BUILTIN_TEMPLATE_ID}>Built-in service agreement terms</option>
-          </select>
-          {editable ? (
+          {historyRows.length > 0 ? (
             <>
-              <span />
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                {selectedTemplate ? (
-                  <>
-                    The same wording on every agreement.{' '}
-                    <button type="button" onClick={() => setTermsEditOpen(true)} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }} data-testid="contract-edit-standard-terms">
-                      Edit standard terms
-                    </button>{' '}
-                    — it changes what every later agreement says, not only this one.
-                  </>
-                ) : (
-                  'The built-in wording. Pick the Contract Book document above to use — and edit — the office’s own.'
-                )}
-              </span>
+              <div style={sectionHead}>History</div>
+              <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+                {historyRows.map((r) => (
+                  <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.4rem 0.6rem', borderBottom: '1px solid var(--border)', fontSize: '0.78rem' }}>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      rev {r.revision} · {r.template_name ?? 'Contract'}
+                      {r.signed_at ? ` · ${jobContractSignatureAuditLine(r) ?? ''}` : r.last_sent_at ? ` · sent ${formatContractStamp(r.last_sent_at) ?? ''}` : ` · ${formatContractStamp(r.created_at) ?? ''}`}
+                    </span>
+                    {jobContractChips(r).map((chip) => (
+                      <span key={chip.label} style={{ ...jobContractChipColors(chip.tone), padding: '0.05rem 0.45rem', borderRadius: 999, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                        {chip.label}
+                      </span>
+                    ))}
+                    <button type="button" style={{ ...btn, padding: '0.2rem 0.5rem', fontSize: '0.72rem' }} onClick={() => (r.signed_at ? setRecordRow(r) : viewHistoryRow(r))}>
+                      View
+                    </button>
+                  </div>
+                ))}
+              </div>
             </>
           ) : null}
-          <span style={labelStyle}>Scope</span>
-          <textarea style={{ ...inputStyle, minHeight: 84, resize: 'vertical' }} value={scopeText} disabled={!editable} onChange={(e) => applyScopeText(e.target.value)} placeholder="One line per item — what you'll do, in the customer's words" />
-          <span style={labelStyle}>Not included</span>
-          <input style={inputStyle} value={fields.exclusions} disabled={!editable} onChange={(e) => setField('exclusions', e.target.value)} placeholder="Drywall repair, painting, permits by others (optional)" />
-          <span style={labelStyle}>Amount</span>
-          {/* v2.3707: the job's number, its source and one door — never a box; a sent agreement shows what it went out with. */}
-          <div style={{ display: 'grid', gap: '0.3rem', minWidth: 0 }} data-testid="contract-amount">
-            {editable ? (
-              <div style={{ display: 'flex', gap: '0.2rem 0.6rem', alignItems: 'baseline', flexWrap: 'wrap', fontSize: '0.8rem' }}>
-                <b style={{ fontVariantNumeric: 'tabular-nums', ...(amountSrc.cents == null ? { color: 'var(--text-muted)', fontWeight: 600 } : {}) }} data-testid="contract-amount-value">
-                  {amountSrc.cents != null ? formatContractMoney(amountSrc.cents) : 'No amount'}
-                </b>
-                <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>{contractAmountSourceLabel(amountSrc, (iso) => new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }))}</span>
-                {onEditJob && job ? (
-                  <button type="button" style={{ font: 'inherit', fontSize: '0.74rem', fontWeight: 600, color: 'var(--text-link)', background: 'transparent', border: 'none', padding: 0, cursor: 'pointer' }} onClick={() => onEditJob(job)} data-testid="contract-amount-door">
-                    {contractAmountDoorLabel(amountSrc)}
-                  </button>
-                ) : (
-                  <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>change it on the job</span>
-                )}
-              </div>
-            ) : (
-              <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>{fields.amount_cents != null ? formatContractMoney(fields.amount_cents) : 'time & materials'}</span>
-            )}
-            {editable && amountDrift ? (
-              <div style={{ display: 'flex', gap: '0.3rem 0.6rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.35rem 0.55rem', borderRadius: 6, background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', color: 'var(--text-amber-800)', fontSize: '0.76rem' }} data-testid="contract-amount-differs">
-                <span>
-                  This draft still says <b>{amountDrift.draftCents != null ? formatContractMoney(amountDrift.draftCents) : 'time and materials'}</b>, typed before the number came from the job.
-                </span>
-                <button
-                  type="button"
-                  style={{ font: 'inherit', fontSize: '0.74rem', fontWeight: 600, padding: '0.2rem 0.55rem', borderRadius: 6, border: '1px solid var(--border-amber)', background: 'var(--surface)', color: 'var(--text-amber-800)', cursor: 'pointer' }}
-                  onClick={() => {
-                    touch()
-                    setField('amount_cents', amountSrc.cents)
-                  }}
-                  data-testid="contract-amount-use-job"
-                >
-                  Use the job's {amountSrc.cents != null ? formatContractMoney(amountSrc.cents) : 'no amount'}
-                </button>
-              </div>
-            ) : null}
-          </div>
-          <span style={labelStyle}>Payment</span>
-          <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-            {PAYMENT_TERMS_PRESETS.map((p) => {
-              const on = fields.payment_terms_key === p.key
-              return (
-                <button
-                  key={p.key}
-                  type="button"
-                  disabled={!editable}
-                  onClick={() => setField('payment_terms_key', p.key as PaymentTermsKey)}
-                  style={{ ...btn, padding: '0.25rem 0.6rem', fontSize: '0.75rem', borderRadius: 999, background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: on ? 'var(--text-blue-700)' : 'var(--text-700)', borderColor: on ? 'var(--text-link)' : 'var(--border-strong)' }}
-                >
-                  {p.label}
-                </button>
-              )
-            })}
-          </div>
-          {fields.payment_terms_key === 'custom' ? (
-            <>
-              <span />
-              <input style={inputStyle} value={fields.payment_terms_text} disabled={!editable} onChange={(e) => setField('payment_terms_text', e.target.value)} placeholder="Describe the payment terms" />
-            </>
-          ) : (
-            <>
-              <span />
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{paymentTermsSentence(fields)}</span>
-            </>
-          )}
-          <span style={labelStyle}>Dates</span>
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-            <input style={{ ...inputStyle, maxWidth: 160 }} type="date" value={fields.start_date ?? ''} disabled={!editable} onChange={(e) => setField('start_date', e.target.value || null)} aria-label="Start date" />
-            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>to</span>
-            <input style={{ ...inputStyle, maxWidth: 160 }} type="date" value={fields.completion_date ?? ''} disabled={!editable} onChange={(e) => setField('completion_date', e.target.value || null)} aria-label="Estimated completion date" />
-          </div>
-          <span style={labelStyle}>Note</span>
-          <input style={inputStyle} value={fields.note} disabled={!editable} onChange={(e) => setField('note', e.target.value)} placeholder="A line the customer reads above the terms (optional)" />
-        </div>
-
-        <div style={sectionHead}>Sending</div>
-        <div style={rowStyle}>
-          <span style={labelStyle}>Message</span>
-          <textarea style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Optional note for the email (default: a one-line intro)" />
-          <span style={labelStyle}>Reminders</span>
-          <label style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.8rem' }}>
-            <input type="checkbox" checked={remindersEnabled} disabled={!editable} onChange={(e) => { touch(); setRemindersEnabled(e.target.checked) }} />
-            Remind by email every 3 days until signed, up to 3 times
-          </label>
-        </div>
-
-        {historyRows.length > 0 ? (
-          <>
-            <div style={sectionHead}>History</div>
-            <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
-              {historyRows.map((r) => (
-                <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.4rem 0.6rem', borderBottom: '1px solid var(--border)', fontSize: '0.78rem' }}>
-                  <span style={{ flex: 1, minWidth: 0 }}>
-                    rev {r.revision} · {r.template_name ?? 'Contract'}
-                    {r.signed_at ? ` · ${jobContractSignatureAuditLine(r) ?? ''}` : r.last_sent_at ? ` · sent ${formatContractStamp(r.last_sent_at) ?? ''}` : ` · ${formatContractStamp(r.created_at) ?? ''}`}
-                  </span>
-                  {jobContractChips(r).map((chip) => (
-                    <span key={chip.label} style={{ ...jobContractChipColors(chip.tone), padding: '0.05rem 0.45rem', borderRadius: 999, fontWeight: 600, whiteSpace: 'nowrap' }}>
-                      {chip.label}
-                    </span>
-                  ))}
-                  <button type="button" style={{ ...btn, padding: '0.2rem 0.5rem', fontSize: '0.72rem' }} onClick={() => (r.signed_at ? setRecordRow(r) : viewHistoryRow(r))}>
-                    View
-                  </button>
-                </div>
-              ))}
+          {lastLink ? (
+            <div style={{ marginTop: '0.6rem', fontSize: '0.72rem', color: 'var(--text-muted)', wordBreak: 'break-all' }}>
+              Signing link: <a href={lastLink} target="_blank" rel="noopener noreferrer">{jobContractSigningUrl(window.location.origin, '…')}</a>
             </div>
-          </>
-        ) : null}
-        {lastLink ? (
-          <div style={{ marginTop: '0.6rem', fontSize: '0.72rem', color: 'var(--text-muted)', wordBreak: 'break-all' }}>
-            Signing link: <a href={lastLink} target="_blank" rel="noopener noreferrer">{jobContractSigningUrl(window.location.origin, '…')}</a>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
+
+        <div style={{ display: 'grid', gap: '0.6rem', alignContent: 'start', minWidth: 0 }}>
+          {notNeeded ? (
+            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', padding: '0.5rem 0.75rem', borderRadius: 8, background: 'var(--bg-subtle)', border: '1px dashed var(--border)', color: 'var(--text-muted)', fontSize: '0.8rem' }} data-testid="contract-not-needed-strip">
+              <span style={{ flex: 1, minWidth: 200 }}>
+                <b style={{ color: 'var(--text-700)' }}>Not needed</b>
+                {formatContractStamp(notNeeded.at) ? ` · marked ${formatContractStamp(notNeeded.at)}` : ''}
+                {notNeeded.reason ? ` · ${notNeeded.reason}` : ''}
+                {' — this job is out of the contract count. Sending or filing an agreement still works.'}
+              </span>
+              <button type="button" style={btn} disabled={notNeededBusy} onClick={() => void writeNotNeeded(null)}>
+                {notNeededBusy ? 'Saving…' : 'Needed after all'}
+              </button>
+            </div>
+          ) : null}
+          {sentRail}
+          {editable ? (
+            <JobContractSigningRail
+              plan={plan}
+              way={way}
+              onPick={(w) => setPickedWay(w)}
+              oursShown={oursShown}
+              onShowOurs={() => {
+                setOursShown(true)
+                setPickedWay(effectiveWindowWay({ ...plan, ways: plan.demoted, demoted: [] }, null))
+              }}
+              gcName={gcName}
+              recipientName={recipientName}
+              setRecipientName={(v) => { touch(); setRecipientName(v) }}
+              email={recipientEmail}
+              setEmail={(v) => { touch(); setRecipientEmail(v) }}
+              phone={recipientPhone}
+              setPhone={(v) => { touch(); setRecipientPhone(v) }}
+              textToo={textToo}
+              setTextToo={setTextToo}
+              cc={ccText}
+              setCc={(v) => { touch(); setCcText(v) }}
+              message={message}
+              setMessage={setMessage}
+              remindersEnabled={remindersEnabled}
+              setRemindersEnabled={(v) => { touch(); setRemindersEnabled(v) }}
+              paperSend={paperSend}
+              setPaperSend={setPaperSend}
+              sentence={sentence}
+              button={wayButton}
+              busy={busy != null}
+              onGo={goWay}
+              onCopyLink={() => void copyLink()}
+              onFileSigned={() => setPaperOpen(true)}
+              onNotNeeded={() => setNotNeededOpen(true)}
+              notNeededPanel={notNeededPanel}
+            />
+          ) : null}
+          {!editable && notNeededPanel}
+        </div>
       </div>
       {termsEditOpen && selectedTemplate ? (
         <StandardTermsEditModal
