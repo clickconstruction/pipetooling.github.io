@@ -9,6 +9,7 @@ const note: ReleaseNote = {
   highlights: [
     'Under Build Rev 1 the line now reads: “Rev 1 is the first version of your submittal. A Rev 2 happens only when the GC sends rows back, or a product changes after you share.”',
     'Under Resubmit: “Rows the GC sent back come here. Start Rev 2 with only those rows, or with every row when a product changed.”',
+    'A shared revision’s own line reads “Shared. A new version starts when the GC sends rows back, or a product changes.”',
   ],
 }
 
