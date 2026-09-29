@@ -1350,7 +1350,9 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Procurement (v2.4087)**: an open room's payload adds `procurement` when the office has any `bid_procurement_items` row or any tag is approved — the records without the PO, the bid's count rows and stage splits, the job's stage dates (`_shared/procurementStageDates.ts`) and the last update's `sent_at`; every `RoomRow` carries `leadTimeDays`. The page derives released / expected / required / float with the app's own kernel. Its own try/catch: a missing table leaves the card absent, never breaks the room.
 
-**Used by**: [`SubmittalRoom.tsx`](../src/pages/SubmittalRoom.tsx). **Deploy**: `bash scripts/deploy-functions.sh get-submittal-room` after `20260916015805` is applied (and again after `20260928204228` for the procurement card).
+**Proposed rows (v2.4107)**: an item with `status = 'proposed'` (built from the takeoff on a bid with no schedule) is `RoomRowKind 'proposed'` — ordered right after the differing rows, counted in `counts.proposed` and open until decided, its why sentence *What we intend to install; the plans' schedule was not on the bid to compare against.* Redeploy after `20260929015024` is applied.
+
+**Used by**: [`SubmittalRoom.tsx`](../src/pages/SubmittalRoom.tsx). **Deploy**: `bash scripts/deploy-functions.sh get-submittal-room` after `20260916015805` is applied (again after `20260928204228` for the procurement card, and after `20260929015024` for proposed rows).
 
 
 **Stage 5a (v2.3528)** — the payload gains `messages: RoomMessage[]` (oldest first: `{ id, at, authorKind, authorName, body, kind, revNumber, tags }`; the office reads as the company name, system lines carry the person's name only inside the body) and `person.messagesThisHour`, so the page greys *Ask* at the cap. A missing table (before the migration is pushed) reads as no messages.
@@ -1481,7 +1483,7 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ### get-job-contract
 
-**Purpose**: Payload for the customer's contract page `/contract/sign?t=<token>` (Contract Desk PR 2, v2.2681).
+**Purpose**: Payload for the customer's contract page `/contract/sign?t=<token>` (Contract Desk PR 2, v2.2681). The sample tokens (`sample`, `sample-done`, v2.3510) answer with the fixture agreement; since v2.4098 its terms are the office's own — the newest customer document in the Contract Book (`contract_template_documents`, `audience = 'customer'`, newest `book_version_date` then `updated_at`) — so Settings → Contracts & terms can read a card on this page and find its wording; the fixture's stand-in terms print only when the Book holds no customer document.
 
 **Endpoint**: `GET /functions/v1/get-job-contract?t=<token>`
 
@@ -3186,6 +3188,8 @@ interface SendPhysicalInvoiceEmailBody {
 ---
 
 ### gc-statement-email-dispatch
+
+> **v2.4100 — what paid each bill**: `render.ts` prints a line under each bill — *$12,000.00 paid by #48211 on Sep 24 · $1,333.00 still open* / *nothing applied yet* — worded by [`_shared/billPaidBy.ts`](../supabase/functions/_shared/billPaidBy.ts) (the rule the client's `billPaidByWords` re-exports) from the row's `invoice_id`, `invoice_amount`, `retainage_held`, `job_bills` and `job_payments` (migration `20260928213000`). A payload from before the migration has none of them and prints no line. `gcStatementEmailParity.test.ts` pins both lanes on one set of facts.
 
 > **v2.3346 — who pays**: no code change; `get_gc_statement_email_payload` (migration `20260911223500`) now files a row under a GC only when the GC pays it and labels the rest "Not billed to a GC". Scheduled statements pick it up on the next run.
 

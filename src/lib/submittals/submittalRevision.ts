@@ -34,7 +34,7 @@ export type SourceFile = {
   droppedPages: number | null
 }
 
-const STATUSES: ReadonlySet<string> = new Set(['as_specified', 'superseded', 'equal', 'alternate', 'design_change', 'missing', 'accessory'])
+const STATUSES: ReadonlySet<string> = new Set(['as_specified', 'superseded', 'equal', 'alternate', 'design_change', 'missing', 'accessory', 'proposed'])
 const REASONS: ReadonlySet<string> = new Set(['lead_time', 'discontinued', 'in_stock', 'equal', 'cost', 'other'])
 const DECISIONS: ReadonlySet<string> = new Set(['approved', 'revise', 'rejected'])
 
@@ -134,6 +134,8 @@ export type RevisionTiles = {
   designChanges: number
   designChangesWithoutReason: number
   missing: number
+  /** Built from the takeoff, no schedule to compare against (v2.4107). */
+  proposed: number
   sheetsIn: number
   sheetsWanted: number
   sheetsNeeded: number
@@ -141,7 +143,7 @@ export type RevisionTiles = {
 
 /** The six tiles at the top of the tab, from the revision's items. */
 export function revisionTiles(items: ReadonlyArray<Pick<SubmittalItemRow, 'tag' | 'status' | 'reason_kind' | 'sheet_pages'>>): RevisionTiles {
-  const t: RevisionTiles = { rows: items.length, tagged: 0, accessories: 0, asSpecified: 0, superseded: 0, equal: 0, alternates: 0, alternatesWithoutReason: 0, designChanges: 0, designChangesWithoutReason: 0, missing: 0, sheetsIn: 0, sheetsWanted: 0, sheetsNeeded: 0 }
+  const t: RevisionTiles = { rows: items.length, tagged: 0, accessories: 0, asSpecified: 0, superseded: 0, equal: 0, alternates: 0, alternatesWithoutReason: 0, designChanges: 0, designChangesWithoutReason: 0, missing: 0, proposed: 0, sheetsIn: 0, sheetsWanted: 0, sheetsNeeded: 0 }
   for (const it of items) {
     const status = asStatus(it.status)
     if (it.tag.trim() === '') t.accessories += 1
@@ -157,6 +159,7 @@ export function revisionTiles(items: ReadonlyArray<Pick<SubmittalItemRow, 'tag' 
       t.designChanges += 1
       if (reason === null) t.designChangesWithoutReason += 1
     } else if (status === 'missing') t.missing += 1
+    else if (status === 'proposed') t.proposed += 1
     if (status !== 'missing') {
       t.sheetsWanted += 1
       if ((it.sheet_pages ?? []).length > 0) t.sheetsIn += 1
@@ -244,8 +247,50 @@ export function describeRevision(t: RevisionTiles): string {
     if (t.alternatesWithoutReason > 0) parts.push(`${t.alternatesWithoutReason} without a reason`)
   }
   if (t.designChanges > 0) parts.push(`${t.designChanges} design change${t.designChanges === 1 ? '' : 's'}`)
+  if (t.proposed > 0) parts.push(`${t.proposed} proposed`)
   if (t.missing > 0) parts.push(`${t.missing} missing`)
   if (t.accessories > 0) parts.push(`${t.accessories} accessor${t.accessories === 1 ? 'y' : 'ies'}`)
   if (t.sheetsWanted > 0) parts.push(`${t.sheetsIn} of ${t.sheetsWanted} sheets in`)
   return parts.join(' · ')
+}
+
+/** The id the editor sees on a row that is not in the database yet (a row by hand, v2.4105). */
+export const NEW_ROW_ID = 'new'
+
+/** A row by hand before Save: every column the editor reads, nothing written. */
+export function blankSubmittalItem(submittalId: string, sequenceOrder: number): SubmittalItemRow {
+  return {
+    id: NEW_ROW_ID,
+    submittal_id: submittalId,
+    source_count_row_id: null,
+    tag: '',
+    sequence_order: sequenceOrder,
+    specified_manufacturer: null,
+    specified_model: null,
+    specified_description: null,
+    submitted_manufacturer: null,
+    submitted_model: null,
+    submitted_label: null,
+    supply_house_id: null,
+    source_quote_line_id: null,
+    status: 'missing',
+    reason_kind: null,
+    reason_note: null,
+    lead_time_days: null,
+    sheet_file: null,
+    sheet_pages: [],
+    sheet_source: null,
+    carried_from_item_id: null,
+    review_decision: null,
+    review_note: null,
+    reviewed_at: null,
+    reviewed_by_name: null,
+    reviewed_by_email: null,
+    reviewed_by_person_id: null,
+    decision_source: 'room',
+    decision_entered_by: null,
+    decision_entered_by_name: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  }
 }

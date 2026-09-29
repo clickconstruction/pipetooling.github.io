@@ -6,7 +6,7 @@
 import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { ymdAddDays } from '../../utils/dateUtils'
-import { buildCategoryTagLookups, categoryTagForCharge, type CategoryTagRow } from '../banking/categoryTags'
+import { buildCategoryTagLookups, categoryTagForCharge, pickFuelTag, type CategoryTagRow } from '../banking/categoryTags'
 import { mercuryDebitCardIdFromRaw } from '../mercuryRawDebitCard'
 import { fetchAllRowsChunkedIn } from '../supabasePaging'
 import type { Json } from '../../types/database'
@@ -95,7 +95,7 @@ export async function loadWheelsSnapshot(input: { todayYmd: string; users: Reado
 
   // Fuel = charges whose accounting label's tag, else bank category's tag, is the fuel family.
   const lookups = buildCategoryTagLookups(tagData.tags, tagData.members)
-  const fuelTag = tagData.tags.find((t) => t.default_key === 'fuel_vehicle') ?? tagData.tags.find((t) => /fuel/i.test(t.name)) ?? null
+  const fuelTag = pickFuelTag(tagData.tags)
   // Only card purchases can be someone's fuel (v2.2739): a supplier ACH filed
   // under a vehicle label is reported as a label check, never counted.
   let familyRows: typeof txRows = []

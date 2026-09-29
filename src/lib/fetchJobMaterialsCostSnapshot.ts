@@ -3,7 +3,7 @@ import { withSupabaseRetry } from '../utils/errorHandling'
 import { EMPTY_CARD_CHARGE_EXCLUSIONS, type CardChargeExclusions } from './jobs/cardChargeAllocationFilter'
 import { loadCardChargeExclusions } from './jobs/loadCardChargeExclusions'
 import { fetchLabelIdByTxId, loadCategoryTags } from './banking/categoryTagsData'
-import { buildCategoryTagLookups, type CategoryTagRow } from './banking/categoryTags'
+import { buildCategoryTagLookups, categoryTagForCharge, pickFuelTag, type CategoryTagRow } from './banking/categoryTags'
 import { costLineTags } from './mercuryTagSplit'
 import { jobCardCostLines, type JobCardCostLine } from './jobs/jobCardCostLines'
 import {
@@ -42,6 +42,8 @@ export {
 export type JobMaterialsCostSnapshot = SharedJobMaterialsCostSnapshot & {
   cardCostLines?: JobCardCostLine[]
   cardTagByTxId?: ReadonlyMap<string, CategoryTagRow>
+  /** The job's card transactions in the fuel family's tag — the cost timeline's ⛽ stream. */
+  cardFuelTxIds?: ReadonlySet<string>
 }
 
 /**
@@ -115,6 +117,7 @@ export async function fetchJobMaterialsCostSnapshot(jobId: string): Promise<JobM
   // any failure leaves the card charges as one line, as before.
   let cardCostLines: JobCardCostLine[] = []
   let cardTagByTxId: ReadonlyMap<string, CategoryTagRow> = new Map()
+  const cardFuelTxIds = new Set<string>()
   if (txIds.length > 0) {
     try {
       const [tagRows, labelIdByTxId] = await Promise.all([loadCategoryTags(), fetchLabelIdByTxId(txIds)])
@@ -130,9 +133,18 @@ export async function fetchJobMaterialsCostSnapshot(jobId: string): Promise<JobM
       })
       cardCostLines = split.costLines
       cardTagByTxId = split.tagByTxId
+      const fuelTag = pickFuelTag(tagRows.tags)
+      if (fuelTag) {
+        for (const id of txIds) {
+          const cat = categoryByTxId.get(id)
+          const bank = typeof cat === 'string' ? cat : cat && typeof cat === 'object' && typeof (cat as { name?: unknown }).name === 'string' ? (cat as { name: string }).name : null
+          if (categoryTagForCharge(lookups, labelIdByTxId.get(id) ?? null, bank)?.id === fuelTag.id) cardFuelTxIds.add(id)
+        }
+      }
     } catch {
       cardCostLines = []
       cardTagByTxId = new Map()
+      cardFuelTxIds.clear()
     }
   }
 
@@ -158,6 +170,7 @@ export async function fetchJobMaterialsCostSnapshot(jobId: string): Promise<JobM
     cardExclusions,
     cardCostLines,
     cardTagByTxId,
+    cardFuelTxIds,
     tallyPartLines: tallyLines,
     tallyFetchFailed: tallyFailed,
   }

@@ -25,7 +25,6 @@ import {
   segmentsAreTheRowsUnchanged,
 } from './myTimeDaySavePlan'
 import {
-  boundariesMatchOriginalRows,
   CLUSTER_CONTIGUITY_EPS_MS,
   clusterIsHomogeneousJobBid,
   clusterSharesClockSessionClusterRpcMetadata,
@@ -139,7 +138,7 @@ export async function persistMyTimeDayDirtyClusters({
     const split = splitByCluster[clusterId]
     if (!split) continue
     const payloads = buildPayloads(last, split, nowTick)
-    if (!payloads || payloads.length < 1) {
+    if (!payloads) {
       const first = c[0]!
       throw new DatabaseError(
         `Block ${formatDenverBlockDateHeader(new Date(first.clocked_in_at).getTime(), new Date(last.clocked_out_at || nowTick).getTime())} (${formatDenverTimeOnly(new Date(first.clocked_in_at).getTime())} – ${formatDenverTimeOnly(new Date(last.clocked_out_at || nowTick).getTime())}): add notes and ensure at least 0.01 hours per part.`
@@ -203,68 +202,41 @@ export async function persistMyTimeDayDirtyClusters({
             'update clock session notes'
           )
         }
-      } else if (boundariesMatchOriginalRows(c, split, nowTick) && !peopleHoursGridProportionalSeed) {
-        for (const row of c) {
-          await withSupabaseRetry(
-            async () =>
-              supabase.from('clock_sessions').update({ notes: payloads[0]!.notes }).eq('id', row.id),
-            'update clock session notes'
-          )
-        }
-      } else {
+      } else if (!clusterSharesClockSessionClusterRpcMetadata(c)) {
+        // Punch and salary rows merged into one part: each row takes its share of the part's span.
         const p0 = payloads[0]!
         const pIn = new Date(p0.clocked_in_at).getTime()
         const pOut = p0.clocked_out_at ? new Date(p0.clocked_out_at).getTime() : null
-        let partitionPersisted = false
-        if (
-          split.boundaries.length === 2 &&
-          !clusterSharesClockSessionClusterRpcMetadata(c)
-        ) {
-          const intervals = partitionMixedClusterSingleSegmentToRowIntervals(c, pIn, pOut, nowTick)
-          if (intervals) {
-            for (let i = 0; i < c.length; i++) {
-              const row = c[i]!
-              const iv = intervals[i]!
-              await withSupabaseRetry(
-                async () =>
-                  supabase
-                    .from('clock_sessions')
-                    .update({
-                      clocked_in_at: new Date(iv.clockedInMs).toISOString(),
-                      clocked_out_at:
-                        iv.clockedOutMs != null
-                          ? new Date(iv.clockedOutMs).toISOString()
-                          : null,
-                      notes: p0.notes,
-                    })
-                    .eq('id', row.id),
-                'update clock session times after mixed cross-row merge partition',
-              )
-            }
-            partitionPersisted = true
-            if (c.some((s) => s.origin === 'salary_schedule')) {
-              showSalarySyncAfterPartitionSave = true
-            }
-          } else {
-            throw new DatabaseError(
-              'Cannot save: the time span is too small to split across these clock rows (each needs at least 0.01 hours), or the block is too compressed. Widen the span or edit in People → Hours.'
-            )
-          }
+        const intervals = partitionMixedClusterSingleSegmentToRowIntervals(c, pIn, pOut, nowTick)
+        if (!intervals) {
+          throw new DatabaseError(
+            'Cannot save: the time span is too small to split across these clock rows (each needs at least 0.01 hours), or the block is too compressed. Widen the span or edit in People → Hours.'
+          )
         }
-        if (!partitionPersisted) {
-          if (!clusterSharesClockSessionClusterRpcMetadata(c)) {
-            throw new DatabaseError(myTimeClusterPersistRpcMetadataUserMessage(c))
-          }
-          const mixed = attachAllocationsToPayloads(payloads, c, split, nowTick)
-          await runReplaceMixed(c.map((s) => s.id), mixed)
+        for (let i = 0; i < c.length; i++) {
+          const row = c[i]!
+          const iv = intervals[i]!
+          await withSupabaseRetry(
+            async () =>
+              supabase
+                .from('clock_sessions')
+                .update({
+                  clocked_in_at: new Date(iv.clockedInMs).toISOString(),
+                  clocked_out_at:
+                    iv.clockedOutMs != null
+                      ? new Date(iv.clockedOutMs).toISOString()
+                      : null,
+                  notes: p0.notes,
+                })
+                .eq('id', row.id),
+            'update clock session times after mixed cross-row merge partition',
+          )
         }
+      } else {
+        const mixed = attachAllocationsToPayloads(payloads, c, split, nowTick)
+        await runReplaceMixed(c.map((s) => s.id), mixed)
       }
     } else if (c.length === 1) {
-      if (isDraftPeopleHoursSessionId(c[0]!.id)) {
-        throw new DatabaseError(
-          'Splitting a draft session before its first save is not supported yet. Save once, then edit splits.',
-        )
-      }
       await runSplitSeg(c[0]!.id, payloads.map(stripJobBidForSegmentRpc))
     } else if (segmentsAreTheRowsUnchanged(c, split, nowTick)) {
       // Only the notes changed: write them onto the rows. The split / replace RPCs delete and
@@ -398,15 +370,15 @@ export async function persistMyTimeDayDirtyClusters({
           'update clock session times after mixed coalesced partition save',
         )
       }
-      if (c.some((s) => s.origin === 'salary_schedule')) {
-        showSalarySyncAfterPartitionSave = true
-      }
     } else {
-      if (!clusterSharesClockSessionClusterRpcMetadata(c)) {
-        throw new DatabaseError(myTimeClusterPersistRpcMetadataUserMessage(c))
-      }
+      // Rows that share origin and salary segment, cut out of line with each other: rebuild.
       const mixed = attachAllocationsToPayloads(payloads, c, split, nowTick)
       await runReplaceMixed(c.map((s) => s.id), mixed)
+    }
+    // Any save that re-cut a block holding a salaried row — a split, a moved seam, a merge, a
+    // rebuild — may be adjusted by the next salary sync. A notes-only save changes no times.
+    if (c.some((s) => s.origin === 'salary_schedule') && !segmentsAreTheRowsUnchanged(c, split, nowTick)) {
+      showSalarySyncAfterPartitionSave = true
     }
   }
   return { salarySyncMayAdjust: showSalarySyncAfterPartitionSave }

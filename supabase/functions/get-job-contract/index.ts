@@ -39,13 +39,36 @@ serve(async (req) => {
   try {
     const token = new URL(req.url).searchParams.get('t')?.trim()
     if (!token) return json({ error: 'Missing token' }, 400)
-    // What customers see (v2.3510): the sample tokens answer with the hard-coded sample agreement
-    // laid over the company particulars — no row, no view stamp, no event.
-    const sample = sampleStateFromToken(token)
-    if (sample) return json(sampleJobContractResponse(sample, PORTAL_COMPANY, todayYmdInAppTz()))
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
       auth: { autoRefreshToken: false, persistSession: false },
     })
+    // What customers see (v2.3510): the sample tokens answer with the hard-coded sample agreement
+    // laid over the company particulars — no row, no view stamp, no event. v2.4098: the terms on it
+    // are the office's own — the newest customer document in the Contract Book, as the sweep sends —
+    // so Settings → Contracts & terms can read a card on this page and find its wording; the fixture's
+    // stand-in terms print only when the Book holds no customer document.
+    const sample = sampleStateFromToken(token)
+    if (sample) {
+      const body = sampleJobContractResponse(sample, PORTAL_COMPANY, todayYmdInAppTz())
+      const { data: doc } = await admin
+        .from('contract_template_documents')
+        .select('document_name, book_body_html, book_body_format, book_version_date, updated_at')
+        .eq('audience', 'customer')
+        .not('book_body_html', 'is', null)
+        .order('book_version_date', { ascending: false, nullsFirst: false })
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      const html = typeof doc?.book_body_html === 'string' ? doc.book_body_html.trim() : ''
+      if (doc && html) {
+        const contract = body.contract as Record<string, unknown>
+        contract.body_html = html
+        contract.body_format = doc.book_body_format === 'plain' || doc.book_body_format === 'markdown' ? doc.book_body_format : 'html'
+        contract.template_name = doc.document_name ?? contract.template_name
+        contract.template_version_date = (doc.book_version_date as string | null) ?? (typeof doc.updated_at === 'string' ? doc.updated_at.slice(0, 10) : contract.template_version_date)
+      }
+      return json(body)
+    }
 
     const { data: row } = await admin
       .from('job_contracts')

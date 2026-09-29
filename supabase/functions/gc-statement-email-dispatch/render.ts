@@ -22,6 +22,12 @@ export type GcStatementPayloadRow = {
   age_days: number | null
   remaining: number
   in_collections: boolean
+  /** What paid the bill (v2.4100) — absent from a payload older than the RPC change, and then no line prints. */
+  invoice_id?: string | null
+  invoice_amount?: number | null
+  retainage_held?: number | null
+  job_bills?: PaidByBill[] | null
+  job_payments?: PaidByPayment[] | null
 }
 
 export type GcStatementPayloadGroup = {
@@ -43,6 +49,7 @@ export type GcStatementPayload = {
 }
 
 import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
+import { billPaidByWords, type PaidByBill, type PaidByPayment } from '../_shared/billPaidBy.ts'
 
 export const GC_STATEMENT_COMPANY_NAME = 'Click Plumbing and Electrical'
 export const GC_STATEMENT_FOOTER_LINE =
@@ -118,12 +125,25 @@ export function rowLabel(r: GcStatementPayloadRow): { lead: string; sub: string 
   return { lead, sub }
 }
 
+/**
+ * The line under the bill (v2.4100) — mirror of the client's `GcReviewRow.paidBy`, worded by
+ * `_shared/billPaidBy.ts`. '' when the payload predates the RPC change (no bills, no payments).
+ */
+export function rowPaidBy(r: GcStatementPayloadRow): string {
+  if (!r.job_bills && !r.job_payments) return ''
+  return billPaidByWords(
+    { bills: r.job_bills ?? [], payments: r.job_payments ?? [], retainageHeld: r.retainage_held },
+    r.invoice_id ? { id: r.invoice_id, amount: r.invoice_amount ?? 0 } : null,
+  )
+}
+
 const rowsHtml = (rows: GcStatementPayloadRow[]): string =>
   rows
     .map((r) => {
       const { lead, sub } = rowLabel(r)
+      const paidBy = rowPaidBy(r)
       return `<tr>
-        <td style="padding:7px 6px;border-bottom:1px solid #e5e7eb;font-size:14px;color:#111827;line-height:1.3">${escapeHtml(lead)}${sub ? `<br /><span style="font-size:11px;color:#6b7280">${escapeHtml(sub)}</span>` : ''}</td>
+        <td style="padding:7px 6px;border-bottom:1px solid #e5e7eb;font-size:14px;color:#111827;line-height:1.3">${escapeHtml(lead)}${sub ? `<br /><span style="font-size:11px;color:#6b7280">${escapeHtml(sub)}</span>` : ''}${paidBy ? `<br /><span style="font-size:11px;color:#6b7280">${escapeHtml(paidBy)}</span>` : ''}</td>
         <td style="padding:7px 6px;border-bottom:1px solid #e5e7eb;font-size:14px;color:#111827;white-space:nowrap;vertical-align:top">${escapeHtml(refDisplay(r))}</td>
         <td style="padding:7px 6px;border-bottom:1px solid #e5e7eb;font-size:14px;color:#111827;text-align:right;vertical-align:top">$${formatCurrency(r.remaining)}</td>
       </tr>`
@@ -132,7 +152,8 @@ const rowsHtml = (rows: GcStatementPayloadRow[]): string =>
 
 const rowText = (r: GcStatementPayloadRow): string => {
   const { lead, sub } = rowLabel(r)
-  return `- ${lead}${sub ? ` (${sub})` : ''} — billed ${refDisplay(r)} — $${formatCurrency(r.remaining)}`
+  const paidBy = rowPaidBy(r)
+  return `- ${lead}${sub ? ` (${sub})` : ''} — billed ${refDisplay(r)} — $${formatCurrency(r.remaining)}${paidBy ? ` — ${paidBy}` : ''}`
 }
 
 const tableHeadHtml = `<thead><tr>

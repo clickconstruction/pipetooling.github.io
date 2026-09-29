@@ -22,14 +22,21 @@ New to the page? Tap {{button:outline|Walk me through it ▶}} on the strip (or 
 
 Nothing on this page needs the robot. On a bid with no schedule, stage 1 offers {{button:blue|Type or paste the schedule}}: the tags off the plans' fixture schedule, one per line — *WC-1 TOTO CT708UVG water closet* — saved to the same schedule Pricing reads. With no picks, build Rev 1 anyway: every row starts {{chip:red|Missing}}, and {{button:outline|Edit}} on a draft takes the tag and the product you are submitting along with the lead time. {{button:outline|+ Add a row by hand}} starts a row for anything not on the schedule. A call that came by phone or email is entered on any revision from the same editor, recorded as *entered by you*. From there the procurement log on stage 8 prints as it would from any other path.
 
-## Before you build: two things on Pricing
+## Before you build: where the rows come from
 
-- **Plug in the fixture schedule** (Pricing → Supply house prices ▾ → Plug in the fixture schedule). Every row starts from a tag there. Without it, Rev 1 is accessories only.
-- **Pick a house on the compare** for each part. A tag nobody picked reads {{chip:red|Missing}}; a picked line with no tag on the schedule becomes an {{chip:gray|Accessory}} row (carriers, stops, traps — the schedule leaves them to you).
+Stage 1 shows three sources with a count on each. Any one of them is enough.
+
+- **The takeoff** — the fixtures you counted, with the part under each as the product and the house it came from. {{button:blue|Choose from the takeoff}} opens a pick list: fixtures and equipment start ticked, fixtures with no part yet and pipe, sawcutting and allowances start unticked. Untick what the GC does not need to approve; {{button:outline|Tick all with a product}} when you want everything priced. Your ticks are remembered on the bid. Rows built this way read {{chip:blue|Proposed}} — what we intend to install — until the plans' schedule says otherwise; a ticked fixture with no part yet lands {{chip:red|Missing}}, to type with {{button:outline|Edit}}.
+- **The Pricing picks** — a house picked per line on the compare. A tag nobody picked reads {{chip:red|Missing}}; a picked line with no tag on the schedule becomes an {{chip:gray|Accessory}} row (carriers, stops, traps — the schedule leaves them to you).
+- **The plans' schedule** — {{button:outline|Type or paste the schedule}} here, or plug it in on Pricing. Optional: with it, rows read {{chip:green|As specified}} or {{chip:yellow|Alternate}} instead of Proposed.
+
+:::example SpaceX, priced from the takeoff
+BP375 has 26 fixtures on the takeoff, 22 with a part, no quotes compared and no schedule pasted. Wendi opens Submittals, taps Choose from the takeoff, unticks the two hose bibbs, and builds Rev 1: 20 Proposed rows with the product and the house on each, in tag order. The procurement log on stage 8 prints from them.
+:::
 
 ## Build Rev 1
 
-Open the bid on the Submittals tab and tap {{button:blue|Build Rev 1 from the picks}}. One row per tag, in tag order, then the accessories. Each row carries what Pricing knew: {{chip:green|As specified}}, {{chip:blue|Superseded}}, {{chip:blue|Equal}}, {{chip:yellow|Alternate}}, {{chip:red|Design change}}, {{chip:red|Missing}}, or {{chip:gray|Accessory}}; the reason and lead time from the pick; the house it came from.
+Open the bid on the Submittals tab and tap {{button:blue|Build Rev 1 from the picks}} — or {{button:blue|Choose from the takeoff}} and build from the ticked fixtures. From the picks: one row per tag, in tag order, then the accessories. Each row carries what Pricing knew: {{chip:green|As specified}}, {{chip:blue|Superseded}}, {{chip:blue|Equal}}, {{chip:yellow|Alternate}}, {{chip:red|Design change}}, {{chip:red|Missing}}, or {{chip:gray|Accessory}}; the reason and lead time from the pick; the house it came from.
 
 Six tiles at the top say where you stand: rows, as specified, alternates (and how many still need a reason), design changes, missing, and **cut sheets in**.
 

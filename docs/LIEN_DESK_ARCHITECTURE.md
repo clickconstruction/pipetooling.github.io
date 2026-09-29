@@ -8,12 +8,14 @@ covers:
   - src/components/jobs/LienDeskModal.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-09-27
+last_updated: 2026-09-28
 ---
 
 > **Line numbers are as of `a05cef4c4`** (the `mapped_at` commit) and drift with every edit — search the symbol named beside each range. Regenerate the fact sheet with `npm run map -- src/components/jobs/LienDeskModal.tsx`. The file is the busiest component this week (37 commits in 90 days; its 29 since 2026-09-18 lead every component — over 90 days `JobsStagesTab.tsx` has more); re-check ranges before any move.
 
 ## What this surface is
+
+> **v2.4101 (punch list #55 PR B):** a fifth kind, **Calendar**, first in the tab row and the desk's default landing — `LienDeskCalendarTab.tsx` over `lib/jobs/lienCalendar.ts`, fed by the parent's `calendarRows` (every billed job with its `LienPayRunway`, built in `JobsStagesTab` from `lienRunwayFor`) and `onOpenCalendarJob`. Region A's tab row and the body switch gained the kind; nothing else in this file moved. PRs C–D (the shared axis, the pay-dot editor) land in the tab component, not here.
 
 [`LienDeskModal.tsx`](../src/components/jobs/LienDeskModal.tsx) is the **Lien desk**: one full-screen dialog with four kinds (tabs) — **Notices** (the queue of § 53.056 notices due per unpaid work month on sub jobs: the office readies the owner of record, drafts on the paper, sends for approval / on the leader's spoken word / straight into the run under a standing rule; the leader approves, holds or sets the GC's standing rule; a sent notice's footer runs letter two, the GC's written okay, counsel's sign-off and the owner's call), **Affidavits** (§ 53.052, pane extracted), **Retainage** (§ 53.057, pane extracted) and **Timeline** (every billed job's Chapter 53 path, tab extracted). Header doors: pile chips, **Put a GC on notice…** (hands off to `GcOnNoticeModal`), **Send the run** (`LienDeskRunModal`). Help guide: [`send-lien-notices-from-the-lien-desk`](../src/content/help/send-lien-notices-from-the-lien-desk.md).
 

@@ -16,6 +16,7 @@ import { PersonJourneyStrips } from '../journeys/PersonJourneyStrips'
 import { JourneyHealthRow } from '../journeys/JourneyHealthRow'
 import type { PersonSubject } from '../../lib/journeys/personJourney'
 import { paperSample, type PaperSample } from '../../lib/journeys/paperSamples'
+import { stepFrameProps, type SampleEmails } from '../../lib/journeys/stepFrame'
 import { contractEntriesForStep, parseStepParam } from '../../lib/contracts/customerContractCatalog'
 
 /**
@@ -54,7 +55,6 @@ const MUTED: CSSProperties = { fontSize: '0.78rem', color: 'var(--text-muted)' }
 const PILL: CSSProperties = { font: 'inherit', fontSize: '0.75rem', fontWeight: 600, padding: '0.2rem 0.65rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }
 const PILL_ON: CSSProperties = { ...PILL, background: 'var(--bg-blue-50)', borderColor: 'var(--border-blue)', color: 'var(--text-blue-700)' }
 
-type SampleEmails = Record<string, { subject: string; html: string; text: string }>
 
 export function SettingsWhatCustomersSeeTab({ onOpenContract }: { /** Open a card on Contracts & terms. */ onOpenContract?: (entryId: string) => void } = {}) {
   const { user, profileName } = useAuth()
@@ -299,7 +299,7 @@ function StepCard(props: { step: JourneyStep; first: boolean; selected: boolean;
 
 /** A live thumbnail: the real frame at phone width, scaled down, inert. */
 function StepThumb(props: { step: JourneyStep; emails: SampleEmails | null; papers: Partial<Record<string, PaperSample>>; origin: string; reloadNonce: number }) {
-  const frame = frameProps(props.step, props.emails, props.papers, props.origin, props.reloadNonce)
+  const frame = stepFrameProps(props.step, props.emails, props.papers, props.origin, props.reloadNonce)
   return (
     <div style={{ width: THUMB_W, height: THUMB_H, overflow: 'hidden', borderRadius: 4, background: 'var(--surface)', pointerEvents: 'none' }} aria-hidden="true">
       {frame ? (
@@ -320,7 +320,7 @@ function StepThumb(props: { step: JourneyStep; emails: SampleEmails | null; pape
 function ExpandedStep(props: { step: JourneyStep; journeyId: JourneyId; device: Device; emails: SampleEmails | null; papers: Partial<Record<string, PaperSample>>; origin: string; reloadNonce: number; onOpenContract?: (entryId: string) => void }) {
   const { step, device } = props
   const wording = props.onOpenContract ? contractEntriesForStep(props.journeyId, step.id) : []
-  const frame = frameProps(step, props.emails, props.papers, props.origin, props.reloadNonce)
+  const frame = stepFrameProps(step, props.emails, props.papers, props.origin, props.reloadNonce)
   const email = step.render.kind === 'email' ? props.emails?.[step.render.email] ?? null : null
   const paper = step.render.kind === 'paper' ? props.papers[step.render.paper] ?? null : null
   const openUrl = step.render.kind === 'page' ? (step.render.absolute ? step.render.path : `${props.origin}${step.render.path}`) : null
@@ -418,21 +418,4 @@ function OpenPdfButton({ paper }: { paper: PaperSample }) {
   )
 }
 
-/** iframe props for a renderable step: a same-origin page URL, the built email as srcDoc, or the paper's preview as srcDoc. */
-function frameProps(step: JourneyStep, emails: SampleEmails | null, papers: Partial<Record<string, PaperSample>>, origin: string, reloadNonce: number): { key: string; attrs: { src?: string; srcDoc?: string; sandbox?: string; title: string } } | null {
-  if (step.render.kind === 'paper') {
-    const p = papers[step.render.paper]
-    if (!p) return null
-    return { key: `${step.id}-${reloadNonce}`, attrs: { srcDoc: p.html, sandbox: '', title: step.label } }
-  }
-  if (step.render.kind === 'page') {
-    const base = step.render.absolute ? step.render.path : `${origin}${step.render.path}`
-    return { key: `${step.id}-${reloadNonce}`, attrs: { src: `${base}${base.includes('?') ? '&' : '?'}v=${reloadNonce}`, title: step.label } }
-  }
-  if (step.render.kind === 'email') {
-    const m = emails?.[step.render.email]
-    if (!m) return null
-    return { key: `${step.id}-${reloadNonce}`, attrs: { srcDoc: m.html, sandbox: '', title: step.label } }
-  }
-  return null
-}
+// v2.4098: `frameProps` moved to src/lib/journeys/stepFrame.ts (`stepFrameProps`), shared with the Contracts & terms reader.

@@ -22,6 +22,9 @@ import { SpotlightTour } from '../SpotlightTour'
 import { SubmittalJourneyStrip } from './SubmittalJourneyStrip'
 import { SubmittalProcurementPanel } from './SubmittalProcurementPanel'
 import { PlugInScheduleModal } from './PlugInScheduleModal'
+import { SubmittalTakeoffPicker } from './SubmittalTakeoffPicker'
+import { loadTakeoffCandidates, saveTakeoffChoices, type TakeoffCandidatesLoad } from '../../lib/submittals/takeoffCandidatesIo'
+import { candidateToItemInsert, type TakeoffCandidate } from '../../lib/submittals/takeoffCandidates'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { procurementItemsFrom } from '../../lib/submittals/procurementLogIo'
 import type { ProcurementItemSource } from '../../lib/submittals/procurementLog'
@@ -84,8 +87,7 @@ import {
   SUBMITTALS_BUCKET,
   type SourceFile,
   type SubmittalItemRow,
-  type SubmittalRevisionRow,
-} from '../../lib/submittals/submittalRevision'
+  type SubmittalRevisionRow, blankSubmittalItem, NEW_ROW_ID } from '../../lib/submittals/submittalRevision'
 
 // The stage 1–2 tables are hand-typed until the regen chore; the untyped client keeps a checkout ahead of the push honest.
 const db = supabase as unknown as SupabaseClient
@@ -169,6 +171,9 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   const [openAllStages, setOpenAllStages] = useState<boolean>(() => hasOpenEveryStage())
   // By hand (v2.4090): the schedule typed or pasted here, no robot and no trip to Pricing.
   const [plugInOpen, setPlugInOpen] = useState(false)
+  // From the takeoff (v2.4107): the takeoff's fixtures as candidates, and the picker (build = Rev 1 from them, add = onto the draft).
+  const [takeoff, setTakeoff] = useState<TakeoffCandidatesLoad | null>(null)
+  const [takeoffPicker, setTakeoffPicker] = useState<'build' | 'add' | null>(null)
   const [sectionToggles, setSectionToggles] = useState<Partial<Record<JourneyStageKey, boolean>>>({})
   // Procure (v2.4083): the newest revision's rows as the log reads them, and the counts the strip's pill lights on.
   const [procItems, setProcItems] = useState<ProcurementItemSource[]>([])
@@ -177,6 +182,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   const [prevItems, setPrevItems] = useState<SubmittalItemRow[]>([])
   const [editing, setEditing] = useState<SubmittalItemRow | null>(null)
   const fileInput = useRef<HTMLInputElement | null>(null)
+  const bidsRef = useRef(bids)
+  bidsRef.current = bids
   const reviewerInput = useRef<HTMLInputElement | null>(null)
   /** Stage 3a: page thumbnails per vendor file, keyed by bucket path; drawn on demand. */
   const [thumbs, setThumbs] = useState<Record<string, ThumbState>>({})
@@ -302,6 +309,12 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         setOverridesByFixture(derived.overridesByFixture)
         const revs = await loadRevisions(id)
         setRevisions(revs)
+        // v2.4107 · the takeoff's fixtures (the selected version's rows win over the base rows); none is not an error.
+        try {
+          setTakeoff(await loadTakeoffCandidates(db, id, { selectedVersionId: bidsRef.current.find((b) => b.id === id)?.selected_bid_version_id ?? null }))
+        } catch {
+          setTakeoff(null)
+        }
         await loadRoom(id)
         await loadTasks(id)
         const keep = revs.find((r) => r.id === selectedRevId) ?? revs[0] ?? null
@@ -417,6 +430,78 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       showToast(`Rev 1 built · ${n} row${n === 1 ? '' : 's'} from the picks.`, 'success')
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Could not build the submittal.', 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** v2.4107 · the takeoff's fixtures with the revision's rows already set aside; the door is Rev 1 when there is none, the draft otherwise. */
+  const takeoffFixtures = takeoff?.fixtures ?? 0
+  const takeoffCandidatesForPicker = useMemo<TakeoffCandidate[]>(() => {
+    if (!takeoff) return []
+    const on = new Set(items.map((it) => it.source_count_row_id).filter((x): x is string => !!x))
+    return takeoff.candidates.map((c) => ({ ...c, alreadyOn: on.has(c.countRowId) }))
+  }, [takeoff, items])
+  function openTakeoffPicker() {
+    if (takeoffFixtures === 0) return
+    if (revisions.length === 0) setTakeoffPicker('build')
+    else if (selectedRev && asRevisionStatus(selectedRev.status) === 'draft') setTakeoffPicker('add')
+    else showToast('Rows from the takeoff land on a draft — start a new revision first.', 'info')
+  }
+  async function confirmTakeoff(rows: ReadonlyArray<TakeoffCandidate>, ticks: ReadonlyMap<string, boolean>) {
+    if (!bidId || !takeoffPicker) return
+    setBusy(true)
+    try {
+      let revId: string
+      let seq = 0
+      if (takeoffPicker === 'build') {
+        const { data, error } = await db.from('bid_submittals').insert({ bid_id: bidId, rev_number: 1, status: 'draft', created_by: user?.id ?? null }).select('id').single()
+        if (error) throw error
+        revId = (data as { id: string }).id
+      } else {
+        if (!selectedRev) return
+        revId = selectedRev.id
+        seq = items.reduce((m, it) => Math.max(m, it.sequence_order), 0)
+      }
+      const inserts = rows.map((c, i) => candidateToItemInsert(c, revId, seq + i + 1))
+      if (inserts.length > 0) {
+        const { error } = await db.from('bid_submittal_items').insert(inserts)
+        if (error) throw error
+      }
+      await saveTakeoffChoices(db, bidId, ticks)
+      setTakeoffPicker(null)
+      const proposed = inserts.filter((r) => r.status === 'proposed').length
+      const toType = inserts.length - proposed
+      const tail = `${inserts.length} row${inserts.length === 1 ? '' : 's'} from the takeoff · ${proposed} proposed${toType > 0 ? `, ${toType} to type with Edit` : ''}`
+      if (takeoffPicker === 'build') {
+        setSelectedRevId(revId)
+        await load(bidId)
+        showToast(`Rev 1 built · ${tail}.`, 'success')
+      } else {
+        setItems(await loadItems(revId))
+        setTakeoff(await loadTakeoffCandidates(db, bidId, { selectedVersionId: bidsRef.current.find((b) => b.id === bidId)?.selected_bid_version_id ?? null }))
+        showToast(`Added · ${tail}.`, 'success')
+      }
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not build from the takeoff'), 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+  /** v2.4107 · a draft row leaves; a row that came from the takeoff is unticked there too, so the choice holds. */
+  async function removeRow(it: SubmittalItemRow) {
+    if (!bidId || !selectedRev || asRevisionStatus(selectedRev.status) !== 'draft') return
+    const ok = await confirm({ title: `Remove ${it.tag.trim() || 'this row'}`, message: it.source_count_row_id ? 'The row leaves this draft, and the fixture is unticked on the takeoff list so it stays out next time.' : 'The row leaves this draft.', confirmLabel: 'Remove', danger: true })
+    if (!ok) return
+    setBusy(true)
+    try {
+      const { error } = await db.from('bid_submittal_items').delete().eq('id', it.id)
+      if (error) throw error
+      if (it.source_count_row_id) await saveTakeoffChoices(db, bidId, new Map([[it.source_count_row_id, false]]))
+      setItems(await loadItems(selectedRev.id))
+      if (it.source_count_row_id) setTakeoff(await loadTakeoffCandidates(db, bidId, { selectedVersionId: bidsRef.current.find((b) => b.id === bidId)?.selected_bid_version_id ?? null }))
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not remove the row'), 'error')
     } finally {
       setBusy(false)
     }
@@ -1009,24 +1094,28 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     setItems(await loadItems(selectedRev.id))
   }
 
-  /** By hand (v2.4090): an empty row on the draft, then the editor for its tag, product and lead time. */
-  async function addRowByHand() {
+  /** By hand (v2.4090; v2.4105 the editor first): a row that exists only once Save is pressed — Cancel leaves nothing behind. */
+  function addRowByHand() {
     if (!selectedRev || !isDraft) return
     const maxSeq = items.reduce((m, it) => Math.max(m, it.sequence_order), 0)
-    const { data, error } = await db.from('bid_submittal_items').insert({ submittal_id: selectedRev.id, tag: '', sequence_order: maxSeq + 1, status: 'missing', sheet_pages: [] }).select('*').single()
-    if (error) {
-      showToast(formatErrorMessage(error, 'Could not add the row'), 'error')
-      return
-    }
-    const rows = await loadItems(selectedRev.id)
-    setItems(rows)
-    const added = rows.find((it) => it.id === (data as { id: string }).id) ?? null
-    if (added) setEditing(added)
+    setEditing(blankSubmittalItem(selectedRev.id, maxSeq + 1))
   }
 
   async function saveItem(patch: SubmittalItemPatch) {
     if (!editing || !selectedRev || !bidId) return
     const { entered, clearDecision, ...rowPatch } = patch
+    if (editing.id === NEW_ROW_ID) {
+      // v2.4105 · the row by hand lands now, with what the editor holds; a call on it is entered with Edit once it exists.
+      const { error } = await db.from('bid_submittal_items').insert({ submittal_id: selectedRev.id, sequence_order: editing.sequence_order, ...rowPatch, tag: rowPatch.tag ?? '', sheet_pages: rowPatch.sheet_pages ?? [] })
+      if (error) {
+        showToast(formatErrorMessage(error, 'Could not add the row'), 'error')
+        return
+      }
+      setEditing(null)
+      setItems(await loadItems(selectedRev.id))
+      if (entered) showToast('The row is in. Their call goes on it with Edit.', 'info')
+      return
+    }
     try {
       let write: Record<string, unknown> = { ...rowPatch }
       let enteredFor: { id: string; name: string } | null = null
@@ -1098,8 +1187,9 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         room: room ? { status: room.status, opens: events.filter((e) => e.event_type === 'view').length, identified: people.map((p) => p.name).filter((n): n is string => !!n) } : null,
         decisions: selectedRev ? decisions : null,
         procurement: procCounts,
+        takeoff: takeoff ? { fixtures: takeoff.fixtures, withProduct: takeoff.withProduct } : null,
       }),
-    [specified.length, picks.length, selectedRev, newestRev, items.length, tiles, room, events, people, decisions, procCounts],
+    [specified.length, picks.length, selectedRev, newestRev, items.length, tiles, room, events, people, decisions, procCounts, takeoff],
   )
   function runJourneyAction(action: JourneyAction) {
     if (!selectedBid) return
@@ -1107,6 +1197,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     else if (action === 'plug_in_schedule') setPlugInOpen(true)
     else if (action === 'ask_robot_schedule') void askRobot('read_schedule', {}, null)
     else if (action === 'build_rev1') void createFirstRevision()
+    else if (action === 'choose_from_takeoff') openTakeoffPicker()
     else if (action === 'drop_vendor_pdf') fileInput.current?.click()
     else if (action === 'build_package') void buildPackage()
     else if (action === 'share') setSharing(true)
@@ -1185,12 +1276,19 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
             </button>
           </div>
           <p style={{ margin: '0.2rem 0 0', ...smallMuted }} data-tour="submittals-source">
-            Submittals · plumbing fixtures &amp; equipment · {specified.length} tag{specified.length === 1 ? '' : 's'} on the schedule · {picks.length} picked line{picks.length === 1 ? '' : 's'}
-            {onOpenPricing ? (
+            Submittals · plumbing fixtures &amp; equipment · {takeoffFixtures > 0 ? <>{takeoffFixtures} fixture{takeoffFixtures === 1 ? '' : 's'} on the takeoff · </> : null}{specified.length} tag{specified.length === 1 ? '' : 's'} on the schedule · {picks.length} picked line{picks.length === 1 ? '' : 's'}
+            {takeoffFixtures > 0 && specified.length === 0 && picks.length === 0 ? (
               <>
                 {' · '}
-                <button type="button" onClick={() => onOpenPricing(bid)} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }}>
-                  {specified.length === 0 ? 'plug in the fixture schedule on Pricing' : 'the picks on Pricing'}
+                <button type="button" onClick={openTakeoffPicker} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }}>
+                  choose from the takeoff
+                </button>
+              </>
+            ) : onOpenPricing ? (
+              <>
+                {' · '}
+                <button type="button" onClick={() => (specified.length === 0 ? setPlugInOpen(true) : onOpenPricing(bid))} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }}>
+                  {specified.length === 0 ? 'type or paste the fixture schedule' : 'the picks on Pricing'}
                 </button>
               </>
             ) : null}
@@ -1241,13 +1339,29 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       {!loading ? (
         <div className="submittal-road" data-testid="submittal-road" style={{ display: 'grid', gridTemplateColumns: '34px 1fr', columnGap: '0.6rem' }}>
           {/* 1 · Schedule & picks — the source line is in the header; the robot's offer lives here while there is no schedule. */}
-          <RoadSection n={1} title="Schedule & picks" status={stageStatus('picks')} open={sectionOpen('picks')} onToggle={() => toggleSection('picks')} anchor="submittals-schedule"
-            summary={<>{specified.length} tag{specified.length === 1 ? '' : 's'} · {picks.length} picked line{picks.length === 1 ? '' : 's'}{onOpenPricing ? <> · <button type="button" onClick={() => onOpenPricing(bid)} style={{ ...btnQuiet, textDecoration: 'underline', fontSize: 'inherit' }}>{specified.length === 0 ? 'plug in the fixture schedule on Pricing' : 'the picks on Pricing'}</button></> : null}</>}>
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-              <button type="button" disabled={busy} onClick={() => setPlugInOpen(true)} style={specified.length === 0 ? btnPrimary : btn} title="Type or paste the plans' fixture schedule — one tag per line; no robot, no trip to Pricing" data-testid="plug-in-schedule" data-tour="submittals-plug-in">
-                {specified.length === 0 ? 'Type or paste the schedule' : 'Add to the schedule'}
-              </button>
-              <span style={smallMuted}>{specified.length === 0 ? 'The tags off the plans’ fixture schedule, one per line. The robot can read it for you instead — below.' : 'Picks come from the Pricing compare; a row with no pick takes its product typed with Edit.'}</span>
+          <RoadSection n={1} title="Where the rows come from" status={stageStatus('picks')} open={sectionOpen('picks')} onToggle={() => toggleSection('picks')} anchor="submittals-schedule"
+            summary={<>{takeoffFixtures > 0 ? <>{takeoffFixtures} on the takeoff · </> : null}{specified.length} tag{specified.length === 1 ? '' : 's'} · {picks.length} picked line{picks.length === 1 ? '' : 's'}{takeoffFixtures > 0 && specified.length === 0 && picks.length === 0 ? <> · <button type="button" onClick={openTakeoffPicker} style={{ ...btnQuiet, textDecoration: 'underline', fontSize: 'inherit' }}>choose from the takeoff</button></> : onOpenPricing ? <> · <button type="button" onClick={() => (specified.length === 0 ? setPlugInOpen(true) : onOpenPricing(bid))} style={{ ...btnQuiet, textDecoration: 'underline', fontSize: 'inherit' }}>{specified.length === 0 ? 'type or paste the fixture schedule' : 'the picks on Pricing'}</button></> : null}</>}>
+            {/* v2.4107 · three sources, the takeoff first: a bid priced from a takeoff has no picks and often no schedule, yet the takeoff already names every product. */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.6rem', maxWidth: 900 }} data-testid="submittal-sources">
+              <div style={{ border: `1px solid ${takeoffFixtures > 0 && specified.length === 0 && picks.length === 0 ? '#2563eb' : 'var(--border)'}`, borderRadius: 8, padding: '0.6rem 0.75rem', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: '0.4rem' }} data-testid="source-takeoff">
+                <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>The takeoff <span style={{ ...smallMuted, fontWeight: 400 }}>· {takeoffFixtures === 0 ? 'none on this bid' : `${takeoffFixtures} fixture${takeoffFixtures === 1 ? '' : 's'}, ${takeoff?.withProduct ?? 0} with a part`}</span></div>
+                <span style={smallMuted}>{takeoffFixtures === 0 ? 'Count the fixtures on Takeoffs and they show here.' : 'One row per fixture; the part under it is the product. You tick what goes on.'}</span>
+                <button type="button" disabled={busy || takeoffFixtures === 0} onClick={openTakeoffPicker} style={{ ...(takeoffFixtures > 0 && specified.length === 0 && picks.length === 0 ? btnPrimary : btn), alignSelf: 'flex-start', opacity: takeoffFixtures === 0 ? 0.5 : 1 }} title="Tick the takeoff fixtures that go on the submittal; the part under each is the product" data-testid="choose-from-takeoff" data-tour="submittals-takeoff">
+                  {revisions.length === 0 ? 'Choose from the takeoff' : 'Add from the takeoff'}
+                </button>
+              </div>
+              <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.75rem', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: '0.4rem' }} data-testid="source-picks">
+                <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>Pricing picks <span style={{ ...smallMuted, fontWeight: 400 }}>· {picks.length === 0 ? 'none yet' : `${picks.length} picked line${picks.length === 1 ? '' : 's'}`}</span></div>
+                <span style={smallMuted}>{picks.length === 0 ? 'Quotes compared on Pricing, a house picked per line. Not every bid has them.' : 'The house you picked per line, with the reason and lead time you gave.'}</span>
+                {onOpenPricing ? <button type="button" disabled={busy} onClick={() => onOpenPricing(bid)} style={{ ...btn, alignSelf: 'flex-start' }}>Open Pricing</button> : null}
+              </div>
+              <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.75rem', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: '0.4rem' }} data-testid="source-schedule">
+                <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>The plans’ schedule <span style={{ ...smallMuted, fontWeight: 400 }}>· {specified.length === 0 ? 'none yet' : `${specified.length} tag${specified.length === 1 ? '' : 's'}`}</span></div>
+                <span style={smallMuted}>{specified.length === 0 ? 'Optional: the tags off the plans, one per line. With it, rows read As specified or Alternate instead of Proposed.' : 'Every tag here becomes a row; a row with no pick takes its product typed with Edit.'}</span>
+                <button type="button" disabled={busy} onClick={() => setPlugInOpen(true)} style={{ ...(specified.length === 0 && takeoffFixtures === 0 ? btnPrimary : btn), alignSelf: 'flex-start' }} title="Type or paste the plans' fixture schedule — one tag per line; no robot, no trip to Pricing" data-testid="plug-in-schedule" data-tour="submittals-plug-in">
+                  {specified.length === 0 ? 'Type or paste the schedule' : 'Add to the schedule'}
+                </button>
+              </div>
             </div>
         {!loading ? (() => {
           // 6b · the schedule read: ask, wait, confirm
@@ -1325,12 +1439,23 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
             <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-base)', lineHeight: 1.45 }}>
               Rev 1 is built from what Pricing already knows: one row per tag on the fixture schedule, the product from the house you picked, the status against the schedule, and the reason and lead time you gave at the pick. Picks that match no tag become accessory rows.
             </p>
-            {specified.length === 0 ? <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-amber-700)' }}>No fixture schedule on this bid — plug it in on Pricing first, or Rev 1 will be accessories only.</p> : null}
-            {picks.length === 0 ? <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-amber-700)' }}>No picked quote lines — every tag starts as missing. Pick a house on the compare, or type each row's product with Edit after Rev 1 is built.</p> : null}
+            {takeoffFixtures > 0 ? <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-base)' }} data-testid="build-from-takeoff-line">Or from the takeoff: one row per fixture you tick, the part under it as the product, marked Proposed until the plans’ schedule says As specified or Alternate.</p> : null}
+            {specified.length === 0 && takeoffFixtures === 0 ? <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-amber-700)' }}>No fixture schedule on this bid — type or paste it under stage 1 first, or Rev 1 will be accessories only.</p> : null}
+            {picks.length === 0 && takeoffFixtures === 0 ? <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-amber-700)' }}>No picked quote lines — every tag starts as missing. Pick a house on the compare, or type each row's product with Edit after Rev 1 is built.</p> : null}
             <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center', flexWrap: 'wrap' }}>
-              <button type="button" disabled={busy || (specified.length === 0 && picks.length === 0)} onClick={() => void createFirstRevision()} style={{ ...btnPrimary, opacity: busy || (specified.length === 0 && picks.length === 0) ? 0.6 : 1 }}>
+              {takeoffFixtures > 0 && specified.length === 0 && picks.length === 0 ? (
+                <button type="button" disabled={busy} onClick={openTakeoffPicker} style={btnPrimary} data-testid="build-from-takeoff">
+                  Choose from the takeoff
+                </button>
+              ) : null}
+              <button type="button" disabled={busy || (specified.length === 0 && picks.length === 0)} onClick={() => void createFirstRevision()} style={{ ...(takeoffFixtures > 0 && specified.length === 0 && picks.length === 0 ? btn : btnPrimary), opacity: busy || (specified.length === 0 && picks.length === 0) ? 0.6 : 1 }}>
                 Build Rev 1 from the picks
               </button>
+              {takeoffFixtures > 0 && (specified.length > 0 || picks.length > 0) ? (
+                <button type="button" disabled={busy} onClick={openTakeoffPicker} style={btn} data-testid="build-from-takeoff">
+                  …or choose from the takeoff
+                </button>
+              ) : null}
               {notNeededAt ? (
                 <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }} data-testid="submittals-not-needed">
                   Not needed on this job · {new Date(notNeededAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: ROOM_TZ })} ·{' '}
@@ -1451,6 +1576,11 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                               <button type="button" aria-label={`Edit ${it.tag.trim() || 'accessory'}`} onClick={() => setEditing(it)} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem' }}>
                                 Edit
                               </button>
+                              {isDraft ? (
+                                <button type="button" aria-label={`Remove ${it.tag.trim() || 'accessory'}`} disabled={busy} onClick={() => void removeRow(it)} title={it.source_count_row_id ? 'Off this draft, and unticked on the takeoff list' : 'Off this draft'} style={{ ...btn, padding: '0.2rem 0.5rem', fontSize: '0.75rem', marginLeft: '0.3rem', color: 'var(--text-muted)' }}>
+                                  ×
+                                </button>
+                              ) : null}
                             </td>
                           </tr>
                         )
@@ -1463,8 +1593,13 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                     Drop a vendor PDF
                   </button>
                   <span style={smallMuted}>The house's whole submittal PDF is fine; put each page on its row.</span>
+                  {isDraft && takeoffFixtures > 0 ? (
+                    <button type="button" disabled={busy} onClick={openTakeoffPicker} style={{ ...btn, marginLeft: 'auto' }} title="Tick more takeoff fixtures onto this draft; rows already on it are set aside" data-testid="add-from-takeoff">
+                      + Add from the takeoff…
+                    </button>
+                  ) : null}
                   {isDraft ? (
-                    <button type="button" disabled={busy} onClick={() => void addRowByHand()} style={{ ...btn, marginLeft: 'auto' }} title="A row with no pick behind it: type its tag, product and lead time" data-testid="add-row-by-hand">
+                    <button type="button" disabled={busy} onClick={() => void addRowByHand()} style={{ ...btn, marginLeft: isDraft && takeoffFixtures > 0 ? undefined : 'auto' }} title="A row with no pick behind it: type its tag, product and lead time" data-testid="add-row-by-hand">
                       + Add a row by hand
                     </button>
                   ) : null}
@@ -1744,6 +1879,9 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       ) : null}
 
       {editing ? <SubmittalItemEditDialog item={editing} sourceFiles={sourceFiles} people={people} canEnterDecision canEditProduct={isDraft} onSave={(p) => void saveItem(p)} onClose={() => setEditing(null)} /> : null}
+      {takeoffPicker && takeoff ? (
+        <SubmittalTakeoffPicker mode={takeoffPicker} revLabel={takeoffPicker === 'build' ? 'Rev 1' : `Rev ${selectedRev?.rev_number ?? newestRev?.rev_number ?? 1}`} candidates={takeoffCandidatesForPicker} busy={busy} onConfirm={(rows, ticks) => void confirmTakeoff(rows, ticks)} onClose={() => setTakeoffPicker(null)} />
+      ) : null}
       {plugInOpen && bidId && selectedBid ? <PlugInScheduleModal open onClose={() => setPlugInOpen(false)} onSaved={() => { setPlugInOpen(false); void load(bidId) }} bidId={bidId} bidLabel={bidDisplayName(selectedBid) || 'Bid'} rows={[]} /> : null}
       {sharing && selectedRev && bidId ? (
         <SubmittalShareModal
