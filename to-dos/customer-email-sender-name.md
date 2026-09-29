@@ -2,13 +2,13 @@
 name: Customer emails come from Click Plumbing and Electrical
 number: 53
 group: ready
-status: planned 2026-09-28 · PR 1 shipped v2.4127 (the helper, `COMPANY_EMAIL_FROM`, the bill email and its copies), deployed and run live 2026-09-29 · PR 2 shipped v2.4132 (every other customer sender + the catalog guard + the bill windows' copy lines; fourteen functions to redeploy) · PR 3 not started
+status: planned 2026-09-28 · PR 1 shipped v2.4127 (the helper, `COMPANY_EMAIL_FROM`, the bill email and its copies), deployed and run live 2026-09-29 · PR 2 shipped v2.4132 (every other customer sender + the catalog guard + the bill windows' copy lines), its fourteen functions deployed 2026-09-29 (edge drift clean) · PR 3 not started
 summary: >
   Most emails the app sends a customer, a GC, a supply house or a law firm show "ClickTooling"
   as the sender in the inbox — the name of our software, not of the company the reader hired.
   Customer-facing emails should read "Click Plumbing and Electrical"; staff emails keep
   "ClickTooling" so the team can tell an app notice from a customer thread.
-next: deploy PR 2's fourteen functions (`bash scripts/deploy-functions.sh` — the list is in the v2.4132 fragment); then PR 3, the From line above each sample in Settings → What customers see; the owner glances at the 2026-09-29 test bill in robert@'s inbox for the sender name.
+next: PR 3, the From line above each sample in Settings → What customers see; the owner glances at the 2026-09-29 test bill in robert@'s inbox for the sender name.
 size: S
 blocker: None.
 opinion: build on — the bill is done (v2.4127); every other customer email still says "ClickTooling" until PR 2
@@ -103,5 +103,5 @@ changed functions, and the sender line in `docs/BILLING_FLOWS.md` where it names
   The session could not open that inbox, so the sender name as the inbox shows it is the owner's one
   glance; the function that sent it is the v2.4127 build. Found on the way: the Bill Customer window's
   Send-to line still says *a copy from ClickTooling* — a code string, PR 2.
-- Live, PR 2: `email_send_log.from_email` for the next send of each type reads the company name;
+- Live, PR 2 (deployed 2026-09-29, all 125 functions current): `email_send_log.from_email` for the next send of each type reads the company name;
   Resend's dashboard shows delivered, not bounced (a display-name change does not touch SPF/DKIM).
