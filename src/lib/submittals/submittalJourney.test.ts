@@ -18,6 +18,14 @@ describe('submittalJourney', () => {
     expect(j.next).toEqual({ kind: 'next', text: "12 tags on the schedule, nothing picked yet. Pick a house for each part on the Pricing compare, or build Rev 1 now and type each row's product with Edit.", action: 'build_rev1', actionLabel: 'Build Rev 1 and type the products' })
   })
 
+  it('v2.4107 · a bid priced from a takeoff, with no picks, is told to choose from the takeoff', () => {
+    const j = submittalJourney({ ...base, scheduleTags: 0, picks: 0, takeoff: { fixtures: 26, withProduct: 22 } })
+    expect(j.next).toEqual({ kind: 'next', text: 'The takeoff has 26 fixtures, 22 with parts. Choose which ones go on the submittal and build Rev 1 from them. The plans’ schedule is optional; typing it later turns Proposed rows into As specified or Alternate.', action: 'choose_from_takeoff', actionLabel: 'Choose from the takeoff' })
+    expect(statuses({ ...base, scheduleTags: 0, picks: 0, takeoff: { fixtures: 26, withProduct: 22 } })).toBe('current,later,later,later,later,later,later,later')
+    // Once Rev 1 exists from the takeoff, stage 1 is done even with no picks.
+    expect(statuses({ ...base, scheduleTags: 0, picks: 0, takeoff: { fixtures: 26, withProduct: 22 }, rev: draft() })).toMatch(/^done,done/)
+  })
+
   it('a bid with no schedule offers typing it first, the robot second', () => {
     const j = submittalJourney({ ...base, scheduleTags: 0, picks: 0 })
     expect(j.next.action).toBe('plug_in_schedule')

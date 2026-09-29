@@ -87,7 +87,7 @@ function plural(n: number, one: string, many: string): string {
 
 /** The words on the cover, from the plan — what the renderer draws and the test reads. */
 export function buildCoverModel(input: CoverInput, plan: PackagePlan): CoverModel {
-  const by: Record<ProductStatus, number> = { as_specified: 0, superseded: 0, equal: 0, alternate: 0, design_change: 0, missing: 0, accessory: 0 }
+  const by: Record<ProductStatus, number> = { as_specified: 0, superseded: 0, equal: 0, alternate: 0, design_change: 0, missing: 0, accessory: 0, proposed: 0 }
   for (const r of plan.rows) by[r.status] += 1
   const counts: string[] = [plural(plan.rows.length, 'row', 'rows')]
   if (by.as_specified) counts.push(`${by.as_specified} as specified`)
@@ -96,6 +96,7 @@ export function buildCoverModel(input: CoverInput, plan: PackagePlan): CoverMode
   if (by.alternate) counts.push(plural(by.alternate, 'alternate', 'alternates'))
   if (by.design_change) counts.push(plural(by.design_change, 'design change', 'design changes'))
   if (by.missing) counts.push(`${by.missing} missing`)
+  if (by.proposed) counts.push(`${by.proposed} proposed`)
   if (by.accessory) counts.push(plural(by.accessory, 'accessory', 'accessories'))
   counts.push(`${plan.rowsWithSheet} cut sheet${plan.rowsWithSheet === 1 ? '' : 's'} attached`)
   const notes: string[] = []
@@ -307,6 +308,7 @@ const STAMP_INK: Record<ProductStatus, [number, number, number]> = {
   design_change: [0.73, 0.14, 0.14],
   missing: [0.73, 0.14, 0.14],
   accessory: [0.42, 0.45, 0.5],
+  proposed: [0.11, 0.31, 0.85],
 }
 
 /** The cover, then every sheet's pages in order, each stamped "TAG · STATUS" and footed with the product. */

@@ -50,7 +50,7 @@ function shortDate(iso: string | null): string {
 }
 
 function RowCard({ row, local, onDecide }: { row: RoomRow; local: DecisionKind | undefined; onDecide: (kind: DecisionKind) => void }) {
-  const differs = row.kind === 'differs'
+  const differs = row.kind === 'differs' || row.kind === 'proposed'
   const shown = local ?? row.decision?.kind
   const tone = row.kind === 'added' ? 'var(--text-muted)' : row.performanceChange ? '#b42318' : COPPER
   return (
@@ -58,7 +58,7 @@ function RowCard({ row, local, onDecide }: { row: RoomRow; local: DecisionKind |
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' }}>
         <b>{row.tag || 'Accessory'}</b>
         <span style={{ fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: tone }}>
-          {row.kind === 'differs' ? 'differs' : row.kind === 'added' ? 'added for the fixture' : row.kind === 'not_quoted' ? 'to follow' : 'as the plans specify'}
+          {row.kind === 'differs' ? 'differs' : row.kind === 'proposed' ? 'proposed' : row.kind === 'added' ? 'added for the fixture' : row.kind === 'not_quoted' ? 'to follow' : 'as the plans specify'}
         </span>
       </div>
       {row.plans ? (
@@ -307,7 +307,7 @@ export default function SubmittalRoom() {
                 : {
                     ...r,
                     rows: r.rows.map((row) => (pending[row.id] ? { ...row, decision: { kind: pending[row.id]!.decision, note: pending[row.id]!.note.trim() || null, byName: me.name, byPersonId: null, at } } : row)),
-                    counts: { ...r.counts, decided: r.rows.filter((row) => row.decision || pending[row.id]).length, open: r.rows.filter((row) => row.kind === 'differs' && !row.decision && !pending[row.id]).length },
+                    counts: { ...r.counts, decided: r.rows.filter((row) => row.decision || pending[row.id]).length, open: r.rows.filter((row) => (row.kind === 'differs' || row.kind === 'proposed') && !row.decision && !pending[row.id]).length },
                   },
             ),
           },

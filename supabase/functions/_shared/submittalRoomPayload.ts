@@ -43,7 +43,7 @@ export type RoomItemSource = {
 }
 
 /** The customer's four words. */
-export type RoomRowKind = 'matches' | 'differs' | 'not_quoted' | 'added'
+export type RoomRowKind = 'matches' | 'differs' | 'not_quoted' | 'added' | 'proposed'
 
 export type RoomRow = {
   id: string
@@ -93,6 +93,8 @@ export function roomKindOf(status: string): RoomRowKind {
       return 'not_quoted'
     case 'accessory':
       return 'added'
+    case 'proposed':
+      return 'proposed'
     default:
       return 'differs'
   }
@@ -129,7 +131,7 @@ export function roomRowFrom(item: RoomItemSource): RoomRow {
     kind,
     plans,
     proposed,
-    why: kind === 'differs' ? whySentence(item) : kind === 'added' ? 'Required by the fixture; the plans leave it to the contractor.' : kind === 'not_quoted' ? 'No product yet — to follow.' : '',
+    why: kind === 'differs' ? whySentence(item) : kind === 'added' ? 'Required by the fixture; the plans leave it to the contractor.' : kind === 'not_quoted' ? 'No product yet — to follow.' : kind === 'proposed' ? 'What we intend to install; the plans’ schedule was not on the bid to compare against.' : '',
     performanceChange: item.status === 'design_change',
     sheetPages: (item.sheet_pages ?? []).length,
     decision,
@@ -145,18 +147,19 @@ export type RoomRevision = {
   hasPackage: boolean
   rows: RoomRow[]
   /** The differing rows first, then not-quoted and added; the matching rows are the fold. */
-  counts: { total: number; matches: number; differs: number; notQuoted: number; added: number; decided: number; open: number }
+  counts: { total: number; matches: number; differs: number; notQuoted: number; added: number; proposed?: number; decided: number; open: number }
 }
 
 export function roomCounts(rows: ReadonlyArray<RoomRow>): RoomRevision['counts'] {
-  const c = { total: rows.length, matches: 0, differs: 0, notQuoted: 0, added: 0, decided: 0, open: 0 }
+  const c = { total: rows.length, matches: 0, differs: 0, notQuoted: 0, added: 0, proposed: 0, decided: 0, open: 0 }
   for (const r of rows) {
     if (r.kind === 'matches') c.matches += 1
     else if (r.kind === 'differs') c.differs += 1
     else if (r.kind === 'not_quoted') c.notQuoted += 1
+    else if (r.kind === 'proposed') c.proposed += 1
     else c.added += 1
     if (r.decision) c.decided += 1
-    else if (r.kind === 'differs') c.open += 1
+    else if (r.kind === 'differs' || r.kind === 'proposed') c.open += 1
   }
   return c
 }
@@ -165,15 +168,16 @@ export function roomCounts(rows: ReadonlyArray<RoomRow>): RoomRevision['counts']
 export function roomRowsFrom(items: ReadonlyArray<RoomItemSource>): RoomRow[] {
   const sorted = [...items].sort((a, b) => a.sequence_order - b.sequence_order)
   const rows = sorted.map(roomRowFrom)
-  const order: Record<RoomRowKind, number> = { differs: 0, added: 1, not_quoted: 2, matches: 3 }
+  const order: Record<RoomRowKind, number> = { differs: 0, proposed: 1, added: 2, not_quoted: 3, matches: 4 }
   return rows.map((r, i) => ({ r, i })).sort((a, b) => order[a.r.kind] - order[b.r.kind] || a.i - b.i).map((x) => x.r)
 }
 
 /** "3 rows need a call" · "Everything matches the plans" · "2 to go". */
 export function roomHeadline(c: RoomRevision['counts']): string {
   if (c.total === 0) return 'Nothing to review yet'
-  if (c.differs === 0) return c.notQuoted > 0 ? 'Everything quoted matches the plans' : 'Everything matches the plans'
-  if (c.open === 0) return `All ${c.differs} decided — thank you`
+  const asks = c.differs + (c.proposed ?? 0)
+  if (asks === 0) return c.notQuoted > 0 ? 'Everything quoted matches the plans' : 'Everything matches the plans'
+  if (c.open === 0) return `All ${asks} decided — thank you`
   return `${c.open} row${c.open === 1 ? '' : 's'} need${c.open === 1 ? 's' : ''} a call`
 }
 
@@ -182,6 +186,7 @@ export function roomSubline(c: RoomRevision['counts']): string {
   const parts: string[] = []
   if (c.matches > 0) parts.push(`${c.matches} row${c.matches === 1 ? '' : 's'} match the plans and ${c.matches === 1 ? 'is' : 'are'} marked approved`)
   if (c.differs > 0) parts.push(`${c.differs} differ${c.differs === 1 ? 's' : ''} — each says why`)
+  if ((c.proposed ?? 0) > 0) parts.push(`${c.proposed} ${c.proposed === 1 ? 'is' : 'are'} proposed — the plans’ schedule was not on the bid`)
   if (c.notQuoted > 0) parts.push(`${c.notQuoted} ${c.notQuoted === 1 ? 'has' : 'have'} no product yet`)
   if (c.added > 0) parts.push(`${c.added} ${c.added === 1 ? 'is' : 'are'} accessor${c.added === 1 ? 'y' : 'ies'} the plans leave to us`)
   return parts.length ? `${parts.join('. ')}.` : ''
