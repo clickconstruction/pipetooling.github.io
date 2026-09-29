@@ -9,9 +9,15 @@ order: 66
 
 It is the same set of pages as **What customers see**, sorted by the document instead of by the customer's journey. Each opens the other.
 
+## Find a contract
+
+The page is an index first. Six sections in the order a customer meets them — **Estimates · Bids · Jobs · Every signing page · Billing · Liens & collections** — and one line per contract: its name, who it is for, whose wording it is, when it last changed, when it was reviewed, and what last went out. Press a line to open its card; {{button:outline|Open all}} opens every card on the page and turns into **Close all**. **Jump to** at the top lands a section.
+
+The lens chips narrow the list: {{chip:blue|All · 18}} {{chip:yellow|Needs a look · 3}} {{chip:green|Your wording · 4}} {{chip:blue|Built-in wording · 2}} … **Needs a look** keeps the contracts where what went out is not what the card says, nothing is set, or a review is due — the never-reviewed ones stay on the top line, since on the first day that is every card. The find box reads the names and the wording itself, so *interest* finds every clause that charges it.
+
 ## Read a card
 
-Each contract is a card. The chips say where it is used, who it is for, and whose wording it is.
+Each contract is a card under its line. The chips say where it is used, who it is for, and whose wording it is.
 
 :::example One card
 {{chip:gray|Bids}} {{chip:gray|Contractor}} {{chip:blue|Built-in wording}}
