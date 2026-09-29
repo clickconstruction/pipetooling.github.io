@@ -12,6 +12,8 @@ import { needsFreezeAfterWrite, resolvePricingWriteTarget } from '../../lib/bids
 import { compareSentVsToday, sentVsTodayText } from '../../lib/bids/sentVsToday'
 import { pricingLockChipText, pricingLockState, pricingLockedMessage, readRevisedBids, writeRevisedBid } from '../../lib/bids/pricingLock'
 import { mapCountRowsByFixture } from '../../lib/bids/mapCountRowsByFixture'
+import { sumByAlternate } from '../../lib/bids/alternateScope'
+import { alternateScopeKey, isAlternateRow } from '../../lib/bids/countSheet'
 import { searchPriceBookEntries, seedPricingAssignmentSearch, type AssignMatchMode, type PriceBookSearchResult } from '../../lib/bids/priceBookAssignSearch'
 import { SpotlightTour } from '../SpotlightTour'
 import { scenarioPricingRows } from '../../lib/bids/scenarioPricingRows'
@@ -1584,19 +1586,21 @@ export function BidsPricingTab({
     const loadRows = async (versionId: string) => {
       const { data, error: err } = await supabase
         .from('bids_count_rows')
-        .select('id, fixture')
+        .select('id, fixture, group_tag')
         .eq('bid_id', bidId)
         .eq('bid_version_id', versionId)
       if (err) {
         setError(err.message)
         return null
       }
-      return (data ?? []) as Array<{ id: string; fixture: string | null }>
+      return (data ?? []) as Array<{ id: string; fixture: string | null; group_tag: string | null }>
     }
     const sourceRows = await loadRows(sourceBidVersionId)
     const targetRows = await loadRows(targetBidVersionId)
     if (!sourceRows || !targetRows) return null
-    const rowMap = mapCountRowsByFixture(sourceRows, targetRows)
+    // v2.4194: a fixture that sits in the base and in an alternate pairs within its scope.
+    const scopeTags = selectedBidForPricing?.alternate_group_tags ?? []
+    const rowMap = mapCountRowsByFixture(sourceRows, targetRows, (r) => alternateScopeKey({ group_tag: r.group_tag ?? null }, scopeTags))
     let matched = 0
     let dropped = 0
     for (const table of ['bid_count_row_custom_prices', 'bid_pricing_assignments', 'bid_count_row_submission_hides'] as const) {
@@ -1686,18 +1690,18 @@ export function BidsPricingTab({
     try {
       const sourceBidVersionId = priceBookVersions.find((p) => p.id === sourceId)?.bid_version_id ?? null
       const crossVersion = sourceBidVersionId != null && sourceBidVersionId !== selectedBidVersionId
-      let sourceCountRows: Array<{ id: string; fixture: string | null; count: number | string | null }> = pricingCountRows
+      let sourceCountRows: Array<{ id: string; fixture: string | null; count: number | string | null; group_tag: string | null }> = pricingCountRows
       if (crossVersion) {
         const { data, error: err } = await supabase
           .from('bids_count_rows')
-          .select('id, fixture, count')
+          .select('id, fixture, count, group_tag')
           .eq('bid_id', bid.id)
           .eq('bid_version_id', sourceBidVersionId)
         if (err) {
           setError(err.message)
           return
         }
-        sourceCountRows = (data ?? []) as Array<{ id: string; fixture: string | null; count: number | string | null }>
+        sourceCountRows = (data ?? []) as Array<{ id: string; fixture: string | null; count: number | string | null; group_tag: string | null }>
       }
       const [entriesRes, assignRes, customRes] = await Promise.all([
         supabase.from('price_book_entries').select('*, fixture_types(name)').eq('version_id', sourceId),
@@ -1712,10 +1716,12 @@ export function BidsPricingTab({
         assignments: (assignRes.data as BidPricingAssignment[]) ?? [],
         customPrices: (customRes.data as BidCountRowCustomPrice[]) ?? [],
       })
+      const scopeTags = selectedBidForPricing?.alternate_group_tags ?? []
       const rowMap = crossVersion
         ? mapCountRowsByFixture(
-            sourceCountRows.map((r) => ({ id: r.id, fixture: r.fixture })),
-            pricingCountRows.map((r) => ({ id: r.id, fixture: r.fixture })),
+            sourceCountRows.map((r) => ({ id: r.id, fixture: r.fixture, group_tag: r.group_tag })),
+            pricingCountRows.map((r) => ({ id: r.id, fixture: r.fixture, group_tag: r.group_tag })),
+            (r) => alternateScopeKey({ group_tag: r.group_tag ?? null }, scopeTags),
           )
         : null
       let copied = 0
@@ -2337,6 +2343,18 @@ export function BidsPricingTab({
                 const effRevenue = eff.reduce((s, r) => s + r.effRevenue, 0)
                 const effProfit = effRevenue - totalCost
                 const effMargin = effRevenue > 0 ? effProfit / effRevenue : null
+                // v2.4194: the base and what each alternate adds — revenue and cost per row, summed by
+                // the Count Sheet's scope (one kernel with Takeoffs and Labor). null on a bid without one.
+                const altTags: readonly string[] = selectedBidForPricing?.alternate_group_tags ?? []
+                const groupTagById = new Map(pricingCountRows.map((cr) => [cr.id, cr.group_tag] as const))
+                const effScoped = eff.map((r) => ({ ...r, group_tag: groupTagById.get(r.countRow.id) ?? null }))
+                const altRevenue = sumByAlternate(effScoped, altTags, (r) => r.effRevenue)
+                const altCost = sumByAlternate(effScoped, altTags, (r) => r.cost)
+                const altRowIds = new Set(pricingCountRows.filter((cr) => isAlternateRow(cr, altTags)).map((cr) => cr.id))
+                const altChip = (id: string) =>
+                  altRowIds.has(id) ? (
+                    <span title="In an alternate group — priced with and without" style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.06em', padding: '0 0.3rem', borderRadius: 3, border: '1px solid var(--text-amber-700)', color: 'var(--text-amber-700)', marginLeft: '0.35rem', verticalAlign: '1px' }}>ALT</span>
+                  ) : null
                 const previewCount = eff.filter((r) => r.isPreview && !r.isVetoed).length
                 const vetoCount = eff.filter((r) => r.isVetoed).length
                 const costed = eff.filter((r) => r.cost > 0)
@@ -2629,7 +2647,26 @@ export function BidsPricingTab({
                             Margin ›
                           </button>
                         )
+                        // v2.4194: a second line under the scoreboard when the bid carries an alternate —
+                        // the base, what each alternate adds (with its own margin on hover), and the whole.
+                        const whole = (n: number) => `${n < 0 ? '-' : ''}$${Math.abs(Math.round(n)).toLocaleString('en-US')}`
+                        const altLine =
+                          altRevenue && altCost ? (
+                            <div data-testid="workbench-alternates" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem 0.9rem', flexWrap: 'wrap', marginTop: '0.45rem', paddingTop: '0.4rem', borderTop: '1px dashed var(--border-strong)' }}>
+                              {stat('Base', whole(altRevenue.base), 'var(--text-strong)', `$${formatCurrency(altRevenue.base)} · our cost $${formatCurrency(altCost.base)}`)}
+                              {altRevenue.alternates.map((a, i) => {
+                                const c = altCost.alternates[i]?.value ?? 0
+                                const m = a.value > 0 ? (a.value - c) / a.value : null
+                                return stat(`+ ${a.label}`, whole(a.value), 'var(--text-amber-700)', `$${formatCurrency(a.value)} · our cost $${formatCurrency(c)}${m != null ? ` · margin ${Math.round(m * 100)}%` : ''}`)
+                              })}
+                              {stat(altRevenue.alternates.length === 1 ? 'With the alternate' : 'With every alternate', whole(altRevenue.total), 'var(--text-strong)', `$${formatCurrency(altRevenue.total)} · our cost $${formatCurrency(altCost.total)}`)}
+                              {altRevenue.alternates.length === 1 && altRevenue.alternates[0]!.value > 0
+                                ? stat('Alternate margin', `${Math.round(((altRevenue.alternates[0]!.value - (altCost.alternates[0]?.value ?? 0)) / altRevenue.alternates[0]!.value) * 100)}%`, mColor((altRevenue.alternates[0]!.value - (altCost.alternates[0]?.value ?? 0)) / altRevenue.alternates[0]!.value))
+                                : null}
+                            </div>
+                          ) : null
                         return (
+                          <>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem 0.9rem', flexWrap: 'wrap' }}>
                             {/* Whole dollars only — the strip is a scoreboard, cents live in the rows (owner, v2.2205). */}
                             {stat('Revenue', `$${Math.round(effRevenue).toLocaleString('en-US')}`, 'var(--text-strong)', `$${formatCurrency(effRevenue)} · our cost $${formatCurrency(totalCost)}`)}
@@ -2822,6 +2859,8 @@ export function BidsPricingTab({
                               </>
                             )}
                           </div>
+                          {altLine}
+                          </>
                         )
                       })()}
                       {brushArmed ? (
@@ -3055,7 +3094,7 @@ export function BidsPricingTab({
                                     📌
                                   </button>
                                 </td>
-                                <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>{r.countRow.fixture ?? '—'}</td>
+                                <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>{r.countRow.fixture ?? '—'}{altChip(r.countRow.id)}</td>
                                 <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>{r.count}</td>
                                 <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: r.cost > 0 ? 'var(--text-700)' : 'var(--text-muted)' }} onClick={(e) => e.stopPropagation()}>
                                   {r.cost > 0 ? `$${formatCurrency(r.cost / r.count)}` : 'no cost'}

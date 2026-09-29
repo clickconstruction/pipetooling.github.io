@@ -49,4 +49,12 @@ describe('mapCountRowsByFixture', () => {
     )
     expect(m.size).toBe(0)
   })
+
+  it('scoped (v2.4194): the same fixture in the base and in an alternate pairs with its own counterpart', () => {
+    const scope = (r: { group_tag?: string | null }) => ((r.group_tag ?? '').toLowerCase() === 'break room' ? 'break room' : '')
+    const source = [{ id: 's1', fixture: 'WC', group_tag: 'Restroom A' }, { id: 's2', fixture: 'WC', group_tag: 'Break room' }]
+    const target = [{ id: 't1', fixture: 'WC', group_tag: null }, { id: 't2', fixture: 'WC', group_tag: 'break room' }]
+    expect(mapCountRowsByFixture(source, target)).toEqual(new Map())                          // unscoped: still ambiguous
+    expect(mapCountRowsByFixture(source, target, scope)).toEqual(new Map([['s1', 't1'], ['s2', 't2']]))
+  })
 })
