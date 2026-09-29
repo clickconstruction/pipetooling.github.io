@@ -35,6 +35,29 @@ export const STATUS_LABELS: Record<ProductStatus, string> = {
   proposed: 'Proposed',
 }
 
+/**
+ * What each status means, in plain words (v2.4140): the legend under the rows table and
+ * the Status header's help. The first time a reader meets a status is in the table, so the
+ * meaning lives there, not in the step's sentence.
+ */
+export const STATUS_MEANINGS: Record<ProductStatus, string> = {
+  as_specified: 'the exact product the plans named',
+  superseded: 'the maker replaced the named model with this one',
+  equal: 'the same unit under another number',
+  alternate: 'a stand-in for what the plans named, say why',
+  design_change: 'a different design from the plans, say why',
+  proposed: 'what we intend to install, the plans gave no schedule',
+  missing: 'no product picked yet',
+  accessory: 'a part the schedule leaves to you',
+}
+
+/** The three columns a row must fill, explained where they are read (v2.4140). */
+export const COLUMN_HELP = {
+  status: 'How your product compares to what the plans asked for.',
+  reason: 'Why you are not giving them what the plans asked for. An alternate or a design change needs one.',
+  sheet: 'The cut sheet: the maker’s page for the product, from the house’s PDF.',
+} as const
+
 export const REASON_LABELS: Record<ReasonKind, string> = {
   lead_time: 'Lead time',
   discontinued: 'Discontinued',

@@ -357,6 +357,22 @@ describe('BidsSubmittalsTab', () => {
     state.takeoff = false
   })
 
+  it('v2.4140 · the Status, Reason and Sheet headers explain themselves, and the legend opens under the table', async () => {
+    state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [], created_at: '2026-09-15T00:00:00Z', shared_at: null }]
+    state.items = [item({ id: 'it-1', tag: 'WC-1', sequence_order: 1, specified_manufacturer: 'TOTO', specified_model: 'CT708UVG', submitted_label: 'TOTO CT708UVG#01', status: 'as_specified' })]
+    mount()
+    expect(await screen.findByTestId('status-legend-toggle')).toBeTruthy()
+    expect(screen.getByRole('columnheader', { name: /^Status/ }).getAttribute('title')).toBe('How your product compares to what the plans asked for.')
+    expect(screen.getByRole('columnheader', { name: /^Sheet/ }).getAttribute('title')).toMatch(/maker’s page/)
+    expect(screen.queryByTestId('status-legend')).toBeNull()
+    fireEvent.click(screen.getByTestId('status-legend-toggle'))
+    const legend = screen.getByTestId('status-legend')
+    expect(legend.textContent).toContain('As specified — the exact product the plans named')
+    expect(legend.textContent).toContain('Alternate — a stand-in for what the plans named, say why')
+    expect(legend.textContent).toContain('Cut sheet — the maker’s page for the product')
+    expect(screen.getByTestId('road-3-about').textContent).toContain('Check each row. Is it the product the plans asked for?')
+  })
+
   it('draws the tiles and rows of a revision — say why, sheet needed, the status chips — and Edit saves the row', async () => {
     state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [{ path: 'b398/rev-1/0.pdf', name: 'NWS.pdf', pages: 12, house_id: null, house_name: null, trimmed_at: null }], shared_at: null, created_at: '2026-09-15T00:00:00Z' }]
     state.items = [

@@ -65,7 +65,7 @@ import { describeTask, type SubmittalTaskKind } from '../../../supabase/function
 import { keptPages, remapAfterTrim } from '../../lib/submittals/sheetAssignment'
 import { assignmentsFromItems } from '../../lib/submittals/sheetStripModel'
 import { buildSubmittalRows, changeNoteFor, summarizeChanges, type PickInput, type SpecifiedInput } from '../../lib/submittals/buildSubmittalRows'
-import { needsReason, REASON_LABELS, type StatusOverride } from '../../lib/submittals/productStatus'
+import { needsReason, REASON_LABELS, type StatusOverride, COLUMN_HELP, STATUS_LABELS, STATUS_MEANINGS, type ProductStatus } from '../../lib/submittals/productStatus'
 import { describeLeadTime } from '../../lib/submittals/leadTime'
 import { buildCoverModel, buildSubmittalPackage, packageFileName, planPackage, renderCoverPdf, type PackageRowInput } from '../../lib/submittals/submittalPackage'
 import { cachedTestReportSettings, fetchTestReportSettings } from '../../lib/jobs/testReportSettings'
@@ -211,6 +211,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   // v2.4067: the walkthrough, and the first-open offer (remembered per device).
   const [tourOpen, setTourOpen] = useState(false)
   const [tourStage, setTourStage] = useState<number | null>(null)
+  const [statusLegendOpen, setStatusLegendOpen] = useState(false)
   // v2.4136 · whether a robot seat is live (punch list #59): no offer shows until it is. Not live until the reader answers, so nothing flashes.
   const [robotSeat, setRobotSeat] = useState<RobotSeatState>(() => robotSeatState(null, Date.now()))
   useEffect(() => {
@@ -633,7 +634,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     if (!bidId || !selectedRev) return
     const ok = await confirm({
       title: 'Rebuild the rows from the picks',
-      message: 'Rows are rebuilt from today\'s picks on the Pricing compare. Sheets, reasons and lead times carry where the product is unchanged; a row whose product changed starts over.',
+      message: 'Every row is built again from today\'s picks on Pricing. Sheets, reasons and lead times stay where the product did not change. A row whose product changed starts over.',
       confirmLabel: 'Rebuild',
     })
     if (!ok) return
@@ -1569,7 +1570,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                     Rebuild rows from picks
                   </button>
                 ) : null}
-                <span style={smallMuted}>{selectedRev.note ? selectedRev.note : isDraft ? 'A draft until you share it; each shared revision stays as the record.' : 'Shared; a new revision is the way to change it.'}</span>
+                <span style={smallMuted}>{selectedRev.note ? selectedRev.note : isDraft ? 'A draft until you share it. Each shared version stays as the record.' : 'Shared. Start a new version to change it.'}</span>
                 {isDraft && isNewest ? (
                   <button type="button" disabled={busy} onClick={() => void deleteDraft()} style={{ ...btnQuiet, color: 'var(--text-red-700)', textDecoration: 'underline dotted', marginLeft: 'auto' }}>
                     Delete draft
@@ -1591,10 +1592,10 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                         <th style={th}>Tag</th>
                         <th style={th}>Specified</th>
                         <th style={th}>Submitted</th>
-                        <th style={th}>Status</th>
-                        <th style={th}>Reason</th>
+                        <th style={th} title={COLUMN_HELP.status}>Status <span aria-hidden style={{ color: 'var(--text-faint)', fontWeight: 400 }}>?</span></th>
+                        <th style={th} title={COLUMN_HELP.reason}>Reason <span aria-hidden style={{ color: 'var(--text-faint)', fontWeight: 400 }}>?</span></th>
                         <th style={th}>Lead time</th>
-                        <th style={th}>Sheet</th>
+                        <th style={th} title={COLUMN_HELP.sheet}>Sheet <span aria-hidden style={{ color: 'var(--text-faint)', fontWeight: 400 }}>?</span></th>
                         {previousRev ? <th style={th}>Since Rev {previousRev.rev_number}</th> : null}
                         {decisions.decided > 0 ? <th style={th}>Their call</th> : null}
                         <th style={th} />
@@ -1685,6 +1686,20 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                     </tbody>
                   </table>
                 </div>
+                {/* v2.4140 · the statuses explained where they are read: a quiet link under the table opens the legend. */}
+                <div style={{ marginTop: '0.35rem', fontSize: '0.78rem' }}>
+                  <button type="button" onClick={() => setStatusLegendOpen((v) => !v)} aria-expanded={statusLegendOpen} style={{ ...btnQuiet, textDecoration: 'underline', fontSize: 'inherit' }} data-testid="status-legend-toggle">
+                    {statusLegendOpen ? 'Hide what the statuses mean' : 'What do the statuses mean?'}
+                  </button>
+                  {statusLegendOpen ? (
+                    <ul style={{ margin: '0.3rem 0 0', paddingLeft: '1.1rem', color: 'var(--text-muted)', lineHeight: 1.5 }} data-testid="status-legend">
+                      {(Object.keys(STATUS_LABELS) as ProductStatus[]).map((k) => (
+                        <li key={k}><b style={{ color: 'var(--text-strong)', fontWeight: 600 }}>{STATUS_LABELS[k]}</b> — {STATUS_MEANINGS[k]}</li>
+                      ))}
+                      <li><b style={{ color: 'var(--text-strong)', fontWeight: 600 }}>Cut sheet</b> — the maker’s page for the product, from the house’s PDF</li>
+                    </ul>
+                  ) : null}
+                </div>
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '0.5rem' }}>
                   <button type="button" disabled={busy} onClick={() => fileInput.current?.click()} style={btn} title="Save the house's PDF on this version. Then put each page on its row" data-tour="submittals-drop">
                     Drop a vendor PDF
@@ -1749,7 +1764,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                   {selectedRev.drive_file_url ? null : selectedRev.package_path && asRevisionStatus(selectedRev.status) !== 'draft' ? (
                     <button type="button" disabled={busy} onClick={() => void fileInDrive()} style={{ ...btnQuiet, textDecoration: 'underline dotted' }} title="Save this version's package PDF in the bid's job folder on Drive, under Submittals" data-testid="file-in-drive">File in Drive</button>
                   ) : null}
-                  <span style={smallMuted}>One PDF on our letterhead: the cover table, then every row's sheet stamped with its tag and status.</span>
+                  <span style={smallMuted}>One PDF on our letterhead. The cover table first, then every cut sheet stamped with its tag and status.</span>
                 </div>
               </RoadSection>
 
@@ -1761,7 +1776,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                     <button type="button" disabled={busy || room?.status === 'closed'} onClick={() => setSharing(true)} style={asRevisionStatus(selectedRev.status) === 'shared' ? btn : btnPrimary} title={room ? 'Mark this revision shared; the room link shows it' : 'Mint the bid\'s review room and copy its link'} data-tour="submittals-share">
                       {asRevisionStatus(selectedRev.status) === 'shared' ? 'Shared · share again' : 'Share'}
                     </button>
-                    <span style={smallMuted}>{room ? 'The same room link shows every later revision.' : 'Mints the bid’s review-room link and copies it for the GC’s email chain.'}</span>
+                    <span style={smallMuted}>{room ? 'The same link shows every later version.' : 'Makes the link for the GC and copies it. Paste it into your email.'}</span>
                   </div>
                 ) : null}
                 {room ? (
@@ -1952,7 +1967,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                   <button type="button" disabled={busy || !isNewest} onClick={() => void newRevision()} style={{ ...(decisions.sentBack > 0 || !isNewest ? btn : btnGreen), opacity: !isNewest ? 0.5 : 1 }} title={isNewest ? 'Carry every row into a new draft and mark what changed' : 'Only the newest revision can be revised'} data-tour={isNewest && decisions.sentBack > 0 ? undefined : 'submittals-resubmit'}>
                     New revision
                   </button>
-                  <span style={smallMuted}>Fix the pick on Pricing, rebuild, share again: the same room link shows the new revision.</span>
+                  <span style={smallMuted}>Fix the rows, then share again. The GC’s link shows the new version.</span>
                 </div>
               </RoadSection>
 
