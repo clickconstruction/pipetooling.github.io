@@ -14,16 +14,16 @@ The dates block at the bottom of each row is the reading; the doing happens in f
 
 ## Reading the Expected row
 
-Each billed row ends with the bill's dates in one block — a numbered track and a ledger under it (see *read the Pipeline money view*). The money is row ②:
+Each billed row ends with the bill's dates in one block — a time bar over a short ledger (see *read the Pipeline money view*). The money is the Expected row:
 
-- *② Expected Sep 8 · in 12 d* — on track, in green. The date is the bill date (row ①) plus this customer's usual pay speed: the **median** time between our bill going out and their payments landing, over the last 12 months.
-- *② Expected Sep 8 · 12 d past* — in amber: the customer is now slower than **their own** history. This is the real follow-up signal: a 40-day-old bill is normal for a customer who pays in 45 days, and alarming for one who pays in 20.
+- *Expected Sep 8 · in 12 d* — on track, in green. The date is the bill date (the Billed row) plus this customer's usual pay speed: the **median** time between our bill going out and their payments landing, over the last 12 months.
+- *Expected Sep 8 · 12 d past* — in amber: the customer is now slower than **their own** history. This is the real follow-up signal: a 40-day-old bill is normal for a customer who pays in 45 days, and alarming for one who pays in 20.
 - A customer with too little payment history (fewer than 3 measured payments) gets the company-wide average instead. Treat it as a rough guess, not their norm.
 
 Hover the row and it spells out the math. In Collections the row reads red whatever the dates say.
 
 :::example Answering "when do we get paid on 964?"
-Find the row on Billed Awaiting Payment — its dates read *① Billed Aug 4* and *② Expected Sep 8 · in 12 d*. Knight Contracting usually pays about 35 days after billing, the bill went out Aug 4, so early September is the honest answer. No one has to ask the office.
+Find the row on Billed Awaiting Payment — its dates read *Billed Aug 4* and *Expected Sep 8 · in 12 d*. Knight Contracting usually pays about 35 days after billing, the bill went out Aug 4, so early September is the honest answer. No one has to ask the office.
 :::
 
 ## When the customer names a real date
