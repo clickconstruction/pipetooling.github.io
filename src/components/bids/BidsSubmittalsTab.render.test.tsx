@@ -527,7 +527,7 @@ describe('BidsSubmittalsTab', () => {
     mount()
     // v2.4109 · the state sits in the schedule card; the tags to confirm sit under the cards.
     const card = await screen.findByTestId('robot-schedule')
-    expect(card.textContent).toContain('The robot read the schedule — confirm the tags below.')
+    expect(card.textContent).toContain('The robot read the schedule. Confirm the tags below.')
     expect(card.textContent).toContain('robot · read the schedule · ready · 2 tags · 1 sure · 1 want a look')
     const panel = screen.getByTestId('robot-schedule-confirm')
     expect(panel.textContent).toContain('The robot read 2 tags off the plans')
