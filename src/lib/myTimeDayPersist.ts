@@ -242,9 +242,6 @@ export async function persistMyTimeDayDirtyClusters({
               )
             }
             partitionPersisted = true
-            if (c.some((s) => s.origin === 'salary_schedule')) {
-              showSalarySyncAfterPartitionSave = true
-            }
           } else {
             throw new DatabaseError(
               'Cannot save: the time span is too small to split across these clock rows (each needs at least 0.01 hours), or the block is too compressed. Widen the span or edit in People → Hours.'
@@ -398,15 +395,17 @@ export async function persistMyTimeDayDirtyClusters({
           'update clock session times after mixed coalesced partition save',
         )
       }
-      if (c.some((s) => s.origin === 'salary_schedule')) {
-        showSalarySyncAfterPartitionSave = true
-      }
     } else {
       if (!clusterSharesClockSessionClusterRpcMetadata(c)) {
         throw new DatabaseError(myTimeClusterPersistRpcMetadataUserMessage(c))
       }
       const mixed = attachAllocationsToPayloads(payloads, c, split, nowTick)
       await runReplaceMixed(c.map((s) => s.id), mixed)
+    }
+    // Any save that re-cut a block holding a salaried row — a split, a moved seam, a merge, a
+    // rebuild — may be adjusted by the next salary sync. A notes-only save changes no times.
+    if (c.some((s) => s.origin === 'salary_schedule') && !segmentsAreTheRowsUnchanged(c, split, nowTick)) {
+      showSalarySyncAfterPartitionSave = true
     }
   }
   return { salarySyncMayAdjust: showSalarySyncAfterPartitionSave }
