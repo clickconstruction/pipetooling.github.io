@@ -104,7 +104,9 @@ const btn: React.CSSProperties = {
   fontWeight: 600,
   cursor: 'pointer',
 }
-const btnPrimary: React.CSSProperties = { ...btn, background: 'var(--text-link)', borderColor: 'var(--text-link)', color: 'white' }
+// border as the full shorthand, not borderColor over btn's border: the rail's buttons flip between btn and btnPrimary
+// in place (armed ↔ plain), and React warns when a longhand is removed beside its shorthand on a persisting node.
+const btnPrimary: React.CSSProperties = { ...btn, background: 'var(--text-link)', border: '1px solid var(--text-link)', color: 'white' }
 
 function dispatchChanged() {
   try {
