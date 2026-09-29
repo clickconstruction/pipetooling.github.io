@@ -16,9 +16,10 @@ import { BidsSubmittalsTab } from './BidsSubmittalsTab'
 type Rec = { table: string; op: string; payload: unknown; filters: Array<[string, unknown]> }
 const state: { revisions: Record<string, unknown>[]; items: Record<string, unknown>[]; tasks: Record<string, unknown>[]; writes: Rec[]; storage: string[]; packageCalls: Array<{ files: number; sheets: string[] }>; noSources: boolean; takeoff: boolean } = { revisions: [], items: [], tasks: [], writes: [], storage: [], packageCalls: [], noSources: false, takeoff: false }
 
-vi.mock('../../lib/jobs/testReportSettings', () => ({
-  fetchTestReportSettings: () => Promise.resolve({ companyName: 'Click Plumbing', companyTagline: 'Plumbing', officePhone: '(512) 555-0100' }),
-}))
+vi.mock('../../lib/jobs/testReportSettings', () => {
+  const settings = { companyName: 'Click Plumbing', companyTagline: 'Plumbing', officePhone: '(512) 555-0100', mailingAddress: '' }
+  return { fetchTestReportSettings: () => Promise.resolve(settings), cachedTestReportSettings: () => settings }
+})
 
 // The package kernels run jsPDF and pdf-lib; the smoke checks the orchestration, not the ink.
 vi.mock('../../lib/submittals/submittalPackage', async (importOriginal) => {
@@ -219,7 +220,7 @@ describe('BidsSubmittalsTab', () => {
     expect(await screen.findByText('No submittal on this bid yet')).toBeTruthy()
     expect(screen.getByText(/3 tags on the schedule · 3 picked lines/)).toBeTruthy()
     // v2.4067: the journey strip offers the same door above the card; either one builds.
-    expect(screen.getByTestId('journey-next').textContent).toBe('Next: 3 tags on the schedule and 3 picked lines are ready.Build Rev 1 from the picks')
+    expect(screen.getByTestId('journey-next').textContent).toBe('Next: 3 tags on the schedule and 3 lines picked. Ready to build Rev 1, the first version.Build Rev 1 from the picks')
     fireEvent.click(screen.getAllByRole('button', { name: 'Build Rev 1 from the picks' })[1] as HTMLElement)
     await waitFor(() => expect(state.writes.filter((w) => w.op === 'insert')).toHaveLength(2))
     const rev = state.writes.find((w) => w.table === 'bid_submittals')!
@@ -291,7 +292,7 @@ describe('BidsSubmittalsTab', () => {
     expect(screen.getByRole('dialog', { name: 'Where this submittal is' })).toBeTruthy()
     const titles: string[] = []
     const missing: string[] = []
-    for (let i = 0; i < 15; i++) {
+    for (let i = 0; i < 13; i++) {
       const dialog = screen.getByRole('dialog')
       titles.push(dialog.getAttribute('aria-label') ?? '')
       if (within(dialog).queryByTestId('tour-missing')) missing.push(dialog.getAttribute('aria-label') ?? '')
@@ -300,23 +301,21 @@ describe('BidsSubmittalsTab', () => {
     }
     expect(titles).toEqual([
       'Where this submittal is',
-      '1 · Where the rows come from',
+      'Step 1. Where the rows come from',
       'From the takeoff',
       'No schedule yet? Type or paste it',
       'Or let the robot read it',
-      '2 · Build Rev 1',
-      'Revisions',
-      'One line: where you stand',
-      '3 · Fix a row with Edit',
-      '3 · Cut sheets: drop the house’s PDF',
-      '4 · Build the package',
-      '5 · Share the review room',
-      '6 · Their calls come back here',
-      '7 · Resubmit only what came back',
-      '8 · Procure: the log the GC asks for',
+      'Step 2. Build Rev 1',
+      'Step 3. Fix the rows',
+      'Step 3. Add the cut sheets',
+      'Step 4. Build the package',
+      'Step 5. Share it',
+      'Step 6. Their answer',
+      'Step 7. Resubmit',
+      'Step 8. Procure',
     ])
     // On a fresh bid with a schedule, only the strip, the source line and the Build Rev 1 card are on the page.
-    expect(missing).toEqual(titles.filter((t) => !['Where this submittal is', '1 · Where the rows come from', 'From the takeoff', 'No schedule yet? Type or paste it', '2 · Build Rev 1'].includes(t)))
+    expect(missing).toEqual(titles.filter((t) => !['Where this submittal is', 'Step 1. Where the rows come from', 'From the takeoff', 'No schedule yet? Type or paste it', 'Step 2. Build Rev 1'].includes(t)))
     expect(screen.getByRole('link', { name: 'Read the full guide: build a submittal package →' }).getAttribute('href')).toBe('/help?g=build-a-submittal-package')
     fireEvent.click(screen.getByRole('button', { name: 'Done' }))
     expect(screen.queryByRole('dialog')).toBeNull()
@@ -503,7 +502,7 @@ describe('BidsSubmittalsTab', () => {
       mount()
       expect(await screen.findByText('No submittal on this bid yet')).toBeTruthy()
       expect(document.querySelector('[data-tour="submittals-source"]')?.textContent).toContain('4 fixtures on the takeoff · no schedule yet · choose from the takeoff')
-      expect(screen.getByTestId('journey-next').textContent).toBe('Next: The takeoff has 4 fixtures, 3 with parts. Choose which ones go on the submittal and build Rev 1 from them. The plans’ schedule is optional; typing it later turns Proposed rows into As specified or Alternate.Choose from the takeoff')
+      expect(screen.getByTestId('journey-next').textContent).toBe('Next: The takeoff has 4 fixtures. 3 of them have a part. Tick the ones to submit, then build Rev 1 from them. You can type the plans’ schedule later. Then each row is checked against it.Choose from the takeoff')
       expect(screen.getByTestId('source-takeoff').textContent).toContain('The takeoff · 4 fixtures, 3 with a part')
       expect(screen.getByTestId('choose-from-takeoff').textContent).toBe('Choose from the takeoff')
       // v2.4109 · no picks → no picks card; the robot's offer is a line in the schedule card.

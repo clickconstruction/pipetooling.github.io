@@ -20,7 +20,7 @@ opinion: later — what is left is a persisted stage nobody has missed and polis
 
 - `create_sheet_for_work_order(uuid)` no longer admits `superintendent` by role literal — the role sweep (v2.2920, migration `20260906010000_role_sweep_predicates.sql` item 6) scoped the branch.
 
-## The items (validated 2026-09-06)
+## The items (validated 2026-09-06, re-checked 2026-09-29 — nothing on this list moved; `SubSheetStageSource` already admits `'auto'` and nothing writes it, `StepFormModal.tsx` still has no compliance code)
 
 1. **Sheet stage derived from anchored steps** (v2.2667 deferred). `src/lib/subSheetStage.ts` still stores three stages (`working → walkthrough → customer_pay`, paid derived) that the office or the portal steps by hand. The spine it waited on has landed, so this is unblocked: the rail wants a stage the stage windows (v2.2927) and the sub's percent (v2.2931) can drive.
 2. ~~**Spanish strings inside the shared signature form internals**~~ — shipped v2.3636 (`signatureFormStrings.ts`; the portal's form is `ContractAcceptSignatureForm` over `SignatureTypeOrDrawInput`, not the two files first named here).

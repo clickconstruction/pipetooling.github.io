@@ -93,7 +93,7 @@ sheet already lists the payment itself; totals are untouched, since the events a
 
 ## PR 3 — Move to job… on customer payments — SHIPPED v2.3576
 
-Built as drawn: the button on every saved row (disabled with *unlink it from the bill first* on a sent bill's payment; absent on Stripe), the dialog with the job search and the What-changes panel, `move_jobs_ledger_payment`, the trace on both jobs. `docs/recent-features/v2.3576.md`.
+Built as drawn: the button on every saved row (disabled with *unlink it from the bill first* on a sent bill's payment; absent on Stripe), the dialog with the job search and the What-changes panel, `move_jobs_ledger_payment`, the trace on both jobs. `docs/recent-features/v2.3576.md`. Since then: v2.4029 fixed the door's re-read (Remove, Unlink and remove and Move to job… set the form's payments without moving `hydratedPaymentIdsRef`, so the billing slice diffed against stale ids) and v2.3839 lifted the Edit Job confirms, Move to job… among them, into their own pieces — the live run below still has not happened and should go through the v2.4029 client.
 
 The same wrong-job mistake happens on Edit Job → Payments received, where Remove and
 *Unlink & remove* exist but nothing carries a payment to the right job.
