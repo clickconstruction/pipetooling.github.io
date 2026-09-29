@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { COMPANY_EMAIL_FROM_LABEL } from '../../lib/customerEmailFrom'
 import { useAuth } from '../../hooks/useAuth'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import {
@@ -2172,7 +2173,7 @@ export function JobsGcReviewModal({
               />
               <div style={{ border: '1px solid var(--border)', borderRadius: 4, padding: '0.5rem 0.65rem', fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
                 Every section above as one email — job addresses, bill-sent dates, amounts owed, and the grand total. Sent
-                from team@noreply.pipetooling.com with your email as reply-to.
+                from {COMPANY_EMAIL_FROM_LABEL} with your email as reply-to.
               </div>
               {shareAllError ? (
                 <p style={{ margin: '0 0 0.6rem', fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>{shareAllError}</p>

@@ -116,7 +116,8 @@ import {
   parseAcceptHeaderBrand,
   type EstimateAcceptHeaderBrand,
 } from '../lib/estimateAcceptHeaderBrand'
-import { buildEstimateLetterheadEmail, estimateEmailCompanyName } from '../lib/estimateEmailLetterhead'
+import { estimateEmailFrom } from '../lib/customerEmailFrom'
+import { buildEstimateLetterheadEmail } from '../lib/estimateEmailLetterhead'
 import { APP_CALENDAR_TZ } from '../utils/dateUtils'
 import { formatEstimateUpdatedRelativeCompact } from '../lib/formatEstimateListUpdated'
 import { formatNotificationDatetime } from '../utils/formatNotificationDatetime'
@@ -162,10 +163,6 @@ const ESTIMATE_CATALOG_EDITOR_ROLES = new Set<UserRole>([
 
 const SEND_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-// Mirrors the live EMAIL_FROM edge-function secret (sender the customer sees) —
-// if that secret changes, update this label (and supabase/functions/_shared/emailFrom.ts) with it.
-/** The verified sending address; the display name is the brand's company (send-estimate-to-customer). */
-const ESTIMATE_EMAIL_FROM_ADDRESS = 'team@noreply.clicktooling.com'
 
 const PREVIEW_EMAIL_ACCEPT_URL = 'https://example.com/estimate/accept?t=preview'
 
@@ -4907,7 +4904,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                 }}
               >
                 <p style={{ margin: '0 0 0.5rem', color: 'var(--text-muted)' }}>
-                  <strong>From:</strong> {estimateEmailCompanyName(acceptanceDocHeaderBrand)} &lt;{ESTIMATE_EMAIL_FROM_ADDRESS}&gt;
+                  <strong>From:</strong> {estimateEmailFrom(acceptanceDocHeaderBrand)}
                   {customerEmailPreview.replyTo ? <> · <strong>Reply-To:</strong> {customerEmailPreview.replyTo}</> : null}
                 </p>
                 <p style={{ margin: '0 0 0.5rem' }}>
