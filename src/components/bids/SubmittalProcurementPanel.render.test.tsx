@@ -17,6 +17,8 @@ const state: { records: Array<Record<string, unknown>>; updates: Array<Record<st
   updates: [],
 }
 vi.mock('../../lib/bidDocuments/htmlDoc', async (orig) => ({ ...(await orig<typeof import('../../lib/bidDocuments/htmlDoc')>()), printHtmlInNewWindow: vi.fn() }))
+const opened: string[] = []
+vi.mock('../../lib/openInExternalBrowser', () => ({ openInExternalBrowser: (url: string) => { opened.push(url) } }))
 vi.mock('../../lib/supabase', () => {
   const answer = (table: string) => {
     if (table === 'bid_procurement_items') return state.records
@@ -95,5 +97,36 @@ describe('SubmittalProcurementPanel', () => {
     expect(upd.changes).toHaveLength(2)
     expect(upd.line).toBe('hello')
     await waitFor(() => expect(screen.getByText(/last update 09\/28 to Dana W\./)).toBeTruthy())
+  })
+
+  it('v2.4113 · Download CSV saves the log as a file and Open in Google Sheets copies tab-separated rows then opens a new sheet', async () => {
+    const written: string[] = []
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText: (t: string) => { written.push(t); return Promise.resolve() } }, configurable: true })
+    const urls: string[] = []
+    const realCreate = URL.createObjectURL
+    const realRevoke = URL.revokeObjectURL
+    URL.createObjectURL = (b: Blob) => { urls.push(`blob:${b.type}:${b.size}`); return 'blob:x' }
+    URL.revokeObjectURL = () => {}
+    const clicks: string[] = []
+    const realClick = HTMLAnchorElement.prototype.click
+    HTMLAnchorElement.prototype.click = function () { clicks.push(this.download) }
+    try {
+      renderWithProviders(<SubmittalProcurementPanel bidId="b1" bidLabel="B482 Shipley" companyName="Click" items={items} reviewerNames={['Dana W.']} currentUser={{ id: 'u', name: 'Wendi' }} />)
+      await waitFor(() => expect(screen.getAllByTestId('procurement-row')).toHaveLength(2))
+      fireEvent.click(screen.getByTestId('procurement-csv'))
+      expect(urls).toEqual([expect.stringMatching(/^blob:text\/csv;charset=utf-8:\d+$/)])
+      expect(clicks).toEqual([expect.stringMatching(/^procurement-log_B482-Shipley_\d{4}-\d{2}-\d{2}\.csv$/)])
+      fireEvent.click(screen.getByTestId('procurement-sheets'))
+      await waitFor(() => expect(written).toHaveLength(1))
+      const lines = written[0]!.split('\n')
+      expect(lines[0]).toBe('Tag\tProduct\tSupply house\tStage\tSubmittal\tReleased\tOrdered\tPO\tLead time\tExpected\tExpected from\tRequired\tFloat\tDelivered\tNote')
+      expect(lines[1]).toContain('BFP-1\tWatts 909 RPZ 2"\t\tRough-in\tApproved 09/22\t2026-09-22\t')
+      expect(opened).toEqual(['https://sheets.new'])
+      await waitFor(() => expect(screen.getByText(/Log copied — a new Google Sheet is opening/)).toBeTruthy())
+    } finally {
+      URL.createObjectURL = realCreate
+      URL.revokeObjectURL = realRevoke
+      HTMLAnchorElement.prototype.click = realClick
+    }
   })
 })
