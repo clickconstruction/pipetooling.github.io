@@ -672,6 +672,31 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     }
   }
 
+  /** v2.4171 · the reader's verdict on a file: how many pages name a row, and whether the file carries section stamps. */
+  async function readFileAgainstRows(bytes: ArrayBuffer): Promise<{ namesRows: number; sectioned: boolean }> {
+    const [{ openPdf }, { commonHeader, fileSectionTags, readPages, walkRowsFrom }] = await Promise.all([import('../../lib/submittals/pdfThumbnails'), import('../../lib/submittals/assignPagesWalk')])
+    const pdf = await openPdf(bytes)
+    try {
+      const texts: string[] = []
+      for (let p = 1; p <= pdf.numPages; p++) texts.push(await pdf.pageText(p).catch(() => ''))
+      const reads = readPages(texts, walkRowsFrom(items))
+      const header = commonHeader(texts)
+      return { namesRows: Object.values(reads).filter((r) => r.itemId !== null).length, sectioned: header ? fileSectionTags(texts, header).length > 0 : false }
+    } finally {
+      pdf.destroy()
+    }
+  }
+
+  /** v2.4171 · the walk read the file: keep its verdict on the file record so the line can use it. */
+  async function noteFileReads(fileIndex: number, reads: { namesRows: number; sectioned: boolean }) {
+    if (!selectedRev) return
+    const f = sourceFiles[fileIndex]
+    if (!f || (f.namesRows === reads.namesRows && f.sectioned === reads.sectioned)) return
+    const next = sourceFiles.map((sf, i) => (i === fileIndex ? { ...sf, ...reads } : sf))
+    const { error } = await db.from('bid_submittals').update({ source_files: serializeSourceFiles(next) }).eq('id', selectedRev.id)
+    if (!error && bidId) await load(bidId)
+  }
+
   async function dropVendorPdf(file: File) {
     if (!bidId || !selectedRev) return
     if (file.type && file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
@@ -680,18 +705,21 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     }
     setBusy(true)
     try {
-      const bytes = new Uint8Array(await file.arrayBuffer())
+      const raw = await file.arrayBuffer()
+      const bytes = new Uint8Array(raw)
       const { pageCount } = await import('../../lib/submittals/trimPdf')
       const pages = await pageCount(bytes)
       const index = sourceFiles.length
       const path = `${bidId}/${selectedRev.id}/${index}.pdf`
       const up = await supabase.storage.from(SUBMITTALS_BUCKET).upload(path, bytes, { contentType: 'application/pdf', upsert: true })
       if (up.error) throw up.error
-      const next: SourceFile[] = [...sourceFiles, { path, houseId: null, houseName: null, name: file.name, pages, trimmedAt: null, droppedPages: null }]
+      // v2.4171 · read it against the rows now, so the line can say when no page names a row.
+      const reads = await readFileAgainstRows(raw).catch(() => ({ namesRows: null, sectioned: null }))
+      const next: SourceFile[] = [...sourceFiles, { path, houseId: null, houseName: null, name: file.name, pages, trimmedAt: null, droppedPages: null, ...reads }]
       const { error } = await db.from('bid_submittals').update({ source_files: serializeSourceFiles(next) }).eq('id', selectedRev.id)
       if (error) throw error
       await load(bidId)
-      showToast(`${file.name} · ${pages} page${pages === 1 ? '' : 's'} — tap Show the pages, then a page and its row.`, 'success')
+      showToast(reads.namesRows === 0 ? `${file.name} · ${pages} page${pages === 1 ? '' : 's'} — no page names a row on this revision; is it the vendor's submittal?` : `${file.name} · ${pages} page${pages === 1 ? '' : 's'} — Assign pages… walks it, or open the arrow and tap a page and its row.`, reads.namesRows === 0 ? 'info' : 'success')
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Could not store the file.', 'error')
     } finally {
@@ -2027,6 +2055,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
           guesses={(() => { const f = sourceFiles[assignFile]!; const t = liveTask(tasks, 'file_cut_sheets', (inp) => inp.file_index === assignFile && (!inp.path || inp.path === f.path)); const g = t ? sheetGuessesToConfirm(t, f.pages) : null; return g ? guessByPage(g) : undefined })()}
           busy={busy}
           onDone={applyAssignWrites}
+          onReads={(reads) => void noteFileReads(assignFile, reads)}
           onClose={() => setAssignFile(null)}
         />
       ) : null}

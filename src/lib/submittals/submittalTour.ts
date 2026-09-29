@@ -56,7 +56,7 @@ export const SUBMITTAL_TOUR_STEPS: SpotlightTourStep[] = [
   {
     anchor: 'submittals-drop',
     title: 'Step 3. Add the cut sheets',
-    body: 'Tap Drop a vendor PDF. Give it the supply house’s whole PDF. Tap Show the pages. Then tap a page, and tap the row it belongs to. Repeat until every row has its page.',
+    body: 'Tap Drop a vendor PDF. Give it the supply house’s whole PDF. Open the file’s pages with the arrow. Then tap a page, and tap the row it belongs to. Repeat until every row has its page.',
     missingBody: 'This button appears after you build Rev 1.',
   },
   {

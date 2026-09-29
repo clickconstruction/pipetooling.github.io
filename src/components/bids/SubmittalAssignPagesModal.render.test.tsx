@@ -30,7 +30,7 @@ const items = [
   item({ id: 'wha500', tag: 'WHA-500', submitted_model: 'Z1700-500-OV', submitted_label: 'Zurn Z1700-500-OV', status: 'as_specified' }),
   item({ id: 'wc1', tag: 'WC-1', submitted_model: 'CT708', submitted_label: 'TOTO CT708 bowl', status: 'as_specified' }),
 ]
-const file: SourceFile = { path: 'b/r/0.pdf', houseId: null, houseName: 'NWS', name: 'NWS.pdf', pages: 3, trimmedAt: null, droppedPages: null }
+const file: SourceFile = { path: 'b/r/0.pdf', houseId: null, houseName: 'NWS', name: 'NWS.pdf', pages: 3, trimmedAt: null, droppedPages: null, namesRows: null, sectioned: null }
 
 describe('SubmittalAssignPagesModal', () => {
   it('walks the file: the read answer lit, Space and X decide, Done writes once every page is seen', async () => {

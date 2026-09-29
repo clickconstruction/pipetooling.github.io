@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vendor files — one line each</title>
+<style>
+  :root { --ground: #0f141c; --panel: #161c26; --panel2: #1c2431; --line: #2a3442; --line2: #3a4658; --ink: #e6eaf0; --muted: #8a97a8; --blue: #3b82f6; --green: #22c55e; --amber: #f59e0b; --red: #f87171; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 14px/1.45 -apple-system, "Segoe UI", system-ui, sans-serif; padding: 0 20px 60px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 26px 0 12px; border-bottom: 2px solid var(--line2); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 24px; line-height: 1.15; }
+  .stamp { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 17px; margin: 30px 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; }
+  .tag.before { background: #3f1d1d; color: #fca5a5; } .tag.after { background: #14351f; color: #86efac; } .tag.best { background: #1e2f55; color: #93c5fd; }
+  .lede { margin: 0 0 12px; color: var(--muted); max-width: 95ch; } .lede b { color: var(--ink); }
+  .callouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; margin: 0 0 14px; padding: 0; list-style: none; }
+  .callouts li { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--red); border-radius: 6px; padding: 8px 10px; font-size: 12.5px; color: var(--muted); }
+  .callouts li b { display: block; color: var(--ink); }
+  .callouts.good li { border-left-color: var(--green); } .callouts.best li { border-left-color: var(--blue); }
+
+  .app { background: #131a24; border: 1px solid var(--line2); border-radius: 10px; padding: 14px 16px; }
+  .btn { padding: 7px 13px; border-radius: 6px; border: 1px solid var(--line2); background: var(--panel2); color: var(--ink); font: inherit; font-size: 13px; font-weight: 500; white-space: nowrap; }
+  .btn.blue { background: var(--blue); border-color: var(--blue); color: #fff; font-weight: 600; }
+  .btn.green { background: #16a34a; border-color: #16a34a; color: #fff; font-weight: 600; }
+  .btn.link { background: none; border-color: transparent; color: var(--muted); padding-inline: 6px; }
+  .btn.link.red { color: var(--red); } .btn.link.u { text-decoration: underline; text-underline-offset: 3px; }
+  .btn.dashed { border-style: dashed; color: var(--muted); background: none; }
+  .btn.sm { padding: 4px 9px; font-size: 12px; }
+  .muted { color: var(--muted); }
+  .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  .toolbar .hint { color: var(--muted); flex: 1; min-width: 200px; }
+
+  /* before: the card */
+  .card { border: 1px solid var(--line); border-radius: 8px; background: var(--panel); padding: 10px 12px; margin-bottom: 10px; }
+  .card .h { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+  .card .f { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding-top: 10px; }
+
+  /* after: the list */
+  .list { border: 1px solid var(--line); border-radius: 8px; background: var(--panel); overflow: hidden; }
+  .row { display: grid; grid-template-columns: 22px minmax(220px, 1.3fr) minmax(200px, 1fr) auto; gap: 12px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+  .row:last-child { border-bottom: none; }
+  .row .chev { color: var(--muted); font-size: 12px; width: 22px; text-align: center; cursor: pointer; }
+  .row .name b { font-weight: 700; } .row .name .muted { margin-left: 6px; }
+  .row .state { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; min-width: 0; }
+  .bar { width: 90px; height: 5px; background: var(--line2); border-radius: 3px; overflow: hidden; flex: none; } .bar i { display: block; height: 100%; background: var(--green); }
+  .bar i.amber { background: var(--amber); }
+  .row .acts { display: flex; gap: 6px; align-items: center; justify-content: flex-end; }
+  .robot { color: var(--amber); font-style: italic; }
+  .expand { background: #101620; border-bottom: 1px solid var(--line); padding: 10px 12px 10px 46px; }
+  .thumbs { display: flex; gap: 6px; flex-wrap: wrap; }
+  .th { width: 56px; text-align: center; font-size: 10px; color: var(--muted); }
+  .th div { height: 40px; background: #cfd6e0; border-radius: 2px; margin-bottom: 2px; position: relative; }
+  .th div i { position: absolute; left: 3px; bottom: 3px; background: #14351f; color: #86efac; font-size: 9px; font-weight: 700; padding: 0 4px; border-radius: 999px; font-style: normal; }
+  .expand .foot { display: flex; gap: 12px; align-items: center; margin-top: 8px; color: var(--muted); font-size: 12.5px; }
+  .call { background: var(--panel); border: 1px solid var(--line2); border-radius: 10px; padding: 14px 18px; margin-top: 18px; }
+  .call h3 { margin: 0 0 6px; font-size: 15px; } .call ol { margin: 0; padding-left: 20px; } .call li { margin: 5px 0; } .call .why { color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div>
+    <p class="eyebrow">Bids → Submittals → 3 · cut sheets → <u>the vendor files</u></p>
+    <h1>One line per file</h1>
+  </div>
+  <div class="stamp">punch list #17 · Submittals<br>drawn 2026-09-29 · B375's two files</div>
+</header>
+
+<h2><span class="tag before">Before</span> A card per file, two lines each</h2>
+<p class="lede">Each file is a boxed card: its name and the action buttons on one line, a rule, then the count and <i>Remove this file</i> on a second. Two files take six lines and two boxes to say "75 pages, none on rows" and "11 pages, none on rows". With three or four files the strip pushes the rows table off the screen.</p>
+<ul class="callouts">
+  <li><b>Two lines for one fact</b>The count line is the file's status; it belongs beside the name, not under a rule.</li>
+  <li><b>The wrong file has the same weight</b>The Master Subcontract Agreement is not a submittal PDF; the layout gives it the same box and the same blue button as the real one.</li>
+  <li><b>Remove sits far from its file</b>Bottom-right of the card, the eye has to travel; and it reads as important as Assign pages.</li>
+</ul>
+<div class="app">
+  <div class="toolbar"><button class="btn">Drop a vendor PDF</button><span class="hint">A cut sheet is the maker’s page for a product. Drop the house’s whole PDF here, then put each page on its row.</span><button class="btn">+ Add from the takeoff…</button><button class="btn">+ Add a row by hand</button><button class="btn link u">when can a row split?</button></div>
+  <div class="card"><div class="h"><span><b>SPACEX BA-2 CORE &amp; SHELL.pdf</b> <span class="muted">· 75 pages</span></span><span><button class="btn blue">Assign pages…</button> <button class="btn">Show the pages</button></span></div><div class="f"><span>75 pages · none on rows yet</span><button class="btn link red" style="border:1px solid var(--line2)">Remove this file</button></div></div>
+  <div class="card"><div class="h"><span><b>Click Plumbing - Master Subcontract Agreement.pdf</b> <span class="muted">· 11 pages</span></span><span><button class="btn blue">Assign pages…</button> <button class="btn">Show the pages</button></span></div><div class="f"><span>11 pages · none on rows yet</span><button class="btn link red" style="border:1px solid var(--line2)">Remove this file</button></div></div>
+</div>
+
+<h2><span class="tag after">After</span> A list: name · where it stands · what you can do</h2>
+<p class="lede">One row per file in one bordered list. Left, a chevron that folds the page strip out under the row (that is what <i>Show the pages</i> was). Then the name and page count. Then the file's standing in words with a small bar — <b>none on rows yet</b>, <b>57 of 75 on rows · 18 let go</b>, <b>trimmed · 57 pages</b>. Right, the actions in weight order: <b>Assign pages…</b> in blue, <i>Done with this file</i> once something is on rows, <i>Remove</i> as quiet red text. The robot's line, when it has one, sits in the standing column.</p>
+<ul class="callouts good">
+  <li><b>One line, one file</b>Six lines become two. Four files still fit above the rows table.</li>
+  <li><b>Standing where the eye lands</b>The count is the second thing you read, right after the name, with a bar that shows the shape at a glance.</li>
+  <li><b>The strip is a fold, not a mode</b>Chevron open → thumbnails and chips under the row, the same tap-a-page-then-a-row as today; the footer (<i>6 of 31 on rows · 25 not used</i>) lives inside the fold.</li>
+  <li><b>Weight matches importance</b>Assign pages is the button; Done is text once there is something to keep; Remove is quiet and last.</li>
+</ul>
+<div class="app">
+  <div class="toolbar"><button class="btn">Drop a vendor PDF</button><span class="hint">A cut sheet is the maker’s page for a product. Drop the house’s whole PDF here, then put each page on its row.</span><button class="btn">+ Add from the takeoff…</button><button class="btn">+ Add a row by hand</button><button class="btn link u">when can a row split?</button></div>
+  <div class="list">
+    <div class="row">
+      <span class="chev">▸</span>
+      <span class="name"><b>SPACEX BA-2 CORE &amp; SHELL.pdf</b><span class="muted">· 75 pages · National Wholesale</span></span>
+      <span class="state"><span class="bar"><i style="width:0"></i></span>none on rows yet</span>
+      <span class="acts"><button class="btn blue sm">Assign pages…</button><button class="btn link red sm">Remove</button></span>
+    </div>
+    <div class="row">
+      <span class="chev">▸</span>
+      <span class="name"><b>Click Plumbing - Master Subcontract Agreement.pdf</b><span class="muted">· 11 pages</span></span>
+      <span class="state"><span class="bar"><i style="width:0"></i></span>none on rows yet</span>
+      <span class="acts"><button class="btn blue sm">Assign pages…</button><button class="btn link red sm">Remove</button></span>
+    </div>
+  </div>
+</div>
+
+<h2 style="font-size:15px;margin-top:22px"><span class="muted">The same list in its other states</span></h2>
+<div class="app">
+  <div class="list">
+    <div class="row">
+      <span class="chev">▾</span>
+      <span class="name"><b>SPACEX BA-2 CORE &amp; SHELL.pdf</b><span class="muted">· 75 pages · National Wholesale</span></span>
+      <span class="state"><span class="bar"><i style="width:76%"></i></span>57 of 75 on rows · 18 not used</span>
+      <span class="acts"><button class="btn blue sm">Assign pages…</button><button class="btn link sm u">Done with this file</button><button class="btn link red sm">Remove</button></span>
+    </div>
+    <div class="expand">
+      <div class="thumbs">
+        <div class="th"><div></div>1</div><div class="th"><div></div>2</div><div class="th"><div><i>DWH-1</i></div>5</div><div class="th"><div><i>DWH-1</i></div>6</div><div class="th"><div><i>DWH-1</i></div>7</div><div class="th"><div></div>12</div><div class="th"><div><i>WC-1</i></div>19</div><div class="th"><div><i>WC-1</i></div>20</div><div class="th"><div><i>UR-1</i></div>25</div><div class="th"><div><i>LAV-1</i></div>30</div><div class="th"><div><i>LAV-1</i></div>31</div><div class="th"><div><i>LAV-2</i></div>48</div><div class="th"><div></div>59</div><div class="th"><div><i>EWC-1</i></div>69</div><div class="th"><div></div>…</div>
+      </div>
+      <div class="foot">Tap a page, then the row it belongs to · a chip's × takes it off · <span class="robot">robot · split the file by tag · ready · 61 pages matched</span> <button class="btn green sm">Confirm 61 · pick 4</button></div>
+    </div>
+    <div class="row">
+      <span class="chev">▸</span>
+      <span class="name"><b>NWS - Kitchen package.pdf</b><span class="muted">· 31 pages</span></span>
+      <span class="state"><span class="bar"><i style="width:100%"></i></span>trimmed · 6 pages kept · Sep 15</span>
+      <span class="acts"><button class="btn blue sm">Assign pages…</button><button class="btn link red sm">Remove</button></span>
+    </div>
+    <div class="row">
+      <span class="chev">▸</span>
+      <span class="name"><b>Ferguson quote pages.pdf</b><span class="muted">· 9 pages</span></span>
+      <span class="state"><span class="bar"><i class="amber" style="width:22%"></i></span>2 of 9 on rows · <span style="color:var(--red)">1 page on two rows</span></span>
+      <span class="acts"><button class="btn blue sm">Assign pages…</button><button class="btn link sm u" disabled style="opacity:.5">Done with this file</button><button class="btn link red sm">Remove</button></span>
+    </div>
+    <div class="row">
+      <span class="chev">▸</span>
+      <span class="name"><b>Click Plumbing - Master Subcontract Agreement.pdf</b><span class="muted">· 11 pages</span></span>
+      <span class="state"><span class="bar"><i style="width:0"></i></span>none on rows yet · <span class="robot">robot · reading the pages…</span></span>
+      <span class="acts"><button class="btn blue sm">Assign pages…</button><button class="btn link red sm">Remove</button></span>
+    </div>
+  </div>
+</div>
+
+<h2><span class="tag best">Is this the best we can do?</span> Two things the list still gets wrong</h2>
+<ul class="callouts best">
+  <li><b>A file that is not a submittal</b>The Master Subcontract Agreement was dropped by mistake; nothing tells the user. After the reader runs (it runs on Assign pages today), a file whose pages name no row and carry no section stamps can say so in the standing column — <i>no page names a row · not a vendor submittal?</i> — with Remove lit. Cheap once the reader runs on drop instead of on open.</li>
+  <li><b>Ask the robot is gone from the line</b>It was a dashed button on the card; on the line there is no room, and the walk's own reader makes it a second opinion. It lives in the fold (the robot's line and Confirm are there), and the walk shows the robot's sure guesses as reads anyway. If the owner wants it back on the line, it goes as a dashed <i>robot</i> chip after Assign pages.</li>
+</ul>
+
+<div class="call">
+  <h3>The calls this drawing makes, and why</h3>
+  <ol>
+    <li><b>A list, not cards.</b> <span class="why">Files are peers with the same four facts; a table-shaped list reads them in one pass. Cards suggest each file is its own little page.</span></li>
+    <li><b>The standing is a sentence plus a bar.</b> <span class="why">The words are exact (<i>57 of 75 on rows · 18 not used</i>); the bar is the shape. A page on two rows turns the bar amber and names itself in red, because Done refuses until it is settled.</span></li>
+    <li><b>Show the pages becomes the chevron.</b> <span class="why">It is a disclosure, not an action; the fold keeps the tap-a-page path exactly as it is, including the robot's chips and Confirm.</span></li>
+    <li><b>Done only once there is something to keep; Remove always, but quiet.</b> <span class="why">Today Remove replaces Done when nothing is on rows. On one line both fit, so Done appears when it means something and Remove never changes place.</span></li>
+    <li><b>The house's name rides with the file name.</b> <span class="why">It is already stored (<code>houseName</code>); after the name is where "which house sent this" is asked.</span></li>
+  </ol>
+</div>
+</div>
+</body>
+</html>

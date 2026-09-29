@@ -32,6 +32,10 @@ export type SourceFile = {
   trimmedAt: string | null
   /** How many pages Done let go, for the quiet line under the strip. */
   droppedPages: number | null
+  /** v2.4171 · what the reader found on drop (or when the walk read it): how many pages name a row; null = not read yet. */
+  namesRows: number | null
+  /** v2.4171 · the file carries section stamps (a supply house's submittal shape); null = not read yet. */
+  sectioned: boolean | null
 }
 
 const STATUSES: ReadonlySet<string> = new Set(['as_specified', 'superseded', 'equal', 'alternate', 'design_change', 'missing', 'accessory', 'proposed'])
@@ -64,6 +68,8 @@ export function parseSourceFiles(json: unknown): SourceFile[] {
       pages: typeof r.pages === 'number' && Number.isFinite(r.pages) && r.pages >= 0 ? Math.floor(r.pages) : 0,
       trimmedAt: typeof r.trimmed_at === 'string' ? r.trimmed_at : null,
       droppedPages: typeof r.dropped_pages === 'number' && Number.isFinite(r.dropped_pages) ? Math.max(0, Math.floor(r.dropped_pages)) : null,
+      namesRows: typeof r.names_rows === 'number' && Number.isFinite(r.names_rows) ? Math.max(0, Math.floor(r.names_rows)) : null,
+      sectioned: typeof r.sectioned === 'boolean' ? r.sectioned : null,
     })
   }
   return out
@@ -71,7 +77,7 @@ export function parseSourceFiles(json: unknown): SourceFile[] {
 
 /** Typed files → the jsonb column. */
 export function serializeSourceFiles(files: ReadonlyArray<SourceFile>): Array<Record<string, unknown>> {
-  return files.map((f) => ({ path: f.path, house_id: f.houseId, house_name: f.houseName, name: f.name, pages: f.pages, trimmed_at: f.trimmedAt, dropped_pages: f.droppedPages }))
+  return files.map((f) => ({ path: f.path, house_id: f.houseId, house_name: f.houseName, name: f.name, pages: f.pages, trimmed_at: f.trimmedAt, dropped_pages: f.droppedPages, names_rows: f.namesRows, sectioned: f.sectioned }))
 }
 
 /** A stored item as the row kernel's "previous revision" input. */
