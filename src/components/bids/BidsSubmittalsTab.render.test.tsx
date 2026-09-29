@@ -290,10 +290,10 @@ describe('BidsSubmittalsTab', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Walk me through it ▶' })[0] as HTMLElement)
     expect(screen.queryByTestId('journey-offer')).toBeNull()
     expect(window.localStorage.getItem('pt.submittals.walkthrough.seen')).toBeTruthy()
-    expect(screen.getByRole('dialog', { name: 'Where this submittal is' })).toBeTruthy()
+    expect(screen.getByRole('dialog', { name: 'Where you are' })).toBeTruthy()
     const titles: string[] = []
     const missing: string[] = []
-    for (let i = 0; i < 13; i++) {
+    for (let i = 0; i < 12; i++) {
       const dialog = screen.getByRole('dialog')
       titles.push(dialog.getAttribute('aria-label') ?? '')
       if (within(dialog).queryByTestId('tour-missing')) missing.push(dialog.getAttribute('aria-label') ?? '')
@@ -301,11 +301,10 @@ describe('BidsSubmittalsTab', () => {
       if (next) fireEvent.click(next)
     }
     expect(titles).toEqual([
-      'Where this submittal is',
+      'Where you are',
       'Step 1. Where the rows come from',
       'From the takeoff',
       'No schedule yet? Type or paste it',
-      'Or let the robot read it',
       'Step 2. Build Rev 1',
       'Step 3. Fix the rows',
       'Step 3. Add the cut sheets',
@@ -315,8 +314,8 @@ describe('BidsSubmittalsTab', () => {
       'Step 7. Resubmit',
       'Step 8. Procure',
     ])
-    // On a fresh bid with a schedule, only the strip, the source line and the Build Rev 1 card are on the page.
-    expect(missing).toEqual(titles.filter((t) => !['Where this submittal is', 'Step 1. Where the rows come from', 'From the takeoff', 'No schedule yet? Type or paste it', 'Step 2. Build Rev 1'].includes(t)))
+    // On a fresh bid with a schedule, only the strip, the source line and the Build Rev 1 card are on the page; the robot's offer is not, so its stop is not walked (v2.4134).
+    expect(missing).toEqual(titles.filter((t) => !['Where you are', 'Step 1. Where the rows come from', 'From the takeoff', 'No schedule yet? Type or paste it', 'Step 2. Build Rev 1'].includes(t)))
     expect(screen.getByRole('link', { name: 'Read the full guide: build a submittal package →' }).getAttribute('href')).toBe('/help?g=build-a-submittal-package')
     fireEvent.click(screen.getByRole('button', { name: 'Done' }))
     expect(screen.queryByRole('dialog')).toBeNull()

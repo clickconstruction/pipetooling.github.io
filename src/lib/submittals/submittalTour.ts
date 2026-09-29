@@ -1,5 +1,5 @@
 /**
- * Bids → Submittals: the walkthrough's stops (v2.4067; the Procure stop v2.4088; reworded for the road, the takeoff and the row controls v2.4120; written in plain words v2.4123) and the first-open offer.
+ * Bids → Submittals: the walkthrough's stops (v2.4067; the Procure stop v2.4088; reworded for the road, the takeoff and the row controls v2.4120; written in plain words v2.4123; the robot's stop only where its offer is on the page v2.4134) and the first-open offer.
  *
  * The words follow the plain-words rules in `submittalTour.test.ts`: one idea per sentence,
  * you + a verb, the button's exact name, a trade word explained beside itself the first
@@ -18,7 +18,7 @@ export const SUBMITTAL_GUIDE_HREF = '/help?g=build-a-submittal-package'
 export const SUBMITTAL_TOUR_STEPS: SpotlightTourStep[] = [
   {
     anchor: 'submittals-journey',
-    title: 'Where this submittal is',
+    title: 'Where you are',
     body: 'This strip shows the 8 steps. A check mark means done. Blue means you are here. Amber means you are waiting on someone else. The line under it tells you the next thing to do. Its button does it.',
   },
   {
@@ -39,8 +39,7 @@ export const SUBMITTAL_TOUR_STEPS: SpotlightTourStep[] = [
   {
     anchor: 'submittals-robot',
     title: 'Or let the robot read it',
-    body: 'Do not want to type the schedule? Ask the robot to read it off the plans. It shows you what it found. You confirm each tag before it counts.',
-    missingBody: 'This offer only shows when the bid has no schedule yet.',
+    body: 'You do not have to type the schedule. The robot can read it off the plans. Tap the link. In a few minutes its tags show up here. Tick the right ones. Nothing counts until you tick it.',
   },
   {
     anchor: 'submittals-build',
@@ -157,8 +156,13 @@ const STAGE_STOP_ANCHORS: Record<number, string[]> = {
   8: ['submittals-procure'],
 }
 
-/** The walkthrough stop a stage's `?` opens on (v2.4125); the strip's stop when a stage has none. */
-export function tourStopForStage(stage: number): number {
+/**
+ * The walkthrough stop a stage's `?` opens on (v2.4125); the strip's stop when a stage has none.
+ * `steps` is the list the tour will actually walk — since v2.4134 the tab drops a stop whose
+ * anchor is not on the page and carries no `missingBody` (the robot's offer), so the index is
+ * taken over that list, not the full one.
+ */
+export function tourStopForStage(stage: number, steps: SpotlightTourStep[] = SUBMITTAL_TOUR_STEPS): number {
   const anchors = STAGE_STOP_ANCHORS[stage] ?? []
-  return Math.max(0, SUBMITTAL_TOUR_STEPS.findIndex((s) => anchors.includes(s.anchor)))
+  return Math.max(0, steps.findIndex((s) => anchors.includes(s.anchor)))
 }
