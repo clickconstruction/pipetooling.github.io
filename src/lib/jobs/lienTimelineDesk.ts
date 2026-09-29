@@ -68,7 +68,7 @@ function noticeStateOf(entry: LienDeskEntry | null): LienTimelineNoticeState {
   }
 }
 
-export function lienTimelineMonthsFromDesk(jobId: string, rows: ReadonlyArray<LienNoticeMonthRow>, items: ReadonlyArray<LienDeskItemRow>, todayYmd: string): LienTimelineMonth[] {
+export function lienTimelineMonthsFromDesk(jobId: string, rows: ReadonlyArray<LienNoticeMonthRow>, items: ReadonlyArray<LienDeskItemRow>, todayYmd: string, propertyKind = ''): LienTimelineMonth[] {
   const deskMonths: LienDeskMonth[] = rows
     .filter((r) => r.job_id === jobId)
     .map((r) => ({ key: r.work_month, approvedHours: Number(r.approved_hours) || 0, deadline: r.deadline, daysLeft: daysBetweenYmd(todayYmd, r.deadline) ?? 0, noticed: r.noticed, fromCreation: monthFromCreation(r) }))
@@ -77,13 +77,14 @@ export function lienTimelineMonthsFromDesk(jobId: string, rows: ReadonlyArray<Li
   for (const m of deskMonths) byKey.set(m.key, { key: m.key, deadline: m.deadline, fromCreation: m.fromCreation, outcome: 'open', at: '' })
   for (const h of history) {
     const prev = byKey.get(h.month)
-    byKey.set(h.month, { key: h.month, deadline: prev?.deadline || h.deadline, fromCreation: prev?.fromCreation ?? false, outcome: h.outcome, at: h.at })
+    // A closed month the RPC no longer returns carries no deadline in its history row; the statute still knows it (v2.4111 — the fold's tray prints it).
+    byKey.set(h.month, { key: h.month, deadline: prev?.deadline || h.deadline || noticeDeadlineForMonth(`${h.month}-01`, propertyKind), fromCreation: prev?.fromCreation ?? false, outcome: h.outcome, at: h.at })
   }
   return [...byKey.values()].sort((a, b) => a.key.localeCompare(b.key))
 }
 
 export function buildLienTimelineFromDesk(jobId: string, src: LienTimelineDeskSource): LienTimeline {
-  const months = lienTimelineMonthsFromDesk(jobId, src.rows, src.items, src.todayYmd)
+  const months = lienTimelineMonthsFromDesk(jobId, src.rows, src.items, src.todayYmd, src.propertyKind)
   const fromRows = months.length ? months[months.length - 1] : null
   const fromLedger = (src.lastWorkDate ?? '').slice(0, 7)
   const lastMonth = src.affidavit?.lastMonth || (fromRows && fromLedger ? (fromRows.key > fromLedger ? fromRows.key : fromLedger) : fromRows?.key || fromLedger || '')
