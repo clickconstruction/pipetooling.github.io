@@ -1307,7 +1307,7 @@ The glyph before the bid number on the human Bid Board (v2.3202; one kernel, `sr
 The dev-only operator's desk (v2.3224, `?tab=robot-console`): the Claude Desktop **setup command** (a Terminal one-liner that asks for the robot key and writes Desktop's connector config) and **kickoff**, the Claude Code **handoff prompt**, requested / ready counts with a door to the Queue, the fleet at a glance, the robots' **operator-lane** questions, and the **run ledger**. Everything a person does to *run* the robots; what they do to *administer* them — mint, keys, rungs, endpoints, the calibration standard — stays on Settings → System → Digital twins. Estimators never see the pill.
 
 ### ZZ convention
-Twin-created records prefix their names with `ZZ` (`ZZ Twin …`, `ZZ Shadow …`) so they sort last and read as robot residue at a glance; the write fence, not the naming, is what holds.
+Twin-created records prefix their names with `ZZ` (`ZZ Twin …`, `ZZ Shadow …`) so they sort last and read as robot residue at a glance; the write fence, not the naming, is what holds. Live passes use the same prefix for test jobs and customers (`ZZ TEST …`). Since v2.4157 the prefix is also what **Settings → Data & recovery → ZZ test jobs (dev)** reads (`isZzTestJob`, `src/lib/jobs/zzTestJobSweep.ts`: job name or customer name starts with `ZZ`) to sweep week-old test jobs into the **sink** — the one ZZ job kept on purpose, found by the word *sink* in its name (`ZZ TEST sink`; `isZzSinkJob`), never by number — through `migrate_job_ledger_costs_and_delete`.
 
 ## Database Concepts
 

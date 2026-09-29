@@ -8,6 +8,7 @@ import DeletedRecordsSection from './DeletedRecordsSection'
 import BulkDeleteAlertSettingsBlock from './BulkDeleteAlertSettingsBlock'
 import BidJobBackfillSettingsBlock from './BidJobBackfillSettingsBlock'
 import StaleDraftBillsOnPaidJobsSection from './StaleDraftBillsOnPaidJobsSection'
+import ZzTestJobSweepSection from './ZzTestJobSweepSection'
 
 export default function SettingsDataTab({
   dataBackupSectionOpen,
@@ -177,6 +178,7 @@ export default function SettingsDataTab({
       )}
     </div>
     <StaleDraftBillsOnPaidJobsSection />
+    <ZzTestJobSweepSection />
     <DeletedRecordsSection />
     <BulkDeleteAlertSettingsBlock />
     <BidJobBackfillSettingsBlock />
