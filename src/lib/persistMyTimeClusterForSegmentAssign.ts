@@ -61,6 +61,7 @@ export async function persistMyTimeClusterAndGetSegmentIds(
 
   if (mixedClusterSegmentsAllowPerRowPersist(c, split, nowTick)) {
     const segmentIds: (string | undefined)[] = new Array(n)
+    let approvedRowTimesChangedId: string | null = null
     const useOrderedRowSegment =
       orderedSegmentsFollowTheirRows(c, split, nowTick) && n === c.length
     if (useOrderedRowSegment) {
@@ -97,6 +98,7 @@ export async function persistMyTimeClusterAndGetSegmentIds(
                 .eq('id', row.id),
             'update clock session times assign-prep'
           )
+          if (row.approved_at) approvedRowTimesChangedId = row.id
         }
         segmentIds[segI] = row.id
       }
@@ -147,6 +149,7 @@ export async function persistMyTimeClusterAndGetSegmentIds(
                   .eq('id', row.id),
               'update clock session times assign-prep'
             )
+            if (row.approved_at) approvedRowTimesChangedId = row.id
           }
           segmentIds[segI] = row.id
         } else {
@@ -159,6 +162,15 @@ export async function persistMyTimeClusterAndGetSegmentIds(
           }
         }
       }
+    }
+    // A direct UPDATE of an approved row's times leaves people_hours at the old sum; resync the day
+    // once (the RPC paths keep people_hours themselves). Same rule as the day editor's save.
+    if (approvedRowTimesChangedId) {
+      const sessionId = approvedRowTimesChangedId
+      await withSupabaseRetry(
+        async () => supabase.rpc('recompute_people_hours_after_session_edit', { p_session_id: sessionId }),
+        'recompute people_hours after assign-prep'
+      )
     }
     if (segmentIds.some((x) => x == null)) {
       throw new DatabaseError('Could not resolve all segment ids after persist')
