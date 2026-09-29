@@ -2,7 +2,7 @@
 name: "Bids: the Edit Bid controller comes out of the page (the Bids map's step 9)"
 number: 51
 group: ready
-status: in progress on claude/bids-edit-controller-pr1 … pr5 (2026-09-28) — PR 1 (the map refresh + the autosave slice's own tests) is v2.4069, PR 2 (Edit Bid in the page smoke) v2.4072, PR 3 (the trade switch) v2.4074, PR 4a (the Bid window's state) v2.4086, PR 4b (`useBidEditController`) v2.4102, PR 5 (the delete and evaluate windows) v2.4112 — the train is built; the Bids map's steps 1–8 shipped (v2.3873 … v2.4003; the last run of them v2.3937 · v2.3953 · v2.3989 · v2.3999)
+status: in progress on claude/bids-edit-controller-pr1 … pr5 (2026-09-28) — PR 1 (the map refresh + the autosave slice's own tests) is v2.4069, PR 2 (Edit Bid in the page smoke) v2.4072, PR 3 (the trade switch) v2.4074, PR 4a (the Bid window's state) v2.4086, PR 4b (`useBidEditController`) v2.4102, PR 5 (the delete and evaluate windows) v2.4112 — the train is built; after it, the unsent bid's null stamps dropped v2.4116; the Bids map's steps 1–8 shipped (v2.3873 … v2.4003; the last run of them v2.3937 · v2.3953 · v2.3989 · v2.3999)
 summary: >
   What is left of `src/pages/Bids.tsx` region R14: opening and closing the Bid window, the
   Edit tab's autosave and its close guard, Create bid / Create and open counts, the trade
@@ -11,8 +11,8 @@ summary: >
   Rated high risk in the map: it writes bids, and it sits on `useJobFormAutosaveSlice`, the
   autosave engine Edit Job and the Estimates draft share.
 next: >
-  Close out once PRs 3–5 merge: tick #46 row 5's step 9 on the queue card and remove the
-  session card. After it, optional and its own PR: the unsent bid's eight null stamps (below).
+  Close out once PRs 4b, 5 and the null-stamps PR merge: tick #46 row 5's step 9 on the queue
+  card and remove the session card.
 size: S (PR 1) · L (the train)
 blocker: None. Take it alone, on a quiet day — `npm run sessions` first; no other PR open on `src/pages/Bids.tsx` or on the shared autosave slice.
 ver: v2.3937 · 3953 · 3962 · 3978 · 3989 · 3999 · 4003
@@ -99,14 +99,15 @@ Each PR: the page smokes (`Bids.render.test.tsx`, `Bids.followupDoors.render.tes
 before and after; eslint, typecheck, `npm test` in full; release note + fragment; the map row
 flipped.
 
-## A quirk the guard pins (not to be fixed inside this train)
+## A quirk the guard pinned, then dropped (v2.4116)
 
-On a bid with **no sent date**, every Edit Bid write also carries the eight sent-date stamp
+On a bid with **no sent date**, every Edit Bid write also carried the eight sent-date stamp
 columns (`bid_date_sent_attested_at` … `_ack_honesty_by`) as `null`: the attestation merge
-answers "cleared" for an empty date, and `pruneUnchangedBidUpdateFields` does not drop columns
-that are not form fields. It is null over null — no data changes — and it predates the second
-pass (the page's own `getBidDateSentAttestationPayloadMerge` did the same). PR 2's cases assert it
-exactly so no move changes it by accident; dropping it would be its own small PR after #51.
+answered "cleared" for any empty date, and `pruneUnchangedBidUpdateFields` does not drop columns
+that are not form fields. Null over null — no data changed — and it predated the second pass.
+PR 2's cases asserted it exactly so no move would change it by accident; after the train,
+v2.4116 sends the nulls only when a saved sent date is emptied (no unsent bid carried stamps —
+0 of 117 on 2026-09-28 — so nothing relied on the cleanup).
 
 ## How to verify
 
