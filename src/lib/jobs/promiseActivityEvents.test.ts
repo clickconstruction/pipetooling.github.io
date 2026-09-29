@@ -16,7 +16,7 @@ const promise = (over: Partial<PaymentPromise> = {}): PaymentPromise => ({
   ...over,
 })
 
-describe('promise activity events (v2.4099)', () => {
+describe('promise activity events (v2.4103)', () => {
   it('keeps the year — a promise is read months later', () => {
     expect(promiseDateWords('2026-11-20')).toBe('Nov 20, 2026')
     expect(promiseDateWords('junk')).toBe('junk')

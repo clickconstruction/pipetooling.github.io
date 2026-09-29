@@ -199,7 +199,7 @@ export function useJobThreadNotes(
           fetchJobScheduleBlocksForJob(jobId),
           fetchClockSessionsForJobLedger(jobId),
           fetchJobActivityEventsForJobLedger(jobId),
-          // The job's live payment promises as feed events (v2.4099) — an extra: the thread reads without them.
+          // The job's live payment promises as feed events (v2.4103) — an extra: the thread reads without them.
           (async (): Promise<unknown> => {
             try {
               const r = await supabase.rpc('list_job_payment_promises' as never)

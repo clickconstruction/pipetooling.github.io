@@ -1,7 +1,7 @@
 import type { ReleaseNote } from '../../lib/releaseNotes'
 
 const note: ReleaseNote = {
-  version: 'v2.4099',
+  version: 'v2.4103',
   date: '2026-09-28',
   title: 'A payment promise now shows in the job\'s activity',
   kind: 'feature',

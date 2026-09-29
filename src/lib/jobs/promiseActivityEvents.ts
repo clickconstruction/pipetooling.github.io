@@ -2,7 +2,7 @@ import type { JobThreadEventActivityItem } from '../jobActivityEvent'
 import { promiseSaidLine, type PaymentPromise } from './paymentPromises'
 
 /**
- * Payment promises as job-thread events (v2.4099). A promise ("They said…" on
+ * Payment promises as job-thread events (v2.4103). A promise ("They said…" on
  * the Pipeline row, the GC's word on a statement round, the customer's own
  * date from the portal) was its own record and nowhere else: the row's
  * Activity box and the Job window's feed never mentioned it. This maps the
