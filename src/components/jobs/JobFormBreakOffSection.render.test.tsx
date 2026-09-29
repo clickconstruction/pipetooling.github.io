@@ -25,6 +25,17 @@ beforeAll(() => {
     removeEventListener: () => {},
     dispatchEvent: () => false,
   })) as typeof window.matchMedia
+  // jsdom has no PointerEvent, so fireEvent's pointerType would never reach the handler.
+  if (!('PointerEvent' in window)) {
+    class PointerEventStandIn extends MouseEvent {
+      pointerType: string
+      constructor(type: string, init: MouseEventInit & { pointerType?: string } = {}) {
+        super(type, init)
+        this.pointerType = init.pointerType ?? ''
+      }
+    }
+    Object.defineProperty(window, 'PointerEvent', { value: PointerEventStandIn, configurable: true })
+  }
 })
 
 afterEach(cleanup)
@@ -148,8 +159,36 @@ describe('the break-off button — a press counts only if the button still means
     const move = vi.fn()
     const { rerender } = renderWithProviders(section(sliderFor(false, '50000'), () => {}, move))
     const before = screen.getByRole('button', { name: 'New invoice' })
-    fireEvent.pointerDown(before)
-    fireEvent.pointerLeave(before)
+    fireEvent.pointerDown(before, { pointerType: 'mouse' })
+    fireEvent.pointerLeave(before, { pointerType: 'mouse' })
+    rerender(section(sliderFor(true, '11000'), () => {}, move))
+    fireEvent.click(screen.getByRole('button', { name: 'Ready to Bill' }))
+    expect(move).toHaveBeenCalledTimes(1)
+  })
+
+  it('on a touch screen, keeps the press through the leave a lifted finger sends before the click', async () => {
+    narrowMatches = false
+    const createInvoice = vi.fn()
+    const move = vi.fn()
+    const { rerender } = renderWithProviders(section(sliderFor(false, '50000'), createInvoice, move))
+    const before = screen.getByRole('button', { name: 'New invoice' })
+    fireEvent.pointerDown(before, { pointerType: 'touch' })
+    fireEvent.pointerUp(before, { pointerType: 'touch' })
+    fireEvent.pointerLeave(before, { pointerType: 'touch' })
+    rerender(section(sliderFor(true, '11000'), createInvoice, move))
+    fireEvent.click(screen.getByRole('button', { name: 'Ready to Bill' }))
+    expect(move).not.toHaveBeenCalled()
+    expect(createInvoice).not.toHaveBeenCalled()
+    expect(await screen.findByText(/everything left on the job/)).toBeTruthy()
+  })
+
+  it('on a touch screen, forgets a press the finger scrolled away from', () => {
+    narrowMatches = false
+    const move = vi.fn()
+    const { rerender } = renderWithProviders(section(sliderFor(false, '50000'), () => {}, move))
+    const before = screen.getByRole('button', { name: 'New invoice' })
+    fireEvent.pointerDown(before, { pointerType: 'touch' })
+    fireEvent.pointerCancel(before, { pointerType: 'touch' })
     rerender(section(sliderFor(true, '11000'), () => {}, move))
     fireEvent.click(screen.getByRole('button', { name: 'Ready to Bill' }))
     expect(move).toHaveBeenCalledTimes(1)

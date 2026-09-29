@@ -241,7 +241,11 @@ export function JobFormBreakOffSection({
               onPointerDown={() => {
                 pressedActionRef.current = buttonAction
               }}
-              onPointerLeave={forgetPress}
+              onPointerLeave={(e) => {
+                // A finger holds the button until it lifts, and its leave comes after the lift,
+                // before the click — only a mouse or pen that leaves has given up the press.
+                if (e.pointerType !== 'touch') forgetPress()
+              }}
               onPointerCancel={forgetPress}
               onClick={onActionClick}
               disabled={actionDisabled}
