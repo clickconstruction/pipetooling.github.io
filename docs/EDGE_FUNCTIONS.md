@@ -3259,6 +3259,8 @@ interface SendPhysicalInvoiceEmailBody {
 
 ### weekly-movement-email-dispatch
 
+> **v2.4172 — the renderer is a kernel**: `render.ts` re-exports [`_shared/weeklyMovementEmail.ts`](../supabase/functions/_shared/weeklyMovementEmail.ts) (moved verbatim), so Settings → What the team sees renders the report on sample data (punch list #60, lift 6 of 14). Redeploy after merge.
+
 **Purpose** (v2.1437): Cron-only dispatcher for scheduled **Weekly movement** report sends (`weekly_movement` Report Subscriptions stream). Drains due `weekly_movement_email_requests` rows, rebuilds the report **once per batch** via `get_weekly_movement_email_payload(NULL)` — the **previous complete Central week** — renders in-function ([`render.ts`](../supabase/functions/weekly-movement-email-dispatch/render.ts), keep in sync with `stagesWeeklyMovement.ts`), sends via Resend with the requester's reply-to, stamps, re-enqueues `repeat_weekly` chains. Recipients are **internal office-capable users only** (`recipient_user_id`; role-checked at dispatch — the report names who moved what). A quiet week still sends ("no moves" is information for this stream, unlike GC statements).
 
 **Endpoint**: `POST /functions/v1/weekly-movement-email-dispatch`
