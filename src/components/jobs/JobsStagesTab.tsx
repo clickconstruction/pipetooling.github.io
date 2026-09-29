@@ -1,6 +1,5 @@
 import { stageRowPayerCustomerId } from '../../lib/jobs/billToParty'
 import { lienSignerNameFor, lienSignerPhoneFor } from '../../lib/jobs/lienSigner'
-import { parseStagesDeepLinks, stripStagesDeepLink } from '../../lib/jobs/stagesDeepLinks'
 import { billedListRows as billedListRowsFor, stagesSectionHeader, stagesSectionLoadingSuffix, type StagesSectionKey } from '../../lib/jobs/stagesSectionHeader'
 import { lienFocusEditJobOptions } from '../../lib/jobs/lienFocusEditJobOptions'
 import { stagesLaborBreakdownByJobId as foldStagesLaborBreakdownByJobId, stagesManHoursByJobId as foldStagesManHoursByJobId } from '../../lib/jobs/stagesManHours'
@@ -35,6 +34,7 @@ import { buildLienPayRunway, type LienPayRunway as LienPayRunwayModel } from '..
 import { useBilledLienClocks } from '../../hooks/useBilledLienClocks'
 import { useBilledMoneyData } from '../../hooks/useBilledMoneyData'
 import { useDemandOutJobIds, useHazmatAndReleaseJobIds, useJobContractCoverage } from '../../hooks/useStagesRowFlags'
+import { useStagesDeepLinkParams, useStagesRtbFocus, type StagesDeepLinkDoors } from '../../hooks/useStagesDeepLinkParams'
 import LienPayRunway from './LienPayRunway'
 import type { LienCalendarJob } from '../../lib/jobs/lienCalendar'
 import { progressPaymentForJob } from '../../lib/jobs/progressPaymentForJob'
@@ -1221,82 +1221,25 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     if (!phoneBoard) return
     if (!PHONE_STAGE_ORDER.some((k) => stagesSectionOpen[k])) pickPhoneStage('working')
   }, [phoneBoard, stagesSectionOpen, pickPhoneStage])
-  // The board's deep links — one parse of the URL (`lib/jobs/stagesDeepLinks`, v2.3865); each
-  // door below consumes once (its ref), opens, and strips its own params with `replace`.
-  const deepLinks = useMemo(() => parseStagesDeepLinks(searchParams), [searchParams])
-  // Dashboard card entry (v2.1720): ?followups=1 opens the deck once, then
-  // strips itself so refresh/back doesn't re-open it.
-  const followupParamConsumedRef = useRef(false)
-  useEffect(() => {
-    if (followupParamConsumedRef.current) return
-    if (deepLinks.followups) {
-      followupParamConsumedRef.current = true
-      setFollowupOpen(true)
-      navigate({ search: stripStagesDeepLink(searchParams, 'followups') }, { replace: true })
-    }
-  }, [deepLinks, searchParams, navigate])
-  /** `?gcReview=1` deep link (v2.1984): the Dashboard Wednesday nudge opens GC Review directly. */
-  const gcReviewParamConsumedRef = useRef(false)
-  useEffect(() => {
-    if (gcReviewParamConsumedRef.current) return
-    if (deepLinks.gcReview) {
-      gcReviewParamConsumedRef.current = true
-      setGcReviewModalOpen(true)
-      navigate({ search: stripStagesDeepLink(searchParams, 'gcReview') }, { replace: true })
-    }
-  }, [deepLinks, searchParams, navigate])
-  /** `?gcnotice=<customer id>` deep link (v2.3470): Bids → Customer review's Put on notice… lands here. */
-  const gcNoticeParamConsumedRef = useRef(false)
-  useEffect(() => {
-    if (gcNoticeParamConsumedRef.current) return
-    const id = deepLinks.gcNoticeGcId
-    if (id) {
-      gcNoticeParamConsumedRef.current = true
-      setGcNotice({ gcId: id })
-      navigate({ search: stripStagesDeepLink(searchParams, 'gcNotice') }, { replace: true })
-    }
-  }, [deepLinks, searchParams, navigate])
-  /** `?liendesk=1` (+ `liendeskJob=<id>`) deep link (v2.3405): the Dashboard's Needs you cards open the Lien desk directly. */
-  const lienDeskParamConsumedRef = useRef(false)
-  useEffect(() => {
-    if (lienDeskParamConsumedRef.current) return
-    if (deepLinks.lienDesk) {
-      lienDeskParamConsumedRef.current = true
-      setLienDesk(deepLinks.lienDesk)
-      navigate({ search: stripStagesDeepLink(searchParams, 'lienDesk') }, { replace: true })
-    }
-  }, [deepLinks, searchParams, navigate])
-  /** `?round=1` deep link (v2.2771): the Dashboard Needs You row + the round email open GC Review straight into the round overlay. */
-  const roundParamConsumedRef = useRef(false)
-  useEffect(() => {
-    if (roundParamConsumedRef.current) return
-    if (deepLinks.round) {
-      roundParamConsumedRef.current = true
-      setGcReviewRoundGcId(deepLinks.round.gcId)
-      setGcReviewModalOpen(true)
-      navigate({ search: stripStagesDeepLink(searchParams, 'round') }, { replace: true })
-    }
-  }, [deepLinks, searchParams, navigate])
-  /** `?chase=1` deep link (v2.2025): open payment follow-up call mode directly. */
-  const chaseParamConsumedRef = useRef(false)
-  useEffect(() => {
-    if (chaseParamConsumedRef.current) return
-    if (deepLinks.chase) {
-      chaseParamConsumedRef.current = true
-      setChaseModalOpen(true)
-      navigate({ search: stripStagesDeepLink(searchParams, 'chase') }, { replace: true })
-    }
-  }, [deepLinks, searchParams, navigate])
-  /** `?forecast=1` deep link (v2.2226): the forecast email's CTA opens the Payment forecast modal directly. */
-  const forecastParamConsumedRef = useRef(false)
-  useEffect(() => {
-    if (forecastParamConsumedRef.current) return
-    if (deepLinks.forecast) {
-      forecastParamConsumedRef.current = true
-      setBilledPaymentForecastOpen(true)
-      navigate({ search: stripStagesDeepLink(searchParams, 'forecast') }, { replace: true })
-    }
-  }, [deepLinks, searchParams, navigate])
+  // The board's deep links (`hooks/useStagesDeepLinkParams`): one parse of the URL; each door
+  // consumes once, opens, and strips its own params with `replace`. The setters are stable, so
+  // the doors are built once.
+  const stagesDeepLinkDoors = useMemo<StagesDeepLinkDoors>(
+    () => ({
+      followups: () => setFollowupOpen(true),
+      gcReview: () => setGcReviewModalOpen(true),
+      gcNotice: (gcId) => setGcNotice({ gcId }),
+      lienDesk: (link) => setLienDesk(link),
+      round: (gcId) => {
+        setGcReviewRoundGcId(gcId)
+        setGcReviewModalOpen(true)
+      },
+      chase: () => setChaseModalOpen(true),
+      forecast: () => setBilledPaymentForecastOpen(true),
+    }),
+    [],
+  )
+  const deepLinks = useStagesDeepLinkParams(searchParams, navigate, stagesDeepLinkDoors)
 
   const renderStagesOpenDetailJobName = useCallback((j: JobWithDetails): ReactNode => {
     const fmt = formatJobNameTwoLines(j.job_name)
@@ -1731,50 +1674,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     })
   }, [])
 
-  /**
-   * `?rtb=1` deep link (v2.2276): the assistants' ready-to-bill banner lands
-   * on the Ready to Bill section. Unlike the modal params above, this one
-   * needs the board DOM, so the scroll polls for the section header while
-   * data loads; and the strip re-runs unguarded because the tab-router
-   * effect can resurrect the param from its own pre-strip snapshot.
-   */
-  useEffect(() => {
-    if (!deepLinks.rtb) return
-    navigate({ search: stripStagesDeepLink(searchParams, 'rtb') }, { replace: true })
-    // Window-level arm (not a ref/state): survives the StrictMode double
-    // mount that loses component state here, and expires so a later banner
-    // tap re-arms. The scroll itself waits for the board's layout to hold
-    // still — the section header exists while sections above it are still
-    // streaming in, and scrolling early gets eaten by the growth.
-    const w = window as unknown as { __rtbFocusArmedAt?: number }
-    if (w.__rtbFocusArmedAt != null && Date.now() - w.__rtbFocusArmedAt < 5000) return
-    w.__rtbFocusArmedAt = Date.now()
-    // Stillness alone can't tell "loaded" from "not loaded yet" — the page is
-    // perfectly still while the board query is in flight, so a single scroll
-    // fires early and the sections above then grow and push the target back
-    // down. Keep polling after the first scroll and re-pin whenever layout
-    // settles with the section away from the top; stop once it holds there.
-    let lastTop: number | null = null
-    let tries = 0
-    let focused = false
-    const tick = () => {
-      const el = document.getElementById(stagesSectionElementId('readyToBill'))
-      if (el) {
-        const top = Math.round(el.getBoundingClientRect().top)
-        if (lastTop != null && Math.abs(top - lastTop) < 2) {
-          if (!focused || Math.abs(top) > 40) {
-            focusStagesSection('readyToBill')
-            focused = true
-          } else {
-            return
-          }
-        }
-        lastTop = top
-      }
-      if (++tries < 100) window.setTimeout(tick, 300)
-    }
-    window.setTimeout(tick, 400)
-  }, [deepLinks, searchParams, navigate, focusStagesSection])
+  // `?rtb=1` (v2.2276): strip it and scroll Ready to Bill into view once the board holds still.
+  useStagesRtbFocus(deepLinks, searchParams, navigate, focusStagesSection)
 
   /** "Follow cards I move": open the destination section, then scroll to + flash the job row. */
   const followMovedJob = useCallback(
