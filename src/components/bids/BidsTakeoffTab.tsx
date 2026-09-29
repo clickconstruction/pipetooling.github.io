@@ -99,6 +99,7 @@ import type { useBidPricingEngine } from '../../hooks/useBidPricingEngine'
 import type { Database } from '../../types/database'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import type { BidCountRow } from '../../types/bids'
+import { isAlternateRow } from '../../lib/bids/countSheet'
 import type {
   MaterialTemplateWithAssemblyType,
   TakeoffBookEntry,
@@ -541,6 +542,12 @@ export function BidsTakeoffTab({
   const bookFillButton = fillFromBookLabel(bookFillPlan, applyingTakeoffBookTemplates, takeoffIsRough)
   // New 1 / New 2 substrate (v2.2778): coverage is the same math the Labor tab and Workbench use.
   const takeoffCoverage = useMemo(() => summarizeTakeoffCoverage(takeoffCountRows, takeoffRoughPartLines), [takeoffCountRows, takeoffRoughPartLines])
+  // v2.4191: the bid's alternate groups — the rail splits materials by them; an alternate's row wears the ALT mark.
+  const altTags: readonly string[] = selectedBidForTakeoff?.alternate_group_tags ?? []
+  const altChip = (row: BidCountRow) =>
+    isAlternateRow(row, altTags) ? (
+      <span title="In an alternate group — priced with and without" style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.06em', padding: '0 0.3rem', borderRadius: 3, border: '1px solid var(--text-amber-700)', color: 'var(--text-amber-700)', marginLeft: '0.35rem', verticalAlign: '1px' }}>ALT</span>
+    ) : null
 
   // Materials by stage (v2.3672): load the splits + the factor with the bid.
   const stageBidId = takeoffIsRough ? (selectedBidForTakeoff?.id ?? null) : null
@@ -1809,7 +1816,7 @@ export function BidsTakeoffTab({
                               {linesForRow.length === 0 ? (
                                 <tr id={takeoffRowDomId(row.id)} style={{ borderBottom: '1px solid var(--border)', background: rowJumpFlashCountRowId === row.id ? 'var(--bg-blue-tint)' : undefined, transition: 'background 400ms ease' }}>
                                   <td style={{ padding: '0.75rem', verticalAlign: 'top' }}>
-                                    <div>{takeoffFixtureCountLabel(row)}</div>
+                                    <div>{takeoffFixtureCountLabel(row)}{altChip(row)}</div>
                                     <div style={{ marginTop: '0.35rem' }}>
                                       <StageSplitChips
                                         scope="fixture"
@@ -2265,6 +2272,7 @@ export function BidsTakeoffTab({
                     countRows={takeoffCountRows}
                     lines={takeoffRoughPartLines}
                     coverage={takeoffCoverage}
+                    alternateTags={altTags}
                     bookPlan={bookFillPlan}
                     bookVersions={takeoffBookVersions}
                     selectedBookVersionId={selectedTakeoffBookVersionId}
@@ -2376,7 +2384,7 @@ export function BidsTakeoffTab({
                           if (mappingsForRow.length === 0) {
                             return (
                               <tr key={row.id} id={takeoffRowDomId(row.id)} style={{ borderBottom: '1px solid var(--border)', background: rowJumpFlashCountRowId === row.id ? 'var(--bg-blue-tint)' : undefined, transition: 'background 400ms ease' }}>
-                                <td style={{ padding: '0.75rem' }}>{takeoffFixtureCountLabel(row)}</td>
+                                <td style={{ padding: '0.75rem' }}>{takeoffFixtureCountLabel(row)}{altChip(row)}</td>
                                 <td colSpan={5} style={{ padding: '0.75rem' }}>
                                   <button
                                     type="button"
@@ -2458,7 +2466,7 @@ export function BidsTakeoffTab({
                                 }
                                 return (
                                   <tr key={mapping.id} id={mappingIdx === 0 ? takeoffRowDomId(row.id) : undefined} style={{ borderBottom: '1px solid var(--border)', background: rowJumpFlashCountRowId === row.id ? 'var(--bg-blue-tint)' : undefined, transition: 'background 400ms ease' }}>
-                                    <td style={{ padding: '0.75rem' }}>{takeoffFixtureCountLabel(row)}</td>
+                                    <td style={{ padding: '0.75rem' }}>{takeoffFixtureCountLabel(row)}{altChip(row)}</td>
                                     <td style={{ padding: '0.75rem' }}>
                                       <div style={{ position: 'relative' }}>
                                         <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>

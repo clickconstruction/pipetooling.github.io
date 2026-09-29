@@ -216,4 +216,29 @@ describe('BidsLaborNewView · one book and who may recalibrate (v2.3597)', () =>
     expect(within(tile).queryByTestId('labor-book-propose')).toBeNull()
     expect(within(tile).getByTestId('labor-book-proposal').textContent).toContain('proposed ×3.25 by Wendi · Sep 18')
   })
+
+  it('splits the hours into the base and what the alternate adds when the bid has an alternate group (v2.4191)', async () => {
+    renderView({
+      countRows: [
+        { fixture: 'Toilets', count: 3, group_tag: 'Restroom A' },
+        { fixture: 'Toilets', count: 1, group_tag: 'Break room' },
+        { fixture: 'Gas drops', count: 5, group_tag: null },
+      ],
+      alternateTags: ['Break room'],
+    })
+    await settle()
+    const split = screen.getByTestId('labor-alt-split')
+    // Toilets 4 × 3 h = 12 h, one of the four in the alternate → 3 h; gas drops 20 h in the base.
+    expect(within(split).getByText('+ Break room')).toBeTruthy()
+    expect(within(split).getByText('29')).toBeTruthy()
+    expect(within(split).getByText('3')).toBeTruthy()
+    expect(within(split).getByText('$107.28')).toBeTruthy() // 3 h × $35.76
+    expect(within(split).getByText('$1,037.04')).toBeTruthy() // 29 h × $35.76
+  })
+
+  it('draws no split on a bid without alternates', async () => {
+    renderView({ countRows: [{ fixture: 'Toilets', count: 4, group_tag: 'Restroom A' }], alternateTags: [] })
+    await settle()
+    expect(screen.queryByTestId('labor-alt-split')).toBeNull()
+  })
 })

@@ -62,6 +62,8 @@ Two facts sit beside the rate and are never added to the bid's cost: **Overhead 
 
 Under the grid: **Direct cost of this bid** — labor at the effective rate, materials from the takeoff, driving, travel, other direct (equipment, permits, subs, waste, other), the total, and the margin at the bid value (amber under 20 %). *Open Pricing →* takes you to the Workbench, which reads the same number.
 
+When the bid carries an **alternate** (a group marked on the Counts tab — the section a customer wants priced with and without), a card above the bottom line reads **With and without the alternate**: field hours, labor at the rate and driving in columns for the base, each alternate, and the bid with it. A fixture that sits in the base and in the alternate shares one labor row, and its hours follow the counts — WC ×4 in the base and ×1 in the alternate puts one fifth of the WC hours on the alternate. Materials split the same way on Takeoffs → What Pricing sees.
+
 ## Direct costs: one list
 
 Under the labor, **DIRECT COSTS** is one list. Every row wears its kind — {{chip:gray|equipment}} {{chip:gray|permit}} {{chip:blue|sub}} {{chip:gray|waste}} {{chip:gray|other}} — with what it is for and the dollars by stage. Pick a kind and press {{button:blue|+ Add}} for a new row; the × removes one. The **driving** line sits on top, computed from the hours, the hours-per-trip and $/mile boxes and the bid's distance to the office, so it reads beside the rest: *88 crew-days · 176 trips (8 h each) · 41 mi · $0.70/mi*. One total closes the list.

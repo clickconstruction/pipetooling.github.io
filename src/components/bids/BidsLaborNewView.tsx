@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'r
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
 import { laborRowHours } from '../../lib/bids/laborRowHours'
+import { laborHoursByAlternate } from '../../lib/bids/alternateScope'
 import { laborCellAriaLabel } from '../../lib/bids/laborCellSaveState'
 import {
   entryAlreadyKnows,
@@ -95,6 +96,9 @@ export type BidsLaborNewViewProps = {
   costEstimate?: CostEstimate | null
   distanceFromOffice?: string | null
   countRowsLength?: number
+  /** v2.4191: the bid's count rows and alternate groups — the hours split into the base and what each alternate adds. */
+  countRows?: ReadonlyArray<{ fixture: string | null; count: number | string | null; group_tag: string | null }>
+  alternateTags?: readonly string[]
   directCostTables?: Partial<Record<DirectCostKind, ReadonlyArray<StageAmountRow>>>
   /** Calibration (v2.3307): the jobs linked to bids that priced with the applied book; undefined = not loaded (roles without job hours). */
   calibrationJobs?: CalibrationJob[]
@@ -259,6 +263,11 @@ export function BidsLaborNewView(p: BidsLaborNewViewProps) {
     [p.materials?.rough, p.materials?.top, p.materials?.trim, eff.rate, p.rows, p.distanceFromOffice, p.costEstimate, p.countRowsLength, directRows],
   )
   const marginPct = p.bidValue != null && p.bidValue > 0 ? (p.bidValue - bottom.totalCost) / p.bidValue : null
+  // v2.4191: hours by alternate (labor rows share a fixture name across the base and an alternate; the split follows the counts).
+  const altHours = useMemo(
+    () => (p.countRows && p.alternateTags && p.alternateTags.length > 0 ? laborHoursByAlternate({ laborRows: p.rows, countRows: p.countRows, alternateTags: p.alternateTags }) : null),
+    [p.rows, p.countRows, p.alternateTags],
+  )
   const matchedZero = useMemo(() => queue.filter((r) => matches.get(r.id)), [queue, matches])
 
   const draftFor = (row: CostEstimateLaborRow): QueueDraft => {
@@ -905,6 +914,31 @@ export function BidsLaborNewView(p: BidsLaborNewViewProps) {
         </div>
       ) : null}
 
+      {altHours && p.rows.length > 0 ? (() => {
+        const share = (h: number) => (altHours.total > 0 ? h / altHours.total : 0)
+        const cols = [{ label: 'Base', hours: altHours.base }, ...altHours.alternates.map((a) => ({ label: `+ ${a.label}`, hours: a.value })), { label: altHours.alternates.length === 1 ? 'With the alternate' : 'With every alternate', hours: altHours.total }]
+        const money = (h: number) => (eff.rate != null ? `$${formatCurrency(h * eff.rate)}` : '—')
+        const cell: React.CSSProperties = { padding: '0.3rem 0.6rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }
+        return (
+          <div data-testid="labor-alt-split" style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '0.6rem 0.9rem', background: 'var(--bg-amber-tint)', overflowX: 'auto' }}>
+            <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-amber-700)', marginBottom: '0.3rem' }}>With and without the alternate{altHours.alternates.length === 1 ? '' : 's'}</div>
+            <table style={{ borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+              <thead>
+                <tr>
+                  <th style={{ ...cell, textAlign: 'left', fontWeight: 600, color: 'var(--text-muted)' }}></th>
+                  {cols.map((c) => <th key={c.label} style={{ ...cell, fontWeight: 700, color: c.label.startsWith('+') ? 'var(--text-amber-700)' : undefined }}>{c.label}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td style={{ ...cell, textAlign: 'left' }}>Field hours</td>{cols.map((c) => <td key={c.label} style={cell}>{fmtHours(c.hours)}</td>)}</tr>
+                <tr><td style={{ ...cell, textAlign: 'left' }}>Labor at the rate</td>{cols.map((c) => <td key={c.label} style={cell}>{money(c.hours)}</td>)}</tr>
+                {bottom.drivingCost > 0 ? <tr><td style={{ ...cell, textAlign: 'left' }}>Driving</td>{cols.map((c) => <td key={c.label} style={cell}>${formatCurrency(bottom.drivingCost * share(c.hours))}</td>)}</tr> : null}
+              </tbody>
+            </table>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>Materials split the same way on Takeoffs → What Pricing sees.</div>
+          </div>
+        )
+      })() : null}
       {/* The bottom line: the handoff number — what the job's Budget card will snapshot on the win */}
       {p.rows.length > 0 ? (
         <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '0.7rem 0.9rem', background: 'var(--bg-subtle)', display: 'flex', alignItems: 'baseline', gap: '0.4rem 0.9rem', flexWrap: 'wrap', fontSize: '0.8125rem' }} data-testid="labor-bottom-line">

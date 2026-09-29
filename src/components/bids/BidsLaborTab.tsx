@@ -902,6 +902,8 @@ export function BidsLaborTab({
                     costEstimate={costEstimate}
                     distanceFromOffice={selectedBidForCostEstimate.distance_from_office ?? null}
                     countRowsLength={costEstimateCountRows.length}
+                    countRows={costEstimateCountRows}
+                    alternateTags={selectedBidForCostEstimate.alternate_group_tags ?? []}
                     directCostTables={{ equipment: equipmentRows, permit: permitRows, sub: subcontractorRows, waste: wasteRows, other: otherRows }}
                     calibrationJobs={calibration.jobs}
                     calibrationLoaded={calibration.loaded}
