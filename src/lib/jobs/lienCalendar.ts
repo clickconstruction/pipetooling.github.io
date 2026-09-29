@@ -30,6 +30,8 @@ export type LienCalendarJob = {
   lastWorkYmd?: string | null
   /** Every work month's § 53.056 notice (from `buildWorkMonthsByJob`), when the clock sessions have loaded; null → the runway's last-month flag stands in. */
   months?: ReadonlyArray<LienCalendarMonth> | null
+  /** The linked property record (`customer_addresses.id`) — where a kind is written (PR D). */
+  addressId?: string | null
 }
 
 /** One work month's notice on the calendar: its statutory deadline and where it stands. */
@@ -345,9 +347,10 @@ function moneyShort(n: number): string {
   return `$${Math.round(n).toLocaleString('en-US')}`
 }
 
-export function lienCalendarTodo(cal: Pick<LienCalendar, 'jobs'>, density: ReadonlyArray<LienCalendarDensityColumn>, jobsById: ReadonlyMap<string, LienCalendarJob>): LienCalendarTodo[] {
+export function lienCalendarTodo(cal: Pick<LienCalendar, 'jobs'>, density: ReadonlyArray<LienCalendarDensityColumn>, jobsById: ReadonlyMap<string, LienCalendarJob>, firstYmd?: string | null): LienCalendarTodo[] {
   const ahead = density.filter((c) => !c.past && (c.notices.count > 0 || c.liens.count > 0))
-  const first = ahead.find((c) => c.notices.count > 0) ?? ahead[0] ?? null
+  // A clicked density bar leads (PR D); else the first column with a notice owed.
+  const first = (firstYmd ? ahead.find((c) => c.ymd === firstYmd) : null) ?? ahead.find((c) => c.notices.count > 0) ?? ahead[0] ?? null
   const out: LienCalendarTodo[] = []
   const gcWords = (col: LienCalendarDensityColumn) => {
     const gcs = [...col.notices.gcIds]
@@ -403,3 +406,48 @@ export const LIEN_CALENDAR_KEY: ReadonlyArray<{ glyph: 'pay' | 'pay_missing' | '
   { glyph: 'bracket', label: 'property kind not set — the flag sits at the residential date but could be as late as the commercial one' },
   { glyph: 'count', label: 'on a GC row, the number is how many of its jobs share that date' },
 ]
+
+
+// ---------------------------------------------------------------------------
+// PR D — the pen (v2.4153)
+// ---------------------------------------------------------------------------
+
+/** What a pay date means against the lien flag — read back before Save. */
+export type PromiseConsequence = { tone: 'green' | 'red' | 'amber'; text: string }
+
+export function promiseConsequence(payYmd: string, lienByYmd: string, todayYmd: string): PromiseConsequence {
+  if (!lienByYmd) return { tone: 'amber', text: 'no lien date on this job' }
+  if (payYmd < todayYmd) return { tone: 'amber', text: 'that day has passed' }
+  const d = daysBetweenYmd(payYmd, lienByYmd) ?? 0
+  if (d < 0) return { tone: 'red', text: `${-d} d after the lien flag — file first` }
+  if (d === 0) return { tone: 'red', text: 'on the lien day — file first' }
+  return { tone: 'green', text: `${d} d of room before the lien flag` }
+}
+
+/** Whose word a pay date can be: the owner the job is for, and the GC on a sub job. */
+export function whoseWordOptions(job: Pick<LienCalendarJob, 'customer' | 'gcName' | 'isSub'>): Array<{ key: 'owner' | 'gc'; label: string }> {
+  const out: Array<{ key: 'owner' | 'gc'; label: string }> = []
+  if (job.customer.trim()) out.push({ key: 'owner', label: `${job.customer.trim()} (owner)` })
+  if (job.isSub && job.gcName?.trim()) out.push({ key: 'gc', label: `${job.gcName.trim()} (GC)` })
+  if (out.length === 0) out.push({ key: 'owner', label: 'the owner' })
+  return out
+}
+
+/** The GC row's one dot: the date every one of its jobs with a date shares — the GC's word from the statement round — else none. */
+export function groupPayYmd(jobs: ReadonlyArray<Pick<LienCalendarJob, 'runway'>>, todayYmd: string): string | null {
+  const dates = new Set<string>()
+  for (const j of jobs) {
+    if (j.runway.state === 'closed' || j.runway.state === 'filed') continue
+    const pay = j.runway.marks?.pay
+    if (pay) dates.add(addDays(todayYmd, pay.days))
+  }
+  return dates.size === 1 ? [...dates][0]! : null
+}
+
+/** The "Set kinds, biggest first" sheet: the rows whose kind is assumed, largest balance first, each with where the kind is written. */
+export function kindsQueue(jobs: ReadonlyArray<LienCalendarJob>): Array<{ jobId: string; addressId: string | null; label: string; openBalance: number; lienByYmd: string; commercialYmd: string | null }> {
+  return jobs
+    .filter((j) => j.runway.kindAssumed && j.runway.state !== 'closed' && j.runway.state !== 'filed')
+    .sort((a, b) => b.openBalance - a.openBalance)
+    .map((j) => ({ jobId: j.jobId, addressId: j.addressId ?? null, label: `${j.number} · ${j.name}`, openBalance: j.openBalance, lienByYmd: j.runway.lienByYmd, commercialYmd: commercialLienByFor(j) }))
+}

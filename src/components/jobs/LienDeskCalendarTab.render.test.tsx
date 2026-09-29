@@ -7,9 +7,28 @@
  * opens the job, and the phone list instead of the axis. The grouping, the
  * axis and every mark come from lib/jobs/lienCalendar.ts (kernel-tested).
  */
-import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import LienDeskCalendarTab from './LienDeskCalendarTab'
+
+const promiseWrites: unknown[] = []
+const kindWrites: unknown[] = []
+vi.mock('../../lib/jobs/paymentChaseIo', () => ({
+  addJobPaymentPromise: vi.fn(async (args: unknown) => {
+    promiseWrites.push(args)
+  }),
+  addJobPaymentPromisesSettled: vi.fn(async (args: { jobIds: string[] }) => {
+    promiseWrites.push(args)
+    return { saved: args.jobIds, failed: [] }
+  }),
+}))
+vi.mock('../../lib/jobs/propertyKindWrite', () => ({ savePropertyKind: vi.fn(async (id: string, kind: string) => { kindWrites.push([id, kind]) }) }))
+vi.mock('../../contexts/ToastContext', () => ({ useToastContext: () => ({ showToast: vi.fn(), showActionToast: vi.fn() }) }))
+afterEach(() => {
+  cleanup()
+  promiseWrites.length = 0
+  kindWrites.length = 0
+})
 import { buildLienPayRunway } from '../../lib/jobs/lienPayRunway'
 import type { LienCalendarJob } from '../../lib/jobs/lienCalendar'
 
@@ -17,7 +36,7 @@ const TODAY = '2026-09-28'
 const base = { todayYmd: TODAY, openBalance: 1000, propertyKind: 'residential', expectedPayYmd: null, filedYmd: null, releasedYmd: null }
 const rows: LienCalendarJob[] = [
   { jobId: 'a', number: '890 PLUM', name: 'Rizvi', customer: 'Dudley Mason', gcId: 'gc1', gcName: 'RMC · Dudley Mason', address: '628 Terrell Rd', openBalance: 9800, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 9800, lastWorkYmd: '2026-08-12', isSub: true }), lastWorkYmd: '2026-08-12' },
-  { jobId: 'b', number: '881 PLUM', name: 'Umar Khan', customer: 'Dudley Mason', gcId: 'gc1', gcName: 'RMC · Dudley Mason', address: '9703 Lenox Hl', openBalance: 7902, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 7902, lastWorkYmd: '2026-08-20', propertyKind: '', isSub: true }), lastWorkYmd: '2026-08-20', months: [{ key: '2026-07', due: '2026-09-15', state: 'sent' }, { key: '2026-08', due: '2026-10-15', state: 'due' }] },
+  { jobId: 'b', number: '881 PLUM', name: 'Umar Khan', customer: 'Dudley Mason', gcId: 'gc1', gcName: 'RMC · Dudley Mason', address: '9703 Lenox Hl', openBalance: 7902, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 7902, lastWorkYmd: '2026-08-20', propertyKind: '', isSub: true }), lastWorkYmd: '2026-08-20', addressId: 'addr-b', months: [{ key: '2026-07', due: '2026-09-15', state: 'sent' }, { key: '2026-08', due: '2026-10-15', state: 'due' }] },
   { jobId: 'd', number: '473 PLUM', name: 'Mike Holub', customer: 'Michael Holub', gcId: null, gcName: null, address: '109 Tuscarora', openBalance: 5724, isSub: false, runway: buildLienPayRunway({ ...base, openBalance: 5724, lastWorkYmd: '2026-08-12', expectedPayYmd: '2026-09-30' }), lastWorkYmd: '2026-08-12' },
   { jobId: 'e', number: '663 PLUM', name: 'Knight', customer: 'Knight Contracting', gcId: 'gc2', gcName: 'Knight Contracting', address: '', openBalance: 658, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 658, lastWorkYmd: '2026-03-01', isSub: true }), lastWorkYmd: '2026-03-01' },
 ]
@@ -66,7 +85,7 @@ describe('LienDeskCalendarTab', () => {
 
   it('a row and a hollow flag open the job; the search narrows the groups', () => {
     const { onOpen } = mount()
-    fireEvent.click(screen.getByRole('button', { name: /890 PLUM/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^890 PLUM/ }))
     expect(onOpen).toHaveBeenCalledWith('a')
     fireEvent.click(screen.getByRole('button', { name: /A § 53.056 notice is owed for August 2026/ }))
     expect(onOpen).toHaveBeenLastCalledWith('b')
@@ -90,5 +109,55 @@ describe('LienDeskCalendarTab', () => {
     expect(within(phone).getByText('2 notices')).toBeTruthy()
     expect(screen.queryByTestId('lien-cal-density')).toBeNull()
     expect(screen.queryByTestId('lien-cal-key')).toBeNull()
+  })
+})
+
+
+describe('the pen (v2.4153)', () => {
+  it('the dashed dot opens They said… with the consequence read back; Save writes the promise', async () => {
+    const onChanged = vi.fn()
+    mount({ canWrite: true, onChanged })
+    fireEvent.click(screen.getByRole('button', { name: 'Record when Dudley Mason expects to pay · 890 PLUM' }))
+    const pen = screen.getByTestId('lien-cal-pen')
+    expect(pen.textContent).toContain('890 PLUM')
+    fireEvent.change(within(pen).getByLabelText('Pay by'), { target: { value: '2026-11-20' } })
+    expect(screen.getByTestId('lien-cal-pen-consequence').textContent).toBe('4 d after the lien flag — file first')
+    fireEvent.change(within(pen).getByLabelText('Pay by'), { target: { value: '2026-10-03' } })
+    expect(screen.getByTestId('lien-cal-pen-consequence').textContent).toBe('44 d of room before the lien flag')
+    fireEvent.change(within(pen).getByLabelText('Whose word'), { target: { value: 'gc' } })
+    fireEvent.change(within(pen).getByLabelText('Note'), { target: { value: 'check with the draw' } })
+    fireEvent.click(within(pen).getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(promiseWrites).toHaveLength(1))
+    expect(promiseWrites[0]).toEqual({ jobId: 'a', ymd: '2026-10-03', saidBy: 'RMC · Dudley Mason', channel: null, note: 'check with the draw' })
+    await waitFor(() => expect(onChanged).toHaveBeenCalledWith('promise'))
+    expect(screen.queryByTestId('lien-cal-pen')).toBeNull()
+  })
+  it('without the pen the dot opens the job', () => {
+    const { onOpen } = mount()
+    fireEvent.click(screen.getByRole('button', { name: 'Record when Dudley Mason expects to pay · 890 PLUM' }))
+    expect(onOpen).toHaveBeenCalledWith('a')
+    expect(screen.queryByTestId('lien-cal-pen')).toBeNull()
+  })
+  it('the GC row’s dot writes the GC’s word for every job in the group', async () => {
+    mount({ canWrite: true })
+    fireEvent.click(screen.getByRole('button', { name: 'Record RMC · Dudley Mason\'s word for all 2 jobs' }))
+    const pen = screen.getByTestId('lien-cal-pen')
+    expect(pen.textContent).toContain('RMC · Dudley Mason · 2 jobs')
+    fireEvent.change(within(pen).getByLabelText('Pay by'), { target: { value: '2026-10-09' } })
+    fireEvent.click(within(pen).getByRole('button', { name: 'Save for all 2' }))
+    await waitFor(() => expect(promiseWrites).toHaveLength(1))
+    expect(promiseWrites[0]).toMatchObject({ jobIds: ['a', 'b'], ymd: '2026-10-09', saidBy: 'RMC · Dudley Mason' })
+  })
+  it('a density bar leads the to-do; Set kinds opens the sheet biggest first and writes the kind', async () => {
+    const onChanged = vi.fn()
+    mount({ canWrite: true, onChanged })
+    fireEvent.click(screen.getByRole('button', { name: /Nov 16: .* — lead the to-do with this column/ }))
+    expect(screen.getByTestId('lien-cal-todo').textContent).toMatch(/^BY NOV 16 · 49 D/i)
+    fireEvent.click(screen.getByRole('button', { name: 'Set kinds, biggest first ›' }))
+    const sheet = screen.getByTestId('lien-cal-kinds')
+    expect(within(sheet).getByTestId('lien-cal-kind-b').textContent).toContain('881 PLUM · Umar Khan')
+    fireEvent.click(within(within(sheet).getByTestId('lien-cal-kind-b')).getByRole('button', { name: /residential/i }))
+    await waitFor(() => expect(kindWrites).toEqual([['addr-b', 'residential']]))
+    await waitFor(() => expect(onChanged).toHaveBeenCalledWith('kind'))
   })
 })

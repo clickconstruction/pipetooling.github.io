@@ -205,3 +205,42 @@ describe('the GC row, the density and the to-do', () => {
     for (const g of ['today', 'pay', 'pay_missing', 'notice', 'check', 'lien', 'room', 'short', 'bracket', 'count']) expect(glyphs).toContain(g)
   })
 })
+
+
+// ---- PR D (v2.4153): the pen ----
+import { groupPayYmd, kindsQueue, promiseConsequence, whoseWordOptions } from './lienCalendar'
+
+describe('the pen', () => {
+  it('reads a pay date back against the lien flag', () => {
+    expect(promiseConsequence('2026-10-03', '2026-11-16', TODAY)).toEqual({ tone: 'green', text: '44 d of room before the lien flag' })
+    expect(promiseConsequence('2026-11-20', '2026-11-16', TODAY)).toEqual({ tone: 'red', text: '4 d after the lien flag — file first' })
+    expect(promiseConsequence('2026-11-16', '2026-11-16', TODAY)).toEqual({ tone: 'red', text: 'on the lien day — file first' })
+    expect(promiseConsequence('2026-09-01', '2026-11-16', TODAY)).toEqual({ tone: 'amber', text: 'that day has passed' })
+  })
+  it('whose word: the owner, and the GC on a sub job', () => {
+    expect(whoseWordOptions(job({ customer: 'Umar Khan', ...RMC, isSub: true }))).toEqual([
+      { key: 'owner', label: 'Umar Khan (owner)' },
+      { key: 'gc', label: 'RMC · Dudley Mason (GC)' },
+    ])
+    expect(whoseWordOptions(job({ customer: 'Mike Holub' }))).toEqual([{ key: 'owner', label: 'Mike Holub (owner)' }])
+  })
+  it('the GC row carries one dot only when every dated job agrees', () => {
+    const a = job({ jobId: 'a', ...RMC, isSub: true, r: { lastWorkYmd: '2026-08-12', expectedPayYmd: '2026-10-03' } })
+    const b = job({ jobId: 'b', ...RMC, isSub: true, r: { lastWorkYmd: '2026-08-12', expectedPayYmd: '2026-10-03' } })
+    const c = job({ jobId: 'c', ...RMC, isSub: true, r: { lastWorkYmd: '2026-08-12' } })
+    expect(groupPayYmd([a, b, c], TODAY)).toBe('2026-10-03')
+    expect(groupPayYmd([a, job({ jobId: 'd', ...RMC, isSub: true, r: { lastWorkYmd: '2026-08-12', expectedPayYmd: '2026-10-10' } })], TODAY)).toBeNull()
+    expect(groupPayYmd([c], TODAY)).toBeNull()
+  })
+  it('the kinds queue is the assumed rows, biggest first, with the commercial date', () => {
+    const q = kindsQueue([
+      job({ jobId: 'a', number: 'J1', openBalance: 450, addressId: 'addr-a', lastWorkYmd: '2026-08-12', r: { lastWorkYmd: '2026-08-12', propertyKind: '' } }),
+      job({ jobId: 'b', number: 'J2', openBalance: 7902, addressId: null, lastWorkYmd: '2026-08-20', r: { lastWorkYmd: '2026-08-20', propertyKind: '' } }),
+      job({ jobId: 'c', number: 'J3', openBalance: 9000, r: { lastWorkYmd: '2026-08-12' } }),
+    ])
+    expect(q.map((x) => [x.jobId, x.addressId, x.commercialYmd])).toEqual([
+      ['b', null, '2026-12-15'],
+      ['a', 'addr-a', '2026-12-15'],
+    ])
+  })
+})
