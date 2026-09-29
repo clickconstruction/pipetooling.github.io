@@ -136,3 +136,12 @@ describe('sample emails (What customers see)', () => {
     expect(digest.html).toContain('New account referred')
   })
 })
+
+describe('sample emails carry the From line the inbox shows (v2.4138)', () => {
+  it('the estimate is the plumbing brand; every other sample is the company', () => {
+    expect(buildSampleEmail('estimate', ctx).from).toBe('Click Plumbing <team@noreply.clicktooling.com>')
+    for (const id of ['bill-email', 'gc-statement', 'rfq-request', 'job-account', 'legal-now', 'contract', 'bid-room', 'pricing-package'] as const) {
+      expect(buildSampleEmail(id, ctx).from, id).toBe('Click Plumbing and Electrical <team@noreply.clicktooling.com>')
+    }
+  })
+})

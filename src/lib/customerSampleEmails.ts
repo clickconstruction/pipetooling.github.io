@@ -11,6 +11,7 @@ import { ESTIMATE_EXPERIENCE_APP_KEY_LIST, resolveEstimateCustomerExperience } f
 import { buildContractSigningEmail, type ContractSigningEmail } from './contractSigningEmail'
 import { PORTAL_SHORT_ORIGIN } from './portal/portalShortOrigin'
 import { PORTAL_COMPANY } from '../../supabase/functions/_shared/portalCompany'
+import { COMPANY_EMAIL_FROM_LABEL, estimateEmailFrom } from './customerEmailFrom'
 import { SAMPLE_BID, SAMPLE_CONTRACT, SAMPLE_ESTIMATE, SAMPLE_GC, SAMPLE_HOMEOWNER, SAMPLE_SUB, ymdPlusDays } from './customerSample'
 import { BID_ROOM_SAMPLE_PATH, CONTRACT_SAMPLE_PATH, ESTIMATE_SAMPLE_PATH, JOB_CONTRACT_SAMPLE_PATH, type SampleEmailId } from './customerJourneys'
 import { buildJobContractPaperEmail, buildJobContractReminderEmail, buildJobContractSendEmail, buildJobContractSignedCopyEmail, type BuiltEmail } from './jobContractEmail'
@@ -296,7 +297,16 @@ export function buildSampleBillEmail(ctx: SampleEmailContext): BuiltEmail {
   })
 }
 
-export function buildSampleEmail(id: SampleEmailId, ctx: SampleEmailContext): { subject: string; html: string; text: string } {
+/** The From line the inbox shows for a sample — the estimate's per-trade name (the sample is the plumbing brand), the company for the rest (v2.4138). */
+export function sampleEmailFrom(id: SampleEmailId): string {
+  return id === 'estimate' ? estimateEmailFrom('plum') : COMPANY_EMAIL_FROM_LABEL
+}
+
+export function buildSampleEmail(id: SampleEmailId, ctx: SampleEmailContext): { subject: string; html: string; text: string; from: string } {
+  return { ...buildSampleEmailBody(id, ctx), from: sampleEmailFrom(id) }
+}
+
+function buildSampleEmailBody(id: SampleEmailId, ctx: SampleEmailContext): { subject: string; html: string; text: string } {
   if (id === 'estimate') return buildSampleEstimateEmail(ctx)
   if (id === 'contract') return buildSampleContractEmail(ctx)
   if (id === 'job-contract') return buildSampleJobContractEmail(ctx)

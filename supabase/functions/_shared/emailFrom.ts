@@ -9,10 +9,11 @@
  * Format must be a full RFC 5322 mailbox (`Name <addr>`); the domain must be
  * verified in Resend or sends fail with a 403.
  */
+import { EMAIL_FROM_FALLBACK } from './emailFromAddress.ts'
 import { mailboxWithName } from './mailboxWithName.ts'
 import { PORTAL_COMPANY } from './portalCompany.ts'
 
-export const EMAIL_FROM: string = Deno.env.get('EMAIL_FROM')?.trim() || 'ClickTooling <team@noreply.clicktooling.com>'
+export const EMAIL_FROM: string = Deno.env.get('EMAIL_FROM')?.trim() || EMAIL_FROM_FALLBACK
 
 /**
  * The customer-facing sender (punch list #53, v2.4127): the company's name on

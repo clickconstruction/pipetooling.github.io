@@ -19,7 +19,7 @@ Under the count, **Where people are, all at once** shows, per step, how many out
 
 ## Read the strips
 
-Each strip is one audience. Each step names what sends it (*Estimates → Send to customer*), when it happens (*Day 0*), and which Settings it reflects.
+Each strip is one audience. Each step names what sends it (*Estimates → Send to customer*), when it happens (*Day 0*), and which Settings it reflects. Open an email step and its header shows the **From** line the inbox will show — *Click Plumbing and Electrical <team@noreply.clicktooling.com>*, or *Click Plumbing <…>* on the estimate, which keeps its trade name — beside the **Subject**. Staff emails are not here; they come from ClickTooling so the team can tell them apart.
 
 :::example The homeowner's strip
 {{chip:gray|Estimate email}} → {{chip:gray|Accept page}} → {{chip:gray|Thank-you}} → {{chip:gray|Bill email}} → {{chip:gray|Portal}}
