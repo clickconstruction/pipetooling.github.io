@@ -1461,6 +1461,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
               ) : null}
               {(() => {
                 // v2.4109 · the robot lives in the schedule card: the offer under the typed door, the state while it works, Cancel beside it.
+                // v2.4144 · the state row is two lines, not three: the sentence, then the task line with Cancel/Dismiss at its right.
                 const t = liveTask(tasks, 'read_schedule')
                 const st = t ? taskStatus(t) : null
                 const conf = t ? scheduleToConfirm(t) : null
@@ -1469,14 +1470,16 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                     <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>The plans’ schedule <span style={{ ...smallMuted, fontWeight: 400 }}>· {specified.length === 0 ? 'none yet' : `${specified.length} tag${specified.length === 1 ? '' : 's'}`}</span></div>
                     <span style={smallMuted}>{specified.length === 0 ? 'Optional. A tag is the plan’s name for a fixture, like WC-1. With the schedule, the app checks each row against the plans.' : 'Every tag here becomes a row. A row with no pick gets its product typed with Edit.'}</span>
                     {t ? (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', background: 'var(--bg-muted)', borderRadius: 6, padding: '0.3rem 0.55rem', fontSize: '0.8rem' }} data-testid="robot-schedule" data-tour="submittals-robot">
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', background: 'var(--bg-muted)', borderRadius: 6, padding: '0.3rem 0.55rem', fontSize: '0.8rem' }} data-testid="robot-schedule" data-tour="submittals-robot">
                         <span style={{ color: 'var(--text-strong)' }}>
-                          {st === 'ready' ? (conf ? 'The robot read the schedule — confirm the tags below.' : 'The robot read the schedule and found no tags.') : st === 'blocked' ? (t.summary || 'The robot could not read the plans.') : st === 'working' ? 'The robot is reading the fixture schedule off the plans.' : 'The robot is queued to read the fixture schedule off the plans.'}
-                          <span style={{ ...smallMuted, display: 'block', fontStyle: 'italic' }} data-testid="robot-line">{describeTask(t)}</span>
+                          {st === 'ready' ? (conf ? 'The robot read the schedule. Confirm the tags below.' : 'The robot read the schedule and found no tags.') : st === 'blocked' ? (t.summary || 'The robot could not read the plans.') : st === 'working' ? 'The robot is reading the fixture schedule off the plans.' : 'The robot is queued to read the fixture schedule off the plans.'}
                         </span>
-                        {st === 'blocked' || st === 'queued' ? (
-                          <button type="button" disabled={busy} onClick={() => void markTask(t.id, 'cancelled').then(() => loadTasks(bidId as string))} style={{ ...btnQuiet, textDecoration: 'underline', fontSize: '0.78rem' }}>{st === 'blocked' ? 'Dismiss' : 'Cancel'}</button>
-                        ) : null}
+                        <span style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', alignItems: 'baseline' }}>
+                          <span style={{ ...smallMuted, fontStyle: 'italic' }} data-testid="robot-line">{describeTask(t)}</span>
+                          {st === 'blocked' || st === 'queued' ? (
+                            <button type="button" disabled={busy} onClick={() => void markTask(t.id, 'cancelled').then(() => loadTasks(bidId as string))} style={{ ...btnQuiet, textDecoration: 'underline', fontSize: '0.78rem', flexShrink: 0 }}>{st === 'blocked' ? 'Dismiss' : 'Cancel'}</button>
+                          ) : null}
+                        </span>
                       </div>
                     ) : null}
                     <button type="button" disabled={busy} onClick={() => setPlugInOpen(true)} style={{ ...(specified.length === 0 && takeoffFixtures === 0 ? btnPrimary : btn), alignSelf: 'flex-start' }} title="Type or paste the tags from the plans, one per line" data-testid="plug-in-schedule" data-tour="submittals-plug-in">
