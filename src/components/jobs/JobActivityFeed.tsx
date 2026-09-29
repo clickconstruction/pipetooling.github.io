@@ -132,7 +132,9 @@ export function JobActivityFeed({ lines, filtered, narrow = false, reportsOpenBy
         const el = e.currentTarget
         atBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 60
       }}
-      style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0.2rem 0.9rem 0.8rem', scrollbarWidth: 'thin' }}
+      // A soft edge above the feed (v2.4137): the rows scroll away under the
+      // filter pills, and without a line the half-hidden one read as cut off.
+      style={{ flex: 1, minHeight: 0, overflowY: 'auto', marginTop: '0.45rem', borderTop: '1px solid var(--border)', padding: '0.35rem 0.9rem 0.8rem', scrollbarWidth: 'thin' }}
     >
       {!loaded ? (
         <div style={{ color: 'var(--text-faint)', padding: '1.5rem 0', textAlign: 'center' }}>Loading activity…</div>
