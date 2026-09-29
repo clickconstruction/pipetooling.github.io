@@ -291,7 +291,7 @@ describe('BidsSubmittalsTab', () => {
     expect(screen.getByRole('dialog', { name: 'Where this submittal is' })).toBeTruthy()
     const titles: string[] = []
     const missing: string[] = []
-    for (let i = 0; i < 15; i++) {
+    for (let i = 0; i < 13; i++) {
       const dialog = screen.getByRole('dialog')
       titles.push(dialog.getAttribute('aria-label') ?? '')
       if (within(dialog).queryByTestId('tour-missing')) missing.push(dialog.getAttribute('aria-label') ?? '')
@@ -300,23 +300,21 @@ describe('BidsSubmittalsTab', () => {
     }
     expect(titles).toEqual([
       'Where this submittal is',
-      '1 · Where the rows come from',
+      'Step 1. Where the rows come from',
       'From the takeoff',
       'No schedule yet? Type or paste it',
       'Or let the robot read it',
-      '2 · Build Rev 1',
-      'Revisions',
-      'One line: where you stand',
-      '3 · Fix a row with Edit',
-      '3 · Cut sheets: drop the house’s PDF',
-      '4 · Build the package',
-      '5 · Share the review room',
-      '6 · Their calls come back here',
-      '7 · Resubmit only what came back',
-      '8 · Procure: the log the GC asks for',
+      'Step 2. Build Rev 1',
+      'Step 3. Fix the rows',
+      'Step 3. Add the cut sheets',
+      'Step 4. Build the package',
+      'Step 5. Share it',
+      'Step 6. Their answer',
+      'Step 7. Resubmit',
+      'Step 8. Procure',
     ])
     // On a fresh bid with a schedule, only the strip, the source line and the Build Rev 1 card are on the page.
-    expect(missing).toEqual(titles.filter((t) => !['Where this submittal is', '1 · Where the rows come from', 'From the takeoff', 'No schedule yet? Type or paste it', '2 · Build Rev 1'].includes(t)))
+    expect(missing).toEqual(titles.filter((t) => !['Where this submittal is', 'Step 1. Where the rows come from', 'From the takeoff', 'No schedule yet? Type or paste it', 'Step 2. Build Rev 1'].includes(t)))
     expect(screen.getByRole('link', { name: 'Read the full guide: build a submittal package →' }).getAttribute('href')).toBe('/help?g=build-a-submittal-package')
     fireEvent.click(screen.getByRole('button', { name: 'Done' }))
     expect(screen.queryByRole('dialog')).toBeNull()
