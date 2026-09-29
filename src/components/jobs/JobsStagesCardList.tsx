@@ -1178,6 +1178,7 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
         const j = row.job
         const inv = row.kind === 'job' ? null : row.inv
         const invWithJob: InvoiceWithJob | null = inv ? { ...inv, job: j } : null
+        const billLine = props.billedBillLine?.(row) ?? null
         const key =
           row.kind === 'invoice'
             ? `inv-${row.inv.id}`
@@ -1264,8 +1265,9 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
                 onPctCommit={canEditJobPctComplete ? (n) => updateJobPctComplete(j.id, n, j.pct_complete ?? null) : undefined}
                 onNoBidValueClick={() => openEdit(j, { fixturesSectionHighlight: true })}
                 onStageClick={() => openEdit(j, { fixturesSectionHighlight: true })}
+                wordsOverride={billLine?.words ?? null}
               />
-              {props.billedExpectedPayChip?.(row)}
+              {billLine?.extras}
               {props.billedLienRunway?.(row)}
               {inv ? cardStripeEmailedHint(ctx, j, inv) : null}
             </div>

@@ -85,7 +85,9 @@ import {
 } from '../../lib/jobs/invoiceBilling'
 import { liveBilledStats, overlayLiveBilledStats } from '../../lib/jobs/stagesLiveHeaderStats'
 import { billedExpectedPayModel } from '../../lib/jobs/billedExpectedPay'
-import BilledExpectedPayChip from './BilledExpectedPayChip'
+import { buildBilledWordsLine } from '../../lib/jobs/billedWordsLine'
+import { billedWordsOverride } from './BilledWordsLine'
+import type { BilledRowBillLine } from './JobsStagesUnifiedTable'
 import SetPromisedPayDateModal from './SetPromisedPayDateModal'
 import JobContractModal from './JobContractModal'
 import JobSignedAgreementModal, { type SignedCoverage } from './JobSignedAgreementModal'
@@ -1031,33 +1033,41 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     }
     return out
   }, [jobs, billedLienClocks, lienRunwayFor])
-  const billedExpectedPayChipRenderer = useCallback(
-    (row: StageRow) => {
+  const billedBillLineRenderer = useCallback(
+    (row: StageRow): BilledRowBillLine | null => {
       // Job-shell rows (no bill line at all) can't have an expected date; wear
       // the "No bill line" hint the no_line chip filters by instead (v2.1931).
       const shell = row.kind === 'job'
       const promise = promisedPayDates?.[row.job.id] ?? null
-      const model = billedExpectedPayModel(
-        shell
-          ? { billedAtIso: null, estBillYmd: null, customerId: row.job.customer_id }
-          : {
-              billedAtIso: row.inv.billed_at,
-              estBillYmd: effectiveInvoiceEstBillDate(row.inv),
-              customerId: row.job.customer_id,
-            },
-        billedPaySpeeds,
-        calendarYmdInAppTzFromIso(new Date().toISOString()),
-        promise,
-      )
+      const todayYmd = calendarYmdInAppTzFromIso(new Date().toISOString())
       const bankRet = bankReturnedByJobId.get(row.job.id) ?? null
-      if (!shell && !model && !canMarkPromisedPay && !bankRet) return null
       const number = effectiveJobLedgerNumber(row.job.hcp_number, row.job.click_number) || '—'
       const label = `${number} · ${(row.job.job_name ?? '').trim() || 'Job'}`
       // B6 / J4-10: a Collections shell has a clock the office set — the flag
       // day — so it ages from there instead of wearing "can't age" forever.
       const collectionsRef = shell ? stageRowBilledAgeReference(row) : null
       const collectionsDays = collectionsRef?.source === 'collections' ? stageRowBilledAgeDays(row) : null
-      return (
+      const openPromise = () =>
+        setPromisedPayModalJob({
+          jobId: row.job.id,
+          jobLabel: label,
+          initialYmd: promise?.promisedYmd ?? null,
+        })
+      // v2.4130: the bill's story is the words line under the bar — "Billed Sep 15 ·
+      // 21 d past expected · they said Oct 3" — and its expectation clause is the
+      // click that records what the customer said (They said… / New date…).
+      const line = shell
+        ? null
+        : buildBilledWordsLine({
+            row: { billedAtIso: row.inv.billed_at, estBillYmd: effectiveInvoiceEstBillDate(row.inv), customerId: row.job.customer_id },
+            data: billedPaySpeeds,
+            todayYmd,
+            promise,
+            inCollections: jobInCollections(row.job),
+          })
+      const words = line ? billedWordsOverride(line, canMarkPromisedPay ? openPromise : undefined) : null
+      if (!words && !shell && !bankRet) return null
+      const extras = (
         <>
           {bankRet ? (
             <button
@@ -1088,17 +1098,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
               No bill line
             </span>
           ) : null}
-          {model ? <BilledExpectedPayChip model={model} /> : null}
-          {canMarkPromisedPay ? (
+          {shell && canMarkPromisedPay ? (
             <button
               type="button"
-              onClick={() =>
-                setPromisedPayModalJob({
-                  jobId: row.job.id,
-                  jobLabel: label,
-                  initialYmd: promise?.promisedYmd ?? null,
-                })
-              }
+              onClick={openPromise}
               title="Record the payment date the customer named, who said it and how — it overrides the estimate, and every date they name stays on record"
               style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.7rem', color: 'var(--text-muted)', textDecoration: 'underline dotted', textUnderlineOffset: 2 }}
             >
@@ -1115,6 +1118,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           ) : null}
         </>
       )
+      return { words, extras }
     },
     [billedPaySpeeds, promisedPayDates, canMarkPromisedPay, promiseRecordsByCustomer, bankReturnedByJobId, openPaymentsReceived],
   )
@@ -2551,7 +2555,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           ? void revertBilledInvoiceToReadyToBill(inv)
           : (setSendBackChecked(false), setSendBackInvoice({ inv, action: 'revert' })),
       showRemaining: true,
-      showTimeOpen: true,
+      showTimeOpen: false, // v2.4130: the bill's line says how late it is; the job's age is noise here
       sendBackBelowRemaining: true,
       showCreatePartialInvoice: false,
       invoiceBundleActionLabel: 'Send back',
@@ -2573,7 +2577,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       onJobSendBack: (j) => setCollectionsConfirm({ job: j, direction: 'from' }),
       onInvoiceSendBack: (inv) => setCollectionsConfirm({ job: inv.job, direction: 'from' }),
       showRemaining: true,
-      showTimeOpen: true,
+      showTimeOpen: false, // v2.4130: the bill's line says how late it is; the job's age is noise here
       sendBackBelowRemaining: true,
       showCreatePartialInvoice: false,
       jobSendBackLabel: 'Send back to Billed',
@@ -3691,7 +3695,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     rows={billedListRows}
                     phoneRows={phoneRowsFor('billed')}
                     onToggleProgressSort={onToggleProgressSort}
-                    billedExpectedPayChip={billedExpectedPayChipRenderer}
+                    billedBillLine={billedBillLineRenderer}
                     {...stagesSectionActionProps.billed}
                     openNewReportForJob={openNewReportForJob}
                   />

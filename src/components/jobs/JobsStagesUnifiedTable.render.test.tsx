@@ -202,7 +202,7 @@ describe('JobsStagesUnifiedTable render smoke', () => {
     expect(plainCard.style.borderLeft).toBe('')
   })
 
-  it('renders the expected-payment chip on invoice-bearing rows (table + cards)', async () => {
+  it('renders the bill line on invoice-bearing rows — the words under the bar and the extras under the cell (table + cards, v2.4130)', async () => {
     const billedJob = makeJob({ job_name: 'Chip Merged Job', status: 'billed' })
     const billedInvoice = makeInvoice({ job_id: billedJob.id, amount: 900, status: 'billed' })
     const floaterJob = makeJob({ job_name: 'Chip Floater Job', status: 'billed' })
@@ -214,17 +214,26 @@ describe('JobsStagesUnifiedTable render smoke', () => {
       { kind: 'job', job: bareJob },
     ]
     const chip = vi.fn((row: StageRow) =>
-      row.kind === 'job' ? null : <span data-testid="expected-pay-chip">Expect pay ~Sep 8</span>,
+      row.kind === 'job'
+        ? null
+        : {
+            words: { node: <span data-testid="bill-words">Billed Aug 4 · expect ~Sep 8</span>, tone: 'plain' as const, title: 'Billed Aug 4 · expect ~Sep 8' },
+            extras: <span data-testid="bill-extras">Pays in 9–41d</span>,
+          },
     )
-    renderWithProviders(<JobsStagesUnifiedTable {...makeProps({ rows, billedExpectedPayChip: chip })} />)
+    renderWithProviders(<JobsStagesUnifiedTable {...makeProps({ rows, billedBillLine: chip })} />)
     await settle()
-    expect(screen.getAllByTestId('expected-pay-chip')).toHaveLength(2)
+    expect(screen.getAllByTestId('bill-words')).toHaveLength(2)
+    expect(screen.getAllByTestId('bill-extras')).toHaveLength(2)
+    // The words sit in the bar's words div, which wears the line's tooltip.
+    expect(screen.getAllByTestId('bill-words')[0]?.closest('[data-progress-words]')?.getAttribute('title')).toBe('Billed Aug 4 · expect ~Sep 8')
     expect(chip).toHaveBeenCalledWith(rows[0])
     expect(chip).toHaveBeenCalledWith(rows[1])
     document.body.innerHTML = ''
-    renderWithProviders(<JobsStagesUnifiedCardList {...makeProps({ rows, billedExpectedPayChip: chip })} />)
+    renderWithProviders(<JobsStagesUnifiedCardList {...makeProps({ rows, billedBillLine: chip })} />)
     await settle()
-    expect(screen.getAllByTestId('expected-pay-chip')).toHaveLength(2)
+    expect(screen.getAllByTestId('bill-words')).toHaveLength(2)
+    expect(screen.getAllByTestId('bill-extras')).toHaveLength(2)
   })
 
   it('wraps the hazmat button in a green box only for jobs with a live fee (v2.1040)', async () => {
