@@ -16,6 +16,7 @@ function sampleRow(
     mercury_transaction_id: tx,
     attributionDisplayName: attribution,
     linkedToSupplyInvoice: false,
+    isFuel: false,
     mercury_transactions: {
       posted_at: '2020-01-15',
       counterparty_name: 'X',

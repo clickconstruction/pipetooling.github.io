@@ -51,6 +51,8 @@ import { ContractCardHistory } from './ContractCardHistory'
 import { ContractCardReview } from './ContractCardReview'
 import { ContractBodyDisplay } from '../contracts/ContractBodyDisplay'
 import StandardTermsEditModal from '../jobs/StandardTermsEditModal'
+import ContractReaderModal, { type ContractReaderEditDoor } from './ContractReaderModal'
+import { readerSurfacesFor } from '../../lib/contracts/contractReader'
 
 /**
  * Settings → Contracts & terms: every contract text a customer accepts or signs, and every
@@ -111,6 +113,8 @@ export function SettingsContractsTab({ role, onOpenEditor, onOpenStep }: Setting
   const [lastSent, setLastSent] = useState<ContractLastSentData | null>(null)
   const [history, setHistory] = useState<ContractHistoryData | null>(null)
   const [historyOpen, setHistoryOpen] = useState<ReadonlySet<string>>(() => new Set())
+  /** v2.4098: the card being read as the customer sees it. */
+  const [reading, setReading] = useState<{ entry: ContractCatalogEntry; text: ResolvedContractText } | null>(null)
   const { user, profileName } = useAuth()
   const { showToast } = useToastContext()
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -364,6 +368,11 @@ export function SettingsContractsTab({ role, onOpenEditor, onOpenStep }: Setting
                     {action.kind === 'note' ? <p style={{ ...MUTED, margin: 0 }}>{action.text}</p> : null}
 
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center' }}>
+                      {readerSurfacesFor(entry).length > 0 ? (
+                        <button type="button" style={PILL_ON} onClick={() => setReading({ entry, text })} title="The customer's own page, with sample information, and this wording lit on it" data-testid={`contract-read-${text.key}`}>
+                          Read it as the customer sees it
+                        </button>
+                      ) : null}
                       {hasWording ? (
                         <button type="button" style={isPicked ? PILL_ON : PILL} aria-pressed={isPicked} onClick={() => setPicked((prev) => toggleCompare(prev, text.key))}>
                           {isPicked ? '✓ Comparing' : 'Compare'}
@@ -477,6 +486,25 @@ export function SettingsContractsTab({ role, onOpenEditor, onOpenStep }: Setting
         </div>
       ) : null}
 
+      {reading ? (
+        <ContractReaderModal
+          entry={reading.entry}
+          text={reading.text}
+          surfaces={readerSurfacesFor(reading.entry)}
+          editDoor={readerEditDoor(contractEditAction(reading.entry, reading.text, role), reading.text, {
+            edit: (doc) => {
+              setReading(null)
+              setEditing(doc)
+            },
+            settings: (tabId, anchorId) => {
+              setReading(null)
+              onOpenEditor(tabId, anchorId)
+            },
+          })}
+          onClose={() => setReading(null)}
+        />
+      ) : null}
+
       {editing ? (
         <StandardTermsEditModal
           doc={editing}
@@ -491,6 +519,21 @@ export function SettingsContractsTab({ role, onOpenEditor, onOpenStep }: Setting
       ) : null}
     </div>
   )
+}
+
+/** The card's edit door, as the reader's footer carries it (v2.4098): a press closes the reader and opens the door. */
+function readerEditDoor(
+  action: ReturnType<typeof contractEditAction>,
+  text: ResolvedContractText,
+  go: { edit: (doc: ContractBookDoc) => void; settings: (tabId: string, anchorId: string) => void },
+): ContractReaderEditDoor | null {
+  if (action.kind === 'modal' && text.doc) {
+    const doc = text.doc
+    return { label: action.label, onClick: () => go.edit(doc) }
+  }
+  if (action.kind === 'settings') return { label: action.label, onClick: () => go.settings(action.tabId, action.anchorId) }
+  if (action.kind === 'page') return { label: action.label, to: action.to }
+  return null
 }
 
 function lastChangedLine(text: ResolvedContractText): string {

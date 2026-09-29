@@ -157,6 +157,8 @@ export function useJobSummaryData({
         amount: r.amount,
         note: r.note,
         attributionDisplayName: r.attributionDisplayName,
+        linkedToSupplyInvoice: r.linkedToSupplyInvoice,
+        isFuel: r.isFuel,
         mercury_transactions: r.mercury_transactions
           ? {
               posted_at: r.mercury_transactions.posted_at,

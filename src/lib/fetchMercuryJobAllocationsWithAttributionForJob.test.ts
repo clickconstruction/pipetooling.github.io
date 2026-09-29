@@ -41,6 +41,10 @@ const attrs = vi.fn(async (_ids: string[], _label: string): Promise<Array<{ merc
 vi.mock('./fetchMercuryRelationsByTxIds', () => ({ fetchAttributionsByMercuryTxIds: (ids: string[], label: string) => attrs(ids, label) }))
 const exclusions = vi.fn(async (_ids: readonly string[]) => ({ bucketByTxId: new Map<string, string>(), invoiceLinkedTxIds: new Set<string>() }))
 vi.mock('./jobs/loadCardChargeExclusions', () => ({ loadCardChargeExclusions: (ids: readonly string[]) => exclusions(ids) }))
+// Fuel (punch list #52): the tags and the accounting labels; the classifier has its own suite.
+const categoryTags = vi.fn()
+const labelIds = vi.fn()
+vi.mock('./banking/categoryTagsData', () => ({ loadCategoryTags: () => categoryTags(), fetchLabelIdByTxId: (ids: unknown) => labelIds(ids) }))
 
 import { fetchMercuryJobAllocationsWithAttributionForJob } from './fetchMercuryJobAllocationsWithAttributionForJob'
 
@@ -61,6 +65,8 @@ beforeEach(() => {
   attrs.mockResolvedValue([])
   exclusions.mockReset()
   exclusions.mockResolvedValue({ bucketByTxId: new Map(), invoiceLinkedTxIds: new Set() })
+  categoryTags.mockReset().mockResolvedValue({ tags: [], members: [] })
+  labelIds.mockReset().mockResolvedValue(new Map())
 })
 
 describe('fetchMercuryJobAllocationsWithAttributionForJob', () => {
@@ -78,7 +84,7 @@ describe('fetchMercuryJobAllocationsWithAttributionForJob', () => {
     }
     const out = await fetchMercuryJobAllocationsWithAttributionForJob('j1', 'job summary')
     const read = q('mercury_transaction_job_allocations')!
-    expect(String(argsOf(read.steps, 'select')[0]![0])).toContain('mercury_transactions(posted_at, counterparty_name, amount, note, external_memo, mercury_account_id, raw)')
+    expect(String(argsOf(read.steps, 'select')[0]![0])).toContain('mercury_transactions(posted_at, counterparty_name, amount, note, external_memo, mercury_account_id, raw, mercury_category)')
     expect(argsOf(read.steps, 'eq')).toEqual([['job_id', 'j1']])
     expect(argsOf(read.steps, 'order')).toEqual([['created_at', { ascending: true }], ['id']])
     expect(argsOf(read.steps, 'range')).toEqual([[0, 999]])
@@ -87,9 +93,9 @@ describe('fetchMercuryJobAllocationsWithAttributionForJob', () => {
     expect(argsOf(q('people')!.steps, 'in')).toEqual([['id', ['p1']]])
     expect(argsOf(q('users')!.steps, 'in')).toEqual([['id', ['u1']]])
     expect(out).toEqual([
-      { id: 'a1', amount: -50, note: 'PVC', mercury_transaction_id: 'tx1', mercury_transactions: mt(), attributionDisplayName: 'Pat Person', linkedToSupplyInvoice: false },
-      { id: 'a2', amount: -20, note: null, mercury_transaction_id: 'tx2', mercury_transactions: mt({ counterparty_name: 'Ferguson' }), attributionDisplayName: 'Uma User', linkedToSupplyInvoice: true },
-      { id: 'a4', amount: -10, note: null, mercury_transaction_id: 'tx1', mercury_transactions: null, attributionDisplayName: 'Pat Person', linkedToSupplyInvoice: false },
+      { id: 'a1', amount: -50, note: 'PVC', mercury_transaction_id: 'tx1', mercury_transactions: mt(), attributionDisplayName: 'Pat Person', linkedToSupplyInvoice: false, isFuel: false },
+      { id: 'a2', amount: -20, note: null, mercury_transaction_id: 'tx2', mercury_transactions: mt({ counterparty_name: 'Ferguson' }), attributionDisplayName: 'Uma User', linkedToSupplyInvoice: true, isFuel: false },
+      { id: 'a4', amount: -10, note: null, mercury_transaction_id: 'tx1', mercury_transactions: null, attributionDisplayName: 'Pat Person', linkedToSupplyInvoice: false, isFuel: false },
     ])
   })
 
@@ -122,5 +128,39 @@ describe('fetchMercuryJobAllocationsWithAttributionForJob', () => {
     expect((await fetchMercuryJobAllocationsWithAttributionForJob('j1', 'x'))[0]!.attributionDisplayName).toBeNull()
     route = () => ({ data: null, error: { message: 'alloc rls' } })
     await expect(fetchMercuryJobAllocationsWithAttributionForJob('j1', 'x')).rejects.toThrow('alloc rls')
+  })
+
+  it('names the fuel: the fuel family’s tag by the accounting label first, else the bank category', async () => {
+    const FUEL = { id: 'fuel', name: 'Fuel & gas', icon: '⛽', color: 'amber', sort_order: 1, default_key: 'fuel_vehicle', show_as_cost_line: true, hide_from_picker: false }
+    const TOOLS = { id: 'tools', name: 'Tools', icon: '🔧', color: 'blue', sort_order: 2, default_key: null, show_as_cost_line: true, hide_from_picker: false }
+    categoryTags.mockResolvedValue({
+      tags: [FUEL, TOOLS],
+      members: [
+        { tag_id: 'fuel', bank_category: 'Fuel', label_id: null },
+        { tag_id: 'tools', bank_category: null, label_id: 'label-tools' },
+      ],
+    })
+    // tx2: the bank says fuel, but its label says tools — the label wins.
+    labelIds.mockResolvedValue(new Map([['tx2', 'label-tools']]))
+    route = (table) => ({
+      data:
+        table === 'mercury_transaction_job_allocations'
+          ? [
+              { ...rows[0]!, mercury_transactions: { ...mt(), mercury_category: 'Fuel' } },
+              { ...rows[1]!, mercury_transactions: { ...mt(), mercury_category: { name: 'Fuel' } } },
+            ]
+          : [],
+      error: null,
+    })
+    const out = await fetchMercuryJobAllocationsWithAttributionForJob('j1', 'x')
+    expect(out.map((r) => [r.id, r.isFuel])).toEqual([['a1', true], ['a2', false]])
+    expect(labelIds).toHaveBeenCalledWith(['tx1', 'tx2'])
+  })
+
+  it('tags it cannot read leave every charge a plain card charge', async () => {
+    categoryTags.mockRejectedValue(new Error('rls'))
+    const out = await fetchMercuryJobAllocationsWithAttributionForJob('j1', 'x')
+    expect(out).toHaveLength(4)
+    expect(out.every((r) => r.isFuel === false)).toBe(true)
   })
 })

@@ -149,6 +149,7 @@ describe('fetchJobMaterialsCostSnapshot', () => {
       cardExclusions: EMPTY_CARD_CHARGE_EXCLUSIONS,
       cardCostLines: [],
       cardTagByTxId: new Map(),
+      cardFuelTxIds: new Set(),
       tallyPartLines: [],
       tallyFetchFailed: false,
     })
@@ -290,6 +291,19 @@ describe('the Job window’s fuel line — the snapshot splits the card charges 
     expect(snap.cardCostLines).toEqual([{ tagId: 'fuel', name: 'Fuel & gas', icon: '⛽', color: 'amber', usd: 60 }])
     expect(snap.cardTagByTxId?.get('tx-gas')?.id).toBe('fuel')
     expect(snap.cardTagByTxId?.has('tx-pipe')).toBe(false)
+    // The cost timeline's ⛽ stream (punch list #52) — the fuel family's tag, by name when unseeded.
+    expect([...(snap.cardFuelTxIds ?? [])]).toEqual(['tx-gas'])
+  })
+
+  it('names the fuel even when the office does not draw the fuel tag as a cost line', async () => {
+    categoryTags.mockResolvedValue({ tags: [{ ...FUEL, show_as_cost_line: false, default_key: 'fuel_vehicle' }], members: [{ tag_id: 'fuel', bank_category: 'Fuel', label_id: null }] })
+    route = (_k, name) =>
+      name === 'mercury_transaction_job_allocations'
+        ? [{ id: 'g1', amount: -60, note: null, mercury_transaction_id: 'tx-gas', mercury_transactions: { posted_at: null, counterparty_name: 'Shell', amount: -60, raw: null, mercury_category: 'Fuel' } }]
+        : (full[name] ?? [])
+    const snap = await fetchJobMaterialsCostSnapshot('j1')
+    expect(snap.cardCostLines).toEqual([])
+    expect([...(snap.cardFuelTxIds ?? [])]).toEqual(['tx-gas'])
   })
 
   it('a label beats the bank category', async () => {

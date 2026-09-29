@@ -148,8 +148,10 @@ const statementRowsHtml = (rows: GcReviewGroup['rows']): string =>
   rows
     .map((r) => {
       const { lead, sub } = gcStatementRowLabel(r.jobAddress, r.jobName, r.hcp)
+      // The line under the bill (v2.4100): what paid it — mirror of render.ts `rowPaidBy`.
+      const paidBy = (r.paidBy ?? '').trim()
       return `<tr>
-        <td style="padding:7px 6px;border-bottom:1px solid #e5e7eb;font-size:14px;color:#111827;line-height:1.3">${escapeHtml(lead)}${sub ? `<br /><span style="font-size:11px;color:#6b7280">${escapeHtml(sub)}</span>` : ''}</td>
+        <td style="padding:7px 6px;border-bottom:1px solid #e5e7eb;font-size:14px;color:#111827;line-height:1.3">${escapeHtml(lead)}${sub ? `<br /><span style="font-size:11px;color:#6b7280">${escapeHtml(sub)}</span>` : ''}${paidBy ? `<br /><span style="font-size:11px;color:#6b7280">${escapeHtml(paidBy)}</span>` : ''}</td>
         <td style="padding:7px 6px;border-bottom:1px solid #e5e7eb;font-size:14px;color:#111827;white-space:nowrap;vertical-align:top">${escapeHtml(r.referenceDateDisplay)}</td>
         <td style="padding:7px 6px;border-bottom:1px solid #e5e7eb;font-size:14px;color:#111827;text-align:right;vertical-align:top">$${formatCurrency(r.remaining)}</td>
       </tr>`
@@ -158,7 +160,8 @@ const statementRowsHtml = (rows: GcReviewGroup['rows']): string =>
 
 const statementRowText = (r: GcReviewGroup['rows'][number]): string => {
   const { lead, sub } = gcStatementRowLabel(r.jobAddress, r.jobName, r.hcp)
-  return `- ${lead}${sub ? ` (${sub})` : ''} — billed ${r.referenceDateDisplay} — $${formatCurrency(r.remaining)}`
+  const paidBy = (r.paidBy ?? '').trim()
+  return `- ${lead}${sub ? ` (${sub})` : ''} — billed ${r.referenceDateDisplay} — $${formatCurrency(r.remaining)}${paidBy ? ` — ${paidBy}` : ''}`
 }
 
 const statementTableHeadHtml = `<thead><tr>

@@ -719,3 +719,27 @@ describe('newestPercentEvent / buildJobManualPercentEvents (v2.3372)', () => {
     expect(sep.hasReportMarker).toBe(false)
   })
 })
+
+describe('buildJobChargeEvents — fuel is its own stream (punch list #52)', () => {
+  it('a card charge in the fuel tag is a ⛽ event on the day it was bought; a refund is negative', async () => {
+    const { buildJobChargeEvents, JOB_CHARGE_SOURCE_META } = await import('./jobChargesTimeline')
+    const events = buildJobChargeEvents({
+      teamLaborBreakdown: [],
+      subLabor: [],
+      mercury: [
+        { dateKey: '2026-09-02', amount: 60, counterpartyName: 'Shell', attributionDisplayName: 'Al', fuel: true },
+        { dateKey: '2026-09-03', amount: 100, counterpartyName: 'Ferguson', attributionDisplayName: null },
+        { dateKey: '2026-09-04', amount: -15, counterpartyName: 'Ferguson', attributionDisplayName: null, fuel: false },
+      ],
+      supplyHouse: [],
+      tallyParts: [],
+      billedMaterials: [],
+    })
+    expect(events.map((e) => [e.source, e.dateKey, e.amount, e.label])).toEqual([
+      ['fuel', '2026-09-02', 60, 'Shell (Al)'],
+      ['mercury_card', '2026-09-03', 100, 'Ferguson'],
+      ['mercury_card', '2026-09-04', -15, 'Ferguson'],
+    ])
+    expect(JOB_CHARGE_SOURCE_META.fuel).toEqual({ icon: '⛽', name: 'Fuel' })
+  })
+})

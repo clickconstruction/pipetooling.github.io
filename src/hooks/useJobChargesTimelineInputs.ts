@@ -11,6 +11,7 @@ import {
   type JobValueEvent,
 } from '../lib/jobChargesTimeline'
 import { fetchJobMaterialsCostSnapshot } from '../lib/fetchJobMaterialsCostSnapshot'
+import { cardEventRowsFromSnapshotLines } from '../lib/jobs/jobCardChargeEvents'
 import { resolveJobCurrentPercentFallback } from '../lib/jobSummaryPercentComplete'
 import { fetchTeamLaborBreakdownForJob } from '../utils/teamLabor'
 import { laborJobSubCost } from '../lib/jobs/subLaborCost'
@@ -124,12 +125,14 @@ export function useJobChargesTimelineInputs(job: JobWithDetails, includeTeamLabo
             ),
             assignedToName: lj.assigned_to_name ?? '',
           })),
-          mercury: snapshot.mercuryAllocLines.map((m) => ({
-            dateKey: toYmd(m.postedAt),
-            amount: Math.abs(Number(m.allocationAmount)),
-            counterpartyName: m.counterpartyName,
-            attributionDisplayName: null,
-          })),
+          // The one card rule (Internal Transfers out, an invoice-linked charge counted once), each at
+          // its signed cost so a refund comes off — the Costs card's parts figure (v2.4059); fuel is
+          // its own ⛽ stream, dated by the day it was bought (punch list #52).
+          mercury: cardEventRowsFromSnapshotLines(snapshot.mercuryAllocLines, {
+            exclusions: snapshot.cardExclusions,
+            fuelTxIds: snapshot.cardFuelTxIds,
+            toYmd,
+          }),
           supplyHouse: snapshot.supplyInvoiceLines.map((l) => ({
             dateKey: toYmd(l.invoiceDate),
             allocatedAmount: l.allocatedAmount,
