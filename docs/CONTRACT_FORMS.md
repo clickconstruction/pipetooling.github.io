@@ -5,11 +5,17 @@ file: docs/CONTRACT_FORMS.md
 type: Specialist
 purpose: How a Contract Book entry becomes a fillable form (an uploaded PDF plus dev-placed entry boxes), the FormSchema reference, the agent workflow for drafting a form from a PDF, and the out-of-band storage setup.
 audience: Developers, AI Agents
-last_updated: 2026-09-05
+last_updated: 2026-09-29
 key_sections:
   - name: "What a form is"
   - name: "FormSchema reference"
   - name: "Agent workflow: draft a form from a PDF"
+  - name: "Enter from paper"
+  - name: "Two-party forms: the office section"
+  - name: "Forms Click authors itself"
+  - name: "New revisions of a form"
+  - name: "The Form Studio"
+  - name: "The signer's page"
   - name: "Fill semantics"
   - name: "Storage (out-of-band)"
   - name: "Files"
@@ -127,7 +133,7 @@ The shipped I-9 schema is `docs/forms/i9-2025-01.schema.json` (Section 1 = signe
 
 Not every form is somebody else's PDF. `npm run forms:author` (`scripts/forms/author/`) builds Click's own forms from source: `lib.ts` is a small page model on pdf-lib (letterhead, title, wrapped paragraphs, labelled field rows, inline checkbox rows, signature blocks) that records every box it draws into a `FormSchema`, so the PDF and the schema are produced together and cannot disagree. `company.ts` holds the company block (name, tagline, address) printed on each; change it, re-run, re-upload in the studio. Outputs are committed under `docs/forms/authored/` so the exact PDF a person signed is always re-creatable.
 
-Shipped sources: **Direct Deposit Authorization** (`directDeposit.ts`; routing and account numbers sensitive) and the **four Texas statutory lien waivers** (`lienWaivers.ts`; Tex. Prop. Code § 53.284(b)–(e) verbatim, each statutory blank a box with its caption under the underline; `paragraphWithBlanks` wraps text around unbreakable blanks; on the unconditional forms the notice is bold at the page's largest type size, per (c)(1) / (e)(1)). They are written for a **subcontractor signing to Click** (maker of check and person contracted with = constants; payee and company name prefill from the roster). Publishing is the studio's normal import.
+Shipped sources: **Direct Deposit Authorization** (`directDeposit.ts`; routing and account numbers sensitive) and the **four Texas statutory lien waivers** (`lienWaivers.ts`; Tex. Prop. Code § 53.284(b)–(e) verbatim, each statutory blank a box with its caption under the underline; `paragraphWithBlanks` wraps text around unbreakable blanks; on the unconditional forms the notice is bold at the page's largest type size, per (c)(1) / (e)(1)). They are written for a **subcontractor signing to Click** (maker of check and person contracted with = constants; payee and company name prefill from the roster). Published through the studio's normal import: the Direct Deposit Authorization on 2026-09-06, the four lien waivers on 2026-09-07 into a **Lien waivers** packet (audience sub, no assignees). A waiver is sent from the sub's pay row — Jobs → Sub labor → **Lien waiver…** ([`LienWaiverSendModal`](../src/components/jobs/LienWaiverSendModal.tsx), kernel [`lienWaiverPick.ts`](../src/lib/subWorkOrders/lienWaiverPick.ts), v2.3062) picks the § 53.284 form from whether the money has landed and whether the payment is final, warns on the unconditional pair, and seeds the sub's boxes by writing `form_values` on the unsent row; guide `send-a-lien-waiver.md`.
 
 ## New revisions of a form
 
@@ -135,11 +141,11 @@ When the IRS (or anyone) issues a new PDF: open the form in the studio, **Replac
 
 ## The Form Studio (dev-only)
 
-People → Contracts → Contract library → **Forms** (`src/components/contracts/formStudio/`). `FormStudio` lists `contract_form_templates` and creates one from an uploaded PDF (`readPdfFields` → optional `mergeDraftedFields` → `createFormTemplate`, which uploads to the private bucket and inserts the row). `FormStudioEditor` renders the page (`PdfPageCanvas`, pdf.js) under `FormBoxLayer` (drag / resize / multi-select) beside `FormBoxInspector`; every schema change goes through `src/lib/forms/formStudioState.ts`. Toolbar: add by type, Import PDF fields, Merge → digits, Import / Export JSON (the same `FormSchema` the scripts produce), Replace PDF, Preview filled PDF (client-side `fillFormPdf`), Save, Publish (packet + document name + audience → one Book entry per template via `publishFormTemplate`). Guide: `build-a-fillable-form.md`.
+People → Contracts → Contract library → **Forms** (`src/components/contracts/formStudio/`). `FormStudio` lists `contract_form_templates` and creates one from an uploaded PDF (`readPdfFields` → optional `mergeDraftedFields` → `createFormTemplate`, which uploads to the private bucket and inserts the row). `FormStudioEditor` renders the page (`PdfPageCanvas`, pdf.js) under `FormBoxLayer` (drag / resize / multi-select) beside `FormBoxInspector`; every schema change goes through `src/lib/forms/formStudioState.ts`. Toolbar: add by type, Import PDF fields, Merge → digits, Import / Export JSON (the same `FormSchema` the scripts produce), Replace PDF, Preview filled PDF (client-side `fillFormPdf`), Save, Publish (packet + document name + audience → one Book entry per template via `publishFormTemplate`). The editor keeps unsaved edits (schema, name, revision, doc type, keyed by the template) across the app's auto-reload through `src/lib/reloadDraft.ts` (v2.3742). Guide: `build-a-fillable-form.md`.
 
 ## The signer's page (fill on the document)
 
-`/contract/accept?t=…` (`src/pages/ContractAccept.tsx`) asks `get-contract-for-signer`; a form row comes back with `form: { schema, templateUrl, person, todayLabel }` and renders `ContractFormFill` (`src/components/contracts/formFill/`) instead of the prose body: every page via `PdfPageCanvas` at a fit-to-width scale, `FormFillOverlay` inputs at the boxes' rects, a phone lens under 760 px (`lensSequence`, Back / Next, progress, rarely-needed expander), an English / Español toggle (`labelEs` / `helpEs` + `fillString`). Values are prefilled from the roster (`applyPrefill`), validated client-side (`validateFormValues` → `errorsByBox`), and posted to `accept-contract` as `formValues` with the signature; the function validates again, fills, flattens, files, and stores only non-sensitive values. Kernel: `src/lib/forms/formFillState.ts`. Guide: `fill-and-sign-a-form-on-my-phone.md`.
+`/contract/accept?t=…` (`src/pages/ContractAccept.tsx`) asks `get-contract-for-signer`; a form row comes back with `form: { schema, templateUrl, person, todayLabel }` and renders `ContractFormFill` (`src/components/contracts/formFill/`) instead of the prose body: every page via `PdfPageCanvas` at a fit-to-width scale, `FormFillOverlay` inputs at the boxes' rects, a phone lens under 760 px (`lensSequence`, Back / Next, progress, rarely-needed expander), an English / Español toggle (`labelEs` / `helpEs` + `fillString`). Values are prefilled from the roster (`applyPrefill`) over the non-sensitive `form_values` an office surface wrote on the unsent row (returned as `form.values`, v2.3062 — how the lien-waiver picker seeds the sub's boxes; the signer may change any of them), validated client-side (`validateFormValues` → `errorsByBox`), and posted to `accept-contract` as `formValues` with the signature; the function validates again, fills, flattens, files, and stores only non-sensitive values. The signature form carries the ESIGN / Texas UETA consent line (v2.3118, `src/lib/esignConsent.ts`; *this form* / *este formulario*), and the words the signer saw are stored on `esign_consents` with the signed row. Kernel: `src/lib/forms/formFillState.ts`. Guide: `fill-and-sign-a-form-on-my-phone.md`.
 
 ## Fill semantics
 
@@ -184,3 +190,7 @@ create policy "Devs manage contract form templates" on storage.objects
 | `src/components/contracts/formFill/*`, `src/lib/forms/formFillState.ts` | Signer's fill-on-the-document mode (PR 3) |
 | `src/lib/forms/formRecord.ts`, `PersonContractSignedRecordModal.tsx`, `supabase/functions/open-contract-form-pdf/` | Staff record + gated, logged PDF open (PR 4) |
 | `src/lib/forms/formStudioState.ts`, `src/lib/forms/formTemplateRepo.ts` | Studio kernel + data access (PR 2) |
+| `supabase/functions/contract-form-paper-entry/`, `src/lib/forms/formPaperEntry.ts`, `ContractFormPaperEntryModal.tsx`, migration `20260905010500_contract_form_paper_entry.sql` | Enter from paper (PR 6) |
+| `supabase/functions/_shared/formParties.ts`, `supabase/functions/complete-contract-form-office/`, `ContractFormOfficeModal.tsx`, migrations `20260905013000_contract_form_office_section.sql` + `20260905020000_contract_form_office_attested.sql` | Two-party forms + the office flow (PR 7–8) |
+| `scripts/forms/author/`, `docs/forms/authored/` | Forms Click authors itself (PR 10) |
+| `src/lib/subWorkOrders/lienWaiverPick.ts`, `src/components/jobs/LienWaiverSendModal.tsx` | The pay-row lien-waiver picker that seeds a form's boxes (v2.3062) |
