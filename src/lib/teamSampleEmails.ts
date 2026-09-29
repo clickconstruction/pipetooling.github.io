@@ -16,6 +16,7 @@ import { moneyWaitingEmailSubject, moneyWaitingEmailText, renderMoneyWaitingEmai
 import { buildCrewDayEmailView, crewDayEmailSubject, crewDayEmailText, renderCrewDayEmail, type CrewDayEmailPayload } from '../../supabase/functions/_shared/crewDayEmail'
 import { paymentForecastEmailSubject, paymentForecastEmailText, renderPaymentForecastEmail, type ForecastEmailPayload } from '../../supabase/functions/_shared/paymentForecastEmail'
 import { billedReportEmailSubject, billedReportEmailText, renderBilledReportEmail, type BilledReportPayload, type BilledReportRow } from '../../supabase/functions/_shared/billedReportEmail'
+import { renderWeeklyMoneyHtml, renderWeeklyMoneyText, weekLabelFromMonday, weeklyMoneySubject, type WeeklyMoneyPayload } from '../../supabase/functions/_shared/weeklyMoneyEmail'
 
 export type BuiltTeamEmail = { subject: string; html: string; text: string }
 
@@ -229,9 +230,57 @@ export function sampleBilledReportPayload(todayYmd: string): BilledReportPayload
   }
 }
 
+/** The Monday of the week that holds `ymd` (YYYY-MM-DD). */
+export function mondayOf(ymd: string): string {
+  const d = new Date(`${ymd}T12:00:00Z`)
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7))
+  return d.toISOString().slice(0, 10)
+}
+
+/** The Weekly money movement payload (lift 5): a week where two jobs made money, one lost, one has no report yet, plus the office's overhead. */
+export function sampleWeeklyMoneyPayload(weekMonday: string): WeeklyMoneyPayload {
+  const end = new Date(`${weekMonday}T12:00:00Z`)
+  end.setUTCDate(end.getUTCDate() + 6)
+  const job = (id: string, hcp: string, name: string, address: string, revenue: number | null, costs: Partial<Record<'labor_cost' | 'sub_cost' | 'mercury_cost' | 'supply_cost' | 'tally_cost' | 'other_cost' | 'payments_in', number>>, pctStart: number | null, pctEnd: number | null, source: string | null = 'report') => ({
+    job_id: id,
+    hcp_number: hcp,
+    click_number: null,
+    job_name: name,
+    job_address: address,
+    revenue,
+    labor_cost: costs.labor_cost ?? 0,
+    sub_cost: costs.sub_cost ?? 0,
+    mercury_cost: costs.mercury_cost ?? 0,
+    supply_cost: costs.supply_cost ?? 0,
+    tally_cost: costs.tally_cost ?? 0,
+    other_cost: costs.other_cost ?? 0,
+    payments_in: costs.payments_in ?? 0,
+    pct_start: pctStart,
+    pct_end: pctEnd,
+    pct_end_source: source,
+  })
+  return {
+    week_monday: weekMonday,
+    week_end: end.toISOString().slice(0, 10),
+    jobs: [
+      job('job-1', '1041', 'Cedar Bend Apartments — rough-in', '2530 Cedar Bend Dr, Kyle, TX 78640', 86_000, { labor_cost: 6_420, supply_cost: 3_180, payments_in: 26_000 }, 40, 55),
+      job('job-3', '1054', 'Water heater replacement', SAMPLE_HOMEOWNER.address, 4_380, { labor_cost: 640, supply_cost: 1_210, payments_in: 4_380 }, 0, 100),
+      job('job-5', '1057', 'Hunter Homes — gas line', '77 Hunter Loop, Kyle, TX 78640', 18_900, { labor_cost: 2_980, sub_cost: 1_500, mercury_cost: 420 }, 20, 25),
+      job('job-4', '1039', 'Structura — pretest', '901 Structura Way, Buda, TX 78610', 12_640, { labor_cost: 380 }, 60, null, null),
+    ],
+    overhead: { office_labor_hours: 38, office_labor_cost: 1_520, office_job_charges: 210, bid_labor_hours: 11, bid_labor_cost: 495 },
+  }
+}
+
 export function buildTeamSampleEmail(id: TeamSampleEmailId, ctx: TeamSampleContext): BuiltTeamEmail {
   const origin = ctx.origin
   switch (id) {
+    case 'weekly_money': {
+      const monday = mondayOf(ctx.todayYmd)
+      const p = sampleWeeklyMoneyPayload(monday)
+      const week = weekLabelFromMonday(monday)
+      return { subject: weeklyMoneySubject(week), html: renderWeeklyMoneyHtml(p, week, ctx.sender?.name || undefined), text: renderWeeklyMoneyText(p, week) }
+    }
     case 'billed_awaiting': {
       const p = sampleBilledReportPayload(ctx.todayYmd)
       return { subject: billedReportEmailSubject(p), html: renderBilledReportEmail(p, origin, ctx.sender?.name || undefined), text: billedReportEmailText(p, origin) }
