@@ -69,7 +69,8 @@ describe('parseCountsImportText', () => {
     expect(skippedCount).toBe(0)
     expect(rows).toEqual([
       { fixture: 'Water Closet', count: 12, group_tag: null, page: '1, 2, 3', unit: 'ea' },
-      { fixture: '[Rough-In] ft of 2in Copper', count: 148.5, group_tag: null, page: '1, 2', unit: 'ft' },
+      // v2.4188: the [Group] prefix is lifted into group_tag and taken off the name.
+      { fixture: 'ft of 2in Copper', count: 148.5, group_tag: 'Rough-In', page: '1, 2', unit: 'ft' },
       { fixture: 'ft of 4in PVC', count: 60, group_tag: null, page: '3', unit: 'ft' },
     ])
   })
@@ -116,5 +117,53 @@ describe('parseCountsImportText', () => {
   it('still imports a fixture whose name merely starts with dashes', () => {
     const { rows } = parseCountsImportText('--- not a heading\t3')
     expect(rows).toHaveLength(1)
+  })
+})
+
+describe('groups and alternates from CountTooling (v2.4188)', () => {
+  it('lifts the [Group] prefix into group_tag and takes it off the fixture, in 3- and 4-column rows', () => {
+    const { rows } = parseCountsImportText('[Restroom A] WC\t4\t2\n[Restroom A] ft of 2" PVC\t112.00\t2\n[LP-1 / 7] Duplex Receptacle\t2\t\tE2.1')
+    expect(rows.map((r) => [r.fixture, r.group_tag, r.page, r.unit])).toEqual([
+      ['WC', 'Restroom A', '2', 'ea'],
+      ['ft of 2" PVC', 'Restroom A', '2', 'ft'],
+      ['Duplex Receptacle', 'LP-1 / 7', 'E2.1', 'ea'],
+    ])
+  })
+
+  it('an explicit 4-column group wins over the prefix; an empty bracket leaves the group null', () => {
+    const { rows } = parseCountsImportText('[Old] WC\t4\tRiser 2\t2\n[] LAV\t3\t2')
+    expect(rows.map((r) => [r.fixture, r.group_tag])).toEqual([['WC', 'Riser 2'], ['LAV', null]])
+  })
+
+  it('reads the --- Alternate: <name> --- block: its rows join the group, the name is reported once, a blank line ends it', () => {
+    const text = [
+      '--- Counts, Sunridge Dental · every sheet ---',
+      '[Restroom A] WC\t4\t2',
+      'WH\t1\t1',
+      '',
+      '--- Alternate: Break room ---',
+      '[Break room] WC\t1\t3',
+      'LAV\t1\t3',
+      '',
+      '--- Alternate: break room ---',
+      '[Break room] ft of 2" PVC\t48.50\t3',
+      '',
+      'View link:\thttps://counttooling.com/app/?t=12345678-1234-1234-1234-123456789abc',
+    ].join('\n')
+    const out = parseCountsImportText(text)
+    expect(out.alternateGroups).toEqual(['Break room'])
+    expect(out.rows.map((r) => [r.fixture, r.group_tag])).toEqual([
+      ['WC', 'Restroom A'],
+      ['WH', null],
+      ['WC', 'Break room'],
+      ['LAV', 'Break room'],
+      ['ft of 2" PVC', 'Break room'],
+    ])
+    expect(out.skippedCount).toBe(0)
+    expect(out.sourceLink).toContain('t=12345678')
+  })
+
+  it('a text with no alternate reports none', () => {
+    expect(parseCountsImportText('WC\t4\t2').alternateGroups).toEqual([])
   })
 })

@@ -899,6 +899,8 @@ Quantity entry for a fixture or tie-in in a bid. Stored in Counts tab. Uses free
 
 **Note**: Unlike labor/price books, count rows use free text `fixture` field (not FK) to allow flexible field notes
 
+**Group and alternate** (v2.4188): `group_tag` is the row's group — CountTooling's `[Group] ` prefix lifted off the name on import, or typed in the sheet's Group cell. A group named in **`bids.alternate_group_tags`** is an **alternate**: the section a customer wants priced with and without, marked by CountTooling's `--- Alternate: <name> ---` heading or the Count Sheet's By group switch; membership is by name, trimmed and case-insensitive (`isAlternateRow`, `alternateScopeKey` in `src/lib/bids/countSheet.ts`). The same fixture may sit in the base and in an alternate as two rows; Takeoffs, Labor, Pricing and the Cover Letter price the bid as the base plus what each alternate adds.
+
 **Unit** (v2.2113): a count row's `count` is a tally (**ea**) or a length (**ft**; **px** = unscaled CountTooling run; **sqft**). Stored in `bids_count_rows.unit` (nullable; NULL = read from the name convention `ft of …` / `feet of …` / `… per ft` by `src/lib/bids/countRowUnit.ts` — `effectiveCountUnit(row)` is the one reader); importer stamps it, editors pin it; totals are kept per unit and never summed across units
 
 ### Rough In

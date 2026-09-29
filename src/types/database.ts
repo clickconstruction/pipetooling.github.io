@@ -2917,6 +2917,7 @@ export type Database = {
           address: string | null
           adopted_into_bid_id: string | null
           agreed_value: number | null
+          alternate_group_tags: string[]
           backtest_axis: string | null
           bid_date_sent: string | null
           bid_date_sent_ack_email_at: string | null
@@ -3001,6 +3002,7 @@ export type Database = {
           address?: string | null
           adopted_into_bid_id?: string | null
           agreed_value?: number | null
+          alternate_group_tags?: string[]
           backtest_axis?: string | null
           bid_date_sent?: string | null
           bid_date_sent_ack_email_at?: string | null
@@ -3085,6 +3087,7 @@ export type Database = {
           address?: string | null
           adopted_into_bid_id?: string | null
           agreed_value?: number | null
+          alternate_group_tags?: string[]
           backtest_axis?: string | null
           bid_date_sent?: string | null
           bid_date_sent_ack_email_at?: string | null
