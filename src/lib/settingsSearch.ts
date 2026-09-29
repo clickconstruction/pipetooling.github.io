@@ -32,6 +32,8 @@ export type SettingsSearchEntry = {
 export const SETTINGS_SEARCH_INDEX: readonly SettingsSearchEntry[] = [
   // What customers see (v2.2758)
   { label: 'What customers see', keywords: ['customer view', 'sample customer', 'estimate email preview', 'bid room preview', 'portal preview', 'journeys', 'what the customer sees'], tabId: 'settings-what-customers-see' },
+  // What the team sees (v2.4142)
+  { label: 'What the team sees', keywords: ['team emails', 'staff emails', 'digest preview', 'crew day preview', 'money waiting preview', 'what does a controller get', 'who gets which email', 'sign-in email preview', 'invitation preview', 'workflow notification preview', 'email subjects'], tabId: 'settings-what-the-team-sees' },
   // Contracts & terms
   { label: 'Contracts & terms', keywords: ['contract', 'contracts', 'terms and conditions', 'legal wording', 'agreement', 'warranty', 'exclusions', 'what we send', 'side by side', 'compare contracts', 'lien waiver', 'esign', 'electronic signature'], tabId: 'settings-contracts' },
   { label: 'Estimate Terms and Conditions', keywords: ['estimate terms', 'public terms', 'terms page'], tabId: 'settings-contracts', anchorId: 'settings-contract-estimate-terms' },

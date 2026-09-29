@@ -182,6 +182,15 @@ describe('resolveContractTexts', () => {
     expect(resolveContractTexts(entry('estimate-terms-box'), EMPTY)).toMatchObject([{ status: 'per_record', text: '' }])
   })
 
+  it('the website terms are a copy of a page kept elsewhere, dated by the day it was copied (v2.4135)', () => {
+    const [t] = resolveContractTexts(entry('website-terms'), EMPTY)
+    expect(t).toMatchObject({ key: 'website-terms', status: 'external', versionLabel: 'copied Sep 29, 2026', doc: null })
+    expect(t?.text).toContain('Venue for any legal action shall lie exclusively in Guadalupe County, Texas.')
+    expect(contractSourceLine(entry('website-terms'))).toBe('A page Housecall Pro hosts. The wording here is a copy, copied Sep 29, 2026; open the live page to read it as it stands today.')
+    expect(contractEditAction(entry('website-terms'), t!, 'assistant')).toMatchObject({ kind: 'link', label: 'Open the live page', href: 'https://pro.housecallpro.com/ClickPlumbing/712596/terms' })
+    expect(entry('website-terms').area).toBe('website')
+  })
+
   it('wording kept in a Settings form is not called fixed', () => {
     expect(resolveContractTexts(entry('invoice-footers'), EMPTY)).toMatchObject([{ status: 'in_settings', text: '', versionLabel: null }])
     expect(contractSourceLine(entry('invoice-footers'))).toContain('Footer presets in Settings')
@@ -259,9 +268,10 @@ describe('the count', () => {
     const data: ContractCatalogData = { settings: new Map([['bid_cover_letter_terms_default_v1', 'Net 30.']]), bookDocs: [doc()] }
     const texts = ['bid-terms', 'bid-exclusions', 'estimate-terms', 'job-standard-terms', 'esign-consent', 'estimate-terms-box'].flatMap((id) => resolveContractTexts(entry(id), data))
     const c = contractCatalogCounts(texts)
-    expect(c).toEqual({ texts: 6, yours: 2, builtIn: 1, blank: 1, fixed: 1, perRecord: 1, inSettings: 0, dated: 2 })
+    expect(c).toEqual({ texts: 6, yours: 2, builtIn: 1, blank: 1, fixed: 1, perRecord: 1, inSettings: 0, external: 0, dated: 2 })
     expect(contractCountsLine(c)).toBe('6 texts · 2 your wording · 1 built-in · 1 with nothing set · 1 fixed in the app · 1 typed each time · 2 dated')
-    expect(contractCountsLine({ texts: 2, yours: 0, builtIn: 1, blank: 0, fixed: 0, perRecord: 0, inSettings: 1, dated: 0 })).toBe('2 texts · 1 built-in · 1 set in Settings · 0 dated')
+    expect(contractCountsLine({ texts: 2, yours: 0, builtIn: 1, blank: 0, fixed: 0, perRecord: 0, inSettings: 1, external: 0, dated: 0 })).toBe('2 texts · 1 built-in · 1 set in Settings · 0 dated')
+    expect(contractCountsLine({ texts: 1, yours: 0, builtIn: 0, blank: 0, fixed: 0, perRecord: 0, inSettings: 0, external: 1, dated: 1 })).toBe('1 text · 1 hosted elsewhere · 1 dated')
   })
 })
 

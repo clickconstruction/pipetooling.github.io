@@ -6,7 +6,7 @@
 import type { JourneyStep } from '../customerJourneys'
 import type { PaperSample } from './paperSamples'
 
-export type SampleEmails = Record<string, { subject: string; html: string; text: string }>
+export type SampleEmails = Record<string, { subject: string; html: string; text: string; /** The From line the inbox shows (v2.4138). */ from?: string }>
 
 export type StepFrame = { key: string; attrs: { src?: string; srcDoc?: string; sandbox?: string; title: string } }
 

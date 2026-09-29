@@ -328,6 +328,7 @@ function ExpandedStep(props: { step: JourneyStep; journeyId: JourneyId; device: 
     <div id="wcs-expanded-step" style={{ marginTop: '0.75rem', border: '1px solid var(--border-blue)', borderRadius: 10, padding: '0.75rem 0.9rem', background: 'var(--surface)', scrollMarginTop: '0.75rem' }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 0.9rem', alignItems: 'center', marginBottom: '0.6rem', fontSize: '0.8rem' }}>
         <strong style={{ color: 'var(--text-strong)' }}>{step.label}</strong>
+        {email?.from ? <span style={{ color: 'var(--text-700)' }} title="The sender the inbox shows — the company, not the software">From: {email.from}</span> : null}
         {email ? <span style={{ color: 'var(--text-700)' }}>Subject: {email.subject}</span> : null}
         {paper?.subject ? <span style={{ color: 'var(--text-700)' }}>Subject: {paper.subject}</span> : null}
         {paper ? <OpenPdfButton paper={paper} /> : null}

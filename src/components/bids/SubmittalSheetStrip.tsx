@@ -8,6 +8,8 @@
  * Presentational: the host owns the data and writes.
  */
 import { useMemo, useState, type CSSProperties } from 'react'
+import { RobotOffer } from './RobotOffer'
+import type { RobotSeatState } from '../../lib/submittals/robotOffer'
 
 import { conflicts, describeFooter, keptPages, tagsWithoutSheets } from '../../lib/submittals/sheetAssignment'
 import { formatShortDate, needsSheet, type SourceFile, type SubmittalItemRow } from '../../lib/submittals/submittalRevision'
@@ -32,6 +34,7 @@ export function SubmittalSheetStrip({
   robotLines,
   confirmLabels,
   onAskRobot,
+  robotSeat,
   onConfirmGuesses,
   onAssignPages,
 }: {
@@ -52,6 +55,8 @@ export function SubmittalSheetStrip({
   /** 6b · "Confirm 14 · pick 2" per file when a result waits. */
   confirmLabels?: Record<number, string>
   onAskRobot?: (fileIndex: number) => void
+  /** v2.4136 · the offer draws only while a seat is live; without it no offer is drawn at all. */
+  robotSeat?: RobotSeatState
   onConfirmGuesses?: (fileIndex: number) => void
   /** v2.4143 · opens the Assign pages walk for the file. */
   onAssignPages?: (fileIndex: number) => void
@@ -88,11 +93,7 @@ export function SubmittalSheetStrip({
                     Assign pages…
                   </button>
                 ) : null}
-                {onAskRobot && !trimmed && !robotLines?.[fileIndex] ? (
-                  <button type="button" disabled={busy} onClick={() => onAskRobot(fileIndex)} style={{ ...btn, borderStyle: 'dashed', color: 'var(--text-muted)' }} title="The robot reads every page and guesses each sheet's tag; you confirm">
-                    Ask the robot to split this file
-                  </button>
-                ) : null}
+                {onAskRobot && robotSeat && !trimmed && !robotLines?.[fileIndex] ? <RobotOffer kind="file_cut_sheets" seat={robotSeat} busy={busy} onAsk={() => onAskRobot(fileIndex)} testId={`ask-robot-split-${fileIndex}`} /> : null}
                 {thumbs === undefined || thumbs === 'error' ? (
                   <button type="button" onClick={() => onNeedThumbnails(fileIndex)} style={btn}>
                     {thumbs === 'error' ? 'Try the pages again' : 'Show the pages'}

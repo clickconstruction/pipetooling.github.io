@@ -28,6 +28,7 @@ import { DEFAULT_JOB_CONTRACT_TERMS_PLAIN, paymentTermsSentence } from '../jobs/
 import { ESIGN_CONSENT_VERSION, esignConsentText } from '../esignConsent'
 import { effectiveBookVersionPlainDate } from '../contractBookVersionDate'
 import { formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
+import { WEBSITE_TERMS_COPIED_YMD, WEBSITE_TERMS_HOSTED_BY, WEBSITE_TERMS_TEXT, WEBSITE_TERMS_URL, copiedLabel } from './websiteTerms'
 
 export const CONTRACTS_TAB_ID = 'settings-contracts'
 /** Every card's DOM id, and the hash a deep link lands on: `#settings-contract-<entry id>`. */
@@ -45,9 +46,10 @@ export const CONTRACT_GROUP_HINTS: Readonly<Record<ContractCatalogGroup, string>
   notice: 'Wording we send that binds or informs a customer and that they do not sign.',
 }
 
-export type ContractCatalogArea = 'estimates' | 'bids' | 'jobs' | 'signing' | 'billing' | 'liens'
+export type ContractCatalogArea = 'website' | 'estimates' | 'bids' | 'jobs' | 'signing' | 'billing' | 'liens'
 
 export const CONTRACT_AREA_LABELS: Readonly<Record<ContractCatalogArea, string>> = {
+  website: 'Website',
   estimates: 'Estimates',
   bids: 'Bids',
   jobs: 'Jobs',
@@ -56,13 +58,14 @@ export const CONTRACT_AREA_LABELS: Readonly<Record<ContractCatalogArea, string>>
   liens: 'Liens & collections',
 }
 
-export type ContractCatalogAudience = 'homeowner' | 'gc' | 'everyone' | 'owner'
+export type ContractCatalogAudience = 'homeowner' | 'gc' | 'everyone' | 'owner' | 'public'
 
 export const CONTRACT_AUDIENCE_LABELS: Readonly<Record<ContractCatalogAudience, string>> = {
   homeowner: 'Homeowner',
   gc: 'Contractor',
   everyone: 'Everyone who signs',
   owner: 'Property owner',
+  public: 'Anyone on the website',
 }
 
 /** Where the wording is kept. */
@@ -77,6 +80,8 @@ export type ContractTextSource =
   | { kind: 'per_record'; where: string; startsFrom: string }
   /** Set in a Settings block that has its own shape (presets, a form) — not one text this tab can print. */
   | { kind: 'settings_block'; where: string }
+  /** A page kept outside the app (the website's terms on Housecall Pro): `text` is a copy made on `copiedYmd`. */
+  | { kind: 'external'; url: string; hostedBy: string; text: string; copiedYmd: string }
 
 /** Where the wording is changed. */
 export type ContractEditDoor =
@@ -88,6 +93,8 @@ export type ContractEditDoor =
   | { kind: 'page'; to: string; label: string }
   /** Nowhere in the app. */
   | { kind: 'code'; note: string }
+  /** Another company's site holds it; the door opens the live page. */
+  | { kind: 'external'; url: string; note: string }
 
 export type ContractStepRef = { journeyId: JourneyId; stepId: string }
 
@@ -140,6 +147,20 @@ function lines(parts: ReadonlyArray<readonly [string, string]>): string {
 }
 
 export const CUSTOMER_CONTRACT_CATALOG: readonly ContractCatalogEntry[] = [
+  // ---- Website ----
+  {
+    id: 'website-terms',
+    name: 'Website Terms of Service (Housecall Pro)',
+    group: 'notice',
+    area: 'website',
+    audience: 'public',
+    what: 'The public Terms and Conditions the footer of clickplumbing.com links to as Terms of Service: the site\'s /terms page redirects to a page Housecall Pro hosts. The Estimate Terms and Conditions started from this text — tick Compare on both to read them side by side.',
+    customerAction: 'Reads it on the website; nothing is signed. It says it applies to every invoice, proposal and contract unless a signed agreement supersedes it.',
+    source: { kind: 'external', url: WEBSITE_TERMS_URL, hostedBy: WEBSITE_TERMS_HOSTED_BY, text: WEBSITE_TERMS_TEXT, copiedYmd: WEBSITE_TERMS_COPIED_YMD },
+    edit: { kind: 'external', url: WEBSITE_TERMS_URL, note: 'Edited in the Housecall Pro account, not in the app. The wording on this card is a copy; when the page changes, a dev copies the new wording in with the day it was copied.' },
+    copyKept: null,
+    seenOn: [],
+  },
   // ---- Estimates ----
   {
     id: 'estimate-terms',
@@ -474,7 +495,7 @@ export type ContractCatalogData = {
   bookDocs: readonly ContractBookDoc[]
 }
 
-export type ContractTextStatus = 'yours' | 'built_in' | 'blank' | 'fixed' | 'per_record' | 'in_settings'
+export type ContractTextStatus = 'yours' | 'built_in' | 'blank' | 'fixed' | 'per_record' | 'in_settings' | 'external'
 
 export const CONTRACT_STATUS_LABELS: Readonly<Record<ContractTextStatus, string>> = {
   yours: 'Your wording',
@@ -483,6 +504,7 @@ export const CONTRACT_STATUS_LABELS: Readonly<Record<ContractTextStatus, string>
   fixed: 'Fixed in the app',
   per_record: 'Typed each time',
   in_settings: 'Set in Settings',
+  external: 'Hosted elsewhere',
 }
 
 export type ResolvedContractText = {
@@ -541,6 +563,7 @@ export function resolveContractTexts(entry: ContractCatalogEntry, data: Contract
   }
   if (s.kind === 'code') return [{ ...base, key: entry.id, title: entry.name, text: s.text ?? '', status: 'fixed', versionLabel: s.version ?? null }]
   if (s.kind === 'settings_block') return [{ ...base, key: entry.id, title: entry.name, text: '', status: 'in_settings' }]
+  if (s.kind === 'external') return [{ ...base, key: entry.id, title: entry.name, text: s.text, status: 'external', versionLabel: copiedLabel(s.copiedYmd) }]
   return [{ ...base, key: entry.id, title: entry.name, text: '', status: 'per_record' }]
 }
 
@@ -551,6 +574,7 @@ export function contractSourceLine(entry: ContractCatalogEntry): string {
   if (s.kind === 'contract_book') return 'The Contract Book, as a customer document.'
   if (s.kind === 'code') return s.text == null ? 'Written in the app, around the facts of each record.' : 'Written in the app.'
   if (s.kind === 'settings_block') return `${s.where}.`
+  if (s.kind === 'external') return `A page ${s.hostedBy} hosts. The wording here is a copy, ${copiedLabel(s.copiedYmd)}; open the live page to read it as it stands today.`
   return `${s.where}. ${s.startsFrom}`
 }
 
@@ -568,6 +592,8 @@ export type ContractEditAction =
   | { kind: 'settings'; label: string; tabId: string; anchorId: string }
   | { kind: 'page'; label: string; to: string }
   | { kind: 'note'; text: string }
+  /** Opens another site in a new tab; `note` says where the wording is really edited. */
+  | { kind: 'link'; label: string; href: string; note: string }
 
 /** What the Edit door does for this viewer. */
 export function contractEditAction(entry: ContractCatalogEntry, text: ResolvedContractText, role: UserRole | null): ContractEditAction {
@@ -582,6 +608,7 @@ export function contractEditAction(entry: ContractCatalogEntry, text: ResolvedCo
     return { kind: 'settings', label: 'Open where it is edited', tabId: d.tabId, anchorId: d.anchorId }
   }
   if (d.kind === 'page') return { kind: 'page', label: d.label, to: d.to }
+  if (d.kind === 'external') return { kind: 'link', label: 'Open the live page', href: d.url, note: d.note }
   return { kind: 'note', text: d.note }
 }
 
@@ -625,11 +652,11 @@ export function toggleCompare(picked: readonly string[], key: string, max: numbe
 // The count, and the guard
 // ---------------------------------------------------------------------------
 
-export type ContractCatalogCounts = { texts: number; yours: number; builtIn: number; blank: number; fixed: number; perRecord: number; inSettings: number; dated: number }
+export type ContractCatalogCounts = { texts: number; yours: number; builtIn: number; blank: number; fixed: number; perRecord: number; inSettings: number; external: number; dated: number }
 
 export function contractCatalogCounts(texts: ReadonlyArray<ResolvedContractText>): ContractCatalogCounts {
   const n = (s: ContractTextStatus) => texts.filter((t) => t.status === s).length
-  return { texts: texts.length, yours: n('yours'), builtIn: n('built_in'), blank: n('blank'), fixed: n('fixed'), perRecord: n('per_record'), inSettings: n('in_settings'), dated: texts.filter((t) => t.versionLabel != null).length }
+  return { texts: texts.length, yours: n('yours'), builtIn: n('built_in'), blank: n('blank'), fixed: n('fixed'), perRecord: n('per_record'), inSettings: n('in_settings'), external: n('external'), dated: texts.filter((t) => t.versionLabel != null).length }
 }
 
 /** "12 texts · 3 your wording · 4 built-in · 1 with nothing set · 4 fixed in the app · 2 dated" */
@@ -641,6 +668,7 @@ export function contractCountsLine(c: ContractCatalogCounts): string {
   if (c.fixed > 0) parts.push(`${c.fixed} fixed in the app`)
   if (c.perRecord > 0) parts.push(`${c.perRecord} typed each time`)
   if (c.inSettings > 0) parts.push(`${c.inSettings} set in Settings`)
+  if (c.external > 0) parts.push(`${c.external} hosted elsewhere`)
   parts.push(`${c.dated} dated`)
   return parts.join(' · ')
 }

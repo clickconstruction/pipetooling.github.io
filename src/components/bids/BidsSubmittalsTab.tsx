@@ -19,6 +19,8 @@
  */
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { SpotlightTour, spotlightTourStepsPresent, type SpotlightTourStep } from '../SpotlightTour'
+import { RobotOffer } from './RobotOffer'
+import { robotSeatState, type RobotSeatRow, type RobotSeatState } from '../../lib/submittals/robotOffer'
 import { SubmittalJourneyStrip } from './SubmittalJourneyStrip'
 import { SubmittalProcurementPanel } from './SubmittalProcurementPanel'
 import { PlugInScheduleModal } from './PlugInScheduleModal'
@@ -213,6 +215,22 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   // v2.4067: the walkthrough, and the first-open offer (remembered per device).
   const [tourOpen, setTourOpen] = useState(false)
   const [tourStage, setTourStage] = useState<number | null>(null)
+  // v2.4136 · whether a robot seat is live (punch list #59): no offer shows until it is. Not live until the reader answers, so nothing flashes.
+  const [robotSeat, setRobotSeat] = useState<RobotSeatState>(() => robotSeatState(null, Date.now()))
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const { data } = await (db.rpc as unknown as (fn: string) => PromiseLike<{ data: unknown; error: unknown }>)('submittal_robot_liveness')
+        if (!cancelled) setRobotSeat(robotSeatState((data ?? null) as RobotSeatRow | null, Date.now()))
+      } catch {
+        if (!cancelled) setRobotSeat(robotSeatState(null, Date.now()))
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
   // v2.4134 · the stops the tour will walk: computed after the road opens every stage for the
   // tour (the anchors inside folded stages are not in the DOM before that), so a stop with no
   // `missingBody` — the robot's offer — is walked only when it is on the page.
@@ -1463,11 +1481,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                     <button type="button" disabled={busy} onClick={() => setPlugInOpen(true)} style={{ ...(specified.length === 0 && takeoffFixtures === 0 ? btnPrimary : btn), alignSelf: 'flex-start' }} title="Type or paste the tags from the plans, one per line" data-testid="plug-in-schedule" data-tour="submittals-plug-in">
                       {specified.length === 0 ? 'Type or paste the schedule' : 'Add to the schedule'}
                     </button>
-                    {!t && specified.length === 0 ? (
-                      <span style={smallMuted} data-tour="submittals-robot">
-                        …or <button type="button" disabled={busy} onClick={() => void askRobot('read_schedule', {}, null)} style={{ ...btnQuiet, textDecoration: 'underline', fontSize: 'inherit', color: 'var(--text-link)' }} title="The robot reads the tags off the plans. You confirm each one" data-testid="ask-robot-schedule">ask the robot to read it off the plans</button>. You confirm each tag before it counts.
-                      </span>
-                    ) : null}
+                    {!t && specified.length === 0 ? <RobotOffer kind="read_schedule" seat={robotSeat} hasPlans={Boolean(selectedBid?.plans_link)} busy={busy} onAsk={() => void askRobot('read_schedule', {}, null)} testId="ask-robot-schedule" tour="submittals-robot" /> : null}
                   </div>
                 )
               })()}
@@ -1722,6 +1736,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                     guesses={Object.fromEntries(sourceFiles.map((f, i) => { const t = liveTask(tasks, 'file_cut_sheets', (inp) => inp.file_index === i && (!inp.path || inp.path === f.path)); const g = t ? sheetGuessesToConfirm(t, f.pages) : null; return [i, g ? guessByPage(g) : new Map()] }))}
                     robotLines={Object.fromEntries(sourceFiles.map((f, i) => { const t = liveTask(tasks, 'file_cut_sheets', (inp) => inp.file_index === i && (!inp.path || inp.path === f.path)); return [i, t ? describeTask(t, f.pages) : ''] }))}
                     confirmLabels={Object.fromEntries(sourceFiles.map((f, i) => { const t = liveTask(tasks, 'file_cut_sheets', (inp) => inp.file_index === i && (!inp.path || inp.path === f.path)); const g = t ? sheetGuessesToConfirm(t, f.pages) : null; return [i, g ? confirmLabel(g.sure.length, g.unsure.length) : ''] }))}
+                    robotSeat={robotSeat}
                     onAskRobot={(i) => void askRobot('file_cut_sheets', { file_index: i, path: sourceFiles[i]?.path, name: sourceFiles[i]?.name, pages: sourceFiles[i]?.pages }, selectedRev.id)}
                     onConfirmGuesses={(i) => void confirmGuesses(i)}
                     onAssignPages={(i) => setAssignFile(i)}
@@ -1867,9 +1882,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem' }}>
                             <span><b style={{ color: 'var(--text-strong)' }}>{f.name}</b> <span style={smallMuted}>· {describeReviewerFile(f, ROOM_TZ)}</span></span>
                             <span style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                              {f.kind === 'redline' && !t ? (
-                                <button type="button" disabled={busy} onClick={() => void askRobot('read_redlines', { reviewer_index: i, path: f.path, name: f.name, person_id: f.personId, person_name: f.personName }, selectedRev.id)} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem', borderStyle: 'dashed', color: 'var(--text-muted)' }} title="The robot reads the stamps and marks. You confirm each answer">Ask the robot to read the redlines</button>
-                              ) : null}
+                              {f.kind === 'redline' && !t ? <RobotOffer kind="read_redlines" seat={robotSeat} busy={busy} onAsk={() => void askRobot('read_redlines', { reviewer_index: i, path: f.path, name: f.name, person_id: f.personId, person_name: f.personName }, selectedRev.id)} testId="ask-robot-redlines" /> : null}
                               <button type="button" disabled={busy} onClick={() => void openReviewerFile(f)} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem' }}>Open the file</button>
                               <button type="button" disabled={busy} onClick={() => void removeReviewerFile(i)} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Remove this file</button>
                             </span>

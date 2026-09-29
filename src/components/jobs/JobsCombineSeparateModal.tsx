@@ -11,6 +11,7 @@ import { loadTeamLaborData, type TeamLaborRow } from '../../utils/teamLabor'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
+import { combineJobsSuccessToast, type MigrateDeleteOkPayload } from '../../lib/jobs/migrateDeleteReply'
 import { fetchJobsLedgerForScheduleDispatchHub, jobPickerStatusChip } from '../../lib/scheduleDispatchHub'
 import { useAuth } from '../../hooks/useAuth'
 import { UnifiedSearchResultRow } from '../search/UnifiedSearchResultRow'
@@ -664,13 +665,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
         showToast(msg, 'error')
         return
       }
-      const notePosted = typeof (payload as { note_body?: unknown }).note_body === 'string'
-      showToast(
-        notePosted
-          ? 'Costs and job total moved to the target job; the source job was removed. A "Combined" note was posted to the job\'s activity.'
-          : 'Costs and job total moved to the target job; the source job was removed. Open the target job to verify Specific Work and Job Total.',
-        'success',
-      )
+      showToast(combineJobsSuccessToast(payload as MigrateDeleteOkPayload), 'success')
       onAfterSuccess()
       onClose()
     } catch (err: unknown) {

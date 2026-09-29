@@ -5,7 +5,7 @@
  * Jobs.tsx in v2.830.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -200,6 +200,33 @@ describe('JobsStagesUnifiedTable render smoke', () => {
     expect(card.style.borderLeft).toContain('rgb(22, 163, 74)')
     const plainCard = document.querySelector(`[data-stages-job-id="${plainJob.id}"]`) as HTMLElement
     expect(plainCard.style.borderLeft).toBe('')
+  })
+
+  it('Send back and Collections sit in the action column, not the Progress cell (v2.4147)', async () => {
+    const billedJob = makeJob({ job_name: 'Move Merged Job', status: 'billed' })
+    const billedInvoice = makeInvoice({ job_id: billedJob.id, amount: 900, status: 'billed' })
+    const floaterJob = makeJob({ job_name: 'Move Floater Job', status: 'billed' })
+    const floaterInvoice = makeInvoice({ job_id: floaterJob.id, amount: 250, status: 'billed' })
+    const rows: StageRow[] = [
+      { kind: 'job_with_merged_billed', job: billedJob, inv: billedInvoice },
+      { kind: 'invoice', inv: floaterInvoice, job: floaterJob },
+    ]
+    const onJobMoveToCollections = vi.fn()
+    renderWithProviders(<JobsStagesUnifiedTable {...makeProps({ rows, sendBackBelowRemaining: true, onJobMoveToCollections })} />)
+    await settle()
+    const collections = screen.getAllByRole('button', { name: 'Collections' })
+    expect(collections).toHaveLength(2)
+    for (const btn of collections) {
+      const tr = btn.closest('tr') as HTMLElement
+      // The button's cell is the row's last one — the action column — and the
+      // Progress cell (the one before it) carries no Send back / Collections.
+      expect(btn.closest('td')).toBe(tr.lastElementChild)
+      const progress = tr.children[tr.children.length - 2] as HTMLElement
+      expect(within(progress).queryByRole('button', { name: 'Collections' })).toBeNull()
+      expect(within(progress).queryByRole('button', { name: /send back/i })).toBeNull()
+    }
+    fireEvent.click(collections[0] as HTMLElement)
+    expect(onJobMoveToCollections).toHaveBeenCalledWith(billedJob)
   })
 
   it('renders the bill line on invoice-bearing rows — the words under the bar and the extras under the cell (table + cards, v2.4130)', async () => {

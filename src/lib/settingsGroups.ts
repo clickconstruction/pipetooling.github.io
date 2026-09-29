@@ -71,6 +71,10 @@ export function getZonedSettingsGroups(myRole: UserRole | null): SettingsGroupDe
   if (canSeeWhatCustomersSee(r)) {
     groups.push({ id: 'settings-what-customers-see', label: 'What customers see', zone: 'company', pagesHint: 'Every email and page anyone outside the company gets — customers, GCs, subs, supply houses and the collections firm — rendered live with sample data, in the order they meet them.' })
   }
+  // v2.4142 (punch list #60): the other side of the mail — every email the team receives, as one person's week.
+  if (r === 'dev') {
+    groups.push({ id: 'settings-what-the-team-sees', label: 'What the team sees', zone: 'company', pagesHint: 'Every email the app sends someone on the team — digests, notices, sign-in — as one person\u2019s week, with sample data.' })
+  }
   // Contracts & terms: the same people, by the document instead of by the journey.
   if (canSeeWhatCustomersSee(r)) {
     groups.push({ id: 'settings-contracts', label: 'Contracts & terms', zone: 'company', pagesHint: 'Every contract a customer accepts or signs, and every notice they receive — the wording side by side, where it is edited, and where the customer meets it.' })

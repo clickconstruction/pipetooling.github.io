@@ -398,7 +398,7 @@ export function renderStagesScheduleStripCells(
   ctx: Pick<StagesRowRenderContext, 'stagesUpcomingByJobId' | 'stagesWorkedByJobId' | 'openJobCalendar'>,
   job: JobWithDetails,
   when: StagesWhen,
-  opts: { cellPx: number; extraTitle?: string | null },
+  opts: { cellPx: number; extraTitle?: string | null; /** Air above the strip (v2.4145): the desktop cell's chip sat on the top row of cells. */ marginTop?: string },
 ) {
   const up = ctx.stagesUpcomingByJobId[job.id]
   const soFar = ctx.stagesWorkedByJobId?.[job.id]
@@ -423,7 +423,7 @@ export function renderStagesScheduleStripCells(
     <button
       type="button"
       className="stagesStrip"
-      style={{ '--strip-cell': `${opts.cellPx}px` } as CSSProperties}
+      style={{ '--strip-cell': `${opts.cellPx}px`, ...(opts.marginTop ? { marginTop: opts.marginTop } : {}) } as CSSProperties}
       title={title}
       aria-label={`Schedule strip — ${words}. Open the job calendar.`}
       onClick={(e) => {
@@ -528,7 +528,7 @@ export function renderStagesFieldAndBillingLines(ctx: StagesRowRenderContext, jo
   }
   return (
     <>
-      {renderStagesScheduleStripCells(ctx, job, when, { cellPx: 12, extraTitle: jTitle })}
+      {renderStagesScheduleStripCells(ctx, job, when, { cellPx: 12, extraTitle: jTitle, marginTop: '0.45rem' })}
       <div className="stagesWhen">
         {when.kind === 'scheduled' ? (
           <>
@@ -1547,3 +1547,6 @@ export function renderStagesJobColumnEstimateFooter(linked: JobWithDetails['link
     </div>
   )
 }
+
+/** v2.4147: Send back / Collections under the action column's icons — stacked, full width, the Edit button's rhythm. */
+export const stagesActionMoveStackStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'stretch', width: '100%', marginTop: '0.25rem' }
