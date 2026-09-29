@@ -6,7 +6,7 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
-import { makeJob, renderWithProviders } from '../../test/renderSmokeMocks'
+import { makeJob, renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import JobContractModal from './JobContractModal'
 
 vi.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'u1' }, role: 'dev' }) }))
@@ -53,11 +53,14 @@ describe('JobContractModal — Edit & re-send', () => {
     reopenSpy.mockClear()
     rowState.current = sentRow()
     renderWithProviders(<JobContractModal open onClose={() => undefined} job={job} />)
-    const btn = (await screen.findByTestId('contract-edit-resend')) as HTMLButtonElement
+    await screen.findByTestId('contract-edit-resend')
+    // The modal re-mounts this button on every commit (its group is a component built inside the render), so a
+    // node held across an await is detached by the time it is clicked and the click arms nothing — CI lost that
+    // race twice on main after v2.4154. Settle the loads, then query and click in the same tick.
+    await settle()
+    const btn = screen.getByTestId('contract-edit-resend') as HTMLButtonElement
     expect(btn.textContent).toBe('Edit & re-send')
-    // The button draws as soon as the row is there but stays disabled while the modal is busy — a click in
-    // that window arms nothing (CI lost this race twice on main after v2.4154). Wait for it to be live.
-    await waitFor(() => expect(btn.disabled).toBe(false))
+    expect(btn.disabled).toBe(false)
     fireEvent.click(btn)
     expect(reopenSpy).not.toHaveBeenCalled()
     const note = await screen.findByTestId('contract-reopen-note')
