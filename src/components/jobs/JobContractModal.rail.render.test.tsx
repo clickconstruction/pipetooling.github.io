@@ -76,13 +76,17 @@ describe('JobContractModal — the rail', () => {
     await waitFor(() => expect(within(rail).getByTestId('contract-way-link').getAttribute('aria-checked')).toBe('true'))
   })
 
-  it('the terms row names the document and reads its wording in place; Not needed opens its reasons under the rail', async () => {
+  it('the paper names the terms document and reads its wording in place; Not needed opens its reasons under the rail', async () => {
     renderWithProviders(<JobContractModal open onClose={() => undefined} job={withEmail} />)
     await screen.findByTestId('contract-rail')
+    // v2.4175: the terms live on the paper — the heading names the document, the body sits under it, collapsed until read all.
     const terms = screen.getByTestId('contract-terms-row')
     expect(terms.textContent).toContain('Built-in service agreement terms')
-    fireEvent.click(within(terms).getByTestId('contract-terms-read'))
-    expect(terms.textContent).toContain('1. Scope.')
+    expect(screen.getByTestId('contract-paper').textContent).toContain('1. Scope.')
+    const read = within(terms).getByTestId('contract-terms-read')
+    expect(read.textContent).toBe('read all')
+    fireEvent.click(read)
+    expect(within(terms).getByTestId('contract-terms-read').textContent).toBe('collapse')
     fireEvent.click(screen.getByTestId('contract-exit-not-needed'))
     expect(screen.getByTestId('contract-not-needed-panel').textContent).toContain("Why doesn't this job need an agreement of ours?")
   })

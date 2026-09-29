@@ -53,19 +53,20 @@ You can also set the filter by hand: open the **⋯** menu at the right end of t
 
 ## Send a contract
 
-Tap the {{chip:gray|No contract}} chip on the row, or the **✍** icon in the row's quick-action stack. The Contract window opens with everything prefilled from the job, in two columns: the agreement on the left, and on the right one question — **How this one gets signed**.
+Tap the {{chip:gray|No contract}} chip on the row, or the **✍** icon in the row's quick-action stack. The Contract window opens with everything prefilled from the job, in two columns: the agreement on the left as the customer will see it, and on the right one question — **How this one gets signed**.
 
-{{gif:get-a-job-contract-signed.gif|From the Pipeline row: the chip opens the Contract window prefilled from the job; the rail on the right has the answer picked and one button that follows it}}
+{{gif:get-a-job-contract-signed.gif|From the Pipeline row: the chip opens the Contract window — the agreement as the customer sees it on the left, edited in place; the rail on the right with the answer picked and one button that follows it}}
 
-**The agreement** — the standard terms named with their clause count and date ({{button:outline|Read the wording}} opens them in place; {{button:outline|Edit the wording}} changes every later agreement), the scope one line per item, anything not included, the amount, payment terms as chips ({{chip:blue|50% down, balance on completion}} is the default), optional dates and a note.
+**The agreement** is the paper itself, laid out as the customer will see it — your letterhead, the work, the price and payment line, the terms, the signature frames — and you edit it in place. Hover a line and it says it edits; press it and the field opens where the text was; click away to keep it. Empty things are faint lines you tap to add: *+ not included…*, *+ start and estimated completion*, *+ a line the customer reads before the work*. Press the payment sentence and the presets appear as chips ({{chip:blue|50% down, balance on completion}} is the default).
 
-- **The amount is the job's number**, never typed here: the estimate the customer accepted when there is one, else the job's line items. It reads *$123,600 · from the job's 14 line items · Adjust line items ›* — the door opens the job, and the agreement follows what you change there. So the signed agreement and the bill can never disagree.
-- Everything saves as you type; there is no Save button. **Preview as customer** under the fields opens the document exactly as they will see it, and **Download the PDF** beside it is the look-only copy — it records nothing.
+- **The amount is the job's number**, never typed here: the estimate the customer accepted when there is one, else the job's line items. The price line reads *$123,600 · from the job's 14 line items · adjust* — the door opens the job, and the agreement follows what you change there. So the signed agreement and the bill can never disagree.
+- **The terms** are the Contract Book's, named on the paper with their clause count and date — *Terms · Service agreement · 12 clauses · updated Sep 29* — with **read all** and **edit the wording** beside them. Editing the wording changes every later agreement.
+- Everything saves as you type; there is no Save button and no preview button — the paper is the preview. **Open full size** under it opens the printable page, and **Download the PDF** beside it is the look-only copy; it records nothing.
 
 **The rail** — three ways, with the answer already picked from what the job knows. Only the fields the picked way needs appear under it, then one blue button whose label follows the pick, and a sentence that says exactly what pressing it will do.
 
 - {{button:outline|Send a link}} — *picked when the job has an email or a mobile.* They review and sign on their phone. Email is filled from the job; tick **Text it too** to open a text with the same link after the email goes, or leave the email blank and the button reads **Text the link**. **Copies** are for a GC or property manager who only reads it. Reminders go every 3 days until signed, up to 3. **Copy the link** in the sentence pastes it anywhere.
-- {{button:outline|Sign here, now}} — the customer signs on this device, at the kitchen table. Nothing is needed but their name; an email is only where their signed copy goes.
+- {{button:outline|Sign here, now}} — the customer signs on this device, at the kitchen table. Nothing is needed but their name; an email is only where their signed copy goes. A technician clocked in on the job has the same door on the Job Mode card, ✍ Hand the phone to the customer to sign.
 - {{button:outline|On paper}} — *picked when the job has neither an email nor a mobile.* **Download to print** gives the page blank **Sign** and **Date** rules and **marks the agreement handed over**, so the job leaves the count and reads *handed over · awaiting signature*. **Email the PDF** sends it to print, sign and send back, with the signing link riding along.
 - A way that cannot run says why and steps aside — {{chip:yellow|Needs an email or a mobile — add one, or pick another way}} — and the button greys until it can.
 
