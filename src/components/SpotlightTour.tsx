@@ -31,9 +31,15 @@ const CARD_EST_HEIGHT = 170
  * Spotlight coach-marks tour (v2.2021, first used on the Pricing Workbench):
  * dims the page, cuts a hole over the current step's `data-tour` anchor, and
  * walks Next/Back through the steps with a caption card. Look-don't-touch —
- * the overlay blocks the page while open; Esc or Done closes. Anchors that
+ * the overlay blocks clicks on the page while open; Esc or Done closes. Anchors that
  * aren't in the DOM when the tour opens should be filtered out by the caller
  * (`spotlightTourStepsPresent`).
+ *
+ * The page still scrolls under it (v2.4121): the overlay carries
+ * `data-page-scroll="allow"` so the app-wide body scroll lock (v2.2186, which
+ * pins the body under any viewport-covering fixed layer) leaves it alone —
+ * locked, the anchor's scrollIntoView could not move the page and every stop
+ * below the fold was out of reach, and the wheel did nothing.
  */
 export function SpotlightTour({ steps, onClose, guideHref, guideLabel }: SpotlightTourProps) {
   const [index, setIndex] = useState(0)
@@ -123,7 +129,7 @@ export function SpotlightTour({ steps, onClose, guideHref, guideLabel }: Spotlig
   }
 
   return createPortal(
-    <div style={{ position: 'fixed', inset: 0, zIndex: 1000 }} onClick={onClose}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 1000 }} onClick={onClose} data-page-scroll="allow" data-testid="spotlight-tour-overlay">
       {hole ? (
         <div
           style={{
