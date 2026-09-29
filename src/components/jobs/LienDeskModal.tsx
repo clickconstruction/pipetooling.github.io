@@ -144,6 +144,8 @@ export type LienDeskModalProps = {
   calendarRows?: ReadonlyArray<LienCalendarJob> | null
   /** A Calendar row opens the job's Lien window. */
   onOpenCalendarJob?: (jobId: string) => void
+  /** The Calendar's pen wrote something (v2.4153): a pay date, or a property kind — the Pipeline re-reads what changed. */
+  onCalendarChanged?: (what: 'promise' | 'kind') => void
   /** Open on a pile — the Dashboard's missed-window line lands on the Missed lens (v2.3679). */
   initialPile?: LienDeskPile | null
   /** Put a GC on notice (v2.3470): the header door — every owner on every job with this GC, one approved run. */
@@ -235,6 +237,7 @@ export default function LienDeskModal({
   initialKind,
   calendarRows,
   onOpenCalendarJob,
+  onCalendarChanged,
   initialPile,
   onPutGcOnNotice,
   onOpenCompanySettings,
@@ -331,11 +334,14 @@ export default function LienDeskModal({
   const [affFooterEl, setAffFooterEl] = useState<HTMLDivElement | null>(null)
 
   const entries = data?.queue.entries ?? []
+  // The Calendar's "Draft the N" (v2.4153): the notice list narrows to those jobs until the chip is cleared.
+  const [calendarJobFilter, setCalendarJobFilter] = useState<{ ymd: string; jobIds: ReadonlySet<string> } | null>(null)
   const visible = useMemo(() => {
     // Missed is a lens (v2.3679): a job in To draft with a closed month shows under it too.
-    const list = pile ? entries.filter((e) => e.pile === pile || (pile === 'missed' && e.missedMonths.length > 0)) : entries
+    const scoped = calendarJobFilter ? entries.filter((e) => calendarJobFilter.jobIds.has(e.jobId)) : entries
+    const list = pile ? scoped.filter((e) => e.pile === pile || (pile === 'missed' && e.missedMonths.length > 0)) : scoped
     return PILE_ORDER.flatMap((p) => list.filter((e) => e.pile === p))
-  }, [entries, pile])
+  }, [entries, pile, calendarJobFilter])
 
   // Selection follows the list: the requested job, else the first visible row (desktop).
   useEffect(() => {
@@ -751,6 +757,16 @@ export default function LienDeskModal({
         <p style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
           {loading || data == null ? 'Looking at every unpaid sub job…' : pile ? 'Nothing in this pile.' : 'Nothing is due — every unpaid month on a sub job is noticed, or is more than 30 days from its deadline.'}
         </p>
+      ) : null}
+      {calendarJobFilter ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0.5rem 0.9rem 0', fontSize: '0.75rem' }} data-testid="lien-desk-calendar-filter">
+          <span style={{ padding: '2px 8px', borderRadius: 999, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', fontWeight: 700 }}>
+            {calendarJobFilter.jobIds.size} {calendarJobFilter.jobIds.size === 1 ? 'job' : 'jobs'} from the calendar · by {formatYmdMonthDay(calendarJobFilter.ymd)}
+          </span>
+          <button type="button" onClick={() => setCalendarJobFilter(null)} style={{ ...btn('plain'), padding: '1px 8px', fontSize: '0.72rem' }}>
+            show every job
+          </button>
+        </div>
       ) : null}
       {PILE_ORDER.map((p) => {
         const rows = visible.filter((e) => e.pile === p)
@@ -1969,7 +1985,25 @@ export default function LienDeskModal({
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: isMobile || kind === 'timeline' || kind === 'calendar' ? '1fr' : '320px 1fr', overflow: 'hidden', minHeight: 0 }}>
           {kind === 'calendar' ? (
-            <LienDeskCalendarTab rows={calendarRows ?? null} loading={loading} todayYmd={todayYmd} isMobile={isMobile} onOpenJob={(jobId) => (onOpenCalendarJob ?? onOpenLienInstruments)(jobId)} />
+            <LienDeskCalendarTab
+              rows={calendarRows ?? null}
+              loading={loading}
+              todayYmd={todayYmd}
+              isMobile={isMobile}
+              canWrite={office}
+              onOpenJob={(jobId) => (onOpenCalendarJob ?? onOpenLienInstruments)(jobId)}
+              onOpenEditJob={(jobId) => onOpenEditJob(jobId, 'property-record')}
+              onChanged={(what) => {
+                onChanged()
+                onCalendarChanged?.(what)
+              }}
+              onDraft={(ymd, jobIds) => {
+                // Draft the N (v2.4153): the notice list, To draft, narrowed to the column's jobs.
+                setCalendarJobFilter({ ymd, jobIds: new Set(jobIds) })
+                setPile('to_draft')
+                setKind('notice')
+              }}
+            />
           ) : kind === 'timeline' ? (
             <LienDeskTimelineTab
               book={book}

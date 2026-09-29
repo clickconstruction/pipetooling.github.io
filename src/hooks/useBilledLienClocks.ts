@@ -31,7 +31,7 @@ export type BilledLienClock = {
  * rows simply draw no runway. Keyed on the job ids so a re-rendered but
  * unchanged list does not refetch.
  */
-export function useBilledLienClocks(jobs: ReadonlyArray<BilledLienClockJob> | null): Record<string, BilledLienClock> | null {
+export function useBilledLienClocks(jobs: ReadonlyArray<BilledLienClockJob> | null, refreshKey = 0): Record<string, BilledLienClock> | null {
   const [byJob, setByJob] = useState<Record<string, BilledLienClock> | null>(null)
   const key = jobs ? jobs.map((j) => `${j.id}:${j.customer_address_id ?? ''}:${j.gc_customer_id ?? ''}`).join('|') : ''
 
@@ -109,7 +109,8 @@ export function useBilledLienClocks(jobs: ReadonlyArray<BilledLienClockJob> | nu
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key])
+    // v2.4153: a bump refetches for the same list — the Lien calendar's pen wrote a property kind.
+  }, [key, refreshKey])
 
   return byJob
 }

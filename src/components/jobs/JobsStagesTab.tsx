@@ -935,7 +935,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     () => jobs.filter((j) => j.status === 'billed').map((j) => ({ id: j.id, customer_address_id: j.customer_address_id ?? null, gc_customer_id: j.gc_customer_id ?? null })),
     [jobs],
   )
-  const billedLienClocks = useBilledLienClocks(billedLienClockJobs)
+  // v2.4153: the Lien calendar's pen bumps this after it writes a property kind, so the clocks re-read the kind.
+  const [lienClocksRefresh, setLienClocksRefresh] = useState(0)
+  const billedLienClocks = useBilledLienClocks(billedLienClockJobs, lienClocksRefresh)
   // The address badge's fact for every row (v2.4160): each job's property kind, one read across the board.
   const propertyKindJobs = useMemo(() => jobs.map((j) => ({ id: j.id, customer_address_id: j.customer_address_id ?? null })), [jobs])
   const propertyKinds = usePropertyKinds(propertyKindJobs)
@@ -1064,6 +1066,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         isSub: Boolean(job.gc_customer_id),
         runway,
         lastWorkYmd: job.last_work_date ?? null,
+        addressId: job.customer_address_id ?? null,
       })
     }
     return out
@@ -4434,6 +4437,14 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         // The Calendar is the desk's landing (v2.4101); a door that names a job lands on its notice as before.
         initialKind={lienDesk?.kind ?? (lienDesk?.jobId ? 'notice' : 'calendar')}
         calendarRows={lienCalendarRowsWithMonths}
+        onCalendarChanged={(what) => {
+          // The pen (v2.4153): a promise re-reads the pay dates; a kind re-reads the clocks; the desk's own queue follows either.
+          if (what === 'promise') {
+            void loadPromisedPayDates()
+            void loadPromiseRecords()
+          } else setLienClocksRefresh((k) => k + 1)
+          refetchLienDesk()
+        }}
         onOpenCalendarJob={(jobId) => {
           const job = jobs.find((x) => x.id === jobId)
           if (!job) return
