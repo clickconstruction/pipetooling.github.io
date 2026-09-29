@@ -48,6 +48,17 @@ Wendi pastes the P002 schedule, picks NWS on the compare, and opens Submittals. 
 
 Tap {{button:outline|Edit}} on any row. The editor takes the status (your call on superseded, equal or a design change when the model numbers alone cannot tell), the reason chips and a note an alternate or a design change owes ({{chip:gray|Long lead time}} {{chip:gray|Discontinued}} {{chip:gray|In stock}} {{chip:gray|Or-equal clause}} {{chip:gray|Cost}} {{chip:gray|Other}}), the lead time ({{chip:gray|In stock}} {{chip:gray|1 wk}} {{chip:gray|2 wk}} {{chip:gray|4+ wk}}, or typed), and the cut sheet. A row that owes a reason reads **say why**; a row with no sheet reads **sheet needed**.
 
+## Split a combined fixture
+
+Counts name a fixture the way the plans group it — *WC 1&2 × 10* — and the submittal or the procurement log often wants WC-1 and WC-2 as two lines. Two doors, and the default keeps every row as counted.
+
+- **In Choose from the takeoff**, a row whose name spells out more than one tag gets a {{chip:blue|Split}} switch. On, the row opens to show the rows it becomes, each with the same product and house; the bar reads *14 rows will go on Rev 1 · 1 split into 2*. The switch is remembered with your tick, so the next revision and *Add from the takeoff* split it the same way.
+- **On a draft row**, {{button:outline|Split}} beside Edit does the same after the fact, for a row from any source — the takeoff, the schedule, or typed by hand as *WC-1, WC-2*. Product, house, lead time and sheet pages carry to each row; their calls start blank. Only on a draft; a shared revision is the record.
+
+The app reads the tags off the name: *WC 1&2* reads WC-1 and WC-2; *UR 1, 2 & 3* reads three; *DWH1 & ET* reads only DWH-1, because "ET" has no number and the expansion tank stays with the heater; *12" DEEP MOP SINK* reads no tag at all. *When can a row split?* under the pick list shows this bid's own names as the rule reads them. A count the rule cannot read, such as *WC-1* that covers WC-1 and WC-1A on the plans, is renamed on Takeoffs to *WC 1&1A* or gets its second row by hand.
+
+In the procurement log, rows split from one count read *counted with WC-2 on the takeoff*, so nobody orders the count twice; ordered, PO and expected dates are entered per row.
+
 ## Attach the cut sheets
 
 Tap {{button:outline|Drop a vendor PDF}} and give it the house's whole submittal PDF — the 31-page catalog is fine. It is stored once on the revision and appears above the table as a strip. Tap {{button:outline|Show the pages}} and every page draws as a thumbnail.

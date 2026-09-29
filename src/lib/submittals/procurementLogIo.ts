@@ -84,7 +84,7 @@ export async function loadStageDatesForBid(supabase: Client, bidId: string): Pro
   return { jobId: job.id, stageDates: stageDatesFromJob(fixtures ?? [], windows ?? []) }
 }
 
-type ItemLike = { tag: string; submitted_manufacturer: string | null; submitted_model: string | null; submitted_label: string | null; specified_manufacturer: string | null; specified_model: string | null; specified_description: string | null; lead_time_days: number | null; review_decision: string | null; reviewed_at: string | null; supply_house_id: string | null }
+type ItemLike = { tag: string; submitted_manufacturer: string | null; submitted_model: string | null; submitted_label: string | null; specified_manufacturer: string | null; specified_model: string | null; specified_description: string | null; lead_time_days: number | null; review_decision: string | null; reviewed_at: string | null; supply_house_id: string | null; source_count_row_id?: string | null }
 
 /** The newest revision's rows as the log reads them; the house names come from one read. */
 export async function procurementItemsFrom(supabase: Client, items: ReadonlyArray<ItemLike>, shared: boolean): Promise<ProcurementItemSource[]> {
@@ -107,6 +107,7 @@ export async function procurementItemsFrom(supabase: Client, items: ReadonlyArra
         leadTimeDays: i.lead_time_days,
         decision: d ? { kind: d, at: i.reviewed_at } : null,
         shared,
+        sourceCountRowId: i.source_count_row_id ?? null,
       }
     })
 }

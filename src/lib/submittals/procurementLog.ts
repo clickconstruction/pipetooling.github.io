@@ -15,6 +15,7 @@ import { escapeHtml } from '../bidDocuments/htmlDoc'
 import { compareTags } from './buildSubmittalRows'
 import { describeLeadTime } from './leadTime'
 import { normalizeTag } from './parseFixtureSchedule'
+import { tagsFromFixtureName } from './takeoffCandidates'
 import type { TakeoffStage } from '../bids/bidTakeoffHelpers'
 import { STAGE_KEYS, defaultSplitForFixture, effectiveSplit, indexStageSplits, type StageSplitRecord, type StageWeights } from '../bids/materialsByStage'
 import type { StageDates } from '../../../supabase/functions/_shared/procurementStageDates.ts'
@@ -77,6 +78,8 @@ export type ProcurementItemSource = {
   decision: { kind: ProcurementDecisionKind; at: string | null } | null
   /** The revision has been shared (a row with no decision is then "awaiting"). */
   shared: boolean
+  /** The takeoff count row the item came from (v2.4107); two rows sharing one were split from it (v2.4118). */
+  sourceCountRowId?: string | null
 }
 
 /** A `bid_procurement_items` row. */
@@ -131,6 +134,8 @@ export type ProcurementRow = {
   note: string
   status: ProcurementStatus
   late: boolean
+  /** The other tags split from the same count row (v2.4118) — "counted with WC-2", so nobody orders the count twice. */
+  countedWith: string[]
 }
 
 export type ProcurementLogInput = {
@@ -143,7 +148,7 @@ export type ProcurementLogInput = {
 
 const emptyRecord = (tag: string | null): ProcurementRecord => ({ id: null, tag, label: '', leadTimeDays: null, stage: null, orderedOn: null, poRef: '', expectedOn: null, deliveredOn: null, note: '', sortOrder: 0 })
 
-function rowFrom(source: ProcurementItemSource | null, rec: ProcurementRecord, stage: ProcurementStage | null, stageDates: StageDates): ProcurementRow {
+function rowFrom(source: ProcurementItemSource | null, rec: ProcurementRecord, stage: ProcurementStage | null, stageDates: StageDates, countedWith: string[] = []): ProcurementRow {
   const isHand = source == null
   const decision = source?.decision ?? null
   const submittal: ProcurementRow['submittal'] = source ? (decision ? decision.kind : source.shared ? 'open' : 'none') : 'none'
@@ -197,6 +202,7 @@ function rowFrom(source: ProcurementItemSource | null, rec: ProcurementRecord, s
     note: rec.note,
     status,
     late: floatDays != null && floatDays < 0,
+    countedWith,
   }
 }
 
@@ -208,9 +214,11 @@ export function buildProcurementLog(input: ProcurementLogInput): ProcurementRow[
     if (r.tag) byTag.set(r.tag, r)
     else hand.push(r)
   }
+  const byCountRow = new Map<string, string[]>()
+  for (const it of input.items) if (it.sourceCountRowId) byCountRow.set(it.sourceCountRowId, [...(byCountRow.get(it.sourceCountRowId) ?? []), it.tag])
   const tagged = [...input.items]
     .sort((a, b) => compareTags(a.tag, b.tag))
-    .map((it) => rowFrom(it, byTag.get(it.tag) ?? emptyRecord(it.tag), input.tagStage[it.tag] ?? null, input.stageDates))
+    .map((it) => rowFrom(it, byTag.get(it.tag) ?? emptyRecord(it.tag), input.tagStage[it.tag] ?? null, input.stageDates, it.sourceCountRowId ? (byCountRow.get(it.sourceCountRowId) ?? []).filter((t) => t !== it.tag).sort(compareTags) : []))
   const handRows = hand.sort((a, b) => a.sortOrder - b.sortOrder).map((r) => rowFrom(null, r, r.stage, input.stageDates))
   return [...tagged, ...handRows]
 }
@@ -283,7 +291,9 @@ export function tagMatchesFixture(tag: string, fixtureName: string | null | unde
   if (normHead && normHead === t) return true
   if (head === t) return true
   const letters = t.replace(/[-\s]*\d+[A-Z]?$/, '')
-  return letters.length > 0 && head === letters
+  if (letters.length > 0 && head === letters) return true
+  // v2.4118 · a row split from "WC 1&2" is WC-1 or WC-2: the tags the name spells out.
+  return tagsFromFixtureName(fixtureName).includes(t)
 }
 
 /** The stage a split puts an item in: the heaviest, the earliest on a tie; null when unsplit. */

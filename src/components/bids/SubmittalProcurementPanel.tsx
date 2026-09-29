@@ -332,6 +332,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
                       <>
                         {r.product}
                         {r.supplyHouse ? <div style={smallMuted}>{r.supplyHouse}</div> : null}
+                        {r.countedWith.length > 0 ? <div style={smallMuted} data-testid="procurement-counted-with">counted with {r.countedWith.join(', ')} on the takeoff</div> : null}
                       </>
                     )}
                     {r.stage ? <div style={smallMuted}>{PROCUREMENT_STAGE_LABELS[r.stage]}</div> : r.isHand ? (
@@ -436,6 +437,7 @@ function rowsFromSnapshot(snap: ProcurementUpdate['rows']): ProcurementRow[] {
     tag: s.tag,
     isHand: s.tag == null,
     recordId: null,
+    countedWith: [],
     product: s.product,
     supplyHouse: null,
     stage: null,

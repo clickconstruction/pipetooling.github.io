@@ -2344,18 +2344,21 @@ export type Database = {
         Row: {
           bid_id: string
           count_row_id: string
+          split: boolean
           ticked: boolean
           updated_at: string
         }
         Insert: {
           bid_id: string
           count_row_id: string
+          split?: boolean
           ticked?: boolean
           updated_at?: string
         }
         Update: {
           bid_id?: string
           count_row_id?: string
+          split?: boolean
           ticked?: boolean
           updated_at?: string
         }
