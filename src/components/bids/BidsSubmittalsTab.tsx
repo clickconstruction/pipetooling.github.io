@@ -1312,7 +1312,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
             <button
               type="button"
               onClick={startWalkThrough}
-              title="How this page works — walk me through it"
+              title="How this page works. Walk me through it"
               aria-label="How this page works"
               style={{ font: 'inherit', flexShrink: 0, width: 20, height: 20, borderRadius: '50%', border: '1.5px solid #3b82f6', color: 'var(--text-blue-500)', background: 'var(--surface)', fontSize: '0.72rem', fontWeight: 700, lineHeight: 1, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
             >
@@ -1389,15 +1389,15 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.6rem', maxWidth: 900 }} data-testid="submittal-sources">
               <div style={{ border: `1px solid ${takeoffFixtures > 0 && specified.length === 0 && picks.length === 0 ? '#2563eb' : 'var(--border)'}`, borderRadius: 8, padding: '0.6rem 0.75rem', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: '0.4rem' }} data-testid="source-takeoff">
                 <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>The takeoff <span style={{ ...smallMuted, fontWeight: 400 }}>· {takeoffFixtures === 0 ? 'none on this bid' : `${takeoffFixtures} fixture${takeoffFixtures === 1 ? '' : 's'}, ${takeoff?.withProduct ?? 0} with a part`}</span></div>
-                <span style={smallMuted}>{takeoffFixtures === 0 ? 'Count the fixtures on Takeoffs and they show here.' : 'One row per fixture; the part under it is the product. You tick what goes on.'}</span>
-                <button type="button" disabled={busy || takeoffFixtures === 0} onClick={openTakeoffPicker} style={{ ...(takeoffFixtures > 0 && specified.length === 0 && picks.length === 0 ? btnPrimary : btn), alignSelf: 'flex-start', opacity: takeoffFixtures === 0 ? 0.5 : 1 }} title="Tick the takeoff fixtures that go on the submittal; the part under each is the product" data-testid="choose-from-takeoff" data-tour="submittals-takeoff">
+                <span style={smallMuted}>{takeoffFixtures === 0 ? 'Count the fixtures on Takeoffs and they show here.' : 'One row per fixture you tick. The part under it is the product.'}</span>
+                <button type="button" disabled={busy || takeoffFixtures === 0} onClick={openTakeoffPicker} style={{ ...(takeoffFixtures > 0 && specified.length === 0 && picks.length === 0 ? btnPrimary : btn), alignSelf: 'flex-start', opacity: takeoffFixtures === 0 ? 0.5 : 1 }} title="Tick the fixtures you counted. Each one becomes a row, with its part as the product" data-testid="choose-from-takeoff" data-tour="submittals-takeoff">
                   {revisions.length === 0 ? 'Choose from the takeoff' : 'Add from the takeoff'}
                 </button>
               </div>
               {picks.length > 0 ? (
                 <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.75rem', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: '0.4rem' }} data-testid="source-picks">
                   <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>Quotes compared <span style={{ ...smallMuted, fontWeight: 400 }}>· {picks.length} picked line{picks.length === 1 ? '' : 's'}</span></div>
-                  <span style={smallMuted}>The house you picked per line on the Pricing compare, with the reason and lead time you gave at the pick.</span>
+                  <span style={smallMuted}>The house you picked for each line on Pricing, with the reason and lead time you gave.</span>
                   {onOpenPricing ? <button type="button" disabled={busy} onClick={() => onOpenPricing(bid)} style={{ ...btn, alignSelf: 'flex-start' }}>Open the compare</button> : null}
                 </div>
               ) : null}
@@ -1409,7 +1409,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                 return (
                   <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.75rem', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: '0.4rem' }} data-testid="source-schedule">
                     <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>The plans’ schedule <span style={{ ...smallMuted, fontWeight: 400 }}>· {specified.length === 0 ? 'none yet' : `${specified.length} tag${specified.length === 1 ? '' : 's'}`}</span></div>
-                    <span style={smallMuted}>{specified.length === 0 ? 'Optional. With it, rows read As specified or Alternate instead of Proposed.' : 'Every tag here becomes a row; a row with no pick takes its product typed with Edit.'}</span>
+                    <span style={smallMuted}>{specified.length === 0 ? 'Optional. A tag is the plan’s name for a fixture, like WC-1. With the schedule, the app checks each row against the plans.' : 'Every tag here becomes a row. A row with no pick gets its product typed with Edit.'}</span>
                     {t ? (
                       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', background: 'var(--bg-muted)', borderRadius: 6, padding: '0.3rem 0.55rem', fontSize: '0.8rem' }} data-testid="robot-schedule" data-tour="submittals-robot">
                         <span style={{ color: 'var(--text-strong)' }}>
@@ -1421,12 +1421,12 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                         ) : null}
                       </div>
                     ) : null}
-                    <button type="button" disabled={busy} onClick={() => setPlugInOpen(true)} style={{ ...(specified.length === 0 && takeoffFixtures === 0 ? btnPrimary : btn), alignSelf: 'flex-start' }} title="Type or paste the plans' fixture schedule — one tag per line; no robot, no trip to Pricing" data-testid="plug-in-schedule" data-tour="submittals-plug-in">
+                    <button type="button" disabled={busy} onClick={() => setPlugInOpen(true)} style={{ ...(specified.length === 0 && takeoffFixtures === 0 ? btnPrimary : btn), alignSelf: 'flex-start' }} title="Type or paste the tags from the plans, one per line" data-testid="plug-in-schedule" data-tour="submittals-plug-in">
                       {specified.length === 0 ? 'Type or paste the schedule' : 'Add to the schedule'}
                     </button>
                     {!t && specified.length === 0 ? (
                       <span style={smallMuted} data-tour="submittals-robot">
-                        …or <button type="button" disabled={busy} onClick={() => void askRobot('read_schedule', {}, null)} style={{ ...btnQuiet, textDecoration: 'underline', fontSize: 'inherit', color: 'var(--text-link)' }} title="The robot reads the fixture schedule off the plans; you confirm each tag before it counts" data-testid="ask-robot-schedule">ask the robot to read it off the plans</button>. You confirm each tag before it counts.
+                        …or <button type="button" disabled={busy} onClick={() => void askRobot('read_schedule', {}, null)} style={{ ...btnQuiet, textDecoration: 'underline', fontSize: 'inherit', color: 'var(--text-link)' }} title="The robot reads the tags off the plans. You confirm each one" data-testid="ask-robot-schedule">ask the robot to read it off the plans</button>. You confirm each tag before it counts.
                       </span>
                     ) : null}
                   </div>
@@ -1488,15 +1488,15 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
             <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-strong)' }}>No submittal on this bid yet</h3>
             {picks.length > 0 ? (
               <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-base)', lineHeight: 1.45 }}>
-                Rev 1 is built from the quotes compared: one row per tag on the fixture schedule, the product from the house you picked, the status against the schedule, and the reason and lead time you gave at the pick. Picks that match no tag become accessory rows.
+                Rev 1 is the first version of your submittal. It is built from your picks on Pricing, one row per tag. Each row has the product you picked and the reason and lead time you gave. A pick with no tag becomes an accessory row.
               </p>
             ) : specified.length > 0 ? (
               <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-base)', lineHeight: 1.45 }}>
-                Rev 1 is built from the schedule: one row per tag, each Missing until you type its product with Edit or add it from the takeoff.
+                Rev 1 is the first version of your submittal. It is built from the schedule, one row per tag. Each row starts Missing until you type its product with Edit or add it from the takeoff.
               </p>
             ) : null}
-            {takeoffFixtures > 0 ? <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-base)' }} data-testid="build-from-takeoff-line">Or from the takeoff: one row per fixture you tick, the part under it as the product, marked Proposed until the plans’ schedule says As specified or Alternate.</p> : null}
-            {specified.length === 0 && takeoffFixtures === 0 ? <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-amber-700)' }}>No fixture schedule on this bid — type or paste it under stage 1 first, or Rev 1 will be accessories only.</p> : null}
+            {takeoffFixtures > 0 ? <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-base)' }} data-testid="build-from-takeoff-line">Or build it from the takeoff. One row per fixture you tick. The part under it is the product. Each row reads Proposed until the plans’ schedule says otherwise.</p> : null}
+            {specified.length === 0 && takeoffFixtures === 0 ? <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-amber-700)' }}>This bid has no fixture schedule. Type or paste it under Step 1 first. Without it, Rev 1 would be accessories only.</p> : null}
             <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center', flexWrap: 'wrap' }}>
               {takeoffFixtures > 0 && specified.length === 0 && picks.length === 0 ? (
                 <button type="button" disabled={busy} onClick={openTakeoffPicker} style={btnPrimary} data-testid="build-from-takeoff">
@@ -1519,7 +1519,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                   <button type="button" disabled={busy} onClick={() => void toggleNotNeeded(false)} style={{ ...btnQuiet, textDecoration: 'underline dotted' }}>undo</button>
                 </span>
               ) : (
-                <button type="button" disabled={busy} onClick={() => void toggleNotNeeded(true)} style={{ ...btnQuiet, textDecoration: 'underline dotted' }} title="No submittal card for this job on the Dashboard; the won question stays quiet">
+                <button type="button" disabled={busy} onClick={() => void toggleNotNeeded(true)} style={{ ...btnQuiet, textDecoration: 'underline dotted' }} title="No submittal card for this job on the Dashboard">
                   Not needed on this job
                 </button>
               )}
@@ -1530,7 +1530,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
             {selectedRev ? (
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                 {isDraft ? (
-                  <button type="button" disabled={busy} onClick={() => void rebuildRows()} style={btn} title="Rebuild every row from today's picks; edits carry where the product is unchanged">
+                  <button type="button" disabled={busy} onClick={() => void rebuildRows()} style={btn} title="Build every row again from today's picks. Your edits stay where the product did not change">
                     Rebuild rows from picks
                   </button>
                 ) : null}
@@ -1651,17 +1651,17 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                   </table>
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '0.5rem' }}>
-                  <button type="button" disabled={busy} onClick={() => fileInput.current?.click()} style={btn} title="Store the house's submittal PDF on this revision; name each row's pages with Edit" data-tour="submittals-drop">
+                  <button type="button" disabled={busy} onClick={() => fileInput.current?.click()} style={btn} title="Save the house's PDF on this version. Then put each page on its row" data-tour="submittals-drop">
                     Drop a vendor PDF
                   </button>
-                  <span style={smallMuted}>The house's whole submittal PDF is fine; put each page on its row.</span>
+                  <span style={smallMuted}>A cut sheet is the maker’s page for a product. Drop the house’s whole PDF here, then put each page on its row.</span>
                   {isDraft && takeoffFixtures > 0 ? (
-                    <button type="button" disabled={busy} onClick={openTakeoffPicker} style={{ ...btn, marginLeft: 'auto' }} title="Tick more takeoff fixtures onto this draft; rows already on it are set aside" data-testid="add-from-takeoff">
+                    <button type="button" disabled={busy} onClick={openTakeoffPicker} style={{ ...btn, marginLeft: 'auto' }} title="Tick more fixtures from the takeoff onto this draft" data-testid="add-from-takeoff">
                       + Add from the takeoff…
                     </button>
                   ) : null}
                   {isDraft ? (
-                    <button type="button" disabled={busy} onClick={() => void addRowByHand()} style={{ ...btn, marginLeft: isDraft && takeoffFixtures > 0 ? undefined : 'auto' }} title="A row with no pick behind it: type its tag, product and lead time" data-testid="add-row-by-hand">
+                    <button type="button" disabled={busy} onClick={() => void addRowByHand()} style={{ ...btn, marginLeft: isDraft && takeoffFixtures > 0 ? undefined : 'auto' }} title="Type a row yourself: the tag, the product and the lead time" data-testid="add-row-by-hand">
                       + Add a row by hand
                     </button>
                   ) : null}
@@ -1698,10 +1698,10 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                     <button type="button" disabled={busy} onClick={() => void openStoredPackage(selectedRev.package_path as string, selectedRev.rev_number)} style={{ ...btnQuiet, textDecoration: 'underline', fontSize: 'inherit' }}>open it</button>
                     {selectedRev.drive_file_url ? <> · <a href={selectedRev.drive_file_url} target="_blank" rel="noreferrer" style={{ color: 'var(--text-link)', fontWeight: 600 }} data-testid="drive-link">filed in Drive ↗</a></> : null}
                   </>
-                ) : items.length > 0 ? 'not built for this revision yet' : 'appears once the revision has rows'}>
+                ) : items.length > 0 ? 'not built for this version yet' : 'appears once Rev 1 has rows'}>
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                   {items.length > 0 ? (
-                    <button type="button" disabled={busy} onClick={() => void buildPackage()} style={selectedRev.package_path ? btn : btnPrimary} title="The cover table, then every row's sheet pages stamped with tag and status — stored on this revision and opened" data-tour="submittals-package">
+                    <button type="button" disabled={busy} onClick={() => void buildPackage()} style={selectedRev.package_path ? btn : btnPrimary} title="One PDF for the GC: the cover table, then every cut sheet stamped with its tag and status. Saved on this version and opened" data-tour="submittals-package">
                       {selectedRev.package_path ? 'Rebuild package' : 'Build package'}
                     </button>
                   ) : null}
@@ -1711,7 +1711,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                     </button>
                   ) : null}
                   {selectedRev.drive_file_url ? null : selectedRev.package_path && asRevisionStatus(selectedRev.status) !== 'draft' ? (
-                    <button type="button" disabled={busy} onClick={() => void fileInDrive()} style={{ ...btnQuiet, textDecoration: 'underline dotted' }} title="Put this revision's package PDF in the bid's job folder on Drive, under Submittals" data-testid="file-in-drive">File in Drive</button>
+                    <button type="button" disabled={busy} onClick={() => void fileInDrive()} style={{ ...btnQuiet, textDecoration: 'underline dotted' }} title="Save this version's package PDF in the bid's job folder on Drive, under Submittals" data-testid="file-in-drive">File in Drive</button>
                   ) : null}
                   <span style={smallMuted}>One PDF on our letterhead: the cover table, then every row's sheet stamped with its tag and status.</span>
                 </div>
@@ -1719,7 +1719,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
 
               {/* 5 · Share — the room link and the people on it */}
               <RoadSection n={5} title="Share" status={stageStatus('share')} open={sectionOpen('share')} onToggle={() => toggleSection('share')} anchor="submittals-share-section"
-                summary={room ? describeRoomLine(room, events.filter((e) => e.event_type === 'view').length, ROOM_TZ) : items.length > 0 ? 'not shared yet' : 'appears once the revision has rows'}>
+                summary={room ? describeRoomLine(room, events.filter((e) => e.event_type === 'view').length, ROOM_TZ) : items.length > 0 ? 'not shared yet' : 'appears once Rev 1 has rows'}>
                 {items.length > 0 && isNewest ? (
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', marginBottom: room ? '0.5rem' : 0 }}>
                     <button type="button" disabled={busy || room?.status === 'closed'} onClick={() => setSharing(true)} style={asRevisionStatus(selectedRev.status) === 'shared' ? btn : btnPrimary} title={room ? 'Mark this revision shared; the room link shows it' : 'Mint the bid\'s review room and copy its link'} data-tour="submittals-share">
@@ -1792,7 +1792,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
 
               {/* 6 · Their call — decisions, the reviewer's own files, the thread */}
               <RoadSection n={6} title={<>Their call{decisions.decided > 0 || reviewerFiles.length > 0 ? <span style={{ ...smallMuted, fontWeight: 400 }}> on Rev {selectedRev.rev_number}</span> : null}</>} status={stageStatus('review')} open={sectionOpen('review')} onToggle={() => toggleSection('review')} anchor="submittals-review"
-                summary={decisions.decided > 0 ? `${describeDecisions(decisions)}${decisions.open > 0 ? ` · ${decisions.open} still open` : ''}` : room ? (room.status === 'closed' ? 'room closed' : 'nothing decided yet') : 'appears after the first share'}>
+                summary={decisions.decided > 0 ? `${describeDecisions(decisions)}${decisions.open > 0 ? ` · ${decisions.open} still open` : ''}` : room ? (room.status === 'closed' ? 'link closed' : 'no answers yet') : 'appears after you share'}>
                 {decisions.decided > 0 ? (
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg-subtle)', padding: '0.4rem 0.7rem' }} data-testid="decisions-line">
                     <span style={{ fontSize: '0.8125rem', color: 'var(--text-strong)' }}>
@@ -1806,7 +1806,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                 ) : null}
                 {asRevisionStatus(selectedRev.status) !== 'draft' || reviewerFiles.length > 0 ? (
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', margin: '0.5rem 0' }}>
-                    <button type="button" disabled={busy} onClick={() => reviewerInput.current?.click()} style={btn} title="The architect marked up the PDF or answered by email instead of the room — keep their file here and type their calls onto the rows">
+                    <button type="button" disabled={busy} onClick={() => reviewerInput.current?.click()} style={btn} title="The architect marked up the PDF or answered by email. Keep their file here and type their answers onto the rows">
                       Drop a reviewer's file
                     </button>
                     <span style={smallMuted}>A marked-up PDF or an email instead of the room; type their calls onto the rows with Edit.</span>
@@ -1828,7 +1828,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                             <span><b style={{ color: 'var(--text-strong)' }}>{f.name}</b> <span style={smallMuted}>· {describeReviewerFile(f, ROOM_TZ)}</span></span>
                             <span style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                               {f.kind === 'redline' && !t ? (
-                                <button type="button" disabled={busy} onClick={() => void askRobot('read_redlines', { reviewer_index: i, path: f.path, name: f.name, person_id: f.personId, person_name: f.personName }, selectedRev.id)} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem', borderStyle: 'dashed', color: 'var(--text-muted)' }} title="The robot reads the stamps and marks into proposed calls; you confirm each">Ask the robot to read the redlines</button>
+                                <button type="button" disabled={busy} onClick={() => void askRobot('read_redlines', { reviewer_index: i, path: f.path, name: f.name, person_id: f.personId, person_name: f.personName }, selectedRev.id)} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem', borderStyle: 'dashed', color: 'var(--text-muted)' }} title="The robot reads the stamps and marks. You confirm each answer">Ask the robot to read the redlines</button>
                               ) : null}
                               <button type="button" disabled={busy} onClick={() => void openReviewerFile(f)} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem' }}>Open the file</button>
                               <button type="button" disabled={busy} onClick={() => void removeReviewerFile(i)} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Remove this file</button>
@@ -1911,7 +1911,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                 summary={isNewest && decisions.sentBack > 0 ? `${decisions.sentBack} row${decisions.sentBack === 1 ? '' : 's'} sent back — start Rev ${selectedRev.rev_number + 1} with just ${decisions.sentBack === 1 ? 'that row' : 'those rows'}` : previousRev ? `Rev ${selectedRev.rev_number} carries what Rev ${previousRev.rev_number} sent back` : 'nothing sent back'}>
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                   {isNewest && decisions.sentBack > 0 ? (
-                    <button type="button" disabled={busy} onClick={() => void newRevision(true)} style={btnGreen} title="A new draft carrying only the rows marked Revise or Reject" data-tour="submittals-resubmit">
+                    <button type="button" disabled={busy} onClick={() => void newRevision(true)} style={btnGreen} title="A new version with only the rows marked Revise or Reject" data-tour="submittals-resubmit">
                       Rev {selectedRev.rev_number + 1} from the {decisions.sentBack} row{decisions.sentBack === 1 ? '' : 's'} sent back
                     </button>
                   ) : null}
@@ -1924,7 +1924,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
 
               {/* 8 · Procure — a side track: open when it has work, never the Next stage until every row is approved */}
               <RoadSection n={8} title="Procure" status={stageStatus('procure')} open={sectionOpen('procure')} onToggle={() => toggleSection('procure')} anchor="submittals-procure-section" last
-                summary={procCounts ? `${procCounts.released} released · ${procCounts.ordered} ordered · ${procCounts.delivered} delivered${procCounts.late > 0 ? ` · ${procCounts.late} behind schedule` : ''}` : isNewest ? 'fills in as the GC approves rows' : 'on the newest revision'}>
+                summary={procCounts ? `${procCounts.released} released · ${procCounts.ordered} ordered · ${procCounts.delivered} delivered${procCounts.late > 0 ? ` · ${procCounts.late} behind schedule` : ''}` : isNewest ? 'fills in as the GC approves rows' : 'on the newest version'}>
                 {isNewest && bidId && selectedBid ? (
                   <SubmittalProcurementPanel
                     bidId={bidId}
