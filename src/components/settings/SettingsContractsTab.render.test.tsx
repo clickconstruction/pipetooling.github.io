@@ -52,18 +52,22 @@ afterEach(() => {
 
 const BOOK_DOC = { id: 'doc-1', document_name: 'Service agreement', book_body_html: '1. Scope. The office wording.', book_body_format: 'plain', book_version_date: '2026-09-20', updated_at: '2026-09-20T12:00:00Z' }
 
-function mount(role: 'dev' | 'master_technician' | 'assistant' = 'dev') {
+/** v2.4108: the rows start closed; the cases that reach into a card press Open all once the list is up. */
+function mount(role: 'dev' | 'master_technician' | 'assistant' = 'dev', opts: { openAll?: boolean; openEntryId?: string | null } = {}) {
   const onOpenEditor = vi.fn()
   const onOpenStep = vi.fn()
-  const view = renderSettled(<SettingsContractsTab role={role} onOpenEditor={onOpenEditor} onOpenStep={onOpenStep} />, { loaded: () => screen.getByTestId('contracts-counts') })
+  const view = renderSettled(<SettingsContractsTab role={role} openEntryId={opts.openEntryId ?? null} onOpenEditor={onOpenEditor} onOpenStep={onOpenStep} />, { loaded: () => screen.getByTestId('contracts-counts') }).then((v) => {
+    if (opts.openAll !== false) fireEvent.click(screen.getByTestId('contracts-open-all'))
+    return v
+  })
   return { view, onOpenEditor, onOpenStep }
 }
 
 describe('SettingsContractsTab', () => {
   it('shows the built-in wording and says so when nothing is set', async () => {
     await mount().view
-    expect(screen.getByRole('heading', { name: 'Contracts customers accept or sign' })).toBeTruthy()
-    expect(screen.getByRole('heading', { name: 'Notices customers receive' })).toBeTruthy()
+    // v2.4108: the sections are the areas, in the order a customer meets them.
+    expect(screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['Estimates', 'Bids', 'Jobs', 'Every signing page', 'Billing', 'Liens & collections'])
     const bid = within(screen.getByTestId('contract-card-bid-terms'))
     expect(bid.getByText('Built-in wording')).toBeTruthy()
     expect(bid.getByText(/All work to be completed in a workmanlike manner/)).toBeTruthy()
@@ -85,7 +89,8 @@ describe('SettingsContractsTab', () => {
     expect(bid.getByText('Net 30 from the invoice.')).toBeTruthy()
     const job = within(screen.getByTestId('contract-card-job-standard-terms:doc-1'))
     expect(job.getByText('1. Scope. The office wording.')).toBeTruthy()
-    expect(job.getByText('Sep 20')).toBeTruthy()
+    // The row line and the card both date it (v2.4108).
+    expect(job.getByTestId('contract-last-changed-job-standard-terms:doc-1').textContent).toBe('Sep 20')
     expect(job.getByRole('button', { name: 'Edit the wording' })).toBeTruthy()
   })
 
@@ -120,6 +125,43 @@ describe('SettingsContractsTab', () => {
     expect(screen.getByTestId('contract-reader-sample').textContent).toContain('Sam Sample')
     fireEvent.click(screen.getByTestId('contract-reader-close'))
     expect(screen.queryByTestId('contract-reader')).toBeNull()
+  })
+
+  it('is an index (v2.4108): rows start closed and open into their card, the lens and the find box narrow the list, a deep-linked card opens on arrival', async () => {
+    tables.contract_template_documents = [BOOK_DOC]
+    tables.job_contracts = [{ id: 'c1', status: 'sent', body_html: 'Older.', body_format: 'plain', template_document_id: 'doc-1', template_version_date: '2026-09-01', last_sent_at: '2026-09-10T15:00:00Z', sent_at: '2026-09-10T15:00:00Z', signed_at: null, voided_at: null, recipient_name: 'A' }]
+    await mount('dev', { openAll: false }).view
+    // Closed: the row line is there, the card's wording is not.
+    const job = screen.getByTestId('contract-card-job-standard-terms:doc-1')
+    expect(job.getAttribute('data-open')).toBeNull()
+    expect(within(job).queryByText('1. Scope. The office wording.')).toBeNull()
+    expect(within(job).getByRole('button', { name: 'Read it' })).toBeTruthy()
+    fireEvent.click(within(job).getByRole('button', { name: /Job service agreement — standard terms/ }))
+    expect(job.getAttribute('data-open')).toBe('true')
+    expect(within(job).getByText('1. Scope. The office wording.')).toBeTruthy()
+    // The lens: Needs a look keeps the card whose last send differs, and drops the rest.
+    expect(screen.getByTestId('contract-lens-needs_look').textContent).toMatch(/Needs a look · \d+/)
+    fireEvent.click(screen.getByTestId('contract-lens-needs_look'))
+    expect(screen.getByTestId('contract-card-job-standard-terms:doc-1')).toBeTruthy()
+    expect(screen.queryByTestId('contract-card-esign-consent')).toBeNull()
+    fireEvent.click(screen.getByTestId('contract-lens-all'))
+    // The find box reads the names and the wording.
+    fireEvent.change(screen.getByLabelText('Find a contract'), { target: { value: 'consent' } })
+    expect(screen.getByTestId('contract-card-esign-consent')).toBeTruthy()
+    expect(screen.queryByTestId('contract-card-bid-terms')).toBeNull()
+    expect(screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['Every signing page'])
+    fireEvent.change(screen.getByLabelText('Find a contract'), { target: { value: '' } })
+    // Open all, then Close all.
+    fireEvent.click(screen.getByTestId('contracts-open-all'))
+    expect(screen.getByTestId('contract-card-bid-terms').getAttribute('data-open')).toBe('true')
+    expect(screen.getByTestId('contracts-open-all').textContent).toBe('Close all')
+    fireEvent.click(screen.getByTestId('contracts-open-all'))
+    expect(screen.getByTestId('contract-card-bid-terms').getAttribute('data-open')).toBeNull()
+    cleanup()
+    // A card named on arrival opens by itself.
+    await mount('dev', { openAll: false, openEntryId: 'bid-terms' }).view
+    expect(screen.getByTestId('contract-card-bid-terms').getAttribute('data-open')).toBe('true')
+    expect(screen.getByTestId('contract-card-esign-consent').getAttribute('data-open')).toBeNull()
   })
 
   it('opens the step a customer meets it on', async () => {
@@ -161,8 +203,8 @@ describe('SettingsContractsTab', () => {
       { id: 'v1', source_kind: 'app_setting', source_key: 'bid_cover_letter_terms_default_v1', name: null, body: 'Net 30.', body_format: 'plain', version_date: null, change_kind: 'baseline', changed_at: '2026-09-01T18:00:00Z', changed_by: null },
     ]
     await mount().view
-    const changed = await screen.findByText('Changed Sep 28, 2026 by Taunya.')
-    expect(changed.getAttribute('data-testid')).toBe('contract-last-changed-bid-terms')
+    const changed = await screen.findByTestId('contract-last-changed-bid-terms')
+    expect(changed.textContent).toBe('Changed Sep 28, 2026 by Taunya.')
     // Wording with no history keeps its own line.
     expect(screen.getByTestId('contract-last-changed-esign-consent').textContent).toBe('version 2')
     const card = within(screen.getByTestId('contract-card-bid-terms'))

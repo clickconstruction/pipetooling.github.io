@@ -11,8 +11,6 @@ import {
   COMPARE_MAX,
   CONTRACT_AREA_LABELS,
   CONTRACT_AUDIENCE_LABELS,
-  CONTRACT_GROUP_HINTS,
-  CONTRACT_GROUP_LABELS,
   CONTRACT_STATUS_LABELS,
   CUSTOMER_CONTRACT_CATALOG,
   contractAnchorId,
@@ -26,7 +24,6 @@ import {
   type ContractBookDoc,
   type ContractCatalogData,
   type ContractCatalogEntry,
-  type ContractCatalogGroup,
   type ContractStepRef,
   type ContractTextStatus,
   type ResolvedContractText,
@@ -53,6 +50,7 @@ import { ContractBodyDisplay } from '../contracts/ContractBodyDisplay'
 import StandardTermsEditModal from '../jobs/StandardTermsEditModal'
 import ContractReaderModal, { type ContractReaderEditDoor } from './ContractReaderModal'
 import { readerSurfacesFor } from '../../lib/contracts/contractReader'
+import { CONTRACT_AREA_HINTS, CONTRACT_AREA_ORDER, CONTRACT_LENS_ORDER, contractLensCounts, contractLensLabel, entryIdFromHash, indexSection, needsLookReasons, NEEDS_LOOK_LABELS, reviewWord, type ContractLens } from '../../lib/contracts/contractsIndex'
 
 /**
  * Settings → Contracts & terms: every contract text a customer accepts or signs, and every
@@ -101,13 +99,15 @@ type Column = { key: string; title: string; sub: string; body: ReactNode }
 
 export type SettingsContractsTabProps = {
   role: UserRole | null
+  /** v2.4108: a card to open on arrival (What customers see's door); the page's `#settings-contract-<id>` hash does the same. */
+  openEntryId?: string | null
   /** Open a section on another Settings tab. */
   onOpenEditor: (tabId: string, anchorId: string) => void
   /** Open a step on What customers see. */
   onOpenStep: (ref: ContractStepRef) => void
 }
 
-export function SettingsContractsTab({ role, onOpenEditor, onOpenStep }: SettingsContractsTabProps) {
+export function SettingsContractsTab({ role, openEntryId = null, onOpenEditor, onOpenStep }: SettingsContractsTabProps) {
   const [data, setData] = useState<ContractCatalogData | null>(null)
   // null until it is read; the cards show without it.
   const [lastSent, setLastSent] = useState<ContractLastSentData | null>(null)
@@ -115,6 +115,17 @@ export function SettingsContractsTab({ role, onOpenEditor, onOpenStep }: Setting
   const [historyOpen, setHistoryOpen] = useState<ReadonlySet<string>>(() => new Set())
   /** v2.4098: the card being read as the customer sees it. */
   const [reading, setReading] = useState<{ entry: ContractCatalogEntry; text: ResolvedContractText } | null>(null)
+  /** v2.4108: the index — which rows are open into their card, the lens over the list, and the find box. */
+  const [openRows, setOpenRows] = useState<ReadonlySet<string>>(() => new Set())
+  const [lens, setLens] = useState<ContractLens>('all')
+  const [query, setQuery] = useState('')
+  const toggleRow = (key: string) =>
+    setOpenRows((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
   const { user, profileName } = useAuth()
   const { showToast } = useToastContext()
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -185,6 +196,15 @@ export function SettingsContractsTab({ role, onOpenEditor, onOpenStep }: Setting
     )
   }, [data, lastSent, history, nameOf, todayYmd])
 
+  // A card named by the page's hash or by What customers see's door opens on arrival; the shell scrolls to it.
+  const wantedEntryId = openEntryId ?? (typeof window !== 'undefined' ? entryIdFromHash(window.location.hash) : null)
+  useEffect(() => {
+    if (!wantedEntryId || cards.length === 0) return
+    const keys = cards.filter((c) => c.entry.id === wantedEntryId).map((c) => c.text.key)
+    if (keys.length === 0) return
+    setOpenRows((prev) => (keys.every((k) => prev.has(k)) ? prev : new Set([...prev, ...keys])))
+  }, [wantedEntryId, cards])
+
   /** One review per entry: a Book with two documents shows it on both cards and counts it once. */
   const reviewLine = history ? reviewCountsLine(reviewCounts(cards.filter((c) => c.first).map((c) => c.review))) : null
 
@@ -252,7 +272,9 @@ export function SettingsContractsTab({ role, onOpenEditor, onOpenStep }: Setting
   }
   if (!data) return <div style={{ ...CARD, ...MUTED }}>Reading the wording…</div>
 
-  const groups: ContractCatalogGroup[] = ['signed', 'notice']
+  const lensCounts = contractLensCounts(cards)
+  const visible = CONTRACT_AREA_ORDER.flatMap((area) => indexSection(cards, area, lens, query))
+  const allOpen = visible.length > 0 && visible.every((c) => openRows.has(c.text.key))
 
   return (
     <div>
@@ -269,7 +291,7 @@ export function SettingsContractsTab({ role, onOpenEditor, onOpenStep }: Setting
           </span>
         ) : null}
         <span style={MUTED}>
-          The wording as it stands today. Every customer-facing page has a card here or a stated reason it offers no terms — a test checks it on every change. Tick <em>Compare</em> on two or three cards to read them side by side.
+          The wording as it stands today, one line per contract in the order a customer meets them. Open a line for its card; tick <em>Compare</em> on two or three to read them side by side.
         </span>
       </div>
 
@@ -300,16 +322,65 @@ export function SettingsContractsTab({ role, onOpenEditor, onOpenStep }: Setting
         </section>
       ) : null}
 
-      {groups.map((group) => {
-        const inGroup = cards.filter((c) => c.entry.group === group)
+      {/* v2.4108: the toolbar — the find box, the lens, Open all — and the jump line. */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'center', marginBottom: '0.6rem' }} data-testid="contracts-toolbar">
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Find a contract…"
+          aria-label="Find a contract"
+          style={{ font: 'inherit', fontSize: '0.82rem', padding: '0.35rem 0.6rem', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text)', width: 'min(100%, 240px)' }}
+        />
+        {CONTRACT_LENS_ORDER.filter((l) => l === 'all' || lensCounts[l] > 0).map((l) => (
+          <button
+            key={l}
+            type="button"
+            style={lens === l ? PILL_ON : l === 'needs_look' ? { ...PILL, borderColor: 'var(--text-amber-800)', color: 'var(--text-amber-800)' } : PILL}
+            aria-pressed={lens === l}
+            onClick={() => setLens(l)}
+            data-testid={`contract-lens-${l}`}
+          >
+            {contractLensLabel(l)} · {lensCounts[l]}
+          </button>
+        ))}
+        <button type="button" style={{ ...PILL, marginLeft: 'auto' }} onClick={() => setOpenRows(allOpen ? new Set() : new Set(visible.map((c) => c.text.key)))} data-testid="contracts-open-all">
+          {allOpen ? 'Close all' : 'Open all'}
+        </button>
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem 0.55rem', alignItems: 'center', marginBottom: '0.7rem', fontSize: '0.78rem' }} data-testid="contracts-jump">
+        <span style={{ ...MUTED, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', fontSize: '0.68rem' }}>Jump to</span>
+        {CONTRACT_AREA_ORDER.map((area) => {
+          const n = indexSection(cards, area, lens, query).length
+          return (
+            <button
+              key={area}
+              type="button"
+              disabled={n === 0}
+              style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, color: n === 0 ? 'var(--text-faint)' : 'var(--text-link)', background: 'none', border: 'none', padding: 0, cursor: n === 0 ? 'default' : 'pointer' }}
+              onClick={() => document.getElementById(`contracts-area-${area}`)?.scrollIntoView({ block: 'start', behavior: 'auto' })}
+            >
+              {CONTRACT_AREA_LABELS[area]} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{n}</span>
+            </button>
+          )
+        })}
+      </div>
+
+      {visible.length === 0 ? <p style={{ ...CARD, ...MUTED, margin: 0 }}>No contract matches — clear the find box or pick another lens.</p> : null}
+
+      {CONTRACT_AREA_ORDER.map((area) => {
+        const inArea = indexSection(cards, area, lens, query)
+        if (inArea.length === 0) return null
         return (
-          <section key={group} style={{ marginBottom: '1.4rem' }} aria-label={CONTRACT_GROUP_LABELS[group]}>
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.3rem 0.6rem', marginBottom: '0.6rem' }}>
-              <h3 style={{ margin: 0, fontSize: '0.95rem' }}>{CONTRACT_GROUP_LABELS[group]}</h3>
-              <span style={MUTED}>{CONTRACT_GROUP_HINTS[group]}</span>
+          <section key={area} style={{ ...CARD, padding: 0, marginBottom: '0.9rem', overflow: 'hidden', scrollMarginTop: '0.75rem' }} aria-label={CONTRACT_AREA_LABELS[area]} id={`contracts-area-${area}`}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.3rem 0.6rem', padding: '0.5rem 0.85rem', background: 'var(--bg-subtle)' }}>
+              <h3 style={{ margin: 0, fontSize: '0.9rem' }}>{CONTRACT_AREA_LABELS[area]}</h3>
+              <span style={MUTED}>{CONTRACT_AREA_HINTS[area]}</span>
+              <span style={{ ...MUTED, marginLeft: 'auto' }}>{inArea.length === 1 ? '1 contract' : `${inArea.length} contracts`}</span>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 340px), 1fr))', gap: '0.75rem', alignItems: 'start' }}>
-              {inGroup.map(({ entry, text, first, sent, versions, changed, review }) => {
+            <div>
+              {inArea.map((card) => {
+                const { entry, text, first, sent, versions, changed, review } = card
                 const action = contractEditAction(entry, text, role)
                 const showHistory = historyOpen.has(text.key)
                 const canTakeBack = review.last != null && review.last.reviewed_by === user?.id && review.last.reviewed_on === todayYmd
@@ -319,16 +390,51 @@ export function SettingsContractsTab({ role, onOpenEditor, onOpenStep }: Setting
                 const sentPicked = picked.includes(sentKey)
                 const sentOff = sent != null && (sent.status === 'differs' || sent.staleDrafts > 0)
                 const hasWording = text.text.trim() !== ''
+                const rowOpen = openRows.has(text.key)
+                const reasons = needsLookReasons(card)
+                const canRead = readerSurfacesFor(entry).length > 0
                 return (
-                  <article key={text.key} id={first ? contractAnchorId(entry.id) : undefined} style={{ ...CARD, scrollMarginTop: '0.75rem', display: 'grid', gap: '0.55rem', minWidth: 0 }} data-testid={`contract-card-${text.key}`}>
-                    <div>
-                      <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-strong)', lineHeight: 1.3 }}>{text.title}</div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginTop: '0.3rem' }}>
-                        <span style={CHIP}>{CONTRACT_AREA_LABELS[entry.area]}</span>
-                        <span style={CHIP}>{CONTRACT_AUDIENCE_LABELS[entry.audience]}</span>
-                        <span style={STATUS_CHIP[text.status]}>{CONTRACT_STATUS_LABELS[text.status]}</span>
-                      </div>
+                  <article key={text.key} id={first ? contractAnchorId(entry.id) : undefined} style={{ borderTop: '1px solid var(--border)', scrollMarginTop: '0.75rem', background: rowOpen ? 'var(--bg-blue-50)' : undefined }} data-testid={`contract-card-${text.key}`} data-open={rowOpen ? 'true' : undefined}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.4rem 0.6rem 0.4rem 0.45rem' }}>
+                      <button
+                        type="button"
+                        aria-expanded={rowOpen}
+                        onClick={() => toggleRow(text.key)}
+                        style={{ font: 'inherit', flex: 1, minWidth: 0, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.3rem 0.6rem', background: 'none', border: 'none', padding: '0.15rem 0', textAlign: 'left', cursor: 'pointer', color: 'inherit' }}
+                        data-testid={`contract-row-${text.key}`}
+                      >
+                        <span aria-hidden="true" style={{ color: 'var(--text-muted)', width: 12, display: 'inline-flex', justifyContent: 'center', fontSize: '0.7rem' }}>{rowOpen ? '▾' : '▸'}</span>
+                        <span style={{ fontSize: '0.86rem', fontWeight: 600, color: 'var(--text-strong)', minWidth: 0, flex: '1 1 220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{text.title}</span>
+                        <span style={{ display: 'inline-flex', gap: '0.3rem', flexWrap: 'wrap' }}>
+                          <span style={CHIP}>{CONTRACT_AUDIENCE_LABELS[entry.audience]}</span>
+                          <span style={STATUS_CHIP[text.status]}>{CONTRACT_STATUS_LABELS[text.status]}</span>
+                          {entry.group === 'notice' ? <span style={CHIP}>Notice</span> : null}
+                        </span>
+                        <span style={{ ...MUTED, fontSize: '0.74rem', flex: '1 1 160px', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title="Last changed">
+                          {changed?.line ?? lastChangedLine(text)}
+                        </span>
+                        <span style={{ fontSize: '0.74rem', color: review.status === 'ok' ? 'var(--text-muted)' : 'var(--text-amber-800)', whiteSpace: 'nowrap' }} title="Reviewed">
+                          {reviewWord(review)}
+                        </span>
+                        {sent ? (
+                          <span style={{ fontSize: '0.74rem', color: sentOff ? 'var(--text-amber-800)' : 'var(--text-muted)', flex: '2 1 200px', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title="Last sent">
+                            {sent.line}
+                          </span>
+                        ) : null}
+                        {reasons.length > 0 ? (
+                          <span style={{ ...STATUS_CHIP.blank, fontSize: '0.66rem' }} title={reasons.map((r) => NEEDS_LOOK_LABELS[r]).join(' · ')}>
+                            Needs a look
+                          </span>
+                        ) : null}
+                      </button>
+                      {canRead ? (
+                        <button type="button" style={PILL_ON} onClick={() => setReading({ entry, text })} title="Read it as the customer sees it — the customer's own page, with sample information, and this wording lit on it" data-testid={`contract-read-${text.key}`}>
+                          Read it
+                        </button>
+                      ) : null}
                     </div>
+                    {rowOpen ? (
+                  <div style={{ display: 'grid', gap: '0.55rem', minWidth: 0, padding: '0.1rem 0.85rem 0.85rem 1.6rem', background: 'var(--surface)', borderTop: '1px solid var(--border)' }}>
                     <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-700)', lineHeight: 1.45 }}>{entry.what}</p>
 
                     <div style={{ ...WORDING_BOX, maxHeight: isOpen ? undefined : COLLAPSED_HEIGHT }}>
@@ -368,8 +474,8 @@ export function SettingsContractsTab({ role, onOpenEditor, onOpenStep }: Setting
                     {action.kind === 'note' ? <p style={{ ...MUTED, margin: 0 }}>{action.text}</p> : null}
 
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center' }}>
-                      {readerSurfacesFor(entry).length > 0 ? (
-                        <button type="button" style={PILL_ON} onClick={() => setReading({ entry, text })} title="The customer's own page, with sample information, and this wording lit on it" data-testid={`contract-read-${text.key}`}>
+                      {canRead ? (
+                        <button type="button" style={PILL_ON} onClick={() => setReading({ entry, text })} title="The customer's own page, with sample information, and this wording lit on it" data-testid={`contract-read-full-${text.key}`}>
                           Read it as the customer sees it
                         </button>
                       ) : null}
@@ -462,6 +568,8 @@ export function SettingsContractsTab({ role, onOpenEditor, onOpenStep }: Setting
                           </button>
                         ))}
                       </div>
+                    ) : null}
+                  </div>
                     ) : null}
                   </article>
                 )
