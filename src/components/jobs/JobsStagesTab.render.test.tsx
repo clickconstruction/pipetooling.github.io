@@ -388,4 +388,56 @@ describe('JobsStagesTab render smoke', () => {
     // BankPaymentsModal flips from mounted-closed to open without crashing
     expect(document.body.textContent).toContain('Accounts Receivable')
   })
+
+  describe('section moves (the shared stagesSectionActionProps, map step 6)', () => {
+    function moveJobs() {
+      return [
+        makeJob({ job_name: 'Waiting Casa', status: 'waiting' }),
+        makeJob({ job_name: 'Working Duplex', status: 'working', hcp_number: '878' }),
+      ]
+    }
+    beforeEach(() => {
+      localStorage.setItem(
+        'pipetooling_stages_sections_v2',
+        JSON.stringify({ waiting: true, working: true, readyToBill: false, billed: false, collections: false, paid: false }),
+      )
+    })
+
+    it('Move to Working moves the Waiting job; Ready to Bill and Mark Waiting ask first', async () => {
+      localStorage.removeItem('jobs-stages-ham-mode')
+      const jobs = moveJobs()
+      const updateJobStatus = vi.fn(async () => true)
+      const moveJobToReadyToBillWithStripePrep = vi.fn(async () => true)
+      renderWithProviders(
+        <JobsStagesTab ref={createRef<JobsStagesTabHandle>()} {...makeProps({ jobs, updateJobStatus, moveJobToReadyToBillWithStripePrep })} />,
+      )
+      await settle()
+      fireEvent.click(screen.getByRole('button', { name: 'Move to Working' }))
+      expect(updateJobStatus).toHaveBeenCalledWith(jobs[0]!.id, 'working')
+      fireEvent.click(screen.getByRole('button', { name: 'Ready to Bill' }))
+      expect(screen.getByText('878 · Working Duplex')).toBeTruthy()
+      expect(moveJobToReadyToBillWithStripePrep).not.toHaveBeenCalled()
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Mark Waiting' }))
+      expect(screen.getByText('This will move the job back to Waiting.')).toBeTruthy()
+      expect(updateJobStatus).toHaveBeenCalledTimes(1)
+    })
+
+    it('ham mode moves straight through: Ready to Bill and Mark Waiting act without a confirm', async () => {
+      localStorage.setItem('jobs-stages-ham-mode', 'true')
+      const jobs = moveJobs()
+      const updateJobStatus = vi.fn(async () => true)
+      const moveJobToReadyToBillWithStripePrep = vi.fn(async () => true)
+      renderWithProviders(
+        <JobsStagesTab ref={createRef<JobsStagesTabHandle>()} {...makeProps({ jobs, updateJobStatus, moveJobToReadyToBillWithStripePrep })} />,
+      )
+      await settle()
+      fireEvent.click(screen.getByRole('button', { name: 'Ready to Bill' }))
+      expect(moveJobToReadyToBillWithStripePrep).toHaveBeenCalledWith(jobs[1]!.id)
+      fireEvent.click(screen.getByRole('button', { name: 'Mark Waiting' }))
+      expect(updateJobStatus).toHaveBeenCalledWith(jobs[1]!.id, 'waiting')
+      expect(screen.queryByText('878 · Working Duplex')).toBeNull()
+      localStorage.removeItem('jobs-stages-ham-mode')
+    })
+  })
 })
