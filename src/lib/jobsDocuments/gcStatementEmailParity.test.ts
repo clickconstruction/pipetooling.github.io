@@ -16,6 +16,7 @@ import {
   type GcStatementPayloadGroup,
 } from '../../../supabase/functions/gc-statement-email-dispatch/render'
 import type { GcReviewGroup } from '../gcReviewRollup'
+import { billPaidByWords } from '../../../supabase/functions/_shared/billPaidBy'
 
 /**
  * Journey-map #46: three lanes build the GC's statement — Draft Message
@@ -29,6 +30,16 @@ const PHONE = '(512) 360-0599'
 const PORTAL = 'https://my.clickplumbing.com/knight'
 const INTRO = 'Hi there — here is where things stand this week.\nThanks for your business.'
 
+/**
+ * What paid each bill (v2.4100), once, as facts: the server render words them from the payload,
+ * the client row carries the words the board computed — the same rule, so the lanes stay one email.
+ */
+const j1Bills = [{ id: 'i1', amount: 1450, status: 'billed', sequence_order: 1, billed_at: '2026-07-21' }]
+const j1Payments = [{ invoice_id: 'i1', amount: 1000, paid_on: '2026-08-15', payment_type: 'check', reference_number: '4821', sequence_order: 1 }]
+const j3Bills = [{ id: 'i3', amount: 4000, status: 'billed', sequence_order: 1, billed_at: '2026-08-30' }]
+const PAID_BY_J1 = billPaidByWords({ bills: j1Bills, payments: j1Payments, retainageHeld: null }, { id: 'i1', amount: 1450 })
+const PAID_BY_J3 = billPaidByWords({ bills: j3Bills, payments: [], retainageHeld: null }, { id: 'i3', amount: 4000 })
+
 /** The same three jobs in both shapes: address-led, address-less (name leads once), number-less. */
 const clientGroup: GcReviewGroup = {
   key: 'gc-1',
@@ -39,9 +50,9 @@ const clientGroup: GcReviewGroup = {
   subtotal: 5_650,
   oldestAgeDays: 45,
   rows: [
-    { key: 'a', jobId: 'j1', hcp: '916', jobName: 'SVP Manor', jobAddress: '11915 Ring Dr, Manor TX', customerName: 'Knight', referenceDateDisplay: 'Jul 21, 2026', ageDays: 45, remaining: 450, inCollections: false },
+    { key: 'a', jobId: 'j1', hcp: '916', jobName: 'SVP Manor', jobAddress: '11915 Ring Dr, Manor TX', customerName: 'Knight', referenceDateDisplay: 'Jul 21, 2026', ageDays: 45, remaining: 450, inCollections: false, paidBy: PAID_BY_J1 },
     { key: 'b', jobId: 'j2', hcp: '948', jobName: 'Water Heater', jobAddress: '', customerName: 'Knight', referenceDateDisplay: 'Aug 2, 2026 (est.)', ageDays: 30, remaining: 1_200, inCollections: false },
-    { key: 'c', jobId: 'j3', hcp: '—', jobName: 'Connect sink', jobAddress: '12803 El Dorado, Universal City TX', customerName: 'Knight', referenceDateDisplay: 'Aug 30, 2026', ageDays: 6, remaining: 4_000, inCollections: false },
+    { key: 'c', jobId: 'j3', hcp: '—', jobName: 'Connect sink', jobAddress: '12803 El Dorado, Universal City TX', customerName: 'Knight', referenceDateDisplay: 'Aug 30, 2026', ageDays: 6, remaining: 4_000, inCollections: false, paidBy: PAID_BY_J3 },
   ],
 }
 
@@ -53,9 +64,9 @@ const payloadGroup: GcStatementPayloadGroup = {
   subtotal: 5_650,
   oldest_age_days: 45,
   rows: [
-    { job_id: 'j1', display_number: '916', job_name: 'SVP Manor', job_address: '11915 Ring Dr, Manor TX', customer_name: 'Knight', ref_date: '2026-07-21', ref_is_estimate: false, age_days: 45, remaining: 450, in_collections: false },
+    { job_id: 'j1', display_number: '916', job_name: 'SVP Manor', job_address: '11915 Ring Dr, Manor TX', customer_name: 'Knight', ref_date: '2026-07-21', ref_is_estimate: false, age_days: 45, remaining: 450, in_collections: false, invoice_id: 'i1', invoice_amount: 1450, retainage_held: null, job_bills: j1Bills, job_payments: j1Payments },
     { job_id: 'j2', display_number: '948', job_name: 'Water Heater', job_address: null, customer_name: 'Knight', ref_date: '2026-08-02', ref_is_estimate: true, age_days: 30, remaining: 1_200, in_collections: false },
-    { job_id: 'j3', display_number: null, job_name: 'Connect sink', job_address: '12803 El Dorado, Universal City TX', customer_name: 'Knight', ref_date: '2026-08-30', ref_is_estimate: false, age_days: 6, remaining: 4_000, in_collections: false },
+    { job_id: 'j3', display_number: null, job_name: 'Connect sink', job_address: '12803 El Dorado, Universal City TX', customer_name: 'Knight', ref_date: '2026-08-30', ref_is_estimate: false, age_days: 6, remaining: 4_000, in_collections: false, invoice_id: 'i3', invoice_amount: 4000, retainage_held: null, job_bills: j3Bills, job_payments: [] },
   ],
 }
 
@@ -127,6 +138,21 @@ describe('GC statement — the client builders and the dispatcher render the sam
     for (const body of [buildGcStatementEmailText(clientGroup, { dateStr: DATE }), renderGcStatementText(payloadGroup, DATE)]) {
       expect(body).toContain('- Water Heater (Job 948) — billed Aug 2, 2026 (est.) — $1,200.00')
       expect(body).toContain('- 12803 El Dorado, Universal City TX (Connect sink) — billed Aug 30, 2026 — $4,000.00')
+    }
+  })
+
+  it('under each bill, what paid it (v2.4100) — the same words in both lanes, and none for a row the RPC did not decorate', () => {
+    expect(PAID_BY_J1).toBe('$1,000.00 paid by #4821 on Aug 15 · $450.00 still open')
+    expect(PAID_BY_J3).toBe('nothing applied yet')
+    for (const body of [buildGcStatementEmailHtml(clientGroup, { dateStr: DATE }), renderGcStatementHtml(payloadGroup, DATE)]) {
+      expect(body).toContain('Job 916 · SVP Manor</span><br /><span style="font-size:11px;color:#6b7280">$1,000.00 paid by #4821 on Aug 15 · $450.00 still open</span>')
+      expect(body).toContain('Connect sink</span><br /><span style="font-size:11px;color:#6b7280">nothing applied yet</span>')
+      // The address-less row carries no payments in either shape: no line.
+      expect(body).toContain('Water Heater<br /><span style="font-size:11px;color:#6b7280">Job 948</span></td>')
+    }
+    for (const body of [buildGcStatementEmailText(clientGroup, { dateStr: DATE }), renderGcStatementText(payloadGroup, DATE)]) {
+      expect(body).toContain('- 11915 Ring Dr, Manor TX (Job 916 · SVP Manor) — billed Jul 21, 2026 — $450.00 — $1,000.00 paid by #4821 on Aug 15 · $450.00 still open')
+      expect(body).toContain('- Water Heater (Job 948) — billed Aug 2, 2026 (est.) — $1,200.00\n')
     }
   })
 
