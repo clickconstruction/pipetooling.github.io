@@ -228,6 +228,15 @@ describe('updates', () => {
     expect(html).toContain('Verified true and current by Wendi Aguilar, Click Plumbing and Electrical')
   })
 
+  it('a first update marks nothing and carries no “since” line (v2.4133 — the live pass on B398 printed “since : released 09/17”)', () => {
+    const changes = diffProcurementLog(null, after)
+    const html = buildProcurementUpdateHtml({ ...letter, kind: 'update', updateNumber: 1, sentOn: '2026-09-28', sinceOn: null, rows: after, changes, line: '' })
+    expect(html).toContain('first update')
+    expect(html).not.toContain('class="dot"></span><strong>')
+    expect(html).not.toContain('since :')
+    expect(html).not.toContain('since ')
+  })
+
   it('a sheet with no fields beyond the rows still prints (the old call shape)', () => {
     const html = buildProcurementUpdateHtml({ bidLabel: 'B1', companyName: 'Click', updateNumber: 1, sentOn: '2026-09-28', sinceOn: null, rows: [], changes: [], line: '', stageDates: {} })
     expect(html).toContain('No items on the log.')
