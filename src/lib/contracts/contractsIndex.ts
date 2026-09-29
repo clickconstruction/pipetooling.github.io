@@ -1,6 +1,6 @@
 /**
  * Contracts & terms as an index (v2.4108): the cards ordered the way a customer meets them, one
- * line per contract, a lens to narrow the list and a find box — so eighteen texts read as a table
+ * line per contract, a lens to narrow the list and a find box — so nineteen texts read as a table
  * of contents first and a card second. Pure; the tab renders it.
  */
 import { CONTRACT_STATUS_LABELS, type ContractCatalogArea, type ContractCatalogEntry, type ContractTextStatus, type ResolvedContractText } from './customerContractCatalog'
@@ -8,9 +8,10 @@ import type { ContractLastSent } from './contractLastSent'
 import type { ReviewState } from './contractTextHistory'
 
 /** The sections, in the order a customer meets them. */
-export const CONTRACT_AREA_ORDER: readonly ContractCatalogArea[] = ['estimates', 'bids', 'jobs', 'signing', 'billing', 'liens']
+export const CONTRACT_AREA_ORDER: readonly ContractCatalogArea[] = ['website', 'estimates', 'bids', 'jobs', 'signing', 'billing', 'liens']
 
 export const CONTRACT_AREA_HINTS: Readonly<Record<ContractCatalogArea, string>> = {
+  website: 'what anyone reads on clickplumbing.com before they call',
   estimates: 'what a homeowner accepts on an estimate',
   bids: 'what a contractor approves in the bid room, and the letter behind it',
   jobs: 'what a homeowner signs on a job, and what a job sends',
@@ -50,7 +51,7 @@ export function needsLookReasons(card: Pick<IndexCard, 'text' | 'sent' | 'review
 export type ContractLens = 'all' | 'needs_look' | ContractTextStatus
 
 /** The lenses in the order the chips show them: every card, the ones that need a look, then each kind of wording. */
-export const CONTRACT_LENS_ORDER: readonly ContractLens[] = ['all', 'needs_look', 'yours', 'built_in', 'blank', 'in_settings', 'per_record', 'fixed']
+export const CONTRACT_LENS_ORDER: readonly ContractLens[] = ['all', 'needs_look', 'yours', 'built_in', 'blank', 'in_settings', 'per_record', 'fixed', 'external']
 
 export function contractLensLabel(lens: ContractLens): string {
   if (lens === 'all') return 'All'

@@ -9,7 +9,7 @@ const card = (id: string, over: Partial<IndexCard> = {}): IndexCard => {
 
 describe('contractsIndex', () => {
   it('orders the sections the way a customer meets them, and every catalog area has one', () => {
-    expect(CONTRACT_AREA_ORDER).toEqual(['estimates', 'bids', 'jobs', 'signing', 'billing', 'liens'])
+    expect(CONTRACT_AREA_ORDER).toEqual(['website', 'estimates', 'bids', 'jobs', 'signing', 'billing', 'liens'])
     for (const e of CUSTOMER_CONTRACT_CATALOG) expect(CONTRACT_AREA_ORDER).toContain(e.area)
   })
 
@@ -30,6 +30,7 @@ describe('contractsIndex', () => {
     expect(counts.built_in).toBe(1)
     expect(contractLensLabel('needs_look')).toBe('Needs a look')
     expect(contractLensLabel('built_in')).toBe('Built-in wording')
+    expect(contractLensLabel('external')).toBe('Hosted elsewhere')
     expect(indexRowMatches(cards[0]!, 'needs_look', '')).toBe(true)
     expect(indexRowMatches(cards[2]!, 'needs_look', '')).toBe(false)
     expect(indexRowMatches(cards[1]!, 'built_in', 'concrete')).toBe(true)
