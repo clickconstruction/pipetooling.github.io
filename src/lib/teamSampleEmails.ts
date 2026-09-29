@@ -23,6 +23,7 @@ import { buildScheduleEmail, type ScheduleDayBlockRow } from '../../supabase/fun
 import { buildShareEmail, type ShareBlockRow } from '../../supabase/functions/_shared/scheduleShareCore'
 import { buildRecurringJobReportHtml, buildRecurringJobReportTextFallback, recurringJobReportEmailSubject, type RecurringJobReportPayload } from '../../supabase/functions/_shared/recurringJobReportEmail'
 import { sunSatWeekOf } from './teamEmails'
+import { buildReportEmail, type ReportContent } from '../../supabase/functions/_shared/fieldReportEmail'
 import { readyToBillSubject, readyToBillText, renderReadyToBillDetailed, type ReadyToBillPayload } from '../../supabase/functions/_shared/readyToBillEmail'
 
 export type BuiltTeamEmail = { subject: string; html: string; text: string }
@@ -407,6 +408,23 @@ export function sampleRecurringJobReportPayload(todayYmd: string): RecurringJobR
   }
 }
 
+/** The Field report content (lift 11): Ana's Job completion report on the water heater job, filed this afternoon, signature captured. */
+export function sampleFieldReportContent(todayYmd: string): ReportContent {
+  return {
+    templateName: 'Job completion',
+    authorName: 'Ana Lead',
+    jobDisplay: '1054 · Water heater replacement',
+    createdAt: `${todayYmd}T17:40:00Z`,
+    fieldValues: {
+      'Work done': 'Replaced 50-gal gas heater, new expansion tank, flex lines.\nOld unit hauled off.',
+      'Parts used': ['Bradford White 50-gal', 'Expansion tank', '2× flex lines'],
+      'Follow-up': 'None — customer walked through.',
+      'Customer signature': 'data:image/png;base64,iVBORw0KGgo=',
+      'Photos': '',
+    },
+  }
+}
+
 export function buildTeamSampleEmail(id: TeamSampleEmailId, ctx: TeamSampleContext): BuiltTeamEmail {
   const origin = ctx.origin
   switch (id) {
@@ -423,6 +441,9 @@ export function buildTeamSampleEmail(id: TeamSampleEmailId, ctx: TeamSampleConte
     case 'recurring_job_report': {
       const p = sampleRecurringJobReportPayload(ctx.todayYmd)
       return { subject: recurringJobReportEmailSubject(p), html: buildRecurringJobReportHtml(p), text: buildRecurringJobReportTextFallback(p, false) }
+    }
+    case 'report_email': {
+      return buildReportEmail(sampleFieldReportContent(ctx.todayYmd))
     }
     case 'ready_to_bill': {
       const p = sampleReadyToBillPayload(ctx.todayYmd)
