@@ -1,5 +1,5 @@
 /**
- * Bids → Submittals: the walkthrough's stops (v2.4067; the Procure stop v2.4088) and the first-open offer.
+ * Bids → Submittals: the walkthrough's stops (v2.4067; the Procure stop v2.4088; reworded for the road, the takeoff and the row controls v2.4120) and the first-open offer.
  *
  * The spotlight tour stops at every stage of the process in order. A stage whose
  * controls are not on the page yet (Build Rev 1 once it is built, the room line before a
@@ -41,7 +41,7 @@ export const SUBMITTAL_TOUR_STEPS: SpotlightTourStep[] = [
   {
     anchor: 'submittals-build',
     title: '2 · Build Rev 1',
-    body: 'One row per tag, in tag order, then the accessories: the specified product, the product you picked, the status against the schedule, and the reason and lead time from the pick.',
+    body: 'One row per tag, in tag order, from whichever source the bid has. From the quotes compared: the product you picked, the status against the schedule, the reason and lead time from the pick, the accessories after. From the schedule alone: each row Missing until you type its product. From the takeoff: the part under each fixture you ticked, marked Proposed.',
     missingBody: 'Rev 1 is already built on this bid, so this card is gone. The revision chips took its place.',
   },
   {
@@ -52,14 +52,14 @@ export const SUBMITTAL_TOUR_STEPS: SpotlightTourStep[] = [
   },
   {
     anchor: 'submittals-tiles',
-    title: 'The tiles: where you stand',
-    body: 'Rows, as specified, alternates (and how many still owe a reason), design changes, tags nobody quoted, and cut sheets in. Amber and red are the ones that want you.',
-    missingBody: 'The tiles appear with Rev 1.',
+    title: 'One line: where you stand',
+    body: 'Under the Reasons & cut sheets title: rows, as specified, alternates (and how many still owe a reason), design changes, proposed, missing, accessories, and how many cut sheets are in. The counts that name something still owed — without a reason, missing, sheets — are the ones that want you.',
+    missingBody: 'The line appears with Rev 1.',
   },
   {
     anchor: 'submittals-rows',
     title: '3 · Fix a row with Edit',
-    body: 'Status, the reason an alternate or a design change owes, the lead time, and the cut-sheet pages. “say why” and “sheet needed” mark the rows still owing something. On a draft the editor also takes the tag and the product, so a row with no pick behind it — or a whole submittal with no picks — is typed here; + Add a row by hand starts one.',
+    body: 'Status, the reason an alternate or a design change owes, the lead time, and the cut-sheet pages. “say why” and “sheet needed” mark the rows still owing something. On a draft the editor also takes the tag and the product, so a row with no pick behind it — or a whole submittal with no picks — is typed here; + Add a row by hand starts one, + Add from the takeoff… ticks more fixtures on. Split beside Edit turns a row counted as WC 1&2 into WC-1 and WC-2; × takes a row off the draft.',
     missingBody: 'The rows appear with Rev 1.',
   },
   {
@@ -89,7 +89,7 @@ export const SUBMITTAL_TOUR_STEPS: SpotlightTourStep[] = [
   {
     anchor: 'submittals-resubmit',
     title: '7 · Resubmit only what came back',
-    body: 'When rows come back marked Revise or Reject, a green button starts Rev N+1 with just those rows. Fix the pick on Pricing, rebuild, share again: the same room link shows the new revision.',
+    body: 'When rows come back marked Revise or Reject, a green button starts Rev N+1 with just those rows. Fix the pick on Pricing and rebuild, or fix the row with Edit; share again, and the same room link shows the new revision.',
     missingBody: 'New revision is always here; the “Rev N+1 from the rows sent back” form of it appears when a reviewer has sent rows back.',
   },
   {

@@ -60,7 +60,7 @@ export type SubmittalJourneyInput = {
 }
 
 const LABELS: Record<JourneyStageKey, string> = {
-  picks: 'Schedule & picks',
+  picks: 'Sources',
   build: 'Build Rev 1',
   rows: 'Reasons & sheets',
   package: 'Package',

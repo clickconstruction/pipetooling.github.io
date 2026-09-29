@@ -4,15 +4,15 @@ category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
 keywords: procurement log, procurement, released, ordered, lead time, expected, required, float, order by, delivered, send update, submittal, submittals, walkthrough, tour, where you are, journey, next step, cut sheet, cut sheets, fixture schedule, specified, submitted, alternate, superseded, equal, design change, missing, accessory, revision, rev, package, vendor pdf, in lieu of, GC approval, product data
 ---
-A submittal is the list of products you will install, one row per tag on the plan's fixture schedule, with the cut sheet for each — the GC approves it before anything is ordered. In PipeTooling the rows are not typed: they are **built from the picks** you already made on the Pricing compare, so the day you pick a house the submittal is half done.
+A submittal is the list of products you will install, one row per tag on the plan's fixture schedule, with the cut sheet for each — the GC approves it before anything is ordered. In PipeTooling the rows are not typed: they are **built from what the bid already knows** — the fixtures you counted on the takeoff, the picks you made on the Pricing compare, or the plans' schedule — so the day you price a job the submittal is half done.
 
 ## Where it lives
 
-Bids → **Submittals** (the tab after Cover Letter; office and estimator roles). Pick a bid the way you do on Pricing. The tab is a lens on the product decisions: the specified product from the schedule, the submitted product from the picked quote line, the status against the schedule, the reason and lead time you gave at the pick, and the cut-sheet pages.
+Bids → **Submittals** (the tab after Cover Letter; office and estimator roles). Pick a bid the way you do on Pricing. The tab is a lens on the product decisions: the specified product from the schedule, the submitted product from the picked quote line or the part under the takeoff's fixture, the status against the schedule, the reason and lead time you gave at the pick, and the cut-sheet pages.
 
 ## Where you are
 
-The strip under the bid name, **Where this submittal is**, shows the eight stages as pills: schedule & picks → Build Rev 1 → reasons & sheets → package → share → their call → resubmit → procure. A ✓ is done, blue is where you are, amber is waiting on the reviewer. The line under the pills names the next thing to do and carries the button that does it, so the answer to "what now?" is always the same place. Tap a pill and the page scrolls to that stage's controls and rings them.
+The strip under the bid name, **Where this submittal is**, shows the eight stages as pills: sources → Build Rev 1 → reasons & sheets → package → share → their call → resubmit → procure. A ✓ is done, blue is where you are, amber is waiting on the reviewer. The line under the pills names the next thing to do and carries the button that does it, so the answer to "what now?" is always the same place. Tap a pill and the page scrolls to that stage's controls and rings them.
 
 The page below runs in the same order, one numbered section per stage down a rail on the left. A finished stage folds to one green line (tap its title to open it); the stage you are on is open and ringed, and the rows stay open beside whatever reads them; a later stage is dashed with a line saying what will appear there. Tick **Open every stage** to see everything at once — the page remembers that on this device. The line under the bid name says which revision you are working on (*Working on Rev 3 · draft, started from Rev 2*); older revisions are the chips on stage 2.
 
@@ -38,7 +38,7 @@ BP375 has 26 fixtures on the takeoff, 22 with a part, no quotes compared and no 
 
 Open the bid on the Submittals tab and tap {{button:blue|Build Rev 1 from the picks}} — or {{button:blue|Choose from the takeoff}} and build from the ticked fixtures. From the picks: one row per tag, in tag order, then the accessories. Each row carries what Pricing knew: {{chip:green|As specified}}, {{chip:blue|Superseded}}, {{chip:blue|Equal}}, {{chip:yellow|Alternate}}, {{chip:red|Design change}}, {{chip:red|Missing}}, or {{chip:gray|Accessory}}; the reason and lead time from the pick; the house it came from.
 
-Six tiles at the top say where you stand: rows, as specified, alternates (and how many still need a reason), design changes, missing, and **cut sheets in**.
+One line under stage 3's title says where you stand: rows, as specified, alternates (and how many still need a reason), design changes, proposed, missing, accessories, and **cut sheets in**.
 
 :::example SpaceX, the way it should have gone
 Wendi pastes the P002 schedule, picks NWS on the compare, and opens Submittals. Rev 1 builds 22 rows: 6 as specified, 1 superseded, 1 equal, 8 alternates (3 still owe a reason), 1 design change, 1 missing, 4 accessories. Nothing was retyped from the quote.
@@ -46,7 +46,7 @@ Wendi pastes the P002 schedule, picks NWS on the compare, and opens Submittals. 
 
 ## Fix a row
 
-Tap {{button:outline|Edit}} on any row. The editor takes the status (your call on superseded, equal or a design change when the model numbers alone cannot tell), the reason chips and a note an alternate or a design change owes ({{chip:gray|Long lead time}} {{chip:gray|Discontinued}} {{chip:gray|In stock}} {{chip:gray|Or-equal clause}} {{chip:gray|Cost}} {{chip:gray|Other}}), the lead time ({{chip:gray|In stock}} {{chip:gray|1 wk}} {{chip:gray|2 wk}} {{chip:gray|4+ wk}}, or typed), and the cut sheet. A row that owes a reason reads **say why**; a row with no sheet reads **sheet needed**.
+Tap {{button:outline|Edit}} on any row. The editor takes the status (your call on superseded, equal or a design change when the model numbers alone cannot tell), the reason chips and a note an alternate or a design change owes ({{chip:gray|Long lead time}} {{chip:gray|Discontinued}} {{chip:gray|In stock}} {{chip:gray|Or-equal clause}} {{chip:gray|Cost}} {{chip:gray|Other}}), the lead time ({{chip:gray|In stock}} {{chip:gray|1 wk}} {{chip:gray|2 wk}} {{chip:gray|4+ wk}}, or typed), and the cut sheet. A row that owes a reason reads **say why**; a row with no sheet reads **sheet needed**. On a draft, **×** beside Edit takes a row off (a takeoff row is unticked in the pick list too), and {{button:outline|+ Add from the takeoff…}} ticks more fixtures on.
 
 ## Split a combined fixture
 

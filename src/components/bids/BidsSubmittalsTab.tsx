@@ -1380,7 +1380,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       ) : null}
       {!loading ? (
         <div className="submittal-road" data-testid="submittal-road" style={{ display: 'grid', gridTemplateColumns: '34px 1fr', columnGap: '0.6rem' }}>
-          {/* 1 · Schedule & picks — the source line is in the header; the robot's offer lives here while there is no schedule. */}
+          {/* 1 · Sources (Where the rows come from) — the source line is in the header; the robot's offer lives here while there is no schedule. */}
           <RoadSection n={1} title="Where the rows come from" status={stageStatus('picks')} open={sectionOpen('picks')} onToggle={() => toggleSection('picks')} anchor="submittals-schedule"
             summary={<>{takeoffFixtures > 0 ? <>{takeoffFixtures} on the takeoff · </> : null}{specified.length === 0 ? 'no schedule yet' : `${specified.length} tag${specified.length === 1 ? '' : 's'}`}{picks.length > 0 ? <> · {picks.length} picked line{picks.length === 1 ? '' : 's'}</> : null}{takeoffFixtures > 0 && specified.length === 0 && picks.length === 0 ? <> · <button type="button" onClick={openTakeoffPicker} style={{ ...btnQuiet, textDecoration: 'underline', fontSize: 'inherit' }}>choose from the takeoff</button></> : onOpenPricing ? <> · <button type="button" onClick={() => (specified.length === 0 ? setPlugInOpen(true) : onOpenPricing(bid))} style={{ ...btnQuiet, textDecoration: 'underline', fontSize: 'inherit' }}>{specified.length === 0 ? 'type or paste the fixture schedule' : 'the picks on Pricing'}</button></> : null}</>}>
             {/* v2.4107 · three sources, the takeoff first: a bid priced from a takeoff has no picks and often no schedule, yet the takeoff already names every product. */}
