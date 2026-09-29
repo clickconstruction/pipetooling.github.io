@@ -1,20 +1,19 @@
 /**
  * The My Time day editor's save: what each dirty cluster writes to `clock_sessions`. PAYROLL PATH.
  *
- * Moved word for word out of DashboardMyTimeDayEditorModal (`persistDirtyChangesAsync`). The order
- * of the branches is the behavior, and every `DatabaseError` message is copy the user reads —
- * MY_TIME_DAY_EDITOR_MODAL map, "The save engine" and quirk 8. Change neither without a test
- * that says why.
+ * `planMyTimeDaySave` works out the whole day's writes, in order, without touching the database —
+ * every refusal (`DatabaseError`, the copy the user reads) is thrown before anything is sent.
+ * `persistMyTimeDayDirtyClusters` sends the list to `save_my_time_day` in one call, which applies it
+ * in one transaction: all of it, or none of it (v2.4115; before, each write was its own request
+ * and a refusal part-way left the rows before it rewritten — the map's quirk 26).
+ *
+ * The order of the branches is the behaviour — MY_TIME_DAY_EDITOR_MODAL map, "The save engine"
+ * and quirk 8. Change it only with a test that says why.
  *
  * `persistMyTimeClusterAndGetSegmentIds` (persistMyTimeClusterForSegmentAssign.ts) is a near-copy
- * of the multi-payload branches for the assign flow. It has no draft guard and no coalesced
- * branch; do not swap one for the other without a parity test.
+ * of the multi-payload branches for the assign flow, still one request per write. It has no draft
+ * guard and no coalesced branch; do not swap one for the other without a parity test.
  */
-import {
-  leaderReplaceClockSessionClusterMixed,
-  leaderSplitClockSessionCluster,
-  leaderSplitClockSessionSegments,
-} from './leaderClockSessionSplit'
 import { buildPayloads, singleSegmentTimesMatchSession, stripJobBidForSegmentRpc } from './myTimeDayEditorPayloads'
 import {
   attachAllocationsToPayloads,
@@ -36,13 +35,9 @@ import {
 } from './myTimeDayTimeline'
 import { partitionMixedClusterSingleSegmentToRowIntervals } from './myTimeMixedClusterSingleSegmentPartition'
 import { isDraftPeopleHoursSessionId } from './peopleHoursManualDraftSession'
-import {
-  replaceOwnClockSessionClusterMixed,
-  splitOwnClockSessionCluster,
-  splitOwnClockSessionSegments,
-  type SplitClockSegmentPayload,
-} from './splitOwnClockSessionSegments'
+import type { SplitClockSegmentPayload } from './splitOwnClockSessionSegments'
 import { supabase } from './supabase'
+import type { Json } from '../types/database'
 import { formatDenverBlockDateHeader, formatDenverTimeOnly } from '../utils/dateUtils'
 import { DatabaseError, withSupabaseRetry } from '../utils/errorHandling'
 
@@ -54,85 +49,103 @@ export const MY_TIME_SALARY_SYNC_SAVED_NOTE =
 export const MY_TIME_DRAFT_IN_BLOCK_EDITED_MESSAGE =
   'A new session can’t be split or merged with the session beside it before it is saved. Undo that change and Save, then edit again.'
 
-/** A new (draft) session's first save: an INSERT with the part's times and the row's job and bid. */
-async function insertDraftClockSession(
+/** A save with writes to send but no person to send them for. */
+export const MY_TIME_SAVE_MISSING_SUBJECT_MESSAGE = 'Missing subject user for this day.'
+
+/**
+ * One write of a day's save, as `save_my_time_day` takes it (migration 20260928182140). An insert
+ * is stamped with the call's person and day by the database.
+ */
+export type MyTimeDayWrite =
+  | {
+      op: 'insert'
+      clocked_in_at: string
+      clocked_out_at: string | null
+      notes: string
+      job_ledger_id: string | null
+      bid_id: string | null
+    }
+  | { op: 'update_notes'; id: string; notes: string }
+  | {
+      op: 'update_times'
+      id: string
+      clocked_in_at: string
+      clocked_out_at: string | null
+      notes: string
+      /** Written only when present (the People → Hours seed update). */
+      work_date?: string
+      job_ledger_id?: string | null
+      bid_id?: string | null
+    }
+  | { op: 'split_segments'; id: string; segments: SplitClockSegmentPayload[] }
+  | { op: 'split_cluster'; ids: string[]; segments: SplitClockSegmentPayload[] }
+  | { op: 'replace_mixed'; ids: string[]; segments: SplitClockSegmentPayload[] }
+
+/** A new (draft) session's first save: an insert with the part's times and the row's job and bid. */
+function draftInsert(
   row: DayEditorSession,
   p0: SplitClockSegmentPayload,
-  effectiveSubjectUserId: string | null | undefined,
-  dateStr: string
-): Promise<void> {
+  effectiveSubjectUserId: string | null | undefined
+): MyTimeDayWrite {
   if (!p0.clocked_out_at) {
     throw new DatabaseError('Draft session must be clocked out before saving.')
   }
   if (!effectiveSubjectUserId) {
     throw new DatabaseError('Missing subject user for new clock session.')
   }
-  await withSupabaseRetry(
-    async () =>
-      supabase.from('clock_sessions').insert({
-        user_id: effectiveSubjectUserId,
-        work_date: dateStr,
-        clocked_in_at: p0.clocked_in_at,
-        clocked_out_at: p0.clocked_out_at,
-        notes: p0.notes,
-        job_ledger_id: row.job_ledger_id,
-        bid_id: row.bid_id,
-      }),
-    'insert draft clock session from people hours',
-  )
-}
-
-/** The three split / replace RPCs a save may call. What they return is not read here. */
-export type MyTimeDayPersistRpcs = {
-  runSplitSeg: (sessionId: string, segments: SplitClockSegmentPayload[]) => Promise<unknown>
-  runSplitCluster: (sessionIds: string[], segments: SplitClockSegmentPayload[]) => Promise<unknown>
-  runReplaceMixed: (sessionIds: string[], segments: SplitClockSegmentPayload[]) => Promise<unknown>
+  return {
+    op: 'insert',
+    clocked_in_at: p0.clocked_in_at,
+    clocked_out_at: p0.clocked_out_at,
+    notes: p0.notes,
+    job_ledger_id: row.job_ledger_id,
+    bid_id: row.bid_id,
+  }
 }
 
 /**
- * Your own day uses the `own_*` RPCs, which the server holds to the current week. Anyone else's
- * day, and your own once the week fence is overridden (Draft Payroll), uses the `leader_*` RPCs.
+ * Your own day uses the `own_*` split / replace RPCs, which the server holds to the current week.
+ * Anyone else's day, and your own once the week fence is overridden (Draft Payroll), uses the
+ * `leader_*` ones.
  */
-export function myTimeDayPersistRpcs(editingSelf: boolean, fenceOverridden: boolean): MyTimeDayPersistRpcs {
+export function myTimeDaySaveUsesLeaderRpcs(editingSelf: boolean, fenceOverridden: boolean): boolean {
   // Overridden fence (Draft Payroll origin): always the leader RPCs — own_* stay week-fenced.
-  const runSplitSeg = editingSelf && !fenceOverridden ? splitOwnClockSessionSegments : leaderSplitClockSessionSegments
-  const runSplitCluster = editingSelf && !fenceOverridden ? splitOwnClockSessionCluster : leaderSplitClockSessionCluster
-  const runReplaceMixed = editingSelf && !fenceOverridden ? replaceOwnClockSessionClusterMixed : leaderReplaceClockSessionClusterMixed
-  return { runSplitSeg, runSplitCluster, runReplaceMixed }
+  return !(editingSelf && !fenceOverridden)
 }
 
-export type PersistMyTimeDayInput = {
+export type PlanMyTimeDaySaveInput = {
   /** Cluster ids to write, in order (the editor's `effectiveDirtyIds`). */
   dirty: string[]
   sessionClusters: DayEditorSession[][]
   splitByCluster: Record<string, SplitEditorState>
   nowTick: number
   effectiveSubjectUserId: string | null | undefined
-  dateStr: string
   /** People → Hours grid seed: a single untouched row saves its times, not only its note. */
   peopleHoursGridProportionalSeed: boolean
-  rpcs: MyTimeDayPersistRpcs
+}
+
+export type PersistMyTimeDayInput = PlanMyTimeDaySaveInput & {
+  /** The day the editor is open on: `save_my_time_day`'s `p_work_date`. */
+  dateStr: string
+  /** `leader_*` RPCs (true) or `own_*` (false) — `myTimeDaySaveUsesLeaderRpcs`. */
+  leader: boolean
 }
 
 /**
- * Writes every dirty cluster, one after another, and stops at the first failure — clusters
- * already written stay written. Throws `DatabaseError` with the message the editor shows.
- * `salarySyncMayAdjust` is true when rows of a salaried workday were re-cut.
+ * The day's writes, in order. Throws `DatabaseError` with the message the editor shows when a
+ * cluster cannot be saved — before anything is sent. `salarySyncMayAdjust` is true when rows of a
+ * salaried workday are re-cut.
  */
-export async function persistMyTimeDayDirtyClusters({
+export function planMyTimeDaySave({
   dirty,
   sessionClusters,
   splitByCluster,
   nowTick,
   effectiveSubjectUserId,
-  dateStr,
   peopleHoursGridProportionalSeed,
-  rpcs,
-}: PersistMyTimeDayInput): Promise<{ salarySyncMayAdjust: boolean }> {
-  const { runSplitSeg, runSplitCluster, runReplaceMixed } = rpcs
+}: PlanMyTimeDaySaveInput): { writes: MyTimeDayWrite[]; salarySyncMayAdjust: boolean } {
+  const writes: MyTimeDayWrite[] = []
   let showSalarySyncAfterPartitionSave = false
-  /** An approved row whose times a direct UPDATE changed: payroll hours are resynced once, at the end. */
-  let approvedRowTimesChangedId: string | null = null
   for (const clusterId of dirty) {
     const c = sessionClusters.find((x) => sessionClusterId(x) === clusterId)
     if (!c?.length) continue
@@ -157,12 +170,9 @@ export async function persistMyTimeDayDirtyClusters({
         const row = c[i]!
         const p0 = payloads[i]!
         if (isDraftPeopleHoursSessionId(row.id)) {
-          await insertDraftClockSession(row, p0, effectiveSubjectUserId, dateStr)
+          writes.push(draftInsert(row, p0, effectiveSubjectUserId))
         } else {
-          await withSupabaseRetry(
-            async () => supabase.from('clock_sessions').update({ notes: p0.notes }).eq('id', row.id),
-            'update clock session notes'
-          )
+          writes.push({ op: 'update_notes', id: row.id, notes: p0.notes })
         }
       }
       continue
@@ -176,34 +186,25 @@ export async function persistMyTimeDayDirtyClusters({
       if (c.length === 1) {
         const row = c[0]!
         if (isDraftPeopleHoursSessionId(row.id)) {
-          await insertDraftClockSession(row, payloads[0]!, effectiveSubjectUserId, dateStr)
+          writes.push(draftInsert(row, payloads[0]!, effectiveSubjectUserId))
         } else if (!singleSegmentTimesMatchSession(row, split)) {
           throw new DatabaseError(
             'To change clock times for one block, add a split first (tap the gray strip) or edit in People → Hours.'
           )
         } else if (peopleHoursGridProportionalSeed) {
           const p0 = payloads[0]!
-          await withSupabaseRetry(
-            async () =>
-              supabase
-                .from('clock_sessions')
-                .update({
-                  clocked_in_at: p0.clocked_in_at,
-                  clocked_out_at: p0.clocked_out_at,
-                  work_date: row.work_date,
-                  notes: p0.notes,
-                  job_ledger_id: row.job_ledger_id,
-                  bid_id: row.bid_id,
-                })
-                .eq('id', row.id),
-            'update clock session times from people hours proportional seed',
-          )
-          if (row.approved_at) approvedRowTimesChangedId = row.id
+          writes.push({
+            op: 'update_times',
+            id: row.id,
+            clocked_in_at: p0.clocked_in_at,
+            clocked_out_at: p0.clocked_out_at,
+            notes: p0.notes,
+            work_date: row.work_date,
+            job_ledger_id: row.job_ledger_id,
+            bid_id: row.bid_id,
+          })
         } else {
-          await withSupabaseRetry(
-            async () => supabase.from('clock_sessions').update({ notes: payloads[0]!.notes }).eq('id', row.id),
-            'update clock session notes'
-          )
+          writes.push({ op: 'update_notes', id: row.id, notes: payloads[0]!.notes })
         }
       } else if (!clusterSharesClockSessionClusterRpcMetadata(c)) {
         // Punch and salary rows merged into one part: each row takes its share of the part's span.
@@ -219,42 +220,29 @@ export async function persistMyTimeDayDirtyClusters({
         for (let i = 0; i < c.length; i++) {
           const row = c[i]!
           const iv = intervals[i]!
-          await withSupabaseRetry(
-            async () =>
-              supabase
-                .from('clock_sessions')
-                .update({
-                  clocked_in_at: new Date(iv.clockedInMs).toISOString(),
-                  clocked_out_at:
-                    iv.clockedOutMs != null
-                      ? new Date(iv.clockedOutMs).toISOString()
-                      : null,
-                  notes: p0.notes,
-                })
-                .eq('id', row.id),
-            'update clock session times after mixed cross-row merge partition',
-          )
-          if (row.approved_at) approvedRowTimesChangedId = row.id
+          writes.push({
+            op: 'update_times',
+            id: row.id,
+            clocked_in_at: new Date(iv.clockedInMs).toISOString(),
+            clocked_out_at: iv.clockedOutMs != null ? new Date(iv.clockedOutMs).toISOString() : null,
+            notes: p0.notes,
+          })
         }
       } else {
         const mixed = attachAllocationsToPayloads(payloads, c, split, nowTick)
-        await runReplaceMixed(c.map((s) => s.id), mixed)
+        writes.push({ op: 'replace_mixed', ids: c.map((s) => s.id), segments: mixed })
       }
     } else if (c.length === 1) {
-      await runSplitSeg(c[0]!.id, payloads.map(stripJobBidForSegmentRpc))
+      writes.push({ op: 'split_segments', id: c[0]!.id, segments: payloads.map(stripJobBidForSegmentRpc) })
     } else if (segmentsAreTheRowsUnchanged(c, split, nowTick)) {
       // Only the notes changed: write them onto the rows. The split / replace RPCs delete and
       // re-insert the rows, which takes approved hours back out of payroll.
       for (let i = 0; i < c.length; i++) {
         const row = c[i]!
-        const p0 = payloads[i]!
-        await withSupabaseRetry(
-          async () => supabase.from('clock_sessions').update({ notes: p0.notes }).eq('id', row.id),
-          'update clock session notes'
-        )
+        writes.push({ op: 'update_notes', id: row.id, notes: payloads[i]!.notes })
       }
     } else if (clusterIsHomogeneousJobBid(c) && clusterSharesClockSessionClusterRpcMetadata(c)) {
-      await runSplitCluster(c.map((s) => s.id), payloads.map(stripJobBidForSegmentRpc))
+      writes.push({ op: 'split_cluster', ids: c.map((s) => s.id), segments: payloads.map(stripJobBidForSegmentRpc) })
     } else if (mixedClusterSegmentsAllowPerRowPersist(c, split, nowTick)) {
       const useOrderedRowSegment =
         orderedSegmentsFollowTheirRows(c, split, nowTick) && payloads.length === c.length
@@ -274,25 +262,15 @@ export async function persistMyTimeDayDirtyClusters({
                 p0.clocked_out_at &&
                 Math.abs(pOut - rowOut) <= eps))
           if (timesMatch) {
-            await withSupabaseRetry(
-              async () =>
-                supabase.from('clock_sessions').update({ notes: p0.notes }).eq('id', row.id),
-              'update clock session notes'
-            )
+            writes.push({ op: 'update_notes', id: row.id, notes: p0.notes })
           } else {
-            await withSupabaseRetry(
-              async () =>
-                supabase
-                  .from('clock_sessions')
-                  .update({
-                    clocked_in_at: p0.clocked_in_at,
-                    clocked_out_at: p0.clocked_out_at,
-                    notes: p0.notes,
-                  })
-                  .eq('id', row.id),
-              'update clock session times'
-            )
-            if (row.approved_at) approvedRowTimesChangedId = row.id
+            writes.push({
+              op: 'update_times',
+              id: row.id,
+              clocked_in_at: p0.clocked_in_at,
+              clocked_out_at: p0.clocked_out_at,
+              notes: p0.notes,
+            })
           }
         }
       } else {
@@ -321,28 +299,18 @@ export async function persistMyTimeDayDirtyClusters({
                   p0.clocked_out_at &&
                   Math.abs(pOut - rowOut) <= eps))
             if (timesMatch) {
-              await withSupabaseRetry(
-                async () =>
-                  supabase.from('clock_sessions').update({ notes: p0.notes }).eq('id', row.id),
-                'update clock session notes'
-              )
+              writes.push({ op: 'update_notes', id: row.id, notes: p0.notes })
             } else {
-              await withSupabaseRetry(
-                async () =>
-                  supabase
-                    .from('clock_sessions')
-                    .update({
-                      clocked_in_at: p0.clocked_in_at,
-                      clocked_out_at: p0.clocked_out_at,
-                      notes: p0.notes,
-                    })
-                    .eq('id', row.id),
-                'update clock session times'
-              )
-              if (row.approved_at) approvedRowTimesChangedId = row.id
+              writes.push({
+                op: 'update_times',
+                id: row.id,
+                clocked_in_at: p0.clocked_in_at,
+                clocked_out_at: p0.clocked_out_at,
+                notes: p0.notes,
+              })
             }
           } else {
-            await runSplitSeg(row.id, rowPayloads.map(stripJobBidForSegmentRpc))
+            writes.push({ op: 'split_segments', id: row.id, segments: rowPayloads.map(stripJobBidForSegmentRpc) })
           }
         }
       }
@@ -360,27 +328,18 @@ export async function persistMyTimeDayDirtyClusters({
       for (let i = 0; i < c.length; i++) {
         const row = c[i]!
         const iv = coalesced.intervals[i]!
-        await withSupabaseRetry(
-          async () =>
-            supabase
-              .from('clock_sessions')
-              .update({
-                clocked_in_at: new Date(iv.clockedInMs).toISOString(),
-                clocked_out_at:
-                  iv.clockedOutMs != null
-                    ? new Date(iv.clockedOutMs).toISOString()
-                    : null,
-                notes: coalesced.rowNotes[i]!,
-              })
-              .eq('id', row.id),
-          'update clock session times after mixed coalesced partition save',
-        )
-        if (row.approved_at) approvedRowTimesChangedId = row.id
+        writes.push({
+          op: 'update_times',
+          id: row.id,
+          clocked_in_at: new Date(iv.clockedInMs).toISOString(),
+          clocked_out_at: iv.clockedOutMs != null ? new Date(iv.clockedOutMs).toISOString() : null,
+          notes: coalesced.rowNotes[i]!,
+        })
       }
     } else {
       // Rows that share origin and salary segment, cut out of line with each other: rebuild.
       const mixed = attachAllocationsToPayloads(payloads, c, split, nowTick)
-      await runReplaceMixed(c.map((s) => s.id), mixed)
+      writes.push({ op: 'replace_mixed', ids: c.map((s) => s.id), segments: mixed })
     }
     // Any save that re-cut a block holding a salaried row — a split, a moved seam, a merge, a
     // rebuild — may be adjusted by the next salary sync. A notes-only save changes no times.
@@ -388,16 +347,34 @@ export async function persistMyTimeDayDirtyClusters({
       showSalarySyncAfterPartitionSave = true
     }
   }
-  // people_hours moves only on approve (+) and reject / revoke (−). A direct UPDATE of an approved
-  // row's times changes neither, so the day's payroll hours stayed at the old sum. Resync the day
-  // from its approved sessions — once, and only when an approved row's times were written. (The
-  // split / replace RPCs keep people_hours themselves; a notes-only update changes no hours.)
-  if (approvedRowTimesChangedId) {
-    const sessionId = approvedRowTimesChangedId
-    await withSupabaseRetry(
-      async () => supabase.rpc('recompute_people_hours_after_session_edit', { p_session_id: sessionId }),
-      'recompute people_hours after my time save',
-    )
+  return { writes, salarySyncMayAdjust: showSalarySyncAfterPartitionSave }
+}
+
+/**
+ * Saves the dirty clusters: plans the writes, then sends them to `save_my_time_day` in one call —
+ * one transaction, so a refusal from the database undoes every write (all or nothing). The database
+ * resyncs `people_hours` once when an approved row's times change in place. Resolves with
+ * `salarySyncMayAdjust`; rejects with the planner's `DatabaseError` (nothing sent) or the
+ * database's error (nothing written).
+ */
+export async function persistMyTimeDayDirtyClusters(
+  input: PersistMyTimeDayInput
+): Promise<{ salarySyncMayAdjust: boolean }> {
+  const { writes, salarySyncMayAdjust } = planMyTimeDaySave(input)
+  if (writes.length === 0) return { salarySyncMayAdjust }
+  const subjectUserId = input.effectiveSubjectUserId
+  if (!subjectUserId) {
+    throw new DatabaseError(MY_TIME_SAVE_MISSING_SUBJECT_MESSAGE)
   }
-  return { salarySyncMayAdjust: showSalarySyncAfterPartitionSave }
+  await withSupabaseRetry(
+    async () =>
+      supabase.rpc('save_my_time_day', {
+        p_subject_user_id: subjectUserId,
+        p_work_date: input.dateStr,
+        p_leader: input.leader,
+        p_writes: writes as unknown as Json,
+      }),
+    'save my time day',
+  )
+  return { salarySyncMayAdjust }
 }
