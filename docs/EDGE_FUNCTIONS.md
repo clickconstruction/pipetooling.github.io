@@ -1509,6 +1509,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ### sign-job-contract
 
+> **v2.4150 — a statutory sentence at 10 pt**: a plain body's `**…**` run prints in the signed PDF at `STATUTORY_SIZE` (10 pt, regular weight) on the terms' 9 pt baseline (`parseStatutoryRuns` / `wrapRuns` in [`_shared/jobContractPdf.ts`](../supabase/functions/_shared/jobContractPdf.ts)); the asterisks never print. **Redeploy required.**
+
 **Purpose**: Record the customer's e-signature on a job contract (Contract Desk PR 2, v2.2681).
 
 **Endpoint**: `POST /functions/v1/sign-job-contract` — `{ token, revision, printedName, agreedTerms: true, signaturePngBase64?, mode?: 'in_person', public_origin? }`
@@ -1542,6 +1544,8 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 **v2.3510 (What customers see PR 2):** the reminder's subject, text and HTML come from `_shared/jobContractEmail.ts` → `buildJobContractReminderEmail`; the cron path is otherwise unchanged.
 
 ### share-job-contract
+
+> **v2.4150**: the draft and to-sign PDFs print a plain body's `**…**` run at 10 pt, as `sign-job-contract` does. **Redeploy required.**
 
 **Purpose**: Share a signed agreement — the stored signed PDF — by email, or hand back a download URL (Signed agreement view PR B, v2.2712).
 

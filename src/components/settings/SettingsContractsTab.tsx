@@ -676,6 +676,7 @@ function Wording({ entry, text }: { entry: ContractCatalogEntry; text: ResolvedC
 }
 
 function Body({ text, format }: { text: string; format: 'plain' | 'html' | 'markdown' }) {
-  if (format === 'plain') return <pre style={WORDING}>{text}</pre>
+  // v2.4150: plain goes through the renderer too, so a `**statutory sentence**` reads on the card as it prints.
+  if (format === 'plain') return <ContractBodyDisplay format="plain" bodyHtml={text} scrollStyles={{ fontSize: '0.8rem', lineHeight: 1.5, color: 'var(--text-700)', overflowWrap: 'anywhere' }} />
   return <ContractBodyDisplay format={format} bodyHtml={text} scrollStyles={{ fontSize: '0.8rem', color: 'var(--text-700)' }} />
 }

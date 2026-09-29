@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import * as pdfLib from 'pdf-lib'
-import { buildJobContractPdf, contractBodyToPlainText, formatPdfMoney, UNSIGNED_BLOCK, type PdfLibLike } from '../../../supabase/functions/_shared/jobContractPdf'
+import { buildJobContractPdf, contractBodyToPlainText, formatPdfMoney, parseStatutoryRuns, STATUTORY_SIZE, TERMS_SIZE, UNSIGNED_BLOCK, wrapRuns, type PdfLibLike } from '../../../supabase/functions/_shared/jobContractPdf'
 
 const input = {
   heading: 'Service agreement for 138 W Pat Dolan',
@@ -25,6 +25,30 @@ const input = {
   issuer: { companyName: 'Click Plumbing and Electrical', addressText: '12925 FM 20, Kingsbury, TX 78638', phone: '512-360-0599', email: '', tagline: 'Reliable service today, innovative solutions for tomorrow.', licenseLine: 'Malachi Whites RMP M-41130' },
   signature: { printedName: 'Michael Palmer', auditLine: 'Signed electronically by Michael Palmer (typed) · Sep 3, 2026, 7:14 PM CT · consent recorded', png: null },
 }
+
+describe('statutory runs (v2.4150)', () => {
+  const fake = { widthOfTextAtSize: (t: string, size: number) => t.length * size }
+  it('splits a paragraph into runs at the terms size and the statutory size, asterisks dropped; a lone ** stays', () => {
+    expect(parseStatutoryRuns('Waivers are conditional. **Customer waives the list.** Texas law governs.')).toEqual([
+      { text: 'Waivers are conditional. ', size: TERMS_SIZE },
+      { text: 'Customer waives the list.', size: STATUTORY_SIZE },
+      { text: ' Texas law governs.', size: TERMS_SIZE },
+    ])
+    expect(parseStatutoryRuns('a ** b')).toEqual([{ text: 'a ** b', size: TERMS_SIZE }])
+    expect(parseStatutoryRuns('')).toEqual([])
+  })
+  it('wraps sized words to the width, measuring each word at its own size', () => {
+    const lines = wrapRuns(parseStatutoryRuns('aa bb **cc dd** ee', 9, 10), fake, 60)
+    // aa(18)+sp(9)+bb(18)=45; +sp(9)+cc(20)=74 > 60 → break; cc(20)+sp(10)+dd(20)=50; +sp(10)+ee(18)=78 > 60 → break
+    expect(lines.map((l) => l.map((w) => `${w.word}@${w.size}`))).toEqual([['aa@9', 'bb@9'], ['cc@10', 'dd@10'], ['ee@9']])
+  })
+  it('a plain body keeps its tokens for the PDF builder, and the PDF still builds and parses with one', async () => {
+    expect(contractBodyToPlainText('x **y** z', 'plain')).toBe('x **y** z')
+    const bytes = await buildJobContractPdf(pdfLib as unknown as PdfLibLike, { ...input, termsText: '11. General terms. Waivers are conditional. **Customer waives the list under § 53.256.** Texas law governs.' })
+    const doc = await pdfLib.PDFDocument.load(bytes)
+    expect(doc.getPageCount()).toBe(1)
+  })
+})
 
 describe('contractBodyToPlainText', () => {
   it('passes plain text through and flattens html / markdown', () => {
