@@ -1,5 +1,9 @@
 /**
- * Bids → Submittals: the walkthrough's stops (v2.4067; the Procure stop v2.4088; reworded for the road, the takeoff and the row controls v2.4120) and the first-open offer.
+ * Bids → Submittals: the walkthrough's stops (v2.4067; the Procure stop v2.4088; reworded for the road, the takeoff and the row controls v2.4120; written in plain words v2.4123) and the first-open offer.
+ *
+ * The words follow the plain-words rules in `submittalTour.test.ts`: one idea per sentence,
+ * you + a verb, the button's exact name, a trade word explained beside itself the first
+ * time, no dashes, semicolons, parentheses or dot lists inside a sentence.
  *
  * The spotlight tour stops at every stage of the process in order. A stage whose
  * controls are not on the page yet (Build Rev 1 once it is built, the room line before a
@@ -15,88 +19,76 @@ export const SUBMITTAL_TOUR_STEPS: SpotlightTourStep[] = [
   {
     anchor: 'submittals-journey',
     title: 'Where this submittal is',
-    body: 'Eight stages, from the schedule to the GC’s approval and on to ordering. ✓ is done, blue is you, amber is waiting on someone else. The line under the pills is the next thing to do and the button that does it. The page below runs in the same order: a done stage folds to one line, the one you are on is open.',
+    body: 'This strip shows the 8 steps. A check mark means done. Blue means you are here. Amber means you are waiting on someone else. The line under it tells you the next thing to do. Its button does it.',
   },
   {
-    anchor: 'submittals-source',
-    title: '1 · Where the rows come from',
-    body: 'Two sources, either one enough: the takeoff (one row per fixture, the part under it as the product) and the plans’ fixture schedule, typed or read by the robot. A bid with quotes compared on Pricing gets a third card, the picks, which carry the reason and lead time from each pick. Nothing here is retyped from a quote.',
+    anchor: 'submittals-schedule',
+    title: 'Step 1. Where the rows come from',
+    body: 'A submittal is a list of the products you will install. Each row is one product. The rows come from work you already did. Pick one of these cards to start.',
   },
   {
     anchor: 'submittals-takeoff',
     title: 'From the takeoff',
-    body: 'A bid priced from a takeoff already names every product. Tick the fixtures that go on the submittal — fixtures and equipment start ticked, pipe and allowances unticked — and Rev 1 is built from them, each row Proposed until the plans’ schedule says As specified or Alternate. A name that spells out two tags (WC 1&2) offers a Split switch: a row per tag. Your ticks and splits are remembered on the bid.',
+    body: 'You counted these fixtures on the takeoff. Tick the ones the GC needs to approve. Then tap Build Rev 1. Each ticked fixture becomes a row.',
   },
   {
     anchor: 'submittals-plug-in',
     title: 'No schedule yet? Type or paste it',
-    body: 'The tags off the plans’ fixture schedule, one per line — WC-1, L-1, DWH-1 — with the make and model when the schedule gives them. No robot and no trip to Pricing. It saves to the same schedule Pricing reads.',
+    body: 'The plans have a fixture schedule. It lists tags like WC-1 and L-1. Type or paste those tags here, one per line. Now the app can check your products against the plans.',
   },
   {
     anchor: 'submittals-robot',
     title: 'Or let the robot read it',
-    body: 'Under Type or paste: ask the robot to read the tags off the plans. The card says so while it works; when it is back, the tags land under the cards for you to confirm, and only confirmed tags join the schedule.',
-    missingBody: 'This offer shows only while the bid has no schedule. This bid already has one.',
+    body: 'Do not want to type the schedule? Ask the robot to read it off the plans. It shows you what it found. You confirm each tag before it counts.',
+    missingBody: 'This offer only shows when the bid has no schedule yet.',
   },
   {
     anchor: 'submittals-build',
-    title: '2 · Build Rev 1',
-    body: 'One row per tag, in tag order, from whichever source the bid has. From the quotes compared: the product you picked, the status against the schedule, the reason and lead time from the pick, the accessories after. From the schedule alone: each row Missing until you type its product. From the takeoff: the part under each fixture you ticked, marked Proposed.',
-    missingBody: 'Rev 1 is already built on this bid, so this card is gone. The revision chips took its place.',
-  },
-  {
-    anchor: 'submittals-revisions',
-    title: 'Revisions',
-    body: 'Rev 1 is a draft until you share it. Each shared revision stays as the record; only the newest one can be edited or revised.',
-    missingBody: 'The chips appear once Rev 1 exists.',
-  },
-  {
-    anchor: 'submittals-tiles',
-    title: 'One line: where you stand',
-    body: 'Under the Reasons & cut sheets title: rows, as specified, alternates (and how many still owe a reason), design changes, proposed, missing, accessories, and how many cut sheets are in. The counts that name something still owed — without a reason, missing, sheets — are the ones that want you.',
-    missingBody: 'The line appears with Rev 1.',
+    title: 'Step 2. Build Rev 1',
+    body: 'Rev 1 is the first version of your submittal. Tap the button. The app makes one row per product. Later versions are Rev 2, Rev 3 and so on. Only the newest one can be changed.',
+    missingBody: 'This bid already has Rev 1. The chips here are its versions.',
   },
   {
     anchor: 'submittals-rows',
-    title: '3 · Fix a row with Edit',
-    body: 'Status, the reason an alternate or a design change owes, the lead time, and the cut-sheet pages. “say why” and “sheet needed” mark the rows still owing something. On a draft the editor also takes the tag and the product, so a row with no pick behind it — or a whole submittal with no picks — is typed here; + Add a row by hand starts one, + Add from the takeoff… ticks more fixtures on. Split beside Edit turns a row counted as WC 1&2 into WC-1 and WC-2; × takes a row off the draft.',
-    missingBody: 'The rows appear with Rev 1.',
+    title: 'Step 3. Fix the rows',
+    body: 'Each row needs three things. A status: is this the product the plans asked for? A reason, if it is not. A cut sheet, the maker’s page for the product. Tap Edit on a row to fill them in. The line at the top counts what is still missing.',
+    missingBody: 'The rows appear after you build Rev 1.',
   },
   {
     anchor: 'submittals-drop',
-    title: '3 · Cut sheets: drop the house’s PDF',
-    body: 'The whole submittal PDF is fine, 31 pages and all. Show the pages, then tap a page and the row it belongs to. When every page you need is on a row, Done with this file lets the rest go.',
-    missingBody: 'This button appears with Rev 1.',
+    title: 'Step 3. Add the cut sheets',
+    body: 'Tap Drop a vendor PDF. Give it the supply house’s whole PDF. Tap Show the pages. Then tap a page, and tap the row it belongs to. Repeat until every row has its page.',
+    missingBody: 'This button appears after you build Rev 1.',
   },
   {
     anchor: 'submittals-package',
-    title: '4 · Build the package',
-    body: 'One PDF on our letterhead: the cover table, then every row’s sheet stamped with its tag and status. Stored on the revision and opened in a new tab.',
-    missingBody: 'This button appears once the revision has rows.',
+    title: 'Step 4. Build the package',
+    body: 'The package is one PDF for the GC. It has a cover table and every cut sheet. Tap Build package. It opens in a new tab so you can check it.',
+    missingBody: 'This button appears once the rows are in.',
   },
   {
     anchor: 'submittals-share',
-    title: '5 · Share the review room',
-    body: 'Mints one review-room link for the bid and copies it. Paste it into the email chain with the GC; they forward it to the architect. The same link shows every later revision.',
-    missingBody: 'Share appears once the revision has rows.',
+    title: 'Step 5. Share it',
+    body: 'Tap Share. The app makes a link and copies it. Paste the link into your email to the GC. They open it to review your products. The same link works for every later version.',
+    missingBody: 'Share appears once the rows are in.',
   },
   {
     anchor: 'submittals-room',
-    title: '6 · Their calls come back here',
-    body: 'The room line counts opens and names who identified themselves. The reviewer taps Approve, Revise or Reject on each row; their calls land in a Their call column, and any question lands on your inbox.',
-    missingBody: 'This line appears after the first share.',
+    title: 'Step 6. Their answer',
+    body: 'The GC or the architect looks at each row. They tap Approve, Revise or Reject. Their answers show up here, on your rows. Any question they ask lands in your inbox.',
+    missingBody: 'This appears after you share.',
   },
   {
     anchor: 'submittals-resubmit',
-    title: '7 · Resubmit only what came back',
-    body: 'When rows come back marked Revise or Reject, a green button starts Rev N+1 with just those rows. Fix the pick on Pricing and rebuild, or fix the row with Edit; share again, and the same room link shows the new revision.',
-    missingBody: 'New revision is always here; the “Rev N+1 from the rows sent back” form of it appears when a reviewer has sent rows back.',
+    title: 'Step 7. Resubmit',
+    body: 'Some rows may come back marked Revise or Reject. Tap the green button. It starts a new version with only those rows. Fix them, then share again. The GC’s link shows the new version.',
+    missingBody: 'The green button appears when rows come back.',
   },
   {
     anchor: 'submittals-procure',
-    title: '8 · Procure: the log the GC asks for',
-    body: 'One row per tag. Released is the GC’s approval, required is the day its stage starts on the job, expected is your order date plus the lead time. Type the order date and PO; a red float means it lands late, “order by” is the last safe day. Send update writes what changed, prints the sheet and copies the text for your email; the GC’s room link shows the same log.',
-    missingBody: 'The log appears under the rows once Rev 1 exists, and fills in as the GC approves rows.',
+    title: 'Step 8. Procure',
+    body: 'This is the order log the GC asks for. One row per product. Released means the GC approved it. Required is the day the job needs it. You type the order date and the PO number. Red means it will arrive late. Tap Send update to send the GC the changes.',
+    missingBody: 'The log appears after you build Rev 1. It fills in as the GC approves rows.',
   },
 ]
 
