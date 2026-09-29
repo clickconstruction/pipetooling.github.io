@@ -42,9 +42,12 @@ describe('BilledWordsLine (v2.4130)', () => {
     expect(screen.queryByTestId('billed-words-expect')).toBeNull()
   })
 
-  it('billedWordsOverride hands the bar the tone and the whole sentence as its tooltip', () => {
+  it('billedWordsOverride hands the bar the tone, the whole sentence as its tooltip, and the line below it (v2.4147)', () => {
     const o = billedWordsOverride(late)
     expect(o.tone).toBe('amber')
     expect(o.title).toBe(late.full)
+    expect(o.below).toBeUndefined()
+    const evidence = <span data-testid="evidence">Pays in 2–8d</span>
+    expect(billedWordsOverride(late, undefined, evidence).below).toBe(evidence)
   })
 })

@@ -271,6 +271,7 @@ export function StagesStageBar({ view, compact = false, onStageClick, wordsOverr
       >
         {wordsOverride ? wordsOverride.node : view.words.text}
       </div>
+      {wordsOverride?.below ? <div style={{ marginTop: 3, minWidth: 0, maxWidth: '100%' }}>{wordsOverride.below}</div> : null}
     </div>
   )
 }
