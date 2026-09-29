@@ -5,6 +5,8 @@ import { fetchAttributionsByMercuryTxIds } from './fetchMercuryRelationsByTxIds'
 import { fetchAllRows } from './supabasePaging'
 import { cardChargeAllocationCounts, cardChargeAllocationIsInvoiceLinked } from './jobs/cardChargeAllocationFilter'
 import { loadCardChargeExclusions } from './jobs/loadCardChargeExclusions'
+import { buildCategoryTagLookups, categoryTagForCharge, pickFuelTag } from './banking/categoryTags'
+import { fetchLabelIdByTxId, loadCategoryTags } from './banking/categoryTagsData'
 
 type MtSelect = {
   posted_at: string | null
@@ -14,6 +16,7 @@ type MtSelect = {
   external_memo: string | null
   mercury_account_id: string
   raw: Database['public']['Tables']['mercury_transactions']['Row']['raw']
+  mercury_category?: unknown
 }
 
 /** Same shape as JobSummaryMercuryAllocationRow in Jobs.tsx (for card breakdown + UI). */
@@ -26,6 +29,8 @@ export type MercuryJobAllocationWithAttributionRow = {
   attributionDisplayName: string | null
   /** The charge is also linked to a supply-house invoice — Job Summary counts the purchase once (same rule as the bulk card-charge map). */
   linkedToSupplyInvoice: boolean
+  /** In the fuel family's tag (the label's tag, else the bank category's) — the timeline's ⛽ stream (punch list #52). False when tags or labels cannot be read. */
+  isFuel: boolean
   mercury_transactions: MtSelect | null
 }
 
@@ -60,7 +65,7 @@ export async function fetchMercuryJobAllocationsWithAttributionForJob(
           await supabase
             .from('mercury_transaction_job_allocations')
             .select(
-              'id, amount, note, mercury_transaction_id, mercury_transactions(posted_at, counterparty_name, amount, note, external_memo, mercury_account_id, raw)',
+              'id, amount, note, mercury_transaction_id, mercury_transactions(posted_at, counterparty_name, amount, note, external_memo, mercury_account_id, raw, mercury_category)',
             )
             .eq('job_id', jobId)
             .order('created_at', { ascending: true })
@@ -117,6 +122,27 @@ export async function fetchMercuryJobAllocationsWithAttributionForJob(
   } catch {
     /* show allocations; names may be missing */
   }
+  // Fuel (punch list #52): the fuel family's tag, by the accounting label first, else the bank
+  // category — Job Summary's classifier. Tags and labels are office-staff reads; any failure
+  // leaves every charge a plain card charge.
+  const fuelTxIds = new Set<string>()
+  try {
+    const txIds = [...new Set(rawRows.map((r) => r.mercury_transaction_id))]
+    if (txIds.length > 0) {
+      const [tagRows, labelIdByTxId] = await Promise.all([loadCategoryTags(), fetchLabelIdByTxId(txIds)])
+      const fuelTag = pickFuelTag(tagRows.tags)
+      if (fuelTag) {
+        const lookups = buildCategoryTagLookups(tagRows.tags, tagRows.members)
+        for (const r of rawRows) {
+          const cat = r.mercury_transactions?.mercury_category
+          const bank = typeof cat === 'string' ? cat : cat && typeof cat === 'object' && typeof (cat as { name?: unknown }).name === 'string' ? (cat as { name: string }).name : null
+          if (categoryTagForCharge(lookups, labelIdByTxId.get(r.mercury_transaction_id) ?? null, bank)?.id === fuelTag.id) fuelTxIds.add(r.mercury_transaction_id)
+        }
+      }
+    }
+  } catch {
+    fuelTxIds.clear()
+  }
   return rawRows.map((r) => {
     const attr = attrByTxId.get(r.mercury_transaction_id)
     let attributionDisplayName: string | null = null
@@ -132,6 +158,7 @@ export async function fetchMercuryJobAllocationsWithAttributionForJob(
       mercury_transactions: r.mercury_transactions,
       attributionDisplayName,
       linkedToSupplyInvoice: cardChargeAllocationIsInvoiceLinked(r, exclusions),
+      isFuel: fuelTxIds.has(r.mercury_transaction_id),
     }
   })
 }
