@@ -1,4 +1,3 @@
-import type { WordsOverride } from './BilledWordsLine'
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { fitStageChips, type PipelineStageState } from '../../lib/jobs/pipelineStageBar'
 import type { ProgressPaymentSegment, ProgressPaymentTone, ProgressPaymentView } from '../../lib/jobs/progressPaymentCell'
@@ -115,7 +114,10 @@ export const STAGE_CLICK_TITLE = 'Open Bill → ① Line Items'
  * window at ① Line Items — the one place stages are set — so the *Set stages*
  * link under the bar (v2.3421) is gone.
  */
-export function StagesStageBar({ view, compact = false, onStageClick, wordsOverride = null }: { view: ProgressPaymentView; compact?: boolean; onStageClick?: () => void; /** v2.4130: a Billed row's bill story in place of the crew's sentence. */ wordsOverride?: WordsOverride | null }) {
+/** What the words div takes in place of the crew's sentence (v2.4130); `below` (v2.4147) is drawn right under it. */
+export type WordsOverride = { node: ReactNode; tone: ProgressPaymentTone; title: string; below?: ReactNode }
+
+export function StagesStageBar({ view, compact = false, onStageClick, wordsOverride = null, hideWords = false }: { view: ProgressPaymentView; compact?: boolean; onStageClick?: () => void; wordsOverride?: WordsOverride | null; /** v2.4168: a Billed row prints no words under the bar — its dates block under the legend tells the story. */ hideWords?: boolean }) {
   const words = wordsOverride ?? view.words
   const [stripRef, stripWidth] = useMeasuredWidth<HTMLDivElement>()
   const [barRef, barWidth] = useMeasuredWidth<HTMLDivElement>()
@@ -250,6 +252,8 @@ export function StagesStageBar({ view, compact = false, onStageClick, wordsOverr
         </BarShell>
       ) : null}
 
+      {hideWords ? null : (
+        <>
       <div
         data-progress-words
         style={{
@@ -272,6 +276,8 @@ export function StagesStageBar({ view, compact = false, onStageClick, wordsOverr
         {wordsOverride ? wordsOverride.node : view.words.text}
       </div>
       {wordsOverride?.below ? <div style={{ marginTop: 3, minWidth: 0, maxWidth: '100%' }}>{wordsOverride.below}</div> : null}
+        </>
+      )}
     </div>
   )
 }

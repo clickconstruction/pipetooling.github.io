@@ -1266,6 +1266,7 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
                 onNoBidValueClick={() => openEdit(j, { fixturesSectionHighlight: true })}
                 onStageClick={() => openEdit(j, { fixturesSectionHighlight: true })}
                 wordsOverride={billLine?.words ?? null}
+                hideWords={billLine?.hideWords}
               />
               {billLine?.extras}
               {props.billedLienRunway?.(row)}

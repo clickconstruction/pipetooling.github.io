@@ -168,7 +168,7 @@ Sometimes the right move this week is a conversation, not another statement. Tap
 
 ### The date goes on their bills
 
-A date you save here is a real promise, the same record as a date entered from the Billed row's line. It shows there as *they said Oct 3*, moves the money in the payment forecast, and counts toward whether this GC keeps its word (see *know whether a customer keeps their word*).
+A date you save here is a real promise, the same record as a date entered from the Billed row's dates block. It shows there as the *They said Oct 3* row, moves the money in the payment forecast, and counts toward whether this GC keeps its word (see *know whether a customer keeps their word*).
 
 :::example Under the date
 **Goes on all 4 bills · $27,499.49** {{button:outline|Choose bills}}
