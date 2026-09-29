@@ -67,7 +67,7 @@ describe('SettingsContractsTab', () => {
   it('shows the built-in wording and says so when nothing is set', async () => {
     await mount().view
     // v2.4108: the sections are the areas, in the order a customer meets them.
-    expect(screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['Estimates', 'Bids', 'Jobs', 'Every signing page', 'Billing', 'Liens & collections'])
+    expect(screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['Website', 'Estimates', 'Bids', 'Jobs', 'Every signing page', 'Billing', 'Liens & collections'])
     const bid = within(screen.getByTestId('contract-card-bid-terms'))
     expect(bid.getByText('Built-in wording')).toBeTruthy()
     expect(bid.getByText(/All work to be completed in a workmanlike manner/)).toBeTruthy()
@@ -77,7 +77,24 @@ describe('SettingsContractsTab', () => {
     const job = within(screen.getByTestId('contract-card-job-standard-terms'))
     expect(job.getByText(/Built-in service agreement terms/)).toBeTruthy()
     expect(job.getByText(/Add a customer document/)).toBeTruthy()
-    expect(screen.getByTestId('contracts-counts').textContent).toMatch(/\d+ texts · .*0 dated|\d+ texts · .*1 dated/)
+    // v2.4135: the website copy is dated, so the line always counts at least one.
+    expect(screen.getByTestId('contracts-counts').textContent).toMatch(/\d+ texts · .*1 hosted elsewhere · [12] dated/)
+  })
+
+  it('the website terms card holds the copy, says where the page lives, and opens it in a new tab (v2.4135)', async () => {
+    await mount().view
+    const site = within(screen.getByTestId('contract-card-website-terms'))
+    expect(site.getByText('Hosted elsewhere')).toBeTruthy()
+    expect(site.getByText('Anyone on the website')).toBeTruthy()
+    expect(site.getByText(/Venue for any legal action shall lie exclusively in Guadalupe County/)).toBeTruthy()
+    expect(site.getByTestId('contract-last-changed-website-terms').textContent).toBe('copied Sep 29, 2026')
+    const link = site.getByTestId('contract-live-page-website-terms')
+    expect(link.getAttribute('href')).toBe('https://pro.housecallpro.com/ClickPlumbing/712596/terms')
+    expect(link.getAttribute('target')).toBe('_blank')
+    expect(link.getAttribute('rel')).toBe('noopener noreferrer')
+    expect(site.getByText(/Edited in the Housecall Pro account/)).toBeTruthy()
+    expect(site.getByRole('button', { name: 'Compare' })).toBeTruthy()
+    expect(site.queryByTestId('contract-read-full-website-terms')).toBeNull()
   })
 
   it('shows the office wording, dated, when Settings and the Book hold it', async () => {

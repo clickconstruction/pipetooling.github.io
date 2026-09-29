@@ -2,7 +2,7 @@
 title: see every contract we offer side by side
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: contracts, contract, terms, terms and conditions, legal wording, agreement, service agreement, standard terms, bid terms, warranty, exclusions, estimate terms, electronic signature, esign consent, lien waiver, demand letter, notice, compare contracts, side by side, what we send, when to update, contracts and terms, settings
+keywords: contracts, contract, terms, terms of service, website terms, housecall pro, terms and conditions, legal wording, agreement, service agreement, standard terms, bid terms, warranty, exclusions, estimate terms, electronic signature, esign consent, lien waiver, demand letter, notice, compare contracts, side by side, what we send, when to update, contracts and terms, settings
 order: 66
 ---
 **Settings → Contracts & terms** puts every contract a customer accepts or signs on one page, with the wording as it stands today. Use it to read two contracts against each other, to find where one is edited, or to check what a customer is being sent.
@@ -11,9 +11,9 @@ It is the same set of pages as **What customers see**, sorted by the document in
 
 ## Find a contract
 
-The page is an index first. Six sections in the order a customer meets them — **Estimates · Bids · Jobs · Every signing page · Billing · Liens & collections** — and one line per contract: its name, who it is for, whose wording it is, when it last changed, when it was reviewed, and what last went out. Press a line to open its card; {{button:outline|Open all}} opens every card on the page and turns into **Close all**. **Jump to** at the top lands a section.
+The page is an index first. Seven sections in the order a customer meets them — **Website · Estimates · Bids · Jobs · Every signing page · Billing · Liens & collections** — and one line per contract: its name, who it is for, whose wording it is, when it last changed, when it was reviewed, and what last went out. Press a line to open its card; {{button:outline|Open all}} opens every card on the page and turns into **Close all**. **Jump to** at the top lands a section.
 
-The lens chips narrow the list: {{chip:blue|All · 18}} {{chip:yellow|Needs a look · 3}} {{chip:green|Your wording · 4}} {{chip:blue|Built-in wording · 2}} … **Needs a look** keeps the contracts where what went out is not what the card says, nothing is set, or a review is due — the never-reviewed ones stay on the top line, since on the first day that is every card. The find box reads the names and the wording itself, so *interest* finds every clause that charges it.
+The lens chips narrow the list: {{chip:blue|All · 19}} {{chip:yellow|Needs a look · 3}} {{chip:green|Your wording · 4}} {{chip:blue|Built-in wording · 2}} {{chip:gray|Hosted elsewhere · 1}} … **Needs a look** keeps the contracts where what went out is not what the card says, nothing is set, or a review is due — the never-reviewed ones stay on the top line, since on the first day that is every card. The find box reads the names and the wording itself, so *interest* finds every clause that charges it.
 
 ## Read a card
 
@@ -28,6 +28,7 @@ Each contract is a card under its line. The chips say where it is used, who it i
 - {{chip:yellow|Nothing set}} — nobody has set it and there is no built-in. The customer sees nothing there.
 - {{chip:gray|Fixed in the app}} — it changes only with an app update.
 - {{chip:gray|Typed each time}} — it is written on each estimate or bid, so there is no one wording to show.
+- {{chip:gray|Hosted elsewhere}} — a page another company hosts for us. The card holds a copy made on the day it says, and opens the live page.
 
 Under the wording, four lines answer the questions that matter when a contract needs an update:
 
@@ -113,6 +114,16 @@ The door on each card goes to the one place that wording is edited.
 Under each card, **As the customer sees it** still lists the pages and emails that carry that wording. Each opens **What customers see** on that step, where the whole journey is.
 
 From the other side, an open step on **What customers see** lists **The wording on it**, and each name opens its card here.
+
+## The website's terms
+
+The first section, **Website**, has one card: the **Terms of Service** the footer of clickplumbing.com links to. That link goes to a page Housecall Pro hosts, so the app cannot read it live. The card holds a copy, dated the day it was copied, and {{button:outline|Open the live page ↗}} opens the real page in a new tab.
+
+:::example Checking it
+{{chip:gray|Hosted elsewhere}} · {{chip:gray|copied Sep 29, 2026}} · {{button:outline|Open the live page ↗}} · {{button:outline|Compare}}
+:::
+
+Our **Estimate Terms and Conditions** started from this document. Tick {{button:outline|Compare}} on both cards to see where they have drifted apart. When the website's page changes, ask a dev to copy the new wording in; the date on the card moves with it.
 
 ## Notices
 

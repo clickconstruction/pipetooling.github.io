@@ -80,6 +80,7 @@ const STATUS_CHIP: Readonly<Record<ContractTextStatus, CSSProperties>> = {
   fixed: CHIP,
   per_record: CHIP,
   in_settings: CHIP,
+  external: CHIP,
 }
 
 /** `first`: the entry's first text carries the card's anchor (a Book with two documents makes two cards). */
@@ -471,7 +472,7 @@ export function SettingsContractsTab({ role, openEntryId = null, onOpenEditor, o
                       ) : null}
                     </dl>
 
-                    {action.kind === 'note' ? <p style={{ ...MUTED, margin: 0 }}>{action.text}</p> : null}
+                    {action.kind === 'note' || action.kind === 'link' ? <p style={{ ...MUTED, margin: 0 }}>{action.kind === 'note' ? action.text : action.note}</p> : null}
 
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center' }}>
                       {canRead ? (
@@ -520,6 +521,11 @@ export function SettingsContractsTab({ role, openEntryId = null, onOpenEditor, o
                         <Link to={action.to} style={PILL}>
                           {action.label} →
                         </Link>
+                      ) : null}
+                      {action.kind === 'link' ? (
+                        <a href={action.href} target="_blank" rel="noopener noreferrer" style={PILL} title={action.href} data-testid={`contract-live-page-${text.key}`}>
+                          {action.label} ↗
+                        </a>
                       ) : null}
                       {entry.guide ? (
                         <Link to={`/help?g=${encodeURIComponent(entry.guide)}`} style={PILL} title="The help guide that covers it">
