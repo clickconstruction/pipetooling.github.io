@@ -13,7 +13,7 @@ import {
   teamEmailsForRole,
 } from './teamEmails'
 
-const ctx = { dateLabel: 'Sep 29, 2026', weekStartLabel: 'Sep 21', firstName: 'Malachi' }
+const ctx = { dateLabel: 'Sep 29, 2026', weekStartLabel: 'Sep 21', weekEndLabel: 'Sep 27', firstName: 'Malachi' }
 
 describe('TEAM_EMAILS — the guard (punch list #60)', () => {
   it('every team or internal catalog row has a row here, and nothing else does', () => {
@@ -83,9 +83,9 @@ describe('coverage', () => {
     const c = teamEmailCoverage()
     expect(c.total).toBe(25)
     expect(c.sample + c.real + c.soon).toBe(25)
-    expect(c.sample).toBe(15)
+    expect(c.sample).toBe(16)
     expect(c.real).toBe(0)
-    expect(teamCoverageLine(c)).toBe('25 emails · 15 render live · 10 built on the server (next release)')
+    expect(teamCoverageLine(c)).toBe('25 emails · 16 render live · 9 built on the server (next release)')
     expect(teamCoverageLine({ total: 1, sample: 1, real: 0, soon: 0 })).toBe('1 email · 1 render live')
   })
 })

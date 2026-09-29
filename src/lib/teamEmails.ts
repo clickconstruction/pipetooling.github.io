@@ -35,6 +35,7 @@ export type TeamSampleEmailId =
   | 'crew_day'
   | 'payment_forecast'
   | 'billed_awaiting'
+  | 'weekly_money'
   | 'signed_agreement_staff'
   | 'estimate_accepted_staff'
   | 'gc_word_ask'
@@ -74,6 +75,8 @@ export type TeamSampleContext = {
   dateLabel: string
   /** "Sep 21" — the Monday of the current week, as the weekly emails print it. */
   weekStartLabel: string
+  /** "Sep 27" (or "Oct 4" across a month) — that week's Sunday. */
+  weekEndLabel: string
   /** The first name the subject addresses (the account man, the invitee). */
   firstName: string
 }
@@ -270,8 +273,8 @@ export const TEAM_EMAILS: readonly TeamEmail[] = [
     label: 'Weekly money movement',
     when: { kind: 'weekly', label: 'Mondays', order: 30 },
     recipients: { roles: ['dev', 'controller'], decidedBy: 'role', rule: 'Devs and controllers — the function picks them by role; one-off sends can be asked for.' },
-    sampleSubject: (c) => `Weekly money movement — week of ${c.weekStartLabel}`,
-    render: { kind: 'soon', note: 'Built inside weekly-money-email-dispatch over the week’s deposits and bills.' },
+    sampleSubject: (c) => `Weekly money movement — ${c.weekStartLabel} – ${c.weekEndLabel}`,
+    render: { kind: 'sample', sample: 'weekly_money' },
     manage: stream('weekly_money', 'Emails & reports → Weekly money'),
     reflects: ['the Weekly Money Movement report'],
   },

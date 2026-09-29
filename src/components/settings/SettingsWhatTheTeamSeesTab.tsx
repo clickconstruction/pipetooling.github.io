@@ -67,10 +67,19 @@ function realStreamOf(row: TeamEmail): TeamRealPreviewStream | null {
 
 /** "Sep 21" — the Monday of the week that holds `ymd`, as the weekly emails print it. */
 export function weekStartLabel(ymd: string): string {
+  return weekEdgeLabel(ymd, 0)
+}
+
+/** "Sep 27" — that week's Sunday. */
+export function weekEndLabel(ymd: string): string {
+  return weekEdgeLabel(ymd, 6)
+}
+
+function weekEdgeLabel(ymd: string, offset: number): string {
   const [y = 1970, m = 1, d = 1] = ymd.split('-').map(Number)
   const date = new Date(Date.UTC(y, m - 1, d))
   const dow = date.getUTCDay() // 0 = Sunday
-  date.setUTCDate(date.getUTCDate() - ((dow + 6) % 7))
+  date.setUTCDate(date.getUTCDate() - ((dow + 6) % 7) + offset)
   return new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' }).format(date)
 }
 
@@ -136,7 +145,7 @@ export function SettingsWhatTheTeamSeesTab() {
   const todayYmd = todayYmdInAppTz()
   const dateLabel = new Intl.DateTimeFormat('en-US', { timeZone: APP_CALENDAR_TZ, month: 'short', day: 'numeric', year: 'numeric' }).format(new Date())
   const recipient = person ? { name: person.name, email: person.email, role: humanRoleLabel(person.role).toLowerCase() } : sampleRecipientFor(role)
-  const subjectCtx: TeamSubjectContext = { dateLabel, weekStartLabel: weekStartLabel(todayYmd), firstName: recipient.name.split(' ')[0] || 'Sam' }
+  const subjectCtx: TeamSubjectContext = { dateLabel, weekStartLabel: weekStartLabel(todayYmd), weekEndLabel: weekEndLabel(todayYmd), firstName: recipient.name.split(' ')[0] || 'Sam' }
   const sampleCtx: TeamSampleContext = useMemo(
     () => ({
       rows: [],
