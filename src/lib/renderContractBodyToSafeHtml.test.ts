@@ -28,6 +28,14 @@ describe('renderContractBodyToSafeHtml', () => {
     expect(out).not.toContain('<b>')
   })
 
+  it('plain: a **sentence** prints as a statutory span at 10 pt with the asterisks gone; a lone ** stays; the text inside is still escaped (v2.4150)', () => {
+    const out = renderContractBodyToSafeHtml('11. General terms. Waivers are conditional. **Customer waives the list under § 53.256.** Texas law governs.', 'plain')
+    expect(out).toContain('Waivers are conditional. <span class="statutory" style="font-size:max(10pt, 1em)">Customer waives the list under § 53.256.</span> Texas law governs.')
+    expect(out).not.toContain('**')
+    expect(renderContractBodyToSafeHtml('a ** b', 'plain')).toContain('a ** b')
+    expect(renderContractBodyToSafeHtml('**<b>x</b>**', 'plain')).toContain('<span class="statutory" style="font-size:max(10pt, 1em)">&lt;b&gt;x&lt;/b&gt;</span>')
+  })
+
   it('markdown: the source text survives rendering', () => {
     // In the node test env the sanitizer strips tags (no DOMParser); we assert the
     // text content survives. Rich markup is verified live in the browser preview.

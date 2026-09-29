@@ -102,6 +102,7 @@ The door on each card goes to the one place that wording is edited.
 - {{button:outline|Edit the wording}} — the job service agreement's standard terms open right on the card. Anyone in the office can save them. The new wording goes on every agreement sent from then on; agreements already sent or signed keep theirs.
 - {{button:outline|Open where it is edited →}} — the estimate terms and the bid cover-letter defaults are on **Bids & materials**. The door opens that section. A dev edits these; everyone else is told so on the card.
 - A card that says **Fixed in the app** has no editor. Ask a dev for a change.
+- To print one sentence at 10 point, the size Texas asks for a waiver, wrap it in double asterisks, `**like this**`. The asterisks never print; the sentence keeps the regular weight. It reads that way on the signing page, in the PDF and on this card.
 
 ## See it as the customer does
 

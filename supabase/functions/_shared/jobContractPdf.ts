@@ -114,6 +114,50 @@ const PAGE_H = 792
 const MARGIN = 54
 const CONTENT_W = PAGE_W - MARGIN * 2
 
+/** The terms' type size, and the size a `**statutory sentence**` prints at (v2.4150; regular weight). */
+export const TERMS_SIZE = 9
+export const STATUTORY_SIZE = 10
+
+export type TextRun = { text: string; size: number }
+export type SizedWord = { word: string; size: number }
+
+/** One paragraph → runs: text at `base`, each `**…**` at `statutory` with the asterisks dropped. A lone `**` stays. */
+export function parseStatutoryRuns(para: string, base: number = TERMS_SIZE, statutory: number = STATUTORY_SIZE): TextRun[] {
+  const runs: TextRun[] = []
+  const re = /\*\*([^*\n]+?)\*\*/g
+  let last = 0
+  for (let m = re.exec(para); m; m = re.exec(para)) {
+    if (m.index > last) runs.push({ text: para.slice(last, m.index), size: base })
+    runs.push({ text: m[1] ?? '', size: statutory })
+    last = m.index + m[0].length
+  }
+  if (last < para.length) runs.push({ text: para.slice(last), size: base })
+  return runs.filter((r) => r.text.length > 0)
+}
+
+/** Greedy wrap of sized words to `width`; the space before a word is measured at the size of the word before it. */
+export function wrapRuns(runs: ReadonlyArray<TextRun>, font: PdfFontLike, width: number): SizedWord[][] {
+  const words: SizedWord[] = []
+  for (const r of runs) for (const w of r.text.split(/\s+/).filter(Boolean)) words.push({ word: w, size: r.size })
+  const lines: SizedWord[][] = []
+  let line: SizedWord[] = []
+  let lineW = 0
+  for (const w of words) {
+    const ww = font.widthOfTextAtSize(w.word, w.size)
+    const sp = line.length ? font.widthOfTextAtSize(' ', line[line.length - 1]!.size) : 0
+    if (line.length && lineW + sp + ww > width) {
+      lines.push(line)
+      line = [w]
+      lineW = ww
+    } else {
+      line.push(w)
+      lineW += sp + ww
+    }
+  }
+  if (line.length) lines.push(line)
+  return lines
+}
+
 function wrap(text: string, font: PdfFontLike, size: number, width: number): string[] {
   const out: string[] = []
   for (const para of text.split('\n')) {
@@ -228,7 +272,26 @@ export async function buildJobContractPdf(lib: PdfLibLike, input: JobContractPdf
 
   // Terms
   label(`Terms${input.templateName ? ` · ${input.templateName}` : ''}`)
-  text(input.termsText || 'Terms as agreed.', 9, font, ink, MARGIN, CONTENT_W, 1.4)
+  // v2.4150: a paragraph carrying `**…**` prints that run at STATUTORY_SIZE on the same baseline; the rest of the terms stay at TERMS_SIZE.
+  const terms = (t: string, lineGap = 1.4) => {
+    for (const para of t.split('\n')) {
+      if (!para.includes('**')) {
+        text(para, TERMS_SIZE, font, ink, MARGIN, CONTENT_W, lineGap)
+        continue
+      }
+      for (const line of wrapRuns(parseStatutoryRuns(para), font, CONTENT_W)) {
+        const size = Math.max(...line.map((w) => w.size))
+        ensure(size * lineGap)
+        let x = MARGIN
+        for (const w of line) {
+          page.drawText(w.word, { x, y: y - size, size: w.size, font, color: ink })
+          x += font.widthOfTextAtSize(w.word, w.size) + font.widthOfTextAtSize(' ', w.size)
+        }
+        y -= size * lineGap
+      }
+    }
+  }
+  terms(input.termsText || 'Terms as agreed.')
 
   // Signature block (v2.2724 "Option A"): a framed mark tagged SIGNED
   // ELECTRONICALLY with the record ID, printed name + time to the right, the
