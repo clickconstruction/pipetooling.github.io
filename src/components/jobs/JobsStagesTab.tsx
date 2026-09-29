@@ -33,6 +33,7 @@ import { bankReturnedBadgeTitle, bankReturnedBadgeWords, bankReturnedByJob } fro
 import { advanceConsequence, jobNextLine, type JobNextLine, type JobNextLineInput, type JobNextStage, type PhoneRowFilter } from '../../lib/jobs/jobNextLine'
 import { buildLienPayRunway, type LienPayRunway as LienPayRunwayModel } from '../../lib/jobs/lienPayRunway'
 import { useBilledLienClocks } from '../../hooks/useBilledLienClocks'
+import { useBilledMoneyData } from '../../hooks/useBilledMoneyData'
 import LienPayRunway from './LienPayRunway'
 import { progressPaymentForJob } from '../../lib/jobs/progressPaymentForJob'
 import { stagesBillSentPctAlert } from '../../lib/jobs/stagesBillSentPctAlert'
@@ -80,13 +81,7 @@ import {
   billedRowsRemainingTotal,
 } from '../../lib/jobs/invoiceBilling'
 import { liveBilledStats, overlayLiveBilledStats } from '../../lib/jobs/stagesLiveHeaderStats'
-import {
-  billedExpectedPayModel,
-  parsePaySpeedsRpc,
-  parsePromisedPayDatesRpc,
-  type PaySpeedData,
-  type PromisedPayDate,
-} from '../../lib/jobs/billedExpectedPay'
+import { billedExpectedPayModel } from '../../lib/jobs/billedExpectedPay'
 import BilledExpectedPayChip from './BilledExpectedPayChip'
 import SetPromisedPayDateModal from './SetPromisedPayDateModal'
 import JobContractModal from './JobContractModal'
@@ -122,7 +117,7 @@ import { ManageJobPeopleModal } from './ManageJobPeopleModal'
 import { JobCalendarModal } from './JobCalendarModal'
 import { JobsStagesActivityExpandModal } from './JobsStagesActivityExpandModal'
 import NewReportModal from '../NewReportModal'
-import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso, companyWeekStartSundayContaining, getDefaultWeekRange } from '../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, companyWeekStartSundayContaining, getDefaultWeekRange } from '../../utils/dateUtils'
 import { fetchStagesUpcomingScheduleForJobs, type StagesUpcomingAppointment } from '../../lib/stagesUpcomingSchedule'
 import { fetchStagesWeekSoFarForJobs, type StagesWeekSoFar } from '../../lib/stagesWorkedDays'
 import { stripBillParts, stripDistancePhrase, stripWeekStartYmd } from '../../lib/jobs/stagesScheduleStrip'
@@ -137,8 +132,7 @@ import BilledAgingChartModal from './BilledAgingChartModal'
 import BilledPaymentForecastModal from './BilledPaymentForecastModal'
 import { useForecastWorkMonths } from '../../hooks/useForecastWorkMonths'
 import PaymentChaseModal from './PaymentChaseModal'
-import { buildPaymentChaseQueue, parseChaseTouchesRpc, summarizePaymentChase, type ChaseTouch } from '../../lib/jobs/paymentChase'
-import { buildCustomerPromiseRecords, classifyPromises, parsePromiseRecordsRpc, type CustomerPromiseRecord, promiseSlipByCustomer as promiseSlipByCustomerOf } from '../../lib/jobs/paymentPromises'
+import { buildPaymentChaseQueue, summarizePaymentChase } from '../../lib/jobs/paymentChase'
 import { buildReliabilityLine } from '../../lib/jobs/paymentReliability'
 import BilledReliabilityLine from './BilledReliabilityLine'
 import type { StagesMoneyMoveKey } from '../../lib/jobs/stagesMoneyMoveLink'
@@ -1002,10 +996,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   useEffect(() => {
     void loadLienReleaseJobIds()
   }, [loadLienReleaseJobIds])
-  // Customer pay speeds for the Billed Awaiting Payment expected-payment
-  // chips (bill date + customer's median billed→paid gap, company-wide
-  // fallback for thin history). Same fail-soft posture as the hazmat lookup:
-  // an RPC error (including a not-yet-deployed function) leaves rows chipless.
   // Session notes doors (toolbar pill + per-job "Sessions") show for every office
   // role — owner call 2026-09-03. What the view returns still follows the
   // clock_sessions RLS, so a role without pay access sees only its own rows.
@@ -1015,82 +1005,29 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     [],
   )
   const canSeeBilledExpectedPay = stagesGates.canSeeBilledExpectedPay(authRole)
-  const [billedPaySpeeds, setBilledPaySpeeds] = useState<PaySpeedData | null>(null)
   // The lien runway's facts for every billed job (v2.4051): the property kind (a house's clock is a month shorter) and any affidavit or release already on file.
   const billedLienClockJobs = useMemo(
     () => jobs.filter((j) => j.status === 'billed').map((j) => ({ id: j.id, customer_address_id: j.customer_address_id ?? null, gc_customer_id: j.gc_customer_id ?? null })),
     [jobs],
   )
   const billedLienClocks = useBilledLienClocks(billedLienClockJobs)
-  // Extracted so the Data health drill-down can refresh medians right after
-  // an exclusion toggles (v2.2290) — same fail-soft posture as the mount load.
-  const refreshBilledPaySpeeds = useCallback(async () => {
-    if (!canSeeBilledExpectedPay) return
-    try {
-      const { data } = await supabase.rpc('get_billed_customer_pay_speeds' as never)
-      setBilledPaySpeeds(parsePaySpeedsRpc(data as unknown))
-    } catch {
-      // glanceable extra — never block the tab
-    }
-  }, [canSeeBilledExpectedPay])
-  useEffect(() => {
-    void refreshBilledPaySpeeds()
-  }, [refreshBilledPaySpeeds])
-  // Promised pay dates: real dates a customer named, marked by the office —
-  // they override the statistical estimate (chip turns green, forecast
-  // buckets by the promise). Same fail-soft posture as the pay-speed fetch.
+  // Promised pay dates are marked by the office roles; promise records and
+  // chase touches load for them only.
   const canMarkPromisedPay =
     stagesGates.isStagesOfficeRole(authRole)
-  const [promisedPayDates, setPromisedPayDates] = useState<Record<string, PromisedPayDate> | null>(null)
-  const loadPromisedPayDates = useCallback(async () => {
-    if (!canSeeBilledExpectedPay) return
-    try {
-      const { data } = await supabase.rpc('list_job_promised_pay_dates' as never)
-      setPromisedPayDates(parsePromisedPayDatesRpc(data as unknown))
-    } catch {
-      // glanceable extra — never block the tab
-    }
-  }, [canSeeBilledExpectedPay])
-  useEffect(() => {
-    void loadPromisedPayDates()
-  }, [loadPromisedPayDates])
-  // Their Word PR 3: the per-customer promise record (keeps N of M · usual
-  // slip) behind the reliability line and the forecast's slip adjustment.
-  // Office roles only — primary sees the pay-speed spread, not the record.
-  // Fail-soft like the rest: a not-yet-pushed RPC just leaves it off.
-  const [promiseRecordsByCustomer, setPromiseRecordsByCustomer] = useState<Map<string, CustomerPromiseRecord> | null>(null)
-  const loadPromiseRecords = useCallback(async () => {
-    if (!canMarkPromisedPay) return
-    try {
-      const { data } = await supabase.rpc('list_payment_promise_records' as never)
-      const records = parsePromiseRecordsRpc(data as unknown)
-      if (!records) return
-      const today = new Date().toLocaleDateString('en-CA', { timeZone: APP_CALENDAR_TZ })
-      setPromiseRecordsByCustomer(buildCustomerPromiseRecords(classifyPromises(records, today)))
-    } catch {
-      // glanceable extra — never block the tab
-    }
-  }, [canMarkPromisedPay])
-  useEffect(() => {
-    void loadPromiseRecords()
-  }, [loadPromiseRecords])
-  const promiseSlipByCustomer = useMemo(() => promiseSlipByCustomerOf(promiseRecordsByCustomer), [promiseRecordsByCustomer])
-  // Payment chase loop (v2.2025): the call log behind the follow-up queue.
-  // Office-only (the marking roles); fail-soft like promises/pay-speeds — a
-  // not-yet-deployed RPC just leaves the chase card hidden.
-  const [chaseTouches, setChaseTouches] = useState<ChaseTouch[] | null>(null)
-  const loadChaseTouches = useCallback(async () => {
-    if (!canMarkPromisedPay) return
-    try {
-      const { data } = await supabase.rpc('list_payment_chase_touches' as never)
-      setChaseTouches(parseChaseTouchesRpc(data as unknown))
-    } catch {
-      // glanceable extra — never block the tab
-    }
-  }, [canMarkPromisedPay])
-  useEffect(() => {
-    void loadChaseTouches()
-  }, [loadChaseTouches])
+  // The four billed-money reads (pay speeds, promised dates, promise records,
+  // chase touches) — fail-soft, each with its reloader (punch list #46 row 2).
+  const {
+    billedPaySpeeds,
+    refreshBilledPaySpeeds,
+    promisedPayDates,
+    loadPromisedPayDates,
+    promiseRecordsByCustomer,
+    loadPromiseRecords,
+    promiseSlipByCustomer,
+    chaseTouches,
+    loadChaseTouches,
+  } = useBilledMoneyData({ canSeeBilledExpectedPay, canMarkPromisedPay })
   const [chaseModalOpen, setChaseModalOpen] = useState(false)
   // Call mode reads FULL rows (names + send evidence) from EVERY non-paid
   // scope — billed invoices hang on working/waiting jobs too (a part-billed
