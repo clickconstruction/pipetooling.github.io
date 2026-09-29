@@ -14,6 +14,7 @@ import { escapeEmailHtml, renderEmailWording } from './emailWording'
 import type { TeamSampleEmailId } from './teamEmails'
 import { moneyWaitingEmailSubject, moneyWaitingEmailText, renderMoneyWaitingEmail, type MoneyWaitingEmailPayload } from '../../supabase/functions/_shared/moneyWaitingEmail'
 import { buildCrewDayEmailView, crewDayEmailSubject, crewDayEmailText, renderCrewDayEmail, type CrewDayEmailPayload } from '../../supabase/functions/_shared/crewDayEmail'
+import { paymentForecastEmailSubject, paymentForecastEmailText, renderPaymentForecastEmail, type ForecastEmailPayload } from '../../supabase/functions/_shared/paymentForecastEmail'
 
 export type BuiltTeamEmail = { subject: string; html: string; text: string }
 
@@ -166,9 +167,30 @@ export function sampleCrewDayPayload(todayYmd: string): CrewDayEmailPayload {
   }
 }
 
+/** The Payment forecast digest's payload (v2.4164): the same five bills as Money waiting, with one promise on the books. */
+export function sampleForecastPayload(todayYmd: string): ForecastEmailPayload {
+  const mw = sampleMoneyWaitingPayload(todayYmd)
+  const plus = (n: number) => {
+    const d = new Date(`${todayYmd}T12:00:00Z`)
+    d.setUTCDate(d.getUTCDate() + n)
+    return d.toISOString().slice(0, 10)
+  }
+  return {
+    generated_at: mw.generated_at,
+    today: todayYmd,
+    rows: mw.rows.map(({ job_address: _address, ...r }) => r),
+    pay_speeds: mw.pay_speeds,
+    promises: { 'job-2': { promisedYmd: plus(3), markedByName: 'Wendi' } },
+  }
+}
+
 export function buildTeamSampleEmail(id: TeamSampleEmailId, ctx: TeamSampleContext): BuiltTeamEmail {
   const origin = ctx.origin
   switch (id) {
+    case 'payment_forecast': {
+      const p = sampleForecastPayload(ctx.todayYmd)
+      return { subject: paymentForecastEmailSubject(p), html: renderPaymentForecastEmail(p, origin, ctx.sender?.name || undefined), text: paymentForecastEmailText(p, origin) }
+    }
     case 'crew_day': {
       const view = buildCrewDayEmailView(sampleCrewDayPayload(ctx.todayYmd), new Date(`${ctx.todayYmd}T16:30:00-05:00`).getTime())
       return { subject: crewDayEmailSubject(view), html: renderCrewDayEmail(view, ctx.sender?.name || undefined), text: crewDayEmailText(view) }
