@@ -189,3 +189,26 @@ export function submittalJourney(input: SubmittalJourneyInput): SubmittalJourney
   status.resubmit = 'done'
   return finish({ kind: 'done', text: `${by} approved every row. Next is the order log, Step 8.`, action: null, actionLabel: null })
 }
+
+/**
+ * The four words over the pills (v2.4126): eight steps are more than a first-timer holds,
+ * four parts are how the process is talked about. Build (1–3) · Send (4–5) · Their
+ * answer (6–7) · Order (8). A group's status is its pills' — blue while one is current,
+ * amber while one waits, green once every one is done, muted until then.
+ */
+export type JourneyGroup = { label: string; stages: JourneyStage[]; status: JourneyStageStatus }
+
+export const SUBMITTAL_STAGE_GROUPS: ReadonlyArray<{ label: string; numbers: number[] }> = [
+  { label: 'Build', numbers: [1, 2, 3] },
+  { label: 'Send', numbers: [4, 5] },
+  { label: 'Their answer', numbers: [6, 7] },
+  { label: 'Order', numbers: [8] },
+]
+
+export function groupJourneyStages(stages: JourneyStage[]): JourneyGroup[] {
+  return SUBMITTAL_STAGE_GROUPS.map((g) => {
+    const own = stages.filter((s) => g.numbers.includes(s.number))
+    const status: JourneyStageStatus = own.some((s) => s.status === 'current') ? 'current' : own.some((s) => s.status === 'waiting') ? 'waiting' : own.length > 0 && own.every((s) => s.status === 'done') ? 'done' : 'later'
+    return { label: g.label, stages: own, status }
+  })
+}

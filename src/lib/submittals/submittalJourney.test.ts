@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { submittalJourney, type SubmittalJourneyInput } from './submittalJourney'
+import { groupJourneyStages, SUBMITTAL_STAGE_GROUPS, submittalJourney, type SubmittalJourneyInput } from './submittalJourney'
 
 const base: SubmittalJourneyInput = { scheduleTags: 12, picks: 14, rev: null, room: null, decisions: null }
 const draft = (o: Partial<NonNullable<SubmittalJourneyInput['rev']>> = {}) => ({ number: 1, status: 'draft', isNewest: true, rows: 14, owesReason: 0, sheetsNeeded: 0, packageBuilt: false, ...o })
@@ -115,5 +115,21 @@ describe('plain words on the Next line (v2.4124)', () => {
     const text = submittalJourney(input).next.text
     expect(text, text).not.toMatch(GLUE)
     for (const s of text.split(/(?<=[.?!])\s+/)) expect(s.split(/\s+/).length, s).toBeLessThanOrEqual(20)
+  })
+})
+
+describe('the four words over the pills (v2.4126)', () => {
+  it('cover the eight stages once, in order', () => {
+    expect(SUBMITTAL_STAGE_GROUPS.flatMap((g) => g.numbers)).toEqual([1, 2, 3, 4, 5, 6, 7, 8])
+    expect(SUBMITTAL_STAGE_GROUPS.map((g) => g.label)).toEqual(['Build', 'Send', 'Their answer', 'Order'])
+  })
+  it('take their status from their pills', () => {
+    const groups = groupJourneyStages(submittalJourney({ ...base, rev: draft({ owesReason: 2 }) }).stages)
+    expect(groups.map((g) => `${g.label}:${g.status}:${g.stages.length}`)).toEqual(['Build:current:3', 'Send:later:2', 'Their answer:later:2', 'Order:later:1'])
+    const shared = draft({ number: 2, status: 'shared', packageBuilt: true })
+    const waiting = groupJourneyStages(submittalJourney({ ...base, rev: shared, room: { status: 'open', opens: 0, identified: [] } }).stages)
+    expect(waiting.map((g) => g.status)).toEqual(['done', 'done', 'waiting', 'later'])
+    const all = groupJourneyStages(submittalJourney({ ...base, rev: shared, decisions: { decided: 14, approved: 14, open: 0, sentBack: 0, byName: ['Dana Whitfield'] } }).stages)
+    expect(all.map((g) => g.status)).toEqual(['done', 'done', 'done', 'current'])
   })
 })
