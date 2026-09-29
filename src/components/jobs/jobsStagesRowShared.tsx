@@ -33,6 +33,7 @@ import { formatEstimatedCompletionDisplay, formatUsdNoCents } from '../../lib/jo
 import { formatDecimalWorkHoursToHhMm } from '../../lib/formatDecimalWorkHoursHhMm'
 import { formatAddressTwoLines, googleMapsSearchUrl } from '../../lib/jobs/jobAddressUrls'
 import { JobAddressText } from './JobAddressText'
+import PropertyKindBadge from './PropertyKindBadge'
 import { StagesSearchMark } from './StagesSearchMark'
 import { invoiceOpenRemainingOnJob, jobStagesInvoiceJumpChipTargets } from '../../lib/jobs/invoiceBilling'
 import {
@@ -120,6 +121,10 @@ export type StagesRowRenderContext = {
   onDevelopmentFilter?: (developmentId: string) => void
   /** Contract Desk: per-job contract coverage — the chip under the job (office roles only; undefined hides it). */
   jobContractCoverageByJobId?: ReadonlyMap<string, JobContractCoverage>
+  /** Each job's property kind ('' | residential | non_residential) for the address badge (v2.4160); null/absent while unread → no badge. */
+  propertyKindByJobId?: ReadonlyMap<string, string> | null
+  /** A kind picked from the badge: the board records it at once (the property row is already saved). */
+  onPropertyKindSaved?: (customerAddressId: string, kind: string) => void
   /** Legal portal PR 2 (v2.3313): the legal matter a Collections job belongs to — the ⚖ chip beside the contract chip. */
   legalMatterByJobId?: ReadonlyMap<string, LegalMatterRow>
   /** Opens the job's Contract modal (PR 2); absent = the chip is a plain label. */
@@ -635,11 +640,17 @@ export function renderStagesFieldAndBillingLines(ctx: StagesRowRenderContext, jo
 }
 
 /** Job-column address: red map-pin icon + two-line address, linking to Google Maps. */
-export function renderJobAddressWithMap(address: string | null | undefined) {
+/**
+ * The address under the job name, a Google Maps link; since v2.4160 the
+ * property-kind badge (C / R / ?) sits at the end of its last line — a sibling
+ * of the link, bottom-aligned, never a button inside the anchor.
+ */
+export function renderJobAddressWithMap(ctx: Pick<StagesRowRenderContext, 'propertyKindByJobId' | 'onPropertyKindSaved' | 'authRole' | 'showToast'>, job: Pick<JobWithDetails, 'id' | 'job_address' | 'customer_address_id' | 'hcp_number' | 'job_name'>) {
+  const address = job.job_address
   const fmt = formatAddressTwoLines(address ?? null)
   if (!fmt) return null
   return (
-    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem', display: 'flex', alignItems: 'flex-end', gap: '0.3rem' }}>
       {/* inline-flex so the clickable area hugs the icon + text instead of
           stretching across the whole Job cell. */}
       <a
@@ -669,6 +680,13 @@ export function renderJobAddressWithMap(address: string | null | undefined) {
         </svg>
         <JobAddressText line1={fmt.line1} line2={fmt.line2} />
       </a>
+      <PropertyKindBadge
+        job={job}
+        kind={ctx.propertyKindByJobId?.get(job.id)}
+        role={ctx.authRole}
+        onSaved={(addressId, kind) => ctx.onPropertyKindSaved?.(addressId, kind)}
+        onError={(m) => ctx.showToast(m, 'error')}
+      />
     </div>
   )
 }

@@ -221,7 +221,7 @@ export function StagesUnifiedInvoiceRow({ row, t }: { row: StagesUnifiedInvoiceR
           {renderStagesOpenDetailJobName(job)}
           {renderStagesThreadExpandButton(stagesRowSharedCtx, job.id)}
         </div>
-        {renderJobAddressWithMap(job.job_address)}
+        {renderJobAddressWithMap(stagesRowSharedCtx, job)}
         {renderJobCustomerLine(job)}
         {renderStagesJobColumnEstimateFooter(job.linkedEstimateForStages)}
         {renderStagesJobCellActivityFooter(job, inv)}
