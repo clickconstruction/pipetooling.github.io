@@ -98,7 +98,13 @@ The door on each card goes to the one place that wording is edited.
 
 ## See it as the customer does
 
-Under each card, **As the customer sees it** lists the pages and emails that carry that wording. Each opens **What customers see** on that step, with the sample customer.
+{{button:blue|Read it as the customer sees it}} on a card opens the customer's own page in a window — the sample page, email or paper that **What customers see** shows, with sample information (Sam Sample, 100 Sample St, job 1042) so nothing on it is a real customer — and finds this card's wording on it, lit yellow. **Your wording ↓** scrolls back to it. When the wording is on more than one page, chips at the top switch between them: *Agreement to sign · Agreement email · Signed*. The footer opens the page in a new tab, prints it, and carries the card's own edit door, so a read can turn straight into a fix. The button beside ⋯ takes the reader full screen.
+
+:::example Reading the standard terms
+{{chip:blue|Agreement to sign}} {{chip:gray|Agreement email}} {{chip:gray|Signed}} · {{chip:yellow|Sample · Sam Sample · 100 Sample St, Kyle, TX 78640 · Job 1042 · $1,850.00}} · {{button:outline|Your wording ↓}}
+:::
+
+Under each card, **As the customer sees it** still lists the pages and emails that carry that wording. Each opens **What customers see** on that step, where the whole journey is.
 
 From the other side, an open step on **What customers see** lists **The wording on it**, and each name opens its card here.
 

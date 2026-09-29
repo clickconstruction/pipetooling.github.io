@@ -110,6 +110,18 @@ describe('SettingsContractsTab', () => {
     expect(reach).toContain("open that job’s Contract window")
   })
 
+  it('reads a card as the customer sees it: the reader opens on the card’s page in sample mode; a card seen nowhere has no reader (v2.4098)', async () => {
+    const { view } = mount()
+    await view
+    expect(within(screen.getByTestId('contract-card-bid-closing')).queryByRole('button', { name: 'Read it as the customer sees it' })).toBeNull()
+    fireEvent.click(within(screen.getByTestId('contract-card-estimate-terms')).getByRole('button', { name: 'Read it as the customer sees it' }))
+    expect(screen.getByTestId('contract-reader')).toBeTruthy()
+    expect((screen.getByTitle('Terms page') as HTMLIFrameElement).getAttribute('src')).toContain('/estimate/terms?t=sample')
+    expect(screen.getByTestId('contract-reader-sample').textContent).toContain('Sam Sample')
+    fireEvent.click(screen.getByTestId('contract-reader-close'))
+    expect(screen.queryByTestId('contract-reader')).toBeNull()
+  })
+
   it('opens the step a customer meets it on', async () => {
     const { view, onOpenStep } = mount()
     await view
