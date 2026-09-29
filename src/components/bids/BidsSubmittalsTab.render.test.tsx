@@ -16,9 +16,10 @@ import { BidsSubmittalsTab } from './BidsSubmittalsTab'
 type Rec = { table: string; op: string; payload: unknown; filters: Array<[string, unknown]> }
 const state: { revisions: Record<string, unknown>[]; items: Record<string, unknown>[]; tasks: Record<string, unknown>[]; writes: Rec[]; storage: string[]; packageCalls: Array<{ files: number; sheets: string[] }>; noSources: boolean; takeoff: boolean } = { revisions: [], items: [], tasks: [], writes: [], storage: [], packageCalls: [], noSources: false, takeoff: false }
 
-vi.mock('../../lib/jobs/testReportSettings', () => ({
-  fetchTestReportSettings: () => Promise.resolve({ companyName: 'Click Plumbing', companyTagline: 'Plumbing', officePhone: '(512) 555-0100' }),
-}))
+vi.mock('../../lib/jobs/testReportSettings', () => {
+  const settings = { companyName: 'Click Plumbing', companyTagline: 'Plumbing', officePhone: '(512) 555-0100', mailingAddress: '' }
+  return { fetchTestReportSettings: () => Promise.resolve(settings), cachedTestReportSettings: () => settings }
+})
 
 // The package kernels run jsPDF and pdf-lib; the smoke checks the orchestration, not the ink.
 vi.mock('../../lib/submittals/submittalPackage', async (importOriginal) => {
