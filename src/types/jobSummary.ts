@@ -40,6 +40,10 @@ export type JobSummaryMercuryAllocationRow = {
   amount: number
   note: string | null
   attributionDisplayName: string | null
+  /** Also on a supply-house invoice — the parts cost counts it once, under the invoice (v2.2692). */
+  linkedToSupplyInvoice?: boolean
+  /** In the fuel family's tag — the charges timeline's ⛽ stream (punch list #52). */
+  isFuel?: boolean
   mercury_transactions: {
     posted_at: string | null
     counterparty_name: string | null

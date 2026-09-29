@@ -6,6 +6,12 @@ keywords: lien desk, lien notice, he is here, standing over me, typing it in, le
 ---
 Texas counts lien deadlines from the **month the work was done**, not from the bill. On a job with a GC, every unpaid month needs its own § 53.056 notice by the 15th of the third month after it (the second month on a residential property). The **Lien desk** keeps that queue so nothing closes quietly: the office readies and drafts, the leader approves, and the notice goes out on paper.
 
+## Start on the Calendar
+
+The desk opens on its **Calendar** tab: every Billed and Collections job on its lien clock, grouped by GC — a notice goes to the owner and the GC, and one GC's jobs go out in one run. Each group's header says what it is owed and the next move: {{chip:yellow|send 3 notices · 17 d}}, {{chip:green|44 d of room}}, {{chip:red|money still owed}}. Under the GCs, **Direct — we contracted with the owner** holds the homeowner jobs, which have no notice step and never sat on the notice piles; **Lien gone** holds every job whose window closed unsent, folded up by default.
+
+Every row carries the same runway its Pipeline row does — today, the pay dot, the hollow notice flag, the lien flag, the two-line sentence — so the calendar and the board never disagree. Type a job number, a name, a customer, a GC or an address in the search to keep only those rows. Click a row to open the job's **Lien window**. The other tabs — Notices, Affidavits, Retainage, Timeline — are where the paper is drafted, approved and sent.
+
 ## Where it opens
 
 - **Dashboard → Needs you** — one lien card for the office that leads with the next deadline whatever it is — *Next lien deadline: Oct 15 · in 23 days*, grey beyond fourteen days, amber inside, red inside seven when it reads *4 lien windows close in 5 days* — with the notices, the GCs and where they stand on the desk in one line, and the dollars behind that deadline; {{chip:blue|Approve N lien notices the office drafted}} for the master. Both open the desk in place. Quickfill shows the same cards on a phone.

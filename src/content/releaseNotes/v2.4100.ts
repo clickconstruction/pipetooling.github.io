@@ -3,11 +3,13 @@ import type { ReleaseNote } from '../../lib/releaseNotes'
 const note: ReleaseNote = {
   version: 'v2.4100',
   date: '2026-09-28',
-  title: 'Jobs → Stages: the row markers load from their own piece',
-  kind: 'fix',
+  title: 'The GC statement email says what paid each bill',
+  kind: 'feature',
+  roles: ['dev', 'master_technician', 'assistant', 'controller'],
   highlights: [
-    'Behind the scenes: the markers on Stages rows (a demand letter sent, the contract chip, a hazmat fee, a lien release on file) now load from their own piece instead of inside the Stages page.',
-    'Nothing changes on screen: the same people see the same markers, and a marker that cannot load still just leaves the row plain.',
+    'Under each bill on the weekly statement email — sent from the app, scheduled, or pasted with Copy — a small line now says what paid it and when, and what is still open: "$12,000.00 paid by #48211 on Sep 24 · $1,333.00 still open", or "nothing applied yet". The same words the printed statement, GC Review and the portal already show.',
+    'When what is left on a bill is the retainage the job records, the line says so: "… still open, the retainage you hold".',
+    'The plain-text copy carries the line after the amount, so a text-only mail client reads it too.',
   ],
 }
 

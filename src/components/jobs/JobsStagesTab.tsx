@@ -36,6 +36,7 @@ import { useBilledMoneyData } from '../../hooks/useBilledMoneyData'
 import { useDemandOutJobIds, useHazmatAndReleaseJobIds, useJobContractCoverage } from '../../hooks/useStagesRowFlags'
 import { useStagesDeepLinkParams, useStagesRtbFocus, type StagesDeepLinkDoors } from '../../hooks/useStagesDeepLinkParams'
 import LienPayRunway from './LienPayRunway'
+import type { LienCalendarJob } from '../../lib/jobs/lienCalendar'
 import { progressPaymentForJob } from '../../lib/jobs/progressPaymentForJob'
 import { stagesBillSentPctAlert } from '../../lib/jobs/stagesBillSentPctAlert'
 import { deriveStagesBillingActivityDetail } from '../../lib/stagesJobReferenceDates'
@@ -1005,6 +1006,30 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     },
     [lienRunwayFor],
   )
+  /** The Lien desk's Calendar rows (v2.4101, punch list #55): every billed job with the runway its Pipeline row carries; null until the clocks load. */
+  const lienCalendarRows = useMemo<LienCalendarJob[] | null>(() => {
+    if (!billedLienClocks) return null
+    const out: LienCalendarJob[] = []
+    for (const job of jobs) {
+      if (job.status !== 'billed') continue
+      const billed = (job.invoices ?? []).filter((i) => i.status === 'billed')
+      const runway = lienRunwayFor(job, billed.length === 1 ? billed[0]! : null)
+      if (!runway || runway.state === 'none') continue
+      out.push({
+        jobId: job.id,
+        number: effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—',
+        name: (job.job_name ?? '').trim() || 'Job',
+        customer: (job.customer_name ?? '').trim(),
+        gcId: job.gc_customer_id ?? null,
+        gcName: job.gcCustomer?.name?.trim() || null,
+        address: (job.job_address ?? '').trim(),
+        openBalance: Math.max(0, Number(job.revenue ?? 0) - Number(job.payments_made ?? 0)),
+        isSub: Boolean(job.gc_customer_id),
+        runway,
+      })
+    }
+    return out
+  }, [jobs, billedLienClocks, lienRunwayFor])
   const billedExpectedPayChipRenderer = useCallback(
     (row: StageRow) => {
       // Job-shell rows (no bill line at all) can't have an expected date; wear
@@ -1421,7 +1446,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const { byJob: forecastWorkMonths } = useForecastWorkMonths(forecastWorkMonthJobs, forecastTodayYmd)
   // The Lien desk (v2.3405): § 53.056 notices due per unpaid work month on sub
   // jobs. A light read keeps the menus' counts; the full read runs while open.
-  const [lienDesk, setLienDesk] = useState<{ jobId: string | null; kind?: 'notice' | 'affidavit' | 'timeline'; pile?: LienDeskPile | null } | null>(null)
+  const [lienDesk, setLienDesk] = useState<{ jobId: string | null; kind?: 'notice' | 'affidavit' | 'timeline' | 'calendar'; pile?: LienDeskPile | null } | null>(null)
   const lienDeskEligible = stagesGates.isStagesOfficeRole(authRole)
   /** Put a GC on notice (v2.3470): every owner on every job with a failing GC, one approved run. */
   const [gcNotice, setGcNotice] = useState<{ gcId: string } | null>(null)
@@ -4467,7 +4492,15 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         signerNameFor={lienDeskSignerFor}
         signerPhoneFor={lienDeskSignerPhoneFor}
         initialJobId={lienDesk?.jobId ?? null}
-        initialKind={lienDesk?.kind ?? 'notice'}
+        // The Calendar is the desk's landing (v2.4101); a door that names a job lands on its notice as before.
+        initialKind={lienDesk?.kind ?? (lienDesk?.jobId ? 'notice' : 'calendar')}
+        calendarRows={lienCalendarRows}
+        onOpenCalendarJob={(jobId) => {
+          const job = jobs.find((x) => x.id === jobId)
+          if (!job) return
+          setLienDesk(null)
+          setLienInstrumentsModal({ job, invoice: null })
+        }}
         initialPile={lienDesk?.pile ?? null}
         onOpenLegalDesk={() => {
           setLienDesk(null)

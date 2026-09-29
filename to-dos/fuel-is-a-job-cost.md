@@ -2,19 +2,19 @@
 name: "Fuel is a job cost: one rule, its own line, by day, and who is spending"
 number: 52
 group: ready
-status: PR 1 in review (#3959, v2.4059) · PR 2 building — claude/job-window-fuel-line (v2.4068)
+status: PRs 1–2 shipped (v2.4059, v2.4068) · PR 3 in review (claude/job-timeline-fuel-by-day, v2.4104) · PR 4a in review (#4010 — the office roles read the tags; db push after merge) · PR 4b next
 summary: >
   What a job cost, fuel included, the same on every screen, with fuel as its own line and dated
   to the day it was bought, so a long multi-day job shows whether it is making or losing money
   while it runs; then who is spending what; then Review follows the job numbers.
 next: >
-  PR 1 (the Job window's card charges by Job Summary's rule) ships; then PR 2, fuel as its own
-  line in Job Summary and the Job window.
+  PR 3 (the cost timeline by the card rule, fuel by day) and PR 4a (the office roles read the
+  tags) ship; then PR 4b, People → Spending, per the mock-up.
 size: M for PRs 1–3 · M for the spend view
-blocker: Step 3 needs the owner's call on who sees spend by person (devs only, or the office roles too).
-ver: v2.4059 · 4068
+blocker: None.
+ver: v2.4059 · 4068 · 4104
 opinion: build — the owner asked for it (2026-09-28).
-mockup: required for PR 4 (the spend view) — PRs 1–3 change figures and add a line or a stream in the existing layout
+mockup: fuel-is-a-job-cost-spending.html — People → Spending (PR 4b); PRs 1–3 change figures and add a line or a stream in the existing layout
 ---
 
 # Fuel is a job cost
@@ -39,20 +39,21 @@ Then: "build it" — which takes the recommended answer to the first decision be
 ## The decisions
 
 1. **Fuel stays on the job everywhere, Review included** — taken (the recommendation; "build it"). Reverses v2.2735's rule for Review in PR 5.
-2. **Who sees spend by person** — open: devs only (like Wheels today), or the office roles (assistant, controller) too.
+2. **Who sees spend by person** — the office roles (the owner, 2026-09-28): dev, master technician, assistant, controller — the roles that can already read card charges.
 3. **Order** — the train below, the Job window fix first as its own PR.
+4. **The spend view** (the owner, 2026-09-28, on the mock-up): its home is **People → Spending**; it counts **card charges only** (debit and credit card purchases — no ACH or checks); and the office roles **read the fuel tag** (PR 4a), so an assistant sees fuel on a job too. Editing tags stays with Banking.
 
 ## The plan
 
 1. **The Job window counts card charges by Job Summary's rule** (v2.4059) — `jobCardChargesCountedFromLines` / `jobCardLineStatus` in `supabase/functions/_shared/jobMaterialsCostLines.ts`; the snapshot loads the rule's lookups; the Card charges total, the profit band and the Job tab's Costs card follow; a line left out says why. Edit Job's Parts Cost section too. Delete / migrate / combine still list every line attached — they move rows, not cost. dev-mcp's `get_job` still sums every line (an edge deploy; a follow-up).
 2. **Fuel as its own line** in the Job window (v2.4068) — `lib/jobs/jobCardCostLines.ts` (`jobCardCostLines`, and `clampCostLinesToCounted`, which Job Summary now shares); the snapshot reads each charge's bank category, the accounting labels and the tags, and splits the counted card charges by cost-line tag. The Job tab's Costs card draws ⛽ Fuel & gas after Parts (Parts less the fuel), Where the money went draws it beside *Other card charges*, and each fuel charge in the card list carries a ⛽ marker. Job Summary already draws the line under Parts; its print does not (and does not take off the invoice-linked charges) — a follow-up.
-3. **The job by day** — the day-by-day view already exists on the Job window's Costs tab (Burn's daily spend for the last 14 working days, the cost-to-date timeline, *spent so far*), so no new screen: those views count card charges by the one card rule, with refunds netting (today they add every line as a positive amount), and fuel becomes its own ⛽ stream in the timeline and the daily spend, dated to the day it was bought. The Months view still spreads parts by field hours — dating fuel there is a follow-up if the owner wants it.
-4. **Who is spending what** — fuel and card spend by person for any period, by job, and what is not on a job yet. Mock-up first; needs decision 2.
+3. **The job by day** — the day-by-day view already exists on the Job window's Costs tab (Burn's daily spend for the last 14 working days, the cost-to-date timeline, *spent so far*), so no new screen: those views count card charges by the one card rule, with refunds netting (today they add every line as a positive amount), and fuel becomes its own ⛽ stream in the timeline, dated to the day it was bought (v2.4104 — `lib/jobs/jobCardChargeEvents.ts` for both the Job window's and Job Summary's timeline; the fuel family's tag is `pickFuelTag`, shared with Wheels). Burn's daily spend keeps fuel inside its parts bars. The Months view still spreads parts by field hours — dating fuel there is a follow-up if the owner wants it.
+4. **Who is spending what** — (a) the office roles read the tags (#4010, migration `20260929001119`); (b) **People → Spending**, per the mock-up: any period (presets or a custom range); one row per person — card spend, ⛽ fuel, other, on jobs, not on a job — plus *Company cards* and *Not tied to anyone*; a person opens to their jobs and the charges not on a job yet, each with *Put on a job*. Card charges only. Who a charge belongs to is its attribution (the card holder by default); fuel is the job window's rule; on-a-job is the job splits (a partly split charge counts in both columns). The data: the review RPC `list_user_mercury_review_window` is one person at a time, so the view needs an all-people read for the window.
 5. **Review follows job cost** — Review stops taking vehicle-deal fuel off jobs; the person's vehicle charge covers only what is not already on jobs, so nothing counts twice; the per-person panel's fuel line comes with it.
 
 ## Found along the way
 
-- **The Job window's cost timeline and "spent so far"** read every card line as a positive amount (`useJobChargesTimelineInputs.ts`, `Math.abs`): no Internal Transfer or invoice rule, and a refund does not come off. It is the running cost of a long job — fixed with PR 3.
+- **The cost timeline, Burn and "spent so far"** (the Job window's and Job Summary's) read every card line as a positive amount (`Math.abs`): no Internal Transfer or invoice rule, and a refund did not come off. Fixed in v2.4104.
 - **Job Summary's print** (`jobSummaryCostBreakdown.ts`) does not take off card charges already on a supply invoice, so the printed parts can read higher than the table.
 
 ## How to verify
