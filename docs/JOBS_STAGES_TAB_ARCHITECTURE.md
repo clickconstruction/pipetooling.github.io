@@ -23,7 +23,7 @@ The Pipeline board (tab label "Pipeline"; the `stages` key, URL slug and `JobsSt
 | File | Lines | Shape |
 |---|---|---|
 | [`JobsStagesTab.tsx`](../src/components/jobs/JobsStagesTab.tsx) | 5,099 | `forwardRef(function JobsStagesTabInner)` 468–5097. Hook census: **120 useState** · 0 useReducer · **51 effects** (incl. `useImperativeHandle` 2460) · 45 useMemo · 33 useCallback · 10 useRef · 20 custom-hook calls. **60 props** (`JobsStagesTabProps` 348–420) + **11-method** `JobsStagesTabHandle` (323–346). 179 local imports; 67 distinct child elements in the render (3031–5096) |
-| [`jobsStagesRowShared.tsx`](../src/components/jobs/jobsStagesRowShared.tsx) | 1,518 | 23 module functions, zero hooks, zero Supabase; **33-field** `StagesRowRenderContext` (74–124, 8 optional); imported by 14 files |
+| [`jobsStagesRowShared.tsx`](../src/components/jobs/jobsStagesRowShared.tsx) | 1,518 | 23 module functions, zero hooks, zero Supabase; **33-field** `StagesRowRenderContext` (74–124, 8 optional; 35 since v2.4160 — `propertyKindByJobId`, `onPropertyKindSaved`); `stagesOpenRowStyle` / `STAGES_OPEN_ROW_BAR` (v2.4131: the opened row and its thread row as one blue-barred card, under the amber flash); imported by 14 files |
 | [`JobsStagesTable.tsx`](../src/components/jobs/JobsStagesTable.tsx) | 513 | job-only sections (Waiting / Working / Paid in Full); 65 prop fields |
 | [`JobsStagesUnifiedTable.tsx`](../src/components/jobs/JobsStagesUnifiedTable.tsx) | 449 | job + invoice rows (Ready to Bill / Billed / Collections); 86 prop fields; row kinds in [`StagesUnifiedJobRow.tsx`](../src/components/jobs/StagesUnifiedJobRow.tsx) (434) / [`StagesUnifiedInvoiceRow.tsx`](../src/components/jobs/StagesUnifiedInvoiceRow.tsx) (358) |
 
@@ -229,7 +229,7 @@ Function-returning-JSX style throughout (blocks `memo`); no hooks, no Supabase �
 | 359–368 | `stagesWhenForJob` | 10 | CardList (+ internal) | `deriveStagesWhen` |
 | 376–440 | `renderStagesScheduleStripCells` | 65 | CardList (+ internal) | two-week strip; ✓ / hollow cells from `stagesWorkedByJobId` |
 | 470–608 | `renderStagesFieldAndBillingLines` | 139 | Table, UnifiedTable | NEXT / ENDS / Not scheduled / Done, BILL / PAID (`stripBillParts`), man-hours; private `whenLine` 443–468 |
-| 611–647 | `renderJobAddressWithMap` | 37 | Table, both unified rows | |
+| 611–647 | `renderJobAddressWithMap` | 37 | Table, both unified rows | `(ctx, job)` since v2.4160: the map link and `PropertyKindBadge` (C / R / ?, `lib/jobs/propertyKindBadge.ts`; `usePropertyKinds` runs in the tab) in one bottom-aligned row |
 | 654–679 / 685–689 | `renderAccountManChip` / `accountManOnlyStripeStyle` | 26 / 5 | chip: DetailJobModal (+ internal) · stripe: Table, CardList, both unified rows | |
 | 698–704 | `stagesInvoiceRowAccent{Row,Rail}Style` | — | CardList, UnifiedInvoiceRow | green = invoice |
 | 706–831 | `renderJobCustomerLine` | 126 | Table, UnifiedTable | desktop customer / GC / development / Account Man |

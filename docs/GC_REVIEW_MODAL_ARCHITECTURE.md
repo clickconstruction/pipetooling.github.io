@@ -36,7 +36,7 @@ The office opens GC Review from the Stages board's Billed section. There they:
 - read where the week stands on the **stage track** (Check → Send → Word → Done), pinned over the list, and press a stage to see the GCs waiting there
 - read **Billed Awaiting Payment grouped by GC/Builder** (or by Development): one row per group, its bills with bill-out dates and ages folded inside
 - **certify** each GC's group on Wednesdays
-- work **This week's GCs**: every GC with a balance, three steps a row (Check · Send · Word), grouped by the account man to ask — whoever is signed in works every row
+- work **This week's GCs**: every GC with a balance, three steps a row (Check · Send · Word), grouped by the account man to ask (since v2.4149 every GC files under one — the standing pick, else the account man on most of its jobs, else the leader, the one live master — so the *Under $10,000* / *No account man yet* groups are gone and `ownerSource` says which rule chose) — whoever is signed in works every row
 - watch the **temperature board** (the Temperature tab)
 - manage **scheduled and standing statement emails** (the Scheduled tab)
 - send any GC's statement through **Draft Message** (app email, send now or scheduled), **Copy**, **Print** or the **portal link**, and open the GC's unpaid invoices as one PDF (**Print unpaid invoices**)
