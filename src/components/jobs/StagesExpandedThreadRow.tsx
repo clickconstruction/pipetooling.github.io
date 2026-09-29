@@ -6,7 +6,7 @@
  */
 import { JobsStagesThreadPanel } from './JobsStagesThreadPanel'
 import type { JobsStagesTableProps } from './JobsStagesTable'
-import { renderStagesExpandedRowPanel, renderStagesThreadFullscreenJobHeader } from './jobsStagesRowShared'
+import { STAGES_OPEN_ROW_BAR, renderStagesExpandedRowPanel, renderStagesThreadFullscreenJobHeader } from './jobsStagesRowShared'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 
 export type StagesExpandedThreadRowShared = Pick<
@@ -44,13 +44,16 @@ export function StagesExpandedThreadRow({
   setManageJobPeople,
 }: StagesExpandedThreadRowShared & { job: JobWithDetails; colSpan: number }) {
   return (
-    <tr>
+    <tr data-stages-thread-for={job.id}>
       <td
         colSpan={colSpan}
         style={{
-          padding: '0.5rem 0.75rem',
-          background: 'var(--bg-subtle)',
-          borderBottom: '1px solid var(--border)',
+          padding: '0 0.75rem 0.6rem',
+          // v2.4131: the same tint and left bar as the open row above, so the
+          // row and its notes read as one card; the rule returns under the panel.
+          background: 'var(--bg-blue-tint)',
+          boxShadow: STAGES_OPEN_ROW_BAR,
+          borderBottom: '1px solid var(--border-job-row)',
         }}
       >
         {renderStagesExpandedRowPanel(

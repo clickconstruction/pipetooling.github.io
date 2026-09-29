@@ -141,6 +141,22 @@ export type StagesRowRenderContext = {
 export const STAGES_TABLE_MIN_WIDTH = 880
 
 /**
+ * The open row (v2.4131): when a job's notes thread is expanded under it, the row
+ * and the thread row beneath read as one card — a 3 px bar in the link blue down
+ * the left edge (an inset shadow, so nothing shifts) and a faint blue tint on
+ * both, with no rule between them. Blue means "you opened this"; the amber
+ * flash (`stagesJobFlashId`) keeps meaning "we scrolled you here".
+ */
+export const STAGES_OPEN_ROW_BAR = 'inset 3px 0 0 var(--text-link)'
+
+export const stagesOpenRowStyle: CSSProperties = {
+  backgroundColor: 'var(--bg-blue-tint)',
+  boxShadow: STAGES_OPEN_ROW_BAR,
+  borderBottom: 'none',
+  transition: 'background-color 150ms ease',
+}
+
+/**
  * Edit mode rail (v2.1236): with the ⋯ tools menu's "Edit mode" on, every
  * job-backed row in both Stages tables wears this thin vertical E-D-I-T tab on
  * its left edge — one tap straight into the Edit Job modal, saving dispatch

@@ -9,7 +9,7 @@ import ViewBillWithPdfTail from './ViewBillWithPdfTail'
 import type { StageRow } from '../../lib/jobsStagesBoard'
 import type { StagesUnifiedRowContext } from './JobsStagesUnifiedTable'
 import { Fragment } from 'react'
-import { STAGES_EDIT_MODE_RAIL_WIDTH, accountManOnlyStripeStyle, renderJobAddressWithMap, renderStagesEditModeRail, renderStagesJobColumnEstimateFooter, renderStagesProjectBannerRow, renderStagesThreadExpandButton, shouldSuppressStagesRowJobThreadToggle, stagesInvoiceRowAccentRailStyle, stagesInvoiceRowAccentRowStyle, stagesRowHasProjectBanner } from './jobsStagesRowShared'
+import { STAGES_EDIT_MODE_RAIL_WIDTH, stagesOpenRowStyle, accountManOnlyStripeStyle, renderJobAddressWithMap, renderStagesEditModeRail, renderStagesJobColumnEstimateFooter, renderStagesProjectBannerRow, renderStagesThreadExpandButton, shouldSuppressStagesRowJobThreadToggle, stagesInvoiceRowAccentRailStyle, stagesInvoiceRowAccentRowStyle, stagesRowHasProjectBanner } from './jobsStagesRowShared'
 import { ShareJobButton } from './ShareJobButton'
 import { StagesAiaG702Button, StagesLienInstrumentsButton, StagesLienReleaseButton, StagesTestReportButton } from './StagesRowActionButtons'
 import { StagesCrewLine } from './StagesCrewLine'
@@ -81,9 +81,11 @@ export function StagesUnifiedInvoiceRow({ row, t }: { row: StagesUnifiedInvoiceR
     <tr
       data-stages-invoice-id={inv.id}
       data-stages-job-id={job.id}
+      aria-expanded={expandedJobThreadId === job.id}
       style={{
         borderBottom: stagesRowHasProjectBanner(job.project_id, job.project) ? 'none' : '1px solid var(--border-job-row)',
         ...stagesInvoiceRowAccentRowStyle,
+        ...(expandedJobThreadId === job.id ? stagesOpenRowStyle : {}),
         ...flashRowStyle(inv.id),
         ...(stagesJobFlashId === job.id
           ? { backgroundColor: 'var(--bg-amber-100)', outline: '2px solid #f59e0b', outlineOffset: -2, transition: 'background-color 0.35s ease' }
