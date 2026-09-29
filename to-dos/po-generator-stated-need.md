@@ -2,13 +2,13 @@
 name: PO code — what they said they need
 number: 25
 group: waiting
-status: PR 1 v2.3599 · PR 2 v2.3718 · PR 3 v2.3724 — all built 2026-09-22 · left: the first live write after the push, then a week of watching
+status: PR 1 v2.3599 · PR 2 v2.3718 · PR 3 v2.3724 — all built 2026-09-22 · the editor's reset race fixed v2.3731 · the first live write done 2026-09-22 · the week of watching ran out 2026-09-29 — the ledger read that closes the to-do is still owed
 summary: >
   When the office mints a counter PO code, the tech has just said what it is for — "40 ft of ¾" PEX", "a drain machine" — and nothing writes that down. The row already has a `notes` column and both forms already write it; the desktop form calls it "Optional notes…" and nothing reads it back. Option A: relabel Notes as **What they said they need** on both doors with a concrete placeholder, put the claim in the text to the tech, rename the ledger column, and show the matched ledger entry (job, person, claim) on the supply-house invoice form under the PO check — so $612 against "40 ft of PEX and two valves" is a question the office can ask the day the invoice arrives. No migration.
-next: Watch a week (from 2026-09-22) whether the after-code question gets answered — claims on rows minted by the office are the signal; then close the to-do.
+next: Read the ledger for the week from 2026-09-22 — claims on rows minted by the office are the signal (`material_po_generator_entries` rows with `created_at` after the 22nd and a non-empty `notes`); a read that shows the question getting answered closes the to-do.
 size: S
 blocker: None.
-ver: v2.3599 · 3718 · 3724
+ver: v2.3599 · 3718 · 3724 · 3731
 opinion: later — the code is done; the week of use decides whether the to-do closes. The kind chip stays rejected until a claim ever says "tool".
 ---
 
@@ -72,4 +72,4 @@ Sharpen the field that exists; add nothing to the schema.
 
 ## Where it stands
 
-Designed and decided 2026-09-18. **PR 1 shipped as v2.3599** (#3412, merged 2026-09-19). **PR 2 shipped as v2.3718** (2026-09-22) — see `docs/recent-features/v2.3718.md` for the ledger read that changed the plan (55 codes, one real claim, both post-PR-1 codes blank; Reece prints the job name on 114 of 117 bills). The migration was pushed the same day and the first live write through the new function went on the J523 test row minted that day (code 87092, from the desktop ledger's *add what it was for…*; it reads the claim after a reload); the types regen and the cast drop are #3572. **PR 3 shipped as v2.3724** (2026-09-22): `poLedgerJobMatches` + `poLedgerEntryJobMismatch`, live-checked read-only on two Reece invoices. Option C is rejected, not deferred.
+Designed and decided 2026-09-18. **PR 1 shipped as v2.3599** (#3412, merged 2026-09-19). **PR 2 shipped as v2.3718** (2026-09-22) — see `docs/recent-features/v2.3718.md` for the ledger read that changed the plan (55 codes, one real claim, both post-PR-1 codes blank; Reece prints the job name on 114 of 117 bills). The migration was pushed the same day and the first live write through the new function went on the J523 test row minted that day (code 87092, from the desktop ledger's *add what it was for…*; it reads the claim after a reload); the types regen (#3576) and the cast drop (#3572) merged the same week. **PR 3 shipped as v2.3724** (2026-09-22): `poLedgerJobMatches` + `poLedgerEntryJobMismatch`, live-checked read-only on two Reece invoices. **v2.3731** (2026-09-22) fixed the editor's reset race the merge queue found — *add what it was for…* could fail to open one click in six. Option C is rejected, not deferred. The watching week ended 2026-09-29; its ledger read has not been made.

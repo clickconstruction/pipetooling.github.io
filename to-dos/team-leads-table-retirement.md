@@ -44,6 +44,8 @@ What remains is data and the SQL that reads it, listed in the summary; nothing n
    webhook** — since v2.3650 its try-out branch (`notifyTrialHelperLeads`) pushes whoever ran a
    trial helper's job, off `trial_helper_supervisors()`, not the list. Drop the team-lead branch from
    `send-report-email` / `recurringJobReportCore.ts` (`crew_filter = 'my_team'`).
-3. Client: `reportEmailSubscriptions.ts`'s `leaderUserIds` mirror; `email-reports-to-people.md`
+3. Client: `reportEmailSubscriptions.ts`'s `leaderUserIds` mirror; `useDashboardMyTeamSectionState.ts`'s
+   `setNotifyPreference` (an upsert into `team_leader_clock_notify_prefs` that no component calls any more —
+   re-checked 2026-09-29) and its `team_leader_assignments` comment; `email-reports-to-people.md`
    and `see-your-email-schedule.md`; `PROJECT_DOCUMENTATION.md` §tables, `ACCESS_CONTROL.md`,
    `EDGE_FUNCTIONS.md`, `REPORT_SUBSCRIPTIONS.md`.
