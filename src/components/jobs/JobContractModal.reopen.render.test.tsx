@@ -53,11 +53,13 @@ describe('JobContractModal — Edit & re-send', () => {
     reopenSpy.mockClear()
     rowState.current = sentRow()
     renderWithProviders(<JobContractModal open onClose={() => undefined} job={job} />)
-    const btn = await screen.findByTestId('contract-edit-resend')
+    const btn = (await screen.findByTestId('contract-edit-resend')) as HTMLButtonElement
     expect(btn.textContent).toBe('Edit & re-send')
+    // The button draws as soon as the row is there but stays disabled while the modal is busy — a click in
+    // that window arms nothing (CI lost this race twice on main after v2.4154). Wait for it to be live.
+    await waitFor(() => expect(btn.disabled).toBe(false))
     fireEvent.click(btn)
     expect(reopenSpy).not.toHaveBeenCalled()
-    // The arming is what the click produces — wait for it (CI lost this race twice on main after v2.4154).
     const note = await screen.findByTestId('contract-reopen-note')
     expect(note.textContent).toContain('unlocks here as revision 2')
     expect(screen.getByTestId('contract-edit-resend').textContent).toBe('Confirm — unlock to edit')
