@@ -52,7 +52,7 @@ function mount() {
 describe('SettingsWhatTheTeamSeesTab', () => {
   it('opens on a controller’s week, grouped by when, with the count line', async () => {
     await mount()
-    expect(screen.getByTestId('wtts-coverage').textContent).toContain('25 emails · 17 render live · 8 built on the server (next release)')
+    expect(screen.getByTestId('wtts-coverage').textContent).toContain('25 emails · 19 render live · 6 built on the server (next release)')
     const headings = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent ?? '')
     expect(headings[0]).toContain('Every morning')
     expect(headings.some((h) => h.includes('When something happens'))).toBe(true)
