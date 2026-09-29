@@ -373,6 +373,26 @@ describe('BidsSubmittalsTab', () => {
     expect(screen.getByTestId('road-3-about').textContent).toContain('Check each row. Is it the product the plans asked for?')
   })
 
+  it('v2.4169 · a stage you have not reached folds to its sentence; opened early, its button is held with the reason; an empty stage draws no box', async () => {
+    state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [], created_at: '2026-09-15T00:00:00Z', shared_at: null }]
+    state.items = [item({ id: 'it-1', tag: 'DWH-1', sequence_order: 1, specified_manufacturer: 'Rheem', specified_model: 'RH375', submitted_label: 'BW RE2HP50', status: 'alternate' })]
+    mount()
+    await screen.findAllByTestId('submittal-row')
+    expect(screen.getByTestId('road-3').getAttribute('data-open')).toBe('true')
+    for (const n of [4, 5, 7]) expect(screen.getByTestId(`road-${n}`).getAttribute('data-open')).toBe('false')
+    expect(screen.queryByTestId('build-package')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /^4 · Package/ }))
+    expect((screen.getByTestId('build-package') as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByTestId('package-caption').textContent).toBe('Build package turns on when every row has its reason and its cut sheet.')
+    fireEvent.click(screen.getByRole('button', { name: /^7 · Resubmit/ }))
+    expect((screen.getByTestId('new-revision') as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByTestId('resubmit-caption').textContent).toBe('New revision turns on once the package is built.')
+    fireEvent.click(screen.getByRole('button', { name: /^6 · Their call/ }))
+    expect(screen.getByTestId('road-6').getAttribute('data-open')).toBe('true')
+    // Opened early, Their call has only its reviewer-file door — no empty box, no decisions band.
+    expect(screen.queryByTestId('their-call-band')).toBeNull()
+  })
+
   it('draws the tiles and rows of a revision — say why, sheet needed, the status chips — and Edit saves the row', async () => {
     state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [{ path: 'b398/rev-1/0.pdf', name: 'NWS.pdf', pages: 12, house_id: null, house_name: null, trimmed_at: null }], shared_at: null, created_at: '2026-09-15T00:00:00Z' }]
     state.items = [
@@ -411,7 +431,7 @@ describe('BidsSubmittalsTab', () => {
   })
 
   it('New revision carries the rows into Rev 2, marks the diff, and supersedes the unshared draft', async () => {
-    state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [], shared_at: null, created_at: '2026-09-15T00:00:00Z' }]
+    state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: 'b398/rev-1/package-rev1.pdf', source_files: [], shared_at: null, created_at: '2026-09-15T00:00:00Z' }]
     state.items = [
       item({ id: 'it-1', tag: 'DWH-1', sequence_order: 1, specified_manufacturer: 'Rheem', specified_model: 'RH375', submitted_model: 'AO SMITH BTH-120', submitted_label: 'AO SMITH BTH-120', status: 'alternate', reason_kind: 'cost' }),
       item({ id: 'it-2', tag: 'PRV-1', sequence_order: 2, specified_manufacturer: 'Watts', specified_model: 'LF223', status: 'missing' }),
@@ -420,7 +440,9 @@ describe('BidsSubmittalsTab', () => {
     state.writes = []
     mount()
     await screen.findAllByTestId('submittal-row')
-    fireEvent.click(screen.getByRole('button', { name: 'New revision' }))
+    // Stage 7 folds until it is reached (v2.4169); the package is built, so its door is on once opened.
+    fireEvent.click(screen.getByRole('button', { name: /^7 · Resubmit/ }))
+    fireEvent.click(screen.getByTestId('new-revision'))
     // The confirm dialog names the diff, then builds.
     const confirmDialog = await screen.findByRole('alertdialog')
     expect(confirmDialog.textContent).toMatch(/Rev 2 from today's picks/)
@@ -448,7 +470,7 @@ describe('BidsSubmittalsTab', () => {
   it('Build package downloads only the files the rows use, stores package-rev<N>.pdf, stamps the revision, and opens the signed link', async () => {
     state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [{ path: 'b398/rev-1/0.pdf', name: 'NWS.pdf', pages: 12, house_id: null, house_name: null, trimmed_at: null }, { path: 'b398/rev-1/1.pdf', name: 'Moore.pdf', pages: 4, house_id: null, house_name: null, trimmed_at: null }], shared_at: null, created_at: '2026-09-15T00:00:00Z' }]
     state.items = [
-      item({ id: 'it-1', tag: 'DWH-1', sequence_order: 1, specified_manufacturer: 'Rheem', specified_model: 'RH375', submitted_label: 'BRADFORD WHITE RE2HP50 50 GAL', status: 'alternate', reason_kind: 'lead_time' }),
+      item({ id: 'it-1', tag: 'DWH-1', sequence_order: 1, specified_manufacturer: 'Rheem', specified_model: 'RH375', submitted_label: 'BRADFORD WHITE RE2HP50 50 GAL', status: 'alternate', reason_kind: 'lead_time', sheet_file: 0, sheet_pages: [3] }),
       item({ id: 'it-3', tag: 'WC-1', sequence_order: 2, specified_manufacturer: 'TOTO', specified_model: 'CT708UVG', submitted_label: 'TOTO CT708UVG#01 WALL HUNG', submitted_model: 'CT708UVG', status: 'as_specified', sheet_file: 0, sheet_pages: [1, 2] }),
     ]
     state.writes = []
@@ -457,9 +479,9 @@ describe('BidsSubmittalsTab', () => {
     const open = vi.spyOn(window, 'open').mockImplementation(() => null)
     mount()
     await screen.findAllByTestId('submittal-row')
-    fireEvent.click(screen.getByRole('button', { name: 'Build package' }))
+    fireEvent.click(screen.getByTestId('build-package'))
     await waitFor(() => expect(state.writes.some((w) => w.op === 'update' && w.table === 'bid_submittals')).toBe(true))
-    expect(state.packageCalls).toEqual([{ files: 1, sheets: ['WC-1'] }])
+    expect(state.packageCalls).toEqual([{ files: 1, sheets: ['DWH-1', 'WC-1'] }])
     expect(state.storage).toEqual(['download b398/rev-1/0.pdf', 'upload b398/rev-1/package-rev1.pdf', 'sign b398/rev-1/package-rev1.pdf'])
     const upd = state.writes.find((w) => w.op === 'update' && w.table === 'bid_submittals')!
     expect(upd.payload).toEqual({ package_path: 'b398/rev-1/package-rev1.pdf' })

@@ -132,6 +132,8 @@ export function submittalJourney(input: SubmittalJourneyInput): SubmittalJourney
   }
 
   if (rev.status === 'draft') {
+    // A built package is done whatever the rows still owe (v2.4169): the pill says so, and the New revision door reads it.
+    if (rev.packageBuilt) status.package = 'done'
     if (rev.rows === 0) {
       status.rows = 'current'
       return finish({ kind: 'next', text: 'This version has no rows. Pick a house for each part on Pricing. Then tap Rebuild rows from picks.', action: 'open_pricing', actionLabel: 'The picks on Pricing' })
@@ -211,4 +213,24 @@ export function groupJourneyStages(stages: JourneyStage[]): JourneyGroup[] {
     const status: JourneyStageStatus = own.some((s) => s.status === 'current') ? 'current' : own.some((s) => s.status === 'waiting') ? 'waiting' : own.length > 0 && own.every((s) => s.status === 'done') ? 'done' : 'later'
     return { label: g.label, stages: own, status }
   })
+}
+
+/**
+ * The gate on a later stage's button (v2.4169): a stage you have not reached shows what it
+ * is for, never a live control. Opened early, its button is held and the caption says what
+ * turns it on — from the same statuses the strip draws, so the two never disagree.
+ */
+export type StageGate = { on: boolean; why: string | null }
+
+export function stageGate(stages: JourneyStage[], key: 'package' | 'share' | 'resubmit'): StageGate {
+  const status = (k: JourneyStageKey) => stages.find((s) => s.key === k)?.status ?? 'later'
+  switch (key) {
+    case 'package':
+      return status('package') !== 'later' ? { on: true, why: null } : { on: false, why: 'Build package turns on when every row has its reason and its cut sheet.' }
+    case 'share':
+      return status('share') !== 'later' ? { on: true, why: null } : { on: false, why: 'Share turns on once the package is built.' }
+    case 'resubmit':
+      // Past building: a shared revision, or a draft whose package is built (v2.4090's supersede-the-draft path stays reachable there).
+      return status('share') === 'done' || status('package') === 'done' ? { on: true, why: null } : { on: false, why: 'New revision turns on once the package is built.' }
+  }
 }

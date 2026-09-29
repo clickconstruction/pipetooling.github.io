@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { groupJourneyStages, SUBMITTAL_STAGE_GROUPS, submittalJourney, type SubmittalJourneyInput } from './submittalJourney'
+import { groupJourneyStages, stageGate, SUBMITTAL_STAGE_GROUPS, submittalJourney, type SubmittalJourneyInput } from './submittalJourney'
 
 const base: SubmittalJourneyInput = { scheduleTags: 12, picks: 14, rev: null, room: null, decisions: null }
 const draft = (o: Partial<NonNullable<SubmittalJourneyInput['rev']>> = {}) => ({ number: 1, status: 'draft', isNewest: true, rows: 14, owesReason: 0, sheetsNeeded: 0, packageBuilt: false, ...o })
@@ -131,5 +131,17 @@ describe('the four words over the pills (v2.4126)', () => {
     expect(waiting.map((g) => g.status)).toEqual(['done', 'done', 'waiting', 'later'])
     const all = groupJourneyStages(submittalJourney({ ...base, rev: shared, decisions: { decided: 14, approved: 14, open: 0, sentBack: 0, byName: ['Dana Whitfield'] } }).stages)
     expect(all.map((g) => g.status)).toEqual(['done', 'done', 'done', 'current'])
+  })
+})
+
+describe('stageGate (v2.4169)', () => {
+  const gates = (i: SubmittalJourneyInput) => (['package', 'share', 'resubmit'] as const).map((k) => `${k}:${stageGate(submittalJourney(i).stages, k).on ? 'on' : 'held'}`).join(' ')
+  it('a stage you have not reached holds its button, with the reason', () => {
+    expect(gates({ ...base, rev: draft({ owesReason: 2 }) })).toBe('package:held share:held resubmit:held')
+    expect(stageGate(submittalJourney({ ...base, rev: draft({ owesReason: 2 }) }).stages, 'package').why).toBe('Build package turns on when every row has its reason and its cut sheet.')
+    expect(gates({ ...base, rev: draft() })).toBe('package:on share:held resubmit:held')
+    expect(gates({ ...base, rev: draft({ packageBuilt: true }) })).toBe('package:on share:on resubmit:on')
+    const shared = draft({ number: 2, status: 'shared', packageBuilt: true })
+    expect(gates({ ...base, rev: shared, room: { status: 'open', opens: 0, identified: [] } })).toBe('package:on share:on resubmit:on')
   })
 })
