@@ -17,7 +17,7 @@ Crew day · Money waiting · Payment forecast — then, during the day, Payment 
 
 ## What each row can show
 
-The count line under the toolbar says where things stand — *25 emails · 11 render live · 4 show the real one · 10 built on the server (next release)* — and every row wears one of three chips:
+The count line under the toolbar says where things stand — how many of the 25 render live, how many can show the real one, how many are still built on the server — and every row wears one of three chips (a lifted digest keeps its real-one doors under its sample):
 
 - {{chip:green|renders live}} — the same builder the sender runs, fed the sample company. Open the row and the email is in the frame. The four template emails (invitation, sign-in, workflow notices, and the task reminder's words) read the live rows on **Email templates**, so an edit there shows here the moment you refresh.
 - {{chip:yellow|shows the real one}} — the digests whose function has a preview mode (Crew day, Money waiting, Payment forecast, Billed awaiting). Open the row and press {{button:outline|Show the real one}}: the function builds today's email over live rows, for your eyes only. {{button:outline|Email me the real one}} sends that same email to you.

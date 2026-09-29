@@ -60,6 +60,11 @@ const REAL: Record<TeamRealPreviewStream, { preview: () => Promise<string>; test
   billed_awaiting: { preview: fetchBilledReportPreview, test: sendBilledReportTest },
 }
 
+/** The digest stream a row can show for real: its own `real` beside a sample, or its render when it is only that. */
+function realStreamOf(row: TeamEmail): TeamRealPreviewStream | null {
+  return row.real ?? (row.render.kind === 'real' ? row.render.stream : null)
+}
+
 /** "Sep 21" — the Monday of the week that holds `ymd`, as the weekly emails print it. */
 export function weekStartLabel(ymd: string): string {
   const [y = 1970, m = 1, d = 1] = ymd.split('-').map(Number)
@@ -162,8 +167,8 @@ export function SettingsWhatTheTeamSeesTab() {
   }, [selected, sampleCtx])
 
   const showReal = async (row: TeamEmail) => {
-    if (row.render.kind !== 'real') return
-    const stream = row.render.stream
+    const stream = realStreamOf(row)
+    if (!stream) return
     setReal((m) => ({ ...m, [row.id]: 'loading' }))
     try {
       const html = await REAL[stream].preview()
@@ -173,10 +178,11 @@ export function SettingsWhatTheTeamSeesTab() {
     }
   }
   const emailMe = async (row: TeamEmail) => {
-    if (row.render.kind !== 'real') return
+    const stream = realStreamOf(row)
+    if (!stream) return
     setSending(row.id)
     try {
-      await REAL[row.render.stream].test()
+      await REAL[stream].test()
       showToast(`Sent — the real ${row.label} is on its way to ${user?.email ?? 'you'}.`, 'success')
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'The send failed.', 'error')
@@ -294,7 +300,7 @@ export function SettingsWhatTheTeamSeesTab() {
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-end' }}>
                       <span style={status.style}>{status.label}</span>
-                      {row.render.kind === 'real' ? (
+                      {realStreamOf(row) ? (
                         <button type="button" style={PILL} disabled={sending === row.id} onClick={() => emailMe(row)}>
                           {sending === row.id ? 'Sending…' : 'Email me the real one'}
                         </button>
@@ -313,6 +319,19 @@ export function SettingsWhatTheTeamSeesTab() {
                           <>
                             <div style={{ ...MUTED, marginBottom: '0.3rem' }}>Subject: <span style={{ color: 'var(--text)' }}>{built.subject}</span></div>
                             <iframe key={`${row.id}-${reloadNonce}`} title={row.label} srcDoc={built.html} sandbox="" style={{ width: '100%', maxWidth: 640, height: 420, border: '1px solid var(--border)', borderRadius: 6, background: '#f3f5f7' }} />
+                            {row.real ? (
+                              <div style={{ marginTop: '0.5rem' }}>
+                                {real[row.id] == null ? (
+                                  <button type="button" style={PILL} onClick={() => showReal(row)}>Show the real one — today\u2019s, over live rows, for your eyes only</button>
+                                ) : real[row.id] === 'loading' ? (
+                                  <span style={MUTED}>Building today\u2019s email…</span>
+                                ) : 'error' in (real[row.id] as object) ? (
+                                  <span style={{ color: 'var(--text-red-700)', fontSize: '0.8rem' }}>{(real[row.id] as { error: string }).error}</span>
+                                ) : (
+                                  <iframe key={`${row.id}-real`} title={`${row.label} — real`} srcDoc={(real[row.id] as { html: string }).html} sandbox="" style={{ width: '100%', maxWidth: 640, height: 480, border: '1px solid var(--border)', borderRadius: 6, background: '#f3f5f7' }} />
+                                )}
+                              </div>
+                            ) : null}
                           </>
                         ) : (
                           <span style={{ color: 'var(--text-red-700)', fontSize: '0.8rem' }}>This sample could not be built — see the console.</span>

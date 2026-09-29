@@ -12,6 +12,7 @@ import { SAMPLE_GC, SAMPLE_HOMEOWNER } from './customerSample'
 import { buildSampleContractEmail, type SampleEmailContext } from './customerSampleEmails'
 import { escapeEmailHtml, renderEmailWording } from './emailWording'
 import type { TeamSampleEmailId } from './teamEmails'
+import { moneyWaitingEmailSubject, moneyWaitingEmailText, renderMoneyWaitingEmail, type MoneyWaitingEmailPayload } from '../../supabase/functions/_shared/moneyWaitingEmail'
 
 export type BuiltTeamEmail = { subject: string; html: string; text: string }
 
@@ -70,9 +71,59 @@ const SAMPLE_WORD_ASK_GCS = [
   { gcName: 'Structura', amount: 89_000, promise: { payBy: '2026-09-20', late: true, daysLate: 9 } },
 ] as const
 
+/**
+ * The Money waiting digest's payload for the sample company (v2.4161): three customers off
+ * their pace, one on it — the same rows `get_money_waiting_email_payload` returns, dated from
+ * today so the waits read right whenever the tab is opened.
+ */
+export function sampleMoneyWaitingPayload(todayYmd: string): MoneyWaitingEmailPayload {
+  const daysAgo = (n: number) => {
+    const d = new Date(`${todayYmd}T12:00:00Z`)
+    d.setUTCDate(d.getUTCDate() - n)
+    return d.toISOString()
+  }
+  const row = (invoice: string, job: string, number: string, name: string, address: string, customerId: string, customer: string, billedDaysAgo: number, remaining: number) => ({
+    invoice_id: invoice,
+    job_id: job,
+    display_number: number,
+    job_name: name,
+    job_address: address,
+    customer_id: customerId,
+    customer_name: customer,
+    billed_at: daysAgo(billedDaysAgo),
+    est_bill_ymd: null,
+    remaining,
+  })
+  return {
+    generated_at: `${todayYmd}T12:30:00Z`,
+    today: todayYmd,
+    rows: [
+      row('inv-1', 'job-1', '1041', 'Cedar Bend Apartments — rough-in', '2530 Cedar Bend Dr, Kyle, TX 78640', 'gc-sample', SAMPLE_GC.company, 41, 26_000),
+      row('inv-2', 'job-2', '1046', 'Cedar Bend Apartments — top out', '2530 Cedar Bend Dr, Kyle, TX 78640', 'gc-sample', SAMPLE_GC.company, 19, 8_200),
+      row('inv-3', 'job-3', '1054', 'Water heater replacement', SAMPLE_HOMEOWNER.address, 'home-sample', SAMPLE_HOMEOWNER.name, 58, 4_380),
+      row('inv-4', 'job-4', '1039', 'Structura — pretest', '901 Structura Way, Buda, TX 78610', 'structura', 'Structura', 33, 12_640),
+      row('inv-5', 'job-5', '1057', 'Hunter Homes — gas line', '77 Hunter Loop, Kyle, TX 78640', 'hunter', 'Hunter Homes', 6, 5_724),
+    ],
+    pay_speeds: {
+      company: { medianDays: 24, samples: 40 },
+      customers: {
+        'gc-sample': { medianDays: 18, samples: 9 },
+        'home-sample': { medianDays: 12, samples: 4 },
+        hunter: { medianDays: 30, samples: 5 },
+      },
+      segments: { residential: { medianDays: 14, samples: 12 }, commercial: { medianDays: 27, samples: 28 } },
+      customerTypes: { 'gc-sample': 'commercial', 'home-sample': 'residential', structura: 'commercial', hunter: 'commercial' },
+    },
+  }
+}
+
 export function buildTeamSampleEmail(id: TeamSampleEmailId, ctx: TeamSampleContext): BuiltTeamEmail {
   const origin = ctx.origin
   switch (id) {
+    case 'money_waiting': {
+      const p = sampleMoneyWaitingPayload(ctx.todayYmd)
+      return { subject: moneyWaitingEmailSubject(p), html: renderMoneyWaitingEmail(p, origin, ctx.sender?.name || undefined), text: moneyWaitingEmailText(p) }
+    }
     case 'signed_agreement_staff':
       return buildSignedAgreementEmail({
         kind: 'bid',
