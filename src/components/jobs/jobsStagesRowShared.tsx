@@ -129,15 +129,16 @@ export type StagesRowRenderContext = {
 
 /**
  * Minimum width for both Stages tables (JobsStagesTable + JobsStagesUnifiedTable).
- * They use table-layout: fixed with a colgroup whose sized columns total 516px
- * (9rem + 14.5rem + 140px — the Progress & payment column widened to 14.5rem in
- * v2.3462 so its legend never wraps); the single flexible column (Job — the
- * Activity column was removed in v2.1555) takes all of the remaining
- * `minWidth − 516` and keeps growing as the page widens. 800 keeps the Job
- * column ≥ ~284px at the floor (the table scrolls sideways inside its own
- * wrapper on phones instead).
+ * They use table-layout: fixed with a colgroup whose sized columns total 596px
+ * (14rem + 14.5rem + 140px — the Progress & payment column widened to 14.5rem in
+ * v2.3462 so its legend never wraps; Crew & Dates widened from 9rem in v2.4128 so
+ * the names, the strip and the DONE / BILL lines stop wrapping into a twelve-line
+ * stack); the single flexible column (Job — the Activity column was removed in
+ * v2.1555) takes all of the remaining `minWidth − 596` and keeps growing as the
+ * page widens. 880 keeps the Job column ≥ ~284px at the floor (the table scrolls
+ * sideways inside its own wrapper on phones instead).
  */
-export const STAGES_TABLE_MIN_WIDTH = 800
+export const STAGES_TABLE_MIN_WIDTH = 880
 
 /**
  * Edit mode rail (v2.1236): with the ⋯ tools menu's "Edit mode" on, every
@@ -375,7 +376,7 @@ export function stagesWhenForJob(ctx: Pick<StagesRowRenderContext, 'stagesUpcomi
  * booked days filled, today outlined, weekday letters under it — as one
  * button into the Job Calendar. Each week is its own run of cells with a real
  * gap between the two (v2.4042). Both desktop tables (10 px cells, inside the
- * 140 px Crew & Dates column) and the phone card (11 px) draw it.
+ * 14rem Crew & Dates column; 12 px cells since v2.4128) and the phone card (11 px) draw it.
  */
 export function renderStagesScheduleStripCells(
   ctx: Pick<StagesRowRenderContext, 'stagesUpcomingByJobId' | 'stagesWorkedByJobId' | 'openJobCalendar'>,
@@ -511,7 +512,7 @@ export function renderStagesFieldAndBillingLines(ctx: StagesRowRenderContext, jo
   }
   return (
     <>
-      {renderStagesScheduleStripCells(ctx, job, when, { cellPx: 10, extraTitle: jTitle })}
+      {renderStagesScheduleStripCells(ctx, job, when, { cellPx: 12, extraTitle: jTitle })}
       <div className="stagesWhen">
         {when.kind === 'scheduled' ? (
           <>
@@ -519,7 +520,7 @@ export function renderStagesFieldAndBillingLines(ctx: StagesRowRenderContext, jo
             {whenLine('Ends', 'isEnds', stripEndsParts(when, todayYmd), openCal, 'Last day on the calendar — open the job calendar')}
           </>
         ) : when.kind === 'done' ? (
-          whenLine('Done', 'isMuted', stripDoneParts(when.lastYmd, todayYmd), openCal, 'Nothing on the calendar — open the job calendar')
+          whenLine('Done', 'isMuted', stripDoneParts(when.lastYmd, when.lastKind, todayYmd), openCal, 'Nothing on the calendar — open the job calendar')
         ) : (
           <>
             <span className={`stagesWhenFlag${when.tone === 'amber' ? ' isAmber' : ''}`}>Not scheduled</span>

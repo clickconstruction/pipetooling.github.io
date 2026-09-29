@@ -3094,9 +3094,9 @@ body.my-time-boundary-dragging {
   gap: 1px;
   margin: 3px 0 1px;
   /* The crew cell keeps an icon rail on its left, so the words get the strip's
-     own width (ten 10 px cells) and no more: the label rides inline with the
-     date, and the window / visit count sits on its own line under it. */
-  min-width: 112px;
+     own width (ten 12 px cells, v2.4128) and no more: the label rides inline
+     with the date, and the window / visit count sits on its own line under it. */
+  min-width: 131px;
   font-size: 0.7rem;
   line-height: 1.25;
   white-space: nowrap;
@@ -3141,7 +3141,7 @@ body.my-time-boundary-dragging {
   display: block;
   color: var(--text-muted);
   white-space: normal;
-  max-width: 116px;
+  max-width: 168px; /* "3 months ago · booked, no hrs" is 163 px at 0.7rem (v2.4128) */
 }
 .stagesWhenChunk {
   white-space: nowrap;

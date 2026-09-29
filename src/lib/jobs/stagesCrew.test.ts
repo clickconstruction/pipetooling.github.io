@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildStagesCrewModel, splitStagesCrew, stagesCrewArchivedTail, stagesCrewSummary, type StagesCrewMember } from './stagesCrew'
+import { buildStagesCrewModel, splitStagesCrew, stagesCrewArchivedTail, stagesCrewLineParts, stagesCrewSummary, type StagesCrewMember } from './stagesCrew'
 
 const m = (id: string, name: string, archived_at: string | null = null, role: string | null = 'helpers'): StagesCrewMember => ({ user_id: id, users: { name, archived_at, role } })
 
@@ -34,6 +34,19 @@ describe('splitStagesCrew / stagesCrewSummary (v2.3373)', () => {
     expect(stagesCrewSummary([])).toBeNull()
     expect(stagesCrewSummary(null)).toBeNull()
     expect(stagesCrewSummary([{ user_id: 'x', users: null }, m('y', '   ')])).toBeNull()
+  })
+})
+
+describe('stagesCrewLineParts (v2.4128)', () => {
+  it('two live names, then +N for the rest and every archived account', () => {
+    expect(stagesCrewLineParts({ active: ['Malachi', 'Abraham', 'Paige'], archived: [] })).toEqual({ shown: ['Malachi', 'Abraham'], more: 1, tail: null })
+    expect(stagesCrewLineParts({ active: ['Malachi', 'Abraham', 'Paige'], archived: ['Old Hand'] })).toEqual({ shown: ['Malachi', 'Abraham'], more: 2, tail: null })
+    expect(stagesCrewLineParts({ active: ['Malachi'], archived: [] })).toEqual({ shown: ['Malachi'], more: 0, tail: null })
+    expect(stagesCrewLineParts({ active: ['Malachi', 'Abraham'], archived: [] })).toEqual({ shown: ['Malachi', 'Abraham'], more: 0, tail: null })
+  })
+  it('nobody live → the archived count alone; no crew → null', () => {
+    expect(stagesCrewLineParts({ active: [], archived: ['A', 'B'] })).toEqual({ shown: [], more: 0, tail: '2 archived' })
+    expect(stagesCrewLineParts({ active: [], archived: [] })).toBeNull()
   })
 })
 
