@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   clearDecision,
+  commonHeader,
+  fileSectionTags,
   decide,
   decisionsToWrites,
   doneButtonText,
@@ -15,6 +17,7 @@ import {
   rowModels,
   runStart,
   suggestFor,
+  tagTokens,
   walkProgressText,
   walkRowsFrom,
   walkSummary,
@@ -79,6 +82,16 @@ describe('reading the pages', () => {
     expect(reads[2]).toBeUndefined()
   })
 
+  it('a combined row answers to either tag, on the page and from the robot', () => {
+    const combined = walkRowsFrom([item({ id: 'wc', tag: 'WC-1, WC-2', submitted_model: 'TET2UB31#SS' }), item({ id: 'ur', tag: 'UR-1 & UR-2' })])
+    expect(tagTokens('WC-1, WC-2')).toEqual([' WC 1 ', ' WC 2 '])
+    expect(tagTokens('FD')).toEqual([])
+    const reads = readPages(['NATIONAL WHOLESALE SUPPLY · SPACEX BA-2 · WC-2 · TOTO wall-hung bowl page', 'stamped UR-2 on the header of this urinal sheet page'], combined)
+    expect(reads[1]).toEqual({ itemId: 'wc', why: 'tag' })
+    expect(reads[2]).toEqual({ itemId: 'ur', why: 'tag' })
+    expect(readsFromGuesses(new Map([[7, { tag: 'UR-2', sure: true }]]), combined)).toEqual({ 7: { itemId: 'ur', why: 'tag' } })
+  })
+
   it('a family model reads its SKU on the sheet (CT708 → CT708UVG) once it is five characters; a short model must match whole', () => {
     const family = walkRowsFrom([item({ id: 'wc', tag: 'WC-1', submitted_model: 'CT708' }), item({ id: 'z', tag: 'Z-1', submitted_model: 'Z415' })])
     const reads = readPages(['TOTO CT708UVG elongated bowl submittal sheet with the rough-in', 'ZURN Z4150 something else entirely on this page here'], family)
@@ -95,6 +108,47 @@ describe('reading the pages', () => {
   it('finds the pages that name a row', () => {
     expect(findPagesForRow(texts, rows[4]!)).toEqual([2, 9])
     expect(findPagesForRow(texts, rows[5]!)).toEqual([])
+  })
+})
+
+describe('a stamped file (the National Wholesale shape)', () => {
+  const H = 'SPACEX BA-2 CORE & SHELL'
+  const stamped = [
+    '09/28/2026 SPACEX BA-2 CORE & SHELL Selena Garcia se.garcia@nws-inc.com',
+    `${H} Table of Contents VENDOR PART VENDOR DESCRIPTION PAGE DWH-1 PROPH40 Rheem heater 6 WC-1 & WC-2 CT728CUVG#01 Toto 20 ET-1 ST-5 Amtrol 13`,
+    `${H} E88AA24000 Fiat Bumper Guard 66 MSG-2424 Fiat Wall Panel 68 EWC-1 LZSTL8WSL Elkay bottle filler 69 — the contents run on`,
+    `${H} DWH-1 VENDOR PART VENDOR DESCRIPTION PAGE PROPH40 T2 RH400 Rheem ProTerra Hybrid Electric Heat Pump Specifications 6`,
+    `${H} DWH-1 Rheem | PROPH40 T2 RH400 Professional Prestige ProTerra Hybrid Electric Heat Pump Water Heaters form no`,
+    `${H} ET-1 VENDOR PART VENDOR DESCRIPTION PAGE ST-5 Amtrol St-5 Therm-x-trol 13 PAGE 12 OF 75`,
+    `${H} ET-1 Amtrol | ST-5 MC4400 Worthington Industries Inc., 1400 Division Road, West Warwick`,
+    `${H} WC-1 & WC-2 VENDOR PART VENDOR DESCRIPTION PAGE CT728CUVG#01 Toto Tornado Flush Commercial Flushometer Wall Mounted Toilet`,
+    `${H} WC-1 & WC-2 Toto | CT728CUVG#01 PRODUCT SPECIFICATION The wall-mounted, low consumption siphon jet flushing toilet`,
+  ]
+  const stampedRows = walkRowsFrom([item({ id: 'dwh', tag: 'DWH-1', submitted_label: 'DWH1 & ET assembly' }), item({ id: 'wc', tag: 'WC-1, WC-2', submitted_model: 'TET2UB31#SS' })])
+
+  it('finds the shared header and the file’s own section tags', () => {
+    expect(commonHeader(stamped)).toBe(' SPACEX BA 2 CORE SHELL ')
+    expect(fileSectionTags(stamped, commonHeader(stamped))).toEqual(['WC 1 WC 2', 'DWH 1', 'ET 1'])
+    // a file with no stamps reads as before: nothing is front matter by position
+    expect(readPages(texts, rows)[1]).toBeUndefined()
+    expect(commonHeader(['one page only that is long enough to count here'])).toBe('')
+  })
+
+  it('the stamp decides: the row that answers to it, other for a tag with no row, the index by its title', () => {
+    const reads = readPages(stamped, stampedRows)
+    // the cover and both contents pages are front matter — everything before the first stamp
+    expect(reads[1]).toEqual({ itemId: null, why: 'index' })
+    expect(reads[2]).toEqual({ itemId: null, why: 'index' })
+    expect(reads[3]).toEqual({ itemId: null, why: 'index' })
+    expect(reads[4]).toEqual({ itemId: 'dwh', why: 'stamp' })
+    expect(reads[5]).toEqual({ itemId: 'dwh', why: 'stamp' })
+    expect(reads[6]).toEqual({ itemId: null, why: 'other', tag: 'ET-1' })
+    expect(reads[7]).toEqual({ itemId: null, why: 'other', tag: 'ET-1' })
+    expect(reads[8]).toEqual({ itemId: 'wc', why: 'stamp' })
+    expect(reads[9]).toEqual({ itemId: 'wc', why: 'stamp' })
+    // an other page suggests X; the run does not continue through it
+    const d = decide({}, 6, 'skip')
+    expect(suggestFor(7, d, reads, stampedRows)).toEqual({ value: 'skip', why: 'read' })
   })
 })
 

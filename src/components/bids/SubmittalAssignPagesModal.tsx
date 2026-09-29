@@ -246,13 +246,13 @@ export function SubmittalAssignPagesModal({ file, fileIndex, items, loadBytes, g
   const bannerTone = suggestion.why === 'read' || suggestion.why === 'kept' ? 'sure' : suggestion.why === 'none' ? 'none' : 'guess'
   const bannerHead =
     suggestion.why === 'none' ? 'No row to suggest — pick one, or X if this is not a cut sheet'
-      : suggestion.value === 'skip' ? (suggestion.why === 'kept' ? 'Not a cut sheet' : 'Looks like the index — not a cut sheet')
+      : suggestion.value === 'skip' ? (suggestion.why === 'kept' ? 'Not a cut sheet' : reads[page]?.why === 'other' ? `Stamped ${(reads[page] as { tag: string }).tag} — not a row on this revision` : 'Looks like the index — not a cut sheet')
       : suggestion.why === 'kept' ? `Already on ${sug?.tag || sug?.label}`
       : suggestion.why === 'read' ? `Looks like ${sug?.tag || ''} · ${sug?.label || ''}`
       : suggestion.why === 'continue' ? `${sug?.tag || sug?.label} continues`
       : `Next in the schedule: ${sug?.tag || ''} · ${sug?.label || ''}`
   const bannerSub =
-    suggestion.why === 'read' ? (suggestion.value === 'skip' ? 'the page names four or more rows' : reads[page]?.why === 'tag' ? 'its tag is on the page' : 'its model number is on the page')
+    suggestion.why === 'read' ? (suggestion.value === 'skip' ? (reads[page]?.why === 'other' ? 'X leaves it out; pick a row if it belongs to one' : 'the page names four or more rows') : reads[page]?.why === 'stamp' ? 'the file stamps its tag on the page' : reads[page]?.why === 'tag' ? 'its tag is on the page' : 'its model number is on the page')
       : suggestion.why === 'kept' ? 'kept from before — Space keeps it'
       : suggestion.why === 'continue' ? `same as page ${runStart(decisions, page - 1)}${runStart(decisions, page - 1) !== page - 1 ? `–${page - 1}` : ''} · nothing read on this page`
       : suggestion.why === 'next' ? 'nothing read on this page; the PDF usually follows the schedule'

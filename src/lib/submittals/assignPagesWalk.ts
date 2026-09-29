@@ -16,8 +16,12 @@ export type WalkDecisions = Readonly<Record<number, Decision>>
 /** What the walk needs of a row: its id, its label, and the strings that would name it on a page. */
 export type WalkRow = { id: string; tag: string; label: string; models: string[] }
 
-/** What the reader found on a page: the row its text names, or that it is not a cut sheet. */
-export type PageRead = { itemId: string; why: 'model' | 'tag' } | { itemId: null; why: 'index' }
+/**
+ * What the reader found on a page: the row its text names; the index; or a page the
+ * vendor stamped with a tag that is not a row on this revision (an ET-1 expansion tank
+ * in a file whose rows stop at the heater) — not a cut sheet here.
+ */
+export type PageRead = { itemId: string; why: 'model' | 'tag' | 'stamp' } | { itemId: null; why: 'index' } | { itemId: null; why: 'other'; tag: string }
 export type PageReads = Readonly<Record<number, PageRead>>
 
 /** Upper-case, every run of non-alphanumerics one space, padded so token matches can use spaces as boundaries. */
@@ -54,10 +58,16 @@ export function walkRowsFrom(items: ReadonlyArray<SubmittalItemRow>): WalkRow[] 
   return items.map((it) => ({ id: it.id, tag: it.tag.trim(), label: it.submitted_label ?? it.submitted_model ?? '', models: rowModels(it) }))
 }
 
-/** A tag is worth matching on its own when it is not a bare word: "WHA-500", "WC-1", not "FD". */
-function tagToken(tag: string): string | null {
-  const n = normalizeText(tag).trim()
-  return n && /\d/.test(n) ? ` ${n} ` : null
+/**
+ * The tags a row answers to, as page-text tokens: "WHA-500" → " WHA 500 "; a combined row
+ * "UR-1, UR-2" answers to either; a bare word like "FD" is too common to match on its own.
+ */
+export function tagTokens(tag: string): string[] {
+  return tag
+    .split(/[,&/]|\band\b/i)
+    .map((t) => normalizeText(t).trim())
+    .filter((n) => n && /\d/.test(n))
+    .map((n) => ` ${n} `)
 }
 
 /** The model is on the page as a whole token — or, at five characters or more, as the start of one (the row says CT708, the sheet says CT708UVG). */
@@ -66,17 +76,89 @@ export function textHasModel(text: string, model: string): boolean {
 }
 
 /**
- * Reads every page's text against the rows. A page names the row whose longest model
- * appears in it (ties: the earlier row); failing a model, a tag with a number in it. A
- * page that names four or more rows is an index, not a sheet. Text under 20 characters
- * is a scan or a blank and reads nothing. `texts[0]` is page 1.
+ * The words most pages start with — a supply house stamps its project name on each
+ * page; the cover (a date, a name) need not. The pages that share their first two
+ * words, when they are at least half the file, give the longest prefix they all share,
+ * cut at a word. '' when the file has no such header.
+ */
+export function commonHeader(texts: ReadonlyArray<string>): string {
+  const pages = texts.map((t) => normalizeText(t)).filter((t) => t.trim().length >= 20)
+  if (pages.length < 2) return ''
+  const keyOf = (t: string) => t.trim().split(' ').slice(0, 2).join(' ')
+  const counts = new Map<string, number>()
+  for (const t of pages) counts.set(keyOf(t), (counts.get(keyOf(t)) ?? 0) + 1)
+  const [key, n] = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]!
+  if (n < 2 || n * 2 < pages.length) return ''
+  const shared = pages.filter((t) => keyOf(t) === key)
+  let prefix = shared[0]!
+  for (const t of shared.slice(1)) {
+    let i = 0
+    while (i < prefix.length && i < t.length && prefix[i] === t[i]) i += 1
+    prefix = prefix.slice(0, i)
+  }
+  const cut = prefix.lastIndexOf(' ')
+  return cut > 0 ? prefix.slice(0, cut + 1) : ''
+}
+
+/**
+ * The tags the file itself is sectioned by: a divider page reads "<tag> VENDOR PART
+ * VENDOR DESCRIPTION PAGE" after the stamped header (the National Wholesale shape).
+ * Normalized, longest first, so "WC 1 WC 2" is tried before "WC 1".
+ */
+export function fileSectionTags(texts: ReadonlyArray<string>, header: string): string[] {
+  const out = new Set<string>()
+  for (const raw of texts) {
+    const text = normalizeText(raw)
+    if (!text.startsWith(header)) continue
+    const m = /^(.{2,40}?) VENDOR PART VENDOR DESCRIPTION PAGE /.exec(text.slice(header.length))
+    // A tag carries a number; the table of contents carries the same column heads and is not one.
+    if (m && /\d/.test(m[1]!) && !m[1]!.includes('TABLE OF CONTENTS')) out.add(m[1]!.trim())
+  }
+  return [...out].sort((a, b) => b.length - a.length)
+}
+
+/** The section tag stamped on this page — the one the text carries right after the shared header. */
+function stampedTag(text: string, header: string, sectionTags: ReadonlyArray<string>): string | null {
+  if (!header || !text.startsWith(header)) return null
+  const rest = text.slice(header.length)
+  return sectionTags.find((t) => rest.startsWith(`${t} `)) ?? null
+}
+
+function rowAnswersTo(row: WalkRow, stamped: string): boolean {
+  const padded = ` ${stamped} `
+  return tagTokens(row.tag).some((t) => padded.includes(t))
+}
+
+/**
+ * Reads every page's text against the rows. Where the file stamps a section tag on the
+ * page (`fileSectionTags`), that tag decides: the row that answers to it, or — a tag
+ * with no row on this revision — *other*, not a cut sheet here. Otherwise a page names
+ * the row whose longest model appears in it (ties: the earlier row); failing a model, a
+ * tag with a number in it. A page that says "table of contents" or names four or more
+ * rows is the index. Text under 20 characters is a scan or a blank and reads nothing.
+ * `texts[0]` is page 1.
  */
 export function readPages(texts: ReadonlyArray<string>, rows: ReadonlyArray<WalkRow>): PageReads {
   const out: Record<number, PageRead> = {}
-  texts.forEach((raw, i) => {
+  const header = commonHeader(texts)
+  const sectionTags = header ? fileSectionTags(texts, header) : []
+  const normalized = texts.map((raw) => normalizeText(raw))
+  const stamps = normalized.map((text) => (text.trim().length >= 20 ? stampedTag(text, header, sectionTags) : null))
+  // In a stamped file, the pages before the first stamp are the front matter: the cover, the table of contents.
+  const firstStamp = stamps.findIndex((t) => t !== null)
+  normalized.forEach((text, i) => {
     const page = i + 1
-    const text = normalizeText(raw)
     if (text.trim().length < 20) return
+    if (text.includes(' TABLE OF CONTENTS ') || (firstStamp > 0 && i < firstStamp)) {
+      out[page] = { itemId: null, why: 'index' }
+      return
+    }
+    const stamped = stamps[i]
+    if (stamped) {
+      const row = rows.find((r) => rowAnswersTo(r, stamped))
+      out[page] = row ? { itemId: row.id, why: 'stamp' } : { itemId: null, why: 'other', tag: stamped.replace(/ (\d)/g, '-$1') }
+      return
+    }
     let best: { row: WalkRow; len: number; why: 'model' | 'tag' } | null = null
     let named = 0
     for (const row of rows) {
@@ -87,10 +169,7 @@ export function readPages(texts: ReadonlyArray<string>, rows: ReadonlyArray<Walk
           break
         }
       }
-      if (!hit) {
-        const t = tagToken(row.tag)
-        if (t && text.includes(t)) hit = { len: 1, why: 'tag' }
-      }
+      if (!hit && tagTokens(row.tag).some((t) => text.includes(t))) hit = { len: 1, why: 'tag' }
       if (!hit) continue
       named += 1
       if (!best || hit.len > best.len) best = { row, len: hit.len, why: hit.why }
@@ -222,7 +301,8 @@ export function readsFromGuesses(guesses: ReadonlyMap<number, { tag: string; sur
   if (!guesses) return out
   for (const [page, g] of guesses) {
     if (!g.sure) continue
-    const row = rows.find((r) => r.tag.toUpperCase() === g.tag.trim().toUpperCase())
+    const want = normalizeText(g.tag).trim()
+    const row = rows.find((r) => r.tag.toUpperCase() === g.tag.trim().toUpperCase() || tagTokens(r.tag).some((t) => t.trim() === want))
     if (row) out[page] = { itemId: row.id, why: 'tag' }
   }
   return out
