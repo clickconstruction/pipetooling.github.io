@@ -348,7 +348,7 @@ export function StagesUnifiedJobRow({ row, t }: { row: StagesUnifiedJobRowKind; 
               type="button"
               onClick={() => openEdit(j)}
               title="Open the Edit tab for this job"
-              style={{ ...stagesSecondaryOutlineButtonBase, width: '100%', minWidth: '7.5rem', padding: '0.4rem 0.75rem', cursor: 'pointer', color: 'var(--text-700)' }}
+              style={{ ...stagesSecondaryOutlineButtonBase, alignSelf: 'center', width: 'auto', minWidth: '6rem', padding: '0.3rem 1.25rem', cursor: 'pointer', color: 'var(--text-700)' }}
             >
               Edit
             </button>
@@ -384,7 +384,7 @@ export function StagesUnifiedJobRow({ row, t }: { row: StagesUnifiedJobRowKind; 
                     type="button"
                     onClick={() => onJobSendBack(j)}
                     disabled={stagesStatusUpdatingId === j.id}
-                    style={{ ...stagesCellButtonStyle, width: '100%', cursor: stagesStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}
+                    style={{ ...stagesCellButtonStyle, flex: '0 0 auto', width: 'auto', padding: '0.25rem 0.7rem', cursor: stagesStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}
                   >
                     {jobSendBackLabel}
                   </button>
@@ -395,7 +395,7 @@ export function StagesUnifiedJobRow({ row, t }: { row: StagesUnifiedJobRowKind; 
                     onClick={() => onInvoiceSendBack(bundleInvWithJob)}
                     disabled={stagesInvoiceUpdatingId === bundleInv.id}
                     title="Remove this billing line (partial invoice row)"
-                    style={{ ...stagesCellButtonStyle, width: '100%', cursor: stagesInvoiceUpdatingId === bundleInv.id ? 'not-allowed' : 'pointer' }}
+                    style={{ ...stagesCellButtonStyle, flex: '0 0 auto', width: 'auto', padding: '0.25rem 0.7rem', cursor: stagesInvoiceUpdatingId === bundleInv.id ? 'not-allowed' : 'pointer' }}
                   >
                     {invoiceBundleActionLabel}
                   </button>
@@ -405,7 +405,7 @@ export function StagesUnifiedJobRow({ row, t }: { row: StagesUnifiedJobRowKind; 
                     type="button"
                     onClick={() => onJobMoveToCollections(j)}
                     title="Flag this job as difficult to collect (moves to the Collections section; stays Billed)"
-                    style={{ ...stagesCellButtonStyle, width: '100%', color: 'var(--text-red-600)', border: '1px solid #dc2626', fontWeight: 600, cursor: 'pointer' }}
+                    style={{ ...stagesCellButtonStyle, flex: '0 0 auto', width: 'auto', padding: '0.25rem 0.7rem', color: 'var(--text-red-600)', border: '1px solid #dc2626', fontWeight: 600, cursor: 'pointer' }}
                   >
                     Collections
                   </button>
