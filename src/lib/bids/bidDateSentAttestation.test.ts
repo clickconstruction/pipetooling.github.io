@@ -24,18 +24,25 @@ function state(over: Partial<BidDateSentAttestationState>): BidDateSentAttestati
 }
 
 describe('bidDateSentAttestationMerge — the columns a save writes', () => {
-  it('an empty date clears all eight stamps', () => {
-    expect(bidDateSentAttestationMerge(state({ bidDateSent: '' }))).toEqual(BID_DATE_SENT_ATTESTATION_NULLS)
+  it('emptying a sent date clears all eight stamps', () => {
+    expect(bidDateSentAttestationMerge(state({ bidDateSent: '', serverBidDateSent: '2026-09-01' }))).toEqual(BID_DATE_SENT_ATTESTATION_NULLS)
     expect(bidDateSentAttestationMerge(state({ bidDateSent: '   ', serverBidDateSent: '2026-09-01' }))).toEqual(BID_DATE_SENT_ATTESTATION_NULLS)
     expect(Object.keys(BID_DATE_SENT_ATTESTATION_NULLS)).toHaveLength(8)
   })
 
-  it('an empty date clears the stamps even with a checklist held', () => {
-    expect(bidDateSentAttestationMerge(state({ bidDateSent: '', pending: CONFIRMED, pendingForDate: '2026-09-27' }))).toEqual(BID_DATE_SENT_ATTESTATION_NULLS)
+  it('a bid never sent has no stamps to clear: an empty date writes none (v2.4116)', () => {
+    expect(bidDateSentAttestationMerge(state({ bidDateSent: '' }))).toEqual({})
+    expect(bidDateSentAttestationMerge(state({ bidDateSent: '  ', serverBidDateSent: '' }))).toEqual({})
+    expect(bidDateSentAttestationMerge(state({ bidDateSent: '', serverBidDateSent: '   ' }))).toEqual({})
+  })
+
+  it('emptying a sent date clears the stamps even with a checklist held', () => {
+    expect(bidDateSentAttestationMerge(state({ bidDateSent: '', serverBidDateSent: '2026-09-01', pending: CONFIRMED, pendingForDate: '2026-09-27' }))).toEqual(BID_DATE_SENT_ATTESTATION_NULLS)
   })
 
   it('hands back a copy of the nulls, never the constant', () => {
-    const merge = bidDateSentAttestationMerge(state({ bidDateSent: '' }))
+    const merge = bidDateSentAttestationMerge(state({ bidDateSent: '', serverBidDateSent: '2026-09-01' }))
+    expect(merge).toEqual(BID_DATE_SENT_ATTESTATION_NULLS)
     expect(merge).not.toBe(BID_DATE_SENT_ATTESTATION_NULLS)
   })
 
