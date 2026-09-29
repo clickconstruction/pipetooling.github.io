@@ -32,7 +32,7 @@ On **Pricing** (New), the Workbench shows the packet you're on: **This GC — Bu
 
 ## Write each GC's letter
 
-1. On **Cover Letter** (New), tabs above the form pick whose letter you're writing. Under **In Burd & Assoc.'s letter**, tick the packets that go in; each is **Base** or **Alternate**, and the prices you offered them show as alternate sub-rows.
+1. On **Cover Letter** (New), tabs above the form pick whose letter you're writing. (An *Alternate* here is priced **in lieu of** the proposal — a whole different bid. A section the customer wants **with and without** is a different thing: see [offer an alternate on a bid](?g=offer-an-alternate-on-a-bid).) Under **In Burd & Assoc.'s letter**, tick the packets that go in; each is **Base** or **Alternate**, and the prices you offered them show as alternate sub-rows.
 2. The preview, {{button:blue|Print}} and the copy buttons follow the selected GC. Each letter holds **only that GC's packets and prices**, headed with their name and address — one builder never sees what another was quoted.
 3. {{button:blue|Mark sent to Burd & Assoc.}} stamps that GC's packets with today's date and their ★ value. A GC whose packet has no prices yet gets a *No prices yet* note, and its Mark sent stays off.
 
