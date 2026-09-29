@@ -1059,20 +1059,20 @@ describe('persistMyTimeDayDirtyClusters — payroll hours after an approved row�
   it('only the approved row counts: a pending row re-cut beside it still resyncs, keyed on the approved one', async () => {
     const c = [mk('a', T(0), T(2), { job_ledger_id: 'j1', ...APPROVED }), mk('b', T(2), T(4), { job_ledger_id: 'j2' })]
     await save([c], [{ boundaries: [T(0), T(3), T(4)], notes: ['x', 'y'] }])
-    expect(db.state.log.at(-1)).toStrictEqual(recompute('a'))
+    expect(db.state.log[db.state.log.length - 1]).toStrictEqual(recompute('a'))
   })
 
   it('the People → Hours seed writing an approved row’s times resyncs', async () => {
     const c = [mk('a', T(0), T(4), APPROVED)]
     await save([c], [{ boundaries: [T(0), T(4)], notes: ['x'] }], { peopleHoursGridProportionalSeed: true })
     expect(db.state.log.map((w) => w.op)).toStrictEqual(['update', 'dbRpc'])
-    expect(db.state.log.at(-1)).toStrictEqual(recompute('a'))
+    expect(db.state.log[db.state.log.length - 1]).toStrictEqual(recompute('a'))
   })
 
   it('punch and salary approved rows merged into one part resync', async () => {
     const c = [mk('a', T(0), T(2), APPROVED), salary('s', T(2), T(4), 1, APPROVED)]
     await save([c], [{ boundaries: [T(0), T(4)], notes: ['x'] }])
-    expect(db.state.log.at(-1)).toStrictEqual(recompute('s'))
+    expect(db.state.log[db.state.log.length - 1]).toStrictEqual(recompute('s'))
   })
 
   it('pending rows re-cut do not resync — there is nothing approved to count', async () => {
@@ -1102,7 +1102,7 @@ describe('persistMyTimeDayDirtyClusters — payroll hours after an approved row�
       ],
     )
     expect(db.state.log.map((w) => w.op)).toStrictEqual(['update', 'update', 'update', 'update', 'dbRpc'])
-    expect(db.state.log.at(-1)).toStrictEqual(recompute('d'))
+    expect(db.state.log[db.state.log.length - 1]).toStrictEqual(recompute('d'))
   })
 
   it('a refused resync rejects the save; the rows written before it stay written', async () => {
