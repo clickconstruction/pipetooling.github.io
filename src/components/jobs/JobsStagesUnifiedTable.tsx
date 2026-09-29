@@ -1,4 +1,4 @@
-import type { WordsOverride } from './BilledWordsLine'
+import type { WordsOverride } from './StagesStageBar'
 import { type CSSProperties, type ReactNode } from 'react'
 import type { StagesPhoneRowsMode } from './stagesPhoneRowsMode'
 import { useCustomerProfileModal } from '../../contexts/CustomerProfileModalContext'
@@ -163,7 +163,7 @@ export type JobsStagesUnifiedTableProps = {
  * props after defaults, plus the helpers it builds once per render. The two row files
  * destructure only what they use.
  */
-export type BilledRowBillLine = { words: WordsOverride | null; extras: React.ReactNode }
+export type BilledRowBillLine = { words: WordsOverride | null; extras: React.ReactNode; /** v2.4168: the bar prints nothing under itself. */ hideWords?: boolean }
 
 export type StagesUnifiedRowContext = Omit<JobsStagesUnifiedTableProps, 'jobSendBackLabel' | 'invoiceBundleActionLabel' | 'invoiceStandaloneActionLabel' | 'flashInvoiceId' | 'showClickTooling'> &
   Required<Pick<JobsStagesUnifiedTableProps, 'jobSendBackLabel' | 'invoiceBundleActionLabel' | 'invoiceStandaloneActionLabel' | 'flashInvoiceId' | 'showClickTooling'>> & {

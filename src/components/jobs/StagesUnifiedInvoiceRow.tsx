@@ -238,6 +238,7 @@ export function StagesUnifiedInvoiceRow({ row, t }: { row: StagesUnifiedInvoiceR
             onNoBidValueClick={() => openEdit(job, { fixturesSectionHighlight: true })}
             onStageClick={() => openEdit(job, { fixturesSectionHighlight: true })}
             wordsOverride={billLine?.words ?? null}
+            hideWords={billLine?.hideWords}
             footnote={(() => {
               const u = showRemaining ? jobBillingUnallocatedDollars(job) : 0
               return (

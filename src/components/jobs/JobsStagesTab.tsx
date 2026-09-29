@@ -36,7 +36,6 @@ import { useBilledLienClocks } from '../../hooks/useBilledLienClocks'
 import { useBilledMoneyData } from '../../hooks/useBilledMoneyData'
 import { useDemandOutJobIds, useHazmatAndReleaseJobIds, useJobContractCoverage } from '../../hooks/useStagesRowFlags'
 import { useStagesDeepLinkParams, useStagesRtbFocus, type StagesDeepLinkDoors } from '../../hooks/useStagesDeepLinkParams'
-import LienPayRunway from './LienPayRunway'
 import type { LienCalendarJob } from '../../lib/jobs/lienCalendar'
 import { progressPaymentForJob } from '../../lib/jobs/progressPaymentForJob'
 import { stagesBillSentPctAlert } from '../../lib/jobs/stagesBillSentPctAlert'
@@ -85,8 +84,8 @@ import {
 } from '../../lib/jobs/invoiceBilling'
 import { liveBilledStats, overlayLiveBilledStats } from '../../lib/jobs/stagesLiveHeaderStats'
 import { billedExpectedPayModel } from '../../lib/jobs/billedExpectedPay'
-import { buildBilledWordsLine } from '../../lib/jobs/billedWordsLine'
-import { billedWordsOverride } from './BilledWordsLine'
+import { buildBilledDatesLedger } from '../../lib/jobs/billedDatesLedger'
+import BilledDatesLedger from './BilledDatesLedger'
 import type { BilledRowBillLine } from './JobsStagesUnifiedTable'
 import SetPromisedPayDateModal from './SetPromisedPayDateModal'
 import JobContractModal from './JobContractModal'
@@ -1002,12 +1001,43 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   )
   const billedLienRunwayRenderer = useCallback(
     (row: StageRow) => {
+      // v2.4168: the bill's dates in one block under the money legend — the
+      // numbered track over the ledger: Billed · Expected / They said · Send the
+      // notice · Lien. The runway kernel still decides the deadlines; the ledger
+      // arranges them with the money.
       const inv = row.kind === 'job' ? null : row.inv
       const runway = lienRunwayFor(row.job, inv)
-      if (!runway || runway.state === 'none') return null
-      return <LienPayRunway runway={runway} onOpen={() => setLienInstrumentsModal({ job: row.job, invoice: inv })} />
+      const todayYmd = calendarYmdInAppTzFromIso(new Date().toISOString())
+      const promise = promisedPayDates?.[row.job.id] ?? null
+      const ledger = buildBilledDatesLedger({
+        todayYmd,
+        row: inv ? { billedAtIso: inv.billed_at, estBillYmd: effectiveInvoiceEstBillDate(inv), customerId: row.job.customer_id } : null,
+        data: billedPaySpeeds,
+        promise,
+        runway,
+        inCollections: jobInCollections(row.job),
+      })
+      if (ledger.rows.length === 0) return null
+      const number = effectiveJobLedgerNumber(row.job.hcp_number, row.job.click_number) || '—'
+      const label = `${number} · ${(row.job.job_name ?? '').trim() || 'Job'}`
+      const evidence = inv ? (
+        <BilledReliabilityLine
+          line={buildReliabilityLine(
+            row.job.customer_id ? billedPaySpeeds?.receipts[row.job.customer_id] : null,
+            canMarkPromisedPay ? promiseRecordsByCustomer?.get(stageRowPayerCustomerId(row) ?? '') ?? null : null,
+          )}
+        />
+      ) : null
+      return (
+        <BilledDatesLedger
+          ledger={ledger}
+          evidence={evidence}
+          onMoney={canMarkPromisedPay ? () => setPromisedPayModalJob({ jobId: row.job.id, jobLabel: label, initialYmd: promise?.promisedYmd ?? null }) : undefined}
+          onLienDesk={() => setLienInstrumentsModal({ job: row.job, invoice: inv })}
+        />
+      )
     },
-    [lienRunwayFor],
+    [lienRunwayFor, promisedPayDates, billedPaySpeeds, canMarkPromisedPay, promiseRecordsByCustomer],
   )
   /** The Lien desk's Calendar rows (v2.4101, punch list #55): every billed job with the runway its Pipeline row carries; null until the clocks load. */
   const lienCalendarRows = useMemo<LienCalendarJob[] | null>(() => {
@@ -1036,11 +1066,13 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   }, [jobs, billedLienClocks, lienRunwayFor])
   const billedBillLineRenderer = useCallback(
     (row: StageRow): BilledRowBillLine | null => {
-      // Job-shell rows (no bill line at all) can't have an expected date; wear
-      // the "No bill line" hint the no_line chip filters by instead (v2.1931).
+      // v2.4168: no words under the bar on a Billed row — the dates block under
+      // the legend tells the bill's story. What stays here is the alert by the
+      // buttons: the bank-returned ⚠ and a job-shell row's pill (no bill line, so
+      // nothing to age — v2.1931), with its own They said… since the ledger has
+      // no money row to click on a shell.
       const shell = row.kind === 'job'
       const promise = promisedPayDates?.[row.job.id] ?? null
-      const todayYmd = calendarYmdInAppTzFromIso(new Date().toISOString())
       const bankRet = bankReturnedByJobId.get(row.job.id) ?? null
       const number = effectiveJobLedgerNumber(row.job.hcp_number, row.job.click_number) || '—'
       const label = `${number} · ${(row.job.job_name ?? '').trim() || 'Job'}`
@@ -1054,30 +1086,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           jobLabel: label,
           initialYmd: promise?.promisedYmd ?? null,
         })
-      // v2.4130: the bill's story is the words line under the bar — "Billed Sep 15 ·
-      // 21 d past expected · they said Oct 3" — and its expectation clause is the
-      // click that records what the customer said (They said… / New date…).
-      const line = shell
-        ? null
-        : buildBilledWordsLine({
-            row: { billedAtIso: row.inv.billed_at, estBillYmd: effectiveInvoiceEstBillDate(row.inv), customerId: row.job.customer_id },
-            data: billedPaySpeeds,
-            todayYmd,
-            promise,
-            inCollections: jobInCollections(row.job),
-          })
-      // v2.4147: the customer's pay history ("Pays in 2–8d · keeps 3 of 4") is the
-      // evidence behind the estimate, so it sits right under the sentence.
-      const evidence = shell ? null : (
-        <BilledReliabilityLine
-          line={buildReliabilityLine(
-            row.job.customer_id ? billedPaySpeeds?.receipts[row.job.customer_id] : null,
-            canMarkPromisedPay ? promiseRecordsByCustomer?.get(stageRowPayerCustomerId(row) ?? '') ?? null : null,
-          )}
-        />
-      )
-      const words = line ? billedWordsOverride(line, canMarkPromisedPay ? openPromise : undefined, evidence) : null
-      if (!words && !shell && !bankRet) return null
+      if (!shell && !bankRet) return { words: null, hideWords: true, extras: null }
       const extras = (
         <>
           {bankRet ? (
@@ -1121,9 +1130,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           ) : null}
         </>
       )
-      return { words, extras }
+      return { words: null, hideWords: true, extras }
     },
-    [billedPaySpeeds, promisedPayDates, canMarkPromisedPay, promiseRecordsByCustomer, bankReturnedByJobId, openPaymentsReceived],
+    [promisedPayDates, canMarkPromisedPay, bankReturnedByJobId, openPaymentsReceived],
   )
   const [sendBackJob, setSendBackJob] = useState<{
     id: string
