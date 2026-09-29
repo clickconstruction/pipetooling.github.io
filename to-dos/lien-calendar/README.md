@@ -2,7 +2,7 @@
 name: "Lien calendar: every billed job on the statute's calendar, as the Lien desk's first tab"
 number: 56
 group: ready
-status: designed 2026-09-28 (canvas boards 6–7) · PR A shipped v2.4103 (promises in the job's activity) · PR B shipped v2.4101 (the Calendar tab shell, grouped by GC) · PRs C–D not started
+status: designed 2026-09-28 (canvas boards 6–7) · PR A shipped v2.4103 (promises in the job's activity) · PR B shipped v2.4101 (the Calendar tab shell, grouped by GC) · PR C shipped v2.4152 (the body: the shared axis, every unpaid month's flag, the kind bracket, the density, the to-do, the key, the today pill, the phone list) · PR D not started
 summary: >
   The lien runway (v2.4051 · v2.4064 · v2.4096) puts one job's two dates under its money bar. The
   owner wants the whole board at once: every billed job and how close it is to its notice date and
@@ -13,10 +13,10 @@ summary: >
   strip counting what lands on each 15th, a to-do line the columns write, and a key that names
   every mark. The desk widens to direct jobs (affidavit only). Promises recorded anywhere now show
   in the job's activity feed (PR A).
-next: PR C — the body: the shared axis with the 15ths as columns, every unpaid month's notice flag, the kind bracket, the density strip, the key, the today pill, the to-do sentences; then PR D the pen. The owner looks at the live shell first.
-size: S (PR A, shipped) + M (PR B, shipped) + L (C) + M (D)
+next: PR D — the pen: the pay dot / dashed dot opens the "They said…" popover in place (consequence read back before Save), the GC row's one dot writes the GC's word, the to-do's doors (Draft the N → the desk's run; Set kinds, biggest first → the property records).
+size: S (PR A, shipped) + M (PR B, shipped) + L (PR C, shipped) + M (D)
 blocker: none — data already exists (useForecastWorkMonths knows each month's notice state; the runway kernel gives marks and sortKey per job; the promise RPCs exist).
-ver: v2.4051 · v2.4064 · v2.4096 · v2.4103 · v2.4101
+ver: v2.4051 · v2.4064 · v2.4096 · v2.4103 · v2.4101 · v2.4152
 opinion: build B → C → D in that order; C is the value, B makes it land in the right place, D is what makes the chart a tool and not a picture.
 ---
 
@@ -67,7 +67,7 @@ Open question, left for PR C: a GC pays several jobs on one check, so a pay dot 
 |---|---|---|---|
 | **A** | Promises in the job's activity feed — `payment_promise` event type, read-side merge in `useJobThreadNotes`. | S | **shipped v2.4103** |
 | **B** | The **Calendar** kind, first in the tab row and the desk's landing (the ⋯ menu and the Collections header's door): every billed / collections job — direct jobs too, affidavit only — grouped by GC with a next move per group, search, rows opening the Lien window. Rows come from the Pipeline's `lienRunwayFor`, not `useLienDeskData`. | M | **shipped v2.4101** |
-| **C** | The Calendar body: `lib/jobs/lienCalendar.ts` (per-job runway → GC groups, every unpaid month's notice flag from `buildWorkMonthsByJob`, the kind bracket, density per 15th, the three to-do sentences, search), the shared-axis renderer with the one today line + pill, the key, the past gutter, rows as doors, the phone list. | L | |
+| **C** | The Calendar body: `lib/jobs/lienCalendar.ts` (per-job runway → GC groups, every unpaid month's notice flag from `buildWorkMonthsByJob`, the kind bracket, density per 15th, the three to-do sentences, search), the shared-axis renderer with the one today line + pill, the key, the past gutter, rows as doors, the phone list. | L | **shipped v2.4152** |
 | **D** | The pen: the pay dot / dashed dot opens the "They said…" popover in place (consequence read back before Save; drag ends in the popover); the GC row's one dot writes the GC's word (`gcWordPromise`); density-bar selection → *Draft the N* hands the jobs to the desk's run; *Set kinds, biggest first* opens the property records. | M | |
 
 Each PR: release note + fragment, the guide *send lien notices from the Lien desk* (+ *read the Pipeline's money view* for the door), `docs/LIEN_DESK_ARCHITECTURE.md` region for the new kind, GLOSSARY *Lien calendar*.
@@ -78,4 +78,4 @@ Live data on 2026-09-28 (local build against prod rows): 64 billed runways — 4
 
 ## Where it stands
 
-Designed; PRs A and B shipped (v2.4103, v2.4101 — the 2026-09-28 census read 64 rows, 45 *send the notice*, 12 under Lien gone, as predicted). Neighbours shipped the same day: the strip's fold (v2.4111) and the run's mailing workflow (v2.4119, board 9). Next: PR C, after the owner's look at the live shell.
+Designed; PRs A, B and C shipped (v2.4103, v2.4101, v2.4152 — the 2026-09-28 census read 64 rows, 45 *send the notice*, 12 under Lien gone, as predicted). Neighbours shipped 2026-09-29: the strip's fold (v2.4111) and the run's mailing workflow (v2.4119, board 9). Next: PR D, the pen — the to-do's two doors are already props on the tab (`onDraft`, `onSetKinds`), unwired until then; the open question above (one pay dot per GC group) is PR D's first call.

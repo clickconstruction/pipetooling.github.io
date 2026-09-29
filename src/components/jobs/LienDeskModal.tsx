@@ -1969,7 +1969,7 @@ export default function LienDeskModal({
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: isMobile || kind === 'timeline' || kind === 'calendar' ? '1fr' : '320px 1fr', overflow: 'hidden', minHeight: 0 }}>
           {kind === 'calendar' ? (
-            <LienDeskCalendarTab rows={calendarRows ?? null} loading={loading} onOpenJob={(jobId) => (onOpenCalendarJob ?? onOpenLienInstruments)(jobId)} />
+            <LienDeskCalendarTab rows={calendarRows ?? null} loading={loading} todayYmd={todayYmd} isMobile={isMobile} onOpenJob={(jobId) => (onOpenCalendarJob ?? onOpenLienInstruments)(jobId)} />
           ) : kind === 'timeline' ? (
             <LienDeskTimelineTab
               book={book}

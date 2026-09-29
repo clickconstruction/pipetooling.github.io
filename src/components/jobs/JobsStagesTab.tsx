@@ -1029,6 +1029,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         openBalance: Math.max(0, Number(job.revenue ?? 0) - Number(job.payments_made ?? 0)),
         isSub: Boolean(job.gc_customer_id),
         runway,
+        lastWorkYmd: job.last_work_date ?? null,
       })
     }
     return out
@@ -1464,11 +1465,29 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const lienDeskMoneyCard = useMemo(() => buildLienDeskMoneyCard(lienDeskData?.summary, forecastTodayYmd), [lienDeskData, forecastTodayYmd])
   // Collections' note line (v2.3684): the account's note, then — on a job whose lien claim was set by hand under the balance — the unsecured part, named.
   const collectionsNoteLine = useCallback((j: JobWithDetails): string | null => collectionsNoteLineFor(j, lienDeskData?.claimCorrectionsByJob[j.id] ?? null), [lienDeskData])
-  const lienDeskJobs = useMemo(
-    () => (lienDesk && lienDeskData ? Object.values(lienDeskData.jobsById).map((j) => ({ id: j.id, gc_customer_id: j.gc_customer_id, customer_address_id: j.customer_address_id })) : null),
-    [lienDesk, lienDeskData],
-  )
+  const lienDeskJobs = useMemo(() => {
+    if (!lienDesk || !lienDeskData) return null
+    const seen = new Map<string, { id: string; gc_customer_id: string | null; customer_address_id: string | null }>()
+    for (const j of Object.values(lienDeskData.jobsById)) seen.set(j.id, { id: j.id, gc_customer_id: j.gc_customer_id, customer_address_id: j.customer_address_id })
+    // v2.4152 (punch list #56 PR C): the Calendar draws every unpaid month's notice flag, so the desk's work months cover every billed job, not only the notice piles'.
+    for (const r of lienCalendarRows ?? []) {
+      if (seen.has(r.jobId)) continue
+      const job = jobs.find((j) => j.id === r.jobId)
+      if (job) seen.set(job.id, { id: job.id, gc_customer_id: job.gc_customer_id ?? null, customer_address_id: job.customer_address_id ?? null })
+    }
+    return [...seen.values()]
+  }, [lienDesk, lienDeskData, lienCalendarRows, jobs])
   const { byJob: lienDeskWorkMonths } = useForecastWorkMonths(lienDeskJobs, forecastTodayYmd)
+  /** The Calendar's rows with each job's work months folded in (null months until the clock sessions land). */
+  const lienCalendarRowsWithMonths = useMemo<LienCalendarJob[] | null>(() => {
+    if (!lienCalendarRows) return null
+    if (!lienDeskWorkMonths) return lienCalendarRows
+    return lienCalendarRows.map((r) => {
+      const wm = lienDeskWorkMonths[r.jobId]
+      if (!wm) return r
+      return { ...r, months: wm.months.flatMap((m) => (m.notice ? [{ key: m.key, due: m.notice.due, state: m.notice.state }] : [])) }
+    })
+  }, [lienCalendarRows, lienDeskWorkMonths])
   const [lienDeskIssuerGen, setLienDeskIssuerGen] = useState(0)
   const lienDeskIssuer = useMemo(() => (lienDesk || gcNotice ? getPhysicalInvoiceIssuerDraft() : null), [lienDesk, gcNotice, lienDeskIssuerGen])
   useEffect(() => {
@@ -4399,7 +4418,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         initialJobId={lienDesk?.jobId ?? null}
         // The Calendar is the desk's landing (v2.4101); a door that names a job lands on its notice as before.
         initialKind={lienDesk?.kind ?? (lienDesk?.jobId ? 'notice' : 'calendar')}
-        calendarRows={lienCalendarRows}
+        calendarRows={lienCalendarRowsWithMonths}
         onOpenCalendarJob={(jobId) => {
           const job = jobs.find((x) => x.id === jobId)
           if (!job) return
