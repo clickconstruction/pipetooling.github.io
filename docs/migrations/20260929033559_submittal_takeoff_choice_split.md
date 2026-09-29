@@ -1,4 +1,4 @@
-# 20260929033559 — `bid_submittal_takeoff_choices.split` (v2.4114)
+# 20260929033559 — `bid_submittal_takeoff_choices.split` (v2.4118)
 
 **What**: one additive column, `split boolean NOT NULL DEFAULT false`, on the table v2.4107 added for the estimator's ticks in *Choose from the takeoff*.
 

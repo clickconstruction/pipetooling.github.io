@@ -366,3 +366,34 @@ describe('buildLienTimeline — the demand letter on the strip, whose move it is
     expect(original.steps.find((s) => s.kind === 'release')?.move).toBe('owner')
   })
 })
+
+describe('the strip folds consecutive closed months into one node (v2.4111)', () => {
+  const closed = (key: string, deadline: string, at = '2026-09-21T15:00:00Z') => ({ key, deadline, fromCreation: false, outcome: 'missed' as const, at })
+  it('four closed months, all noted → one node: the cite, the run, the count, the state; the months ride along', () => {
+    const t = buildLienTimeline(base({ lastMonth: '2026-09', months: [closed('2026-05', '2026-08-17'), closed('2026-06', '2026-09-15'), closed('2026-07', '2026-09-15'), closed('2026-08', '2026-09-15'), { key: '2026-09', deadline: '2026-10-15', fromCreation: false, outcome: 'open', at: '' }] }))
+    const fold = t.steps.find((s) => s.fold)!
+    expect(fold).toMatchObject({ kind: 'notice', key: 'notice-fold:2026-05:2026-08', label: '§ 53.056 · May–Aug', state: 'missed', dateWords: '4 windows closed', words: 'all noted', daysLeft: null, move: null })
+    expect(fold.fold).toMatchObject({ count: 4, noted: 4, unnoted: 0, unknown: 0, fromMonthKey: '2026-05', toMonthKey: '2026-08' })
+    expect(fold.fold!.steps.map((s) => s.monthKey)).toEqual(['2026-05', '2026-06', '2026-07', '2026-08'])
+    expect(kinds(t)).toEqual(['last_work=done', 'notice=missed', 'notice:2026-09=due', 'retainage=undated', 'affidavit=later', 'serve=later', 'suit=later'])
+    expect(t.todayIndex).toBe(2) // last work + the fold are past
+  })
+  it('one month not noted keeps its voice inside the fold', () => {
+    const t = buildLienTimeline(base({ lastMonth: '2026-08', months: [closed('2026-05', '2026-08-17'), closed('2026-06', '2026-09-15'), closed('2026-07', '2026-09-15'), closed('2026-08', '2026-09-15', '')] }))
+    const fold = t.steps.find((s) => s.fold)!
+    expect(fold.words).toBe('3 noted · 1 to note')
+    expect(fold.fold).toMatchObject({ noted: 3, unnoted: 1 })
+  })
+  it('a single closed month, a skipped month or a sent month between closed months do not fold', () => {
+    const one = buildLienTimeline(base({ lastMonth: '2026-06', months: [closed('2026-06', '2026-09-15')] }))
+    expect(one.steps.some((s) => s.fold)).toBe(false)
+    const broken = buildLienTimeline(base({ lastMonth: '2026-08', months: [closed('2026-05', '2026-08-17'), { key: '2026-06', deadline: '2026-09-15', fromCreation: false, outcome: 'sent', at: '2026-09-01T15:00:00Z' }, closed('2026-07', '2026-09-15'), { key: '2026-08', deadline: '2026-09-15', fromCreation: false, outcome: 'skipped', at: '2026-09-20T15:00:00Z' }] }))
+    expect(broken.steps.filter((s) => s.kind === 'notice').map((s) => `${s.monthKey}=${s.words}`)).toEqual(['2026-05=window closed · noted', '2026-06=sent Sep 1', '2026-07=window closed · noted', '2026-08=skipped on purpose'])
+  })
+  it('the Lien window without desk items folds too, and says only that the windows closed', () => {
+    const t = buildLienTimeline(base({ lastMonth: '2026-07', months: [{ ...closed('2026-05', '2026-08-17', ''), noteUnknown: true }, { ...closed('2026-06', '2026-09-15', ''), noteUnknown: true }] }))
+    const fold = t.steps.find((s) => s.fold)!
+    expect(fold.words).toBe('window closed')
+    expect(fold.fold).toMatchObject({ count: 2, unknown: 2 })
+  })
+})

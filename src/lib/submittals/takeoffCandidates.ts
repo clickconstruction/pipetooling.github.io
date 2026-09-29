@@ -44,7 +44,7 @@ export type TakeoffCandidate = {
   ticked: boolean
   /** Already a row on the revision being built onto. */
   alreadyOn: boolean
-  /** The name spells out more than one tag (WC 1&2 → WC-1, WC-2), so the row may split (v2.4114). */
+  /** The name spells out more than one tag (WC 1&2 → WC-1, WC-2), so the row may split (v2.4118). */
   canSplit: boolean
   /** The estimator's stored split, when there is one. */
   storedSplit: boolean | null
@@ -61,7 +61,7 @@ export type TakeoffCandidatesInput = {
   /** The house behind a catalog price row, by price id. */
   houses: ReadonlyMap<string, TakeoffHouse>
   choices?: ReadonlyMap<string, boolean> | null
-  /** The estimator's stored splits by count row id (v2.4114). */
+  /** The estimator's stored splits by count row id (v2.4118). */
   splits?: ReadonlyMap<string, boolean> | null
   /** Count rows already on the revision (their `source_count_row_id`). */
   alreadyOn?: ReadonlySet<string> | null
@@ -184,7 +184,7 @@ export type CandidateCounts = {
   ticked: number
   /** Submittal rows those ticks become — a split candidate counts once per tag. */
   rows: number
-  /** Ticked candidates that split (v2.4114). */
+  /** Ticked candidates that split (v2.4118). */
   splitCount: number
   tickedWithProduct: number
   tickedToType: number
@@ -250,7 +250,7 @@ export function candidateToItemInsert(x: TakeoffCandidate, submittalId: string, 
   }
 }
 
-/** The rows a ticked candidate becomes: one, or one per tag when split (v2.4114) — same product, house and count row on each. */
+/** The rows a ticked candidate becomes: one, or one per tag when split (v2.4118) — same product, house and count row on each. */
 export function candidateToItemInserts(x: TakeoffCandidate, submittalId: string, sequenceStart: number, split = x.split): ReturnType<typeof candidateToItemInsert>[] {
   if (!(split && x.canSplit)) return [candidateToItemInsert(x, submittalId, sequenceStart)]
   return x.tags.map((tag, i) => ({ ...candidateToItemInsert(x, submittalId, sequenceStart + i), tag }))
@@ -259,7 +259,7 @@ export function candidateToItemInserts(x: TakeoffCandidate, submittalId: string,
 /**
  * The tags a submittal row's tag text lists, when it lists more than one: "WC-1, WC-2" · "WC-1 / WC-2" ·
  * "WC 1&2" → [WC-1, WC-2]; a single tag or none → []. The same reader the takeoff uses, so Split is
- * offered on the same names in both places (v2.4114).
+ * offered on the same names in both places (v2.4118).
  */
 export function rowSplitTags(tagText: string | null | undefined): string[] {
   const text = (tagText ?? '').trim()
@@ -281,7 +281,7 @@ export function rowSplitTags(tagText: string | null | undefined): string[] {
 
 export type SplitExample = { name: string; readsAs: string; canSplit: boolean; note: string | null }
 
-/** How the rule reads this bid's own names — the "When a row can split" modal's table (v2.4114). */
+/** How the rule reads this bid's own names — the "When a row can split" modal's table (v2.4118). */
 export function splitExplanation(cands: ReadonlyArray<TakeoffCandidate>): SplitExample[] {
   return cands
     .filter((c) => c.group !== 'pipe_allowance')

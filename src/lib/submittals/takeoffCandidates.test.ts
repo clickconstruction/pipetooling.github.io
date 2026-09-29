@@ -103,7 +103,7 @@ describe('the candidates', () => {
     expect(candidateToItemInsert(us, 'rev-1', 4)).toMatchObject({ tag: 'UTILITY SINK', submitted_label: null, status: 'missing' })
   })
 
-  it('v2.4114 · a name that spells out two tags can split: the stored split, the counts and bar, one row per tag with the same product, house and count row', () => {
+  it('v2.4118 · a name that spells out two tags can split: the stored split, the counts and bar, one row per tag with the same product, house and count row', () => {
     const c = takeoffCandidates({ countRows, lines, parts, templates, houses, splits: new Map([['c-wc', true]]) })
     const by = new Map(c.map((x) => [x.countRowId, x]))
     expect(by.get('c-wc')).toMatchObject({ canSplit: true, storedSplit: true, split: true, tags: ['WC-1', 'WC-2'] })
@@ -123,7 +123,7 @@ describe('the candidates', () => {
     expect(candidateToItemInserts(by.get('c-wh')!, 'rev-1', 1, true)).toHaveLength(1)
   })
 
-  it('v2.4114 · the same reader offers Split on a draft row’s tag, and the modal reads this bid’s names', () => {
+  it('v2.4118 · the same reader offers Split on a draft row’s tag, and the modal reads this bid’s names', () => {
     expect(rowSplitTags('WC-1, WC-2')).toEqual(['WC-1', 'WC-2'])
     expect(rowSplitTags('WC-1 / WC-2')).toEqual(['WC-1', 'WC-2'])
     expect(rowSplitTags('WC 1&2')).toEqual(['WC-1', 'WC-2'])

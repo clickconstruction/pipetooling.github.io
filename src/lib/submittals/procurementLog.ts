@@ -78,7 +78,7 @@ export type ProcurementItemSource = {
   decision: { kind: ProcurementDecisionKind; at: string | null } | null
   /** The revision has been shared (a row with no decision is then "awaiting"). */
   shared: boolean
-  /** The takeoff count row the item came from (v2.4107); two rows sharing one were split from it (v2.4114). */
+  /** The takeoff count row the item came from (v2.4107); two rows sharing one were split from it (v2.4118). */
   sourceCountRowId?: string | null
 }
 
@@ -134,7 +134,7 @@ export type ProcurementRow = {
   note: string
   status: ProcurementStatus
   late: boolean
-  /** The other tags split from the same count row (v2.4114) — "counted with WC-2", so nobody orders the count twice. */
+  /** The other tags split from the same count row (v2.4118) — "counted with WC-2", so nobody orders the count twice. */
   countedWith: string[]
 }
 
@@ -292,7 +292,7 @@ export function tagMatchesFixture(tag: string, fixtureName: string | null | unde
   if (head === t) return true
   const letters = t.replace(/[-\s]*\d+[A-Z]?$/, '')
   if (letters.length > 0 && head === letters) return true
-  // v2.4114 · a row split from "WC 1&2" is WC-1 or WC-2: the tags the name spells out.
+  // v2.4118 · a row split from "WC 1&2" is WC-1 or WC-2: the tags the name spells out.
   return tagsFromFixtureName(fixtureName).includes(t)
 }
 

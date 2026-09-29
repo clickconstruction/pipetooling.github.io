@@ -111,3 +111,29 @@ export function breakOffPrefillAmountStringFromJob(job: JobWithDetails): string 
   const amount = useCents / 100
   return amount > 0 ? amount.toFixed(2) : ''
 }
+
+/** What the break-off chip's button does: bill part of the job, or — for the whole remainder of a Working job — move the job. */
+export type BreakOffButtonAction = 'new_invoice' | 'move_to_ready_to_bill'
+
+export function breakOffButtonAction(isFullRemainderOfWorkingJob: boolean): BreakOffButtonAction {
+  return isFullRemainderOfWorkingJob ? 'move_to_ready_to_bill' : 'new_invoice'
+}
+
+/**
+ * A press counts only if the button still means what it meant when the pointer went down.
+ * Pressing the button takes the focus off the amount field, which cuts a typed amount back to
+ * what is left — and an amount cut back to the whole remainder turns "New Invoice" into "Ready
+ * to Bill" between the press and the click. A keyboard press has no pointer-down (`pressed` is
+ * null): the field lost focus before the button could be reached, so what it says is settled.
+ */
+export function breakOffPressStillMeansTheSame(pressed: BreakOffButtonAction | null, now: BreakOffButtonAction): boolean {
+  return pressed == null || pressed === now
+}
+
+/** What the form says when a press is set aside because the button changed under it. */
+export function breakOffButtonChangedWords(now: BreakOffButtonAction, amountDollars: number): string {
+  const amount = `$${amountDollars.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  return now === 'move_to_ready_to_bill'
+    ? `That was more than is left to bill, so the amount is now ${amount} — everything left on the job. Billing all of it moves the job to Ready to Bill: press Ready to Bill to do that, or type a smaller amount for an invoice.`
+    : `The amount changed to ${amount} as you pressed. Check it, then press New Invoice.`
+}

@@ -373,19 +373,12 @@ describe('Bids page render smoke — the Day book’s params', () => {
  */
 describe('Bids page render smoke — Edit Bid writes', () => {
   const bidWrites = () => smoke.writes.filter((w) => w.table === 'bids')
-  /**
-   * A quirk pinned as it is (#51 must not change it): on a bid with no sent date, every Edit
-   * Bid write also carries the eight sent-date stamps as null — the attestation merge answers
-   * "cleared" for an empty date, and the prune does not drop columns that are not form fields.
-   * Null over null; recorded on the #51 card.
-   */
-  const unsentStampNulls = { ...BID_DATE_SENT_ATTESTATION_NULLS }
   const projectName = () => document.getElementById('bid-form-project-name') as HTMLInputElement | null
   const bidWindowOpen = () => !!screen.queryByRole('button', { name: 'Close bid window' })
 
   /** Opens BID on the Bid window's Edit face and waits until the form holds the bid. */
-  async function openBidOnEdit() {
-    renderBidsAt('/bids?tab=bid-board&bidId=bid-1&openBidEdit=1', 'estimator', [BID])
+  async function openBidOnEdit(row: Record<string, unknown> = BID) {
+    renderBidsAt('/bids?tab=bid-board&bidId=bid-1&openBidEdit=1', 'estimator', [row])
     await waitFor(() => expect(projectName()?.value).toBe('Pondhill Building 2'))
     await pageAtRest()
     smoke.writes = []
@@ -416,8 +409,16 @@ describe('Bids page render smoke — Edit Bid writes', () => {
     await openBidOnEdit()
     await runTheDebounce(() => fireEvent.change(projectName()!, { target: { value: 'Pondhill Building 3' } }))
     await waitFor(() => expect(bidWrites()).toHaveLength(1))
-    expect(bidWrites()[0]).toEqual({ table: 'bids', op: 'update', payload: { project_name: 'Pondhill Building 3', ...unsentStampNulls }, filters: [['id', 'bid-1']] })
+    expect(bidWrites()[0]).toEqual({ table: 'bids', op: 'update', payload: { project_name: 'Pondhill Building 3' }, filters: [['id', 'bid-1']] })
     expect(bidWindowOpen()).toBe(true)
+  })
+
+  it('emptying a sent date writes the date and its eight stamps as null — the only save that sends the stamps', async () => {
+    await openBidOnEdit({ ...BID, bid_date_sent: '2026-09-01' })
+    const sent = screen.getByDisplayValue('2026-09-01') as HTMLInputElement
+    await runTheDebounce(() => fireEvent.change(sent, { target: { value: '' } }))
+    await waitFor(() => expect(bidWrites()).toHaveLength(1))
+    expect(bidWrites()[0]).toEqual({ table: 'bids', op: 'update', payload: { bid_date_sent: null, ...BID_DATE_SENT_ATTESTATION_NULLS }, filters: [['id', 'bid-1']] })
   })
 
   it('closing inside the pause saves the change first, once, then closes', async () => {
@@ -426,7 +427,7 @@ describe('Bids page render smoke — Edit Bid writes', () => {
     await settle()
     fireEvent.click(screen.getByRole('button', { name: 'Close bid window' }))
     await waitFor(() => expect(bidWindowOpen()).toBe(false))
-    expect(bidWrites()).toEqual([{ table: 'bids', op: 'update', payload: { project_name: 'Pondhill Building 3', ...unsentStampNulls }, filters: [['id', 'bid-1']] }])
+    expect(bidWrites()).toEqual([{ table: 'bids', op: 'update', payload: { project_name: 'Pondhill Building 3' }, filters: [['id', 'bid-1']] }])
   })
 
   it('a refused write keeps the window open and says so; Close without saving closes it with no second write', async () => {
@@ -480,6 +481,29 @@ describe('Bids page render smoke — Edit Bid writes', () => {
     expect(bidWrites()).toEqual([])
   })
 
+  it('Go/no-go: the checklist opens over the bid, starts empty every time, and writes nothing', async () => {
+    await openBidOnEdit()
+    const checklist = () => screen.queryByRole('heading', { name: 'Go/no-go checklist' })
+    const boxes = () => screen.getAllByRole('checkbox', { name: /^(LOCATION|PAYMENT TERMS|BID DOCUMENTS|COMPETITION|STRENGTHS)$/ }) as HTMLInputElement[]
+    fireEvent.click(screen.getByRole('button', { name: 'Go/no-go' }))
+    expect(checklist()).toBeTruthy()
+    expect(boxes().map((b) => b.checked)).toEqual([false, false, false, false, false])
+    fireEvent.click(screen.getByRole('checkbox', { name: 'LOCATION' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'COMPETITION' }))
+    expect(boxes().map((b) => b.checked)).toEqual([true, false, false, true, false])
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    expect(checklist()).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Go/no-go' }))
+    expect(boxes().map((b) => b.checked)).toEqual([false, false, false, false, false])
+    fireEvent.click(screen.getByRole('checkbox', { name: 'STRENGTHS' }))
+    fireEvent.click(screen.getByRole('button', { name: '×' }))
+    expect(checklist()).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Go/no-go' }))
+    expect(boxes().every((b) => !b.checked)).toBe(true)
+    expect(bidWindowOpen()).toBe(true)
+    expect(smoke.writes).toEqual([])
+  })
+
   it('Open Counts on an open bid saves the pending change, closes, and lands on its Counts tab', async () => {
     await openBidOnEdit()
     fireEvent.change(projectName()!, { target: { value: 'Pondhill Building 3' } })
@@ -488,7 +512,7 @@ describe('Bids page render smoke — Edit Bid writes', () => {
     await waitFor(() => expect(currentTab()).toBe('counts'))
     await waitFor(() => expect(bidWindowOpen()).toBe(false))
     expect(currentParam('bidId')).toBe('bid-1')
-    expect(bidWrites()).toEqual([{ table: 'bids', op: 'update', payload: { project_name: 'Pondhill Building 3', ...unsentStampNulls }, filters: [['id', 'bid-1']] }])
+    expect(bidWrites()).toEqual([{ table: 'bids', op: 'update', payload: { project_name: 'Pondhill Building 3' }, filters: [['id', 'bid-1']] }])
   })
 
   it('New Bid → Create and open counts inserts one bid and lands on Counts', async () => {

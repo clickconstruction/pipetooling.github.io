@@ -3,9 +3,8 @@
  * board with something open — the Dashboard's cards, the round and forecast emails, Bids →
  * Customer review — and what each one strips from the URL once consumed, so a refresh or
  * Back does not re-open it. Eight effects in `JobsStagesTab` parsed these by hand (Stage-A
- * sweep II, v2.3865); this is the one table. The consume-once refs, the `replace`
- * navigation and the `rtb` window arm stay in the tab (map quirk 2) — the hook that applies
- * this table is the map's step 5.
+ * sweep II, v2.3865); this is the one table. `hooks/useStagesDeepLinkParams` applies it
+ * (consume-once, `replace` navigation, the `rtb` window arm — map quirk 2).
  */
 
 export type StagesDeepLinkKey = 'followups' | 'gcReview' | 'gcNotice' | 'lienDesk' | 'round' | 'chase' | 'forecast' | 'rtb'

@@ -175,7 +175,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   // From the takeoff (v2.4107): the takeoff's fixtures as candidates, and the picker (build = Rev 1 from them, add = onto the draft).
   const [takeoff, setTakeoff] = useState<TakeoffCandidatesLoad | null>(null)
   const [takeoffPicker, setTakeoffPicker] = useState<'build' | 'add' | null>(null)
-  // v2.4114 · "When a row can split", opened from the rows' footer.
+  // v2.4118 · "When a row can split", opened from the rows' footer.
   const [splitRuleOpen, setSplitRuleOpen] = useState(false)
   const [sectionToggles, setSectionToggles] = useState<Partial<Record<JourneyStageKey, boolean>>>({})
   // Procure (v2.4083): the newest revision's rows as the log reads them, and the counts the strip's pill lights on.
@@ -466,7 +466,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         revId = selectedRev.id
         seq = items.reduce((m, it) => Math.max(m, it.sequence_order), 0)
       }
-      // v2.4114 · a split candidate becomes one row per tag; the sequence runs on through them.
+      // v2.4118 · a split candidate becomes one row per tag; the sequence runs on through them.
       const inserts: ReturnType<typeof candidateToItemInserts> = []
       for (const c of rows) inserts.push(...candidateToItemInserts(c, revId, seq + inserts.length + 1))
       if (inserts.length > 0) {
@@ -512,7 +512,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     }
   }
 
-  /** v2.4114 · a draft row whose tag lists several becomes one row per tag: same product, house, lead time and sheet pages; a takeoff row's split is remembered. */
+  /** v2.4118 · a draft row whose tag lists several becomes one row per tag: same product, house, lead time and sheet pages; a takeoff row's split is remembered. */
   async function splitRow(it: SubmittalItemRow) {
     if (!bidId || !selectedRev || asRevisionStatus(selectedRev.status) !== 'draft') return
     const tags = rowSplitTags(it.tag)

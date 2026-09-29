@@ -69,7 +69,7 @@ export async function loadTakeoffCandidates(supabase: Client, bidId: string, opt
   return { candidates, fixtures: candidates.length, withProduct: candidates.filter((c) => c.product).length }
 }
 
-/** The estimator's ticks (and splits, v2.4114), one upsert per fixture shown; a split not given is left as stored. */
+/** The estimator's ticks (and splits, v2.4118), one upsert per fixture shown; a split not given is left as stored. */
 export async function saveTakeoffChoices(supabase: Client, bidId: string, ticks: ReadonlyMap<string, boolean>, splits?: ReadonlyMap<string, boolean>): Promise<void> {
   const rows = [...ticks.entries()].map(([count_row_id, ticked]) => ({ bid_id: bidId, count_row_id, ticked, ...(splits?.has(count_row_id) ? { split: !!splits.get(count_row_id) } : {}) }))
   if (rows.length === 0) return

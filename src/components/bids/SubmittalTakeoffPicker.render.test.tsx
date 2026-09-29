@@ -47,7 +47,7 @@ describe('SubmittalTakeoffPicker', () => {
     expect(screen.getByTestId('takeoff-confirm').textContent).toBe('Add 3 rows to Rev 2')
   })
 
-  it('v2.4114 · the Split switch shows only on a row whose name spells out two tags; on, the bar counts a row per tag and Confirm hands the split back', () => {
+  it('v2.4118 · the Split switch shows only on a row whose name spells out two tags; on, the bar counts a row per tag and Confirm hands the split back', () => {
     const onConfirm = vi.fn()
     render(<SubmittalTakeoffPicker mode="build" revLabel="Rev 1" candidates={cands} onConfirm={onConfirm} onClose={() => {}} />)
     expect(screen.getAllByTestId('takeoff-split')).toHaveLength(1)

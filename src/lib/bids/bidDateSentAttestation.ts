@@ -42,14 +42,14 @@ function pendingCoversDate(state: BidDateSentAttestationState, date: string): bo
 }
 
 /**
- * The attestation columns a save spreads over the bid payload: all nulls when the date is
+ * The attestation columns a save spreads over the bid payload: all nulls when a sent date is
  * cleared, the confirmed stamps when the date changed and was confirmed, nothing otherwise
- * (an unchanged date keeps the stamps it has; an unconfirmed change is refused by
- * `bidDateSentAttestationSaveError`).
+ * (a bid never sent has no stamps to clear; an unchanged date keeps the stamps it has; an
+ * unconfirmed change is refused by `bidDateSentAttestationSaveError`).
  */
 export function bidDateSentAttestationMerge(state: BidDateSentAttestationState): Record<string, string | null> {
   const date = normalizeBidDateInput(state.bidDateSent)
-  if (!date) return { ...BID_DATE_SENT_ATTESTATION_NULLS }
+  if (!date) return normalizeBidDateInput(state.serverBidDateSent) ? { ...BID_DATE_SENT_ATTESTATION_NULLS } : {}
   if (date !== normalizeBidDateInput(state.serverBidDateSent) && pendingCoversDate(state, date)) {
     return { ...state.pending }
   }

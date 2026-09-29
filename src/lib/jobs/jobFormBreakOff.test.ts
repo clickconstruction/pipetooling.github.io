@@ -7,6 +7,9 @@ import {
   combinedPctFromTrackRatio,
   snapBreakOffCombinedPctToStep,
   unallocatedBillableDollars,
+  breakOffButtonAction,
+  breakOffButtonChangedWords,
+  breakOffPressStillMeansTheSame,
 } from './jobFormBreakOff'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 
@@ -153,5 +156,34 @@ describe('v2.3775 — a partly paid billed line counts for what is still unpaid 
   it('unallocatedBillableDollars reads $577.37 left, not $0', () => {
     expect(unallocatedBillableDollars(3630, 2999, invoices, payments)).toBeCloseTo(577.37, 2)
     expect(unallocatedBillableDollars(3630, 2999, invoices)).toBe(0)
+  })
+})
+
+describe('the break-off button — a press counts only if the button still means the same', () => {
+  it('names the action: the whole remainder of a Working job moves the job, anything else is an invoice', () => {
+    expect(breakOffButtonAction(true)).toBe('move_to_ready_to_bill')
+    expect(breakOffButtonAction(false)).toBe('new_invoice')
+  })
+
+  it('runs a press whose meaning did not change', () => {
+    expect(breakOffPressStillMeansTheSame('new_invoice', 'new_invoice')).toBe(true)
+    expect(breakOffPressStillMeansTheSame('move_to_ready_to_bill', 'move_to_ready_to_bill')).toBe(true)
+  })
+
+  it('sets aside a press on New Invoice that became Ready to Bill under the pointer, and the other way round', () => {
+    expect(breakOffPressStillMeansTheSame('new_invoice', 'move_to_ready_to_bill')).toBe(false)
+    expect(breakOffPressStillMeansTheSame('move_to_ready_to_bill', 'new_invoice')).toBe(false)
+  })
+
+  it('runs a keyboard press, which has no pointer-down', () => {
+    expect(breakOffPressStillMeansTheSame(null, 'new_invoice')).toBe(true)
+    expect(breakOffPressStillMeansTheSame(null, 'move_to_ready_to_bill')).toBe(true)
+  })
+
+  it('says what happened and what each button would do', () => {
+    expect(breakOffButtonChangedWords('move_to_ready_to_bill', 1_200)).toBe(
+      'That was more than is left to bill, so the amount is now $1,200.00 — everything left on the job. Billing all of it moves the job to Ready to Bill: press Ready to Bill to do that, or type a smaller amount for an invoice.',
+    )
+    expect(breakOffButtonChangedWords('new_invoice', 350.5)).toBe('The amount changed to $350.50 as you pressed. Check it, then press New Invoice.')
   })
 })

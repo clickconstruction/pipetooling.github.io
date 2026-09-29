@@ -7,7 +7,7 @@ const th: CSSProperties = { textAlign: 'left', fontSize: '0.68rem', textTransfor
 const td: CSSProperties = { padding: '0.3rem 0.5rem', borderBottom: '1px solid var(--border)', verticalAlign: 'top', fontSize: '0.8125rem' }
 
 /**
- * When a row can split (v2.4114): the rule in two sentences, then this bid's own count names as the
+ * When a row can split (v2.4118): the rule in two sentences, then this bid's own count names as the
  * rule reads them — the same reader that offers the Split switch, so the table is always true for the bid on screen.
  */
 export function SplitRuleModal({ examples, onClose }: { examples: ReadonlyArray<SplitExample>; onClose: () => void }) {

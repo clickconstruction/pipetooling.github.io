@@ -8,7 +8,7 @@ type Props = {
   revLabel: string
   candidates: ReadonlyArray<TakeoffCandidate>
   busy?: boolean
-  /** The ticked candidates (with `split` as switched), every tick, and every split switched here (v2.4114). */
+  /** The ticked candidates (with `split` as switched), every tick, and every split switched here (v2.4118). */
   onConfirm: (ticked: ReadonlyArray<TakeoffCandidate>, ticks: ReadonlyMap<string, boolean>, splits: ReadonlyMap<string, boolean>) => void
   onClose: () => void
 }
@@ -33,7 +33,7 @@ const btnPrimary: CSSProperties = { ...btn, background: '#2563eb', borderColor: 
  */
 export function SubmittalTakeoffPicker({ mode, revLabel, candidates, busy = false, onConfirm, onClose }: Props) {
   const [ticks, setTicks] = useState<Map<string, boolean>>(() => new Map(candidates.map((c) => [c.countRowId, c.ticked && !c.alreadyOn])))
-  // v2.4114 · the Split switch, per row whose name spells out more than one tag; starts from the stored split.
+  // v2.4118 · the Split switch, per row whose name spells out more than one tag; starts from the stored split.
   const [splits, setSplits] = useState<Map<string, boolean>>(() => new Map(candidates.filter((c) => c.canSplit).map((c) => [c.countRowId, c.split])))
   const [ruleOpen, setRuleOpen] = useState(false)
   const counts = useMemo(() => candidateCounts(candidates, ticks, splits), [candidates, ticks, splits])

@@ -550,7 +550,7 @@ describe('BidsSubmittalsTab', () => {
     }
   })
 
-  it('v2.4114 · Split on a draft row whose tag lists two: the rows after it shift down, the row becomes one per tag with its product and sheets, and a takeoff row’s split is remembered', async () => {
+  it('v2.4118 · Split on a draft row whose tag lists two: the rows after it shift down, the row becomes one per tag with its product and sheets, and a takeoff row’s split is remembered', async () => {
     state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [], shared_at: null, created_at: '2026-09-15T00:00:00Z' }]
     state.items = [
       item({ id: 'it-1', tag: 'DWH-1', sequence_order: 1, submitted_label: 'A.O. Smith BTH-199', status: 'proposed', source_count_row_id: 'c-wh' }),
