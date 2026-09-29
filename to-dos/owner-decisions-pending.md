@@ -7,7 +7,7 @@ summary: Every yes/no the docs are waiting on, one line each.
 next: Walk the table in one sitting; each answer deletes a line.
 size: a sitting
 blocker: You.
-ver: re-verified 09-21
+ver: re-verified 09-29
 pointer: true
 ---
 
@@ -42,6 +42,8 @@ pointer: true
 | Wheels PR 3: should Bids and Crew P&L price the vehicle deal too? Wear in the truck rate? | v2.2735 | [`crew-pnl-and-wheels.md`](./crew-pnl-and-wheels.md) |
 | Parts Book cleanup: five "K-25077-0 KINGSTON 1.28 GPF…" rows (one spelled "kingstin", created 09-03/09-04) and two "OS-25" rows are still in `material_parts` — which one survives each group? | v2.2755 | `/duplicates` |
 | Job Summary placeholder jobs: seven rows at Gun Dog Trail, Neeses SC created 2026-08-08 — three marked paid ("Materials" $894,971 · "Gas Line" $496,748 · "ROUGH IN" $241,431) and four $0 waiting (J953–J956) — archive them, or name a placeholder convention to key on? | v2.2893 | `docs/recent-features/v2.2893.md` |
+| **Review: adopt the shared overhead pool read?** Since v2.3974 the People → Review tab's overhead scan is `loadReviewOverheadRates.ts` (a verbatim lift, math agreed with the old code); the shared `loadOverheadPoolSnapshot` would replace it but reads two bad rows differently. Adopt it and take the new reads, or keep the tab's own scan? | Review decomposition (#46 row 8), v2.3974 | `docs/PEOPLE_REVIEW_TAB_ARCHITECTURE.md` step 4 · [`decomposition-queue.md`](./decomposition-queue.md) |
+| **A week fence on the day editor's direct clock writes?** `save_my_time_day` (v2.4063, migration `20260928182140`) keeps today's rules: a current-week fence on one's own day would break the prior-week edits the editor allows after its acknowledgment step; a this-or-last-week fence could refuse Draft Payroll day edits by roles `pay_access_clock_week_fence_bypass()` does not cover. None, current week, or this-or-last week? | My Time day editor (#46 row 10), v2.4063 | `docs/migrations/20260928182140_save_my_time_day.md` |
 | Close the whole class: `REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC, anon` + `ALTER DEFAULT PRIVILEGES`, re-granting only `get_hazmat_notice_by_token` and `list_my_contract_dashboard_prompts`? v2.2954 revoked the 28 proven leaks one by one; the blanket form also covers every future RPC, but policies on the anon-facing tables (`public_page_views`, `estimate_customer_events`, portal slugs) may evaluate helper functions as anon and there is no staging to prove they survive it | v2.2954 audit | `docs/recent-features/v2.2954.md` |
 
 Answered 2026-09-27: **Draft Payroll → Generate Remaining skips a person whose week comes to $0 — "same rule on both"**, built the same day as v2.3979: the button's list and the window's count read one function, priced the way the preview and the report are, so a salaried person out unpaid all week (or not started yet) is left out.

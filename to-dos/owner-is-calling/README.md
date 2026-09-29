@@ -2,7 +2,7 @@
 name: "The owner is calling: a call sheet the assistant reads and records"
 number: 47
 group: gated
-status: built as the door + the conversation cards (v2.3854, 2026-09-26) · left: option 3 (the printed sheet), the Dashboard and header-search doors
+status: built as the door + the conversation cards (v2.3854, 2026-09-26) · the assistant's guide shipped v2.3876 (when to press it, where it is, what may be said) · left: option 3 (the printed sheet), the Dashboard and header-search doors
 summary: >
   An owner who just got a lien letter calls the office. Today the answer lives in three places —
   counsel's memo, the letter, and the Owner call dialog's three bare questions — and whoever
@@ -11,10 +11,10 @@ summary: >
   their situation as they say it. Three placements: the sheet inside the Owner call dialog
   (option 1), a "someone's calling about a letter" door that finds the job (option 2), a printed
   sheet per run (option 3).
-next: Counsel reads the script's words (they are the memo's sentences for the phone); option 3 and the other doors if the office asks for them.
+next: Counsel reads the script's words (they are the memo's sentences for the phone); option 3 and the other doors if the office asks for them (v2.3854 left them as is on purpose).
 size: S + M + XS
 blocker: none — counsel's read of the words is on the pending list.
-ver: v2.3854
+ver: v2.3854 · v2.3876
 opinion: build 2 + 1 together — the door is what makes it usable by someone who does not know the Lien desk; option 3 is cheap and worth having on the run's print row.
 ---
 
@@ -39,7 +39,7 @@ The owner, 2026-09-26, after the retainage letter redraft (v2.3850): *"I need so
 ## The three options
 
 1. **The call sheet inside the Owner call dialog** — `LienOwnerCallDialog` grows a *Say* column beside the picks: the opening (which letter they hold, mailed when, for how much), a script line under every pick that changes with the answer, the closing (the affidavit date, the release the same day), and a *Never say* strip. New facts recorded on `OwnerCall`: `releasedOn` (the day the 10% went to the GC), `wantsToPayUs`, `gcSilentToThem`, `told` (the script branches read), `askedAbout` (§ 53.056 / § 53.057 / letter two). `affidavitPileFor` and the grid read them; `wantsToPayUs` opens the counsel sign-off door (#41). Kernel `lienOwnerCallScript.ts` (pure: the letter's facts + the answers → the lines), tests, the guide. Size S.
-2. **The door: "Someone's calling about a letter"** — a button on the Lien desk header and the Dashboard's lien card, and a row in the header search: type the caller's name, the property address or the job number; it matches the sent notices (owner name, mailing address, job address, job number, the GC's name for a GC calling) and opens option 1's sheet on that job with the letter's facts at the top. Nothing new is loaded — the desk already holds the sent items, owners and properties; the matcher is a kernel over `LienDeskData`. Size M.
+2. **The door: "Someone's calling about a letter"** — built on the Lien desk header (v2.3854, `LienCallerDoor.tsx` + `lienCallerMatch.ts`) and from a sent job's footer; not yet on the Dashboard's lien card or as a row in the header search: type the caller's name, the property address or the job number; it matches the sent notices (owner name, mailing address, job address, job number, the GC's name for a GC calling) and opens option 1's sheet on that job with the letter's facts at the top. Nothing new is loaded — the desk already holds the sent items, owners and properties; the matcher is a kernel over `LienDeskData`. Size M.
 3. **The printed call sheet** — *Print the call sheets ↗* beside *Print the grid ↗* on Put a GC on notice: one page per owner in the run, the same script with blanks for the answers, for a front desk without the app open. Size XS once option 1's kernel exists.
 
 Recommended: 2 + 1 as one PR, 3 after.
@@ -48,6 +48,6 @@ Recommended: 2 + 1 as one PR, 3 after.
 
 Say: you did nothing wrong by paying the GC; this is not a lawsuit; you did not hire us; you may hold back the claim from what you still owe; the 10% and the 30 days; the affidavit date; the release the same day; a direct payment is your decision, call us first, payable only to Click, a copy to the GC. Never: the GC's other jobs or "not paying subs generally"; interest, fees, theft of service; "the Code requires you to pay us"; a joint check; "you are in default". Counsel's sign-off per job before an owner's direct check is accepted.
 
-## How to verify (once built)
+## How to verify
 
-Dev-login on localhost, the Lien desk, press *Someone's calling ›*, type "Lenox" — the sent notice on 9703 Lenox Hl opens with its letter's facts; pick *No* / *Released · Sep 10* / *Done Aug 30* / *Wants to pay us*; the Say column changes at each pick; save; the since-sent line reads *Owner called … · Pile C · wants to pay us → counsel*; the affidavit pane and the grid show the same.
+Dev-login on localhost, the Lien desk, press *☎ Someone's calling ›* (beside *§ The rules*; the guide *answer an owner who calls about a lien letter*, v2.3876, walks an assistant through it), type "Lenox" — the sent notice on 9703 Lenox Hl opens with its letter's facts; pick *No* / *Released · Sep 10* / *Done Aug 30* / *Wants to pay us*; the Say column changes at each pick; save; the since-sent line reads *Owner called … · Pile C · wants to pay us → counsel*; the affidavit pane and the grid show the same.

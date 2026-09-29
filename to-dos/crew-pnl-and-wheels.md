@@ -19,7 +19,7 @@ opinion: drop — vehicle rates on Crew P&L move numbers nobody has asked to see
 
 Wheels on Labor (v2.2733 / v2.2735) priced each person's vehicle deal per field hour on **Review**. The proposal's optional PR 3 was Bids and Crew P&L picking up the same rates, plus wear in the truck rate. Crew P&L's own backlog (2026-08-02) also listed six weaknesses.
 
-## Validation 2026-09-06 (what is still true; v2.2912 added loose person-name matching, not sheet job-number linking)
+## Validation 2026-09-06, re-checked 2026-09-29 (what is still true; v2.2912 added loose person-name matching, not sheet job-number linking; nothing since has touched `crewPnlSummary.ts` or the tab)
 
 | Backlog item | State |
 |---|---|
@@ -38,7 +38,7 @@ Wheels on Labor (v2.2733 / v2.2735) priced each person's vehicle deal per field 
 
 ## Where it plugs in
 
-- `src/lib/crewPnlSummary.ts`, `src/components/jobs/JobsCrewPnlTab.tsx`, the Wheels kernel used by `PeopleReviewTab` (v2.2735), `src/utils/teamLabor.ts` for the bids side.
+- `src/lib/crewPnlSummary.ts`, `src/components/jobs/JobsCrewPnlTab.tsx`, the Wheels kernel used by `PeopleReviewTab` (v2.2735; since v2.3955 its read lives in `src/lib/people/loadTeamReviewUnion.ts` via `loadWheelsSnapshot`, and v2.4104's `pickFuelTag` in `lib/banking/categoryTags.ts` is the fuel tag Wheels and the job's cost timeline share), `src/utils/teamLabor.ts` for the bids side.
 
 ## How to verify
 

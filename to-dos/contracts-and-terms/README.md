@@ -2,23 +2,25 @@
 name: "Contracts & terms: every contract a customer signs, side by side"
 number: 50
 group: close
-status: planned and built 2026-09-27 / 28 · PR 1 shipped v2.3977 (the tab, Compare, the doors) · PR 2 shipped v2.3968 (the bid room gets the wording the letter prints) · PR 3 shipped v2.3965 (an unsent draft goes out with the current standard terms) · PR 4 shipped v2.3964 (consent on a change order signed in the bid room) · PR 5 shipped v2.3987 (the history tables and triggers) · PR 7 shipped v2.3992 (Last sent) · PR 6 shipped v2.3994 (History, What did it say on, Mark reviewed) — all seven built · left: a month of use, five things deliberately not built, one question for the attorney
+status: planned and built 2026-09-27 / 28 · PR 1 shipped v2.3977 (the tab, Compare, the doors) · PR 2 shipped v2.3968 (the bid room gets the wording the letter prints) · PR 3 shipped v2.3965 (an unsent draft goes out with the current standard terms) · PR 4 shipped v2.3964 (consent on a change order signed in the bid room) · PR 5 shipped v2.3987 (the history tables and triggers) · PR 7 shipped v2.3992 (Last sent) · PR 6 shipped v2.3994 (History, What did it say on, Mark reviewed) — all seven built · then v2.4098 (Read it as the customer sees it — the customer's own page in sample mode, in a modal; the sample agreement now prints the Book document) and v2.4108 (the tab reads as an index: six sections in the customer's order, one row per contract, lenses and a find box) · left: a month of use, four things deliberately not built, one question for the attorney
 summary: >
   The app offers customers **eight contract texts** from Estimates, Bids and Jobs, kept five
   different ways — one Settings text, per-record boxes, built-in wording in code, the Contract
   Book, and page state that is never saved. Only the job service agreement carried a date and a
   frozen copy of what each customer agreed to. Settings → **Contracts & terms** now shows all of
   them side by side, with where each is kept and edited, when it last changed and what it said
-  before, when it was last read, and what last went out. The read that started it also found
-  that what customers received was not always what Settings said; three of those are fixed.
+  before, when it was last read, and what last went out — as an index of six sections, each
+  row opening its card, and any contract readable as the customer sees it with sample
+  information. The read that started it also found that what customers received was not
+  always what Settings said; four of those are fixed.
 next: >
   Use the tab for a month. Then decide two things — whether the estimate and bid terms move into
   the Contract Book (rejected for now, see The decision), and which of the five items under
-  *Not in this train* to build. Take the interest-clause disagreement to the attorney.
-size: S — what is left is use, and five small builds if they are wanted
+  *Not in this train* to build (the sample-agreement one shipped v2.4098). Take the interest-clause disagreement to the attorney.
+size: S — what is left is use, and four small builds if they are wanted
 blocker: A month of use. The interest clauses (45 days from the invoice; 30 days after the due date) are the attorney's call.
-ver: v2.3977 · v2.3968 · v2.3965 · v2.3964 · v2.3987 · v2.3992 · v2.3994
-opinion: your call — everything planned is built; the five items left out are each small, and the first to build is the signed copy to the customer, because the consent tells them they have one
+ver: v2.3977 · v2.3968 · v2.3965 · v2.3964 · v2.3987 · v2.3992 · v2.3994 · v2.4098 · v2.4108
+opinion: your call — everything planned is built and the tab has had two more passes on the owner's live reads; the four items left out are each small, and the first to build is the signed copy to the customer, because the consent tells them they have one
 mockup: not required — built in the same sitting as the plan; the live tab is the drawing
 ---
 
@@ -84,7 +86,7 @@ Confirmed in the code:
 - **The sweep sends old wording.** After a standard-terms edit an existing draft keeps the old
   terms, and the save that follows strips the terms fields.
 - **A change order signed in the bid room records no consent** — the card posts no `esignConsent`.
-- **What customers see shows stand-in terms** for the job agreement, not the Book document.
+- **What customers see shows stand-in terms** for the job agreement, not the Book document — fixed v2.4098 (`get-job-contract`'s sample prints the newest customer Book document; the fixture's terms only when the Book holds none).
 - **The texts disagree**: the estimate terms charge interest 45 days from the invoice, the job
   agreement 30 days after the due date (read in production on the tab, 2026-09-27).
 - **`app_settings` has no date column**, so texts 1 and 3–6 have no "last changed" at all.
@@ -126,8 +128,13 @@ PRs 2–4 are independent of the rest and of each other.
 
 ## Where it stands
 
-All seven PRs are built. What the tab said about production the day it shipped (2026-09-28, read
-only, as the dev login):
+All seven PRs are built, and two owner asks on the live tab followed: **v2.4098** — *Read it as the
+customer sees it* on every card with a rendered surface (the customer's own page, email or paper in
+sample mode, in a modal, the card's wording found and lit; `ContractReaderModal`, `contractReader.ts`);
+**v2.4108** — the page reads as an index (`contractsIndex.ts`: six sections in the order a customer
+meets them, rows closed until pressed, *Needs a look* as a lens not a section, a find box, Open all /
+Close all, a linked card open on arrival). What the tab said about production the day it shipped
+(2026-09-28, read only, as the dev login):
 
 - The estimate terms, the estimate checkbox sentence and the bid exclusions are the office's own
   wording. **The bid terms and the bid closing were never set**, so the letter prints the
@@ -144,7 +151,6 @@ only, as the dev login):
 - Saving the per-bid letter boxes — `src/pages/Bids.tsx` is mid-move (the Bids second pass).
 - The approval PDF reading the org defaults — same file.
 - A signed copy to the estimate or bid signer.
-- The job agreement sample on *What customers see* reading the Book document (an edge function).
 - One master terms text — the attorney's question.
 - The proposal section of the bid room shows its own agree box and stores a consent clause that
   ends with a checkbox sentence the signer never saw (found in PR 4; left for a decision, because
@@ -156,8 +162,10 @@ only, as the dev login):
 
 ## How to verify
 
-- The tab: Settings → Contracts & terms as dev, master and assistant; every card shows wording;
-  *Compare* puts two or three in columns; each *Edit* door lands on its editor.
+- The tab: Settings → Contracts & terms as dev, master and assistant; six sections, every row
+  opens its card with wording; *Compare* puts two or three in columns; each *Edit* door lands on
+  its editor; *Read it* opens the customer's page in sample mode with the wording lit (v2.4098's
+  Verified block has the per-card results; a phone width and the light theme are still unlooked-at).
 - PR 2: a bid with empty boxes and no org default publishes a room that shows Terms and Exclusions.
 - PR 3: edit the standard terms from the sweep, then preview and send a job that already had a
   draft — the new wording goes out.

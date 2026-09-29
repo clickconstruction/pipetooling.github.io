@@ -2,7 +2,7 @@
 name: "GC Review for one operator: the assistant drives, the account man is the source"
 number: 49
 group: waiting
-status: steps 1–7 shipped v2.3950 / v2.3954 / v2.3957 / v2.3959 / v2.3960 / v2.3961 / v2.3971 / v2.3976 / v2.3985 · migrations applied and the three functions deployed 2026-09-28
+status: steps 1–7 shipped v2.3950 / v2.3954 / v2.3957 / v2.3959 / v2.3960 / v2.3961 / v2.3971 / v2.3976 / v2.3985 · migrations applied and the three functions deployed 2026-09-28 · follow-ons v2.3991 / v2.4012 / v2.4016 / v2.4097 · the casts and the old per-sender functions still in place 2026-09-29
 summary: >
   The weekly statement round was built for the account man opening the app. Only the assistant
   works GC Review; when the knowledge is his, she phones him and types the answer in. So the
@@ -66,7 +66,7 @@ Kept: a statement never goes out unchecked; the app never emails a GC on its own
 
 ## Where it stands
 
-Everything is live as of 2026-09-28: the four migrations of that day are applied, `gc-word-ask`, `send-gc-statement-email` and `statement-round-email-dispatch` are deployed and answer, and a dead link answers 404 with the office's words. Checked in the app on real data, read-only: the week's list, the call sheet ("Stamps Malachi's word — entered by …"), the Ask by link dialog, and Print unpaid invoices (RMC- Dudley Mason, 21 pages). Not yet exercised on real data, because each writes: minting a link, his answers, saving a call sheet, a send with Replies go to.
+Everything is live as of 2026-09-28: the four migrations of that day are applied, `gc-word-ask`, `send-gc-statement-email` and `statement-round-email-dispatch` are deployed and answer, and a dead link answers 404 with the office's words. Checked in the app on real data, read-only: the week's list, the call sheet ("Stamps Malachi's word — entered by …"), the Ask by link dialog, and Print unpaid invoices (RMC- Dudley Mason, 21 pages). A word has since been saved and undone live twice (v2.3991 on a one-bill GC, v2.4012 on a four-bill GC), so the mark write is exercised; still not exercised on real data, because each writes: minting a link, his answers, a send with Replies go to. Follow-ons on the same surfaces since the train: the word's pay date goes onto the GC's bills as a payment promise (v2.3991) and shows for GCs under the line too (v2.4012); the call sheet lists the bills behind each total and says where Save answers writes (v2.4016); the groups are headed "Account Man <name>" (v2.4097 — the regrouping the owner asked for the same day is #54, `gc-worklist-by-account-man.md`). The `as never` casts in `gcWordAskIo.ts` / `statementRoundEmailClient.ts` are still there (2026-09-29), and the old per-sender functions are still called — `get_statement_round_for_user` by `statement-round-email-dispatch`, `get_my_statement_round` by `statementRoundEmailClient.ts`.
 
 ## How to verify
 
