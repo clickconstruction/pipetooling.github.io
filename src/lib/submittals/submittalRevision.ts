@@ -249,3 +249,43 @@ export function describeRevision(t: RevisionTiles): string {
   if (t.sheetsWanted > 0) parts.push(`${t.sheetsIn} of ${t.sheetsWanted} sheets in`)
   return parts.join(' · ')
 }
+
+/** The id the editor sees on a row that is not in the database yet (a row by hand, v2.4105). */
+export const NEW_ROW_ID = 'new'
+
+/** A row by hand before Save: every column the editor reads, nothing written. */
+export function blankSubmittalItem(submittalId: string, sequenceOrder: number): SubmittalItemRow {
+  return {
+    id: NEW_ROW_ID,
+    submittal_id: submittalId,
+    tag: '',
+    sequence_order: sequenceOrder,
+    specified_manufacturer: null,
+    specified_model: null,
+    specified_description: null,
+    submitted_manufacturer: null,
+    submitted_model: null,
+    submitted_label: null,
+    supply_house_id: null,
+    source_quote_line_id: null,
+    status: 'missing',
+    reason_kind: null,
+    reason_note: null,
+    lead_time_days: null,
+    sheet_file: null,
+    sheet_pages: [],
+    sheet_source: null,
+    carried_from_item_id: null,
+    review_decision: null,
+    review_note: null,
+    reviewed_at: null,
+    reviewed_by_name: null,
+    reviewed_by_email: null,
+    reviewed_by_person_id: null,
+    decision_source: 'room',
+    decision_entered_by: null,
+    decision_entered_by_name: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  }
+}
