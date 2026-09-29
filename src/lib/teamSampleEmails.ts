@@ -25,6 +25,8 @@ import { buildRecurringJobReportHtml, buildRecurringJobReportTextFallback, recur
 import { sunSatWeekOf } from './teamEmails'
 import { buildReportEmail, type ReportContent } from '../../supabase/functions/_shared/fieldReportEmail'
 import { buildBankReturnNoticeEmail, type BankReturnNoticeInput } from '../../supabase/functions/_shared/bankReturnedDeposits'
+import { renderCtRosterAuditEmail } from '../../supabase/functions/_shared/ctRosterAuditEmail'
+import type { CtRosterDiff } from '../../supabase/functions/_shared/ctRosterDiff'
 import { readyToBillSubject, readyToBillText, renderReadyToBillDetailed, type ReadyToBillPayload } from '../../supabase/functions/_shared/readyToBillEmail'
 
 export type BuiltTeamEmail = { subject: string; html: string; text: string }
@@ -440,6 +442,25 @@ export function sampleBankReturnInput(todayYmd: string, appOrigin: string): Bank
   }
 }
 
+/** The roster audit diff (lift 13): one CountTooling seat nobody links to, one PT person whose email is already on CT — two items over 14 people and 12 accounts. */
+export function sampleCtRosterDiff(): { diff: CtRosterDiff; ptCount: number; ctCount: number } {
+  const diff: CtRosterDiff = {
+    onlyInCt: [{ ct_user_id: 'ct-9f2', email: 'oldsub@example.com', is_digital_twin: false, is_admin: false, active: false }],
+    linkedButGone: [],
+    twinFlagMismatch: [],
+    activeMismatch: [],
+    emailChanged: [],
+    backfillCandidates: [
+      {
+        pt: { id: 'u-kim', email: 'kim@example.com', name: 'Kim Tech', archived_at: null, is_digital_twin: false, counttooling_user_id: null },
+        ct: { ct_user_id: 'ct-a41', email: 'kim@example.com', is_digital_twin: false, is_admin: false, active: true },
+      },
+    ],
+    clean: false,
+  }
+  return { diff, ptCount: 14, ctCount: 12 }
+}
+
 export function buildTeamSampleEmail(id: TeamSampleEmailId, ctx: TeamSampleContext): BuiltTeamEmail {
   const origin = ctx.origin
   switch (id) {
@@ -462,6 +483,12 @@ export function buildTeamSampleEmail(id: TeamSampleEmailId, ctx: TeamSampleConte
     }
     case 'bank_return': {
       return buildBankReturnNoticeEmail(sampleBankReturnInput(ctx.todayYmd, origin))
+    }
+    case 'ct_roster_audit': {
+      const { diff, ptCount, ctCount } = sampleCtRosterDiff()
+      // The function sends HTML only; the text pane shows the same words.
+      const { subject, html } = renderCtRosterAuditEmail(diff, ptCount, ctCount)
+      return { subject, html, text: `${subject}\n\n${ptCount} ClickTooling people · ${ctCount} CountTooling accounts.\n(This email is sent as HTML only.)` }
     }
     case 'ready_to_bill': {
       const p = sampleReadyToBillPayload(ctx.todayYmd)
