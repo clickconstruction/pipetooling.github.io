@@ -4,6 +4,7 @@ import { gcPortalStages, loadGcStageInputs } from '../_shared/gcStages.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
+import { portalRequestStaffEmail } from '../_shared/portalRequestStaffEmail.ts'
 import { resolvePortalCustomerPhone } from '../_shared/portalCustomerPhone.ts'
 import { owedJobIdsForViewer, PORTAL_OPEN_INVOICE_STATUS } from '../_shared/portalBillMembership.ts'
 import { statementRoleFor } from '../_shared/billVisibility.ts'
@@ -443,10 +444,10 @@ serve(async (req) => {
             '',
             'The request is in the dispatch inbox in ClickTooling.',
           ].filter((l): l is string => l != null)
-          const subject = `Portal ${kindLabel} — ${customerName}`
-          const html = `<p>${lines.map((l) => l.replace(/&/g, '&amp;').replace(/</g, '&lt;')).join('</p><p>')}</p>`
+          // v2.4142: the words live in _shared/portalRequestStaffEmail.ts so What the team sees can show them.
+          const mail = portalRequestStaffEmail({ kindLabel, customerName, lines })
           for (const to of emails) {
-            await sendEmailViaResend(to, subject, lines.join('\n'), html, resendApiKey)
+            await sendEmailViaResend(to, mail.subject, mail.text, mail.html, resendApiKey)
           }
         }
       }

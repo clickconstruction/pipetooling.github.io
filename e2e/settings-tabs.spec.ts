@@ -33,6 +33,7 @@ const TABS: Array<{ label: string; marker: RegExp | string; expand?: string }> =
   { label: 'People & teams', marker: 'Additional People' },
   { label: 'Emails & reports', marker: 'Payment received notifications' },
   { label: 'What customers see', marker: 'Sample data:' },
+  { label: 'What the team sees', marker: 'Sample data:' },
   { label: 'Contracts & terms', marker: 'Contracts customers accept or sign' },
   { label: 'Company', marker: 'Company documents' },
   { label: 'Usage', marker: 'Where the time goes' },

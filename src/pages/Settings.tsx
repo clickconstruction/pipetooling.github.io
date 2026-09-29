@@ -37,6 +37,7 @@ import SettingsMyEmailScheduleSection from '../components/settings/SettingsMyEma
 import SettingsEmailStreamsSection from '../components/settings/SettingsEmailStreamsSection'
 import { SettingsUsageTab } from '../components/settings/SettingsUsageTab'
 import { SettingsWhatCustomersSeeTab } from '../components/settings/SettingsWhatCustomersSeeTab'
+import { SettingsWhatTheTeamSeesTab } from '../components/settings/SettingsWhatTheTeamSeesTab'
 import { SettingsContractsTab } from '../components/settings/SettingsContractsTab'
 import { ANCHOR_BID_COVER_LETTER_DEFAULTS, ANCHOR_ESTIMATE_CX_DEFAULTS, ANCHOR_ESTIMATE_PUBLIC_TERMS, CONTRACTS_TAB_ID, contractAnchorId, stepParam, type ContractStepRef } from '../lib/contracts/customerContractCatalog'
 import type { EmailStreamKey } from '../lib/emailLogStreamLink'
@@ -1447,6 +1448,10 @@ export default function Settings() {
             }}
           />
         )}
+      </SettingsGroup>
+
+      <SettingsGroup id="settings-what-the-team-sees" hidden={activeSettingsTab !== 'settings-what-the-team-sees'} title={settingsGroupTitle('settings-what-the-team-sees', 'What the team sees')} description={settingsGroupHint('settings-what-the-team-sees')}>
+        {activeSettingsTab === 'settings-what-the-team-sees' && myRole === 'dev' && <SettingsWhatTheTeamSeesTab />}
       </SettingsGroup>
 
       <SettingsGroup id={CONTRACTS_TAB_ID} hidden={activeSettingsTab !== CONTRACTS_TAB_ID} title={settingsGroupTitle(CONTRACTS_TAB_ID, 'Contracts & terms')} description={settingsGroupHint(CONTRACTS_TAB_ID)}>

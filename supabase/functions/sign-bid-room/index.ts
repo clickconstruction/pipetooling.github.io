@@ -15,6 +15,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { parseSharedBidRoomPayload } from '../_shared/bidRoomPayload.ts'
 import { isRoomDeclineCategory, planRoomOutcome, type OutcomeVersionRow } from '../_shared/bidRoomOutcome.ts'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
+import { bidRoomActivityStaffEmail } from '../_shared/bidRoomActivityStaffEmail.ts'
 import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
 import { parseEsignConsent, recordEsignConsent } from '../_shared/esignConsent.ts'
 
@@ -432,11 +433,11 @@ async function notifyStaff(
     const ids = [...new Set([room.master_user_id, room.created_by].filter((x): x is string => !!x))]
     const { data: users } = await admin.from('users').select('email').in('id', ids)
     const origin = Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com'
-    const subject = `Bid room — ${projectName || 'proposal'}`
-    const text = `${projectName || 'A proposal'}: the GC ${what}\n\nOpen ClickTooling: ${origin}/bids\n`
+    // v2.4142: the words live in _shared/bidRoomActivityStaffEmail.ts so What the team sees can show them.
+    const mail = bidRoomActivityStaffEmail({ projectName, what, origin })
     for (const u of (users ?? []) as Array<{ email: string | null }>) {
       const em = (u.email ?? '').trim()
-      if (em) await sendEmailViaResend(em, subject, text, text.replace(/\n/g, '<br>'), key)
+      if (em) await sendEmailViaResend(em, mail.subject, mail.text, mail.html, key)
     }
   } catch (e) {
     console.error('sign-bid-room notify (non-fatal)', e)

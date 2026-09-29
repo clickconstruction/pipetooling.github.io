@@ -1202,6 +1202,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ### submit-portal-request
 
+> **v2.4142 — the staff notice is a kernel**: the "Portal {kind} — {customer}" email comes from [`_shared/portalRequestStaffEmail.ts`](../supabase/functions/_shared/portalRequestStaffEmail.ts) (moved verbatim) so Settings → What the team sees renders it on sample data (punch list #60).
+
 > **v2.3438 — the offered columns are gone**: the `stage_window` ask reads the window **by id only** (`.eq('id', stageId)`) and selects no `bundle_id` / `offered_to_gc` — migration `20260914250000` drops both plus `offered_to_gc_at`. **Redeploy before the push**: the old bundle selects those columns and would 400 once they are gone.
 
 > **v2.3346 — who pays**: `payment_promise` scopes its job ids with `owedJobIdsForViewer` (the job rule + each open `billed` invoice's pick) instead of every open-bill job the viewer is on, so a GC's promise never lands on a homeowner-paid job. **Redeploy with `customer-portal`.**
@@ -1452,6 +1454,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 ---
 
 ### sign-bid-room
+
+> **v2.4142 — the staff notice is a kernel**: the "Bid room — {project}: the GC {what}" email comes from [`_shared/bidRoomActivityStaffEmail.ts`](../supabase/functions/_shared/bidRoomActivityStaffEmail.ts) (moved verbatim) so Settings → What the team sees renders it on sample data (punch list #60).
 
 **Purpose**: Record a GC's signature or decline on a bid-room proposal (Signable Bids Phase 2, v2.2470) — the signature-time freeze.
 
