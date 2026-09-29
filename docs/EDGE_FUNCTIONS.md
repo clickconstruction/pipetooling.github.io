@@ -3908,6 +3908,8 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 
 ### mercury-webhook
 
+> **v2.4181 — rendered in What the team sees**: the check-returned notice was already a kernel (`_shared/bankReturnedDeposits.ts` — `buildBankReturnNoticeEmail`); Settings → What the team sees now renders it over a sample returned draw (punch list #60, lift 12 of 14). No function change, nothing to redeploy.
+
 **Purpose**: Receive Mercury **[webhook](https://docs.mercury.com/reference/webhooks)** events for **`transaction`** resources; verify **`Mercury-Signature`**, **dedupe** the delivery, **`GET /transaction/{id}`**, upsert into **`mercury_transactions`** (shared mapper), then **pre-tag** the transaction with a suggested accounting label.
 
 **Endpoint**: `POST /functions/v1/mercury-webhook`

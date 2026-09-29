@@ -18,7 +18,7 @@ const SAMPLE_IDS = TEAM_EMAILS.flatMap((e) => (e.render.kind === 'sample' ? [e.r
 
 describe('team sample emails (What the team sees)', () => {
   it('every sample row builds a subject and an HTML body', () => {
-    expect(SAMPLE_IDS.length).toBe(23)
+    expect(SAMPLE_IDS.length).toBe(24)
     for (const id of SAMPLE_IDS) {
       const m = buildTeamSampleEmail(id, ctx)
       expect(m.subject.trim().length, id).toBeGreaterThan(3)
@@ -99,6 +99,13 @@ describe('team sample emails (What the team sees)', () => {
     expect(built.subject).toBe('Job completion — 1054 · Water heater replacement')
     expect(built.html).toContain('[signature captured]')
     expect(built.text).toContain('Ana Lead')
+  })
+  it('the Check returned notice is the webhook\u2019s own builder over the sample deposit (lift 12)', () => {
+    const built = buildTeamSampleEmail('bank_return', ctx)
+    expect(built.subject).toBe('Check returned · $13,680 · J1057 Hunter Homes – gas line · Insufficient funds')
+    expect(built.text.startsWith('Hunter Homes\u2019 check for $13,680 on J1057 Hunter Homes – gas line came back: Insufficient funds.'.replace('\u2019', "'"))).toBe(true)
+    expect(built.text).toContain('The bank took it Sep 26 and has now sent it back.')
+    expect(built.html).toContain(`${ctx.origin}/jobs?tab=stages&amp;edit=job-5&amp;editFocus=payments`)
   })
   it('the signed-agreement notice is the real builder over the sample GC', () => {
     const m = buildTeamSampleEmail('signed_agreement_staff', ctx)
