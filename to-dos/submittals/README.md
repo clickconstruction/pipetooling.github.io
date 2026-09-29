@@ -17,7 +17,9 @@ status: >
   plain stops v2.4123, the page's own sentences v2.4124, a sentence and a `?` under every step
   v2.4125, Build · Send · Their answer · Order over the pills v2.4126 (the leftovers are #58) ·
   first real use began on B375 SpaceX (Wendi and Stephen opened its Submittals 2026-09-28/29; no Rev 4 shared
-  yet) · left: 3b (owner-gated), SpaceX Rev 4 through the room, the takeoff-rows-against-a-later-
+  yet) · Assign pages… took a user's machine down on a scanned vendor PDF 2026-09-29 — the walk re-opened the
+  file on every tab re-render and the partial re-reads reloaded the tab in a loop; fixed by #4111 (2026-09-29), which also
+  ships pdf.js's wasm decoders so scanned pages draw instead of rendering blank · left: 3b (owner-gated), SpaceX Rev 4 through the room, the takeoff-rows-against-a-later-
   schedule merge (v2.4107's residual) · live gates owed on Wendi's live bid and the SpaceX Rev 3 on B375
 summary: >
   **Submittals**: the product decision as one row per fixture tag from the plan's schedule to the

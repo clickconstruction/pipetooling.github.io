@@ -11,7 +11,7 @@ covers:
   - src/components/jobs/JobsStagesUnifiedTable.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-09-25
+last_updated: 2026-09-29
 ---
 
 > **Line numbers are as of `a05cef4c4`** (from the `npm run map` fact sheets). This is the hottest surface in the repo (195 commits in 90 days on the tab, 62 on `jobsStagesRowShared`) — search the symbol, and trust a range only while the symbol still sits at it.
@@ -188,7 +188,7 @@ None of the three v2.3530 dialogs has a render test.
 | 4712 | `lienDesk` | `LienDeskModal` → [map](./LIEN_DESK_ARCHITECTURE.md) | `legalSignoff.ask` writes `legalRpc('legal_add_entry')` (4743); the notice door fetches an unloaded job via `fetchJobWithDetailsById` (the affidavit door only toasts); `onOpenEditJob` focus mapping (4758) |
 | 4782 | `gcNotice` | `GcOnNoticeModal` | not mapped here; `onOpenEditJob` focus mapping (4793–4808) — a longer, divergent copy of 4758's |
 | 4812 / 4833 / 4841 | `lienInstrumentsModal` / `lienToolingPrefillModal` / `lienReleaseModal` | `LienInstrumentsModal` / `LienToolingPrefillModal` / `LienReleaseModal` | recorded → `loadDemandOutJobIds` + `syncLienDeskAfterRecord`; issued → `loadLienReleaseJobIds` |
-| 4849 / 4865 | `jobContractModalJob` / `contractSweepOpen` | `JobContractModal` (given the row's `coverage` — a signed chip lands on its signed state, v2.4183; the separate `JobSignedAgreementModal` is gone) / `JobsContractSweepModal` | → `loadJobContractCoverage` / `loadJobs`; sweep can set the `missing` filter |
+| 4849 / 4865 | `jobContractModalJob` / `contractSweepOpen` | `JobContractModal` (given the row's `coverage` — a signed chip lands on its signed state, v2.4183; the separate `JobSignedAgreementModal` is gone; a second signer named on the paper, v2.4186) / `JobsContractSweepModal` | → `loadJobContractCoverage` / `loadJobs`; sweep can set the `missing` filter |
 | 4879 / 4885 | `aiaG702StagesJob` / `hazmatFeeJob` | `AiaG702G703Modal` / `HazmatFeeModal` | hazmat created → `loadJobs` + `loadHazmatFeeJobIds` |
 | 4893 / 4915 | `markPaidJob` / `markPaidInvoice` | `BilledPaymentConfirmationModal` ×2 | `stripeModeForBillingFromRole`; invoice mode also reloads promises |
 | 4930 / 4941 / 4956 / 4964 | send-back invoice / job / simple / collections | the four `Stages…Modal`s (v2.3535–3536) | handlers in cluster L |

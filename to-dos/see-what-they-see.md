@@ -2,7 +2,7 @@
 name: "See what they see: a live view of the GC's room (and the portal) while you work"
 number: 62
 group: ready
-status: opened 2026-09-29 · the gating fix that prompted it shipped as v2.4169 · Layer 1 shipped v2.4174 (the reviewer's own headline under the rows, live as you edit) · Layer 2 (the pane) next
+status: opened 2026-09-29 · the gating fix that prompted it shipped as v2.4169 · Layer 1 shipped v2.4174 (the reviewer's own headline under the rows, live as you edit) · Layer 2 shipped v2.4187 + v2.4189 (See what the GC sees: the GC's page beside the road, a sheet on a phone, from the draft's rows) · Layer 3 next
 summary: >
   On Bids → Submittals the office edits rows and never sees what the GC or the architect will
   see until after sharing. The owner's ask (2026-09-29): "an active view of what they change and
@@ -12,13 +12,12 @@ summary: >
   and the sample views in What customers see — all rendered from the same kernels the real pages
   use, so a preview can never lie.
 next: >
-  Layer 2 (two PRs): "See what the GC sees" on the strip opens a side pane (a sheet on phones)
-  that renders `SubmittalRoom`'s read-only view from the current draft through a client-side twin
-  of get-submittal-room's payload kernel (`buildRoomPayload`), with a test pinning both to the same
-  fixtures; the pane stays open and re-renders on every row edit.
+  Layer 3: the package cover as a live thumbnail in the pane (its model is client-side already:
+  `buildCoverModel`, `renderCoverPdf`), and for a job with a portal the customer's submittal card
+  the same way — needs a job with a portal to verify live.
 size: M (Layer 1 S; Layer 2 M; Layers 3–5 S each)
 blocker: none for Layers 1–2; Layer 3's portal card needs a job with a portal to verify live.
-ver: v2.4174 (Layer 1)
+ver: v2.4174 (Layer 1) · v2.4187 / v2.4189 (Layer 2)
 opinion: soon — Wendi and Stephen are on the tab this week and first shares are coming; the pane is what teaches "why the reason matters" without a tour.
 ---
 
