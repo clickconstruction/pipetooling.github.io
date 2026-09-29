@@ -53,21 +53,30 @@ You can also set the filter by hand: open the **⋯** menu at the right end of t
 
 ## Send a contract
 
-Tap the {{chip:gray|No contract}} chip on the row, or the **✍** icon in the row's quick-action stack. The Contract modal opens with everything prefilled from the job:
+Tap the {{chip:gray|No contract}} chip on the row, or the **✍** icon in the row's quick-action stack. The Contract window opens with everything prefilled from the job, in two columns: the agreement on the left, and on the right one question — **How this one gets signed**.
 
-{{gif:get-a-job-contract-signed.gif|From the Pipeline row: the chip opens the Contract modal prefilled from the job; Copy link mints the customer's signing link and the strip shows where it stands}}
+{{gif:get-a-job-contract-signed.gif|From the Pipeline row: the chip opens the Contract window prefilled from the job; the rail on the right has the answer picked and one button that follows it}}
 
-- **Who signs** — name, email and mobile from the job's customer; add a GC, spouse or property manager under **Also send to**.
-- **What they're signing** — the terms document from the Contract Book (or the built-in service-agreement terms until you add one), the scope one line per item, anything not included, the amount, payment terms as chips ({{chip:blue|50% down, balance on completion}} is the default), optional dates and a note.
+**The agreement** — the standard terms named with their clause count and date ({{button:outline|Read the wording}} opens them in place; {{button:outline|Edit the wording}} changes every later agreement), the scope one line per item, anything not included, the amount, payment terms as chips ({{chip:blue|50% down, balance on completion}} is the default), optional dates and a note.
+
 - **The amount is the job's number**, never typed here: the estimate the customer accepted when there is one, else the job's line items. It reads *$123,600 · from the job's 14 line items · Adjust line items ›* — the door opens the job, and the agreement follows what you change there. So the signed agreement and the bill can never disagree.
-- Everything autosaves as you type; there is no Save button. {{button:outline|Preview as customer}} opens the document exactly as they will see it.
+- Everything saves as you type; there is no Save button. **Preview as customer** under the fields opens the document exactly as they will see it, and **Download the PDF** beside it is the look-only copy — it records nothing.
 
-Then pick a door:
+**The rail** — three ways, with the answer already picked from what the job knows. Only the fields the picked way needs appear under it, then one blue button whose label follows the pick, and a sentence that says exactly what pressing it will do.
 
-- {{button:blue|Send by email}} — the customer gets a short email with a **Review & sign** button. Your address is the reply-to.
-- {{button:outline|Copy link}} — paste it anywhere. {{button:outline|Text link}} opens your phone's messages with the link ready to send.
-- {{button:outline|Sign in person}} — opens the signing page on this device so the customer can sign at the kitchen table.
-- {{button:outline|Download PDF}} — the same agreement with blank **Sign** and **Date** rules for a pen, for a customer who signs on paper. From the Contract window it sends nothing and records nothing; to have the app remember the hand-off, use the Contract sweep's **Download to print** (below).
+- {{button:outline|Send a link}} — *picked when the job has an email or a mobile.* They review and sign on their phone. Email is filled from the job; tick **Text it too** to open a text with the same link after the email goes, or leave the email blank and the button reads **Text the link**. **Copies** are for a GC or property manager who only reads it. Reminders go every 3 days until signed, up to 3. **Copy the link** in the sentence pastes it anywhere.
+- {{button:outline|Sign here, now}} — the customer signs on this device, at the kitchen table. Nothing is needed but their name; an email is only where their signed copy goes.
+- {{button:outline|On paper}} — *picked when the job has neither an email nor a mobile.* **Download to print** gives the page blank **Sign** and **Date** rules and **marks the agreement handed over**, so the job leaves the count and reads *handed over · awaiting signature*. **Email the PDF** sends it to print, sign and send back, with the signing link riding along.
+- A way that cannot run says why and steps aside — {{chip:yellow|Needs an email or a mobile — add one, or pick another way}} — and the button greys until it can.
+
+:::example What the button says
+{{button:blue|Send the link}} · *Emails sam@example.com a Review & sign link from office@clickplumbing.com. Reminders every 3 days until signed, up to 3.*
+{{button:blue|Download & mark handed over}} · *Downloads the PDF with Sign and Date rules and marks the agreement handed over today. The job leaves the count; nothing is emailed.*
+:::
+
+On a builder's job the rail leads with {{button:outline|File Summit GC's subcontract}} — their paper is the agreement — and keeps our three ways one tap behind **Send ours anyway**.
+
+Under the rail sit the two exits: **Already signed outside the app? File their signed contract** and **This job doesn't need one? Not needed…**. The title bar's pill says where the agreement stands: {{chip:gray|Draft · nothing sent yet}}, {{chip:yellow|Sent Sep 12 · opened 2×}}, {{chip:yellow|Handed over Sep 12 · awaiting the signed page}}, {{chip:green|✍ Signed Sep 14 · M. Palmer}}.
 
 ## How this one gets signed
 
@@ -85,7 +94,7 @@ A page downloaded and emailed from your own mail leaves no trace: the job stays 
 :::
 
 :::example While it's out
-The row reads {{chip:yellow|Contract sent · opened 2× · 6d}} and the modal shows an amber strip with the same facts, plus **Resend email**, **Copy link**, **Text link**, **Sign in person**, **Edit & re-send** and **Void & redo**.
+The row reads {{chip:yellow|Contract sent · opened 2× · 6d}} and the window's rail shows an amber strip with the same facts, then three groups: **Nudge** ({{button:blue|Resend email}}, **Text the link**, **Copy link**), **Sign here** (**Open the signing page on this device**) and **Change it** (**Edit & re-send** or **Void & redo**). Handed over on paper, the groups are **It's back** ({{button:blue|File the signed copy}}) and **Change it**.
 
 **Need to change it after sending?** It depends on whether they have opened it:
 

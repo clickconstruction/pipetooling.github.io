@@ -4,7 +4,7 @@
  * (Waiting / Working / Paid in Full), extracted from Jobs.tsx in v2.830.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -214,5 +214,39 @@ describe('JobsStagesTable render smoke', () => {
     btn.click()
     expect(openQuickAssignForJob).toHaveBeenCalledWith(expect.objectContaining({ id: teamless.id }))
     expect(setScheduleModalJob).not.toHaveBeenCalled()
+  })
+
+  it('v2.4160 · the address ends in the property-kind badge — C, R, or a ? that opens the picker; no linked property, no badge', async () => {
+    const commercial = makeJob({ id: 'j-c', job_name: 'Take 5- Liberty Hill', job_address: '11730 TX-29\nLiberty Hill, TX', customer_address_id: 'addr-c' })
+    const residential = makeJob({ id: 'j-r', job_name: 'Tovi Polk Repairs', job_address: '1141 Lago Vista St\nSan Marcos, TX', customer_address_id: 'addr-r' })
+    const unknown = makeJob({ id: 'j-u', job_name: 'Backflow Preventor Valve', job_address: '8507 Culebra Road\nSan Antonio, TX', customer_address_id: 'addr-u' })
+    const unlinked = makeJob({ id: 'j-n', job_name: 'Typed Address Job', job_address: '1 Nowhere Ln\nAustin, TX', customer_address_id: null })
+    const onPropertyKindSaved = vi.fn()
+    renderWithProviders(
+      <JobsStagesTable
+        {...makeProps({
+          jobList: [commercial, residential, unknown, unlinked],
+          propertyKindByJobId: new Map([
+            ['j-c', 'non_residential'],
+            ['j-r', 'residential'],
+            ['j-u', ''],
+          ]),
+          onPropertyKindSaved,
+        })}
+      />,
+    )
+    await settle()
+    const badges = screen.getAllByTestId('property-kind-badge')
+    expect(badges.map((b) => [b.textContent, b.getAttribute('data-kind')])).toEqual([
+      ['C', 'non_residential'],
+      ['R', 'residential'],
+      ['?', 'unset'],
+    ])
+    expect(document.querySelector('tr[data-stages-job-id="j-n"] [data-testid="property-kind-badge"]')).toBeNull()
+    // The ? asks, with the lien screens' Residential | Commercial switch.
+    fireEvent.click(badges[2] as HTMLElement)
+    const dialog = screen.getByRole('dialog', { name: 'What kind of property is 8507 Culebra Road?' })
+    expect(within(dialog).getByTestId('property-kind-switch').getAttribute('data-kind')).toBe('unset')
+    expect(within(dialog).getByRole('button', { name: 'Commercial' })).toBeTruthy()
   })
 })

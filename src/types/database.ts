@@ -2114,6 +2114,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "bid_submittal_items_source_count_row_id_fkey"
+            columns: ["source_count_row_id"]
+            isOneToOne: false
+            referencedRelation: "bids_count_rows"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "bid_submittal_items_source_quote_line_id_fkey"
             columns: ["source_quote_line_id"]
             isOneToOne: false
@@ -9819,6 +9826,8 @@ export type Database = {
           job_id: string
           kind: string
           months: string[]
+          printed_at: string | null
+          printed_by: string | null
           pulled_back_at: string | null
           pulled_back_by: string | null
           sent_at: string | null
@@ -9847,6 +9856,8 @@ export type Database = {
           job_id: string
           kind?: string
           months?: string[]
+          printed_at?: string | null
+          printed_by?: string | null
           pulled_back_at?: string | null
           pulled_back_by?: string | null
           sent_at?: string | null
@@ -9875,6 +9886,8 @@ export type Database = {
           job_id?: string
           kind?: string
           months?: string[]
+          printed_at?: string | null
+          printed_by?: string | null
           pulled_back_at?: string | null
           pulled_back_by?: string | null
           sent_at?: string | null
@@ -9913,6 +9926,13 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_lien_desk_items_printed_by_fkey"
+            columns: ["printed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
@@ -25544,6 +25564,7 @@ export type Database = {
         }
         Returns: Json
       }
+      submittal_robot_liveness: { Args: never; Returns: Json }
       suggest_bids_for_job: {
         Args: { p_job_id: string }
         Returns: {

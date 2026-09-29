@@ -31,6 +31,7 @@ export const TEAM_EMAIL_WHEN_ORDER: readonly TeamEmailWhenKind[] = ['morning', '
 export type TeamRealPreviewStream = 'crew_day' | 'money_waiting' | 'payment_forecast' | 'billed_awaiting'
 
 export type TeamSampleEmailId =
+  | 'money_waiting'
   | 'signed_agreement_staff'
   | 'estimate_accepted_staff'
   | 'gc_word_ask'
@@ -82,6 +83,8 @@ export type TeamEmail = {
   recipients: TeamEmailRecipients
   sampleSubject: (ctx: TeamSampleContext) => string
   render: TeamEmailRender
+  /** A digest whose function also has a `preview` / `test_send` mode keeps its real-one doors beside the sample (v2.4161). */
+  real?: TeamRealPreviewStream
   /** Where the words or the recipients are changed. */
   manage: { tabId: string; anchorId?: string; label: string }
   /** The Settings or data the email reflects — the reason to look after a change. */
@@ -116,7 +119,8 @@ export const TEAM_EMAILS: readonly TeamEmail[] = [
     when: { kind: 'morning', label: 'Every weekday morning', order: 2 },
     recipients: { roles: OFFICE_AND_PRIMARY, decidedBy: 'role', rule: 'Devs, leaders, assistants, controllers and the primary — the function picks them by role.' },
     sampleSubject: (c) => `Money waiting — ${c.dateLabel}`,
-    render: { kind: 'real', stream: 'money_waiting' },
+    render: { kind: 'sample', sample: 'money_waiting' },
+    real: 'money_waiting',
     manage: emails('Emails & reports → Money waiting'),
     reflects: ['Money waiting wording (Email templates)', 'the Moneyfill weekly-close queues'],
   },

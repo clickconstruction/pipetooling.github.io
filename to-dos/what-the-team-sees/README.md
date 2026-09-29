@@ -2,7 +2,7 @@
 name: "What the team sees: every email a user could get, as one person's week"
 number: 60
 group: ready
-status: asked and mocked up 2026-09-29 (draft 2 picked) · PR 1 shipped v2.4142 (the inventory, the tab, the guard, 11 live samples, 4 real previews) · the digests not started
+status: asked and mocked up 2026-09-29 (draft 2 picked) · PR 1 shipped v2.4142 (the inventory, the tab, the guard, 11 live samples, 4 real previews) · lift 1 of 14, Money waiting, shipped v2.4161 (12 live)
 summary: >
   The customer-facing emails have Settings → What customers see; the other 25 — the digests,
   the notices, sign-in, invitations — had no place a dev could see them with sample data. A
@@ -10,7 +10,7 @@ summary: >
   lands, who gets it, the From, the subject with sample values filled in, and the email itself
   where the app can build one. Fourteen digests build their HTML inside their edge functions;
   each is lifted into a kernel in its own PR and its row turns from "next release" to live.
-next: PR 2 — lift Money waiting into `_shared/moneyWaitingEmail.ts` (subject/html/text from data), the function calls it, a unit test, a before/after diff of one real send, and the row's sample; then the rest, most-read first.
+next: lift 2 — Crew day (`crew-day-email-dispatch/render.ts` → `_shared/crewDayEmail.ts`); then Payment forecast, Billed awaiting, Weekly money, Weekly movement, Paid job + Ready to bill (the seven with a `render.ts` are moves; the other seven build HTML inline in `index.ts` and are real lifts).
 size: M (PR 1, shipped) + S–M per digest × 14
 blocker: None.
 opinion: build on, one digest at a time — every lift also gives a digest the unit test it never had

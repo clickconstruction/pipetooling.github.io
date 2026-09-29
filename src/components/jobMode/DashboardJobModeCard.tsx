@@ -27,7 +27,9 @@ import JobModeAdvanceNotesModal, {
   type JobModeAdvanceDestination,
 } from './JobModeAdvanceNotesModal'
 import JobModeDetailsSection from './JobModeDetailsSection'
+import { useToastContext } from '../../contexts/ToastContext'
 import { useQuickEstimateDoor } from '../../hooks/useQuickEstimateDoor'
+import { canHandThePhone, goToSigningPage, handPhoneDoorText, handPhoneState, openInPersonSigning, type HandPhoneState } from '../../lib/jobs/jobContractInPerson'
 import { QuickEstimateWizard } from '../estimates/QuickEstimateWizard'
 import { WriteUpChangeGlyph } from '../dashboard/dashboardJobRowShared'
 import { scheduleDispatchWeekUrl } from '../../lib/scheduleDispatchDayLink'
@@ -273,6 +275,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
   const { prefixMap } = useLedgerDisplayPrefixes()
   const navigate = useNavigate()
   const { role } = useAuth()
+  const { showToast } = useToastContext()
   // SP-2 (v2.3067): a sub or helper with a login reaches their own statement from here.
   const myStatement = useMySubPortalAddress(role === 'subcontractor' || role === 'helpers')
   // Same planner pool as Stages' canOpenJobScheduleModal — gates the calendar's week-dispatch link.
@@ -811,6 +814,42 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
   /** Write up a change (v2.4057): a quiet link under the action row, on the clocked-in job or the one ready to start. */
   const writeUpChangeDoor = useQuickEstimateDoor(userId, role)
   const [writeUpChangeOpen, setWriteUpChangeOpen] = useState(false)
+  /** Hand the phone to the customer (v2.4159): on the clocked-in job, for the roles that speak for the company on site, until the job is signed. */
+  const handPhoneJobId = leaveReportTarget?.id ?? null
+  const [handPhone, setHandPhone] = useState<HandPhoneState | null>(null)
+  const [handPhoneBusy, setHandPhoneBusy] = useState(false)
+  useEffect(() => {
+    if (!handPhoneJobId || !canHandThePhone(role)) {
+      setHandPhone(null)
+      return
+    }
+    let cancelled = false
+    void supabase
+      .from('job_contracts')
+      .select('status, voided_at')
+      .eq('job_id', handPhoneJobId)
+      .then(({ data }) => {
+        if (!cancelled) setHandPhone(handPhoneState((data ?? []) as Array<{ status: string; voided_at: string | null }>))
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [handPhoneJobId, role])
+  const handPhoneDoor = handPhoneJobId && handPhone ? handPhoneDoorText(handPhone) : null
+  const handThePhone = async () => {
+    if (!handPhoneJobId || handPhoneBusy) return
+    setHandPhoneBusy(true)
+    try {
+      const res = await openInPersonSigning({ jobId: handPhoneJobId, authUserId: userId ?? null, origin: window.location.origin })
+      if (!res.ok) {
+        showToast(res.error, 'error')
+        return
+      }
+      goToSigningPage(res.url)
+    } finally {
+      setHandPhoneBusy(false)
+    }
+  }
   const writeUpChangeJobId =
     leaveReportTarget?.id ??
     (picked.state === 'not-clocked-in-with-schedule' && picked.nextBlock ? picked.nextBlock.job_id : null)
@@ -995,6 +1034,20 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
         >
           <WriteUpChangeGlyph size={16} />
           Write up a change
+        </button>
+      ) : null}
+      {!loading && handPhoneDoor ? (
+        <button
+          type="button"
+          style={{ ...quietClockOutBtn, color: 'var(--text-link)', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
+          aria-label="Hand the phone to the customer to sign"
+          title={handPhoneDoor.title}
+          disabled={handPhoneBusy}
+          onClick={() => void handThePhone()}
+          data-testid="job-mode-hand-phone"
+        >
+          <span aria-hidden>✍</span>
+          {handPhoneBusy ? 'Opening the agreement…' : handPhoneDoor.label}
         </button>
       ) : null}
       {writeUpChangeOpen && writeUpChangeJobId ? (
