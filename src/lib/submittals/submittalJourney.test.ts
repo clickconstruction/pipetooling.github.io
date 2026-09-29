@@ -8,7 +8,7 @@ const statuses = (i: SubmittalJourneyInput) => submittalJourney(i).stages.map((s
 describe('submittalJourney', () => {
   it('has eight stages in process order', () => {
     expect(submittalJourney(base).stages.map((s) => `${s.number} ${s.label}`)).toEqual([
-      '1 Schedule & picks', '2 Build Rev 1', '3 Reasons & sheets', '4 Package', '5 Share', '6 Their call', '7 Resubmit', '8 Procure',
+      '1 Sources', '2 Build Rev 1', '3 Reasons & sheets', '4 Package', '5 Share', '6 Their call', '7 Resubmit', '8 Procure',
     ])
   })
 

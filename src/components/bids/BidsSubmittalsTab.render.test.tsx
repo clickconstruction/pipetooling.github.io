@@ -306,7 +306,7 @@ describe('BidsSubmittalsTab', () => {
       'Or let the robot read it',
       '2 · Build Rev 1',
       'Revisions',
-      'The tiles: where you stand',
+      'One line: where you stand',
       '3 · Fix a row with Edit',
       '3 · Cut sheets: drop the house’s PDF',
       '4 · Build the package',
