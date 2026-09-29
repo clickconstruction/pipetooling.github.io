@@ -145,7 +145,7 @@ export function SettingsWhatTheTeamSeesTab() {
   const todayYmd = todayYmdInAppTz()
   const dateLabel = new Intl.DateTimeFormat('en-US', { timeZone: APP_CALENDAR_TZ, month: 'short', day: 'numeric', year: 'numeric' }).format(new Date())
   const recipient = person ? { name: person.name, email: person.email, role: humanRoleLabel(person.role).toLowerCase() } : sampleRecipientFor(role)
-  const subjectCtx: TeamSubjectContext = { dateLabel, weekStartLabel: weekStartLabel(todayYmd), weekEndLabel: weekEndLabel(todayYmd), firstName: recipient.name.split(' ')[0] || 'Sam' }
+  const subjectCtx: TeamSubjectContext = { todayYmd, dateLabel, weekStartLabel: weekStartLabel(todayYmd), weekEndLabel: weekEndLabel(todayYmd), firstName: recipient.name.split(' ')[0] || 'Sam' }
   const sampleCtx: TeamSampleContext = useMemo(
     () => ({
       rows: [],
