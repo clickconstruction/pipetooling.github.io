@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { GcReviewGroup } from '../gcReviewRollup'
 import type { GcReviewCertRow } from './gcReviewCertification'
 import type { RoundMarkRow } from './gcStatementRounds'
-import { APP_SEND_NOTE, buildGcWorklist, markCarriesWord, mergeRoundMarkWrite, worklistCards, worklistGroupTitle, worklistNextStep } from './gcWorklist'
+import { APP_SEND_NOTE, buildGcWorklist, markCarriesWord, mergeRoundMarkWrite, worklistCards, worklistGroupTitle, worklistNextStep, leaderUserIdFrom, underLineCount } from './gcWorklist'
 
 const WEEK = '2026-09-21'
 
@@ -89,7 +89,7 @@ describe('buildGcWorklist', () => {
     expect(w.counts.gcs).toBe(2)
   })
 
-  it('groups by the account man, the unassigned next, the GCs under the line last', () => {
+  it('every GC files under its account man — the small ones too — and a GC nobody is set on under the leader (v2.4149)', () => {
     const w = build({
       groups: [group('a', 46000), group('b', 20000), group('c', 30000), group('d', 12000), group('e', 5000)],
       senders: new Map([
@@ -99,14 +99,37 @@ describe('buildGcWorklist', () => {
       accountMen: new Map([
         ['b', 'u-someone-else'],
         ['c', 'u-trace'],
+        ['e', 'u-trace'],
       ]),
+      leaderUserId: 'u-wendi',
     })
-    expect(w.groups.map((g) => [g.key, g.kind, g.rows.map((r) => r.gcId), g.total])).toEqual([
-      ['owner:u-malachi', 'owner', ['a', 'b'], 66000],
-      ['owner:u-trace', 'owner', ['c'], 30000],
-      ['unassigned', 'unassigned', ['d'], 12000],
-      ['under_line', 'under_line', ['e'], 5000],
+    expect(w.groups.map((g) => [g.key, g.rows.map((r) => r.gcId), g.total])).toEqual([
+      ['owner:u-malachi', ['a', 'b'], 66000],
+      ['owner:u-trace', ['c', 'e'], 35000],
+      ['owner:u-wendi', ['d'], 12000],
     ])
+    const rows = new Map(w.groups.flatMap((g) => g.rows).map((r) => [r.gcId, r]))
+    expect(rows.get('a')!.ownerSource).toBe('pick')
+    expect(rows.get('c')!.ownerSource).toBe('jobs')
+    expect(rows.get('d')!.ownerSource).toBe('leader')
+    expect(rows.get('e')!.overLine).toBe(false)
+    expect(underLineCount(w.groups[1]!)).toBe(1)
+  })
+
+  it('with no leader known, the GCs nobody is set on sit in one last group with no owner', () => {
+    const w = build({ groups: [group('a', 46000), group('d', 12000)], senders: new Map([['a', 'u-malachi']]) })
+    expect(w.groups.map((g) => [g.key, g.ownerUserId, g.rows.map((r) => r.gcId)])).toEqual([
+      ['owner:u-malachi', 'u-malachi', ['a']],
+      ['owner:nobody', null, ['d']],
+    ])
+    expect(w.groups[1]!.rows[0]!.ownerSource).toBeNull()
+  })
+
+  it('leaderUserIdFrom is the one live master, else nobody', () => {
+    expect(leaderUserIdFrom([{ id: 'w', role: 'master_technician' }, { id: 'm', role: 'controller' }])).toBe('w')
+    expect(leaderUserIdFrom([{ id: 'w', role: 'master_technician', archived_at: '2026-01-01' }, { id: 'x', role: 'master_technician' }])).toBe('x')
+    expect(leaderUserIdFrom([{ id: 'w', role: 'master_technician' }, { id: 'x', role: 'master_technician' }])).toBeNull()
+    expect(leaderUserIdFrom([])).toBeNull()
   })
 
   it('reads the three steps from the certification, the sends and the mark', () => {
@@ -206,10 +229,9 @@ describe('worklistCards', () => {
 
 describe('worklistGroupTitle', () => {
   it('names who to ask', () => {
-    expect(worklistGroupTitle({ kind: 'owner' }, 'Malachi', false)).toBe('Account Man Malachi')
-    expect(worklistGroupTitle({ kind: 'owner' }, 'Taunya', true)).toBe('Account Man Taunya (you)')
-    expect(worklistGroupTitle({ kind: 'unassigned' }, 'nobody assigned', false)).toBe('No account man yet')
-    expect(worklistGroupTitle({ kind: 'under_line' }, '', false)).toBe('Under $10,000')
+    expect(worklistGroupTitle({ ownerUserId: 'u-malachi' }, 'Malachi', false)).toBe('Account Man Malachi')
+    expect(worklistGroupTitle({ ownerUserId: 'u-taunya' }, 'Taunya', true)).toBe('Account Man Taunya (you)')
+    expect(worklistGroupTitle({ ownerUserId: null }, 'nobody assigned', false)).toBe('No account man yet')
   })
 })
 

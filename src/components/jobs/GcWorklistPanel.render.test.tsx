@@ -28,6 +28,7 @@ const worklist = buildGcWorklist({
   accountMen: new Map(),
   lastSentByGcId: {},
   weekStartYmd: WEEK,
+  leaderUserId: 'u-wendi',
 })
 
 function renderPanel(over: Partial<ComponentProps<typeof GcWorklistPanel>> = {}) {
@@ -36,7 +37,7 @@ function renderPanel(over: Partial<ComponentProps<typeof GcWorklistPanel>> = {})
     <GcWorklistPanel
       worklist={worklist}
       authUserId="u-taunya"
-      userNameById={(id) => (id === 'u-malachi' ? 'Malachi' : 'nobody assigned')}
+      userNameById={(id) => (id === 'u-malachi' ? 'Malachi' : id === 'u-wendi' ? 'Wendi' : 'nobody assigned')}
       canAct
       busy={false}
       error={null}
@@ -58,7 +59,10 @@ describe('GcWorklistPanel', () => {
   it('gives the person signed in every GC, grouped by who to ask', () => {
     renderPanel()
     expect(screen.getByText('Account Man Malachi')).toBeTruthy()
-    expect(screen.getByText('Under $10,000')).toBeTruthy()
+    // v2.4149: the small GC nobody is set on files under the leader, its word optional — no "Under $10,000" group.
+    expect(screen.getByText('Account Man Wendi')).toBeTruthy()
+    expect(screen.queryByText('Under $10,000')).toBeNull()
+    expect(screen.getByText(/1 under \$10,000, word optional/)).toBeTruthy()
     expect(screen.getAllByTestId('gc-worklist-row')).toHaveLength(3)
   })
 

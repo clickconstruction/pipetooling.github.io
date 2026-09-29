@@ -91,7 +91,7 @@ import { gcWordBills, planWordPromise, promiseChannelForWord, wordPromiseNote, w
 import { addJobPaymentPromisesSettled } from '../../lib/jobs/paymentChaseIo'
 import { payPromiseLabel, payPromiseStatus } from '../../lib/jobs/payPromise'
 import { canTakeStatementReplies, defaultReplyToUserId } from '../../lib/gcStatementReplyTo'
-import { APP_SEND_NOTE, buildGcWorklist, mergeRoundMarkWrite } from '../../lib/jobs/gcWorklist'
+import { APP_SEND_NOTE, buildGcWorklist, mergeRoundMarkWrite, leaderUserIdFrom } from '../../lib/jobs/gcWorklist'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import { TeammateEmailChips } from './TeammateEmailChips'
 import { buildTeammateEmailChips } from '../../lib/teammateEmailChips'
@@ -608,10 +608,12 @@ export function JobsGcReviewModal({
         weekStartYmd: certWeekStart,
         expectedPayByByGc: payByByGc,
         todayYmd,
+        // v2.4149 (punch list #54): a GC nobody is set on files under the leader — the one live master.
+        leaderUserId: leaderUserIdFrom(users),
       }),
-    [roundRollup, certRows, roundMarks, roundSenders, accountMen, mergedLastSent, certWeekStart, payByByGc, todayYmd],
+    [roundRollup, certRows, roundMarks, roundSenders, accountMen, mergedLastSent, certWeekStart, payByByGc, todayYmd, users],
   )
-  const worklistWordsDue = worklist.groups.reduce((n, g) => n + (g.kind === 'under_line' ? 0 : g.rows.length), 0)
+  const worklistWordsDue = worklist.groups.reduce((n, g) => n + g.rows.filter((r) => r.overLine).length, 0)
   // Opened on one GC (the week's email, `?round=1&gc=`): bring up its account man's call sheet, once per open.
   const [focusedGcId, setFocusedGcId] = useState<string | null>(null)
   useEffect(() => {
@@ -620,7 +622,7 @@ export function JobsGcReviewModal({
       return
     }
     if (!focusGcId || focusedGcId === focusGcId) return
-    const group = worklist.groups.find((g) => g.kind !== 'under_line' && g.rows.some((r) => r.gcId === focusGcId))
+    const group = worklist.groups.find((g) => g.rows.some((r) => r.gcId === focusGcId))
     if (!group) return
     setFocusedGcId(focusGcId)
     setCallSheetGroupKey(group.key)

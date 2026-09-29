@@ -20,6 +20,8 @@ export type GcWorklistRow = {
   oldestAgeDays: number | null
   /** The account man: the standing assignment, else the Account Man on most of the GC's jobs; null = nobody. */
   ownerUserId: string | null
+  /** Where the account man came from: the standing pick, the account manager on most of the GC's jobs, or the leader by default (v2.4149) — null when nobody is set and no leader is known. */
+  ownerSource: 'pick' | 'jobs' | 'leader' | null
   /** done = certified and unchanged; changed = the group moved after sign-off; todo = not certified this week. */
   checked: 'done' | 'changed' | 'todo'
   /** A statement went out this week — a sent mark or an app send. */
@@ -39,7 +41,7 @@ export type GcWorklistRow = {
 
 export type GcWorklistGroup = {
   key: string
-  kind: 'owner' | 'unassigned' | 'under_line'
+  /** The account man whose GCs these are; null only when no leader is known (the Pipeline cards, which never show a heading). */
   ownerUserId: string | null
   rows: GcWorklistRow[]
   total: number
@@ -84,6 +86,8 @@ export function buildGcWorklist(input: {
   expectedPayByByGc?: ReadonlyMap<string, string | null>
   todayYmd?: string
   threshold?: number
+  /** The leader — a GC with no standing pick and no account manager files under them, so nothing is nobody's (punch list #54, v2.4149). */
+  leaderUserId?: string | null
 }): GcWorklist {
   const threshold = input.threshold ?? GC_ROUND_THRESHOLD
   const markByGc = new Map(input.marks.map((m) => [m.gc_customer_id, m]))
@@ -107,7 +111,7 @@ export function buildGcWorklist(input: {
       amount: g.subtotal,
       jobCount: g.jobCount,
       oldestAgeDays: g.oldestAgeDays,
-      ownerUserId: input.senders.get(g.gcId) ?? input.accountMen.get(g.gcId) ?? null,
+      ...ownerFor(g.gcId, input.senders, input.accountMen, input.leaderUserId ?? null),
       ...base,
       next: worklistNextStep(base),
       promise: input.todayYmd ? payPromiseStatus(input.expectedPayByByGc?.get(g.gcId), input.todayYmd, g.subtotal) : null,
@@ -116,13 +120,13 @@ export function buildGcWorklist(input: {
     })
   }
 
+  // Every GC files under its account man — the small ones too, their word still optional (v2.4149).
   const byKey = new Map<string, GcWorklistGroup>()
   for (const r of rows) {
-    const kind: GcWorklistGroup['kind'] = !r.overLine ? 'under_line' : r.ownerUserId ? 'owner' : 'unassigned'
-    const key = kind === 'owner' ? `owner:${r.ownerUserId}` : kind
+    const key = `owner:${r.ownerUserId ?? 'nobody'}`
     let group = byKey.get(key)
     if (!group) {
-      group = { key, kind, ownerUserId: kind === 'owner' ? r.ownerUserId : null, rows: [], total: 0, open: 0, late: 0 }
+      group = { key, ownerUserId: r.ownerUserId, rows: [], total: 0, open: 0, late: 0 }
       byKey.set(key, group)
     }
     group.rows.push(r)
@@ -140,8 +144,8 @@ export function buildGcWorklist(input: {
         a.gcName.localeCompare(b.gcName),
     )
   }
-  const rank = (k: GcWorklistGroup['kind']) => (k === 'owner' ? 0 : k === 'unassigned' ? 1 : 2)
-  const groups = [...byKey.values()].sort((a, b) => rank(a.kind) - rank(b.kind) || b.total - a.total || a.key.localeCompare(b.key))
+  // Named account men by total; a group with nobody known (no leader passed) last.
+  const groups = [...byKey.values()].sort((a, b) => Number(a.ownerUserId == null) - Number(b.ownerUserId == null) || b.total - a.total || a.key.localeCompare(b.key))
 
   return {
     groups,
@@ -165,9 +169,8 @@ export function worklistCards(w: Pick<GcWorklist, 'groups'>): { held: { count: n
   const held = { count: 0, total: 0 }
   const ready = { count: 0, total: 0, late: 0 }
   for (const g of w.groups) {
-    if (g.kind === 'under_line') continue
     for (const r of g.rows) {
-      if (r.skipped || r.sent) continue
+      if (!r.overLine || r.skipped || r.sent) continue
       if (r.checked === 'done') {
         ready.count += 1
         ready.total += r.amount
@@ -184,12 +187,33 @@ export function worklistCards(w: Pick<GcWorklist, 'groups'>): { held: { count: n
 /**
  * The group's heading: "Account Man Malachi" ("Account Man Taunya (you)" for the signed-in
  * person — the owner's wording, v2.4097: it names whose GCs these are, whoever is at the
- * keyboard), "No account man yet", "Under $10,000".
+ * keyboard). Since v2.4149 every GC has an account man — the leader by default — so
+ * "No account man yet" only shows when no leader is known at all.
  */
-export function worklistGroupTitle(group: Pick<GcWorklistGroup, 'kind'>, ownerName: string, isYou: boolean, threshold = GC_ROUND_THRESHOLD): string {
-  if (group.kind === 'under_line') return `Under $${threshold.toLocaleString('en-US')}`
-  if (group.kind === 'unassigned') return 'No account man yet'
+export function worklistGroupTitle(group: Pick<GcWorklistGroup, 'ownerUserId'>, ownerName: string, isYou: boolean): string {
+  if (group.ownerUserId == null) return 'No account man yet'
   return `Account Man ${ownerName}${isYou ? ' (you)' : ''}`
+}
+
+/** The account man for a GC: the standing pick, else the account manager on most of its jobs, else the leader (v2.4149). */
+export function ownerFor(gcId: string, senders: ReadonlyMap<string, string>, accountMen: ReadonlyMap<string, string>, leaderUserId: string | null): { ownerUserId: string | null; ownerSource: GcWorklistRow['ownerSource'] } {
+  const pick = senders.get(gcId)
+  if (pick) return { ownerUserId: pick, ownerSource: 'pick' }
+  const jobs = accountMen.get(gcId)
+  if (jobs) return { ownerUserId: jobs, ownerSource: 'jobs' }
+  if (leaderUserId) return { ownerUserId: leaderUserId, ownerSource: 'leader' }
+  return { ownerUserId: null, ownerSource: null }
+}
+
+/** The leader a GC nobody is set on files under: the one live master account (the same rule as the company owner's fallback), else null. */
+export function leaderUserIdFrom(users: ReadonlyArray<{ id: string; role: string; archived_at?: string | null }>): string | null {
+  const live = users.filter((u) => u.role === 'master_technician' && !u.archived_at)
+  return live.length === 1 ? live[0]!.id : null
+}
+
+/** How many of a group's rows sit under the line — their word is optional, the heading says so (v2.4149). */
+export function underLineCount(group: Pick<GcWorklistGroup, 'rows'>): number {
+  return group.rows.filter((r) => !r.overLine).length
 }
 
 /** The note the app writes when a Draft Message send marks the GC sent. */
