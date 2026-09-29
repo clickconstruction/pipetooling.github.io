@@ -929,7 +929,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const canSeeBilledExpectedPay = stagesGates.canSeeBilledExpectedPay(authRole)
   // The lien runway's facts for every billed job (v2.4051): the property kind (a house's clock is a month shorter) and any affidavit or release already on file.
   const billedLienClockJobs = useMemo(
-    () => jobs.filter((j) => j.status === 'billed').map((j) => ({ id: j.id, customer_address_id: j.customer_address_id ?? null })),
+    () => jobs.filter((j) => j.status === 'billed').map((j) => ({ id: j.id, customer_address_id: j.customer_address_id ?? null, gc_customer_id: j.gc_customer_id ?? null })),
     [jobs],
   )
   const billedLienClocks = useBilledLienClocks(billedLienClockJobs)
@@ -990,6 +990,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         expectedPayYmd: model?.expectedYmd ?? null,
         filedYmd: clock.filedYmd,
         releasedYmd: clock.releasedYmd,
+        isSub: Boolean(job.gc_customer_id),
+        noticedMonths: clock.noticedMonths,
+        anyNoticeOnFile: clock.noticeOnFile,
       })
     },
     [billedLienClocks, billedPaySpeeds, promisedPayDates],

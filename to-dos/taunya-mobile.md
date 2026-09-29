@@ -2,16 +2,16 @@
 name: Taunya on a phone
 number: 30
 group: close
-status: audited 2026-09-22 · thirteen surfaces captured at 375 px as the sample assistant · before/after drawn for each · PR 1 (the shell) shipped 2026-09-23 as v2.3749 · PR 2 redrawn against the code (`taunya-mobile-pr2-pipeline.html`), five calls taken 2026-09-23 · PR 2a (the Pipeline) v2.3762 · PR 2b (the window's bar) v2.3779 · PR 3 redrawn against the code (`taunya-mobile-pr3-quickfill.html`, the rhythm rule), five calls taken, built as v2.3783 · PR 4's five calls taken 2026-09-27 (all as recommended; superintendents sit with the crews) · PR 4a-1 (the Needs You deck) v2.3881 · PR 4a-2 (the Inbox folds) v2.3882 · PR 4a-3 (the Dashboard in office order) v2.3883 · PR 4b-1 (the Day: crews first, the chips) v2.3884 · PR 4b-2 (the Day's block sheet) v2.3885 — PR 4 is built · PR 5 drawn against the code 2026-09-27 (`taunya-mobile-pr5-rows.html`), the eight calls taken the same day, all as recommended · PR 5a (Customers is the search) v2.3886 · PR 5b (Subs: Pay as rows, the sheet, the bulk door) v2.3887 · PR 5c (Supply houses: the card's balance, the house screen) v2.3888 · PR 5d (People · Hours: three views, the person screen) v2.3889 — all five PRs are built · the owner's fourteen open calls taken 2026-09-27 (the picks are in the artifact's store) and built as v2.3890 (the lien timeline's Waiting-on line) · v2.3891 (the folds' counts, the quiet squares) · v2.3892 (Quickfill's section colours) · v2.3893 (Dispatch Mode's block sheet) · v2.3894 (Subs Work as rows); two picks built differently and said so: the hours grid stays under *Week & sessions* (its day sheet is the only place hours are typed from a phone — the owner then picked that), Job Report and Tally are quiet links rather than hidden (Job Report has no other door on a phone) · a phone look ran 2026-09-27 at iPhone 15 size in emulation, read-only, as every sample login; its four display bugs fixed as v2.3895 · left: a look on a real phone, the look's open findings, and the leftovers below
+status: audited 2026-09-22 · thirteen surfaces captured at 375 px as the sample assistant · before/after drawn for each · PR 1 (the shell) shipped 2026-09-23 as v2.3749 · PR 2 redrawn against the code (`taunya-mobile-pr2-pipeline.html`), five calls taken 2026-09-23 · PR 2a (the Pipeline) v2.3762 · PR 2b (the window's bar) v2.3779 · PR 3 redrawn against the code (`taunya-mobile-pr3-quickfill.html`, the rhythm rule), five calls taken, built as v2.3783 · PR 4's five calls taken 2026-09-27 (all as recommended; superintendents sit with the crews) · PR 4a-1 (the Needs You deck) v2.3881 · PR 4a-2 (the Inbox folds) v2.3882 · PR 4a-3 (the Dashboard in office order) v2.3883 · PR 4b-1 (the Day: crews first, the chips) v2.3884 · PR 4b-2 (the Day's block sheet) v2.3885 — PR 4 is built · PR 5 drawn against the code 2026-09-27 (`taunya-mobile-pr5-rows.html`), the eight calls taken the same day, all as recommended · PR 5a (Customers is the search) v2.3886 · PR 5b (Subs: Pay as rows, the sheet, the bulk door) v2.3887 · PR 5c (Supply houses: the card's balance, the house screen) v2.3888 · PR 5d (People · Hours: three views, the person screen) v2.3889 — all five PRs are built · the owner's fourteen open calls taken 2026-09-27 (the picks are in the artifact's store) and built as v2.3890 (the lien timeline's Waiting-on line) · v2.3891 (the folds' counts, the quiet squares) · v2.3892 (Quickfill's section colours) · v2.3893 (Dispatch Mode's block sheet) · v2.3894 (Subs Work as rows); two picks built differently and said so: the hours grid stays under *Week & sessions* (its day sheet is the only place hours are typed from a phone — the owner then picked that), Job Report and Tally are quiet links rather than hidden (Job Report has no other door on a phone) · a phone look ran 2026-09-27 at iPhone 15 size in emulation, read-only, as every sample login; its four display bugs fixed as v2.3895 · **Taunya walked all fifteen on her own iPhone 2026-09-28** (the answers below): eleven Good, and her four asks built the same day — v2.4073 the sheet form above the dock (Save was cut off) · v2.4093 *The dock* row in More (a tap changes a slot; the hold never opened for her) and PO in Quickfill's place on the assistant's four · Week & sessions kept (L11 closed) · left: her second look, the look's open findings, and the leftovers below
 summary: >
   The assistant's surfaces, ranked by Taunya's own page-minutes (189 h over 90 days), each
   looked at on a phone and rated; a first proposal and a second "is this the best we can do"
   pass for every one, drawn side by side; two bugs the capture found; a five-PR order.
-next: A look on a real iPhone as Taunya — the look so far was emulation, and it did not exercise the one-line clock row or any save — then the look's open findings (the move sheet's person list carries ZZ TEST and twin accounts; the *Add Task* banner takes the top of the page), the leftovers table (L2, L5–L11) with the owner, and close the card. The controller's empty supply houses, found in the same look, is #48.
+next: Taunya's second look on her phone — the sheet form's Save whole, a slot changed from More's *The dock* row, PO on the bar — then the look's open findings (the move sheet's person list carries ZZ TEST and twin accounts; the *Add Task* banner takes the top of the page), the leftovers table (L2, L5–L10) with the owner, and close the card. The controller's empty supply houses, found in the emulated look, is #48.
 size: L
-blocker: A look on a real phone.
+blocker: Taunya's second look on her phone.
 mockup: to-dos/taunya-mobile-before-after.html
-ver: v2.3737 · v2.3738 · v2.3749 · v2.3762 · v2.3779 · v2.3783 · v2.3881 · v2.3882 · v2.3883 · v2.3884 · v2.3885 · v2.3886 · v2.3887 · v2.3888 · v2.3889 · v2.3890 · v2.3891 · v2.3892 · v2.3893 · v2.3894 · v2.3895
+ver: v2.3737 · v2.3738 · v2.3749 · v2.3762 · v2.3779 · v2.3783 · v2.3881 · v2.3882 · v2.3883 · v2.3884 · v2.3885 · v2.3886 · v2.3887 · v2.3888 · v2.3889 · v2.3890 · v2.3891 · v2.3892 · v2.3893 · v2.3894 · v2.3895 · v2.4073 · v2.4093
 ---
 
 # Taunya on a phone: the assistant's surfaces, rated and redrawn
@@ -157,6 +157,26 @@ where a flow changes; PR 1 also amends `docs/twins/APP_DIRECTORY.md` (the phone 
 `scripts/mobile-surface-shots.mjs --out <dir>` regenerates the row set; "Past right edge" counts
 elements whose box ends beyond 375 px, the sideways-scroll tell.
 
+## Taunya's walk on her own iPhone (2026-09-28)
+
+The walk page (https://claude.ai/artifact/CRDGheVyhBaJbLnxzm8TJV, private): fifteen screens, each with
+a door into the app, the 2026-09-27 emulated shot beside it, one or two questions, and *Good* /
+*Cut off or hard to tap* with a note. Her answers, and what each became:
+
+| # | Screen | Answer | Note | Became |
+|---|---|---|---|---|
+| 1 | The bar itself | Cut off or hard to tap | "Would like to not have Quickfill at the bottom dock but the PO generator" | **v2.4093** — PO in Quickfill's slot on the assistant's four (`roleDockDefault`); Quickfill is under More |
+| 2 | More | Cut off or hard to tap | "Can't swap out pages on dock for different ones under More" — the page had told her to press and hold a slot | **v2.4093** — *The dock* row at the top of More: tap a slot, then the page; ‹ Back returns to More; Reset under the row. The hold stays, but it is no longer the only door |
+| 3–5, 7–9, 11–14 | Clock row · folded lines · Needs You · Pipeline · job window · Subs Pay · Day · round · Customers · supply house | Good | — | — |
+| 6 | My Inbox and team inboxes | Good | "Prefer them not being open" — the page asked whether she missed them open; she does not | Nothing; the folds stay closed until opened |
+| 10 | Subs · Work | Cut off or hard to tap | "The Save button is cut off partially" (screenshot by text) | **v2.4073** — the Sub Labor sheet form (*Edit the sheet*) stood at z 50 under the dock's 1000; now 1100 |
+| 15 | People · Hours | Good | "Rarely use Week & sessions on the phone" — the page asked whether she ever needs it | L11 closed: kept as the third view |
+
+The hold not opening on her phone is unexplained — the same `useLongPress` drives Quick Assign. It
+fires on release after 450 ms; if iOS ends the touch early on that button the release never comes.
+A simulator run is the way to see it (the recipe is in the session memory); the tap door makes it
+moot for her.
+
 ## Leftovers from PRs 1–3 (2026-09-23)
 
 What the shipped PRs deferred, with the call on each. Two are worth doing; two are not.
@@ -172,7 +192,7 @@ What the shipped PRs deferred, with the call on each. Two are worth doing; two a
 | L8 | **The block sheet on Quickfill's schedule section.** Quickfill mounts the Day section bare, with no hub around it to own the move sheet and the note modal, so a block tap still opens the job's week there. (Dispatch Mode's Schedule tab is its own agenda with its own edit flow — it has no *reassign to another person*, which is the gap worth asking Taunya about.) | v2.3885 | Later | The Schedule page's Day tab is where her 30 hours are. |
 | L9 | **The Work view's cards are still about 500 px each.** 5b put the bulk door above them and left the cards as they were; a two-line card with the row's move in a sheet is the same pattern as the Pay rows. | v2.3887 | Later | The Pay table was the broken one; the cards only scroll. |
 | L10 | **The house screen's job-accounts roster and purchase orders.** The desk's opened house also shows the job-accounts roster and the house's purchase orders; the phone screen carries the balance, notes and invoices only. | v2.3888 | Later | Neither is what a call with the house is about. |
-| L11 | **The hours grid on a phone — keep or drop.** The owner's call was that the week grid is not drawn on a phone. It was kept under *Week & sessions* because its phone mode is the only place a day's hours can be typed from a phone. Drop it if nobody types hours from a phone; the Approvals window also still wears its desk layout. | v2.3889 | Owner's call | One line in `People.tsx` either way. |
+| L11 | **The hours grid on a phone — keep or drop.** The owner's call was that the week grid is not drawn on a phone. It was kept under *Week & sessions* because its phone mode is the only place a day's hours can be typed from a phone. Drop it if nobody types hours from a phone; the Approvals window also still wears its desk layout. | v2.3889 | **Closed 2026-09-28 — keep.** Taunya: rarely, not never. | One line in `People.tsx` either way. |
 | L4 | **Re-measure the numbers to beat.** `scripts/mobile-surface-shots.mjs` needs a Playwright browser installed on this machine (`npx playwright install chromium`) before it can capture again. | audit | Skip unless the audit table is wanted updated | The live walks proved each surface. |
 
 ## Verify recipe

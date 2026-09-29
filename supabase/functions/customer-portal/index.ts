@@ -16,6 +16,7 @@ import {
   type PortalPaymentRow,
 } from '../_shared/portalMergedBills.ts'
 import { buildPortalProperties } from '../_shared/portalProperties.ts'
+import { buildPortalChecks, type PortalChecksEventRow, type PortalChecksInvoiceRow, type PortalChecksPaymentRow } from '../_shared/portalChecks.ts'
 import { buildPortalPropertyNotices, type PortalNoticeFilingRow, type PortalPropertyNotice } from '../_shared/portalPropertyNotices.ts'
 import { openBillJobIds, owedJobIdsForViewer, PORTAL_OPEN_INVOICE_STATUS } from '../_shared/portalBillMembership.ts'
 import { linkMayBeStale, type OpenStripeBillRow } from '../_shared/stripeInvoiceLinkRefresh.ts'
@@ -178,7 +179,7 @@ serve(async (req) => {
     }
 
     const jobSelect =
-      'id, hcp_number, click_number, job_name, job_address, status, revenue, payments_made, customer_id, gc_customer_id, gc_shares_stage_dates, bill_to_party, show_bills_to_other_party, service_types:service_type_id(name)'
+      'id, hcp_number, click_number, job_name, job_address, status, revenue, payments_made, customer_id, gc_customer_id, gc_shares_stage_dates, bill_to_party, show_bills_to_other_party, lien_retainage_held, service_types:service_type_id(name)'
     let jobs: PortalJobRow[]
     if (link.audience === 'all') {
       const { data: jobsRaw } = await admin
@@ -247,7 +248,7 @@ serve(async (req) => {
         // the kernel too.
         const { data: payRaw } = await admin
           .from('jobs_ledger_payments')
-          .select('job_id, invoice_id, amount, paid_on, payment_type, sequence_order')
+          .select('id, job_id, invoice_id, amount, paid_on, sent_on, payment_type, reference_number, sequence_order')
           .in('job_id', [...new Set(invoices.map((i) => i.job_id))])
         payments = (payRaw ?? []) as PortalPaymentRow[]
       }
@@ -301,6 +302,33 @@ serve(async (req) => {
         for (const o of (others ?? []) as Array<{ id: string; name: string | null }>) {
           if (o.name) partyNames[o.id] = o.name
         }
+      }
+    }
+
+    // Your payments (v2.4053): every sent bill and payment on the viewer's jobs, pre-scoped to
+    // what they pay by _shared/portalChecks.ts; the page folds them into checks. A read failure
+    // leaves it null and the section off — never the page.
+    let checks: ReturnType<typeof buildPortalChecks> | null = null
+    if (jobs.length > 0) {
+      try {
+        const jobIds = jobs.map((j) => j.id)
+        const [{ data: cInv }, { data: cPay }] = await Promise.all([
+          admin.from('jobs_ledger_invoices').select('id, job_id, amount, status, billed_at, sequence_order, bill_to_party, bill_to_email').in('job_id', jobIds).in('status', ['billed', 'paid']),
+          admin.from('jobs_ledger_payments').select('id, job_id, invoice_id, amount, paid_on, sent_on, payment_type, reference_number, sequence_order').in('job_id', jobIds),
+        ])
+        const payRows = (cPay ?? []) as PortalChecksPaymentRow[]
+        let evRows: PortalChecksEventRow[] = []
+        if (payRows.length > 0) {
+          const { data: ev } = await admin
+            .from('jobs_ledger_payment_events')
+            .select('id, kind, payment_id, from_job_id, to_job_id, amount, created_at')
+            .eq('kind', 'moved')
+            .in('payment_id', payRows.map((p) => p.id))
+          evRows = (ev ?? []) as PortalChecksEventRow[]
+        }
+        checks = buildPortalChecks({ jobs, invoices: (cInv ?? []) as PortalChecksInvoiceRow[], payments: payRows, events: evRows, viewerCustomerId: link.customer_id })
+      } catch (e) {
+        console.warn('customer-portal checks: skipped —', e instanceof Error ? e.message : String(e))
       }
     }
 
@@ -587,6 +615,7 @@ serve(async (req) => {
       agreements,
       testReports,
       stages,
+      checks,
       promise,
       bankTransfer,
     })

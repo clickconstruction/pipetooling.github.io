@@ -15,7 +15,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { DEFAULT_TEST_REPORT_SETTINGS, parseTestReportSettings } from '../_shared/testReport.ts'
 import { asRoomRole, roomCounts, roomRowsFrom, type RoomItemSource, type RoomMessage,
-  type RoomRevision, type SubmittalRoomPayload } from '../_shared/submittalRoomPayload.ts'
+  type RoomProcurement, type RoomRevision, type SubmittalRoomPayload } from '../_shared/submittalRoomPayload.ts'
+import { stageDatesFromJob } from '../_shared/procurementStageDates.ts'
 import { sampleStateFromToken } from '../_shared/customerSample.ts'
 import { sampleSubmittalRoomResponse } from '../_shared/customerSampleFixtures.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
@@ -152,7 +153,52 @@ serve(async (req) => {
       personOut = { ...personOut, messagesThisHour: count ?? 0 }
     }
 
-    return json({ status: 'open', closedAt: null, ...base, person: personOut, revisions, messages } satisfies SubmittalRoomPayload)
+    // v2.4087 · the procurement card: the office's log without the PO or the house, the takeoff's
+    // stages and the job's dates — the page derives released / expected / required / float itself.
+    let procurement: RoomProcurement | undefined
+    try {
+      const [recs, countRows, splits, job, upd] = await Promise.all([
+        admin.from('bid_procurement_items').select('tag, label, lead_time_days, stage, ordered_on, expected_on, delivered_on, note, sort_order').eq('bid_id', room.bid_id).order('sort_order'),
+        admin.from('bids_count_rows').select('id, fixture').eq('bid_id', room.bid_id),
+        admin.from('bid_takeoff_stage_splits').select('count_row_id, line_id, part_id, rough_in, top_out, trim_set, source').eq('bid_id', room.bid_id),
+        admin.from('jobs_ledger').select('id').eq('bid_id', room.bid_id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+        admin.from('bid_procurement_updates').select('sent_at').eq('bid_id', room.bid_id).order('sent_at', { ascending: false }).limit(1).maybeSingle(),
+      ])
+      let stageDates: Record<string, string> = {}
+      const jobId = (job.data as { id: string } | null)?.id ?? null
+      if (jobId) {
+        const [{ data: fixtures }, { data: windows }] = await Promise.all([
+          admin.from('jobs_ledger_fixtures').select('id, name, stage_kind').eq('job_id', jobId),
+          admin.from('job_stage_windows').select('fixture_id, window_start').eq('job_id', jobId),
+        ])
+        stageDates = stageDatesFromJob((fixtures ?? []) as Array<{ id: string; name: string; stage_kind: string | null }>, (windows ?? []) as Array<{ fixture_id: string; window_start: string | null }>) as Record<string, string>
+      }
+      const records = ((recs.data ?? []) as Array<Record<string, unknown>>).map((r) => ({
+        tag: (r.tag as string | null) ?? null,
+        label: String(r.label ?? ''),
+        leadTimeDays: r.lead_time_days == null ? null : Number(r.lead_time_days),
+        stage: (r.stage as string | null) ?? null,
+        orderedOn: (r.ordered_on as string | null) ?? null,
+        expectedOn: (r.expected_on as string | null) ?? null,
+        deliveredOn: (r.delivered_on as string | null) ?? null,
+        note: String(r.note ?? ''),
+        sortOrder: Number(r.sort_order ?? 0),
+      }))
+      const hasReleased = revisions[0]?.rows.some((r) => r.decision?.kind === 'approved') ?? false
+      if (records.length > 0 || hasReleased) {
+        procurement = {
+          records,
+          countRows: ((countRows.data ?? []) as Array<{ id: string; fixture: string | null }>).map((c) => ({ id: c.id, fixture: c.fixture })),
+          splits: ((splits.data ?? []) as Array<Record<string, unknown>>).map((s) => ({ countRowId: String(s.count_row_id), lineId: (s.line_id as string | null) ?? null, partId: (s.part_id as string | null) ?? null, roughIn: Number(s.rough_in ?? 0), topOut: Number(s.top_out ?? 0), trimSet: Number(s.trim_set ?? 0), source: String(s.source ?? 'hand') })),
+          stageDates,
+          lastUpdateAt: (upd.data as { sent_at: string } | null)?.sent_at ?? null,
+        }
+      }
+    } catch (e) {
+      console.error('get-submittal-room procurement', e)
+    }
+
+    return json({ status: 'open', closedAt: null, ...base, person: personOut, revisions, messages, ...(procurement ? { procurement } : {}) } satisfies SubmittalRoomPayload)
   } catch (e) {
     console.error('get-submittal-room', e)
     return json({ error: 'Internal error' }, 500)

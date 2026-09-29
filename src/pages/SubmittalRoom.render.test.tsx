@@ -77,6 +77,44 @@ describe('SubmittalRoom', () => {
     expect(screen.getByText('Everything matches the plans')).toBeTruthy()
   })
 
+  it('the procurement card (v2.4087): released, ordered and delivered tags with when they land against the schedule — status and dates, never a PO or a house', async () => {
+    const procurement = {
+      records: [
+        { tag: 'DWH-1', label: '', leadTimeDays: null, stage: null, orderedOn: '2026-09-24', expectedOn: null, deliveredOn: null, note: '', sortOrder: 0 },
+        { tag: 'WC-1', label: '', leadTimeDays: null, stage: null, orderedOn: '2026-09-20', expectedOn: null, deliveredOn: '2026-09-26', note: '', sortOrder: 1 },
+        { tag: null, label: 'Grease interceptor', leadTimeDays: 56, stage: 'rough_in', orderedOn: '2026-09-18', expectedOn: null, deliveredOn: null, note: '', sortOrder: 2 },
+      ],
+      countRows: [{ id: 'c1', fixture: 'DWH-1 - WATER HEATER' }, { id: 'c2', fixture: 'WC-1 - WATER CLOSET' }],
+      splits: [{ countRowId: 'c1', lineId: null, partId: null, roughIn: 0, topOut: 0, trimSet: 1, source: 'hand' }, { countRowId: 'c2', lineId: null, partId: null, roughIn: 0, topOut: 0, trimSet: 1, source: 'rule' }],
+      stageDates: { rough_in: '2026-10-06', trim_set: '2026-11-17' },
+      lastUpdateAt: '2026-09-28T18:00:00Z',
+    }
+    const rows = [
+      row({ id: 'a', tag: 'DWH-1', kind: 'differs', proposed: 'Bradford White RE2HP50', why: 'x', decision: { kind: 'approved', note: null, byName: 'Dana W.', byPersonId: 'p1', at: '2026-09-22T16:00:00Z' }, leadTimeDays: 42 }),
+      row({ id: 'd', tag: 'WC-1', kind: 'matches', decision: { kind: 'approved', note: null, byName: 'Dana W.', byPersonId: 'p1', at: '2026-09-22T16:00:00Z' }, leadTimeDays: 0 }),
+      row({ id: 'e', tag: 'KS-1', kind: 'matches' }),
+    ]
+    mockFetch(200, payload({ revisions: [{ id: 'rev-2', rev: 2, sharedAt: '2026-09-16T15:00:00Z', current: true, hasPackage: true, rows, counts: { total: 3, matches: 2, differs: 1, notQuoted: 0, added: 0, decided: 2, open: 0 } }], procurement }))
+    mount('/submittal?t=roomtoken')
+    const cardEl = await screen.findByTestId('room-procurement')
+    expect(cardEl.textContent).toContain('Updated 09/28 by Click Plumbing')
+    expect(cardEl.textContent).toContain('2 released · 3 ordered · 1 delivered · 1 behind schedule')
+    const lines = screen.getAllByTestId('room-procurement-row').map((r) => r.textContent)
+    // DWH-1: ordered 09/24 + 6 wk → 11/05 against Trim Set 11/17 → on time. WC-1 delivered → on site. The interceptor: 8 wk from 09/18 → 11/13 against Rough In 10/06 → late.
+    expect(lines[0]).toContain('DWH-1')
+    expect(lines[0]).toContain('Ordered 09/24')
+    expect(lines[0]).toContain('11/05')
+    expect(lines[0]).toContain('11/17')
+    expect(lines[0]).toContain('on time')
+    expect(lines[1]).toContain('Delivered 09/26')
+    expect(lines[1]).toContain('on site')
+    expect(lines[2]).toContain('Grease interceptor')
+    expect(lines[2]).toContain('38 d late')
+    // KS-1 is awaiting review: not on the card. No PO, no house, anywhere.
+    expect(cardEl.textContent).not.toContain('KS-1')
+    expect(cardEl.textContent).not.toMatch(/PO|Ferguson/)
+  })
+
   it('a personal link names its person; a watching person can tap but not send', async () => {
     mockFetch(200, payload({ person: { id: 'p1', name: 'Dana Whitfield', role: 'architect', mayDecide: false } }))
     mount('/submittal?t=persontoken')

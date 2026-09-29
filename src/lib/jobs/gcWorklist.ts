@@ -181,11 +181,15 @@ export function worklistCards(w: Pick<GcWorklist, 'groups'>): { held: { count: n
   return { held, ready }
 }
 
-/** The group's heading: "Ask Malachi", "No account man yet", "Under $10,000". */
+/**
+ * The group's heading: "Account Man Malachi" ("Account Man Taunya (you)" for the signed-in
+ * person — the owner's wording, v2.4097: it names whose GCs these are, whoever is at the
+ * keyboard), "No account man yet", "Under $10,000".
+ */
 export function worklistGroupTitle(group: Pick<GcWorklistGroup, 'kind'>, ownerName: string, isYou: boolean, threshold = GC_ROUND_THRESHOLD): string {
   if (group.kind === 'under_line') return `Under $${threshold.toLocaleString('en-US')}`
   if (group.kind === 'unassigned') return 'No account man yet'
-  return isYou ? 'Your accounts' : `Ask ${ownerName}`
+  return `Account Man ${ownerName}${isYou ? ' (you)' : ''}`
 }
 
 /** The note the app writes when a Draft Message send marks the GC sent. */

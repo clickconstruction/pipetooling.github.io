@@ -104,6 +104,9 @@ export function parseSubmittalRoomPayload(json: unknown): SubmittalRoomPayload |
     company: { name: String(company.name ?? ''), tagline: String(company.tagline ?? ''), phone: String(company.phone ?? '') },
     person: person ? { id: String(person.id ?? ''), name: String(person.name ?? ''), role: asRoomRole(person.role), mayDecide: person.mayDecide !== false, ...(typeof person.messagesThisHour === 'number' ? { messagesThisHour: person.messagesThisHour } : {}) } : null,
     messages: Array.isArray(j.messages) ? threadOrder((j.messages as unknown[]).map(parseRoomMessage).filter((m): m is RoomMessage => m != null)) : [],
+    ...(j.procurement && typeof j.procurement === 'object' && Array.isArray((j.procurement as Record<string, unknown>).records)
+      ? { procurement: { records: [], countRows: [], splits: [], stageDates: {}, lastUpdateAt: null, ...(j.procurement as Record<string, unknown>) } as SubmittalRoomPayload['procurement'] }
+      : {}),
     revisions: (j.revisions as unknown[])
       .filter((r): r is Record<string, unknown> => !!r && typeof r === 'object')
       .map((r) => ({

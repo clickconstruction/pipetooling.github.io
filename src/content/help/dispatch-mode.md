@@ -5,7 +5,7 @@ roles: dev, master_technician, assistant, controller, superintendent
 keywords: dispatch mode, mobile, footer, tabs, dock, more, swap a tab, long press, quickfill, schedule, inbox, customers, bell, note to dispatch, badge, open requests, close a request, dismiss, oldest first, age chip, days waiting, needs you
 order: 30
 ---
-Dispatch Mode is a phone-first shell for whoever's running the day — the office-side companion to Job Mode. Turn it on and a tab bar pins to the bottom of every screen: **Dashboard · Schedule · Inbox · Customers** (plus **PO** if you turn it on). On a phone, an **assistant's** bar is her own four — **Jobs · Schedule · Quickfill · Inbox** — with **More** as the fifth.
+Dispatch Mode is a phone-first shell for whoever's running the day — the office-side companion to Job Mode. Turn it on and a tab bar pins to the bottom of every screen: **Dashboard · Schedule · Inbox · Customers** (plus **PO** if you turn it on). On a phone, an **assistant's** bar is her own four — **Jobs · Schedule · PO · Inbox** — with **More** as the fifth.
 
 :::example The pinned tab bar
 {{button:blue|Dashboard}} {{button:outline|Schedule}} {{button:outline|Inbox}} {{chip:red|4}} {{button:outline|Customers}} {{button:outline|PO}}
@@ -14,9 +14,9 @@ The red badge on Inbox counts **open** dispatch and estimator requests — close
 :::
 
 :::example The assistant's bar on a phone
-{{button:blue|Jobs}} {{button:outline|Schedule}} {{button:outline|Quickfill}} {{button:outline|Inbox}} {{chip:red|4}} {{button:outline|More}}
+{{button:blue|Jobs}} {{button:outline|Schedule}} {{button:outline|PO}} {{button:outline|Inbox}} {{chip:red|4}} {{button:outline|More}}
 
-**Jobs** opens the Pipeline. **Press and hold** any slot to swap it for another page — Supply houses, Subs · Pay, People · Hours, Customers, anything you can open — and it stays that way on that phone; hold again and tap **Reset to the role's four** to go back. **More** is the phone's one menu: a *Suggested for you* row from where you spend your time, every page, the mode switches, and Help / Settings / Sign out. While this bar is up the {{icon:gear}} gear and the ☰ menu step aside — everything in them is under More. Your desktop keeps its menus.
+**Jobs** opens the Pipeline; **PO** is the three-tap code for the counter. To change a slot, tap **More**, tap that slot in **The dock** row at the top, then tap the page you want in its place — Quickfill, Supply houses, Subs · Pay, People · Hours, Customers, anything you can open — and it stays that way on that phone (**press and hold** the slot on the bar does the same). **Reset to the role's four** under the row puts it back. **More** is the phone's one menu: a *Suggested for you* row from where you spend your time, every page, the mode switches, and Help / Settings / Sign out. While this bar is up the {{icon:gear}} gear and the ☰ menu step aside — everything in them is under More. Your desktop keeps its menus.
 :::
 
 {{gif:dispatch-mode.gif|Assign work in Dispatch Mode: pick the job, tap a day, tap people, take a suggested window}}
