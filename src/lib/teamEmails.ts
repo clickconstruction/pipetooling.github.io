@@ -33,6 +33,7 @@ export type TeamRealPreviewStream = 'crew_day' | 'money_waiting' | 'payment_fore
 export type TeamSampleEmailId =
   | 'money_waiting'
   | 'crew_day'
+  | 'payment_forecast'
   | 'signed_agreement_staff'
   | 'estimate_accepted_staff'
   | 'gc_word_ask'
@@ -131,8 +132,9 @@ export const TEAM_EMAILS: readonly TeamEmail[] = [
     label: 'Payment forecast',
     when: { kind: 'morning', label: 'Every weekday morning', order: 3 },
     recipients: { roles: OFFICE_AND_PRIMARY, decidedBy: 'role', rule: 'Devs, leaders, assistants, controllers and the primary — the function picks them by role.' },
-    sampleSubject: (c) => `Payment forecast — ${c.dateLabel}`,
-    render: { kind: 'real', stream: 'payment_forecast' },
+    sampleSubject: (c) => `Payment forecast — ${c.dateLabel} — $43,020 past expected · $8,200 this week`,
+    render: { kind: 'sample', sample: 'payment_forecast' },
+    real: 'payment_forecast',
     manage: emails('Emails & reports → Payment forecast'),
     reflects: ['payment promises and pay speeds on the Pipeline'],
   },
