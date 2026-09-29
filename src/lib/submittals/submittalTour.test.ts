@@ -53,3 +53,20 @@ describe('the stage sentences and the ? on each stage (v2.4125)', () => {
     expect(tourStopForStage(9)).toBe(0)
   })
 })
+
+describe('a trade word gets its plain word beside it the first time (v2.4140)', () => {
+  const TRADE: Array<[RegExp, RegExp]> = [
+    [/cut sheet/i, /maker’s page/],
+    [/\bRev 1\b/, /first version/],
+    [/\brevision\b/i, /version/],
+  ]
+  it.each([
+    ['the walkthrough', SUBMITTAL_TOUR_STEPS.map((s) => s.body)],
+    ['the stage sentences', [1, 2, 3, 4, 5, 6, 7, 8].map((n) => SUBMITTAL_STAGE_ABOUT[n] ?? '')],
+  ])('%s', (_name, texts) => {
+    for (const [word, plain] of TRADE) {
+      const first = texts.find((t) => word.test(t))
+      if (first) expect(first, `${word} first appears without its plain word`).toMatch(plain)
+    }
+  })
+})

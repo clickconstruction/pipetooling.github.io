@@ -1,17 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import {
-  REASON_LABELS,
-  STATUS_LABELS,
-  deriveProductStatus,
-  needsReason,
-  normalizeModel,
-  sameUnitNear,
-  statusCounts,
-  statusSummaryLine,
-  type ProductStatus,
-  type ReasonKind,
-} from './productStatus'
+import { REASON_LABELS, STATUS_LABELS, deriveProductStatus, needsReason, normalizeModel, sameUnitNear, statusCounts, statusSummaryLine, type ProductStatus, type ReasonKind, STATUS_MEANINGS, COLUMN_HELP } from './productStatus'
 
 const spec = (model: string | null, manufacturer: string | null = 'TOTO') => ({ manufacturer, model })
 const sub = (model: string | null, manufacturer: string | null = 'TOTO', label: string | null = null) => ({ manufacturer, model, label })
@@ -144,5 +133,16 @@ describe('statusCounts + statusSummaryLine', () => {
   })
   it('a reasoned alternate does not add the "without a reason" clause', () => {
     expect(statusSummaryLine(statusCounts(rows(['alternate', 'lead_time'], ['alternate', 'cost'])))).toBe('2 alternates')
+  })
+})
+
+describe('the statuses explained where they are read (v2.4140)', () => {
+  it('every status has a plain meaning under twelve words, and the three columns their help', () => {
+    for (const key of Object.keys(STATUS_LABELS) as Array<keyof typeof STATUS_LABELS>) {
+      expect(STATUS_MEANINGS[key], key).toBeTruthy()
+      expect(STATUS_MEANINGS[key].split(/\s+/).length, key).toBeLessThanOrEqual(12)
+    }
+    expect(COLUMN_HELP.sheet).toMatch(/maker’s page/)
+    expect(COLUMN_HELP.status).toMatch(/plans asked for/)
   })
 })

@@ -29,7 +29,7 @@ export const SUBMITTAL_TOUR_STEPS: SpotlightTourStep[] = [
   {
     anchor: 'submittals-takeoff',
     title: 'From the takeoff',
-    body: 'You counted these fixtures on the takeoff. Tick the ones the GC needs to approve. Then tap Build Rev 1. Each ticked fixture becomes a row.',
+    body: 'You counted these fixtures on the takeoff. Tick the ones the GC needs to approve. Then tap Build Rev 1, the first version of your submittal. Each ticked fixture becomes a row.',
   },
   {
     anchor: 'submittals-plug-in',
@@ -50,7 +50,7 @@ export const SUBMITTAL_TOUR_STEPS: SpotlightTourStep[] = [
   {
     anchor: 'submittals-rows',
     title: 'Step 3. Fix the rows',
-    body: 'Each row needs three things. A status: is this the product the plans asked for? A reason, if it is not. A cut sheet, the maker’s page for the product. Tap Edit on a row to fill them in. The line at the top counts what is still missing.',
+    body: 'Check each row. Is it the product the plans asked for? If not, say why. Add its cut sheet, the maker’s page for the product. Tap Edit on a row to fill it in. The Status column explains its words under the table.',
     missingBody: 'The rows appear after you build Rev 1.',
   },
   {
@@ -137,7 +137,7 @@ export function rememberOpenEveryStage(on: boolean, storage: Pick<Storage, 'setI
 export const SUBMITTAL_STAGE_ABOUT: Record<number, string> = {
   1: 'Pick where the rows come from. Each row is one product you will install.',
   2: 'Rev 1 is the first version of your submittal. Only the newest version can be changed.',
-  3: 'Each row needs a status, a reason if it differs from the plans, and a cut sheet.',
+  3: 'Check each row. Is it the product the plans asked for? If not, say why. Add its cut sheet, the maker’s page for the product.',
   4: 'One PDF for the GC: the cover table and every cut sheet.',
   5: 'Get a link and paste it into your email to the GC.',
   6: 'The GC or the architect answers each row: Approve, Revise or Reject.',
