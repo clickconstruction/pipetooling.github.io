@@ -1055,3 +1055,13 @@ describe('the suit watch card (v2.3781)', () => {
     expect(buildNeedsYouItems(inputs({ lienWatch: { noticeDue: [], filingDue: [], serveDue: [] } })).some((i) => i.key === 'lien-suit-year')).toBe(false)
   })
 })
+
+describe('tracking owed (v2.4119)', () => {
+  it('one amber card naming how many mailed notices have no number; quiet when none', () => {
+    const items = buildNeedsYouItems(inputs({ lienWatch: { noticeDue: [], filingDue: [], serveDue: [], trackingOwed: [{ jobId: 'j1', filingId: 'f1', recipients: ['owner', 'original_contractor'], sentOn: '2026-09-29' }, { jobId: 'j2', filingId: 'f2', recipients: ['owner'], sentOn: '2026-09-29' }] } }))
+    const card = items.find((i) => i.key === 'lien-tracking-owed')!
+    expect(card).toMatchObject({ severity: 'amber', kicker: 'Lien notices', title: '2 mailed notices have no tracking number', figure: '2', actionLabel: 'Open the Lien desk' })
+    expect(card.detail).toContain('3 certified sends have no number')
+    expect(buildNeedsYouItems(inputs({ lienWatch: { noticeDue: [], filingDue: [], serveDue: [], trackingOwed: [] } })).some((i) => i.key === 'lien-tracking-owed')).toBe(false)
+  })
+})

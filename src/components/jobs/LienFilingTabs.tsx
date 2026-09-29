@@ -21,6 +21,8 @@ import { payPageBlocks, payPageRows, type PayPageAssets } from '../../lib/jobs/l
 import { buildPayPageAssets } from '../../lib/jobs/lienNoticePayPageAssets'
 import { noticeEnclosureRefItem, noticeInvoiceExhibitInputs, noticeInvoicePrintSections, type NoticeInvoiceDoc } from '../../lib/jobs/noticeInvoiceEnclosure'
 import { supabase } from '../../lib/supabase'
+import LienTrackingOwedEditor from './LienTrackingOwedEditor'
+import { sendsTrackingOwed } from '../../lib/jobs/lienSendTracking'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
@@ -595,6 +597,7 @@ export default function LienFilingTabs({
                 </span>
               )
             })()}
+            {(f.kind === 'notice_53_056' || f.kind === 'retainage_53_057') && sendsTrackingOwed(f.sends).length ? <LienTrackingOwedEditor filing={f} onSaved={onChanged} compact /> : null}
             <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem' }}>
               <button type="button" onClick={() => viewFiling(f)} style={{ background: 'none', border: 'none', color: 'var(--text-link)', fontWeight: 600, cursor: 'pointer', padding: 0, fontSize: '0.72rem' }}>
                 View

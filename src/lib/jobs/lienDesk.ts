@@ -61,13 +61,14 @@ export function parseLienNoticePolicy(v: unknown): LienNoticePolicy {
   return v === 'send' || v === 'hold' ? v : 'ask'
 }
 
-export type LienDeskPile = 'needs_owner' | 'to_draft' | 'awaiting' | 'ready' | 'held' | 'sent' | 'missed'
+export type LienDeskPile = 'needs_owner' | 'to_draft' | 'awaiting' | 'ready' | 'printed' | 'held' | 'sent' | 'missed'
 
 export const LIEN_DESK_PILES: ReadonlyArray<{ key: LienDeskPile; label: string }> = [
   { key: 'needs_owner', label: 'Needs the owner' },
   { key: 'to_draft', label: 'To draft' },
   { key: 'awaiting', label: 'Awaiting approval' },
   { key: 'ready', label: 'Ready to send' },
+  { key: 'printed', label: 'In the mail · tracking owed' },
   { key: 'held', label: 'Held' },
   { key: 'sent', label: 'Sent · 30d' },
   { key: 'missed', label: 'Missed' },
@@ -130,6 +131,7 @@ const EMPTY_PILES = (): Record<LienDeskPile, LienDeskEntry[]> => ({
   to_draft: [],
   awaiting: [],
   ready: [],
+  printed: [],
   held: [],
   sent: [],
   missed: [],
@@ -157,7 +159,8 @@ function pileForItem(item: LienDeskItemRow, hasOwner: boolean): LienDeskPile {
     case 'awaiting_approval':
       return 'awaiting'
     case 'approved':
-      return 'ready'
+      // Printed but not yet recorded (v2.4119): the envelopes are stuffed or in the mail, the numbers not yet on record.
+      return (item as { printed_at?: string | null }).printed_at ? 'printed' : 'ready'
     case 'held':
       return 'held'
     case 'sent':

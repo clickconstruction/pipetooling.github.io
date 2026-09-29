@@ -58,6 +58,9 @@ import { parsePaymentBond } from '../../lib/jobs/lienDeskRetainage'
 import LienOwnerCallDialog from './LienOwnerCallDialog'
 import { LienCallerDoor } from './LienCallerDoor'
 import LienDeskCalendarTab from './LienDeskCalendarTab'
+import LienTrackingOwedEditor from './LienTrackingOwedEditor'
+import { sendsTrackingOwed } from '../../lib/jobs/lienSendTracking'
+import { markLienDeskItemsPrinted } from '../../lib/jobs/lienDeskIo'
 import type { LienCalendarJob } from '../../lib/jobs/lienCalendar'
 import { callLetterFactsFor, type CallerMatchInput } from '../../lib/jobs/lienCallerMatch'
 import { DEFAULT_CLAIMANT_NAME } from '../../lib/jobs/lienNoticeDraft'
@@ -147,7 +150,7 @@ export type LienDeskModalProps = {
   onPutGcOnNotice?: (gcId: string) => void
 }
 
-const PILE_ORDER: LienDeskPile[] = ['needs_owner', 'to_draft', 'awaiting', 'ready', 'held', 'sent', 'missed']
+const PILE_ORDER: LienDeskPile[] = ['needs_owner', 'to_draft', 'awaiting', 'ready', 'printed', 'held', 'sent', 'missed']
 
 const isLeader = isLienLeader
 const isOffice = isLienOffice
@@ -774,7 +777,7 @@ export default function LienDeskModal({
                     : e.pile === 'held'
                       ? `held · ${e.item?.hold_reason === 'promised' ? 'they promised' : 'call first'} · re-asks ${e.item?.hold_until ? formatYmdMonthDay(e.item.hold_until) : ''}`
                       : e.pile === 'sent'
-                        ? `sent ${e.item?.sent_at ? formatYmdMonthDay(e.item.sent_at.slice(0, 10)) : ''}`
+                        ? `sent ${e.item?.sent_at ? formatYmdMonthDay(e.item.sent_at.slice(0, 10)) : ''}${(() => { const f = (data?.filingsByJob[e.jobId] ?? []).find((x) => x.id === e.item?.sent_filing_id); return f && sendsTrackingOwed(f.sends).length ? ' · tracking owed' : '' })()}`
                         : e.pile === 'missed'
                           ? `window closed on ${e.missedMonths.map(workMonthShort).join(', ')}`
                           : e.pile === 'needs_owner'
@@ -1740,6 +1743,9 @@ export default function LienDeskModal({
       // The first packet's item carries the GC's okay and the owner's call; the entry's item may be a later letter two.
       const first = (lt?.firstItemId ? data?.items.find((i) => i.id === lt.firstItemId) : null) ?? selected.item
       const call = data?.ownerCallByJob[selected.jobId] ?? null
+      // The recorded packet (v2.4119): a certified send with no number yet gets its "add the number" door here.
+      const sentFiling = (data?.filingsByJob[selected.jobId] ?? []).find((f) => f.id === (first?.sent_filing_id ?? selected.item?.sent_filing_id)) ?? null
+      const trackingOwed = sentFiling ? sendsTrackingOwed(sentFiling.sends) : []
       const jobBalance = Math.max(0, Number(job?.revenue ?? 0) - Number(job?.payments_made ?? 0))
       // Counsel's sign-off (#41 PR 3, v2.3790): the memo's moment — an owner paying Click direct while the GC is silent needs
       // counsel's per-job okay. Read from the firm's matter through `legalSignoff`; no matter with the firm, no door.
@@ -1775,6 +1781,7 @@ export default function LienDeskModal({
             {lt && lt.day != null ? <span>Day <strong style={{ color: 'var(--text-700)' }}>{lt.day}</strong></span> : null}
             <span>GC paid: <strong style={{ color: 'var(--text-700)' }}>{jobBalance <= 0.005 ? 'yes' : 'no'}</strong></span>
             <span>GC authorized direct pay: <strong style={{ color: 'var(--text-700)' }}>{lt?.gcAuthorized ? `yes · ${formatYmdMonthDay(lt.gcAuthorized.at.slice(0, 10))}${lt.gcAuthorized.note ? ` · ${lt.gcAuthorized.note}` : ''}` : 'no'}</strong></span>
+            {sentFiling && trackingOwed.length ? <LienTrackingOwedEditor filing={sentFiling} onSaved={onChanged} /> : null}
             {lt?.letterTwo ? <span>Letter two: <strong style={{ color: 'var(--text-700)' }}>{lt.words}</strong></span> : null}
             {signoff ? <span data-lien-counsel-signoff style={signoff.state === 'signed_off' ? { color: 'var(--text-green-800)' } : signoff.state === 'declined' ? { color: 'var(--text-red-600)' } : undefined}>Counsel: <strong style={{ color: 'inherit' }}>{signoffLine || 'not asked'}</strong></span> : null}
             <span data-lien-owner-called>Owner called: <strong style={{ color: 'var(--text-700)' }}>{call ? ownerCallWords(call, formatYmdMonthDay, formatUsdNoCents) : 'not yet'}</strong>{call && affidavitPileFor(call) ? <span style={{ ...chip('var(--bg-green-tint)', 'var(--text-green-800)'), marginLeft: 6 }}>Pile {affidavitPileFor(call)}</span> : null}</span>
@@ -2032,7 +2039,11 @@ export default function LienDeskModal({
       })()}
       {runOpen && data ? (
         <LienDeskRunModal
-          notices={[...buildLienDeskRun(data.queue.piles.ready, data, issuer, signerNameFor, todayYmd, signerPhoneFor), ...buildLienRetainageRun(data.retainage.piles.ready, data, issuer, signerNameFor, todayYmd, signerPhoneFor)]}
+          onPrinted={async (ids) => {
+            await markLienDeskItemsPrinted(ids, authUserId).catch(() => undefined)
+            onChanged()
+          }}
+          notices={[...buildLienDeskRun([...data.queue.piles.ready, ...data.queue.piles.printed], data, issuer, signerNameFor, todayYmd, signerPhoneFor), ...buildLienRetainageRun(data.retainage.piles.ready, data, issuer, signerNameFor, todayYmd, signerPhoneFor)]}
           issuer={issuer}
           todayYmd={todayYmd}
           userId={authUserId}

@@ -5,7 +5,7 @@ import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { describeNoticeMonths } from '../../lib/jobs/lienNoticeDraft'
-import { RUN_SEND_METHODS, runNoticeProblems, runPacketHtml, runPayPageBlocks, type RunNotice, type RunPayPages, type RunSendMethod } from '../../lib/jobs/lienDeskRun'
+import { RUN_SEND_METHODS, runEnvelopeFacesHtml, runNoticeProblems, runPacketHtml, runPayPageBlocks, runRecordSplit, trackingShape, type RunNotice, type RunPayPages, type RunSendMethod } from '../../lib/jobs/lienDeskRun'
 import { payPageRows, type PayPageAssets, type PayPageRow } from '../../lib/jobs/lienNoticePayPage'
 import { buildPayPageAssets } from '../../lib/jobs/lienNoticePayPageAssets'
 import { filingDocHtml, type FilingDocBlock } from '../../lib/jobsDocuments/lienFilingDocuments'
@@ -30,6 +30,7 @@ export default function LienDeskRunModal({
   userId,
   onClose,
   onRecorded,
+  onPrinted,
 }: {
   notices: RunNotice[]
   issuer: PhysicalInvoiceIssuer | null
@@ -38,6 +39,8 @@ export default function LienDeskRunModal({
   onClose: () => void
   /** After a record — the desk re-reads. */
   onRecorded: () => void
+  /** The packet printed (v2.4119): the desk stamps these items printed so they sit in "In the mail · tracking owed" until recorded. */
+  onPrinted?: (itemIds: string[]) => Promise<void> | void
 }) {
   const { showToast } = useToastContext()
   const [notices, setNotices] = useState<RunNotice[]>(initial)
@@ -45,6 +48,9 @@ export default function LienDeskRunModal({
   // The saved copy (v2.3763): where the office keeps the packet as printed — one link and a line for the whole run; every notice's record carries it.
   const [docUrl, setDocUrl] = useState('')
   const [docNote, setDocNote] = useState('')
+  // The mailing (v2.4119): when the packet printed in this sitting, and the day the envelopes went out.
+  const [printedAt, setPrintedAt] = useState<string | null>(null)
+  const [mailedOn, setMailedOn] = useState(todayYmd)
   // One notice per property (#35 PR 3): off until the office ticks it — the form's claim changes when jobs combine.
   const [combine, setCombine] = useState(false)
   const combinable = useMemo(() => combineSummary(combineNoticesByProperty(notices, { combine: true })), [notices])
@@ -129,19 +135,36 @@ export default function LienDeskRunModal({
   }
 
   const printPacket = () => {
-    if (!openHtmlPrintWindow(runPacketHtml(shown, todayYmd, issuer, invoiceSectionsByJob, payPagesByJob))) showToast('Popup blocked — allow popups to print the packet.', 'error')
+    if (!openHtmlPrintWindow(runPacketHtml(shown, todayYmd, issuer, invoiceSectionsByJob, payPagesByJob))) {
+      showToast('Popup blocked — allow popups to print the packet.', 'error')
+      return
+    }
+    // Printed is a state (v2.4119): the desk shows these items in their own pile until the mailing is recorded. Best-effort.
+    const itemIds = shown.flatMap((n) => (partsOf(n) ?? [{ itemId: n.itemId }]).map((p) => p.itemId))
+    setPrintedAt(new Date().toISOString())
+    void Promise.resolve(onPrinted?.(itemIds)).catch(() => undefined)
   }
+  const printEnvelopes = () => {
+    if (!openHtmlPrintWindow(runEnvelopeFacesHtml(envelopes, issuer))) showToast('Popup blocked — allow popups to print the envelopes.', 'error')
+  }
+  // Back from the post office (v2.4119): the envelopes with a number record now; the rest stay printed.
+  const split = useMemo(() => runRecordSplit(shown), [shown])
 
   const record = async () => {
     if (busy || blocked || notices.length === 0) return
     setBusy(true)
     try {
-      const result = await recordLienDeskRun(shown, { userId, todayYmd, invoiceDocsByJob: invoiceDocsShown, payBlocksByJob, document: { url: docUrl, note: docNote } })
-      if (result.recorded.length) showToast(`${result.recorded.length} ${result.recorded.length === 1 ? 'notice' : 'notices'} recorded — the desk reads them as sent.`, 'success')
+      const result = await recordLienDeskRun(split.mailed, { userId, todayYmd, mailedOn, invoiceDocsByJob: invoiceDocsShown, payBlocksByJob, document: { url: docUrl, note: docNote } })
+      if (result.recorded.length) showToast(`${result.recorded.length} ${result.recorded.length === 1 ? 'notice' : 'notices'} recorded — the desk reads them as sent.${split.waiting.length ? ` ${split.waiting.length} ${split.waiting.length === 1 ? 'stays' : 'stay'} in the mail pile until its number is typed.` : ''}`, 'success')
       if (result.failed.length) showToast(`${result.failed.length} not recorded: ${result.failed.map((f) => `${f.label} (${f.reason})`).join('; ')}`, 'error')
       onRecorded()
-      if (result.failed.length === 0) onClose()
-      else setNotices((prev) => prev.filter((n) => result.failed.some((f) => f.itemId === n.itemId || shown.some((s) => s.itemId === f.itemId && (partsOf(s) ?? []).some((p) => p.itemId === n.itemId)))))
+      if (result.failed.length === 0 && split.waiting.length === 0) onClose()
+      else {
+        const keep = (n: RunNotice) =>
+          result.failed.some((f) => f.itemId === n.itemId || shown.some((s) => s.itemId === f.itemId && (partsOf(s) ?? []).some((p) => p.itemId === n.itemId))) ||
+          split.waiting.some((w) => w.itemId === n.itemId || (partsOf(w) ?? []).some((p) => p.itemId === n.itemId))
+        setNotices((prev) => prev.filter(keep))
+      }
     } finally {
       setBusy(false)
     }
@@ -164,6 +187,23 @@ export default function LienDeskRunModal({
             </p>
           </div>
           <button type="button" onClick={onClose} aria-label="Close" style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}>×</button>
+        </div>
+        <div data-testid="run-steps" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', padding: '0.45rem 1.25rem', borderBottom: '1px solid var(--border)', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+          <span style={{ fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Steps</span>
+          {[
+            ['1 · Print the packet', printedAt != null],
+            ['2 · Mail them', false],
+            ['3 · Record the mailing', false],
+          ].map(([label, done], i) => (
+            <span key={String(label)} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+              {i > 0 ? <span aria-hidden>→</span> : null}
+              <span style={{ padding: '1px 8px', borderRadius: 999, border: '1px solid var(--border-strong)', background: done ? 'var(--bg-green-tint)' : i === (printedAt ? 2 : 0) ? 'var(--bg-blue-tint)' : 'var(--surface)', color: done ? 'var(--text-green-800)' : 'inherit', fontWeight: 600 }}>
+                {label}
+                {done ? ' ✓' : ''}
+              </span>
+            </span>
+          ))}
+          {printedAt ? <span style={{ marginLeft: 'auto' }}>Back from the post office? Type each envelope’s number below — an envelope without one stays in the mail pile.</span> : null}
         </div>
         <div style={{ overflow: 'auto', padding: '0.5rem 1.25rem' }}>
           {notices.length === 0 ? <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>Nothing approved is waiting.</p> : null}
@@ -210,7 +250,18 @@ export default function LienDeskRunModal({
                       {env.method === 'email' ? (
                         <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>sent on record — the email id is the tracking{env.contents.length > 1 ? ', one email per notice' : ''}</span>
                       ) : (
+                        <>
                         <input value={env.tracking} onChange={(ev) => setEnvelope(env, { tracking: ev.target.value })} placeholder={env.method === 'hand' ? 'who signed for it' : '9407 1118 …'} aria-label={`${who} — tracking`} style={{ width: '100%', font: 'inherit', fontSize: '0.78rem', padding: '3px 6px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit' }} />
+                        {(() => {
+                          const shape = trackingShape(env.method, env.tracking)
+                          return env.tracking.trim() && shape.hint ? (
+                            <div data-testid={`run-tracking-shape-${env.n}`} style={{ fontSize: '0.7rem', color: shape.ok ? 'var(--text-green-700)' : 'var(--text-red-600)', marginTop: 2 }}>
+                              {shape.ok ? '✓ ' : ''}
+                              {shape.hint}
+                            </div>
+                          ) : null
+                        })()}
+                        </>
                       )}
                     </td>
                   </tr>,
@@ -240,14 +291,21 @@ export default function LienDeskRunModal({
             <input value={docUrl} onChange={(ev) => setDocUrl(ev.target.value)} placeholder="Drive link to the packet as printed (optional)" aria-label="Saved copy — link" style={{ width: '100%', font: 'inherit', fontSize: '0.78rem', padding: '3px 6px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit' }} />
             <input value={docNote} onChange={(ev) => setDocNote(ev.target.value)} placeholder="note (optional)" aria-label="Saved copy — note" style={{ width: '100%', font: 'inherit', fontSize: '0.78rem', padding: '3px 6px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit' }} />
           </div>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            Mailed on
+            <input type="date" value={mailedOn} onChange={(ev) => setMailedOn(ev.target.value || todayYmd)} aria-label="Mailed on" style={{ font: 'inherit', fontSize: '0.78rem', padding: '3px 6px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit' }} />
+          </label>
+          <button type="button" onClick={printEnvelopes} disabled={envelopes.length === 0} title="One page per envelope — the return address, the certified line, a blank for the article number, and the recipient as the notice names it" style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem' }}>
+            Envelope faces
+          </button>
           <button type="button" onClick={printPacket} disabled={notices.length === 0} style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}>
             Print the packet · {envelopes.length} {envelopes.length === 1 ? 'envelope' : 'envelopes'}
           </button>
           <span className="lienRunFootHint" style={{ fontSize: '0.78rem', color: blocked ? 'var(--text-red-600)' : 'var(--text-muted)' }}>
-            {blocked ? 'Fix the recipients marked in red before recording.' : 'Tracking numbers can be typed now or left for later.'}
+            {blocked ? 'Fix the recipients marked in red before recording.' : split.partial ? `${split.waiting.length} ${split.waiting.length === 1 ? 'envelope has' : 'envelopes have'} no number yet — ${split.waiting.length === 1 ? 'it stays' : 'they stay'} in the mail pile.` : printedAt ? 'Type each envelope’s number; a number can also be added later from the Sent row.' : 'Tracking numbers can be typed now, or added later from the Sent row.'}
           </span>
           <button type="button" onClick={() => void record()} disabled={busy || blocked || notices.length === 0} style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid transparent', background: '#2563eb', color: '#fff', fontSize: '0.8125rem', fontWeight: 600, cursor: busy || blocked ? 'default' : 'pointer', opacity: busy || blocked || notices.length === 0 ? 0.55 : 1 }}>
-            {busy ? 'Recording…' : 'Record the run ▸'}
+            {busy ? 'Recording…' : split.partial ? `Record ${split.mailed.length} mailed · ${split.waiting.length} ${split.waiting.length === 1 ? 'stays' : 'stay'} in the pile ▸` : 'Record the run ▸'}
           </button>
         </div>
       </div>

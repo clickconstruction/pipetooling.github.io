@@ -124,8 +124,8 @@ const EMPTY_AFFIDAVITS: LienAffidavitQueue = {
 
 const EMPTY_QUEUE: LienDeskQueue = {
   entries: [],
-  piles: { needs_owner: [], to_draft: [], awaiting: [], ready: [], held: [], sent: [], missed: [] },
-  counts: { needs_owner: 0, to_draft: 0, awaiting: 0, ready: 0, held: 0, sent: 0, missed: 0 },
+  piles: { needs_owner: [], to_draft: [], awaiting: [], ready: [], printed: [], held: [], sent: [], missed: [] },
+  counts: { needs_owner: 0, to_draft: 0, awaiting: 0, ready: 0, printed: 0, held: 0, sent: 0, missed: 0 },
 }
 
 /**

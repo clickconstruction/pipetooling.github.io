@@ -80,6 +80,7 @@ export type NeedsYouItem = {
     | 'lien-unconditional'
     | 'demand-deadline'
     | 'lien-serve-copy'
+  | 'lien-tracking-owed'
     | 'lien-suit-year'
     | 'lien-window-missed'
     | 'lien-notice-draft'
@@ -154,6 +155,7 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'job-followups': 40,
   'demand-deadline': 40,
   'lien-serve-copy': 10,
+  'lien-tracking-owed': 10,
   'lien-suit-year': 20,
   'lien-window-missed': 40,
   'lien-notice-draft': 40,
@@ -387,6 +389,8 @@ export type NeedsYouInputs = {
     serveDue: { serveDue: string }[]
     /** The year to sue (§ 53.158) inside the counsel lead, or run out (v2.3781). */
     suitDue?: { suitDate: string; daysLeft: number; openBalance: number }[]
+    /** Recorded notices whose certified send has no tracking number yet (v2.4119). */
+    trackingOwed?: { jobId: string; filingId: string; recipients: string[]; sentOn: string }[]
   } | null
   /**
    * Closed clock sessions awaiting approval (v2.2671) — null while loading or
@@ -534,6 +538,21 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       detail: `A copy of the filed affidavit must reach the owner and contractor by the 5th day after filing (§ 53.055) — the ${n === 1 ? 'deadline is' : 'earliest deadline is'} ${worst}. Record the service on the job's lien instruments.`,
       figure: String(n),
       actionLabel: 'Record service',
+    })
+  }
+
+  if (inputs.lienWatchEnabled && (inputs.lienWatch?.trackingOwed?.length ?? 0) > 0) {
+    const rows = inputs.lienWatch?.trackingOwed ?? []
+    const n = rows.length
+    const sends = rows.reduce((t, r) => t + r.recipients.length, 0)
+    items.push({
+      key: 'lien-tracking-owed',
+      severity: 'amber',
+      kicker: 'Lien notices',
+      title: n === 1 ? 'A mailed notice has no tracking number' : `${n} mailed notices have no tracking number`,
+      detail: `${sends} certified ${sends === 1 ? 'send has' : 'sends have'} no number on record. The number is what the affidavit leans on to swear the notice went out — type it on the notice's Sent row on the Lien desk, or in the job's Lien window (“add the number”).`,
+      figure: String(n),
+      actionLabel: 'Open the Lien desk',
     })
   }
 

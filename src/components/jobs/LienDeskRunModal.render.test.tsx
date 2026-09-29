@@ -145,3 +145,30 @@ describe('LienDeskRunModal · one notice per property (#35 PR 3)', () => {
     expect(screen.queryByTestId('run-combine')).toBeNull()
   })
 })
+
+describe('LienDeskRunModal — the mailing (v2.4119)', () => {
+  it('shows the steps, checks a number\u2019s shape as it is typed, and records only the numbered envelopes', async () => {
+    recordMock.mockClear()
+    const printed: string[][] = []
+    const two = [notice(), notice({ itemId: 'it2', jobId: 'j651', label: '651 · Other', jobNumber: '651', recipients: [{ key: 'owner', label: 'Owner of record', name: 'Other Owner', address: '9 Other St', email: '', method: 'certified_mail', tracking: '' }, { key: 'original_contractor', label: 'Original contractor', name: 'Other GC', address: '1 GC Rd', email: '', method: 'certified_mail', tracking: '' }] })]
+    renderWithProviders(<LienDeskRunModal notices={two} issuer={null} todayYmd="2026-09-29" userId="u1" onClose={() => {}} onRecorded={() => {}} onPrinted={(ids) => { printed.push(ids) }} />)
+    await settle()
+    expect(screen.getByTestId('run-steps').textContent).toContain('1 · Print the packet')
+    expect(screen.getByRole('button', { name: /Envelope faces/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^Record the run/ })).toBeTruthy()
+    const inputs = screen.getAllByPlaceholderText('9407 1118 …')
+    fireEvent.change(inputs[0]!, { target: { value: '9407 1118 9876 5432 10' } })
+    expect(screen.getByTestId('run-tracking-shape-1').textContent).toBe('18 digits — a certified number has 20')
+    fireEvent.change(inputs[0]!, { target: { value: '9407 1118 9876 5432 1098' } })
+    expect(screen.getByTestId('run-tracking-shape-1').textContent).toBe('✓ 20 digits · certified')
+    expect(screen.getByRole('button', { name: /Record 1 mailed · 1 stays in the pile/ })).toBeTruthy()
+    expect(screen.getByText(/1 envelope has no number yet/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /Record 1 mailed/ }))
+    await settle()
+    expect(recordMock).toHaveBeenCalledTimes(1)
+    const [recordedNotices, opts] = recordMock.mock.calls[0] as unknown as [RunNotice[], { mailedOn?: string }]
+    expect(recordedNotices.map((n) => n.itemId)).toEqual(['it1'])
+    expect(opts.mailedOn).toBe('2026-09-29')
+    expect(printed).toEqual([])
+  })
+})

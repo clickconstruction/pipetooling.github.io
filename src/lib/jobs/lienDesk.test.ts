@@ -247,3 +247,14 @@ describe('buildLienDeskQueue · a job with no clock hours is dated from its crea
     expect(DATED_FROM_CREATION_WORDS).toBe('dated from the job’s creation · no clock hours')
   })
 })
+
+describe('the printed pile (v2.4119)', () => {
+  it('an approved item stamped printed sits in "In the mail · tracking owed"; unstamped it is ready', () => {
+    const ready = buildLienDeskQueue(J650, [item({ job_id: 'j650', status: 'approved', months: ['2026-06'] })], {}, TODAY)
+    expect(ready.entries[0]!.pile).toBe('ready')
+    const printed = buildLienDeskQueue(J650, [item({ job_id: 'j650', status: 'approved', months: ['2026-06'], ...({ printed_at: '2026-09-29T15:00:00Z' } as object) })], {}, TODAY)
+    expect(printed.entries[0]!.pile).toBe('printed')
+    expect(printed.counts.printed).toBe(1)
+    expect(printed.counts.ready).toBe(0)
+  })
+})

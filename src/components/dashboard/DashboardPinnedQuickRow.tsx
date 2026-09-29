@@ -780,6 +780,8 @@ export function DashboardPinnedQuickRow({
               navigate('/jobs?tab=stages&liendesk=1&kind=affidavit')
             } else if (item.key === 'lien-suit-year') {
               navigate('/jobs?tab=stages&liendesk=1&kind=timeline')
+            } else if (item.key === 'lien-tracking-owed') {
+              navigate('/jobs?tab=stages&liendesk=1&liendeskPile=sent')
             } else if (item.key === 'lien-serve-copy') {
               navigate('/jobs?tab=stages')
             } else if (item.key === 'hours-approvals') {

@@ -172,6 +172,15 @@ export async function startLetterTwo(input: { first: Pick<LienDeskItemRow, 'id' 
 }
 
 /** The run recorded a filing for this item. */
+/** The run printed these items' notices (v2.4119): they sit in "In the mail · tracking owed" until recorded. Best-effort — a failure only leaves them in Ready to send. */
+export async function markLienDeskItemsPrinted(itemIds: ReadonlyArray<string>, userId: string | null): Promise<void> {
+  if (itemIds.length === 0) return
+  await withSupabaseRetry(
+    () => supabase.from('job_lien_desk_items').update({ printed_at: new Date().toISOString(), printed_by: userId } as never).in('id', [...itemIds]),
+    'lien desk: mark printed',
+  )
+}
+
 export async function markLienDeskItemSent(itemId: string, filingId: string): Promise<void> {
   await withSupabaseRetry(
     () => supabase.from('job_lien_desk_items').update({ status: 'sent', sent_filing_id: filingId } as never).eq('id', itemId),
