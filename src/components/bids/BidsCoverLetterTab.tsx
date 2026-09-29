@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState, type Dispatch, type SetStateAction } from 'react'
+import { Fragment, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
@@ -69,6 +69,7 @@ import type {
 } from '../../lib/bids/bidPricingEngineTypes'
 import { bundleSummary, letterTotal, planLetterSections, planUnsplitLetterSections, sectionLabel, starredPricingIdForVersion } from '../../lib/bids/coverLetterVersionBundle'
 import { COVER_LETTER_ALTS_HEADING_DEFAULT, altSectionKey, buildAlternatesBlock, parseCoverLetterAltTexts, planSamePageLetter, type CoverLetterAltTexts } from '../../lib/bids/coverLetterSamePage'
+import { buildAddAlternatesBlock, offeredAddAlternates, splitLetterTotalsByAlternate, stampAddAlternateAmounts, type LetterTotalsByAlternate } from '../../lib/bids/coverLetterAddAlternates'
 import { copyRichHtmlToClipboard } from '../../lib/copyRichHtmlToClipboard'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
@@ -103,7 +104,7 @@ type BidsCoverLetterTabProps = {
   bidPreview: ReturnType<typeof useBidPreview>
   serviceTypes: Array<{ id: string; name: string }>
   pricingCountRows: BidCountRow[]
-  coverLetterPricingRows: { revenueSum: number; fixtureRows: { fixture: string; count: number }[] } | null
+  coverLetterPricingRows: { revenueSum: number; fixtureRows: { fixture: string; count: number }[]; byAlternate: LetterTotalsByAlternate | null } | null
   /** Name of the active Pricing driving the amount above, shown so the user knows which pricing this letter reflects. */
   activePricingName: string | null
   /** The engine's active bid Version (null = unsplit bid) — the single letter's GC follows this Version's override. */
@@ -245,6 +246,15 @@ export function BidsCoverLetterTab({
   // per-alternate label/note, edited by clicking the dashed text right on the preview.
   const [altTexts, setAltTexts] = useState<CoverLetterAltTexts>({})
   const [altTextEditor, setAltTextEditor] = useState<{ editKey: string; label: string; note: string } | null>(null)
+  // v2.4195: the with-and-without alternates on the active version, kept for the send to stamp
+  // their add-on amounts onto cover_letter_alt_texts (the Bid Board's "+$ alt" chip reads them).
+  const addAltRef = useRef<{ split: LetterTotalsByAlternate | null; texts: CoverLetterAltTexts }>({ split: null, texts: {} })
+  async function stampAlternateAmounts(bidId: string) {
+    const { split, texts } = addAltRef.current
+    if (!split) return
+    const next = stampAddAlternateAmounts(texts, split)
+    if (JSON.stringify(next) !== JSON.stringify(texts)) await saveAltTexts(bidId, next)
+  }
   useEffect(() => {
     setAltTexts({})
     setAltTextEditor(null)
@@ -817,13 +827,23 @@ export function BidsCoverLetterTab({
           materialsFromTakeoffByCountRowId: {},
           hiddenSubmissionCountRowIds: submissionHiddenIdsForVersion(allHides, pid),
         })
-        const totals = coverLetterTotalsFromPricingRows(result.rows)
+        const allTotals = coverLetterTotalsFromPricingRows(result.rows)
+        // v2.4195: an offered with-and-without alternate leaves the section (it prints as an add-on);
+        // one the estimator unticked stays priced into it.
+        const split = splitLetterTotalsByAlternate(result.rows, rowsFor(p.bidVersionId), bid.alternate_group_tags ?? [])
+        const offeredHere = offeredAddAlternates(split, altTexts)
+        const totals = split && offeredHere.length > 0
+          ? (() => {
+              const kept = split.alternates.filter((g) => !offeredHere.includes(g))
+              return { revenueSum: split.base.revenueSum + kept.reduce((sum, g) => sum + g.revenueSum, 0), fixtureRows: [...split.base.fixtureRows, ...kept.flatMap((g) => g.fixtureRows)] }
+            })()
+          : allTotals
         return { name: p.name, bidVersionId: p.bidVersionId, revenueSum: totals.revenueSum, fixtureRows: totals.fixtureRows, isAlternate: p.isAlternate, offeredPricingId: p.offeredPricingId }
       })
       setBundlePricings(sections)
     })()
     return () => { cancelled = true }
-  }, [selectedBidForPricing?.id, bidPricings, bidVersions, pricingCountRows])
+  }, [selectedBidForPricing?.id, bidPricings, bidVersions, pricingCountRows, altTexts])
 
   // v2.2117: the letter flag lives on the VERSION. The version's ★ scenario mirrors the version's
   // flag (its other scenarios are never bundled) so the picker badge and the bundle can't disagree.
@@ -953,6 +973,7 @@ export function BidsCoverLetterTab({
         return
       }
       recordBidSentLane(authUser?.id, authRole, lane)
+      await stampAlternateAmounts(bidId)
       await loadBids()
       showToast(cur ? 'Sent date moved to today.' : 'Marked sent today.', 'success')
       onBidSentRecorded?.(bidId)
@@ -990,6 +1011,7 @@ export function BidsCoverLetterTab({
       else if (bidUpdateRefused(bidRows)) showToast(BID_UPDATE_NOT_APPLIED_MESSAGE, 'error')
       recordBidSentLane(authUser?.id, authRole, opts.lane ?? 'ledger')
       window.dispatchEvent(new Event('bid-version-sends-changed'))
+      await stampAlternateAmounts(bidId)
       await loadBids()
       showToast(`Marked sent today — ${inLetter.length} bid${inLetter.length === 1 ? '' : 's'} in the letter.`, 'success')
       if (!bidErr) onBidSentRecorded?.(bidId)
@@ -1110,10 +1132,60 @@ export function BidsCoverLetterTab({
           coverLetterRevenue = coverLetterPricingRows.revenueSum
           fixtureRows = coverLetterPricingRows.fixtureRows
         }
+        // v2.4195: with-and-without alternates — the proposed amount is the BASE, each offered
+        // alternate prints as an addition under it; an unticked one stays priced into the amount.
+        const addAltSplit = coverLetterPricingRows?.byAlternate ?? null
+        const offeredAdd = offeredAddAlternates(addAltSplit, altTexts)
+        if (addAltSplit && offeredAdd.length > 0) {
+          const kept = addAltSplit.alternates.filter((g) => !offeredAdd.includes(g))
+          coverLetterRevenue = addAltSplit.base.revenueSum + kept.reduce((sum, g) => sum + g.revenueSum, 0)
+          fixtureRows = [...addAltSplit.base.fixtureRows, ...kept.flatMap((g) => g.fixtureRows)]
+        }
+        addAltRef.current = { split: addAltSplit, texts: altTexts }
         const useCustomAmount = coverLetterUseCustomAmountByBid[bid.id] === true
         const customAmountStr = (coverLetterCustomAmountByBid[bid.id] ?? '').replace(/,/g, '').trim()
         const customAmountNum = customAmountStr ? parseFloat(customAmountStr) : NaN
         const effectiveRevenue = useCustomAmount && !isNaN(customAmountNum) && customAmountNum >= 0 ? customAmountNum : coverLetterRevenue
+        const addAltsBlock = (editable: boolean, base: number = effectiveRevenue) => buildAddAlternatesBlock(offeredAdd, base, altTexts, formatCurrency, editable)
+        const altChipStyle: React.CSSProperties = { fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.06em', padding: '0 0.3rem', borderRadius: 3, border: '1px solid var(--text-amber-700)', color: 'var(--text-amber-700)', marginLeft: '0.3rem', verticalAlign: '1px' }
+        const addAltRows = addAltSplit && addAltSplit.alternates.length > 0 ? (
+          <div data-testid="cover-letter-add-alternates" style={{ display: 'grid', gap: '0.25rem', margin: '0.35rem 0 0.5rem' }}>
+            {addAltSplit.alternates.map((g) => {
+              const on = offeredAdd.includes(g)
+              const saved = altTexts.sections?.[g.key]
+              const autoLabel = `Alternate ${offeredAdd.indexOf(g) + 1} — ${g.label}`
+              return (
+                <div key={g.key} style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.82rem', flexWrap: 'wrap' }}>
+                  <input
+                    type="checkbox"
+                    checked={on}
+                    aria-label={`Offer ${g.label} as an alternate`}
+                    onChange={() => {
+                      const next: CoverLetterAltTexts = { ...altTexts, groups: { ...(altTexts.groups ?? {}), [g.key]: { ...(altTexts.groups?.[g.key] ?? {}), offered: !on } } }
+                      void saveAltTexts(bid.id, next)
+                    }}
+                    style={{ margin: 0, cursor: 'pointer' }}
+                  />
+                  <span>Offer <strong>{g.label}</strong><span style={altChipStyle}>ALT</span></span>
+                  <span style={{ color: 'var(--text-muted)' }}>adds ${formatCurrency(g.revenueSum)}</span>
+                  {on ? (
+                    <button
+                      type="button"
+                      onClick={() => setAltTextEditor({ editKey: g.key, label: saved?.label ?? autoLabel, note: saved?.note ?? '' })}
+                      title="How this alternate reads on the letter"
+                      aria-label={`Wording for ${g.label}`}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-link)', fontSize: '0.75rem', padding: '0 0.25rem' }}
+                    >
+                      ✎ {saved?.label ?? autoLabel}
+                    </button>
+                  ) : (
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>priced into the proposal</span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        ) : null
         // New view on a split bid: the headline is the LETTER TOTAL (sum of base bids at their ★),
         // not the active scenario's revenue — the number Mark sent stamps as the bid's value.
         const newBundleActive = bidVersions.length > 0 && bundlePricings.length > 0
@@ -1209,8 +1281,9 @@ export function BidsCoverLetterTab({
         const letterGcIsNotBidGc = letterGcDiffersFromBid(letterCustomer, bidGcPacketCustomer)
         const letterCustomerName = letterCustomer.name
         const letterCustomerAddress = letterCustomer.address
-        const combinedText = buildCoverLetterText(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: effectiveRevenue } : null, orgCoverLetterDefaults.closing, null, bidBasisForLetter, materialsByStageForLetter, scheduleOfValuesForLetter(effectiveRevenue))
-        const combinedHtml = buildCoverLetterHtml(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: effectiveRevenue } : null, orgCoverLetterDefaults.closing, null, bidBasisForLetter, materialsByStageForLetter, scheduleOfValuesForLetter(effectiveRevenue))
+        const combinedText = buildCoverLetterText(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: effectiveRevenue } : null, orgCoverLetterDefaults.closing, null, bidBasisForLetter, materialsByStageForLetter, scheduleOfValuesForLetter(effectiveRevenue), addAltsBlock(false))
+        const combinedHtml = buildCoverLetterHtml(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: effectiveRevenue } : null, orgCoverLetterDefaults.closing, null, bidBasisForLetter, materialsByStageForLetter, scheduleOfValuesForLetter(effectiveRevenue), addAltsBlock(false))
+        const combinedHtmlEditable = offeredAdd.length > 0 ? buildCoverLetterHtml(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: effectiveRevenue } : null, orgCoverLetterDefaults.closing, null, bidBasisForLetter, materialsByStageForLetter, scheduleOfValuesForLetter(effectiveRevenue), addAltsBlock(true)) : null
         // When 2+ Pricings are included in submission, the deliverable is one cover letter per
         // Pricing (each with its own amount + fixtures, shared prose), concatenated. With 0–1
         // included Pricings this stays the single letter above (no behavior change).
@@ -1230,7 +1303,7 @@ export function BidsCoverLetterTab({
         const showAltsLayoutToggle = selectedGcPacket != null && selectedGcPacket.sections.length > 1 && selectedGcPacket.sections.some((s) => s.isAlternate)
         const samePageHtml = (editable: boolean) =>
           samePagePlan
-            ? buildCoverLetterHtml(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(samePagePlan.headlineRevenue).toUpperCase(), `$${formatCurrency(samePagePlan.headlineRevenue)}`, samePagePlan.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: samePagePlan.headlineRevenue } : null, orgCoverLetterDefaults.closing, buildAlternatesBlock(samePagePlan, altTexts, formatCurrency, editable, { gcName: letterCustomerName, projectName: projectNameVal }), bidBasisForLetter, materialsByStageForLetter, scheduleOfValuesForLetter(samePagePlan.headlineRevenue))
+            ? buildCoverLetterHtml(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(samePagePlan.headlineRevenue).toUpperCase(), `$${formatCurrency(samePagePlan.headlineRevenue)}`, samePagePlan.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: samePagePlan.headlineRevenue } : null, orgCoverLetterDefaults.closing, buildAlternatesBlock(samePagePlan, altTexts, formatCurrency, editable, { gcName: letterCustomerName, projectName: projectNameVal }), bidBasisForLetter, materialsByStageForLetter, scheduleOfValuesForLetter(samePagePlan.headlineRevenue), addAltsBlock(editable, samePagePlan.headlineRevenue))
             : null
         const finalCoverLetterHtml = selectedGcPacket
           ? samePagePlan
@@ -1240,10 +1313,10 @@ export function BidsCoverLetterTab({
               : packetSectionHtml(selectedGcPacket.sections[0]!)
           : combinedHtml
         // Preview-only twin with data-cl-edit spans (click-to-edit); never copied or printed.
-        const previewCoverLetterHtml = samePagePlan ? samePageHtml(true)! : finalCoverLetterHtml
+        const previewCoverLetterHtml = samePagePlan ? samePageHtml(true)! : combinedHtmlEditable && !selectedGcPacket ? combinedHtmlEditable : finalCoverLetterHtml
         const finalCoverLetterText = selectedGcPacket
           ? samePagePlan
-            ? buildCoverLetterText(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(samePagePlan.headlineRevenue).toUpperCase(), `$${formatCurrency(samePagePlan.headlineRevenue)}`, samePagePlan.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: samePagePlan.headlineRevenue } : null, orgCoverLetterDefaults.closing, buildAlternatesBlock(samePagePlan, altTexts, formatCurrency, false, { gcName: letterCustomerName, projectName: projectNameVal }), bidBasisForLetter, materialsByStageForLetter, scheduleOfValuesForLetter(samePagePlan.headlineRevenue))
+            ? buildCoverLetterText(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(samePagePlan.headlineRevenue).toUpperCase(), `$${formatCurrency(samePagePlan.headlineRevenue)}`, samePagePlan.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: samePagePlan.headlineRevenue } : null, orgCoverLetterDefaults.closing, buildAlternatesBlock(samePagePlan, altTexts, formatCurrency, false, { gcName: letterCustomerName, projectName: projectNameVal }), bidBasisForLetter, materialsByStageForLetter, scheduleOfValuesForLetter(samePagePlan.headlineRevenue), addAltsBlock(false, samePagePlan.headlineRevenue))
             : selectedGcPacket.sections.length > 1
               ? buildCombinedCoverLetterText(selectedGcPacket.sections.map((s) => ({ label: bundleLabel(s), text: packetSectionText(s) })))
               : packetSectionText(selectedGcPacket.sections[0]!)
@@ -1443,6 +1516,7 @@ export function BidsCoverLetterTab({
                             />
                           ) : null}
                           <span style={studioFieldLabelStyle}>{multi ? `In ${gcShort}'s letter` : 'In this cover letter'}</span>
+                          {addAltRows}
                           {bidVersions.length === 0 ? (
                             <>
                               <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
@@ -2070,9 +2144,12 @@ export function BidsCoverLetterTab({
                       .cl-preview [data-cl-edit] { border-bottom: 1.5px dashed #93b4e8; cursor: text; }
                       .cl-preview [data-cl-edit]:hover { background: #eaf1fd; }
                     `}</style>
-                    {altTextEditor && samePagePlan ? (() => {
+                    {altTextEditor && (samePagePlan || offeredAdd.length > 0) ? (() => {
                       const isHeading = altTextEditor.editKey === 'heading'
-                      const autoSec = isHeading ? null : samePagePlan.alternates.find((s) => altSectionKey(s) === altTextEditor.editKey)
+                      const autoSec = isHeading ? null : samePagePlan?.alternates.find((s) => altSectionKey(s) === altTextEditor.editKey)
+                      // v2.4195: a with-and-without alternate edits under its group key; its automatic name is numbered among the offered ones.
+                      const autoGroup = isHeading ? null : offeredAdd.find((g) => g.key === altTextEditor.editKey)
+                      const autoName = autoSec?.name ?? (autoGroup ? `Alternate ${offeredAdd.indexOf(autoGroup) + 1} — ${autoGroup.label}` : undefined)
                       const commit = () => {
                         const next: CoverLetterAltTexts = { ...altTexts, sections: { ...(altTexts.sections ?? {}) } }
                         if (isHeading) {
@@ -2083,7 +2160,7 @@ export function BidsCoverLetterTab({
                           const label = altTextEditor.label.trim()
                           const note = altTextEditor.note.trim()
                           const entry: { label?: string; note?: string } = {}
-                          if (label && label !== autoSec?.name) entry.label = label
+                          if (label && label !== autoName) entry.label = label
                           if (note) entry.note = note
                           if (entry.label || entry.note) next.sections![altTextEditor.editKey] = entry
                           else delete next.sections![altTextEditor.editKey]
@@ -2101,7 +2178,7 @@ export function BidsCoverLetterTab({
                       const inputStyle: React.CSSProperties = { width: '100%', padding: '0.4rem 0.55rem', border: '1px solid var(--border-strong)', borderRadius: 5, boxSizing: 'border-box', fontSize: '0.85rem' }
                       return (
                         <div style={{ background: 'var(--surface)', border: '1px solid #3b82f6', borderRadius: 10, padding: '0.8rem 0.9rem', display: 'grid', gap: '0.5rem' }}>
-                          <span style={{ fontSize: '0.78rem', fontWeight: 600 }}>{isHeading ? 'Alternates heading' : `Letter wording — ${autoSec?.name ?? 'alternate'}`}</span>
+                          <span style={{ fontSize: '0.78rem', fontWeight: 600 }}>{isHeading ? 'Alternates heading' : `Letter wording — ${autoSec?.name ?? autoGroup?.label ?? 'alternate'}`}</span>
                           <input
                             type="text"
                             value={altTextEditor.label}
@@ -2109,7 +2186,7 @@ export function BidsCoverLetterTab({
                             onChange={(e) => setAltTextEditor((prev) => (prev ? { ...prev, label: e.target.value } : prev))}
                             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); commit() } else if (e.key === 'Escape') setAltTextEditor(null) }}
                             aria-label={isHeading ? 'Alternates heading' : 'Alternate name on the letter'}
-                            placeholder={isHeading ? COVER_LETTER_ALTS_HEADING_DEFAULT : autoSec?.name}
+                            placeholder={isHeading ? COVER_LETTER_ALTS_HEADING_DEFAULT : autoName}
                             style={inputStyle}
                           />
                           {!isHeading ? (

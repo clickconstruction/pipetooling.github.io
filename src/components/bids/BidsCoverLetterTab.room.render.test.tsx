@@ -56,7 +56,7 @@ function makeProps(overrides: Partial<Props> = {}): Props {
     bidPreview: null as unknown as Props['bidPreview'],
     serviceTypes: [{ id: 'st-1', name: 'Plumbing' }],
     pricingCountRows: [],
-    coverLetterPricingRows: { revenueSum: 1000, fixtureRows: [] },
+    coverLetterPricingRows: { revenueSum: 1000, fixtureRows: [], byAlternate: null },
     activePricingName: 'Standard',
     activeBidVersionId: null,
     versionGcFingerprint: '',

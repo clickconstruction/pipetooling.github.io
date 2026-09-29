@@ -22,6 +22,13 @@ export type SamePageSection = {
 export type CoverLetterAltTexts = {
   heading?: string
   sections?: Record<string, { label?: string; note?: string }>
+  /**
+   * v2.4195: the with-and-without alternates (count-row groups in `bids.alternate_group_tags`), keyed
+   * `group:<normalized tag>` — whether the letter offers one (default yes) and the add-on amount the
+   * letter last stamped on a send, which the Bid Board's "+$ alt" chip reads. Their wording lives in
+   * `sections` under the same key, so the preview's click-to-edit works unchanged.
+   */
+  groups?: Record<string, { offered?: boolean; amount?: number }>
 }
 
 export const COVER_LETTER_ALTS_HEADING_DEFAULT = 'Alternates:'
@@ -42,6 +49,18 @@ export function parseCoverLetterAltTexts(raw: unknown): CoverLetterAltTexts {
       if (entry.label != null || entry.note != null) sections[key] = entry
     }
     if (Object.keys(sections).length > 0) out.sections = sections
+  }
+  if (obj.groups != null && typeof obj.groups === 'object' && !Array.isArray(obj.groups)) {
+    const groups: Record<string, { offered?: boolean; amount?: number }> = {}
+    for (const [key, val] of Object.entries(obj.groups as Record<string, unknown>)) {
+      if (val == null || typeof val !== 'object' || Array.isArray(val)) continue
+      const v = val as Record<string, unknown>
+      const entry: { offered?: boolean; amount?: number } = {}
+      if (typeof v.offered === 'boolean') entry.offered = v.offered
+      if (typeof v.amount === 'number' && Number.isFinite(v.amount)) entry.amount = v.amount
+      if (entry.offered != null || entry.amount != null) groups[key] = entry
+    }
+    if (Object.keys(groups).length > 0) out.groups = groups
   }
   return out
 }
