@@ -403,6 +403,28 @@ export function diffProcurementLog(previous: ReadonlyArray<ProcurementSnapshotRo
 
 /* ────────────────────────────── the sheet and the text ────────────────────────────── */
 
+/** "Sep 18" — the sheet's date, in words the GC reads; '' for null. */
+export function monthDay(iso: string | null | undefined): string {
+  const d = parseIsoDate(iso)
+  return d ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''
+}
+
+/** "September 29, 2026" — the sheet's heading date; '' for null. */
+export function longDate(iso: string | null | undefined): string {
+  const d = parseIsoDate(iso)
+  return d ? d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : ''
+}
+
+/** The company block at the head of the sheet — the test report's settings row (v2.4122). */
+export type ProcurementSheetLetterhead = {
+  companyName: string
+  tagline: string
+  phone: string
+  mailingAddress: string
+  /** The plumbing logo as a data URL (a print window cannot wait on an image); null draws the name alone. */
+  logoDataUrl: string | null
+}
+
 export type ProcurementUpdateInput = {
   /** "B482 Shipley Do-Nuts (San Antonio)" */
   bidLabel: string
@@ -416,6 +438,17 @@ export type ProcurementUpdateInput = {
   changes: ReadonlyArray<ProcurementChange>
   line: string
   stageDates: StageDates
+  /** v2.4122 · `print` = the log as it stands (no update number, no changes marked); default `update`. */
+  kind?: 'print' | 'update'
+  letterhead?: ProcurementSheetLetterhead | null
+  projectAddress?: string | null
+  /** The GC the sheet is addressed to. */
+  gcName?: string | null
+  /** The estimator who prepared it — signs that it is true and current. */
+  preparedBy?: string | null
+  /** The GC's review-room link, and the code that opens it (`payQrSvgMarkup`); the sheet points there. */
+  roomUrl?: string | null
+  roomQrSvg?: string | null
 }
 
 function stageDatesText(d: StageDates): string {
@@ -423,8 +456,10 @@ function stageDatesText(d: StageDates): string {
   return bits.length ? `required dates from the stage schedule (${bits.join(' · ')})` : 'required dates not set (no stage schedule on the job yet)'
 }
 
-const cell = 'padding:0.35rem 0.45rem; border-bottom:1px solid #e5e7eb; vertical-align:top; font-size:0.85rem'
-const th = 'text-align:left; font-size:0.7em; text-transform:uppercase; letter-spacing:0.05em; color:#6b7280; border-bottom:1.5px solid #17191e; padding:0.3rem 0.45rem; white-space:nowrap'
+/** "Rough In Oct 6 · Top Out Oct 27 · Trim Set Nov 17" — the schedule line in the GC's words; '' with no dates. */
+export function stageDatesWords(d: StageDates): string {
+  return STAGE_KEYS.filter((k) => d[k]).map((k) => `${PROCUREMENT_STAGE_LABELS[k]} ${monthDay(d[k])}`).join(' · ')
+}
 
 export function submittalWord(r: ProcurementRow): string {
   switch (r.submittal) {
@@ -441,52 +476,187 @@ export function submittalWord(r: ProcurementRow): string {
   }
 }
 
-/** The printed update: changed rows first, then the rest; the one line under the title. */
+/** The submittal column as the GC reads it: their decision, in their words. */
+export function gcSubmittalWord(r: ProcurementRow): string {
+  switch (r.submittal) {
+    case 'approved':
+      return `Approved ${monthDay(r.submittalAt)}`
+    case 'revise':
+      return `Returned for revision ${monthDay(r.submittalAt)}`
+    case 'rejected':
+      return `Rejected ${monthDay(r.submittalAt)}`
+    case 'open':
+      return 'Awaiting your approval'
+    default:
+      return r.isHand ? '—' : 'Not yet submitted'
+  }
+}
+
+/** The last day the GC's approval can land and the item still make its stage: required − lead time; null without either. */
+export function approveBy(r: Pick<ProcurementRow, 'requiredOn' | 'leadTimeDays'>): string | null {
+  return r.requiredOn && r.leadTimeDays != null ? addDays(r.requiredOn, -r.leadTimeDays) : null
+}
+
+/** The schedule column in the GC's words: "15 days ahead" · "14 days behind" · "delivered Sep 26" · "we order by Oct 10" · "approve by Nov 10" · "needs approval now". */
+export function gcScheduleWord(r: ProcurementRow, asOf: string): string {
+  if (r.deliveredOn) return `delivered ${monthDay(r.deliveredOn)}`
+  if (r.floatDays != null) {
+    if (r.floatDays === 0) return 'on time'
+    return `${Math.abs(r.floatDays)} day${Math.abs(r.floatDays) === 1 ? '' : 's'} ${r.floatDays < 0 ? 'behind' : 'ahead'}`
+  }
+  if (r.status === 'awaiting' || r.status === 'sent_back') {
+    const by = approveBy(r)
+    if (!by) return ''
+    return by <= asOf ? 'needs approval now' : `approve by ${monthDay(by)}`
+  }
+  if (r.orderBy) return `we order by ${monthDay(r.orderBy)}`
+  return ''
+}
+
+export type ProcurementAsk = { key: string; tag: string | null; product: string; text: string }
+
+/**
+ * What we need from you — the rows waiting on the GC, each with the date it must come by:
+ * a row awaiting their approval, a row they returned, and a row that lands after its stage
+ * starts (the supplier's date is the fact; the question is theirs). Tag order as given.
+ */
+export function procurementAsks(rows: ReadonlyArray<ProcurementRow>, asOf: string): ProcurementAsk[] {
+  const out: ProcurementAsk[] = []
+  for (const r of rows) {
+    const stage = r.stage ? PROCUREMENT_STAGE_LABELS[r.stage] : null
+    const by = approveBy(r)
+    const byWord = by ? (by <= asOf ? 'needs your approval now' : `needs your approval by ${monthDay(by)}`) + (stage ? ` to make ${stage}` : '') : null
+    let text = ''
+    if (r.late && !r.deliveredOn) {
+      text = `${r.expectedSource === 'house' ? 'the supplier says' : 'expected'} ${monthDay(r.expectedOn)}, ${Math.abs(r.floatDays ?? 0)} day${Math.abs(r.floatDays ?? 0) === 1 ? '' : 's'} after ${stage ?? 'the stage'} starts`
+    } else if (r.status === 'sent_back') {
+      text = `returned ${monthDay(r.submittalAt)}${byWord ? `; ${byWord}` : ''}`
+    } else if (r.status === 'awaiting') {
+      text = `awaiting your approval${byWord ? `; ${byWord}` : ''}`
+    }
+    if (!text) continue
+    if (r.note) text += ` — ${r.note}`
+    out.push({ key: r.key, tag: r.tag, product: r.product, text })
+  }
+  return out
+}
+
+export type ProcurementStageGroup = { stage: ProcurementStage | null; label: string; neededOn: string | null; rows: ProcurementRow[] }
+
+/** The rows by stage in build order, a group only where rows are; rows with no stage last under "No stage yet". */
+export function groupRowsByStage(rows: ReadonlyArray<ProcurementRow>, stageDates: StageDates): ProcurementStageGroup[] {
+  const out: ProcurementStageGroup[] = []
+  for (const k of STAGE_KEYS) {
+    const rs = rows.filter((r) => r.stage === k)
+    if (rs.length) out.push({ stage: k, label: PROCUREMENT_STAGE_LABELS[k], neededOn: stageDates[k] ?? null, rows: rs })
+  }
+  const rest = rows.filter((r) => !r.stage)
+  if (rest.length) out.push({ stage: null, label: 'No stage yet', neededOn: null, rows: rest })
+  return out
+}
+
+const cell = 'padding:0.4rem 0.45rem; border-bottom:1px solid #e5e7eb; vertical-align:top; font-size:0.82rem'
+const th = 'text-align:left; font-size:0.66em; text-transform:uppercase; letter-spacing:0.05em; color:#6b7280; border-bottom:1.5px solid #17191e; padding:0.3rem 0.45rem; white-space:nowrap'
+
+/**
+ * The printed sheet (v2.4122): a letter to the GC. The company block and the To/Project lines
+ * the submittal cover prints, the rows grouped by stage with the stage's date once, *What we
+ * need from you* above the table, every cell in the GC's words, the row's own note in Notes,
+ * the room's code at the foot, and the estimator's line that it is true and current. An update
+ * marks its changed rows (amber, a dot) and says since when; a print says *as of* and marks nothing.
+ */
 export function buildProcurementUpdateHtml(input: ProcurementUpdateInput): string {
-  const changed = new Map(input.changes.map((c) => [c.key, c.text] as const))
-  const ordered = [...input.rows].sort((a, b) => Number(changed.has(b.key)) - Number(changed.has(a.key)))
-  const rowsHtml = ordered
-    .map((r) => {
-      const chg = changed.get(r.key)
-      const bg = chg ? ' background:#fff8e1' : ''
-      // Two lines per item: the tag and its dates, then the product on its own line across the
-      // sheet — the product is always the longest thing on the row and wrapped the table otherwise.
-      const top = `${cell}; border-bottom:none; padding-bottom:0.1rem`
-      return `<tr>
-        <td style="${top};${bg}; white-space:nowrap"><strong>${escapeHtml(r.tag ?? '—')}</strong></td>
-        <td style="${top};${bg}; white-space:nowrap">${escapeHtml(submittalWord(r))}</td>
-        <td style="${top};${bg}">${escapeHtml(shortDate(r.releasedOn) || '—')}</td>
-        <td style="${top};${bg}">${escapeHtml(shortDate(r.orderedOn) || '—')}</td>
-        <td style="${top};${bg}">${escapeHtml(r.poRef)}</td>
-        <td style="${top};${bg}; white-space:nowrap">${escapeHtml(describeLeadTime(r.leadTimeDays) ?? '')}</td>
-        <td style="${top};${bg}; white-space:nowrap">${r.expectedOn ? `<strong>${escapeHtml(shortDate(r.expectedOn))}</strong>${r.expectedSource === 'house' ? ' <span style="color:#6b7280">(house)</span>' : ''}` : '—'}</td>
-        <td style="${top};${bg}">${escapeHtml(shortDate(r.requiredOn) || '—')}</td>
-        <td style="${top};${bg}; white-space:nowrap${r.late ? '; color:#b91c1c; font-weight:700' : ''}">${escapeHtml(floatText(r))}</td>
-        <td style="${top};${bg}; color:#4b5563">${escapeHtml(chg ?? '')}</td>
-      </tr>
-      <tr>
-        <td colspan="10" style="${cell};${bg}; padding-top:0; padding-left:1.4rem; color:#4b5563; font-size:0.8rem">${escapeHtml(r.product)}${r.supplyHouse ? ` <span style="color:#9ca3af">· ${escapeHtml(r.supplyHouse)}</span>` : ''}</td>
-      </tr>`
+  const kind = input.kind ?? 'update'
+  const changed = kind === 'update' ? new Map(input.changes.map((c) => [c.key, c.text] as const)) : new Map<string, string>()
+  const lh = input.letterhead
+  const companyName = lh?.companyName.trim() || input.companyName
+  const asks = procurementAsks(input.rows, input.sentOn)
+  const line = input.line.trim()
+  const groups = groupRowsByStage(input.rows, input.stageDates)
+  const title = kind === 'print' ? 'Procurement log' : `Procurement log — update ${input.updateNumber}`
+  const subtitle = kind === 'print'
+    ? `Plumbing fixtures &amp; equipment · as of ${escapeHtml(longDate(input.sentOn))}`
+    : `Plumbing fixtures &amp; equipment · ${escapeHtml(longDate(input.sentOn))} · ${input.sinceOn ? `changes since ${escapeHtml(longDate(input.sinceOn))} marked <span class="dot"></span>` : 'first update'}`
+  const schedule = stageDatesWords(input.stageDates)
+
+  const rowHtml = (r: ProcurementRow) => {
+    const chg = changed.get(r.key)
+    const bg = chg ? ' background:#fff8e1' : ''
+    // The diff repeats a new note at its end; the note already prints, so the change line drops it.
+    const chgLine = chg && r.note && chg.endsWith(r.note) ? chg.slice(0, -r.note.length).replace(/;\s*$/, '') : chg
+    const ordered = r.orderedOn ? `${monthDay(r.orderedOn)}${r.poRef ? ` · PO ${escapeHtml(r.poRef)}` : ''}` : r.status === 'released' ? 'not yet' : '—'
+    const expected = r.expectedOn && !r.deliveredOn ? `<strong>${monthDay(r.expectedOn)}</strong>${r.expectedSource === 'house' ? ' <span style="color:#6b7280">supplier’s date</span>' : ''}` : '—'
+    const sched = gcScheduleWord(r, input.sentOn)
+    const notes = [r.note ? escapeHtml(r.note) : '', chgLine ? `<span style="color:#6b7280">since ${escapeHtml(monthDay(input.sinceOn))}: ${escapeHtml(chgLine)}</span>` : ''].filter(Boolean).join('<br/>')
+    return `<tr>
+      <td style="${cell};${bg}; white-space:nowrap">${chg ? '<span class="dot"></span>' : ''}<strong>${escapeHtml(r.tag ?? '—')}</strong></td>
+      <td style="${cell};${bg}">${escapeHtml(r.product)}${r.supplyHouse ? ` <span style="color:#6b7280">· ${escapeHtml(r.supplyHouse)}</span>` : ''}</td>
+      <td style="${cell};${bg}">${escapeHtml(gcSubmittalWord(r))}</td>
+      <td style="${cell};${bg}; white-space:nowrap">${ordered}</td>
+      <td style="${cell};${bg}; white-space:nowrap">${escapeHtml(describeLeadTime(r.leadTimeDays) ?? '—')}</td>
+      <td style="${cell};${bg}; white-space:nowrap">${expected}</td>
+      <td style="${cell};${bg}; white-space:nowrap${r.late ? '; color:#b91c1c; font-weight:700' : ''}">${escapeHtml(sched)}</td>
+      <td style="${cell};${bg}; color:#4b5563">${notes}</td>
+    </tr>`
+  }
+  const bodyHtml = groups
+    .map((g) => {
+      const behind = g.rows.filter((r) => r.late).length
+      const head = `${escapeHtml(g.label)} <span style="font-weight:400; color:#4b5563">· ${g.neededOn ? `needed on site ${escapeHtml(monthDay(g.neededOn))} · ` : ''}${g.rows.length} item${g.rows.length === 1 ? '' : 's'}${behind ? `, ${behind} behind` : ''}</span>`
+      return `<tr><td colspan="8" style="background:#f3f4f6; font-weight:700; padding:0.4rem 0.45rem; border-bottom:1px solid #d1d5db; font-size:0.85rem">${head}</td></tr>${g.rows.map(rowHtml).join('')}`
     })
     .join('')
-  const since = input.sinceOn ? `since ${shortDate(input.sinceOn)}` : 'first update'
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeHtml(input.bidLabel)} — Procurement log update</title><style>
+
+  const asksHtml = asks.length || line
+    ? `<div class="ask"><b>What we need from you</b><ul>${line ? `<li>${escapeHtml(line)}</li>` : ''}${asks.map((a) => `<li><strong>${escapeHtml(a.tag ?? a.product)}</strong>${a.tag ? ` ${escapeHtml(a.product)}` : ''} — ${escapeHtml(a.text)}</li>`).join('')}</ul></div>`
+    : ''
+  const companyLines = lh ? [lh.tagline.trim(), [lh.phone.trim(), lh.mailingAddress.trim()].filter(Boolean).join(' · ')].filter(Boolean) : []
+  const letterheadHtml = `<div class="lh">${lh?.logoDataUrl ? `<img src="${lh.logoDataUrl}" alt="${escapeHtml(companyName)}" style="height:44px"/>` : `<b style="font-size:1.1rem">${escapeHtml(companyName)}</b>`}<div class="co"><b>${escapeHtml(companyName)}</b>${companyLines.map((l) => escapeHtml(l)).join('<br/>')}</div></div>`
+  const metaHtml = `<div class="meta">
+    <div><b>Project</b>${escapeHtml(input.bidLabel)}${input.projectAddress?.trim() ? `<br/>${escapeHtml(input.projectAddress.trim())}` : ''}</div>
+    <div><b>To</b>${escapeHtml(input.gcName?.trim() || '—')}</div>
+    <div><b>Schedule you gave us</b>${schedule ? escapeHtml(schedule) : 'no stage schedule yet — needed-on-site dates to follow'}</div>
+    <div><b>From</b>${escapeHtml([input.preparedBy?.trim(), companyName, lh?.phone.trim()].filter(Boolean).join(' · '))}</div>
+  </div>`
+  const roomHtml = input.roomUrl
+    ? `<div class="room">${input.roomQrSvg ?? ''}<div>This log lives at <b>${escapeHtml(input.roomUrl)}</b> — today’s dates, the cut sheets, and a place to approve or ask. Approving a row there records your name and email.</div></div>`
+    : ''
+  const signHtml = `<div class="sign"><div><div class="l">Verified true and current by ${escapeHtml([input.preparedBy?.trim(), companyName].filter(Boolean).join(', '))} — signature</div></div><div><div class="l">Date</div></div></div>`
+
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeHtml(input.bidLabel)} — ${escapeHtml(title)}</title><style>
   body { font-family: sans-serif; margin: 0.8in; color: #17191e; }
   table { width: 100%; border-collapse: collapse; }
   h1 { font-size: 1.25rem; margin: 0; }
-  .sub { color: #6b7280; font-size: 0.85rem; margin: 0.15rem 0 0.9rem; }
-  .line { margin: 0 0 0.9rem; font-size: 0.95rem; }
-  .foot { color: #6b7280; font-size: 0.78rem; margin-top: 0.9rem; }
-  @media print { body { margin: 0.5in; } }
+  .sub { color: #4b5563; font-size: 0.85rem; margin: 0.15rem 0 0.9rem; }
+  .lh { display: flex; justify-content: space-between; align-items: flex-start; gap: 1.5rem; border-bottom: 2px solid #17191e; padding-bottom: 0.7rem; margin-bottom: 1rem; }
+  .lh .co { text-align: right; font-size: 0.78rem; line-height: 1.4; color: #374151; }
+  .lh .co b { display: block; font-size: 0.85rem; color: #17191e; }
+  .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem 1.5rem; font-size: 0.82rem; margin: 0 0 1rem; }
+  .meta b { display: block; color: #6b7280; font-weight: 600; font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  .ask { border: 1px solid #f59e0b; background: #fffbeb; border-radius: 6px; padding: 0.6rem 0.9rem; margin: 0 0 1rem; font-size: 0.85rem; }
+  .ask b { display: block; margin-bottom: 0.25rem; }
+  .ask ul { margin: 0; padding-left: 1.1rem; } .ask li { margin: 0.15rem 0; }
+  .dot { display: inline-block; width: 7px; height: 7px; background: #f59e0b; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+  .foot { color: #6b7280; font-size: 0.76rem; margin-top: 0.9rem; }
+  .room { display: flex; gap: 0.9rem; align-items: center; margin-top: 1rem; font-size: 0.8rem; color: #4b5563; }
+  .room svg { flex: none; }
+  .sign { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem 2.5rem; margin-top: 2.6rem; font-size: 0.8rem; }
+  .sign .l { border-top: 1px solid #17191e; padding-top: 0.25rem; color: #4b5563; }
+  @page { size: letter landscape; margin: 0.5in; }
+  @media print { body { margin: 0; } }
 </style></head><body>
-  <h1>${escapeHtml(input.bidLabel)} — Procurement log update</h1>
-  <p class="sub">${escapeHtml(input.companyName)} · update ${input.updateNumber} · ${escapeHtml(shortDate(input.sentOn))} · ${escapeHtml(since)} · ${escapeHtml(stageDatesText(input.stageDates))}</p>
-  ${input.line.trim() ? `<p class="line">${escapeHtml(input.line.trim())}</p>` : ''}
+  ${letterheadHtml}
+  <h1>${escapeHtml(title)}</h1>
+  <p class="sub">${subtitle}</p>
+  ${metaHtml}
+  ${asksHtml}
   <table>
-    <thead><tr><th style="${th}">Tag · product</th><th style="${th}">Submittal</th><th style="${th}">Released</th><th style="${th}">Ordered</th><th style="${th}">PO</th><th style="${th}">Lead</th><th style="${th}">Expected</th><th style="${th}">Required</th><th style="${th}">Float</th><th style="${th}">${escapeHtml(input.sinceOn ? `Since ${shortDate(input.sinceOn)}` : 'Notes')}</th></tr></thead>
-    <tbody>${rowsHtml || `<tr><td colspan="10" style="${cell}; color:#6b7280">No items on the log.</td></tr>`}</tbody>
+    <thead><tr><th style="${th}">Tag</th><th style="${th}">Item</th><th style="${th}">Submittal</th><th style="${th}">Ordered</th><th style="${th}">Lead time</th><th style="${th}">Expected on site</th><th style="${th}">Schedule</th><th style="${th}">Notes</th></tr></thead>
+    <tbody>${bodyHtml || `<tr><td colspan="8" style="${cell}; color:#6b7280">No items on the log.</td></tr>`}</tbody>
   </table>
-  <p class="foot">Changed rows first. Released = the reviewer's approval in the submittal room. Expected = order date + lead time unless the supply house gave a date. Required = the start of the stage the item belongs to on the schedule we were given; a negative float means the item lands after its stage starts.</p>
+  <p class="foot">Submittal = your reviewer’s decision on our submittal. Expected = our order date plus the supplier’s lead time, or the supplier’s own date where marked. Behind = the item lands after its stage starts, on the schedule you gave us.</p>
+  ${roomHtml}
+  ${signHtml}
 </body></html>`
 }
 
@@ -494,6 +664,12 @@ export function buildProcurementUpdateHtml(input: ProcurementUpdateInput): strin
 export function procurementUpdateText(input: ProcurementUpdateInput): string {
   const lines: string[] = [`${input.bidLabel} — procurement log update ${input.updateNumber} (${shortDate(input.sentOn)}${input.sinceOn ? `, since ${shortDate(input.sinceOn)}` : ''})`, '']
   if (input.line.trim()) lines.push(input.line.trim(), '')
+  const asks = procurementAsks(input.rows, input.sentOn)
+  if (asks.length > 0) {
+    lines.push('What we need from you:')
+    for (const a of asks) lines.push(`• ${a.tag ?? a.product}${a.tag ? ` ${a.product}` : ''}: ${a.text}`)
+    lines.push('')
+  }
   if (input.changes.length > 0) {
     lines.push('Changed since the last update:')
     for (const c of input.changes) lines.push(`• ${c.tag ?? c.product}${c.tag ? ` ${c.product}` : ''}: ${c.text}`)

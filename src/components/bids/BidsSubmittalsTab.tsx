@@ -66,7 +66,8 @@ import { buildSubmittalRows, changeNoteFor, summarizeChanges, type PickInput, ty
 import { needsReason, REASON_LABELS, type StatusOverride } from '../../lib/submittals/productStatus'
 import { describeLeadTime } from '../../lib/submittals/leadTime'
 import { buildCoverModel, buildSubmittalPackage, packageFileName, planPackage, renderCoverPdf, type PackageRowInput } from '../../lib/submittals/submittalPackage'
-import { fetchTestReportSettings } from '../../lib/jobs/testReportSettings'
+import { cachedTestReportSettings, fetchTestReportSettings } from '../../lib/jobs/testReportSettings'
+import type { TestReportSettings } from '../../lib/jobs/testReport'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { fixtureKey } from '../../lib/submittals/picksFromQuotes'
 import { loadPicksForBid, setSubmittalsNotNeeded } from '../../lib/submittals/firstRevisionClient'
@@ -181,7 +182,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   // Procure (v2.4083): the newest revision's rows as the log reads them, and the counts the strip's pill lights on.
   const [procItems, setProcItems] = useState<ProcurementItemSource[]>([])
   const [procCounts, setProcCounts] = useState<{ released: number; ordered: number; delivered: number; late: number } | null>(null)
-  const [companyName, setCompanyName] = useState('Click Plumbing and Electrical')
+  const [reportSettings, setReportSettings] = useState<TestReportSettings>(() => cachedTestReportSettings())
+  const companyName = reportSettings.companyName
   const [prevItems, setPrevItems] = useState<SubmittalItemRow[]>([])
   const [editing, setEditing] = useState<SubmittalItemRow | null>(null)
   const fileInput = useRef<HTMLInputElement | null>(null)
@@ -385,7 +387,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     }
   }, [items, selectedRev, newestRev])
   useEffect(() => {
-    void fetchTestReportSettings().then((st) => setCompanyName(st.companyName)).catch(() => undefined)
+    void fetchTestReportSettings().then(setReportSettings).catch(() => undefined)
   }, [])
   const prevById = useMemo(() => new Map(prevItems.map((p) => [p.id, p])), [prevItems])
   const overridesByTag = useMemo(() => {
@@ -1928,6 +1930,10 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                     bidId={bidId}
                     bidLabel={bidDisplayName(selectedBid) || 'Bid'}
                     companyName={companyName}
+                    letterhead={{ companyName: reportSettings.companyName, tagline: reportSettings.companyTagline, phone: reportSettings.officePhone, mailingAddress: reportSettings.mailingAddress }}
+                    projectAddress={selectedBid.address ?? null}
+                    gcName={selectedBid.customers?.name ?? selectedBid.bids_gc_builders?.name ?? null}
+                    roomUrl={room ? roomLink(window.location.origin, room.token) : null}
                     items={procItems}
                     reviewerNames={people.filter((p) => p.may_decide).map((p) => p.name)}
                     currentUser={{ id: user?.id ?? null, name: profileName ?? '' }}
