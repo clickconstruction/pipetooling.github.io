@@ -22,7 +22,7 @@ const items = [
   item({ id: 'it-prv', tag: 'PRV-1', status: 'missing' }),
   item({ id: 'it-acc', tag: '', submitted_label: 'JOSAM 12704 CARRIER', status: 'accessory', sheet_file: 0, sheet_pages: [2] }),
 ]
-const files: SourceFile[] = [{ path: 'b/r/0.pdf', houseId: null, houseName: 'NWS', name: 'NWS.pdf', pages: 4, trimmedAt: null, droppedPages: null }]
+const files: SourceFile[] = [{ path: 'b/r/0.pdf', houseId: null, houseName: 'NWS', name: 'NWS.pdf', pages: 4, trimmedAt: null, droppedPages: null, namesRows: null, sectioned: null }]
 const thumbs = { 'b/r/0.pdf': ['data:1', 'data:2', 'data:3', 'data:4'] }
 
 function mount(over: Partial<Parameters<typeof SubmittalSheetStrip>[0]> = {}) {
@@ -37,7 +37,8 @@ describe('SubmittalSheetStrip', () => {
     expect(screen.getAllByRole('button', { name: /^Page \d$/ })).toHaveLength(4)
     expect(screen.getByText('2 rows')).toBeTruthy()
     expect(screen.getByTestId('conflicts').textContent).toMatch(/Page 2 is on 2 rows/)
-    expect(screen.getByTestId('strip-footer').textContent).toBe('2 of 4 pages on rows · 2 not used')
+    expect(screen.getByTestId('strip-footer').textContent).toBe('2 of 4 pages on rows · 2 not used · tap a page, then the row it belongs to')
+    expect(screen.getByTestId('file-standing').textContent).toBe('2 of 4 on rows · 2 not used · 1 page on two rows')
     // Done is held while a page sits on two rows.
     expect((screen.getByRole('button', { name: 'Done with this file' }) as HTMLButtonElement).disabled).toBe(true)
   })
@@ -62,16 +63,28 @@ describe('SubmittalSheetStrip', () => {
     expect(h.onUnassign).toHaveBeenCalledWith(0, 2, 'it-acc')
   })
 
-  it('a file with nothing on rows offers Remove; a trimmed file reads what was let go; missing thumbnails ask', () => {
+  it('one line per file: the standing beside the name, Remove quiet and last, Done only with something on rows; a trimmed file reads what was kept', () => {
     const h = mount({ items: items.map((i) => ({ ...i, sheet_file: null, sheet_pages: [] })) })
-    expect(screen.getByTestId('strip-footer').textContent).toBe('4 pages · none on rows yet')
-    fireEvent.click(screen.getByRole('button', { name: 'Remove this file' }))
+    expect(screen.getByTestId('file-standing').textContent).toBe('none on rows yet')
+    expect(screen.getByTestId('strip-footer').textContent).toBe('4 pages · none on rows yet · tap a page, then the row it belongs to')
+    expect(screen.queryByRole('button', { name: 'Done with this file' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }))
     expect(h.onRemove).toHaveBeenCalledWith(0)
-    render(<SubmittalSheetStrip files={[{ ...files[0]!, path: 'b/r/1.pdf', pages: 2, trimmedAt: '2026-09-15T20:00:00Z', droppedPages: 24 }]} items={[]} thumbnails={{}} busy={false} onNeedThumbnails={h.onNeedThumbnails} onAssign={h.onAssign} onUnassign={h.onUnassign} onDone={h.onDone} onRemove={h.onRemove} />)
-    expect(screen.getAllByTestId('strip-footer')[1]!.textContent).toMatch(/24 pages let go · Sep 15 · drop the file again if you need one/)
+    render(<SubmittalSheetStrip files={[{ ...files[0]!, path: 'b/r/1.pdf', pages: 2, trimmedAt: '2026-09-15T20:00:00Z', droppedPages: 24 }]} items={[item({ id: 'k', tag: 'K-1', sheet_file: 0, sheet_pages: [1, 2] })]} thumbnails={{}} busy={false} onNeedThumbnails={h.onNeedThumbnails} onAssign={h.onAssign} onUnassign={h.onUnassign} onDone={h.onDone} onRemove={h.onRemove} />)
+    expect(screen.getAllByTestId('file-standing')[1]!.textContent).toBe('trimmed · 2 pages kept · Sep 15')
+    // a trimmed file has neither Done nor Remove
+    expect(screen.getAllByRole('button', { name: 'Remove' })).toHaveLength(1)
+  })
+
+  it('the arrow folds the pages out and asks for thumbnails it does not have; a file the reader could not place says so', () => {
+    const h = mount({ thumbnails: {}, files: [{ ...files[0]!, namesRows: 0 }], items: items.map((i) => ({ ...i, sheet_file: null, sheet_pages: [] })) })
+    expect(screen.queryByTestId('file-fold')).toBeNull()
+    expect(screen.getByTestId('file-hint').textContent).toBe('· no page names a row · not a vendor submittal?')
     fireEvent.click(screen.getByRole('button', { name: 'Show the pages' }))
     expect(h.onNeedThumbnails).toHaveBeenCalledWith(0)
-    expect(screen.queryByRole('button', { name: 'Done with this file' })).toBeNull()
+    expect(screen.getByTestId('file-fold')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Hide the pages' }))
+    expect(screen.queryByTestId('file-fold')).toBeNull()
   })
 
   it("6b · the robot's guesses draw as dashed chips (unsure marked ?), a tap on one assigns the page, Confirm and Ask sit on the file", () => {
