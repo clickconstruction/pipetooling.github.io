@@ -41,6 +41,25 @@ export function stagesCrewArchivedTail(split: StagesCrewSplit): string | null {
   return split.active.length > 0 ? `and ${n} archived` : `${n} archived`
 }
 
+/**
+ * The Crew & Dates cell's one line (v2.4128): the first two live names, then
+ * "+N" for everyone else (live beyond two, and every archived account) — the
+ * line opens the crew modal, which lists them all. Nobody live: the archived
+ * count alone, as before. Null when the job has no crew.
+ */
+export type StagesCrewLineParts = { shown: string[]; more: number; tail: string | null }
+
+export const STAGES_CREW_LINE_NAMES = 2
+
+export function stagesCrewLineParts(split: StagesCrewSplit, maxNames = STAGES_CREW_LINE_NAMES): StagesCrewLineParts | null {
+  if (split.active.length === 0) {
+    const tail = stagesCrewArchivedTail(split)
+    return tail ? { shown: [], more: 0, tail } : null
+  }
+  const shown = split.active.slice(0, maxNames)
+  return { shown, more: split.active.length - shown.length + split.archived.length, tail: null }
+}
+
 /** The one-line summary with the tail, for the phone sheet's "Crew: …" header; null when the job has no crew. */
 export function stagesCrewSummary(members: ReadonlyArray<StagesCrewMember> | null | undefined): string | null {
   const split = splitStagesCrew(members)

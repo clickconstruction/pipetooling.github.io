@@ -163,9 +163,9 @@ describe('deriveStagesWhen', () => {
   })
 
   it('done: 100 % with nothing booked, or a stage past Working', () => {
-    expect(deriveStagesWhen({ ...base, upcoming: null, pctComplete: 100, lastWorkDate: '2026-09-21' })).toEqual({ kind: 'done', lastYmd: '2026-09-21' })
-    expect(deriveStagesWhen({ ...base, upcoming: null, status: 'billed', lastWorkDate: '2026-09-01' })).toEqual({ kind: 'done', lastYmd: '2026-09-01' })
-    expect(deriveStagesWhen({ ...base, upcoming: null, status: 'ready_to_bill' })).toEqual({ kind: 'done', lastYmd: null })
+    expect(deriveStagesWhen({ ...base, upcoming: null, pctComplete: 100, lastWorkDate: '2026-09-21' })).toEqual({ kind: 'done', lastYmd: '2026-09-21', lastKind: 'worked' })
+    expect(deriveStagesWhen({ ...base, upcoming: null, status: 'billed', lastWorkDate: '2026-09-01' })).toEqual({ kind: 'done', lastYmd: '2026-09-01', lastKind: 'worked' })
+    expect(deriveStagesWhen({ ...base, upcoming: null, status: 'ready_to_bill' })).toEqual({ kind: 'done', lastYmd: null, lastKind: null })
   })
 
   it('a booked future day beats 100 % — the calendar still says scheduled', () => {
@@ -204,8 +204,9 @@ describe('column line parts (date on the label line, distance + fact under it)',
     expect(stripLastParts('2026-09-21', 'worked', TODAY)).toEqual({ main: 'Mon Sep 21', sub: 'yesterday · worked' })
     expect(stripLastParts('2026-09-18', 'scheduled', TODAY)).toEqual({ main: 'Fri Sep 18', sub: '4 days ago · booked, no hrs' })
     expect(stripLastParts(null, null, TODAY)).toEqual({ main: 'never worked', sub: null })
-    expect(stripDoneParts('2026-09-21', TODAY)).toEqual({ main: 'Mon Sep 21', sub: 'yesterday · last visit' })
-    expect(stripDoneParts(null, TODAY)).toEqual({ main: 'nothing booked', sub: null })
+    expect(stripDoneParts('2026-09-21', 'worked', TODAY)).toEqual({ main: 'Mon Sep 21', sub: 'yesterday · worked' })
+    expect(stripDoneParts('2026-09-21', 'scheduled', TODAY)).toEqual({ main: 'Mon Sep 21', sub: 'yesterday · booked, no hrs' })
+    expect(stripDoneParts(null, null, TODAY)).toEqual({ main: 'nothing booked', sub: null })
   })
   it('BILL / PAID from the billing detail labels', () => {
     expect(stripBillParts({ ymd: '2026-09-20', labels: ['Invoice sent'] }, TODAY)).toEqual({ label: 'Bill', main: 'Sun Sep 20', sub: '2 days ago · sent' })
@@ -227,7 +228,8 @@ describe('describeStagesWhen', () => {
       .toBe('Next Wed Sep 23 8–10 AM · Abraham, Paige; ends Fri Sep 25 · 3 visits')
     expect(describeStagesWhen({ kind: 'unscheduled', tone: 'amber', lastYmd: '2026-09-17', lastKind: 'worked' }))
       .toBe('Not scheduled — last Thu Sep 17 · worked')
-    expect(describeStagesWhen({ kind: 'done', lastYmd: null })).toBe('Done — nothing on the calendar')
+    expect(describeStagesWhen({ kind: 'done', lastYmd: '2026-09-17', lastKind: 'worked' })).toBe('Done — last Thu Sep 17 · worked')
+    expect(describeStagesWhen({ kind: 'done', lastYmd: null, lastKind: null })).toBe('Done — nothing on the calendar')
     expect(describeStagesWhen({ kind: 'unscheduled', tone: 'muted', lastYmd: null, lastKind: null })).toBe('Not scheduled — never worked')
   })
 })

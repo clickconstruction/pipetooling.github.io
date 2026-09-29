@@ -283,7 +283,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
           (see STAGES_TABLE_MIN_WIDTH). */}
       <table style={{ width: '100%', minWidth: STAGES_TABLE_MIN_WIDTH, borderCollapse: 'collapse', fontSize: '0.875rem', tableLayout: 'fixed' }}>
         <colgroup>
-          <col style={{ width: '9rem' }} />
+          <col style={{ width: '14rem' }} />
           <col />
           {/* v2.3462: 14.5rem — wide enough that the legend's widest row ("100% Done, not billed" beside a six-figure amount) never wraps. */}
           <col style={{ width: '14.5rem' }} />

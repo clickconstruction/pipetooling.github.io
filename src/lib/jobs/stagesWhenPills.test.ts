@@ -33,7 +33,7 @@ describe('stripWeekEndYmd + classifyStagesWhen', () => {
     expect(byJob.get('mon')?.kind).toBe('later')
     expect(byJob.get('none')?.kind).toBe('unscheduled')
     expect(byJob.get('done')?.kind).toBe('done')
-    expect(classifyStagesWhen({ kind: 'done', lastYmd: null }, TODAY)).toBe('done')
+    expect(classifyStagesWhen({ kind: 'done', lastYmd: null, lastKind: null }, TODAY)).toBe('done')
   })
 })
 
