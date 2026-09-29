@@ -46,7 +46,7 @@ describe('the stage sentences and the ? on each stage (v2.4125)', () => {
     }
   })
   it('each stage opens the tour on its own stop, in order', () => {
-    const stops = [1, 2, 3, 4, 5, 6, 7, 8].map(tourStopForStage)
+    const stops = [1, 2, 3, 4, 5, 6, 7, 8].map((n) => tourStopForStage(n))
     expect(stops[0]).toBeGreaterThan(0)
     for (let i = 1; i < stops.length; i++) expect(stops[i], `stage ${i + 1}`).toBeGreaterThan(stops[i - 1]!)
     expect(SUBMITTAL_TOUR_STEPS[stops[7]!]?.anchor).toBe('submittals-procure')

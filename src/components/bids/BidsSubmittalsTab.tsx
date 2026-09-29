@@ -17,8 +17,8 @@
  * the people on it, the trail, and Close; 4a-ii reads their decisions back
  * onto the rows and builds the next revision from the rows sent back.
  */
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { SpotlightTour } from '../SpotlightTour'
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { SpotlightTour, spotlightTourStepsPresent, type SpotlightTourStep } from '../SpotlightTour'
 import { SubmittalJourneyStrip } from './SubmittalJourneyStrip'
 import { SubmittalProcurementPanel } from './SubmittalProcurementPanel'
 import { PlugInScheduleModal } from './PlugInScheduleModal'
@@ -208,7 +208,14 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   const [events, setEvents] = useState<SubmittalEventRow[]>([])
   // v2.4067: the walkthrough, and the first-open offer (remembered per device).
   const [tourOpen, setTourOpen] = useState(false)
-  const [tourStart, setTourStart] = useState(0)
+  const [tourStage, setTourStage] = useState<number | null>(null)
+  // v2.4134 · the stops the tour will walk: computed after the road opens every stage for the
+  // tour (the anchors inside folded stages are not in the DOM before that), so a stop with no
+  // `missingBody` — the robot's offer — is walked only when it is on the page.
+  const [tourSteps, setTourSteps] = useState<SpotlightTourStep[] | null>(null)
+  useLayoutEffect(() => {
+    if (tourOpen && tourSteps == null) setTourSteps(spotlightTourStepsPresent(SUBMITTAL_TOUR_STEPS))
+  }, [tourOpen, tourSteps])
   const [offerWalkThrough, setOfferWalkThrough] = useState(() => !hasSeenSubmittalWalkthrough())
   /** Stage 5a: the room's thread and the office's reply box. */
   const [messages, setMessages] = useState<RoomMessage[]>([])
@@ -738,7 +745,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       const { error } = await db.from('bid_submittal_tasks').insert({ bid_id: bidId, submittal_id: submittalId, kind, input, status: 'queued', requested_by: user?.id ?? null })
       if (error) throw error
       await loadTasks(bidId)
-      showToast(kind === 'read_schedule' ? 'Asked — the robot reads the schedule off the plans; you confirm the rows here.' : kind === 'file_cut_sheets' ? 'Asked — the robot guesses each page\'s tag; the guesses land on the strip as dashed chips.' : 'Asked — the robot reads the marks; the proposed calls land on the file card for you to confirm.', 'success')
+      showToast(kind === 'read_schedule' ? 'Asked. The robot reads the schedule off the plans. Its tags land here for you to tick.' : kind === 'file_cut_sheets' ? 'Asked — the robot guesses each page\'s tag; the guesses land on the strip as dashed chips.' : 'Asked — the robot reads the marks; the proposed calls land on the file card for you to confirm.', 'success')
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Could not ask the robot.', 'error')
     } finally {
@@ -1272,7 +1279,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   function startWalkThrough(stage?: number) {
     markSubmittalWalkthroughSeen()
     setOfferWalkThrough(false)
-    setTourStart(typeof stage === 'number' ? tourStopForStage(stage) : 0)
+    setTourStage(typeof stage === 'number' ? stage : null)
+    setTourSteps(null)
     setTourOpen(true)
   }
 
@@ -1382,7 +1390,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
           }}
         />
       ) : null}
-      {tourOpen ? <SpotlightTour steps={SUBMITTAL_TOUR_STEPS} startIndex={tourStart} onClose={() => setTourOpen(false)} guideHref={SUBMITTAL_GUIDE_HREF} guideLabel="Read the full guide: build a submittal package →" /> : null}
+      {tourOpen && tourSteps ? <SpotlightTour steps={tourSteps} startIndex={tourStage != null ? tourStopForStage(tourStage, tourSteps) : 0} onClose={() => { setTourOpen(false); setTourSteps(null) }} guideHref={SUBMITTAL_GUIDE_HREF} guideLabel="Read the full guide: build a submittal package →" /> : null}
 
       {/* The hidden file inputs live here so every section's button can reach them, folded or not. */}
       <input ref={fileInput} type="file" accept="application/pdf,.pdf" aria-label="Vendor PDF" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void dropVendorPdf(f) }} />

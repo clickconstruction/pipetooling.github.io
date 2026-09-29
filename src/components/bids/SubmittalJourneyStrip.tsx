@@ -51,7 +51,7 @@ export function SubmittalJourneyStrip({
   return (
     <div data-tour="submittals-journey" data-testid="submittal-journey" style={{ border: '1px solid var(--border)', borderRadius: 10, background: 'var(--surface)', padding: '0.6rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-        <span style={{ fontSize: '0.66rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>Where this submittal is</span>
+        <span aria-hidden />
         <button type="button" onClick={onWalkThrough} style={btn} title="A one-minute walkthrough of every stage, from the schedule to the GC's approval">
           Walk me through it ▶
         </button>
