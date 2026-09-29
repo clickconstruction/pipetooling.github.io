@@ -102,7 +102,10 @@ export default function JobContractSignedRail({ job, jobNumber, source, row, est
     void loadLastShare(job.id)
   }, [job.id, row?.id, estimate?.estimateId])
 
-  const signerName = (isContract ? (row?.signer_printed_name ?? '') : (estimateRow?.acceptor_printed_name ?? estimate?.signerName ?? '')).trim()
+  // v2.4186: a two-frame agreement names both signers.
+  const primaryName = (row?.signer_printed_name ?? '').trim()
+  const coName = row?.co_signer_name && row.co_signed_at ? (row.co_signer_printed_name ?? row.co_signer_name ?? '').trim() : ''
+  const signerName = (isContract ? (coName ? `${primaryName} and ${coName}` : primaryName) : (estimateRow?.acceptor_printed_name ?? estimate?.signerName ?? '')).trim()
   const signedAt = isContract ? row?.signed_at ?? null : estimateRow?.acceptor_consented_at ?? estimate?.signedAt ?? null
   const phone = (job.customer_phone ?? row?.recipient_phone ?? '').replace(/[^\d+]/g, '')
   const signLink = isContract && row?.public_token ? jobContractSigningUrl(window.location.origin, row.public_token) : null
@@ -338,7 +341,7 @@ export default function JobContractSignedRail({ job, jobNumber, source, row, est
         onClose={() => setShareOpen(false)}
         target={shareTarget}
         heading={`${isContract ? 'Contract' : source === 'bid_room' ? 'Proposal' : 'Estimate'} · J${jobNumber}${job.job_address ? ` · ${job.job_address}` : ''}`}
-        signerName={signerName}
+        signerName={primaryName || signerName}
         signerEmail={isContract ? row?.recipient_email ?? job.customer_email ?? null : estimateRow?.customer_email ?? job.customer_email ?? null}
         contractRow={isContract ? row : null}
         filenameHint={doors.emailCopy?.attachment === 'link' && row?.signed_document_url ? shortDocumentLabel(row.signed_document_url) : pdfFilename}

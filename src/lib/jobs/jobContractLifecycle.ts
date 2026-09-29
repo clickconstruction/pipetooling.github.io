@@ -7,6 +7,7 @@
 import type { Database } from '../../types/database'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { esignAuditSuffix } from '../esignConsent'
+import { framesLabel, type SignerFramesRow } from './jobContractSigners'
 
 export type JobContractRow = Database['public']['Tables']['job_contracts']['Row']
 
@@ -35,18 +36,21 @@ export type JobContractChip = {
 }
 
 export function jobContractChips(
-  row: Pick<JobContractRow, 'status' | 'voided_at' | 'signer_mode' | 'send_count' | 'view_count'> & { sent_channel?: string | null },
+  row: Pick<JobContractRow, 'status' | 'voided_at' | 'signer_mode' | 'send_count' | 'view_count'> & { sent_channel?: string | null } & SignerFramesRow,
 ): JobContractChip[] {
   const s = jobContractStatus(row)
   if (s === 'voided') return [{ label: 'voided', tone: 'voided' }]
   if (s === 'draft') return [{ label: 'draft', tone: 'draft' }]
   if (s === 'sent') {
+    // v2.4186: a two-frame agreement says how many frames are filled.
+    const frames = framesLabel(row)
+    const framesSuffix = frames ? ` · ${frames}` : ''
     // v2.3629: handed over on paper — there is no link to open, so no sends or opens to count.
-    if (row.sent_channel === 'handed') return [{ label: 'handed over · awaiting signature', tone: 'sent' }]
+    if (row.sent_channel === 'handed') return [{ label: `handed over · awaiting signature${framesSuffix}`, tone: 'sent' }]
     // v2.3631: the PDF went by email to sign by hand — the link is only the second door.
-    if (row.sent_channel === 'pdf_email') return [{ label: `PDF emailed${row.send_count > 1 ? ` ×${row.send_count}` : ''} · awaiting signature`, tone: 'sent' }]
+    if (row.sent_channel === 'pdf_email') return [{ label: `PDF emailed${row.send_count > 1 ? ` ×${row.send_count}` : ''} · awaiting signature${framesSuffix}`, tone: 'sent' }]
     const opened = row.view_count > 0 ? ` · opened ${row.view_count}×` : ''
-    return [{ label: `sent${row.send_count > 1 ? ` ×${row.send_count}` : ''}${opened}`, tone: 'sent' }]
+    return [{ label: `sent${row.send_count > 1 ? ` ×${row.send_count}` : ''}${opened}${framesSuffix}`, tone: 'sent' }]
   }
   return [{ label: row.signer_mode === 'paper' ? 'on file · paper' : 'signed ✓', tone: 'signed' }]
 }

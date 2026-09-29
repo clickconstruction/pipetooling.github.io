@@ -62,6 +62,9 @@ export type JobContractPdfInput = {
     /** Stamp beside the name, e.g. "Sep 2, 2026, 7:14 PM CT". */
     whenLabel?: string | null
   } | null
+  /** v2.4186: a second signer the office named — a second block, signed or with its own pen rules. */
+  coSignerName?: string | null
+  coSignature?: JobContractPdfInput['signature']
 }
 
 /** The unsigned block's wording, shared with the TS test twin. */
@@ -295,12 +298,8 @@ export async function buildJobContractPdf(lib: PdfLibLike, input: JobContractPdf
 
   // Signature block (v2.2724 "Option A"): a framed mark tagged SIGNED
   // ELECTRONICALLY with the record ID, printed name + time to the right, the
-  // audit line below.
-  gap(18)
-  ensure(120)
-  label('Customer signature')
-  const sig = input.signature
-  if (!sig) {
+  // audit line below. v2.4186: drawn once per frame — a second signer gets a second block.
+  const drawUnsigned = (who: string | null) => {
     // Unsigned (v2.3527): two rules for a pen — a long one for the signature, a short one
     // for the date — a small label under each, and one line of instruction. No frame,
     // no tag: nothing here may read as an electronic signature.
@@ -310,11 +309,12 @@ export async function buildJobContractPdf(lib: PdfLibLike, input: JobContractPdf
     const dateW = CONTENT_W - signW - 30
     page.drawLine({ start: { x: MARGIN, y: ruleY }, end: { x: MARGIN + signW, y: ruleY }, thickness: 0.8, color: ink })
     page.drawLine({ start: { x: dateX, y: ruleY }, end: { x: dateX + dateW, y: ruleY }, thickness: 0.8, color: ink })
-    page.drawText(UNSIGNED_BLOCK.signLabel, { x: MARGIN, y: ruleY - 11, size: 7.5, font, color: muted })
+    page.drawText(`${UNSIGNED_BLOCK.signLabel}${who ? ` — ${who}` : ''}`, { x: MARGIN, y: ruleY - 11, size: 7.5, font, color: muted })
     page.drawText(UNSIGNED_BLOCK.dateLabel, { x: dateX, y: ruleY - 11, size: 7.5, font, color: muted })
     y = ruleY - 26
     text(UNSIGNED_BLOCK.hint, 8.5, font, muted)
-  } else {
+  }
+  const drawSigned = async (sig: NonNullable<JobContractPdfInput['signature']>) => {
   const frameX = MARGIN
   const frameW = 250
   const innerPad = 12
@@ -363,6 +363,18 @@ export async function buildJobContractPdf(lib: PdfLibLike, input: JobContractPdf
   }
   y = frameBottom - 14
   text(sig.auditLine, 8.5, font, muted)
+  }
+  gap(18)
+  ensure(120)
+  label('Customer signature')
+  if (!input.signature) drawUnsigned(input.coSignerName ? input.recipientName : null)
+  else await drawSigned(input.signature)
+  if (input.coSignerName) {
+    gap(18)
+    ensure(120)
+    label('Second signature')
+    if (!input.coSignature) drawUnsigned(input.coSignerName)
+    else await drawSigned(input.coSignature)
   }
 
   // Footer on every page

@@ -46,6 +46,7 @@ type Body = {
     body_format?: string | null
     template_name?: string | null
     recipient_name?: string | null
+    co_signer_name?: unknown
     revision?: number | null
   }
   to?: string[]
@@ -111,13 +112,13 @@ serve(async (req) => {
       // a draft, a sent-and-unopened, even a signed one prints the same page without the
       // mark), else from the fields the client holds for a job with no row yet.
       let jobId: string | null = null
-      let draft: { fields: Record<string, unknown>; body_html: string | null; body_format: string; template_name: string | null; recipient_name: string | null; revision: number } | null = null
+      let draft: { fields: Record<string, unknown>; body_html: string | null; body_format: string; template_name: string | null; recipient_name: string | null; revision: number; co_signer_name: string | null } | null = null
       if (body.contract_id) {
-        const { data: row } = await userClient.from('job_contracts').select('job_id, fields, body_html, body_format, template_name, recipient_name, revision').eq('id', body.contract_id).maybeSingle()
+        const { data: row } = await userClient.from('job_contracts').select('job_id, fields, body_html, body_format, template_name, recipient_name, revision, co_signer_name').eq('id', body.contract_id).maybeSingle()
         if (!row) return json({ error: 'Contract not found or access denied' }, 403)
-        const c = row as { job_id: string; fields: unknown; body_html: string | null; body_format: string; template_name: string | null; recipient_name: string | null; revision: number }
+        const c = row as { job_id: string; fields: unknown; body_html: string | null; body_format: string; template_name: string | null; recipient_name: string | null; revision: number; co_signer_name: string | null }
         jobId = c.job_id
-        draft = { fields: (c.fields && typeof c.fields === 'object' ? c.fields : {}) as Record<string, unknown>, body_html: c.body_html, body_format: c.body_format, template_name: c.template_name, recipient_name: c.recipient_name, revision: c.revision }
+        draft = { co_signer_name: c.co_signer_name ?? null, fields: (c.fields && typeof c.fields === 'object' ? c.fields : {}) as Record<string, unknown>, body_html: c.body_html, body_format: c.body_format, template_name: c.template_name, recipient_name: c.recipient_name, revision: c.revision }
       } else if (body.job_id && body.draft) {
         jobId = body.job_id
         const d = body.draft
@@ -128,6 +129,7 @@ serve(async (req) => {
           template_name: typeof d.template_name === 'string' ? d.template_name.slice(0, 200) : null,
           recipient_name: typeof d.recipient_name === 'string' ? d.recipient_name.slice(0, 200) : null,
           revision: typeof d.revision === 'number' && d.revision > 0 ? d.revision : 1,
+          co_signer_name: typeof d.co_signer_name === 'string' && d.co_signer_name.trim() ? d.co_signer_name.trim().slice(0, 200) : null,
         }
       } else {
         return json({ error: 'draft_pdf needs a contract_id, or a job_id with the draft fields.' }, 400)
@@ -166,6 +168,8 @@ serve(async (req) => {
         termsText: contractBodyToPlainText(draft.body_html, draft.body_format),
         issuer,
         signature: null,
+        // v2.4186: a named second signer gets their own pen rules.
+        coSignerName: draft.co_signer_name,
       })
       const jobNo = jobNumberLabel(jobRow).replace(/[^a-zA-Z0-9-]/g, '')
       const draftFilename = `Agreement-J${jobNo}-to-sign.pdf`
@@ -282,6 +286,13 @@ serve(async (req) => {
         paper_upload_path: string | null
         public_token: string | null
         signed_document_url: string | null
+        co_signer_name: string | null
+        co_signed_at: string | null
+        co_signer_printed_name: string | null
+        co_signer_mode: string | null
+        co_signer_consented_at: string | null
+        co_signer_ip: string | null
+        co_signer_signature_storage_path: string | null
       }
       if (c.status !== 'signed' || !c.signed_at) return json({ error: 'Only a signed contract can be shared.' }, 409)
       const { data: j } = await userClient.from('jobs_ledger').select('id, hcp_number, click_number, job_name, job_address, customer_name, master_user_id').eq('id', c.job_id).maybeSingle()
@@ -313,6 +324,13 @@ serve(async (req) => {
         if (!pdf) {
           // Rebuild once from the frozen row (older signatures predate the stored PDF).
           const sigPng = c.signer_signature_storage_path ? await fetchBytes(admin, c.signer_signature_storage_path) : null
+          // v2.4186: the second frame, when the office named a second signer and they signed.
+          const coPng = c.co_signer_signature_storage_path ? await fetchBytes(admin, c.co_signer_signature_storage_path) : null
+          const coHow = c.co_signer_mode === 'draw' ? 'drawn' : c.co_signer_mode === 'in_person' ? 'in person' : 'typed'
+          const coSignature =
+            c.co_signer_name && c.co_signed_at
+              ? { printedName: (c.co_signer_printed_name ?? '').trim(), auditLine: `${c.co_signer_consented_at ? 'Consent recorded · ' : ''}${coHow} · ${stamp(c.co_signed_at)} CT${c.co_signer_ip ? ` · ${c.co_signer_ip}` : ''}`, png: coPng, recordId: signedRecordId('J', jobNo, c.id), whenLabel: `${stamp(c.co_signed_at)} CT` }
+              : null
           const f = (c.fields && typeof c.fields === 'object' ? c.fields : {}) as Record<string, unknown>
           const amount = amountCentsFromFields(c.fields)
           const key = typeof f.payment_terms_key === 'string' ? f.payment_terms_key : 'half_down'
@@ -344,7 +362,9 @@ serve(async (req) => {
             dates: [typeof f.start_date === 'string' && f.start_date ? `Start: ${f.start_date}` : '', typeof f.completion_date === 'string' && f.completion_date ? `Estimated completion: ${f.completion_date}` : ''].filter(Boolean).join('  ·  '),
             termsText: contractBodyToPlainText(c.body_html, c.body_format),
             issuer,
-            signature: { printedName: signerName, auditLine: `${c.signer_consented_at ? 'Consent recorded · ' : ''}${how} · ${stamp(c.signed_at)} CT${c.signer_ip ? ` · ${c.signer_ip}` : ''}`, png: sigPng, recordId: signedRecordId('J', jobNo, c.id), whenLabel: `${stamp(c.signed_at)} CT` },
+            signature: { printedName: signerName, auditLine: `${c.signer_consented_at ? 'Consent recorded · ' : ''}${how} · ${stamp(c.signer_consented_at ?? c.signed_at)} CT${c.signer_ip ? ` · ${c.signer_ip}` : ''}`, png: sigPng, recordId: signedRecordId('J', jobNo, c.id), whenLabel: `${stamp(c.signer_consented_at ?? c.signed_at)} CT` },
+            coSignerName: c.co_signer_name ?? null,
+            coSignature,
           })
           const { error: upErr } = await admin.storage.from(JOB_CONTRACT_BUCKET).upload(pdfPath, pdf, { contentType: 'application/pdf', upsert: true })
           if (!upErr) await admin.from('job_contracts').update({ signed_pdf_path: pdfPath }).eq('id', c.id)
