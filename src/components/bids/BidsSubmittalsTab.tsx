@@ -17,7 +17,7 @@
  * the people on it, the trail, and Close; 4a-ii reads their decisions back
  * onto the rows and builds the next revision from the rows sent back.
  */
-import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { Children, Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { SpotlightTour, spotlightTourStepsPresent, type SpotlightTourStep } from '../SpotlightTour'
 import { RobotOffer } from './RobotOffer'
 import { robotSeatState, type RobotSeatRow, type RobotSeatState } from '../../lib/submittals/robotOffer'
@@ -31,7 +31,7 @@ import { SplitRuleModal } from './SplitRuleModal'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { procurementItemsFrom } from '../../lib/submittals/procurementLogIo'
 import type { ProcurementItemSource } from '../../lib/submittals/procurementLog'
-import { submittalJourney, type JourneyAction, type JourneyStage, type JourneyStageKey } from '../../lib/submittals/submittalJourney'
+import { submittalJourney, type JourneyAction, type JourneyStage, type JourneyStageKey, stageGate } from '../../lib/submittals/submittalJourney'
 import { SUBMITTAL_GUIDE_HREF, SUBMITTAL_STAGE_ABOUT, SUBMITTAL_TOUR_STEPS, hasOpenEveryStage, tourStopForStage, hasSeenSubmittalWalkthrough, markSubmittalWalkthroughSeen, rememberOpenEveryStage } from '../../lib/submittals/submittalTour'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
@@ -145,8 +145,8 @@ function RoadSection({ n, title, status, open, onToggle, anchor, summary, about,
             ) : null}
           </div>
         ) : null}
-        {open ? (
-          <div style={{ marginTop: '0.5rem', border: `1px ${status === 'later' ? 'dashed' : 'solid'} ${status === 'current' ? '#2563eb' : 'var(--border)'}`, boxShadow: status === 'current' ? '0 0 0 3px var(--bg-blue-tint)' : undefined, borderRadius: 8, padding: '0.6rem 0.75rem', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        {open && Children.toArray(children).some(Boolean) ? (
+          <div data-testid={`road-${n}-body`} style={{ marginTop: '0.5rem', border: `1px ${status === 'later' ? 'dashed' : 'solid'} ${status === 'current' ? '#2563eb' : 'var(--border)'}`, boxShadow: status === 'current' ? '0 0 0 3px var(--bg-blue-tint)' : undefined, borderRadius: 8, padding: '0.6rem 0.75rem', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             {children}
           </div>
         ) : null}
@@ -1370,6 +1370,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   // The road (v2.4090): a done stage folds to its line; the current stage and the stage it reads from stay open;
   // "Open every stage" (remembered per device) and the walkthrough open everything.
   const stageStatus = (key: JourneyStageKey): RoadStatus => journey.stages.find((st) => st.key === key)?.status ?? 'later'
+  const gates = { package: stageGate(journey.stages, 'package'), share: stageGate(journey.stages, 'share'), resubmit: stageGate(journey.stages, 'resubmit') }
   const currentStageKey = journey.stages.find((st) => (st.status === 'current' || st.status === 'waiting') && st.key !== 'procure')?.key ?? null
   // What each stage reads from stays open beside it: the package reads the rows; their call and the resubmit land on the rows.
   const readsFrom: Partial<Record<JourneyStageKey, JourneyStageKey[]>> = { package: ['rows'], share: ['package'], review: ['rows'], resubmit: ['rows', 'review'] }
@@ -1379,6 +1380,9 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     if (toggled != null) return toggled
     if (openAllStages || tourOpen) return true
     if (key === 'picks' && scheduleReadLive) return true
+    // v2.4169 · a stage you have not reached folds to its sentence; its controls draw only when you open it, and then held.
+    if (key === 'build' && revisions.length === 0) return true
+    if (stageStatus(key) === 'later') return false
     if (stageStatus(key) !== 'done') return true
     return currentStageKey != null && (readsFrom[currentStageKey] ?? []).includes(key)
   }
@@ -1802,7 +1806,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                 ) : items.length > 0 ? 'not built for this version yet' : 'appears once Rev 1 has rows'}>
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                   {items.length > 0 ? (
-                    <button type="button" disabled={busy} onClick={() => void buildPackage()} style={selectedRev.package_path ? btn : btnPrimary} title="One PDF for the GC: the cover table, then every cut sheet stamped with its tag and status. Saved on this version and opened" data-tour="submittals-package">
+                    <button type="button" disabled={busy || !gates.package.on} onClick={() => void buildPackage()} style={{ ...(selectedRev.package_path ? btn : btnPrimary), opacity: gates.package.on ? 1 : 0.5 }} data-testid="build-package"
+ title="One PDF for the GC: the cover table, then every cut sheet stamped with its tag and status. Saved on this version and opened" data-tour="submittals-package">
                       {selectedRev.package_path ? 'Rebuild package' : 'Build package'}
                     </button>
                   ) : null}
@@ -1814,7 +1819,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                   {selectedRev.drive_file_url ? null : selectedRev.package_path && asRevisionStatus(selectedRev.status) !== 'draft' ? (
                     <button type="button" disabled={busy} onClick={() => void fileInDrive()} style={{ ...btnQuiet, textDecoration: 'underline dotted' }} title="Save this version's package PDF in the bid's job folder on Drive, under Submittals" data-testid="file-in-drive">File in Drive</button>
                   ) : null}
-                  <span style={smallMuted}>One PDF on our letterhead. The cover table first, then every cut sheet stamped with its tag and status.</span>
+                  <span style={smallMuted} data-testid="package-caption">{gates.package.on ? 'One PDF on our letterhead. The cover table first, then every cut sheet stamped with its tag and status.' : gates.package.why}</span>
                 </div>
               </RoadSection>
 
@@ -1823,10 +1828,10 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                 summary={room ? describeRoomLine(room, events.filter((e) => e.event_type === 'view').length, ROOM_TZ) : items.length > 0 ? 'not shared yet' : 'appears once Rev 1 has rows'}>
                 {items.length > 0 && isNewest ? (
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', marginBottom: room ? '0.5rem' : 0 }}>
-                    <button type="button" disabled={busy || room?.status === 'closed'} onClick={() => setSharing(true)} style={asRevisionStatus(selectedRev.status) === 'shared' ? btn : btnPrimary} title={room ? 'Mark this revision shared; the room link shows it' : 'Mint the bid\'s review room and copy its link'} data-tour="submittals-share">
+                    <button type="button" disabled={busy || room?.status === 'closed' || !gates.share.on} onClick={() => setSharing(true)} style={{ ...(asRevisionStatus(selectedRev.status) === 'shared' ? btn : btnPrimary), opacity: gates.share.on ? 1 : 0.5 }} data-testid="share-button" title={room ? 'Mark this revision shared; the room link shows it' : 'Mint the bid\'s review room and copy its link'} data-tour="submittals-share">
                       {asRevisionStatus(selectedRev.status) === 'shared' ? 'Shared · share again' : 'Share'}
                     </button>
-                    <span style={smallMuted}>{room ? 'The same link shows every later version.' : 'Makes the link for the GC and copies it. Paste it into your email.'}</span>
+                    <span style={smallMuted} data-testid="share-caption">{!gates.share.on ? gates.share.why : room ? 'The same link shows every later version.' : 'Makes the link for the GC and copies it. Paste it into your email.'}</span>
                   </div>
                 ) : null}
                 {room ? (
@@ -2014,10 +2019,10 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                       Rev {selectedRev.rev_number + 1} from the {decisions.sentBack} row{decisions.sentBack === 1 ? '' : 's'} sent back
                     </button>
                   ) : null}
-                  <button type="button" disabled={busy || !isNewest} onClick={() => void newRevision()} style={{ ...(decisions.sentBack > 0 || !isNewest ? btn : btnGreen), opacity: !isNewest ? 0.5 : 1 }} title={isNewest ? 'Carry every row into a new draft and mark what changed' : 'Only the newest revision can be revised'} data-tour={isNewest && decisions.sentBack > 0 ? undefined : 'submittals-resubmit'}>
+                  <button type="button" disabled={busy || !isNewest || !gates.resubmit.on} onClick={() => void newRevision()} style={{ ...(decisions.sentBack > 0 || !isNewest || !gates.resubmit.on ? btn : btnGreen), opacity: !isNewest || !gates.resubmit.on ? 0.5 : 1 }} data-testid="new-revision" title={isNewest ? 'Carry every row into a new draft and mark what changed' : 'Only the newest revision can be revised'} data-tour={isNewest && decisions.sentBack > 0 ? undefined : 'submittals-resubmit'}>
                     New revision
                   </button>
-                  <span style={smallMuted}>Fix the rows, then share again. The GC’s link shows the new version.</span>
+                  <span style={smallMuted} data-testid="resubmit-caption">{gates.resubmit.on ? 'Fix the rows, then share again. The GC’s link shows the new version.' : gates.resubmit.why}</span>
                 </div>
               </RoadSection>
 
