@@ -3,6 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import Stripe from 'https://esm.sh/stripe@16.12.0?target=deno'
 import { customerEmailFromStripeInvoice } from '../_shared/stripeInvoiceCustomerEmail.ts'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
+import { COMPANY_EMAIL_FROM } from '../_shared/emailFrom.ts'
 import { buildStripeBillCopyEmail } from '../_shared/stripeBillCopyEmail.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { loadPortalReturnUrl } from '../_shared/customerPortalReturnUrl.ts'
@@ -189,6 +190,7 @@ async function sendBillCopies(args: {
     const res = await sendEmailViaResend(plan.to, email.subject, email.text, email.html, resendApiKey, {
       replyTo: plan.to,
       emailType: 'stripe_bill_copy',
+      from: COMPANY_EMAIL_FROM,
     })
     if (res.success) return { copies_sent: [], copies_failed: [], copies_test_to: plan.to, ...heldBack }
     console.error('send-stripe-invoice: test bill copy failed', res.error)
@@ -214,6 +216,7 @@ async function sendBillCopies(args: {
       ...(args.callerEmail ? { replyTo: args.callerEmail } : {}),
       ...(qr ? { attachments: [{ filename: PORTAL_QR_FILENAME, content: qr, content_id: PORTAL_QR_CONTENT_ID }] } : {}),
       emailType: 'stripe_bill_copy',
+      from: COMPANY_EMAIL_FROM,
     })
     if (res.success) sent.push(to)
     else failed.push({ email: to, error: res.error ?? 'send failed' })
@@ -311,6 +314,7 @@ async function sendOwnBillEmail(args: {
       ...(args.callerEmail ? { replyTo: args.callerEmail } : {}),
       ...(attachments.length ? { attachments } : {}),
       emailType: 'stripe_bill',
+      from: COMPANY_EMAIL_FROM,
     })
     return res.success ? { ok: true } : { ok: false, error: res.error ?? 'send failed' }
   } catch (e) {
