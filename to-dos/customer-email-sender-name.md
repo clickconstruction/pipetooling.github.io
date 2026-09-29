@@ -2,13 +2,13 @@
 name: Customer emails come from Click Plumbing and Electrical
 number: 53
 group: ready
-status: planned 2026-09-28 · PR 1 shipped v2.4127 (the helper, `COMPANY_EMAIL_FROM`, the bill email and its copies) · PRs 2–3 not started
+status: planned 2026-09-28 · PR 1 shipped v2.4127 (the helper, `COMPANY_EMAIL_FROM`, the bill email and its copies), deployed and run live 2026-09-29 · PRs 2–3 not started
 summary: >
   Most emails the app sends a customer, a GC, a supply house or a law firm show "ClickTooling"
   as the sender in the inbox — the name of our software, not of the company the reader hired.
   Customer-facing emails should read "Click Plumbing and Electrical"; staff emails keep
   "ClickTooling" so the team can tell an app notice from a customer thread.
-next: run PR 1's live check (a test-mode bill on the ZZ TEST job; the inbox reads Click Plumbing and Electrical); then PR 2 — the rest of the customer senders + the catalog guard test.
+next: PR 2 — the rest of the customer senders + the catalog guard test, and the Bill Customer window's "a copy from ClickTooling" line (a code string) reads the company; the owner glances at the 2026-09-29 test bill in robert@'s inbox for the sender name.
 size: S
 blocker: None.
 opinion: build on — the bill is done (v2.4127); every other customer email still says "ClickTooling" until PR 2
@@ -97,5 +97,11 @@ changed functions, and the sender line in `docs/BILLING_FLOWS.md` where it names
   *ZZ TEST Owner On Notice*, which has a portal and a short address) — Send Email invoice sends it to
   whoever pressed Send; the inbox should read **Click Plumbing and Electrical**. v2.4020's test on
   2026-09-28 is the recipe (dev login signs in as `robert@douglasmining.com`, so that is the inbox).
+  **Run 2026-09-29** after the three functions deployed (`check:edge-drift` clean): a fresh $100 draft
+  on the job → Stripe bill in Test mode (invoice `#1054-2609291046`, left open on the job) → Send
+  Email invoice → *"Test bill: the email came to you (robert@douglasmining.com), not the customer."*
+  The session could not open that inbox, so the sender name as the inbox shows it is the owner's one
+  glance; the function that sent it is the v2.4127 build. Found on the way: the Bill Customer window's
+  Send-to line still says *a copy from ClickTooling* — a code string, PR 2.
 - Live, PR 2: `email_send_log.from_email` for the next send of each type reads the company name;
   Resend's dashboard shows delivered, not bounced (a display-name change does not touch SPF/DKIM).
