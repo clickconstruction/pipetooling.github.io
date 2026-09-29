@@ -754,8 +754,10 @@ export function renderJobCustomerLine(ctx: StagesRowRenderContext, job: JobWithD
     >
       {/* Icon + name open the customer profile modal (v2.1322); rows with a
           customer NAME but no linked row route to the existing create/link
-          flow instead — same affordance, honest destination. */}
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.15rem' }}>
+          flow instead — same affordance, honest destination. The line flows
+          as text (v2.4151): a long name wraps and the 🌐 + owner-sees chip
+          follow its last word, instead of floating beside a two-line block. */}
+      <span style={{ display: 'inline' }}>
       <button
         type="button"
         onClick={(e) => {
@@ -765,18 +767,18 @@ export function renderJobCustomerLine(ctx: StagesRowRenderContext, job: JobWithD
         }}
         title={job.customer_id ? 'Open customer profile' : 'Link or create this customer'}
         aria-label={job.customer_id ? `Open customer profile for ${cn || 'customer'}` : `Link or create customer ${cn || ''}`.trim()}
-        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit', textAlign: 'left' }}
+        style={{ display: 'inline', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit', textAlign: 'left' }}
       >
-        <CustomerContactCardIcon size={13} style={{ flexShrink: 0 }} />
+        <CustomerContactCardIcon size={13} style={{ display: 'inline-block', verticalAlign: '-2px', marginRight: '0.3rem' }} />
         <span style={{ textDecoration: job.customer_id ? 'underline dotted' : 'none', textUnderlineOffset: 2 }}>{cn ? <StagesSearchMark text={cn} /> : '—'}</span>
       </button>
-      {/* 🌐 portal link (portal train PR 4) — office-only, renders null otherwise. */}
       {job.customer_id ? (
-        <CustomerPortalGlobeButton customerId={job.customer_id} customerName={cn || 'Customer'} size={13} />
-      ) : null}
-      {/* The owner sees the bills (v2.3827): only on a GC-billed job whose customer is the owner; renders null otherwise. */}
-      {job.customer_id ? (
-        <OwnerShareChip job={job} invoices={job.invoices ?? []} ownerName={cn || 'The owner'} gcName={gcName} role={ctx.authRole} onChanged={() => void ctx.loadJobs()} onError={(m) => ctx.showToast(m, 'error')} />
+        // One inline unit after the name's last word: the 🌐 (portal train PR 4, office-only, renders null otherwise)
+        // and the owner-sees chip (v2.3827: only on a GC-billed job whose customer is the owner; renders null otherwise).
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.15rem', verticalAlign: 'middle', marginLeft: '0.15rem' }} data-testid="customer-line-tail">
+          <CustomerPortalGlobeButton customerId={job.customer_id} customerName={cn || 'Customer'} size={13} />
+          <OwnerShareChip job={job} invoices={job.invoices ?? []} ownerName={cn || 'The owner'} gcName={gcName} role={ctx.authRole} onChanged={() => void ctx.loadJobs()} onError={(m) => ctx.showToast(m, 'error')} />
+        </span>
       ) : null}
       </span>
       {gcName || developmentName ? (
