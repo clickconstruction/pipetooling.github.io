@@ -82,7 +82,7 @@ export type CheckLine = {
   /** "4410 Oak Ridge Dr · 1041 Oak Ridge Ph 2" — the address leads, as on the statement. */
   jobLabel: string
   invoiceId: string | null
-  /** "Invoice 2 of 3"; "on the job, no bill yet" for money no sent bill needed. */
+  /** "Invoice 2 of 3"; "on the job, not tied to an invoice" for money no sent bill needed. */
   invoiceLabel: string
   amount: number
   billPaidInFull: boolean
@@ -117,8 +117,8 @@ export type GcCheckJob = {
   /** Sent bills the GC pays, billed or paid. */
   billCount: number
   billed: number
-  /** Distinct check labels on the job, oldest first. */
-  paidBy: string[]
+  /** The distinct checks on the job, oldest first. */
+  paidBy: Array<{ label: string; receivedYmd: string | null; noNumber: boolean }>
   lastApplied: { label: string; receivedYmd: string | null } | null
   retainageHeld: number
   stillOpen: number
@@ -181,27 +181,51 @@ export function paymentKind(paymentType: string | null | undefined): CheckKind {
   return 'other'
 }
 
-/** The number as the GC would say it: no leading #, no spaces around it. */
+/**
+ * A bank-recorded payment carries Mercury's transaction id in the number field
+ * (`apply_mercury_bank_payment_allocations` writes `mercury_id` there so one
+ * deposit's allocations share it): a fold key, never a check number.
+ */
+export function isDepositRef(reference: string | null | undefined): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test((reference ?? '').trim())
+}
+
+/** The number as the GC would say it: no leading #, no spaces around it; '' for a deposit id. */
 export function checkNumberText(reference: string | null | undefined): string {
-  return (reference ?? '').trim().replace(/^#\s*/, '').trim()
+  const ref = (reference ?? '').trim().replace(/^#\s*/, '').trim()
+  return isDepositRef(ref) ? '' : ref
 }
 
 const numberKey = (reference: string | null | undefined): string => checkNumberText(reference).toLowerCase().replace(/[^a-z0-9]/g, '')
+/** The fold key keeps a deposit id — one deposit's allocations share it — where the display number drops it. */
+const foldNumberKey = (reference: string | null | undefined): string =>
+  (reference ?? '')
+    .trim()
+    .replace(/^#\s*/, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
 
-export function checkLabel(kind: CheckKind, number: string): string {
+export function checkLabel(kind: CheckKind, number: string, opts?: { deposit?: boolean }): string {
   if (number) return `#${number}`
   if (kind === 'check') return 'check · no number recorded'
   if (kind === 'ach') return 'ACH'
   if (kind === 'wire') return 'Wire'
   if (kind === 'card') return 'Card'
-  return 'Payment'
+  // Recorded from a bank deposit with no type picked: say so rather than "Payment".
+  return opts?.deposit ? 'Bank deposit' : 'Payment'
 }
 
-/** The address leads, then the job number and name — the statement's row label, on one line. */
+/**
+ * The address leads, then the job number and name — the statement's row label, on one line. A
+ * name that repeats the street ("Service Visit — 9703 Lenox Hl (HCP 858)") adds nothing, so the
+ * number stands alone.
+ */
 export function checksJobLabel(job: Pick<ChecksJobIn, 'hcp_number' | 'click_number' | 'job_name' | 'job_address'>): string {
   const number = effectiveJobLedgerNumber(job.hcp_number ?? null, job.click_number ?? null)
-  const name = (job.job_name ?? '').trim()
   const address = (job.job_address ?? '').trim()
+  const street = address.split(',')[0]!.trim().toLowerCase()
+  const rawName = (job.job_name ?? '').trim()
+  const name = street.length >= 6 && rawName.toLowerCase().includes(street) ? '' : rawName
   const tail = [number, name].filter(Boolean).join(' ')
   if (address && tail) return `${address} · ${tail}`
   return address || tail || 'Job'
@@ -226,7 +250,7 @@ function sentBillsInOrder(job: ChecksJobIn): SentBill[] {
 function invoiceLabelFor(bill: SentBill | undefined, sentCount: number, invoiceId: string | null): string {
   if (bill) return `Invoice ${bill.ordinal} of ${sentCount}`
   if (invoiceId) return 'a bill not yet sent'
-  return 'on the job, no bill yet'
+  return 'on the job, not tied to an invoice'
 }
 
 /** The GC pays this bill (or, with no bill, this job's bills by its rule). */
@@ -278,7 +302,7 @@ function paymentShares(f: JobFacts, p: ChecksPaymentIn): Array<{ invoice: SentBi
 }
 
 function foldKey(p: ChecksPaymentIn): string {
-  const n = numberKey(p.reference_number)
+  const n = foldNumberKey(p.reference_number)
   if (n) return `ref:${n}|${ymd(p.paid_on) ?? ''}`
   if ((p.mercury_transaction_id ?? '').trim()) return `dep:${p.mercury_transaction_id}`
   return `pay:${p.id}`
@@ -328,7 +352,7 @@ export function buildGcChecksReport(input: {
         d = {
           key,
           kind,
-          label: checkLabel(kind, number),
+          label: checkLabel(kind, number, { deposit: isDepositRef(p.reference_number) || Boolean((p.mercury_transaction_id ?? '').trim()) }),
           number,
           noNumber: kind === 'check' && !number,
           receivedYmd: null,
@@ -381,9 +405,9 @@ export function buildGcChecksReport(input: {
   const jobs: GcCheckJob[] = []
   for (const f of facts.values()) {
     const gcBills = f.sent.filter((b) => gcPays(input.gcId, f.job, b))
-    const paidBy: Array<{ label: string; receivedYmd: string | null }> = []
+    const paidBy: Array<{ label: string; receivedYmd: string | null; noNumber: boolean }> = []
     for (const d of all) {
-      if (d.lines.some((l) => l.jobId === f.job.id) && !paidBy.some((x) => x.label === d.label && x.receivedYmd === d.receivedYmd)) paidBy.push({ label: d.label, receivedYmd: d.receivedYmd })
+      if (d.lines.some((l) => l.jobId === f.job.id) && !paidBy.some((x) => x.label === d.label && x.receivedYmd === d.receivedYmd)) paidBy.push({ label: d.label, receivedYmd: d.receivedYmd, noNumber: d.noNumber })
     }
     if (gcBills.length === 0 && paidBy.length === 0) continue
     paidBy.sort((a, b) => (a.receivedYmd ?? '9999').localeCompare(b.receivedYmd ?? '9999'))
@@ -394,8 +418,8 @@ export function buildGcChecksReport(input: {
       jobLabel: f.label,
       billCount: gcBills.length,
       billed,
-      paidBy: paidBy.map((x) => x.label),
-      lastApplied: paidBy.length > 0 ? paidBy[paidBy.length - 1]! : null,
+      paidBy,
+      lastApplied: paidBy.length > 0 ? { label: paidBy[paidBy.length - 1]!.label, receivedYmd: paidBy[paidBy.length - 1]!.receivedYmd } : null,
       retainageHeld: round2(Math.max(0, num(f.job.lien_retainage_held))),
       stillOpen,
       paid: billed > 0 && stillOpen <= 0.005,

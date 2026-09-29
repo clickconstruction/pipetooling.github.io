@@ -1,4 +1,5 @@
 import type { PortalPropertyNotice } from '../../../supabase/functions/_shared/portalPropertyNotices'
+import type { ChecksEventIn, ChecksJobIn } from '../jobs/gcChecksApplied'
 export type { PortalPropertyNotice } from '../../../supabase/functions/_shared/portalPropertyNotices'
 import { bankTransferDetailsForPortal, parseBankTransferDetails, type BankTransferDetails } from '../bankTransferDetails'
 /**
@@ -107,7 +108,11 @@ export type PortalPayload = {
   stages: PortalJobStages[]
   /** Their Word PR 2: the latest pay-by date on record across the open bills (office-marked or the customer's own), null when none. */
   promise: { promisedYmd: string; source: 'office' | 'customer' } | null
+  /** Your payments (v2.4053): the viewer's jobs with the bills they pay and the payments on them, pre-scoped by `_shared/portalChecks.ts`; null from a function without it. */
+  checks: PortalChecksPayload | null
 }
+
+export type PortalChecksPayload = { jobs: ChecksJobIn[]; events: ChecksEventIn[] }
 
 /** Stage Plan PR 5: the GC's sequence, in the company's voice — mirrors `GcView` in `_shared/stagePlan.ts`. */
 export type PortalGcStepState = 'done' | 'now' | 'next' | 'later'
@@ -289,7 +294,59 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
     bankTransfer: bankTransferDetailsForPortal(parseBankTransferDetails(r.bankTransfer)),
     stages: Array.isArray(r.stages) ? r.stages.map(parseJobStages).filter((x): x is PortalJobStages => x != null) : [],
     promise: parsePortalPromise(r.promise),
+    checks: parsePortalChecks(r.checks),
   }
+}
+
+/** Tolerant of the block's absence and of a malformed row — a bad job or event is dropped, never the page. */
+export function parsePortalChecks(raw: unknown): PortalChecksPayload | null {
+  if (raw == null || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  if (!Array.isArray(r.jobs)) return null
+  const ymd = (v: unknown): string | null => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v) ? v.slice(0, 10) : null)
+  const text = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v : null)
+  const jobs: ChecksJobIn[] = []
+  for (const j of r.jobs as Array<Record<string, unknown>>) {
+    if (j == null || typeof j !== 'object' || typeof j.id !== 'string' || !j.id) continue
+    const jobId = j.id
+    const invoices = Array.isArray(j.invoices) ? (j.invoices as Array<Record<string, unknown>>) : []
+    const payments = Array.isArray(j.payments) ? (j.payments as Array<Record<string, unknown>>) : []
+    jobs.push({
+      id: jobId,
+      hcp_number: text(j.hcp_number),
+      click_number: text(j.click_number),
+      job_name: text(j.job_name),
+      job_address: text(j.job_address),
+      customer_id: str(j.customer_id, 'viewer'),
+      gc_customer_id: null,
+      bill_to_party: null,
+      lien_retainage_held: typeof j.lien_retainage_held === 'number' ? j.lien_retainage_held : null,
+      invoices: invoices
+        .filter((i) => i != null && typeof i === 'object' && typeof i.id === 'string' && i.id)
+        .map((i) => ({ id: i.id as string, job_id: jobId, sequence_order: typeof i.sequence_order === 'number' ? i.sequence_order : null, amount: num(i.amount), status: str(i.status, 'billed'), billed_at: ymd(i.billed_at) })),
+      payments: payments
+        .filter((p) => p != null && typeof p === 'object' && typeof p.id === 'string' && p.id)
+        .map((p) => ({
+          id: p.id as string,
+          job_id: jobId,
+          invoice_id: text(p.invoice_id),
+          amount: num(p.amount),
+          paid_on: ymd(p.paid_on),
+          sent_on: ymd(p.sent_on),
+          payment_type: text(p.payment_type),
+          reference_number: text(p.reference_number),
+          sequence_order: typeof p.sequence_order === 'number' ? p.sequence_order : null,
+        })),
+    })
+  }
+  const events: ChecksEventIn[] = []
+  if (Array.isArray(r.events)) {
+    for (const e of r.events as Array<Record<string, unknown>>) {
+      if (e == null || typeof e !== 'object' || typeof e.id !== 'string' || typeof e.created_at !== 'string') continue
+      events.push({ id: e.id, kind: str(e.kind), payment_id: text(e.payment_id), from_job_id: text(e.from_job_id), to_job_id: text(e.to_job_id), amount: num(e.amount), created_at: e.created_at })
+    }
+  }
+  return { jobs, events }
 }
 
 /** The Test reports card shows this many before "Show all" (v2.3312). */

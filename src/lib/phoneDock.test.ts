@@ -11,9 +11,9 @@ import {
 } from './phoneDock'
 
 describe('roleDockDefault', () => {
-  it('gives assistants and controllers Jobs · Schedule · Quickfill · Inbox', () => {
-    expect(roleDockDefault('assistant')).toEqual(['jobs', 'schedule', 'quickfill', 'inbox'])
-    expect(roleDockDefault('controller')).toEqual(['jobs', 'schedule', 'quickfill', 'inbox'])
+  it('gives assistants and controllers Jobs · Schedule · PO · Inbox (PO in Quickfill\'s place since v2.4093)', () => {
+    expect(roleDockDefault('assistant')).toEqual(['jobs', 'schedule', 'po', 'inbox'])
+    expect(roleDockDefault('controller')).toEqual(['jobs', 'schedule', 'po', 'inbox'])
   })
   it('leaves every other role on the fixed bar', () => {
     for (const role of ['dev', 'master_technician', 'estimator', 'subcontractor', 'helpers', 'primary', 'superintendent', null] as const) {
@@ -40,8 +40,8 @@ describe('parseStoredDockSlots / resolveDockSlots', () => {
     expect(parseStoredDockSlots('["jobs","banking","quickfill","inbox"]', 'controller')).toEqual(['jobs', 'banking', 'quickfill', 'inbox'])
   })
   it('falls back to the role default, and to null for roles without a dock', () => {
-    expect(resolveDockSlots('assistant', null)).toEqual(['jobs', 'schedule', 'quickfill', 'inbox'])
-    expect(resolveDockSlots('assistant', '["x"]')).toEqual(['jobs', 'schedule', 'quickfill', 'inbox'])
+    expect(resolveDockSlots('assistant', null)).toEqual(['jobs', 'schedule', 'po', 'inbox'])
+    expect(resolveDockSlots('assistant', '["x"]')).toEqual(['jobs', 'schedule', 'po', 'inbox'])
     expect(resolveDockSlots('dev', '["jobs","schedule","quickfill","inbox"]')).toBeNull()
   })
 })

@@ -2,7 +2,7 @@
 title: stage a takeoff for a schedule of values
 category: Bids & Estimating
 roles: dev, master_technician, assistant, estimator
-keywords: schedule of values, sov, materials by stage, stage, rough in, top out, trim set, split, half, 1.5, factor, takeoff, sheet, assembly, bundle, fill from rules, print schedule, cover letter, of contract, pay application, payment schedule
+keywords: schedule of values, sov, materials by stage, stage, rough in, top out, trim set, split, half, 1.5, factor, takeoff, sheet, assembly, bundle, fill from rules, print schedule, cover letter, of contract, pay application, payment schedule, labor and material, labor share, total only, note for the GC, my lines, by stage, g703, line items, mobilization, scale to contract, paste line names
 order: 87
 ---
 A schedule of values says what each stage of the job is worth. This one comes straight from the takeoff: every fixture or tie-in on **Bids → Takeoffs** carries a stage — {{chip:yellow|1 Rough In}}, {{chip:blue|2 Top Out}}, {{chip:green|3 Trim Set}}, or a split — and the rail adds the material cost up by stage and multiplies it by the company factor (1.5 unless Settings says otherwise).
@@ -38,6 +38,14 @@ Each stage shows its raw material and, in bold, the raw number times the factor.
 ## Putting it in the letter
 
 On **Cover Letter**, the {{chip:blue|Schedule of values}} pill spreads the letter's amount across the three stages by the shares you set here — *Rough In — $35,596.80 (41.2%)*, one line per stage, then a *Total* that always equals the amount — in the letter and the Approval PDF. Nothing to type: the box under the pill shows the same lines, says how many costed fixtures are staged, and warns in amber when some still need a stage (their money is left out of the shares, so stage them first). {{button:outline|Print the full schedule}} in that box prints the two pages above with an **Of contract** column at the letter's amount, for a GC building a pay application. An alternate or a per-GC letter spreads its own amount by the same shares.
+
+When a GC wants each stage broken into labor and material, tick **Split labor and material** under the schedule. Each stage's value divides by the ratio of the bid's own costs — the Labor tab's hours times the rate (plus subcontractors) against the takeoff's material times the factor — so the line reads *Rough In — $35,596.80 (labor $12,143.83 · material $23,452.97)*. Type over a labor figure and the material recomputes so the stage still adds up (the box turns amber, with *reset* to go back to the bid's costs); a note typed under a stage prints under its line. A stage with no hours and no material takes the company labor share from Settings → Bid Cover Letter Defaults and says *company rule*. Tick **Letter shows the total only** to keep the proposal to one line pointing at the attached schedule, and print the schedule with its Labor, Material and Notes columns from {{button:outline|Print the full schedule}}.
+
+## Two shapes: By stage or My lines
+
+The schedule has a shape, chosen under the pill. {{chip:blue|By stage}} is the one above: the takeoff writes the three lines and keeps them current when the price or the stages change. {{chip:gray|My lines}} is your own schedule — for a GC whose pay application wants mobilization, underground, gas piping or a water heater as lines of their own. The first time you switch, the three stages become your first three lines; from there rename, {{button:outline|+ Add line}}, move with ▲ ▼, remove with ×, and give any line a note. **Paste the GC's line names…** takes the list from their form, one per row, and adds them with blank values for you to fill. **Seed again from the stages** starts over from the three stages (it asks first). Switching back to By stage keeps your lines for next time; nothing is lost either way.
+
+A bar under the lines checks them against the letter's amount: amber with the gap when they miss it, and one click, **Scale every line to the contract**, brings them to it (a typed labor figure scales with its line). With **Split labor and material** on, each line has a labor box; leave it blank and the line takes the company share. **Print the schedule** prints the pay-application form — #, description of work, labor and material, scheduled value, notes — headed *for progress billing only*.
 
 The {{chip:blue|Materials by stage}} pill adds a short **Materials by stage** section — one line per stage with the factored figure. Each pill is off unless you turn it on, and the sections read in order: what each stage is worth, when it is paid ({{chip:gray|Payment schedule}}, headed *Payment schedule:* in the letter), what the material costs.
 

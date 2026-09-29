@@ -38,13 +38,13 @@ Open **GC Review** (the Billed Awaiting Payment section tools). Pinned at the to
 Under the track, **one row per GC**:
 
 :::example One group, three rows
-**Ask Malachi** · 3 GCs · $96,000 — 2 to do
+**Account Man Malachi** · 3 GCs · $96,000 — 2 to do
 › Loberg Contracting {{chip:gray|no word yet}} · $22,000 · 4 jobs · oldest 19d — ◉ Check · ○ Send · ○ Word {{button:blue|Check bills}}
 › Knight Contracting {{chip:yellow|warm · Sep 18}} · $26,000 · 4 jobs · oldest 41d — ✓ Checked · ◉ Send · ○ Word {{button:blue|Send}}
 › Structura {{chip:yellow|warm · Sep 25}} · $48,000 · 12 jobs · oldest 58d — ✓ Checked · ✓ Sent Thu · ✓ warm {{chip:green|✓ Done}}
 :::
 
-- **Ask Malachi** — the GCs Malachi knows. Your own read **Your accounts**; a GC nobody is set on sits under **No account man yet** (open its row and tap **pick an account man**; the choice sticks week to week, and an unset GC defaults to the Account Man on its jobs). GCs owing under $10,000 are listed last — check and send them; the word is optional. A GC that owes only in Collections has a statement and no steps; it sits under **Nothing to check this week** with the **Not billed to a GC** bucket.
+- **Account Man Malachi** — the GCs Malachi is the account man for: the standing pick on the GC, else the account manager on most of its jobs. Your own read **Account Man Taunya (you)**; a GC nobody is set on sits under **No account man yet** (open its row and tap **pick an account man**; the choice sticks week to week, and an unset GC defaults to the Account Man on its jobs). GCs owing under $10,000 are listed last — check and send them; the word is optional. A GC that owes only in Collections has a statement and no steps; it sits under **Nothing to check this week** with the **Not billed to a GC** bucket.
 - **The three dots are the GC's steps**: green behind it, blue where it is, grey ahead. The chip beside the name is the last word on record.
 - **The blue button is the next step.** {{button:blue|Check bills}} opens the checklist of that GC's bills; {{button:blue|Send}} opens Draft Message; {{button:blue|Get the word}} opens the form for what was said. The dots are doors too — press **Word** on a GC that has not been sent yet to take the word first.
 - **Send stays grey until the bills are checked** — a statement never goes out unchecked. A group that changes after sign-off shows {{button:amber|Re-check}}.
@@ -235,7 +235,7 @@ If a statement already went to the same address a few minutes ago — by any lan
 
 - Nothing is ever emailed uncertified, and nothing goes out that a person didn't ask for — you send it yourself, press **Send statement**, or set the schedule.
 - **A $0 statement can't be sent.** When a GC's certified group owes nothing, Draft Message says **Nothing owed — no statement goes out.** and the Send button stays off. **Schedule…** still works — a weekly chain simply skips the weeks the GC is at $0.
-- Each group's header ("Ask Malachi · 3 GCs · 2 to do") is how you see Friday afternoon what is still open, and whose GCs they are.
+- Each group's header ("Account Man Malachi · 3 GCs · 2 to do") is how you see Friday afternoon what is still open, and whose GCs they are.
 - Each opened GC row carries its portal globe; **Share → Copy portal link** and the statement's portal card point the GC at their live statement — the card itself says **"Pay online any time at …"**, and it is the same card in {{button:outline|Preview statement}}, {{button:outline|Copy for email}}, Draft Message, and scheduled sends.
 - Every office role sees every scheduled send in GC Review; **Cancel** stays with whoever scheduled it (or a dev). Your own Settings → My email schedule still lists only sends you requested or that are addressed to you.
 - The **Draft Message** dialog and scheduled sends still exist for the GCs where an app-sent statement is fine. Three things count as "that GC got their statement this week": **or mark sent** (or **Share → Mark sent…**), **Draft Message**, and a scheduled send addressed to that one GC. Two things never do: **Spoke with them · no statement**, and the office's own "All GCs" whole-report copies — those are for you, not the GC. The Dashboard card turns green only when every GC over the line is certified and sent one of the three ways.

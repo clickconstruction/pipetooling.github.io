@@ -17,7 +17,7 @@ describe('LienPayRunway', () => {
     const onOpen = vi.fn()
     const { container } = render(<LienPayRunway runway={buildLienPayRunway({ ...base, expectedPayYmd: '2026-10-03' })} onOpen={onOpen} />)
     const words = screen.getByRole('button')
-    expect(screen.getByText('pay Oct 3 → lien Oct 15')).toBeTruthy()
+    expect(screen.getByText('pay Oct 3 → file lien by Oct 15')).toBeTruthy()
     expect(screen.getByText(/^12 d of room/)).toBeTruthy()
     expect(words.getAttribute('title')).toContain('§ 53.052')
     expect(container.querySelector('.lienRunway')?.getAttribute('data-state')).toBe('room')
@@ -32,6 +32,17 @@ describe('LienPayRunway', () => {
     expect(screen.getByText(/^window closed Sep 15/)).toBeTruthy()
     expect(screen.queryByText('today')).toBeNull()
     expect(container.querySelector('.lienRunway')?.getAttribute('data-state')).toBe('closed')
+  })
+
+  it('a sub job with the notice owed draws the hollow flag; recorded, the check (v2.4096)', () => {
+    const owed = render(<LienPayRunway runway={buildLienPayRunway({ ...base, lastWorkYmd: '2026-08-12', isSub: true, expectedPayYmd: null })} />)
+    expect(screen.getByText('notice by Oct 15 · lien by Nov 16')).toBeTruthy()
+    expect(screen.getByText(/^send the notice · 17 d/)).toBeTruthy()
+    expect(owed.container.querySelector('.lienRunway')?.getAttribute('data-state')).toBe('notice_due')
+    owed.unmount()
+    const done = render(<LienPayRunway runway={buildLienPayRunway({ ...base, lastWorkYmd: '2026-08-12', isSub: true, noticedMonths: ['2026-08'], expectedPayYmd: null })} />)
+    expect(screen.getByText('✓')).toBeTruthy()
+    expect(done.container.querySelector('.lienRunway')?.getAttribute('data-state')).toBe('no_pay')
   })
 
   it('nothing open: renders nothing', () => {

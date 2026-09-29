@@ -34,6 +34,7 @@ Someone flags you down who isn't your current job? Tap the link under My Schedul
 
 ## Good to know
 
-- The ✕ **saves and closes** — never discards. Your half-finished write-up sits in Estimates → Unsent until you or the office picks it up.
+- The ✕ **saves and closes** — never discards. Next time you open **Write up a change** it asks first: **Pick it back up** (your words, photos and job come back), **Start fresh** (the old one stays in Estimates → Unsent), or **Leave it for the office** (it stops asking about that one).
 - After you send, the draft shows a {{chip:yellow|With Dispatch}} chip in Estimates so nobody double-works it.
 - Send needs at least a description **or** a photo — everything else is skippable.
+- If you already sent a write-up for the same job today, the **Ready to send** screen says so, with the time — send again only if it's different work; otherwise the office already has it.

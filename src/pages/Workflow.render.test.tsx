@@ -23,6 +23,8 @@ const world = vi.hoisted(() => ({
   steps: [] as Array<Record<string, unknown>>,
   lineItems: [] as Array<Record<string, unknown>>,
   projections: [] as Array<Record<string, unknown>>,
+  templates: [] as Array<Record<string, unknown>>,
+  templateSteps: [] as Array<Record<string, unknown>>,
   writes: [] as Array<{ table: string; method: string; payload: unknown; id: unknown }>,
   stepReads: [] as Array<Array<{ method: string; args: unknown[] }>>,
 }))
@@ -41,6 +43,11 @@ vi.mock('../lib/supabase', () => {
         if (table === 'project_workflow_steps' && m === 'update') {
           const id = eqValue(steps, 'id')
           world.steps = world.steps.map((s) => (s.id === id ? { ...s, ...(arg(steps, m) as Row) } : s))
+        }
+        if (table === 'project_workflow_steps' && m === 'insert') {
+          const row = arg(steps, m) as Row
+          world.steps = [...world.steps, { id: `new-${world.steps.length + 1}`, assigned_to_name: null, started_at: null, ended_at: null, ...row }]
+          return { data: [{ id: `new-${world.steps.length}` }], error: null }
         }
         if (table === 'project_workflow_step_actions' && m === 'insert') {
           return { data: { id: `act-${world.writes.length}`, ...(arg(steps, m) as Row) }, error: null }
@@ -68,6 +75,10 @@ vi.mock('../lib/supabase', () => {
         return list(world.lineItems)
       case 'workflow_projections':
         return list(world.projections)
+      case 'workflow_templates':
+        return list(world.templates)
+      case 'workflow_template_steps':
+        return list(world.templateSteps)
       default:
         return list([])
     }
@@ -196,6 +207,8 @@ afterEach(() => {
   cleanup()
   world.lineItems = []
   world.projections = []
+  world.templates = []
+  world.templateSteps = []
   vi.restoreAllMocks()
 })
 
@@ -273,5 +286,55 @@ describe('Workflow page', () => {
     expect(update?.payload).toMatchObject({ status: 'approved', approved_by: 'Pat Office' })
     expect(world.writes.some((w) => w.table === 'project_workflow_step_actions' && (w.payload as Row).action_type === 'approved')).toBe(true)
     await waitFor(() => expect(scrolled).toHaveBeenCalled())
+  })
+  it('an empty workflow offers the templates, and creating from one adds its steps in order', async () => {
+    world.templates = [{ id: 't1', name: 'Standard rough' }]
+    world.templateSteps = [
+      { sequence_order: 1, name: 'Underground' },
+      { sequence_order: 2, name: 'Rough' },
+    ]
+    renderWorkflow('dev', [])
+    expect(await screen.findByText('No steps yet. Add a step or create from a template.')).toBeTruthy()
+    const create = screen.getByRole('button', { name: 'Create from template' }) as HTMLButtonElement
+    expect(create.disabled).toBe(true)
+    fireEvent.change(screen.getByDisplayValue('Select a template'), { target: { value: 't1' } })
+    await act(async () => {
+      fireEvent.click(create)
+    })
+    const inserted = world.writes.filter((w) => w.table === 'project_workflow_steps' && w.method === 'insert').map((w) => (w.payload as Row).name)
+    expect(inserted).toEqual(['Underground', 'Rough'])
+    await waitFor(() => expect(document.querySelectorAll('[id^="step-new-"]').length).toBe(2))
+  })
+
+  it('a card’s buttons open the page’s windows: Assign, Set Start, Send Back', async () => {
+    renderWorkflow('dev', fourSteps())
+    await stagesLoaded('s3')
+    const card = (id: string) => document.getElementById(`step-${id}`)!
+    fireEvent.click(within(card('s3')).getByRole('button', { name: 'Assign' }))
+    expect(screen.getByText('Add person to: Top Out')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    fireEvent.click(within(card('s3')).getByRole('button', { name: 'Send Back: Previous Work Incomplete' }))
+    expect(screen.getByText('Previous work incomplete: Top Out')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    // Trim is pending and starts folded: open it, then Set Start.
+    fireEvent.click(within(card('s4')).getAllByRole('button')[0]!)
+    fireEvent.click(within(card('s4')).getByRole('button', { name: 'Set Start' }))
+    expect(screen.getByText('Set Start Time: Trim')).toBeTruthy()
+  })
+
+  it('a wide window shows dev the ledger rail’s margin card when there is money', async () => {
+    const was = window.innerWidth
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1400 })
+    try {
+      world.projections = [{ id: 'pr1', workflow_id: 'w1', stage_name: 'Rough', memo: 'draw', amount: 10000, sequence_order: 1, step_id: 's2', placement: 'after' }]
+      world.lineItems = [{ id: 'li1', step_id: 's2', memo: 'pipe', amount: 2500, sequence_order: 1, item_date: null, link: null }]
+      renderWorkflow('dev', fourSteps())
+      await stagesLoaded('s3')
+      expect(await screen.findByText('Project margin')).toBeTruthy()
+      // The line items land 50 ms after the steps: 10,000 projected, 2,500 spent.
+      expect(await screen.findByText('75.0%')).toBeTruthy()
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: was })
+    }
   })
 })

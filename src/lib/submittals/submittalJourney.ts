@@ -1,7 +1,7 @@
 /**
  * Bids → Submittals: where this submittal is (v2.4067).
  *
- * Wendi opened Submittals and did not know where to start: the tab is a seven-stage
+ * Wendi opened Submittals and did not know where to start: the tab is an eight-stage
  * process (schedule and picks on Pricing → Rev 1 → reasons and cut sheets → package →
  * share → their calls → resubmit) drawn as one row of buttons. The journey strip at the
  * top of the tab reads this kernel: one pill per stage lit by the revision's state, and
@@ -10,9 +10,9 @@
  * already calls.
  */
 
-export type JourneyStageKey = 'picks' | 'build' | 'rows' | 'package' | 'share' | 'review' | 'resubmit'
+export type JourneyStageKey = 'picks' | 'build' | 'rows' | 'package' | 'share' | 'review' | 'resubmit' | 'procure'
 export type JourneyStageStatus = 'done' | 'current' | 'waiting' | 'later'
-export type JourneyAction = 'open_pricing' | 'ask_robot_schedule' | 'build_rev1' | 'drop_vendor_pdf' | 'build_package' | 'share' | 'copy_room_link' | 'resubmit'
+export type JourneyAction = 'open_pricing' | 'plug_in_schedule' | 'ask_robot_schedule' | 'build_rev1' | 'drop_vendor_pdf' | 'build_package' | 'share' | 'copy_room_link' | 'resubmit'
 
 export type JourneyStage = {
   key: JourneyStageKey
@@ -53,6 +53,8 @@ export type SubmittalJourneyInput = {
   room: { status: string; opens: number; identified: string[] } | null
   /** The revision's reviewer decisions (`summarizeDecisions`). */
   decisions: { decided: number; approved: number; open: number; sentBack: number; byName: string[] } | null
+  /** The procurement log (v2.4083): rows released, ordered, delivered, late — null before any row is approved. */
+  procurement?: { released: number; ordered: number; delivered: number; late: number } | null
 }
 
 const LABELS: Record<JourneyStageKey, string> = {
@@ -63,9 +65,10 @@ const LABELS: Record<JourneyStageKey, string> = {
   share: 'Share',
   review: 'Their call',
   resubmit: 'Resubmit',
+  procure: 'Procure',
 }
 
-const ORDER: JourneyStageKey[] = ['picks', 'build', 'rows', 'package', 'share', 'review', 'resubmit']
+const ORDER: JourneyStageKey[] = ['picks', 'build', 'rows', 'package', 'share', 'review', 'resubmit', 'procure']
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
 
@@ -78,12 +81,17 @@ function stageAnchors(hasRevision: boolean): Record<JourneyStageKey, string> {
     share: 'submittals-share',
     review: 'submittals-room',
     resubmit: 'submittals-resubmit',
+    procure: 'submittals-procure',
   }
 }
 
-/** The seven stages lit by the bid's state, and the next thing to do. */
+/** The eight stages lit by the bid's state (Procure, v2.4083, lights on its own), and the next thing to do. */
 export function submittalJourney(input: SubmittalJourneyInput): SubmittalJourney {
-  const status: Record<JourneyStageKey, JourneyStageStatus> = { picks: 'later', build: 'later', rows: 'later', package: 'later', share: 'later', review: 'later', resubmit: 'later' }
+  const status: Record<JourneyStageKey, JourneyStageStatus> = { picks: 'later', build: 'later', rows: 'later', package: 'later', share: 'later', review: 'later', resubmit: 'later', procure: 'later' }
+  // Procure (v2.4083) lights on its own: current once anything is released, done once every released row is delivered.
+  const pr = input.procurement
+  if (pr && pr.released > 0) status.procure = pr.delivered >= pr.released && pr.late === 0 ? 'done' : 'current'
+  else if (!pr && (input.decisions?.approved ?? 0) > 0) status.procure = 'current'
   const anchors = stageAnchors(input.rev != null)
   const finish = (next: JourneyNext): SubmittalJourney => ({
     stages: ORDER.map((key, i) => ({ key, number: i + 1, label: LABELS[key], status: status[key], anchor: anchors[key] })),
@@ -100,9 +108,9 @@ export function submittalJourney(input: SubmittalJourneyInput): SubmittalJourney
       return finish({ kind: 'next', text: `${plural(input.scheduleTags, 'tag')} on the schedule and ${plural(input.picks, 'picked line')} are ready.`, action: 'build_rev1', actionLabel: 'Build Rev 1 from the picks' })
     }
     if (input.scheduleTags > 0) {
-      return finish({ kind: 'next', text: `${plural(input.scheduleTags, 'tag')} on the schedule, nothing picked yet. Pick a house for each part on the Pricing compare, or Rev 1 reads every tag as missing.`, action: 'open_pricing', actionLabel: 'The picks on Pricing' })
+      return finish({ kind: 'next', text: `${plural(input.scheduleTags, 'tag')} on the schedule, nothing picked yet. Pick a house for each part on the Pricing compare, or build Rev 1 now and type each row's product with Edit.`, action: 'build_rev1', actionLabel: 'Build Rev 1 and type the products' })
     }
-    return finish({ kind: 'next', text: 'No fixture schedule on this bid. Plug it in on Pricing, or let the robot read it off the plans.', action: 'ask_robot_schedule', actionLabel: 'Ask the robot to read the schedule' })
+    return finish({ kind: 'next', text: 'No fixture schedule on this bid. Type or paste it here — one tag per line, off the plans’ fixture schedule — or let the robot read it.', action: 'plug_in_schedule', actionLabel: 'Type or paste the schedule' })
   }
 
   status.build = 'done'
@@ -170,5 +178,5 @@ export function submittalJourney(input: SubmittalJourneyInput): SubmittalJourney
     return finish({ kind: 'waiting', text: `${by} approved ${d.approved} · ${plural(d.open, 'row')} still open.`, action: null, actionLabel: null })
   }
   status.resubmit = 'done'
-  return finish({ kind: 'done', text: `Every row approved by ${by}. Nothing left to do here.`, action: null, actionLabel: null })
+  return finish({ kind: 'done', text: `Every row approved by ${by}. The procurement log is next.`, action: null, actionLabel: null })
 }

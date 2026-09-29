@@ -2,7 +2,7 @@
 name: "Bids: the Edit Bid controller comes out of the page (the Bids map's step 9)"
 number: 51
 group: ready
-status: in progress on claude/bids-edit-controller-pr1 … pr5 (2026-09-28) — PR 1 (the map refresh + the autosave slice's own tests) is v2.4069; the Bids map's steps 1–8 shipped (v2.3873 … v2.4003; the last run of them v2.3937 · v2.3953 · v2.3989 · v2.3999)
+status: in progress on claude/bids-edit-controller-pr1 … pr5 (2026-09-28) — PR 1 (the map refresh + the autosave slice's own tests) is v2.4069, PR 2 (Edit Bid in the page smoke) v2.4072, PR 3 (the trade switch) v2.4074, PR 4a (the Bid window's state) v2.4086; the Bids map's steps 1–8 shipped (v2.3873 … v2.4003; the last run of them v2.3937 · v2.3953 · v2.3989 · v2.3999)
 summary: >
   What is left of `src/pages/Bids.tsx` region R14: opening and closing the Bid window, the
   Edit tab's autosave and its close guard, Create bid / Create and open counts, the trade
@@ -11,9 +11,10 @@ summary: >
   Rated high risk in the map: it writes bids, and it sits on `useJobFormAutosaveSlice`, the
   autosave engine Edit Job and the Estimates draft share.
 next: >
-  PR 2 — Edit Bid in the page render smoke, with a write-recording stub: open a bid on Edit,
-  change a field, the debounced `bids` UPDATE carries only that field; a pending change is
-  flushed on close; a refused write holds the window open; New Bid → Create bid inserts once.
+  PR 4b — `useBidEditController` at R14's position: the doors, closeBidForm, the lost-reason
+  save, the after-save notes, the payload builders, autosave + close guard, saveBid /
+  saveBidAndOpenCounts, delete. Takes the window state (PR 4a) as one input. The quick-add
+  save, the Counts door, the party windows and the last-contact door stay in the page.
 size: S (PR 1) · L (the train)
 blocker: None. Take it alone, on a quiet day — `npm run sessions` first; no other PR open on `src/pages/Bids.tsx` or on the shared autosave slice.
 ver: v2.3937 · 3953 · 3962 · 3978 · 3989 · 3999 · 4003
@@ -69,20 +70,39 @@ script windows, which belong to Submission & Followup.
 1. **Map refresh + the slice's own test** — **done v2.4069.** `npm run map -- src/pages/Bids.tsx`; the
    map's region and render tables re-read at `4833712a0`. `useJobFormAutosaveSlice.lifecycle.render.test` (25 cases, fake timers) beside the
    `markSavedNow` cases v2.4027 added; five deliberate breaks of the hook were each caught. No app code changes.
-2. **Edit Bid in the page render smoke.** `Bids.render.test.tsx` with a write-recording stub:
-   open a bid on Edit, change a field, the debounced `bids` UPDATE carries only that field;
-   close with a pending change flushes first; a refused write (0 rows) holds the window open
-   and says so; New Bid → Create bid inserts once. This is the guard for PRs 3–5.
-3. **The trade switch** as `useBidTradeSwitch` (the smallest, most self-contained piece; its
-   RPC path gets a hook test).
-4. **`useBidEditController`** — open/close, autosave + close guard, the save paths, the
-   after-save notes, quick add, delete. Called where the code stands; the page hands in the
-   selections, `loadBids`, `openCountsForBid`'s tab switch and the robot layer's two calls.
+2. **Edit Bid in the page render smoke** — **done v2.4072.** `Bids.render.test.tsx` records every
+   write the page sends (six cases): untouched open-and-close writes nothing; a change saves once
+   after the pause, that field only, on that bid; closing inside the pause flushes first, once;
+   a refused write holds the window open and *Close without saving* writes nothing more; a blank
+   required field holds every save; New Bid → Create bid inserts once and updates nothing. Five
+   deliberate breaks of the page's Edit Bid code were each caught. This is the guard for PRs 3–5.
+3. **The trade switch** — **done v2.4074.** `hooks/useBidTradeSwitch.ts` (13-case hook test) and the
+   sibling grouping as `lib/bids/tradeSwitchSiblings.ts` (7 tests); five deliberate breaks of the
+   hook each caught; run live (a bid's Service Type switch opened and closed, nothing written).
+4. **`useBidEditController`**, in two PRs, so that no hook or effect changes its order.
+   The sent-date hook near the top of the page reads `editingBid`, so the Bid window's state
+   cannot move into a hook called lower down.
+   - **4a — done v2.4086.** `hooks/useBidWindowState.ts`: the window's eleven states and the close
+     guard's ref as one state container, called where they were declared; the page reads the
+     same names. (3-case hook test.)
+   - **4b.** The handlers, autosave and close guard as `useBidEditController`, called where
+     R14 stands, taking the window state as one input. `saveBidSubmissionQuickAdd`,
+     `openCountsForBid`, `openGcBuilderOrCustomerModal` and `handleLastContactClick` sit in
+     R14's lines but are not Edit Bid — they stay in the page and are handed in where needed.
 5. **`BidDeleteConfirmModal` + `BidEvaluateChecklistModal`** — the two windows, verbatim.
 
 Each PR: the page smokes (`Bids.render.test.tsx`, `Bids.followupDoors.render.test.tsx`) pass
 before and after; eslint, typecheck, `npm test` in full; release note + fragment; the map row
 flipped.
+
+## A quirk the guard pins (not to be fixed inside this train)
+
+On a bid with **no sent date**, every Edit Bid write also carries the eight sent-date stamp
+columns (`bid_date_sent_attested_at` … `_ack_honesty_by`) as `null`: the attestation merge
+answers "cleared" for an empty date, and `pruneUnchangedBidUpdateFields` does not drop columns
+that are not form fields. It is null over null — no data changes — and it predates the second
+pass (the page's own `getBidDateSentAttestationPayloadMerge` did the same). PR 2's cases assert it
+exactly so no move changes it by accident; dropping it would be its own small PR after #51.
 
 ## How to verify
 

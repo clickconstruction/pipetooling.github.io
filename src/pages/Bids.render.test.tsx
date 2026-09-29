@@ -14,30 +14,62 @@
  */
 import type { ReactElement, ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 import { ToastProvider } from '../contexts/ToastContext'
 import { ConfirmDialogProvider } from '../contexts/ConfirmDialogContext'
 import { ThemeProvider } from '../contexts/ThemeContext'
 
-const smoke = vi.hoisted(() => ({ role: 'dev' as string, bids: [] as Array<Record<string, unknown>>, bidsReads: 0 }))
+const smoke = vi.hoisted(() => ({
+  role: 'dev' as string,
+  bids: [] as Array<Record<string, unknown>>,
+  bidsReads: 0,
+  /** Every insert / update / upsert / delete the page sends, in order (#51 PR 2). */
+  writes: [] as Array<{ table: string; op: string; payload: unknown; filters: Array<[string, unknown]> }>,
+  /** Answer `bids` updates with no rows — what RLS does to a write it refuses. */
+  refuseBidUpdates: false,
+}))
 
 vi.mock('../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../test/renderSmokeMocks')
   const generic = makeSupabaseStub()
 
-  /** Chainable builder that resolves `rows` (list) / `rows[0] ?? null` (single). */
-  function makeTableBuilder(rows: () => Array<Record<string, unknown>>): Record<string, unknown> {
+  type WriteRecord = { op: string | null; payload: unknown; filters: Array<[string, unknown]>; logged: boolean }
+
+  /**
+   * Chainable builder that resolves `rows` (list) / `rows[0] ?? null` (single). A write
+   * (insert / update / upsert / delete) is recorded in `smoke.writes` once, when it is awaited.
+   */
+  function makeTableBuilder(table: string, rows: () => Array<Record<string, unknown>>): Record<string, unknown> {
+    const rec: WriteRecord = { op: null, payload: undefined, filters: [], logged: false }
     const build = (single: boolean): Record<string, unknown> => {
-      const result = () => Promise.resolve({ data: single ? (rows()[0] ?? null) : rows(), error: null, count: rows().length })
+      const result = () => {
+        if (rec.op && !rec.logged) {
+          rec.logged = true
+          smoke.writes.push({ table, op: rec.op, payload: rec.payload, filters: rec.filters })
+        }
+        const refused = rec.op === 'update' && table === 'bids' && smoke.refuseBidUpdates
+        const list = refused ? [] : rows()
+        return Promise.resolve({ data: single ? (list[0] ?? null) : list, error: null, count: list.length })
+      }
       const b: Record<string, unknown> = {}
       for (const m of [
-        'select', 'insert', 'update', 'upsert', 'delete',
-        'eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'like', 'ilike',
+        'select', 'neq', 'gt', 'gte', 'lt', 'lte', 'like', 'ilike',
         'is', 'in', 'or', 'not', 'contains', 'filter',
         'order', 'range', 'limit', 'abortSignal',
       ]) {
         b[m] = () => b
+      }
+      for (const op of ['insert', 'update', 'upsert', 'delete']) {
+        b[op] = (payload?: unknown) => {
+          rec.op = op
+          rec.payload = payload
+          return b
+        }
+      }
+      b.eq = (col: string, val: unknown) => {
+        rec.filters.push([col, val])
+        return b
       }
       b.single = () => build(true)
       b.maybeSingle = () => build(true)
@@ -71,7 +103,7 @@ vi.mock('../lib/supabase', async () => {
       ...generic,
       from: (table: string) => {
         const rows = TABLE_ROWS[table]
-        return rows ? makeTableBuilder(rows) : (generic.from as () => unknown)()
+        return rows ? makeTableBuilder(table, rows) : (generic.from as () => unknown)()
       },
     },
   }
@@ -87,6 +119,7 @@ import { installDomShims, settle } from '../test/renderSmokeMocks'
 import { BIDS_TABS, bidsTabOpenFor, isFollowupLens, resolveBidsTabRoute, type BidsTabKey } from '../lib/bids/bidsTabAccess'
 import { followupLensCaption, followupLenses } from '../lib/bids/bidsLenses'
 import { resetRoleGateAnnouncements } from '../hooks/useRoleGate'
+import { BID_DATE_SENT_ATTESTATION_NULLS } from '../lib/bids/bidDateSentAttestation'
 
 function LocationProbe() {
   const location = useLocation()
@@ -104,6 +137,8 @@ function renderBidsAt(url: string, role: string, bids: Array<Record<string, unkn
   smoke.role = role
   smoke.bids = bids
   smoke.bidsReads = 0
+  smoke.writes = []
+  smoke.refuseBidUpdates = false
   installDomShims()
   installCssEscapeShim()
   return render((<><Bids /><LocationProbe /></>) as ReactElement, {
@@ -328,5 +363,110 @@ describe('Bids page render smoke — the Day book’s params', () => {
     renderBidsAt('/bids?tab=day-book&dayb_from=2026-08-10&dayb_to=2026-08-16&dayb_person=u-1', 'estimator')
     await waitFor(() => expect(currentTab()).toBe('bid-board'))
     expect(dayBookParams()).toEqual([])
+  })
+})
+
+/**
+ * Edit Bid — the guard for punch list #51 (the Edit Bid controller moves out of the page).
+ * What the page sends to `bids` when a bid is edited, closed, or created: recorded by the
+ * stub, asserted exactly. These cases must pass before each of #51's moves and after it.
+ */
+describe('Bids page render smoke — Edit Bid writes', () => {
+  const bidWrites = () => smoke.writes.filter((w) => w.table === 'bids')
+  /**
+   * A quirk pinned as it is (#51 must not change it): on a bid with no sent date, every Edit
+   * Bid write also carries the eight sent-date stamps as null — the attestation merge answers
+   * "cleared" for an empty date, and the prune does not drop columns that are not form fields.
+   * Null over null; recorded on the #51 card.
+   */
+  const unsentStampNulls = { ...BID_DATE_SENT_ATTESTATION_NULLS }
+  const projectName = () => document.getElementById('bid-form-project-name') as HTMLInputElement | null
+  const bidWindowOpen = () => !!screen.queryByRole('button', { name: 'Close bid window' })
+
+  /** Opens BID on the Bid window's Edit face and waits until the form holds the bid. */
+  async function openBidOnEdit() {
+    renderBidsAt('/bids?tab=bid-board&bidId=bid-1&openBidEdit=1', 'estimator', [BID])
+    await waitFor(() => expect(projectName()?.value).toBe('Pondhill Building 2'))
+    await pageAtRest()
+    smoke.writes = []
+  }
+
+  /** Real timers for the page, fake ones for the debounce that starts after this call. */
+  async function runTheDebounce(change: () => void) {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      change()
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1300)
+      })
+    } finally {
+      vi.useRealTimers()
+    }
+    await settle()
+  }
+
+  it('opening a bid and closing it untouched writes nothing', async () => {
+    await openBidOnEdit()
+    fireEvent.click(screen.getByRole('button', { name: 'Close bid window' }))
+    await waitFor(() => expect(bidWindowOpen()).toBe(false))
+    expect(bidWrites()).toEqual([])
+  })
+
+  it('a change saves itself after the pause — one update, that field only, on that bid', async () => {
+    await openBidOnEdit()
+    await runTheDebounce(() => fireEvent.change(projectName()!, { target: { value: 'Pondhill Building 3' } }))
+    await waitFor(() => expect(bidWrites()).toHaveLength(1))
+    expect(bidWrites()[0]).toEqual({ table: 'bids', op: 'update', payload: { project_name: 'Pondhill Building 3', ...unsentStampNulls }, filters: [['id', 'bid-1']] })
+    expect(bidWindowOpen()).toBe(true)
+  })
+
+  it('closing inside the pause saves the change first, once, then closes', async () => {
+    await openBidOnEdit()
+    fireEvent.change(projectName()!, { target: { value: 'Pondhill Building 3' } })
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Close bid window' }))
+    await waitFor(() => expect(bidWindowOpen()).toBe(false))
+    expect(bidWrites()).toEqual([{ table: 'bids', op: 'update', payload: { project_name: 'Pondhill Building 3', ...unsentStampNulls }, filters: [['id', 'bid-1']] }])
+  })
+
+  it('a refused write keeps the window open and says so; Close without saving closes it with no second write', async () => {
+    await openBidOnEdit()
+    smoke.refuseBidUpdates = true
+    fireEvent.change(projectName()!, { target: { value: 'Pondhill Building 3' } })
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Close bid window' }))
+    expect(await screen.findByText(/Couldn’t save your latest changes/)).toBeTruthy()
+    expect(bidWindowOpen()).toBe(true)
+    expect(bidWrites().filter((w) => w.op === 'update')).toHaveLength(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Close without saving' }))
+    await waitFor(() => expect(bidWindowOpen()).toBe(false))
+    await settle()
+    expect(bidWrites().filter((w) => w.op === 'update')).toHaveLength(1)
+  })
+
+  it('a required field left blank holds the save — nothing is written, not even on close', async () => {
+    await openBidOnEdit()
+    await runTheDebounce(() => fireEvent.change(projectName()!, { target: { value: '' } }))
+    expect(screen.getByText(/Required: Project Name/)).toBeTruthy()
+    expect(bidWrites()).toEqual([])
+    fireEvent.click(screen.getByRole('button', { name: 'Close bid window' }))
+    await waitFor(() => expect(bidWindowOpen()).toBe(false))
+    expect(bidWrites()).toEqual([])
+  })
+
+  it('New Bid → Create bid inserts one bid in the picked trade, and updates nothing', async () => {
+    renderBidsAt('/bids?tab=bid-board', 'estimator', [BID])
+    await waitFor(() => expect(stripButton('bid-board')).toBeTruthy())
+    await pageAtRest()
+    smoke.writes = []
+    fireEvent.click(screen.getByRole('button', { name: 'New Bid' }))
+    await waitFor(() => expect(projectName()).toBeTruthy())
+    fireEvent.change(projectName()!, { target: { value: 'Smoke Test Clinic' } })
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Create bid' }))
+    await waitFor(() => expect(bidWrites().filter((w) => w.op === 'insert')).toHaveLength(1))
+    const insert = bidWrites().find((w) => w.op === 'insert')!
+    expect(insert.payload).toMatchObject({ project_name: 'Smoke Test Clinic', service_type_id: 'st-1' })
+    expect(bidWrites().filter((w) => w.op === 'update')).toEqual([])
   })
 })
