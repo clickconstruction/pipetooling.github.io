@@ -19,6 +19,47 @@ function loadPdfjs(): Promise<Pdfjs> {
   return pdfjsPromise
 }
 
+/**
+ * A vendor PDF opened once for the Assign pages walk (v2.4143): the page count, any page
+ * drawn at a width, and any page's text (pdf.js text content joined with spaces). Call
+ * `destroy` when the modal closes.
+ */
+export type OpenPdf = {
+  numPages: number
+  renderPage(page: number, width: number, quality?: number): Promise<string>
+  pageText(page: number): Promise<string>
+  destroy(): void
+}
+
+export async function openPdf(bytes: ArrayBuffer): Promise<OpenPdf> {
+  const pdfjs = await loadPdfjs()
+  const task = pdfjs.getDocument({ data: new Uint8Array(bytes.slice(0)) })
+  const doc = await task.promise
+  return {
+    numPages: doc.numPages,
+    async renderPage(p, width, quality = 0.8) {
+      const page = await doc.getPage(p)
+      const base = page.getViewport({ scale: 1 })
+      const viewport = page.getViewport({ scale: width / base.width })
+      const canvas = document.createElement('canvas')
+      canvas.width = Math.ceil(viewport.width)
+      canvas.height = Math.ceil(viewport.height)
+      const ctx = canvas.getContext('2d')
+      if (!ctx) throw new Error('no canvas')
+      await page.render({ canvas, canvasContext: ctx, viewport }).promise
+      return canvas.toDataURL('image/jpeg', quality)
+    },
+    async pageText(p) {
+      const page = await doc.getPage(p)
+      const content = await page.getTextContent()
+      return content.items.map((it) => ('str' in it ? it.str : '')).join(' ')
+    },
+    destroy() {
+      void task.destroy()
+    },
+  }
+}
+
 /** One data URL per page, in order; `width` is the thumbnail's CSS width in px. */
 export async function renderPdfThumbnails(bytes: ArrayBuffer, width = 112, onPage?: (index: number, dataUrl: string) => void): Promise<string[]> {
   const pdfjs = await loadPdfjs()
