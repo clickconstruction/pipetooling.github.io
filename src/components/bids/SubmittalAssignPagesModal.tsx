@@ -91,13 +91,30 @@ export function SubmittalAssignPagesModal({ file, fileIndex, items, loadBytes, g
   const rootRef = useRef<HTMLDivElement | null>(null)
   const stripRef = useRef<HTMLDivElement | null>(null)
 
-  // Open the file once: the page count, then every page's thumbnail and text in order.
+  // Open the file once — per file, not per render (v2.4192): the host's callbacks and rows
+  // are read through refs, so a re-render of the tab (its own reload after this walk reports
+  // the read, a robot task ticking over) never destroys the document mid-read and opens it
+  // again. Before the fix every re-render did, and each partial re-read reported a different
+  // count, which wrote the revision, reloaded the tab and re-opened the file — a loop that
+  // ran a 75-page scanned PDF through pdf.js hundreds of times and took the machine down.
+  const loadBytesRef = useRef(loadBytes)
+  loadBytesRef.current = loadBytes
+  const onReadsRef = useRef(onReads)
+  onReadsRef.current = onReads
+  const rowsRef = useRef(rows)
+  rowsRef.current = rows
   useEffect(() => {
     let cancelled = false
     let opened: OpenPdf | null = null
+    setPdf(null)
+    setStatus('loading')
+    setThumbs({})
+    setBigs({})
+    setTexts([])
+    setTextsDone(false)
     void (async () => {
       try {
-        const bytes = await loadBytes()
+        const bytes = await loadBytesRef.current()
         const { openPdf } = await import('../../lib/submittals/pdfThumbnails')
         opened = await openPdf(bytes)
         if (cancelled) return
@@ -112,7 +129,11 @@ export function SubmittalAssignPagesModal({ file, fileIndex, items, loadBytes, g
           setThumbs((t) => ({ ...t, [p]: thumb }))
           setTexts([...collected])
         }
+        if (cancelled) return
         setTextsDone(true)
+        // The file's line (v2.4171), once, from the whole read.
+        const header = commonHeader(collected)
+        onReadsRef.current?.({ namesRows: Object.values(readPages(collected, rowsRef.current)).filter((r) => r.itemId !== null).length, sectioned: header ? fileSectionTags(collected, header).length > 0 : false })
       } catch {
         if (!cancelled) setStatus('error')
       }
@@ -121,7 +142,7 @@ export function SubmittalAssignPagesModal({ file, fileIndex, items, loadBytes, g
       cancelled = true
       opened?.destroy()
     }
-  }, [loadBytes])
+  }, [file.path])
 
   // The page at reading size, drawn when it is reached and kept.
   useEffect(() => {
@@ -146,13 +167,6 @@ export function SubmittalAssignPagesModal({ file, fileIndex, items, loadBytes, g
   }, [status])
 
   const reads: PageReads = useMemo(() => ({ ...readsFromGuesses(guesses, rows), ...readPages(texts, rows) }), [guesses, rows, texts])
-  const onReadsRef = useRef(onReads)
-  onReadsRef.current = onReads
-  useEffect(() => {
-    if (!textsDone) return
-    const header = commonHeader(texts)
-    onReadsRef.current?.({ namesRows: Object.values(readPages(texts, rows)).filter((r) => r.itemId !== null).length, sectioned: header ? fileSectionTags(texts, header).length > 0 : false })
-  }, [textsDone, texts, rows])
   const suggestion = useMemo(() => suggestFor(page, decisions, reads, rows), [page, decisions, reads, rows])
   const summary = useMemo(() => walkSummary(decisions, seen, pageCount, rows, wants), [decisions, seen, pageCount, rows, wants])
   const have = useMemo(() => pagesByItem(decisions), [decisions])

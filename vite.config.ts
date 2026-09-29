@@ -2,12 +2,13 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { visualizer } from 'rollup-plugin-visualizer'
 import { VitePWA } from 'vite-plugin-pwa'
-import { copyFileSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'fs'
+import { copyFileSync, cpSync, createReadStream, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'fs'
 import { join, resolve } from 'path'
 import { fileURLToPath } from 'url'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 import { parseHelpGuideFrontmatter } from './src/lib/helpGuides'
+import { PDFJS_ASSET_DIRS, PDFJS_ASSET_PREFIX, pdfjsAssetPath } from './src/lib/pdfjsAssets'
 import { HELP_SHARE_PATH_PREFIX, helpShareDescription, helpSharePageHtml } from './src/lib/helpShareCard'
 import { renderTodoBoardModule } from './scripts/todos/readTodos'
 
@@ -123,6 +124,40 @@ function helpSharePagesPlugin() {
   }
 }
 
+/**
+ * pdf.js's run-time files (v2.4192): the JBIG2 / JPEG 2000 wasm decoders, the packed
+ * CMaps and the standard fonts, served under /pdfjs/<dir>/ straight from the installed
+ * pdfjs-dist in dev and copied into dist/pdfjs/ at build, so what the app names in
+ * `getDocument` (src/lib/pdfjsAssets.ts) is always the installed version's. Without
+ * them a scanned vendor PDF renders blank.
+ */
+function pdfjsAssetsPlugin() {
+  const source = (dir: string) => join(process.cwd(), 'node_modules', 'pdfjs-dist', dir)
+  const types: Record<string, string> = { '.wasm': 'application/wasm', '.js': 'text/javascript', '.mjs': 'text/javascript', '.bcmap': 'application/octet-stream', '.pfb': 'application/octet-stream', '.ttf': 'font/ttf' }
+  return {
+    name: 'pdfjs-assets',
+    configureServer(server: { middlewares: { use(fn: (req: { url?: string }, res: { setHeader(k: string, v: string): void; statusCode: number; end(): void }, next: () => void) => void): void } }) {
+      server.middlewares.use((req, res, next) => {
+        const hit = pdfjsAssetPath(req.url ?? '')
+        if (!hit) return next()
+        const file = join(source(hit.dir), hit.file)
+        if (!existsSync(file)) {
+          res.statusCode = 404
+          return res.end()
+        }
+        res.setHeader('Content-Type', types[hit.file.slice(hit.file.lastIndexOf('.'))] ?? 'application/octet-stream')
+        res.setHeader('Cache-Control', 'no-cache')
+        createReadStream(file).pipe(res as unknown as NodeJS.WritableStream)
+      })
+    },
+    closeBundle() {
+      const outDir = join(process.cwd(), 'dist', PDFJS_ASSET_PREFIX)
+      for (const dir of PDFJS_ASSET_DIRS) cpSync(source(dir), join(outDir, dir), { recursive: true })
+      console.log(`pdfjs-assets: copied ${PDFJS_ASSET_DIRS.join(', ')} into dist/${PDFJS_ASSET_PREFIX}/`)
+    },
+  }
+}
+
 function copy404Plugin() {
   return {
     name: 'copy-404',
@@ -182,6 +217,7 @@ export default defineConfig({
       },
     }),
     copy404Plugin(),
+    pdfjsAssetsPlugin(),
     helpSharePagesPlugin(),
     todoMockupsPlugin(),
     todoBoardPlugin(),
