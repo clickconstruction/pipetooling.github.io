@@ -6,7 +6,7 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
-import { makeJob, renderWithProviders } from '../../test/renderSmokeMocks'
+import { makeJob, renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import JobContractModal from './JobContractModal'
 
 vi.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'u1' }, role: 'dev' }) }))
@@ -53,9 +53,13 @@ describe('JobContractModal — Edit & re-send', () => {
     reopenSpy.mockClear()
     rowState.current = sentRow()
     renderWithProviders(<JobContractModal open onClose={() => undefined} job={job} />)
-    const btn = await screen.findByTestId('contract-edit-resend')
-    expect(btn.textContent).toBe('Edit & re-send')
-    fireEvent.click(btn)
+    expect((await screen.findByTestId('contract-edit-resend')).textContent).toBe('Edit & re-send')
+    // The open's loads land in more than one render, and a render after the button
+    // first appears can replace its node; a click on the old node goes nowhere (it
+    // failed one run in six and took two Pages deploys down on 2026-09-29). Settle
+    // the loads, then click the button that is on the page now.
+    await settle()
+    fireEvent.click(screen.getByTestId('contract-edit-resend'))
     expect(reopenSpy).not.toHaveBeenCalled()
     expect(screen.getByTestId('contract-reopen-note').textContent).toContain('unlocks here as revision 2')
     expect(screen.getByTestId('contract-edit-resend').textContent).toBe('Confirm — unlock to edit')
