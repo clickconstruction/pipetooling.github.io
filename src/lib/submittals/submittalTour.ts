@@ -20,7 +20,7 @@ export const SUBMITTAL_TOUR_STEPS: SpotlightTourStep[] = [
   {
     anchor: 'submittals-source',
     title: '1 · Where the rows come from',
-    body: 'Three sources, any of them enough: the takeoff (one row per fixture, the part under it as the product), the picks on the Pricing compare, and the plans’ fixture schedule. Nothing here is retyped from a quote.',
+    body: 'Two sources, either one enough: the takeoff (one row per fixture, the part under it as the product) and the plans’ fixture schedule, typed or read by the robot. A bid with quotes compared on Pricing gets a third card, the picks, which carry the reason and lead time from each pick. Nothing here is retyped from a quote.',
   },
   {
     anchor: 'submittals-takeoff',
@@ -35,7 +35,7 @@ export const SUBMITTAL_TOUR_STEPS: SpotlightTourStep[] = [
   {
     anchor: 'submittals-robot',
     title: 'Or let the robot read it',
-    body: 'On a bid with no schedule, the robot reads the tags off the plans. You confirm each tag before it counts; the confirmed tags join the schedule on Pricing.',
+    body: 'Under Type or paste: ask the robot to read the tags off the plans. The card says so while it works; when it is back, the tags land under the cards for you to confirm, and only confirmed tags join the schedule.',
     missingBody: 'This offer shows only while the bid has no schedule. This bid already has one.',
   },
   {
