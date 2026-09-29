@@ -15,7 +15,7 @@ import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import { BidsSubmittalsTab } from './BidsSubmittalsTab'
 
 type Rec = { table: string; op: string; payload: unknown; filters: Array<[string, unknown]> }
-const state: { revisions: Record<string, unknown>[]; items: Record<string, unknown>[]; tasks: Record<string, unknown>[]; writes: Rec[]; storage: string[]; packageCalls: Array<{ files: number; sheets: string[] }>; noSources: boolean; takeoff: boolean } = { revisions: [], items: [], tasks: [], writes: [], storage: [], packageCalls: [], noSources: false, takeoff: false }
+const state: { revisions: Record<string, unknown>[]; items: Record<string, unknown>[]; tasks: Record<string, unknown>[]; writes: Rec[]; storage: string[]; packageCalls: Array<{ files: number; sheets: string[] }>; noSources: boolean; takeoff: boolean; seat: { unrevoked_seats: number; last_used_at: string | null } | null } = { revisions: [], items: [], tasks: [], writes: [], storage: [], packageCalls: [], noSources: false, takeoff: false, seat: { unrevoked_seats: 1, last_used_at: new Date().toISOString() } }
 
 vi.mock('../../lib/jobs/testReportSettings', () => {
   const settings = { companyName: 'Click Plumbing', companyTagline: 'Plumbing', officePhone: '(512) 555-0100', mailingAddress: '' }
@@ -175,6 +175,7 @@ function builder(table: string) {
 vi.mock('../../lib/supabase', () => ({
   supabase: {
     from: (table: string) => builder(table),
+    rpc: () => Promise.resolve({ data: state.seat, error: null }),
     storage: {
       from: () => ({
         upload: (path: string) => {
@@ -333,6 +334,27 @@ describe('BidsSubmittalsTab', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Skip tour' }))
     fireEvent.click(screen.getByRole('button', { name: 'Walk me through step 1' }))
     expect(screen.getByRole('dialog').getAttribute('aria-label')).toMatch(/Where the rows come from/)
+  })
+
+  it('v2.4136 · no robot offer anywhere while no seat is live; a live seat on a bid with no plans keeps the offer but holds the button', async () => {
+    state.revisions = []
+    state.items = []
+    state.noSources = true
+    state.takeoff = true
+    state.seat = { unrevoked_seats: 0, last_used_at: null }
+    const { unmount } = mount()
+    expect(await screen.findByText('No submittal on this bid yet')).toBeTruthy()
+    expect(screen.queryByTestId('ask-robot-schedule')).toBeNull()
+    expect(screen.queryByTestId('robot-offer-read_schedule')).toBeNull()
+    unmount()
+    state.seat = { unrevoked_seats: 1, last_used_at: new Date().toISOString() }
+    mount()
+    expect(await screen.findByText('No submittal on this bid yet')).toBeTruthy()
+    const ask = await screen.findByTestId('ask-robot-schedule')
+    expect((ask as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByTestId('robot-needs-read_schedule').textContent).toMatch(/✗ Add the plans link on the bid first\. · A robot was working/)
+    state.noSources = false
+    state.takeoff = false
   })
 
   it('draws the tiles and rows of a revision — say why, sheet needed, the status chips — and Edit saves the row', async () => {
@@ -521,7 +543,7 @@ describe('BidsSubmittalsTab', () => {
       expect(screen.getByTestId('choose-from-takeoff').textContent).toBe('Choose from the takeoff')
       // v2.4109 · no picks → no picks card; the robot's offer is a line in the schedule card.
       expect(screen.queryByTestId('source-picks')).toBeNull()
-      expect(screen.getByTestId('ask-robot-schedule').textContent).toBe('ask the robot to read it off the plans')
+      expect(screen.getByTestId('ask-robot-schedule').textContent).toBe('Ask the robot to read the schedule')
       expect(screen.queryByRole('button', { name: /Build Rev 1 from/ })).toBeNull()
       fireEvent.click(screen.getByTestId('build-from-takeoff'))
       const picker = await screen.findByRole('dialog', { name: 'Choose from the takeoff' })
