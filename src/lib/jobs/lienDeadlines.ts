@@ -1,4 +1,5 @@
 import type { Database } from '../../types/database'
+import { sendsTrackingOwed } from './lienSendTracking'
 
 /**
  * The Chapter 53 deadline clock (v2.2645, Lien Instruments phase 4).
@@ -133,6 +134,8 @@ export type LienWatchResult = {
   serveDue: { jobId: string; filingId: string; serveDue: string }[]
   /** Filed, unreleased, unpaid liens whose year to sue (§ 53.158) ends inside the counsel lead — or has run out (v2.3781). */
   suitDue: { jobId: string; filingId: string; suitDate: string; daysLeft: number; openBalance: number }[]
+  /** Recorded notices whose certified or courier send has no tracking number yet (v2.4119). */
+  trackingOwed: { jobId: string; filingId: string; recipients: string[]; sentOn: string }[]
 }
 
 export const LIEN_WATCH_MIN_OPEN_BALANCE = 500
@@ -202,5 +205,13 @@ export function assessLienWatch(
       serveDue.push({ jobId: f.job_id, filingId: f.id, serveDue: f.serve_due })
     }
   }
-  return { noticeDue, filingDue, serveDue, suitDue }
+  // Proof of service owed (v2.4119): a recorded notice whose certified or courier send has no number yet.
+  const trackingOwed: LienWatchResult['trackingOwed'] = []
+  for (const f of live) {
+    if (f.kind !== 'notice_53_056' && f.kind !== 'retainage_53_057') continue
+    const owed = sendsTrackingOwed(f.sends)
+    if (owed.length === 0) continue
+    trackingOwed.push({ jobId: f.job_id, filingId: f.id, recipients: owed.map((o) => o.recipient), sentOn: owed[0]?.sent_on ?? '' })
+  }
+  return { noticeDue, filingDue, serveDue, suitDue, trackingOwed }
 }

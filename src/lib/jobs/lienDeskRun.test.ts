@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { EMPTY_LIEN_RETAINAGE_QUEUE } from './lienDeskRetainage'
 import { buildLienDeskQueue, type LienDeskItemRow, type LienNoticeMonthRow } from './lienDesk'
-import { buildLienDeskRun, buildLienRetainageRun, RUN_OWNER_UNCONFIRMED_PROBLEM, runCoverSheetBlocks, runCoverNoteBlocks, runFilingPayload, runNoticeBlocks, runNoticeProblems, runNoticeWhatWords, runPacketHtml, runPayPageBlocks } from './lienDeskRun'
+import { buildLienDeskRun, buildLienRetainageRun, RUN_OWNER_UNCONFIRMED_PROBLEM, runCoverSheetBlocks, runCoverNoteBlocks, runFilingPayload, runNoticeBlocks, runNoticeProblems, runNoticeWhatWords, runPacketHtml, runPayPageBlocks, trackingShape, recipientMailed, runRecordSplit, runEnvelopeFacesHtml } from './lienDeskRun'
 import type { LienRetainageEntry } from './lienDeskRetainage'
 import type { LienDeskData } from '../../hooks/useLienDeskData'
 import { homesteadStatementApplies, parseLienDeskDraftFields } from './lienNoticeDraft'
@@ -288,5 +288,57 @@ describe('the pay page in the packet (v2.3758)', () => {
     expect(html.indexOf('data-pay-page')).toBeGreaterThan(html.indexOf('Copy for: Owner of record'))
     expect(html.indexOf('data-pay-page')).toBeLessThan(html.indexOf('data-invoice'))
     expect(html.indexOf('data-pay-page')).toBeLessThan(html.indexOf('Copy for: Original contractor'))
+  })
+})
+
+describe('the mailing (v2.4119): the number\u2019s shape, what records, the envelope faces', () => {
+  it('trackingShape: certified wants 20 digits (22 with the prefix); courier any text; email and hand none', () => {
+    expect(trackingShape('certified_mail', '9407 1118 9876 5432 1098')).toEqual({ ok: true, hint: '20 digits · certified', digits: 20 })
+    expect(trackingShape('certified_mail', '9407111898765432109812')).toEqual({ ok: true, hint: '22 digits · certified', digits: 22 })
+    expect(trackingShape('certified_mail', '9407 1118 9876 5432 10')).toEqual({ ok: false, hint: '18 digits — a certified number has 20', digits: 18 })
+    expect(trackingShape('certified_mail', '')).toEqual({ ok: false, hint: '', digits: 0 })
+    expect(trackingShape('traceable_courier', 'FX123')).toEqual({ ok: true, hint: '', digits: 3 })
+    expect(trackingShape('email', '')).toEqual({ ok: true, hint: '', digits: 0 })
+    expect(trackingShape('hand', '')).toEqual({ ok: true, hint: '', digits: 0 })
+  })
+  const r = (method: 'certified_mail' | 'traceable_courier' | 'email' | 'hand', tracking = '') => ({ key: 'owner' as const, label: 'Owner of record', name: 'A', address: 'B', email: 'a@b.test', method, tracking })
+  const n = (itemId: string, recipients: ReturnType<typeof r>[]) => ({ itemId, jobId: itemId, kind: 'notice_53_056', label: itemId, jobNumber: itemId, months: [], amount: 1, fields: {} as never, extras: {} as never, coverLetter: null, coverNote: '', ownerUnconfirmed: false, recipients }) as unknown as Parameters<typeof runRecordSplit>[0][number]
+  it('an envelope is mailed once it carries a number, or goes by email or hand', () => {
+    expect(recipientMailed(r('certified_mail'))).toBe(false)
+    expect(recipientMailed(r('certified_mail', '9407'))).toBe(true)
+    expect(recipientMailed(r('email'))).toBe(true)
+    expect(recipientMailed(r('hand'))).toBe(true)
+  })
+  it('runRecordSplit: numbered notices record now, the rest wait; with no number anywhere the run records whole', () => {
+    const a = n('a', [r('certified_mail', '9407 1118 9876 5432 1098'), r('certified_mail')])
+    const b = n('b', [r('certified_mail'), r('certified_mail')])
+    const split = runRecordSplit([a, b])
+    expect(split.partial).toBe(true)
+    expect(split.mailed.map((x) => x.itemId)).toEqual(['a'])
+    expect(split.waiting.map((x) => x.itemId)).toEqual(['b'])
+    const whole = runRecordSplit([b, n('c', [r('certified_mail')])])
+    expect(whole.partial).toBe(false)
+    expect(whole.mailed).toHaveLength(2)
+    expect(whole.waiting).toEqual([])
+    const all = runRecordSplit([a])
+    expect(all.partial).toBe(false)
+    expect(all.mailed).toHaveLength(1)
+  })
+  it('envelope faces: one page per envelope, the certified line only when certified, no page for an email', () => {
+    const html = runEnvelopeFacesHtml(
+      [
+        { n: 1, label: 'Owner of record', name: 'Rizvi & Kizilbash', address: '704 Garraty Ct\nSan Antonio, TX 78209', method: 'certified_mail' },
+        { n: 2, label: 'Original contractor', name: 'RMC', address: '1 River Rd', method: 'traceable_courier' },
+        { n: 3, label: 'Owner of record', name: 'Someone', address: '', method: 'email' },
+      ],
+      { companyName: 'Click Plumbing & Electrical', addressText: '1234 Trade St\nSan Antonio, TX 78201', phone: '', email: '', tagline: '', licenseLine: '' },
+    )
+    expect(html.match(/<section class="env">/g)).toHaveLength(2)
+    expect(html).toContain('CERTIFIED MAIL · RETURN RECEIPT REQUESTED')
+    expect(html).toContain('TRACEABLE COURIER')
+    expect(html).toContain('Rizvi &amp; Kizilbash')
+    expect(html).toContain('Click Plumbing &amp; Electrical<br>1234 Trade St<br>San Antonio, TX 78201')
+    expect(html).toContain('Envelope 1 of 3')
+    expect(html).not.toContain('Someone')
   })
 })

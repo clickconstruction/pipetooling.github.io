@@ -129,3 +129,13 @@ describe('assessLienWatch — the suit watch (v2.3781)', () => {
     expect(suitDeadlineFor('')).toBe('')
   })
 })
+
+describe('trackingOwed (v2.4119): recorded notices whose certified send has no number', () => {
+  it('names the filing and the recipients still owed; email and hand sends never count', () => {
+    const f1 = filing({ id: 'f1', job_id: 'j1', kind: 'notice_53_056', sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '', sent_on: '2026-09-29' }, { recipient: 'original_contractor', method: 'certified_mail', tracking: '9407 1118 9876 5432 1098', sent_on: '2026-09-29' }] as never })
+    const f2 = filing({ id: 'f2', job_id: 'j2', kind: 'notice_53_056', sends: [{ recipient: 'owner', method: 'email', tracking: 'resend:x' }, { recipient: 'original_contractor', method: 'hand', tracking: '' }] as never })
+    const f3 = filing({ id: 'f3', job_id: 'j3', kind: 'affidavit', sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '' }] as never })
+    const r = assessLienWatch([], [f1, f2, f3], '2026-10-01')
+    expect(r.trackingOwed).toEqual([{ jobId: 'j1', filingId: 'f1', recipients: ['owner'], sentOn: '2026-09-29' }])
+  })
+})

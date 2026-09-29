@@ -50,6 +50,8 @@ export async function recordLienDeskRun(
     payBlocksByJob?: Readonly<Record<string, Partial<Record<'owner' | 'original_contractor', readonly FilingDocBlock[]>>>>
     /** The saved copy (v2.3763): a Drive link to the paper as sent, with a note. */
     document?: { url?: string | null; note?: string | null }
+    /** The day the envelopes went to the post office (v2.4119); today when not given. */
+    mailedOn?: string
   },
 ): Promise<RunRecordResult> {
   const result: RunRecordResult = { recorded: [], failed: [] }
@@ -63,7 +65,7 @@ export async function recordLienDeskRun(
           const id = await emailNoticePdf(n, r.key, r.email, opts.invoiceDocsByJob?.[n.jobId] ?? [], opts.payBlocksByJob?.[n.jobId]?.[r.key] ?? [])
           tracking = `resend:${id} → ${r.email}`
         }
-        sends.push({ recipient: r.key, method: r.method, tracking, sent_on: opts.todayYmd })
+        sends.push({ recipient: r.key, method: r.method, tracking, sent_on: opts.mailedOn || opts.todayYmd })
       }
       if (n.parts && n.parts.length > 1) {
         // One notice for the jobs at a property (#35 PR 3): one filing per job on one packet, each item sent.

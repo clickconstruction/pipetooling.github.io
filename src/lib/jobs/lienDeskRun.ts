@@ -361,6 +361,74 @@ export function runPacketHtml(
 
 export type RunSendRecord = { recipient: 'owner' | 'original_contractor'; method: RunSendMethod; tracking: string; sent_on: string }
 
+/** The shape of a tracking number for its method (v2.4119): a certified article number is 20 digits (22 with the service prefix); a courier number is any non-empty string; email and hand delivery need none. */
+export type TrackingShape = { ok: boolean; hint: string; digits: number }
+
+export function trackingShape(method: RunSendMethod, tracking: string): TrackingShape {
+  const raw = (tracking ?? '').trim()
+  if (method === 'email' || method === 'hand') return { ok: true, hint: '', digits: 0 }
+  if (!raw) return { ok: false, hint: '', digits: 0 }
+  const digits = raw.replace(/\D/g, '').length
+  if (method === 'certified_mail') {
+    if (digits === 20 || digits === 22) return { ok: true, hint: `${digits} digits · certified`, digits }
+    return { ok: false, hint: `${digits} digits — a certified number has 20`, digits }
+  }
+  return { ok: true, hint: '', digits }
+}
+
+/** An envelope counts as mailed once it carries a number, or goes by email or hand (v2.4119). */
+export function recipientMailed(r: Pick<RunRecipient, 'method' | 'tracking'>): boolean {
+  return r.method === 'email' || r.method === 'hand' || (r.tracking ?? '').trim().length > 0
+}
+
+/**
+ * Recording after the post office (v2.4119): a notice with at least one
+ * mailed envelope records now; the rest stay in the printed pile. When no
+ * envelope carries a number the run records whole, as it always did — an
+ * office that does not track is not stopped.
+ */
+export function runRecordSplit<T extends RunNotice>(notices: ReadonlyArray<T>): { mailed: T[]; waiting: T[]; partial: boolean } {
+  const mailed = notices.filter((n) => n.recipients.some(recipientMailed))
+  if (mailed.length === 0 || mailed.length === notices.length) return { mailed: [...notices], waiting: [], partial: false }
+  return { mailed, waiting: notices.filter((n) => !n.recipients.some(recipientMailed)), partial: true }
+}
+
+function esc(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+/**
+ * Envelope faces (v2.4119): one page per envelope — the return address, the
+ * certified line when the envelope goes certified, a blank for the article
+ * number, and the recipient block exactly as the notice names it. The cover
+ * sheet says what goes IN each envelope; this says what goes ON it.
+ */
+export function runEnvelopeFacesHtml(envelopes: ReadonlyArray<{ n: number; label: string; name: string; address: string; method: RunSendMethod }>, issuer: PhysicalInvoiceIssuer | null): string {
+  const ret = [issuer?.companyName ?? '', ...(issuer?.addressText ?? '').split('\n')].map((l) => l.trim()).filter(Boolean)
+  const pages = envelopes
+    .filter((e) => e.method !== 'email')
+    .map(
+      (e) => `<section class="env">
+  <div class="ret">${ret.map(esc).join('<br>')}</div>
+  ${e.method === 'certified_mail' ? '<div class="cert">CERTIFIED MAIL · RETURN RECEIPT REQUESTED</div><div class="art">Article no. ____ ____ ____ ____ ____</div>' : e.method === 'traceable_courier' ? '<div class="cert">TRACEABLE COURIER</div><div class="art">Tracking no. ______________________</div>' : '<div class="cert">HAND DELIVERED</div>'}
+  <div class="to"><strong>${esc(e.name || '—')}</strong><br>${esc(e.address || '').split('\n').map(esc).join('<br>')}</div>
+  <div class="n">Envelope ${e.n} of ${envelopes.length} · ${esc(e.label)}</div>
+</section>`,
+    )
+    .join('\n')
+  return `<!doctype html><html><head><meta charset="utf-8"><title>Envelope faces</title>
+<style>
+@page { size: 9.5in 4.125in; margin: 0.35in; }
+body { margin: 0; font-family: Georgia, "Times New Roman", serif; color: #111; }
+.env { page-break-after: always; position: relative; height: 3.3in; }
+.ret { font-size: 10pt; line-height: 1.3; }
+.cert { margin-top: 0.35in; font-size: 9pt; font-weight: 700; letter-spacing: 0.08em; }
+.art { font-size: 9pt; color: #444; margin-top: 2pt; }
+.to { position: absolute; left: 3.6in; top: 1.45in; font-size: 12pt; line-height: 1.35; }
+.n { position: absolute; right: 0; bottom: 0; font-size: 8pt; color: #666; }
+</style></head><body>${pages}</body></html>`
+}
+
 /** The `job_lien_filings` insert for one notice — every month it named, both sends, and the saved copy when the office kept one (v2.3763). */
 export function runFilingPayload(n: RunNotice, sends: ReadonlyArray<RunSendRecord>, userId: string | null, document: { url?: string | null; note?: string | null } = {}): Record<string, unknown> {
   return {
