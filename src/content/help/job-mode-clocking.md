@@ -135,3 +135,14 @@ With Job Mode on, a tab bar pins to the bottom of the screen — everything on i
 ## Extra work the customer asked for
 
 If you switched **Write up a change from the field** on in Settings, a small **Write up a change** link sits under the card's buttons. It opens the write-up already on the job you're clocked into (see *write up a change order from the field*).
+
+## The customer signs on your phone
+
+Clocked in on a job that has no signed agreement yet, and the customer is standing there? Under the card's buttons there is one more line: {{button:outline|✍ Hand the phone to the customer to sign}}.
+
+1. Tap it. The app opens this job's agreement on your phone — the same page the office sends by link — with the work, the price and payment line and the terms, and a note that says you are present.
+2. Hand the phone over. They read it, type or draw their name, tick **I agree to sign electronically**, and press **Sign agreement**.
+3. Take the phone back. The job now reads {{chip:green|✍ Signed}} everywhere, and their signed copy goes to the email on the job.
+
+Nothing is emailed until they sign. If the office already sent this customer an agreement, the same one opens; if there is none yet, the app makes it from the job's own facts, so there is nothing to type. The line shows for the master, primary, superintendent and estimator roles, and disappears once the job is signed.
+
