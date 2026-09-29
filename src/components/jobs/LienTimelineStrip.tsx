@@ -70,6 +70,44 @@ function nextColor(tone: LienTimeline['next']['tone']): string {
 
 function Node({ s, size }: { s: LienTimelineStep; size: number }) {
   const t = toneFor(s)
+  if (s.fold) {
+    // Several closed months as one node (v2.4111): three overlapping discs say "folded" before any word does; the badge says how many.
+    const disc = (left: number, opacity: number): CSSProperties => ({ position: 'absolute', left, top: 0, width: size, height: size, borderRadius: '50%', background: t.ring, opacity })
+    return (
+      <span aria-hidden data-lien-timeline-fold style={{ position: 'relative', display: 'inline-block', width: size + 10, height: size, flex: 'none', zIndex: 1 }}>
+        <span style={disc(0, 0.3)} />
+        <span style={disc(5, 0.55)} />
+        <span
+          style={{
+            position: 'absolute',
+            left: 10,
+            top: 0,
+            width: size,
+            height: size,
+            borderRadius: '50%',
+            border: `2px solid ${t.ring}`,
+            background: t.fill,
+            color: t.ink,
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: size <= 12 ? 8 : 9,
+            fontWeight: 800,
+            lineHeight: 1,
+            boxSizing: 'border-box',
+          }}
+        >
+          {t.mark}
+        </span>
+        <span
+          data-lien-timeline-fold-count
+          style={{ position: 'absolute', top: -7, right: -9, minWidth: 14, height: 14, borderRadius: 999, background: 'var(--text-strong)', color: 'var(--surface)', fontSize: 9, fontWeight: 800, lineHeight: '14px', textAlign: 'center', padding: '0 3px' }}
+        >
+          {s.fold.count}
+        </span>
+      </span>
+    )
+  }
   return (
     <span
       aria-hidden
@@ -93,6 +131,44 @@ function Node({ s, size }: { s: LienTimelineStep; size: number }) {
     >
       {t.mark}
     </span>
+  )
+}
+
+/** A folded node's words (v2.4111): `3 noted · 1 to note` — the part still owed reads amber, the rest in the step's colour. */
+function FoldWords({ s }: { s: LienTimelineStep }) {
+  const parts = s.words.split(' · ')
+  return (
+    <>
+      {parts.map((part, i) => (
+        <span key={i}>
+          {i > 0 ? ' · ' : ''}
+          <span style={/to note/.test(part) ? { color: 'var(--text-amber-800)', fontWeight: 700 } : undefined}>{part}</span>
+        </span>
+      ))}
+    </>
+  )
+}
+
+/** The hover on a folded node: the node's line, then one line per month (v2.4111). */
+function foldTitle(s: LienTimelineStep, todayYmd: string): string {
+  const head = `${s.label} · ${s.dateWords} · ${s.words}`
+  if (!s.fold) return head
+  return [head, ...s.fold.steps.map((f) => `${f.label} · closed ${lienDateWords(f.date, todayYmd)} · ${f.words}`)].join('\n')
+}
+
+/** The months a folded node holds, fanned open under the strip (v2.4111). */
+function FoldTray({ s, todayYmd }: { s: LienTimelineStep; todayYmd: string }) {
+  if (!s.fold) return null
+  return (
+    <div data-lien-timeline-fold-tray style={{ margin: '0.35rem 0 0.2rem', padding: '0.5rem 0.7rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-subtle)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.4rem 0.9rem', fontSize: '0.75rem', lineHeight: 1.35 }}>
+      {s.fold.steps.map((f) => (
+        <div key={f.key} data-lien-timeline-step={f.key}>
+          <div style={{ fontWeight: 700, color: 'var(--text-red-600)' }}>{f.label}</div>
+          <div style={{ color: 'var(--text-muted)' }}>closed {lienDateWords(f.date, todayYmd)}</div>
+          <div style={{ color: / not noted/.test(f.words) ? 'var(--text-amber-800)' : 'var(--text-700)', fontWeight: / not noted/.test(f.words) ? 700 : 400 }}>{f.words.replace(/^window closed · ?/, '') || 'window closed'}</div>
+        </div>
+      ))}
+    </div>
   )
 }
 
@@ -139,6 +215,21 @@ export default function LienTimelineStrip({ timeline, layout: layoutProp = 'auto
   const n = Math.max(1, steps.length)
   const hostRef = useRef<HTMLDivElement | null>(null)
   const [narrow, setNarrow] = useState(false)
+  // Which folded node is fanned open (v2.4111); the mini row never fans.
+  const [openFold, setOpenFold] = useState<string | null>(null)
+  const openFoldStep = steps.find((s) => s.key === openFold && s.fold) ?? null
+  const foldDoor = (s: LienTimelineStep) =>
+    s.fold ? (
+      <button
+        type="button"
+        data-lien-timeline-fold-door
+        aria-expanded={openFold === s.key}
+        onClick={() => setOpenFold((cur) => (cur === s.key ? null : s.key))}
+        style={{ border: 'none', background: 'none', color: 'var(--text-link)', font: 'inherit', fontSize: 'inherit', fontWeight: 600, cursor: 'pointer', padding: 0 }}
+      >
+        {openFold === s.key ? 'hide the months' : 'show the months ›'}
+      </button>
+    ) : null
   useEffect(() => {
     if (layoutProp !== 'auto') return
     const el = hostRef.current
@@ -196,7 +287,8 @@ export default function LienTimelineStrip({ timeline, layout: layoutProp = 'auto
                 <span style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{s.label}</span>
                 <span style={{ margin: '0 0.4rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: s.state === 'undated' || s.state === 'blocked' ? 'var(--text-muted)' : 'var(--text-strong)' }}>{s.dateWords}</span>
                 {s.opensWords ? <span data-lien-timeline-opens style={{ color: 'var(--text-green-800)', fontWeight: 600, marginRight: '0.4rem' }}>{s.opensWords} ·</span> : null}
-                <span style={{ color: wordsColor(s) }}>{s.words}</span>
+                <span style={{ color: wordsColor(s) }}>{s.fold ? <FoldWords s={s} /> : s.words}</span>
+                {s.fold ? <span style={{ marginLeft: '0.4rem', fontSize: '0.75rem' }}>{foldDoor(s)}</span> : null}
                 {s.door && onDoor ? (
                   <button type="button" onClick={() => onDoor(s.door!)} style={{ marginLeft: '0.4rem', border: 'none', background: 'none', color: 'var(--text-link)', font: 'inherit', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', padding: 0 }}>
                     set the date ›
@@ -206,6 +298,7 @@ export default function LienTimelineStrip({ timeline, layout: layoutProp = 'auto
             </div>
           ))}
         </div>
+        {openFoldStep ? <FoldTray s={openFoldStep} todayYmd={timeline.todayYmd} /> : null}
         {nextLine}
         {waitLine}
       </div>
@@ -227,14 +320,20 @@ export default function LienTimelineStrip({ timeline, layout: layoutProp = 'auto
         ) : null}
         <div style={{ display: 'grid', gridTemplateColumns: `repeat(${n}, minmax(0, 1fr))`, position: 'relative' }}>
           {steps.map((s) => (
-            <div key={s.key} data-lien-timeline-step={s.key} title={`${s.label}${s.dateWords ? ` · ${s.dateWords}` : ''}${s.words ? ` · ${s.words}` : ''}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '0 2px', minWidth: 0, fontSize: mini ? '0.68rem' : '0.72rem', lineHeight: 1.25, height: '100%' }}>
+            <div key={s.key} data-lien-timeline-step={s.key} title={s.fold ? foldTitle(s, timeline.todayYmd) : `${s.label}${s.dateWords ? ` · ${s.dateWords}` : ''}${s.words ? ` · ${s.words}` : ''}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '0 2px', minWidth: 0, fontSize: mini ? '0.68rem' : '0.72rem', lineHeight: 1.25, height: '100%' }}>
               <Node s={s} size={nodeSize} />
               {mini ? null : <span style={{ marginTop: 3, fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.03em', textTransform: 'uppercase', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{s.label}</span>}
               {!mini && s.opensWords ? <span data-lien-timeline-opens style={{ color: 'var(--text-green-800)', fontWeight: 600, maxWidth: '100%' }}>{s.opensWords}</span> : null}
               <span style={{ marginTop: mini ? 2 : 1, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: s.state === 'undated' || s.state === 'blocked' ? 'var(--text-muted)' : 'var(--text-strong)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{mini ? miniDateWords(s.dateWords) : s.dateWords}</span>
               {mini ? null : (
                 <span style={{ color: wordsColor(s), maxWidth: '100%' }}>
-                  {s.words}
+                  {s.fold ? <FoldWords s={s} /> : s.words}
+                  {s.fold ? (
+                    <>
+                      <br />
+                      {foldDoor(s)}
+                    </>
+                  ) : null}
                   {s.door && onDoor ? (
                     <>
                       {' '}
@@ -249,6 +348,7 @@ export default function LienTimelineStrip({ timeline, layout: layoutProp = 'auto
             </div>
           ))}
         </div>
+        {!mini && openFoldStep ? <FoldTray s={openFoldStep} todayYmd={timeline.todayYmd} /> : null}
       </div>
       {nextLine}
       {waitLine}
@@ -296,6 +396,12 @@ function windowRows(steps: ReadonlyArray<LienTimelineStep>, todayYmd: string): {
   const closed: string[] = []
   const also: string[] = []
   for (const s of steps) {
+    if (s.fold) {
+      for (const f of s.fold.steps) {
+        if (f.opensOn && f.date) closed.push(`${f.label.replace('§ 53.056 · ', '')} closed ${lienDateWords(f.date, todayYmd)} — it was open ${spanWords(f.opensOn, f.date, todayYmd)}`)
+      }
+      continue
+    }
     if (s.kind === 'notice' && s.monthKey && s.opensOn && s.date) {
       if (s.state === 'due') {
         const span = lienWindowSpan(s.opensOn, s.date, todayYmd)

@@ -4,6 +4,8 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { printHtmlInNewWindow } from '../../lib/bidDocuments/htmlDoc'
+import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
+import { procurementLogCsv, procurementLogFileName, procurementLogTsv } from '../../lib/submittals/procurementLogExport'
 import { describeLeadTime, parseLeadTime } from '../../lib/submittals/leadTime'
 import {
   buildProcurementLog,
@@ -222,6 +224,31 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
     printHtmlInNewWindow(buildProcurementUpdateHtml({ ...updateInput(today, updates.length + 1), changes: [], line: '', sinceOn: null }))
   }
 
+  /** v2.4113 · the log as a file: the printed sheet's columns, dates a sheet reads. */
+  function downloadCsv() {
+    const blob = new Blob([`\uFEFF${procurementLogCsv(rows)}`], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = procurementLogFileName(bidLabel, toIsoDate(new Date()))
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  /** v2.4113 · copy the rows as tab-separated text, open a new Google Sheet, paste — the Cover Letter's copy-then-open shape. */
+  async function openInGoogleSheets() {
+    const text = procurementLogTsv(rows)
+    let copied = false
+    try {
+      await navigator.clipboard.writeText(text)
+      copied = true
+    } catch {
+      copied = false
+    }
+    openInExternalBrowser('https://sheets.new')
+    showToast(copied ? 'Log copied — a new Google Sheet is opening; click cell A1 and paste.' : 'Could not copy; download the CSV instead and open it in Sheets.', copied ? 'success' : 'error')
+  }
+
   async function copyText(text: string) {
     try {
       await navigator.clipboard.writeText(text)
@@ -356,6 +383,8 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
         <button type="button" onClick={() => { setSendTo((t) => t || reviewerNames.join(', ')); setSendOpen((v) => !v) }} disabled={disabled || rows.length === 0} style={btnPrimary} data-testid="procurement-send">Send update…</button>
         <button type="button" onClick={() => void addHandRow()} disabled={disabled} style={btn}>+ Add item</button>
         <button type="button" onClick={printLog} disabled={rows.length === 0} style={link}>Print the log</button>
+        <button type="button" onClick={downloadCsv} disabled={rows.length === 0} style={link} title="The log as a .csv file, one row per item, dates a spreadsheet reads" data-testid="procurement-csv">Download CSV</button>
+        <button type="button" onClick={() => void openInGoogleSheets()} disabled={rows.length === 0} style={link} title="Copies the log and opens a new Google Sheet; click A1 and paste" data-testid="procurement-sheets">Open in Google Sheets</button>
         <button type="button" onClick={() => setUpdatesOpen((v) => !v)} style={link}>Updates sent ({updates.length})</button>
       </div>
 

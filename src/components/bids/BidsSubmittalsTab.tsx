@@ -1276,7 +1276,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
             </button>
           </div>
           <p style={{ margin: '0.2rem 0 0', ...smallMuted }} data-tour="submittals-source">
-            Submittals · plumbing fixtures &amp; equipment · {takeoffFixtures > 0 ? <>{takeoffFixtures} fixture{takeoffFixtures === 1 ? '' : 's'} on the takeoff · </> : null}{specified.length} tag{specified.length === 1 ? '' : 's'} on the schedule · {picks.length} picked line{picks.length === 1 ? '' : 's'}
+            Submittals · plumbing fixtures &amp; equipment · {takeoffFixtures > 0 ? <>{takeoffFixtures} fixture{takeoffFixtures === 1 ? '' : 's'} on the takeoff · </> : null}{specified.length === 0 ? 'no schedule yet' : `${specified.length} tag${specified.length === 1 ? '' : 's'} on the schedule`}{picks.length > 0 ? <> · {picks.length} picked line{picks.length === 1 ? '' : 's'}</> : null}
             {takeoffFixtures > 0 && specified.length === 0 && picks.length === 0 ? (
               <>
                 {' · '}
@@ -1340,7 +1340,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         <div className="submittal-road" data-testid="submittal-road" style={{ display: 'grid', gridTemplateColumns: '34px 1fr', columnGap: '0.6rem' }}>
           {/* 1 · Schedule & picks — the source line is in the header; the robot's offer lives here while there is no schedule. */}
           <RoadSection n={1} title="Where the rows come from" status={stageStatus('picks')} open={sectionOpen('picks')} onToggle={() => toggleSection('picks')} anchor="submittals-schedule"
-            summary={<>{takeoffFixtures > 0 ? <>{takeoffFixtures} on the takeoff · </> : null}{specified.length} tag{specified.length === 1 ? '' : 's'} · {picks.length} picked line{picks.length === 1 ? '' : 's'}{takeoffFixtures > 0 && specified.length === 0 && picks.length === 0 ? <> · <button type="button" onClick={openTakeoffPicker} style={{ ...btnQuiet, textDecoration: 'underline', fontSize: 'inherit' }}>choose from the takeoff</button></> : onOpenPricing ? <> · <button type="button" onClick={() => (specified.length === 0 ? setPlugInOpen(true) : onOpenPricing(bid))} style={{ ...btnQuiet, textDecoration: 'underline', fontSize: 'inherit' }}>{specified.length === 0 ? 'type or paste the fixture schedule' : 'the picks on Pricing'}</button></> : null}</>}>
+            summary={<>{takeoffFixtures > 0 ? <>{takeoffFixtures} on the takeoff · </> : null}{specified.length === 0 ? 'no schedule yet' : `${specified.length} tag${specified.length === 1 ? '' : 's'}`}{picks.length > 0 ? <> · {picks.length} picked line{picks.length === 1 ? '' : 's'}</> : null}{takeoffFixtures > 0 && specified.length === 0 && picks.length === 0 ? <> · <button type="button" onClick={openTakeoffPicker} style={{ ...btnQuiet, textDecoration: 'underline', fontSize: 'inherit' }}>choose from the takeoff</button></> : onOpenPricing ? <> · <button type="button" onClick={() => (specified.length === 0 ? setPlugInOpen(true) : onOpenPricing(bid))} style={{ ...btnQuiet, textDecoration: 'underline', fontSize: 'inherit' }}>{specified.length === 0 ? 'type or paste the fixture schedule' : 'the picks on Pricing'}</button></> : null}</>}>
             {/* v2.4107 · three sources, the takeoff first: a bid priced from a takeoff has no picks and often no schedule, yet the takeoff already names every product. */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.6rem', maxWidth: 900 }} data-testid="submittal-sources">
               <div style={{ border: `1px solid ${takeoffFixtures > 0 && specified.length === 0 && picks.length === 0 ? '#2563eb' : 'var(--border)'}`, borderRadius: 8, padding: '0.6rem 0.75rem', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: '0.4rem' }} data-testid="source-takeoff">
@@ -1350,68 +1350,74 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                   {revisions.length === 0 ? 'Choose from the takeoff' : 'Add from the takeoff'}
                 </button>
               </div>
-              <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.75rem', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: '0.4rem' }} data-testid="source-picks">
-                <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>Pricing picks <span style={{ ...smallMuted, fontWeight: 400 }}>· {picks.length === 0 ? 'none yet' : `${picks.length} picked line${picks.length === 1 ? '' : 's'}`}</span></div>
-                <span style={smallMuted}>{picks.length === 0 ? 'Quotes compared on Pricing, a house picked per line. Not every bid has them.' : 'The house you picked per line, with the reason and lead time you gave.'}</span>
-                {onOpenPricing ? <button type="button" disabled={busy} onClick={() => onOpenPricing(bid)} style={{ ...btn, alignSelf: 'flex-start' }}>Open Pricing</button> : null}
-              </div>
-              <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.75rem', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: '0.4rem' }} data-testid="source-schedule">
-                <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>The plans’ schedule <span style={{ ...smallMuted, fontWeight: 400 }}>· {specified.length === 0 ? 'none yet' : `${specified.length} tag${specified.length === 1 ? '' : 's'}`}</span></div>
-                <span style={smallMuted}>{specified.length === 0 ? 'Optional: the tags off the plans, one per line. With it, rows read As specified or Alternate instead of Proposed.' : 'Every tag here becomes a row; a row with no pick takes its product typed with Edit.'}</span>
-                <button type="button" disabled={busy} onClick={() => setPlugInOpen(true)} style={{ ...(specified.length === 0 && takeoffFixtures === 0 ? btnPrimary : btn), alignSelf: 'flex-start' }} title="Type or paste the plans' fixture schedule — one tag per line; no robot, no trip to Pricing" data-testid="plug-in-schedule" data-tour="submittals-plug-in">
-                  {specified.length === 0 ? 'Type or paste the schedule' : 'Add to the schedule'}
-                </button>
-              </div>
-            </div>
-        {!loading ? (() => {
-          // 6b · the schedule read: ask, wait, confirm
-          const t = liveTask(tasks, 'read_schedule')
-          const st = t ? taskStatus(t) : null
-          const conf = t ? scheduleToConfirm(t) : null
-          if (!t && specified.length > 0) return null
-          return (
-            <div style={{ border: '1px dashed var(--border-strong)', borderRadius: 8, background: 'var(--surface)', padding: '0.6rem 0.9rem', display: 'flex', flexDirection: 'column', gap: '0.45rem', maxWidth: 760 }} data-testid="robot-schedule" data-tour="submittals-robot">
-              {!t ? (
-                <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                  <button type="button" disabled={busy} onClick={() => void askRobot('read_schedule', {}, null)} style={{ ...btn, borderStyle: 'dashed', color: 'var(--text-muted)' }} title="The robot reads the fixture schedule off the plans; you confirm each tag before it counts">
-                    Ask the robot to read the schedule
-                  </button>
-                  <span style={smallMuted}>No schedule on this bid yet — the robot reads it off the plans and you confirm; or plug it in by hand on Pricing.</span>
+              {picks.length > 0 ? (
+                <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.75rem', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: '0.4rem' }} data-testid="source-picks">
+                  <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>Quotes compared <span style={{ ...smallMuted, fontWeight: 400 }}>· {picks.length} picked line{picks.length === 1 ? '' : 's'}</span></div>
+                  <span style={smallMuted}>The house you picked per line on the Pricing compare, with the reason and lead time you gave at the pick.</span>
+                  {onOpenPricing ? <button type="button" disabled={busy} onClick={() => onOpenPricing(bid)} style={{ ...btn, alignSelf: 'flex-start' }}>Open the compare</button> : null}
                 </div>
-              ) : (
-                <>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '0.8125rem', color: 'var(--text-strong)', fontStyle: 'italic' }} data-testid="robot-line">{describeTask(t)}</span>
-                    {st === 'blocked' || st === 'queued' ? (
-                      <button type="button" disabled={busy} onClick={() => void markTask(t.id, 'cancelled').then(() => loadTasks(bidId as string))} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{st === 'blocked' ? 'Dismiss' : 'Cancel'}</button>
+              ) : null}
+              {(() => {
+                // v2.4109 · the robot lives in the schedule card: the offer under the typed door, the state while it works, Cancel beside it.
+                const t = liveTask(tasks, 'read_schedule')
+                const st = t ? taskStatus(t) : null
+                const conf = t ? scheduleToConfirm(t) : null
+                return (
+                  <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.75rem', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: '0.4rem' }} data-testid="source-schedule">
+                    <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>The plans’ schedule <span style={{ ...smallMuted, fontWeight: 400 }}>· {specified.length === 0 ? 'none yet' : `${specified.length} tag${specified.length === 1 ? '' : 's'}`}</span></div>
+                    <span style={smallMuted}>{specified.length === 0 ? 'Optional. With it, rows read As specified or Alternate instead of Proposed.' : 'Every tag here becomes a row; a row with no pick takes its product typed with Edit.'}</span>
+                    {t ? (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', background: 'var(--bg-muted)', borderRadius: 6, padding: '0.3rem 0.55rem', fontSize: '0.8rem' }} data-testid="robot-schedule" data-tour="submittals-robot">
+                        <span style={{ color: 'var(--text-strong)' }}>
+                          {st === 'ready' ? (conf ? 'The robot read the schedule — confirm the tags below.' : 'The robot read the schedule and found no tags.') : st === 'blocked' ? (t.summary || 'The robot could not read the plans.') : st === 'working' ? 'The robot is reading the fixture schedule off the plans.' : 'The robot is queued to read the fixture schedule off the plans.'}
+                          <span style={{ ...smallMuted, display: 'block', fontStyle: 'italic' }} data-testid="robot-line">{describeTask(t)}</span>
+                        </span>
+                        {st === 'blocked' || st === 'queued' ? (
+                          <button type="button" disabled={busy} onClick={() => void markTask(t.id, 'cancelled').then(() => loadTasks(bidId as string))} style={{ ...btnQuiet, textDecoration: 'underline', fontSize: '0.78rem' }}>{st === 'blocked' ? 'Dismiss' : 'Cancel'}</button>
+                        ) : null}
+                      </div>
+                    ) : null}
+                    <button type="button" disabled={busy} onClick={() => setPlugInOpen(true)} style={{ ...(specified.length === 0 && takeoffFixtures === 0 ? btnPrimary : btn), alignSelf: 'flex-start' }} title="Type or paste the plans' fixture schedule — one tag per line; no robot, no trip to Pricing" data-testid="plug-in-schedule" data-tour="submittals-plug-in">
+                      {specified.length === 0 ? 'Type or paste the schedule' : 'Add to the schedule'}
+                    </button>
+                    {!t && specified.length === 0 ? (
+                      <span style={smallMuted} data-tour="submittals-robot">
+                        …or <button type="button" disabled={busy} onClick={() => void askRobot('read_schedule', {}, null)} style={{ ...btnQuiet, textDecoration: 'underline', fontSize: 'inherit', color: 'var(--text-link)' }} title="The robot reads the fixture schedule off the plans; you confirm each tag before it counts" data-testid="ask-robot-schedule">ask the robot to read it off the plans</button>. You confirm each tag before it counts.
+                      </span>
                     ) : null}
                   </div>
-                  {conf ? (
-                    <>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0.2rem 0.6rem', fontSize: '0.8125rem', alignItems: 'baseline' }}>
-                        {conf.sure.map((r) => (
-                          <Fragment key={r.tag}><span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>{r.tag} ✓</span><span>{[r.manufacturer, r.model].filter(Boolean).join(' ') || r.description || r.fixture || '—'}{r.fixture ? <span style={smallMuted}> · {r.fixture}</span> : null}</span></Fragment>
-                        ))}
-                        {conf.look.map((r) => (
-                          <Fragment key={r.tag}>
-                            <label style={{ color: 'var(--text-amber-700)', fontWeight: 600, display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
-                              <input type="checkbox" aria-label={`Keep ${r.tag}`} checked={!!lookChecked[r.tag]} onChange={(e) => setLookChecked((m) => ({ ...m, [r.tag]: e.target.checked }))} /> {r.tag} ?
-                            </label>
-                            <span>{[r.manufacturer, r.model].filter(Boolean).join(' ') || r.description || r.fixture || '—'}{r.fixture ? <span style={smallMuted}> · {r.fixture}</span> : null}<span style={smallMuted}> · want a look</span></span>
-                          </Fragment>
-                        ))}
-                      </div>
-                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                        <button type="button" disabled={busy} onClick={() => void confirmSchedule(t, [...conf.sure.map((r) => r.tag), ...conf.look.filter((r) => lookChecked[r.tag]).map((r) => r.tag)])} style={btnGreen} data-testid="confirm-schedule">
-                          {confirmLabel(conf.sure.length + conf.look.filter((r) => lookChecked[r.tag]).length, conf.look.filter((r) => !lookChecked[r.tag]).length, 'leave') || 'Confirm'}
-                        </button>
-                        <button type="button" disabled={busy} onClick={() => void confirmSchedule(t, [])} style={{ ...btn, color: 'var(--text-muted)' }}>Discard the robot's rows</button>
-                        <span style={smallMuted}>Confirmed tags join the schedule on Pricing; the rest are dropped.</span>
-                      </div>
-                    </>
-                  ) : null}
-                </>
-              )}
+                )
+              })()}
+            </div>
+        {!loading ? (() => {
+          // 6b · the schedule read, ready: the tags to confirm, under the cards at full width
+          const t = liveTask(tasks, 'read_schedule')
+          const conf = t ? scheduleToConfirm(t) : null
+          if (!t || !conf) return null
+          const n = conf.sure.length + conf.look.length
+          return (
+            <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '0.6rem 0.9rem', display: 'flex', flexDirection: 'column', gap: '0.45rem', maxWidth: 900, marginTop: '0.6rem' }} data-testid="robot-schedule-confirm">
+              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-strong)' }}>The robot read {n} tag{n === 1 ? '' : 's'} off the plans <span style={{ ...smallMuted, fontWeight: 400 }}>· confirm them and they join the schedule; the rest are dropped</span></div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0.2rem 0.6rem', fontSize: '0.8125rem', alignItems: 'baseline' }}>
+                {conf.sure.map((r) => (
+                  <Fragment key={r.tag}><span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>{r.tag} ✓</span><span>{[r.manufacturer, r.model].filter(Boolean).join(' ') || r.description || r.fixture || '—'}{r.fixture ? <span style={smallMuted}> · {r.fixture}</span> : null}</span></Fragment>
+                ))}
+                {conf.look.map((r) => (
+                  <Fragment key={r.tag}>
+                    <label style={{ color: 'var(--text-amber-700)', fontWeight: 600, display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
+                      <input type="checkbox" aria-label={`Keep ${r.tag}`} checked={!!lookChecked[r.tag]} onChange={(e) => setLookChecked((m) => ({ ...m, [r.tag]: e.target.checked }))} /> {r.tag} ?
+                    </label>
+                    <span>{[r.manufacturer, r.model].filter(Boolean).join(' ') || r.description || r.fixture || '—'}{r.fixture ? <span style={smallMuted}> · {r.fixture}</span> : null}<span style={smallMuted}> · want a look</span></span>
+                  </Fragment>
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <button type="button" disabled={busy} onClick={() => void confirmSchedule(t, [...conf.sure.map((r) => r.tag), ...conf.look.filter((r) => lookChecked[r.tag]).map((r) => r.tag)])} style={btnGreen} data-testid="confirm-schedule">
+                  {confirmLabel(conf.sure.length + conf.look.filter((r) => lookChecked[r.tag]).length, conf.look.filter((r) => !lookChecked[r.tag]).length, 'leave') || 'Confirm'}
+                </button>
+                <button type="button" disabled={busy} onClick={() => void confirmSchedule(t, [])} style={{ ...btn, color: 'var(--text-muted)' }}>Discard the robot's rows</button>
+                <span style={smallMuted}>Confirmed tags join the schedule; the rest are dropped.</span>
+              </div>
             </div>
           )
         })() : null}
@@ -1436,21 +1442,28 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         {!loading && revisions.length === 0 ? (
           <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '1rem 1.1rem', display: 'flex', flexDirection: 'column', gap: '0.6rem', maxWidth: 640 }}>
             <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-strong)' }}>No submittal on this bid yet</h3>
-            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-base)', lineHeight: 1.45 }}>
-              Rev 1 is built from what Pricing already knows: one row per tag on the fixture schedule, the product from the house you picked, the status against the schedule, and the reason and lead time you gave at the pick. Picks that match no tag become accessory rows.
-            </p>
+            {picks.length > 0 ? (
+              <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-base)', lineHeight: 1.45 }}>
+                Rev 1 is built from the quotes compared: one row per tag on the fixture schedule, the product from the house you picked, the status against the schedule, and the reason and lead time you gave at the pick. Picks that match no tag become accessory rows.
+              </p>
+            ) : specified.length > 0 ? (
+              <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-base)', lineHeight: 1.45 }}>
+                Rev 1 is built from the schedule: one row per tag, each Missing until you type its product with Edit or add it from the takeoff.
+              </p>
+            ) : null}
             {takeoffFixtures > 0 ? <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-base)' }} data-testid="build-from-takeoff-line">Or from the takeoff: one row per fixture you tick, the part under it as the product, marked Proposed until the plans’ schedule says As specified or Alternate.</p> : null}
             {specified.length === 0 && takeoffFixtures === 0 ? <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-amber-700)' }}>No fixture schedule on this bid — type or paste it under stage 1 first, or Rev 1 will be accessories only.</p> : null}
-            {picks.length === 0 && takeoffFixtures === 0 ? <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-amber-700)' }}>No picked quote lines — every tag starts as missing. Pick a house on the compare, or type each row's product with Edit after Rev 1 is built.</p> : null}
             <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center', flexWrap: 'wrap' }}>
               {takeoffFixtures > 0 && specified.length === 0 && picks.length === 0 ? (
                 <button type="button" disabled={busy} onClick={openTakeoffPicker} style={btnPrimary} data-testid="build-from-takeoff">
                   Choose from the takeoff
                 </button>
               ) : null}
-              <button type="button" disabled={busy || (specified.length === 0 && picks.length === 0)} onClick={() => void createFirstRevision()} style={{ ...(takeoffFixtures > 0 && specified.length === 0 && picks.length === 0 ? btn : btnPrimary), opacity: busy || (specified.length === 0 && picks.length === 0) ? 0.6 : 1 }}>
-                Build Rev 1 from the picks
-              </button>
+              {specified.length > 0 || picks.length > 0 ? (
+                <button type="button" disabled={busy} onClick={() => void createFirstRevision()} style={btnPrimary}>
+                  {picks.length > 0 ? 'Build Rev 1 from the picks' : 'Build Rev 1 from the schedule'}
+                </button>
+              ) : null}
               {takeoffFixtures > 0 && (specified.length > 0 || picks.length > 0) ? (
                 <button type="button" disabled={busy} onClick={openTakeoffPicker} style={btn} data-testid="build-from-takeoff">
                   …or choose from the takeoff
