@@ -567,7 +567,8 @@ const th = 'text-align:left; font-size:0.66em; text-transform:uppercase; letter-
  */
 export function buildProcurementUpdateHtml(input: ProcurementUpdateInput): string {
   const kind = input.kind ?? 'update'
-  const changed = kind === 'update' ? new Map(input.changes.map((c) => [c.key, c.text] as const)) : new Map<string, string>()
+  // A first update has nothing to mark: every row is new to the GC, and the subtitle says so.
+  const changed = kind === 'update' && input.sinceOn ? new Map(input.changes.map((c) => [c.key, c.text] as const)) : new Map<string, string>()
   const lh = input.letterhead
   const companyName = lh?.companyName.trim() || input.companyName
   const asks = procurementAsks(input.rows, input.sentOn)
