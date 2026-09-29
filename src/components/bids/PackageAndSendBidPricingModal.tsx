@@ -747,7 +747,7 @@ export function PackageAndSendBidPricingModal({
             title={
               sendDisabledBase && disabledReason
                 ? disabledReason
-                : 'Send the email now from ClickTooling.'
+                : 'Send the email now from Click Plumbing and Electrical.'
             }
             style={{
               padding: '0.5rem 1rem',

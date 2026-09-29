@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { EMAIL_FROM } from '../_shared/emailFrom.ts'
+import { COMPANY_EMAIL_FROM } from '../_shared/emailFrom.ts'
 import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
 import { TEST_REPORT_BUCKET, testReportActivityLine, testReportStoragePath } from '../_shared/testReportSend.ts'
 
@@ -104,14 +104,14 @@ serve(async (req) => {
       const r = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: { Authorization: `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ from: EMAIL_FROM, to: [myEmail], subject: subjectOut, html: sHtml || undefined, text: sText, attachments: [{ filename: sFilename, content: sPdf }] }),
+        body: JSON.stringify({ from: COMPANY_EMAIL_FROM, to: [myEmail], subject: subjectOut, html: sHtml || undefined, text: sText, attachments: [{ filename: sFilename, content: sPdf }] }),
       })
       if (!r.ok) {
         const errorData = await r.json().catch(() => ({} as { message?: string }))
         return jsonResponse({ error: errorData.message || `Resend ${r.status}` }, 502)
       }
       const sent = (await r.json().catch(() => ({}))) as { id?: string }
-      await logEmailSendBestEffort({ resendEmailId: sent.id ?? null, to: [myEmail], from: EMAIL_FROM, subject: subjectOut, emailType: 'test_report' })
+      await logEmailSendBestEffort({ resendEmailId: sent.id ?? null, to: [myEmail], from: COMPANY_EMAIL_FROM, subject: subjectOut, emailType: 'test_report' })
       return jsonResponse({ ok: true, sample: true, sent_to: myEmail, resend_email_id: sent.id ?? null })
     }
 
@@ -153,7 +153,7 @@ serve(async (req) => {
       method: 'POST',
       headers: { Authorization: `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        from: EMAIL_FROM,
+        from: COMPANY_EMAIL_FROM,
         to,
         ...(ccOnly.length ? { cc: ccOnly } : {}),
         subject,
@@ -168,7 +168,7 @@ serve(async (req) => {
       return jsonResponse({ error: errorData.message || `Resend ${resendResponse.status}` }, 502)
     }
     const sent = (await resendResponse.json().catch(() => ({}))) as { id?: string }
-    await logEmailSendBestEffort({ resendEmailId: sent.id ?? null, to: [...to, ...ccOnly], from: EMAIL_FROM, subject, emailType: 'test_report' })
+    await logEmailSendBestEffort({ resendEmailId: sent.id ?? null, to: [...to, ...ccOnly], from: COMPANY_EMAIL_FROM, subject, emailType: 'test_report' })
 
     const nowIso = new Date().toISOString()
     const { error: stampErr } = await userClient

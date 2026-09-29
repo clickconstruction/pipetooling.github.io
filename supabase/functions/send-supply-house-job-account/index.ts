@@ -1,7 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { EMAIL_FROM } from '../_shared/emailFrom.ts'
+import { COMPANY_EMAIL_FROM, EMAIL_FROM } from '../_shared/emailFrom.ts'
 
 /**
  * Send a job-account setup email to supply house contacts (v2.1605 — the Job
@@ -134,7 +134,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: EMAIL_FROM,
+        from: COMPANY_EMAIL_FROM,
         to: toEmails,
         subject,
         html: emailHtml,
@@ -151,7 +151,7 @@ serve(async (req) => {
     await logEmailSendBestEffort({
       resendEmailId: sent.id ?? null,
       to: toEmails,
-      from: EMAIL_FROM,
+      from: COMPANY_EMAIL_FROM,
       subject,
     })
 

@@ -1,7 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { EMAIL_FROM } from '../_shared/emailFrom.ts'
+import { COMPANY_EMAIL_FROM } from '../_shared/emailFrom.ts'
 
 // Email a SIGNED lien release to the job's customer, PDF attached (v2.2621 —
 // the signing loop's "ready to send" lane). Mirrors send-physical-invoice-email:
@@ -113,7 +113,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: EMAIL_FROM,
+        from: COMPANY_EMAIL_FROM,
         to: [customerEmailIn],
         subject,
         html: htmlBody,
@@ -126,7 +126,7 @@ serve(async (req) => {
       return jsonResponse({ error: errorData.message || `Resend ${resendResponse.status}` }, 502)
     }
     const sent = (await resendResponse.json().catch(() => ({}))) as { id?: string }
-    await logEmailSendBestEffort({ resendEmailId: sent.id ?? null, to: [customerEmailIn], from: EMAIL_FROM, subject })
+    await logEmailSendBestEffort({ resendEmailId: sent.id ?? null, to: [customerEmailIn], from: COMPANY_EMAIL_FROM, subject })
 
     const { error: upErr } = await userClient
       .from('job_lien_releases')

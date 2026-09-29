@@ -1,7 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { EMAIL_FROM } from '../_shared/emailFrom.ts'
+import { COMPANY_EMAIL_FROM } from '../_shared/emailFrom.ts'
 
 // Companion email for the Biohazard Remediation Fee Notice: Stripe invoices
 // cannot carry attachments, so the notice PDF (built client-side, same as the
@@ -162,7 +162,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: EMAIL_FROM,
+        from: COMPANY_EMAIL_FROM,
         to: [customerEmailIn],
         subject,
         html: htmlBody,
@@ -178,7 +178,7 @@ serve(async (req) => {
     await logEmailSendBestEffort({
       resendEmailId: resendSent.id ?? null,
       to: [customerEmailIn],
-      from: EMAIL_FROM,
+      from: COMPANY_EMAIL_FROM,
       subject,
     })
 

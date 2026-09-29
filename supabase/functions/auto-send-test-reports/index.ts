@@ -1,7 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import * as pdfLib from 'https://esm.sh/pdf-lib@1.17.1'
-import { EMAIL_FROM } from '../_shared/emailFrom.ts'
+import { COMPANY_EMAIL_FROM } from '../_shared/emailFrom.ts'
 import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
 import {
   TEST_REPORT_AUTO_SEND_GRACE_MINUTES,
@@ -154,7 +154,7 @@ serve(async (req) => {
         const cc = parseEmailList(settings.emailCc).filter((e) => e !== gcEmail)
         const sent = await sendTestReportEmailViaResend({
           resendApiKey,
-          from: EMAIL_FROM,
+          from: COMPANY_EMAIL_FROM,
           to: [gcEmail],
           cc,
           subject: email.subject,
@@ -167,7 +167,7 @@ serve(async (req) => {
           results.push({ report: draft.id, outcome: `resend failed: ${sent.error}` })
           continue
         }
-        await logEmailSendBestEffort({ resendEmailId: sent.id, to: [gcEmail, ...cc], from: EMAIL_FROM, subject: email.subject, emailType: 'test_report' })
+        await logEmailSendBestEffort({ resendEmailId: sent.id, to: [gcEmail, ...cc], from: COMPANY_EMAIL_FROM, subject: email.subject, emailType: 'test_report' })
 
         const { error: stampErr } = await admin
           .from('job_test_reports')

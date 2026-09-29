@@ -267,6 +267,8 @@ JWT-validating functions check the caller's role from the `public.users` table. 
 
 ### send-supply-house-job-account
 
+> **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
+
 **Purpose**: Email a job-account setup packet (property, phones, homeowner / building owner + company) to office-chosen supply house contacts — the Job Detail "Share with supply house" flow (v2.1605).
 
 **Endpoint**: `POST /functions/v1/send-supply-house-job-account`
@@ -275,7 +277,7 @@ JWT-validating functions check the caller's role from the `public.users` table. 
 
 **Payload**: `{ job_id, recipients: [{label, email}] (1–10; v2.1606 — audit-logged) | to_emails: string[] (v2.1605 fallback), subject, email_html (≤100k chars), email_text }` — subject/html/text are composed client-side by `src/lib/supplyHouseJobAccount.ts` and sent verbatim. After a successful send, inserts one `supply_house_job_accounts` row per recipient with the service role (best-effort).
 
-**Behavior**: sends via Resend from the `EMAIL_FROM` sender (secret; default `PipeTooling <team@noreply.pipetooling.com>`) with the caller's email as reply-to, then best-effort logs to `email_send_log`. No audit table.
+**Behavior**: sends via Resend as `COMPANY_EMAIL_FROM` (v2.4132; the address is `EMAIL_FROM`'s) with the caller's email as reply-to, then best-effort logs to `email_send_log`. No audit table.
 
 **Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY` (service key only for the shared email log helper).
 
@@ -1415,6 +1417,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ### send-rfq-email
 
+> **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
+
 **Purpose**: The **RFQ Desk** sender (lane B, v2.2636) — system-sent supply-house price requests with tracking, nudges, and previews (`docs/SUPPLY_HOUSE_RFQ_PLAN.md`).
 
 **Endpoint**: `POST /functions/v1/send-rfq-email` — `{ mode: 'send'|'remind'|'resend'|'preview', … }`
@@ -1430,6 +1434,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 **v2.3512 (What customers see PR 6):** the request and reminder emails are built by `_shared/rfqEmail.ts` → `buildRfqEmail` (wording moved verbatim), re-exported by `src/lib/rfqEmail.ts` so the tab renders the same email over the sample.
 
 ### send-bid-room-link
+
+> **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
 
 **Purpose**: Email a GC their bid-room link with the option ladder (every option's price, ★ on the proposed — owner decision 5's estimate-email precedent).
 
@@ -1579,6 +1585,8 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 
 ### submit-legal-portal
 
+> **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
+
 **Purpose**: The firm's acts on its portal (Legal portal train PR 4, v2.3322): one POST, token-authenticated like `submit-sub-portal`. `{ token, matterId, kind, … }` with `kind` one of **`fee` · `cost`** (`amount`, `note` — rolls into the matter's total demand), **`step`** (`stage` = `demand` · `suit` · `judgment` · `settled`, optional `note` — moves `legal_matters.stage`; `settled` also stamps `closed_at`), **`question`** (`note`), **`answer`** (v2.3790: `askId` — an office ask, a `question` entry with `via_portal = false` on this matter and not withdrawn — with `note` and, for a sign-off, `signedOff` true / false; the body defaults to *Signed off* / *Not yet*), **`payment_received`** (`amount`, `note` — money the firm holds; the office applies it to the job and records the firm's cut from the desk). Every act is one `legal_matter_entries` row with `via_portal = true` and `acknowledged_at NULL` — exactly what the office's "The law firm has N things for you" Needs You card reads; the desk's Fees & steps tab answers, applies or acknowledges each (`legal_add_entry`, `legal_acknowledge_entry`).
 
 **Recipients** (v2.3325): `recipient_add` (`name`, `email`, `role`, optional `mode` / `scope`; 12 people per firm; one live row per address; sends the confirmation email with a hashed token), `recipient_rules` (`recipientId`, `mode`, `scope`, `digestWeekday` 1–7, `digestTime` HH:MM), `recipient_stop` / `recipient_resume` (`paused_at`), `recipient_resend`. No `matterId` needed for these.
@@ -1592,6 +1600,8 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 **v2.3521:** the confirm email links to `${APP_ORIGIN}/legal/confirm?t=<raw>` (the app page), not the function.
 
 ### legal-notify-dispatch
+
+> **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
 
 _v2.3351:_ an event is heard by whoever is subscribed when it happens and never replayed to whoever joins later — with no confirmed recipients (or no digest people) the open queue rows are stamped consumed on each tick instead of waiting.
 
@@ -2073,6 +2083,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 ---
 
 ### send-bid-pricing-package
+
+> **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
 
 > **v2.2132:** count rows are loaded for the scenario's `bid_version_id` (`price_book_versions.bid_version_id`; NULL = the unsplit bid's rows) — versions own their counts since `20260823034820`. Redeploy after that migration is applied.
 
@@ -3050,6 +3062,8 @@ If **`stripe_invoice_id`** and **`hosted_invoice_url`** are already set, returns
 
 ### send-test-report
 
+> **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
+
 **Purpose** (v2.3301, Test reports PR 3): email a job's hydrostatic / pinpoint / gas **test report** to the GC (or the customer) with the PDF attached and the job's Stripe pay link in the body — the hand-written Gmail the office sent from plumbingtooling.com, as one button. The PDF arrives from the client (jsPDF, [`sendTestReport.ts`](../src/lib/jobs/sendTestReport.ts)); the function **stores the exact bytes** in the private `job-test-reports` bucket as `<job_id>/<report_id>-v<n>.pdf` (a re-send is the next version, never an overwrite), sends through Resend (To + cc + attachment, `email_type: 'test_report'`), stamps the `job_test_reports` row sent (`sent_at/to/cc/by`, `sent_pay_url`, `pdf_path`, `pdf_version`, `certifier_name/license` snapshot), and posts the job activity line. Send surface: the Test report modal's send sheet ([`TestReportSendSheet`](../src/components/jobs/TestReportSendSheet.tsx)); email wording from [`_shared/testReportEmail.ts`](../supabase/functions/_shared/testReportEmail.ts).
 
 **Endpoint**: `POST /functions/v1/send-test-report` · **Authentication**: Bearer JWT, `auth.getUser` in-body, user-scoped client for the row read and the sent stamp (the table's RLS decides who may send — dev / master / assistant-like on a job they reach), `verify_jwt = false` on the gateway (send-physical-invoice-email pattern). Service role for the storage upload only. **Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`.
@@ -3074,6 +3088,8 @@ Body: `{ report_id, to: string[], cc?: string[], subject, email_text, email_html
 
 ### auto-send-test-reports
 
+> **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
+
 **Purpose** (v2.3316, Test reports dial B): every ten minutes pg_cron (`20260911201244_auto_send_test_reports_cron.sql`) calls this; when Settings → Test reports → Sending is *Send PASS reports automatically* (`app_settings.test_report_settings_v1.autoSend = 'pass'`, **off by default**), it takes up to ten hydrostatic **PASS** drafts older than the 15-minute grace period whose job has a **GC with an email** on the customer card and a **billed Stripe invoice with a pay link**, renders the paper server-side with pdf-lib ([`_shared/testReportPdfLib.ts`](../supabase/functions/_shared/testReportPdfLib.ts), the twin of the browser renderer), files it as the next version in `job-test-reports`, emails the GC (cc the standing copy, `email_type: 'test_report'`), stamps the row sent with `sent_by NULL` and the certifier snapshot (guarded by `status = 'draft'`), and posts *Sent automatically: …* on the job as the job's master. FAIL, pinpoint, gas, and anything missing a bill or a GC email are skipped with a reason in the response and stay on the Dashboard for a person.
 
 **Endpoint**: `POST /functions/v1/auto-send-test-reports` · **Authentication**: `X-Cron-Secret` must equal `CRON_SECRET` (`verify_jwt = false`); service role throughout. **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `CRON_SECRET`. Response: `{ ok, skipped? | considered, results: [{ report, outcome }] }`. Shares `_shared/testReportSend.ts` with `send-test-report`. **Deploy**: `supabase functions deploy auto-send-test-reports`.
@@ -3081,6 +3097,8 @@ Body: `{ report_id, to: string[], cc?: string[], subject, email_text, email_html
 ---
 
 ### send-lien-release-email
+
+> **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
 
 **Purpose** (v2.2621, the lien-signing loop's send leg): email a **signed** lien release to the job's customer with the PDF attached, then stamp the release row **sent** (`sent_to_customer_at`, `sent_channel: 'email'`, `sent_by`). The PDF arrives from the client — the stored `signed.pdf` bytes from the `lien-release-documents` bucket when present, else a regeneration from the row snapshot with the typed signature. Client helper: [`sendLienReleaseEmail.ts`](../src/lib/sendLienReleaseEmail.ts); the send surface is the "Signed — ready to send" inbox lane ([`LienSignatureInboxSection`](../src/components/jobs/LienSignatureInboxSection.tsx)).
 
@@ -3090,6 +3108,8 @@ Body: `{ release_id, job_id, customer_email, subject?, email_text?, email_html?,
 
 ### send-lien-filing-email
 
+> **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
+
 **Purpose** (v2.2645, Lien Instruments phase 3): email a **lien-instrument PDF** — today the § 53.056 notice of claim — to a named recipient (the owner of record or the original contractor) as a **courtesy channel** beside the recorded certified-mail send. The caller records the send on its `job_lien_filings` row afterward (`sends` jsonb, method `email`, tracking `resend:<id> → <address>`); the statutory path stays traceable physical delivery. Client caller: the § 53.056 tab of [`LienFilingTabs`](../src/components/jobs/LienFilingTabs.tsx).
 
 **Endpoint**: `POST /functions/v1/send-lien-filing-email` · **Authentication**: Bearer JWT, `auth.getUser` in-body, user-scoped client — the access check is an RLS read of the `jobs_ledger` row (office/master only). `verify_jwt = false` on the gateway (send-physical-invoice-email pattern). **Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`.
@@ -3097,6 +3117,8 @@ Body: `{ release_id, job_id, customer_email, subject?, email_text?, email_html?,
 Body: `{ job_id, to_email, recipient_label?, subject?, email_text?, pdf_base64, pdf_filename?, email_type? }` — `email_type` (v2.3436) is `'lien_filing_notice'` (default) or `'demand_letter'` (the final demand letter packet: the letter and its exhibits as one PDF, from the Lien instruments modal's *Email with the PDF…*); it sets the send log's `email_type` and the default subject/body. Guards: job must be readable by the caller; valid `to_email`; PDF ≤ 6M base64 chars. Success: `{ success: true, resend_email_id }` — the function writes nothing; the client persists the send record. Sends are logged with `email_type: 'lien_filing_notice'` (v2.2664), the row's id in the Settings email catalog.
 
 ### send-physical-invoice-email
+
+> **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
 
 > **v2.3711 — who sent it**: the first-send update also writes `jobs_ledger_invoices.sent_by_user_id` (the signed-in caller). The write already runs as the user, so the `invoice_sent` activity event was attributed; the column makes the sender a fact on the row (Day book PR 1b).
 
@@ -3171,6 +3193,8 @@ interface SendPhysicalInvoiceEmailBody {
 
 ### send-gc-statement-email
 
+> **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
+
 **Purpose** (v2.1418): Email a **GC statement** (job addresses, bill-sent dates, amounts owed — built client-side by [`gcStatementEmail.ts`](../src/lib/jobsDocuments/gcStatementEmail.ts)) from GC Review's **Email…** dialog, then audit into **`gc_statement_emails`** via the **service-role** client (the table has no client write policies) and best-effort log to `email_send_log`. Since v2.1420 it also carries GC Review's **Share all** email — the whole report (every GC/development section + grand total) as `group_by: 'all'`.
 
 **CC** (v2.2160): optional `cc_emails: string[]` — re-validated server-side (lower-cased, unique, never the To, ≤ 10), passed as Resend `cc`, audited on `gc_statement_emails.cc_emails`.
@@ -3181,7 +3205,7 @@ interface SendPhysicalInvoiceEmailBody {
 
 **Body**: `gc_customer_id` (null for development and Share-all sends), `gc_name` (`All GCs` / `All developments` for Share all), `group_by` (`gc`|`development`|`all`), `to_email`, `subject`, `email_html` (≤300k chars), `email_text`, `total`, `job_count`, and optionally `reply_to_user_id`.
 
-**Sends** via Resend from the `EMAIL_FROM` sender (secret; default `PipeTooling <team@noreply.pipetooling.com>`). **Replies go to** the caller's email, or — when `reply_to_user_id` names another office user (dev / master_technician / assistant / controller / primary, with an email) — to that user, with the caller added to the CC (never twice, never the To, never past 10). The rule is [`_shared/gcStatementReplyTo.ts`](../supabase/functions/_shared/gcStatementReplyTo.ts) (`resolveStatementReplyTo`), which the client reads through `src/lib/gcStatementReplyTo.ts`; a named user who cannot take replies answers **400** with the reason and nothing is sent. The success body echoes `reply_to`, `reply_to_name` and `on_behalf`, so a client can tell a function deployed before this rule (no echo) and say replies came to the sender. Audit-insert failures never fail the request (the email is already out). The `email_send_log` row is stamped **`email_type: 'gc_statement_manual'`** (v2.2888) — the lane.
+**Sends** via Resend as `COMPANY_EMAIL_FROM` (v2.4132; the address is `EMAIL_FROM`'s). **Replies go to** the caller's email, or — when `reply_to_user_id` names another office user (dev / master_technician / assistant / controller / primary, with an email) — to that user, with the caller added to the CC (never twice, never the To, never past 10). The rule is [`_shared/gcStatementReplyTo.ts`](../supabase/functions/_shared/gcStatementReplyTo.ts) (`resolveStatementReplyTo`), which the client reads through `src/lib/gcStatementReplyTo.ts`; a named user who cannot take replies answers **400** with the reason and nothing is sent. The success body echoes `reply_to`, `reply_to_name` and `on_behalf`, so a client can tell a function deployed before this rule (no echo) and say replies came to the sender. Audit-insert failures never fail the request (the email is already out). The `email_send_log` row is stamped **`email_type: 'gc_statement_manual'`** (v2.2888) — the lane.
 
 **Send-time dedupe** (v2.2888, journey-map #45): before sending, the function reads the last 20 `gc_statement_emails` rows to that address inside the **attended window (10 min)** and asks the shared [`_shared/gcStatementSendDedupe.ts`](../supabase/functions/_shared/gcStatementSendDedupe.ts) kernel (`findDuplicateStatementSend`; identity = entity + recipient, **lane-agnostic** — a scheduled send minutes ago counts). On a match it answers **200 `{ success: false, skipped: 'duplicate', error: 'skipped: duplicate — <GC> already went to <addr> N minutes ago' }`** and nothing goes out; the Draft Message dialog shows the sentence. An audit-read failure fails open (sends).
 
@@ -3190,6 +3214,8 @@ interface SendPhysicalInvoiceEmailBody {
 ---
 
 ### gc-statement-email-dispatch
+
+> **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
 
 > **v2.4100 — what paid each bill**: `render.ts` prints a line under each bill — *$12,000.00 paid by #48211 on Sep 24 · $1,333.00 still open* / *nothing applied yet* — worded by [`_shared/billPaidBy.ts`](../supabase/functions/_shared/billPaidBy.ts) (the rule the client's `billPaidByWords` re-exports) from the row's `invoice_id`, `invoice_amount`, `retainage_held`, `job_bills` and `job_payments` (migration `20260928213000`). A payload from before the migration has none of them and prints no line. `gcStatementEmailParity.test.ts` pins both lanes on one set of facts.
 
@@ -3329,6 +3355,8 @@ interface SendPhysicalInvoiceEmailBody {
 ---
 
 ### send-hazmat-notice-email
+
+> **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
 
 > **v2.1085 — Bill-to override**: when the incident's linked fee invoice (`job_hazmat_incidents.invoice_id` → `jobs_ledger_invoices.bill_to_email`) bills an alternate recipient, the notice `customer_email` may match **either** that address or the job customer email — the payer of the fee should receive the notice.
 

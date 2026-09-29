@@ -10,6 +10,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
+import { COMPANY_EMAIL_FROM } from '../_shared/emailFrom.ts'
 import { brandImageAbsoluteUrl } from '../_shared/estimateEmailBrandImage.ts'
 import { parseSharedBidRoomPayload } from '../_shared/bidRoomPayload.ts'
 import { buildBidRoomLinkEmail } from '../_shared/bidRoomLinkEmail.ts'
@@ -93,7 +94,7 @@ serve(async (req) => {
     const resendApiKey = Deno.env.get('RESEND_API_KEY')
     let emailed = false
     if (resendApiKey) {
-      const sent = await sendEmailViaResend(email, subject, text, html, resendApiKey, mail.replyTo ? { replyTo: mail.replyTo } : undefined)
+      const sent = await sendEmailViaResend(email, subject, text, html, resendApiKey, { from: COMPANY_EMAIL_FROM, ...(mail.replyTo ? { replyTo: mail.replyTo } : {}) })
       if (!sent.success) return json({ ok: false, error: sent.error ?? 'Email failed' }, 502)
       emailed = true
     }

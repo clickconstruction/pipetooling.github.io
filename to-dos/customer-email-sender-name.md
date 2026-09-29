@@ -67,7 +67,7 @@ now gets the bill email from us rather than from Stripe, and the inbox shows it 
 |---|---|---|
 | `_shared/emailFrom.ts` · `_shared/mailboxWithName.ts` | `EMAIL_FROM`; `mailboxWithName(name, mailbox)` and `COMPANY_EMAIL_FROM` (= the company name on `EMAIL_FROM`'s address) — shipped v2.4127 | — |
 | `_shared/resendSendEmail.ts` | `sendEmailViaResend(…, options)` with `options.from` (v2.4127) — defaults to `EMAIL_FROM`; the logged `from_email` follows it | — |
-| `src/lib/emailCatalog.ts` | `audience` per email | a guard test: every `customer` sender imports `COMPANY_EMAIL_FROM` (a source scan, like `appDirectoryCheck`) |
+| `src/lib/emailCatalog.ts` | `audience` per email; the guard test in `emailCatalog.test.ts` (v2.4132): every `customer` sender's `index.ts` names `COMPANY_EMAIL_FROM` / `mailboxWithName` and never sends as bare `EMAIL_FROM` | — |
 | `email_send_log.from_email` | written per send | nothing — it records whatever `from` was used |
 
 ## The plan (PR train, smallest first)
@@ -78,7 +78,7 @@ now gets the bill email from us rather than from Stripe, and the inbox shows it 
    `send-estimate-to-customer` swap their inline regex for the helper (no change in what they send).
    `send-stripe-invoice` sends the bill email and its copies as `COMPANY_EMAIL_FROM`.
    Deploy: `send-stripe-invoice`, `send-contract-for-signature`, `send-estimate-to-customer`.
-2. **The rest of the customer senders**, one PR: `send-physical-invoice-email`, `send-test-report` and
+2. **The rest of the customer senders**, one PR — shipped v2.4132: `send-physical-invoice-email`, `send-test-report` and
    `auto-send-test-reports`, `send-hazmat-notice-email`, `send-gc-statement-email`,
    `gc-statement-email-dispatch`, `send-supply-house-job-account`, `legal-notify-dispatch`,
    `submit-legal-portal`, `send-lien-filing-email`, `send-lien-release-email`, `send-bid-room-link`,

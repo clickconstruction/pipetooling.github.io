@@ -15,6 +15,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
+import { COMPANY_EMAIL_FROM } from '../_shared/emailFrom.ts'
 import { buildRfqEmail, type RfqEmailInput } from '../_shared/rfqEmail.ts'
 
 const corsHeaders = {
@@ -213,7 +214,7 @@ serve(async (req) => {
           token,
           plansLink,
         })
-        const sent = await sendEmailViaResend(email, mail.subject, mail.text, mail.html, resendApiKey, { replyTo, cc })
+        const sent = await sendEmailViaResend(email, mail.subject, mail.text, mail.html, resendApiKey, { from: COMPANY_EMAIL_FROM, replyTo, cc })
         if (sent.success) {
           await admin.from('bid_rfqs').update({ resend_email_id: sent.resendEmailId ?? null }).eq('id', rfq.id)
           results.push({ supplyHouseId: r.supplyHouseId, ok: true })
@@ -256,7 +257,7 @@ serve(async (req) => {
         token: rfq.token as string,
         plansLink: cleanPlansLink(scope.plansLink),
       })
-      const sent = await sendEmailViaResend(rfq.sent_email, mail.subject, mail.text, mail.html, resendApiKey, { replyTo, cc: cleanCc(rfq.sent_cc) })
+      const sent = await sendEmailViaResend(rfq.sent_email, mail.subject, mail.text, mail.html, resendApiKey, { from: COMPANY_EMAIL_FROM, replyTo, cc: cleanCc(rfq.sent_cc) })
       if (!sent.success) return json({ error: sent.error ?? 'Send failed' }, 502)
       await admin
         .from('bid_rfqs')
@@ -285,7 +286,7 @@ serve(async (req) => {
         token: rfq.token as string,
         plansLink: cleanPlansLink(scope.plansLink),
       })
-      const sent = await sendEmailViaResend(email, mail.subject, mail.text, mail.html, resendApiKey, { replyTo, cc: cleanCc(rfq.sent_cc) })
+      const sent = await sendEmailViaResend(email, mail.subject, mail.text, mail.html, resendApiKey, { from: COMPANY_EMAIL_FROM, replyTo, cc: cleanCc(rfq.sent_cc) })
       if (!sent.success) return json({ error: sent.error ?? 'Send failed' }, 502)
       await admin.from('bid_rfqs').update({ sent_email: email, resend_email_id: sent.resendEmailId ?? null }).eq('id', rfq.id)
       return json({ ok: true })

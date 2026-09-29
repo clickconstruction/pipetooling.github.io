@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { APP_CALENDAR_TZ, todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
+import { COMPANY_EMAIL_FROM } from '../_shared/emailFrom.ts'
 import { buildLegalDigestEmail, buildLegalNowEmail, legalPageHtml, legalWrapHtml, type LegalNowTrigger } from '../_shared/legalEmails.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 
@@ -181,7 +182,7 @@ serve(async (req) => {
             portalUrl: portal,
             unsubscribeUrl: unsub,
           })
-          const res = await sendEmailViaResend(r.email, mail.subject, mail.text, mail.html, resendKey)
+          const res = await sendEmailViaResend(r.email, mail.subject, mail.text, mail.html, resendKey, { from: COMPANY_EMAIL_FROM })
           if (!res.success) result.errors.push(`${r.email}: ${res.error ?? 'send failed'}`)
           else result.now++
         }
@@ -207,7 +208,7 @@ serve(async (req) => {
           portalUrl: portal,
           unsubscribeUrl: unsub,
         })
-        const res = await sendEmailViaResend(r.email, mail.subject, mail.text, mail.html, resendKey)
+        const res = await sendEmailViaResend(r.email, mail.subject, mail.text, mail.html, resendKey, { from: COMPANY_EMAIL_FROM })
         if (!res.success) {
           result.errors.push(`${r.email}: ${res.error ?? 'digest failed'}`)
           continue

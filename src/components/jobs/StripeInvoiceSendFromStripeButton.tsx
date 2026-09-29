@@ -77,7 +77,7 @@ export function StripeInvoiceSendFromStripeButton({
   const [sendHistoryAt, setSendHistoryAt] = useState<string[]>([])
   /** Copies each logged send reached (v2.3362), keyed by the send's sent_at. */
   const [sendHistoryCopies, setSendHistoryCopies] = useState<Record<string, string[]>>({})
-  /** Bills also go to (v2.3359): who gets a copy from ClickTooling beside the payer's bill email. */
+  /** Bills also go to (v2.3359): who gets a copy from Click Plumbing and Electrical beside the payer's bill email. */
   const [copyEmails, setCopyEmails] = useState<string[]>([])
 
   const emailHint = (customerEmail ?? '').trim()
@@ -428,7 +428,7 @@ export function StripeInvoiceSendFromStripeButton({
                   ) : (
                     <>
                       The bill email goes to <strong style={{ wordBreak: 'break-all' }}>{emailLine}</strong> from{' '}
-                      <strong>ClickTooling</strong>; they pay on <strong>Stripe</strong>.
+                      <strong>Click Plumbing and Electrical</strong>; they pay on <strong>Stripe</strong>.
                     </>
                   )}
                   {copyEmails.length === 0 ? null : stripeModeForBilling === 'test' ? (
@@ -439,7 +439,7 @@ export function StripeInvoiceSendFromStripeButton({
                   ) : (
                     <>
                       {' '}
-                      Copies from ClickTooling, same Pay link, to <strong style={{ wordBreak: 'break-all' }}>{copyEmails.join(', ')}</strong>.
+                      Copies from Click Plumbing and Electrical, same Pay link, to <strong style={{ wordBreak: 'break-all' }}>{copyEmails.join(', ')}</strong>.
                     </>
                   )}
                 </span>

@@ -29,7 +29,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
 import { resolveServerEmailWording } from '../_shared/emailWordingServer.ts'
-import { EMAIL_FROM } from '../_shared/emailFrom.ts'
+import { COMPANY_EMAIL_FROM, EMAIL_FROM } from '../_shared/emailFrom.ts'
 import {
   GC_STATEMENT_DEDUPE_WINDOW_MS,
   GC_STATEMENT_EMAIL_TYPES,
@@ -82,7 +82,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
 }
 
-const FROM = EMAIL_FROM
+const FROM = COMPANY_EMAIL_FROM
 const MAX_QUEUE_BATCH = 10
 const MAX_ATTEMPTS = 5
 
