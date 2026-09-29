@@ -12,7 +12,7 @@ import type { Database } from '../../types/database'
 import type { StagesUnifiedRowContext } from './JobsStagesUnifiedTable'
 import { Fragment } from 'react'
 import { JobsStagesActivityBox } from './JobsStagesActivityBox'
-import { STAGES_EDIT_MODE_RAIL_WIDTH, accountManOnlyStripeStyle, renderJobAddressWithMap, renderStagesEditModeRail, renderStagesJobColumnEstimateFooter, renderStagesJobHcpSubline, renderStagesProjectBannerRow, renderStagesThreadExpandButton, renderStagesViewReportsButton, shouldSuppressStagesRowJobThreadToggle, stagesRowHasProjectBanner } from './jobsStagesRowShared'
+import { STAGES_EDIT_MODE_RAIL_WIDTH, stagesOpenRowStyle, accountManOnlyStripeStyle, renderJobAddressWithMap, renderStagesEditModeRail, renderStagesJobColumnEstimateFooter, renderStagesJobHcpSubline, renderStagesProjectBannerRow, renderStagesThreadExpandButton, renderStagesViewReportsButton, shouldSuppressStagesRowJobThreadToggle, stagesRowHasProjectBanner } from './jobsStagesRowShared'
 import { ShareJobButton } from './ShareJobButton'
 import { StagesAiaG702Button, StagesHazmatFeeButton, StagesLienInstrumentsButton, StagesLienReleaseButton, StagesTestReportButton } from './StagesRowActionButtons'
 import { StagesCrewLine } from './StagesCrewLine'
@@ -98,8 +98,10 @@ export function StagesUnifiedJobRow({ row, t }: { row: StagesUnifiedJobRowKind; 
     <tr
       data-stages-invoice-id={bundleInv != null ? bundleInv.id : undefined}
       data-stages-job-id={j.id}
+      aria-expanded={expandedJobThreadId === j.id}
       style={{
         borderBottom: stagesRowHasProjectBanner(j.project_id, j.project) ? 'none' : '1px solid var(--border-job-row)',
+        ...(expandedJobThreadId === j.id ? stagesOpenRowStyle : {}),
         ...(bundleInv != null ? flashRowStyle(bundleInv.id) : {}),
         ...(stagesJobFlashId === j.id
           ? { backgroundColor: 'var(--bg-amber-100)', outline: '2px solid #f59e0b', outlineOffset: -2, transition: 'background-color 0.35s ease' }

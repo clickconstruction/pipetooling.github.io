@@ -179,6 +179,26 @@ describe('JobsStagesTable render smoke', () => {
     expect(screen.getByText('No activity yet — post the first note')).toBeTruthy()
     expect(screen.queryByText('Schedule')).toBeNull()
     expect(screen.queryByText('Week dispatch')).toBeNull()
+    // v2.4131: the open row and the thread row under it read as one card — the
+    // same tint and left bar on both, no rule between them, aria-expanded on the row.
+    const row = document.querySelector(`tr[data-stages-job-id="${teamless.id}"]`) as HTMLTableRowElement
+    expect(row.getAttribute('aria-expanded')).toBe('true')
+    expect(row.style.backgroundColor).toBe('var(--bg-blue-tint)')
+    expect(row.style.boxShadow).toContain('var(--text-link)')
+    expect(row.style.borderBottom).not.toContain('solid')
+    const threadCell = document.querySelector(`tr[data-stages-thread-for="${teamless.id}"] > td`) as HTMLTableCellElement
+    expect(threadCell.style.background).toBe('var(--bg-blue-tint)')
+    expect(threadCell.style.boxShadow).toContain('var(--text-link)')
+  })
+
+  it('a closed row carries neither the tint nor aria-expanded (v2.4131)', async () => {
+    const job = makeJob({ job_name: 'Closed Row Job' })
+    renderWithProviders(<JobsStagesTable {...makeProps({ jobList: [job], expandedJobThreadId: null })} />)
+    await settle()
+    const row = document.querySelector(`tr[data-stages-job-id="${job.id}"]`) as HTMLTableRowElement
+    expect(row.getAttribute('aria-expanded')).toBe('false')
+    expect(row.style.backgroundColor).toBe('')
+    expect(document.querySelector('tr[data-stages-thread-for]')).toBeNull()
   })
 
   it('schedule quick action opens the Assign work sheet, even with no team members (v2.1536)', async () => {
