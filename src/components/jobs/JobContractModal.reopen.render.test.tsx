@@ -53,11 +53,13 @@ describe('JobContractModal — Edit & re-send', () => {
     reopenSpy.mockClear()
     rowState.current = sentRow()
     renderWithProviders(<JobContractModal open onClose={() => undefined} job={job} />)
-    const btn = await screen.findByTestId('contract-edit-resend')
-    expect(btn.textContent).toBe('Edit & re-send')
-    fireEvent.click(btn)
+    expect((await screen.findByTestId('contract-edit-resend')).textContent).toBe('Edit & re-send')
+    // Query again at click time: the modal's mount-time loads (doubled under StrictMode) can
+    // re-render the rail after findBy resolves, and a click on the node it handed back — by
+    // then detached — reaches no handler. Flaked 2 in 5 locally, and failed CI on main twice.
+    fireEvent.click(screen.getByTestId('contract-edit-resend'))
     expect(reopenSpy).not.toHaveBeenCalled()
-    expect(screen.getByTestId('contract-reopen-note').textContent).toContain('unlocks here as revision 2')
+    expect((await screen.findByTestId('contract-reopen-note')).textContent).toContain('unlocks here as revision 2')
     expect(screen.getByTestId('contract-edit-resend').textContent).toBe('Confirm — unlock to edit')
     fireEvent.click(screen.getByTestId('contract-edit-resend'))
     await waitFor(() => expect(reopenSpy).toHaveBeenCalledTimes(1))
