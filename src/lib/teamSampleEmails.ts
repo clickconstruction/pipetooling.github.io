@@ -15,6 +15,7 @@ import type { TeamSampleEmailId } from './teamEmails'
 import { moneyWaitingEmailSubject, moneyWaitingEmailText, renderMoneyWaitingEmail, type MoneyWaitingEmailPayload } from '../../supabase/functions/_shared/moneyWaitingEmail'
 import { buildCrewDayEmailView, crewDayEmailSubject, crewDayEmailText, renderCrewDayEmail, type CrewDayEmailPayload } from '../../supabase/functions/_shared/crewDayEmail'
 import { paymentForecastEmailSubject, paymentForecastEmailText, renderPaymentForecastEmail, type ForecastEmailPayload } from '../../supabase/functions/_shared/paymentForecastEmail'
+import { billedReportEmailSubject, billedReportEmailText, renderBilledReportEmail, type BilledReportPayload, type BilledReportRow } from '../../supabase/functions/_shared/billedReportEmail'
 
 export type BuiltTeamEmail = { subject: string; html: string; text: string }
 
@@ -184,9 +185,57 @@ export function sampleForecastPayload(todayYmd: string): ForecastEmailPayload {
   }
 }
 
+/** The Billed awaiting payment report's payload (lift 4): the same five bills, aged, with the customers' contact lines and the 30–90 / 90+ chips. */
+export function sampleBilledReportPayload(todayYmd: string): BilledReportPayload {
+  const mw = sampleMoneyWaitingPayload(todayYmd)
+  const contacts: Record<string, { email: string | null; phone: string | null }> = {
+    'gc-sample': { email: SAMPLE_GC.email, phone: '(512) 555-0199' },
+    'home-sample': { email: SAMPLE_HOMEOWNER.email, phone: SAMPLE_HOMEOWNER.phone },
+    structura: { email: 'ap@structura.example.com', phone: null },
+    hunter: { email: null, phone: '(512) 555-0142' },
+  }
+  const rows: BilledReportRow[] = mw.rows.map((r) => {
+    const days = Math.round((new Date(`${todayYmd}T12:00:00Z`).getTime() - new Date(r.billed_at ?? '').getTime()) / 86_400_000)
+    return {
+      job_id: r.job_id,
+      display_number: r.display_number,
+      job_name: r.job_name,
+      job_address: r.job_address,
+      customer_id: r.customer_id,
+      customer_name: r.customer_name,
+      customer_email: contacts[r.customer_id ?? '']?.email ?? null,
+      customer_phone: contacts[r.customer_id ?? '']?.phone ?? null,
+      detail: r.job_name?.includes('rough-in') ? 'Draw 2 of 3' : 'Final',
+      ref_date: (r.billed_at ?? '').slice(0, 10),
+      ref_is_estimate: false,
+      days_past: days,
+      remaining: r.remaining,
+      aging_bucket: days >= 90 ? '90' : days >= 30 ? '30_90' : null,
+    }
+  })
+  const b3090 = rows.filter((r) => r.aging_bucket === '30_90')
+  const b90 = rows.filter((r) => r.aging_bucket === '90')
+  return {
+    generated_at: mw.generated_at,
+    totals: {
+      row_count: rows.length,
+      grand_total: rows.reduce((s, r) => s + r.remaining, 0),
+      count30_90: b3090.length,
+      sum30_90: b3090.reduce((s, r) => s + r.remaining, 0),
+      count90: b90.length,
+      sum90: b90.reduce((s, r) => s + r.remaining, 0),
+    },
+    rows,
+  }
+}
+
 export function buildTeamSampleEmail(id: TeamSampleEmailId, ctx: TeamSampleContext): BuiltTeamEmail {
   const origin = ctx.origin
   switch (id) {
+    case 'billed_awaiting': {
+      const p = sampleBilledReportPayload(ctx.todayYmd)
+      return { subject: billedReportEmailSubject(p), html: renderBilledReportEmail(p, origin, ctx.sender?.name || undefined), text: billedReportEmailText(p, origin) }
+    }
     case 'payment_forecast': {
       const p = sampleForecastPayload(ctx.todayYmd)
       return { subject: paymentForecastEmailSubject(p), html: renderPaymentForecastEmail(p, origin, ctx.sender?.name || undefined), text: paymentForecastEmailText(p, origin) }

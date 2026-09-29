@@ -34,6 +34,7 @@ export type TeamSampleEmailId =
   | 'money_waiting'
   | 'crew_day'
   | 'payment_forecast'
+  | 'billed_awaiting'
   | 'signed_agreement_staff'
   | 'estimate_accepted_staff'
   | 'gc_word_ask'
@@ -289,8 +290,9 @@ export const TEAM_EMAILS: readonly TeamEmail[] = [
     label: 'Billed awaiting payment',
     when: { kind: 'weekly', label: 'On its schedule, or when asked', order: 32 },
     recipients: { roles: OFFICE_AND_PRIMARY, decidedBy: 'role', rule: 'Devs, leaders, assistants, controllers and the primary — by role.' },
-    sampleSubject: (c) => `Billed awaiting payment — ${c.dateLabel}`,
-    render: { kind: 'real', stream: 'billed_awaiting' },
+    sampleSubject: (c) => `Billed awaiting payment — ${c.dateLabel} — $56,944.00 due`,
+    render: { kind: 'sample', sample: 'billed_awaiting' },
+    real: 'billed_awaiting',
     manage: stream('billed', 'Emails & reports → Billed awaiting'),
     reflects: ['Billed awaiting wording (Email templates)', 'Billed Awaiting Payment on the Pipeline'],
   },

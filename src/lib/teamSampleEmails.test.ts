@@ -18,7 +18,7 @@ const SAMPLE_IDS = TEAM_EMAILS.flatMap((e) => (e.render.kind === 'sample' ? [e.r
 
 describe('team sample emails (What the team sees)', () => {
   it('every sample row builds a subject and an HTML body', () => {
-    expect(SAMPLE_IDS.length).toBe(14)
+    expect(SAMPLE_IDS.length).toBe(15)
     for (const id of SAMPLE_IDS) {
       const m = buildTeamSampleEmail(id, ctx)
       expect(m.subject.trim().length, id).toBeGreaterThan(3)
@@ -46,6 +46,13 @@ describe('team sample emails (What the team sees)', () => {
     expect(m.subject).toMatch(/^Payment forecast — /)
     expect(m.html).toContain('https://clicktooling.com/jobs?jobDetail=job-1')
     expect(m.text).toContain('open bills')
+  })
+  it('Billed awaiting is the report\u2019s own renderer over the aged sample bills (lift 4)', () => {
+    const m = buildTeamSampleEmail('billed_awaiting', ctx)
+    expect(m.subject).toBe('Billed awaiting payment — Tue, Sep 29, 2026 — $56,944.00 due')
+    expect(m.html).toContain('Sample Contracting')
+    expect(m.html).toContain('https://clicktooling.com/jobs?jobDetail=job-1')
+    expect(m.text).toContain('Grand total due: $56,944.00')
   })
   it('the signed-agreement notice is the real builder over the sample GC', () => {
     const m = buildTeamSampleEmail('signed_agreement_staff', ctx)

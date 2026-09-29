@@ -52,7 +52,7 @@ function mount() {
 describe('SettingsWhatTheTeamSeesTab', () => {
   it('opens on a controller’s week, grouped by when, with the count line', async () => {
     await mount()
-    expect(screen.getByTestId('wtts-coverage').textContent).toContain('25 emails · 14 render live · 1 show the real one · 10 built on the server (next release)')
+    expect(screen.getByTestId('wtts-coverage').textContent).toContain('25 emails · 15 render live · 10 built on the server (next release)')
     const headings = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent ?? '')
     expect(headings[0]).toContain('Every morning')
     expect(headings.some((h) => h.includes('When something happens'))).toBe(true)
@@ -73,12 +73,22 @@ describe('SettingsWhatTheTeamSeesTab', () => {
     expect(expanded.textContent).toContain('Subject: Your link, Helper Sample')
     expect(expanded.querySelector('iframe')?.getAttribute('srcdoc')).toContain('Tap: ')
   })
-  it('a real row offers the function’s preview and shows it', async () => {
+  it('a lifted digest opens to its sample and still offers the function’s real one (v2.4161)', async () => {
     await mount()
     fireEvent.click(within(screen.getByTestId('wtts-row-money_waiting')).getByRole('button', { name: 'Money waiting' }))
+    expect(screen.getByTestId('wtts-expanded').textContent).toContain('Subject: Money waiting — 3 customers off pace, $51,220 open')
+    expect(screen.getByTitle('Money waiting').getAttribute('srcdoc')).toContain('Structura')
     fireEvent.click(screen.getByRole('button', { name: /Show the real one/ }))
     const frame = await screen.findByTitle('Money waiting — real')
     expect(frame.getAttribute('srcdoc')).toBe('<p>money waiting, live</p>')
+  })
+  it('the last lifted digest keeps the function’s real one under its sample (v2.4167)', async () => {
+    await mount()
+    fireEvent.click(within(screen.getByTestId('wtts-row-billed_awaiting')).getByRole('button', { name: 'Billed awaiting payment' }))
+    expect(screen.getByTestId('wtts-expanded').textContent).toContain('Subject: Billed awaiting payment —')
+    fireEvent.click(screen.getByRole('button', { name: /Show the real one/ }))
+    const frame = await screen.findByTitle('Billed awaiting payment — real')
+    expect(frame.getAttribute('srcdoc')).toBe('<p>billed, live</p>')
   })
   it('a soon row says which function builds it', async () => {
     await mount()
