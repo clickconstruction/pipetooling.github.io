@@ -8,43 +8,34 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
  * branches on have their own suites; this pins the ladder (MY_TIME_DAY_EDITOR_MODAL map, "The
  * save engine", branches 1–9).
  *
- * Every direct write and every RPC call lands in one log, in the order it was made.
+ * The save plans the whole day's writes and sends them to `save_my_time_day` in one call; the
+ * stand-in logs each call and, unless it is told to refuse, the writes it applied, in order.
  */
-type Written =
-  | { op: 'insert'; table: string; label: string; values: unknown }
-  | { op: 'update'; table: string; label: string; values: unknown; match: Record<string, unknown> }
-  | { op: 'rpc'; rpc: 'splitSeg' | 'splitCluster' | 'replaceMixed'; target: string | string[]; segments: unknown }
-  | { op: 'dbRpc'; fn: string; label: string; args: unknown }
+/** One write the save sends — the same shape `save_my_time_day` takes. */
+type Written = MyTimeDayWrite
 
 const db = vi.hoisted(() => {
   const state = {
-    log: [] as Written[],
-    /** The operation name `withSupabaseRetry` was handed for the write being built. */
+    /** Every write the database applied, in order (a refused save applies none). */
+    log: [] as unknown[],
+    /** Every `save_my_time_day` call and its arguments. */
+    calls: [] as Array<{ fn: string; args: Record<string, unknown> }>,
+    /** The operation name `withSupabaseRetry` was handed. */
     label: '',
-    directWrites: 0,
-    /** Nth direct write (1-based) → the error the database answers with. */
-    refuse: new Map<number, unknown>(),
+    /** When set, the database refuses the next save with this error — and applies nothing. */
+    refuseSave: null as unknown,
   }
-  const settle = (entry: Written) => ({
-    then<R>(resolve: (result: { data: null; error: unknown }) => R): Promise<R> {
-      state.directWrites += 1
-      state.log.push(entry)
-      return Promise.resolve(resolve({ data: null, error: state.refuse.get(state.directWrites) ?? null }))
-    },
-  })
-  return { state, settle }
+  return { state }
 })
 
 vi.mock('./supabase', () => ({
   supabase: {
-    rpc: (fn: string, args: unknown) => db.settle({ op: 'dbRpc', fn, label: db.state.label, args }),
-    from: (table: string) => ({
-      insert: (values: unknown) => db.settle({ op: 'insert', table, label: db.state.label, values }),
-      update: (values: unknown) => ({
-        eq: (column: string, value: unknown) =>
-          db.settle({ op: 'update', table, label: db.state.label, values, match: { [column]: value } }),
-      }),
-    }),
+    rpc: (fn: string, args: Record<string, unknown>) => {
+      db.state.calls.push({ fn, args })
+      if (db.state.refuseSave) return Promise.resolve({ data: null, error: db.state.refuseSave })
+      db.state.log.push(...(args.p_writes as unknown[]))
+      return Promise.resolve({ data: null, error: null })
+    },
   },
 }))
 
@@ -64,12 +55,14 @@ vi.mock('../utils/errorHandling', async (importOriginal) => {
   }
 })
 
-import * as leader from './leaderClockSessionSplit'
 import {
   MY_TIME_DRAFT_IN_BLOCK_EDITED_MESSAGE,
   MY_TIME_SALARY_SYNC_SAVED_NOTE,
-  myTimeDayPersistRpcs,
+  MY_TIME_SAVE_MISSING_SUBJECT_MESSAGE,
+  myTimeDaySaveUsesLeaderRpcs,
   persistMyTimeDayDirtyClusters,
+  planMyTimeDaySave,
+  type MyTimeDayWrite,
   type PersistMyTimeDayInput,
 } from './myTimeDayPersist'
 import {
@@ -79,7 +72,6 @@ import {
 } from './myTimeDaySavePlan'
 import { sessionClusterId, type DayEditorSession, type SplitEditorState } from './myTimeDayTimeline'
 import { DRAFT_PEOPLE_HOURS_SESSION_ID_PREFIX } from './peopleHoursManualDraftSession'
-import * as own from './splitOwnClockSessionSegments'
 import type { SplitClockSegmentPayload } from './splitOwnClockSessionSegments'
 import { formatDenverBlockDateHeader, formatDenverTimeOnly } from '../utils/dateUtils'
 import { DatabaseError } from '../utils/errorHandling'
@@ -117,24 +109,6 @@ function mk(
 const salary = (id: string, inMs: number, outMs: number | null, idx: number | null, over: Partial<DayEditorSession> = {}) =>
   mk(id, inMs, outMs, { origin: 'salary_schedule', salary_segment_index: idx, ...over })
 
-function rpcSpies() {
-  return {
-    runSplitSeg: vi.fn(async (sessionId: string, segments: SplitClockSegmentPayload[]): Promise<unknown> => {
-      db.state.log.push({ op: 'rpc', rpc: 'splitSeg', target: sessionId, segments })
-      return []
-    }),
-    runSplitCluster: vi.fn(async (sessionIds: string[], segments: SplitClockSegmentPayload[]): Promise<unknown> => {
-      db.state.log.push({ op: 'rpc', rpc: 'splitCluster', target: sessionIds, segments })
-      return []
-    }),
-    runReplaceMixed: vi.fn(async (sessionIds: string[], segments: SplitClockSegmentPayload[]): Promise<unknown> => {
-      db.state.log.push({ op: 'rpc', rpc: 'replaceMixed', target: sessionIds, segments })
-      return []
-    }),
-  }
-}
-let spies: ReturnType<typeof rpcSpies>
-
 /** Saves `clusters`, each with the split state beside it; every cluster is dirty, in day order, unless `over` says otherwise. */
 function save(
   clusters: DayEditorSession[][],
@@ -154,7 +128,7 @@ function save(
     effectiveSubjectUserId: 'user-1',
     dateStr: EDITOR_DATE,
     peopleHoursGridProportionalSeed: false,
-    rpcs: spies,
+    leader: false,
     ...over,
   })
 }
@@ -167,25 +141,20 @@ async function expectRefused(p: Promise<unknown>, message: string) {
   expect((err as DatabaseError).message).toBe(message)
 }
 
-const noteUpdate = (id: string, notes: string): Written => ({
-  op: 'update',
-  table: 'clock_sessions',
-  label: 'update clock session notes',
-  values: { notes },
-  match: { id },
-})
+const noteUpdate = (id: string, notes: string): Written => ({ op: 'update_notes', id, notes })
+/** `_label` was the request's name when each write was its own request; kept so call sites read as before. */
 const timesUpdate = (
   id: string,
   inMs: number,
   outMs: number | null,
   notes: string,
-  label = 'update clock session times',
+  _label?: string,
 ): Written => ({
-  op: 'update',
-  table: 'clock_sessions',
-  label,
-  values: { clocked_in_at: iso(inMs), clocked_out_at: outMs != null ? iso(outMs) : null, notes },
-  match: { id },
+  op: 'update_times',
+  id,
+  clocked_in_at: iso(inMs),
+  clocked_out_at: outMs != null ? iso(outMs) : null,
+  notes,
 })
 const PARTITION_LABEL = 'update clock session times after mixed cross-row merge partition'
 const COALESCED_LABEL = 'update clock session times after mixed coalesced partition save'
@@ -252,10 +221,9 @@ const refusals: Record<string, { run: () => Promise<unknown>; message: () => str
 
 beforeEach(() => {
   db.state.log.length = 0
+  db.state.calls.length = 0
   db.state.label = ''
-  db.state.directWrites = 0
-  db.state.refuse.clear()
-  spies = rpcSpies()
+  db.state.refuseSave = null
 })
 
 describe('persistMyTimeDayDirtyClusters — skips and guards', () => {
@@ -312,27 +280,19 @@ describe('persistMyTimeDayDirtyClusters — skips and guards', () => {
       noteUpdate('a', 'x'),
       {
         op: 'insert',
-        table: 'clock_sessions',
-        label: 'insert draft clock session from people hours',
-        values: {
-          user_id: 'user-1',
-          work_date: EDITOR_DATE,
-          clocked_in_at: iso(T(2)),
-          clocked_out_at: iso(T(4)),
-          notes: 'y',
-          job_ledger_id: 'j2',
-          bid_id: null,
-        },
+        clocked_in_at: iso(T(2)),
+        clocked_out_at: iso(T(4)),
+        notes: 'y',
+        job_ledger_id: 'j2',
+        bid_id: null,
       },
     ])
-    expect(spies.runSplitCluster).not.toHaveBeenCalled()
-    expect(spies.runReplaceMixed).not.toHaveBeenCalled()
   })
 
   it('a new session before a saved one saves in row order: the insert, then the note', async () => {
     const c = [mk(DRAFT_ID, T(0), T(2)), mk('b', T(2), T(4))]
     await save([c], [{ boundaries: [T(0), T(2), T(4)], notes: ['x', 'y'] }])
-    expect(db.state.log.map((w) => (w as { op: string }).op)).toStrictEqual(['insert', 'update'])
+    expect(db.state.log.map((w) => (w as { op: string }).op)).toStrictEqual(['insert', 'update_notes'])
   })
 
   it('a new session split or with its seam moved beside a saved one is refused, and nothing is written', async () => {
@@ -354,8 +314,9 @@ describe('persistMyTimeDayDirtyClusters — skips and guards', () => {
       save([c], [{ boundaries: [T(0), T(2), T(4)], notes: ['x', 'y'] }], { effectiveSubjectUserId: null }),
       'Missing subject user for new clock session.',
     )
-    // The saved row comes first and its note is written before the insert is refused.
-    expect(db.state.log).toStrictEqual([noteUpdate('a', 'x')])
+    // The whole day is refused before anything is sent: the saved row's note is not written either.
+    expect(db.state.calls).toStrictEqual([])
+    expect(db.state.log).toStrictEqual([])
   })
 
   it('the refusal message', () => {
@@ -374,17 +335,11 @@ describe('persistMyTimeDayDirtyClusters — one part, one row', () => {
     expect(db.state.log).toStrictEqual([
       {
         op: 'insert',
-        table: 'clock_sessions',
-        label: 'insert draft clock session from people hours',
-        values: {
-          user_id: 'user-1',
-          work_date: EDITOR_DATE,
-          clocked_in_at: iso(T(0)),
-          clocked_out_at: iso(T(4)),
-          notes: 'framing',
-          job_ledger_id: 'j1',
-          bid_id: 'b1',
-        },
+        clocked_in_at: iso(T(0)),
+        clocked_out_at: iso(T(4)),
+        notes: 'framing',
+        job_ledger_id: 'j1',
+        bid_id: 'b1',
       },
     ])
   })
@@ -395,17 +350,11 @@ describe('persistMyTimeDayDirtyClusters — one part, one row', () => {
     expect(db.state.log).toStrictEqual([
       {
         op: 'insert',
-        table: 'clock_sessions',
-        label: 'insert draft clock session from people hours',
-        values: {
-          user_id: 'user-1',
-          work_date: EDITOR_DATE,
-          clocked_in_at: iso(T(1)),
-          clocked_out_at: iso(T(3)),
-          notes: 'x',
-          job_ledger_id: null,
-          bid_id: null,
-        },
+        clocked_in_at: iso(T(1)),
+        clocked_out_at: iso(T(3)),
+        notes: 'x',
+        job_ledger_id: null,
+        bid_id: null,
       },
     ])
   })
@@ -447,18 +396,14 @@ describe('persistMyTimeDayDirtyClusters — one part, one row', () => {
     ).resolves.toStrictEqual({ salarySyncMayAdjust: false })
     expect(db.state.log).toStrictEqual([
       {
-        op: 'update',
-        table: 'clock_sessions',
-        label: 'update clock session times from people hours proportional seed',
-        values: {
-          clocked_in_at: iso(T(0, 500)),
-          clocked_out_at: iso(T(4, -500)),
-          work_date: ROW_DATE,
-          notes: 'seeded',
-          job_ledger_id: 'j1',
-          bid_id: 'b1',
-        },
-        match: { id: 'a' },
+        op: 'update_times',
+        id: 'a',
+        clocked_in_at: iso(T(0, 500)),
+        clocked_out_at: iso(T(4, -500)),
+        notes: 'seeded',
+        work_date: ROW_DATE,
+        job_ledger_id: 'j1',
+        bid_id: 'b1',
       },
     ])
   })
@@ -468,18 +413,14 @@ describe('persistMyTimeDayDirtyClusters — one part, one row', () => {
     await save([c], [{ boundaries: [T(0), T(5)], notes: ['x'] }], { peopleHoursGridProportionalSeed: true })
     expect(db.state.log).toStrictEqual([
       {
-        op: 'update',
-        table: 'clock_sessions',
-        label: 'update clock session times from people hours proportional seed',
-        values: {
-          clocked_in_at: iso(T(0)),
-          clocked_out_at: null,
-          work_date: ROW_DATE,
-          notes: 'x',
-          job_ledger_id: null,
-          bid_id: null,
-        },
-        match: { id: 'a' },
+        op: 'update_times',
+        id: 'a',
+        clocked_in_at: iso(T(0)),
+        clocked_out_at: null,
+        notes: 'x',
+        work_date: ROW_DATE,
+        job_ledger_id: null,
+        bid_id: null,
       },
     ])
   })
@@ -561,10 +502,7 @@ describe('persistMyTimeDayDirtyClusters — one part, several rows', () => {
     const expected = attachAllocationsToPayloads([seg(T(0), T(4), 'merged')], c, split, NOW)
     // The part takes the job of the row it overlaps most.
     expect(expected).toStrictEqual([seg(T(0), T(4), 'merged', { job_ledger_id: 'j2', bid_id: 'b2' })])
-    expect(db.state.log).toStrictEqual([{ op: 'rpc', rpc: 'replaceMixed', target: ['a', 'b'], segments: expected }])
-    expect(spies.runReplaceMixed).toHaveBeenCalledTimes(1)
-    expect(spies.runSplitSeg).not.toHaveBeenCalled()
-    expect(spies.runSplitCluster).not.toHaveBeenCalled()
+    expect(db.state.log).toStrictEqual([{ op: 'replace_mixed', ids: ['a', 'b'], segments: expected }])
   })
 
   it('the People → Hours seed changes nothing for a block of several rows', async () => {
@@ -572,9 +510,8 @@ describe('persistMyTimeDayDirtyClusters — one part, several rows', () => {
     await save([c], [{ boundaries: [T(0), T(4)], notes: ['merged'] }], { peopleHoursGridProportionalSeed: true })
     expect(db.state.log).toStrictEqual([
       {
-        op: 'rpc',
-        rpc: 'replaceMixed',
-        target: ['a', 'b'],
+        op: 'replace_mixed',
+        ids: ['a', 'b'],
         segments: [seg(T(0), T(4), 'merged', { job_ledger_id: null, bid_id: null })],
       },
     ])
@@ -600,16 +537,15 @@ describe('persistMyTimeDayDirtyClusters — several parts', () => {
       ]),
     ).resolves.toStrictEqual({ salarySyncMayAdjust: false })
     expect(db.state.log).toStrictEqual([
-      { op: 'rpc', rpc: 'splitSeg', target: 'a', segments: [seg(T(0), T(1), 'first'), seg(T(1), T(4), 'second')] },
+      { op: 'split_segments', id: 'a', segments: [seg(T(0), T(1), 'first'), seg(T(1), T(4), 'second')] },
     ])
-    expect(spies.runSplitSeg).toHaveBeenCalledTimes(1)
   })
 
   it('one open row split in two: the last part has no clock-out', async () => {
     const c = [mk('a', T(0), null)]
     await save([c], [{ boundaries: [T(0), T(1), T(5)], notes: ['first', 'second'] }])
     expect(db.state.log).toStrictEqual([
-      { op: 'rpc', rpc: 'splitSeg', target: 'a', segments: [seg(T(0), T(1), 'first'), seg(T(1), null, 'second')] },
+      { op: 'split_segments', id: 'a', segments: [seg(T(0), T(1), 'first'), seg(T(1), null, 'second')] },
     ])
   })
 
@@ -620,13 +556,11 @@ describe('persistMyTimeDayDirtyClusters — several parts', () => {
     ).resolves.toStrictEqual({ salarySyncMayAdjust: false })
     expect(db.state.log).toStrictEqual([
       {
-        op: 'rpc',
-        rpc: 'splitCluster',
-        target: ['a', 'b'],
+        op: 'split_cluster',
+        ids: ['a', 'b'],
         segments: [seg(T(0), T(1), 'x'), seg(T(1), T(3), 'y'), seg(T(3), T(4), 'z')],
       },
     ])
-    expect(spies.runSplitCluster).toHaveBeenCalledTimes(1)
   })
 
   // Before, a note edit on same-job rows went through the split-cluster RPC, which deletes and
@@ -635,7 +569,6 @@ describe('persistMyTimeDayDirtyClusters — several parts', () => {
     const c = [mk('a', T(0), T(2), { job_ledger_id: 'j1' }), mk('b', T(2), T(4), { job_ledger_id: 'j1' })]
     await save([c], [{ boundaries: [T(0), T(2), T(4)], notes: ['x', 'y'] }])
     expect(db.state.log).toStrictEqual([noteUpdate('a', 'x'), noteUpdate('b', 'y')])
-    expect(spies.runSplitCluster).not.toHaveBeenCalled()
   })
 
   it('the same with the last row still open: its end is the running clock, so notes only', async () => {
@@ -650,7 +583,7 @@ describe('persistMyTimeDayDirtyClusters — several parts', () => {
       { boundaries: [T(0), T(2), T(4)], notes: ['x', 'y'], segmentJobOverrides: { 1: { job_ledger_id: 'j2', bid_id: null } } },
     ])
     expect(db.state.log).toStrictEqual([
-      { op: 'rpc', rpc: 'splitCluster', target: ['a', 'b'], segments: [seg(T(0), T(2), 'x'), seg(T(2), T(4), 'y')] },
+      { op: 'split_cluster', ids: ['a', 'b'], segments: [seg(T(0), T(2), 'x'), seg(T(2), T(4), 'y')] },
     ])
   })
 
@@ -658,7 +591,7 @@ describe('persistMyTimeDayDirtyClusters — several parts', () => {
     const c = [mk('a', T(0), T(2), { job_ledger_id: 'j1' }), mk('b', T(2), T(4), { job_ledger_id: 'j1' })]
     await save([c], [{ boundaries: [T(0), T(3), T(4)], notes: ['x', 'y'] }])
     expect(db.state.log).toStrictEqual([
-      { op: 'rpc', rpc: 'splitCluster', target: ['a', 'b'], segments: [seg(T(0), T(3), 'x'), seg(T(3), T(4), 'y')] },
+      { op: 'split_cluster', ids: ['a', 'b'], segments: [seg(T(0), T(3), 'x'), seg(T(3), T(4), 'y')] },
     ])
   })
 
@@ -727,7 +660,7 @@ describe('persistMyTimeDayDirtyClusters — several parts', () => {
       save([twoJobs()], [{ boundaries: [T(0), T(1), T(2), T(4)], notes: ['p', 'q', 'r'] }]),
     ).resolves.toStrictEqual({ salarySyncMayAdjust: false })
     expect(db.state.log).toStrictEqual([
-      { op: 'rpc', rpc: 'splitSeg', target: 'a', segments: [seg(T(0), T(1), 'p'), seg(T(1), T(2), 'q')] },
+      { op: 'split_segments', id: 'a', segments: [seg(T(0), T(1), 'p'), seg(T(1), T(2), 'q')] },
       noteUpdate('b', 'r'),
     ])
   })
@@ -736,7 +669,7 @@ describe('persistMyTimeDayDirtyClusters — several parts', () => {
     await save([twoJobs()], [{ boundaries: [T(0), T(2), T(3), T(4)], notes: ['p', 'q', 'r'] }])
     expect(db.state.log).toStrictEqual([
       noteUpdate('a', 'p'),
-      { op: 'rpc', rpc: 'splitSeg', target: 'b', segments: [seg(T(2), T(3), 'q'), seg(T(3), T(4), 'r')] },
+      { op: 'split_segments', id: 'b', segments: [seg(T(2), T(3), 'q'), seg(T(3), T(4), 'r')] },
     ])
   })
 
@@ -745,7 +678,7 @@ describe('persistMyTimeDayDirtyClusters — several parts', () => {
     // Three parts over two rows, the block's last hour left out: row b holds one part, an hour short.
     await save([c], [{ boundaries: [T(0), T(1), T(2), T(3)], notes: ['p', 'q', 'r'] }])
     expect(db.state.log).toStrictEqual([
-      { op: 'rpc', rpc: 'splitSeg', target: 'a', segments: [seg(T(0), T(1), 'p'), seg(T(1), T(2), 'q')] },
+      { op: 'split_segments', id: 'a', segments: [seg(T(0), T(1), 'p'), seg(T(1), T(2), 'q')] },
       timesUpdate('b', T(2), T(3), 'r'),
     ])
   })
@@ -764,9 +697,8 @@ describe('persistMyTimeDayDirtyClusters — several parts', () => {
     await expect(save([c], [split])).resolves.toStrictEqual({ salarySyncMayAdjust: false })
     expect(db.state.log).toStrictEqual([
       {
-        op: 'rpc',
-        rpc: 'replaceMixed',
-        target: ['a', 'b', 'c'],
+        op: 'replace_mixed',
+        ids: ['a', 'b', 'c'],
         segments: [
           seg(T(0), T(1), 'p', { job_ledger_id: 'j1', bid_id: null }),
           seg(T(1), T(2), 'q', { job_ledger_id: 'j1', bid_id: null }),
@@ -781,9 +713,8 @@ describe('persistMyTimeDayDirtyClusters — several parts', () => {
     await save([c], [{ boundaries: [T(0), T(1), T(2), T(6)], notes: ['p', 'q', 'r'] }])
     expect(db.state.log).toStrictEqual([
       {
-        op: 'rpc',
-        rpc: 'replaceMixed',
-        target: ['a', 'b', 'c'],
+        op: 'replace_mixed',
+        ids: ['a', 'b', 'c'],
         segments: [
           seg(T(0), T(1), 'p', { job_ledger_id: 'j1', bid_id: null }),
           seg(T(1), T(2), 'q', { job_ledger_id: 'j1', bid_id: null }),
@@ -823,9 +754,8 @@ describe('persistMyTimeDayDirtyClusters — several parts', () => {
     ])
     expect(db.state.log).toStrictEqual([
       {
-        op: 'rpc',
-        rpc: 'replaceMixed',
-        target: ['a', 'b', 'c'],
+        op: 'replace_mixed',
+        ids: ['a', 'b', 'c'],
         segments: [
           seg(T(0), T(2), 'p', { job_ledger_id: 'j1', bid_id: null }),
           seg(T(2), T(3), 'q', { job_ledger_id: 'j2', bid_id: null }),
@@ -851,8 +781,8 @@ describe('persistMyTimeDayDirtyClusters — several parts', () => {
       save([c], [{ boundaries: [T(0), T(1), T(2), T(3), T(4)], notes: ['p', 'q', 'r', 's'] }]),
     ).resolves.toStrictEqual({ salarySyncMayAdjust: false })
     expect(db.state.log).toStrictEqual([
-      { op: 'rpc', rpc: 'splitSeg', target: 'a', segments: [seg(T(0), T(1), 'p'), seg(T(1), T(2), 'q')] },
-      { op: 'rpc', rpc: 'splitSeg', target: 'b', segments: [seg(T(2), T(3), 'r'), seg(T(3), T(4), 's')] },
+      { op: 'split_segments', id: 'a', segments: [seg(T(0), T(1), 'p'), seg(T(1), T(2), 'q')] },
+      { op: 'split_segments', id: 'b', segments: [seg(T(2), T(3), 'r'), seg(T(3), T(4), 's')] },
     ])
   })
 
@@ -922,8 +852,7 @@ describe('persistMyTimeDayDirtyClusters — several parts', () => {
       seg(T(1), T(3.5), 'y', { job_ledger_id: 'j2', bid_id: null }),
       seg(T(3.5), T(4), 'z', { job_ledger_id: 'j2', bid_id: null }),
     ])
-    expect(db.state.log).toStrictEqual([{ op: 'rpc', rpc: 'replaceMixed', target: ['a', 'b'], segments: expected }])
-    expect(spies.runReplaceMixed).toHaveBeenCalledTimes(1)
+    expect(db.state.log).toStrictEqual([{ op: 'replace_mixed', ids: ['a', 'b'], segments: expected }])
   })
 
   it('a job chosen for a part reaches the replace RPC in place of the row job', async () => {
@@ -937,9 +866,8 @@ describe('persistMyTimeDayDirtyClusters — several parts', () => {
     ])
     expect(db.state.log).toStrictEqual([
       {
-        op: 'rpc',
-        rpc: 'replaceMixed',
-        target: ['a', 'b'],
+        op: 'replace_mixed',
+        ids: ['a', 'b'],
         segments: [
           seg(T(0), T(1), 'x', { job_ledger_id: 'j1', bid_id: null }),
           seg(T(1), T(3.5), 'y', { job_ledger_id: null, bid_id: 'b7' }),
@@ -986,45 +914,93 @@ describe('persistMyTimeDayDirtyClusters — across clusters', () => {
     expect(db.state.log).toHaveLength(3)
   })
 
-  it('when the second of two dirty clusters is refused, the first is already written and the call rejects', async () => {
+  // All or nothing (v2.4108): the planner refuses before anything is sent, and the database applies
+  // the whole day in one transaction. Before, each write was its own request and a refusal
+  // part-way left the rows before it written (the map's quirk 26).
+  it('a refusal in the second of two dirty clusters sends nothing — the first is not written either', async () => {
     const day = [morning(), noon()]
     await expectRefused(
       save(day, [whole(day[0]!, 'am'), { boundaries: [T(3), T(3.5)], notes: ['moved'] }]),
       TIMES_MOVED_REFUSAL,
     )
-    expect(db.state.log).toStrictEqual([noteUpdate('m', 'am')])
+    expect(db.state.calls).toStrictEqual([])
+    expect(db.state.log).toStrictEqual([])
   })
 
-  it('when the database refuses a write, the call rejects with that error and later clusters are not written', async () => {
+  it('every cluster’s writes go in one call, in order, with the person, the day and the RPC family', async () => {
+    const day = [morning(), noon(), evening()]
+    await save(day, [whole(day[0]!, 'am'), whole(day[1]!, 'noon'), whole(day[2]!, 'pm')])
+    expect(db.state.calls).toHaveLength(1)
+    expect(db.state.calls[0]).toStrictEqual({
+      fn: 'save_my_time_day',
+      args: {
+        p_subject_user_id: 'user-1',
+        p_work_date: EDITOR_DATE,
+        p_leader: false,
+        p_writes: [noteUpdate('m', 'am'), noteUpdate('n', 'noon'), noteUpdate('e', 'pm')],
+      },
+    })
+    expect(db.state.label).toBe('save my time day')
+  })
+
+  it('a lead’s save names the leader RPC family', async () => {
+    await save([morning()], [whole(morning(), 'am')], { leader: true })
+    expect(db.state.calls[0]!.args.p_leader).toBe(true)
+  })
+
+  it('when the database refuses the save, the call rejects with its error and nothing is written', async () => {
     const refused = { message: 'new row violates row-level security policy', code: '42501' }
-    db.state.refuse.set(2, refused)
+    db.state.refuseSave = refused
     const day = [morning(), noon(), evening()]
     const err = await caught(save(day, [whole(day[0]!, 'am'), whole(day[1]!, 'noon'), whole(day[2]!, 'pm')]))
     expect(err).toBe(refused)
-    // The second entry is the write the database refused; the evening was never sent.
-    expect(db.state.log).toStrictEqual([noteUpdate('m', 'am'), noteUpdate('n', 'noon')])
+    expect(db.state.calls).toHaveLength(1)
+    expect(db.state.log).toStrictEqual([])
   })
 
-  it('when the database refuses a row in the middle of a block, the rows before it stay written and the rest are not sent', async () => {
-    const refused = { message: 'deadlock detected', code: '40P01' }
-    db.state.refuse.set(2, refused)
-    const err = await caught(save([mixedThree()], [{ boundaries: [T(0), T(2), T(3)], notes: ['x', 'y'] }]))
-    expect(err).toBe(refused)
-    expect(db.state.log).toStrictEqual([
-      timesUpdate('a', T(0), T(1), 'x', COALESCED_LABEL),
-      timesUpdate('b', T(1), T(2), 'x', COALESCED_LABEL),
-    ])
-  })
-
-  it('when an RPC fails, the call rejects with its error and later clusters are not written', async () => {
-    const failed = new DatabaseError('Session is outside the current week')
-    spies.runSplitSeg.mockRejectedValueOnce(failed)
+  it('a refusal in the middle of a block — a split RPC’s error included — writes none of it', async () => {
+    const refused = { message: 'Session is outside the editable current week' }
+    db.state.refuseSave = refused
     const day = [morning(), noon()]
     const err = await caught(
       save(day, [{ boundaries: [T(0), T(1), T(2)], notes: ['x', 'y'] }, whole(day[1]!, 'noon')]),
     )
-    expect(err).toBe(failed)
+    expect(err).toBe(refused)
+    expect((db.state.calls[0]!.args.p_writes as MyTimeDayWrite[]).map((w) => w.op)).toStrictEqual([
+      'split_segments',
+      'update_notes',
+    ])
     expect(db.state.log).toStrictEqual([])
+  })
+
+  it('a save with nothing to write makes no call', async () => {
+    await expect(save([morning()], [undefined])).resolves.toStrictEqual({ salarySyncMayAdjust: false })
+    expect(db.state.calls).toStrictEqual([])
+  })
+
+  it('a save with writes but no person is refused before anything is sent', async () => {
+    await expectRefused(
+      save([morning()], [whole(morning(), 'am')], { effectiveSubjectUserId: null }),
+      MY_TIME_SAVE_MISSING_SUBJECT_MESSAGE,
+    )
+    expect(db.state.calls).toStrictEqual([])
+    expect(MY_TIME_SAVE_MISSING_SUBJECT_MESSAGE).toBe('Missing subject user for this day.')
+  })
+
+  it('planMyTimeDaySave returns the same writes without calling the database', () => {
+    const day = [morning(), noon()]
+    const splitByCluster = { [sessionClusterId(day[0]!)]: whole(day[0]!, 'am'), [sessionClusterId(day[1]!)]: whole(day[1]!, 'noon') }
+    expect(
+      planMyTimeDaySave({
+        dirty: day.map(sessionClusterId),
+        sessionClusters: day,
+        splitByCluster,
+        nowTick: NOW,
+        effectiveSubjectUserId: 'user-1',
+        peopleHoursGridProportionalSeed: false,
+      }),
+    ).toStrictEqual({ writes: [noteUpdate('m', 'am'), noteUpdate('n', 'noon')], salarySyncMayAdjust: false })
+    expect(db.state.calls).toStrictEqual([])
   })
 
   it.each(Object.keys(refusals))('refuses with a DatabaseError and writes nothing: %s', async (name) => {
@@ -1035,103 +1011,42 @@ describe('persistMyTimeDayDirtyClusters — across clusters', () => {
     expect((err as DatabaseError).name).toBe('DatabaseError')
     expect((err as DatabaseError).message).toBe(refusal.message())
     expect(db.state.log).toStrictEqual([])
-    expect(spies.runSplitSeg).not.toHaveBeenCalled()
-    expect(spies.runSplitCluster).not.toHaveBeenCalled()
-    expect(spies.runReplaceMixed).not.toHaveBeenCalled()
+    expect(db.state.calls).toStrictEqual([])
   })
 })
 
 describe('persistMyTimeDayDirtyClusters — payroll hours after an approved row’s times change', () => {
+  // save_my_time_day resyncs people_hours once when an approved row's times change in place
+  // (migration 20260928182140, tried in supabase/tests/my_time_day_save). The browser sends the
+  // times and makes no second call.
   const APPROVED = { approved_at: '2026-01-06T00:00:00Z' }
-  const recompute = (id: string): Written => ({
-    op: 'dbRpc',
-    fn: 'recompute_people_hours_after_session_edit',
-    label: 'recompute people_hours after my time save',
-    args: { p_session_id: id },
-  })
 
-  it('a seam moved between approved rows: the times, then one resync of the day', async () => {
+  it('a seam moved between approved rows sends the times in the one call — no separate resync', async () => {
     const c = [mk('a', T(0), T(2), { job_ledger_id: 'j1', ...APPROVED }), mk('b', T(2), T(4), { job_ledger_id: 'j2', ...APPROVED })]
     await save([c], [{ boundaries: [T(0), T(3), T(4)], notes: ['x', 'y'] }])
-    expect(db.state.log).toStrictEqual([timesUpdate('a', T(0), T(3), 'x'), timesUpdate('b', T(3), T(4), 'y'), recompute('b')])
+    expect(db.state.calls.map((call) => call.fn)).toStrictEqual(['save_my_time_day'])
+    expect(db.state.log).toStrictEqual([timesUpdate('a', T(0), T(3), 'x'), timesUpdate('b', T(3), T(4), 'y')])
   })
 
-  it('only the approved row counts: a pending row re-cut beside it still resyncs, keyed on the approved one', async () => {
-    const c = [mk('a', T(0), T(2), { job_ledger_id: 'j1', ...APPROVED }), mk('b', T(2), T(4), { job_ledger_id: 'j2' })]
-    await save([c], [{ boundaries: [T(0), T(3), T(4)], notes: ['x', 'y'] }])
-    expect(db.state.log.at(-1)).toStrictEqual(recompute('a'))
-  })
-
-  it('the People → Hours seed writing an approved row’s times resyncs', async () => {
+  it('the People → Hours seed writing an approved row’s times goes in the one call too', async () => {
     const c = [mk('a', T(0), T(4), APPROVED)]
     await save([c], [{ boundaries: [T(0), T(4)], notes: ['x'] }], { peopleHoursGridProportionalSeed: true })
-    expect(db.state.log.map((w) => w.op)).toStrictEqual(['update', 'dbRpc'])
-    expect(db.state.log.at(-1)).toStrictEqual(recompute('a'))
-  })
-
-  it('punch and salary approved rows merged into one part resync', async () => {
-    const c = [mk('a', T(0), T(2), APPROVED), salary('s', T(2), T(4), 1, APPROVED)]
-    await save([c], [{ boundaries: [T(0), T(4)], notes: ['x'] }])
-    expect(db.state.log.at(-1)).toStrictEqual(recompute('s'))
-  })
-
-  it('pending rows re-cut do not resync — there is nothing approved to count', async () => {
-    await save([twoJobs()], [{ boundaries: [T(0), T(3), T(4)], notes: ['x', 'y'] }])
-    expect(db.state.log.some((w) => w.op === 'dbRpc')).toBe(false)
-  })
-
-  it('a notes-only save of approved rows does not resync', async () => {
-    const c = [mk('a', T(0), T(2), { job_ledger_id: 'j1', ...APPROVED }), mk('b', T(2), T(4), { job_ledger_id: 'j2', ...APPROVED })]
-    await save([c], [{ boundaries: [T(0), T(2), T(4)], notes: ['x', 'y'] }])
-    expect(db.state.log).toStrictEqual([noteUpdate('a', 'x'), noteUpdate('b', 'y')])
-  })
-
-  it('an approved row split by the RPC does not resync here — the RPC keeps payroll hours itself', async () => {
-    await save([[mk('a', T(0), T(4), APPROVED)]], [{ boundaries: [T(0), T(2), T(4)], notes: ['x', 'y'] }])
-    expect(db.state.log.map((w) => w.op)).toStrictEqual(['rpc'])
-  })
-
-  it('two clusters with approved rows re-cut resync once, after every write', async () => {
-    const first = [mk('a', T(0), T(2), { job_ledger_id: 'j1', ...APPROVED }), mk('b', T(2), T(4), { job_ledger_id: 'j2', ...APPROVED })]
-    const second = [mk('c', T(5), T(6), { job_ledger_id: 'j1', ...APPROVED }), mk('d', T(6), T(7), { job_ledger_id: 'j2', ...APPROVED })]
-    await save(
-      [first, second],
-      [
-        { boundaries: [T(0), T(3), T(4)], notes: ['x', 'y'] },
-        { boundaries: [T(5), T(6.5), T(7)], notes: ['z', 'w'] },
-      ],
-    )
-    expect(db.state.log.map((w) => w.op)).toStrictEqual(['update', 'update', 'update', 'update', 'dbRpc'])
-    expect(db.state.log.at(-1)).toStrictEqual(recompute('d'))
-  })
-
-  it('a refused resync rejects the save; the rows written before it stay written', async () => {
-    const c = [mk('a', T(0), T(2), { job_ledger_id: 'j1', ...APPROVED }), mk('b', T(2), T(4), { job_ledger_id: 'j2', ...APPROVED })]
-    const refusal = { message: 'Access denied' }
-    db.state.refuse.set(3, refusal)
-    await expect(save([c], [{ boundaries: [T(0), T(3), T(4)], notes: ['x', 'y'] }])).rejects.toBe(refusal)
-    expect(db.state.log.map((w) => w.op)).toStrictEqual(['update', 'update', 'dbRpc'])
+    expect(db.state.calls.map((call) => call.fn)).toStrictEqual(['save_my_time_day'])
+    expect((db.state.log as MyTimeDayWrite[]).map((w) => w.op)).toStrictEqual(['update_times'])
   })
 })
 
-describe('myTimeDayPersistRpcs', () => {
-  it('hands out the own RPCs only for your own day inside the week fence', () => {
-    const r = myTimeDayPersistRpcs(true, false)
-    expect(r.runSplitSeg).toBe(own.splitOwnClockSessionSegments)
-    expect(r.runSplitCluster).toBe(own.splitOwnClockSessionCluster)
-    expect(r.runReplaceMixed).toBe(own.replaceOwnClockSessionClusterMixed)
-    expect(Object.keys(r).sort()).toStrictEqual(['runReplaceMixed', 'runSplitCluster', 'runSplitSeg'])
+describe('myTimeDaySaveUsesLeaderRpcs', () => {
+  it('uses the own RPCs only for your own day inside the week fence', () => {
+    expect(myTimeDaySaveUsesLeaderRpcs(true, false)).toBe(false)
   })
 
   it.each([
     [true, true],
     [false, false],
     [false, true],
-  ])('hands out the leader RPCs for editingSelf %s, fenceOverridden %s', (editingSelf, fenceOverridden) => {
-    const r = myTimeDayPersistRpcs(editingSelf, fenceOverridden)
-    expect(r.runSplitSeg).toBe(leader.leaderSplitClockSessionSegments)
-    expect(r.runSplitCluster).toBe(leader.leaderSplitClockSessionCluster)
-    expect(r.runReplaceMixed).toBe(leader.leaderReplaceClockSessionClusterMixed)
+  ])('uses the leader RPCs for editingSelf %s, fenceOverridden %s', (editingSelf, fenceOverridden) => {
+    expect(myTimeDaySaveUsesLeaderRpcs(editingSelf, fenceOverridden)).toBe(true)
   })
 })
 

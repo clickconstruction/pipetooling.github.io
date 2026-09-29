@@ -23,7 +23,7 @@ import {
 import { persistMyTimeClusterAndGetSegmentIds } from '../lib/persistMyTimeClusterForSegmentAssign'
 import {
   MY_TIME_SALARY_SYNC_SAVED_NOTE,
-  myTimeDayPersistRpcs,
+  myTimeDaySaveUsesLeaderRpcs,
   persistMyTimeDayDirtyClusters,
 } from '../lib/myTimeDayPersist'
 import {
@@ -1533,7 +1533,7 @@ export function DashboardMyTimeDayEditorModal({
           effectiveSubjectUserId,
           dateStr,
           peopleHoursGridProportionalSeed,
-          rpcs: myTimeDayPersistRpcs(editingSelf, fenceOverridden),
+          leader: myTimeDaySaveUsesLeaderRpcs(editingSelf, fenceOverridden),
         })
         if (salarySyncMayAdjust) {
           showToast(MY_TIME_SALARY_SYNC_SAVED_NOTE, 'info')
