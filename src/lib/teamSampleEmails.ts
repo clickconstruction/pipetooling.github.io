@@ -21,6 +21,8 @@ import { renderWeeklyMovementHtml, renderWeeklyMovementText, weeklyMovementSubje
 import { paidJobEmailSubject, paidJobEmailText, renderPaidJobEmailDetailed, type PaidJobEmailPayload } from '../../supabase/functions/_shared/paidJobEmail'
 import { buildScheduleEmail, type ScheduleDayBlockRow } from '../../supabase/functions/_shared/scheduleDayEmail'
 import { buildShareEmail, type ShareBlockRow } from '../../supabase/functions/_shared/scheduleShareCore'
+import { buildRecurringJobReportHtml, buildRecurringJobReportTextFallback, recurringJobReportEmailSubject, type RecurringJobReportPayload } from '../../supabase/functions/_shared/recurringJobReportEmail'
+import { sunSatWeekOf } from './teamEmails'
 import { readyToBillSubject, readyToBillText, renderReadyToBillDetailed, type ReadyToBillPayload } from '../../supabase/functions/_shared/readyToBillEmail'
 
 export type BuiltTeamEmail = { subject: string; html: string; text: string }
@@ -366,6 +368,45 @@ export function sampleScheduleShareBlocks(todayYmd: string): { dates: string[]; 
   return { dates, blocks }
 }
 
+/** The Job activity report payload (lift 10): the Sun–Sat week holding today, two jobs — the water heater with clock time and a filed report, the gas line with clock time only. */
+export function sampleRecurringJobReportPayload(todayYmd: string): RecurringJobReportPayload {
+  const week = sunSatWeekOf(todayYmd)
+  const clock = (displayName: string, hours: number, notes: string[], wage: number) => ({ displayName, hours, notes, costDollars: Math.round(hours * wage * 100) / 100 })
+  return {
+    reportingDate: week.start,
+    weekEndYmd: week.end,
+    periodKind: 'weekly',
+    windowStartUtc: `${week.start}T05:00:00Z`,
+    windowEndUtc: `${week.end}T05:00:00Z`,
+    jobs: [
+      {
+        job: { id: 'job-3', job_name: 'Water heater replacement', hcp_number: '1054', job_address: SAMPLE_HOMEOWNER.address },
+        byUserId: new Map([
+          ['u-ana', clock('Ana Lead', 4, ['Old unit drained and out by 9'], 42)],
+          ['u-max', clock('Max Helper', 4, [], 28)],
+        ]),
+        reports: [
+          {
+            id: 'rep-1', created_at: `${todayYmd}T17:40:00Z`, created_by_user_id: 'u-ana', creatorName: 'Ana Lead', template_name: 'Job completion',
+            fieldPairs: [
+              { label: 'Work done', htmlValue: 'Replaced 50-gal gas heater, new expansion tank, flex lines.' },
+              { label: 'Follow-up', htmlValue: 'None — customer walked through.' },
+            ],
+          },
+        ],
+      },
+      {
+        job: { id: 'job-5', job_name: 'Hunter Homes — gas line', hcp_number: '1057', job_address: '77 Hunter Loop\nKyle, TX 78640' },
+        byUserId: new Map([
+          ['u-ana', clock('Ana Lead', 18.5, ['Trench open Mon', 'Pressure test held 24 h'], 42)],
+          ['u-max', clock('Max Helper', 18.5, [], 28)],
+        ]),
+        reports: [],
+      },
+    ],
+  }
+}
+
 export function buildTeamSampleEmail(id: TeamSampleEmailId, ctx: TeamSampleContext): BuiltTeamEmail {
   const origin = ctx.origin
   switch (id) {
@@ -378,6 +419,10 @@ export function buildTeamSampleEmail(id: TeamSampleEmailId, ctx: TeamSampleConte
     }
     case 'schedule_share': {
       return buildShareEmail(sampleScheduleShareBlocks(ctx.todayYmd))
+    }
+    case 'recurring_job_report': {
+      const p = sampleRecurringJobReportPayload(ctx.todayYmd)
+      return { subject: recurringJobReportEmailSubject(p), html: buildRecurringJobReportHtml(p), text: buildRecurringJobReportTextFallback(p, false) }
     }
     case 'ready_to_bill': {
       const p = sampleReadyToBillPayload(ctx.todayYmd)

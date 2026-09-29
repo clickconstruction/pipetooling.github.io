@@ -2525,6 +2525,8 @@ Same payload as **`recurring-job-report-preview`** (including optional **`includ
 
 ### recurring-job-report-dispatch
 
+> **v2.4179 — the email is a kernel**: the payload types, `escapeHtml` and the three renderers moved verbatim out of `_shared/recurringJobReportCore.ts` into [`_shared/recurringJobReportEmail.ts`](../supabase/functions/_shared/recurringJobReportEmail.ts) (the core re-exports them; the core itself needs `Deno` at load, which is why the browser could not import it), so Settings → What the team sees renders the report on sample data (punch list #60, lift 10 of 14). Redeploy after merge.
+
 **Purpose**: pg_cron `*/15` — finds **enabled** schedules whose **timezone wall day-of-week + quarter-hour TIME** matches **now**, loads recipients (max **50** per schedule), skips **dispatch log** duplicates for **`reporting_date`**, builds HTML body, sends with Resend to each **`recipient_user_id`**.
 
 **Endpoint**: `POST /functions/v1/recurring-job-report-dispatch`
