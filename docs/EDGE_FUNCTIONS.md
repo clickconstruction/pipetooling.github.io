@@ -2600,6 +2600,8 @@ Per-recipient **`activity_scope`** + **`crew_filter`** + **`include_costs`** (fr
 
 ### billed-report-email
 
+> **v2.4167 — the renderer is a kernel**: `render.ts` is a binding over [`_shared/billedReportEmail.ts`](../supabase/functions/_shared/billedReportEmail.ts) (moved verbatim; the app origin is an argument), so Settings → What the team sees renders the report on sample data (punch list #60, lift 4 of 14). Redeploy after merge.
+
 **Purpose**: Share the Stages **Billed Awaiting Payment** report by email (v2.1315) — the print report re-rendered email-safe: customer groups A→Z with **tel:/mailto: contact links**, HCP / Job·Address / Detail / Days past / Amount due columns, subtotals + grand total, the board's 30–90/90+ aging chips, and **every job cell deep-links to `https://pipetooling.com/jobs?jobDetail=<id>`** (opens Job Detail in the app). Numbers come from the service-role RPC **`get_billed_report_email_payload()`** (migration `20260803100000`), rebuilt **at send time** — a scheduled send shows send-time numbers, never a stale snapshot. Renderers in [`billed-report-email/render.ts`](../supabase/functions/billed-report-email/render.ts).
 
 **Endpoint**: `POST /functions/v1/billed-report-email`
@@ -3270,6 +3272,8 @@ interface SendPhysicalInvoiceEmailBody {
 ---
 
 ### weekly-money-email-dispatch
+
+> **v2.4170 — the renderer is a kernel**: `render.ts` re-exports [`_shared/weeklyMoneyEmail.ts`](../supabase/functions/_shared/weeklyMoneyEmail.ts) (moved verbatim), so Settings → What the team sees renders the report on sample data (punch list #60, lift 5 of 14). Redeploy after merge.
 
 **Purpose** (v2.1448): Cron-only dispatcher for scheduled **Weekly Money Movement** report sends (`weekly_money` Report Subscriptions stream — `docs/WEEKLY_MONEY_PLAN.md` Phase 5). Drains due `weekly_money_email_requests` rows, rebuilds the report **once per batch** via `get_weekly_money_movement_payload(NULL)` — the **previous complete Central week** — and, unlike weekly_movement, there is **no SQL mirror to keep faithful**: the RPC is the same source of truth the client modal reads. Renders in-function ([`render.ts`](../supabase/functions/weekly-money-email-dispatch/render.ts) ports `weeklyMoneyMovement.ts` row math — material bucketing, Δ% with the seed-bootstrap rule, earned nets; keep in sync), sends via Resend with the requester's reply-to, stamps, re-enqueues `repeat_weekly` chains. Recipients restricted to **dev/controller** (`recipient_user_id`, role-checked at dispatch AND at INSERT RLS — wage-derived job costs). A quiet week still sends.
 

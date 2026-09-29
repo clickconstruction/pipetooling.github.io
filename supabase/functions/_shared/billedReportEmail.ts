@@ -12,7 +12,7 @@
  * Email-safe markup: inline-styled <table>s, light colors only, no external
  * assets (matches paid-job-email/render.ts).
  *
- * Lifted here verbatim (punch list #60, lift 4 of 14) so Settings → What the team sees
+ * Lifted here verbatim in v2.4167 (punch list #60, lift 4 of 14) so Settings → What the team sees
  * renders the digest on sample data — the app origin for the deep links is an argument;
  * the function's render.ts binds it from its secret.
  */

@@ -9,7 +9,7 @@ import { fileURLToPath } from 'url'
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 import { parseHelpGuideFrontmatter } from './src/lib/helpGuides'
 import { PDFJS_ASSET_DIRS, PDFJS_ASSET_PREFIX, pdfjsAssetPath } from './src/lib/pdfjsAssets'
-import { HELP_SHARE_PATH_PREFIX, helpShareDescription, helpSharePageHtml } from './src/lib/helpShareCard'
+import { HELP_SHARE_PATH_PREFIX, helpShareCardPath, helpShareCardSvg, helpShareDescription, helpSharePageHtml } from './src/lib/helpShareCard'
 import { renderTodoBoardModule } from './scripts/todos/readTodos'
 
 const bundleAnalyze = process.env.ANALYZE === '1'
@@ -104,22 +104,54 @@ function todoBoardPlugin() {
 function helpSharePagesPlugin() {
   return {
     name: 'help-share-pages',
-    closeBundle() {
+    async closeBundle() {
       const guidesDir = join(process.cwd(), 'src', 'content', 'help')
       const outDir = join(process.cwd(), 'dist')
+      const guides = readdirSync(guidesDir)
+        .filter((file) => file.endsWith('.md'))
+        .map((file) => {
+          const slug = file.replace(/\.md$/, '')
+          const { fields, body } = parseHelpGuideFrontmatter(readFileSync(join(guidesDir, file), 'utf8'))
+          return { slug, title: (fields.title ?? '').trim(), category: (fields.category ?? '').trim(), body }
+        })
+        .filter((g) => g.title)
+      // The guide's own card (v2.4190): the SVG rasterised by Playwright's Chromium. No browser → the site card, and the build says so.
+      let shoot: ((svg: string, out: string) => Promise<void>) | null = null
+      let browser: { close: () => Promise<void> } | null = null
+      if (process.env.HELP_SHARE_CARDS !== '0') {
+        try {
+          const { chromium } = await import('playwright')
+          const b = await chromium.launch()
+          browser = b
+          const page = await b.newPage({ viewport: { width: 1200, height: 630 }, deviceScaleFactor: 1 })
+          shoot = async (svg, out) => {
+            await page.setContent(`<!doctype html><html><body style="margin:0;background:#0f172a">${svg}</body></html>`, { waitUntil: 'load' })
+            await page.screenshot({ path: out, clip: { x: 0, y: 0, width: 1200, height: 630 }, type: 'png' })
+          }
+        } catch (e) {
+          console.warn(`help-share-pages: no browser for the per-guide cards (${String(e).split('\n')[0]}) — pages carry the site card`)
+        }
+      }
       let count = 0
-      for (const file of readdirSync(guidesDir)) {
-        if (!file.endsWith('.md')) continue
-        const slug = file.replace(/\.md$/, '')
-        const { fields, body } = parseHelpGuideFrontmatter(readFileSync(join(guidesDir, file), 'utf8'))
-        const title = (fields.title ?? '').trim()
-        if (!title) continue
-        const dir = join(outDir, HELP_SHARE_PATH_PREFIX.replace(/^\/|\/$/g, ''), slug)
+      let cards = 0
+      for (const g of guides) {
+        const dir = join(outDir, HELP_SHARE_PATH_PREFIX.replace(/^\/|\/$/g, ''), g.slug)
         mkdirSync(dir, { recursive: true })
-        writeFileSync(join(dir, 'index.html'), helpSharePageHtml({ slug, title, description: helpShareDescription(body), origin: 'https://clicktooling.com' }))
+        let image: string | undefined
+        if (shoot) {
+          try {
+            await shoot(helpShareCardSvg({ title: g.title, category: g.category, slug: g.slug }), join(dir, 'card.png'))
+            image = helpShareCardPath(g.slug)
+            cards += 1
+          } catch (e) {
+            console.warn(`help-share-pages: card for ${g.slug} failed (${String(e).split('\n')[0]}) — site card`)
+          }
+        }
+        writeFileSync(join(dir, 'index.html'), helpSharePageHtml({ slug: g.slug, title: g.title, category: g.category, description: helpShareDescription(g.body), origin: 'https://clicktooling.com', image }))
         count += 1
       }
-      console.log(`help-share-pages: wrote ${count} share pages under dist${HELP_SHARE_PATH_PREFIX}`)
+      await browser?.close()
+      console.log(`help-share-pages: wrote ${count} share pages under dist${HELP_SHARE_PATH_PREFIX}${shoot ? ` with ${cards} cards` : ' (site card — no browser)'}`)
     },
   }
 }

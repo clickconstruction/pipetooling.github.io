@@ -999,9 +999,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   )
   const billedLienRunwayRenderer = useCallback(
     (row: StageRow) => {
-      // v2.4168: the bill's dates in one block under the money legend — the
-      // numbered track over the ledger: Billed · Expected / They said · Send the
-      // notice · Lien. The runway kernel still decides the deadlines; the ledger
+      // v2.4168 / v2.4193: the bill's dates in one block under the money
+      // legend, in the legend's own grammar — the time bar over the rows
+      // (Billed · Expected / They said · Send the notice · Lien) and the bold
+      // verdict. The runway kernel still decides the deadlines; the ledger
       // arranges them with the money.
       const inv = row.kind === 'job' ? null : row.inv
       const runway = lienRunwayFor(row.job, inv)
@@ -1024,6 +1025,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             row.job.customer_id ? billedPaySpeeds?.receipts[row.job.customer_id] : null,
             canMarkPromisedPay ? promiseRecordsByCustomer?.get(stageRowPayerCustomerId(row) ?? '') ?? null : null,
           )}
+          showBars={false}
         />
       ) : null
       return (

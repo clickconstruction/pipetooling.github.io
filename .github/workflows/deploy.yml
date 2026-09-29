@@ -81,6 +81,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # The build draws one 1200×630 share card per help guide (helpSharePagesPlugin, v2.4190) with Playwright's
+      # Chromium; without a browser the pages fall back to the site card, so this step is a nicety, not a gate.
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Install Chromium for the share cards
+        run: npx playwright install --with-deps chromium
+        continue-on-error: true
+
       - name: Check environment variables
         run: |
           if [ -z "${{ secrets.VITE_SUPABASE_URL }}" ]; then

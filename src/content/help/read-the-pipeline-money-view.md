@@ -16,16 +16,17 @@ The **Jobs → Pipeline** tab opens with the money story: four answer cards and 
 
 ## Does the money land before the lien dies?
 
-Every row in **Billed** and **Collections** ends with the bill's dates in one block under the money legend: a short track with numbered markers, and a ledger under it that names each number — oldest first, with a right-hand column that always says *how far from today*.
+Every row in **Billed** and **Collections** ends with the bill's dates in one block under the money legend, drawn the way the legend is: a bar, then rows with a dot, the words and *how far from today* on the right, then one bold line under a hairline.
 
-- **① Billed Sep 23 · 7 d ago** — the day the bill went out. Every clock below starts here, and the track does too: the grey run from ① to the small ▲ is the time used so far.
-- **② Expected Oct 4 · in 4 d** — when the money is expected: a date the customer named (*They said Oct 3*), else the bill date plus their usual pay speed. Amber and *1 d past* once it is behind. Click it to record what they said; the pay history (*pays in 2–8d · keeps 3 of 4*) sits under it.
-- **③ Send the notice by Oct 15 · 16 d** — on a sub job (a GC on the job) with no § 53.056 notice recorded for the work month: the one thing to do, in bold, red inside a week. Click it and the Lien window opens on the notice.
-- **④ Lien by Nov 16 · 48 d** — the last day a lien affidavit can be filed for the job's last work month. It turns bold — *File the lien by …* — when the money is expected after the window closes (a red run on the track) or the window is inside three weeks with no pay date.
-- **A green run** between ② and ④ is room: the money is due before the flag, and the line under the rows says how much — *72 d of room after they pay* — instead of asking for anything.
-- **Lien gone** (one red row, no marker) — the window closed with nothing filed, or the notice window did. The money is still owed.
+- **The time bar** is the money bar's twin. It runs from the day we billed to the last deadline, one stretch per gap between the dates, sized by days; the two dates stand at its ends with *77 days to the lien* between them. Grey fill is time used, and the stretch today falls in wears the blue outline.
+- **Billed Sep 23 · 7 d ago** — the day the bill went out. Every clock below starts here.
+- **Expected Oct 4 · in 4 d** — when the money is expected: a date the customer named (*They said Oct 3*), else the bill date plus their usual pay speed. Amber and *1 d past* once it is behind. Click it to record what they said; the pay history (*pays in 2–8d · keeps 3 of 4*) sits under it.
+- **Send the notice by Oct 15 · 16 d** — on a sub job (a GC on the job) with no § 53.056 notice recorded for the work month: amber, red inside a week, and its stretch of the bar is amber too. Click it and the Lien window opens on the notice.
+- **Lien by Nov 16 · 48 d** — the last day a lien affidavit can be filed for the job's last work month; a ring while it is still ahead. It reads *File the lien* when the window is inside three weeks with no pay date.
+- **The bold line** is the verdict. *Room after they pay · 72 d* in green when the money lands before the window closes — the stretch between the two is green on the bar. *File the lien first · 5 d short* in red when it lands after — a red hatch past the lien. *Send the notice · 16 d* while a notice is owed. *Ask for a date · 12 d past* when the expected date has gone by with nothing in — click it to record what they say.
+- **Lien gone** — the window closed with nothing filed, or the notice window did: the row says which and when, the bar is all grey, and the verdict is red. The money is still owed.
 
-*Lien by* is the last day the affidavit can be filed with the county clerk, not a day to send anything. Every deadline row opens the job's **Lien window** on its timeline, where the last work month, the property kind and the statute are spelled out; hover a row for the same in a line.
+*Lien by* is the last day the affidavit can be filed with the county clerk, not a day to send anything. Every deadline row and the verdict open the job's **Lien window** on its timeline, where the last work month, the property kind and the statute are spelled out; hover a row for the same in a line.
 
 :::example A house with no property kind set
 The lien row shows the **residential** date — a month earlier than commercial — and the hover says *Property kind is not set, so the earlier (residential) date is shown*. That is the safe reading: a house read as commercial is a lien lost a month late. Open the job's Edit tab → **Property record** and pick {{button:outline|Residential}} or {{button:outline|Non-residential}} to confirm it.
