@@ -216,6 +216,21 @@ Sometimes you email a Stripe invoice and the customer mails a check anyway. Thos
 
 Jobs that are billed but proving hard to collect can be flagged for **Collections** — they get their own section so the AR picture stays honest. The flag takes care of itself on the way out: the moment the job is paid in full — by Stripe, a bank-deposit allocation, or Mark Paid — it leaves Collections and lands in {{chip:green|Paid}} with the flag cleared, and the job's activity thread notes it was removed from Collections. Use **Send back to Billed** on a Collections row only when the job should return to plain Billed Awaiting Payment *before* it's paid.
 
+### The check didn't clear?
+
+A bill marked paid by check is closed in Stripe as paid *out of band* — Stripe holds no money, only the mark — so when the check fails at the bank the bill cannot simply be re-sent: Stripe never reopens a paid invoice and its pay link now reads Paid. The way back is to reverse the mark and bill again, and both doors do it in one press:
+
+- On the job's **③ Payments received**, the check payment wears {{button:outline|Check didn't clear…}}. It opens **Undo out-of-band payment** with the reason filled in and **Send the bill back to Ready to Bill** already ticked. Confirm, and ClickTooling issues a credit note in Stripe that reverses the mark, takes the payment off the job, removes the billed line and moves the job back to {{chip:blue|Ready to Bill}}.
+- If the payment was already removed, open **View Bill** on the Billed row: the footer reads {{button:outline|Check didn't clear · send back…}} and the confirm says what it will do — credit note, billed line removed, job back to Ready to Bill.
+
+Then press {{button:blue|Bill Customer}} as usual: a fresh Stripe invoice goes out with a new number and a new pay link. The old invoice stays in Stripe as paid and reversed, and the reversal is kept on the job's payment record with who did it and why.
+
+:::example the check could not be deposited
+Iannotti PRV: a $600 Stripe bill was marked paid by check on Sep 24; the mobile deposit failed the next morning. View Bill → *Check didn't clear · send back…* → Send back puts the job at Ready to Bill; Bill Customer sends a new $600 bill and the customer pays online.
+:::
+
+A bill the customer paid by **card or bank transfer** through Stripe is different: that money is real, and the send-back says to refund it in the Stripe Dashboard first.
+
 ## The "paid in full" email
 
 The moment a job lands in {{chip:green|Paid}}, the app can email the good news automatically. Devs and leaders on the list get the **detailed review** — a {{chip:green|PAID IN FULL}} banner, job start and last-work dates, then the full scoreboard: revenue, every payment with its date, team labor person by person (hours × wage), sub labor, parts, and the profit line, plus a month-by-month timeline. Everyone else on the list gets the **summary** — same banner and dates, the payment amount and time but no cost or profit figures anywhere.

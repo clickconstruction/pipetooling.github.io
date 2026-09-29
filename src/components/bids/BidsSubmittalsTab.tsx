@@ -17,11 +17,16 @@
  * the people on it, the trail, and Close; 4a-ii reads their decisions back
  * onto the rows and builds the next revision from the rows sent back.
  */
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { SpotlightTour } from '../SpotlightTour'
 import { SubmittalJourneyStrip } from './SubmittalJourneyStrip'
-import { submittalJourney, type JourneyAction, type JourneyStage } from '../../lib/submittals/submittalJourney'
-import { SUBMITTAL_GUIDE_HREF, SUBMITTAL_TOUR_STEPS, hasSeenSubmittalWalkthrough, markSubmittalWalkthroughSeen } from '../../lib/submittals/submittalTour'
+import { SubmittalProcurementPanel } from './SubmittalProcurementPanel'
+import { PlugInScheduleModal } from './PlugInScheduleModal'
+import { formatErrorMessage } from '../../utils/errorHandling'
+import { procurementItemsFrom } from '../../lib/submittals/procurementLogIo'
+import type { ProcurementItemSource } from '../../lib/submittals/procurementLog'
+import { submittalJourney, type JourneyAction, type JourneyStage, type JourneyStageKey } from '../../lib/submittals/submittalJourney'
+import { SUBMITTAL_GUIDE_HREF, SUBMITTAL_TOUR_STEPS, hasOpenEveryStage, hasSeenSubmittalWalkthrough, markSubmittalWalkthroughSeen, rememberOpenEveryStage } from '../../lib/submittals/submittalTour'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 import { supabase } from '../../lib/supabase'
@@ -94,14 +99,41 @@ const th: CSSProperties = { textAlign: 'left', fontSize: '0.68rem', letterSpacin
 const td: CSSProperties = { padding: '0.5rem 0.5rem', borderBottom: '1px solid var(--bg-muted)', verticalAlign: 'top', fontSize: '0.8125rem', color: 'var(--text-base)' }
 const sub: CSSProperties = { display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)' }
 
-function Tile({ label, value, note, tone }: { label: string; value: string; note?: string; tone?: 'green' | 'amber' | 'red' }) {
-  const bg = tone === 'green' ? 'var(--bg-green-tint)' : tone === 'amber' ? 'var(--bg-yellow-tint)' : tone === 'red' ? 'var(--bg-red-tint)' : 'var(--surface)'
+type RoadStatus = 'done' | 'current' | 'waiting' | 'later'
+
+/**
+ * One stage of the road (v2.4090): the numbered dot on the rail, the title, a one-line
+ * summary, and the body. A done stage folds to its summary line (click the title to
+ * open it); the current stage is ringed; a later stage is dashed so a first-timer sees
+ * the whole road. `anchor` is the `data-tour` the strip's pills and the walkthrough jump to.
+ */
+function RoadSection({ n, title, status, open, onToggle, anchor, summary, last = false, children }: { n: number; title: ReactNode; status: RoadStatus; open: boolean; onToggle: () => void; anchor: string; summary?: ReactNode; last?: boolean; children?: ReactNode }) {
+  const dot: CSSProperties = {
+    width: 30, height: 30, borderRadius: '50%', display: 'grid', placeItems: 'center', fontWeight: 700, fontSize: '0.8125rem', flexShrink: 0,
+    border: `2px solid ${status === 'done' ? '#16a34a' : status === 'current' ? '#2563eb' : status === 'waiting' ? '#d97706' : 'var(--border-strong)'}`,
+    background: status === 'current' ? '#2563eb' : 'var(--surface)',
+    color: status === 'done' ? 'var(--text-green-700)' : status === 'current' ? 'white' : status === 'waiting' ? 'var(--text-amber-700)' : 'var(--text-muted)',
+  }
   return (
-    <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.7rem', background: bg, minWidth: 0 }}>
-      <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{label}</div>
-      <div style={{ fontSize: '1.15rem', fontWeight: 700, lineHeight: 1.2, color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{value}</div>
-      {note ? <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{note}</div> : null}
-    </div>
+    <>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }} aria-hidden>
+        <div style={dot}>{status === 'done' ? '✓' : n}</div>
+        {!last ? <div style={{ flex: 1, width: 2, minHeight: 14, background: status === 'done' ? '#16a34a' : 'var(--border)' }} /> : null}
+      </div>
+      <section data-tour={anchor} data-testid={`road-${n}`} data-status={status} data-open={open} style={{ padding: '0.15rem 0 1rem', minWidth: 0 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
+          <button type="button" onClick={onToggle} aria-expanded={open} style={{ ...btnQuiet, fontSize: '0.95rem', fontWeight: 700, color: status === 'later' ? 'var(--text-muted)' : 'var(--text-strong)', textAlign: 'left' }}>
+            {n} · {title} <span style={{ fontWeight: 400, fontSize: '0.75rem', color: 'var(--text-faint)' }}>{open ? '▴' : '▾'}</span>
+          </button>
+          {summary ? <span style={{ fontSize: '0.8125rem', color: status === 'done' ? 'var(--text-green-700)' : status === 'waiting' ? 'var(--text-amber-700)' : 'var(--text-muted)', minWidth: 0 }}>{summary}</span> : null}
+        </div>
+        {open ? (
+          <div style={{ marginTop: '0.5rem', border: `1px ${status === 'later' ? 'dashed' : 'solid'} ${status === 'current' ? '#2563eb' : 'var(--border)'}`, boxShadow: status === 'current' ? '0 0 0 3px var(--bg-blue-tint)' : undefined, borderRadius: 8, padding: '0.6rem 0.75rem', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {children}
+          </div>
+        ) : null}
+      </section>
+    </>
   )
 }
 
@@ -133,6 +165,15 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   const [revisions, setRevisions] = useState<SubmittalRevisionRow[]>([])
   const [selectedRevId, setSelectedRevId] = useState<string | null>(null)
   const [items, setItems] = useState<SubmittalItemRow[]>([])
+  // The road (v2.4090): "Open every stage" (remembered per device) and the per-section toggles.
+  const [openAllStages, setOpenAllStages] = useState<boolean>(() => hasOpenEveryStage())
+  // By hand (v2.4090): the schedule typed or pasted here, no robot and no trip to Pricing.
+  const [plugInOpen, setPlugInOpen] = useState(false)
+  const [sectionToggles, setSectionToggles] = useState<Partial<Record<JourneyStageKey, boolean>>>({})
+  // Procure (v2.4083): the newest revision's rows as the log reads them, and the counts the strip's pill lights on.
+  const [procItems, setProcItems] = useState<ProcurementItemSource[]>([])
+  const [procCounts, setProcCounts] = useState<{ released: number; ordered: number; delivered: number; late: number } | null>(null)
+  const [companyName, setCompanyName] = useState('Click Plumbing and Electrical')
   const [prevItems, setPrevItems] = useState<SubmittalItemRow[]>([])
   const [editing, setEditing] = useState<SubmittalItemRow | null>(null)
   const fileInput = useRef<HTMLInputElement | null>(null)
@@ -313,6 +354,23 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   const reviewerFiles: ReviewerFile[] = useMemo(() => parseReviewerFiles((selectedRev as { reviewer_files?: unknown } | null)?.reviewer_files ?? null), [selectedRev])
   const tiles = useMemo(() => revisionTiles(items), [items])
   const decisions = useMemo(() => summarizeDecisions(items), [items])
+  useEffect(() => {
+    let cancelled = false
+    if (!selectedRev || newestRev?.id !== selectedRev.id) {
+      setProcItems([])
+      setProcCounts(null)
+      return
+    }
+    void procurementItemsFrom(supabase, items, selectedRev.status !== 'draft').then((rows) => {
+      if (!cancelled) setProcItems(rows)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [items, selectedRev, newestRev])
+  useEffect(() => {
+    void fetchTestReportSettings().then((st) => setCompanyName(st.companyName)).catch(() => undefined)
+  }, [])
   const prevById = useMemo(() => new Map(prevItems.map((p) => [p.id, p])), [prevItems])
   const overridesByTag = useMemo(() => {
     const out: Record<string, StatusOverride> = {}
@@ -951,6 +1009,21 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     setItems(await loadItems(selectedRev.id))
   }
 
+  /** By hand (v2.4090): an empty row on the draft, then the editor for its tag, product and lead time. */
+  async function addRowByHand() {
+    if (!selectedRev || !isDraft) return
+    const maxSeq = items.reduce((m, it) => Math.max(m, it.sequence_order), 0)
+    const { data, error } = await db.from('bid_submittal_items').insert({ submittal_id: selectedRev.id, tag: '', sequence_order: maxSeq + 1, status: 'missing', sheet_pages: [] }).select('*').single()
+    if (error) {
+      showToast(formatErrorMessage(error, 'Could not add the row'), 'error')
+      return
+    }
+    const rows = await loadItems(selectedRev.id)
+    setItems(rows)
+    const added = rows.find((it) => it.id === (data as { id: string }).id) ?? null
+    if (added) setEditing(added)
+  }
+
   async function saveItem(patch: SubmittalItemPatch) {
     if (!editing || !selectedRev || !bidId) return
     const { entered, clearDecision, ...rowPatch } = patch
@@ -1024,12 +1097,14 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
           : null,
         room: room ? { status: room.status, opens: events.filter((e) => e.event_type === 'view').length, identified: people.map((p) => p.name).filter((n): n is string => !!n) } : null,
         decisions: selectedRev ? decisions : null,
+        procurement: procCounts,
       }),
-    [specified.length, picks.length, selectedRev, newestRev, items.length, tiles, room, events, people, decisions],
+    [specified.length, picks.length, selectedRev, newestRev, items.length, tiles, room, events, people, decisions, procCounts],
   )
   function runJourneyAction(action: JourneyAction) {
     if (!selectedBid) return
     if (action === 'open_pricing') onOpenPricing?.(selectedBid)
+    else if (action === 'plug_in_schedule') setPlugInOpen(true)
     else if (action === 'ask_robot_schedule') void askRobot('read_schedule', {}, null)
     else if (action === 'build_rev1') void createFirstRevision()
     else if (action === 'drop_vendor_pdf') fileInput.current?.click()
@@ -1070,6 +1145,26 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
 
   const bid = selectedBid
   const isDraft = selectedRev ? asRevisionStatus(selectedRev.status) === 'draft' : false
+
+  // The road (v2.4090): a done stage folds to its line; the current stage and the stage it reads from stay open;
+  // "Open every stage" (remembered per device) and the walkthrough open everything.
+  const stageStatus = (key: JourneyStageKey): RoadStatus => journey.stages.find((st) => st.key === key)?.status ?? 'later'
+  const currentStageKey = journey.stages.find((st) => (st.status === 'current' || st.status === 'waiting') && st.key !== 'procure')?.key ?? null
+  // What each stage reads from stays open beside it: the package reads the rows; their call and the resubmit land on the rows.
+  const readsFrom: Partial<Record<JourneyStageKey, JourneyStageKey[]>> = { package: ['rows'], share: ['package'], review: ['rows'], resubmit: ['rows', 'review'] }
+  const scheduleReadLive = liveTask(tasks, 'read_schedule') != null
+  function sectionOpen(key: JourneyStageKey): boolean {
+    const toggled = sectionToggles[key]
+    if (toggled != null) return toggled
+    if (openAllStages || tourOpen) return true
+    if (key === 'picks' && scheduleReadLive) return true
+    if (stageStatus(key) !== 'done') return true
+    return currentStageKey != null && (readsFrom[currentStageKey] ?? []).includes(key)
+  }
+  function toggleSection(key: JourneyStageKey) {
+    const open = sectionOpen(key)
+    setSectionToggles((m) => ({ ...m, [key]: !open }))
+  }
   const isNewest = selectedRev != null && newestRev != null && selectedRev.id === newestRev.id
 
   return (
@@ -1100,6 +1195,14 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
               </>
             ) : null}
           </p>
+          {selectedRev ? (
+            <p style={{ margin: '0.2rem 0 0', ...smallMuted }} data-testid="revision-line">
+              Working on <b style={{ color: 'var(--text-strong)' }}>{describeRevisionChip(selectedRev)}</b> · {describeRevision(tiles)}
+              {previousRev && isNewest && isDraft ? ` · started from Rev ${previousRev.rev_number}` : ''}
+              {selectedRev.package_path ? <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}> · package built</span> : null}
+              {!isNewest ? <span style={{ color: 'var(--text-amber-700)', fontWeight: 600 }}> · an older revision, the record; the newest is where the work is</span> : null}
+            </p>
+          ) : null}
         </div>
         {!narrowViewport640 ? (
           <button type="button" onClick={onClose} title="Close" aria-label="Close" style={bidDetailCloseXStyle}>
@@ -1126,449 +1229,522 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       ) : null}
       {tourOpen ? <SpotlightTour steps={SUBMITTAL_TOUR_STEPS} onClose={() => setTourOpen(false)} guideHref={SUBMITTAL_GUIDE_HREF} guideLabel="Read the full guide: build a submittal package →" /> : null}
 
-      {!loading ? (() => {
-        // 6b · the schedule read: ask, wait, confirm
-        const t = liveTask(tasks, 'read_schedule')
-        const st = t ? taskStatus(t) : null
-        const conf = t ? scheduleToConfirm(t) : null
-        if (!t && specified.length > 0) return null
-        return (
-          <div style={{ border: '1px dashed var(--border-strong)', borderRadius: 8, background: 'var(--surface)', padding: '0.6rem 0.9rem', display: 'flex', flexDirection: 'column', gap: '0.45rem', maxWidth: 760 }} data-testid="robot-schedule" data-tour="submittals-robot">
-            {!t ? (
-              <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                <button type="button" disabled={busy} onClick={() => void askRobot('read_schedule', {}, null)} style={{ ...btn, borderStyle: 'dashed', color: 'var(--text-muted)' }} title="The robot reads the fixture schedule off the plans; you confirm each tag before it counts">
-                  Ask the robot to read the schedule
-                </button>
-                <span style={smallMuted}>No schedule on this bid yet — the robot reads it off the plans and you confirm; or plug it in by hand on Pricing.</span>
-              </div>
-            ) : (
-              <>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: '0.8125rem', color: 'var(--text-strong)', fontStyle: 'italic' }} data-testid="robot-line">{describeTask(t)}</span>
-                  {st === 'blocked' || st === 'queued' ? (
-                    <button type="button" disabled={busy} onClick={() => void markTask(t.id, 'cancelled').then(() => loadTasks(bidId as string))} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{st === 'blocked' ? 'Dismiss' : 'Cancel'}</button>
-                  ) : null}
-                </div>
-                {conf ? (
-                  <>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0.2rem 0.6rem', fontSize: '0.8125rem', alignItems: 'baseline' }}>
-                      {conf.sure.map((r) => (
-                        <Fragment key={r.tag}><span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>{r.tag} ✓</span><span>{[r.manufacturer, r.model].filter(Boolean).join(' ') || r.description || r.fixture || '—'}{r.fixture ? <span style={smallMuted}> · {r.fixture}</span> : null}</span></Fragment>
-                      ))}
-                      {conf.look.map((r) => (
-                        <Fragment key={r.tag}>
-                          <label style={{ color: 'var(--text-amber-700)', fontWeight: 600, display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
-                            <input type="checkbox" aria-label={`Keep ${r.tag}`} checked={!!lookChecked[r.tag]} onChange={(e) => setLookChecked((m) => ({ ...m, [r.tag]: e.target.checked }))} /> {r.tag} ?
-                          </label>
-                          <span>{[r.manufacturer, r.model].filter(Boolean).join(' ') || r.description || r.fixture || '—'}{r.fixture ? <span style={smallMuted}> · {r.fixture}</span> : null}<span style={smallMuted}> · want a look</span></span>
-                        </Fragment>
-                      ))}
-                    </div>
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                      <button type="button" disabled={busy} onClick={() => void confirmSchedule(t, [...conf.sure.map((r) => r.tag), ...conf.look.filter((r) => lookChecked[r.tag]).map((r) => r.tag)])} style={btnGreen} data-testid="confirm-schedule">
-                        {confirmLabel(conf.sure.length + conf.look.filter((r) => lookChecked[r.tag]).length, conf.look.filter((r) => !lookChecked[r.tag]).length, 'leave') || 'Confirm'}
-                      </button>
-                      <button type="button" disabled={busy} onClick={() => void confirmSchedule(t, [])} style={{ ...btn, color: 'var(--text-muted)' }}>Discard the robot's rows</button>
-                      <span style={smallMuted}>Confirmed tags join the schedule on Pricing; the rest are dropped.</span>
-                    </div>
-                  </>
-                ) : null}
-              </>
-            )}
-          </div>
-        )
-      })() : null}
+      {/* The hidden file inputs live here so every section's button can reach them, folded or not. */}
+      <input ref={fileInput} type="file" accept="application/pdf,.pdf" aria-label="Vendor PDF" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void dropVendorPdf(f) }} />
+      <input ref={reviewerInput} type="file" accept="application/pdf,.pdf,.eml,.msg,.txt,.html,message/rfc822" aria-label="Reviewer's file" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void dropReviewerFile(f) }} />
 
-      {!loading && revisions.length === 0 ? (
-        <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '1rem 1.1rem', display: 'flex', flexDirection: 'column', gap: '0.6rem', maxWidth: 640 }} data-tour="submittals-build">
-          <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-strong)' }}>No submittal on this bid yet</h3>
-          <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-base)', lineHeight: 1.45 }}>
-            Rev 1 is built from what Pricing already knows: one row per tag on the fixture schedule, the product from the house you picked, the status against the schedule, and the reason and lead time you gave at the pick. Picks that match no tag become accessory rows.
-          </p>
-          {specified.length === 0 ? <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-amber-700)' }}>No fixture schedule on this bid — plug it in on Pricing first, or Rev 1 will be accessories only.</p> : null}
-          {picks.length === 0 ? <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-amber-700)' }}>No picked quote lines — every tag will read missing until a house is picked on the compare.</p> : null}
-          <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center', flexWrap: 'wrap' }}>
-            <button type="button" disabled={busy || (specified.length === 0 && picks.length === 0)} onClick={() => void createFirstRevision()} style={{ ...btnPrimary, opacity: busy || (specified.length === 0 && picks.length === 0) ? 0.6 : 1 }}>
-              Build Rev 1 from the picks
-            </button>
-            {notNeededAt ? (
-              <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }} data-testid="submittals-not-needed">
-                Not needed on this job · {new Date(notNeededAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: ROOM_TZ })} ·{' '}
-                <button type="button" disabled={busy} onClick={() => void toggleNotNeeded(false)} style={{ ...btnQuiet, textDecoration: 'underline dotted' }}>undo</button>
-              </span>
-            ) : (
-              <button type="button" disabled={busy} onClick={() => void toggleNotNeeded(true)} style={{ ...btnQuiet, textDecoration: 'underline dotted' }} title="No submittal card for this job on the Dashboard; the won question stays quiet">
-                Not needed on this job
-              </button>
-            )}
-          </div>
-        </div>
+      {!loading ? (
+        <label style={{ ...smallMuted, display: 'inline-flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', alignSelf: 'flex-end' }}>
+          <input type="checkbox" checked={openAllStages} onChange={(e) => { setOpenAllStages(e.target.checked); setSectionToggles({}); rememberOpenEveryStage(e.target.checked) }} /> Open every stage
+        </label>
       ) : null}
-
-      {selectedRev ? (
-        <>
-          {room ? (
-            <div style={{ border: '1px solid var(--border-blue)', background: room.status === 'closed' ? 'var(--bg-muted)' : 'var(--bg-blue-tint)', borderRadius: 8, padding: '0.55rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }} data-testid="room-line" data-tour="submittals-room">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>{describeRoomLine(room, events.filter((e) => e.event_type === 'view').length, ROOM_TZ)}</span>
-                <div style={{ display: 'flex', gap: '0.4rem' }}>
-                  {room.status === 'open' ? (
-                    <>
-                      <button type="button" onClick={() => void navigator.clipboard.writeText(roomLink(window.location.origin, room.token)).then(() => showToast('Link copied.', 'success'), () => showToast(roomLink(window.location.origin, room.token), 'info'))} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem' }}>
-                        Copy link
-                      </button>
-                      <button type="button" onClick={() => void closeRoom()} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        Close the room
-                      </button>
-                    </>
-                  ) : (
-                    <button type="button" onClick={() => void reopenRoom()} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem' }}>
-                      Reopen
-                    </button>
-                  )}
-                </div>
-              </div>
-              {people.filter((p) => !p.closed_at).length > 0 || anonymousOpens(events) > 0 ? (
-                <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto auto', gap: '0.3rem 0.75rem', alignItems: 'center', fontSize: '0.78rem' }} data-testid="room-people">
-                  {people.filter((p) => !p.closed_at).map((p) => {
-                    const t = personTrail(p.id, events, items.filter((it) => it.reviewed_by_person_id === p.id).length)
-                    return (
-                      <div key={p.id} style={{ display: 'contents' }}>
-                        <span><b style={{ color: 'var(--text-strong)' }}>{p.name}</b> <span style={smallMuted}>· {ROOM_ROLE_LABELS[asRoomRole(p.role)]}</span></span>
-                        <span style={smallMuted}>{describeHow(asPersonHow(p.how))} · {describeTrail(t, ROOM_TZ)}</span>
-                        <span style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden', fontSize: '0.7rem' }} role="group" aria-label={`${p.name} may`}>
-                          <button type="button" aria-pressed={p.may_decide} onClick={() => void setMayDecide(p.id, true)} style={{ padding: '0.15rem 0.5rem', border: 'none', cursor: 'pointer', font: 'inherit', background: p.may_decide ? '#16a34a' : 'var(--surface)', color: p.may_decide ? 'white' : 'var(--text-muted)', fontWeight: p.may_decide ? 700 : 500 }}>deciding</button>
-                          <button type="button" aria-pressed={!p.may_decide} onClick={() => void setMayDecide(p.id, false)} style={{ padding: '0.15rem 0.5rem', border: 'none', cursor: 'pointer', font: 'inherit', background: !p.may_decide ? 'var(--text-strong)' : 'var(--surface)', color: !p.may_decide ? 'white' : 'var(--text-muted)', fontWeight: !p.may_decide ? 700 : 500 }}>watching</button>
-                        </span>
-                        <span style={{ display: 'flex', gap: '0.3rem' }}>
-                          {p.token ? (
-                            <button type="button" onClick={() => void navigator.clipboard.writeText(roomLink(window.location.origin, p.token as string)).then(() => showToast('Personal link copied.', 'success'), () => showToast(roomLink(window.location.origin, p.token as string), 'info'))} style={{ ...btn, padding: '0.1rem 0.45rem', fontSize: '0.7rem' }}>
-                              Personal link
-                            </button>
-                          ) : null}
-                          <button type="button" aria-label={`Close ${p.name}'s link`} onClick={() => void closePerson(p.id)} style={{ ...btn, padding: '0.1rem 0.45rem', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                            ×
-                          </button>
-                        </span>
-                      </div>
-                    )
-                  })}
-                  {anonymousOpens(events) > 0 ? (
-                    <div style={{ display: 'contents' }}>
-                      <span style={smallMuted}>+ {anonymousOpens(events)} open{anonymousOpens(events) === 1 ? '' : 's'}</span>
-                      <span style={smallMuted}>by people who did not say who they were</span>
-                      <span />
-                      <span />
-                    </div>
-                  ) : null}
+      {!loading ? (
+        <div className="submittal-road" data-testid="submittal-road" style={{ display: 'grid', gridTemplateColumns: '34px 1fr', columnGap: '0.6rem' }}>
+          {/* 1 · Schedule & picks — the source line is in the header; the robot's offer lives here while there is no schedule. */}
+          <RoadSection n={1} title="Schedule & picks" status={stageStatus('picks')} open={sectionOpen('picks')} onToggle={() => toggleSection('picks')} anchor="submittals-schedule"
+            summary={<>{specified.length} tag{specified.length === 1 ? '' : 's'} · {picks.length} picked line{picks.length === 1 ? '' : 's'}{onOpenPricing ? <> · <button type="button" onClick={() => onOpenPricing(bid)} style={{ ...btnQuiet, textDecoration: 'underline', fontSize: 'inherit' }}>{specified.length === 0 ? 'plug in the fixture schedule on Pricing' : 'the picks on Pricing'}</button></> : null}</>}>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <button type="button" disabled={busy} onClick={() => setPlugInOpen(true)} style={specified.length === 0 ? btnPrimary : btn} title="Type or paste the plans' fixture schedule — one tag per line; no robot, no trip to Pricing" data-testid="plug-in-schedule" data-tour="submittals-plug-in">
+                {specified.length === 0 ? 'Type or paste the schedule' : 'Add to the schedule'}
+              </button>
+              <span style={smallMuted}>{specified.length === 0 ? 'The tags off the plans’ fixture schedule, one per line. The robot can read it for you instead — below.' : 'Picks come from the Pricing compare; a row with no pick takes its product typed with Edit.'}</span>
+            </div>
+        {!loading ? (() => {
+          // 6b · the schedule read: ask, wait, confirm
+          const t = liveTask(tasks, 'read_schedule')
+          const st = t ? taskStatus(t) : null
+          const conf = t ? scheduleToConfirm(t) : null
+          if (!t && specified.length > 0) return null
+          return (
+            <div style={{ border: '1px dashed var(--border-strong)', borderRadius: 8, background: 'var(--surface)', padding: '0.6rem 0.9rem', display: 'flex', flexDirection: 'column', gap: '0.45rem', maxWidth: 760 }} data-testid="robot-schedule" data-tour="submittals-robot">
+              {!t ? (
+                <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <button type="button" disabled={busy} onClick={() => void askRobot('read_schedule', {}, null)} style={{ ...btn, borderStyle: 'dashed', color: 'var(--text-muted)' }} title="The robot reads the fixture schedule off the plans; you confirm each tag before it counts">
+                    Ask the robot to read the schedule
+                  </button>
+                  <span style={smallMuted}>No schedule on this bid yet — the robot reads it off the plans and you confirm; or plug it in by hand on Pricing.</span>
                 </div>
               ) : (
-                <span style={smallMuted}>Nobody has identified themselves yet. Anyone with the link can read; deciding or asking asks who they are.</span>
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '0.8125rem', color: 'var(--text-strong)', fontStyle: 'italic' }} data-testid="robot-line">{describeTask(t)}</span>
+                    {st === 'blocked' || st === 'queued' ? (
+                      <button type="button" disabled={busy} onClick={() => void markTask(t.id, 'cancelled').then(() => loadTasks(bidId as string))} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{st === 'blocked' ? 'Dismiss' : 'Cancel'}</button>
+                    ) : null}
+                  </div>
+                  {conf ? (
+                    <>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0.2rem 0.6rem', fontSize: '0.8125rem', alignItems: 'baseline' }}>
+                        {conf.sure.map((r) => (
+                          <Fragment key={r.tag}><span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>{r.tag} ✓</span><span>{[r.manufacturer, r.model].filter(Boolean).join(' ') || r.description || r.fixture || '—'}{r.fixture ? <span style={smallMuted}> · {r.fixture}</span> : null}</span></Fragment>
+                        ))}
+                        {conf.look.map((r) => (
+                          <Fragment key={r.tag}>
+                            <label style={{ color: 'var(--text-amber-700)', fontWeight: 600, display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
+                              <input type="checkbox" aria-label={`Keep ${r.tag}`} checked={!!lookChecked[r.tag]} onChange={(e) => setLookChecked((m) => ({ ...m, [r.tag]: e.target.checked }))} /> {r.tag} ?
+                            </label>
+                            <span>{[r.manufacturer, r.model].filter(Boolean).join(' ') || r.description || r.fixture || '—'}{r.fixture ? <span style={smallMuted}> · {r.fixture}</span> : null}<span style={smallMuted}> · want a look</span></span>
+                          </Fragment>
+                        ))}
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <button type="button" disabled={busy} onClick={() => void confirmSchedule(t, [...conf.sure.map((r) => r.tag), ...conf.look.filter((r) => lookChecked[r.tag]).map((r) => r.tag)])} style={btnGreen} data-testid="confirm-schedule">
+                          {confirmLabel(conf.sure.length + conf.look.filter((r) => lookChecked[r.tag]).length, conf.look.filter((r) => !lookChecked[r.tag]).length, 'leave') || 'Confirm'}
+                        </button>
+                        <button type="button" disabled={busy} onClick={() => void confirmSchedule(t, [])} style={{ ...btn, color: 'var(--text-muted)' }}>Discard the robot's rows</button>
+                        <span style={smallMuted}>Confirmed tags join the schedule on Pricing; the rest are dropped.</span>
+                      </div>
+                    </>
+                  ) : null}
+                </>
               )}
             </div>
-          ) : null}
-          {room ? (
-            <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '0.5rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }} data-testid="room-thread-panel">
-              <button type="button" aria-expanded={threadOpen} onClick={() => setThreadOpen((o) => !o)} style={{ ...btnQuiet, display: 'flex', justifyContent: 'space-between', width: '100%', textAlign: 'left', padding: 0 }}>
-                <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>Thread</span>
-                <span style={smallMuted}>{summarizeThread(messages, ROOM_TZ)} {threadOpen ? '▴' : '▾'}</span>
-              </button>
-              {threadOpen ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }} data-testid="room-thread-entries">
-                  {messages.length === 0 ? <span style={smallMuted}>Nothing asked yet. Questions from the room land here and on the inbox.</span> : null}
-                  {messages.map((m) => {
-                    const d = describeThreadEntry(m, ROOM_TZ)
-                    const askable = m.authorKind === 'reviewer' || m.authorKind === 'watcher'
+          )
+        })() : null}
+          </RoadSection>
+
+          {/* 2 · Build Rev 1 / the revision */}
+          <RoadSection n={2} title={revisions.length === 0 ? 'Build Rev 1' : `Rev ${selectedRev?.rev_number ?? newestRev?.rev_number ?? 1}`} status={stageStatus('build')} open={sectionOpen('build')} onToggle={() => toggleSection('build')} anchor="submittals-build"
+            summary={selectedRev ? (
+              <span style={{ display: 'inline-flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }} data-tour="submittals-revisions">
+                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }} data-testid="revision-strip" data-tour="submittals-revisions">
+                  {revisions.map((r) => {
+                    const on = r.id === selectedRev.id
                     return (
-                      <div key={m.id} data-thread-kind={m.kind} style={{ fontSize: '0.8125rem', borderLeft: `3px solid ${m.authorKind === 'office' ? '#b0662f' : d.quiet ? 'var(--border)' : 'var(--border-strong)'}`, paddingLeft: 8, color: d.quiet ? 'var(--text-muted)' : 'var(--text-strong)' }}>
-                        <div style={{ ...smallMuted, display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                          <span>{d.who ? <b>{d.who}</b> : null}{d.who && d.when ? ' · ' : ''}{d.when}{m.tags.length ? ` · ${m.tags.join(', ')}` : ''}{m.revNumber ? ` · Rev ${m.revNumber}` : ''}</span>
-                          {askable && room.status === 'open' ? (
-                            <button type="button" onClick={() => { setReplyTo(m.id); setReplyBody('') }} style={{ ...btnQuiet, padding: 0, fontSize: '0.72rem', textDecoration: 'underline dotted' }}>
-                              Reply
-                            </button>
-                          ) : null}
-                        </div>
-                        <div style={{ whiteSpace: 'pre-wrap', fontStyle: d.quiet ? 'italic' : 'normal' }}>{m.body}</div>
-                        {replyTo === m.id ? (
-                          <div style={{ marginTop: '0.35rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }} data-testid="room-thread-reply">
-                            <textarea aria-label="Your answer" value={replyBody} onChange={(e) => setReplyBody(e.target.value)} rows={3} placeholder="The answer — the room shows it as the company; they get it by email with their own link" style={{ padding: '0.45rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 6, font: 'inherit', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-strong)', resize: 'vertical' }} />
-                            <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
-                              <button type="button" style={btn} disabled={replying} onClick={() => { setReplyTo(null); setReplyBody('') }}>Cancel</button>
-                              <button type="button" style={{ ...btn, background: '#b0662f', color: 'white', borderColor: 'transparent' }} disabled={replying || !replyBody.trim()} onClick={() => void sendReply()}>
-                                {replying ? 'Sending…' : 'Send the answer'}
+                      <button key={r.id} type="button" data-testid="revision-chip" aria-pressed={on} onClick={() => setSelectedRevId(r.id)} style={{ ...btn, padding: '0.25rem 0.65rem', borderRadius: 999, fontSize: '0.75rem', background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', borderColor: on ? '#2563eb' : 'var(--border-strong)', color: on ? 'var(--text-blue-700)' : 'var(--text-muted)', fontWeight: on ? 700 : 500 }}>
+                        {describeRevisionChip(r)}
+                      </button>
+                    )
+                  })}
+                </div>
+              </span>
+            ) : 'not built yet'}>
+        {!loading && revisions.length === 0 ? (
+          <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '1rem 1.1rem', display: 'flex', flexDirection: 'column', gap: '0.6rem', maxWidth: 640 }}>
+            <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-strong)' }}>No submittal on this bid yet</h3>
+            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-base)', lineHeight: 1.45 }}>
+              Rev 1 is built from what Pricing already knows: one row per tag on the fixture schedule, the product from the house you picked, the status against the schedule, and the reason and lead time you gave at the pick. Picks that match no tag become accessory rows.
+            </p>
+            {specified.length === 0 ? <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-amber-700)' }}>No fixture schedule on this bid — plug it in on Pricing first, or Rev 1 will be accessories only.</p> : null}
+            {picks.length === 0 ? <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-amber-700)' }}>No picked quote lines — every tag starts as missing. Pick a house on the compare, or type each row's product with Edit after Rev 1 is built.</p> : null}
+            <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <button type="button" disabled={busy || (specified.length === 0 && picks.length === 0)} onClick={() => void createFirstRevision()} style={{ ...btnPrimary, opacity: busy || (specified.length === 0 && picks.length === 0) ? 0.6 : 1 }}>
+                Build Rev 1 from the picks
+              </button>
+              {notNeededAt ? (
+                <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }} data-testid="submittals-not-needed">
+                  Not needed on this job · {new Date(notNeededAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: ROOM_TZ })} ·{' '}
+                  <button type="button" disabled={busy} onClick={() => void toggleNotNeeded(false)} style={{ ...btnQuiet, textDecoration: 'underline dotted' }}>undo</button>
+                </span>
+              ) : (
+                <button type="button" disabled={busy} onClick={() => void toggleNotNeeded(true)} style={{ ...btnQuiet, textDecoration: 'underline dotted' }} title="No submittal card for this job on the Dashboard; the won question stays quiet">
+                  Not needed on this job
+                </button>
+              )}
+            </div>
+          </div>
+        ) : null}
+
+            {selectedRev ? (
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                {isDraft ? (
+                  <button type="button" disabled={busy} onClick={() => void rebuildRows()} style={btn} title="Rebuild every row from today's picks; edits carry where the product is unchanged">
+                    Rebuild rows from picks
+                  </button>
+                ) : null}
+                <span style={smallMuted}>{selectedRev.note ? selectedRev.note : isDraft ? 'A draft until you share it; each shared revision stays as the record.' : 'Shared; a new revision is the way to change it.'}</span>
+                {isDraft && isNewest ? (
+                  <button type="button" disabled={busy} onClick={() => void deleteDraft()} style={{ ...btnQuiet, color: 'var(--text-red-700)', textDecoration: 'underline dotted', marginLeft: 'auto' }}>
+                    Delete draft
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+          </RoadSection>
+
+          {selectedRev ? (
+            <>
+              {/* 3 · Reasons & cut sheets — the rows are the work */}
+              <RoadSection n={3} title="Reasons & cut sheets" status={stageStatus('rows')} open={sectionOpen('rows')} onToggle={() => toggleSection('rows')} anchor="submittals-rows-section"
+                summary={<span data-testid="submittal-tiles" data-tour="submittals-tiles">{describeRevision(tiles)}</span>}>
+                <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflowX: 'auto', background: 'var(--surface)' }} data-tour="submittals-rows">
+                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
+                    <thead>
+                      <tr>
+                        <th style={th}>Tag</th>
+                        <th style={th}>Specified</th>
+                        <th style={th}>Submitted</th>
+                        <th style={th}>Status</th>
+                        <th style={th}>Reason</th>
+                        <th style={th}>Lead time</th>
+                        <th style={th}>Sheet</th>
+                        {previousRev ? <th style={th}>Since Rev {previousRev.rev_number}</th> : null}
+                        {decisions.decided > 0 ? <th style={th}>Their call</th> : null}
+                        <th style={th} />
+                      </tr>
+                    </thead>
+                    <tbody data-testid="submittal-rows">
+                      {items.length === 0 ? (
+                        <tr>
+                          <td style={td} colSpan={9}>
+                            <span style={smallMuted}>No rows on this revision.</span>
+                          </td>
+                        </tr>
+                      ) : null}
+                      {items.map((it) => {
+                        const status = asStatus(it.status)
+                        const reason = asReason(it.reason_kind)
+                        const lead = describeLeadTime(it.lead_time_days)
+                        const file = it.sheet_file != null ? sourceFiles[it.sheet_file] ?? null : null
+                        const prev = it.carried_from_item_id ? prevById.get(it.carried_from_item_id) ?? null : null
+                        const note = previousRev ? changeNoteFor(prev ? itemToPrevious(prev) : null, { submittedModel: it.submitted_model, submittedLabel: it.submitted_label, status, reasonKind: reason }) : null
+                        const specText = [it.specified_manufacturer, it.specified_model].filter(Boolean).join(' ')
+                        return (
+                          <tr key={it.id} data-testid="submittal-row" style={{ background: status === 'design_change' ? 'var(--bg-red-tint)' : undefined }}>
+                            <td style={{ ...td, fontWeight: 700, color: it.tag.trim() ? 'var(--text-strong)' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>{it.tag.trim() || '—'}</td>
+                            <td style={td}>
+                              {specText || (it.tag.trim() ? '—' : <span style={smallMuted}>not on the schedule</span>)}
+                              {it.specified_description ? <span style={sub}>{it.specified_description}</span> : null}
+                            </td>
+                            <td style={td}>
+                              {it.submitted_label ?? it.submitted_model ?? <span style={{ color: 'var(--text-faint)' }}>—</span>}
+                              {it.submitted_label && it.submitted_model && it.submitted_label !== it.submitted_model ? <span style={sub}>{it.submitted_model}</span> : null}
+                            </td>
+                            <td style={td}>
+                              <ProductStatusChip status={status} size="md" />
+                            </td>
+                            <td style={td}>
+                              {reason ? REASON_LABELS[reason] : needsReason(status) ? <span style={{ color: 'var(--text-amber-700)', fontWeight: 600 }}>say why</span> : <span style={{ color: 'var(--text-faint)' }}>—</span>}
+                              {it.reason_note ? <span style={sub}>{it.reason_note}</span> : null}
+                            </td>
+                            <td style={{ ...td, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{lead ?? <span style={{ color: 'var(--text-faint)' }}>—</span>}</td>
+                            <td style={td}>
+                              {file && (it.sheet_pages ?? []).length > 0 ? (
+                                <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>
+                                  ✓ {formatPages(it.sheet_pages)}
+                                  <span style={sub}>{file.name}</span>
+                                </span>
+                              ) : needsSheet(it) ? (
+                                <span style={{ color: 'var(--text-amber-700)', fontWeight: 600 }}>sheet needed</span>
+                              ) : (
+                                <span style={{ color: 'var(--text-faint)' }}>—</span>
+                              )}
+                            </td>
+                            {previousRev ? <td style={{ ...td, color: note ? 'var(--text-amber-700)' : 'var(--text-faint)', fontWeight: note ? 600 : 400 }}>{note ?? 'carried'}</td> : null}
+                            {decisions.decided > 0 ? (
+                              <td style={td} data-testid="their-call">
+                                {(() => {
+                                  const d = asDecision(it.review_decision)
+                                  if (!d) return <span style={{ color: 'var(--text-faint)' }}>—</span>
+                                  const color = d === 'approved' ? 'var(--text-green-700)' : d === 'revise' ? 'var(--text-amber-700)' : 'var(--text-red-700)'
+                                  return (
+                                    <span style={{ color, fontWeight: 600 }}>
+                                      {DECISION_LABELS[d]}
+                                      <span style={sub}>{[it.reviewed_by_name, enteredSuffix(it), formatShortDate(it.reviewed_at)].filter(Boolean).join(' · ')}</span>
+                                      {it.review_note ? <span style={sub}>“{it.review_note}”</span> : null}
+                                    </span>
+                                  )
+                                })()}
+                              </td>
+                            ) : null}
+                            <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>
+                              <button type="button" aria-label={`Edit ${it.tag.trim() || 'accessory'}`} onClick={() => setEditing(it)} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem' }}>
+                                Edit
                               </button>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '0.5rem' }}>
+                  <button type="button" disabled={busy} onClick={() => fileInput.current?.click()} style={btn} title="Store the house's submittal PDF on this revision; name each row's pages with Edit" data-tour="submittals-drop">
+                    Drop a vendor PDF
+                  </button>
+                  <span style={smallMuted}>The house's whole submittal PDF is fine; put each page on its row.</span>
+                  {isDraft ? (
+                    <button type="button" disabled={busy} onClick={() => void addRowByHand()} style={{ ...btn, marginLeft: 'auto' }} title="A row with no pick behind it: type its tag, product and lead time" data-testid="add-row-by-hand">
+                      + Add a row by hand
+                    </button>
+                  ) : null}
+                </div>
+                {sourceFiles.length > 0 ? (
+                  <SubmittalSheetStrip
+                    files={sourceFiles}
+                    items={items}
+                    thumbnails={thumbs}
+                    busy={busy}
+                    onNeedThumbnails={(i) => void showPages(i)}
+                    onAssign={(f, p, id) => void assignPageToItem(f, p, id)}
+                    onUnassign={(f, p, id) => void unassignPageFromItem(f, p, id)}
+                    onDone={(i) => void doneWithFile(i)}
+                    onRemove={(i) => void removeFile(i)}
+                    guesses={Object.fromEntries(sourceFiles.map((f, i) => { const t = liveTask(tasks, 'file_cut_sheets', (inp) => inp.file_index === i && (!inp.path || inp.path === f.path)); const g = t ? sheetGuessesToConfirm(t, f.pages) : null; return [i, g ? guessByPage(g) : new Map()] }))}
+                    robotLines={Object.fromEntries(sourceFiles.map((f, i) => { const t = liveTask(tasks, 'file_cut_sheets', (inp) => inp.file_index === i && (!inp.path || inp.path === f.path)); return [i, t ? describeTask(t, f.pages) : ''] }))}
+                    confirmLabels={Object.fromEntries(sourceFiles.map((f, i) => { const t = liveTask(tasks, 'file_cut_sheets', (inp) => inp.file_index === i && (!inp.path || inp.path === f.path)); const g = t ? sheetGuessesToConfirm(t, f.pages) : null; return [i, g ? confirmLabel(g.sure.length, g.unsure.length) : ''] }))}
+                    onAskRobot={(i) => void askRobot('file_cut_sheets', { file_index: i, path: sourceFiles[i]?.path, name: sourceFiles[i]?.name, pages: sourceFiles[i]?.pages }, selectedRev.id)}
+                    onConfirmGuesses={(i) => void confirmGuesses(i)}
+                  />
+                ) : null}
+              </RoadSection>
+
+              {/* 4 · Package */}
+              <RoadSection n={4} title="Package" status={stageStatus('package')} open={sectionOpen('package')} onToggle={() => toggleSection('package')} anchor="submittals-package-section"
+                summary={selectedRev.package_path ? (
+                  <>
+                    <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>built</span>
+                    {' · '}
+                    <button type="button" disabled={busy} onClick={() => void openStoredPackage(selectedRev.package_path as string, selectedRev.rev_number)} style={{ ...btnQuiet, textDecoration: 'underline', fontSize: 'inherit' }}>open it</button>
+                    {selectedRev.drive_file_url ? <> · <a href={selectedRev.drive_file_url} target="_blank" rel="noreferrer" style={{ color: 'var(--text-link)', fontWeight: 600 }} data-testid="drive-link">filed in Drive ↗</a></> : null}
+                  </>
+                ) : items.length > 0 ? 'not built for this revision yet' : 'appears once the revision has rows'}>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                  {items.length > 0 ? (
+                    <button type="button" disabled={busy} onClick={() => void buildPackage()} style={selectedRev.package_path ? btn : btnPrimary} title="The cover table, then every row's sheet pages stamped with tag and status — stored on this revision and opened" data-tour="submittals-package">
+                      {selectedRev.package_path ? 'Rebuild package' : 'Build package'}
+                    </button>
+                  ) : null}
+                  {selectedRev.package_path ? (
+                    <button type="button" disabled={busy} onClick={() => void openStoredPackage(selectedRev.package_path as string, selectedRev.rev_number)} style={btn}>
+                      Open package
+                    </button>
+                  ) : null}
+                  {selectedRev.drive_file_url ? null : selectedRev.package_path && asRevisionStatus(selectedRev.status) !== 'draft' ? (
+                    <button type="button" disabled={busy} onClick={() => void fileInDrive()} style={{ ...btnQuiet, textDecoration: 'underline dotted' }} title="Put this revision's package PDF in the bid's job folder on Drive, under Submittals" data-testid="file-in-drive">File in Drive</button>
+                  ) : null}
+                  <span style={smallMuted}>One PDF on our letterhead: the cover table, then every row's sheet stamped with its tag and status.</span>
+                </div>
+              </RoadSection>
+
+              {/* 5 · Share — the room link and the people on it */}
+              <RoadSection n={5} title="Share" status={stageStatus('share')} open={sectionOpen('share')} onToggle={() => toggleSection('share')} anchor="submittals-share-section"
+                summary={room ? describeRoomLine(room, events.filter((e) => e.event_type === 'view').length, ROOM_TZ) : items.length > 0 ? 'not shared yet' : 'appears once the revision has rows'}>
+                {items.length > 0 && isNewest ? (
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', marginBottom: room ? '0.5rem' : 0 }}>
+                    <button type="button" disabled={busy || room?.status === 'closed'} onClick={() => setSharing(true)} style={asRevisionStatus(selectedRev.status) === 'shared' ? btn : btnPrimary} title={room ? 'Mark this revision shared; the room link shows it' : 'Mint the bid\'s review room and copy its link'} data-tour="submittals-share">
+                      {asRevisionStatus(selectedRev.status) === 'shared' ? 'Shared · share again' : 'Share'}
+                    </button>
+                    <span style={smallMuted}>{room ? 'The same room link shows every later revision.' : 'Mints the bid’s review-room link and copies it for the GC’s email chain.'}</span>
+                  </div>
+                ) : null}
+                {room ? (
+                  <div style={{ border: '1px solid var(--border-blue)', background: room.status === 'closed' ? 'var(--bg-muted)' : 'var(--bg-blue-tint)', borderRadius: 8, padding: '0.55rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }} data-testid="room-line" data-tour="submittals-room">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>{describeRoomLine(room, events.filter((e) => e.event_type === 'view').length, ROOM_TZ)}</span>
+                      <div style={{ display: 'flex', gap: '0.4rem' }}>
+                        {room.status === 'open' ? (
+                          <>
+                            <button type="button" onClick={() => void navigator.clipboard.writeText(roomLink(window.location.origin, room.token)).then(() => showToast('Link copied.', 'success'), () => showToast(roomLink(window.location.origin, room.token), 'info'))} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem' }}>
+                              Copy link
+                            </button>
+                            <button type="button" onClick={() => void closeRoom()} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                              Close the room
+                            </button>
+                          </>
+                        ) : (
+                          <button type="button" onClick={() => void reopenRoom()} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem' }}>
+                            Reopen
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    {people.filter((p) => !p.closed_at).length > 0 || anonymousOpens(events) > 0 ? (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto auto', gap: '0.3rem 0.75rem', alignItems: 'center', fontSize: '0.78rem' }} data-testid="room-people">
+                        {people.filter((p) => !p.closed_at).map((p) => {
+                          const t = personTrail(p.id, events, items.filter((it) => it.reviewed_by_person_id === p.id).length)
+                          return (
+                            <div key={p.id} style={{ display: 'contents' }}>
+                              <span><b style={{ color: 'var(--text-strong)' }}>{p.name}</b> <span style={smallMuted}>· {ROOM_ROLE_LABELS[asRoomRole(p.role)]}</span></span>
+                              <span style={smallMuted}>{describeHow(asPersonHow(p.how))} · {describeTrail(t, ROOM_TZ)}</span>
+                              <span style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden', fontSize: '0.7rem' }} role="group" aria-label={`${p.name} may`}>
+                                <button type="button" aria-pressed={p.may_decide} onClick={() => void setMayDecide(p.id, true)} style={{ padding: '0.15rem 0.5rem', border: 'none', cursor: 'pointer', font: 'inherit', background: p.may_decide ? '#16a34a' : 'var(--surface)', color: p.may_decide ? 'white' : 'var(--text-muted)', fontWeight: p.may_decide ? 700 : 500 }}>deciding</button>
+                                <button type="button" aria-pressed={!p.may_decide} onClick={() => void setMayDecide(p.id, false)} style={{ padding: '0.15rem 0.5rem', border: 'none', cursor: 'pointer', font: 'inherit', background: !p.may_decide ? 'var(--text-strong)' : 'var(--surface)', color: !p.may_decide ? 'white' : 'var(--text-muted)', fontWeight: !p.may_decide ? 700 : 500 }}>watching</button>
+                              </span>
+                              <span style={{ display: 'flex', gap: '0.3rem' }}>
+                                {p.token ? (
+                                  <button type="button" onClick={() => void navigator.clipboard.writeText(roomLink(window.location.origin, p.token as string)).then(() => showToast('Personal link copied.', 'success'), () => showToast(roomLink(window.location.origin, p.token as string), 'info'))} style={{ ...btn, padding: '0.1rem 0.45rem', fontSize: '0.7rem' }}>
+                                    Personal link
+                                  </button>
+                                ) : null}
+                                <button type="button" aria-label={`Close ${p.name}'s link`} onClick={() => void closePerson(p.id)} style={{ ...btn, padding: '0.1rem 0.45rem', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                                  ×
+                                </button>
+                              </span>
                             </div>
+                          )
+                        })}
+                        {anonymousOpens(events) > 0 ? (
+                          <div style={{ display: 'contents' }}>
+                            <span style={smallMuted}>+ {anonymousOpens(events)} open{anonymousOpens(events) === 1 ? '' : 's'}</span>
+                            <span style={smallMuted}>by people who did not say who they were</span>
+                            <span />
+                            <span />
                           </div>
                         ) : null}
                       </div>
-                    )
-                  })}
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }} data-testid="revision-strip" data-tour="submittals-revisions">
-              {revisions.map((r) => {
-                const on = r.id === selectedRev.id
-                return (
-                  <button key={r.id} type="button" data-testid="revision-chip" aria-pressed={on} onClick={() => setSelectedRevId(r.id)} style={{ ...btn, padding: '0.25rem 0.65rem', borderRadius: 999, fontSize: '0.75rem', background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', borderColor: on ? '#2563eb' : 'var(--border-strong)', color: on ? 'var(--text-blue-700)' : 'var(--text-muted)', fontWeight: on ? 700 : 500 }}>
-                    {describeRevisionChip(r)}
-                  </button>
-                )
-              })}
-            </div>
-            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-              {isDraft ? (
-                <button type="button" disabled={busy} onClick={() => void rebuildRows()} style={btn} title="Rebuild every row from today's picks; edits carry where the product is unchanged">
-                  Rebuild rows from picks
-                </button>
-              ) : null}
-              <button type="button" disabled={busy} onClick={() => fileInput.current?.click()} style={btn} title="Store the house's submittal PDF on this revision; name each row's pages with Edit" data-tour="submittals-drop">
-                Drop a vendor PDF
-              </button>
-              <input ref={fileInput} type="file" accept="application/pdf,.pdf" aria-label="Vendor PDF" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void dropVendorPdf(f) }} />
-              {asRevisionStatus(selectedRev.status) !== 'draft' || reviewerFiles.length > 0 ? (
-                <button type="button" disabled={busy} onClick={() => reviewerInput.current?.click()} style={btn} title="The architect marked up the PDF or answered by email instead of the room — keep their file here and type their calls onto the rows">
-                  Drop a reviewer's file
-                </button>
-              ) : null}
-              <input ref={reviewerInput} type="file" accept="application/pdf,.pdf,.eml,.msg,.txt,.html,message/rfc822" aria-label="Reviewer's file" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void dropReviewerFile(f) }} />
-              {items.length > 0 ? (
-                <button type="button" disabled={busy} onClick={() => void buildPackage()} style={btn} title="The cover table, then every row's sheet pages stamped with tag and status — stored on this revision and opened" data-tour="submittals-package">
-                  {selectedRev.package_path ? 'Rebuild package' : 'Build package'}
-                </button>
-              ) : null}
-              {selectedRev.package_path ? (
-                <button type="button" disabled={busy} onClick={() => void openStoredPackage(selectedRev.package_path as string, selectedRev.rev_number)} style={btn}>
-                  Open package
-                </button>
-              ) : null}
-              {isDraft && isNewest ? (
-                <button type="button" disabled={busy} onClick={() => void deleteDraft()} style={{ ...btn, color: 'var(--text-red-700)' }}>
-                  Delete draft
-                </button>
-              ) : null}
-              {items.length > 0 && isNewest ? (
-                <button type="button" disabled={busy || room?.status === 'closed'} onClick={() => setSharing(true)} style={btnPrimary} title={room ? 'Mark this revision shared; the room link shows it' : 'Mint the bid\'s review room and copy its link'} data-tour="submittals-share">
-                  {asRevisionStatus(selectedRev.status) === 'shared' ? 'Shared · share again' : 'Share'}
-                </button>
-              ) : null}
-              {isNewest && decisions.sentBack > 0 ? (
-                <button type="button" disabled={busy} onClick={() => void newRevision(true)} style={btnGreen} title="A new draft carrying only the rows marked Revise or Reject" data-tour="submittals-resubmit">
-                  Rev {selectedRev.rev_number + 1} from the {decisions.sentBack} row{decisions.sentBack === 1 ? '' : 's'} sent back
-                </button>
-              ) : null}
-              <button type="button" disabled={busy || !isNewest} onClick={() => void newRevision()} style={{ ...btnGreen, opacity: !isNewest ? 0.5 : 1, ...(decisions.sentBack > 0 ? { background: 'var(--surface)', color: 'var(--text-strong)', borderColor: 'var(--border-strong)', fontWeight: 500 } : {}) }} title={isNewest ? 'Carry every row into a new draft and mark what changed' : 'Only the newest revision can be revised'} data-tour={isNewest && decisions.sentBack > 0 ? undefined : 'submittals-resubmit'}>
-                New revision
-              </button>
-            </div>
-          </div>
+                    ) : (
+                      <span style={smallMuted}>Nobody has identified themselves yet. Anyone with the link can read; deciding or asking asks who they are.</span>
+                    )}
+                  </div>
+                ) : null}
+              </RoadSection>
 
-          <div data-testid="submittal-tiles" data-tour="submittals-tiles" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(9rem, 1fr))', gap: '0.5rem' }}>
-            <Tile label="Rows" value={String(tiles.rows)} note={`${tiles.tagged} on the schedule · ${tiles.accessories} accessor${tiles.accessories === 1 ? 'y' : 'ies'}`} />
-            <Tile label="As specified" value={String(tiles.asSpecified)} note={tiles.superseded + tiles.equal > 0 ? `+ ${tiles.superseded} superseded · ${tiles.equal} equal` : undefined} tone="green" />
-            <Tile label="Alternates" value={String(tiles.alternates)} note={tiles.alternatesWithoutReason > 0 ? `${tiles.alternatesWithoutReason} still need a reason` : tiles.alternates > 0 ? 'every one has a reason' : undefined} tone={tiles.alternatesWithoutReason > 0 ? 'amber' : undefined} />
-            <Tile label="Design change" value={String(tiles.designChanges)} note={tiles.designChangesWithoutReason > 0 ? `${tiles.designChangesWithoutReason} still need a reason` : undefined} tone={tiles.designChanges > 0 ? 'red' : undefined} />
-            <Tile label="Missing" value={String(tiles.missing)} note={tiles.missing > 0 ? 'specified, nobody quoted it' : undefined} tone={tiles.missing > 0 ? 'red' : undefined} />
-            <Tile label="Cut sheets in" value={`${tiles.sheetsIn} of ${tiles.sheetsWanted}`} note={tiles.sheetsNeeded > 0 ? `${tiles.sheetsNeeded} needed` : tiles.sheetsWanted > 0 ? 'all in' : undefined} tone={tiles.sheetsNeeded > 0 && tiles.sheetsIn > 0 ? 'amber' : undefined} />
-          </div>
-
-          <p style={{ margin: 0, ...smallMuted }} data-testid="revision-line">
-            <b style={{ color: 'var(--text-strong)' }}>{describeRevisionChip(selectedRev)}</b> · {describeRevision(tiles)}
-            {selectedRev.note ? ` · ${selectedRev.note}` : ''}
-            {selectedRev.package_path ? <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}> · package built</span> : null}
-            {selectedRev.drive_file_url ? (
-              <>
-                {' · '}
-                <a href={selectedRev.drive_file_url} target="_blank" rel="noreferrer" style={{ color: 'var(--text-link)', fontWeight: 600 }} data-testid="drive-link">filed in Drive ↗</a>
-              </>
-            ) : selectedRev.package_path && asRevisionStatus(selectedRev.status) !== 'draft' ? (
-              <>
-                {' · '}
-                <button type="button" disabled={busy} onClick={() => void fileInDrive()} style={{ ...btnQuiet, textDecoration: 'underline dotted' }} title="Put this revision's package PDF in the bid's job folder on Drive, under Submittals" data-testid="file-in-drive">File in Drive</button>
-              </>
-            ) : null}
-          </p>
-          {decisions.decided > 0 ? (
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg-subtle)', padding: '0.4rem 0.7rem' }} data-testid="decisions-line">
-              <span style={{ fontSize: '0.8125rem', color: 'var(--text-strong)' }}>
-                <b>Their call:</b> {describeDecisions(decisions)}
-                {decisions.open > 0 ? <span style={smallMuted}> · {decisions.open} still open</span> : null}
-              </span>
-              <button type="button" onClick={() => void navigator.clipboard.writeText(decisionsAsText(items, `${describeRevisionChip(selectedRev)} · ${bidWorkflowTabHeading(bid, prefixMap)}`, ROOM_TZ)).then(() => showToast('Decisions copied as text.', 'success'), () => showToast('Could not copy.', 'error'))} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem' }}>
-                Copy their decisions as text
-              </button>
-            </div>
-          ) : null}
-
-          {sourceFiles.length > 0 ? (
-            <SubmittalSheetStrip
-              files={sourceFiles}
-              items={items}
-              thumbnails={thumbs}
-              busy={busy}
-              onNeedThumbnails={(i) => void showPages(i)}
-              onAssign={(f, p, id) => void assignPageToItem(f, p, id)}
-              onUnassign={(f, p, id) => void unassignPageFromItem(f, p, id)}
-              onDone={(i) => void doneWithFile(i)}
-              onRemove={(i) => void removeFile(i)}
-              guesses={Object.fromEntries(sourceFiles.map((f, i) => { const t = liveTask(tasks, 'file_cut_sheets', (inp) => inp.file_index === i && (!inp.path || inp.path === f.path)); const g = t ? sheetGuessesToConfirm(t, f.pages) : null; return [i, g ? guessByPage(g) : new Map()] }))}
-              robotLines={Object.fromEntries(sourceFiles.map((f, i) => { const t = liveTask(tasks, 'file_cut_sheets', (inp) => inp.file_index === i && (!inp.path || inp.path === f.path)); return [i, t ? describeTask(t, f.pages) : ''] }))}
-              confirmLabels={Object.fromEntries(sourceFiles.map((f, i) => { const t = liveTask(tasks, 'file_cut_sheets', (inp) => inp.file_index === i && (!inp.path || inp.path === f.path)); const g = t ? sheetGuessesToConfirm(t, f.pages) : null; return [i, g ? confirmLabel(g.sure.length, g.unsure.length) : ''] }))}
-              onAskRobot={(i) => void askRobot('file_cut_sheets', { file_index: i, path: sourceFiles[i]?.path, name: sourceFiles[i]?.name, pages: sourceFiles[i]?.pages }, selectedRev.id)}
-              onConfirmGuesses={(i) => void confirmGuesses(i)}
-            />
-          ) : null}
-
-          {reviewerFiles.length > 0 ? (
-            <div style={{ border: '1px solid var(--border-blue)', background: 'var(--bg-blue-tint)', borderRadius: 6, padding: '0.6rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }} data-testid="reviewer-files">
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
-                <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>The reviewer's own files</span>
-                <span style={smallMuted}>{describeEnteredCount(decisions.entered) || 'type their calls onto the rows with Edit — the record reads entered by you'}</span>
-              </div>
-              {reviewerFiles.map((f, i) => {
-                const t = liveTask(tasks, 'read_redlines', (inp) => inp.reviewer_index === i && (!inp.path || inp.path === f.path))
-                const r = t ? redlinesToConfirm(t) : null
-                const st = t ? taskStatus(t) : null
-                return (
-                  <div key={f.path} style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem' }}>
-                      <span><b style={{ color: 'var(--text-strong)' }}>{f.name}</b> <span style={smallMuted}>· {describeReviewerFile(f, ROOM_TZ)}</span></span>
-                      <span style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                        {f.kind === 'redline' && !t ? (
-                          <button type="button" disabled={busy} onClick={() => void askRobot('read_redlines', { reviewer_index: i, path: f.path, name: f.name, person_id: f.personId, person_name: f.personName }, selectedRev.id)} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem', borderStyle: 'dashed', color: 'var(--text-muted)' }} title="The robot reads the stamps and marks into proposed calls; you confirm each">Ask the robot to read the redlines</button>
-                        ) : null}
-                        <button type="button" disabled={busy} onClick={() => void openReviewerFile(f)} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem' }}>Open the file</button>
-                        <button type="button" disabled={busy} onClick={() => void removeReviewerFile(i)} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Remove this file</button>
-                      </span>
+              {/* 6 · Their call — decisions, the reviewer's own files, the thread */}
+              <RoadSection n={6} title={<>Their call{decisions.decided > 0 || reviewerFiles.length > 0 ? <span style={{ ...smallMuted, fontWeight: 400 }}> on Rev {selectedRev.rev_number}</span> : null}</>} status={stageStatus('review')} open={sectionOpen('review')} onToggle={() => toggleSection('review')} anchor="submittals-review"
+                summary={decisions.decided > 0 ? `${describeDecisions(decisions)}${decisions.open > 0 ? ` · ${decisions.open} still open` : ''}` : room ? (room.status === 'closed' ? 'room closed' : 'nothing decided yet') : 'appears after the first share'}>
+                {decisions.decided > 0 ? (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg-subtle)', padding: '0.4rem 0.7rem' }} data-testid="decisions-line">
+                    <span style={{ fontSize: '0.8125rem', color: 'var(--text-strong)' }}>
+                      <b>Their call:</b> {describeDecisions(decisions)}
+                      {decisions.open > 0 ? <span style={smallMuted}> · {decisions.open} still open</span> : null}
+                    </span>
+                    <button type="button" onClick={() => void navigator.clipboard.writeText(decisionsAsText(items, `${describeRevisionChip(selectedRev)} · ${bidWorkflowTabHeading(bid, prefixMap)}`, ROOM_TZ)).then(() => showToast('Decisions copied as text.', 'success'), () => showToast('Could not copy.', 'error'))} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem' }}>
+                      Copy their decisions as text
+                    </button>
+                  </div>
+                ) : null}
+                {asRevisionStatus(selectedRev.status) !== 'draft' || reviewerFiles.length > 0 ? (
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', margin: '0.5rem 0' }}>
+                    <button type="button" disabled={busy} onClick={() => reviewerInput.current?.click()} style={btn} title="The architect marked up the PDF or answered by email instead of the room — keep their file here and type their calls onto the rows">
+                      Drop a reviewer's file
+                    </button>
+                    <span style={smallMuted}>A marked-up PDF or an email instead of the room; type their calls onto the rows with Edit.</span>
+                  </div>
+                ) : null}
+                {reviewerFiles.length > 0 ? (
+                  <div style={{ border: '1px solid var(--border-blue)', background: 'var(--bg-blue-tint)', borderRadius: 6, padding: '0.6rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }} data-testid="reviewer-files">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
+                      <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>The reviewer's own files</span>
+                      <span style={smallMuted}>{describeEnteredCount(decisions.entered) || 'type their calls onto the rows with Edit — the record reads entered by you'}</span>
                     </div>
-                    {t ? (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                        <span style={{ ...smallMuted, fontStyle: 'italic' }} data-testid="robot-line">{describeTask(t)}</span>
-                        {st === 'blocked' || st === 'queued' ? <button type="button" disabled={busy} onClick={() => void markTask(t.id, 'cancelled').then(() => loadTasks(bidId as string))} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{st === 'blocked' ? 'Dismiss' : 'Cancel'}</button> : null}
-                      </div>
-                    ) : null}
-                    {r ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', paddingLeft: '0.5rem', borderLeft: '3px solid var(--border-strong)' }} data-testid="robot-redlines">
-                        {[...r.sure, ...r.unsure].map((a, k) => (
-                          <span key={k} style={{ fontSize: '0.8125rem' }}>
-                            <b style={{ color: a.proposed === 'approved' ? 'var(--text-green-700)' : a.proposed === 'revise' ? 'var(--text-amber-700)' : 'var(--text-red-700)' }}>{a.tag}{a.confidence < 0.7 ? ' ?' : ''}</b> · {DECISION_LABELS[a.proposed as 'approved' | 'revise' | 'rejected']}{a.text ? <span style={smallMuted}> · “{a.text}”</span> : null}{a.page ? <span style={smallMuted}> · p.{a.page}</span> : null}
-                          </span>
-                        ))}
-                        {r.questions.map((q, k) => (
-                          <span key={`q${k}`} style={{ fontSize: '0.8125rem' }}><b style={{ color: 'var(--text-muted)' }}>{q.tag ?? 'no tag'}</b> · a question for the thread<span style={smallMuted}> · “{q.text}”</span></span>
-                        ))}
-                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.2rem' }}>
-                          <button type="button" disabled={busy} onClick={() => void confirmRedlines(t as SubmittalTaskRow, false)} style={btnGreen} data-testid="confirm-redlines">{confirmLabel(r.sure.length, r.unsure.length, 'settle') || 'Confirm'}</button>
-                          {r.unsure.length ? <button type="button" disabled={busy} onClick={() => void confirmRedlines(t as SubmittalTaskRow, true)} style={btn}>Take the unsure ones too</button> : null}
-                          <span style={smallMuted}>Each lands as read from {f.personName ?? 'the reviewer'}'s file, confirmed by you; the questions post to the thread.</span>
+                    {reviewerFiles.map((f, i) => {
+                      const t = liveTask(tasks, 'read_redlines', (inp) => inp.reviewer_index === i && (!inp.path || inp.path === f.path))
+                      const r = t ? redlinesToConfirm(t) : null
+                      const st = t ? taskStatus(t) : null
+                      return (
+                        <div key={f.path} style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem' }}>
+                            <span><b style={{ color: 'var(--text-strong)' }}>{f.name}</b> <span style={smallMuted}>· {describeReviewerFile(f, ROOM_TZ)}</span></span>
+                            <span style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                              {f.kind === 'redline' && !t ? (
+                                <button type="button" disabled={busy} onClick={() => void askRobot('read_redlines', { reviewer_index: i, path: f.path, name: f.name, person_id: f.personId, person_name: f.personName }, selectedRev.id)} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem', borderStyle: 'dashed', color: 'var(--text-muted)' }} title="The robot reads the stamps and marks into proposed calls; you confirm each">Ask the robot to read the redlines</button>
+                              ) : null}
+                              <button type="button" disabled={busy} onClick={() => void openReviewerFile(f)} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem' }}>Open the file</button>
+                              <button type="button" disabled={busy} onClick={() => void removeReviewerFile(i)} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Remove this file</button>
+                            </span>
+                          </div>
+                          {t ? (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                              <span style={{ ...smallMuted, fontStyle: 'italic' }} data-testid="robot-line">{describeTask(t)}</span>
+                              {st === 'blocked' || st === 'queued' ? <button type="button" disabled={busy} onClick={() => void markTask(t.id, 'cancelled').then(() => loadTasks(bidId as string))} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{st === 'blocked' ? 'Dismiss' : 'Cancel'}</button> : null}
+                            </div>
+                          ) : null}
+                          {r ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', paddingLeft: '0.5rem', borderLeft: '3px solid var(--border-strong)' }} data-testid="robot-redlines">
+                              {[...r.sure, ...r.unsure].map((a, k) => (
+                                <span key={k} style={{ fontSize: '0.8125rem' }}>
+                                  <b style={{ color: a.proposed === 'approved' ? 'var(--text-green-700)' : a.proposed === 'revise' ? 'var(--text-amber-700)' : 'var(--text-red-700)' }}>{a.tag}{a.confidence < 0.7 ? ' ?' : ''}</b> · {DECISION_LABELS[a.proposed as 'approved' | 'revise' | 'rejected']}{a.text ? <span style={smallMuted}> · “{a.text}”</span> : null}{a.page ? <span style={smallMuted}> · p.{a.page}</span> : null}
+                                </span>
+                              ))}
+                              {r.questions.map((q, k) => (
+                                <span key={`q${k}`} style={{ fontSize: '0.8125rem' }}><b style={{ color: 'var(--text-muted)' }}>{q.tag ?? 'no tag'}</b> · a question for the thread<span style={smallMuted}> · “{q.text}”</span></span>
+                              ))}
+                              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.2rem' }}>
+                                <button type="button" disabled={busy} onClick={() => void confirmRedlines(t as SubmittalTaskRow, false)} style={btnGreen} data-testid="confirm-redlines">{confirmLabel(r.sure.length, r.unsure.length, 'settle') || 'Confirm'}</button>
+                                {r.unsure.length ? <button type="button" disabled={busy} onClick={() => void confirmRedlines(t as SubmittalTaskRow, true)} style={btn}>Take the unsure ones too</button> : null}
+                                <span style={smallMuted}>Each lands as read from {f.personName ?? 'the reviewer'}'s file, confirmed by you; the questions post to the thread.</span>
+                              </div>
+                            </div>
+                          ) : null}
                         </div>
+                      )
+                    })}
+                    <span style={smallMuted}>Nothing about these files shows on the room.</span>
+                  </div>
+                ) : null}
+                {room ? (
+                  <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '0.5rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }} data-testid="room-thread-panel">
+                    <button type="button" aria-expanded={threadOpen} onClick={() => setThreadOpen((o) => !o)} style={{ ...btnQuiet, display: 'flex', justifyContent: 'space-between', width: '100%', textAlign: 'left', padding: 0 }}>
+                      <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>Thread</span>
+                      <span style={smallMuted}>{summarizeThread(messages, ROOM_TZ)} {threadOpen ? '▴' : '▾'}</span>
+                    </button>
+                    {threadOpen ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }} data-testid="room-thread-entries">
+                        {messages.length === 0 ? <span style={smallMuted}>Nothing asked yet. Questions from the room land here and on the inbox.</span> : null}
+                        {messages.map((m) => {
+                          const d = describeThreadEntry(m, ROOM_TZ)
+                          const askable = m.authorKind === 'reviewer' || m.authorKind === 'watcher'
+                          return (
+                            <div key={m.id} data-thread-kind={m.kind} style={{ fontSize: '0.8125rem', borderLeft: `3px solid ${m.authorKind === 'office' ? '#b0662f' : d.quiet ? 'var(--border)' : 'var(--border-strong)'}`, paddingLeft: 8, color: d.quiet ? 'var(--text-muted)' : 'var(--text-strong)' }}>
+                              <div style={{ ...smallMuted, display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                <span>{d.who ? <b>{d.who}</b> : null}{d.who && d.when ? ' · ' : ''}{d.when}{m.tags.length ? ` · ${m.tags.join(', ')}` : ''}{m.revNumber ? ` · Rev ${m.revNumber}` : ''}</span>
+                                {askable && room.status === 'open' ? (
+                                  <button type="button" onClick={() => { setReplyTo(m.id); setReplyBody('') }} style={{ ...btnQuiet, padding: 0, fontSize: '0.72rem', textDecoration: 'underline dotted' }}>
+                                    Reply
+                                  </button>
+                                ) : null}
+                              </div>
+                              <div style={{ whiteSpace: 'pre-wrap', fontStyle: d.quiet ? 'italic' : 'normal' }}>{m.body}</div>
+                              {replyTo === m.id ? (
+                                <div style={{ marginTop: '0.35rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }} data-testid="room-thread-reply">
+                                  <textarea aria-label="Your answer" value={replyBody} onChange={(e) => setReplyBody(e.target.value)} rows={3} placeholder="The answer — the room shows it as the company; they get it by email with their own link" style={{ padding: '0.45rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 6, font: 'inherit', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-strong)', resize: 'vertical' }} />
+                                  <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
+                                    <button type="button" style={btn} disabled={replying} onClick={() => { setReplyTo(null); setReplyBody('') }}>Cancel</button>
+                                    <button type="button" style={{ ...btn, background: '#b0662f', color: 'white', borderColor: 'transparent' }} disabled={replying || !replyBody.trim()} onClick={() => void sendReply()}>
+                                      {replying ? 'Sending…' : 'Send the answer'}
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : null}
+                            </div>
+                          )
+                        })}
                       </div>
                     ) : null}
                   </div>
-                )
-              })}
-              <span style={smallMuted}>Nothing about these files shows on the room.</span>
-            </div>
-          ) : null}
-
-          <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflowX: 'auto', background: 'var(--surface)' }} data-tour="submittals-rows">
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
-              <thead>
-                <tr>
-                  <th style={th}>Tag</th>
-                  <th style={th}>Specified</th>
-                  <th style={th}>Submitted</th>
-                  <th style={th}>Status</th>
-                  <th style={th}>Reason</th>
-                  <th style={th}>Lead time</th>
-                  <th style={th}>Sheet</th>
-                  {previousRev ? <th style={th}>Since Rev {previousRev.rev_number}</th> : null}
-                  {decisions.decided > 0 ? <th style={th}>Their call</th> : null}
-                  <th style={th} />
-                </tr>
-              </thead>
-              <tbody data-testid="submittal-rows">
-                {items.length === 0 ? (
-                  <tr>
-                    <td style={td} colSpan={9}>
-                      <span style={smallMuted}>No rows on this revision.</span>
-                    </td>
-                  </tr>
                 ) : null}
-                {items.map((it) => {
-                  const status = asStatus(it.status)
-                  const reason = asReason(it.reason_kind)
-                  const lead = describeLeadTime(it.lead_time_days)
-                  const file = it.sheet_file != null ? sourceFiles[it.sheet_file] ?? null : null
-                  const prev = it.carried_from_item_id ? prevById.get(it.carried_from_item_id) ?? null : null
-                  const note = previousRev ? changeNoteFor(prev ? itemToPrevious(prev) : null, { submittedModel: it.submitted_model, submittedLabel: it.submitted_label, status, reasonKind: reason }) : null
-                  const specText = [it.specified_manufacturer, it.specified_model].filter(Boolean).join(' ')
-                  return (
-                    <tr key={it.id} data-testid="submittal-row" style={{ background: status === 'design_change' ? 'var(--bg-red-tint)' : undefined }}>
-                      <td style={{ ...td, fontWeight: 700, color: it.tag.trim() ? 'var(--text-strong)' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>{it.tag.trim() || '—'}</td>
-                      <td style={td}>
-                        {specText || (it.tag.trim() ? '—' : <span style={smallMuted}>not on the schedule</span>)}
-                        {it.specified_description ? <span style={sub}>{it.specified_description}</span> : null}
-                      </td>
-                      <td style={td}>
-                        {it.submitted_label ?? it.submitted_model ?? <span style={{ color: 'var(--text-faint)' }}>—</span>}
-                        {it.submitted_label && it.submitted_model && it.submitted_label !== it.submitted_model ? <span style={sub}>{it.submitted_model}</span> : null}
-                      </td>
-                      <td style={td}>
-                        <ProductStatusChip status={status} size="md" />
-                      </td>
-                      <td style={td}>
-                        {reason ? REASON_LABELS[reason] : needsReason(status) ? <span style={{ color: 'var(--text-amber-700)', fontWeight: 600 }}>say why</span> : <span style={{ color: 'var(--text-faint)' }}>—</span>}
-                        {it.reason_note ? <span style={sub}>{it.reason_note}</span> : null}
-                      </td>
-                      <td style={{ ...td, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{lead ?? <span style={{ color: 'var(--text-faint)' }}>—</span>}</td>
-                      <td style={td}>
-                        {file && (it.sheet_pages ?? []).length > 0 ? (
-                          <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>
-                            ✓ {formatPages(it.sheet_pages)}
-                            <span style={sub}>{file.name}</span>
-                          </span>
-                        ) : needsSheet(it) ? (
-                          <span style={{ color: 'var(--text-amber-700)', fontWeight: 600 }}>sheet needed</span>
-                        ) : (
-                          <span style={{ color: 'var(--text-faint)' }}>—</span>
-                        )}
-                      </td>
-                      {previousRev ? <td style={{ ...td, color: note ? 'var(--text-amber-700)' : 'var(--text-faint)', fontWeight: note ? 600 : 400 }}>{note ?? 'carried'}</td> : null}
-                      {decisions.decided > 0 ? (
-                        <td style={td} data-testid="their-call">
-                          {(() => {
-                            const d = asDecision(it.review_decision)
-                            if (!d) return <span style={{ color: 'var(--text-faint)' }}>—</span>
-                            const color = d === 'approved' ? 'var(--text-green-700)' : d === 'revise' ? 'var(--text-amber-700)' : 'var(--text-red-700)'
-                            return (
-                              <span style={{ color, fontWeight: 600 }}>
-                                {DECISION_LABELS[d]}
-                                <span style={sub}>{[it.reviewed_by_name, enteredSuffix(it), formatShortDate(it.reviewed_at)].filter(Boolean).join(' · ')}</span>
-                                {it.review_note ? <span style={sub}>“{it.review_note}”</span> : null}
-                              </span>
-                            )
-                          })()}
-                        </td>
-                      ) : null}
-                      <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>
-                        <button type="button" aria-label={`Edit ${it.tag.trim() || 'accessory'}`} onClick={() => setEditing(it)} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem' }}>
-                          Edit
-                        </button>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        </>
+              </RoadSection>
+
+              {/* 7 · Resubmit */}
+              <RoadSection n={7} title="Resubmit" status={stageStatus('resubmit')} open={sectionOpen('resubmit')} onToggle={() => toggleSection('resubmit')} anchor="submittals-resubmit-section"
+                summary={isNewest && decisions.sentBack > 0 ? `${decisions.sentBack} row${decisions.sentBack === 1 ? '' : 's'} sent back — start Rev ${selectedRev.rev_number + 1} with just ${decisions.sentBack === 1 ? 'that row' : 'those rows'}` : previousRev ? `Rev ${selectedRev.rev_number} carries what Rev ${previousRev.rev_number} sent back` : 'nothing sent back'}>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                  {isNewest && decisions.sentBack > 0 ? (
+                    <button type="button" disabled={busy} onClick={() => void newRevision(true)} style={btnGreen} title="A new draft carrying only the rows marked Revise or Reject" data-tour="submittals-resubmit">
+                      Rev {selectedRev.rev_number + 1} from the {decisions.sentBack} row{decisions.sentBack === 1 ? '' : 's'} sent back
+                    </button>
+                  ) : null}
+                  <button type="button" disabled={busy || !isNewest} onClick={() => void newRevision()} style={{ ...(decisions.sentBack > 0 || !isNewest ? btn : btnGreen), opacity: !isNewest ? 0.5 : 1 }} title={isNewest ? 'Carry every row into a new draft and mark what changed' : 'Only the newest revision can be revised'} data-tour={isNewest && decisions.sentBack > 0 ? undefined : 'submittals-resubmit'}>
+                    New revision
+                  </button>
+                  <span style={smallMuted}>Fix the pick on Pricing, rebuild, share again: the same room link shows the new revision.</span>
+                </div>
+              </RoadSection>
+
+              {/* 8 · Procure — a side track: open when it has work, never the Next stage until every row is approved */}
+              <RoadSection n={8} title="Procure" status={stageStatus('procure')} open={sectionOpen('procure')} onToggle={() => toggleSection('procure')} anchor="submittals-procure-section" last
+                summary={procCounts ? `${procCounts.released} released · ${procCounts.ordered} ordered · ${procCounts.delivered} delivered${procCounts.late > 0 ? ` · ${procCounts.late} behind schedule` : ''}` : isNewest ? 'fills in as the GC approves rows' : 'on the newest revision'}>
+                {isNewest && bidId && selectedBid ? (
+                  <SubmittalProcurementPanel
+                    bidId={bidId}
+                    bidLabel={bidDisplayName(selectedBid) || 'Bid'}
+                    companyName={companyName}
+                    items={procItems}
+                    reviewerNames={people.filter((p) => p.may_decide).map((p) => p.name)}
+                    currentUser={{ id: user?.id ?? null, name: profileName ?? '' }}
+                    busy={busy}
+                    onCounts={setProcCounts}
+                  />
+                ) : null}
+              </RoadSection>
+            </>
+          ) : null}
+        </div>
       ) : null}
 
-      {editing ? <SubmittalItemEditDialog item={editing} sourceFiles={sourceFiles} people={people} canEnterDecision={asRevisionStatus(selectedRev?.status) !== 'draft' || reviewerFiles.length > 0} onSave={(p) => void saveItem(p)} onClose={() => setEditing(null)} /> : null}
+      {editing ? <SubmittalItemEditDialog item={editing} sourceFiles={sourceFiles} people={people} canEnterDecision canEditProduct={isDraft} onSave={(p) => void saveItem(p)} onClose={() => setEditing(null)} /> : null}
+      {plugInOpen && bidId && selectedBid ? <PlugInScheduleModal open onClose={() => setPlugInOpen(false)} onSaved={() => { setPlugInOpen(false); void load(bidId) }} bidId={bidId} bidLabel={bidDisplayName(selectedBid) || 'Bid'} rows={[]} /> : null}
       {sharing && selectedRev && bidId ? (
         <SubmittalShareModal
           bidId={bidId}

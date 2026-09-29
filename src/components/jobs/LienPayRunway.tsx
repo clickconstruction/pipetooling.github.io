@@ -5,8 +5,9 @@ import type { LienPayRunway as LienPayRunwayModel, LienRunwayTone } from '../../
  * The lien runway under a Billed / Collections row's money bar (v2.4051):
  * today at the left, the green dot where the money is expected, the flag on
  * the last day to lien, the run between them green (room) or red-hatched
- * (the lien dies first), and two lines under it — the dates, then the verdict —
- * that are a door to the job's Lien window. Pure presentation — every mark and word comes from
+ * (the lien dies first), a hollow flag for a sub job's § 53.056 notice while it
+ * is owed (a check once recorded), and two lines under it — the dates, then the
+ * verdict — that are a door to the job's Lien window. Pure presentation — every mark and word comes from
  * `buildLienPayRunway`.
  */
 
@@ -40,6 +41,7 @@ export default function LienPayRunway({
   const color = TONE_COLOR[runway.tone]
   const flag = FLAG_COLOR[runway.tone]
   const m = runway.marks
+  const lienFlag = m?.notice && !m.notice.done ? 'var(--text-700)' : flag
   const trackH = 20
   const wrap: CSSProperties = { display: 'flex', flexDirection: 'column', gap: '0.15rem', width: '100%', maxWidth: '100%', marginTop: compact ? '0.1rem' : '0.2rem' }
   const wordsStyle: CSSProperties = {
@@ -133,8 +135,36 @@ export default function LienPayRunway({
             }}
           />
         ) : null}
-        {/* the flag */}
-        <div style={{ position: 'absolute', left: `calc(${m.lien.pct}% - 1px)`, top: 0, width: 2, height: trackH, background: flag }} />
+        {/* the § 53.056 notice on a sub job (v2.4096): hollow while owed, a check once recorded */}
+        {m.notice && !m.notice.done ? (
+          <>
+            <div style={{ position: 'absolute', left: `calc(${m.notice.pct}% - 1px)`, top: 0, width: 2, height: trackH, background: flag }} />
+            <div style={{ position: 'absolute', left: `calc(${m.notice.pct}% + 1px)`, top: 0, width: 9, height: 7, background: flag, clipPath: 'polygon(0 0, 100% 50%, 0 100%)' }} />
+            <div style={{ position: 'absolute', left: `calc(${m.notice.pct}% + 2.5px)`, top: 1.5, width: 5, height: 4, background: 'var(--surface)', clipPath: 'polygon(0 0, 100% 50%, 0 100%)' }} />
+          </>
+        ) : null}
+        {m.notice && m.notice.done ? (
+          <div
+            style={{
+              position: 'absolute',
+              left: `calc(${m.notice.pct}% - 6px)`,
+              top: 4,
+              width: 12,
+              height: 12,
+              borderRadius: '50%',
+              background: '#15803d',
+              color: '#ffffff',
+              fontSize: 9,
+              lineHeight: '12px',
+              textAlign: 'center',
+              fontWeight: 700,
+            }}
+          >
+            ✓
+          </div>
+        ) : null}
+        {/* the lien flag — neutral while a notice is owed, so the eye lands on the hollow flag first */}
+        <div style={{ position: 'absolute', left: `calc(${m.lien.pct}% - 1px)`, top: 0, width: 2, height: trackH, background: lienFlag }} />
         <div
           style={{
             position: 'absolute',
@@ -142,7 +172,7 @@ export default function LienPayRunway({
             top: 0,
             width: 9,
             height: 7,
-            background: flag,
+            background: lienFlag,
             clipPath: 'polygon(0 0, 100% 50%, 0 100%)',
           }}
         />

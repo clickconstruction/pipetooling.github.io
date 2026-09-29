@@ -19,13 +19,12 @@ import {
 import { StripeInvoiceSharePanel } from './StripeInvoiceSharePanel'
 import { StripeInvoiceSendFromStripeButton } from './StripeInvoiceSendFromStripeButton'
 import UnwindStripeOobPaymentModal from './UnwindStripeOobPaymentModal'
+import { oobMarkPaidOnWords, stripeSendBackKind, stripeSendBackWords } from '../../lib/jobs/stripeOobSendBack'
 import {
-  ensureLedgerInvoiceRemovedAfterStripeSendBack,
-  invokeVoidStripeInvoiceForRevert,
   invoiceNeedsStripeVoidForRevert,
+  sendBackStripeBilledLine,
   stripeModeForBillingFromRole,
 } from '../../lib/voidStripeInvoiceForRevert'
-import { syncJobToReadyToBillIfNoBilledInvoicesRemain } from '../../lib/syncJobToReadyToBillIfNoBilledInvoicesRemain'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { SplitBillModal } from './SplitBillModal'
 
@@ -267,6 +266,17 @@ export function HostedStripeBillPanel({
 
   const showVoidStripeHostedDisabledWhileLoading =
     voidStripeHostedFooterEligible && stripeLoading && !stripeError
+  // v2.4082: a bill Stripe shows paid only by our own check/cash mark is sent
+  // back by reversing that mark (credit note), not refused — the words follow.
+  const sendBackKind = stripeSendBackKind({
+    invoiceStatus: inv.status,
+    applied,
+    detail: stripeDetail && !stripeError ? stripeDetail : null,
+  })
+  const sendBackWords = stripeSendBackWords(sendBackKind ?? 'void_open', {
+    amount: Number(inv.amount ?? 0),
+    paidOn: oobMarkPaidOnWords(stripeDetail && !stripeError ? stripeDetail : null),
+  })
 
   useEffect(() => {
     if (!isStripeHosted) {
@@ -672,9 +682,13 @@ export function HostedStripeBillPanel({
             stripeModeForBilling={stripeModeForBilling}
             open={unwindOobOpen}
             onClose={() => setUnwindOobOpen(false)}
-            onSuccess={async () => {
+            onSuccess={async (r) => {
               setStripeDetailsGeneration((g) => g + 1)
               onLoadedRef.current?.()
+              if (r.sentBack) {
+                await onVoidSuccessRef.current?.()
+                return
+              }
               await onOobUnwindRef.current?.()
             }}
           />
@@ -703,21 +717,16 @@ export function HostedStripeBillPanel({
                   margin: '0.75rem',
                 }}
               >
-                <h2 style={{ margin: '0 0 0.75rem', fontSize: '1.15rem', lineHeight: 1.35 }}>Void Stripe invoice?</h2>
+                <h2 style={{ margin: '0 0 0.75rem', fontSize: '1.15rem', lineHeight: 1.35 }}>{sendBackWords.title}</h2>
                 <div style={{ fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.45, marginBottom: '0.85rem' }}>
                   <ul style={{ margin: '0.25rem 0 0', paddingLeft: '1.2rem' }}>
-                    <li style={{ marginBottom: '0.35rem' }}>
-                      Stripe will delete a draft invoice or void an open unpaid invoice so this hosted link cannot be paid.
-                    </li>
-                    <li style={{ marginBottom: '0.35rem' }}>ClickTooling will remove this billed line.</li>
-                    <li>
-                      If this is the last billed invoice on the job, the job moves back to <strong>Ready to Bill</strong>.
-                    </li>
+                    {sendBackWords.bullets.map((b, i) => (
+                      <li key={i} style={{ marginBottom: i < sendBackWords.bullets.length - 1 ? '0.35rem' : 0 }}>
+                        {b}
+                      </li>
+                    ))}
                   </ul>
-                  <p style={{ margin: '0.75rem 0 0', fontSize: '0.8125rem', color: 'var(--text-amber-800)' }}>
-                    Paid Stripe invoices or invoices with recorded payments here cannot be voided this way; fix them in Stripe
-                    or unlink payments first.
-                  </p>
+                  <p style={{ margin: '0.75rem 0 0', fontSize: '0.8125rem', color: 'var(--text-amber-800)' }}>{sendBackWords.note}</p>
                 </div>
                 {voidConfirmError ? (
                   <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-amber-700)', lineHeight: 1.4 }}>{voidConfirmError}</p>
@@ -731,9 +740,7 @@ export function HostedStripeBillPanel({
                     onChange={(e) => setVoidConfirmChecked(e.target.checked)}
                     style={{ marginTop: 4 }}
                   />
-                  <span style={{ fontSize: '0.875rem' }}>
-                    I understand this bill line will be removed and the job may return to Ready to Bill.
-                  </span>
+                  <span style={{ fontSize: '0.875rem' }}>{sendBackWords.confirm}</span>
                 </label>
                 <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                   <button
@@ -770,23 +777,14 @@ export function HostedStripeBillPanel({
                             setVoidConfirmError('Not signed in')
                             return
                           }
-                          const r = await invokeVoidStripeInvoiceForRevert({
+                          const r = await sendBackStripeBilledLine({
                             invoiceId: inv.id,
+                            jobId: job.id,
                             stripeModeForBilling: stripeModeForBillingFromRole(authRole),
                             accessToken: token,
                           })
                           if (!r.ok) {
                             setVoidConfirmError(r.message)
-                            return
-                          }
-                          const cleaned = await ensureLedgerInvoiceRemovedAfterStripeSendBack(inv.id)
-                          if (!cleaned.ok) {
-                            setVoidConfirmError(cleaned.message)
-                            return
-                          }
-                          const sync = await syncJobToReadyToBillIfNoBilledInvoicesRemain(supabase, job.id)
-                          if (!sync.ok) {
-                            setVoidConfirmError(sync.message)
                             return
                           }
                           setVoidConfirmOpen(false)
@@ -808,7 +806,7 @@ export function HostedStripeBillPanel({
                       fontWeight: 600,
                     }}
                   >
-                    {voidConfirmBusy ? '…' : 'Void invoice'}
+                    {voidConfirmBusy ? '…' : sendBackWords.action}
                   </button>
                 </div>
               </div>
@@ -911,7 +909,7 @@ export function HostedStripeBillPanel({
                   cursor: 'pointer',
                 }}
               >
-                Void Stripe invoice…
+                {sendBackWords.button}
               </button>
               <button
                 type="button"

@@ -154,6 +154,8 @@ import { getAccessTokenForEdgeFunctions } from '../../lib/supabaseAccessTokenFor
 import { stripeModeForBillingFromRole } from '../../lib/voidStripeInvoiceForRevert'
 import BilledPaymentConfirmationModal from './BilledPaymentConfirmationModal'
 import UndoStripePartPaymentModal from './UndoStripePartPaymentModal'
+import UnwindStripeOobPaymentModal from './UnwindStripeOobPaymentModal'
+import { CHECK_DID_NOT_CLEAR_REASON, oobUnwindDoneWords } from '../../lib/jobs/stripeOobSendBack'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 import { findInvoiceWithJobFromJobs } from '../../lib/invoiceWithJobFromJobList'
 import { mercuryCardTotalFromLines, tallyPartsTotalFromLines } from '../../lib/fetchJobMaterialsCostSnapshot'
@@ -1037,6 +1039,8 @@ export default function JobFormModal({
    */
   /** v2.3695: the locked Stripe row whose part payment is being undone. */
   const [undoPartPaymentRow, setUndoPartPaymentRow] = useState<PaymentRow | null>(null)
+  // v2.4082: "Check didn't clear…" on a whole-bill out-of-band mark — opens the Undo window with the send-back on.
+  const [checkDidNotClearRow, setCheckDidNotClearRow] = useState<PaymentRow | null>(null)
   const [recordPaymentTarget, setRecordPaymentTarget] = useState<{
     inv: JobsLedgerInvoiceRow
     amount: number | null
@@ -1077,6 +1081,7 @@ export default function JobFormModal({
     unlinkMercuryConfirmRowId != null ||
     recordPaymentTarget != null ||
     undoPartPaymentRow != null ||
+    checkDidNotClearRow != null ||
     paymentMoveRow != null ||
     deleteJobConfirmOpen ||
     migrate.migrateJobModalOpen ||
@@ -3009,8 +3014,34 @@ export default function JobFormModal({
               setBillViewInvoice={setBillViewInvoice}
               onRecordPaymentOnBill={(inv, o) => setRecordPaymentTarget({ inv, amount: o.amount, draftRowId: o.draftRowId })}
               requestUndoPartPayment={(row) => setUndoPartPaymentRow(row)}
+              requestCheckDidNotClear={(row) => setCheckDidNotClearRow(row)}
             />
             </div>
+            {checkDidNotClearRow && editing ? (
+              <UnwindStripeOobPaymentModal
+                invoice={(editing.invoices ?? []).find((i) => i.id === checkDidNotClearRow.invoice_id) ?? null}
+                stripeModeForBilling={stripeModeForBillingFromRole(authRole)}
+                open
+                initialReason={CHECK_DID_NOT_CLEAR_REASON}
+                zIndex={JOB_FORM_NESTED_OVERLAY_Z_INDEX}
+                onClose={() => setCheckDidNotClearRow(null)}
+                onSuccess={async (r) => {
+                  setCheckDidNotClearRow(null)
+                  const found = await fetchJobWithDetailsById(editing.id)
+                  if (found) {
+                    setEditing(found)
+                    setPayments(paymentRowsFromJob(found))
+                    hydratedPaymentIdsRef.current = (found.payments ?? []).map((p) => p.id)
+                  }
+                  if (r.sendBackError) {
+                    showToast(`Payment undone, but the bill could not be sent back: ${r.sendBackError}. Open View bill and press Send back.`, 'error')
+                  } else {
+                    showToast(oobUnwindDoneWords(r.sentBack), 'success')
+                  }
+                  onSavedRef.current?.()
+                }}
+              />
+            ) : null}
             {undoPartPaymentRow && editing ? (
               <UndoStripePartPaymentModal
                 payment={undoPartPaymentRow}

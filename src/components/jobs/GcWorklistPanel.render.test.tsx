@@ -57,7 +57,7 @@ const rowFor = (name: string) => screen.getAllByTestId('gc-worklist-row').find((
 describe('GcWorklistPanel', () => {
   it('gives the person signed in every GC, grouped by who to ask', () => {
     renderPanel()
-    expect(screen.getByText('Ask Malachi')).toBeTruthy()
+    expect(screen.getByText('Account Man Malachi')).toBeTruthy()
     expect(screen.getByText('Under $10,000')).toBeTruthy()
     expect(screen.getAllByTestId('gc-worklist-row')).toHaveLength(3)
   })

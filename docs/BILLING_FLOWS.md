@@ -5,7 +5,7 @@ file: BILLING_FLOWS.md
 type: System Documentation
 purpose: End-to-end map of the billing system — job lifecycle, invoices, the three billing channels, Stripe test/live plumbing, payments, send-backs, routes, cleanup — plus a live-test safety brief and optimization candidates
 audience: Developers, AI Agents, anyone running a live end-to-end billing test (there is no staging)
-last_updated: 2026-09-18
+last_updated: 2026-09-28
 
 key_sections:
   - name: "Job billing lifecycle"
@@ -294,15 +294,16 @@ The company migrated off HouseCall Pro; **this app is the system of record for a
 
 | Path | Trigger | Mechanics |
 |---|---|---|
-| Billed invoice → removed | "Send back" on a billed invoice card (Dashboard Stage 3 / Pipeline Billed / bill-view panel / **Edit Job ② Invoices row, v2.1653** — button disabled with explainer when payments link; kernel `src/lib/jobs/editJobInvoiceSendBack.ts` also feeds the bills-ahead warning's remedy hint) | Non-Stripe: RPC `delete_billed_invoice_on_send_back` (roles dev/master_technician/assistant/primary + job access; status must be `billed`; **blocked if any payment references the invoice**; idempotent). Stripe-backed (`invoiceNeedsStripeVoidForRevert`): edge `void-stripe-invoice-for-revert` (payments block → 409; Stripe paid/partially-paid → 409 "resolve in Stripe"; draft→delete, open→void, void/uncollectible/missing→noop) then row delete + client `ensureLedgerInvoiceRemovedAfterStripeSendBack`. Either way `syncJobToReadyToBillIfNoBilledInvoicesRemain` demotes the job when the last billed row is gone. |
+| Billed invoice → removed | "Send back" on a billed invoice card (Dashboard Stage 3 / Pipeline Billed / bill-view panel / **Edit Job ② Invoices row, v2.1653** — button disabled with explainer when payments link; kernel `src/lib/jobs/editJobInvoiceSendBack.ts` also feeds the bills-ahead warning's remedy hint) | Non-Stripe: RPC `delete_billed_invoice_on_send_back` (roles dev/master_technician/assistant/primary + job access; status must be `billed`; **blocked if any payment references the invoice**; idempotent). Stripe-backed (`invoiceNeedsStripeVoidForRevert`): edge `void-stripe-invoice-for-revert` (payments block → 409; Stripe paid by card/ACH → 409 "refund in the Stripe Dashboard"; Stripe `paid` with `amount_paid` 0 and no charge = our own out-of-band mark → out-of-band credit note + `removed` payment event, v2.4082; draft→delete, open→void, void/uncollectible/missing→noop) then row delete + client `ensureLedgerInvoiceRemovedAfterStripeSendBack` — the three steps are `sendBackStripeBilledLine` (`src/lib/voidStripeInvoiceForRevert.ts`), and View bill words the confirm per kind (`src/lib/jobs/stripeOobSendBack.ts`: *Check didn't clear · send back…* on a marked bill). Either way `syncJobToReadyToBillIfNoBilledInvoicesRemain` demotes the job when the last billed row is gone. |
 | Job billed → ready_to_bill | "Send back" on a billed job row | `prepareBilledInvoicesBeforeJobRevertToReadyToBill` (`src/lib/voidStripeInvoiceForRevert.ts`) clears ALL billed rows (Stripe void or RPC per row; any failure aborts) then `update_job_status('ready_to_bill')`. |
 | Job ready_to_bill → working | "Send Job Back" on an RTB job row | Confirm modal shows RTB-draft-count warning, collect-payment-flow cancellation notice (`src/hooks/useSendBackCollectPaymentFlowNotice.ts` + `src/lib/collectPaymentFlowSendBackNotice.ts`), and the `job_status_events` "Move into stage by" line. `update_job_status('working')` deletes all RTB draft rows server-side. |
 | Draft bill deletion | "Delete draft bill" on RTB invoice/bundle cards | RPC `delete_ready_to_bill_invoice` (same gates; status must be `ready_to_bill`; no payments check needed — payments can't exist on RTB rows). Job status untouched. |
 | Paid → billed | Pipeline Paid section send-back; automatic via payment unlink / OOB unwind | `update_job_status('billed')` |
+| Paid (out-of-band mark) → ready_to_bill | Undo out-of-band payment with *send back* ticked (default, v2.4082), or Edit Job ③ **Check didn't clear…** on the Stripe-held row | `reverse-stripe-invoice-out-of-band-payment` (credit note, payments off, invoice billed) then `sendBackStripeBilledLine` (the void function finds the note, deletes the row, job → RTB). Stripe never reopens a paid invoice, so collecting again means Bill Customer. |
 | Collections ↔ Billed | "Move to Collections" / "Send back to Billed" | `set_job_collections_flag` only — not a status transition |
 | Field send-back | Collect Payment step 3 | `invokeVoidStripeInvoiceForCollectPaymentSendBack` → same edge with flow verification (service-role path) |
 
-**What blocks a send-back**: recorded payments on the invoice; Stripe invoice paid or `amount_paid > 0`; un-voidable Stripe status; role/access gates; stale from-status (client resyncs).
+**What blocks a send-back**: recorded payments on the invoice; money in Stripe (`amount_paid > 0` or a charge — a `paid` status with nothing paid through Stripe is our own mark and is reversed, v2.4082); un-voidable Stripe status; role/access gates; stale from-status (client resyncs).
 
 ## Routes map
 
