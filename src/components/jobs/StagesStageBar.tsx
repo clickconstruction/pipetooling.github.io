@@ -1,6 +1,7 @@
-import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { fitStageChips, type PipelineStageState } from '../../lib/jobs/pipelineStageBar'
 import type { ProgressPaymentSegment, ProgressPaymentTone, ProgressPaymentView } from '../../lib/jobs/progressPaymentCell'
+import { useMeasuredWidth } from '../../hooks/useMeasuredWidth'
 
 /**
  * The Pipeline row's bar (v2.3198 chips + bar; v2.3419 the two channels on
@@ -23,22 +24,6 @@ const TONE_COLOR: Record<ProgressPaymentTone, string> = {
   amber: 'var(--text-amber-700)',
   green: 'var(--text-green-700)',
   red: 'var(--text-red-700)',
-}
-
-function useMeasuredWidth<T extends HTMLElement>(): [React.RefObject<T>, number | null] {
-  const ref = useRef<T>(null)
-  const [width, setWidth] = useState<number | null>(null)
-  useLayoutEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const read = () => setWidth(el.getBoundingClientRect().width || null)
-    read()
-    if (typeof ResizeObserver === 'undefined') return
-    const ro = new ResizeObserver(read)
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [])
-  return [ref, width]
 }
 
 function chipColors(state: PipelineStageState): { border: string; color: string; bg: string; disc: string; discInk: string; weight: number } {

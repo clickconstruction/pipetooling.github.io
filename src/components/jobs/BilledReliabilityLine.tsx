@@ -7,7 +7,7 @@ import type { ReliabilityLine } from '../../lib/jobs/paymentReliability'
  * red beyond) and "Pays in 9–41d · keeps 3 of 7 · slips ~9d". Renders
  * nothing when nothing is known, so a brand-new customer's row stays clean.
  */
-export default function BilledReliabilityLine({ line }: { line: ReliabilityLine }) {
+export default function BilledReliabilityLine({ line, showBars = true }: { line: ReliabilityLine; /** v2.4193: the dates block prints the words alone, in the legend's grey. */ showBars?: boolean }) {
   if (!line.text && line.bars.length === 0) return null
   return (
     <span
@@ -15,7 +15,7 @@ export default function BilledReliabilityLine({ line }: { line: ReliabilityLine 
       title={line.title || undefined}
       style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.7rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis' }}
     >
-      {line.bars.length > 0 ? (
+      {showBars && line.bars.length > 0 ? (
         <span aria-hidden style={{ display: 'inline-flex', alignItems: 'flex-end', gap: 1, height: 11 }}>
           {line.bars.map((b, i) => (
             <i

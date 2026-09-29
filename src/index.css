@@ -3408,3 +3408,9 @@ button.gcStep:hover > em { text-decoration: underline; }
   border-radius: 6px;
   transition: box-shadow 0.2s;
 }
+
+/* Pipeline Billed rows' dates block (v2.4193): the doors underline on hover only. */
+.billedDatesLedger button:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

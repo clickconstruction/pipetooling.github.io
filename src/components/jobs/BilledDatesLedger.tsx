@@ -1,59 +1,142 @@
 import { Fragment, type CSSProperties, type ReactNode } from 'react'
-import type { BilledDatesLedger as LedgerModel, LedgerRow, LedgerTone } from '../../lib/jobs/billedDatesLedger'
+import type { BilledDatesLedger as LedgerModel, LedgerAction, LedgerRow, LedgerSegment, LedgerTone } from '../../lib/jobs/billedDatesLedger'
+import { useMeasuredWidth } from '../../hooks/useMeasuredWidth'
 
 /**
- * The dates block under a Billed / Collections row's money legend (v2.4168): a
- * numbered track over a ledger. Pure presentation — every row, marker and word
- * comes from `buildBilledDatesLedger`. The Expected / They said row opens the
- * promise window; every deadline row opens the job's Lien window.
+ * The dates block under a Billed / Collections row's money legend (v2.4168,
+ * redrawn v2.4193): the time bar — the money bar's twin — over rows in the
+ * legend's own grammar (a dot, the words, *how far from today* on the right)
+ * and one bold verdict under a hairline. Pure presentation — every segment,
+ * row and word comes from `buildBilledDatesLedger`. The Expected / They said
+ * row opens the promise window; every deadline row and the verdict open the
+ * job's Lien window.
  */
 
 const INK: Record<LedgerTone, string> = {
-  done: 'var(--text-muted)',
-  plain: 'var(--text-muted)',
+  done: 'var(--text-strong)',
+  plain: 'var(--text-strong)',
   green: 'var(--text-green-700)',
   amber: 'var(--text-amber-800)',
   red: 'var(--text-red-700)',
 }
-const MARK: Record<LedgerTone, string> = {
-  done: 'var(--text-muted)',
-  plain: 'var(--text-muted)',
-  green: '#15803d',
-  amber: '#b45309',
-  red: '#b91c1c',
+const DOT: Record<LedgerTone, string> = {
+  done: 'var(--border-strong)',
+  plain: 'var(--border-strong)',
+  green: '#16a34a',
+  amber: '#d97706',
+  red: '#dc2626',
 }
+const LIVE_OUTLINE = '#2563eb'
 const HATCH = 'repeating-linear-gradient(135deg, #fca5a5 0 3px, var(--bg-red-tint) 3px 6px)'
 
-function Badge({ n, tone, filled }: { n: number; tone: LedgerTone; filled: boolean }) {
-  const color = MARK[tone]
+const SEGMENT_BG: Record<LedgerSegment['kind'], string> = {
+  wait: 'var(--bg-subtle)',
+  room: 'var(--bg-green-200)',
+  short: HATCH,
+  notice: 'var(--bg-amber-100)',
+  closed: 'var(--border-strong)',
+}
+const SEGMENT_LABEL_INK: Record<LedgerSegment['kind'], string> = {
+  wait: 'var(--text-700)',
+  room: 'var(--text-green-800)',
+  short: 'var(--text-red-800)',
+  notice: 'var(--text-amber-800)',
+  closed: '#ffffff',
+}
+
+/** ~9px bold system font: a shade under half an em per glyph, plus the padding. */
+const textPx = (text: string) => Math.ceil(text.length * 5.4) + 8
+
+function Dot({ tone, dot }: { tone: LedgerTone; dot: LedgerRow['dot'] }) {
+  const color = DOT[tone]
   return (
     <span
       aria-hidden
       style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: 15,
-        height: 15,
+        display: 'inline-block',
+        width: 8,
+        height: 8,
         borderRadius: '50%',
         boxSizing: 'border-box',
         border: `1.5px solid ${color}`,
-        background: filled ? color : 'var(--surface)',
-        color: filled ? '#ffffff' : color,
-        fontSize: '0.62rem',
-        fontWeight: 700,
-        lineHeight: 1,
-        fontVariantNumeric: 'tabular-nums',
+        background: dot === 'filled' ? color : 'var(--surface)',
+        marginRight: 6,
         flexShrink: 0,
       }}
-    >
-      {n}
-    </span>
+    />
   )
 }
 
-/** A done marker is filled grey; an amber/red one that asks for something is filled too; the rest are rings. */
-const filledFor = (r: Pick<LedgerRow, 'tone' | 'bold'>) => r.tone === 'done' || (r.bold && r.tone !== 'plain')
+const doorStyle: CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6, width: '100%', minWidth: 0, padding: 0, border: 'none', background: 'none', font: 'inherit', color: 'inherit', cursor: 'pointer', textAlign: 'left' }
+const rowStyle: CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6, minWidth: 0, color: 'var(--text-muted)' }
+
+function TimeBar({ bar }: { bar: NonNullable<LedgerModel['bar']> }) {
+  const [barRef, barWidth] = useMeasuredWidth<HTMLDivElement>()
+  const gapPx = 2
+  const totalDays = bar.segments.reduce((s, x) => s + x.days, 0) || 1
+  const n = bar.segments.length
+  return (
+    <div aria-hidden style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }} data-testid="ledger-bar">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6, fontSize: '0.6875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+        <span>{bar.startLabel}</span>
+        <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{bar.caption}</span>
+        <span>{bar.endLabel}</span>
+      </div>
+      <div ref={barRef} style={{ display: 'flex', gap: gapPx, height: 14, minWidth: 0 }}>
+        {bar.segments.map((s) => {
+          const segPx = barWidth != null ? Math.max(14, (barWidth - gapPx * (n - 1)) * (s.days / totalDays)) : null
+          const usedPct = Math.round(s.usedFrac * 1000) / 10
+          // The label sits just past the used fill when it fits there, else against the right edge; hidden when it fits nowhere.
+          const fitsAfterUsed = s.label !== '' && (segPx == null || segPx * s.usedFrac + textPx(s.label) <= segPx)
+          const showLabel = fitsAfterUsed || (s.label !== '' && segPx != null && textPx(s.label) <= segPx)
+          return (
+            <div
+              key={s.key}
+              data-testid="ledger-segment"
+              data-segment-kind={s.kind}
+              data-segment-live={s.live ? 'true' : undefined}
+              style={{
+                flex: `${s.days} 1 0px`,
+                position: 'relative',
+                minWidth: 14,
+                height: 14,
+                borderRadius: 4,
+                background: SEGMENT_BG[s.kind],
+                overflow: 'hidden',
+                boxSizing: 'border-box',
+                outline: s.live ? `1px solid ${LIVE_OUTLINE}` : undefined,
+                outlineOffset: -1,
+              }}
+            >
+              {s.usedFrac > 0 && s.kind !== 'closed' ? <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${usedPct}%`, background: 'var(--border-strong)' }} /> : null}
+              {showLabel ? (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    bottom: 0,
+                    left: fitsAfterUsed ? `calc(${usedPct}% + 4px)` : undefined,
+                    right: fitsAfterUsed ? undefined : 4,
+                    display: 'flex',
+                    alignItems: 'center',
+                    fontSize: 9,
+                    fontWeight: 700,
+                    lineHeight: 1,
+                    color: SEGMENT_LABEL_INK[s.kind],
+                    whiteSpace: 'nowrap',
+                    pointerEvents: 'none',
+                  }}
+                >
+                  {s.label}
+                </div>
+              ) : null}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
 
 export default function BilledDatesLedger({
   ledger,
@@ -72,110 +155,73 @@ export default function BilledDatesLedger({
   compact?: boolean
 }) {
   if (ledger.rows.length === 0) return null
-  const t = ledger.track
-  const trackH = 20
-  const wrap: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 0, width: '100%', maxWidth: '100%', marginTop: compact ? '0.15rem' : '0.3rem', fontVariantNumeric: 'tabular-nums' }
-  const byN = new Map(ledger.rows.map((r) => [r.n, r]))
-  const handlerFor = (r: LedgerRow): (() => void) | undefined => {
-    if (r.action === 'they-said' || r.action === 'new-date') return onMoney
-    if (r.action === 'lien-desk') return onLienDesk
+  const handlerFor = (action: LedgerAction | null): (() => void) | undefined => {
+    if (action === 'they-said' || action === 'new-date') return onMoney
+    if (action === 'lien-desk') return onLienDesk
     return undefined
   }
+  const doorTitle = (title: string, action: LedgerAction | null) => `${title}${action === 'they-said' ? ' — click to record what the customer said' : action === 'new-date' ? ' — click to record a new date the customer named' : ' — click to open the Lien window'}`
+  const wrap: CSSProperties = { display: 'flex', flexDirection: 'column', gap: compact ? 4 : 5, width: '100%', maxWidth: '100%', marginTop: compact ? '0.35rem' : '0.5rem', fontSize: '0.75rem', lineHeight: 1.35, fontVariantNumeric: 'tabular-nums' }
+  const v = ledger.verdict
+  const verdictClick = v ? handlerFor(v.action) : undefined
+  const verdictBody = v ? (
+    <>
+      <span style={{ color: v.tone === 'amber' || v.tone === 'red' ? INK[v.tone] : 'var(--text-strong)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.label}</span>
+      <span style={{ color: INK[v.tone], whiteSpace: 'nowrap' }}>{v.value}</span>
+    </>
+  ) : null
+  const verdictStyle: CSSProperties = { borderTop: '1px solid var(--border)', paddingTop: 3, marginTop: 1, fontWeight: 600 }
   return (
     <div className="billedDatesLedger" data-testid="billed-dates-ledger" aria-label={ledger.full} style={wrap}>
-      {t ? (
-        <div aria-hidden style={{ position: 'relative', height: trackH + 12, width: '100%', margin: '0.35rem 0 0.2rem' }} data-testid="ledger-track">
-          <div style={{ position: 'absolute', left: 0, right: 0, top: 9, height: 2, background: 'var(--border)' }} />
-          {/* time used */}
-          <div style={{ position: 'absolute', left: 0, width: `${t.todayPct}%`, top: 9, height: 2, background: 'var(--text-muted)' }} />
-          {/* the run between the money and the lien */}
-          {t.gap ? (
-            <div
-              style={{
-                position: 'absolute',
-                left: `${t.gap.fromPct}%`,
-                width: `${Math.max(0, t.gap.toPct - t.gap.fromPct)}%`,
-                top: 7,
-                height: 6,
-                borderRadius: 3,
-                background: t.gap.kind === 'room' ? 'var(--bg-green-200)' : HATCH,
-              }}
-            />
-          ) : null}
-          {/* today */}
-          <div style={{ position: 'absolute', left: `calc(${t.todayPct}% - 5px)`, top: 14, width: 0, height: 0, borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderBottom: '7px solid var(--text-strong)' }} />
-          <div style={{ position: 'absolute', left: `${t.todayPct}%`, top: 22, transform: 'translateX(-50%)', fontSize: '0.6rem', color: 'var(--text-muted)', lineHeight: 1 }}>today</div>
-          {t.markers.map((m) => {
-            const row = byN.get(m.n)
-            const filled = row ? filledFor(row) : false
-            return (
-              <div key={m.n} data-testid="ledger-marker" style={{ position: 'absolute', left: `calc(${m.pct}% - 7.5px)`, top: 2.5, display: 'flex' }}>
-                <Badge n={m.n} tone={m.tone} filled={filled} />
-              </div>
-            )
-          })}
-        </div>
-      ) : null}
-      <div style={{ display: 'grid', gridTemplateColumns: '17px minmax(0, 1fr) auto', columnGap: 6, rowGap: 3, alignItems: 'center', fontSize: '0.75rem', marginTop: t ? '0.25rem' : 0 }}>
-        {ledger.rows.map((r) => {
-          const ink = INK[r.tone]
-          const onClick = handlerFor(r)
-          const words = (
-            <>
-              <b style={{ fontWeight: r.bold ? 700 : 600, color: r.bold ? ink : r.tone === 'done' || r.tone === 'plain' ? 'var(--text-700)' : ink }}>{r.label}</b>
-              {r.joiner ? ` ${r.joiner}` : ''}
-              {r.date ? ` ${r.date}` : ''}
-              {onClick && r.bold ? ' ›' : ''}
-            </>
-          )
-          return (
-            <Fragment key={r.key}>
-              {r.n > 0 ? <Badge n={r.n} tone={r.tone} filled={filledFor(r)} /> : <span aria-hidden />}
-              {onClick ? (
-                <button
-                  type="button"
-                  data-testid={`ledger-row-${r.key}`}
-                  title={`${r.title}${r.action === 'they-said' ? ' — click to record what the customer said' : r.action === 'new-date' ? ' — click to record a new date the customer named' : ' — click to open the Lien window'}`}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onClick()
-                  }}
-                  style={{ padding: 0, border: 'none', background: 'none', font: 'inherit', color: ink, cursor: 'pointer', textAlign: 'left', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textDecoration: r.bold ? 'none' : 'underline dotted', textUnderlineOffset: 2 }}
-                >
-                  {words}
-                </button>
-              ) : (
-                <span data-testid={`ledger-row-${r.key}`} title={r.title} style={{ color: ink, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {words}
-                </span>
-              )}
-              <span style={{ textAlign: 'right', whiteSpace: 'nowrap', color: ink, fontWeight: r.bold ? 700 : r.tone === 'amber' || r.tone === 'red' ? 600 : 400 }}>{r.far}</span>
-              {r.sub ? <span style={{ gridColumn: '2 / 4', fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: -2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.sub}</span> : null}
-              {r.key === 'money' && evidence ? <span style={{ gridColumn: '2 / 4', marginTop: -2, minWidth: 0 }}>{evidence}</span> : null}
-            </Fragment>
-          )
-        })}
-        {ledger.roomLine ? (
-          onLienDesk ? (
-            <button
-              type="button"
-              data-testid="ledger-room"
-              onClick={(e) => {
-                e.stopPropagation()
-                onLienDesk()
-              }}
-              title="Expected pay lands before the lien window closes — click to open the Lien window"
-              style={{ gridColumn: '1 / 4', marginTop: 3, padding: 0, border: 'none', background: 'none', font: 'inherit', fontSize: '0.75rem', fontWeight: 600, color: INK.green, cursor: 'pointer', textDecoration: 'underline dotted', textUnderlineOffset: 3, textAlign: 'center' }}
-            >
-              {ledger.roomLine} ›
-            </button>
-          ) : (
-            <span data-testid="ledger-room" style={{ gridColumn: '1 / 4', marginTop: 3, fontSize: '0.75rem', fontWeight: 600, color: INK.green, textAlign: 'center' }}>
-              {ledger.roomLine}
+      {ledger.bar ? <TimeBar bar={ledger.bar} /> : null}
+      {ledger.rows.map((r) => {
+        const onClick = handlerFor(r.action)
+        const valueInk = r.tone === 'done' || r.tone === 'plain' ? 'var(--text-strong)' : INK[r.tone]
+        const body = (
+          <>
+            <span style={{ display: 'flex', alignItems: 'center', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <Dot tone={r.tone} dot={r.dot} />
+              <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{[r.label, r.joiner, r.date].filter(Boolean).join(' ')}</span>
             </span>
-          )
-        ) : null}
-      </div>
+            <span style={{ whiteSpace: 'nowrap', color: valueInk, fontWeight: r.bold || r.tone === 'amber' || r.tone === 'red' ? 600 : 400 }}>{r.far}</span>
+          </>
+        )
+        return (
+          <Fragment key={r.key}>
+            {onClick ? (
+              <button
+                type="button"
+                data-testid={`ledger-row-${r.key}`}
+                title={doorTitle(r.title, r.action)}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onClick()
+                }}
+                style={{ ...doorStyle, color: 'var(--text-muted)' }}
+              >
+                {body}
+              </button>
+            ) : (
+              <div data-testid={`ledger-row-${r.key}`} title={r.title} style={rowStyle}>
+                {body}
+              </div>
+            )}
+            {r.sub ? <div style={{ paddingLeft: 14, marginTop: -3, fontSize: '0.6875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.sub}</div> : null}
+            {r.key === 'money' && evidence ? <div style={{ paddingLeft: 14, marginTop: -3, minWidth: 0 }}>{evidence}</div> : null}
+          </Fragment>
+        )
+      })}
+      {v ? (
+        verdictClick ? (
+          <button type="button" data-testid="ledger-verdict" title={doorTitle(v.title, v.action)} onClick={(e) => { e.stopPropagation(); verdictClick() }} style={{ ...doorStyle, ...verdictStyle }}>
+            {verdictBody}
+          </button>
+        ) : (
+          <div data-testid="ledger-verdict" title={v.title} style={{ ...rowStyle, ...verdictStyle }}>
+            {verdictBody}
+          </div>
+        )
+      ) : null}
     </div>
   )
 }
