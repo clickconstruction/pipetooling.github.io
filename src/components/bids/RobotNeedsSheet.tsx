@@ -6,6 +6,9 @@ import { ROBOT_INTAKE_ACCOUNT } from '../../lib/bids/robotReadinessLine'
 import { answerFromChoice, orderedChoices } from '../../lib/bids/twinQuestionChoices'
 import { PLANS_ASK_DEFAULT_CHOICES, PLANS_ASK_DEFAULT_RECOMMENDED, answerRequestsRerun, effectiveTwinQuestionKind } from '../../../supabase/functions/_shared/twinQuestionKind'
 import { RobotGlyph } from './RobotGlyph'
+import { BidPlansFolderSteps } from './BidPlansFolderSteps'
+import { supabase } from '../../lib/supabase'
+import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../../lib/bids/updateGuard'
 import { TwinQuestionChoiceButtons } from './TwinQuestionChoiceButtons'
 
 export type RobotOpenQuestion = {
@@ -33,6 +36,8 @@ type RobotNeedsSheetProps = {
    * stamps that bid robot-requested so the robot picks it up front of the line.
    */
   onAnswer: (questionId: string, text: string, opts?: { rerunBidId?: string }) => Promise<boolean>
+  /** v2.4165: the bid's service type by name — which division bid folder the plans card opens. */
+  serviceTypeName?: string
 }
 
 /**
@@ -46,15 +51,19 @@ type RobotNeedsSheetProps = {
  * up with the blocking gaps, with Edit bid and Copy intake address beside it,
  * and its taps underneath; Standing rulings only points here.
  */
-export function RobotNeedsSheet({ bid, questions, onClose, onEditBid, onAnswer }: RobotNeedsSheetProps) {
+export function RobotNeedsSheet({ bid, questions, onClose, onEditBid, onAnswer, serviceTypeName = '' }: RobotNeedsSheetProps) {
   const [copied, setCopied] = useState(false)
+  // v2.4165 · Find on the plans card saves the link straight onto the bid; the card folds once it has.
+  const [plansSaved, setPlansSaved] = useState<string | null>(null)
   const [drafts, setDrafts] = useState<Record<string, string>>({})
   const [freeText, setFreeText] = useState<Record<string, boolean>>({})
   const [busy, setBusy] = useState<string | null>(null)
   if (!bid) return null
   const gaps = robotGaps(bid)
-  const blocking = gaps.filter((g) => g.required)
+  const blocking = gaps.filter((g) => g.required && !(g.key === 'plans' && plansSaved))
   const soft = gaps.filter((g) => !g.required)
+  const plansGap = blocking.find((g) => g.key === 'plans') ?? null
+  const otherBlocking = blocking.filter((g) => g.key !== 'plans')
   const plansAsks = questions.filter((q) => effectiveTwinQuestionKind(q) === 'plans')
   const otherQuestions = questions.filter((q) => effectiveTwinQuestionKind(q) !== 'plans')
   const stops = blocking.length > 0 || plansAsks.length > 0
@@ -62,6 +71,19 @@ export function RobotNeedsSheet({ bid, questions, onClose, onEditBid, onAnswer }
   // The footer's Edit bid lands on the first blocking fix; a plans ask alone is a plans-link fix.
   const firstFix: BidFormFocus | null =
     blocking.map((g) => focusForRobotGap(g.key)).find((f): f is BidFormFocus => f != null) ?? (plansAsks.length > 0 ? 'plansLink' : null)
+
+  async function savePlansLink(link: string): Promise<void> {
+    if (!bid) return
+    try {
+      const { data: rows, error } = await supabase.from('bids').update({ plans_link: link }).eq('id', bid.id).select('id')
+      if (error) throw new Error(error.message)
+      if (bidUpdateRefused(rows)) throw new Error(BID_UPDATE_NOT_APPLIED_MESSAGE)
+      setPlansSaved(link)
+    } catch (e) {
+      setPlansSaved(null)
+      window.alert(`Found the folder, but could not save its link on the bid: ${e instanceof Error ? e.message : 'unknown error'}. Paste it on the bid instead.`)
+    }
+  }
 
   async function copyIntake() {
     try {
@@ -149,7 +171,27 @@ export function RobotNeedsSheet({ bid, questions, onClose, onEditBid, onAnswer }
 
         {gaps.length > 0 || plansAsks.length > 0 ? (
           <ul style={{ listStyle: 'none', margin: '0 0 1rem', padding: 0, display: 'grid', gap: '0.6rem' }}>
-            {blocking.map((g) => gapItem(g))}
+            {plansGap ? (
+              <li key="plans" data-testid="robot-plans-card" style={{ display: 'grid', gap: '0.5rem', padding: '0.75rem 0.85rem', border: '1px solid var(--bg-amber-tint)', background: 'var(--bg-amber-tint)', borderRadius: 8 }}>
+                <span style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-amber-800)' }}>{plansGap.label}</span>
+                <span style={{ fontSize: '0.85rem' }}>In the division bid folder, make a folder with this name and drag the plans PDF into it. Then tap Find. The robot starts on the next batch.</span>
+                <BidPlansFolderSteps
+                  projectName={bid.project_name ?? ''}
+                  bidNumber={bid.bid_number ?? ''}
+                  bidId={bid.id}
+                  serviceTypeName={serviceTypeName}
+                  onFound={(link) => void savePlansLink(link)}
+                />
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                  Plans somewhere else in Drive?{' '}
+                  <button type="button" onClick={() => { onClose(); onEditBid(bid, { focus: 'plansLink' }) }} style={{ ...smallBtn, padding: '0.1rem 0.4rem' }}>Paste a link on the bid</button>
+                </span>
+              </li>
+            ) : null}
+            {plansSaved ? (
+              <li data-testid="robot-plans-saved" style={{ fontSize: '0.85rem', color: 'var(--text-green-700)' }}>Found the folder and saved its link on the bid. The robot picks it up on the next batch.</li>
+            ) : null}
+            {otherBlocking.map((g) => gapItem(g))}
             {plansAsks.map((q) => (
               <li key={q.id} data-testid="robot-plans-ask" style={{ display: 'grid', gridTemplateColumns: '18px 1fr', gap: '0.5rem', alignItems: 'start', fontSize: '0.875rem' }}>
                 <span aria-hidden style={{ fontWeight: 700, color: 'var(--text-red-600)' }}>✗</span>
@@ -159,11 +201,11 @@ export function RobotNeedsSheet({ bid, questions, onClose, onEditBid, onAnswer }
                       <span style={{ fontWeight: 600 }}>Robot needs a different plan set</span>
                       <span style={{ display: 'block', fontSize: '0.8rem', marginTop: '0.1rem' }}>🤖 {q.question}</span>
                       <span style={{ display: 'block', fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
-                        Fix the plans link under Job Plans on the Edit form, or share the right file with the robots’ intake address — then tap Attached — rerun and the robot goes again, front of the line next batch.
+                        Put the right plans in the bid’s folder on the bid, or share the right file with the robots’ Drive address. Then tap Attached — rerun and the robot goes again, front of the line next batch.
                       </span>
                     </span>
                     <span style={{ display: 'inline-flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-                      <button type="button" onClick={() => void copyIntake()} style={smallBtn}>{copied ? 'Copied ✓' : 'Copy intake address'}</button>
+                      <button type="button" onClick={() => void copyIntake()} style={smallBtn}>{copied ? 'Copied ✓' : 'Copy the robots’ address'}</button>
                       <button type="button" onClick={() => { onClose(); onEditBid(bid, { focus: 'plansLink' }) }} style={smallBtn}>Edit bid</button>
                     </span>
                   </div>
@@ -171,7 +213,12 @@ export function RobotNeedsSheet({ bid, questions, onClose, onEditBid, onAnswer }
                 </div>
               </li>
             ))}
-            {soft.map((g) => gapItem(g))}
+            {soft.length > 0 ? (
+              <li data-testid="robot-soft-gaps" style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', alignItems: 'center', fontSize: '0.8rem', color: 'var(--text-muted)', padding: '0.5rem 0.6rem', border: '1px solid var(--border)', borderRadius: 6 }}>
+                <span>Also blank, not blocking: {soft.map((g) => g.label.toLowerCase()).join(', ')}. {soft.map((g) => g.fix).join(' ')}</span>
+                <button type="button" onClick={() => { onClose(); onEditBid(bid, focusForRobotGap(soft[0]!.key) ? { focus: focusForRobotGap(soft[0]!.key) as BidFormFocus } : undefined) }} style={smallBtn}>Edit bid</button>
+              </li>
+            ) : null}
           </ul>
         ) : null}
 
@@ -215,7 +262,7 @@ export function RobotNeedsSheet({ bid, questions, onClose, onEditBid, onAnswer }
           <span style={{ display: 'block', fontSize: '0.78rem', color: 'var(--text-muted)' }}>{g.required ? g.fix : `Not blocking — ${g.fix}`}</span>
         </span>
         {g.copyIntake ? (
-          <button type="button" onClick={() => void copyIntake()} style={smallBtn}>{copied ? 'Copied ✓' : 'Copy intake address'}</button>
+          <button type="button" onClick={() => void copyIntake()} style={smallBtn}>{copied ? 'Copied ✓' : 'Copy the robots’ address'}</button>
         ) : (
           <button type="button" onClick={() => { onClose(); if (bid) onEditBid(bid, gapFocus ? { focus: gapFocus } : undefined) }} style={smallBtn}>Edit bid</button>
         )}

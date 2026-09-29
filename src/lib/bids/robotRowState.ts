@@ -81,7 +81,7 @@ export function robotGaps(bid: RobotRowBid): RobotGap[] {
   const gaps: RobotGap[] = []
   const plansItem = readiness.items.find((i) => i.key === 'plans')
   if (plansItem && !plansItem.ok) {
-    gaps.push({ key: 'plans', label: 'No plans link', fix: 'Paste the plan set (a Drive file or folder) on the Edit form under Job Plans.', required: true })
+    gaps.push({ key: 'plans', label: 'No plans yet', fix: 'Make a folder with the bid’s name in the division bid folder, put the PDFs in it, then tap Find the folder.', required: true })
   } else if (bid.plans_robot_readable === false) {
     const note = bid.plans_robot_probe_note ?? ''
     const notShared = /not shared|no permission|403|404/i.test(note)
@@ -89,7 +89,7 @@ export function robotGaps(bid: RobotRowBid): RobotGap[] {
       key: 'plans-unreadable',
       label: notShared ? 'Plans aren’t shared with the robots' : 'Robots couldn’t open the plans',
       fix: notShared
-        ? `Share the ${/folder/i.test(note) ? 'folder' : 'file'} with ${ROBOT_INTAKE_ACCOUNT} as Viewer, then check again from the Edit form.`
+        ? `The ${/folder/i.test(note) ? 'folder' : 'file'} is outside the bid folders. Share it with the robots’ Drive account, ${ROBOT_INTAKE_ACCOUNT}, as Viewer, then Check again on the bid.`
         : note || 'Open the link yourself — if it works for you, re-save the bid so the robots retry.',
       required: true,
       copyIntake: notShared,

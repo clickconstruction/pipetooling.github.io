@@ -77,7 +77,7 @@ describe('robotRowState', () => {
     expect(s.badge).toBe('?')
     expect(s.gaps[0]?.key).toBe('plans')
     expect(s.gaps[0]?.required).toBe(true)
-    expect(s.title).toMatch(/no plans link/i)
+    expect(s.title).toMatch(/no plans yet/i)
   })
 
   it('needs something when the probe says the plans are not shared, offering the intake address', () => {
