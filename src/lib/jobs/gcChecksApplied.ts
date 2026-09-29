@@ -20,6 +20,16 @@ import { attributeJobPayments, isSentBill, type PaymentSlice } from './paymentAt
 import { effectiveInvoiceParty, payerCustomerId } from './billToParty'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 import { formatCurrency } from './jobFormatting'
+import {
+  billPaidByWords as sharedBillPaidByWords,
+  checkLabel,
+  checkNumberText,
+  formatYmdLong,
+  formatYmdShort,
+  isDepositRef,
+  paymentKind,
+  type CheckKind,
+} from '../../../supabase/functions/_shared/billPaidBy'
 
 export type ChecksInvoiceIn = {
   id: string
@@ -74,7 +84,7 @@ export type ChecksEventIn = {
 /** A Mercury deposit a payment was matched to: when it posted, and how much of it every job together has applied. */
 export type ChecksDepositIn = { id: string; posted_at: string | null; amount: number | string | null; applied: number }
 
-export type CheckKind = 'check' | 'ach' | 'wire' | 'card' | 'other'
+export { checkLabel, checkNumberText, formatYmdLong, formatYmdShort, isDepositRef, paymentKind, type CheckKind }
 
 export type CheckLine = {
   paymentId: string
@@ -155,47 +165,6 @@ const ymd = (v: string | null | undefined): string | null => {
   return /^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(0, 10) : null
 }
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-
-/** "Sep 24, 2026" from a YYYY-MM-DD; the input back when it is not one. */
-export function formatYmdLong(v: string | null | undefined): string {
-  const s = ymd(v)
-  if (!s) return (v ?? '').trim()
-  return `${MONTHS[Number(s.slice(5, 7)) - 1] ?? s.slice(5, 7)} ${Number(s.slice(8, 10))}, ${s.slice(0, 4)}`
-}
-
-/** "Sep 24" from a YYYY-MM-DD. */
-export function formatYmdShort(v: string | null | undefined): string {
-  const s = ymd(v)
-  if (!s) return (v ?? '').trim()
-  return `${MONTHS[Number(s.slice(5, 7)) - 1] ?? s.slice(5, 7)} ${Number(s.slice(8, 10))}`
-}
-
-export function paymentKind(paymentType: string | null | undefined): CheckKind {
-  const t = (paymentType ?? '').trim().toLowerCase()
-  if (!t) return 'other'
-  if (/che(ck|que)|chk/.test(t)) return 'check'
-  if (/ach|eft|direct|transfer/.test(t)) return 'ach'
-  if (/wire/.test(t)) return 'wire'
-  if (/card|stripe|credit|debit|online/.test(t)) return 'card'
-  return 'other'
-}
-
-/**
- * A bank-recorded payment carries Mercury's transaction id in the number field
- * (`apply_mercury_bank_payment_allocations` writes `mercury_id` there so one
- * deposit's allocations share it): a fold key, never a check number.
- */
-export function isDepositRef(reference: string | null | undefined): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test((reference ?? '').trim())
-}
-
-/** The number as the GC would say it: no leading #, no spaces around it; '' for a deposit id. */
-export function checkNumberText(reference: string | null | undefined): string {
-  const ref = (reference ?? '').trim().replace(/^#\s*/, '').trim()
-  return isDepositRef(ref) ? '' : ref
-}
-
 const numberKey = (reference: string | null | undefined): string => checkNumberText(reference).toLowerCase().replace(/[^a-z0-9]/g, '')
 /** The fold key keeps a deposit id — one deposit's allocations share it — where the display number drops it. */
 const foldNumberKey = (reference: string | null | undefined): string =>
@@ -205,15 +174,6 @@ const foldNumberKey = (reference: string | null | undefined): string =>
     .toLowerCase()
     .replace(/[^a-z0-9]/g, '')
 
-export function checkLabel(kind: CheckKind, number: string, opts?: { deposit?: boolean }): string {
-  if (number) return `#${number}`
-  if (kind === 'check') return 'check · no number recorded'
-  if (kind === 'ach') return 'ACH'
-  if (kind === 'wire') return 'Wire'
-  if (kind === 'card') return 'Card'
-  // Recorded from a bank deposit with no type picked: say so rather than "Payment".
-  return opts?.deposit ? 'Bank deposit' : 'Payment'
-}
 
 /**
  * The address leads, then the job number and name — the statement's row label, on one line. A
@@ -517,27 +477,5 @@ export function findChecks(checks: readonly GcCheck[], query: string): GcCheck[]
  * balance with no bill behind it — then what the job has been paid so far.
  */
 export function billPaidByWords(job: ChecksJobIn, invoice: Pick<ChecksInvoiceIn, 'id' | 'amount'> | null): string {
-  const f = jobFacts(job)
-  const labelOf = (p: ChecksPaymentIn) => {
-    const label = checkLabel(paymentKind(p.payment_type), checkNumberText(p.reference_number))
-    const when = ymd(p.paid_on)
-    return when ? `${label} on ${formatYmdShort(when)}` : label
-  }
-  if (!invoice) {
-    const total = round2(job.payments.reduce((s, p) => s + num(p.amount), 0))
-    if (total <= 0.005) return 'nothing applied yet'
-    const labels = [...new Set(job.payments.map(labelOf))]
-    return `paid ${money(total)} so far by ${joinList(labels)}`
-  }
-  const bill = f.attribution.byBill.get(invoice.id)
-  const applied = round2(bill?.applied ?? 0)
-  if (applied <= 0.005) return 'nothing applied yet'
-  const amount = num(invoice.amount)
-  const remaining = round2(Math.max(0, amount - applied))
-  const slices = [...(bill?.slices ?? [])].sort((a, b) => (ymd(a.payment.paid_on) ?? '9999').localeCompare(ymd(b.payment.paid_on) ?? '9999'))
-  const labels = [...new Set(slices.map((s) => labelOf(s.payment)))]
-  if (remaining <= 0.005) return `paid in full by ${joinList(labels)}`
-  const held = round2(Math.max(0, num(job.lien_retainage_held)))
-  const retainage = held > 0 && remaining <= held + 0.005 ? ', the retainage you hold' : ''
-  return `${money(applied)} paid by ${joinList(labels)} · ${money(remaining)} still open${retainage}`
+  return sharedBillPaidByWords({ bills: job.invoices, payments: job.payments, retainageHeld: job.lien_retainage_held }, invoice)
 }
