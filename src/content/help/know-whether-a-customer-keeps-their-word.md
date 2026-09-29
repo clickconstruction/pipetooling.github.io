@@ -11,19 +11,19 @@ When a customer says "we'll pay by the 25th," that sentence is now a record, not
 A promise is a date a customer named for paying a bill. It gets recorded in four places, and the office never has to remember a form for the first one:
 
 - **The customer names the date themselves.** On their portal statement, once a bill is a week old, a strip under *Balance due* says **Can't pay today? Tell us when to expect it.** with three Fridays and a *Pick a date* option. One tap, no sign-in. It lands on the Billed row as {{chip:green|✓ Promised Sep 12 · customer}}.
-- **They said…** on **Jobs → Pipeline → Billed Awaiting Payment**, the link under a row's expected-pay chip. Pick the date, who said it (optional), and how — phone, text, email, in person. Call mode's "promised" outcome records one the same way (see *chase late payments with call mode*).
+- **The expectation on the row's line** on **Jobs → Pipeline → Billed Awaiting Payment** — click *expect ~Sep 8* or *12 d past expected* under the bar. Pick the date, who said it (optional), and how — phone, text, email, in person. Call mode's "promised" outcome records one the same way (see *chase late payments with call mode*).
 - **The word in GC Review.** The pay date on a GC's word or call sheet row goes on every bill that GC owes, unless you untick some (see *run your GC statement round*).
 - **Recording a late payment.** When a payment lands two weeks or more after its bill and no promise is on the job, the *Mark paid* window asks **Did they promise a date for this?** Tap the day it came or one of the Fridays before it, or *No*. Answering writes the promise from memory while it is fresh; skipping is fine — nothing is guessed.
 
 :::example Taking a promise on the phone
-Tanya at Done Right says the cheque run is Friday. On the row, click {{chip:gray|They said…}}, pick Friday, type "Tanya, their office", tap **Phone**, save. The chip turns green with the date and the record has who said it.
+Tanya at Done Right says the cheque run is Friday. On the row, click *12 d past expected* on the line under the bar, pick Friday, type "Tanya, their office", tap **Phone**, save. The line gains *they said Fri* and the record has who said it.
 :::
 
 Each promise remembers who at the customer said it, who on our side heard it, and when. Changing the date on a row does **not** overwrite the old promise: the first one stays on record and the new one is a second promise on the same bill — the modal says so. Clearing a promised date takes it off the chip but keeps the promise in the record — it was still said.
 
 ## Taking a wrong promise off the record
 
-A promise entered on the wrong bill, or with a date nobody gave, should not count against the customer. Open {{chip:gray|They said…}} on the Billed row: under the form, **On record for this bill** lists every promise made on it — the day, who said it and how, who heard it, and the day it was written down.
+A promise entered on the wrong bill, or with a date nobody gave, should not count against the customer. Click the expectation on the Billed row's line: under the form, **On record for this bill** lists every promise made on it — the day, who said it and how, who heard it, and the day it was written down.
 
 :::example On record for this bill · 2 promises
 **Oct 9 · on the board** — {{chip:red|never said that}}

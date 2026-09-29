@@ -1,3 +1,4 @@
+import type { WordsOverride } from './BilledWordsLine'
 import { type CSSProperties, type ReactNode } from 'react'
 import type { StagesPhoneRowsMode } from './stagesPhoneRowsMode'
 import { useCustomerProfileModal } from '../../contexts/CustomerProfileModalContext'
@@ -84,7 +85,8 @@ export type JobsStagesUnifiedTableProps = {
   /** Collections: short muted note line under the amounts (e.g. the stored collections reason). */
   jobNoteLine?: (j: JobWithDetails) => string | null
   /** Billed Awaiting Payment: expected-payment chip for the row (bill date + customer pay speed). */
-  billedExpectedPayChip?: (row: StageRow) => React.ReactNode
+  /** v2.4130: the bill's story for the words line under the bar, plus what still sits under the cell (bank-returned, the no-bill-line pill, the reliability line). */
+  billedBillLine?: (row: StageRow) => BilledRowBillLine | null
   /** Billed / Collections (v2.4051): the lien runway under the money bar — today → expected pay → the last day to lien. */
   billedLienRunway?: (row: StageRow) => React.ReactNode
   /** Phone rows (punch list #30, PR 2a): the card lists render two-line rows instead of cards. */
@@ -161,6 +163,8 @@ export type JobsStagesUnifiedTableProps = {
  * props after defaults, plus the helpers it builds once per render. The two row files
  * destructure only what they use.
  */
+export type BilledRowBillLine = { words: WordsOverride | null; extras: React.ReactNode }
+
 export type StagesUnifiedRowContext = Omit<JobsStagesUnifiedTableProps, 'jobSendBackLabel' | 'invoiceBundleActionLabel' | 'invoiceStandaloneActionLabel' | 'flashInvoiceId' | 'showClickTooling'> &
   Required<Pick<JobsStagesUnifiedTableProps, 'jobSendBackLabel' | 'invoiceBundleActionLabel' | 'invoiceStandaloneActionLabel' | 'flashInvoiceId' | 'showClickTooling'>> & {
     openTestReportFor: (job: JobWithDetails) => void

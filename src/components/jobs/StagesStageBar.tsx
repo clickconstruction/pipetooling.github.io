@@ -1,3 +1,4 @@
+import type { WordsOverride } from './BilledWordsLine'
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { fitStageChips, type PipelineStageState } from '../../lib/jobs/pipelineStageBar'
 import type { ProgressPaymentSegment, ProgressPaymentTone, ProgressPaymentView } from '../../lib/jobs/progressPaymentCell'
@@ -114,7 +115,8 @@ export const STAGE_CLICK_TITLE = 'Open Bill → ① Line Items'
  * window at ① Line Items — the one place stages are set — so the *Set stages*
  * link under the bar (v2.3421) is gone.
  */
-export function StagesStageBar({ view, compact = false, onStageClick }: { view: ProgressPaymentView; compact?: boolean; onStageClick?: () => void }) {
+export function StagesStageBar({ view, compact = false, onStageClick, wordsOverride = null }: { view: ProgressPaymentView; compact?: boolean; onStageClick?: () => void; /** v2.4130: a Billed row's bill story in place of the crew's sentence. */ wordsOverride?: WordsOverride | null }) {
+  const words = wordsOverride ?? view.words
   const [stripRef, stripWidth] = useMeasuredWidth<HTMLDivElement>()
   const [barRef, barWidth] = useMeasuredWidth<HTMLDivElement>()
   const gapPx = 3
@@ -252,8 +254,8 @@ export function StagesStageBar({ view, compact = false, onStageClick }: { view: 
         data-progress-words
         style={{
           fontSize: '0.6875rem',
-          color: TONE_COLOR[view.words.tone],
-          fontWeight: view.words.tone === 'red' ? 600 : 400,
+          color: TONE_COLOR[words.tone],
+          fontWeight: words.tone === 'red' ? 600 : 400,
           // v2.3446: two lines, then an ellipsis — a 176 px desktop cell was
           // cutting the sentence at "Top Out · Tristen on site Sat · 4…".
           display: '-webkit-box',
@@ -265,9 +267,9 @@ export function StagesStageBar({ view, compact = false, onStageClick }: { view: 
           minWidth: 0,
           maxWidth: '100%',
         }}
-        title={view.words.full}
+        title={wordsOverride ? wordsOverride.title : view.words.full}
       >
-        {view.words.text}
+        {wordsOverride ? wordsOverride.node : view.words.text}
       </div>
     </div>
   )

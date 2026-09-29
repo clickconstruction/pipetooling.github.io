@@ -30,6 +30,7 @@ type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['R
 export type StagesUnifiedJobRowKind = Extract<StageRow, { kind: 'job' | 'job_with_merged_billed' | 'job_with_primary_rtb' }>
 
 export function StagesUnifiedJobRow({ row, t }: { row: StagesUnifiedJobRowKind; t: StagesUnifiedRowContext }) {
+  const billLine = t.billedBillLine?.(row) ?? null
   const {
     actionLabel,
     onJobAction,
@@ -186,6 +187,7 @@ export function StagesUnifiedJobRow({ row, t }: { row: StagesUnifiedJobRowKind; 
                 onPctCommit={(n) => updateJobPctComplete(j.id, n, j.pct_complete ?? null)}
                 onNoBidValueClick={() => openEdit(j, { fixturesSectionHighlight: true })}
                 onStageClick={() => openEdit(j, { fixturesSectionHighlight: true })}
+                wordsOverride={billLine?.words ?? null}
                 footnote={showRemaining ? (() => {
                   const u = jobBillingUnallocatedDollars(j)
                   return u > 0 ? (
@@ -194,6 +196,7 @@ export function StagesUnifiedJobRow({ row, t }: { row: StagesUnifiedJobRowKind; 
                 })() : null}
               />
               {t.billedLienRunway?.(row)}
+              {billLine?.extras}
               {((sendBackBelowRemaining && onJobSendBack) || onJobMoveToCollections) && (
                 <div style={stagesCellButtonRowStyle}>
                   {sendBackBelowRemaining && onJobSendBack && (
@@ -234,6 +237,7 @@ export function StagesUnifiedJobRow({ row, t }: { row: StagesUnifiedJobRowKind; 
                 onPctCommit={(n) => updateJobPctComplete(j.id, n, j.pct_complete ?? null)}
                 onNoBidValueClick={() => openEdit(j, { fixturesSectionHighlight: true })}
                 onStageClick={() => openEdit(j, { fixturesSectionHighlight: true })}
+                wordsOverride={billLine?.words ?? null}
                 footnote={
                   row.kind === 'job_with_merged_billed'
                     ? (() => {
@@ -254,6 +258,7 @@ export function StagesUnifiedJobRow({ row, t }: { row: StagesUnifiedJobRowKind; 
                 }
               />
               {t.billedLienRunway?.(row)}
+              {billLine?.extras}
               {((sendBackBelowRemaining && bundleInvWithJob != null) || onJobMoveToCollections) && (
                 <div style={stagesCellButtonRowStyle}>
                   {sendBackBelowRemaining && onInvoiceSendBack && bundleInvWithJob != null && (
@@ -388,7 +393,6 @@ export function StagesUnifiedJobRow({ row, t }: { row: StagesUnifiedJobRowKind; 
               </button>
             )}
           </div>
-          {t.billedExpectedPayChip?.(row)}
           {/* marginTop tops the outer stack's 0.25rem gap up to the status
               buttons' own 0.5rem rhythm — equal air above Edit Job (v2.1688). */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'stretch', marginTop: '0.25rem' }}>

@@ -25,6 +25,7 @@ import { stagesBillSentPctAlert } from '../../lib/jobs/stagesBillSentPctAlert'
 export type StagesUnifiedInvoiceRowKind = Extract<StageRow, { kind: 'invoice' }>
 
 export function StagesUnifiedInvoiceRow({ row, t }: { row: StagesUnifiedInvoiceRowKind; t: StagesUnifiedRowContext }) {
+  const billLine = t.billedBillLine?.(row) ?? null
   const {
     actionLabel,
     onInvoiceAction,
@@ -237,6 +238,7 @@ export function StagesUnifiedInvoiceRow({ row, t }: { row: StagesUnifiedInvoiceR
             onPctCommit={(n) => updateJobPctComplete(job.id, n, job.pct_complete ?? null)}
             onNoBidValueClick={() => openEdit(job, { fixturesSectionHighlight: true })}
             onStageClick={() => openEdit(job, { fixturesSectionHighlight: true })}
+            wordsOverride={billLine?.words ?? null}
             footnote={(() => {
               const u = showRemaining ? jobBillingUnallocatedDollars(job) : 0
               return (
@@ -250,6 +252,7 @@ export function StagesUnifiedInvoiceRow({ row, t }: { row: StagesUnifiedInvoiceR
             })()}
           />
           {t.billedLienRunway?.(row)}
+          {billLine?.extras}
           {(sendBackBelowRemaining || onJobMoveToCollections) && (
             <div style={stagesCellButtonRowStyle}>
               {sendBackBelowRemaining && (
@@ -321,7 +324,6 @@ export function StagesUnifiedInvoiceRow({ row, t }: { row: StagesUnifiedInvoiceR
               </button>
             )}
           </div>
-          {t.billedExpectedPayChip?.(row)}
           {/* marginTop tops the outer stack's 0.25rem gap up to the status
               buttons' own 0.5rem rhythm — equal air above Edit Job (v2.1688). */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'stretch', marginTop: '0.25rem' }}>
