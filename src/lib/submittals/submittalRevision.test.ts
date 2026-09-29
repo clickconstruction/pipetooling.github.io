@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { asDecision, asReason, asStatus, describeRevision, describeRevisionChip, draftToItemInsert, formatPages, itemToPrevious, needsSheet, parsePageRange, parseSourceFiles, revisionTiles, serializeSourceFiles } from './submittalRevision'
+import { asDecision, asReason, asStatus, describeRevision, describeRevisionChip, describeWhatIsLeft, draftToItemInsert, formatPages, itemToPrevious, needsSheet, parsePageRange, parseSourceFiles, revisionTiles, serializeSourceFiles } from './submittalRevision'
 import type { SubmittalItemRow } from './submittalRevision'
 import type { SubmittalRowDraft } from './buildSubmittalRows'
 
@@ -123,5 +123,16 @@ describe('the revision chip', () => {
     expect(describeRevisionChip({ rev_number: 3, status: 'draft', created_at: '2026-09-15T20:00:00Z', shared_at: null })).toBe('Rev 3 · draft · Sep 15')
     expect(describeRevisionChip({ rev_number: 2, status: 'shared', created_at: '2026-09-10T20:00:00Z', shared_at: '2026-09-12T20:00:00Z' })).toBe('Rev 2 · shared · Sep 12')
     expect(describeRevisionChip({ rev_number: 1, status: 'nonsense', created_at: '', shared_at: null })).toBe('Rev 1 · draft')
+  })
+})
+
+describe('describeWhatIsLeft (v2.4125)', () => {
+  const tiles = { rows: 22, tagged: 20, accessories: 2, asSpecified: 6, superseded: 1, equal: 1, alternates: 8, alternatesWithoutReason: 2, designChanges: 1, designChangesWithoutReason: 1, missing: 1, proposed: 0, sheetsIn: 14, sheetsWanted: 22, sheetsNeeded: 8 }
+  it('says what is still to do, one short sentence each', () => {
+    expect(describeWhatIsLeft(tiles)).toBe('22 rows. 3 still need a reason. 1 still needs a product. 8 still need a cut sheet.')
+  })
+  it('says so when nothing is left', () => {
+    expect(describeWhatIsLeft({ ...tiles, alternatesWithoutReason: 0, designChangesWithoutReason: 0, missing: 0, sheetsNeeded: 0 })).toBe('22 rows. Every row has its reason and its cut sheet.')
+    expect(describeWhatIsLeft({ ...tiles, rows: 0, alternatesWithoutReason: 0, designChangesWithoutReason: 0, missing: 0, sheetsNeeded: 0 })).toBe('0 rows.')
   })
 })

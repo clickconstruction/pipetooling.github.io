@@ -6,6 +6,7 @@
  * carries the rows into Rev 2 and supersedes an unshared draft; Edit writes
  * the item row.
  */
+import { SUBMITTAL_STAGE_ABOUT } from '../../lib/submittals/submittalTour'
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 
@@ -321,6 +322,20 @@ describe('BidsSubmittalsTab', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 
+  it('v2.4125 · every stage carries its plain sentence, and its ? opens the walkthrough on that stage’s stop', async () => {
+    if (typeof window.matchMedia !== 'function') window.matchMedia = (() => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} })) as unknown as typeof window.matchMedia
+    Element.prototype.scrollIntoView = () => {}
+    mount()
+    expect(await screen.findByTestId('road-1-about')).toBeTruthy()
+    // A fresh bid draws stages 1 and 2; the rest come with Rev 1.
+    for (const n of [1, 2]) expect(screen.getByTestId(`road-${n}-about`).textContent).toContain(SUBMITTAL_STAGE_ABOUT[n])
+    fireEvent.click(screen.getByRole('button', { name: 'Walk me through step 2' }))
+    expect(screen.getByRole('dialog').getAttribute('aria-label')).toMatch(/Build Rev 1/)
+    fireEvent.click(screen.getByRole('button', { name: 'Skip tour' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Walk me through step 1' }))
+    expect(screen.getByRole('dialog').getAttribute('aria-label')).toMatch(/Where the rows come from/)
+  })
+
   it('draws the tiles and rows of a revision — say why, sheet needed, the status chips — and Edit saves the row', async () => {
     state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [{ path: 'b398/rev-1/0.pdf', name: 'NWS.pdf', pages: 12, house_id: null, house_name: null, trimmed_at: null }], shared_at: null, created_at: '2026-09-15T00:00:00Z' }]
     state.items = [
@@ -334,8 +349,8 @@ describe('BidsSubmittalsTab', () => {
     expect(rows).toHaveLength(3)
     expect(screen.getByTestId('revision-line').textContent).toMatch(/Rev 1 · draft · Sep 1[45] · 3 rows · 1 as specified · 1 alternate · 1 without a reason · 1 missing · 1 of 2 sheets in/)
     const tiles = screen.getByTestId('submittal-tiles').textContent ?? ''
-    expect(tiles).toMatch(/1 alternate · 1 without a reason/)
-    expect(tiles).toMatch(/1 of 2 sheets in/)
+    expect(tiles).toBe('3 rows. 1 still needs a reason. 1 still needs a product. 1 still needs a cut sheet.')
+    expect(screen.getByTestId('submittal-tiles').getAttribute('title')).toMatch(/1 alternate · 1 without a reason · 1 missing · 1 of 2 sheets in/)
     expect(within(rows[0]!).getByText('say why')).toBeTruthy()
     expect(within(rows[0]!).getByText('sheet needed')).toBeTruthy()
     expect(within(rows[2]!).getByText(/✓ p\.1–2/)).toBeTruthy()
