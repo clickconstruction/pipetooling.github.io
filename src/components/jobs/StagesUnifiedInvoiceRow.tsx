@@ -9,7 +9,7 @@ import ViewBillWithPdfTail from './ViewBillWithPdfTail'
 import type { StageRow } from '../../lib/jobsStagesBoard'
 import type { StagesUnifiedRowContext } from './JobsStagesUnifiedTable'
 import { Fragment } from 'react'
-import { STAGES_EDIT_MODE_RAIL_WIDTH, stagesOpenRowStyle, accountManOnlyStripeStyle, renderJobAddressWithMap, renderStagesEditModeRail, renderStagesJobColumnEstimateFooter, renderStagesProjectBannerRow, renderStagesThreadExpandButton, shouldSuppressStagesRowJobThreadToggle, stagesInvoiceRowAccentRailStyle, stagesInvoiceRowAccentRowStyle, stagesRowHasProjectBanner } from './jobsStagesRowShared'
+import { STAGES_EDIT_MODE_RAIL_WIDTH, stagesOpenRowStyle, accountManOnlyStripeStyle, renderJobAddressWithMap, renderStagesEditModeRail, renderStagesJobColumnEstimateFooter, renderStagesProjectBannerRow, renderStagesThreadExpandButton, shouldSuppressStagesRowJobThreadToggle, stagesInvoiceRowAccentRailStyle, stagesInvoiceRowAccentRowStyle, stagesRowHasProjectBanner, stagesActionMoveStackStyle } from './jobsStagesRowShared'
 import { ShareJobButton } from './ShareJobButton'
 import { StagesAiaG702Button, StagesLienInstrumentsButton, StagesLienReleaseButton, StagesTestReportButton } from './StagesRowActionButtons'
 import { StagesCrewLine } from './StagesCrewLine'
@@ -66,7 +66,6 @@ export function StagesUnifiedInvoiceRow({ row, t }: { row: StagesUnifiedInvoiceR
     unifiedStagesColCount,
     flashRowStyle,
     stagesSecondaryOutlineButtonBase,
-    stagesCellButtonRowStyle,
     stagesCellButtonStyle,
     stagesInvoiceHcpBadgeStyle,
     threadRowShared,
@@ -253,33 +252,6 @@ export function StagesUnifiedInvoiceRow({ row, t }: { row: StagesUnifiedInvoiceR
           />
           {t.billedLienRunway?.(row)}
           {billLine?.extras}
-          {(sendBackBelowRemaining || onJobMoveToCollections) && (
-            <div style={stagesCellButtonRowStyle}>
-              {sendBackBelowRemaining && (
-                <button
-                  type="button"
-                  onClick={() => onInvoiceSendBack(invWithJob)}
-                  disabled={stagesInvoiceUpdatingId === inv.id}
-                  style={{
-                    ...stagesCellButtonStyle,
-                    cursor: stagesInvoiceUpdatingId === inv.id ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  {invoiceStandaloneActionLabel}
-                </button>
-              )}
-              {onJobMoveToCollections && (
-                <button
-                  type="button"
-                  onClick={() => onJobMoveToCollections(job)}
-                  title="Flag this job as difficult to collect (moves all its billed lines to the Collections section; stays Billed)"
-                  style={{ ...stagesCellButtonStyle, color: 'var(--text-red-600)', border: '1px solid #dc2626', fontWeight: 600, cursor: 'pointer' }}
-                >
-                  Collections
-                </button>
-              )}
-            </div>
-          )}
           {renderJobNoteLine(job)}
         </div>
       </td>
@@ -352,6 +324,31 @@ export function StagesUnifiedInvoiceRow({ row, t }: { row: StagesUnifiedInvoiceR
             ) : null}
             {showAiaG702G703(authRole, job, inv) ? <StagesAiaG702Button onClick={() => setAiaG702StagesJob(job)} /> : null}
             </div>
+            {/* v2.4147 (owner): Send back and Collections live under the icons, stacked full width. */}
+            {(sendBackBelowRemaining || onJobMoveToCollections) ? (
+              <div style={stagesActionMoveStackStyle}>
+                {sendBackBelowRemaining ? (
+                  <button
+                    type="button"
+                    onClick={() => onInvoiceSendBack(invWithJob)}
+                    disabled={stagesInvoiceUpdatingId === inv.id}
+                    style={{ ...stagesCellButtonStyle, width: '100%', cursor: stagesInvoiceUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}
+                  >
+                    {invoiceStandaloneActionLabel}
+                  </button>
+                ) : null}
+                {onJobMoveToCollections ? (
+                  <button
+                    type="button"
+                    onClick={() => onJobMoveToCollections(job)}
+                    title="Flag this job as difficult to collect (moves all its billed lines to the Collections section; stays Billed)"
+                    style={{ ...stagesCellButtonStyle, width: '100%', color: 'var(--text-red-600)', border: '1px solid #dc2626', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    Collections
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         </div>
       </td>

@@ -1547,3 +1547,6 @@ export function renderStagesJobColumnEstimateFooter(linked: JobWithDetails['link
     </div>
   )
 }
+
+/** v2.4147: Send back / Collections under the action column's icons — stacked, full width, the Edit button's rhythm. */
+export const stagesActionMoveStackStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'stretch', width: '100%', marginTop: '0.25rem' }

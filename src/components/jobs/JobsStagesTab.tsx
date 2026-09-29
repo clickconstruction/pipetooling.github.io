@@ -1065,7 +1065,17 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             promise,
             inCollections: jobInCollections(row.job),
           })
-      const words = line ? billedWordsOverride(line, canMarkPromisedPay ? openPromise : undefined) : null
+      // v2.4147: the customer's pay history ("Pays in 2–8d · keeps 3 of 4") is the
+      // evidence behind the estimate, so it sits right under the sentence.
+      const evidence = shell ? null : (
+        <BilledReliabilityLine
+          line={buildReliabilityLine(
+            row.job.customer_id ? billedPaySpeeds?.receipts[row.job.customer_id] : null,
+            canMarkPromisedPay ? promiseRecordsByCustomer?.get(stageRowPayerCustomerId(row) ?? '') ?? null : null,
+          )}
+        />
+      )
+      const words = line ? billedWordsOverride(line, canMarkPromisedPay ? openPromise : undefined, evidence) : null
       if (!words && !shell && !bankRet) return null
       const extras = (
         <>
@@ -1107,14 +1117,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             >
               {promise ? 'They said… (new date)' : 'They said…'}
             </button>
-          ) : null}
-          {!shell ? (
-            <BilledReliabilityLine
-              line={buildReliabilityLine(
-                row.job.customer_id ? billedPaySpeeds?.receipts[row.job.customer_id] : null,
-                canMarkPromisedPay ? promiseRecordsByCustomer?.get(stageRowPayerCustomerId(row) ?? '') ?? null : null,
-              )}
-            />
           ) : null}
         </>
       )

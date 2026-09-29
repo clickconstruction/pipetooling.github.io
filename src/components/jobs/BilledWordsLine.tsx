@@ -41,9 +41,9 @@ export default function BilledWordsLine({ line, onExpect }: { line: BilledWordsL
   )
 }
 
-/** What the bar's words div takes in place of the crew's sentence. */
-export type WordsOverride = { node: ReactNode; tone: ProgressPaymentTone; title: string }
+/** What the bar's words div takes in place of the crew's sentence; `below` (v2.4147) is drawn right under it — the pay history behind the estimate. */
+export type WordsOverride = { node: ReactNode; tone: ProgressPaymentTone; title: string; below?: ReactNode }
 
-export function billedWordsOverride(line: BilledWordsLineModel, onExpect?: () => void): WordsOverride {
-  return { node: <BilledWordsLine line={line} onExpect={onExpect} />, tone: line.tone, title: line.full }
+export function billedWordsOverride(line: BilledWordsLineModel, onExpect?: () => void, below?: ReactNode): WordsOverride {
+  return { node: <BilledWordsLine line={line} onExpect={onExpect} />, tone: line.tone, title: line.full, below }
 }
