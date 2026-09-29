@@ -34,6 +34,8 @@ export function SubmittalJourneyStrip({
   onWalkThrough,
   offerWalkThrough,
   onDismissOffer,
+  onSeeGc,
+  seeGcOpen = false,
 }: {
   journey: SubmittalJourney
   busy: boolean
@@ -45,6 +47,9 @@ export function SubmittalJourneyStrip({
   /** The first open on this device: a line under the pills offers the walkthrough in words. */
   offerWalkThrough: boolean
   onDismissOffer: () => void
+  /** v2.4189 · opens the pane that draws the GC's page from the rows as they stand (#62). */
+  onSeeGc?: () => void
+  seeGcOpen?: boolean
 }) {
   const { stages, next } = journey
   const lead = next.kind === 'next' ? 'Next: ' : next.kind === 'waiting' ? 'Waiting: ' : 'Done: '
@@ -52,9 +57,16 @@ export function SubmittalJourneyStrip({
     <div data-tour="submittals-journey" data-testid="submittal-journey" style={{ border: '1px solid var(--border)', borderRadius: 10, background: 'var(--surface)', padding: '0.6rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
         <span aria-hidden />
-        <button type="button" onClick={onWalkThrough} style={btn} title="A one-minute walkthrough of every stage, from the schedule to the GC's approval">
-          Walk me through it ▶
-        </button>
+        <span style={{ display: 'inline-flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+          {onSeeGc ? (
+            <button type="button" onClick={onSeeGc} aria-pressed={seeGcOpen} style={{ ...btn, ...(seeGcOpen ? { borderColor: '#2563eb', color: 'var(--text-blue-700)', background: 'var(--bg-blue-tint)' } : {}) }} title="The GC's page for the rows as they stand, beside the road; it follows your edits" data-testid="see-gc">
+            {seeGcOpen ? 'Hide what the GC sees' : 'See what the GC sees'}
+            </button>
+          ) : null}
+          <button type="button" onClick={onWalkThrough} style={btn} title="A one-minute walkthrough of every stage, from the schedule to the GC's approval">
+            Walk me through it ▶
+          </button>
+        </span>
       </div>
       <div role="list" aria-label="Submittal stages" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
         {groupJourneyStages(stages).map((g, gi, groups) => (

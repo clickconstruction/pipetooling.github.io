@@ -21,6 +21,7 @@ import { Children, Fragment, useCallback, useEffect, useLayoutEffect, useMemo, u
 import { SpotlightTour, spotlightTourStepsPresent, type SpotlightTourStep } from '../SpotlightTour'
 import { RobotOffer } from './RobotOffer'
 import { robotSeatState, type RobotSeatRow, type RobotSeatState } from '../../lib/submittals/robotOffer'
+import { SeeWhatTheGcSees } from './SeeWhatTheGcSees'
 import { describeForReviewer } from '../../lib/submittals/seeWhatTheySee'
 import { SubmittalJourneyStrip } from './SubmittalJourneyStrip'
 import { SubmittalProcurementPanel } from './SubmittalProcurementPanel'
@@ -217,6 +218,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   const [tourOpen, setTourOpen] = useState(false)
   const [tourStage, setTourStage] = useState<number | null>(null)
   const [statusLegendOpen, setStatusLegendOpen] = useState(false)
+  // v2.4189 · the pane beside the road that draws the GC's page from the rows as they stand (#62 Layer 2).
+  const [seeGcOpen, setSeeGcOpen] = useState(false)
   // v2.4136 · whether a robot seat is live (punch list #59): no offer shows until it is. Not live until the reader answers, so nothing flashes.
   const [robotSeat, setRobotSeat] = useState<RobotSeatState>(() => robotSeatState(null, Date.now()))
   useEffect(() => {
@@ -1394,7 +1397,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   const isNewest = selectedRev != null && newestRev != null && selectedRev.id === newestRev.id
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: seeGcOpen && selectedRev && isNewest && !narrowViewport640 ? 'minmax(0, 1fr) 400px' : 'minmax(0, 1fr)', gap: '1rem', alignItems: 'start' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem', minWidth: 0 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', flexWrap: 'wrap' }}>
         <div style={{ minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
@@ -1453,6 +1457,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
           onAction={runJourneyAction}
           onGoToStage={goToStage}
           onWalkThrough={() => startWalkThrough()}
+          onSeeGc={selectedRev && isNewest ? () => setSeeGcOpen((v) => !v) : undefined}
+          seeGcOpen={seeGcOpen}
           offerWalkThrough={offerWalkThrough}
           onDismissOffer={() => {
             markSubmittalWalkthroughSeen()
@@ -2096,6 +2102,19 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
           }}
         />
       ) : null}
+    </div>
+    {seeGcOpen && selectedRev && isNewest && selectedBid ? (
+      <SeeWhatTheGcSees
+        items={items}
+        revNumber={selectedRev.rev_number}
+        shared={asRevisionStatus(selectedRev.status) !== 'draft'}
+        hasPackage={Boolean(selectedRev.package_path)}
+        company={{ name: companyName, tagline: reportSettings.companyTagline, phone: reportSettings.officePhone }}
+        bid={{ label: bidDisplayName(selectedBid) || 'Bid', projectName: selectedBid.project_name ?? null, address: selectedBid.address ?? null }}
+        narrow={narrowViewport640}
+        onClose={() => setSeeGcOpen(false)}
+      />
+    ) : null}
     </div>
   )
 }

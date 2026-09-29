@@ -32,6 +32,18 @@ describe('SubmittalJourneyStrip', () => {
     expect(onWalkThrough).toHaveBeenCalledTimes(1)
     fireEvent.click(screen.getByRole('button', { name: 'Not now' }))
     expect(onDismissOffer).toHaveBeenCalledTimes(1)
+    // v2.4189 · no onSeeGc → no door.
+    expect(screen.queryByTestId('see-gc')).toBeNull()
+  })
+
+  it('v2.4189 · See what the GC sees opens the pane, and reads Hide while it is open', () => {
+    const onSeeGc = vi.fn()
+    const journey = submittalJourney({ scheduleTags: 12, picks: 14, rev: { number: 1, status: 'draft', isNewest: true, rows: 14, owesReason: 0, sheetsNeeded: 0, packageBuilt: false }, room: null, decisions: null })
+    const { rerender } = render(<SubmittalJourneyStrip journey={journey} busy={false} onAction={() => {}} onGoToStage={() => {}} onWalkThrough={() => {}} offerWalkThrough={false} onDismissOffer={() => {}} onSeeGc={onSeeGc} />)
+    fireEvent.click(screen.getByTestId('see-gc'))
+    expect(onSeeGc).toHaveBeenCalledTimes(1)
+    rerender(<SubmittalJourneyStrip journey={journey} busy={false} onAction={() => {}} onGoToStage={() => {}} onWalkThrough={() => {}} offerWalkThrough={false} onDismissOffer={() => {}} onSeeGc={onSeeGc} seeGcOpen />)
+    expect(screen.getByTestId('see-gc').textContent).toBe('Hide what the GC sees')
   })
 
   it('a waiting stage reads amber, its button is quiet, and a done journey has no button', () => {
