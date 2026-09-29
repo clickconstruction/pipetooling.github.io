@@ -2009,6 +2009,7 @@ export type Database = {
           sheet_file: number | null
           sheet_pages: number[]
           sheet_source: string | null
+          source_count_row_id: string | null
           source_quote_line_id: string | null
           specified_description: string | null
           specified_manufacturer: string | null
@@ -2042,6 +2043,7 @@ export type Database = {
           sheet_file?: number | null
           sheet_pages?: number[]
           sheet_source?: string | null
+          source_count_row_id?: string | null
           source_quote_line_id?: string | null
           specified_description?: string | null
           specified_manufacturer?: string | null
@@ -2075,6 +2077,7 @@ export type Database = {
           sheet_file?: number | null
           sheet_pages?: number[]
           sheet_source?: string | null
+          source_count_row_id?: string | null
           source_quote_line_id?: string | null
           specified_description?: string | null
           specified_manufacturer?: string | null
@@ -2333,6 +2336,42 @@ export type Database = {
             columns: ["shared_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bid_submittal_takeoff_choices: {
+        Row: {
+          bid_id: string
+          count_row_id: string
+          ticked: boolean
+          updated_at: string
+        }
+        Insert: {
+          bid_id: string
+          count_row_id: string
+          ticked?: boolean
+          updated_at?: string
+        }
+        Update: {
+          bid_id?: string
+          count_row_id?: string
+          ticked?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_submittal_takeoff_choices_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_submittal_takeoff_choices_count_row_id_fkey"
+            columns: ["count_row_id"]
+            isOneToOne: false
+            referencedRelation: "bids_count_rows"
             referencedColumns: ["id"]
           },
         ]

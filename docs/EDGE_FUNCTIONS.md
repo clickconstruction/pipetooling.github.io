@@ -1350,7 +1350,9 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Procurement (v2.4087)**: an open room's payload adds `procurement` when the office has any `bid_procurement_items` row or any tag is approved — the records without the PO, the bid's count rows and stage splits, the job's stage dates (`_shared/procurementStageDates.ts`) and the last update's `sent_at`; every `RoomRow` carries `leadTimeDays`. The page derives released / expected / required / float with the app's own kernel. Its own try/catch: a missing table leaves the card absent, never breaks the room.
 
-**Used by**: [`SubmittalRoom.tsx`](../src/pages/SubmittalRoom.tsx). **Deploy**: `bash scripts/deploy-functions.sh get-submittal-room` after `20260916015805` is applied (and again after `20260928204228` for the procurement card).
+**Proposed rows (v2.4107)**: an item with `status = 'proposed'` (built from the takeoff on a bid with no schedule) is `RoomRowKind 'proposed'` — ordered right after the differing rows, counted in `counts.proposed` and open until decided, its why sentence *What we intend to install; the plans' schedule was not on the bid to compare against.* Redeploy after `20260929015024` is applied.
+
+**Used by**: [`SubmittalRoom.tsx`](../src/pages/SubmittalRoom.tsx). **Deploy**: `bash scripts/deploy-functions.sh get-submittal-room` after `20260916015805` is applied (again after `20260928204228` for the procurement card, and after `20260929015024` for proposed rows).
 
 
 **Stage 5a (v2.3528)** — the payload gains `messages: RoomMessage[]` (oldest first: `{ id, at, authorKind, authorName, body, kind, revNumber, tags }`; the office reads as the company name, system lines carry the person's name only inside the body) and `person.messagesThisHour`, so the page greys *Ask* at the cap. A missing table (before the migration is pushed) reads as no messages.

@@ -14,7 +14,7 @@ import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import { BidsSubmittalsTab } from './BidsSubmittalsTab'
 
 type Rec = { table: string; op: string; payload: unknown; filters: Array<[string, unknown]> }
-const state: { revisions: Record<string, unknown>[]; items: Record<string, unknown>[]; tasks: Record<string, unknown>[]; writes: Rec[]; storage: string[]; packageCalls: Array<{ files: number; sheets: string[] }> } = { revisions: [], items: [], tasks: [], writes: [], storage: [], packageCalls: [] }
+const state: { revisions: Record<string, unknown>[]; items: Record<string, unknown>[]; tasks: Record<string, unknown>[]; writes: Rec[]; storage: string[]; packageCalls: Array<{ files: number; sheets: string[] }>; noSources: boolean; takeoff: boolean } = { revisions: [], items: [], tasks: [], writes: [], storage: [], packageCalls: [], noSources: false, takeoff: false }
 
 vi.mock('../../lib/jobs/testReportSettings', () => ({
   fetchTestReportSettings: () => Promise.resolve({ companyName: 'Click Plumbing', companyTagline: 'Plumbing', officePhone: '(512) 555-0100' }),
@@ -69,6 +69,25 @@ const QUOTES = [
   },
 ]
 
+// v2.4107 · a takeoff: two fixtures with a priced part (one from Reece), one with no part yet, one pipe line.
+const COUNT_ROWS = [
+  { id: 'c-wc', fixture: 'WC 1&2', count: 10, bid_version_id: null, sequence_order: 1 },
+  { id: 'c-wh', fixture: 'DWH1 & ET', count: 1, bid_version_id: null, sequence_order: 2 },
+  { id: 'c-us', fixture: 'UTILITY SINK', count: 2, bid_version_id: null, sequence_order: 3 },
+  { id: 'c-pipe', fixture: 'ft of 3/4IN WATER', count: 140, bid_version_id: null, sequence_order: 4 },
+]
+const PART_LINES = [
+  { count_row_id: 'c-wc', part_id: 'p-wc', source_template_id: null, quantity: 1, unit_price: 300, source_material_part_price_id: 'pr-1', bid_version_id: null },
+  { count_row_id: 'c-wh', part_id: 'p-wh', source_template_id: null, quantity: 1, unit_price: 2400, source_material_part_price_id: null, bid_version_id: null },
+  { count_row_id: 'c-pipe', part_id: 'p-pipe', source_template_id: null, quantity: 140, unit_price: 6.5, source_material_part_price_id: null, bid_version_id: null },
+]
+const PARTS = [
+  { id: 'p-wc', name: 'TOTO CT708UVG#01 WALL HUNG BOWL', manufacturer: null, part_types: { name: 'Fixtures' } },
+  { id: 'p-wh', name: 'BTH-199 WATER HEATER', manufacturer: 'A.O. Smith', part_types: { name: 'Equipment' } },
+  { id: 'p-pipe', name: '3/4IN TYPE L COPPER', manufacturer: null, part_types: { name: 'Pipe' } },
+]
+const PRICES = [{ id: 'pr-1', supply_house_id: 'h-reece', supply_houses: { name: 'Reece' } }]
+
 function builder(table: string) {
   const rec: Rec = { table, op: 'select', payload: null, filters: [] }
   const b: Record<string, unknown> = {}
@@ -97,6 +116,11 @@ function builder(table: string) {
     rec.op = 'delete'
     return b
   }
+  b.upsert = (payload: unknown) => {
+    rec.op = 'upsert'
+    rec.payload = payload
+    return b
+  }
   const run = () => {
     if (rec.op !== 'select') {
       state.writes.push(rec)
@@ -121,13 +145,18 @@ function builder(table: string) {
       }
       if (rec.op === 'delete' && table === 'bid_submittal_items') {
         const sid = rec.filters.find((f) => f[0] === 'submittal_id')?.[1]
-        state.items = state.items.filter((r) => r.submittal_id !== sid)
+        const id = rec.filters.find((f) => f[0] === 'id')?.[1]
+        state.items = state.items.filter((r) => (sid ? r.submittal_id !== sid : r.id !== id))
       }
       return { data: null, error: null }
     }
-    if (table === 'bid_specified_products') return { data: SPEC, error: null }
+    if (table === 'bid_specified_products') return { data: state.noSources ? [] : SPEC, error: null }
     if (table === 'bid_submittal_tasks') return { data: state.tasks, error: null }
-    if (table === 'bid_quotes') return { data: QUOTES, error: null }
+    if (table === 'bid_quotes') return { data: state.noSources ? [] : QUOTES, error: null }
+    if (table === 'bids_count_rows') return { data: state.takeoff ? COUNT_ROWS : [], error: null }
+    if (table === 'bids_takeoff_rough_part_lines') return { data: state.takeoff ? PART_LINES : [], error: null }
+    if (table === 'material_parts') return { data: PARTS, error: null }
+    if (table === 'material_part_prices') return { data: PRICES, error: null }
     if (table === 'bid_submittals') return { data: [...state.revisions].sort((a, b) => (b.rev_number as number) - (a.rev_number as number)), error: null }
     if (table === 'bid_submittal_items') {
       const sid = rec.filters.find((f) => f[0] === 'submittal_id')?.[1]
@@ -218,7 +247,7 @@ describe('BidsSubmittalsTab', () => {
     expect(await screen.findByText('No submittal on this bid yet')).toBeTruthy()
     // Stage 1 is done here (3 tags, 3 picks) so it is folded; its title opens it, and the door reads "Add to the schedule".
     expect(screen.queryByTestId('plug-in-schedule')).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: /1 · Schedule & picks/ }))
+    fireEvent.click(screen.getByRole('button', { name: /1 · Where the rows come from/ }))
     expect(screen.getByTestId('plug-in-schedule').textContent).toBe('Add to the schedule')
 
     state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [], shared_at: null, created_at: '2026-09-15T00:00:00Z' }]
@@ -262,7 +291,7 @@ describe('BidsSubmittalsTab', () => {
     expect(screen.getByRole('dialog', { name: 'Where this submittal is' })).toBeTruthy()
     const titles: string[] = []
     const missing: string[] = []
-    for (let i = 0; i < 14; i++) {
+    for (let i = 0; i < 15; i++) {
       const dialog = screen.getByRole('dialog')
       titles.push(dialog.getAttribute('aria-label') ?? '')
       if (within(dialog).queryByTestId('tour-missing')) missing.push(dialog.getAttribute('aria-label') ?? '')
@@ -271,7 +300,8 @@ describe('BidsSubmittalsTab', () => {
     }
     expect(titles).toEqual([
       'Where this submittal is',
-      '1 · Schedule and picks, on Pricing',
+      '1 · Where the rows come from',
+      'From the takeoff',
       'No schedule yet? Type or paste it',
       'Or let the robot read it',
       '2 · Build Rev 1',
@@ -286,7 +316,7 @@ describe('BidsSubmittalsTab', () => {
       '8 · Procure: the log the GC asks for',
     ])
     // On a fresh bid with a schedule, only the strip, the source line and the Build Rev 1 card are on the page.
-    expect(missing).toEqual(titles.filter((t) => !['Where this submittal is', '1 · Schedule and picks, on Pricing', 'No schedule yet? Type or paste it', '2 · Build Rev 1'].includes(t)))
+    expect(missing).toEqual(titles.filter((t) => !['Where this submittal is', '1 · Where the rows come from', 'From the takeoff', 'No schedule yet? Type or paste it', '2 · Build Rev 1'].includes(t)))
     expect(screen.getByRole('link', { name: 'Read the full guide: build a submittal package →' }).getAttribute('href')).toBe('/help?g=build-a-submittal-package')
     fireEvent.click(screen.getByRole('button', { name: 'Done' }))
     expect(screen.queryByRole('dialog')).toBeNull()
@@ -456,5 +486,58 @@ describe('BidsSubmittalsTab', () => {
     expect(confirm.payload).toMatchObject({ confirmed_by: 'wendi' })
     expect(state.writes.some((w) => w.table === 'bid_specified_products' && w.op === 'delete')).toBe(true)
     expect(state.writes.find((w) => w.table === 'bid_submittal_tasks' && w.op === 'update')!.payload).toMatchObject({ status: 'done' })
+  })
+
+  it('v2.4107 · from the takeoff: a bid with no schedule and no picks offers the takeoff first; the picker ticks fixtures and equipment, Rev 1 lands as Proposed rows with the house, the ticks are remembered, and × on a draft row unticks it', async () => {
+    state.revisions = []
+    state.items = []
+    state.writes = []
+    state.noSources = true
+    state.takeoff = true
+    try {
+      mount()
+      expect(await screen.findByText('No submittal on this bid yet')).toBeTruthy()
+      expect(document.querySelector('[data-tour="submittals-source"]')?.textContent).toContain('4 fixtures on the takeoff · 0 tags on the schedule · 0 picked lines · choose from the takeoff')
+      expect(screen.getByTestId('journey-next').textContent).toBe('Next: The takeoff has 4 fixtures, 3 with parts. Choose which ones go on the submittal and build Rev 1 from them. The plans’ schedule is optional; typing it later turns Proposed rows into As specified or Alternate.Choose from the takeoff')
+      expect(screen.getByTestId('source-takeoff').textContent).toContain('The takeoff · 4 fixtures, 3 with a part')
+      expect(screen.getByTestId('choose-from-takeoff').textContent).toBe('Choose from the takeoff')
+      fireEvent.click(screen.getByTestId('build-from-takeoff'))
+      const picker = await screen.findByRole('dialog', { name: 'Choose from the takeoff' })
+      // Fixtures and equipment ticked; the unpriced sink and the pipe not.
+      expect(within(picker).getByTestId('takeoff-bar').textContent).toBe('2 rows will go on Rev 1 · 2 with a product · 2 left out')
+      expect(within(picker).getByTestId('takeoff-group-fixtures').textContent).toContain('Reece')
+      fireEvent.click(within(picker).getByLabelText('UTILITY SINK'))
+      expect(within(picker).getByTestId('takeoff-bar').textContent).toBe('3 rows will go on Rev 1 · 2 with a product, 1 to type · 1 left out')
+      fireEvent.click(within(picker).getByTestId('takeoff-confirm'))
+      await waitFor(() => expect(state.writes.some((w) => w.op === 'upsert' && w.table === 'bid_submittal_takeoff_choices')).toBe(true))
+      expect(state.writes.find((w) => w.table === 'bid_submittals')!.payload).toMatchObject({ bid_id: 'b398', rev_number: 1, status: 'draft' })
+      const rows = state.writes.find((w) => w.op === 'insert' && w.table === 'bid_submittal_items')!.payload as Record<string, unknown>[]
+      expect(rows.map((r) => [r.tag, r.status, r.submitted_label, r.supply_house_id, r.source_count_row_id])).toEqual([
+        ['DWH-1', 'proposed', 'A.O. Smith BTH-199 WATER HEATER', null, 'c-wh'],
+        ['WC-1, WC-2', 'proposed', 'TOTO CT708UVG#01 WALL HUNG BOWL', 'h-reece', 'c-wc'],
+        ['UTILITY SINK', 'missing', null, null, 'c-us'],
+      ])
+      expect(rows[1]).toMatchObject({ specified_description: 'WC 1&2', sequence_order: 2, submittal_id: 'rev-1' })
+      const ticks = state.writes.find((w) => w.op === 'upsert')!.payload as Array<{ count_row_id: string; ticked: boolean }>
+      expect(ticks.map((t) => [t.count_row_id, t.ticked])).toEqual([['c-wh', true], ['c-wc', true], ['c-us', true], ['c-pipe', false]])
+      // The built revision: three rows, the picker gone, the source line now reads the takeoff as done.
+      expect(await screen.findByTestId('revision-line')).toBeTruthy()
+      expect(screen.getAllByTestId('submittal-row')).toHaveLength(3)
+      expect(screen.queryByRole('dialog', { name: 'Choose from the takeoff' })).toBeNull()
+      expect(screen.getByTestId('add-from-takeoff').textContent).toBe('+ Add from the takeoff…')
+      // × on the sink: off the draft, and unticked on the takeoff list.
+      state.writes = []
+      fireEvent.click(screen.getByRole('button', { name: 'Remove UTILITY SINK' }))
+      const confirmDialog = await screen.findByRole('alertdialog')
+      expect(confirmDialog.textContent).toMatch(/unticked on the takeoff list/)
+      fireEvent.click(within(confirmDialog).getByRole('button', { name: 'Remove' }))
+      await waitFor(() => expect(state.writes.some((w) => w.op === 'upsert')).toBe(true))
+      expect(state.writes.find((w) => w.op === 'delete')!.filters).toEqual([['id', 'it-3']])
+      expect(state.writes.find((w) => w.op === 'upsert')!.payload).toEqual([{ bid_id: 'b398', count_row_id: 'c-us', ticked: false }])
+      await waitFor(() => expect(screen.getAllByTestId('submittal-row')).toHaveLength(2))
+    } finally {
+      state.noSources = false
+      state.takeoff = false
+    }
   })
 })

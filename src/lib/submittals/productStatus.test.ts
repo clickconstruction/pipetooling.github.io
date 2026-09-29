@@ -102,6 +102,7 @@ describe('labels', () => {
       design_change: 'Design change',
       missing: 'Missing',
       accessory: 'Accessory',
+      proposed: 'Proposed',
     })
     expect(REASON_LABELS).toEqual({ lead_time: 'Lead time', discontinued: 'Discontinued', in_stock: 'In stock', equal: 'Equal', cost: 'Cost', other: 'Other' })
   })
@@ -126,7 +127,7 @@ describe('statusCounts + statusSummaryLine', () => {
       ),
     )
     expect(c.total).toBe(22)
-    expect(c.byStatus).toEqual({ as_specified: 6, superseded: 1, equal: 1, alternate: 8, design_change: 1, missing: 1, accessory: 4 })
+    expect(c.byStatus).toEqual({ as_specified: 6, superseded: 1, equal: 1, alternate: 8, design_change: 1, missing: 1, accessory: 4, proposed: 0 })
     expect(c.alternatesWithoutReason).toBe(3)
     expect(c.designChangesWithoutReason).toBe(0)
     expect(statusSummaryLine(c)).toBe('6 as specified · 1 superseded · 1 equal · 8 alternates · 3 without a reason · 1 design change · 1 missing · 4 accessories')

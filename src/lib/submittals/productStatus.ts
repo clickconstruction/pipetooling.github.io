@@ -15,7 +15,7 @@
  * never decides on its own — the model does.
  */
 
-export type ProductStatus = 'as_specified' | 'superseded' | 'equal' | 'alternate' | 'design_change' | 'missing' | 'accessory'
+export type ProductStatus = 'as_specified' | 'superseded' | 'equal' | 'alternate' | 'design_change' | 'missing' | 'accessory' | 'proposed'
 export type StatusOverride = 'superseded' | 'equal' | 'design_change' | null
 export type ReasonKind = 'lead_time' | 'discontinued' | 'in_stock' | 'equal' | 'cost' | 'other'
 
@@ -31,6 +31,8 @@ export const STATUS_LABELS: Record<ProductStatus, string> = {
   design_change: 'Design change',
   missing: 'Missing',
   accessory: 'Accessory',
+  /** Built from the takeoff with no plans' schedule to compare against (v2.4107). */
+  proposed: 'Proposed',
 }
 
 export const REASON_LABELS: Record<ReasonKind, string> = {
@@ -118,6 +120,7 @@ export function statusCounts(rows: ReadonlyArray<{ status: ProductStatus; reason
     equal: 0,
     alternate: 0,
     design_change: 0,
+    proposed: 0,
     missing: 0,
     accessory: 0,
   }

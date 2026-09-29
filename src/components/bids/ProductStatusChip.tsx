@@ -14,6 +14,7 @@ const PRODUCT_STATUS_STYLE: Record<ProductStatus, { color: string; bg: string }>
   design_change: { color: 'var(--text-red-700)', bg: 'var(--bg-red-tint)' },
   missing: { color: 'var(--text-red-700)', bg: 'var(--bg-red-tint)' },
   accessory: { color: 'var(--text-muted)', bg: 'var(--bg-muted)' },
+  proposed: { color: 'var(--text-blue-700)', bg: 'var(--bg-blue-tint)' },
 }
 
 export function ProductStatusChip({ status, near, size = 'sm' }: { status: ProductStatus; near?: boolean; size?: 'sm' | 'md' }) {
