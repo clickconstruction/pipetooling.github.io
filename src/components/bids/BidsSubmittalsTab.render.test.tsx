@@ -226,16 +226,17 @@ describe('BidsSubmittalsTab', () => {
     state.writes = []
     mount()
     await screen.findAllByTestId('submittal-row')
+    // The editor opens first; nothing is written until Save (v2.4105), so Cancel leaves no stray row.
     fireEvent.click(screen.getByTestId('add-row-by-hand'))
-    await waitFor(() => expect(state.writes.some((w) => w.op === 'insert' && w.table === 'bid_submittal_items')).toBe(true))
-    expect(state.writes.find((w) => w.op === 'insert' && w.table === 'bid_submittal_items')!.payload).toMatchObject({ submittal_id: 'rev-1', tag: '', sequence_order: 2, status: 'missing' })
     const dialog = await screen.findByRole('dialog')
+    expect(state.writes.some((w) => w.table === 'bid_submittal_items')).toBe(false)
     fireEvent.change(within(dialog).getByLabelText('Tag'), { target: { value: 'gi-1' } })
     fireEvent.change(within(dialog).getByLabelText('Submitted product'), { target: { value: 'Schier GB-250 grease interceptor' } })
     fireEvent.click(within(dialog).getByRole('button', { name: '4+ wk' }))
     fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
-    await waitFor(() => expect(state.writes.some((w) => w.op === 'update' && w.table === 'bid_submittal_items')).toBe(true))
-    expect(state.writes.find((w) => w.op === 'update' && w.table === 'bid_submittal_items')!.payload).toMatchObject({ tag: 'GI-1', submitted_label: 'Schier GB-250 grease interceptor', lead_time_days: 28 })
+    await waitFor(() => expect(state.writes.some((w) => w.op === 'insert' && w.table === 'bid_submittal_items')).toBe(true))
+    expect(state.writes.find((w) => w.op === 'insert' && w.table === 'bid_submittal_items')!.payload).toMatchObject({ submittal_id: 'rev-1', sequence_order: 2, status: 'missing', tag: 'GI-1', submitted_label: 'Schier GB-250 grease interceptor', lead_time_days: 28 })
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
   })
 
   it('v2.4067 · the journey strip says where the submittal is, the first open offers the walkthrough, and the tour keeps a stop for every stage — centered when its controls are not on the page', async () => {

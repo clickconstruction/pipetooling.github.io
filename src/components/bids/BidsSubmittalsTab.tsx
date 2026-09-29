@@ -84,8 +84,7 @@ import {
   SUBMITTALS_BUCKET,
   type SourceFile,
   type SubmittalItemRow,
-  type SubmittalRevisionRow,
-} from '../../lib/submittals/submittalRevision'
+  type SubmittalRevisionRow, blankSubmittalItem, NEW_ROW_ID } from '../../lib/submittals/submittalRevision'
 
 // The stage 1–2 tables are hand-typed until the regen chore; the untyped client keeps a checkout ahead of the push honest.
 const db = supabase as unknown as SupabaseClient
@@ -1009,24 +1008,28 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     setItems(await loadItems(selectedRev.id))
   }
 
-  /** By hand (v2.4090): an empty row on the draft, then the editor for its tag, product and lead time. */
-  async function addRowByHand() {
+  /** By hand (v2.4090; v2.4105 the editor first): a row that exists only once Save is pressed — Cancel leaves nothing behind. */
+  function addRowByHand() {
     if (!selectedRev || !isDraft) return
     const maxSeq = items.reduce((m, it) => Math.max(m, it.sequence_order), 0)
-    const { data, error } = await db.from('bid_submittal_items').insert({ submittal_id: selectedRev.id, tag: '', sequence_order: maxSeq + 1, status: 'missing', sheet_pages: [] }).select('*').single()
-    if (error) {
-      showToast(formatErrorMessage(error, 'Could not add the row'), 'error')
-      return
-    }
-    const rows = await loadItems(selectedRev.id)
-    setItems(rows)
-    const added = rows.find((it) => it.id === (data as { id: string }).id) ?? null
-    if (added) setEditing(added)
+    setEditing(blankSubmittalItem(selectedRev.id, maxSeq + 1))
   }
 
   async function saveItem(patch: SubmittalItemPatch) {
     if (!editing || !selectedRev || !bidId) return
     const { entered, clearDecision, ...rowPatch } = patch
+    if (editing.id === NEW_ROW_ID) {
+      // v2.4105 · the row by hand lands now, with what the editor holds; a call on it is entered with Edit once it exists.
+      const { error } = await db.from('bid_submittal_items').insert({ submittal_id: selectedRev.id, sequence_order: editing.sequence_order, ...rowPatch, tag: rowPatch.tag ?? '', sheet_pages: rowPatch.sheet_pages ?? [] })
+      if (error) {
+        showToast(formatErrorMessage(error, 'Could not add the row'), 'error')
+        return
+      }
+      setEditing(null)
+      setItems(await loadItems(selectedRev.id))
+      if (entered) showToast('The row is in. Their call goes on it with Edit.', 'info')
+      return
+    }
     try {
       let write: Record<string, unknown> = { ...rowPatch }
       let enteredFor: { id: string; name: string } | null = null
@@ -1189,8 +1192,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
             {onOpenPricing ? (
               <>
                 {' · '}
-                <button type="button" onClick={() => onOpenPricing(bid)} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }}>
-                  {specified.length === 0 ? 'plug in the fixture schedule on Pricing' : 'the picks on Pricing'}
+                <button type="button" onClick={() => (specified.length === 0 ? setPlugInOpen(true) : onOpenPricing(bid))} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }}>
+                  {specified.length === 0 ? 'type or paste the fixture schedule' : 'the picks on Pricing'}
                 </button>
               </>
             ) : null}
@@ -1242,7 +1245,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         <div className="submittal-road" data-testid="submittal-road" style={{ display: 'grid', gridTemplateColumns: '34px 1fr', columnGap: '0.6rem' }}>
           {/* 1 · Schedule & picks — the source line is in the header; the robot's offer lives here while there is no schedule. */}
           <RoadSection n={1} title="Schedule & picks" status={stageStatus('picks')} open={sectionOpen('picks')} onToggle={() => toggleSection('picks')} anchor="submittals-schedule"
-            summary={<>{specified.length} tag{specified.length === 1 ? '' : 's'} · {picks.length} picked line{picks.length === 1 ? '' : 's'}{onOpenPricing ? <> · <button type="button" onClick={() => onOpenPricing(bid)} style={{ ...btnQuiet, textDecoration: 'underline', fontSize: 'inherit' }}>{specified.length === 0 ? 'plug in the fixture schedule on Pricing' : 'the picks on Pricing'}</button></> : null}</>}>
+            summary={<>{specified.length} tag{specified.length === 1 ? '' : 's'} · {picks.length} picked line{picks.length === 1 ? '' : 's'}{onOpenPricing ? <> · <button type="button" onClick={() => (specified.length === 0 ? setPlugInOpen(true) : onOpenPricing(bid))} style={{ ...btnQuiet, textDecoration: 'underline', fontSize: 'inherit' }}>{specified.length === 0 ? 'type or paste the fixture schedule' : 'the picks on Pricing'}</button></> : null}</>}>
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
               <button type="button" disabled={busy} onClick={() => setPlugInOpen(true)} style={specified.length === 0 ? btnPrimary : btn} title="Type or paste the plans' fixture schedule — one tag per line; no robot, no trip to Pricing" data-testid="plug-in-schedule" data-tour="submittals-plug-in">
                 {specified.length === 0 ? 'Type or paste the schedule' : 'Add to the schedule'}
@@ -1325,7 +1328,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
             <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-base)', lineHeight: 1.45 }}>
               Rev 1 is built from what Pricing already knows: one row per tag on the fixture schedule, the product from the house you picked, the status against the schedule, and the reason and lead time you gave at the pick. Picks that match no tag become accessory rows.
             </p>
-            {specified.length === 0 ? <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-amber-700)' }}>No fixture schedule on this bid — plug it in on Pricing first, or Rev 1 will be accessories only.</p> : null}
+            {specified.length === 0 ? <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-amber-700)' }}>No fixture schedule on this bid — type or paste it under stage 1 first, or Rev 1 will be accessories only.</p> : null}
             {picks.length === 0 ? <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-amber-700)' }}>No picked quote lines — every tag starts as missing. Pick a house on the compare, or type each row's product with Edit after Rev 1 is built.</p> : null}
             <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center', flexWrap: 'wrap' }}>
               <button type="button" disabled={busy || (specified.length === 0 && picks.length === 0)} onClick={() => void createFirstRevision()} style={{ ...btnPrimary, opacity: busy || (specified.length === 0 && picks.length === 0) ? 0.6 : 1 }}>
