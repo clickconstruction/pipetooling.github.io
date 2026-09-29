@@ -24,7 +24,7 @@ describe('robotBidReadiness', () => {
     const r = robotBidReadiness({ ...fullBid, plans_link: '  ' })
     expect(r.state).toBe('missing')
     expect(r.missing.map((m) => m.key)).toEqual(['plans'])
-    expect(r.missing[0]?.fix).toMatch(/plans link/i)
+    expect(r.missing[0]?.fix).toMatch(/Find the folder/i)
   })
 
   it('missing service type blocks readiness', () => {

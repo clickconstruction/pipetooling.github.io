@@ -54,6 +54,7 @@ import { BidsRobotOverlays } from '../components/bids/BidsRobotOverlays'
 import type { BidFlowDoor, BidFlowStep } from '../lib/bids/bidFlow'
 import { landOnBidFlowTarget, landOnElement, parseLandingParam } from '../lib/bids/bidFlowLanding'
 import { BidsRobotQueueTab } from '../components/bids/BidsRobotQueueTab'
+import { plansWaitingBids, plansWaitingWords } from '../lib/bids/bidPlansFolder'
 import { BidsRobotMirrorTab } from '../components/bids/BidsRobotMirrorTab'
 import { BidsRobotScoreboardTab } from '../components/bids/BidsRobotScoreboardTab'
 import { normalizeBidNumber } from '../lib/bids/confidenceBoard'
@@ -1796,6 +1797,13 @@ export default function Bids() {
       )}
 
       {/* Bid Board Tab */}
+      {activeTab === 'bid-board' && plansWaitingBids(peopleBids, serviceTypes).length > 0 ? (
+        // v2.4165 · the line the Robot Board already carries, on the board estimators live on.
+        <div data-testid="plans-waiting-line" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', margin: '0 0 0.75rem', padding: '0.55rem 0.85rem', border: '1px solid var(--bg-amber-tint)', background: 'var(--bg-amber-tint)', borderRadius: 8, fontSize: '0.875rem', color: 'var(--text-amber-800)' }}>
+          <span>{plansWaitingWords(plansWaitingBids(peopleBids, serviceTypes).length)}</span>
+          <button type="button" onClick={() => selectBidsTab('robot-board')} style={{ font: 'inherit', fontSize: '0.82rem', fontWeight: 600, padding: '0.35rem 0.75rem', borderRadius: 5, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>Add the plans →</button>
+        </div>
+      ) : null}
       {activeTab === 'bid-board' && (
         <BidsBidBoardTab
           jobAccountStrips={jobAccountStrips}
@@ -1848,7 +1856,7 @@ export default function Bids() {
         />
       )}
 
-      <BidsRobotOverlays robot={robot} authUser={authUser} selectBidsTab={selectBidsTab} selectBidAndSyncUrl={selectBidAndSyncUrl} openEditBid={openEditBid} />
+      <BidsRobotOverlays serviceTypes={serviceTypes} robot={robot} authUser={authUser} selectBidsTab={selectBidsTab} selectBidAndSyncUrl={selectBidAndSyncUrl} openEditBid={openEditBid} />
 
       {/* Builder Review Tab */}
       {isFollowupLens(activeTab) && (

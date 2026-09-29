@@ -21,12 +21,15 @@ export function BidsRobotOverlays({
   selectBidsTab,
   selectBidAndSyncUrl,
   openEditBid,
+  serviceTypes,
 }: {
   robot: BidRobotLayer
   authUser: User | null
   selectBidsTab: (tab: BidsTabKey) => void
   selectBidAndSyncUrl: (bid: BidWithBuilder, tab: BidsTabKey) => void
   openEditBid: (bid: BidWithBuilder, opts?: { focus?: BidFormFocus; tab?: 'bid' | 'edit' }) => void
+  /** v2.4165: the plans card on the needs sheet opens the bid's division folder. */
+  serviceTypes?: ReadonlyArray<{ id: string; name: string }>
 }) {
   const {
     robotEnvelope,
@@ -76,6 +79,7 @@ export function BidsRobotOverlays({
         onClose={() => setRobotNeedsBid(null)}
         onEditBid={(bid, opts) => openEditBid(bid as BidWithBuilder, opts)}
         onAnswer={answerRobotQuestion}
+        serviceTypeName={robotNeedsBid ? (serviceTypes?.find((st) => st.id === robotNeedsBid.service_type_id)?.name ?? '') : ''}
       />
 
       <RobotReferenceGradeModal

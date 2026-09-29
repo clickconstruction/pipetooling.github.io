@@ -5,10 +5,12 @@
  * pick answers with the bid id riding along so the page stamps the request.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { RobotNeedsSheet, type RobotOpenQuestion } from './RobotNeedsSheet'
 import type { Bid } from '../../types/bids'
-import { settle } from '../../test/renderSmokeMocks'
+import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
+
+vi.mock('../../lib/supabase', () => ({ supabase: { functions: { invoke: () => Promise.resolve({ data: { found: false }, error: null }) }, from: () => ({ update: () => ({ eq: () => ({ select: () => Promise.resolve({ data: [{ id: 'b1' }], error: null }) }) }) }) } }))
 
 const bid = {
   id: 'bid-378',
@@ -46,13 +48,13 @@ const decision: RobotOpenQuestion = {
 describe('RobotNeedsSheet', () => {
   it('a legacy plans ask gets the standard taps; the rerun tap answers with the bid id for the request stamp', async () => {
     const onAnswer = vi.fn().mockResolvedValue(true)
-    render(<RobotNeedsSheet bid={bid} questions={[plansAsk, decision]} onClose={() => {}} onEditBid={() => {}} onAnswer={onAnswer} />)
+    renderWithProviders(<RobotNeedsSheet bid={bid} questions={[plansAsk, decision]} onClose={() => {}} onEditBid={() => {}} onAnswer={onAnswer} />)
     await settle()
     expect(screen.getByText('Robot needs a different plan set')).toBeTruthy()
     expect(screen.getByText(/It stops here until these are fixed/)).toBeTruthy()
     // Plans ask: Copy intake address + Edit bid beside it, three taps under it.
     const plansRow = screen.getByTestId('robot-plans-ask')
-    expect(plansRow.textContent).toContain('Copy intake address')
+    expect(plansRow.textContent).toContain('Copy the robots’ address')
     expect(plansRow.textContent).toContain('Edit bid')
     fireEvent.click(screen.getByRole('button', { name: /★ Attached — rerun/ }))
     await waitFor(() => expect(onAnswer).toHaveBeenCalledWith('q-plans', 'Attached — rerun', { rerunBidId: 'bid-378' }))
@@ -64,7 +66,7 @@ describe('RobotNeedsSheet', () => {
 
   it('every Edit bid lands on the field that fixes the gap — a plans ask and a no-plans gap both open on Job Plans (v2.3334)', async () => {
     const onEditBid = vi.fn()
-    const { unmount } = render(<RobotNeedsSheet bid={bid} questions={[plansAsk]} onClose={() => {}} onEditBid={onEditBid} onAnswer={vi.fn()} />)
+    const { unmount } = renderWithProviders(<RobotNeedsSheet bid={bid} questions={[plansAsk]} onClose={() => {}} onEditBid={onEditBid} onAnswer={vi.fn()} />)
     const [beside, footer] = screen.getAllByRole('button', { name: 'Edit bid' })
     fireEvent.click(beside!)
     expect(onEditBid).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'bid-378' }), { focus: 'plansLink' })
@@ -73,9 +75,9 @@ describe('RobotNeedsSheet', () => {
     unmount()
 
     const noPlans = { ...bid, plans_link: null, plans_robot_readable: null } as unknown as Bid
-    render(<RobotNeedsSheet bid={noPlans} questions={[]} onClose={() => {}} onEditBid={onEditBid} onAnswer={vi.fn()} />)
+    renderWithProviders(<RobotNeedsSheet bid={noPlans} questions={[]} onClose={() => {}} onEditBid={onEditBid} onAnswer={vi.fn()} />)
     await settle()
-    expect(screen.getByText('No plans link')).toBeTruthy()
+    expect(screen.getByText('No plans yet')).toBeTruthy()
     const [gapDoor] = screen.getAllByRole('button', { name: 'Edit bid' })
     fireEvent.click(gapDoor!)
     expect(onEditBid).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'bid-378' }), { focus: 'plansLink' })
@@ -83,7 +85,7 @@ describe('RobotNeedsSheet', () => {
 
   it('"Skip this bid" answers the plans ask without a rerun request', async () => {
     const onAnswer = vi.fn().mockResolvedValue(true)
-    render(<RobotNeedsSheet bid={bid} questions={[plansAsk]} onClose={() => {}} onEditBid={() => {}} onAnswer={onAnswer} />)
+    renderWithProviders(<RobotNeedsSheet bid={bid} questions={[plansAsk]} onClose={() => {}} onEditBid={() => {}} onAnswer={onAnswer} />)
     await settle()
     fireEvent.click(screen.getByRole('button', { name: 'Skip this bid' }))
     await waitFor(() => expect(onAnswer).toHaveBeenCalledWith('q-plans', 'Skip this bid', undefined))

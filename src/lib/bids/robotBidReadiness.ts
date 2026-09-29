@@ -47,7 +47,7 @@ export function robotBidReadiness(
       label: 'Plans PDF filed',
       ok: !!bid.plans_link?.trim(),
       required: true,
-      fix: 'The robot reads the plan set through the bid’s plans link — file it on the Edit form.',
+      fix: 'Make a folder with the bid’s name in the division bid folder, put the PDFs in it, then tap Find the folder on the bid.',
     },
     {
       key: 'service-type',
@@ -61,7 +61,7 @@ export function robotBidReadiness(
       label: 'GC / customer on the bid',
       ok: !!(bid.gc_builder_id || bid.customer_id),
       required: false,
-      fix: 'Not blocking, but the robot’s bid copy carries the GC for context.',
+      fix: 'The robot’s bid copy carries the GC for context.',
     },
     {
       key: 'distance',
@@ -75,7 +75,7 @@ export function robotBidReadiness(
       label: 'Bid due date',
       ok: !!bid.bid_due_date,
       required: false,
-      fix: 'Not blocking; the robot notes the deadline in its plan.',
+      fix: 'The robot notes the deadline in its plan.',
     },
   ]
   if (opts?.twinBidExists) return { state: 'done', items, missing: [] }
