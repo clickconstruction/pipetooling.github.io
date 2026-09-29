@@ -16,6 +16,9 @@ describe('SubmittalJourneyStrip', () => {
     const pills = screen.getAllByTestId('journey-stage')
     expect(pills.map((p) => p.getAttribute('data-status'))).toEqual(['done', 'done', 'current', 'later', 'later', 'later', 'later', 'later'])
     expect(screen.getByRole('button', { name: '3 Reasons & sheets · you are here' })).toBeTruthy()
+    // v2.4126 · four words over the pills, each lit by its pills.
+    const groups = screen.getAllByTestId('journey-group')
+    expect(groups.map((g) => `${g.getAttribute('aria-label')}:${g.getAttribute('data-status')}:${g.querySelectorAll('[data-testid="journey-stage"]').length}`)).toEqual(['Build:current:3', 'Send:later:2', 'Their answer:later:2', 'Order:later:1'])
     expect(screen.getByTestId('journey-next').textContent).toMatch(/^Next: 2 rows still owe a reason\. 10 rows still need a cut sheet\./)
 
     fireEvent.click(screen.getByRole('button', { name: 'Drop a vendor PDF' }))

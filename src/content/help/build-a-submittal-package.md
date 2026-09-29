@@ -12,7 +12,7 @@ Bids → **Submittals** (the tab after Cover Letter; office and estimator roles)
 
 ## Where you are
 
-The strip under the bid name, **Where this submittal is**, shows the eight stages as pills: sources → Build Rev 1 → reasons & sheets → package → share → their call → resubmit → procure. A ✓ is done, blue is where you are, amber is waiting on the reviewer. The line under the pills names the next thing to do and carries the button that does it, so the answer to "what now?" is always the same place. Tap a pill and the page scrolls to that stage's controls and rings them.
+The strip under the bid name, **Where this submittal is**, shows the eight stages as pills under four words — **Build** (sources → Build Rev 1 → reasons & sheets), **Send** (package → share), **Their answer** (their call → resubmit), **Order** (procure). A ✓ is done, blue is where you are, amber is waiting on the reviewer. The line under the pills names the next thing to do and carries the button that does it, so the answer to "what now?" is always the same place. Tap a pill and the page scrolls to that stage's controls and rings them.
 
 The page below runs in the same order, one numbered section per stage down a rail on the left. A finished stage folds to one green line (tap its title to open it); the stage you are on is open and ringed, and the rows stay open beside whatever reads them; a later stage is dashed with a line saying what will appear there. Tick **Open every stage** to see everything at once — the page remembers that on this device. The line under the bid name says which revision you are working on (*Working on Rev 3 · draft, started from Rev 2*); older revisions are the chips on stage 2.
 
