@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
+import { COMPANY_EMAIL_FROM } from '../_shared/emailFrom.ts'
 import { buildLegalConfirmEmail } from '../_shared/legalEmails.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 
@@ -87,7 +88,7 @@ serve(async (req) => {
         const confirmUrl = `${Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com'}/legal/confirm?t=${raw}`
         // v2.3512: one builder for the sender and Settings → What customers see (_shared/legalEmails.ts).
         const mail = buildLegalConfirmEmail({ companyName: PORTAL_COMPANY.name, email, confirmUrl })
-        const res = await sendEmailViaResend(email, mail.subject, mail.text, mail.html, key)
+        const res = await sendEmailViaResend(email, mail.subject, mail.text, mail.html, key, { from: COMPANY_EMAIL_FROM })
         return res.success
       }
       if (kind === 'recipient_add') {

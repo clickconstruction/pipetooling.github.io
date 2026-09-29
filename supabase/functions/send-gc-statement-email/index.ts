@@ -1,7 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { EMAIL_FROM } from '../_shared/emailFrom.ts'
+import { COMPANY_EMAIL_FROM, EMAIL_FROM } from '../_shared/emailFrom.ts'
 import {
   GC_STATEMENT_DEDUPE_WINDOW_MS,
   GC_STATEMENT_EMAIL_TYPES,
@@ -223,7 +223,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: EMAIL_FROM,
+        from: COMPANY_EMAIL_FROM,
         to: [toEmail],
         ...(ccAll.length ? { cc: ccAll } : {}),
         subject,
@@ -241,7 +241,7 @@ serve(async (req) => {
     await logEmailSendBestEffort({
       resendEmailId: sent.id ?? null,
       to: [toEmail, ...ccAll],
-      from: EMAIL_FROM,
+      from: COMPANY_EMAIL_FROM,
       subject,
       emailType: GC_STATEMENT_EMAIL_TYPES.manual,
     })

@@ -1,7 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { EMAIL_FROM } from '../_shared/emailFrom.ts'
+import { COMPANY_EMAIL_FROM } from '../_shared/emailFrom.ts'
 
 // Email a lien-instrument PDF (v2.2645 — the § 53.056 notice; v2.3436 — the
 // final demand letter packet, `email_type: 'demand_letter'`) to a named
@@ -105,7 +105,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: EMAIL_FROM,
+        from: COMPANY_EMAIL_FROM,
         to: [toEmail],
         subject,
         html: htmlBody,
@@ -118,7 +118,7 @@ serve(async (req) => {
       return jsonResponse({ error: errorData.message || `Resend ${resendResponse.status}` }, 502)
     }
     const sent = (await resendResponse.json().catch(() => ({}))) as { id?: string }
-    await logEmailSendBestEffort({ resendEmailId: sent.id ?? null, to: [toEmail], from: EMAIL_FROM, subject, emailType })
+    await logEmailSendBestEffort({ resendEmailId: sent.id ?? null, to: [toEmail], from: COMPANY_EMAIL_FROM, subject, emailType })
 
     return jsonResponse({ success: true, resend_email_id: sent.id ?? null })
   } catch (e) {

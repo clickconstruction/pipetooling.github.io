@@ -2246,7 +2246,7 @@ export default function SendRecordInvoiceModal({
             </div>
             {channel === 'stripe' ? (
               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 0.35rem', lineHeight: 1.4 }}>
-                The bill email goes to that address. Everyone ticked below gets a copy from ClickTooling with the same Pay link when you press
+                The bill email goes to that address. Everyone ticked below gets a copy from Click Plumbing and Electrical with the same Pay link when you press
                 <strong> Send Email invoice</strong>.
               </div>
             ) : null}
@@ -3147,7 +3147,7 @@ export default function SendRecordInvoiceModal({
                 </p>
                 {physicalAdditionalEmails().length > 0 ? (
                   <p style={{ margin: '-0.35rem 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                    Copies to <strong>{physicalAdditionalEmails().join(', ')}</strong> go out from ClickTooling when you press Send Email invoice.
+                    Copies to <strong>{physicalAdditionalEmails().join(', ')}</strong> go out from Click Plumbing and Electrical when you press Send Email invoice.
                   </p>
                 ) : null}
                 {hazmatNoticeEmailStatus ? (

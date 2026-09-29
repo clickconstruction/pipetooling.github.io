@@ -19,6 +19,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 import { sendResendHtmlEmail } from '../_shared/recurringJobReportCore.ts'
+import { COMPANY_EMAIL_FROM } from '../_shared/emailFrom.ts'
 import {
   DEFAULT_BID_LEDGER_PREFIX,
   formatBidLedgerNumberLabel,
@@ -351,6 +352,7 @@ serve(async (req) => {
     }
 
     const send = await sendResendHtmlEmail({
+      from: COMPANY_EMAIL_FROM,
       to: recipientEmail,
       subject,
       html: htmlBody,

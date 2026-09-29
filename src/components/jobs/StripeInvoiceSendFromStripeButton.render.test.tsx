@@ -60,7 +60,7 @@ describe('StripeInvoiceSendFromStripeButton', () => {
     fireEvent.click(screen.getByRole('button', { name: /Send Email invoice/ }))
     const dialog = await screen.findByRole('dialog')
     expect(dialog.textContent).toContain('Email this invoice?')
-    expect(dialog.textContent).toContain('The bill email goes to ap@hartwell.example from ClickTooling; they pay on Stripe.')
+    expect(dialog.textContent).toContain('The bill email goes to ap@hartwell.example from Click Plumbing and Electrical; they pay on Stripe.')
     expect(dialog.textContent).toContain('the QR code and short address of their statement')
     expect(dialog.textContent).not.toContain('Test mode')
   })
@@ -79,7 +79,7 @@ describe('StripeInvoiceSendFromStripeButton', () => {
     await settle()
     fireEvent.click(screen.getByRole('button', { name: /Send Email invoice/ }))
     const dialog = await screen.findByRole('dialog')
-    await waitFor(() => expect(dialog.textContent).toContain('Copies from ClickTooling, same Pay link, to pm@hartwell.example, ap@drf.example.'))
+    await waitFor(() => expect(dialog.textContent).toContain('Copies from Click Plumbing and Electrical, same Pay link, to pm@hartwell.example, ap@drf.example.'))
   })
 
   it('in test mode the confirm says the copy list gets nothing', async () => {
@@ -89,7 +89,7 @@ describe('StripeInvoiceSendFromStripeButton', () => {
     fireEvent.click(screen.getByRole('button', { name: /Send Email invoice/ }))
     const dialog = await screen.findByRole('dialog')
     await waitFor(() => expect(dialog.textContent).toContain('One copy comes to you too; nothing goes to pm@hartwell.example, ap@drf.example.'))
-    expect(dialog.textContent).not.toContain('Copies from ClickTooling')
+    expect(dialog.textContent).not.toContain('Copies from Click Plumbing and Electrical')
   })
 
   it('a test bill with copies: the toast says the copy came to the sender and who got nothing', async () => {

@@ -605,7 +605,10 @@ export async function sendResendHtmlEmail(opts: {
   resendApiKey: string
   /** EMAIL_CATALOG id — sends through this helper were invisible to email_send_log until v2.2656. */
   emailType?: string
+  /** The sender mailbox — `COMPANY_EMAIL_FROM` for a customer-facing email (v2.4132); defaults to `EMAIL_FROM`. */
+  from?: string
 }): Promise<{ ok: boolean; error?: string; id?: string }> {
+  const from = opts.from?.trim() || EMAIL_FROM
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
@@ -613,7 +616,7 @@ export async function sendResendHtmlEmail(opts: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: EMAIL_FROM,
+      from,
       to: [opts.to],
       subject: opts.subject,
       html: opts.html,
@@ -633,7 +636,7 @@ export async function sendResendHtmlEmail(opts: {
   await logEmailSendBestEffort({
     resendEmailId: data.id ?? null,
     to: [opts.to],
-    from: EMAIL_FROM,
+    from,
     subject: opts.subject,
     emailType: opts.emailType ?? null,
   })

@@ -2,7 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { customerBillingEmail, effectiveInvoiceParty } from '../_shared/billToParty.ts'
 import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { EMAIL_FROM } from '../_shared/emailFrom.ts'
+import { COMPANY_EMAIL_FROM } from '../_shared/emailFrom.ts'
 import {
   PAID_JOB_BILL_BLOCKED_MESSAGE,
   allowRebillFromBody,
@@ -47,7 +47,7 @@ async function sendEmailWithAttachmentsViaResend(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: EMAIL_FROM,
+      from: COMPANY_EMAIL_FROM,
       to,
       subject,
       html: htmlBody,
@@ -60,7 +60,7 @@ async function sendEmailWithAttachmentsViaResend(
     return { success: false, error: errorData.message || `Resend ${resendResponse.status}` }
   }
   const sent = (await resendResponse.json().catch(() => ({}))) as { id?: string }
-  await logEmailSendBestEffort({ resendEmailId: sent.id ?? null, to, from: EMAIL_FROM, subject })
+  await logEmailSendBestEffort({ resendEmailId: sent.id ?? null, to, from: COMPANY_EMAIL_FROM, subject })
   return { success: true }
 }
 

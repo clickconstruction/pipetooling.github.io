@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { EMAIL_CATALOG, EMAIL_CATALOG_GROUP_LABELS, emailCatalogByGroup } from './emailCatalog'
 
@@ -46,4 +48,26 @@ describe('EMAIL_CATALOG', () => {
       expect(e.subjectExample.trim().length).toBeGreaterThan(0)
     }
   })
+})
+
+// v2.4132 (punch list #53): every email a customer, GC, supply house or law firm reads sends as the
+// company — `COMPANY_EMAIL_FROM` on `EMAIL_FROM`'s address — never as bare `EMAIL_FROM`. A source
+// scan, like appDirectoryCheck: a new customer sender cannot ship as "ClickTooling".
+describe('customer-facing senders send as the company', () => {
+  const root = resolve(__dirname, '../..')
+  const customerSenders = Array.from(
+    new Set(EMAIL_CATALOG.filter((e) => e.audience === 'customer').map((e) => e.sender)),
+  )
+  it('names at least the eighteen customer rows across their senders', () => {
+    expect(customerSenders.length).toBeGreaterThanOrEqual(14)
+  })
+  for (const sender of customerSenders) {
+    it(`${sender} sends as COMPANY_EMAIL_FROM (or a company name built by mailboxWithName)`, () => {
+      const src = readFileSync(resolve(root, `supabase/functions/${sender}/index.ts`), 'utf8')
+      const usesCompany = src.includes('COMPANY_EMAIL_FROM') || src.includes('mailboxWithName(')
+      expect(usesCompany, `${sender} never imports COMPANY_EMAIL_FROM / mailboxWithName`).toBe(true)
+      expect(src, `${sender} still sends as bare EMAIL_FROM`).not.toMatch(/\bfrom: EMAIL_FROM\b/)
+      expect(src, `${sender} still aliases bare EMAIL_FROM as its FROM`).not.toMatch(/=\s*EMAIL_FROM\s*$/m)
+    })
+  }
 })
