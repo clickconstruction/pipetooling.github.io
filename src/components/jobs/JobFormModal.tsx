@@ -52,6 +52,7 @@ import {
 } from '../../lib/jobs/jobFormAutosaveSlices'
 import { composePctAutoNoteBody } from '../../lib/jobs/stagesPctNote'
 import { postJobThreadNoteBody } from '../../lib/jobs/postJobThreadNote'
+import { migrateDeleteSuccessToast, type MigrateDeleteOkPayload } from '../../lib/jobs/migrateDeleteReply'
 import {
   buildJobFormUndoSnapshot,
   invoiceSetKey,
@@ -2324,12 +2325,7 @@ export default function JobFormModal({
       }
       onSavedRef.current?.()
       closeFormWithoutSaving()
-      showToast(
-        typeof (payload as { note_body?: unknown }).note_body === 'string'
-          ? 'Costs and job total moved to the target job; this job was removed. A "Combined" note was posted to the target\'s activity.'
-          : 'Costs and job total moved to the target job; this job was removed. Open the target job to verify Specific Work and Job Total.',
-        'success',
-      )
+      showToast(migrateDeleteSuccessToast(payload as MigrateDeleteOkPayload), 'success')
       return true
     } catch (err: unknown) {
       console.error('migrateJobLedgerCostsAndDelete', err)
