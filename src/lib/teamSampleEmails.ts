@@ -13,6 +13,7 @@ import { buildSampleContractEmail, type SampleEmailContext } from './customerSam
 import { escapeEmailHtml, renderEmailWording } from './emailWording'
 import type { TeamSampleEmailId } from './teamEmails'
 import { moneyWaitingEmailSubject, moneyWaitingEmailText, renderMoneyWaitingEmail, type MoneyWaitingEmailPayload } from '../../supabase/functions/_shared/moneyWaitingEmail'
+import { buildCrewDayEmailView, crewDayEmailSubject, crewDayEmailText, renderCrewDayEmail, type CrewDayEmailPayload } from '../../supabase/functions/_shared/crewDayEmail'
 
 export type BuiltTeamEmail = { subject: string; html: string; text: string }
 
@@ -117,9 +118,61 @@ export function sampleMoneyWaitingPayload(todayYmd: string): MoneyWaitingEmailPa
   }
 }
 
+/**
+ * The Crew day digest's payload for the sample company (v2.4163): a busy day — three jobs, six
+ * people, three reports, one flag (a clock still open at send time), a sub on site — timed in
+ * the company calendar zone on the day the tab is opened.
+ */
+export function sampleCrewDayPayload(todayYmd: string): CrewDayEmailPayload {
+  const at = (hhmm: string) => `${todayYmd}T${hhmm}:00-05:00`
+  return {
+    day: todayYmd,
+    users: [
+      { id: 'u-sam', name: 'Sam Plumber' },
+      { id: 'u-jo', name: 'Jo Helper' },
+      { id: 'u-lee', name: 'Lee Tech' },
+      { id: 'u-ana', name: 'Ana Lead' },
+      { id: 'u-max', name: 'Max Helper' },
+      { id: 'u-kim', name: 'Kim Tech' },
+    ],
+    jobs: [
+      { id: 'job-1', hcp_number: '1041', click_number: null, job_name: 'Cedar Bend Apartments — rough-in', job_address: '2530 Cedar Bend Dr, Kyle, TX 78640', status: 'working', pct_complete: 55 },
+      { id: 'job-3', hcp_number: '1054', click_number: null, job_name: 'Water heater replacement', job_address: SAMPLE_HOMEOWNER.address, status: 'working', pct_complete: 100 },
+      { id: 'job-5', hcp_number: '1057', click_number: null, job_name: 'Hunter Homes — gas line', job_address: '77 Hunter Loop, Kyle, TX 78640', status: 'working', pct_complete: 20 },
+    ],
+    sessions: [
+      { user_id: 'u-sam', job_id: 'job-1', clocked_in_at: at('07:02'), clocked_out_at: at('15:41') },
+      { user_id: 'u-jo', job_id: 'job-1', clocked_in_at: at('07:05'), clocked_out_at: at('15:40') },
+      { user_id: 'u-lee', job_id: 'job-1', clocked_in_at: at('07:10'), clocked_out_at: at('12:02') },
+      { user_id: 'u-ana', job_id: 'job-3', clocked_in_at: at('08:00'), clocked_out_at: at('13:30') },
+      { user_id: 'u-max', job_id: 'job-3', clocked_in_at: at('08:00'), clocked_out_at: at('13:32') },
+      { user_id: 'u-kim', job_id: 'job-5', clocked_in_at: at('09:15'), clocked_out_at: null },
+    ],
+    blocks: [
+      { user_id: 'u-sam', job_id: 'job-1', bid_id: null, time_start: at('07:00'), time_end: at('15:30'), note: null },
+      { user_id: 'u-jo', job_id: 'job-1', bid_id: null, time_start: at('07:00'), time_end: at('15:30'), note: null },
+      { user_id: 'u-ana', job_id: 'job-3', bid_id: null, time_start: at('08:00'), time_end: at('14:00'), note: 'Bring the 50-gal' },
+      { user_id: 'u-max', job_id: 'job-3', bid_id: null, time_start: at('08:00'), time_end: at('14:00'), note: null },
+      { user_id: 'u-kim', job_id: 'job-5', bid_id: null, time_start: at('09:00'), time_end: at('17:00'), note: null },
+    ],
+    reports: [
+      { id: 'r-1', user_id: 'u-sam', job_id: 'job-1', created_at: at('15:35'), template_name: 'Daily log', field_values: { notes: 'Second floor rough-in done; inspection Thursday.' } },
+      { id: 'r-2', user_id: 'u-ana', job_id: 'job-3', created_at: at('13:20'), template_name: 'Pressure test', field_values: { result: 'PASS', notes: 'Held 15 min at 80 psi.' } },
+      { id: 'r-3', user_id: 'u-kim', job_id: 'job-5', created_at: at('11:50'), template_name: 'Daily log', field_values: { notes: 'Trench open; gas line set tomorrow.' } },
+    ],
+    pct_notes: [{ job_id: 'job-1', body: 'Rough-in 40% → 55%', created_at: at('15:36') }],
+    subs: [{ person_name: "Sam's Plumbing LLC", job_id: 'job-1', job_label: '1041 · Cedar Bend Apartments', stage_name: 'Rough-in', picked_start: todayYmd, picked_end: todayYmd }],
+    outcomes: { 'u-ana': 'water heater in, tested, customer paid at the door' },
+  }
+}
+
 export function buildTeamSampleEmail(id: TeamSampleEmailId, ctx: TeamSampleContext): BuiltTeamEmail {
   const origin = ctx.origin
   switch (id) {
+    case 'crew_day': {
+      const view = buildCrewDayEmailView(sampleCrewDayPayload(ctx.todayYmd), new Date(`${ctx.todayYmd}T16:30:00-05:00`).getTime())
+      return { subject: crewDayEmailSubject(view), html: renderCrewDayEmail(view, ctx.sender?.name || undefined), text: crewDayEmailText(view) }
+    }
     case 'money_waiting': {
       const p = sampleMoneyWaitingPayload(ctx.todayYmd)
       return { subject: moneyWaitingEmailSubject(p), html: renderMoneyWaitingEmail(p, origin, ctx.sender?.name || undefined), text: moneyWaitingEmailText(p) }

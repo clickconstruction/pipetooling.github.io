@@ -39,7 +39,7 @@ vi.mock('../../hooks/useAuth', async () => {
 
 vi.mock('../../lib/crewDayEmailClient', () => ({ fetchCrewDayPreview: vi.fn(async () => '<p>crew day, live</p>'), sendCrewDayTest: vi.fn(async () => undefined) }))
 vi.mock('../../lib/moneyWaitingEmailClient', () => ({ fetchMoneyWaitingPreview: vi.fn(async () => '<p>money waiting, live</p>'), sendMoneyWaitingTest: vi.fn(async () => undefined) }))
-vi.mock('../../lib/paymentForecastEmailClient', () => ({ fetchPaymentForecastPreview: vi.fn(async () => ''), sendPaymentForecastTest: vi.fn(async () => undefined) }))
+vi.mock('../../lib/paymentForecastEmailClient', () => ({ fetchPaymentForecastPreview: vi.fn(async () => '<p>forecast, live</p>'), sendPaymentForecastTest: vi.fn(async () => undefined) }))
 vi.mock('../../lib/billedReportEmailClient', () => ({ fetchBilledReportPreview: vi.fn(async () => ''), sendBilledReportTest: vi.fn(async () => undefined) }))
 
 installDomShims()
@@ -52,7 +52,7 @@ function mount() {
 describe('SettingsWhatTheTeamSeesTab', () => {
   it('opens on a controller’s week, grouped by when, with the count line', async () => {
     await mount()
-    expect(screen.getByTestId('wtts-coverage').textContent).toContain('25 emails · 12 render live · 3 show the real one · 10 built on the server (next release)')
+    expect(screen.getByTestId('wtts-coverage').textContent).toContain('25 emails · 13 render live · 2 show the real one · 10 built on the server (next release)')
     const headings = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent ?? '')
     expect(headings[0]).toContain('Every morning')
     expect(headings.some((h) => h.includes('When something happens'))).toBe(true)
