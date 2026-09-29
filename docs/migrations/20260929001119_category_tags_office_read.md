@@ -1,4 +1,4 @@
-# 20260929001119_category_tags_office_read.sql (2026-09-29, v2.4098)
+# 20260929001119_category_tags_office_read.sql (2026-09-29, v2.4106)
 
 The office roles read the bank-category tags (punch list #52, the owner's call 2026-09-28). Two policies swapped; no table, column or function changes.
 

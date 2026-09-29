@@ -1481,7 +1481,7 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ### get-job-contract
 
-**Purpose**: Payload for the customer's contract page `/contract/sign?t=<token>` (Contract Desk PR 2, v2.2681).
+**Purpose**: Payload for the customer's contract page `/contract/sign?t=<token>` (Contract Desk PR 2, v2.2681). The sample tokens (`sample`, `sample-done`, v2.3510) answer with the fixture agreement; since v2.4098 its terms are the office's own — the newest customer document in the Contract Book (`contract_template_documents`, `audience = 'customer'`, newest `book_version_date` then `updated_at`) — so Settings → Contracts & terms can read a card on this page and find its wording; the fixture's stand-in terms print only when the Book holds no customer document.
 
 **Endpoint**: `GET /functions/v1/get-job-contract?t=<token>`
 
