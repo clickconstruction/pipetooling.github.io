@@ -3023,13 +3023,24 @@ body.my-time-boundary-dragging {
 .stagesStripCells,
 .stagesStripLetters {
   display: flex;
-  gap: 3px; /* the week break — a gap between the two weeks, not a margin on a cell (v2.4042) */
+  gap: 0;
 }
 .stagesStripWeek {
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: var(--strip-cell, 10px);
   gap: 1px;
+}
+/* The week break: a 1 px grey rule between this week and next (v2.4146; a bare
+   3 px gap since v2.4042), 2 px of air either side. The letters row keeps the
+   same spacing with the rule invisible, so the letters stay under their cells. */
+.stagesStripWeek + .stagesStripWeek {
+  margin-left: 2px;
+  padding-left: 2px;
+  border-left: 1px solid var(--border-strong);
+}
+.stagesStripLetters .stagesStripWeek + .stagesStripWeek {
+  border-left-color: transparent;
 }
 .stagesStripCells i {
   display: block;
