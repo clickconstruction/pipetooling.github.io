@@ -17,6 +17,8 @@ Sometimes the same work ends up as two job cards — a second Job # for the same
 
 Everything real moves to the target: costs, labor, schedule, reports, notes, and the job total. The source card is then deleted.
 
+A job made from an estimate carries that estimate with it — unless the target was made from an estimate of its own. A job can hold one estimate, so in that case the source's estimate stays on the **Estimates** page on its own, no longer linked to a job, and the success message says so.
+
 :::example The combined job keeps the target's status
 Combining never changes the target's status or % done. If a tech had marked the source further along, that mark doesn't transfer — which is exactly why the warning shows first, so you can move the target forward yourself if the work really is done.
 :::

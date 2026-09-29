@@ -76,7 +76,7 @@ Other server-side status writers:
 - Trigger `clock_sessions_promote_job_waiting_to_working` (baseline) — auto waiting→working after a clock-out on the job (writes its own `job_status_events` row).
 - `mark_job_paid` / `mark_invoice_paid` / `mark_invoice_paid_from_stripe` / `apply_mercury_bank_payment_allocations` — promote billed→paid by **direct UPDATE** (no `job_status_events` row) when covered. See [Payments](#payments-jobs_ledger_payments).
 - `remove_jobs_ledger_payment_and_reconcile` and `revert_stripe_oob_invoice_payment` — may demote paid→billed via `update_job_status` (so those reverts *are* audited).
-- `migrate_job_ledger_costs_and_delete` (latest `supabase/migrations/20260619130000_migrate_costs_allow_billed.sql`) — moves costs to another job and deletes the source (invoices/payments cascade); Edit Job delete/migrate path.
+- `migrate_job_ledger_costs_and_delete` (latest `supabase/migrations/20260929123000_migrate_delete_keeps_estimate_apart.sql`, v2.4139) — moves costs to another job and deletes the source (invoices/payments cascade); Edit Job delete/migrate path and Pipeline → Combine. The source's estimate follows it unless the target already has one (`estimates_job_ledger_id_unique`) — then it keeps its record and drops its job link, `estimate_unlinked: true` in the payload.
 
 ### `job_status_events`
 
