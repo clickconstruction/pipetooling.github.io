@@ -6,11 +6,15 @@ keywords: robot, twin, shadow, plans link, drive, intake account, share, readine
 ---
 Every plumbing bid you create gets a **robot shadow estimate** by default: within the hour a robot reads the plans, counts, prices, and seals its number before yours goes out. You never see it until you send. The bid form tells you whether that will happen.
 
-## Read the line under Job Plans
+## Put the plans in the bid folder
 
-1. Paste the plans link (a Drive file or folder). The line checks it as you go:
+Plans are always a Drive link, never an upload. The **Plans** block sits right under the project name and walks it in four cards: {{button:outline|Open in Drive ↗}} opens the division bid folder (plumbing, electrical or HVAC — the service type says which); **Make a folder with this name** shows the name the office gives it (the project name) with {{button:outline|Copy name}}; put the PDFs in that folder; then {{button:blue|Find the folder}} looks it up by that name and fills the plans link in. You never copy a link. Plans that live somewhere else in Drive go in with {{button:outline|Paste a link instead}}.
+
+## Read the line under it
+
+1. With the link filled in, the line checks it as you go:
    - {{chip:green|Robots will shadow this bid within the hour}} — with what it verified: folder shared · 3 PDFs, plumbing, miles, due date. Nothing more to do.
-   - {{chip:yellow|Robots can’t open these plans yet}} — the file isn’t shared with the robots’ intake account. Hit {{button:gray|Copy intake address}}, share the file with that address as **Viewer** in Drive, then {{button:gray|↻ Check again}}. The line turns green without leaving the form.
+   - {{chip:yellow|Robots can’t open these plans yet}} — a pasted link outside the bid folders is not shared with the robots’ Drive account. Hit {{button:gray|Copy the robots’ address}}, share the folder with that address as **Viewer** in Drive, then {{button:gray|↻ Check again}}. A folder made inside the division bid folders never needs this.
    - {{chip:yellow|Robots don’t bid this division}} — robots estimate plumbing only; an electrical or HVAC bid is simply left alone.
 2. A blank **Distance to Office** is filled in when you save, as long as the bid has an address. With no address the robot asks before pricing travel.
 

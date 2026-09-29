@@ -122,6 +122,23 @@ async function listFolderPdfs(token: string, folderId: string): Promise<FolderLi
   return { status: 200, files }
 }
 
+// find_folder (v2.4162): the bid form's "Find the folder" — the child folder of a
+// division bid folder with exactly this name (the name the app gave the estimator
+// to copy), or null. Shared drives included; trashed folders ignored.
+async function findChildFolder(token: string, parentId: string, name: string): Promise<string | null> {
+  const url = new URL('https://www.googleapis.com/drive/v3/files')
+  const safe = name.replace(/\\/g, '\\\\').replace(/'/g, "\\'")
+  url.searchParams.set('q', `'${parentId}' in parents and name = '${safe}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`)
+  url.searchParams.set('fields', 'files(id,name)')
+  url.searchParams.set('supportsAllDrives', 'true')
+  url.searchParams.set('includeItemsFromAllDrives', 'true')
+  url.searchParams.set('pageSize', '5')
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+  if (!res.ok) return null
+  const body = await res.json().catch(() => ({})) as { files?: Array<{ id?: string }> }
+  return body.files?.[0]?.id ?? null
+}
+
 // Is the folder itself visible to the service account? Used to tell "shared but
 // empty" from "not shared" when the listing comes back empty.
 async function folderVisible(token: string, folderId: string): Promise<number> {
@@ -262,6 +279,7 @@ serve(async (req) => {
     let bidRef = params.get('bid')?.trim() ?? ''
     let probe = params.get('probe')?.trim() ?? ''
     let probeUrl = params.get('probe_url')?.trim() ?? ''
+    let findFolder: { parent_id?: string; name?: string } | null = null
     let limitRaw = params.get('limit')
     let force = params.get('force') === '1'
     let partRaw = params.get('part')?.trim() ?? ''
@@ -273,6 +291,8 @@ serve(async (req) => {
       if (body.force) force = true
       if (!partRaw && body.part != null) partRaw = String(body.part).trim()
       if (!probeUrl) probeUrl = String((body as { probe_url?: string }).probe_url ?? '').trim()
+      const ff = (body as { find_folder?: { parent_id?: string; name?: string } }).find_folder
+      if (ff && typeof ff === 'object') findFolder = ff
     }
 
     // Link probe (v2.3142): the bid form asks "can robots open THIS link?" while
@@ -282,6 +302,21 @@ serve(async (req) => {
       if (isTwin) return json({ error: 'probe_url is for staff sessions' }, 403)
       const r = await probePlansLink(probeUrl, await googleAccessToken(saJson))
       return json({ readable: r.readable, note: r.note, name: r.name ?? null })
+    }
+
+    // Find the folder (v2.4162): the bid form asks for the child of a division bid
+    // folder named exactly what the app told the estimator to name it. Staff only;
+    // answers the folder's link and how many PDFs it holds, or found: false.
+    if (findFolder) {
+      if (isTwin) return json({ error: 'find_folder is for staff sessions' }, 403)
+      const parentId = String(findFolder.parent_id ?? '').trim()
+      const name = String(findFolder.name ?? '').trim()
+      if (!parentId || !name) return json({ error: 'find_folder needs parent_id and name' }, 400)
+      const token = await googleAccessToken(saJson)
+      const id = await findChildFolder(token, parentId, name)
+      if (!id) return json({ found: false })
+      const listing = await listFolderPdfs(token, id)
+      return json({ found: true, id, link: `https://drive.google.com/drive/folders/${id}`, pdfs: listing.files.length })
     }
 
     // Sweep: probe every live bid with a plans link that was never probed or

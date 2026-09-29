@@ -49,12 +49,12 @@ describe('buildReadinessLine', () => {
     expect(line.title).toBe('Robots can’t open these plans yet')
     expect(line.gaps[0]).toMatchObject({ key: 'plans-unreadable', copyIntake: true })
     expect(line.gaps[0]!.text).toContain(ROBOT_INTAKE_ACCOUNT)
-    expect(line.gaps[0]!.text).toContain('This file')
+    expect(line.gaps[0]!.text).toContain('cannot open this file')
   })
 
   it('names a folder when the unshared link is a folder', () => {
     const line = buildReadinessLine(inputs({ probe: { kind: 'unreadable', note: 'Drive 404 — the folder is not shared with the intake service account' } }))
-    expect(line.gaps[0]!.text).toContain('This folder')
+    expect(line.gaps[0]!.text).toContain('cannot open this folder')
   })
 
   it('passes a non-sharing probe reason through verbatim without the copy action', () => {
