@@ -157,13 +157,14 @@ describe('gcStageStopLabel', () => {
 describe('gcWorklistAtStage', () => {
   const names = (groups: ReturnType<typeof gcWorklistAtStage>['groups']) => groups.map((g) => [g.key, g.rows.map((r) => r.gcId)])
 
+  // v2.4149 (punch list #54): the small GCs file under their account man — here nobody is set and no leader is passed, so they share the last, ownerless group.
   it('with no stage picked, keeps every GC and puts the earliest stage on top of its group', () => {
     const at = gcWorklistAtStage(week(), null)
     expect(at).toMatchObject({ shown: 6, of: 6 })
     expect(names(at.groups)).toEqual([
       ['owner:u-malachi', ['a', 'b', 'c']],
       ['owner:u-taunya', ['d']],
-      ['under_line', ['e', 'f']],
+      ['owner:nobody', ['e', 'f']],
     ])
   })
 
@@ -171,7 +172,7 @@ describe('gcWorklistAtStage', () => {
     const at = gcWorklistAtStage(week(), 'send')
     expect(names(at.groups)).toEqual([
       ['owner:u-malachi', ['b']],
-      ['under_line', ['e']],
+      ['owner:nobody', ['e']],
     ])
     expect(at).toMatchObject({ shown: 2, shownTotal: 106000, of: 6 })
   })
@@ -179,7 +180,7 @@ describe('gcWorklistAtStage', () => {
   it('"done" lists the finished GCs', () => {
     expect(names(gcWorklistAtStage(week(), 'done').groups)).toEqual([
       ['owner:u-taunya', ['d']],
-      ['under_line', ['f']],
+      ['owner:nobody', ['f']],
     ])
   })
 
