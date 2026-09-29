@@ -113,3 +113,46 @@ describe('LienTimelineStrip — whose move, the demand letter, Waiting on (v2.38
     setLienTimelineView('steps')
   })
 })
+
+describe('LienTimelineStrip — closed months fold into one node (v2.4111)', () => {
+  const folded = buildLienTimeline({
+    todayYmd: '2026-09-28',
+    isSub: true,
+    propertyKind: 'residential',
+    lastMonth: '2026-09',
+    lastMonthFromCreation: false,
+    months: [
+      { key: '2026-05', deadline: '2026-08-17', fromCreation: false, outcome: 'missed', at: '2026-09-21T15:00:00Z' },
+      { key: '2026-06', deadline: '2026-09-15', fromCreation: false, outcome: 'missed', at: '2026-09-21T15:00:00Z' },
+      { key: '2026-07', deadline: '2026-09-15', fromCreation: false, outcome: 'missed', at: '2026-09-21T15:00:00Z' },
+      { key: '2026-08', deadline: '2026-09-15', fromCreation: false, outcome: 'missed', at: '' },
+      { key: '2026-09', deadline: '2026-10-15', fromCreation: false, outcome: 'open', at: '' },
+    ],
+    noticeState: 'to_draft',
+    retainage: null,
+    affidavit: null,
+    originalContractCompletedOn: null,
+    releasedAt: null,
+    paid: false,
+  })
+  it('one stacked node with a count badge; the door fans the months open and names the one still to note', () => {
+    setLienTimelineView('steps')
+    const { container } = render(<LienTimelineStrip timeline={folded} layout="row" />)
+    expect(container.querySelectorAll('[data-lien-timeline-fold]').length).toBe(1)
+    expect(container.querySelector('[data-lien-timeline-fold-count]')?.textContent).toBe('4')
+    expect(screen.getByText('4 windows closed')).toBeTruthy()
+    expect(screen.getByText('1 to note')).toBeTruthy()
+    expect(container.querySelector('[data-lien-timeline-fold-tray]')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /show the months/ }))
+    const tray = container.querySelector('[data-lien-timeline-fold-tray]')
+    expect(tray).not.toBeNull()
+    expect(tray!.querySelectorAll('[data-lien-timeline-step]').length).toBe(4)
+    expect(screen.getByText('§ 53.056 · Aug')).toBeTruthy()
+    expect(screen.getByText('not noted')).toBeTruthy()
+  })
+  it('the mini row draws the stacked node and no door', () => {
+    const { container } = render(<LienTimelineStrip timeline={folded} layout="mini" withNext={false} />)
+    expect(container.querySelectorAll('[data-lien-timeline-fold]').length).toBe(1)
+    expect(container.querySelector('[data-lien-timeline-fold-door]')).toBeNull()
+  })
+})

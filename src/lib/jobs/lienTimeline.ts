@@ -87,6 +87,22 @@ export interface LienTimelineStep {
   opensWords?: string
   /** Whose move the step is (v2.3877); null on a step that is done, missed or blocked, and on last work. Set by the builder on every step. */
   move?: LienTimelineMove | null
+  /** Several consecutive closed notice months folded into this one node (v2.4111); the months are kept here, whole. */
+  fold?: LienTimelineFold
+}
+
+/** Consecutive § 53.056 months whose windows closed, drawn as one node (v2.4111): the count, the run, and how many a person has noted. */
+export interface LienTimelineFold {
+  /** The folded steps, oldest first, exactly as they were built. */
+  steps: LienTimelineStep[]
+  count: number
+  noted: number
+  /** Closed and not yet written down — still a move. */
+  unnoted: number
+  /** Closed where the reader cannot know whether it was noted (the Lien window without desk items). */
+  unknown: number
+  fromMonthKey: string
+  toMonthKey: string
 }
 
 /** Who we wait on, and for what — the second line beside Next on the path (v2.3877). */
@@ -496,9 +512,12 @@ export function buildLienTimeline(input: LienTimelineInput): LienTimeline {
   const paidBy: LienTimelineMove = input.isSub ? 'gc' : 'owner'
   for (const s of steps) s.move = moveFor(s, input.paid, paidBy)
 
+  // Fold consecutive closed months into one node (v2.4111) — the strip draws `folded`; next and waitingOn read the unfolded steps.
+  const folded = foldClosedNoticeSteps(steps)
+
   // The today marker: after the leading run of dated, past steps.
   let todayIndex = 0
-  for (const s of steps) {
+  for (const s of folded) {
     if (s.date && s.date < todayYmd) todayIndex += 1
     else break
   }
@@ -555,7 +574,7 @@ export function buildLienTimeline(input: LienTimelineInput): LienTimeline {
 
   const waitingOn = waitingOnFor(steps, next, input, paidBy, todayYmd)
 
-  return { steps, next, kindUnknown, lienGone, suitDate, todayIndex, windowsAside, todayYmd, waitingOn }
+  return { steps: folded, next, kindUnknown, lienGone, suitDate, todayIndex, windowsAside, todayYmd, waitingOn }
 }
 
 function moneyWords(n: number): string {
@@ -661,4 +680,62 @@ function waitingOnFor(steps: ReadonlyArray<LienTimelineStep>, next: LienTimeline
 /** The one-line form for a sticky strip or a list row: `Next on the path · Approve the Aug notice — 22 days`. */
 export function lienTimelineNextLine(t: LienTimeline): string {
   return t.next.words
+}
+
+/** A closed § 53.056 month as the builder writes it — `window closed`, `window closed · noted`, `window closed · not noted` (+ ` · dated from creation`); a month skipped on purpose is not one. */
+function isClosedNoticeStep(s: LienTimelineStep): boolean {
+  return s.kind === 'notice' && s.state === 'missed' && Boolean(s.monthKey) && s.words.startsWith('window closed')
+}
+
+/**
+ * Consecutive closed notice months fold into one node (v2.4111): four red
+ * nodes that each said *window closed · noted* are one fact — four months can
+ * no longer be liened. The fold carries the cite, the run of months, the
+ * count and how many were noted; the months themselves ride along, whole,
+ * for the hover and the fan-out. A single closed month stays as it was; a
+ * month skipped on purpose, a sent month or an open one breaks the run; a
+ * closed month nobody has noted is still a move, so the fold says so
+ * (`3 noted · 1 to note`) rather than hiding it.
+ */
+export function foldClosedNoticeSteps(steps: ReadonlyArray<LienTimelineStep>): LienTimelineStep[] {
+  const out: LienTimelineStep[] = []
+  let run: LienTimelineStep[] = []
+  const flush = () => {
+    if (run.length >= 2) out.push(foldStep(run))
+    else out.push(...run)
+    run = []
+  }
+  for (const s of steps) {
+    if (isClosedNoticeStep(s)) run.push(s)
+    else {
+      flush()
+      out.push(s)
+    }
+  }
+  flush()
+  return out
+}
+
+function foldStep(run: LienTimelineStep[]): LienTimelineStep {
+  const first = run[0]!
+  const last = run[run.length - 1]!
+  const noted = run.filter((s) => / · noted/.test(s.words)).length
+  const unnoted = run.filter((s) => / · not noted/.test(s.words)).length
+  const unknown = run.length - noted - unnoted
+  const creation = run.every((s) => s.words.includes('dated from creation')) ? ' · dated from creation' : ''
+  const words = noted + unnoted === 0 ? 'window closed' + creation : unnoted === 0 ? 'all noted' + creation : `${noted} noted · ${unnoted} to note${creation}`
+  return {
+    kind: 'notice',
+    key: `notice-fold:${first.monthKey}:${last.monthKey}`,
+    cite: '§ 53.056',
+    label: `§ 53.056 · ${workMonthShort(first.monthKey!)}–${workMonthShort(last.monthKey!)}`,
+    date: last.date,
+    dateWords: `${run.length} windows closed`,
+    state: 'missed',
+    words,
+    daysLeft: null,
+    door: null,
+    move: null,
+    fold: { steps: run, count: run.length, noted, unnoted, unknown, fromMonthKey: first.monthKey!, toMonthKey: last.monthKey! },
+  }
 }
