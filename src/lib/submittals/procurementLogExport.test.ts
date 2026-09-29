@@ -4,7 +4,7 @@ import type { ProcurementRow } from './procurementLog'
 
 const row = (o: Partial<ProcurementRow>): ProcurementRow => ({
   key: 'WC-1', tag: 'WC-1', isHand: false, recordId: null, product: 'TOTO TET2UB31#SS', supplyHouse: 'Moore Supply', stage: 'trim_set', submittal: 'approved', submittalAt: '2026-09-17', releasedOn: '2026-09-17',
-  orderedOn: '2026-09-28', poRef: '118', leadTimeDays: 14, expectedOn: '2026-10-12', expectedSource: 'derived', requiredOn: '2026-11-17', floatDays: 36, orderBy: null, deliveredOn: null, note: '', status: 'ordered', late: false, ...o,
+  orderedOn: '2026-09-28', poRef: '118', leadTimeDays: 14, expectedOn: '2026-10-12', expectedSource: 'derived', requiredOn: '2026-11-17', floatDays: 36, orderBy: null, deliveredOn: null, note: '', status: 'ordered', late: false, countedWith: [], ...o,
 })
 
 describe('the procurement log as a spreadsheet (v2.4113)', () => {
