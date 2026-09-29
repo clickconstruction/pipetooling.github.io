@@ -605,14 +605,18 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
       return
     }
     let rows = (laborData as CostEstimateLaborRow[]) ?? []
+    // Labor rows are keyed by fixture NAME. Since v2.4188 one name may sit on two count
+    // rows (the base bid and an alternate group), so the counts SUM onto the one labor
+    // row instead of the last one winning; the alternates train splits them per row later.
     const countByFixture = new Map<string, number>()
-    for (const r of countRows) countByFixture.set(r.fixture ?? '', Number(r.count))
+    for (const r of countRows) countByFixture.set(r.fixture ?? '', (countByFixture.get(r.fixture ?? '') ?? 0) + Number(r.count))
     const fixtureSet = new Set(countRows.map((r) => r.fixture ?? ''))
     const maxSeq = rows.length === 0 ? 0 : Math.max(...rows.map((r) => r.sequence_order))
     let seq = maxSeq
-    for (const cr of countRows) {
+    const firstByFixture = countRows.filter((cr, i) => countRows.findIndex((o) => (o.fixture ?? '') === (cr.fixture ?? '')) === i)
+    for (const cr of firstByFixture) {
       const existing = rows.find((l) => (l.fixture ?? '') === (cr.fixture ?? ''))
-      const countVal = Number(cr.count)
+      const countVal = countByFixture.get(cr.fixture ?? '') ?? Number(cr.count)
       if (!existing) {
         const def = defaults.find((d) => d.fixture.toLowerCase() === (cr.fixture ?? '').toLowerCase())
         // If not found in primary defaults (labor book), fall back to fixture_labor_defaults
