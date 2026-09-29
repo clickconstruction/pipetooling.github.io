@@ -254,6 +254,21 @@ export function describeRevision(t: RevisionTiles): string {
   return parts.join(' · ')
 }
 
+/**
+ * Stage 3's line (v2.4125): what is still to do, in plain words — "22 rows. 3 still need a
+ * reason. 8 still need a cut sheet." The full census (`describeRevision`) stays on hover.
+ */
+export function describeWhatIsLeft(t: RevisionTiles): string {
+  const need = (n: number, what: string) => `${n} still need${n === 1 ? 's' : ''} ${what}`
+  const parts: string[] = [`${t.rows} row${t.rows === 1 ? '' : 's'}`]
+  const reasons = t.alternatesWithoutReason + t.designChangesWithoutReason
+  if (reasons > 0) parts.push(need(reasons, 'a reason'))
+  if (t.missing > 0) parts.push(need(t.missing, 'a product'))
+  if (t.sheetsNeeded > 0) parts.push(need(t.sheetsNeeded, 'a cut sheet'))
+  if (parts.length === 1 && t.rows > 0) parts.push('Every row has its reason and its cut sheet')
+  return `${parts.join('. ')}.`
+}
+
 /** The id the editor sees on a row that is not in the database yet (a row by hand, v2.4105). */
 export const NEW_ROW_ID = 'new'
 

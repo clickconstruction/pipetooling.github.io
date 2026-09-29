@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { SUBMITTAL_TOUR_STEPS } from './submittalTour'
+import { SUBMITTAL_STAGE_ABOUT, SUBMITTAL_TOUR_STEPS, tourStopForStage } from './submittalTour'
 
 /**
  * The plain-words rules for the walkthrough (owner, 2026-09-29: the stops were
@@ -34,5 +34,22 @@ describe('submittal walkthrough plain words', () => {
   it('every stop after the strip says what to do, with a verb the page carries', () => {
     const verbs = /\b(Tap|Tick|Type|Pick|Ask|Paste|Give|Repeat|Fix|type|tap)\b/
     for (const step of SUBMITTAL_TOUR_STEPS.slice(1)) expect(step.body, step.title).toMatch(verbs)
+  })
+})
+
+describe('the stage sentences and the ? on each stage (v2.4125)', () => {
+  it('every stage has one short plain sentence', () => {
+    for (let n = 1; n <= 8; n++) {
+      const about = SUBMITTAL_STAGE_ABOUT[n] ?? ''
+      expect(about, String(n)).not.toMatch(GLUE)
+      for (const s of sentences(about)) expect(s.split(/\s+/).length, s).toBeLessThanOrEqual(MAX_WORDS)
+    }
+  })
+  it('each stage opens the tour on its own stop, in order', () => {
+    const stops = [1, 2, 3, 4, 5, 6, 7, 8].map(tourStopForStage)
+    expect(stops[0]).toBeGreaterThan(0)
+    for (let i = 1; i < stops.length; i++) expect(stops[i], `stage ${i + 1}`).toBeGreaterThan(stops[i - 1]!)
+    expect(SUBMITTAL_TOUR_STEPS[stops[7]!]?.anchor).toBe('submittals-procure')
+    expect(tourStopForStage(9)).toBe(0)
   })
 })

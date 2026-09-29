@@ -22,6 +22,8 @@ type SpotlightTourProps = {
   /** Optional footer deep link (e.g. the surface's full help guide). */
   guideHref?: string
   guideLabel?: string
+  /** The stop to open on (v2.4125): a `?` on a page section starts the tour at that section's stop. */
+  startIndex?: number
 }
 
 const CARD_WIDTH = 400
@@ -41,8 +43,8 @@ const CARD_EST_HEIGHT = 170
  * locked, the anchor's scrollIntoView could not move the page and every stop
  * below the fold was out of reach, and the wheel did nothing.
  */
-export function SpotlightTour({ steps, onClose, guideHref, guideLabel }: SpotlightTourProps) {
-  const [index, setIndex] = useState(0)
+export function SpotlightTour({ steps, onClose, guideHref, guideLabel, startIndex = 0 }: SpotlightTourProps) {
+  const [index, setIndex] = useState(Math.min(Math.max(startIndex, 0), Math.max(steps.length - 1, 0)))
   const [anchorRect, setAnchorRect] = useState<TourRect | null>(null)
   const [anchorMissing, setAnchorMissing] = useState(false)
   const [cardHeight, setCardHeight] = useState(CARD_EST_HEIGHT)

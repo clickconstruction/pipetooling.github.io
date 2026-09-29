@@ -16,7 +16,7 @@ The strip under the bid name, **Where this submittal is**, shows the eight stage
 
 The page below runs in the same order, one numbered section per stage down a rail on the left. A finished stage folds to one green line (tap its title to open it); the stage you are on is open and ringed, and the rows stay open beside whatever reads them; a later stage is dashed with a line saying what will appear there. Tick **Open every stage** to see everything at once — the page remembers that on this device. The line under the bid name says which revision you are working on (*Working on Rev 3 · draft, started from Rev 2*); older revisions are the chips on stage 2.
 
-New to the page? Tap {{button:outline|Walk me through it ▶}} on the strip (or the {{icon:help}} beside the bid name). It walks every stage in order, ringing what is on the page and explaining what will appear later, so you see the whole road on a fresh bid. The first time a device opens Submittals the strip offers it in a line; **Not now** puts it away for good on that device.
+New to the page? Tap {{button:outline|Walk me through it ▶}} on the strip (or the {{icon:help}} beside the bid name). It walks every stage in order, ringing what is on the page and explaining what will appear later, so you see the whole road on a fresh bid. Every step also carries one plain sentence under its title saying what it is for, with a {{icon:help}} that starts the walkthrough at that step. The first time a device opens Submittals the strip offers it in a line; **Not now** puts it away for good on that device.
 
 ## Without the robot
 
