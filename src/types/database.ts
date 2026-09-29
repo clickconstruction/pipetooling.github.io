@@ -1167,6 +1167,119 @@ export type Database = {
           },
         ]
       }
+      bid_procurement_items: {
+        Row: {
+          bid_id: string
+          created_at: string
+          delivered_on: string | null
+          expected_on: string | null
+          id: string
+          label: string
+          lead_time_days: number | null
+          note: string
+          ordered_on: string | null
+          po_ref: string
+          sort_order: number
+          stage: string | null
+          tag: string | null
+          updated_at: string
+        }
+        Insert: {
+          bid_id: string
+          created_at?: string
+          delivered_on?: string | null
+          expected_on?: string | null
+          id?: string
+          label?: string
+          lead_time_days?: number | null
+          note?: string
+          ordered_on?: string | null
+          po_ref?: string
+          sort_order?: number
+          stage?: string | null
+          tag?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bid_id?: string
+          created_at?: string
+          delivered_on?: string | null
+          expected_on?: string | null
+          id?: string
+          label?: string
+          lead_time_days?: number | null
+          note?: string
+          ordered_on?: string | null
+          po_ref?: string
+          sort_order?: number
+          stage?: string | null
+          tag?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_procurement_items_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bid_procurement_updates: {
+        Row: {
+          bid_id: string
+          changes: Json
+          created_at: string
+          id: string
+          line: string
+          rows: Json
+          sent_at: string
+          sent_by: string | null
+          sent_by_name: string
+          sent_to: string
+        }
+        Insert: {
+          bid_id: string
+          changes?: Json
+          created_at?: string
+          id?: string
+          line?: string
+          rows?: Json
+          sent_at?: string
+          sent_by?: string | null
+          sent_by_name?: string
+          sent_to?: string
+        }
+        Update: {
+          bid_id?: string
+          changes?: Json
+          created_at?: string
+          id?: string
+          line?: string
+          rows?: Json
+          sent_at?: string
+          sent_by?: string | null
+          sent_by_name?: string
+          sent_to?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_procurement_updates_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_procurement_updates_sent_by_fkey"
+            columns: ["sent_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_proposal_room_events: {
         Row: {
           client_ip: string | null
@@ -1315,119 +1428,6 @@ export type Database = {
           {
             foreignKeyName: "bid_proposal_rooms_master_user_id_fkey"
             columns: ["master_user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      bid_procurement_items: {
-        Row: {
-          bid_id: string
-          created_at: string
-          delivered_on: string | null
-          expected_on: string | null
-          id: string
-          label: string
-          lead_time_days: number | null
-          note: string
-          ordered_on: string | null
-          po_ref: string
-          sort_order: number
-          stage: string | null
-          tag: string | null
-          updated_at: string
-        }
-        Insert: {
-          bid_id: string
-          created_at?: string
-          delivered_on?: string | null
-          expected_on?: string | null
-          id?: string
-          label?: string
-          lead_time_days?: number | null
-          note?: string
-          ordered_on?: string | null
-          po_ref?: string
-          sort_order?: number
-          stage?: string | null
-          tag?: string | null
-          updated_at?: string
-        }
-        Update: {
-          bid_id?: string
-          created_at?: string
-          delivered_on?: string | null
-          expected_on?: string | null
-          id?: string
-          label?: string
-          lead_time_days?: number | null
-          note?: string
-          ordered_on?: string | null
-          po_ref?: string
-          sort_order?: number
-          stage?: string | null
-          tag?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "bid_procurement_items_bid_id_fkey"
-            columns: ["bid_id"]
-            isOneToOne: false
-            referencedRelation: "bids"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      bid_procurement_updates: {
-        Row: {
-          bid_id: string
-          changes: Json
-          created_at: string
-          id: string
-          line: string
-          rows: Json
-          sent_at: string
-          sent_by: string | null
-          sent_by_name: string
-          sent_to: string
-        }
-        Insert: {
-          bid_id: string
-          changes?: Json
-          created_at?: string
-          id?: string
-          line?: string
-          rows?: Json
-          sent_at?: string
-          sent_by?: string | null
-          sent_by_name?: string
-          sent_to?: string
-        }
-        Update: {
-          bid_id?: string
-          changes?: Json
-          created_at?: string
-          id?: string
-          line?: string
-          rows?: Json
-          sent_at?: string
-          sent_by?: string | null
-          sent_by_name?: string
-          sent_to?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "bid_procurement_updates_bid_id_fkey"
-            columns: ["bid_id"]
-            isOneToOne: false
-            referencedRelation: "bids"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "bid_procurement_updates_sent_by_fkey"
-            columns: ["sent_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -1781,6 +1781,85 @@ export type Database = {
           },
         ]
       }
+      bid_sov_lines: {
+        Row: {
+          bid_id: string
+          created_at: string
+          id: string
+          label: string
+          labor: number | null
+          note: string
+          sort_order: number
+          stage: string | null
+          updated_at: string
+          value: number
+        }
+        Insert: {
+          bid_id: string
+          created_at?: string
+          id?: string
+          label?: string
+          labor?: number | null
+          note?: string
+          sort_order?: number
+          stage?: string | null
+          updated_at?: string
+          value?: number
+        }
+        Update: {
+          bid_id?: string
+          created_at?: string
+          id?: string
+          label?: string
+          labor?: number | null
+          note?: string
+          sort_order?: number
+          stage?: string | null
+          updated_at?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_sov_lines_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bid_sov_stage_overrides: {
+        Row: {
+          bid_id: string
+          labor: number | null
+          note: string
+          stage: string
+          updated_at: string
+        }
+        Insert: {
+          bid_id: string
+          labor?: number | null
+          note?: string
+          stage: string
+          updated_at?: string
+        }
+        Update: {
+          bid_id?: string
+          labor?: number | null
+          note?: string
+          stage?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_sov_stage_overrides_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_specified_products: {
         Row: {
           bid_id: string
@@ -1930,6 +2009,7 @@ export type Database = {
           sheet_file: number | null
           sheet_pages: number[]
           sheet_source: string | null
+          source_count_row_id: string | null
           source_quote_line_id: string | null
           specified_description: string | null
           specified_manufacturer: string | null
@@ -1963,6 +2043,7 @@ export type Database = {
           sheet_file?: number | null
           sheet_pages?: number[]
           sheet_source?: string | null
+          source_count_row_id?: string | null
           source_quote_line_id?: string | null
           specified_description?: string | null
           specified_manufacturer?: string | null
@@ -1996,6 +2077,7 @@ export type Database = {
           sheet_file?: number | null
           sheet_pages?: number[]
           sheet_source?: string | null
+          source_count_row_id?: string | null
           source_quote_line_id?: string | null
           specified_description?: string | null
           specified_manufacturer?: string | null
@@ -2258,6 +2340,42 @@ export type Database = {
           },
         ]
       }
+      bid_submittal_takeoff_choices: {
+        Row: {
+          bid_id: string
+          count_row_id: string
+          ticked: boolean
+          updated_at: string
+        }
+        Insert: {
+          bid_id: string
+          count_row_id: string
+          ticked?: boolean
+          updated_at?: string
+        }
+        Update: {
+          bid_id?: string
+          count_row_id?: string
+          ticked?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_submittal_takeoff_choices_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_submittal_takeoff_choices_count_row_id_fkey"
+            columns: ["count_row_id"]
+            isOneToOne: false
+            referencedRelation: "bids_count_rows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_submittal_tasks: {
         Row: {
           bid_id: string
@@ -2493,85 +2611,6 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      bid_sov_lines: {
-        Row: {
-          bid_id: string
-          created_at: string
-          id: string
-          label: string
-          labor: number | null
-          note: string
-          sort_order: number
-          stage: string | null
-          updated_at: string
-          value: number
-        }
-        Insert: {
-          bid_id: string
-          created_at?: string
-          id?: string
-          label?: string
-          labor?: number | null
-          note?: string
-          sort_order?: number
-          stage?: string | null
-          updated_at?: string
-          value?: number
-        }
-        Update: {
-          bid_id?: string
-          created_at?: string
-          id?: string
-          label?: string
-          labor?: number | null
-          note?: string
-          sort_order?: number
-          stage?: string | null
-          updated_at?: string
-          value?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "bid_sov_lines_bid_id_fkey"
-            columns: ["bid_id"]
-            isOneToOne: false
-            referencedRelation: "bids"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      bid_sov_stage_overrides: {
-        Row: {
-          bid_id: string
-          labor: number | null
-          note: string
-          stage: string
-          updated_at: string
-        }
-        Insert: {
-          bid_id: string
-          labor?: number | null
-          note?: string
-          stage: string
-          updated_at?: string
-        }
-        Update: {
-          bid_id?: string
-          labor?: number | null
-          note?: string
-          stage?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "bid_sov_stage_overrides_bid_id_fkey"
-            columns: ["bid_id"]
-            isOneToOne: false
-            referencedRelation: "bids"
             referencedColumns: ["id"]
           },
         ]
@@ -25121,6 +25160,15 @@ export type Database = {
       }
       salary_sync_one_user_clock_sessions: {
         Args: { p_now: string; p_user_id: string; p_work_date: string }
+        Returns: undefined
+      }
+      save_my_time_day: {
+        Args: {
+          p_leader: boolean
+          p_subject_user_id: string
+          p_work_date: string
+          p_writes: Json
+        }
         Returns: undefined
       }
       schedule_hidden_block_counts: {

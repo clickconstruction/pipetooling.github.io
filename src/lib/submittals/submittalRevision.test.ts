@@ -7,6 +7,7 @@ import type { SubmittalRowDraft } from './buildSubmittalRows'
 const item = (o: Partial<SubmittalItemRow>): SubmittalItemRow => ({
   id: 'i1',
   submittal_id: 's1',
+  source_count_row_id: null,
   tag: 'WC-1',
   sequence_order: 1,
   specified_manufacturer: 'TOTO',
@@ -97,7 +98,7 @@ describe('tiles and the header line', () => {
   ]
   it('counts every bucket, the unreasoned, and the sheets (missing rows want none)', () => {
     const t = revisionTiles(items)
-    expect(t).toEqual({ rows: 8, tagged: 7, accessories: 1, asSpecified: 1, superseded: 1, equal: 1, alternates: 2, alternatesWithoutReason: 1, designChanges: 1, designChangesWithoutReason: 1, missing: 1, sheetsIn: 4, sheetsWanted: 7, sheetsNeeded: 3 })
+    expect(t).toEqual({ rows: 8, tagged: 7, accessories: 1, asSpecified: 1, superseded: 1, equal: 1, alternates: 2, alternatesWithoutReason: 1, designChanges: 1, designChangesWithoutReason: 1, missing: 1, proposed: 0, sheetsIn: 4, sheetsWanted: 7, sheetsNeeded: 3 })
     expect(describeRevision(t)).toBe('8 rows · 1 as specified · 1 superseded · 1 equal · 2 alternates · 1 without a reason · 1 design change · 1 missing · 1 accessory · 4 of 7 sheets in')
     expect(needsSheet(item({ status: 'missing' }))).toBe(false)
     expect(needsSheet(item({ status: 'alternate' }))).toBe(true)

@@ -57,6 +57,8 @@ import { AFFIDAVIT_PILE_WORDS, affidavitPileFor, ownerCallWords } from '../../li
 import { parsePaymentBond } from '../../lib/jobs/lienDeskRetainage'
 import LienOwnerCallDialog from './LienOwnerCallDialog'
 import { LienCallerDoor } from './LienCallerDoor'
+import LienDeskCalendarTab from './LienDeskCalendarTab'
+import type { LienCalendarJob } from '../../lib/jobs/lienCalendar'
 import { callLetterFactsFor, type CallerMatchInput } from '../../lib/jobs/lienCallerMatch'
 import { DEFAULT_CLAIMANT_NAME } from '../../lib/jobs/lienNoticeDraft'
 import LienDeskRunModal from './LienDeskRunModal'
@@ -133,8 +135,12 @@ export type LienDeskModalProps = {
   onOpenLegalDesk?: () => void
   /** Counsel's sign-off on a sent notice (#41 PR 3): the job's state on the firm's matter, and the ask. Absent when the board has no legal matters. */
   legalSignoff?: { stateFor: (jobId: string) => LegalSignoffState | null; ask: (jobId: string, text: string) => Promise<string | null> } | null
-  /** Open on the affidavit kind (the Dashboard's filing-window card), the retainage kind (v2.3753) or the Timeline tab (v2.3768). */
-  initialKind?: 'notice' | 'affidavit' | 'retainage' | 'timeline'
+  /** Open on the affidavit kind (the Dashboard's filing-window card), the retainage kind (v2.3753), the Timeline tab (v2.3768) or the Calendar (v2.4101). */
+  initialKind?: 'notice' | 'affidavit' | 'retainage' | 'timeline' | 'calendar'
+  /** The Calendar kind (v2.4101, punch list #55): every billed / collections job with its runway — the Pipeline hands them in; null while its clocks load. */
+  calendarRows?: ReadonlyArray<LienCalendarJob> | null
+  /** A Calendar row opens the job's Lien window. */
+  onOpenCalendarJob?: (jobId: string) => void
   /** Open on a pile — the Dashboard's missed-window line lands on the Missed lens (v2.3679). */
   initialPile?: LienDeskPile | null
   /** Put a GC on notice (v2.3470): the header door — every owner on every job with this GC, one approved run. */
@@ -224,6 +230,8 @@ export default function LienDeskModal({
   onOpenLegalDesk,
   legalSignoff,
   initialKind,
+  calendarRows,
+  onOpenCalendarJob,
   initialPile,
   onPutGcOnNotice,
   onOpenCompanySettings,
@@ -285,7 +293,7 @@ export default function LienDeskModal({
   // The run (v2.3410): every approved notice as one packet + one tracking form.
   const [runOpen, setRunOpen] = useState(false)
   // The kind (v2.3412): notices per month, or the one affidavit per job.
-  const [kind, setKind] = useState<'notice' | 'affidavit' | 'retainage' | 'timeline'>(initialKind ?? 'notice')
+  const [kind, setKind] = useState<'notice' | 'affidavit' | 'retainage' | 'timeline' | 'calendar'>(initialKind ?? 'notice')
   // The Timeline tab (v2.3768): the book is read the first time the tab opens and kept for the modal's life.
   const [bookOpened, setBookOpened] = useState(initialKind === 'timeline')
   // The desk stays mounted between opens, so a door's kind (the Dashboard's filing-window card, `?kind=timeline`) lands on each open, not only the first (v2.3781).
@@ -1851,9 +1859,9 @@ export default function LienDeskModal({
           {showToggle ? <ModalFullScreenButton fullScreen={fullScreen} onToggle={toggleFullScreen} style={{ position: 'absolute', right: '3.1rem', top: '0.55rem' }} /> : null}
           <button type="button" onClick={onClose} aria-label="Close" style={{ position: 'absolute', right: '0.8rem', top: '0.5rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}>×</button>
           <div role="tablist" aria-label="Kind" style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 7, overflow: 'hidden', marginRight: '0.4rem' }}>
-            {(['notice', 'affidavit', 'retainage', 'timeline'] as const).map((k) => (
+            {(['calendar', 'notice', 'affidavit', 'retainage', 'timeline'] as const).map((k) => (
               <button key={k} type="button" role="tab" aria-selected={kind === k} onClick={() => setKind(k)} style={{ padding: '2px 10px', border: 'none', background: kind === k ? FILL.primary : 'var(--surface)', color: kind === k ? '#fff' : 'var(--text-700)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }} title={k === 'retainage' ? 'The § 53.057 notice of claim for unpaid retainage — one per job, 30 days after our contract on it ends' : k === 'timeline' ? 'Every billed job with money open and a lien month — the whole path, sorted by the next date; Print the grid for counsel' : undefined}>
-                {k === 'notice' ? `Notices${counts ? ` · ${entries.filter((e) => e.pile !== 'sent').length}` : ''}` : k === 'affidavit' ? `Affidavits${data ? ` · ${affCount}` : ''}` : k === 'retainage' ? `Retainage${data ? ` · ${retCount}` : ''}` : `Timeline${book ? ` · ${book.counts.due}` : ''}`}
+                {k === 'calendar' ? 'Calendar' : k === 'notice' ? `Notices${counts ? ` · ${entries.filter((e) => e.pile !== 'sent').length}` : ''}` : k === 'affidavit' ? `Affidavits${data ? ` · ${affCount}` : ''}` : k === 'retainage' ? `Retainage${data ? ` · ${retCount}` : ''}` : `Timeline${book ? ` · ${book.counts.due}` : ''}`}
               </button>
             ))}
           </div>
@@ -1952,8 +1960,10 @@ export default function LienDeskModal({
             </span>
           ) : null}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile || kind === 'timeline' ? '1fr' : '320px 1fr', overflow: 'hidden', minHeight: 0 }}>
-          {kind === 'timeline' ? (
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile || kind === 'timeline' || kind === 'calendar' ? '1fr' : '320px 1fr', overflow: 'hidden', minHeight: 0 }}>
+          {kind === 'calendar' ? (
+            <LienDeskCalendarTab rows={calendarRows ?? null} loading={loading} onOpenJob={(jobId) => (onOpenCalendarJob ?? onOpenLienInstruments)(jobId)} />
+          ) : kind === 'timeline' ? (
             <LienDeskTimelineTab
               book={book}
               loading={bookLoading}

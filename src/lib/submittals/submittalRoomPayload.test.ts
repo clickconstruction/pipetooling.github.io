@@ -50,7 +50,7 @@ describe('the room\'s rows, counts and headline', () => {
   })
   it('counts and words the headline', () => {
     const c = roomCounts(roomRowsFrom(items))
-    expect(c).toEqual({ total: 5, matches: 1, differs: 2, notQuoted: 1, added: 1, decided: 1, open: 1 })
+    expect(c).toEqual({ total: 5, matches: 1, differs: 2, notQuoted: 1, added: 1, proposed: 0, decided: 1, open: 1 })
     expect(roomHeadline(c)).toBe('1 row needs a call')
     expect(roomSubline(c)).toBe('1 row match the plans and is marked approved. 2 differ — each says why. 1 has no product yet. 1 is accessory the plans leave to us.')
     expect(roomHeadline({ ...c, open: 0 })).toBe('All 2 decided — thank you')

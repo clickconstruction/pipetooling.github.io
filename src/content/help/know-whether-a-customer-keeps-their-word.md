@@ -63,6 +63,7 @@ Over time each customer builds a record: promises made, how many were kept, and 
 - Office roles see the whole line; primary sees the pay range only. A customer with fewer than two measured payments and no promises shows nothing — the row stays clean rather than pretending to a score.
 
 **In the Payment forecast.** A promised bill is filed by the promise *plus* that customer's usual slip, and the row says "usually slips ~9d". A promise from a customer who runs nine days late lands in the week the money actually tends to arrive, while the chip still shows the date they gave.
+- **The job's activity.** Every promise on record is a {{chip:green|They said}} line in the job's activity feed — the Pipeline row's box and the Job window — at the moment it was recorded, in order with the notes, reports and clock-ins around it: the date with its year, who said it, how, who heard it, the note. Take a promise off the record and its line leaves too.
 
 ## Deciding what to do about it
 

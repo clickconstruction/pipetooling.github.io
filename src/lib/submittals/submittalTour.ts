@@ -19,8 +19,13 @@ export const SUBMITTAL_TOUR_STEPS: SpotlightTourStep[] = [
   },
   {
     anchor: 'submittals-source',
-    title: '1 · Schedule and picks, on Pricing',
-    body: 'Every row starts from a tag on the fixture schedule and the house you picked for it on the Pricing compare. Do those two things on Pricing first; nothing here is retyped from a quote.',
+    title: '1 · Where the rows come from',
+    body: 'Three sources, any of them enough: the takeoff (one row per fixture, the part under it as the product), the picks on the Pricing compare, and the plans’ fixture schedule. Nothing here is retyped from a quote.',
+  },
+  {
+    anchor: 'submittals-takeoff',
+    title: 'From the takeoff',
+    body: 'A bid priced from a takeoff already names every product. Tick the fixtures that go on the submittal — fixtures and equipment start ticked, pipe and allowances unticked — and Rev 1 is built from them, each row Proposed until the plans’ schedule says As specified or Alternate. Your ticks are remembered on the bid.',
   },
   {
     anchor: 'submittals-plug-in',

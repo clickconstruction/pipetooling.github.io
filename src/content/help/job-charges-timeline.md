@@ -76,6 +76,8 @@ Each red step is tagged with an icon for where the cost came from:
 
 💳 **Card charge** — Mercury card purchases allocated to the job. A refund at the counter (Lowe's, Home Depot, O'Reilly) comes back through the same card and shows as a negative charge marked *refund* — it nets off the job's parts instead of adding to them.
 
+⛽ **Fuel** — the card charges in the fuel tag (an accounting label in Fuel & gas, or, with no label, fuel by the bank's category), on the day each was bought. On a long job this is where you see which days fuel landed on it. The card line and the fuel line together are exactly what the job's parts cost counts: an Internal Transfer is not on either, and a charge that is also on a supply-house invoice is counted once, under the invoice.
+
 🧾 **Supply house invoice** — the job's share of allocated supply invoices
 
 📦 **Tally part** — parts entered on the job tally

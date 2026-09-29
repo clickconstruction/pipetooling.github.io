@@ -454,6 +454,59 @@ describe('Bids page render smoke — Edit Bid writes', () => {
     expect(bidWrites()).toEqual([])
   })
 
+  it('Delete bid: held until the project name is typed, then one delete of that bid and the window closes', async () => {
+    await openBidOnEdit()
+    fireEvent.click(screen.getByRole('button', { name: 'Delete bid…' }))
+    const typed = await screen.findByPlaceholderText('Project name')
+    const confirm = () => screen.getByRole('button', { name: 'Delete bid' }) as HTMLButtonElement
+    expect(confirm().disabled).toBe(true)
+    fireEvent.change(typed, { target: { value: 'Pondhill' } })
+    expect(confirm().disabled).toBe(true)
+    fireEvent.change(typed, { target: { value: 'Pondhill Building 2' } })
+    expect(confirm().disabled).toBe(false)
+    fireEvent.click(confirm())
+    await waitFor(() => expect(bidWindowOpen()).toBe(false))
+    expect(bidWrites()).toEqual([{ table: 'bids', op: 'delete', payload: undefined, filters: [['id', 'bid-1']] }])
+  })
+
+  it('Delete bid → Cancel writes nothing and leaves the bid open', async () => {
+    await openBidOnEdit()
+    fireEvent.click(screen.getByRole('button', { name: 'Delete bid…' }))
+    fireEvent.change(await screen.findByPlaceholderText('Project name'), { target: { value: 'Pondhill Building 2' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    await settle()
+    expect(screen.queryByPlaceholderText('Project name')).toBeNull()
+    expect(bidWindowOpen()).toBe(true)
+    expect(bidWrites()).toEqual([])
+  })
+
+  it('Open Counts on an open bid saves the pending change, closes, and lands on its Counts tab', async () => {
+    await openBidOnEdit()
+    fireEvent.change(projectName()!, { target: { value: 'Pondhill Building 3' } })
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Open Counts' }))
+    await waitFor(() => expect(currentTab()).toBe('counts'))
+    await waitFor(() => expect(bidWindowOpen()).toBe(false))
+    expect(currentParam('bidId')).toBe('bid-1')
+    expect(bidWrites()).toEqual([{ table: 'bids', op: 'update', payload: { project_name: 'Pondhill Building 3', ...unsentStampNulls }, filters: [['id', 'bid-1']] }])
+  })
+
+  it('New Bid → Create and open counts inserts one bid and lands on Counts', async () => {
+    renderBidsAt('/bids?tab=bid-board', 'estimator', [BID])
+    await waitFor(() => expect(stripButton('bid-board')).toBeTruthy())
+    await pageAtRest()
+    smoke.writes = []
+    fireEvent.click(screen.getByRole('button', { name: 'New Bid' }))
+    await waitFor(() => expect(projectName()).toBeTruthy())
+    fireEvent.change(projectName()!, { target: { value: 'Smoke Test Clinic' } })
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Create and open counts' }))
+    await waitFor(() => expect(currentTab()).toBe('counts'))
+    expect(bidWrites().filter((w) => w.op === 'insert')).toHaveLength(1)
+    expect(bidWrites().find((w) => w.op === 'insert')!.payload).toMatchObject({ project_name: 'Smoke Test Clinic', service_type_id: 'st-1', materials_model: 'rough' })
+    expect(bidWrites().filter((w) => w.op === 'update')).toEqual([])
+  })
+
   it('New Bid → Create bid inserts one bid in the picked trade, and updates nothing', async () => {
     renderBidsAt('/bids?tab=bid-board', 'estimator', [BID])
     await waitFor(() => expect(stripButton('bid-board')).toBeTruthy())

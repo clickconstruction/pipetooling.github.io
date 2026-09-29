@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Who is spending what — mock-up</title>
+<style>
+  :root {
+    --ground: #F3F4F6; --surface: #FFFFFF; --subtle: #F8FAFC; --ink: #111827; --muted: #6B7280;
+    --line: #E5E7EB; --line-strong: #CBD5E1; --link: #2563EB;
+    --green: #15803D; --green-bg: #DCFCE7; --red: #B91C1C; --red-bg: #FEE2E2; --amber: #B45309; --amber-bg: #FEF3C7;
+    --blue: #1D4ED8; --blue-bg: #DBEAFE;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding: 0 16px 64px; }
+  .wrap { max-width: 1120px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; max-width: 32ch; }
+  .stamp { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 18px; margin: 34px 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: var(--blue-bg); color: var(--blue); }
+  h2 .tag.call { background: var(--amber-bg); color: var(--amber); }
+  .lede { margin: 0 0 14px; color: var(--muted); max-width: 82ch; }
+  .lede b { color: var(--ink); }
+
+  /* the app frame */
+  .app { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; }
+  .tabs { display: flex; gap: 2px; padding: 8px 12px 0; background: var(--subtle); border-bottom: 1px solid var(--line); overflow-x: auto; }
+  .tabs span { padding: 7px 12px; font-size: 13px; color: var(--muted); border-radius: 6px 6px 0 0; white-space: nowrap; }
+  .tabs span.on { background: var(--surface); color: var(--ink); font-weight: 600; border: 1px solid var(--line); border-bottom-color: var(--surface); margin-bottom: -1px; }
+  .body { padding: 14px 16px 18px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .chip { font-size: 12px; padding: 4px 10px; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--surface); color: var(--ink); }
+  .chip.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .date { font: 12px ui-monospace, Menlo, monospace; padding: 4px 8px; border: 1px solid var(--line-strong); border-radius: 6px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin: 14px 0; }
+  .tile { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; background: var(--subtle); }
+  .tile .k { font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+  .tile .v { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .tile .s { font-size: 12px; color: var(--muted); }
+  .tile.warn { background: var(--amber-bg); border-color: #FCD34D; }
+  .tile.warn .v { color: var(--amber); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: right; font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--line-strong); background: var(--subtle); white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; }
+  td { padding: 7px 8px; border-bottom: 1px solid var(--line); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  tr.person td:first-child { font-weight: 600; }
+  tr.open td { background: #EFF6FF; }
+  tr.sub td { font-size: 12.5px; background: #FBFDFF; }
+  tr.sub td:first-child { padding-left: 30px; font-weight: 400; }
+  tr.muted td { color: var(--muted); }
+  tr.total td { font-weight: 700; background: var(--subtle); border-top: 2px solid var(--line-strong); }
+  .amber { color: var(--amber); font-weight: 600; }
+  .fuel { color: #B45309; }
+  .caret { display: inline-block; width: 14px; color: var(--muted); }
+  .btn { font-size: 12px; padding: 3px 9px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); color: var(--link); cursor: pointer; }
+  .scroll { overflow-x: auto; }
+  .note { margin-top: 10px; font-size: 12.5px; color: var(--muted); }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; align-items: start; }
+  .panel { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; padding: 12px 14px; }
+  .panel h3 { margin: 0 0 6px; font-size: 14px; }
+  .panel p, .panel li { color: var(--muted); font-size: 13px; margin: 4px 0; }
+  .panel b { color: var(--ink); }
+  ol.calls { padding-left: 20px; }
+  ol.calls li { margin: 8px 0; color: var(--ink); }
+  ol.calls li span { color: var(--muted); display: block; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">Punch list #52 · PR 4 · mock-up</p>
+      <h1>Who is spending what — People → Spending</h1>
+    </div>
+    <div class="stamp">2026-09-28<br>office roles: dev · master · assistant · controller<br>sample figures</div>
+  </header>
+
+  <h2><span class="tag">The page</span> One row per person, for any period</h2>
+  <p class="lede">A new <b>Spending</b> tab on People, beside the Person Desk — the office roles can already open People, and Banking keeps assistants out. Every card charge in the period lands on one row: <b>a person</b> (who the charge is attributed to — the card holder by default), <b>Company cards</b>, or <b>Not tied to anyone</b>. Fuel is its own column, by the same fuel rule as the job window. <b>Not on a job</b> is what nobody has put on a job yet — the fuel and parts that never reach any job's cost.</p>
+
+  <div class="app">
+    <div class="tabs"><span>Roster</span><span>Hours</span><span>Payroll</span><span>Vehicles</span><span>Review</span><span class="on">Spending</span></div>
+    <div class="body">
+      <div class="row">
+        <span class="chip">This week</span><span class="chip">Last week</span><span class="chip on">This month</span><span class="chip">Last month</span><span class="chip">Last 30 days</span><span class="chip">Custom</span>
+        <span class="date">2026-09-01</span> – <span class="date">2026-09-28</span>
+        <span style="flex:1"></span>
+        <span class="chip">All card charges</span>
+      </div>
+
+      <div class="tiles">
+        <div class="tile"><div class="k">Card spend</div><div class="v">$18,412</div><div class="s">214 charges</div></div>
+        <div class="tile"><div class="k">⛽ Fuel</div><div class="v fuel">$4,905</div><div class="s">27% of card spend</div></div>
+        <div class="tile"><div class="k">On jobs</div><div class="v">$14,760</div><div class="s">80%</div></div>
+        <div class="tile warn"><div class="k">Not on a job yet</div><div class="v">$3,652</div><div class="s">41 charges · $1,380 of it fuel</div></div>
+        <div class="tile"><div class="k">Not tied to anyone</div><div class="v">$610</div><div class="s">6 charges</div></div>
+      </div>
+
+      <div class="scroll">
+      <table>
+        <thead><tr><th>Who</th><th>Card spend</th><th>⛽ Fuel</th><th>Other</th><th>On jobs</th><th>Not on a job</th><th>Jobs</th></tr></thead>
+        <tbody>
+          <tr class="person open"><td><span class="caret">▾</span>Malachi R.</td><td>$4,218.40</td><td class="fuel">$1,106.22</td><td>$3,112.18</td><td>$3,540.10</td><td class="amber">$678.30</td><td>6</td></tr>
+          <tr class="sub"><td>101 · Main St remodel</td><td>$1,904.55</td><td class="fuel">$402.10</td><td>$1,502.45</td><td>$1,904.55</td><td></td><td></td></tr>
+          <tr class="sub"><td>118 · Oak Ave new build</td><td>$1,011.80</td><td class="fuel">$286.40</td><td>$725.40</td><td>$1,011.80</td><td></td><td></td></tr>
+          <tr class="sub"><td>4 more jobs</td><td>$623.75</td><td class="fuel">$150.30</td><td>$473.45</td><td>$623.75</td><td></td><td></td></tr>
+          <tr class="sub"><td><span class="amber">Not on a job yet</span> · 7 charges</td><td>$678.30</td><td class="fuel">$267.42</td><td>$410.88</td><td></td><td class="amber">$678.30</td><td><span class="btn">See the charges</span></td></tr>
+          <tr class="person"><td><span class="caret">▸</span>Dana P.</td><td>$3,560.00</td><td class="fuel">$980.64</td><td>$2,579.36</td><td>$3,012.12</td><td class="amber">$547.88</td><td>4</td></tr>
+          <tr class="person"><td><span class="caret">▸</span>Jorge L.</td><td>$2,944.19</td><td class="fuel">$1,220.08</td><td>$1,724.11</td><td>$2,050.00</td><td class="amber">$894.19</td><td>5</td></tr>
+          <tr class="person"><td><span class="caret">▸</span>Taunya W.</td><td>$1,730.47</td><td class="fuel">$0.00</td><td>$1,730.47</td><td>$1,730.47</td><td>—</td><td>9</td></tr>
+          <tr class="person"><td><span class="caret">▸</span>4 more people</td><td>$4,338.94</td><td class="fuel">$1,198.06</td><td>$3,140.88</td><td>$3,927.31</td><td class="amber">$411.63</td><td>11</td></tr>
+          <tr class="person muted"><td><span class="caret">▸</span>Company cards</td><td>$1,010.00</td><td class="fuel">$0.00</td><td>$1,010.00</td><td>$500.00</td><td class="amber">$510.00</td><td>1</td></tr>
+          <tr class="person muted"><td><span class="caret">▸</span>Not tied to anyone</td><td>$610.00</td><td class="fuel">$400.00</td><td>$210.00</td><td>$0.00</td><td class="amber">$610.00</td><td>—</td></tr>
+          <tr class="total"><td>Everyone</td><td>$18,412.00</td><td class="fuel">$4,905.00</td><td>$13,507.00</td><td>$14,760.00</td><td class="amber">$3,652.00</td><td>21</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p class="note">Tap a person to see their jobs and what is not on a job yet. <b>See the charges</b> lists them — date, merchant, card, amount — each with <b>Put on a job</b> (the same split window Banking and Tally use). Refunds come off; Internal Transfers are not spend.</p>
+    </div>
+  </div>
+
+  <h2><span class="tag">How it counts</span> The same rules as the job's cost</h2>
+  <div class="grid">
+    <div class="panel">
+      <h3>Who a charge belongs to</h3>
+      <p>The charge's <b>attribution</b> — set automatically from the card holder, or by hand in Banking. A person record without a login counts as that person. A card marked as a company card with no one on the charge goes to <b>Company cards</b>. No attribution and no card holder: <b>Not tied to anyone</b>.</p>
+    </div>
+    <div class="panel">
+      <h3>Fuel</h3>
+      <p>The fuel family's tag — the accounting label's tag first, else the bank's category — exactly as the job window's ⛽ line and the cost timeline. <b>Card purchases only</b>; a refund comes off.</p>
+    </div>
+    <div class="panel">
+      <h3>On a job / not on a job</h3>
+      <p>What the job splits put on jobs, and the rest of the charge. A charge split half onto a job shows half under <b>On jobs</b> and half under <b>Not on a job</b>. A charge already on a supply-house invoice counts as on its job.</p>
+    </div>
+  </div>
+
+  <h2><span class="tag call">Calls</span> For the owner</h2>
+  <ol class="calls">
+    <li>People → Spending as the home?<span>The alternative is a Spending view on Banking's Card Review — but assistants cannot open Banking.</span></li>
+    <li>Assistants need to read the fuel tag.<span>Today only Banking staff can read the category tags, so an assistant sees no fuel anywhere — not here, not on the job window's ⛽ line. One small database change lets the office roles <b>read</b> the tags (editing them stays Banking-only).</span></li>
+    <li>Card charges only, or every Mercury spend (ACH to suppliers, checks)?<span>The mock shows card charges; a filter can switch to everything attributed to the person.</span></li>
+  </ol>
+</div>
+</body>
+</html>

@@ -12,7 +12,7 @@
 
 export type JourneyStageKey = 'picks' | 'build' | 'rows' | 'package' | 'share' | 'review' | 'resubmit' | 'procure'
 export type JourneyStageStatus = 'done' | 'current' | 'waiting' | 'later'
-export type JourneyAction = 'open_pricing' | 'plug_in_schedule' | 'ask_robot_schedule' | 'build_rev1' | 'drop_vendor_pdf' | 'build_package' | 'share' | 'copy_room_link' | 'resubmit'
+export type JourneyAction = 'open_pricing' | 'plug_in_schedule' | 'ask_robot_schedule' | 'choose_from_takeoff' | 'build_rev1' | 'drop_vendor_pdf' | 'build_package' | 'share' | 'copy_room_link' | 'resubmit'
 
 export type JourneyStage = {
   key: JourneyStageKey
@@ -38,6 +38,8 @@ export type SubmittalJourneyInput = {
   scheduleTags: number
   /** Picked quote lines on the Pricing compare. */
   picks: number
+  /** The takeoff's fixtures (v2.4107): total, and how many carry a priced part. */
+  takeoff?: { fixtures: number; withProduct: number } | null
   /** The revision on screen, or null when the bid has none. */
   rev: {
     number: number
@@ -98,14 +100,21 @@ export function submittalJourney(input: SubmittalJourneyInput): SubmittalJourney
     next,
   })
 
+  const takeoffFixtures = input.takeoff?.fixtures ?? 0
   const havePicks = input.scheduleTags > 0 && input.picks > 0
-  status.picks = havePicks ? 'done' : 'current'
+  status.picks = havePicks || (input.rev != null && takeoffFixtures > 0) ? 'done' : 'current'
 
   const rev = input.rev
   if (!rev) {
     if (havePicks) {
       status.build = 'current'
       return finish({ kind: 'next', text: `${plural(input.scheduleTags, 'tag')} on the schedule and ${plural(input.picks, 'picked line')} are ready.`, action: 'build_rev1', actionLabel: 'Build Rev 1 from the picks' })
+    }
+    // v2.4107 · a bid priced from a takeoff: the takeoff names the products — choose which go on.
+    if (input.picks === 0 && takeoffFixtures > 0) {
+      status.picks = 'current'
+      const withProduct = input.takeoff?.withProduct ?? 0
+      return finish({ kind: 'next', text: `The takeoff has ${plural(takeoffFixtures, 'fixture')}, ${withProduct} with parts. Choose which ones go on the submittal and build Rev 1 from them.${input.scheduleTags === 0 ? ' The plans’ schedule is optional; typing it later turns Proposed rows into As specified or Alternate.' : ''}`, action: 'choose_from_takeoff', actionLabel: 'Choose from the takeoff' })
     }
     if (input.scheduleTags > 0) {
       return finish({ kind: 'next', text: `${plural(input.scheduleTags, 'tag')} on the schedule, nothing picked yet. Pick a house for each part on the Pricing compare, or build Rev 1 now and type each row's product with Edit.`, action: 'build_rev1', actionLabel: 'Build Rev 1 and type the products' })

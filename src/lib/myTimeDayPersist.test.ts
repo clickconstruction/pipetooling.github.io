@@ -693,12 +693,31 @@ describe('persistMyTimeDayDirtyClusters — several parts', () => {
     expect(db.state.log).toStrictEqual([timesUpdate('a', T(0), T(3), 'n1'), timesUpdate('b', T(3), null, 'n2')])
   })
 
-  it('a punch and a salary row with the seam moved are rewritten row by row, with no salary note', async () => {
+  it('a punch and a salary row with the seam moved are rewritten row by row, now with the salary note', async () => {
     const c = [mk('a', T(0), T(2)), salary('b', T(2), T(4), 1)]
     await expect(
       save([c], [{ boundaries: [T(0), T(3), T(4)], notes: ['n1', 'n2'] }]),
-    ).resolves.toStrictEqual({ salarySyncMayAdjust: false })
+    ).resolves.toStrictEqual({ salarySyncMayAdjust: true })
     expect(db.state.log).toStrictEqual([timesUpdate('a', T(0), T(3), 'n1'), timesUpdate('b', T(3), T(4), 'n2')])
+  })
+
+  it('one salaried row split in two raises the salary note', async () => {
+    await expect(
+      save([[salary('s', T(0), T(4), 1)]], [{ boundaries: [T(0), T(2), T(4)], notes: ['x', 'y'] }]),
+    ).resolves.toStrictEqual({ salarySyncMayAdjust: true })
+  })
+
+  it('a notes-only save of a block holding a salaried row does not', async () => {
+    const c = [mk('a', T(0), T(2)), salary('s', T(2), T(4), 1)]
+    await expect(save([c], [{ boundaries: [T(0), T(2), T(4)], notes: ['x', 'y'] }])).resolves.toStrictEqual({
+      salarySyncMayAdjust: false,
+    })
+  })
+
+  it('a block with no salaried row never does', async () => {
+    await expect(
+      save([twoJobs()], [{ boundaries: [T(0), T(3), T(4)], notes: ['x', 'y'] }]),
+    ).resolves.toStrictEqual({ salarySyncMayAdjust: false })
   })
 
   it('two rows on different jobs, the first split in two and the second whole: the RPC for the first, then a note for the second', async () => {
