@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { autosaveFailureWords, writeBillingSlice, writeMaterialsSlice, writeNewJobChildRows, writeTeamSlice } from './jobFormSliceWrites'
+import { autosaveFailureWords, newJobChildRowFailureWords, writeBillingSlice, writeMaterialsSlice, writeNewJobChildRows, writeTeamSlice, type NewJobChildRowFailure } from './jobFormSliceWrites'
 import { discountSnapshot } from './discountActivity'
 import type { FixtureRow, MaterialRow, PaymentRow } from './jobFormTypes'
 
@@ -244,9 +244,9 @@ describe('writeNewJobChildRows', () => {
     teamMemberIds: ['u-1', 'u-2'],
   }
 
-  it('payments → materials → line items → team, one insert at a time', async () => {
+  it('payments → materials → line items → team, one insert at a time, and nothing to report', async () => {
     const { client, steps } = makeClient()
-    await writeNewJobChildRows(client, args)
+    expect(await writeNewJobChildRows(client, args)).toEqual([])
     expect(seq(steps)).toEqual([
       'insert:jobs_ledger_payments',
       'insert:jobs_ledger_materials',
@@ -256,10 +256,52 @@ describe('writeNewJobChildRows', () => {
     ])
   })
 
-  it('does not read an insert’s answer: a refused row stops nothing and throws nothing', async () => {
+  it('a refused row is handed back with its reason, and the rows after it are still written', async () => {
     const { client, steps } = makeClient({ fail: 'insert:jobs_ledger_payments' })
-    await expect(writeNewJobChildRows(client, args)).resolves.toBeUndefined()
+    expect(await writeNewJobChildRows(client, args)).toEqual([{ kind: 'payment', message: 'insert:jobs_ledger_payments refused' }])
     expect(seq(steps)).toHaveLength(5)
+  })
+
+  it('hands back each refused row of a kind, in the order they were tried', async () => {
+    const { client, steps } = makeClient({ fail: 'insert:jobs_ledger_team_members' })
+    expect(await writeNewJobChildRows(client, args)).toEqual([
+      { kind: 'team member', message: 'insert:jobs_ledger_team_members refused' },
+      { kind: 'team member', message: 'insert:jobs_ledger_team_members refused' },
+    ])
+    expect(seq(steps)).toHaveLength(5)
+  })
+
+  it('a call that fails outright is a row that did not land, not a throw', async () => {
+    const { client } = makeClient()
+    const from = client.from.bind(client)
+    vi.spyOn(client, 'from').mockImplementation(((table: string) => {
+      if (table === 'jobs_ledger_fixtures') throw new Error('Failed to fetch')
+      return from(table)
+    }) as typeof client.from)
+    expect(await writeNewJobChildRows(client, args)).toEqual([{ kind: 'line item', message: 'Failed to fetch' }])
+  })
+})
+
+describe('newJobChildRowFailureWords', () => {
+  const f = (kind: NewJobChildRowFailure['kind'], message = 'new row violates row-level security policy'): NewJobChildRowFailure => ({ kind, message })
+
+  it('says nothing when every row landed', () => {
+    expect(newJobChildRowFailureWords([])).toBeNull()
+  })
+
+  it('one row: what it was, why, and what to do', () => {
+    expect(newJobChildRowFailureWords([f('payment')])).toBe('Job saved, but 1 payment did not save (new row violates row-level security policy). Open the job and add it again.')
+  })
+
+  it('counts by kind in the order they are written, with the first reason given', () => {
+    expect(newJobChildRowFailureWords([f('line item', 'timeout.'), f('team member'), f('line item'), f('payment')])).toBe(
+      'Job saved, but 1 payment, 2 line items and 1 team member did not save (timeout). Open the job and add them again.',
+    )
+    expect(newJobChildRowFailureWords([f('material', 'denied'), f('material', 'denied')])).toBe('Job saved, but 2 materials did not save (denied). Open the job and add them again.')
+  })
+
+  it('leaves the reason out when the database gave none', () => {
+    expect(newJobChildRowFailureWords([f('team member', '  ')])).toBe('Job saved, but 1 team member did not save. Open the job and add it again.')
   })
 })
 

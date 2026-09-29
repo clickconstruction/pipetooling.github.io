@@ -1,8 +1,9 @@
 /**
  * The job form's save engine, the writes: what each edit-mode autosave slice sends to the
  * database and in which order, and the child rows a new job is born with. Each takes
- * `supabase`. Nothing here is transactional — a write that fails stops the sequence where it
- * is, and what ran before it stays written.
+ * `supabase`. Nothing here is transactional — a slice's write that fails stops the sequence
+ * where it is, and what ran before it stays written; a new job's child rows go on past a
+ * refused row and hand back what was refused.
  *
  * TODO(billing): make transactional server-side (RPC) — see BILLING_FLOWS #9/#10.
  */
@@ -103,29 +104,55 @@ export async function writeTeamSlice(supabase: SupabaseClient, args: { jobId: st
   }
 }
 
+export type NewJobChildRowKind = 'payment' | 'material' | 'line item' | 'team member'
+/** One row a new job was to be born with that the database did not take. */
+export type NewJobChildRowFailure = { kind: NewJobChildRowKind; message: string }
+
 /**
  * The rows a new job is born with, once its `jobs_ledger` row exists: payments → materials →
- * line items → team, one insert at a time. Each insert is awaited and its answer is not read —
- * a refused row stops nothing and is not reported. That is how the form has always created a
- * job; checking these is a change of behavior, for a PR of its own.
+ * line items → team, one insert at a time. A refused row — or one whose call fails outright —
+ * does not stop the rest: the job exists by now, and every row that lands is one less to type
+ * again. Never throws; hands back the rows that did not land, in the order they were tried.
  */
 export async function writeNewJobChildRows(
   supabase: SupabaseClient,
   args: { jobId: string; payments: PaymentRow[]; materials: MaterialRow[]; fixtures: FixtureRow[]; teamMemberIds: string[] },
-): Promise<void> {
+): Promise<NewJobChildRowFailure[]> {
   const { jobId } = args
-  for (const row of paymentInsertRows(jobId, args.payments)) {
-    await supabase.from('jobs_ledger_payments').insert(row)
+  const failures: NewJobChildRowFailure[] = []
+  const insertRow = async (kind: NewJobChildRowKind, table: string, row: Record<string, unknown>) => {
+    try {
+      const { error } = await supabase.from(table).insert(row)
+      if (error) failures.push({ kind, message: error.message })
+    } catch (thrown) {
+      failures.push({ kind, message: thrown instanceof Error ? thrown.message : String(thrown) })
+    }
   }
-  for (const row of materialInsertRows(jobId, args.materials)) {
-    await supabase.from('jobs_ledger_materials').insert(row)
-  }
-  for (const row of fixtureInsertRows(jobId, args.fixtures)) {
-    await supabase.from('jobs_ledger_fixtures').insert(row)
-  }
-  for (const uid of args.teamMemberIds) {
-    await supabase.from('jobs_ledger_team_members').insert({ job_id: jobId, user_id: uid })
-  }
+  for (const row of paymentInsertRows(jobId, args.payments)) await insertRow('payment', 'jobs_ledger_payments', row)
+  for (const row of materialInsertRows(jobId, args.materials)) await insertRow('material', 'jobs_ledger_materials', row)
+  for (const row of fixtureInsertRows(jobId, args.fixtures)) await insertRow('line item', 'jobs_ledger_fixtures', row)
+  for (const uid of args.teamMemberIds) await insertRow('team member', 'jobs_ledger_team_members', { job_id: jobId, user_id: uid })
+  return failures
+}
+
+/** How long the note stays up — the form has closed by then, and it names what to type again. */
+export const NEW_JOB_CHILD_ROW_FAILURE_TOAST_MS = 15_000
+
+const NEW_JOB_CHILD_ROW_KINDS: NewJobChildRowKind[] = ['payment', 'material', 'line item', 'team member']
+
+/**
+ * What the form says when a new job's rows did not all land; null when they did. Counts by
+ * kind, in the order they are written, and gives the first reason the database gave.
+ */
+export function newJobChildRowFailureWords(failures: readonly NewJobChildRowFailure[]): string | null {
+  const first = failures[0]
+  if (!first) return null
+  const counted = NEW_JOB_CHILD_ROW_KINDS.map((kind) => ({ kind, n: failures.filter((f) => f.kind === kind).length }))
+    .filter((c) => c.n > 0)
+    .map((c) => `${c.n} ${c.kind}${c.n === 1 ? '' : 's'}`)
+  const list = counted.length > 1 ? `${counted.slice(0, -1).join(', ')} and ${counted[counted.length - 1]}` : counted[0]
+  const reason = first.message.trim().replace(/[.\s]+$/, '')
+  return `Job saved, but ${list} did not save${reason ? ` (${reason})` : ''}. Open the job and add ${failures.length === 1 ? 'it' : 'them'} again.`
 }
 
 /** What the form says when a slice's save throws. */

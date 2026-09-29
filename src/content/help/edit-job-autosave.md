@@ -44,3 +44,5 @@ Tapping **Billed** on a job whose open money has no bill line pauses first: mone
 ## New jobs still use a button
 
 Creating a job is different: fill in the New Job form and click {{button:blue|Create Job}}. Auto-save starts once the job exists and you're editing it.
+
+If a payment, part, line item or team member you typed could not be saved with the new job, a red note says how many of each and why. The job itself is saved — open it and add them again; don't create it a second time.

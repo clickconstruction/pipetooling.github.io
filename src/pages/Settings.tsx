@@ -972,6 +972,8 @@ export default function Settings() {
   // sample doors open a step on What customers see. Callbacks, not links, so the same door works
   // twice in a row (the rail changes the tab without changing the URL).
   const [bidCoverLetterOpenSignal, setBidCoverLetterOpenSignal] = useState(0)
+  /** v2.4108: the Contracts & terms row to open on arrival from What customers see (the tab's rows start closed). */
+  const [contractsOpenEntryId, setContractsOpenEntryId] = useState<string | null>(null)
   const openContractEditorSection = useCallback(
     (anchorId: string) => {
       if (anchorId === ANCHOR_ESTIMATE_PUBLIC_TERMS) setEstimatePublicTermsSectionOpen(true)
@@ -1439,6 +1441,7 @@ export default function Settings() {
         {activeSettingsTab === 'settings-what-customers-see' && canSeeWhatCustomersSee(myRole) && (
           <SettingsWhatCustomersSeeTab
             onOpenContract={(entryId) => {
+              setContractsOpenEntryId(entryId)
               setActiveSettingsTab(CONTRACTS_TAB_ID)
               pollScrollToSettingsAnchor(contractAnchorId(entryId))
             }}
@@ -1451,6 +1454,7 @@ export default function Settings() {
         {activeSettingsTab === CONTRACTS_TAB_ID && canSeeWhatCustomersSee(myRole) && (
           <SettingsContractsTab
             role={myRole}
+            openEntryId={contractsOpenEntryId}
             onOpenEditor={(tabId, anchorId) => {
               setActiveSettingsTab(tabId)
               openContractEditorSection(anchorId)
