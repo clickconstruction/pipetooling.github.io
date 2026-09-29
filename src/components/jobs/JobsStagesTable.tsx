@@ -137,6 +137,8 @@ export type JobsStagesTableProps = {
   loadJobs: StagesRowRenderContext['loadJobs']
   onDevelopmentFilter?: StagesRowRenderContext['onDevelopmentFilter']
   jobContractCoverageByJobId?: StagesRowRenderContext['jobContractCoverageByJobId']
+  propertyKindByJobId?: StagesRowRenderContext['propertyKindByJobId']
+  onPropertyKindSaved?: StagesRowRenderContext['onPropertyKindSaved']
   onOpenJobContract?: StagesRowRenderContext['onOpenJobContract']
 }
 
@@ -203,6 +205,8 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
     loadJobs,
     onDevelopmentFilter,
     jobContractCoverageByJobId,
+    propertyKindByJobId,
+    onPropertyKindSaved,
     onOpenJobContract,
   } = props
   const wideViewport = useWideViewport1100()
@@ -245,6 +249,8 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
     loadJobs,
     onDevelopmentFilter,
     jobContractCoverageByJobId,
+    propertyKindByJobId,
+    onPropertyKindSaved,
     onOpenJobContract,
   }
   const renderStagesFieldAndBillingLines = (job: JobWithDetails) =>
@@ -368,7 +374,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                         row click still expands the thread either way. */}
                     {!wideViewport ? renderStagesThreadExpandButton(stagesRowSharedCtx, j.id) : null}
                   </div>
-                  {renderJobAddressWithMap(j.job_address)}
+                  {renderJobAddressWithMap(stagesRowSharedCtx, j)}
                   {renderJobCustomerLine(j)}
                   {renderStagesJobColumnEstimateFooter(j.linkedEstimateForStages)}
                   {renderStagesJobCellActivityFooter(j, stagesJobLevelStripeEmailedHintInvoice(j))}

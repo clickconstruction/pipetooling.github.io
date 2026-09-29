@@ -143,7 +143,7 @@ export function StagesUnifiedJobRow({ row, t }: { row: StagesUnifiedJobRowKind; 
           row click still expands the thread either way. */}
           {!wideViewport ? renderStagesThreadExpandButton(stagesRowSharedCtx, j.id) : null}
         </div>
-        {renderJobAddressWithMap(j.job_address)}
+        {renderJobAddressWithMap(stagesRowSharedCtx, j)}
         {renderJobCustomerLine(j)}
         {bundleInv != null && row.kind === 'job_with_merged_billed' ? (
           // The "Billed line: $X open" text was redundant with the

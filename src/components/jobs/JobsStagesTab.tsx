@@ -33,6 +33,7 @@ import { bankReturnedBadgeTitle, bankReturnedBadgeWords, bankReturnedByJob } fro
 import { advanceConsequence, jobNextLine, type JobNextLine, type JobNextLineInput, type JobNextStage, type PhoneRowFilter } from '../../lib/jobs/jobNextLine'
 import { buildLienPayRunway, type LienPayRunway as LienPayRunwayModel } from '../../lib/jobs/lienPayRunway'
 import { useBilledLienClocks } from '../../hooks/useBilledLienClocks'
+import { usePropertyKinds } from '../../hooks/usePropertyKinds'
 import { useBilledMoneyData } from '../../hooks/useBilledMoneyData'
 import { useDemandOutJobIds, useHazmatAndReleaseJobIds, useJobContractCoverage } from '../../hooks/useStagesRowFlags'
 import { useStagesDeepLinkParams, useStagesRtbFocus, type StagesDeepLinkDoors } from '../../hooks/useStagesDeepLinkParams'
@@ -936,6 +937,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     [jobs],
   )
   const billedLienClocks = useBilledLienClocks(billedLienClockJobs)
+  // The address badge's fact for every row (v2.4160): each job's property kind, one read across the board.
+  const propertyKindJobs = useMemo(() => jobs.map((j) => ({ id: j.id, customer_address_id: j.customer_address_id ?? null })), [jobs])
+  const propertyKinds = usePropertyKinds(propertyKindJobs)
   // Promised pay dates are marked by the office roles; promise records and
   // chase touches load for them only.
   const canMarkPromisedPay =
@@ -2379,6 +2383,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     jobContractCoverageByJobId: canSeeJobContracts ? jobContractCoverageByJobId : undefined,
     onOpenJobContract: openJobContract,
     legalMatterByJobId: legalMatters.byJobId,
+    propertyKindByJobId: propertyKinds.byJobId,
+    onPropertyKindSaved: propertyKinds.setKind,
     }
   /** The phone rows' kernel input for a job, from the same side maps the cards read. */
   const phoneTodayYmd = calendarYmdInAppTzFromIso(new Date().toISOString())
