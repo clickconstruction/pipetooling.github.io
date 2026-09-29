@@ -219,7 +219,7 @@ describe('BidsSubmittalsTab', () => {
     expect(await screen.findByText('No submittal on this bid yet')).toBeTruthy()
     expect(screen.getByText(/3 tags on the schedule · 3 picked lines/)).toBeTruthy()
     // v2.4067: the journey strip offers the same door above the card; either one builds.
-    expect(screen.getByTestId('journey-next').textContent).toBe('Next: 3 tags on the schedule and 3 picked lines are ready.Build Rev 1 from the picks')
+    expect(screen.getByTestId('journey-next').textContent).toBe('Next: 3 tags on the schedule and 3 lines picked. Ready to build Rev 1, the first version.Build Rev 1 from the picks')
     fireEvent.click(screen.getAllByRole('button', { name: 'Build Rev 1 from the picks' })[1] as HTMLElement)
     await waitFor(() => expect(state.writes.filter((w) => w.op === 'insert')).toHaveLength(2))
     const rev = state.writes.find((w) => w.table === 'bid_submittals')!
@@ -503,7 +503,7 @@ describe('BidsSubmittalsTab', () => {
       mount()
       expect(await screen.findByText('No submittal on this bid yet')).toBeTruthy()
       expect(document.querySelector('[data-tour="submittals-source"]')?.textContent).toContain('4 fixtures on the takeoff · no schedule yet · choose from the takeoff')
-      expect(screen.getByTestId('journey-next').textContent).toBe('Next: The takeoff has 4 fixtures, 3 with parts. Choose which ones go on the submittal and build Rev 1 from them. The plans’ schedule is optional; typing it later turns Proposed rows into As specified or Alternate.Choose from the takeoff')
+      expect(screen.getByTestId('journey-next').textContent).toBe('Next: The takeoff has 4 fixtures. 3 of them have a part. Tick the ones to submit, then build Rev 1 from them. You can type the plans’ schedule later. Then each row is checked against it.Choose from the takeoff')
       expect(screen.getByTestId('source-takeoff').textContent).toContain('The takeoff · 4 fixtures, 3 with a part')
       expect(screen.getByTestId('choose-from-takeoff').textContent).toBe('Choose from the takeoff')
       // v2.4109 · no picks → no picks card; the robot's offer is a line in the schedule card.
