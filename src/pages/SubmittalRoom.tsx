@@ -9,6 +9,7 @@
  * pinned, phone first.
  */
 import { useEffect, useState, type CSSProperties } from 'react'
+import { RoomRevisionBody } from '../components/bids/SubmittalRoomView'
 import { APP_CALENDAR_TZ } from '../utils/dateUtils'
 import { useSearchParams } from 'react-router-dom'
 
@@ -17,7 +18,7 @@ import { PUBLIC_PREVIEW_PARAM, isPreviewFlag } from '../lib/publicViewCounting'
 import { describeThreadEntry, parseSubmittalRoomPayload, ROOM_ROLE_LABELS } from '../lib/submittals/submittalRoom'
 import { sampleStateFromToken } from '../lib/customerSampleMode'
 import { SampleModeBanner } from '../components/SampleModeBanner'
-import { roomHeadline, roomSubline, ROOM_ROLES, type RoomMessage, type RoomRevision, type RoomRole, type RoomRow, type SubmittalRoomPayload } from '../../supabase/functions/_shared/submittalRoomPayload'
+import { ROOM_ROLES, type RoomMessage, type RoomRevision, type RoomRole, type SubmittalRoomPayload } from '../../supabase/functions/_shared/submittalRoomPayload'
 import type { DecisionKind } from '../../supabase/functions/_shared/submittalReviewActions'
 import { buildProcurementLog, floatText, procurementHeadline, shortDate as logDate, statusText, tagStagesFrom, type ProcurementItemSource, type ProcurementRecord, type ProcurementStage, type StageDates } from '../lib/submittals/procurementLog'
 import type { StageSplitRecord, StageSplitSource } from '../lib/bids/materialsByStage'
@@ -32,16 +33,6 @@ const paper: CSSProperties = { minHeight: '100vh', background: 'var(--bg-subtle)
 const card: CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.85rem 0.95rem' }
 const label: CSSProperties = { fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 const quiet: CSSProperties = { fontSize: '0.8rem', color: 'var(--text-muted)' }
-const seg = (on: boolean, tone: 'g' | 'a' | 'r'): CSSProperties => ({
-  padding: '0.5rem 0.85rem',
-  fontSize: '0.85rem',
-  fontWeight: on ? 700 : 500,
-  border: 'none',
-  cursor: 'pointer',
-  fontFamily: 'inherit',
-  background: on ? (tone === 'g' ? '#1f7a3a' : tone === 'a' ? COPPER : '#b42318') : 'var(--surface)',
-  color: on ? 'white' : 'var(--text-muted)',
-})
 
 function shortDate(iso: string | null): string {
   if (!iso) return ''
@@ -49,48 +40,6 @@ function shortDate(iso: string | null): string {
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
-function RowCard({ row, local, onDecide }: { row: RoomRow; local: DecisionKind | undefined; onDecide: (kind: DecisionKind) => void }) {
-  const differs = row.kind === 'differs' || row.kind === 'proposed'
-  const shown = local ?? row.decision?.kind
-  const tone = row.kind === 'added' ? 'var(--text-muted)' : row.performanceChange ? '#b42318' : COPPER
-  return (
-    <div style={{ ...card, borderColor: differs && !row.decision ? COPPER : 'var(--border)' }} data-testid="room-row">
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' }}>
-        <b>{row.tag || 'Accessory'}</b>
-        <span style={{ fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: tone }}>
-          {row.kind === 'differs' ? 'differs' : row.kind === 'proposed' ? 'proposed' : row.kind === 'added' ? 'added for the fixture' : row.kind === 'not_quoted' ? 'to follow' : 'as the plans specify'}
-        </span>
-      </div>
-      {row.plans ? (
-        <div style={{ ...quiet, marginTop: 4 }}>
-          The plans: <b style={{ color: 'var(--text-strong)' }}>{row.plans}</b>
-        </div>
-      ) : null}
-      {row.proposed ? (
-        <div style={{ marginTop: 2, fontSize: '0.9rem' }}>
-          {row.kind === 'matches' ? 'Submitted' : 'Proposed'}: <b>{row.proposed}</b>
-        </div>
-      ) : null}
-      {row.why ? <div style={{ ...quiet, marginTop: 4 }}>{row.kind === 'differs' ? 'Why: ' : ''}{row.why}</div> : null}
-      {row.performanceChange ? <div style={{ marginTop: 4, fontSize: '0.8rem', color: '#b42318' }}>This changes a performance value on the plans.</div> : null}
-      {row.decision ? (
-        <div style={{ marginTop: 8, fontSize: '0.8rem', color: 'var(--text-strong)' }}>
-          <b>{row.decision.kind === 'revise' ? 'Revise' : row.decision.kind === 'approved' ? 'Approved' : 'Rejected'}</b>
-          {row.decision.byName ? ` · ${row.decision.byName}` : ''}
-          {row.decision.at ? ` · ${shortDate(row.decision.at)}` : ''}
-          {row.decision.note ? <span style={quiet}> · “{row.decision.note}”</span> : null}
-        </div>
-      ) : null}
-      {differs ? (
-        <div style={{ marginTop: 10, display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden' }} role="group" aria-label={`Your call on ${row.tag}`}>
-          <button type="button" aria-pressed={shown === 'approved'} onClick={() => onDecide('approved')} style={seg(shown === 'approved', 'g')}>Approve</button>
-          <button type="button" aria-pressed={shown === 'revise'} onClick={() => onDecide('revise')} style={seg(shown === 'revise', 'a')}>Revise</button>
-          <button type="button" aria-pressed={shown === 'rejected'} onClick={() => onDecide('rejected')} style={seg(shown === 'rejected', 'r')}>Reject</button>
-        </div>
-      ) : null}
-    </div>
-  )
-}
 
 export default function SubmittalRoom() {
   const [params] = useSearchParams()
@@ -100,7 +49,6 @@ export default function SubmittalRoom() {
   const sample = sampleStateFromToken(token)
   const [view, setView] = useState<View>({ kind: 'loading' })
   const [revId, setRevId] = useState<string | null>(null)
-  const [showMatches, setShowMatches] = useState(false)
   const [identifyOpen, setIdentifyOpen] = useState(false)
   /** Who this browser is on this room: the personal token the identify sheet returned (or the link carried), remembered per room. */
   const [me, setMe] = useState<{ token: string; name: string; role: RoomRole; mayDecide: boolean; messagesThisHour?: number } | null>(null)
@@ -372,39 +320,18 @@ export default function SubmittalRoom() {
               </div>
             ) : null}
 
-            <div style={{ ...card, borderLeft: `4px solid ${COPPER}` }} data-testid="room-headline">
-              <div style={{ ...label, color: COPPER }}>{roomHeadline(rev.counts)}</div>
-              <div style={{ ...quiet, marginTop: 4 }}>
-                {roomSubline(rev.counts)} <b style={{ color: 'var(--text-strong)' }}>Just looking? Fine.</b> To decide or ask, we&apos;ll ask who you are.
-              </div>
-              {payload.person ? (
+            <RoomRevisionBody
+              rev={rev}
+              pending={pending}
+              onDecide={decide}
+              afterSubline={<><b style={{ color: 'var(--text-strong)' }}>Just looking? Fine.</b> To decide or ask, we&apos;ll ask who you are.</>}
+              personLine={payload.person ? (
                 <div style={{ ...quiet, marginTop: 6 }}>
                   This link was made for <b style={{ color: 'var(--text-strong)' }}>{payload.person.name}</b> · {ROOM_ROLE_LABELS[payload.person.role]}
                   {!payload.person.mayDecide ? ' · watching' : ''}
                 </div>
               ) : null}
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
-              {rev.rows.filter((r) => r.kind !== 'matches').map((r) => (
-                <RowCard key={r.id} row={r} local={pending[r.id]?.decision} onDecide={(k) => decide(r.id, k)} />
-              ))}
-            </div>
-
-            {rev.counts.matches > 0 ? (
-              <div style={{ marginTop: 10 }}>
-                <button type="button" aria-expanded={showMatches} onClick={() => setShowMatches(!showMatches)} style={{ background: 'none', border: 'none', padding: '0.4rem 0', font: 'inherit', fontSize: '0.85rem', color: COPPER, fontWeight: 700, cursor: 'pointer' }}>
-                  {showMatches ? 'Hide' : 'Show'} the {rev.counts.matches} row{rev.counts.matches === 1 ? '' : 's'} as the plans specify {showMatches ? '▴' : '▾'}
-                </button>
-                {showMatches ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {rev.rows.filter((r) => r.kind === 'matches').map((r) => (
-                      <RowCard key={r.id} row={r} local={pending[r.id]?.decision} onDecide={(k) => decide(r.id, k)} />
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
+            />
 
             {payload.procurement && rev.current ? <ProcurementCard rev={rev} procurement={payload.procurement} companyName={payload.company.name} /> : null}
 
