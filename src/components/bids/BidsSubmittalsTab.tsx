@@ -24,7 +24,8 @@ import { SubmittalProcurementPanel } from './SubmittalProcurementPanel'
 import { PlugInScheduleModal } from './PlugInScheduleModal'
 import { SubmittalTakeoffPicker } from './SubmittalTakeoffPicker'
 import { loadTakeoffCandidates, saveTakeoffChoices, type TakeoffCandidatesLoad } from '../../lib/submittals/takeoffCandidatesIo'
-import { candidateToItemInsert, type TakeoffCandidate } from '../../lib/submittals/takeoffCandidates'
+import { candidateToItemInserts, rowSplitTags, splitExplanation, type TakeoffCandidate } from '../../lib/submittals/takeoffCandidates'
+import { SplitRuleModal } from './SplitRuleModal'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { procurementItemsFrom } from '../../lib/submittals/procurementLogIo'
 import type { ProcurementItemSource } from '../../lib/submittals/procurementLog'
@@ -174,6 +175,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   // From the takeoff (v2.4107): the takeoff's fixtures as candidates, and the picker (build = Rev 1 from them, add = onto the draft).
   const [takeoff, setTakeoff] = useState<TakeoffCandidatesLoad | null>(null)
   const [takeoffPicker, setTakeoffPicker] = useState<'build' | 'add' | null>(null)
+  // v2.4114 · "When a row can split", opened from the rows' footer.
+  const [splitRuleOpen, setSplitRuleOpen] = useState(false)
   const [sectionToggles, setSectionToggles] = useState<Partial<Record<JourneyStageKey, boolean>>>({})
   // Procure (v2.4083): the newest revision's rows as the log reads them, and the counts the strip's pill lights on.
   const [procItems, setProcItems] = useState<ProcurementItemSource[]>([])
@@ -448,7 +451,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     else if (selectedRev && asRevisionStatus(selectedRev.status) === 'draft') setTakeoffPicker('add')
     else showToast('Rows from the takeoff land on a draft — start a new revision first.', 'info')
   }
-  async function confirmTakeoff(rows: ReadonlyArray<TakeoffCandidate>, ticks: ReadonlyMap<string, boolean>) {
+  async function confirmTakeoff(rows: ReadonlyArray<TakeoffCandidate>, ticks: ReadonlyMap<string, boolean>, splits?: ReadonlyMap<string, boolean>) {
     if (!bidId || !takeoffPicker) return
     setBusy(true)
     try {
@@ -463,12 +466,14 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         revId = selectedRev.id
         seq = items.reduce((m, it) => Math.max(m, it.sequence_order), 0)
       }
-      const inserts = rows.map((c, i) => candidateToItemInsert(c, revId, seq + i + 1))
+      // v2.4114 · a split candidate becomes one row per tag; the sequence runs on through them.
+      const inserts: ReturnType<typeof candidateToItemInserts> = []
+      for (const c of rows) inserts.push(...candidateToItemInserts(c, revId, seq + inserts.length + 1))
       if (inserts.length > 0) {
         const { error } = await db.from('bid_submittal_items').insert(inserts)
         if (error) throw error
       }
-      await saveTakeoffChoices(db, bidId, ticks)
+      await saveTakeoffChoices(db, bidId, ticks, splits)
       setTakeoffPicker(null)
       const proposed = inserts.filter((r) => r.status === 'proposed').length
       const toType = inserts.length - proposed
@@ -502,6 +507,43 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       if (it.source_count_row_id) setTakeoff(await loadTakeoffCandidates(db, bidId, { selectedVersionId: bidsRef.current.find((b) => b.id === bidId)?.selected_bid_version_id ?? null }))
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not remove the row'), 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** v2.4114 · a draft row whose tag lists several becomes one row per tag: same product, house, lead time and sheet pages; a takeoff row's split is remembered. */
+  async function splitRow(it: SubmittalItemRow) {
+    if (!bidId || !selectedRev || asRevisionStatus(selectedRev.status) !== 'draft') return
+    const tags = rowSplitTags(it.tag)
+    if (tags.length < 2) return
+    const ok = await confirm({ title: `Split ${it.tag.trim()} into ${tags.length} rows`, message: `${tags.join(', ')} each get their own row with the same product, house, lead time and sheet pages. Their calls stay blank until the reviewer decides each one. Nothing changes on the takeoff.`, confirmLabel: `Split into ${tags.length} rows` })
+    if (!ok) return
+    setBusy(true)
+    try {
+      // The rows after it move down to make room, so the split rows sit where the one row was.
+      const shift = tags.length - 1
+      for (const other of items.filter((x) => x.sequence_order > it.sequence_order).sort((a, b) => b.sequence_order - a.sequence_order)) {
+        const { error } = await db.from('bid_submittal_items').update({ sequence_order: other.sequence_order + shift }).eq('id', other.id)
+        if (error) throw error
+      }
+      const { error: delErr } = await db.from('bid_submittal_items').delete().eq('id', it.id)
+      if (delErr) throw delErr
+      const { error } = await db.from('bid_submittal_items').insert(tags.map((tag, i) => ({
+        submittal_id: it.submittal_id, tag, sequence_order: it.sequence_order + i,
+        specified_manufacturer: it.specified_manufacturer, specified_model: it.specified_model, specified_description: it.specified_description,
+        submitted_manufacturer: it.submitted_manufacturer, submitted_model: it.submitted_model, submitted_label: it.submitted_label,
+        supply_house_id: it.supply_house_id, source_quote_line_id: it.source_quote_line_id, source_count_row_id: it.source_count_row_id,
+        status: it.status, reason_kind: it.reason_kind, reason_note: it.reason_note, lead_time_days: it.lead_time_days,
+        sheet_file: it.sheet_file, sheet_pages: it.sheet_pages, sheet_source: it.sheet_source,
+      })))
+      if (error) throw error
+      if (it.source_count_row_id) await saveTakeoffChoices(db, bidId, new Map([[it.source_count_row_id, true]]), new Map([[it.source_count_row_id, true]]))
+      setItems(await loadItems(selectedRev.id))
+      if (it.source_count_row_id) setTakeoff(await loadTakeoffCandidates(db, bidId, { selectedVersionId: bidsRef.current.find((b) => b.id === bidId)?.selected_bid_version_id ?? null }))
+      showToast(`Split into ${tags.join(', ')}.`, 'success')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not split the row'), 'error')
     } finally {
       setBusy(false)
     }
@@ -1589,6 +1631,11 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                               <button type="button" aria-label={`Edit ${it.tag.trim() || 'accessory'}`} onClick={() => setEditing(it)} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem' }}>
                                 Edit
                               </button>
+                              {isDraft && rowSplitTags(it.tag).length > 1 ? (
+                                <button type="button" aria-label={`Split ${it.tag.trim()}`} disabled={busy} onClick={() => void splitRow(it)} title={`One row per tag: ${rowSplitTags(it.tag).join(', ')}`} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem', marginLeft: '0.3rem', borderColor: '#2563eb', color: 'var(--text-blue-700)' }} data-testid="split-row">
+                                  Split
+                                </button>
+                              ) : null}
                               {isDraft ? (
                                 <button type="button" aria-label={`Remove ${it.tag.trim() || 'accessory'}`} disabled={busy} onClick={() => void removeRow(it)} title={it.source_count_row_id ? 'Off this draft, and unticked on the takeoff list' : 'Off this draft'} style={{ ...btn, padding: '0.2rem 0.5rem', fontSize: '0.75rem', marginLeft: '0.3rem', color: 'var(--text-muted)' }}>
                                   ×
@@ -1615,6 +1662,9 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                     <button type="button" disabled={busy} onClick={() => void addRowByHand()} style={{ ...btn, marginLeft: isDraft && takeoffFixtures > 0 ? undefined : 'auto' }} title="A row with no pick behind it: type its tag, product and lead time" data-testid="add-row-by-hand">
                       + Add a row by hand
                     </button>
+                  ) : null}
+                  {isDraft && (items.some((x) => rowSplitTags(x.tag).length > 1) || takeoffCandidatesForPicker.some((c) => c.canSplit)) ? (
+                    <button type="button" onClick={() => setSplitRuleOpen(true)} style={{ ...btnQuiet, textDecoration: 'underline', fontSize: '0.78rem' }} data-testid="split-rule-link-rows">when can a row split?</button>
                   ) : null}
                 </div>
                 {sourceFiles.length > 0 ? (
@@ -1892,8 +1942,9 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       ) : null}
 
       {editing ? <SubmittalItemEditDialog item={editing} sourceFiles={sourceFiles} people={people} canEnterDecision canEditProduct={isDraft} onSave={(p) => void saveItem(p)} onClose={() => setEditing(null)} /> : null}
+      {splitRuleOpen ? <SplitRuleModal examples={splitExplanation(takeoffCandidatesForPicker)} onClose={() => setSplitRuleOpen(false)} /> : null}
       {takeoffPicker && takeoff ? (
-        <SubmittalTakeoffPicker mode={takeoffPicker} revLabel={takeoffPicker === 'build' ? 'Rev 1' : `Rev ${selectedRev?.rev_number ?? newestRev?.rev_number ?? 1}`} candidates={takeoffCandidatesForPicker} busy={busy} onConfirm={(rows, ticks) => void confirmTakeoff(rows, ticks)} onClose={() => setTakeoffPicker(null)} />
+        <SubmittalTakeoffPicker mode={takeoffPicker} revLabel={takeoffPicker === 'build' ? 'Rev 1' : `Rev ${selectedRev?.rev_number ?? newestRev?.rev_number ?? 1}`} candidates={takeoffCandidatesForPicker} busy={busy} onConfirm={(rows, ticks, splits) => void confirmTakeoff(rows, ticks, splits)} onClose={() => setTakeoffPicker(null)} />
       ) : null}
       {plugInOpen && bidId && selectedBid ? <PlugInScheduleModal open onClose={() => setPlugInOpen(false)} onSaved={() => { setPlugInOpen(false); void load(bidId) }} bidId={bidId} bidLabel={bidDisplayName(selectedBid) || 'Bid'} rows={[]} /> : null}
       {sharing && selectedRev && bidId ? (

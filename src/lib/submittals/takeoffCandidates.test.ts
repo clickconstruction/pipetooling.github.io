@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { candidateBar, candidateCounts, candidateHead, candidateToItemInsert, productLineOf, tagsFromFixtureName, takeoffCandidates, type TakeoffLine } from './takeoffCandidates'
+import { candidateBar, candidateCounts, candidateHead, candidateToItemInsert, candidateToItemInserts, productLineOf, rowSplitTags, splitExplanation, tagsFromFixtureName, takeoffCandidates, type TakeoffLine } from './takeoffCandidates'
 
 const parts = new Map([
   ['p-wc', { name: 'TOTO CT708UVG#01 WALL HUNG BOWL', partTypeName: 'Fixtures' }],
@@ -90,7 +90,7 @@ describe('the candidates', () => {
     expect(by.get('c-us')).toMatchObject({ ticked: true, storedTick: true, defaultTicked: false })
     expect(by.get('c-wc')!.alreadyOn).toBe(true)
     const counts = candidateCounts(c)
-    expect(counts).toEqual({ total: 8, withProduct: 5, ticked: 3, tickedWithProduct: 2, tickedToType: 1, leftOut: 4, alreadyOn: 1 })
+    expect(counts).toEqual({ total: 8, withProduct: 5, ticked: 3, rows: 3, splitCount: 0, tickedWithProduct: 2, tickedToType: 1, leftOut: 4, alreadyOn: 1 })
     expect(candidateBar(counts, 'Rev 2')).toBe('3 rows will go on Rev 2 · 2 with a product, 1 to type · 4 left out · 1 already on it')
     expect(candidateBar(candidateCounts(c, new Map([['c-lav', false], ['c-wh', false], ['c-us', false]])), 'Rev 1')).toBe('0 rows will go on Rev 1 · 7 left out · 1 already on it')
   })
@@ -101,5 +101,44 @@ describe('the candidates', () => {
     expect(candidateToItemInsert(wc, 'rev-1', 3)).toEqual({ submittal_id: 'rev-1', tag: 'WC-1, WC-2', sequence_order: 3, specified_description: 'WC 1&2', submitted_label: 'TOTO CT708UVG#01 WALL HUNG BOWL', supply_house_id: 'h-reece', status: 'proposed', sheet_pages: [], source_count_row_id: 'c-wc' })
     const us = c.find((x) => x.countRowId === 'c-us')!
     expect(candidateToItemInsert(us, 'rev-1', 4)).toMatchObject({ tag: 'UTILITY SINK', submitted_label: null, status: 'missing' })
+  })
+
+  it('v2.4114 · a name that spells out two tags can split: the stored split, the counts and bar, one row per tag with the same product, house and count row', () => {
+    const c = takeoffCandidates({ countRows, lines, parts, templates, houses, splits: new Map([['c-wc', true]]) })
+    const by = new Map(c.map((x) => [x.countRowId, x]))
+    expect(by.get('c-wc')).toMatchObject({ canSplit: true, storedSplit: true, split: true, tags: ['WC-1', 'WC-2'] })
+    expect(by.get('c-wh')).toMatchObject({ canSplit: false, split: false })
+    expect(by.get('c-lav')!.canSplit).toBe(false)
+    const counts = candidateCounts(c)
+    expect(counts).toMatchObject({ ticked: 4, rows: 5, splitCount: 1, tickedWithProduct: 5 })
+    expect(candidateBar(counts, 'Rev 1')).toBe('5 rows will go on Rev 1 · 5 with a product · 1 split into 2 · 4 left out')
+    // Switched off on the screen, the same candidate counts once.
+    expect(candidateCounts(c, undefined, new Map([['c-wc', false]]))).toMatchObject({ ticked: 4, rows: 4, splitCount: 0 })
+    const rows = candidateToItemInserts(by.get('c-wc')!, 'rev-1', 3)
+    expect(rows.map((r) => [r.tag, r.sequence_order, r.submitted_label, r.supply_house_id, r.source_count_row_id, r.status])).toEqual([
+      ['WC-1', 3, 'TOTO CT708UVG#01 WALL HUNG BOWL', 'h-reece', 'c-wc', 'proposed'],
+      ['WC-2', 4, 'TOTO CT708UVG#01 WALL HUNG BOWL', 'h-reece', 'c-wc', 'proposed'],
+    ])
+    expect(candidateToItemInserts(by.get('c-wc')!, 'rev-1', 3, false)).toHaveLength(1)
+    expect(candidateToItemInserts(by.get('c-wh')!, 'rev-1', 1, true)).toHaveLength(1)
+  })
+
+  it('v2.4114 · the same reader offers Split on a draft row’s tag, and the modal reads this bid’s names', () => {
+    expect(rowSplitTags('WC-1, WC-2')).toEqual(['WC-1', 'WC-2'])
+    expect(rowSplitTags('WC-1 / WC-2')).toEqual(['WC-1', 'WC-2'])
+    expect(rowSplitTags('WC 1&2')).toEqual(['WC-1', 'WC-2'])
+    expect(rowSplitTags('UR-1, UR-2 and UR-3')).toEqual(['UR-1', 'UR-2', 'UR-3'])
+    expect(rowSplitTags('WC-1')).toEqual([])
+    expect(rowSplitTags('DWH1 & ET')).toEqual([])
+    expect(rowSplitTags('WC-1, WC-1')).toEqual([])
+    expect(rowSplitTags('')).toEqual([])
+    const ex = splitExplanation(takeoffCandidates({ countRows, lines, parts, templates, houses }))
+    expect(ex.map((x) => [x.name, x.readsAs, x.canSplit, x.note])).toEqual([
+      ['DWH1 & ET', 'DWH-1', false, '“ET” has no number, so it is not a second tag'],
+      ['LAV 1', 'LAV-1', false, null],
+      ['WC 1&2', 'WC-1, WC-2', true, null],
+      ['WHA-300', 'WHA-300', false, null],
+      ['UTILITY SINK', 'UTILITY SINK', false, 'no tag read; the name is the tag'],
+    ])
   })
 })

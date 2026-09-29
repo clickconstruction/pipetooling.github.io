@@ -25,7 +25,7 @@ export const SUBMITTAL_TOUR_STEPS: SpotlightTourStep[] = [
   {
     anchor: 'submittals-takeoff',
     title: 'From the takeoff',
-    body: 'A bid priced from a takeoff already names every product. Tick the fixtures that go on the submittal — fixtures and equipment start ticked, pipe and allowances unticked — and Rev 1 is built from them, each row Proposed until the plans’ schedule says As specified or Alternate. Your ticks are remembered on the bid.',
+    body: 'A bid priced from a takeoff already names every product. Tick the fixtures that go on the submittal — fixtures and equipment start ticked, pipe and allowances unticked — and Rev 1 is built from them, each row Proposed until the plans’ schedule says As specified or Alternate. A name that spells out two tags (WC 1&2) offers a Split switch: a row per tag. Your ticks and splits are remembered on the bid.',
   },
   {
     anchor: 'submittals-plug-in',

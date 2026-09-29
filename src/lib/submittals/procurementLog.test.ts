@@ -104,6 +104,9 @@ describe('the stage of a tag and the job’s stage dates', () => {
     expect(tagMatchesFixture('WC-1', 'wc 1 - WATER CLOSET')).toBe(true)
     expect(tagMatchesFixture('HS-1', '(3) HS - HAND SINK')).toBe(true)
     expect(tagMatchesFixture('WH-1', 'WC-1 - WATER CLOSET')).toBe(false)
+    // v2.4114 · a row split from a combined count carries one of the tags the name spells out.
+    expect(tagMatchesFixture('WC-2', 'WC 1&2 - WATER CLOSET')).toBe(true)
+    expect(tagMatchesFixture('WC-3', 'WC 1&2 - WATER CLOSET')).toBe(false)
     expect(tagMatchesFixture('L-1', '')).toBe(false)
   })
 

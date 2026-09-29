@@ -549,4 +549,45 @@ describe('BidsSubmittalsTab', () => {
       state.takeoff = false
     }
   })
+
+  it('v2.4114 · Split on a draft row whose tag lists two: the rows after it shift down, the row becomes one per tag with its product and sheets, and a takeoff row’s split is remembered', async () => {
+    state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [], shared_at: null, created_at: '2026-09-15T00:00:00Z' }]
+    state.items = [
+      item({ id: 'it-1', tag: 'DWH-1', sequence_order: 1, submitted_label: 'A.O. Smith BTH-199', status: 'proposed', source_count_row_id: 'c-wh' }),
+      item({ id: 'it-2', tag: 'WC-1, WC-2', sequence_order: 2, submitted_label: 'TOTO TET2UB31#SS', status: 'proposed', lead_time_days: 14, sheet_file: 0, sheet_pages: [3, 4], sheet_source: 'estimator', source_count_row_id: 'c-wc' }),
+      item({ id: 'it-3', tag: 'WHA-200', sequence_order: 3, submitted_label: 'ZURN Z1700-200-OV', status: 'proposed' }),
+    ]
+    state.writes = []
+    state.tasks = []
+    state.takeoff = true
+    try {
+      mount()
+      await screen.findAllByTestId('submittal-row')
+      expect(screen.getAllByTestId('split-row')).toHaveLength(1)
+      expect(screen.getByTestId('split-rule-link-rows').textContent).toBe('when can a row split?')
+      fireEvent.click(screen.getByRole('button', { name: 'Split WC-1, WC-2' }))
+      const confirmDialog = await screen.findByRole('alertdialog')
+      expect(confirmDialog.textContent).toMatch(/WC-1, WC-2 each get their own row/)
+      fireEvent.click(within(confirmDialog).getByRole('button', { name: 'Split into 2 rows' }))
+      await waitFor(() => expect(state.writes.some((w) => w.op === 'upsert')).toBe(true))
+      // WHA-200 moves from 3 to 4; the combined row goes; WC-1 at 2 and WC-2 at 3 carry the product, lead time and pages.
+      expect(state.writes.find((w) => w.op === 'update')!).toMatchObject({ payload: { sequence_order: 4 }, filters: [['id', 'it-3']] })
+      expect(state.writes.find((w) => w.op === 'delete')!.filters).toEqual([['id', 'it-2']])
+      const rows = state.writes.find((w) => w.op === 'insert')!.payload as Record<string, unknown>[]
+      expect(rows.map((r) => [r.tag, r.sequence_order, r.submitted_label, r.lead_time_days, r.sheet_pages, r.source_count_row_id, r.status])).toEqual([
+        ['WC-1', 2, 'TOTO TET2UB31#SS', 14, [3, 4], 'c-wc', 'proposed'],
+        ['WC-2', 3, 'TOTO TET2UB31#SS', 14, [3, 4], 'c-wc', 'proposed'],
+      ])
+      expect(state.writes.find((w) => w.op === 'upsert')!.payload).toEqual([{ bid_id: 'b398', count_row_id: 'c-wc', ticked: true, split: true }])
+      await waitFor(() => expect(screen.getAllByTestId('submittal-row')).toHaveLength(4))
+      expect(screen.queryByTestId('split-row')).toBeNull()
+      // The modal reads this bid's own names.
+      fireEvent.click(screen.getByTestId('split-rule-link-rows'))
+      const modal = await screen.findByRole('dialog', { name: 'When a row can split' })
+      expect(within(modal).getByTestId('split-rule-table').textContent).toContain('WC 1&2WC-1, WC-2can split')
+      expect(within(modal).getByTestId('split-rule-table').textContent).toContain('DWH1 & ETDWH-1“ET” has no number, so it is not a second tagone row')
+    } finally {
+      state.takeoff = false
+    }
+  })
 })
