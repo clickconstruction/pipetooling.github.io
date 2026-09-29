@@ -57,7 +57,9 @@ describe('JobContractModal — Edit & re-send', () => {
     expect(btn.textContent).toBe('Edit & re-send')
     fireEvent.click(btn)
     expect(reopenSpy).not.toHaveBeenCalled()
-    expect(screen.getByTestId('contract-reopen-note').textContent).toContain('unlocks here as revision 2')
+    // The arming is what the click produces — wait for it (CI lost this race twice on main after v2.4154).
+    const note = await screen.findByTestId('contract-reopen-note')
+    expect(note.textContent).toContain('unlocks here as revision 2')
     expect(screen.getByTestId('contract-edit-resend').textContent).toBe('Confirm — unlock to edit')
     fireEvent.click(screen.getByTestId('contract-edit-resend'))
     await waitFor(() => expect(reopenSpy).toHaveBeenCalledTimes(1))
