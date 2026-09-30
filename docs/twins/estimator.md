@@ -134,7 +134,13 @@ in it — that is your price book and assemblies here.
 6. **Hand off** — **Copy to /Tooling** puts the whole takeoff on the clipboard as
    tab-delimited counts plus a view link to the plan, behind a scale-check gate. Then in
    PipeTooling: the bid's Counts tab → import → paste. (`reports-and-exports`;
-   PipeTooling side: `/help?g=import-a-takeoff-from-counttooling`.)
+   PipeTooling side: `/help?g=import-a-takeoff-from-counttooling`.) A section the
+   customer calls an **alternate** — priced *with and without* — is a CountTooling
+   **group with its Alternate switch on**: Copy to /Tooling puts its rows last under
+   `--- Alternate: <name> ---`, the Counts tab imports it as an alternate (By group shows
+   it, an ALT mark on its rows), and Takeoffs, Labor, Pricing and the Cover Letter then
+   price the base and what it adds (`/help?g=offer-an-alternate-on-a-bid`). Never fold
+   it into the base, and never make a second version for it.
 
 **Cross-app verification**: CountTooling's Copied confirmation states the totals by unit —
 "29 counts (1,122 ea) · 6 line types (444.74 ft)" — and PipeTooling's import reports the
@@ -195,7 +201,13 @@ entirely — PipeTooling's own takeoff books do that work.
 - **Version**: a draft of the bid inside a packet ("To Plans", "PEX in lieu of copper").
 - **★ base / price option**: the ★ price is what the letter shows; other options can be
   "offered" to that GC as alternates.
-- **Alternate**: offered *in lieu of* the base (letter prints Add/Deduct against the amount).
+- **Alternate (in lieu of)**: a version offered *instead of* the base (letter prints
+  Add/Deduct against the amount under *Alternates:*).
+- **Alternate (with and without)**: a count-row group the customer wants priced both
+  ways (`bids.alternate_group_tags`, from CountTooling's Alternate switch or the Counts
+  tab's By group switch). The letter's amount is the base; a second block prints
+  *Alternate 1 — <group>: add $X (with it, $Y)*; the Bid value stays the base and the
+  board shows *+$X alt*. One bid, not a second version.
 - **Mark sent**: the act that stamps a packet's send date + value. **Un-send** exists for
   mistakes (Edit Bid → Sent panel).
 - **Last contact**: derived from logged contacts *with a method* (call/text/email); notes
@@ -252,7 +264,8 @@ The stages (docs/ESTIMATOR_TWIN_PIPELINE_PLAN.md is authoritative):
 4. **Human review** — mark the project ready; a human approves or sends back. Check
    where it stands with `get_work_state` (its `ct_takeoff` block carries the review status).
 5. **Counts into PipeTooling** — Copy to /Tooling → Counts tab paste import on your bid,
-   then book-assign every row. **This is what the auditor sees**: the Audits tab prices
+   then book-assign every row (an alternate group arrives as one — leave it an alternate;
+   the letter offers it in step 1). **This is what the auditor sees**: the Audits tab prices
    the bid from these rows; a bid whose counts live only in CountTooling audits as $0.
 6. **Materials → Labor → draft pricing → letter** — apply the takeoff book first, then fill
    gaps; missing part prices go on YOUR BID'S frozen book copy only (never the master

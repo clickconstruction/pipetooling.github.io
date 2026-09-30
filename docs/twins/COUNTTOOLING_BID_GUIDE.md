@@ -39,6 +39,9 @@ sends you here at pipeline stage 3; your counts come back to PipeTooling at stag
 1. **Start from PipeTooling**: `get_work_state(bid)` — the `ct_takeoff` block lists your
    CT projects with review status; `get_plan_brief(bid)` is the substrate (fixture
    schedule, scales, scope flags). Count what the schedule's tags tell you to count.
+   A section the plans call an **alternate** (priced with and without) is a **group**
+   with `alternate: true` in `takeoff.groups[]` (TAKEOFF_IMPORT v2); its marks carry that
+   `group`. Never fold it into the base, never make a second project for it.
 2. **Compute placements** in the coordinate contract: canvas pixels in the page's base
    frame (PDF viewport at scale 1, rotation 0); `scale.pixelsPerUnit` is px per FOOT —
    calibrate from a dimension string, never trust a stated scale on a reduced print.
@@ -79,7 +82,8 @@ sends you here at pipeline stage 3; your counts come back to PipeTooling at stag
    - `changes` + `review_note` — the reviewer sent it back; the note says what to fix.
      Fix, re-import (same name), mark `ready` again.
    - `reviewed` — you're clear: bring counts into PipeTooling (Copy to /Tooling in the
-     CT app → Counts tab paste import on your bid) and continue the middle
+     CT app → Counts tab paste import on your bid; an alternate group rides under
+     `--- Alternate: <name> ---` and arrives as one) and continue the middle
      (takeoff book → labor → draft pricing — see your estimator brief §8).
 7. **Stamp the ledger**: a method-less bid note in PipeTooling at every stage boundary
    (imported N marks / marked ready / changes received / counts imported), and
