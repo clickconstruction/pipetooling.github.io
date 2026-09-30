@@ -82,7 +82,7 @@ describe('sendLienReleaseEmailToCustomer', () => {
   it('refuses an unsigned or voided release, a job without a customer email, and a signed-out session', async () => {
     expect(await sendLienReleaseEmailToCustomer(release({ status: 'awaiting_signature' }), job)).toEqual({ ok: false, message: 'Only a signed release can be emailed.' })
     expect(await sendLienReleaseEmailToCustomer(release({ voided_at: '2026-09-07' }), job)).toEqual({ ok: false, message: 'Only a signed release can be emailed.' })
-    expect(await sendLienReleaseEmailToCustomer(release(), { ...job, customer_email: '  ' })).toEqual({ ok: false, message: 'Job has no customer email; add it on Edit Job.' })
+    expect(await sendLienReleaseEmailToCustomer(release(), { ...job, customer_email: '  ' })).toEqual({ ok: false, message: 'No email to send to — add the GC’s billing email or the job’s customer email.' })
     getSession.mockResolvedValueOnce({ data: { session: null } })
     expect(await sendLienReleaseEmailToCustomer(release(), job)).toEqual({ ok: false, message: 'Not signed in' })
     expect(invoke).not.toHaveBeenCalled()
