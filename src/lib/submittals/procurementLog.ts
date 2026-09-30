@@ -64,6 +64,23 @@ export function shortDate(iso: string | null | undefined): string {
   return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`
 }
 
+/** "09/28/26" — a log date as a date box presents it, the year in two digits; '' for null. */
+export function shortDateYear(iso: string | null | undefined): string {
+  const d = parseIsoDate(iso)
+  if (!d) return ''
+  return `${shortDate(iso)}/${String(d.getFullYear() % 100).padStart(2, '0')}`
+}
+
+/** "today" · "1 day ago" · "12 days ago" · "in 1 day" · "in 12 days" — a log date against today; '' when either does not read. */
+export function daysAgoWords(iso: string | null | undefined, asOf: string): string {
+  if (!iso) return ''
+  const n = daysBetween(iso, asOf)
+  if (n == null) return ''
+  if (n === 0) return 'today'
+  const days = `${Math.abs(n)} day${Math.abs(n) === 1 ? '' : 's'}`
+  return n > 0 ? `${days} ago` : `in ${days}`
+}
+
 /** The years a log date may carry. A date box hands over `0002-09-30` while the year is still being typed. */
 export const LOG_DATE_MIN_YEAR = 2000
 export const LOG_DATE_MAX_YEAR = 2100

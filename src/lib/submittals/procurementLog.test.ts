@@ -20,6 +20,8 @@ import {
   procurementUpdateText,
   readLogDateEntry,
   shortDate,
+  shortDateYear,
+  daysAgoWords,
   snapshotRows,
   stageDatesFromJob,
   stageOfStageName,
@@ -59,6 +61,22 @@ describe('dates', () => {
     expect(daysBetween('2026-10-20', '2026-10-06')).toBe(-14)
     expect(shortDate('2026-09-28')).toBe('09/28')
     expect(shortDate(null)).toBe('')
+  })
+
+  it('a date box presents its date with a two-digit year, and says how far it is from today', () => {
+    expect(shortDateYear('2026-09-28')).toBe('09/28/26')
+    expect(shortDateYear('2030-01-05')).toBe('01/05/30')
+    expect(shortDateYear(null)).toBe('')
+    expect(shortDateYear('nope')).toBe('')
+    expect(daysAgoWords('2026-09-30', '2026-09-30')).toBe('today')
+    expect(daysAgoWords('2026-09-29', '2026-09-30')).toBe('1 day ago')
+    expect(daysAgoWords('2026-09-18', '2026-09-30')).toBe('12 days ago')
+    expect(daysAgoWords('2026-10-01', '2026-09-30')).toBe('in 1 day')
+    expect(daysAgoWords('2026-10-12', '2026-09-30')).toBe('in 12 days')
+    // Across a year end, and nothing to say for a box with no date.
+    expect(daysAgoWords('2025-12-31', '2026-01-02')).toBe('2 days ago')
+    expect(daysAgoWords(null, '2026-09-30')).toBe('')
+    expect(daysAgoWords('nope', '2026-09-30')).toBe('')
   })
 
   it('a log date is plausible only as a real day with a full year (a date box hands over 0002-… while the year is typed)', () => {
