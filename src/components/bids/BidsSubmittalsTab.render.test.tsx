@@ -386,12 +386,26 @@ describe('BidsSubmittalsTab', () => {
     expect(screen.queryByTestId('build-package')).toBeNull()
     // v2.4201 · Procure never folds on its own, and a pill jumps into its stage: Share opens, scrolls and rings.
     expect(screen.getByTestId('road-8').getAttribute('data-open')).toBe('true')
-    Element.prototype.scrollIntoView = () => {}
+    const scrolls = vi.fn()
+    Element.prototype.scrollIntoView = scrolls
     fireEvent.click(screen.getByRole('button', { name: '5 Share · later' }))
     expect(screen.getByTestId('road-5').getAttribute('data-open')).toBe('true')
     expect((screen.getByTestId('share-button') as HTMLButtonElement).disabled).toBe(true)
-    // The Share button was folded away when the pill was tapped, so the ring lands on it a frame later.
+    // The Share button was folded away when the pill was tapped, so the ring lands on it a frame later; the pill always centres.
     await waitFor(() => expect(document.querySelector('[data-tour="submittals-share"]')?.classList.contains('submittal-journey-flash')).toBe(true))
+    expect(scrolls).toHaveBeenCalledWith(expect.objectContaining({ block: 'center' }))
+    // v2.4207 · a step's title jumps the same way but scrolls only when the controls would be off screen (jsdom's rects sit at 0, on screen): the New revision button rings, the page stays put, and the caret is what folds.
+    scrolls.mockClear()
+    fireEvent.click(screen.getByTestId('road-7-title'))
+    expect(screen.getByTestId('road-7').getAttribute('data-open')).toBe('true')
+    await waitFor(() => expect(document.querySelector('[data-tour="submittals-resubmit"]')?.classList.contains('submittal-journey-flash')).toBe(true))
+    expect(scrolls).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByTestId('road-7-title'))
+    expect(screen.getByTestId('road-7').getAttribute('data-open')).toBe('true')
+    fireEvent.click(screen.getByRole('button', { name: 'Fold step 7' }))
+    expect(screen.getByTestId('road-7').getAttribute('data-open')).toBe('false')
+    fireEvent.click(screen.getByRole('button', { name: 'Unfold step 7' }))
+    expect(screen.getByTestId('road-7').getAttribute('data-open')).toBe('true')
     fireEvent.click(screen.getByRole('button', { name: /^4 · Package/ }))
     expect((screen.getByTestId('build-package') as HTMLButtonElement).disabled).toBe(true)
     expect(screen.getByTestId('package-caption').textContent).toBe('Build package turns on when every row has its reason and its cut sheet.')
