@@ -5,12 +5,14 @@ roles: dev, master_technician, assistant
 keywords: archive customer, unarchive, hide customer, old customer, inactive customer, show archived
 order: 42
 ---
-Archiving tidies up a customer you no longer work with. Nothing is deleted — every job, bid, estimate, project, and note stays attached — the customer just stops showing up where you pick customers for new work.
+Archiving hides a customer you no longer work with from the pickers for new work. Nothing is deleted.
+
+Every job, bid, estimate, project, and note stays attached. The customer just stops showing up where you pick customers for new work.
 
 ## Archive a customer
 
-1. Open the customer's page from the **Customers** list (click their name), then click {{button:outline|✎ Edit customer}} — or click the small ✎ pencil right on the list.
-2. In the edit form, click {{button:outline|Archive customer}} (next to Save/Cancel).
+1. Open the customer's page from the **Customers** list by clicking their name. Then click {{button:outline|✎ Edit customer}}. Or click the small ✎ pencil right on the list.
+2. In the edit form, click {{button:outline|Archive customer}}. It sits next to Save/Cancel.
 3. A confirmation lists exactly what will happen. Click {{button:amber|Archive}} to commit.
 
 :::example What archiving does
@@ -19,15 +21,15 @@ Hidden from the Customers list by default · removed from new-job, estimate, bid
 
 ## Find and unarchive
 
-On the **Customers** page, click **Show archived (n)** at the right end of the filter row — archived customers appear with an {{chip:yellow|Archived}} badge. Open one for editing (the ✎ pencil) and click {{button:outline|Unarchive}}; it immediately returns to the list and all pickers.
+On the **Customers** page, click **Show archived** at the right end of the filter row. The button shows the count. Archived customers appear with an {{chip:yellow|Archived}} badge. Open one for editing with the ✎ pencil. Click {{button:outline|Unarchive}}. It immediately returns to the list and all pickers.
 
 ## What archiving does NOT do
 
-- It never deletes anything — use it instead of delete when a customer is simply inactive.
+- It never deletes anything. Use it instead of delete when a customer is simply inactive.
 - Existing jobs, bids, estimates, and projects keep their link and keep displaying the customer.
-- Global search (the header search) still finds archived customers, so you can always navigate to them.
+- Global search, the header search, still finds archived customers. So you can always navigate to them.
 
 ## Related
 
-- Deleting a customer (dev/leader only) permanently removes them — archive is almost always the better choice.
+- Deleting a customer permanently removes them. Only a dev or leader can delete. Archive is almost always the better choice.
 - User accounts have their own archive flow: see *archive and restore user accounts*.

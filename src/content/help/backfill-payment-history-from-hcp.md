@@ -5,20 +5,22 @@ roles: dev, master_technician, assistant, controller
 keywords: HCP, HouseCall Pro, payment history, collected, paid no payment record, backfill, import, money rail, tips, tip line item
 order: 44
 ---
-Jobs imported from HouseCall Pro arrived marked Paid but without payment records, so the green "collected" numbers on the Customers list and customer pages read $0 for that era. The backfill tool fills them in with real HCP collection dates, all at once.
+Jobs imported from HouseCall Pro arrived marked Paid but with no payment records. The backfill tool fills them in with the real HCP collection dates, all at once.
+
+Because of the missing records, the green "collected" numbers read $0 for that era. You see this on the Customers list and on customer pages.
 
 ## Before you start
 
-Download the **jobs export** from HouseCall Pro (Reports → Jobs → export as CSV). It has the "Job paid in full date" column the tool uses to date each payment. The file is read on your device only — nothing uploads anywhere.
+Download the **jobs export** from HouseCall Pro. In HCP, open Reports, then Jobs, and export as CSV. The file has the "Job paid in full date" column. The tool uses that column to date each payment. The file is read on your device only. Nothing uploads anywhere.
 
 ## Run the backfill
 
-1. Go to **Customers**. If any paid jobs are missing payment records, the stat band shows a **Paid, no payment record** cell with the count.
+1. Go to **Customers**. Some paid jobs may be missing payment records. Then the stat band shows a **Paid, no payment record** cell with the count.
 2. Click **Backfill from HCP →** and choose the export file.
-3. Every job appears with the payment it would get: the job's billed amount, and the date HCP recorded the money.
-   - {{chip:green|HCP paid date}} — exact collection date from HCP.
-   - {{chip:yellow|completed date}} or {{chip:yellow|HCP created date}} — HCP had no paid date, so the tool uses the closest date it has.
-4. Untick anything you're unsure about, then click {{button:blue|Record}}.
+3. Every job appears with the payment it would get. That is the job's billed amount and the date HCP recorded the money.
+   - {{chip:green|HCP paid date}} means the exact collection date from HCP.
+   - {{chip:yellow|completed date}} or {{chip:yellow|HCP created date}} means HCP had no paid date. The tool uses the closest date it has.
+4. Untick anything you are unsure about. Then click {{button:blue|Record}}.
 
 :::example Nothing happens without you
 The list is only a preview — no payments exist until you press Record, and Cancel walks away without writing anything. Jobs that already have any payment record are never touched, so re-running is always safe.
@@ -26,12 +28,12 @@ The list is only a preview — no payments exist until you press Record, and Can
 
 ## Tips HCP collected on top of the job total
 
-HouseCall Pro's "Job amount" includes any tip the customer added, but jobs came into ClickTooling at the pre-tip figure — so a job HCP shows as $370 collected reads $360 here and the $10 tip is invisible. The same tool finds these: below the payments list, a **Tips** section shows every tipped job with its before → after total.
+HouseCall Pro's "Job amount" includes any tip the customer added. But jobs came into ClickTooling at the pre-tip figure. So a job HCP shows as $370 collected reads $360 here. The $10 tip is invisible. The same tool finds these. Below the payments list, a **Tips** section shows every tipped job with its before → after total.
 
-1. Each checked row adds a **Tip (HCP)** line item to the job's bill and a matching tip payment dated when HCP collected it — billed and collected both land on the HCP total.
-2. A Billed job that becomes fully collected once its tip lands also moves to **Paid** automatically (the row says so in green).
-3. Rows the tool won't touch are listed with the reason: the tip is **already in the job total**, the tip was **already added** on a previous run, or the totals **don't reconcile** and need a human look (including when two jobs share a number).
+1. Each checked row adds a *Tip (HCP)* line item to the job's bill. It also adds a matching tip payment, dated when HCP collected it. Billed and collected both land on the HCP total.
+2. A Billed job may become fully collected once its tip lands. Then it moves to **Paid** on its own. The row says so in green.
+3. Rows the tool will not touch are listed with the reason. The tip is **already in the job total**. Or the tip was **already added** on a previous run. Or the totals **don't reconcile** and need a human look. That includes when two jobs share a number.
 
 ## After applying
 
-The paid and billed columns agree for HCP-era customers, and each backfilled payment carries a note saying its date source — so you can always tell a backfilled payment from one recorded by hand. If HCP recorded a different amount than the job was billed for, the note keeps the HCP figure too. Tip payments carry a "Tip recorded in HouseCall Pro" note with the HCP collected total.
+The paid and billed columns agree for HCP-era customers. Each backfilled payment carries a note saying its date source. So you can always tell a backfilled payment from one recorded by hand. HCP may have recorded a different amount than the job was billed for. Then the note keeps the HCP figure too. Tip payments carry a "Tip recorded in HouseCall Pro" note with the HCP collected total.

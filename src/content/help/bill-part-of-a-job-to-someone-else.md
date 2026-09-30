@@ -5,14 +5,16 @@ roles: dev, master_technician, assistant, controller
 keywords: bill to, tenant, alternate payer, split invoice, hazmat fee, third party, property manager, recipient
 order: 12
 ---
-Sometimes one bill on a job needs to go to a different payer than the job's customer — the classic case is a **hazmat fee the customer's tenant is responsible for**, while the customer pays everything else. Any draft invoice can be given its own recipient.
+Sometimes one bill on a job needs to go to a different payer than the job's customer. The classic case is a hazmat fee, the charge for hazardous waste, which the customer's tenant pays.
+
+The customer pays everything else. Any draft invoice can be given its own recipient. The recipient is the person the bill goes to.
 
 ## The fast path: a hazmat fee the tenant pays
 
 1. Open the job in **Edit Job**. In ① Line Items, find the fee's red **RIDERS** row.
-2. Click {{button:outline|Bill separately…}}. The fee moves onto its own draft invoice (the customer's bill shrinks by the same amount automatically) and the **Bill this invoice to…** window opens.
-3. Enter the tenant's **name and email** (phone optional) and {{button:blue|Save}}.
-4. Send both bills from the **Invoices** table as usual — {{button:blue|Send bill…}} on each. The customer's invoice goes to the customer; the fee invoice goes to the tenant.
+2. Click {{button:outline|Bill separately…}}. The fee moves onto its own draft invoice. The customer's bill shrinks by the same amount on its own. The **Bill this invoice to…** window opens.
+3. Enter the tenant's **name and email**. The phone is optional. Then tap {{button:blue|Save}}.
+4. Send both bills from the **Invoices** table as usual. Tap {{button:blue|Send bill…}} on each. The customer's invoice goes to the customer. The fee invoice goes to the tenant.
 
 :::example what the tenant receives
 The tenant gets their own invoice — Stripe payment page or PDF email, whichever channel you choose — for exactly the fee amount, addressed to them. The Biohazard Fee Notice email can go to them too (they are the payer). Their payment lands on the job like any other payment.
@@ -22,16 +24,16 @@ The tenant gets their own invoice — Stripe payment page or PDF email, whicheve
 
 The same works for any split, not just hazmat fees:
 
-1. In **Edit Job → ② Invoices**, create the draft you want (break one off with **Make Invoice**, or select segments in the strip).
-2. On the draft's row, click {{button:outline|Bill to ▾}}. The menu lists the job customer, the job's GC (when there is one), and **Someone else…** — pick that and enter the recipient. The row shows an amber {{chip:yellow|→ name}} chip so anyone can see this invoice bills someone else.
-3. **Send bill…** as usual. The Bill Customer window shows a banner naming the alternate recipient so there are no surprises before you press send.
+1. In **Edit Job → ② Invoices**, create the draft you want. Break one off with **Make Invoice**, or select segments in the strip.
+2. On the draft's row, click {{button:outline|Bill to ▾}}. The menu lists the job customer. It lists the job's GC, the general contractor, when there is one. It also lists **Someone else…**. Pick that and enter the recipient. The row shows an amber {{chip:yellow|→ name}} chip. So anyone can see this invoice bills someone else.
+3. **Send bill…** as usual. The Bill Customer window shows a banner naming the alternate recipient. So there are no surprises before you press send.
 
-If the whole job bills the GC rather than the customer, you do not need this — set **Bills go to** on the Edit tab instead (see *choose who gets the bill on a job*).
+If the whole job bills the GC rather than the customer, you do not need this. Set **Bills go to** on the Edit tab instead. See *choose who gets the bill on a job*.
 
 ## Good to know
 
-- **The rest of the job is untouched.** Only the invoice you mark bills the other person; every other invoice still goes to the job's customer.
-- **Change your mind any time before sending**: open {{button:outline|Bill to ▾}} again and pick the customer or the GC, or choose **Someone else…** and press **Bill the job customer** to remove the override.
+- **The rest of the job is untouched.** Only the invoice you mark bills the other person. Every other invoice still goes to the job's customer.
+- **Change your mind any time before sending**: open {{button:outline|Bill to ▾}} again and pick the customer or the GC. Or choose **Someone else…** and press **Bill the job customer** to remove the override.
 - **A fee billed to a tenant never folds back into the customer's bill.** The "include hazmat fee" roll-in checkbox skips invoices that have their own recipient.
-- Billing an alternate payer through Stripe creates a separate Stripe customer for them — the job customer's saved Stripe details are never modified.
-- Once an invoice has been sent, its recipient can't be changed — send it back first if you need to redo it.
+- Billing an alternate payer through Stripe creates a separate Stripe customer for them. The job customer's saved Stripe details are never modified.
+- Once an invoice has been sent, its recipient cannot be changed. Send it back first if you need to redo it.

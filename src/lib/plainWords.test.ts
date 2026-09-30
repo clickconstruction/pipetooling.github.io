@@ -41,6 +41,9 @@ describe('plain words: a help guide', () => {
       'Tap Build Rev 1 from the picks and quoted stays. Bold too. icon starts it.',
     )
     expect(helpGuideLineForGlue('Tap {{button:green|Confirm 14 · pick 2}} then *x · y*.')).not.toMatch(PLAIN_WORDS_GLUE)
+    expect(helpGuideLineForCounting('{{gif:settings-walkthrough.gif|The Settings page, one tab at a time.}}')).toBe('The Settings page, one tab at a time.')
+    expect(helpGuideLineForGlue('See [read the bid board](?g=read-the-bid-board) first.')).not.toMatch(PLAIN_WORDS_GLUE)
+    expect(helpGuideLineForCounting('See [read the bid board](?g=read-the-bid-board) first.')).toBe('See read the bid board first.')
     expect(helpGuideLineForGlue('A sentence — glued.')).toMatch(PLAIN_WORDS_GLUE)
   })
 
