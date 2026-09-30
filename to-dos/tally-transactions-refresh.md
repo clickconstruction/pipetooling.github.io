@@ -2,18 +2,20 @@
 name: "Job Parts Tally → Transactions: the team's queue, sorted where it is"
 number: 72
 group: ready
-status: asked 2026-09-30 · read against 90 days of prod · drawn as before / after · not built · the owner's look pending
+status: asked 2026-09-30 · read against 90 days of prod · drawn as before / after, redrawn the same day as pass 2 (a person's day is the unit; the real Before is the Team purchases modal) · the row-cap defect it found shipped as v2.4259 · not built · the owner's look pending
 summary: >
   The Transactions tab was built for the card holder to sort their own purchases, with a phone
   Sort mode and a clock-out nudge. Ninety days of production say the field does not: one assistant
   sorts 98% of every card charge, from a Dashboard modal, one search window per charge, and the
   page itself was opened on 38 person-days. Two thirds of charges go to a job the holder clocked
-  that day and half go where the last one went, and the page knows none of it. After: for office
-  roles the tab is the team's queue — a people strip with who is behind, one line per charge
-  with the holder's day in words and the app's best guess as a chip with its reason, one tap to
-  sort, two chips to split, a bar that sorts the obvious ones in one press and one for pay sends,
-  the holder's phone card carrying the same chip, and the page measuring its own guesses so the
-  owner can later let the surest rule auto-apply.
+  that day and half go where the last one went, and the page knows none of it. The charges come
+  in days (2.2 per person-day; two days in three go entirely to one job). After: for office roles
+  the tab is the team's queue, one card per person per day — a people strip with who is behind,
+  the holder's day in words on the card, the day's chip sorting every charge under it with its
+  reason, a charge with its own store rule keeping its own pick, two-job days offering both jobs
+  and a split by hours, a bar that sorts the obvious days in one press and one for pay sends, the
+  holder's phone card carrying the same chip, and the page measuring its own guesses so the owner
+  can later let the surest rule auto-apply.
 next: >
   The owner's look at the mock-up and four calls (fuel on a two-job day; auto-apply gated on
   measured accuracy; which roles see the team view; retire Materials Estimate). Then PR 1, the
@@ -41,6 +43,8 @@ ask yourself is this the best we can do?"
 | Card charges on the 19 linked cards | 1,063 · $80k |
 | Sorted by Taunya (assistant) / by the holders themselves | 837 / 18 of 855 |
 | Person-days anyone opened `/tally` | 38 (Robert 10, Paige 1 long session, Taunya 12 short) |
+| Person-days with a sorted charge / charges per day | 382 / 2.2 |
+| Person-days whose every charge went to one job | 64% (245 days, holding half of all charges) |
 | Sorted to a job the holder clocked within ±1 day | 66% (584 of 879 field-card charges) |
 | Sorted to the only job the holder clocked that day | 37% |
 | Same job as the holder's previous sorted charge | 56% (1,027 of 1,840 over 180 days) |
@@ -59,21 +63,22 @@ Quickfill, *Team purchases*), which lists every unlinked charge across the team 
 `MercuryTransactionAllocationsModal` per row — the window already offers the holder's schedule and
 clock picks, so the minute per charge is open · look · pick · save · close, not the search.
 
-## Found while looking (its own small PR, before or beside PR 2)
+## Found while looking (shipped as v2.4259 the same day)
 
-The page's read, `list_my_linked_mercury_transactions_for_tally`, takes no limit and PostgREST
-caps it at 1,000 rows: on the dev's card (over 1,000 charges since 2025) the console logs
-`[row-cap]` three times per load and the oldest rows are dropped **before** the client applies
-the date floor and the payroll merge, so the *Payroll: 401 · $161,929.90* chip and the unlinked
-count read only what survived the cap. Page the read with `fetchAllRows`
-(`src/lib/supabasePaging.ts`) or push the floor into the RPC. Any holder's card that crosses
-1,000 rows will do the same.
+The page's read, `list_my_linked_mercury_transactions_for_tally`, took no limit and PostgREST
+capped it at 1,000 rows, so a card past that lost its oldest rows before the date floor and the
+payroll merge ran. Both callers now read through `lib/tally/fetchTallyLinkedMercuryRows.ts`
+(`docs/recent-features/v2.4259.md`).
 
 ## The decision (drawn; the owner's look pending)
 
-One page for the sorter, with the guess on the row. Detail in the mock-up's callouts (the page
+One page for the sorter, with the guess on the card. Detail in the mock-up's callouts (the page
 beside this file; the same page as an artifact — https://claude.ai/artifact/WTDeVjMCS2mVBgb5TEzwWG);
-the calls in its *Kept · dropped · the owner's calls* section:
+the calls in its *Kept · dropped · the owner's calls* section. **Pass 2** (the same day, on
+"is this the best we can do?") changed two things and the page says why: the unit of work is a
+person's day, not a charge (a day card, one chip, a line keeps its own store rule, two-job days
+offer both jobs and a split by hours), and the Before now draws the Team purchases modal with its
+Assign window, which is what the After replaces.
 
 1. **Fuel on a two-job day** — even split (today's practice, drawn) or by hours on each job.
 2. **Auto-apply** — never by default; the page measures accepted vs overridden per rule and shows
@@ -98,20 +103,22 @@ the calls in its *Kept · dropped · the owner's calls* section:
 
 ## The plan
 
-1. **PR 1 — the kernel** `tallySortSuggestion.ts`: charge + the holder's day jobs (clock first,
-   then schedule, posted ±1) + the holder's last N sorted charges + the store's last N → ranked
-   chips with a reason each and a confidence (sure · likely · none). Rules in order: only job
-   clocked that day; same store → same job within 30 days; same as the previous charge the same
-   day; category Utilities / Software / Telecom → Office. Pure, tested. No screen change.
+1. **PR 1 — the kernel** `tallySortSuggestion.ts`: a person's day (its charges) + the holder's
+   day jobs (clock first, then schedule, the day ±1, with hours per job) + the holder's last N
+   sorted charges + each store's last N → the day's chips and each line's own pick, with a reason
+   and a confidence (sure · likely · none), and the split-by-hours amounts. Rules in order: only
+   job clocked that day; same store → same job within 30 days; same as the previous charge the
+   same day; category Utilities / Software / Telecom → Office. Pure, tested. No screen change.
 2. **PR 2 — the team queue** on the Transactions tab for office roles: the people strip, the
-   through-date, day groups, the evidence line, the chips, one-tap sort and even split through the
-   staff RPC, *Another job…* opening today's Assign window; the Dashboard and Quickfill doors open
-   here. Lands as `TallyTransactionsTab` per the architecture map. Guide *sort my card purchases to
-   jobs* gains the office section; GLOSSARY and PROJECT_DOCUMENTATION amended.
-3. **PR 3 — the obvious bar and the pay bar**: sort-all for ✓ rows with Undo per line; the
+   through-date, the day cards, the evidence line, the chips, *Sort the day* through the staff
+   RPC (one write per charge), *Another job…* opening today's Assign window; the Dashboard and
+   Quickfill doors open here. Lands as `TallyTransactionsTab` per the architecture map. Guide
+   *sort my card purchases to jobs* gains the office section; GLOSSARY and PROJECT_DOCUMENTATION
+   amended.
+3. **PR 3 — the obvious bar and the pay bar**: sort-all for ✓ days with undo per line; the
    pay-send bar that marks and widens the matching payroll rule.
-4. **PR 4 — the holder's card gains the chip**: phone cards, Sort mode, the pre-clock-out sheet,
-   one component over the same kernel.
+4. **PR 4 — the holder's card gains the day's chip**: phone cards, Sort mode, the pre-clock-out
+   sheet, one component over the same kernel.
 5. **PR 5 — the page measures itself**: accepted vs overridden per rule, the accuracy line on the
    through-date, an owner switch per rule for auto-apply (off). Materials Estimate retires here or
    in its own PR (`?tab=materials` keeps redirecting).

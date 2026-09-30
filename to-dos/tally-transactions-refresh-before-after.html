@@ -6,7 +6,7 @@
 <title>Job Parts Tally refresh</title>
 <style>
   /* Layout: one column of sections; every "app" panel is a phone-wide or desk-wide render of the real screen. Dark, single look, like the other to-do mock-ups. */
-  :root { --ground: #0f141c; --panel: #161c26; --panel2: #1c2431; --line: #2a3442; --line2: #3a4658; --ink: #e6eaf0; --muted: #8a97a8; --blue: #3b82f6; --green: #22c55e; --red: #ef4444; --amber: #f59e0b; --violet: #a78bfa; --serif: Georgia, "Times New Roman", serif; --mono: ui-monospace, Menlo, monospace; color-scheme: dark; }
+  :root { --ground: #0f141c; --panel: #161c26; --panel2: #1c2431; --line: #2a3442; --line2: #3a4658; --ink: #e6eaf0; --muted: #8a97a8; --blue: #3b82f6; --green: #22c55e; --red: #ef4444; --amber: #f59e0b; --violet: #a78bfa; --mono: ui-monospace, Menlo, monospace; color-scheme: dark; }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--ground); color: var(--ink); font: 14px/1.45 -apple-system, "Segoe UI", system-ui, sans-serif; padding-block: 0 60px; padding-inline: 20px; }
   .wrap { max-width: 1240px; margin: 0 auto; }
@@ -16,7 +16,7 @@
   .stamp { font-family: var(--mono); font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
   h2 { font-size: 17px; margin: 30px 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; text-wrap: balance; }
   h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; }
-  .tag.before { background: #3f1d1d; color: #fca5a5; } .tag.after { background: #14351f; color: #86efac; } .tag.best { background: #1e2f55; color: #93c5fd; } .tag.data { background: #2a2540; color: #c4b5fd; }
+  .tag.before { background: #3f1d1d; color: #fca5a5; } .tag.after { background: #14351f; color: #86efac; } .tag.best { background: #1e2f55; color: #93c5fd; } .tag.data { background: #2a2540; color: #c4b5fd; } .tag.pass { background: #3a2f10; color: #fcd34d; }
   .lede { margin: 0 0 12px; color: var(--muted); max-width: 95ch; } .lede b { color: var(--ink); }
   .callouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; margin: 0 0 14px; padding: 0; list-style: none; }
   .callouts li { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--red); border-radius: 6px; padding: 8px 10px; font-size: 12.5px; color: var(--muted); min-width: 0; }
@@ -24,13 +24,12 @@
   .callouts.good li { border-left-color: var(--green); } .callouts.best li { border-left-color: var(--blue); } .callouts.calls li { border-left-color: var(--amber); }
   .try { font-size: 12.5px; color: var(--muted); margin: 0 0 8px; } .try kbd { font: 11px var(--mono); border: 1px solid var(--line2); border-radius: 4px; padding: 0 5px; color: var(--ink); }
 
-  /* the numbers */
   .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 0 0 8px; }
   .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; min-width: 0; }
   .stat .n { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
   .stat .n small { font-size: 13px; font-weight: 500; color: var(--muted); }
   .stat .l { font-size: 12px; color: var(--muted); margin-top: 3px; }
-  .stat.red .n { color: #fca5a5; } .stat.green .n { color: #86efac; } .stat.blue .n { color: #93c5fd; }
+  .stat.red .n { color: #fca5a5; } .stat.green .n { color: #86efac; } .stat.blue .n { color: #93c5fd; } .stat.gold .n { color: #fcd34d; }
   .foot { font-size: 12px; color: var(--muted); margin: 0 0 6px; }
 
   .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 18px; }
@@ -41,7 +40,7 @@
   .log { font: 11.5px/1.5 var(--mono); color: var(--muted); border-top: 1px dashed var(--line); margin-top: 10px; padding-top: 8px; min-height: 40px; word-break: break-word; }
   .log b { color: var(--ink); font-weight: 600; }
 
-  /* BEFORE — the page today */
+  /* BEFORE */
   .b-head { display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 12.5px; margin-bottom: 8px; }
   .b-head .cnt { color: var(--muted); } .b-head .cnt b { color: var(--ink); }
   .pillamber { display: inline-block; background: var(--amber); color: #1c1917; font-weight: 600; border-radius: 999px; padding: 1px 8px; font-size: 12px; }
@@ -61,11 +60,29 @@
   .b-banner { text-align: right; font-size: 11.5px; padding: 4px 8px; background: #2b2410; border: 1px solid #4b3a10; border-radius: 4px; color: #fbbf24; }
   .b-banner .btn { display: inline-block; border: 1px solid #93c5fd; background: #1a2942; color: #93c5fd; border-radius: 4px; padding: 0 6px; margin-left: 6px; font-size: 11px; }
   .b-banner .btn.grey { border-color: var(--line2); background: var(--panel); color: var(--muted); }
-  .b-banner.green { background: #0f2a1c; border-color: #1f5a3a; color: #86efac; }
+  /* the modal Taunya uses */
+  .m-title { font-size: 15px; font-weight: 600; margin: 0 0 6px; }
+  .m-group { border-top: 1px solid var(--line2); padding: 8px 0 4px; }
+  .m-group .g { font-size: 12.5px; font-weight: 600; } .m-group .g small { font-weight: 400; color: var(--muted); }
+  table.m { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 4px; }
+  table.m td { padding: 4px 6px; border-top: 1px solid var(--line); vertical-align: top; }
+  table.m td.amt { white-space: nowrap; font-variant-numeric: tabular-nums; text-align: right; }
+  table.m .act { white-space: nowrap; text-align: right; }
+  table.m .act span { display: inline-block; border: 1px solid #93c5fd; color: #93c5fd; background: #1a2942; border-radius: 4px; padding: 0 6px; font-size: 11px; margin-left: 4px; }
+  table.m .act span.grey { border-color: var(--line2); color: var(--muted); background: var(--panel); }
+  .m-win { margin-top: 10px; border: 1px solid var(--line2); border-radius: 8px; background: var(--panel2); padding: 10px 12px; font-size: 12px; }
+  .m-win .t { font-weight: 600; margin-bottom: 6px; }
+  .m-win .in { border: 1px solid var(--line2); border-radius: 6px; padding: 5px 8px; color: var(--muted); background: var(--panel); margin-bottom: 8px; }
+  .m-win .sec { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; margin: 6px 0 3px; }
+  .m-win .opt { display: inline-block; border: 1px solid var(--line2); border-radius: 999px; padding: 1px 9px; margin: 0 4px 4px 0; }
+  .m-win .foot { display: flex; justify-content: flex-end; gap: 6px; margin-top: 6px; }
+  .m-win .foot span { border: 1px solid var(--line2); border-radius: 6px; padding: 3px 10px; }
+  .m-win .foot span.save { background: var(--blue); border-color: var(--blue); color: #fff; }
 
-  /* AFTER — the office desk */
+  /* AFTER — the office desk, grouped by a person's day */
   .people { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
   .person { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line2); border-radius: 999px; padding: 2px 10px 2px 3px; font-size: 12px; color: var(--ink); background: var(--panel); cursor: pointer; }
+  .person.on { border-color: var(--blue); background: #1a2942; }
   .person .av { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: 10px; font-weight: 700; background: #2a3442; color: var(--ink); }
   .person .n { font-variant-numeric: tabular-nums; color: var(--amber); font-weight: 700; }
   .person .n.zero { color: var(--green); }
@@ -76,36 +93,45 @@
   .obvious .sub { font-size: 11.5px; color: var(--muted); }
   .btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line2); background: var(--panel); color: var(--ink); border-radius: 6px; padding: 5px 10px; font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; white-space: nowrap; }
   .btn.green { background: var(--green); border-color: var(--green); color: #052e16; }
+  .btn.green[disabled] { opacity: .45; cursor: default; }
   .btn.violet { background: #2a2540; border-color: #4c3f8a; color: #c4b5fd; }
   .btn.small { padding: 2px 8px; font-size: 11.5px; font-weight: 500; }
   .btn:focus-visible, .sug:focus-visible, .person:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
-  .day { font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 12px 0 4px; display: flex; justify-content: space-between; gap: 8px; }
-  .day span { font-weight: 500; letter-spacing: 0; text-transform: none; }
-  .row { display: grid; grid-template-columns: 26px 1fr auto; gap: 6px 10px; padding: 8px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); margin-bottom: 6px; align-items: start; }
-  .row.sorted { background: #101a14; border-color: #1f5a3a; }
-  .row .av { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 700; background: #2a3442; color: var(--ink); }
-  .row .who { font-size: 12.5px; min-width: 0; }
-  .row .who b { color: var(--ink); }
-  .row .who .cat { display: inline-block; font-size: 10.5px; border: 1px solid var(--line2); border-radius: 999px; padding: 0 7px; color: var(--muted); margin-left: 6px; vertical-align: 1px; }
-  .row .who .cat.fuel { border-color: #7c5a12; color: #fbbf24; }
-  .row .who .desc { font-size: 11px; color: var(--muted); }
-  .row .amt { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
-  .row .amt small { display: block; font-weight: 400; color: var(--muted); font-size: 11px; }
-  .row .ev { grid-column: 2 / 4; font-size: 11.5px; color: var(--muted); min-width: 0; }
-  .row .ev b { color: var(--ink); font-weight: 600; }
-  .row .ev i { font-style: normal; color: #93c5fd; }
-  .sugs { grid-column: 2 / 4; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; min-width: 0; }
+  .daylabel { font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 12px 0 4px; display: flex; justify-content: space-between; gap: 8px; }
+  .daylabel span { font-weight: 500; letter-spacing: 0; text-transform: none; }
+  .dayg { border: 1px solid var(--line); border-radius: 8px; background: var(--panel); margin-bottom: 8px; padding: 8px 10px; }
+  .dayg.sorted { background: #101a14; border-color: #1f5a3a; }
+  .dayg .dh { display: grid; grid-template-columns: 26px 1fr auto; gap: 4px 10px; align-items: start; }
+  .dayg .av { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 700; background: #2a3442; color: var(--ink); }
+  .dayg .who { font-size: 13px; min-width: 0; } .dayg .who b { color: var(--ink); } .dayg .who .k { color: var(--muted); font-size: 12px; }
+  .dayg .tot { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; } .dayg .tot small { display: block; font-weight: 400; color: var(--muted); font-size: 11px; }
+  .dayg .ev { grid-column: 2 / 4; font-size: 11.5px; color: var(--muted); min-width: 0; } .dayg .ev b { color: var(--ink); font-weight: 600; } .dayg .ev i { font-style: normal; color: #93c5fd; }
+  .dayg .daychips { grid-column: 2 / 4; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 2px; }
   .sug { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--line2); border-radius: 999px; padding: 3px 10px; font: inherit; font-size: 12px; color: var(--ink); background: var(--panel2); cursor: pointer; }
   .sug.pick { border-color: var(--green); background: #14351f; color: #d1fae5; }
   .sug.pick::before { content: "✓"; color: #86efac; font-weight: 700; }
   .sug.likely { border-style: dashed; }
   .sug .why { font-size: 10.5px; color: var(--muted); }
   .sug.more { color: #93c5fd; border-color: #2a3f66; background: transparent; }
-  .row.sorted .sugs { display: none; }
-  .done { grid-column: 2 / 4; display: none; font-size: 12px; color: #86efac; align-items: center; gap: 8px; flex-wrap: wrap; }
-  .done .u { color: var(--muted); font-size: 11.5px; border: 0; background: none; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; font: inherit; font-size: 11.5px; }
-  .row.sorted .done { display: flex; }
-  .row.sorted .ev { color: #5b6b80; }
+  .lines { margin: 8px 0 0 36px; border-top: 1px dashed var(--line); padding-top: 4px; }
+  .line { display: grid; grid-template-columns: 62px 1fr auto; gap: 2px 10px; padding: 5px 0; border-bottom: 1px solid var(--line); font-size: 12.5px; align-items: baseline; }
+  .line:last-child { border-bottom: 0; }
+  .line .tm { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 11.5px; }
+  .line .cp { min-width: 0; } .line .cp b { color: var(--ink); font-weight: 600; }
+  .line .cat { display: inline-block; font-size: 10.5px; border: 1px solid var(--line2); border-radius: 999px; padding: 0 7px; color: var(--muted); margin-left: 6px; vertical-align: 1px; }
+  .line .cat.fuel { border-color: #7c5a12; color: #fbbf24; }
+  .line .amt { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .line .to { grid-column: 2 / 4; font-size: 11.5px; color: var(--muted); display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .line .to .pk { color: #86efac; } .line .to .pk.off { color: #fcd34d; } .line .to .none { color: #fca5a5; }
+  .line .to .lc { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+  .line .to .lc button { font: inherit; font-size: 11px; border: 1px solid var(--line2); background: transparent; color: var(--muted); border-radius: 999px; padding: 0 7px; cursor: pointer; }
+  .line .to .lc button.on { border-color: var(--green); color: #d1fae5; background: #14351f; }
+  .line .to .lc button.on::before { content: "✓ "; color: #86efac; }
+  .line.done .to .lc { display: none; }
+  .line .to .u { color: var(--muted); font-size: 11px; border: 0; background: none; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; font: inherit; font-size: 11px; }
+  .dayfoot { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin: 8px 0 0 36px; font-size: 11.5px; color: var(--muted); }
+  .dayg.sorted .dayfoot .btn, .dayg.sorted .daychips { display: none; }
+  .dayg.sorted .dayfoot .st { color: #86efac; }
   .paybar { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; border: 1px solid #4c3f8a; background: #1c1930; border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; font-size: 12.5px; }
   .paybar b { color: #c4b5fd; } .paybar .sub { color: var(--muted); font-size: 11.5px; }
   .paybar.done { border-color: #1f5a3a; background: #101a14; }
@@ -120,47 +146,46 @@
   .p-row { display: flex; gap: 8px; margin-top: 8px; }
   .p-row .btn { flex: 1; justify-content: center; }
 
-  /* the calls */
   .three { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
   .three h3 { font-size: 13px; margin: 0 0 6px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
   .three ul { margin: 0; padding-left: 18px; color: var(--muted); font-size: 13px; } .three li { margin-bottom: 6px; } .three li b { color: var(--ink); }
   .best p { max-width: 90ch; color: var(--muted); margin: 0 0 10px; } .best p b { color: var(--ink); }
   ol.plan { padding-left: 20px; color: var(--muted); font-size: 13px; max-width: 95ch; } ol.plan li { margin-bottom: 8px; } ol.plan b { color: var(--ink); }
-  @media (prefers-reduced-motion: no-preference) { .row { transition: background .25s, border-color .25s; } }
-  @media (max-width: 480px) { .row { grid-template-columns: 22px 1fr auto; } .stamp { text-align: left; } }
+  @media (prefers-reduced-motion: no-preference) { .dayg, .line { transition: background .25s, border-color .25s; } }
+  @media (max-width: 480px) { .stamp { text-align: left; } .lines, .dayfoot { margin-left: 0; } .line { grid-template-columns: 52px 1fr auto; } }
 </style>
 </head>
 <body>
 <div class="wrap">
 <header class="top">
   <div>
-    <p class="eyebrow">Job Parts Tally → Transactions · punch list #72 · before / after · nothing built</p>
+    <p class="eyebrow">Job Parts Tally → Transactions · punch list #72 · before / after · pass 2 · nothing built</p>
     <h1>Every card charge on the right job, in the fewest minutes</h1>
   </div>
-  <div class="stamp">drawn 2026-09-30<br>numbers: prod, last 90 days, read-only<br>rows: real charges, names as the app shows them</div>
+  <div class="stamp">drawn 2026-09-30, redrawn the same day<br>numbers: prod, last 90 days, read-only<br>rows: real charges, names as the app shows them</div>
 </header>
 
-<h2><span class="tag data">What the numbers say</span> The page is not where the work happens</h2>
-<p class="lede">The Transactions tab was built for the <b>card holder</b>: your card, your purchases, sort them yourself, with a phone Sort mode and a nudge at clock-out. Ninety days of production say the field does not do that. <b>One assistant sorts almost every charge</b>, from a Dashboard modal, one charge at a time, by search. The page itself is barely opened.</p>
+<h2><span class="tag data">What the numbers say</span> The page is not where the work happens, and the unit of work is a person's day</h2>
+<p class="lede">The Transactions tab was built for the <b>card holder</b>: your card, your purchases, sort them yourself, with a phone Sort mode and a nudge at clock-out. Ninety days of production say the field does not do that. <b>One assistant sorts almost every charge</b>, from a Dashboard modal, one charge at a time, by search. And the charges come in days: a person buys fuel, then parts, then lunch, on the job they clocked that day.</p>
 <div class="stats">
   <div class="stat"><div class="n">1,063</div><div class="l">card charges in 90 days across 19 linked cards · $80k</div></div>
   <div class="stat red"><div class="n">98%</div><div class="l">of sorted charges were sorted by Taunya (837 of 855); the holders sorted 18</div></div>
   <div class="stat red"><div class="n">38</div><div class="l">person-days anyone opened /tally in 90 days; 10 of them Robert</div></div>
-  <div class="stat blue"><div class="n">66%</div><div class="l">went to a job the holder clocked within a day of the purchase</div></div>
-  <div class="stat blue"><div class="n">37%</div><div class="l">went to the <em>only</em> job the holder clocked that day</div></div>
-  <div class="stat blue"><div class="n">56%</div><div class="l">went to the same job as the holder's previous charge</div></div>
+  <div class="stat gold"><div class="n">2.2</div><div class="l">charges per person-day (382 person-days with a sorted charge)</div></div>
+  <div class="stat gold"><div class="n">64%</div><div class="l">of those days went entirely to one job (245 days, half of all charges)</div></div>
+  <div class="stat blue"><div class="n">66%</div><div class="l">of charges went to a job the holder clocked within a day of the purchase</div></div>
+  <div class="stat blue"><div class="n">56%</div><div class="l">went to the same job as the holder's previous charge · 46% same store → same job</div></div>
   <div class="stat"><div class="n">43%</div><div class="l">of rows are fuel (Mercury tags every row: FuelAndGas, Retail, …)</div></div>
   <div class="stat green"><div class="n">0.8 <small>d</small></div><div class="l">median purchase → sorted; p90 9.6 days; batches Thu 10–11 am</div></div>
   <div class="stat red"><div class="n">0</div><div class="l">Materials Estimate rows since Feb 2026 (8 rows ever this year)</div></div>
-  <div class="stat"><div class="n">904 <small>/ 9</small></div><div class="l">payroll marks by rule / by hand — the payroll cluster is done</div></div>
 </div>
-<p class="foot">Also true: 10% of charges are splits; 4 of 1,028 splits carry a note and 24 memos exist in total; every charge reaches the app the day it is made (webhook), so timing is not why the field skips it; 4,200 charges before 2026-03-31 were never sorted and sit under the date floor.</p>
+<p class="foot">Also true: 10% of charges are splits; 4 of 1,028 splits carry a note and 24 memos exist in total; 904 payroll marks came from rules and 9 by hand; every charge reaches the app the day it is made (webhook), so timing is not why the field skips it; 4,200 charges before 2026-03-31 were never sorted and sit under the date floor.</p>
 
-<h2><span class="tag before">Before</span> The page today, as Robert sees it</h2>
-<p class="lede">One person's card. A count line that quotes the Dashboard card. Scope chips, a card filter, a search box, then a three-column table where every unsorted row ends in <b>No jobs assigned yet | Assign jobs · Mark payroll</b>. Robert's card is pay sends, so his queue is seventeen Cash App rows the payroll rule did not catch. The office's actual tool is a modal off the Dashboard that lists everyone's stale charges and opens the Assign window per row.</p>
+<h2><span class="tag before">Before</span> Two screens: the page nobody opens, and the modal that does the work</h2>
+<p class="lede">The page shows <b>one person's card</b>. The office's real tool is <b>Team purchases follow-up</b> on the Dashboard and Quickfill: everyone's unsorted charges grouped by person, and an <b>Assign</b> button per row that opens the Assign window (a search box, Recent, the holder's schedule and clock picks). Open · look · pick · save · close, about 70 times a week. Pass 1 of this page drew only the first screen; the second is what the After replaces.</p>
 <div class="pair">
   <div class="app phone">
-    <p class="name"><b>/tally?tab=transactions</b> <span>signed in as Robert (dev) · 2026-09-30</span></p>
+    <p class="name"><b>/tally?tab=transactions</b> <span>signed in as Robert (dev) · Wed Sep 30</span></p>
     <div class="b-head"><span class="cnt"><b>Transactions to sort:</b> <span class="pillamber">17 unlinked</span> · 9 over 2 days old (the Dashboard card's count)</span></div>
     <div class="b-head"><span class="chip">Show all</span><span class="chip on">Show unlinked</span><span class="chip">Payroll rules</span></div>
     <div class="b-pay">Payroll: 401 · $161,929.90</div>
@@ -175,161 +200,206 @@
         <tr><td colspan="3"><div class="b-banner">No jobs assigned yet | <span class="btn">Assign jobs</span><span class="btn grey">Mark payroll</span></div></td></tr>
         <tr><td><span class="b-date">Sep 29<small>Tuesday</small></span></td><td class="amt">-$1,200.00</td><td>Cash App<div class="b-desc">CASH APP*ABE WHITES</div><span class="b-memo">+ memo</span></td></tr>
         <tr><td colspan="3"><div class="b-banner">No jobs assigned yet | <span class="btn">Assign jobs</span><span class="btn grey">Mark payroll</span></div></td></tr>
-        <tr><td><span class="b-date">Sep 19<small>Saturday</small></span></td><td class="amt">-$57.50</td><td>Cash App<div class="b-desc">CASH APP*KYLE WILLMANN</div><span class="b-memo">+ memo</span></td></tr>
-        <tr><td colspan="3"><div class="b-banner">No jobs assigned yet | <span class="btn">Assign jobs</span><span class="btn grey">Mark payroll</span></div></td></tr>
       </tbody>
     </table>
-    <div class="log">…13 more Cash App rows, back to Jul 23. The Materials Estimate tab beside it: pick a job, tally parts, Send to Office — 8 rows in February, none since.</div>
+    <div class="log">…14 more Cash App rows, back to Jul 23. The Materials Estimate tab beside it: pick a job, tally parts, Send to Office — 8 rows in February, none since.</div>
   </div>
-  <div>
-    <ul class="callouts">
-      <li><b>It shows the wrong person's cards.</b> An office login sees its own card. The office's job is everyone else's cards, and that lives in a modal off the Dashboard, not on this page.</li>
-      <li><b>One modal per charge.</b> Assign jobs opens a window with a search box, a Recent row and the holder's clock and schedule picks. Pick, save, close, next. Taunya does that about 70 times a week.</li>
-      <li><b>The page knows nothing it could know.</b> Two thirds of charges go where the holder clocked that day, and half go where the last one went. The row says "No jobs assigned yet" and waits.</li>
-      <li><b>The header answers a question nobody asks.</b> "17 unlinked · 9 over 2 days old (the Dashboard card's count)" explains a reconciliation. The office wants: who is behind, and through what date is everything sorted?</li>
-      <li><b>Pay sends look like purchases.</b> Robert's queue is Cash App pay sends the rule's wording did not match. Each one offers "Assign jobs" as if it were a Home Depot run.</li>
-      <li><b>Two tabs, one dead.</b> Materials Estimate has not been used since February; the PO flow lives in Materials now. Sort mode for the field was used 9 times in 90 days, by one sub.</li>
-    </ul>
+  <div class="app">
+    <p class="name"><b>Dashboard → Team purchases follow-up</b> <span>signed in as Taunya (assistant) · Thu, 10:14 AM</span></p>
+    <p class="m-title">Team purchases follow-up</p>
+    <div class="b-search">Filter transactions</div>
+    <div class="m-group">
+      <div class="g">Malachi <small>· malachi@… · (830) …</small></div>
+      <table class="m">
+        <tr><td>September 30 (Wed) · 6:03 AM</td><td class="amt">-$22.58</td><td>7-Eleven</td><td class="act"><span>Assign</span><span class="grey">Backcharge</span></td></tr>
+        <tr><td>September 29 (Tue) · 12:18 PM</td><td class="amt">-$219.80</td><td>Murdoch's Ranch &amp; Home Supply</td><td class="act"><span>Assign</span><span class="grey">Backcharge</span></td></tr>
+        <tr><td>September 29 (Tue) · 10:05 AM</td><td class="amt">-$74.40</td><td>Blue Beacon Truck Wash</td><td class="act"><span>Assign</span><span class="grey">Backcharge</span></td></tr>
+        <tr><td>September 26 (Sat) · 10:08 AM</td><td class="amt">-$83.67</td><td>QuikTrip</td><td class="act"><span>Assign</span><span class="grey">Backcharge</span></td></tr>
+      </table>
+    </div>
+    <div class="m-group">
+      <div class="g">Abraham <small>· abraham@… · (830) …</small></div>
+      <table class="m">
+        <tr><td>September 29 (Tue) · 7:55 AM</td><td class="amt">-$61.03</td><td>QuikTrip</td><td class="act"><span>Assign</span><span class="grey">Backcharge</span></td></tr>
+      </table>
+    </div>
+    <div class="m-win">
+      <div class="t">Assign — 7-Eleven · -$22.58 · Malachi</div>
+      <div class="in">Transaction's Job Assignment (to search type 3+ characters)</div>
+      <div class="sec">Jobs on their schedule</div><span class="opt">SPACEX BA-02N Architec</span>
+      <div class="sec">Their clock sessions that day</div><span class="opt">SPACEX BA-02N Architec · 7:10 AM – 4:40 PM</span>
+      <div class="sec">Recent</div><span class="opt">251 Michael Palmer</span><span class="opt">000 Office</span>
+      <div class="foot"><span>Cancel</span><span class="save">Save</span></div>
+    </div>
+    <div class="log">Per charge: Assign → the window → read the picks → tap one → Save → the list reloads → the next row. The window already knows the day's job; the list does not say it, so every row costs a window.</div>
   </div>
 </div>
+<ul class="callouts">
+  <li><b>The page shows the wrong person's cards.</b> An office login sees its own card. Robert's queue is Cash App pay sends the rule's wording did not match, each offering "Assign jobs" as if it were a Home Depot run.</li>
+  <li><b>The modal is a list of charges, not of days.</b> Malachi's Tuesday is two rows, his Wednesday one, his Saturday two; each is its own window even when the day is one job.</li>
+  <li><b>What the window knows, the list hides.</b> "Their clock sessions that day · SPACEX 7:10 – 4:40" is one tap away on every row, and never on the row itself.</li>
+  <li><b>No memory of the store.</b> Murdoch's has gone to Office four times running; the window offers Recent, not that.</li>
+  <li><b>Two tabs, one dead.</b> Materials Estimate has not been used since February. Sort mode for the field was used 9 times in 90 days, by one sub.</li>
+</ul>
 
-<h2><span class="tag after">After</span> The team's purchases, sorted where they are</h2>
-<p class="lede">For an office login the tab becomes the <b>team's queue</b>: every linked card, newest day first, one line per charge with the holder's name on it. Each unsorted line already carries the app's best guess and why, as a chip. One tap sorts it; a second chip splits it evenly; <b>Another job…</b> opens today's Assign window for the rest. A green bar at the top sorts every obvious one in one press. Field holders keep the phone cards for their own card, with the same guess on each.</p>
-<p class="try">Try it: tap a green ✓ chip · tap a second chip on a sorted row to split it · <kbd>Sort the 5 obvious ones</kbd> · <kbd>Mark 17 payroll</kbd> · Undo on any sorted line.</p>
+<h2><span class="tag after">After</span> The team's days, sorted where they are</h2>
+<p class="lede">For an office login the tab is the <b>team's queue, one card per person per day</b>. The card's header is the holder's day in words: when they clocked and where. The day's chips sort every charge under it in one tap; a charge with its own rule (the store that always goes to Office) already reads its own pick and says why; a day with two jobs offers both on each line, and a day with no clock offers the neighbours and picks nothing. <b>Sort the day</b> writes the card; the green bar at the top writes every obvious day at once. Field holders keep the phone cards for their own card, with the same chip.</p>
+<p class="try">Try it: tap the ✓ chip on Malachi's Wednesday, then <kbd>Sort the day</kbd> · on Michael A's day pick a job on the line · <kbd>Sort the 4 obvious days</kbd> · <kbd>Mark 17 payroll</kbd> · undo on any line.</p>
 <div class="pair">
   <div class="app" id="desk">
-    <p class="name"><b>Job Parts Tally → Transactions</b> <span>office view · Tue Sep 30</span></p>
+    <p class="name"><b>Job Parts Tally → Transactions</b> <span>office view · Wed Sep 30</span></p>
     <div class="people" id="people">
-      <span class="person" tabindex="0" data-p="M" title="Malachi · 3 to sort"><span class="av">M</span>Malachi <span class="n" data-cnt="M">3</span></span>
+      <span class="person" tabindex="0" data-p="M"><span class="av">M</span>Malachi <span class="n" data-cnt="M">5</span></span>
       <span class="person" tabindex="0" data-p="T"><span class="av">T</span>Trace <span class="n" data-cnt="T">1</span></span>
       <span class="person" tabindex="0" data-p="A"><span class="av">A</span>Abraham <span class="n" data-cnt="A">1</span></span>
       <span class="person" tabindex="0" data-p="MA"><span class="av">MA</span>Michael A <span class="n" data-cnt="MA">1</span></span>
-      <span class="person pay" tabindex="0" data-p="R" title="Robert · 17 pay sends"><span class="av">R</span>Robert <span class="n" data-cnt="R">17 pay</span></span>
+      <span class="person pay" tabindex="0" data-p="R"><span class="av">R</span>Robert <span class="n" data-cnt="R">17 pay</span></span>
       <span class="person" tabindex="0"><span class="av">P</span>Paige <span class="n zero">0</span></span>
       <span class="person" tabindex="0"><span class="av">Tr</span>Tristen <span class="n zero">0</span></span>
     </div>
-    <p class="through">Everything sorted through <b>Sat Sep 27</b> · <span id="left">6 charges and 17 pay sends</span> to go · <a href="#" style="color:#93c5fd">Show sorted too</a></p>
+    <p class="through">Everything sorted through <b>Fri Sep 25</b> · <span id="left">8 charges on 6 days, and 17 pay sends</span> to go · <a href="#" style="color:#93c5fd">Show sorted too</a></p>
     <div class="obvious" id="obvious">
-      <div><div class="t"><b>5 look obvious</b> — the only job clocked that day, or where this store went last time.</div><div class="sub">You confirm; nothing sorts on its own. Each one says why on its chip.</div></div>
-      <button class="btn green" id="sortObvious">Sort the 5 obvious ones</button>
+      <div><div class="t"><b>4 days look obvious</b> — one job clocked, or a store that always goes to the same place.</div><div class="sub">You confirm; nothing sorts on its own. Every pick says why on its chip.</div></div>
+      <button class="btn green" id="sortObvious">Sort the 4 obvious days</button>
     </div>
     <div class="paybar" id="paybar">
       <div><b>17 Cash App pay sends</b> on Robert's card · $6,412 <div class="sub">They match the payroll rule "Cash App" but not its description wording. Marking them widens the rule.</div></div>
       <button class="btn violet" id="markPay">Mark 17 payroll</button>
     </div>
 
-    <div class="day">Tue Sep 30 <span>today</span></div>
-    <div class="row" data-p="M" data-obv="1">
-      <div class="av">M</div>
-      <div class="who"><b>7-Eleven</b><span class="cat fuel">Fuel</span><div class="desc">7-ELEVEN 36148 HOUSTON TX · 6:03 AM</div></div>
-      <div class="amt">$22.58<small>Malachi</small></div>
-      <div class="ev">Clocked <b>7:10 AM – 4:40 PM</b> on <i>SPACEX BA-02N Architec</i> · nothing else that day</div>
-      <div class="sugs"><button class="sug pick" data-job="SPACEX BA-02N">SPACEX BA-02N <span class="why">only job that day</span></button><button class="sug" data-job="000 Office">000 Office</button><button class="sug more" data-more="1">Another job…</button></div>
-      <div class="done"></div>
+    <div class="daylabel">Wed Sep 30 <span>today</span></div>
+    <div class="dayg" data-p="M" data-obv="1">
+      <div class="dh">
+        <div class="av">M</div>
+        <div class="who"><b>Malachi</b> <span class="k">· 1 charge</span></div>
+        <div class="tot">$22.58</div>
+        <div class="ev">Clocked <b>7:10 AM – 4:40 PM</b> on <i>SPACEX BA-02N Architec</i> · nothing else that day</div>
+        <div class="daychips"><button class="sug pick" data-day="SPACEX BA-02N">Day → SPACEX BA-02N <span class="why">only job that day</span></button><button class="sug" data-day="000 Office">Day → 000 Office</button><button class="sug more">Another job…</button></div>
+      </div>
+      <div class="lines">
+        <div class="line" data-pick="SPACEX BA-02N" data-why="the day"><div class="tm">6:03 AM</div><div class="cp"><b>7-Eleven</b><span class="cat fuel">Fuel</span></div><div class="amt">$22.58</div><div class="to"></div></div>
+      </div>
+      <div class="dayfoot"><span class="st"></span><button class="btn green small" data-sortday="1">Sort the day</button></div>
     </div>
-    <div class="row" data-p="T" data-obv="1">
-      <div class="av">T</div>
-      <div class="who"><b>The Home Depot</b><span class="cat">Retail</span><div class="desc">THE HOME DEPOT #6544 · 8:41 AM</div></div>
-      <div class="amt">$184.20<small>Trace</small></div>
-      <div class="ev">No clock (Trace does not clock in) · last 3 Home Depot runs went to <i>890 Beck – repipe</i>, the last one Fri</div>
-      <div class="sugs"><button class="sug pick" data-job="890 Beck – repipe">890 Beck – repipe <span class="why">same as last, Fri</span></button><button class="sug" data-job="000 Office">000 Office</button><button class="sug more">Another job…</button></div>
-      <div class="done"></div>
+    <div class="dayg" data-p="T" data-obv="1">
+      <div class="dh">
+        <div class="av">T</div>
+        <div class="who"><b>Trace</b> <span class="k">· 1 charge</span></div>
+        <div class="tot">$184.20</div>
+        <div class="ev">No clock (Trace does not clock in) · the last 3 Home Depot runs went to <i>890 Beck – repipe</i>, the last one Fri</div>
+        <div class="daychips"><button class="sug pick" data-day="890 Beck – repipe">Day → 890 Beck – repipe <span class="why">Home Depot, last 3 times</span></button><button class="sug" data-day="000 Office">Day → 000 Office</button><button class="sug more">Another job…</button></div>
+      </div>
+      <div class="lines">
+        <div class="line" data-pick="890 Beck – repipe" data-why="store rule"><div class="tm">8:41 AM</div><div class="cp"><b>The Home Depot</b><span class="cat">Retail</span></div><div class="amt">$184.20</div><div class="to"></div></div>
+      </div>
+      <div class="dayfoot"><span class="st"></span><button class="btn green small" data-sortday="1">Sort the day</button></div>
     </div>
-    <div class="row" data-p="MA">
-      <div class="av">MA</div>
-      <div class="who"><b>Reece Plumbing</b><span class="cat">Retail</span><div class="desc">REECE PLUMBING 411 · 12:10 PM</div></div>
-      <div class="amt">$96.40<small>Michael A</small></div>
-      <div class="ev">Clocked <b>7:02 – 11:30</b> on <i>892 Megan Connell</i>, then <b>12:40 – 4:15</b> on <i>251 Michael Palmer</i> · Reece went to 892 on Sep 24</div>
-      <div class="sugs"><button class="sug likely" data-job="892 Megan Connell">892 Megan Connell <span class="why">likely · Reece last time</span></button><button class="sug" data-job="251 Michael Palmer">251 Michael Palmer</button><button class="sug more">Another job…</button></div>
-      <div class="done"></div>
-    </div>
-
-    <div class="day">Mon Sep 29</div>
-    <div class="row" data-p="M" data-obv="1">
-      <div class="av">M</div>
-      <div class="who"><b>Murdoch's Ranch &amp; Home Supply</b><span class="cat">Retail</span><div class="desc">MURDOCHS RANCH HOME #24 · 12:18 PM</div></div>
-      <div class="amt">$219.80<small>Malachi</small></div>
-      <div class="ev">Clocked on <i>SPACEX BA-02N</i> that day · but the last 4 Murdoch's runs all went to <i>000 Office</i></div>
-      <div class="sugs"><button class="sug pick" data-job="000 Office">000 Office <span class="why">Murdoch's, last 4 times</span></button><button class="sug" data-job="SPACEX BA-02N">SPACEX BA-02N</button><button class="sug more">Another job…</button></div>
-      <div class="done"></div>
-    </div>
-    <div class="row" data-p="M" data-obv="1">
-      <div class="av">M</div>
-      <div class="who"><b>Blue Beacon Truck Wash</b><span class="cat">Vehicle</span><div class="desc">BLUE BEACON #178 · 10:05 AM</div></div>
-      <div class="amt">$74.40<small>Malachi</small></div>
-      <div class="ev">Clocked <b>7:14 AM – 5:02 PM</b> on <i>SPACEX BA-02N Architec</i> · nothing else that day</div>
-      <div class="sugs"><button class="sug pick" data-job="SPACEX BA-02N">SPACEX BA-02N <span class="why">only job that day</span></button><button class="sug" data-job="000 Office">000 Office</button><button class="sug more">Another job…</button></div>
-      <div class="done"></div>
-    </div>
-    <div class="row sorted" data-p="M" data-presorted="1">
-      <div class="av">M</div>
-      <div class="who"><b>Murdoch's Ranch &amp; Home Supply</b><span class="cat">Retail</span><div class="desc">MURDOCHS RANCH HOME #24 · 12:39 PM</div></div>
-      <div class="amt">$43.83<small>Malachi</small></div>
-      <div class="ev">Clocked on SPACEX BA-02N that day</div>
-      <div class="done">→ 000 Office <span style="color:var(--muted)">· Taunya, Tue 10:14 AM</span> <button class="u">change</button></div>
-    </div>
-    <div class="row" data-p="A" data-obv="1">
-      <div class="av">A</div>
-      <div class="who"><b>QuikTrip</b><span class="cat fuel">Fuel</span><div class="desc">QT 1092 · 7:55 AM</div></div>
-      <div class="amt">$61.03<small>Abraham</small></div>
-      <div class="ev">Clocked <b>7:40 AM – 4:20 PM</b> on <i>1017 Terrell – concrete cut</i> · nothing else that day</div>
-      <div class="sugs"><button class="sug pick" data-job="1017 Terrell">1017 Terrell <span class="why">only job that day</span></button><button class="sug" data-job="000 Office">000 Office</button><button class="sug more">Another job…</button></div>
-      <div class="done"></div>
+    <div class="dayg" data-p="MA">
+      <div class="dh">
+        <div class="av">MA</div>
+        <div class="who"><b>Michael A</b> <span class="k">· 1 charge · two jobs that day</span></div>
+        <div class="tot">$96.40</div>
+        <div class="ev">Clocked <b>7:02 – 11:30</b> on <i>892 Megan Connell</i>, then <b>12:40 – 4:15</b> on <i>251 Michael Palmer</i> · Reece went to 892 on Sep 24</div>
+        <div class="daychips"><button class="sug" data-day="892 Megan Connell">Day → 892 Megan Connell</button><button class="sug" data-day="251 Michael Palmer">Day → 251 Michael Palmer</button><button class="sug" data-day="split:892 Megan Connell|251 Michael Palmer">Day → split by hours <span class="why">4.5 h / 3.6 h</span></button><button class="sug more">Another job…</button></div>
+      </div>
+      <div class="lines">
+        <div class="line" data-pick="" data-likely="892 Megan Connell" data-why="Reece last time" data-alts="892 Megan Connell|251 Michael Palmer"><div class="tm">12:10 PM</div><div class="cp"><b>Reece Plumbing</b><span class="cat">Retail</span></div><div class="amt">$96.40</div><div class="to"></div></div>
+      </div>
+      <div class="dayfoot"><span class="st"></span><button class="btn green small" data-sortday="1">Sort the day</button></div>
     </div>
 
-    <div class="day">Sat Sep 26</div>
-    <div class="row" data-p="M">
-      <div class="av">M</div>
-      <div class="who"><b>QuikTrip</b><span class="cat fuel">Fuel</span><div class="desc">QT 1163 · 10:08 AM</div></div>
-      <div class="amt">$83.67<small>Malachi</small></div>
-      <div class="ev">No clock, nothing scheduled Saturday · Fri he was on <i>1017 Terrell</i>, Mon on <i>SPACEX BA-02N</i> — no guess</div>
-      <div class="sugs"><button class="sug" data-job="1017 Terrell">1017 Terrell <span class="why">Fri</span></button><button class="sug" data-job="SPACEX BA-02N">SPACEX BA-02N <span class="why">Mon</span></button><button class="sug" data-job="000 Office">000 Office</button><button class="sug more">Another job…</button></div>
-      <div class="done"></div>
+    <div class="daylabel">Tue Sep 29</div>
+    <div class="dayg" data-p="M" data-obv="1">
+      <div class="dh">
+        <div class="av">M</div>
+        <div class="who"><b>Malachi</b> <span class="k">· 2 charges · 1 sorted</span></div>
+        <div class="tot">$294.20<small>+ $43.83 sorted</small></div>
+        <div class="ev">Clocked <b>7:14 AM – 5:02 PM</b> on <i>SPACEX BA-02N Architec</i> · nothing else that day · Murdoch's has gone to <i>000 Office</i> the last 4 times</div>
+        <div class="daychips"><button class="sug pick" data-day="SPACEX BA-02N">Day → SPACEX BA-02N <span class="why">only job that day · Murdoch's keeps its own pick</span></button><button class="sug" data-day="000 Office">Day → 000 Office</button><button class="sug more">Another job…</button></div>
+      </div>
+      <div class="lines">
+        <div class="line" data-pick="SPACEX BA-02N" data-why="the day"><div class="tm">10:05 AM</div><div class="cp"><b>Blue Beacon Truck Wash</b><span class="cat">Vehicle</span></div><div class="amt">$74.40</div><div class="to"></div></div>
+        <div class="line" data-pick="000 Office" data-why="store rule · Murdoch's, last 4 times" data-own="1"><div class="tm">12:18 PM</div><div class="cp"><b>Murdoch's Ranch &amp; Home Supply</b><span class="cat">Retail</span></div><div class="amt">$219.80</div><div class="to"></div></div>
+        <div class="line done" data-presorted="1"><div class="tm">12:39 PM</div><div class="cp"><b>Murdoch's Ranch &amp; Home Supply</b><span class="cat">Retail</span></div><div class="amt">$43.83</div><div class="to"><span class="pk">→ 000 Office</span><span>· Taunya, Thu 10:14 AM</span><button class="u">change</button></div></div>
+      </div>
+      <div class="dayfoot"><span class="st"></span><button class="btn green small" data-sortday="1">Sort the day</button></div>
     </div>
-    <div class="row sorted" data-p="M" data-presorted="1">
-      <div class="av">M</div>
-      <div class="who"><b>Valero Energy</b><span class="cat fuel">Fuel</span><div class="desc">VALERO 4051 · Tue Sep 22, 11:55 AM</div></div>
-      <div class="amt">$113.39<small>Malachi</small></div>
-      <div class="ev">Clocked on Echols and 251 Michael Palmer that day</div>
-      <div class="done">→ 251 Michael Palmer $56.69 · Echols $56.70 <span style="color:var(--muted)">· Taunya, Thu 10:41 AM</span> <button class="u">change</button></div>
+    <div class="dayg" data-p="A" data-obv="1">
+      <div class="dh">
+        <div class="av">A</div>
+        <div class="who"><b>Abraham</b> <span class="k">· 1 charge</span></div>
+        <div class="tot">$61.03</div>
+        <div class="ev">Clocked <b>7:40 AM – 4:20 PM</b> on <i>1017 Terrell – concrete cut</i> · nothing else that day</div>
+        <div class="daychips"><button class="sug pick" data-day="1017 Terrell">Day → 1017 Terrell <span class="why">only job that day</span></button><button class="sug" data-day="000 Office">Day → 000 Office</button><button class="sug more">Another job…</button></div>
+      </div>
+      <div class="lines">
+        <div class="line" data-pick="1017 Terrell" data-why="the day"><div class="tm">7:55 AM</div><div class="cp"><b>QuikTrip</b><span class="cat fuel">Fuel</span></div><div class="amt">$61.03</div><div class="to"></div></div>
+      </div>
+      <div class="dayfoot"><span class="st"></span><button class="btn green small" data-sortday="1">Sort the day</button></div>
     </div>
-    <div class="log" id="log">Log — what each tap would write: <b>replace_mercury_job_splits_for_linked_card_as_staff</b>(for the holder, the charge, the rows), the same RPC the Dashboard modal uses today.</div>
+
+    <div class="daylabel">Sat Sep 26</div>
+    <div class="dayg" data-p="M">
+      <div class="dh">
+        <div class="av">M</div>
+        <div class="who"><b>Malachi</b> <span class="k">· 2 charges · 1 sorted · no guess</span></div>
+        <div class="tot">$102.22<small>+ $4.32 sorted</small></div>
+        <div class="ev">No clock, nothing scheduled Saturday · Fri he was on <i>1017 Terrell</i> 7.8 h, Mon on <i>SPACEX BA-02N</i> · the sorted one went to Pretest</div>
+        <div class="daychips"><button class="sug" data-day="1017 Terrell">Day → 1017 Terrell <span class="why">Fri</span></button><button class="sug" data-day="SPACEX BA-02N">Day → SPACEX BA-02N <span class="why">Mon</span></button><button class="sug" data-day="Pretest">Day → Pretest <span class="why">as the 9:26 one</span></button><button class="sug more">Another job…</button></div>
+      </div>
+      <div class="lines">
+        <div class="line" data-pick="" data-alts="1017 Terrell|SPACEX BA-02N|Pretest"><div class="tm">10:08 AM</div><div class="cp"><b>QuikTrip</b><span class="cat fuel">Fuel</span></div><div class="amt">$83.67</div><div class="to"></div></div>
+        <div class="line" data-pick="" data-alts="1017 Terrell|SPACEX BA-02N|Pretest"><div class="tm">10:13 AM</div><div class="cp"><b>QuikTrip</b><span class="cat fuel">Fuel</span></div><div class="amt">$18.55</div><div class="to"></div></div>
+        <div class="line done" data-presorted="1"><div class="tm">9:26 AM</div><div class="cp"><b>Circle K</b><span class="cat fuel">Fuel</span></div><div class="amt">$4.32</div><div class="to"><span class="pk">→ Pretest</span><span>· Taunya, Mon 9:40 AM</span><button class="u">change</button></div></div>
+      </div>
+      <div class="dayfoot"><span class="st"></span><button class="btn green small" data-sortday="1">Sort the day</button></div>
+    </div>
+    <div class="log" id="log">Log — what each press would write: <b>replace_mercury_job_splits_for_linked_card_as_staff</b>(for the holder, the charge, the rows), once per charge, the same RPC the Team purchases modal uses today. A day is a batch of those, not a new write path.</div>
   </div>
 
   <div>
     <ul class="callouts good">
-      <li><b>The people strip is the header.</b> Who has charges to sort and how many; green zero when they are clear. "Everything sorted through Sat Sep 27" is the one date the office wants.</li>
-      <li><b>The guess is on the row, with its reason.</b> Only job clocked that day · same as last time at this store · where the last one went. A dashed chip is a likely guess; a plain chip is a choice. No guess means no chip is picked, and the row says why.</li>
-      <li><b>One tap sorts, two chips split.</b> A second chip on a sorted row splits it evenly; the amounts show. Uneven splits and jobs off the list go through Another job…, which is today's Assign window.</li>
-      <li><b>Sort the obvious ones in one press.</b> Only rows with a ✓ chip. The bar says the rule; the log says what it wrote; every line keeps Undo.</li>
-      <li><b>Pay sends are one bar, not seventeen rows.</b> Marking them widens the rule that should have caught them, so next month they never show.</li>
-      <li><b>The evidence line is the holder's day.</b> Clock spans and scheduled jobs, in words. When the guess is wrong the sorter sees why at a glance instead of opening a window to find out.</li>
+      <li><b>A person's day is the unit.</b> 2.2 charges a day, and two days in three go to one job: the day's chip sorts them all. The window per charge becomes one tap per day.</li>
+      <li><b>The header is the holder's day in words.</b> Clock spans and scheduled jobs. When the guess is wrong the sorter sees why without opening anything.</li>
+      <li><b>A charge keeps its own rule.</b> Murdoch's reads → Office under a SPACEX day, and says why. The day's chip never overrides a line that has a reason of its own; the line's change link does.</li>
+      <li><b>Two-job days offer both, and a split by hours.</b> Nothing is picked until the sorter picks; the day button counts picks. Even split stays one tap away on the line.</li>
+      <li><b>No clock, no guess.</b> Saturday offers Friday's and Monday's jobs and the one the sorted charge went to. Honest chips beat a confident wrong one.</li>
+      <li><b>The obvious bar is days, not rows.</b> Only days whose every line has a ✓. The log says what it wrote; every line keeps undo.</li>
+      <li><b>Pay sends are one bar.</b> Marking them widens the rule that should have caught them.</li>
     </ul>
     <div class="app phone" style="margin-top:14px">
-      <p class="name"><b>The holder's phone</b> <span>Malachi · his own card, unchanged flow, plus the guess</span></p>
+      <p class="name"><b>The holder's phone</b> <span>Malachi · his own card, unchanged flow, plus the day's chip</span></p>
       <div class="p-card">
-        <div class="top"><b>7-Eleven</b><span class="a">$22.58</span></div>
-        <div class="sub">Today 6:03 AM · Fuel · 7-ELEVEN 36148 HOUSTON TX</div>
-        <button class="p-big" id="pbig">SPACEX BA-02N Architec<small>the only job you clocked today · tap to sort it there</small></button>
+        <div class="top"><b>Wednesday · 1 purchase</b><span class="a">$22.58</span></div>
+        <div class="sub">7-Eleven 6:03 AM · Fuel · you clocked 7:10 – 4:40 on SPACEX BA-02N</div>
+        <button class="p-big" id="pbig">SPACEX BA-02N Architec<small>the only job you clocked today · tap to sort the day there</small></button>
         <div class="p-row"><button class="btn small">Another job…</button><button class="btn small">Split…</button><button class="btn small">+ memo</button></div>
       </div>
       <div class="p-card" style="opacity:.75">
-        <div class="top"><b>Murdoch's Ranch &amp; Home</b><span class="a">$219.80</span></div>
-        <div class="sub">Mon 12:18 PM · Retail</div>
-        <div style="font-size:12.5px;color:#86efac">✓ 000 Office · sorted by the office Tue</div>
+        <div class="top"><b>Tuesday · 3 purchases</b><span class="a">$338.03</span></div>
+        <div class="sub">Blue Beacon · Murdoch's ×2</div>
+        <div style="font-size:12.5px;color:#86efac">✓ SPACEX BA-02N · Office ×2 · sorted by the office Thu</div>
       </div>
-      <div class="log" id="plog">The same chip, the same reason. If the field ever picks this up, it is one tap; if not, nothing is lost — the office row has the same guess.</div>
+      <div class="log" id="plog">The same chip, the same reason. If the field ever picks this up, it is one tap a day; if not, nothing is lost — the office card has the same guess.</div>
     </div>
   </div>
 </div>
 
+<h2><span class="tag pass">Pass 2</span> What pass 1 got wrong</h2>
+<ul class="callouts calls">
+  <li><b>It drew the wrong Before.</b> Pass 1 showed the page as Robert sees it. The thing being replaced is the Team purchases modal and its window per charge; that is now the second Before panel, with the window drawn inside it.</li>
+  <li><b>It sorted charges, not days.</b> Per-charge chips were a tap per row. The data says the row is the wrong unit: 382 person-days, 2.2 charges each, 64% of days to one job. A day card with one chip halves the taps again and reads the way the sorter thinks ("what was Malachi on Tuesday?").</li>
+  <li><b>It hid the two-job day.</b> Pass 1 had no answer for fuel on a day with two jobs beyond "pick one". The day card offers both jobs and a split by hours, and the even split stays on the line.</li>
+  <li><b>It had a bar that did what the chips did.</b> "Sort the obvious ones" now means whole days, which is a different action from the chip, not a shortcut for it.</li>
+</ul>
+
 <h2>Kept · dropped · the owner's calls</h2>
 <div class="three">
   <div><h3>Kept</h3><ul>
-    <li><b>The write path.</b> The staff split RPC, the allocation rows, the job cost math, the Dashboard and Quickfill counts. Nothing downstream changes.</li>
+    <li><b>The write path.</b> The staff split RPC, the allocation rows, the job cost math, the Dashboard and Quickfill counts. A day is a batch of the same writes.</li>
     <li><b>The Assign window</b> as Another job…: search, Recent, the holder's schedule and clock picks, uneven splits, notes.</li>
     <li><b>Mark payroll and the rules</b>, with the pay bar in front of them.</li>
-    <li><b>The phone cards and Sort mode</b> for the holder's own card. They gain the guess; they lose nothing.</li>
+    <li><b>The phone cards and Sort mode</b> for the holder's own card. They gain the day's chip; they lose nothing.</li>
     <li><b>Show sorted too</b> for review; the search box, under the strip; the memo, one button.</li>
     <li><b>The date floor.</b> The 4,200 charges before April stay under it.</li>
   </ul></div>
@@ -337,12 +407,12 @@
     <li><b>The Materials Estimate tab.</b> Eight rows in February, none since; the PO flow is in Materials. Its route keeps redirecting to Transactions.</li>
     <li><b>The card filter row</b> as a chip strip. The people strip is the filter; a person's several cards fold under their name.</li>
     <li><b>The "Dashboard card's count" gloss</b> in the header. The people strip and the through-date replace both numbers.</li>
-    <li><b>The Posted-date button</b> that opened the clock-window split modal. The evidence line and the chips do that job on the row.</li>
+    <li><b>The Posted-date button</b> that opened the clock-window split modal. The day card is that modal, in place.</li>
     <li><b>The Team purchases modal</b> on Dashboard and Quickfill, once this ships: its door opens this tab instead. One place to sort, not two.</li>
   </ul></div>
   <div><h3>Owner's calls</h3><ul class="calls">
-    <li><b>Fuel on a two-job day.</b> Today Taunya splits it evenly (Valero $113.39 → $56.69 / $56.70). The chips could offer <em>split by hours on each job</em> as the pick instead. Even is drawn; by hours is one line in the kernel.</li>
-    <li><b>Let the surest rule auto-apply?</b> "Only job clocked that day" covers 37% of charges. The page can measure itself first: how often the sorter overrides the ✓ chip. Under 3% for a month, and it can go the way payroll rules already do — auto-apply, every one of them still undoable. Not before.</li>
+    <li><b>Fuel on a two-job day.</b> Today Taunya splits it evenly (Valero $113.39 → $56.69 / $56.70). The day card offers <em>split by hours</em> as a chip; which one leads is your call. Even is one tap away either way.</li>
+    <li><b>Let the surest rule auto-apply?</b> "Only job clocked that day" covers 37% of charges and 64% of days. The page measures itself first: how often the sorter overrides a ✓. Under 3% for a month, and it can go the way payroll rules already do — auto-apply, every one still undoable. Not before.</li>
     <li><b>Who sees the team view.</b> Drawn for dev, master, assistant and controller — the roles the staff RPC already admits. Superintendents and primaries keep their own card only.</li>
     <li><b>Retire the Materials Estimate tab</b>, or keep it as a door in Materials. Drawn as retired.</li>
   </ul></div>
@@ -350,103 +420,146 @@
 
 <h2 class="best"><span class="tag best">Is this the best we can do?</span></h2>
 <div class="best">
-  <p><b>The job is not a nicer table.</b> It is every card charge landing on the right job with the fewest human minutes and the fewest wrong picks, so job cost is true while the job runs. Measured that way, the redraw above buys most of what is available: the sorter goes from open-search-pick-save-close per charge to a glance and a tap, and the obvious half of the queue goes in one press. Roughly 70 charges a week at a minute each becomes a few minutes, twice a week.</p>
-  <p><b>What would beat it</b> is the charge never needing a human at all. Three quarters of that is already in reach: the only-job-that-day rule, the same-store-same-job rule and the pay-send rule together cover about six in ten rows. The honest path is to let the page prove them first. Every ✓ chip the sorter accepts or overrides is a data point; the page shows its own accuracy on the through-date line ("guessed right 94% this month"). When a rule is right often enough for long enough, the owner flips it to auto-apply, the way payroll rules run today, and the sorter's queue becomes only the rows the app could not call. That is the version of this page that gets smaller every month instead of staying the same size.</p>
+  <p><b>The job is not a nicer table.</b> It is every card charge landing on the right job with the fewest human minutes and the fewest wrong picks, so job cost is true while the job runs. Measured that way, pass 2 buys most of what is available: the sorter goes from a window per charge to a glance and a tap per day, and the obvious days go in one press. Roughly 70 charges a week, a minute each, becomes a few minutes twice a week.</p>
+  <p><b>What would beat it</b> is the charge never needing a human at all. Most of that is already in reach: the only-job-that-day rule, the same-store rule and the pay-send rule together cover about six in ten rows. The honest path is to let the page prove them first. Every ✓ the sorter accepts or overrides is a data point, and the page shows its own accuracy on the through-date line ("guessed right 94% this month"). When a rule is right often enough for long enough, the owner flips it to auto-apply, the way payroll rules run today, and the sorter's queue becomes only the days the app could not call. That is the version of this page that gets smaller every month instead of staying the same size.</p>
   <p><b>What we should not build.</b> Receipt capture at the pump: Mercury has no receipts on these charges (4 attachments in 1,063, all check images), the field does not open the app to sort, and a photo does not name a job. A stronger clock-out nudge: the charges are in the app by then, the nudge exists, and it is skipped. A smarter search box: the search is not the slow part. And no page for the 4,200 old charges: the floor is a decision already taken.</p>
-  <p><b>The one thing to check before building.</b> Ask Taunya what she does when the guess is wrong and why. The evidence line and the chip reasons are drawn from the data; her ten most common overrides are the spec for the second rule set.</p>
+  <p><b>The one thing to check before building.</b> Ask Taunya what she does when the guess is wrong and why. The day cards and the chip reasons are drawn from the data; her ten most common overrides are the spec for the second rule set.</p>
 </div>
 
 <h2>The plan, smallest shippable first</h2>
 <ol class="plan">
-  <li><b>PR 1 — the kernel.</b> <code>tallySortSuggestion.ts</code>: given a charge, the holder's clock sessions and schedule blocks for posted ±1 day, the holder's last N sorted charges and the store's last N, return the ranked chips with a reason each and a confidence (sure · likely · none). Pure, tested on the cases above. No screen changes.</li>
-  <li><b>PR 2 — the team queue.</b> For office roles the Transactions tab reads the staff RPC (with <code>include_all_unlinked</code>) instead of the caller's own cards: the people strip, the through-date, day groups, the evidence line, the chips, one-tap sort and even split through the existing staff RPC, Another job… opening today's Assign window. Guide amended; the Dashboard and Quickfill doors open here.</li>
-  <li><b>PR 3 — the obvious bar and the pay bar.</b> Sort-all for ✓ rows, Undo per line, the pay-send bar that marks and widens the rule.</li>
-  <li><b>PR 4 — the holder's card gains the chip</b> (phone cards, Sort mode, the pre-clock-out sheet), one component reading the same kernel.</li>
+  <li><b>PR 1 — the kernel.</b> <code>tallySortSuggestion.ts</code>: given a person's day (its charges, the holder's clock sessions and schedule blocks for the day ±1, the holder's last N sorted charges and each store's last N), return the day's chips and each line's own pick, with a reason and a confidence (sure · likely · none) — and the split-by-hours amounts. Pure, tested on the cases above. No screen changes.</li>
+  <li><b>PR 2 — the team queue.</b> For office roles the Transactions tab reads the staff RPC (with <code>include_all_unlinked</code>) instead of the caller's own cards: the people strip, the through-date, the day cards, the evidence line, the chips, Sort the day through the existing staff RPC, Another job… opening today's Assign window. Guide amended; the Dashboard and Quickfill doors open here.</li>
+  <li><b>PR 3 — the obvious bar and the pay bar.</b> Sort-all for ✓ days, undo per line, the pay-send bar that marks and widens the rule.</li>
+  <li><b>PR 4 — the holder's card gains the day's chip</b> (phone cards, Sort mode, the pre-clock-out sheet), one component reading the same kernel.</li>
   <li><b>PR 5 — the page measures itself.</b> Accepted vs overridden per rule, the accuracy line, an owner switch per rule for auto-apply, off by default. The Materials Estimate tab retires in the same PR or its own.</li>
 </ol>
 
 </div>
 <script>
 (function () {
-  var counts = { M: 3, T: 1, A: 1, MA: 1 };
+  var counts = { M: 5, T: 1, A: 1, MA: 1 };
   var payLeft = 17;
   var log = document.getElementById('log');
   function say(html) { log.innerHTML = html + '<br>' + log.innerHTML; }
-  function leftLine() {
-    var n = counts.M + counts.T + counts.A + counts.MA;
-    var s = n === 0 ? 'nothing' : (n + ' charge' + (n === 1 ? '' : 's'));
-    if (payLeft) s += ' and 17 pay sends';
+  function fmt(n) { return '$' + n.toFixed(2); }
+  function amountOf(line) { return parseFloat(line.querySelector('.amt').textContent.replace(/[$,]/g, '')); }
+  function daysLeft() { return document.querySelectorAll('.dayg:not(.sorted)').length; }
+  function chargesLeft() { return counts.M + counts.T + counts.A + counts.MA; }
+  function obviousDays() { return [].slice.call(document.querySelectorAll('.dayg[data-obv="1"]:not(.sorted)')); }
+  function renderLine(line) {
+    if (line.classList.contains('done')) return;
+    var to = line.querySelector('.to');
+    var pick = line.dataset.pick;
+    var html = '';
+    if (pick) {
+      var split = pick.indexOf('split:') === 0;
+      var label = split ? pick.slice(6).split('|').join(' · ') + ' by hours' : pick;
+      html += '<span class="pk' + (line.dataset.own ? ' off' : '') + '">→ ' + label + '</span>' + (line.dataset.why ? '<span>· ' + line.dataset.why + '</span>' : '');
+    } else {
+      html += '<span class="none">no pick yet</span>';
+    }
+    var alts = (line.dataset.alts || '').split('|').filter(Boolean);
+    if (alts.length) {
+      html += '<span class="lc">' + alts.map(function (a) { return '<button data-alt="' + a + '" class="' + (pick === a ? 'on' : '') + '">' + a + (line.dataset.likely === a && !pick ? ' · likely' : '') + '</button>'; }).join('') + '</span>';
+    } else if (pick && !line.dataset.own) {
+      html += '<button class="u" data-change="1">change</button>';
+    } else if (line.dataset.own) {
+      html += '<button class="u" data-change="1">change</button>';
+    }
+    to.innerHTML = html;
+  }
+  function renderDay(day) {
+    var lines = [].slice.call(day.querySelectorAll('.line:not(.done)'));
+    lines.forEach(renderLine);
+    var picked = lines.filter(function (l) { return l.dataset.pick; }).length;
+    var btn = day.querySelector('[data-sortday]');
+    var st = day.querySelector('.dayfoot .st');
+    if (day.classList.contains('sorted')) { st.textContent = 'sorted · you, just now'; return; }
+    if (lines.length === 0) { day.classList.add('sorted'); st.textContent = 'sorted'; return; }
+    btn.disabled = picked < lines.length;
+    st.textContent = picked === lines.length ? (lines.length === 1 ? '1 charge picked' : lines.length + ' charges picked') : picked + ' of ' + lines.length + ' picked';
+  }
+  function refresh() {
+    document.querySelectorAll('.dayg').forEach(renderDay);
+    var n = chargesLeft(), d = daysLeft();
+    var s = n === 0 ? 'nothing' : n + ' charge' + (n === 1 ? '' : 's') + ' on ' + d + ' day' + (d === 1 ? '' : 's');
+    if (payLeft) s += (n === 0 ? ', ' : ', and ') + '17 pay sends';
     document.getElementById('left').textContent = s + ' to go';
-    var obv = document.querySelectorAll('.row[data-obv="1"]:not(.sorted)').length;
+    var obv = obviousDays().length;
     var bar = document.getElementById('obvious');
     if (obv === 0) { bar.hidden = true; } else {
-      bar.querySelector('.t').innerHTML = '<b>' + obv + ' look' + (obv === 1 ? 's' : '') + ' obvious</b> — the only job clocked that day, or where this store went last time.';
-      document.getElementById('sortObvious').textContent = 'Sort the ' + obv + ' obvious one' + (obv === 1 ? '' : 's');
+      bar.querySelector('.t').innerHTML = '<b>' + obv + ' day' + (obv === 1 ? ' looks' : 's look') + ' obvious</b> — one job clocked, or a store that always goes to the same place.';
+      document.getElementById('sortObvious').textContent = 'Sort the ' + obv + ' obvious day' + (obv === 1 ? '' : 's');
     }
   }
-  function amountOf(row) { return parseFloat(row.querySelector('.amt').firstChild.textContent.replace(/[$,]/g, '')); }
-  function fmt(n) { return '$' + n.toFixed(2); }
-  function sortRow(row, jobs, how) {
-    var p = row.getAttribute('data-p');
-    if (!row.classList.contains('sorted')) { counts[p] = Math.max(0, counts[p] - 1); document.querySelector('[data-cnt="' + p + '"]').textContent = counts[p]; if (counts[p] === 0) document.querySelector('[data-cnt="' + p + '"]').classList.add('zero'); }
-    row.classList.add('sorted');
-    row.dataset.jobs = JSON.stringify(jobs);
-    var amt = amountOf(row);
-    var done = row.querySelector('.done');
-    var parts;
-    if (jobs.length === 1) parts = '→ ' + jobs[0];
-    else { var each = Math.floor(amt / jobs.length * 100) / 100; var last = Math.round((amt - each * (jobs.length - 1)) * 100) / 100; parts = '→ ' + jobs.map(function (j, i) { return j + ' ' + fmt(i === jobs.length - 1 ? last : each); }).join(' · '); }
-    done.innerHTML = parts + ' <span style="color:var(--muted)">· you, just now' + (how ? ' · ' + how : '') + '</span> <button class="u" data-undo="1">undo</button> <button class="u" data-split="1">split with another job…</button>';
-    say('<b>sorted</b> ' + row.querySelector('.who b').textContent + ' ' + fmt(amt) + ' → ' + jobs.join(' + ') + (how ? ' <span>(' + how + ')</span>' : ''));
-    leftLine();
+  function sortDay(day, how) {
+    var p = day.getAttribute('data-p');
+    var lines = [].slice.call(day.querySelectorAll('.line:not(.done)'));
+    var total = 0, parts = [];
+    lines.forEach(function (l) {
+      var amt = amountOf(l); total += amt;
+      var pick = l.dataset.pick;
+      var txt;
+      if (pick.indexOf('split:') === 0) { var js = pick.slice(6).split('|'); var a = Math.round(amt * 4.5 / 8.1 * 100) / 100; txt = js[0] + ' ' + fmt(a) + ' · ' + js[1] + ' ' + fmt(Math.round((amt - a) * 100) / 100); }
+      else txt = pick;
+      l.classList.add('done');
+      l.querySelector('.to').innerHTML = '<span class="pk">→ ' + txt + '</span><span>· you, just now' + (l.dataset.why ? ' · ' + l.dataset.why : '') + '</span><button class="u" data-undo="1">undo</button>';
+      parts.push(l.querySelector('.cp b').textContent + ' → ' + txt);
+      counts[p] = Math.max(0, counts[p] - 1);
+    });
+    var el = document.querySelector('[data-cnt="' + p + '"]'); el.textContent = counts[p]; if (counts[p] === 0) el.classList.add('zero');
+    day.classList.add('sorted');
+    say('<b>sorted ' + day.querySelector('.who b').textContent + '’s day</b> ' + fmt(total) + (how ? ' <span>(' + how + ')</span>' : '') + ' — ' + parts.join('; '));
+    refresh();
   }
-  function undoRow(row) {
-    var p = row.getAttribute('data-p');
-    row.classList.remove('sorted'); counts[p] += 1; var el = document.querySelector('[data-cnt="' + p + '"]'); el.textContent = counts[p]; el.classList.remove('zero');
-    row.querySelector('.done').innerHTML = '';
-    say('<b>undone</b> ' + row.querySelector('.who b').textContent);
-    leftLine();
+  function undoLine(line) {
+    var day = line.closest('.dayg'); var p = day.getAttribute('data-p');
+    line.classList.remove('done'); line.dataset.pick = '';
+    if (!line.dataset.alts) line.dataset.alts = (day.querySelector('.daychips .sug[data-day]') ? [].slice.call(day.querySelectorAll('.daychips .sug[data-day]')).map(function (b) { return b.dataset.day; }).filter(function (d) { return d.indexOf('split:') < 0; }).join('|') : '');
+    day.classList.remove('sorted'); day.removeAttribute('data-obv');
+    counts[p] += 1; var el = document.querySelector('[data-cnt="' + p + '"]'); el.textContent = counts[p]; el.classList.remove('zero');
+    say('<b>undone</b> ' + line.querySelector('.cp b').textContent);
+    refresh();
   }
   document.getElementById('desk').addEventListener('click', function (e) {
-    var t = e.target.closest('button');
-    if (!t) return;
-    var row = t.closest('.row');
-    if (t.classList.contains('sug')) {
-      if (t.dataset.more !== undefined && t.classList.contains('more')) { say('<b>Another job…</b> opens today’s Assign window for ' + row.querySelector('.amt small').textContent + '’s charge (search, Recent, their schedule and clock picks, uneven splits).'); return; }
-      var job = t.dataset.job;
-      if (row.classList.contains('sorted') && row.dataset.splitting) { var jobs = JSON.parse(row.dataset.jobs || '[]'); if (jobs.indexOf(job) < 0) jobs.push(job); delete row.dataset.splitting; sortRow(row, jobs, 'split evenly'); return; }
-      var why = t.querySelector('.why'); sortRow(row, [job], why ? why.textContent : (t.classList.contains('pick') ? '' : 'your pick'));
-      return;
+    var t = e.target.closest('button'); if (!t) return;
+    var day = t.closest('.dayg'); var line = t.closest('.line');
+    if (t.classList.contains('more')) { say('<b>Another job…</b> opens today’s Assign window for ' + day.querySelector('.who b').textContent + '’s day (search, Recent, their schedule and clock picks, uneven splits).'); return; }
+    if (t.dataset.day !== undefined) {
+      var dj = t.dataset.day;
+      day.querySelectorAll('.daychips .sug').forEach(function (b) { b.classList.remove('pick'); });
+      t.classList.add('pick');
+      day.querySelectorAll('.line:not(.done)').forEach(function (l) { if (l.dataset.own) return; l.dataset.pick = dj; l.dataset.why = dj.indexOf('split:') === 0 ? 'by hours' : 'the day'; });
+      var why = t.querySelector('.why'); say('day chip: ' + day.querySelector('.who b').textContent + ' → ' + dj.replace('split:', '').replace('|', ' + ') + (why ? ' <span>(' + why.textContent + ')</span>' : ''));
+      refresh(); return;
     }
-    if (t.dataset.undo) { undoRow(row); return; }
-    if (t.dataset.split) { row.dataset.splitting = '1'; row.classList.remove('sorted'); row.querySelector('.done').innerHTML = ''; row.classList.add('sorted'); row.querySelector('.sugs').style.display = 'flex'; say('pick the second job on that row'); return; }
-    if (t.id === 'sortObvious') {
-      document.querySelectorAll('.row[data-obv="1"]:not(.sorted)').forEach(function (r) { var pick = r.querySelector('.sug.pick'); sortRow(r, [pick.dataset.job], pick.querySelector('.why').textContent); });
-      return;
-    }
+    if (t.dataset.alt !== undefined) { line.dataset.pick = t.dataset.alt; line.dataset.why = line.dataset.likely === t.dataset.alt && line.dataset.why ? line.dataset.why : 'your pick'; refresh(); return; }
+    if (t.dataset.change) { line.dataset.own = ''; line.dataset.pick = ''; line.dataset.why = ''; line.dataset.alts = [].slice.call(day.querySelectorAll('.daychips .sug[data-day]')).map(function (b) { return b.dataset.day; }).filter(function (d) { return d.indexOf('split:') < 0; }).join('|'); day.removeAttribute('data-obv'); refresh(); return; }
+    if (t.dataset.sortday) { sortDay(day); return; }
+    if (t.dataset.undo) { undoLine(line); return; }
+    if (t.id === 'sortObvious') { obviousDays().forEach(function (d) { sortDay(d, 'obvious'); }); return; }
     if (t.id === 'markPay') {
       payLeft = 0; var bar = document.getElementById('paybar'); bar.classList.add('done');
       bar.innerHTML = '<div><b style="color:#86efac">17 marked payroll</b> · the rule "Cash App" now also matches these descriptions <div class="sub">Undo per row under Show sorted too · rule edits in Payroll rules</div></div>';
-      document.querySelector('[data-cnt="R"]').textContent = '0'; document.querySelector('[data-cnt="R"]').classList.add('zero');
+      var r = document.querySelector('[data-cnt="R"]'); r.textContent = '0'; r.classList.add('zero');
       say('<b>marked payroll</b> 17 Cash App sends · <b>set_tally_payroll_flag</b> ×17, rule widened');
-      leftLine(); return;
+      refresh(); return;
     }
-    if (t.classList.contains('u') && !t.dataset.undo) { say('<b>change</b> reopens the row’s chips with the current pick marked'); }
+    if (t.classList.contains('u')) { say('<b>change</b> reopens the line’s picks with the current one marked'); }
   });
-  document.querySelectorAll('.sug.pick').forEach(function (b) { b.title = 'Sorts it there. Reason on the chip.'; });
   document.getElementById('pbig').addEventListener('click', function () {
-    var b = this; b.innerHTML = '✓ Sorted to SPACEX BA-02N Architec<small>undo · the office sees it sorted by you</small>'; b.style.opacity = '.8';
-    document.getElementById('plog').innerHTML = '<b>replace_mercury_job_splits_for_my_linked_card</b>(the charge, [{ SPACEX BA-02N, $22.58 }]) — the RPC Sort mode already uses.';
+    var b = this; b.innerHTML = '✓ Sorted to SPACEX BA-02N Architec<small>undo · the office sees the day sorted by you</small>'; b.style.opacity = '.8';
+    document.getElementById('plog').innerHTML = '<b>replace_mercury_job_splits_for_my_linked_card</b>(each charge of the day, [{ SPACEX BA-02N, its amount }]) — the RPC Sort mode already uses, once per charge.';
   });
-  // people strip filters the rows
   document.getElementById('people').addEventListener('click', function (e) {
     var p = e.target.closest('.person'); if (!p) return;
     var key = p.dataset.p; var on = p.classList.toggle('on');
     document.querySelectorAll('.person').forEach(function (x) { if (x !== p) x.classList.remove('on'); });
-    document.querySelectorAll('.row').forEach(function (r) { r.hidden = on && key ? r.getAttribute('data-p') !== key : false; });
-    document.querySelectorAll('.day').forEach(function (d) { var n = d.nextElementSibling; var any = false; while (n && !n.classList.contains('day')) { if (n.classList.contains('row') && !n.hidden) any = true; n = n.nextElementSibling; } d.hidden = !any; });
+    document.querySelectorAll('.dayg').forEach(function (r) { r.hidden = on && key ? r.getAttribute('data-p') !== key : false; });
+    document.querySelectorAll('.daylabel').forEach(function (d) { var n = d.nextElementSibling; var any = false; while (n && !n.classList.contains('daylabel')) { if (n.classList.contains('dayg') && !n.hidden) any = true; n = n.nextElementSibling; } d.hidden = !any; });
   });
-  leftLine();
+  refresh();
 })();
 </script>
 </body>
