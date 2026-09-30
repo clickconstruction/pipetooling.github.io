@@ -90,35 +90,14 @@ const dayOffset = (ymd: string, todayYmd: string): number => Math.round((Date.pa
 
 type SessionRow = { work_date: string; clocked_in_at: string; clocked_out_at: string | null; job_ledger_id: string | null }
 
-export async function loadBridgeData(): Promise<BridgeData> {
-  const todayYmd = denverCalendarDayKey(Date.now())
-  const windowStart = ymdAddDays(todayYmd, -BRIDGE_DAYS_BACK)
-  const inputs = await loadOverheadPoolSnapshotInputs()
-  const officeJobLedgerId = inputs.officeJobLedgerId
-  const snapPromise = loadOverheadPoolSnapshot(inputs)
-
-  // Approved field sessions in the window (earned-revenue numerator + crew hours).
-  const fieldSessions = await fetchAllRows(
-    async (from, to) => ({
-      data: (await withSupabaseRetry(async () => {
-        let q = supabase
-          .from('clock_sessions')
-          .select('work_date, clocked_in_at, clocked_out_at, job_ledger_id')
-          .gte('work_date', windowStart)
-          .lte('work_date', todayYmd)
-          .not('job_ledger_id', 'is', null)
-          .not('approved_at', 'is', null)
-          .is('rejected_at', null)
-          .is('revoked_at', null)
-          .not('clocked_out_at', 'is', null)
-        if (officeJobLedgerId) q = q.neq('job_ledger_id', officeJobLedgerId)
-        return q.order('id').range(from, to)
-      }, 'bridge field sessions')) as SessionRow[] | null,
-      error: null,
-    }),
-    'bridge field sessions',
-  )
-  const jobIds = [...new Set(fieldSessions.map((s) => s.job_ledger_id).filter((v): v is string => !!v))]
+/**
+ * The jobs a set of ids names, with their lifetime approved field hours — the
+ * inputs `earnedRevenue.ts` prices a job's hour by (contract ÷ expected hours,
+ * expected = lifetime ÷ % complete). Shared with Vectors by the day
+ * (`loadVectorDays.ts`), whose wider windows touch jobs the Bridge's own
+ * 8-week window does not; the same load, so the rates agree.
+ */
+export async function loadEarnedJobs(jobIds: string[]): Promise<{ jobs: BridgeJobRow[]; earnedJobs: EarnedRevenueJob[] }> {
   const chunks = <T,>(arr: T[], n: number): T[][] => Array.from({ length: Math.ceil(arr.length / n) }, (_, i) => arr.slice(i * n, i * n + n))
 
   // Jobs + lifetime hours for the jobs touched.
@@ -169,6 +148,39 @@ export async function loadBridgeData(): Promise<BridgeData> {
     status: j.status,
     lifetimeHours: lifetimeHours.get(j.id) ?? 0,
   }))
+  return { jobs, earnedJobs }
+}
+
+export async function loadBridgeData(): Promise<BridgeData> {
+  const todayYmd = denverCalendarDayKey(Date.now())
+  const windowStart = ymdAddDays(todayYmd, -BRIDGE_DAYS_BACK)
+  const inputs = await loadOverheadPoolSnapshotInputs()
+  const officeJobLedgerId = inputs.officeJobLedgerId
+  const snapPromise = loadOverheadPoolSnapshot(inputs)
+
+  // Approved field sessions in the window (earned-revenue numerator + crew hours).
+  const fieldSessions = await fetchAllRows(
+    async (from, to) => ({
+      data: (await withSupabaseRetry(async () => {
+        let q = supabase
+          .from('clock_sessions')
+          .select('work_date, clocked_in_at, clocked_out_at, job_ledger_id')
+          .gte('work_date', windowStart)
+          .lte('work_date', todayYmd)
+          .not('job_ledger_id', 'is', null)
+          .not('approved_at', 'is', null)
+          .is('rejected_at', null)
+          .is('revoked_at', null)
+          .not('clocked_out_at', 'is', null)
+        if (officeJobLedgerId) q = q.neq('job_ledger_id', officeJobLedgerId)
+        return q.order('id').range(from, to)
+      }, 'bridge field sessions')) as SessionRow[] | null,
+      error: null,
+    }),
+    'bridge field sessions',
+  )
+  const jobIds = [...new Set(fieldSessions.map((s) => s.job_ledger_id).filter((v): v is string => !!v))]
+  const { jobs, earnedJobs } = await loadEarnedJobs(jobIds)
   const earned = buildEarnedRevenue({
     jobs: earnedJobs,
     sessions: fieldSessions.map((s) => ({ jobId: s.job_ledger_id as string, ymd: s.work_date, hours: hoursOf(s.clocked_in_at, s.clocked_out_at) })),

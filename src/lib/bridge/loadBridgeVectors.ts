@@ -54,6 +54,39 @@ type ReportRow = { created_by_user_id: string | null; created_at: string }
 type VersionRow = { bid_id: string; outcome_at: string | null }
 type BidRow = { id: string; bid_number: string | null; project_name: string | null; estimator_id: string | null; bid_value: number | null; agreed_value: number | null; bid_date_sent: string | null }
 
+/** Every closed clock session in [start, end] with its approval state, as the kernels read it. Shared with Vectors by the day (`loadVectorDays.ts`). */
+export async function loadVectorSessions(start: string, end: string, officeJobLedgerId: string | null): Promise<VectorSession[]> {
+  const sessionRows = await fetchAllRows(
+    async (from, to) => ({
+      data: (await withSupabaseRetry(
+        async () =>
+          supabase
+            .from('clock_sessions')
+            .select('user_id, work_date, clocked_in_at, clocked_out_at, job_ledger_id, bid_id, approved_at, rejected_at, revoked_at')
+            .gte('work_date', start)
+            .lte('work_date', end)
+            .not('clocked_out_at', 'is', null)
+            .order('id')
+            .range(from, to),
+        'vectors sessions',
+      )) as SessionRow[] | null,
+      error: null,
+    }),
+    'vectors sessions',
+  )
+  const sessions: VectorSession[] = sessionRows.map((s) => ({
+    userId: s.user_id,
+    workDate: s.work_date,
+    hours: hoursOf(s.clocked_in_at, s.clocked_out_at),
+    jobId: s.job_ledger_id,
+    onBid: !s.job_ledger_id && !!s.bid_id,
+    officeJob: !!officeJobLedgerId && s.job_ledger_id === officeJobLedgerId,
+    approved: !!s.approved_at && !s.rejected_at && !s.revoked_at,
+    pending: !s.approved_at && !s.rejected_at && !s.revoked_at,
+  }))
+  return sessions
+}
+
 export async function loadBridgeVectorInputs(data: BridgeData): Promise<BridgeVectorInputs> {
   const { windowStart, todayYmd, officeJobLedgerId } = data
   const fromIso = `${windowStart}T00:00:00-06:00`
@@ -77,34 +110,7 @@ export async function loadBridgeVectorInputs(data: BridgeData): Promise<BridgeVe
     wages.push({ userId, fieldWage: r.hourly_wage == null ? null : Number(r.hourly_wage), officeWage: r.office_hourly_wage == null ? null : Number(r.office_hourly_wage), isSalary: !!r.is_salary })
   }
 
-  const sessionRows = await fetchAllRows(
-    async (from, to) => ({
-      data: (await withSupabaseRetry(
-        async () =>
-          supabase
-            .from('clock_sessions')
-            .select('user_id, work_date, clocked_in_at, clocked_out_at, job_ledger_id, bid_id, approved_at, rejected_at, revoked_at')
-            .gte('work_date', windowStart)
-            .lte('work_date', todayYmd)
-            .not('clocked_out_at', 'is', null)
-            .order('id')
-            .range(from, to),
-        'vectors sessions',
-      )) as SessionRow[] | null,
-      error: null,
-    }),
-    'vectors sessions',
-  )
-  const sessions: VectorSession[] = sessionRows.map((s) => ({
-    userId: s.user_id,
-    workDate: s.work_date,
-    hours: hoursOf(s.clocked_in_at, s.clocked_out_at),
-    jobId: s.job_ledger_id,
-    onBid: !s.job_ledger_id && !!s.bid_id,
-    officeJob: !!officeJobLedgerId && s.job_ledger_id === officeJobLedgerId,
-    approved: !!s.approved_at && !s.rejected_at && !s.revoked_at,
-    pending: !s.approved_at && !s.rejected_at && !s.revoked_at,
-  }))
+  const sessions = await loadVectorSessions(windowStart, todayYmd, officeJobLedgerId)
 
   const eventRows = await fetchAllRows(
     async (from, to) => ({
