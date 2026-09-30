@@ -1,5 +1,6 @@
 import type { BidEditFormValues } from './useBidEditForm'
 import { normalizeBidDateInput } from '../bidDateSentDisplay'
+import { isUnfinishedDate } from '../autosaveDateHold'
 
 /**
  * Edit-Bid saves used to write EVERY payload column back, so a field the user
@@ -90,4 +91,46 @@ export function pruneUnchangedBidUpdateFields<T extends Record<string, unknown>>
     if (!drop.has(k)) pruned[k] = v
   }
   return pruned as Partial<T>
+}
+
+/** The date boxes the Edit tab's autosave can catch half typed: the column, the columns that ride with it, the form fields behind them. */
+const DATE_HOLDS: ReadonlyArray<{ key: string; rides: readonly string[]; fields: ReadonlyArray<keyof BidEditFormValues> }> = [
+  { key: 'bid_due_date', rides: ['bid_due_time'], fields: ['bidDueDate', 'bidDueTime'] },
+  { key: 'estimated_job_start_date', rides: [], fields: ['estimatedJobStartDate'] },
+  { key: 'design_drawing_plan_date', rides: [], fields: ['designDrawingPlanDate'] },
+]
+
+export type BidDateHold<T> = {
+  /** The update without the held dates — never with one as null, which would clear the saved date. */
+  payload: Partial<T>
+  /** What this save leaves persisted: the values written, with each held box still at its last saved value. */
+  saved: BidEditFormValues
+  /** The date columns held back. */
+  held: string[]
+}
+
+/**
+ * Hold a half-typed date out of an autosave (the year "2026" arrives as `0002-…`, `0020-…`,
+ * `0202-…`). The column leaves the pruned update with whatever rides with it (the due time),
+ * and every other changed field still saves. `saved` keeps the held box at `initial`, so the
+ * next prune still reads the box as changed and writes it once the year is finished. Edit
+ * autosave only: Create builds its row from the same payload and must not be held here.
+ */
+export function holdUnfinishedBidDates<T extends Record<string, unknown>>(
+  payload: Partial<T>,
+  written: BidEditFormValues,
+  initial: BidEditFormValues | null,
+): BidDateHold<T> {
+  const next: Record<string, unknown> = { ...payload }
+  const saved: Record<string, unknown> = { ...written }
+  const held: string[] = []
+  for (const hold of DATE_HOLDS) {
+    const value = next[hold.key]
+    if (typeof value !== 'string' || !isUnfinishedDate(value)) continue
+    held.push(hold.key)
+    delete next[hold.key]
+    for (const k of hold.rides) delete next[k]
+    if (initial) for (const f of hold.fields) saved[f] = initial[f]
+  }
+  return { payload: next as Partial<T>, saved: saved as BidEditFormValues, held }
 }

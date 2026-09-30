@@ -9,6 +9,7 @@ import {
   buildLienWaiverSignatureHtml,
   buildLienWaiverSignatureLines,
   lienWaiverDate,
+  lienWaiverDatesUnfinished,
   lienWaiverInvoiceOpenRemaining,
   lienWaiverMoney,
   lienWaiverPdfFilename,
@@ -83,6 +84,16 @@ describe('titles and field visibility', () => {
     expect(lienWaiverUsesField('unconditional_final', 'throughDate')).toBe(false)
     expect(lienWaiverUsesField('conditional_progress', 'throughDate')).toBe(true)
     expect(lienWaiverUsesField('unconditional_final', 'amount')).toBe(true)
+  })
+  it('the dates are unfinished while either year is half typed; an empty date is finished', () => {
+    expect(lienWaiverDatesUnfinished('conditional_progress', FIELDS)).toBe(false)
+    expect(lienWaiverDatesUnfinished('conditional_progress', { throughDate: '', signedDate: '' })).toBe(false)
+    expect(lienWaiverDatesUnfinished('conditional_progress', { ...FIELDS, signedDate: '0002-09-01' })).toBe(true)
+    expect(lienWaiverDatesUnfinished('unconditional_progress', { ...FIELDS, throughDate: '0202-08-29' })).toBe(true)
+  })
+  it('a final waiver has no through date, so one left half typed under another form type does not hold it', () => {
+    expect(lienWaiverDatesUnfinished('unconditional_final', { ...FIELDS, throughDate: '0202-08-29' })).toBe(false)
+    expect(lienWaiverDatesUnfinished('unconditional_final', { ...FIELDS, signedDate: '0026-09-01' })).toBe(true)
   })
 })
 

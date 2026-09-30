@@ -44,10 +44,12 @@ import {
   DEFAULT_JOB_CONTRACT_TERMS_PLAIN,
   EMPTY_JOB_CONTRACT_FIELDS,
   isGoogleDocsUrl,
+  jobContractDatesUnfinished,
   jobContractHeading,
   parseJobContractFields,
   type JobContractFields,
 } from '../../lib/jobs/jobContractDocument'
+import { draftHeldByDateMessage } from '../../lib/autosaveDateHold'
 import { contractAmountDrift, contractAmountSource } from '../../lib/jobs/contractAmountSource'
 import {
   formatContractStamp,
@@ -157,7 +159,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
   const [scopeText, setScopeText] = useState('')
   /** v2.3707: the estimate the customer accepted, read once per open, so the amount can say where it comes from. */
   const [acceptedEst, setAcceptedEst] = useState<{ totalCents: number | null; acceptedOn: string | null } | null>(null)
-  const [autosaveState, setAutosaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [autosaveState, setAutosaveState] = useState<'idle' | 'saving' | 'saved' | 'error' | 'held'>('idle')
   const [busy, setBusy] = useState<null | 'send' | 'link' | 'void' | 'preview' | 'pdf' | 'reopen' | 'handed'>(null)
   const [voidArmed, setVoidArmed] = useState(false)
   const [lastLink, setLastLink] = useState<string | null>(null)
@@ -438,12 +440,18 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
     }
   }, [buildRowPayload, liveRow, authUser?.id])
 
-  // Autosave — debounced from the first real edit; stops once sent.
+  // Autosave — debounced from the first real edit; stops once sent. A start or completion date
+  // caught half typed (the year "2026" arrives as 0002, 0020, 0202) holds the draft until it is
+  // finished: the dates ride inside `fields`, so the rest cannot be written without them.
+  const datesUnfinished = jobContractDatesUnfinished(fields)
   useEffect(() => {
     if (!open || !job || !editable || !userTouchedRef.current) return
-    const t = window.setTimeout(() => void flushDraft(), 800)
+    const t = window.setTimeout(() => {
+      if (datesUnfinished) setAutosaveState('held')
+      else void flushDraft()
+    }, 800)
     return () => window.clearTimeout(t)
-  }, [open, job, editable, fields, recipientName, recipientEmail, recipientPhone, coSigner, ccText, remindersEnabled, templateId, flushDraft])
+  }, [open, job, editable, fields, datesUnfinished, recipientName, recipientEmail, recipientPhone, coSigner, ccText, remindersEnabled, templateId, flushDraft])
 
   const applyScopeText = (text: string) => {
     setScopeText(text)
@@ -1062,8 +1070,8 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
           ) : null}
 
           <div style={{ display: 'flex', gap: '0.3rem 0.8rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-            <span style={{ color: autosaveState === 'error' ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
-              {shownRow ? (shownRow.signed_at ? 'The agreement as signed.' : 'The agreement as sent.') : signedView ? '' : !rowsLoaded ? 'Loading…' : !editable ? 'Locked — it is out' : autosaveState === 'saving' ? 'Saving…' : autosaveState === 'saved' ? 'Saved as you type.' : autosaveState === 'error' ? 'Save failed' : 'Saves as you type. Hover a line to see what edits.'}
+            <span style={{ color: autosaveState === 'error' || autosaveState === 'held' ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
+              {shownRow ? (shownRow.signed_at ? 'The agreement as signed.' : 'The agreement as sent.') : signedView ? '' : !rowsLoaded ? 'Loading…' : !editable ? 'Locked — it is out' : autosaveState === 'saving' ? 'Saving…' : autosaveState === 'saved' ? 'Saved as you type.' : autosaveState === 'error' ? 'Save failed' : autosaveState === 'held' ? draftHeldByDateMessage(new Date().getFullYear()) : 'Saves as you type. Hover a line to see what edits.'}
             </span>
             {(signedView && !('row' in signedView)) || filedDoc ? null : (
               <button type="button" style={linkBtn} disabled={busy != null} onClick={shownRow ? () => viewHistoryRow(shownRow) : preview}>

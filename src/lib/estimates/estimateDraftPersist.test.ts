@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { buildEstimateDraftPersistPayload, type EstimateDraftPersistFields } from './estimateDraftPersist'
+import {
+  buildEstimateDraftPersistPayload,
+  estimateDraftHeldDateMessage,
+  estimateDraftUnfinishedDateBlocksSend,
+  estimateDraftUnfinishedDates,
+  type EstimateDraftPersistFields,
+} from './estimateDraftPersist'
 import type { EstimateOption } from './estimateOptions'
 
 const line = (description: string, amount_cents: number) => ({ line_item: 'Work', description, quantity: 1, unit_price_cents: amount_cents, amount_cents })
@@ -86,5 +92,63 @@ describe('buildEstimateDraftPersistPayload', () => {
 
   it('is the same object for the same fields — the autosave dirty check compares its JSON', () => {
     expect(JSON.stringify(buildEstimateDraftPersistPayload(base, att))).toBe(JSON.stringify(buildEstimateDraftPersistPayload({ ...base }, { ...att })))
+  })
+
+  it('an Expires-on date caught mid-year is left out — not written, and not written as null', () => {
+    for (const half of ['0002-10-15', '0020-10-15', '0202-10-15', '0026-10-15']) {
+      const out = buildEstimateDraftPersistPayload({ ...base, validUntil: half }, att)
+      expect('valid_until' in out).toBe(false)
+      expect(out.title).toBe('Kitchen rough-in')
+      expect(out.total_cents).toBe(150_000)
+    }
+    expect(buildEstimateDraftPersistPayload({ ...base, validUntil: '2026-10-15' }, att).valid_until).toBe('2026-10-15')
+    // An emptied box is a cleared date.
+    expect(buildEstimateDraftPersistPayload({ ...base, validUntil: '' }, att).valid_until).toBeNull()
+  })
+
+  it('a Response-requested-by date caught mid-year leaves change_order_fields out whole — the date rides inside it', () => {
+    const co = { ...base, isChangeOrder: true }
+    const half = buildEstimateDraftPersistPayload({ ...co, changeOrderFields: { ...base.changeOrderFields, response_requested_by: '0202-10-20' } }, att)
+    expect('change_order_fields' in half).toBe(false)
+    expect(half.valid_until).toBe('2026-10-15')
+    const finished = buildEstimateDraftPersistPayload({ ...co, changeOrderFields: { ...base.changeOrderFields, response_requested_by: '2026-10-20' } }, att)
+    expect(finished.change_order_fields?.response_requested_by).toBe('2026-10-20')
+    const cleared = buildEstimateDraftPersistPayload({ ...co, changeOrderFields: { ...base.changeOrderFields, response_requested_by: '' } }, att)
+    expect(cleared.change_order_fields?.response_requested_by).toBe('')
+  })
+
+  it('the dirty check sees a half-typed date as a change, and the finished one as another', () => {
+    const json = (validUntil: string) => JSON.stringify(buildEstimateDraftPersistPayload({ ...base, validUntil }, att))
+    expect(json('0002-10-15')).not.toBe(json('2026-10-15'))
+    expect(json('0002-10-15')).toBe(json('0020-10-15'))
+    expect(json('2026-10-16')).not.toBe(json('0002-10-15'))
+  })
+})
+
+describe('estimateDraftUnfinishedDates', () => {
+  const co = { ...base, isChangeOrder: true, changeOrderFields: { ...base.changeOrderFields, response_requested_by: '0002-10-20' } }
+
+  it('names the boxes held, and none when every date is finished or empty', () => {
+    expect(estimateDraftUnfinishedDates(base)).toEqual([])
+    expect(estimateDraftUnfinishedDates({ ...base, validUntil: '' })).toEqual([])
+    expect(estimateDraftUnfinishedDates({ ...base, validUntil: '0026-10-15' })).toEqual(['valid_until'])
+    expect(estimateDraftUnfinishedDates({ ...co, validUntil: '0026-10-15' })).toEqual(['valid_until', 'response_requested_by'])
+  })
+
+  it('an estimate has no Response-requested-by box, so a value there holds nothing', () => {
+    expect(estimateDraftUnfinishedDates({ ...co, isChangeOrder: false })).toEqual([])
+  })
+
+  it('says the plain line for Expires on, and that the change order details waited for Response requested by', () => {
+    expect(estimateDraftHeldDateMessage(['valid_until'], 2026)).toBe('That date was not finished, so it was not saved. Type the year in full, like 2026.')
+    expect(estimateDraftHeldDateMessage(['valid_until', 'response_requested_by'], 2026)).toBe(
+      '“Response requested by” is not a finished date, so the change order details were not saved. Type the year in full, like 2026.',
+    )
+  })
+
+  it('blocks a send while a date is unfinished, naming the box; nothing held blocks nothing', () => {
+    expect(estimateDraftUnfinishedDateBlocksSend([], 2026)).toBeNull()
+    expect(estimateDraftUnfinishedDateBlocksSend(['valid_until'], 2026)).toBe('Finish the “Expires on” date before this goes out. Type the year in full, like 2026.')
+    expect(estimateDraftUnfinishedDateBlocksSend(['response_requested_by'], 2026)).toBe('Finish the “Response requested by” date before this goes out. Type the year in full, like 2026.')
   })
 })

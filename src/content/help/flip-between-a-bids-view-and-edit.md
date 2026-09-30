@@ -25,6 +25,7 @@ Type a note, pause: **Saving…** then **Saved**. Blank the Project Name: *Requi
 :::
 
 - **Closing saves first.** Press **✕** (or Escape) a second after typing and the window saves that last change before it closes. If that save fails, the window stays open and says so — {{button:blue|Retry}}, {{button:outline|Keep editing}}, or **Close without saving** — so nothing is dropped quietly.
+- **A date saves when it is finished.** A due, estimated-start or plan date with its year half typed (`26` for 2026, or a pause part way through) is not written: the rest of the form saves, a line says the date was not saved, and the bid keeps the date it had until you type the year in full.
 - **A new Bid Date Sent still asks.** Changing the sent date opens the confirm-sent checklist as before; the rest of the form keeps saving while you decide, and the date is written once you confirm.
 - **New Bid is different.** A bid has to exist before it can save itself, so the New Bid form keeps its own button: {{button:blue|Create bid}} (or {{button:gray|Create and open counts}}). Its **✕** still discards.
 

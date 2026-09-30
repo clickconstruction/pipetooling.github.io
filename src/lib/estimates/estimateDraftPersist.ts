@@ -2,6 +2,8 @@ import type { EstimateLineItemNormalized } from '../estimateLineItemNormalize'
 import type { EstimateAcceptHeaderBrand } from '../estimateAcceptHeaderBrand'
 import type { EstimateChangeOrderFields } from '../estimateChangeOrder'
 import { estimateOptionsDraftPersistFields, type EstimateOption } from './estimateOptions'
+import { isUnfinishedDate } from '../autosaveDateHold'
+import { unfinishedDateMessage } from '../dateBoxEntry'
 
 /**
  * The exact draft UPDATE payload (pure) — one builder shared by saveDraft and the autosave
@@ -20,6 +22,12 @@ import { estimateOptionsDraftPersistFields, type EstimateOption } from './estima
  * - Notify ids are de-duplicated and only non-empty strings survive.
  * - `change_order_fields` is written on a change order only — an estimate's payload has no
  *   such key, so it never clears a column it does not own.
+ * - A date caught half typed is left out, never written as null (the year "2026" arrives from
+ *   a date box as `0002-…`, `0020-…`, `0202-…`, and the autosave writes on a pause): an
+ *   unfinished Expires-on leaves `valid_until` out, and an unfinished Response-requested-by
+ *   leaves `change_order_fields` out whole, because the date rides inside it. The saved values
+ *   stay until the year is finished. Null here would also be the dirty check's answer, and the
+ *   autosave would write it.
  */
 
 export type EstimateDraftAttachmentDb = { url: string | null; label: string | null }
@@ -54,7 +62,8 @@ export type EstimateDraftPersistPayload = {
   line_items_snapshot: EstimateLineItemNormalized[]
   total_cents: number
   options_snapshot: EstimateOption[] | null
-  valid_until: string | null
+  /** Absent while the Expires-on date is half typed. */
+  valid_until?: string | null
   for_address: string | null
   project_id: string | null
   internal_notes: string | null
@@ -65,20 +74,47 @@ export type EstimateDraftPersistPayload = {
   customer_attachment_url: string | null
   customer_attachment_label: string | null
   accept_notify_user_ids: string[]
+  /** Absent on an estimate, and on a change order while its Response-requested-by date is half typed. */
   change_order_fields?: EstimateChangeOrderFields
+}
+
+export type EstimateDraftDateBox = 'valid_until' | 'response_requested_by'
+
+/** The date boxes a draft save holds back half typed, in the order the page shows them. */
+export function estimateDraftUnfinishedDates(f: Pick<EstimateDraftPersistFields, 'isChangeOrder' | 'validUntil' | 'changeOrderFields'>): EstimateDraftDateBox[] {
+  const held: EstimateDraftDateBox[] = []
+  if (isUnfinishedDate(f.validUntil)) held.push('valid_until')
+  if (f.isChangeOrder && isUnfinishedDate(f.changeOrderFields.response_requested_by)) held.push('response_requested_by')
+  return held
+}
+
+/** What the page says when a save held a date back. The change order's other lines wait with its date, so that one says so. */
+export function estimateDraftHeldDateMessage(held: readonly EstimateDraftDateBox[], thisYear: number): string {
+  if (held.includes('response_requested_by')) {
+    return `“Response requested by” is not a finished date, so the change order details were not saved. Type the year in full, like ${thisYear}.`
+  }
+  return unfinishedDateMessage(thisYear)
+}
+
+/** Why a draft cannot go out yet, or null: what is sent is what is saved, and a half-typed date is not. */
+export function estimateDraftUnfinishedDateBlocksSend(held: readonly EstimateDraftDateBox[], thisYear: number): string | null {
+  if (held.length === 0) return null
+  const box = held[0] === 'valid_until' ? 'Expires on' : 'Response requested by'
+  return `Finish the “${box}” date before this goes out. Type the year in full, like ${thisYear}.`
 }
 
 const blankToNull = (s: string): string | null => (s.trim() ? s.trim() : null)
 
 export function buildEstimateDraftPersistPayload(f: EstimateDraftPersistFields, attDb: EstimateDraftAttachmentDb): EstimateDraftPersistPayload {
   const optionsPersist = estimateOptionsDraftPersistFields(f.options, f.viewedOptionKey, f.lines)
+  const held = estimateDraftUnfinishedDates(f)
   return {
     title: f.title.trim() || (f.isChangeOrder ? 'Change order' : 'Estimate'),
     terms_snapshot: f.terms,
     line_items_snapshot: optionsPersist.line_items_snapshot ?? f.lines,
     total_cents: optionsPersist.total_cents ?? f.totalCents,
     options_snapshot: optionsPersist.options_snapshot,
-    valid_until: blankToNull(f.validUntil),
+    ...(held.includes('valid_until') ? {} : { valid_until: blankToNull(f.validUntil) }),
     for_address: blankToNull(f.forAddress),
     project_id: f.linkedProjectId || null,
     internal_notes: blankToNull(f.internalNotes),
@@ -89,6 +125,6 @@ export function buildEstimateDraftPersistPayload(f: EstimateDraftPersistFields, 
     customer_attachment_url: attDb.url,
     customer_attachment_label: attDb.label,
     accept_notify_user_ids: [...new Set(f.acceptNotifyUserIds.filter((id): id is string => typeof id === 'string' && id.length > 0))],
-    ...(f.isChangeOrder ? { change_order_fields: f.changeOrderFields } : {}),
+    ...(f.isChangeOrder && !held.includes('response_requested_by') ? { change_order_fields: f.changeOrderFields } : {}),
   }
 }

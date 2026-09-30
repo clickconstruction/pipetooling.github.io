@@ -21,6 +21,8 @@ The bottom-right corner of Edit Job shows where your changes stand:
 Job numbers, name, address, customer info, links, line items, payments, Other job charges, and Team changes — each saves on its own as you edit it.
 :::
 
+A payment's **Sent** or **Received** date saves once it is a finished date. With the year half typed (`26` for 2026, or a pause part way through) the rest of the payment saves, a line says the date was not saved, and the payment keeps the date it had until you type the year in full.
+
 ## Closing the window
 
 Click the **✕** in the top-right, press the **Escape** key, click outside the window, or jump to another view — if anything is still waiting to save, the close **finishes the save first**. Switching between the **Job**, **Edit**, and **Bill** tabs never needs a save at all — your work stays put across tabs. Escape never closes the job window while a smaller window sits on top of it (like a preview or the create-customer window), so you won't lose your place by accident.

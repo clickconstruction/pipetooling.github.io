@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildJobContractDocumentHtml,
   buildJobContractPrefill,
+  jobContractDatesUnfinished,
   jobContractHeading,
   parseJobContractFields,
   paymentTermsSentence,
@@ -62,6 +63,15 @@ describe('fields and terms', () => {
     expect(f.amount_cents).toBe(1235)
     expect(f.payment_terms_key).toBe('progress')
     expect(f.start_date).toBe('2026-09-04')
+  })
+
+  it('the dates are unfinished while either year is half typed; an empty date is finished', () => {
+    expect(jobContractDatesUnfinished({ start_date: null, completion_date: null })).toBe(false)
+    expect(jobContractDatesUnfinished({ start_date: '2026-10-01', completion_date: '2026-11-15' })).toBe(false)
+    expect(jobContractDatesUnfinished({ start_date: '0002-10-01', completion_date: null })).toBe(true)
+    expect(jobContractDatesUnfinished({ start_date: '2026-10-01', completion_date: '0202-11-15' })).toBe(true)
+    // A year typed as two digits.
+    expect(jobContractDatesUnfinished({ start_date: '0026-10-01', completion_date: null })).toBe(true)
   })
 
   it('payment sentence fills in the deposit', () => {

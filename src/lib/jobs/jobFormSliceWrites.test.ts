@@ -74,7 +74,7 @@ describe('writeBillingSlice', () => {
 
   it('revenue → payments deleted then upserted → line items deleted then re-inserted, in that order', async () => {
     const { client, steps } = makeClient()
-    await writeBillingSlice(client, base())
+    expect(await writeBillingSlice(client, base())).toEqual({ heldPaymentDates: [] })
     expect(seq(steps)).toEqual([
       'update:jobs_ledger',
       'delete:jobs_ledger_payments',
@@ -101,6 +101,29 @@ describe('writeBillingSlice', () => {
       ['p-new', 200, 1],
     ])
     expect(upsert.options).toEqual({ onConflict: 'id' })
+  })
+
+  it('a payment date caught half typed is left out of its own upsert: the saved date is not written over, and nothing else waits', async () => {
+    const { client, steps } = makeClient()
+    const args = base()
+    const answer = await writeBillingSlice(client, { ...args, payments: [pay('p-kept', 300), { ...pay('p-new', 200), paid_on: '0002-09-01', note: 'check 1182' }] })
+    expect(answer).toEqual({ heldPaymentDates: ['p-new:paid_on'] })
+    expect(seq(steps)).toEqual([
+      'update:jobs_ledger',
+      'delete:jobs_ledger_payments',
+      'upsert:jobs_ledger_payments',
+      'upsert:jobs_ledger_payments',
+      'delete:jobs_ledger_fixtures',
+      'insert:jobs_ledger_fixtures',
+      'insert:jobs_ledger_fixtures',
+    ])
+    const [finished, held] = steps.filter((s) => s.op === 'upsert').map((s) => s.payload as { rows: Array<Record<string, unknown>>; options: unknown })
+    expect(finished?.rows).toEqual([expect.objectContaining({ id: 'p-kept', paid_on: '2026-09-01' })])
+    expect(held?.rows).toEqual([expect.objectContaining({ id: 'p-new', amount: 200, note: 'check 1182', sent_on: null })])
+    expect('paid_on' in held!.rows[0]!).toBe(false)
+    expect(held?.options).toEqual({ onConflict: 'id' })
+    // Both rows are saved rows now: the next diff must not delete the one whose date waited.
+    expect(args.onPaymentsWritten).toHaveBeenCalledWith(['p-kept', 'p-new'])
   })
 
   it('skips the payment delete and the upsert when there is nothing for them', async () => {
@@ -170,7 +193,7 @@ describe('writeBillingSlice', () => {
     const { client, steps } = makeClient({ fail: 'rpc:log_job_discount_event' })
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const args = { ...base(), fixtures: withDiscount, persistedDiscounts: [] }
-    await expect(writeBillingSlice(client, args)).resolves.toBeUndefined()
+    await expect(writeBillingSlice(client, args)).resolves.toEqual({ heldPaymentDates: [] })
     const logs = steps.filter((s) => s.op === 'rpc')
     expect(logs).toHaveLength(1)
     expect(logs[0]).toMatchObject({ table: 'log_job_discount_event', payload: { p_job_id: 'job-1', p_event_type: 'discount_added' } })

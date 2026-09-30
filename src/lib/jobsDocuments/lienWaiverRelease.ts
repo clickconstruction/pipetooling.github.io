@@ -3,6 +3,7 @@ import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { PhysicalInvoiceIssuer } from '../physicalInvoiceIssuer'
 import { loadJsPDF } from '../loadJsPDF'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { isUnfinishedDate } from '../autosaveDateHold'
 
 /**
  * Lien waiver-and-release documents issued from the Jobs board (v2.2579):
@@ -66,6 +67,15 @@ export function lienWaiverUsesField(formType: LienWaiverFormType, field: keyof L
   if (field === 'checkFrom') return formType === 'conditional_progress'
   if (field === 'throughDate') return formType !== 'unconditional_final'
   return true
+}
+
+/**
+ * True while a date on the form is still being typed — the signature date, or the through date
+ * on a form type that has one. The draft autosave waits: both dates are written as columns and
+ * again inside the one `fields` object, so there is no writing the rest without them.
+ */
+export function lienWaiverDatesUnfinished(formType: LienWaiverFormType, fields: Pick<LienWaiverFields, 'throughDate' | 'signedDate'>): boolean {
+  return isUnfinishedDate(fields.signedDate) || (lienWaiverUsesField(formType, 'throughDate') && isUnfinishedDate(fields.throughDate))
 }
 
 /** "$2,200.00" from "2200", "2,200.00", "$2200" — unparseable input passes through. */

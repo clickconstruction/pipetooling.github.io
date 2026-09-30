@@ -480,6 +480,45 @@ describe('Bids page render smoke — Edit Bid writes', () => {
     expect(bidWrites()).toEqual([])
   })
 
+  // A date box reports the year "2026" as 0002, 0020, 0202, 2026 — one change per digit.
+  const dueDate = () => document.getElementById('bid-form-bid-due-date') as HTMLInputElement
+  const HELD_DATE_LINE = /That date was not finished, so it was not saved\. Type the year in full/
+
+  it('a due date caught mid-year is left out of the save — never written, never nulled — while the other change saves, and a line says so once', async () => {
+    await openBidOnEdit()
+    expect(dueDate().value).toBe('2026-10-01')
+    await runTheDebounce(() => {
+      fireEvent.change(dueDate(), { target: { value: '0002-10-08' } })
+      fireEvent.change(projectName()!, { target: { value: 'Pondhill Building 3' } })
+    })
+    await waitFor(() => expect(bidWrites()).toHaveLength(1))
+    expect(bidWrites()[0]).toEqual({ table: 'bids', op: 'update', payload: { project_name: 'Pondhill Building 3' }, filters: [['id', 'bid-1']] })
+    expect(screen.getAllByText(HELD_DATE_LINE)).toHaveLength(1)
+    // A second pause, still mid-year: nothing to write, nothing said again.
+    await runTheDebounce(() => fireEvent.change(dueDate(), { target: { value: '0202-10-08' } }))
+    expect(bidWrites()).toHaveLength(1)
+    expect(screen.getAllByText(HELD_DATE_LINE)).toHaveLength(1)
+    expect(bidWindowOpen()).toBe(true)
+  })
+
+  it('the finished year writes the due date', async () => {
+    await openBidOnEdit()
+    await runTheDebounce(() => fireEvent.change(dueDate(), { target: { value: '0020-10-08' } }))
+    expect(bidWrites()).toEqual([])
+    await runTheDebounce(() => fireEvent.change(dueDate(), { target: { value: '2026-10-08' } }))
+    await waitFor(() => expect(bidWrites()).toHaveLength(1))
+    expect(bidWrites()[0]).toEqual({ table: 'bids', op: 'update', payload: { bid_due_date: '2026-10-08', bid_due_time: null }, filters: [['id', 'bid-1']] })
+  })
+
+  it('closing with the year half typed closes and leaves the saved due date as it was', async () => {
+    await openBidOnEdit()
+    fireEvent.change(dueDate(), { target: { value: '0002-10-08' } })
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Close bid window' }))
+    await waitFor(() => expect(bidWindowOpen()).toBe(false))
+    expect(bidWrites()).toEqual([])
+  })
+
   it('Delete bid: held until the project name is typed, then one delete of that bid and the window closes', async () => {
     await openBidOnEdit()
     fireEvent.click(screen.getByRole('button', { name: 'Delete bid…' }))
