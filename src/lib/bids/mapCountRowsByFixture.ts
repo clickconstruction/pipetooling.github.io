@@ -12,18 +12,27 @@
  * onto one target row would collide — never guess).
  */
 
-export type CountRowRef = { id: string; fixture: string | null }
+export type CountRowRef = { id: string; fixture: string | null; group_tag?: string | null }
 
 /** source row id → target row id, for names unique on both sides. */
 export function mapCountRowsByFixture(
   source: readonly CountRowRef[],
   target: readonly CountRowRef[],
+  /**
+   * v2.4194: the alternate scope a row sits in ('' for the base bid, else the alternate's
+   * key — `alternateScopeKey` in countSheet.ts). One fixture may sit in the base AND in
+   * an alternate as two rows on purpose; scoped, each pairs with its own counterpart.
+   */
+  scopeOf?: (row: CountRowRef) => string,
 ): Map<string, string> {
-  const key = (f: string | null) => (f ?? '').trim().toLowerCase()
+  const key = (r: CountRowRef) => {
+    const name = (r.fixture ?? '').trim().toLowerCase()
+    return name ? name + '\u0001' + (scopeOf ? scopeOf(r) : '') : ''
+  }
   const uniqueByName = (rows: readonly CountRowRef[]) => {
     const byName = new Map<string, { id: string; ambiguous: boolean }>()
     for (const r of rows) {
-      const k = key(r.fixture)
+      const k = key(r)
       if (!k) continue
       const existing = byName.get(k)
       if (existing) existing.ambiguous = true
