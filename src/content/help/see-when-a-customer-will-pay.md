@@ -14,7 +14,7 @@ The dates block at the bottom of each row is the reading; the doing happens in f
 
 ## Reading the Expected row
 
-Each billed row ends with the bill's dates in one block — a time bar over a short ledger (see *read the Pipeline money view*). The money is the Expected row:
+Each billed row ends with the bill's dates in one block — a short ledger (see *read the Pipeline money view*). The money is the Expected row:
 
 - *Expected Sep 8 · in 12 d* — on track, in green. The date is the bill date (the Billed row) plus this customer's usual pay speed: the **median** time between our bill going out and their payments landing, over the last 12 months.
 - *Expected Sep 8 · 12 d past* — in amber: the customer is now slower than **their own** history. This is the real follow-up signal: a 40-day-old bill is normal for a customer who pays in 45 days, and alarming for one who pays in 20.
