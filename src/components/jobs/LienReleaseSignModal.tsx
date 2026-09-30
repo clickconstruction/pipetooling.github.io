@@ -29,6 +29,11 @@ import { useAuth } from '../../hooks/useAuth'
  * pad). Signing uploads the drawn PNG + the signed PDF to the private
  * lien-release-documents bucket (best-effort), then stamps the row — the row
  * stamp is the signature of record; stored bytes are the audit copy.
+ *
+ * "He signs now" (v2.4274): with `presentSigner`, the leader signs on this
+ * screen — the assistant's, or a phone handed to him. The signer of record is
+ * the leader; `signed_on_device_of` names whose session it was, and the audit
+ * line says so. Drawn, not typed: a typed name would be the assistant's keys.
  */
 export default function LienReleaseSignModal({
   open,
@@ -36,12 +41,18 @@ export default function LienReleaseSignModal({
   release,
   jobNumber,
   onSigned,
+  presentSigner = null,
+  deviceUserName = null,
 }: {
   open: boolean
   onClose: () => void
   release: JobLienReleaseRow | null
   jobNumber: string
   onSigned?: () => void
+  /** The leader standing here, signing on this session's screen. Null: the signed-in user signs for themselves. */
+  presentSigner?: { id: string; name: string } | null
+  /** The signed-in user's name, for the audit line when a present leader signs. */
+  deviceUserName?: string | null
 }) {
   const { user: authUser } = useAuth()
   const { showToast } = useToastContext()
@@ -70,13 +81,14 @@ export default function LienReleaseSignModal({
     }
   }, [release])
 
-  // Seed the printed name from the document's "Signed by" line, once per release.
+  // Seed the printed name from the document's "Signed by" line — or the present leader's name — once per release.
   if (open && release && fields && seededFor !== release.id) {
     setSeededFor(release.id)
-    setPrintedName(fields.signerName)
+    setPrintedName(presentSigner?.name.trim() || fields.signerName)
     setAgreed(false)
     setFormError(null)
   }
+  const present = presentSigner != null && presentSigner.id !== authUser?.id
 
   const sign = useCallback(
     async (payload: EstimateAcceptSubmitPayload) => {
@@ -86,6 +98,10 @@ export default function LienReleaseSignModal({
       try {
         let signaturePath: string | null = null
         const signedAtIso = new Date().toISOString()
+        if (present && payload.mode !== 'draw') {
+          setFormError('Draw the signature. A typed name would be this screen’s keyboard, not the leader’s hand.')
+          return
+        }
         if (payload.mode === 'draw') {
           const invalid = validateReportSignatureDataUrlForSubmit(payload.signaturePngBase64)
           if (invalid) {
@@ -105,7 +121,7 @@ export default function LienReleaseSignModal({
           }
         }
 
-        const audit = lienReleaseSignatureAuditLine({ signed_at: signedAtIso, signer_consented_at: signedAtIso })
+        const audit = lienReleaseSignatureAuditLine({ signed_at: signedAtIso, signer_consented_at: signedAtIso }, present ? deviceUserName : null)
         const signature: LienWaiverSignature = {
           mode: payload.mode,
           printedName: payload.printedName,
@@ -125,7 +141,8 @@ export default function LienReleaseSignModal({
                 signer_signature_mode: payload.mode,
                 signer_signature_storage_path: signaturePath,
                 signer_consented_at: signedAtIso,
-                signer_user_id: authUser?.id ?? null,
+                signer_user_id: present ? presentSigner.id : (authUser?.id ?? null),
+                signed_on_device_of: present ? (authUser?.id ?? null) : null,
               })
               .eq('id', release.id)
               .eq('status', 'awaiting_signature'),
@@ -153,7 +170,7 @@ export default function LienReleaseSignModal({
         setSubmitting(false)
       }
     },
-    [release, fields, submitting, formType, authUser?.id, showToast, onSigned, onClose],
+    [release, fields, submitting, formType, authUser?.id, present, presentSigner, deviceUserName, showToast, onSigned, onClose],
   )
 
   if (!open || !release || !fields) return null
@@ -173,9 +190,13 @@ export default function LienReleaseSignModal({
         style={{ background: 'var(--surface)', borderRadius: 8, maxWidth: 640, width: '100%', maxHeight: 'min(92vh, 100%)', overflowY: 'auto', boxShadow: '0 20px 40px rgba(0,0,0,0.15)' }}
       >
         <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)' }}>
-          <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600 }}>Sign release of lien — Job {jobNumber}</h2>
+          <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600 }}>
+            {present ? `${presentSigner.name} signs here — Job ${jobNumber}` : `Sign release of lien — Job ${jobNumber}`}
+          </h2>
           <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-            Read it, then sign below. The signature prints on every copy of this document.
+            {present
+              ? `Read it, then draw the signature below. The record: signed by ${presentSigner.name}${deviceUserName ? ` · on ${deviceUserName}’s device` : ''}.`
+              : 'Read it, then sign below. The signature prints on every copy of this document.'}
           </p>
         </div>
         <div data-theme="light" style={{ padding: '1rem 1.25rem', background: 'var(--bg-subtle)' }}>
@@ -204,10 +225,15 @@ export default function LienReleaseSignModal({
             formError={formError}
             submitting={submitting}
             onSubmit={(payload) => void sign(payload)}
-            heading="Sign release"
-            disclosure="By signing, you acknowledge that you have read this release of lien and agree to issue it. Typing or drawing your signature here has the same force and effect as your written signature under the federal ESIGN Act (15 U.S.C. § 7001) and the Texas UETA (Bus. & Com. Code ch. 322), and it prints on every copy of this document."
-            agreeLabel="I have read this release and agree that my electronic signature is as binding as ink."
-            submitLabel="Sign release"
+            heading={present ? `${presentSigner.name} signs` : 'Sign release'}
+            disclosure={
+              present
+                ? `By signing, ${presentSigner.name} acknowledges having read this release of lien and agrees to issue it. Drawing the signature here has the same force and effect as a written signature under the federal ESIGN Act (15 U.S.C. § 7001) and the Texas UETA (Bus. & Com. Code ch. 322), and it prints on every copy of this document.`
+                : 'By signing, you acknowledge that you have read this release of lien and agree to issue it. Typing or drawing your signature here has the same force and effect as your written signature under the federal ESIGN Act (15 U.S.C. § 7001) and the Texas UETA (Bus. & Com. Code ch. 322), and it prints on every copy of this document.'
+            }
+            agreeLabel={present ? `I, ${presentSigner.name}, have read this release and my drawn signature is as binding as ink.` : 'I have read this release and agree that my electronic signature is as binding as ink.'}
+            submitLabel={present ? 'Sign it' : 'Sign release'}
+            lockMode={present ? 'draw' : undefined}
           />
           <button
             type="button"

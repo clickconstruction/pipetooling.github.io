@@ -2,8 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import {
-  LIEN_WAIVER_FORM_SHORT_LABELS,
-  LIEN_WAIVER_FORM_TYPES,
+  LIEN_WAIVER_FORM_CITES,
   buildLienWaiverParagraphs,
   buildLienWaiverPdfBlob,
   buildLienWaiverPrefill,
@@ -11,15 +10,20 @@ import {
   buildLienWaiverSignatureLines,
   lienWaiverDate,
   lienWaiverDatesUnfinished,
+  lienWaiverFormFrom,
   lienWaiverInvoiceOpenRemaining,
   lienWaiverPdfFilename,
   lienWaiverTitle,
+  lienWaiverToggles,
   lienWaiverUnfinishedDateBlocksIssue,
   lienWaiverUsesField,
+  lienWaiverWhy,
+  pickLienWaiverForBill,
   type LienWaiverFields,
   type LienWaiverFormType,
   type LienWaiverSignature,
 } from '../../lib/jobsDocuments/lienWaiverRelease'
+import { sendLienReleaseEmailToCustomer } from '../../lib/sendLienReleaseEmail'
 import { draftHeldByDateMessage } from '../../lib/autosaveDateHold'
 import { openHtmlPreviewWindow, openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import {
@@ -30,7 +34,6 @@ import {
   type JobLienReleaseRow,
 } from '../../lib/jobs/lienReleaseTracking'
 import {
-  canRequestLienSignature,
   lienReleaseChips,
   lienReleaseIsEditable,
   lienReleaseIsMinted,
@@ -59,12 +62,34 @@ import { useAuth } from '../../hooks/useAuth'
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
 /**
- * Release of lien modal (v2.2579): generate one of the three owner-drafted
+ * Release of lien modal (v2.2579): generate one of the four owner-drafted
  * waiver-and-release forms straight from a Stages row — prefilled from the
  * job's bill lines, owner row, and the physical-invoice issuer; every field
  * editable; output via copy-for-email, print, or PDF download. Document
  * content lives in `src/lib/jobsDocuments/lienWaiverRelease.ts`.
+ *
+ * v2.4274 (our waiver to the GC): the form is two toggles — Conditional |
+ * Unconditional, Progress | Final — pre-set from the bill when one is chosen
+ * (`pickLienWaiverForBill`), with one line of why. The signer block names the
+ * job's leader: *Later, from his desk* requests the signature as before; *He
+ * signs now* lets the leader draw on this screen (or a phone handed to him) —
+ * the signer of record is the leader, the device is named. A signed waiver has
+ * *Send to <GC>*: the GC's billing email on a sub job, else the customer's.
  */
+
+type MasterOption = { id: string; name: string }
+
+const seg = (on: boolean, disabled = false): React.CSSProperties => ({
+  padding: '0.35rem 0.75rem',
+  fontSize: '0.8125rem',
+  fontWeight: 600,
+  border: 'none',
+  background: on ? 'var(--text-strong)' : 'var(--surface)',
+  color: on ? 'var(--surface)' : 'var(--text-700)',
+  cursor: disabled ? 'default' : 'pointer',
+  opacity: disabled && !on ? 0.5 : 1,
+})
+const segWrap: React.CSSProperties = { display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 8, overflow: 'hidden' }
 
 const FIELD_LABELS: Record<keyof LienWaiverFields, string> = {
   companyName: 'Contractor / releasing party',
@@ -139,9 +164,15 @@ export default function LienReleaseModal({
   /** Open on this form type instead of conditional-progress (e.g. the unconditional follow-up). */
   initialFormType?: LienWaiverFormType
 }) {
-  const { role: authRole, user: authUser } = useAuth()
+  const { role: authRole, user: authUser, profileName } = useAuth()
   const { showToast } = useToastContext()
   const [formType, setFormType] = useState<LienWaiverFormType>('conditional_progress')
+  // v2.4274: the leaders who can sign (the job's master first), the one standing here, and the GC's email.
+  const [masters, setMasters] = useState<MasterOption[]>([])
+  const [presentSignerId, setPresentSignerId] = useState<string | null>(null)
+  const [presentOpen, setPresentOpen] = useState(false)
+  const [gcEmail, setGcEmail] = useState<string | null>(null)
+  const [sendBusy, setSendBusy] = useState(false)
   const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<ReadonlySet<string>>(() => new Set())
   const [fields, setFields] = useState<LienWaiverFields | null>(null)
   const [issuerGen, setIssuerGen] = useState(0)
@@ -187,6 +218,41 @@ export default function LienReleaseModal({
     }
     void loadHistory()
   }, [open, loadHistory])
+
+  useEffect(() => {
+    if (!open || !job) {
+      setMasters([])
+      setGcEmail(null)
+      setPresentOpen(false)
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const { data } = await supabase.from('users').select('id, name, notes, archived_at').eq('role', 'master_technician')
+        if (cancelled) return
+        const rows = ((data ?? []) as Array<{ id: string; name: string | null; notes: string | null; archived_at: string | null }>)
+          .filter((u) => !u.archived_at)
+          .map((u) => ({ id: u.id, name: (u.notes?.trim() || u.name?.trim() || 'the leader').replace(/,.*$/, '') }))
+          .sort((a, b) => (a.id === job.master_user_id ? -1 : b.id === job.master_user_id ? 1 : a.name.localeCompare(b.name)))
+        setMasters(rows)
+        setPresentSignerId((cur) => cur ?? job.master_user_id ?? rows[0]?.id ?? null)
+      } catch {
+        setMasters([])
+      }
+      if (job.gc_customer_id) {
+        try {
+          const { data } = await supabase.from('customers').select('billing_email').eq('id', job.gc_customer_id).maybeSingle()
+          if (!cancelled) setGcEmail(((data as { billing_email?: string | null } | null)?.billing_email ?? '').trim() || null)
+        } catch {
+          if (!cancelled) setGcEmail(null)
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, job?.id, job?.master_user_id, job?.gc_customer_id])
 
   const issuer = useMemo(() => (open ? getPhysicalInvoiceIssuerDraft() : null), [open, issuerGen])
 
@@ -318,6 +384,8 @@ export default function LienReleaseModal({
     const selectable = selectableInvoices(job)
     if (invoice && selectable.some((i) => i.id === invoice.id)) {
       setSelectedInvoiceIds(new Set([invoice.id]))
+      // The bill picks its own form (v2.4274) unless the opener asked for one.
+      if (!initialFormType) setFormType(pickLienWaiverForBill(job, invoice).formType)
       return
     }
     const billed = selectable.filter((i) => i.status === 'billed')
@@ -493,7 +561,7 @@ export default function LienReleaseModal({
             ? {
                 signature_requested_at: nowIso,
                 signature_requested_by: authUser?.id ?? null,
-                signer_user_id: job.master_user_id ?? null,
+                signer_user_id: presentSignerId ?? job.master_user_id ?? null,
               }
             : {}),
         }
@@ -547,7 +615,7 @@ export default function LienReleaseModal({
         setMintBusy(false)
       }
     },
-    [fields, job, mintBusy, releaseRow, buildRowPayload, authUser?.id, formType, loadHistory, onIssued, showToast],
+    [fields, job, mintBusy, releaseRow, buildRowPayload, authUser?.id, presentSignerId, formType, loadHistory, onIssued, showToast],
   )
 
   const requestSignature = useCallback(async () => {
@@ -563,7 +631,7 @@ export default function LienReleaseModal({
                 status: 'awaiting_signature',
                 signature_requested_at: new Date().toISOString(),
                 signature_requested_by: authUser?.id ?? null,
-                signer_user_id: job.master_user_id ?? null,
+                signer_user_id: presentSignerId ?? job.master_user_id ?? null,
               })
               .eq('id', releaseRow.id)
               .eq('status', 'issued')
@@ -581,7 +649,7 @@ export default function LienReleaseModal({
     }
     const row = await ensureMinted('awaiting_signature')
     if (row) showToast('Signature requested.', 'success')
-  }, [job, releaseRow, authUser?.id, ensureMinted, loadHistory, onIssued, showToast])
+  }, [job, releaseRow, authUser?.id, presentSignerId, ensureMinted, loadHistory, onIssued, showToast])
 
   const cancelSignatureRequest = useCallback(async () => {
     if (!releaseRow || lienReleaseStatus(releaseRow) !== 'awaiting_signature') return
@@ -603,6 +671,87 @@ export default function LienReleaseModal({
       showToast('Could not cancel the request.', 'error')
     }
   }, [releaseRow, loadHistory, showToast])
+
+  /**
+   * He signs now (v2.4274): mint the row as awaiting the chosen leader's signature, then open the
+   * pad for him on this screen. When the signed-in user is that leader, it is simply Sign now.
+   */
+  const signNow = useCallback(async () => {
+    if (!job) return
+    const signerId = presentSignerId ?? job.master_user_id ?? null
+    let row = releaseRow
+    if (!row || !lienReleaseIsMinted(row)) {
+      row = await ensureMinted('awaiting_signature')
+      if (!row) return
+    }
+    if (lienReleaseStatus(row) === 'issued') {
+      try {
+        const data = await withSupabaseRetry<JobLienReleaseRow>(
+          () =>
+            supabase
+              .from('job_lien_releases')
+              .update({ status: 'awaiting_signature', signature_requested_at: new Date().toISOString(), signature_requested_by: authUser?.id ?? null, signer_user_id: signerId })
+              .eq('id', row!.id)
+              .eq('status', 'issued')
+              .select('*')
+              .single(),
+          'open lien release for signing',
+        )
+        if (data) {
+          row = data
+          setReleaseRow(data)
+        }
+      } catch {
+        showToast('Could not open the release for signing.', 'error')
+        return
+      }
+    } else if (row.signer_user_id !== signerId && signerId) {
+      try {
+        const data = await withSupabaseRetry<JobLienReleaseRow>(
+          () => supabase.from('job_lien_releases').update({ signer_user_id: signerId }).eq('id', row!.id).eq('status', 'awaiting_signature').select('*').single(),
+          'name the signer',
+        )
+        if (data) {
+          row = data
+          setReleaseRow(data)
+        }
+      } catch {
+        /* the pad still opens; the signer is stamped on signing */
+      }
+    }
+    setPresentOpen(true)
+  }, [job, presentSignerId, releaseRow, ensureMinted, authUser?.id, showToast])
+
+  const presentSigner = useMemo(() => masters.find((m) => m.id === presentSignerId) ?? null, [masters, presentSignerId])
+  const iAmTheSigner = presentSigner != null && presentSigner.id === authUser?.id
+  const gcName = (job?.gcCustomer?.name ?? '').trim()
+  const sendToName = gcName || (job?.customer_name ?? '').trim() || 'the customer'
+  const sendRecipient = gcName ? gcEmail : (job?.customer_email ?? '').trim() || null
+
+  const sendToPayor = useCallback(async () => {
+    if (!job || !releaseRow || sendBusy) return
+    setSendBusy(true)
+    try {
+      const idx = selectedInvoices.length === 1 ? invoices.findIndex((i) => i.id === selectedInvoices[0]!.id) + 1 : 0
+      const billLabel = idx > 0 ? `Bill ${idx} · ${jobNumber} ${(job.job_name ?? '').trim()}`.trim() : null
+      const r = await sendLienReleaseEmailToCustomer(
+        releaseRow,
+        { id: job.id, customer_email: job.customer_email ?? null, hcp_number: job.hcp_number ?? null, click_number: job.click_number ?? null },
+        { recipient: sendRecipient, billLabel },
+      )
+      if (r.ok) {
+        showToast(`Sent to ${r.sentTo}.`, 'success')
+        const { data } = await supabase.from('job_lien_releases').select('*').eq('id', releaseRow.id).maybeSingle()
+        if (data) setReleaseRow(data as JobLienReleaseRow)
+        void loadHistory()
+        onIssued?.()
+      } else {
+        showToast(r.message, 'error')
+      }
+    } finally {
+      setSendBusy(false)
+    }
+  }, [job, releaseRow, sendBusy, selectedInvoices, invoices, jobNumber, sendRecipient, showToast, loadHistory, onIssued])
 
   /** Signature for renders of the live row (typed renders inline; drawn falls back to the printed name — the stored signed PDF carries the ink). */
   const renderSignature = useCallback((row: JobLienReleaseRow | null): LienWaiverSignature | null => {
@@ -745,30 +894,42 @@ export default function LienReleaseModal({
           </button>
         </div>
 
-        <div style={{ padding: '0.75rem 1.25rem', borderBottom: '1px solid var(--border)', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-          {LIEN_WAIVER_FORM_TYPES.map((t) => (
-            <button
-              key={t}
-              type="button"
-              disabled={!editable}
-              onClick={() => {
-                userTouchedRef.current = true
-                setFormType(t)
-              }}
-              style={{
-                padding: '0.4rem 0.75rem',
-                fontSize: '0.8125rem',
-                borderRadius: 6,
-                border: formType === t ? '2px solid #2563eb' : '1px solid var(--border-strong)',
-                background: formType === t ? 'var(--bg-blue-tint)' : 'var(--surface)',
-                cursor: editable ? 'pointer' : 'default',
-                opacity: editable || formType === t ? 1 : 0.5,
-                fontWeight: formType === t ? 600 : 400,
-              }}
-            >
-              {LIEN_WAIVER_FORM_SHORT_LABELS[t]}
-            </button>
-          ))}
+        <div style={{ padding: '0.75rem 1.25rem', borderBottom: '1px solid var(--border)', display: 'flex', flexWrap: 'wrap', gap: '0.6rem 1rem', alignItems: 'center' }} data-testid="lien-waiver-form">
+          {(() => {
+            const t = lienWaiverToggles(formType)
+            const pick = (next: Partial<typeof t>) => {
+              userTouchedRef.current = true
+              setFormType(lienWaiverFormFrom({ ...t, ...next }))
+            }
+            const picked = selectedInvoices.length === 1 && job ? pickLienWaiverForBill(job, selectedInvoices[0]!) : null
+            return (
+              <>
+                <div style={segWrap} role="group" aria-label="Conditional or unconditional">
+                  <button type="button" disabled={!editable} aria-pressed={t.conditional} onClick={() => pick({ conditional: true })} style={seg(t.conditional, !editable)}>
+                    Conditional
+                  </button>
+                  <button type="button" disabled={!editable} aria-pressed={!t.conditional} onClick={() => pick({ conditional: false })} style={seg(!t.conditional, !editable)}>
+                    Unconditional
+                  </button>
+                </div>
+                <div style={segWrap} role="group" aria-label="Progress or final">
+                  <button type="button" disabled={!editable} aria-pressed={!t.final} onClick={() => pick({ final: false })} style={seg(!t.final, !editable)}>
+                    Progress
+                  </button>
+                  <button type="button" disabled={!editable} aria-pressed={t.final} onClick={() => pick({ final: true })} style={seg(t.final, !editable)}>
+                    Final
+                  </button>
+                </div>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  {LIEN_WAIVER_FORM_CITES[formType]}
+                  {picked ? ` · ${picked.formType === formType ? 'picked from the bill' : 'the bill would pick ' + lienReleaseFormLabel(picked.formType)} · ${picked.facts.join(' · ')}` : ''}
+                </span>
+                <span style={{ flexBasis: '100%', fontSize: '0.8125rem', lineHeight: 1.45 }} data-testid="lien-waiver-why">
+                  {lienWaiverWhy(formType, fields.checkFrom || sendToName)}
+                </span>
+              </>
+            )
+          })()}
         </div>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', overflowY: 'auto', flex: 1 }}>
@@ -928,6 +1089,41 @@ export default function LienReleaseModal({
                 />
               </label>
             ))}
+            {rowStatus !== 'signed' && !releaseRow?.voided_at ? (
+              <div style={{ marginTop: '0.75rem', padding: '0.6rem 0.7rem', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-subtle)', fontSize: '0.75rem' }} data-testid="lien-waiver-signer">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <span style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)', fontSize: '0.6875rem' }}>Signed by the leader</span>
+                  {masters.length > 1 ? (
+                    <select value={presentSignerId ?? ''} onChange={(e) => setPresentSignerId(e.target.value || null)} aria-label="Who signs" disabled={rowStatus === 'awaiting_signature'} style={{ fontSize: '0.75rem', padding: '0.15rem 0.3rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit' }}>
+                      {masters.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span style={{ fontWeight: 600 }}>{presentSigner?.name ?? (fields.signerName.trim() || 'the leader')}</span>
+                  )}
+                  <span style={{ marginLeft: 'auto', ...segWrap }}>
+                    {iAmTheSigner ? null : rowStatus === 'awaiting_signature' ? (
+                      <span style={{ ...seg(true), cursor: 'default' }}>Later, from his desk ✓</span>
+                    ) : (
+                      <button type="button" onClick={() => void requestSignature()} disabled={mintBusy} style={seg(false)} title="Mint the release and ask him to sign from his own desk">
+                        Later, from his desk
+                      </button>
+                    )}
+                    <button type="button" onClick={() => void signNow()} disabled={mintBusy} style={seg(false)} data-testid="lien-waiver-sign-now" title={iAmTheSigner ? 'Sign it now' : 'He is here — he draws his signature on this screen'}>
+                      {iAmTheSigner ? '✍ Sign now' : '✍ He signs now'}
+                    </button>
+                  </span>
+                </div>
+                <div style={{ color: 'var(--text-muted)', marginTop: '0.35rem' }}>
+                  {iAmTheSigner
+                    ? 'You are the leader on this job — sign here and it is done.'
+                    : `He signs now: this screen, or a phone handed to him, it is the same signature. The record: signed by ${presentSigner?.name ?? 'the leader'} · on ${(profileName ?? '').trim() || 'your'} device.`}
+                </div>
+              </div>
+            ) : null}
             {rowStatus === 'awaiting_signature' && releaseRow ? (
               <div style={{ marginTop: '0.75rem', padding: '0.5rem 0.6rem', borderRadius: 8, background: 'var(--bg-amber-100)', border: '1px solid var(--border-strong)', fontSize: '0.75rem' }}>
                 <div style={{ fontWeight: 700, color: 'var(--text-amber-800)' }}>
@@ -961,8 +1157,11 @@ export default function LienReleaseModal({
                   ✓ Signed by {releaseRow.signer_printed_name ?? fields.signerName}
                 </div>
                 <div style={{ color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-                  {lienReleaseSignatureAuditLine(releaseRow) ?? ''}
+                  {lienReleaseSignatureAuditLine(releaseRow, releaseRow.signed_on_device_of && releaseRow.signed_on_device_of !== releaseRow.signer_user_id ? (releaseRow.signed_on_device_of === authUser?.id ? (profileName ?? '').trim() || 'this' : 'the office’s') : null) ?? ''}
                 </div>
+                {releaseRow.sent_to_customer_at ? (
+                  <div style={{ color: 'var(--text-green-700)', marginTop: '0.2rem', fontWeight: 600 }}>Sent {lienWaiverDate((releaseRow.sent_to_customer_at ?? '').slice(0, 10))}</div>
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -1057,22 +1256,16 @@ export default function LienReleaseModal({
             >
               {pdfBusy ? 'Building…' : 'Download PDF'}
             </button>
-            {rowStatus === 'awaiting_signature' ? (
+            {rowStatus === 'signed' && releaseRow && !releaseRow.voided_at ? (
               <button
                 type="button"
-                disabled
-                style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: 'var(--bg-subtle)', border: '1px solid var(--border)', color: 'var(--text-muted)', borderRadius: 4, cursor: 'default' }}
+                onClick={() => void sendToPayor()}
+                disabled={sendBusy || !sendRecipient}
+                title={sendRecipient ? `Email the signed waiver to ${sendRecipient}` : `No email on file for ${sendToName} — add the GC’s billing email or the job’s customer email`}
+                data-testid="lien-waiver-send"
+                style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: sendRecipient ? '#2563eb' : 'var(--bg-subtle)', color: sendRecipient ? 'white' : 'var(--text-muted)', border: 'none', borderRadius: 4, cursor: sendBusy || !sendRecipient ? 'default' : 'pointer', fontWeight: 600 }}
               >
-                ✍ Signature requested ✓
-              </button>
-            ) : canRequestLienSignature(releaseRow) ? (
-              <button
-                type="button"
-                onClick={() => void requestSignature()}
-                disabled={mintBusy}
-                style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: mintBusy ? 'wait' : 'pointer', fontWeight: 600 }}
-              >
-                ✍ Request signature
+                {sendBusy ? 'Sending…' : releaseRow.sent_to_customer_at ? `Send again to ${sendToName}` : `Send to ${sendToName}`}
               </button>
             ) : null}
             {rowStatus == null || rowStatus === 'draft' ? (
@@ -1106,10 +1299,15 @@ export default function LienReleaseModal({
         </div>
       </div>
       <LienReleaseSignModal
-        open={signOpen}
-        onClose={() => setSignOpen(false)}
+        open={signOpen || presentOpen}
+        onClose={() => {
+          setSignOpen(false)
+          setPresentOpen(false)
+        }}
         release={releaseRow}
         jobNumber={jobNumber}
+        presentSigner={presentOpen && presentSigner && !iAmTheSigner ? presentSigner : null}
+        deviceUserName={(profileName ?? '').trim() || null}
         onSigned={() => {
           void loadHistory()
           onIssued?.()

@@ -8,27 +8,79 @@ import { unfinishedDateStopsMessage } from '../dateBoxEntry'
 
 /**
  * Lien waiver-and-release documents issued from the Jobs board (v2.2579):
- * the owner-drafted three-form family — conditional/unconditional on progress
- * payment, unconditional on final payment. Pure builders (paragraph model →
- * HTML / text / PDF) so content is unit-testable without jsPDF; prefill maps
- * job + invoice data into the fields. Print/copy documents stay light like
- * every customer-facing paper.
+ * the owner-drafted form family — conditional/unconditional on progress
+ * payment, conditional (v2.4274) / unconditional on final payment. Pure
+ * builders (paragraph model → HTML / text / PDF) so content is unit-testable
+ * without jsPDF; prefill maps job + invoice data into the fields. Print/copy
+ * documents stay light like every customer-facing paper.
+ *
+ * Two questions pick the form (v2.4274, the same two the sub-side dialog asks
+ * of a payment): has the money settled (unconditional) or not (conditional),
+ * and is this the last bill (final) or not (progress). `lienWaiverFormFrom`
+ * and `lienWaiverToggles` are that grid; `pickLienWaiverForBill` answers both
+ * from a bill.
  */
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
-export type LienWaiverFormType = 'conditional_progress' | 'unconditional_progress' | 'unconditional_final'
+export type LienWaiverFormType = 'conditional_progress' | 'unconditional_progress' | 'conditional_final' | 'unconditional_final'
 
 export const LIEN_WAIVER_FORM_TYPES: readonly LienWaiverFormType[] = [
   'conditional_progress',
   'unconditional_progress',
+  'conditional_final',
   'unconditional_final',
 ]
 
 export const LIEN_WAIVER_FORM_SHORT_LABELS: Record<LienWaiverFormType, string> = {
   conditional_progress: 'Conditional · progress',
   unconditional_progress: 'Unconditional · progress',
+  conditional_final: 'Conditional · final',
   unconditional_final: 'Unconditional · final',
+}
+
+/** The two questions, as the window's toggles read them. */
+export type LienWaiverToggles = { conditional: boolean; final: boolean }
+
+export function lienWaiverToggles(formType: LienWaiverFormType): LienWaiverToggles {
+  return { conditional: formType.startsWith('conditional'), final: formType.endsWith('final') }
+}
+
+export function lienWaiverFormFrom(t: LienWaiverToggles): LienWaiverFormType {
+  if (t.conditional) return t.final ? 'conditional_final' : 'conditional_progress'
+  return t.final ? 'unconditional_final' : 'unconditional_progress'
+}
+
+export function lienWaiverIsConditional(formType: LienWaiverFormType): boolean {
+  return lienWaiverToggles(formType).conditional
+}
+
+/** Texas Property Code § 53.284's subsection for each statutory form — the cite line. */
+export const LIEN_WAIVER_FORM_CITES: Record<LienWaiverFormType, string> = {
+  conditional_progress: '§ 53.284(b)',
+  unconditional_progress: '§ 53.284(c)',
+  conditional_final: '§ 53.284(d)',
+  unconditional_final: '§ 53.284(e)',
+}
+
+/** One line of why this form, in the words the window says under the toggles. */
+export function lienWaiverWhy(formType: LienWaiverFormType, payorName: string): string {
+  const who = payorName.trim() || 'their'
+  const whose = payorName.trim() ? `${who}’s` : 'their'
+  switch (formType) {
+    case 'conditional_progress':
+      return `Takes effect when ${whose} check clears. Safe to sign now; the unconditional follows when the payment settles.`
+    case 'conditional_final':
+      return `The last bill. Takes effect when ${whose} check clears and closes the job; the unconditional final follows when it settles.`
+    case 'unconditional_progress':
+      return 'States this payment has been received. Only after the money has settled — Texas forbids requiring it before payment.'
+    case 'unconditional_final':
+      return 'States the job is paid in full and releases everything. Only after the last payment has settled.'
+    default: {
+      const _e: never = formType
+      return _e
+    }
+  }
 }
 
 export function lienWaiverTitle(formType: LienWaiverFormType): string {
@@ -37,6 +89,8 @@ export function lienWaiverTitle(formType: LienWaiverFormType): string {
       return 'Conditional Waiver and Release on Progress Payment'
     case 'unconditional_progress':
       return 'Unconditional Waiver and Release on Progress Payment'
+    case 'conditional_final':
+      return 'Conditional Waiver and Release on Final Payment'
     case 'unconditional_final':
       return 'Unconditional Waiver and Release on Final Payment'
     default: {
@@ -65,8 +119,9 @@ export type LienWaiverFields = {
 
 /** Which fields the form type actually uses (drives the modal's field list). */
 export function lienWaiverUsesField(formType: LienWaiverFormType, field: keyof LienWaiverFields): boolean {
-  if (field === 'checkFrom') return formType === 'conditional_progress'
-  if (field === 'throughDate') return formType !== 'unconditional_final'
+  const t = lienWaiverToggles(formType)
+  if (field === 'checkFrom') return t.conditional
+  if (field === 'throughDate') return !t.final
   return true
 }
 
@@ -141,6 +196,13 @@ export function buildLienWaiverParagraphs(formType: LienWaiverFormType, f: LienW
         `The undersigned has been paid and has received progress payment(s) totaling ${amount} for all labor, services, equipment, or materials furnished to the property located at:`,
         `${project}, through ${through}, and does hereby waive and release any right to file a mechanic's lien, stop notice, or claim on any bond for that portion of the work.`,
         `This release does not affect any retainage, pending change orders, or disputed claims for extra work.`,
+      ]
+    case 'conditional_final':
+      return [
+        `Upon receipt by the undersigned of a check from ${f.checkFrom.trim() || '—'} in the sum of ${amount} payable to ${company} and when the check has been properly endorsed and has cleared the bank, this document shall become effective to waive and release any lien, stop payment notice, or bond right the undersigned has on the project described as:`,
+        `${project}.`,
+        `This is the final payment. Upon its clearance the undersigned waives, releases, and discharges any and all rights to a mechanic's lien, stop payment notice, or claim against a payment bond related to this project, for all work, labor, materials, and services provided through the date below.`,
+        `This release is conditional upon actual receipt and clearance of the above payment, and does not cover disputed claims for extra work listed in writing before signing.`,
       ]
     case 'unconditional_final':
       return [
@@ -222,12 +284,51 @@ export function lienWaiverPrefillAmount(
     const paid = Number(job.payments_made ?? 0)
     return formType === 'unconditional_progress' ? Math.max(0, paid) : Math.max(0, revenue - paid)
   }
+  if (formType === 'unconditional_final') {
+    // Paid in full: the final form states what the whole job came to on the covered lines.
+    return invoices.reduce((s, inv) => s + Number(inv.amount ?? 0), 0)
+  }
   if (formType === 'unconditional_progress') {
     const applied = invoices.reduce((s, inv) => s + sumAppliedToInvoice(job, inv.id), 0)
     if (applied > 0) return applied
     return invoices.reduce((s, inv) => s + Number(inv.amount ?? 0), 0)
   }
   return invoices.reduce((s, inv) => s + lienWaiverInvoiceOpenRemaining(job, inv), 0)
+}
+
+export type LienWaiverBillPick = {
+  formType: LienWaiverFormType
+  /** Payments applied to the bill reach its amount. */
+  settled: boolean
+  /** The bill is the job's last: highest in sequence among the minted lines, and together they bill the whole job. */
+  final: boolean
+  /** The two facts as the window says them under the toggles. */
+  facts: string[]
+}
+
+/**
+ * Which waiver a bill calls for (v2.4274) — the sub-side dialog's two questions asked of one of
+ * our bills. Settled → unconditional, else conditional. Final when the bill is the last minted
+ * line and the minted lines together cover the job's revenue (to the dollar); a job with more to
+ * bill, or an earlier line, is a progress payment.
+ */
+export function pickLienWaiverForBill(job: Pick<JobWithDetails, 'invoices' | 'payments' | 'revenue'>, invoice: Pick<JobsLedgerInvoice, 'id' | 'amount' | 'sequence_order'>): LienWaiverBillPick {
+  const applied = (job.payments ?? []).filter((p) => p.invoice_id === invoice.id).reduce((s, p) => s + Number(p.amount ?? 0), 0)
+  const amount = Number(invoice.amount ?? 0)
+  const settled = amount > 0 && applied >= amount - 0.005
+  const minted = (job.invoices ?? []).filter((i) => i.status === 'billed' || i.status === 'ready_to_bill' || i.status === 'paid')
+  const lastSeq = Math.max(...minted.map((i) => Number(i.sequence_order ?? 0)), Number(invoice.sequence_order ?? 0))
+  const billedTotal = minted.reduce((s, i) => s + Number(i.amount ?? 0), 0)
+  const revenue = Number(job.revenue ?? 0)
+  const final = Number(invoice.sequence_order ?? 0) >= lastSeq && (revenue <= 0 || billedTotal >= revenue - 1)
+  const n = minted.length
+  const idx = minted.filter((i) => Number(i.sequence_order ?? 0) < Number(invoice.sequence_order ?? 0)).length + 1
+  return {
+    formType: lienWaiverFormFrom({ conditional: !settled, final }),
+    settled,
+    final,
+    facts: [settled ? 'Settled' : 'Not settled yet', final ? (n > 1 ? `Bill ${idx} of ${n} · the last` : 'The only bill') : n > 1 ? `Bill ${idx} of ${n} · not the last` : 'More to bill'],
+  }
 }
 
 export function buildLienWaiverPrefill(formType: LienWaiverFormType, ctx: LienWaiverPrefillContext): LienWaiverFields {
