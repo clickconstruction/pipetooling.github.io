@@ -5,7 +5,7 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-09-29
+last_updated: 2026-09-30
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
@@ -139,6 +139,13 @@ Credentials: created without a password by the migration; set out-of-band (`ALTE
 - **Backend**: Row Level Security (RLS) policies on all tables
 - **Database**: Foreign key relationships enforce data ownership
 - **Edge Functions**: Role validation before privileged operations
+
+### Typed hours get a second look (v2.4242, `20260930160727_typed_hours_second_look.sql`)
+- **The rule**: whoever typed hours onto someone's day cannot approve them, and nobody approves their own hours. It lives on `clock_sessions` itself — trigger `clock_sessions_guard_approval` refuses the `approved_at` write, whatever screen or RPC it came from; `approve_clock_sessions` skips a held session instead of failing the batch and `approve_clock_sessions_v2` says how many it left (`held_own`, `held_typed`). Salary-schedule sessions and writes with no signed-in person (cron, service role, the agent roles) are outside it.
+- **What "typed" means**: a signed-in person made time exist on a day that the clock had not recorded. Two triggers compare the day before and after each transaction (`clock_sessions_typed_snapshot`, deferred `clock_sessions_typed_record`) and write `clock_typed_entries` — `added` or `trimmed`, who, when, the stretch, the day's total before and after. Cutting a punched day into job segments records nothing; a real clock-in or clock-out records nothing; a worker's own late entry is typed by himself.
+- **The second look** (`confirmed_by` / `confirmed_at` on the entry): another approver's approval of a session the typed hours touch, or — for hours typed onto a session that was already approved, which stays approved — `confirm_clock_typed_entry`, refused for the typist and for the person whose hours they are.
+- **The switch**: `app_settings.typed_hours_second_look_v1` — `off` (ledger only), `test` (the hold applies to sample accounts and ZZ-named people only) or `on`; dev-set. The ledger and the second-look record run in every mode.
+- **`clock_typed_entries`**: SELECT for whoever may read the person's clock sessions (dev, payroll access, assistant-like, the person's team lead, the person); no INSERT / UPDATE / DELETE policy — only the definer triggers and `confirm_clock_typed_entry` write it; `anon` has nothing. Readers: `clock_typed_stamps(ids)` (SECURITY INVOKER) and `list_typed_hours_waiting()` (definer; dev, payroll access and assistant-like, empty for anyone else).
 
 ### Punch list picks — the board's shared Do / Later / Drop (v2.3559, `20260917120000_punch_list_picks.sql`)
 
