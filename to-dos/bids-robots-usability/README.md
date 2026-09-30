@@ -2,7 +2,7 @@
 name: "Bids → Robots: the Audits lens as a queue for the estimator's minutes"
 number: 63
 group: gated
-status: not started · read off the live page, planned and mocked up 2026-09-29 (three "is this the best we can do?" passes) · waiting on the owner's five calls
+status: building — the owner took the draft's picks 2026-09-30 · PR 1 shipped v2.4230 (the open card, one question count, the strip off Audits) · PRs 2–6 follow
 summary: >
   Bids → 🤖 Robots → Audits stacks the robots' 19 open questions (16 cards, about 96 buttons), a
   coaching strip and all 40 audits, with the 8 sealed shadows mixed in and the auto-opened card at
@@ -85,4 +85,4 @@ Each PR is cut from fresh `main`, one claim each, auto-merge; no migration in an
 
 ## Where it stands
 
-Read, planned and mocked up 2026-09-29; nothing built. PR 1 and PR 2 can start on any day; 3–5 wait for the owner's picks.
+Read, planned and mocked up 2026-09-29. The owner took the five calls as the draft's picks on 2026-09-30 (Questions as the heading word, two panes on desktop, shared questions first; a parked slate stays unbuilt, and the sealed-shadow dollar rule stays a harness call). PR 1 shipped as v2.4230; PRs 2–6 follow on the same day.

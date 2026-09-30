@@ -397,7 +397,7 @@ export function DashboardPinnedQuickRow({
   // (ROBOT_AUDIT_ROLES, v2.2920 — the same list gates the Bids 🤖 door). The
   // hook's sealed-shadow hold keeps unworkable audits out.
   const robotAuditsEnabled = !hideBanners && Boolean(authUserId) && canWorkRobotAudits(role)
-  const { pending: robotAuditsPending } = useBidAuditsPendingCount(robotAuditsEnabled)
+  const { pending: robotAuditsPending, questions: robotQuestionsWaiting } = useBidAuditsPendingCount(robotAuditsEnabled)
   // Sealed robot numbers on live bids (v2.3126) — same audience; the head start, not a queue.
   const { locked: robotLockedShadows } = useRobotLockedShadows(robotAuditsEnabled)
 
@@ -526,6 +526,7 @@ export function DashboardPinnedQuickRow({
     claimDevLookbackDays: CLAIM_DEV_LOOKBACK_DAYS,
     robotAuditsEnabled,
     robotAuditsPending,
+    robotQuestionsWaiting,
     robotLockedShadows,
     d22UncodedEnabled,
     d22UncodedCount,

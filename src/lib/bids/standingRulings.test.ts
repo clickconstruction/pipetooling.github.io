@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { groupStandingRulings, legacyMultiDecisionNote, openCountByAudience, rulingAskedLine, topicLabel, type TwinQuestionRow } from './standingRulings'
+import { groupStandingRulings, legacyMultiDecisionNote, openCountByAudience, openEstimatorQuestions, questionMinutesEstimate, rulingAskedLine, topicLabel, type TwinQuestionRow } from './standingRulings'
 
 const q = (over: Partial<TwinQuestionRow> & { id: string }): TwinQuestionRow => ({
   twin_user_id: 'twin-1',
@@ -140,5 +140,40 @@ describe('groupStandingRulings · legacy asks', () => {
   it('the memo note no longer promises a re-ask', () => {
     expect(legacyMultiDecisionNote({ question: legacy })).toMatch(/nothing re-asks on its own/)
     expect(legacyMultiDecisionNote({ question: legacy })).not.toMatch(/robots re-ask/)
+  })
+})
+
+describe('openEstimatorQuestions (v2.4230) — the one count every surface reads', () => {
+  const rows = [
+    q({ id: 'a', topic: 'travel-bands', about_bid_id: 'b1' }),
+    // a bid-less doctrine ask counts — the Scoreboard used to drop it (about_bid_id not null)
+    q({ id: 'b', topic: 'small-ti', about_bid_id: null }),
+    // a plans ask is a need on the bid, not a question waiting
+    q({ id: 'c', kind: 'plans', about_bid_id: 'b1', question: 'Attach the plumbing sheets?' }),
+    // the operator's lane
+    q({ id: 'd', audience: 'operator', about_bid_id: 'b1' }),
+    // an ask written before the one-decision rule waits for the owner on the Console
+    q({ id: 'e', about_bid_id: 'b1', question: 'Do we carry the interceptor, and is the travel banded, and which fixture schedule applies? Also, is the med gas ours?' }),
+    q({ id: 'f', status: 'answered', about_bid_id: 'b1' }),
+  ]
+  it('counts open, estimator-lane, one-decision, non-plans asks — bid or no bid', () => {
+    expect(openEstimatorQuestions(rows)).toBe(2)
+  })
+  it('is exactly the panel header count', () => {
+    expect(openEstimatorQuestions(rows)).toBe(groupStandingRulings(rows, { audience: 'estimator' }).openCount)
+  })
+  it('a row loaded without status (a board load of open rows) counts as open', () => {
+    expect(openEstimatorQuestions([{ question: 'Which fixture schedule applies?' }])).toBe(1)
+  })
+})
+
+describe('questionMinutesEstimate', () => {
+  it('three quarters of a minute each, in fives once there are a handful', () => {
+    expect(questionMinutesEstimate(19)).toBe(15)
+    expect(questionMinutesEstimate(12)).toBe(10)
+    expect(questionMinutesEstimate(4)).toBe(5)
+    expect(questionMinutesEstimate(3)).toBe(2)
+    expect(questionMinutesEstimate(1)).toBe(1)
+    expect(questionMinutesEstimate(0)).toBe(0)
   })
 })

@@ -9,6 +9,7 @@
  */
 import { effectiveTwinQuestionKind } from '../../../supabase/functions/_shared/twinQuestionKind'
 import type { ShadowRunRow } from './shadowStory'
+import { openEstimatorQuestions } from './standingRulings'
 
 /** The note `noteBestEffortGap` writes starts with this; one per bid, found again by the prefix. */
 export const BEST_EFFORT_GAP_NOTE_PREFIX = '[best effort gap]'
@@ -26,11 +27,16 @@ export type RobotOpenQuestionEntry = {
   kind?: string | null
 }
 
-/** A `twin_questions` row as loaded: the entry plus the bid it was asked about and who it is for. */
+/**
+ * A `twin_questions` row as loaded: the entry plus the bid it was asked about and who it is
+ * for. v2.4230: the load takes the FULL open list — a bid-less doctrine ask (`about_bid_id`
+ * null) counts as a question waiting even though no board row can carry it.
+ */
 export type OpenRobotQuestionRow = Omit<RobotOpenQuestionEntry, 'topic'> & {
   topic?: string | null
-  about_bid_id: string
+  about_bid_id: string | null
   audience?: string | null
+  status?: string
 }
 
 type TwinPairing = { id: string; twin_source_bid_id?: string | null }
@@ -88,6 +94,7 @@ export function openRobotQuestionsByBidId(
 ): Map<string, RobotOpenQuestionEntry[]> {
   const m = new Map<string, RobotOpenQuestionEntry[]>()
   for (const r of rows) {
+    if (!r.about_bid_id) continue
     const kind = effectiveTwinQuestionKind(r)
     const key = kind === 'plans' ? (sourceByTwin.get(r.about_bid_id) ?? r.about_bid_id) : r.about_bid_id
     const list = m.get(key) ?? []
@@ -97,9 +104,13 @@ export function openRobotQuestionsByBidId(
   return m
 }
 
-/** Questions waiting on anyone: the estimator lane minus plans asks (those sit on the bid as a need). */
+/**
+ * Questions waiting on anyone. v2.4230: the one kernel every surface reads
+ * (`openEstimatorQuestions` — open, the estimator's lane, not a plans ask, not a pre-rule
+ * ask), over the full open list. A row loaded without `status` is an open one.
+ */
 export function robotQuestionsWaitingCount(rows: readonly OpenRobotQuestionRow[]): number {
-  return rows.filter((r) => effectiveTwinQuestionKind(r) !== 'plans').length
+  return openEstimatorQuestions(rows)
 }
 
 /** The dev door `?envelope=<bid number>`: `b482`, `B482` and `482` all name bid 482. */

@@ -52,3 +52,32 @@ export function orderPendingByStake<T extends { status: string; requested_at: st
     .sort((a, b) => compareAuditStake(a.row, b.row))
   return [...scored.map((s) => s.audit), ...rest]
 }
+
+/**
+ * v2.4230 (punch list #63): WHICH card opens. The tab used to expand on its first render,
+ * before the notes, draft totals and references that `orderPendingByStake` needs had loaded
+ * — every signal read zero, so the pick was the oldest pending audit (row 32 of 40 on
+ * 2026-09-29), and the effect then held it for the session. Now: nothing opens until the
+ * signals are in; the top of the ordered queue opens; and it keeps re-picking to the top as
+ * the signals move until the estimator taps a row (or a door names one), after which the
+ * pick holds. A held card that stops being workable (a reference un-sent, a card gone) is
+ * let go the same way.
+ */
+export function pickOpenAudit<T extends { id: string; status: string }>(input: {
+  /** The list already shaped by `orderPendingByStake` (pending block first, in stake order). */
+  triaged: readonly T[]
+  /** The card open now. */
+  current: string | null
+  /** The estimator tapped a row, or a door named one — the pick holds. */
+  picked: boolean
+  /** Notes, draft totals and references have loaded, so the order means something. */
+  ready: boolean
+  /** Neither sealed nor unpriced. */
+  workable: (audit: T) => boolean
+}): string | null {
+  const { triaged, current, picked, ready, workable } = input
+  const held = current ? triaged.find((a) => a.id === current) : undefined
+  if (held && picked && workable(held)) return held.id
+  if (!ready) return held && workable(held) ? held.id : null
+  return triaged.find((a) => a.status === 'pending' && workable(a))?.id ?? null
+}

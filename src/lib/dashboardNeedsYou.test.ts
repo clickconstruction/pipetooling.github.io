@@ -433,6 +433,19 @@ describe('buildNeedsYouItems', () => {
     expect(buildNeedsYouItems(inputs({ robotAuditsPending: 120 }))[0]?.figure).toBe('99+')
   })
 
+  it('robot-audits (v2.4230): the questions lead — the fifteen-minute item, said first, one door', () => {
+    const both = buildNeedsYouItems(inputs({ robotAuditsPending: 31, robotQuestionsWaiting: 19 }))
+    expect(both[0]?.title).toBe('19 robot questions (about 15 min) and 31 audits are waiting on you')
+    expect(both[0]?.figure).toBe('19')
+    expect(both[0]?.detail).toMatch(/^Answer the questions first/)
+    expect(both[0]?.actionLabel).toBe('Open Audits')
+    const onlyQuestions = buildNeedsYouItems(inputs({ robotAuditsPending: 0, robotQuestionsWaiting: 1 }))
+    expect(onlyQuestions[0]?.title).toBe('1 robot question (about 1 min) is waiting on you')
+    expect(buildNeedsYouItems(inputs({ robotAuditsEnabled: false, robotQuestionsWaiting: 19 }))).toEqual([])
+    // No questions: the audits wording as before.
+    expect(buildNeedsYouItems(inputs({ robotAuditsPending: 2, robotQuestionsWaiting: 0 }))[0]?.title).toBe('2 robot bids are waiting on your audit')
+  })
+
   it('robot-locked (v2.3126): no sealed shadows (null, [], or disabled) → no item', () => {
     expect(buildNeedsYouItems(inputs({ robotLockedShadows: null }))).toEqual([])
     expect(buildNeedsYouItems(inputs({ robotLockedShadows: [] }))).toEqual([])
