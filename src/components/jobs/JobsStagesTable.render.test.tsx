@@ -221,22 +221,24 @@ describe('JobsStagesTable render smoke', () => {
     expect(setScheduleModalJob).not.toHaveBeenCalled()
   })
 
-  it('v2.4160 · the address ends in the property-kind badge — C, R, or a ? that opens the picker; v2.4212: no linked property but a customer is a ? too, no customer no badge', async () => {
+  it('v2.4160 · the address ends in the property-kind badge — C, R, or a ? that opens the picker; v2.4212: no linked property but a customer is a ? too; v2.4222: a GC counts as the home; neither, no badge', async () => {
     const commercial = makeJob({ id: 'j-c', job_name: 'Take 5- Liberty Hill', job_address: '11730 TX-29\nLiberty Hill, TX', customer_address_id: 'addr-c' })
     const residential = makeJob({ id: 'j-r', job_name: 'Tovi Polk Repairs', job_address: '1141 Lago Vista St\nSan Marcos, TX', customer_address_id: 'addr-r' })
     const unknown = makeJob({ id: 'j-u', job_name: 'Backflow Preventor Valve', job_address: '8507 Culebra Road\nSan Antonio, TX', customer_address_id: 'addr-u' })
     const unlinked = makeJob({ id: 'j-n', job_name: 'Typed Address Job', job_address: '1 Nowhere Ln\nAustin, TX', customer_address_id: null, customer_id: 'cust-n', customer_name: 'Dudley Mason' })
-    const orphan = makeJob({ id: 'j-o', job_name: 'No Customer Job', job_address: '2 Nowhere Ln\nAustin, TX', customer_address_id: null, customer_id: null })
+    const gcOnly = makeJob({ id: 'j-g', job_name: 'GC Job No Owner', job_address: '371 Buffalo Creek\nNew Braunfels, TX', customer_address_id: null, customer_id: null, gc_customer_id: 'gc-1', gcCustomer: { id: 'gc-1', name: 'Limitless Renovations & Design LLC' } })
+    const orphan = makeJob({ id: 'j-o', job_name: 'No Customer Job', job_address: '2 Nowhere Ln\nAustin, TX', customer_address_id: null, customer_id: null, gc_customer_id: null })
     const onPropertyKindSaved = vi.fn()
     renderWithProviders(
       <JobsStagesTable
         {...makeProps({
-          jobList: [commercial, residential, unknown, unlinked, orphan],
+          jobList: [commercial, residential, unknown, unlinked, gcOnly, orphan],
           propertyKindByJobId: new Map([
             ['j-c', 'non_residential'],
             ['j-r', 'residential'],
             ['j-u', ''],
             ['j-n', ''],
+            ['j-g', ''],
           ]),
           onPropertyKindSaved,
         })}
@@ -249,8 +251,13 @@ describe('JobsStagesTable render smoke', () => {
       ['R', 'residential', null],
       ['?', 'unset', null],
       ['?', 'unset', 'true'],
+      ['?', 'unset', 'true'],
     ])
     expect(document.querySelector('tr[data-stages-job-id="j-o"] [data-testid="property-kind-badge"]')).toBeNull()
+    // v2.4222 · no customer but a GC: the GC is the property's home, as on Edit Job.
+    fireEvent.click(badges[4] as HTMLElement)
+    expect(screen.getByRole('dialog', { name: 'What kind of property is 371 Buffalo Creek?' }).textContent).toContain("Not one of Limitless Renovations & Design LLC's saved properties yet")
+    fireEvent.click(badges[4] as HTMLElement)
     // The unlinked ? says what its pick will do.
     fireEvent.click(badges[3] as HTMLElement)
     expect(screen.getByRole('dialog', { name: 'What kind of property is 1 Nowhere Ln?' }).textContent).toContain("Not one of Dudley Mason's saved properties yet")

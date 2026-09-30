@@ -14,7 +14,7 @@ At the end of the address's last line:
 - {{button:blue|R}} — a **residential** property.
 - {{button:red|?}} — nobody has said yet. This is the one that wants you.
 
-Hover any of them for the words. A job whose address was typed on the job rather than linked to one of the customer's saved properties shows the red **?** too: picking an answer saves the address as a property on the customer (or links the job to the saved property it already matches) and the answer lands there. Only a job with no customer at all shows no badge — there is nobody to keep a property on.
+Hover any of them for the words. A job whose address was typed on the job rather than linked to one of the customer's saved properties shows the red **?** too: picking an answer saves the address as a property on the customer (or links the job to the saved property it already matches) and the answer lands there. A GC job with no owner on it keeps the property on the GC, the way Edit Job does. Only a job with neither a customer nor a GC shows no badge — there is nobody to keep a property on.
 
 ## Setting it
 
