@@ -2960,6 +2960,7 @@ export function BidsTakeoffTab({
           {!selectedBidForTakeoff && (
             <BidPickerStandardList
               bids={filteredBidsForTakeoff}
+              searching={takeoffSearchQuery.trim() !== ''}
               prefixMap={ledgerPrefixMap}
               onSelectBid={onSelectBid}
               emptyMessage={takeoffSearchQuery.trim() ? 'No bids match your search.' : null}

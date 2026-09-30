@@ -3439,6 +3439,7 @@ export function BidsPricingTab({
         {!selectedBidForPricing && (
           <BidPickerStandardList
             bids={filteredBidsForPricing}
+            searching={pricingSearchQuery.trim() !== ''}
             prefixMap={ledgerPrefixMap}
             onSelectBid={onSelectBid}
             emptyMessage={pricingSearchQuery.trim() ? 'No bids match your search.' : null}

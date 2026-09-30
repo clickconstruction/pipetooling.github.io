@@ -130,6 +130,7 @@ export function BidChangeOrderTab({ bids, onlyMyBids, setOnlyMyBids, isMyBid, au
           return (
             <BidPickerStandardList
               bids={filtered}
+              searching={changeOrderSearchQuery.trim() !== ''}
               prefixMap={tabLedgerPrefixMap}
               onSelectBid={onSelectBid}
               emptyMessage={

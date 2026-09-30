@@ -66,6 +66,7 @@ export function BidLienReleaseTab({ bids, onlyMyBids, setOnlyMyBids, isMyBid, se
           return (
             <BidPickerStandardList
               bids={filtered}
+              searching={lienReleaseSearchQuery.trim() !== ''}
               prefixMap={tabLedgerPrefixMap}
               onSelectBid={onSelectBid}
               emptyMessage={

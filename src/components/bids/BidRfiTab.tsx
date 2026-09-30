@@ -56,6 +56,7 @@ export function BidRfiTab({ bids, onlyMyBids, setOnlyMyBids, isMyBid, authUser, 
           return (
             <BidPickerStandardList
               bids={filtered}
+              searching={rfiSearchQuery.trim() !== ''}
               prefixMap={tabLedgerPrefixMap}
               onSelectBid={onSelectBid}
               emptyMessage={

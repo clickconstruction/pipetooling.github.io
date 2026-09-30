@@ -1257,6 +1257,7 @@ export function BidsLaborTab({
       {!selectedBidForCostEstimate && (
         <BidPickerStandardList
           bids={costEstimateBidList.map((row) => row as unknown as BidWithBuilder)}
+          searching={costEstimateSearchQuery.trim() !== ''}
           prefixMap={ledgerPrefixMap}
           onSelectBid={onSelectBid}
           emptyMessage={costEstimateSearchQuery.trim() ? 'No bids match your search.' : null}
