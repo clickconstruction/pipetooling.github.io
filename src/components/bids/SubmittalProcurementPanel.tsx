@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties, type FocusEvent, type KeyboardEvent } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
@@ -17,6 +17,7 @@ import {
   procurementCounts,
   procurementHeadline,
   procurementUpdateText,
+  readLogDateEntry,
   shortDate,
   snapshotRows,
 
@@ -66,7 +67,8 @@ const inp: CSSProperties = { padding: '0.2rem 0.35rem', border: '1px solid var(-
 // As narrow as the date it holds: the text plus the browser's calendar button (`.procurement-date` in index.css pulls that button in).
 const dateInp: CSSProperties = { ...inp, width: '6.75rem' }
 
-type Draft = Partial<Record<'po' | 'note' | 'label' | 'lead', string>>
+type DateField = 'ordered_on' | 'expected_on' | 'delivered_on'
+type Draft = Partial<Record<'po' | 'note' | 'label' | 'lead' | DateField, string>>
 
 /**
  * Submittals → Procure (v2.4083): the procurement log. Released reads from the room's
@@ -94,9 +96,19 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
 
   const tagsKey = items.map((i) => i.tag).join('|')
 
+  // The records as last read, for a write queued behind the one that made the row's record.
+  const recordsRef = useRef<ProcurementRecord[]>([])
+  const writeQueue = useRef<Promise<void>>(Promise.resolve())
+  // The date box being typed in (`row key:field`); a change with no key press is a pick from the calendar.
+  const typingIn = useRef<string | null>(null)
+  const applyRecords = useCallback((recs: ProcurementRecord[]) => {
+    recordsRef.current = recs
+    setRecords(recs)
+  }, [])
+
   const reloadRecords = useCallback(async () => {
-    setRecords(await loadProcurementRecords(supabase, bidId))
-  }, [bidId])
+    applyRecords(await loadProcurementRecords(supabase, bidId))
+  }, [bidId, applyRecords])
   const reloadUpdates = useCallback(async () => {
     setUpdates(await loadProcurementUpdates(supabase, bidId))
   }, [bidId])
@@ -107,7 +119,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
     void Promise.all([loadProcurementRecords(supabase, bidId), loadProcurementUpdates(supabase, bidId), loadTagStagesForBid(supabase, bidId, tagsKey ? tagsKey.split('|') : []), loadStageDatesForBid(supabase, bidId)])
       .then(([recs, ups, stages, dates]) => {
         if (cancelled) return
-        setRecords(recs)
+        applyRecords(recs)
         setUpdates(ups)
         setTagStage(stages)
         setStageDates(dates.stageDates)
@@ -122,7 +134,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
     return () => {
       cancelled = true
     }
-  }, [bidId, tagsKey, showToast])
+  }, [bidId, tagsKey, showToast, applyRecords])
 
   // The logo and the room's code, fetched ahead so every print stays inside its click (see procurementSheetAssets.ts).
   useEffect(() => {
@@ -160,31 +172,93 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
     })
   }
 
-  /** One row per tag (or hand row id): insert on first write, update after. */
-  async function write(row: ProcurementRow, patch: Partial<{ ordered_on: string | null; po_ref: string; expected_on: string | null; delivered_on: string | null; note: string; label: string; lead_time_days: number | null; stage: ProcurementStage | null }>) {
-    setSaving(true)
-    try {
-      if (row.recordId) {
-        const { error } = await supabase.from('bid_procurement_items').update(patch).eq('id', row.recordId)
-        if (error) throw error
-      } else {
-        const maxSort = records.reduce((m, r) => Math.max(m, r.sortOrder), -1)
-        const { error } = await supabase.from('bid_procurement_items').insert({ bid_id: bidId, tag: row.tag, sort_order: maxSort + 1, ...patch })
-        if (error) throw error
+  /**
+   * One row per tag (or hand row id): insert on first write, update after. Writes run one at
+   * a time, so the second box filled on a new row updates the record the first one made.
+   */
+  function write(row: ProcurementRow, patch: Partial<{ ordered_on: string | null; po_ref: string; expected_on: string | null; delivered_on: string | null; note: string; label: string; lead_time_days: number | null; stage: ProcurementStage | null }>): Promise<void> {
+    const run = async () => {
+      setSaving(true)
+      try {
+        const recordId = row.recordId ?? (row.tag ? recordsRef.current.find((r) => r.tag === row.tag)?.id ?? null : null)
+        if (recordId) {
+          const { error } = await supabase.from('bid_procurement_items').update(patch).eq('id', recordId)
+          if (error) throw error
+        } else {
+          const maxSort = recordsRef.current.reduce((m, r) => Math.max(m, r.sortOrder), -1)
+          const { error } = await supabase.from('bid_procurement_items').insert({ bid_id: bidId, tag: row.tag, sort_order: maxSort + 1, ...patch })
+          if (error) throw error
+        }
+        await reloadRecords()
+      } catch (e) {
+        showToast(formatErrorMessage(e, 'Could not save the log'), 'error')
+      } finally {
+        setSaving(false)
       }
-      await reloadRecords()
-    } catch (e) {
-      showToast(formatErrorMessage(e, 'Could not save the log'), 'error')
-    } finally {
-      setSaving(false)
     }
+    const next = writeQueue.current.then(run)
+    writeQueue.current = next
+    return next
   }
 
-  function dateChanged(row: ProcurementRow, field: 'ordered_on' | 'expected_on' | 'delivered_on', value: string) {
-    const v = value.trim() ? value.trim() : null
-    const cur = field === 'ordered_on' ? row.orderedOn : field === 'expected_on' ? (row.expectedSource === 'house' ? row.expectedOn : null) : row.deliveredOn
-    if (v === cur) return
-    void write(row, { [field]: v } as Record<string, string | null>)
+  /** What the row's record holds for a date box (Expected shows a derived date the record does not hold). */
+  function storedDate(row: ProcurementRow, field: DateField): string | null {
+    return field === 'ordered_on' ? row.orderedOn : field === 'expected_on' ? (row.expectedSource === 'house' ? row.expectedOn : null) : row.deliveredOn
+  }
+
+  /** An unfinished date is dropped: the box goes back to what is saved, and a line says why. */
+  function dropDate(row: ProcurementRow, field: DateField) {
+    clearDraft(row.key, field)
+    showToast(`That date was not finished, so it was not saved. Type the year in full, like ${new Date().getFullYear()}.`, 'info')
+  }
+
+  /** Saves a finished date, or null for an emptied box; a half-typed year is dropped. */
+  function saveDate(row: ProcurementRow, field: DateField, raw: string) {
+    const entry = readLogDateEntry(raw, storedDate(row, field))
+    if (entry.kind === 'unfinished') return dropDate(row, field)
+    clearDraft(row.key, field)
+    if (entry.kind === 'save') void write(row, { [field]: entry.value } as Record<string, string | null>)
+  }
+
+  /**
+   * v2.4239 · a date box saves a finished date only. The browser reports a date on every key
+   * that completes one ("2026" arrives as 0002, 0020, 0202, 2026), so a typed date waits in
+   * the draft until the box is left or Enter is pressed. A pick from the calendar saves at once.
+   */
+  function dateChanged(row: ProcurementRow, field: DateField, value: string) {
+    const typed = typingIn.current === `${row.key}:${field}`
+    if (typed || readLogDateEntry(value, storedDate(row, field)).kind === 'unfinished') setDraft(row.key, field, value)
+    else saveDate(row, field, value)
+  }
+
+  /** Leaving a date box, or Enter in it: the draft saves if it is a finished date. */
+  function commitDate(row: ProcurementRow, field: DateField) {
+    const raw = drafts[row.key]?.[field]
+    if (raw != null) saveDate(row, field, raw)
+  }
+
+  /** The handlers the three date boxes share. */
+  function dateBox(row: ProcurementRow, field: DateField, shown: string | null) {
+    const box = `${row.key}:${field}`
+    return {
+      value: draftOf(row.key, field, shown ?? ''),
+      onChange: (e: ChangeEvent<HTMLInputElement>) => dateChanged(row, field, e.target.value),
+      onKeyDown: (e: KeyboardEvent<HTMLInputElement>) => {
+        typingIn.current = box
+        if (e.key === 'Enter' && !e.currentTarget.validity.badInput) commitDate(row, field)
+      },
+      onPointerDown: () => {
+        typingIn.current = null
+      },
+      onBlur: (e: FocusEvent<HTMLInputElement>) => {
+        typingIn.current = null
+        if (e.currentTarget.validity.badInput) {
+          // Left with a part missing (09/30/yyyy): the browser reports that as no date. Wipe the box so it shows what is saved.
+          e.currentTarget.value = ''
+          dropDate(row, field)
+        } else commitDate(row, field)
+      },
+    }
   }
 
   async function commitText(row: ProcurementRow, field: 'po' | 'note' | 'label' | 'lead') {
@@ -386,7 +460,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
                   </td>
                   <td style={{ ...td, whiteSpace: 'nowrap' }}><span style={{ color: r.submittal === 'approved' ? 'var(--text-green-700)' : r.submittal === 'revise' || r.submittal === 'rejected' ? 'var(--text-amber-700)' : 'var(--text-muted)' }}>{submittalWord(r)}</span></td>
                   <td style={{ ...td, whiteSpace: 'nowrap' }}>{r.releasedOn ? shortDate(r.releasedOn) : <span style={smallMuted}>—</span>}</td>
-                  <td style={td}><input type="date" className="procurement-date" aria-label={`${r.tag ?? r.product} ordered on`} value={r.orderedOn ?? ''} onChange={(e) => dateChanged(r, 'ordered_on', e.target.value)} disabled={disabled} style={dateInp} /></td>
+                  <td style={td}><input type="date" className="procurement-date" aria-label={`${r.tag ?? r.product} ordered on`} {...dateBox(r, 'ordered_on', r.orderedOn)} disabled={busy} style={dateInp} /></td>
                   <td style={td}><input type="text" aria-label={`${r.tag ?? r.product} PO`} placeholder="PO" value={draftOf(r.key, 'po', r.poRef)} onChange={(e) => setDraft(r.key, 'po', e.target.value)} onBlur={() => void commitText(r, 'po')} maxLength={60} style={{ ...inp, width: '5.2rem' }} /></td>
                   <td style={{ ...td, whiteSpace: 'nowrap' }}>
                     {r.isHand ? (
@@ -401,16 +475,15 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
                       className="procurement-date"
                       aria-label={`${r.tag ?? r.product} expected on`}
                       title={r.expectedSource === 'derived' ? `${shortDate(r.orderedOn)} + ${describeLeadTime(r.leadTimeDays)}; type the house's own date to override` : r.expectedSource === 'house' ? "The house's date; clear it to go back to ordered + lead time" : 'Order date + lead time, or the house’s own date'}
-                      value={r.expectedOn ?? ''}
-                      onChange={(e) => dateChanged(r, 'expected_on', e.target.value)}
-                      disabled={disabled || !!r.deliveredOn}
+                      {...dateBox(r, 'expected_on', r.expectedOn)}
+                      disabled={busy || !!r.deliveredOn}
                       style={{ ...dateInp, background: r.expectedSource === 'house' ? 'var(--bg-amber-100)' : r.expectedSource === 'derived' ? 'var(--bg-muted)' : 'var(--surface)' }}
                     />
                     {r.expectedSource === 'house' ? <div style={smallMuted}>house said</div> : null}
                   </td>
                   <td style={{ ...td, whiteSpace: 'nowrap' }}>{r.requiredOn ? shortDate(r.requiredOn) : <span style={smallMuted}>—</span>}</td>
                   <td style={{ ...td, whiteSpace: 'nowrap', fontWeight: late ? 700 : 500, color: late ? 'var(--text-red-700)' : r.deliveredOn ? 'var(--text-green-700)' : r.floatDays != null ? 'var(--text-green-700)' : 'var(--text-muted)' }} data-testid="procurement-float">{floatText(r)}</td>
-                  <td style={td}><input type="date" className="procurement-date" aria-label={`${r.tag ?? r.product} delivered on`} value={r.deliveredOn ?? ''} onChange={(e) => dateChanged(r, 'delivered_on', e.target.value)} disabled={disabled} style={dateInp} /></td>
+                  <td style={td}><input type="date" className="procurement-date" aria-label={`${r.tag ?? r.product} delivered on`} {...dateBox(r, 'delivered_on', r.deliveredOn)} disabled={busy} style={dateInp} /></td>
                   <td style={{ ...td, minWidth: 160 }}><input type="text" aria-label={`${r.tag ?? r.product} note`} placeholder="note for the GC" value={draftOf(r.key, 'note', r.note)} onChange={(e) => setDraft(r.key, 'note', e.target.value)} onBlur={() => void commitText(r, 'note')} maxLength={500} style={{ ...inp, width: '100%' }} /></td>
                   <td style={{ ...td, whiteSpace: 'nowrap' }}>{r.isHand ? <button type="button" onClick={() => void removeHandRow(r)} disabled={disabled} title="Remove this item" aria-label={`Remove ${r.product || 'item'}`} style={{ ...link, color: 'var(--text-red-600)', textDecoration: 'none', fontSize: '0.95rem' }}>×</button> : null}</td>
                 </tr>
