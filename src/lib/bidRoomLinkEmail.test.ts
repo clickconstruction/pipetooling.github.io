@@ -8,6 +8,7 @@ import {
 
 const payload: BidRoomLinkEmailInput['payload'] = {
   v: 1,
+  add_ons: [],
   project_name: 'ZZ Test <Studio>',
   project_address: '2530 Hunter Rd, San Marcos, TX 78666',
   gc_name: 'Knight Contracting',

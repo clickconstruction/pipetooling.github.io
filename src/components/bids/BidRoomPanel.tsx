@@ -17,6 +17,7 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import {
   buildBidRoomRevisionPayload,
   newBidRoomToken,
+  type RoomAddOnInput,
   type RoomSectionInput,
 } from '../../lib/bids/bidRoomPayload'
 import { extractContactFromCustomer } from '../../lib/customerContactDisplay'
@@ -41,6 +42,8 @@ export type BidRoomPanelProps = {
   projectAddress: string
   serviceTypeName: string
   sections: RoomSectionInput[]
+  /** v2.4197: the with-and-without alternates the letter offers, tickable in the room beside any option. */
+  addOns?: RoomAddOnInput[]
   inclusions: string
   exclusions: string
   terms: string
@@ -174,6 +177,7 @@ export function BidRoomPanel(props: BidRoomPanelProps) {
       gcName: props.gcName,
       serviceTypeName: props.serviceTypeName,
       sections: props.sections,
+      addOns: props.addOns ?? [],
       inclusions: props.inclusions,
       exclusions: props.exclusions,
       terms: props.terms,

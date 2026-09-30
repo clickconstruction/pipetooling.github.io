@@ -23,6 +23,24 @@ export type RoomOption = {
   fixture_rows: RoomFixtureRow[]
 }
 
+/**
+ * A with-and-without alternate offered as an ADD-ON (v2.4197): a count-row group the customer can
+ * tick beside whichever option they choose — never instead of it. `tag` is the group's name on
+ * the bid (`bids.alternate_group_tags`); a signature writes the taken tags to
+ * `bids.accepted_alternate_tags`.
+ */
+export type RoomAddOn = {
+  /** `group:<normalized tag>` — the letter's key for the alternate. */
+  key: string
+  /** Customer-facing name, the letter's label ("Alternate 1 — Break room"). */
+  name: string
+  tag: string
+  total_cents: number
+  fixture_rows: RoomFixtureRow[]
+}
+
+export type RoomAddOnInput = { tag: string; label: string; revenueSum: number; fixtureRows: RoomFixtureRow[] }
+
 export type BidRoomRevisionPayloadV1 = {
   v: 1
   project_name: string
@@ -30,6 +48,8 @@ export type BidRoomRevisionPayloadV1 = {
   gc_name: string
   service_type_name: string
   options: RoomOption[]
+  /** v2.4197: the with-and-without alternates, tickable beside any option; absent on older revisions. */
+  add_ons: RoomAddOn[]
   /** Inclusions / exclusions / terms, as the letter carries them (plain text blocks). */
   inclusions: string
   exclusions: string
@@ -71,6 +91,8 @@ export function buildBidRoomRevisionPayload(input: {
   inclusions: string
   exclusions: string
   terms: string
+  /** v2.4197: the offered with-and-without alternates (unpriced ones are left off, like sections). */
+  addOns?: RoomAddOnInput[]
 }): BidRoomRevisionPayloadV1 | null {
   const priced = input.sections.filter((s) => s.revenueSum > 0)
   const base = priced.filter((s) => !s.isAlternate)
@@ -94,6 +116,15 @@ export function buildBidRoomRevisionPayload(input: {
       fixture_rows: s.fixtureRows,
     })),
   ]
+  const add_ons: RoomAddOn[] = (input.addOns ?? [])
+    .filter((a) => a.revenueSum > 0 && a.tag.trim())
+    .map((a) => ({
+      key: 'group:' + a.tag.trim().toLowerCase(),
+      name: a.label.trim() || a.tag.trim(),
+      tag: a.tag.trim(),
+      total_cents: centsFromDollars(a.revenueSum),
+      fixture_rows: a.fixtureRows,
+    }))
   return {
     v: 1,
     project_name: input.projectName.trim(),
@@ -101,6 +132,7 @@ export function buildBidRoomRevisionPayload(input: {
     gc_name: input.gcName.trim(),
     service_type_name: input.serviceTypeName.trim(),
     options,
+    add_ons,
     inclusions: input.inclusions.trim(),
     exclusions: input.exclusions.trim(),
     terms: input.terms.trim(),
@@ -136,6 +168,30 @@ export function parseBidRoomRevisionPayload(raw: unknown): BidRoomRevisionPayloa
     })
   }
   if (options.length === 0 || !options.some((opt) => opt.is_base)) return null
+  const add_ons: RoomAddOn[] = []
+  if (Array.isArray(o.add_ons)) {
+    for (const x of o.add_ons) {
+      if (!x || typeof x !== 'object') continue
+      const a = x as Record<string, unknown>
+      const key = typeof a.key === 'string' ? a.key.trim() : ''
+      if (!key || add_ons.some((p) => p.key === key)) continue
+      const total = Number(a.total_cents)
+      add_ons.push({
+        key,
+        name: typeof a.name === 'string' ? a.name : '',
+        tag: typeof a.tag === 'string' ? a.tag : '',
+        total_cents: Number.isFinite(total) ? Math.round(total) : 0,
+        fixture_rows: Array.isArray(a.fixture_rows)
+          ? a.fixture_rows
+              .filter((r): r is Record<string, unknown> => !!r && typeof r === 'object')
+              .map((r) => ({
+                fixture: typeof r.fixture === 'string' ? r.fixture : '',
+                count: typeof r.count === 'number' || typeof r.count === 'string' ? r.count : '',
+              }))
+          : [],
+      })
+    }
+  }
   const str = (k: string) => (typeof o[k] === 'string' ? (o[k] as string) : '')
   return {
     v: 1,
@@ -144,11 +200,17 @@ export function parseBidRoomRevisionPayload(raw: unknown): BidRoomRevisionPayloa
     gc_name: str('gc_name'),
     service_type_name: str('service_type_name'),
     options,
+    add_ons,
     inclusions: str('inclusions'),
     exclusions: str('exclusions'),
     terms: str('terms'),
     header_brand: o.header_brand === 'plum' || o.header_brand === 'elec' ? (o.header_brand as string) : null,
   }
+}
+
+/** What the customer signs for: the chosen option plus every add-on they ticked (v2.4197). */
+export function roomGrandTotalCents(option: Pick<RoomOption, 'total_cents'>, addOns: ReadonlyArray<Pick<RoomAddOn, 'total_cents'>>): number {
+  return option.total_cents + addOns.reduce((s, a) => s + a.total_cents, 0)
 }
 
 /** The option the room pre-selects. */

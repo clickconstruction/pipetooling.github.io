@@ -14,6 +14,14 @@ export type SharedRoomOption = {
   fixture_rows: SharedRoomFixtureRow[]
 }
 
+export type SharedRoomAddOn = {
+  key: string
+  name: string
+  tag: string
+  total_cents: number
+  fixture_rows: SharedRoomFixtureRow[]
+}
+
 export type SharedBidRoomPayload = {
   v: 1
   project_name: string
@@ -21,6 +29,8 @@ export type SharedBidRoomPayload = {
   gc_name: string
   service_type_name: string
   options: SharedRoomOption[]
+  /** v2.4197: the with-and-without alternates, tickable beside any option; [] on older revisions. */
+  add_ons: SharedRoomAddOn[]
   inclusions: string
   exclusions: string
   terms: string
@@ -54,6 +64,30 @@ export function parseSharedBidRoomPayload(raw: unknown): SharedBidRoomPayload | 
     })
   }
   if (options.length === 0 || !options.some((opt) => opt.is_base)) return null
+  const add_ons: SharedRoomAddOn[] = []
+  if (Array.isArray(o.add_ons)) {
+    for (const x of o.add_ons) {
+      if (!x || typeof x !== 'object') continue
+      const a = x as Record<string, unknown>
+      const key = typeof a.key === 'string' ? a.key.trim() : ''
+      if (!key || add_ons.some((p) => p.key === key)) continue
+      const total = Number(a.total_cents)
+      add_ons.push({
+        key,
+        name: typeof a.name === 'string' ? a.name : '',
+        tag: typeof a.tag === 'string' ? a.tag : '',
+        total_cents: Number.isFinite(total) ? Math.round(total) : 0,
+        fixture_rows: Array.isArray(a.fixture_rows)
+          ? a.fixture_rows
+              .filter((r): r is Record<string, unknown> => !!r && typeof r === 'object')
+              .map((r) => ({
+                fixture: typeof r.fixture === 'string' ? r.fixture : '',
+                count: typeof r.count === 'number' || typeof r.count === 'string' ? r.count : '',
+              }))
+          : [],
+      })
+    }
+  }
   const str = (k: string) => (typeof o[k] === 'string' ? (o[k] as string) : '')
   return {
     v: 1,
@@ -62,6 +96,7 @@ export function parseSharedBidRoomPayload(raw: unknown): SharedBidRoomPayload | 
     gc_name: str('gc_name'),
     service_type_name: str('service_type_name'),
     options,
+    add_ons,
     inclusions: str('inclusions'),
     exclusions: str('exclusions'),
     terms: str('terms'),

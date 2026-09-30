@@ -8,6 +8,7 @@ import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 
 export const BID_ROOM_LINK_EMAIL_SAMPLE_PAYLOAD: BidRoomRevisionPayloadV1 = {
   v: 1,
+  add_ons: [],
   project_name: 'Hunter Road Sound Studio',
   project_address: '2530 Hunter Rd, San Marcos, TX 78666',
   gc_name: 'Knight Contracting',

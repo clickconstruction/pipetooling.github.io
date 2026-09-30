@@ -1147,6 +1147,8 @@ export function BidsCoverLetterTab({
         const customAmountNum = customAmountStr ? parseFloat(customAmountStr) : NaN
         const effectiveRevenue = useCustomAmount && !isNaN(customAmountNum) && customAmountNum >= 0 ? customAmountNum : coverLetterRevenue
         const addAltsBlock = (editable: boolean, base: number = effectiveRevenue) => buildAddAlternatesBlock(offeredAdd, base, altTexts, formatCurrency, editable)
+        // v2.4197: the room offers the same alternates as add-ons beside its options, under the letter's labels.
+        const roomAddOns = offeredAdd.map((g, i) => ({ tag: g.label, label: altTexts.sections?.[g.key]?.label?.trim() || `Alternate ${i + 1} — ${g.label}`, revenueSum: g.revenueSum, fixtureRows: g.fixtureRows }))
         const altChipStyle: React.CSSProperties = { fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.06em', padding: '0 0.3rem', borderRadius: 3, border: '1px solid var(--text-amber-700)', color: 'var(--text-amber-700)', marginLeft: '0.3rem', verticalAlign: '1px' }
         const addAltRows = addAltSplit && addAltSplit.alternates.length > 0 ? (
           <div data-testid="cover-letter-add-alternates" style={{ display: 'grid', gap: '0.25rem', margin: '0.35rem 0 0.5rem' }}>
@@ -1576,6 +1578,7 @@ export function BidsCoverLetterTab({
                                     ? bundlePricings.map((s) => ({ name: s.name, isAlternate: s.isAlternate, revenueSum: s.revenueSum, fixtureRows: s.fixtureRows }))
                                     : [{ name: 'Base bid', isAlternate: false, revenueSum: headlineAmount, fixtureRows }]
                                 }
+                                addOns={roomAddOns}
                                 inclusions={inclusions}
                                 exclusions={roomExclusions}
                                 terms={roomTerms}
@@ -1712,6 +1715,7 @@ export function BidsCoverLetterTab({
                                 projectAddress={projectAddressVal}
                                 serviceTypeName={serviceTypeName}
                                 sections={gcSections.map((s) => ({ name: s.name, isAlternate: s.isAlternate, revenueSum: s.revenueSum, fixtureRows: s.fixtureRows }))}
+                                addOns={roomAddOns}
                                 inclusions={inclusions}
                                 exclusions={roomExclusions}
                                 terms={roomTerms}
