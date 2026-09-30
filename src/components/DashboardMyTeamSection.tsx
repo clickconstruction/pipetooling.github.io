@@ -1,7 +1,11 @@
 import { Fragment, useCallback, useMemo, useState } from 'react'
 import { PersonNameDoor } from './personDesk/PersonNameDoor'
 import { Link } from 'react-router-dom'
-import { approveClockSessions } from '../lib/approveClockSessions'
+import { approveClockSessions, heldFromApproveResult } from '../lib/approveClockSessions'
+import { describeHeld, splitForApproveAll, typedStampsVersion } from '../lib/clock/typedHours'
+import { useTypedStamps } from '../hooks/useTypedStamps'
+import { TypedHoldNote, TypedHoursStamp } from './clock/TypedHoursStamp'
+import { useToastContext } from '../contexts/ToastContext'
 import {
   formatHoursShort,
   formatTeamWeekLabel,
@@ -98,6 +102,7 @@ export default function DashboardMyTeamSection({
   } = myTeam
   const prefixMap = useLedgerPrefixMap()
   const confirmDialog = useConfirmDialog()
+  const { showToast } = useToastContext()
 
   /** v2.2076: the exact Start/End inputs hide behind the week-pager label. */
   const [datePickersOpen, setDatePickersOpen] = useState(false)
@@ -133,6 +138,28 @@ export default function DashboardMyTeamSection({
         (s) => s.clocked_out_at != null && fullDetailUserIdSet.has(s.user_id),
       ),
     [pendingSessions, fullDetailUserIdSet],
+  )
+
+  // Typed hours (v2.4247): each row's stamp, and the part of the list one press may approve.
+  const pendingApprovalIds = useMemo(() => pendingApprovalClockSessions.map((s) => s.id), [pendingApprovalClockSessions])
+  const pendingApprovalVersion = useMemo(() => typedStampsVersion(pendingApprovalClockSessions), [pendingApprovalClockSessions])
+  const { stamps: typedStamps, reload: reloadTypedStamps } = useTypedStamps(pendingApprovalIds, pendingApprovalVersion)
+  const approveAll = useMemo(() => splitForApproveAll(pendingApprovalIds, typedStamps), [pendingApprovalIds, typedStamps])
+  const approveAllRollup = useMemo(() => {
+    const take = new Set(approveAll.punchIds)
+    return pendingRollup(pendingApprovalClockSessions.filter((s) => take.has(s.id)).map(sessionDecimalHours))
+  }, [approveAll, pendingApprovalClockSessions])
+  const approveAllSetAside = approveAll.typedIds.length + approveAll.heldIds.length > 0
+  const approveAllLabel = `all ${approveAll.punchIds.length}${approveAllSetAside ? ' punches' : ''}`
+  /** After an approve: say what it left for someone else, and re-read the stamps. */
+  const sayHeld = useCallback(
+    (data: Parameters<typeof heldFromApproveResult>[0]) => {
+      const { heldOwn, heldTyped } = heldFromApproveResult(data)
+      const held = describeHeld(heldOwn, heldTyped)
+      if (held) showToast(held, 'warning')
+      reloadTypedStamps()
+    },
+    [showToast, reloadTypedStamps],
   )
 
   if (!authUserId || loadingMeta) {
@@ -329,30 +356,29 @@ export default function DashboardMyTeamSection({
                       </p>
                     ) : (
                       <>
-                        {rollup.count > 1 && (
+                        {/* Typed hours (v2.4247): Approve all takes the punches; a typed row is opened one at a time. */}
+                        {approveAll.punchIds.length > 1 && (
                           <button
                             type="button"
                             onClick={async () => {
                               if (
                                 !(await confirmDialog({
-                                  message: `Approve all ${rollup.count} sessions — ${formatHoursShort(rollup.totalHours)} total?`,
+                                  message: `Approve ${approveAllLabel}${approveAllSetAside ? '' : ' sessions'} — ${formatHoursShort(approveAllRollup.totalHours)} total?`,
                                   confirmLabel: 'Approve all',
                                 }))
                               )
                                 return
-                              const { data, error: rpcErr } = await approveClockSessions(
-                                pendingApprovalClockSessions.map((s) => s.id),
-                              )
+                              const { data, error: rpcErr } = await approveClockSessions(approveAll.punchIds)
                               if (rpcErr) {
                                 setError(rpcErr.message)
                                 return
                               }
-                              const rows = (data ?? []) as Array<{ approved_count: number; error_message: string | null }>
-                              const firstErr = rows.find((r) => r.error_message)?.error_message
+                              const firstErr = (data ?? []).find((r) => r.error_message)?.error_message
                               if (firstErr) {
                                 setError(firstErr)
                                 return
                               }
+                              sayHeld(data)
                               await refreshPendingAfterAction()
                             }}
                             style={{
@@ -368,9 +394,21 @@ export default function DashboardMyTeamSection({
                               cursor: 'pointer',
                             }}
                           >
-                            Approve all {rollup.count} · {formatHoursShort(rollup.totalHours)}
+                            Approve {approveAllLabel} · {formatHoursShort(approveAllRollup.totalHours)}
                           </button>
                         )}
+                        {approveAll.typedIds.length > 0 || approveAll.heldIds.length > 0 ? (
+                          <p data-testid="my-team-set-aside" style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: '0.5rem 0 0' }}>
+                            {[
+                              approveAll.typedIds.length > 0
+                                ? `${approveAll.typedIds.length} typed by hand — approve ${approveAll.typedIds.length === 1 ? 'it' : 'each one'} below`
+                                : null,
+                              approveAll.heldIds.length > 0 ? `${approveAll.heldIds.length} waiting on someone else` : null,
+                            ]
+                              .filter(Boolean)
+                              .join(' · ')}
+                          </p>
+                        ) : null}
                         {pendingApprovalClockSessions.map((s) => {
                           const hrs = sessionDecimalHours(s)
                           const long = isLongSession(hrs)
@@ -383,6 +421,7 @@ export default function DashboardMyTeamSection({
                             .toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric' })
                             .replace(',', '')
                           const jobLabel = formatClockSessionJobOrBidLabel(s, prefixMap)
+                          const typedStamp = typedStamps.get(s.id)
                           return (
                             <div key={s.id} style={{ borderTop: '1px solid var(--border)', marginTop: '0.75rem', paddingTop: '0.75rem' }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -432,7 +471,11 @@ export default function DashboardMyTeamSection({
                                   "{s.notes.trim()}"
                                 </div>
                               ) : null}
-                              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.6rem' }}>
+                              <TypedHoursStamp stamp={typedStamp} size="full" workDate={s.work_date} style={{ marginTop: 6 }} />
+                              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.6rem', alignItems: 'center' }}>
+                                {typedStamp?.hold ? (
+                                  <TypedHoldNote hold={typedStamp.hold} style={{ flex: 1.4, borderRadius: 8, padding: '0.35rem 0.6rem', fontSize: '0.8125rem' }} />
+                                ) : (
                                 <button
                                   type="button"
                                   onClick={async () => {
@@ -441,12 +484,12 @@ export default function DashboardMyTeamSection({
                                       setError(rpcErr.message)
                                       return
                                     }
-                                    const result = (data ?? []) as Array<{ approved_count: number; error_message: string | null }>
-                                    const row = result[0]
+                                    const row = data?.[0]
                                     if (row?.error_message) {
                                       setError(row.error_message)
                                       return
                                     }
+                                    sayHeld(data)
                                     await refreshPendingAfterAction()
                                   }}
                                   style={{
@@ -463,6 +506,7 @@ export default function DashboardMyTeamSection({
                                 >
                                   Approve {formatHoursShort(hrs)}
                                 </button>
+                                )}
                                 <button
                                   type="button"
                                   onClick={async () => {

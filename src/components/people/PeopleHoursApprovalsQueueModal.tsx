@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { PersonNameDoor } from '../personDesk/PersonNameDoor'
 import { AssignSessionJobPopover } from '../clock-sessions'
-import { approveClockSessions } from '../../lib/approveClockSessions'
+import { approveClockSessions, heldFromApproveResult } from '../../lib/approveClockSessions'
+import { describeHeld, isTypedByHand, splitForApproveAll, typedStampsVersion } from '../../lib/clock/typedHours'
+import { useTypedStamps } from '../../hooks/useTypedStamps'
+import { TypedHoldNote, TypedHoursStamp } from '../clock/TypedHoursStamp'
 import { recordHoursApproved, type HoursApprovedSurface } from '../../lib/hoursApprovedTelemetry'
 import { sessionApprovalChips } from '../../lib/people/approvalsSessionChips'
 import type { SalariedPayConfigFlags } from '../../lib/salariedEffectiveHours'
@@ -106,6 +109,8 @@ export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSessi
   const [loadError, setLoadError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [flaggedOnly, setFlaggedOnly] = useState(false)
+  /** v2.4247: only the sessions someone typed hours onto — the ones that want a second person. */
+  const [typedOnly, setTypedOnly] = useState(false)
   const [collapsedPeople, setCollapsedPeople] = useState<Set<string>>(() => new Set())
   const [openWeeks, setOpenWeeks] = useState<Set<string>>(() => new Set())
 
@@ -144,22 +149,53 @@ export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSessi
 
   const todayYmd = denverCalendarDayKey(Date.now())
   const fullQueue = useMemo(() => buildApprovalsQueue(rows ?? [], { todayYmd }), [rows, todayYmd])
+  // Typed hours (v2.4247): the stamp on each row, and which rows an "Approve …" button may take.
+  const allIds = useMemo(() => (rows ?? []).map((r) => r.id), [rows])
+  const stampsVersion = useMemo(() => typedStampsVersion(rows ?? []), [rows])
+  const { stamps, reload: reloadStamps } = useTypedStamps(allIds, stampsVersion)
+  const typedCount = useMemo(() => allIds.filter((id) => isTypedByHand(stamps.get(id))).length, [allIds, stamps])
+  const hoursById = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const r of rows ?? []) {
+      m.set(r.id, r.clocked_out_at ? (new Date(r.clocked_out_at).getTime() - new Date(r.clocked_in_at).getTime()) / 3_600_000 : 0)
+    }
+    return m
+  }, [rows])
+  /** The part of a batch one press may approve: the punches. Typed and held rows are set aside. */
+  const batchOf = useCallback(
+    (ids: readonly string[]) => {
+      const split = splitForApproveAll(ids, stamps)
+      const hours = split.punchIds.reduce((sum, id) => sum + (hoursById.get(id) ?? 0), 0)
+      return { ids: split.punchIds, hours, setAside: split.typedIds.length + split.heldIds.length }
+    },
+    [stamps, hoursById],
+  )
+
   const queue = useMemo(() => {
-    if (!flaggedOnly) return fullQueue
-    const flaggedIds = new Set<string>()
-    for (const p of fullQueue.people) for (const w of p.weeks) for (const s of w.sessions) if (s.flagged) flaggedIds.add(s.id)
-    return buildApprovalsQueue((rows ?? []).filter((r) => flaggedIds.has(r.id)), { todayYmd })
-  }, [flaggedOnly, fullQueue, rows, todayYmd])
+    if (!flaggedOnly && !typedOnly) return fullQueue
+    const keep = new Set<string>()
+    for (const p of fullQueue.people) {
+      for (const w of p.weeks) {
+        for (const s of w.sessions) {
+          if (flaggedOnly && !s.flagged) continue
+          if (typedOnly && !isTypedByHand(stamps.get(s.id))) continue
+          keep.add(s.id)
+        }
+      }
+    }
+    return buildApprovalsQueue((rows ?? []).filter((r) => keep.has(r.id)), { todayYmd })
+  }, [flaggedOnly, typedOnly, fullQueue, rows, todayYmd, stamps])
 
   const removeLocally = useCallback((ids: string[]) => {
     setRows((prev) => (prev ? withoutSessionIds(prev, ids) : prev))
   }, [])
 
-  async function approve(ids: string[], what: string, hours: number, confirmBulk: boolean): Promise<void> {
+  async function approve(ids: string[], what: string, hours: number, confirmBulk: boolean, setAside = 0): Promise<void> {
     if (busy || ids.length === 0) return
     if (confirmBulk) {
+      const aside = setAside > 0 ? ` ${setAside} typed by hand or held ${setAside === 1 ? 'is' : 'are'} left out — those are approved one at a time.` : ''
       const ok = await confirmDialog({
-        message: `Approve ${ids.length} session${ids.length === 1 ? '' : 's'} · ${formatHoursShort(hours)} for ${what}? This adds the hours to payroll.`,
+        message: `Approve ${ids.length} session${ids.length === 1 ? '' : 's'} · ${formatHoursShort(hours)} for ${what}? This adds the hours to payroll.${aside}`,
         confirmLabel: `Approve ${ids.length}`,
       })
       if (!ok) return
@@ -171,18 +207,22 @@ export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSessi
       showToast(error.message, 'error')
       return
     }
-    const row = ((data ?? []) as Array<{ approved_count: number; error_message: string | null }>)[0]
+    const row = data?.[0]
     if (row?.error_message) {
       showToast(row.error_message, 'error')
       return
     }
     const approved = row?.approved_count ?? ids.length
-    recordHoursApproved(authUserId ?? authUser?.id, role, surface, approved)
-    const outcome = describeApproveOutcome(ids.length, approved)
-    showToast(outcome.message, outcome.variant)
+    // Held sessions (the approver typed them, or they are the approver's own) are not "skipped".
+    const { heldOwn, heldTyped } = heldFromApproveResult(data)
+    const held = describeHeld(heldOwn, heldTyped)
+    if (approved > 0) recordHoursApproved(authUserId ?? authUser?.id, role, surface, approved)
+    const outcome = describeApproveOutcome(Math.max(0, ids.length - heldOwn - heldTyped), approved)
+    showToast(held ? `${outcome.message}${outcome.message.endsWith('.') ? '' : '.'} ${held}` : outcome.message, held ? 'warning' : outcome.variant)
     if (approved > 0) onApproved?.(approved)
     if (approved >= ids.length) removeLocally(ids)
     else await load()
+    reloadStamps()
     onChanged()
   }
 
@@ -225,6 +265,12 @@ export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSessi
   /** v2.2822: every week of every person open at once, or everything folded. */
   const allWeekKeys = useMemo(() => queue.people.flatMap((p) => p.weeks.map((w) => `${p.userId}|${w.weekStart}`)), [queue])
   const allOpen = allWeekKeys.length > 0 && collapsedPeople.size === 0 && allWeekKeys.every((k) => openWeeks.has(k))
+  // The typed-by-hand list is short and each row wants a look: open it all the way.
+  useEffect(() => {
+    if (!typedOnly) return
+    setCollapsedPeople(new Set())
+    setOpenWeeks(new Set(allWeekKeys))
+  }, [typedOnly, allWeekKeys])
   function expandAll() {
     setCollapsedPeople(new Set())
     setOpenWeeks(new Set(allWeekKeys))
@@ -244,6 +290,7 @@ export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSessi
   }
 
   const loading = rows == null
+  const everything = batchOf(queue.sessionIds)
   const capped = (rows?.length ?? 0) >= PENDING_APPROVALS_FETCH_CAP
 
   function renderSession(s: ApprovalsQueueSession<ClockSessionRow>) {
@@ -252,6 +299,7 @@ export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSessi
     const outMs = r.clocked_out_at ? new Date(r.clocked_out_at).getTime() : inMs
     const jobLabel = shortJobOrBidLabelFromEmbeds(r, prefixMap)
     const note = (r.notes ?? '').trim()
+    const stamp = stamps.get(s.id)
     return (
       <div
         key={s.id}
@@ -318,11 +366,16 @@ export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSessi
               “{note}”
             </span>
           ) : null}
+          <TypedHoursStamp stamp={stamp} size="full" workDate={r.work_date} style={{ flexBasis: '100%' }} />
         </div>
-        <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'nowrap' }}>
-          <button type="button" style={BTN_APPROVE} disabled={busy} onClick={() => void approve([s.id], s.row.users?.name?.trim() || 'this person', s.hours, false)}>
-            Approve
-          </button>
+        <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'nowrap', alignItems: 'center' }}>
+          {stamp?.hold ? (
+            <TypedHoldNote hold={stamp.hold} style={{ maxWidth: '13rem' }} />
+          ) : (
+            <button type="button" style={BTN_APPROVE} disabled={busy} onClick={() => void approve([s.id], s.row.users?.name?.trim() || 'this person', s.hours, false)}>
+              Approve
+            </button>
+          )}
           <button type="button" style={BTN_REJECT} disabled={busy} onClick={() => void reject(r)}>
             Reject
           </button>
@@ -338,6 +391,7 @@ export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSessi
     const key = `${p.userId}|${w.weekStart}`
     const open = openWeeks.has(key)
     const flagText = formatFlagCounts(w.flagCounts)
+    const batch = batchOf(w.sessionIds)
     return (
       <div key={key} style={{ borderTop: '1px solid var(--border)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.4rem 0.6rem', flexWrap: 'wrap' }}>
@@ -370,10 +424,12 @@ export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSessi
           <button
             type="button"
             style={BTN_APPROVE}
-            disabled={busy || w.count === 0}
-            onClick={() => void approve(w.sessionIds, `${p.name} · week of ${w.label}`, w.hours, true)}
+            disabled={busy || batch.ids.length === 0}
+            title={batch.setAside > 0 ? `${batch.setAside} typed by hand or held — approved one at a time, not by this button` : undefined}
+            onClick={() => void approve(batch.ids, `${p.name} · week of ${w.label}`, batch.hours, true, batch.setAside)}
           >
-            Approve week · {w.count}
+            Approve week · {batch.ids.length}
+            {batch.setAside > 0 ? ` of ${w.count}` : ''}
           </button>
         </div>
         {open ? w.sessions.map(renderSession) : null}
@@ -383,6 +439,7 @@ export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSessi
 
   function renderPerson(p: ApprovalsQueuePerson<ClockSessionRow>) {
     const collapsed = collapsedPeople.has(p.userId)
+    const batch = batchOf(p.sessionIds)
     return (
       <section key={p.userId} style={{ flexShrink: 0, border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', background: 'var(--surface)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem 0.75rem', padding: '0.5rem 0.6rem', background: 'var(--bg-subtle)', flexWrap: 'wrap' }}>
@@ -404,8 +461,14 @@ export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSessi
               <FlagSummary counts={p.flagCounts} />
             </button>
           </div>
-          <button type="button" style={BTN_APPROVE} disabled={busy || p.count === 0} onClick={() => void approve(p.sessionIds, p.name, p.hours, true)}>
-            Approve all {p.count} · {formatHoursShort(p.hours)}
+          <button
+            type="button"
+            style={BTN_APPROVE}
+            disabled={busy || batch.ids.length === 0}
+            title={batch.setAside > 0 ? `${batch.setAside} typed by hand or held — approved one at a time, not by this button` : undefined}
+            onClick={() => void approve(batch.ids, p.name, batch.hours, true, batch.setAside)}
+          >
+            {batch.setAside > 0 ? `Approve ${batch.ids.length} of ${p.count}` : `Approve all ${p.count}`} · {formatHoursShort(batch.hours)}
           </button>
         </div>
         {collapsed ? null : p.weeks.map((w) => renderWeek(p, w))}
@@ -457,6 +520,7 @@ export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSessi
                       · <FlagSummary counts={fullQueue.flagCounts} />
                     </>
                   ) : null}
+                  {typedCount > 0 ? ` · ${typedCount} typed by hand` : ''}
                   {capped ? ` · showing the first ${PENDING_APPROVALS_FETCH_CAP}` : ''}
                 </>
               )}
@@ -478,33 +542,49 @@ export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSessi
             <input type="checkbox" checked={flaggedOnly} onChange={(e) => setFlaggedOnly(e.target.checked)} />
             Flagged only
           </label>
-          <span style={{ fontSize: '0.78125rem', color: 'var(--text-muted)' }}>People lead with the oldest stall. Open a week to see its sessions.</span>
+          {typedCount > 0 || typedOnly ? (
+            <label
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8125rem', color: 'var(--text-700)', cursor: 'pointer' }}
+              title="Hours someone typed rather than punched. Whoever typed them cannot approve them."
+            >
+              <input type="checkbox" checked={typedOnly} onChange={(e) => setTypedOnly(e.target.checked)} />
+              Typed by hand · {typedCount}
+            </label>
+          ) : null}
+          {typedCount > 0 || typedOnly ? null : (
+            <span style={{ fontSize: '0.78125rem', color: 'var(--text-muted)' }}>People lead with the oldest stall. Open a week to see its sessions.</span>
+          )}
           <button type="button" disabled={loading || allWeekKeys.length === 0} onClick={() => (allOpen ? collapseAll() : expandAll())} style={{ ...BTN_QUIET, opacity: loading || allWeekKeys.length === 0 ? 0.55 : 1 }}>
             {allOpen ? 'Collapse all' : 'Expand all'}
           </button>
           <button
             type="button"
-            disabled={busy || loading || queue.count === 0}
-            onClick={() => void approve(queue.sessionIds, flaggedOnly ? 'every flagged session' : 'everyone', queue.hours, true)}
+            disabled={busy || loading || everything.ids.length === 0}
+            title={everything.setAside > 0 ? `${everything.setAside} typed by hand or held — approved one at a time, not by this button` : undefined}
+            onClick={() => void approve(everything.ids, flaggedOnly ? 'every flagged session' : 'everyone', everything.hours, true, everything.setAside)}
             style={{
               marginLeft: 'auto',
               padding: '0.4rem 0.9rem',
               fontSize: '0.875rem',
               fontWeight: 600,
               border: '1px solid #15803d',
-              background: busy || loading || queue.count === 0 ? '#86efac' : '#22c55e',
+              background: busy || loading || everything.ids.length === 0 ? '#86efac' : '#22c55e',
               color: 'white',
               borderRadius: 4,
-              cursor: busy || loading || queue.count === 0 ? 'not-allowed' : 'pointer',
+              cursor: busy || loading || everything.ids.length === 0 ? 'not-allowed' : 'pointer',
             }}
           >
-            {busy ? 'Approving…' : `Approve ${flaggedOnly ? 'flagged' : 'everything'} · ${queue.count} · ${formatHoursShort(queue.hours)}`}
+            {busy
+              ? 'Approving…'
+              : `Approve ${flaggedOnly ? 'flagged' : everything.setAside > 0 ? 'the punches' : 'everything'} · ${everything.ids.length} · ${formatHoursShort(everything.hours)}`}
           </button>
         </div>
 
         <div style={{ overflow: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.6rem', paddingRight: '0.1rem' }}>
           {!loading && queue.count === 0 && fullQueue.count > 0 ? (
-            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>No flagged sessions — everything left looks ordinary.</p>
+            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+              {typedOnly && !flaggedOnly ? 'Nothing typed by hand is waiting.' : 'No flagged sessions — everything left looks ordinary.'}
+            </p>
           ) : null}
           {queue.people.map(renderPerson)}
         </div>

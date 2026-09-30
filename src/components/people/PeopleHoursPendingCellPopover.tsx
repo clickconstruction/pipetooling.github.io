@@ -1,7 +1,10 @@
 import { QuickAddChip } from '../clock/QuickAddChip'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { approveClockSessions } from '../../lib/approveClockSessions'
+import { approveClockSessions, heldFromApproveResult } from '../../lib/approveClockSessions'
+import { describeHeld, needsSecondLook, splitForApproveAll, typedStampsVersion } from '../../lib/clock/typedHours'
+import { useTypedStamps } from '../../hooks/useTypedStamps'
+import { TypedHoldNote, TypedHoursStamp } from '../clock/TypedHoursStamp'
 import { recordHoursApproved } from '../../lib/hoursApprovedTelemetry'
 import { useAuth } from '../../hooks/useAuth'
 import { supabase } from '../../lib/supabase'
@@ -49,6 +52,10 @@ export function PeopleHoursPendingCellPopover({
   const { role: viewerRole } = useAuth()
   const [rejectingId, setRejectingId] = useState<string | null>(null)
   const [rejectConfirmId, setRejectConfirmId] = useState<string | null>(null)
+  // Typed hours (v2.4242): a typed line wears its stamp and its own Approve; the day button takes the punches only.
+  const { stamps, reload: reloadStamps } = useTypedStamps(entry.sessionIds, typedStampsVersion(entry.sessions))
+  const split = splitForApproveAll(entry.sessionIds, stamps)
+  const hasSetAside = split.typedIds.length > 0 || split.heldIds.length > 0
 
   useLayoutEffect(() => {
     if (!anchorEl) return
@@ -96,29 +103,36 @@ export function PeopleHoursPendingCellPopover({
     }
   }, [anchorEl, onClose])
 
-  async function handleApproveAll() {
-    if (!canApprove || busyApprove || entry.sessionIds.length === 0) return
+  /** Approves the given sessions; stays open when the day still has lines set aside for a look. */
+  async function handleApprove(ids: string[]) {
+    if (!canApprove || busyApprove || ids.length === 0) return
     setBusyApprove(true)
-    const { data, error } = await approveClockSessions(entry.sessionIds)
+    const { data, error } = await approveClockSessions(ids)
     setBusyApprove(false)
     if (error) {
       onError(error.message)
       return
     }
-    const result = (data ?? []) as Array<{ approved_count: number; error_message: string | null }>
-    const row = result[0]
+    const row = data?.[0]
     if (row?.error_message) {
       onError(row.error_message)
       return
     }
-    recordHoursApproved(authUserId, viewerRole, 'cell-popover', row?.approved_count ?? entry.sessionIds.length)
-    onApproved?.(row?.approved_count ?? entry.sessionIds.length)
+    const approved = row?.approved_count ?? ids.length
+    const { heldOwn, heldTyped } = heldFromApproveResult(data)
+    const held = describeHeld(heldOwn, heldTyped)
+    if (approved > 0) {
+      recordHoursApproved(authUserId, viewerRole, 'cell-popover', approved)
+      onApproved?.(approved)
+    }
     onShowToast(
-      `Approved ${row?.approved_count ?? entry.sessionIds.length} session(s) — added to payroll`,
-      'success',
+      `Approved ${approved} session(s) — added to payroll${held ? `. ${held}` : ''}`,
+      held ? 'warning' : 'success',
     )
     onChanged()
-    onClose()
+    const left = entry.sessionIds.length - ids.length + heldOwn + heldTyped
+    if (left <= 0) onClose()
+    else reloadStamps()
   }
 
   async function handleReject(sessionId: string) {
@@ -208,7 +222,7 @@ export function PeopleHoursPendingCellPopover({
           margin: 0,
           padding: 0,
           listStyle: 'none',
-          maxHeight: 180,
+          maxHeight: hasSetAside ? 260 : 180,
           overflowY: 'auto',
           borderTop: '1px solid var(--border)',
           borderBottom: '1px solid var(--border)',
@@ -222,12 +236,13 @@ export function PeopleHoursPendingCellPopover({
             shortJobOrBidLabelFromEmbeds(s as ClockSessionRow, prefixMap) ?? 'No job/bid'
           const confirming = rejectConfirmId === s.id
           const rejecting = rejectingId === s.id
+          const stamp = stamps.get(s.id)
           return (
             <li
               key={s.id}
               style={{
                 display: 'flex',
-                alignItems: 'center',
+                alignItems: 'flex-start',
                 justifyContent: 'space-between',
                 gap: '0.5rem',
                 padding: '0.4rem 0',
@@ -263,6 +278,36 @@ export function PeopleHoursPendingCellPopover({
                     label
                   )}
                 </div>
+                {stamp ? (
+                  <div style={{ marginTop: '0.2rem', display: 'flex', flexDirection: 'column', gap: '0.2rem', alignItems: 'flex-start' }}>
+                    <TypedHoursStamp stamp={stamp} size="full" workDate={s.work_date} />
+                    {needsSecondLook(stamp) && s.quick_add_minutes == null && (s.notes ?? '').trim() ? (
+                      <span style={{ fontSize: '0.75rem', fontStyle: 'italic', color: 'var(--text-muted)' }}>“{(s.notes ?? '').trim()}”</span>
+                    ) : null}
+                    {stamp.hold ? (
+                      <TypedHoldNote hold={stamp.hold} />
+                    ) : canApprove && needsSecondLook(stamp) ? (
+                      <button
+                        type="button"
+                        onClick={() => void handleApprove([s.id])}
+                        disabled={busyApprove}
+                        title="These hours were typed, not punched. Approving is the second look."
+                        style={{
+                          padding: '0.15rem 0.5rem',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          border: '1px solid #15803d',
+                          background: busyApprove ? '#86efac' : '#22c55e',
+                          color: 'white',
+                          borderRadius: 4,
+                          cursor: busyApprove ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        Approve {dur.toFixed(2)}h
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
               {canReject ? (
                 <button
@@ -323,25 +368,33 @@ export function PeopleHoursPendingCellPopover({
         </button>
         <button
           type="button"
-          onClick={() => void handleApproveAll()}
-          disabled={!canApprove || busyApprove}
+          onClick={() => void handleApprove(split.punchIds)}
+          disabled={!canApprove || busyApprove || split.punchIds.length === 0}
           style={{
             padding: '0.3rem 0.7rem',
             fontSize: '0.8125rem',
             fontWeight: 600,
             border: '1px solid #15803d',
-            background: !canApprove || busyApprove ? '#86efac' : '#22c55e',
+            background: !canApprove || busyApprove || split.punchIds.length === 0 ? '#86efac' : '#22c55e',
             color: 'white',
             borderRadius: 4,
-            cursor: !canApprove || busyApprove ? 'not-allowed' : 'pointer',
+            cursor: !canApprove || busyApprove || split.punchIds.length === 0 ? 'not-allowed' : 'pointer',
           }}
           title={
             !canApprove
               ? 'You don’t have permission to approve clock sessions'
-              : 'Approve all pending sessions for this day'
+              : split.punchIds.length === 0
+                ? 'Nothing here for one press: typed hours are approved one at a time, by someone other than who typed them'
+                : hasSetAside
+                  ? 'Approve the punched sessions for this day. Typed hours are approved one at a time.'
+                  : 'Approve all pending sessions for this day'
           }
         >
-          {busyApprove ? 'Approving…' : `Approve all (${entry.count})`}
+          {busyApprove
+            ? 'Approving…'
+            : hasSetAside
+              ? `Approve ${split.punchIds.length} ${split.punchIds.length === 1 ? 'punch' : 'punches'}`
+              : `Approve all (${entry.count})`}
         </button>
       </div>
     </div>

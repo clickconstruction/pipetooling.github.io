@@ -18,7 +18,10 @@ import { ClockSessionEditSplitModal } from './ClockSessionEditSplitModal'
 import { AssignSessionJobPopover } from './clock-sessions/AssignSessionJobPopover'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { formatBidLedgerShortLine, formatJobLedgerShortLine } from '../lib/ledgerDisplayPrefixes'
-import { approveClockSessions } from '../lib/approveClockSessions'
+import { approveClockSessions, heldFromApproveResult } from '../lib/approveClockSessions'
+import { describeHeld, splitForApproveAll, typedStampsVersion } from '../lib/clock/typedHours'
+import { useTypedStamps } from '../hooks/useTypedStamps'
+import { TypedHoldNote, TypedHoursStamp } from './clock/TypedHoursStamp'
 import { useIntervalNowMs } from '../hooks/useIntervalNowMs'
 import { usePersonDayScheduleData } from '../hooks/usePersonDayScheduleData'
 import { blocksToSegments } from '../lib/quickfillScheduleSegments'
@@ -410,18 +413,20 @@ export function PeopleHoursDayAuditModal({
       showToast?.(error.message, 'error')
       return
     }
-    const result = (data ?? []) as Array<{ approved_count: number; error_message: string | null }>
-    const row = result[0]
+    const row = data?.[0]
     if (row?.error_message) {
       showToast?.(row.error_message, 'error')
       return
     }
+    const { heldOwn, heldTyped } = heldFromApproveResult(data)
+    const held = describeHeld(heldOwn, heldTyped)
     showToast?.(
       `Approved ${row?.approved_count ?? sessionIds.length} session${
         (row?.approved_count ?? sessionIds.length) === 1 ? '' : 's'
-      }.`,
-      'success',
+      }.${held ? ` ${held}` : ''}`,
+      held ? 'warning' : 'success',
     )
+    reloadTypedStamps()
     refreshSessions()
     onCrewSaved?.()
   }
@@ -539,6 +544,15 @@ export function PeopleHoursDayAuditModal({
     [sessions],
   )
 
+  // Typed hours (v2.4247): the stamp on each session, and the part of "Approve all" one press may take.
+  const sessionIds = useMemo(() => sessions.map((s) => s.id), [sessions])
+  const sessionsVersion = useMemo(() => typedStampsVersion(sessions), [sessions])
+  const { stamps: typedStamps, reload: reloadTypedStamps } = useTypedStamps(sessionIds, sessionsVersion)
+  const pendingLinkedPunchIds = useMemo(
+    () => splitForApproveAll(pendingLinkedSessions.map((s) => s.id), typedStamps).punchIds,
+    [pendingLinkedSessions, typedStamps],
+  )
+
   /** Up to 2 distinct linked job/bid labels for the pending-approval banner; "+N more" suffix when more. */
   const pendingLinkedLabelSummary = useMemo(() => {
     if (pendingLinkedSessions.length === 0) return ''
@@ -594,11 +608,16 @@ export function PeopleHoursDayAuditModal({
           <strong>{pendingLinkedLabelSummary}</strong>. Approve{' '}
           {pendingLinkedSessions.length === 1 ? 'it' : 'them'} above to auto-assign these hours.
         </span>
-        {canEditCrewJobs && pendingLinkedSessions.length > 1 ? (
+        {canEditCrewJobs && pendingLinkedPunchIds.length > 1 ? (
           <button
             type="button"
-            disabled={pendingLinkedSessions.every((s) => approvingSessionIds.has(s.id))}
-            onClick={() => void handleApproveSessions(pendingLinkedSessions.map((s) => s.id))}
+            disabled={pendingLinkedPunchIds.every((id) => approvingSessionIds.has(id))}
+            title={
+              pendingLinkedPunchIds.length < pendingLinkedSessions.length
+                ? 'Approves the punched sessions. Typed hours are approved one at a time, by someone other than who typed them.'
+                : undefined
+            }
+            onClick={() => void handleApproveSessions(pendingLinkedPunchIds)}
             style={{
               marginLeft: 'auto',
               padding: '0.2rem 0.5rem',
@@ -610,7 +629,7 @@ export function PeopleHoursDayAuditModal({
               cursor: 'pointer',
             }}
           >
-            Approve all ({pendingLinkedSessions.length})
+            Approve all ({pendingLinkedPunchIds.length})
           </button>
         ) : null}
       </div>
@@ -886,6 +905,7 @@ export function PeopleHoursDayAuditModal({
                 const canApprove =
                   canEditCrewJobs && !sessionsUserMissing && !isApproved && isClosed && !!s.user_id
                 const isApproving = approvingSessionIds.has(s.id)
+                const typedStamp = typedStamps.get(s.id)
                 /**
                  * Per-row job/bid assignment is the canonical fix for "unallocated field time" when the
                  * session was clocked without selecting a job. Setting `clock_sessions.job_ledger_id`
@@ -962,7 +982,9 @@ export function PeopleHoursDayAuditModal({
                               onError={(msg) => showToast?.(msg, 'error')}
                             />
                           ) : null}
-                          {canApprove ? (
+                          {canApprove && typedStamp?.hold ? (
+                            <TypedHoldNote hold={typedStamp.hold} />
+                          ) : canApprove ? (
                             <button
                               type="button"
                               disabled={isApproving}
@@ -1002,6 +1024,7 @@ export function PeopleHoursDayAuditModal({
                         {notesDisplay || '—'}
                       </div>
                     ) : null}
+                    <TypedHoursStamp stamp={typedStamp} size="full" workDate={workDate} style={{ marginTop: '0.25rem' }} />
                   </div>
                 )
               })}

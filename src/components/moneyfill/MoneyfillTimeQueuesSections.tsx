@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { approveClockSessions } from '../../lib/approveClockSessions'
+import { useTypedStamps } from '../../hooks/useTypedStamps'
+import { TypedHoldNote, TypedHoursStamp } from '../clock/TypedHoursStamp'
 import { recordHoursApproved } from '../../lib/hoursApprovedTelemetry'
 import { formatPayWeekLabel } from '../../lib/payWeekAnchor'
 import { useAuth } from '../../hooks/useAuth'
@@ -148,6 +150,14 @@ export function MoneyfillPendingApprovalSection({
     load()
   }, [load])
 
+  // Typed hours (v2.4247): the stamp beside the name; whoever typed the hours gets no Approve.
+  const sessionIds = useMemo(() => (rows !== 'loading' && rows != null ? rows.map((r) => r.id) : []), [rows])
+  const sessionsVersion = useMemo(
+    () => (rows !== 'loading' && rows != null ? rows.map((r) => `${r.clockedInAt}|${r.clockedOutAt}`).join(',') : ''),
+    [rows],
+  )
+  const { stamps: typedStamps } = useTypedStamps(sessionIds, sessionsVersion)
+
   const approve = async (id: string) => {
     setApprovingIds((prev) => new Set([...prev, id]))
     const res = await approveClockSessions([id])
@@ -203,6 +213,7 @@ export function MoneyfillPendingApprovalSection({
                 <tr key={r.id} style={{ borderBottom: '1px solid var(--border)' }}>
                   <td style={td()}>
                     {r.personName}
+                    <TypedHoursStamp stamp={typedStamps.get(r.id)} size="compact" workDate={r.workDate} style={{ marginLeft: '0.4rem' }} />
                     {r.jobOrBid == null ? (
                       <span style={{ display: 'block', fontSize: '0.6875rem', color: 'var(--text-faint)' }}>no job or bid</span>
                     ) : null}
@@ -214,8 +225,12 @@ export function MoneyfillPendingApprovalSection({
                   <td style={td(true)}>{r.hours.toFixed(1)}</td>
                   <td style={{ ...td(true), fontWeight: 650 }}>{r.atWage != null ? money(r.atWage) : '—'}</td>
                   <td style={{ ...td(true), whiteSpace: 'nowrap' }}>
+                    {typedStamps.get(r.id)?.hold ? (
+                      <TypedHoldNote hold={typedStamps.get(r.id)?.hold ?? 'typed'} style={{ marginRight: 6, whiteSpace: 'nowrap' }} />
+                    ) : null}
                     <button
                       type="button"
+                      hidden={Boolean(typedStamps.get(r.id)?.hold)}
                       disabled={approvingIds.has(r.id)}
                       onClick={() => void approve(r.id)}
                       title="Approve this session (same approve_clock_sessions path as People → Hours)"

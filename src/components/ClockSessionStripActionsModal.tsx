@@ -10,6 +10,8 @@ import { UnifiedSearchResultRow } from './search/UnifiedSearchResultRow'
 import { useJobBidSearchEvidence } from '../hooks/useJobBidSearchEvidence'
 import { useLedgerDisplayPrefixes } from '../contexts/LedgerDisplayPrefixContext'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
+import { TypedHoldNote, TypedHoursStamp } from './clock/TypedHoursStamp'
+import type { TypedStamp } from '../lib/clock/typedHours'
 
 export type ClockSessionStripActionsPayload = {
   sessionId: string
@@ -44,6 +46,8 @@ type Props = {
   onRevoke: () => Promise<boolean>
   onSaved: () => void
   onError: (msg: string) => void
+  /** Typed hours (v2.4247): who typed this session's hours, and whether the viewer is held from approving it. */
+  typedStamp?: TypedStamp | null
 }
 
 export function ClockSessionStripActionsModal({
@@ -58,6 +62,7 @@ export function ClockSessionStripActionsModal({
   onRevoke,
   onSaved,
   onError,
+  typedStamp,
 }: Props) {
   void _innerPopoverZIndex
   const { prefixMap } = useLedgerDisplayPrefixes()
@@ -455,6 +460,7 @@ export function ClockSessionStripActionsModal({
           ) : null}
         </div>
 
+        <TypedHoursStamp stamp={typedStamp} size="full" style={{ marginBottom: '0.75rem' }} />
         <div
           style={{
             display: 'flex',
@@ -502,7 +508,9 @@ export function ClockSessionStripActionsModal({
             >
               Close
             </button>
-            {p.stripStatus === 'pending' ? (
+            {p.stripStatus === 'pending' && typedStamp?.hold ? (
+              <TypedHoldNote hold={typedStamp.hold} style={{ alignSelf: 'center', maxWidth: '14rem' }} />
+            ) : p.stripStatus === 'pending' ? (
               <button
                 type="button"
                 disabled={footerBusy}

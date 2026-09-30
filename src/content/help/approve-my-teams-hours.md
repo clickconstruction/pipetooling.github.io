@@ -2,7 +2,7 @@
 title: approve my team's hours
 category: Field Work
 roles: master_technician, assistant, controller, dev
-keywords: my team, approve hours, pending sessions, clock sessions, supervised crew, approve all, long day, clock strip pill, salary flat hours, midnight, who can approve, on the clock, click to review, hours grid
+keywords: my team, approve hours, typed hours, typed by hand, pencil, second person, own hours, missed clock in, pending sessions, clock sessions, supervised crew, approve all, long day, clock strip pill, salary flat hours, midnight, who can approve, on the clock, click to review, hours grid
 order: 67
 ---
 If you approve hours — a dev, a pay-approved master, or the office — your Dashboard has a **My Team** section where the clock sessions of the people you supervised this week come to you for approval. Nobody is assigned to you: the roster is read off the schedule and the clock (see *supervise a crew*). The header wears an amber chip — {{chip:yellow|7 to approve}} — whenever hours are waiting, even while the section is collapsed. A master who is not pay-approved sees the same roster read-only; the approve controls belong to the office. There is no Team leads list any more (v2.3616).
@@ -44,6 +44,24 @@ Office staff can add 5 to 30 minutes for a call or an email they handled off the
 - the person's pay-week view totals them under the week's hours — *1 h 05 m across 8 entries this week* — so one number tells you whether the button is being used as intended.
 
 A quick add cannot overlap clocked hours, reach into another day, or pass two hours in a day; the person cannot stretch one after the fact. Reject one like any other session.
+
+## Hours someone typed
+
+A session is either **punched** (the clock button, at the moment) or **typed** (someone wrote the times — a day the clock missed, a longer day, a worker's own late entry). A typed session wears a pencil wherever hours are approved: {{chip:blue|✎ typed by Taunya · Wed 9:40 AM}}, and beside it what the day read before and after — *Nothing recorded → 11.0h*. No pencil means a real punch.
+
+Two rules come with it:
+
+- **Whoever typed the hours cannot approve them.** On your own typed row the Approve button is replaced by *You typed these — waiting on a second person*. Anyone else who approves hours can approve it, and their approval is the second look.
+- **Nobody approves their own hours.** Your own row reads *Your own hours — someone else approves them*.
+
+:::example An Approve all never takes a typed row
+**Approve all 7 punches · 46.4h**
+2 typed by hand — approve each one below · 1 waiting on someone else
+:::
+
+So a typed row is always opened and approved by itself: on the Hours grid the cell's chip shows the pencil ({{chip:yellow|! 2 ✎}}), and in its popover the typed line has its own {{button:green|Approve 11.00h}} while the day button reads {{button:green|Approve 1 punch}}. In the **All weeks** queue, tick **Typed by hand** to see only those rows.
+
+A trim — a forgotten clock-out cut back — is recorded too (*trimmed by Taunya · 12.0h → 8.0h*) but holds nothing: the person who trimmed it may approve it.
 
 ## Everywhere else you can approve
 

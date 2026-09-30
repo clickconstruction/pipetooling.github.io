@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import {
   AssignSessionJobPopover,
   ClockSessionsTable,
@@ -7,7 +7,10 @@ import {
   RejectedClockSessionsSection,
 } from '../clock-sessions'
 import { CollapsibleSection } from '../CollapsibleSection'
-import { approveClockSessions } from '../../lib/approveClockSessions'
+import { approveClockSessions, heldFromApproveResult } from '../../lib/approveClockSessions'
+import { describeHeld, typedStampsVersion } from '../../lib/clock/typedHours'
+import { useTypedStamps } from '../../hooks/useTypedStamps'
+import { TypedHoldNote, TypedHoursStamp } from '../clock/TypedHoursStamp'
 import { recordHoursApproved } from '../../lib/hoursApprovedTelemetry'
 import { useAuth } from '../../hooks/useAuth'
 import { supabase } from '../../lib/supabase'
@@ -87,6 +90,10 @@ export function PeopleHoursSessions({
   // never hidden — same convention as the Users-tab roster search.
   const [pendingSectionOpen, setPendingSectionOpen] = useState(false)
   const pendingSectionEffectiveOpen = pendingSectionOpen || hoursClockSessionsSearching
+  // Typed hours (v2.4247): the stamp on each pending row; whoever typed the hours gets no Approve.
+  const pendingIds = useMemo(() => pendingApprovalClockSessionsFiltered.map((s) => s.id), [pendingApprovalClockSessionsFiltered])
+  const pendingVersion = useMemo(() => typedStampsVersion(pendingApprovalClockSessionsFiltered), [pendingApprovalClockSessionsFiltered])
+  const { stamps: typedStamps, reload: reloadTypedStamps } = useTypedStamps(pendingIds, pendingVersion)
 
   return (
     <section id="people-hours-sessions" style={HOURS_TAB_SECTION_SHELL}>
@@ -174,11 +181,18 @@ export function PeopleHoursSessions({
               emptyMessage={hoursClockSessionsSearching ? 'No matching sessions' : 'No active sessions'}
               renderNotesSecondary={(s) => {
                 const label = formatClockSessionJobOrBidLabel(s, prefixMap)
-                return label ? (
-                  <span title={label.replace(/\n/g, ' ')} style={{ whiteSpace: 'pre-line' }}>
-                    {label}
-                  </span>
-                ) : null
+                const typedStamp = typedStamps.get(s.id)
+                if (!label && !typedStamp) return null
+                return (
+                  <>
+                    {label ? (
+                      <span title={label.replace(/\n/g, ' ')} style={{ whiteSpace: 'pre-line' }}>
+                        {label}
+                      </span>
+                    ) : null}
+                    <TypedHoursStamp stamp={typedStamp} size="full" workDate={s.work_date} style={{ display: 'flex', marginTop: label ? '0.2rem' : 0 }} />
+                  </>
+                )
               }}
               renderJob={() => (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'nowrap', minWidth: 0 }} />
@@ -261,17 +275,22 @@ export function PeopleHoursSessions({
                 </div>
               )}
               renderActions={(s) => (
-                <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                  {typedStamps.get(s.id)?.hold ? (
+                    <TypedHoldNote hold={typedStamps.get(s.id)?.hold ?? 'typed'} style={{ maxWidth: '12rem' }} />
+                  ) : (
                   <button
                     type="button"
                     onClick={async () => {
                       const { data, error } = await approveClockSessions([s.id])
                       if (error) { setError(error.message); return }
-                      const result = (data ?? []) as Array<{ approved_count: number; error_message: string | null }>
-                      const row = result[0]
+                      const row = data?.[0]
                       if (row?.error_message) { setError(row.error_message); return }
-                      recordHoursApproved(authUserId, viewerRole, 'sessions-list', row?.approved_count ?? 0)
-                      showToast?.(`Approved ${row?.approved_count ?? 0} session(s)`, 'success')
+                      const { heldOwn, heldTyped } = heldFromApproveResult(data)
+                      const held = describeHeld(heldOwn, heldTyped)
+                      if ((row?.approved_count ?? 0) > 0) recordHoursApproved(authUserId, viewerRole, 'sessions-list', row?.approved_count ?? 0)
+                      showToast?.(`Approved ${row?.approved_count ?? 0} session(s)${held ? `. ${held}` : ''}`, held ? 'warning' : 'success')
+                      reloadTypedStamps()
                       reloadSessions()
                       reloadHours()
                     }}
@@ -279,6 +298,7 @@ export function PeopleHoursSessions({
                   >
                     Approve
                   </button>
+                  )}
                   <button
                     type="button"
                     onClick={async () => {
