@@ -65,6 +65,9 @@ const items: ProcurementItemSource[] = [
   { tag: 'BFP-1', product: 'Watts 909 RPZ 2"', supplyHouse: null, leadTimeDays: 28, decision: { kind: 'approved', at: '2026-09-22T15:00:00Z' }, shared: true },
 ]
 
+/** The calendar's date input beside a date box (the box itself is a text box that takes "9/23"). */
+const pickOf = (label: string) => screen.getByLabelText(label).parentElement!.querySelector('[data-testid="procurement-date-pick"]') as HTMLInputElement
+
 describe('SubmittalProcurementPanel', () => {
   it('builds the log from the rows, the records and the job, derives the float, and records an update with its changes', async () => {
     renderWithProviders(<SubmittalProcurementPanel bidId="b1" bidLabel="B482 Shipley" companyName="Click" items={items} reviewerNames={['Dana W.']} currentUser={{ id: 'u', name: 'Wendi' }} />)
@@ -76,22 +79,25 @@ describe('SubmittalProcurementPanel', () => {
     expect(rows[0]!.querySelector('[data-testid="procurement-item"]')!.textContent).toBe('BFP-1Watts 909 RPZ 2"Rough In')
     expect(rows[0]!.textContent).toContain('Approved 09/22')
     expect(rows[0]!.textContent).toContain('house said')
-    // At rest each date reads with a two-digit year, and under it how far it is from today; the house's date says so first.
-    expect([...rows[0]!.querySelectorAll('[data-testid="procurement-date-read"]')].map((n) => n.textContent)).toEqual(['09/25/26', '10/20/26', 'mm/dd/yy'])
+    // Each date box reads a month and a day (a year only when it has to be said); under it, how far it is from today; the house's date says so first.
+    const boxes = [...rows[0]!.querySelectorAll<HTMLInputElement>('input.procurement-date')]
+    expect(boxes.map((b) => b.type)).toEqual(['text', 'text', 'text'])
+    expect(boxes.map((b) => b.value.slice(0, 5))).toEqual(['09/25', '10/20', ''])
+    expect(boxes[2]!.placeholder).toBe('mm/dd')
     const under = [...rows[0]!.querySelectorAll('[data-testid="procurement-date-under"]')].map((n) => n.textContent ?? '')
     expect(under).toHaveLength(3)
     expect(under[0]).toMatch(/^(today|\d+ days? ago|in \d+ days?)$/)
     expect(under[1]).toBe('house said')
     expect(under[2]).toMatch(/^(today|\d+ days? ago|in \d+ days?)$/)
-    // The real date box is still there under the label, so a click, a tap or Tab lands in it.
-    expect((screen.getByLabelText('BFP-1 ordered on') as HTMLInputElement).value).toBe('2026-09-25')
+    // The calendar's own date input lies beside each box, holding the whole date.
+    expect(pickOf('BFP-1 ordered on').value).toBe('2026-09-25')
     expect(rows[0]!.querySelector('[data-testid="procurement-float"]')!.textContent).toBe('−14 d')
     // WH-1: released, unordered, trim set 11/17, 6 wk → order by 10/06.
     expect(rows[1]!.querySelector('[data-testid="procurement-float"]')!.textContent).toBe('order by 10/06')
     expect(screen.getByText(/Required dates from the job/)).toBeTruthy()
 
-    // An order date on WH-1 inserts its record (no row yet) and the float follows.
-    fireEvent.change(screen.getByLabelText('WH-1 ordered on'), { target: { value: '2026-09-24' } })
+    // An order date on WH-1 (picked from the calendar) inserts its record (no row yet) and the float follows.
+    fireEvent.change(pickOf('WH-1 ordered on'), { target: { value: '2026-09-24' } })
     await waitFor(() => expect(writes.some((w) => w.table === 'bid_procurement_items' && w.op === 'insert')).toBe(true))
     expect(writes.find((w) => w.op === 'insert')!.payload).toMatchObject({ bid_id: 'b1', tag: 'WH-1', ordered_on: '2026-09-24' })
     await waitFor(() => expect(screen.getAllByTestId('procurement-float')[1]!.textContent).toBe('12 d'))
@@ -110,7 +116,7 @@ describe('SubmittalProcurementPanel', () => {
     await waitFor(() => expect(screen.getByText(/last update 09\/28 to Dana W\./)).toBeTruthy())
   })
 
-  it('v2.4239 · a date box saves a finished date only: a half-typed year writes nothing, a typed date waits for the box to be left, an emptied box saves null', async () => {
+  it('a date box takes a typed month and day and saves when it is left; a pick from the calendar saves at once; what does not read as a date is never written', async () => {
     renderWithProviders(<SubmittalProcurementPanel bidId="b1" bidLabel="B482 Shipley" companyName="Click" items={items} reviewerNames={['Dana W.']} currentUser={{ id: 'u', name: 'Wendi' }} />)
     await waitFor(() => expect(screen.getAllByTestId('procurement-row')).toHaveLength(2))
     writes.length = 0
@@ -118,68 +124,85 @@ describe('SubmittalProcurementPanel', () => {
     const floatOf = (i: number) => screen.getAllByTestId('procurement-float')[i]!.textContent
     const itemWrites = () => writes.filter((w) => w.table === 'bid_procurement_items')
 
-    // The browser hands over 0002-09-30 when the first digit of the year lands: nothing is written, and the float does not turn to "on site".
-    const delivered = screen.getByLabelText('BFP-1 delivered on') as HTMLInputElement
-    fireEvent.change(delivered, { target: { value: '0002-09-30' } })
-    await settle()
-    expect(itemWrites()).toHaveLength(0)
-    expect(delivered.value).toBe('0002-09-30')
-    expect(floatOf(0)).toBe('−14 d')
-    // The finished date (a pick from the calendar: no key pressed) writes once.
-    fireEvent.change(delivered, { target: { value: '2026-09-30' } })
-    await waitFor(() => expect(itemWrites()).toHaveLength(1))
-    await settle()
-    expect(itemWrites()).toEqual([{ table: 'bid_procurement_items', op: 'update', payload: { delivered_on: '2026-09-30' } }])
-
-    // Typed: the day 25 → "1" → "15" passes through 09/01; nothing is written until the box is left, then once.
-    writes.length = 0
+    // Typed: nothing is written while the date is being typed — not at "9/1", not at the whole date — then once when the box is left.
     const ordered = screen.getByLabelText('BFP-1 ordered on') as HTMLInputElement
-    fireEvent.keyDown(ordered, { key: '1' })
-    fireEvent.change(ordered, { target: { value: '2026-09-01' } })
-    fireEvent.keyDown(ordered, { key: '5' })
-    fireEvent.change(ordered, { target: { value: '2026-09-15' } })
+    fireEvent.change(ordered, { target: { value: '9/1' } })
+    fireEvent.change(ordered, { target: { value: '9/15/26' } })
     await settle()
     expect(itemWrites()).toHaveLength(0)
-    expect(ordered.value).toBe('2026-09-15')
+    expect(ordered.value).toBe('9/15/26')
     fireEvent.blur(ordered)
     await waitFor(() => expect(itemWrites()).toHaveLength(1))
     expect(itemWrites()[0]).toMatchObject({ op: 'update', payload: { ordered_on: '2026-09-15' } })
     await settle()
 
-    // Typed and left with the year half done: nothing is written, the box goes back to the saved date, and a line says why.
+    // What does not read as a date is dropped: nothing is written, the box goes back to the saved date, and a line says why.
     writes.length = 0
-    fireEvent.keyDown(ordered, { key: '2' })
-    fireEvent.change(ordered, { target: { value: '0002-09-25' } })
+    for (const typed of ['13/45', '9/', '9/2/202']) {
+      fireEvent.change(ordered, { target: { value: typed } })
+      fireEvent.blur(ordered)
+      await settle()
+      expect(itemWrites()).toHaveLength(0)
+      expect(ordered.value.slice(0, 5)).toBe('09/25')
+    }
+    expect(screen.getAllByText(/does not read as a date, so it was not saved/).length).toBeGreaterThan(0)
+    // A box left as it was, or typed back to what it showed, writes nothing; Escape drops what was typed.
+    fireEvent.blur(ordered)
+    fireEvent.change(ordered, { target: { value: ordered.value } })
+    fireEvent.blur(ordered)
+    fireEvent.change(ordered, { target: { value: '9/3' } })
+    fireEvent.keyDown(ordered, { key: 'Escape' })
     fireEvent.blur(ordered)
     await settle()
     expect(itemWrites()).toHaveLength(0)
-    expect(ordered.value).toBe('2026-09-25')
-    expect(screen.getByText(/That date was not finished, so it was not saved/)).toBeTruthy()
 
-    // Left with a part missing (09/dd/2026): the browser reports no date at all. That is not a cleared box — nothing is written.
-    fireEvent.keyDown(ordered, { key: 'Backspace' })
-    fireEvent.change(ordered, { target: { value: '' } })
-    Object.defineProperty(ordered, 'validity', { value: { badInput: true }, configurable: true })
-    fireEvent.blur(ordered)
-    await settle()
-    expect(itemWrites()).toHaveLength(0)
-    expect(ordered.value).toBe('2026-09-25')
-    Object.defineProperty(ordered, 'validity', { value: { badInput: false }, configurable: true })
-
-    // Enter saves a typed date without leaving the box; an emptied box saves null.
-    fireEvent.keyDown(ordered, { key: '6' })
-    fireEvent.change(ordered, { target: { value: '2026-09-26' } })
+    // Enter saves a typed date without leaving the box; a month and a day alone take the nearest year; an emptied box saves null.
+    fireEvent.change(ordered, { target: { value: '9/26/2026' } })
     fireEvent.keyDown(ordered, { key: 'Enter' })
     await waitFor(() => expect(itemWrites()).toHaveLength(1))
     expect(itemWrites()[0]).toMatchObject({ payload: { ordered_on: '2026-09-26' } })
     await settle()
     writes.length = 0
-    fireEvent.keyDown(ordered, { key: 'Backspace' })
+    fireEvent.change(ordered, { target: { value: '0924' } })
+    fireEvent.blur(ordered)
+    await waitFor(() => expect(itemWrites()).toHaveLength(1))
+    expect((itemWrites()[0]!.payload as { ordered_on: string }).ordered_on).toMatch(/^20\d\d-09-24$/)
+    await settle()
+    writes.length = 0
     fireEvent.change(ordered, { target: { value: '' } })
     fireEvent.blur(ordered)
     await waitFor(() => expect(itemWrites()).toHaveLength(1))
     expect(itemWrites()[0]).toMatchObject({ op: 'update', payload: { ordered_on: null } })
     await settle()
+
+    // A pick from the calendar is a whole date: it writes at once, and the float turns to "on site" only then.
+    writes.length = 0
+    expect(floatOf(0)).toBe('−14 d')
+    fireEvent.change(pickOf('BFP-1 delivered on'), { target: { value: '2026-09-30' } })
+    await waitFor(() => expect(itemWrites()).toHaveLength(1))
+    expect(itemWrites()).toEqual([{ table: 'bid_procurement_items', op: 'update', payload: { delivered_on: '2026-09-30' } }])
+    await settle()
+  })
+
+  it('a click into a date box opens the calendar; a click in a box already in use only places the caret', async () => {
+    renderWithProviders(<SubmittalProcurementPanel bidId="b1" bidLabel="B482 Shipley" companyName="Click" items={items} reviewerNames={['Dana W.']} currentUser={{ id: 'u', name: 'Wendi' }} />)
+    await waitFor(() => expect(screen.getAllByTestId('procurement-row')).toHaveLength(2))
+    const ordered = screen.getByLabelText('WH-1 ordered on') as HTMLInputElement
+    const showPicker = vi.fn()
+    pickOf('WH-1 ordered on').showPicker = showPicker
+    fireEvent.pointerDown(ordered)
+    ordered.focus()
+    fireEvent.click(ordered)
+    expect(showPicker).toHaveBeenCalledTimes(1)
+    // Already in the box (typing, or the calendar just closed): the next click does not bring the calendar back.
+    fireEvent.pointerDown(ordered)
+    fireEvent.click(ordered)
+    expect(showPicker).toHaveBeenCalledTimes(1)
+    // A browser with no calendar to show still takes the typed date.
+    ordered.blur()
+    pickOf('WH-1 ordered on').showPicker = () => { throw new Error('NotSupportedError') }
+    fireEvent.pointerDown(ordered)
+    expect(() => fireEvent.click(ordered)).not.toThrow()
   })
 
   it('v2.4239 · two boxes filled on a new row before the first save lands make one record: the second write updates it', async () => {
@@ -190,8 +213,8 @@ describe('SubmittalProcurementPanel', () => {
       await waitFor(() => expect(screen.getAllByTestId('procurement-row')).toHaveLength(2))
       writes.length = 0
       // Both changes land in one tick, against the same row with no record yet.
-      fireEvent.change(screen.getByLabelText('WH-1 ordered on'), { target: { value: '2026-09-24' } })
-      fireEvent.change(screen.getByLabelText('WH-1 delivered on'), { target: { value: '2026-10-01' } })
+      fireEvent.change(pickOf('WH-1 ordered on'), { target: { value: '2026-09-24' } })
+      fireEvent.change(pickOf('WH-1 delivered on'), { target: { value: '2026-10-01' } })
       await waitFor(() => expect(writes).toHaveLength(2))
       expect(writes.map((w) => w.op)).toEqual(['insert', 'update'])
       expect(writes[1]!.payload).toEqual({ delivered_on: '2026-10-01' })

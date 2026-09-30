@@ -3422,53 +3422,37 @@ button.gcStep:hover > em { text-decoration: underline; }
   text-underline-offset: 2px;
 }
 
-/* Procurement log date boxes (v2.4238): the browser's calendar button sits against the date, so the box is as narrow as the date it holds. */
-.procurement-date::-webkit-calendar-picker-indicator {
-  margin-inline-start: 0;
-  padding: 0;
-}
-
-/* Procurement log date boxes at rest: the date is presented with a two-digit year in a box as narrow as it reads.
-   The real date box lies over it, unseen until it is focused; then it shows whole, over the cell to its right, so nothing in the row moves. */
+/* Procurement log date boxes: a text box as narrow as a month and a day ("09/23"); the panel sets the width from what it holds.
+   A click opens the browser's calendar, which belongs to a date input lying unseen under the text box. On a touch screen
+   that input lies on top instead, so a tap opens the phone's own date picker and no keyboard comes up. */
 .procurement-date-slot {
   position: relative;
-  width: 4.75rem;
-  height: 1.7rem;
-}
-.procurement-date-slot .procurement-date-read {
-  box-sizing: border-box;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  padding: 0 0.35rem;
-  border: 1px solid var(--border-strong);
-  border-radius: 4px;
-  white-space: nowrap;
-  pointer-events: none;
+  max-width: 100%;
 }
 .procurement-date-slot .procurement-date {
-  position: absolute;
-  top: 0;
-  left: 0;
   width: 100%;
-  height: 100%;
-  opacity: 0;
-  cursor: text;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
 }
-.procurement-date-slot .procurement-date:focus,
-.procurement-date-slot.is-open .procurement-date {
-  width: 6.75rem;
-  opacity: 1;
-  z-index: 2;
-  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.18);
-}
-.procurement-date-slot:hover .procurement-date:not(:disabled) + .procurement-date-read {
-  border-color: var(--text-muted);
+.procurement-date-slot .procurement-date::placeholder {
+  color: var(--text-faint);
 }
 .procurement-date-slot .procurement-date:disabled {
-  cursor: default;
-}
-.procurement-date-slot .procurement-date:disabled + .procurement-date-read {
   opacity: 0.6;
+}
+.procurement-date-slot .procurement-date-pick {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+@media (pointer: coarse) {
+  .procurement-date-slot .procurement-date-pick:not(:disabled) {
+    pointer-events: auto;
+  }
 }
