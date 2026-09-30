@@ -62,7 +62,7 @@ import LienTrackingOwedEditor from './LienTrackingOwedEditor'
 import { sendsTrackingOwed } from '../../lib/jobs/lienSendTracking'
 import { markLienDeskItemsPrinted } from '../../lib/jobs/lienDeskIo'
 import type { LienCalendarJob } from '../../lib/jobs/lienCalendar'
-import { callLetterFactsFor, type CallerMatchInput } from '../../lib/jobs/lienCallerMatch'
+import { callLetterFactsFor, practiceCallFacts, type CallerJobHit, type CallerMatchInput, type DeskJobRef } from '../../lib/jobs/lienCallerMatch'
 import { DEFAULT_CLAIMANT_NAME } from '../../lib/jobs/lienNoticeDraft'
 import LienDeskRunModal from './LienDeskRunModal'
 import LienDeskAffidavitPane, { affidavitDeadlineWords } from './LienDeskAffidavitPane'
@@ -327,6 +327,10 @@ export default function LienDeskModal({
   const [ownerCallOpen, setOwnerCallOpen] = useState(false)
   // ☎ Someone's calling (v2.3854): the door's pick — the call sheet opens on that job without selecting it.
   const [callerJobId, setCallerJobId] = useState<string | null>(null)
+  // The door's practice call (v2.4249): the same sheet on a made-up letter — no job, no item, no save.
+  const [practiceCallOpen, setPracticeCallOpen] = useState(false)
+  /** A job the door's search just opened: the list's selection effect leaves it alone once. */
+  const doorPickedJobId = useRef<string | null>(null)
   const [affSelectedJobId, setAffSelectedJobId] = useState<string | null>(null)
   // The pane's footer lands in the desk's one footer strip through a portal (v2.3753). It used to be
   // handed up as state from the pane's render on a microtask, which re-rendered the desk on every paint —
@@ -351,6 +355,11 @@ export default function LienDeskModal({
       setMobileListShown(false)
       return
     }
+    if (doorPickedJobId.current && visible.some((e) => e.jobId === doorPickedJobId.current)) {
+      doorPickedJobId.current = null
+      return
+    }
+    doorPickedJobId.current = null
     if (selectedJobId && visible.some((e) => e.jobId === selectedJobId)) return
     setSelectedJobId(!isMobile && visible[0] ? visible[0].jobId : null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -365,10 +374,36 @@ export default function LienDeskModal({
   const ownerName = lienPropertyOwnerDisplayName(property.owner)
   /** "Click" — who "us" is on the phone. */
   const callerUs = ((issuer?.companyName ?? '').trim() || DEFAULT_CLAIMANT_NAME).split(/\s+/)[0] || 'us'
-  const callerInput = useMemo<CallerMatchInput | null>(
-    () => (data ? { items: data.items, jobsById: data.jobsById, gcsById: data.gcsById, addressesById: data.addressesById, ownerByJob: data.ownerByJob, letterTwoByJob: data.letterTwoByJob, us: callerUs } : null),
-    [data, callerUs],
-  )
+  const callerInput = useMemo<CallerMatchInput | null>(() => {
+    if (!data) return null
+    // Every job on the three tabs, once — the tab that lists it first is where the door opens it (v2.4249).
+    const deskJobs: DeskJobRef[] = [
+      ...data.queue.entries.map((e): DeskJobRef => ({ jobId: e.jobId, tab: 'notice', pile: LIEN_DESK_PILES.find((p) => p.key === e.pile)?.label ?? e.pile, openBalance: e.openBalance, deadline: e.earliestDeadline })),
+      ...data.affidavits.entries.map((e): DeskJobRef => ({ jobId: e.jobId, tab: 'affidavit', pile: LIEN_AFFIDAVIT_PILES.find((p) => p.key === e.pile)?.label ?? e.pile, openBalance: e.openBalance, deadline: e.deadline })),
+      ...data.retainage.entries.map((e): DeskJobRef => ({ jobId: e.jobId, tab: 'retainage', pile: LIEN_RETAINAGE_PILES.find((p) => p.key === e.pile)?.label ?? e.pile, openBalance: e.openBalance, deadline: e.deadline })),
+    ]
+    return { items: data.items, jobsById: data.jobsById, gcsById: data.gcsById, addressesById: data.addressesById, ownerByJob: data.ownerByJob, letterTwoByJob: data.letterTwoByJob, deskJobs, us: callerUs }
+  }, [data, callerUs])
+  /** The door's "Open the job ›" (v2.4249): the job's own tab, with any pile or calendar narrowing lifted so its row is in the list. */
+  const openDeskJob = (hit: CallerJobHit) => {
+    setMobileListShown(false)
+    if (hit.tab === 'affidavit') {
+      setKind('affidavit')
+      setAffPile(null)
+      setAffSelectedJobId(hit.jobId)
+    } else if (hit.tab === 'retainage') {
+      setKind('retainage')
+      setRetPile(null)
+      setRetSelectedJobId(hit.jobId)
+    } else {
+      // Lifting a filter changes the list, which re-runs the selection effect — it keeps this pick.
+      if (pile != null || calendarJobFilter != null) doorPickedJobId.current = hit.jobId
+      setKind('notice')
+      setPile(null)
+      setCalendarJobFilter(null)
+      setSelectedJobId(hit.jobId)
+    }
+  }
   const pickKind = async (next: PropertyKind) => {
     if (!address || kindBusy) return
     setKindBusy(true)
@@ -1889,7 +1924,7 @@ export default function LienDeskModal({
             ))}
           </div>
           <LienRulesDoor where={kind === 'affidavit' ? 'desk_affidavit' : 'desk_notice'} style={{ marginRight: '0.4rem' }} />
-          {office ? <LienCallerDoor input={callerInput} onPick={(h) => setCallerJobId(h.jobId)} style={{ marginRight: '0.4rem' }} /> : null}
+          {office ? <LienCallerDoor input={callerInput} onPick={(h) => setCallerJobId(h.jobId)} onOpenJob={openDeskJob} onPractice={() => setPracticeCallOpen(true)} style={{ marginRight: '0.4rem' }} /> : null}
           {/* The second line (v2.3817): the piles on the left, Put a GC on notice and the run on the right. */}
           <span aria-hidden data-lien-desk-header-break style={{ flexBasis: '100%', height: 0 }} />
           {kind === 'retainage'
@@ -2071,6 +2106,17 @@ export default function LienDeskModal({
           />
         )
       })()}
+      {practiceCallOpen ? (
+        <LienOwnerCallDialog
+          practice
+          facts={practiceCallFacts({ us: callerUs, todayYmd, signer: signerNameFor(null), phone: signerPhoneFor ? signerPhoneFor(null) : (issuer?.phone ?? '').trim() })}
+          existing={null}
+          takerName={authName}
+          busy={false}
+          onClose={() => setPracticeCallOpen(false)}
+          onSave={() => setPracticeCallOpen(false)}
+        />
+      ) : null}
       {runOpen && data ? (
         <LienDeskRunModal
           onPrinted={async (ids) => {

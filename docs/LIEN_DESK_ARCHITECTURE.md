@@ -8,12 +8,14 @@ covers:
   - src/components/jobs/LienDeskModal.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 ---
 
 > **Line numbers are as of `a05cef4c4`** (the `mapped_at` commit) and drift with every edit — search the symbol named beside each range. Regenerate the fact sheet with `npm run map -- src/components/jobs/LienDeskModal.tsx`. The file is the busiest component this week (37 commits in 90 days; its 29 since 2026-09-18 lead every component — over 90 days `JobsStagesTab.tsx` has more); re-check ranges before any move.
 
 ## What this surface is
+
+> **v2.4249 (the caller's door searches the desk):** `LienCallerDoor` now finds every job on the three tabs, not only sent notices — the parent's `callerInput` memo adds `deskJobs` (one `DeskJobRef` per job from `queue` / `affidavits` / `retainage` entries), a *Letter sent* hit still sets `callerJobId`, a *No letter mailed yet* hit calls `openDeskJob` (switches `kind`, lifts `pile` / `affPile` / `retPile` / `calendarJobFilter`, selects the job; `doorPickedJobId` keeps the selection effect from snapping back to `initialJobId` on that one list change), and `practiceCallOpen` mounts `LienOwnerCallDialog practice` on `practiceCallFacts` — no item, no `noteOwnerCall`. Kernel: [`lienCallerMatch.ts`](../src/lib/jobs/lienCallerMatch.ts) (`callerIndex`, `findOnDesk`, `lettersOutNow`, `callerTryWords`).
 
 > **v2.4119 (the mailing):** a `printed` pile between Ready and Held (`job_lien_desk_items.printed_at`, stamped by the run's *Print the packet* through `markLienDeskItemsPrinted`); the run window (`LienDeskRunModal`) gained the steps strip, `trackingShape` hints, `runRecordSplit` (numbered envelopes record, the rest stay printed), *Mailed on*, and *Envelope faces* (`runEnvelopeFacesHtml`); the Sent footer (region F2) and the Lien window's Filings list draw `LienTrackingOwedEditor` when a certified send has no number (`lib/jobs/lienSendTracking.ts`). The run's source is `piles.ready + piles.printed`.
 

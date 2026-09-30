@@ -13,6 +13,8 @@ import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
  * Back undoes a tap. The facts are collected on the way and read back as a
  * sentence; Save writes the same record the old dialog wrote, plus the new
  * facts. The words are `lienOwnerCallScript` — counsel's, for the phone.
+ * `practice` (v2.4249) is the same sheet on a made-up letter: every card works,
+ * there is no Save, and nothing is written.
  */
 
 const lab: CSSProperties = { fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }
@@ -23,7 +25,7 @@ const reply = (on: boolean): CSSProperties => ({ display: 'flex', justifyContent
 
 const fmt = { day: formatYmdMonthDay, money: formatUsdNoCents }
 
-export default function LienOwnerCallDialog({ facts, existing, takerName, onSave, onClose, busy }: { facts: CallLetterFacts; existing: OwnerCall | null; takerName: string; onSave: (call: OwnerCall) => void; onClose: () => void; busy: boolean }) {
+export default function LienOwnerCallDialog({ facts, existing, takerName, onSave, onClose, busy, practice = false }: { facts: CallLetterFacts; existing: OwnerCall | null; takerName: string; onSave: (call: OwnerCall) => void; onClose: () => void; busy: boolean; practice?: boolean }) {
   const [state, setState] = useState<CallState>(EMPTY_CALL_STATE)
   /** The reply whose inputs are open (amount / the dates) before it is taken. */
   const [pending, setPending] = useState<string | null>(null)
@@ -63,15 +65,29 @@ export default function LienOwnerCallDialog({ facts, existing, takerName, onSave
   }
   const canSave = !busy && callHasFacts(state) && !amountBad
   const save = () => onSave(callToOwnerCall(state, takerName, new Date().toISOString()))
+  const startOver = () => {
+    setPending(null)
+    setAmount('')
+    setReleasedOn('')
+    setCompletedOn('')
+    setContractOpen(false)
+    setState(EMPTY_CALL_STATE)
+  }
 
   return createPortal(
     <div className="lienMonthDialogScrim" onClick={onClose}>
-      <div role="dialog" aria-modal="true" aria-label={`The owner called · ${facts.jobLabel}`} className="lienMonthDialog" style={{ maxWidth: 640, width: 'calc(100vw - 2rem)', maxHeight: 'calc(100vh - 2rem)', overflowY: 'auto', padding: 0 }} onClick={(e) => e.stopPropagation()} data-lien-owner-call-dialog data-lien-owner-call-step={state.step}>
+      <div role="dialog" aria-modal="true" aria-label={`${practice ? 'Practice call' : 'The owner called'} · ${facts.jobLabel}`} className="lienMonthDialog" style={{ maxWidth: 640, width: 'calc(100vw - 2rem)', maxHeight: 'calc(100vh - 2rem)', overflowY: 'auto', padding: 0 }} onClick={(e) => e.stopPropagation()} data-lien-owner-call-dialog data-lien-owner-call-practice={practice ? 'yes' : undefined} data-lien-owner-call-step={state.step}>
         <div className="lienMonthDialogHead" style={{ margin: 0, padding: '0.7rem 1rem 0.5rem', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, background: 'var(--surface)', zIndex: 1 }}>
-          <strong style={{ fontSize: '0.9rem' }}>The owner called · {facts.jobLabel}</strong>
+          <strong style={{ fontSize: '0.9rem' }}>{practice ? 'Practice call' : 'The owner called'} · {facts.jobLabel}</strong>
           <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginLeft: 8 }}>{card.title}</span>
           <button type="button" onClick={onClose} aria-label="Close" className="lienMonthDialogClose">×</button>
         </div>
+        {practice ? (
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', padding: '0.45rem 1rem', background: 'var(--bg-yellow-tint)', color: 'var(--text-yellow-800)', fontSize: '0.78rem', fontWeight: 600, borderBottom: '1px solid var(--border)' }} data-lien-owner-call-practice-banner>
+            <span>Practice call · a made-up letter · nothing is saved</span>
+            <button type="button" onClick={startOver} style={{ border: 'none', background: 'none', padding: 0, color: 'inherit', font: 'inherit', fontWeight: 600, cursor: 'pointer' }}>Start over ↺</button>
+          </div>
+        ) : null}
 
         <p style={{ margin: 0, padding: '0.55rem 1rem', fontSize: '0.8rem', color: 'var(--text-muted)', borderBottom: '1px solid var(--border)' }} data-lien-owner-call-holding>
           <strong style={{ color: 'var(--text-700)' }}>{facts.ownerName || 'The owner'}</strong> is holding {holdingWords(facts, fmt)} — <strong style={{ color: 'var(--text-700)' }}>{facts.amount}</strong>
@@ -150,8 +166,12 @@ export default function LienOwnerCallDialog({ facts, existing, takerName, onSave
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '0.7rem 1rem 0.9rem' }}>
           <button type="button" onClick={back} disabled={state.history.length === 0} style={{ ...btn('plain', state.history.length === 0), border: 'none', background: 'none', padding: 0 }}>‹ Back</button>
           <span style={{ display: 'flex', gap: 8 }}>
-            <button type="button" onClick={onClose} style={btn('plain')}>Cancel</button>
-            <button type="button" onClick={save} disabled={!canSave} style={btn('primary', !canSave)} data-lien-owner-call-save>Save the call</button>
+            <button type="button" onClick={onClose} style={btn('plain')}>{practice ? 'Close' : 'Cancel'}</button>
+            {practice ? (
+              <button type="button" onClick={onClose} style={btn('primary')} data-lien-owner-call-done>Done practicing</button>
+            ) : (
+              <button type="button" onClick={save} disabled={!canSave} style={btn('primary', !canSave)} data-lien-owner-call-save>Save the call</button>
+            )}
           </span>
         </div>
       </div>
