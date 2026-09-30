@@ -1,4 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { boardAlternateAddOn } from '../../lib/bids/coverLetterAddAlternates'
+import { formatCurrency } from '../../lib/format'
+import { parseCoverLetterAltTexts } from '../../lib/bids/coverLetterSamePage'
 import { Link } from 'react-router-dom'
 import { bidBoardJobLinkLabel, type BidBoardJobLink } from '../../lib/bids/bidBoardJobLinks'
 import { BID_ESTIMATE_STATUS_WORDS, isWonOutcome, type BidBoardBudgetChip } from '../../lib/bids/bidBoardBudgetChips'
@@ -1023,7 +1026,24 @@ export function BidsBidBoardTab({
         <span aria-hidden>$</span>
       </button>
     ) : (
-      formatBidValueShort(bid.bid_value != null ? Number(bid.bid_value) : null)
+      <>
+        {formatBidValueShort(bid.bid_value != null ? Number(bid.bid_value) : null)}
+        {renderAlternateAddOnChip(bid)}
+      </>
+    )
+  }
+
+  /** v2.4195: "+$3.2k alt" beside the value — the offered with-and-without alternates the letter last stamped on a send. */
+  function renderAlternateAddOnChip(bid: BidWithBuilder) {
+    const addOn = boardAlternateAddOn(parseCoverLetterAltTexts(bid.cover_letter_alt_texts))
+    if (!addOn) return null
+    return (
+      <span
+        title={`Alternate${addOn.parts.length === 1 ? '' : 's'} priced in addition to the bid: ${addOn.parts.map((p) => `${p.key.replace(/^group:/, '')} +$${formatCurrency(p.amount)}`).join(' · ')} — the value is the base bid`}
+        style={{ marginLeft: '0.3rem', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.03em', padding: '0 0.3rem', borderRadius: 3, border: '1px solid var(--text-amber-700)', color: 'var(--text-amber-700)', whiteSpace: 'nowrap', verticalAlign: '1px' }}
+      >
+        +{formatCompactCurrency(addOn.total)} alt
+      </span>
     )
   }
 
@@ -1093,7 +1113,7 @@ export function BidsBidBoardTab({
           <div>
             <span style={labelStyle}>Bid</span>
             {bid.bid_value != null && Number(bid.bid_value) > 0 ? (
-              formatCompactCurrency(Number(bid.bid_value))
+              <>{formatCompactCurrency(Number(bid.bid_value))}{renderAlternateAddOnChip(bid)}</>
             ) : (
               <span style={{ color: 'var(--text-muted)' }}>not set yet</span>
             )}

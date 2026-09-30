@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { splitLetterTotalsByAlternate, type LetterTotalsByAlternate } from '../lib/bids/coverLetterAddAlternates'
 import { coverLetterTotalsFromPricingRows, type ComputeBidPricingRowsResult } from '../lib/bidPricingRowCalculations'
 import { scenarioPackageRows, scenarioPricingRows } from '../lib/bids/scenarioPricingRows'
 import type { PackageAndSendPricingRowInput } from '../components/bids/PackageAndSendBidPricingModal'
@@ -36,7 +37,7 @@ export type UseBidPricingRowsInput = {
 export type UseBidPricingRowsResult = {
   pricingRowsForGrid: ComputeBidPricingRowsResult | null
   pricingPackageSource: { rows: PackageAndSendPricingRowInput[]; totalRevenue: number } | null
-  coverLetterPricingRows: { revenueSum: number; fixtureRows: { fixture: string; count: number }[] } | null
+  coverLetterPricingRows: { revenueSum: number; fixtureRows: { fixture: string; count: number }[]; byAlternate: LetterTotalsByAlternate | null } | null
 }
 
 /**
@@ -169,10 +170,12 @@ export function useBidPricingRows(input: UseBidPricingRowsInput): UseBidPricingR
     pricingFixtureMaterialsFromTakeoff,
   ])
 
-  const coverLetterPricingRows = useMemo<{ revenueSum: number; fixtureRows: { fixture: string; count: number }[] } | null>(() => {
+  const coverLetterPricingRows = useMemo<{ revenueSum: number; fixtureRows: { fixture: string; count: number }[]; byAlternate: LetterTotalsByAlternate | null } | null>(() => {
     if (!pricingRowsForGrid) return null
-    return coverLetterTotalsFromPricingRows(pricingRowsForGrid.rows)
-  }, [pricingRowsForGrid])
+    // v2.4195: the same rows split by the Count Sheet's alternate scope — the letter's base and add-ons.
+    const byAlternate = splitLetterTotalsByAlternate(pricingRowsForGrid.rows, pricingCountRows, selectedBidForPricing?.alternate_group_tags ?? [])
+    return { ...coverLetterTotalsFromPricingRows(pricingRowsForGrid.rows), byAlternate }
+  }, [pricingRowsForGrid, pricingCountRows, selectedBidForPricing?.alternate_group_tags])
 
   return { pricingRowsForGrid, pricingPackageSource, coverLetterPricingRows }
 }
