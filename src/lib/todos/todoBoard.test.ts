@@ -112,7 +112,7 @@ describe('parseFrontMatter', () => {
 })
 
 describe('readTodoDoc', () => {
-  it('reads flagged: true, and round-trips it (v2.4195)', () => {
+  it('reads flagged: true, and round-trips it (v2.4196)', () => {
     const md = ['---', 'name: X', 'number: 70', 'group: ready', 'status: s', 'summary: s', 'next: n', 'size: S', 'blocker: None.', 'ver: —', 'flagged: true', '---', '', 'body'].join('\n')
     const doc = readTodoDoc('to-dos/x.md', md)
     expect(isParseError(doc)).toBe(false)

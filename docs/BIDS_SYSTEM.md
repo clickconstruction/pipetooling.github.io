@@ -1380,6 +1380,9 @@ When an org setting is blank/missing, the letter builders fall back to the **bui
 - **Clipboard**: **`text/html`** is a minimal full document (DOCTYPE, charset meta, **StartFragment** / **EndFragment** around the body content) and **no** paired **`text/plain`** on the same write, so **Google Docs** tends to use rich HTML instead of plain text (plain would be one paragraph per line from newlines). **Normal paste** in Docs; “paste without formatting” still uses plain fallback behavior.
 - Fallback if **`navigator.clipboard.write`** fails: **`writeText(combinedText)`** as before.
 
+### With-and-without alternates on the letter (v2.4195)
+A count-row group named in `bids.alternate_group_tags` (v2.4188) prints as an addition, not in lieu: the proposed amount and the fixtures list are the **base** (an unticked alternate stays priced into them), and a second block — *Alternates — priced in addition to the proposal above:* — lists each offered alternate as *Alternate N — <group>: add $X (with it, $Y)* with its fixtures under it. Kernel [`coverLetterAddAlternates.ts`](../src/lib/bids/coverLetterAddAlternates.ts) (`splitLetterTotalsByAlternate` over `useBidPricingRows`' `coverLetterPricingRows.byAlternate`, `offeredAddAlternates`, `buildAddAlternatesBlock`); the builders take a last `addAlternatesBlock` argument and print it after the in-lieu-of block. `bids.cover_letter_alt_texts.groups[group:<tag>]` holds `offered` (step 1's checkbox, on by default) and the `amount` a send stamps (`stampAddAlternateAmounts`, both Mark sent paths); wording lives in `sections` under the same key, so the preview's click-to-edit is unchanged. A GC packet's section drops its offered alternates the same way. The Bid Board reads the stamped amounts into a *+$X alt* chip beside the value (`boardAlternateAddOn`); the value stays the base.
+
 ### Apply Proposed amount to Bid Value
 
 **Location**: Below "Proposed amount (from Pricing)", above the amount display

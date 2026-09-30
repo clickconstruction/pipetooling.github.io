@@ -31,7 +31,7 @@ A customer's plan set sometimes carries a section they call an **alternate**: th
 - The same fixture can sit in the base and in an alternate — WC ×4 in Restroom A and WC ×1 in the Break room — and those are two rows on purpose. Quick add and a rename only call a row a duplicate when it is in the same group.
 
 :::example One alternate on a bid
-Base · 5 ea · 112.00 ft — + Break room · 1 ea · 48.50 ft. The customer's letter will say the base price, then what the break room adds.
+Base · 5 ea · 112.00 ft — + Break room · 1 ea · 48.50 ft. The customer's letter will say the base price, then what the break room adds — see [offer an alternate on a bid](?g=offer-an-alternate-on-a-bid).
 :::
 
 ## The Reference grade chip — what this record can teach

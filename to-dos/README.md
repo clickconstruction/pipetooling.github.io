@@ -38,7 +38,7 @@ PR like any other.
    with no `.html` beside it reads *waiting on a mock-up*** on the board (and the board has a
    toggle for just those rows); when the work changes no screen — a live test, a refactor, a
    retirement — say so with `mockup: not required — <why>` and the row reads that instead.
-   **Flag a row to the top** with `flagged: true` in its front matter (v2.4195): the board lifts it out
+   **Flag a row to the top** with `flagged: true` in its front matter (v2.4196): the board lifts it out
    of its group into a ⚑ Flagged section above every group. Delete the line to unflag.
 3. **Check** — `npm run check:todos` says whether every to-do parses, cites shipped versions
    only, and renders. It runs in CI on every PR. Nothing is generated into the repo: the

@@ -1,6 +1,6 @@
 ---
 name: "New Bid: fold the other eighteen fields under More details"
-number: 64
+number: 68
 group: ready
 status: the Plans section moved up under the project name (v2.4162); the rest of the form is still every section open, ~26 fields
 summary: >

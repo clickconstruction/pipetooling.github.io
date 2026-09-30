@@ -163,7 +163,9 @@ export function buildCoverLetterHtml(
   alternatesBlock: CoverLetterAlternatesBlock | null = null,
   bidBasis: CoverLetterBidBasis | null = null,
   materialsByStage: CoverLetterMaterialsByStage | null = null,
-  scheduleOfValues: CoverLetterScheduleOfValues | null = null
+  scheduleOfValues: CoverLetterScheduleOfValues | null = null,
+  /** v2.4195: the with-and-without alternates, priced in addition to the proposal — after the in-lieu-of block. */
+  addAlternatesBlock: CoverLetterAlternatesBlock | null = null
 ): string {
   const inclusionIndent = '     ' // 5 preceding spaces for Additional Inclusions (same as fixture header)
   const inclusionLines = inclusions.trim().split(/\n/).filter(Boolean).map((l) => inclusionIndent + '• ' + l.trim())
@@ -191,19 +193,22 @@ export function buildCoverLetterHtml(
   const termsContent = terms.trim() ? termsLines.join('\n') : DEFAULT_TERMS_AND_WARRANTY
 
   let html = customerBlock + br2 + projectBlock
-  if (alternatesBlock && alternatesBlock.items.length > 0) {
-    html += br2 + '<strong>' + editWrap(escapeHtml(alternatesBlock.heading), alternatesBlock.headingEditKey) + '</strong>'
-    for (const item of alternatesBlock.items) {
-      html += br + inclusionIndent + '• <strong>' + editWrap(escapeHtml(item.label), item.editKey) + '</strong>: ' +
+  const blockHtml = (block: CoverLetterAlternatesBlock) => {
+    let out = br2 + '<strong>' + editWrap(escapeHtml(block.heading), block.headingEditKey) + '</strong>'
+    for (const item of block.items) {
+      out += br + inclusionIndent + '• <strong>' + editWrap(escapeHtml(item.label), item.editKey) + '</strong>: ' +
         (item.deltaText ? '<strong>' + escapeHtml(item.deltaText) + '</strong> (' + escapeHtml(item.amountFormatted) + ')' : '<strong>' + escapeHtml(item.amountFormatted) + '</strong>')
-      if (item.note?.trim()) html += br + inclusionIndent + '  ' + editWrap(escapeHtml(item.note.trim()), item.editKey)
+      if (item.note?.trim()) out += br + inclusionIndent + '  ' + editWrap(escapeHtml(item.note.trim()), item.editKey)
       for (const op of item.options ?? []) {
-        html += br + inclusionIndent + '     — or' + (op.label ? ' <strong>' + editWrap(escapeHtml(op.label), op.editKey) + '</strong>' : '') + ': ' +
+        out += br + inclusionIndent + '     — or' + (op.label ? ' <strong>' + editWrap(escapeHtml(op.label), op.editKey) + '</strong>' : '') + ': ' +
           (op.deltaText ? '<strong>' + escapeHtml(op.deltaText) + '</strong> (' + escapeHtml(op.amountFormatted) + ')' : '<strong>' + escapeHtml(op.amountFormatted) + '</strong>')
-        if (op.note?.trim()) html += br + inclusionIndent + '       ' + editWrap(escapeHtml(op.note.trim()), op.editKey)
+        if (op.note?.trim()) out += br + inclusionIndent + '       ' + editWrap(escapeHtml(op.note.trim()), op.editKey)
       }
     }
+    return out
   }
+  if (alternatesBlock && alternatesBlock.items.length > 0) html += blockHtml(alternatesBlock)
+  if (addAlternatesBlock && addAlternatesBlock.items.length > 0) html += blockHtml(addAlternatesBlock)
   if (designDrawingPlanDateFormatted) {
     html += br2 + '<strong>Design Drawings Plan Date: ' + escapeHtml(designDrawingPlanDateFormatted) + '</strong>'
   }
@@ -268,7 +273,9 @@ export function buildCoverLetterText(
   alternatesBlock: CoverLetterAlternatesBlock | null = null,
   bidBasis: CoverLetterBidBasis | null = null,
   materialsByStage: CoverLetterMaterialsByStage | null = null,
-  scheduleOfValues: CoverLetterScheduleOfValues | null = null
+  scheduleOfValues: CoverLetterScheduleOfValues | null = null,
+  /** v2.4195: the with-and-without alternates, priced in addition to the proposal — after the in-lieu-of block. */
+  addAlternatesBlock: CoverLetterAlternatesBlock | null = null
 ): string {
   const inclusionIndent = '     ' // 5 preceding spaces for Additional Inclusions (same as fixture header)
   const inclusionLines = inclusions.trim().split(/\n/).filter(Boolean).map((l) => inclusionIndent + '• ' + l.trim())
@@ -282,11 +289,11 @@ export function buildCoverLetterText(
       : ''
   const inclusionsBlock = [fixtureBlock, ...inclusionLinesToUse].filter(Boolean).join('\n')
   const stWord = serviceTypeWordForCoverLetter(serviceTypeName)
-  const alternatesLines =
-    alternatesBlock && alternatesBlock.items.length > 0
+  const blockLines = (block: CoverLetterAlternatesBlock | null): string[] =>
+    block && block.items.length > 0
       ? [
-          alternatesBlock.heading,
-          ...alternatesBlock.items.flatMap((item) => [
+          block.heading,
+          ...block.items.flatMap((item) => [
             inclusionIndent + '• ' + item.label + ': ' + (item.deltaText ? item.deltaText + ' (' + item.amountFormatted + ')' : item.amountFormatted),
             ...(item.note?.trim() ? [inclusionIndent + '  ' + item.note.trim()] : []),
             ...(item.options ?? []).flatMap((op) => [
@@ -297,6 +304,7 @@ export function buildCoverLetterText(
           '',
         ]
       : []
+  const alternatesLines = [...blockLines(alternatesBlock), ...blockLines(addAlternatesBlock)]
   const lines: string[] = [
     customerName,
     ...addressLines(customerAddress),

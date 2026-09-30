@@ -157,7 +157,7 @@ describe('local picks', () => {
   })
 })
 
-describe('flagged rows (v2.4195)', () => {
+describe('flagged rows (v2.4196)', () => {
   it('a flagged row leaves its group and shows once, in the Flagged section, in board order', () => {
     const flagged = { ...A, slug: 'f1', flagged: true }
     const flagged2 = { ...FLAT, slug: 'f2', flagged: true }

@@ -61,7 +61,7 @@ export interface TodoMeta {
   /** Standing pointers are listed but are not "open items". */
   pointer: boolean
   /**
-   * `flagged: true` (v2.4195): the owner wants this row at the top. The board lifts it out of
+   * `flagged: true` (v2.4196): the owner wants this row at the top. The board lifts it out of
    * its group into a Flagged section above every group, marked ⚑; the group still shows on the
    * row's stripe. Unflag by deleting the line.
    */

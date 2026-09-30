@@ -8,13 +8,14 @@ summary: >
   scores the counts and the pricing and writes what the robot missed. With 31 audits waiting
   and the oldest a month old, no kind of job has earned first drafts, so loading plans in (the
   robot-intake train) makes more robot bids that nobody reads. The audits are the other half
-  of the loop, and they are a person's time, not code.
+  of the loop, and they are a person's time, not code. Making each audit faster — the Audits lens
+  as a queue — is #63; this row is who audits and how often.
 next: >
   The owner decides who audits and how often (a standing half hour a week per estimator, or
   one person clearing the backlog oldest-first), then works Bids → 🤖 Robots → Audits from the
   oldest. Measure after two weeks: audits waiting under 10 and none older than 14 days. If a
   single audit takes more than about fifteen minutes, write down which step is slow — that is
-  the code to-do this one turns into.
+  the case for #63's queue, not a new to-do.
 size: M (people time — about 31 audits, roughly 15 minutes each)
 blocker: The owner's call on who audits and on what cadence.
 ver: —

@@ -68,7 +68,7 @@ export default function PunchList() {
   const counts = useMemo(() => countPicks(board.items, picks), [picks])
   const groups = useMemo(() => groupRows(board.items), [])
   const flagged = useMemo(() => flaggedRows(board.items), [])
-  // Every row counts toward its group, flagged ones included — they left the group's section, not the group (v2.4195).
+  // Every row counts toward its group, flagged ones included — they left the group's section, not the group (v2.4196).
   const byGroup = useMemo(() => {
     const out: Partial<Record<BoardGroup, number>> = {}
     for (const it of board.items as BoardItem[]) out[it.group] = (out[it.group] ?? 0) + 1
@@ -195,7 +195,7 @@ export default function PunchList() {
         </button>
       </div>
 
-      {/* v2.4195 · the owner's flagged rows, above every group. */}
+      {/* v2.4196 · the owner's flagged rows, above every group. */}
       {(() => {
         const visible = flagged.filter((it) => rowVisible(it, picks, filter, waitingOnly))
         if (visible.length === 0) return null
