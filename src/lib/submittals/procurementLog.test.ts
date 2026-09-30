@@ -35,7 +35,7 @@ const approved = (at: string) => ({ kind: 'approved' as const, at })
 // The mock-up's job: Rough In 10/06 · Top Out 10/27 · Trim Set 11/17.
 const stageDates = { rough_in: '2026-10-06', top_out: '2026-10-27', trim_set: '2026-11-17' }
 const items = [
-  item({ tag: 'WH-1', product: 'A.O. Smith BTH-199', leadTimeDays: 42, decision: approved('2026-09-22T15:00:00Z') }),
+  item({ tag: 'WH-1', product: 'A.O. Smith BTH-199', supplyHouse: 'Ferguson', leadTimeDays: 42, decision: approved('2026-09-22T15:00:00Z') }),
   item({ tag: 'FS-2', product: 'Zurn Z1900 floor sink', leadTimeDays: 0, decision: approved('2026-09-22T15:00:00Z') }),
   item({ tag: 'BFP-1', product: 'Watts 909 RPZ 2"', leadTimeDays: 28, decision: approved('2026-09-22T15:00:00Z') }),
   item({ tag: 'HS-1', product: 'Advance Tabco 7-PS-66', leadTimeDays: 14, decision: { kind: 'revise', at: '2026-09-22T15:00:00Z' } }),
@@ -200,6 +200,14 @@ describe('updates', () => {
     expect(html).toContain('Sep 24 · PO 118')
     expect(html).toContain('delivered Sep 26')
     expect(html).toContain('<span class="dot"></span><strong>BFP-1</strong>')
+    // One Item column (v2.4236): the tag in bold, the product beside it, the house after; a hand row leads with its name.
+    expect(html).toContain('<th style="text-align:left; font-size:0.66em; text-transform:uppercase; letter-spacing:0.05em; color:#6b7280; border-bottom:1.5px solid #17191e; padding:0.3rem 0.45rem; white-space:nowrap; width:32%">Item</th><th')
+    expect(html).not.toContain('>Tag</th>')
+    expect(html).toContain('<strong>BFP-1</strong> Watts 909 RPZ 2&quot;</td>')
+    expect(html).toContain('<strong>WH-1</strong> A.O. Smith BTH-199 <span style="color:#6b7280">· Ferguson</span></td>')
+    expect(html).toContain('<strong>Grease interceptor 750 gal</strong></td>')
+    expect(html).toContain('colspan="7"')
+    expect(html).not.toContain('colspan="8"')
     expect(html).toContain('Ferguson: 10/20 earliest<br/><span style="color:#6b7280">since Sep 21: expected 10/23 → 10/20 (house)</span>')
     expect(html).not.toContain('<span class="dot"></span><strong>WH-1</strong>')
     expect(html).toContain('<svg data-qr="1"></svg>')

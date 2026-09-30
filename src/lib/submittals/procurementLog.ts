@@ -561,7 +561,9 @@ const th = 'text-align:left; font-size:0.66em; text-transform:uppercase; letter-
 /**
  * The printed sheet (v2.4122): a letter to the GC. The company block and the To/Project lines
  * the submittal cover prints, the rows grouped by stage with the stage's date once, *What we
- * need from you* above the table, every cell in the GC's words, the row's own note in Notes,
+ * need from you* above the table, the tag in bold with the product beside it in one Item
+ * column (v2.4236 — two columns left the product a sliver on a landscape page), every cell in
+ * the GC's words, the row's own note in Notes,
  * the room's code at the foot, and the estimator's line that it is true and current. An update
  * marks its changed rows (amber, a dot) and says since when; a print says *as of* and marks nothing.
  */
@@ -590,8 +592,7 @@ export function buildProcurementUpdateHtml(input: ProcurementUpdateInput): strin
     const sched = gcScheduleWord(r, input.sentOn)
     const notes = [r.note ? escapeHtml(r.note) : '', chgLine ? `<span style="color:#6b7280">since ${escapeHtml(monthDay(input.sinceOn))}: ${escapeHtml(chgLine)}</span>` : ''].filter(Boolean).join('<br/>')
     return `<tr>
-      <td style="${cell};${bg}; white-space:nowrap">${chg ? '<span class="dot"></span>' : ''}<strong>${escapeHtml(r.tag ?? '—')}</strong></td>
-      <td style="${cell};${bg}">${escapeHtml(r.product)}${r.supplyHouse ? ` <span style="color:#6b7280">· ${escapeHtml(r.supplyHouse)}</span>` : ''}</td>
+      <td style="${cell};${bg}">${chg ? '<span class="dot"></span>' : ''}<strong>${escapeHtml(r.tag ?? r.product)}</strong>${r.tag ? ` ${escapeHtml(r.product)}` : ''}${r.supplyHouse ? ` <span style="color:#6b7280">· ${escapeHtml(r.supplyHouse)}</span>` : ''}</td>
       <td style="${cell};${bg}">${escapeHtml(gcSubmittalWord(r))}</td>
       <td style="${cell};${bg}; white-space:nowrap">${ordered}</td>
       <td style="${cell};${bg}; white-space:nowrap">${escapeHtml(describeLeadTime(r.leadTimeDays) ?? '—')}</td>
@@ -604,7 +605,7 @@ export function buildProcurementUpdateHtml(input: ProcurementUpdateInput): strin
     .map((g) => {
       const behind = g.rows.filter((r) => r.late).length
       const head = `${escapeHtml(g.label)} <span style="font-weight:400; color:#4b5563">· ${g.neededOn ? `needed on site ${escapeHtml(monthDay(g.neededOn))} · ` : ''}${g.rows.length} item${g.rows.length === 1 ? '' : 's'}${behind ? `, ${behind} behind` : ''}</span>`
-      return `<tr><td colspan="8" style="background:#f3f4f6; font-weight:700; padding:0.4rem 0.45rem; border-bottom:1px solid #d1d5db; font-size:0.85rem">${head}</td></tr>${g.rows.map(rowHtml).join('')}`
+      return `<tr><td colspan="7" style="background:#f3f4f6; font-weight:700; padding:0.4rem 0.45rem; border-bottom:1px solid #d1d5db; font-size:0.85rem">${head}</td></tr>${g.rows.map(rowHtml).join('')}`
     })
     .join('')
 
@@ -652,8 +653,8 @@ export function buildProcurementUpdateHtml(input: ProcurementUpdateInput): strin
   ${metaHtml}
   ${asksHtml}
   <table>
-    <thead><tr><th style="${th}">Tag</th><th style="${th}">Item</th><th style="${th}">Submittal</th><th style="${th}">Ordered</th><th style="${th}">Lead time</th><th style="${th}">Expected on site</th><th style="${th}">Schedule</th><th style="${th}">Notes</th></tr></thead>
-    <tbody>${bodyHtml || `<tr><td colspan="8" style="${cell}; color:#6b7280">No items on the log.</td></tr>`}</tbody>
+    <thead><tr><th style="${th}; width:32%">Item</th><th style="${th}">Submittal</th><th style="${th}">Ordered</th><th style="${th}">Lead time</th><th style="${th}">Expected on site</th><th style="${th}">Schedule</th><th style="${th}">Notes</th></tr></thead>
+    <tbody>${bodyHtml || `<tr><td colspan="7" style="${cell}; color:#6b7280">No items on the log.</td></tr>`}</tbody>
   </table>
   <p class="foot">Submittal = your reviewer’s decision on our submittal. Expected = our order date plus the supplier’s lead time, or the supplier’s own date where marked. Behind = the item lands after its stage starts, on the schedule you gave us.</p>
   ${roomHtml}
