@@ -2,7 +2,7 @@
 title: send a GC our lien waiver
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: lien waiver, GC, general contractor, conditional, unconditional, progress, final, release of lien, he signs now, sign now, send to the GC, waiver PDF, 53.284, bill, pay app, send with the bill, bill tab, add waiver
+keywords: lien waiver, GC, general contractor, conditional, unconditional, progress, final, release of lien, he signs now, sign now, send to the GC, waiver PDF, 53.284, bill, pay app, send with the bill, bill tab, add waiver, waivers to sign, needs you, sign them
 ---
 A GC often wants a lien waiver with each bill. The waiver says we give up our lien right for that payment. Texas has four forms. The app picks the right one from the bill, and the leader signs it in the app.
 
@@ -58,6 +58,18 @@ The **Signed by the leader** box names the leader on the job. There are two ways
 When he signs now, he draws his signature with a finger or the mouse. He cannot type it. The record names him as the signer and names your device. The signature prints on every copy.
 
 If you are the leader, the button reads {{button:outline|✍ Sign now}}.
+
+## Sign several at once
+
+A leader with waivers waiting sees a card on his Dashboard. It reads **N lien waivers wait for your signature**.
+
+1. Click {{button:outline|Sign them}}. The **Waivers to sign** seat opens.
+2. The list is on the left. Each row names the GC, the job, the form and the amount.
+3. Click a row. Its full page shows on the right. Read it.
+4. Type or draw your signature under the page. Tick the box. Click {{button:blue|✍ Sign · send to the GC}}.
+5. The waiver goes to the GC by email. The next row loads.
+
+Untick **Send once signed** to sign without sending. The office sends it later from the job.
 
 ## Send it or download it
 

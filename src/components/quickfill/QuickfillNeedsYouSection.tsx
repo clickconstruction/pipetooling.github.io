@@ -141,6 +141,8 @@ export function QuickfillNeedsYouSection({
     // Unconditional follow-ups ARE billing-desk work (v2.2582).
     lienUnconditionalEnabled,
     lienUnconditionalOwed,
+    lienWaiversToSignEnabled: false,
+    lienWaiversToSign: null,
     demandDeadlineEnabled: lienUnconditionalEnabled,
     demandDeadlineOverdue,
     lienWatchEnabled: lienUnconditionalEnabled,

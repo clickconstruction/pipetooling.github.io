@@ -66,6 +66,8 @@ import {
 import type { DispatchAgingSummary } from '../../lib/dispatchInboxAging'
 import { DashboardStaleTallyStaffFollowUpModal } from '../DashboardStaleTallyStaffFollowUpModal'
 import { DashboardLienReleaseQueueModal } from './DashboardLienReleaseQueueModal'
+import { DashboardLienWaiversToSignModal } from './DashboardLienWaiversToSignModal'
+import { useLienSignatureLanes } from '../../hooks/useLienSignatureLanes'
 import { DashboardArDepositsModal } from './DashboardArDepositsModal'
 import NewReportModal from '../NewReportModal'
 import type { PinnedItem } from '../../lib/pinnedTabs'
@@ -428,6 +430,12 @@ export function DashboardPinnedQuickRow({
   const lienUnconditionalEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const { owed: lienUnconditionalOwed, queue: lienReleaseQueue, refetch: refetchLienReleasesOwed } = useLienReleasesOwedNudge(lienUnconditionalEnabled)
   const [lienReleaseQueueOpen, setLienReleaseQueueOpen] = useState(false)
+  // Lien waivers awaiting MY signature (v2.4276): the leader's seat. Signers only — the lanes hook
+  // already scopes to me; the enable keeps the read off the roles that never sign.
+  const lienWaiversToSignEnabled = !hideBanners && Boolean(authUserId) && (role === 'master_technician' || role === 'dev')
+  const { lanes: lienSignatureLanes, refetch: refetchLienSignatureLanes } = useLienSignatureLanes(lienWaiversToSignEnabled)
+  const lienWaiversToSign = lienWaiversToSignEnabled ? { count: lienSignatureLanes.toSign.length, total: lienSignatureLanes.toSign.reduce((sum, r) => sum + Number(r.amount ?? 0), 0) } : null
+  const [lienWaiversToSignOpen, setLienWaiversToSignOpen] = useState(false)
   const { overdue: demandDeadlineOverdue } = useDemandDeadlinesNudge(lienUnconditionalEnabled)
   const { watch: lienWatch } = useLienWatchNudge(lienUnconditionalEnabled)
   // The Lien desk (v2.3405): notices due per unpaid work month — the office's drafting pile, the leader's approvals.
@@ -535,6 +543,8 @@ export function DashboardPinnedQuickRow({
     d22UncodedCount,
     lienUnconditionalEnabled,
     lienUnconditionalOwed,
+    lienWaiversToSignEnabled,
+    lienWaiversToSign,
     contractNudgeEnabled,
     contractNudge,
     unpricedWorkOrdersEnabled,
@@ -773,6 +783,9 @@ export function DashboardPinnedQuickRow({
             } else if (item.key === 'lien-unconditional') {
               // The queue (v2.2751): issue each unconditional follow-up from its row.
               setLienReleaseQueueOpen(true)
+            } else if (item.key === 'lien-waivers-to-sign') {
+              // The leader's seat (v2.4276): the list, the page, the pad.
+              setLienWaiversToSignOpen(true)
             } else if (item.key === 'demand-deadline') {
               navigate('/jobs?tab=stages')
             } else if (item.key === 'lien-notice-batch') {
@@ -874,6 +887,9 @@ export function DashboardPinnedQuickRow({
           rows={lienReleaseQueue}
           onChanged={refetchLienReleasesOwed}
         />
+      )}
+      {renderModals && (
+        <DashboardLienWaiversToSignModal open={lienWaiversToSignOpen} onClose={() => setLienWaiversToSignOpen(false)} rows={lienSignatureLanes.toSign} onChanged={refetchLienSignatureLanes} />
       )}
       {renderModals && (
         <DashboardArDepositsModal

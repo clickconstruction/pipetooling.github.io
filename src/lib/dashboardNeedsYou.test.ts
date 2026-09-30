@@ -34,6 +34,8 @@ function inputs(overrides: Partial<NeedsYouInputs> = {}): NeedsYouInputs {
     d22UncodedCount: 0,
     lienUnconditionalEnabled: true,
     lienUnconditionalOwed: null,
+    lienWaiversToSignEnabled: true,
+    lienWaiversToSign: null,
     demandDeadlineEnabled: true,
     demandDeadlineOverdue: null,
     lienWatchEnabled: true,
@@ -1102,5 +1104,18 @@ describe('tracking owed (v2.4119)', () => {
     expect(card).toMatchObject({ severity: 'amber', kicker: 'Lien notices', title: '2 mailed notices have no tracking number', figure: '2', actionLabel: 'Open the Lien desk' })
     expect(card.detail).toContain('3 certified sends have no number')
     expect(buildNeedsYouItems(inputs({ lienWatch: { noticeDue: [], filingDue: [], serveDue: [], trackingOwed: [] } })).some((i) => i.key === 'lien-tracking-owed')).toBe(false)
+  })
+})
+
+describe('lien-waivers-to-sign (v2.4276)', () => {
+  it('an amber money-tier item for the signer, naming the count and the dollars; gone at zero, disabled, or while loading', () => {
+    const one = buildNeedsYouItems(inputs({ lienWaiversToSign: { count: 1, total: 15406 } }))
+    expect(one.map((i) => i.key)).toEqual(['lien-waivers-to-sign'])
+    expect(one[0]).toMatchObject({ severity: 'amber', kicker: 'Lien waivers', title: 'A lien waiver waits for your signature · $15,406', figure: '1', actionLabel: 'Sign it' })
+    const four = buildNeedsYouItems(inputs({ lienWaiversToSign: { count: 4, total: 38077 } }))
+    expect(four[0]).toMatchObject({ title: '4 lien waivers wait for your signature · $38,077', actionLabel: 'Sign them' })
+    expect(buildNeedsYouItems(inputs({ lienWaiversToSign: { count: 0, total: 0 } }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ lienWaiversToSignEnabled: false, lienWaiversToSign: { count: 2, total: 100 } }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ lienWaiversToSign: null }))).toEqual([])
   })
 })

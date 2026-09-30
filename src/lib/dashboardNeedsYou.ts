@@ -79,6 +79,7 @@ export type NeedsYouItem = {
     | 'robot-audits'
     | 'robot-locked'
     | 'lien-unconditional'
+    | 'lien-waivers-to-sign'
     | 'demand-deadline'
     | 'lien-serve-copy'
   | 'lien-tracking-owed'
@@ -151,6 +152,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   // Money tier: a returned check still counted as paid overstates the job, the Pipeline and the lien claim.
   'returned-check': 10,
   'lien-unconditional': 20,
+  // The leader's own signatures on waivers going to GCs (v2.4276): a bill is waiting on it.
+  'lien-waivers-to-sign': 20,
   'gc-review-weekly': 20,
   'tally-self': 30,
   'tally-team': 30,
@@ -371,6 +374,12 @@ export type NeedsYouInputs = {
    */
   lienUnconditionalEnabled: boolean
   lienUnconditionalOwed: { count: number; total: number } | null
+  /**
+   * Lien waivers awaiting THIS user's signature (v2.4276) — the office minted them for bills to
+   * GCs and asked the leader to sign. Null while loading; the lanes hook reports empty on error.
+   */
+  lienWaiversToSignEnabled: boolean
+  lienWaiversToSign: { count: number; total: number } | null
   /**
    * Demand letters past their named deadline with money still open (v2.2640).
    * Null while loading; the hook reports zero on error so the card stays quiet.
@@ -793,6 +802,22 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
         " conditional lien release was issued — the customer is owed the unconditional version. Open the list: each row issues its unconditional release, prefilled from the original.",
       figure: String(n),
       actionLabel: n === 1 ? 'Issue release' : 'Issue releases',
+    })
+  }
+
+  if (inputs.lienWaiversToSignEnabled && (inputs.lienWaiversToSign?.count ?? 0) > 0) {
+    const { count: n, total } = inputs.lienWaiversToSign as { count: number; total: number }
+    const money = total.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+    items.push({
+      key: 'lien-waivers-to-sign',
+      severity: 'amber',
+      kicker: 'Lien waivers',
+      title: n === 1 ? `A lien waiver waits for your signature · ${money}` : `${n} lien waivers wait for your signature · ${money}`,
+      detail:
+        (n === 1 ? 'The office drafted a waiver for a bill to a GC; the bill has gone and the waiver follows the moment you sign.' : 'The office drafted waivers for bills to GCs; each bill has gone and its waiver follows the moment you sign.') +
+        ' Open the list: the page is on the right, sign it there, the next one loads.',
+      figure: String(n),
+      actionLabel: n === 1 ? 'Sign it' : 'Sign them',
     })
   }
 
