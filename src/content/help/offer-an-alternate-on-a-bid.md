@@ -22,8 +22,8 @@ Base · 5 ea · 112.00 ft — + Break room · 1 ea · 48.50 ft. Takeoffs, Labor,
 ## Read the split on Takeoffs, Labor and Pricing
 
 - **Takeoffs** (Sheet view): under **Materials on this bid**, an amber block reads **Base**, **+ Break room**, **With the alternate**.
-- **Labor**: a card above the bottom line splits field hours, labor at the rate and driving the same way.
-- **Pricing**: the Workbench's scoreboard grows a second line — Base, + Break room, With the alternate, and the alternate's own margin. Price its rows like any other.
+- **Labor**: a card above the bottom line splits field hours, labor at the rate, driving and materials the same way, and ends with each column's direct cost.
+- **Pricing**: the Workbench's scoreboard grows a second line — Base, + Break room, With the alternate, and the alternate's own margin. Price its rows like any other. Open the solver and a **Solve for** row picks what the margin slider and the target total price: {{chip:blue|Base}} to start (the number the letter leads with), the alternate on its own, or the whole bid. Rows outside the pick keep their prices.
 
 ## Offer it on the letter
 

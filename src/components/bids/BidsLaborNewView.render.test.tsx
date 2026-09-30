@@ -236,6 +236,33 @@ describe('BidsLaborNewView · one book and who may recalibrate (v2.3597)', () =>
     expect(within(split).getByText('$1,037.04')).toBeTruthy() // 29 h × $35.76
   })
 
+  it('v2.4202: with each count row\'s takeoff materials the card adds Materials and Direct cost by scope', async () => {
+    renderView({
+      countRows: [
+        { id: 'c1', fixture: 'Toilets', count: 3, group_tag: 'Restroom A' },
+        { id: 'c2', fixture: 'Toilets', count: 1, group_tag: 'Break room' },
+        { id: 'c3', fixture: 'Gas drops', count: 5, group_tag: null },
+      ],
+      alternateTags: ['Break room'],
+      materialsByCountRowId: { c1: 300, c2: 100, c3: 500 },
+    })
+    await settle()
+    const split = screen.getByTestId('labor-alt-split')
+    expect(within(split).getByText('Materials')).toBeTruthy()
+    expect(within(split).getByText('$800.00')).toBeTruthy() // base: 300 + 500
+    expect(within(split).getByText('$100.00')).toBeTruthy() // the alternate
+    expect(within(split).getByText('$900.00')).toBeTruthy() // with it
+    expect(screen.getByTestId('labor-alt-direct')).toBeTruthy()
+    expect(within(split).queryByText(/Materials split the same way/)).toBeNull()
+  })
+
+  it('without per-row materials the card keeps the Takeoffs footnote', async () => {
+    renderView({ countRows: [{ fixture: 'Toilets', count: 3, group_tag: 'Restroom A' }, { fixture: 'Toilets', count: 1, group_tag: 'Break room' }], alternateTags: ['Break room'] })
+    await settle()
+    expect(within(screen.getByTestId('labor-alt-split')).getByText(/Materials split the same way/)).toBeTruthy()
+    expect(screen.queryByTestId('labor-alt-direct')).toBeNull()
+  })
+
   it('draws no split on a bid without alternates', async () => {
     renderView({ countRows: [{ fixture: 'Toilets', count: 4, group_tag: 'Restroom A' }], alternateTags: [] })
     await settle()

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'r
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
 import { laborRowHours } from '../../lib/bids/laborRowHours'
-import { laborHoursByAlternate } from '../../lib/bids/alternateScope'
+import { laborHoursByAlternate, sumByAlternate } from '../../lib/bids/alternateScope'
 import { laborCellAriaLabel } from '../../lib/bids/laborCellSaveState'
 import {
   entryAlreadyKnows,
@@ -97,8 +97,10 @@ export type BidsLaborNewViewProps = {
   distanceFromOffice?: string | null
   countRowsLength?: number
   /** v2.4191: the bid's count rows and alternate groups — the hours split into the base and what each alternate adds. */
-  countRows?: ReadonlyArray<{ fixture: string | null; count: number | string | null; group_tag: string | null }>
+  countRows?: ReadonlyArray<{ id?: string; fixture: string | null; count: number | string | null; group_tag: string | null }>
   alternateTags?: readonly string[]
+  /** v2.4202: each count row's takeoff materials — the alternate card gains a Materials row and a Direct cost line. */
+  materialsByCountRowId?: Record<string, number>
   directCostTables?: Partial<Record<DirectCostKind, ReadonlyArray<StageAmountRow>>>
   /** Calibration (v2.3307): the jobs linked to bids that priced with the applied book; undefined = not loaded (roles without job hours). */
   calibrationJobs?: CalibrationJob[]
@@ -268,6 +270,13 @@ export function BidsLaborNewView(p: BidsLaborNewViewProps) {
     () => (p.countRows && p.alternateTags && p.alternateTags.length > 0 ? laborHoursByAlternate({ laborRows: p.rows, countRows: p.countRows, alternateTags: p.alternateTags }) : null),
     [p.rows, p.countRows, p.alternateTags],
   )
+  // v2.4202: materials by alternate from the same per-fixture coverage Takeoffs shows; null until the takeoff has lines.
+  const altMaterials = useMemo(() => {
+    const m = p.materialsByCountRowId
+    if (!altHours || !m || Object.keys(m).length === 0 || !p.countRows || !p.alternateTags) return null
+    const rows = p.countRows.filter((r): r is typeof r & { id: string } => typeof r.id === 'string')
+    return sumByAlternate(rows, p.alternateTags, (r) => m[r.id] ?? 0)
+  }, [altHours, p.materialsByCountRowId, p.countRows, p.alternateTags])
   const matchedZero = useMemo(() => queue.filter((r) => matches.get(r.id)), [queue, matches])
 
   const draftFor = (row: CostEstimateLaborRow): QueueDraft => {
@@ -933,9 +942,22 @@ export function BidsLaborNewView(p: BidsLaborNewViewProps) {
                 <tr><td style={{ ...cell, textAlign: 'left' }}>Field hours</td>{cols.map((c) => <td key={c.label} style={cell}>{fmtHours(c.hours)}</td>)}</tr>
                 <tr><td style={{ ...cell, textAlign: 'left' }}>Labor at the rate</td>{cols.map((c) => <td key={c.label} style={cell}>{money(c.hours)}</td>)}</tr>
                 {bottom.drivingCost > 0 ? <tr><td style={{ ...cell, textAlign: 'left' }}>Driving</td>{cols.map((c) => <td key={c.label} style={cell}>${formatCurrency(bottom.drivingCost * share(c.hours))}</td>)}</tr> : null}
+                {altMaterials ? (() => {
+                  // v2.4202: materials by the Count Sheet's scope, and the direct cost each column carries —
+                  // labor at the rate, its share of driving and the other direct costs, plus its materials.
+                  const matOf = (label: string) => (label === 'Base' ? altMaterials.base : label.startsWith('+ ') ? (altMaterials.alternates.find((a) => `+ ${a.label}` === label)?.value ?? 0) : altMaterials.total)
+                  const otherDirect = Math.max(bottom.totalCost - bottom.laborCost - bottom.drivingCost - bottom.totalMaterials, 0)
+                  const direct = (c: { label: string; hours: number }) => (eff.rate != null ? c.hours * eff.rate : 0) + (bottom.drivingCost + otherDirect) * share(c.hours) + matOf(c.label)
+                  return (
+                    <>
+                      <tr><td style={{ ...cell, textAlign: 'left' }}>Materials</td>{cols.map((c) => <td key={c.label} style={cell}>${formatCurrency(matOf(c.label))}</td>)}</tr>
+                      <tr data-testid="labor-alt-direct"><td style={{ ...cell, textAlign: 'left', fontWeight: 700 }}>Direct cost</td>{cols.map((c) => <td key={c.label} style={{ ...cell, fontWeight: 700 }}>${formatCurrency(direct(c))}</td>)}</tr>
+                    </>
+                  )
+                })() : null}
               </tbody>
             </table>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>Materials split the same way on Takeoffs → What Pricing sees.</div>
+            {altMaterials ? null : <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>Materials split the same way on Takeoffs → What Pricing sees.</div>}
           </div>
         )
       })() : null}
