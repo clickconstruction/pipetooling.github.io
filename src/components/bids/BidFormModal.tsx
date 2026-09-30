@@ -101,9 +101,13 @@ export type BidFormModalProps = {
   setDeleteBidModalOpen: (value: boolean) => void
   setDeleteConfirmProjectName: (value: string) => void
   setError: Dispatch<SetStateAction<string | null>>
-  /** Hide bid from Unsent/Working surfaces (opens parent confirm). */
+  /** Hide bid from Unsent/Working surfaces (opens parent confirm). A greyed press calls it too — the parent says why. */
   onRequestArchiveFromUnsentWorking?: () => void
-  showArchiveFromUnsentWorking?: boolean
+  /** Why the Archive button is greyed for this bid and user (`archiveFromBoardBlockedReason`); null = it may act. */
+  archiveFromBoardBlockedReason?: string | null
+  /** The bid is archived from the board: the button reads "Put back on board" and calls `onRequestUnarchiveFromBoard`. */
+  archivedFromBoard?: boolean
+  onRequestUnarchiveFromBoard?: () => void
   archiveFromUnsentWorkingBusy?: boolean
   /** Sibling bids keyed by `service_type_id` (same customer + project name); for “open existing” in service-type switcher. */
   serviceTypeSwitchSiblings?: Record<string, BidServiceTypeSwitchSibling[]>
@@ -275,7 +279,9 @@ export function BidFormModal(props: BidFormModalProps) {
     setDeleteConfirmProjectName,
     setError,
     onRequestArchiveFromUnsentWorking,
-    showArchiveFromUnsentWorking = false,
+    archiveFromBoardBlockedReason = null,
+    archivedFromBoard = false,
+    onRequestUnarchiveFromBoard,
     archiveFromUnsentWorkingBusy = false,
     serviceTypeSwitchSiblings = {},
     onServiceTypeSwitchModalOpen,
@@ -1451,12 +1457,25 @@ export function BidFormModal(props: BidFormModalProps) {
                     >
                       Delete bid…
                     </button>
-                    {showArchiveFromUnsentWorking && onRequestArchiveFromUnsentWorking ? (
+                    {onRequestArchiveFromUnsentWorking ? (
+                      /* Always drawn. Greyed (aria-disabled, so the press still fires and a screen reader hears
+                         "dimmed") when the kernel has a reason — the parent toasts that reason on the press. An
+                         archived bid gets the way back instead of a grey button pointing at another window. */
                       <button
                         type="button"
-                        onClick={() => onRequestArchiveFromUnsentWorking()}
+                        onClick={() =>
+                          archivedFromBoard && onRequestUnarchiveFromBoard
+                            ? onRequestUnarchiveFromBoard()
+                            : onRequestArchiveFromUnsentWorking()
+                        }
                         disabled={archiveFromUnsentWorkingBusy || savingBid}
-                        title="Hide from Working board, unsent lists, and clock quick picks (column placement kept)"
+                        aria-disabled={archiveFromBoardBlockedReason ? true : undefined}
+                        title={
+                          archiveFromBoardBlockedReason ??
+                          (archivedFromBoard
+                            ? 'Back onto the Unsent / Working board'
+                            : 'Hide from the working board, unsent lists and clock quick picks (column placement kept)')
+                        }
                         style={{
                           padding: '0.45rem 0.7rem',
                           fontSize: '0.85rem',
@@ -1464,10 +1483,22 @@ export function BidFormModal(props: BidFormModalProps) {
                           background: 'var(--surface)',
                           border: '1px solid var(--border-strong)',
                           borderRadius: 4,
-                          cursor: archiveFromUnsentWorkingBusy || savingBid ? 'wait' : 'pointer',
+                          opacity: archiveFromBoardBlockedReason ? 0.5 : 1,
+                          cursor:
+                            archiveFromUnsentWorkingBusy || savingBid
+                              ? 'wait'
+                              : archiveFromBoardBlockedReason
+                                ? 'not-allowed'
+                                : 'pointer',
                         }}
                       >
-                        {archiveFromUnsentWorkingBusy ? 'Archiving…' : 'Archive from board'}
+                        {archiveFromUnsentWorkingBusy
+                          ? archivedFromBoard
+                            ? 'Putting back…'
+                            : 'Archiving…'
+                          : archivedFromBoard
+                            ? 'Put back on board'
+                            : 'Archive from board'}
                       </button>
                     ) : null}
                   </>

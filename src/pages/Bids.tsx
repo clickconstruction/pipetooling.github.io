@@ -94,10 +94,7 @@ import {
   DEFAULT_TERMS_AND_WARRANTY,
   DEFAULT_EXCLUSIONS,
 } from '../lib/bidDocuments/coverLetter'
-import {
-  bidEligibleForWorkingBoardArchive,
-  canUserArchiveBidOnWorkingBoard,
-} from '../lib/workingBoardArchiveEligibility'
+import { archiveFromBoardBlockedReason, bidEligibleForWorkingBoardArchive, canUserArchiveBidOnWorkingBoard } from '../lib/workingBoardArchiveEligibility'
 import {
   bidDisplayName,
   getCustomerDisplay,
@@ -740,7 +737,7 @@ export default function Bids() {
         )
         if (bidUpdateRefused(archivedRows)) throw new Error(BID_UPDATE_NOT_APPLIED_MESSAGE)
         const rows = await loadBids()
-        showToast('Archived. Restore from Bid Board → Archived.', 'success')
+        showToast('Archived. Put it back from this window, or from Bid Board → Archived.', 'success')
         setEditingBid((prev) => {
           if (!prev || prev.id !== bidId) return prev
           const fresh = rows.find((b) => b.id === bidId)
@@ -755,10 +752,47 @@ export default function Bids() {
     [authUser?.id, bids, myRole, showToast, loadBids, setEditingBid],
   )
 
+  const unarchiveWorkingBoardBid = useCallback(
+    async (bidId: string) => {
+      if (!authUser?.id) return
+      setArchiveWorkingBoardBusyBidId(bidId)
+      try {
+        const rows0 = await withSupabaseRetry(
+          async () =>
+            supabase
+              .from('bids')
+              .update({ working_board_archived_at: null, working_board_archived_by: null })
+              .eq('id', bidId)
+              .select('id'),
+          'unarchive working board bid',
+        )
+        if (bidUpdateRefused(rows0)) throw new Error(BID_UPDATE_NOT_APPLIED_MESSAGE)
+        const rows = await loadBids()
+        showToast('Back on the Unsent / Working board.', 'success')
+        setEditingBid((prev) => {
+          if (!prev || prev.id !== bidId) return prev
+          const fresh = rows.find((b) => b.id === bidId)
+          return fresh ?? prev
+        })
+      } catch (e: unknown) {
+        showToast(formatErrorMessage(e, 'Failed to put the bid back on the board'), 'error')
+      } finally {
+        setArchiveWorkingBoardBusyBidId(null)
+      }
+    },
+    [authUser?.id, showToast, loadBids, setEditingBid],
+  )
+
   const promptArchiveWorkingBoardBid = useCallback(
     (bidId: string) => {
       if (!authUser?.id) return
       const bid = bids.find((b) => b.id === bidId)
+      // A greyed button still fires: say why, with the door, in the kernel's words.
+      const blocked = archiveFromBoardBlockedReason(bid, authUser.id, myRole)
+      if (blocked) {
+        showToast(blocked, 'error')
+        return
+      }
       if (!canUserArchiveBidOnWorkingBoard(bid, authUser.id, myRole)) {
         showToast('You can only archive unsent bids that are not won, lost, or started/complete.', 'error')
         return
@@ -2501,15 +2535,14 @@ export default function Bids() {
             setDeleteBidModalOpen={setDeleteBidModalOpen}
             setDeleteConfirmProjectName={setDeleteConfirmProjectName}
             setError={setError}
-            showArchiveFromUnsentWorking={Boolean(
-              editingBid &&
-                !editingBid.working_board_archived_at &&
-                bidEligibleForWorkingBoardArchive(editingBid) &&
-                canUserArchiveBidOnWorkingBoard(editingBid, authUser?.id, myRole),
-            )}
+            archiveFromBoardBlockedReason={archiveFromBoardBlockedReason(editingBid ?? undefined, authUser?.id, myRole)}
+            archivedFromBoard={Boolean(editingBid?.working_board_archived_at)}
             archiveFromUnsentWorkingBusy={archiveWorkingBoardBusyBidId === editingBid?.id}
             onRequestArchiveFromUnsentWorking={
               editingBid ? () => promptArchiveWorkingBoardBid(editingBid.id) : undefined
+            }
+            onRequestUnarchiveFromBoard={
+              editingBid ? () => { void unarchiveWorkingBoardBid(editingBid.id) } : undefined
             }
             serviceTypeSwitchSiblings={tradeSwitch.siblings}
             onServiceTypeSwitchModalOpen={tradeSwitch.refreshSiblings}
