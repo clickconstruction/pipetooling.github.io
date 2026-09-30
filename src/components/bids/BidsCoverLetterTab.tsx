@@ -1135,6 +1135,7 @@ export function BidsCoverLetterTab({
       {!selectedBidForPricing ? (
         <BidPickerStandardList
           bids={coverLetterVisibleBids}
+          searching={coverLetterSearchQuery.trim() !== ''}
           prefixMap={ledgerPrefixMap}
           onSelectBid={onSelectBid}
           emptyMessage={

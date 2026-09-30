@@ -2,12 +2,23 @@
 title: find a bid on the workflow tabs
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: bids, sort, order, bid number, due date, sent, value, search, counts, takeoffs, labor, pricing, cover letter, RFI, change order, lien release, picker
+keywords: bids, sort, order, group, stage, unsent, pending, won, lost, archived, bid number, due date, sent, value, search, counts, takeoffs, labor, pricing, cover letter, RFI, change order, lien release, picker
 order: 97
 ---
-When no bid is selected on a workflow tab, the bid list is sorted, bid number first by default. The buttons next to the search bar switch the order.
+When no bid is selected on a workflow tab, the bid list sits under the Bid Board's headings. Inside each group the bids are sorted, bid number first by default. The buttons next to the search bar switch the order.
 
 Once you pick a bid it stays selected across Counts → Takeoffs → Labor → Pricing → Cover Letter. A **refresh brings it back**. This browser tab remembers your bid until you close the bid or the tab. Only a shared link needs the `bidId` in the URL. The picker adds it for you. Above the bid's title on each of those tabs sits its **flow strip**. That is the estimating steps with the next one ringed. See [see where a bid is in the estimating flow](?g=see-where-a-bid-is-in-the-flow).
+
+## Grouped by stage
+
+The list uses the same headings as the Bid Board, in the same order. Each heading shows its count. The groups are **Unsent / Working Bids**, **Not yet won or lost**, **Won**, **Started or Complete** and **Lost**. Bids put away from the working board sit last, under *Archived (Unsent/Working)*. A group with nothing in it is not drawn.
+
+- Tap a heading to fold or open its group. **Lost** and **Archived** start folded. The working groups start open.
+- Your folds stick on this device. Every workflow tab shares them. Fold Lost on Counts and it is folded on Pricing too.
+
+:::example Looking for a bid you lost?
+Type part of its name in the search bar. Every group opens while you search, so the match shows under **Lost** right away. Clear the box and the folds come back.
+:::
 
 ## Pick the order
 
@@ -17,7 +28,7 @@ Once you pick a bid it stays selected across Counts → Takeoffs → Labor → P
    - {{button:outline|Due date}} puts the soonest due first. Bids with no due date drop to the bottom.
    - {{button:outline|Sent}} puts the most recently sent first. Unsent bids come last.
    - {{button:outline|Value}} puts the largest bid value first. Unpriced bids come last.
-3. Your choice sticks. Every workflow tab uses it. It is still set next time you sign in on the same device.
+3. Your choice sticks. Every workflow tab uses it. It is still set next time you sign in on the same device. The order applies inside each group. The headings never move.
 
 :::example Looking for last week's sends?
 Tap **Sent** — the bids you sent most recently rise to the top, and everything still waiting to go out sits together at the bottom.

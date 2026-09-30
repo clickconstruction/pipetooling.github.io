@@ -1437,6 +1437,7 @@ export function BidsCountsTab({
       {!selectedBidForCounts && (
         <BidPickerStandardList
           bids={filteredBidsForCounts}
+          searching={countsSearchQuery.trim() !== ''}
           prefixMap={ledgerPrefixMap}
           onSelectBid={onSelectBid}
           emptyMessage={countsSearchQuery.trim() ? 'No bids match your search.' : null}
