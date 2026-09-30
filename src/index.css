@@ -3148,8 +3148,8 @@ body.my-time-boundary-dragging {
 .stagesWhenLine.isMuted b {
   color: var(--text-muted);
 }
-/* DONE, BILLED and PAID name a stage the job has reached; the underline sets
-   them apart from NEXT / ENDS / LAST, which describe the calendar (v2.4203). */
+/* Underlined means it already happened — DONE, BILLED, PAID and ACTIVITY (the
+   last day on site); plain means it is coming — NEXT and ENDS (v2.4203, v2.4209). */
 .stagesWhenLine.isReached b {
   text-decoration: underline;
   text-underline-offset: 2px;
