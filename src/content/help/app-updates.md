@@ -5,7 +5,7 @@ roles: all
 keywords: update, new version, reload, refresh, white screen, stale, fix app, hard reload
 order: 4
 ---
-ClickTooling updates itself. When a new version has been released, the app reloads onto it by itself at a quiet moment — when you first open a page and have not touched anything yet, when you move to another page with nothing open, or when the tab has sat in the background five minutes or untouched half an hour. You see a brief pill while it happens:
+ClickTooling updates itself. When a new version has been released, the app reloads onto it by itself at a quiet moment — when you first open a page and have not touched anything yet, when you move to another page or tab with nothing open, or when the browser tab has sat in the background five minutes or untouched half an hour. You see a brief pill while it happens:
 
 :::example While it updates
 Updating to the newest version…
