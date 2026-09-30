@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Someone's calling — find any job, and a practice call</title>
+<style>
+  :root { --ground:#F3F4F6; --surface:#FFFFFF; --subtle:#F8FAFC; --ink:#111827; --muted:#6B7280; --line:#E5E7EB; --line-strong:#CBD5E1; --link:#2563EB;
+    --green:#15803D; --green-bg:#DCFCE7; --red:#B91C1C; --red-bg:#FEE2E2; --amber:#B45309; --amber-bg:#FEF3C7; --blue:#1D4ED8; --blue-bg:#DBEAFE; color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--ground); color:var(--ink); font:14px/1.5 -apple-system,"Segoe UI",system-ui,sans-serif; padding:0 16px 64px; }
+  .wrap { max-width:1180px; margin:0 auto; }
+  header.top { padding:28px 0 14px; border-bottom:2px solid var(--ink); display:flex; justify-content:space-between; gap:24px; flex-wrap:wrap; align-items:flex-end; }
+  .eyebrow { font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:0 0 4px; }
+  h1 { margin:0; font-size:26px; line-height:1.15; max-width:36ch; }
+  .stamp { font-family:ui-monospace,Menlo,monospace; font-size:12px; color:var(--muted); text-align:right; line-height:1.6; }
+  h2 { font-size:18px; margin:36px 0 6px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  h2 .tag { font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; padding:2px 8px; border-radius:999px; background:var(--blue-bg); color:var(--blue); }
+  h2 .tag.was { background:var(--red-bg); color:var(--red); }
+  .lede { margin:0 0 14px; color:var(--muted); max-width:86ch; }
+  .lede b { color:var(--ink); }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:18px; align-items:start; }
+  .cards.one { grid-template-columns:minmax(0,640px); }
+  .card { background:var(--surface); border:1px solid var(--line-strong); border-radius:12px; overflow:hidden; min-width:0; }
+  .card .cap { padding:8px 12px; font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); background:var(--subtle); border-bottom:1px solid var(--line); display:flex; justify-content:space-between; gap:8px; }
+  .card .cap .n { color:var(--blue); }
+  .card .cap .n.was { color:var(--red); }
+  .pop { padding:10px 12px 12px; font-size:13px; }
+  .ask { display:flex; gap:8px; align-items:center; }
+  .ask .q { color:var(--muted); white-space:nowrap; }
+  .box { flex:1; padding:5px 9px; border:2px solid var(--link); border-radius:7px; min-width:0; }
+  .box.empty { color:var(--muted); border:1px solid var(--line-strong); }
+  .x { color:var(--muted); font-size:17px; }
+  .hint { font-size:11.5px; color:var(--muted); margin:5px 0 0; }
+  .try { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin:8px 0 2px; font-size:12px; color:var(--muted); }
+  .pill { padding:2px 9px; border-radius:999px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:12px; }
+  .pill small { color:var(--muted); }
+  .grp { margin:10px 0 0; font-size:10.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); display:flex; justify-content:space-between; gap:8px; }
+  .row { display:grid; gap:2px; padding:8px 4px; border-top:1px solid var(--line); }
+  .row .l1 { display:flex; justify-content:space-between; gap:8px; }
+  .row .go { color:var(--link); font-weight:600; white-space:nowrap; }
+  .row .l2 { color:var(--muted); font-size:12px; }
+  .row mark { background:#FEF08A; color:inherit; padding:0 1px; border-radius:2px; }
+  .state { display:inline-block; padding:0 7px; border-radius:999px; font-size:11px; font-weight:700; }
+  .state.sent { background:var(--green-bg); color:var(--green); }
+  .state.not { background:var(--amber-bg); color:var(--amber); }
+  .none { padding:9px 4px; color:var(--muted); }
+  .foot { margin-top:10px; padding:9px 10px; border:1px dashed var(--line-strong); border-radius:8px; background:var(--subtle); display:flex; justify-content:space-between; gap:10px; align-items:center; flex-wrap:wrap; }
+  .foot b { display:block; }
+  .foot span.s { color:var(--muted); font-size:12px; }
+  .btn { display:inline-block; padding:5px 12px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); font-size:13px; font-weight:600; white-space:nowrap; }
+  .btn.blue { background:var(--link); color:#fff; border-color:transparent; }
+  .lnk { color:var(--link); font-weight:600; white-space:nowrap; }
+  .callout { margin:10px 12px 12px; font-size:12.5px; padding:8px 10px; border-radius:6px; border:1px dashed var(--amber); background:var(--amber-bg); color:var(--amber); }
+  .callout.ok { border-color:var(--green); background:var(--green-bg); color:var(--green); }
+  .callout.bad { border-color:var(--red); background:var(--red-bg); color:var(--red); }
+  .practice { padding:7px 14px; background:var(--amber-bg); color:var(--amber); font-size:12.5px; font-weight:600; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+  .holding { padding:9px 14px; font-size:12.5px; color:var(--muted); border-bottom:1px solid var(--line); }
+  .holding b { color:var(--ink); }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; padding:10px 14px 4px; }
+  .chip { padding:3px 10px; border-radius:999px; border:1px solid var(--line-strong); background:var(--surface); font-size:12px; color:var(--muted); }
+  .chip.on { background:var(--ink); color:#fff; border-color:transparent; font-weight:600; }
+  .say { margin:10px 14px 0; padding:12px 14px; border-left:4px solid var(--green); background:var(--green-bg); border-radius:0 8px 8px 0; font-family:Georgia,"Times New Roman",serif; font-size:16px; line-height:1.5; }
+  .say .who { display:block; font-family:-apple-system,"Segoe UI",system-ui,sans-serif; font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--green); margin-bottom:4px; }
+  .opts { display:grid; gap:8px; padding:12px 14px 4px; }
+  .opt { padding:10px 14px; border:1px solid var(--line-strong); border-radius:10px; font-size:14.5px; display:flex; justify-content:space-between; gap:10px; }
+  .opt .arrow { color:var(--link); font-weight:700; }
+  .sofar { margin:10px 14px 0; padding:9px 12px; background:var(--subtle); border:1px dashed var(--line-strong); border-radius:8px; font-size:13px; color:var(--muted); }
+  .nav { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:10px 14px 12px; font-size:12.5px; color:var(--muted); flex-wrap:wrap; }
+  table.rule { width:100%; border-collapse:collapse; font-size:13px; background:var(--surface); }
+  table.rule th, table.rule td { text-align:left; padding:7px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  table.rule th { font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); background:var(--subtle); }
+  .tablewrap { overflow-x:auto; border:1px solid var(--line-strong); border-radius:12px; }
+  ol.calls { margin:0; padding-left:20px; max-width:86ch; }
+  ol.calls li { margin-bottom:8px; }
+  ol.calls b { color:var(--ink); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">Punch list #47 · the Lien desk · ☎ Someone's calling</p>
+      <h1>Find any job on the desk, and take a practice call</h1>
+    </div>
+    <div class="stamp">draft 1 · 2026-09-30 · built v2.4249<br>asked by Taunya (assistant)<br>rows are illustrative</div>
+  </header>
+
+  <h2><span class="tag was">Today</span> Why "lenn" found nothing</h2>
+  <p class="lede">Taunya's words: <b>"I need to be able to search by job or address or owner or GC, and would like the option to click on a sample one to explore how this page works."</b> The box has two limits she ran into at once.</p>
+  <div class="cards one">
+    <div class="card">
+      <div class="cap"><span>The box today</span><span class="n was">nothing to click</span></div>
+      <div class="pop">
+        <div class="ask"><span class="q">Who is calling?</span><span class="box">lenn</span><span class="x">×</span></div>
+        <p class="hint">Matches the notices already sent — the owner of record, the mailing address, the job's address or number, the GC.</p>
+        <div class="none">No sent notice matches "lenn". Try the street alone, or the job number.</div>
+      </div>
+      <div class="callout bad"><b>1 · It only looks at letters already mailed.</b> 9703 Lenox Hl (job 858) is sitting in <i>To draft</i>, so no spelling would have found it. Most of the desk is not mailed yet: 20 jobs are waiting on the Notices tab.</div>
+      <div class="callout bad"><b>2 · It needs the exact letters.</b> "lenn" is not inside "Lenox", so one slip of the finger returns nothing.</div>
+      <div class="callout bad"><b>3 · An empty box teaches nothing.</b> Until a real owner calls about a real letter, there is no way to see what the call sheet does.</div>
+    </div>
+  </div>
+
+  <h2><span class="tag">Proposed</span> 1 · The box when it opens</h2>
+  <p class="lede">Before anything is typed the box shows <b>what it can find</b>, <b>the letters that are out</b> and <b>a practice call</b>. The four "try" words are read from jobs on the desk right now, so each one finds something when pressed.</p>
+  <div class="cards one">
+    <div class="card">
+      <div class="cap"><span>Just opened</span><span class="n">nothing typed yet</span></div>
+      <div class="pop">
+        <div class="ask"><span class="q">Find</span><span class="box empty">a job number, a street, an owner or a GC…</span><span class="x">×</span></div>
+        <div class="try">Try: <span class="pill">927 <small>job</small></span><span class="pill">Candelaria <small>street</small></span><span class="pill">Natarajan <small>owner</small></span><span class="pill">Summit <small>GC</small></span></div>
+        <div class="grp"><span>Letters out now · 2</span><span>newest first</span></div>
+        <div class="row">
+          <div class="l1"><b>Priya Natarajan · owner of 12 Example Ct</b><span class="go">Open the call sheet ›</span></div>
+          <div class="l2">§ 53.056 notice · mailed Sep 22 · $7,902 for July and August · GC RMC · job 273</div>
+        </div>
+        <div class="row">
+          <div class="l1"><b>Owner of record · 45 Sample Rd</b><span class="go">Open the call sheet ›</span></div>
+          <div class="l2">§ 53.056 notice · mailed Sep 19 · $3,100 for August · GC Knight Contracting · job 881</div>
+        </div>
+        <div class="foot">
+          <div><b>New to this? Take a practice call.</b><span class="s">A made-up letter. Nothing is saved.</span></div>
+          <span><span class="btn blue">▶ Practice call</span> &nbsp;<span class="lnk">How this works ↗</span></span>
+        </div>
+      </div>
+      <div class="callout ok">When no letter is out, the list reads <i>"No letters are out right now, so no owner is holding one."</i> The practice call is still there.</div>
+    </div>
+  </div>
+
+  <h2><span class="tag">Proposed</span> 2 · Searching</h2>
+  <p class="lede">The box searches <b>every job the desk holds</b>, not only the mailed ones. Results come in two groups, so the person on the phone knows at a glance whether the caller can be holding a letter from us.</p>
+  <div class="cards">
+    <div class="card">
+      <div class="cap"><span>A street, mistyped</span><span class="n">"lenn"</span></div>
+      <div class="pop">
+        <div class="ask"><span class="q">Find</span><span class="box">lenn</span><span class="x">×</span></div>
+        <p class="hint">Nothing has "lenn" in it. Showing <b>"len"</b>.</p>
+        <div class="grp"><span>No letter mailed yet · 1</span></div>
+        <div class="row">
+          <div class="l1"><b>858 · Service Visit — 9703 <mark>Len</mark>ox Hl</b><span class="go">Open the job ›</span></div>
+          <div class="l2"><span class="state not">To draft</span> · GC RMC- Dudley Mason · $7,902 · notice by Oct 15</div>
+          <div class="l2">Nothing has been mailed on this job, so the caller is not holding a notice from us about it.</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="cap"><span>A GC</span><span class="n">"dudley"</span></div>
+      <div class="pop">
+        <div class="ask"><span class="q">Find</span><span class="box">dudley</span><span class="x">×</span></div>
+        <div class="grp"><span>GC · RMC- <mark style="background:#FEF08A">Dudley</mark> Mason · 3 jobs on the desk</span></div>
+        <div class="row"><div class="l2">A GC's own call goes to the master, not to the call sheet. Its jobs:</div></div>
+        <div class="grp"><span>Letter sent · 1</span></div>
+        <div class="row">
+          <div class="l1"><b>Priya Natarajan · owner of 12 Example Ct</b><span class="go">Open the call sheet ›</span></div>
+          <div class="l2"><span class="state sent">Sent Sep 22</span> · job 273 · $7,902 for July and August</div>
+        </div>
+        <div class="grp"><span>No letter mailed yet · 2</span></div>
+        <div class="row">
+          <div class="l1"><b>258 · Dudley Mason</b><span class="go">Open the job ›</span></div>
+          <div class="l2"><span class="state not">To draft</span> · $9,800 · draft saved · notice by Oct 15</div>
+        </div>
+        <div class="row">
+          <div class="l1"><b>858 · Service Visit — 9703 Lenox Hl</b><span class="go">Open the job ›</span></div>
+          <div class="l2"><span class="state not">To draft</span> · $7,902 · notice by Oct 15</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="cap"><span>A job number</span><span class="n">"927"</span></div>
+      <div class="pop">
+        <div class="ask"><span class="q">Find</span><span class="box">927</span><span class="x">×</span></div>
+        <div class="grp"><span>No letter mailed yet · 1</span></div>
+        <div class="row">
+          <div class="l1"><b><mark>927</mark> · Mike Holub- Candelria</b><span class="go">Open the job ›</span></div>
+          <div class="l2"><span class="state not">Needs the owner</span> · GC Michael Holub · $7,429 · notice by Oct 15</div>
+        </div>
+      </div>
+      <div class="callout ok"><b>Open the job ›</b> closes the box and selects that job in the desk's list, on the tab and pile it lives in. A job number typed whole comes first.</div>
+    </div>
+    <div class="card">
+      <div class="cap"><span>Not on the desk</span><span class="n">"oak hollow"</span></div>
+      <div class="pop">
+        <div class="ask"><span class="q">Find</span><span class="box">oak hollow</span><span class="x">×</span></div>
+        <div class="none">No job on the Lien desk matches "oak hollow". The desk holds jobs with an unpaid balance and a lien deadline. For any other job, search the Pipeline.</div>
+        <div class="foot">
+          <div><b>New to this? Take a practice call.</b><span class="s">A made-up letter. Nothing is saved.</span></div>
+          <span class="btn blue">▶ Practice call</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2><span class="tag">Proposed</span> 3 · The practice call</h2>
+  <p class="lede">The same call sheet, on a letter that is plainly made up. Every card, chip and reply works, and the sentence at the bottom builds as she taps. <b>Nothing is written anywhere</b>: there is no Save, and no real job is touched.</p>
+  <div class="cards one">
+    <div class="card" style="max-width:640px">
+      <div class="cap"><span>The owner called · 000 · Practice job</span><span class="n">practice</span></div>
+      <div class="practice"><span>Practice call · a made-up letter · nothing is saved</span><span>Start over ↺</span></div>
+      <div class="holding"><b>Pat Sample</b> is holding the residential letter with our § 53.056 notice, mailed Sep 22 — <b>$4,250.00</b> for July and August 2026 under <b>Sample Builders</b>, signed Robert Douglas.</div>
+      <div class="chips"><span class="chip on">They opened with…</span><span class="chip">Paid my builder</span><span class="chip">Still owe some</span><span class="chip">Am I being sued?</span><span class="chip">Builder's gone quiet</span><span class="chip">Can I pay you?</span><span class="chip">Wants a call back</span></div>
+      <div class="say"><span class="who">Say</span>Thanks for calling about the notice we mailed Sep 22. First — you did nothing wrong by paying Sample Builders. You didn't hire us, and this is not a lawsuit. Tell me where things stand with Sample Builders and I'll tell you exactly what this means for you.</div>
+      <div class="opts">
+        <div class="opt"><span>"I already paid Sample Builders — everything."</span><span class="arrow">›</span></div>
+        <div class="opt"><span>"I still owe Sample Builders something."</span><span class="arrow">›</span></div>
+        <div class="opt"><span>"What is this? Am I being sued?"</span><span class="arrow">›</span></div>
+      </div>
+      <div class="sofar">So far: nothing recorded yet.</div>
+      <div class="nav"><span>‹ Back</span><span><span class="btn">Close</span> &nbsp;<span class="btn blue">Done practicing</span></span></div>
+    </div>
+  </div>
+
+  <h2>What the box searches, and what a click does</h2>
+  <div class="tablewrap">
+    <table class="rule">
+      <thead><tr><th>She types</th><th>It looks in</th><th>A result with a letter sent</th><th>A result with no letter yet</th></tr></thead>
+      <tbody>
+        <tr><td><b>Job</b></td><td>The job number (whole number first) and the job's name</td><td rowspan="3">Opens the call sheet, as today</td><td rowspan="3">Opens the job on the desk, in its tab and pile, and says no letter has gone out</td></tr>
+        <tr><td><b>Address</b></td><td>The job's address and the owner's mailing address</td></tr>
+        <tr><td><b>Owner</b></td><td>The owner of record's name and company, once one is saved</td></tr>
+        <tr><td><b>GC</b></td><td>The GC's name</td><td colspan="2">Heads the list with the GC's name and the reminder that a GC's call goes to the master, then lists its jobs in the same two groups</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>What it takes</h2>
+  <p class="lede"><b>One client PR. No database change, no new load.</b> The desk already holds every job, owner, property and GC it shows. The search kernel grows from "sent letters" to "every job on the desk", the call sheet gains a practice switch that removes Save, and the assistant's guide gains a short section on searching and practising.</p>
+
+  <h2>Calls to make</h2>
+  <ol class="calls">
+    <li><b>Practice on a made-up letter, or on a real one?</b> Drawn: made up (Pat Sample, Sample Builders, job 000). A real job would need its Save switched off too, and a real owner's name would sit on a screen nobody called about.</li>
+    <li><b>Show "Letters out now" before anything is typed?</b> Drawn: yes, newest five. A caller is most often holding the letter mailed most recently.</li>
+    <li><b>The word on the box.</b> Drawn: "Find", because it now finds jobs with no letter too. The blue button keeps its name, <i>☎ Someone's calling ›</i>.</li>
+    <li><b>Forgive a slip?</b> Drawn: when nothing matches, the last word loses letters from its end, down to three, and the box says which letters it used.</li>
+  </ol>
+</div>
+</body>
+</html>
