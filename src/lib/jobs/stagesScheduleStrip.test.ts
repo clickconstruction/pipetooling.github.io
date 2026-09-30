@@ -203,7 +203,7 @@ describe('column line parts (date on the label line, distance + fact under it)',
   it('LAST and DONE carry the distance', () => {
     expect(stripLastParts('2026-09-21', 'worked', TODAY)).toEqual({ main: 'Mon Sep 21', sub: 'yesterday · worked' })
     expect(stripLastParts('2026-09-18', 'scheduled', TODAY)).toEqual({ main: 'Fri Sep 18', sub: '4 days ago · booked, no hrs' })
-    expect(stripLastParts(null, null, TODAY)).toEqual({ main: 'never worked', sub: null })
+    expect(stripLastParts(null, null, TODAY)).toEqual({ main: 'none yet', sub: null })
     expect(stripDoneParts('2026-09-21', 'worked', TODAY)).toEqual({ main: 'Mon Sep 21', sub: 'yesterday · worked' })
     expect(stripDoneParts('2026-09-21', 'scheduled', TODAY)).toEqual({ main: 'Mon Sep 21', sub: 'yesterday · booked, no hrs' })
     expect(stripDoneParts(null, null, TODAY)).toEqual({ main: 'nothing booked', sub: null })

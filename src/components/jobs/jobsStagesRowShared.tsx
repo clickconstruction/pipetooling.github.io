@@ -545,7 +545,7 @@ export function renderStagesFieldAndBillingLines(ctx: StagesRowRenderContext, jo
         ) : (
           <>
             <span className={`stagesWhenFlag${when.tone === 'amber' ? ' isAmber' : ''}`}>Not scheduled</span>
-            {whenLine('Last', 'isMuted', stripLastParts(when.lastYmd, when.lastKind, todayYmd), openCal, 'Latest field activity — open the job calendar')}
+            {whenLine('Activity', 'isMuted isReached', stripLastParts(when.lastYmd, when.lastKind, todayYmd), openCal, 'Latest field activity — open the job calendar')}
             {ctx.canOpenJobScheduleModal ? (
               <button
                 type="button"

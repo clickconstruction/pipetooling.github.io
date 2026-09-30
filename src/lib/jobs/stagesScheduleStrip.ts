@@ -242,9 +242,9 @@ export function stripEndsParts(when: Extract<StagesWhen, { kind: 'scheduled' }>,
   }
 }
 
-/** LAST: "Tue Sep 22" over "yesterday · worked" / "booked, no hrs"; "never worked" alone. */
+/** ACTIVITY (the line under Not scheduled; it read LAST until v2.4209): "Tue Sep 22" over "yesterday · worked" / "booked, no hrs"; "none yet" alone. */
 export function stripLastParts(lastYmd: string | null, lastKind: 'worked' | 'scheduled' | null, todayYmd: string): StripLineParts {
-  if (!lastYmd) return { main: 'never worked', sub: null }
+  if (!lastYmd) return { main: 'none yet', sub: null }
   return { main: formatStripDate(lastYmd), sub: joinSub(stripDistancePhrase(lastYmd, todayYmd), lastKind === 'scheduled' ? 'booked, no hrs' : 'worked') }
 }
 
