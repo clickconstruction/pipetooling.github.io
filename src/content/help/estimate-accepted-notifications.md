@@ -5,15 +5,15 @@ roles: dev, master_technician, assistant, controller, estimator
 keywords: estimate accepted, acceptance notification, estimate email, who gets notified, accepted notifications, quote accepted, estimate alert, notify on acceptance
 order: 62
 ---
-When a customer accepts an estimate, ClickTooling emails the office. There are two lists, and both are sent:
+When a customer accepts an estimate, ClickTooling emails the office. There are two lists, and both are sent.
 
-- **Always notify** — an org-wide list set once. These people get an email for *every* accepted estimate, including estimates already sitting with customers.
-- **Email when customer accepts** — extra people picked on one specific estimate.
+- **Always notify** is an org-wide list set once. These people get an email for every accepted estimate. That includes estimates already sitting with customers.
+- **Email when customer accepts** is extra people picked on one specific estimate.
 
 ## Set the always-notify list
 
 1. Go to **Estimates**.
-2. Click the {{button:outline|⚙}} gear next to {{button:blue|New estimate}} — hover it and it says who gets emailed. (Dev and leader roles see it.)
+2. Click the {{button:outline|⚙}} gear next to {{button:blue|New estimate}}. Hover it and it says who gets emailed. Dev and leader roles see it.
 3. Check everyone who should hear about every acceptance.
 4. Click {{button:outline|Save recipients}}.
 
@@ -21,16 +21,16 @@ When a customer accepts an estimate, ClickTooling emails the office. There are t
 {{chip:gray|Estimates}} … {{button:outline|⚙}} {{button:blue|New estimate}}
 :::
 
-Only a **dev** can change this list. Leader technicians can open the window and see who is on it, but the checkboxes and Save button are disabled for them.
+Only a **dev** can change this list. Leader technicians can open the window and see who is on it. The checkboxes and Save button are disabled for them.
 
 ## Add extra people to one estimate
 
 1. Open the estimate.
 2. Scroll to **Email when customer accepts**.
-3. Tick **Notify me** to include yourself, and use **Also notify** to search for anyone else.
+3. Tick **Notify me** to include yourself. Use **Also notify** to search for anyone else.
 4. Save the estimate.
 
-Those picks apply to that estimate only. They are sent *in addition to* the always-notify list — you do not need to re-add the same people there.
+Those picks apply to that estimate only. They are sent in addition to the always-notify list. You do not need to re-add the same people there.
 
 ## Who actually receives the email
 
@@ -38,10 +38,10 @@ Someone on either list is skipped if:
 
 - they have no email address on their account,
 - their account is archived, or
-- they cannot see the estimate (office roles — leaders, assistants, controllers — see every estimate since v2.2967; estimators see the ones they wrote; primaries see all).
+- they cannot see the estimate. Office roles see every estimate since v2.2967. Office roles are leaders, assistants and controllers. Estimators see the ones they wrote. Primaries see all.
 
-So it is safe to add someone broadly — they simply will not be emailed about estimates they could not see anyway.
+So it is safe to add someone broadly. They simply will not be emailed about estimates they could not see anyway.
 
 ## What the email says
 
-The subject reads **Quote #123 accepted — <customer name>**, and the body links straight to the estimate in ClickTooling.
+The subject reads *Quote #123 accepted — <customer name>*. The body links straight to the estimate in ClickTooling.

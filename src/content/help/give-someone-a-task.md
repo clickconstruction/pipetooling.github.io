@@ -5,14 +5,16 @@ roles: dev, master_technician, assistant, controller, primary, estimator, subcon
 keywords: task, add task, assign, checklist, crew, team, send task, todo
 order: 40
 ---
-The **＋ Task button** in the top bar (the checkmark icon) opens the Add-task dialog from anywhere in the app. Type what needs doing, pick who does it, and {{button:blue|Send}} — the task lands on each person's **Checklist → Today** list on its day. As soon as you start typing, a {{button:blue|Send}} button also appears at the top of the dialog — same as the one at the bottom, just closer to your thumb. Tapping outside the dialog leaves it open, so a stray tap never loses your draft — use the × in the top corner or **Cancel** to close it.
+The ＋ Task button in the top bar opens the Add-task dialog from anywhere in the app. Type what needs doing, pick who does it and send it.
+
+The **＋ Task button** is the checkmark icon. Tap {{button:blue|Send}}. The task lands on each person's **Checklist → Today** list on its day. As soon as you start typing, a {{button:blue|Send}} button also appears at the top of the dialog. It is the same as the one at the bottom, just closer to your thumb. Tapping outside the dialog leaves it open. So a stray tap never loses your draft. Use the × in the top corner or **Cancel** to close it.
 
 ## Pick the people
 
-- **Search** — start typing in the people box and tick names.
-- **Recent** — your last few assignees appear as one-tap links above the search.
-- **Crew chips** — every team from **People → Teams** shows as a chip with its member count. Tap a chip to tick the whole crew at once; tap again to untick them. Untick one person by hand and the chip goes dashed — your manual picks always win.
-- **＋ New crew / ✎ Edit** — build or change a crew right here (name it, tick who's in it). Crews save to People → Teams, so the same chips appear on the roadmap dialogs too.
+- **Search**: start typing in the people box and tick names.
+- **Recent**: your last few assignees appear as one-tap links above the search.
+- **Crew chips**: every team from **People → Teams** shows as a chip with its member count. Tap a chip to tick the whole crew at once. Tap again to untick them. Untick one person by hand and the chip goes dashed. Your manual picks always win.
+- **＋ New crew / ✎ Edit**: build or change a crew right here. Name it and tick who's in it. Crews save to People → Teams. So the same chips appear on the roadmap dialogs too.
 
 :::example The Monday flurry
 "Clean the shop bays" → tap **Farm crew** → Send. Four people get the task in two taps, and tomorrow the crew chip is still there for the next one.
@@ -20,11 +22,10 @@ The **＋ Task button** in the top bar (the checkmark icon) opens the Add-task d
 
 ## When it happens
 
-**Today** is the default. **On a date** schedules it; **Repeats** makes it weekly-on-days or "N days after it's done". *Stays on the list until done* keeps an unfinished task visible past its day.
+**Today** is the default. **On a date** schedules it. **Repeats** makes it weekly-on-days or "N days after it's done". *Stays on the list until done* keeps an unfinished task visible past its day.
 
-Reminders, notify-on-complete, and links to app pages live in the same dialog — set them and Send. To see or edit everything you've handed out, open **Checklist → Manage**.
+Reminders, notify-on-complete, and links to app pages live in the same dialog. Set them and Send. To see or edit everything you've handed out, open **Checklist → Manage**.
 
 ## Send a job as a task
 
-The purple arrow on a job — on the Jobs pipeline row, the phone card's **Send as task**, or the Job Detail header — opens the same dialog with the job on a bar above the text box: {{chip:purple|1016 PLUM · Mission faucet}} with the address and customer under it. Type only the task; on every task list the job then shows as a chip in front of it — {{chip:purple|1016 · Mission faucet ↗}} — that opens the job. **open ↗** on the bar shows the job behind the dialog without losing your draft, and **×** turns it into an ordinary task with no job attached.
-
+Tap the purple arrow on a job. It sits on the Jobs pipeline row, on the phone card's **Send as task**, and on the Job Detail header. The arrow opens the same dialog with the job on a bar above the text box. The bar reads {{chip:purple|1016 PLUM · Mission faucet}} with the address and customer under it. Type only the task. On every task list the job then shows as a chip in front of it. The chip reads {{chip:purple|1016 · Mission faucet ↗}} and opens the job. **open ↗** on the bar shows the job behind the dialog without losing your draft. **×** turns it into an ordinary task with no job attached.

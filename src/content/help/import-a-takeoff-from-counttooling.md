@@ -5,23 +5,25 @@ roles: dev, master_technician, assistant, controller, estimator
 keywords: counttooling, import, takeoff, copy to tooling, counts, line feet, ft of, unscaled, px, view link, plans link, undo import, set scale, by stage, combined, group, alternate, with and without
 order: 96
 ---
-CountTooling counts the drawings; ClickTooling prices them. The bridge is one clipboard copy — no retyping.
+CountTooling counts the drawings and ClickTooling prices them. The bridge is one clipboard copy with no retyping.
+
+A takeoff is the count of fixtures and pipe runs from the drawings.
 
 ## Copy in CountTooling
 
-In CountTooling, open the project and click {{button:blue|Copy to /Tooling}} in the sidebar, then pick **This Canvas Only**, **All Visible Canvases**, or **All Canvases**. CountTooling puts the whole takeoff on the clipboard as tab-separated rows — one per counter and one per line type — plus a **view link** back to the plans.
+In CountTooling, open the project and click {{button:blue|Copy to /Tooling}} in the sidebar. Then pick **This Canvas Only**, **All Visible Canvases**, or **All Canvases**. CountTooling puts the whole takeoff on the clipboard as tab-separated rows. There is one row per counter and one per line type. It also adds a **view link** back to the plans.
 
-- Counters copy as a count: `WC · 12 · pages 1, 2`.
-- Line types copy as feet: `ft of 2in Copper · 148.50 · pages 1, 2`.
-- If a page has lines but no scale, CountTooling stops and asks you to **Set scale** first. If you choose **Export anyway**, those runs copy as `px of …` — pixel lengths, not feet.
+- Counters copy as a count: *`WC · 12 · pages 1, 2`*.
+- Line types copy as feet: *`ft of 2in Copper · 148.50 · pages 1, 2`*.
+- If a page has lines but no scale, CountTooling stops and asks you to **Set scale** first. If you choose **Export anyway**, those runs copy as `px of …`. Those are pixel lengths, not feet.
 
 ## Paste in ClickTooling
 
-Open the bid in **Bids → Counts** and click {{button:outline|Import from /Tooling}} (top-right, beside the ×). ClickTooling reads the clipboard and adds the rows straight onto the bid; if the browser won't share the clipboard, a paste box opens instead — paste and click **Import**. The green toast carries an {{button:outline|Undo}} for ten seconds — click it and the rows that import just added are removed and the plans link goes back to what it was, nothing else touched.
+Open the bid in **Bids → Counts** and click {{button:outline|Import from /Tooling}}. It sits top-right, beside the ×. ClickTooling reads the clipboard and adds the rows straight onto the bid. If the browser won't share the clipboard, a paste box opens instead. Paste and click **Import**. The green toast carries an {{button:outline|Undo}} for ten seconds. Click it and the rows that import just added are removed. The plans link goes back to what it was. Nothing else is touched.
 
-The toast tells you what arrived: *Imported 35 rows: 29 counts (1,122 ea) · 6 line types (444.74 ft).* Each row lands with its unit set — counters as **ea**, line types as **ft**, unscaled runs as **px** — so the Count Sheet totals them apart without guessing. The view link is saved to the bid as its **CountTooling plans** link (the crosshair icon on the Bid Board), so anyone pricing it can open the marked-up drawings.
+The toast tells you what arrived: *Imported 35 rows: 29 counts (1,122 ea) · 6 line types (444.74 ft).* Each row lands with its unit set. Counters land as **ea**, line types as **ft**, and unscaled runs as **px**. So the Count Sheet totals them apart without guessing. The view link is saved to the bid as its **CountTooling plans** link. That is the crosshair icon on the Bid Board. Anyone pricing it can open the marked-up drawings.
 
-CountTooling's **groups** come along: a row copied as `[Restroom A] WC` lands as **WC** in the **Restroom A** group (the Group column), so the name still matches your labor and price books. A group CountTooling marked as an **alternate** — the section a customer wants priced with and without — arrives as one here: its rows sit under `--- Alternate: Break room ---` in the copied text, the toast adds *· 1 alternate: Break room (1 ea · 48.5 ft)*, and the Count Sheet shows it apart from the base bid (see [count with the Count Sheet](?g=count-with-the-count-sheet)). A **Duct** or **Water sizing** block in the text (CountTooling's schedules, including an alternate's own `--- Alternate: <name> · Water sizing ---`) is read as a schedule, not as counts — its rows never become fixtures.
+CountTooling's **groups** come along. A row copied as `[Restroom A] WC` lands as **WC** in the **Restroom A** group, the Group column. So the name still matches your labor and price books. CountTooling can mark a group as an **alternate**. That is the section a customer wants priced with and without. It arrives as one here. Its rows sit under `--- Alternate: Break room ---` in the copied text. The toast adds *· 1 alternate: Break room (1 ea · 48.5 ft)*. The Count Sheet shows it apart from the base bid. See [count with the Count Sheet](?g=count-with-the-count-sheet). A **Duct** or **Water sizing** block in the text is read as a schedule, not as counts. Those are CountTooling's schedules, including an alternate's own *`--- Alternate: <name> · Water sizing ---`*. Its rows never become fixtures.
 
 :::example Reading the result
 The Count Sheet strip shows **Counts** and **Line feet** as separate totals, and each feet row carries a small **ft** tag. A red **Unscaled** tile means some runs came in as pixels: set the scale in CountTooling, copy again, and delete the `px of` rows.
@@ -29,8 +31,8 @@ The Count Sheet strip shows **Counts** and **Line feet** as separate totals, and
 
 ## Then pick how the materials get priced
 
-Counts are counts either way. Before you price them on **Takeoffs**, the bid needs its **materials model** — **By Stage** (count each fixture's exact assembly per rough-in / top-out / trim-set) or **Combined** (one rough parts list for the whole job). New bids start on Combined; the pills sit at the top of Takeoffs and Labor. See [choose By Stage or Combined for a bid's materials](?g=choose-by-stage-or-combined-for-materials).
+Counts are counts either way. Before you price them on **Takeoffs**, the bid needs its **materials model**. **By Stage** counts each fixture's exact assembly per rough-in, top-out and trim-set. **Combined** makes one rough parts list for the whole job. New bids start on Combined. The pills sit at the top of Takeoffs and Labor. See [choose By Stage or Combined for a bid's materials](?g=choose-by-stage-or-combined-for-materials).
 
 ## Keep the names
 
-Leave the `ft of …` prefix on imported rows. The labor and price books match count rows by name, so `ft of 2in Copper` is how those rows find their per-foot labor and pricing.
+Leave the `ft of …` prefix on imported rows. The labor and price books match count rows by name. So `ft of 2in Copper` is how those rows find their per-foot labor and pricing.

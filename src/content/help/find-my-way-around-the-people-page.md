@@ -5,7 +5,9 @@ roles: dev, master_technician, assistant, controller
 keywords: people, tabs, pay, paperwork, fleet, housing, review, feedback, hours, payroll, contracts, subs, person
 order: 40
 ---
-The People page is one page with six tabs across the top. Each tab opens a row of views underneath it. Nothing moved off the page; the old tabs are the views in that row.
+The People page is one page with six tabs across the top. Each tab opens a row of views underneath it.
+
+Nothing moved off the page. The old tabs are the views in that row.
 
 :::example The six tabs and their views
 {{button:blue|People}} Users · Subs · Person · Day book
@@ -18,10 +20,10 @@ The People page is one page with six tabs across the top. Each tab opens a row o
 
 ## Which tab has what
 
-- **People** — who is here. **Users** is the roster with logins and chips, **Subs** is the subcontractor list, **Person** is one person's whole desk as a page, and **Day book** is what each office person got done on any day, read from the app's own records (see *see what the office got done on any day*).
-- **Pay** — the money side of people. **Hours** is the timesheet grid and clock sessions, **Payroll** the pay reports and ledger, **Offsets** deductions and balances, **Employment** start and end dates and time off, **Overhead** office labor on the overhead job.
-- **Paperwork** — what people sign and hold. **Contracts** is the Contract library, packets, and signing status; **Licenses**, **Writeups**, and the dev-only **HR** files sit beside it.
-- **Fleet & Housing** — **Vehicles** (the fleet board) and **Housing**.
+- **People** is who is here. **Users** is the roster with logins and chips. **Subs** is the subcontractor list. **Person** is one person's whole desk as a page. **Day book** is what each office person got done on any day, read from the app's own records. See *see what the office got done on any day*.
+- **Pay** is the money side of people. **Hours** is the timesheet grid and clock sessions. **Payroll** is the pay reports and ledger. **Offsets** is deductions and balances. **Employment** is start and end dates and time off. **Overhead** is office labor on the overhead job.
+- **Paperwork** is what people sign and hold. **Contracts** is the Contract library, packets, and signing status. **Licenses**, **Writeups**, and the dev-only **HR** files sit beside it.
+- **Fleet & Housing** holds **Vehicles**, the fleet board, and **Housing**.
 - **Review** and **Feedback** appear for devs only.
 
 You only see the tabs and views your role could open before. A tab with a single view for you skips the row and opens that view directly.
@@ -32,4 +34,4 @@ Click **Pay** and you land on the view you used last under Pay, not always Hours
 
 ## Old links still work
 
-A bookmark or a Dashboard card that pointed at a tab still opens the same view. {{chip:gray|?tab=hours}} opens **Pay → Hours**, a contract record link opens **Paperwork → Contracts** with the record, and a person link opens **People → Person**.
+A bookmark or a Dashboard card that pointed at a tab still opens the same view. {{chip:gray|?tab=hours}} opens **Pay → Hours**. A contract record link opens **Paperwork → Contracts** with the record. A person link opens **People → Person**.
