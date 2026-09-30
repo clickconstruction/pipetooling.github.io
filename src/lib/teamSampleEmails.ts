@@ -19,6 +19,7 @@ import { billedReportEmailSubject, billedReportEmailText, renderBilledReportEmai
 import { renderWeeklyMoneyHtml, renderWeeklyMoneyText, weekLabelFromMonday, weeklyMoneySubject, type WeeklyMoneyPayload } from '../../supabase/functions/_shared/weeklyMoneyEmail'
 import { renderWeeklyMovementHtml, renderWeeklyMovementText, weeklyMovementSubject, type WeeklyMovementPayload, type WeeklyMovementPayloadEntry } from '../../supabase/functions/_shared/weeklyMovementEmail'
 import { paidJobEmailSubject, paidJobEmailText, renderPaidJobEmailDetailed, type PaidJobEmailPayload } from '../../supabase/functions/_shared/paidJobEmail'
+import { buildScheduleEmail, type ScheduleDayBlockRow } from '../../supabase/functions/_shared/scheduleDayEmail'
 import { readyToBillSubject, readyToBillText, renderReadyToBillDetailed, type ReadyToBillPayload } from '../../supabase/functions/_shared/readyToBillEmail'
 
 export type BuiltTeamEmail = { subject: string; html: string; text: string }
@@ -328,12 +329,30 @@ export function sampleReadyToBillPayload(todayYmd: string): ReadyToBillPayload {
   }
 }
 
+/** The Dispatch schedule rows (lift 8): three blocks on the sample day — a two-person rough-in, a service call, an afternoon inspection. */
+export function sampleScheduleDayBlocks(todayYmd: string): ScheduleDayBlockRow[] {
+  const row = (id: string, assignee_user_id: string, assignee_name: string, time_start: string, time_end: string, job: { id: string; hcp: string; name: string; address: string }, note: string | null): ScheduleDayBlockRow => ({
+    id, job_id: job.id, assignee_user_id, work_date: todayYmd, time_start, time_end, note, assignee_name, job_hcp_number: job.hcp, job_name: job.name, job_address: job.address,
+  })
+  const roughIn = { id: 'job-5', hcp: '1057', name: 'Hunter Homes — gas line', address: '77 Hunter Loop\nKyle, TX 78640' }
+  const service = { id: 'job-3', hcp: '1054', name: 'Water heater replacement', address: SAMPLE_HOMEOWNER.address }
+  return [
+    row('blk-1', 'u-ana', 'Ana Lead', '07:00:00', '12:00:00', roughIn, 'Meet the GC super at the gate'),
+    row('blk-2', 'u-max', 'Max Helper', '07:00:00', '12:00:00', roughIn, null),
+    row('blk-3', 'u-kim', 'Kim Tech', '08:30:00', '11:00:00', service, 'Customer home after 8:30'),
+    row('blk-4', 'u-ana', 'Ana Lead', '13:00:00', '15:00:00', roughIn, 'City inspection 1–3'),
+  ]
+}
+
 export function buildTeamSampleEmail(id: TeamSampleEmailId, ctx: TeamSampleContext): BuiltTeamEmail {
   const origin = ctx.origin
   switch (id) {
     case 'paid_job': {
       const p = samplePaidJobPayload(ctx.todayYmd)
       return { subject: paidJobEmailSubject(p), html: renderPaidJobEmailDetailed(p), text: paidJobEmailText(p) }
+    }
+    case 'schedule_day': {
+      return buildScheduleEmail({ workDateYmd: ctx.todayYmd, blocks: sampleScheduleDayBlocks(ctx.todayYmd) })
     }
     case 'ready_to_bill': {
       const p = sampleReadyToBillPayload(ctx.todayYmd)

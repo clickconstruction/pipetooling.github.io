@@ -18,7 +18,7 @@ const SAMPLE_IDS = TEAM_EMAILS.flatMap((e) => (e.render.kind === 'sample' ? [e.r
 
 describe('team sample emails (What the team sees)', () => {
   it('every sample row builds a subject and an HTML body', () => {
-    expect(SAMPLE_IDS.length).toBe(19)
+    expect(SAMPLE_IDS.length).toBe(20)
     for (const id of SAMPLE_IDS) {
       const m = buildTeamSampleEmail(id, ctx)
       expect(m.subject.trim().length, id).toBeGreaterThan(3)
@@ -75,6 +75,12 @@ describe('team sample emails (What the team sees)', () => {
     const rtb = buildTeamSampleEmail('ready_to_bill', ctx)
     expect(rtb.subject).toMatch(/1057/)
     expect(rtb.html).toContain('Kim Tech')
+  })
+  it('the Dispatch schedule is the function\u2019s own builder over the sample day (lift 8)', () => {
+    const built = buildTeamSampleEmail('schedule_day', ctx)
+    expect(built.subject).toBe('Dispatch schedule — 2026-09-29 (America/Chicago)')
+    expect(built.html).toContain('Ana Lead')
+    expect(built.text).toContain('Kim Tech')
   })
   it('the signed-agreement notice is the real builder over the sample GC', () => {
     const m = buildTeamSampleEmail('signed_agreement_staff', ctx)

@@ -2541,6 +2541,8 @@ Per-recipient **`activity_scope`** + **`crew_filter`** + **`include_costs`** (fr
 
 ### schedule-day-email-dispatch
 
+> **v2.4177 — the email is a kernel**: `buildScheduleEmail` and the row type moved verbatim into [`_shared/scheduleDayEmail.ts`](../supabase/functions/_shared/scheduleDayEmail.ts); `index.ts` imports it, so Settings → What the team sees renders the email on sample data (punch list #60, lift 8 of 14). Redeploy after merge.
+
 **Purpose**: pg_cron `*/15` — loads **`schedule_day_email_requests`** rows with **`status = pending`** and **`send_at <= now()`**, calls **`list_job_schedule_blocks_for_schedule_email(p_recipient, p_work_date)`** (Schedule Dispatch hub–parity visibility for that calendar day), builds HTML + plain text, sends to the **recipient**’s **`users.email`** (row **`recipient_user_id`**) via Resend, then sets **`sent`** / **`failed`**.
 
 **Who queues rows** (client **`INSERT`** + RLS — not decided by this Edge function): **master_technician** and **assistant** — **self** only; **dev** — may set **`recipient_user_id`** to any non-archived **`users`** row (**`schedule_day_email_requests_insert_dev_any_recipient`**, migration **`20270523120000_dev_schedule_day_email_for_other.sql`**). Cron dispatch always uses **`recipient_user_id`** for the Resend **To** address and for **`p_recipient`** on the blocks RPC (independent of **`created_by`**).

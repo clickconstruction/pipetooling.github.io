@@ -39,6 +39,7 @@ export type TeamSampleEmailId =
   | 'weekly_movement'
   | 'paid_job'
   | 'ready_to_bill'
+  | 'schedule_day'
   | 'signed_agreement_staff'
   | 'estimate_accepted_staff'
   | 'gc_word_ask'
@@ -74,6 +75,8 @@ export type TeamRecipientList = 'paid_job' | 'ready_to_bill' | 'signed_agreement
 
 /** What fills the sample subject: the viewer's name where the email says one, and today. */
 export type TeamSampleContext = {
+  /** "2026-09-29" — today in the app's calendar zone, for the subjects that print the raw date. */
+  todayYmd: string
   /** "Sep 29, 2026" — today as the emails print it. */
   dateLabel: string
   /** "Sep 21" — the Monday of the current week, as the weekly emails print it. */
@@ -150,8 +153,8 @@ export const TEAM_EMAILS: readonly TeamEmail[] = [
     label: 'Dispatch schedule — one day',
     when: { kind: 'morning', label: 'The morning of the day you asked for', order: 4 },
     recipients: { roles: EVERYONE, decidedBy: 'event', rule: 'Whoever asked for a day’s schedule from Dispatch (Email me this day).' },
-    sampleSubject: (c) => `Schedule — ${c.dateLabel}`,
-    render: { kind: 'soon', note: 'Built inside schedule-day-email-dispatch over the day’s dispatch rows.' },
+    sampleSubject: (c) => `Dispatch schedule — ${c.todayYmd} (America/Chicago)`,
+    render: { kind: 'sample', sample: 'schedule_day' },
     manage: stream('schedule_day', 'Emails & reports → Schedule day'),
     reflects: ['the day’s dispatch board'],
   },
