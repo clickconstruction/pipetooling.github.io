@@ -8,6 +8,7 @@ import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { procurementLogCsv, procurementLogFileName, procurementLogTsv } from '../../lib/submittals/procurementLogExport'
 import { loadProcurementSheetAssets, type ProcurementSheetAssets } from '../../lib/submittals/procurementSheetAssets'
 import { describeLeadTime, parseLeadTime } from '../../lib/submittals/leadTime'
+import { holdsDateBoxChange, isPlausibleDate, readDateBoxEntry, unfinishedDateMessage } from '../../lib/dateBoxEntry'
 import {
   buildProcurementLog,
   buildProcurementUpdateHtml,
@@ -17,8 +18,6 @@ import {
   procurementCounts,
   procurementHeadline,
   procurementUpdateText,
-  isPlausibleLogDate,
-  readLogDateEntry,
   shortDate,
   shortDateYear,
   daysAgoWords,
@@ -219,12 +218,12 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
   /** An unfinished date is dropped: the box goes back to what is saved, and a line says why. */
   function dropDate(row: ProcurementRow, field: DateField) {
     clearDraft(row.key, field)
-    showToast(`That date was not finished, so it was not saved. Type the year in full, like ${new Date().getFullYear()}.`, 'info')
+    showToast(unfinishedDateMessage(new Date().getFullYear()), 'info')
   }
 
   /** Saves a finished date, or null for an emptied box; a half-typed year is dropped. */
   function saveDate(row: ProcurementRow, field: DateField, raw: string) {
-    const entry = readLogDateEntry(raw, storedDate(row, field))
+    const entry = readDateBoxEntry(raw, storedDate(row, field))
     if (entry.kind === 'unfinished') return dropDate(row, field)
     clearDraft(row.key, field)
     if (entry.kind === 'save') void write(row, { [field]: entry.value } as Record<string, string | null>)
@@ -237,7 +236,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
    */
   function dateChanged(row: ProcurementRow, field: DateField, value: string) {
     const typed = typingIn.current === `${row.key}:${field}`
-    if (typed || readLogDateEntry(value, storedDate(row, field)).kind === 'unfinished') setDraft(row.key, field, value)
+    if (holdsDateBoxChange(typed, value, storedDate(row, field))) setDraft(row.key, field, value)
     else saveDate(row, field, value)
   }
 
@@ -281,7 +280,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
     const box = `${row.key}:${field}`
     const handlers = dateBox(row, field, shown)
     // A year outside the log's window (0001, typed short before v2.4239) is shown in full, so two digits cannot hide it.
-    const odd = shown != null && !isPlausibleLogDate(shown)
+    const odd = shown != null && !isPlausibleDate(shown)
     // Soft lines under the box, each no wider than it: what the date is ("house said"), then how far it is from today.
     const under = odd ? ['check the year'] : [o.under, daysAgoWords(shown, today)].filter((x): x is string => !!x)
     return (
