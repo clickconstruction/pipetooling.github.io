@@ -166,8 +166,9 @@ built on the MC labor units. You have a seat there (`mint_session` with
 typed counts (units, types, groups, children — the same payload CountTooling's *Open in
 TakeoffTooling* emits) and lands them as a manifest, exploded and priced, marked ready
 for a human's look. `get_work_state(bid).tt_manifest` then carries the priced rows into
-`paste_counts` with `unit_cost` and `labor_hours`, so the Workbench opens costed. Read
-`get_tt_guide` before the first electrical bid. Plumbing bids skip TakeoffTooling
+`paste_counts` with `unit_cost` and `labor_hours`, so the Workbench opens costed; a row it
+marks `alternate: true` names its group as one of the bid's with-and-without alternates,
+so pass the flag through. Read `get_tt_guide` before the first electrical bid. Plumbing bids skip TakeoffTooling
 entirely — PipeTooling's own takeoff books do that work.
 
 ## 6 · Vocabulary

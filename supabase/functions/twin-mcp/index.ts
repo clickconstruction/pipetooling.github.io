@@ -448,6 +448,8 @@ const TOOLS = [
               count: { type: 'number', description: 'Quantity (ea) or length (ft)' },
               unit: { type: 'string', description: "'ea' | 'ft' | 'px' | 'sqft' — omit to infer from the fixture name ('ft of …' → ft)" },
               page: { type: 'string', description: "Plan sheet, e.g. 'P2.1' (optional)" },
+              group: { type: 'string', description: "v2.4215: the row's group (a circuit, an area, an alternate) — lands as group_tag; a '[Group] ' prefix on the fixture is read the same way" },
+              alternate: { type: 'boolean', description: "v2.4215: true when the row's group is a with-and-without alternate (TakeoffTooling's tt_manifest.rows[].alternate) — the group joins the bid's alternates, so Takeoffs, Labor, Pricing and the letter price the bid both ways" },
               book_entry: { type: 'string', description: 'EXACT 🤖 Robot Default entry name to assign this row to (the fixture_types name)' },
               unit_price_override: { type: 'number', description: "Price per unit when the book entry's price is not the row's price (lump rows, LOCK-stated all-ins)" },
               unit_cost: { type: 'number', description: 'v2.3082: materials COST per unit from TakeoffTooling (tt_manifest.rows[].unit_cost) — lands as the row\'s custom cost tagged TakeoffTooling so the Workbench opens costed' },
@@ -2639,9 +2641,20 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       if (!ref || !rows.length) return textContent('paste_counts needs bid + rows[]', true)
       if (rows.length > 200) return textContent('paste_counts takes at most 200 rows', true)
       const UNITS = ['ea', 'ft', 'px', 'sqft']
-      const parsed = rows.map((r, i) => ({
+      // v2.4215: the group rides as group_tag (a `[Group] ` prefix on the fixture is lifted
+      // off it, as the Counts tab's paste import does since v2.4188), and a row marked
+      // `alternate: true` (TakeoffTooling's priced rows, its ALTERNATES) names its group as
+      // one of the bid's with-and-without alternates.
+      const GROUP_PREFIX_RE = /^\[([^\]]*)\]\s*/
+      const parsed = rows.map((r, i) => {
+        const rawFixture = String(r.fixture ?? '').trim().slice(0, 300)
+        const prefix = rawFixture.match(GROUP_PREFIX_RE)
+        const explicitGroup = r.group == null ? null : String(r.group).trim().slice(0, 80) || null
+        return {
         i,
-        fixture: String(r.fixture ?? '').trim().slice(0, 300),
+        fixture: prefix ? rawFixture.slice(prefix[0].length).trim() : rawFixture,
+        group: explicitGroup ?? (prefix ? prefix[1].trim().slice(0, 80) || null : null),
+        alternate: r.alternate === true,
         count: Number(r.count),
         unit: r.unit == null ? null : String(r.unit).trim(),
         page: r.page == null ? null : String(r.page).trim().slice(0, 40) || null,
@@ -2650,7 +2663,8 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         // v2.3082: TakeoffTooling's cost side per unit (materials $ and labor hours)
         unitCost: r.unit_cost == null ? null : Number(r.unit_cost),
         laborHours: r.labor_hours == null ? null : Number(r.labor_hours),
-      }))
+        }
+      })
       const bad = parsed.filter((r) =>
         !r.fixture || !r.bookEntry || !Number.isFinite(r.count) || r.count <= 0 ||
         (r.unit != null && !UNITS.includes(r.unit)) || (r.override != null && !Number.isFinite(r.override)) ||
@@ -2702,9 +2716,24 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         if (delRowsErr) return textContent(`Replace failed clearing bids_count_rows: ${delRowsErr.message}`, true)
       }
       const { data: inserted, error: rowErr } = await admin.from('bids_count_rows').insert(parsed.map((r, i) => ({
-        bid_id: bid.id, fixture: r.fixture, count: r.count, unit: r.unit, page: r.page, sequence_order: i + 1,
+        bid_id: bid.id, fixture: r.fixture, count: r.count, unit: r.unit, page: r.page, group_tag: r.group, sequence_order: i + 1,
       }))).select('id')
       if (rowErr) return textContent(`Rows not saved: ${rowErr.message}`, true)
+      // v2.4215: the alternates the rows name join bids.alternate_group_tags (never removed here —
+      // the Counts tab's switch owns that); membership by group name, trimmed and case-folded.
+      const altNames: string[] = []
+      for (const r of parsed) {
+        if (r.alternate && r.group && !altNames.some((g) => g.toLowerCase() === r.group!.toLowerCase())) altNames.push(r.group)
+      }
+      let altNote = ''
+      if (altNames.length) {
+        const { data: bidTags } = await admin.from('bids').select('alternate_group_tags').eq('id', bid.id).maybeSingle()
+        const have: string[] = Array.isArray(bidTags?.alternate_group_tags) ? bidTags.alternate_group_tags : []
+        const merged = have.slice()
+        for (const g of altNames) if (!merged.some((h) => h.toLowerCase() === g.toLowerCase())) merged.push(g)
+        const { error: altErr } = await admin.from('bids').update({ alternate_group_tags: merged }).eq('id', bid.id)
+        altNote = altErr ? ` — alternates NOT stamped (${altErr.message})` : `, ${altNames.length} alternate${altNames.length === 1 ? '' : 's'} (${altNames.join(', ')}) priced with and without`
+      }
       const { error: asgErr } = await admin.from('bid_pricing_assignments').insert((inserted ?? []).map((row, i) => ({
         bid_id: bid.id,
         count_row_id: row.id,
@@ -2732,12 +2761,12 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       if (laborHoursTotal > 0) costNote += `, ${laborHoursTotal} labor hrs from TakeoffTooling (enter on the Labor tab)`
       await admin.from('bids_submission_entries').insert({
         bid_id: bid.id,
-        notes: `[pipeline STG-5] via twin-mcp paste_counts: ${parsed.length} rows written and book-assigned (🤖 Robot Default, ${overrides} price overrides${costNote}) → priced $${total.toLocaleString()}${expected != null ? ` = expected_total $${expected.toLocaleString()}` : ' (no expected_total passed)'}.`,
+        notes: `[pipeline STG-5] via twin-mcp paste_counts: ${parsed.length} rows written and book-assigned (🤖 Robot Default, ${overrides} price overrides${costNote}${altNote}) → priced $${total.toLocaleString()}${expected != null ? ` = expected_total $${expected.toLocaleString()}` : ' (no expected_total passed)'}.`,
       }).then(() => {}, () => {})
       return textContent(JSON.stringify({
         ok: true, bid: `b${bid.bid_number}`, rows: parsed.length, priced_total: total,
         replaced: (existing ?? 0) > 0 ? existing : 0, overrides,
-        costed_rows: costed.length, labor_hours_total: laborHoursTotal,
+        costed_rows: costed.length, labor_hours_total: laborHoursTotal, alternates: altNames,
         next: expected == null ? 'No expected_total passed — verify the Counts tab total equals your LOCK before scoring.' : 'LOCK note next if not already on the ledger, then score_backtest (STG-6).',
       }, null, 2))
     }
@@ -3320,7 +3349,7 @@ async function handleRpc(req: Request, msg: { jsonrpc?: string; id?: unknown; me
       return rpcResult(id, {
         protocolVersion: version,
         capabilities: { tools: {} },
-        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.4.4' },
+        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.4.5' },
         instructions:
           "PipeTooling digital-twin seat (estimator-only). Call get_brief first, then get_directory; mint_session gives you a signed-in browser link to the real apps — PipeTooling by default, CountTooling (the PDF-takeoff tool) with app: 'counttooling'. The work happens there. Every call needs your per-twin token (X-Twin-Token or Bearer).",
       })
