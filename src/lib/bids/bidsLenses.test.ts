@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { bidsTabOpenFor, isBidsTabKey, isFollowupLens, isRobotLens } from './bidsTabAccess'
-import { followupLensCaption, followupLenses, followupNeedsReasonChipShows, robotLensBarShows, robotLenses } from './bidsLenses'
+import { followupLensCaption, followupLenses, followupNeedsReasonChipShows, robotLensBarShows, robotLensCaption, robotLenses } from './bidsLenses'
 
 const BIDS_ROLES = ['dev', 'master_technician', 'assistant', 'controller', 'estimator', 'primary', 'superintendent'] as const
 
@@ -154,5 +154,16 @@ describe('followupLensCaption', () => {
   it('six lenses, six different lines', () => {
     const keys = followupLenses({ role: 'dev', jobAccountsMissing: 0 }).map((l) => l.key)
     expect(new Set(keys.map(followupLensCaption)).size).toBe(6)
+  })
+})
+
+describe('robotLensCaption (v2.4256)', () => {
+  it('says what each lens is for, the Audits line leading with the questions', () => {
+    expect(robotLensCaption('audits')).toMatch(/^Teach the robots — answer their questions, then judge their drafts/)
+    expect(robotLensCaption('robot-scoreboard')).toMatch(/by kind of job/)
+    expect(robotLensCaption('robot-board')).toMatch(/^Our bids seen through the robots/)
+    expect(robotLensCaption('robot-queue')).toMatch(/^Dev only/)
+    expect(robotLensCaption('robot-console')).toMatch(/^Dev only/)
+    expect(robotLensCaption('robot-shadows')).toBe(robotLensCaption('robot-board'))
   })
 })
