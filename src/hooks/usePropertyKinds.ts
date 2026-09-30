@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { chunkIds } from '../lib/supabasePaging'
 
+/** `customer_id` is the property's home: the job's customer, else its GC (v2.4222). */
 export type PropertyKindJob = { id: string; customer_address_id: string | null; customer_id?: string | null }
 
 /**

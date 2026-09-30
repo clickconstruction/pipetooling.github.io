@@ -653,7 +653,7 @@ export function renderStagesFieldAndBillingLines(ctx: StagesRowRenderContext, jo
  */
 export function renderJobAddressWithMap(
   ctx: Pick<StagesRowRenderContext, 'propertyKindByJobId' | 'onPropertyKindSaved' | 'propertyLinkByJobId' | 'onPropertyLinked' | 'authRole' | 'showToast'>,
-  job: Pick<JobWithDetails, 'id' | 'job_address' | 'customer_address_id' | 'customer_id' | 'customer_name' | 'hcp_number' | 'job_name'>,
+  job: Pick<JobWithDetails, 'id' | 'job_address' | 'customer_address_id' | 'customer_id' | 'customer_name' | 'gc_customer_id' | 'gcCustomer' | 'hcp_number' | 'job_name'>,
 ) {
   const address = job.job_address
   const fmt = formatAddressTwoLines(address ?? null)
@@ -693,13 +693,19 @@ export function renderJobAddressWithMap(
         <JobAddressText line1={fmt.line1} line2={fmt.line2} />
       </a>
       <PropertyKindBadge
-        job={{ ...job, customer_address_id: job.customer_address_id ?? ctx.propertyLinkByJobId?.get(job.id) ?? null }}
+        // The property's home is the customer, else the GC (v2.4222) — the fallback Edit Job's Property record row uses; a GC job with no owner still gets its badge.
+        job={{
+          ...job,
+          customer_address_id: job.customer_address_id ?? ctx.propertyLinkByJobId?.get(job.id) ?? null,
+          customer_id: job.customer_id ?? job.gc_customer_id ?? null,
+          customer_name: job.customer_id ? job.customer_name : (job.gcCustomer?.name ?? null),
+        }}
         kind={ctx.propertyKindByJobId?.get(job.id)}
         role={ctx.authRole}
         onSaved={(addressId, kind) => ctx.onPropertyKindSaved?.(addressId, kind)}
         onLinked={(addressId, kind, reused) => {
           ctx.onPropertyLinked?.(job.id, addressId, kind)
-          const who = (job.customer_name ?? '').trim() || 'the customer'
+          const who = ((job.customer_id ? job.customer_name : job.gcCustomer?.name) ?? '').trim() || 'the customer'
           ctx.showToast(reused ? `Linked to ${who}'s saved property and marked ${kind === 'residential' ? 'residential' : 'commercial'}` : `Saved as a property on ${who} and marked ${kind === 'residential' ? 'residential' : 'commercial'}`, 'success', 3500)
         }}
         onError={(m) => ctx.showToast(m, 'error')}
