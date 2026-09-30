@@ -147,7 +147,7 @@ describe('lienCalendarMarks', () => {
     const created = job({ jobId: 'c', r: { lastWorkYmd: null, createdAt: '2026-08-03T15:00:00Z' } })
     expect(created.runway.datedFromCreation).toBe(true)
     expect(created.runway.basisYmd).toBe('2026-08-03')
-    expect(workMarkFor(created, axis)).toMatchObject({ fromCreation: true, offAxis: true, label: '◂ Aug · no hours (created)' })
+    expect(workMarkFor(created, axis)).toMatchObject({ fromCreation: true, offAxis: true, label: '◂ Aug · no hours' })
     expect(workMarkFor(job({ jobId: 'd', r: { lastWorkYmd: null, createdAt: null } }), axis)).toBeNull()
   })
   it('a notice window closed unsent dies on the notice date, not the lien date — the gutter and the flag follow it', () => {
