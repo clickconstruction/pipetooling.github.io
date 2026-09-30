@@ -9,7 +9,7 @@ Need the current Bank Deposit Details, I-9, or Certificate of Insurance? They li
 
 ## Where to find them
 
-**Documents → Company** (the far-left tab), or **Settings → Your account → Company documents** — same list in both places. Each document is a {{button:outline|📄 Name}} button — click it and the current copy opens in a new tab. The grey date next to each shows when it was last updated, so you know how fresh it is.
+Open **Documents → Company**, the far-left tab. Or open **Settings → Your account → Company documents**. It is the same list in both places. Each document is a {{button:outline|📄 Name}} button. Click it and the current copy opens in a new tab. The grey date next to each shows when it was last updated, so you know how fresh it is.
 
 :::example The Company tab's list
 {{button:outline|📄 Bank Deposit Details}} updated Jul 28
@@ -21,4 +21,4 @@ Need the current Bank Deposit Details, I-9, or Certificate of Insurance? They li
 
 ## Keeping them current (devs)
 
-On **Documents → Company**, devs see a {{icon:gear}} gear at the top right of the tab — it opens the manager: change a link when a new version exists (the "updated" date refreshes automatically), rename, reorder with ↑ ↓, delete, or add a new one — a name plus a link is all it takes. Everyone in the office sees the change immediately; there's nothing to send around.
+On **Documents → Company**, devs see a {{icon:gear}} gear at the top right of the tab. It opens the manager. There you change a link when a new version exists, and the "updated" date refreshes automatically. You can rename, reorder with ↑ ↓, delete, or add a new one. A name plus a link is all it takes. Everyone in the office sees the change immediately. There is nothing to send around.

@@ -72,18 +72,20 @@ export function helpGuideProseLines(source: string): string[] {
   return lines
 }
 
-/** For counting: a token becomes its label, bold marks go, an italic span is one quoted word. */
+/** For counting: a link is its text, a token becomes its label, bold marks go, an italic span is one quoted word. */
 export function helpGuideLineForCounting(line: string): string {
   return line
-    .replace(/\{\{[a-z]+:[a-z]+\|([^}]*)\}\}/g, '$1')
-    .replace(/\{\{[a-z]+:[a-z]+\}\}/g, 'icon')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/\{\{[a-z]+:[^|}]*\|([^}]*)\}\}/g, '$1')
+    .replace(/\{\{[a-z]+:[^|}]*\}\}/g, 'icon')
     .replace(/\*\*/g, '')
     .replace(/\*[^*]+\*/g, 'quoted')
 }
 
-/** For the glue rule: tokens and italic spans are quotes of the screen, read around. */
+/** For the glue rule: a link's target, tokens and italic spans are not prose, read around. */
 export function helpGuideLineForGlue(line: string): string {
   return line
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
     .replace(/\{\{[^}]*\}\}/g, '')
     .replace(/\*\*/g, '')
     .replace(/\*[^*]+\*/g, '')

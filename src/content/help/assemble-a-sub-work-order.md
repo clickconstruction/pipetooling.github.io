@@ -5,18 +5,20 @@ roles: dev, master_technician, assistant, controller
 keywords: sub, subcontractor, work order, work orders tab, assemble, scope, bid, price, draft, unpriced, sign, signature, portal, record number, WO, needs a work order, sub labor, rail, handshake, no agreement, link to a job, not in pipeline
 order: 62
 ---
-A **work order** is the short numbered document a sub signs before they start: what they're doing, for how much, in what window, under which standing rules. **Jobs → Subs → Work** is where they're assembled — like a bid cover letter, with the document taking shape on the right as you tick.
+A work order is the short numbered document a sub signs before they start. You assemble it on Jobs → Subs → Work.
+
+A sub is a subcontractor. The **work order** says what they're doing, for how much, in what window, and under which standing rules. **Jobs → Subs → Work** is where they're assembled. It works like a bid cover letter. The document takes shape on the right as you tick.
 
 ## Start one
 
-1. Open **Jobs → Subs → Work**. Every row on the board is a **Sub Labor sheet** with the agreement behind it, and the first group — **Working with no agreement** — is the queue: sheets for roster subs with money still open (or never priced) and nothing signed, including sheets on jobs that are not in the Pipeline. Click {{button:blue|Draft a work order…}} on a row (the assembler opens on that sheet with its total as the price) or {{button:blue|+ New work order}} for a job with no sheet yet.
+1. Open **Jobs → Subs → Work**. Every row on the board is a **Sub Labor sheet** with the agreement behind it. The first group, **Working with no agreement**, is the queue. It holds sheets for roster subs with money still open or never priced, and nothing signed. It includes sheets on jobs that are not in the Pipeline. Click {{button:blue|Draft a work order…}} on a row. The assembler opens on that sheet with its total as the price. Or click {{button:blue|+ New work order}} for a job with no sheet yet.
 2. **Job**: pick the job. The document's project block, customer, and trade come from it.
-3. **Sub**: pick the sub from the roster chips, or {{button:outline|Add sub}} for someone new — they get a roster row and a portal.
+3. **Sub**: pick the sub from the roster chips. Or click {{button:outline|Add sub}} for someone new. They get a roster row and a portal.
 4. **Scope and terms**:
    - **Scope** starts with the trade's library defaults ticked. If the job has a bid, the bid's stages appear as lines to tick too. Type anything else for this job underneath, one per line. Whatever is ticked is what the sub signs, word for word.
-   - **Price**: type the subcontract amount. If the job has a bid, the bid's sub-labor total shows as a hint. You can leave it blank and {{button:outline|Save draft}} — the draft shows *Drafted · no price yet* on the board until someone fills it in.
-   - **Window, expiry, retainage, bond, special provisions**, then the documents **attached by reference** and the sentences they **confirm at signing**.
-5. {{button:blue|Send for signature}} gives the order its number (WO-977-01, WO-977-02, …), freezes the document, and notifies the sub. Their portal link opens the offer; when they sign, a **Sub Labor sheet is created for them from the agreed amount** — nothing to set up on the Sub Labor tab.
+   - **Price**: type the subcontract amount. If the job has a bid, the bid's sub-labor total shows as a hint. You can leave it blank and click {{button:outline|Save draft}}. The draft shows *Drafted · no price yet* on the board until someone fills it in.
+   - **Window, expiry, retainage, bond, special provisions** come next. Retainage is the part of the pay held back until the work is done. Then come the documents **attached by reference** and the sentences they **confirm at signing**.
+5. {{button:blue|Send for signature}} gives the order its number, like WO-977-01, then WO-977-02. It freezes the document. It notifies the sub. Their portal link opens the offer. When they sign, a **Sub Labor sheet is created for them from the agreed amount**. There is nothing to set up on the Sub Labor tab.
 
 :::example An assistant taking a job in
 The leader says "Rudy's doing the rough-in". The assistant opens Work Orders, picks the job and Rudy, ticks the plumbing defaults, leaves the price blank, saves the draft. The leader opens it from the Drafts filter, types the price, sends.
@@ -24,32 +26,32 @@ The leader says "Rudy's doing the rough-in". The assistant opens Work Orders, pi
 
 ## From the job window
 
-Taking a job in and the leader already knows who's doing it? Open the job, **Edit** tab: the **Sub work order** row sits right under Contract. {{button:blue|Draft a work order…}} opens the assembler with the job already picked — choose the sub, tick the scope, leave the price blank if that's the leader's call, {{button:outline|Save draft}}. The row then shows {{chip:gray|Drafted · no price yet}} with {{button:blue|Price…}}; once it's signed it shows {{chip:green|✍ Signed}} and {{button:outline|View record}}. The **Bill** tab shows the same line read-only above the invoice.
+Taking a job in and the leader already knows who's doing it? Open the job's **Edit** tab. The **Sub work order** row sits right under Contract. {{button:blue|Draft a work order…}} opens the assembler with the job already picked. Choose the sub and tick the scope. Leave the price blank if that's the leader's call. Click {{button:outline|Save draft}}. The row then shows {{chip:gray|Drafted · no price yet}} with {{button:blue|Price…}}. Once it's signed it shows {{chip:green|✍ Signed}} and {{button:outline|View record}}. The **Bill** tab shows the same line read-only above the invoice.
 
 ## The leader's queue
 
-Unpriced drafts show on the dashboard's **Needs You** card — *"2 sub work orders are waiting for a price"* — and {{button:blue|Price them}} opens **Jobs → Subs → Work** on the Drafts filter. Open each draft, type the price, {{button:blue|Send for signature}}.
+Unpriced drafts show on the dashboard's **Needs You** card. The line reads *"2 sub work orders are waiting for a price"*. {{button:blue|Price them}} opens **Jobs → Subs → Work** on the Drafts filter. Open each draft. Type the price. Click {{button:blue|Send for signature}}.
 
 ## Reading the board
 
-Three tiles lead: **On a handshake** (open money on sheets with nothing signed — the number to drive to zero), **Offers out**, and **Signed this month**. Four columns on every row: **Sub · stage**, **Window** (the dates as text with the GC chip beside them — click the dates for the calendar), **Agreed · Paid · Open** stacked (paid in green, open in red), and **Where it stands → next** — the rail, an arrow, and the move as a button with a **⋯** menu for the rest. The same numbers the sub sees on their portal.
+Three tiles lead. **On a handshake** is open money on sheets with nothing signed. That is the number to drive to zero. **Offers out** and **Signed this month** follow. Four columns sit on every row. *Sub · stage* names the sub and the stage. **Window** shows the dates as text with the GC chip beside them. Click the dates for the calendar. *Agreed · Paid · Open* stacks the three amounts, paid in green and open in red. **Where it stands → next** shows the rail, an arrow, and the move as a button. A **⋯** menu holds the rest. These are the same numbers the sub sees on their portal.
 
-**Where it stands** is the rail — seven dots on one line. Three small dots are the office's steps (Drafted · Sent · Signed); four big ones are the sub's (Work · Pre-inspection · Post-inspection: Trigger draw · Paid — the same four on their portal). The filled terracotta dot is where the sheet is today. A **dashed red run** through the first three dots means work is happening with nothing signed — a declined or expired offer draws the same gap, so it lands back in the first group with {{button:blue|Re-offer…}} or {{button:blue|Re-send…}} ready.
+**Where it stands** is the rail, seven dots on one line. Three small dots are the office's steps: *Drafted · Sent · Signed*. Four big ones are the sub's: *Work · Pre-inspection · Post-inspection: Trigger draw · Paid*. Those are the same four on their portal. The filled terracotta dot is where the sheet is today. A **dashed red run** through the first three dots means work is happening with nothing signed. A declined or expired offer draws the same gap. So it lands back in the first group with {{button:blue|Re-offer…}} or {{button:blue|Re-send…}} ready.
 
-**Next** names the office's move, and its button sits first in the row: *Get it in writing* → {{button:blue|Draft a work order…}}; *Price it and send* → {{button:blue|Price…}}; *Waiting on ‹sub› · 3 days* → {{button:blue|Nudge}} once three days have passed; then, once signed, *Wait for "done"* (the sub taps Done on their portal), *Call it in for inspection*, *Bill and collect*, *Pay ‹sub›*, *Nothing — done*.
+**Next** names the office's move, and its button sits first in the row. *Get it in writing* pairs with {{button:blue|Draft a work order…}}. *Price it and send* pairs with {{button:blue|Price…}}. *Waiting on ‹sub› · 3 days* pairs with {{button:blue|Nudge}} once three days have passed. Once signed, the moves are *Wait for "done"*, *Call it in for inspection*, *Bill and collect*, *Pay ‹sub›* and *Nothing — done*. For *Wait for "done"*, the sub taps Done on their portal.
 
-**Click the rail** (anywhere but the current dot) for the sheet's **story**: one row per dot with the facts behind it — who drafted it and when, when it went out and until when, how it was signed and the paperwork it binds under, when the sub said "done" and what they wrote, the job's bill, every payment — plus what the sub sees on their portal at that step, and the office's move for the live one.
+**Click the rail** anywhere but the current dot for the sheet's **story**. It shows one row per dot with the facts behind it. Who drafted it and when. When it went out and until when. How it was signed and the paperwork it binds under. When the sub said "done" and what they wrote. The job's bill. Every payment. It also shows what the sub sees on their portal at that step. For the live dot it shows the office's move.
 
-The groups follow the rail: **Working with no agreement**, **Drafted**, **Sent**, **Signed** (collapsed — {{button:outline|Show ▾}} opens the record). The filter chips are the same four groups with counts. Search by job number, sub, customer, or WO number. {{button:outline|Sheet ›}} on any row opens the Sub Labor sheet; a signed order's **WO-977-01 ›** opens the record.
+The groups follow the rail: **Working with no agreement**, **Drafted**, **Sent**, **Signed**. Signed is collapsed. {{button:outline|Show ▾}} opens the record. The filter chips are the same four groups with counts. Search by job number, sub, customer, or WO number. {{button:outline|Sheet ›}} on any row opens the Sub Labor sheet. A signed order's **WO-977-01 ›** opens the record.
 
 :::example A sheet on a job that is not in the Pipeline
 Springtown's $40,000 electrical sheet was written against job 977 before the job had a Pipeline row. It shows {{chip:yellow|Not in Pipeline}} with {{button:outline|Link to a job…}} — pick the job and the sheet's number follows it, so the work order, the bill and the Job Summary land on one job. {{button:outline|New job…}} opens the New Job form; give it number 977 and the sheet links itself.
 :::
 
-While an offer waits: {{button:outline|Nudge}} resends the notification, {{button:outline|Signed on paper}} records a signature they gave you on a printed copy, {{button:outline|Withdraw}} takes it back to a draft. Signed orders open read-only and {{button:outline|Print}} gives the paper copy.
+While an offer waits, you have three buttons. {{button:outline|Nudge}} resends the notification. {{button:outline|Signed on paper}} records a signature they gave you on a printed copy. {{button:outline|Withdraw}} takes it back to a draft. Signed orders open read-only. {{button:outline|Print}} gives the paper copy.
 
-Crew pay sheets (a teammate on the sheet) never need a work order and are never listed here — they keep their own label on **Jobs → Subs → Pay**.
+Crew pay sheets never need a work order and are never listed here. A crew pay sheet is one with a teammate on the sheet. They keep their own label on **Jobs → Subs → Pay**.
 
 ## Where the words come from
 
-Scope lines, exclusions, and acknowledgements live at **People → Contracts → Contract library → Scope**, one list per trade plus an all-trades list. General Conditions is a Contract library document with its audience set to **Subs**. Editing either changes future work orders only — signed ones keep their frozen wording.
+Scope lines, exclusions, and acknowledgements live at **People → Contracts → Contract library → Scope**. There is one list per trade plus an all-trades list. General Conditions is a Contract library document with its audience set to **Subs**. Editing either changes future work orders only. Signed ones keep their frozen wording.
