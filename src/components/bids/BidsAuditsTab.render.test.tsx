@@ -26,6 +26,8 @@ const audits = [
     created_by: null,
     created_at: '2026-08-30T20:00:00Z',
     updated_at: '2026-08-30T20:00:00Z',
+    // v2.4261: a three-sentence confession folds to two.
+    self_assessment: 'Counters-first takeoff, registration-gated mains. Every sheet accounted. Least sure about the vent risers on P-201.',
     bids: { id: 'bid-405', bid_number: '405', project_name: 'ZZ Twin MPH CASA LINDA (backtest)', selected_bid_version_id: null },
   },
   {
@@ -216,6 +218,14 @@ describe('BidsAuditsTab', () => {
     expect(screen.queryByRole('button', { name: 'Not mine' })).toBeNull()
     fireEvent.keyDown(window, { key: 'Escape' })
     await waitFor(() => expect(screen.queryByTestId('ruling-run-through')).toBeNull())
+
+    // v2.4261: the confession shows two sentences; the rest a tap away.
+    expect(screen.getByText(/Counters-first takeoff, registration-gated mains\. Every sheet accounted\./)).toBeTruthy()
+    expect(screen.queryByText(/Least sure about the vent risers/)).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /read the rest \(about 8 more words\)/ }))
+    expect(screen.getByText(/Least sure about the vent risers on P-201/)).toBeTruthy()
+    // Its question, said as the bid's own.
+    expect(screen.getByText('Its question')).toBeTruthy()
 
     // v2.4234: the card's Finish names what opens next.
     expect(screen.getByText('Finish audit → next: AISD GARCIA SCHOOL RENOVATION')).toBeTruthy()

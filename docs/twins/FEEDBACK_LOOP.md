@@ -103,6 +103,7 @@ the auditor's explicit routing before your own judgment:
 - `[verdict:teach]` → the robot is wrong: digest as **doctrine** or **books**.
 - `[verdict:record]` → OUR record is wrong: digest as **reference_quality** + repair task.
 - `[verdict:ok]` → scope difference / judgment call: digest as **bid_only** (usually no change).
+- `[verdict:alias]` (v2.4261) → one item under two names — `OURS = ROBOT'S` in the body: digest as **books** (the robot book learns the human name as an alias of its row; the two diff rows were one difference).
 
 Also write your own confession at STG-3: pass `self_assessment` to `ct_finish_takeoff`
 (2-3 sentences on where THIS draft is least sure — modeled-not-traced footage, guessed
