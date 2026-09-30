@@ -248,9 +248,11 @@ export function SettingsWhatTheTeamSeesTab() {
           <button type="button" style={view === 'week' ? PILL_ON : PILL} onClick={() => setView('week')}>Their week</button>
           <button type="button" style={view === 'email' ? PILL_ON : PILL} onClick={() => setView('email')}>By the email</button>
         </div>
-        <button type="button" style={onlySoon ? PILL_ON : { ...PILL, borderStyle: 'dashed' }} onClick={() => setOnlySoon((v) => !v)} aria-pressed={onlySoon}>
-          Only what doesn't render yet
-        </button>
+        {rowsAll.some((r) => r.render.kind === 'soon') ? (
+          <button type="button" style={onlySoon ? PILL_ON : { ...PILL, borderStyle: 'dashed' }} onClick={() => setOnlySoon((v) => !v)} aria-pressed={onlySoon}>
+            Only what doesn't render yet
+          </button>
+        ) : null}
         <span style={MUTED}>
           {person ? (
             <>

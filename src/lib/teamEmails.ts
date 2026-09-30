@@ -44,6 +44,7 @@ export type TeamSampleEmailId =
   | 'recurring_job_report'
   | 'report_email'
   | 'bank_return'
+  | 'ct_roster_audit'
   | 'signed_agreement_staff'
   | 'estimate_accepted_staff'
   | 'gc_word_ask'
@@ -353,8 +354,8 @@ export const TEAM_EMAILS: readonly TeamEmail[] = [
     label: 'CT↔PT roster audit',
     when: { kind: 'weekly', label: 'Weekly', order: 35 },
     recipients: { roles: ['dev'], decidedBy: 'role', rule: 'Devs only — the function picks them by role.' },
-    sampleSubject: (c) => `CT/PT roster audit — ${c.dateLabel}`,
-    render: { kind: 'soon', note: 'Built inside ct-roster-audit over the two rosters.' },
+    sampleSubject: () => 'CT↔PT roster audit: 2 items to look at',
+    render: { kind: 'sample', sample: 'ct_roster_audit' },
     manage: emails('ct-roster-audit (cron)'),
     reflects: ['the CountTooling roster'],
   },

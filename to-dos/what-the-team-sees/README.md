@@ -2,7 +2,7 @@
 name: "What the team sees: every email a user could get, as one person's week"
 number: 60
 group: ready
-status: asked and mocked up 2026-09-29 (draft 2 picked) · PR 1 shipped v2.4142 (the inventory, the tab, the guard, 11 live samples, 4 real previews) · lifts 1–12 of 14 shipped — Money waiting v2.4161, Crew day v2.4163, Payment forecast v2.4164, Billed awaiting v2.4167, Weekly money v2.4170, Weekly movement v2.4172, Paid job + Ready to bill v2.4173, Schedule day v2.4177, Schedule share v2.4178, Job activity report v2.4179, Field report v2.4180, Check returned v2.4181 (24 live)
+status: asked and mocked up 2026-09-29 (draft 2 picked) · PR 1 shipped v2.4142 (the inventory, the tab, the guard, 11 live samples, 4 real previews) · all 14 rows lifted (13 PRs; lift 7 carried two rows) — Money waiting v2.4161, Crew day v2.4163, Payment forecast v2.4164, Billed awaiting v2.4167, Weekly money v2.4170, Weekly movement v2.4172, Paid job + Ready to bill v2.4173, Schedule day v2.4177, Schedule share v2.4178, Job activity report v2.4179, Field report v2.4180, Check returned v2.4181, CT roster audit v2.4182 (25 of 25 live; the tab's *soon* state and its toggle retire when no row needs them)
 summary: >
   The customer-facing emails have Settings → What customers see; the other 25 — the digests,
   the notices, sign-in, invitations — had no place a dev could see them with sample data. A
@@ -10,7 +10,7 @@ summary: >
   lands, who gets it, the From, the subject with sample values filled in, and the email itself
   where the app can build one. Fourteen digests build their HTML inside their edge functions;
   each is lifted into a kernel in its own PR and its row turns from "next release" to live.
-next: lift 13 — CT roster audit (`ct-roster-audit/index.ts` builds its HTML inline; lift `renderEmail` into `_shared/ctRosterAuditEmail.ts`) — the last row; then every team email renders live and the tab's *soon* state retires.
+next: the owner's look at the live tab once the train has merged and the seven functions are redeployed (`crew-day-email-dispatch payment-forecast-email-dispatch billed-report-email weekly-money-email-dispatch weekly-movement-email-dispatch paid-job-email schedule-day-email-dispatch recurring-job-report-dispatch send-report-email ct-roster-audit`), then retire.
 size: M (PR 1, shipped) + S–M per digest × 14
 blocker: None.
 opinion: build on, one digest at a time — every lift also gives a digest the unit test it never had

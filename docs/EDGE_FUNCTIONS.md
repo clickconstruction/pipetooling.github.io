@@ -1024,6 +1024,8 @@ The function reads and writes with the service role, so every bid-scoped verb en
 
 ### ct-roster-audit
 
+> **v2.4182 — the email is a kernel**: `renderEmail` (now `renderCtRosterAuditEmail`), `section` and `esc` moved verbatim into [`_shared/ctRosterAuditEmail.ts`](../supabase/functions/_shared/ctRosterAuditEmail.ts); `index.ts` imports it, so Settings → What the team sees renders the audit on a sample diff (punch list #60, lift 13 of 14 — the last row). Redeploy after merge.
+
 **Purpose**: The CT↔PT bridge's **weekly drift audit** (v2.2438; Phase 3 — drift is caught, not prevented). Cron-invoked Mondays 13:00 UTC (migration `20260828110000`): pulls the PT roster (service role) and the CT roster (`manage-user roster` via `_shared/ctBridge.ts`), diffs them with the pure `_shared/ctRosterDiff.ts` kernel (unit-tested from `src/lib/ctRosterDiff.test.ts` — one copy, no port), and emails every dev. Sections: only-in-CT, linked-but-gone, active mismatch (the offboarding hole), twin-flag mismatch, email changed under a linked uuid, backfill candidates. **The email always sends** — the all-clear note is the heartbeat; a missing Monday email means the audit broke. Twin fleet domains (`@twins.pipetooling.local` ↔ `@twins.counttooling.local`) are normalized before email comparison.
 
 **Endpoint**: `POST /functions/v1/ct-roster-audit` · **Auth**: `X-Cron-Secret` vs `CRON_SECRET`; `verify_jwt = false`.

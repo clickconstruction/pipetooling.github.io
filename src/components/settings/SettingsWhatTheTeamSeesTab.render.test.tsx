@@ -52,7 +52,7 @@ function mount() {
 describe('SettingsWhatTheTeamSeesTab', () => {
   it('opens on a controller’s week, grouped by when, with the count line', async () => {
     await mount()
-    expect(screen.getByTestId('wtts-coverage').textContent).toContain('25 emails · 24 render live · 1 built on the server (next release)')
+    expect(screen.getByTestId('wtts-coverage').textContent).toContain('25 emails · 25 render live')
     const headings = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent ?? '')
     expect(headings[0]).toContain('Every morning')
     expect(headings.some((h) => h.includes('When something happens'))).toBe(true)
@@ -90,11 +90,11 @@ describe('SettingsWhatTheTeamSeesTab', () => {
     const frame = await screen.findByTitle('Billed awaiting payment — real')
     expect(frame.getAttribute('srcdoc')).toBe('<p>billed, live</p>')
   })
-  it('a soon row says which function builds it', async () => {
+  it('the last row renders live: a dev opens the roster audit to its sample (v2.4182)', async () => {
     await mount()
     fireEvent.click(screen.getByRole('radio', { name: 'Dev' }))
     fireEvent.click(within(screen.getByTestId('wtts-row-ct_roster_audit')).getByRole('button', { name: 'CT↔PT roster audit' }))
-    expect(screen.getByTestId('wtts-expanded').textContent).toContain('ct-roster-audit')
+    expect(screen.getByTestId('wtts-expanded').textContent).toContain('Subject: CT↔PT roster audit: 2 items to look at')
   })
   it('a person reads the recipient lists: Malachi is not on the Paid job list', async () => {
     await mount()
@@ -104,12 +104,9 @@ describe('SettingsWhatTheTeamSeesTab', () => {
     expect(screen.queryByTestId('wtts-row-paid_job')).toBeNull()
     expect(screen.getByTestId('wtts-row-gc_word_ask').textContent).toContain('Malachi, where do your 7 GCs stand?')
   })
-  it('the only-soon toggle keeps the next-release rows', async () => {
+  it('with every email rendering live, the only-soon toggle is gone', async () => {
     await mount()
-    fireEvent.click(screen.getByRole('radio', { name: 'Dev' }))
-    fireEvent.click(screen.getByRole('button', { name: "Only what doesn't render yet" }))
-    expect(screen.queryByTestId('wtts-row-money_waiting')).toBeNull()
-    expect(screen.getByTestId('wtts-row-ct_roster_audit')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: "Only what doesn't render yet" })).toBeNull()
   })
 })
 
