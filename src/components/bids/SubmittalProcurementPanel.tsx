@@ -56,6 +56,9 @@ type Props = {
 const smallMuted: CSSProperties = { fontSize: '0.75rem', color: 'var(--text-muted)' }
 const th: CSSProperties = { textAlign: 'left', fontSize: '0.68rem', letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)', padding: '0.35rem 0.4rem', borderBottom: '1px solid var(--border)', fontWeight: 600, whiteSpace: 'nowrap' }
 const td: CSSProperties = { padding: '0.35rem 0.4rem', borderBottom: '1px solid var(--bg-muted)', verticalAlign: 'middle', fontSize: '0.8125rem', color: 'var(--text-base)' }
+// The Item cell: the tag in bold, then the product on the same line, so a long name wraps across one wide cell.
+const itemTd: CSSProperties = { ...td, minWidth: '19rem', lineHeight: 1.35 }
+const itemTag: CSSProperties = { fontWeight: 700, color: 'var(--text-strong)', marginRight: '0.45rem' }
 const btn: CSSProperties = { padding: '0.35rem 0.75rem', background: 'var(--surface)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem', fontWeight: 500 }
 const btnPrimary: CSSProperties = { ...btn, background: '#2563eb', borderColor: '#2563eb', color: 'white', fontWeight: 600 }
 const link: CSSProperties = { background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: '0.75rem', color: 'var(--text-blue-700)', textDecoration: 'underline', textUnderlineOffset: 2 }
@@ -331,8 +334,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1080, fontVariantNumeric: 'tabular-nums' }}>
           <thead>
             <tr>
-              <th style={th}>Tag</th>
-              <th style={th}>Product</th>
+              <th style={th}>Item</th>
               <th style={th}>Submittal</th>
               <th style={th}>Released</th>
               <th style={th}>Ordered</th>
@@ -349,7 +351,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
           <tbody data-testid="procurement-rows">
             {rows.length === 0 ? (
               <tr>
-                <td style={td} colSpan={13}>
+                <td style={td} colSpan={12}>
                   <span style={smallMuted}>No rows yet. The submittal's rows appear here once a revision is shared; + Add item for a long-lead item with no cut sheet.</span>
                 </td>
               </tr>
@@ -359,23 +361,27 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
               const changed = changes.some((c) => c.key === r.key)
               return (
                 <tr key={r.key} data-testid="procurement-row" style={{ background: changed ? 'var(--bg-amber-100)' : undefined }}>
-                  <td style={{ ...td, fontWeight: 700, whiteSpace: 'nowrap' }}>{r.tag ?? '+'}</td>
-                  <td style={{ ...td, minWidth: 180 }}>
+                  <td style={itemTd} data-testid="procurement-item">
                     {r.isHand ? (
-                      <input type="text" aria-label="Item" placeholder="What it is (no cut sheet)" value={draftOf(r.key, 'label', r.product)} onChange={(e) => setDraft(r.key, 'label', e.target.value)} onBlur={() => void commitText(r, 'label')} maxLength={200} style={{ ...inp, width: '100%' }} />
+                      <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                        <input type="text" aria-label="Item" placeholder="What it is (no cut sheet)" value={draftOf(r.key, 'label', r.product)} onChange={(e) => setDraft(r.key, 'label', e.target.value)} onBlur={() => void commitText(r, 'label')} maxLength={200} style={{ ...inp, flex: 1, minWidth: 0 }} />
+                        {r.stage ? <span style={{ ...smallMuted, whiteSpace: 'nowrap' }}>{PROCUREMENT_STAGE_LABELS[r.stage]}</span> : (
+                          <select aria-label="Stage" value="" onChange={(e) => void write(r, { stage: (e.target.value || null) as ProcurementStage | null })} style={inp}>
+                            <option value="">stage…</option>
+                            {(['rough_in', 'top_out', 'trim_set'] as const).map((s) => <option key={s} value={s}>{PROCUREMENT_STAGE_LABELS[s]}</option>)}
+                          </select>
+                        )}
+                      </div>
                     ) : (
                       <>
-                        {r.product}
-                        {r.supplyHouse ? <div style={smallMuted}>{r.supplyHouse}</div> : null}
-                        {r.countedWith.length > 0 ? <div style={smallMuted} data-testid="procurement-counted-with">counted with {r.countedWith.join(', ')} on the takeoff</div> : null}
+                        <div><b style={itemTag}>{r.tag}</b>{r.product}</div>
+                        <div style={smallMuted}>
+                          {r.supplyHouse ? `${r.supplyHouse} · ` : ''}
+                          {r.stage ? PROCUREMENT_STAGE_LABELS[r.stage] : 'no stage on the takeoff'}
+                          {r.countedWith.length > 0 ? <span data-testid="procurement-counted-with"> · counted with {r.countedWith.join(', ')} on the takeoff</span> : null}
+                        </div>
                       </>
                     )}
-                    {r.stage ? <div style={smallMuted}>{PROCUREMENT_STAGE_LABELS[r.stage]}</div> : r.isHand ? (
-                      <select aria-label="Stage" value={r.stage ?? ''} onChange={(e) => void write(r, { stage: (e.target.value || null) as ProcurementStage | null })} style={{ ...inp, marginTop: 2 }}>
-                        <option value="">stage…</option>
-                        {(['rough_in', 'top_out', 'trim_set'] as const).map((s) => <option key={s} value={s}>{PROCUREMENT_STAGE_LABELS[s]}</option>)}
-                      </select>
-                    ) : <div style={smallMuted}>no stage on the takeoff</div>}
                   </td>
                   <td style={{ ...td, whiteSpace: 'nowrap' }}><span style={{ color: r.submittal === 'approved' ? 'var(--text-green-700)' : r.submittal === 'revise' || r.submittal === 'rejected' ? 'var(--text-amber-700)' : 'var(--text-muted)' }}>{submittalWord(r)}</span></td>
                   <td style={{ ...td, whiteSpace: 'nowrap' }}>{r.releasedOn ? shortDate(r.releasedOn) : <span style={smallMuted}>—</span>}</td>

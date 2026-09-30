@@ -247,6 +247,11 @@ export function procurementHeadline(rows: ReadonlyArray<ProcurementRow>): string
   return bits.join(' · ')
 }
 
+/** The Item cell as one line of text, tag first: "BFP-1 · Watts 909 RPZ 2"" · a hand row's name alone · a tag with no product alone. */
+export function procurementItemText(r: Pick<ProcurementRow, 'tag' | 'product'>): string {
+  return [r.tag?.trim(), r.product.trim()].filter(Boolean).join(' · ')
+}
+
 /** "12 d" · "−14 d" · "on site" · "order by 11/03" · "" */
 export function floatText(r: Pick<ProcurementRow, 'floatDays' | 'deliveredOn' | 'orderBy'>): string {
   if (r.deliveredOn) return 'on site'
@@ -590,8 +595,7 @@ export function buildProcurementUpdateHtml(input: ProcurementUpdateInput): strin
     const sched = gcScheduleWord(r, input.sentOn)
     const notes = [r.note ? escapeHtml(r.note) : '', chgLine ? `<span style="color:#6b7280">since ${escapeHtml(monthDay(input.sinceOn))}: ${escapeHtml(chgLine)}</span>` : ''].filter(Boolean).join('<br/>')
     return `<tr>
-      <td style="${cell};${bg}; white-space:nowrap">${chg ? '<span class="dot"></span>' : ''}<strong>${escapeHtml(r.tag ?? '—')}</strong></td>
-      <td style="${cell};${bg}">${escapeHtml(r.product)}${r.supplyHouse ? ` <span style="color:#6b7280">· ${escapeHtml(r.supplyHouse)}</span>` : ''}</td>
+      <td style="${cell};${bg}">${chg ? '<span class="dot"></span>' : ''}${r.tag ? `<strong>${escapeHtml(r.tag)}</strong> ` : ''}${escapeHtml(r.product)}${r.supplyHouse ? ` <span style="color:#6b7280">· ${escapeHtml(r.supplyHouse)}</span>` : ''}</td>
       <td style="${cell};${bg}">${escapeHtml(gcSubmittalWord(r))}</td>
       <td style="${cell};${bg}; white-space:nowrap">${ordered}</td>
       <td style="${cell};${bg}; white-space:nowrap">${escapeHtml(describeLeadTime(r.leadTimeDays) ?? '—')}</td>
@@ -604,7 +608,7 @@ export function buildProcurementUpdateHtml(input: ProcurementUpdateInput): strin
     .map((g) => {
       const behind = g.rows.filter((r) => r.late).length
       const head = `${escapeHtml(g.label)} <span style="font-weight:400; color:#4b5563">· ${g.neededOn ? `needed on site ${escapeHtml(monthDay(g.neededOn))} · ` : ''}${g.rows.length} item${g.rows.length === 1 ? '' : 's'}${behind ? `, ${behind} behind` : ''}</span>`
-      return `<tr><td colspan="8" style="background:#f3f4f6; font-weight:700; padding:0.4rem 0.45rem; border-bottom:1px solid #d1d5db; font-size:0.85rem">${head}</td></tr>${g.rows.map(rowHtml).join('')}`
+      return `<tr><td colspan="7" style="background:#f3f4f6; font-weight:700; padding:0.4rem 0.45rem; border-bottom:1px solid #d1d5db; font-size:0.85rem">${head}</td></tr>${g.rows.map(rowHtml).join('')}`
     })
     .join('')
 
@@ -652,8 +656,8 @@ export function buildProcurementUpdateHtml(input: ProcurementUpdateInput): strin
   ${metaHtml}
   ${asksHtml}
   <table>
-    <thead><tr><th style="${th}">Tag</th><th style="${th}">Item</th><th style="${th}">Submittal</th><th style="${th}">Ordered</th><th style="${th}">Lead time</th><th style="${th}">Expected on site</th><th style="${th}">Schedule</th><th style="${th}">Notes</th></tr></thead>
-    <tbody>${bodyHtml || `<tr><td colspan="8" style="${cell}; color:#6b7280">No items on the log.</td></tr>`}</tbody>
+    <thead><tr><th style="${th}">Item</th><th style="${th}">Submittal</th><th style="${th}">Ordered</th><th style="${th}">Lead time</th><th style="${th}">Expected on site</th><th style="${th}">Schedule</th><th style="${th}">Notes</th></tr></thead>
+    <tbody>${bodyHtml || `<tr><td colspan="7" style="${cell}; color:#6b7280">No items on the log.</td></tr>`}</tbody>
   </table>
   <p class="foot">Submittal = your reviewer’s decision on our submittal. Expected = our order date plus the supplier’s lead time, or the supplier’s own date where marked. Behind = the item lands after its stage starts, on the schedule you gave us.</p>
   ${roomHtml}

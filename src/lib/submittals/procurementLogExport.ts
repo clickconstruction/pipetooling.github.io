@@ -1,21 +1,21 @@
 /**
  * The procurement log as a spreadsheet (v2.4113): the same columns the printed sheet carries,
  * one row per item, as CSV (Download CSV) and as tab-separated text (Open in Google Sheets:
- * copied to the clipboard, a new sheet opened, the estimator pastes). Pure.
+ * copied to the clipboard, a new sheet opened, the estimator pastes). The tag and the product
+ * are one Item cell, tag first, as on the screen and the sheet. Pure.
  */
 import { escapeCsvField } from '../domTableToCsv'
 import { describeLeadTime } from './leadTime'
-import { floatText, submittalWord, type ProcurementRow } from './procurementLog'
+import { floatText, procurementItemText, submittalWord, type ProcurementRow } from './procurementLog'
 
-export const PROCUREMENT_EXPORT_COLUMNS = ['Tag', 'Product', 'Supply house', 'Stage', 'Submittal', 'Released', 'Ordered', 'PO', 'Lead time', 'Expected', 'Expected from', 'Required', 'Float', 'Delivered', 'Note'] as const
+export const PROCUREMENT_EXPORT_COLUMNS = ['Item', 'Supply house', 'Stage', 'Submittal', 'Released', 'Ordered', 'PO', 'Lead time', 'Expected', 'Expected from', 'Required', 'Float', 'Delivered', 'Note'] as const
 
 const STAGE_WORDS: Record<string, string> = { rough_in: 'Rough-in', top_out: 'Top-out', trim_set: 'Trim set' }
 
 /** One export row per log row, dates as YYYY-MM-DD so a sheet reads them as dates. */
 export function procurementExportRows(rows: ReadonlyArray<ProcurementRow>): string[][] {
   return rows.map((r) => [
-    r.tag ?? '',
-    r.product,
+    procurementItemText(r),
     r.supplyHouse ?? '',
     r.stage ? STAGE_WORDS[r.stage] ?? r.stage : '',
     submittalWord(r),
