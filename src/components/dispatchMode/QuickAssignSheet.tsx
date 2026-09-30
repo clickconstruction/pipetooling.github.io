@@ -57,6 +57,7 @@ import {
   windowOverlapsBusy,
   type MinuteInterval,
 } from '../../lib/quickAssignFreeWindows'
+import { quickAssignBusyBarLabel } from '../../lib/quickAssignBusyBarLabel'
 import {
   insertJobScheduleBlock,
   newJobScheduleSharedBlockGroupId,
@@ -265,13 +266,17 @@ export default function QuickAssignSheet({
     }
   }, [open, selectedYmd, dayBlocksReloadKey])
 
+  // Each bar carries its words (job number · customer, two words · town, v2.4213) and a
+  // hover title with the whole job; the free-window kernels read only the minutes.
   const busyByUser = useMemo(() => {
-    const m = new Map<string, MinuteInterval[]>()
+    const m = new Map<string, (MinuteInterval & { label: string; title: string })[]>()
     for (const b of dayBlocks) {
       const list = m.get(b.assigneeUserId) ?? []
       list.push({
         startMin: timeInputToMinutesSafe(b.timeStart),
         endMin: timeInputToMinutesSafe(b.timeEnd),
+        label: quickAssignBusyBarLabel(b),
+        title: [b.jobName, b.customerName, b.jobAddress].filter(Boolean).join(' · '),
       })
       m.set(b.assigneeUserId, list)
     }
@@ -842,6 +847,7 @@ export default function QuickAssignSheet({
                               return span ? (
                                 <span
                                   key={i}
+                                  title={b.title}
                                   style={{
                                     position: 'absolute',
                                     left: `${span.leftPct}%`,
@@ -849,8 +855,20 @@ export default function QuickAssignSheet({
                                     top: 0,
                                     bottom: 0,
                                     background: 'var(--bg-blue-200)',
+                                    // The bar's words: job number · customer · town, clipped when the bar is narrow.
+                                    boxSizing: 'border-box',
+                                    padding: '0 4px',
+                                    fontSize: '0.5625rem',
+                                    fontWeight: 600,
+                                    lineHeight: '14px',
+                                    color: 'var(--text-strong)',
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
                                   }}
-                                />
+                                >
+                                  {b.label}
+                                </span>
                               ) : null
                             })}
                             {isSel && effectiveWindow
