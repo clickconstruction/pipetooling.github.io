@@ -1,7 +1,7 @@
 import type { ReleaseNote } from '../../lib/releaseNotes'
 
 const note: ReleaseNote = {
-  version: 'v2.4274',
+  version: 'v2.4277',
   date: '2026-09-30',
   title: 'Accounts Receivable: every deposit row says where it went',
   kind: 'feature',

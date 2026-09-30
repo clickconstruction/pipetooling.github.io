@@ -97,4 +97,4 @@ revoke all on function public.list_ar_deposit_trails(uuid[]) from public;
 grant execute on function public.list_ar_deposit_trails(uuid[]) to authenticated;
 
 comment on function public.list_ar_deposit_trails(uuid[]) is
-  'Accounts Receivable: every payment each deposit ever carried (live, and removed from deleted_records_archive) with who applied it and who took it off — the trail line on the deposit row (v2.4274). Dev/master/assistant/controller/primary; at most 1000 ids per call.';
+  'Accounts Receivable: every payment each deposit ever carried (live, and removed from deleted_records_archive) with who applied it and who took it off — the trail line on the deposit row (v2.4277). Dev/master/assistant/controller/primary; at most 1000 ids per call.';

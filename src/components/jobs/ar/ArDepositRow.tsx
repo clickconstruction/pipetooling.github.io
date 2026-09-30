@@ -81,7 +81,7 @@ function memoSnippet(d: ArDepositRowDeposit): string | null {
   return first.length > 42 ? `${first.slice(0, 40).trimEnd()}…` : first
 }
 
-/** The trail (v2.4274): "→ **#650 ATI Schertz** today 4:02 PM by Taunya · was ~~#878 Take 5- Seguin~~ 9/29". */
+/** The trail (v2.4277): "→ **#650 ATI Schertz** today 4:02 PM by Taunya · was ~~#878 Take 5- Seguin~~ 9/29". */
 export function ArDepositTrailLine({ trail }: { trail: ArDepositTrail }) {
   return (
     <div
@@ -121,7 +121,7 @@ export function ArDepositRow({
   deposit: ArDepositRowDeposit
   active: boolean
   state: ArDepositRowState
-  /** v2.4274: where the deposit went; null while unknown or when nothing ever happened to it. */
+  /** v2.4277: where the deposit went; null while unknown or when nothing ever happened to it. */
   trail?: ArDepositTrail | null
   kindBadges: Record<string, MercuryKindBadge>
   markMode: boolean

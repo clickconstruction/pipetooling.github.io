@@ -1,4 +1,4 @@
-# 20260930230000_list_ar_deposit_trails.sql (2026-09-30, v2.4274)
+# 20260930230000_list_ar_deposit_trails.sql (2026-09-30, v2.4277)
 
 Accounts Receivable's deposit rows gain a trail line — *→ #650 ATI Schertz today 4:02 PM by Taunya · was #878 Take 5- Seguin 9/29* — and this is its read (punch list #74 PR 2 of 4).
 

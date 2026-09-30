@@ -1,5 +1,5 @@
 /**
- * The trail on an Accounts Receivable deposit row (v2.4274, punch list #74 PR 2).
+ * The trail on an Accounts Receivable deposit row (v2.4277, punch list #74 PR 2).
  *
  * A deposit row said what it is — the amount, the payer, a state chip — but not
  * where the money went. The office's two questions on 2026-09-30 ("was the

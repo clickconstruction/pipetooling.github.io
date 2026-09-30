@@ -227,7 +227,7 @@ export default function BankPaymentsModal({
   /** One fetch at a time; a list refresh bumps the sequence so a stale result is dropped, never cancelled mid-flight. */
   const hiddenInFlightRef = useRef(false)
   const hiddenFetchSeqRef = useRef(0)
-  /** v2.4274: the trail under each row, keyed by deposit; cleared on every list refresh (rows may have moved). */
+  /** v2.4277: the trail under each row, keyed by deposit; cleared on every list refresh (rows may have moved). */
   const [trailsById, setTrailsById] = useState<Map<string, ArDepositTrail | null>>(() => new Map())
   const trailsUnavailableRef = useRef(false)
   const [arBankReturnedMarkMode, setArBankReturnedMarkMode] = useState(false)
@@ -761,7 +761,7 @@ export default function BankPaymentsModal({
   }, [wantHiddenCandidates, hiddenCandidates, sortingConfig])
 
   /**
-   * v2.4274: the trail under every row — where the deposit went, who, when. One read
+   * v2.4277: the trail under every row — where the deposit went, who, when. One read
    * (`list_ar_deposit_trails`, at most 500 ids a call) for the rows on screen and the
    * All rows behind a search; quiet when the RPC is not pushed yet or the read fails.
    */
