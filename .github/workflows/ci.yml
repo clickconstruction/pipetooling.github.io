@@ -12,6 +12,8 @@ on:
 jobs:
   checks:
     runs-on: ubuntu-latest
+    # Same budget as deploy.yml's checks job (normally ~13 min); a stalled PR check fails instead of hanging.
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
