@@ -1420,6 +1420,8 @@ The **Schedule of values** pill on Cover Letter → Letter content (`bids.includ
 
 ### Bid room (signable link) — v2.2468; link-first since journey Tier-2 #31
 
+> **v2.4197 — add-ons**: the revision payload carries `add_ons` (one per offered with-and-without alternate: `key` `group:<tag>`, the letter's label, `tag`, `total_cents`, fixture rows; `BidRoomPanel` prop `addOns` from the letter's offered alternates, older revisions parse with `[]`). The customer's page shows them as checkboxes beside the options, ticked to start; the total, the scope table and Approve follow the ticks (`roomGrandTotalCents`). `sign-bid-room` takes `addOnKeys[]`, freezes a line per taken add-on with the grand total, and writes `bids.accepted_alternate_tags` + `agreed_value` when the plan marks the bid won — the Won dialog's two fields (v2.4196).
+
 Every GC packet can have one durable, signable link (`bid_proposal_rooms` · `bid_proposal_room_revisions` · `bid_proposal_room_events`; migration `20260828215717`). The staff door is [`BidRoomPanel.tsx`](../src/components/bids/BidRoomPanel.tsx), mounted under Mark sent in both Cover Letter layouts (v2.2716's **✍ Setup bid room** button opens it while no room exists). Which buttons render is the pure kernel [`bidRoomPanelActions.ts`](../src/lib/bids/bidRoomPanelActions.ts) (`{ hasRoom, published, everSent, hasEmail, answered }`):
 
 - **Not yet published** — primary **✍ Get the link** (`publish()`: mint the room + rev 1, copy the link, no email); **Send to GC** (needs an address) publishes rev 1 *and* emails via `send-bid-room-link`.

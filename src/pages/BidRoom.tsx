@@ -30,6 +30,7 @@ import {
   parseBidRoomRevisionPayload,
   roomBaseOption,
   type BidRoomRevisionPayloadV1,
+  roomGrandTotalCents,
   type RoomOption,
 } from '../lib/bids/bidRoomPayload'
 import { useHoldsUnsavedWork } from '../hooks/useHoldsUnsavedWork'
@@ -94,6 +95,8 @@ export default function BidRoom() {
   const [error, setError] = useState<string | null>(null)
   const [room, setRoom] = useState<RoomFetch | null>(null)
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
+  // v2.4197: the with-and-without alternates the GC ticks beside the option — all on to start, like the letter offers them.
+  const [addOnKeys, setAddOnKeys] = useState<string[]>([])
   // Sign & decline (Phase 2, v2.2470)
   const [printedName, setPrintedName] = useState('')
   const [agreed, setAgreed] = useState(false)
@@ -143,6 +146,7 @@ export default function BidRoom() {
         if (!ac.signal.aborted) {
           setRoom({ ...json, payload })
           setSelectedKey(roomBaseOption(payload).key)
+          setAddOnKeys(payload.add_ons.map((a) => a.key))
         }
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') return
@@ -211,11 +215,12 @@ export default function BidRoom() {
       setFormError(problem)
       return
     }
-    const ok = await post({ action: 'sign', optionKey: selected.key, ...bidRoomSignatureFields(signature), esignConsent: esignConsentPayload(bidRoomConsent) })
+    const taken = (room?.payload.add_ons ?? []).filter((a) => addOnKeys.includes(a.key))
+    const ok = await post({ action: 'sign', optionKey: selected.key, addOnKeys: taken.map((a) => a.key), ...bidRoomSignatureFields(signature), esignConsent: esignConsentPayload(bidRoomConsent) })
     if (ok) {
       setLocalOutcome({
         event_type: 'signed',
-        metadata: { option_name: selected.name, total_cents: selected.total_cents, printed_name: signature.printedName },
+        metadata: { option_name: selected.name, total_cents: roomGrandTotalCents(selected, taken), printed_name: signature.printedName, add_on_names: taken.map((a) => a.name) },
         occurred_at: new Date().toISOString(),
       })
     }
@@ -240,8 +245,12 @@ export default function BidRoom() {
   const outcome = localOutcome ?? room.outcome
   const answered = outcome != null
   const selected = options.find((o) => o.key === selectedKey) ?? roomBaseOption(payload)
+  const addOns = payload.add_ons
+  const takenAddOns = addOns.filter((a) => addOnKeys.includes(a.key))
+  const grandTotal = roomGrandTotalCents(selected, takenAddOns)
+  const scopeRows = [...selected.fixture_rows, ...takenAddOns.flatMap((a) => a.fixture_rows.map((r) => ({ ...r, fixture: `${r.fixture} — ${a.name}` })))]
   const brand = parseAcceptHeaderBrand(payload.header_brand)
-  const outcomeMeta = (outcome?.metadata ?? {}) as { option_name?: string; total_cents?: number; printed_name?: string }
+  const outcomeMeta = (outcome?.metadata ?? {}) as { option_name?: string; total_cents?: number; printed_name?: string; add_on_names?: string[] }
 
   const textBlock = (heading: string, body: string) =>
     body.trim() ? (
@@ -296,6 +305,7 @@ export default function BidRoom() {
               <>
                 ✍ Signed{outcomeMeta.printed_name ? ` by ${outcomeMeta.printed_name}` : ''}
                 {outcomeMeta.option_name ? ` — “${outcomeMeta.option_name}”` : ''}
+                {Array.isArray(outcomeMeta.add_on_names) && outcomeMeta.add_on_names.length > 0 ? ` with ${outcomeMeta.add_on_names.join(', ')}` : ''}
                 {typeof outcomeMeta.total_cents === 'number' ? ` · ${formatMoney(outcomeMeta.total_cents)}` : ''}
                 {'. '}Thank you — we&rsquo;ll be in touch shortly.
               </>
@@ -316,11 +326,46 @@ export default function BidRoom() {
           </section>
         ) : null}
 
+        {addOns.length > 0 ? (
+          <section aria-label="Add-ons" style={{ margin: '1.1rem 0 0.3rem' }}>
+            <div style={{ fontSize: '0.78rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#9a5b13', marginBottom: '0.45rem' }}>
+              Add to the proposal, if you want it
+            </div>
+            {addOns.map((a) => {
+              const on = addOnKeys.includes(a.key)
+              return (
+                <label
+                  key={a.key}
+                  data-testid={`room-addon-${a.key}`}
+                  style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', border: on ? '1.5px solid var(--text-amber-700)' : '1.5px solid var(--border-strong)', background: on ? 'var(--bg-amber-tint)' : 'var(--surface)', borderRadius: 12, padding: '0.7rem 0.8rem', marginBottom: '0.55rem', cursor: answered ? 'default' : 'pointer' }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={on}
+                    disabled={answered}
+                    aria-label={`Add ${a.name}`}
+                    onChange={(e) => setAddOnKeys((prev) => (e.target.checked ? [...prev.filter((k) => k !== a.key), a.key] : prev.filter((k) => k !== a.key)))}
+                    style={{ marginTop: 3 }}
+                  />
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>{a.name}</span>
+                    {a.fixture_rows.length > 0 ? (
+                      <span style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{a.fixture_rows.map((r) => `${String(r.count)} ${r.fixture}`).join(' · ')}</span>
+                    ) : null}
+                  </span>
+                  <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>+ {formatMoney(a.total_cents)}</span>
+                </label>
+              )
+            })}
+          </section>
+        ) : null}
+
         <section style={{ marginTop: '1.2rem', borderTop: '1px solid var(--border-rule)', paddingTop: '0.9rem' }}>
           <h2 style={{ fontSize: '1.05rem', margin: '0 0 0.5rem' }}>
             {options.length > 1 ? <>Your selection — {selected.name.trim() || 'Option'}</> : 'Scope of work'}
+            {takenAddOns.length > 0 ? <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> with {takenAddOns.map((a) => a.name).join(', ')}</span> : null}
           </h2>
-          {selected.fixture_rows.length > 0 ? (
+          {scopeRows.length > 0 ? (
             <div style={{ overflowX: 'auto' }}>
               <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.9rem' }}>
                 <thead>
@@ -330,7 +375,7 @@ export default function BidRoom() {
                   </tr>
                 </thead>
                 <tbody>
-                  {selected.fixture_rows.map((r, i) => (
+                  {scopeRows.map((r, i) => (
                     <tr key={i}>
                       <td style={{ padding: '0.32rem 0.5rem', borderBottom: '1px solid var(--border)' }}>{r.fixture || '—'}</td>
                       <td style={{ padding: '0.32rem 0.5rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{String(r.count)}</td>
@@ -342,7 +387,7 @@ export default function BidRoom() {
           ) : null}
           <p style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: '1.05rem', margin: '0.7rem 0 0' }}>
             <span>{options.length > 1 ? `Total — ${selected.name.trim() || 'Option'}` : 'Total'}</span>
-            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatMoney(selected.total_cents)}</span>
+            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatMoney(grandTotal)}</span>
           </p>
         </section>
 
@@ -417,7 +462,7 @@ export default function BidRoom() {
               onClick={() => void submitSign(selected)}
               style={{ display: 'inline-block', marginTop: '0.8rem', background: '#ea580c', color: '#fff', fontWeight: 800, fontSize: '0.95rem', border: 'none', borderRadius: 9, padding: '0.6rem 1.4rem', cursor: submitting ? 'wait' : 'pointer', opacity: submitting ? 0.6 : 1 }}
             >
-              {submitting ? 'Recording…' : `Approve “${selected.name.trim() || 'Option'}” — ${formatMoney(selected.total_cents)}`}
+              {submitting ? 'Recording…' : `Approve “${selected.name.trim() || 'Option'}” — ${formatMoney(grandTotal)}`}
             </button>
 
             <div style={{ marginTop: '1.1rem', fontSize: '0.82rem', color: 'var(--text-muted)' }}>

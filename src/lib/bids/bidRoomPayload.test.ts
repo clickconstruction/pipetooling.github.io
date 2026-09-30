@@ -105,4 +105,18 @@ describe('parseBidRoomRevisionPayload', () => {
     const built = buildBidRoomRevisionPayload({ ...baseInput, sections: [section('To Plans', 1)] })!
     expect(roomBaseOption(built).key).toBe('base')
   })
+
+  it('add-ons (v2.4197): the with-and-without alternates ride beside the options, unpriced ones left off, and round-trip', () => {
+    const p = buildBidRoomRevisionPayload({
+      ...baseInput,
+      sections: [section('To Plans', 13580)],
+      addOns: [
+        { tag: 'Break room', label: 'Alternate 1 — Break room', revenueSum: 3220, fixtureRows: [{ fixture: 'WC', count: 1 }] },
+        { tag: 'Annex', label: '', revenueSum: 0, fixtureRows: [] },
+      ],
+    })!
+    expect(p.add_ons).toEqual([{ key: 'group:break room', name: 'Alternate 1 — Break room', tag: 'Break room', total_cents: 322000, fixture_rows: [{ fixture: 'WC', count: 1 }] }])
+    expect(parseBidRoomRevisionPayload(JSON.parse(JSON.stringify(p)))).toEqual(p)
+    expect(parseBidRoomRevisionPayload({ v: 1, options: [{ key: 'base', name: 'x', is_base: true, total_cents: 1, fixture_rows: [] }] })!.add_ons).toEqual([])
+  })
 })
