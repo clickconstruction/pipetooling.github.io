@@ -7,6 +7,10 @@ import {
   isTypedByHand,
   needsSecondLook,
   parseTypedStampRow,
+  parseTypedWaitingRow,
+  summarizeTypedWaiting,
+  typedStampsVersion,
+  typedWaitingAsEntry,
   secondLookWords,
   splitForApproveAll,
   trimmedEntry,
@@ -178,5 +182,50 @@ describe('describeHeld', () => {
     expect(describeHeld(1, 0)).toBe('1 left for someone else: your own hours.')
     expect(describeHeld(2, 1)).toBe('3 left for someone else: you typed 1, 2 are your own hours.')
     expect(describeHeld(1, 1)).toBe('2 left for someone else: you typed 1, 1 is your own hours.')
+  })
+})
+
+describe('what waits on a second look', () => {
+  const raw = {
+    entry_id: 'e1', user_id: 'michael', person_name: 'Michael A', work_date: '2026-09-25', typed_by: 'taunya', typed_by_name: 'Taunya',
+    typed_at: TYPED_AT, typed_seconds: 39600, day_seconds_before: 0, day_seconds_after: 39600, self_typed: false, state: 'pending',
+    session_ids: ['s1'], can_act: true,
+  }
+
+  it('reads a row of list_typed_hours_waiting', () => {
+    const row = parseTypedWaitingRow(raw)
+    expect(row).toMatchObject({ entryId: 'e1', personName: 'Michael A', typedByName: 'Taunya', seconds: 39600, state: 'pending', sessionIds: ['s1'], canAct: true })
+    expect(parseTypedWaitingRow({ ...raw, entry_id: null })).toBeNull()
+    expect(parseTypedWaitingRow({ ...raw, state: 'approved', can_act: false, session_ids: null })).toMatchObject({ state: 'approved', canAct: false, sessionIds: [] })
+  })
+
+  it('draws a waiting row with the same stamp', () => {
+    const row = parseTypedWaitingRow(raw)
+    expect(row && typedByWords(typedWaitingAsEntry(row), row.workDate, NOW)).toBe('typed by Taunya · Wed 9:40 AM')
+  })
+
+  it('counts only what the viewer can act on', () => {
+    const rows = [
+      parseTypedWaitingRow(raw),
+      parseTypedWaitingRow({ ...raw, entry_id: 'e2', user_id: 'paige', person_name: 'Paige', typed_seconds: 9000, state: 'approved' }),
+      parseTypedWaitingRow({ ...raw, entry_id: 'e3', can_act: false }),
+    ].filter((r): r is NonNullable<typeof r> => r !== null)
+    expect(summarizeTypedWaiting(rows)).toEqual({ count: 2, seconds: 48600, people: 2, approvedCount: 1, firstLine: 'Taunya typed 11.0h for Michael A' })
+    expect(summarizeTypedWaiting([])).toEqual({ count: 0, seconds: 0, people: 0, approvedCount: 0, firstLine: null })
+  })
+
+  it('says a person typed their own day', () => {
+    const row = parseTypedWaitingRow({ ...raw, self_typed: true, typed_by: 'michael', typed_by_name: 'Michael A' })
+    expect(row && summarizeTypedWaiting([row]).firstLine).toBe('Michael A typed 11.0h onto their own day')
+  })
+})
+
+describe('typedStampsVersion', () => {
+  it('changes when a row\'s times or approval change, and not otherwise', () => {
+    const a = [{ clocked_in_at: 'a', clocked_out_at: 'b', approved_at: null }]
+    expect(typedStampsVersion(a)).toBe(typedStampsVersion([{ ...a[0]! }]))
+    expect(typedStampsVersion(a)).not.toBe(typedStampsVersion([{ ...a[0]!, clocked_in_at: 'c' }]))
+    expect(typedStampsVersion(a)).not.toBe(typedStampsVersion([{ ...a[0]!, approved_at: 'now' }]))
+    expect(typedStampsVersion([])).toBe('')
   })
 })

@@ -613,6 +613,8 @@ export default function People() {
   const [bulkApprovePendingOpen, setBulkApprovePendingOpen] = useState(false)
   /** All-weeks approvals queue (the Needs You card's door; also the Hours header button + banner "All weeks"). */
   const [approvalsQueueOpen, setApprovalsQueueOpen] = useState(false)
+  /** `&typed=1` beside `approvals=1` (the Needs You *Look at them* action): the queue opens on its Typed by hand filter. */
+  const [approvalsQueueTypedOnly, setApprovalsQueueTypedOnly] = useState(false)
   const [approvalsQueueReloadKey, setApprovalsQueueReloadKey] = useState(0)
   /** Hours on a phone (v2.3889, punch list #30 PR 5d): Who's in · Approvals · Week & sessions; the tab as it was is the third view. */
   const [hoursPhoneView, setHoursPhoneView] = useState<HoursPhoneViewKey>('in')
@@ -816,11 +818,13 @@ export default function People() {
     if (searchParams.get('approvals') !== '1') return
     if (!(canAccessHours || canAccessPay)) return
     setActiveTab('hours')
+    setApprovalsQueueTypedOnly(searchParams.get('typed') === '1')
     setApprovalsQueueOpen(true)
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev)
       next.set('tab', 'hours')
       next.delete('approvals')
+      next.delete('typed')
       return next
     }, { replace: true })
   }, [searchParams, canAccessHours, canAccessPay, setSearchParams])
@@ -3016,7 +3020,12 @@ export default function People() {
         <PeopleHoursApprovalsQueueModal
           reloadKey={approvalsQueueReloadKey}
           authUserId={authUser?.id}
-          onClose={() => setApprovalsQueueOpen(false)}
+          startTypedOnly={approvalsQueueTypedOnly}
+          onOpenDay={(day) => setHoursMyTimeEditor({ subjectUserId: day.userId, subjectDisplayName: day.personName, dateStr: day.workDate })}
+          onClose={() => {
+            setApprovalsQueueOpen(false)
+            setApprovalsQueueTypedOnly(false)
+          }}
           onChanged={() => {
             loadAllClockSessionsRef.current?.()
             loadPeopleHoursRef.current?.()

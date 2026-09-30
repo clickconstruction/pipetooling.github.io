@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderSettled, settle } from '../../test/renderSmokeMocks'
-import type { TypedStamp } from '../../lib/clock/typedHours'
+import type { TypedStamp, TypedWaitingRow } from '../../lib/clock/typedHours'
 import type { ClockSessionRow } from '../../types/clockSessions'
 
 // Three pending sessions for one person: a punch, a session the office typed for them (someone
@@ -25,6 +25,12 @@ vi.mock('../../hooks/useTypedStamps', () => ({
 vi.mock('../../lib/people/fetchAllPendingClockSessions', () => ({
   PENDING_APPROVALS_FETCH_CAP: 2000,
   fetchAllPendingClockSessions: async () => rowsBox.current,
+}))
+const waitingBox: { current: TypedWaitingRow[] } = { current: [] }
+const confirmMock = vi.fn()
+vi.mock('../../lib/clock/loadTypedHoursWaiting', () => ({
+  loadTypedHoursWaiting: async () => waitingBox.current,
+  confirmTypedEntry: (id: string) => confirmMock(id),
 }))
 vi.mock('../../lib/approveClockSessions', async (orig) => {
   const actual = await orig<typeof import('../../lib/approveClockSessions')>()
@@ -83,6 +89,9 @@ async function mount() {
 
 describe('PeopleHoursApprovalsQueueModal — typed hours', () => {
   beforeEach(() => {
+    waitingBox.current = []
+    confirmMock.mockReset()
+    confirmMock.mockResolvedValue(null)
     approveMock.mockReset()
     approveMock.mockResolvedValue({ data: [{ approved_count: 1, error_message: null, held_own: 0, held_typed: 0 }], error: null })
     // Monday to Wednesday of one week, 8:00 AM to noon Central.
@@ -134,5 +143,34 @@ describe('PeopleHoursApprovalsQueueModal — typed hours', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Approve 3' }))
     expect(await screen.findByText('Approved 2 sessions — added to payroll. 1 left for someone else: you typed it.')).toBeTruthy()
     expect(screen.queryByText(/zero-length/)).toBeNull()
+  })
+
+  it('hours typed onto approved time get a Looks right — from someone who did not type them', async () => {
+    const base: TypedWaitingRow = {
+      entryId: 'w1', userId: 'paige', personName: 'Paige', workDate: '2026-09-24', typedBy: 'taunya', typedByName: 'Taunya',
+      typedAt: new Date().toISOString(), seconds: 9000, daySecondsBefore: 23400, daySecondsAfter: 32400, selfTyped: false,
+      state: 'approved', sessionIds: ['x'], canAct: true,
+    }
+    waitingBox.current = [base, { ...base, entryId: 'w2', personName: 'Isiah', userId: 'isiah', typedBy: 'viewer', typedByName: 'Viewer', canAct: false }]
+    await mount()
+    const section = await screen.findByTestId('typed-onto-approved')
+    expect(within(section).getByText('Typed onto hours already approved · 2')).toBeTruthy()
+    expect(within(section).getAllByTestId('typed-hours-stamp')[0]?.textContent).toContain('6.5h → 9.0h')
+    // the viewer typed the second one: the reason, no button
+    expect(within(section).getByTestId('typed-hours-hold').textContent).toBe('You typed these — waiting on a second person')
+    expect(within(section).getAllByRole('button', { name: 'Looks right' })).toHaveLength(1)
+
+    fireEvent.click(within(section).getByRole('button', { name: 'Looks right' }))
+    await waitFor(() => expect(confirmMock).toHaveBeenCalledWith('w1'))
+    await waitFor(() => expect(within(screen.getByTestId('typed-onto-approved')).getByText('Typed onto hours already approved · 1')).toBeTruthy())
+  })
+
+  it('opens on the Typed by hand filter when asked to', async () => {
+    await renderSettled(
+      <PeopleHoursApprovalsQueueModal onClose={() => {}} onChanged={() => {}} onEditSession={() => {}} authUserId="viewer" reloadKey={0} startTypedOnly />,
+      { loaded: () => screen.findAllByTestId('typed-hours-stamp') },
+    )
+    expect((screen.getByLabelText(/Typed by hand · 2/) as HTMLInputElement).checked).toBe(true)
+    expect(screen.queryByText('“Rough in”')).toBeNull()
   })
 })

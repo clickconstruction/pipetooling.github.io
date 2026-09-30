@@ -2,7 +2,7 @@
 name: "Typed hours get a second look: the stamp, the hold, the worker's own door"
 number: 70
 group: ready
-status: PR 1 (the database) shipped v2.4242 · PR 2 (the stamp on the nine approval views) shipped v2.4247 · next the Needs You card
+status: PRs 1–3 shipped (v2.4242 the database · v2.4247 the stamp on the nine approval views · v2.4254 Needs You and Looks right) · next the worker's door
 summary: >
   A clock session someone typed looked the same as a punch, and the assistant who typed it could
   approve it. Now the database records typed hours (who, when, the day before and after), holds the
@@ -10,11 +10,11 @@ summary: >
   the nine approval views, a Needs You card, a worker's "it did not clock me in" door, the Hours
   grid stopping before it writes over clocked hours, and the dev switch.
 next: >
-  PR 3 the Needs You card and "Looks right"; PR 4 the worker's door; PR 5 the grid stop and the
-  dead Quickfill hours grid; then a dev flips the switch from test to on in Settings.
-size: M (PRs 1–2, shipped) + S–M per screen PR × 3
+  PR 4 the worker's door; PR 5 the grid stop, the dead Quickfill hours grid and the dev switch;
+  then a dev flips the switch from test to on in Settings.
+size: M (PRs 1–3, shipped) + S–M per screen PR × 2
 blocker: Nothing — building.
-ver: v2.4242 · v2.4247
+ver: v2.4242 · v2.4247 · v2.4254
 ---
 
 # Typed hours get a second look
@@ -81,9 +81,9 @@ Approve all holding typed rows, the worker's door, the grid stop.
 2. **PR 2 — the stamp and the hold on the approval views** · shipped v2.4247. `approveClockSessions`
    calls `_v2` and falls back; `useTypedStamps(ids)` + `TypedHoursStamp` (full / compact / dot); each
    view shows the stamp, takes typed and held rows out of its *Approve all*, and says what it left.
-3. **PR 3 — Needs You + "Looks right".** A card for dev / controller / office when typed hours wait
-   on a second person; the approvals queue gets a *Typed by hand* filter and the approved-but-unlooked
-   list with *Looks right*.
+3. **PR 3 — Needs You + "Looks right"** · shipped v2.4254. A card for the people who approve hours
+   when typed hours wait on them; the queue opens on its *Typed by hand* filter and lists hours typed
+   onto approved time with *Looks right* and *Open day*.
 4. **PR 4 — the worker's door.** A small form (day, in, out, the job from that day's schedule, what
    happened) that inserts his own session; the ledger stamps it *typed by him, late*.
 5. **PR 5 — the grid stop**, delete `quickfill/HoursSection.tsx`, and the dev switch in Settings.

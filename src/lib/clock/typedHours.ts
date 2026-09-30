@@ -179,6 +179,97 @@ export type ApproveAllSplit = {
   heldIds: string[]
 }
 
+/** One row of `list_typed_hours_waiting`: added hours nobody other than the typist has looked at. */
+export type TypedWaitingRow = {
+  entryId: string
+  userId: string
+  personName: string
+  workDate: string
+  typedBy: string | null
+  typedByName: string
+  typedAt: string
+  seconds: number
+  daySecondsBefore: number
+  daySecondsAfter: number
+  selfTyped: boolean
+  /** `pending`: a session under it still waits for approval. `approved`: every session under it is approved. */
+  state: 'pending' | 'approved'
+  sessionIds: string[]
+  /** The viewer may give the second look: they did not type it and the hours are not their own. */
+  canAct: boolean
+}
+
+export function parseTypedWaitingRow(raw: unknown): TypedWaitingRow | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const entryId = str(r.entry_id)
+  const userId = str(r.user_id)
+  const workDate = str(r.work_date)
+  const typedAt = str(r.typed_at)
+  if (!entryId || !userId || !workDate || !typedAt) return null
+  return {
+    entryId,
+    userId,
+    personName: str(r.person_name) ?? 'Someone',
+    workDate,
+    typedBy: str(r.typed_by),
+    typedByName: str(r.typed_by_name) ?? 'Someone',
+    typedAt,
+    seconds: num(r.typed_seconds),
+    daySecondsBefore: num(r.day_seconds_before),
+    daySecondsAfter: num(r.day_seconds_after),
+    selfTyped: r.self_typed === true,
+    state: r.state === 'approved' ? 'approved' : 'pending',
+    sessionIds: Array.isArray(r.session_ids) ? r.session_ids.filter((x): x is string => typeof x === 'string') : [],
+    canAct: r.can_act === true,
+  }
+}
+
+/** A waiting row as the stamp's entry, so the same words and the same chip draw it. */
+export function typedWaitingAsEntry(row: TypedWaitingRow): TypedEntry {
+  return {
+    id: row.entryId,
+    kind: 'added',
+    typedBy: row.typedBy,
+    typedByName: row.typedByName,
+    typedAt: row.typedAt,
+    seconds: row.seconds,
+    daySecondsBefore: row.daySecondsBefore,
+    daySecondsAfter: row.daySecondsAfter,
+    self: row.selfTyped,
+    confirmedByName: null,
+    confirmedAt: null,
+  }
+}
+
+export type TypedWaitingSummary = {
+  /** Entries the viewer can give the second look to. */
+  count: number
+  seconds: number
+  people: number
+  /** Of `count`, the ones typed onto hours that are already approved (and so already count in pay). */
+  approvedCount: number
+  /** "Taunya typed 11.0h for Michael A" — the first entry, for a card that has room for one sentence. */
+  firstLine: string | null
+}
+
+/** What the Needs You card says: only the rows the viewer can act on count. */
+export function summarizeTypedWaiting(rows: readonly TypedWaitingRow[]): TypedWaitingSummary {
+  const mine = rows.filter((r) => r.canAct)
+  const first = mine[0]
+  return {
+    count: mine.length,
+    seconds: mine.reduce((s, r) => s + r.seconds, 0),
+    people: new Set(mine.map((r) => r.userId)).size,
+    approvedCount: mine.filter((r) => r.state === 'approved').length,
+    firstLine: first
+      ? first.selfTyped
+        ? `${first.personName} typed ${typedHoursShort(first.seconds)} onto their own day`
+        : `${first.typedByName} typed ${typedHoursShort(first.seconds)} for ${first.personName}`
+      : null,
+  }
+}
+
 /**
  * A string that changes when any row's times or approval change — what `useTypedStamps` watches,
  * so typing new times onto a row re-reads its stamp without the list changing its ids.

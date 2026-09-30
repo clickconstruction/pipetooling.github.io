@@ -90,6 +90,7 @@ export type NeedsYouItem = {
     | 'lien-file-window'
     | 'd22-uncoded'
     | 'hours-approvals'
+    | 'typed-hours'
     | 'label-approvals'
     | 'contract-missing'
     | 'contract-stale'
@@ -169,6 +170,7 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'robot-audits': 50,
   'robot-locked': 50,
   'hours-approvals': 50,
+  'typed-hours': 50,
   'label-approvals': 40,
   'contract-missing': 40,
   'contract-stale': 50,
@@ -409,6 +411,15 @@ export type NeedsYouInputs = {
   hoursApprovalsEnabled: boolean
   hoursApprovals: { sessions: number; totalHours: number; people: number; oldestAgeDays: number } | null
   hoursApprovalsMinAgeDays: number
+  /**
+   * Hours typed by hand that wait on this viewer's second look (v2.4254) — only entries the
+   * viewer did not type and that are not the viewer's own. Null while loading or when there
+   * are none. No age gate: whoever typed them cannot approve them, so a second person is the
+   * only way they reach payroll (or, typed onto approved hours, the only look they ever get).
+   * Optional so a host that never shows it (Quickfill) need not name it.
+   */
+  typedHoursEnabled?: boolean
+  typedHours?: { count: number; seconds: number; people: number; approvedCount: number; firstLine: string | null } | null
   /**
    * Pending bank-label suggestions (journey-map Tier-2 #27) — null while
    * loading or when the RPC's internal gate returned the zero row. With the org
@@ -1086,6 +1097,31 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
         'Unapproved time is missing from payroll, the Hours grid, and the Overhead numbers — work the queue on People → Hours.',
       figure: a.sessions > 99 ? '99+' : String(a.sessions),
       actionLabel: 'Open approvals',
+    })
+  }
+
+  if (inputs.typedHoursEnabled === true && inputs.typedHours != null && inputs.typedHours.count > 0) {
+    const t = inputs.typedHours
+    const hours = (t.seconds / 3600).toLocaleString('en-US', { maximumFractionDigits: 1 })
+    const lead =
+      t.count > 1
+        ? `${t.firstLine ?? 'Someone typed hours'} and ${t.count - 1} more — ${hours}h in all that the clock did not record.`
+        : `${t.firstLine ?? 'Someone typed hours'} — time the clock did not record.`
+    items.push({
+      key: 'typed-hours',
+      severity: 'amber',
+      kicker: 'Typed hours',
+      title:
+        t.count === 1
+          ? 'Hours typed by hand want a second look'
+          : `${t.count} entries of hours typed by hand want a second look`,
+      detail:
+        `${lead} Whoever typed hours cannot approve them, so they wait for you.` +
+        (t.approvedCount > 0
+          ? ` ${t.approvedCount === 1 ? 'One was' : `${t.approvedCount} were`} typed onto hours already approved, and ${t.approvedCount === 1 ? 'counts' : 'count'} in pay now.`
+          : ''),
+      figure: t.count > 99 ? '99+' : String(t.count),
+      actionLabel: 'Look at them',
     })
   }
 
