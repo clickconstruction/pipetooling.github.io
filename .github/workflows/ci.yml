@@ -49,6 +49,9 @@ jobs:
       - name: To-dos render the punch list
         run: npm run check:todos
 
+      - name: Changed help guides read in plain words
+        run: npm run check:plain-words
+
       - name: Test
         run: npm test
         env:

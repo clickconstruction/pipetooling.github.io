@@ -1,18 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { SUBMITTAL_STAGE_ABOUT, SUBMITTAL_TOUR_STEPS, tourStopForStage } from './submittalTour'
+import { PLAIN_WORDS_GLUE as GLUE, PLAIN_WORDS_MAX_SENTENCE_WORDS as MAX_WORDS, plainWordsSentences as sentences } from '../plainWords'
 
 /**
  * The plain-words rules for the walkthrough (owner, 2026-09-29: the stops were
- * hard to follow for someone who is not very smart). One idea per sentence, no
- * sentence over 20 words, nothing glued together with dashes, semicolons,
- * parentheses or dot lists. Words that fail here are rewritten, never exempted.
+ * hard to follow for someone who is not very smart). The mechanical rules — one idea
+ * per sentence, no sentence over 20 words, nothing glued together with dashes,
+ * semicolons, parentheses or dot lists — live in `src/lib/plainWords.ts` (the
+ * convention since v2.4233). Words that fail here are rewritten, never exempted.
  */
-const MAX_WORDS = 20
-const GLUE = /[—;()·]/
-
-function sentences(text: string): string[] {
-  return text.split(/(?<=[.?!])\s+/).map((s) => s.trim()).filter(Boolean)
-}
 
 describe('submittal walkthrough plain words', () => {
   it('walks thirteen stops, each anchor once', () => {

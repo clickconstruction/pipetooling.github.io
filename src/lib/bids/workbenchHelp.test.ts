@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { WORKBENCH_TOUR_STEPS, workbenchHelpFacts } from './workbenchHelp'
+import { PLAIN_WORDS_GLUE as GLUE, PLAIN_WORDS_MAX_SENTENCE_WORDS as MAX_WORDS, plainWordsSentences as sentences } from '../plainWords'
 
 const v = (id: string, name: string, sort_order: number) => ({ id, name, sort_order })
 
@@ -32,17 +33,11 @@ describe('workbenchHelpFacts', () => {
 })
 
 /**
- * The plain-words rules (v2.4228, punch list #58; the Submittals tour's, from
- * `submittalTour.test.ts`): one idea per sentence, no sentence over 20 words, nothing glued
- * together with dashes, semicolons, parentheses or dot lists. Words that fail here are
- * rewritten, never exempted.
+ * The plain-words rules (v2.4228, punch list #58): the mechanical ones — one idea per
+ * sentence, no sentence over 20 words, nothing glued together with dashes, semicolons,
+ * parentheses or dot lists — live in `src/lib/plainWords.ts` (the convention since
+ * v2.4233). Words that fail here are rewritten, never exempted.
  */
-const MAX_WORDS = 20
-const GLUE = /[—;()·]/
-
-function sentences(text: string): string[] {
-  return text.split(/(?<=[.?!])\s+/).map((s) => s.trim()).filter(Boolean)
-}
 
 describe('WORKBENCH_TOUR_STEPS', () => {
   it('walks the section top to bottom, each stop with an anchor of its own and words to say', () => {
