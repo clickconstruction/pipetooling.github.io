@@ -3951,10 +3951,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     // cut into the email's subject field; the table below it is
                     // the body. Rich HTML pastes as a real table in Gmail /
                     // Outlook / Apple Mail; plain text covers everything else.
+                    // The payments block rides when the modal has read the GC's checks (it starts reading as the row opens).
+                    const copyOpts = { dateStr, officePhone: getPhysicalInvoiceIssuerForDocument().phone, portalUrl, ...(extra?.received ?? {}) }
                     const html =
                       `<p style="margin:0 0 10px;font-size:12px;color:#6b7280"><strong>Subject:</strong> ${subject}</p>` +
-                      buildGcStatementEmailHtml(group, { dateStr, officePhone: getPhysicalInvoiceIssuerForDocument().phone, portalUrl })
-                    const text = `Subject: ${subject}\n\n${buildGcStatementEmailText(group, { dateStr, officePhone: getPhysicalInvoiceIssuerForDocument().phone, portalUrl })}`
+                      buildGcStatementEmailHtml(group, copyOpts)
+                    const text = `Subject: ${subject}\n\n${buildGcStatementEmailText(group, copyOpts)}`
                     void copyRichHtmlToClipboard(html, text).then(
                       () => showToast(`Copied the ${group.gcName} statement — paste it into your email.`, 'success'),
                       () => showToast('Could not copy — try again.', 'error'),

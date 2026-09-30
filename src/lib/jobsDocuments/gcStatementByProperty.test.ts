@@ -4,10 +4,13 @@ import {
   renderStatementByPropertyHtml,
   renderStatementByPropertyText,
   statementJobName,
+  statementReceivedFromChecks,
+  statementReceivedIntro,
   statementSentWords,
   statementYearOf,
   type StatementBillIn,
 } from '../../../supabase/functions/_shared/gcStatementByProperty'
+import { buildGcChecksReport } from '../../../supabase/functions/_shared/gcChecksApplied'
 
 /** One open bill; every field a test does not name is the plain case. */
 function bill(over: Partial<StatementBillIn> & Pick<StatementBillIn, 'key'>): StatementBillIn {
@@ -271,5 +274,68 @@ describe('renderStatementByProperty', () => {
     expect(html).toContain('$0.00')
     expect(html).toContain('href="tel:+15123600599"')
     expect(html).not.toContain('open bill')
+  })
+})
+
+describe('Payments we have received (v2.4260)', () => {
+  const jobs = [
+    {
+      id: 'j372', hcp_number: '372', click_number: null, job_name: 'Dudley Mason', job_address: '1780 FM 1343, Castroville, TX 78009', customer_id: 'owner-1', gc_customer_id: 'gc', bill_to_party: 'gc',
+      invoices: [{ id: 'i372', job_id: 'j372', sequence_order: 1, amount: 35200, status: 'billed', billed_at: '2026-09-14' }],
+      payments: [{ id: 'p1', job_id: 'j372', invoice_id: 'i372', amount: 17600, paid_on: '2026-09-22', payment_type: 'check', reference_number: '4402', sequence_order: 1 }],
+    },
+    {
+      // A job paid off in the window: the statement's own rows cannot see it, the block can.
+      id: 'j868', hcp_number: '868', click_number: null, job_name: 'Service Visit', job_address: '1875 Co Rd 777, Devine, TX 78016', customer_id: 'owner-2', gc_customer_id: 'gc', bill_to_party: 'gc',
+      invoices: [{ id: 'i868', job_id: 'j868', sequence_order: 1, amount: 1200, status: 'paid', billed_at: '2026-08-18' }],
+      payments: [{ id: 'p2', job_id: 'j868', invoice_id: null, amount: 1200, paid_on: '2026-09-02', payment_type: 'check', reference_number: '4390', sequence_order: 1 }],
+    },
+    {
+      // Older than the window, and one the owner pays — neither is the GC's business here.
+      id: 'j900', hcp_number: '900', click_number: null, job_name: 'Old', job_address: '1 Old Rd, Devine, TX', customer_id: 'owner-3', gc_customer_id: 'gc', bill_to_party: 'customer',
+      invoices: [{ id: 'i900', job_id: 'j900', sequence_order: 1, amount: 500, status: 'paid', billed_at: '2026-06-01' }],
+      payments: [{ id: 'p3', job_id: 'j900', invoice_id: 'i900', amount: 500, paid_on: '2026-06-20', payment_type: 'check', reference_number: '4001', sequence_order: 1 }],
+    },
+  ]
+  const report = buildGcChecksReport({ gcId: 'gc', jobs, sinceYmd: '2026-08-31' })
+  const byJob = new Map(jobs.map((j) => [j.id, { address: j.job_address, number: j.hcp_number }]))
+  const received = statementReceivedFromChecks(report.checks, byJob)
+
+  it('lists every check the GC sent in the window, newest first, with where it landed', () => {
+    expect(received).toEqual([
+      { key: expect.any(String), onYmd: '2026-09-22', label: 'Check #4402', amount: 17600, where: ['1780 FM 1343 · Job 372'] },
+      { key: expect.any(String), onYmd: '2026-09-02', label: 'Check #4390', amount: 1200, where: ['1875 Co Rd 777 · Job 868, now paid in full'] },
+    ])
+  })
+
+  it('words the heading line for a list, one payment and none', () => {
+    expect(statementReceivedIntro('2026-08-31', 2)).toBe('2 payments since Aug 31, 2026, newest first. If one you sent is missing, reply and we will find it.')
+    expect(statementReceivedIntro('2026-08-31', 1)).toBe('One payment since Aug 31, 2026, newest first. If one you sent is missing, reply and we will find it.')
+    expect(statementReceivedIntro('2026-08-31', 0)).toBe('No payments received since Aug 31, 2026. If you sent one, reply and we will find it.')
+    expect(statementReceivedIntro(null, 0)).toBe('No payments received on record. If you sent one, reply and we will find it.')
+  })
+
+  const input = { payerName: 'RMC- Dudley Mason', dateStr: 'Sep 30, 2026', bills: [bill({ key: '372', billed: 35200, owed: 17600 })] }
+
+  it('HTML: the block sits between the total and the account card, and only when the lane brought it', () => {
+    const html = renderStatementByPropertyHtml({ ...input, received, receivedSinceYmd: '2026-08-31', portalUrl: 'https://my.clickplumbing.com/rmc' })
+    expect(html).toContain('Payments we have received')
+    expect(html).toContain('2 payments since Aug 31, 2026, newest first.')
+    expect(html).toContain('Check #4402<span style="color:#5b6676"> to 1780 FM 1343 · Job 372</span>')
+    expect(html).toContain('Check #4390<span style="color:#5b6676"> to 1875 Co Rd 777 · Job 868, now paid in full</span>')
+    expect(html.indexOf('Total owed')).toBeLessThan(html.indexOf('Payments we have received'))
+    expect(html.indexOf('Payments we have received')).toBeLessThan(html.indexOf('Your account, any time'))
+    expect(renderStatementByPropertyHtml(input)).not.toContain('Payments we have received')
+    const none = renderStatementByPropertyHtml({ ...input, received: [], receivedSinceYmd: '2026-08-31' })
+    expect(none).toContain('No payments received since Aug 31, 2026. If you sent one, reply and we will find it.')
+    expect(none).not.toContain('<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;border-collapse:collapse">\n    </table>')
+  })
+
+  it('text: the same block', () => {
+    const text = renderStatementByPropertyText({ ...input, received, receivedSinceYmd: '2026-08-31' })
+    expect(text).toContain(
+      ['Total owed: $17,600.00', '', 'Payments we have received', '2 payments since Aug 31, 2026, newest first. If one you sent is missing, reply and we will find it.', '- Sep 22 — Check #4402 to 1780 FM 1343 · Job 372 — $17,600.00', '- Sep 2 — Check #4390 to 1875 Co Rd 777 · Job 868, now paid in full — $1,200.00', ''].join('\n'),
+    )
+    expect(renderStatementByPropertyText(input)).not.toContain('Payments we have received')
   })
 })

@@ -41,8 +41,12 @@ import {
 import { PORTAL_QR_CONTENT_ID, PORTAL_QR_FILENAME } from '../_shared/portalAccountCard.ts'
 import { qrMatrix } from '../_shared/qrMatrix.ts'
 import { bytesToBase64, qrPngBytes } from '../_shared/qrPng.ts'
+import { buildGcChecksReport, type ChecksDepositIn, type ChecksEventIn, type ChecksJobIn } from '../_shared/gcChecksApplied.ts'
+import { STATEMENT_RECEIVED_DAYS, statementReceivedFromChecks, type StatementReceivedIn } from '../_shared/gcStatementByProperty.ts'
+import { ymdPlusDays } from '../_shared/customerSample.ts'
 import {
   chicagoDateStr,
+  chicagoTodayYmd,
   gcShareAllSubject,
   gcStatementSubject,
   renderGcShareAllHtml,
@@ -97,6 +101,52 @@ async function loadPropertyIdByJob(admin: any, jobIds: string[]): Promise<Record
     return out
   } catch {
     return {}
+  }
+}
+
+/**
+ * "Payments we have received" (v2.4260): the GC's checks of the last
+ * STATEMENT_RECEIVED_DAYS days and where each went — the same rows Find a check
+ * reads (`src/lib/jobs/gcChecksAppliedIo.ts` `fetchGcChecksInputs`), through
+ * the same kernel. Best-effort: a failed read sends the statement without the
+ * block rather than not at all.
+ */
+// deno-lint-ignore no-explicit-any
+async function receivedFor(admin: any, gcId: string, todayYmd: string): Promise<{ received: StatementReceivedIn[]; receivedSinceYmd: string } | null> {
+  try {
+    const { data: rawJobs, error: jobsErr } = await admin
+      .from('jobs_ledger')
+      .select(
+        'id, hcp_number, click_number, job_name, job_address, customer_id, gc_customer_id, bill_to_party, lien_retainage_held, ' +
+          'invoices:jobs_ledger_invoices(id, job_id, sequence_order, amount, status, billed_at, bill_to_party, bill_to_email), ' +
+          'payments:jobs_ledger_payments(id, job_id, invoice_id, amount, paid_on, sent_on, payment_type, reference_number, mercury_transaction_id, sequence_order, created_at)',
+      )
+      .or(`gc_customer_id.eq.${gcId},customer_id.eq.${gcId}`)
+    if (jobsErr) return null
+    const jobs: ChecksJobIn[] = ((rawJobs ?? []) as Array<Omit<ChecksJobIn, 'invoices' | 'payments'> & { invoices: ChecksJobIn['invoices'] | null; payments: ChecksJobIn['payments'] | null }>).map((j) => ({
+      ...j,
+      invoices: j.invoices ?? [],
+      payments: j.payments ?? [],
+    }))
+    const jobIds = jobs.map((j) => j.id)
+    let events: ChecksEventIn[] = []
+    if (jobIds.length > 0) {
+      const idList = `(${jobIds.join(',')})`
+      const { data } = await admin
+        .from('jobs_ledger_payment_events')
+        .select('id, kind, payment_id, from_job_id, to_job_id, amount, created_at')
+        .or(`from_job_id.in.${idList},to_job_id.in.${idList}`)
+        .order('created_at', { ascending: true })
+      events = (data ?? []) as ChecksEventIn[]
+    }
+    // Deposit dates only sharpen the sheet; the statement's block does not print them.
+    const deposits: ChecksDepositIn[] = []
+    const receivedSinceYmd = ymdPlusDays(todayYmd, -STATEMENT_RECEIVED_DAYS)
+    const report = buildGcChecksReport({ gcId, jobs, events, deposits, sinceYmd: receivedSinceYmd })
+    const byJob = new Map(jobs.map((j) => [j.id, { address: j.job_address ?? null, number: (j.hcp_number ?? '').trim() || (j.click_number ?? '').trim() }]))
+    return { received: statementReceivedFromChecks(report.checks, byJob), receivedSinceYmd }
+  } catch {
+    return null
   }
 }
 
@@ -311,7 +361,9 @@ serve(async (req) => {
         // account card carries the portal's QR code as an inline attachment — as a bill email does.
         const propertyIdByJob = isSingle ? await loadPropertyIdByJob(admin, singleGroup!.rows.map((r) => r.job_id)) : null
         const qrModules = portalUrl ? qrMatrix(portalUrl) : null
-        const extras = { propertyIdByJob, qrImgSrc: qrModules ? `cid:${PORTAL_QR_CONTENT_ID}` : null }
+        // "Payments we have received" (v2.4260) — a GC's statement only; a development has no one payer to read.
+        const received = isSingle && row.group_by === 'gc' && row.gc_customer_id ? await receivedFor(admin, row.gc_customer_id, chicagoTodayYmd()) : null
+        const extras = { propertyIdByJob, qrImgSrc: qrModules ? `cid:${PORTAL_QR_CONTENT_ID}` : null, ...(received ?? {}) }
         const html = isSingle ? renderGcStatementHtml(singleGroup!, dateStr, officePhone, portalUrl, wording.introText, extras) : renderGcShareAllHtml(payload, dateStr, officePhone, wording.introText)
         const text = isSingle ? renderGcStatementText(singleGroup!, dateStr, officePhone, portalUrl, wording.introText, extras) : renderGcShareAllText(payload, dateStr, officePhone, wording.introText)
 

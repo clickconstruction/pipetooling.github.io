@@ -11,6 +11,7 @@ import {
   gcStatementEmailSubject,
   gcStatementFooterLine,
   gcStatementQrDataUrl,
+  gcStatementReceived,
   gcStatementUnmatchedPayments,
   gcStatementUnmatchedWords,
 } from './gcStatementEmail'
@@ -252,5 +253,28 @@ describe('gcStatementFooterHtml (v2.2158)', () => {
     expect(html).toContain('>(512) 360-0599</a>.')
     expect(mod.gcStatementFooterHtml(null)).toBe('Questions about a bill? Reply to this email or call the office.')
     expect(mod.buildGcStatementEmailHtml({ key: 'k', gcId: 'g', gcName: 'X', isNoGc: false, rows: [], subtotal: 0, jobCount: 0, oldestAgeDays: null }, { officePhone: '(512) 360-0599' })).toContain('href="tel:+15123600599"')
+  })
+})
+
+describe('gcStatementReceived — the payments block from the rows Find a check reads', () => {
+  it('counts back 30 days from today and names where each check landed', () => {
+    const inputs = {
+      jobs: [
+        {
+          id: 'j1', hcp_number: '916', click_number: null, job_name: 'SVP Manor', job_address: '11915 Ring Dr, Manor TX', customer_id: 'o1', gc_customer_id: 'gc-1', bill_to_party: 'gc',
+          invoices: [{ id: 'i1', job_id: 'j1', sequence_order: 1, amount: 1450, status: 'billed', billed_at: '2026-07-21' }],
+          payments: [
+            { id: 'p1', job_id: 'j1', invoice_id: 'i1', amount: 1000, paid_on: '2026-08-15', payment_type: 'check', reference_number: '4821', sequence_order: 1 },
+            { id: 'p0', job_id: 'j1', invoice_id: null, amount: 200, paid_on: '2026-07-01', payment_type: 'check', reference_number: '4700', sequence_order: 0 },
+          ],
+        },
+      ],
+      events: [],
+      deposits: [],
+    }
+    const out = gcStatementReceived(inputs, 'gc-1', '2026-09-05')
+    expect(out.receivedSinceYmd).toBe('2026-08-06')
+    expect(out.received).toEqual([{ key: expect.any(String), onYmd: '2026-08-15', label: 'Check #4821', amount: 1000, where: ['11915 Ring Dr · Job 916'] }])
+    expect(buildGcStatementEmailHtml(group(), { dateStr: 'Sep 5, 2026', ...out })).toContain('One payment since Aug 6, 2026, newest first.')
   })
 })

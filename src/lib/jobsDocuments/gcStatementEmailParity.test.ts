@@ -86,22 +86,27 @@ const payloadGroup: GcStatementPayloadGroup = {
 }
 /** What the dispatcher reads beside the payload: each job's property record. */
 const PROPERTY_BY_JOB = { j1: 'prop-ring', j2: null, j3: null, j4: 'prop-ring', j5: null }
-const EXTRAS = { propertyIdByJob: PROPERTY_BY_JOB, qrImgSrc: QR }
+/** "Payments we have received" (v2.4260): the block is built once from the checks and handed to both lanes. */
+const RECEIVED = [{ key: 'ref:4821|2026-08-15', onYmd: '2026-08-15', label: 'Check #4821', amount: 1000, where: ['11915 Ring Dr · Job 916'] }]
+const RECEIVED_SINCE = '2026-08-06'
+const EXTRAS = { propertyIdByJob: PROPERTY_BY_JOB, qrImgSrc: QR, received: RECEIVED, receivedSinceYmd: RECEIVED_SINCE }
 
 const PAY_LINK_HTML = '<a href="https://my.clickplumbing.com/knight?src=gc-statement" style="color: #b0662f; font-weight: 600; text-decoration: none;">my.clickplumbing.com/knight</a>'
 const PAY_LINE_TEXT = 'Pay online any time at https://my.clickplumbing.com/knight?src=gc-statement — this statement stays current there.'
 
 describe('GC statement — the client builders and the dispatcher render the same email', () => {
   it('HTML: Draft Message == scheduled dispatcher — intro, portal, QR code, phone, property records', () => {
-    const client = buildGcStatementEmailHtml(clientGroup, { dateStr: DATE, officePhone: PHONE, portalUrl: PORTAL, introText: INTRO, qrImgSrc: QR })
+    const client = buildGcStatementEmailHtml(clientGroup, { dateStr: DATE, officePhone: PHONE, portalUrl: PORTAL, introText: INTRO, qrImgSrc: QR, received: RECEIVED, receivedSinceYmd: RECEIVED_SINCE })
     const server = renderGcStatementHtml(payloadGroup, DATE, PHONE, PORTAL, INTRO, EXTRAS)
     expect(client).toBe(server)
+    expect(client).toContain('Check #4821<span style="color:#5b6676"> to 11915 Ring Dr · Job 916</span>')
   })
 
   it('text: the plain-text twins match too', () => {
-    const client = buildGcStatementEmailText(clientGroup, { dateStr: DATE, officePhone: PHONE, portalUrl: PORTAL, introText: INTRO })
+    const client = buildGcStatementEmailText(clientGroup, { dateStr: DATE, officePhone: PHONE, portalUrl: PORTAL, introText: INTRO, received: RECEIVED, receivedSinceYmd: RECEIVED_SINCE })
     const server = renderGcStatementText(payloadGroup, DATE, PHONE, PORTAL, INTRO, EXTRAS)
     expect(client).toBe(server)
+    expect(client).toContain('- Aug 15 — Check #4821 to 11915 Ring Dr · Job 916 — $1,000.00')
   })
 
   it('without intro, portal or code (the personal Copy lane) they still match', () => {

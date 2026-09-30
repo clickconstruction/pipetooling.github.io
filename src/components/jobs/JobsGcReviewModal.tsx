@@ -30,6 +30,7 @@ import {
   buildGcStatementEmailPreviewHtml,
   buildGcStatementEmailText,
   GC_STATEMENT_QR_CID_SRC,
+  type GcStatementReceived,
   gcStatementUnmatchedWords,
   gcReviewShareAllEmailSubject,
   gcStatementEmailSubject,
@@ -107,6 +108,7 @@ import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 import CustomerPortalGlobeButton from '../customers/CustomerPortalGlobeButton'
 import { useEmailPreview } from '../../hooks/useEmailPreview'
 import { useGcPortalLinks } from '../../hooks/useGcPortalLinks'
+import { useGcStatementReceived } from '../../hooks/useGcStatementReceived'
 import { gcPortalLinkCaption } from '../../lib/portal/gcPortalLink'
 import { useToastContext } from '../../contexts/ToastContext'
 import { planGcUnpaidInvoicePrint } from '../../lib/jobs/gcUnpaidInvoicePrint'
@@ -264,7 +266,7 @@ type JobsGcReviewModalProps = {
   /** Shell glue: build the statement HTML and open the print window (toast on popup block). */
   onPrint: (groups: GcReviewGroup[], groupBy: GcReviewGroupBy) => void
   /** Shell glue: copy the GC-facing statement (rich HTML + plain text) for pasting into an email (v2.1414). */
-  onCopyForEmail: (group: GcReviewGroup, groupBy: GcReviewGroupBy, extra?: { portalUrl?: string | null }) => void
+  onCopyForEmail: (group: GcReviewGroup, groupBy: GcReviewGroupBy, extra?: { portalUrl?: string | null; received?: GcStatementReceived | null }) => void
   /** Shell transport for the Email… dialog: invoke send-gc-statement-email (v2.1416). */
   onSendStatement: (payload: SendGcStatementPayload) => Promise<{ ok: boolean; error?: string }>
   /** Prefill for the Email… dialog's To field (customers.contact_info email; '' when unknown). */
@@ -650,6 +652,12 @@ export function JobsGcReviewModal({
   )
   /** Portal links per GC (v2.2151): the globe on the row, the Share item, and the Draft Message card all read this. */
   const gcIdsForPortal = useMemo(() => rollup.groups.filter((g) => !g.isNoGc && g.gcId).map((g) => g.gcId as string), [rollup.groups])
+  // The statement's "Payments we have received" (v2.4260): the checks of every opened GC, and of the GC whose Draft Message is open.
+  const gcIdsForReceived = useMemo(
+    () => (byDevelopment ? [] : [...rollup.groups.filter((g) => g.gcId && expandedKeys.has(g.key)).map((g) => g.gcId as string), ...(emailDialogGroup?.gcId ? [emailDialogGroup.gcId] : [])]),
+    [byDevelopment, rollup.groups, expandedKeys, emailDialogGroup],
+  )
+  const { receivedFor, receivedWhenReady } = useGcStatementReceived(gcIdsForReceived)
   const { links: portalLinks, refresh: refreshPortalLinks } = useGcPortalLinks(gcIdsForPortal, open && !byDevelopment)
   const portalLinkFor = (g: GcReviewGroup) => (!byDevelopment && !g.isNoGc && g.gcId ? portalLinks.get(g.gcId) ?? null : null)
   const { showToast } = useToastContext()
@@ -1192,7 +1200,7 @@ export function JobsGcReviewModal({
                     type="button"
                     onClick={() => {
                       setShareMenuGroupKey(null)
-                      onCopyForEmail(g, effectiveGroupBy, { portalUrl: portalLinkFor(g)?.url ?? null })
+                      onCopyForEmail(g, effectiveGroupBy, { portalUrl: portalLinkFor(g)?.url ?? null, received: byDevelopment ? null : receivedFor(g.gcId) })
                     }}
                     title={`Copy the ${g.gcName} statement to paste into an email`}
                     style={gcShareMenuItemStyle}
@@ -1942,7 +1950,7 @@ export function JobsGcReviewModal({
                   const g = emailDialogGroup
                   const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                   const subject = emailDialogSubject.trim() || gcStatementEmailSubject(g, dateStr)
-                  void emailPreview.show(`Statement to ${g.gcName}`, buildGcStatementEmailPreviewHtml(g, subject, { dateStr, groupBy: effectiveGroupBy, officePhone: getPhysicalInvoiceIssuerForDocument().phone, portalUrl: emailIncludePortal ? portalLinkFor(g)?.url ?? null : null, introText: emailIntroText }))
+                  void emailPreview.show(`Statement to ${g.gcName}`, buildGcStatementEmailPreviewHtml(g, subject, { dateStr, groupBy: effectiveGroupBy, officePhone: getPhysicalInvoiceIssuerForDocument().phone, portalUrl: emailIncludePortal ? portalLinkFor(g)?.url ?? null : null, introText: emailIntroText, ...(byDevelopment ? {} : receivedFor(g.gcId) ?? {}) }))
                 }}
                 style={{ marginRight: 'auto', padding: '0.4rem 0.8rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-link)', cursor: 'pointer' }}
               >
@@ -2008,8 +2016,10 @@ export function JobsGcReviewModal({
                   setEmailSending(true)
                   setEmailError(null)
                   const sendPortalUrl = emailIncludePortal ? portalLinkFor(g)?.url ?? null : null
-                  const sendOpts = { dateStr, groupBy: effectiveGroupBy, officePhone: getPhysicalInvoiceIssuerForDocument().phone, portalUrl: sendPortalUrl, introText: emailIntroText }
-                  void onSendStatement({
+                  // The payments block waits for the GC's checks (read since the dialog opened; a failed read sends without it).
+                  void (byDevelopment ? Promise.resolve(null) : receivedWhenReady(g.gcId)).then((received) => {
+                  const sendOpts = { dateStr, groupBy: effectiveGroupBy, officePhone: getPhysicalInvoiceIssuerForDocument().phone, portalUrl: sendPortalUrl, introText: emailIntroText, ...(received ?? {}) }
+                  return onSendStatement({
                     gcCustomerId: byDevelopment ? null : g.gcId,
                     gcName: g.gcName,
                     groupBy: effectiveGroupBy,
@@ -2040,6 +2050,7 @@ export function JobsGcReviewModal({
                     } else {
                       setEmailError(res.error || 'Send failed — try again.')
                     }
+                  })
                   })
                 }}
                 style={{

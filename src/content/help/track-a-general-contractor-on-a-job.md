@@ -61,6 +61,7 @@ Job 1058 · Service Visit · Sep 21 · $2,000.00
 - **What counts as one property.** Jobs linked to the same property record share a block, however each job's address was typed; a job with no property record joins the block its cleaned-up address matches. If one place shows as two blocks, set the property on the job (Edit Job → Property record).
 - **The job's name** shows only when it says something — *Trip Charges* stays; a repeat of the GC's own name, or of the address the block is already headed by, is left off.
 - **A payment shows under the bill it was recorded against**, with the check number and the day. A bill with nothing paid is one plain line.
+- **Payments we have received.** Under the total, every payment the GC sent in the last 30 days, newest first, each with the check number, the day and the property and job it went to — a check that paid a job off says *now paid in full*. When none came the statement says so and asks them to reply if they sent one. The list is read as you open the GC's row, so Copy carries it too.
 - **Paid on the job, not on a bill.** When a job carries a payment that was never put on a bill, the Draft Message dialog says so before you send — *Paid on the job, not on a bill: Job 1042 $3,000.00.* The statement still shows that job's bills as owed in full. If the money was for those bills, match it in Edit Job → Payments, then send.
 
 ## Print a GC's unpaid invoices

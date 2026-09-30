@@ -26,6 +26,7 @@
  * Pure, no Deno: tested from `src/lib/jobsDocuments/gcStatementByProperty.test.ts`.
  */
 import { joinList, formatYmdLong, formatYmdShort, money, paymentLabelWords, type PaidByPayment } from './billPaidBy.ts'
+import type { GcCheck } from './gcChecksApplied.ts'
 import { portalAccountCardHtml } from './portalAccountCard.ts'
 import { normalizeAddressKey, splitAddress } from './portalProperties.ts'
 
@@ -322,6 +323,55 @@ export function buildStatementModel(bills: readonly StatementBillIn[], opts: { p
   return { properties, billCount: all.length, billed, paid, owed, summary }
 }
 
+/** One payment the GC sent, for "Payments we have received" (v2.4260). */
+export type StatementReceivedIn = {
+  key: string
+  /** The day it was received (YYYY-MM-DD); null when none was recorded. */
+  onYmd: string | null
+  /** "Check #4402" · "ACH" · "Bank deposit" · "Payment". */
+  label: string
+  amount: number
+  /** Where it went, one entry per job: "1780 FM 1343 · Job 372", with ", now paid in full" when the job is. */
+  where: string[]
+}
+
+/** How many days back the statement's payments list reaches. */
+export const STATEMENT_RECEIVED_DAYS = 30
+
+/**
+ * The checks kernel's folded payments (`buildGcChecksReport(...).checks`, already
+ * limited to the window) as the statement lists them — every check the GC sent,
+ * newest first, each with the property and job it landed on. `jobs` gives each
+ * job's address and number, since a check's lines carry only the job id.
+ */
+export function statementReceivedFromChecks(
+  checks: readonly GcCheck[],
+  jobs: ReadonlyMap<string, { address?: string | null; number?: string | null }>,
+): StatementReceivedIn[] {
+  return checks.map((c) => {
+    const byJob = new Map<string, { paidInFull: boolean }>()
+    for (const l of c.lines) {
+      const held = byJob.get(l.jobId)
+      byJob.set(l.jobId, { paidInFull: (held?.paidInFull ?? true) && l.jobPaidInFull })
+    }
+    const where = [...byJob].map(([jobId, { paidInFull }]) => {
+      const job = jobs.get(jobId)
+      const address = (job?.address ?? '').replace(/\s+/g, ' ').trim()
+      const street = address ? splitAddress(address).street : ''
+      const number = (job?.number ?? '').trim()
+      const place = [street, number ? `Job ${number}` : ''].filter(Boolean).join(' · ') || 'a job'
+      return paidInFull ? `${place}, now paid in full` : place
+    })
+    return {
+      key: c.key,
+      onYmd: c.receivedYmd,
+      label: c.kind === 'check' && c.number ? `Check ${c.label}` : c.label,
+      amount: c.amount,
+      where,
+    }
+  })
+}
+
 export type StatementRenderInput = {
   /** Who the statement is for — the GC, or the development. */
   payerName: string
@@ -335,6 +385,22 @@ export type StatementRenderInput = {
   qrImgSrc?: string | null
   /** The editable intro above the statement. */
   introText?: string | null
+  /**
+   * "Payments we have received" (v2.4260): the GC's payments since `receivedSinceYmd`,
+   * newest first. Omit/undefined for no block (a development statement, or a lane
+   * that could not read them); an empty list prints the block saying none came.
+   */
+  received?: readonly StatementReceivedIn[] | null
+  receivedSinceYmd?: string | null
+}
+
+/** The sentence under the block's heading. */
+export function statementReceivedIntro(sinceYmd: string | null | undefined, count: number): string {
+  const since = ymdOf(sinceYmd)
+  const window = since ? `since ${formatYmdLong(since)}` : 'on record'
+  return count === 0
+    ? `No payments received ${window}. If you sent one, reply and we will find it.`
+    : `${count === 1 ? 'One payment' : `${count} payments`} ${window}, newest first. If one you sent is missing, reply and we will find it.`
 }
 
 const modelOf = (input: StatementRenderInput): StatementModel =>
@@ -383,11 +449,34 @@ export function renderStatementByPropertyHtml(input: StatementRenderInput): stri
         <td colspan="2" style="padding:10px 8px 0;border-top:2px solid ${INK};font-size:16px;font-weight:700;color:${INK}">Total owed</td>
         <td style="padding:10px 8px 0;border-top:2px solid ${INK};font-size:16px;font-weight:700;color:${INK};text-align:right;white-space:nowrap">${money(model.owed)}</td>
       </tr>
-    </table>${card ? `
+    </table>${receivedHtml(input)}${card ? `
     <div style="padding-top:22px">${card}</div>` : ''}
     <p style="margin:${card ? '0' : '18px 0 0'};padding-top:12px;border-top:1px solid ${RULE};font-size:13px;color:#6b7280">${gcStatementFooterHtml(input.officePhone)}</p>
   </div>
 </div>`
+}
+
+/** "Payments we have received" — '' when the lane brought none. */
+function receivedHtml(input: StatementRenderInput): string {
+  const rows = input.received
+  if (rows == null) return ''
+  const cell = `padding:6px 8px;border-bottom:1px solid ${RULE};font-size:13.5px;line-height:1.35;vertical-align:top`
+  const lines = rows
+    .map(
+      (r) => `<tr>
+        <td style="${cell};color:${MUTED};white-space:nowrap">${escapeHtml(r.onYmd ? formatYmdShort(r.onYmd) : '—')}</td>
+        <td style="${cell};color:${INK}">${escapeHtml(r.label)}<span style="color:${MUTED}"> to ${escapeHtml(joinList(r.where))}</span></td>
+        <td style="${cell};color:${PAID};font-weight:600;text-align:right;white-space:nowrap">${money(r.amount)}</td>
+      </tr>`,
+    )
+    .join('')
+  return `
+    <div style="padding:22px 8px 0;font-size:15px;font-weight:600;color:${INK}">Payments we have received</div>
+    <div style="padding:1px 8px 6px;font-size:12.5px;color:${MUTED}">${escapeHtml(statementReceivedIntro(input.receivedSinceYmd, rows.length))}</div>${
+      lines ? `
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;border-collapse:collapse">${lines}
+    </table>` : ''
+    }`
 }
 
 /** The same statement for a text-only mail client. */
@@ -414,6 +503,14 @@ export function renderStatementByPropertyText(input: StatementRenderInput): stri
     ...blocks,
     `Total owed: ${money(model.owed)}`,
     '',
+    ...(input.received != null
+      ? [
+          'Payments we have received',
+          statementReceivedIntro(input.receivedSinceYmd, input.received.length),
+          ...input.received.map((r) => `- ${r.onYmd ? formatYmdShort(r.onYmd) : '—'} — ${r.label} to ${joinList(r.where)} — ${money(r.amount)}`),
+          '',
+        ]
+      : []),
     ...(payLine ? [payLine, ''] : []),
     gcStatementFooterLine(input.officePhone),
   ].join('\n')

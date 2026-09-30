@@ -2,14 +2,21 @@ import type { GcReviewGroup, GcReviewGroupBy } from '../gcReviewRollup'
 import { formatCurrency } from '../jobs/jobFormatting'
 import {
   GC_STATEMENT_COMPANY_NAME,
+  STATEMENT_RECEIVED_DAYS,
   escapeHtml,
   gcStatementFooterHtml,
   gcStatementFooterLine,
   gcStatementIntroHtml,
   renderStatementByPropertyHtml,
   renderStatementByPropertyText,
+  statementReceivedFromChecks,
   type StatementBillIn,
+  type StatementReceivedIn,
 } from '../../../supabase/functions/_shared/gcStatementByProperty'
+import { ymdPlusDays } from '../../../supabase/functions/_shared/customerSample'
+import { buildGcChecksReport } from '../jobs/gcChecksApplied'
+import type { GcChecksInputs } from '../jobs/gcChecksAppliedIo'
+import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 import { PORTAL_QR_CONTENT_ID } from '../../../supabase/functions/_shared/portalAccountCard'
 import { qrMatrix } from '../../../supabase/functions/_shared/qrMatrix'
 import { bytesToBase64, qrPngBytes } from '../../../supabase/functions/_shared/qrPng'
@@ -69,6 +76,30 @@ export type GcStatementEmailOpts = {
    * its own line by hand).
    */
   introText?: string | null
+  /**
+   * "Payments we have received" (v2.4260): the GC's checks of the last
+   * `STATEMENT_RECEIVED_DAYS` days and where each went (`gcStatementReceived`).
+   * Omit while they are still being read, or for a development statement — no
+   * block prints; an empty list prints the block saying none came.
+   */
+  received?: readonly StatementReceivedIn[] | null
+  receivedSinceYmd?: string | null
+}
+
+/** What the Draft Message and Copy lanes carry for the payments block, once the GC's checks are read. */
+export type GcStatementReceived = { received: StatementReceivedIn[]; receivedSinceYmd: string }
+
+/**
+ * The payments block's rows from a GC's checks (the rows Find a check and the
+ * printed sheet read, `fetchGcChecksInputs`): every check received in the last
+ * `STATEMENT_RECEIVED_DAYS` days before `todayYmd`, newest first, each with the
+ * property and job it landed on. Mirror of the dispatcher's `receivedFor`.
+ */
+export function gcStatementReceived(inputs: GcChecksInputs, gcId: string, todayYmd: string): GcStatementReceived {
+  const receivedSinceYmd = ymdPlusDays(todayYmd, -STATEMENT_RECEIVED_DAYS)
+  const report = buildGcChecksReport({ gcId, ...inputs, sinceYmd: receivedSinceYmd })
+  const jobs = new Map(inputs.jobs.map((j) => [j.id, { address: j.job_address ?? null, number: effectiveJobLedgerNumber(j.hcp_number, j.click_number) }]))
+  return { received: statementReceivedFromChecks(report.checks, jobs), receivedSinceYmd }
 }
 
 /** The QR code as an email loads it: an inline attachment the send function adds under this Content-ID. */
@@ -183,6 +214,8 @@ export function buildGcStatementEmailHtml(
     bills: gcStatementBillsOf(group),
     officePhone: opts?.officePhone,
     portalUrl: opts?.portalUrl,
+    received: opts?.received,
+    receivedSinceYmd: opts?.receivedSinceYmd,
     qrImgSrc: opts?.qrImgSrc,
     introText: opts?.introText,
   })
@@ -292,6 +325,8 @@ export function buildGcStatementEmailText(
     bills: gcStatementBillsOf(group),
     officePhone: opts?.officePhone,
     portalUrl: opts?.portalUrl,
+    received: opts?.received,
+    receivedSinceYmd: opts?.receivedSinceYmd,
     introText: opts?.introText,
   })
 }
