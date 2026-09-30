@@ -3432,6 +3432,7 @@ button.gcStep:hover > em { text-decoration: underline; }
 .procurement-date-slot .procurement-date {
   width: 100%;
   font-variant-numeric: tabular-nums;
+  text-align: center;
 }
 .procurement-date-slot .procurement-date::placeholder {
   color: var(--text-faint);

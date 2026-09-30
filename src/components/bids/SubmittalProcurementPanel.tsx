@@ -60,6 +60,9 @@ type Props = {
 const smallMuted: CSSProperties = { fontSize: '0.75rem', color: 'var(--text-muted)' }
 const th: CSSProperties = { textAlign: 'left', fontSize: '0.68rem', letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)', padding: '0.35rem 0.4rem', borderBottom: '1px solid var(--border)', fontWeight: 600, whiteSpace: 'nowrap' }
 const td: CSSProperties = { padding: '0.35rem 0.4rem', borderBottom: '1px solid var(--bg-muted)', verticalAlign: 'middle', fontSize: '0.8125rem', color: 'var(--text-base)' }
+// The seven date and count columns (Released · Ordered · Lead · Expected · Required · Float · Delivered): heading and cell centred, one line each.
+const thCenter: CSSProperties = { ...th, textAlign: 'center' }
+const tdCenter: CSSProperties = { ...td, whiteSpace: 'nowrap', textAlign: 'center' }
 // The Item cell: the tag in bold, then the product on the same line, so a long name wraps across one wide cell.
 const itemTd: CSSProperties = { ...td, minWidth: '19rem', lineHeight: 1.35 }
 const itemTag: CSSProperties = { fontWeight: 700, color: 'var(--text-strong)', marginRight: '0.45rem' }
@@ -261,7 +264,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
     return (
       <>
         {/* As wide as what it holds: five characters for a month and a day, more only while a year is typed or has to be said. */}
-        <div className="procurement-date-slot" style={{ width: `calc(${Math.max(5, text.length)}ch + 1rem)` }} title={o.title ?? 'Click for the calendar, or type the date, like 9/23'}>
+        <div className="procurement-date-slot" style={{ width: `calc(${Math.max(5, text.length)}ch + 1rem)`, margin: '0 auto' }} title={o.title ?? 'Click for the calendar, or type the date, like 9/23'}>
           <input
             type="text"
             className="procurement-date"
@@ -448,14 +451,14 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
             <tr>
               <th style={th}>Item</th>
               <th style={th}>Submittal</th>
-              <th style={th}>Released</th>
-              <th style={th}>Ordered</th>
+              <th style={thCenter}>Released</th>
+              <th style={thCenter}>Ordered</th>
               <th style={th}>PO</th>
-              <th style={th}>Lead</th>
-              <th style={th}>Expected</th>
-              <th style={th}>Required</th>
-              <th style={th}>Float</th>
-              <th style={th}>Delivered</th>
+              <th style={thCenter}>Lead</th>
+              <th style={thCenter}>Expected</th>
+              <th style={thCenter}>Required</th>
+              <th style={thCenter}>Float</th>
+              <th style={thCenter}>Delivered</th>
               <th style={th}>Note</th>
               <th style={th} />
             </tr>
@@ -496,17 +499,17 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
                     )}
                   </td>
                   <td style={{ ...td, whiteSpace: 'nowrap' }}><span style={{ color: r.submittal === 'approved' ? 'var(--text-green-700)' : r.submittal === 'revise' || r.submittal === 'rejected' ? 'var(--text-amber-700)' : 'var(--text-muted)' }}>{submittalWord(r)}</span></td>
-                  <td style={{ ...td, whiteSpace: 'nowrap' }}>{r.releasedOn ? shortDate(r.releasedOn) : <span style={smallMuted}>—</span>}</td>
-                  <td style={{ ...td, whiteSpace: 'nowrap' }}>{dateCell(r, 'ordered_on', r.orderedOn, { label: `${r.tag ?? r.product} ordered on`, disabled: busy })}</td>
+                  <td style={{ ...tdCenter }}>{r.releasedOn ? shortDate(r.releasedOn) : <span style={smallMuted}>—</span>}</td>
+                  <td style={{ ...tdCenter }}>{dateCell(r, 'ordered_on', r.orderedOn, { label: `${r.tag ?? r.product} ordered on`, disabled: busy })}</td>
                   <td style={td}><input type="text" aria-label={`${r.tag ?? r.product} PO`} placeholder="PO" value={draftOf(r.key, 'po', r.poRef)} onChange={(e) => setDraft(r.key, 'po', e.target.value)} onBlur={() => void commitText(r, 'po')} maxLength={60} style={{ ...inp, width: '5.2rem' }} /></td>
-                  <td style={{ ...td, whiteSpace: 'nowrap' }}>
+                  <td style={{ ...tdCenter }}>
                     {r.isHand ? (
                       <input type="text" aria-label="Lead time" placeholder="2 wk" value={draftOf(r.key, 'lead', describeLeadTime(r.leadTimeDays) ?? '')} onChange={(e) => setDraft(r.key, 'lead', e.target.value)} onBlur={() => void commitText(r, 'lead')} style={{ ...inp, width: '4.6rem' }} />
                     ) : (
                       describeLeadTime(r.leadTimeDays) ?? <span style={smallMuted}>—</span>
                     )}
                   </td>
-                  <td style={{ ...td, whiteSpace: 'nowrap' }}>
+                  <td style={{ ...tdCenter }}>
                     {dateCell(r, 'expected_on', r.expectedOn, {
                       label: `${r.tag ?? r.product} expected on`,
                       title: r.expectedSource === 'derived' ? `${shortDate(r.orderedOn)} + ${describeLeadTime(r.leadTimeDays)}; type the house's own date to override` : r.expectedSource === 'house' ? "The house's date; clear it to go back to ordered + lead time" : 'Order date + lead time, or the house’s own date',
@@ -516,9 +519,9 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
                       empty: r.deliveredOn ? '—' : undefined,
                     })}
                   </td>
-                  <td style={{ ...td, whiteSpace: 'nowrap' }}>{r.requiredOn ? shortDate(r.requiredOn) : <span style={smallMuted}>—</span>}</td>
-                  <td style={{ ...td, whiteSpace: 'nowrap', fontWeight: late ? 700 : 500, color: late ? 'var(--text-red-700)' : r.deliveredOn ? 'var(--text-green-700)' : r.floatDays != null ? 'var(--text-green-700)' : 'var(--text-muted)' }} data-testid="procurement-float">{floatText(r)}</td>
-                  <td style={{ ...td, whiteSpace: 'nowrap' }}>{dateCell(r, 'delivered_on', r.deliveredOn, { label: `${r.tag ?? r.product} delivered on`, disabled: busy })}</td>
+                  <td style={{ ...tdCenter }}>{r.requiredOn ? shortDate(r.requiredOn) : <span style={smallMuted}>—</span>}</td>
+                  <td style={{ ...tdCenter, fontWeight: late ? 700 : 500, color: late ? 'var(--text-red-700)' : r.deliveredOn ? 'var(--text-green-700)' : r.floatDays != null ? 'var(--text-green-700)' : 'var(--text-muted)' }} data-testid="procurement-float">{floatText(r)}</td>
+                  <td style={{ ...tdCenter }}>{dateCell(r, 'delivered_on', r.deliveredOn, { label: `${r.tag ?? r.product} delivered on`, disabled: busy })}</td>
                   <td style={{ ...td, minWidth: 160 }}><input type="text" aria-label={`${r.tag ?? r.product} note`} placeholder="note for the GC" value={draftOf(r.key, 'note', r.note)} onChange={(e) => setDraft(r.key, 'note', e.target.value)} onBlur={() => void commitText(r, 'note')} maxLength={500} style={{ ...inp, width: '100%' }} /></td>
                   <td style={{ ...td, whiteSpace: 'nowrap' }}>{r.isHand ? <button type="button" onClick={() => void removeHandRow(r)} disabled={disabled} title="Remove this item" aria-label={`Remove ${r.product || 'item'}`} style={{ ...link, color: 'var(--text-red-600)', textDecoration: 'none', fontSize: '0.95rem' }}>×</button> : null}</td>
                 </tr>
