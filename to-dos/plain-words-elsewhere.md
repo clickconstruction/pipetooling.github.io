@@ -14,13 +14,13 @@ summary: >
 next: >
   1. The Pricing Workbench walkthrough: rewrite its five stops by the rules and copy
   `submittalTour.test.ts`'s cases over `WORKBENCH_TOUR_STEPS` (one PR).
-  2. Guide *build a submittal package*: the guide still reads in the old voice while the page
-  and the tour read plain; rewrite it section by section, examples kept (one PR).
+  2. Done, v2.4229: the guide *build a submittal package* section by section, examples kept,
+  held by `helpGuidePlainWords.test.ts` (its `PLAIN_WORDS_GUIDES` list names the guides held).
   3. Decide whether the rules become a repo convention for every first-timer surface (a line in
   `CLAUDE.md` under help guides, and a shared `plainWords.test.ts` helper the tour tests import)
   — an owner call, since it binds every future walkthrough.
 size: S (two PRs; the convention is a sentence)
-blocker: none; 3 is an owner call.
+blocker: 3 is an owner call.
 ver: —
 opinion: soon — Wendi and Stephen are on the Submittals tab this week and will hit Pricing's walkthrough next; the rules exist, so each PR is a rewrite and a copied test.
 ---
@@ -41,5 +41,5 @@ The owner, 2026-09-29, on the Submittals walkthrough: it "needs to use simpler s
 ## What is left
 
 - **Pricing Workbench walkthrough** (`src/lib/bids/workbenchHelp.ts`, `WORKBENCH_TOUR_STEPS`, five stops; the `?` card's facts beside them). Same `SpotlightTour`, so the scroll fix (v2.4121) already applies; the words do not.
-- **The help guide** `src/content/help/build-a-submittal-package.md`: its "Where you are" and "Without the robot" sections were amended by the train, the rest is the 2026-09-1x voice.
-- **The convention**: whether every future walkthrough and Next line is written by these rules. If yes, the rules move to `CLAUDE.md` (one clause) and this section becomes a link.
+- ~~**The help guide**~~ — done v2.4229: `build-a-submittal-package.md` reads by the rules, examples kept; `src/lib/helpGuidePlainWords.test.ts` holds it.
+- **The convention**: whether every future walkthrough, Next line and guide is written by these rules. If yes, the rules move to `CLAUDE.md` (one clause), `PLAIN_WORDS_GUIDES` in `helpGuidePlainWords.test.ts` becomes every guide (the 294 others will need their own rewrites first, or the list grows as each is done), and this section becomes a link.
