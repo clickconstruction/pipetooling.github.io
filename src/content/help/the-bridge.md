@@ -2,7 +2,7 @@
 title: read the Bridge
 category: Billing & Money
 roles: dev
-keywords: bridge, vectors, who moved the number, truth check, paper vs bank, net position, cash forecast, cash on hand, cash floor, bills due, receipts expected, profit rate, overhead, earned revenue
+keywords: bridge, vectors, who moved the number, by the day, profitable day, red day, green day, truth check, paper vs bank, net position, cash forecast, cash on hand, cash floor, bills due, receipts expected, profit rate, overhead, earned revenue
 order: 62
 ---
 **The Bridge** (devs only for now — the compass icon in the header, or **Bridge** in the ☰ menu; `/bridge`) answers three questions on one page: where we stand, where cash is going, and what would change it. One clock — days.
@@ -55,6 +55,21 @@ An amber **≈** on Earned or Contribution means some of it rests on a job with 
 :::
 
 Materials and sub sheets are job costs, not anyone's vector, so contribution here is labor-only. Invoice sends that the system wrote with no signed-in sender, and bids with no estimator, are listed under the table as *not on anyone's row*.
+
+## Vectors by the day — was each person's day worth it
+
+Under the Vectors table, the same rule one day at a time: a grid with one row per field person and one cell per day of the month, **green when the day's hours earned more than they cost, red when they cost more**, the shade by dollars per hour. A **wk** column after every Saturday sums the week, and the month's total sits at the end with the hours and $/h under it. ‹ › steps back a month; the current month reads *so far*.
+
+- Hover a cell for the split — the jobs worked that day, each at its earned rate beside the wage — and the {{chip:yellow|≈}} hatch means part of it rests on a job with no % complete.
+- **A grey cell with hours** is an office or bid day: it costs a wage and earns nothing here, so it is never judged.
+- **A salaried person's day** costs the flat workday, the way payroll prices it, whatever the clock says.
+- The **Field crew** row at the bottom is the company line day by day.
+
+:::example Reading a red day
+Tristen's Tuesday reads −53: 7.5 h on J1044 at $31 an hour, against a $38 wage. That is the job's price against the hours it is taking, not how fast the day went — everyone on J1044 reads red this month. The job has no % complete, so its expected hours are a guess: set the % and the rate firms up either way.
+:::
+
+A red day is a job's verdict, not a person's: every hour on a job earns the same rate, so a day goes red only when the job's rate is under the wage — priced low, no contract price, or run past its expected hours. And the past moves: a job's rate is its contract ÷ (hours to date ÷ % complete), so every new hour and every % update re-prices every day ever worked on that job. The grid is always as of today.
 
 ## Cash — next 8 weeks
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useDashboardFinancials } from '../hooks/useDashboardFinancials'
@@ -14,6 +14,9 @@ import { BridgeCashChart, BridgeNetPositionChart } from '../components/bridge/Br
 import { BridgeVectorsPanel } from '../components/bridge/BridgeVectorsPanel'
 import { loadBridgeVectorInputs, type BridgeVectorInputs } from '../lib/bridge/loadBridgeVectors'
 import { buildVectors } from '../lib/bridge/vectors'
+import { BridgeVectorDaysPanel } from '../components/bridge/BridgeVectorDaysPanel'
+import { loadVectorDaysInputs, type VectorDaysInputs } from '../lib/bridge/loadVectorDays'
+import { buildVectorGrid, monthStartOf, vectorAnchorStep, vectorRangeFor, vectorRangeLabel } from '../lib/bridge/vectorDays'
 import { formatPayWeekLabel, payWeekContaining } from '../lib/payWeekAnchor'
 import { ymdAddDays } from '../utils/dateUtils'
 
@@ -51,6 +54,11 @@ export default function Bridge() {
   const [vectorInputs, setVectorInputs] = useState<BridgeVectorInputs | null>(null)
   const [vectorError, setVectorError] = useState<string | null>(null)
   const [vectorWeekStart, setVectorWeekStart] = useState<string | null>(null)
+  // Vectors by the day (v2.4217): the month drawn, its sessions and job rates (cached per period on this page).
+  const [daysAnchor, setDaysAnchor] = useState<string | null>(null)
+  const [daysInputs, setDaysInputs] = useState<VectorDaysInputs | null>(null)
+  const [daysError, setDaysError] = useState<string | null>(null)
+  const daysCacheRef = useRef(new Map<string, VectorDaysInputs>())
   const fin = useDashboardFinancials(role === 'dev', refreshKey, role)
 
   useEffect(() => {
@@ -226,6 +234,49 @@ export default function Bridge() {
     return buildVectors({ weekStart: vectorWeek.start, weekEnd: vectorWeek.end, ...inputs, assumedHalfJobs: new Set(data?.earned.assumedHalfJobs ?? []) })
   }, [vectorWeek, vectorInputs, data])
 
+  // Vectors by the day (v2.4217): one month of sessions + rates per anchor, loaded once the Bridge data is in.
+  const daysRange = useMemo(() => (data ? vectorRangeFor('days', daysAnchor ?? data.todayYmd) : null), [data, daysAnchor])
+  useEffect(() => {
+    if (!data || !daysRange) return
+    const key = `${daysRange.start}:${daysRange.end}`
+    const cached = daysCacheRef.current.get(key)
+    if (cached) {
+      setDaysInputs(cached)
+      setDaysError(null)
+      return
+    }
+    let cancelled = false
+    setDaysInputs(null)
+    setDaysError(null)
+    void (async () => {
+      try {
+        const v = await loadVectorDaysInputs({ start: daysRange.start, end: daysRange.end, officeJobLedgerId: data.officeJobLedgerId })
+        daysCacheRef.current.set(key, v)
+        if (!cancelled) setDaysInputs(v)
+      } catch (e) {
+        if (!cancelled) setDaysError(formatErrorMessage(e))
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [data, daysRange])
+  const daysGrid = useMemo(() => {
+    if (!data || !daysRange || !daysInputs || !vectorInputs) return null
+    return buildVectorGrid({
+      zoom: 'days',
+      anchorYmd: daysRange.start,
+      todayYmd: data.todayYmd,
+      mode: 'approved',
+      people: vectorInputs.people,
+      wages: vectorInputs.wages,
+      sessions: daysInputs.sessions,
+      ratePerHourByJob: daysInputs.ratePerHourByJob,
+      assumedHalfJobs: daysInputs.assumedHalfJobs,
+      jobLabels: daysInputs.jobLabels,
+    })
+  }, [data, daysRange, daysInputs, vectorInputs])
+
   // Truth check: paper profit vs the net position change over the chart's days — flows only, so it reads before cash is typed.
   const truth = useMemo<TruthCheck | null>(() => {
     if (!data) return null
@@ -356,6 +407,21 @@ export default function Bridge() {
               onNext={() => setVectorWeekStart(ymdAddDays(vectorWeek.start, 7))}
               loading={vectorInputs == null && vectorError == null}
               error={vectorError}
+            />
+          )}
+
+          {/* Vectors by the day (v2.4217) */}
+          {daysRange && (
+            <BridgeVectorDaysPanel
+              grid={daysGrid}
+              periodLabel={vectorRangeLabel('days', daysRange)}
+              isCurrent={daysRange.end >= data.todayYmd}
+              canPrev={daysRange.start > monthStartOf(ymdAddDays(data.todayYmd, -730))}
+              canNext={daysRange.end < data.todayYmd}
+              onPrev={() => setDaysAnchor(vectorAnchorStep('days', daysRange.start, -1))}
+              onNext={() => setDaysAnchor(vectorAnchorStep('days', daysRange.start, 1))}
+              loading={daysGrid == null && daysError == null}
+              error={daysError ?? vectorError}
             />
           )}
 
