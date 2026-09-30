@@ -33,6 +33,14 @@ export type ArDepositTrailRow = {
   /** When and by whom it was taken off; null on a live payment. */
   removed_at: string | null
   removed_by: string | null
+  /** v2.4276: how it was recorded ("Check", "checkDeposit"), and its reference (a check number, or the deposit's Mercury id). */
+  payment_type?: string | null
+  reference_number?: string | null
+  /** v2.4276: recorded by hand (Edit Job, Mark Paid) and linked to the deposit later, not applied from the deposit. */
+  recorded_by_hand?: boolean | null
+  /** v2.4276: when and by whom a hand-recorded payment was linked to this deposit; null before the stamp existed. */
+  linked_at?: string | null
+  linked_by?: string | null
 }
 
 export type ArTrailPartKind = 'on' | 'was' | 'bankFailed' | 'off'
@@ -54,8 +62,12 @@ export type ArDepositTrail = {
   lastTouchedAt: string | null
 }
 
-/** The name the trail gives a row nobody signed for. */
-export const AR_TRAIL_UNSIGNED = 'the app'
+/**
+ * The name the trail gives a row whose recorder is not on record. Empty: the "by …" is left
+ * out. (v2.4274 said "the app"; v2.4276 found those rows were people — Mark Paid through an
+ * edge function that dropped the name — so a missing name is left blank, never invented.)
+ */
+export const AR_TRAIL_UNSIGNED = ''
 
 const JOB_GONE = 'a job the archive did not keep'
 /** A removal and a re-add inside this window are one move, not a take-off and a fresh apply. */
@@ -87,6 +99,11 @@ export function buildArDepositTrail(args: {
 }): ArDepositTrail | null {
   const unsigned = args.unsignedName ?? AR_TRAIL_UNSIGNED
   const who = (name: string | null | undefined): string => (name ?? '').trim() || unsigned
+  /** " by Taunya", or nothing when no name is on record. */
+  const by = (name: string | null | undefined): string => {
+    const w = who(name)
+    return w ? ` by ${w}` : ''
+  }
   const when = (iso: string | null): string => (iso ? args.whenWords(iso) : '')
   const live = args.rows.filter((r) => r.live)
   const gone = args.rows.filter((r) => !r.live)
@@ -95,23 +112,41 @@ export function buildArDepositTrail(args: {
   const parts: ArTrailPart[] = []
   const times: number[] = []
 
-  // Where the money is now: one part per (day, who), the jobs joined.
+  // Where the money is now: one part per (day, who), the jobs joined. A payment recorded by
+  // hand and linked to the deposit later is its own part, and says both steps.
   const onGroups = new Map<string, { jobs: string[]; when: string; who: string; at: number }>()
+  const handParts: Array<{ part: ArTrailPart; at: number }> = []
   for (const r of [...live].sort((a, b) => ms(a.applied_at) - ms(b.applied_at))) {
+    if (Number.isFinite(ms(r.applied_at))) times.push(ms(r.applied_at))
+    if (r.recorded_by_hand) {
+      const how = [(r.payment_type ?? '').trim(), (r.reference_number ?? '').trim()].filter(Boolean).join(' ')
+      const recorded = `recorded${how ? ` as ${how}` : ' by hand'} ${when(r.applied_at)}${by(r.applied_by)}`
+      const linked = r.linked_at ? `linked to this deposit ${when(r.linked_at)}${by(r.linked_by)}` : 'linked to this deposit later'
+      if (r.linked_at && Number.isFinite(ms(r.linked_at))) times.push(ms(r.linked_at))
+      handParts.push({
+        part: { kind: 'on', jobs: [arTrailJobLabel(r)], before: '→ ', after: ` · ${recorded} · ${linked}` },
+        at: Math.max(ms(r.applied_at) || 0, ms(r.linked_at) || 0),
+      })
+      continue
+    }
     const w = when(r.applied_at)
-    const by = who(r.applied_by)
-    const key = `${w}|${by}`
+    const b = who(r.applied_by)
+    const key = `${w}|${b}`
     const g = onGroups.get(key)
     const label = arTrailJobLabel(r)
     if (g) {
       g.jobs.push(label)
       g.at = Math.max(g.at, ms(r.applied_at) || 0)
-    } else onGroups.set(key, { jobs: [label], when: w, who: by, at: ms(r.applied_at) || 0 })
-    if (Number.isFinite(ms(r.applied_at))) times.push(ms(r.applied_at))
+    } else onGroups.set(key, { jobs: [label], when: w, who: b, at: ms(r.applied_at) || 0 })
   }
-  for (const g of [...onGroups.values()].sort((a, b) => b.at - a.at)) {
-    parts.push({ kind: 'on', jobs: uniq(g.jobs), before: '→ ', after: ` ${g.when} by ${g.who}`.replace(/^ +$/, '') })
-  }
+  const onParts = [
+    ...[...onGroups.values()].map((g) => ({
+      part: { kind: 'on' as const, jobs: uniq(g.jobs), before: '→ ', after: ` ${g.when}${g.who ? ` by ${g.who}` : ''}` },
+      at: g.at,
+    })),
+    ...handParts,
+  ].sort((a, b) => b.at - a.at)
+  parts.push(...onParts.map((p) => p.part))
 
   // Where it used to be, oldest first; a removal followed by a live apply within minutes is a move.
   const offParts: ArTrailPart[] = []
@@ -127,7 +162,7 @@ export function buildArDepositTrail(args: {
     if (Number.isFinite(removedMs)) times.push(removedMs)
     if (!moved && r.removed_at) {
       const verb = args.returned ? 'taken off, marked returned' : 'taken off'
-      offParts.push({ kind: 'off', jobs: [], before: `${verb} ${when(r.removed_at)} by ${who(r.removed_by)}`, after: '' })
+      offParts.push({ kind: 'off', jobs: [], before: `${verb} ${when(r.removed_at)}${by(r.removed_by)}`, after: '' })
     }
   }
   if (args.bankFailedAt) {

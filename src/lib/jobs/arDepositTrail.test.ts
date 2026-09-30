@@ -69,7 +69,17 @@ describe('buildArDepositTrail', () => {
     const t = buildArDepositTrail({ rows: [lobergGone], returned: false, bankFailedAt: null, whenWords: when })!
     expect(t.words).toBe('was #650 ATI Schertz — As per plans 9/29 by Taunya · taken off today 4:02 PM by Taunya')
   })
-  it('rows nobody signed for say "the app"; one deposit over several jobs on one day is one part', () => {
+  it('a payment recorded by hand and linked later says both steps, with or without the names', () => {
+    const marked = row({ payment_id: 'm', live: true, job_number: '1025', job_name: 'Tovi Polk Repairs', applied_at: '2026-09-28T16:56:30Z', applied_by: null, payment_type: 'Check', reference_number: '3463', recorded_by_hand: true })
+    expect(buildArDepositTrail({ rows: [marked], returned: false, bankFailedAt: null, whenWords: when })!.words).toBe(
+      '→ #1025 Tovi Polk Repairs · recorded as Check 3463 9/28 · linked to this deposit later',
+    )
+    const stamped = { ...marked, applied_by: 'Taunya', linked_at: '2026-09-30T21:10:00Z', linked_by: 'Grace' }
+    const t = buildArDepositTrail({ rows: [stamped], returned: false, bankFailedAt: null, whenWords: when })!
+    expect(t.words).toBe('→ #1025 Tovi Polk Repairs · recorded as Check 3463 9/28 by Taunya · linked to this deposit today 4:10 PM by Grace')
+    expect(t.lastTouchedAt).toBe('2026-09-30T21:10:00.000Z')
+  })
+  it('a row whose recorder is not on record says no name; one deposit over several jobs on one day is one part', () => {
     const rows = [
       row({ payment_id: 'a', live: true, job_number: '', job_name: 'Springtown', applied_at: '2026-09-17T15:50:00Z', applied_by: 'Taunya' }),
       row({ payment_id: 'b', live: true, job_number: '', job_name: 'Springtown- HVAC', applied_at: '2026-09-17T15:51:00Z', applied_by: 'Taunya' }),
@@ -77,8 +87,8 @@ describe('buildArDepositTrail', () => {
     ]
     expect(buildArDepositTrail({ rows, returned: false, bankFailedAt: null, whenWords: when })!.words).toBe('→ Springtown, Springtown- HVAC 9/17 by Taunya')
     const unsigned = [row({ payment_id: 'd', live: true, job_number: '1025', job_name: 'Tovi Polk Repairs', applied_at: '2026-09-28T16:56:00Z' })]
-    expect(buildArDepositTrail({ rows: unsigned, returned: false, bankFailedAt: null, whenWords: when })!.words).toBe('→ #1025 Tovi Polk Repairs 9/28 by the app')
-    expect(buildArDepositTrail({ rows: unsigned, returned: false, bankFailedAt: null, whenWords: when, unsignedName: '—' })!.words).toBe('→ #1025 Tovi Polk Repairs 9/28 by —')
+    expect(buildArDepositTrail({ rows: unsigned, returned: false, bankFailedAt: null, whenWords: when })!.words).toBe('→ #1025 Tovi Polk Repairs 9/28')
+    expect(buildArDepositTrail({ rows: unsigned, returned: false, bankFailedAt: null, whenWords: when, unsignedName: 'someone' })!.words).toBe('→ #1025 Tovi Polk Repairs 9/28 by someone')
   })
   it('a bounce still on the job (nobody has taken it off) ends on the bank; nothing at all is null', () => {
     const still = row({ payment_id: 'x', live: true, job_number: '878', job_name: 'Take 5- Seguin', applied_at: '2026-09-21T15:06:44Z', applied_by: 'Taunya' })
