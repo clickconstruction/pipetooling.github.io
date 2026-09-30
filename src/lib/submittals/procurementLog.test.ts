@@ -17,8 +17,10 @@ import {
   floatText,
   procurementHeadline,
   procurementUpdateText,
+  readTypedLogDate,
+  logDateRead,
+  nearestYearFor,
   shortDate,
-  shortDateYear,
   daysAgoWords,
   snapshotRows,
   stageDatesFromJob,
@@ -61,11 +63,7 @@ describe('dates', () => {
     expect(shortDate(null)).toBe('')
   })
 
-  it('a date box presents its date with a two-digit year, and says how far it is from today', () => {
-    expect(shortDateYear('2026-09-28')).toBe('09/28/26')
-    expect(shortDateYear('2030-01-05')).toBe('01/05/30')
-    expect(shortDateYear(null)).toBe('')
-    expect(shortDateYear('nope')).toBe('')
+  it('says how far a log date is from today', () => {
     expect(daysAgoWords('2026-09-30', '2026-09-30')).toBe('today')
     expect(daysAgoWords('2026-09-29', '2026-09-30')).toBe('1 day ago')
     expect(daysAgoWords('2026-09-18', '2026-09-30')).toBe('12 days ago')
@@ -75,6 +73,47 @@ describe('dates', () => {
     expect(daysAgoWords('2025-12-31', '2026-01-02')).toBe('2 days ago')
     expect(daysAgoWords(null, '2026-09-30')).toBe('')
     expect(daysAgoWords('nope', '2026-09-30')).toBe('')
+  })
+
+  it('a month and a day typed alone take the year nearest today', () => {
+    expect(nearestYearFor(9, 23, '2026-09-30')).toBe(2026)
+    expect(nearestYearFor(11, 17, '2026-09-30')).toBe(2026)
+    // Across the turn of the year: December typed in January is last month; January typed in December is next month.
+    expect(nearestYearFor(12, 20, '2027-01-05')).toBe(2026)
+    expect(nearestYearFor(1, 5, '2026-12-20')).toBe(2027)
+    // Half a year either way is the edge: April 1 is 182 days back, March 1 is 152 days ahead.
+    expect(nearestYearFor(4, 1, '2026-09-30')).toBe(2026)
+    expect(nearestYearFor(3, 1, '2026-09-30')).toBe(2027)
+  })
+
+  it('reads a typed date: 9/23 and its spellings, a year when one is typed, nothing as empty, the rest as bad', () => {
+    const asOf = '2026-09-30'
+    for (const t of ['9/23', '09/23', ' 9/23 ', '9-23', '9.23', '9 23', '0923', '9 / 23']) expect(readTypedLogDate(t, asOf)).toEqual({ kind: 'date', iso: '2026-09-23' })
+    expect(readTypedLogDate('9/23/27', asOf)).toEqual({ kind: 'date', iso: '2027-09-23' })
+    expect(readTypedLogDate('9/23/2027', asOf)).toEqual({ kind: 'date', iso: '2027-09-23' })
+    expect(readTypedLogDate('1/5', '2026-12-20')).toEqual({ kind: 'date', iso: '2027-01-05' })
+    expect(readTypedLogDate('2/29/28', asOf)).toEqual({ kind: 'date', iso: '2028-02-29' })
+    expect(readTypedLogDate('', asOf)).toEqual({ kind: 'empty' })
+    expect(readTypedLogDate('   ', asOf)).toEqual({ kind: 'empty' })
+    for (const t of ['9', '923', '13/1', '2/30', '9/32', '0/5', '9/23/1', '9/23/202', '9/23/0001', '9/23/2101', 'sept 23', '9/23/26/1', '2/29/27']) expect(readTypedLogDate(t, asOf)).toEqual({ kind: 'bad' })
+  })
+
+  it('shows a log date as short as it can be typed back: no year when the nearest year is the date’s own', () => {
+    const asOf = '2026-09-30'
+    expect(logDateRead('2026-09-23', asOf)).toBe('09/23')
+    expect(logDateRead('2026-11-17', asOf)).toBe('11/17')
+    expect(logDateRead('2027-01-05', '2026-12-20')).toBe('01/05')
+    // A year that a typed month and day would not reach is said, in two digits.
+    expect(logDateRead('2027-09-23', asOf)).toBe('09/23/27')
+    expect(logDateRead('2025-09-23', asOf)).toBe('09/23/25')
+    // Whatever the box shows reads back as the same date.
+    for (const iso of ['2026-09-23', '2027-09-23', '2025-12-31', '2026-02-28', '2028-02-29']) {
+      expect(readTypedLogDate(logDateRead(iso, asOf), asOf)).toEqual({ kind: 'date', iso })
+    }
+    // A year outside the window keeps every digit, so two cannot hide it.
+    expect(logDateRead('0001-02-12', asOf)).toBe('02/12/0001')
+    expect(logDateRead(null, asOf)).toBe('')
+    expect(logDateRead('nope', asOf)).toBe('')
   })
 })
 

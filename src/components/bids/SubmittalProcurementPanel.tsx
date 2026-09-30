@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties, type FocusEvent, type KeyboardEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
@@ -8,7 +8,7 @@ import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { procurementLogCsv, procurementLogFileName, procurementLogTsv } from '../../lib/submittals/procurementLogExport'
 import { loadProcurementSheetAssets, type ProcurementSheetAssets } from '../../lib/submittals/procurementSheetAssets'
 import { describeLeadTime, parseLeadTime } from '../../lib/submittals/leadTime'
-import { holdsDateBoxChange, isPlausibleDate, readDateBoxEntry, unfinishedDateMessage } from '../../lib/dateBoxEntry'
+import { isPlausibleDate, readDateBoxEntry } from '../../lib/dateBoxEntry'
 import {
   buildProcurementLog,
   buildProcurementUpdateHtml,
@@ -18,8 +18,9 @@ import {
   procurementCounts,
   procurementHeadline,
   procurementUpdateText,
+  logDateRead,
+  readTypedLogDate,
   shortDate,
-  shortDateYear,
   daysAgoWords,
   snapshotRows,
 
@@ -66,11 +67,6 @@ const btn: CSSProperties = { padding: '0.35rem 0.75rem', background: 'var(--surf
 const btnPrimary: CSSProperties = { ...btn, background: '#2563eb', borderColor: '#2563eb', color: 'white', fontWeight: 600 }
 const link: CSSProperties = { background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: '0.75rem', color: 'var(--text-blue-700)', textDecoration: 'underline', textUnderlineOffset: 2 }
 const inp: CSSProperties = { padding: '0.2rem 0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8125rem', boxSizing: 'border-box', font: 'inherit', background: 'var(--surface)', color: 'var(--text-base)' }
-// A date box at rest is unseen: the date reads under it with a two-digit year. Focus shows the box whole, as narrow as the
-// date it holds plus the browser's calendar button (`.procurement-date-slot` and `.procurement-date` in index.css size both).
-/** "02/12/0001" — a stored date with every digit of its year. */
-const fullDate = (iso: string) => `${iso.slice(5, 7)}/${iso.slice(8, 10)}/${iso.slice(0, 4)}`
-const dateRead: CSSProperties = { fontSize: '0.8125rem', fontVariantNumeric: 'tabular-nums' }
 
 type DateField = 'ordered_on' | 'expected_on' | 'delivered_on'
 type Draft = Partial<Record<'po' | 'note' | 'label' | 'lead' | DateField, string>>
@@ -104,10 +100,8 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
   // The records as last read, for a write queued behind the one that made the row's record.
   const recordsRef = useRef<ProcurementRecord[]>([])
   const writeQueue = useRef<Promise<void>>(Promise.resolve())
-  // The date box being typed in (`row key:field`); a change with no key press is a pick from the calendar.
-  const typingIn = useRef<string | null>(null)
-  // The date box in use (`row key:field`), shown whole until it is left.
-  const [openDate, setOpenDate] = useState<string | null>(null)
+  // The date box a click is landing in (`row key:field`) when it was not already in use: that click opens the calendar.
+  const clickedInto = useRef<string | null>(null)
   const applyRecords = useCallback((recs: ProcurementRecord[]) => {
     recordsRef.current = recs
     setRecords(recs)
@@ -215,94 +209,87 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
     return field === 'ordered_on' ? row.orderedOn : field === 'expected_on' ? (row.expectedSource === 'house' ? row.expectedOn : null) : row.deliveredOn
   }
 
-  /** An unfinished date is dropped: the box goes back to what is saved, and a line says why. */
-  function dropDate(row: ProcurementRow, field: DateField) {
-    clearDraft(row.key, field)
-    showToast(unfinishedDateMessage(new Date().getFullYear()), 'info')
-  }
-
-  /** Saves a finished date, or null for an emptied box; a half-typed year is dropped. */
-  function saveDate(row: ProcurementRow, field: DateField, raw: string) {
-    const entry = readDateBoxEntry(raw, storedDate(row, field))
-    if (entry.kind === 'unfinished') return dropDate(row, field)
+  /** A pick from the calendar is a whole date (or the calendar's Clear), so it saves at once. */
+  function pickDate(row: ProcurementRow, field: DateField, value: string) {
+    const entry = readDateBoxEntry(value, storedDate(row, field))
     clearDraft(row.key, field)
     if (entry.kind === 'save') void write(row, { [field]: entry.value } as Record<string, string | null>)
   }
 
   /**
-   * v2.4239 · a date box saves a finished date only. The browser reports a date on every key
-   * that completes one ("2026" arrives as 0002, 0020, 0202, 2026), so a typed date waits in
-   * the draft until the box is left or Enter is pressed. A pick from the calendar saves at once.
+   * Leaving a date box, or Enter in it. What was typed saves if it reads as a date ("9/23"
+   * takes the nearest year); an emptied box clears the date; anything else is dropped, the
+   * box goes back to what is saved, and a line says why. So a half-typed date is never written.
    */
-  function dateChanged(row: ProcurementRow, field: DateField, value: string) {
-    const typed = typingIn.current === `${row.key}:${field}`
-    if (holdsDateBoxChange(typed, value, storedDate(row, field))) setDraft(row.key, field, value)
-    else saveDate(row, field, value)
-  }
-
-  /** Leaving a date box, or Enter in it: the draft saves if it is a finished date. */
-  function commitDate(row: ProcurementRow, field: DateField) {
+  function commitTypedDate(row: ProcurementRow, field: DateField, shown: string | null) {
     const raw = drafts[row.key]?.[field]
-    if (raw != null) saveDate(row, field, raw)
+    if (raw == null) return
+    clearDraft(row.key, field)
+    if (raw.trim() === logDateRead(shown, today)) return
+    const entry = readTypedLogDate(raw, today)
+    if (entry.kind === 'bad') {
+      showToast(`“${raw.trim()}” does not read as a date, so it was not saved. Type the month and the day, like 9/23.`, 'info')
+      return
+    }
+    const value = entry.kind === 'date' ? entry.iso : null
+    if (value !== storedDate(row, field)) void write(row, { [field]: value } as Record<string, string | null>)
   }
 
-  /** The handlers the three date boxes share. */
-  function dateBox(row: ProcurementRow, field: DateField, shown: string | null) {
-    const box = `${row.key}:${field}`
-    return {
-      value: draftOf(row.key, field, shown ?? ''),
-      onChange: (e: ChangeEvent<HTMLInputElement>) => dateChanged(row, field, e.target.value),
-      onKeyDown: (e: KeyboardEvent<HTMLInputElement>) => {
-        typingIn.current = box
-        if (e.key === 'Enter' && !e.currentTarget.validity.badInput) commitDate(row, field)
-      },
-      onPointerDown: () => {
-        typingIn.current = null
-      },
-      onBlur: (e: FocusEvent<HTMLInputElement>) => {
-        typingIn.current = null
-        if (e.currentTarget.validity.badInput) {
-          // Left with a part missing (09/30/yyyy): the browser reports that as no date. Wipe the box so it shows what is saved.
-          e.currentTarget.value = ''
-          dropDate(row, field)
-        } else commitDate(row, field)
-      },
+  /** Opens the browser's calendar for a date box: it belongs to the unseen date input beside the text box. */
+  function openCalendar(textBox: HTMLInputElement) {
+    const pick = textBox.parentElement?.querySelector<HTMLInputElement>('.procurement-date-pick')
+    try {
+      pick?.showPicker?.()
+    } catch {
+      // No calendar in this browser, or the box is disabled: the text box still takes a typed date.
     }
   }
 
   /**
-   * One date cell. At rest the date reads with a two-digit year ("09/28/26") and, under it in
-   * soft text, how far it is from today ("2 days ago", "in 12 days"). The date box itself lies
-   * over that, unseen until it is focused (`.procurement-date-slot` in index.css), so a click,
-   * a tap or Tab lands in the real box and the row does not move.
+   * One date cell: a text box as narrow as a month and a day ("09/23"; the year shows only when
+   * a typed month and day would not reach it). A click into it opens the browser's calendar; a
+   * typed date ("9/23", "9/23/27") saves when the box is left or on Enter. Under it in soft
+   * text, how far the date is from today ("2 days ago", "in 12 days").
    */
   function dateCell(row: ProcurementRow, field: DateField, shown: string | null, o: { label: string; disabled: boolean; title?: string; background?: string; under?: string | null; empty?: string }) {
     const box = `${row.key}:${field}`
-    const handlers = dateBox(row, field, shown)
     // A year outside the log's window (0001, typed short before v2.4239) is shown in full, so two digits cannot hide it.
     const odd = shown != null && !isPlausibleDate(shown)
-    // Soft lines under the box, each no wider than it: what the date is ("house said"), then how far it is from today.
+    // Soft lines under the box: what the date is ("house said"), then how far it is from today.
     const under = odd ? ['check the year'] : [o.under, daysAgoWords(shown, today)].filter((x): x is string => !!x)
+    const text = draftOf(row.key, field, logDateRead(shown, today))
     return (
       <>
-        {/* `is-open` holds the box in view while the browser's calendar is up: the page's own :focus drops then. */}
-        <div className={`procurement-date-slot${openDate === box ? ' is-open' : ''}`} title={o.title}>
+        {/* As wide as what it holds: five characters for a month and a day, more only while a year is typed or has to be said. */}
+        <div className="procurement-date-slot" style={{ width: `calc(${Math.max(5, text.length)}ch + 1rem)` }} title={o.title ?? 'Click for the calendar, or type the date, like 9/23'}>
           <input
-            type="date"
+            type="text"
             className="procurement-date"
             aria-label={o.label}
-            {...handlers}
-            onFocus={() => setOpenDate(box)}
-            onBlur={(e) => {
-              setOpenDate((cur) => (cur === box ? null : cur))
-              handlers.onBlur(e)
-            }}
+            placeholder={o.empty ?? 'mm/dd'}
+            autoComplete="off"
+            value={text}
             disabled={o.disabled}
-            style={{ ...inp, background: o.background ?? 'var(--surface)' }}
+            onChange={(e) => setDraft(row.key, field, e.target.value)}
+            onPointerDown={(e) => {
+              // A click into the box opens the calendar; a click in a box already in use only places the caret.
+              clickedInto.current = document.activeElement === e.currentTarget ? null : box
+            }}
+            onClick={(e) => {
+              if (clickedInto.current === box) openCalendar(e.currentTarget)
+              clickedInto.current = null
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') commitTypedDate(row, field, shown)
+              else if (e.key === 'Escape' && drafts[row.key]?.[field] != null) {
+                e.stopPropagation()
+                clearDraft(row.key, field)
+              }
+            }}
+            onBlur={() => commitTypedDate(row, field, shown)}
+            style={{ ...inp, background: o.background ?? 'var(--surface)', ...(odd ? { color: 'var(--text-red-700)' } : null) }}
           />
-          <div className="procurement-date-read" aria-hidden="true" data-testid="procurement-date-read" style={{ ...dateRead, ...(odd ? { fontSize: '0.7rem' } : null), background: o.background ?? 'var(--surface)', color: odd ? 'var(--text-red-700)' : shown ? 'var(--text-base)' : 'var(--text-faint)' }}>
-            {odd ? fullDate(shown) : shown ? shortDateYear(shown) : o.empty ?? 'mm/dd/yy'}
-          </div>
+          <input type="date" className="procurement-date-pick" tabIndex={-1} aria-hidden="true" data-testid="procurement-date-pick" value={shown != null && !odd ? shown : ''} disabled={o.disabled} onChange={(e) => pickDate(row, field, e.target.value)} />
         </div>
         {under.map((line) => (
           <div key={line} style={{ ...smallMuted, ...(odd ? { color: 'var(--text-red-700)' } : null) }} data-testid="procurement-date-under">{line}</div>
