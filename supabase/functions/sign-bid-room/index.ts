@@ -200,7 +200,7 @@ serve(async (req) => {
 
     const { data: bid } = await admin
       .from('bids')
-      .select('id, customer_id, project_name, outcome, bid_date_sent, bid_value')
+      .select('id, customer_id, project_name, outcome, bid_date_sent, bid_value, accepted_alternate_tags, declined_alternate_tags')
       .eq('id', room.bid_id)
       .maybeSingle()
     if (!bid) return json({ error: 'Not found' }, 404)
@@ -361,7 +361,15 @@ serve(async (req) => {
     if (payload.add_ons.length > 0 && plan.bidOutcomeSet === 'won') {
       const sentBase = bid.bid_value != null && Number.isFinite(Number(bid.bid_value)) ? Number(bid.bid_value) : chosen.total_cents / 100
       const agreed = Math.round((sentBase + takenAddOns.reduce((s, a) => s + a.total_cents, 0) / 100) * 100) / 100
-      await admin.from('bids').update({ accepted_alternate_tags: takenAddOns.map((a) => a.tag), agreed_value: agreed }).eq('id', bid.id)
+      // v2.4225: the add-ons the customer left unticked are DECLINED — said by the signature, not
+      // inferred. Only the room's own add-ons are answered here; an alternate the room did not
+      // carry (unpriced when the revision was published) keeps whatever answer it had.
+      const roomTags = new Set(payload.add_ons.map((a) => a.tag.trim().toLowerCase()))
+      const takenTags = new Set(takenAddOns.map((a) => a.tag.trim().toLowerCase()))
+      const keep = (list: unknown) => (Array.isArray(list) ? (list as string[]) : []).filter((t) => !roomTags.has(String(t).trim().toLowerCase()))
+      const accepted = [...keep((bid as { accepted_alternate_tags?: unknown }).accepted_alternate_tags), ...takenAddOns.map((a) => a.tag)]
+      const declined = [...keep((bid as { declined_alternate_tags?: unknown }).declined_alternate_tags), ...payload.add_ons.filter((a) => !takenTags.has(a.tag.trim().toLowerCase())).map((a) => a.tag)]
+      await admin.from('bids').update({ accepted_alternate_tags: accepted, declined_alternate_tags: declined, agreed_value: agreed }).eq('id', bid.id)
     }
 
     // v2.2697: the blast radius, named. A GC's click just flipped OTHER GCs' packets to Lost

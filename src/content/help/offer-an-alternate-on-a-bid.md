@@ -37,10 +37,10 @@ Untick **Offer** and the alternate's price folds back into the proposed amount, 
 
 ## When they answer
 
-Mark the bid **Won** (Edit Bid, or a GC's packet on the Bid Board) and it asks **which alternates they took**. Tick the ones they did: the **Agreed value** becomes the sent base plus those add-ons, and the sent value stays as history. A GC's packet asks the same, one yes or no per alternate.
+Mark the bid **Won** (Edit Bid, or a GC's packet on the Bid Board) and it asks **which alternates they took**. Each one has {{chip:green|Taken}}, {{chip:gray|Declined}} and {{chip:yellow|Not sure}}, and starts on Not sure. Taken ones make the **Agreed value** the sent base plus those add-ons, and the sent value stays as history. A GC's packet asks the same, one yes or no per alternate. On a bid that is already won, the alternate's heading on the Counts tab (By group) asks too: {{button:outline|Taken}} or {{button:outline|Not taken}}.
 
-- A declined alternate's rows stay on the bid, greyed **ALT · declined**, and leave the job's materials, book fill, schedule of values and labor hours. Nothing is deleted, so a customer who comes back for it later is one tick away.
-- The Bid Board shows the agreed value with a green **alt taken** chip, or **alt declined** when they passed.
+- Only an alternate marked **Declined** leaves the job: its rows stay on the bid, greyed **ALT · declined**, and drop out of the job's materials, book fill, schedule of values and labor hours. Nothing is deleted, so a customer who comes back for it later is one click away.
+- An alternate nobody has answered stays in the job, and the Bid Board shows {{chip:yellow|alt ?}} until someone does. After that it shows the agreed value with a green **alt taken** chip, or **alt declined** when they passed.
 - **The bid room asks for you.** On the signable link, each offered alternate is an add-on card the customer can tick beside the option they choose — ticked to start, with what it covers and what it adds. Their signature records the answer the same way, so the Won dialog shows it already ticked.
 
 ## What the Bid Board shows

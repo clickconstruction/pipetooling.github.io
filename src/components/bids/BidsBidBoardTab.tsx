@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { boardAlternateAddOn } from '../../lib/bids/coverLetterAddAlternates'
-import { acceptanceWords, bidIsWon } from '../../lib/bids/alternateAcceptance'
+import { acceptanceWords, bidIsWon, boardAlternateState } from '../../lib/bids/alternateAcceptance'
 import { formatCurrency } from '../../lib/format'
 import { parseCoverLetterAltTexts } from '../../lib/bids/coverLetterSamePage'
 import { Link } from 'react-router-dom'
@@ -1045,6 +1045,19 @@ export function BidsBidBoardTab({
   function renderAlternateAddOnChip(bid: BidWithBuilder) {
     // v2.4211: once the bid is won the chip is the answer — green with the alternate, grey without.
     const words = acceptanceWords(bid)
+    const state = boardAlternateState(bid)
+    if (state === 'unanswered') {
+      // v2.4225: won, and an alternate still waits for the customer's answer — ask, never assume "declined".
+      return (
+        <span
+          data-testid="bid-board-alt-unanswered"
+          title={`Won ${words} Answer it on Edit Bid (the Won section) or on the Counts tab's alternate heading. Until then its rows stay in the job.`}
+          style={{ marginLeft: '0.3rem', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.03em', padding: '0 0.3rem', borderRadius: 3, border: '1px solid var(--text-amber-700)', color: 'var(--text-amber-700)', background: 'var(--bg-amber-tint)', whiteSpace: 'nowrap', verticalAlign: 'middle' }}
+        >
+          alt ?
+        </span>
+      )
+    }
     if (bidIsWon(bid.outcome) && words) {
       const took = (bid.accepted_alternate_tags ?? []).length > 0
       return (

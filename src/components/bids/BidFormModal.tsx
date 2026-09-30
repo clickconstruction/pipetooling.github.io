@@ -24,7 +24,7 @@ import { BidPlansFolderSteps } from './BidPlansFolderSteps'
 import { BidPriceRequestsTable } from './BidPriceRequestsTable'
 import { getBidServiceTypeTag } from '../../utils/unifiedJobBidSearch'
 import { BidWonJobActions } from './BidWonJobActions'
-import { agreedValueFromAcceptance, isAcceptedTag, offeredAlternates, toggleAcceptedTag } from '../../lib/bids/alternateAcceptance'
+import { agreedValueFromAcceptance, alternateAnswer, offeredAlternates, setAlternateAnswer, type AlternateAnswer } from '../../lib/bids/alternateAcceptance'
 import { formatCurrency } from '../../lib/format'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { bidAutosaveStatusLine, bidFormFooterLabels, type BidAutosaveStatus } from '../../lib/bids/bidFormAutosave'
@@ -311,6 +311,7 @@ export function BidFormModal(props: BidFormModalProps) {
     bidValue,
     agreedValue,
     acceptedAlternateTags,
+    declinedAlternateTags,
     profit,
     distanceFromOffice,
     lastContact,
@@ -347,6 +348,7 @@ export function BidFormModal(props: BidFormModalProps) {
     setBidValue,
     setAgreedValue,
     setAcceptedAlternateTags,
+    setDeclinedAlternateTags,
     setProfit,
     setDistanceFromOffice,
     setLastContact,
@@ -936,23 +938,40 @@ export function BidFormModal(props: BidFormModalProps) {
                     return (
                       <div data-testid="bid-won-alternates" style={{ flexBasis: '100%', minWidth: 0, display: 'grid', gap: '0.3rem', padding: '0.5rem 0.75rem', border: '1px solid var(--text-amber-700)', borderRadius: 8, background: 'var(--bg-amber-tint)' }}>
                         <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-amber-700)' }}>Which alternates did they take?</span>
-                        {alts.map((a) => (
-                          <label key={a.key} style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.85rem', cursor: 'pointer' }}>
-                            <input
-                              type="checkbox"
-                              checked={isAcceptedTag(a.tag, acceptedAlternateTags)}
-                              onChange={(e) => {
-                                const next = toggleAcceptedTag(acceptedAlternateTags, a.tag, e.target.checked)
-                                setAcceptedAlternateTags(next)
-                                const value = agreedValueFromAcceptance(Number.isFinite(sent) ? sent : null, alts, next)
-                                if (value != null) setAgreedValue(String(value))
-                              }}
-                              style={{ margin: 0 }}
-                            />
-                            <span><strong>{a.tag}</strong> <span style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.06em', padding: '0 0.3rem', borderRadius: 3, border: '1px solid var(--text-amber-700)', color: 'var(--text-amber-700)' }}>ALT</span></span>
+                        {alts.map((a) => {
+                          // v2.4225: three answers, Not sure to start — an autosave mid-edit can never
+                          // decline an alternate nobody answered; only "Declined" drops its rows from the job.
+                          const answer = alternateAnswer(a.tag, { accepted_alternate_tags: acceptedAlternateTags, declined_alternate_tags: declinedAlternateTags })
+                          const choose = (next: AlternateAnswer) => {
+                            const lists = setAlternateAnswer({ accepted: acceptedAlternateTags, declined: declinedAlternateTags }, a.tag, next)
+                            setAcceptedAlternateTags(lists.accepted)
+                            setDeclinedAlternateTags(lists.declined)
+                            const value = agreedValueFromAcceptance(Number.isFinite(sent) ? sent : null, alts, lists.accepted)
+                            if (value != null) setAgreedValue(String(value))
+                          }
+                          const pill = (value: AlternateAnswer, label: string) => (
+                            <button
+                              key={value}
+                              type="button"
+                              aria-pressed={answer === value}
+                              onClick={() => choose(value)}
+                              style={{ font: 'inherit', fontSize: '0.75rem', fontWeight: 600, padding: '0.1rem 0.55rem', border: 'none', borderLeft: value === 'taken' ? 'none' : '1px solid var(--border-strong)', background: answer === value ? (value === 'taken' ? '#16a34a' : value === 'declined' ? 'var(--text-muted)' : 'var(--text-amber-700)') : 'var(--surface)', color: answer === value ? '#fff' : 'var(--text-muted)', cursor: 'pointer' }}
+                            >
+                              {label}
+                            </button>
+                          )
+                          return (
+                            <div key={a.key} data-testid={`bid-won-alternate-${a.key}`} style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.85rem', flexWrap: 'wrap' }}>
+                              <span role="group" aria-label={`Did they take ${a.tag}?`} style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 999, overflow: 'hidden' }}>
+                                {pill('taken', 'Taken')}
+                                {pill('declined', 'Declined')}
+                                {pill('unanswered', 'Not sure')}
+                              </span>
+                              <span><strong>{a.tag}</strong> <span style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.06em', padding: '0 0.3rem', borderRadius: 3, border: '1px solid var(--text-amber-700)', color: 'var(--text-amber-700)' }}>ALT</span></span>
                             <span style={{ color: 'var(--text-muted)' }}>{a.amount != null ? `adds $${formatCurrency(a.amount)}` : 'not priced on the letter yet'}</span>
-                          </label>
-                        ))}
+                            </div>
+                          )
+                        })}
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                           {agreed != null ? <>Agreed value <strong style={{ color: 'var(--text-strong)' }}>${formatCurrency(agreed)}</strong> · the sent value stays ${formatCurrency(Number.isFinite(sent) ? sent : 0)}</> : 'Set the bid value and the agreed value follows.'}
                         </span>

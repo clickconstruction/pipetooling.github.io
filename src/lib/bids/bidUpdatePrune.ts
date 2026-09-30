@@ -47,8 +47,8 @@ const FIELD_GROUPS: readonly FieldGroup[] = [
   { keys: ['submitted_to'], dirty: (c, i) => c.submittedTo !== i.submittedTo },
   // v2.4211: accepted_alternate_tags is cleared unless the outcome is won, so it rides with the outcome.
   {
-    keys: ['outcome', 'loss_reason', 'loss_category', 'accepted_alternate_tags'],
-    dirty: (c, i) => c.outcome !== i.outcome || c.lossReason !== i.lossReason || c.lossCategory !== i.lossCategory || !sameList(c.acceptedAlternateTags ?? [], i.acceptedAlternateTags ?? []),
+    keys: ['outcome', 'loss_reason', 'loss_category', 'accepted_alternate_tags', 'declined_alternate_tags'],
+    dirty: (c, i) => c.outcome !== i.outcome || c.lossReason !== i.lossReason || c.lossCategory !== i.lossCategory || !sameList(c.acceptedAlternateTags ?? [], i.acceptedAlternateTags ?? []) || !sameList(c.declinedAlternateTags ?? [], i.declinedAlternateTags ?? []),
   },
   { keys: ['bid_value'], dirty: (c, i) => c.bidValue !== i.bidValue },
   { keys: ['agreed_value'], dirty: (c, i) => c.agreedValue !== i.agreedValue },
