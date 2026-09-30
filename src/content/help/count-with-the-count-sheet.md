@@ -58,7 +58,7 @@ In By plan page, a WC-1 sits under "No plan page". Type `2` in its page cell, En
 
 ## Add counts heads-down
 
-Quick add starts tucked away — click {{button:outline|+ Quick add}} to open the panel (the count box is focused and ready), and **Hide** to put it away when you're done.
+Quick add starts tucked away — click {{button:outline|+ Quick add}} to open the panel (the count box is focused and ready), and **Hide** to put it away when you're done. The panel's **Group** box offers the bid's groups (an alternate reads *· ALT*); pick one, type a new one, or leave it blank. In **By group**, every heading has its own {{button:outline|+ add here}}, which opens quick add with that group filled in.
 
 Tap a fixture chip (from your service type's fixture list), set the count, press **Enter** — the row is added and the count box is focused for the next one. No mouse needed between rows. The **ea / ft** toggle next to the count follows the name you typed (`ft of 2in copper` flips it to ft); click it to pin a unit for that row.
 

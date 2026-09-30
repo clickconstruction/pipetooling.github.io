@@ -165,6 +165,8 @@ export function BidsCountsTab({
   const [qaCount, setQaCount] = useState('1')
   const [qaFixture, setQaFixture] = useState('')
   const [qaPage, setQaPage] = useState('')
+  // v2.4204: the group the quick add lands in — typed, picked from the bid's groups, or set by a heading's "+ add here".
+  const [qaGroup, setQaGroup] = useState('')
   /** Quick-add unit: null = follow the name ("ft of …" → ft); a click pins one explicitly. */
   const [qaUnit, setQaUnit] = useState<CountUnit | null>(null)
   const [qaBusy, setQaBusy] = useState(false)
@@ -229,6 +231,7 @@ export function BidsCountsTab({
     setQaFixture('')
     setQaCount('1')
     setQaPage('')
+    setQaGroup('')
     setQaUnit(null)
   }, [selectedBidForCounts?.id])
 
@@ -258,19 +261,20 @@ export function BidsCountsTab({
       showToast('Enter a count above zero.', 'error')
       return
     }
-    if (findDuplicateFixture(countRows, fixture, undefined, { alternateTags: altTags, groupTag: null })) {
+    const groupTag = qaGroup.trim() || null
+    if (findDuplicateFixture(countRows, fixture, undefined, { alternateTags: altTags, groupTag })) {
       showToast('Already on this bid — use Merge, or rename the row.', 'error')
       return
     }
     setQaBusy(true)
     try {
       const unit = qaUnit ?? classifyCountRowUnit(fixture)
-      const { error } = await insertCountRows(bid.id, [{ fixture, count, group_tag: null, page: qaPage.trim() || null, unit }])
+      const { error } = await insertCountRows(bid.id, [{ fixture, count, group_tag: groupTag, page: qaPage.trim() || null, unit }])
       if (error) {
         showToast(formatErrorMessage(error, 'Could not add the row'), 'error')
         return
       }
-      showToast(`${count}${unit === 'ea' ? ' ×' : ` ${COUNT_UNIT_LABEL[unit]}`} ${fixture} added${qaPage.trim() ? ` (p. ${qaPage.trim()})` : ''}`, 'success')
+      showToast(`${count}${unit === 'ea' ? ' ×' : ` ${COUNT_UNIT_LABEL[unit]}`} ${fixture} added${groupTag ? ` to ${groupTag}` : ''}${qaPage.trim() ? ` (p. ${qaPage.trim()})` : ''}`, 'success')
       setQaFixture('')
       setQaCount('1')
       setQaUnit(null)
@@ -847,7 +851,7 @@ export function BidsCountsTab({
             // v2.4188: the By group view and the base / + alternate foot.
             const altTotals = countSheetAlternateTotals(countRows, altTags)
             const groupGroups = buildCountSheetGroupGroups(visibleRows, altTags)
-            const dup = findDuplicateFixture(countRows, qaFixture, undefined, { alternateTags: altTags, groupTag: null })
+            const dup = findDuplicateFixture(countRows, qaFixture, undefined, { alternateTags: altTags, groupTag: qaGroup.trim() || null })
             const sheetCell: React.CSSProperties = { padding: '0.28rem 0.5rem', borderBottom: '1px solid var(--border)' }
             /** Uncontrolled quiet input: commits on Enter/blur, Esc reverts. Keyed by the saved value so optimistic updates re-sync it. */
             const sheetEditCell = (r: BidCountRow, field: 'count' | 'fixture' | 'group_tag' | 'page', saved: string, extra?: { numeric?: boolean; nopage?: boolean; ariaLabel: string }) => (
@@ -953,6 +957,21 @@ export function BidsCountsTab({
                       {g.alternate ? 'Alternate · on' : 'Alternate'}
                     </button>
                     {g.alternate ? <span style={{ fontWeight: 500, fontSize: '0.72rem' }}>bid with and without</span> : null}
+                    <button
+                      type="button"
+                      aria-label={`Add a row to ${g.label}`}
+                      title={`Quick add into ${g.label}`}
+                      disabled={!selectedBidForCounts}
+                      onClick={() => {
+                        // v2.4204: the heading's own add — the quick-add panel opens with this group filled in.
+                        setQaGroup(g.label)
+                        setQaOpen(true)
+                        requestAnimationFrame(() => qaCountRef.current?.focus())
+                      }}
+                      style={{ font: 'inherit', fontSize: '0.7rem', fontWeight: 600, padding: '0.1rem 0.5rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer', marginLeft: 'auto' }}
+                    >
+                      + add here
+                    </button>
                   </div>
                 </td>
               </tr>,
@@ -1149,6 +1168,32 @@ export function BidsCountsTab({
                       aria-label="Plan page"
                       style={{ width: '6.5rem', font: 'inherit', fontSize: '0.85rem', padding: '0.4rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)' }}
                     />
+                    {(() => {
+                      // v2.4204: the Group box — the bid's groups on offer (an alternate says so); blank lands outside any group.
+                      const seen = new Map<string, string>()
+                      for (const r of countRows) {
+                        const label = (r.group_tag ?? '').trim()
+                        if (label && !seen.has(label.toLowerCase())) seen.set(label.toLowerCase(), label)
+                      }
+                      const groups = [...seen.values()].sort((a, b) => a.localeCompare(b))
+                      return (
+                        <>
+                          <input
+                            value={qaGroup}
+                            onChange={(e) => setQaGroup(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void sheetQuickAdd() } }}
+                            list="count-sheet-qa-groups"
+                            placeholder="Group"
+                            aria-label="Group"
+                            title="The group the row lands in — pick one of the bid's, type a new one, or leave it blank"
+                            style={{ width: '9rem', font: 'inherit', fontSize: '0.85rem', padding: '0.4rem 0.5rem', border: '1px solid ' + (isAlternateRow({ group_tag: qaGroup }, altTags) ? 'var(--text-amber-700)' : 'var(--border-strong)'), borderRadius: 6, background: 'var(--surface)', color: 'inherit' }}
+                          />
+                          <datalist id="count-sheet-qa-groups">
+                            {groups.map((g) => <option key={g} value={g} label={isAlternateRow({ group_tag: g }, altTags) ? `${g} · ALT` : g} />)}
+                          </datalist>
+                        </>
+                      )
+                    })()}
                     <button
                       type="button"
                       onClick={() => void sheetQuickAdd()}

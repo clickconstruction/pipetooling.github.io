@@ -24,6 +24,8 @@ const smoke = vi.hoisted(() => ({
   role: 'dev' as string,
   bids: [] as Array<Record<string, unknown>>,
   bidsReads: 0,
+  /** v2.4204: the bid's count rows (the Counts smoke). */
+  countRows: [] as Array<Record<string, unknown>>,
   /** Every insert / update / upsert / delete the page sends, in order (#51 PR 2). */
   writes: [] as Array<{ table: string; op: string; payload: unknown; filters: Array<[string, unknown]> }>,
   /** Answer `bids` updates with no rows — what RLS does to a write it refuses. */
@@ -96,6 +98,7 @@ vi.mock('../lib/supabase', async () => {
       smoke.bidsReads += 1
       return smoke.bids
     },
+    bids_count_rows: () => smoke.countRows,
   }
 
   return {
@@ -133,9 +136,10 @@ function installCssEscapeShim() {
   if (!g.CSS.escape) g.CSS.escape = (value: string) => value.replace(/[^a-zA-Z0-9_-]/g, (ch) => `\\${ch}`)
 }
 
-function renderBidsAt(url: string, role: string, bids: Array<Record<string, unknown>> = []) {
+function renderBidsAt(url: string, role: string, bids: Array<Record<string, unknown>> = [], countRows: Array<Record<string, unknown>> = []) {
   smoke.role = role
   smoke.bids = bids
+  smoke.countRows = countRows
   smoke.bidsReads = 0
   smoke.writes = []
   smoke.refuseBidUpdates = false
@@ -329,6 +333,27 @@ describe('Bids page render smoke — a link to a bid', () => {
     renderBidsAt('/bids?tab=bid-board&bidId=bid-1&openBidEdit=1', 'estimator', [BID])
     await waitFor(() => expect(currentParam('openBidEdit')).toBeNull())
     await waitFor(() => expect(screen.getAllByRole('dialog').length).toBeGreaterThan(0))
+  })
+})
+
+describe('Bids page render smoke — Counts with an alternate (v2.4204)', () => {
+  const countRow = (id: string, fixture: string, count: number, group_tag: string | null) => ({
+    id, bid_id: 'bid-1', bid_version_id: null, fixture, count, group_tag, page: null, unit: null, sequence_order: 1, created_at: '2026-09-30T00:00:00Z', fixture_type_id: null,
+  })
+  const ROWS = [countRow('c1', 'Toilets', 3, 'Restroom A'), countRow('c2', 'Toilets', 1, 'Break room'), countRow('c3', 'Gas drops', 5, null)]
+
+  it('the Alternates tile and the ALT mark draw; By group shows the alternate heading with its own add, which fills quick add’s Group box', async () => {
+    renderBidsAt('/bids?tab=counts&bidId=bid-1', 'estimator', [{ ...BID, alternate_group_tags: ['Break room'] }], ROWS)
+    await waitFor(() => expect(stripButton('bid-board')).toBeTruthy())
+    expect(await screen.findByText('Alternates')).toBeTruthy()
+    await waitFor(() => expect(screen.getAllByText('ALT').length).toBeGreaterThan(0))
+    fireEvent.click(screen.getByRole('button', { name: 'By group' }))
+    expect(await screen.findByText(/Alternate: Break room/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Add a row to Break room' }))
+    const group = (await screen.findByLabelText('Group')) as HTMLInputElement
+    expect(group.value).toBe('Break room')
+    expect(document.querySelector('#count-sheet-qa-groups option[value="Restroom A"]')).toBeTruthy()
+    await settle()
   })
 })
 
