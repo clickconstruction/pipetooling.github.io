@@ -87,6 +87,7 @@ import { ArCloseOut } from './ar/ArCloseOut'
 import { buildArCloseOutOffer, describeArCloseOut, type ArClosedRow } from '../../lib/jobs/arCloseOut'
 import { isMissingRpcError } from '../../lib/customers/customersListBundle'
 import { arSearchFallThrough } from '../../lib/jobs/arDepositSearch'
+import { orderArAllByLastAction } from '../../lib/jobs/arAllByLastAction'
 import {
   arTrailWhenWords,
   bankFailedAtFromRaw,
@@ -284,6 +285,21 @@ export default function BankPaymentsModal({
   const filteredCandidates = search.hits
   /** Rows only All has that match the search — listed under their own heading, selectable like any other. */
   const foundElsewhere = search.elsewhere
+  /** Under All (PR 3): the newest action first under a heading for its day for the last 30 days, then bank date. */
+  const allGroups = useMemo(
+    () =>
+      includeHiddenArDeposits
+        ? orderArAllByLastAction({
+            rows: filteredCandidates,
+            lastTouchedOf: (id) => trailsById.get(id)?.lastTouchedAt ?? null,
+            now: new Date(),
+            timeZone: APP_CALENDAR_TZ,
+          })
+        : null,
+    [includeHiddenArDeposits, filteredCandidates, trailsById],
+  )
+  /** The rows in the order the list shows them — what "Apply & next" and the selection fallback follow. */
+  const orderedFiltered = useMemo(() => (allGroups ? allGroups.flatMap((g) => g.rows) : filteredCandidates), [allGroups, filteredCandidates])
 
   const selected = useMemo(
     () =>
@@ -461,8 +477,8 @@ export default function BankPaymentsModal({
   )
   /** AR refresh PR 4 (v2.3382): the deposit "Apply & next" lands on — the row below, else above. */
   const nextDepositId = useMemo(
-    () => arNextDepositId(filteredCandidates.map((c) => c.mercury_transaction_id), selectedId),
-    [filteredCandidates, selectedId],
+    () => arNextDepositId(orderedFiltered.map((c) => c.mercury_transaction_id), selectedId),
+    [orderedFiltered, selectedId],
   )
   const [sweepOpen, setSweepOpen] = useState(false)
   /** Deposit ids the user un-ticked in the review panel. */
@@ -1179,9 +1195,9 @@ export default function BankPaymentsModal({
     setSelectedId((prev) => {
       if (prev && filteredCandidates.some((r) => r.mercury_transaction_id === prev)) return prev
       if (prev && foundElsewhere.some((r) => r.mercury_transaction_id === prev)) return prev
-      return filteredCandidates[0]?.mercury_transaction_id ?? foundElsewhere[0]?.mercury_transaction_id ?? null
+      return orderedFiltered[0]?.mercury_transaction_id ?? foundElsewhere[0]?.mercury_transaction_id ?? null
     })
-  }, [open, filteredCandidates, foundElsewhere])
+  }, [open, filteredCandidates, orderedFiltered, foundElsewhere])
 
   const loadMercurySamplesForConfigModal = useCallback(async () => {
     const { data, error } = await supabase
@@ -1998,20 +2014,39 @@ export default function BankPaymentsModal({
                   No bank transactions match this search — not in All either.
                 </p>
               )}
-              {filteredCandidates.map((c) => (
-                <ArDepositRow
-                  key={c.mercury_transaction_id}
-                  deposit={c}
-                  active={c.mercury_transaction_id === selectedId}
-                  state={rowStates.get(c.mercury_transaction_id) ?? 'hand'}
-                  trail={trailsById.get(c.mercury_transaction_id) ?? null}
-                  kindBadges={kindBadges}
-                  markMode={arBankReturnedMarkMode}
-                  canApply={canApply}
-                  savingReturned={returnedToggleSavingId === c.mercury_transaction_id}
-                  onSelect={() => setSelectedId(c.mercury_transaction_id)}
-                  onToggleReturned={(next) => void toggleMercuryReturned(c.mercury_transaction_id, next)}
-                />
+              {(allGroups ?? [{ heading: null, rows: filteredCandidates }]).map((g) => (
+                <div key={g.heading ?? 'list'}>
+                  {g.heading ? (
+                    <div
+                      data-testid="ar-all-day-heading"
+                      style={{
+                        padding: '0.6rem 0.75rem 0.3rem',
+                        fontSize: '0.6875rem',
+                        fontWeight: 700,
+                        letterSpacing: '0.06em',
+                        textTransform: 'uppercase',
+                        color: 'var(--text-muted)',
+                      }}
+                    >
+                      {g.heading}
+                    </div>
+                  ) : null}
+                  {g.rows.map((c) => (
+                    <ArDepositRow
+                      key={c.mercury_transaction_id}
+                      deposit={c}
+                      active={c.mercury_transaction_id === selectedId}
+                      state={rowStates.get(c.mercury_transaction_id) ?? 'hand'}
+                      trail={trailsById.get(c.mercury_transaction_id) ?? null}
+                      kindBadges={kindBadges}
+                      markMode={arBankReturnedMarkMode}
+                      canApply={canApply}
+                      savingReturned={returnedToggleSavingId === c.mercury_transaction_id}
+                      onSelect={() => setSelectedId(c.mercury_transaction_id)}
+                      onToggleReturned={(next) => void toggleMercuryReturned(c.mercury_transaction_id, next)}
+                    />
+                  ))}
+                </div>
               ))}
               {/* v2.4273: a search on To match also reads All — a cheque already applied is found, not "no match". */}
               {!listBusy && !listError && hiddenLoading && filteredCandidates.length === 0 && (
