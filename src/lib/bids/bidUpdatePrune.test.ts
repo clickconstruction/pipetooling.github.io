@@ -140,6 +140,16 @@ describe('pruneUnchangedBidUpdateFields', () => {
     expect('gc_builder_id' in pruned).toBe(false)
   })
 
+  it('v2.4196: accepted_alternate_tags rides with the outcome — pruned untouched, kept when the ticks or the outcome change', () => {
+    const initial = formValues()
+    const withTags = () => ({ ...fullPayload(), accepted_alternate_tags: [] as string[] })
+    expect(pruneUnchangedBidUpdateFields(withTags(), { current: formValues(), initial, bidDateSent: sameSentDate })).toEqual({})
+    const ticked = pruneUnchangedBidUpdateFields(withTags(), { current: formValues({ acceptedAlternateTags: ['Break room'] }), initial, bidDateSent: sameSentDate })
+    expect(Object.keys(ticked).sort()).toEqual(['accepted_alternate_tags', 'loss_category', 'loss_reason', 'outcome'])
+    const won = pruneUnchangedBidUpdateFields(withTags(), { current: formValues({ outcome: 'won' }), initial, bidDateSent: sameSentDate })
+    expect(Object.keys(won)).toContain('accepted_alternate_tags')
+  })
+
   it('itb_links compares by content, not identity', () => {
     const unchanged = pruneUnchangedBidUpdateFields(fullPayload(), {
       current: formValues({ itbLinks: ['https://planhub.com/a'] }),
