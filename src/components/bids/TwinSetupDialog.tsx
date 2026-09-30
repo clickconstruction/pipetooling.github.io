@@ -70,6 +70,7 @@ const panel: CSSProperties = {
 const eyebrow: CSSProperties = { fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 const stepNo: CSSProperties = { flex: 'none', width: '1.35rem', height: '1.35rem', borderRadius: 999, background: TWIN_VIOLET, color: '#fff', fontSize: '0.72rem', fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }
 const stepRow: CSSProperties = { display: 'flex', gap: '0.6rem', alignItems: 'flex-start', fontSize: '0.86rem', color: 'var(--text-strong)' }
+const keepTogether: CSSProperties = { whiteSpace: 'nowrap' }
 
 function describeTarget(t: TwinSetupTarget): string {
   if ('twinEmail' in t) return t.twinEmail
@@ -255,7 +256,10 @@ export function TwinSetupDialog({ open, onClose, target }: TwinSetupDialogProps)
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
               <span style={{ ...MUTED, marginRight: 'auto' }}>Key label: <b>{minted.res.label}</b> · revoke it any time on Settings → Digital twins.</span>
               {expired ? (
-                <button type="button" style={BTN_PRIMARY} disabled={busy} onClick={() => { setMinted(null) }}>Make a fresh one</button>
+                <button type="button" style={BTN_PRIMARY} disabled={busy} onClick={() => { setMinted(null) }}>
+                  {/* One break point: a squeezed button reads "Make a / fresh one", never "Make a fresh / one". */}
+                  <span style={keepTogether}>Make a</span> <span style={keepTogether}>fresh one</span>
+                </button>
               ) : null}
               <button type="button" style={BTN} onClick={onClose}>Done</button>
             </div>

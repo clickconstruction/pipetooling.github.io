@@ -66,4 +66,30 @@ describe('TwinSetupDialog', () => {
     expect(state.bodies[0]).toEqual({ action: 'mint', label: '', twin_user_id: 'u-est-1' })
     expect(screen.queryByText('Copy the command')).toBeNull()
   })
+
+  it('an expired code offers a fresh one on a button that can only break before "fresh one"', async () => {
+    state.bodies = []
+    state.reply = {
+      data: {
+        code: 'K7Q2-M9XD-4T',
+        expires_at: new Date(Date.now() - 1_000).toISOString(),
+        twin_email: 'twin-estimator-1@twins.pipetooling.local',
+        twin_kind: 'estimator',
+        label: 'Grace-MacBookPro',
+        setup_url: 'https://abc.supabase.co/functions/v1/twin-setup',
+        connector_url: 'https://abc.supabase.co/functions/v1/twin-mcp',
+      },
+      error: null,
+    }
+    renderWithProviders(<TwinSetupDialog open onClose={() => {}} target={{ kind: 'estimator' }} />)
+    await settle()
+    fireEvent.click(screen.getByText('Make my setup command'))
+    const fresh = await screen.findByRole('button', { name: 'Make a fresh one' })
+    expect(Array.from(fresh.querySelectorAll('span')).map((s) => [s.textContent, s.style.whiteSpace])).toEqual([
+      ['Make a', 'nowrap'],
+      ['fresh one', 'nowrap'],
+    ])
+    fireEvent.click(fresh)
+    await waitFor(() => expect(screen.getByText('Make my setup command')).toBeTruthy())
+  })
 })
