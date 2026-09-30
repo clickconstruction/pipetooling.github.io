@@ -173,3 +173,35 @@ export function legacyMultiDecisionNote(q: { question: string; choices?: unknown
   if (!multi) return null
   return 'Written before the one-decision rule: several decisions in one ask, no taps. Split it into one-tap questions below, or dismiss it — nothing re-asks on its own.'
 }
+
+/** The rows every count and the panel read: what a status-less row (a board load) counts as is open. */
+export type OpenQuestionShape = { status?: string; question: string; audience?: string | null; kind?: string | null; choices?: unknown; recommended?: string | null }
+
+/**
+ * The one predicate behind every count of "questions waiting on the estimator" (v2.4230,
+ * punch list #63): open, the estimator's lane, not a plans ask (those sit on the bid as a
+ * need), not an ask written before the one-decision rule (the owner's, on the Console).
+ * `groupStandingRulings` builds its `openCount` from the same three classifiers.
+ */
+export function isOpenEstimatorDecision(r: OpenQuestionShape): boolean {
+  return (r.status ?? 'open') === 'open' && effectiveTwinQuestionAudience(r) === 'estimator' && effectiveTwinQuestionKind(r) !== 'plans' && legacyMultiDecisionNote(r) == null
+}
+
+/**
+ * THE count of open estimator questions — one kernel for the Audits panel's header, the
+ * Scoreboard's Your part, the Dashboard card and the tab badge. Before it, three surfaces
+ * counted three ways (the panel read 19 while the Scoreboard read 15: its rows were loaded
+ * with `about_bid_id not null`, so the bid-less doctrine asks fell out). Feed it the FULL
+ * open list.
+ */
+export function openEstimatorQuestions(rows: readonly OpenQuestionShape[]): number {
+  return rows.filter(isOpenEstimatorDecision).length
+}
+
+/** About three quarters of a minute per one-tap question, said in fives once there are a handful: 19 → 15, 12 → 10, 3 → 2. */
+export function questionMinutesEstimate(count: number): number {
+  if (count <= 0) return 0
+  const raw = count * 0.75
+  if (count < 4) return Math.max(1, Math.round(raw))
+  return Math.max(5, Math.round(raw / 5) * 5)
+}

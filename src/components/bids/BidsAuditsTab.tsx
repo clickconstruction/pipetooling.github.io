@@ -19,7 +19,6 @@ import {
   isUnpricedAudit,
   pairTwinReferences,
   type AuditSection,
-  type AuditDigestOutcome,
   type BidAuditRow,
   type BidAuditNoteRow,
 } from '../../lib/bids/bidAudits'
@@ -40,15 +39,16 @@ import { twinQuestionAudienceColumnPresent } from '../../../supabase/functions/_
 import { useTwinQuestionBidRefs } from '../../hooks/useTwinQuestionBidRefs'
 import { AUDIT_LIST_FILTERS, auditFilterCounts, filterAuditList, type AuditListFilter } from '../../lib/bids/auditListFilter'
 import { TwinQuestionText } from './TwinQuestionText'
-import { orderPendingByStake } from '../../lib/bids/auditTriage'
+import { orderPendingByStake, pickOpenAudit } from '../../lib/bids/auditTriage'
 import { loadPricedTakeoffRows } from '../../lib/bids/loadPricedTakeoffRows'
 
 /**
  * The Audits tab, cockpit v2 (v2.2553): judge the differences, coach the robot.
  * The twin's rows and the reference bid's rows are name-matched into a true diff
  * (missed / added / quantity gaps), each difference takes a one-tap verdict that
- * posts a tagged note the digest can triage mechanically, the card opens with the
- * robot's own self-assessment, and a coaching strip shows what past notes became.
+ * posts a tagged note the digest can triage mechanically, and the card opens with the
+ * robot's own self-assessment. (The coaching strip left in v2.4230: its "recent runs"
+ * were the five OLDEST audits, and the Scoreboard already says both of its facts.)
  * Sealed shadows hold completely — before our own bid goes out, even the robot's
  * takeoff rows could anchor the estimator, so those audits show only a 🔒 row.
  * Unpriced audits (v2.2796) — the robot opened the audit before pasting its counts
@@ -160,6 +160,10 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
   const [expandedId, setExpandedId] = useState<string | null>(null)
   // twin bid_id -> its reference (comparison + diff; sealed while the ref is unsent).
   const [refByBidId, setRefByBidId] = useState<Record<string, RefInfo>>({})
+  // v2.4230: the references have been read (or the read failed) — the open-card pick waits on it.
+  const [refsLoaded, setRefsLoaded] = useState(false)
+  // v2.4230: the estimator tapped a row (or a door named one) — the open card holds from then on.
+  const [pickedByHand, setPickedByHand] = useState(false)
   // Priced active-version rows per bid (twin AND reference) for the diff, lazy per card.
   const [pricedRowsByBid, setPricedRowsByBid] = useState<Record<string, PricedRow[]>>({})
   // Verdict drafts open for editing + verdicts already posted this session.
@@ -239,6 +243,8 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
           setRefByBidId(out)
         } catch {
           /* strip is optional context — never block the tab */
+        } finally {
+          setRefsLoaded(true)
         }
       })()
       const auditIds = list.map((a) => a.id)
@@ -452,24 +458,29 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
     [audits, notesByAudit, deltaPctFor],
   )
 
-  // Auto-expand the top-stake workable pending card — never a sealed shadow.
-  // Re-runs when the refs land so a briefly-expanded sealed card snaps shut.
+  // v2.4230 (punch list #63): the open card is the top of the queue. `pickOpenAudit` waits
+  // for the notes, draft totals and references (the signals the order reads), opens the
+  // first workable pending card, re-picks as they move, and holds once the estimator picks.
   const focusAppliedRef = useRef<string | null>(null)
+  const workable = useCallback((a: AuditWithBid) => !isSealed(a) && !isUnpricedAudit(draftByAudit[a.id]), [isSealed, draftByAudit])
   useEffect(() => {
-    setExpandedId((cur) => {
-      // v2.3222: a door from the Robot Board / the envelope names the card to open — once.
-      if (focusAuditId && focusAppliedRef.current !== focusAuditId) {
-        const wanted = triaged.find((a) => a.id === focusAuditId)
-        if (wanted && !isSealed(wanted)) {
-          focusAppliedRef.current = focusAuditId
-          return wanted.id
-        }
+    // A door from the Robot Board / the envelope names the card to open — once, and it counts as a pick.
+    if (focusAuditId && focusAppliedRef.current !== focusAuditId) {
+      const wanted = triaged.find((a) => a.id === focusAuditId)
+      if (wanted && !isSealed(wanted)) {
+        focusAppliedRef.current = focusAuditId
+        setPickedByHand(true)
+        setExpandedId(wanted.id)
+        return
       }
-      const current = triaged.find((a) => a.id === cur)
-      if (current && !isSealed(current)) return cur
-      return triaged.find((a) => a.status === 'pending' && !isSealed(a) && !isUnpricedAudit(draftByAudit[a.id]))?.id ?? null
-    })
-  }, [triaged, isSealed, draftByAudit, focusAuditId])
+    }
+    const next = pickOpenAudit({ triaged, current: expandedId, picked: pickedByHand, ready: !loading && refsLoaded, workable })
+    if (next !== expandedId) setExpandedId(next)
+  }, [triaged, isSealed, workable, focusAuditId, expandedId, pickedByHand, loading, refsLoaded])
+  const openCard = (id: string) => {
+    setPickedByHand(true)
+    setExpandedId(id)
+  }
 
   // Priced active-version rows for the expanded card — the twin's draft AND (once
   // the reference has gone out) the reference bid's rows, so the diff has both sides.
@@ -603,7 +614,9 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
   }
   const finishAudit = async (audit: AuditWithBid) => {
     await setAuditStatus(audit, 'finish')
-    const next = triaged.find((a) => a.id !== audit.id && a.status === 'pending' && !isSealed(a))
+    // The pick is released: the next card is the top of the queue as the signals now read.
+    setPickedByHand(false)
+    const next = triaged.find((a) => a.id !== audit.id && a.status === 'pending' && workable(a))
     setExpandedId(next?.id ?? null)
   }
   const reopenAudit = (audit: AuditWithBid) => setAuditStatus(audit, 'reopen')
@@ -617,23 +630,6 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
   const visible = useMemo(() => filterAuditList(filterItems, listFilter).map((it) => it.audit), [filterItems, listFilter])
   const digestedCount = audits.filter((a) => a.status === 'digested').length
   const pendingCount = audits.filter((a) => a.status === 'pending').length
-
-  // Coaching record: what the team's past notes became, and the recent error runs.
-  const allNotes = Object.values(notesByAudit).flat()
-  const coachingNotes = allNotes.filter((n) => n.kind === 'note' || n.kind === 'answer').length
-  const receiptCounts: Partial<Record<AuditDigestOutcome, number>> = {}
-  for (const n of allNotes) {
-    if (n.kind === 'receipt' && n.digest_outcome) receiptCounts[n.digest_outcome] = (receiptCounts[n.digest_outcome] ?? 0) + 1
-  }
-  const recentDeltas = audits
-    .map((a) => {
-      const ref = refByBidId[a.bid_id]
-      const draft = draftByAudit[a.id]
-      if (!ref?.refValue || !draft || isUnpricedAudit(draft)) return null
-      return { num: a.bids?.bid_number, pct: ((draft.total - ref.refValue) / ref.refValue) * 100 }
-    })
-    .filter((x): x is { num: string | null; pct: number } => !!x)
-    .slice(0, 5)
 
   // Open by default when there is anything to act on or point at (one-tap questions, plans asks, a pre-rule ask waiting for the owner).
   const rulingsExpanded = rulingsOpen ?? (rulingsView.openCount > 0 || rulingsView.plansAsks.length > 0 || rulingsView.legacyAsks.length > 0)
@@ -893,31 +889,6 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
           <>Robot bids and their audit trail — view only for your role.</>
         )}
       </div>
-      {coachingNotes > 0 || Object.keys(receiptCounts).length > 0 ? (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-subtle)', padding: '0.5rem 0.9rem', marginBottom: '1rem', fontSize: '0.8125rem' }}>
-          <span>
-            👩‍🏫 <strong>Coaching record:</strong> {coachingNotes} note{coachingNotes === 1 ? '' : 's'}
-            {Object.keys(receiptCounts).length > 0 ? (
-              <>
-                {' '}→{' '}
-                {(Object.entries(receiptCounts) as Array<[AuditDigestOutcome, number]>)
-                  .map(([outcome, count]) => `${count} ${AUDIT_DIGEST_OUTCOME_LABELS[outcome]}`)
-                  .join(' · ')}
-              </>
-            ) : null}
-          </span>
-          {recentDeltas.length > 0 ? (
-            <span style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center', marginLeft: 'auto' }}>
-              <span style={{ color: 'var(--text-muted)' }}>recent runs:</span>
-              {recentDeltas.map((d, i) => (
-                <span key={i} title={d.num ? `b${d.num}` : undefined} style={{ fontFamily: 'ui-monospace, monospace', fontWeight: 700, color: Math.abs(d.pct) <= 8 ? 'var(--text-emerald-800)' : 'var(--text-red-600)' }}>
-                  {d.pct > 0 ? '+' : ''}{d.pct.toFixed(1)}%
-                </span>
-              ))}
-            </span>
-          ) : null}
-        </div>
-      ) : null}
       {loading ? (
         <div style={{ color: 'var(--text-muted)' }}>Loading audits…</div>
       ) : audits.length === 0 ? (
@@ -997,7 +968,7 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
                 <button
                   key={audit.id}
                   type="button"
-                  onClick={() => setExpandedId(audit.id)}
+                  onClick={() => openCard(audit.id)}
                   style={{ display: 'flex', flexWrap: 'wrap', gap: '0.55rem', alignItems: 'center', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '0.6rem 0.9rem', cursor: 'pointer', textAlign: 'left', font: 'inherit', color: 'inherit', width: '100%' }}
                 >
                   <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{bidLabel}</span>

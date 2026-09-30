@@ -137,6 +137,7 @@ describe('open robot questions', () => {
   })
 
   it('a plans ask on a bid with no pairing stays where it was asked', () => {
+    expect(openRobotQuestionsByBidId([question({ id: 'none', about_bid_id: null })], sourceByTwin).size).toBe(0)
     const m = openRobotQuestionsByBidId([question({ id: 'plans', kind: 'plans', about_bid_id: 'bid-lone' })], sourceByTwin)
     expect([...m.keys()]).toEqual(['bid-lone'])
   })
@@ -166,6 +167,10 @@ describe('open robot questions', () => {
   it('questions waiting on anyone are the ones that are not plans asks', () => {
     expect(robotQuestionsWaitingCount([question({ id: 'a' }), question({ id: 'b', kind: 'plans' }), question({ id: 'c', kind: null, question: 'Please attach the plumbing plans to this bid.' }), question({ id: 'd', kind: null })])).toBe(2)
     expect(robotQuestionsWaitingCount([])).toBe(0)
+    // v2.4230: a bid-less doctrine ask is a question waiting — the Scoreboard used to drop it.
+    expect(robotQuestionsWaitingCount([question({ id: 'e', about_bid_id: null })])).toBe(1)
+    // …and the operator's lane never counts.
+    expect(robotQuestionsWaitingCount([question({ id: 'f', audience: 'operator' })])).toBe(0)
   })
 })
 

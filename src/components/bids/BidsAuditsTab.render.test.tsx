@@ -131,7 +131,9 @@ describe('BidsAuditsTab', () => {
     expect(screen.getByPlaceholderText('Type your answer…')).toBeTruthy()
     expect(screen.getByText('Waste footage way low.')).toBeTruthy()
     expect(screen.getByText(/Learned: developed-length multiplier/)).toBeTruthy()
-    expect(screen.getAllByText(/placement doctrine/).length).toBeGreaterThan(0) // receipt label + coaching strip
+    expect(screen.getAllByText(/placement doctrine/).length).toBeGreaterThan(0) // the receipt's label
+    // v2.4230: the coaching strip left the tab (its "recent runs" were the oldest audits; the Scoreboard says both facts).
+    expect(screen.queryByText(/Coaching record/)).toBeNull()
     expect(screen.getByText('Finish audit')).toBeTruthy()
 
     // One composer with section chips on a pending card (cockpit rework).
