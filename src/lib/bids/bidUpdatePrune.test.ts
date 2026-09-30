@@ -30,6 +30,7 @@ function formValues(overrides: Partial<BidEditFormValues> = {}): BidEditFormValu
     lossCategory: null,
     bidValue: '50000',
     agreedValue: '',
+    acceptedAlternateTags: [],
     profit: '',
     distanceFromOffice: '38.2',
     robotOptOut: false,
@@ -137,6 +138,16 @@ describe('pruneUnchangedBidUpdateFields', () => {
     })
     expect('customer_id' in pruned).toBe(false)
     expect('gc_builder_id' in pruned).toBe(false)
+  })
+
+  it('v2.4211: accepted_alternate_tags rides with the outcome — pruned untouched, kept when the ticks or the outcome change', () => {
+    const initial = formValues()
+    const withTags = () => ({ ...fullPayload(), accepted_alternate_tags: [] as string[] })
+    expect(pruneUnchangedBidUpdateFields(withTags(), { current: formValues(), initial, bidDateSent: sameSentDate })).toEqual({})
+    const ticked = pruneUnchangedBidUpdateFields(withTags(), { current: formValues({ acceptedAlternateTags: ['Break room'] }), initial, bidDateSent: sameSentDate })
+    expect(Object.keys(ticked).sort()).toEqual(['accepted_alternate_tags', 'loss_category', 'loss_reason', 'outcome'])
+    const won = pruneUnchangedBidUpdateFields(withTags(), { current: formValues({ outcome: 'won' }), initial, bidDateSent: sameSentDate })
+    expect(Object.keys(won)).toContain('accepted_alternate_tags')
   })
 
   it('itb_links compares by content, not identity', () => {

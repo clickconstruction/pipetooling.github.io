@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { boardAlternateAddOn } from '../../lib/bids/coverLetterAddAlternates'
+import { acceptanceWords, bidIsWon } from '../../lib/bids/alternateAcceptance'
 import { formatCurrency } from '../../lib/format'
 import { parseCoverLetterAltTexts } from '../../lib/bids/coverLetterSamePage'
 import { Link } from 'react-router-dom'
@@ -1027,14 +1028,31 @@ export function BidsBidBoardTab({
       </button>
     ) : (
       <>
-        {formatBidValueShort(bid.bid_value != null ? Number(bid.bid_value) : null)}
+        {formatBidValueShort(boardValueFor(bid))}
         {renderAlternateAddOnChip(bid)}
       </>
     )
   }
 
+  /** v2.4211: the board's value is the agreed value once a won bid's customer took an alternate; the sent value otherwise. */
+  function boardValueFor(bid: BidWithBuilder): number | null {
+    const took = bidIsWon(bid.outcome) && (bid.accepted_alternate_tags ?? []).length > 0
+    if (took && bid.agreed_value != null) return Number(bid.agreed_value)
+    return bid.bid_value != null ? Number(bid.bid_value) : null
+  }
+
   /** v2.4195: "+$3.2k alt" beside the value — the offered with-and-without alternates the letter last stamped on a send. */
   function renderAlternateAddOnChip(bid: BidWithBuilder) {
+    // v2.4211: once the bid is won the chip is the answer — green with the alternate, grey without.
+    const words = acceptanceWords(bid)
+    if (bidIsWon(bid.outcome) && words) {
+      const took = (bid.accepted_alternate_tags ?? []).length > 0
+      return (
+        <span title={`Won ${words}${took && bid.agreed_value != null ? ` — agreed value $${formatCurrency(Number(bid.agreed_value))}, sent as $${formatCurrency(Number(bid.bid_value ?? 0))}` : ''}`} style={{ marginLeft: '0.3rem', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.03em', padding: '0 0.3rem', borderRadius: 3, border: `1px solid ${took ? 'var(--text-green-700)' : 'var(--border-strong)'}`, color: took ? 'var(--text-green-700)' : 'var(--text-muted)', whiteSpace: 'nowrap', verticalAlign: '1px' }}>
+          {took ? 'alt taken' : 'alt declined'}
+        </span>
+      )
+    }
     const addOn = boardAlternateAddOn(parseCoverLetterAltTexts(bid.cover_letter_alt_texts))
     if (!addOn) return null
     return (
@@ -1113,7 +1131,7 @@ export function BidsBidBoardTab({
           <div>
             <span style={labelStyle}>Bid</span>
             {bid.bid_value != null && Number(bid.bid_value) > 0 ? (
-              <>{formatCompactCurrency(Number(bid.bid_value))}{renderAlternateAddOnChip(bid)}</>
+              <>{formatCompactCurrency(boardValueFor(bid) ?? Number(bid.bid_value))}{renderAlternateAddOnChip(bid)}</>
             ) : (
               <span style={{ color: 'var(--text-muted)' }}>not set yet</span>
             )}

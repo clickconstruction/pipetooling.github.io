@@ -40,6 +40,8 @@ export type BidEditFormValues = {
   lossCategory: BidLossCategoryKey | null
   bidValue: string
   agreedValue: string
+  /** v2.4211: the with-and-without alternates the customer took (bids.accepted_alternate_tags); meaningful while won. */
+  acceptedAlternateTags: string[]
   profit: string
   distanceFromOffice: string
   lastContact: string
@@ -77,6 +79,7 @@ export type BidEditFormSetters = {
   setLossCategory: Dispatch<SetStateAction<BidLossCategoryKey | null>>
   setBidValue: Dispatch<SetStateAction<string>>
   setAgreedValue: Dispatch<SetStateAction<string>>
+  setAcceptedAlternateTags: Dispatch<SetStateAction<string[]>>
   setProfit: Dispatch<SetStateAction<string>>
   setDistanceFromOffice: Dispatch<SetStateAction<string>>
   setLastContact: Dispatch<SetStateAction<string>>
@@ -163,6 +166,7 @@ export function bidRowToFormValues(bid: BidWithBuilder, opts: BidEditFormLoadOpt
     lossCategory: isBidLossCategoryKey(savedLossCategory) ? savedLossCategory : null,
     bidValue: bid.bid_value != null ? String(bid.bid_value) : '',
     agreedValue: bid.agreed_value != null ? String(bid.agreed_value) : '',
+    acceptedAlternateTags: [...((bid as { accepted_alternate_tags?: string[] | null }).accepted_alternate_tags ?? [])],
     profit: bid.profit != null ? String(bid.profit) : '',
     distanceFromOffice: bid.distance_from_office ?? '',
     lastContact: toDatetimeLocal(bid.last_contact),
@@ -205,6 +209,7 @@ export function useBidEditForm(): BidEditForm {
   const [lossCategory, setLossCategory] = useState<BidLossCategoryKey | null>(null)
   const [bidValue, setBidValue] = useState('')
   const [agreedValue, setAgreedValue] = useState('')
+  const [acceptedAlternateTags, setAcceptedAlternateTags] = useState<string[]>([])
   const [profit, setProfit] = useState('')
   const [distanceFromOffice, setDistanceFromOffice] = useState('')
   const [lastContact, setLastContact] = useState('')
@@ -242,6 +247,7 @@ export function useBidEditForm(): BidEditForm {
     setLossCategory(null)
     setBidValue('')
     setAgreedValue('')
+    setAcceptedAlternateTags([])
     setProfit('')
     setDistanceFromOffice('')
     setLastContact('')
@@ -279,6 +285,7 @@ export function useBidEditForm(): BidEditForm {
     setLossCategory(v.lossCategory)
     setBidValue(v.bidValue)
     setAgreedValue(v.agreedValue)
+    setAcceptedAlternateTags(v.acceptedAlternateTags)
     setProfit(v.profit)
     setDistanceFromOffice(v.distanceFromOffice)
     setLastContact(v.lastContact)
@@ -328,6 +335,7 @@ export function useBidEditForm(): BidEditForm {
     lossCategory,
     bidValue,
     agreedValue,
+    acceptedAlternateTags,
     profit,
     distanceFromOffice,
     lastContact,
@@ -364,6 +372,7 @@ export function useBidEditForm(): BidEditForm {
     setLossCategory,
     setBidValue,
     setAgreedValue,
+    setAcceptedAlternateTags,
     setProfit,
     setDistanceFromOffice,
     setLastContact,

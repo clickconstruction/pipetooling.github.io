@@ -45,9 +45,10 @@ const FIELD_GROUPS: readonly FieldGroup[] = [
   { keys: ['bid_due_date', 'bid_due_time'], dirty: (c, i) => c.bidDueDate !== i.bidDueDate || c.bidDueTime !== i.bidDueTime },
   { keys: ['estimated_job_start_date'], dirty: (c, i) => c.estimatedJobStartDate !== i.estimatedJobStartDate },
   { keys: ['submitted_to'], dirty: (c, i) => c.submittedTo !== i.submittedTo },
+  // v2.4211: accepted_alternate_tags is cleared unless the outcome is won, so it rides with the outcome.
   {
-    keys: ['outcome', 'loss_reason', 'loss_category'],
-    dirty: (c, i) => c.outcome !== i.outcome || c.lossReason !== i.lossReason || c.lossCategory !== i.lossCategory,
+    keys: ['outcome', 'loss_reason', 'loss_category', 'accepted_alternate_tags'],
+    dirty: (c, i) => c.outcome !== i.outcome || c.lossReason !== i.lossReason || c.lossCategory !== i.lossCategory || !sameList(c.acceptedAlternateTags ?? [], i.acceptedAlternateTags ?? []),
   },
   { keys: ['bid_value'], dirty: (c, i) => c.bidValue !== i.bidValue },
   { keys: ['agreed_value'], dirty: (c, i) => c.agreedValue !== i.agreedValue },

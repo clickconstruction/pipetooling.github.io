@@ -29,6 +29,7 @@ function formValues(overrides: Partial<BidEditFormValues> = {}): BidEditFormValu
     lossReason: '',
     lossCategory: null,
     bidValue: '50000',
+    acceptedAlternateTags: [],
     agreedValue: 'abc',
     profit: '',
     distanceFromOffice: ' 38.2 ',
@@ -103,5 +104,14 @@ describe('buildBidSavePayload', () => {
     expect(typeof creating.last_contact).toBe('string')
     const editing = buildBidSavePayload({ values: formValues({ lastContact: '2026-09-01T10:30' }), bidDateSent: '', editing: true, canEditBidNumber: false })
     expect('last_contact' in editing).toBe(false)
+  })
+
+  it('the accepted alternates ride only while the bid is won or started (v2.4211)', () => {
+    const won = buildBidSavePayload({ values: formValues({ outcome: 'won', acceptedAlternateTags: ['Break room'] }), bidDateSent: '', editing: true, canEditBidNumber: true })
+    expect(won.accepted_alternate_tags).toEqual(['Break room'])
+    const started = buildBidSavePayload({ values: formValues({ outcome: 'started_or_complete', acceptedAlternateTags: ['Break room'] }), bidDateSent: '', editing: true, canEditBidNumber: true })
+    expect(started.accepted_alternate_tags).toEqual(['Break room'])
+    const open = buildBidSavePayload({ values: formValues({ outcome: '', acceptedAlternateTags: ['Break room'] }), bidDateSent: '', editing: true, canEditBidNumber: true })
+    expect(open.accepted_alternate_tags).toEqual([])
   })
 })

@@ -68,6 +68,8 @@ serve(async (req) => {
       revision_id?: string
       action?: 'sign' | 'decline'
       optionKey?: string
+      /** v2.4197: the with-and-without alternates the GC ticked beside the option (payload.add_ons keys). */
+      addOnKeys?: string[]
       printedName?: string
       agreedTerms?: boolean
       signaturePngBase64?: string
@@ -198,7 +200,7 @@ serve(async (req) => {
 
     const { data: bid } = await admin
       .from('bids')
-      .select('id, customer_id, project_name, outcome, bid_date_sent')
+      .select('id, customer_id, project_name, outcome, bid_date_sent, bid_value')
       .eq('id', room.bid_id)
       .maybeSingle()
     if (!bid) return json({ error: 'Not found' }, 404)
@@ -253,6 +255,10 @@ serve(async (req) => {
     if (body.agreedTerms !== true) return json({ error: 'You must agree to the terms' }, 400)
     const chosen = payload.options.find((o) => o.key === (body.optionKey ?? '').trim())
     if (!chosen) return json({ error: 'Please choose an option first.', code: 'option_required' }, 400)
+    // v2.4197: the add-ons the GC ticked — only keys the published revision carries count.
+    const wantedAddOns = new Set((Array.isArray(body.addOnKeys) ? body.addOnKeys : []).map((k) => String(k).trim()))
+    const takenAddOns = payload.add_ons.filter((a) => wantedAddOns.has(a.key))
+    const grandCents = chosen.total_cents + takenAddOns.reduce((s, a) => s + a.total_cents, 0)
 
     let storagePath: string | null = null
     const sigRaw = typeof body.signaturePngBase64 === 'string' ? body.signaturePngBase64 : ''
@@ -303,8 +309,11 @@ serve(async (req) => {
         status: 'customer_accepted',
         sent_at: latest.published_at,
         terms_snapshot: termsText,
-        line_items_snapshot: [optionLine(chosen, true)],
-        total_cents: chosen.total_cents,
+        line_items_snapshot: [
+          optionLine(chosen, true),
+          ...takenAddOns.map((a) => ({ line_item: a.name.trim() || 'Alternate', description: 'Alternate — taken with the proposal', quantity: 1, unit_price_cents: a.total_cents, amount_cents: a.total_cents })),
+        ],
+        total_cents: grandCents,
         options_snapshot: payload.options.map((o) => ({
           key: o.key,
           name: o.name,
@@ -347,6 +356,13 @@ serve(async (req) => {
       await admin.from('bid_versions').update({ outcome: 'lost', outcome_at: today }).in('id', plan.autoLostVersionIds)
     }
     if (plan.bidOutcomeSet === 'won') await admin.from('bids').update({ outcome: 'won' }).eq('id', bid.id)
+    // v2.4197: the signature answers the with-and-without alternates — the same two fields the
+    // Won dialog writes: the taken groups, and the agreed value (the sent base plus their add-ons).
+    if (payload.add_ons.length > 0 && plan.bidOutcomeSet === 'won') {
+      const sentBase = bid.bid_value != null && Number.isFinite(Number(bid.bid_value)) ? Number(bid.bid_value) : chosen.total_cents / 100
+      const agreed = Math.round((sentBase + takenAddOns.reduce((s, a) => s + a.total_cents, 0) / 100) * 100) / 100
+      await admin.from('bids').update({ accepted_alternate_tags: takenAddOns.map((a) => a.tag), agreed_value: agreed }).eq('id', bid.id)
+    }
 
     // v2.2697: the blast radius, named. A GC's click just flipped OTHER GCs' packets to Lost
     // (the staff-kernel rule for sent, unanswered packets) — the record and the email must say
@@ -359,7 +375,9 @@ serve(async (req) => {
       metadata: {
         option_key: chosen.key,
         option_name: chosen.name,
-        total_cents: chosen.total_cents,
+        total_cents: grandCents,
+        add_ons_taken: takenAddOns.map((a) => a.name),
+        add_on_keys: takenAddOns.map((a) => a.key),
         rev_number: latest.rev_number,
         estimate_id: estimateId,
         estimate_number: (inserted as { estimate_number: number } | null)?.estimate_number ?? null,
@@ -390,7 +408,7 @@ serve(async (req) => {
         customerName: gcName[0] ?? null,
         signerName: printedName,
         optionName: chosen.name.trim() || null,
-        totalCents: chosen.total_cents,
+        totalCents: grandCents,
       },
     })
     if (autoLostLine) {

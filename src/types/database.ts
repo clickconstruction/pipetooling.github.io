@@ -2913,6 +2913,7 @@ export type Database = {
       }
       bids: {
         Row: {
+          accepted_alternate_tags: string[]
           account_manager_id: string | null
           address: string | null
           adopted_into_bid_id: string | null
@@ -2998,6 +2999,7 @@ export type Database = {
           working_board_archived_by: string | null
         }
         Insert: {
+          accepted_alternate_tags?: string[]
           account_manager_id?: string | null
           address?: string | null
           adopted_into_bid_id?: string | null
@@ -3083,6 +3085,7 @@ export type Database = {
           working_board_archived_by?: string | null
         }
         Update: {
+          accepted_alternate_tags?: string[]
           account_manager_id?: string | null
           address?: string | null
           adopted_into_bid_id?: string | null

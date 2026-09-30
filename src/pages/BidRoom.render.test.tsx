@@ -232,3 +232,36 @@ describe('Bid Room change order carries the electronic-signature consent (v2.396
     expect(posted[0]).toEqual({ token: 'room-token', revision_id: 'rev-1', action: 'decline', documentId: 'co-1', note: 'Owner dropped the bar.' })
   })
 })
+
+describe('Bid Room add-ons (v2.4197)', () => {
+  it('a with-and-without alternate is ticked to start, the total follows the tick, and the signature carries the keys', async () => {
+    served.room = {
+      ...room,
+      payload: buildBidRoomRevisionPayload({
+        projectName: 'Sunridge Dental',
+        projectAddress: '4410 Stone Oak Pkwy',
+        gcName: 'Dana Ruiz',
+        serviceTypeName: 'Plumbing',
+        inclusions: '',
+        exclusions: '',
+        terms: 'Net 30.',
+        sections: [{ name: 'To Plans', isAlternate: false, revenueSum: 13580, fixtureRows: [{ fixture: 'WC', count: 4 }] }],
+        addOns: [{ tag: 'Break room', label: 'Alternate 1 — Break room', revenueSum: 3220, fixtureRows: [{ fixture: 'WC', count: 1 }] }],
+      }),
+    }
+    renderRoom()
+    await screen.findByText('Approve this proposal')
+    const box = screen.getByLabelText('Add Alternate 1 — Break room') as HTMLInputElement
+    expect(box.checked).toBe(true)
+    expect(screen.getByRole('button', { name: /^Approve “To Plans” — \$16,800\.00/ })).toBeTruthy()
+    fireEvent.click(box)
+    expect(screen.getByRole('button', { name: /^Approve “To Plans” — \$13,580\.00/ })).toBeTruthy()
+    fireEvent.click(box)
+    fireEvent.change(screen.getByLabelText('Full name'), { target: { value: 'Dana Ruiz' } })
+    fireEvent.click(screen.getByRole('checkbox', { name: /I agree to conduct business/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Approve “To Plans” — \$16,800\.00/ }))
+    await waitFor(() => expect(posted).toHaveLength(1))
+    expect(posted[0]).toMatchObject({ action: 'sign', optionKey: 'base', addOnKeys: ['group:break room'] })
+    expect(await screen.findByText(/Signed by Dana Ruiz — “To Plans” with Alternate 1 — Break room/)).toBeTruthy()
+  })
+})

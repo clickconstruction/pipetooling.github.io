@@ -17,6 +17,7 @@ describe('bid room payload parser parity', () => {
       inclusions: 'inc',
       exclusions: 'exc',
       terms: 'terms',
+      addOns: [{ tag: 'Break room', label: 'Alternate 1 — Break room', revenueSum: 3220, fixtureRows: [{ fixture: 'WC', count: 1 }] }],
     })!
     const wire = JSON.parse(JSON.stringify(built))
     expect(parseSharedBidRoomPayload(wire)).toEqual(parseBidRoomRevisionPayload(wire))

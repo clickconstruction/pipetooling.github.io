@@ -52,6 +52,7 @@ export function sampleEstimateResponse(rows: AppSettingRow[], state: SampleState
 export function sampleBidRoomResponse(rows: AppSettingRow[], state: SampleState, nowIso: string, todayYmd: string): Record<string, unknown> {
   const payload: SharedBidRoomPayload = {
     v: 1,
+    add_ons: [],
     project_name: SAMPLE_BID.projectName,
     project_address: SAMPLE_BID.projectAddress,
     gc_name: SAMPLE_GC.company,

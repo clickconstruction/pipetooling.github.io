@@ -15,6 +15,7 @@ import { mapCountRowsByFixture } from '../../lib/bids/mapCountRowsByFixture'
 import { sumByAlternate } from '../../lib/bids/alternateScope'
 import { sameSolveScope, scopeWorkbenchRows, solveScopeLabel, type WorkbenchSolveScope } from '../../lib/bids/workbenchSolveScope'
 import { alternateScopeKey, isAlternateRow } from '../../lib/bids/countSheet'
+import { isDeclinedRow } from '../../lib/bids/alternateAcceptance'
 import { searchPriceBookEntries, seedPricingAssignmentSearch, type AssignMatchMode, type PriceBookSearchResult } from '../../lib/bids/priceBookAssignSearch'
 import { SpotlightTour } from '../SpotlightTour'
 import { scenarioPricingRows } from '../../lib/bids/scenarioPricingRows'
@@ -2375,8 +2376,11 @@ export function BidsPricingTab({
                 const altRevenue = sumByAlternate(effScoped, altTags, (r) => r.effRevenue)
                 const altCost = sumByAlternate(effScoped, altTags, (r) => r.cost)
                 const altRowIds = new Set(pricingCountRows.filter((cr) => isAlternateRow(cr, altTags)).map((cr) => cr.id))
+                const declinedIds = new Set(selectedBidForPricing ? pricingCountRows.filter((cr) => isDeclinedRow(cr, selectedBidForPricing)).map((cr) => cr.id) : [])
                 const altChip = (id: string) =>
-                  altRowIds.has(id) ? (
+                  declinedIds.has(id) ? (
+                    <span title="The customer did not take this alternate — priced as sent, out of the job" style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.06em', padding: '0 0.3rem', borderRadius: 3, border: '1px solid var(--border-strong)', color: 'var(--text-muted)', marginLeft: '0.35rem', verticalAlign: '1px' }}>ALT · declined</span>
+                  ) : altRowIds.has(id) ? (
                     <span title="In an alternate group — priced with and without" style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.06em', padding: '0 0.3rem', borderRadius: 3, border: '1px solid var(--text-amber-700)', color: 'var(--text-amber-700)', marginLeft: '0.35rem', verticalAlign: '1px' }}>ALT</span>
                   ) : null
                 const previewCount = eff.filter((r) => r.isPreview && !r.isVetoed).length
