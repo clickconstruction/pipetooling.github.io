@@ -27,20 +27,23 @@ import { resolveEmailWording } from './emailWording'
 const MAX_PDF_BASE64_CHARS = 5_500_000
 
 /** The email around the attached release — plain and formal; the PDF is the document. */
-export function buildLienReleaseEmailBodies(args: { formLabel: string; projectDescription: string; amountLabel: string }): {
+export function buildLienReleaseEmailBodies(args: { formLabel: string; projectDescription: string; amountLabel: string; billLabel?: string | null }): {
   subject: string
   text: string
   html: string
 } {
-  const subject = `Release of lien — ${args.projectDescription || 'your project'}`
-  const text = [
-    `Attached is the signed release of lien (${args.formLabel}, ${args.amountLabel}) for ${args.projectDescription || 'your project'}.`,
-    '',
-    'The attached PDF is the complete, signed document for your records.',
-  ].join('\n')
+  // v2.4274: a waiver sent for one bill names it in the subject, so it threads with that bill's email.
+  const bill = (args.billLabel ?? '').trim()
+  const subject = bill ? `Lien waiver for ${bill}` : `Release of lien — ${args.projectDescription || 'your project'}`
+  const lead = bill
+    ? `Attached is the signed lien waiver (${args.formLabel}, ${args.amountLabel}) for ${bill}${args.projectDescription ? ` — ${args.projectDescription}` : ''}.`
+    : `Attached is the signed release of lien (${args.formLabel}, ${args.amountLabel}) for ${args.projectDescription || 'your project'}.`
+  const text = [lead, '', 'The attached PDF is the complete, signed document for your records.'].join('\n')
   const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   const html =
-    `<p>Attached is the signed release of lien (<strong>${esc(args.formLabel)}</strong>, ${esc(args.amountLabel)}) for ${esc(args.projectDescription || 'your project')}.</p>` +
+    (bill
+      ? `<p>Attached is the signed lien waiver (<strong>${esc(args.formLabel)}</strong>, ${esc(args.amountLabel)}) for ${esc(bill)}${args.projectDescription ? ` — ${esc(args.projectDescription)}` : ''}.</p>`
+      : `<p>Attached is the signed release of lien (<strong>${esc(args.formLabel)}</strong>, ${esc(args.amountLabel)}) for ${esc(args.projectDescription || 'your project')}.</p>`) +
     `<p>The attached PDF is the complete, signed document for your records.</p>`
   return { subject, text, html }
 }
@@ -60,13 +63,15 @@ export type SendLienReleaseEmailResult = { ok: true; sentTo: string } | { ok: fa
 export async function sendLienReleaseEmailToCustomer(
   release: JobLienReleaseRow,
   job: { id: string; customer_email: string | null; hcp_number: string | null; click_number: string | null },
+  /** v2.4274: send to the GC's billing email instead of the job's customer, and name the bill in the subject. */
+  opts: { recipient?: string | null; billLabel?: string | null; onDeviceOf?: string | null } = {},
 ): Promise<SendLienReleaseEmailResult> {
   try {
     if (lienReleaseStatus(release) !== 'signed' || release.voided_at) {
       return { ok: false, message: 'Only a signed release can be emailed.' }
     }
-    const recipient = (job.customer_email ?? '').trim()
-    if (!recipient) return { ok: false, message: 'Job has no customer email; add it on Edit Job.' }
+    const recipient = ((opts.recipient ?? '').trim() || (job.customer_email ?? '')).trim()
+    if (!recipient) return { ok: false, message: 'No email to send to — add the GC’s billing email or the job’s customer email.' }
     const { data: auth } = await supabase.auth.getSession()
     const token = auth.session?.access_token
     if (!token) return { ok: false, message: 'Not signed in' }
@@ -90,10 +95,13 @@ export async function sendLienReleaseEmailToCustomer(
             mode: 'type',
             printedName: release.signer_printed_name,
             auditLine:
-              lienReleaseSignatureAuditLine({
-                signed_at: release.signed_at,
-                signer_consented_at: release.signer_consented_at,
-              }) ?? '',
+              lienReleaseSignatureAuditLine(
+                {
+                  signed_at: release.signed_at,
+                  signer_consented_at: release.signer_consented_at,
+                },
+                opts.onDeviceOf ?? null,
+              ) ?? '',
           }
         : null
       pdfBase64 = await blobToBase64(await buildLienWaiverPdfBlob(formType, fields, signature))
@@ -106,6 +114,7 @@ export async function sendLienReleaseEmailToCustomer(
       formLabel,
       projectDescription: fields.projectDescription,
       amountLabel,
+      billLabel: opts.billLabel ?? null,
     })
     // Dev-saved wording override (Settings → Email templates, v2.2658);
     // built-in copy is the fallback and keeps its richer HTML.

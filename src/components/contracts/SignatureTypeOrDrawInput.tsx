@@ -38,6 +38,8 @@ export type SignatureTypeOrDrawInputProps = {
   maxWidth?: number
   /** v2.3636: the language of Type / Draw, the draw hint and Clear. Default English. */
   lang?: SignatureFormLang
+  /** v2.4274: the switch is hidden — the form allows this one mode only. */
+  lockMode?: SignatureMode
 }
 
 export const SIGNATURE_NAME_PLACEHOLDER = 'Your full legal name'
@@ -69,7 +71,7 @@ const segmentBtnStyle = (active: boolean): CSSProperties => ({
 
 export const SignatureTypeOrDrawInput = forwardRef<SignatureTypeOrDrawHandle, SignatureTypeOrDrawInputProps>(
   function SignatureTypeOrDrawInput(
-    { mode, onModeChange, printedName, placeholderName = SIGNATURE_NAME_PLACEHOLDER, disabled = false, align = 'center', maxWidth = CANVAS_W, lang = 'en' },
+    { mode, onModeChange, printedName, placeholderName = SIGNATURE_NAME_PLACEHOLDER, disabled = false, align = 'center', maxWidth = CANVAS_W, lang = 'en', lockMode },
     ref,
   ) {
     const s = signatureFormStrings(lang)
@@ -115,25 +117,27 @@ export const SignatureTypeOrDrawInput = forwardRef<SignatureTypeOrDrawHandle, Si
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: centered ? 'center' : 'stretch', width: '100%' }}>
-        <div
-          role="group"
-          aria-label={s.modeAria}
-          style={{
-            display: 'flex',
-            gap: '0.5rem',
-            flexWrap: 'wrap',
-            marginTop: '0.75rem',
-            justifyContent: centered ? 'center' : 'flex-start',
-            width: '100%',
-          }}
-        >
-          <button type="button" disabled={disabled} onClick={() => onModeChange('type')} style={segmentBtnStyle(mode === 'type')}>
-            {s.type}
-          </button>
-          <button type="button" disabled={disabled} onClick={() => onModeChange('draw')} style={segmentBtnStyle(mode === 'draw')}>
-            {s.draw}
-          </button>
-        </div>
+        {lockMode ? null : (
+          <div
+            role="group"
+            aria-label={s.modeAria}
+            style={{
+              display: 'flex',
+              gap: '0.5rem',
+              flexWrap: 'wrap',
+              marginTop: '0.75rem',
+              justifyContent: centered ? 'center' : 'flex-start',
+              width: '100%',
+            }}
+          >
+            <button type="button" disabled={disabled} onClick={() => onModeChange('type')} style={segmentBtnStyle(mode === 'type')}>
+              {s.type}
+            </button>
+            <button type="button" disabled={disabled} onClick={() => onModeChange('draw')} style={segmentBtnStyle(mode === 'draw')}>
+              {s.draw}
+            </button>
+          </div>
+        )}
 
         {mode === 'type' ? (
           <div style={{ marginTop: '0.75rem', width: '100%', maxWidth }}>

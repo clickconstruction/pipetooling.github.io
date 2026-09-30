@@ -40,7 +40,8 @@ vi.mock('../../lib/supabase', async () => {
 })
 
 const invoice = makeInvoice({ id: 'inv-1', status: 'billed', amount: 2200, sequence_order: 0 })
-const job = makeJob({ id: 'j1', hcp_number: '375', job_name: 'Springtown Vet', customer_name: 'Knight Contracting', invoices: [invoice] })
+// revenue above the one bill: a progress payment, so the through date box is on the form (a bill that covers the whole job picks the final form, v2.4274)
+const job = makeJob({ id: 'j1', hcp_number: '375', job_name: 'Springtown Vet', customer_name: 'Knight Contracting', invoices: [invoice], revenue: 6000 })
 
 const HELD_LINE = /Not saved: a date is not finished\. Type the year in full, like \d{4}\./
 const signedBox = () => screen.getByLabelText('Signature date') as HTMLInputElement
@@ -106,7 +107,7 @@ describe('LienReleaseModal — a date caught half typed', () => {
 describe('LienReleaseModal — a half-typed date and the clicks that issue the waiver', () => {
   const STOPS_SIGNATURE = /Finish the “Signature” date before this is issued\. Type the year in full, like \d{4}\./
 
-  it.each(['Mark issued', 'Print for signature', 'Download PDF', '✍ Request signature'])('%s mints nothing over a half-typed signature date: the toast names the box', async (button) => {
+  it.each(['Mark issued', 'Print for signature', 'Download PDF', 'Later, from his desk', '✍ He signs now'])('%s mints nothing over a half-typed signature date: the toast names the box', async (button) => {
     await openWaiver()
     await pauseAfter(() => fireEvent.change(signedBox(), { target: { value: '0026-09-30' } }))
     fireEvent.click(screen.getByRole('button', { name: button }))

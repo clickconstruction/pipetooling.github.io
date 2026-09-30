@@ -3136,7 +3136,7 @@ Body: `{ report_id, to: string[], cc?: string[], subject, email_text, email_html
 
 **Endpoint**: `POST /functions/v1/send-lien-release-email` · **Authentication**: Bearer JWT, `auth.getUser` in-body, user-scoped client (RLS applies), `verify_jwt = false` on the gateway (send-physical-invoice-email pattern). **Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`.
 
-Body: `{ release_id, job_id, customer_email, subject?, email_text?, email_html?, pdf_base64, pdf_filename? }`. Guards: release must belong to the job, be `status = 'signed'`, and not voided; `customer_email` must match `jobs_ledger.customer_email` (case-insensitive); PDF ≤ 6M base64 chars. Success: `{ success: true }`; if the Resend send succeeds but the sent-stamp UPDATE fails, returns 500 with "mark it sent manually" (email already went out).
+Body: `{ release_id, job_id, customer_email, subject?, email_text?, email_html?, pdf_base64, pdf_filename? }`. Guards: release must belong to the job, be `status = 'signed'`, and not voided; `customer_email` must be the job's customer email **or, since v2.4274, the GC's `customers.billing_email`** on a sub job (`jobs_ledger.gc_customer_id`) — both read by the function, case-insensitive, never trusted from the body; PDF ≤ 6M base64 chars. The client names the bill in the subject when the waiver covers one (*Lien waiver for Bill 2 · 977 Springtown*). Success: `{ success: true }`; if the Resend send succeeds but the sent-stamp UPDATE fails, returns 500 with "mark it sent manually" (email already went out).
 
 ### send-lien-filing-email
 

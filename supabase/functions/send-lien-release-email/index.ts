@@ -85,14 +85,24 @@ serve(async (req) => {
 
     const { data: jl, error: jlErr } = await userClient
       .from('jobs_ledger')
-      .select('id, customer_email')
+      .select('id, customer_email, gc_customer_id')
       .eq('id', jobId)
       .single()
     if (jlErr || !jl) return jsonResponse({ error: 'Job not found' }, 403)
-    const jobEmail = typeof jl.customer_email === 'string' ? jl.customer_email.trim() : ''
-    if (!jobEmail) return jsonResponse({ error: 'Job has no customer email; add it on Edit Job' }, 400)
-    if (customerEmailIn.toLowerCase() !== jobEmail.toLowerCase()) {
-      return jsonResponse({ error: 'customer_email must match the job customer email' }, 400)
+    // The recipient is the job's customer — or, on a sub job, the GC it bills (v2.4274: the
+    // waiver goes to whoever pays the bill; the GC's billing email is read here, never trusted from the body).
+    const allowed = new Set<string>()
+    const jobEmail = typeof jl.customer_email === 'string' ? jl.customer_email.trim().toLowerCase() : ''
+    if (jobEmail) allowed.add(jobEmail)
+    const gcId = typeof jl.gc_customer_id === 'string' ? jl.gc_customer_id : null
+    if (gcId) {
+      const { data: gc } = await userClient.from('customers').select('billing_email').eq('id', gcId).maybeSingle()
+      const gcEmail = typeof gc?.billing_email === 'string' ? gc.billing_email.trim().toLowerCase() : ''
+      if (gcEmail) allowed.add(gcEmail)
+    }
+    if (allowed.size === 0) return jsonResponse({ error: 'Job has no customer or GC email; add it on Edit Job or the GC’s record' }, 400)
+    if (!allowed.has(customerEmailIn.toLowerCase())) {
+      return jsonResponse({ error: 'customer_email must be the job’s customer email or its GC’s billing email' }, 400)
     }
 
     const subject =

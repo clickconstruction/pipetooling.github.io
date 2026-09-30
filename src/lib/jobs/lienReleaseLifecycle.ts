@@ -57,10 +57,14 @@ export function canRequestLienSignature(
 }
 
 /** The one-line electronic-signature audit every rendering carries under the signature. */
-export function lienReleaseSignatureAuditLine(row: {
-  signed_at: string | null
-  signer_consented_at: string | null
-}): string | null {
+export function lienReleaseSignatureAuditLine(
+  row: {
+    signed_at: string | null
+    signer_consented_at: string | null
+  },
+  /** v2.4274: the leader signed on someone else's screen — named after the stamp ("· on Taunya’s device"). */
+  onDeviceOf?: string | null,
+): string | null {
   if (!row.signed_at) return null
   const when = new Date(row.signed_at)
   const stamp = new Intl.DateTimeFormat('en-US', {
@@ -71,7 +75,8 @@ export function lienReleaseSignatureAuditLine(row: {
     hour: 'numeric',
     minute: '2-digit',
   }).format(when)
-  return `Signed electronically in ClickTooling · ${stamp} CT${row.signer_consented_at ? ` · consent recorded${esignAuditSuffix()}` : ''}`
+  const device = (onDeviceOf ?? '').trim()
+  return `Signed electronically in ClickTooling · ${stamp} CT${row.signer_consented_at ? ` · consent recorded${esignAuditSuffix()}` : ''}${device ? ` · on ${device}’s device` : ''}`
 }
 
 /** Theme-token chip colors per lifecycle tone — shared by the modal history and Documents rows. */

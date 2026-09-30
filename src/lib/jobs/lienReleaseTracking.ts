@@ -17,7 +17,12 @@ import {
 export type JobLienReleaseRow = Database['public']['Tables']['job_lien_releases']['Row']
 
 export function isLienWaiverFormType(v: string): v is LienWaiverFormType {
-  return v === 'conditional_progress' || v === 'unconditional_progress' || v === 'unconditional_final'
+  return v === 'conditional_progress' || v === 'unconditional_progress' || v === 'conditional_final' || v === 'unconditional_final'
+}
+
+/** A conditional form — progress or final (v2.4274) — waits on the money behind it. */
+export function isConditionalLienForm(v: string): boolean {
+  return v === 'conditional_progress' || v === 'conditional_final'
 }
 
 export function lienReleaseFormLabel(formType: string): string {
@@ -59,7 +64,7 @@ export function lienReleaseClearance(
   release: Pick<JobLienReleaseRow, 'form_type' | 'amount' | 'invoice_ids' | 'created_at'>,
   job: Pick<JobWithDetails, 'payments' | 'payments_made'>,
 ): LienReleaseClearance {
-  if (release.form_type !== 'conditional_progress') return 'not_applicable'
+  if (!isConditionalLienForm(release.form_type)) return 'not_applicable'
   const amount = Number(release.amount ?? 0)
   if (amount <= 0) return 'cleared'
   const ids = new Set(release.invoice_ids ?? [])
@@ -114,7 +119,7 @@ export function lienReleasesOwingUnconditional(
     const covered = new Set(r.invoice_ids ?? [])
     return !live.some(
       (u) =>
-        u.form_type !== 'conditional_progress' &&
+        !isConditionalLienForm(u.form_type) &&
         u.created_at >= r.created_at &&
         (covered.size === 0 ||
           (u.invoice_ids ?? []).length === 0 ||

@@ -41,6 +41,8 @@ export type ContractAcceptSignatureFormProps = {
   submitLabel?: string
   /** v2.3636: the language of the form's own words (name label, Type / Draw, hints). Defaults to the consent's language, else English. */
   lang?: SignatureFormLang
+  /** v2.4274: one mode only, no Type / Draw switch — a present leader draws on someone else's screen. */
+  lockMode?: SignatureMode
 }
 
 export function ContractAcceptSignatureForm({
@@ -57,9 +59,10 @@ export function ContractAcceptSignatureForm({
   agreeLabel = 'I have read and agree to this contract.',
   submitLabel = 'Submit signature',
   lang,
+  lockMode,
 }: ContractAcceptSignatureFormProps) {
   const s = signatureFormStrings(lang ?? consent?.lang)
-  const [acceptMode, setAcceptMode] = useState<SignatureMode>('type')
+  const [acceptMode, setAcceptMode] = useState<SignatureMode>(lockMode ?? 'type')
   const [fieldHint, setFieldHint] = useState<string | null>(null)
   const [consented, setConsented] = useState(false)
   // v2.3159: the Type / Draw input is shared with the Bid Room; the pad is read at submit.
@@ -175,11 +178,13 @@ export function ContractAcceptSignatureForm({
 
       <SignatureTypeOrDrawInput
         ref={padRef}
-        mode={acceptMode}
+        mode={lockMode ?? acceptMode}
         onModeChange={(m) => {
+          if (lockMode) return
           setAcceptMode(m)
           setFieldHint(null)
         }}
+        lockMode={lockMode}
         printedName={printedName}
         placeholderName={s.namePlaceholder}
         disabled={submitting}

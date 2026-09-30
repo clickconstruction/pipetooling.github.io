@@ -286,3 +286,56 @@ describe('electronic signature rendering (v2.2619)', () => {
     expect(html).toContain('x &lt; y')
   })
 })
+
+// ---- v2.4274: the fourth form, the two toggles, the bill pick ----
+import { LIEN_WAIVER_FORM_CITES, LIEN_WAIVER_FORM_SHORT_LABELS, LIEN_WAIVER_FORM_TYPES, lienWaiverFormFrom, lienWaiverIsConditional, lienWaiverToggles, lienWaiverWhy, pickLienWaiverForBill } from './lienWaiverRelease'
+
+type BillLike = { id: string; amount: number; sequence_order: number; status: string }
+const bill = (b: BillLike) => b as unknown as JobWithDetails['invoices'][number]
+
+describe('the four forms as two questions (v2.4274)', () => {
+  it('toggles ↔ form types, both ways', () => {
+    expect(lienWaiverFormFrom({ conditional: true, final: false })).toBe('conditional_progress')
+    expect(lienWaiverFormFrom({ conditional: true, final: true })).toBe('conditional_final')
+    expect(lienWaiverFormFrom({ conditional: false, final: true })).toBe('unconditional_final')
+    for (const t of LIEN_WAIVER_FORM_TYPES) expect(lienWaiverFormFrom(lienWaiverToggles(t))).toBe(t)
+    expect(lienWaiverIsConditional('conditional_final')).toBe(true)
+    expect(lienWaiverIsConditional('unconditional_progress')).toBe(false)
+  })
+  it('conditional final: titled, cited § 53.284(d), asks who the check is from, has no through date, releases on clearance', () => {
+    expect(lienWaiverTitle('conditional_final')).toBe('Conditional Waiver and Release on Final Payment')
+    expect(LIEN_WAIVER_FORM_CITES.conditional_final).toBe('§ 53.284(d)')
+    expect(lienWaiverUsesField('conditional_final', 'checkFrom')).toBe(true)
+    expect(lienWaiverUsesField('conditional_final', 'throughDate')).toBe(false)
+    const paras = buildLienWaiverParagraphs('conditional_final', { ...FIELDS, amount: '4800' })
+    expect(paras[0]).toContain('check from Knight Contracting in the sum of $4,800.00')
+    expect(paras[2]).toContain('This is the final payment')
+    expect(paras[3]).toContain('conditional upon actual receipt and clearance')
+    expect(LIEN_WAIVER_FORM_SHORT_LABELS.conditional_final).toBe('Conditional · final')
+  })
+  it('the why line names the payor and warns on the unconditional forms', () => {
+    expect(lienWaiverWhy('conditional_progress', 'Knight Contracting')).toBe('Takes effect when Knight Contracting’s check clears. Safe to sign now; the unconditional follows when the payment settles.')
+    expect(lienWaiverWhy('unconditional_progress', 'Knight')).toContain('Texas forbids requiring it before payment')
+    expect(lienWaiverWhy('conditional_final', '')).toContain('The last bill')
+  })
+  it('picks the waiver from the bill: unsettled progress bill → conditional progress; the settled last bill → unconditional final', () => {
+    const inv1 = bill({ id: 'a', amount: 11240, sequence_order: 0, status: 'billed' })
+    const inv2 = bill({ id: 'b', amount: 15406, sequence_order: 1, status: 'billed' })
+    const inv3 = bill({ id: 'c', amount: 9354, sequence_order: 2, status: 'ready_to_bill' })
+    const job = jobWith({ invoices: [inv1, inv2, inv3], payments: [{ invoice_id: 'a', amount: 11240 }] as never, revenue: 36000 })
+    expect(pickLienWaiverForBill(job, inv2)).toMatchObject({ formType: 'conditional_progress', settled: false, final: false, facts: ['Not settled yet', 'Bill 2 of 3 · not the last'] })
+    expect(pickLienWaiverForBill(job, inv1)).toMatchObject({ formType: 'unconditional_progress', settled: true, final: false })
+    const paidAll = jobWith({ invoices: [inv1, inv2, inv3], payments: [{ invoice_id: 'a', amount: 11240 }, { invoice_id: 'b', amount: 15406 }, { invoice_id: 'c', amount: 9354 }] as never, revenue: 36000 })
+    expect(pickLienWaiverForBill(paidAll, inv3)).toMatchObject({ formType: 'unconditional_final', settled: true, final: true, facts: ['Settled', 'Bill 3 of 3 · the last'] })
+    expect(pickLienWaiverForBill(job, inv3)).toMatchObject({ formType: 'conditional_final', final: true })
+    // more still to bill than the minted lines cover → the "last" line is still a progress payment
+    const moreToBill = jobWith({ invoices: [inv1, inv2], payments: [], revenue: 36000 })
+    expect(pickLienWaiverForBill(moreToBill, inv2)).toMatchObject({ formType: 'conditional_progress', final: false })
+  })
+  it('unconditional final prefills the whole covered amount, not the open remainder', () => {
+    const one = bill({ id: 'a', amount: 4800, sequence_order: 0, status: 'billed' })
+    const job = jobWith({ invoices: [one], payments: [{ invoice_id: 'a', amount: 4800 }] as never, revenue: 4800, payments_made: 4800 })
+    expect(lienWaiverPrefillAmount('unconditional_final', job, [one])).toBe(4800)
+    expect(lienWaiverPrefillAmount('conditional_final', job, [one])).toBe(0)
+  })
+})

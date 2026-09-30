@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { FileCheck2 } from 'lucide-react'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import {
+  isConditionalLienForm,
   isLienWaiverFormType,
   lienReleaseClearance,
   lienReleaseFieldsFromSnapshot,
@@ -143,7 +144,7 @@ export default function BillCustomerLienReleaseStrip({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
           {live.map((r) => {
             const clearance = jobDetails ? lienReleaseClearance(r, jobDetails) : 'not_applicable'
-            const conditional = r.form_type === 'conditional_progress'
+            const conditional = isConditionalLienForm(r.form_type)
             return (
               <div
                 key={r.id}
@@ -181,7 +182,7 @@ export default function BillCustomerLienReleaseStrip({
                   {conditional && clearance === 'cleared' && canIssue ? (
                     <button
                       type="button"
-                      onClick={() => setReleaseModal({ formType: 'unconditional_progress', invoiceIds: r.invoice_ids ?? [] })}
+                      onClick={() => setReleaseModal({ formType: r.form_type === 'conditional_final' ? 'unconditional_final' : 'unconditional_progress', invoiceIds: r.invoice_ids ?? [] })}
                       style={{ background: 'none', border: 'none', color: 'var(--text-green-700)', fontWeight: 700, cursor: 'pointer', padding: 0, fontSize: '0.75rem' }}
                     >
                       Issue unconditional

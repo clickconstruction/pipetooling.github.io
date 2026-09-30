@@ -10166,6 +10166,7 @@ export type Database = {
           signature_requested_by: string | null
           signed_at: string | null
           signed_date: string | null
+          signed_on_device_of: string | null
           signed_pdf_path: string | null
           signer_consented_at: string | null
           signer_printed_name: string | null
@@ -10195,6 +10196,7 @@ export type Database = {
           signature_requested_by?: string | null
           signed_at?: string | null
           signed_date?: string | null
+          signed_on_device_of?: string | null
           signed_pdf_path?: string | null
           signer_consented_at?: string | null
           signer_printed_name?: string | null
@@ -10224,6 +10226,7 @@ export type Database = {
           signature_requested_by?: string | null
           signed_at?: string | null
           signed_date?: string | null
+          signed_on_device_of?: string | null
           signed_pdf_path?: string | null
           signer_consented_at?: string | null
           signer_printed_name?: string | null
