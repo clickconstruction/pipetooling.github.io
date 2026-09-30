@@ -53,6 +53,12 @@ describe('formatCompactCurrency', () => {
   it('keeps one decimal otherwise', () => {
     expect(formatCompactCurrency(5500)).toBe('$5.5k')
   })
+
+  it('puts a comma every three digits of the thousands (v2.4264)', () => {
+    expect(formatCompactCurrency(15813000)).toBe('$15,813k')
+    expect(formatCompactCurrency(1240500)).toBe('$1,240.5k')
+    expect(formatCompactCurrency(820000)).toBe('$820k')
+  })
 })
 
 describe('formatBidValueShort', () => {
@@ -65,8 +71,10 @@ describe('formatBidValueShort', () => {
     expect(formatBidValueShort(5500)).toBe('5.5k')
   })
 
-  it('keeps thousands for million-dollar bids', () => {
-    expect(formatBidValueShort(1240000)).toBe('1240k')
+  it('keeps thousands for million-dollar bids, with a comma every three digits (v2.4264)', () => {
+    expect(formatBidValueShort(1240000)).toBe('1,240k')
+    expect(formatBidValueShort(15813000)).toBe('15,813k')
+    expect(formatBidValueShort(452000)).toBe('452k')
   })
 })
 

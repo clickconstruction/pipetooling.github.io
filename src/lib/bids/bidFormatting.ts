@@ -14,17 +14,27 @@ type Customer = Database['public']['Tables']['customers']['Row']
 export function formatCompactCurrency(n: number | null): string {
   if (n == null) return '—'
   const k = n / 1000
-  if (k % 1 === 0) return `$${k}k`
-  return `$${k.toFixed(1)}k`
+  if (k % 1 === 0) return `$${groupThousands(k.toFixed(0))}k`
+  return `$${groupThousands(k.toFixed(1))}k`
 }
 
-/** Bid value in thousands with a `k` suffix — `153000` → `153k`. The suffix
+/** v2.4264: a comma every three digits of the whole part — `15813` → `15,813`, `1240.5` → `1,240.5` — so a
+ *  four-digit thousands figure reads at a glance. Takes the already-rounded string so rounding stays the caller's. */
+function groupThousands(fixed: string): string {
+  const [whole = '', frac] = fixed.split('.')
+  const sign = whole.startsWith('-') ? '-' : ''
+  const digits = sign ? whole.slice(1) : whole
+  const grouped = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  return `${sign}${grouped}${frac != null ? `.${frac}` : ''}`
+}
+
+/** Bid value in thousands with a `k` suffix — `153000` → `153k`, `15813000` → `15,813k`. The suffix
  *  matters on the Bid Board phone cards, where the value has no column header
  *  to identify it. */
 export function formatBidValueShort(n: number | null): string {
   if (n == null) return '—'
   const valueInThousands = n / 1000
-  return `${valueInThousands >= 10 ? valueInThousands.toFixed(0) : valueInThousands.toFixed(1)}k`
+  return `${groupThousands(valueInThousands >= 10 ? valueInThousands.toFixed(0) : valueInThousands.toFixed(1))}k`
 }
 
 export function formatTimeSinceLastContact(iso: string | null): string {
