@@ -1,0 +1,204 @@
+---
+name: "Bid history: every value anyone entered on a bid, and a way to put one back"
+number: 73
+group: ready
+status: planned 2026-09-30 — the ask, the read of Wendi's bid, the design and its two "is this the best we can do?" passes, the mock-up · nothing built · PR 1 (capture) is safe to ship on its own and should go first, because history starts the day it deploys
+summary: >
+  Wendi lost work on a SpaceX bid after re-importing counts and there was no way to see what the
+  bid had said before, or who changed it. Nothing on a bid keeps its old value: an edit overwrites,
+  a delete is kept for a dev only, and the Cover Letter's own boxes are never saved at all. Bid
+  history is one ledger of every value anyone enters on a bid, written by a database trigger so no
+  save path can miss it; a History switch on the Bids page that shows each cell's past under it and
+  lists everything that happened on the bid, newest first, grouped into actions ("Imported 23 rows
+  from CountTooling"); and Put back, per value and per removed row, so an estimator recovers her
+  own work without a dev. Three small fixes stop the losses at the source and can ship first.
+next: >
+  The owner's four calls (who sees whose edits; how long to keep; may a non-dev put a row back;
+  which bid columns count), then PR 1 the capture migration — it is safe without any call and
+  every day it waits is a day with no history. PR 0's three loss fixes are independent and can go
+  in any order, before or after.
+size: S (PR 0, three small fixes) + S (PR 1 capture) + M (PR 2 the pane) + M (PR 3 the switch on the cells) + M (PR 4 put back) + S (PR 5 action captions)
+blocker: none for PR 0 and PR 1; the owner's calls before PR 2–4 are shown to anyone.
+---
+
+# Bid history: every value anyone entered on a bid, and a way to put one back
+
+Mock-up: [`mockup.html`](./mockup.html) (the Pricing tab with History on, and the pane) — also at https://claude.ai/artifact/399oWZLPy7xi22D8gciNFi.
+
+## The ask
+
+Grace, 2026-09-30: "Estimator Wendi is reporting that after a recent attempt to upload some SpaceX
+information she lost her history on her bid. Do we have a tool to see price history on a bid where a
+user could potentially toggle a mode and see all the values he or she or anyone has entered on the
+bid? If not, can you help me come up with a plan to add this and deeply think through what this
+could look like?"
+
+## What exists today (read off the code and prod, 2026-09-30)
+
+- **No table keeps an old value when a bid is edited.** Edit Bid autosaves a diff and moves its
+  baseline forward (`useBidEditController.ts`); Pricing, Takeoffs, Labor and Counts write straight to
+  their tables. Only `bid_pricing_assignments` and `bid_count_row_custom_prices` carry
+  `updated_by` / `updated_at`, and those say who wrote last, not what it was.
+- **Deletes are kept, for a dev, for 90 days.** `deleted_records_archive` (a BEFORE DELETE trigger
+  over the bid's cascade closure) and Settings → Data & recovery → *Recently deleted*, which puts a
+  whole bundle back, all or nothing. Three bid tables are not covered: `bid_count_row_custom_costs`
+  (which also has no FK to its count row, so its rows are orphaned by a delete), `bid_takeoff_stage_splits`,
+  `bid_submittal_takeoff_choices`.
+- **Two things called "history" on the tabs are not this bid's past**: `bid_pricing_history` is the
+  Pricing tab's win/loss calibration strip from other bids; `takeoff_fixture_history` is "what this
+  fixture usually gets" on other bids.
+- **Undo exists twice, one level each**: the ten-second toast after a counts import
+  (`countsImportUndo.ts`) and the margin brush's Undo sweep, both in memory.
+- **Two ways work vanishes without any delete being pressed**:
+  - the Cover Letter's per-bid Inclusions, Exclusions and Terms boxes are React state only
+    (`Bids.tsx` ~556, `BidsCoverLetterTab.tsx` ~2128) — typed, shown, never saved; a reload empties them;
+  - the Labor tab's load sync (`useBidPricingEngine.ts` ~685) deletes every hours row whose fixture
+    name no longer matches a count row and mints book defaults in its place, so a re-import that
+    renames fixtures (the `[Group]` fix of v2.4188 changes names) wipes typed hours.
+- The counts import itself only **appends** rows (`insertCountRows`, one row at a time); Clear all
+  counts hard-deletes the version's rows and the cascade takes prices, assignments, takeoff lines,
+  mappings, splits and submittal ticks with them. twin-mcp's `paste_counts` with `replace: true`
+  deletes every count row of the bid across all versions.
+
+**Wendi's bid, read on 2026-09-30 (B494 SPACEX BA02 9 GANG RESTROOMS, and B375):** nothing on B494
+reads as lost — all 35 count rows carry her prices and allowances. The archive holds 47 rows she
+removed from it that day: 44 takeoff part lines added and removed within a minute of each other,
+one count row (SUMP ×2 with its $3,700 price and its labor row) and one assignment. B375 has no
+deletions since 09-28. So what she saw as lost is most likely one of the two silent paths above, or
+CountTooling (a separate app). Ask her which tab and which values before restoring anything.
+
+## The decision (draft 2, after two passes)
+
+**What it is.** One ledger of every value anyone enters on a bid, and a **History** switch on the
+Bids page. Off, the tabs are as today. On: every editable number shows its past under it in soft
+text; a side pane lists everything that happened on the bid, newest first, grouped into actions; any
+old value or removed row has **Put back**.
+
+**Capture — one table, one trigger, no client.** `bid_changes`: `bid_id`, `table_name`, `record_id`,
+`count_row_id` (when the row hangs off one), `op` (insert · update · delete), `changed` (the columns
+that changed), `old` and `new` (those columns only, jsonb), `label` (the row's human name, computed
+at write time: the count row's fixture, the part's name, the labor row's fixture, the bid column's
+word — so the reader never joins back to a row that may be gone), `changed_by` (`auth.uid()`; null
+for a robot or the system), `changed_at`, `action_id` (nullable, see captions). One generic
+`AFTER INSERT OR UPDATE OR DELETE` trigger, `record_bid_change()`, attached to the tables that hold
+what people type: `bids` (a chosen column list: value, dates, notes, outcome, the selected books,
+the alternate tags — not `updated_at` and not the robot columns), `bids_count_rows`,
+`bid_count_row_custom_prices`, `bid_count_row_custom_costs`, `bid_pricing_assignments`,
+`bids_takeoff_rough_part_lines`, `bids_takeoff_template_mappings`, `bid_takeoff_stage_splits`,
+`cost_estimates`, `cost_estimate_labor_rows` and the five direct-cost row tables, `bid_sov_lines`,
+`bid_payment_schedule_rows`, `bid_versions`. It is the contract-text history's pattern
+(`20260928050129`): SECURITY DEFINER, writes only when something actually changed
+(`IS DISTINCT FROM`), swallows its own errors so a save can never fail. Deletes are recorded too
+(old values only), so history outlives the archive's 90-day purge; the archive stays the thing a
+restore reads. Volume is small — about 500 bid-table writes a week across every bid — so keep three
+years, purged by `pg_cron` like the archive. RLS: read for whoever can open the bid (office roles,
+and an estimator within her service types, the same rule as `bidsTabOpenFor`); no client writes.
+
+**Actions, not rows.** Each REST call is its own transaction and the import inserts one row at a
+time, so a transaction id cannot group a burst. The reader groups instead: same person, same bid,
+gaps under five seconds → one action, captioned from its shape ("Added 23 count rows",
+"Changed 4 prices", "Removed SUMP ×2 and what hung on it"). A bulk path may register a caption up
+front (`begin_bid_action(bid_id, kind, label)` → id; the trigger attaches the next writes by that
+person on that bid to the open action; `end_bid_action(id)`), so the import reads "Imported 23 rows
+from CountTooling". Captions are polish; the grouping works without them.
+
+**Reading.** `list_bid_history(p_bid_id, p_since, p_table)` returns the rows with labels; a pure kernel
+(`bidHistory.ts`) groups them into actions and words each line ("Lav-1 · price · $9,800 → $10,300 ·
+Wendi · Tue 8:14 pm"), formatting by a table+column map (money · count · hours · text · pick). The
+pane says plainly that history starts the day PR 1 deployed, and shows the archive's removed rows
+alongside so it is not empty on day one.
+
+**The switch.** A **History** pill on the Bids lens bar, remembered per person. On:
+
+- Pricing's price cells, Counts' count cells, Takeoffs' quantity and price cells and Labor's hours
+  cells show up to two prior values under the box, newest first, in the soft-line style the
+  procurement log uses ("$9,800 · Wendi · Tue"), with "+3 more" opening the pane on that row. A cell
+  with no past shows nothing, so rows do not all grow.
+- The pane (the *See what the GC sees* side-pane pattern, v2.4189) lists actions newest first, each
+  expandable to its rows, filterable by tab and by person, with a search box for a fixture.
+- Removed rows appear in the pane with **Put back**, row by row.
+
+**Put back.** A value reverts through the normal save path, so it is logged as a change by the person
+who reverted. A removed row comes back through a row-level version of the archive's restore
+(`restore_deleted_record(p_archive_id)` reusing the bundle machinery's FK checks and insert order),
+allowed to whoever can edit the bid; a row whose parent is gone reads "its count row was removed
+too — put that back first". Putting back a whole action (undo an import after the toast is gone)
+is the same loop over its rows and comes last.
+
+**Stop the losses at the source (PR 0, independent):**
+
+1. Save the Cover Letter's Inclusions, Exclusions and Terms per bid (three text columns on `bids`,
+   the org defaults still the fallback).
+2. The Labor sync keeps a typed hours row whose fixture was renamed: match on the count row's id
+   when the row carries one, else by name; a row it would drop moves to an "unmatched" band with its
+   hours instead of being deleted.
+3. Give `bid_count_row_custom_costs` its FK (`ON DELETE CASCADE`) and put it, the stage splits and
+   the submittal ticks under the delete archive.
+
+**Rejected on the way:** Supabase's `supa_audit` extension (generic row versions, but no labels, no
+bid key, a second pattern beside the archive's); a nightly snapshot of every bid table with a diff
+(cheap, but no *who*, and Wendi's churn was inside one hour); grouping by transaction id (see above);
+per-cell history on every editable field (heavy; the four numbers people type are enough).
+
+## Where it plugs in
+
+- Tables: the seventeen above; the archive's coverage list (`20260716120000`, `..._tier2`) for what a
+  delete already keeps; `stamp_updated_by()` (`20260905233000`) for the two stamped tables.
+- Kernels (new): `src/lib/bids/bidHistory.ts` (grouping, captions, wording, the column map),
+  `bidHistoryPutBack.ts` (the write each revert makes). Tests beside each.
+- Client: `BidsLensBar` (the pill; `useBidsLoadGates` for the pane's read), a new
+  `BidHistoryPane.tsx`, small hooks into `BidsPricingTab` / `BidsCountsTab` / `BidsTakeoffTab` /
+  `BidsLaborTab` for the under-cell lines (`useBidHistory(bidId)` → a map by `(table, record_id, column)`).
+- RPCs (new): `list_bid_history`, `begin_bid_action` / `end_bid_action`, `restore_deleted_record`.
+- Docs: `docs/BIDS_SYSTEM.md` (a *History* section), `docs/BIDS_TABS_ARCHITECTURE.md`, the guide
+  *price a bid* (one paragraph and the switch), `docs/PROJECT_DOCUMENTATION.md` (the audit trail is
+  "partially implemented" at ~2711 — amend), `docs/GLOSSARY.md` (History, Put back).
+
+## The plan
+
+| PR | What | Size |
+|---|---|---|
+| 0a | Cover Letter Inclusions / Exclusions / Terms saved per bid | S |
+| 0b | Labor sync keeps typed hours through a rename; unmatched band | S |
+| 0c | `bid_count_row_custom_costs` FK + archive coverage for three tables | XS (migration) |
+| 1 | `bid_changes` + `record_bid_change()` on the seventeen tables, RLS, purge, `docs/migrations` | S — ship first |
+| 2 | `list_bid_history` + `bidHistory.ts` + the pane, read-only, with the archive's removed rows | M |
+| 3 | The History pill and the under-cell lines on the four tabs | M |
+| 4 | Put back: a value (client write), a removed row (`restore_deleted_record`) | M |
+| 5 | Action captions: `begin/end_bid_action` from the import, Clear all, the labor sync, the margin brush; undo a whole action | S |
+
+Each PR ships its release note and fragment; PR 1 its migration doc; PR 2 the guide paragraph.
+
+## How to verify
+
+- PR 1: on a ZZ test bid, type a price, change it twice, delete a count row, run an import and Clear
+  all; `select label, op, changed, old, new, changed_by from bid_changes where bid_id = … order by
+  changed_at` reads every step with the right labels; a write with the trigger deliberately broken
+  (rename its target table in a transaction, roll back) still saves.
+- PR 2–3: the same bid's pane groups the import as one action of 23 rows; the price cell shows the
+  two earlier values; an estimator on another service type cannot read the bid's history (RLS).
+- PR 4: put a price back → the cell reads the old value and the pane shows the revert by the
+  person who pressed it; put the removed count row back → its price and labor row come with it.
+- Live data left in prod: none beyond the ZZ bid.
+
+## Is this the best we can do? (the two passes)
+
+**Pass 1, on the plan.** The first draft grouped changes by transaction id — that fails with
+PostgREST, where every request is its own transaction, so grouping moved to the reader (bursts) with
+optional captions. It kept deletes out of the ledger — added, so history outlives the 90-day purge.
+It put per-cell history on every editable field — cut to the four numbers people type. It had the
+pane before capture — reversed: capture is PR 1 and stands alone, because nothing typed before it
+deploys can ever be shown. It had no answer for the two silent losses that most likely bit Wendi —
+they became PR 0, ahead of the feature.
+
+**Pass 2, on the mock-up.** The first cut showed prior values under every cell and doubled the
+table's height; now a cell with no past shows nothing and a cell with a past shows two lines at most.
+"Put back" sat on every history line; now it shows on hover and on the pane, once per line. The pane
+first listed rows; now it lists actions with the rows folded, so an import is one line, not 23. The
+pill's location on the lens bar had no place on the mock-up; drawn. A look at the rendered page
+found the table's line-total column clipped under the pane (it said nothing the mock-up needs and
+went) and one action out of time order in the pane (fixed).
+
+## Where it stands
+
+Planned 2026-09-30. Nothing built. Owner's calls open (front matter). PR 0 and PR 1 need no call.

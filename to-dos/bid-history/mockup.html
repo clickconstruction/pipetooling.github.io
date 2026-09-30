@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bid History</title>
+<style>
+  /* Layout: the Bids page's Pricing tab as the app draws it, with the History switch on, and the
+     history pane beside it; below, the same cell with the switch off, and the notes. Light only, by
+     choice: it mirrors the app's light theme so the office reads it as the screen it will get. */
+  :root {
+    --ground: #F3F4F6; --surface: #FFFFFF; --subtle: #F8FAFC; --ink: #111827; --muted: #6B7280; --faint: #9AA3B2;
+    --line: #E5E7EB; --line-strong: #CBD5E1; --link: #2563EB;
+    --green: #15803D; --green-bg: #DCFCE7; --red: #B91C1C; --red-bg: #FEE2E2; --amber: #B45309; --amber-bg: #FEF3C7;
+    --blue: #1D4ED8; --blue-bg: #DBEAFE; --violet: #6D28D9; --violet-bg: #EDE9FE;
+    --font: -apple-system, "Segoe UI", system-ui, sans-serif; --mono: ui-monospace, Menlo, Consolas, monospace;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 14px/1.5 var(--font); padding-block: 0 64px; padding-inline: 16px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; max-width: 36ch; text-wrap: balance; }
+  .stamp { font-family: var(--mono); font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 18px; margin: 36px 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; text-wrap: balance; }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: var(--blue-bg); color: var(--blue); }
+  h2 .tag.pr { background: var(--violet-bg); color: var(--violet); }
+  .lede { margin: 0 0 14px; color: var(--muted); max-width: 84ch; }
+  .lede b { color: var(--ink); }
+  .panel { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; min-width: 0; }
+  .panel .cap { padding: 8px 12px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--subtle); border-bottom: 1px solid var(--line); }
+  .callout { margin-top: 10px; font-size: 12.5px; padding: 8px 10px; border-radius: 6px; border: 1px dashed var(--amber); background: var(--amber-bg); color: var(--amber); }
+  .callout.ok { border-color: var(--green); background: var(--green-bg); color: var(--green); }
+  .notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 14px; }
+  .note { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 13px; }
+  .note b { display: block; margin-bottom: 4px; }
+  .note.new { border-color: var(--green); }
+
+  /* the app's chrome, sketched */
+  .lensbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 8px 12px; background: var(--subtle); border-bottom: 1px solid var(--line); font-size: 12.5px; }
+  .lensbar .bid { font-weight: 700; font-size: 14px; }
+  .lensbar .sp { flex: 1; }
+  .pill { padding: 2px 10px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--surface); font-size: 12px; white-space: nowrap; }
+  .pill.on { background: var(--blue-bg); color: var(--blue); border-color: transparent; font-weight: 600; }
+  .pill.hist { display: inline-flex; align-items: center; gap: 6px; }
+  .pill.hist .sw { width: 26px; height: 14px; border-radius: 999px; background: var(--line-strong); position: relative; }
+  .pill.hist .sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 10px; height: 10px; border-radius: 50%; background: #fff; }
+  .pill.hist.on .sw { background: var(--blue); }
+  .pill.hist.on .sw::after { left: 14px; }
+  .new { outline: 2px solid var(--green); outline-offset: 2px; }
+
+  .screen { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 0; }
+  @media (max-width: 900px) { .screen { grid-template-columns: 1fr; } .pane { border-left: 0; border-top: 1px solid var(--line-strong); } }
+
+  /* the pricing table */
+  .tabwrap { padding: 12px; min-width: 0; overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; min-width: 520px; font-size: 13px; font-variant-numeric: tabular-nums; }
+  th { text-align: left; font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--line-strong); white-space: nowrap; }
+  th.c, td.c { text-align: center; }
+  th.r, td.r { text-align: right; }
+  td { padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  td .fx { font-weight: 700; }
+  td .sub { display: block; font-size: 11.5px; color: var(--muted); }
+  .box { display: inline-block; min-width: 5.6rem; padding: 3px 7px; border: 1px solid var(--line-strong); border-radius: 4px; background: var(--surface); text-align: right; }
+  .box.wide { min-width: 6.4rem; }
+  td.r .box { text-align: right; }
+  .was { display: block; font-size: 11.5px; color: var(--muted); margin-top: 3px; white-space: nowrap; text-align: right; }
+  .was s { color: var(--faint); text-decoration-color: var(--faint); }
+  .was .who { color: var(--faint); }
+  .was .pb { color: var(--link); text-decoration: underline; text-underline-offset: 2px; margin-left: 6px; }
+  .was .more { color: var(--link); text-decoration: underline; text-underline-offset: 2px; }
+  tr.hover td { background: var(--subtle); }
+  .gone td { color: var(--muted); }
+  .gone .fx { text-decoration: line-through; text-decoration-color: var(--faint); }
+  .goneline { display: inline-block; font-size: 11.5px; color: var(--red); background: var(--red-bg); border-radius: 4px; padding: 1px 7px; }
+  .goneline .pb { color: var(--link); text-decoration: underline; text-underline-offset: 2px; margin-left: 6px; }
+
+  /* the pane */
+  .pane { border-left: 1px solid var(--line-strong); background: var(--subtle); min-width: 0; display: flex; flex-direction: column; }
+  .pane .head { padding: 10px 12px; border-bottom: 1px solid var(--line); background: var(--surface); }
+  .pane .head .t { font-weight: 700; font-size: 14px; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .pane .head .t .x { color: var(--muted); font-weight: 400; font-size: 12px; }
+  .pane .head .filters { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .pane .head .filters .pill { font-size: 11.5px; padding: 1px 8px; }
+  .pane .head .search { margin-top: 8px; padding: 5px 8px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); color: var(--faint); font-size: 12.5px; }
+  .day { padding: 8px 12px 2px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .act { background: var(--surface); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 8px 12px; }
+  .act + .act { border-top: 0; }
+  .act .l1 { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .act .l1 b { font-size: 13px; }
+  .act .l1 .when { color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .act .l2 { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .act .rows { margin: 6px 0 0; padding: 0 0 0 12px; font-size: 12.5px; list-style: none; border-left: 2px solid var(--line); }
+  .act .rows li { padding: 2px 0; display: flex; justify-content: space-between; gap: 8px; }
+  .act .rows li s { color: var(--faint); }
+  .act .rows li .pb { color: var(--link); text-decoration: underline; text-underline-offset: 2px; white-space: nowrap; }
+  .act .fold { color: var(--link); font-size: 12px; text-decoration: underline; text-underline-offset: 2px; margin-top: 4px; display: inline-block; }
+  .act.removed .l1 b::before { content: "−"; display: inline-block; width: 14px; color: var(--red); }
+  .act.added .l1 b::before { content: "+"; display: inline-block; width: 14px; color: var(--green); }
+  .act.changed .l1 b::before { content: "∆"; display: inline-block; width: 14px; color: var(--amber); }
+  .pane .foot { margin-top: auto; padding: 10px 12px; font-size: 11.5px; color: var(--muted); border-top: 1px solid var(--line); background: var(--surface); }
+  .kbd { font-family: var(--mono); font-size: 11px; background: var(--ground); border: 1px solid var(--line-strong); border-radius: 4px; padding: 0 5px; }
+  .before { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-top: 12px; }
+  .before .panel .in { padding: 12px; }
+  .mini { width: 100%; min-width: 0; }
+  .mini td { padding: 6px 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">Punch list #73 · mock-up · draft 2</p>
+      <h1>Bid history: every value anyone entered on a bid, and a way to put one back</h1>
+    </div>
+    <div class="stamp">B494 · SPACEX BA02 9 GANG RESTROOMS<br>Pricing tab · History on<br>drawn 2026-09-30</div>
+  </header>
+
+  <h2>The screen <span class="tag">History on</span></h2>
+  <p class="lede">The <b>History</b> switch sits on the Bids lens bar and is remembered per person. On, a price that was ever different shows its past under the box; the pane on the right lists what happened on the bid, newest first, one line per action. Green rings mark what is new.</p>
+
+  <div class="panel">
+    <div class="lensbar">
+      <span class="bid">BP494 · SPACEX BA02 9 GANG RESTROOMS</span>
+      <span class="pill">Counts</span><span class="pill">Takeoffs</span><span class="pill">Labor</span><span class="pill on">Pricing</span><span class="pill">Cover Letter</span><span class="pill">Submittals</span>
+      <span class="sp"></span>
+      <span class="pill hist on new"><span class="sw"></span>History</span>
+    </div>
+    <div class="screen">
+      <div class="tabwrap">
+        <table>
+          <thead><tr><th>Fixture</th><th class="c">Count</th><th>Book entry</th><th class="r">Unit price</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><span class="fx">EWC-1</span><span class="sub">Elkay bi-level cooler</span></td>
+              <td class="c">5</td>
+              <td>Water cooler, bi-level</td>
+              <td class="r"><span class="box">$3,779</span></td>
+            </tr>
+            <tr class="hover">
+              <td><span class="fx">Lav-1</span><span class="sub">Kohler K-2210 undermount</span></td>
+              <td class="c">4</td>
+              <td>Lavatory, wall hung</td>
+              <td class="r">
+                <span class="box">$10,300</span>
+                <span class="was new"><s>$9,800</s> <span class="who">· Wendi · Tue 8:14 pm</span><span class="pb">Put back</span></span>
+                <span class="was"><s>$8,400</s> <span class="who">· book · Tue 8:11 pm</span></span>
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fx">WC-1</span><span class="sub">TOTO CT708UVG wall hung</span></td>
+              <td class="c">40</td>
+              <td>Water closet, wall hung</td>
+              <td class="r">
+                <span class="box">$3,350</span>
+                <span class="was new"><s>$3,100</s> <span class="who">· Robert · Mon</span> <span class="more">+2 more</span></span>
+              </td>
+            </tr>
+            <tr>
+              <td><span class="fx">FCO</span><span class="sub">Zurn ZN1400 floor cleanout</span></td>
+              <td class="c">8</td>
+              <td>Floor cleanout</td>
+              <td class="r"><span class="box">$500</span></td>
+            </tr>
+            <tr class="gone">
+              <td><span class="fx">SUMP</span><span class="sub">Sump pump, simplex</span></td>
+              <td class="c">2</td>
+              <td colspan="2"><span class="goneline new">removed Wed 10:05 am · Wendi · with its price and hours<span class="pb">Put back</span></span></td>
+              </tr>
+            <tr>
+              <td><span class="fx">FD-1</span><span class="sub">JR Smith 2005 floor drain</span></td>
+              <td class="c">14</td>
+              <td>Floor drain</td>
+              <td class="r"><span class="box">$500</span></td>
+            </tr>
+            <tr>
+              <td><span class="fx">labor</span><span class="sub">allowance · added by hand</span></td>
+              <td class="c">1</td>
+              <td>—</td>
+              <td class="r">
+                <span class="box wide">$1,350,000</span>
+                <span class="was new"><s>$1,200,000</s> <span class="who">· Wendi · Wed 9:41 am</span></span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="callout ok">A cell with no past shows nothing, so most rows stay one line tall. A cell with a past shows at most two earlier values; “+N more” opens the pane on that row. Put back appears when the pointer is on the line.</div>
+      </div>
+
+      <aside class="pane new">
+        <div class="head">
+          <div class="t">History <span class="x">since Sep 30 · 4 people</span></div>
+          <div class="filters"><span class="pill on">All</span><span class="pill">Counts</span><span class="pill">Takeoffs</span><span class="pill">Labor</span><span class="pill">Pricing</span><span class="pill">Edit bid</span><span class="pill">Wendi</span><span class="pill">Robert</span><span class="pill">robot</span></div>
+          <div class="search">find a fixture or a value · Lav-1 · 9,800</div>
+        </div>
+
+        <div class="day">Wednesday · today</div>
+        <div class="act added">
+          <div class="l1"><b>Imported 4 rows from CountTooling</b><span class="when">10:10 am</span></div>
+          <div class="l2">Wendi · Counts · SCISSOR X 4, TEMPORARY LIGHTING, TOOLS ON SITE, SAFETY EQUIPMENT</div>
+          <span class="fold">show the 4 rows</span>
+        </div>
+        <div class="act removed">
+          <div class="l1"><b>Removed SUMP ×2 and what hung on it</b><span class="when">10:05 am</span></div>
+          <div class="l2">Wendi · Counts</div>
+          <ul class="rows">
+            <li><span>SUMP · count row ×2</span><span class="pb">Put back</span></li>
+            <li><span>SUMP · price <s>$3,700</s></span><span>with the row</span></li>
+            <li><span>SUMP · labor <s>6 h</s></span><span>with the row</span></li>
+            <li><span>SUMP · takeoff part <s>1 × Zoeller M53</s></span><span>with the row</span></li>
+          </ul>
+        </div>
+        <div class="act removed">
+          <div class="l1"><b>Removed 6 takeoff parts on WC-1</b><span class="when">10:01 am</span></div>
+          <div class="l2">Wendi · Takeoffs · added a minute earlier</div>
+          <span class="fold">show the 6 parts</span>
+        </div>
+
+        <div class="act changed">
+          <div class="l1"><b>Changed 3 prices</b><span class="when">9:41 am</span></div>
+          <div class="l2">Wendi · Pricing</div>
+          <ul class="rows">
+            <li><span>labor · <s>$1,200,000</s> → $1,350,000</span><span class="pb">Put back</span></li>
+            <li><span>super · <s>$45,000</s> → $60,000</span><span class="pb">Put back</span></li>
+            <li><span>rentals · <s>$90,000</s> → $97,699.70</span><span class="pb">Put back</span></li>
+          </ul>
+        </div>
+        <div class="day">Tuesday</div>
+        <div class="act changed">
+          <div class="l1"><b>Changed Lav-1 price</b><span class="when">8:14 pm</span></div>
+          <div class="l2">Wendi · Pricing · <s>$9,800</s> → $10,300</div>
+        </div>
+        <div class="act added">
+          <div class="l1"><b>Imported 23 rows from CountTooling</b><span class="when">8:11 pm</span></div>
+          <div class="l2">Wendi · Counts · 14 fixtures, 9 runs of pipe · 23 prices from the book, 23 labor rows</div>
+          <span class="fold">show the 23 rows</span>
+        </div>
+        <div class="act changed">
+          <div class="l1"><b>Edit Bid · value and due date</b><span class="when">2:00 pm</span></div>
+          <div class="l2">Robert · <s>$0</s> → $2,146,000 · due <s>Oct 3</s> → Oct 10</div>
+        </div>
+
+        <div class="foot">History starts the day it was switched on (Sep 30). Rows removed before that are in the archive for 90 days and show here with Put back. <span class="kbd">H</span> toggles the switch.</div>
+      </aside>
+    </div>
+  </div>
+
+  <h2>The same cell with the switch off <span class="tag">History off</span></h2>
+  <div class="before">
+    <div class="panel"><div class="cap">Pricing · as today</div><div class="in">
+      <table class="mini"><tbody>
+        <tr><td><span class="fx">Lav-1</span></td><td class="c">4</td><td class="r"><span class="box">$10,300</span></td></tr>
+        <tr><td><span class="fx">WC-1</span></td><td class="c">40</td><td class="r"><span class="box">$3,350</span></td></tr>
+      </tbody></table>
+      <div class="callout">Nothing changes with the switch off. The ledger still records every write; the switch only decides whether the past is drawn.</div>
+    </div></div>
+    <div class="panel"><div class="cap">What one line in the ledger holds</div><div class="in">
+      <table class="mini"><tbody>
+        <tr><td>label</td><td>Lav-1</td></tr>
+        <tr><td>table · column</td><td>bid_count_row_custom_prices · unit_price</td></tr>
+        <tr><td>old → new</td><td>9800 → 10300</td></tr>
+        <tr><td>who · when</td><td>Wendi · 2026-09-30 01:14:22Z</td></tr>
+        <tr><td>action</td><td>(none — a single edit) · grouped by burst when read</td></tr>
+      </tbody></table>
+      <div class="callout ok">Written by a database trigger, so a robot's write, a bulk import and a typed edit all land the same way. A save can never fail because of it.</div>
+    </div></div>
+  </div>
+
+  <h2>What is new, and what is not <span class="tag pr">PR 1 → 5</span></h2>
+  <div class="notes">
+    <div class="note new"><b>The ledger (PR 1)</b>One table, one trigger on the seventeen tables that hold what people type. Ships first and alone: history starts the day it deploys.</div>
+    <div class="note new"><b>The pane (PR 2)</b>Actions, not rows: an import is one line. Filters by tab and by person; a search box for a fixture or a value.</div>
+    <div class="note new"><b>The switch (PR 3)</b>Under-cell lines on the four numbers people type: price, count, quantity, hours. Two lines at most per cell.</div>
+    <div class="note new"><b>Put back (PR 4)</b>A value reverts through the normal save, logged as a change by whoever pressed it. A removed row comes back with what hung on it.</div>
+    <div class="note"><b>Not built here</b>Nothing before the deploy is visible. Cover Letter inclusions/exclusions saved per bid, the labor sync keeping renamed rows, and the cost-override table's missing FK are PR 0, separate and first.</div>
+    <div class="note"><b>Owner's calls</b>Who sees whose edits (one company says everyone who can open the bid). How long to keep (drawn as three years). May a non-dev put a row back (drawn as yes, for whoever can edit the bid). Which Edit Bid columns count.</div>
+  </div>
+</div>
+</body>
+</html>
