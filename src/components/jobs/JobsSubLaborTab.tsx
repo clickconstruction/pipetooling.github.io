@@ -14,6 +14,7 @@ import { useRosterSubKinds } from '../../hooks/useRosterSubKinds'
 import { useIsNarrowScreen } from '../../hooks/useIsNarrowScreen'
 import { emitWorkOrderChanged, WORK_ORDER_CHANGED_EVENT } from '../../hooks/useJobWorkOrderCoverage'
 import { SheetRail } from './SheetRail'
+import { FinishedDateInput } from '../FinishedDateInput'
 import { ScheduleSheet, ScheduleSheetAction } from '../schedule/ScheduleBlockSheet'
 import { subPayPhoneAmount, subPayPhoneVerbs, type SubPayPhoneVerb } from '../../lib/subWorkOrders/subPayPhoneRows'
 import { SheetStoryModal } from './SheetStoryModal'
@@ -732,7 +733,7 @@ export default function JobsSubLaborTab({
                                   </span>
                                   <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                                     Sheet date
-                                    <input type="date" value={dateInputValue} onChange={(e) => onUpdateLaborJobDate(job.id, e.target.value || null)} style={{ padding: '0.2rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8125rem' }} />
+                                    <FinishedDateInput value={dateInputValue} onCommit={(day) => onUpdateLaborJobDate(job.id, day)} style={{ padding: '0.2rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8125rem' }} />
                                   </label>
                                   <span style={{ marginLeft: 'auto', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                                     {balance > 0 ? <button type="button" style={btnPay} onClick={() => onOpenMakePayment(payTarget(r), String(balance))}>Payment…</button> : null}

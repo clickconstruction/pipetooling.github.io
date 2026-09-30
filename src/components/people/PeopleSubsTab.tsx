@@ -11,6 +11,7 @@ import { useOptionalPersonDesk } from '../../contexts/PersonDeskContext'
 import { appendNoteLine, backNoteLine, benchNoteLine, compareSubsForBench, subBenchStatus, type SubBenchStatus } from '../../lib/people/subBench'
 import { useAuth } from '../../hooks/useAuth'
 import { SubDocumentAddForm } from './SubDocumentAddForm'
+import { FinishedDateInput } from '../FinishedDateInput'
 import { SUB_DOCUMENT_TYPE_LABEL, suggestedRetype } from '../../lib/people/subDocumentDraft'
 
 /**
@@ -864,11 +865,10 @@ export default function PeopleSubsTab() {
                 </select>
                 <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
                   expires
-                  <input
-                    type="date"
+                  <FinishedDateInput
+                    aria-label={`${d.document_name} expires`}
                     value={d.expires_at ?? ''}
-                    disabled={savingDocId === d.id}
-                    onChange={(e) => void updateDoc(d.id, { expires_at: e.target.value || null })}
+                    onCommit={(day) => void updateDoc(d.id, { expires_at: day })}
                     style={{ padding: '0.15rem 0.3rem', borderRadius: 5, border: '1px solid var(--border)', fontSize: '0.78rem' }}
                   />
                 </label>
