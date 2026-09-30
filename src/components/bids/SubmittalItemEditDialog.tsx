@@ -4,6 +4,9 @@
  * chips and note for an alternate or a design change, the lead time (the
  * presets or typed), and the cut sheet as a file + page range typed from the
  * vendor PDF (stage 3 makes the pages a tap). Save writes the item row.
+ *
+ * The supply house is the office's own fact — who the part is bought from — so
+ * it can be set on any revision, shared or not; the GC's room never shows it.
  */
 import { useState, type CSSProperties } from 'react'
 
@@ -40,6 +43,8 @@ export type SubmittalItemPatch = {
   /** By hand (v2.4090): the tag and the product, typed on a draft — a row with no pick behind it. */
   tag?: string
   submitted_label?: string | null
+  /** The house the part is bought from — on the patch only when the picker was changed. */
+  supply_house_id?: string | null
   /** 5b: a call entered from the reviewer's file, on their behalf. */
   entered?: EnteredChoice | null
   /** 5b: take the entered call back off the row. */
@@ -71,9 +76,11 @@ const chipButton = (on: boolean): CSSProperties => ({
 const fieldLabel: CSSProperties = { fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 const inputStyle: CSSProperties = { padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, font: 'inherit', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-strong)' }
 
-export function SubmittalItemEditDialog({ item, sourceFiles, people = [], canEnterDecision = false, canEditProduct = false, onSave, onClose }: { item: SubmittalItemRow; sourceFiles: SourceFile[]; /** the room's people, for the on-behalf-of picker (5b) */ people?: SubmittalPersonRow[]; /** the revision was shared, so a reviewer's call makes sense */ canEnterDecision?: boolean; /** a draft: the tag and the product can be typed (v2.4090) */ canEditProduct?: boolean; onSave: (patch: SubmittalItemPatch) => void; onClose: () => void }) {
+export function SubmittalItemEditDialog({ item, sourceFiles, people = [], houses = [], canEnterDecision = false, canEditProduct = false, onSave, onClose }: { item: SubmittalItemRow; sourceFiles: SourceFile[]; /** the supply houses to pick from; none hides the picker */ houses?: ReadonlyArray<{ id: string; name: string }>; /** the room's people, for the on-behalf-of picker (5b) */ people?: SubmittalPersonRow[]; /** the revision was shared, so a reviewer's call makes sense */ canEnterDecision?: boolean; /** a draft: the tag and the product can be typed (v2.4090) */ canEditProduct?: boolean; onSave: (patch: SubmittalItemPatch) => void; onClose: () => void }) {
   const [tagText, setTagText] = useState(item.tag)
   const [submittedText, setSubmittedText] = useState(item.submitted_label ?? [item.submitted_manufacturer, item.submitted_model].filter(Boolean).join(' '))
+  const [houseId, setHouseId] = useState<string | null>(item.supply_house_id ?? null)
+  const houseChanged = houseId !== (item.supply_house_id ?? null)
   // 5b · a call entered on a reviewer's behalf
   const currentDecision = asDecision(item.review_decision)
   const [enterOpen, setEnterOpen] = useState(false)
@@ -142,6 +149,23 @@ export function SubmittalItemEditDialog({ item, sourceFiles, people = [], canEnt
               ))}
             </div>
           </div>
+        ) : null}
+
+        {houses.length > 0 ? (
+          <label style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+            <span style={fieldLabel}>Supply house · office only</span>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <select aria-label="Supply house" value={houseId ?? ''} onChange={(e) => setHouseId(e.target.value || null)} style={{ ...inputStyle, minWidth: '12rem' }}>
+                <option value="">No house</option>
+                {/* A house the list no longer carries still reads, so opening the row never drops it. */}
+                {houseId && !houses.some((h) => h.id === houseId) ? <option value={houseId}>The house on this row</option> : null}
+                {houses.map((h) => (
+                  <option key={h.id} value={h.id}>{h.name}</option>
+                ))}
+              </select>
+              <span style={smallMuted}>Who you buy it from. It prints on the procurement log. The GC's room never shows it.</span>
+            </div>
+          </label>
         ) : null}
 
         <label style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
@@ -255,6 +279,7 @@ export function SubmittalItemEditDialog({ item, sourceFiles, people = [], canEnt
                   sheet_pages: file ? pages : [],
                   sheet_source: file && pages.length > 0 ? 'estimator' : null,
                   ...(canEditProduct ? { tag: tagText.trim().toUpperCase(), submitted_label: submittedText.trim() || null } : {}),
+                  ...(houseChanged ? { supply_house_id: houseId } : {}),
                   entered,
                   clearDecision: clearDecision && !entered,
                 })

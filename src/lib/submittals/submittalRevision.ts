@@ -95,6 +95,8 @@ export function itemToPrevious(item: SubmittalItemRow): PreviousItem {
     sheetPages: [...(item.sheet_pages ?? [])],
     reviewDecision: asDecision(item.review_decision),
     reviewNote: item.review_note,
+    supplyHouseId: item.supply_house_id,
+    sourceQuoteLineId: item.source_quote_line_id,
   }
 }
 

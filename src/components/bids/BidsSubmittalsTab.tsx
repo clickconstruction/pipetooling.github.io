@@ -30,7 +30,7 @@ import { SubmittalTakeoffPicker } from './SubmittalTakeoffPicker'
 import { loadTakeoffCandidates, saveTakeoffChoices, type TakeoffCandidatesLoad } from '../../lib/submittals/takeoffCandidatesIo'
 import { candidateToItemInserts, rowSplitTags, splitExplanation, type TakeoffCandidate } from '../../lib/submittals/takeoffCandidates'
 import { SplitRuleModal } from './SplitRuleModal'
-import { formatErrorMessage } from '../../utils/errorHandling'
+import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { procurementItemsFrom } from '../../lib/submittals/procurementLogIo'
 import type { ProcurementItemSource } from '../../lib/submittals/procurementLog'
 import { submittalJourney, type JourneyAction, type JourneyStage, type JourneyStageKey, stageGate } from '../../lib/submittals/submittalJourney'
@@ -232,6 +232,23 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   const [tourOpen, setTourOpen] = useState(false)
   const [tourStage, setTourStage] = useState<number | null>(null)
   const [statusLegendOpen, setStatusLegendOpen] = useState(false)
+  // v2.4248 · the supply houses: the row editor's picker, and the name under each row's product. One read; a failed read hides both.
+  const [houses, setHouses] = useState<Array<{ id: string; name: string }>>([])
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const data = await withSupabaseRetry(() => db.from('supply_houses').select('id, name').order('name'), 'load supply houses')
+        if (!cancelled) setHouses(((data ?? []) as Array<{ id: string; name: string }>).filter((h) => h.name?.trim()))
+      } catch {
+        if (!cancelled) setHouses([])
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+  const houseNameById = useMemo(() => new Map(houses.map((h) => [h.id, h.name] as const)), [houses])
   // v2.4189 · the pane beside the road that draws the GC's page from the rows as they stand (#62 Layer 2).
   const [seeGcOpen, setSeeGcOpen] = useState(false)
   // v2.4136 · whether a robot seat is live (punch list #59): no offer shows until it is. Not live until the reader answers, so nothing flashes.
@@ -669,7 +686,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     if (!bidId || !selectedRev) return
     const ok = await confirm({
       title: 'Rebuild the rows from the picks',
-      message: 'Every row is built again from today\'s picks on Pricing. Sheets, reasons and lead times stay where the product did not change. A row whose product changed starts over.',
+      message: 'Every row is built again from today\'s picks on Pricing. Sheets, reasons and lead times stay where the product did not change. A supply house you set on a row stays while its pick is the same. A row whose product changed starts over.',
       confirmLabel: 'Rebuild',
     })
     if (!ok) return
@@ -1778,6 +1795,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                             <td style={td}>
                               {it.submitted_label ?? it.submitted_model ?? <span style={{ color: 'var(--text-faint)' }}>—</span>}
                               {it.submitted_label && it.submitted_model && it.submitted_label !== it.submitted_model ? <span style={sub}>{it.submitted_model}</span> : null}
+                              {it.supply_house_id && houseNameById.get(it.supply_house_id) ? <span style={sub} data-testid="row-house">{houseNameById.get(it.supply_house_id)}</span> : null}
                             </td>
                             <td style={td}>
                               <ProductStatusChip status={status} size="md" />
@@ -2187,7 +2205,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
           onClose={() => setAssignFile(null)}
         />
       ) : null}
-      {editing ? <SubmittalItemEditDialog item={editing} sourceFiles={sourceFiles} people={people} canEnterDecision canEditProduct={isDraft} onSave={(p) => void saveItem(p)} onClose={() => setEditing(null)} /> : null}
+      {editing ? <SubmittalItemEditDialog item={editing} sourceFiles={sourceFiles} people={people} houses={houses} canEnterDecision canEditProduct={isDraft} onSave={(p) => void saveItem(p)} onClose={() => setEditing(null)} /> : null}
       {approvingAll && selectedRev ? (
         <SubmittalApproveAllDialog
           revLabel={`Rev ${selectedRev.rev_number}`}
