@@ -1269,8 +1269,9 @@ export function BidsBidBoardTab({
               {showsJobAccounts(bid) ? <BidBoardJobAccountChips bidId={bid.id} loaded={jobAccountStrips.loaded} rows={jobAccountStrips.byBid.get(bid.id) ?? []} onChanged={jobAccountStrips.reload} /> : null}
             </div>
           </td>
+          {/* v2.4264: the value reads at the estimator name's size, in tabular figures — the owner could not read it at the cell's 11px. */}
           {!hideBidColumn ? (
-            <td style={{ padding: '0.0625rem', textAlign: 'center', fontSize: '0.6875rem', lineHeight: 1.35 }}>
+            <td style={{ padding: '0.0625rem', textAlign: 'center', fontSize: '0.9375rem', fontWeight: 600, fontVariantNumeric: 'tabular-nums', lineHeight: 1.35, whiteSpace: 'nowrap' }}>
               {renderBidBoardBidValue(bid)}
             </td>
           ) : null}
