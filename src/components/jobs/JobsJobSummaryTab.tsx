@@ -235,7 +235,7 @@ function JobSummaryExpandedHeader({
           style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}
           title={bDetail ? `${bDetail.tooltip} · b: ${formatEstimatedCompletionDisplay(bDetail.ymd) ?? '—'}` : undefined}
         >
-          <span style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginRight: 4 }}>{billParts?.label ?? 'Bill'}</span>
+          <span style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginRight: 4 }}>{billParts?.label ?? 'Billed'}</span>
           {billParts ? `${billParts.main}${billParts.sub ? ` · ${billParts.sub}` : ''}` : '—'}
         </div>
       </div>

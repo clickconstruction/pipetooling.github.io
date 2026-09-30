@@ -260,14 +260,14 @@ export function stripDoneParts(lastYmd: string | null, lastKind: 'worked' | 'sch
 
 /**
  * The billing line (the old `b:`): PAID when the latest event is a payment,
- * BILL for an invoice sent or billed — "Mon Sep 21" over "2 days ago · sent".
+ * BILLED for an invoice sent or billed — "Mon Sep 21" over "2 days ago · sent".
  */
-export type StripBillParts = StripLineParts & { label: 'Bill' | 'Paid' }
+export type StripBillParts = StripLineParts & { label: 'Billed' | 'Paid' }
 
 export function stripBillParts(detail: { ymd: string; labels: readonly string[] }, todayYmd: string): StripBillParts {
   const paid = detail.labels.includes('Payment recorded')
   const fact = paid ? 'paid' : detail.labels.includes('Invoice sent') ? 'sent' : 'billed'
-  return { label: paid ? 'Paid' : 'Bill', main: formatStripDate(detail.ymd), sub: joinSub(stripDistancePhrase(detail.ymd, todayYmd), fact) }
+  return { label: paid ? 'Paid' : 'Billed', main: formatStripDate(detail.ymd), sub: joinSub(stripDistancePhrase(detail.ymd, todayYmd), fact) }
 }
 
 /**
