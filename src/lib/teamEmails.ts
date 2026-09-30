@@ -43,6 +43,7 @@ export type TeamSampleEmailId =
   | 'schedule_share'
   | 'recurring_job_report'
   | 'report_email'
+  | 'bank_return'
   | 'signed_agreement_staff'
   | 'estimate_accepted_staff'
   | 'gc_word_ask'
@@ -206,8 +207,8 @@ export const TEAM_EMAILS: readonly TeamEmail[] = [
     label: 'Check returned',
     when: { kind: 'event', label: 'When the bank returns a deposit', order: 12 },
     recipients: { roles: OFFICE, decidedBy: 'role', rule: 'Every dev, leader, assistant and controller — the webhook picks them by role.' },
-    sampleSubject: () => 'Check returned · $13,680 · J878 Take 5 – Seguin · Insufficient funds',
-    render: { kind: 'soon', note: 'Built inside mercury-webhook when a returned deposit lands.' },
+    sampleSubject: () => 'Check returned · $13,680 · J1057 Hunter Homes – gas line · Insufficient funds',
+    render: { kind: 'sample', sample: 'bank_return' },
     manage: emails('Emails & reports'),
     reflects: ['the bank feed (Mercury)'],
   },

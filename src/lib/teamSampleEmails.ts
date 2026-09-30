@@ -24,6 +24,7 @@ import { buildShareEmail, type ShareBlockRow } from '../../supabase/functions/_s
 import { buildRecurringJobReportHtml, buildRecurringJobReportTextFallback, recurringJobReportEmailSubject, type RecurringJobReportPayload } from '../../supabase/functions/_shared/recurringJobReportEmail'
 import { sunSatWeekOf } from './teamEmails'
 import { buildReportEmail, type ReportContent } from '../../supabase/functions/_shared/fieldReportEmail'
+import { buildBankReturnNoticeEmail, type BankReturnNoticeInput } from '../../supabase/functions/_shared/bankReturnedDeposits'
 import { readyToBillSubject, readyToBillText, renderReadyToBillDetailed, type ReadyToBillPayload } from '../../supabase/functions/_shared/readyToBillEmail'
 
 export type BuiltTeamEmail = { subject: string; html: string; text: string }
@@ -425,6 +426,20 @@ export function sampleFieldReportContent(todayYmd: string): ReportContent {
   }
 }
 
+/** The Check returned notice (lift 12): Hunter Homes' $13,680 draw on the gas-line job, posted three days ago, sent back for insufficient funds. */
+export function sampleBankReturnInput(todayYmd: string, appOrigin: string): BankReturnNoticeInput {
+  const d = new Date(`${todayYmd}T12:00:00Z`)
+  d.setUTCDate(d.getUTCDate() - 3)
+  return {
+    counterparty: 'Hunter Homes',
+    amount: 13_680,
+    reason: 'Insufficient funds',
+    postedYmd: d.toISOString().slice(0, 10),
+    jobs: [{ jobId: 'job-5', jobLabel: 'J1057 Hunter Homes – gas line', amount: 13_680 }],
+    appOrigin,
+  }
+}
+
 export function buildTeamSampleEmail(id: TeamSampleEmailId, ctx: TeamSampleContext): BuiltTeamEmail {
   const origin = ctx.origin
   switch (id) {
@@ -444,6 +459,9 @@ export function buildTeamSampleEmail(id: TeamSampleEmailId, ctx: TeamSampleConte
     }
     case 'report_email': {
       return buildReportEmail(sampleFieldReportContent(ctx.todayYmd))
+    }
+    case 'bank_return': {
+      return buildBankReturnNoticeEmail(sampleBankReturnInput(ctx.todayYmd, origin))
     }
     case 'ready_to_bill': {
       const p = sampleReadyToBillPayload(ctx.todayYmd)

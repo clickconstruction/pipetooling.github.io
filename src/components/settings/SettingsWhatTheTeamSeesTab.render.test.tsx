@@ -52,7 +52,7 @@ function mount() {
 describe('SettingsWhatTheTeamSeesTab', () => {
   it('opens on a controller’s week, grouped by when, with the count line', async () => {
     await mount()
-    expect(screen.getByTestId('wtts-coverage').textContent).toContain('25 emails · 23 render live · 2 built on the server (next release)')
+    expect(screen.getByTestId('wtts-coverage').textContent).toContain('25 emails · 24 render live · 1 built on the server (next release)')
     const headings = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent ?? '')
     expect(headings[0]).toContain('Every morning')
     expect(headings.some((h) => h.includes('When something happens'))).toBe(true)
@@ -92,8 +92,9 @@ describe('SettingsWhatTheTeamSeesTab', () => {
   })
   it('a soon row says which function builds it', async () => {
     await mount()
-    fireEvent.click(within(screen.getByTestId('wtts-row-bank_return')).getByRole('button', { name: 'Check returned' }))
-    expect(screen.getByTestId('wtts-expanded').textContent).toContain('mercury-webhook')
+    fireEvent.click(screen.getByRole('radio', { name: 'Dev' }))
+    fireEvent.click(within(screen.getByTestId('wtts-row-ct_roster_audit')).getByRole('button', { name: 'CT↔PT roster audit' }))
+    expect(screen.getByTestId('wtts-expanded').textContent).toContain('ct-roster-audit')
   })
   it('a person reads the recipient lists: Malachi is not on the Paid job list', async () => {
     await mount()
@@ -105,9 +106,10 @@ describe('SettingsWhatTheTeamSeesTab', () => {
   })
   it('the only-soon toggle keeps the next-release rows', async () => {
     await mount()
+    fireEvent.click(screen.getByRole('radio', { name: 'Dev' }))
     fireEvent.click(screen.getByRole('button', { name: "Only what doesn't render yet" }))
     expect(screen.queryByTestId('wtts-row-money_waiting')).toBeNull()
-    expect(screen.getByTestId('wtts-row-bank_return')).toBeTruthy()
+    expect(screen.getByTestId('wtts-row-ct_roster_audit')).toBeTruthy()
   })
 })
 
