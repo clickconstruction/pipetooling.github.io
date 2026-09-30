@@ -63,7 +63,8 @@ const btn: CSSProperties = { padding: '0.35rem 0.75rem', background: 'var(--surf
 const btnPrimary: CSSProperties = { ...btn, background: '#2563eb', borderColor: '#2563eb', color: 'white', fontWeight: 600 }
 const link: CSSProperties = { background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: '0.75rem', color: 'var(--text-blue-700)', textDecoration: 'underline', textUnderlineOffset: 2 }
 const inp: CSSProperties = { padding: '0.2rem 0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8125rem', boxSizing: 'border-box', font: 'inherit', background: 'var(--surface)', color: 'var(--text-base)' }
-const dateInp: CSSProperties = { ...inp, width: '8.6rem' }
+// As narrow as the date it holds: the text plus the browser's calendar button (`.procurement-date` in index.css pulls that button in).
+const dateInp: CSSProperties = { ...inp, width: '6.75rem' }
 
 type Draft = Partial<Record<'po' | 'note' | 'label' | 'lead', string>>
 
@@ -385,7 +386,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
                   </td>
                   <td style={{ ...td, whiteSpace: 'nowrap' }}><span style={{ color: r.submittal === 'approved' ? 'var(--text-green-700)' : r.submittal === 'revise' || r.submittal === 'rejected' ? 'var(--text-amber-700)' : 'var(--text-muted)' }}>{submittalWord(r)}</span></td>
                   <td style={{ ...td, whiteSpace: 'nowrap' }}>{r.releasedOn ? shortDate(r.releasedOn) : <span style={smallMuted}>—</span>}</td>
-                  <td style={td}><input type="date" aria-label={`${r.tag ?? r.product} ordered on`} value={r.orderedOn ?? ''} onChange={(e) => dateChanged(r, 'ordered_on', e.target.value)} disabled={disabled} style={dateInp} /></td>
+                  <td style={td}><input type="date" className="procurement-date" aria-label={`${r.tag ?? r.product} ordered on`} value={r.orderedOn ?? ''} onChange={(e) => dateChanged(r, 'ordered_on', e.target.value)} disabled={disabled} style={dateInp} /></td>
                   <td style={td}><input type="text" aria-label={`${r.tag ?? r.product} PO`} placeholder="PO" value={draftOf(r.key, 'po', r.poRef)} onChange={(e) => setDraft(r.key, 'po', e.target.value)} onBlur={() => void commitText(r, 'po')} maxLength={60} style={{ ...inp, width: '5.2rem' }} /></td>
                   <td style={{ ...td, whiteSpace: 'nowrap' }}>
                     {r.isHand ? (
@@ -397,6 +398,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
                   <td style={{ ...td, whiteSpace: 'nowrap' }}>
                     <input
                       type="date"
+                      className="procurement-date"
                       aria-label={`${r.tag ?? r.product} expected on`}
                       title={r.expectedSource === 'derived' ? `${shortDate(r.orderedOn)} + ${describeLeadTime(r.leadTimeDays)}; type the house's own date to override` : r.expectedSource === 'house' ? "The house's date; clear it to go back to ordered + lead time" : 'Order date + lead time, or the house’s own date'}
                       value={r.expectedOn ?? ''}
@@ -408,7 +410,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
                   </td>
                   <td style={{ ...td, whiteSpace: 'nowrap' }}>{r.requiredOn ? shortDate(r.requiredOn) : <span style={smallMuted}>—</span>}</td>
                   <td style={{ ...td, whiteSpace: 'nowrap', fontWeight: late ? 700 : 500, color: late ? 'var(--text-red-700)' : r.deliveredOn ? 'var(--text-green-700)' : r.floatDays != null ? 'var(--text-green-700)' : 'var(--text-muted)' }} data-testid="procurement-float">{floatText(r)}</td>
-                  <td style={td}><input type="date" aria-label={`${r.tag ?? r.product} delivered on`} value={r.deliveredOn ?? ''} onChange={(e) => dateChanged(r, 'delivered_on', e.target.value)} disabled={disabled} style={dateInp} /></td>
+                  <td style={td}><input type="date" className="procurement-date" aria-label={`${r.tag ?? r.product} delivered on`} value={r.deliveredOn ?? ''} onChange={(e) => dateChanged(r, 'delivered_on', e.target.value)} disabled={disabled} style={dateInp} /></td>
                   <td style={{ ...td, minWidth: 160 }}><input type="text" aria-label={`${r.tag ?? r.product} note`} placeholder="note for the GC" value={draftOf(r.key, 'note', r.note)} onChange={(e) => setDraft(r.key, 'note', e.target.value)} onBlur={() => void commitText(r, 'note')} maxLength={500} style={{ ...inp, width: '100%' }} /></td>
                   <td style={{ ...td, whiteSpace: 'nowrap' }}>{r.isHand ? <button type="button" onClick={() => void removeHandRow(r)} disabled={disabled} title="Remove this item" aria-label={`Remove ${r.product || 'item'}`} style={{ ...link, color: 'var(--text-red-600)', textDecoration: 'none', fontSize: '0.95rem' }}>×</button> : null}</td>
                 </tr>

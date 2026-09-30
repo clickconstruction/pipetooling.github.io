@@ -121,8 +121,8 @@ describe('SubmittalProcurementPanel', () => {
       fireEvent.click(screen.getByTestId('procurement-sheets'))
       await waitFor(() => expect(written).toHaveLength(1))
       const lines = written[0]!.split('\n')
-      expect(lines[0]).toBe('Item\tSupply house\tStage\tSubmittal\tReleased\tOrdered\tPO\tLead time\tExpected\tExpected from\tRequired\tFloat\tDelivered\tNote')
-      expect(lines[1]).toContain('BFP-1 · Watts 909 RPZ 2"\t\tRough-in\tApproved 09/22\t2026-09-22\t')
+      expect(lines[0]).toBe('Tag\tProduct\tSupply house\tStage\tSubmittal\tReleased\tOrdered\tPO\tLead time\tExpected\tExpected from\tRequired\tFloat\tDelivered\tNote')
+      expect(lines[1]).toContain('BFP-1\tWatts 909 RPZ 2"\t\tRough-in\tApproved 09/22\t2026-09-22\t')
       expect(opened).toEqual(['https://sheets.new'])
       await waitFor(() => expect(screen.getByText(/Log copied — a new Google Sheet is opening/)).toBeTruthy())
     } finally {

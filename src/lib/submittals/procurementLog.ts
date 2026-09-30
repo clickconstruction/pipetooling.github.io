@@ -247,11 +247,6 @@ export function procurementHeadline(rows: ReadonlyArray<ProcurementRow>): string
   return bits.join(' · ')
 }
 
-/** The Item cell as one line of text, tag first: "BFP-1 · Watts 909 RPZ 2"" · a hand row's name alone · a tag with no product alone. */
-export function procurementItemText(r: Pick<ProcurementRow, 'tag' | 'product'>): string {
-  return [r.tag?.trim(), r.product.trim()].filter(Boolean).join(' · ')
-}
-
 /** "12 d" · "−14 d" · "on site" · "order by 11/03" · "" */
 export function floatText(r: Pick<ProcurementRow, 'floatDays' | 'deliveredOn' | 'orderBy'>): string {
   if (r.deliveredOn) return 'on site'
