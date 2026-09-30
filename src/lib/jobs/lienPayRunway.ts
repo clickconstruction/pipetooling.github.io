@@ -93,6 +93,8 @@ export type LienPayRunway = {
   daysToNotice: number | null
   /** The residential date is shown because the property kind is not set. */
   kindAssumed: boolean
+  /** The § 53.056 notice for the work month is recorded (a sub job); false on a direct job. The Pipeline's dates block reads it (v2.4205). */
+  noticeSent: boolean
   /** No clock hours — the clock counts from the month the job was created. */
   datedFromCreation: boolean
   /** The right-edge label under the track ('' when there is no track). */
@@ -117,6 +119,7 @@ const NONE: LienPayRunway = {
   noticeByYmd: '',
   daysToNotice: null,
   kindAssumed: false,
+  noticeSent: false,
   datedFromCreation: false,
   endLabel: '',
   marks: null,
@@ -182,6 +185,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       tone: 'green',
       words: `lien filed ${formatYmdMonthDay(filed)}`,
       lines: [`lien filed ${formatYmdMonthDay(filed)}`],
+      noticeSent: false,
       title: 'The lien affidavit is on file. The money is still owed; the Lien window carries the serve-by and the year to sue.',
       chipLabel: 'lien filed',
       sortKey: 3_000_000,
@@ -227,6 +231,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       noticeByYmd: noticeBy,
       daysToNotice,
       kindAssumed,
+      noticeSent,
       datedFromCreation,
       sortKey: 2_000_000 + daysToNotice,
     }
@@ -246,6 +251,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       noticeByYmd: noticeBy,
       daysToNotice,
       kindAssumed,
+      noticeSent,
       datedFromCreation,
       sortKey: 2_000_000 + daysToLien,
     }
@@ -278,6 +284,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       noticeByYmd: noticeBy,
       daysToNotice,
       kindAssumed,
+      noticeSent,
       datedFromCreation,
       endLabel,
       marks: { endDays, pay: payMark, lien: lienMark, notice: noticeMark, gap: null },
@@ -300,6 +307,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       noticeByYmd: noticeBy,
       daysToNotice,
       kindAssumed,
+      noticeSent,
       datedFromCreation,
       endLabel,
       marks: { endDays, pay: { days: livePay, pct: pct(livePay) }, lien: lienMark, notice: noticeMark, gap: { fromPct: lienMark.pct, toPct: pct(livePay), kind: 'short' } },
@@ -322,6 +330,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       noticeByYmd: noticeBy,
       daysToNotice,
       kindAssumed,
+      noticeSent,
       datedFromCreation,
       endLabel,
       marks: { endDays, pay: { days: livePay, pct: pct(livePay) }, lien: lienMark, notice: noticeMark, gap: { fromPct: pct(livePay), toPct: lienMark.pct, kind: 'room' } },
@@ -344,6 +353,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
     noticeByYmd: noticeBy,
     daysToNotice,
     kindAssumed,
+    noticeSent,
     datedFromCreation,
     endLabel,
     marks: { endDays, pay: null, lien: lienMark, notice: noticeMark, gap: null },

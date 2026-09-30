@@ -1,87 +1,65 @@
 /**
  * The dates block at the bottom of a Billed / Collections row's cell (v2.4168;
- * redrawn v2.4193 in the money legend's own grammar):
+ * redrawn in the money legend's grammar v2.4189/v2.4193; rows and one bold
+ * line, one deadline at a time, v2.4205):
  *
- *   Sep 23 ·········· 42 days to the lien ·········· Nov 16
- *   [ used ][ notice ][            42 d left             ]      ← the time bar
  *   ● Billed Sep 23 .................... 12 d ago
  *   ● Expected Oct 4 .................... 1 d past      ← the click for They said…
- *       pays in 2–8 d · keeps 0 of 5
- *   ● Send the notice by Oct 15 ............ 10 d
- *   ○ Lien by Nov 16 ....................... 42 d
- *   ───────────────────────────────────────────────
- *   Send the notice                          10 d       ← the verdict, bold
+ *       usually pays in 2–8 d · kept 0 of 5 dates
+ *   ● Lien notice by Oct 15 ................ 10 d       ← bold: the one thing to do
  *
- * The bar is the money bar's twin for time: one segment per stretch between
- * the dates, sized by days, grey where time is used, the blue outline on the
- * segment today sits in, green for the room between the money and the lien,
- * a red hatch when the lien dies first. Rows read oldest to newest with *how
- * far from today* on the right; a promise replaces the Expected row rather
- * than joining it, so the block is the same height whatever happens. The
- * bold line under the hairline is the verdict — the room, or the one thing
- * to do. Pure: the money comes from `billedExpectedPayModel`, the deadlines
- * from `buildLienPayRunway`; this only arranges them.
+ *   ● Billed Sep 29 ....................... today
+ *   ● Expected Oct 4 ...................... in 5 d
+ *   ○ Lien by Dec 15 ........................ 77 d
+ *   ───────────────────────────────────────────────
+ *   Can run late                             72 d       ← the verdict, only when it adds
+ *
+ * Rows read oldest to newest with *how far from today* on the right. A
+ * promise replaces the Expected row rather than joining it. There is ONE
+ * deadline row: on a sub job the § 53.056 notice until it is recorded (nothing
+ * can be filed before it), then the lien date with *notice sent* under it; on
+ * a direct job the lien date from the start. The bold line under the hairline
+ * appears only when it says something the rows do not — the slack (*Can run
+ * late · 72 d*), a comparison (*Notice first · 4 d short*), an ask (*Ask for a
+ * date · 12 d past*) or a loss (*Lien gone*); when the deadline row is itself
+ * the to-do it is bold and nothing repeats it. Pure: the money comes from
+ * `billedExpectedPayModel`, the deadlines from `buildLienPayRunway`; this only
+ * arranges them.
  */
 import { billedExpectedPayModel, billedReferenceYmd, daysBetweenYmd, formatYmdMonthDay, type ExpectedPayRowInput, type PaySpeedData, type PromisedPayDate } from './billedExpectedPay'
 import { LIEN_RUNWAY_AMBER_DAYS, LIEN_RUNWAY_RED_DAYS, type LienPayRunway } from './lienPayRunway'
 
 export type LedgerTone = 'done' | 'plain' | 'green' | 'amber' | 'red'
 export type LedgerAction = 'they-said' | 'new-date' | 'lien-desk'
-/** A filled dot is a fact behind us, the money, or the row that asks; a ring is a date still ahead. */
+/** A filled dot is a fact behind us, the money, or the row that asks; a ring is a deadline still ahead. */
 export type LedgerDot = 'filled' | 'ring'
 
-export type LedgerRowKey = 'billed' | 'money' | 'notice' | 'notice-sent' | 'lien' | 'filed' | 'closed'
+export type LedgerRowKey = 'billed' | 'money' | 'notice' | 'lien' | 'filed' | 'closed'
 
 export type LedgerRow = {
   key: LedgerRowKey
-  /** "Billed" · "Expected" · "They said" · "Send the notice" · "Notice sent" · "Lien" · "File the lien" · "Lien filed" · "Window closed". */
+  /** "Billed" · "Expected" · "They said" · "Lien notice" · "Lien" · "File the lien" · "Lien filed" · "Lien window closed" · "Notice window closed". */
   label: string
-  /** The words between the label and the date: '' · 'by' · 'for'. */
+  /** The words between the label and the date: '' · 'by'. */
   joiner: string
   /** "Sep 23"; '' when there is none. */
   date: string
   /** The right column: "7 d ago" · "1 d past" · "in 4 d" · "16 d" · "today"; '' when there is none. */
   far: string
   tone: LedgerTone
-  /** The row that asks for something — its value prints bold. */
+  /** The row that asks for something — its words and value print bold. */
   bold: boolean
   dot: LedgerDot
   action: LedgerAction | null
   title: string
-  /** A quiet line under the row: the estimate a promise displaced. */
+  /** A quiet line under the row: the estimate a promise displaced, or "notice sent" under the lien date. */
   sub: string
 }
 
-export type LedgerSegmentKind = 'wait' | 'room' | 'short' | 'notice' | 'closed'
-
-export type LedgerSegment = {
-  /** `<from>-<to>` by row key ('start' for a shell row's today). */
-  key: string
-  days: number
-  /** How much of this stretch is behind us, 0–1. */
-  usedFrac: number
-  /** Today sits inside this stretch — it wears the money bar's live outline. */
-  live: boolean
-  kind: LedgerSegmentKind
-  tone: LedgerTone
-  /** "72 d of room" · "42 d left" · "notice" · "closed 14 d ago" · ''. Drawn only when it fits. */
-  label: string
-}
-
-export type LedgerBar = {
-  segments: LedgerSegment[]
-  /** The date at the left end: the bill date, or today on a shell row. */
-  startLabel: string
-  /** The date at the right end: the farthest deadline. */
-  endLabel: string
-  /** "77 days to the lien" · "the window closed Sep 15". */
-  caption: string
-}
-
 export type LedgerVerdict = {
-  /** "Room after they pay" · "Send the notice" · "File the lien first" · "File the lien" · "Ask for a date" · "Lien gone". */
+  /** "Can run late" · "Notice first" · "File the lien first" · "Ask for a date" · "Lien gone". */
   label: string
-  /** "72 d" · "16 d" · "5 d short" · "12 d past" · ''. */
+  /** "72 d" · "4 d short" · "12 d past" · ''. */
   value: string
   tone: LedgerTone
   action: LedgerAction | null
@@ -90,9 +68,7 @@ export type LedgerVerdict = {
 
 export type BilledDatesLedger = {
   rows: LedgerRow[]
-  /** Null when there is no deadline to run to (no runway, a filed lien, or no dates at all). */
-  bar: LedgerBar | null
-  /** The bold line under the rows; null when the rows say everything (a filed lien, no runway). */
+  /** The bold line under the rows; null when the rows already say everything. */
   verdict: LedgerVerdict | null
   /** The whole block as one sentence (the accessible name). */
   full: string
@@ -119,20 +95,14 @@ function farWords(days: number, ahead: 'in' | 'bare'): string {
   return ahead === 'in' ? `in ${dWord(days)}` : dWord(days)
 }
 
-const clamp01 = (x: number) => Math.max(0, Math.min(1, x))
-
-type Point = { key: LedgerRowKey | 'start'; ymd: string; tone: LedgerTone }
-
 export function buildBilledDatesLedger({ todayYmd, row, data, promise, runway, inCollections }: BilledDatesLedgerInput): BilledDatesLedger {
   const rows: LedgerRow[] = []
-  const points: Point[] = []
 
   // The bill
   const billedYmd = row ? billedReferenceYmd(row) : null
   if (billedYmd) {
     const ago = daysBetweenYmd(billedYmd, todayYmd) ?? 0
     rows.push({ key: 'billed', label: 'Billed', joiner: '', date: formatYmdMonthDay(billedYmd), far: farWords(-ago, 'bare'), tone: 'done', bold: false, dot: 'filled', action: null, title: `The bill went out ${formatYmdMonthDay(billedYmd)} — the day every clock below starts from`, sub: '' })
-    points.push({ key: 'billed', ymd: billedYmd, tone: 'done' })
   }
 
   // The money — their word if they gave one, else the estimate from their pay history
@@ -141,118 +111,76 @@ export function buildBilledDatesLedger({ todayYmd, row, data, promise, runway, i
   const moneyYmd = promised?.expectedYmd ?? stat?.expectedYmd ?? null
   const moneyTo = moneyYmd ? (daysBetweenYmd(todayYmd, moneyYmd) ?? 0) : null
   const moneyPast = moneyTo != null && moneyTo < 0
+  const moneyAhead = moneyTo != null && !moneyPast
   const moneyAction: LedgerAction = promise ? 'new-date' : 'they-said'
-  let moneyTone: LedgerTone = 'plain'
+  const moneyTitle = promised?.title ?? stat?.title ?? ''
   if (moneyYmd && moneyTo != null) {
-    moneyTone = inCollections ? 'red' : moneyPast ? 'amber' : 'green'
+    const tone: LedgerTone = inCollections ? 'red' : moneyPast ? 'amber' : 'green'
     rows.push({
       key: 'money',
       label: promised ? 'They said' : 'Expected',
       joiner: '',
       date: formatYmdMonthDay(moneyYmd),
       far: moneyPast ? `${-moneyTo} d past` : farWords(moneyTo, 'in'),
-      tone: moneyTone,
+      tone,
       bold: false,
       dot: 'filled',
       action: moneyAction,
-      title: promised?.title ?? stat?.title ?? '',
+      title: moneyTitle,
       sub: promised && stat ? `expected ${formatYmdMonthDay(stat.expectedYmd)} by their history` : '',
     })
-    points.push({ key: 'money', ymd: moneyYmd, tone: moneyTone })
   }
 
-  // The deadlines, from the runway's verdict
+  // The one deadline, from the runway's verdict
   let verdict: LedgerVerdict | null = null
-  let caption = ''
-  let lienRow: LedgerRow | null = null
   if (runway && runway.state !== 'none') {
-    const lienDate = runway.lienByYmd ? formatYmdMonthDay(runway.lienByYmd) : ''
-    const noticeDate = runway.noticeByYmd ? formatYmdMonthDay(runway.noticeByYmd) : ''
     if (runway.state === 'filed') {
       rows.push({ key: 'filed', label: 'Lien filed', joiner: '', date: runway.lines[0]?.replace(/^lien filed\s*/i, '') ?? '', far: '', tone: 'green', bold: false, dot: 'filled', action: 'lien-desk', title: runway.title, sub: '' })
     } else if (runway.state === 'closed') {
       const noticeClosed = /^notice/i.test(runway.lines[1] ?? '')
       const closedYmd = noticeClosed ? runway.noticeByYmd : runway.lienByYmd
       const closedDays = closedYmd ? (daysBetweenYmd(todayYmd, closedYmd) ?? 0) : 0
-      rows.push({ key: 'closed', label: noticeClosed ? 'Notice window closed' : 'Window closed', joiner: '', date: closedYmd ? formatYmdMonthDay(closedYmd) : '', far: closedYmd ? farWords(closedDays, 'bare') : '', tone: 'done', bold: false, dot: 'filled', action: 'lien-desk', title: runway.title, sub: '' })
-      if (closedYmd) points.push({ key: 'closed', ymd: closedYmd, tone: 'done' })
+      rows.push({ key: 'closed', label: noticeClosed ? 'Notice window closed' : 'Lien window closed', joiner: '', date: closedYmd ? formatYmdMonthDay(closedYmd) : '', far: closedYmd ? farWords(closedDays, 'bare') : '', tone: 'done', bold: false, dot: 'filled', action: 'lien-desk', title: runway.title, sub: '' })
       verdict = { label: 'Lien gone', value: '', tone: 'red', action: 'lien-desk', title: runway.title }
-      caption = closedYmd ? `the window closed ${formatYmdMonthDay(closedYmd)}` : ''
     } else {
-      const notice = runway.marks?.notice
-      if (runway.state === 'notice_due' && runway.daysToNotice != null && noticeDate) {
-        const tone: LedgerTone = runway.daysToNotice <= LIEN_RUNWAY_RED_DAYS ? 'red' : 'amber'
-        rows.push({ key: 'notice', label: 'Send the notice', joiner: 'by', date: noticeDate, far: farWords(runway.daysToNotice, 'bare'), tone, bold: true, dot: 'filled', action: 'lien-desk', title: runway.title, sub: '' })
-        points.push({ key: 'notice', ymd: runway.noticeByYmd, tone })
-        verdict = { label: 'Send the notice', value: dWord(runway.daysToNotice), tone, action: 'lien-desk', title: runway.title }
-      } else if (notice?.done && noticeDate) {
-        rows.push({ key: 'notice-sent', label: 'Notice sent', joiner: 'for', date: noticeDate, far: '', tone: 'done', bold: false, dot: 'filled', action: 'lien-desk', title: 'The § 53.056 notice for this work month is recorded', sub: '' })
-        points.push({ key: 'notice-sent', ymd: runway.noticeByYmd, tone: 'done' })
-      }
-      if (runway.daysToLien != null && lienDate) {
-        const urgent = runway.state === 'file_first' || (runway.state === 'no_pay' && runway.daysToLien <= LIEN_RUNWAY_AMBER_DAYS)
-        const tone: LedgerTone = runway.state === 'file_first' || runway.daysToLien <= LIEN_RUNWAY_RED_DAYS ? 'red' : urgent ? 'amber' : runway.state === 'room' ? 'green' : 'plain'
-        const bold = urgent && runway.state !== 'notice_due'
-        lienRow = { key: 'lien', label: bold ? 'File the lien' : 'Lien', joiner: 'by', date: lienDate, far: farWords(runway.daysToLien, 'bare'), tone, bold, dot: bold ? 'filled' : 'ring', action: 'lien-desk', title: runway.title, sub: '' }
-        rows.push(lienRow)
-        points.push({ key: 'lien', ymd: runway.lienByYmd, tone })
-        caption = `${runway.daysToLien} days to the lien`
-        if (!verdict) {
-          const lienDays = moneyYmd ? daysBetweenYmd(moneyYmd, runway.lienByYmd) : null
-          if (runway.state === 'file_first' && lienDays != null) {
-            verdict = { label: 'File the lien first', value: `${-lienDays} d short`, tone: 'red', action: 'lien-desk', title: runway.title }
-          } else if (moneyTo != null && !moneyPast && lienDays != null && lienDays >= 0) {
-            verdict = { label: 'Room after they pay', value: dWord(lienDays), tone: runway.daysToLien <= LIEN_RUNWAY_RED_DAYS ? 'amber' : 'green', action: 'lien-desk', title: runway.title }
-          } else if (bold) {
-            verdict = { label: 'File the lien', value: dWord(runway.daysToLien), tone, action: 'lien-desk', title: runway.title }
-          } else if (moneyPast && moneyTo != null) {
-            verdict = { label: 'Ask for a date', value: `${-moneyTo} d past`, tone: inCollections ? 'red' : 'amber', action: moneyAction, title: `${promised?.title ?? stat?.title ?? ''} — the date has gone by with the balance still open` }
-          } else {
-            verdict = { label: 'Ask for a date', value: `${dWord(runway.daysToLien)} left`, tone, action: moneyAction, title: 'Nobody has said when this will be paid' }
-          }
+      // On a sub job the notice comes first; nothing can be filed before it goes.
+      const noticeFirst = runway.state === 'notice_due' && runway.daysToNotice != null && runway.noticeByYmd !== ''
+      const deadlineYmd = noticeFirst ? runway.noticeByYmd : runway.lienByYmd
+      const deadlineDays = noticeFirst ? runway.daysToNotice! : runway.daysToLien
+      if (deadlineYmd && deadlineDays != null) {
+        /** + when the money lands before the deadline, − when after. */
+        const slack = moneyYmd ? daysBetweenYmd(moneyYmd, deadlineYmd) : null
+        const short = moneyAhead && slack != null && slack < 0
+        // The row is the to-do when the money is not landing before it: expected after it, already
+        // past, or never named. A notice is cheap and preserves the lien, so it asks at any distance;
+        // a lien asks inside three weeks.
+        const urgent = short || ((moneyPast || moneyTo == null) && (noticeFirst || deadlineDays <= LIEN_RUNWAY_AMBER_DAYS))
+        const tone: LedgerTone = short || deadlineDays <= LIEN_RUNWAY_RED_DAYS ? 'red' : urgent ? 'amber' : moneyAhead && slack != null && slack >= 0 ? 'green' : 'plain'
+        rows.push({
+          key: noticeFirst ? 'notice' : 'lien',
+          label: noticeFirst ? 'Lien notice' : urgent ? 'File the lien' : 'Lien',
+          joiner: 'by',
+          date: formatYmdMonthDay(deadlineYmd),
+          far: farWords(deadlineDays, 'bare'),
+          tone,
+          bold: urgent,
+          dot: urgent ? 'filled' : 'ring',
+          action: 'lien-desk',
+          title: runway.title,
+          sub: !noticeFirst && runway.noticeSent ? 'notice sent' : '',
+        })
+        if (short && slack != null) {
+          verdict = { label: noticeFirst ? 'Notice first' : 'File the lien first', value: `${-slack} d short`, tone: 'red', action: 'lien-desk', title: runway.title }
+        } else if (moneyAhead && slack != null) {
+          verdict = { label: 'Can run late', value: dWord(slack), tone: deadlineDays <= LIEN_RUNWAY_RED_DAYS ? 'amber' : 'green', action: 'lien-desk', title: `${moneyTitle ? `${moneyTitle} ` : ''}The money can land ${slack} ${slack === 1 ? 'day' : 'days'} later than expected before the ${noticeFirst ? 'notice has to go' : 'lien window closes'}.` }
+        } else if (urgent) {
+          verdict = null // the deadline row is the to-do; nothing repeats it
+        } else if (moneyPast && moneyTo != null) {
+          verdict = { label: 'Ask for a date', value: `${-moneyTo} d past`, tone: inCollections ? 'red' : 'amber', action: moneyAction, title: `${moneyTitle} — the date has gone by with the balance still open` }
+        } else {
+          verdict = { label: 'Ask for a date', value: '', tone: 'plain', action: moneyAction, title: 'Nobody has said when this will be paid' }
         }
       }
-    }
-  }
-
-  // The bar: from the bill date (or today) to the farthest deadline, one segment per stretch.
-  let bar: LedgerBar | null = null
-  const hasDeadline = points.some((p) => p.key === 'notice' || p.key === 'notice-sent' || p.key === 'lien' || p.key === 'closed')
-  if (hasDeadline) {
-    const origin = billedYmd ?? todayYmd
-    const todayDays = Math.max(0, daysBetweenYmd(origin, todayYmd) ?? 0)
-    const dated = points
-      .map((p) => ({ ...p, days: daysBetweenYmd(origin, p.ymd) }))
-      .filter((p): p is Point & { days: number } => p.days != null && p.days >= 0)
-      .sort((a, b) => a.days - b.days)
-    if (dated.length > 0 && dated[0]!.days > 0) dated.unshift({ key: 'start', ymd: origin, tone: 'done', days: 0 })
-    const moneyDays = moneyYmd ? (daysBetweenYmd(origin, moneyYmd) ?? null) : null
-    const lienDays = runway?.lienByYmd ? (daysBetweenYmd(origin, runway.lienByYmd) ?? null) : null
-    // Room when the money is still ahead and lands before the lien; short when it lands after.
-    const gapKind: 'room' | 'short' | null = moneyDays != null && lienDays != null && moneyTo != null && !moneyPast ? (moneyDays <= lienDays ? 'room' : 'short') : null
-    const segments: LedgerSegment[] = []
-    for (let i = 1; i < dated.length; i++) {
-      const from = dated[i - 1]!
-      const to = dated[i]!
-      const days = to.days - from.days
-      if (days <= 0) continue
-      let kind: LedgerSegmentKind = 'wait'
-      if (to.key === 'notice') kind = 'notice'
-      else if (to.key === 'closed') kind = 'closed'
-      else if (to.key === 'lien' && gapKind === 'room' && moneyDays != null && from.days >= moneyDays) kind = 'room'
-      else if (to.key === 'money' && gapKind === 'short' && from.key === 'lien') kind = 'short'
-      const usedFrac = clamp01((todayDays - from.days) / days)
-      const live = from.days <= todayDays && todayDays < to.days
-      let label = ''
-      if (kind === 'room' && lienDays != null && moneyDays != null) label = `${lienDays - moneyDays} d of room`
-      else if (kind === 'notice') label = 'notice'
-      else if (kind === 'closed') label = `closed ${-(daysBetweenYmd(todayYmd, to.ymd) ?? 0)} d ago`
-      else if (kind === 'wait' && to.key === 'lien' && runway?.daysToLien != null && runway.daysToLien >= 0) label = `${runway.daysToLien} d left`
-      const tone: LedgerTone = kind === 'room' ? 'green' : kind === 'short' ? 'red' : kind === 'closed' ? 'done' : to.key === 'lien' || to.key === 'notice' ? to.tone : 'plain'
-      segments.push({ key: `${from.key}-${to.key}`, days, usedFrac, live, kind, tone, label })
-    }
-    if (segments.length > 0) {
-      bar = { segments, startLabel: formatYmdMonthDay(origin), endLabel: formatYmdMonthDay(dated[dated.length - 1]!.ymd), caption }
     }
   }
 
@@ -260,5 +188,5 @@ export function buildBilledDatesLedger({ todayYmd, row, data, promise, runway, i
     .map((r) => [r.label, r.joiner, r.date, r.far ? `· ${r.far}` : ''].filter(Boolean).join(' '))
     .concat(verdict ? [[verdict.label, verdict.value ? `· ${verdict.value}` : ''].filter(Boolean).join(' ')] : [])
     .join(' · ')
-  return { rows, bar, verdict, full }
+  return { rows, verdict, full }
 }

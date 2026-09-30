@@ -999,11 +999,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   )
   const billedLienRunwayRenderer = useCallback(
     (row: StageRow) => {
-      // v2.4168 / v2.4193: the bill's dates in one block under the money
-      // legend, in the legend's own grammar — the time bar over the rows
-      // (Billed · Expected / They said · Send the notice · Lien) and the bold
-      // verdict. The runway kernel still decides the deadlines; the ledger
-      // arranges them with the money.
+      // v2.4168 / v2.4193 / v2.4205: the bill's dates in one block under the
+      // money legend, in the legend's own grammar — rows (Billed · Expected /
+      // They said · one deadline: the § 53.056 notice until it is recorded,
+      // then the lien) and the bold verdict only when it adds something. The
+      // runway kernel still decides the deadlines; the ledger arranges them
+      // with the money.
       const inv = row.kind === 'job' ? null : row.inv
       const runway = lienRunwayFor(row.job, inv)
       const todayYmd = calendarYmdInAppTzFromIso(new Date().toISOString())
