@@ -1,34 +1,24 @@
 import { useEffect, useRef } from 'react'
+import type { PDFDocumentProxy } from 'pdfjs-dist'
+
+import { getPdfDocument } from '../../../lib/pdfjsDocument'
 
 /**
  * One PDF page rendered to a canvas with pdf.js (lazy-imported so the main
  * bundle does not pay for it). `scale` is CSS px per PDF point, the same
  * number the box layer uses, so boxes and the page line up.
  *
- * pdf.js takes ownership of the bytes it is handed (they are transferred to
- * the worker), so a copy is passed each time the document is opened.
+ * The document is opened through the shared opener (`lib/pdfjsDocument.ts`, which
+ * copies the bytes pdf.js transfers to its worker and names the wasm / CMap / font
+ * directories, v2.4192), once per buffer.
  */
 
-type Pdfjs = typeof import('pdfjs-dist')
-type PdfDoc = Awaited<ReturnType<Pdfjs['getDocument']>['promise']>
+const docCache = new WeakMap<ArrayBuffer, Promise<PDFDocumentProxy>>()
 
-let pdfjsPromise: Promise<Pdfjs> | null = null
-const docCache = new WeakMap<ArrayBuffer, Promise<PdfDoc>>()
-
-function loadPdfjs(): Promise<Pdfjs> {
-  if (pdfjsPromise) return pdfjsPromise
-  pdfjsPromise = (async () => {
-    const pdfjs = await import('pdfjs-dist')
-    pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString()
-    return pdfjs
-  })()
-  return pdfjsPromise
-}
-
-function openPdfDocument(bytes: ArrayBuffer): Promise<PdfDoc> {
+function openPdfDocument(bytes: ArrayBuffer): Promise<PDFDocumentProxy> {
   const cached = docCache.get(bytes)
   if (cached) return cached
-  const p = loadPdfjs().then((pdfjs) => pdfjs.getDocument({ data: new Uint8Array(bytes.slice(0)) }).promise)
+  const p = getPdfDocument(bytes)
   docCache.set(bytes, p)
   return p
 }

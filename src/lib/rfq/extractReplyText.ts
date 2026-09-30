@@ -123,9 +123,8 @@ export async function extractReplyText(file: File): Promise<ExtractResult> {
       return { ok: true, text: lines.join('\n'), meta: metaLine(`${file.name} — first sheet`, lines.length, droppedColumns) }
     }
     if (name.endsWith('.pdf')) {
-      const pdfjs = await import('pdfjs-dist')
-      pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString()
-      const doc = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise
+      const { getPdfDocument } = await import('../pdfjsDocument')
+      const doc = await getPdfDocument(await file.arrayBuffer())
       const pageLines: string[] = []
       for (let p = 1; p <= Math.min(doc.numPages, 20); p++) {
         const page = await doc.getPage(p)

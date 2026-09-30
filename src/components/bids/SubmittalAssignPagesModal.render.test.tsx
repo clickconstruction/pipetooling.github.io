@@ -2,7 +2,8 @@
 /**
  * Assign pages (v2.4143) render smoke: the walk opens on page 1 with the row the page
  * names lit, Space confirms and moves on, X skips a page, the last page ends the walk
- * and Done hands the host the rows' writes. pdf.js is mocked: three pages of text.
+ * and Done hands the host the rows' writes. pdf.js is mocked: three pages of text. The
+ * host re-rendering with fresh callbacks and rows opens the file no second time (v2.4192).
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
@@ -11,14 +12,19 @@ import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { SubmittalAssignPagesModal } from './SubmittalAssignPagesModal'
 import type { SourceFile, SubmittalItemRow } from '../../lib/submittals/submittalRevision'
 
-const TEXTS = [
-  'ZURN Z1700-500-OV WATER HAMMER ARRESTOR PDI size C sizing table and dimensions of the unit',
-  'Terms and conditions of sale. Warranty. Freight. Returns are not accepted without authorization.',
-  'TOTO CT708UVG elongated flushometer bowl, ADA height, submittal data sheet with rough-in',
-]
+const { openPdfMock, destroyMock } = vi.hoisted(() => {
+  const TEXTS = [
+    'ZURN Z1700-500-OV WATER HAMMER ARRESTOR PDI size C sizing table and dimensions of the unit',
+    'Terms and conditions of sale. Warranty. Freight. Returns are not accepted without authorization.',
+    'TOTO CT708UVG elongated flushometer bowl, ADA height, submittal data sheet with rough-in',
+  ]
+  const destroyMock = vi.fn()
+  const openPdfMock = vi.fn(async (_bytes: ArrayBuffer) => ({ numPages: 3, renderPage: async () => 'data:image/jpeg;base64,AAAA', pageText: async (p: number) => TEXTS[p - 1] ?? '', destroy: destroyMock }))
+  return { openPdfMock, destroyMock }
+})
 
 vi.mock('../../lib/submittals/pdfThumbnails', () => ({
-  openPdf: async () => ({ numPages: 3, renderPage: async () => 'data:image/jpeg;base64,AAAA', pageText: async (p: number) => TEXTS[p - 1] ?? '', destroy() {} }),
+  openPdf: (bytes: ArrayBuffer) => openPdfMock(bytes),
 }))
 
 const item = (o: Partial<SubmittalItemRow>): SubmittalItemRow => ({
@@ -57,6 +63,28 @@ describe('SubmittalAssignPagesModal', () => {
       { itemId: 'wha500', fileIndex: 0, pages: [1] },
       { itemId: 'wc1', fileIndex: 0, pages: [3] },
     ])
+  })
+
+  it('opens the file once: the host re-rendering with new callbacks and rows neither re-opens it nor reports the read again', async () => {
+    openPdfMock.mockClear()
+    destroyMock.mockClear()
+    const onReads = vi.fn()
+    const loadBytes = vi.fn(async () => new ArrayBuffer(8))
+    const view = renderWithProviders(<SubmittalAssignPagesModal file={file} fileIndex={0} items={items} loadBytes={loadBytes} busy={false} onDone={() => undefined} onReads={onReads} onClose={() => undefined} />)
+    await waitFor(() => expect(onReads).toHaveBeenCalledTimes(1))
+    expect(onReads).toHaveBeenCalledWith({ namesRows: 2, sectioned: false })
+    expect(screen.getByTestId('assign-banner').textContent).toContain('Looks like WHA-500')
+    // The tab reloads after the read lands: new callback identities, a new rows array, the same file.
+    view.rerender(<SubmittalAssignPagesModal file={{ ...file, namesRows: 2, sectioned: false }} fileIndex={0} items={items.map((i) => ({ ...i }))} loadBytes={async () => new ArrayBuffer(8)} busy={false} onDone={() => undefined} onReads={(r) => onReads(r)} onClose={() => undefined} />)
+    view.rerender(<SubmittalAssignPagesModal file={{ ...file, namesRows: 2, sectioned: false }} fileIndex={0} items={items.map((i) => ({ ...i }))} loadBytes={async () => new ArrayBuffer(8)} busy={false} onDone={() => undefined} onReads={(r) => onReads(r)} onClose={() => undefined} />)
+    await waitFor(() => expect(screen.getByTestId('assign-progress').textContent).toContain('1 of 3 seen'))
+    expect(loadBytes).toHaveBeenCalledTimes(1)
+    expect(openPdfMock).toHaveBeenCalledTimes(1)
+    expect(destroyMock).not.toHaveBeenCalled()
+    expect(onReads).toHaveBeenCalledTimes(1)
+    // Unmounting closes the document exactly once.
+    view.unmount()
+    expect(destroyMock).toHaveBeenCalledTimes(1)
   })
 
   it('Backspace undoes the last pick and steps back; typing finds a row and Enter picks it', async () => {

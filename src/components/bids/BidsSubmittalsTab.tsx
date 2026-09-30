@@ -171,6 +171,12 @@ export type BidsSubmittalsTabProps = {
   isMyBid: (bid: BidWithBuilder) => boolean
 }
 
+async function downloadFile(path: string): Promise<ArrayBuffer> {
+  const { data, error } = await supabase.storage.from(SUBMITTALS_BUCKET).download(path)
+  if (error || !data) throw error ?? new Error('Could not read the file.')
+  return data.arrayBuffer()
+}
+
 export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPreview, onSelectBid, onClose, onOpenPricing, onlyMyBids, setOnlyMyBids, isMyBid }: BidsSubmittalsTabProps) {
   const { showToast } = useToastContext()
   const confirm = useConfirmDialog()
@@ -414,6 +420,17 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   }, [selectedRev, previousRev, loadItems])
 
   const sourceFiles: SourceFile[] = useMemo(() => parseSourceFiles(selectedRev?.source_files ?? null), [selectedRev])
+  // The walk's inputs, stable per file (v2.4192): the modal opens the file once per path, and
+  // nothing this tab re-renders for hands it a new callback or a new guesses map.
+  const assignPath = assignFile != null ? sourceFiles[assignFile]?.path ?? null : null
+  const assignLoadBytes = useCallback(() => (assignPath ? downloadFile(assignPath) : Promise.reject(new Error('No file.'))), [assignPath])
+  const assignGuesses = useMemo(() => {
+    const f = assignFile != null ? sourceFiles[assignFile] : undefined
+    if (!f) return undefined
+    const t = liveTask(tasks, 'file_cut_sheets', (inp) => inp.file_index === assignFile && (!inp.path || inp.path === f.path))
+    const g = t ? sheetGuessesToConfirm(t, f.pages) : null
+    return g ? guessByPage(g) : undefined
+  }, [assignFile, sourceFiles, tasks])
   const reviewerFiles: ReviewerFile[] = useMemo(() => parseReviewerFiles((selectedRev as { reviewer_files?: unknown } | null)?.reviewer_files ?? null), [selectedRev])
   const tiles = useMemo(() => revisionTiles(items), [items])
   const decisions = useMemo(() => summarizeDecisions(items), [items])
@@ -1012,12 +1029,6 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   }
 
   // ---------- stage 3a · the sheet strip ----------
-
-  async function downloadFile(path: string): Promise<ArrayBuffer> {
-    const { data, error } = await supabase.storage.from(SUBMITTALS_BUCKET).download(path)
-    if (error || !data) throw error ?? new Error('Could not read the file.')
-    return data.arrayBuffer()
-  }
 
   async function showPages(fileIndex: number) {
     const f = sourceFiles[fileIndex]
@@ -2072,8 +2083,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
           file={sourceFiles[assignFile]!}
           fileIndex={assignFile}
           items={items}
-          loadBytes={() => downloadFile(sourceFiles[assignFile]!.path)}
-          guesses={(() => { const f = sourceFiles[assignFile]!; const t = liveTask(tasks, 'file_cut_sheets', (inp) => inp.file_index === assignFile && (!inp.path || inp.path === f.path)); const g = t ? sheetGuessesToConfirm(t, f.pages) : null; return g ? guessByPage(g) : undefined })()}
+          loadBytes={assignLoadBytes}
+          guesses={assignGuesses}
           busy={busy}
           onDone={applyAssignWrites}
           onReads={(reads) => void noteFileReads(assignFile, reads)}
