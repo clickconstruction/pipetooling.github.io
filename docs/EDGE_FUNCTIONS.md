@@ -2565,6 +2565,8 @@ Per-recipient **`activity_scope`** + **`crew_filter`** + **`include_costs`** (fr
 
 ### schedule-share-dispatch
 
+> **v2.4178 — rendered in What the team sees**: the email was already a kernel (`_shared/scheduleShareCore.ts` — `buildShareEmail`); Settings → What the team sees now renders it over three sample days (punch list #60, lift 9 of 14). No function change, nothing to redeploy.
+
 **Purpose**: Email the **Schedule board** (Dispatch hub blocks) to chosen recipients — two modes in one function, distinguished by the cron secret:
 
 - **Instant** (caller JWT): POST from the Share Schedule modal sends the board for the selected dates to up to **50** recipients right now, rendered from the **sharer's** visibility (`list_schedule_blocks_for_share` RPC with `p_viewer = sender`). Same content to every recipient.

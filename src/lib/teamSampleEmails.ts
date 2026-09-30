@@ -20,6 +20,7 @@ import { renderWeeklyMoneyHtml, renderWeeklyMoneyText, weekLabelFromMonday, week
 import { renderWeeklyMovementHtml, renderWeeklyMovementText, weeklyMovementSubject, type WeeklyMovementPayload, type WeeklyMovementPayloadEntry } from '../../supabase/functions/_shared/weeklyMovementEmail'
 import { paidJobEmailSubject, paidJobEmailText, renderPaidJobEmailDetailed, type PaidJobEmailPayload } from '../../supabase/functions/_shared/paidJobEmail'
 import { buildScheduleEmail, type ScheduleDayBlockRow } from '../../supabase/functions/_shared/scheduleDayEmail'
+import { buildShareEmail, type ShareBlockRow } from '../../supabase/functions/_shared/scheduleShareCore'
 import { readyToBillSubject, readyToBillText, renderReadyToBillDetailed, type ReadyToBillPayload } from '../../supabase/functions/_shared/readyToBillEmail'
 
 export type BuiltTeamEmail = { subject: string; html: string; text: string }
@@ -344,6 +345,27 @@ export function sampleScheduleDayBlocks(todayYmd: string): ScheduleDayBlockRow[]
   ]
 }
 
+/** The Schedule share rows (lift 9): today's four blocks plus two more days — the rough-in runs on, Kim takes a repipe estimate. The RPC orders by person, date, start. */
+export function sampleScheduleShareBlocks(todayYmd: string): { dates: string[]; blocks: ShareBlockRow[] } {
+  const plus = (n: number) => {
+    const d = new Date(`${todayYmd}T12:00:00Z`)
+    d.setUTCDate(d.getUTCDate() + n)
+    return d.toISOString().slice(0, 10)
+  }
+  const dates = [todayYmd, plus(1), plus(2)]
+  const day1 = sampleScheduleDayBlocks(todayYmd)
+  const roughIn = day1[0]!
+  const more: ShareBlockRow[] = [
+    { ...roughIn, id: 'blk-5', work_date: plus(1), time_start: '07:00:00', time_end: '15:00:00', note: null },
+    { ...roughIn, id: 'blk-6', work_date: plus(2), time_start: '07:00:00', time_end: '15:00:00', note: 'Pressure test before backfill' },
+    { ...day1[1]!, id: 'blk-7', work_date: plus(1), time_start: '07:00:00', time_end: '15:00:00', note: null },
+    { ...day1[2]!, id: 'blk-8', work_date: plus(2), time_start: '09:00:00', time_end: '10:30:00', job_id: 'job-6', job_hcp_number: '1058', job_name: 'Repipe estimate', job_address: '410 Elm Grove\nBuda, TX 78610', note: 'Estimate only — bring the camera' },
+  ]
+  const byPerson = (r: ShareBlockRow) => r.assignee_name
+  const blocks = [...day1, ...more].sort((a, b) => byPerson(a).localeCompare(byPerson(b)) || a.work_date.localeCompare(b.work_date) || a.time_start.localeCompare(b.time_start))
+  return { dates, blocks }
+}
+
 export function buildTeamSampleEmail(id: TeamSampleEmailId, ctx: TeamSampleContext): BuiltTeamEmail {
   const origin = ctx.origin
   switch (id) {
@@ -353,6 +375,9 @@ export function buildTeamSampleEmail(id: TeamSampleEmailId, ctx: TeamSampleConte
     }
     case 'schedule_day': {
       return buildScheduleEmail({ workDateYmd: ctx.todayYmd, blocks: sampleScheduleDayBlocks(ctx.todayYmd) })
+    }
+    case 'schedule_share': {
+      return buildShareEmail(sampleScheduleShareBlocks(ctx.todayYmd))
     }
     case 'ready_to_bill': {
       const p = sampleReadyToBillPayload(ctx.todayYmd)

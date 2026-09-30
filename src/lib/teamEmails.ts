@@ -40,6 +40,7 @@ export type TeamSampleEmailId =
   | 'paid_job'
   | 'ready_to_bill'
   | 'schedule_day'
+  | 'schedule_share'
   | 'signed_agreement_staff'
   | 'estimate_accepted_staff'
   | 'gc_word_ask'
@@ -85,6 +86,14 @@ export type TeamSampleContext = {
   weekEndLabel: string
   /** The first name the subject addresses (the account man, the invitee). */
   firstName: string
+}
+
+/** `YYYY-MM-DD` (+ days) → `Tue, Sep 29`, as the Schedule share email prints its range. */
+export function shortDayLabel(ymd: string, plusDays: number): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd)
+  if (!m) return ymd
+  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]) + plusDays))
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })
 }
 
 export type TeamEmail = {
@@ -267,8 +276,8 @@ export const TEAM_EMAILS: readonly TeamEmail[] = [
     label: 'Dispatch schedule share',
     when: { kind: 'event', label: 'When someone shares a schedule range', order: 20 },
     recipients: { roles: EVERYONE, decidedBy: 'event', rule: 'Whoever the sharer picked.' },
-    sampleSubject: (c) => `Schedule — ${c.weekStartLabel} to ${c.dateLabel}`,
-    render: { kind: 'soon', note: 'Built inside schedule-share-dispatch over the shared days.' },
+    sampleSubject: (c) => `Dispatch schedule — ${shortDayLabel(c.todayYmd, 0)} – ${shortDayLabel(c.todayYmd, 2)}`,
+    render: { kind: 'sample', sample: 'schedule_share' },
     manage: emails('Dispatch → Share'),
     reflects: ['the dispatch board'],
   },
