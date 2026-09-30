@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
+import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { AR_ALL_OLDER_HEADING, arAllDayHeading, orderArAllByLastAction } from './arAllByLastAction'
 
-const TZ = 'America/Chicago'
+const TZ = APP_CALENDAR_TZ
 const NOW = new Date('2026-09-30T21:30:00Z') // 4:30 PM Chicago, Wed Sep 30
 
 const row = (id: string, posted: string | null) => ({ mercury_transaction_id: id, posted_at: posted })
