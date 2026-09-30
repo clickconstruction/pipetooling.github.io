@@ -50,6 +50,10 @@ import PropertyKindSwitch from './PropertyKindSwitch'
  * past the day its lien died, a job row's words say only what its GC row does
  * not, the dashed dot sits on the GC row alone, and the key is a strip of
  * marks with a few words each — the long words open on a tap.
+ * v2.4270 (the visual pass): two inks — notice flags amber, lien flags slate,
+ * the density strip's own colours, carried by the column headers and the GC
+ * row's counts; every mark stands on one baseline; the work tick is short and
+ * its stand-in whispers; rows alternate a faint tint instead of a hairline.
  */
 
 export type LienDeskCalendarTabProps = {
@@ -78,26 +82,39 @@ const TONE: Record<LienRunwayTone, string> = {
   red: 'var(--text-red-700)',
   grey: 'var(--text-muted)',
 }
-const FLAG: Record<LienRunwayTone, string> = { green: '#15803d', amber: '#b45309', red: '#b91c1c', grey: 'var(--text-700)' }
+/** Two inks for two deadlines (v2.4270): a notice is a letter — amber; a lien is a filing — slate, the density strip's colours. Red is the week's warning on either. */
+const NOTICE_INK = '#d97706'
+const LIEN_INK = 'var(--text-700)'
+const RED_INK = '#b91c1c'
+const GREEN_INK = '#15803d'
+function noticeInk(tone: LienRunwayTone): string {
+  return tone === 'red' ? RED_INK : tone === 'green' ? GREEN_INK : NOTICE_INK
+}
+function lienInk(tone: LienRunwayTone): string {
+  return tone === 'red' ? RED_INK : tone === 'green' ? GREEN_INK : LIEN_INK
+}
 const HATCH = 'repeating-linear-gradient(135deg, #fca5a5 0 3px, var(--bg-red-tint) 3px 6px)'
 const STRIPE = 'repeating-linear-gradient(90deg, #fcd34d 0 4px, #fef3c7 4px 8px)'
 const LABEL_W = 'minmax(0, 300px)'
 const RIGHT_W = '11rem'
 const GRID: CSSProperties = { display: 'grid', gridTemplateColumns: `${LABEL_W} minmax(0, 1fr) ${RIGHT_W}`, alignItems: 'center' }
 const cellNum: CSSProperties = { fontSize: '0.6875rem', fontWeight: 700, padding: '0 5px', borderRadius: 3, background: 'var(--bg-blue-tint)', color: 'var(--text-blue-800)', whiteSpace: 'nowrap' }
-const ROW_H = 44
-const TRACK_H = 36
+const ROW_H = 48
+const TRACK_H = 40
+/** One baseline per row: the track line, where every pole ends and every tick and dot sits. */
+const LINE_Y = 26
+const FLAG_H = LINE_Y - 8
 
 /** The glyphs, drawn once for the key and once per row — the same shapes the runway draws (v2.4051). */
 function Glyph({ kind, tone = 'amber', count }: { kind: LienCalendarKeyGlyph | 'notice_done'; tone?: LienRunwayTone; count?: number }): ReactNode {
-  const flag = FLAG[tone]
+  const flag = kind === 'lien' ? lienInk(tone) : noticeInk(tone)
   switch (kind) {
     case 'today':
       return <span style={{ display: 'inline-block', width: 2, height: 16, background: 'var(--text-strong)' }} />
     case 'work':
-      return <span style={{ display: 'inline-block', width: 2, height: 16, background: 'var(--text-muted)' }} />
+      return <span style={{ display: 'inline-block', width: 2, height: 10, background: 'var(--text-muted)' }} />
     case 'work_hollow':
-      return <span style={{ display: 'inline-block', width: 0, height: 16, borderLeft: '2px dashed #d97706' }} />
+      return <span style={{ display: 'inline-block', width: 0, height: 10, borderLeft: `2px dashed ${NOTICE_INK}` }} />
     case 'gone':
       return <span style={{ display: 'inline-block', width: 26, height: 14, background: 'var(--bg-subtle)', borderLeft: '2px solid #b91c1c' }} />
     case 'pay':
@@ -172,11 +189,11 @@ function Track({ marks, j, onOpen, onPen }: { marks: LienCalendarMark[]; j: Lien
   const gone = marks.find((m): m is Extract<LienCalendarMark, { kind: 'gone' }> => m.kind === 'gone') ?? null
   return (
     <div style={{ position: 'relative', height: TRACK_H }} data-testid="lien-cal-track">
-      <div style={{ position: 'absolute', left: 0, right: gone ? `${100 - gone.pct}%` : 0, top: 13, height: 2, background: 'var(--border)' }} />
+      <div style={{ position: 'absolute', left: 0, right: gone ? `${100 - gone.pct}%` : 0, top: LINE_Y, height: 1, background: 'var(--border-strong)' }} />
       {gone ? (
-        <div title={markTitle(gone, j)} data-testid="lien-cal-gone" style={{ position: 'absolute', left: `${gone.pct}%`, right: 0, top: 0, bottom: 0, background: 'var(--bg-subtle)', borderLeft: '2px solid #b91c1c', zIndex: 0 }}>
-          <span style={{ position: 'absolute', left: 8, top: 22, fontSize: 10, fontWeight: 600, color: 'var(--text-red-700)', whiteSpace: 'nowrap' }}>{gone.label}</span>
-          <span style={{ position: 'absolute', left: 8, top: 5, fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 'calc(100% - 16px)' }}>nothing left to file after this day — the money is still owed</span>
+        <div title={markTitle(gone, j)} data-testid="lien-cal-gone" style={{ position: 'absolute', left: `${gone.pct}%`, right: 0, top: 0, bottom: 0, background: 'var(--bg-subtle)', borderLeft: `2px solid ${RED_INK}`, zIndex: 0 }}>
+          <span style={{ position: 'absolute', left: 8, top: LINE_Y + 3, fontSize: 10, fontWeight: 600, color: 'var(--text-red-700)', whiteSpace: 'nowrap' }}>{gone.label}</span>
+          <span style={{ position: 'absolute', left: 8, top: 7, fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 'calc(100% - 16px)' }}>nothing left to file after this day — the money is still owed</span>
         </div>
       ) : null}
       {marks.map((m, i) => {
@@ -186,35 +203,35 @@ function Track({ marks, j, onOpen, onPen }: { marks: LienCalendarMark[]; j: Lien
           // On a dead row the reason sits under the red flag; the tick keeps its date only when there is room before the wash.
           const labelled = !gone || gone.pct - m.pct >= 12
           return (
-            <div key={i} title={title} data-testid="lien-cal-work" style={{ position: 'absolute', left: `calc(${m.pct}% - 1px)`, top: 6, width: 2, height: 16, background: m.fromCreation ? 'transparent' : 'var(--text-muted)', borderLeft: m.fromCreation ? '2px dashed #d97706' : 'none', zIndex: 1 }}>
-              {labelled ? <span style={{ position: 'absolute', left: m.offAxis ? 4 : undefined, top: 17, transform: m.offAxis ? 'none' : 'translateX(-50%)', fontSize: 10, lineHeight: 1, whiteSpace: 'nowrap', color: m.fromCreation ? 'var(--text-amber-800)' : 'var(--text-muted)', fontWeight: m.fromCreation ? 600 : 400 }}>{m.label}</span> : null}
+            <div key={i} title={title} data-testid="lien-cal-work" style={{ position: 'absolute', left: `calc(${m.pct}% - 1px)`, top: LINE_Y - 8, width: 2, height: 8, background: m.fromCreation ? 'transparent' : 'var(--text-muted)', borderLeft: m.fromCreation ? `2px dashed ${NOTICE_INK}` : 'none', zIndex: 1 }}>
+              {labelled ? <span style={{ position: 'absolute', left: m.offAxis ? 4 : undefined, top: 11, transform: m.offAxis ? 'none' : 'translateX(-50%)', fontSize: 10, lineHeight: 1, whiteSpace: 'nowrap', color: m.fromCreation ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>{m.label}</span> : null}
             </div>
           )
         }
-        if (m.kind === 'run') return <div key={i} title={title} style={{ position: 'absolute', left: `${m.fromPct}%`, width: `${Math.max(0.4, m.toPct - m.fromPct)}%`, top: 11, height: 6, borderRadius: 3, background: m.short ? HATCH : '#86efac' }} />
-        if (m.kind === 'bracket') return <div key={i} title={title} style={{ position: 'absolute', left: `${m.fromPct}%`, width: `${Math.max(0.4, m.toPct - m.fromPct)}%`, top: 11, height: 6, borderRadius: 3, background: STRIPE, opacity: 0.9 }} />
+        if (m.kind === 'run') return <div key={i} title={title} style={{ position: 'absolute', left: `${m.fromPct}%`, width: `${Math.max(0.4, m.toPct - m.fromPct)}%`, top: LINE_Y - 2, height: 5, borderRadius: 3, background: m.short ? HATCH : '#86efac' }} />
+        if (m.kind === 'bracket') return <div key={i} title={title} style={{ position: 'absolute', left: `${m.fromPct}%`, width: `${Math.max(0.4, m.toPct - m.fromPct)}%`, top: LINE_Y - 2, height: 5, borderRadius: 3, background: STRIPE, opacity: 0.9 }} />
         if (m.kind === 'pay')
           return (
-            <button key={i} type="button" title={onPen ? `${title} — click to change it` : title} aria-label={`When ${j.customer || j.name} said they would pay: ${labelOf(m.ymd)} · ${j.number}`} onClick={() => (onPen ? onPen(m.pct) : onOpen())} style={{ position: 'absolute', left: `calc(${m.pct}% - 5px)`, top: 9, width: 10, height: 10, borderRadius: '50%', background: '#16a34a', border: '2px solid var(--surface)', boxShadow: '0 0 0 1px #16a34a', padding: 0, cursor: 'pointer' }} />
+            <button key={i} type="button" title={onPen ? `${title} — click to change it` : title} aria-label={`When ${j.customer || j.name} said they would pay: ${labelOf(m.ymd)} · ${j.number}`} onClick={() => (onPen ? onPen(m.pct) : onOpen())} style={{ position: 'absolute', left: `calc(${m.pct}% - 5px)`, top: LINE_Y - 5, width: 11, height: 11, borderRadius: '50%', background: '#16a34a', border: '2px solid var(--surface)', boxShadow: '0 0 0 1px #16a34a', padding: 0, cursor: 'pointer' }} />
           )
         if (m.kind === 'pay_missing')
-          return <button key={i} type="button" title={title} aria-label={`Record when ${j.customer || j.name} expects to pay · ${j.number}`} onClick={() => (onPen ? onPen(m.pct) : onOpen())} style={{ position: 'absolute', left: `calc(${m.pct}% - 7px)`, top: 7, width: 14, height: 14, borderRadius: '50%', border: '2px dashed #16a34a', background: 'var(--surface)', padding: 0, opacity: 0.75, cursor: 'pointer' }} />
+          return <button key={i} type="button" title={title} aria-label={`Record when ${j.customer || j.name} expects to pay · ${j.number}`} onClick={() => (onPen ? onPen(m.pct) : onOpen())} style={{ position: 'absolute', left: `calc(${m.pct}% - 7px)`, top: LINE_Y - 7, width: 14, height: 14, borderRadius: '50%', border: '2px dashed #16a34a', background: 'var(--surface)', padding: 0, opacity: 0.75, cursor: 'pointer' }} />
         if (m.kind === 'notice')
           return m.done ? (
-            <div key={i} title={title} style={{ position: 'absolute', left: `calc(${m.pct}% - 6px)`, top: 8, width: 12, height: 12, borderRadius: '50%', background: '#15803d', color: '#fff', fontSize: 9, lineHeight: '12px', textAlign: 'center', fontWeight: 700 }}>✓</div>
+            <div key={i} title={title} style={{ position: 'absolute', left: `calc(${m.pct}% - 6px)`, top: LINE_Y - 6, width: 12, height: 12, borderRadius: '50%', background: GREEN_INK, color: '#fff', fontSize: 9, lineHeight: '12px', textAlign: 'center', fontWeight: 700 }}>✓</div>
           ) : (
-            <button key={i} type="button" title={title} aria-label={title} onClick={onOpen} style={{ position: 'absolute', left: `calc(${m.pct}% - 1px)`, top: 4, width: 14, height: 20, padding: 0, border: 'none', background: 'transparent', cursor: 'pointer' }}>
-              <span style={{ position: 'absolute', left: 0, top: 0, width: 2, height: 20, background: FLAG[m.tone] }} />
-              <span style={{ position: 'absolute', left: 2, top: 0, width: 9, height: 7, background: FLAG[m.tone], clipPath: 'polygon(0 0, 100% 50%, 0 100%)' }} />
-              <span style={{ position: 'absolute', left: 3.5, top: 1.5, width: 5, height: 4, background: 'var(--surface)', clipPath: 'polygon(0 0, 100% 50%, 0 100%)' }} />
+            <button key={i} type="button" title={title} aria-label={title} onClick={onOpen} style={{ position: 'absolute', left: `calc(${m.pct}% - 1px)`, top: LINE_Y - FLAG_H, width: 14, height: FLAG_H, padding: 0, border: 'none', background: 'transparent', cursor: 'pointer' }}>
+              <span style={{ position: 'absolute', left: 0, top: 0, width: 2, height: FLAG_H, background: noticeInk(m.tone) }} />
+              <span style={{ position: 'absolute', left: 2, top: 0, width: 10, height: 8, background: noticeInk(m.tone), clipPath: 'polygon(0 0, 100% 50%, 0 100%)' }} />
+              <span style={{ position: 'absolute', left: 3.5, top: 1.5, width: 6, height: 5, background: 'var(--surface)', clipPath: 'polygon(0 0, 100% 50%, 0 100%)' }} />
             </button>
           )
-        // the lien flag — on a dead row, the red flag on the day the lien died
-        const color = m.closed ? '#b91c1c' : FLAG[m.tone]
+        // the lien flag, slate — on a dead row, red on the day the lien died
+        const color = m.closed ? RED_INK : lienInk(m.tone)
         return (
-          <div key={i} title={title} style={{ position: 'absolute', left: `calc(${m.pct}% - 1px)`, top: 4, width: 12, height: 20, zIndex: 1 }}>
-            <span style={{ position: 'absolute', left: 0, top: 0, width: 2, height: 20, background: color }} />
-            <span style={{ position: 'absolute', left: 2, top: 0, width: 9, height: 7, background: color, clipPath: 'polygon(0 0, 100% 50%, 0 100%)' }} />
+          <div key={i} title={title} style={{ position: 'absolute', left: `calc(${m.pct}% - 1px)`, top: LINE_Y - FLAG_H, width: 12, height: FLAG_H, zIndex: 1 }}>
+            <span style={{ position: 'absolute', left: 0, top: 0, width: 2, height: FLAG_H, background: color }} />
+            <span style={{ position: 'absolute', left: 2, top: 0, width: 10, height: 8, background: color, clipPath: 'polygon(0 0, 100% 50%, 0 100%)' }} />
           </div>
         )
       })}
@@ -228,24 +245,30 @@ function GroupTrack({ g, axis, onPen }: { g: LienCalendarGroup; axis: LienCalend
   const dotPct = word ? axis.pct(word) : axis.pct(addDaysYmd(axis.todayYmd, 2))
   return (
     <div style={{ position: 'relative', height: TRACK_H }}>
-      <div style={{ position: 'absolute', left: 0, right: 0, top: 13, height: 2, background: 'var(--border)' }} />
+      <div style={{ position: 'absolute', left: 0, right: 0, top: LINE_Y, height: 1, background: 'var(--border-strong)' }} />
       {g.kind === 'gc' && onPen ? (
         word ? (
-          <button type="button" title={`${g.name} said ${labelOf(word)} — one word for all ${g.jobs.length} jobs. Click to change it.`} aria-label={`${g.name}'s word: ${labelOf(word)}`} onClick={() => onPen(dotPct)} style={{ position: 'absolute', left: `calc(${dotPct}% - 5px)`, top: 9, width: 10, height: 10, borderRadius: '50%', background: '#16a34a', border: '2px solid var(--surface)', boxShadow: '0 0 0 1px #16a34a', padding: 0, cursor: 'pointer', zIndex: 1 }} />
+          <button type="button" title={`${g.name} said ${labelOf(word)} — one word for all ${g.jobs.length} jobs. Click to change it.`} aria-label={`${g.name}'s word: ${labelOf(word)}`} onClick={() => onPen(dotPct)} style={{ position: 'absolute', left: `calc(${dotPct}% - 5px)`, top: LINE_Y - 5, width: 11, height: 11, borderRadius: '50%', background: '#16a34a', border: '2px solid var(--surface)', boxShadow: '0 0 0 1px #16a34a', padding: 0, cursor: 'pointer', zIndex: 1 }} />
         ) : (
-          <button type="button" title={`No one date for ${g.name}'s jobs yet — click to give the GC's word for all of them`} aria-label={`Record ${g.name}'s word for all ${g.jobs.length} jobs`} onClick={() => onPen(dotPct)} style={{ position: 'absolute', left: `calc(${dotPct}% - 7px)`, top: 7, width: 14, height: 14, borderRadius: '50%', border: '2px dashed #16a34a', background: 'var(--surface)', padding: 0, opacity: 0.75, cursor: 'pointer', zIndex: 1 }} />
+          <button type="button" title={`No one date for ${g.name}'s jobs yet — click to give the GC's word for all of them`} aria-label={`Record ${g.name}'s word for all ${g.jobs.length} jobs`} onClick={() => onPen(dotPct)} style={{ position: 'absolute', left: `calc(${dotPct}% - 7px)`, top: LINE_Y - 7, width: 14, height: 14, borderRadius: '50%', border: '2px dashed #16a34a', background: 'var(--surface)', padding: 0, opacity: 0.75, cursor: 'pointer', zIndex: 1 }} />
         )
       ) : null}
       {flags.map((f) => {
-        const hollow = f.notices > 0
-        const n = f.notices || f.liens
+        // One date, two inks: the notices' hollow amber flag, then the liens' slate flag beside it, each with its count.
         const title = `${f.notices ? `${f.notices} ${f.notices === 1 ? 'notice' : 'notices'} owed` : ''}${f.notices && f.liens ? ' · ' : ''}${f.liens ? `${f.liens} ${f.liens === 1 ? 'lien' : 'liens'} to file` : ''} by ${labelOf(f.ymd)}`
+        const parts: Array<{ kind: 'notice' | 'lien'; n: number; ink: string }> = []
+        if (f.notices) parts.push({ kind: 'notice', n: f.notices, ink: noticeInk(f.tone) })
+        if (f.liens) parts.push({ kind: 'lien', n: f.liens, ink: g.kind === 'gone' ? RED_INK : lienInk(f.tone) })
         return (
-          <div key={f.ymd} title={title} style={{ position: 'absolute', left: `calc(${f.pct}% - 1px)`, top: 4, width: 20, height: 20 }}>
-            <span style={{ position: 'absolute', left: 0, top: 0, width: 2, height: 20, background: FLAG[f.tone] }} />
-            <span style={{ position: 'absolute', left: 2, top: 0, width: 9, height: 7, background: FLAG[f.tone], clipPath: 'polygon(0 0, 100% 50%, 0 100%)' }} />
-            {hollow ? <span style={{ position: 'absolute', left: 3.5, top: 1.5, width: 5, height: 4, background: 'var(--surface)', clipPath: 'polygon(0 0, 100% 50%, 0 100%)' }} /> : null}
-            {n > 1 ? <span style={{ position: 'absolute', left: 6, top: 7, fontSize: 9, fontWeight: 700, color: FLAG[f.tone] }}>{n}</span> : null}
+          <div key={f.ymd} title={title} style={{ position: 'absolute', left: `calc(${f.pct}% - 1px)`, top: LINE_Y - FLAG_H, width: 14 * parts.length + 12, height: FLAG_H + 14 }}>
+            {parts.map((p, i) => (
+              <span key={p.kind} style={{ position: 'absolute', left: i * 14, top: 0, width: 14, height: FLAG_H }}>
+                <span style={{ position: 'absolute', left: 0, top: 0, width: 2, height: FLAG_H, background: p.ink }} />
+                <span style={{ position: 'absolute', left: 2, top: 0, width: 10, height: 8, background: p.ink, clipPath: 'polygon(0 0, 100% 50%, 0 100%)' }} />
+                {p.kind === 'notice' ? <span style={{ position: 'absolute', left: 3.5, top: 1.5, width: 6, height: 5, background: 'var(--surface)', clipPath: 'polygon(0 0, 100% 50%, 0 100%)' }} /> : null}
+                {p.n > 1 ? <span style={{ position: 'absolute', left: 4, top: FLAG_H + 2, fontSize: 10, lineHeight: 1, fontWeight: 700, color: p.ink }}>{p.n}</span> : null}
+              </span>
+            ))}
           </div>
         )
       })}
@@ -394,7 +417,7 @@ function GroupHeader({ g, open, onToggle, axis, onPen }: { g: LienCalendarGroup;
     <button type="button" aria-expanded={open} onClick={onToggle} style={{ textAlign: 'left', border: 'none', background: 'none', padding: '6px 10px', display: 'flex', gap: 8, alignItems: 'center', minWidth: 0, cursor: 'pointer', color: 'inherit', width: '100%' }}>
       <span aria-hidden style={{ color: 'var(--text-muted)' }}>{open ? '▾' : '▸'}</span>
       <span style={{ minWidth: 0 }}>
-        <span style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.name}</span>
+        <span style={{ display: 'block', fontSize: '0.875rem', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.name}</span>
         <span style={{ display: 'block', fontSize: '0.6875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.sub}</span>
       </span>
     </button>
@@ -406,7 +429,7 @@ function GroupHeader({ g, open, onToggle, axis, onPen }: { g: LienCalendarGroup;
     </div>
   )
   return (
-    <div style={{ ...GRID, background: g.kind === 'gone' ? 'var(--bg-red-tint)' : 'var(--bg-subtle)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', minHeight: 40 }} data-testid={`lien-cal-group-${g.key}`}>
+    <div style={{ ...GRID, background: g.kind === 'gone' ? 'var(--bg-red-tint)' : 'var(--bg-subtle)', borderTop: '2px solid var(--border-strong)', borderBottom: '1px solid var(--border)', minHeight: ROW_H }} data-testid={`lien-cal-group-${g.key}`}>
       {left}
       {axis ? <GroupTrack g={g} axis={axis} onPen={onPen} /> : <div />}
       {right}
@@ -414,13 +437,13 @@ function GroupHeader({ g, open, onToggle, axis, onPen }: { g: LienCalendarGroup;
   )
 }
 
-function JobRow({ j, g, axis, onOpen, onPen }: { j: LienCalendarJob; g: LienCalendarGroup; axis: LienCalendarAxis | null; onOpen: () => void; onPen?: (pct: number) => void }) {
+function JobRow({ j, g, index, axis, onOpen, onPen }: { j: LienCalendarJob; g: LienCalendarGroup; index: number; axis: LienCalendarAxis | null; onOpen: () => void; onPen?: (pct: number) => void }) {
   // Under a GC row its one dot speaks for every job; a job draws the dashed dot only on its own.
   const marks = axis ? lienCalendarMarks(j, axis, { payMissingDot: g.kind !== 'gc' }) : []
   const word = rowWord(j, g)
   const dead = j.runway.state === 'closed'
   return (
-    <div role="row" className="lienCalendarRow" style={{ ...GRID, borderBottom: '1px solid var(--border)', minHeight: ROW_H, background: 'var(--surface)' }}>
+    <div role="row" className="lienCalendarRow" style={{ ...GRID, minHeight: ROW_H, background: index % 2 === 1 ? 'var(--bg-subtle)' : 'var(--surface)' }}>
       <button type="button" onClick={onOpen} title="Open the job’s Lien window" style={{ minWidth: 0, textAlign: 'left', border: 'none', background: 'none', padding: '4px 10px 4px 30px', cursor: 'pointer', color: 'inherit' }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
           <span style={cellNum}>{j.number}</span>
@@ -433,7 +456,7 @@ function JobRow({ j, g, axis, onOpen, onPen }: { j: LienCalendarJob; g: LienCale
       </button>
       {axis ? <Track marks={marks} j={j} onOpen={onOpen} onPen={onPen} /> : <div />}
       <div style={{ padding: '0 14px', textAlign: 'right' }} data-testid="lien-cal-row-money">
-        <div style={{ fontSize: '0.8125rem', fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: dead ? 'var(--text-muted)' : undefined }}>{formatUsdNoCents(j.openBalance)}</div>
+        <div style={{ fontSize: '0.8125rem', fontWeight: 500, fontVariantNumeric: 'tabular-nums', color: dead ? 'var(--text-muted)' : undefined }}>{formatUsdNoCents(j.openBalance)}</div>
         {word ? (
           <div title={j.runway.lines.join(' — ')} style={{ fontSize: '0.6875rem', fontWeight: word.tone === 'grey' ? 500 : 600, color: TONE[word.tone], whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {word.text}
@@ -526,7 +549,7 @@ function DensityStrip({ density, axis, selectedYmd, onSelect }: { density: LienC
         What lands on each 15th
         <br />
         <span style={{ color: 'var(--text-muted)' }}>
-          <span style={{ display: 'inline-block', width: 8, height: 8, background: '#f59e0b' }} /> notices · <span style={{ display: 'inline-block', width: 8, height: 8, background: 'var(--text-700)' }} /> liens
+          <span style={{ display: 'inline-block', width: 8, height: 8, background: NOTICE_INK }} /> notices · <span style={{ display: 'inline-block', width: 8, height: 8, background: LIEN_INK }} /> liens
         </span>
       </div>
       <div style={{ position: 'relative', height: 44 }}>
@@ -538,8 +561,8 @@ function DensityStrip({ density, axis, selectedYmd, onSelect }: { density: LienC
           const sel = selectedYmd === c.ymd
           return (
             <button key={c.ymd} type="button" aria-pressed={sel} aria-label={`${labelOf(c.ymd)}: ${c.notices.count} ${c.notices.count === 1 ? 'notice' : 'notices'}, ${c.liens.count} ${c.liens.count === 1 ? 'lien' : 'liens'} — lead the to-do with this column`} title={`${labelOf(c.ymd)}: ${c.notices.count} ${c.notices.count === 1 ? 'notice' : 'notices'} (${formatUsdNoCents(c.notices.total)}) · ${c.liens.count} ${c.liens.count === 1 ? 'lien' : 'liens'} (${formatUsdNoCents(c.liens.total)}) — click to lead the to-do`} onClick={() => onSelect(sel ? null : c.ymd)} style={{ position: 'absolute', left: `calc(${c.pct}% - 8px)`, bottom: 4, width: 16, height: h, display: 'flex', flexDirection: 'column-reverse', padding: 0, border: 'none', background: 'transparent', cursor: 'pointer', outline: sel ? '2px solid var(--border-blue)' : 'none', outlineOffset: 2 }}>
-              <div style={{ height: nh, background: '#f59e0b' }} />
-              <div style={{ height: h - nh, background: 'var(--text-700)' }} />
+              <div style={{ height: nh, background: NOTICE_INK }} />
+              <div style={{ height: h - nh, background: LIEN_INK }} />
               <span style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', fontSize: 9, fontWeight: 700, color: 'var(--text-700)' }}>{total}</span>
             </button>
           )
@@ -548,11 +571,16 @@ function DensityStrip({ density, axis, selectedYmd, onSelect }: { density: LienC
       <div />
       <div style={{ padding: '0 10px 6px', fontSize: '0.6875rem', color: 'var(--text-muted)', alignSelf: 'end' }}>GC · then their jobs</div>
       <div style={{ position: 'relative', height: 30 }}>
-        {axis.columns.map((c) => (
-          <div key={c.ymd} style={{ position: 'absolute', left: `${c.pct}%`, bottom: 4, transform: 'translateX(-50%)', fontSize: '0.6875rem', fontWeight: 600, color: c.past ? 'var(--text-muted)' : 'var(--text-700)', whiteSpace: 'nowrap' }}>
-            {c.label}
-          </div>
-        ))}
+        {axis.columns.map((c) => {
+          // The header carries the column's ink: amber where only notices land, slate where a lien does.
+          const d = density.find((x) => x.ymd === c.ymd)
+          const ink = c.past ? 'var(--text-muted)' : d && d.liens.count > 0 ? LIEN_INK : d && d.notices.count > 0 ? 'var(--text-amber-800)' : 'var(--text-700)'
+          return (
+            <div key={c.ymd} style={{ position: 'absolute', left: `${c.pct}%`, bottom: 4, transform: 'translateX(-50%)', fontSize: '0.6875rem', fontWeight: 600, color: ink, whiteSpace: 'nowrap' }}>
+              {c.label}
+            </div>
+          )
+        })}
         <div style={{ position: 'absolute', left: `${axis.todayPct}%`, bottom: 2, transform: 'translateX(-50%)', fontSize: '0.6875rem', fontWeight: 700, color: '#fff', background: 'var(--text-strong)', borderRadius: 999, padding: '1px 8px', whiteSpace: 'nowrap' }} data-testid="lien-cal-today-pill">
           today · {labelOf(axis.todayYmd)}
         </div>
@@ -680,9 +708,9 @@ export default function LienDeskCalendarTab({ rows, loading, todayYmd, onOpenJob
                     </div>
                   ) : null}
                   {open
-                    ? g.jobs.map((j) => (
+                    ? g.jobs.map((j, index) => (
                         <div key={j.jobId} style={{ position: 'relative' }}>
-                          <JobRow j={j} g={g} axis={axis} onOpen={() => onOpenJob(j.jobId)} onPen={penOn ? (pct) => setPen({ kind: 'job', job: j, pct }) : undefined} />
+                          <JobRow j={j} g={g} index={index} axis={axis} onOpen={() => onOpenJob(j.jobId)} onPen={penOn ? (pct) => setPen({ kind: 'job', job: j, pct }) : undefined} />
                           {pen && pen.kind === 'job' && pen.job.jobId === j.jobId && axis ? (
                             <div style={{ ...GRID, position: 'absolute', left: 0, right: 0, top: 0, pointerEvents: 'none' }}>
                               <div />
@@ -704,7 +732,7 @@ export default function LienDeskCalendarTab({ rows, loading, todayYmd, onOpenJob
                 <div />
                 <div style={{ position: 'relative' }}>
                   {axis.columns.map((c) => (
-                    <div key={c.ymd} style={{ position: 'absolute', left: `${c.pct}%`, top: 0, bottom: 0, width: 1, background: 'var(--border)' }} />
+                    <div key={c.ymd} style={{ position: 'absolute', left: `${c.pct}%`, top: 0, bottom: 0, width: 0, borderLeft: '1px dashed var(--border)' }} />
                   ))}
                   <div style={{ position: 'absolute', left: `${axis.todayPct}%`, top: 0, bottom: 0, width: 2, background: 'var(--text-strong)', opacity: 0.85 }} data-testid="lien-cal-today-line" />
                 </div>

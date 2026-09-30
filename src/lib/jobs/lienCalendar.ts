@@ -322,7 +322,8 @@ export function workMarkFor(job: Pick<LienCalendarJob, 'runway'>, axis: Pick<Lie
   if (!ymd) return null
   const offAxis = ymd < axis.startYmd
   const fromCreation = job.runway.datedFromCreation
-  const words = fromCreation ? `${monthShort(ymd)} · no hours (created)` : formatYmdMonthDay(ymd)
+  // The stand-in whispers (v2.4266): the month and "no hours"; the creation-day words are the hover and the key.
+  const words = fromCreation ? `${monthShort(ymd)} · no hours` : formatYmdMonthDay(ymd)
   return { kind: 'work', pct: offAxis ? 0 : axis.pct(ymd), ymd, offAxis, fromCreation, label: offAxis ? `◂ ${words}` : words }
 }
 
@@ -502,8 +503,8 @@ export const LIEN_CALENDAR_KEY: ReadonlyArray<LienCalendarKeyEntry> = [
   {
     glyph: 'lien',
     short: 'Lien deadline',
-    label: 'the last day to file the lien affidavit (§ 53.052) — darker as it nears',
-    long: 'The last day the lien affidavit can be filed with the county — the 15th of the third month after the work month on a residential property, the fourth on a commercial one (§ 53.052). Amber inside three weeks, red inside one. After this day the lien is gone; the debt is not.',
+    label: 'the last day to file the lien affidavit (§ 53.052) — red inside a week',
+    long: 'The last day the lien affidavit can be filed with the county — the 15th of the third month after the work month on a residential property, the fourth on a commercial one (§ 53.052). Slate, like the liens on the density strip; red inside a week. After this day the lien is gone; the debt is not.',
   },
   { glyph: 'pay', short: 'Pay date they gave', label: 'when they said they would pay (a promise, the GC’s word, or the pay-speed estimate)', long: 'When they said the money would come — a promise on the job, the GC’s word from the statement round, or, with neither, the estimate from how fast this customer usually pays. Click it to change it.' },
   { glyph: 'pay_missing', short: 'No pay date yet', label: 'no pay date yet — click to record what they said', long: 'Nobody has said when this will be paid. On a GC row one dot speaks for all of its jobs — click it to record the GC’s word for every job at once; a job row shows its own dot only when it has its own date.' },

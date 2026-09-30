@@ -97,7 +97,7 @@ describe('LienDeskCalendarTab', () => {
     expect(ticks.length).toBe(4) // Rizvi, Umar Khan, Holub, Garza; Knight's is folded under Lien gone
     expect(ticks.filter((t) => t.textContent === 'Aug 12').length).toBe(2)
     expect(screen.getByText('Aug 20')).toBeTruthy()
-    expect(screen.getByText('Aug · no hours (created)')).toBeTruthy()
+    expect(screen.getByText('Aug · no hours')).toBeTruthy()
     expect(screen.getByTitle(/No approved hours — the board counts from the month the job was created \(Aug 3\)/)).toBeTruthy()
   })
 
