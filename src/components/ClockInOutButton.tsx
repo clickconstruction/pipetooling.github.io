@@ -59,6 +59,7 @@ import {
   type TallyLinkedMercuryRow,
   filterTallyRowsToUnlinkedWithOptionalMinPosted,
 } from '../lib/mercuryTxRowFromTally'
+import { fetchTallyLinkedMercuryRows } from '../lib/tally/fetchTallyLinkedMercuryRows'
 import { fetchRecentClockJobPicksForUser, type RecentClockJobPick } from '../lib/fetchRecentClockJobPicksForUser'
 import { useFirstAssistantDispatchPhone } from '../hooks/useFirstAssistantDispatchPhone'
 import {
@@ -991,10 +992,7 @@ export default function ClockInOutButton({
 
   const refreshTallyPreClockOutUnlinked = useCallback(async () => {
     try {
-      const txData = await withSupabaseRetry(
-        () => supabase.rpc('list_my_linked_mercury_transactions_for_tally'),
-        'list tally for pre clock out refresh',
-      )
+      const txData = await fetchTallyLinkedMercuryRows(supabase, 'list tally for pre clock out refresh')
       setTallyPreUnlinkedRows(
         filterTallyRowsToUnlinkedWithOptionalMinPosted(
           (txData ?? []) as TallyLinkedMercuryRow[],
@@ -1026,7 +1024,7 @@ export default function ClockInOutButton({
               .maybeSingle(),
           'load job tally min posted for clock out gate',
         ),
-        withSupabaseRetry(() => supabase.rpc('list_my_linked_mercury_transactions_for_tally'), 'list tally for pre clock out'),
+        fetchTallyLinkedMercuryRows(supabase, 'list tally for pre clock out'),
         withSupabaseRetry(
           () => supabase.rpc('list_my_linked_mercury_debit_cards_for_tally'),
           'list tally debit cards for pre clock out',
