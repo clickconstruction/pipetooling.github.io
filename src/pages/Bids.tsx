@@ -480,6 +480,7 @@ export default function Bids() {
     costEstimate, setCostEstimate,
     costEstimateLaborRows, setCostEstimateLaborRows,
     costEstimateCountRows, setCostEstimateCountRows,
+    costEstimateFixtureMaterials,
     purchaseOrdersForCostEstimate,
     costEstimateMaterialTotalRoughIn,
     costEstimateMaterialTotalTopOut,
@@ -2146,6 +2147,7 @@ export default function Bids() {
           costEstimateLaborRows={costEstimateLaborRows}
           setCostEstimateLaborRows={setCostEstimateLaborRows}
           costEstimateCountRows={costEstimateCountRows}
+          costEstimateFixtureMaterials={costEstimateFixtureMaterials}
           panel={laborPanel}
           purchaseOrdersForCostEstimate={purchaseOrdersForCostEstimate}
           costEstimateMaterialTotalRoughIn={costEstimateMaterialTotalRoughIn}

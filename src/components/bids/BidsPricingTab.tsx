@@ -13,6 +13,7 @@ import { compareSentVsToday, sentVsTodayText } from '../../lib/bids/sentVsToday'
 import { pricingLockChipText, pricingLockState, pricingLockedMessage, readRevisedBids, writeRevisedBid } from '../../lib/bids/pricingLock'
 import { mapCountRowsByFixture } from '../../lib/bids/mapCountRowsByFixture'
 import { sumByAlternate } from '../../lib/bids/alternateScope'
+import { sameSolveScope, scopeWorkbenchRows, solveScopeLabel, type WorkbenchSolveScope } from '../../lib/bids/workbenchSolveScope'
 import { alternateScopeKey, isAlternateRow } from '../../lib/bids/countSheet'
 import { searchPriceBookEntries, seedPricingAssignmentSearch, type AssignMatchMode, type PriceBookSearchResult } from '../../lib/bids/priceBookAssignSearch'
 import { SpotlightTour } from '../SpotlightTour'
@@ -504,6 +505,9 @@ export function BidsPricingTab({
       many rows it priced. Where the bid lands (revenue/blended) reads live from the
       preview totals; cleared whenever the preview clears or a row is hand-edited. */
   const [wbSolveLanding, setWbSolveLanding] = useState<{ pct: number; rows: number } | null>(null)
+  // v2.4202: what the solver prices on a bid with an alternate — the base by default (the number the
+  // letter leads with); one alternate or the whole bid a click away. Rows outside keep their prices.
+  const [wbSolveScope, setWbSolveScope] = useState<WorkbenchSolveScope>('base')
   const [wbShowUnpricedOnly, setWbShowUnpricedOnly] = useState(false)
   const [wbShowNoCostOnly, setWbShowNoCostOnly] = useState(false)
   const [wbApplying, setWbApplying] = useState(false)
@@ -1788,15 +1792,21 @@ export function BidsPricingTab({
     const derived = derivePricingWorkbench()
     if (!derived) return
     const fixtureCostSum = derived.rows.reduce((s, r) => s + (r.cost > 0 ? r.cost : 0), 0)
-    const overhead = Math.max(derived.totalCost - fixtureCostSum, 0)
-    const solverRows = derived.rows.map((r) => ({
+    const overheadAll = Math.max(derived.totalCost - fixtureCostSum, 0)
+    const allRows = derived.rows.map((r) => ({
       id: r.countRow.id,
       count: r.count,
       rowCost: r.cost,
       // A saved $0 is not a price (v2.2396) — the solver treats those rows as unpriced.
       unitPrice: wbPreview?.[r.countRow.id] ?? (r.unitPrice != null && r.unitPrice > 0 ? r.unitPrice : null),
       locked: r.isFixedPrice || wbLocks.has(r.countRow.id),
+      group_tag: r.countRow.group_tag ?? null,
     }))
+    // v2.4202: the scope — the base, one alternate or the whole bid; the overhead follows pro rata.
+    const scoped = scopeWorkbenchRows(allRows, wbSolveScope, selectedBidForPricing?.alternate_group_tags ?? [], overheadAll)
+    const solverRows = scoped.rows
+    const overhead = scoped.overhead
+    const scopeTotalCost = scoped.fixtureCost + scoped.overhead
     const sol = solveWorkbenchPrices(solverRows, overhead, {
       ...(opts.targetTotal == null ? { targetMarginPct: opts.marginPct ?? wbMarginPct } : { targetTotal: opts.targetTotal }),
       onlyUnpriced: opts.onlyUnpriced === true,
@@ -1824,10 +1834,24 @@ export function BidsPricingTab({
       // syncing to blended would jump prices on the next slider nudge.
       const costedRev = sol.resultingRevenue - sol.uncostedFixedRevenue
       if (costedRev > 0) {
-        const costedMargin = (costedRev - derived.totalCost) / costedRev
+        const costedMargin = (costedRev - scopeTotalCost) / costedRev
         setWbMarginPct(Math.min(95, Math.max(1, Math.round(costedMargin * 100))))
       }
     }
+  }
+
+  /** v2.4202: the cost the solver's scope carries (its rows plus their share of the overhead) — the target must beat it. */
+  function workbenchScopeCost(): number | null {
+    const derived = derivePricingWorkbench()
+    if (!derived) return null
+    const fixtureCostSum = derived.rows.reduce((s, r) => s + (r.cost > 0 ? r.cost : 0), 0)
+    const scoped = scopeWorkbenchRows(
+      derived.rows.map((r) => ({ id: r.countRow.id, rowCost: r.cost, group_tag: r.countRow.group_tag ?? null })),
+      wbSolveScope,
+      selectedBidForPricing?.alternate_group_tags ?? [],
+      Math.max(derived.totalCost - fixtureCostSum, 0),
+    )
+    return scoped.fixtureCost + scoped.overhead
   }
 
   /** Workbench: commit the preview via the existing per-row override write. */
@@ -2523,8 +2547,10 @@ export function BidsPricingTab({
                       {(() => {
                         const solveToTarget = () => {
                           const v = parseFloat(wbTargetTotalInput.replace(/[$,]/g, ''))
-                          if (!Number.isFinite(v) || v <= totalCost) {
-                            showToast(`Target must beat our cost ($${formatCurrency(totalCost)}).`, 'error')
+                          // v2.4202: the scope's cost, not the bid's — a base target beats the base's cost.
+                          const floor = altRevenue ? (workbenchScopeCost() ?? totalCost) : totalCost
+                          if (!Number.isFinite(v) || v <= floor) {
+                            showToast(`Target must beat our cost ($${formatCurrency(floor)}).`, 'error')
                             return
                           }
                           runWorkbenchSolve({ targetTotal: v })
@@ -2734,6 +2760,32 @@ export function BidsPricingTab({
                                 >
                                   ‹
                                 </button>
+                                {altRevenue && altRevenue.alternates.length > 0 ? (() => {
+                                  // v2.4202: Solve for — Base · + <alternate> · Whole bid. Held rows and the rows outside keep their prices.
+                                  const labels = new Map(altRevenue.alternates.map((a) => [a.label.trim().toLowerCase(), a.label] as const))
+                                  const scopes: WorkbenchSolveScope[] = ['base', ...altRevenue.alternates.map((a) => ({ alternate: a.label.trim().toLowerCase() })), 'whole']
+                                  const pill = (sc: WorkbenchSolveScope) => {
+                                    const on = sameSolveScope(sc, wbSolveScope)
+                                    return (
+                                      <button
+                                        key={solveScopeLabel(sc)}
+                                        type="button"
+                                        onClick={() => { setWbSolveScope(sc); setWbSolveLanding(null) }}
+                                        aria-pressed={on}
+                                        title={sc === 'whole' ? 'Price every row' : sc === 'base' ? 'Price the rows outside the alternate — its rows keep their prices' : 'Price only this alternate\'s rows'}
+                                        style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 700, padding: '0.16rem 0.55rem', borderRadius: 999, border: `1px solid ${on ? '#3b82f6' : 'var(--border-strong)'}`, background: on ? '#3b82f6' : 'var(--surface)', color: on ? '#fff' : 'var(--text-muted)', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                      >
+                                        {solveScopeLabel(sc, labels)}
+                                      </button>
+                                    )
+                                  }
+                                  return (
+                                    <span data-testid="workbench-solve-scope" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', flexWrap: 'wrap' }}>
+                                      <span style={labelStyle}>Solve for</span>
+                                      {scopes.map(pill)}
+                                    </span>
+                                  )
+                                })() : null}
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flex: '1 1 230px', minWidth: 210 }}>
                                   <span style={labelStyle}>Margin</span>
                                   <span style={{ flex: 1, minWidth: 110, position: 'relative', display: 'inline-flex', flexDirection: 'column' }}>

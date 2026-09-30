@@ -101,6 +101,8 @@ type BidsLaborTabProps = {
   costEstimateLaborRows: CostEstimateLaborRow[]
   setCostEstimateLaborRows: Dispatch<SetStateAction<CostEstimateLaborRow[]>>
   costEstimateCountRows: BidCountRow[]
+  /** v2.4202: each count row's takeoff materials (rough model) — the alternate card's Materials row. */
+  costEstimateFixtureMaterials?: Record<string, number>
   /** What renders under the bid header: skeleton while the Version resolves, the empty sentence only for a settled zero-row bid (`laborEmptyState`). */
   panel: LaborTabPanel
   purchaseOrdersForCostEstimate: CostEstimatePO[]
@@ -180,6 +182,7 @@ export function BidsLaborTab({
   costEstimateLaborRows,
   setCostEstimateLaborRows,
   costEstimateCountRows,
+  costEstimateFixtureMaterials,
   panel,
   purchaseOrdersForCostEstimate,
   costEstimateMaterialTotalRoughIn,
@@ -903,6 +906,7 @@ export function BidsLaborTab({
                     distanceFromOffice={selectedBidForCostEstimate.distance_from_office ?? null}
                     countRowsLength={costEstimateCountRows.length}
                     countRows={costEstimateCountRows}
+                    materialsByCountRowId={costEstimateFixtureMaterials}
                     alternateTags={selectedBidForCostEstimate.alternate_group_tags ?? []}
                     directCostTables={{ equipment: equipmentRows, permit: permitRows, sub: subcontractorRows, waste: wasteRows, other: otherRows }}
                     calibrationJobs={calibration.jobs}

@@ -112,6 +112,8 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
   const [costEstimateMaterialTotalRoughIn, setCostEstimateMaterialTotalRoughIn] = useState<number | null>(null)
   const [costEstimateMaterialTotalTopOut, setCostEstimateMaterialTotalTopOut] = useState<number | null>(null)
   const [costEstimateMaterialTotalTrimSet, setCostEstimateMaterialTotalTrimSet] = useState<number | null>(null)
+  // v2.4202: each count row's takeoff materials (rough model) — the Labor card splits materials by alternate from it.
+  const [costEstimateFixtureMaterials, setCostEstimateFixtureMaterials] = useState<Record<string, number>>({})
   const [laborRateInput, setLaborRateInput] = useState('')
   const [drivingCostRate, setDrivingCostRate] = useState('0.70')
   const [hoursPerTrip, setHoursPerTrip] = useState('2')
@@ -537,11 +539,21 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
           ((crsForCount ?? []) as Array<{ id: string; count: number | null }>).map((r) => [r.id, r.count]),
         )
         // v2.3407: the sticks are in the number — Σ count × qty × price plus the order rounding's extra.
-        const sum = roughMaterialsTotalWithRounding((roughLines ?? []) as RoughLineDbRow[], countByRowId).total
-        setCostEstimateMaterialTotalRoughIn(sum)
+        const rounded = roughMaterialsTotalWithRounding((roughLines ?? []) as RoughLineDbRow[], countByRowId)
+        setCostEstimateMaterialTotalRoughIn(rounded.total)
         setCostEstimateMaterialTotalTopOut(null)
         setCostEstimateMaterialTotalTrimSet(null)
+        // v2.4202: the same number per count row (as the Pricing load keeps it) for the Labor card's split.
+        const perRow: Record<string, number> = {}
+        for (const ln of (roughLines ?? []) as Array<{ count_row_id: string; quantity: number | string | null; unit_price: number | string | null }>) {
+          perRow[ln.count_row_id] = (perRow[ln.count_row_id] ?? 0) + Number(ln.quantity) * Number(ln.unit_price)
+        }
+        for (const [rowId, count] of countByRowId) {
+          perRow[rowId] = (perRow[rowId] ?? 0) * roughCountMultiplier(count) + (rounded.rounding.extraByCountRow.get(rowId) ?? 0)
+        }
+        setCostEstimateFixtureMaterials(perRow)
       } else {
+        setCostEstimateFixtureMaterials({})
         const rough = est.purchase_order_id_rough_in ? await loadPOTotal(est.purchase_order_id_rough_in) : 0
         const top = est.purchase_order_id_top_out ? await loadPOTotal(est.purchase_order_id_top_out) : 0
         const trim = est.purchase_order_id_trim_set ? await loadPOTotal(est.purchase_order_id_trim_set) : 0
@@ -564,6 +576,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
       setCostEstimateMaterialTotalRoughIn(null)
       setCostEstimateMaterialTotalTopOut(null)
       setCostEstimateMaterialTotalTrimSet(null)
+      setCostEstimateFixtureMaterials({})
     }
     return est
   }
@@ -1691,6 +1704,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     setCostEstimateLaborRows,
     costEstimateCountRows,
     setCostEstimateCountRows,
+    costEstimateFixtureMaterials,
     purchaseOrdersForCostEstimate,
     setPurchaseOrdersForCostEstimate,
     costEstimateMaterialTotalRoughIn,
