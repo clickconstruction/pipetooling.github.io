@@ -6,6 +6,7 @@
  * no field focused; and (v2.3741) when idle — the tab hidden five minutes, or untouched half
  * an hour — with no unsaved-work hold and no write in flight (src/lib/unsavedWork.ts).
  * Anything it cannot tell is "no" — the pill is the fallback. Drafts come with PR 3.
+ * v2.4214: a move is a change of page OR of tab (`?tab=`) — `routeMoveKey` names it.
  */
 export type AutoReloadMoment = 'first-paint' | 'route-change' | 'idle'
 
@@ -74,6 +75,22 @@ export function decideAutoReload(s: AutoReloadSnapshot): AutoReloadDecision {
       if ((s.idleForMs ?? 0) >= IDLE_VISIBLE_MIN_MS) return { reload: true, reason: 'untouched long enough, nothing open' }
       return { reload: false, reason: 'not idle long enough' }
   }
+}
+
+/**
+ * The key the route-change moment watches (v2.4214): the path plus the `tab` query param,
+ * so People → Hours → Review counts as a move between tasks the way Jobs → People does.
+ * Other query params (a picked bid, a lens, a filter) are not a move — they change under
+ * a person mid-task, and a reload there would read as the app jumping.
+ */
+export function routeMoveKey(pathname: string, search: string): string {
+  let tab: string | null = null
+  try {
+    tab = new URLSearchParams(search).get('tab')
+  } catch {
+    tab = null
+  }
+  return tab ? `${pathname}?tab=${tab}` : pathname
 }
 
 /** sessionStorage key recording the last automatic reload (per tab). */

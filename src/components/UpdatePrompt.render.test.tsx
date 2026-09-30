@@ -19,15 +19,23 @@ vi.mock('virtual:pwa-register', () => ({
 function Nav() {
   const navigate = useNavigate()
   return (
-    <button type="button" onClick={() => navigate('/jobs')}>
-      go
-    </button>
+    <>
+      <button type="button" onClick={() => navigate('/jobs')}>
+        go
+      </button>
+      <button type="button" onClick={() => navigate('/people?tab=review')}>
+        tab
+      </button>
+      <button type="button" onClick={() => navigate('/people?tab=hours&lens=pay')}>
+        lens
+      </button>
+    </>
   )
 }
 
-function mount() {
+function mount(at = '/dashboard') {
   return render(
-    <MemoryRouter initialEntries={['/dashboard']}>
+    <MemoryRouter initialEntries={[at]}>
       <UpdatePrompt />
       <Routes>
         <Route path="*" element={<Nav />} />
@@ -96,6 +104,25 @@ describe('UpdatePrompt auto-reload (v2.3740)', () => {
     fireEvent.click(screen.getByText('go'))
     expect(updateSW).toHaveBeenCalledTimes(1)
     expect(screen.getByText('Updating to the newest version…')).toBeTruthy()
+  })
+
+  it('v2.4214: switching tabs on the same page is a move — it reloads', () => {
+    mount('/people?tab=hours')
+    fireEvent.pointerDown(window)
+    act(() => swOpts.current?.onNeedRefresh?.())
+    expect(updateSW).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByText('tab'))
+    expect(updateSW).toHaveBeenCalledTimes(1)
+    expect(screen.getByText('Updating to the newest version…')).toBeTruthy()
+  })
+
+  it('v2.4214: a query change that is not a tab (a lens) stays put — the pill only', () => {
+    mount('/people?tab=hours')
+    fireEvent.pointerDown(window)
+    act(() => swOpts.current?.onNeedRefresh?.())
+    fireEvent.click(screen.getByText('lens'))
+    expect(updateSW).not.toHaveBeenCalled()
+    expect(screen.getByText('A new version is ready.')).toBeTruthy()
   })
 
   it('"Not now" holds for ten minutes even across route changes', () => {

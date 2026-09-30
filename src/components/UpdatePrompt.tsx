@@ -8,6 +8,7 @@ import {
   isEditableFocused,
   msSinceLastAutoReload,
   recordAutoReload,
+  routeMoveKey,
   type AutoReloadMoment,
 } from '../lib/autoReload'
 import { inFlightWriteCount, unsavedHoldCount } from '../lib/unsavedWork'
@@ -33,7 +34,8 @@ function sessionStorageOrNull(): Storage | null {
 /**
  * Owns the service-worker registration (prompt mode). When a new build's SW reaches
  * the waiting state, the app reloads itself at a quiet moment (v2.3740: first paint
- * before any interaction; a route change with no modal open and no field focused; idle —
+ * before any interaction; a route change — a new page or a new `?tab=` (v2.4214) — with no
+ * modal open and no field focused; idle —
  * hidden five minutes or untouched half an hour (v2.3741) — with nothing unsaved and no write
  * in flight; the decision lives in src/lib/autoReload.ts) and otherwise shows the persistent "new
  * version" pill; Reload posts SKIP_WAITING (listener in src/sw.ts) and vite-plugin-pwa
@@ -54,7 +56,9 @@ export function UpdatePrompt() {
   const lastInteractionAtRef = useRef(Date.now())
   const hiddenAtRef = useRef<number | null>(null)
   const reloadingRef = useRef(false)
-  const { pathname } = useLocation()
+  const { pathname, search } = useLocation()
+  /** v2.4214: a move is a new page or a new `?tab=` — a tab switch is a quiet moment too. */
+  const moveKey = routeMoveKey(pathname, search)
 
   const applyUpdate = useCallback(() => {
     if (reloadingRef.current) return
@@ -153,8 +157,8 @@ export function UpdatePrompt() {
     }
   }, [tryAutoReload])
 
-  // Route change: a quiet moment between tasks — reload if nothing is open, else the
-  // dismissed pill re-surfaces (throttled).
+  // Route change (a page or a tab): a quiet moment between tasks — reload if nothing is
+  // open, else the dismissed pill re-surfaces (throttled).
   const firstRouteRef = useRef(true)
   useEffect(() => {
     if (firstRouteRef.current) {
@@ -173,7 +177,7 @@ export function UpdatePrompt() {
       dismissedAtRef.current = null
       setNeedRefresh(true)
     }
-  }, [pathname, tryAutoReload])
+  }, [moveKey, tryAutoReload])
 
   useEffect(() => {
     let intervalId: ReturnType<typeof setInterval> | undefined

@@ -7,6 +7,7 @@ import {
   isEditableFocused,
   msSinceLastAutoReload,
   recordAutoReload,
+  routeMoveKey,
   type AutoReloadSnapshot,
 } from './autoReload'
 
@@ -104,5 +105,20 @@ describe('the DOM readers', () => {
     expect(isDialogOpen(document)).toBe(true)
     document.body.innerHTML = '<dialog></dialog>'
     expect(isDialogOpen(document)).toBe(false)
+  })
+})
+
+describe('routeMoveKey (v2.4214)', () => {
+  it('a tab switch is a move; the same tab is not', () => {
+    expect(routeMoveKey('/people', '?tab=hours')).not.toBe(routeMoveKey('/people', '?tab=review'))
+    expect(routeMoveKey('/people', '?tab=hours&lens=pay')).toBe(routeMoveKey('/people', '?tab=hours'))
+  })
+  it('a page change is a move with or without a tab', () => {
+    expect(routeMoveKey('/jobs', '')).not.toBe(routeMoveKey('/people', ''))
+    expect(routeMoveKey('/people', '')).toBe('/people')
+  })
+  it('a picked bid, a lens or a filter alone is not a move', () => {
+    expect(routeMoveKey('/bids', '?bidId=1')).toBe(routeMoveKey('/bids', '?bidId=2'))
+    expect(routeMoveKey('/bids', '?tab=pricing&bidId=1')).toBe(routeMoveKey('/bids', '?tab=pricing&bidId=2'))
   })
 })
