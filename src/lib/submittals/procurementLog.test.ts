@@ -222,7 +222,7 @@ describe('updates', () => {
     expect(html).toContain('<b>Schedule you gave us</b>Rough In Oct 6 · Top Out Oct 27 · Trim Set Nov 17')
     expect(html).toContain('<b>From</b>Wendi Aguilar · Click Plumbing and Electrical · (512) 360-0599')
     // The estimator's line leads the asks; then the rows waiting on the GC.
-    const asks = html.slice(html.indexOf('What we need from you'), html.indexOf('<table>'))
+    const asks = html.slice(html.indexOf('What we need from you'), html.indexOf('<table'))
     expect(asks.indexOf('BFP-1: can Rough In wait for the RPZ?')).toBeLessThan(asks.indexOf('<strong>HS-1</strong>'))
     expect(asks).toContain('<strong>HS-1</strong> Advance Tabco 7-PS-66 — returned Sep 22; needs your approval by Nov 3 to make Trim Set')
     expect(asks).toContain('<strong>S-3</strong> Elkay sink — awaiting your approval; needs your approval by Nov 10 to make Trim Set')
@@ -231,6 +231,14 @@ describe('updates', () => {
     expect(html.indexOf('Rough In <span')).toBeLessThan(html.indexOf('Trim Set <span'))
     expect(html).toContain('needed on site Oct 6 · 3 items, 2 behind')
     expect(html).toContain('needed on site Nov 17 · 4 items')
+    // Each stage is its own table under its band and the column labels, so a page that opens on a stage
+    // opens on the labels; the first may run on from the letter, a later one is kept on one page.
+    const stages = groupRowsByStage(after, stageDates).length
+    expect(html.match(/<table class="stage/g)).toHaveLength(stages)
+    expect(html.match(/<thead><tr><th colspan="7"/g)).toHaveLength(stages)
+    expect(html.match(/>Expected on site<\/th>/g)).toHaveLength(stages)
+    expect(html.match(/<table class="stage keep">/g)).toHaveLength(stages - 1)
+    expect(html).toContain('thead { display: table-header-group; }')
     // The GC's words in the cells; the changed row carries the dot and its change under the note.
     expect(html).toContain('Returned for revision Sep 22')
     expect(html).toContain('Awaiting your approval')
@@ -278,6 +286,7 @@ describe('updates', () => {
   it('a sheet with no fields beyond the rows still prints (the old call shape)', () => {
     const html = buildProcurementUpdateHtml({ bidLabel: 'B1', companyName: 'Click', updateNumber: 1, sentOn: '2026-09-28', sinceOn: null, rows: [], changes: [], line: '', stageDates: {} })
     expect(html).toContain('No items on the log.')
+    expect(html.match(/>Expected on site<\/th>/g)).toHaveLength(1)
     expect(html).toContain('first update')
     expect(html).toContain('no stage schedule yet')
     expect(html).toContain('<b>To</b>—')
