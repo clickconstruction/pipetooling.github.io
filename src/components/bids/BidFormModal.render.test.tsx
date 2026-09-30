@@ -200,7 +200,7 @@ describe('BidFormModal footer — Archive from board (v2.4266)', () => {
 
   it('a blocked bid keeps the button, greyed, with the reason as its title — and a press still asks the parent (which says why)', async () => {
     const onRequestArchiveFromUnsentWorking = vi.fn()
-    const reason = 'Sent Sep 12, 2026. A sent bid is already off the working board. If it is dead, mark it Lost in Outcome.'
+    const reason = 'Archive is for bids that have not been sent. This one was sent Sep 12, 2026. To archive it, clear its Bid Date Sent first. If the bid is dead, set Win / Loss to Lost instead.'
     renderWithProviders(
       <BidFormModal
         {...baseProps({
