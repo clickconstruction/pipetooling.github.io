@@ -6,6 +6,11 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, within } from '@testing-library/react'
 
+// A row with a customer renders customer chrome that reads useAuth (v2.4212 fixtures set customer_id).
+vi.mock('../../hooks/useAuth', async () => {
+  const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
+  return useAuthModuleMock()
+})
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
   return { supabase: makeSupabaseStub() }
@@ -216,20 +221,22 @@ describe('JobsStagesTable render smoke', () => {
     expect(setScheduleModalJob).not.toHaveBeenCalled()
   })
 
-  it('v2.4160 · the address ends in the property-kind badge — C, R, or a ? that opens the picker; no linked property, no badge', async () => {
+  it('v2.4160 · the address ends in the property-kind badge — C, R, or a ? that opens the picker; v2.4212: no linked property but a customer is a ? too, no customer no badge', async () => {
     const commercial = makeJob({ id: 'j-c', job_name: 'Take 5- Liberty Hill', job_address: '11730 TX-29\nLiberty Hill, TX', customer_address_id: 'addr-c' })
     const residential = makeJob({ id: 'j-r', job_name: 'Tovi Polk Repairs', job_address: '1141 Lago Vista St\nSan Marcos, TX', customer_address_id: 'addr-r' })
     const unknown = makeJob({ id: 'j-u', job_name: 'Backflow Preventor Valve', job_address: '8507 Culebra Road\nSan Antonio, TX', customer_address_id: 'addr-u' })
-    const unlinked = makeJob({ id: 'j-n', job_name: 'Typed Address Job', job_address: '1 Nowhere Ln\nAustin, TX', customer_address_id: null })
+    const unlinked = makeJob({ id: 'j-n', job_name: 'Typed Address Job', job_address: '1 Nowhere Ln\nAustin, TX', customer_address_id: null, customer_id: 'cust-n', customer_name: 'Dudley Mason' })
+    const orphan = makeJob({ id: 'j-o', job_name: 'No Customer Job', job_address: '2 Nowhere Ln\nAustin, TX', customer_address_id: null, customer_id: null })
     const onPropertyKindSaved = vi.fn()
     renderWithProviders(
       <JobsStagesTable
         {...makeProps({
-          jobList: [commercial, residential, unknown, unlinked],
+          jobList: [commercial, residential, unknown, unlinked, orphan],
           propertyKindByJobId: new Map([
             ['j-c', 'non_residential'],
             ['j-r', 'residential'],
             ['j-u', ''],
+            ['j-n', ''],
           ]),
           onPropertyKindSaved,
         })}
@@ -237,12 +244,17 @@ describe('JobsStagesTable render smoke', () => {
     )
     await settle()
     const badges = screen.getAllByTestId('property-kind-badge')
-    expect(badges.map((b) => [b.textContent, b.getAttribute('data-kind')])).toEqual([
-      ['C', 'non_residential'],
-      ['R', 'residential'],
-      ['?', 'unset'],
+    expect(badges.map((b) => [b.textContent, b.getAttribute('data-kind'), b.getAttribute('data-unlinked')])).toEqual([
+      ['C', 'non_residential', null],
+      ['R', 'residential', null],
+      ['?', 'unset', null],
+      ['?', 'unset', 'true'],
     ])
-    expect(document.querySelector('tr[data-stages-job-id="j-n"] [data-testid="property-kind-badge"]')).toBeNull()
+    expect(document.querySelector('tr[data-stages-job-id="j-o"] [data-testid="property-kind-badge"]')).toBeNull()
+    // The unlinked ? says what its pick will do.
+    fireEvent.click(badges[3] as HTMLElement)
+    expect(screen.getByRole('dialog', { name: 'What kind of property is 1 Nowhere Ln?' }).textContent).toContain("Not one of Dudley Mason's saved properties yet")
+    fireEvent.click(badges[3] as HTMLElement)
     // The ? asks, with the lien screens' Residential | Commercial switch.
     fireEvent.click(badges[2] as HTMLElement)
     const dialog = screen.getByRole('dialog', { name: 'What kind of property is 8507 Culebra Road?' })

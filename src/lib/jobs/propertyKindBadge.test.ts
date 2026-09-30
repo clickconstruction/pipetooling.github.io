@@ -20,9 +20,16 @@ describe('propertyKindBadge (v2.4160)', () => {
     }
   })
 
-  it('a job with no linked property has no badge — there is nowhere to keep the answer', () => {
+  it('v2.4212 · a job with no linked property but a customer is a ? that will save the address as a property; no customer, no badge', () => {
+    const b = propertyKindBadge({ customerAddressId: null, kind: undefined, customerId: 'c1' }, '1780 FM 1343')
+    expect(b).toMatchObject({ kind: '', letter: '?', fill: PROPERTY_KIND_BADGE_FILLS.unknown, unlinked: true })
+    expect(b?.title).toContain('saved as a property')
+    expect(b?.label).toContain('1780 FM 1343')
+    // whatever kind the board thinks it read, an unlinked job has no property to have read it from
+    expect(propertyKindBadge({ customerAddressId: '', kind: 'residential', customerId: 'c1' })?.letter).toBe('?')
     expect(propertyKindBadge({ customerAddressId: null, kind: 'residential' })).toBeNull()
-    expect(propertyKindBadge({ customerAddressId: '', kind: '' })).toBeNull()
+    expect(propertyKindBadge({ customerAddressId: '', kind: '', customerId: null })).toBeNull()
+    expect(propertyKindBadge({ customerAddressId: 'a1', kind: 'residential', customerId: 'c1' })).toMatchObject({ letter: 'R', unlinked: false })
   })
 
   it('the question names the address, or the job when the address is blank', () => {
