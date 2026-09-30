@@ -25,7 +25,7 @@ describe('BilledDatesLedger (v2.4193)', () => {
     const segments = screen.getAllByTestId('ledger-segment')
     expect(segments.map((s) => s.getAttribute('data-segment-kind'))).toEqual(['wait', 'notice', 'wait'])
     expect(segments.map((s) => s.getAttribute('data-segment-live'))).toEqual([null, 'true', null])
-    expect(screen.getByTestId('ledger-bar').textContent).toBe('Sep 2342 days to the lienNov 16notice42 d left')
+    expect(screen.getByTestId('ledger-bar').textContent).toBe('10 days left to send the noticenotice42 d left')
     expect(screen.getByTestId('ledger-row-billed').textContent).toBe('Billed Sep 2312 d ago')
     expect(screen.getByTestId('ledger-row-money').textContent).toBe('Expected Oct 41 d past')
     expect(screen.getByTestId('ledger-row-notice').textContent).toBe('Send the notice by Oct 1510 d')

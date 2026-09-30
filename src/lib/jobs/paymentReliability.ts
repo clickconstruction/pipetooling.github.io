@@ -2,10 +2,10 @@
  * "Their Word" PR 3 — the reliability line under every Billed row.
  *
  * Two readings that never say "never asked":
- *   - the pay-speed SPREAD ("Pays in 9–41d") from the receipts the pay-speed
+ *   - the pay-speed SPREAD ("usually pays in 9–41 d") from the receipts the pay-speed
  *     RPC already returns — capture-free, on every customer with two or more
  *     measurable payments;
- *   - the promise record ("keeps 3 of 7 · slips ~9d") from the classified
+ *   - the promise record ("kept 3 of 7 dates · lands ~9 d late") from the classified
  *     promise events, when any exist.
  * Plus a six-bar sparkline of the customer's last bills, and the forecast's
  * slip adjustment: a promised date moved by the customer's usual slip.
@@ -14,7 +14,7 @@
  */
 
 import type { PayReceipt } from './billedExpectedPay'
-import { formatKeptRecord, formatUsualSlip, type CustomerPromiseRecord } from './paymentPromises'
+import type { CustomerPromiseRecord } from './paymentPromises'
 
 /** Bars in the sparkline: the customer's most recent measurable bills. */
 export const RELIABILITY_SPARK_BARS = 6
@@ -100,9 +100,13 @@ export type ReliabilityLine = {
  */
 export function buildReliabilityLine(receipts: ReadonlyArray<PayReceipt> | null | undefined, record: CustomerPromiseRecord | null | undefined): ReliabilityLine {
   const spread = paySpeedSpread(receipts)
-  const paysIn = formatPaysIn(spread)
-  const kept = record ? formatKeptRecord(record) : null
-  const slip = record ? formatUsualSlip(record) : null
+  // v2.4193: the Pipeline's line reads as a sentence under the Expected row —
+  // "usually pays in 9–41 d · kept 3 of 7 dates · lands ~9 d late". The Bid
+  // Board's column and the customer windows keep the short forms
+  // (`formatPaysIn`, `formatKeptRecord`, `formatUsualSlip`).
+  const paysIn = spread ? (spread.loDays === spread.hiDays ? `usually pays in ~${spread.loDays} d` : `usually pays in ${spread.loDays}–${spread.hiDays} d`) : null
+  const kept = record && record.decided > 0 ? `kept ${record.kept} of ${record.decided} dates` : null
+  const slip = record && record.usualSlipDays != null && record.usualSlipDays >= 1 ? `lands ~${Math.round(record.usualSlipDays)} d late` : null
   const parts = [paysIn, kept, slip].filter((x): x is string => x != null)
   const titleParts: string[] = []
   if (spread) titleParts.push(`Days from bill to money over their last ${spread.samples} measurable payments (last 12 months): typically ${spread.loDays}–${spread.hiDays}, median ${spread.medianDays}.`)

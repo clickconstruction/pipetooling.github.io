@@ -41,9 +41,7 @@ describe('buildBilledDatesLedger (v2.4168, redrawn v2.4193)', () => {
     expect(l.rows[2]?.action).toBe('lien-desk')
     expect(l.verdict).toMatchObject({ label: 'Send the notice', value: '10 d', tone: 'amber', action: 'lien-desk' })
     const b = l.bar!
-    expect(b.startLabel).toBe('Sep 23')
-    expect(b.endLabel).toBe('Nov 16')
-    expect(b.caption).toBe('42 days to the lien')
+    expect(b.caption).toBe('10 days left to send the notice')
     expect(b.segments.map((s) => [s.key, s.days, s.kind, s.live, s.label])).toEqual([
       ['billed-money', 11, 'wait', false, ''],
       ['money-notice', 11, 'notice', true, 'notice'],
@@ -66,7 +64,7 @@ describe('buildBilledDatesLedger (v2.4168, redrawn v2.4193)', () => {
     expect(l.rows[2]?.dot).toBe('ring')
     expect(l.verdict).toMatchObject({ label: 'Room after they pay', value: '66 d', tone: 'green', action: 'lien-desk' })
     const b = l.bar!
-    expect(b.caption).toBe('76 days to the lien')
+    expect(b.caption).toBe('76 days left to file the lien')
     expect(b.segments.map((s) => [s.key, s.days, s.kind, s.live, s.label])).toEqual([
       ['billed-money', 11, 'wait', true, ''],
       ['money-lien', 66, 'room', false, '66 d of room'],
@@ -94,7 +92,7 @@ describe('buildBilledDatesLedger (v2.4168, redrawn v2.4193)', () => {
     expect(short).toBeGreaterThan(0)
     expect(l.verdict).toMatchObject({ label: 'File the lien first', value: `${short} d short`, tone: 'red' })
     const b = l.bar!
-    expect(b.endLabel).toBe('Oct 20')
+    expect(b.caption).toBe(`${runway.daysToLien} days left to file the lien`)
     expect(b.segments.map((s) => [s.key, s.kind])).toEqual([
       ['billed-lien', 'wait'],
       ['lien-money', 'short'],
@@ -125,7 +123,7 @@ describe('buildBilledDatesLedger (v2.4168, redrawn v2.4193)', () => {
     expect(lc.rows.map((r) => r.key)).toEqual(['billed', 'money', 'closed'])
     expect(lc.rows[2]).toMatchObject({ label: 'Window closed', date: 'Aug 17', far: '44 d ago', tone: 'done', dot: 'filled', action: 'lien-desk' })
     expect(lc.verdict).toMatchObject({ label: 'Lien gone', value: '', tone: 'red', action: 'lien-desk' })
-    expect(lc.bar!.caption).toBe('the window closed Aug 17')
+    expect(lc.bar!.caption).toBe('the lien window closed Aug 17')
     // Billed Sep 23 is after the window closed, so the only stretch is today's shell start → closed? No — the bill
     // came after the close, so the bar has nothing ahead of the bill and draws no segment past it.
     expect(lc.bar!.segments.map((s) => s.kind)).toEqual(['wait'])
@@ -139,7 +137,7 @@ describe('buildBilledDatesLedger (v2.4168, redrawn v2.4193)', () => {
   it('a shell row (no bill line) has only the deadlines and a bar from today; no dates at all → nothing', () => {
     const shell = buildBilledDatesLedger({ todayYmd: today, row: null, data, promise: null, runway: buildLienPayRunway(runwayInput()), inCollections: false })
     expect(shell.rows.map((r) => r.key)).toEqual(['notice', 'lien'])
-    expect(shell.bar!.startLabel).toBe('Sep 30')
+    expect(shell.bar!.caption).toBe('15 days left to send the notice')
     expect(shell.bar!.segments.map((s) => [s.key, s.kind, s.live])).toEqual([
       ['start-notice', 'notice', true],
       ['notice-lien', 'wait', false],

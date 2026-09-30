@@ -49,12 +49,12 @@ describe('buildReliabilityLine', () => {
   const record: CustomerPromiseRecord = { customerId: 'c', decided: 7, kept: 3, late: 2, broken: 2, open: 1, keptRate: 3 / 7, usualSlipDays: 9, rePromised: 1, openBroken: 1, lastPromisedYmd: '2026-09-12' }
   it('joins the spread and the record', () => {
     const line = buildReliabilityLine([receipt(9), receipt(41)], record)
-    expect(line.text).toBe('Pays in 9–41d · keeps 3 of 7 · slips ~9d')
+    expect(line.text).toBe('usually pays in 9–41 d · kept 3 of 7 dates · lands ~9 d late')
     expect(line.title).toMatch(/last 2 measurable payments/)
     expect(line.title).toMatch(/3 kept, 2 late, 2 broken, 1 open/)
   })
   it('spread only for a viewer who may not see the record, and empty when nothing is known', () => {
-    expect(buildReliabilityLine([receipt(9), receipt(41)], null).text).toBe('Pays in 9–41d')
+    expect(buildReliabilityLine([receipt(9), receipt(41)], null).text).toBe('usually pays in 9–41 d')
     const nothing = buildReliabilityLine([], null)
     expect(nothing.text).toBe('')
     expect(nothing.bars).toEqual([])
@@ -62,7 +62,7 @@ describe('buildReliabilityLine', () => {
   it('a record with only open promises says so without a kept line', () => {
     const open: CustomerPromiseRecord = { ...record, decided: 0, kept: 0, late: 0, broken: 0, open: 1, keptRate: null, usualSlipDays: null }
     const line = buildReliabilityLine([receipt(20), receipt(22)], open)
-    expect(line.text).toBe('Pays in 20–22d')
+    expect(line.text).toBe('usually pays in 20–22 d')
     expect(line.title).toMatch(/1 promise open, none decided yet/)
   })
 })

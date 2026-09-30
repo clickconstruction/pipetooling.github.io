@@ -2,11 +2,11 @@
  * The dates block at the bottom of a Billed / Collections row's cell (v2.4168;
  * redrawn v2.4193 in the money legend's own grammar):
  *
- *   Sep 23 ·········· 42 days to the lien ·········· Nov 16
+ *   10 days left to send the notice
  *   [ used ][ notice ][            42 d left             ]      ← the time bar
  *   ● Billed Sep 23 .................... 12 d ago
  *   ● Expected Oct 4 .................... 1 d past      ← the click for They said…
- *       pays in 2–8 d · keeps 0 of 5
+ *       usually pays in 2–8 d · kept 0 of 5 dates
  *   ● Send the notice by Oct 15 ............ 10 d
  *   ○ Lien by Nov 16 ....................... 42 d
  *   ───────────────────────────────────────────────
@@ -70,11 +70,7 @@ export type LedgerSegment = {
 
 export type LedgerBar = {
   segments: LedgerSegment[]
-  /** The date at the left end: the bill date, or today on a shell row. */
-  startLabel: string
-  /** The date at the right end: the farthest deadline. */
-  endLabel: string
-  /** "77 days to the lien" · "the window closed Sep 15". */
+  /** The line over the bar — what is left: "77 days left to file the lien" · "16 days left to send the notice" · "the lien window closed Sep 15". The dates themselves are the rows under it. */
   caption: string
 }
 
@@ -120,6 +116,12 @@ function farWords(days: number, ahead: 'in' | 'bare'): string {
 }
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x))
+
+/** "77 days left to file the lien" · "1 day left to send the notice" · "today is the last day to file the lien". */
+function leftWords(days: number, todo: string): string {
+  if (days <= 0) return `today is the last day to ${todo}`
+  return `${days} ${days === 1 ? 'day' : 'days'} left to ${todo}`
+}
 
 type Point = { key: LedgerRowKey | 'start'; ymd: string; tone: LedgerTone }
 
@@ -177,7 +179,7 @@ export function buildBilledDatesLedger({ todayYmd, row, data, promise, runway, i
       rows.push({ key: 'closed', label: noticeClosed ? 'Notice window closed' : 'Window closed', joiner: '', date: closedYmd ? formatYmdMonthDay(closedYmd) : '', far: closedYmd ? farWords(closedDays, 'bare') : '', tone: 'done', bold: false, dot: 'filled', action: 'lien-desk', title: runway.title, sub: '' })
       if (closedYmd) points.push({ key: 'closed', ymd: closedYmd, tone: 'done' })
       verdict = { label: 'Lien gone', value: '', tone: 'red', action: 'lien-desk', title: runway.title }
-      caption = closedYmd ? `the window closed ${formatYmdMonthDay(closedYmd)}` : ''
+      caption = closedYmd ? `the ${noticeClosed ? 'notice' : 'lien'} window closed ${formatYmdMonthDay(closedYmd)}` : ''
     } else {
       const notice = runway.marks?.notice
       if (runway.state === 'notice_due' && runway.daysToNotice != null && noticeDate) {
@@ -185,6 +187,7 @@ export function buildBilledDatesLedger({ todayYmd, row, data, promise, runway, i
         rows.push({ key: 'notice', label: 'Send the notice', joiner: 'by', date: noticeDate, far: farWords(runway.daysToNotice, 'bare'), tone, bold: true, dot: 'filled', action: 'lien-desk', title: runway.title, sub: '' })
         points.push({ key: 'notice', ymd: runway.noticeByYmd, tone })
         verdict = { label: 'Send the notice', value: dWord(runway.daysToNotice), tone, action: 'lien-desk', title: runway.title }
+        caption = leftWords(runway.daysToNotice, 'send the notice')
       } else if (notice?.done && noticeDate) {
         rows.push({ key: 'notice-sent', label: 'Notice sent', joiner: 'for', date: noticeDate, far: '', tone: 'done', bold: false, dot: 'filled', action: 'lien-desk', title: 'The § 53.056 notice for this work month is recorded', sub: '' })
         points.push({ key: 'notice-sent', ymd: runway.noticeByYmd, tone: 'done' })
@@ -196,7 +199,7 @@ export function buildBilledDatesLedger({ todayYmd, row, data, promise, runway, i
         lienRow = { key: 'lien', label: bold ? 'File the lien' : 'Lien', joiner: 'by', date: lienDate, far: farWords(runway.daysToLien, 'bare'), tone, bold, dot: bold ? 'filled' : 'ring', action: 'lien-desk', title: runway.title, sub: '' }
         rows.push(lienRow)
         points.push({ key: 'lien', ymd: runway.lienByYmd, tone })
-        caption = `${runway.daysToLien} days to the lien`
+        if (!caption) caption = leftWords(runway.daysToLien, 'file the lien')
         if (!verdict) {
           const lienDays = moneyYmd ? daysBetweenYmd(moneyYmd, runway.lienByYmd) : null
           if (runway.state === 'file_first' && lienDays != null) {
@@ -252,7 +255,7 @@ export function buildBilledDatesLedger({ todayYmd, row, data, promise, runway, i
       segments.push({ key: `${from.key}-${to.key}`, days, usedFrac, live, kind, tone, label })
     }
     if (segments.length > 0) {
-      bar = { segments, startLabel: formatYmdMonthDay(origin), endLabel: formatYmdMonthDay(dated[dated.length - 1]!.ymd), caption }
+      bar = { segments, caption }
     }
   }
 

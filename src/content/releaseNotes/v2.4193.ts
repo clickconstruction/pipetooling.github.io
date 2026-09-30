@@ -8,9 +8,9 @@ const note: ReleaseNote = {
   roles: ['dev', 'master_technician', 'assistant', 'controller', 'primary'],
   highlights: [
     'The numbered track and badges under Left on Job are gone. In their place the block reads like the legend above it: a bar, then rows with a dot, the words and how far from today on the right, then one bold line under a hairline.',
-    'The bar is the money bar’s twin for time — from the day we billed to the last deadline, sized by days, grey where time is used, a blue outline on the stretch today falls in, green for the room between the money and the lien, a red hatch when the lien would die first, amber up to a notice.',
+    'The bar is the money bar’s twin for time — one line over it says what is left (77 days left to file the lien, or 16 days left to send the notice), then the bar from the day we billed to the last deadline, sized by days, grey where time is used, a blue outline on the stretch today falls in, green for the room between the money and the lien, a red hatch when the lien would die first, amber up to a notice.',
     'The bold line is the verdict: Room after they pay · 72 d, Send the notice · 16 d, File the lien first · 5 d short, Ask for a date · 12 d past, or Lien gone. It opens the Lien window, or They said… when it asks for a date.',
-    'The clicks are unchanged — Expected opens They said…, every deadline row opens the Lien window — and they underline only on hover. The pay history under Expected is words alone, no sparkline.',
+    'The clicks are unchanged — Expected opens They said…, every deadline row opens the Lien window — and they underline only on hover. The pay history under Expected is words alone, left-aligned under the row, and reads as a sentence: usually pays in 9–41 d · kept 3 of 7 dates · lands ~9 d late.',
   ],
 }
 

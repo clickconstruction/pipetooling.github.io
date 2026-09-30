@@ -77,11 +77,7 @@ function TimeBar({ bar }: { bar: NonNullable<LedgerModel['bar']> }) {
   const n = bar.segments.length
   return (
     <div aria-hidden style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }} data-testid="ledger-bar">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6, fontSize: '0.6875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-        <span>{bar.startLabel}</span>
-        <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{bar.caption}</span>
-        <span>{bar.endLabel}</span>
-      </div>
+      {bar.caption ? <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{bar.caption}</div> : null}
       <div ref={barRef} style={{ display: 'flex', gap: gapPx, height: 14, minWidth: 0 }}>
         {bar.segments.map((s) => {
           const segPx = barWidth != null ? Math.max(14, (barWidth - gapPx * (n - 1)) * (s.days / totalDays)) : null
@@ -161,7 +157,7 @@ export default function BilledDatesLedger({
     return undefined
   }
   const doorTitle = (title: string, action: LedgerAction | null) => `${title}${action === 'they-said' ? ' — click to record what the customer said' : action === 'new-date' ? ' — click to record a new date the customer named' : ' — click to open the Lien window'}`
-  const wrap: CSSProperties = { display: 'flex', flexDirection: 'column', gap: compact ? 4 : 5, width: '100%', maxWidth: '100%', marginTop: compact ? '0.35rem' : '0.5rem', fontSize: '0.75rem', lineHeight: 1.35, fontVariantNumeric: 'tabular-nums' }
+  const wrap: CSSProperties = { display: 'flex', flexDirection: 'column', gap: compact ? 4 : 5, width: '100%', maxWidth: '100%', marginTop: compact ? '0.35rem' : '0.5rem', textAlign: 'left', fontSize: '0.75rem', lineHeight: 1.35, fontVariantNumeric: 'tabular-nums' }
   const v = ledger.verdict
   const verdictClick = v ? handlerFor(v.action) : undefined
   const verdictBody = v ? (

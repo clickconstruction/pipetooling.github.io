@@ -38,7 +38,7 @@ Anyone who can see the board sees promises; marking them is for dev, leaders, an
 
 ## The pay history under it
 
-Below the chip, a small line reads how this customer actually pays: {{chip:gray|▂▅▃▇▂▁ Pays in 9–41d · keeps 3 of 7 · slips ~9d}}. The bars are their last six bills (days from bill to money), the range is their real spread over the last year, and the promise part appears once they have named dates — see *know whether a customer keeps their word*. The forecast uses the same record: a promise from a customer who usually slips nine days is filed nine days later than the date they gave.
+Under the Expected row, a small line reads how this customer actually pays: {{chip:gray|usually pays in 9–41 d · kept 3 of 7 dates · lands ~9 d late}}. The range is their real spread over the last year, and the promise part appears once they have named dates — see *know whether a customer keeps their word*. The forecast uses the same record: a promise from a customer who usually slips nine days is filed nine days later than the date they gave.
 
 ## The payment forecast
 
