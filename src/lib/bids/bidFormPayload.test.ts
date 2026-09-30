@@ -30,6 +30,7 @@ function formValues(overrides: Partial<BidEditFormValues> = {}): BidEditFormValu
     lossCategory: null,
     bidValue: '50000',
     acceptedAlternateTags: [],
+    declinedAlternateTags: [],
     agreedValue: 'abc',
     profit: '',
     distanceFromOffice: ' 38.2 ',
@@ -113,5 +114,12 @@ describe('buildBidSavePayload', () => {
     expect(started.accepted_alternate_tags).toEqual(['Break room'])
     const open = buildBidSavePayload({ values: formValues({ outcome: '', acceptedAlternateTags: ['Break room'] }), bidDateSent: '', editing: true, canEditBidNumber: true })
     expect(open.accepted_alternate_tags).toEqual([])
+  })
+
+  it('v2.4225: the declined alternates ride beside them, and clear the same way', () => {
+    const won = buildBidSavePayload({ values: formValues({ outcome: 'won', acceptedAlternateTags: ['Break room'], declinedAlternateTags: ['Annex'] }), bidDateSent: '', editing: true, canEditBidNumber: true })
+    expect(won.declined_alternate_tags).toEqual(['Annex'])
+    const open = buildBidSavePayload({ values: formValues({ outcome: '', declinedAlternateTags: ['Annex'] }), bidDateSent: '', editing: true, canEditBidNumber: true })
+    expect(open.declined_alternate_tags).toEqual([])
   })
 })

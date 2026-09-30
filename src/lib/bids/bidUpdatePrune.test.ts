@@ -31,6 +31,7 @@ function formValues(overrides: Partial<BidEditFormValues> = {}): BidEditFormValu
     bidValue: '50000',
     agreedValue: '',
     acceptedAlternateTags: [],
+    declinedAlternateTags: [],
     profit: '',
     distanceFromOffice: '38.2',
     robotOptOut: false,
@@ -142,10 +143,12 @@ describe('pruneUnchangedBidUpdateFields', () => {
 
   it('v2.4211: accepted_alternate_tags rides with the outcome — pruned untouched, kept when the ticks or the outcome change', () => {
     const initial = formValues()
-    const withTags = () => ({ ...fullPayload(), accepted_alternate_tags: [] as string[] })
+    const withTags = () => ({ ...fullPayload(), accepted_alternate_tags: [] as string[], declined_alternate_tags: [] as string[] })
     expect(pruneUnchangedBidUpdateFields(withTags(), { current: formValues(), initial, bidDateSent: sameSentDate })).toEqual({})
     const ticked = pruneUnchangedBidUpdateFields(withTags(), { current: formValues({ acceptedAlternateTags: ['Break room'] }), initial, bidDateSent: sameSentDate })
-    expect(Object.keys(ticked).sort()).toEqual(['accepted_alternate_tags', 'loss_category', 'loss_reason', 'outcome'])
+    expect(Object.keys(ticked).sort()).toEqual(['accepted_alternate_tags', 'declined_alternate_tags', 'loss_category', 'loss_reason', 'outcome'])
+    const declined = pruneUnchangedBidUpdateFields(withTags(), { current: formValues({ declinedAlternateTags: ['Break room'] }), initial, bidDateSent: sameSentDate })
+    expect(Object.keys(declined)).toContain('declined_alternate_tags')
     const won = pruneUnchangedBidUpdateFields(withTags(), { current: formValues({ outcome: 'won' }), initial, bidDateSent: sameSentDate })
     expect(Object.keys(won)).toContain('accepted_alternate_tags')
   })

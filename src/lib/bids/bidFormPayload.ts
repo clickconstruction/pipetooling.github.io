@@ -54,6 +54,8 @@ export type BidSavePayload = {
   agreed_value: number | null
   /** v2.4211: the alternates the customer took; cleared unless the bid is won (or a job opened from it). */
   accepted_alternate_tags: string[]
+  /** v2.4225: the alternates the customer turned down; cleared unless won. */
+  declined_alternate_tags: string[]
   profit: number | null
   distance_from_office: string | null
   /** "Don't let robots shadow this bid" (v2.3142). */
@@ -100,6 +102,7 @@ export function buildBidSavePayload({ values: v, bidDateSent, editing, canEditBi
     bid_value: numberOrNull(v.bidValue),
     agreed_value: numberOrNull(v.agreedValue),
     accepted_alternate_tags: outcome === 'won' || outcome === 'started_or_complete' ? [...(v.acceptedAlternateTags ?? [])] : [],
+    declined_alternate_tags: outcome === 'won' || outcome === 'started_or_complete' ? [...(v.declinedAlternateTags ?? [])] : [],
     profit: numberOrNull(v.profit),
     distance_from_office: v.distanceFromOffice.trim() || null,
     // v2.3142: "Don't let robots shadow this bid" — the one opt-out; default is on.

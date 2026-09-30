@@ -30,6 +30,9 @@ import { BidPickerStandardList } from './BidPickerStandardList'
 import { BidPickerSearchRow } from './BidPickerSearchRow'
 import { bidNumberMatchesQuery, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
 import { buildCountSheetGroupGroups, buildCountSheetPageGroups, countSheetAlternateTotals, countSheetSummary, findDuplicateFixture, isAlternateRow, mergeAlternateTags, parsePlanPageTokens, summarizeAlternates, toggleAlternateTag } from '../../lib/bids/countSheet'
+import { alternateAnswer, bidIsWon, type AlternateAnswer } from '../../lib/bids/alternateAcceptance'
+import { recordAlternateAnswer } from '../../lib/bids/acceptedAlternatesWrite'
+import { formatCurrency } from '../../lib/format'
 import { COUNT_UNITS, COUNT_UNIT_LABEL, classifyCountRowUnit, effectiveCountUnit, formatUnitTotal, formatUnitTotals, isCountUnit, sumByUnit, summarizeRowsByUnit, type CountUnit, type UnitTotals } from '../../lib/bids/countRowUnit'
 import { breakdownJumpDomId, breakdownJumpMissMessage, countsRowDomId, type BreakdownJumpTarget } from '../../lib/bids/bidTabRowJump'
 import { referenceGradeChip, referenceGradeChipApplies } from '../../lib/bids/referenceGradeChip'
@@ -160,6 +163,24 @@ export function BidsCountsTab({
   // until the parent re-reads the bid after a save (onCountSourceLinkSaved reloads it).
   const [altTagsLocal, setAltTagsLocal] = useState<{ bidId: string; tags: string[] } | null>(null)
   const altTags: string[] = altTagsLocal && altTagsLocal.bidId === selectedBidForCounts?.id ? altTagsLocal.tags : (selectedBidForCounts?.alternate_group_tags ?? [])
+  // v2.4225: on a won bid an alternate heading answers "did they take it?" — the lists as last written here.
+  const [answersLocal, setAnswersLocal] = useState<{ bidId: string; accepted: string[]; declined: string[] } | null>(null)
+  const answerLists = answersLocal && answersLocal.bidId === selectedBidForCounts?.id
+    ? { accepted_alternate_tags: answersLocal.accepted, declined_alternate_tags: answersLocal.declined }
+    : { accepted_alternate_tags: selectedBidForCounts?.accepted_alternate_tags ?? [], declined_alternate_tags: (selectedBidForCounts as { declined_alternate_tags?: string[] | null } | null)?.declined_alternate_tags ?? [] }
+  const bidWonForCounts = bidIsWon(selectedBidForCounts?.outcome)
+  async function answerAlternate(tag: string, answer: AlternateAnswer) {
+    const bid = selectedBidForCounts
+    if (!bid) return
+    const res = await recordAlternateAnswer({ bidId: bid.id, tag, answer })
+    if ('error' in res) {
+      showToast('Could not save the answer: ' + res.error, 'error')
+      return
+    }
+    setAnswersLocal({ bidId: bid.id, accepted: res.accepted, declined: res.declined })
+    showToast(answer === 'taken' ? `${tag}: taken — its rows are in the job${res.agreedValue != null ? `, agreed value $${formatCurrency(res.agreedValue)}` : ''}.` : answer === 'declined' ? `${tag}: declined — its rows stay on the bid, out of the job.` : `${tag}: back to unanswered.`, 'success')
+    await onCountSourceLinkSaved?.(bid.id)
+  }
   const [sheetNoPageOnly, setSheetNoPageOnly] = useState(false)
   const [qaOpen, setQaOpen] = useState(false)
   const [qaCount, setQaCount] = useState('1')
@@ -956,7 +977,36 @@ export function BidsCountsTab({
                     >
                       {g.alternate ? 'Alternate · on' : 'Alternate'}
                     </button>
-                    {g.alternate ? <span style={{ fontWeight: 500, fontSize: '0.72rem' }}>bid with and without</span> : null}
+                    {g.alternate && !bidWonForCounts ? <span style={{ fontWeight: 500, fontSize: '0.72rem' }}>bid with and without</span> : null}
+                    {g.alternate && bidWonForCounts ? (() => {
+                      // v2.4225: the bid is won — this alternate is taken, declined, or still waiting for an answer.
+                      const answer = alternateAnswer(g.label, answerLists)
+                      const btn = (label: string, next: AlternateAnswer, tone: string) => (
+                        <button
+                          type="button"
+                          onClick={() => void answerAlternate(g.label, next)}
+                          style={{ font: 'inherit', fontSize: '0.7rem', fontWeight: 600, padding: '0.1rem 0.5rem', borderRadius: 999, border: `1px solid ${tone}`, background: 'var(--surface)', color: tone, cursor: 'pointer' }}
+                        >
+                          {label}
+                        </button>
+                      )
+                      return (
+                        <span data-testid="count-sheet-alt-answer" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontWeight: 500, fontSize: '0.72rem' }}>
+                          {answer === 'unanswered' ? (
+                            <>
+                              <span>Won — did they take it?</span>
+                              {btn('Taken', 'taken', '#16a34a')}
+                              {btn('Not taken', 'declined', 'var(--text-muted)')}
+                            </>
+                          ) : (
+                            <>
+                              <span>{answer === 'taken' ? 'Taken — in the job' : 'Declined — out of the job'}</span>
+                              {btn('Change', 'unanswered', 'var(--text-muted)')}
+                            </>
+                          )}
+                        </span>
+                      )
+                    })() : null}
                     <button
                       type="button"
                       aria-label={`Add a row to ${g.label}`}

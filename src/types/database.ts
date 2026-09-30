@@ -2945,6 +2945,7 @@ export type Database = {
           created_at: string | null
           created_by: string
           customer_id: string | null
+          declined_alternate_tags: string[]
           design_drawing_plan_date: string | null
           distance_from_office: string | null
           drive_link: string | null
@@ -3031,6 +3032,7 @@ export type Database = {
           created_at?: string | null
           created_by: string
           customer_id?: string | null
+          declined_alternate_tags?: string[]
           design_drawing_plan_date?: string | null
           distance_from_office?: string | null
           drive_link?: string | null
@@ -3117,6 +3119,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string
           customer_id?: string | null
+          declined_alternate_tags?: string[]
           design_drawing_plan_date?: string | null
           distance_from_office?: string | null
           drive_link?: string | null

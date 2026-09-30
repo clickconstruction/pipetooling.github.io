@@ -31,6 +31,7 @@ function formValues(overrides: Partial<BidEditFormValues> = {}): BidEditFormValu
     bidValue: '',
     agreedValue: '',
     acceptedAlternateTags: [],
+    declinedAlternateTags: [],
     profit: '',
     distanceFromOffice: '',
     robotOptOut: false,
