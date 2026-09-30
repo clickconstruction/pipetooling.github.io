@@ -4,7 +4,7 @@
  * A kickoff is a markdown file in `docs/twins/kickoffs/` copied whole, with the one
  * machine-specific value filled in — the twin-mcp connector URL. The doc is the
  * source of truth; this kernel only fills its placeholder, so the copied prompt and
- * the file never disagree. `code-operator.md` (v2.4229) is pasted into a Claude Code
+ * the file never disagree. `code-operator.md` (v2.4231) is pasted into a Claude Code
  * session, which reads the plans itself; `desktop-operator.md` (v2.3207) is the chat
  * fallback, where a person attaches each plan PDF.
  */
@@ -136,7 +136,7 @@ export function buildDesktopSetupCommandFromCode(opts: SetupCodeCommandOpts): st
     "    for (let i = 0; i < 30 && spawnSync('pgrep', ['-x', 'Claude']).status === 0; i++) spawnSync('sleep', ['0.5'])",
     '  }',
     "  spawnSync('open', ['-a', 'Claude'])",
-    // v2.4229: twin-setup says where its kickoff is pasted — the bid robot's in a Code session, the pricer's in a chat.
+    // v2.4231: twin-setup says where its kickoff is pasted — the bid robot's in a Code session, the pricer's in a chat.
     "  const where = body.kickoff_for === 'code' ? 'open the Code tab, start a NEW session and paste it.' : 'start a NEW INCOGNITO chat there and paste it.'",
     "  if (body.kickoff) { spawnSync('pbcopy', { input: body.kickoff }); say('Claude is reopening. The kickoff is on your clipboard: ' + where) }",
     "  else say('Claude is reopening. In a new chat type: ' + (body.check_call || 'call get_brief on twin-mcp'))",

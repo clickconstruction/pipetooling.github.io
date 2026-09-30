@@ -66,7 +66,7 @@ writeFileSync(join(root, 'supabase/functions/twin-mcp/briefs.ts'), out)
 // The kickoffs ride into _shared for the twin-setup edge function (Price Matrix PR 6): a
 // redeemed setup code hands the kickoff back with the connector URL filled in, so the
 // person's clipboard holds the exact document the Console copies. The bid robot gets the
-// Claude Code kickoff (v2.4229); the chat kickoff stays bundled for a harness that asks for it.
+// Claude Code kickoff (v2.4231); the chat kickoff stays bundled for a harness that asks for it.
 const codeKickoff = read('docs/twins/kickoffs/code-operator.md')
 const desktopKickoff = read('docs/twins/kickoffs/desktop-operator.md')
 const pricingKickoff = read('docs/twins/kickoffs/pricing-operator.md')

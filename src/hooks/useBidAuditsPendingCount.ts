@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { countWorkablePendingAudits, pairTwinReferences } from '../lib/bids/bidAudits'
+import { openEstimatorQuestions, type OpenQuestionShape } from '../lib/bids/standingRulings'
 
 // bid_audits reaches the generated types only with the post-push gen-types run
 // (BidRfiQueue pattern) — untyped view until then.
@@ -21,9 +22,13 @@ const auditDb = supabase as unknown as SupabaseClient
  * audits (the robot opened the audit before pasting its counts into PipeTooling,
  * so there is nothing to judge). The pairing for the seal comes from
  * `bids.twin_source_bid_id` OR the shadow run row, so a pre-stamp shadow still seals.
+ *
+ * v2.4230 (punch list #63): `questions` rides along — the robots' open questions for the
+ * estimator, counted by the one kernel the Audits panel and the Scoreboard read
+ * (`openEstimatorQuestions`), so the Dashboard card can lead with the fifteen-minute item.
  */
-export function useBidAuditsPendingCount(enabled: boolean): { pending: number; anyAudits: boolean } {
-  const [state, setState] = useState<{ pending: number; anyAudits: boolean }>({ pending: 0, anyAudits: false })
+export function useBidAuditsPendingCount(enabled: boolean): { pending: number; anyAudits: boolean; questions: number } {
+  const [state, setState] = useState<{ pending: number; anyAudits: boolean; questions: number }>({ pending: 0, anyAudits: false, questions: 0 })
 
   useEffect(() => {
     if (!enabled) return
@@ -71,11 +76,19 @@ export function useBidAuditsPendingCount(enabled: boolean): { pending: number; a
             // Best-effort too — an unpriced audit then counts as pending, as before.
           }
         }
+        // The robots' open questions (fail-soft: RLS-closed or a missing table reads as none).
+        let questions = 0
+        try {
+          const { data: qs } = await auditDb.from('twin_questions').select('*').eq('status', 'open').limit(500)
+          questions = openEstimatorQuestions((qs ?? []) as OpenQuestionShape[])
+        } catch {
+          // no questions surface — the audits count still does
+        }
         if (cancelled) return
-        setState({ pending: countWorkablePendingAudits(rows, sealedBidIds, unpricedBidIds), anyAudits: rows.length > 0 })
+        setState({ pending: countWorkablePendingAudits(rows, sealedBidIds, unpricedBidIds), anyAudits: rows.length > 0, questions })
       } catch {
         // Missing table or transient error: keep the tab hidden rather than toasting.
-        if (!cancelled) setState({ pending: 0, anyAudits: false })
+        if (!cancelled) setState({ pending: 0, anyAudits: false, questions: 0 })
       }
     })()
     return () => {

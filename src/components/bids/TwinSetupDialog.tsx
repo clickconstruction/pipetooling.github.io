@@ -1,7 +1,7 @@
 /**
  * "Set up on this Mac" (Price Matrix PR 6 — docs/PRICE_MATRIX_PLAN.md): the
  * one-click, one-paste way to connect the Claude app on a Mac to a robot —
- * its chats and its Code tab share the connector (v2.4229: the bid robot's
+ * its chats and its Code tab share the connector (v2.4231: the bid robot's
  * kickoff is pasted into a Code session, the pricer's into a chat). The dialog
  * asks twin-setup to mint a ten-minute, single-use SETUP CODE for the twin and
  * wraps it in a Terminal command (`buildDesktopSetupCommandFromCode`). Pasted

@@ -78,7 +78,7 @@ describe('docs/twins/kickoffs/desktop-operator.md (the shipped template)', () =>
     expect(filled).toContain('Issue key')
   })
 
-  it('says what a chat costs (v2.4229): plans attached by hand, Always allow once per tool, the Code kickoff for a Mac that has Code', () => {
+  it('says what a chat costs (v2.4231): plans attached by hand, Always allow once per tool, the Code kickoff for a Mac that has Code', () => {
     expect(filled).toContain('Expect to attach them')
     expect(filled).toContain('choose **Always allow**')
     expect(filled).not.toContain('Allow for this chat')
@@ -87,7 +87,7 @@ describe('docs/twins/kickoffs/desktop-operator.md (the shipped template)', () =>
   })
 })
 
-describe('docs/twins/kickoffs/code-operator.md (the Claude Code kickoff, v2.4229)', () => {
+describe('docs/twins/kickoffs/code-operator.md (the Claude Code kickoff, v2.4231)', () => {
   const filled = buildDesktopKickoff(codeKickoffDoc, { connectorUrl: 'https://mcp.clicktooling.com/twin' })
 
   it('opens as the operator’s instruction, so a Code session runs it instead of asking what to do with a pasted document', () => {
@@ -243,7 +243,7 @@ describe('buildDesktopSetupCommandFromCode (Set up on this Mac, Price Matrix PR 
     expect(cmd).toContain('NEW INCOGNITO chat')
   })
 
-  it('says where the kickoff is pasted from what twin-setup answers (v2.4229): a Code session for the bid robot, a chat otherwise', () => {
+  it('says where the kickoff is pasted from what twin-setup answers (v2.4231): a Code session for the bid robot, a chat otherwise', () => {
     expect(cmd).toContain("body.kickoff_for === 'code' ? 'open the Code tab, start a NEW session and paste it.' : 'start a NEW INCOGNITO chat there and paste it.'")
     // An older twin-setup sends no kickoff_for: the command keeps the chat wording that matches the chat kickoff it hands back.
     expect(cmd).not.toContain('Claude Desktop is reopening')

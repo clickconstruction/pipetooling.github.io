@@ -1,6 +1,7 @@
 import type { UserRole } from '../hooks/useAuth'
 import type { SubmittalNudge } from './submittals/submittalNeedsYou'
 import { describeBacklogAge } from './bids/robotBacklog'
+import { questionMinutesEstimate } from './bids/standingRulings'
 import { formatLostBidNudgeValue, type LostBidNudge } from './dashboardLostBidNudge'
 import { withScopeLabel } from './bids/bidSentCounts'
 import { jobFollowupBreakdownPhrase, type JobFollowupStage } from './jobs/jobFollowupQueue'
@@ -347,6 +348,12 @@ export type NeedsYouInputs = {
   d22UncodedEnabled: boolean
   d22UncodedCount: number
   robotAuditsPending: number
+  /**
+   * v2.4230 (punch list #63): the robots' open questions for the estimator — the
+   * fifteen-minute item, said first. One kernel counts it everywhere
+   * (`openEstimatorQuestions`); absent reads as none.
+   */
+  robotQuestionsWaiting?: number
   /**
    * Sealed robot numbers on live bids (v2.3126): shadows locked blind in the
    * last 14 days whose reference has not gone out. Not a work queue — the
@@ -999,15 +1006,31 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
     })
   }
 
-  if (inputs.robotAuditsEnabled && inputs.robotAuditsPending > 0) {
+  if (inputs.robotAuditsEnabled && (inputs.robotAuditsPending > 0 || (inputs.robotQuestionsWaiting ?? 0) > 0)) {
     const n = inputs.robotAuditsPending
+    const q = inputs.robotQuestionsWaiting ?? 0
+    // v2.4230: the questions first — one tap each, and every answer lands on the next run —
+    // then the audits, one door.
+    const minutes = questionMinutesEstimate(q)
+    const questions = `${q} robot ${q === 1 ? 'question' : 'questions'} (about ${minutes} min)`
+    const audits = n === 1 ? 'one audit' : `${n} audits`
     items.push({
       key: 'robot-audits',
       severity: 'amber',
       kicker: 'Robot training',
-      title: n === 1 ? 'One robot bid is waiting on your audit' : `${n} robot bids are waiting on your audit`,
-      detail: 'The card shows where the robot and our bid differ — judge each difference with one tap, and it learns from every verdict.',
-      figure: n > 99 ? '99+' : String(n),
+      title:
+        q > 0 && n > 0
+          ? `${questions} and ${audits} are waiting on you`
+          : q > 0
+            ? `${questions} ${q === 1 ? 'is' : 'are'} waiting on you`
+            : n === 1
+              ? 'One robot bid is waiting on your audit'
+              : `${n} robot bids are waiting on your audit`,
+      detail:
+        q > 0
+          ? 'Answer the questions first — one tap each, and every answer lands on the next robot run. Then judge the audits.'
+          : 'The card shows where the robot and our bid differ — judge each difference with one tap, and it learns from every verdict.',
+      figure: (q > 0 ? q : n) > 99 ? '99+' : String(q > 0 ? q : n),
       actionLabel: 'Open Audits',
     })
   }

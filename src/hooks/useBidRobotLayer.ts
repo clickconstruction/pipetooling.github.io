@@ -108,11 +108,12 @@ export function useBidRobotLayer(input: {
     try {
       // select('*') so choices / recommended (v2.3210) and kind (v2.3212) ride
       // along once their migrations land; before that they are simply absent.
+      // v2.4230: the FULL open list — a bid-less doctrine ask has no board row but is a
+      // question waiting, and the Scoreboard's count must agree with the Audits panel's.
       const { data, error } = await (supabase as unknown as import('@supabase/supabase-js').SupabaseClient)
         .from('twin_questions')
         .select('*')
         .eq('status', 'open')
-        .not('about_bid_id', 'is', null)
         .order('created_at', { ascending: true })
         .limit(500)
       if (error) return

@@ -22,7 +22,7 @@ import { BTN, BTN_PRIMARY, CARD, CARD_TITLE, CHIP, MUTED, PROMPT_PRE, STEP_REF, 
 /**
  * The 🤖 Console lens (v2.3224, dev only): the operator's desk. Everything a
  * person does to RUN the robots — start a batch in a Claude Code session
- * (v2.4229: the first way, it reads the plans itself) or in a Claude chat,
+ * (v2.4231: the first way, it reads the plans itself) or in a Claude chat,
  * hand the hourly Claude Code routine to someone, see which bids want a robot,
  * answer what blocked one, watch the runs come in — lives here, beside the Robot
  * Board, Audits and Scoreboard the estimators use. The half that is account

@@ -5,7 +5,7 @@ import { twinMcpConnectorUrl } from '../_shared/twinConnectorUrl.ts'
 import { formatTwinMcpKey } from '../_shared/mcpKeyPrefixes.ts'
 
 // twin-setup v1.1.0 — "Set up on this Mac" (Price Matrix PR 6, docs/PRICE_MATRIX_PLAN.md).
-// v1.1.0 (v2.4229): the bid robot's redeem hands back the Claude Code kickoff and says so
+// v1.1.0 (v2.4231): the bid robot's redeem hands back the Claude Code kickoff and says so
 // (`kickoff_for: 'code'`), so the command tells the person to paste it into a Code session;
 // the pricing robot keeps its chat kickoff (`kickoff_for: 'chat'`).
 //

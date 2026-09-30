@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { compareAuditStake, orderPendingByStake, type AuditTriageSignals } from './auditTriage'
+import { compareAuditStake, orderPendingByStake, pickOpenAudit, type AuditTriageSignals } from './auditTriage'
 
 type A = { id: string; status: string; requested_at: string }
 const a = (id: string, status: string, requested_at: string): A => ({ id, status, requested_at })
@@ -58,5 +58,29 @@ describe('orderPendingByStake', () => {
     const out = orderPendingByStake(flat, () => ({ openQuestions: 0, deltaPct: null }))
     expect(out.map((x) => x.id)).toEqual(['x1', 'x2'])
     expect(flat).toEqual(before)
+  })
+})
+
+describe('pickOpenAudit (v2.4230) — the open card is the top of the queue', () => {
+  const triaged = [a('top', 'pending', '2026-09-05T00:00:00Z'), a('sealed', 'pending', '2026-09-04T00:00:00Z'), a('old', 'pending', '2026-08-01T00:00:00Z'), a('done', 'done', '2026-08-02T00:00:00Z')]
+  const workable = (x: A) => x.id !== 'sealed'
+  it('opens nothing before the signals are in', () => {
+    expect(pickOpenAudit({ triaged, current: null, picked: false, ready: false, workable })).toBeNull()
+  })
+  it('once ready, opens the first workable pending card — never a sealed one', () => {
+    expect(pickOpenAudit({ triaged, current: null, picked: false, ready: true, workable })).toBe('top')
+    expect(pickOpenAudit({ triaged: [triaged[1]!, triaged[0]!], current: null, picked: false, ready: true, workable })).toBe('top')
+  })
+  it('re-picks to the new top while nobody has picked', () => {
+    expect(pickOpenAudit({ triaged, current: 'old', picked: false, ready: true, workable })).toBe('top')
+  })
+  it('holds the card the estimator picked, and a door-named one, until it stops being workable', () => {
+    expect(pickOpenAudit({ triaged, current: 'old', picked: true, ready: true, workable })).toBe('old')
+    expect(pickOpenAudit({ triaged, current: 'done', picked: true, ready: true, workable })).toBe('done')
+    expect(pickOpenAudit({ triaged, current: 'sealed', picked: true, ready: true, workable })).toBe('top')
+    expect(pickOpenAudit({ triaged, current: 'gone', picked: true, ready: true, workable })).toBe('top')
+  })
+  it('keeps a workable held card through a reload that resets readiness', () => {
+    expect(pickOpenAudit({ triaged, current: 'old', picked: true, ready: false, workable })).toBe('old')
   })
 })

@@ -62,7 +62,7 @@ Mid-session (or from any non-MCP harness), the HTTP door is equivalent: POST
 JSON-RPC `tools/call` body — every verb works identically. Reference the key by file path
 (`$(cat ~/pt-twin-digest/twin.token)`), never paste its value into a transcript.
 
-**The Claude app (no repo needed) — v2.3207, Code first since v2.4229.** Desktop's *Add
+**The Claude app (no repo needed) — v2.3207, Code first since v2.4231.** Desktop's *Add
 custom connector* screen cannot send a header, so the door is reached through the
 `mcp-remote` bridge in `claude_desktop_config.json` (`--header X-Twin-Token:${TWIN_TOKEN}`,
 key as an env value); the app's **Code tab** loads the same connector, no `.mcp.json` or

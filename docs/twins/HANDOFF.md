@@ -154,7 +154,7 @@ The working loops, in the order a day usually runs:
    amber when a matrix went quiet or a request is a week old). Console → Open the queue: paste kickoff prompts for
    requested/ready live bids (shadows) and for backtest candidates on hungry axes;
    classify unclassified references while you're there. The Console's **Copy Code
-   kickoff** (v2.4229) is the attended path: one prompt for a Claude Code session (the
+   kickoff** (v2.4231) is the attended path: one prompt for a Claude Code session (the
    Claude app's Code tab) that works `next_shadow` serially and reads each plan set itself
    — `get_plan_pages` with `embed: true` lands the pages as files it can open
    (`kickoffs/code-operator.md`). **Copy chat kickoff** (v2.3207, `kickoffs/desktop-operator.md`)

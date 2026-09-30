@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Render smoke for the 🤖 Console's "Run the robots" card (v2.4229): Claude Code is the
+ * Render smoke for the 🤖 Console's "Run the robots" card (v2.4231): Claude Code is the
  * first way — its kickoff is the robot's instructions with the connector filled in and no
  * setup steps for a person — and the chat kickoff stays as the fallback beside it. The
  * cards under it (questions, memo, pricer, runs) are stubbed; they have their own smokes.

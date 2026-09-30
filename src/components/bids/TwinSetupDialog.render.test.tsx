@@ -56,7 +56,7 @@ describe('TwinSetupDialog', () => {
     expect(screen.getByText('In Claude, start a new incognito chat and paste.')).toBeTruthy()
   })
 
-  it('sends the bid robot’s kickoff to a Code session (v2.4229)', async () => {
+  it('sends the bid robot’s kickoff to a Code session (v2.4231)', async () => {
     state.bodies = []
     state.reply = { data: { ...(state.reply.data as Record<string, unknown>), twin_email: 'twin-estimator-1@twins.pipetooling.local', twin_kind: 'estimator', label: "Grace's Mac" }, error: null }
     renderWithProviders(<TwinSetupDialog open onClose={() => {}} target={{ kind: 'estimator' }} />)
