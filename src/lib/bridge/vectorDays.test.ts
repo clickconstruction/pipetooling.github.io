@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addMonths, buildVectorDayCells, buildVectorGrid, foldBuckets, monthEndOf, vectorAnchorStep, vectorColumnsFor, vectorRangeFor, vectorRangeLabel, ymdAddDays, ymdWeekday } from './vectorDays'
+import { addMonths, buildVectorDayCells, buildVectorGrid, foldBuckets, monthEndOf, vectorAnchorStep, vectorColumnsFor, vectorRangeFor, vectorRangeLabel, vectorVerdict, ymdAddDays, ymdWeekday } from './vectorDays'
 import type { VectorPerson, VectorSession, VectorWage } from './vectors'
 
 // September 2026: the 1st is a Tuesday, the 30th a Wednesday.
@@ -316,3 +316,73 @@ describe('buildVectorGrid', () => {
     expect(abraham?.cells[10]).toBeNull()
   })
 })
+
+describe('the ↻ mark (v2.4220)', () => {
+  const base = { start: '2026-09-01', end: '2026-09-30', mode: 'approved' as const, wages, ratePerHourByJob: rates, assumedHalfJobs: assumedHalf, jobLabels: labels }
+  it('flags a day whose verdict differs under last week’s rates, and only then', () => {
+    // j-low reads red today ($31 < $38); a week ago it was priced at $60 — green then.
+    const prior = new Map([
+      ['j-low', 60],
+      ['j-good', 92],
+    ])
+    const cells = buildVectorDayCells({ ...base, sessions: [field('u-tristen', '2026-09-02', 8, 'j-low'), field('u-tristen', '2026-09-03', 8, 'j-good')], priorRatePerHourByJob: prior })
+    expect(cells.get('u-tristen')?.get('2026-09-02')?.flippedDays).toBe(1)
+    expect(cells.get('u-tristen')?.get('2026-09-03')?.flippedDays).toBe(0)
+    const week = foldBuckets([...(cells.get('u-tristen')?.values() ?? [])], '2026-09-01', '2026-09-05')
+    expect(week.flippedDays).toBe(1)
+  })
+  it('a job with no prior rate on file is read at today’s rate — no flip; no prior map at all — no flips', () => {
+    const cells = buildVectorDayCells({ ...base, sessions: [field('u-tristen', '2026-09-02', 8, 'j-low')], priorRatePerHourByJob: new Map([['j-good', 1]]) })
+    expect(cells.get('u-tristen')?.get('2026-09-02')?.flippedDays).toBe(0)
+    const none = buildVectorDayCells({ ...base, sessions: [field('u-tristen', '2026-09-02', 8, 'j-low')] })
+    expect(none.get('u-tristen')?.get('2026-09-02')?.flippedDays).toBe(0)
+  })
+  it('a rate that moved without changing the verdict is not a flip', () => {
+    const cells = buildVectorDayCells({ ...base, sessions: [field('u-tristen', '2026-09-02', 8, 'j-good')], priorRatePerHourByJob: new Map([['j-good', 70]]) })
+    expect(cells.get('u-tristen')?.get('2026-09-02')?.flippedDays).toBe(0)
+  })
+})
+
+describe('vectorVerdict (v2.4220)', () => {
+  const base = { start: '2026-09-01', end: '2026-09-30', mode: 'approved' as const, wages, ratePerHourByJob: rates, assumedHalfJobs: assumedHalf, jobLabels: labels }
+  const cellFor = (sessions: VectorSession[], user = 'u-tristen', day = '2026-09-02') => buildVectorDayCells({ ...base, sessions }).get(user)?.get(day)
+  it('a red day names the job, its rate against the wage, and the % gap', () => {
+    const b = cellFor([field('u-tristen', '2026-09-02', 8, 'j-low')])
+    if (!b) throw new Error('no cell')
+    const v = vectorVerdict(b, 'Tristen', 38)
+    expect(v.tone).toBe('red')
+    expect(v.sentence).toContain('Red because J1044 Cielo Vista earns $31 an hour and Tristen costs $38.')
+    expect(v.sentence).toContain('everyone on it reads the same')
+    expect(v.sentence).toContain('J1044 Cielo Vista has no % complete')
+  })
+  it('a no-price day says the price is missing', () => {
+    const b = cellFor([field('u-tristen', '2026-09-02', 6, 'j-free')])
+    if (!b) throw new Error('no cell')
+    const v = vectorVerdict(b, 'Tristen', 38)
+    expect(v.tone).toBe('red')
+    expect(v.sentence).toContain('earns nothing and Tristen costs $38')
+    expect(v.sentence).toContain('J523 T&M repipe has no contract price yet')
+  })
+  it('a green day says every job cleared the wage; a mixed day says which did not', () => {
+    const g = cellFor([field('u-tristen', '2026-09-02', 8, 'j-good')])
+    if (!g) throw new Error('no cell')
+    expect(vectorVerdict(g, 'Tristen', 38)).toEqual({ tone: 'green', sentence: "Green: every job that day earned over Tristen's $38 wage — $736 earned against $304 of labor." })
+    const m = cellFor([field('u-tristen', '2026-09-02', 6, 'j-low'), field('u-tristen', '2026-09-02', 2, 'j-good')])
+    if (!m) throw new Error('no cell')
+    const v = vectorVerdict(m, 'Tristen', 38)
+    expect(v.tone).toBe('green')
+    expect(v.sentence).toContain('Green on balance')
+    expect(v.sentence).toContain('J1044 Cielo Vista paid under Tristen\'s wage')
+  })
+  it('an office day has no verdict', () => {
+    const b = cellFor([office('u-tristen', '2026-09-02', 7)])
+    if (!b) throw new Error('no cell')
+    expect(vectorVerdict(b, 'Tristen', 38).tone).toBe('none')
+  })
+  it('a folded period speaks of the period', () => {
+    const cells = buildVectorDayCells({ ...base, sessions: [field('u-tristen', '2026-09-01', 8, 'j-low'), field('u-tristen', '2026-09-02', 8, 'j-low')] })
+    const week = foldBuckets([...(cells.get('u-tristen')?.values() ?? [])], '2026-09-01', '2026-09-05')
+    expect(vectorVerdict(week, 'Tristen', 38).sentence).toContain('not how fast the period went')
+  })
+})
+

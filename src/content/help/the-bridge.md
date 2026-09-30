@@ -60,7 +60,9 @@ Materials and sub sheets are job costs, not anyone's vector, so contribution her
 
 Under the Vectors table, the same rule one day at a time: a grid with one row per field person and one cell per day of the month, **green when the day's hours earned more than they cost, red when they cost more**, the shade by dollars per hour. A **wk** column after every Saturday sums the week, and the month's total sits at the end with the hours and $/h under it. The zoom row beside the title changes the columns: **Days** is the month; **Weeks** the last thirteen pay weeks, one cell per person per week; **Months** the last twelve months. A week or month cell is the same days folded, so a person's month equals the sum of their week columns. ‹ › steps a month, thirteen weeks or twelve months at a time; the running period reads *so far*.
 
-- Hover a cell for the split — the jobs worked that day, each at its earned rate beside the wage — and the {{chip:yellow|≈}} hatch means part of it rests on a job with no % complete.
+- Click a cell and a card opens under the grid: the jobs worked, each at its earned rate beside the wage, the labor line, the contribution, and a sentence saying why the day reads the way it does — with doors to open the job, set its % complete, or see that day on People → Review. The {{chip:yellow|≈}} hatch means part of it rests on a job with no % complete.
+- Under each name, a **Why** line counts the red days by job: *7 red · all on 990* is a pricing problem, not a slow person.
+- A **↻** on a day means last week's rates read it the other way — a % update or the hours landing since re-priced every day on that job.
 - **A grey cell with hours** is an office or bid day: it costs a wage and earns nothing here, so it is never judged.
 - **A salaried person's day** costs the flat workday, the way payroll prices it, whatever the clock says.
 - The **Field crew** row at the bottom is the company line day by day.

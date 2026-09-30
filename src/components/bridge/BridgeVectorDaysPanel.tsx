@@ -1,7 +1,7 @@
-import type { CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import type { VectorBucket, VectorColumn, VectorGrid, VectorGridRow, VectorZoom } from '../../lib/bridge/vectorDays'
-import { VECTOR_MONTHS_ZOOM_COUNT, VECTOR_WEEKS_ZOOM_COUNT } from '../../lib/bridge/vectorDays'
+import { VECTOR_MONTHS_ZOOM_COUNT, VECTOR_WEEKS_ZOOM_COUNT, vectorVerdict } from '../../lib/bridge/vectorDays'
 import { reviewDoorHref } from '../../lib/people/reviewDoor'
 
 /**
@@ -10,8 +10,11 @@ import { reviewDoorHref } from '../../lib/people/reviewDoor'
  * less, the shade by dollars per hour; a week sum after every Saturday and
  * the period's total at the end. Office and bid days are grey with their
  * hours — a cost, never a verdict. Weeks and Months (v2.4219) are the same
- * rows folded: a cell per pay week or per month, the shade the same. The
- * kernel decides every number and the order; this only draws.
+ * rows folded: a cell per pay week or per month, the shade the same. A cell's
+ * click (v2.4220) opens its card under the grid — the jobs at their rate
+ * beside the wage, the verdict sentence, the doors; the Why line under each
+ * name counts red days by job; ↻ marks a day whose verdict flipped since last
+ * week's rates. The kernel decides every number and the order; this only draws.
  */
 
 const shortUsd = (n: number): string => {
@@ -55,15 +58,18 @@ function bucketTitle(b: VectorBucket, col: VectorColumn): string {
   return parts.join('\n')
 }
 
-function DayCell({ b, col }: { b: VectorBucket | null; col: VectorColumn }) {
+const FLIP: CSSProperties = { position: 'absolute', top: -1, right: 1, fontSize: '0.55rem', lineHeight: 1, color: 'var(--text-amber-800)' }
+
+function DayCell({ b, col, selected, onPick }: { b: VectorBucket | null; col: VectorColumn; selected: boolean; onPick: () => void }) {
   if (!b) {
     if (col.weekend || col.future) return <td style={{ ...cellBase, background: 'transparent' }} />
     return <td style={{ ...cellBase, background: 'var(--bg-muted)', color: 'var(--border-strong)' }}>·</td>
   }
   const title = bucketTitle(b, col)
+  const sel: CSSProperties = selected ? { outline: '2px solid var(--text)', outlineOffset: -1 } : {}
   if (b.contributionUsd == null || b.contributionPerHour == null) {
     return (
-      <td style={{ ...cellBase, background: 'var(--bg-muted)', borderStyle: b.pendingHours > 0 ? 'dashed' : 'solid', borderColor: b.pendingHours > 0 ? 'var(--border-strong)' : 'transparent' }} title={title}>
+      <td style={{ ...cellBase, ...sel, background: 'var(--bg-muted)', cursor: 'pointer', borderStyle: b.pendingHours > 0 ? 'dashed' : 'solid', borderColor: b.pendingHours > 0 ? 'var(--border-strong)' : 'transparent' }} title={title} onClick={onPick}>
         {hrs(b.officeBidHours)}
       </td>
     )
@@ -74,27 +80,32 @@ function DayCell({ b, col }: { b: VectorBucket | null; col: VectorColumn }) {
       style={{
         ...cellBase,
         ...s,
+        ...sel,
+        position: 'relative',
+        cursor: 'pointer',
         backgroundImage: b.guessedEarnedUsd > 0 ? GUESS_HATCH : undefined,
         borderStyle: b.pendingHours > 0 ? 'dashed' : 'solid',
         borderColor: b.pendingHours > 0 ? 'var(--border-strong)' : 'transparent',
         fontStyle: b.pendingHours > 0 ? 'italic' : undefined,
       }}
-      title={title}
+      title={b.flippedDays > 0 ? `${title}\n↻ re-priced this week: last week's rates read this day the other way` : title}
+      onClick={onPick}
       data-testid="vector-day-cell"
     >
       {shortUsd(b.contributionUsd)}
+      {b.flippedDays > 0 ? <span style={FLIP} data-testid="vector-flip">↻</span> : null}
     </td>
   )
 }
 
 /** A pay-week or month cell (Weeks / Months zooms): the day cell's shade, wider, hours only when the period had no field hours. */
-function PeriodCell({ b, col }: { b: VectorBucket | null; col: VectorColumn }) {
-  const wide: CSSProperties = { ...cellBase, width: 56, minWidth: 56, fontSize: '0.68rem' }
+function PeriodCell({ b, col, selected, onPick }: { b: VectorBucket | null; col: VectorColumn; selected: boolean; onPick: () => void }) {
+  const wide: CSSProperties = { ...cellBase, width: 56, minWidth: 56, fontSize: '0.68rem', cursor: b ? 'pointer' : undefined, ...(selected ? { outline: '2px solid var(--text)', outlineOffset: -1 } : {}) }
   if (!b) return <td style={{ ...wide, background: col.future ? 'transparent' : 'var(--bg-muted)', color: 'var(--border-strong)' }}>{col.future ? '' : '·'}</td>
   const title = bucketTitle(b, col)
   if (b.contributionUsd == null || b.contributionPerHour == null) {
     return (
-      <td style={{ ...wide, background: 'var(--bg-muted)' }} title={title}>
+      <td style={{ ...wide, background: 'var(--bg-muted)' }} title={title} onClick={onPick}>
         {hrs(b.officeBidHours)}
       </td>
     )
@@ -104,10 +115,12 @@ function PeriodCell({ b, col }: { b: VectorBucket | null; col: VectorColumn }) {
     <td
       style={{ ...wide, ...s, backgroundImage: b.guessedEarnedUsd > 0 ? GUESS_HATCH : undefined, borderStyle: b.pendingHours > 0 ? 'dashed' : 'solid', borderColor: b.pendingHours > 0 ? 'var(--border-strong)' : 'transparent', fontStyle: b.pendingHours > 0 ? 'italic' : undefined }}
       title={title}
+      onClick={onPick}
       data-testid="vector-period-cell"
     >
       {b.guessedEarnedUsd > 0 ? '≈' : ''}
       {shortUsd(b.contributionUsd)}
+      {b.flippedDays > 0 ? <span style={{ fontSize: '0.55rem', color: 'var(--text-amber-800)', marginLeft: 1 }} title={`${b.flippedDays} day${b.flippedDays === 1 ? '' : 's'} re-priced this week`}>↻</span> : null}
     </td>
   )
 }
@@ -130,7 +143,14 @@ function SumCell({ b, col, bold }: { b: VectorBucket | null; col: VectorColumn |
   )
 }
 
-function Row({ r, grid }: { r: VectorGridRow; grid: VectorGrid }) {
+function whyLine(r: VectorGridRow): string {
+  if (r.total.redDays === 0) return r.total.fieldDays > 0 ? 'no red days' : ''
+  const jobs = r.redByJob.map((j) => `${r.redByJob.length > 1 ? `${j.days} on ` : 'all on '}${j.label.split(' ')[0] || j.label}${j.noPrice ? ', no price' : j.guessed ? ', no %' : ''}`)
+  return jobs.join(' · ')
+}
+
+function Row({ r, grid, selectedKey, onPick }: { r: VectorGridRow; grid: VectorGrid; selectedKey: string | null; onPick: (key: string) => void }) {
+  const why = whyLine(r)
   return (
     <tr data-testid="vector-day-row">
       <td style={nameTd}>
@@ -145,8 +165,21 @@ function Row({ r, grid }: { r: VectorGridRow; grid: VectorGrid }) {
           {r.wage == null ? 'no wage on file' : `${money(r.wage)}/h`}
           {r.isSalary ? ' · salaried' : ''}
         </span>
+        {why ? (
+          <span style={{ display: 'block', fontSize: '0.66rem', color: 'var(--text-muted)', whiteSpace: 'normal', maxWidth: 150, lineHeight: 1.25 }} data-testid="vector-why">
+            {r.total.redDays > 0 ? <b style={{ color: 'var(--text-red-700)' }}>{r.total.redDays} red</b> : null}
+            {r.total.redDays > 0 ? ' · ' : ''}
+            {why}
+          </span>
+        ) : null}
       </td>
-      {grid.columns.map((col, i) => (col.kind === 'day' ? <DayCell key={col.key} b={r.cells[i] ?? null} col={col} /> : col.kind === 'weekSum' ? <SumCell key={col.key} b={r.cells[i] ?? null} col={col} /> : <PeriodCell key={col.key} b={r.cells[i] ?? null} col={col} />))}
+      {grid.columns.map((col, i) => {
+        const b = r.cells[i] ?? null
+        const key = `${r.userId}:${col.key}`
+        if (col.kind === 'day') return <DayCell key={col.key} b={b} col={col} selected={selectedKey === key} onPick={() => onPick(key)} />
+        if (col.kind === 'weekSum') return <SumCell key={col.key} b={b} col={col} />
+        return <PeriodCell key={col.key} b={b} col={col} selected={selectedKey === key} onPick={() => onPick(key)} />
+      })}
       <SumCell b={r.total} col={null} />
     </tr>
   )
@@ -161,6 +194,18 @@ const segBtn = (on: boolean): CSSProperties => ({ font: 'inherit', fontSize: '0.
 
 export function BridgeVectorDaysPanel(props: { grid: VectorGrid | null; zoom: VectorZoom; onZoom: (zoom: VectorZoom) => void; periodLabel: string; isCurrent: boolean; canPrev: boolean; canNext: boolean; onPrev: () => void; onNext: () => void; loading: boolean; error: string | null }) {
   const { grid, zoom } = props
+  const [selectedKey, setSelectedKey] = useState<string | null>(null)
+  useEffect(() => setSelectedKey(null), [grid])
+  const selected = (() => {
+    if (!grid || !selectedKey) return null
+    const [userId, ...rest] = selectedKey.split(':')
+    const colKey = rest.join(':')
+    const row = grid.rows.find((r) => r.userId === userId)
+    const i = grid.columns.findIndex((c) => c.key === colKey)
+    const col = grid.columns[i]
+    const b = row?.cells[i]
+    return row && col && b ? { row, col, b } : null
+  })()
   const totalLabel = zoom === 'days' ? (grid ? periodShort(grid.start) : 'total') : zoom === 'weeks' ? `${VECTOR_WEEKS_ZOOM_COUNT} wk` : `${VECTOR_MONTHS_ZOOM_COUNT} mo`
   const stepWord = zoom === 'days' ? 'month' : zoom === 'weeks' ? `${VECTOR_WEEKS_ZOOM_COUNT} weeks` : `${VECTOR_MONTHS_ZOOM_COUNT} months`
   return (
@@ -219,7 +264,7 @@ export function BridgeVectorDaysPanel(props: { grid: VectorGrid | null; zoom: Ve
             </thead>
             <tbody>
               {grid.rows.map((r) => (
-                <Row key={r.userId} r={r} grid={grid} />
+                <Row key={r.userId} r={r} grid={grid} selectedKey={selectedKey} onPick={(key) => setSelectedKey((cur) => (cur === key ? null : key))} />
               ))}
               <tr data-testid="vector-day-company">
                 <td style={{ ...nameTd, fontWeight: 700, borderTop: '2px solid var(--border-strong)' }}>Field crew</td>
@@ -238,6 +283,7 @@ export function BridgeVectorDaysPanel(props: { grid: VectorGrid | null; zoom: Ve
               </tr>
             </tbody>
           </table>
+          {selected ? <CellCard row={selected.row} col={selected.col} b={selected.b} onClose={() => setSelectedKey(null)} /> : <div style={{ ...det, marginTop: '0.3rem' }}>Click a cell for its split — the jobs at their rate beside the wage, and why it reads the way it does.</div>}
         </div>
       )}
       <div style={{ ...det, marginTop: '0.45rem', display: 'flex', gap: '0.9rem', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -247,10 +293,102 @@ export function BridgeVectorDaysPanel(props: { grid: VectorGrid | null; zoom: Ve
         <Swatch bg="var(--bg-red-200)" text="well under" />
         <Swatch bg="var(--bg-green-tint)" image={GUESS_HATCH} text="≈ on a job with no % complete (assumed half done)" />
         <Swatch bg="var(--bg-muted)" text="office / bid day, hours only" />
-        <span>Numbers are the day's contribution in dollars, short.</span>
+        <span>↻ re-priced this week (last week's rates read it the other way)</span>
+        <span>Numbers are the day's contribution in dollars, short. Under each name: red days, and which job they were on.</span>
       </div>
       <div style={{ ...det, marginTop: '0.3rem' }}>
         The same rule as the table above, one day at a time (Weeks and Months are the same days folded into pay weeks and months): earned = field hours × the job's contract ÷ expected hours; labor = hours × the wage (a salaried person's day costs the flat workday). A red day means the job's rate is under the wage — priced low, no contract price, or run past its expected hours — and every hour on it reads the same, whoever worked it. Every new hour and % update re-prices every day on that job, so the grid is always as of today. Materials and subs are job costs, not a person's day.
+      </div>
+    </div>
+  )
+}
+
+const DOW_LONG = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+function dayWords(ymd: string): string {
+  const d = new Date(`${ymd}T12:00:00Z`)
+  return `${DOW_LONG[d.getUTCDay()]} ${MON[d.getUTCMonth()]} ${d.getUTCDate()}`
+}
+function periodWords(col: VectorColumn): string {
+  if (col.kind === 'day') return dayWords(col.start)
+  if (col.kind === 'month') return `${MON[Number(col.start.slice(5, 7)) - 1]} ${col.start.slice(0, 4)}`
+  return `${dayWords(col.start)} – ${dayWords(col.end)}`
+}
+const doorBtn: CSSProperties = { fontSize: '0.75rem', fontWeight: 600, padding: '0.15rem 0.55rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text)', textDecoration: 'none' }
+
+/** The card a cell's click opens (v2.4220): the split by job, the verdict, the doors. */
+function CellCard({ row, col, b, onClose }: { row: VectorGridRow; col: VectorColumn; b: VectorBucket; onClose: () => void }) {
+  const verdict = vectorVerdict(b, row.name, row.wage)
+  const tone = verdict.tone === 'red' ? { background: 'var(--bg-red-tint)', color: 'var(--text-red-800)', border: '1px dashed var(--text-red-700)' } : verdict.tone === 'green' ? { background: 'var(--bg-green-tint)', color: 'var(--text-green-800)', border: '1px dashed var(--text-green-700)' } : { background: 'var(--bg-muted)', color: 'var(--text-muted)', border: '1px dashed var(--border-strong)' }
+  const worst = [...b.jobs].sort((a, c) => (a.ratePerHour ?? 0) - (c.ratePerHour ?? 0))[0]
+  const oneDay = col.kind === 'day'
+  return (
+    <div style={{ marginTop: '0.6rem', border: '1px solid var(--text)', borderRadius: 8, background: 'var(--surface)', maxWidth: 480, overflow: 'hidden' }} data-testid="vector-cell-card">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '0.4rem 0.7rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)', fontSize: '0.85rem', fontWeight: 700 }}>
+        <span>
+          {row.name} · {periodWords(col)}
+        </span>
+        <span style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline' }}>
+          <span style={{ fontWeight: 600, color: 'var(--text-muted)' }}>{hrs(b.fieldHours)} field{b.officeBidHours > 0 ? ` · ${hrs(b.officeBidHours)} office` : ''}</span>
+          <button type="button" onClick={onClose} aria-label="Close" style={{ ...navBtn, padding: '0 0.35rem' }}>
+            ×
+          </button>
+        </span>
+      </div>
+      <div style={{ padding: '0.5rem 0.7rem', fontSize: '0.8rem' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <tbody>
+            {b.jobs.map((j) => (
+              <tr key={j.jobId}>
+                <td style={{ padding: '0.2rem 0', borderBottom: '1px solid var(--border)' }}>
+                  {j.label}
+                  <span style={{ display: 'block', fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                    {hrs(j.hours)} × {j.ratePerHour == null ? 'no contract price' : `earned rate ${money(j.ratePerHour)}/h`}
+                    {j.guessed ? ' · ≈ no % complete, assumed half done' : ''}
+                    {!oneDay && j.redDays > 0 ? ` · ${j.redDays} red day${j.redDays === 1 ? '' : 's'}` : ''}
+                  </span>
+                </td>
+                <td style={{ padding: '0.2rem 0', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{money(j.earnedUsd)}</td>
+              </tr>
+            ))}
+            <tr>
+              <td style={{ padding: '0.2rem 0', borderBottom: '1px solid var(--border)' }}>
+                Labor
+                <span style={{ display: 'block', fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                  {row.isSalary ? `the flat workday × ${row.wage == null ? 'no wage' : `${money(row.wage)}/h`} (salaried)` : `${hrs(b.fieldHours)} × wage ${row.wage == null ? '$0 (no wage on file)' : `${money(row.wage)}/h`}`}
+                </span>
+              </td>
+              <td style={{ padding: '0.2rem 0', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>−{money(b.laborUsd)}</td>
+            </tr>
+            <tr>
+              <td style={{ padding: '0.25rem 0', fontWeight: 700 }}>Contribution</td>
+              <td style={{ padding: '0.25rem 0', textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: b.contributionUsd == null ? 'var(--text-muted)' : b.contributionUsd >= 0 ? 'var(--text-green-700)' : 'var(--text-red-700)' }}>
+                {b.contributionUsd == null ? '—' : shortUsd(b.contributionUsd)}
+                {b.contributionPerHour != null ? <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> · {money(b.contributionPerHour)}/h</span> : null}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div style={{ marginTop: '0.5rem', padding: '0.45rem 0.6rem', borderRadius: 6, fontSize: '0.78rem', ...tone }} data-testid="vector-verdict">
+          {verdict.sentence}
+          {b.flippedDays > 0 ? ` ↻ Re-priced this week: last week's rates read ${oneDay ? 'this day' : `${b.flippedDays} of these days`} the other way.` : ''}
+          {b.pendingHours > 0 ? ` ${hrs(b.pendingHours)} of this is not yet approved.` : ''}
+        </div>
+        <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+          {worst ? (
+            <Link to={`/jobs?tab=stages&stagesJob=${encodeURIComponent(worst.jobId)}`} style={{ ...doorBtn, background: 'var(--text)', color: 'var(--surface)', borderColor: 'var(--text)' }}>
+              Open {worst.label.split(' ')[0] || 'the job'}
+            </Link>
+          ) : null}
+          {worst ? (
+            <Link to={`/jobs?tab=job-summary&job=${encodeURIComponent(worst.jobId)}`} style={doorBtn}>
+              Set % complete
+            </Link>
+          ) : null}
+          <Link to={reviewDoorHref({ person: row.name, from: b.start, to: b.end })} style={doorBtn}>
+            {oneDay ? 'This day' : 'This period'} on People → Review
+          </Link>
+        </div>
       </div>
     </div>
   )
