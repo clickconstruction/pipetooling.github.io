@@ -5,10 +5,12 @@ import { useRoleGate } from '../hooks/useRoleGate'
 import { usePunchListPicks } from '../hooks/usePunchListPicks'
 import { canOpenPunchList } from '../lib/todos/punchListAccess'
 import {
+  FLAGGED_BLURB,
   GROUP_BLURBS,
   PUNCH_FILTERS,
   byLine,
   countPicks,
+  flaggedRows,
   groupRows,
   isOpenItem,
   linkChips,
@@ -65,11 +67,13 @@ export default function PunchList() {
 
   const counts = useMemo(() => countPicks(board.items, picks), [picks])
   const groups = useMemo(() => groupRows(board.items), [])
+  const flagged = useMemo(() => flaggedRows(board.items), [])
+  // Every row counts toward its group, flagged ones included — they left the group's section, not the group (v2.4196).
   const byGroup = useMemo(() => {
     const out: Partial<Record<BoardGroup, number>> = {}
-    for (const g of groups) out[g.group] = g.items.length
+    for (const it of board.items as BoardItem[]) out[it.group] = (out[it.group] ?? 0) + 1
     return out
-  }, [groups])
+  }, [])
 
   if (authLoading) return <p style={{ padding: '2rem' }}>Loading…</p>
   if (!allowed) return null
@@ -191,6 +195,31 @@ export default function PunchList() {
         </button>
       </div>
 
+      {/* v2.4196 · the owner's flagged rows, above every group. */}
+      {(() => {
+        const visible = flagged.filter((it) => rowVisible(it, picks, filter, waitingOnly))
+        if (visible.length === 0) return null
+        return (
+          <section data-testid="punch-flagged" style={{ marginTop: '2rem' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+              <h2 style={{ margin: 0, fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-red-700)' }}>
+                <span aria-hidden>⚑</span>
+                Flagged
+              </h2>
+              <span style={{ ...mono, fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                {flagged.length} item{flagged.length === 1 ? '' : 's'}
+              </span>
+              <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.85rem', flexBasis: '100%', maxWidth: '72ch' }}>{FLAGGED_BLURB}</p>
+            </div>
+            <div style={{ border: '1px solid var(--border-red)', borderRadius: 6, background: 'var(--surface)', overflow: 'hidden' }}>
+              {visible.map((it, i) => (
+                <Row key={it.slug} item={it} group={it.group} picks={picks} onSave={save} first={i === 0} />
+              ))}
+            </div>
+          </section>
+        )
+      })()}
+
       {groups.map((g) => {
         const visible = g.items.filter((it) => rowVisible(it, picks, filter, waitingOnly))
         if (visible.length === 0) return null
@@ -264,6 +293,11 @@ function Row({
         >
           #{item.number}
         </a>
+        {item.flagged ? (
+          <span title="Flagged — the owner put this at the top" aria-label="Flagged" style={{ display: 'block', color: 'var(--text-red-700)', fontSize: '0.95rem', lineHeight: 1.1 }}>
+            ⚑
+          </span>
+        ) : null}
       </div>
       <div className="punch-main" style={{ padding: '0.9rem 1rem', minWidth: 0 }}>
         <div style={{ fontWeight: 600, fontSize: '0.98rem', display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>

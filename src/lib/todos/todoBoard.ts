@@ -61,6 +61,12 @@ export interface TodoMeta {
   /** Standing pointers are listed but are not "open items". */
   pointer: boolean
   /**
+   * `flagged: true` (v2.4196): the owner wants this row at the top. The board lifts it out of
+   * its group into a Flagged section above every group, marked ⚑; the group still shows on the
+   * row's stripe. Unflag by deleting the line.
+   */
+  flagged: boolean
+  /**
    * `mockup: not required — <why>` in the front matter: the to-do changes no screen (a live
    * test, a refactor, a retirement), so the board says "not required" instead of "waiting".
    * Empty when a mock-up is expected.
@@ -244,6 +250,7 @@ export function readTodoDoc(
       ver: (fm.fields.ver ?? '').trim(),
       opinion: (fm.fields.opinion ?? '').trim(),
       pointer: /^true$/i.test((fm.fields.pointer ?? '').trim()),
+      flagged: /^true$/i.test((fm.fields.flagged ?? '').trim()),
       mockupNotRequired: parseMockupField(fm.fields.mockup),
     },
   }
@@ -399,6 +406,8 @@ export interface BoardItem {
   /** Repo-root path of the to-do file. */
   file: string
   pointer: boolean
+  /** `flagged: true` — shown in the Flagged section at the top. See `TodoMeta.flagged`. */
+  flagged: boolean
   summary: string
   next: string
   size: string
@@ -434,6 +443,7 @@ export function renderBoardData(docs: readonly TodoDoc[], validated: BoardData['
       name: toPlainText(d.meta.name),
       file: d.file,
       pointer: d.meta.pointer,
+      flagged: d.meta.flagged,
       summary: toPlainText(d.meta.summary),
       next: toPlainText(d.meta.next),
       size: toPlainText(d.meta.size),
@@ -625,6 +635,7 @@ export function renderFrontMatter(meta: TodoMeta): string {
     ...wrap('ver', meta.ver || '—'),
     ...(meta.opinion ? wrap('opinion', meta.opinion) : []),
     ...(meta.pointer ? ['pointer: true'] : []),
+    ...(meta.flagged ? ['flagged: true'] : []),
     ...(meta.mockupNotRequired ? wrap('mockup', `not required — ${meta.mockupNotRequired}`) : []),
     FM_FENCE,
   ].join('\n')
