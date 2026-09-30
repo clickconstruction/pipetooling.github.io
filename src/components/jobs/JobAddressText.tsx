@@ -10,8 +10,9 @@ import { StagesSearchMark } from './StagesSearchMark'
  *
  * Whether the street wrapped can't be known from CSS alone, so we measure the
  * street span's line-box count (getClientRects). The ResizeObserver watches the
- * OUTER span — a flex item, so it has a real box and reliably fires on column
- * reflow, unlike an inline span whose ResizeObserver box is undefined.
+ * nearest BLOCK ancestor — the address block that holds the map link and the
+ * property-kind badge (v2.4210) — because it has a real box and reliably fires
+ * on column reflow, unlike this inline span whose ResizeObserver box is undefined.
  */
 export function JobAddressText({ line1, line2 }: { line1: string; line2?: string }) {
   const outerRef = useRef<HTMLSpanElement>(null)
@@ -28,7 +29,9 @@ export function JobAddressText({ line1, line2 }: { line1: string; line2?: string
     const raf = requestAnimationFrame(measure)
     if (typeof ResizeObserver === 'undefined') return () => cancelAnimationFrame(raf)
     const ro = new ResizeObserver(measure)
-    ro.observe(outer)
+    let block: HTMLElement | null = outer.parentElement
+    while (block && getComputedStyle(block).display.startsWith('inline')) block = block.parentElement
+    ro.observe(block ?? outer)
     return () => {
       cancelAnimationFrame(raf)
       ro.disconnect()
@@ -36,11 +39,10 @@ export function JobAddressText({ line1, line2 }: { line1: string; line2?: string
   }, [line1, line2])
 
   return (
-    // text-wrap: balance — when the kernel couldn't split (unknown city, no
-    // comma) and the one-liner must wrap, break into even lines instead of
-    // orphaning the last word ("…Converse | TX"). The outer span is a flex
-    // item (blockified), so balance applies.
-    <span ref={outerRef} style={{ textWrap: 'balance' }}>
+    // Inline, so whatever follows the address (the property-kind badge) sits
+    // right after its last word; the address block above carries text-wrap:
+    // balance for the unsplit one-liner that must wrap ("…Converse | TX").
+    <span ref={outerRef}>
       <span ref={line1Ref}><StagesSearchMark text={line1} /></span>
       {line2 ? (
         line1Wrapped ? (
