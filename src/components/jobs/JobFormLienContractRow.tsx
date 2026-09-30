@@ -1,10 +1,12 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
+import { isPlausibleDate } from '../../lib/dateBoxEntry'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { retainageDeadlineFor } from '../../lib/jobs/lienDeadlines'
 import { LIEN_CONTRACT_ENDED_HOW, parseContractEndedHow, parsePaymentBond, paymentBondWords, type LienContractEndedHow, type LienPaymentBond } from '../../lib/jobs/lienDeskRetainage'
+import { FinishedDateInput } from '../FinishedDateInput'
 import { JobFormFactRow } from './JobFormFactRow'
 
 /**
@@ -15,7 +17,9 @@ import { JobFormFactRow } from './JobFormFactRow'
  * inferred), the retainage the GC holds back under the subcontract, and
  * whether a payment bond is on the project. Shown on jobs with a GC. Written
  * straight to the job as you pick, like the Share-this-bill tick — never
- * through the autosave slice.
+ * through the autosave slice. The date box hands over a finished date only
+ * (`FinishedDateInput`), and saves queue one behind the other so the box stays
+ * open while a save runs.
  */
 
 type Loaded = {
@@ -37,6 +41,13 @@ export function JobFormLienContractRow({ jobId, gcName, expanded, onToggle, flas
   const [busy, setBusy] = useState(false)
   const [retainageDraft, setRetainageDraft] = useState('')
   const [dateDraft, setDateDraft] = useState('')
+  // What is on the job as of the last save queued, and the queue itself: the date box is not disabled while a save runs.
+  const loadedRef = useRef<Loaded | null>(null)
+  const saveQueue = useRef<Promise<void>>(Promise.resolve())
+  const applyLoaded = (next: Loaded) => {
+    loadedRef.current = next
+    setLoaded(next)
+  }
 
   useEffect(() => {
     if (!jobId) return
@@ -56,6 +67,7 @@ export function JobFormLienContractRow({ jobId, gcName, expanded, onToggle, flas
         bond: parsePaymentBond(r.lien_payment_bond),
         lastWorkDate: r.last_work_date ? String(r.last_work_date).slice(0, 10) : null,
       }
+      loadedRef.current = next
       setLoaded(next)
       setRetainageDraft(next.retainage)
       setDateDraft(next.endedOn || next.lastWorkDate || '')
@@ -65,17 +77,22 @@ export function JobFormLienContractRow({ jobId, gcName, expanded, onToggle, flas
     }
   }, [jobId])
 
-  async function save(patch: Record<string, unknown>, apply: (l: Loaded) => Loaded, what: string) {
-    if (!jobId || !loaded || busy) return
-    const before = loaded
-    setLoaded(apply(loaded))
-    setBusy(true)
-    const { error } = await supabase.from('jobs_ledger').update(patch as never).eq('id', jobId)
-    setBusy(false)
-    if (error) {
-      setLoaded(before)
-      showToast(`Could not save ${what}: ${error.message}`, 'error')
+  function save(patch: Record<string, unknown>, apply: (l: Loaded) => Loaded, what: string): Promise<void> {
+    const run = async () => {
+      const before = loadedRef.current
+      if (!jobId || !before) return
+      applyLoaded(apply(before))
+      setBusy(true)
+      const { error } = await supabase.from('jobs_ledger').update(patch as never).eq('id', jobId)
+      setBusy(false)
+      if (error) {
+        applyLoaded(before)
+        showToast(`Could not save ${what}: ${error.message}`, 'error')
+      }
     }
+    const next = saveQueue.current.then(run)
+    saveQueue.current = next
+    return next
   }
   const setEnded = (how: LienContractEndedHow | null) => {
     if (!loaded) return
@@ -84,15 +101,16 @@ export function JobFormLienContractRow({ jobId, gcName, expanded, onToggle, flas
       return
     }
     const day = (dateDraft || loaded.lastWorkDate || '').slice(0, 10)
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+    if (!isPlausibleDate(day)) {
       showToast('Pick the day our contract ended first.', 'error')
       return
     }
     void save({ lien_contract_ended_on: day, lien_contract_ended_how: how, lien_contract_ended_set_at: new Date().toISOString() }, (l) => ({ ...l, endedOn: day, endedHow: how }), 'the contract state')
   }
+  /** The date box's finished date ('' for an emptied box). Still open: it waits for a state to be picked. */
   const setDate = (day: string) => {
     setDateDraft(day)
-    if (!loaded?.endedHow || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return
+    if (!loaded?.endedHow || !isPlausibleDate(day)) return
     void save({ lien_contract_ended_on: day, lien_contract_ended_set_at: new Date().toISOString() }, (l) => ({ ...l, endedOn: day }), 'the day our contract ended')
   }
   const commitRetainage = () => {
@@ -145,15 +163,16 @@ export function JobFormLienContractRow({ jobId, gcName, expanded, onToggle, flas
           ) : (
             <div style={{ display: 'grid', gap: '0.6rem' }}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 0.9rem', alignItems: 'center' }}>
+                {/* Not disabled while a save runs: a click that leaves the date box saves the date, and must still land here. */}
                 <span role="group" aria-label="Contract state" style={segGroup}>
-                  <button type="button" onClick={() => setEnded(null)} disabled={busy} style={seg(loaded.endedHow == null, busy)} aria-pressed={loaded.endedHow == null}>Still open</button>
+                  <button type="button" onClick={() => setEnded(null)} style={seg(loaded.endedHow == null)} aria-pressed={loaded.endedHow == null}>Still open</button>
                   {LIEN_CONTRACT_ENDED_HOW.map((h) => (
-                    <button key={h.key} type="button" onClick={() => setEnded(h.key)} disabled={busy} style={seg(loaded.endedHow === h.key, busy)} aria-pressed={loaded.endedHow === h.key}>{h.label}</button>
+                    <button key={h.key} type="button" onClick={() => setEnded(h.key)} style={seg(loaded.endedHow === h.key)} aria-pressed={loaded.endedHow === h.key}>{h.label}</button>
                   ))}
                 </span>
                 <label style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: '0.8125rem' }}>
                   Date
-                  <input type="date" aria-label="Day our contract ended" value={dateDraft} onChange={(e) => setDate(e.target.value)} disabled={busy} style={{ padding: '0.3rem 0.4rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
+                  <FinishedDateInput aria-label="Day our contract ended" value={dateDraft} onCommit={(day) => setDate(day ?? '')} style={{ padding: '0.3rem 0.4rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
                 </label>
               </div>
               <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>

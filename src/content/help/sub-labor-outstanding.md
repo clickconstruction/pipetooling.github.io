@@ -50,7 +50,7 @@ Each row keeps **Agreed · Paid · Due** and the rail ([where the sheet stands](
 
 ## Paying it down
 
-The ⋯ on a row holds **Payment…**, **Back-charge…**, **Edit sheet**, **Print** and **Story…**; expanding a row shows the same buttons with the sheet date, the invoice link, the line items and every payment and back-charge. The tiles and rows update the moment a payment or back-charge is saved.
+The ⋯ on a row holds **Payment…**, **Back-charge…**, **Edit sheet**, **Print** and **Story…**; expanding a row shows the same buttons with the sheet date, the invoice link, the line items and every payment and back-charge. The sheet date saves when it is finished: pick it from the calendar, or type it and press Enter or leave the box. A date left half typed is not saved. The tiles and rows update the moment a payment or back-charge is saved.
 
 When you record a payment, the **Date sent** field lets you backdate it to the day the money actually went out (it starts on today). The ledger's Payments list shows that date, and you can fix it later with **Edit** on the payment row.
 

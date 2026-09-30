@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { agreementGating, partitionAgreementDocs } from '../../lib/partnerLedger/agreementGating'
 import { denverCalendarDayKey } from '../../utils/dateUtils'
+import { FinishedDateInput } from '../FinishedDateInput'
 
 /**
  * Partnerships → Agreements tab (PARTNERSHIPS_PLAN.md PR 8): the partnership
@@ -149,10 +150,10 @@ export function PartnershipAgreementsTab({
           <>
             <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
               sign by
-              <input
-                type="date"
+              <FinishedDateInput
+                aria-label={`${d.document_name} sign by`}
                 value={d.sign_by ?? ''}
-                onChange={(e) => void setSignBy(d.id, e.target.value || null)}
+                onCommit={(day) => void setSignBy(d.id, day)}
                 style={{ font: 'inherit', fontSize: '0.78rem', padding: '0.15rem 0.3rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit' }}
               />
             </label>

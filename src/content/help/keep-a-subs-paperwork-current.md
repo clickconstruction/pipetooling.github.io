@@ -28,7 +28,7 @@ Jesse's row shows {{chip:gray|COI missing}}. Open ▶ Documents → + Add docume
 
 ## "Looks like a W-9 — set type"
 
-Anything sent or uploaded from **People → Contracts** is typed as the sub's *Agreement* by default, so a document named "W-9" that came in that way counts toward the wrong badge. When a name and its type disagree, the Subs expander shows an amber pill — click it once and the row is retyped. The type and expiry pickers on each row still work for anything else.
+Anything sent or uploaded from **People → Contracts** is typed as the sub's *Agreement* by default, so a document named "W-9" that came in that way counts toward the wrong badge. When a name and its type disagree, the Subs expander shows an amber pill — click it once and the row is retyped. The type and expiry pickers on each row still work for anything else. An expiry date on a row saves when it is finished: pick it from the calendar, or type it and press Enter or leave the box. A date left half typed is not saved.
 
 ## Who can do this
 

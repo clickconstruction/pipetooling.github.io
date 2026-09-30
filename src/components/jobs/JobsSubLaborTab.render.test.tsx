@@ -76,4 +76,27 @@ describe('JobsSubLaborTab · the Pay view on a phone', () => {
     await settle()
     expect(document.querySelector('[data-sub-pay-phone]')).toBeNull()
   })
+
+  it('the Sheet date saves a finished date only: a half-typed year hands over nothing, a finished date once', async () => {
+    narrow.on = false
+    const onUpdateLaborJobDate = vi.fn()
+    renderWithProviders(<JobsSubLaborTab {...props({ laborJobs: [makeLaborJob({ id: 'sheet-1', assigned_to_name: 'Sam Sub', job_number: 'S-212', job_date: '2026-09-10' })], onUpdateLaborJobDate })} />)
+    await settle()
+    const sheetRow = [...document.querySelectorAll('tr')].find((tr) => tr.firstElementChild?.textContent === '▶') as HTMLElement
+    fireEvent.click(sheetRow)
+    const box = screen.getByLabelText('Sheet date') as HTMLInputElement
+    expect(box.value).toBe('2026-09-10')
+    // The browser hands over 0002-09-30 when the first digit of the year lands.
+    fireEvent.change(box, { target: { value: '0002-09-30' } })
+    expect(onUpdateLaborJobDate).not.toHaveBeenCalled()
+    fireEvent.change(box, { target: { value: '2026-09-30' } })
+    expect(onUpdateLaborJobDate.mock.calls).toEqual([['sheet-1', '2026-09-30']])
+    // Typed and left with the year half done: dropped, with a line that says why.
+    fireEvent.keyDown(box, { key: '2' })
+    fireEvent.change(box, { target: { value: '0002-09-10' } })
+    fireEvent.blur(box)
+    expect(onUpdateLaborJobDate).toHaveBeenCalledTimes(1)
+    expect(box.value).toBe('2026-09-10')
+    expect(screen.getByText(/That date was not finished, so it was not saved/)).toBeTruthy()
+  })
 })
