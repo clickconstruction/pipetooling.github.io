@@ -47,6 +47,22 @@ describe('SubmittalItemEditDialog · entered call (5b)', () => {
     expect(onSave.mock.calls[0]![0].entered).toEqual({ decision: 'approved', note: '', person: { name: 'Tom Reyes', email: 'tom@owner.test', role: 'owners_rep' } })
   })
 
+  it('a call carries the day they made it: an earlier day rides along, today adds nothing, a later day holds Save', () => {
+    const onSave = vi.fn<(p: SubmittalItemPatch) => void>()
+    renderWithProviders(<SubmittalItemEditDialog item={item()} sourceFiles={[]} people={people} canEnterDecision onSave={onSave} onClose={() => {}} />)
+    fireEvent.click(screen.getByTestId('enter-call-open'))
+    fireEvent.click(screen.getByRole('button', { name: 'Approved' }))
+    const day = screen.getByLabelText('The day of their call') as HTMLInputElement
+    expect(day.value).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    expect(day.max).toBe(day.value)
+    fireEvent.change(day, { target: { value: '2099-01-01' } })
+    expect(screen.getByText('Their call cannot be dated after today.')).toBeTruthy()
+    expect((screen.getByRole('button', { name: 'Save' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.change(day, { target: { value: '2026-09-12' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    expect(onSave.mock.calls[0]![0].entered).toEqual({ decision: 'approved', note: '', person: { id: 'p1' }, on: '2026-09-12' })
+  })
+
   it('an entered call reads who typed it and can be cleared', () => {
     const onSave = vi.fn<(p: SubmittalItemPatch) => void>()
     renderWithProviders(<SubmittalItemEditDialog item={item({ review_decision: 'revise', reviewed_by_name: 'Dana Whitfield', decision_source: 'entered', decision_entered_by_name: 'Wendi' })} sourceFiles={[]} people={people} canEnterDecision onSave={onSave} onClose={() => {}} />)

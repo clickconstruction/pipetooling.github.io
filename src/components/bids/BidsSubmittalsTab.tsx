@@ -52,6 +52,7 @@ import { BidPickerSearchRow } from './BidPickerSearchRow'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
 import { ProductStatusChip } from './ProductStatusChip'
 import { SubmittalItemEditDialog, type SubmittalItemPatch } from './SubmittalItemEditDialog'
+import { SubmittalApproveAllDialog, type ApproveAllChoice } from './SubmittalApproveAllDialog'
 import { SubmittalSheetStrip, type ThumbState } from './SubmittalSheetStrip'
 import { SubmittalAssignPagesModal } from './SubmittalAssignPagesModal'
 import type { ItemWrite } from '../../lib/submittals/assignPagesWalk'
@@ -59,10 +60,11 @@ import { SubmittalShareModal } from './SubmittalShareModal'
 import { anonymousOpens, asPersonHow, describeHow, describeRoomLine, describeTrail, personTrail, roomLink, ROOM_ROLE_LABELS, asRoomRole, type SubmittalEventRow, type SubmittalPersonRow, type SubmittalRoomRow, describeThreadEntry, parseRoomMessage, summarizeThread, threadOrder } from '../../lib/submittals/submittalRoom'
 import { replyToRoom } from '../../lib/submittals/replyToRoom'
 import type { RoomMessage } from '../../../supabase/functions/_shared/submittalRoomPayload'
-import { APP_CALENDAR_TZ as ROOM_TZ } from '../../utils/dateUtils'
+import { APP_CALENDAR_TZ as ROOM_TZ, todayYmdInAppTz } from '../../utils/dateUtils'
 import { DECISION_LABELS, decisionsAsText, describeDecisions, itemsSentBack, summarizeDecisions } from '../../lib/submittals/reviewDecisions'
 import { describeEnteredCount, describeReviewerFile, parseReviewerFiles, reviewerFileKind, reviewerFilePath, serializeReviewerFiles, type ReviewerFile } from '../../lib/submittals/reviewerFiles'
-import { CLEAR_DECISION_PATCH, enteredDecisionPatch, enteredEntryBody, enteredSuffix } from '../../lib/submittals/enteredDecisions'
+import { CLEAR_DECISION_PATCH, enteredDecisionAt, enteredDecisionPatch, enteredEntryBody, enteredSuffix, rowsToApproveAll } from '../../lib/submittals/enteredDecisions'
+import type { ReviewerChoice } from '../../lib/submittals/reviewerPick'
 import { newRoomToken } from '../../lib/submittals/submittalRoom'
 import { confirmLabel, guessByPage, liveTask, redlinesToConfirm, scheduleToConfirm, sheetGuessesToConfirm, taskInput, taskStatus, type SubmittalTaskRow } from '../../lib/submittals/robotTasks'
 import { describeTask, type SubmittalTaskKind } from '../../../supabase/functions/_shared/submittalRobot'
@@ -213,6 +215,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   const companyName = reportSettings.companyName
   const [prevItems, setPrevItems] = useState<SubmittalItemRow[]>([])
   const [editing, setEditing] = useState<SubmittalItemRow | null>(null)
+  const [approvingAll, setApprovingAll] = useState(false)
   const fileInput = useRef<HTMLInputElement | null>(null)
   const bidsRef = useRef(bids)
   bidsRef.current = bids
@@ -439,6 +442,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   const reviewerFiles: ReviewerFile[] = useMemo(() => parseReviewerFiles((selectedRev as { reviewer_files?: unknown } | null)?.reviewer_files ?? null), [selectedRev])
   const tiles = useMemo(() => revisionTiles(items), [items])
   const decisions = useMemo(() => summarizeDecisions(items), [items])
+  // Rows one "they approved all of it" entry would cover: no call yet, and a product to approve.
+  const approvableRows = useMemo(() => rowsToApproveAll(items), [items])
   useEffect(() => {
     let cancelled = false
     if (!selectedRev || newestRev?.id !== selectedRev.id) {
@@ -1248,6 +1253,72 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     setEditing(blankSubmittalItem(selectedRev.id, maxSeq + 1))
   }
 
+  /**
+   * The room and the reviewer an entered call is recorded under. The person is on the room, or
+   * joins it now (how = named); the room itself is minted if the bid has none yet — nothing is
+   * shared by that.
+   */
+  async function roomAndReviewerFor(choice: ReviewerChoice): Promise<{ theRoom: SubmittalRoomRow; person: { id: string; name: string; email: string | null } }> {
+    if (!bidId) throw new Error('Pick a bid first.')
+    let theRoom = room
+    if (!theRoom) {
+      const { data, error } = await db.from('bid_submittal_rooms').insert({ bid_id: bidId, token: newRoomToken(), status: 'open' }).select('*').single()
+      if (error) throw error
+      theRoom = data as SubmittalRoomRow
+    }
+    if ('id' in choice) {
+      const p = people.find((x) => x.id === choice.id)
+      if (!p) throw new Error('That person is no longer on the room.')
+      return { theRoom, person: { id: p.id, name: p.name, email: p.email } }
+    }
+    const { data: existing } = await db.from('bid_submittal_people').select('id, name, email').eq('room_id', theRoom.id).ilike('email', choice.email.trim()).maybeSingle()
+    if (existing) return { theRoom, person: existing as { id: string; name: string; email: string | null } }
+    const { data, error } = await db.from('bid_submittal_people').insert({ room_id: theRoom.id, name: choice.name, email: choice.email.trim().toLowerCase(), role: choice.role, may_decide: true, token: newRoomToken(), how: 'named', invited_by: user?.id ?? null }).select('id, name, email').single()
+    if (error) throw error
+    return { theRoom, person: data as { id: string; name: string; email: string | null } }
+  }
+
+  /**
+   * One entry for a submittal approved whole: every row with no call yet (and a product) reads
+   * Approved in the reviewer's name, on the day they said it. Rows that carry a call keep it.
+   */
+  async function approveAll(choice: ApproveAllChoice) {
+    if (!selectedRev || !bidId) return
+    const rows = rowsToApproveAll(items)
+    if (rows.length === 0) return
+    setBusy(true)
+    try {
+      const { theRoom, person } = await roomAndReviewerFor(choice.person)
+      const patch = enteredDecisionPatch({ decision: 'approved', note: choice.note, person, byUserId: user?.id ?? null, byName: profileName, now: enteredDecisionAt(choice.on, new Date(), todayYmdInAppTz()) })
+      // A row the reviewer answered in the room a moment ago keeps that answer: the write takes only rows still without a call.
+      const ids = rows.map((r) => r.id)
+      const written = new Set<string>()
+      for (let i = 0; i < ids.length; i += 100) {
+        const { data, error } = await db.from('bid_submittal_items').update(patch).in('id', ids.slice(i, i + 100)).is('review_decision', null).select('id')
+        if (error) throw error
+        for (const r of (data ?? []) as Array<{ id: string }>) written.add(r.id)
+      }
+      const done = rows.filter((r) => written.has(r.id))
+      if (done.length === 0) {
+        setApprovingAll(false)
+        setItems(await loadItems(selectedRev.id))
+        showToast('Every row already has a call. Nothing was changed.', 'info')
+        return
+      }
+      const counts = { approved: done.length, revise: 0, rejected: 0 }
+      await db.from('bid_submittal_messages').insert({ room_id: theRoom.id, submittal_id: selectedRev.id, person_id: null, author_kind: 'system', body: enteredEntryBody(person.name, counts, 'entered', choice.on ?? null), kind: 'decision', tags: done.map((r) => r.tag.trim()).filter(Boolean), metadata: { entered_by: user?.id ?? null, rev_number: selectedRev.rev_number, counts, person_id: person.id, whole: true, ...(choice.on ? { decided_on: choice.on } : {}) } })
+      await db.from('bid_submittal_events').insert({ room_id: theRoom.id, submittal_id: selectedRev.id, person_id: person.id, event_type: 'decided', metadata: { ...counts, rev_number: selectedRev.rev_number, entered: true, whole: true, by: user?.id ?? null, ...(choice.on ? { decided_on: choice.on } : {}) } })
+      setApprovingAll(false)
+      setItems(await loadItems(selectedRev.id))
+      await loadRoom(bidId)
+      showToast(`Approved on ${done.length} row${done.length === 1 ? '' : 's'} · ${person.name} · entered by ${profileName ?? 'you'}.`, 'success')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not enter their approval'), 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function saveItem(patch: SubmittalItemPatch) {
     if (!editing || !selectedRev || !bidId) return
     const { entered, clearDecision, ...rowPatch } = patch
@@ -1267,36 +1338,15 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       let write: Record<string, unknown> = { ...rowPatch }
       let enteredFor: { id: string; name: string } | null = null
       if (entered) {
-        // 5b · the reviewer's call, typed from their file. The person is on the room, or joins it now
-        // (how = named); the room itself is minted if the bid has none yet — nothing is shared by that.
-        let theRoom = room
-        if (!theRoom) {
-          const { data, error } = await db.from('bid_submittal_rooms').insert({ bid_id: bidId, token: newRoomToken(), status: 'open' }).select('*').single()
-          if (error) throw error
-          theRoom = data as SubmittalRoomRow
-        }
-        let person: { id: string; name: string; email: string | null }
-        if ('id' in entered.person) {
-          const p = people.find((x) => x.id === (entered.person as { id: string }).id)
-          if (!p) throw new Error('That person is no longer on the room.')
-          person = { id: p.id, name: p.name, email: p.email }
-        } else {
-          const np = entered.person
-          const { data: existing } = await db.from('bid_submittal_people').select('id, name, email').eq('room_id', theRoom.id).ilike('email', np.email.trim()).maybeSingle()
-          if (existing) person = existing as { id: string; name: string; email: string | null }
-          else {
-            const { data, error } = await db.from('bid_submittal_people').insert({ room_id: theRoom.id, name: np.name, email: np.email.trim().toLowerCase(), role: np.role, may_decide: true, token: newRoomToken(), how: 'named', invited_by: user?.id ?? null }).select('id, name, email').single()
-            if (error) throw error
-            person = data as { id: string; name: string; email: string | null }
-          }
-        }
+        // 5b · the reviewer's call, typed from their file, on the day they made it.
+        const { theRoom, person } = await roomAndReviewerFor(entered.person)
         enteredFor = person
-        write = { ...write, ...enteredDecisionPatch({ decision: entered.decision, note: entered.note, person, byUserId: user?.id ?? null, byName: profileName, now: new Date().toISOString() }) }
+        write = { ...write, ...enteredDecisionPatch({ decision: entered.decision, note: entered.note, person, byUserId: user?.id ?? null, byName: profileName, now: enteredDecisionAt(entered.on, new Date(), todayYmdInAppTz()) }) }
         const counts = { approved: entered.decision === 'approved' ? 1 : 0, revise: entered.decision === 'revise' ? 1 : 0, rejected: entered.decision === 'rejected' ? 1 : 0 }
         const { error } = await db.from('bid_submittal_items').update(write).eq('id', editing.id)
         if (error) throw error
-        await db.from('bid_submittal_messages').insert({ room_id: theRoom.id, submittal_id: selectedRev.id, person_id: null, author_kind: 'system', body: enteredEntryBody(person.name, counts), kind: 'decision', tags: editing.tag.trim() ? [editing.tag.trim()] : [], metadata: { entered_by: user?.id ?? null, rev_number: selectedRev.rev_number, counts, person_id: person.id } })
-        await db.from('bid_submittal_events').insert({ room_id: theRoom.id, submittal_id: selectedRev.id, person_id: person.id, event_type: 'decided', metadata: { ...counts, rev_number: selectedRev.rev_number, entered: true, by: user?.id ?? null } })
+        await db.from('bid_submittal_messages').insert({ room_id: theRoom.id, submittal_id: selectedRev.id, person_id: null, author_kind: 'system', body: enteredEntryBody(person.name, counts, 'entered', entered.on ?? null), kind: 'decision', tags: editing.tag.trim() ? [editing.tag.trim()] : [], metadata: { entered_by: user?.id ?? null, rev_number: selectedRev.rev_number, counts, person_id: person.id, ...(entered.on ? { decided_on: entered.on } : {}) } })
+        await db.from('bid_submittal_events').insert({ room_id: theRoom.id, submittal_id: selectedRev.id, person_id: person.id, event_type: 'decided', metadata: { ...counts, rev_number: selectedRev.rev_number, entered: true, by: user?.id ?? null, ...(entered.on ? { decided_on: entered.on } : {}) } })
       } else {
         if (clearDecision) write = { ...write, ...CLEAR_DECISION_PATCH }
         const { error } = await db.from('bid_submittal_items').update(write).eq('id', editing.id)
@@ -1967,6 +2017,14 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                     </button>
                   </div>
                 ) : null}
+                {isNewest && approvableRows.length > 0 ? (
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', margin: '0.5rem 0' }}>
+                    <button type="button" disabled={busy} onClick={() => setApprovingAll(true)} style={btn} data-testid="approve-all-open" title="They said yes to all of it by email, on paper or before the room existed. One entry marks every row with no call yet.">
+                      They approved all of it…
+                    </button>
+                    <span style={smallMuted}>One entry for a submittal approved whole. You say who approved it and on what day.</span>
+                  </div>
+                ) : null}
                 {asRevisionStatus(selectedRev.status) !== 'draft' || reviewerFiles.length > 0 ? (
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', margin: '0.5rem 0' }}>
                     <button type="button" disabled={busy} onClick={() => reviewerInput.current?.click()} style={btn} title="The architect marked up the PDF or answered by email. Keep their file here and type their answers onto the rows">
@@ -2088,6 +2146,14 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
               {/* 8 · Procure — a side track, always open (v2.4201) and drawn with or without a revision: long-lead items go in before a row is approved; never the Next stage until every row is approved */}
             <RoadSection n={8} about={SUBMITTAL_STAGE_ABOUT[8]} onHelp={() => startWalkThrough(8)} title="Procure" status={stageStatus('procure')} open={sectionOpen('procure')} onToggle={() => toggleSection('procure')} onJump={() => jumpToSection('procure')} anchor="submittals-procure-section" last always
               summary={procCounts ? `${procCounts.released} released · ${procCounts.ordered} ordered · ${procCounts.delivered} delivered${procCounts.late > 0 ? ` · ${procCounts.late} behind schedule` : ''}` : isNewest || !selectedRev ? 'fills in as the GC approves rows · long-lead items can go in now' : 'on the newest version'}>
+              {isNewest && selectedRev && approvableRows.length > 0 ? (
+                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'baseline', margin: '0 0 0.5rem' }} data-testid="procure-approve-all">
+                  <span style={smallMuted}>{approvableRows.length} {approvableRows.length === 1 ? 'row has' : 'rows have'} no call from the reviewer yet, so {approvableRows.length === 1 ? 'it is' : 'they are'} not released. Approved outside the app?</span>
+                  <button type="button" disabled={busy} onClick={() => setApprovingAll(true)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', fontSize: '0.75rem', color: 'var(--text-blue-700)', textDecoration: 'underline', textUnderlineOffset: 2 }}>
+                    Enter their approval…
+                  </button>
+                </div>
+              ) : null}
               {(isNewest || !selectedRev) && bidId && selectedBid ? (
                 <SubmittalProcurementPanel
                   bidId={bidId}
@@ -2122,6 +2188,18 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         />
       ) : null}
       {editing ? <SubmittalItemEditDialog item={editing} sourceFiles={sourceFiles} people={people} canEnterDecision canEditProduct={isDraft} onSave={(p) => void saveItem(p)} onClose={() => setEditing(null)} /> : null}
+      {approvingAll && selectedRev ? (
+        <SubmittalApproveAllDialog
+          revLabel={`Rev ${selectedRev.rev_number}`}
+          rows={approvableRows.length}
+          alreadyDecided={decisions.decided}
+          missing={items.filter((it) => !asDecision(it.review_decision) && asStatus(it.status) === 'missing').length}
+          people={people}
+          busy={busy}
+          onSave={(c) => void approveAll(c)}
+          onClose={() => setApprovingAll(false)}
+        />
+      ) : null}
       {splitRuleOpen ? <SplitRuleModal examples={splitExplanation(takeoffCandidatesForPicker)} onClose={() => setSplitRuleOpen(false)} /> : null}
       {takeoffPicker && takeoff ? (
         <SubmittalTakeoffPicker mode={takeoffPicker} revLabel={takeoffPicker === 'build' ? 'Rev 1' : `Rev ${selectedRev?.rev_number ?? newestRev?.rev_number ?? 1}`} candidates={takeoffCandidatesForPicker} busy={busy} onConfirm={(rows, ticks, splits) => void confirmTakeoff(rows, ticks, splits)} onClose={() => setTakeoffPicker(null)} />

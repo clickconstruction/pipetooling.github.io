@@ -15,7 +15,7 @@ import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import { BidsSubmittalsTab } from './BidsSubmittalsTab'
 
 type Rec = { table: string; op: string; payload: unknown; filters: Array<[string, unknown]> }
-const state: { revisions: Record<string, unknown>[]; items: Record<string, unknown>[]; tasks: Record<string, unknown>[]; writes: Rec[]; storage: string[]; packageCalls: Array<{ files: number; sheets: string[] }>; noSources: boolean; takeoff: boolean; seat: { unrevoked_seats: number; last_used_at: string | null } | null } = { revisions: [], items: [], tasks: [], writes: [], storage: [], packageCalls: [], noSources: false, takeoff: false, seat: { unrevoked_seats: 1, last_used_at: new Date().toISOString() } }
+const state: { revisions: Record<string, unknown>[]; items: Record<string, unknown>[]; tasks: Record<string, unknown>[]; writes: Rec[]; storage: string[]; packageCalls: Array<{ files: number; sheets: string[] }>; noSources: boolean; takeoff: boolean; /** the bid has no review room yet: the room and people reads answer null, as PostgREST does */ noRoom: boolean; seat: { unrevoked_seats: number; last_used_at: string | null } | null } = { revisions: [], items: [], tasks: [], writes: [], storage: [], packageCalls: [], noSources: false, takeoff: false, noRoom: false, seat: { unrevoked_seats: 1, last_used_at: new Date().toISOString() } }
 
 vi.mock('../../lib/jobs/testReportSettings', () => {
   const settings = { companyName: 'Click Plumbing', companyTagline: 'Plumbing', officePhone: '(512) 555-0100', mailingAddress: '' }
@@ -97,8 +97,13 @@ function builder(table: string) {
   b.select = chain
   b.order = chain
   b.or = chain
-  b.in = chain
+  // An `in` on a write names the rows it takes (the whole-submittal approval); reads ignore it.
+  b.in = (col: string, vals: unknown) => {
+    rec.filters.push([`${col}:in`, vals])
+    return b
+  }
   b.is = chain
+  b.ilike = chain
   b.limit = chain
   b.eq = (col: string, val: unknown) => {
     rec.filters.push([col, val])
@@ -143,8 +148,14 @@ function builder(table: string) {
       }
       if (rec.op === 'update' && table === 'bid_submittal_items') {
         const id = rec.filters.find((f) => f[0] === 'id')?.[1]
-        state.items = state.items.map((r) => (r.id === id ? { ...r, ...(rec.payload as Record<string, unknown>) } : r))
+        const ids = rec.filters.find((f) => f[0] === 'id:in')?.[1] as string[] | undefined
+        const hit = (r: Record<string, unknown>) => (ids ? ids.includes(r.id as string) && r.review_decision == null : r.id === id)
+        const taken = state.items.filter(hit).map((r) => ({ id: r.id }))
+        state.items = state.items.map((r) => (hit(r) ? { ...r, ...(rec.payload as Record<string, unknown>) } : r))
+        if (ids) return { data: taken, error: null }
       }
+      if (rec.op === 'insert' && table === 'bid_submittal_rooms') return { data: { id: 'room-1', token: 'tok', status: 'open', closed_at: null, ...(rec.payload as Record<string, unknown>) }, error: null }
+      if (rec.op === 'insert' && table === 'bid_submittal_people') return { data: { id: 'person-new', ...(rec.payload as Record<string, unknown>) }, error: null }
       if (rec.op === 'delete' && table === 'bid_submittal_items') {
         const sid = rec.filters.find((f) => f[0] === 'submittal_id')?.[1]
         const id = rec.filters.find((f) => f[0] === 'id')?.[1]
@@ -152,6 +163,7 @@ function builder(table: string) {
       }
       return { data: null, error: null }
     }
+    if (state.noRoom && (table === 'bid_submittal_rooms' || table === 'bid_submittal_people')) return { data: null, error: null }
     if (table === 'bid_specified_products') return { data: state.noSources ? [] : SPEC, error: null }
     if (table === 'bid_submittal_tasks') return { data: state.tasks, error: null }
     if (table === 'bid_quotes') return { data: state.noSources ? [] : QUOTES, error: null }
@@ -598,6 +610,54 @@ describe('BidsSubmittalsTab', () => {
     expect((await screen.findByTestId('decisions-line')).textContent).toContain('1 revise · by Dana Whitfield · 1 entered by Wendi')
     const rows = await screen.findAllByTestId('submittal-row')
     expect(rows[0]!.textContent).toContain('Dana Whitfield · entered by Wendi')
+  })
+
+  it('a submittal approved whole takes one entry: every row with no call and a product reads Approved on the day given, a row with a call keeps it, a Missing row is left out', async () => {
+    state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [], shared_at: null, created_at: '2026-09-15T00:00:00Z' }]
+    state.items = [
+      item({ id: 'a-wc', tag: 'WC-1', sequence_order: 1, submitted_label: 'TOTO CT708UVG#01', status: 'as_specified' }),
+      item({ id: 'a-dwh', tag: 'DWH-1', sequence_order: 2, submitted_label: 'BRADFORD WHITE RE2HP50', status: 'proposed' }),
+      item({ id: 'a-lav', tag: 'LAV-1', sequence_order: 3, submitted_label: 'KOHLER K-2035', status: 'alternate', review_decision: 'revise', review_note: 'wall hung', reviewed_by_name: 'Dana Whitfield', reviewed_at: '2026-09-17T15:00:00Z' }),
+      item({ id: 'a-prv', tag: 'PRV-1', sequence_order: 4, status: 'missing' }),
+    ]
+    state.writes = []
+    state.noRoom = true
+    mount()
+    await screen.findAllByTestId('submittal-row')
+    // The door sits over the procurement log, where the rows read Not shared.
+    const door = await screen.findByTestId('procure-approve-all')
+    expect(door.textContent).toContain('2 rows have no call from the reviewer yet, so they are not released. Approved outside the app?')
+    // The same door sits under Their call, a step a draft has not reached: its title opens it.
+    fireEvent.click(screen.getByRole('button', { name: /6 · Their call/ }))
+    expect(screen.getByTestId('approve-all-open').textContent).toBe('They approved all of it…')
+    fireEvent.click(within(door).getByRole('button', { name: 'Enter their approval…' }))
+    const dialog = await screen.findByRole('dialog', { name: 'They approved Rev 1' })
+    expect(within(dialog).getByTestId('approve-all-scope').textContent).toBe('This marks 2 rows Approved in one entry. 1 row already has a call and keeps it. 1 row has no product and is left out.')
+    // Nobody is on the room yet, so the reviewer is typed; the button waits for a name and an email.
+    expect((within(dialog).getByTestId('approve-all-save') as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.change(within(dialog).getByLabelText('Reviewer name'), { target: { value: 'Dana Whitfield' } })
+    fireEvent.change(within(dialog).getByLabelText('Reviewer email'), { target: { value: 'Dana@Arch.test' } })
+    fireEvent.change(within(dialog).getByLabelText('Approved on'), { target: { value: '2026-09-12' } })
+    fireEvent.change(within(dialog).getByLabelText('Their note'), { target: { value: 'approved as submitted' } })
+    expect(within(dialog).getByTestId('approve-all-save').textContent).toBe('Approve 2 rows')
+    fireEvent.click(within(dialog).getByTestId('approve-all-save'))
+    await waitFor(() => expect(state.writes.some((w) => w.table === 'bid_submittal_events')).toBe(true))
+    // The room is minted (nothing is shared by that) and the reviewer joins it by name.
+    expect(state.writes.find((w) => w.table === 'bid_submittal_rooms')!.payload).toMatchObject({ bid_id: 'b398', status: 'open' })
+    expect(state.writes.find((w) => w.table === 'bid_submittal_people')!.payload).toMatchObject({ room_id: 'room-1', name: 'Dana Whitfield', email: 'dana@arch.test', how: 'named', may_decide: true })
+    const upd = state.writes.find((w) => w.table === 'bid_submittal_items' && w.op === 'update')!
+    expect(upd.filters).toContainEqual(['id:in', ['a-wc', 'a-dwh']])
+    expect(upd.payload).toMatchObject({ review_decision: 'approved', review_note: 'approved as submitted', reviewed_by_name: 'Dana Whitfield', reviewed_by_person_id: 'person-new', reviewed_at: '2026-09-12T12:00:00.000Z', decision_source: 'entered', decision_entered_by: 'wendi', decision_entered_by_name: 'Wendi' })
+    expect(state.writes.find((w) => w.table === 'bid_submittal_messages')!.payload).toMatchObject({ body: "from Dana Whitfield's file, entered by the office · 2 rows · 2 approve · dated Sep 12, 2026", tags: ['WC-1', 'DWH-1'], metadata: { whole: true, decided_on: '2026-09-12' } })
+    expect(state.writes.find((w) => w.table === 'bid_submittal_events')!.payload).toMatchObject({ event_type: 'decided', metadata: { approved: 2, entered: true, whole: true, decided_on: '2026-09-12' } })
+    // The rows read it, the one call that was there stays, and the door is gone.
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(state.items.find((r) => r.id === 'a-lav')).toMatchObject({ review_decision: 'revise', reviewed_by_name: 'Dana Whitfield' })
+    expect(state.items.find((r) => r.id === 'a-prv')!.review_decision).toBeNull()
+    await waitFor(() => expect(screen.queryByTestId('procure-approve-all')).toBeNull())
+    const rows = screen.getAllByTestId('submittal-row')
+    expect(rows.find((r) => r.textContent?.includes('WC-1'))!.textContent).toContain('Dana Whitfield · entered by Wendi · Sep 12')
+    state.noRoom = false
   })
 
   it('6b · a ready schedule read lists the sure and want-a-look tags; Confirm keeps the chosen tags and drops the rest', async () => {

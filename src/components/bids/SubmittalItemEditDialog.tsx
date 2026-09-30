@@ -11,16 +11,20 @@ import { needsReason, REASON_LABELS, STATUS_LABELS, type ProductStatus, type Rea
 import { describeLeadTime, LEAD_TIME_PRESETS, parseLeadTime } from '../../lib/submittals/leadTime'
 import { asDecision, asReason, asStatus, formatPages, parsePageRange, type ReviewDecision, type SourceFile, type SubmittalItemRow } from '../../lib/submittals/submittalRevision'
 import { DECISION_LABELS } from '../../lib/submittals/reviewDecisions'
-import { enteredSuffix } from '../../lib/submittals/enteredDecisions'
-import { ROOM_ROLE_LABELS, ROOM_ROLES, type RoomRole } from '../../../supabase/functions/_shared/submittalRoomPayload'
+import { ENTERED_ON_MIN, enteredOnProblem, enteredSuffix } from '../../lib/submittals/enteredDecisions'
+import { initialReviewerPick, reviewerChoiceFrom, reviewerPickBad, type ReviewerChoice, type ReviewerPick } from '../../lib/submittals/reviewerPick'
 import type { SubmittalPersonRow } from '../../lib/submittals/submittalRoom'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { ProductStatusChip } from './ProductStatusChip'
+import { SubmittalReviewerPicker } from './SubmittalReviewerPicker'
 
 /** A decision the office enters on a reviewer's behalf (stage 5b): an existing person on the room, or one not on it yet. */
 export type EnteredChoice = {
   decision: ReviewDecision
   note: string
-  person: { id: string } | { name: string; email: string; role: RoomRole }
+  person: ReviewerChoice
+  /** The day of their call (YYYY-MM-DD) when it is not today: an approval that came by email last week. */
+  on?: string
 }
 
 const Z = 10060
@@ -73,16 +77,16 @@ export function SubmittalItemEditDialog({ item, sourceFiles, people = [], canEnt
   // 5b · a call entered on a reviewer's behalf
   const currentDecision = asDecision(item.review_decision)
   const [enterOpen, setEnterOpen] = useState(false)
-  const [enterPerson, setEnterPerson] = useState<string>(people.find((p) => !p.closed_at && p.may_decide)?.id ?? people[0]?.id ?? 'new')
-  const [enterName, setEnterName] = useState('')
-  const [enterEmail, setEnterEmail] = useState('')
-  const [enterRole, setEnterRole] = useState<RoomRole>('architect')
+  const [enterPick, setEnterPick] = useState<ReviewerPick>(() => initialReviewerPick(people))
   const [enterDecision, setEnterDecision] = useState<ReviewDecision | null>(null)
   const [enterNote, setEnterNote] = useState('')
+  const today = todayYmdInAppTz()
+  const [enterOn, setEnterOn] = useState(today)
   const [clearDecision, setClearDecision] = useState(false)
-  const enterNewBad = enterPerson === 'new' && !(enterName.trim() && /\S+@\S+\.\S+/.test(enterEmail.trim()))
-  const enterBad = enterOpen && enterDecision != null && enterNewBad
-  const entered: EnteredChoice | null = enterOpen && enterDecision && !enterNewBad ? { decision: enterDecision, note: enterNote, person: enterPerson === 'new' ? { name: enterName.trim(), email: enterEmail.trim(), role: enterRole } : { id: enterPerson } } : null
+  const enterNewBad = reviewerPickBad(enterPick)
+  const enterOnProblem = enteredOnProblem(enterOn, today)
+  const enterBad = enterOpen && enterDecision != null && (enterNewBad || enterOnProblem != null)
+  const entered: EnteredChoice | null = enterOpen && enterDecision && !enterNewBad && !enterOnProblem ? { decision: enterDecision, note: enterNote, person: reviewerChoiceFrom(enterPick), ...(enterOn && enterOn !== today ? { on: enterOn } : {}) } : null
   const [status, setStatus] = useState<ProductStatus>(asStatus(item.status))
   const [reasonKind, setReasonKind] = useState<ReasonKind | null>(asReason(item.reason_kind))
   const [note, setNote] = useState(item.reason_note ?? '')
@@ -207,23 +211,7 @@ export function SubmittalItemEditDialog({ item, sourceFiles, people = [], canEnt
               </div>
             ) : (
               <>
-                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                  <select aria-label="Whose call" value={enterPerson} onChange={(e) => setEnterPerson(e.target.value)} style={{ padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, font: 'inherit', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-strong)' }}>
-                    {people.filter((p) => !p.closed_at).map((p) => (
-                      <option key={p.id} value={p.id}>{p.name} · {ROOM_ROLE_LABELS[(p.role as RoomRole) ?? 'other'] ?? p.role}</option>
-                    ))}
-                    <option value="new">a reviewer not on the room…</option>
-                  </select>
-                  {enterPerson === 'new' ? (
-                    <>
-                      <input aria-label="Reviewer name" placeholder="Name" value={enterName} onChange={(e) => setEnterName(e.target.value)} style={{ padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, font: 'inherit', fontSize: '0.8125rem', flex: 1, minWidth: 120, background: 'var(--surface)', color: 'var(--text-strong)' }} />
-                      <input aria-label="Reviewer email" placeholder="email" type="email" value={enterEmail} onChange={(e) => setEnterEmail(e.target.value)} style={{ padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, font: 'inherit', fontSize: '0.8125rem', flex: 1.4, minWidth: 160, background: 'var(--surface)', color: 'var(--text-strong)' }} />
-                      <select aria-label="Reviewer role" value={enterRole} onChange={(e) => setEnterRole(e.target.value as RoomRole)} style={{ padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, font: 'inherit', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-strong)' }}>
-                        {ROOM_ROLES.map((r) => <option key={r} value={r}>{ROOM_ROLE_LABELS[r]}</option>)}
-                      </select>
-                    </>
-                  ) : null}
-                </div>
+                <SubmittalReviewerPicker people={people} value={enterPick} onChange={setEnterPick} />
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                   <div style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden' }} role="group" aria-label="The call">
                     {(['approved', 'revise', 'rejected'] as const).map((d) => {
@@ -235,9 +223,14 @@ export function SubmittalItemEditDialog({ item, sourceFiles, people = [], canEnt
                       )
                     })}
                   </div>
+                  <label style={{ display: 'inline-flex', gap: '0.35rem', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                    on
+                    <input type="date" aria-label="The day of their call" title="The day they made the call. It dates the row and the procurement log's Released." value={enterOn} min={ENTERED_ON_MIN} max={today} onChange={(e) => setEnterOn(e.target.value)} style={{ ...inputStyle, borderColor: enterOnProblem ? '#dc2626' : 'var(--border-strong)' }} />
+                  </label>
                   <input aria-label="Their note" placeholder={enterDecision === 'approved' ? 'their note, if any' : 'what they need instead'} value={enterNote} onChange={(e) => setEnterNote(e.target.value)} style={{ padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, font: 'inherit', fontSize: '0.8125rem', flex: 1, minWidth: 180, background: 'var(--surface)', color: 'var(--text-strong)' }} />
                 </div>
                 {enterDecision && enterNewBad ? <span style={{ ...smallMuted, color: 'var(--text-amber-700)' }}>A name and an email, so the record says whose call it is.</span> : null}
+                {enterOnProblem ? <span style={{ ...smallMuted, color: 'var(--text-amber-700)' }}>{enterOnProblem}</span> : null}
               </>
             )}
           </div>
