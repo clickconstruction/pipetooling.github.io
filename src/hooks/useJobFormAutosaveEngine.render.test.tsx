@@ -157,6 +157,18 @@ describe('useJobFormAutosaveEngine — opening a job', () => {
     expect(result.current.editAutosaveSlices.some((s) => s.isDirty())).toBe(false)
   })
 
+  it('saves nothing when the job opens with Sent dates on its payments — they are what is saved', async () => {
+    const payments = [{ ...pay('p1', 300), sent_on: '2026-08-28' }, pay('p2', 200)]
+    const { result, rerender, args } = mount({ payments })
+    expect(result.current.billingAutosave.isDirty()).toBe(false)
+    // A render that carries the same rows again (new objects, as a re-read gives) is no edit.
+    rerender({ ...args, payments: payments.map((p) => ({ ...p })) })
+    await tick(5_000)
+    expect(db.steps).toEqual([])
+    expect(result.current.billingAutosaveStatus).toBe('idle')
+    expect(result.current.billingAutosave.isDirty()).toBe(false)
+  })
+
   it('with no job open, an edit saves nothing', async () => {
     const { rerender, args } = mount({ editing: null })
     rerender({ ...args, fixtures: [fixture('f1', 'Rough-in', 2_000)], teamMemberIds: ['u-1', 'u-2'] })
@@ -189,6 +201,34 @@ describe('useJobFormAutosaveEngine — the billing slice', () => {
     expect(result.current.billingAutosaveStatus).toBe('saved')
     expect(result.current.billingAutosave.isDirty()).toBe(false)
     expect(spies.onSaved).toHaveBeenCalledTimes(1)
+  })
+
+  it('a Sent date alone is an edit: it saves after 1.2 s and the payment goes up with it (v2.4244)', async () => {
+    const { result, rerender, args, spies } = mount()
+    rerender({ ...args, payments: [{ ...pay('p1', 300), sent_on: '2026-08-28' }] })
+    expect(result.current.billingAutosave.isDirty()).toBe(true)
+    await tick(1_199)
+    expect(db.steps).toEqual([])
+    await tick(1)
+    expect(seq()).toEqual(['update:jobs_ledger', 'upsert:jobs_ledger_payments', 'delete:jobs_ledger_fixtures', 'insert:jobs_ledger_fixtures'])
+    expect(db.steps[1]?.payload).toEqual([expect.objectContaining({ id: 'p1', amount: 300, paid_on: '2026-09-01', sent_on: '2026-08-28' })])
+    expect(result.current.billingAutosave.isDirty()).toBe(false)
+    expect(spies.onSaved).toHaveBeenCalledTimes(1)
+    // Clearing it is an edit too.
+    db.steps.length = 0
+    rerender({ ...args, payments: [pay('p1', 300)] })
+    await tick(1_200)
+    expect(db.steps[1]?.payload).toEqual([expect.objectContaining({ id: 'p1', sent_on: null })])
+  })
+
+  it('a Sent date typed just before the form closes is written by the close flush', async () => {
+    const { result, rerender, args } = mount()
+    rerender({ ...args, payments: [{ ...pay('p1', 300), sent_on: '2026-08-28' }] })
+    expect(result.current.billingAutosave.needsFlush()).toBe(true)
+    await act(async () => {
+      expect(await result.current.billingAutosave.flushForClose()).toBe('saved')
+    })
+    expect(db.steps[1]?.payload).toEqual([expect.objectContaining({ id: 'p1', sent_on: '2026-08-28' })])
   })
 
   it('deletes a payment the form owned and dropped, by the ids hydration gave it', async () => {
