@@ -140,7 +140,7 @@ describe('pruneUnchangedBidUpdateFields', () => {
     expect('gc_builder_id' in pruned).toBe(false)
   })
 
-  it('v2.4196: accepted_alternate_tags rides with the outcome — pruned untouched, kept when the ticks or the outcome change', () => {
+  it('v2.4211: accepted_alternate_tags rides with the outcome — pruned untouched, kept when the ticks or the outcome change', () => {
     const initial = formValues()
     const withTags = () => ({ ...fullPayload(), accepted_alternate_tags: [] as string[] })
     expect(pruneUnchangedBidUpdateFields(withTags(), { current: formValues(), initial, bidDateSent: sameSentDate })).toEqual({})

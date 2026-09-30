@@ -40,7 +40,7 @@ export type BidEditFormValues = {
   lossCategory: BidLossCategoryKey | null
   bidValue: string
   agreedValue: string
-  /** v2.4196: the with-and-without alternates the customer took (bids.accepted_alternate_tags); meaningful while won. */
+  /** v2.4211: the with-and-without alternates the customer took (bids.accepted_alternate_tags); meaningful while won. */
   acceptedAlternateTags: string[]
   profit: string
   distanceFromOffice: string

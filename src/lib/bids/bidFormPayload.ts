@@ -52,7 +52,7 @@ export type BidSavePayload = {
   loss_category: BidLossCategoryKey | null
   bid_value: number | null
   agreed_value: number | null
-  /** v2.4196: the alternates the customer took; cleared unless the bid is won (or a job opened from it). */
+  /** v2.4211: the alternates the customer took; cleared unless the bid is won (or a job opened from it). */
   accepted_alternate_tags: string[]
   profit: number | null
   distance_from_office: string | null

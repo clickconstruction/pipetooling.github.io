@@ -928,7 +928,7 @@ export function BidFormModal(props: BidFormModalProps) {
                     </div>
                   )}
                   {outcome === 'won' && editingBid && offeredAlternates(editingBid).some((a) => a.offered) ? (() => {
-                    // v2.4196: the customer's answer to the with-and-without alternates — accepted ones fold
+                    // v2.4211: the customer's answer to the with-and-without alternates — accepted ones fold
                     // into the agreed value; a declined one's rows leave the job's numbers.
                     const alts = offeredAlternates(editingBid).filter((a) => a.offered)
                     const sent = bidValue.trim() ? parseFloat(bidValue.replace(/[$,]/g, '')) : NaN

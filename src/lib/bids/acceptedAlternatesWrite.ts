@@ -1,6 +1,6 @@
 /**
  * Record the customer's answer to the with-and-without alternates from the Bid Board's per-GC
- * Won (alternates round two, v2.4196): one yes/no per offered alternate, then one write of
+ * Won (alternates round two, v2.4211): one yes/no per offered alternate, then one write of
  * `accepted_alternate_tags` and `agreed_value` (the sent base plus what was taken). The Edit
  * Bid dialog writes the same two fields through its own checklist; the bid room's signature
  * will too. Reads the bid itself so the callers (table cell, phone card, Followup) stay thin.

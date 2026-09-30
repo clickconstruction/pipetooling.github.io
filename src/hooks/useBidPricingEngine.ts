@@ -774,7 +774,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     } else {
       defaults = await loadFixtureLaborDefaults()
     }
-    // v2.4196: a declined alternate's rows leave the labor budget once the bid is won.
+    // v2.4211: a declined alternate's rows leave the labor budget once the bid is won.
     await loadCostEstimateLaborRowsAndSync(est.id, jobScopeRows(countRows, selectedBidForCostEstimate), defaults)
     settleCostEstimateLoad(bidId, true)
   }

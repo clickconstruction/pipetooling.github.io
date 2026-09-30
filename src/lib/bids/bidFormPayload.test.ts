@@ -106,7 +106,7 @@ describe('buildBidSavePayload', () => {
     expect('last_contact' in editing).toBe(false)
   })
 
-  it('the accepted alternates ride only while the bid is won or started (v2.4196)', () => {
+  it('the accepted alternates ride only while the bid is won or started (v2.4211)', () => {
     const won = buildBidSavePayload({ values: formValues({ outcome: 'won', acceptedAlternateTags: ['Break room'] }), bidDateSent: '', editing: true, canEditBidNumber: true })
     expect(won.accepted_alternate_tags).toEqual(['Break room'])
     const started = buildBidSavePayload({ values: formValues({ outcome: 'started_or_complete', acceptedAlternateTags: ['Break room'] }), bidDateSent: '', editing: true, canEditBidNumber: true })

@@ -1034,7 +1034,7 @@ export function BidsBidBoardTab({
     )
   }
 
-  /** v2.4196: the board's value is the agreed value once a won bid's customer took an alternate; the sent value otherwise. */
+  /** v2.4211: the board's value is the agreed value once a won bid's customer took an alternate; the sent value otherwise. */
   function boardValueFor(bid: BidWithBuilder): number | null {
     const took = bidIsWon(bid.outcome) && (bid.accepted_alternate_tags ?? []).length > 0
     if (took && bid.agreed_value != null) return Number(bid.agreed_value)
@@ -1043,7 +1043,7 @@ export function BidsBidBoardTab({
 
   /** v2.4195: "+$3.2k alt" beside the value — the offered with-and-without alternates the letter last stamped on a send. */
   function renderAlternateAddOnChip(bid: BidWithBuilder) {
-    // v2.4196: once the bid is won the chip is the answer — green with the alternate, grey without.
+    // v2.4211: once the bid is won the chip is the answer — green with the alternate, grey without.
     const words = acceptanceWords(bid)
     if (bidIsWon(bid.outcome) && words) {
       const took = (bid.accepted_alternate_tags ?? []).length > 0

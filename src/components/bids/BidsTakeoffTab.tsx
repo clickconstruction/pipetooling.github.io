@@ -536,7 +536,7 @@ export function BidsTakeoffTab({
       !!selectedBidForTakeoff?.id && takeoffIsRough && !hasStoredTakeoffView(typeof window !== 'undefined' ? window.localStorage : null),
     )
   }, [selectedBidForTakeoff?.id, takeoffIsRough])
-  // v2.4196: once the bid is won, a declined alternate's rows stay on the sheet (grey mark) but leave
+  // v2.4211: once the bid is won, a declined alternate's rows stay on the sheet (grey mark) but leave
   // the materials total, the book fill and the schedule of values — the job's numbers.
   const jobRows = useMemo(() => jobScopeRows(takeoffCountRows, selectedBidForTakeoff), [takeoffCountRows, selectedBidForTakeoff])
   const bookFillPlan = useMemo(() => {

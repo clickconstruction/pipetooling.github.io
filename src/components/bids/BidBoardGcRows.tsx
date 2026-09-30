@@ -146,7 +146,7 @@ export function BidBoardGcLines({ bidId, bidLabel, bidOutcome, packets, onChange
       const autoNote = res.autoLost.length > 0 ? ` — ${res.autoLost.join(', ')} marked lost · GC lost the project.` : ''
       if (res.bidOutcomeSet) showToast(`Bid marked ${res.bidOutcomeSet} (${next === 'won' ? 'with ' + p.name : 'every GC lost'})${autoNote}`, 'success')
       else if (autoNote) showToast(`${p.name} marked won${autoNote}`, 'success')
-      // v2.4196: a won packet answers the with-and-without alternates — one yes/no each, then the agreed value.
+      // v2.4211: a won packet answers the with-and-without alternates — one yes/no each, then the agreed value.
       if (next === 'won') {
         const answered = await askAndRecordAcceptedAlternates({ bidId, gcName: p.name, ask: (o) => confirmDialog(o) })
         if (answered && 'error' in answered) showToast('Could not record the alternates: ' + answered.error, 'error')
