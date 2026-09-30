@@ -1138,18 +1138,17 @@ export default function People() {
 
   async function generatePayStub(
     personNameArg: string,
-    options?: { openPreview?: boolean; periodStart?: string; periodEnd?: string },
+    options?: { periodStart?: string; periodEnd?: string },
   ): Promise<boolean> {
-    const openPreview = options?.openPreview !== false
     const personName = personNameArg.trim()
     if (!authUser?.id || !personName) return false
     // Catch-up rows (v2.2034) generate for their own week; default unchanged.
     const start = options?.periodStart ?? payStubPeriodStart
     const end = options?.periodEnd ?? payStubPeriodEnd
     const cfg = payConfig[personName]
-    const wage = cfg?.hourly_wage ?? 0
     // The money and the two inserts live in the kernel (v2.3700) so the Person desk's Leave flow
-    // can generate the final report too; this page keeps the preview below.
+    // can generate the final report too. Nothing opens afterwards (v2.4216): the row turns into
+    // View / Record payment and a toast says the report is there.
     const matches = users.filter((u) => (u.name ?? '').trim() === personName)
     let generated: GeneratePayStubResult
     try {
@@ -1166,22 +1165,8 @@ export default function People() {
       return false
     }
     for (const w of generated.warnings) showToast(w, 'info')
-    const { payStubId, dayRows, hoursTotal, grossPay, rateSplitSummary } = generated
     await loadPayStubs()
-    // The report's other inputs — crew lines, vehicles, housing, offsets, the stub's lines — in one fetch (v2.3874).
-    const inputs = await fetchPayReportInputs(supabase, { personName, periodStart: start, periodEnd: end, dayRows, payStubId, users, people, includePayments: false })
-    const html = buildPayStubHtml({
-      personName,
-      periodStart: start,
-      periodEnd: end,
-      hourlyWage: wage,
-      hoursRows: dayRows.map((r) => ({ date: r.work_date, hours: r.hours })),
-      hoursTotal,
-      grossPay,
-      ...inputs,
-      rateSplit: rateSplitSummary ?? undefined,
-    })
-    if (openPreview) openPayStubWindow(html, false)
+    showToast(`Pay report drafted for ${personName} — View opens it, Record payment marks it paid.`, 'success')
     return true
   }
 
@@ -1647,7 +1632,7 @@ export default function People() {
     payConfig,
     peopleNames: showPeopleForHours,
     payStubs,
-    generateReport: (personName, weekStart, weekEnd) => generatePayStub(personName, { openPreview: false, periodStart: weekStart, periodEnd: weekEnd }),
+    generateReport: (personName, weekStart, weekEnd) => generatePayStub(personName, { periodStart: weekStart, periodEnd: weekEnd }),
     setError,
   })
   const { bulkGeneratingPayStubs, bulkGenerateConfirm, setBulkGenerateConfirm, bulkGenerateMissingPayStubsInModal, runBulkGeneratePayStubs } = useBulkGeneratePayStubs({
@@ -1656,7 +1641,7 @@ export default function People() {
     peopleNames: showPeopleForHours,
     payStubs,
     costForPersonDate: getPayrollCostForPersonDate,
-    generateReport: (personName) => generatePayStub(personName, { openPreview: false }),
+    generateReport: (personName) => generatePayStub(personName),
     setError,
     showToast,
   })
