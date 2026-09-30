@@ -32,13 +32,13 @@ import {
   type DiffBucketKey,
   type DiffEntry,
 } from '../../lib/bids/takeoffDiff'
-import { groupStandingRulings, openCountByAudience, rulingAskedLine, type TwinQuestionRow } from '../../lib/bids/standingRulings'
-import { answerFromChoice, orderedChoices } from '../../lib/bids/twinQuestionChoices'
-import { TwinQuestionChoiceButtons } from './TwinQuestionChoiceButtons'
+import { groupStandingRulings, openCountByAudience, type TwinQuestionRow } from '../../lib/bids/standingRulings'
+import { buildRunThrough, questionLine, questionsHeaderLine, sizeTodaySentence, type RunThroughItem } from '../../lib/bids/rulingRunThrough'
+import { RulingRunThroughSheet } from './RulingRunThroughSheet'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { twinQuestionAudienceColumnPresent } from '../../../supabase/functions/_shared/twinQuestionAudience'
 import { useTwinQuestionBidRefs } from '../../hooks/useTwinQuestionBidRefs'
 import { AUDIT_LIST_FILTERS, auditFilterCounts, filterAuditList, type AuditListFilter } from '../../lib/bids/auditListFilter'
-import { TwinQuestionText } from './TwinQuestionText'
 import { orderPendingByStake, pickOpenAudit } from '../../lib/bids/auditTriage'
 import { loadPricedTakeoffRows } from '../../lib/bids/loadPricedTakeoffRows'
 
@@ -178,7 +178,9 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
   const [rulingsAvailable, setRulingsAvailable] = useState(false)
   // null = follow the default (open when there are questions, collapsed at 0).
   const [rulingsOpen, setRulingsOpen] = useState<boolean | null>(null)
-  const [rulingDrafts, setRulingDrafts] = useState<Record<string, string>>({})
+  // v2.4232 (punch list #63): the run-through sheet — one question at a time — and the index's fold.
+  const [runThrough, setRunThrough] = useState<{ start: number } | null>(null)
+  const [showAllQuestions, setShowAllQuestions] = useState(false)
 
   // Sealed shadow: the reference bid hasn't gone out yet, so even the robot's
   // takeoff rows are off-limits (anchoring) — the audit holds until scoring.
@@ -357,19 +359,18 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
 
   // One submit answers EVERY open question in the ruling's topic (or the one
   // topicless question) — answer + status flip, stamped with who and when.
-  // A tapped choice (v2.3210) passes its label as `override`; the typed box
-  // is the fallback. "Something else…" flips a card to the box.
-  const [rulingFreeText, setRulingFreeText] = useState<Record<string, boolean>>({})
-  const answerRuling = async (questionIds: string[], draftKey: string, override?: string) => {
-    const text = (override ?? rulingDrafts[draftKey] ?? '').trim()
-    if (!text) return
+  // v2.4232: the run-through sheet is the one place that answers; it advances only when
+  // the write lands, so each write says whether it did.
+  const answerRuling = async (questionIds: string[], draftKey: string, text: string): Promise<boolean> => {
+    const body = text.trim()
+    if (!body) return false
     setBusy(`ruling:${draftKey}`)
     try {
       const { data: rows, error } = await auditDb
         .from('twin_questions')
         .update({
           status: 'answered',
-          answer: text,
+          answer: body,
           answered_by: authUser?.id ?? null,
           answered_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -381,19 +382,20 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
       const n = (rows ?? []).length
       if (n === 0) {
         showToast('Already handled elsewhere — refreshing.', 'error')
-      } else {
-        setRulingDrafts((p) => ({ ...p, [draftKey]: '' }))
-        setRulingFreeText((p) => ({ ...p, [draftKey]: false }))
-        showToast(
-          n > 1
-            ? `Ruling saved — ${n} open questions answered at once; every robot pulls it next run.`
-            : 'Answer saved — the robot pulls it on its next run.',
-          'success',
-        )
+        await loadRulings()
+        return false
       }
+      showToast(
+        n > 1
+          ? `Ruling saved — ${n} open questions answered at once; every robot pulls it next run.`
+          : 'Answer saved — the robot pulls it on its next run.',
+        'success',
+      )
       await loadRulings()
+      return true
     } catch (e) {
       showToast(e instanceof Error ? e.message : String(e), 'error')
+      return false
     } finally {
       setBusy(null)
     }
@@ -401,7 +403,7 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
 
   // "Not mine" (v2.3186): the robot was talking to the operator — move every
   // open copy to that lane. Dismiss: close it unanswered (status 'dismissed').
-  const patchRulingQuestions = async (questionIds: string[], key: string, patch: Record<string, unknown>, done: string) => {
+  const patchRulingQuestions = async (questionIds: string[], key: string, patch: Record<string, unknown>, done: string): Promise<boolean> => {
     setBusy(`ruling:${key}`)
     try {
       const { data: rows, error } = await auditDb
@@ -411,11 +413,14 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
         .eq('status', 'open')
         .select('id')
       if (error) throw new Error(error.message)
-      if ((rows ?? []).length === 0) showToast('Already handled elsewhere — refreshing.', 'error')
+      const wrote = (rows ?? []).length > 0
+      if (!wrote) showToast('Already handled elsewhere — refreshing.', 'error')
       else showToast(done, 'success')
       await loadRulings()
+      return wrote
     } catch (e) {
       showToast(e instanceof Error ? e.message : String(e), 'error')
+      return false
     } finally {
       setBusy(null)
     }
@@ -424,17 +429,6 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
     patchRulingQuestions(questionIds, key, { audience: 'operator' }, questionIds.length > 1 ? `Sent ${questionIds.length} questions to the operator's console.` : "Sent to the operator's console.")
   const dismissRulingQuestions = (questionIds: string[], key: string) =>
     patchRulingQuestions(questionIds, key, { status: 'dismissed' }, questionIds.length > 1 ? `Dismissed ${questionIds.length} questions.` : 'Dismissed.')
-  const rulingSecondaryStyle: React.CSSProperties = {
-    padding: '0.4rem 0.7rem',
-    background: 'transparent',
-    color: 'var(--text-muted)',
-    border: '1px solid var(--border)',
-    borderRadius: 4,
-    cursor: 'pointer',
-    fontSize: '0.8rem',
-    whiteSpace: 'nowrap',
-  }
-
   const deltaPctFor = useCallback(
     (a: AuditWithBid): number | null => {
       const ref = refByBidId[a.bid_id]
@@ -633,49 +627,97 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
 
   // Open by default when there is anything to act on or point at (one-tap questions, plans asks, a pre-rule ask waiting for the owner).
   const rulingsExpanded = rulingsOpen ?? (rulingsView.openCount > 0 || rulingsView.plansAsks.length > 0 || rulingsView.legacyAsks.length > 0)
-  const rulingCardStyle: React.CSSProperties = {
-    border: '1px solid var(--border)',
-    borderRadius: 6,
-    background: 'var(--surface)',
-    padding: '0.55rem 0.75rem',
-  }
-  const rulingInputStyle: React.CSSProperties = {
-    flex: 1,
-    padding: '0.4rem 0.5rem',
-    border: '1px solid var(--border-strong)',
-    borderRadius: 4,
-    fontSize: '0.875rem',
-    boxSizing: 'border-box',
-  }
+  // v2.4232: the run-through's order over the panel's view, and the sentence that sizes today.
+  const runItems = useMemo(() => buildRunThrough(rulingsView, rulingQuestions, todayYmdInAppTz()), [rulingsView, rulingQuestions])
+  const workableAudits = triaged.filter((a) => a.status === 'pending' && workable(a)).length
+  const sealedAudits = triaged.filter((a) => a.status === 'pending' && isSealed(a)).length
+  const todaySentence = sizeTodaySentence({ questions: rulingsView.openCount, audits: workableAudits, sealed: sealedAudits })
+  const QUESTION_INDEX_FOLD = 4
+  const indexItems = showAllQuestions ? runItems : runItems.slice(0, QUESTION_INDEX_FOLD)
 
   return (
     <div>
-      {/* Standing rulings (v2.2941): the robots' open questions, deduped by
-          doctrine topic — the highest-leverage minutes on this whole page. */}
+      {/* v2.4232 (punch list #63): one sentence sizes today, one button runs the questions. */}
+      {canWrite && rulingsAvailable ? (
+        <div data-testid="audits-today" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+          <span style={{ fontSize: '0.95rem' }}>{todaySentence}</span>
+          {runItems.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => setRunThrough({ start: 0 })}
+              style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', font: 'inherit', fontWeight: 600, whiteSpace: 'nowrap' }}
+            >
+              Answer the {rulingsView.openCount} question{rulingsView.openCount === 1 ? '' : 's'}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+      {runThrough ? (
+        <RulingRunThroughSheet
+          items={runItems}
+          startIndex={runThrough.start}
+          bidIdByNumber={bidIdByNumber}
+          bidNumberById={bidNumberById}
+          sourceByBidId={sourceByBidId}
+          audienceWritable={audienceWritable}
+          busy={busy?.startsWith('ruling:') ?? false}
+          onAnswer={(item: RunThroughItem, text: string) => answerRuling(item.questionIds, item.key, text)}
+          onNotMine={(item: RunThroughItem) => bounceToOperator(item.questionIds, item.key)}
+          onDismiss={(item: RunThroughItem) => dismissRulingQuestions(item.questionIds, item.key)}
+          onClose={() => setRunThrough(null)}
+        />
+      ) : null}
+      {/* The questions panel (the standing rulings, v2.2941): the robots' open questions,
+          deduped by doctrine topic — one line per question since v2.4232; the sheet answers. */}
       {canWrite && rulingsAvailable ? (
         <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-subtle)', marginBottom: '1rem' }}>
           <button
             type="button"
             onClick={() => setRulingsOpen(!rulingsExpanded)}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', padding: '0.6rem 0.9rem', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', font: 'inherit', color: 'inherit' }}
+            title="The standing rulings — every question the robots have parked while working, from every bid; one answer lands on every open copy"
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', padding: '0.6rem 0.9rem', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', font: 'inherit', color: 'inherit', flexWrap: 'wrap' }}
           >
-            <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>📜 Standing rulings · {rulingsView.openCount}</span>
+            <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>Questions · {rulingsView.openCount}</span>
+            {questionsHeaderLine(runItems) ? <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>· {questionsHeaderLine(runItems)}</span> : null}
             {rulingsView.legacyAsks.length > 0 ? (
               <span style={{ color: 'var(--text-amber-800)', fontSize: '0.78rem' }}>· {rulingsView.legacyAsks.length} for the owner</span>
             ) : null}
-            <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>— fifteen minutes here unblocks every robot</span>
             <span style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: '0.75rem' }}>{rulingsExpanded ? '▾' : '▸'}</span>
           </button>
           {rulingsExpanded ? (
-            <div style={{ padding: '0 0.9rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <div style={{ padding: '0 0.9rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
               {rulingsView.openCount === 0 ? (
                 <div style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>No open questions for an estimator — every robot has its answer.</div>
-              ) : (
-                <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
-                  Questions about the job only — one answer lands on every open copy; the robots pull it on their next run. A robot
-                  talking about its own machine doesn't belong here: <b>Not mine</b> sends it to the operator.
-                </div>
-              )}
+              ) : null}
+              {indexItems.map((item, i) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  data-testid="question-line"
+                  onClick={() => setRunThrough({ start: i })}
+                  title="Open the run-through at this question"
+                  style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', width: '100%', padding: '0.4rem 0.6rem', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', cursor: 'pointer', textAlign: 'left', font: 'inherit', color: 'inherit', fontSize: '0.8125rem', flexWrap: 'wrap' }}
+                >
+                  {item.label ? (
+                    <span style={{ display: 'inline-block', padding: '0.05rem 0.45rem', borderRadius: 9999, border: '1px solid var(--border)', background: 'var(--bg-subtle)', color: 'var(--text-700)', fontSize: '0.6875rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                      {item.label}
+                    </span>
+                  ) : null}
+                  {item.aboutBidIds.length > 1 ? <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem', whiteSpace: 'nowrap' }}>{item.aboutBidIds.length} bids</span> : null}
+                  <span style={{ flex: '1 1 260px' }}>{questionLine(item.newest.question)}</span>
+                  <span style={{ color: item.choices?.some((c) => c.recommended) ? 'var(--text-blue-700, var(--text-700))' : 'var(--text-muted)', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
+                    {(() => {
+                      const star = item.choices?.find((c) => c.recommended)
+                      return star ? `★ ${star.label}` : 'no pick'
+                    })()}
+                  </span>
+                </button>
+              ))}
+              {runItems.length > QUESTION_INDEX_FOLD ? (
+                <button type="button" onClick={() => setShowAllQuestions((v) => !v)} style={{ alignSelf: 'flex-start', padding: '0.25rem 0.6rem', background: 'transparent', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.78rem' }}>
+                  {showAllQuestions ? 'Show fewer' : `Show all ${runItems.length}`}
+                </button>
+              ) : null}
               {rulingsView.plansAsks.length > 0 ? (() => {
                 // v2.3212: plans asks are tasks on one bid each — the robot needs a
                 // different plan set. They live on that bid's robot needs sheet; here
@@ -691,7 +733,7 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
                 const list = [...targets.values()]
                 return (
                   <div data-testid="rulings-plans-asks" style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
-                    🗂 {list.length === 1 ? 'One bid needs' : `${list.length} bids need`} a different plan set — not a ruling, a fix on the bid:{' '}
+                    Also: {list.length === 1 ? 'one bid needs' : `${list.length} bids need`} a different plan set — that is a fix on the bid, not a question:{' '}
                     {list.map((t, i) => (
                       <span key={t.id}>
                         {i > 0 ? ' · ' : ''}
@@ -733,148 +775,6 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
                   </a>
                 </div>
               ) : null}
-              {rulingsView.rulings.map((r) => {
-                const draftKey = `topic:${r.topic}`
-                return (
-                  <div key={r.topic} style={rulingCardStyle}>
-                    <div style={{ fontSize: '0.875rem' }}>
-                      <span style={{ display: 'inline-block', marginRight: '0.5rem', padding: '0.05rem 0.45rem', borderRadius: 9999, border: '1px solid var(--border)', background: 'var(--bg-subtle)', color: 'var(--text-700)', fontSize: '0.6875rem', fontWeight: 600, verticalAlign: 'middle' }}>
-                        {r.label}
-                      </span>
-                      🤖 <TwinQuestionText text={r.newest.question} bidIdByNumber={bidIdByNumber} aboutBidId={r.newest.about_bid_id} aboutBidNumber={r.newest.about_bid_id ? bidNumberById[r.newest.about_bid_id] : null} sourceByBidId={sourceByBidId} />
-                    </div>
-                    <div style={{ marginTop: '0.2rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{rulingAskedLine(r)}</div>
-                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.45rem', flexWrap: 'wrap' }}>
-                      {(() => {
-                        const choices = orderedChoices(r.newest)
-                        if (choices && !rulingFreeText[draftKey]) {
-                          return (
-                            <TwinQuestionChoiceButtons
-                              choices={choices}
-                              disabled={busy === `ruling:${draftKey}`}
-                              fanOut={r.askCount}
-                              onPick={(c) => void answerRuling(r.questionIds, draftKey, answerFromChoice(c))}
-                              onSomethingElse={() => setRulingFreeText((p) => ({ ...p, [draftKey]: true }))}
-                            />
-                          )
-                        }
-                        return (
-                          <>
-                            <input
-                              type="text"
-                              value={rulingDrafts[draftKey] ?? ''}
-                              onChange={(e) => setRulingDrafts((p) => ({ ...p, [draftKey]: e.target.value }))}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') void answerRuling(r.questionIds, draftKey)
-                              }}
-                              autoFocus={!!choices}
-                              placeholder="Your ruling — answers every copy at once…"
-                              style={rulingInputStyle}
-                            />
-                            <button
-                              type="button"
-                              disabled={busy === `ruling:${draftKey}` || !(rulingDrafts[draftKey] ?? '').trim()}
-                              onClick={() => void answerRuling(r.questionIds, draftKey)}
-                              style={{ padding: '0.4rem 0.9rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
-                            >
-                              {r.askCount > 1 ? `Answer all ${r.askCount}` : 'Answer'}
-                            </button>
-                          </>
-                        )
-                      })()}
-                      {audienceWritable ? (
-                        <button
-                          type="button"
-                          disabled={busy === `ruling:${draftKey}`}
-                          title="This is a robot's machine problem, not an estimating question — move it to the operator's console"
-                          onClick={() => void bounceToOperator(r.questionIds, draftKey)}
-                          style={rulingSecondaryStyle}
-                        >
-                          Not mine
-                        </button>
-                      ) : null}
-                      <button
-                        type="button"
-                        disabled={busy === `ruling:${draftKey}`}
-                        title="Close without an answer — the robots stop asking"
-                        onClick={() => void dismissRulingQuestions(r.questionIds, draftKey)}
-                        style={rulingSecondaryStyle}
-                      >
-                        Dismiss
-                      </button>
-                    </div>
-                  </div>
-                )
-              })}
-              {rulingsView.singles.map((s) => {
-                const draftKey = `q:${s.id}`
-                return (
-                  <div key={s.id} style={rulingCardStyle}>
-                    <div style={{ fontSize: '0.875rem' }}>🤖 <TwinQuestionText text={s.question} bidIdByNumber={bidIdByNumber} aboutBidId={s.about_bid_id} aboutBidNumber={s.about_bid_id ? bidNumberById[s.about_bid_id] : null} sourceByBidId={sourceByBidId} /></div>
-                    {s.mission ? (
-                      <div style={{ marginTop: '0.2rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{s.mission}</div>
-                    ) : null}
-                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.45rem', flexWrap: 'wrap' }}>
-                      {(() => {
-                        const choices = orderedChoices(s)
-                        if (choices && !rulingFreeText[draftKey]) {
-                          return (
-                            <TwinQuestionChoiceButtons
-                              choices={choices}
-                              disabled={busy === `ruling:${draftKey}`}
-                              onPick={(c) => void answerRuling([s.id], draftKey, answerFromChoice(c))}
-                              onSomethingElse={() => setRulingFreeText((p) => ({ ...p, [draftKey]: true }))}
-                            />
-                          )
-                        }
-                        return (
-                          <>
-                            <input
-                              type="text"
-                              value={rulingDrafts[draftKey] ?? ''}
-                              onChange={(e) => setRulingDrafts((p) => ({ ...p, [draftKey]: e.target.value }))}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') void answerRuling([s.id], draftKey)
-                              }}
-                              autoFocus={!!choices}
-                              placeholder="Your answer — the robot pulls it next run…"
-                              style={rulingInputStyle}
-                            />
-                            <button
-                              type="button"
-                              disabled={busy === `ruling:${draftKey}` || !(rulingDrafts[draftKey] ?? '').trim()}
-                              onClick={() => void answerRuling([s.id], draftKey)}
-                              style={{ padding: '0.4rem 0.9rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
-                            >
-                              Answer
-                            </button>
-                          </>
-                        )
-                      })()}
-                      {audienceWritable ? (
-                        <button
-                          type="button"
-                          disabled={busy === `ruling:${draftKey}`}
-                          title="This is a robot's machine problem, not an estimating question — move it to the operator's console"
-                          onClick={() => void bounceToOperator([s.id], draftKey)}
-                          style={rulingSecondaryStyle}
-                        >
-                          Not mine
-                        </button>
-                      ) : null}
-                      <button
-                        type="button"
-                        disabled={busy === `ruling:${draftKey}`}
-                        title="Close without an answer — the robots stop asking"
-                        onClick={() => void dismissRulingQuestions([s.id], draftKey)}
-                        style={rulingSecondaryStyle}
-                      >
-                        Dismiss
-                      </button>
-                    </div>
-                  </div>
-                )
-              })}
             </div>
           ) : null}
         </div>

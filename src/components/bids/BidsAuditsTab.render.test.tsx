@@ -6,7 +6,7 @@
  * collapsed behind a toggle.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { BidsAuditsTab } from './BidsAuditsTab'
@@ -152,52 +152,60 @@ describe('BidsAuditsTab', () => {
     expect(screen.queryByText(/draft \$0\b/)).toBeNull()
     expect(screen.queryByText(/-100\.0% vs ours/)).toBeNull()
 
-    // v2.2941 — Standing rulings: the two travel-bands questions collapse into
-    // one ruling (newest text on top, one answer box for both); the topicless
-    // one lists individually. Expanded by default because N > 0.
-    expect(await screen.findByText(/Standing rulings · 3/)).toBeTruthy()
+    // v2.4232 — the sentence that sizes today and the one button; the panel reads
+    // Questions · 3 (the two travel-bands questions are one; the plans ask is not counted)
+    // with one line per question: the shared one first, its chip and its bids, then the
+    // single with its ★ pick.
+    expect(await screen.findByText(/Today: 3 questions, about two minutes\. Then 1 audit\./)).toBeTruthy()
+    expect(screen.getByText(/Questions · 3/)).toBeTruthy()
+    expect(screen.getByText(/1 asked twice/)).toBeTruthy()
+    const lines = screen.getAllByTestId('question-line')
+    expect(lines).toHaveLength(2)
+    expect(lines[0]!.textContent).toMatch(/Travel bands.*2 bids.*Do we band travel by distance\?.*no pick/)
+    expect(lines[1]!.textContent).toMatch(/Is a strip mall shell a no-go\?.*★ Bid it/)
+    // The cards and their buttons are gone from the panel; the sheet answers.
+    expect(screen.queryByRole('button', { name: '★ Bid it' })).toBeNull()
+    expect(screen.queryByPlaceholderText('Your ruling — answers every copy at once…')).toBeNull()
 
-    // v2.3210 — the topicless question carries choices: buttons, robot's pick
-    // first with a ★, no free-text box on that card until "Something else…".
-    const pick = await screen.findByRole('button', { name: /★ Bid it/ })
-    expect(pick).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'No-go' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Something else…' })).toBeTruthy()
-    expect(screen.queryByPlaceholderText('Your answer — the robot pulls it next run…')).toBeNull()
-    // The grouped travel-bands ruling has no choices and keeps its box.
-    expect(screen.getByPlaceholderText('Your ruling — answers every copy at once…')).toBeTruthy()
-
-    // v2.3212 — the plans ask is not a card and not in the count (still · 3); the
+    // v2.3212 — the plans ask is not a line and not in the count (still · 3); the
     // panel points at the bid's needs sheet instead.
     expect(screen.queryByText(/Attach the plumbing sheets/)).toBeNull()
     const plansLine = screen.getByTestId('rulings-plans-asks')
-    expect(plansLine.textContent).toMatch(/One bid needs a different plan set/)
+    expect(plansLine.textContent).toMatch(/one bid needs a different plan set/)
     const link = plansLine.querySelector('a') as HTMLAnchorElement
     expect(link.getAttribute('href')).toBe('/bids?tab=bid-board&bidId=bid-405&robot=needs')
-    expect(screen.getByText(/fifteen minutes here unblocks every robot/)).toBeTruthy()
-    expect(screen.getByText('Travel bands')).toBeTruthy()
-    expect(screen.getByText(/Do we band travel by distance\?/)).toBeTruthy()
-    expect(screen.getByText('asked 2 times across 2 bids')).toBeTruthy()
-    expect(screen.getByText('Answer all 2')).toBeTruthy()
-    expect(screen.getByText(/Is a strip mall shell a no-go\?/)).toBeTruthy()
-    // v2.3174 — the bid number inside a question is a link to its board row.
-    const bidLink = await screen.findByRole('link', { name: 'b474' })
-    expect(bidLink.getAttribute('href')).toBe('/bids?tab=bid-board&bidId=bid-474')
-    // …and a question that never names its bid gets a trailing link to the bid it is about.
-    const trailing = await screen.findByRole('link', { name: 'b405' })
-    expect(trailing.getAttribute('href')).toBe('/bids?tab=bid-board&bidId=bid-405')
-    // v2.3187 — the robot's copy links ours beside it; an unpaired bid gets no extra link.
-    const ours = await screen.findByRole('link', { name: 'ours b214' })
-    expect(ours.getAttribute('href')).toBe('/bids?tab=bid-board&bidId=bid-214')
-    expect(screen.getAllByRole('link', { name: /^ours b/ })).toHaveLength(1)
 
     // v2.3186 — the operator-lane question is filtered out (still 3 on the header),
-    // dev sees the count pointing at the console, and every card has Dismiss.
-    // "Not mine" stays hidden: the mock rows carry no `audience` column to write.
+    // dev sees the count pointing at the console.
     expect(screen.queryByText(/sandbox blocked the bids_plan_substrates/)).toBeNull()
     expect(screen.getByText(/1 robot problem for the operator/)).toBeTruthy()
-    expect(screen.getAllByText('Dismiss').length).toBe(2)
+
+    // The run-through: Answer the 3 questions → question 1 is the shared one with its box
+    // ("answers every copy"), → skips to the tap-answerable one with the ★ first, and every
+    // "b474" in a question is still a link to its bid, "ours b214" beside it (v2.3174/v2.3187).
+    fireEvent.click(screen.getByRole('button', { name: 'Answer the 3 questions' }))
+    // Two steps for three questions: the shared one answers two copies at once.
+    expect(await screen.findByText('Question 1 of 2')).toBeTruthy()
+    const sheet = screen.getByTestId('ruling-run-through')
+    expect(sheet.textContent).toMatch(/Travel bands/)
+    expect(sheet.textContent).toMatch(/Do we band travel by distance\?/)
+    expect(screen.getByText('asked on 2 bids · b405 · b422')).toBeTruthy()
+    expect(screen.getByPlaceholderText('Your ruling — answers every copy at once…')).toBeTruthy()
+    expect(screen.getByText('Answer all 2')).toBeTruthy()
+    fireEvent.keyDown(window, { key: 'ArrowRight' })
+    expect(await screen.findByText('Question 2 of 2')).toBeTruthy()
+    expect(screen.getByRole('button', { name: /1 ★ Bid it/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /2 No-go/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /3 Something else…/ })).toBeTruthy()
+    const bidLink = await screen.findByRole('link', { name: 'b474' })
+    expect(bidLink.getAttribute('href')).toBe('/bids?tab=bid-board&bidId=bid-474')
+    const ours = await screen.findByRole('link', { name: 'ours b214' })
+    expect(ours.getAttribute('href')).toBe('/bids?tab=bid-board&bidId=bid-214')
+    expect(screen.getByRole('button', { name: 'Dismiss' })).toBeTruthy()
+    // "Not mine" stays hidden: the mock rows carry no `audience` column to write.
     expect(screen.queryByRole('button', { name: 'Not mine' })).toBeNull()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByTestId('ruling-run-through')).toBeNull())
 
     // v2.2941 — doctrine-at-stake triage caption on a multi-pending queue.
     expect(screen.getByText('sorted by what your verdict unblocks')).toBeTruthy()
@@ -219,7 +227,8 @@ describe('BidsAuditsTab', () => {
     expect(screen.queryByText('Finish audit')).toBeNull()
     expect(screen.getByText(/view only for your role/)).toBeTruthy()
 
-    // v2.2941 — the Standing rulings panel is write-audience only.
-    expect(screen.queryByText(/Standing rulings/)).toBeNull()
+    // v2.2941 — the questions panel (and v2.4232's sentence and button) are write-audience only.
+    expect(screen.queryByText(/Questions · /)).toBeNull()
+    expect(screen.queryByTestId('audits-today')).toBeNull()
   })
 })
