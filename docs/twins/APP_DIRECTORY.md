@@ -93,14 +93,18 @@ only (no Pricing / Cover Letter / Submission); no subs/helpers.
   delta, the six biggest row differences with one-tap verdicts, your open questions with
   their taps. Verdicts land as `bid_audit_notes` and answers as `twin_questions.answer`,
   exactly as from the Audits lens; read them the same way.
-- `?tab=audits` — **🤖 Audits** (v2.2516–v2.2553): robot bids awaiting a human audit,
-  one open cockpit card at a time — the twin's self-assessment, robot-vs-ours system
-  scoreboard, name-matched diff rows with one-tap verdicts (`[verdict:teach|record|ok]`),
-  question threads with inline answers, Finish audit; a filter row (All · Backtests ·
-  Shadows · Asking you) narrows the list without reordering it. Twins: open audits, seed anchored
-  questions, post receipts, close as `digested`; setting `done` is human-only (RLS).
-  A pending audit whose reference bid hasn't sent shows sealed (🔒). Tab label carries
-  the pending count.
+- `?tab=audits` — **🤖 Audits** (v2.2516–v2.2553; the queue v2.4230–v2.4261, punch list #63):
+  one sentence sizes today (questions and their minutes · workable audits · sealed audits)
+  and one button runs the robots' open questions one at a time (the run-through: shared
+  first, then today's, then the older asks; numbered taps with the robot's pick first);
+  under it a queue — Now · Up next by what a verdict unblocks · Opens when you send (the
+  sealed 🔒 shadows, with the due date of the bid each waits on) · Digesting · Digested —
+  with rows named for the job, the delta and a why line; the open card is the top of the
+  queue (two panes at ≥1151 px) and leads with the six biggest robot-vs-ours differences,
+  one-tap verdicts (`[verdict:teach|record|ok]`, and `[verdict:alias]` for one item under
+  two names), the bid's own questions, Finish audit → next. Twins: open audits, seed
+  anchored questions, post receipts, close as `digested`; setting `done` is human-only
+  (RLS). Tab label carries the pending count; the group's six-number strip heads every lens.
 - `?tab=robot-shadows` — retired v2.3222 (redirects to `robot-board`); the Shadows story
   (v2.2544) is the mirror row now.
 - `?tab=robot-queue` — **🤖 Queue** (v2.2542, dev only; off the lens bar since v2.3222 —

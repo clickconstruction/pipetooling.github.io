@@ -35,15 +35,16 @@ Everything below optimizes one of those two.
 An hour auditing one card yields a handful of verdicts; an hour answering
 standing questions yields doctrine that moves every future bid.
 
-- **Standing-rulings queue** (build): dedupe open `twin_questions` into one
-  canonical question per doctrine issue (travel bands, small-TI absorption,
-  package-boundary rule, …) and present them as a single "N rulings waiting,
-  ~15 minutes" surface — the shape her productive 2026-09-04 pass actually
-  took. Several agents have asked variants of the same question on different
-  bids; the duplicates should collapse.
-- **Audit queue triage by doctrine-at-stake** (build): sort her pending queue
-  by what a verdict unblocks (an axis gate, an open ruling, a book price)
-  instead of oldest-first.
+- **Standing-rulings queue** (shipped v2.2941; the run-through v2.4232): dedupe open
+  `twin_questions` into one canonical question per doctrine issue (travel bands,
+  small-TI absorption, package-boundary rule, …) and present them as a single
+  "19 questions, about fifteen minutes" sentence with one button — the shape her
+  productive 2026-09-04 pass actually took. The button runs them one at a time,
+  shared first, with the robot's pick as the first tap.
+- **Audit queue triage by doctrine-at-stake** (shipped v2.2941; the open card is the
+  top of the queue v2.4230; the queue's sections v2.4234): sort her pending queue by
+  what a verdict unblocks (an axis gate, an open ruling, a book price) instead of
+  oldest-first, and open on it.
 - **Information density per tap** (shipped v2.2935): the rate-gap bucket +
   delta waterfall — her one tap on a `robot $7,705/u vs ours $3,350/u` row IS
   the multiplier ruling.
@@ -142,8 +143,8 @@ company, not just the program.
 | 1 | Rate-gap bucket + delta waterfall on audit cards | app | shipped v2.2935 |
 | 2 | `next_shadow` dispatcher + shadow coverage stat | harness | **this PR (v2.2936)** |
 | 3 | Scheduled shadow-agent batches (full auto-coverage) | ops/harness | scheduled task live 2026-09-06 (weekday batch on the operator machine) |
-| 4 | Standing-rulings queue (dedupe `twin_questions` into canonical rulings) | app | shipped v2.2939 (topics) + v2.2941 (panel + answer-all) |
-| 5 | Audit queue triage by doctrine-at-stake | app | shipped v2.2941 (`auditTriage.ts`) |
+| 4 | Standing-rulings queue (dedupe `twin_questions` into canonical rulings) | app | shipped v2.2939 (topics) + v2.2941 (panel + answer-all) + v2.4232 (the run-through, one at a time) |
+| 5 | Audit queue triage by doctrine-at-stake | app | shipped v2.2941 (`auditTriage.ts`) + v2.4230 (the open card is the top) + v2.4234 (Now · Up next · Opens when you send) + v2.4261 (the card leads with the six biggest, one row for one item) |
 | 6 | Holdout set flag + holdout-only gate denominators | app + owner decision | mechanism shipped v2.2942 + harness enforcement v2.2952 (open_backtest refuses; next_backtest skips; gate_run override); WHICH references still needs the owner (Queue lens toggle, target 20–25) |
 | 7 | Doctrine-promotion regression gate (propose → measure → bank) | process (FEEDBACK_LOOP.md) | shipped v2.2940 |
 | 8 | Scoreboard shadow-coverage pill | app | shipped v2.2943 |
