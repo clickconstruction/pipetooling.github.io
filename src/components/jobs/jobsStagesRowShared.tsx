@@ -639,33 +639,38 @@ export function renderStagesFieldAndBillingLines(ctx: StagesRowRenderContext, jo
   )
 }
 
-/** Job-column address: red map-pin icon + two-line address, linking to Google Maps. */
 /**
  * The address under the job name, a Google Maps link; since v2.4160 the
- * property-kind badge (C / R / ?) sits at the end of its last line — a sibling
- * of the link, bottom-aligned, never a button inside the anchor.
+ * property-kind badge (C / R / ?) sits at the end of its last line. The block
+ * flows inline with a hanging indent (the pin hangs in the gutter, every line
+ * of text aligns under the first), so the badge lands right after the last
+ * word — "Hondo, TX (?)" — instead of at the edge of the widest line (v2.4210).
+ * It stays a sibling of the link, never a button inside the anchor.
  */
 export function renderJobAddressWithMap(ctx: Pick<StagesRowRenderContext, 'propertyKindByJobId' | 'onPropertyKindSaved' | 'authRole' | 'showToast'>, job: Pick<JobWithDetails, 'id' | 'job_address' | 'customer_address_id' | 'hcp_number' | 'job_name'>) {
   const address = job.job_address
   const fmt = formatAddressTwoLines(address ?? null)
   if (!fmt) return null
   return (
-    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem', display: 'flex', alignItems: 'flex-end', gap: '0.3rem' }}>
-      {/* inline-flex so the clickable area hugs the icon + text instead of
-          stretching across the whole Job cell. */}
+    <div
+      style={{
+        fontSize: '0.75rem',
+        color: 'var(--text-muted)',
+        marginTop: '0.15rem',
+        // hanging indent: the 12px pin + its gap sit left of the text column
+        paddingLeft: 'calc(12px + 0.3rem)',
+        textIndent: 'calc(-12px - 0.3rem)',
+        // an unsplit one-liner that must wrap breaks into even lines instead
+        // of orphaning "TX" (was on the text span while it was a flex item)
+        textWrap: 'balance',
+      }}
+    >
       <a
         href={googleMapsSearchUrl(address)}
         target="_blank"
         rel="noopener noreferrer"
         title="Open in Google Maps"
-        style={{
-          color: 'inherit',
-          textDecoration: 'none',
-          display: 'inline-flex',
-          alignItems: 'flex-start',
-          gap: '0.3rem',
-          maxWidth: '100%',
-        }}
+        style={{ color: 'inherit', textDecoration: 'none' }}
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -674,7 +679,7 @@ export function renderJobAddressWithMap(ctx: Pick<StagesRowRenderContext, 'prope
           height={12}
           fill="currentColor"
           aria-hidden="true"
-          style={{ flexShrink: 0, marginTop: 1, color: 'var(--text-red-600)' }}
+          style={{ verticalAlign: -1, marginRight: '0.3rem', color: 'var(--text-red-600)' }}
         >
           <path d="M128 252.6C128 148.4 214 64 320 64C426 64 512 148.4 512 252.6C512 371.9 391.8 514.9 341.6 569.4C329.8 582.2 310.1 582.2 298.3 569.4C248.1 514.9 127.9 371.9 127.9 252.6zM320 320C355.3 320 384 291.3 384 256C384 220.7 355.3 192 320 192C284.7 192 256 220.7 256 256C256 291.3 284.7 320 320 320z" />
         </svg>

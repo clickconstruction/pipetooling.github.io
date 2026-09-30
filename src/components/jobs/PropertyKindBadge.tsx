@@ -49,6 +49,9 @@ export default function PropertyKindBadge({
     fontWeight: 700,
     lineHeight: 1,
     flexShrink: 0,
+    // inline after the address's last word — "Hondo, TX (?)" — with a word's worth of air (v2.4210)
+    marginLeft: '0.3rem',
+    verticalAlign: 'text-bottom',
   } as const
 
   async function pick(next: PropertyKind) {
@@ -73,7 +76,7 @@ export default function PropertyKindBadge({
     )
   }
   return (
-    <span style={{ position: 'relative', display: 'inline-flex' }} onClick={(e) => e.stopPropagation()}>
+    <span style={{ position: 'relative', display: 'inline-flex', verticalAlign: 'text-bottom' }} onClick={(e) => e.stopPropagation()}>
       <button
         type="button"
         data-testid="property-kind-badge"
@@ -83,7 +86,7 @@ export default function PropertyKindBadge({
         aria-label={badge.label}
         title={badge.title}
         onClick={() => setOpen((v) => !v)}
-        style={{ ...circle, border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', fontSize: '0.625rem', fontWeight: 700 }}
+        style={{ ...circle, verticalAlign: undefined, border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', fontSize: '0.625rem', fontWeight: 700 }}
       >
         {badge.letter}
       </button>
