@@ -16,7 +16,7 @@ The fixtures and line editor the classic tab had, with two additions:
 
 ## What Pricing sees
 
-The materials total here is exactly the number the Workbench uses as this bid's cost. When fixtures have no lines, the rail says so in red: Pricing shows those rows as **No Takeoffs cost**. **show** opens per-fixture unit costs; a fixture with a $0 line is marked **incomplete**.
+The materials total here is exactly the number the Workbench uses as this bid's cost. When the bid carries an **alternate** (a group marked on the Counts tab — the section a customer wants priced with and without), an amber block under it splits the number: **Base**, **+ Break room** (what that alternate adds), and the total with it. Every fixture in an alternate wears a small **ALT** mark on the sheet and in the unit-cost list. When fixtures have no lines, the rail says so in red: Pricing shows those rows as **No Takeoffs cost**. **show** opens per-fixture unit costs; a fixture with a $0 line is marked **incomplete**.
 
 ### Sticks are in the number
 

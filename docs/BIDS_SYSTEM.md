@@ -939,6 +939,7 @@ Migration: `20260212180000_add_estimator_cost_to_cost_estimates.sql`
 - **Estimator**: Per-count-type or flat amount
 - **Labor total**: Labor + Driving + Estimator
 - **Grand total**: Materials + Labor total
+- **With and without the alternate** (v2.4191): when `bids.alternate_group_tags` names a group that holds a count row, a card above the bottom line splits field hours, labor at the rate and driving into the base, each alternate and the whole (`laborHoursByAlternate` in `src/lib/bids/alternateScope.ts` — one labor row per fixture name, its hours in the ratio of the scoped counts); Takeoffs' Sheet-view rail splits *Materials on this bid* the same way (`sumByAlternate` over `coverage.perFixture`) and every alternate row wears the ALT mark.
 
 **Format**: All amounts with comma formatting for values over $999
 
