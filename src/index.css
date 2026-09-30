@@ -3456,3 +3456,50 @@ button.gcStep:hover > em { text-decoration: underline; }
     pointer-events: auto;
   }
 }
+
+/* GC Review → Email statement: the header read like an email (v2.4262). Tokens and the menu
+   need a class for hover/focus and the held state; the tint pair matches the teammate pills. */
+.rcpHdr { border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); margin-bottom: 0.5rem; }
+.rcpLine { display: grid; grid-template-columns: 4.4rem minmax(0, 1fr); gap: 0 0.5rem; padding: 0.4rem 0.6rem; border-bottom: 1px solid var(--border); align-items: start; }
+.rcpLine:last-child { border-bottom: 0; }
+.rcpLine.off { opacity: 0.62; }
+.rcpKey { font-size: 0.78rem; color: var(--text-muted); padding-top: 0.25rem; }
+.rcpVal { display: flex; flex-wrap: wrap; gap: 0.3rem 0.35rem; align-items: center; min-width: 0; }
+.rcpFrom { font-size: 0.8125rem; padding: 0.15rem 0; }
+.rcpHint { font-size: 0.74rem; color: var(--text-muted); }
+.rcpTok { display: inline-flex; align-items: center; gap: 0.35rem; max-width: 100%; min-width: 0; font: inherit; font-size: 0.8125rem; padding: 0.1rem 0.25rem 0.1rem 0.6rem; border-radius: 999px; border: 1px solid var(--border-indigo-soft); background: var(--bg-blue-tint); color: var(--text-blue-700); }
+.rcpTok.held { border-style: dashed; padding-right: 0.6rem; }
+.rcpTok.rcpOpener { cursor: pointer; padding-right: 0.4rem; }
+.rcpTok.rcpOpener:disabled { cursor: default; }
+.rcpTok.rcpOpener:hover:not(:disabled) { border-color: var(--text-blue-700); }
+.rcpTokName { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 3ch; }
+.rcpTokAddr { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.72rem; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; }
+.rcpTokAddr.rcpTokWord { font-family: inherit; }
+.rcpTokX, .rcpCaret { flex: none; font: inherit; border: 0; background: none; color: inherit; padding: 0 0.35rem; border-radius: 999px; line-height: 1.4; }
+.rcpTokX { cursor: pointer; }
+.rcpTokX:hover:not(:disabled) { background: var(--surface); }
+.rcpAdd { font: inherit; font-size: 0.78rem; padding: 0.1rem 0.6rem; border-radius: 999px; border: 1px dashed var(--border-strong); background: none; color: var(--text-link); cursor: pointer; }
+.rcpAdd:hover:not(:disabled) { border-color: var(--text-link); }
+.rcpAdd:disabled { cursor: default; opacity: 0.6; }
+.rcpSubject { flex: 1; min-width: 0; font: inherit; font-size: 0.8125rem; border: 0; background: none; color: inherit; padding: 0.2rem 0; }
+.rcpReadback { margin: 0 0 0.6rem; font-size: 0.8125rem; color: var(--text-700); background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 5px; padding: 0.4rem 0.6rem; }
+.rcpMenu { grid-column: 1 / -1; margin: 0.45rem 0 0.1rem; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14); overflow: hidden; }
+.rcpMenuTop { display: flex; gap: 0.35rem; padding: 0.45rem; border-bottom: 1px solid var(--border); }
+.rcpSearch { flex: 1; min-width: 0; font: inherit; font-size: 0.8125rem; padding: 0.3rem 0.55rem; border: 1px solid var(--border-strong); border-radius: 4px; background: var(--surface); color: inherit; }
+.rcpDone { font: inherit; font-size: 0.78rem; font-weight: 600; padding: 0.2rem 0.6rem; border: 1px solid var(--border-strong); border-radius: 4px; background: var(--surface); color: inherit; cursor: pointer; }
+.rcpGroup { font-size: 0.66rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-muted); padding: 0.45rem 0.6rem 0.15rem; }
+.rcpRow { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 0.5rem; align-items: center; width: 100%; text-align: left; font: inherit; font-size: 0.8125rem; padding: 0.35rem 0.6rem; border: 0; background: none; color: inherit; cursor: pointer; }
+.rcpRow:hover:not(:disabled) { background: var(--bg-subtle); }
+.rcpRow.on { background: var(--bg-blue-tint); }
+.rcpRow:disabled { opacity: 0.55; cursor: default; }
+.rcpWho { min-width: 0; }
+.rcpWho b { font-weight: 600; }
+.rcpAddr { display: block; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.72rem; color: var(--text-muted); overflow-wrap: anywhere; }
+.rcpNote { display: block; font-size: 0.74rem; color: var(--text-muted); }
+.rcpTag { font-size: 0.68rem; color: var(--text-muted); border: 1px solid var(--border); border-radius: 999px; padding: 0 0.45rem; white-space: nowrap; }
+.rcpTag.strong { color: var(--text-blue-700); border-color: var(--border-indigo-soft); background: var(--bg-blue-tint); }
+.rcpMark { width: 15px; height: 15px; border: 1.5px solid var(--border-strong); display: inline-block; font-size: 10px; line-height: 12px; text-align: center; color: #ffffff; }
+.rcpMark.radio { border-radius: 50%; }
+.rcpMark.check { border-radius: 3px; }
+.rcpMark.on { background: var(--text-link); border-color: var(--text-link); }
+.rcpNone { padding: 0.5rem 0.6rem; font-size: 0.78rem; color: var(--text-muted); }
