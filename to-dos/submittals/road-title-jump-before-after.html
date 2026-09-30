@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Road titles that jump — before / after</title>
+<style>
+  :root { --ground: #0f141c; --panel: #161c26; --panel2: #1c2431; --line: #2a3442; --line2: #3a4658; --ink: #e6eaf0; --muted: #8a97a8; --blue: #3b82f6; --green: #22c55e; --amber: #f59e0b; --red: #f87171; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 14px/1.45 -apple-system, "Segoe UI", system-ui, sans-serif; padding: 0 20px 60px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 26px 0 12px; border-bottom: 2px solid var(--line2); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 24px; line-height: 1.15; }
+  .stamp { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 17px; margin: 30px 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; }
+  .tag.before { background: #3f1d1d; color: #fca5a5; } .tag.after { background: #14351f; color: #86efac; } .tag.best { background: #1e2f55; color: #93c5fd; }
+  .lede { margin: 0 0 12px; color: var(--muted); max-width: 95ch; } .lede b { color: var(--ink); }
+  .callouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; margin: 0 0 14px; padding: 0; list-style: none; }
+  .callouts li { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--red); border-radius: 6px; padding: 8px 10px; font-size: 12.5px; color: var(--muted); }
+  .callouts li b { display: block; color: var(--ink); }
+  .callouts.good li { border-left-color: var(--green); } .callouts.best li { border-left-color: var(--blue); }
+  .try { font-size: 12.5px; color: var(--muted); margin: 0 0 8px; } .try kbd { font: 11px ui-monospace, Menlo, monospace; border: 1px solid var(--line2); border-bottom-width: 2px; border-radius: 4px; padding: 1px 5px; color: var(--ink); }
+
+  .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 18px; }
+  .app { background: #131a24; border: 1px solid var(--line2); border-radius: 10px; padding: 14px 16px; }
+  .app .name { font-size: 12px; color: var(--muted); margin: 0 0 8px; display: flex; justify-content: space-between; gap: 10px; }
+  .app .name b { color: var(--ink); }
+  .log { font: 11.5px/1.5 ui-monospace, Menlo, monospace; color: var(--muted); border-top: 1px dashed var(--line); margin-top: 10px; padding-top: 8px; min-height: 3.2em; }
+  .log b { color: var(--ink); font-weight: 600; }
+
+  /* the strip */
+  .strip { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+  .pill { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--line2); border-radius: 999px; padding: 2px 9px 2px 4px; background: var(--panel2); color: var(--muted); font: inherit; font-size: 12px; cursor: pointer; }
+  .pill i { font-style: normal; width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; font-size: 10px; font-weight: 700; border: 1.5px solid var(--line2); }
+  .pill.current { border-color: var(--blue); color: var(--ink); } .pill.current i { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .pill.done i { border-color: var(--green); color: var(--green); }
+
+  /* the road, a viewport the height of a phone's middle */
+  .view { height: 330px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; background: #101620; padding: 10px 12px 10px 10px; scroll-behavior: smooth; position: relative; }
+  .road { display: grid; grid-template-columns: 30px 1fr; column-gap: 10px; }
+  .rail { display: flex; flex-direction: column; align-items: center; }
+  .dot { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 12px; border: 2px solid var(--line2); background: var(--panel); color: var(--muted); flex: none; }
+  .dot.current { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .dot.done { border-color: var(--green); color: var(--green); }
+  .rail .line { flex: 1; width: 2px; min-height: 12px; background: var(--line); }
+  .rail .line.done { background: var(--green); }
+  section.step { padding: 2px 0 14px; min-width: 0; }
+  .head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .title { background: none; border: 0; padding: 2px 4px; margin-left: -4px; border-radius: 4px; font: inherit; font-size: 14px; font-weight: 700; color: var(--ink); cursor: pointer; text-align: left; display: inline-flex; gap: 6px; align-items: baseline; }
+  .title.later { color: var(--muted); }
+  .title:hover { background: var(--panel2); }
+  .caret { font-size: 11px; font-weight: 400; color: #5b6b80; }
+  button.caret { background: none; border: 1px solid transparent; border-radius: 4px; padding: 1px 6px; cursor: pointer; font: inherit; font-size: 11px; color: #5b6b80; }
+  button.caret:hover { border-color: var(--line2); color: var(--ink); }
+  .summary { font-size: 12px; color: var(--muted); }
+  .summary.current { color: var(--muted); } .summary.done { color: var(--green); }
+  .about { font-size: 12px; color: var(--muted); margin-top: 1px; display: flex; gap: 6px; align-items: center; }
+  .about .q { width: 15px; height: 15px; border-radius: 50%; border: 1.5px solid var(--blue); color: var(--blue); font-size: 9px; font-weight: 700; display: grid; place-items: center; flex: none; }
+  .body { margin-top: 7px; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; background: var(--panel); display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; }
+  .body.current { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(59,130,246,.18); }
+  .body.later { border-style: dashed; }
+  .body .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .btn { padding: 5px 10px; border-radius: 6px; border: 1px solid var(--line2); background: var(--panel2); color: var(--ink); font: inherit; font-size: 12px; font-weight: 500; }
+  .btn.green { background: #16a34a; border-color: #16a34a; color: #fff; font-weight: 600; }
+  .btn.held { opacity: .5; }
+  .cap { font-size: 11.5px; color: var(--muted); }
+  .hidden { display: none; }
+  table.pl { border-collapse: collapse; font-size: 11.5px; width: 100%; }
+  table.pl th { text-align: left; color: var(--muted); font-weight: 600; font-size: 10.5px; letter-spacing: .04em; padding: 2px 6px 4px 0; border-bottom: 1px solid var(--line); }
+  table.pl td { padding: 4px 6px 4px 0; }
+
+  /* the ring — the app's .submittal-journey-flash */
+  @keyframes ring { 0% { box-shadow: 0 0 0 0 rgba(59,130,246,.75); } 60% { box-shadow: 0 0 0 8px rgba(59,130,246,0); } 100% { box-shadow: 0 0 0 0 rgba(59,130,246,0); } }
+  .flash { animation: ring 1.6s ease-out 1; border-radius: 6px; }
+
+  .call { background: var(--panel); border: 1px solid var(--line2); border-radius: 10px; padding: 14px 18px; margin-top: 18px; }
+  .call h3 { margin: 0 0 6px; font-size: 15px; } .call ol, .call ul { margin: 0; padding-left: 20px; } .call li { margin: 5px 0; } .call .why { color: var(--muted); }
+  .call code { font: 12px ui-monospace, Menlo, monospace; color: #c9d4e2; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div>
+    <p class="eyebrow">Bids → Submittals → <u>the road's step titles</u></p>
+    <h1>If a step title jumped the way a pill does</h1>
+  </div>
+  <div class="stamp">punch list #17 · Submittals<br>drawn 2026-09-30 · after v2.4201 · not built</div>
+</header>
+
+<p class="lede" style="margin-top:12px">Since v2.4201 a <b>pill on the strip</b> opens its stage, scrolls to its controls and rings them. A <b>step title on the road</b> is a toggle: it folds or unfolds the step where it stands. The question: what if the title did what the pill does? Both panels are live — the road is a viewport the height of a phone's middle, so the lower steps start off screen. Tap the titles.</p>
+<p class="try">Try, in each panel: tap <kbd>5 · Share</kbd> (a later step, folded) · tap <kbd>4 · Package</kbd> (already open, on screen) · tap <kbd>7 · Resubmit</kbd> (folded, off screen) · then tap the same title again.</p>
+
+<div class="pair">
+  <div>
+    <h2><span class="tag before">Before</span> today — the title is a toggle</h2>
+    <ul class="callouts">
+      <li><b>Tap opens or folds, in place.</b> Nothing moves, nothing rings. The caret says which way the next tap goes.</li>
+      <li><b>A later step opens with its controls held.</b> The button is there, disabled, with its reason (v2.4169).</li>
+      <li><b>Only the pill jumps.</b> Two doors, two feels: the pill takes you somewhere, the title reveals what is here.</li>
+    </ul>
+    <div class="app" data-mode="before">
+      <p class="name"><b>Before</b><span>title = fold / unfold</span></p>
+      <div class="strip"></div>
+      <div class="view"><div class="road"></div></div>
+      <div class="log">Tap a title or a pill.</div>
+    </div>
+  </div>
+  <div>
+    <h2><span class="tag after">After</span> the title jumps like the pill</h2>
+    <ul class="callouts good">
+      <li><b>Tap opens, then rings the controls.</b> The ring lands on the button a frame after the step unfolds — the same ring the pill gives.</li>
+      <li><b>It scrolls only when it has to.</b> If the controls are already on screen the page stays put; if they would land below the fold, it scrolls just enough. The title never yanks the page from under your finger.</li>
+      <li><b>The caret folds.</b> A jump only opens, so folding moves to the caret as its own small button — the one thing that gets a little harder.</li>
+    </ul>
+    <div class="app" data-mode="after">
+      <p class="name"><b>After</b><span>title = open + ring · caret = fold</span></p>
+      <div class="strip"></div>
+      <div class="view"><div class="road"></div></div>
+      <div class="log">Tap a title or a pill.</div>
+    </div>
+  </div>
+</div>
+
+<div class="call">
+  <h3>What it would look like, in one breath</h3>
+  <ul>
+    <li><b>A folded step</b> (5 · Share, 6 · Their call, 7 · Resubmit): tap the title → it unfolds, its held button rings blue for 1.6 s, and if the button sits below the bottom edge the road scrolls it into view. <span class="why">Same as tapping the pill, minus the long scroll from the top of the page.</span></li>
+    <li><b>An open step on screen</b> (4 · Package, 8 · Procure): tap the title → nothing moves; the button rings. <span class="why">The ring is the only sign the tap landed. Today the same tap folds the step.</span></li>
+    <li><b>Folding</b>: the caret ▴ at the end of the title becomes its own button. <span class="why">Tap it to fold a finished step back to its green line. It is a smaller target than the title is today.</span></li>
+  </ul>
+  <h3 style="margin-top:12px">Is this the best we can do?</h3>
+  <ol>
+    <li><b>A plain jump would not do.</b> <span class="why">Tapping "5 · Share" and having the page scroll the controls to centre — the pill's rule — moves the screen when the title was already under your finger. On a phone that reads as a lurch; on a desktop with the step centred it does nothing, so the ring looks random. The panel on the right scrolls only when the controls would be off screen.</span></li>
+    <li><b>The opening was already the useful half.</b> <span class="why">A title tap on a folded later step has opened it since v2.4169, and Procure never folds since v2.4201. What "After" adds is the ring and the scroll-if-needed — a confirmation, not a new ability.</span></li>
+    <li><b>The cost is the fold.</b> <span class="why">Today one big target does both. After, the title opens and a small caret folds. If the office folds finished steps often, that is the trade to feel before deciding.</span></li>
+    <li><b>Where it would live if built.</b> <span class="why"><code>RoadSection</code> gains an <code>onJump</code> beside <code>onToggle</code>; the tab's <code>goToStage</code> already opens, waits a frame and rings — it would take a <code>scrollIfNeeded</code> flag (<code>scrollIntoView</code> only when the control's rect is outside the viewport). One tab-test case per behaviour; the guide's road paragraph and the SU-12 map row follow.</span></li>
+  </ol>
+</div>
+</div>
+
+<script>
+(function () {
+  const STEPS = [
+    { n: 4, key: 'package', title: 'Package', status: 'current', open: true, summary: 'not built for this version yet', about: 'One PDF for the GC: the cover table and every cut sheet.', anchor: 'submittals-package',
+      body: '<div class="row"><button class="btn green" data-control>Build package</button><span class="cap">One PDF on our letterhead. The cover table first, then every cut sheet stamped with its tag and status.</span></div>' },
+    { n: 5, key: 'share', title: 'Share', status: 'later', open: false, summary: '', about: 'Get a link and paste it into your email to the GC.', anchor: 'submittals-share',
+      body: '<div class="row"><button class="btn held" data-control disabled>Share…</button><span class="cap">Share turns on once the package is built.</span></div>' },
+    { n: 6, key: 'review', title: 'Their call', status: 'later', open: false, summary: '', about: 'The GC or the architect answers each row: Approve, Revise or Reject.', anchor: 'submittals-room',
+      body: '<div class="row"><button class="btn" data-control>Drop the reviewer\'s file</button><span class="cap">A redlined PDF from the GC lands here.</span></div>' },
+    { n: 7, key: 'resubmit', title: 'Resubmit', status: 'later', open: false, summary: '', about: 'Rows the GC sent back come here. Start Rev 2 with only those rows, or with every row when a product changed.', anchor: 'submittals-resubmit',
+      body: '<div class="row"><button class="btn held" data-control disabled>New revision</button><span class="cap">New revision turns on once the package is built.</span></div>' },
+    { n: 8, key: 'procure', title: 'Procure', status: 'current', open: true, always: true, summary: '0 released · 0 ordered · 0 delivered', about: 'The order log the GC asks for: order dates, PO numbers and what is running late.', anchor: 'submittals-procure',
+      body: '<div class="row"><b style="font-size:12px">Procurement log</b><span class="cap">Not a job yet — required dates blank</span></div><table class="pl"><tr><th>TAG</th><th>PRODUCT</th><th>SUBMITTAL</th><th>RELEASED</th><th>ORDERED</th></tr><tr><td>WC-1</td><td>TOTO wall-mount bowl + flush valve</td><td class="cap">open</td><td class="cap">—</td><td class="cap">—</td></tr></table><div class="row"><button class="btn" data-control>Send update…</button><button class="btn">+ Add item</button><span class="cap">Print the log · Download CSV</span></div>' },
+  ]
+
+  function build(app) {
+    const mode = app.dataset.mode
+    const strip = app.querySelector('.strip')
+    const road = app.querySelector('.road')
+    const view = app.querySelector('.view')
+    const log = app.querySelector('.log')
+    const state = Object.fromEntries(STEPS.map((s) => [s.key, s.open]))
+
+    function say(html) { log.innerHTML = html }
+
+    function render() {
+      strip.innerHTML = STEPS.map((s) => `<button class="pill ${s.status}" data-pill="${s.key}"><i>${s.n}</i>${s.title}</button>`).join('')
+      road.innerHTML = STEPS.map((s, i) => {
+        const open = state[s.key]
+        const last = i === STEPS.length - 1
+        const later = s.status === 'later' && !s.always
+        const caret = mode === 'after'
+          ? `<button class="caret" data-fold="${s.key}" title="${open ? 'Fold' : 'Unfold'}">${open ? '▴' : '▾'}</button>`
+          : `<span class="caret">${open ? '▴' : '▾'}</span>`
+        return `
+          <div class="rail" aria-hidden><div class="dot ${s.status}">${s.n}</div>${last ? '' : `<div class="line"></div>`}</div>
+          <section class="step" data-step="${s.key}">
+            <div class="head">
+              <span><button class="title ${later ? 'later' : ''}" data-title="${s.key}">${s.n} · ${s.title}</button> ${caret}</span>
+              ${s.summary ? `<span class="summary ${s.status}">${s.summary}</span>` : ''}
+            </div>
+            <div class="about"><span>${s.about}</span><span class="q">?</span></div>
+            <div class="body ${s.status} ${later ? 'later' : ''} ${open ? '' : 'hidden'}" data-tour="${s.anchor}">${s.body}</div>
+          </section>`
+      }).join('')
+    }
+
+    function controlOf(key) {
+      return road.querySelector(`[data-step="${key}"] [data-control]`) || road.querySelector(`[data-step="${key}"] .body`)
+    }
+    function offScreen(el) {
+      const v = view.getBoundingClientRect(), r = el.getBoundingClientRect()
+      return r.top < v.top + 4 || r.bottom > v.bottom - 4
+    }
+    function ring(el) {
+      el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash')
+      setTimeout(() => el.classList.remove('flash'), 1600)
+    }
+    function scrollTo(el, block) {
+      const v = view.getBoundingClientRect(), r = el.getBoundingClientRect()
+      const target = block === 'center' ? view.scrollTop + (r.top - v.top) - (v.height - r.height) / 2 : view.scrollTop + (r.bottom - v.bottom) + 12
+      view.scrollTo({ top: Math.max(0, target), behavior: 'smooth' })
+    }
+
+    // The pill: opens, scrolls to centre, rings — v2.4201, both panels.
+    function pillJump(key) {
+      const wasOpen = state[key]
+      state[key] = true; render()
+      setTimeout(() => { const c = controlOf(key); scrollTo(c, 'center'); ring(c) })
+      say(`<b>pill ${key}</b> → ${wasOpen ? 'already open' : 'opens'}, scrolls to centre, rings the control.`)
+    }
+
+    strip.addEventListener('click', (e) => { const p = e.target.closest('[data-pill]'); if (p) pillJump(p.dataset.pill) })
+
+    road.addEventListener('click', (e) => {
+      const fold = e.target.closest('[data-fold]')
+      if (fold) { const k = fold.dataset.fold; state[k] = !state[k]; render(); say(`<b>caret ${k}</b> → ${state[k] ? 'unfolds' : 'folds'} in place. Nothing moves, nothing rings.`); return }
+      const t = e.target.closest('[data-title]'); if (!t) return
+      const key = t.dataset.title
+      if (mode === 'before') {
+        state[key] = !state[key]; render()
+        say(`<b>title ${key}</b> → ${state[key] ? 'unfolds' : 'folds'} in place. Nothing moves, nothing rings.`)
+        return
+      }
+      const wasOpen = state[key]
+      state[key] = true; render()
+      setTimeout(() => {
+        const c = controlOf(key)
+        const off = offScreen(c)
+        if (off) scrollTo(c, 'nearest')
+        ring(c)
+        say(`<b>title ${key}</b> → ${wasOpen ? 'already open' : 'opens'}; the control ${off ? 'was below the edge, so the road scrolls <i>just enough</i>' : 'is on screen, so <i>nothing moves</i>'}; it rings.`)
+      }, 0)
+    })
+
+    render()
+  }
+
+  document.querySelectorAll('.app').forEach(build)
+})()
+</script>
+</body>
+</html>
