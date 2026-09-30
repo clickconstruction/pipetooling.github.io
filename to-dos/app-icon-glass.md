@@ -1,6 +1,6 @@
 ---
 name: "The home-screen icon reads crisp under iOS 26's glass"
-number: 64
+number: 67
 group: ready
 status: open 2026-09-29 — v2.4158 centred the mark; the tile on the home screen still reads soft and grey next to native icons
 summary: >
