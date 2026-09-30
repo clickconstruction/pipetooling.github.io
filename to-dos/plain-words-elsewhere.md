@@ -2,7 +2,7 @@
 name: "Plain words on the other first-timer surfaces"
 number: 58
 group: residual
-status: opened 2026-09-29 after the Submittals plain-words train (v2.4123–v2.4126) · nothing built elsewhere yet
+status: opened 2026-09-29 after the Submittals plain-words train (v2.4123–v2.4126) · item 1 shipped v2.4228 (the Workbench walkthrough) · item 2 shipped v2.4229 (the guide) · the convention call left
 summary: >
   The Submittals train wrote the rules for words a first-timer can follow — one idea per
   sentence, under 20 words, *you* + a verb and the button's exact name, a trade word explained
@@ -12,16 +12,16 @@ summary: >
   the old voice), and the help guides, the strip's Next lines on other pages and the toasts were
   never held to the rules.
 next: >
-  1. The Pricing Workbench walkthrough: rewrite its five stops by the rules and copy
-  `submittalTour.test.ts`'s cases over `WORKBENCH_TOUR_STEPS` (one PR).
+  1. Done, v2.4228: the Pricing Workbench walkthrough's five stops by the rules, with
+  `submittalTour.test.ts`'s cases copied over `WORKBENCH_TOUR_STEPS`.
   2. Done, v2.4229: the guide *build a submittal package* section by section, examples kept,
   held by `helpGuidePlainWords.test.ts` (its `PLAIN_WORDS_GUIDES` list names the guides held).
   3. Decide whether the rules become a repo convention for every first-timer surface (a line in
   `CLAUDE.md` under help guides, and a shared `plainWords.test.ts` helper the tour tests import)
   — an owner call, since it binds every future walkthrough.
-size: S (two PRs; the convention is a sentence)
+size: XS (the convention is a sentence and a slug list)
 blocker: 3 is an owner call.
-ver: —
+ver: v2.4228 · 4229
 opinion: soon — Wendi and Stephen are on the Submittals tab this week and will hit Pricing's walkthrough next; the rules exist, so each PR is a rewrite and a copied test.
 ---
 
@@ -40,6 +40,6 @@ The owner, 2026-09-29, on the Submittals walkthrough: it "needs to use simpler s
 
 ## What is left
 
-- **Pricing Workbench walkthrough** (`src/lib/bids/workbenchHelp.ts`, `WORKBENCH_TOUR_STEPS`, five stops; the `?` card's facts beside them). Same `SpotlightTour`, so the scroll fix (v2.4121) already applies; the words do not.
+- ~~**Pricing Workbench walkthrough**~~ — done v2.4228: the five stops in `src/lib/bids/workbenchHelp.ts` read by the rules and `workbenchHelp.test.ts` holds them. The `?` card's four lines still read in the old voice (dashes, a parenthesis); they are the card's, not the tour's, and small.
 - ~~**The help guide**~~ — done v2.4229: `build-a-submittal-package.md` reads by the rules, examples kept; `src/lib/helpGuidePlainWords.test.ts` holds it.
 - **The convention**: whether every future walkthrough, Next line and guide is written by these rules. If yes, the rules move to `CLAUDE.md` (one clause), `PLAIN_WORDS_GUIDES` in `helpGuidePlainWords.test.ts` becomes every guide (the 294 others will need their own rewrites first, or the list grows as each is done), and this section becomes a link.

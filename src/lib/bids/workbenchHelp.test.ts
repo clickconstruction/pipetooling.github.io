@@ -31,12 +31,63 @@ describe('workbenchHelpFacts', () => {
   })
 })
 
+/**
+ * The plain-words rules (v2.4228, punch list #58; the Submittals tour's, from
+ * `submittalTour.test.ts`): one idea per sentence, no sentence over 20 words, nothing glued
+ * together with dashes, semicolons, parentheses or dot lists. Words that fail here are
+ * rewritten, never exempted.
+ */
+const MAX_WORDS = 20
+const GLUE = /[—;()·]/
+
+function sentences(text: string): string[] {
+  return text.split(/(?<=[.?!])\s+/).map((s) => s.trim()).filter(Boolean)
+}
+
 describe('WORKBENCH_TOUR_STEPS', () => {
   it('walks the section top to bottom, each stop with an anchor of its own and words to say', () => {
     expect(WORKBENCH_TOUR_STEPS.map((s) => s.anchor)).toEqual(['send-to', 'workbench-scenarios', 'workbench-summary', 'workbench-solver', 'workbench-rows'])
     for (const s of WORKBENCH_TOUR_STEPS) {
       expect(s.title.length).toBeGreaterThan(0)
       expect(s.body.length).toBeGreaterThan(0)
+    }
+  })
+
+  it.each(WORKBENCH_TOUR_STEPS.map((s) => [s.title, s] as const))('%s — short sentences, nothing glued', (_title, step) => {
+    for (const text of [step.title, step.body, step.missingBody ?? '']) {
+      expect(text, text).not.toMatch(GLUE)
+      for (const sentence of sentences(text)) {
+        expect(sentence.split(/\s+/).length, sentence).toBeLessThanOrEqual(MAX_WORDS)
+      }
+    }
+    expect(step.title.split(/\s+/).length, step.title).toBeLessThanOrEqual(8)
+    expect(sentences(step.body).length, step.body).toBeLessThanOrEqual(7)
+  })
+
+  it('every stop says what to do, with a verb the page carries', () => {
+    const verbs = /\b(Tap|Type|Drag|tap|type)\b/
+    for (const step of WORKBENCH_TOUR_STEPS) expect(step.body, step.title).toMatch(verbs)
+  })
+
+  it('every stop names a control by its exact name', () => {
+    const controls = [/＋ Add GC/, /☆ make base/, /Apply/, /Solver ›/, /📌/]
+    WORKBENCH_TOUR_STEPS.forEach((step, i) => expect(step.body, step.title).toMatch(controls[i]!))
+  })
+
+  it('a trade word gets its plain word beside it the first time', () => {
+    const TRADE: Array<[RegExp, RegExp]> = [
+      [/\bpacket\b/i, /what one GC gets/],
+      [/price option/i, /prices for the same GC/],
+      [/\bbase\b/, /the price the GC sees/],
+      [/\bmargin\b/i, /profit as a share of the price/],
+      [/\bpreview\b/i, /not saved yet/],
+      [/\bsolver\b/i, /suggests a price for every row/],
+    ]
+    const bodies = WORKBENCH_TOUR_STEPS.map((s) => s.body)
+    for (const [word, plain] of TRADE) {
+      const first = bodies.find((t) => word.test(t))
+      expect(first, `${word} never appears`).toBeDefined()
+      expect(first, `${word} first appears without its plain word`).toMatch(plain)
     }
   })
 })
