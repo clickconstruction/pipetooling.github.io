@@ -15,11 +15,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import type { CSSProperties } from 'react'
-import { supabase } from '../../lib/supabase'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
+import { useAssistantHoursWindow } from '../../hooks/useAssistantHoursWindow'
 import { APP_CALENDAR_TZ, companyWeekStartSundayContaining, formatWorkDateYmdWeekdayShortFriendly, todayYmdInAppTz, ymdAddDays } from '../../utils/dateUtils'
-import { APP_SETTINGS_KEY_ASSISTANT_HOURS_WINDOW_WEEKS, DEFAULT_ASSISTANT_HOURS_WINDOW_WEEKS, parseAssistantHoursWindowWeeks } from '../../lib/appSettingsKeys'
-import { assistantHoursWindowFloorYmd, clampYmdToFloor } from '../../lib/people/assistantHoursWindow'
+import { clampYmdToFloor } from '../../lib/people/assistantHoursWindow'
 import { fetchWhosWhereWeek } from '../../lib/people/fetchWhosWhereWeek'
 import { isSupervisor } from '../../lib/people/supervision'
 import WhosWhereWeek from './WhosWhereWeek'
@@ -134,24 +133,7 @@ export default function PeopleWhosWhereTab({ authRole }: Props) {
   const today = useMemo(() => todayYmdInAppTz(), [])
   const isAssistant = authRole === 'assistant'
 
-  const [floorYmd, setFloorYmd] = useState<string | null>(() => (isAssistant ? assistantHoursWindowFloorYmd(today, DEFAULT_ASSISTANT_HOURS_WINDOW_WEEKS) : null))
-  useEffect(() => {
-    if (!isAssistant) return
-    let cancelled = false
-    void supabase
-      .from('app_settings')
-      .select('value_num')
-      .eq('key', APP_SETTINGS_KEY_ASSISTANT_HOURS_WINDOW_WEEKS)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (cancelled) return
-        const weeks = parseAssistantHoursWindowWeeks((data as { value_num?: number | null } | null)?.value_num ?? null)
-        setFloorYmd(assistantHoursWindowFloorYmd(today, weeks))
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [isAssistant, today])
+  const { floorYmd } = useAssistantHoursWindow(isAssistant)
 
   const [day, setDay] = useState<string>(() => {
     const fromUrl = searchParams.get('ww_day')

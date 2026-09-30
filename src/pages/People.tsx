@@ -44,12 +44,8 @@ import { usePeopleHoursTeams } from '../hooks/usePeopleHoursTeams'
 import { PeopleHoursDueSummaries } from '../components/people/PeopleHoursDueSummaries'
 import { PeopleHoursSessions } from '../components/people/PeopleHoursSessions'
 import { PeopleHoursWeekRange } from '../components/people/PeopleHoursWeekRange'
-import { assistantHoursWindowFloorYmd, clampHoursRangeToFloor } from '../lib/people/assistantHoursWindow'
-import {
-  APP_SETTINGS_KEY_ASSISTANT_HOURS_WINDOW_WEEKS,
-  DEFAULT_ASSISTANT_HOURS_WINDOW_WEEKS,
-  parseAssistantHoursWindowWeeks,
-} from '../lib/appSettingsKeys'
+import { clampHoursRangeToFloor } from '../lib/people/assistantHoursWindow'
+import { useAssistantHoursWindow } from '../hooks/useAssistantHoursWindow'
 import { PeopleHoursGrid } from '../components/people/PeopleHoursGrid'
 import { PeopleHoursGridJobHighlight, type HoursGridJobHighlightPick } from '../components/people/PeopleHoursGridJobHighlight'
 import { PeopleHoursAlignModal } from '../components/people/PeopleHoursAlignModal'
@@ -143,7 +139,7 @@ import {
   type PeopleHoursPendingCellEntry,
 } from '../lib/peopleHoursPendingByCell'
 import { countClosedPendingSessions, describePendingOutsideVisibleWeek, pendingOutsideVisibleWeek } from '../lib/payWeekAnchor'
-import { denverCalendarDayKey, formatWorkDateYmdWeekdayShortFriendly, localCalendarDayKey, todayYmdInAppTz } from '../utils/dateUtils'
+import { denverCalendarDayKey, formatWorkDateYmdWeekdayShortFriendly, localCalendarDayKey } from '../utils/dateUtils'
 import { PeopleHoursPendingCellPopover } from '../components/people/PeopleHoursPendingCellPopover'
 import { PeopleHoursBulkApprovePendingModal } from '../components/people/PeopleHoursBulkApprovePendingModal'
 import { PeopleHoursApprovalsQueueModal } from '../components/people/PeopleHoursApprovalsQueueModal'
@@ -514,33 +510,8 @@ export default function People() {
     start.setDate(d.getDate() - day + 6)
     return localCalendarDayKey(start)
   })
-  // Assistant hours visibility window (org setting; missing = 3 weeks, 0 = unlimited).
-  const [assistantHoursWindowWeeks, setAssistantHoursWindowWeeks] = useState(
-    DEFAULT_ASSISTANT_HOURS_WINDOW_WEEKS
-  )
-  useEffect(() => {
-    if (!isAssistant) return
-    let cancelled = false
-    void supabase
-      .from('app_settings')
-      .select('value_num')
-      .eq('key', APP_SETTINGS_KEY_ASSISTANT_HOURS_WINDOW_WEEKS)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!cancelled) setAssistantHoursWindowWeeks(parseAssistantHoursWindowWeeks(data?.value_num))
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [isAssistant])
   /** Earliest Hours-tab date visible to this viewer, or null for no limit (non-assistants, or the unlimited setting). */
-  const hoursFloorYmd = useMemo(
-    () =>
-      isAssistant
-        ? assistantHoursWindowFloorYmd(todayYmdInAppTz(), assistantHoursWindowWeeks)
-        : null,
-    [isAssistant, assistantHoursWindowWeeks]
-  )
+  const { floorYmd: hoursFloorYmd } = useAssistantHoursWindow(isAssistant)
   // Snap-back invariant: no code path may leave the range below the floor.
   useEffect(() => {
     if (!hoursFloorYmd) return

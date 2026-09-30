@@ -694,6 +694,7 @@ export function PeopleHoursDayAuditModal({
       {clockCreateOpen && resolvedClockUserId && (
         <ClockSessionEditSplitModal
           createFor={{ userId: resolvedClockUserId, workDate }}
+          dayLocked
           onClose={() => setClockCreateOpen(false)}
           onSaved={() => {
             setClockCreateOpen(false)

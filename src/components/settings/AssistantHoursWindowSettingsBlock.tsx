@@ -56,8 +56,8 @@ export default function AssistantHoursWindowSettingsBlock() {
       if (error) throw error
       showToast(
         unlimited
-          ? 'Assistants can now view all hours history'
-          : `Assistants now see the current week plus ${Math.floor(n) - 1} previous`,
+          ? 'Assistants can now see and type hours on any day'
+          : `Assistants now see and type hours for the current week plus ${Math.floor(n) - 1} previous`,
         'success'
       )
     } catch (e) {
@@ -100,9 +100,11 @@ export default function AssistantHoursWindowSettingsBlock() {
       {open && (
         <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
           <p style={{ marginBottom: '1rem', marginTop: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-            How far back assistants can browse on People → Hours. The window counts whole
-            Sun–Sat weeks including the current one — 3 means the current week plus two
-            previous. Devs, controllers, and pay-approved masters are never limited.
+            How far back assistants can see hours, and how far back they can add or change a
+            clock session. The window counts whole Sun–Sat weeks including the current one — 3
+            means the current week plus two previous. It holds on People → Hours, Who's where and
+            every Add / Edit clock session door; the database refuses a session typed onto an
+            earlier day. Devs, controllers, and pay-approved masters are never limited.
           </p>
           {loading ? (
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>

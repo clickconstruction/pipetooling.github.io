@@ -1,7 +1,20 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
+import { useAuth } from '../hooks/useAuth'
+import { useAssistantHoursWindow } from '../hooks/useAssistantHoursWindow'
+import { missedSpan } from '../lib/clock/missedClockIn'
+import {
+  clampYmdToBounds,
+  dateInputBounds,
+  datetimeLocalBounds,
+  sessionDayBounds,
+  sessionDayNote,
+  sessionDayProblem,
+  sessionDayWords,
+} from '../lib/clock/sessionDayBounds'
 import { splitOwnClockSessionSegments } from '../lib/splitOwnClockSessionSegments'
+import { todayYmdInAppTz } from '../utils/dateUtils'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { fromDatetimeLocal, toDatetimeLocal } from '../utils/datetimeLocal'
 import { SearchableSelect } from './SearchableSelect'
@@ -34,6 +47,12 @@ export type ClockSessionEditSplitModalCreateProps = {
    * session is created for `createFor.userId` (existing day-audit behavior).
    */
   people?: { value: string; label: string }[]
+  /**
+   * The door is about `createFor.workDate` (a day audit, a Team board cell): the day is in the
+   * title and there is no day to pick. Otherwise the day can move inside the person's bounds —
+   * an assistant's hours window through today (v2.4271).
+   */
+  dayLocked?: boolean
   onClose: () => void
   onSaved?: () => void
   showToast?: (message: string, variant?: 'success' | 'error') => void
@@ -45,25 +64,46 @@ export type ClockSessionEditSplitModalProps = ClockSessionEditSplitModalEditProp
 function ClockSessionCreateModal({
   createFor,
   people,
+  dayLocked = false,
   onClose,
   onSaved,
   showToast,
   zIndex = 1100,
 }: ClockSessionEditSplitModalCreateProps) {
-  const [clockIn, setClockIn] = useState(`${createFor.workDate}T08:00`)
-  const [clockOut, setClockOut] = useState(`${createFor.workDate}T17:00`)
+  const { role } = useAuth()
+  // The days this person may type onto: an assistant's hours window through today, or the one
+  // day a day-audit / Team board door is about (v2.4271). The database holds the same floor.
+  const { floorYmd } = useAssistantHoursWindow(role === 'assistant')
+  const todayYmd = useMemo(() => todayYmdInAppTz(), [])
+  const bounds = useMemo(
+    () => sessionDayBounds({ floorYmd, todayYmd, lockedYmd: dayLocked ? createFor.workDate : null }),
+    [floorYmd, todayYmd, dayLocked, createFor.workDate],
+  )
+  const [day, setDay] = useState(() => clampYmdToBounds(createFor.workDate, bounds))
+  const [inTime, setInTime] = useState('08:00')
+  const [outTime, setOutTime] = useState('17:00')
   const [notes, setNotes] = useState('')
   const [selectedUserId, setSelectedUserId] = useState(createFor.userId)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    setClockIn(`${createFor.workDate}T08:00`)
-    setClockOut(`${createFor.workDate}T17:00`)
+    setDay(createFor.workDate)
+    setInTime('08:00')
+    setOutTime('17:00')
     setNotes('')
     setSelectedUserId(createFor.userId)
     setError(null)
   }, [createFor.workDate, createFor.userId])
+  // Snap-back: a floor that arrives after the modal opened never leaves the day outside it.
+  useEffect(() => {
+    setDay((d) => clampYmdToBounds(d, bounds))
+  }, [bounds])
+
+  const span = useMemo(() => missedSpan(day, inTime, outTime), [day, inTime, outTime])
+  const dayProblem = sessionDayProblem(day, bounds)
+  const dayInput = dateInputBounds(bounds)
+  const canSave = !!selectedUserId && !!notes.trim() && !saving && !!span && !dayProblem
 
   function handleBackdropClose() {
     if (!saving) onClose()
@@ -94,7 +134,7 @@ function ClockSessionCreateModal({
         aria-labelledby="clock-session-create-title"
       >
         <h3 id="clock-session-create-title" style={{ margin: '0 0 1rem 0', fontSize: '1rem' }}>
-          Add clock session
+          {bounds.lockedYmd ? `Add clock session · ${sessionDayWords(bounds.lockedYmd)}` : 'Add clock session'}
         </h3>
         {error && <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.8125rem', color: 'var(--text-red-600)' }}>{error}</p>}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -115,32 +155,57 @@ function ClockSessionCreateModal({
               />
             </div>
           ) : null}
-          <div>
-            <label htmlFor="clock-create-in" style={{ display: 'block', marginBottom: 4, fontSize: '0.875rem', fontWeight: 500 }}>
-              Clocked in
-            </label>
-            <input
-              id="clock-create-in"
-              type="datetime-local"
-              value={clockIn}
-              onChange={(e) => setClockIn(e.target.value)}
-              disabled={saving}
-              style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-            />
+          {bounds.lockedYmd ? null : (
+            <div>
+              <label htmlFor="clock-create-day" style={{ display: 'block', marginBottom: 4, fontSize: '0.875rem', fontWeight: 500 }}>
+                Day
+              </label>
+              <input
+                id="clock-create-day"
+                type="date"
+                value={day}
+                min={dayInput.min}
+                max={dayInput.max}
+                onChange={(e) => setDay(e.target.value)}
+                disabled={saving}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
+              />
+            </div>
+          )}
+          <p data-testid="clock-create-day-note" style={{ margin: '-0.25rem 0 0', fontSize: '0.8125rem', color: dayProblem ? 'var(--text-red-600)' : 'var(--text-muted)' }}>
+            {dayProblem ?? sessionDayNote(bounds)}
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+            <div>
+              <label htmlFor="clock-create-in" style={{ display: 'block', marginBottom: 4, fontSize: '0.875rem', fontWeight: 500 }}>
+                Clocked in
+              </label>
+              <input
+                id="clock-create-in"
+                type="time"
+                value={inTime}
+                onChange={(e) => setInTime(e.target.value)}
+                disabled={saving}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
+              />
+            </div>
+            <div>
+              <label htmlFor="clock-create-out" style={{ display: 'block', marginBottom: 4, fontSize: '0.875rem', fontWeight: 500 }}>
+                Clocked out
+              </label>
+              <input
+                id="clock-create-out"
+                type="time"
+                value={outTime}
+                onChange={(e) => setOutTime(e.target.value)}
+                disabled={saving}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
+              />
+            </div>
           </div>
-          <div>
-            <label htmlFor="clock-create-out" style={{ display: 'block', marginBottom: 4, fontSize: '0.875rem', fontWeight: 500 }}>
-              Clocked out
-            </label>
-            <input
-              id="clock-create-out"
-              type="datetime-local"
-              value={clockOut}
-              onChange={(e) => setClockOut(e.target.value)}
-              disabled={saving}
-              style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-            />
-          </div>
+          {span?.endsNextDay ? (
+            <p style={{ margin: '-0.25rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Ends the next day.</p>
+          ) : null}
           <div>
             <label htmlFor="clock-create-notes" style={{ display: 'block', marginBottom: 4, fontSize: '0.875rem', fontWeight: 500 }}>
               What are you working on?
@@ -172,29 +237,23 @@ function ClockSessionCreateModal({
                 setError('Pick a person')
                 return
               }
-              const inVal = fromDatetimeLocal(clockIn)
-              const outVal = fromDatetimeLocal(clockOut)
-              if (!inVal || !outVal) {
-                setError('Invalid date/time')
+              if (dayProblem) {
+                setError(dayProblem)
+                return
+              }
+              if (!span) {
+                setError('Enter the time clocked in and the time clocked out.')
                 return
               }
               if (!notes.trim()) {
                 setError('Notes are required')
                 return
               }
-              if (clockIn.slice(0, 10) !== createFor.workDate || clockOut.slice(0, 10) !== createFor.workDate) {
-                setError(`Clock in and out must fall on ${createFor.workDate} (this day).`)
-                return
-              }
-              if (new Date(outVal) <= new Date(inVal)) {
-                setError('Clocked out must be after clocked in')
-                return
-              }
-              if (new Date(inVal) > new Date()) {
+              if (span.inMs > Date.now()) {
                 setError('Clock-in cannot be in the future')
                 return
               }
-              if (new Date(outVal) > new Date()) {
+              if (span.outMs > Date.now()) {
                 setError('Clock-out cannot be in the future')
                 return
               }
@@ -204,9 +263,9 @@ function ClockSessionCreateModal({
                   async () => {
                     const { error: err } = await supabase.from('clock_sessions').insert({
                       user_id: selectedUserId,
-                      clocked_in_at: inVal,
-                      clocked_out_at: outVal,
-                      work_date: createFor.workDate,
+                      clocked_in_at: new Date(span.inMs).toISOString(),
+                      clocked_out_at: new Date(span.outMs).toISOString(),
+                      work_date: day,
                       notes: notes.trim(),
                       job_ledger_id: null,
                       bid_id: null,
@@ -215,7 +274,7 @@ function ClockSessionCreateModal({
                   },
                   'create clock session'
                 )
-                showToast?.('Clock session added', 'success')
+                showToast?.(`Clock session added for ${sessionDayWords(day)}`, 'success')
                 onSaved?.()
                 onClose()
               } catch (e: unknown) {
@@ -224,17 +283,14 @@ function ClockSessionCreateModal({
                 setSaving(false)
               }
             }}
-            disabled={!selectedUserId || !notes.trim() || saving || !fromDatetimeLocal(clockIn) || !fromDatetimeLocal(clockOut)}
+            disabled={!canSave}
             style={{
               padding: '0.5rem 1rem',
               border: '1px solid #3b82f6',
               borderRadius: 4,
               background: '#3b82f6',
               color: 'white',
-              cursor:
-                selectedUserId && notes.trim() && !saving && fromDatetimeLocal(clockIn) && fromDatetimeLocal(clockOut)
-                  ? 'pointer'
-                  : 'not-allowed',
+              cursor: canSave ? 'pointer' : 'not-allowed',
             }}
           >
             {saving ? 'Saving…' : 'Save'}
@@ -247,6 +303,12 @@ function ClockSessionCreateModal({
 
 function ClockSessionEditSplitModalEdit({ session, onClose, onSaved, showToast, zIndex = 1100 }: ClockSessionEditSplitModalEditProps) {
   const confirmDialog = useConfirmDialog()
+  const { role } = useAuth()
+  // An assistant edits inside her hours window; nobody moves a session into the future (v2.4271).
+  const { floorYmd } = useAssistantHoursWindow(role === 'assistant')
+  const todayYmd = useMemo(() => todayYmdInAppTz(), [])
+  const dayBounds = useMemo(() => sessionDayBounds({ floorYmd, todayYmd }), [floorYmd, todayYmd])
+  const pickerBounds = datetimeLocalBounds(dayBounds)
   const [clockIn, setClockIn] = useState('')
   const [clockOut, setClockOut] = useState('')
   const [notes, setNotes] = useState('')
@@ -338,10 +400,13 @@ function ClockSessionEditSplitModalEdit({ session, onClose, onSaved, showToast, 
         {error && <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.8125rem', color: 'var(--text-red-600)' }}>{error}</p>}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           <div>
-            <label style={{ display: 'block', marginBottom: 4, fontSize: '0.875rem', fontWeight: 500 }}>Clocked in</label>
+            <label htmlFor="clock-edit-in" style={{ display: 'block', marginBottom: 4, fontSize: '0.875rem', fontWeight: 500 }}>Clocked in</label>
             <input
+              id="clock-edit-in"
               type="datetime-local"
               value={clockIn}
+              min={pickerBounds.min}
+              max={pickerBounds.max}
               onChange={(e) => setClockIn(e.target.value)}
               disabled={splitMode}
               style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
@@ -353,6 +418,8 @@ function ClockSessionEditSplitModalEdit({ session, onClose, onSaved, showToast, 
               <input
                 type="datetime-local"
                 value={splitAt}
+                min={pickerBounds.min}
+                max={pickerBounds.max}
                 onChange={(e) => setSplitAt(e.target.value)}
                 style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
               />
@@ -395,10 +462,13 @@ function ClockSessionEditSplitModalEdit({ session, onClose, onSaved, showToast, 
             </p>
           ) : (
             <div>
-              <label style={{ display: 'block', marginBottom: 4, fontSize: '0.875rem', fontWeight: 500 }}>Clocked out</label>
+              <label htmlFor="clock-edit-out" style={{ display: 'block', marginBottom: 4, fontSize: '0.875rem', fontWeight: 500 }}>Clocked out</label>
               <input
+                id="clock-edit-out"
                 type="datetime-local"
                 value={clockOut}
+                min={pickerBounds.min}
+                max={pickerBounds.max}
                 onChange={(e) => setClockOut(e.target.value)}
                 disabled={splitMode}
                 style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
@@ -506,6 +576,11 @@ function ClockSessionEditSplitModalEdit({ session, onClose, onSaved, showToast, 
                   const inVal = fromDatetimeLocal(clockIn)
                   if (!inVal || !splitVal) {
                     setError('Invalid date/time')
+                    return
+                  }
+                  const dayProblem = sessionDayProblem(clockIn.slice(0, 10), dayBounds)
+                  if (dayProblem) {
+                    setError(dayProblem)
                     return
                   }
                   if (!notes.trim() || !splitNotesSecond.trim()) {
@@ -743,6 +818,11 @@ function ClockSessionEditSplitModalEdit({ session, onClose, onSaved, showToast, 
                   const inVal = fromDatetimeLocal(clockIn)
                   if (!inVal) {
                     setError('Invalid date/time')
+                    return
+                  }
+                  const dayProblem = sessionDayProblem(clockIn.slice(0, 10), dayBounds)
+                  if (dayProblem) {
+                    setError(dayProblem)
                     return
                   }
                   if (!notes.trim()) {
