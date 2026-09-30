@@ -31,7 +31,10 @@ import type { FixtureRow, MaterialRow, PaymentRow } from './jobFormTypes'
 // Slice JSON builders (dirty = JSON !== baseline JSON)
 // ---------------------------------------------------------------------------
 
-/** Money slice snapshot — byte-identical to the pre-extraction inline memo. */
+/**
+ * Money slice snapshot. Every payment field `diffPaymentRows` writes is in it — a field the
+ * writer sends and this leaves out is an edit that starts no save (the Sent date, until v2.4244).
+ */
 export function buildBillingSliceJson(fixtures: FixtureRow[], payments: PaymentRow[]): string {
   return JSON.stringify({
     f: fixtures.map((f) => ({
@@ -52,6 +55,7 @@ export function buildBillingSliceJson(fixtures: FixtureRow[], payments: PaymentR
     p: payments.map((p) => ({
       a: p.amount,
       o: p.paid_on,
+      s: p.sent_on ?? null,
       n: p.note,
       t: p.payment_type,
       r: p.reference_number,
@@ -147,6 +151,7 @@ export function paymentInsertRows(jobId: string, payments: PaymentRow[]) {
       amount: Number(p.amount) || 0,
       sequence_order: i,
       paid_on: p.paid_on?.trim() ? p.paid_on.trim() : null,
+      sent_on: p.sent_on?.trim() ? p.sent_on.trim() : null,
       note: p.note?.trim() ? p.note.trim() : null,
       payment_type: p.payment_type?.trim() ? p.payment_type.trim() : null,
       reference_number: p.reference_number?.trim() ? p.reference_number.trim() : null,

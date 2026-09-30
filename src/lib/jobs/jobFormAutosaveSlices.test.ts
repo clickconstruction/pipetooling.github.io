@@ -14,6 +14,7 @@ import {
   type JobIdentityFormFields,
 } from './jobFormAutosaveSlices'
 import type { FixtureRow, MaterialRow, PaymentRow } from './jobFormTypes'
+import { diffPaymentRows } from './paymentRowsDiff'
 
 function fixture(over: Partial<FixtureRow> = {}): FixtureRow {
   return { id: 'f1', name: 'Rough In', count: 1, line_unit_price: 100, line_description: '', invoice_id: null, ...over }
@@ -74,6 +75,32 @@ describe('slice JSON builders', () => {
     expect(a).not.toBe(b)
   })
 
+  it('billing JSON changes when only the Sent date changes — set, moved, cleared (v2.4244)', () => {
+    const none = buildBillingSliceJson([fixture()], [payment()])
+    const set = buildBillingSliceJson([fixture()], [payment({ sent_on: '2026-09-28' })])
+    const moved = buildBillingSliceJson([fixture()], [payment({ sent_on: '2026-09-29' })])
+    expect(set).not.toBe(none)
+    expect(moved).not.toBe(set)
+    expect(buildBillingSliceJson([fixture()], [payment({ sent_on: null })])).toBe(none)
+  })
+
+  it('billing JSON reads a row with no Sent date as it reads a null one — what a job opens with is not an edit', () => {
+    const { sent_on: _omitted, ...bare } = payment({ paid_on: '2026-09-01' })
+    expect(buildBillingSliceJson([], [bare as PaymentRow])).toBe(buildBillingSliceJson([], [payment({ paid_on: '2026-09-01' })]))
+  })
+
+  it('billing JSON changes with every payment field the billing slice writes', () => {
+    const written = Object.keys(diffPaymentRows('job1', [], [payment()]).upserts[0]!)
+    // The row's id and job are not the form's to edit; its order is the order of the list.
+    const edited = written.filter((k) => !['id', 'job_id', 'sequence_order'].includes(k))
+    expect(edited).toContain('sent_on')
+    const base = buildBillingSliceJson([], [payment()])
+    for (const field of edited) {
+      const changed = payment({ [field]: field === 'amount' ? 51 : '2026-09-02' } as Partial<PaymentRow>)
+      expect(buildBillingSliceJson([], [changed]), field).not.toBe(base)
+    }
+  })
+
   it('identity JSON is trim-insensitive', () => {
     expect(buildIdentitySliceJson(identity({ jobName: ' Antonio Hernandez ' }))).toBe(
       buildIdentitySliceJson(identity()),
@@ -96,6 +123,16 @@ describe('insert-row payload builders', () => {
     const rows = paymentInsertRows('job1', [payment({ amount: 0 }), payment({ id: 'p2', amount: 25, note: ' hi ' })])
     expect(rows).toHaveLength(1)
     expect(rows[0]).toMatchObject({ job_id: 'job1', amount: 25, sequence_order: 0, note: 'hi' })
+  })
+
+  it('paymentInsertRows carries the Sent date a new job’s payment was given, and null when it has none', () => {
+    const rows = paymentInsertRows('job1', [payment({ sent_on: ' 2026-09-28 ' }), payment({ id: 'p2', sent_on: '' })])
+    expect(rows.map((r) => r.sent_on)).toEqual(['2026-09-28', null])
+  })
+
+  it('paymentInsertRows sends every field the billing slice’s upsert sends, but the id the database mints', () => {
+    const upsertKeys = Object.keys(diffPaymentRows('job1', [], [payment()]).upserts[0]!).filter((k) => k !== 'id')
+    expect(Object.keys(paymentInsertRows('job1', [payment()])[0]!).sort()).toEqual(upsertKeys.sort())
   })
 
   it('fixtureInsertRows drops unnamed rows and nulls non-positive prices', () => {

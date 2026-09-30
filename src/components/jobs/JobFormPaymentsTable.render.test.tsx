@@ -102,6 +102,19 @@ describe('JobFormPaymentsTable add-affordance placement', () => {
   })
 })
 
+describe('JobFormPaymentsTable — the Sent date (v2.4244)', () => {
+  it('a date picked in the Sent box is handed to the form as the row’s Sent date, and clearing it as none', () => {
+    const update = vi.fn()
+    renderTable([paymentRow({ sent_on: '2026-02-20' })], () => {}, null, update)
+    const sent = screen.getByLabelText('Payment sent date') as HTMLInputElement
+    expect(sent.value).toBe('2026-02-20')
+    fireEvent.change(sent, { target: { value: '2026-02-24' } })
+    expect(update).toHaveBeenLastCalledWith('p1', { sent_on: '2026-02-24' })
+    fireEvent.change(sent, { target: { value: '' } })
+    expect(update).toHaveBeenLastCalledWith('p1', { sent_on: null })
+  })
+})
+
 describe('JobFormPaymentsTable bill-apply chips (v2.2570)', () => {
   it('one unapplied payment: inline chips with the amount match first, one tap applies', () => {
     const update = vi.fn()
