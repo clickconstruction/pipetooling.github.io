@@ -12,7 +12,7 @@ import ResponsiveModalShell from '../ResponsiveModalShell'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { isGoogleDocsUrl, isHttpUrl, shortDocumentLabel } from '../../lib/jobs/jobContractDocument'
 import type { JobContractDraftPayload } from '../../lib/jobs/jobContractDraftWrite'
-import { fileSignedContractReady, fileSignedJobContract } from '../../lib/jobs/jobContractFileWrite'
+import { fileSignedContractDateBlocks, fileSignedContractReady, fileSignedJobContract } from '../../lib/jobs/jobContractFileWrite'
 import type { JobContractRow } from '../../lib/jobs/jobContractLifecycle'
 
 const labelStyle: CSSProperties = { fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }
@@ -92,6 +92,11 @@ export default function JobContractFileSheet({ jobId, defaultSignerName, existin
     }
     if (!isHttpUrl(link.trim()) && !file) {
       showToast('Paste the Google Doc link, or attach a scan.', 'error')
+      return
+    }
+    const dateBlocks = fileSignedContractDateBlocks(signedOn, new Date().getFullYear())
+    if (dateBlocks) {
+      showToast(dateBlocks, 'error')
       return
     }
     setBusy(true)

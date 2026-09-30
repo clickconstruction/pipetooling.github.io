@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { holdsDateBoxChange, isPlausibleDate, readDateBoxEntry, unfinishedDateMessage } from './dateBoxEntry'
+import { holdsDateBoxChange, isPlausibleDate, readDateBoxEntry, unfinishedDateMessage, unfinishedDateStopsMessage } from './dateBoxEntry'
 
 describe('dateBoxEntry', () => {
   it('a date is plausible only as a real day with a full year (a date box hands over 0002-… while the year is typed)', () => {
@@ -53,5 +53,10 @@ describe('dateBoxEntry', () => {
 
   it('the dropped-date line names the year to type', () => {
     expect(unfinishedDateMessage(2026)).toBe('That date was not finished, so it was not saved. Type the year in full, like 2026.')
+  })
+
+  it('the line that stops a send names the box, what the click would have done, and the year to type', () => {
+    expect(unfinishedDateStopsMessage('Start', 'this goes out', 2026)).toBe('Finish the “Start” date before this goes out. Type the year in full, like 2026.')
+    expect(unfinishedDateStopsMessage('Signature', 'this is issued', 2027)).toBe('Finish the “Signature” date before this is issued. Type the year in full, like 2027.')
   })
 })

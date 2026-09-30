@@ -9,6 +9,8 @@
  */
 import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
+import { isUnfinishedDate } from '../autosaveDateHold'
+import { unfinishedDateStopsMessage } from '../dateBoxEntry'
 import type { JobContractDraftPayload } from './jobContractDraftWrite'
 import { isHttpUrl } from './jobContractDocument'
 import { isAwaitingPaperCopy } from './jobContractHandoff'
@@ -25,6 +27,11 @@ export function paperUploadPath(rowId: string, fileName: string): string {
 /** What the filing needs before it can write: a link or a file, and a name. */
 export function fileSignedContractReady(input: { link: string; file: File | null; signerName: string }): boolean {
   return Boolean(input.signerName.trim()) && (isHttpUrl(input.link) || input.file != null)
+}
+
+/** Why the filing cannot be recorded yet, or null: the Signed-on date becomes the record's signed date, and a half-typed year would be locked into it. */
+export function fileSignedContractDateBlocks(signedOn: string, thisYear: number): string | null {
+  return isUnfinishedDate(signedOn) ? unfinishedDateStopsMessage('Signed on', 'this is filed', thisYear) : null
 }
 
 export async function fileSignedJobContract(input: {

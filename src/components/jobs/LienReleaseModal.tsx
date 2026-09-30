@@ -14,6 +14,7 @@ import {
   lienWaiverInvoiceOpenRemaining,
   lienWaiverPdfFilename,
   lienWaiverTitle,
+  lienWaiverUnfinishedDateBlocksIssue,
   lienWaiverUsesField,
   type LienWaiverFields,
   type LienWaiverFormType,
@@ -474,6 +475,12 @@ export default function LienReleaseModal({
     async (target: 'issued' | 'awaiting_signature'): Promise<JobLienReleaseRow | null> => {
       if (!fields || !job || mintBusy) return null
       if (releaseRow && lienReleaseIsMinted(releaseRow)) return releaseRow
+      // The mint locks the row as it reads: a through or signature date with its year half typed stops here.
+      const dateBlocks = lienWaiverUnfinishedDateBlocksIssue(formType, fields, new Date().getFullYear())
+      if (dateBlocks) {
+        showToast(dateBlocks, 'error')
+        return null
+      }
       const payload = buildRowPayload()
       if (!payload) return null
       setMintBusy(true)

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { fileSignedContractReady, paperUploadPath } from './jobContractFileWrite'
+import { fileSignedContractDateBlocks, fileSignedContractReady, paperUploadPath } from './jobContractFileWrite'
 
 describe('filing a signed contract', () => {
   it('names the upload by the row and a safe extension', () => {
@@ -16,5 +16,11 @@ describe('filing a signed contract', () => {
     expect(fileSignedContractReady({ link: 'not a link', file: null, signerName: 'Dudley Mason' })).toBe(false)
     expect(fileSignedContractReady({ link: '', file, signerName: 'Dudley Mason' })).toBe(true)
     expect(fileSignedContractReady({ link: '', file, signerName: ' ' })).toBe(false)
+  })
+
+  it('stops on a Signed-on date with its year half typed; a finished date or none (recorded as now) goes through', () => {
+    expect(fileSignedContractDateBlocks('2026-09-30', 2026)).toBeNull()
+    expect(fileSignedContractDateBlocks('', 2026)).toBeNull()
+    expect(fileSignedContractDateBlocks('0026-09-30', 2026)).toBe('Finish the “Signed on” date before this is filed. Type the year in full, like 2026.')
   })
 })

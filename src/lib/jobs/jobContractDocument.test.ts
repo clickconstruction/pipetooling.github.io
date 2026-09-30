@@ -3,6 +3,8 @@ import {
   buildJobContractDocumentHtml,
   buildJobContractPrefill,
   jobContractDatesUnfinished,
+  jobContractUnfinishedDateBlocks,
+  jobContractUnfinishedDates,
   jobContractHeading,
   parseJobContractFields,
   paymentTermsSentence,
@@ -72,6 +74,17 @@ describe('fields and terms', () => {
     expect(jobContractDatesUnfinished({ start_date: '2026-10-01', completion_date: '0202-11-15' })).toBe(true)
     // A year typed as two digits.
     expect(jobContractDatesUnfinished({ start_date: '0026-10-01', completion_date: null })).toBe(true)
+  })
+
+  it('a half-typed date stops the draft leaving the window, and the line names the first such box', () => {
+    expect(jobContractUnfinishedDates({ start_date: '2026-10-01', completion_date: null })).toEqual([])
+    expect(jobContractUnfinishedDates({ start_date: '0026-10-01', completion_date: '0202-11-15' })).toEqual(['start_date', 'completion_date'])
+    expect(jobContractUnfinishedDateBlocks({ start_date: null, completion_date: null }, 'out', 2026)).toBeNull()
+    expect(jobContractUnfinishedDateBlocks({ start_date: '2026-10-01', completion_date: '2026-11-15' }, 'out', 2026)).toBeNull()
+    expect(jobContractUnfinishedDateBlocks({ start_date: '0026-10-01', completion_date: '0202-11-15' }, 'out', 2026)).toBe('Finish the “Start” date before this goes out. Type the year in full, like 2026.')
+    expect(jobContractUnfinishedDateBlocks({ start_date: '2026-10-01', completion_date: '0026-11-15' }, 'out', 2026)).toBe('Finish the “Estimated completion” date before this goes out. Type the year in full, like 2026.')
+    // Filing a signed copy records the draft as signed: the same stop, in its own words.
+    expect(jobContractUnfinishedDateBlocks({ start_date: '0002-10-01', completion_date: null }, 'filed', 2026)).toBe('Finish the “Start” date before this is filed. Type the year in full, like 2026.')
   })
 
   it('payment sentence fills in the deposit', () => {
