@@ -261,6 +261,7 @@ export function useTeamBoardActions({ board, reload, role, authUserId, ackIdByKe
       {addSession ? (
         <ClockSessionEditSplitModal
           createFor={{ userId: addSession.userId, workDate: addSession.workDate }}
+          dayLocked
           zIndex={1200}
           onClose={() => setAddSession(null)}
           onSaved={() => {
