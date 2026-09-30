@@ -41,6 +41,7 @@ export type TeamSampleEmailId =
   | 'ready_to_bill'
   | 'schedule_day'
   | 'schedule_share'
+  | 'recurring_job_report'
   | 'signed_agreement_staff'
   | 'estimate_accepted_staff'
   | 'gc_word_ask'
@@ -94,6 +95,16 @@ export function shortDayLabel(ymd: string, plusDays: number): string {
   if (!m) return ymd
   const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]) + plusDays))
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })
+}
+
+/** The Sun–Sat week holding `ymd`, as `YYYY-MM-DD` — the Job activity report's weekly window. */
+export function sunSatWeekOf(ymd: string): { start: string; end: string } {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd)
+  if (!m) return { start: ymd, end: ymd }
+  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])))
+  const sun = new Date(d.getTime() - d.getUTCDay() * 86_400_000)
+  const sat = new Date(sun.getTime() + 6 * 86_400_000)
+  return { start: sun.toISOString().slice(0, 10), end: sat.toISOString().slice(0, 10) }
 }
 
 export type TeamEmail = {
@@ -330,8 +341,8 @@ export const TEAM_EMAILS: readonly TeamEmail[] = [
     label: 'Job activity report',
     when: { kind: 'weekly', label: 'On each schedule’s days and time', order: 34 },
     recipients: { roles: EVERYONE, decidedBy: 'setting', list: 'recurring_job_report', rule: 'The people on each schedule (Emails & reports → Job reports).' },
-    sampleSubject: () => 'Job activity report — J1054 Sam Sample',
-    render: { kind: 'soon', note: 'Built inside recurring-job-report-dispatch over the job’s week.' },
+    sampleSubject: (c) => `Job activity summary — week ${sunSatWeekOf(c.todayYmd).start} to ${sunSatWeekOf(c.todayYmd).end}`,
+    render: { kind: 'sample', sample: 'recurring_job_report' },
     manage: stream('digest', 'Emails & reports → Job reports'),
     reflects: ['each schedule’s scope'],
   },
