@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { jobScopeRows } from '../lib/bids/alternateAcceptance'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
 import { pickLegacyDataTemplateId } from '../lib/bids/legacyTemplatePricing'
@@ -773,7 +774,8 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     } else {
       defaults = await loadFixtureLaborDefaults()
     }
-    await loadCostEstimateLaborRowsAndSync(est.id, countRows, defaults)
+    // v2.4196: a declined alternate's rows leave the labor budget once the bid is won.
+    await loadCostEstimateLaborRowsAndSync(est.id, jobScopeRows(countRows, selectedBidForCostEstimate), defaults)
     settleCostEstimateLoad(bidId, true)
   }
 

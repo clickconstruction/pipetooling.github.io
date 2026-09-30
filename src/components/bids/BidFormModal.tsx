@@ -24,6 +24,8 @@ import { BidPlansFolderSteps } from './BidPlansFolderSteps'
 import { BidPriceRequestsTable } from './BidPriceRequestsTable'
 import { getBidServiceTypeTag } from '../../utils/unifiedJobBidSearch'
 import { BidWonJobActions } from './BidWonJobActions'
+import { agreedValueFromAcceptance, isAcceptedTag, offeredAlternates, toggleAcceptedTag } from '../../lib/bids/alternateAcceptance'
+import { formatCurrency } from '../../lib/format'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { bidAutosaveStatusLine, bidFormFooterLabels, type BidAutosaveStatus } from '../../lib/bids/bidFormAutosave'
 
@@ -308,6 +310,7 @@ export function BidFormModal(props: BidFormModalProps) {
     lossCategory,
     bidValue,
     agreedValue,
+    acceptedAlternateTags,
     profit,
     distanceFromOffice,
     lastContact,
@@ -343,6 +346,7 @@ export function BidFormModal(props: BidFormModalProps) {
     setLossCategory,
     setBidValue,
     setAgreedValue,
+    setAcceptedAlternateTags,
     setProfit,
     setDistanceFromOffice,
     setLastContact,
@@ -923,6 +927,38 @@ export function BidFormModal(props: BidFormModalProps) {
                       <input type="date" value={estimatedJobStartDate} onChange={(e) => setEstimatedJobStartDate(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
                     </div>
                   )}
+                  {outcome === 'won' && editingBid && offeredAlternates(editingBid).some((a) => a.offered) ? (() => {
+                    // v2.4196: the customer's answer to the with-and-without alternates — accepted ones fold
+                    // into the agreed value; a declined one's rows leave the job's numbers.
+                    const alts = offeredAlternates(editingBid).filter((a) => a.offered)
+                    const sent = bidValue.trim() ? parseFloat(bidValue.replace(/[$,]/g, '')) : NaN
+                    const agreed = agreedValueFromAcceptance(Number.isFinite(sent) ? sent : null, alts, acceptedAlternateTags)
+                    return (
+                      <div data-testid="bid-won-alternates" style={{ flexBasis: '100%', minWidth: 0, display: 'grid', gap: '0.3rem', padding: '0.5rem 0.75rem', border: '1px solid var(--text-amber-700)', borderRadius: 8, background: 'var(--bg-amber-tint)' }}>
+                        <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-amber-700)' }}>Which alternates did they take?</span>
+                        {alts.map((a) => (
+                          <label key={a.key} style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.85rem', cursor: 'pointer' }}>
+                            <input
+                              type="checkbox"
+                              checked={isAcceptedTag(a.tag, acceptedAlternateTags)}
+                              onChange={(e) => {
+                                const next = toggleAcceptedTag(acceptedAlternateTags, a.tag, e.target.checked)
+                                setAcceptedAlternateTags(next)
+                                const value = agreedValueFromAcceptance(Number.isFinite(sent) ? sent : null, alts, next)
+                                if (value != null) setAgreedValue(String(value))
+                              }}
+                              style={{ margin: 0 }}
+                            />
+                            <span><strong>{a.tag}</strong> <span style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.06em', padding: '0 0.3rem', borderRadius: 3, border: '1px solid var(--text-amber-700)', color: 'var(--text-amber-700)' }}>ALT</span></span>
+                            <span style={{ color: 'var(--text-muted)' }}>{a.amount != null ? `adds $${formatCurrency(a.amount)}` : 'not priced on the letter yet'}</span>
+                          </label>
+                        ))}
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                          {agreed != null ? <>Agreed value <strong style={{ color: 'var(--text-strong)' }}>${formatCurrency(agreed)}</strong> · the sent value stays ${formatCurrency(Number.isFinite(sent) ? sent : 0)}</> : 'Set the bid value and the agreed value follows.'}
+                        </span>
+                      </div>
+                    )
+                  })() : null}
                   {editingBid ? (
                     // Tier-1 #8: the Job block lives beside Win/Loss — the person recording the win is
                     // the person who needs the job next. (It used to hide at the bottom of the Copy Bid

@@ -35,6 +35,13 @@ On **Cover Letter**, under **In this cover letter**, each alternate has an **Off
 
 Untick **Offer** and the alternate's price folds back into the proposed amount, as if it were never an alternate.
 
+## When they answer
+
+Mark the bid **Won** (Edit Bid, or a GC's packet on the Bid Board) and it asks **which alternates they took**. Tick the ones they did: the **Agreed value** becomes the sent base plus those add-ons, and the sent value stays as history. A GC's packet asks the same, one yes or no per alternate.
+
+- A declined alternate's rows stay on the bid, greyed **ALT · declined**, and leave the job's materials, book fill, schedule of values and labor hours. Nothing is deleted, so a customer who comes back for it later is one tick away.
+- The Bid Board shows the agreed value with a green **alt taken** chip, or **alt declined** when they passed.
+
 ## What the Bid Board shows
 
 **Mark sent today** stamps the base as the bid's value and remembers what each offered alternate adds. The Bid Board shows the value with a small **+$2.7k alt** beside it; hover it for each alternate's amount. A version priced *in lieu of* the proposal (see [bid one project to multiple GCs](?g=bid-one-project-to-multiple-gcs)) is a different thing and keeps its own heading on the letter.

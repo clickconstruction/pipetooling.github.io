@@ -100,6 +100,7 @@ import type { Database } from '../../types/database'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import type { BidCountRow } from '../../types/bids'
 import { isAlternateRow } from '../../lib/bids/countSheet'
+import { isDeclinedRow, jobScopeRows } from '../../lib/bids/alternateAcceptance'
 import type {
   MaterialTemplateWithAssemblyType,
   TakeoffBookEntry,
@@ -535,17 +536,22 @@ export function BidsTakeoffTab({
       !!selectedBidForTakeoff?.id && takeoffIsRough && !hasStoredTakeoffView(typeof window !== 'undefined' ? window.localStorage : null),
     )
   }, [selectedBidForTakeoff?.id, takeoffIsRough])
+  // v2.4196: once the bid is won, a declined alternate's rows stay on the sheet (grey mark) but leave
+  // the materials total, the book fill and the schedule of values — the job's numbers.
+  const jobRows = useMemo(() => jobScopeRows(takeoffCountRows, selectedBidForTakeoff), [takeoffCountRows, selectedBidForTakeoff])
   const bookFillPlan = useMemo(() => {
     if (!takeoffIsRough || !selectedTakeoffBookVersionId || takeoffBookEntriesVersionId !== selectedTakeoffBookVersionId) return null
-    return planBookFill(takeoffCountRows, takeoffRoughPartLines, takeoffBookEntries)
-  }, [takeoffIsRough, selectedTakeoffBookVersionId, takeoffBookEntriesVersionId, takeoffCountRows, takeoffRoughPartLines, takeoffBookEntries])
+    return planBookFill(jobRows, takeoffRoughPartLines, takeoffBookEntries)
+  }, [takeoffIsRough, selectedTakeoffBookVersionId, takeoffBookEntriesVersionId, jobRows, takeoffRoughPartLines, takeoffBookEntries])
   const bookFillButton = fillFromBookLabel(bookFillPlan, applyingTakeoffBookTemplates, takeoffIsRough)
   // New 1 / New 2 substrate (v2.2778): coverage is the same math the Labor tab and Workbench use.
-  const takeoffCoverage = useMemo(() => summarizeTakeoffCoverage(takeoffCountRows, takeoffRoughPartLines), [takeoffCountRows, takeoffRoughPartLines])
+  const takeoffCoverage = useMemo(() => summarizeTakeoffCoverage(jobRows, takeoffRoughPartLines), [jobRows, takeoffRoughPartLines])
   // v2.4191: the bid's alternate groups — the rail splits materials by them; an alternate's row wears the ALT mark.
   const altTags: readonly string[] = selectedBidForTakeoff?.alternate_group_tags ?? []
   const altChip = (row: BidCountRow) =>
-    isAlternateRow(row, altTags) ? (
+    selectedBidForTakeoff && isDeclinedRow(row, selectedBidForTakeoff) ? (
+      <span title="The customer did not take this alternate — the row stays on the bid and is out of the job's materials" style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.06em', padding: '0 0.3rem', borderRadius: 3, border: '1px solid var(--border-strong)', color: 'var(--text-muted)', marginLeft: '0.35rem', verticalAlign: '1px' }}>ALT · declined</span>
+    ) : isAlternateRow(row, altTags) ? (
       <span title="In an alternate group — priced with and without" style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.06em', padding: '0 0.3rem', borderRadius: 3, border: '1px solid var(--text-amber-700)', color: 'var(--text-amber-700)', marginLeft: '0.35rem', verticalAlign: '1px' }}>ALT</span>
     ) : null
 
@@ -618,7 +624,7 @@ export function BidsTakeoffTab({
     const extra = new Map<string, number>()
     for (const f of takeoffCoverage.perFixture.values()) extra.set(f.countRowId, f.roundingExtra)
     return computeMaterialsByStage({
-      countRows: takeoffCountRows,
+      countRows: jobRows,
       lines: takeoffRoughPartLines,
       roundingExtraByCountRow: extra,
       splits: stageSplits,

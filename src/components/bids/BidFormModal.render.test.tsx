@@ -46,6 +46,7 @@ const values: BidEditFormValues = {
   lossCategory: null,
   bidValue: '',
   agreedValue: '',
+  acceptedAlternateTags: [],
   profit: '',
   distanceFromOffice: '',
   robotOptOut: false,
