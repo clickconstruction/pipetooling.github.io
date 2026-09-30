@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ComputedBidPricingRow } from '../bidPricingRowCalculations'
-import { boardAlternateAddOn, buildAddAlternatesBlock, offeredAddAlternates, splitLetterTotalsByAlternate, stampAddAlternateAmounts } from './coverLetterAddAlternates'
+import { alternateIsPriced, boardAlternateAddOn, buildAddAlternatesBlock, offeredAddAlternates, splitLetterTotalsByAlternate, stampAddAlternateAmounts } from './coverLetterAddAlternates'
 import { buildCoverLetterHtml, buildCoverLetterText } from '../bidDocuments/coverLetter'
 
 const row = (id: string, fixture: string, count: number, revenue: number, omit = false): ComputedBidPricingRow =>
@@ -31,6 +31,21 @@ describe('coverLetterAddAlternates (v2.4195)', () => {
     const worded = buildAddAlternatesBlock(offered, 10524, { sections: { 'group:break room': { label: 'Alternate 1 — Break room plumbing', note: 'The break room sink and its drain.' } } }, fmt, true)!
     expect(worded.items[0]).toMatchObject({ label: 'Alternate 1 — Break room plumbing', note: 'The break room sink and its drain.', editKey: 'group:break room' })
     expect(buildAddAlternatesBlock([], 10524, {}, fmt)).toBeNull()
+  })
+
+  it('v2.4224: an unpriced alternate reads "price to follow" — never "add $0 (with it, <the base>)"', () => {
+    const s = splitLetterTotalsByAlternate(rows, countRows, ['Break room'])!
+    const unpriced = offeredAddAlternates(s, {}).map((g) => ({ ...g, revenueSum: 0 }))
+    const block = buildAddAlternatesBlock(unpriced, s.base.revenueSum, {}, fmt)!
+    expect(block.items[0]).toMatchObject({ label: 'Alternate 1 — Break room', deltaText: null, amountFormatted: 'price to follow' })
+    const html = buildCoverLetterHtml('GC', 'addr', 'Sunridge Dental', 'proj', 'TEN THOUSAND', '$10,524.00', s.base.fixtureRows, '', '', '', null, 'Plumbing', true, true, null, null, null, null, null, null, block)
+    expect(html).toContain('price to follow')
+    expect(html).not.toContain('add $0')
+    expect(alternateIsPriced({ revenueSum: 0 })).toBe(false)
+    expect(alternateIsPriced({ revenueSum: Number.NaN })).toBe(false)
+    expect(alternateIsPriced({ revenueSum: 2717 })).toBe(true)
+    // nothing to stamp for it either
+    expect(stampAddAlternateAmounts({}, { ...s, alternates: s.alternates.map((a) => ({ ...a, revenueSum: 0 })) })).toEqual({})
   })
 
   it('prints after the in-lieu block in the html and the text', () => {

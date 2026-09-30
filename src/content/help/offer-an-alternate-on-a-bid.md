@@ -33,7 +33,7 @@ On **Cover Letter**, under **In this cover letter**, each alternate has an **Off
 - a block under it, **Alternates — priced in addition to the proposal above**, reads *Alternate 1 — Break room: add $2,717 (with it, $13,241.00)*, with the fixtures it covers on the next line;
 - click the dashed wording on the preview (or ✎) to rename it or add a note — *Reset* returns to the automatic name.
 
-Untick **Offer** and the alternate's price folds back into the proposed amount, as if it were never an alternate.
+Untick **Offer** and the alternate's price folds back into the proposed amount, as if it were never an alternate. An alternate whose rows have no sale price yet says {{chip:yellow|not priced yet}} here, and the letter reads *price to follow* for it instead of an amount; the signable link leaves it out until it is priced.
 
 ## When they answer
 
