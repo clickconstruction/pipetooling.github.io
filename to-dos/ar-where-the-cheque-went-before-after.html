@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AR: where the cheque went</title>
+<style>
+  /* Same single dark look as the other to-do mock-ups. Every "app" panel is a render of the Accounts Receivable deposit column. */
+  :root { --ground: #0f141c; --panel: #161c26; --panel2: #1c2431; --line: #2a3442; --line2: #3a4658; --ink: #e6eaf0; --muted: #8a97a8; --blue: #3b82f6; --green: #22c55e; --red: #ef4444; --amber: #f59e0b; --violet: #a78bfa; --mono: ui-monospace, Menlo, monospace; color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 14px/1.45 -apple-system, "Segoe UI", system-ui, sans-serif; padding: 0 16px 60px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 26px 0 12px; border-bottom: 2px solid var(--line2); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 24px; line-height: 1.15; text-wrap: balance; }
+  .stamp { font-family: var(--mono); font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 17px; margin: 32px 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; }
+  .tag.before { background: #3f1d1d; color: #fca5a5; } .tag.draft { background: #3a2f10; color: #fcd34d; } .tag.after { background: #14351f; color: #86efac; } .tag.data { background: #2a2540; color: #c4b5fd; } .tag.ask { background: #1e2f55; color: #93c5fd; }
+  .lede { margin: 0 0 12px; color: var(--muted); max-width: 95ch; } .lede b { color: var(--ink); }
+  .callouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; margin: 0 0 14px; padding: 0; list-style: none; }
+  .callouts li { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--red); border-radius: 6px; padding: 8px 10px; font-size: 12.5px; color: var(--muted); min-width: 0; }
+  .callouts li b { display: block; color: var(--ink); margin-bottom: 2px; }
+  .callouts.good li { border-left-color: var(--green); } .callouts.ask li { border-left-color: var(--blue); } .callouts.calls li { border-left-color: var(--amber); }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 0 0 8px; }
+  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; min-width: 0; }
+  .stat .n { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .stat .l { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .stat.red .n { color: #fca5a5; } .stat.amber .n { color: #fcd34d; } .stat.blue .n { color: #93c5fd; }
+  .foot { font-size: 12px; color: var(--muted); margin: 4px 0 0; }
+
+  .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 18px; }
+  .app { background: #131a24; border: 1px solid var(--line2); border-radius: 10px; padding: 14px 16px; min-width: 0; }
+  .app .name { font-size: 12px; color: var(--muted); margin: 0 0 10px; display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .app .name b { color: var(--ink); }
+
+  /* the AR deposit column */
+  .colhead { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  .colhead .t { font-weight: 700; font-size: 13px; }
+  .seg { display: inline-flex; border: 1px solid var(--line2); border-radius: 999px; overflow: hidden; }
+  .seg span { padding: 3px 11px; font-size: 12px; color: var(--muted); border-left: 1px solid var(--line2); white-space: nowrap; }
+  .seg span:first-child { border-left: 0; }
+  .seg span.on { background: #1a2942; color: var(--ink); font-weight: 600; }
+  .search { border: 1px solid var(--line2); border-radius: 6px; padding: 6px 9px; font-size: 12.5px; color: var(--muted); background: var(--panel); margin-bottom: 8px; display: flex; justify-content: space-between; gap: 8px; }
+  .search .typed { color: var(--ink); font-family: var(--mono); }
+  .empty { border: 1px dashed var(--line2); border-radius: 8px; padding: 18px 12px; text-align: center; color: var(--muted); font-size: 12.5px; }
+  .dep { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; background: var(--panel); font-size: 12.5px; }
+  .dep .r1 { display: flex; justify-content: space-between; gap: 8px; }
+  .dep .amt { font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; }
+  .dep .sub { font-size: 11.5px; color: var(--muted); }
+
+  /* draft 1: flat table */
+  table.flat { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.flat th { text-align: left; font-weight: 600; color: var(--muted); font-size: 11px; padding: 4px 5px; border-bottom: 1px solid var(--line2); white-space: nowrap; }
+  table.flat td { padding: 5px; vertical-align: top; border-top: 1px solid var(--line); }
+  table.flat td.n { white-space: nowrap; font-variant-numeric: tabular-nums; text-align: right; }
+  table.flat td.d { white-space: nowrap; color: var(--muted); font-variant-numeric: tabular-nums; }
+  table.flat tr.gone td { color: var(--muted); text-decoration: line-through; text-decoration-color: #64748b; }
+  table.flat tr.gone td.keep { text-decoration: none; }
+  .scroll { overflow-x: auto; }
+  .chip { display: inline-block; border-radius: 999px; padding: 0 7px; font-size: 11px; font-weight: 600; white-space: nowrap; border: 1px solid var(--line2); color: var(--muted); }
+  .chip.red { background: #3f1d1d; border-color: #7f1d1d; color: #fca5a5; }
+  .chip.green { background: #0f2a1c; border-color: #1f5a3a; color: #86efac; }
+  .chip.amber { background: #2b2410; border-color: #4b3a10; color: #fcd34d; }
+  .chip.grey { background: var(--panel2); }
+  .more { font-size: 12px; color: var(--muted); padding: 6px 5px 0; }
+  .mine { display: inline-flex; gap: 5px; align-items: center; font-size: 12px; color: var(--muted); }
+  .box { width: 13px; height: 13px; border: 1px solid var(--line2); border-radius: 3px; display: inline-block; }
+
+  /* revised */
+  .answer { border: 1px solid #1f5a3a; background: #0f2a1c; border-radius: 8px; padding: 9px 11px; margin-bottom: 10px; font-size: 13px; }
+  .answer .h { font-weight: 700; margin-bottom: 3px; }
+  .answer .trail { font-size: 12px; color: #a7f3d0; margin-top: 4px; }
+  .answer .trail s { color: #6ee7b7; opacity: .7; }
+  .look { border: 1px solid #4b3a10; background: #221c0c; border-radius: 8px; padding: 8px 10px; margin-bottom: 10px; }
+  .look .h { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #fcd34d; margin-bottom: 6px; }
+  .look .item { display: flex; justify-content: space-between; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 12.5px; padding: 5px 0; border-top: 1px solid #3a2f10; }
+  .look .item:first-of-type { border-top: 0; }
+  .look .item .why { color: var(--muted); font-size: 11.5px; }
+  .look .item.done { opacity: .55; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line2); background: var(--panel); color: var(--ink); border-radius: 6px; padding: 3px 9px; font: inherit; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .btn.blue { background: #1a2942; border-color: #3b5b8f; color: #93c5fd; }
+  .btns { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+  .day { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 10px 0 5px; }
+  .chq { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; background: var(--panel); font-size: 12.5px; }
+  .chq .r1 { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .chq .payer { font-weight: 700; }
+  .chq .amt { font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; }
+  .chq .meta { font-size: 11.5px; color: var(--muted); }
+  .chq ul { list-style: none; margin: 5px 0 0; padding: 0; }
+  .chq li { display: flex; justify-content: space-between; gap: 8px; padding: 3px 0 3px 12px; border-left: 2px solid var(--line2); margin-top: 3px; font-size: 12px; }
+  .chq li .n { font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--muted); }
+  .chq li .n b { color: var(--ink); font-weight: 600; }
+  .chq .trail { font-size: 11.5px; color: var(--muted); margin-top: 5px; }
+  .chq .trail s { opacity: .7; }
+  .chq.bad { border-color: #7f1d1d; }
+  .chq .fold { font-size: 11.5px; color: #93c5fd; margin-top: 4px; }
+  .who { font-size: 11px; color: var(--muted); }
+  .who b { color: var(--ink); font-weight: 600; }
+  .plan { counter-reset: pr; list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+  .plan li { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px 8px 42px; position: relative; font-size: 12.5px; color: var(--muted); }
+  .plan li::before { counter-increment: pr; content: "PR " counter(pr); position: absolute; left: 8px; top: 9px; font: 700 10px var(--mono); color: #93c5fd; }
+  .plan li b { color: var(--ink); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div>
+    <p class="eyebrow">To-do mock-up · Accounts Receivable</p>
+    <h1>Where did that cheque go?</h1>
+  </div>
+  <div class="stamp">read against prod · Sep 30, 2026, after 4 PM<br>payments applied or taken off, last 30 days</div>
+</header>
+
+<h2><span class="tag data">What prompted it</span> A $6,077.51 cheque "missing" from AR</h2>
+<p class="lede">The office searched Accounts Receivable for <b>$6,077.51</b> and found nothing. It wasn't lost: it had been <b>applied</b>, so it left <i>To match</i>, the only list the search looks in. While we traced it, Taunya moved it from #878 Take 5- Seguin to #650 ATI Schertz and took a $5,622.49 Loberg cheque off #650, which now sits unapplied. Next to it was a <b>$13,680 Southern Post</b> cheque. It paid a bill on 9/21, the bank failed it on 9/23 (insufficient funds), and it came off the bill on 9/24 when Taunya marked it returned. That bounce is <b>punch list #40</b>: the returned-check Needs You card, the office notice and the Pipeline badge (v2.3795–3806) were built from it on 9/23–24.</p>
+<div class="stats">
+  <div class="stat"><div class="n">38</div><div class="l">payments applied or taken off in 30 days</div></div>
+  <div class="stat blue"><div class="n">27</div><div class="l">cheques and deposits behind them</div></div>
+  <div class="stat amber"><div class="n">5</div><div class="l">taken off again (moved, returned, fixed)</div></div>
+  <div class="stat amber"><div class="n">15</div><div class="l">with no name on who applied them</div></div>
+  <div class="stat red"><div class="n">1</div><div class="l">bounced while it was paying a bill</div></div>
+</div>
+
+<!-- ======================= BEFORE ======================= -->
+<h2><span class="tag before">Today</span> The deposit column</h2>
+<p class="lede">Two lists: <b>To match</b> (money still to apply) and <b>All</b> (everything ever, oldest mixed with newest). Nothing answers "what did we do lately", and the search only looks in the list you're on.</p>
+<div class="pair">
+  <div class="app">
+    <p class="name"><b>Accounts Receivable → Deposits</b><span>searching the cheque</span></p>
+    <div class="colhead"><span class="t">Deposits</span><span class="seg"><span class="on">To match</span><span>All</span></span></div>
+    <div class="search"><span class="typed">6077.51</span><span>×</span></div>
+    <div class="empty">No deposits match.<br><span style="font-size:11.5px">It was applied, so it isn't "to match". Nothing says that.</span></div>
+  </div>
+  <div class="app">
+    <p class="name"><b>Same search, on All</b><span>if you think to flip it</span></p>
+    <div class="colhead"><span class="t">Deposits</span><span class="seg"><span>To match</span><span class="on">All</span></span></div>
+    <div class="search"><span class="typed">6077.51</span><span>×</span></div>
+    <div class="dep"><div class="r1"><span>Lober’s Construction Co</span><span class="amt">$6,077.51</span></div><div class="sub">Check deposit · 9/28 · $0.00 remaining</div></div>
+    <div class="dep"><div class="r1"><span>Mercury Checking ••6605</span><span class="amt">$6,077.51</span></div><div class="sub">Internal transfer · 9/28 · the savings rule</div></div>
+    <p class="foot">Found, but to see which job it paid you open it. Nothing says it moved today.</p>
+  </div>
+</div>
+
+<!-- ======================= DRAFT 1 ======================= -->
+<h2><span class="tag draft">Draft 1</span> A third list: Applied · 30 days</h2>
+<p class="lede">The first idea: one more setting on the switch. It lists every payment applied in the last 30 days, newest first, with who applied it, the cheque, the job and bill, and a chip for trouble. Removed payments stay, struck through. A <b>Mine</b> box narrows it to yours.</p>
+<div class="app">
+  <p class="name"><b>Accounts Receivable → Deposits → Applied · 30 days</b><span>38 rows</span></p>
+  <div class="colhead"><span class="t">Deposits</span><span style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="mine"><span class="box"></span>Mine</span><span class="seg"><span>To match</span><span class="on">Applied · 30 days</span><span>All</span></span></span></div>
+  <div class="scroll">
+  <table class="flat">
+    <thead><tr><th>Applied</th><th>By</th><th>Cheque</th><th style="text-align:right">Amount</th><th>Job · bill</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td class="d">9/30 4:02p</td><td>Taunya</td><td>Lober’s Construction Co</td><td class="n">6,077.51</td><td>#650 ATI Schertz · $26,800 bill</td><td><span class="chip amber">$9,022.49 open</span></td></tr>
+      <tr class="gone"><td class="d">9/29 10:29a</td><td>Taunya</td><td>Lober’s Construction Co</td><td class="n">6,077.51</td><td>#878 Take 5- Seguin · $15,200 bill</td><td class="keep"><span class="chip grey">removed 9/30</span></td></tr>
+      <tr class="gone"><td class="d">9/29 10:28a</td><td>Taunya</td><td>Loberg</td><td class="n">5,622.49</td><td>#650 ATI Schertz · $26,800 bill</td><td class="keep"><span class="chip grey">removed 9/30</span></td></tr>
+      <tr><td class="d">9/28 11:59a</td><td>—</td><td>DRF</td><td class="n">250.00</td><td>Malik Post Test</td><td><span class="chip green">paid</span></td></tr>
+      <tr><td class="d">9/28 11:58a</td><td>—</td><td>DRF</td><td class="n">250.00</td><td>McCluskey Pretest</td><td><span class="chip green">paid</span></td></tr>
+      <tr><td class="d">9/28 11:58a</td><td>—</td><td>DRF</td><td class="n">250.00</td><td>Sneegas Pretest</td><td><span class="chip green">paid</span></td></tr>
+      <tr><td class="d">9/28 11:56a</td><td>—</td><td>DRF</td><td class="n">4,478.00</td><td>#1025 Tovi Polk Repairs</td><td><span class="chip green">paid</span></td></tr>
+      <tr><td class="d">9/23 3:07p</td><td>—</td><td>DRF</td><td class="n">3,000.00</td><td>DRF Apartment Repairs</td><td><span class="chip green">paid</span></td></tr>
+      <tr class="gone"><td class="d">9/21 10:06a</td><td>Taunya</td><td>Southern Post</td><td class="n">13,680.00</td><td>#878 Take 5- Seguin · $15,200 bill</td><td class="keep"><span class="chip red">bank failed</span> <span class="chip grey">returned 9/24</span></td></tr>
+      <tr><td class="d">9/17 10:53a</td><td>Taunya</td><td>KCG LLC-CONSTR</td><td class="n">0.30</td><td>Springtown · $11,770.30 bill</td><td><span class="chip amber">$588.52 open</span></td></tr>
+      <tr><td class="d">9/17 10:52a</td><td>Taunya</td><td>KCG LLC-CONSTR</td><td class="n">1,980.00</td><td>Springtown- HVAC</td><td><span class="chip green">paid</span></td></tr>
+      <tr><td class="d">9/17 10:51a</td><td>Taunya</td><td>KCG LLC-CONSTR</td><td class="n">2,090.00</td><td>Knight Springtown Vet</td><td><span class="chip amber">$110.00 open</span></td></tr>
+      <tr><td class="d">9/17 10:50a</td><td>Taunya</td><td>KCG LLC-CONSTR</td><td class="n">11,181.48</td><td>Springtown · $11,770.30 bill</td><td><span class="chip amber">$588.52 open</span></td></tr>
+      <tr><td class="d">9/17 10:50a</td><td>Taunya</td><td>KCG LLC-CONSTR</td><td class="n">1,018.87</td><td>Springtown- HVAC</td><td><span class="chip amber">$53.63 open</span></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="more">+ 24 more rows back to 9/1</p>
+</div>
+
+<!-- ======================= CRITIQUE ======================= -->
+<h2><span class="tag ask">Is this the best we can do?</span> Draft 1 against the 30 days of real rows</h2>
+<p class="lede">Draft 1 answers the literal ask. Checked against what actually happened this month, it misses the question the office actually had.</p>
+<ul class="callouts">
+  <li><b>It lists payments; the office thinks in cheques.</b> KCG's one $17,752.65 deposit is six rows, one of them $0.30. 38 rows for 27 cheques.</li>
+  <li><b>A move reads as unrelated rows.</b> Today's fix is three lines far apart: Lober's off #878, Lober's onto #650, Loberg off #650. Nothing says the $5,622.49 is now back with nowhere to go.</li>
+  <li><b>The question came as a search.</b> "$6,077.51, where is it?" A third tab is one more place to look. The search should answer from every list and say where it went.</li>
+  <li><b>The dangerous rows are buried.</b> A cheque the bank failed while it's still paying a bill, or one taken off a job and never put back, should sit on top, not scroll by as history.</li>
+  <li><b>"Mine" and "By" can't be trusted yet.</b> 15 of 38 rows have no name: the job history records who, but not for every path that applies a payment. A Mine filter would quietly hide real work.</li>
+  <li><b>A table on a laptop-width column.</b> Six columns squeeze the column the matching work lives in; on a phone it scrolls sideways.</li>
+</ul>
+
+<!-- ======================= REVISED ======================= -->
+<h2><span class="tag draft">Revised · first pass</span> The search answers, trouble sits on top, one card per cheque</h2>
+<p class="lede">Three changes instead of one tab. <b>(1)</b> The search looks everywhere and answers in a sentence, with the cheque's trail. <b>(2)</b> A <b>Needs a look</b> strip lifts the two dangerous cases above whichever list you're on. <b>(3)</b> <b>Applied lately</b> is one card per cheque, grouped by day, each bill it paid on its own line in the words Find a check already uses.</p>
+
+<div class="pair">
+  <div class="app">
+    <p class="name"><b>Search, from any list</b><span>the question as it came in</span></p>
+    <div class="colhead"><span class="t">Deposits</span><span class="seg"><span class="on">To match</span><span>Applied lately</span><span>All</span></span></div>
+    <div class="search"><span class="typed">6077.51</span><span>×</span></div>
+    <div class="answer">
+      <div class="h">Lober’s Construction Co · $6,077.51 check, banked 9/28</div>
+      Already applied: <b>#650 ATI Schertz</b>, paid $6,077.51 on the $26,800 bill · $9,022.49 still open.
+      <div class="trail">Applied to <s>#878 Take 5- Seguin</s> 9/29 by Taunya → moved to #650 today 4:02 PM by Taunya</div>
+      <div style="margin-top:6px" class="btns"><span class="btn blue">Open #650</span><span class="btn">Show in Applied lately</span></div>
+    </div>
+    <p class="foot">No hit in To match no longer means "not here". The answer card says which list it's in and what it paid. The savings-rule transfer of the same amount stays out; it isn't a customer payment.</p>
+  </div>
+
+  <div class="app">
+    <p class="name"><b>Needs a look</b><span>above every list, only when there's something</span></p>
+    <div class="look">
+      <div class="h">Needs a look · 1</div>
+      <div class="item">
+        <div><b>Loberg $5,622.49</b> was taken off #650 ATI Schertz today by Taunya and isn't on any bill now.<div class="why">It is back in To match. Put it somewhere, or say it's fine where it is.</div></div>
+        <span class="btns"><span class="btn blue">Apply it</span><span class="btn">It's fine</span></span>
+      </div>
+      <div class="item done">
+        <div><b>Southern Post $13,680</b>: the bank failed it 9/23 (insufficient funds) while it was paying #878's bill.<div class="why">Fixed 9/24: Taunya marked it returned and it came off the bill. This is how it would have looked on 9/23.</div></div>
+        <span class="chip green">handled</span>
+      </div>
+    </div>
+    <p class="foot">Two rules, both from data we already have: <b>the bank failed a deposit that is still applied</b> (Mercury's status turns <i>failed</i>), and <b>a payment was taken off and its cheque has money left over</b>. The strip also shows on the dashboard's AR count, so it's seen without opening the page.</p>
+  </div>
+</div>
+
+<div class="app" style="margin-top:18px">
+  <p class="name"><b>Accounts Receivable → Deposits → Applied lately</b><span>last 30 days · 27 cheques</span></p>
+  <div class="colhead"><span class="t">Deposits</span><span class="seg"><span>To match</span><span class="on">Applied lately</span><span>All</span></span></div>
+
+  <div class="day">Today</div>
+  <div class="chq">
+    <div class="r1"><span class="payer">Lober’s Construction Co</span><span class="amt">$6,077.51</span></div>
+    <div class="meta">Check · banked 9/28</div>
+    <ul><li><span>#650 ATI Schertz · $26,800 bill</span><span class="n"><b>paid $6,077.51</b> · $9,022.49 still open</span></li></ul>
+    <div class="trail">9/29 applied to <s>#878 Take 5- Seguin</s> · today 4:02 PM moved to #650 · <span class="who">by <b>Taunya</b></span></div>
+  </div>
+  <div class="chq">
+    <div class="r1"><span class="payer">Loberg</span><span class="amt">$5,622.49</span></div>
+    <div class="meta">Check · <span class="chip amber">back in To match</span></div>
+    <div class="trail">9/29 applied to <s>#650 ATI Schertz</s> · today taken off · <span class="who">by <b>Taunya</b></span></div>
+  </div>
+
+  <div class="day">Mon Sep 28</div>
+  <div class="chq">
+    <div class="r1"><span class="payer">DRF · 4 cheques</span><span class="amt">$5,228.00</span></div>
+    <ul>
+      <li><span>#1025 Tovi Polk Repairs</span><span class="n"><b>paid $4,478.00</b> · bill paid</span></li>
+      <li><span>Malik Post Test · McCluskey Pretest · Sneegas Pretest</span><span class="n"><b>paid $250.00 each</b> · bills paid</span></li>
+    </ul>
+    <div class="trail"><span class="who">by <b>—</b> (no name recorded)</span></div>
+  </div>
+
+  <div class="day">Mon Sep 21 <span style="text-transform:none;letter-spacing:0;font-weight:500">(still shown: it came off a bill inside the 30 days)</span></div>
+  <div class="chq bad">
+    <div class="r1"><span class="payer">Southern Post</span><span class="amt">$13,680.00</span></div>
+    <div class="meta">Check · <span class="chip red">bank failed 9/23 · insufficient funds</span> <span class="chip grey">returned</span></div>
+    <div class="trail">9/21 applied to <s>#878 Take 5- Seguin</s> · 9/24 taken off, marked returned · <span class="who">by <b>Taunya</b></span></div>
+  </div>
+  <div class="day">Thu Sep 17</div>
+  <div class="chq">
+    <div class="r1"><span class="payer">KCG LLC-CONSTR</span><span class="amt">$17,752.65</span></div>
+    <div class="meta">Deposit · 6 bills on 3 jobs · all of it applied</div>
+    <ul>
+      <li><span>Springtown · $11,770.30 bill</span><span class="n"><b>paid $11,181.78</b> · $588.52 still open</span></li>
+      <li><span>Knight Springtown Vet · 2 bills</span><span class="n"><b>paid $3,572.00</b> · $188.00 still open</span></li>
+    </ul>
+    <div class="fold">▸ Springtown- HVAC · 2 bills, and the 2 split lines</div>
+    <div class="trail"><span class="who">by <b>Taunya</b></span></div>
+  </div>
+
+  <p class="more">▾ 21 more cheques back to 9/1</p>
+</div>
+
+<ul class="callouts good" style="margin-top:14px">
+  <li><b>One card per cheque.</b> Its bills are lines under it, with "paid $X · $Y still open", the same words as Find a check and the GC statement. Same payer, same day, same kind of cheque fold into one card (DRF × 4).</li>
+  <li><b>The trail is one line.</b> Applied, moved, taken off, returned, in order, with who and when. A move is a move, not a delete plus an add.</li>
+  <li><b>No Mine filter.</b> Who is on every trail. It gets trustworthy once each payment records who applied it (PR 4); until then the blanks read "no name recorded", not a guess.</li>
+  <li><b>Fits the column.</b> Cards, not a table, so it works at the column's width and on a phone.</li>
+</ul>
+
+<!-- ======================= SECOND PASS ======================= -->
+<h2><span class="tag ask">Second pass: is this the best we can do?</span> The first revision against what the app already has</h2>
+<p class="lede">Read against the code before drawing anything more. The first revision is three features; two of them exist, and the third is a new shape for a row that already exists.</p>
+<ul class="callouts">
+  <li><b>Half of it shipped last week, from this very cheque.</b> Southern Post's bounce is punch list #40. Since 9/24 a deposit the bank returns while a payment still carries it raises a <b>Needs You card</b> (v2.3795), an <b>email and a push to the office</b> the moment Mercury reports it (v2.3804), a badge on the <b>Pipeline row</b> (v2.3806) and a chip on the AR row. "Needs a look" rule 1 is that card, drawn again.</li>
+  <li><b>Rule 2 is To match.</b> A cheque taken off a bill has money left, so it is already in To match and in the dashboard's AR count. The only new fact is "it used to be somewhere": that is a trail on the row, not a queue.</li>
+  <li><b>The answer card is a new shape for an old row.</b> A deposit row already carries a state chip (<i>applied</i>, <i>returned by the bank · Insufficient funds</i>) and, once selected, the bills it paid with a click into the job. The search should surface that row, not draw a card beside it.</li>
+  <li><b>"Applied lately" is All in a different order.</b> Same cheques, same rows. A card per cheque with bill lines duplicates the selected-row pane. What All lacks is the trail, and an order by last action instead of bank date.</li>
+  <li><b>"It's fine" wants a table for a case with no decision in it.</b> It goes with the strip.</li>
+  <li><b>Folding DRF × 4 hides the one that goes wrong.</b> One cheque, one row.</li>
+  <li><b>The 15 blanks are a path, not a missing column.</b> Every one of the 13 live rows has its history row; the actor is empty. Whatever applied them ran with no signed-in user. A "who" has to read <i>the app</i> there, never blank, and the path has to be found before a column is added.</li>
+</ul>
+
+<!-- ======================= REVISED 2 ======================= -->
+<h2><span class="tag after">Revised · second pass</span> The rows we have, saying one more line</h2>
+<p class="lede">Two changes, no new list and no new card. <b>(1)</b> Every deposit row gets a <b>trail</b>: applied, moved, taken off, returned, with who and when. <b>(2)</b> The search looks in <b>All</b> when To match has nothing, and shows the ordinary row. The 30-day ask is answered by ordering All by last action under day headings; the rows are the same rows.</p>
+
+<div class="pair">
+  <div class="app">
+    <p class="name"><b>To match, searching the cheque</b><span>the question as it came in</span></p>
+    <div class="colhead"><span class="t">Deposits</span><span class="seg"><span class="on">To match</span><span>All</span></span></div>
+    <div class="search"><span class="typed">6077.51</span><span>×</span></div>
+    <div class="day" style="margin-top:4px">Nothing to match · found in All</div>
+    <div class="dep">
+      <div class="r1"><span>Lober’s Construction Co</span><span class="amt">$6,077.51</span></div>
+      <div class="sub">Check · banked 9/28 · <span class="chip green">applied · $0.00 left</span></div>
+      <div class="trail" style="font-size:11.5px;color:var(--muted);margin-top:4px">→ <b style="color:var(--ink)">#650 ATI Schertz</b> today 4:02 PM by Taunya · was <s>#878 Take 5- Seguin</s> 9/29</div>
+    </div>
+    <p class="foot">The row is the answer. Selecting it shows the bill it paid ("paid $6,077.51 · $9,022.49 still open") and opens the job, as today. The savings-rule transfer of the same amount stays out; it isn't a customer payment.</p>
+  </div>
+
+  <div class="app">
+    <p class="name"><b>To match, no search</b><span>the trail on a cheque that came back</span></p>
+    <div class="colhead"><span class="t">Deposits</span><span class="seg"><span class="on">To match</span><span>All</span></span></div>
+    <div class="dep">
+      <div class="r1"><span>Loberg</span><span class="amt">$5,622.49</span></div>
+      <div class="sub">Check · <span class="chip amber">payer known · no bill this size</span></div>
+      <div class="trail" style="font-size:11.5px;color:var(--muted);margin-top:4px">was on <s>#650 ATI Schertz</s> · taken off today 4:02 PM by Taunya</div>
+    </div>
+    <div class="dep" style="opacity:.5"><div class="r1"><span>… the other deposits to match, as today</span></div></div>
+    <p class="foot">A cheque back in the queue says where it was. Without the line it looks like new money.</p>
+  </div>
+</div>
+
+<div class="app" style="margin-top:18px">
+  <p class="name"><b>All · newest action first</b><span>the last 30 days on top, by what happened last</span></p>
+  <div class="colhead"><span class="t">Deposits</span><span class="seg"><span>To match</span><span class="on">All</span></span></div>
+  <div class="search"><span>Search counterparty, note, memo, amount…</span></div>
+
+  <div class="day">Today</div>
+  <div class="dep">
+    <div class="r1"><span>Lober’s Construction Co</span><span class="amt">$6,077.51</span></div>
+    <div class="sub">Check · banked 9/28 · <span class="chip green">applied</span></div>
+    <div class="trail" style="font-size:11.5px;color:var(--muted);margin-top:4px">→ #650 ATI Schertz today by Taunya · was <s>#878 Take 5- Seguin</s> 9/29</div>
+  </div>
+  <div class="dep">
+    <div class="r1"><span>Loberg</span><span class="amt">$5,622.49</span></div>
+    <div class="sub">Check · <span class="chip amber">to match</span></div>
+    <div class="trail" style="font-size:11.5px;color:var(--muted);margin-top:4px">was on <s>#650 ATI Schertz</s> · taken off today by Taunya</div>
+  </div>
+
+  <div class="day">Mon Sep 28</div>
+  <div class="dep"><div class="r1"><span>DRF</span><span class="amt">$4,478.00</span></div><div class="sub">Check · <span class="chip green">applied</span> · → #1025 Tovi Polk Repairs 9/28 by the app</div></div>
+  <div class="dep"><div class="r1"><span>DRF</span><span class="amt">$250.00</span></div><div class="sub">Check · <span class="chip green">applied</span> · → Malik Post Test 9/28 by the app</div></div>
+  <div class="dep" style="opacity:.7"><div class="r1"><span>DRF · 2 more</span><span class="amt">$250.00 each</span></div><div class="sub">McCluskey Pretest · Sneegas Pretest · by the app</div></div>
+
+  <div class="day">Wed Sep 24</div>
+  <div class="dep" style="border-color:#7f1d1d">
+    <div class="r1"><span>Southern Post</span><span class="amt">$13,680.00</span></div>
+    <div class="sub">Check · banked 9/18 · <span class="chip red">returned by the bank · Insufficient funds</span></div>
+    <div class="trail" style="font-size:11.5px;color:var(--muted);margin-top:4px">→ <s>#878 Take 5- Seguin</s> 9/21 by Taunya · bank failed it 9/23 · taken off, marked returned 9/24 by Taunya</div>
+  </div>
+
+  <div class="day">Thu Sep 17</div>
+  <div class="dep">
+    <div class="r1"><span>KCG LLC-CONSTR</span><span class="amt">$17,752.65</span></div>
+    <div class="sub">Deposit · <span class="chip green">applied</span> · 6 bills on 3 jobs</div>
+    <div class="trail" style="font-size:11.5px;color:var(--muted);margin-top:4px">→ Springtown, Springtown- HVAC, Knight Springtown Vet 9/17 by Taunya</div>
+  </div>
+  <p class="more">▾ 21 more cheques back to 9/1, then everything older by bank date</p>
+</div>
+
+<ul class="callouts good" style="margin-top:14px">
+  <li><b>Nothing new to learn.</b> The same two lists, the same rows, the same selected-row pane. One line more per row.</li>
+  <li><b>The trail is the whole history.</b> Applied, moved, taken off, returned, who, when. A move reads as a move.</li>
+  <li><b>The search never says "not here" when it is.</b> A miss on To match shows the All rows that match, in place.</li>
+  <li><b>Cut from the first pass:</b> the answer card, the Needs a look strip and its "It's fine" table, the Applied lately cards, the folding, the Mine filter.</li>
+</ul>
+
+<h2><span class="tag data">What it takes</span> Smallest first</h2>
+<ol class="plan">
+  <li><b>The search looks in All.</b> Client only. On a To match miss, run the same search over the All rows (the modal already loads them in its All mode) and list the hits under <i>Nothing to match · found in All</i> as ordinary rows.</li>
+  <li><b>The trail.</b> One read-only RPC keyed by deposit ids: the payments that carry each deposit, live ones and ones taken off (the deleted-records archive), with the actor from the job history. A kernel (<code>arDepositTrail.ts</code>, unit-tested) turns them into one sentence; the row shows it. Depends on the separate fix that dates a removal when it happens, running in its own session.</li>
+  <li><b>All by last action.</b> Client only, over the trail's last-touched time: day headings for the last 30 days, then bank date as today.</li>
+  <li><b>Who.</b> Find the path that applies payments with no signed-in user; make the trail say <i>the app</i> for it. Then a "created by" on the payment so the trail stops depending on the history table.</li>
+</ol>
+
+<h2><span class="tag ask">Your calls</span></h2>
+<ul class="callouts calls">
+  <li><b>Order All by last action?</b> Proposed, for the last 30 days, then bank date. Or keep bank date and add a toggle.</li>
+  <li><b>The trail on To match rows too?</b> Proposed: a cheque back in the queue says where it was.</li>
+  <li><b>"By the app" or the rule's name?</b> Once the path is found, the trail could say which rule applied it (exact-amount match).</li>
+</ul>
+
+</div>
+</body>
+</html>

@@ -86,6 +86,7 @@ import { ArTipOffer } from './ar/ArTipOffer'
 import { ArCloseOut } from './ar/ArCloseOut'
 import { buildArCloseOutOffer, describeArCloseOut, type ArClosedRow } from '../../lib/jobs/arCloseOut'
 import { isMissingRpcError } from '../../lib/customers/customersListBundle'
+import { arSearchFallThrough } from '../../lib/jobs/arDepositSearch'
 
 type MercuryCandidateRow =
   Database['public']['Functions']['list_mercury_transactions_for_bank_payments']['Returns'][number]
@@ -208,6 +209,16 @@ export default function BankPaymentsModal({
   const [candidates, setCandidates] = useState<MercuryCandidate[]>([])
   const [bankTxSearchQuery, setBankTxSearchQuery] = useState('')
   const [includeHiddenArDeposits, setIncludeHiddenArDeposits] = useState(false)
+  /**
+   * v2.4273: the All rows, fetched once when a search is typed on To match so the
+   * search can find a deposit already applied, returned or closed out. Null until
+   * wanted; cleared on every list refresh so it never outlives the pile it sits beside.
+   */
+  const [hiddenCandidates, setHiddenCandidates] = useState<MercuryCandidate[] | null>(null)
+  const [hiddenLoading, setHiddenLoading] = useState(false)
+  /** One fetch at a time; a list refresh bumps the sequence so a stale result is dropped, never cancelled mid-flight. */
+  const hiddenInFlightRef = useRef(false)
+  const hiddenFetchSeqRef = useRef(0)
   const [arBankReturnedMarkMode, setArBankReturnedMarkMode] = useState(false)
   const [returnedToggleSavingId, setReturnedToggleSavingId] = useState<string | null>(null)
   const [listLoading, setListLoading] = useState(false)
@@ -248,30 +259,29 @@ export default function BankPaymentsModal({
 
   const targets = useMemo(() => bankPaymentTargetsFromStageRows(billedRows), [billedRows])
   const targetByKey = useMemo(() => new Map(targets.map((t) => [t.key, t] as const)), [targets])
-  const filteredCandidates = useMemo(() => {
-    const q = bankTxSearchQuery.trim().toLowerCase()
-    if (!q) return candidates
-    return candidates.filter((c) => {
-      const cp = (c.counterparty_name ?? '').toLowerCase()
-      const note = (c.note ?? '').toLowerCase()
-      const memo = (c.external_memo ?? '').toLowerCase()
-      const amountStr = formatMoney(Math.abs(Number(c.amount))).toLowerCase()
-      const posted = c.posted_at
-        ? new Date(c.posted_at).toLocaleDateString('en-US', { timeZone: APP_CALENDAR_TZ }).toLowerCase()
-        : ''
-      return (
-        cp.includes(q) ||
-        note.includes(q) ||
-        memo.includes(q) ||
-        amountStr.includes(q) ||
-        posted.includes(q)
-      )
-    })
-  }, [candidates, bankTxSearchQuery])
+  /** The search over the list on screen and, on To match, over the All rows too (v2.4273). */
+  const search = useMemo(
+    () =>
+      arSearchFallThrough({
+        query: bankTxSearchQuery,
+        visible: candidates,
+        hidden: includeHiddenArDeposits ? null : hiddenCandidates,
+        postedLabel: (iso) => new Date(iso).toLocaleDateString('en-US', { timeZone: APP_CALENDAR_TZ }),
+      }),
+    [candidates, hiddenCandidates, includeHiddenArDeposits, bankTxSearchQuery],
+  )
+  const filteredCandidates = search.hits
+  /** Rows only All has that match the search — listed under their own heading, selectable like any other. */
+  const foundElsewhere = search.elsewhere
 
   const selected = useMemo(
-    () => (selectedId ? candidates.find((c) => c.mercury_transaction_id === selectedId) ?? null : null),
-    [candidates, selectedId],
+    () =>
+      selectedId
+        ? candidates.find((c) => c.mercury_transaction_id === selectedId) ??
+          foundElsewhere.find((c) => c.mercury_transaction_id === selectedId) ??
+          null
+        : null,
+    [candidates, foundElsewhere, selectedId],
   )
 
   const canAllocateRemaining = useMemo(
@@ -421,6 +431,17 @@ export default function BankPaymentsModal({
         recordedPayments,
       }),
     [candidates, closedById, exactMatchSweep, targets, recordedPayments],
+  )
+  /** The same rule for rows found in All (v2.4273): they are applied, returned or closed out, so the sweep never claims them. */
+  const elsewhereStates = useMemo(
+    () =>
+      arDepositRowStates({
+        deposits: foundElsewhere.map((c) => ({ ...c, closed: closedById.has(c.mercury_transaction_id) })),
+        sweep: exactMatchSweep,
+        targets,
+        recordedPayments,
+      }),
+    [foundElsewhere, closedById, exactMatchSweep, targets, recordedPayments],
   )
   const depositSummary = useMemo(() => arDepositSummaryWords(arDepositSummary(candidates)), [candidates])
   const allocationProgress = useMemo(
@@ -637,6 +658,8 @@ export default function BankPaymentsModal({
   const refreshList = useCallback(async (): Promise<MercuryCandidate[]> => {
     if (!open) return []
     void loadArClosed()
+    setHiddenCandidates(null)
+    hiddenFetchSeqRef.current += 1
     const seq = ++listRequestSeqRef.current
     setListLoading(true)
     setListError(null)
@@ -680,6 +703,50 @@ export default function BankPaymentsModal({
       if (seq === listRequestSeqRef.current) setListLoading(false)
     }
   }, [open, sortingConfig, includeHiddenArDeposits, loadArClosed])
+
+  /**
+   * v2.4273: the All rows behind a To match search. Same RPC, same org filter, with
+   * `includeHiddenArDeposits` on; fetched the first time a search is typed while the
+   * pile is showing and kept until the list refreshes. Quiet on failure — the pile's
+   * own search still works, only the fall-through is missed.
+   */
+  const wantHiddenCandidates = open && !includeHiddenArDeposits && sortingConfigResolved && bankTxSearchQuery.trim().length > 0
+  useEffect(() => {
+    if (!wantHiddenCandidates || hiddenCandidates != null || hiddenInFlightRef.current) return
+    hiddenInFlightRef.current = true
+    const seq = hiddenFetchSeqRef.current
+    setHiddenLoading(true)
+    ;(async () => {
+      try {
+        const cfg = sortingConfig
+        const p_filter = {
+          v: BANKING_SORTING_CONFIG_VERSION,
+          kinds: cfg.kinds,
+          accountIds: cfg.accountIds,
+          debitCardIds: cfg.debitCardIds,
+          startDateYmd: cfg.startDateYmd,
+          excludeCounterpartyContains: cfg.excludeCounterpartyContains,
+          excludeNoteContains: cfg.excludeNoteContains,
+          includeHiddenArDeposits: true,
+        }
+        const data = await withSupabaseRetry(
+          async () => supabase.rpc('list_mercury_transactions_for_bank_payments', { p_filter }),
+          'list_mercury_transactions_for_bank_payments',
+        )
+        if (seq !== hiddenFetchSeqRef.current) return
+        const rows: MercuryCandidate[] = ((data ?? []) as MercuryCandidateRow[]).map((r) => ({
+          ...r,
+          bankReturn: mercuryBankReturnFromRaw(r.raw, r.posted_at, r.amount),
+        }))
+        setHiddenCandidates(rows)
+      } catch {
+        if (seq === hiddenFetchSeqRef.current) setHiddenCandidates([])
+      } finally {
+        hiddenInFlightRef.current = false
+        setHiddenLoading(false)
+      }
+    })()
+  }, [wantHiddenCandidates, hiddenCandidates, sortingConfig])
 
   const toggleMercuryReturned = useCallback(
     async (mercuryTransactionId: string, nextReturned: boolean) => {
@@ -1046,14 +1113,15 @@ export default function BankPaymentsModal({
     }
   }, [selected?.mercury_transaction_id, showToast, refreshList])
 
-  /** Keep selection on the filtered bank list; when the filter hides the current row, select the first visible row. */
+  /** Keep selection on the filtered bank list (or a row found in All); when the filter hides the current row, select the first visible row. */
   useEffect(() => {
     if (!open) return
     setSelectedId((prev) => {
       if (prev && filteredCandidates.some((r) => r.mercury_transaction_id === prev)) return prev
-      return filteredCandidates[0]?.mercury_transaction_id ?? null
+      if (prev && foundElsewhere.some((r) => r.mercury_transaction_id === prev)) return prev
+      return filteredCandidates[0]?.mercury_transaction_id ?? foundElsewhere[0]?.mercury_transaction_id ?? null
     })
-  }, [open, filteredCandidates])
+  }, [open, filteredCandidates, foundElsewhere])
 
   const loadMercurySamplesForConfigModal = useCallback(async () => {
     const { data, error } = await supabase
@@ -1860,9 +1928,14 @@ export default function BankPaymentsModal({
               {!listBusy && !listError && candidates.length === 0 && (
                 <p style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>No matching transactions.</p>
               )}
-              {!listBusy && !listError && candidates.length > 0 && filteredCandidates.length === 0 && (
+              {!listBusy && !listError && candidates.length > 0 && filteredCandidates.length === 0 && search.empty === 'unsearched' && !hiddenLoading && (
                 <p style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                   No bank transactions match this search.
+                </p>
+              )}
+              {!listBusy && !listError && search.empty === 'nowhere' && (
+                <p data-testid="ar-search-nowhere" style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                  No bank transactions match this search — not in All either.
                 </p>
               )}
               {filteredCandidates.map((c) => (
@@ -1871,6 +1944,39 @@ export default function BankPaymentsModal({
                   deposit={c}
                   active={c.mercury_transaction_id === selectedId}
                   state={rowStates.get(c.mercury_transaction_id) ?? 'hand'}
+                  kindBadges={kindBadges}
+                  markMode={arBankReturnedMarkMode}
+                  canApply={canApply}
+                  savingReturned={returnedToggleSavingId === c.mercury_transaction_id}
+                  onSelect={() => setSelectedId(c.mercury_transaction_id)}
+                  onToggleReturned={(next) => void toggleMercuryReturned(c.mercury_transaction_id, next)}
+                />
+              ))}
+              {/* v2.4273: a search on To match also reads All — a cheque already applied is found, not "no match". */}
+              {!listBusy && !listError && hiddenLoading && filteredCandidates.length === 0 && (
+                <p style={{ padding: '0.75rem 1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Looking in All…</p>
+              )}
+              {search.heading ? (
+                <div
+                  data-testid="ar-search-elsewhere-heading"
+                  style={{
+                    padding: '0.6rem 0.75rem 0.3rem',
+                    fontSize: '0.6875rem',
+                    fontWeight: 700,
+                    letterSpacing: '0.06em',
+                    textTransform: 'uppercase',
+                    color: 'var(--text-muted)',
+                  }}
+                >
+                  {search.heading}
+                </div>
+              ) : null}
+              {foundElsewhere.map((c) => (
+                <ArDepositRow
+                  key={c.mercury_transaction_id}
+                  deposit={c}
+                  active={c.mercury_transaction_id === selectedId}
+                  state={elsewhereStates.get(c.mercury_transaction_id) ?? 'applied'}
                   kindBadges={kindBadges}
                   markMode={arBankReturnedMarkMode}
                   canApply={canApply}

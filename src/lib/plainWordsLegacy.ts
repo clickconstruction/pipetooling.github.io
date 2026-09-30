@@ -35,7 +35,6 @@ export const LEGACY_PLAIN_WORDS_GUIDES: ReadonlySet<string> = new Set([
   'mark-a-property-residential-or-commercial',
   'mark-an-invoice-on-a-job-account',
   'mark-supply-house-bills-paid',
-  'match-bank-deposits-to-bills',
   'match-clock-sessions',
   'merge-two-spellings-of-the-same-builder',
   'merge-user-accounts',
