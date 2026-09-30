@@ -14,11 +14,11 @@ At the end of the address's last line:
 - {{button:blue|R}} — a **residential** property.
 - {{button:red|?}} — nobody has said yet. This is the one that wants you.
 
-Hover any of them for the words. A job whose address was typed on the job rather than linked to a customer's saved property shows no badge — there is no property record to keep the answer on; link the property from Edit Job first.
+Hover any of them for the words. A job whose address was typed on the job rather than linked to one of the customer's saved properties shows the red **?** too: picking an answer saves the address as a property on the customer (or links the job to the saved property it already matches) and the answer lands there. Only a job with no customer at all shows no badge — there is nobody to keep a property on.
 
 ## Setting it
 
-Tap the circle (office roles: dev, master, assistant). A small card asks *What kind of property is 8507 Culebra Road?* with {{button:outline|Residential}} {{button:outline|Commercial}} — the same switch the Lien desk and the customer's property sheet use. Pick one and the badge changes at once; the property is saved, every job at that address follows it, and the job's lien clock reads the right deadline from then on.
+Tap the circle (office roles: dev, master, assistant). A small card asks *What kind of property is 8507 Culebra Road?* with {{button:outline|Residential}} {{button:outline|Commercial}} — the same switch the Lien desk and the customer's property sheet use. Pick one and the badge changes at once; the property is saved, every job at that address follows it, and the job's lien clock reads the right deadline from then on. When the job had no saved property, the card says so — *Not one of Dudley Mason's saved properties yet* — and the pick saves the address as one on that customer and links the job before it marks it.
 
 :::example A ? on a service visit
 HCP 863 at 628 Terrell Rd shows a red ?. Taunya taps it, picks Residential, and the badge turns to a blue R — on this job and on the other two jobs at the same address. The notice deadline on their Billed rows moves up a month, as the law has it.

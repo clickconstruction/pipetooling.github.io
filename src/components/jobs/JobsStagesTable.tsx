@@ -139,6 +139,8 @@ export type JobsStagesTableProps = {
   jobContractCoverageByJobId?: StagesRowRenderContext['jobContractCoverageByJobId']
   propertyKindByJobId?: StagesRowRenderContext['propertyKindByJobId']
   onPropertyKindSaved?: StagesRowRenderContext['onPropertyKindSaved']
+  propertyLinkByJobId?: StagesRowRenderContext['propertyLinkByJobId']
+  onPropertyLinked?: StagesRowRenderContext['onPropertyLinked']
   onOpenJobContract?: StagesRowRenderContext['onOpenJobContract']
 }
 
@@ -207,6 +209,8 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
     jobContractCoverageByJobId,
     propertyKindByJobId,
     onPropertyKindSaved,
+    propertyLinkByJobId,
+    onPropertyLinked,
     onOpenJobContract,
   } = props
   const wideViewport = useWideViewport1100()
@@ -251,6 +255,8 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
     jobContractCoverageByJobId,
     propertyKindByJobId,
     onPropertyKindSaved,
+    propertyLinkByJobId,
+    onPropertyLinked,
     onOpenJobContract,
   }
   const renderStagesFieldAndBillingLines = (job: JobWithDetails) =>

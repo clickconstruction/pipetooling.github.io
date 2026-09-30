@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { chunkIds } from '../lib/supabasePaging'
 
-export type PropertyKindJob = { id: string; customer_address_id: string | null }
+export type PropertyKindJob = { id: string; customer_address_id: string | null; customer_id?: string | null }
 
 /**
  * Every Pipeline row's property kind (v2.4160) — `customer_addresses.property_kind`
@@ -12,9 +12,20 @@ export type PropertyKindJob = { id: string; customer_address_id: string | null }
  * this covers every stage for the address badge). `byJobId` is null while the
  * first read is out and empty on error, so the rows simply draw no badge.
  * `setKind` records a save at once, so the badge changes before the board reloads.
+ *
+ * A job with no linked property but a customer gets '' (v2.4212) — its badge is
+ * the ? that saves the address as a property on the pick; `linkJob` remembers
+ * that new link (`linkByJobId`) so the next pick on the row edits the property
+ * instead of making another, until the board reloads with the row's own column.
  */
-export function usePropertyKinds(jobs: ReadonlyArray<PropertyKindJob>): { byJobId: ReadonlyMap<string, string> | null; setKind: (customerAddressId: string, kind: string) => void } {
+export function usePropertyKinds(jobs: ReadonlyArray<PropertyKindJob>): {
+  byJobId: ReadonlyMap<string, string> | null
+  linkByJobId: ReadonlyMap<string, string>
+  setKind: (customerAddressId: string, kind: string) => void
+  linkJob: (jobId: string, customerAddressId: string, kind: string) => void
+} {
   const [kindByAddress, setKindByAddress] = useState<Map<string, string> | null>(null)
+  const [linkByJobId, setLinkByJobId] = useState<Map<string, string>>(() => new Map())
   const addressKey = useMemo(
     () => [...new Set(jobs.map((j) => j.customer_address_id).filter((v): v is string => Boolean(v)))].sort().join('|'),
     [jobs],
@@ -56,16 +67,25 @@ export function usePropertyKinds(jobs: ReadonlyArray<PropertyKindJob>): { byJobI
     })
   }, [])
 
+  const linkJob = useCallback((jobId: string, customerAddressId: string, kind: string) => {
+    setLinkByJobId((prev) => new Map(prev).set(jobId, customerAddressId))
+    setKindByAddress((prev) => new Map(prev ?? []).set(customerAddressId, kind))
+  }, [])
+
   const byJobId = useMemo(() => {
     if (!kindByAddress) return null
     const m = new Map<string, string>()
     for (const j of jobs) {
-      if (!j.customer_address_id) continue
-      const k = kindByAddress.get(j.customer_address_id)
+      const addressId = j.customer_address_id ?? linkByJobId.get(j.id) ?? null
+      if (!addressId) {
+        if (j.customer_id) m.set(j.id, '')
+        continue
+      }
+      const k = kindByAddress.get(addressId)
       if (k != null) m.set(j.id, k)
     }
     return m
-  }, [jobs, kindByAddress])
+  }, [jobs, kindByAddress, linkByJobId])
 
-  return { byJobId, setKind }
+  return { byJobId, linkByJobId, setKind, linkJob }
 }

@@ -125,6 +125,10 @@ export type StagesRowRenderContext = {
   propertyKindByJobId?: ReadonlyMap<string, string> | null
   /** A kind picked from the badge: the board records it at once (the property row is already saved). */
   onPropertyKindSaved?: (customerAddressId: string, kind: string) => void
+  /** Properties linked from the badge since the board loaded (v2.4212): job id → customer_addresses id; the row's own column wins once it reloads. */
+  propertyLinkByJobId?: ReadonlyMap<string, string> | null
+  /** An unlinked job's pick saved (or reused) a property and linked the job: the board remembers both at once. */
+  onPropertyLinked?: (jobId: string, customerAddressId: string, kind: string) => void
   /** Legal portal PR 2 (v2.3313): the legal matter a Collections job belongs to — the ⚖ chip beside the contract chip. */
   legalMatterByJobId?: ReadonlyMap<string, LegalMatterRow>
   /** Opens the job's Contract modal (PR 2); absent = the chip is a plain label. */
@@ -647,7 +651,10 @@ export function renderStagesFieldAndBillingLines(ctx: StagesRowRenderContext, jo
  * word — "Hondo, TX (?)" — instead of at the edge of the widest line (v2.4210).
  * It stays a sibling of the link, never a button inside the anchor.
  */
-export function renderJobAddressWithMap(ctx: Pick<StagesRowRenderContext, 'propertyKindByJobId' | 'onPropertyKindSaved' | 'authRole' | 'showToast'>, job: Pick<JobWithDetails, 'id' | 'job_address' | 'customer_address_id' | 'hcp_number' | 'job_name'>) {
+export function renderJobAddressWithMap(
+  ctx: Pick<StagesRowRenderContext, 'propertyKindByJobId' | 'onPropertyKindSaved' | 'propertyLinkByJobId' | 'onPropertyLinked' | 'authRole' | 'showToast'>,
+  job: Pick<JobWithDetails, 'id' | 'job_address' | 'customer_address_id' | 'customer_id' | 'customer_name' | 'hcp_number' | 'job_name'>,
+) {
   const address = job.job_address
   const fmt = formatAddressTwoLines(address ?? null)
   if (!fmt) return null
@@ -686,10 +693,15 @@ export function renderJobAddressWithMap(ctx: Pick<StagesRowRenderContext, 'prope
         <JobAddressText line1={fmt.line1} line2={fmt.line2} />
       </a>
       <PropertyKindBadge
-        job={job}
+        job={{ ...job, customer_address_id: job.customer_address_id ?? ctx.propertyLinkByJobId?.get(job.id) ?? null }}
         kind={ctx.propertyKindByJobId?.get(job.id)}
         role={ctx.authRole}
         onSaved={(addressId, kind) => ctx.onPropertyKindSaved?.(addressId, kind)}
+        onLinked={(addressId, kind, reused) => {
+          ctx.onPropertyLinked?.(job.id, addressId, kind)
+          const who = (job.customer_name ?? '').trim() || 'the customer'
+          ctx.showToast(reused ? `Linked to ${who}'s saved property and marked ${kind === 'residential' ? 'residential' : 'commercial'}` : `Saved as a property on ${who} and marked ${kind === 'residential' ? 'residential' : 'commercial'}`, 'success', 3500)
+        }}
         onError={(m) => ctx.showToast(m, 'error')}
       />
     </div>

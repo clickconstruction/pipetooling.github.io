@@ -931,7 +931,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const [lienClocksRefresh, setLienClocksRefresh] = useState(0)
   const billedLienClocks = useBilledLienClocks(billedLienClockJobs, lienClocksRefresh)
   // The address badge's fact for every row (v2.4160): each job's property kind, one read across the board.
-  const propertyKindJobs = useMemo(() => jobs.map((j) => ({ id: j.id, customer_address_id: j.customer_address_id ?? null })), [jobs])
+  const propertyKindJobs = useMemo(() => jobs.map((j) => ({ id: j.id, customer_address_id: j.customer_address_id ?? null, customer_id: j.customer_id ?? null })), [jobs])
   const propertyKinds = usePropertyKinds(propertyKindJobs)
   // Promised pay dates are marked by the office roles; promise records and
   // chase touches load for them only.
@@ -2392,6 +2392,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     legalMatterByJobId: legalMatters.byJobId,
     propertyKindByJobId: propertyKinds.byJobId,
     onPropertyKindSaved: propertyKinds.setKind,
+    propertyLinkByJobId: propertyKinds.linkByJobId,
+    onPropertyLinked: propertyKinds.linkJob,
     }
   /** The phone rows' kernel input for a job, from the same side maps the cards read. */
   const phoneTodayYmd = calendarYmdInAppTzFromIso(new Date().toISOString())
