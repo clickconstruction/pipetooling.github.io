@@ -97,12 +97,14 @@ type SessionRow = { work_date: string; clocked_in_at: string; clocked_out_at: st
  * (`loadVectorDays.ts`), whose wider windows touch jobs the Bridge's own
  * 8-week window does not; the same load, so the rates agree.
  */
-export async function loadEarnedJobs(jobIds: string[]): Promise<{ jobs: BridgeJobRow[]; earnedJobs: EarnedRevenueJob[] }> {
+export async function loadEarnedJobs(jobIds: string[], opts: { asOfYmd?: string } = {}): Promise<{ jobs: BridgeJobRow[]; earnedJobs: EarnedRevenueJob[]; lifetimeHoursAsOf: Map<string, number> }> {
   const chunks = <T,>(arr: T[], n: number): T[][] => Array.from({ length: Math.ceil(arr.length / n) }, (_, i) => arr.slice(i * n, i * n + n))
 
   // Jobs + lifetime hours for the jobs touched.
   const jobs: BridgeJobRow[] = []
   const lifetimeHours = new Map<string, number>()
+  /** Lifetime hours through `opts.asOfYmd` — the denominator's past, for Vectors by the day's ↻ mark. */
+  const lifetimeHoursAsOf = new Map<string, number>()
   for (const ids of chunks(jobIds, 150)) {
     const [jobRows, lifeRows] = await Promise.all([
       withSupabaseRetry(
@@ -139,7 +141,12 @@ export async function loadEarnedJobs(jobIds: string[]): Promise<{ jobs: BridgeJo
         status: j.status,
       })
     }
-    for (const s of lifeRows) if (s.job_ledger_id) addTo(lifetimeHours, s.job_ledger_id, hoursOf(s.clocked_in_at, s.clocked_out_at))
+    for (const s of lifeRows) {
+      if (!s.job_ledger_id) continue
+      const h = hoursOf(s.clocked_in_at, s.clocked_out_at)
+      addTo(lifetimeHours, s.job_ledger_id, h)
+      if (opts.asOfYmd && s.work_date <= opts.asOfYmd) addTo(lifetimeHoursAsOf, s.job_ledger_id, h)
+    }
   }
   const earnedJobs: EarnedRevenueJob[] = jobs.map((j) => ({
     id: j.id,
@@ -148,7 +155,7 @@ export async function loadEarnedJobs(jobIds: string[]): Promise<{ jobs: BridgeJo
     status: j.status,
     lifetimeHours: lifetimeHours.get(j.id) ?? 0,
   }))
-  return { jobs, earnedJobs }
+  return { jobs, earnedJobs, lifetimeHoursAsOf }
 }
 
 export async function loadBridgeData(): Promise<BridgeData> {

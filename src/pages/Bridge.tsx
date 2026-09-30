@@ -251,7 +251,7 @@ export default function Bridge() {
     setDaysError(null)
     void (async () => {
       try {
-        const v = await loadVectorDaysInputs({ start: daysRange.start, end: daysRange.end, officeJobLedgerId: data.officeJobLedgerId })
+        const v = await loadVectorDaysInputs({ start: daysRange.start, end: daysRange.end, todayYmd: data.todayYmd, officeJobLedgerId: data.officeJobLedgerId })
         daysCacheRef.current.set(key, v)
         if (!cancelled) setDaysInputs(v)
       } catch (e) {
@@ -275,6 +275,7 @@ export default function Bridge() {
       ratePerHourByJob: daysInputs.ratePerHourByJob,
       assumedHalfJobs: daysInputs.assumedHalfJobs,
       jobLabels: daysInputs.jobLabels,
+      priorRatePerHourByJob: daysInputs.priorRatePerHourByJob,
     })
   }, [data, daysZoom, daysRange, daysInputs, vectorInputs])
 

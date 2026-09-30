@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
-import { screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { BridgeVectorDaysPanel } from './BridgeVectorDaysPanel'
 import { buildVectorGrid } from '../../lib/bridge/vectorDays'
@@ -8,8 +8,9 @@ import type { VectorSession } from '../../lib/bridge/vectors'
 
 const field = (userId: string, workDate: string, hours: number, jobId: string): VectorSession => ({ userId, workDate, hours, jobId, onBid: false, officeJob: false, approved: true, pending: false })
 
-function grid(sessions: VectorSession[], zoom: 'days' | 'weeks' | 'months' = 'days') {
+function grid(sessions: VectorSession[], zoom: 'days' | 'weeks' | 'months' = 'days', prior?: Map<string, number>) {
   return buildVectorGrid({
+    priorRatePerHourByJob: prior,
     zoom,
     anchorYmd: zoom === 'days' ? '2026-09-14' : '2026-09-30',
     todayYmd: '2026-09-30',
@@ -74,4 +75,26 @@ describe('BridgeVectorDaysPanel', () => {
     expect(screen.getByText('12 mo')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Previous 12 months' })).toBeTruthy()
   })
+
+  it('the Why line counts red days by job, a click opens the card with the verdict and the doors, and ↻ marks a flipped day', () => {
+    const sessions = [field('u2', '2026-09-01', 8, 'j-low'), field('u2', '2026-09-02', 8, 'j-low'), field('u2', '2026-09-03', 8, 'j-good'), field('u1', '2026-09-01', 8, 'j-good')]
+    renderWithProviders(<BridgeVectorDaysPanel grid={grid(sessions, 'days', new Map([['j-low', 60]]))} zoom="days" onZoom={noop} periodLabel="September 2026" isCurrent canPrev canNext={false} onPrev={noop} onNext={noop} loading={false} error={null} />)
+    const why = screen.getAllByTestId('vector-why').map((w) => w.textContent)
+    expect(why).toEqual(['no red days', '2 red · all on J1044, no %'])
+    expect(screen.getAllByTestId('vector-flip')).toHaveLength(2) // both J1044 days were green at last week's $60
+    expect(screen.queryByTestId('vector-cell-card')).toBeNull()
+    const red = screen.getAllByTestId('vector-day-cell').find((c) => c.textContent?.startsWith('−'))
+    if (!red) throw new Error('no red cell')
+    fireEvent.click(red)
+    const card = screen.getByTestId('vector-cell-card')
+    expect(card.textContent).toContain('Tristen · Tue Sep 1')
+    expect(screen.getByTestId('vector-verdict').textContent).toContain('Red because J1044 Cielo Vista earns $31 an hour and Tristen costs $38.')
+    expect(screen.getByTestId('vector-verdict').textContent).toContain('↻ Re-priced this week')
+    expect(screen.getByRole('link', { name: 'Open J1044' }).getAttribute('href')).toBe('/jobs?tab=stages&stagesJob=j-low')
+    expect(screen.getByRole('link', { name: 'Set % complete' }).getAttribute('href')).toBe('/jobs?tab=job-summary&job=j-low')
+    expect(screen.getByRole('link', { name: 'This day on People → Review' }).getAttribute('href')).toContain('2026-09-01')
+    fireEvent.click(red) // a second click on the same cell closes the card
+    expect(screen.queryByTestId('vector-cell-card')).toBeNull()
+  })
 })
+

@@ -29,7 +29,10 @@
  *
  * The past moves: the rate is contract ÷ (hours to date ÷ % complete), so a
  * new hour or a % update re-prices every day ever worked on that job. Every
- * figure here is as of the rates passed in — today's.
+ * figure here is as of the rates passed in — today's. Given the rates as they
+ * stood a week ago (`priorRatePerHourByJob`), a day whose verdict flipped
+ * since is marked ↻ (v2.4220), so a change on the grid reads as a change on
+ * a job, not a surprise.
  *
  * Pure: no React, no Supabase.
  */
@@ -76,6 +79,8 @@ export type VectorBucket = {
   fieldDays: number
   /** Days in the bucket whose contribution was negative. */
   redDays: number
+  /** Days whose verdict (green / red) differs from what last week's rates gave (v2.4220). */
+  flippedDays: number
   jobs: VectorBucketJob[]
 }
 
@@ -132,6 +137,8 @@ export type VectorDaysInput = {
   assumedHalfJobs?: ReadonlySet<string>
   /** Job labels for the buckets' job lines; a job with no label reads by id. */
   jobLabels?: ReadonlyMap<string, string>
+  /** The rates as they stood a week ago, for the ↻ mark; a job missing here is read at its current rate (no flip). */
+  priorRatePerHourByJob?: ReadonlyMap<string, number>
 }
 
 export const VECTOR_WEEKS_ZOOM_COUNT = 13
@@ -217,7 +224,7 @@ export function vectorRangeLabel(zoom: VectorZoom, range: { start: string; end: 
 // ---- buckets ----
 
 export function emptyBucket(start: string, end: string): VectorBucket {
-  return { start, end, fieldHours: 0, officeBidHours: 0, pendingHours: 0, earnedUsd: 0, laborUsd: 0, officeLaborUsd: 0, contributionUsd: null, contributionPerHour: null, guessedEarnedUsd: 0, unratedHours: 0, fieldDays: 0, redDays: 0, jobs: [] }
+  return { start, end, fieldHours: 0, officeBidHours: 0, pendingHours: 0, earnedUsd: 0, laborUsd: 0, officeLaborUsd: 0, contributionUsd: null, contributionPerHour: null, guessedEarnedUsd: 0, unratedHours: 0, fieldDays: 0, redDays: 0, flippedDays: 0, jobs: [] }
 }
 
 function closeBucket(b: VectorBucket): VectorBucket {
@@ -248,6 +255,7 @@ export function foldBuckets(list: ReadonlyArray<VectorBucket | null | undefined>
     out.unratedHours += b.unratedHours
     out.fieldDays += b.fieldDays
     out.redDays += b.redDays
+    out.flippedDays += b.flippedDays
     for (const j of b.jobs) {
       const cur = jobs.get(j.jobId)
       if (cur) {
@@ -275,6 +283,7 @@ export function buildVectorDayCells(input: {
   ratePerHourByJob: ReadonlyMap<string, number>
   assumedHalfJobs?: ReadonlySet<string>
   jobLabels?: ReadonlyMap<string, string>
+  priorRatePerHourByJob?: ReadonlyMap<string, number>
 }): Map<string, Map<string, VectorBucket>> {
   const wageByUser = new Map(input.wages.map((w) => [w.userId, w]))
   const byUser = new Map<string, Map<string, VectorBucket>>()
@@ -340,6 +349,19 @@ export function buildVectorDayCells(input: {
       }
       closeBucket(cell)
       if (cell.contributionUsd != null && cell.contributionUsd < 0) cell.redDays = 1
+      if (cell.contributionUsd != null && input.priorRatePerHourByJob) {
+        let priorEarned = 0
+        let differs = false
+        for (const j of cell.jobs) {
+          const prior = input.priorRatePerHourByJob.get(j.jobId)
+          if (prior == null) priorEarned += j.earnedUsd
+          else {
+            priorEarned += j.hours * prior
+            if (prior !== (j.ratePerHour ?? 0)) differs = true
+          }
+        }
+        if (differs && priorEarned - cell.laborUsd < 0 !== cell.contributionUsd < 0) cell.flippedDays = 1
+      }
     }
   }
   return byUser
@@ -401,7 +423,7 @@ export function compareVectorGridRows(a: VectorGridRow, b: VectorGridRow): numbe
 export function buildVectorGrid(input: VectorDaysInput): VectorGrid {
   const range = vectorRangeFor(input.zoom, input.anchorYmd)
   const columns = vectorColumnsFor(input.zoom, range, input.todayYmd)
-  const cellsByUser = buildVectorDayCells({ start: range.start, end: range.end, mode: input.mode, wages: input.wages, sessions: input.sessions, ratePerHourByJob: input.ratePerHourByJob, assumedHalfJobs: input.assumedHalfJobs, jobLabels: input.jobLabels })
+  const cellsByUser = buildVectorDayCells({ start: range.start, end: range.end, mode: input.mode, wages: input.wages, sessions: input.sessions, ratePerHourByJob: input.ratePerHourByJob, assumedHalfJobs: input.assumedHalfJobs, jobLabels: input.jobLabels, priorRatePerHourByJob: input.priorRatePerHourByJob })
   const wageByUser = new Map(input.wages.map((w) => [w.userId, w]))
   const personById = new Map(input.people.map((p) => [p.userId, p]))
   const rows: VectorGridRow[] = []
@@ -437,4 +459,39 @@ export function buildVectorGrid(input: VectorDaysInput): VectorGrid {
     range.end,
   )
   return { zoom: input.zoom, mode: input.mode, start: range.start, end: range.end, todayYmd: input.todayYmd, columns, rows, company: { cells: companyCells, total: companyTotal } }
+}
+
+export type VectorVerdict = { tone: 'green' | 'red' | 'none'; sentence: string }
+
+const usd = (n: number): string => `$${Math.round(Math.abs(n)).toLocaleString('en-US')}`
+
+/**
+ * The sentence a cell's card leads with (v2.4220): why the period reads red or
+ * green, in the job's terms — the rate against the wage — never the person's
+ * pace. A period with no field hours has no verdict.
+ */
+export function vectorVerdict(b: VectorBucket, name: string, wagePerHour: number | null): VectorVerdict {
+  if (b.contributionUsd == null || b.fieldHours <= 0) return { tone: 'none', sentence: `${name} logged no field hours here — office or bid time costs a wage and earns nothing on this grid, so it is not judged.` }
+  const wage = wagePerHour ?? (b.fieldHours > 0 ? b.laborUsd / b.fieldHours : 0)
+  const oneDay = b.start === b.end
+  const period = oneDay ? 'the day' : 'the period'
+  const red = b.contributionUsd < 0
+  const lowJobs = b.jobs.filter((j) => (j.ratePerHour ?? 0) < wage)
+  const noPrice = b.jobs.filter((j) => j.ratePerHour == null)
+  const guessed = b.jobs.filter((j) => j.guessed && j.ratePerHour != null) // a job with no price has no rate to firm up
+  const tail: string[] = []
+  if (noPrice.length > 0) tail.push(`${noPrice.map((j) => j.label).join(' and ')} ${noPrice.length === 1 ? 'has' : 'have'} no contract price yet, so those hours earned $0 — set the price and they count.`)
+  if (guessed.length > 0) tail.push(`${guessed.map((j) => j.label).join(' and ')} ${guessed.length === 1 ? 'has' : 'have'} no % complete, so the expected hours are a guess: set the % and the rate firms up either way.`)
+  if (red) {
+    const worst = lowJobs.sort((a, c) => (a.ratePerHour ?? 0) - (c.ratePerHour ?? 0))[0]
+    const lead = worst
+      ? `Red because ${worst.label} earns ${worst.ratePerHour == null ? 'nothing' : `${usd(worst.ratePerHour)} an hour`} and ${name} costs ${usd(wage)}. That is the job's price against the hours it is taking, not how fast ${period} went — everyone on it reads the same.`
+      : `Red: ${period}'s hours cost ${usd(b.laborUsd)} and earned ${usd(b.earnedUsd)}.`
+    return { tone: 'red', sentence: [lead, ...tail].join(' ') }
+  }
+  const lead =
+    lowJobs.length > 0
+      ? `Green on balance: ${period} earned ${usd(b.earnedUsd)} against ${usd(b.laborUsd)} of labor, though ${lowJobs.map((j) => j.label).join(' and ')} paid under ${name}'s wage.`
+      : `Green: every job ${oneDay ? 'that day' : 'in the period'} earned over ${name}'s ${usd(wage)} wage — ${usd(b.earnedUsd)} earned against ${usd(b.laborUsd)} of labor.`
+  return { tone: 'green', sentence: [lead, ...tail].join(' ') }
 }
