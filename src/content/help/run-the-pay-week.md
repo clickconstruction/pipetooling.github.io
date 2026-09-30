@@ -22,7 +22,7 @@ Tap the link and you land on the next stop with the pay week already selected. T
 
 ## 2. Generate the pay reports
 
-**People → Pay Stubs → Draft Payroll.** The period is the last complete Sun–Sat pay week. {{button:blue|Generate Remaining}} makes a report for everyone with pay due and no report yet; you can also generate one person at a time. A salaried person whose whole week is unpaid time off, or who had not started yet, comes to $0 and is left out — the count beside the button is the list the button uses.
+**People → Pay Stubs → Draft Payroll.** The period is the last complete Sun–Sat pay week. {{button:blue|Generate Remaining}} makes a report for everyone with pay due and no report yet; {{button:blue|Report}} on a row makes one person's. Either way nothing opens on its own: the row turns into {{button:outline|View}} and {{button:green|Record payment}}, and a toast says the report is there. A salaried person whose whole week is unpaid time off, or who had not started yet, comes to $0 and is left out — the count beside the button is the list the button uses.
 
 When every person with pay due has a report, a green line appears under the buttons:
 
