@@ -36,6 +36,7 @@ import {
 import { CARD, COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER, PAPER_GREEN, PAPER_RED } from '../lib/portal/portalTheme'
 import { foldPortalTestReports, portalCertifierLine, type PortalTestReport } from '../lib/portal/portalPayload'
 import PortalPaymentsSection from '../components/portal/PortalPaymentsSection'
+import PortalWaiversSection from '../components/portal/PortalWaiversSection'
 import { phoneContact } from '../lib/phoneContact'
 
 /**
@@ -276,6 +277,8 @@ export default function CustomerPortal() {
             )}
             <PortalStatement requestToken={state.payload.requestToken ?? token} payload={state.payload} today={today} />
             {state.payload.checks ? <PortalPaymentsSection checks={state.payload.checks} formatUsd={formatPortalUsd} /> : null}
+            {/* Lien waivers (v2.4278): one pair per bill the viewer pays — the conditional that came with it, the unconditional that follows. */}
+            <PortalWaiversSection waivers={state.payload.waivers} formatUsd={formatPortalUsd} />
             <div data-screen-only>
               <PortalRequestForms token={state.payload.requestToken ?? token} payload={state.payload} />
             </div>

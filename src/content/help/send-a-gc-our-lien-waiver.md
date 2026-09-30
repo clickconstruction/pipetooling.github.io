@@ -2,7 +2,7 @@
 title: send a GC our lien waiver
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: lien waiver, GC, general contractor, conditional, unconditional, progress, final, release of lien, he signs now, sign now, send to the GC, waiver PDF, 53.284, bill, pay app, send with the bill, bill tab, add waiver, waivers to sign, needs you, sign them
+keywords: lien waiver, GC, general contractor, conditional, unconditional, progress, final, release of lien, he signs now, sign now, send to the GC, waiver PDF, 53.284, bill, pay app, send with the bill, bill tab, add waiver, waivers to sign, needs you, sign them, GC room, portal, what the GC sees
 ---
 A GC often wants a lien waiver with each bill. The waiver says we give up our lien right for that payment. Texas has four forms. The app picks the right one from the bill, and the leader signs it in the app.
 
@@ -80,6 +80,15 @@ Once the waiver is signed, three buttons are ready.
 - {{button:outline|Print}} opens the letter for a printer.
 
 If the button is grey, the GC has no billing email on file. Add it on the GC's customer record and come back.
+
+## What the GC sees
+
+The GC's room has a **Lien waivers** section. It shows one row per bill they pay.
+
+- The **Conditional** column shows the waiver that came with the bill. It is a dated PDF they can open.
+- The **Unconditional** column shows the one that follows. It reads **when your check clears** until the money lands. Then it reads **on its way** while the leader signs. Then it is a PDF too.
+
+Their bookkeeper can find every waiver there without calling the office.
 
 ## Where the waiver lives afterward
 
