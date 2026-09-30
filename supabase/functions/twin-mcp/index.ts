@@ -8,6 +8,7 @@ import { callTtManageUser, ttBridgeConfigured, ttTwinEmail } from '../_shared/tt
 import { todayYmdInAppTz, ymdAddDays } from '../_shared/appTimeZone.ts'
 import { classifyTwinQuestionAudience, isTwinQuestionAudience } from '../_shared/twinQuestionAudience.ts'
 import { backtestRunLabelOwner, isBacktestLockNote } from '../_shared/twinBacktestScoreGate.ts'
+import { referenceWhole, referenceWholeLabel } from '../_shared/referenceWhole.ts'
 import { checkEstimatorQuestionShape, matchRecommended, normalizeTwinQuestionChoices } from '../_shared/twinQuestionShape.ts'
 import { PLANS_ASK_DEFAULT_CHOICES, PLANS_ASK_DEFAULT_RECOMMENDED, answerRequestsRerun, classifyTwinQuestionKind, effectiveTwinQuestionKind, isTwinQuestionKind } from '../_shared/twinQuestionKind.ts'
 
@@ -2329,7 +2330,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       }
       // The seal breaks here — reference value/outcome are read by the server, not the agent.
       const { data: refBid } = await admin.from('bids')
-        .select('id, bid_number, project_name, bid_value, outcome, loss_category, bid_date_sent, created_at, plans_link, estimator_id, bid_date_sent_attested_by, created_by')
+        .select('id, bid_number, project_name, bid_value, outcome, loss_category, bid_date_sent, created_at, plans_link, estimator_id, bid_date_sent_attested_by, created_by, cover_letter_alt_texts')
         .eq('id', bid.twin_source_bid_id).maybeSingle()
       if (!refBid) return textContent('Reference bid not found', true)
       // v2.3099: WHOSE number — same resolver as shadows; the Scoreboard treats a
@@ -2339,7 +2340,10 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         admin.from('bids_count_rows').select('id', { count: 'exact', head: true }).eq('bid_id', refBid.id),
         admin.from('bid_pricing_assignments').select('id', { count: 'exact', head: true }).eq('bid_id', refBid.id),
       ])
-      const refValue = refBid.bid_value == null ? null : Number(refBid.bid_value)
+      // v2.4199: the reference is the WHOLE — the sent base plus every offered alternate's stamped
+      // add-on (the twin priced the alternate's rows too). _shared/referenceWhole.ts.
+      const refWhole = referenceWhole(refBid.bid_value, refBid.cover_letter_alt_texts)
+      const refValue = refWhole.value
       const hasPlans = !!String(refBid.plans_link ?? '').trim()
       const grade = !hasPlans ? 'X' : refValue != null && (refCounts ?? 0) > 0 && (refPricing ?? 0) > 0 ? 'A' : refValue != null ? 'B' : (refCounts ?? 0) > 0 ? 'C' : 'D'
       // Quality flags — mirrors src/lib/bids/referenceGrade.ts (unseal-time only).
@@ -2378,11 +2382,11 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       const teacherLabel = teacher.name ? ` by ${teacher.name} (${teacher.standard ? 'calibration standard' : 'practice teacher — not a gate run'})` : ''
       await admin.from('bids_submission_entries').insert({
         bid_id: bid.id,
-        notes: `[STG-6 SCORECARD] ${runLabel} (${axis}) via twin-mcp score_backtest: twin locked $${lockedTotal.toLocaleString()} vs reference b${refBid.bid_number} ${refValue != null ? `$${refValue.toLocaleString()}` : '(no value)'}${teacherLabel} ${refBid.outcome ?? 'undecided'}${refBid.loss_category ? ` (${refBid.loss_category})` : ''}, sent ${refBid.bid_date_sent ?? '—'} → delta ${deltaPct != null ? `${deltaPct > 0 ? '+' : ''}${deltaPct}%` : 'n/a'}. Grade ${grade}, flags: ${flagList}, scope ${scopeVerdict}, gate-eligible ${gateEligible ? 'yes' : 'no'}.`,
+        notes: `[STG-6 SCORECARD] ${runLabel} (${axis}) via twin-mcp score_backtest: twin locked $${lockedTotal.toLocaleString()} vs reference b${refBid.bid_number} ${refValue != null ? `$${refValue.toLocaleString()}${referenceWholeLabel(refWhole)}` : '(no value)'}${teacherLabel} ${refBid.outcome ?? 'undecided'}${refBid.loss_category ? ` (${refBid.loss_category})` : ''}, sent ${refBid.bid_date_sent ?? '—'} → delta ${deltaPct != null ? `${deltaPct > 0 ? '+' : ''}${deltaPct}%` : 'n/a'}. Grade ${grade}, flags: ${flagList}, scope ${scopeVerdict}, gate-eligible ${gateEligible ? 'yes' : 'no'}.`,
       }).then(() => {}, () => {})
       return textContent(JSON.stringify({
         ok: true, reused: false, run_label: runLabel, twin_bid: `b${bid.bid_number}`,
-        reference: { bid: `b${refBid.bid_number}`, project_name: refBid.project_name, value: refValue, outcome: refBid.outcome, loss_category: refBid.loss_category, sent: refBid.bid_date_sent, count_rows: refCounts ?? 0, priced_rows: refPricing ?? 0 },
+        reference: { bid: `b${refBid.bid_number}`, project_name: refBid.project_name, value: refValue, base: refWhole.base, add_ons: refWhole.addOns, outcome: refBid.outcome, loss_category: refBid.loss_category, sent: refBid.bid_date_sent, count_rows: refCounts ?? 0, priced_rows: refPricing ?? 0 },
         locked_total: lockedTotal, delta_pct: deltaPct, grade, flags: { roundValue, weakLoss, lossUncategorized, stale }, scope_verdict: scopeVerdict, gate_eligible: gateEligible,
         scope_verdict_note: verdictCoerced ?? undefined,
         next: 'Now (and only now) read the reference rows: run the scope-match line-compare, then call score_backtest AGAIN with the same run_label and scope_verdict pass|fail (plus counts_note) — that amends the row and recomputes gate_eligible. Then the count/footage comparison, the audit questions in plain words, and the digest per FEEDBACK_LOOP.md.',
@@ -3256,9 +3260,11 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       const scored: Array<Record<string, unknown>> = []
       for (const run of locked ?? []) {
         const { data: refBid } = await admin.from('bids')
-          .select('bid_number, project_name, bid_value, bid_date_sent, outcome, estimator_id, bid_date_sent_attested_by, created_by').eq('id', run.reference_bid_id).maybeSingle()
+          .select('bid_number, project_name, bid_value, bid_date_sent, outcome, estimator_id, bid_date_sent_attested_by, created_by, cover_letter_alt_texts').eq('id', run.reference_bid_id).maybeSingle()
         if (!refBid?.bid_date_sent || refBid.bid_value == null) continue
-        const refVal = Number(refBid.bid_value)
+        // v2.4199: the whole — base plus the offered alternates' stamped add-ons (_shared/referenceWhole.ts).
+        const refWhole = referenceWhole(refBid.bid_value, refBid.cover_letter_alt_texts)
+        const refVal = refWhole.value ?? Number(refBid.bid_value)
         const delta = refVal > 0 ? ((Number(run.locked_total) - refVal) / refVal) * 100 : null
         // v2.3080: WHOSE number was this? A calibration-standard teacher counts
         // toward Gate B; anyone else is practice (b481 scored against Grace's bid).
@@ -3271,10 +3277,10 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         }).eq('id', run.id)
         const { data: sb } = await admin.from('bids').select('bid_number').eq('id', run.shadow_bid_id).maybeSingle()
         const teacherLabel = teacher.name ? ` by ${teacher.name} (${teacher.standard ? 'calibration standard' : 'practice teacher — not a gate run'})` : ''
-        const line = `[shadow SCORECARD] Twin locked $${Number(run.locked_total).toLocaleString()} (blind, pre-send) vs human $${refVal.toLocaleString()}${teacherLabel} = ${delta == null ? 'n/a' : (delta > 0 ? '+' : '') + (Math.round(delta * 10) / 10) + '%'} — axis ${run.axis ?? 'unclassified'}, reference b${refBid.bid_number} (${refBid.project_name}).`
+        const line = `[shadow SCORECARD] Twin locked $${Number(run.locked_total).toLocaleString()} (blind, pre-send) vs human $${refVal.toLocaleString()}${referenceWholeLabel(refWhole)}${teacherLabel} = ${delta == null ? 'n/a' : (delta > 0 ? '+' : '') + (Math.round(delta * 10) / 10) + '%'} — axis ${run.axis ?? 'unclassified'}, reference b${refBid.bid_number} (${refBid.project_name}).`
         await admin.from('bids_submission_entries').insert({ bid_id: run.shadow_bid_id, notes: line }).then(() => {}, () => {})
         await admin.from('bids_submission_entries').insert({ bid_id: run.reference_bid_id, notes: line }).then(() => {}, () => {})
-        scored.push({ shadow_bid: `b${sb?.bid_number}`, reference: `b${refBid.bid_number}`, axis: run.axis, locked: run.locked_total, human: refVal, delta_pct: delta == null ? null : Math.round(delta * 10) / 10, teacher: teacher.name, teacher_standard: teacher.standard })
+        scored.push({ shadow_bid: `b${sb?.bid_number}`, reference: `b${refBid.bid_number}`, axis: run.axis, locked: run.locked_total, human: refVal, human_base: refWhole.base, add_ons: refWhole.addOns, delta_pct: delta == null ? null : Math.round(delta * 10) / 10, teacher: teacher.name, teacher_standard: teacher.standard })
       }
       // Confidence scoreboard: rolling per-axis stats over all scored runs. Gate
       // math takes STANDARD-teacher runs only (v2.3080); practice runs are counted
@@ -3314,7 +3320,7 @@ async function handleRpc(req: Request, msg: { jsonrpc?: string; id?: unknown; me
       return rpcResult(id, {
         protocolVersion: version,
         capabilities: { tools: {} },
-        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.4.3' },
+        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.4.4' },
         instructions:
           "PipeTooling digital-twin seat (estimator-only). Call get_brief first, then get_directory; mint_session gives you a signed-in browser link to the real apps — PipeTooling by default, CountTooling (the PDF-takeoff tool) with app: 'counttooling'. The work happens there. Every call needs your per-twin token (X-Twin-Token or Bearer).",
       })

@@ -15,6 +15,7 @@ import type { BidWithBuilder } from '../types/bidWithBuilder'
 import type { RobotOpenQuestion } from '../components/bids/RobotNeedsSheet'
 import { ROBOT_AUDIT_ROLES } from '../lib/bids/bidAudits'
 import { bestEffortGap, bestEffortGapNote } from '../lib/bids/bestEffort'
+import { referenceWholeValue } from '../../supabase/functions/_shared/referenceWhole'
 import { envelopeRefusal, envelopeRunFromShadow, isRevisionAfterReveal, robotReviewRevisionNote, type EnvelopeRun } from '../lib/bids/robotEnvelope'
 import {
   BEST_EFFORT_GAP_NOTE_PREFIX,
@@ -249,10 +250,11 @@ export function useBidRobotLayer(input: {
       const untyped = supabase as unknown as import('@supabase/supabase-js').SupabaseClient
       const [{ data: be }, { data: fresh }] = await Promise.all([
         untyped.from('bid_best_efforts').select('value').eq('bid_id', bidId).maybeSingle(),
-        supabase.from('bids').select('bid_number, bid_value, bid_date_sent').eq('id', bidId).maybeSingle(),
+        supabase.from('bids').select('bid_number, bid_value, bid_date_sent, cover_letter_alt_texts').eq('id', bidId).maybeSingle(),
       ])
       if (!be || !fresh?.bid_date_sent) return
-      const gap = bestEffortGap((be as { value: number | string }).value, fresh.bid_value)
+      // v2.4199: against the whole — the sent base plus the offered alternates' stamped add-ons.
+      const gap = bestEffortGap((be as { value: number | string }).value, referenceWholeValue(fresh.bid_value, fresh.cover_letter_alt_texts))
       if (!gap) return
       const { count } = await supabase.from('bids_submission_entries').select('id', { count: 'exact', head: true }).eq('bid_id', bidId).like('notes', `${BEST_EFFORT_GAP_NOTE_PREFIX}%`)
       if ((count ?? 0) > 0) return
