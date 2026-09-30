@@ -37,6 +37,8 @@ export type TeamSampleEmailId =
   | 'billed_awaiting'
   | 'weekly_money'
   | 'weekly_movement'
+  | 'paid_job'
+  | 'ready_to_bill'
   | 'signed_agreement_staff'
   | 'estimate_accepted_staff'
   | 'gc_word_ask'
@@ -161,7 +163,7 @@ export const TEAM_EMAILS: readonly TeamEmail[] = [
     when: { kind: 'event', label: 'When a payment is recorded', order: 10 },
     recipients: { roles: OFFICE_AND_PRIMARY, decidedBy: 'setting', list: 'paid_job', rule: 'The people ticked on Emails & reports → Paid job.' },
     sampleSubject: () => 'Payment recorded — J1054 · Sam Sample · Water heater replacement',
-    render: { kind: 'soon', note: 'Built inside paid-job-email over the job’s bills and payments; a test send per job exists on the Billing tab.' },
+    render: { kind: 'sample', sample: 'paid_job' },
     manage: stream('paid', 'Emails & reports → Paid job'),
     reflects: ['Paid job wording (Email templates)'],
   },
@@ -171,7 +173,7 @@ export const TEAM_EMAILS: readonly TeamEmail[] = [
     when: { kind: 'event', label: 'When a job moves to Ready to Bill', order: 11 },
     recipients: { roles: OFFICE_AND_PRIMARY, decidedBy: 'setting', list: 'ready_to_bill', rule: 'The people ticked on Emails & reports → Ready to bill (email or push, per person).' },
     sampleSubject: () => 'Ready to bill — J1054 · Sam Sample · Water heater replacement',
-    render: { kind: 'soon', note: 'Built inside paid-job-email over the job; a test send per job exists on the Billing tab.' },
+    render: { kind: 'sample', sample: 'ready_to_bill' },
     manage: stream('ready_to_bill', 'Emails & reports → Ready to bill'),
     reflects: ['Ready to bill wording (Email templates)'],
   },

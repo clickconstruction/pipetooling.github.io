@@ -18,6 +18,8 @@ import { paymentForecastEmailSubject, paymentForecastEmailText, renderPaymentFor
 import { billedReportEmailSubject, billedReportEmailText, renderBilledReportEmail, type BilledReportPayload, type BilledReportRow } from '../../supabase/functions/_shared/billedReportEmail'
 import { renderWeeklyMoneyHtml, renderWeeklyMoneyText, weekLabelFromMonday, weeklyMoneySubject, type WeeklyMoneyPayload } from '../../supabase/functions/_shared/weeklyMoneyEmail'
 import { renderWeeklyMovementHtml, renderWeeklyMovementText, weeklyMovementSubject, type WeeklyMovementPayload, type WeeklyMovementPayloadEntry } from '../../supabase/functions/_shared/weeklyMovementEmail'
+import { paidJobEmailSubject, paidJobEmailText, renderPaidJobEmailDetailed, type PaidJobEmailPayload } from '../../supabase/functions/_shared/paidJobEmail'
+import { readyToBillSubject, readyToBillText, renderReadyToBillDetailed, type ReadyToBillPayload } from '../../supabase/functions/_shared/readyToBillEmail'
 
 export type BuiltTeamEmail = { subject: string; html: string; text: string }
 
@@ -289,9 +291,54 @@ export function sampleWeeklyMovementPayload(weekMonday: string): WeeklyMovementP
   return { generated_at: `${weekMonday}T12:00:00Z`, week_monday: weekMonday, sections, send_backs: sent_backs, move_count: all.length, job_count: new Set(all.map((x) => x.job_id)).size }
 }
 
+/** The Paid job payload (lift 7): the sample water heater job, billed and paid in full, with its line items, the invoice, the crew's labor, the parts and the timeline. */
+export function samplePaidJobPayload(todayYmd: string): PaidJobEmailPayload {
+  const daysAgo = (n: number) => {
+    const d = new Date(`${todayYmd}T12:00:00Z`)
+    d.setUTCDate(d.getUTCDate() - n)
+    return d.toISOString().slice(0, 10)
+  }
+  const month = todayYmd.slice(0, 7)
+  return {
+    job: { id: 'job-3', display_number: '1054', job_name: 'Water heater replacement', job_address: SAMPLE_HOMEOWNER.address, customer_name: SAMPLE_HOMEOWNER.name, status: 'paid', service_type_name: 'Plumbing' },
+    line_items: [
+      { name: '50-gal gas water heater', count: 1, unit_price: 2_980, amount: 2_980, description: 'Bradford White, 40k BTU', invoice_status: 'paid' },
+      { name: 'Expansion tank', count: 1, unit_price: 320, amount: 320, description: null, invoice_status: 'paid' },
+      { name: 'Labor', count: 4, unit_price: 270, amount: 1_080, description: 'Two techs, half a day', invoice_status: 'paid' },
+    ],
+    invoices: [{ status: 'paid', amount: 4_380, paid: 4_380, sent_at: daysAgo(3), sent_day_offset: 0, channel: 'stripe', detail: 'Water heater replacement · 1054', bill_to: null }],
+    charge_events: [
+      { source: 'supply_house', date_key: daysAgo(5), amount: 1_210, label: 'Ferguson · heater + tank' },
+      { source: 'team_labor', date_key: daysAgo(4), amount: 640, label: 'Ana Lead, Max Helper · 8.0 h' },
+    ],
+    money: { revenue: 4_380, payments: [{ amount: 4_380, payment_date: daysAgo(1), method: 'stripe' }], payments_total: 4_380, last_payment: { amount: 4_380, at: `${daysAgo(1)}T15:12:00Z` } },
+    costs: { team_labor: { total: 640, people: [{ name: 'Ana Lead', hours: 4, wage: 42, cost: 168 }, { name: 'Max Helper', hours: 4, wage: 28, cost: 112 }] }, sub_labor_total: 0, parts_total: 1_210, supply_house_total: 1_210, tally_total: 0, other_total: 0 },
+    profit: 4_380 - 640 - 1_210,
+    timeline: [{ month, labor_cost: 640, parts_cost: 1_210, payments: 4_380 }],
+    dates: { job_start: daysAgo(4), last_work: daysAgo(4), paid_at: `${daysAgo(1)}T15:12:00Z` },
+  }
+}
+
+/** The Ready to bill payload (lift 7): the gas-line job moved from Working by its lead, one draft bill waiting. */
+export function sampleReadyToBillPayload(todayYmd: string): ReadyToBillPayload {
+  return {
+    job: { id: 'job-5', display_number: '1057', job_name: 'Hunter Homes — gas line', job_address: '77 Hunter Loop, Kyle, TX 78640', customer_name: 'Hunter Homes', status: 'ready_to_bill', service_type_name: 'Plumbing', revenue: 18_900 },
+    billing: { rtb_draft_total: 18_900, rtb_draft_count: 1, payments_total: 0 },
+    moved_by: { name: 'Kim Tech', at: `${todayYmd}T21:05:00Z`, from_status: 'working' },
+  }
+}
+
 export function buildTeamSampleEmail(id: TeamSampleEmailId, ctx: TeamSampleContext): BuiltTeamEmail {
   const origin = ctx.origin
   switch (id) {
+    case 'paid_job': {
+      const p = samplePaidJobPayload(ctx.todayYmd)
+      return { subject: paidJobEmailSubject(p), html: renderPaidJobEmailDetailed(p), text: paidJobEmailText(p) }
+    }
+    case 'ready_to_bill': {
+      const p = sampleReadyToBillPayload(ctx.todayYmd)
+      return { subject: readyToBillSubject(p), html: renderReadyToBillDetailed(p), text: readyToBillText(p) }
+    }
     case 'weekly_movement': {
       const monday = mondayOf(ctx.todayYmd)
       const p = sampleWeeklyMovementPayload(monday)
