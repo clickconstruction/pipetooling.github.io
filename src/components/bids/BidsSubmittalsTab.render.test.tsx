@@ -315,8 +315,11 @@ describe('BidsSubmittalsTab', () => {
       'Step 7. Resubmit',
       'Step 8. Procure',
     ])
-    // On a fresh bid with a schedule, only the strip, the source line and the Build Rev 1 card are on the page; the robot's offer is not, so its stop is not walked (v2.4134).
-    expect(missing).toEqual(titles.filter((t) => !['Where you are', 'Step 1. Where the rows come from', 'From the takeoff', 'No schedule yet? Type or paste it', 'Step 2. Build Rev 1'].includes(t)))
+    // On a fresh bid with a schedule, only the strip, the source line, the Build Rev 1 card and Procure (always on the page, v2.4201) are there; the robot's offer is not, so its stop is not walked (v2.4134).
+    expect(missing).toEqual(titles.filter((t) => !['Where you are', 'Step 1. Where the rows come from', 'From the takeoff', 'No schedule yet? Type or paste it', 'Step 2. Build Rev 1', 'Step 8. Procure'].includes(t)))
+    // v2.4201 · Procure is drawn and open before a revision exists: long-lead items can go in now.
+    expect(screen.getByTestId('road-8').getAttribute('data-open')).toBe('true')
+    expect(within(screen.getByTestId('road-8-body')).getByText(/No rows yet/)).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Read the full guide: build a submittal package →' }).getAttribute('href')).toBe('/help?g=build-a-submittal-package')
     fireEvent.click(screen.getByRole('button', { name: 'Done' }))
     expect(screen.queryByRole('dialog')).toBeNull()
@@ -381,6 +384,14 @@ describe('BidsSubmittalsTab', () => {
     expect(screen.getByTestId('road-3').getAttribute('data-open')).toBe('true')
     for (const n of [4, 5, 7]) expect(screen.getByTestId(`road-${n}`).getAttribute('data-open')).toBe('false')
     expect(screen.queryByTestId('build-package')).toBeNull()
+    // v2.4201 · Procure never folds on its own, and a pill jumps into its stage: Share opens, scrolls and rings.
+    expect(screen.getByTestId('road-8').getAttribute('data-open')).toBe('true')
+    Element.prototype.scrollIntoView = () => {}
+    fireEvent.click(screen.getByRole('button', { name: '5 Share · later' }))
+    expect(screen.getByTestId('road-5').getAttribute('data-open')).toBe('true')
+    expect((screen.getByTestId('share-button') as HTMLButtonElement).disabled).toBe(true)
+    // The Share button was folded away when the pill was tapped, so the ring lands on it a frame later.
+    await waitFor(() => expect(document.querySelector('[data-tour="submittals-share"]')?.classList.contains('submittal-journey-flash')).toBe(true))
     fireEvent.click(screen.getByRole('button', { name: /^4 · Package/ }))
     expect((screen.getByTestId('build-package') as HTMLButtonElement).disabled).toBe(true)
     expect(screen.getByTestId('package-caption').textContent).toBe('Build package turns on when every row has its reason and its cut sheet.')
