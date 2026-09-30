@@ -158,6 +158,27 @@ describe('JobsGcReviewModal', () => {
     expect(await screen.findByRole('dialog', { name: /TF Harper/ })).toBeTruthy()
   })
 
+  it('Preview shows the statement over the dialog, and Back returns to what was typed', async () => {
+    const windowOpen = vi.spyOn(window, 'open')
+    await open()
+    fireEvent.click(within(rowFor('Knight Contracting')).getByRole('button', { name: 'Send' }))
+    const dialog = within(await screen.findByRole('dialog', { name: 'Email statement to Knight Contracting' }))
+    const to = dialog.getByPlaceholderText('accounting@example.com') as HTMLInputElement
+    fireEvent.change(to, { target: { value: 'ap@knight.example' } })
+    fireEvent.click(dialog.getByRole('button', { name: 'Preview' }))
+    const preview = await screen.findByRole('dialog', { name: 'Preview: Statement to Knight Contracting' })
+    expect(within(preview).getByText('Preview. Nothing has been sent.')).toBeTruthy()
+    const frame = within(preview).getByTitle('Preview: Statement to Knight Contracting') as HTMLIFrameElement
+    expect(frame.getAttribute('srcdoc')).toContain('Palomino Trail')
+    expect(frame.getAttribute('srcdoc')).toContain('<base target="_blank">')
+    expect(windowOpen).not.toHaveBeenCalled()
+    // Escape closes the preview alone; the dialog and its address are still there.
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByRole('dialog', { name: 'Preview: Statement to Knight Contracting' })).toBeNull()
+    expect((screen.getByPlaceholderText('accounting@example.com') as HTMLInputElement).value).toBe('ap@knight.example')
+    windowOpen.mockRestore()
+  })
+
   it('a GC that owes only in Collections has a statement and no steps', async () => {
     await open()
     expect(screen.getByText('Nothing to check this week')).toBeTruthy()
