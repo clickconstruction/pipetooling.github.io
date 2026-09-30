@@ -3421,3 +3421,9 @@ button.gcStep:hover > em { text-decoration: underline; }
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+
+/* Procurement log date boxes (v2.4238): the browser's calendar button sits against the date, so the box is as narrow as the date it holds. */
+.procurement-date::-webkit-calendar-picker-indicator {
+  margin-inline-start: 0;
+  padding: 0;
+}

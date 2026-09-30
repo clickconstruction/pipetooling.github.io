@@ -72,6 +72,8 @@ describe('SubmittalProcurementPanel', () => {
     const rows = screen.getAllByTestId('procurement-row')
     expect(rows).toHaveLength(2)
     // BFP-1: released 09/22 from the approval, the house's 10/20 against Rough In 10/06 → 14 days behind.
+    // v2.4238 · the tag and the product are one Item cell, with the stage on the line under them.
+    expect(rows[0]!.querySelector('[data-testid="procurement-item"]')!.textContent).toBe('BFP-1Watts 909 RPZ 2"Rough In')
     expect(rows[0]!.textContent).toContain('Approved 09/22')
     expect(rows[0]!.textContent).toContain('house said')
     expect(rows[0]!.querySelector('[data-testid="procurement-float"]')!.textContent).toBe('−14 d')
