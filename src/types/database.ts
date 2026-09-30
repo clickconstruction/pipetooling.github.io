@@ -4831,6 +4831,79 @@ export type Database = {
           },
         ]
       }
+      clock_typed_entries: {
+        Row: {
+          confirmed_at: string | null
+          confirmed_by: string | null
+          confirmed_by_name: string | null
+          day_seconds_after: number
+          day_seconds_before: number
+          id: string
+          kind: string
+          typed_at: string
+          typed_by: string | null
+          typed_by_name: string
+          typed_range: unknown
+          typed_seconds: number
+          user_id: string
+          work_date: string
+        }
+        Insert: {
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          confirmed_by_name?: string | null
+          day_seconds_after: number
+          day_seconds_before: number
+          id?: string
+          kind: string
+          typed_at?: string
+          typed_by?: string | null
+          typed_by_name?: string
+          typed_range: unknown
+          typed_seconds: number
+          user_id: string
+          work_date: string
+        }
+        Update: {
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          confirmed_by_name?: string | null
+          day_seconds_after?: number
+          day_seconds_before?: number
+          id?: string
+          kind?: string
+          typed_at?: string
+          typed_by?: string | null
+          typed_by_name?: string
+          typed_range?: unknown
+          typed_seconds?: number
+          user_id?: string
+          work_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clock_typed_entries_confirmed_by_fkey"
+            columns: ["confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clock_typed_entries_typed_by_fkey"
+            columns: ["typed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clock_typed_entries_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       common_jobs: {
         Row: {
           id: string
@@ -22672,6 +22745,15 @@ export type Database = {
           error_message: string
         }[]
       }
+      approve_clock_sessions_v2: {
+        Args: { p_session_ids: string[] }
+        Returns: {
+          approved_count: number
+          error_message: string
+          held_own: number
+          held_typed: number
+        }[]
+      }
       approve_collect_payment_for_terminal: {
         Args: {
           p_dispatch_notes?: string
@@ -22891,6 +22973,23 @@ export type Database = {
         Args: { p_id: string }
         Returns: undefined
       }
+      clock_session_approval_hold: {
+        Args: { p_session_id: string }
+        Returns: string
+      }
+      clock_typed_drop_slivers: {
+        Args: { p: unknown; p_min_seconds: number }
+        Returns: unknown
+      }
+      clock_typed_seconds: { Args: { p: unknown }; Returns: number }
+      clock_typed_stamps: {
+        Args: { p_session_ids: string[] }
+        Returns: {
+          entries: Json
+          hold: string
+          session_id: string
+        }[]
+      }
       clone_count_rows_to_bid_version: {
         Args: {
           p_bid_id: string
@@ -22911,6 +23010,10 @@ export type Database = {
       complete_job_collect_payment_flow_terminal: {
         Args: { p_stripe_payment_intent_id: string }
         Returns: Json
+      }
+      confirm_clock_typed_entry: {
+        Args: { p_entry_id: string }
+        Returns: string
       }
       contract_text_setting_keys: { Args: never; Returns: string[] }
       copy_workflow_step: {
@@ -24583,6 +24686,25 @@ export type Database = {
           user_id: string
         }[]
       }
+      list_typed_hours_waiting: {
+        Args: never
+        Returns: {
+          can_act: boolean
+          day_seconds_after: number
+          day_seconds_before: number
+          entry_id: string
+          person_name: string
+          self_typed: boolean
+          session_ids: string[]
+          state: string
+          typed_at: string
+          typed_by: string
+          typed_by_name: string
+          typed_seconds: number
+          user_id: string
+          work_date: string
+        }[]
+      }
       list_unattributed_noncard_mercury_transactions: {
         Args: { p_limit?: number }
         Returns: {
@@ -25711,6 +25833,10 @@ export type Database = {
       trial_helpers_i_led_today: {
         Args: { p_include_open?: boolean }
         Returns: Json
+      }
+      typed_hours_rule_applies: {
+        Args: { p_subject: string }
+        Returns: boolean
       }
       unresolve_noncard_transaction_attribution: {
         Args: { p_mercury_transaction_id: string }
