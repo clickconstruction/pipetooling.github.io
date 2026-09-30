@@ -865,7 +865,7 @@ The function reads and writes with the service role, so every bid-scoped verb en
 
 **Dates** (v2.2703): the `due` date of a bid the twin creates is `today (Central) + due_in_days` via `ymdAddDays`.
 
-**Bundled docs are GENERATED**: `supabase/functions/twin-mcp/briefs.ts` is written by `node scripts/build-twin-mcp-briefs.mjs` from `docs/twins/*` (missions carry only the verbatim mission text, never the scorer sections) — regenerate + redeploy after editing those docs.
+**Bundled docs are GENERATED** (v1.4.3, 2026-09-29: the briefs teach the with-and-without alternate — a CountTooling group with its Alternate switch on, never a second version): `supabase/functions/twin-mcp/briefs.ts` is written by `node scripts/build-twin-mcp-briefs.mjs` from `docs/twins/*` (missions carry only the verbatim mission text, never the scorer sections) — regenerate + redeploy after editing those docs.
 
 **Two-app companion (v2.2439)**: `mint_session` takes `app: 'pipetooling' | 'counttooling'` — the CT path calls CountTooling's `twin-login` with CT's twin secret held server-side (one per-twin credential covers both apps; CT per-twin-credential parity deliberately deferred). The CT path re-applies the 6/min rate limit against `twin_runs` (PT's twin-login isn't in that path) and logs the mint (`app=counttooling` in the note).
 
