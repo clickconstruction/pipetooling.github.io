@@ -101,6 +101,8 @@ function renderCard(bids: BidWithBuilder[], opts: { isMobile?: boolean; revealSi
 
 beforeEach(() => {
   vi.unstubAllEnvs()
+  // Blank the key a developer's .env.local may set, so the OpenStreetMap path is the default here as in CI.
+  vi.stubEnv('VITE_GOOGLE_MAPS_BROWSER_KEY', '')
   localStorage.clear()
   cacheRows.mockReset()
   cacheRows.mockReturnValue([])
