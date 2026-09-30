@@ -33,6 +33,7 @@ import {
 const META: TodoMeta = {
   name: 'Put a GC on notice',
   number: 16,
+  flagged: false,
   group: 'close',
   status: 'built 2026-09-15 · left: the first real run on a TEST GC',
   summary: 'One modal that sends the § 53.056 notice to every owner on every job with a failing GC.',
@@ -111,6 +112,17 @@ describe('parseFrontMatter', () => {
 })
 
 describe('readTodoDoc', () => {
+  it('reads flagged: true, and round-trips it (v2.4195)', () => {
+    const md = ['---', 'name: X', 'number: 70', 'group: ready', 'status: s', 'summary: s', 'next: n', 'size: S', 'blocker: None.', 'ver: —', 'flagged: true', '---', '', 'body'].join('\n')
+    const doc = readTodoDoc('to-dos/x.md', md)
+    expect(isParseError(doc)).toBe(false)
+    if (isParseError(doc)) return
+    expect(doc.meta.flagged).toBe(true)
+    expect(renderFrontMatter(doc.meta)).toContain('flagged: true')
+    const plain = readTodoDoc('to-dos/y.md', md.replace('flagged: true\n', ''))
+    if (!isParseError(plain)) expect(plain.meta.flagged).toBe(false)
+  })
+
   it('builds a doc with the slug derived from the path', () => {
     const parsed = readTodoDoc('to-dos/gc-on-notice/README.md', fileWith(META))
     expect(isParseError(parsed)).toBe(false)

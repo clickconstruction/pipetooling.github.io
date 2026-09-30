@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   countPicks,
   rowVisible,
+  flaggedRows,
   groupRows,
   nextPick,
   withPick,
@@ -22,6 +23,7 @@ import type { BoardItem } from './todoBoard'
 const row = (over: Partial<BoardItem>): BoardItem => ({
   slug: 'gc-on-notice',
   number: 16,
+  flagged: false,
   group: 'close',
   name: 'Put a GC on notice',
   file: 'to-dos/gc-on-notice/README.md',
@@ -152,5 +154,21 @@ describe('local picks', () => {
     })
     expect(parseLocalPicks(null)).toEqual({})
     expect(parseLocalPicks('{')).toEqual({})
+  })
+})
+
+describe('flagged rows (v2.4195)', () => {
+  it('a flagged row leaves its group and shows once, in the Flagged section, in board order', () => {
+    const flagged = { ...A, slug: 'f1', flagged: true }
+    const flagged2 = { ...FLAT, slug: 'f2', flagged: true }
+    const rows = [A, flagged, B, flagged2]
+    expect(flaggedRows(rows).map((r) => r.slug)).toEqual(['f1', 'f2'])
+    const inGroups = groupRows(rows).flatMap((g) => g.items.map((i) => i.slug))
+    expect(inGroups).not.toContain('f1')
+    expect(inGroups).not.toContain('f2')
+    expect(inGroups).toContain(A.slug)
+  })
+  it('no flag, no section', () => {
+    expect(flaggedRows([A, B, FLAT])).toEqual([])
   })
 })

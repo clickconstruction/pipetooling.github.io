@@ -130,9 +130,17 @@ export function groupRows(items: readonly BoardItem[]): Array<{ group: BoardGrou
   return GROUP_ORDER.map((group) => ({
     group,
     label: GROUP_LABELS[group],
-    items: items.filter((i) => i.group === group),
+    // A flagged row shows once, in the Flagged section above (v2.4195), not again in its group.
+    items: items.filter((i) => i.group === group && !i.flagged),
   })).filter((g) => g.items.length > 0)
 }
+
+/** The Flagged section (v2.4195): every `flagged: true` row, in the board's own order (group, then name). */
+export function flaggedRows(items: readonly BoardItem[]): BoardItem[] {
+  return items.filter((i) => i.flagged)
+}
+
+export const FLAGGED_BLURB = 'The owner put these at the top. Each still names its group on the stripe; unflag one by deleting its flagged line.'
 
 /** Toggle: picking the current pick again clears it. */
 export function nextPick(current: PunchPick | '', clicked: PunchPick): PunchPick | '' {
