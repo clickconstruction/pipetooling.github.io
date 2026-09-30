@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CLEAR_DECISION_PATCH, enteredDecisionPatch, enteredEntryBody, enteredSuffix } from './enteredDecisions'
+import { CLEAR_DECISION_PATCH, enteredDecisionAt, enteredDecisionPatch, enteredEntryBody, enteredOnProblem, enteredSuffix, rowsToApproveAll } from './enteredDecisions'
 
 describe('enteredDecisions', () => {
   it('the patch names the reviewer it came from and who typed it', () => {
@@ -16,5 +16,34 @@ describe('enteredDecisions', () => {
     expect(enteredSuffix({ decision_source: 'robot', decision_entered_by_name: 'Wendi' })).toBe('read by the robot · confirmed by Wendi')
     expect(enteredSuffix({ decision_source: 'room' })).toBe('')
     expect(enteredSuffix({})).toBe('')
+  })
+  it('a call can carry its own day: today is now, an earlier day is noon UTC, a later or unreadable day is refused', () => {
+    const now = new Date('2026-09-30T20:15:00Z')
+    expect(enteredDecisionAt('', now, '2026-09-30')).toBe('2026-09-30T20:15:00.000Z')
+    expect(enteredDecisionAt('2026-09-30', now, '2026-09-30')).toBe('2026-09-30T20:15:00.000Z')
+    // The log reads the date as the first ten characters; the tab reads it in the company's zone. Noon UTC is the same day in both.
+    expect(enteredDecisionAt('2026-09-12', now, '2026-09-30')).toBe('2026-09-12T12:00:00.000Z')
+    expect(enteredDecisionAt('2026-09-12', now, '2026-09-30').slice(0, 10)).toBe('2026-09-12')
+    expect(enteredOnProblem('2026-09-12', '2026-09-30')).toBeNull()
+    expect(enteredOnProblem('', '2026-09-30')).toBeNull()
+    expect(enteredOnProblem('2026-10-01', '2026-09-30')).toBe('Their call cannot be dated after today.')
+    expect(enteredOnProblem('0026-09-12', '2026-09-30')).toBe('That date does not read as a day.')
+    expect(enteredOnProblem('Sep 12', '2026-09-30')).toBe('That date does not read as a day.')
+    // A day that cannot stand never reaches the record.
+    expect(enteredDecisionAt('2026-10-01', now, '2026-09-30')).toBe('2026-09-30T20:15:00.000Z')
+    expect(enteredEntryBody('Dana Whitfield', { approved: 14, revise: 0, rejected: 0 }, 'entered', '2026-09-12')).toBe("from Dana Whitfield's file, entered by the office · 14 rows · 14 approve · dated Sep 12, 2026")
+    expect(enteredEntryBody('Dana', { approved: 1, revise: 0, rejected: 0 }, 'entered', null)).toBe("from Dana's file, entered by the office · 1 row · 1 approve")
+  })
+  it('one entry for the whole submittal covers every row with no call and a product; a call already there stays', () => {
+    const rows = [
+      { id: 'a', status: 'as_specified', review_decision: null },
+      { id: 'b', status: 'alternate', review_decision: 'revise' },
+      { id: 'c', status: 'missing', review_decision: null },
+      { id: 'd', status: 'accessory', review_decision: null },
+      { id: 'e', status: 'proposed', review_decision: 'approved' },
+      { id: 'f', status: 'proposed', review_decision: null },
+    ]
+    expect(rowsToApproveAll(rows).map((r) => r.id)).toEqual(['a', 'd', 'f'])
+    expect(rowsToApproveAll([])).toEqual([])
   })
 })
