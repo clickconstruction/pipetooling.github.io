@@ -68,6 +68,14 @@ export function offeredAddAlternates(split: LetterTotalsByAlternate | null, text
 }
 
 /** "add $3,220" — whole dollars unless the amount has real cents. */
+/** What an unpriced alternate says on the letter (v2.4224). */
+export const ALTERNATE_PRICE_TO_FOLLOW = 'price to follow'
+
+/** Priced = its rows carry revenue. An unpriced alternate prints "price to follow", stamps no amount and stays out of the bid room. */
+export function alternateIsPriced(g: Pick<AddAlternateGroup, 'revenueSum'>): boolean {
+  return Number.isFinite(g.revenueSum) && g.revenueSum > 0
+}
+
 export function formatAddOnText(amount: number, fmt: (n: number) => string): string {
   return `add $${fmt(Math.max(0, amount)).replace(/\.00$/, '')}`
 }
@@ -92,10 +100,13 @@ export function buildAddAlternatesBlock(
   if (offered.length === 0) return null
   const items: CoverLetterAlternateItem[] = offered.map((g, i) => {
     const saved = texts.sections?.[g.key]
+    // v2.4224: an alternate with no price yet reads "price to follow" — never "add $0 (with it,
+    // <the base>)", which told the customer the section was free (live walkthrough, BP398).
+    const priced = alternateIsPriced(g)
     return {
       label: saved?.label?.trim() || `Alternate ${i + 1} — ${g.label}`,
-      deltaText: formatAddOnText(g.revenueSum, fmt),
-      amountFormatted: `with it, $${fmt(baseRevenue + g.revenueSum)}`,
+      deltaText: priced ? formatAddOnText(g.revenueSum, fmt) : null,
+      amountFormatted: priced ? `with it, $${fmt(baseRevenue + g.revenueSum)}` : ALTERNATE_PRICE_TO_FOLLOW,
       note: saved?.note?.trim() || alternateFixturesNote(g) || null,
       ...(editable ? { editKey: g.key } : {}),
     }

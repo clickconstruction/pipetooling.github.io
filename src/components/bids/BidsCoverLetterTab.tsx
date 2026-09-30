@@ -69,7 +69,7 @@ import type {
 } from '../../lib/bids/bidPricingEngineTypes'
 import { bundleSummary, letterTotal, planLetterSections, planUnsplitLetterSections, sectionLabel, starredPricingIdForVersion } from '../../lib/bids/coverLetterVersionBundle'
 import { COVER_LETTER_ALTS_HEADING_DEFAULT, altSectionKey, buildAlternatesBlock, parseCoverLetterAltTexts, planSamePageLetter, type CoverLetterAltTexts } from '../../lib/bids/coverLetterSamePage'
-import { buildAddAlternatesBlock, offeredAddAlternates, splitLetterTotalsByAlternate, stampAddAlternateAmounts, type LetterTotalsByAlternate } from '../../lib/bids/coverLetterAddAlternates'
+import { alternateIsPriced, buildAddAlternatesBlock, offeredAddAlternates, splitLetterTotalsByAlternate, stampAddAlternateAmounts, type LetterTotalsByAlternate } from '../../lib/bids/coverLetterAddAlternates'
 import { copyRichHtmlToClipboard } from '../../lib/copyRichHtmlToClipboard'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
@@ -1196,7 +1196,14 @@ export function BidsCoverLetterTab({
                     style={{ margin: 0, cursor: 'pointer' }}
                   />
                   <span>Offer <strong>{g.label}</strong><span style={altChipStyle}>ALT</span></span>
-                  <span style={{ color: 'var(--text-muted)' }}>adds ${formatCurrency(g.revenueSum)}</span>
+                  {alternateIsPriced(g) ? (
+                    <span style={{ color: 'var(--text-muted)' }}>adds ${formatCurrency(g.revenueSum)}</span>
+                  ) : (
+                    // v2.4224: no price yet — say what the customer will read, where the estimator is looking.
+                    <span data-testid="cover-letter-alt-unpriced" title="Its rows have no sale price yet. Price them on the Pricing tab and the letter shows what it adds." style={{ color: 'var(--text-amber-700)', background: 'var(--bg-amber-tint)', borderRadius: 4, padding: '0 0.35rem', fontWeight: 600 }}>
+                      not priced yet — the letter says “price to follow”
+                    </span>
+                  )}
                   {on ? (
                     <button
                       type="button"
