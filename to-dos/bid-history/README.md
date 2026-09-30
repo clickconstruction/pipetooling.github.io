@@ -2,7 +2,7 @@
 name: "Bid history: every value anyone entered on a bid, and a way to put one back"
 number: 73
 group: ready
-status: planned 2026-09-30 — the ask, the read of Wendi's bid, the design and its two "is this the best we can do?" passes, the mock-up · nothing built · PR 1 (capture) is safe to ship on its own and should go first, because history starts the day it deploys
+status: planned 2026-09-30 — the ask, the read of Wendi's bid, the design and its three "is this the best we can do?" passes, the mock-up · nothing built · PR 1 (capture) is safe to ship on its own and should go first, because history starts the day it deploys; PR 0 waits a day for Wendi's answer
 summary: >
   Wendi lost work on a SpaceX bid after re-importing counts and there was no way to see what the
   bid had said before, or who changed it. Nothing on a bid keeps its old value: an edit overwrites,
@@ -67,7 +67,7 @@ one count row (SUMP ×2 with its $3,700 price and its labor row) and one assignm
 deletions since 09-28. So what she saw as lost is most likely one of the two silent paths above, or
 CountTooling (a separate app). Ask her which tab and which values before restoring anything.
 
-## The decision (draft 2, after two passes)
+## The decision (draft 3, after three passes)
 
 **What it is.** One ledger of every value anyone enters on a bid, and a **History** switch on the
 Bids page. Off, the tabs are as today. On: every editable number shows its past under it in soft
@@ -79,7 +79,8 @@ old value or removed row has **Put back**.
 that changed), `old` and `new` (those columns only, jsonb), `label` (the row's human name, computed
 at write time: the count row's fixture, the part's name, the labor row's fixture, the bid column's
 word — so the reader never joins back to a row that may be gone), `changed_by` (`auth.uid()`; null
-for a robot or the system), `changed_at`, `action_id` (nullable, see captions). One generic
+for a robot or the system), `changed_at`, `action` (the request's tag, see captions), `by_app`
+(true when the write was the app's own doing, not a person's press). One generic
 `AFTER INSERT OR UPDATE OR DELETE` trigger, `record_bid_change()`, attached to the tables that hold
 what people type: `bids` (a chosen column list: value, dates, notes, outcome, the selected books,
 the alternate tags — not `updated_at` and not the robot columns), `bids_count_rows`,
@@ -97,15 +98,25 @@ and an estimator within her service types, the same rule as `bidsTabOpenFor`); n
 **Actions, not rows.** Each REST call is its own transaction and the import inserts one row at a
 time, so a transaction id cannot group a burst. The reader groups instead: same person, same bid,
 gaps under five seconds → one action, captioned from its shape ("Added 23 count rows",
-"Changed 4 prices", "Removed SUMP ×2 and what hung on it"). A bulk path may register a caption up
-front (`begin_bid_action(bid_id, kind, label)` → id; the trigger attaches the next writes by that
-person on that bid to the open action; `end_bid_action(id)`), so the import reads "Imported 23 rows
-from CountTooling". Captions are polish; the grouping works without them.
+"Changed 4 prices", "Removed SUMP ×2 and what hung on it"). A bulk path tags its requests instead of
+opening anything: PostgREST hands the request headers to the database
+(`current_setting('request.headers', true)`), so the client sends `x-bid-action: counts-import`
+on each call of the import (supabase-js `setHeader`) and the trigger stores it — the import then
+reads "Imported 23 rows from CountTooling" with no state to open or close. The same tag marks the
+app's own writes: the Labor load sync, the assignments minted from a book, the pricing engine's
+resyncs send `x-bid-action: labor-sync` and the ledger says "the app" did it, not whoever happened
+to open the tab (today those writes would be laid at the viewer's door). twin-mcp sends the tag
+too, so a robot's paste reads as the robot's.
 
 **Reading.** `list_bid_history(p_bid_id, p_since, p_table)` returns the rows with labels; a pure kernel
 (`bidHistory.ts`) groups them into actions and words each line ("Lav-1 · price · $9,800 → $10,300 ·
 Wendi · Tue 8:14 pm"), formatting by a table+column map (money · count · hours · text · pick). The
-pane says plainly that history starts the day PR 1 deployed, and shows the archive's removed rows
+cells read a second, narrow RPC — `latest_bid_cell_history(p_bid_id)`: the last two values and a
+count per (table, row, column) — so a bid that lives for years never loads its whole ledger to draw a
+tab. **A row with no past of its own borrows its label's**: after Clear all and a re-import, Lav-1 is
+a new row with a new id, so the reader falls back to the same bid, table and label and draws the
+earlier row's values marked "an earlier Lav-1 row · removed Wed" — Wendi's case exactly. The pane
+says plainly that history starts the day PR 1 deployed, and shows the archive's removed rows
 alongside so it is not empty on day one.
 
 **The switch.** A **History** pill on the Bids lens bar, remembered per person. On:
@@ -118,8 +129,10 @@ alongside so it is not empty on day one.
   expandable to its rows, filterable by tab and by person, with a search box for a fixture.
 - Removed rows appear in the pane with **Put back**, row by row.
 
-**Put back.** A value reverts through the normal save path, so it is logged as a change by the person
-who reverted. A removed row comes back through a row-level version of the archive's restore
+**Put back.** One RPC, `put_back_bid_change(p_change_id)`: the ledger row names the table, the row and
+the column, so the server writes the old value back under the caller's own RLS (a person who cannot
+edit the bid cannot put anything back) and the trigger logs it as a change by them; the client
+refetches. No per-tab client code. A removed row comes back through a row-level version of the archive's restore
 (`restore_deleted_record(p_archive_id)` reusing the bundle machinery's FK checks and insert order),
 allowed to whoever can edit the bid; a row whose parent is gone reads "its count row was removed
 too — put that back first". Putting back a whole action (undo an import after the toast is gone)
@@ -138,7 +151,9 @@ is the same loop over its rows and comes last.
 **Rejected on the way:** Supabase's `supa_audit` extension (generic row versions, but no labels, no
 bid key, a second pattern beside the archive's); a nightly snapshot of every bid table with a diff
 (cheap, but no *who*, and Wendi's churn was inside one hour); grouping by transaction id (see above);
-per-cell history on every editable field (heavy; the four numbers people type are enough).
+`begin_bid_action` / `end_bid_action` RPCs (state to open and close, and no answer for the app's own
+writes — the request tag does both); per-cell history on every editable field (heavy; the four
+numbers people type are enough); per-tab put-back code (one RPC does it for every table).
 
 ## Where it plugs in
 
@@ -149,7 +164,9 @@ per-cell history on every editable field (heavy; the four numbers people type ar
 - Client: `BidsLensBar` (the pill; `useBidsLoadGates` for the pane's read), a new
   `BidHistoryPane.tsx`, small hooks into `BidsPricingTab` / `BidsCountsTab` / `BidsTakeoffTab` /
   `BidsLaborTab` for the under-cell lines (`useBidHistory(bidId)` → a map by `(table, record_id, column)`).
-- RPCs (new): `list_bid_history`, `begin_bid_action` / `end_bid_action`, `restore_deleted_record`.
+- RPCs (new): `list_bid_history`, `latest_bid_cell_history`, `put_back_bid_change`, `restore_deleted_record`.
+- The request tag: `src/lib/bids/bidActionHeader.ts` (`withBidAction(builder, 'counts-import')`), sent by
+  the import, Clear all, the labor sync, the engine's resyncs, the margin brush; twin-mcp's `paste_counts`.
 - Docs: `docs/BIDS_SYSTEM.md` (a *History* section), `docs/BIDS_TABS_ARCHITECTURE.md`, the guide
   *price a bid* (one paragraph and the switch), `docs/PROJECT_DOCUMENTATION.md` (the audit trail is
   "partially implemented" at ~2711 — amend), `docs/GLOSSARY.md` (History, Put back).
@@ -162,10 +179,11 @@ per-cell history on every editable field (heavy; the four numbers people type ar
 | 0b | Labor sync keeps typed hours through a rename; unmatched band | S |
 | 0c | `bid_count_row_custom_costs` FK + archive coverage for three tables | XS (migration) |
 | 1 | `bid_changes` + `record_bid_change()` on the seventeen tables, RLS, purge, `docs/migrations` | S — ship first |
+| 1b | The request tag on the bulk paths and the app's own writes (`x-bid-action`), read by the trigger | S — with or right after PR 1 |
 | 2 | `list_bid_history` + `bidHistory.ts` + the pane, read-only, with the archive's removed rows | M |
-| 3 | The History pill and the under-cell lines on the four tabs | M |
-| 4 | Put back: a value (client write), a removed row (`restore_deleted_record`) | M |
-| 5 | Action captions: `begin/end_bid_action` from the import, Clear all, the labor sync, the margin brush; undo a whole action | S |
+| 3 | The History pill and the under-cell lines on the four tabs (`latest_bid_cell_history`, the label fallback) | M |
+| 4 | Put back: `put_back_bid_change` for a value, `restore_deleted_record` for a row | S–M |
+| 5 | Undo a whole action (the loop over its rows) | S |
 
 Each PR ships its release note and fragment; PR 1 its migration doc; PR 2 the guide paragraph.
 
@@ -199,6 +217,14 @@ pill's location on the lens bar had no place on the mock-up; drawn. A look at th
 found the table's line-total column clipped under the pane (it said nothing the mock-up needs and
 went) and one action out of time order in the pane (fixed).
 
+**Pass 3, asked again.** The captions leaned on open/close RPCs and left the app's own writes (the
+Labor load sync, minted assignments) attributed to whoever opened the tab — replaced by a request
+tag the trigger reads, which fixes both. Put back was four tabs of client code — one RPC. A
+re-imported row would have shown no past — the label fallback. The cells would have loaded the whole
+ledger — a narrow RPC for the last two values. And PR 0 was three guesses at what bit Wendi — it now
+waits a day for her answer, while PR 1 ships regardless.
+
 ## Where it stands
 
-Planned 2026-09-30. Nothing built. Owner's calls open (front matter). PR 0 and PR 1 need no call.
+Planned 2026-09-30. Nothing built. Owner's calls open (front matter). PR 1 needs no call and no
+answer from Wendi; PR 0 waits a day for hers, so the right loss gets fixed.
