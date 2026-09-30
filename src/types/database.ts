@@ -22783,6 +22783,11 @@ export type Database = {
         }
         Returns: undefined
       }
+      assistant_hours_window_floor: { Args: never; Returns: string }
+      assistant_hours_window_floor_for: {
+        Args: { p_today: string; p_weeks: number }
+        Returns: string
+      }
       assistants_share_master: {
         Args: { assistant_a: string; assistant_b: string }
         Returns: boolean
