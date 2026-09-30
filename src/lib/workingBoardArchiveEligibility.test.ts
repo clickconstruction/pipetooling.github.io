@@ -48,34 +48,47 @@ describe('archiveFromBoardBlockedReason', () => {
     expect(archiveFromBoardBlockedReason(bid({ estimator_id: ME }), ME, 'estimator')).toBeNull()
   })
 
-  it('a sent bid names the day it was sent and the Lost door', () => {
+  it('a sent bid says the rule, the day it was sent, the field to clear, and the Lost door', () => {
     expect(archiveFromBoardBlockedReason(bid({ bid_date_sent: '2026-09-12' }), ME, 'dev')).toBe(
-      'Sent Sep 12, 2026. A sent bid is already off the working board. If it is dead, mark it Lost in Outcome.',
+      'Archive is for bids that have not been sent. This one was sent Sep 12, 2026. To archive it, clear its Bid Date Sent first. If the bid is dead, set Win / Loss to Lost instead.',
     )
   })
 
   it('a sent date stored as a timestamp still reads as its calendar day', () => {
-    expect(archiveFromBoardBlockedReason(bid({ bid_date_sent: '2026-09-12T15:00:00+00:00' }), ME, 'dev')).toMatch(
-      /^Sent Sep 12, 2026\./,
+    expect(archiveFromBoardBlockedReason(bid({ bid_date_sent: '2026-09-12T15:00:00+00:00' }), ME, 'dev')).toContain(
+      'sent Sep 12, 2026.',
     )
   })
 
-  it('a terminal outcome is named in the words the board uses', () => {
+  it('a terminal outcome names the Win / Loss segment to press', () => {
     expect(archiveFromBoardBlockedReason(bid({ outcome: 'won' }), ME, 'dev')).toBe(
-      'This bid is Won. It left the working board when its outcome was set.',
+      'Archive is for open bids. This one is Won. To archive it, set Win / Loss back to Open first.',
     )
-    expect(archiveFromBoardBlockedReason(bid({ outcome: 'started_or_complete' }), ME, 'dev')).toMatch(
-      /^This bid is Started or complete\./,
+    expect(archiveFromBoardBlockedReason(bid({ outcome: 'started_or_complete' }), ME, 'dev')).toContain(
+      'This one is Started / Complete.',
     )
   })
 
-  it("the sent reason wins over the outcome, so a sent-and-lost bid says sent", () => {
-    expect(archiveFromBoardBlockedReason(bid({ bid_date_sent: '2026-09-12', outcome: 'lost' }), ME, 'dev')).toMatch(/^Sent/)
+  it('the sent reason wins over the outcome, so a sent-and-lost bid says sent', () => {
+    expect(archiveFromBoardBlockedReason(bid({ bid_date_sent: '2026-09-12', outcome: 'lost' }), ME, 'dev')).toMatch(
+      /^Archive is for bids that have not been sent\./,
+    )
   })
 
-  it('an unsent bid that is not yours says who can, unless you are a dev', () => {
+  it('an unsent bid that is not yours names who can, and how to make it yours', () => {
+    expect(
+      archiveFromBoardBlockedReason(bid({ estimator_id: 'u-wendi', account_manager_id: 'u-malachi' }), ME, 'assistant', {
+        'u-wendi': 'Wendi',
+        'u-malachi': 'Malachi',
+      }),
+    ).toBe(
+      "Only this bid's estimator, Wendi, or its account man, Malachi, can archive it. A dev can too. To archive it yourself, set yourself as its Estimator or Account Man first, or ask one of them.",
+    )
+  })
+
+  it('without names it still says the roles and the door', () => {
     expect(archiveFromBoardBlockedReason(bid(), ME, 'assistant')).toBe(
-      "Only this bid's estimator or account man can archive it. Ask them, or a dev.",
+      "Only this bid's estimator or its account man can archive it. A dev can too. To archive it yourself, set yourself as its Estimator or Account Man first, or ask one of them.",
     )
     expect(archiveFromBoardBlockedReason(bid(), ME, 'dev')).toBeNull()
   })
