@@ -66,6 +66,7 @@ Under the Vectors table, the same rule one day at a time: a grid with one row pe
 - **A grey cell with hours** is an office or bid day: it costs a wage and earns nothing here, so it is never judged.
 - **A salaried person's day** costs the flat workday, the way payroll prices it, whatever the clock says.
 - The **Field crew** row at the bottom is the company line day by day.
+- The grid reads **recorded time** — every closed session not rejected or revoked, the way job costing does — so this week is on it before approvals catch up; hours still waiting draw with a dashed border and say so. {{button:outline|Approved only}} beside the zoom row switches to what payroll paid (remembered on this browser). The Vectors table above always reads approved time, so the two never disagree about what was paid.
 
 :::example Reading a red day
 Tristen's Tuesday reads −53: 7.5 h on J1044 at $31 an hour, against a $38 wage. That is the job's price against the hours it is taking, not how fast the day went — everyone on J1044 reads red this month. The job has no % complete, so its expected hours are a guess: set the % and the rate firms up either way.

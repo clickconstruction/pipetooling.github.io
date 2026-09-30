@@ -16,7 +16,8 @@ import { loadBridgeVectorInputs, type BridgeVectorInputs } from '../lib/bridge/l
 import { buildVectors } from '../lib/bridge/vectors'
 import { BridgeVectorDaysPanel } from '../components/bridge/BridgeVectorDaysPanel'
 import { loadVectorDaysInputs, type VectorDaysInputs } from '../lib/bridge/loadVectorDays'
-import { buildVectorGrid, monthStartOf, vectorAnchorStep, vectorRangeFor, vectorRangeLabel, type VectorZoom } from '../lib/bridge/vectorDays'
+import { buildVectorGrid, monthStartOf, vectorAnchorStep, vectorRangeFor, vectorRangeLabel, type VectorTimeMode, type VectorZoom } from '../lib/bridge/vectorDays'
+import { readVectorDaysMode, writeVectorDaysMode } from '../lib/bridge/vectorDaysModeStorage'
 import { formatPayWeekLabel, payWeekContaining } from '../lib/payWeekAnchor'
 import { ymdAddDays } from '../utils/dateUtils'
 
@@ -56,6 +57,7 @@ export default function Bridge() {
   const [vectorWeekStart, setVectorWeekStart] = useState<string | null>(null)
   // Vectors by the day (v2.4217): the period drawn (a month of days, 13 pay weeks or 12 months — v2.4219), its sessions and job rates (cached per period on this page).
   const [daysZoom, setDaysZoom] = useState<VectorZoom>('days')
+  const [daysMode, setDaysMode] = useState<VectorTimeMode>(() => readVectorDaysMode())
   const [daysAnchor, setDaysAnchor] = useState<string | null>(null)
   const [daysInputs, setDaysInputs] = useState<VectorDaysInputs | null>(null)
   const [daysError, setDaysError] = useState<string | null>(null)
@@ -268,7 +270,7 @@ export default function Bridge() {
       zoom: daysZoom,
       anchorYmd: daysZoom === 'days' ? daysRange.start : daysRange.end,
       todayYmd: data.todayYmd,
-      mode: 'approved',
+      mode: daysMode,
       people: vectorInputs.people,
       wages: vectorInputs.wages,
       sessions: daysInputs.sessions,
@@ -277,7 +279,7 @@ export default function Bridge() {
       jobLabels: daysInputs.jobLabels,
       priorRatePerHourByJob: daysInputs.priorRatePerHourByJob,
     })
-  }, [data, daysZoom, daysRange, daysInputs, vectorInputs])
+  }, [data, daysZoom, daysMode, daysRange, daysInputs, vectorInputs])
 
   // Truth check: paper profit vs the net position change over the chart's days — flows only, so it reads before cash is typed.
   const truth = useMemo<TruthCheck | null>(() => {
@@ -420,6 +422,11 @@ export default function Bridge() {
               onZoom={(z) => {
                 setDaysZoom(z)
                 setDaysAnchor(null)
+              }}
+              mode={daysMode}
+              onMode={(m) => {
+                setDaysMode(m)
+                writeVectorDaysMode(m)
               }}
               periodLabel={vectorRangeLabel(daysZoom, daysRange)}
               isCurrent={daysRange.end >= data.todayYmd}

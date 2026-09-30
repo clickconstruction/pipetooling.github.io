@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
-import type { VectorBucket, VectorColumn, VectorGrid, VectorGridRow, VectorZoom } from '../../lib/bridge/vectorDays'
+import type { VectorBucket, VectorColumn, VectorGrid, VectorGridRow, VectorTimeMode, VectorZoom } from '../../lib/bridge/vectorDays'
 import { VECTOR_MONTHS_ZOOM_COUNT, VECTOR_WEEKS_ZOOM_COUNT, vectorVerdict } from '../../lib/bridge/vectorDays'
 import { reviewDoorHref } from '../../lib/people/reviewDoor'
 
@@ -14,7 +14,10 @@ import { reviewDoorHref } from '../../lib/people/reviewDoor'
  * click (v2.4220) opens its card under the grid — the jobs at their rate
  * beside the wage, the verdict sentence, the doors; the Why line under each
  * name counts red days by job; ↻ marks a day whose verdict flipped since last
- * week's rates. The kernel decides every number and the order; this only draws.
+ * week's rates. Recorded time (v2.4221) is the default reading — every closed
+ * session not rejected or revoked, pending ones dashed — with Approved only a
+ * click away; Vectors' own pay-week table above stays approved-only.
+ * The kernel decides every number and the order; this only draws.
  */
 
 const shortUsd = (n: number): string => {
@@ -192,8 +195,13 @@ const ZOOMS: Array<{ key: VectorZoom; word: string }> = [
 ]
 const segBtn = (on: boolean): CSSProperties => ({ font: 'inherit', fontSize: '0.75rem', padding: '0.1rem 0.55rem', border: 'none', background: on ? 'var(--text)' : 'transparent', color: on ? 'var(--surface)' : 'var(--text)', fontWeight: on ? 700 : 400, cursor: 'pointer' })
 
-export function BridgeVectorDaysPanel(props: { grid: VectorGrid | null; zoom: VectorZoom; onZoom: (zoom: VectorZoom) => void; periodLabel: string; isCurrent: boolean; canPrev: boolean; canNext: boolean; onPrev: () => void; onNext: () => void; loading: boolean; error: string | null }) {
-  const { grid, zoom } = props
+const MODES: Array<{ key: VectorTimeMode; word: string; title: string }> = [
+  { key: 'recorded', word: 'Recorded time', title: 'Every closed session not rejected or revoked — pending hours count, drawn dashed (job costing’s reading)' },
+  { key: 'approved', word: 'Approved only', title: 'What payroll paid — the pay-week table’s reading; this week reads blank until hours are approved' },
+]
+
+export function BridgeVectorDaysPanel(props: { grid: VectorGrid | null; zoom: VectorZoom; onZoom: (zoom: VectorZoom) => void; mode: VectorTimeMode; onMode: (mode: VectorTimeMode) => void; periodLabel: string; isCurrent: boolean; canPrev: boolean; canNext: boolean; onPrev: () => void; onNext: () => void; loading: boolean; error: string | null }) {
+  const { grid, zoom, mode } = props
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
   useEffect(() => setSelectedKey(null), [grid])
   const selected = (() => {
@@ -212,11 +220,18 @@ export function BridgeVectorDaysPanel(props: { grid: VectorGrid | null; zoom: Ve
     <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.7rem 0.9rem', marginTop: '0.6rem' }} data-testid="bridge-vector-days">
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
         <span style={label}>Vectors — by the day</span>
-        <span style={det}>was each person's day worth it · field people · approved time</span>
+        <span style={det}>was each person's day worth it · field people · {mode === 'recorded' ? 'recorded time, pending dashed' : 'approved time'}</span>
         <span role="group" aria-label="Zoom" style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden' }}>
           {ZOOMS.map((z) => (
             <button key={z.key} type="button" onClick={() => props.onZoom(z.key)} style={segBtn(z.key === zoom)} aria-pressed={z.key === zoom}>
               {z.word}
+            </button>
+          ))}
+        </span>
+        <span role="group" aria-label="Time" style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden' }}>
+          {MODES.map((m) => (
+            <button key={m.key} type="button" onClick={() => props.onMode(m.key)} style={segBtn(m.key === mode)} aria-pressed={m.key === mode} title={m.title}>
+              {m.word}
             </button>
           ))}
         </span>
@@ -238,7 +253,7 @@ export function BridgeVectorDaysPanel(props: { grid: VectorGrid | null; zoom: Ve
       ) : props.loading || !grid ? (
         <div style={{ ...det, padding: '0.6rem 0' }}>Loading days…</div>
       ) : grid.rows.length === 0 ? (
-        <div style={{ ...det, padding: '0.6rem 0' }}>No approved field hours in this period yet.</div>
+        <div style={{ ...det, padding: '0.6rem 0' }}>{mode === 'recorded' ? 'No field hours recorded in this period yet.' : 'No approved field hours in this period yet — Recorded time shows the hours still waiting on approval.'}</div>
       ) : (
         <div style={{ overflowX: 'auto', marginTop: '0.4rem' }}>
           <table style={{ borderCollapse: 'separate', borderSpacing: 1 }}>
@@ -293,11 +308,15 @@ export function BridgeVectorDaysPanel(props: { grid: VectorGrid | null; zoom: Ve
         <Swatch bg="var(--bg-red-200)" text="well under" />
         <Swatch bg="var(--bg-green-tint)" image={GUESS_HATCH} text="≈ on a job with no % complete (assumed half done)" />
         <Swatch bg="var(--bg-muted)" text="office / bid day, hours only" />
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <i style={{ display: 'inline-block', width: 14, height: 12, borderRadius: 3, border: '1px dashed var(--border-strong)' }} />
+          hours not yet approved
+        </span>
         <span>↻ re-priced this week (last week's rates read it the other way)</span>
         <span>Numbers are the day's contribution in dollars, short. Under each name: red days, and which job they were on.</span>
       </div>
       <div style={{ ...det, marginTop: '0.3rem' }}>
-        The same rule as the table above, one day at a time (Weeks and Months are the same days folded into pay weeks and months): earned = field hours × the job's contract ÷ expected hours; labor = hours × the wage (a salaried person's day costs the flat workday). A red day means the job's rate is under the wage — priced low, no contract price, or run past its expected hours — and every hour on it reads the same, whoever worked it. Every new hour and % update re-prices every day on that job, so the grid is always as of today. Materials and subs are job costs, not a person's day.
+        The same rule as the table above, one day at a time (Weeks and Months are the same days folded into pay weeks and months; Recorded time counts hours still waiting on approval, dashed, while the pay-week table above stays on what payroll paid): earned = field hours × the job's contract ÷ expected hours; labor = hours × the wage (a salaried person's day costs the flat workday). A red day means the job's rate is under the wage — priced low, no contract price, or run past its expected hours — and every hour on it reads the same, whoever worked it. Every new hour and % update re-prices every day on that job, so the grid is always as of today. Materials and subs are job costs, not a person's day.
       </div>
     </div>
   )
