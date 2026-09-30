@@ -4,6 +4,7 @@ import type { PhysicalInvoiceIssuer } from '../physicalInvoiceIssuer'
 import { loadJsPDF } from '../loadJsPDF'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { isUnfinishedDate } from '../autosaveDateHold'
+import { unfinishedDateStopsMessage } from '../dateBoxEntry'
 
 /**
  * Lien waiver-and-release documents issued from the Jobs board (v2.2579):
@@ -69,13 +70,34 @@ export function lienWaiverUsesField(formType: LienWaiverFormType, field: keyof L
   return true
 }
 
+export type LienWaiverDateBox = 'throughDate' | 'signedDate'
+
+/**
+ * The date boxes caught half typed, in the order the form shows them. The through date counts
+ * only on a form type that has one: a final waiver hides that box.
+ */
+export function lienWaiverUnfinishedDates(formType: LienWaiverFormType, fields: Pick<LienWaiverFields, LienWaiverDateBox>): LienWaiverDateBox[] {
+  return (['throughDate', 'signedDate'] as const).filter((box) => lienWaiverUsesField(formType, box) && isUnfinishedDate(fields[box]))
+}
+
 /**
  * True while a date on the form is still being typed — the signature date, or the through date
  * on a form type that has one. The draft autosave waits: both dates are written as columns and
  * again inside the one `fields` object, so there is no writing the rest without them.
  */
-export function lienWaiverDatesUnfinished(formType: LienWaiverFormType, fields: Pick<LienWaiverFields, 'throughDate' | 'signedDate'>): boolean {
-  return isUnfinishedDate(fields.signedDate) || (lienWaiverUsesField(formType, 'throughDate') && isUnfinishedDate(fields.throughDate))
+export function lienWaiverDatesUnfinished(formType: LienWaiverFormType, fields: Pick<LienWaiverFields, LienWaiverDateBox>): boolean {
+  return lienWaiverUnfinishedDates(formType, fields).length > 0
+}
+
+/**
+ * Why a draft cannot be issued yet, or null. Every output (Mark issued, Print for signature,
+ * Download PDF, Request signature) mints the row first and locks it as it reads, so a
+ * half-typed date would be on a document of record nobody can edit.
+ */
+export function lienWaiverUnfinishedDateBlocksIssue(formType: LienWaiverFormType, fields: Pick<LienWaiverFields, LienWaiverDateBox>, thisYear: number): string | null {
+  const box = lienWaiverUnfinishedDates(formType, fields)[0]
+  if (!box) return null
+  return unfinishedDateStopsMessage(box === 'throughDate' ? 'Progress payments through' : 'Signature', 'this is issued', thisYear)
 }
 
 /** "$2,200.00" from "2200", "2,200.00", "$2200" — unparseable input passes through. */

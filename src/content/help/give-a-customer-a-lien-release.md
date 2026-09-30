@@ -42,6 +42,7 @@ There's no Save button and nothing to cancel: from your first edit the release k
 
 - {{button:outline-blue|Download PDF}} saves a letter-format PDF to attach anywhere.
 - {{button:blue|Mark issued}} records the release on the job explicitly — and printing, downloading, or requesting a signature records it too. **You can't produce the paper without the record**, which is what keeps every release findable on the job forever.
+- An issued release is locked as it reads, so none of those four buttons works while a date is half typed. A line names the box — *Finish the “Signature” date before this is issued. Type the year in full, like 2026.* — and the release stays a draft until you finish the year.
 
 ## Save the property's legal info once
 

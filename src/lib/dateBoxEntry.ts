@@ -49,3 +49,11 @@ export function holdsDateBoxChange(typed: boolean, raw: string, shown: string | 
 export function unfinishedDateMessage(thisYear: number): string {
   return `That date was not finished, so it was not saved. Type the year in full, like ${thisYear}.`
 }
+
+/**
+ * Why a click that sends, locks or files a document stops on a half-typed date. It names the
+ * box, and `before` says what the click would do ("this goes out", "this is issued").
+ */
+export function unfinishedDateStopsMessage(box: string, before: string, thisYear: number): string {
+  return `Finish the “${box}” date before ${before}. Type the year in full, like ${thisYear}.`
+}

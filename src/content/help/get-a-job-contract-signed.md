@@ -61,7 +61,7 @@ Tap the {{chip:gray|No contract}} chip on the row, or the **✍** icon in the ro
 
 - **The amount is the job's number**, never typed here: the estimate the customer accepted when there is one, else the job's line items. The price line reads *$123,600 · from the job's 14 line items · adjust* — the door opens the job, and the agreement follows what you change there. So the signed agreement and the bill can never disagree.
 - **The terms** are the Contract Book's, named on the paper with their clause count and date — *Terms · Service agreement · 12 clauses · updated Sep 29* — with **read all** and **edit the wording** beside them. Editing the wording changes every later agreement.
-- Everything saves as you type; there is no Save button and no preview button — the paper is the preview. A start or completion date left half typed (a year typed as `26`, say) holds the save until the year is finished, and the line under the paper says *Not saved: a date is not finished*. **Open full size** under it opens the printable page, and **Download the PDF** beside it is the look-only copy; it records nothing.
+- Everything saves as you type; there is no Save button and no preview button — the paper is the preview. A start or completion date left half typed (a year typed as `26`, say) holds the save until the year is finished, and the line under the paper says *Not saved: a date is not finished*. Nothing goes out over it either: the send button, **Copy the link**, **On paper** and **File their signed contract** stop with a line that names the date, such as *Finish the “Start” date before this goes out*. **Open full size** under it opens the printable page, and **Download the PDF** beside it is the look-only copy; it records nothing.
 
 **The rail** — three ways, with the answer already picked from what the job knows. Only the fields the picked way needs appear under it, then one blue button whose label follows the pick, and a sentence that says exactly what pressing it will do.
 
@@ -136,7 +136,7 @@ Open the job (**Edit Job**) and find **Customer Contract**. While nothing is on 
 
 ## Already signed? File the Google Doc
 
-Most signed contracts live in Google Docs. Open the Contract modal and press {{button:outline|📄 File a signed contract}} in its top-right corner. In Google Docs use **Share → Copy link**, paste it into the box, check who signed and the date (today is filled in), and press {{button:blue|Record as signed}}. Nothing goes to the customer — the row reads {{chip:green|✍ On file · Google Doc}} and the doc opens from the signed record.
+Most signed contracts live in Google Docs. Open the Contract modal and press {{button:outline|📄 File a signed contract}} in its top-right corner. In Google Docs use **Share → Copy link**, paste it into the box, check who signed and the date (today is filled in; type its year in full, or the record waits), and press {{button:blue|Record as signed}}. Nothing goes to the customer — the row reads {{chip:green|✍ On file · Google Doc}} and the doc opens from the signed record.
 
 Have a paper scan instead? The small **Have a scan or photo instead?** link under the date opens a file field. A record needs the link or a file — not just a name and date.
 

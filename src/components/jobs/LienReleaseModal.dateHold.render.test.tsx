@@ -4,9 +4,12 @@
  * year "2026" as 0002, 0020, 0202, 2026, and a pause mid-year must not write the half-typed
  * date. The dates are columns and ride inside `fields`, so the whole draft waits and the footer
  * says so; the finished year saves it.
+ *
+ * Every output (Mark issued, Print for signature, Download PDF, Request signature) mints the row
+ * and locks it as it reads, so each stops on the same half-typed date and names the box.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, fireEvent, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { makeInvoice, makeJob, renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import LienReleaseModal from './LienReleaseModal'
 
@@ -97,5 +100,40 @@ describe('LienReleaseModal — a date caught half typed', () => {
     await pauseAfter(() => fireEvent.change(through, { target: { value: '' } }))
     expect(db.writes).toHaveLength(1)
     expect(db.writes[0]?.payload.through_date).toBeNull()
+  })
+})
+
+describe('LienReleaseModal — a half-typed date and the clicks that issue the waiver', () => {
+  const STOPS_SIGNATURE = /Finish the “Signature” date before this is issued\. Type the year in full, like \d{4}\./
+
+  it.each(['Mark issued', 'Print for signature', 'Download PDF', '✍ Request signature'])('%s mints nothing over a half-typed signature date: the toast names the box', async (button) => {
+    await openWaiver()
+    await pauseAfter(() => fireEvent.change(signedBox(), { target: { value: '0026-09-30' } }))
+    fireEvent.click(screen.getByRole('button', { name: button }))
+    await settle()
+    expect(screen.getByText(STOPS_SIGNATURE)).toBeTruthy()
+    expect(db.writes).toEqual([])
+    // Still a draft: the button that issues it is still there.
+    expect(screen.getByRole('button', { name: 'Mark issued' })).toBeTruthy()
+  })
+
+  it('a half-typed through date stops it too, and is named first', async () => {
+    await openWaiver()
+    await pauseAfter(() => fireEvent.change(screen.getByLabelText('Progress payments through'), { target: { value: '0020-09-15' } }))
+    fireEvent.click(screen.getByRole('button', { name: 'Mark issued' }))
+    await settle()
+    expect(screen.getByText(/Finish the “Progress payments through” date before this is issued\./)).toBeTruthy()
+    expect(db.writes).toEqual([])
+  })
+
+  it('with the year finished Mark issued mints the row with the date', async () => {
+    await openWaiver()
+    await pauseAfter(() => fireEvent.change(signedBox(), { target: { value: '0026-09-30' } }))
+    await pauseAfter(() => fireEvent.change(signedBox(), { target: { value: '2026-09-30' } }))
+    db.writes = []
+    fireEvent.click(screen.getByRole('button', { name: 'Mark issued' }))
+    await waitFor(() => expect(db.writes.some((w) => w.payload.status === 'issued')).toBe(true))
+    expect(db.writes.find((w) => w.payload.status === 'issued')?.payload).toMatchObject({ signed_date: '2026-09-30', fields: { signedDate: '2026-09-30' } })
+    expect(screen.queryByText(STOPS_SIGNATURE)).toBeNull()
   })
 })

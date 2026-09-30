@@ -46,6 +46,7 @@ import {
   isGoogleDocsUrl,
   jobContractDatesUnfinished,
   jobContractHeading,
+  jobContractUnfinishedDateBlocks,
   parseJobContractFields,
   type JobContractFields,
 } from '../../lib/jobs/jobContractDocument'
@@ -461,9 +462,26 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
     )
   }
 
+  /**
+   * Says why and answers true when a half-typed start or completion date stops the draft leaving
+   * the window: the clicks that send it, hand it over or file it write it as it reads and lock
+   * it. A row that is already out is not stopped — nobody can retype its dates, and Void & redo
+   * is how they get fixed.
+   */
+  const unfinishedDateStops = useCallback(
+    (leaving: 'out' | 'filed'): boolean => {
+      if (!editable) return false
+      const why = jobContractUnfinishedDateBlocks(fields, leaving, new Date().getFullYear())
+      if (why) showToast(why, 'error')
+      return why !== null
+    },
+    [editable, fields, showToast],
+  )
+
   const invokeSend = useCallback(
     async (mode: 'email' | 'link'): Promise<string | null> => {
       if (!job) return null
+      if (unfinishedDateStops('out')) return null
       const row = editable ? await flushDraft() : liveRow
       if (!row) {
         showToast('Could not save the contract draft.', 'error')
@@ -503,7 +521,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
         setBusy(null)
       }
     },
-    [job, editable, flushDraft, liveRow, recipientEmail, recipientName, ccList, message, showToast, loadRows, onChanged],
+    [job, editable, unfinishedDateStops, flushDraft, liveRow, recipientEmail, recipientName, ccList, message, showToast, loadRows, onChanged],
   )
 
   const copyLink = async () => {
@@ -835,6 +853,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
   }
   /** On paper, download: the PDF with pen rules, and the hand-off recorded so the job leaves the count (the sweep's rule, v2.3629). */
   const downloadHanded = async () => {
+    if (unfinishedDateStops('out')) return
     const row = await flushDraft()
     if (!row) {
       showToast('Could not save the agreement.', 'error')
@@ -869,6 +888,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
       showToast('Enter a valid email for the PDF.', 'error')
       return
     }
+    if (unfinishedDateStops('out')) return
     const row = await flushDraft()
     if (!row) {
       showToast('Could not save the agreement.', 'error')
@@ -894,11 +914,16 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
       setBusy(null)
     }
   }
+  /** The filing sheet records the draft as signed, so it does not open over a half-typed date. */
+  const openFiling = () => {
+    if (unfinishedDateStops('filed')) return
+    setPaperOpen(true)
+  }
   const goWay = () => {
     if (way === 'link') return void sendLink()
     if (way === 'here') return void signInPerson()
     if (way === 'paper') return void (paperSend === 'pdf_email' ? emailPdf() : downloadHanded())
-    setPaperOpen(true)
+    openFiling()
   }
 
   const signedOnFile = status === null && signedRows.length > 0 && !signedView
@@ -1187,7 +1212,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
               busy={busy != null}
               onGo={goWay}
               onCopyLink={() => void copyLink()}
-              onFileSigned={() => setPaperOpen(true)}
+              onFileSigned={openFiling}
               onNotNeeded={() => setNotNeededOpen(true)}
               notNeededPanel={notNeededPanel}
             />

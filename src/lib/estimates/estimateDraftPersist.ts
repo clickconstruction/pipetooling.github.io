@@ -3,7 +3,7 @@ import type { EstimateAcceptHeaderBrand } from '../estimateAcceptHeaderBrand'
 import type { EstimateChangeOrderFields } from '../estimateChangeOrder'
 import { estimateOptionsDraftPersistFields, type EstimateOption } from './estimateOptions'
 import { isUnfinishedDate } from '../autosaveDateHold'
-import { unfinishedDateMessage } from '../dateBoxEntry'
+import { unfinishedDateMessage, unfinishedDateStopsMessage } from '../dateBoxEntry'
 
 /**
  * The exact draft UPDATE payload (pure) — one builder shared by saveDraft and the autosave
@@ -100,7 +100,7 @@ export function estimateDraftHeldDateMessage(held: readonly EstimateDraftDateBox
 export function estimateDraftUnfinishedDateBlocksSend(held: readonly EstimateDraftDateBox[], thisYear: number): string | null {
   if (held.length === 0) return null
   const box = held[0] === 'valid_until' ? 'Expires on' : 'Response requested by'
-  return `Finish the “${box}” date before this goes out. Type the year in full, like ${thisYear}.`
+  return unfinishedDateStopsMessage(box, 'this goes out', thisYear)
 }
 
 const blankToNull = (s: string): string | null => (s.trim() ? s.trim() : null)

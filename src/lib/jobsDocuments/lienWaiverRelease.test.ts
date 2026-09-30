@@ -10,6 +10,8 @@ import {
   buildLienWaiverSignatureLines,
   lienWaiverDate,
   lienWaiverDatesUnfinished,
+  lienWaiverUnfinishedDateBlocksIssue,
+  lienWaiverUnfinishedDates,
   lienWaiverInvoiceOpenRemaining,
   lienWaiverMoney,
   lienWaiverPdfFilename,
@@ -94,6 +96,17 @@ describe('titles and field visibility', () => {
   it('a final waiver has no through date, so one left half typed under another form type does not hold it', () => {
     expect(lienWaiverDatesUnfinished('unconditional_final', { ...FIELDS, throughDate: '0202-08-29' })).toBe(false)
     expect(lienWaiverDatesUnfinished('unconditional_final', { ...FIELDS, signedDate: '0026-09-01' })).toBe(true)
+  })
+  it('a half-typed date stops the waiver being issued, and the line names the first such box on the form', () => {
+    expect(lienWaiverUnfinishedDateBlocksIssue('conditional_progress', FIELDS, 2026)).toBeNull()
+    expect(lienWaiverUnfinishedDateBlocksIssue('conditional_progress', { throughDate: '', signedDate: '' }, 2026)).toBeNull()
+    expect(lienWaiverUnfinishedDates('conditional_progress', { throughDate: '0020-08-29', signedDate: '0026-09-01' })).toEqual(['throughDate', 'signedDate'])
+    expect(lienWaiverUnfinishedDateBlocksIssue('conditional_progress', { throughDate: '0020-08-29', signedDate: '0026-09-01' }, 2026)).toBe(
+      'Finish the “Progress payments through” date before this is issued. Type the year in full, like 2026.',
+    )
+    expect(lienWaiverUnfinishedDateBlocksIssue('unconditional_progress', { ...FIELDS, signedDate: '0026-09-01' }, 2026)).toBe('Finish the “Signature” date before this is issued. Type the year in full, like 2026.')
+    // A final waiver has no through date: one left half typed under another form type does not stop it.
+    expect(lienWaiverUnfinishedDateBlocksIssue('unconditional_final', { ...FIELDS, throughDate: '0020-08-29' }, 2026)).toBeNull()
   })
 })
 

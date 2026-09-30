@@ -8,6 +8,7 @@
 
 import { contractAmountSource } from './contractAmountSource'
 import { isUnfinishedDate } from '../autosaveDateHold'
+import { unfinishedDateStopsMessage } from '../dateBoxEntry'
 
 export type PaymentTermsKey = 'half_down' | 'on_completion' | 'progress' | 'custom'
 
@@ -70,12 +71,31 @@ export function parseJobContractFields(raw: unknown): JobContractFields {
   }
 }
 
+export type JobContractDateBox = 'start_date' | 'completion_date'
+
+/** The date boxes caught half typed, in the order the paper shows them. */
+export function jobContractUnfinishedDates(fields: Pick<JobContractFields, JobContractDateBox>): JobContractDateBox[] {
+  return (['start_date', 'completion_date'] as const).filter((box) => isUnfinishedDate(fields[box]))
+}
+
 /**
  * True while the start or the completion date is still being typed. The draft autosave waits:
  * both dates ride inside the one `fields` object, so there is no writing the rest without them.
  */
-export function jobContractDatesUnfinished(fields: Pick<JobContractFields, 'start_date' | 'completion_date'>): boolean {
-  return isUnfinishedDate(fields.start_date) || isUnfinishedDate(fields.completion_date)
+export function jobContractDatesUnfinished(fields: Pick<JobContractFields, JobContractDateBox>): boolean {
+  return jobContractUnfinishedDates(fields).length > 0
+}
+
+/**
+ * Why a draft cannot leave the window yet, or null. A click that sends the agreement, hands it
+ * over or files it as signed writes the draft as it reads and locks it; a half-typed date would
+ * be on the customer's copy and on the record. `leaving` says which: out to the customer, or
+ * filed as signed.
+ */
+export function jobContractUnfinishedDateBlocks(fields: Pick<JobContractFields, JobContractDateBox>, leaving: 'out' | 'filed', thisYear: number): string | null {
+  const box = jobContractUnfinishedDates(fields)[0]
+  if (!box) return null
+  return unfinishedDateStopsMessage(box === 'start_date' ? 'Start' : 'Estimated completion', leaving === 'out' ? 'this goes out' : 'this is filed', thisYear)
 }
 
 export function formatContractMoney(cents: number): string {
