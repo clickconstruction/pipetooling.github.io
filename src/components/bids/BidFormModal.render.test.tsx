@@ -182,3 +182,64 @@ describe('BidFormModal footer (v2.3130)', () => {
     expect(autosave.retryClose).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('BidFormModal footer — Archive from board (v2.4266)', () => {
+  it('an archivable bid gets the live button, and a press asks the parent to confirm', async () => {
+    const onRequestArchiveFromUnsentWorking = vi.fn()
+    renderWithProviders(
+      <BidFormModal
+        {...baseProps({ editingBid: savedBid, embedded: true, autosave: makeAutosave(), onRequestArchiveFromUnsentWorking })}
+      />,
+    )
+    await settle()
+    const btn = screen.getByRole('button', { name: 'Archive from board' })
+    expect(btn.getAttribute('aria-disabled')).toBeNull()
+    fireEvent.click(btn)
+    expect(onRequestArchiveFromUnsentWorking).toHaveBeenCalledTimes(1)
+  })
+
+  it('a blocked bid keeps the button, greyed, with the reason as its title — and a press still asks the parent (which says why)', async () => {
+    const onRequestArchiveFromUnsentWorking = vi.fn()
+    const reason = 'Sent Sep 12, 2026. A sent bid is already off the working board. If it is dead, mark it Lost in Outcome.'
+    renderWithProviders(
+      <BidFormModal
+        {...baseProps({
+          editingBid: savedBid,
+          embedded: true,
+          autosave: makeAutosave(),
+          onRequestArchiveFromUnsentWorking,
+          archiveFromBoardBlockedReason: reason,
+        })}
+      />,
+    )
+    await settle()
+    const btn = screen.getByRole('button', { name: 'Archive from board' })
+    expect(btn.getAttribute('aria-disabled')).toBe('true')
+    expect(btn.getAttribute('title')).toBe(reason)
+    expect(btn.hasAttribute('disabled')).toBe(false)
+    fireEvent.click(btn)
+    expect(onRequestArchiveFromUnsentWorking).toHaveBeenCalledTimes(1)
+  })
+
+  it('an archived bid reads Put back on board and a press calls the un-archive', async () => {
+    const onRequestArchiveFromUnsentWorking = vi.fn()
+    const onRequestUnarchiveFromBoard = vi.fn()
+    renderWithProviders(
+      <BidFormModal
+        {...baseProps({
+          editingBid: { ...savedBid, working_board_archived_at: '2026-09-20T10:00:00Z' },
+          embedded: true,
+          autosave: makeAutosave(),
+          onRequestArchiveFromUnsentWorking,
+          onRequestUnarchiveFromBoard,
+          archivedFromBoard: true,
+        })}
+      />,
+    )
+    await settle()
+    expect(screen.queryByRole('button', { name: 'Archive from board' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Put back on board' }))
+    expect(onRequestUnarchiveFromBoard).toHaveBeenCalledTimes(1)
+    expect(onRequestArchiveFromUnsentWorking).not.toHaveBeenCalled()
+  })
+})
