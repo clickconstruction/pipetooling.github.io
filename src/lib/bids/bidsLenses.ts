@@ -124,3 +124,19 @@ export function followupLensCaption(activeTab: string): string {
       return 'Chase recent sent bids for answers and bid tabs — newest first.'
   }
 }
+
+/** The one line beside the Robots bar that says what the open lens is for (v2.4256, punch list #63). */
+export function robotLensCaption(activeTab: string): string {
+  switch (activeTab) {
+    case 'audits':
+      return 'Teach the robots — answer their questions, then judge their drafts. Every answer lands on the next run.'
+    case 'robot-scoreboard':
+      return 'How close the robots are, by kind of job — and your part in getting them there.'
+    case 'robot-queue':
+      return 'Dev only — every robot-able bid and the backtest candidates, requested first.'
+    case 'robot-console':
+      return "Dev only — run the robots: the setup command, the kickoff, the queue and the robots' operator questions."
+    default:
+      return "Our bids seen through the robots — the same sections as the Bid Board, with the robot's number once we send."
+  }
+}

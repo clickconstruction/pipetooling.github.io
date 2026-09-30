@@ -97,6 +97,7 @@ const humanBids = [
   bid({ id: 'h397', bid_number: '397', project_name: 'TAKE 5 BROWNSVILLE', bid_date_sent: '2026-09-08', bid_value: 50528 }),
   bid({ id: 'h201', bid_number: '201', project_name: 'AISD GARCIA SCHOOL RENOVATION', outcome: 'lost', bid_date_sent: '2026-04-24', bid_value: 180357 }),
   bid({ id: 'h380', bid_number: '380', project_name: 'MEDINA VALLEY ISD', plans_link: null, bid_due_date: '2026-09-10' }),
+  bid({ id: 'h381', bid_number: '381', project_name: 'MEDINA VALLEY ISD PHASE 2', plans_link: null, bid_due_date: '2026-09-11' }),
   bid({ id: 'h483', bid_number: '483', project_name: 'Laynes Chicken Fingers', bid_due_date: '2026-09-18' }),
   bid({ id: 'h500', bid_number: '500', project_name: 'Opted out job', robot_opt_out: true }),
   bid({ id: 'h116', bid_number: '116', project_name: 'Archived lead', working_board_archived_at: '2026-06-01T00:00:00Z' }),
@@ -108,15 +109,17 @@ const robotBids = [
   bid({ id: 's420', bid_number: '420', project_name: 'ZZ Shadow RBFCU', twin_source_bid_id: 'h391' }),
   bid({ id: 's418', bid_number: '418', project_name: 'ZZ Shadow TAKE 5 BROWNSVILLE', twin_source_bid_id: null }),
   bid({ id: 's471', bid_number: '471', project_name: 'ZZ Twin AISD GARCIA (backtest R2)', twin_source_bid_id: 'h201' }),
+  // v2.4256: a shell that pairs to no bid of ours — the operator's line, dev only.
+  bid({ id: 's999', bid_number: '999', project_name: 'ZZ Twin ORPHAN', twin_source_bid_id: null }),
 ]
 
 const rowStateFor = (b: BidWithBuilder): RobotRowState => {
-  if (b.id === 'h380') return { kind: 'needs', badge: '?', title: '', questions: 0, gaps: [{ key: 'plans', label: 'No plans link', fix: 'Paste the plan set on the Edit form under Job Plans.', required: true }] }
+  if (b.id === 'h380' || b.id === 'h381') return { kind: 'needs', badge: '?', title: '', questions: 0, gaps: [{ key: 'plans', label: 'No plans link', fix: 'Paste the plan set on the Edit form under Job Plans.', required: true }] }
   if (b.id === 'h500') return { kind: 'off', reason: 'opt-out', title: '' }
   return { kind: 'queued', title: '' }
 }
 
-function renderTab() {
+function renderTab(isDev = true) {
   const mocks = {
     onEditBid: vi.fn(),
     onCompare: vi.fn(),
@@ -126,11 +129,10 @@ function renderTab() {
     onOpenNeeds: vi.fn(),
     onOpenStatus: vi.fn(),
     onAddBidValue: vi.fn(),
-    onOpenScoreboard: vi.fn(),
     onRowCount: vi.fn(),
   }
   renderWithProviders(
-    <BidsRobotMirrorTab bids={humanBids} robotBids={robotBids} auditPending={2} loading={false} highlightBidId={null} rowStateFor={rowStateFor} {...mocks} />,
+    <BidsRobotMirrorTab bids={humanBids} robotBids={robotBids} loading={false} isDev={isDev} highlightBidId={null} rowStateFor={rowStateFor} {...mocks} />,
   )
   return mocks
 }
@@ -140,15 +142,8 @@ describe('BidsRobotMirrorTab', () => {
     const props = renderTab()
     await waitFor(() => expect(screen.getByText('PALMER WINERY')).toBeTruthy())
 
-    // The strip in plain words. Live-eligible: 431, 385, 483 (the no-plans, opted-out, archived and never-sent-lost bids are not live) → 2 shadowed of 3.
-    expect(screen.getByText('of our bids have a robot run')).toBeTruthy()
-    expect(screen.getByText('2 / 3')).toBeTruthy()
-    expect(screen.getByText('live plumbing bids shadowed')).toBeTruthy()
-    expect(screen.getByText('sealed, waiting on your number')).toBeTruthy()
-    expect(screen.getByText('need something from a person')).toBeTruthy()
-    expect(screen.getByText(/kinds of job earned first drafts/)).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: /kinds of job earned first drafts/ }))
-    expect(props.onOpenScoreboard).toHaveBeenCalledTimes(1)
+    // v2.4256: the six-number strip is the group's now (RobotGroupStrip, drawn by the page on every lens) — not here.
+    expect(screen.queryByText('of our bids have a robot run')).toBeNull()
 
     // Sealed live shadow: status word, the shell named, and NO number anywhere on the row; the practice teacher is tagged before send.
     expect(screen.getAllByText('sealed').length).toBe(3)
@@ -179,16 +174,20 @@ describe('BidsRobotMirrorTab', () => {
     await waitFor(() => expect(screen.getByText('MEDINA VALLEY ISD')).toBeTruthy())
 
     // The unsent header counts the person-blocked rows; the listed count feeds the lens label.
-    expect(screen.getByText(/1 needs a person before a robot can start/)).toBeTruthy()
+    expect(screen.getByText(/2 need a person before a robot can start/)).toBeTruthy()
     // The rows pair through the shadow rows, which arrive async after the first
     // paint — wait for the count rather than read it at the moment a row renders.
-    await waitFor(() => expect(props.onRowCount).toHaveBeenLastCalledWith(8))
+    await waitFor(() => expect(props.onRowCount).toHaveBeenLastCalledWith(9))
 
-    // Needs row: gap label, its fix, and the door to the needs sheet.
-    expect(screen.getByText('No plans link')).toBeTruthy()
-    expect(screen.getByText('Paste the plan set on the Edit form under Job Plans.')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Paste the plans →' }))
+    // Needs rows: gap label, its fix — said once per section (v2.4256), the second row reads "same as above" — and the door to the needs sheet.
+    expect(screen.getAllByText('No plans link').length).toBe(2)
+    expect(screen.getAllByText('Paste the plan set on the Edit form under Job Plans.').length).toBe(1)
+    expect(screen.getByText('same as above')).toBeTruthy()
+    fireEvent.click(screen.getAllByRole('button', { name: 'Paste the plans →' })[0]!)
     expect(props.onOpenNeeds).toHaveBeenCalledWith(expect.objectContaining({ id: 'h380' }))
+
+    // v2.4256: the orphan-shells line is the operator's — a dev sees it.
+    expect(screen.getByText(/1 robot shell with no bid of ours to mirror/)).toBeTruthy()
 
     // Queued row: next batch, with the status-sheet door.
     expect(screen.getByText('Laynes Chicken Fingers')).toBeTruthy()
@@ -205,6 +204,13 @@ describe('BidsRobotMirrorTab', () => {
     expect(screen.queryByText('Never-sent lost lead')).toBeNull()
   })
 
+  it('the orphan-shells line is dev only (v2.4256)', async () => {
+    renderTab(false)
+    await waitFor(() => expect(screen.getByText('MEDINA VALLEY ISD')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('PALMER WINERY')).toBeTruthy())
+    expect(screen.queryByText(/robot shell with no bid of ours to mirror/)).toBeNull()
+  })
+
   it('"Paste the plans" goes straight to Edit bid on Job Plans when the page offers that door (v2.3334)', async () => {
     const onPasteThePlans = vi.fn()
     const onOpenNeeds = vi.fn()
@@ -212,7 +218,6 @@ describe('BidsRobotMirrorTab', () => {
       <BidsRobotMirrorTab
         bids={humanBids}
         robotBids={robotBids}
-        auditPending={0}
         loading={false}
         highlightBidId={null}
         rowStateFor={rowStateFor}
@@ -226,7 +231,7 @@ describe('BidsRobotMirrorTab', () => {
       />,
     )
     await waitFor(() => expect(screen.getByText('MEDINA VALLEY ISD')).toBeTruthy())
-    const door = screen.getByRole('button', { name: 'Paste the plans →' })
+    const door = screen.getAllByRole('button', { name: 'Paste the plans →' })[0]!
     expect(door.getAttribute('title')).toBe('Opens Edit bid on the Job Plans field')
     fireEvent.click(door)
     expect(onPasteThePlans).toHaveBeenCalledWith(expect.objectContaining({ id: 'h380' }))

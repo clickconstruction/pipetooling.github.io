@@ -56,13 +56,14 @@ import { landOnBidFlowTarget, landOnElement, parseLandingParam } from '../lib/bi
 import { BidsRobotQueueTab } from '../components/bids/BidsRobotQueueTab'
 import { plansWaitingBids, plansWaitingWords } from '../lib/bids/bidPlansFolder'
 import { BidsRobotMirrorTab } from '../components/bids/BidsRobotMirrorTab'
+import { RobotGroupStrip } from '../components/bids/RobotGroupStrip'
 import { BidsRobotScoreboardTab } from '../components/bids/BidsRobotScoreboardTab'
 import { normalizeBidNumber } from '../lib/bids/confidenceBoard'
 import { BidsRobotConsoleTab } from '../components/bids/BidsRobotConsoleTab'
 
 /** The lenses under the one 🤖 Robots tab (v2.2527); `robot-shadows` is a redirect alias, `robot-queue` / `robot-console` are dev-only. */
 import { bidsTabOpenFor, canOpenBids, isFollowupLens, isRobotLens, type BidsTabKey } from '../lib/bids/bidsTabAccess'
-import { followupLensCaption, followupLenses, followupNeedsReasonChipShows, robotLensBarShows, robotLenses } from '../lib/bids/bidsLenses'
+import { followupLensCaption, followupLenses, followupNeedsReasonChipShows, robotLensBarShows, robotLensCaption, robotLenses } from '../lib/bids/bidsLenses'
 import { BidsLensBar } from '../components/bids/BidsLensBar'
 import { useBidAuditsPendingCount } from '../hooks/useBidAuditsPendingCount'
 import { canWorkRobotAudits } from '../lib/bids/bidAudits'
@@ -1732,6 +1733,21 @@ export default function Bids() {
           lenses={robotLenses({ role: myRole, activeTab, mirrorCount: robotMirrorCount, auditsPending: auditGate.pending })}
           activeKey={activeTab}
           onSelect={selectBidsTab}
+        >
+          {/* v2.4256 (punch list #63): the one line that says what the open lens is for, like the Followup bar's. */}
+          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{robotLensCaption(activeTab)}</span>
+        </BidsLensBar>
+      )}
+      {/* v2.4256: the group's header — the program in six numbers on every lens, each tile a door (was the Robot Board's alone). */}
+      {isRobotLens(activeTab) && (
+        <RobotGroupStrip
+          bids={peopleBids}
+          robotBids={robotBids}
+          auditPending={auditGate.pending}
+          rowStateFor={robotRowStateFor}
+          activeKey={activeTab}
+          canOpen={(key) => bidsTabOpenFor(key, myRole)}
+          onOpen={selectBidsTab}
         />
       )}
 
@@ -1778,8 +1794,8 @@ export default function Bids() {
         <BidsRobotMirrorTab
           bids={peopleBids}
           robotBids={robotBids}
-          auditPending={auditGate.pending}
           loading={!bidsLoaded}
+          isDev={myRole === 'dev'}
           highlightBidId={bidBoardDeepLinkHighlightId}
           onEditBid={openEditBid}
           onCompare={(source, twin) => setRobotComparePair({ source, twin })}
@@ -1792,7 +1808,6 @@ export default function Bids() {
           onPasteThePlans={(bid) => openEditBid(bid, { focus: 'plansLink' })}
           onOpenStatus={setRobotStatusBid}
           onAddBidValue={(bid) => openEditBid(bid, { focus: 'bidValue' })}
-          onOpenScoreboard={canWorkRobotAudits(myRole) ? () => selectBidsTab('robot-scoreboard') : undefined}
           onRowCount={setRobotMirrorCount}
         />
       )}

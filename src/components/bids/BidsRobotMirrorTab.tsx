@@ -16,7 +16,7 @@ import {
   type RobotMirrorRow,
   type RobotMirrorRun,
 } from '../../lib/bids/robotMirror'
-import { buildAxisCards, normalizeBidNumber, type RunScoreRow } from '../../lib/bids/confidenceBoard'
+import { normalizeBidNumber, type RunScoreRow } from '../../lib/bids/confidenceBoard'
 import { computeAuditDraftTotal } from '../../lib/bids/bidAudits'
 import { fetchAllRowsChunkedIn } from '../../lib/supabasePaging'
 import type { ShadowRunRow } from '../../lib/bids/shadowStory'
@@ -37,9 +37,9 @@ type BidsRobotMirrorTabProps = {
   bids: BidWithBuilder[]
   /** The robots' ZZ shells (the Robots scope) — read for pairing and doors, never listed. */
   robotBids: BidWithBuilder[]
-  /** The page's audit gate — the workable pending count for the strip. */
-  auditPending: number
   loading: boolean
+  /** v2.4256: the orphan-shells line ("pair or archive") is the operator's — drawn for a dev only. */
+  isDev?: boolean
   /** A row to ring (deep links from the status sheet / comparison modal). Matches the human bid OR its shell. */
   highlightBidId: string | null
   /**
@@ -64,8 +64,6 @@ type BidsRobotMirrorTabProps = {
   onOpenStatus?: (bid: BidWithBuilder) => void
   /** A sealed run on a bid sent without a value: Edit Bid with the value field focused, so it can score. */
   onAddBidValue?: (bid: BidWithBuilder) => void
-  /** The "kinds of job earned first drafts" pill's door, when the viewer has the Scoreboard lens. */
-  onOpenScoreboard?: () => void
   /** Reports the listed-row count for the lens label. */
   onRowCount?: (n: number) => void
 }
@@ -138,9 +136,10 @@ type RowDetail = { loading: boolean; waterfall: DiffWaterfall | null; why: strin
  * v2.3225: the live bids with no run list too (queued · needs a person · off),
  * each with the door that moves it; a sealed run on a bid sent without a value
  * gets an "Add bid value" door; a scored row expands into where the delta lives
- * and the robot's own note; the strip speaks in plain words.
+ * and the robot's own note. The six-number strip that headed this lens is the
+ * group's since v2.4256 (`RobotGroupStrip`, drawn by the page on every lens).
  */
-export function BidsRobotMirrorTab({ bids, robotBids, auditPending, loading, highlightBidId, rowStateFor, onEditBid, onCompare, onOpenShell, onOpenAudit, onReviewNow, onOpenNeeds, onPasteThePlans, onOpenStatus, onAddBidValue, onOpenScoreboard, onRowCount }: BidsRobotMirrorTabProps) {
+export function BidsRobotMirrorTab({ bids, robotBids, loading, isDev = false, highlightBidId, rowStateFor, onEditBid, onCompare, onOpenShell, onOpenAudit, onReviewNow, onOpenNeeds, onPasteThePlans, onOpenStatus, onAddBidValue, onRowCount }: BidsRobotMirrorTabProps) {
   const [shadowRuns, setShadowRuns] = useState<ShadowRunRow[] | null>(null)
   const [scores, setScores] = useState<RunScoreRow[] | null>(null)
   const [audits, setAudits] = useState<MirrorAuditRow[]>([])
@@ -249,15 +248,6 @@ export function BidsRobotMirrorTab({ bids, robotBids, auditPending, loading, hig
     onRowCount?.(mirror.listedCount)
   }, [mirror.listedCount, onRowCount])
 
-  const gate = useMemo(() => {
-    const cards = buildAxisCards(scores ?? [], shadowRuns ?? [], { standardTeacherIds: standardIds })
-    return { met: cards.filter((c) => c.chip.tone === 'met').length, total: cards.length }
-  }, [scores, shadowRuns, standardIds])
-  const oldestAuditDays = useMemo(() => {
-    const pending = audits.filter((a) => a.status === 'pending').map((a) => Date.parse(a.requested_at)).filter(Number.isFinite)
-    if (!pending.length) return null
-    return Math.max(0, Math.floor((Date.now() - Math.min(...pending)) / 86400000))
-  }, [audits])
   const auditNoteById = useMemo(() => new Map(audits.map((a) => [a.id, a.self_assessment ?? null])), [audits])
 
   const shellById = useMemo(() => new Map(robotBids.map((b) => [b.id, b])), [robotBids])
@@ -312,7 +302,7 @@ export function BidsRobotMirrorTab({ bids, robotBids, auditPending, loading, hig
     })()
   }
 
-  const renderRun = (row: RobotMirrorRow<BidWithBuilder>, run: RobotMirrorRun, lead: boolean) => {
+  const renderRun = (row: RobotMirrorRow<BidWithBuilder>, run: RobotMirrorRun, lead: boolean, repeatSub = false) => {
     const status = mirrorStatusLabel(run)
     const chip = mirrorAuditChip(run)
     const shell = run.shellBidId ? shellById.get(run.shellBidId) : undefined
@@ -335,7 +325,7 @@ export function BidsRobotMirrorTab({ bids, robotBids, auditPending, loading, hig
             )}
           </span>
           <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', paddingLeft: 'calc(18px + 0.45rem)', maxWidth: 420 }}>
-            {needs || off ? status.sub : (
+            {needs || off ? (repeatSub ? <span style={{ fontStyle: 'italic' }}>same as above</span> : status.sub) : (
               <>
                 {run.label}
                 {status.sub ? ` · ${status.sub}` : ''}
@@ -461,39 +451,8 @@ export function BidsRobotMirrorTab({ bids, robotBids, auditPending, loading, hig
     )
   }
 
-  const pills: Array<{ n: string; label: string; warn: boolean; title: string; onClick?: () => void }> = [
-    { n: String(mirror.rowCount), label: 'of our bids have a robot run', warn: false, title: 'Human bids with at least one shadow or backtest run' },
-    { n: `${Math.max(0, mirror.liveEligible - mirror.uncoveredLive)} / ${mirror.liveEligible}`, label: 'live plumbing bids shadowed', warn: mirror.uncoveredLive > 0, title: 'Unsent, undecided bids with plans on file that a robot has (or could) shadow — every uncovered one is a free future reference' },
-    { n: String(mirror.sealedCount), label: 'sealed, waiting on your number', warn: false, title: 'Robot numbers locked away on live bids — each opens the moment you record your best effort on the Cover Letter, or mark the bid sent with a value' },
-    { n: String(mirror.needsCount), label: 'need something from a person', warn: mirror.needsCount > 0, title: 'Live bids the robot can\'t start on — no plans link, plans it can\'t open, or a question it asked. Each row says what, with the door.' },
-    { n: String(auditPending), label: oldestAuditDays != null && auditPending > 0 ? `audits waiting · oldest ${oldestAuditDays} d` : 'audits waiting', warn: auditPending > 0, title: 'Robot audits a person still owes a verdict' },
-    { n: `${gate.met} / ${gate.total}`, label: 'kinds of job earned first drafts', warn: false, title: 'A kind of job earns first drafts after five robot numbers in a row within 8% of ours', onClick: onOpenScoreboard },
-    // v2.3234: the robot's worth, summed — sent bids that moved off the number recorded before the reveal.
-    ...(mirror.moved.count > 0
-      ? [{ n: `${mirror.moved.count} · ${money(mirror.moved.total)}`, label: `bid${mirror.moved.count === 1 ? '' : 's'} moved after the robot's envelope`, warn: false, title: 'Sent bids whose value differs from the best effort recorded before the envelope opened, and the dollars moved in total' }]
-      : []),
-  ]
-
   return (
     <div>
-      {/* The program in six numbers — plain words, the mockup's strip. */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.5rem', marginBottom: '0.9rem' }}>
-        {pills.map((s) => {
-          const style: React.CSSProperties = { border: `1px solid ${s.warn ? 'var(--text-amber-800)' : 'var(--border)'}`, borderRadius: 8, background: s.warn ? 'var(--bg-amber-tint)' : 'var(--bg-subtle)', padding: '0.45rem 0.8rem', textAlign: 'left', color: 'inherit', font: 'inherit' }
-          const body = (
-            <>
-              <b style={{ display: 'block', fontSize: '1.05rem', color: s.warn ? 'var(--text-amber-800)' : 'var(--text-strong)', ...mono }}>{s.n}</b>
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{s.label}{s.onClick ? ' →' : ''}</span>
-            </>
-          )
-          return s.onClick ? (
-            <button key={s.label} type="button" title={s.title} onClick={s.onClick} style={{ ...style, cursor: 'pointer' }}>{body}</button>
-          ) : (
-            <div key={s.label} title={s.title} style={style}>{body}</div>
-          )
-        })}
-      </div>
-
       {!ready ? (
         <p role="status" style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading the robots' runs…</p>
       ) : mirror.listedCount === 0 ? (
@@ -541,8 +500,13 @@ export function BidsRobotMirrorTab({ bids, robotBids, auditPending, loading, hig
                         </tr>
                       </thead>
                       <tbody>
-                        {rows.flatMap((row) => {
+                        {rows.flatMap((row, rowIndex) => {
                           const ringed = row.bid.id === ringedHumanId
+                          // v2.4256: the same explanation on six rows in a row ("No plans link — paste the plan set…")
+                          // is said once per section; the rows after it read "same as above".
+                          const prev = rowIndex > 0 ? rows[rowIndex - 1] : undefined
+                          const subOf = (r: RobotMirrorRow<BidWithBuilder> | undefined) => (r && (r.latest.status === 'needs' || r.latest.status === 'off') ? `${r.latest.status}|${mirrorStatusLabel(r.latest).text}|${mirrorStatusLabel(r.latest).sub ?? ''}` : null)
+                          const repeatSub = subOf(row) != null && subOf(row) === subOf(prev)
                           const isExpanded = expanded.has(row.bid.id)
                           const story = hasDeltaStory(row)
                           const gc = row.bid.bids_gc_builders?.name ?? row.bid.customers?.name ?? null
@@ -569,7 +533,7 @@ export function BidsRobotMirrorTab({ bids, robotBids, auditPending, loading, hig
                                   </button>
                                 ) : null}
                               </td>
-                              {renderRun(row, row.latest, true)}
+                              {renderRun(row, row.latest, true, repeatSub)}
                             </tr>
                           )
                           if (!isExpanded) return [lead]
@@ -595,7 +559,7 @@ export function BidsRobotMirrorTab({ bids, robotBids, auditPending, loading, hig
         })
       )}
 
-      {ready && mirror.orphanShells.length > 0 ? (
+      {ready && isDev && mirror.orphanShells.length > 0 ? (
         <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.75rem' }}>
           {mirror.orphanShells.length} robot shell{mirror.orphanShells.length === 1 ? '' : 's'} with no bid of ours to mirror —{' '}
           {mirror.orphanShells.map((s, i) => (
