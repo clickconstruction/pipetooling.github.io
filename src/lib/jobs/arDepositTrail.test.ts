@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import {
   arTrailJobLabel,
   arTrailWhenWords,
@@ -8,7 +9,7 @@ import {
   type ArDepositTrailRow,
 } from './arDepositTrail'
 
-const TZ = 'America/Chicago'
+const TZ = APP_CALENDAR_TZ
 const NOW = new Date('2026-09-30T21:30:00Z') // 4:30 PM Chicago, Sep 30
 const when = (iso: string) => arTrailWhenWords(iso, NOW, TZ)
 
