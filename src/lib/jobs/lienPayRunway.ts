@@ -97,6 +97,10 @@ export type LienPayRunway = {
   noticeSent: boolean
   /** No clock hours — the clock counts from the month the job was created. */
   datedFromCreation: boolean
+  /** The day every date was counted from: the last work day, or the creation day when there are no hours (the Lien calendar's tick, v2.4265); '' when there is neither. */
+  basisYmd: string
+  /** On a closed row, which window shut: the § 53.056 notice's, or the § 53.052 lien's; null otherwise (v2.4265). */
+  closedBy: 'notice' | 'lien' | null
   /** The right-edge label under the track ('' when there is no track). */
   endLabel: string
   marks: LienRunwayMarks | null
@@ -121,6 +125,8 @@ const NONE: LienPayRunway = {
   kindAssumed: false,
   noticeSent: false,
   datedFromCreation: false,
+  basisYmd: '',
+  closedBy: null,
   endLabel: '',
   marks: null,
   sortKey: Number.MAX_SAFE_INTEGER,
@@ -177,6 +183,12 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
   const today = (input.todayYmd ?? '').slice(0, 10)
   if (ymdToUtcDays(today) == null) return NONE
 
+  const worked = (input.lastWorkYmd ?? '').trim().slice(0, 10)
+  const created = (input.createdAt ?? '').trim().slice(0, 10)
+  const datedFromCreation = !/^\d{4}-\d{2}-\d{2}$/.test(worked) && /^\d{4}-\d{2}-\d{2}$/.test(created)
+  const lastWork = datedFromCreation ? created : worked
+  const basisYmd = /^\d{4}-\d{2}-\d{2}$/.test(lastWork) ? lastWork : ''
+
   if (input.filedYmd) {
     const filed = input.filedYmd.slice(0, 10)
     return {
@@ -188,14 +200,11 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       noticeSent: false,
       title: 'The lien affidavit is on file. The money is still owed; the Lien window carries the serve-by and the year to sue.',
       chipLabel: 'lien filed',
+      basisYmd,
+      datedFromCreation,
       sortKey: 3_000_000,
     }
   }
-
-  const worked = (input.lastWorkYmd ?? '').trim().slice(0, 10)
-  const created = (input.createdAt ?? '').trim().slice(0, 10)
-  const datedFromCreation = !/^\d{4}-\d{2}-\d{2}$/.test(worked) && /^\d{4}-\d{2}-\d{2}$/.test(created)
-  const lastWork = datedFromCreation ? created : worked
   const { ymd: lienBy, kindAssumed } = lienByForJob(lastWork, input.propertyKind)
   if (!lienBy) return NONE
   const daysToLien = daysBetweenYmd(today, lienBy)
@@ -233,6 +242,8 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       kindAssumed,
       noticeSent,
       datedFromCreation,
+      basisYmd,
+      closedBy: 'notice',
       sortKey: 2_000_000 + daysToNotice,
     }
   }
@@ -253,6 +264,8 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       kindAssumed,
       noticeSent,
       datedFromCreation,
+      basisYmd,
+      closedBy: 'lien',
       sortKey: 2_000_000 + daysToLien,
     }
   }
@@ -286,6 +299,8 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       kindAssumed,
       noticeSent,
       datedFromCreation,
+      basisYmd,
+      closedBy: null,
       endLabel,
       marks: { endDays, pay: payMark, lien: lienMark, notice: noticeMark, gap: null },
       sortKey: daysToNotice,
@@ -309,6 +324,8 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       kindAssumed,
       noticeSent,
       datedFromCreation,
+      basisYmd,
+      closedBy: null,
       endLabel,
       marks: { endDays, pay: { days: livePay, pct: pct(livePay) }, lien: lienMark, notice: noticeMark, gap: { fromPct: lienMark.pct, toPct: pct(livePay), kind: 'short' } },
       sortKey: daysToLien,
@@ -332,6 +349,8 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       kindAssumed,
       noticeSent,
       datedFromCreation,
+      basisYmd,
+      closedBy: null,
       endLabel,
       marks: { endDays, pay: { days: livePay, pct: pct(livePay) }, lien: lienMark, notice: noticeMark, gap: { fromPct: pct(livePay), toPct: lienMark.pct, kind: 'room' } },
       sortKey: 1_000_000 + daysToLien,
@@ -355,6 +374,8 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
     kindAssumed,
     noticeSent,
     datedFromCreation,
+    basisYmd,
+    closedBy: null,
     endLabel,
     marks: { endDays, pay: null, lien: lienMark, notice: noticeMark, gap: null },
     sortKey: 500_000 + daysToLien,

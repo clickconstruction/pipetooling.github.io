@@ -254,3 +254,20 @@ describe('lienRunwayWantsTheChip', () => {
     expect(lienRunwayWantsTheChip(null)).toBe(false)
   })
 })
+
+describe('the basis and the closed window (v2.4265)', () => {
+  const base = { todayYmd: '2026-09-28', openBalance: 1000, propertyKind: 'residential', expectedPayYmd: null, filedYmd: null, releasedYmd: null }
+  it('basisYmd is the last work day, or the creation day when there are no hours, or nothing', () => {
+    expect(buildLienPayRunway({ ...base, lastWorkYmd: '2026-08-12' }).basisYmd).toBe('2026-08-12')
+    const created = buildLienPayRunway({ ...base, lastWorkYmd: null, createdAt: '2026-08-03T15:00:00Z' })
+    expect(created.basisYmd).toBe('2026-08-03')
+    expect(created.datedFromCreation).toBe(true)
+    expect(buildLienPayRunway({ ...base, lastWorkYmd: null, createdAt: null }).basisYmd).toBe('')
+    expect(buildLienPayRunway({ ...base, lastWorkYmd: '2026-08-12', filedYmd: '2026-09-20' }).basisYmd).toBe('2026-08-12')
+  })
+  it('closedBy says which window shut', () => {
+    expect(buildLienPayRunway({ ...base, lastWorkYmd: '2026-03-01' }).closedBy).toBe('lien')
+    expect(buildLienPayRunway({ ...base, lastWorkYmd: '2026-07-20', isSub: true }).closedBy).toBe('notice')
+    expect(buildLienPayRunway({ ...base, lastWorkYmd: '2026-08-12' }).closedBy).toBeNull()
+  })
+})

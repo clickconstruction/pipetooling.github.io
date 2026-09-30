@@ -12,6 +12,9 @@ import type { NoticeState } from './forecastWorkMonths'
  * next move. Pure: the Pipeline hands in each job's runway; the tab renders.
  * PR C (v2.4152): the shared axis with the 15ths as columns, each row's marks on it, the
  * GC row's counted flags, the density per 15th, the three to-do sentences and the key.
+ * v2.4265: the work tick (the day every date was counted from, hollow when it is the
+ * creation day), the grey wash past the day a lien died, a job row that speaks only when
+ * its deadline differs from its GC's, and a key of short words with the long ones on a tap.
  */
 
 export type LienCalendarJob = {
@@ -82,7 +85,9 @@ function groupWord(jobs: LienCalendarJob[], kind: LienCalendarGroupKind): { word
   if (owed.length > 0) {
     const min = Math.min(...owed.map((j) => j.runway.daysToNotice ?? Number.MAX_SAFE_INTEGER))
     const tone: LienRunwayTone = owed.some((j) => j.runway.tone === 'red') ? 'red' : 'amber'
-    return { word: owed.length === 1 ? `send the notice · ${daysWords(min)}` : `send ${owed.length} notices · ${daysWords(min)}`, tone }
+    const by = owed.find((j) => j.runway.daysToNotice === min)?.runway.noticeByYmd
+    const byWords = by ? ` by ${formatYmdMonthDay(by)}` : ''
+    return { word: owed.length === 1 ? `send the notice${byWords} · ${daysWords(min)}` : `send ${owed.length} notices${byWords} · ${daysWords(min)}`, tone }
   }
   const tightest = jobs[0]
   if (!tightest) return { word: '', tone: 'grey' }
@@ -90,6 +95,37 @@ function groupWord(jobs: LienCalendarJob[], kind: LienCalendarGroupKind): { word
   const fileFirst = jobs.filter((j) => j.runway.state === 'file_first').length
   if (fileFirst > 1) return { word: `file first on ${fileFirst}`, tone: 'red' }
   return { word: verdict, tone: tightest.runway.tone }
+}
+
+/** "4 at one property" — the largest set of a group's jobs that share one address (one notice can cover them, v2.3777); '' when none share. */
+export function sharedPropertyNote(jobs: ReadonlyArray<Pick<LienCalendarJob, 'address'>>): string {
+  const counts = new Map<string, number>()
+  for (const j of jobs) {
+    const key = norm(j.address).replace(/[.,#]/g, '').replace(/\b(tx|texas)\b.*$/, '').trim()
+    if (!key) continue
+    counts.set(key, (counts.get(key) ?? 0) + 1)
+  }
+  const most = Math.max(0, ...counts.values())
+  return most >= 2 ? `${most} at one property` : ''
+}
+
+/**
+ * The words under a job row's money — only what its GC row does not already say (v2.4265).
+ * Under a GC whose word is "send N notices by Oct 15", a job owing that same notice says nothing;
+ * a job on a later notice says its own date; every other state keeps the runway's verdict.
+ */
+export function rowWord(job: Pick<LienCalendarJob, 'runway'>, group: Pick<LienCalendarGroup, 'kind' | 'jobs'> | null): { text: string; tone: LienRunwayTone } | null {
+  const r = job.runway
+  if (r.state === 'none') return null
+  if (r.state === 'closed') return { text: 'still owed', tone: 'grey' }
+  if (r.state === 'notice_due' && r.daysToNotice != null) {
+    const owed = group?.kind === 'gc' ? group.jobs.filter((j) => j.runway.state === 'notice_due') : []
+    const min = owed.length ? Math.min(...owed.map((j) => j.runway.daysToNotice ?? Number.MAX_SAFE_INTEGER)) : null
+    if (min != null && r.daysToNotice === min) return null
+    return { text: `notice by ${formatYmdMonthDay(r.noticeByYmd)} · ${daysWords(r.daysToNotice)}`, tone: r.tone }
+  }
+  const verdict = r.lines[r.lines.length - 1] ?? r.words
+  return verdict ? { text: verdict, tone: r.tone } : null
 }
 
 export function buildLienCalendar(rows: ReadonlyArray<LienCalendarJob>, query: string): LienCalendar {
@@ -114,7 +150,7 @@ export function buildLienCalendar(rows: ReadonlyArray<LienCalendarJob>, query: s
       key: `gc:${gcId}`,
       kind: 'gc',
       name: list[0]?.gcName?.trim() || 'GC',
-      sub: `GC · ${list.length} ${list.length === 1 ? 'job' : 'jobs'}${owed ? ` · ${owed} ${owed === 1 ? 'notice' : 'notices'} owed` : ''}`,
+      sub: `GC · ${list.length} ${list.length === 1 ? 'job' : 'jobs'}${owed ? ` · ${owed} ${owed === 1 ? 'notice' : 'notices'} owed` : ''}${sharedPropertyNote(list) ? ` · ${sharedPropertyNote(list)}` : ''}`,
       jobs: list,
       total: list.reduce((s, j) => s + j.openBalance, 0),
       word,
@@ -145,7 +181,7 @@ export function buildLienCalendar(rows: ReadonlyArray<LienCalendarJob>, query: s
       key: 'gone',
       kind: 'gone',
       name: 'Lien gone',
-      sub: `${gone.length} ${gone.length === 1 ? 'job' : 'jobs'} · a window closed unsent · Collections or the Legal desk`,
+      sub: `${gone.length} ${gone.length === 1 ? 'job' : 'jobs'} · a window closed unsent · nothing left to file — Collections or the Legal desk`,
       jobs: gone,
       total: gone.reduce((s, j) => s + j.openBalance, 0),
       word,
@@ -203,8 +239,10 @@ export function noticeFlagsFor(job: Pick<LienCalendarJob, 'runway' | 'months' | 
 
 /** The commercial lien date when the property kind is not set — the bracket's far end. */
 export function commercialLienByFor(job: Pick<LienCalendarJob, 'runway' | 'lastWorkYmd'>): string | null {
-  if (!job.runway.kindAssumed || !job.lastWorkYmd) return null
-  const ymd = filingDeadlineForMonth(job.lastWorkYmd.slice(0, 10), 'non_residential')
+  // The basis the flag was counted from — the creation day on a job with no hours (v2.4265; before, those rows drew no bracket).
+  const basis = job.runway.basisYmd || job.lastWorkYmd
+  if (!job.runway.kindAssumed || !basis) return null
+  const ymd = filingDeadlineForMonth(basis.slice(0, 10), 'non_residential')
   return ymd && ymd > job.runway.lienByYmd ? ymd : null
 }
 
@@ -213,14 +251,21 @@ export function commercialLienByFor(job: Pick<LienCalendarJob, 'runway' | 'lastW
  * ninety days back), today, then every statutory date on the board, a little room after
  * the last. The columns are the distinct dates — Texas deadlines all land on a 15th.
  */
+/** The day a closed row's lien died: the notice date when the notice was never sent, else the lien date (v2.4265). */
+export function closedYmdFor(runway: Pick<LienPayRunway, 'state' | 'closedBy' | 'noticeByYmd' | 'lienByYmd'>): string {
+  if (runway.state !== 'closed') return ''
+  return runway.closedBy === 'notice' && runway.noticeByYmd ? runway.noticeByYmd : runway.lienByYmd
+}
+
 export function lienCalendarAxis(jobs: ReadonlyArray<LienCalendarJob>, todayYmd: string): LienCalendarAxis {
   const dates = new Set<string>()
   let earliestClosed: string | null = null
   for (const j of jobs) {
     if (j.runway.state === 'none') continue
     if (j.runway.state === 'closed') {
-      if (j.runway.lienByYmd && (!earliestClosed || j.runway.lienByYmd < earliestClosed)) earliestClosed = j.runway.lienByYmd
-      if (j.runway.lienByYmd) dates.add(j.runway.lienByYmd)
+      const closed = closedYmdFor(j.runway)
+      if (closed && (!earliestClosed || closed < earliestClosed)) earliestClosed = closed
+      if (closed) dates.add(closed)
       continue
     }
     if (j.runway.lienByYmd) dates.add(j.runway.lienByYmd)
@@ -248,6 +293,8 @@ export function lienCalendarAxis(jobs: ReadonlyArray<LienCalendarJob>, todayYmd:
 }
 
 export type LienCalendarMark =
+  | { kind: 'work'; pct: number; ymd: string; offAxis: boolean; fromCreation: boolean; label: string }
+  | { kind: 'gone'; pct: number; ymd: string; by: 'notice' | 'lien'; label: string }
   | { kind: 'pay'; pct: number; ymd: string }
   | { kind: 'pay_missing'; pct: number }
   | { kind: 'notice'; pct: number; ymd: string; done: boolean; monthKey: string | null; tone: LienRunwayTone }
@@ -260,13 +307,43 @@ function noticeTone(ymd: string, todayYmd: string): LienRunwayTone {
   return d <= 7 ? 'red' : d <= 21 ? 'amber' : 'grey'
 }
 
-/** A job row's marks on the shared axis — the runway's picture, one scale for everyone. */
-export function lienCalendarMarks(job: LienCalendarJob, axis: LienCalendarAxis): LienCalendarMark[] {
+function monthShort(ymd: string): string {
+  return new Date(`${ymd.slice(0, 7)}-15T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' })
+}
+
+/**
+ * The work tick (v2.4265): the day every date on the row was counted from — the last approved
+ * clock day, drawn solid with its date; or, on a job with no hours, the creation day, drawn hollow
+ * and amber with "Jun · no hours (created)". A day before the axis's left edge sits at the edge
+ * with a "◂". Null when the runway has no basis.
+ */
+export function workMarkFor(job: Pick<LienCalendarJob, 'runway'>, axis: Pick<LienCalendarAxis, 'pct' | 'startYmd'>): Extract<LienCalendarMark, { kind: 'work' }> | null {
+  const ymd = job.runway.basisYmd
+  if (!ymd) return null
+  const offAxis = ymd < axis.startYmd
+  const fromCreation = job.runway.datedFromCreation
+  const words = fromCreation ? `${monthShort(ymd)} · no hours (created)` : formatYmdMonthDay(ymd)
+  return { kind: 'work', pct: offAxis ? 0 : axis.pct(ymd), ymd, offAxis, fromCreation, label: offAxis ? `◂ ${words}` : words }
+}
+
+/**
+ * A job row's marks on the shared axis — the runway's picture, one scale for everyone.
+ * `payMissingDot` (default true) draws the dashed "no pay date" dot; the tab passes false under a
+ * GC row, whose own dot speaks for its jobs (v2.4265).
+ */
+export function lienCalendarMarks(job: LienCalendarJob, axis: LienCalendarAxis, opts: { payMissingDot?: boolean } = {}): LienCalendarMark[] {
   const r = job.runway
   const out: LienCalendarMark[] = []
   if (r.state === 'none') return out
+  const work = workMarkFor(job, axis)
+  if (work) out.push(work)
   if (r.state === 'closed') {
-    if (r.lienByYmd) out.push({ kind: 'lien', pct: axis.pct(r.lienByYmd), ymd: r.lienByYmd, tone: 'red', closed: true })
+    const closed = closedYmdFor(r)
+    if (closed) {
+      const by = r.closedBy === 'notice' ? 'notice' : 'lien'
+      out.push({ kind: 'gone', pct: axis.pct(closed), ymd: closed, by, label: by === 'notice' ? `notice not sent by ${formatYmdMonthDay(closed)}` : `lien window closed ${formatYmdMonthDay(closed)}` })
+      out.push({ kind: 'lien', pct: axis.pct(closed), ymd: closed, tone: 'red', closed: true })
+    }
     return out
   }
   const payYmd = r.marks?.pay ? addDays(axis.todayYmd, r.marks.pay.days) : null
@@ -277,7 +354,7 @@ export function lienCalendarMarks(job: LienCalendarJob, axis: LienCalendarAxis):
   const commercial = commercialLienByFor(job)
   if (commercial && r.lienByYmd) out.push({ kind: 'bracket', fromPct: axis.pct(r.lienByYmd), toPct: axis.pct(commercial), toYmd: commercial })
   if (payYmd) out.push({ kind: 'pay', pct: axis.pct(payYmd), ymd: payYmd })
-  else if (r.state !== 'filed') out.push({ kind: 'pay_missing', pct: axis.pct(addDays(axis.todayYmd, 2)) })
+  else if (r.state !== 'filed' && opts.payMissingDot !== false) out.push({ kind: 'pay_missing', pct: axis.pct(addDays(axis.todayYmd, 2)) })
   for (const f of noticeFlagsFor(job)) out.push({ kind: 'notice', pct: axis.pct(f.ymd), ymd: f.ymd, done: f.done, monthKey: f.monthKey, tone: f.done ? 'green' : noticeTone(f.ymd, axis.todayYmd) })
   if (r.lienByYmd) out.push({ kind: 'lien', pct: axis.pct(r.lienByYmd), ymd: r.lienByYmd, tone: r.state === 'filed' ? 'green' : r.tone, closed: false })
   return out
@@ -393,18 +470,59 @@ export function lienCalendarTodo(cal: Pick<LienCalendar, 'jobs'>, density: Reado
   return out
 }
 
-/** The key under the axis: every mark beside its meaning — the same words are the hover on any flag. */
-export const LIEN_CALENDAR_KEY: ReadonlyArray<{ glyph: 'pay' | 'pay_missing' | 'notice' | 'check' | 'lien' | 'room' | 'short' | 'bracket' | 'count' | 'today'; label: string }> = [
-  { glyph: 'today', label: 'today — one line down the whole board' },
-  { glyph: 'pay', label: 'when they said they would pay (a promise, the GC’s word, or the pay-speed estimate)' },
-  { glyph: 'pay_missing', label: 'no pay date yet — click to record what they said' },
-  { glyph: 'notice', label: 'a § 53.056 notice owed for that work month — hollow until it is recorded' },
-  { glyph: 'check', label: 'that month’s notice is on file' },
-  { glyph: 'lien', label: 'the last day to file the lien affidavit (§ 53.052) — darker as it nears' },
-  { glyph: 'room', label: 'room: the money is expected before the lien date' },
-  { glyph: 'short', label: 'file first: the lien date comes before the money' },
-  { glyph: 'bracket', label: 'property kind not set — the flag sits at the residential date but could be as late as the commercial one' },
-  { glyph: 'count', label: 'on a GC row, the number is how many of its jobs share that date' },
+/**
+ * The key: a strip of marks, each with a few words under it, and the long words on a tap (v2.4265;
+ * before, ten sentences in a fold). `label` stays the hover on a row's mark. `door` names the
+ * board's own door the panel offers; the tab maps it to the handler it already has.
+ */
+export type LienCalendarKeyGlyph = 'today' | 'work' | 'work_hollow' | 'notice' | 'check' | 'lien' | 'pay' | 'pay_missing' | 'room' | 'short' | 'bracket' | 'count' | 'gone'
+export type LienCalendarKeyEntry = { glyph: LienCalendarKeyGlyph; short: string; label: string; long: string; door?: 'kinds' | 'draft' }
+export const LIEN_CALENDAR_KEY: ReadonlyArray<LienCalendarKeyEntry> = [
+  { glyph: 'today', short: 'Today', label: 'today — one line down the whole board', long: 'One line down the whole board on today’s date. Everything left of it has happened; everything right of it is still ahead.' },
+  {
+    glyph: 'work',
+    short: 'Last day worked',
+    label: 'the last day worked — every date on the row is counted from its month',
+    long: 'The last approved clock day on the job. Texas counts every lien date from the month the work was done (§ 53.052, § 53.056), so this tick is where the whole row starts — a wrong tick moves every flag. If it looks wrong, the job’s clock sessions are where to look.',
+  },
+  {
+    glyph: 'work_hollow',
+    short: 'No approved hours',
+    label: 'no approved hours — the job’s creation month stands in for the work month',
+    long: 'This job has no approved clock hours, so the board counts from the month the job was created instead — the Lien desk’s rule. That is a stand-in, not a fact: if the work was done in a different month, the flags sit in the wrong place. Approve the hours, or check the month before a notice goes out.',
+  },
+  {
+    glyph: 'notice',
+    short: 'Notice owed',
+    label: 'a § 53.056 notice owed for that work month — hollow until it is recorded',
+    long: 'On a job under a GC, a § 53.056 notice for each unpaid month must reach the owner and the GC by the 15th of the second month after the work (third for a commercial property). The flag is hollow until that month’s notice is recorded; a month whose flag passes unsent loses its lien.',
+    door: 'draft',
+  },
+  { glyph: 'check', short: 'Notice on file', label: 'that month’s notice is on file', long: 'That month’s § 53.056 notice is recorded — sent from the desk or entered by hand. The lien for that month stays alive to its own flag.' },
+  {
+    glyph: 'lien',
+    short: 'Lien deadline',
+    label: 'the last day to file the lien affidavit (§ 53.052) — darker as it nears',
+    long: 'The last day the lien affidavit can be filed with the county — the 15th of the third month after the work month on a residential property, the fourth on a commercial one (§ 53.052). Amber inside three weeks, red inside one. After this day the lien is gone; the debt is not.',
+  },
+  { glyph: 'pay', short: 'Pay date they gave', label: 'when they said they would pay (a promise, the GC’s word, or the pay-speed estimate)', long: 'When they said the money would come — a promise on the job, the GC’s word from the statement round, or, with neither, the estimate from how fast this customer usually pays. Click it to change it.' },
+  { glyph: 'pay_missing', short: 'No pay date yet', label: 'no pay date yet — click to record what they said', long: 'Nobody has said when this will be paid. On a GC row one dot speaks for all of its jobs — click it to record the GC’s word for every job at once; a job row shows its own dot only when it has its own date.' },
+  { glyph: 'room', short: 'Room', label: 'room: the money is expected before the lien date', long: 'Green room between the pay date and the lien flag: the money is expected before the window closes. Wait for it; the lien is still there if it does not come.' },
+  { glyph: 'short', short: 'File first', label: 'file first: the lien date comes before the money', long: 'Red hatching: the lien window closes before the money is expected. File the affidavit first, or get the pay date moved ahead of the flag.' },
+  {
+    glyph: 'bracket',
+    short: 'Kind not set',
+    label: 'property kind not set — the flag sits at the residential date but could be as late as the commercial one',
+    long: 'The property’s kind — a house or a commercial building — is not on its record, so the board shows the earlier, residential date and stripes the stretch to the commercial one. A house read as commercial is a lien lost a month late, so the safer date stands until someone sets the kind.',
+    door: 'kinds',
+  },
+  { glyph: 'count', short: 'Jobs on one date', label: 'on a GC row, the number is how many of its jobs share that date', long: 'On a GC row the flags are folded: one flag per date, and the number is how many of that GC’s jobs share it. Open the row to see each job’s own flags.' },
+  {
+    glyph: 'gone',
+    short: 'Lien gone',
+    label: 'lien gone — a window closed unsent; nothing can be filed after that day',
+    long: 'A window closed with nothing sent or filed — the notice’s, or the lien’s — so the lien for that work is gone. The row is grey past that day because nothing can be filed after it. The money is still owed: Collections, or the Legal desk.',
+  },
 ]
 
 

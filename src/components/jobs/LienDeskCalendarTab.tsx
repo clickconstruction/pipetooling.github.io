@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import {
   LIEN_CALENDAR_KEY,
@@ -11,11 +11,14 @@ import {
   lienCalendarMarks,
   lienCalendarTodo,
   promiseConsequence,
+  rowWord,
   whoseWordOptions,
   type LienCalendarAxis,
   type LienCalendarDensityColumn,
   type LienCalendarGroup,
   type LienCalendarJob,
+  type LienCalendarKeyEntry,
+  type LienCalendarKeyGlyph,
   type LienCalendarMark,
   type LienCalendarTodo,
 } from '../../lib/jobs/lienCalendar'
@@ -42,6 +45,11 @@ import PropertyKindSwitch from './PropertyKindSwitch'
  * v2.4153): the pay dot opens "They said…" in place with the consequence
  * read back before Save, the GC row's one dot writes the GC's word for all
  * its jobs, a density bar leads the to-do, and the to-do's doors act.
+ * v2.4265: every row starts at its work tick (the day the dates were counted
+ * from — hollow and amber when it is the creation day), a dead row goes grey
+ * past the day its lien died, a job row's words say only what its GC row does
+ * not, the dashed dot sits on the GC row alone, and the key is a strip of
+ * marks with a few words each — the long words open on a tap.
  */
 
 export type LienDeskCalendarTabProps = {
@@ -77,14 +85,21 @@ const LABEL_W = 'minmax(0, 300px)'
 const RIGHT_W = '11rem'
 const GRID: CSSProperties = { display: 'grid', gridTemplateColumns: `${LABEL_W} minmax(0, 1fr) ${RIGHT_W}`, alignItems: 'center' }
 const cellNum: CSSProperties = { fontSize: '0.6875rem', fontWeight: 700, padding: '0 5px', borderRadius: 3, background: 'var(--bg-blue-tint)', color: 'var(--text-blue-800)', whiteSpace: 'nowrap' }
-const KEY_SEEN = 'pipetooling-lien-calendar-key-seen'
+const ROW_H = 44
+const TRACK_H = 36
 
 /** The glyphs, drawn once for the key and once per row — the same shapes the runway draws (v2.4051). */
-function Glyph({ kind, tone = 'amber', count }: { kind: (typeof LIEN_CALENDAR_KEY)[number]['glyph'] | 'notice_done'; tone?: LienRunwayTone; count?: number }): ReactNode {
+function Glyph({ kind, tone = 'amber', count }: { kind: LienCalendarKeyGlyph | 'notice_done'; tone?: LienRunwayTone; count?: number }): ReactNode {
   const flag = FLAG[tone]
   switch (kind) {
     case 'today':
       return <span style={{ display: 'inline-block', width: 2, height: 16, background: 'var(--text-strong)' }} />
+    case 'work':
+      return <span style={{ display: 'inline-block', width: 2, height: 16, background: 'var(--text-muted)' }} />
+    case 'work_hollow':
+      return <span style={{ display: 'inline-block', width: 0, height: 16, borderLeft: '2px dashed #d97706' }} />
+    case 'gone':
+      return <span style={{ display: 'inline-block', width: 26, height: 14, background: 'var(--bg-subtle)', borderLeft: '2px solid #b91c1c' }} />
     case 'pay':
       return <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: '#16a34a', border: '2px solid var(--surface)', boxShadow: '0 0 0 1px #16a34a' }} />
     case 'pay_missing':
@@ -126,6 +141,10 @@ function Glyph({ kind, tone = 'amber', count }: { kind: (typeof LIEN_CALENDAR_KE
 
 function markTitle(m: LienCalendarMark, j: LienCalendarJob): string {
   switch (m.kind) {
+    case 'work':
+      return m.fromCreation ? `No approved hours — the board counts from the month the job was created (${labelOf(m.ymd)}). Approve the hours or check the month before a notice goes out.` : `Last day worked: ${labelOf(m.ymd)} — every date on this row is counted from its month`
+    case 'gone':
+      return m.by === 'notice' ? `The § 53.056 notice was due ${labelOf(m.ymd)} and none is recorded — the lien for that work is gone. Nothing can be filed after this day; the money is still owed.` : `The § 53.052 window closed ${labelOf(m.ymd)} with nothing filed — the lien is gone. Nothing can be filed after this day; the money is still owed.`
     case 'pay':
       return `Expected to pay ${labelOf(m.ymd)} — ${j.runway.lines[0] ?? ''}`.trim()
     case 'pay_missing':
@@ -133,7 +152,7 @@ function markTitle(m: LienCalendarMark, j: LienCalendarJob): string {
     case 'notice':
       return m.done ? `The ${monthWords(m.monthKey)} notice is on file` : `A § 53.056 notice is owed for ${monthWords(m.monthKey)} — send it by ${labelOf(m.ymd)}`
     case 'lien':
-      return m.closed ? `The lien window closed ${labelOf(m.ymd)} — money still owed` : `Last day to file the lien affidavit: ${labelOf(m.ymd)} (§ 53.052)`
+      return m.closed ? (j.runway.closedBy === 'notice' ? `The notice window closed ${labelOf(m.ymd)} unsent — the lien is gone, the money still owed` : `The lien window closed ${labelOf(m.ymd)} — money still owed`) : `Last day to file the lien affidavit: ${labelOf(m.ymd)} (§ 53.052)`
     case 'run':
       return m.short ? 'File first — the lien date comes before the money' : 'Room — the money is expected before the lien date'
     case 'bracket':
@@ -150,11 +169,28 @@ function monthWords(key: string | null): string {
 
 /** One row's marks laid on the shared axis. */
 function Track({ marks, j, onOpen, onPen }: { marks: LienCalendarMark[]; j: LienCalendarJob; onOpen: () => void; onPen?: (pct: number) => void }) {
+  const gone = marks.find((m): m is Extract<LienCalendarMark, { kind: 'gone' }> => m.kind === 'gone') ?? null
   return (
-    <div style={{ position: 'relative', height: 28 }} data-testid="lien-cal-track">
-      <div style={{ position: 'absolute', left: 0, right: 0, top: 13, height: 2, background: 'var(--border)' }} />
+    <div style={{ position: 'relative', height: TRACK_H }} data-testid="lien-cal-track">
+      <div style={{ position: 'absolute', left: 0, right: gone ? `${100 - gone.pct}%` : 0, top: 13, height: 2, background: 'var(--border)' }} />
+      {gone ? (
+        <div title={markTitle(gone, j)} data-testid="lien-cal-gone" style={{ position: 'absolute', left: `${gone.pct}%`, right: 0, top: 0, bottom: 0, background: 'var(--bg-subtle)', borderLeft: '2px solid #b91c1c', zIndex: 0 }}>
+          <span style={{ position: 'absolute', left: 8, top: 22, fontSize: 10, fontWeight: 600, color: 'var(--text-red-700)', whiteSpace: 'nowrap' }}>{gone.label}</span>
+          <span style={{ position: 'absolute', left: 8, top: 5, fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 'calc(100% - 16px)' }}>nothing left to file after this day — the money is still owed</span>
+        </div>
+      ) : null}
       {marks.map((m, i) => {
         const title = markTitle(m, j)
+        if (m.kind === 'gone') return null
+        if (m.kind === 'work') {
+          // On a dead row the reason sits under the red flag; the tick keeps its date only when there is room before the wash.
+          const labelled = !gone || gone.pct - m.pct >= 12
+          return (
+            <div key={i} title={title} data-testid="lien-cal-work" style={{ position: 'absolute', left: `calc(${m.pct}% - 1px)`, top: 6, width: 2, height: 16, background: m.fromCreation ? 'transparent' : 'var(--text-muted)', borderLeft: m.fromCreation ? '2px dashed #d97706' : 'none', zIndex: 1 }}>
+              {labelled ? <span style={{ position: 'absolute', left: m.offAxis ? 4 : undefined, top: 17, transform: m.offAxis ? 'none' : 'translateX(-50%)', fontSize: 10, lineHeight: 1, whiteSpace: 'nowrap', color: m.fromCreation ? 'var(--text-amber-800)' : 'var(--text-muted)', fontWeight: m.fromCreation ? 600 : 400 }}>{m.label}</span> : null}
+            </div>
+          )
+        }
         if (m.kind === 'run') return <div key={i} title={title} style={{ position: 'absolute', left: `${m.fromPct}%`, width: `${Math.max(0.4, m.toPct - m.fromPct)}%`, top: 11, height: 6, borderRadius: 3, background: m.short ? HATCH : '#86efac' }} />
         if (m.kind === 'bracket') return <div key={i} title={title} style={{ position: 'absolute', left: `${m.fromPct}%`, width: `${Math.max(0.4, m.toPct - m.fromPct)}%`, top: 11, height: 6, borderRadius: 3, background: STRIPE, opacity: 0.9 }} />
         if (m.kind === 'pay')
@@ -173,10 +209,10 @@ function Track({ marks, j, onOpen, onPen }: { marks: LienCalendarMark[]; j: Lien
               <span style={{ position: 'absolute', left: 3.5, top: 1.5, width: 5, height: 4, background: 'var(--surface)', clipPath: 'polygon(0 0, 100% 50%, 0 100%)' }} />
             </button>
           )
-        // the lien flag
+        // the lien flag — on a dead row, the red flag on the day the lien died
         const color = m.closed ? '#b91c1c' : FLAG[m.tone]
         return (
-          <div key={i} title={title} style={{ position: 'absolute', left: `calc(${m.pct}% - 1px)`, top: 4, width: 12, height: 20 }}>
+          <div key={i} title={title} style={{ position: 'absolute', left: `calc(${m.pct}% - 1px)`, top: 4, width: 12, height: 20, zIndex: 1 }}>
             <span style={{ position: 'absolute', left: 0, top: 0, width: 2, height: 20, background: color }} />
             <span style={{ position: 'absolute', left: 2, top: 0, width: 9, height: 7, background: color, clipPath: 'polygon(0 0, 100% 50%, 0 100%)' }} />
           </div>
@@ -191,7 +227,7 @@ function GroupTrack({ g, axis, onPen }: { g: LienCalendarGroup; axis: LienCalend
   const word = g.kind === 'gc' ? groupPayYmd(g.jobs, axis.todayYmd) : null
   const dotPct = word ? axis.pct(word) : axis.pct(addDaysYmd(axis.todayYmd, 2))
   return (
-    <div style={{ position: 'relative', height: 28 }}>
+    <div style={{ position: 'relative', height: TRACK_H }}>
       <div style={{ position: 'absolute', left: 0, right: 0, top: 13, height: 2, background: 'var(--border)' }} />
       {g.kind === 'gc' && onPen ? (
         word ? (
@@ -378,10 +414,13 @@ function GroupHeader({ g, open, onToggle, axis, onPen }: { g: LienCalendarGroup;
   )
 }
 
-function JobRow({ j, axis, onOpen, onPen }: { j: LienCalendarJob; axis: LienCalendarAxis | null; onOpen: () => void; onPen?: (pct: number) => void }) {
-  const marks = axis ? lienCalendarMarks(j, axis) : []
+function JobRow({ j, g, axis, onOpen, onPen }: { j: LienCalendarJob; g: LienCalendarGroup; axis: LienCalendarAxis | null; onOpen: () => void; onPen?: (pct: number) => void }) {
+  // Under a GC row its one dot speaks for every job; a job draws the dashed dot only on its own.
+  const marks = axis ? lienCalendarMarks(j, axis, { payMissingDot: g.kind !== 'gc' }) : []
+  const word = rowWord(j, g)
+  const dead = j.runway.state === 'closed'
   return (
-    <div role="row" className="lienCalendarRow" style={{ ...GRID, borderBottom: '1px solid var(--border)', minHeight: 40, background: j.runway.kindAssumed ? 'var(--bg-amber-tint)' : 'var(--surface)' }}>
+    <div role="row" className="lienCalendarRow" style={{ ...GRID, borderBottom: '1px solid var(--border)', minHeight: ROW_H, background: 'var(--surface)' }}>
       <button type="button" onClick={onOpen} title="Open the job’s Lien window" style={{ minWidth: 0, textAlign: 'left', border: 'none', background: 'none', padding: '4px 10px 4px 30px', cursor: 'pointer', color: 'inherit' }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
           <span style={cellNum}>{j.number}</span>
@@ -393,9 +432,13 @@ function JobRow({ j, axis, onOpen, onPen }: { j: LienCalendarJob; axis: LienCale
         </span>
       </button>
       {axis ? <Track marks={marks} j={j} onOpen={onOpen} onPen={onPen} /> : <div />}
-      <div style={{ padding: '0 14px', textAlign: 'right' }}>
-        <div style={{ fontSize: '0.8125rem', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{formatUsdNoCents(j.openBalance)}</div>
-        <div title={j.runway.lines.join(' — ')} style={{ fontSize: '0.6875rem', fontWeight: 600, color: TONE[j.runway.tone], whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{j.runway.lines[j.runway.lines.length - 1] ?? j.runway.words}</div>
+      <div style={{ padding: '0 14px', textAlign: 'right' }} data-testid="lien-cal-row-money">
+        <div style={{ fontSize: '0.8125rem', fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: dead ? 'var(--text-muted)' : undefined }}>{formatUsdNoCents(j.openBalance)}</div>
+        {word ? (
+          <div title={j.runway.lines.join(' — ')} style={{ fontSize: '0.6875rem', fontWeight: word.tone === 'grey' ? 500 : 600, color: TONE[word.tone], whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {word.text}
+          </div>
+        ) : null}
       </div>
     </div>
   )
@@ -429,25 +472,46 @@ function TodoStrip({ todo, onDraft, onSetKinds }: { todo: LienCalendarTodo[]; on
   )
 }
 
-function Key({ open, onToggle }: { open: boolean; onToggle: () => void }) {
+/**
+ * The key as a strip: every mark with a few words under it, in one row. A tap turns the mark dark
+ * and opens one panel under the row — the long words, and the board's own door where it has one.
+ * Tap again, tap another, Esc or × closes it.
+ */
+function KeyStrip({ openGlyph, onToggle, onDoor }: { openGlyph: LienCalendarKeyGlyph | null; onToggle: (g: LienCalendarKeyGlyph) => void; onDoor?: (door: NonNullable<LienCalendarKeyEntry['door']>) => void }) {
+  const open = openGlyph ? LIEN_CALENDAR_KEY.find((k) => k.glyph === openGlyph) ?? null : null
   return (
-    <div style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 14px 4px' }}>
-        <button type="button" aria-expanded={open} onClick={onToggle} style={{ border: 'none', background: 'none', padding: 0, fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-strong)', cursor: 'pointer' }}>
-          {open ? '▾' : '▸'} Key — what each mark means
-        </button>
-        {!open ? <span style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>the same words are the hover on any mark</span> : null}
-      </div>
-      {open ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '4px 24px', padding: '2px 14px 10px' }} data-testid="lien-cal-key">
-          {LIEN_CALENDAR_KEY.map((k) => (
-            <div key={k.glyph} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.6875rem', color: 'var(--text-700)', lineHeight: 1.3 }}>
-              <span style={{ display: 'inline-flex', width: 34, justifyContent: 'center', flex: 'none' }}>
+    <div style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface)' }} data-testid="lien-cal-key" onKeyDown={(e) => { if (e.key === 'Escape' && openGlyph) onToggle(openGlyph) }}>
+      <div role="group" aria-label="Key — what each mark means" style={{ display: 'flex', alignItems: 'stretch', gap: 2, padding: '4px 8px 3px', overflowX: 'auto' }}>
+        <div style={{ fontSize: '0.625rem', color: 'var(--text-muted)', width: 48, flex: 'none', lineHeight: 1.2, alignSelf: 'center' }}>Key · tap a mark</div>
+        {LIEN_CALENDAR_KEY.map((k) => {
+          const on = k.glyph === openGlyph
+          return (
+            <button key={k.glyph} type="button" aria-pressed={on} onClick={() => onToggle(k.glyph)} className="lienCalendarKeyMark" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, flex: '1 1 0', minWidth: 72, maxWidth: 110, padding: '4px 4px 3px', border: 'none', borderRadius: 8, background: on ? 'var(--text-strong)' : 'transparent', color: on ? 'var(--surface)' : 'var(--text-700)', cursor: 'pointer', font: 'inherit' }}>
+              <span style={{ height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Glyph kind={k.glyph} />
               </span>
-              <span>{k.label}</span>
-            </div>
-          ))}
+              <span style={{ fontSize: '0.625rem', lineHeight: 1.2, textAlign: 'center', fontWeight: on ? 600 : 400 }}>{k.short}</span>
+            </button>
+          )
+        })}
+      </div>
+      {open ? (
+        <div role="region" aria-label={open.short} data-testid="lien-cal-key-panel" style={{ display: 'grid', gridTemplateColumns: '40px minmax(0, 1fr) auto', gap: '0 12px', alignItems: 'start', margin: '0 8px 8px', padding: '10px 12px', border: '1px solid var(--border-strong)', borderRadius: 10, background: 'var(--bg-subtle)' }}>
+          <span style={{ display: 'flex', justifyContent: 'center', paddingTop: 4 }}>
+            <Glyph kind={open.glyph} />
+          </span>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: '0.8125rem', fontWeight: 700, marginBottom: 2 }}>{open.short}</div>
+            <div style={{ fontSize: '0.75rem', lineHeight: 1.45, color: 'var(--text-700)' }}>{open.long}</div>
+            {open.door && onDoor ? (
+              <button type="button" onClick={() => onDoor(open.door!)} style={{ marginTop: 6, font: 'inherit', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-amber-800)', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
+                {open.door === 'kinds' ? 'Set kinds, biggest first ›' : 'Draft the notices ›'}
+              </button>
+            ) : null}
+          </div>
+          <button type="button" aria-label="Close the key" onClick={() => onToggle(open.glyph)} style={{ font: 'inherit', border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'inherit', borderRadius: 6, width: 26, height: 26, cursor: 'pointer', lineHeight: 1 }}>
+            ×
+          </button>
         </div>
       ) : null}
     </div>
@@ -542,22 +606,7 @@ export default function LienDeskCalendarTab({ rows, loading, todayYmd, onOpenJob
   const [kindsOpen, setKindsOpen] = useState(false)
   const [selectedYmd, setSelectedYmd] = useState<string | null>(null)
   const [closed, setClosed] = useState<ReadonlySet<string>>(() => new Set(['gone']))
-  const [keyOpen, setKeyOpen] = useState(() => {
-    try {
-      const n = Number(localStorage.getItem(KEY_SEEN) ?? '0')
-      return n < 3
-    } catch {
-      return true
-    }
-  })
-  useEffect(() => {
-    try {
-      const n = Number(localStorage.getItem(KEY_SEEN) ?? '0')
-      localStorage.setItem(KEY_SEEN, String(n + 1))
-    } catch {
-      /* private mode */
-    }
-  }, [])
+  const [keyGlyph, setKeyGlyph] = useState<LienCalendarKeyGlyph | null>(null)
   const cal = useMemo(() => buildLienCalendar(rows ?? [], query), [rows, query])
   const axis = useMemo(() => (rows && rows.length ? lienCalendarAxis(rows.filter((r) => r.runway.state !== 'none'), todayYmd) : null), [rows, todayYmd])
   const density = useMemo(() => (axis ? lienCalendarDensity(cal, axis) : []), [cal, axis])
@@ -589,7 +638,20 @@ export default function LienDeskCalendarTab({ rows, loading, todayYmd, onOpenJob
       </div>
       {axis && todo.length ? <TodoStrip todo={todo} onDraft={onDraft} onSetKinds={penOn ? () => setKindsOpen(true) : undefined} /> : null}
       {axis && kindsOpen ? <KindsSheet jobs={cal.jobs} onClose={() => setKindsOpen(false)} onOpenEditJob={onOpenEditJob} onSaved={saved} /> : null}
-      {axis && !isMobile ? <Key open={keyOpen} onToggle={() => setKeyOpen((v) => !v)} /> : null}
+      {axis && !isMobile ? (
+        <KeyStrip
+          openGlyph={keyGlyph}
+          onToggle={(g) => setKeyGlyph((cur) => (cur === g ? null : g))}
+          onDoor={(door) => {
+            setKeyGlyph(null)
+            if (door === 'kinds' && penOn) setKindsOpen(true)
+            if (door === 'draft' && onDraft) {
+              const act = todo.map((t) => t.action).find((a): a is Extract<LienCalendarTodo['action'], { kind: 'draft' }> => a?.kind === 'draft')
+              if (act) onDraft(act.ymd, act.jobIds)
+            }
+          }}
+        />
+      ) : null}
       <div style={{ overflowY: 'auto', minHeight: 0, position: 'relative' }}>
         {!loading && rows && cal.groups.length === 0 ? (
           <div style={{ padding: '1.5rem 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{query.trim() ? 'No billed job matches that.' : 'Nothing billed is on a lien clock.'}</div>
@@ -620,7 +682,7 @@ export default function LienDeskCalendarTab({ rows, loading, todayYmd, onOpenJob
                   {open
                     ? g.jobs.map((j) => (
                         <div key={j.jobId} style={{ position: 'relative' }}>
-                          <JobRow j={j} axis={axis} onOpen={() => onOpenJob(j.jobId)} onPen={penOn ? (pct) => setPen({ kind: 'job', job: j, pct }) : undefined} />
+                          <JobRow j={j} g={g} axis={axis} onOpen={() => onOpenJob(j.jobId)} onPen={penOn ? (pct) => setPen({ kind: 'job', job: j, pct }) : undefined} />
                           {pen && pen.kind === 'job' && pen.job.jobId === j.jobId && axis ? (
                             <div style={{ ...GRID, position: 'absolute', left: 0, right: 0, top: 0, pointerEvents: 'none' }}>
                               <div />
@@ -653,7 +715,7 @@ export default function LienDeskCalendarTab({ rows, loading, todayYmd, onOpenJob
         )}
       </div>
       {axis && !isMobile ? (
-        <div style={{ padding: '6px 14px', borderTop: '1px solid var(--border)', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>Rows are doors: a job opens its Lien window; a flag opens that month’s notice. The GC row folds its jobs’ flags with a count{penOn ? '; a dot opens “They said…” — the GC row’s one dot is its word for every job' : ''}.</div>
+        <div style={{ padding: '6px 14px', borderTop: '1px solid var(--border)', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>Rows are doors: a job opens its Lien window; a flag opens that month’s notice. Each row starts at its last day worked — every date is counted from that month. The GC row folds its jobs’ flags with a count and says the next move once; a job speaks only when its deadline differs{penOn ? '. A dot opens “They said…” — the GC row’s one dot is its word for every job' : ''}.</div>
       ) : null}
     </div>
   )
