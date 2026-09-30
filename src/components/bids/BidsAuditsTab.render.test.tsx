@@ -115,7 +115,8 @@ vi.mock('../../hooks/useIsDigitalTwin', () => ({ useIsDigitalTwin: () => false }
 describe('BidsAuditsTab', () => {
   it('renders the pending card: links, question, note + receipt, Finish audit', async () => {
     renderWithProviders(<BidsAuditsTab authUser={null} myRole="dev" />)
-    await waitFor(() => expect(screen.getByText(/ZZ Twin MPH CASA LINDA/)).toBeTruthy())
+    // v2.4234: rows are named for the job, not the robot's copy.
+    await waitFor(() => expect(screen.getAllByText(/MPH CASA LINDA/).length).toBeGreaterThan(0))
     // Auto-expand of the first pending card lands one effect-tick after the row renders.
     await waitFor(() => expect(screen.getByText('Open takeoff (CountTooling) ↗')).toBeTruthy())
 
@@ -134,20 +135,29 @@ describe('BidsAuditsTab', () => {
     expect(screen.getAllByText(/placement doctrine/).length).toBeGreaterThan(0) // the receipt's label
     // v2.4230: the coaching strip left the tab (its "recent runs" were the oldest audits; the Scoreboard says both facts).
     expect(screen.queryByText(/Coaching record/)).toBeNull()
-    expect(screen.getByText('Finish audit')).toBeTruthy()
+    expect(screen.getByText(/^Finish audit/)).toBeTruthy()
 
     // One composer with section chips on a pending card (cockpit rework).
     expect(screen.getByPlaceholderText(/Anything off\?/)).toBeTruthy()
     expect(screen.getByText('Add note')).toBeTruthy()
 
-    // Digested history is collapsed behind the toggle.
+    // v2.4234: the queue — Now (the open card, its place in the stake order), Up next, Digested folded.
+    const now = screen.getByTestId('queue-now')
+    expect(now.textContent).toMatch(/Now1 of 2/)
+    expect(now.textContent).toMatch(/MPH CASA LINDA/)
+    const upNext = screen.getByTestId('queue-up-next')
+    expect(upNext.textContent).toMatch(/by what your verdict unblocks/)
+    expect(upNext.querySelectorAll('[data-testid="audit-row"]')).toHaveLength(1)
+    // Digested history is folded behind its heading.
     expect(screen.queryByText('Old Backtest')).toBeNull()
-    expect(screen.getByText(/Show digested audits \(1\)/)).toBeTruthy()
+    const digested = screen.getByTestId('queue-digested')
+    expect(digested.textContent).toMatch(/Digested1 ▸/)
+    fireEvent.click(digested.querySelector('button')!)
+    expect(screen.getByText('Old Backtest')).toBeTruthy()
 
-    // v2.2796: the audit with no PT count rows is a "Robot still working" row —
+    // v2.2796: the audit with no PT count rows reads "robot still working" on its why line —
     // never "draft $0 · −100% vs ours" — and it did not steal the auto-expand.
-    expect(screen.getByText('Robot still working')).toBeTruthy()
-    expect(screen.getByText('no counts in PipeTooling yet')).toBeTruthy()
+    expect(upNext.textContent).toMatch(/AISD GARCIA SCHOOL RENOVATION.*robot still working · no counts yet/)
     expect(screen.getAllByText(/draft \$3,000/).length).toBeGreaterThan(0) // the priced card, not $0
     expect(screen.queryByText(/draft \$0\b/)).toBeNull()
     expect(screen.queryByText(/-100\.0% vs ours/)).toBeNull()
@@ -207,13 +217,13 @@ describe('BidsAuditsTab', () => {
     fireEvent.keyDown(window, { key: 'Escape' })
     await waitFor(() => expect(screen.queryByTestId('ruling-run-through')).toBeNull())
 
-    // v2.2941 — doctrine-at-stake triage caption on a multi-pending queue.
-    expect(screen.getByText('sorted by what your verdict unblocks')).toBeTruthy()
+    // v2.4234: the card's Finish names what opens next.
+    expect(screen.getByText('Finish audit → next: AISD GARCIA SCHOOL RENOVATION')).toBeTruthy()
   })
 
   it('read-only roles (write RLS mirror) see the card without composers or Finish audit', async () => {
     renderWithProviders(<BidsAuditsTab authUser={null} myRole="superintendent" />)
-    await waitFor(() => expect(screen.getByText(/ZZ Twin MPH CASA LINDA/)).toBeTruthy())
+    await waitFor(() => expect(screen.getAllByText(/MPH CASA LINDA/).length).toBeGreaterThan(0))
 
     // Content still renders… The audit row lands first; the auto-expand is an
     // effect tick later and the notes come back on a second query, so wait for
@@ -224,7 +234,7 @@ describe('BidsAuditsTab', () => {
     // …but every write surface is gone: answer box, composer, Finish audit.
     expect(screen.queryByPlaceholderText('Type your answer…')).toBeNull()
     expect(screen.queryByPlaceholderText(/Anything off\?/)).toBeNull()
-    expect(screen.queryByText('Finish audit')).toBeNull()
+    expect(screen.queryByText(/^Finish audit/)).toBeNull()
     expect(screen.getByText(/view only for your role/)).toBeTruthy()
 
     // v2.2941 — the questions panel (and v2.4232's sentence and button) are write-audience only.

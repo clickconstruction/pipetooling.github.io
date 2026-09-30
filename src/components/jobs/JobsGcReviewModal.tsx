@@ -94,13 +94,14 @@ import type { PromisedPayDate } from '../../lib/jobs/billedExpectedPay'
 import { gcWordBills, planWordPromise, promiseChannelForWord, wordPromiseNote, wordPromiseSavedMessage } from '../../lib/jobs/gcWordPromise'
 import { addJobPaymentPromisesSettled } from '../../lib/jobs/paymentChaseIo'
 import { payPromiseLabel, payPromiseStatus } from '../../lib/jobs/payPromise'
-import { canTakeStatementReplies, defaultReplyToUserId } from '../../lib/gcStatementReplyTo'
+import { defaultReplyToUserId } from '../../lib/gcStatementReplyTo'
 import { APP_SEND_NOTE, buildGcWorklist, mergeRoundMarkWrite, leaderUserIdFrom } from '../../lib/jobs/gcWorklist'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import { TeammateEmailChips } from './TeammateEmailChips'
-import { buildTeammateEmailChips } from '../../lib/teammateEmailChips'
-import { ccTextIncludes, parseCcEmails, toggleCcEmailInText, GC_STATEMENT_CC_MAX } from '../../lib/gcStatementCc'
-import { gcEmailChip } from '../../lib/teammateEmailChips'
+import { parseCcEmails } from '../../lib/gcStatementCc'
+import { StatementRecipientHeader } from './StatementRecipientHeader'
+import { buildRecipientPeople, type GcContactPerson } from '../../lib/gcStatementRecipients'
+import { withSupabaseRetry } from '../../utils/errorHandling'
 import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerForDocument } from '../../lib/physicalInvoiceIssuer'
 import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
@@ -936,6 +937,42 @@ export function JobsGcReviewModal({
         scheduled: emailWhen === 'schedule',
       })
     : null
+  // The GC's contact people (customer_contact_persons) lead the header's menu (v2.4262); read
+  // when the dialog opens for a GC, fail-soft — no rows means the GC's main address alone.
+  const emailDialogGcId = !byDevelopment && emailDialogGroup?.gcId ? emailDialogGroup.gcId : null
+  const [emailGcContacts, setEmailGcContacts] = useState<{ gcId: string; rows: GcContactPerson[] }>({ gcId: '', rows: [] })
+  useEffect(() => {
+    if (!emailDialogGcId) return
+    let alive = true
+    void withSupabaseRetry(
+      async () => supabase.from('customer_contact_persons').select('name, email, gets_bill_copies').eq('customer_id', emailDialogGcId).order('created_at', { ascending: true }),
+      'gc statement email contact people',
+    ).then(
+      (rows) => {
+        if (alive) setEmailGcContacts({ gcId: emailDialogGcId, rows: (rows ?? []) as GcContactPerson[] })
+      },
+      () => {
+        if (alive) setEmailGcContacts({ gcId: emailDialogGcId, rows: [] })
+      },
+    )
+    return () => {
+      alive = false
+    }
+  }, [emailDialogGcId])
+  const emailRecipientPeople = useMemo(
+    () =>
+      emailDialogGroup
+        ? buildRecipientPeople({
+            gcName: emailDialogGroup.gcName,
+            gcEmail: emailDialogGcId ? emailForGc(emailDialogGcId) : '',
+            contacts: emailGcContacts.gcId === emailDialogGcId ? emailGcContacts.rows : [],
+            users,
+            meId: authUser?.id ?? null,
+            accountManId: emailDialogGcId ? (accountManByGc.get(emailDialogGcId) ?? null) : null,
+          })
+        : [],
+    [emailDialogGroup, emailDialogGcId, emailGcContacts, users, authUser?.id, accountManByGc, emailForGc],
+  )
   if (!open) return null
   const EntityIcon = byDevelopment ? DevelopmentHouseIcon : GcHardHatIcon
   const groupByPillStyle = (active: boolean): React.CSSProperties => ({
@@ -1852,78 +1889,22 @@ export function JobsGcReviewModal({
         >
           <div style={{ background: 'var(--surface)', padding: '1.25rem 1.5rem', borderRadius: 8, minWidth: 340, maxWidth: 520, width: 'calc(100vw - 3rem)', maxHeight: 'min(90vh, 100%)', overflow: 'auto' }}>
             <h3 style={{ margin: '0 0 0.75rem', fontSize: '1.05rem' }}>Email statement to {emailDialogGroup.gcName}</h3>
-            <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>To — the GC, a teammate, or any email</label>
-            {/* The GC's own chip leads (v2.2131): the To field opens prefilled with their email, so their pill is the lit one. */}
-            <TeammateEmailChips
+            {/* The header read like the email it becomes (v2.4262): From · To · Cc · Reply to · Subject, one menu for the three lines. */}
+            <StatementRecipientHeader
+              people={emailRecipientPeople}
               users={users}
-              value={emailDialogTo}
-              onPick={setEmailDialogTo}
+              me={authUser?.id ? (users.find((u) => u.id === authUser.id) ?? null) : null}
+              accountManId={!byDevelopment && emailDialogGroup.gcId ? (accountManByGc.get(emailDialogGroup.gcId) ?? null) : null}
+              toEmail={emailDialogTo}
+              onToChange={setEmailDialogTo}
+              ccText={emailDialogCcText}
+              onCcTextChange={setEmailDialogCcText}
+              replyToUserId={emailReplyToUserId || (authUser?.id ?? '')}
+              onReplyToChange={setEmailReplyToUserId}
+              subject={emailDialogSubject}
+              onSubjectChange={setEmailDialogSubject}
+              scheduled={emailWhen === 'schedule'}
               disabled={emailSending}
-              leading={(() => {
-                const chip = !byDevelopment && emailDialogGroup.gcId ? gcEmailChip(emailDialogGroup.gcName, emailForGc(emailDialogGroup.gcId)) : null
-                return chip ? [chip] : undefined
-              })()}
-            />
-            <input
-              type="email"
-              value={emailDialogTo}
-              onChange={(e) => setEmailDialogTo(e.target.value)}
-              placeholder="accounting@example.com"
-              disabled={emailSending}
-              style={{ width: '100%', padding: '0.45rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', marginBottom: '0.6rem' }}
-            />
-            {/* CC (v2.2160): tap teammates to add/remove, or type any addresses (comma-separated). */}
-            <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>CC — optional; tap teammates or type addresses</label>
-            {(() => {
-              const chips = buildTeammateEmailChips(users).filter((c) => c.email !== emailDialogTo.trim().toLowerCase())
-              return chips.length ? (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.5rem' }}>
-                  {chips.map((c) => {
-                    const selected = ccTextIncludes(emailDialogCcText, c.email)
-                    return (
-                      <button
-                        key={c.email}
-                        type="button"
-                        onClick={() => setEmailDialogCcText((t) => toggleCcEmailInText(t, c.email))}
-                        disabled={emailSending}
-                        title={`${c.title} — ${selected ? 'remove from CC' : 'add to CC'}`}
-                        aria-pressed={selected}
-                        style={{ padding: '0.25rem 0.7rem', fontSize: '0.8125rem', borderRadius: 999, cursor: emailSending ? 'default' : 'pointer', border: `1px solid ${selected ? 'var(--border-indigo-soft)' : 'var(--border-strong)'}`, background: selected ? 'var(--bg-blue-tint)' : 'var(--surface)', color: selected ? 'var(--text-blue-700)' : 'var(--text-700)', opacity: emailSending ? 0.6 : 1 }}
-                      >
-                        {selected ? '✓ ' : ''}{c.label}
-                      </button>
-                    )
-                  })}
-                </div>
-              ) : null
-            })()}
-            <input
-              type="text"
-              value={emailDialogCcText}
-              onChange={(e) => setEmailDialogCcText(e.target.value)}
-              placeholder="cc@example.com, another@example.com"
-              aria-label="CC"
-              disabled={emailSending}
-              style={{ width: '100%', padding: '0.45rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', marginBottom: parseCcEmails(emailDialogCcText, emailDialogTo).invalid.length || parseCcEmails(emailDialogCcText, emailDialogTo).overflow ? '0.15rem' : '0.6rem' }}
-            />
-            {(() => {
-              const cc = parseCcEmails(emailDialogCcText, emailDialogTo)
-              if (!cc.invalid.length && !cc.overflow) return null
-              return (
-                <p style={{ margin: '0 0 0.6rem', fontSize: '0.74rem', color: 'var(--text-amber-700)' }}>
-                  {cc.invalid.length ? `Not an email: ${cc.invalid.join(', ')}` : ''}{cc.invalid.length && cc.overflow ? ' · ' : ''}{cc.overflow ? `Up to ${GC_STATEMENT_CC_MAX} CC addresses — extras dropped.` : ''}
-                </p>
-              )
-            })()}
-            <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 2 }}>
-              Subject{emailWhen === 'schedule' ? ' (scheduled sends use the standard subject)' : ''}
-            </label>
-            <input
-              type="text"
-              value={emailDialogSubject}
-              onChange={(e) => setEmailDialogSubject(e.target.value)}
-              disabled={emailSending || emailWhen === 'schedule'}
-              style={{ width: '100%', padding: '0.45rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', marginBottom: '0.6rem', opacity: emailWhen === 'schedule' ? 0.6 : 1 }}
             />
             {(() => {
               const link = emailDialogGroup ? portalLinkFor(emailDialogGroup) : null
@@ -1937,35 +1918,6 @@ export function JobsGcReviewModal({
                     <span style={{ color: 'var(--text-muted)' }}> ({gcPortalLinkCaption(link)}){emailWhen === 'schedule' ? ' · scheduled sends include it automatically while the portal is active' : ''}</span>
                   </span>
                 </label>
-              )
-            })()}
-            {(() => {
-              // Replies go to (punch list #49): the assistant sends, the account man knows the account.
-              if (byDevelopment || !authUser?.id) return null
-              const takers = users.filter((u) => canTakeStatementReplies(u)).sort((a, b) => Number(b.id === authUser.id) - Number(a.id === authUser.id) || a.name.localeCompare(b.name))
-              if (takers.length < 2) return null
-              const accountManId = emailDialogGroup.gcId ? accountManByGc.get(emailDialogGroup.gcId) ?? null : null
-              const scheduled = emailWhen === 'schedule'
-              return (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.6rem', fontSize: '0.8125rem' }}>
-                  <label htmlFor="gc-email-reply-to" style={{ fontWeight: 600 }}>
-                    Replies go to
-                  </label>
-                  <select
-                    id="gc-email-reply-to"
-                    value={scheduled ? authUser.id : emailReplyToUserId || authUser.id}
-                    disabled={emailSending || scheduled}
-                    onChange={(e) => setEmailReplyToUserId(e.target.value)}
-                    style={{ font: 'inherit', fontSize: '0.8125rem', padding: '0.2rem 0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'inherit' }}
-                  >
-                    {takers.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.id === authUser.id ? 'Me' : `${u.name}${u.id === accountManId ? ' · account man' : ''} — copy me`}
-                      </option>
-                    ))}
-                  </select>
-                  {scheduled ? <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>A scheduled send replies to whoever scheduled it.</span> : null}
-                </div>
               )
             })()}
             <ScheduleWhenControls

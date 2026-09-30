@@ -80,6 +80,9 @@ describe('pickOpenAudit (v2.4230) — the open card is the top of the queue', ()
     expect(pickOpenAudit({ triaged, current: 'sealed', picked: true, ready: true, workable })).toBe('top')
     expect(pickOpenAudit({ triaged, current: 'gone', picked: true, ready: true, workable })).toBe('top')
   })
+  it('a card closed by hand (v2.4234, the phone panel) stays closed', () => {
+    expect(pickOpenAudit({ triaged, current: null, picked: true, ready: true, workable })).toBeNull()
+  })
   it('keeps a workable held card through a reload that resets readiness', () => {
     expect(pickOpenAudit({ triaged, current: 'old', picked: true, ready: false, workable })).toBe('old')
   })

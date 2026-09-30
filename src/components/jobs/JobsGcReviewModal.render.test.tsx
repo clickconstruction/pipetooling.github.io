@@ -163,8 +163,11 @@ describe('JobsGcReviewModal', () => {
     await open()
     fireEvent.click(within(rowFor('Knight Contracting')).getByRole('button', { name: 'Send' }))
     const dialog = within(await screen.findByRole('dialog', { name: 'Email statement to Knight Contracting' }))
-    const to = dialog.getByPlaceholderText('accounting@example.com') as HTMLInputElement
-    fireEvent.change(to, { target: { value: 'ap@knight.example' } })
+    // The header (v2.4262): no GC address on file, so To starts empty and a typed address is picked from the menu.
+    fireEvent.click(dialog.getByRole('button', { name: '+ Pick who gets it' }))
+    fireEvent.change(dialog.getByRole('textbox', { name: 'Search a name or type an address' }), { target: { value: 'ap@knight.example' } })
+    fireEvent.click(dialog.getByRole('option', { name: /^Use ap@knight\.example/ }))
+    expect(dialog.getByTestId('rcp-readback').textContent).toBe('Goes to ap@knight.example. Their reply comes to you.')
     fireEvent.click(dialog.getByRole('button', { name: 'Preview' }))
     const preview = await screen.findByRole('dialog', { name: 'Preview: Statement to Knight Contracting' })
     expect(within(preview).getByText('Preview. Nothing has been sent.')).toBeTruthy()
@@ -175,7 +178,7 @@ describe('JobsGcReviewModal', () => {
     // Escape closes the preview alone; the dialog and its address are still there.
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(screen.queryByRole('dialog', { name: 'Preview: Statement to Knight Contracting' })).toBeNull()
-    expect((screen.getByPlaceholderText('accounting@example.com') as HTMLInputElement).value).toBe('ap@knight.example')
+    expect(screen.getByRole('button', { name: 'Remove ap@knight.example from To' })).toBeTruthy()
     windowOpen.mockRestore()
   })
 

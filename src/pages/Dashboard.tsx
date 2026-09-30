@@ -21,6 +21,7 @@ import { recordJobModeEnabledOncePerSession } from '../lib/jobModeTelemetry'
 import DashboardJobModeFirstRunCard from '../components/dashboard/DashboardJobModeFirstRunCard'
 import DashboardJobModeCard from '../components/jobMode/DashboardJobModeCard'
 import DashboardYourRecordCard from '../components/dashboard/DashboardYourRecordCard'
+import { MissedClockInDoor } from '../components/clock/MissedClockInDoor'
 import TurnawayModal from '../components/jobMode/TurnawayModal'
 import JobReportsModal from '../components/JobReportsModal'
 import AdditionalReportModal from '../components/AdditionalReportModal'
@@ -1191,6 +1192,8 @@ export default function Dashboard() {
         />
         {/* Your record (v2.3368): the three things only this person can put right, no money on it. */}
         <DashboardYourRecordCard userId={authUser.id} role={role} displayName={clockDisplayName ?? ''} isSalary={dashboardSelfIsSalary} />
+        {/* A day the clock missed (v2.4257): Job Mode shows no My Time, so the door sits under the card. */}
+        {dashboardSelfIsSalary ? null : <MissedClockInDoor userId={authUser.id} variant="link" />}
         <div style={{ marginTop: '0.75rem' }}>{myScheduleSection}</div>
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: '0.75rem' }}>
           <button

@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Statement Email Recipients</title>
+<style>
+  /* Layout: a before/after sheet in the house mock-up form — two dialog drawings side by side, then the menu, the second look, and the calls. */
+  :root {
+    --ground: #F3F4F6; --surface: #FFFFFF; --subtle: #F8FAFC; --ink: #111827; --ink-2: #374151; --muted: #6B7280;
+    --line: #E5E7EB; --line-strong: #CBD5E1; --link: #2563EB;
+    --tint: #EEF2FF; --tint-line: #A5B4FC; --tint-ink: #1D4ED8;
+    --primary: #2563EB; --on-primary: #FFFFFF;
+    --green: #15803D; --green-bg: #DCFCE7; --red: #B91C1C; --red-bg: #FEE2E2; --amber: #B45309; --amber-bg: #FEF3C7;
+    --menu-dark: #4B5563; --menu-dark-ink: #F9FAFB;
+    --sans: -apple-system, "Segoe UI", system-ui, sans-serif;
+    --mono: ui-monospace, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0F1623; --surface: #1B2432; --subtle: #151D29; --ink: #F3F4F6; --ink-2: #D1D5DB; --muted: #9CA3AF;
+      --line: #2F3A4A; --line-strong: #46536A; --link: #93C5FD;
+      --tint: #1E2F52; --tint-line: #4F6BB0; --tint-ink: #BFD3FF;
+      --primary: #3B82F6; --on-primary: #FFFFFF;
+      --green: #86EFAC; --green-bg: #12301F; --red: #FCA5A5; --red-bg: #3A1A1A; --amber: #FCD34D; --amber-bg: #36290E;
+      --menu-dark: #46536A; --menu-dark-ink: #F9FAFB;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0F1623; --surface: #1B2432; --subtle: #151D29; --ink: #F3F4F6; --ink-2: #D1D5DB; --muted: #9CA3AF;
+    --line: #2F3A4A; --line-strong: #46536A; --link: #93C5FD;
+    --tint: #1E2F52; --tint-line: #4F6BB0; --tint-ink: #BFD3FF;
+    --primary: #3B82F6; --on-primary: #FFFFFF;
+    --green: #86EFAC; --green-bg: #12301F; --red: #FCA5A5; --red-bg: #3A1A1A; --amber: #FCD34D; --amber-bg: #36290E;
+    --menu-dark: #46536A; --menu-dark-ink: #F9FAFB;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 14px/1.5 var(--sans); padding-block: 0 64px; padding-inline: 16px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; max-width: 28ch; }
+  .stamp { font-family: var(--mono); font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 18px; margin: 36px 0 6px; text-wrap: balance; }
+  .lede { margin: 0 0 14px; color: var(--muted); max-width: 78ch; }
+  .lede b { color: var(--ink); }
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 16px; align-items: start; }
+  .three { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 16px; align-items: start; }
+  .panel { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; min-width: 0; }
+  .panel .cap { padding: 8px 12px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--subtle); border-bottom: 1px solid var(--line); border-radius: 10px 10px 0 0; display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .panel.after { border-color: var(--green); }
+  .panel.after .cap { background: var(--green-bg); color: var(--green); border-bottom-color: var(--green); }
+  .panel .in { padding: 16px; }
+  .notes { margin: 12px 0 0; padding: 0 0 0 18px; font-size: 12.5px; color: var(--ink-2); display: grid; gap: 4px; }
+  .notes.bad li::marker { color: var(--red); }
+  .notes.good li::marker { color: var(--green); }
+
+  /* the dialog, both drawings */
+  .dlg h3 { margin: 0 0 12px; font-size: 16px; }
+  .lab { display: block; font-size: 12px; color: var(--muted); margin: 0 0 5px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
+  .chip { padding: 3px 11px; font-size: 13px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-2); white-space: nowrap; }
+  .chip.lit { background: var(--tint); border-color: var(--tint-line); color: var(--tint-ink); }
+  .box { width: 100%; padding: 7px 10px; border: 1px solid var(--line-strong); border-radius: 4px; background: var(--surface); color: var(--ink); font: inherit; margin: 0 0 10px; min-height: 34px; overflow-wrap: anywhere; }
+  .box.ph { color: var(--muted); }
+  .tick { display: flex; gap: 7px; align-items: flex-start; font-size: 12.5px; color: var(--ink-2); margin: 0 0 10px; }
+  .tick .sq { flex: none; width: 14px; height: 14px; margin-top: 3px; border-radius: 3px; background: var(--primary); color: var(--on-primary); font-size: 10px; line-height: 14px; text-align: center; }
+  .tick span.m { color: var(--muted); }
+  .replyrow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; margin: 0 0 10px; }
+  .sel { padding: 3px 8px; border: 1px solid var(--line-strong); border-radius: 4px; background: var(--surface); }
+  .oldmenu { background: var(--menu-dark); color: var(--menu-dark-ink); border-radius: 8px; padding: 5px; font-size: 13px; margin: 0 0 10px; max-width: 290px; }
+  .oldmenu div { padding: 3px 10px 3px 26px; border-radius: 5px; position: relative; }
+  .oldmenu div.on { background: var(--primary); color: var(--on-primary); }
+  .oldmenu div.on::before { content: "✓"; position: absolute; left: 9px; }
+  .pills { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 12px; }
+  .pill { font: inherit; font-size: 13px; padding: 4px 12px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-2); cursor: pointer; }
+  .pill.on { background: var(--tint); border-color: var(--tint-line); color: var(--tint-ink); font-weight: 600; }
+  .foot { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .btn { font: inherit; font-size: 13px; font-weight: 600; padding: 6px 12px; border-radius: 5px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); white-space: nowrap; }
+  .btn.link { color: var(--link); margin-right: auto; }
+  .btn.pri { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+
+  /* the proposed header block */
+  .hdr { border: 1px solid var(--line-strong); border-radius: 8px; margin: 0 0 10px; background: var(--surface); }
+  .hrow { display: grid; grid-template-columns: 4.6rem minmax(0, 1fr); gap: 0 8px; padding: 7px 10px; border-bottom: 1px solid var(--line); align-items: start; }
+  .hrow:last-child { border-bottom: 0; }
+  .hrow > .k { font-size: 12.5px; color: var(--muted); padding-top: 4px; }
+  .hrow > .v { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-width: 0; }
+  .hrow.off { opacity: .62; }
+  .fromv { font-size: 13px; padding: 3px 0; }
+  .fromv .m, .hint { color: var(--muted); font-size: 12px; }
+  .tok { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; font: inherit; font-size: 13px; padding: 2px 4px 2px 10px; border-radius: 999px; border: 1px solid var(--tint-line); background: var(--tint); color: var(--tint-ink); }
+  .tok { min-width: 0; }
+  .tok .nm { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 3ch; }
+  .tok .ad { font-family: var(--mono); font-size: 11.5px; opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; }
+  .tok .x, .tok .car { flex: none; }
+  .tok .x, .tok .car { font: inherit; border: 0; background: none; color: inherit; cursor: pointer; padding: 0 6px; border-radius: 999px; line-height: 1.5; }
+  .tok.lock { border-style: dashed; padding-right: 10px; }
+  .tok.opener { cursor: pointer; padding-right: 8px; }
+  .add { font: inherit; font-size: 12.5px; padding: 2px 10px; border-radius: 999px; border: 1px dashed var(--line-strong); background: none; color: var(--link); cursor: pointer; }
+  .subj { flex: 1; min-width: 0; font: inherit; border: 0; background: none; color: var(--ink); padding: 3px 0; }
+  .readback { font-size: 13px; color: var(--ink-2); background: var(--subtle); border: 1px solid var(--line); border-radius: 6px; padding: 7px 10px; margin: 0 0 10px; }
+  .readback b { color: var(--ink); }
+
+  .picker { grid-column: 1 / -1; margin: 8px 0 2px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--surface); box-shadow: 0 6px 18px rgba(0,0,0,.14); overflow: hidden; }
+  .pk-top { display: flex; gap: 6px; padding: 8px; border-bottom: 1px solid var(--line); }
+  .pk-q { flex: 1; min-width: 0; font: inherit; font-size: 13px; padding: 5px 9px; border: 1px solid var(--line-strong); border-radius: 5px; background: var(--surface); color: var(--ink); }
+  .pk-done { font: inherit; font-size: 12.5px; font-weight: 600; padding: 4px 10px; border: 1px solid var(--line-strong); border-radius: 5px; background: var(--surface); color: var(--ink); cursor: pointer; }
+  .pk-grp { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); padding: 8px 10px 3px; }
+  .pk-row { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 8px; align-items: center; width: 100%; text-align: left; font: inherit; font-size: 13px; padding: 6px 10px; border: 0; background: none; color: var(--ink); cursor: pointer; }
+  .pk-row:hover { background: var(--subtle); }
+  .pk-row.on { background: var(--tint); }
+  .pk-row[disabled] { opacity: .55; cursor: default; }
+  .pk-row .who { min-width: 0; }
+  .pk-row .who b { font-weight: 600; }
+  .pk-row .who .ad { display: block; font-family: var(--mono); font-size: 11.5px; color: var(--muted); overflow-wrap: anywhere; }
+  .pk-row .tag { font-size: 11px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 0 7px; white-space: nowrap; }
+  .pk-row .tag.strong { color: var(--tint-ink); border-color: var(--tint-line); background: var(--tint); }
+  .mark { width: 15px; height: 15px; border: 1.5px solid var(--line-strong); display: inline-block; font-size: 10px; line-height: 12px; text-align: center; color: var(--on-primary); }
+  .mark.radio { border-radius: 50%; }
+  .mark.check { border-radius: 3px; }
+  .mark.on { background: var(--primary); border-color: var(--primary); }
+  .pk-none { padding: 10px; font-size: 12.5px; color: var(--muted); }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+  .static .picker { margin: 0; box-shadow: none; }
+  .figcap { font-size: 12.5px; color: var(--ink-2); margin: 8px 2px 0; }
+  .figcap b { color: var(--ink); }
+
+  /* second look + calls */
+  .look { display: grid; gap: 10px; }
+  .look .r { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 0; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--surface); overflow: hidden; }
+  .look .r > div { padding: 10px 12px; min-width: 0; font-size: 13px; }
+  .look .r > div + div { border-left: 1px solid var(--line); }
+  .look .t { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); margin: 0 0 3px; }
+  .look .r > div:last-child .t { color: var(--green); }
+  .tblwrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; background: var(--surface); border: 1px solid var(--line-strong); }
+  th, td { text-align: left; vertical-align: top; padding: 7px 10px; border-bottom: 1px solid var(--line); }
+  th { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--subtle); }
+  .calls { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: 12px; }
+  .call { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; padding: 12px 14px; font-size: 13px; }
+  .call h3 { margin: 0 0 4px; font-size: 14px; }
+  .call p { margin: 0 0 6px; color: var(--ink-2); }
+  .rec { display: inline-block; font-size: 11px; font-weight: 700; color: var(--green); background: var(--green-bg); border-radius: 999px; padding: 1px 8px; }
+  .small { font-size: 12px; color: var(--muted); margin: 10px 0 0; max-width: 84ch; }
+  code { font-family: var(--mono); font-size: .92em; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div>
+    <p class="eyebrow">GC Review · Email statement window · follows punch list #49</p>
+    <h1>Who the statement goes to, read like an email</h1>
+  </div>
+  <div class="stamp">drawn 2026-09-30 · draft 2<br>nothing built yet</div>
+</header>
+
+<h2>Today and proposed</h2>
+<p class="lede">Both drawings show the same send: the RMC- Dudley Mason statement, with Taunya at the keyboard and Malachi as the account man. <b>The right side works.</b> Press a name, Add, or the reply line to open the menu.</p>
+
+<div class="two">
+  <section class="panel" aria-label="Today">
+    <div class="cap"><span>Today</span><span>17 name pills · 2 boxes · 1 list</span></div>
+    <div class="in dlg">
+      <h3>Email statement to RMC- Dudley Mason</h3>
+      <span class="lab">To — the GC, a teammate, or any email</span>
+      <div class="chips"><span class="chip lit">RMC- Dudley Mason</span><span class="chip">Bryan</span><span class="chip">Grace</span><span class="chip">Malachi</span><span class="chip">Robert</span><span class="chip">Roxi</span><span class="chip">Taunya</span><span class="chip">test</span><span class="chip">Trace</span></div>
+      <div class="box">office@rmc-dudleymason.example</div>
+      <span class="lab">CC — optional; tap teammates or type addresses</span>
+      <div class="chips"><span class="chip">Bryan</span><span class="chip">Grace</span><span class="chip">Malachi</span><span class="chip">Robert</span><span class="chip">Roxi</span><span class="chip">Taunya</span><span class="chip">test</span><span class="chip">Trace</span></div>
+      <div class="box ph">cc@example.com, another@example.com</div>
+      <span class="lab">Subject</span>
+      <div class="box">Click Plumbing open balances: Sep 30, 2026</div>
+      <div class="tick"><span class="sq">✓</span><span>Include portal link <span class="m">— a "Your account, any time" card under the table…</span></span></div>
+      <div class="replyrow"><b>Replies go to</b><span class="sel">Malachi · account man — copy me ▾</span></div>
+      <div class="oldmenu" aria-label="The list, open">
+        <div>Me</div><div>Bryan — copy me</div><div>Grace — copy me</div><div class="on">Malachi · account man — copy me</div><div>Robert — copy me</div><div>Roxi — copy me</div><div>test — copy me</div><div>Trace — copy me</div>
+      </div>
+      <span class="lab">When</span>
+      <div class="pills"><span class="pill on">Send now</span><span class="pill">Schedule…</span></div>
+      <div class="foot"><span class="btn link">Preview</span><span class="btn">Cancel</span><span class="btn pri">Send statement</span></div>
+    </div>
+  </section>
+
+  <section class="panel after" aria-label="Proposed">
+    <div class="cap"><span>Proposed</span><span>one header · one menu</span></div>
+    <div class="in dlg">
+      <h3>Email statement to RMC- Dudley Mason</h3>
+      <div class="hdr" id="hdr"></div>
+      <p class="readback" id="readback" role="status"></p>
+      <div class="tick"><span class="sq">✓</span><span>Include portal link <span class="m">— a "Your account, any time" card under the table…</span></span></div>
+      <span class="lab">When</span>
+      <div class="pills" id="when">
+        <button type="button" class="pill on" id="when-now" data-when="now">Send now</button>
+        <button type="button" class="pill" id="when-sched" data-when="schedule">Schedule…</button>
+      </div>
+      <div class="foot"><span class="btn link">Preview</span><span class="btn">Cancel</span><span class="btn pri">Send statement</span></div>
+    </div>
+  </section>
+</div>
+
+<div class="two">
+  <ul class="notes bad">
+    <li>The same eight names are drawn twice, once for To and once for CC.</li>
+    <li>A To pill replaces the address. A CC pill adds one. They look the same.</li>
+    <li>The boxes show a bare address, so you cannot see whose it is.</li>
+    <li>"copy me" adds you to the CC, but the CC box stays empty.</li>
+    <li>Replies sits under the portal tick, away from To and CC.</li>
+    <li>A test login sits among the teammates.</li>
+    <li>The GC only ever sees the company name as the sender. The window never says so.</li>
+  </ul>
+  <ul class="notes good">
+    <li>It reads top to bottom like the email it becomes: From, To, Cc, Reply to, Subject.</li>
+    <li>Each person is a name with the address beside it. Press × to take one off.</li>
+    <li>One menu serves all three lines. The GC's own people come first, then the office.</li>
+    <li>When replies go to Malachi, your copy shows on the Cc line where it lands.</li>
+    <li>One sentence under the header says what will happen before you send.</li>
+    <li>Choosing Schedule greys the two lines a scheduled send decides for you.</li>
+  </ul>
+</div>
+
+<h2>The menu, open on each line</h2>
+<p class="lede">The same list every time. Only the mark changes: a dot where one person is picked, a tick where several can be.</p>
+<div class="three">
+  <div><div class="static" id="fig-to" inert></div><p class="figcap"><b>To.</b> One address, as the send takes today. Picking another swaps it.</p></div>
+  <div><div class="static" id="fig-cc" inert></div><p class="figcap"><b>Cc.</b> Tick as many as ten. Whoever is on To is greyed. A typed address gets its own row.</p></div>
+  <div><div class="static" id="fig-reply" inert></div><p class="figcap"><b>Reply to.</b> Office people only. Each row says what picking it does.</p></div>
+</div>
+<p class="small">The two extra RMC rows are examples. The real list reads the contact people already kept on the customer record, with their "gets bill copies" mark. Teammate addresses here are samples.</p>
+
+<h2>Is this the best we can do?</h2>
+<p class="lede">The first draft only restyled the labels. Asking the question again changed six things.</p>
+<div class="look">
+  <div class="r"><div><span class="t">First draft</span>"To:" and "Cc:" labels, the pills tucked behind a + button.</div><div><span class="t">What was still wrong</span>Replies stayed a separate list lower down, so the header told half the story.</div><div><span class="t">Now</span>Reply to is a line in the header, with From above it.</div></div>
+  <div class="r"><div><span class="t">First draft</span>The reply list kept "copy me" on every row.</div><div><span class="t">What was still wrong</span>The copy was a side effect you had to trust.</div><div><span class="t">Now</span>Your copy appears on the Cc line, marked as added by the reply choice.</div></div>
+  <div class="r"><div><span class="t">First draft</span>The menu listed teammates only, as the pills do.</div><div><span class="t">What was still wrong</span>A statement usually goes to the GC's bookkeeper, who is not the main address.</div><div><span class="t">Now</span>The GC's contact people lead the menu. Nothing new to store.</div></div>
+  <div class="r"><div><span class="t">First draft</span>To could hold several people.</div><div><span class="t">What was still wrong</span>The send takes one To address. Several would need a server change and a redeploy.</div><div><span class="t">Now</span>One To, extras on Cc. A client-only change. Several To is a call below.</div></div>
+  <div class="r"><div><span class="t">First draft</span>Three different menus, one per line.</div><div><span class="t">What was still wrong</span>Three things to learn for one idea.</div><div><span class="t">Now</span>One list, one search box, a dot or a tick.</div></div>
+  <div class="r"><div><span class="t">First draft</span>No summary.</div><div><span class="t">What was still wrong</span>You still had to read three lines to know the outcome.</div><div><span class="t">Now</span>A plain sentence under the header says it back.</div></div>
+</div>
+<p class="small">Looked at and left out: a sentence with drop-downs in it ("Send to … copy … replies to …") breaks once Cc holds three people. A full compose window with the message body belongs to Settings → Email templates, where the wording already lives.</p>
+
+<h2>What changes and what stays</h2>
+<div class="tblwrap">
+<table>
+  <thead><tr><th>Thing</th><th>Today</th><th>Proposed</th></tr></thead>
+  <tbody>
+    <tr><td>Sender shown</td><td>Not shown</td><td>From: Click Plumbing and Electrical, read-only</td></tr>
+    <tr><td>To</td><td>One address in a box, nine pills above</td><td>One named person, changed from the menu</td></tr>
+    <tr><td>Cc</td><td>Typed text, eight pills above, ten at most</td><td>Named people, ticked in the menu or typed, ten at most</td></tr>
+    <tr><td>Replies</td><td>A list under the portal tick</td><td>The Reply to line, same rule, same default</td></tr>
+    <tr><td>Your copy</td><td>Added at send, unseen</td><td>Shown on Cc, same rule</td></tr>
+    <tr><td>Scheduled send</td><td>Subject and replies greyed in two places</td><td>Both greyed in the header, each with its reason</td></tr>
+    <tr><td>What the GC receives</td><td colspan="2">Unchanged. Same email, same function, no redeploy.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2>Your calls</h2>
+<div class="calls">
+  <div class="call"><h3>Show the From line?</h3><p>It cannot be edited. It tells the sender what name the GC sees.</p><span class="rec">Suggest: yes</span></div>
+  <div class="call"><h3>May your copy be taken off?</h3><p>Today the rule always copies the sender when replies go to someone else. Letting you remove it changes the send function.</p><span class="rec">Suggest: keep it locked</span></div>
+  <div class="call"><h3>Several people on To?</h3><p>Possible, but it changes the send function and the scheduled lane. Cc reaches the same people today.</p><span class="rec">Suggest: later, if asked</span></div>
+  <div class="call"><h3>Test and sample logins</h3><p>Leave them out of this menu, as the schedule roster already does.</p><span class="rec">Suggest: hide</span></div>
+  <div class="call"><h3>The other two windows</h3><p>Share all and Email once use the same pills. Give them this header in the same change, or after a week of use?</p><span class="rec">Suggest: after</span></div>
+</div>
+<p class="small">Size: one client change. A small recipients kernel with tests, one header component, one read of the GC's contact people, and the guide "track a general contractor on a job" updated. No migration and no function deploy.</p>
+
+</div>
+<script>
+(function () {
+  var ME = 'taunya';
+  var people = [
+    { id: 'gc', g: 'gc', name: 'RMC- Dudley Mason', email: 'office@rmc-dudleymason.example', tag: 'main address' },
+    { id: 'gc-ap', g: 'gc', name: 'Accounts payable', email: 'ap@rmc-dudleymason.example', tag: 'gets bill copies' },
+    { id: 'gc-pm', g: 'gc', name: 'Project manager', email: 'pm@rmc-dudleymason.example', tag: 'contact' },
+    { id: 'malachi', g: 'us', name: 'Malachi', email: 'malachi@office.example', tag: 'account man' },
+    { id: 'taunya', g: 'us', name: 'Taunya', email: 'taunya@office.example', tag: 'you' },
+    { id: 'bryan', g: 'us', name: 'Bryan', email: 'bryan@office.example' },
+    { id: 'grace', g: 'us', name: 'Grace', email: 'grace@office.example' },
+    { id: 'robert', g: 'us', name: 'Robert', email: 'robert@office.example' },
+    { id: 'roxi', g: 'us', name: 'Roxi', email: 'roxi@office.example' },
+    { id: 'trace', g: 'us', name: 'Trace', email: 'trace@office.example' }
+  ];
+  var s = { to: 'gc', cc: [], reply: 'malachi', open: null, q: '', when: 'now', subject: 'Click Plumbing open balances: Sep 30, 2026' };
+  var EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function by(id) { for (var i = 0; i < people.length; i++) if (people[i].id === id) return people[i]; return null; }
+  function replyOf(st) { return st.when === 'schedule' ? ME : st.reply; }
+  function lockedCc(st) { return replyOf(st) !== ME && st.to !== ME && st.cc.indexOf(ME) < 0; }
+  function label(p) { return p.id === ME ? p.name + ' (you)' : p.name; }
+
+  function tok(p, field) {
+    return '<span class="tok"><span class="nm">' + esc(label(p)) + '</span>' + (p.email ? '<span class="ad">' + esc(p.email) + '</span>' : '') +
+      '<button type="button" class="x" data-act="rm" data-field="' + field + '" data-id="' + esc(p.id) + '" aria-label="Remove ' + esc(p.name) + '">×</button></span>';
+  }
+
+  function pickerHtml(field, st) {
+    var q = st.q.trim().toLowerCase();
+    var rows = people.filter(function (p) {
+      if (field === 'reply' && p.g !== 'us') return false;
+      return !q || (p.name + ' ' + p.email).toLowerCase().indexOf(q) >= 0;
+    });
+    var multi = field === 'cc';
+    var out = '<div class="picker" role="listbox" aria-label="People for the ' + (field === 'reply' ? 'Reply to' : field === 'cc' ? 'Cc' : 'To') + ' line">' +
+      '<div class="pk-top"><input class="pk-q" id="pk-q-' + field + '" type="text" placeholder="' + (field === 'reply' ? 'Search a name' : 'Search a name or type an address') + '" value="' + esc(st.q) + '" aria-label="Search">' +
+      '<button type="button" class="pk-done" data-act="close">Done</button></div>';
+    var groups = [['gc', 'At RMC- Dudley Mason'], ['us', field === 'reply' ? 'Who takes the reply' : 'Our office'], ['typed', 'Typed']];
+    var any = false;
+    groups.forEach(function (g) {
+      var inG = rows.filter(function (p) { return p.g === g[0]; });
+      if (!inG.length) return;
+      any = true;
+      out += '<div class="pk-grp">' + g[1] + '</div>';
+      inG.forEach(function (p) {
+        var on = field === 'to' ? st.to === p.id : field === 'reply' ? replyOf(st) === p.id : st.cc.indexOf(p.id) >= 0;
+        var locked = false, tag = p.tag || '', strong = p.tag === 'account man';
+        if (field === 'cc' && st.to === p.id) { locked = true; tag = 'on To'; strong = false; }
+        if (field === 'cc' && p.id === ME && lockedCc(st)) { locked = true; on = true; tag = 'copied by Reply to'; strong = false; }
+        if (field === 'to' && st.cc.indexOf(p.id) >= 0) tag = 'on Cc now';
+        var sub = p.email;
+        if (field === 'reply') sub = p.id === ME ? 'Their reply comes to you.' : 'Their reply goes to ' + p.name + '. You get a copy.';
+        out += '<button type="button" class="pk-row' + (on ? ' on' : '') + '" role="option" aria-selected="' + on + '"' + (locked ? ' disabled' : '') + ' data-act="pick" data-field="' + field + '" data-id="' + esc(p.id) + '">' +
+          '<span class="mark ' + (multi ? 'check' : 'radio') + (on ? ' on' : '') + '">' + (on && multi ? '✓' : '') + '</span>' +
+          '<span class="who"><b>' + esc(label(p)) + '</b><span class="ad"' + (field === 'reply' ? ' style="font-family:inherit"' : '') + '>' + esc(sub) + '</span></span>' +
+          (tag ? '<span class="tag' + (strong ? ' strong' : '') + '">' + esc(tag) + '</span>' : '<span></span>') + '</button>';
+      });
+    });
+    if (field !== 'reply' && EMAIL.test(st.q.trim()) && !people.some(function (p) { return p.email.toLowerCase() === q || p.name.toLowerCase() === q; })) {
+      any = true;
+      out += '<div class="pk-grp">Any address</div><button type="button" class="pk-row" data-act="typed" data-field="' + field + '"><span class="mark ' + (multi ? 'check' : 'radio') + '"></span><span class="who"><b>Use ' + esc(st.q.trim()) + '</b></span><span class="tag">typed</span></button>';
+    }
+    if (!any) out += '<div class="pk-none">' + (field === 'reply' ? 'No one in the office by that name.' : 'No one by that name. Type a whole address to use it.') + '</div>';
+    return out + '</div>';
+  }
+
+  function names(list) { return list.length < 2 ? list.join('') : list.slice(0, -1).join(', ') + ' and ' + list[list.length - 1]; }
+  function readback(st) {
+    var to = by(st.to);
+    if (!to) return 'Pick who gets the statement. It cannot send without a To.';
+    var r = by(replyOf(st));
+    var out = 'Goes to <b>' + esc(to.name) + '</b>. ' + (r.id === ME ? 'Their reply comes to <b>you</b>.' : 'Their reply goes to <b>' + esc(r.name) + '</b>.');
+    var copies = st.cc.map(function (id) { return by(id).id === ME ? 'you' : by(id).name; });
+    if (lockedCc(st)) copies.push('you');
+    if (copies.length) {
+      var first = copies[0] === 'you' ? 'You' : copies[0];
+      var txt = names([first].concat(copies.slice(1)));
+      out += ' ' + esc(txt) + (copies.length === 1 && copies[0] !== 'you' ? ' gets a copy.' : ' get a copy.');
+    }
+    if (st.when === 'schedule') out += ' A scheduled send is rebuilt fresh when it goes out.';
+    return out;
+  }
+
+  function render() {
+    var sched = s.when === 'schedule';
+    var to = by(s.to), r = by(replyOf(s));
+    var h = '';
+    h += '<div class="hrow"><span class="k">From</span><span class="v"><span class="fromv">Click Plumbing and Electrical <span class="m">· the name the GC sees</span></span></span></div>';
+    h += '<div class="hrow"><span class="k">To</span><span class="v">' + (to ? tok(to, 'to') : '') +
+      '<button type="button" class="add" data-act="open" data-field="to" aria-expanded="' + (s.open === 'to') + '">' + (to ? 'Change' : '+ Pick who gets it') + '</button></span>' + (s.open === 'to' ? pickerHtml('to', s) : '') + '</div>';
+    h += '<div class="hrow"><span class="k">Cc</span><span class="v">' + s.cc.map(function (id) { return tok(by(id), 'cc'); }).join('') +
+      (lockedCc(s) ? '<span class="tok lock" title="You are copied because replies go to ' + esc(r.name) + '."><span class="nm">' + esc(by(ME).name) + ' (you)</span></span><span class="hint">copied, since replies go to ' + esc(r.name) + '</span>' : '') +
+      '<button type="button" class="add" data-act="open" data-field="cc" aria-expanded="' + (s.open === 'cc') + '">+ Add</button></span>' + (s.open === 'cc' ? pickerHtml('cc', s) : '') + '</div>';
+    h += '<div class="hrow' + (sched ? ' off' : '') + '"><span class="k">Reply to</span><span class="v">' +
+      '<button type="button" class="tok opener" data-act="open" data-field="reply"' + (sched ? ' disabled' : '') + ' aria-expanded="' + (s.open === 'reply') + '"><span class="nm">' + esc(label(r)) + '</span>' + (r.tag === 'account man' ? '<span class="ad" style="font-family:inherit">account man</span>' : '') + '<span class="car">▾</span></button>' +
+      (sched ? '<span class="hint">A scheduled send replies to whoever scheduled it.</span>' : '') + '</span>' + (s.open === 'reply' && !sched ? pickerHtml('reply', s) : '') + '</div>';
+    h += '<div class="hrow' + (sched ? ' off' : '') + '"><span class="k">Subject</span><span class="v"><input class="subj" id="subj" type="text" value="' + esc(s.subject) + '"' + (sched ? ' disabled' : '') + ' aria-label="Subject">' +
+      (sched ? '<span class="hint">Scheduled sends use the standard subject.</span>' : '') + '</span></div>';
+    document.getElementById('hdr').innerHTML = h;
+    document.getElementById('readback').innerHTML = readback(s);
+    document.getElementById('when-now').className = 'pill' + (sched ? '' : ' on');
+    document.getElementById('when-sched').className = 'pill' + (sched ? ' on' : '');
+    if (s.open) { var q = document.getElementById('pk-q-' + s.open); if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); } }
+  }
+
+  function pick(field, id) {
+    if (field === 'to') { s.to = id; s.cc = s.cc.filter(function (c) { return c !== id; }); s.open = null; s.q = ''; }
+    else if (field === 'reply') { s.reply = id; s.open = null; s.q = ''; }
+    else { var i = s.cc.indexOf(id); if (i >= 0) s.cc.splice(i, 1); else if (s.cc.length < 10) s.cc.push(id); }
+  }
+
+  var hdr = document.getElementById('hdr');
+  hdr.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-act]');
+    if (!b || b.disabled) return;
+    var act = b.getAttribute('data-act'), field = b.getAttribute('data-field'), id = b.getAttribute('data-id');
+    if (act === 'open') { s.open = s.open === field ? null : field; s.q = ''; }
+    else if (act === 'close') { s.open = null; s.q = ''; }
+    else if (act === 'rm') { if (field === 'to') s.to = null; else s.cc = s.cc.filter(function (c) { return c !== id; }); }
+    else if (act === 'pick') pick(field, id);
+    else if (act === 'typed') {
+      var addr = s.q.trim();
+      if (!by(addr)) people.push({ id: addr, g: 'typed', name: addr, email: '', tag: 'typed' });
+      s.q = ''; pick(field, addr);
+    }
+    render();
+  });
+  hdr.addEventListener('input', function (e) {
+    if (e.target.classList.contains('pk-q')) { s.q = e.target.value; render(); }
+    else if (e.target.id === 'subj') s.subject = e.target.value;
+  });
+  hdr.addEventListener('keydown', function (e) { if (e.key === 'Escape' && s.open) { s.open = null; s.q = ''; render(); } });
+  document.getElementById('when').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-when]'); if (!b) return;
+    s.when = b.getAttribute('data-when'); if (s.when === 'schedule' && s.open === 'reply') s.open = null; render();
+  });
+
+  render();
+  document.getElementById('fig-to').innerHTML = pickerHtml('to', { to: 'gc', cc: [], reply: 'malachi', q: '', when: 'now' });
+  document.getElementById('fig-cc').innerHTML = pickerHtml('cc', { to: 'gc', cc: ['gc-ap'], reply: 'malachi', q: '', when: 'now' });
+  document.getElementById('fig-reply').innerHTML = pickerHtml('reply', { to: 'gc', cc: [], reply: 'malachi', q: '', when: 'now' });
+})();
+</script>
+</body>
+</html>
