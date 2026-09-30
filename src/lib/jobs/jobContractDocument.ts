@@ -7,6 +7,7 @@
  */
 
 import { contractAmountSource } from './contractAmountSource'
+import { isUnfinishedDate } from '../autosaveDateHold'
 
 export type PaymentTermsKey = 'half_down' | 'on_completion' | 'progress' | 'custom'
 
@@ -67,6 +68,14 @@ export function parseJobContractFields(raw: unknown): JobContractFields {
     completion_date: str(o.completion_date) || null,
     note: str(o.note),
   }
+}
+
+/**
+ * True while the start or the completion date is still being typed. The draft autosave waits:
+ * both dates ride inside the one `fields` object, so there is no writing the rest without them.
+ */
+export function jobContractDatesUnfinished(fields: Pick<JobContractFields, 'start_date' | 'completion_date'>): boolean {
+  return isUnfinishedDate(fields.start_date) || isUnfinishedDate(fields.completion_date)
 }
 
 export function formatContractMoney(cents: number): string {

@@ -12,7 +12,7 @@ import { diffDiscountSnapshots, discountSnapshot, type DiscountSnapshotEntry } f
 import { diffTeamMemberIds, fixtureInsertRows, materialInsertRows, paymentInsertRows } from './jobFormAutosaveSlices'
 import { jobFormRevenueDollars } from './jobFormMoneyTotals'
 import type { FixtureRow, MaterialRow, PaymentRow } from './jobFormTypes'
-import { diffPaymentRows } from './paymentRowsDiff'
+import { diffPaymentRows, paymentUpsertStatements, unfinishedPaymentDateBoxes } from './paymentRowsDiff'
 
 /**
  * The billing slice: the job's revenue → its payments, diffed against the ids the form last
@@ -23,6 +23,10 @@ import { diffPaymentRows } from './paymentRowsDiff'
  * `onPaymentsWritten` runs the moment the payments are down — before the line items are
  * touched — so a failure further on still leaves the form knowing which payments are saved.
  * `onDiscountsWritten` runs once the line items are back, before the trail is logged.
+ *
+ * A payment date caught half typed is not written (`paymentUpsertStatements`); the rest of the
+ * slice is, because the invoice actions flush this slice and then read the rows it wrote.
+ * Answers with the date boxes it held, for the form to say.
  */
 export async function writeBillingSlice(
   supabase: SupabaseClient,
@@ -38,7 +42,7 @@ export async function writeBillingSlice(
     onPaymentsWritten: (savedPaymentIds: string[]) => void
     onDiscountsWritten: (saved: DiscountSnapshotEntry[]) => void
   },
-): Promise<void> {
+): Promise<{ heldPaymentDates: string[] }> {
   const { jobId, fixtures: fx, payments: pays } = args
   const revNum = jobFormRevenueDollars(fx, args.riderFeesDollars)
   // B4 (FRAGILITY_REMEDIATION_PLAN.md): payments_made is a DB-trigger-
@@ -53,8 +57,9 @@ export async function writeBillingSlice(
     const { error: delPayErr } = await supabase.from('jobs_ledger_payments').delete().in('id', deleteIds).eq('job_id', jobId)
     if (delPayErr) throw delPayErr
   }
-  if (upserts.length > 0) {
-    const { error: upsertPayErr } = await supabase.from('jobs_ledger_payments').upsert(upserts, { onConflict: 'id' })
+  // One statement unless a date is half typed: those rows go apart, without that date.
+  for (const rows of paymentUpsertStatements(upserts)) {
+    const { error: upsertPayErr } = await supabase.from('jobs_ledger_payments').upsert(rows, { onConflict: 'id' })
     if (upsertPayErr) throw upsertPayErr
   }
   args.onPaymentsWritten(upserts.map((u) => u.id))
@@ -72,6 +77,7 @@ export async function writeBillingSlice(
       if (error) console.warn('log_job_discount_event failed', error)
     })
   }
+  return { heldPaymentDates: unfinishedPaymentDateBoxes(upserts) }
 }
 
 /** The materials slice: every row deleted, then re-inserted one at a time. Throws the first failed write. */

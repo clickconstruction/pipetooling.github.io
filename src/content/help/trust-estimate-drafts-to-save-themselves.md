@@ -31,5 +31,6 @@ Drafts you opened from the list are never removed this way, and a draft with any
 
 - If a save fails (bad connection, for instance), the note turns into **Autosave failed — press Save draft**. Fix the connection and press {{button:outline|Save draft}} yourself.
 - A Supporting document link that isn't a valid https address pauses autosave until you correct it — an invalid link is never saved onto the estimate.
+- An **Expires on** date with its year half typed (`26` for 2026, or a pause part way through) is not saved: the rest of the draft saves, a line says so, and the draft keeps the date it had. On a change order, a half-typed **Response requested by** date holds the description, reason and schedule lines with it. Finish the year and it all saves. Sending waits for a finished date too.
 
 {{button:outline|Save draft}} still works exactly as before, and sending to the customer always saves first.

@@ -25,6 +25,8 @@ import { fixtureRowsFromDb } from '../lib/jobs/jobFormFixtureHydrate'
 import type { JobFormDevelopmentRow } from '../lib/jobs/jobDevelopments'
 import type { FixtureRow, MaterialRow, PaymentRow } from '../lib/jobs/jobFormTypes'
 import { useJobFormAutosaveSlice, type JobFormAutosaveSlice } from '../components/jobs/useJobFormAutosaveSlice'
+import { heldDatesToTell } from '../lib/autosaveDateHold'
+import { unfinishedDateMessage } from '../lib/dateBoxEntry'
 
 type CustomerRow = Database['public']['Tables']['customers']['Row']
 
@@ -124,6 +126,12 @@ export function useJobFormAutosaveEngine(args: JobFormAutosaveEngineArgs): JobFo
    * keystroke. Best-effort: a failed log never fails the save.
    */
   const persistedDiscountSnapshotRef = useRef<DiscountSnapshotEntry[]>([])
+  /** The payment date boxes the last billing write held back — each is said once (`heldDatesToTell`), and again the next time the job is opened. */
+  const toldHeldPaymentDatesRef = useRef<string[]>([])
+  const openJobId = editing?.id ?? null
+  useEffect(() => {
+    toldHeldPaymentDatesRef.current = []
+  }, [openJobId])
 
   /**
    * The billing-slice WRITES — the same delete+reinsert sequence as always
@@ -134,7 +142,7 @@ export function useJobFormAutosaveEngine(args: JobFormAutosaveEngineArgs): JobFo
     const jobId = autosaveJobIdRef.current
     if (!jobId) return true
     try {
-      await writeBillingSlice(supabase, {
+      const { heldPaymentDates } = await writeBillingSlice(supabase, {
         jobId,
         fixtures: autosaveFixturesRef.current,
         payments: autosavePaymentsRef.current,
@@ -148,6 +156,9 @@ export function useJobFormAutosaveEngine(args: JobFormAutosaveEngineArgs): JobFo
           persistedDiscountSnapshotRef.current = saved
         },
       })
+      // A Sent or Received date caught half typed was left out of the write: say so, once per box.
+      if (heldDatesToTell(toldHeldPaymentDatesRef.current, heldPaymentDates)) showToast(unfinishedDateMessage(new Date().getFullYear()), 'info')
+      toldHeldPaymentDatesRef.current = heldPaymentDates
       return true
     } catch (autosaveErr) {
       showToast(autosaveFailureWords(autosaveErr), 'error')

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { pruneUnchangedBidUpdateFields } from './bidUpdatePrune'
+import { holdUnfinishedBidDates, pruneUnchangedBidUpdateFields } from './bidUpdatePrune'
 import type { BidEditFormValues } from './useBidEditForm'
 
 function formValues(overrides: Partial<BidEditFormValues> = {}): BidEditFormValues {
@@ -212,5 +212,75 @@ describe('pruneUnchangedBidUpdateFields', () => {
       bidDateSent: sameSentDate,
     })
     expect('bid_number' in pruned).toBe(false)
+  })
+})
+
+describe('holdUnfinishedBidDates', () => {
+  const initial = formValues()
+
+  it('passes a finished date, a cleared date and every other field through as they are', () => {
+    const written = formValues({ bidDueDate: '2026-10-01', estimatedJobStartDate: '', notes: 'changed' })
+    const payload = { bid_due_date: '2026-10-01', bid_due_time: '14:00', estimated_job_start_date: null, notes: 'changed' }
+    const out = holdUnfinishedBidDates(payload, written, initial)
+    expect(out.payload).toEqual(payload)
+    expect(out.saved).toEqual(written)
+    expect(out.held).toEqual([])
+  })
+
+  it('a due date caught mid-year leaves the update with its time — left out, never null — and the other fields still save', () => {
+    const written = formValues({ bidDueDate: '0002-09-04', bidDueTime: '09:30', notes: 'changed' })
+    const out = holdUnfinishedBidDates({ bid_due_date: '0002-09-04', bid_due_time: '09:30', notes: 'changed' }, written, initial)
+    expect(out.payload).toEqual({ notes: 'changed' })
+    expect('bid_due_date' in out.payload).toBe(false)
+    expect('bid_due_time' in out.payload).toBe(false)
+    expect(out.held).toEqual(['bid_due_date'])
+  })
+
+  it('records the held box at its last saved value, so the next prune still writes it once the year is finished', () => {
+    const half = formValues({ bidDueDate: '0202-09-04', bidDueTime: '09:30', notes: 'changed' })
+    const { saved } = holdUnfinishedBidDates({ bid_due_date: '0202-09-04', bid_due_time: '09:30', notes: 'changed' }, half, initial)
+    expect(saved.bidDueDate).toBe('2026-09-04')
+    expect(saved.bidDueTime).toBe('14:00')
+    expect(saved.notes).toBe('changed')
+    // The year is finished: the date and the time are dirty against what was recorded, the notes are not.
+    const finished = { ...half, bidDueDate: '2027-09-04' }
+    const next = pruneUnchangedBidUpdateFields({ bid_due_date: '2027-09-04', bid_due_time: '09:30', notes: 'changed' }, { current: finished, initial: saved, bidDateSent: { current: '', initial: '' } })
+    expect(next).toEqual({ bid_due_date: '2027-09-04', bid_due_time: '09:30' })
+    // Typed back to the saved date instead: only the time is left to write, and it rides with the date.
+    const back = { ...half, bidDueDate: '2026-09-04' }
+    expect(pruneUnchangedBidUpdateFields({ bid_due_date: '2026-09-04', bid_due_time: '09:30', notes: 'changed' }, { current: back, initial: saved, bidDateSent: { current: '', initial: '' } })).toEqual({
+      bid_due_date: '2026-09-04',
+      bid_due_time: '09:30',
+    })
+  })
+
+  it('holds the estimated start and the plan date each on its own', () => {
+    const written = formValues({ estimatedJobStartDate: '0020-11-01', designDrawingPlanDate: '0026-08-15', bidDueDate: '2026-10-01' })
+    const out = holdUnfinishedBidDates({ estimated_job_start_date: '0020-11-01', design_drawing_plan_date: '0026-08-15', bid_due_date: '2026-10-01', bid_due_time: '14:00' }, written, initial)
+    expect(out.payload).toEqual({ bid_due_date: '2026-10-01', bid_due_time: '14:00' })
+    expect(out.held).toEqual(['estimated_job_start_date', 'design_drawing_plan_date'])
+    expect(out.saved.estimatedJobStartDate).toBe('')
+    expect(out.saved.designDrawingPlanDate).toBe('')
+    expect(out.saved.bidDueDate).toBe('2026-10-01')
+  })
+
+  it('a date the prune already dropped is not in the update and is not held', () => {
+    const written = formValues({ bidDueDate: '0002-09-04' })
+    const out = holdUnfinishedBidDates({ notes: 'changed' }, written, initial)
+    expect(out.held).toEqual([])
+    expect(out.saved).toEqual(written)
+  })
+
+  it('with no baseline to go back to, the values written stand as saved', () => {
+    const written = formValues({ bidDueDate: '0002-09-04' })
+    const out = holdUnfinishedBidDates({ bid_due_date: '0002-09-04', bid_due_time: '14:00' }, written, null)
+    expect(out.payload).toEqual({})
+    expect(out.saved).toEqual(written)
+  })
+
+  it('does not change the update it was handed', () => {
+    const payload = { bid_due_date: '0002-09-04', bid_due_time: '14:00' }
+    holdUnfinishedBidDates(payload, formValues({ bidDueDate: '0002-09-04' }), initial)
+    expect(payload).toEqual({ bid_due_date: '0002-09-04', bid_due_time: '14:00' })
   })
 })

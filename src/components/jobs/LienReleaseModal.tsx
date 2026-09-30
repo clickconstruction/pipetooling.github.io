@@ -10,6 +10,7 @@ import {
   buildLienWaiverPrintHtml,
   buildLienWaiverSignatureLines,
   lienWaiverDate,
+  lienWaiverDatesUnfinished,
   lienWaiverInvoiceOpenRemaining,
   lienWaiverPdfFilename,
   lienWaiverTitle,
@@ -18,6 +19,7 @@ import {
   type LienWaiverFormType,
   type LienWaiverSignature,
 } from '../../lib/jobsDocuments/lienWaiverRelease'
+import { draftHeldByDateMessage } from '../../lib/autosaveDateHold'
 import { openHtmlPreviewWindow, openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import {
   isLienWaiverFormType,
@@ -146,7 +148,7 @@ export default function LienReleaseModal({
   // The row this modal session works on: an autosaving draft until an output
   // action mints it (v2.2619 — the mint gate), then the locked minted row.
   const [releaseRow, setReleaseRow] = useState<JobLienReleaseRow | null>(null)
-  const [autosaveState, setAutosaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [autosaveState, setAutosaveState] = useState<'idle' | 'saving' | 'saved' | 'error' | 'held'>('idle')
   const [mintBusy, setMintBusy] = useState(false)
   const [signOpen, setSignOpen] = useState(false)
   // True once the user actually edits — mere open/close never mints a draft.
@@ -420,9 +422,17 @@ export default function LienReleaseModal({
 
   // Autosave (v2.2619): the draft writes itself, debounced, from the first
   // real edit — no Save button, ✕ just closes. Stops the moment the row mints.
+  // A through or signature date caught half typed (the year "2026" arrives as
+  // 0002, 0020, 0202) holds the draft until it is finished: the dates are
+  // written as columns and inside `fields`, so nothing is written without them.
+  const datesUnfinished = fields ? lienWaiverDatesUnfinished(formType, fields) : false
   useEffect(() => {
     if (!open || !fields || !job || !editable || !userTouchedRef.current) return
     const t = window.setTimeout(() => {
+      if (datesUnfinished) {
+        setAutosaveState('held')
+        return
+      }
       void (async () => {
         const payload = buildRowPayload()
         if (!payload) return
@@ -452,7 +462,7 @@ export default function LienReleaseModal({
       })()
     }, 800)
     return () => window.clearTimeout(t)
-  }, [open, fields, job, editable, formType, selectedInvoiceIds, releaseRow, buildRowPayload, authUser?.id])
+  }, [open, fields, datesUnfinished, job, editable, formType, selectedInvoiceIds, releaseRow, buildRowPayload, authUser?.id])
 
   /**
    * The mint gate (owner decision): no paper without the record. Flushes the
@@ -1002,7 +1012,7 @@ export default function LienReleaseModal({
             justifyContent: 'space-between',
           }}
         >
-          <span style={{ fontSize: '0.75rem', color: autosaveState === 'error' ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
+          <span style={{ fontSize: '0.75rem', color: autosaveState === 'error' || autosaveState === 'held' ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
             {!editable
               ? ''
               : autosaveState === 'saving'
@@ -1011,7 +1021,9 @@ export default function LienReleaseModal({
                   ? 'All changes saved'
                   : autosaveState === 'error'
                     ? 'Draft not saved — check your connection'
-                    : ''}
+                    : autosaveState === 'held'
+                      ? draftHeldByDateMessage(new Date().getFullYear())
+                      : ''}
           </span>
           <span style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
             <button

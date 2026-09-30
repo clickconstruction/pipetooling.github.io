@@ -25,7 +25,9 @@ import type { BidLossCategoryKey } from '../lib/bidLossCategories'
 import { getCustomerDisplay } from '../lib/bids/bidFormatting'
 import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../lib/bids/updateGuard'
 import type { BidEditOutcomeOption } from '../lib/bids/useBidEditForm'
-import { pruneUnchangedBidUpdateFields } from '../lib/bids/bidUpdatePrune'
+import { holdUnfinishedBidDates, pruneUnchangedBidUpdateFields } from '../lib/bids/bidUpdatePrune'
+import { heldDatesToTell } from '../lib/autosaveDateHold'
+import { unfinishedDateMessage } from '../lib/dateBoxEntry'
 import { buildBidSavePayload, type BidSavePayload } from '../lib/bids/bidFormPayload'
 import { bidAutosaveSliceJson } from '../lib/bids/bidFormAutosave'
 import { useJobFormAutosaveSlice } from '../components/jobs/useJobFormAutosaveSlice'
@@ -279,13 +281,23 @@ export function useBidEditController(input: {
     return { ...payload, distance_from_office: measured.milesText }
   }
 
+  /** The date boxes the last autosave held back half typed — each is said once (`heldDatesToTell`), and again the next time the bid is opened. */
+  const toldHeldBidDatesRef = useRef<string[]>([])
+  const openBidId = bidFormOpen ? (editingBid?.id ?? null) : null
+  useEffect(() => {
+    toldHeldBidDatesRef.current = []
+  }, [openBidId])
+
   /**
    * Edit Bid autosave (v2.3130). One debounced write per pause in typing: the dirty-only diff
    * against the last persisted baseline — the same prune every explicit save ran, so an
    * untouched field never clobbers a column stamped server-side. Bid Date Sent rides along
    * only once its attestation is confirmed (the field's blur prompt owns that); until then the
-   * other fields save and the date waits. Resolves false on a refused or failed write so the
-   * engine shows the error and the close guard keeps the window open.
+   * other fields save and the date waits. A due, estimated-start or plan date caught half typed
+   * waits the same way: it leaves the update, the rest saves, and its box stays unsaved — held
+   * here and not through `enabled`, which would make a close report clean and drop the rest.
+   * Resolves false on a refused or failed write so the engine shows the error and the close
+   * guard keeps the window open.
    */
   async function autosaveBid(): Promise<boolean> {
     const bid = editingBid
@@ -293,12 +305,16 @@ export function useBidEditController(input: {
     const written = bidForm.values
     const attestErr = attestation.validateForSave()
     const payloadWithAttest = { ...buildBidPayload(), ...attestation.getPayloadMerge() }
-    const updatePayload = pruneUnchangedBidUpdateFields(payloadWithAttest, {
+    const pruned = pruneUnchangedBidUpdateFields(payloadWithAttest, {
       current: written,
       initial: bidForm.initialValues,
       bidDateSent: { current: bidDateSent, initial: attestation.savedBidDateSent() },
     })
-    if (attestErr) delete updatePayload.bid_date_sent
+    if (attestErr) delete pruned.bid_date_sent
+    const { payload: updatePayload, saved, held } = holdUnfinishedBidDates(pruned, written, bidForm.initialValues)
+    const heldBoxes = held.map((column) => `${bid.id}:${column}`)
+    if (heldDatesToTell(toldHeldBidDatesRef.current, heldBoxes)) showToast(unfinishedDateMessage(new Date().getFullYear()), 'info')
+    toldHeldBidDatesRef.current = heldBoxes
     const dateWritten = 'bid_date_sent' in updatePayload
     const outcomeWritten = 'outcome' in updatePayload
     const followupNote = dateWritten ? attestation.pendingFollowupNote : null
@@ -315,8 +331,8 @@ export function useBidEditController(input: {
         return false
       }
     }
-    // The values this pass wrote are the new baseline; the sent date's baseline moves only when it went through.
-    bidForm.markSaved(written)
+    // The values this pass wrote are the new baseline (a held date stays at its last saved value); the sent date's baseline moves only when it went through.
+    bidForm.markSaved(saved)
     if (dateWritten) {
       attestation.markSaved()
     }

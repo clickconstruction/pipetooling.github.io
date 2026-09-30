@@ -6,7 +6,8 @@ import { estDangerOutlineButton, estInputBase, estInputBlock, estPrimaryButton, 
 import { EstimateChangeOrderChip, EstimateLegacyChangeOrderTitleChip } from '../components/estimates/EstimateKindChips'
 import { ESTIMATE_LIST_CUSTOMER_SNAPSHOT_BTN_CLASS, EstimateListCards, EstimateListTable, type EstimateListStagesThread } from '../components/estimates/EstimateListTable'
 import { estimateDeclinedRowLabel, estimateLinkedJobHcp, estimateListRowMatchesSearch, estimateStatusLabel as statusLabel, formatEstimateMoney as formatMoney, type EstimateListCustomerEvent, type EstimateListRow } from '../lib/estimates/estimateListRows'
-import { buildEstimateDraftPersistPayload } from '../lib/estimates/estimateDraftPersist'
+import { buildEstimateDraftPersistPayload, estimateDraftHeldDateMessage, estimateDraftUnfinishedDateBlocksSend, estimateDraftUnfinishedDates } from '../lib/estimates/estimateDraftPersist'
+import { heldDatesToTell } from '../lib/autosaveDateHold'
 import {
   catalogEntryToLineItem,
   coerceDraftQuantity,
@@ -1257,6 +1258,8 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
   const freshDraftRowIdRef = useRef<string | null>(null)
   /** The row id that received any write since hydration (autosave / Save draft / pre-send save / delete). */
   const committedDraftRowIdRef = useRef<string | null>(null)
+  /** The date boxes the last draft save held back half typed — the autosave says each once (`heldDatesToTell`), and again the next time the draft is opened. */
+  const toldHeldDraftDatesRef = useRef<string[]>([])
   const [row, setRow] = useState<EstimateDetailRow | null>(null)
   const [loading, setLoading] = useState(true)
   const [title, setTitle] = useState('')
@@ -1365,6 +1368,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     setAttachmentCheckStatus('idle')
     setAttachmentCheckMessage('')
     prevCustomerIdForAutosave.current = undefined
+    toldHeldDraftDatesRef.current = []
     setDetailCustomerSnapshotId(null)
     setAcceptNotifyUserIds([])
     setAcceptNotifyResolvedUsers([])
@@ -2612,6 +2616,17 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     )
   }
 
+  /** The date boxes caught half typed: the payload above leaves them out, a save says so, and nothing goes out past one. */
+  function unfinishedDraftDates() {
+    return estimateDraftUnfinishedDates({ isChangeOrder: isCO, validUntil, changeOrderFields: coFields })
+  }
+  /** Says why and answers true when a half-typed date stops the draft going out — what is sent is what is saved. */
+  function unfinishedDateStopsSending(): boolean {
+    const why = estimateDraftUnfinishedDateBlocksSend(unfinishedDraftDates(), new Date().getFullYear())
+    if (why) showToast(why, 'error')
+    return why !== null
+  }
+
   async function saveDraft(options?: { quiet?: boolean; skipReload?: boolean }): Promise<boolean> {
     if (!row || !isDraft || saving) return false
     const quiet = options?.quiet ?? false
@@ -2632,7 +2647,13 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
         'save estimate',
       )
       committedDraftRowIdRef.current = row.id
-      if (!quiet) showToast('Saved', 'success')
+      // A date caught half typed was left out of that write: say so — once per box from the autosave, every time from Save draft.
+      const heldDates = unfinishedDraftDates()
+      const heldBoxes = heldDates.map((box) => `${row.id}:${box}`)
+      if (heldDates.length > 0 && (!quiet || heldDatesToTell(toldHeldDraftDatesRef.current, heldBoxes))) {
+        showToast(estimateDraftHeldDateMessage(heldDates, new Date().getFullYear()), 'info')
+      } else if (!quiet) showToast('Saved', 'success')
+      toldHeldDraftDatesRef.current = heldBoxes
       // Autosave (v2.2592) skips the reload: load() re-seeds the whole editor
       // from the row (resets lines, options, the viewed option) and would
       // clobber whatever was typed while the save was in flight.
@@ -2738,6 +2759,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
 
   async function sendToCustomer() {
     if (!row || row.status !== 'draft' || sending || !user) return
+    if (unfinishedDateStopsSending()) return
     if (!customerId) {
       showToast('Choose a customer before sending.', 'error')
       return
@@ -2911,6 +2933,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
    */
   async function publishCoToBidRoom() {
     if (!row || !isDraft || !isCO || !row.bid_id || saving || sending) return
+    if (unfinishedDateStopsSending()) return
     const { data: roomRows } = await supabase
       .from('bid_proposal_rooms')
       .select('id, customer_id, public_token')

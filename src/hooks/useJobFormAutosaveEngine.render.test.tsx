@@ -268,6 +268,45 @@ describe('useJobFormAutosaveEngine — the billing slice', () => {
     expect(result.current.billingAutosaveStatus).toBe('saved')
   })
 
+  it('a Received date caught mid-year is left out of the write and said once; the finished year saves it', async () => {
+    const { result, rerender, args } = mount()
+    const upserts = () => db.steps.filter((s: Step) => s.op === 'upsert').map((s: Step) => s.payload as Array<Record<string, unknown>>)
+    // The year "2026" typed one digit at a time, with a pause after the first digit and the line item changed in the same pause.
+    rerender({ ...args, payments: [{ ...pay('p1', 300), paid_on: '0002-09-15' }], fixtures: [fixture('f1', 'Rough-in', 1_500)] })
+    await tick(1_200)
+    expect(upserts()).toHaveLength(1)
+    expect(upserts()[0]).toEqual([expect.objectContaining({ id: 'p1', amount: 300 })])
+    expect('paid_on' in upserts()[0]![0]!).toBe(false)
+    // Nothing else waited for the date: the line item is down, and the invoice actions can read it.
+    expect(db.steps[0]?.payload).toEqual({ revenue: 1_500 })
+    expect(seq()).toContain('insert:jobs_ledger_fixtures')
+    expect(ui.showToast).toHaveBeenCalledTimes(1)
+    expect(ui.showToast).toHaveBeenCalledWith(expect.stringContaining('That date was not finished, so it was not saved.'), 'info')
+    expect(result.current.billingAutosaveStatus).toBe('saved')
+    // A second pause, still mid-year: held again, not said again.
+    db.steps.length = 0
+    rerender({ ...args, payments: [{ ...pay('p1', 300), paid_on: '0202-09-15' }], fixtures: [fixture('f1', 'Rough-in', 1_500)] })
+    await tick(1_200)
+    expect('paid_on' in upserts()[0]![0]!).toBe(false)
+    expect(ui.showToast).toHaveBeenCalledTimes(1)
+    // The year is finished: the date is written, in the one statement.
+    db.steps.length = 0
+    rerender({ ...args, payments: [{ ...pay('p1', 300), paid_on: '2026-09-15' }], fixtures: [fixture('f1', 'Rough-in', 1_500)] })
+    await tick(1_200)
+    expect(upserts()).toEqual([[expect.objectContaining({ id: 'p1', paid_on: '2026-09-15' })]])
+    expect(ui.showToast).toHaveBeenCalledTimes(1)
+  })
+
+  it('a Sent date caught mid-year, changed alone, is held the same way: the row goes up without it', async () => {
+    const { rerender, args } = mount()
+    rerender({ ...args, payments: [{ ...pay('p1', 300), sent_on: '0020-08-28' }] })
+    await tick(1_200)
+    const upserts = db.steps.filter((s: Step) => s.op === 'upsert').map((s: Step) => s.payload as Array<Record<string, unknown>>)
+    expect(upserts).toEqual([[expect.objectContaining({ id: 'p1', paid_on: '2026-09-01' })]])
+    expect('sent_on' in upserts[0]![0]!).toBe(false)
+    expect(ui.showToast).toHaveBeenCalledWith(expect.stringContaining('That date was not finished, so it was not saved.'), 'info')
+  })
+
   it('a flush saves what is pending without waiting for the clock', async () => {
     const { result, rerender, args } = mount()
     rerender({ ...args, fixtures: [fixture('f1', 'Rough-in', 1_500)] })

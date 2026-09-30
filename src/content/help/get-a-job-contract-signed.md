@@ -61,7 +61,7 @@ Tap the {{chip:gray|No contract}} chip on the row, or the **✍** icon in the ro
 
 - **The amount is the job's number**, never typed here: the estimate the customer accepted when there is one, else the job's line items. The price line reads *$123,600 · from the job's 14 line items · adjust* — the door opens the job, and the agreement follows what you change there. So the signed agreement and the bill can never disagree.
 - **The terms** are the Contract Book's, named on the paper with their clause count and date — *Terms · Service agreement · 12 clauses · updated Sep 29* — with **read all** and **edit the wording** beside them. Editing the wording changes every later agreement.
-- Everything saves as you type; there is no Save button and no preview button — the paper is the preview. **Open full size** under it opens the printable page, and **Download the PDF** beside it is the look-only copy; it records nothing.
+- Everything saves as you type; there is no Save button and no preview button — the paper is the preview. A start or completion date left half typed (a year typed as `26`, say) holds the save until the year is finished, and the line under the paper says *Not saved: a date is not finished*. **Open full size** under it opens the printable page, and **Download the PDF** beside it is the look-only copy; it records nothing.
 
 **The rail** — three ways, with the answer already picked from what the job knows. Only the fields the picked way needs appear under it, then one blue button whose label follows the pick, and a sentence that says exactly what pressing it will do.
 

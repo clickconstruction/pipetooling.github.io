@@ -31,7 +31,7 @@ If the job has more than one bill line, green chips at the top let you pick whic
 
 ## It saves itself
 
-There's no Save button and nothing to cancel: from your first edit the release keeps itself as a **draft** on the job ("All changes saved" in the corner), and the ✕ just closes the window. Open the release again later and the draft picks up exactly where you left it.
+There's no Save button and nothing to cancel: from your first edit the release keeps itself as a **draft** on the job ("All changes saved" in the corner), and the ✕ just closes the window. Open the release again later and the draft picks up exactly where you left it. A date left half typed (a year typed as `26`, say) holds the save until the year is finished — the corner says *Not saved: a date is not finished* until then.
 
 ## Get it signed — in the app
 
