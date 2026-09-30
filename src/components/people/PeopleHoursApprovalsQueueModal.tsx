@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'r
 import { PersonNameDoor } from '../personDesk/PersonNameDoor'
 import { AssignSessionJobPopover } from '../clock-sessions'
 import { approveClockSessions, heldFromApproveResult } from '../../lib/approveClockSessions'
-import { describeHeld, isTypedByHand, splitForApproveAll, typedStampsVersion } from '../../lib/clock/typedHours'
+import { describeHeld, isTypedByHand, splitForApproveAll, typedStampsVersion, typedWaitingAsEntry, type TypedWaitingRow } from '../../lib/clock/typedHours'
+import { confirmTypedEntry, loadTypedHoursWaiting } from '../../lib/clock/loadTypedHoursWaiting'
 import { useTypedStamps } from '../../hooks/useTypedStamps'
 import { TypedHoldNote, TypedHoursStamp } from '../clock/TypedHoursStamp'
 import { recordHoursApproved, type HoursApprovedSurface } from '../../lib/hoursApprovedTelemetry'
@@ -47,6 +48,10 @@ type Props = {
   surface?: HoursApprovedSurface
   /** T5-03: fired with the approved count so the host can point at Draft Payroll. */
   onApproved?: (approved: number) => void
+  /** Open on the Typed by hand filter (the Needs You *Look at them* action, v2.4254). */
+  startTypedOnly?: boolean
+  /** Opens a person's day in the clock-day editor — the "or fix it" beside Looks right. Hosts without one show no button. */
+  onOpenDay?: (day: { userId: string; personName: string; workDate: string }) => void
 }
 
 const BTN: CSSProperties = {
@@ -98,7 +103,7 @@ function FlagSummary({ counts, prefix }: { counts: ApprovalsQueueFlagCounts; pre
   )
 }
 
-export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSession, authUserId, reloadKey, pinUserId, pinDisplayName, zIndex = 60, surface = 'approvals-queue', onApproved }: Props) {
+export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSession, authUserId, reloadKey, pinUserId, pinDisplayName, zIndex = 60, surface = 'approvals-queue', onApproved, startTypedOnly, onOpenDay }: Props) {
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
   const prefixMap = useLedgerPrefixMap()
@@ -110,7 +115,10 @@ export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSessi
   const [busy, setBusy] = useState(false)
   const [flaggedOnly, setFlaggedOnly] = useState(false)
   /** v2.4247: only the sessions someone typed hours onto — the ones that want a second person. */
-  const [typedOnly, setTypedOnly] = useState(false)
+  const [typedOnly, setTypedOnly] = useState(startTypedOnly === true)
+  /** Hours typed onto sessions that are already approved: they count in pay now and wait on a "Looks right" (v2.4254). */
+  const [typedOntoApproved, setTypedOntoApproved] = useState<TypedWaitingRow[]>([])
+  const [lookBusyId, setLookBusyId] = useState<string | null>(null)
   const [collapsedPeople, setCollapsedPeople] = useState<Set<string>>(() => new Set())
   const [openWeeks, setOpenWeeks] = useState<Set<string>>(() => new Set())
 
@@ -122,6 +130,9 @@ export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSessi
         supabase.from('people_pay_config').select('person_name, is_salary, record_hours_but_salary'),
       ])
       setRows(data)
+      void loadTypedHoursWaiting().then((waiting) => {
+        setTypedOntoApproved(waiting.filter((w) => w.state === 'approved' && (!pinUserId || w.userId === pinUserId)))
+      })
       if (!payRes.error) {
         const next = new Map<string, SalariedPayConfigFlags>()
         for (const r of (payRes.data ?? []) as Array<{ person_name: string; is_salary: boolean | null; record_hours_but_salary: boolean | null }>) {
@@ -222,6 +233,22 @@ export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSessi
     if (approved > 0) onApproved?.(approved)
     if (approved >= ids.length) removeLocally(ids)
     else await load()
+    reloadStamps()
+    onChanged()
+  }
+
+  /** "Looks right": the second look on hours typed onto approved time. */
+  async function looksRight(row: TypedWaitingRow): Promise<void> {
+    if (lookBusyId) return
+    setLookBusyId(row.entryId)
+    const refused = await confirmTypedEntry(row.entryId)
+    setLookBusyId(null)
+    if (refused) {
+      showToast(refused, 'error')
+      return
+    }
+    showToast(`Recorded — ${row.personName}’s ${dayLabel(row.workDate)} looks right`, 'success')
+    setTypedOntoApproved((prev) => prev.filter((w) => w.entryId !== row.entryId))
     reloadStamps()
     onChanged()
   }
@@ -581,7 +608,56 @@ export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSessi
         </div>
 
         <div style={{ overflow: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.6rem', paddingRight: '0.1rem' }}>
-          {!loading && queue.count === 0 && fullQueue.count > 0 ? (
+          {typedOntoApproved.length > 0 ? (
+            <section
+              data-testid="typed-onto-approved"
+              style={{ flexShrink: 0, border: '1px solid var(--border-blue)', borderRadius: 8, overflow: 'hidden', background: 'var(--surface)' }}
+            >
+              <div style={{ padding: '0.5rem 0.6rem', background: 'var(--bg-blue-tint)' }}>
+                <div style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--text-strong)' }}>
+                  Typed onto hours already approved · {typedOntoApproved.length}
+                </div>
+                <div style={{ fontSize: '0.78125rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                  These hours count in pay now. Someone other than who typed them says they look right{onOpenDay ? ' — or opens the day and fixes it' : ''}.
+                </div>
+              </div>
+              {typedOntoApproved.map((w) => (
+                <div
+                  key={w.entryId}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'minmax(0, 1fr) auto',
+                    gap: '0.35rem 0.75rem',
+                    alignItems: 'center',
+                    padding: '0.4rem 0.6rem',
+                    borderTop: '1px solid var(--border)',
+                    fontSize: '0.8125rem',
+                  }}
+                >
+                  <div style={{ minWidth: 0, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.35rem 0.6rem' }}>
+                    <span style={{ fontWeight: 700, color: 'var(--text-strong)' }}><PersonNameDoor name={w.personName} userId={w.userId} /></span>
+                    <span style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{dayLabel(w.workDate)}</span>
+                    <TypedHoursStamp stamp={{ hold: null, entries: [typedWaitingAsEntry(w)] }} size="full" workDate={w.workDate} />
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
+                    {w.canAct ? (
+                      <button type="button" style={BTN_APPROVE} disabled={lookBusyId === w.entryId} onClick={() => void looksRight(w)}>
+                        {lookBusyId === w.entryId ? 'Recording…' : 'Looks right'}
+                      </button>
+                    ) : (
+                      <TypedHoldNote hold={w.typedBy != null && w.typedBy === (authUserId ?? authUser?.id) ? 'typed' : 'own'} style={{ maxWidth: '13rem' }} />
+                    )}
+                    {onOpenDay ? (
+                      <button type="button" style={BTN_QUIET} onClick={() => onOpenDay({ userId: w.userId, personName: w.personName, workDate: w.workDate })}>
+                        Open day
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
+            </section>
+          ) : null}
+          {!loading && queue.count === 0 && fullQueue.count > 0 && !(typedOnly && typedOntoApproved.length > 0) ? (
             <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               {typedOnly && !flaggedOnly ? 'Nothing typed by hand is waiting.' : 'No flagged sessions — everything left looks ordinary.'}
             </p>

@@ -61,6 +61,15 @@ Two rules come with it:
 
 So a typed row is always opened and approved by itself: on the Hours grid the cell's chip shows the pencil ({{chip:yellow|! 2 ✎}}), and in its popover the typed line has its own {{button:green|Approve 11.00h}} while the day button reads {{button:green|Approve 1 punch}}. In the **All weeks** queue, tick **Typed by hand** to see only those rows.
 
+When typed hours wait on you, the Dashboard's **Needs you** says so — *Hours typed by hand want a second look* — and {{button:amber|Look at them}} opens the queue on that filter.
+
+:::example Hours typed onto time that was already approved
+**Typed onto hours already approved · 1**
+Paige · Thu 9/24 · ✎ typed by Taunya · 6.5h → 9.0h
+:::
+
+Changing the times of a session that is already approved keeps it approved, so those hours count in pay straight away and no approval ever looks at them. They sit in their own section at the top of the queue: {{button:green|Looks right}} is the second look (not offered to whoever typed them, or to the person whose hours they are), and {{button:outline|Open day}} opens the day to fix it instead.
+
 A trim — a forgotten clock-out cut back — is recorded too (*trimmed by Taunya · 12.0h → 8.0h*) but holds nothing: the person who trimmed it may approve it.
 
 ## Everywhere else you can approve

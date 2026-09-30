@@ -752,6 +752,32 @@ describe('buildNeedsYouItems', () => {
     expect(items[2]?.detail.startsWith('Across every trade — work them')).toBe(true)
   })
 
+  it('typed-hours: shows as soon as hand-typed hours wait on this viewer, with no age gate', () => {
+    const typed = { count: 1, seconds: 39600, people: 1, approvedCount: 0, firstLine: 'Taunya typed 11.0h for Michael A' }
+    // Quiet: not enabled (the default — Quickfill never names it), loading, or none.
+    expect(buildNeedsYouItems(inputs({ typedHours: typed }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ typedHoursEnabled: true, typedHours: null }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ typedHoursEnabled: true, typedHours: { ...typed, count: 0 } }))).toEqual([])
+
+    const one = buildNeedsYouItems(inputs({ typedHoursEnabled: true, typedHours: typed }))
+    expect(one).toHaveLength(1)
+    expect(one[0]?.key).toBe('typed-hours')
+    expect(one[0]?.severity).toBe('amber')
+    expect(one[0]?.figure).toBe('1')
+    expect(one[0]?.title).toBe('Hours typed by hand want a second look')
+    expect(one[0]?.detail).toBe(
+      'Taunya typed 11.0h for Michael A — time the clock did not record. Whoever typed hours cannot approve them, so they wait for you.',
+    )
+    expect(one[0]?.actionLabel).toBe('Look at them')
+
+    const three = buildNeedsYouItems(
+      inputs({ typedHoursEnabled: true, typedHours: { count: 3, seconds: 48600, people: 2, approvedCount: 1, firstLine: typed.firstLine } }),
+    )
+    expect(three[0]?.title).toBe('3 entries of hours typed by hand want a second look')
+    expect(three[0]?.detail).toContain('Taunya typed 11.0h for Michael A and 2 more — 13.5h in all that the clock did not record.')
+    expect(three[0]?.detail).toContain('One was typed onto hours already approved, and counts in pay now.')
+  })
+
   it('hours-approvals: appears only once the oldest pending day crosses the age gate', () => {
     const pending = { sessions: 152, totalHours: 799.1, people: 12, oldestAgeDays: 19 }
     // Quiet: disabled, loading, empty, or a fresh queue.

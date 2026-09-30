@@ -54,6 +54,7 @@ import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { useLienDeskData } from '../../hooks/useLienDeskData'
 import { CLAIM_DEV_LOOKBACK_DAYS, useClaimDevAttemptsNudge } from '../../hooks/useClaimDevAttemptsNudge'
 import { HOURS_APPROVALS_MIN_AGE_DAYS, usePendingHoursApprovalsNudge } from '../../hooks/usePendingHoursApprovalsNudge'
+import { useTypedHoursWaitingNudge } from '../../hooks/useTypedHoursWaitingNudge'
 import { LABEL_APPROVALS_MIN_AGE_DAYS, usePendingLabelApprovalsNudge } from '../../hooks/usePendingLabelApprovalsNudge'
 import { usePendingHrReportsNudge } from '../../hooks/usePendingHrReportsNudge'
 import {
@@ -410,6 +411,8 @@ export function DashboardPinnedQuickRow({
   // the office set.
   const hoursApprovalsEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const { approvals: hoursApprovals } = usePendingHoursApprovalsNudge(hoursApprovalsEnabled)
+  // Hours typed by hand waiting on this person's look (v2.4254) — the same roles that approve hours.
+  const { typedHours } = useTypedHoursWaitingNudge(hoursApprovalsEnabled)
   // HR pending reports (journey-map #40): dev-only, like the People → HR tab that files them.
   const hrReportsEnabled = !hideBanners && Boolean(authUserId) && role === 'dev'
   const { aged: hrReportsAged } = usePendingHrReportsNudge(hrReportsEnabled)
@@ -568,6 +571,8 @@ export function DashboardPinnedQuickRow({
     hoursApprovalsEnabled,
     hoursApprovals,
     hoursApprovalsMinAgeDays: HOURS_APPROVALS_MIN_AGE_DAYS,
+    typedHoursEnabled: hoursApprovalsEnabled,
+    typedHours,
     labelApprovalsEnabled,
     labelApprovals,
     labelApprovalsMinAgeDays: LABEL_APPROVALS_MIN_AGE_DAYS,
@@ -787,6 +792,8 @@ export function DashboardPinnedQuickRow({
               navigate('/jobs?tab=stages')
             } else if (item.key === 'hours-approvals') {
               navigate('/people?tab=hours&approvals=1')
+            } else if (item.key === 'typed-hours') {
+              navigate('/people?tab=hours&approvals=1&typed=1')
             } else if (item.key === 'label-approvals') {
               navigate('/banking?tab=accounting')
             } else if (item.key === 'dispatch-requests-aged' || item.key === 'customer-waiting') {
