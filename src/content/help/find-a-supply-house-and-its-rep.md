@@ -5,30 +5,32 @@ roles: dev, master_technician, assistant, controller, estimator
 keywords: supply house, supply houses, directory, rep, reps, contact, vendor, phone, email, website, price request, who to call, ferguson, moore supply, reece, counter, quotes desk, trades served, plumbing, electrical, hvac, vendor kind, job account, job accounts, roster, mark opened, curly, role
 ---
 
-Every supply house the company deals with, who to talk to there, and what we already know about each one — that is the **Directory** on **Materials → Supply houses**. It is one list for the whole company: a rep one person adds is the rep everyone else sees. Estimators see the directory on its own; the office sees it above **Accounts payable**.
+The Directory on Materials → Supply houses lists every supply house the company deals with. It says who to talk to there and what we already know about each one.
+
+It is one list for the whole company. A rep is the person you call at that house. A rep one person adds is the rep everyone else sees. Estimators see the directory on its own. The office sees it above **Accounts payable**.
 
 ## Find a house
 
-Type in the search box — a house name, part of an address, a rep's name or email. The list narrows as you type.
+Type in the search box: a house name, part of an address, a rep's name or email. The list narrows as you type.
 
-The trade chips beside the search — {{chip:blue|Plumbing}} {{chip:gray|Electrical}} {{chip:gray|HVAC}} — keep the houses that serve the trades you have on. If your account is limited to one trade, the chips start on that trade. A house nobody has tagged with a trade yet always shows.
+The trade chips beside the search are {{chip:blue|Plumbing}} {{chip:gray|Electrical}} {{chip:gray|HVAC}}. They keep the houses that serve the trades you have on. If your account is limited to one trade, the chips start on that trade. A house nobody has tagged with a trade yet always shows.
 
 Each row shows:
 
-- **Reps** — the people at that house we send price requests to. The {{chip:yellow|★}} starred rep is the default: a price request goes there unless you pick someone else. Hover a rep to see who added them and when.
-- **Phone** — tap it on a phone to call the counter.
-- **Prices on file** — how many parts that house has priced in the Parts Book, and beneath it the last price request: when, who sent it, and whether the house answered.
-- {{button:outline|Open website}} — the house's order portal, when one is on file.
+- **Reps**: the people at that house we send price requests to. The {{chip:yellow|★}} starred rep is the default. A price request goes there unless you pick someone else. Hover a rep to see who added them and when.
+- **Phone**: tap it on a phone to call the counter.
+- **Prices on file**: how many parts that house has priced in the Parts Book. Beneath it sits the last price request: when, who sent it, and whether the house answered.
+- {{button:outline|Open website}}: the house's order portal, when one is on file.
 
 ## Add a rep
 
-Expand a house (tap its name) and use the **Contacts** box: name, email, an optional label like *quotes desk* or *outside sales*, a phone, and a **role**, then {{button:blue|+ add contact}}. The first rep you add becomes the default; **make default** moves the star. Archive a rep with the × — past requests keep their history.
+Expand a house by tapping its name. Use the **Contacts** box. Enter a name, an email, a phone and a **role**. You can add an optional label like *quotes desk* or *outside sales*. Then tap {{button:blue|+ add contact}}. The first rep you add becomes the default. **make default** moves the star. Archive a rep with the ×. Past requests keep their history.
 
 The role says what the app does with the contact:
 
-- {{chip:green|Job accounts}} — the person who opens a **job account** for a property. Their name and phone show wherever a job needs one: the house's Job accounts roster, the job window, the PO code, and as a teal tag on the Directory row itself. One per house is enough; a house that expects accounts with no such rep says so under its reps.
-- {{chip:gray|Price requests}} — the default; where price requests go.
-- {{chip:gray|Billing}} — statement and payment questions.
+- {{chip:green|Job accounts}}: the person who opens a **job account** for a property. A job account is an account the house opens for one property. Their name and phone show wherever a job needs one. That means the house's Job accounts roster, the job window and the PO code. PO means purchase order. It also shows as a teal tag on the Directory row itself. One per house is enough. A house that expects accounts with no such rep says so under its reps.
+- {{chip:gray|Price requests}}: the default. Where price requests go.
+- {{chip:gray|Billing}}: statement and payment questions.
 
 Click a role chip on an existing contact to move them.
 
@@ -42,16 +44,16 @@ Click a role chip on an existing contact to move them.
 
 ## Job accounts at a house
 
-Some houses open an account per property so a job's purchases land on their own statement — Ferguson, Reece and Moore do. The office marks each house on **Edit**: **Job accounts** — *Expects one per property*, *Optional*, or *None*. Only *expects* houses raise a signal when a job buys there with no account on record.
+Some houses open an account per property. A job's purchases then land on their own statement. Ferguson, Reece and Moore do this. The office marks each house on **Edit**. **Job accounts** is set to *Expects one per property*, *Optional*, or *None*. Only *expects* houses raise a signal when a job buys there with no account on record.
 
-Expand a house in **Accounts payable** and the **Job accounts** roster sits above its invoices: every job with an account there — {{chip:green|open}} with the house's reference and how it was opened, {{chip:purple|requested}} when someone is waiting on the office, {{chip:gray|not needed}} with the reason — and, in amber, every job that has invoices at this house but **no account on record**. {{button:green|Mark opened…}} on a row takes two taps after the call: how (by phone, the packet, at the counter), the reference if the house gave one, the rep, a note. **Not needed** records why (buys on the builder's account, a small service call) so the signal stops for that job.
+Expand a house in **Accounts payable**. The **Job accounts** roster sits above its invoices. It lists every job with an account there. {{chip:green|open}} shows the house's reference and how it was opened. {{chip:purple|requested}} means someone is waiting on the office. {{chip:gray|not needed}} shows the reason. In amber, it lists every job that has invoices at this house but **no account on record**. {{button:green|Mark opened…}} on a row takes two taps after the call. You record how it was opened: by phone, the packet, or at the counter. You add the reference if the house gave one, the rep and a note. **Not needed** records why, so the signal stops for that job. The reason might be that the job buys on the builder's account, or a small service call.
 
 See [mark an invoice as on a job account](?g=mark-an-invoice-on-a-job-account) for what the account changes on invoices.
 
 ## Add or edit a house
 
-{{button:blue|Add supply house}} (the office's button says **Add vendor**) opens the form; {{button:outline|Edit}} on any row opens the same form for that house. Name, address, main phone, website and notes live there, along with **Trades served** — tick the trades the house sells for, or leave them all off to show it to everyone — and, for the office, the vendor's **Kind** and the monthly payment date used for invoice due dates.
+{{button:blue|Add supply house}} opens the form. The office's button says **Add vendor**. {{button:outline|Edit}} on any row opens the same form for that house. Name, address, main phone, website and notes live there. So does **Trades served**. Tick the trades the house sells for. Leave them all off to show it to everyone. For the office, the form also holds the vendor's **Kind** and the monthly payment date used for invoice due dates.
 
 ## What the Directory is not
 
-Invoices, aging and balances owed live in **Accounts payable**, which only the office sees, right below the Directory on its tab. The Directory never shows a dollar figure — an estimator's Supply houses tab has none.
+Invoices, aging and balances owed live in **Accounts payable**. Aging is how long each invoice has waited. Only the office sees it, right below the Directory on its tab. The Directory never shows a dollar figure. An estimator's Supply houses tab has none.

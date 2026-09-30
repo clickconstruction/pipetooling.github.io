@@ -5,14 +5,16 @@ roles: all
 keywords: farm mode, checklist only, today, history, gear menu, simple view, recurring tasks, exit, turn off, chip
 order: 45
 ---
-Farm Mode strips the app down to one thing: your checklist. It's for anyone whose whole day is recurring tasks — feed runs, water checks, barn walk-throughs — and who doesn't need Jobs, Schedule, or anything else in the way.
+Farm Mode strips the app down to one thing: your checklist. It is for anyone whose whole day is recurring tasks.
 
-While it's on:
+Think feed runs, water checks and barn walk-throughs. That person does not need Jobs, Schedule, or anything else in the way.
 
-- A green strip at the very top says **🌾 Farm Mode · Exit** — so a borrowed tablet never looks like a broken app, and the way out is always on screen.
-- The header shows a single **Checklist** link — every other page (Roadmap included) redirects back to the checklist.
-- The checklist keeps just two tabs: **Today** (your assigned tasks for the day) and **History** (what you've completed).
-- Everything else — the office tabs like Review and Manage, the Roadmap page, the `/` people finder — comes back the moment you turn it off.
+While it is on:
+
+- A green strip at the very top says *🌾 Farm Mode · Exit*. A borrowed tablet never looks like a broken app. The way out is always on screen.
+- The header shows a single **Checklist** link. Every other page redirects back to the checklist. The Roadmap is included.
+- The checklist keeps just two tabs. **Today** is your assigned tasks for the day. **History** is what you have completed.
+- Everything else comes back the moment you turn it off. That means the office tabs like Review and Manage, the Roadmap page and the `/` people finder.
 
 :::example What you see in Farm Mode
 {{chip:green|🌾 Farm Mode}} {{button:outline|Exit}}
@@ -31,11 +33,11 @@ Move cattle to east pasture {{chip:gray|Open}}
 
 ## Turning it off
 
-Tap {{button:outline|Exit}} on the green **Farm Mode** strip at the top of the page — or, same as before, {{icon:gear}} gear menu → **Farm Mode**. The full app comes back exactly as you left it, including Job Mode or Dispatch Mode if you had one of those on before.
+Tap {{button:outline|Exit}} on the green **Farm Mode** strip at the top of the page. Or, same as before, open the {{icon:gear}} gear menu and tap **Farm Mode**. The full app comes back exactly as you left it. That includes Job Mode or Dispatch Mode if you had one of those on before.
 
 ## Good to know
 
-- The toggle is **per device and per account** — turning it on at the barn tablet doesn't change your phone.
-- It only changes what this device *shows*. It doesn't change your permissions, and the office still sees your completed tasks in Review.
+- The toggle is **per device and per account**. Turning it on at the barn tablet does not change your phone.
+- It only changes what this device shows. It does not change your permissions. The office still sees your completed tasks in Review.
 - Anyone can use it, whatever their role.
-- The **＋ Task** button in the header and the home-screen **/task** shortcut keep working inside the mode — adding a task never needs the full app.
+- The **＋ Task** button in the header and the home-screen **/task** shortcut keep working inside the mode. Adding a task never needs the full app.
