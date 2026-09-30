@@ -17,8 +17,11 @@ import {
   procurementCounts,
   procurementHeadline,
   procurementUpdateText,
+  isPlausibleLogDate,
   readLogDateEntry,
   shortDate,
+  shortDateYear,
+  daysAgoWords,
   snapshotRows,
 
   submittalWord,
@@ -64,8 +67,11 @@ const btn: CSSProperties = { padding: '0.35rem 0.75rem', background: 'var(--surf
 const btnPrimary: CSSProperties = { ...btn, background: '#2563eb', borderColor: '#2563eb', color: 'white', fontWeight: 600 }
 const link: CSSProperties = { background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: '0.75rem', color: 'var(--text-blue-700)', textDecoration: 'underline', textUnderlineOffset: 2 }
 const inp: CSSProperties = { padding: '0.2rem 0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8125rem', boxSizing: 'border-box', font: 'inherit', background: 'var(--surface)', color: 'var(--text-base)' }
-// As narrow as the date it holds: the text plus the browser's calendar button (`.procurement-date` in index.css pulls that button in).
-const dateInp: CSSProperties = { ...inp, width: '6.75rem' }
+// A date box at rest is unseen: the date reads under it with a two-digit year. Focus shows the box whole, as narrow as the
+// date it holds plus the browser's calendar button (`.procurement-date-slot` and `.procurement-date` in index.css size both).
+/** "02/12/0001" — a stored date with every digit of its year. */
+const fullDate = (iso: string) => `${iso.slice(5, 7)}/${iso.slice(8, 10)}/${iso.slice(0, 4)}`
+const dateRead: CSSProperties = { fontSize: '0.8125rem', fontVariantNumeric: 'tabular-nums' }
 
 type DateField = 'ordered_on' | 'expected_on' | 'delivered_on'
 type Draft = Partial<Record<'po' | 'note' | 'label' | 'lead' | DateField, string>>
@@ -101,6 +107,8 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
   const writeQueue = useRef<Promise<void>>(Promise.resolve())
   // The date box being typed in (`row key:field`); a change with no key press is a pick from the calendar.
   const typingIn = useRef<string | null>(null)
+  // The date box in use (`row key:field`), shown whole until it is left.
+  const [openDate, setOpenDate] = useState<string | null>(null)
   const applyRecords = useCallback((recs: ProcurementRecord[]) => {
     recordsRef.current = recs
     setRecords(recs)
@@ -151,6 +159,8 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
   const lastUpdate = updates[0] ?? null
   const changes = useMemo(() => diffProcurementLog(lastUpdate ? lastUpdate.rows : null, rows), [lastUpdate, rows])
   const hasStageDates = Object.keys(stageDates).length > 0
+  // Today, for the soft line under each date ("2 days ago").
+  const today = toIsoDate(new Date())
   useEffect(() => {
     if (!loaded || !onCounts) return
     const c = procurementCounts(rows)
@@ -259,6 +269,47 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
         } else commitDate(row, field)
       },
     }
+  }
+
+  /**
+   * One date cell. At rest the date reads with a two-digit year ("09/28/26") and, under it in
+   * soft text, how far it is from today ("2 days ago", "in 12 days"). The date box itself lies
+   * over that, unseen until it is focused (`.procurement-date-slot` in index.css), so a click,
+   * a tap or Tab lands in the real box and the row does not move.
+   */
+  function dateCell(row: ProcurementRow, field: DateField, shown: string | null, o: { label: string; disabled: boolean; title?: string; background?: string; under?: string | null; empty?: string }) {
+    const box = `${row.key}:${field}`
+    const handlers = dateBox(row, field, shown)
+    // A year outside the log's window (0001, typed short before v2.4239) is shown in full, so two digits cannot hide it.
+    const odd = shown != null && !isPlausibleLogDate(shown)
+    // Soft lines under the box, each no wider than it: what the date is ("house said"), then how far it is from today.
+    const under = odd ? ['check the year'] : [o.under, daysAgoWords(shown, today)].filter((x): x is string => !!x)
+    return (
+      <>
+        {/* `is-open` holds the box in view while the browser's calendar is up: the page's own :focus drops then. */}
+        <div className={`procurement-date-slot${openDate === box ? ' is-open' : ''}`} title={o.title}>
+          <input
+            type="date"
+            className="procurement-date"
+            aria-label={o.label}
+            {...handlers}
+            onFocus={() => setOpenDate(box)}
+            onBlur={(e) => {
+              setOpenDate((cur) => (cur === box ? null : cur))
+              handlers.onBlur(e)
+            }}
+            disabled={o.disabled}
+            style={{ ...inp, background: o.background ?? 'var(--surface)' }}
+          />
+          <div className="procurement-date-read" aria-hidden="true" data-testid="procurement-date-read" style={{ ...dateRead, ...(odd ? { fontSize: '0.7rem' } : null), background: o.background ?? 'var(--surface)', color: odd ? 'var(--text-red-700)' : shown ? 'var(--text-base)' : 'var(--text-faint)' }}>
+            {odd ? fullDate(shown) : shown ? shortDateYear(shown) : o.empty ?? 'mm/dd/yy'}
+          </div>
+        </div>
+        {under.map((line) => (
+          <div key={line} style={{ ...smallMuted, ...(odd ? { color: 'var(--text-red-700)' } : null) }} data-testid="procurement-date-under">{line}</div>
+        ))}
+      </>
+    )
   }
 
   async function commitText(row: ProcurementRow, field: 'po' | 'note' | 'label' | 'lead') {
@@ -460,7 +511,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
                   </td>
                   <td style={{ ...td, whiteSpace: 'nowrap' }}><span style={{ color: r.submittal === 'approved' ? 'var(--text-green-700)' : r.submittal === 'revise' || r.submittal === 'rejected' ? 'var(--text-amber-700)' : 'var(--text-muted)' }}>{submittalWord(r)}</span></td>
                   <td style={{ ...td, whiteSpace: 'nowrap' }}>{r.releasedOn ? shortDate(r.releasedOn) : <span style={smallMuted}>—</span>}</td>
-                  <td style={td}><input type="date" className="procurement-date" aria-label={`${r.tag ?? r.product} ordered on`} {...dateBox(r, 'ordered_on', r.orderedOn)} disabled={busy} style={dateInp} /></td>
+                  <td style={{ ...td, whiteSpace: 'nowrap' }}>{dateCell(r, 'ordered_on', r.orderedOn, { label: `${r.tag ?? r.product} ordered on`, disabled: busy })}</td>
                   <td style={td}><input type="text" aria-label={`${r.tag ?? r.product} PO`} placeholder="PO" value={draftOf(r.key, 'po', r.poRef)} onChange={(e) => setDraft(r.key, 'po', e.target.value)} onBlur={() => void commitText(r, 'po')} maxLength={60} style={{ ...inp, width: '5.2rem' }} /></td>
                   <td style={{ ...td, whiteSpace: 'nowrap' }}>
                     {r.isHand ? (
@@ -470,20 +521,18 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
                     )}
                   </td>
                   <td style={{ ...td, whiteSpace: 'nowrap' }}>
-                    <input
-                      type="date"
-                      className="procurement-date"
-                      aria-label={`${r.tag ?? r.product} expected on`}
-                      title={r.expectedSource === 'derived' ? `${shortDate(r.orderedOn)} + ${describeLeadTime(r.leadTimeDays)}; type the house's own date to override` : r.expectedSource === 'house' ? "The house's date; clear it to go back to ordered + lead time" : 'Order date + lead time, or the house’s own date'}
-                      {...dateBox(r, 'expected_on', r.expectedOn)}
-                      disabled={busy || !!r.deliveredOn}
-                      style={{ ...dateInp, background: r.expectedSource === 'house' ? 'var(--bg-amber-100)' : r.expectedSource === 'derived' ? 'var(--bg-muted)' : 'var(--surface)' }}
-                    />
-                    {r.expectedSource === 'house' ? <div style={smallMuted}>house said</div> : null}
+                    {dateCell(r, 'expected_on', r.expectedOn, {
+                      label: `${r.tag ?? r.product} expected on`,
+                      title: r.expectedSource === 'derived' ? `${shortDate(r.orderedOn)} + ${describeLeadTime(r.leadTimeDays)}; type the house's own date to override` : r.expectedSource === 'house' ? "The house's date; clear it to go back to ordered + lead time" : 'Order date + lead time, or the house’s own date',
+                      disabled: busy || !!r.deliveredOn,
+                      background: r.expectedSource === 'house' ? 'var(--bg-amber-100)' : r.expectedSource === 'derived' ? 'var(--bg-muted)' : 'var(--surface)',
+                      under: r.expectedSource === 'house' ? 'house said' : null,
+                      empty: r.deliveredOn ? '—' : undefined,
+                    })}
                   </td>
                   <td style={{ ...td, whiteSpace: 'nowrap' }}>{r.requiredOn ? shortDate(r.requiredOn) : <span style={smallMuted}>—</span>}</td>
                   <td style={{ ...td, whiteSpace: 'nowrap', fontWeight: late ? 700 : 500, color: late ? 'var(--text-red-700)' : r.deliveredOn ? 'var(--text-green-700)' : r.floatDays != null ? 'var(--text-green-700)' : 'var(--text-muted)' }} data-testid="procurement-float">{floatText(r)}</td>
-                  <td style={td}><input type="date" className="procurement-date" aria-label={`${r.tag ?? r.product} delivered on`} {...dateBox(r, 'delivered_on', r.deliveredOn)} disabled={busy} style={dateInp} /></td>
+                  <td style={{ ...td, whiteSpace: 'nowrap' }}>{dateCell(r, 'delivered_on', r.deliveredOn, { label: `${r.tag ?? r.product} delivered on`, disabled: busy })}</td>
                   <td style={{ ...td, minWidth: 160 }}><input type="text" aria-label={`${r.tag ?? r.product} note`} placeholder="note for the GC" value={draftOf(r.key, 'note', r.note)} onChange={(e) => setDraft(r.key, 'note', e.target.value)} onBlur={() => void commitText(r, 'note')} maxLength={500} style={{ ...inp, width: '100%' }} /></td>
                   <td style={{ ...td, whiteSpace: 'nowrap' }}>{r.isHand ? <button type="button" onClick={() => void removeHandRow(r)} disabled={disabled} title="Remove this item" aria-label={`Remove ${r.product || 'item'}`} style={{ ...link, color: 'var(--text-red-600)', textDecoration: 'none', fontSize: '0.95rem' }}>×</button> : null}</td>
                 </tr>

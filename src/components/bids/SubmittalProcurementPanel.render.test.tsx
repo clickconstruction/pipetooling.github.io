@@ -76,6 +76,15 @@ describe('SubmittalProcurementPanel', () => {
     expect(rows[0]!.querySelector('[data-testid="procurement-item"]')!.textContent).toBe('BFP-1Watts 909 RPZ 2"Rough In')
     expect(rows[0]!.textContent).toContain('Approved 09/22')
     expect(rows[0]!.textContent).toContain('house said')
+    // At rest each date reads with a two-digit year, and under it how far it is from today; the house's date says so first.
+    expect([...rows[0]!.querySelectorAll('[data-testid="procurement-date-read"]')].map((n) => n.textContent)).toEqual(['09/25/26', '10/20/26', 'mm/dd/yy'])
+    const under = [...rows[0]!.querySelectorAll('[data-testid="procurement-date-under"]')].map((n) => n.textContent ?? '')
+    expect(under).toHaveLength(3)
+    expect(under[0]).toMatch(/^(today|\d+ days? ago|in \d+ days?)$/)
+    expect(under[1]).toBe('house said')
+    expect(under[2]).toMatch(/^(today|\d+ days? ago|in \d+ days?)$/)
+    // The real date box is still there under the label, so a click, a tap or Tab lands in it.
+    expect((screen.getByLabelText('BFP-1 ordered on') as HTMLInputElement).value).toBe('2026-09-25')
     expect(rows[0]!.querySelector('[data-testid="procurement-float"]')!.textContent).toBe('−14 d')
     // WH-1: released, unordered, trim set 11/17, 6 wk → order by 10/06.
     expect(rows[1]!.querySelector('[data-testid="procurement-float"]')!.textContent).toBe('order by 10/06')
