@@ -13,7 +13,7 @@ In CountTooling, put the alternate's fixtures and runs in a **group** and turn o
 
 ## Import it, or mark it here
 
-On **Bids → Counts**, {{button:outline|Import from /Tooling}} brings the group in as an alternate: the toast says *· 1 alternate: Break room (1 ea · 48.5 ft)*, an **Alternates** tile joins the strip, and every row in it wears **ALT**. Counted the section by hand? Flip to **By group** and turn on the {{chip:yellow|Alternate}} switch on the group's heading. See [count with the Count Sheet](?g=count-with-the-count-sheet).
+On **Bids → Counts**, {{button:outline|Import from /Tooling}} brings the group in as an alternate: the toast says *· 1 alternate: Break room (1 ea · 48.5 ft)*, an **Alternates** tile joins the strip, and every row in it wears **ALT**. Counted the section by hand? Flip to **By group** and turn on the {{chip:yellow|Alternate}} switch on the group's heading. Add to it later with the heading's {{button:outline|+ add here}}, or pick the group in quick add's **Group** box. See [count with the Count Sheet](?g=count-with-the-count-sheet).
 
 :::example The two numbers, everywhere
 Base · 5 ea · 112.00 ft — + Break room · 1 ea · 48.50 ft. Takeoffs, Labor, Pricing and the letter carry the same split in dollars.
