@@ -32,7 +32,8 @@ import {
   gcReviewShareAllEmailSubject,
   gcStatementEmailSubject,
 } from '../../lib/jobsDocuments/gcStatementEmail'
-import { openHtmlPreviewWindow, openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
+import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
+import { EmailPreviewOverlay } from './EmailPreviewOverlay'
 import { resolveEmailWording } from '../../lib/emailWording'
 import { dollarsToCents, gcStatementSendGuard } from '../../lib/gcStatementSendGuard'
 import {
@@ -101,6 +102,7 @@ import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerForD
 import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 import CustomerPortalGlobeButton from '../customers/CustomerPortalGlobeButton'
+import { useEmailPreview } from '../../hooks/useEmailPreview'
 import { useGcPortalLinks } from '../../hooks/useGcPortalLinks'
 import { gcPortalLinkCaption } from '../../lib/portal/gcPortalLink'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -421,6 +423,8 @@ export function JobsGcReviewModal({
   const [roundEmailBusy, setRoundEmailBusy] = useState(false)
   const [roundEmailError, setRoundEmailError] = useState<string | null>(null)
   const [roundEmailNotice, setRoundEmailNotice] = useState<string | null>(null)
+  // Both previews (the statement dialog's and the week's list's) open over this window, not in a browser window (v2.4250).
+  const emailPreview = useEmailPreview()
   const refreshRoundEmailRows = useCallback(() => {
     void listPendingStatementRoundRequests().then(setRoundEmailRows, () => setRoundEmailRows([]))
   }, [])
@@ -1688,12 +1692,9 @@ export function JobsGcReviewModal({
                             disabled={roundEmailBusy}
                             onClick={() => {
                               setRoundEmailError(null)
-                              void fetchStatementRoundEmailPreview().then(
-                                (html) => {
-                                  if (!openHtmlPreviewWindow(html)) setRoundEmailError('Allow pop-ups to preview the email.')
-                                },
-                                (e: unknown) => setRoundEmailError(e instanceof Error ? e.message : 'Preview failed'),
-                              )
+                              emailPreview
+                                .show('The week’s list email', fetchStatementRoundEmailPreview())
+                                .catch((e: unknown) => setRoundEmailError(e instanceof Error ? e.message : 'Preview failed'))
                             }}
                             style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}
                           >
@@ -1973,16 +1974,14 @@ export function JobsGcReviewModal({
               <p role="status" style={{ margin: '0 0 0.6rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{emailSendGuard.message}</p>
             ) : null}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-              {/* Preview (v2.2061): the exact email the recipient gets, in a new window — nothing sends. */}
+              {/* Preview (v2.2061): the exact email the recipient gets, over this dialog (v2.4250) — nothing sends. */}
               <button
                 type="button"
                 onClick={() => {
                   const g = emailDialogGroup
                   const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                   const subject = emailDialogSubject.trim() || gcStatementEmailSubject(g, dateStr)
-                  if (!openHtmlPreviewWindow(buildGcStatementEmailPreviewHtml(g, subject, { dateStr, groupBy: effectiveGroupBy, officePhone: getPhysicalInvoiceIssuerForDocument().phone, portalUrl: emailIncludePortal ? portalLinkFor(g)?.url ?? null : null, introText: emailIntroText }))) {
-                    setEmailError('Allow pop-ups to preview the statement.')
-                  }
+                  void emailPreview.show(`Statement to ${g.gcName}`, buildGcStatementEmailPreviewHtml(g, subject, { dateStr, groupBy: effectiveGroupBy, officePhone: getPhysicalInvoiceIssuerForDocument().phone, portalUrl: emailIncludePortal ? portalLinkFor(g)?.url ?? null : null, introText: emailIntroText }))
                 }}
                 style={{ marginRight: 'auto', padding: '0.4rem 0.8rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-link)', cursor: 'pointer' }}
               >
@@ -2569,6 +2568,7 @@ export function JobsGcReviewModal({
       {historyGc ? (
         <GcStatementSendHistoryModal gcId={historyGc.id} gcName={historyGc.name} onClose={() => setHistoryGc(null)} />
       ) : null}
+      {emailPreview.preview ? <EmailPreviewOverlay preview={emailPreview.preview} onClose={emailPreview.close} /> : null}
     </div>
   )
 }

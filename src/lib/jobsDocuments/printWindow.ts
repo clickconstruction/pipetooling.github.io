@@ -18,8 +18,9 @@ export function openHtmlPrintWindow(html: string): boolean {
 
 /**
  * Same window.open glue WITHOUT triggering print — for read-only previews
- * (e.g. GC Review's Email… Preview, v2.2061: see the statement exactly as the
- * recipient will). Same popup-blocked contract as openHtmlPrintWindow.
+ * (the lien papers, the job agreement). Same popup-blocked contract as
+ * openHtmlPrintWindow. GC Review's email previews left it for the in-app
+ * EmailPreviewOverlay (v2.4250).
  */
 export function openHtmlPreviewWindow(html: string): boolean {
   const win = window.open('', '_blank')

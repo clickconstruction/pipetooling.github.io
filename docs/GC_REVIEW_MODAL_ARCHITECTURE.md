@@ -8,7 +8,7 @@ covers:
   - src/components/jobs/JobsGcReviewModal.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 ---
 
 ## Overview
@@ -194,7 +194,7 @@ Render regions in JSX order (all ranges @ `a05cef4c4`). Status: `extracted` mean
   - The account-man select lists 4 roles and has no email check. It calls `assignSender` and is gated by `canCertify`.
   - Every write goes through `markRound`, which merges with the week's existing mark (`mergeRoundMarkWrite`): one row holds the statement and the word.
   - The stage track reads the same worklist (`buildGcStageTrack`).
-- **4b Round email (1054–1193):** your chain line (`formatWeekdays` / `formatMinutes(parseHhMm)`), others' chains with **edit** (canCertify), "Set it up for another sender…" select, and the form (1108–1190): Mon–Fri toggles (sorted), time, **Preview** (`fetchStatementRoundEmailPreview` → `openHtmlPreviewWindow`), **Email me a test**, Stop emailing (`saveRoundEmail([])`), Cancel, Save.
+- **4b Round email (1054–1193):** your chain line (`formatWeekdays` / `formatMinutes(parseHhMm)`), others' chains with **edit** (canCertify), "Set it up for another sender…" select, and the form (1108–1190): Mon–Fri toggles (sorted), time, **Preview** (`fetchStatementRoundEmailPreview` → `emailPreview.show`, the in-app overlay), **Email me a test**, Stop emailing (`saveRoundEmail([])`), Cancel, Save.
 - **Owned (moves with it):** `assigningGcId`, `markSentDefaultAction` and the 7 round-email form states.
 - **Shared (stays or goes to the hook):** `worklist`, `roundBusy`, `roundError`, `temperatureByGc`, `boardRowByGc`.
 - **Handlers:** `userNameById`, `assignSender`, `markWhenLabel`, `undoRoundMark`, `openRoundEmailForm`, `saveRoundEmail`, `describeRoundMark`/`sendChannelLabel` (kernel).
@@ -243,7 +243,7 @@ Render regions in JSX order (all ranges @ `a05cef4c4`). Status: `extracted` mean
   - Subject (locked when scheduled).
   - An include-portal checkbox (only when `portalLinkFor(g)`).
   - `ScheduleWhenControls`, the error, and the **send-guard status** (1775).
-  - Preview: `buildGcStatementEmailPreviewHtml` → `openHtmlPreviewWindow`.
+  - Preview: `buildGcStatementEmailPreviewHtml` → `emailPreview.show` — [`EmailPreviewOverlay`](../src/components/jobs/EmailPreviewOverlay.tsx) (z 66, mounted at the modal's root) lays the email over the dialog in a sandboxed frame with Back; `useEmailPreview` holds its state, `previewFrameHtml` sends the email's links to a new tab.
   - Cancel.
   - **Send (1802–1891):**
     - schedule branch 1808–1844: CC validate → `buildGcStatementRequestInsert` → `scheduleGcStatementSend` → `refreshPendingSends`
@@ -401,8 +401,8 @@ Per the playbook, Stage A comes before Stage B for each unit, and the lowest cou
 9. **Side effect on Copy portal link.** `mark_customer_portal_slug_shared` permanently locks the short address on first share (569). Keep it before the clipboard write.
 10. **Portal staleness.** `CustomerPortalGlobeButton` takes only `customerId` / `customerName` / `size` (no change callback). A link minted in the globe modal does not show in the Share menu or Draft Message until GC Review is closed and reopened. This is from a code read, not verified in the browser.
 11. **URL deep links are parent-owned:** `?gcReview=1` and `?round=1[&gc=<id>]` (the `JobsStagesTab` consume-once effects 1326–1335, 1366–1378; the producers are the Dashboard banner / pinned row and the `statement-round-email-dispatch` email). The modal only sees `startInRound` / `startInRoundGcId`.
-12. **The z-ladder collides at 64.** The round overlay, Mark sent dialog and `GcStatementSendHistoryModal` all use 64 and are mutually exclusive only by flow. The Certify modal is at 70, Edit Job (via `onOpenJob`) at 1010, and the globe modal at 1300. **No Escape handling** exists in the modal or any inline overlay.
-13. **Popup-blocker paths.** Every preview (`openHtmlPreviewWindow` at 1151, 1786, 1945, 2419) returns false when blocked and sets an error string. The print path toasts in the parent.
+12. **The z-ladder collides at 64.** The round overlay, Mark sent dialog and `GcStatementSendHistoryModal` all use 64 and are mutually exclusive only by flow. The Certify modal is at 70, Edit Job (via `onOpenJob`) at 1010, and the globe modal at 1300. **No Escape handling** exists in the modal or any inline overlay, except the email preview (z 66), whose Escape closes the preview alone.
+13. **Popup-blocker paths.** The two email previews open in the app (`EmailPreviewOverlay`) and open no window. The print paths still do: the call sheet (`openHtmlPrintWindow`) toasts here when blocked, and the statement print toasts in the parent.
 14. **Cross-surface duplication.**
     - The round engine (certs + marks + senders → `buildStatementRound` / `summarizeStatementRound`) is loaded independently here (333–540), in `JobsStagesTab` (1648–1720, the stages map's seam "I") and in `usePipelineMoneyOpportunities` (100–150). They share no cache, and a mark made here refreshes only this copy.
     - The GC Review transport (`onSendStatement` edge invoke) lives in `JobsStagesTab` 4259–4288 (stages map extraction #7). Coordinate the two.
