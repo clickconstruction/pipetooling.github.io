@@ -5,7 +5,7 @@ file: docs/twins/TWIN_HARNESS.md
 type: Twin onboarding / Integration guide
 purpose: Everything an agent harness (any provider — Claude, Grok/xAI, GPT, open-source) needs to run a digital twin against the deployed apps — auth, session flow, rules of engagement, and how results are scored. The owner hands a partner this file + a twin token; nothing else is required.
 audience: Twin harness operators, External agent providers, Developers
-last_updated: 2026-09-19
+last_updated: 2026-09-30
 ---
 
 ## What you get
@@ -62,14 +62,18 @@ Mid-session (or from any non-MCP harness), the HTTP door is equivalent: POST
 JSON-RPC `tools/call` body — every verb works identically. Reference the key by file path
 (`$(cat ~/pt-twin-digest/twin.token)`), never paste its value into a transcript.
 
-**Claude Desktop (no repo, no shell) — v2.3207.** Desktop's *Add custom connector*
-screen cannot send a header, so the door is reached through the `mcp-remote` bridge in
-`claude_desktop_config.json` (`--header X-Twin-Token:${TWIN_TOKEN}`, key as an env
-value). Bids → 🤖 Robots → Console → **Copy Desktop kickoff** copies
-`kickoffs/desktop-operator.md` with this project's URL filled in: setup, the blind
-rule, and a serial `next_shadow` loop. A Desktop chat cannot call plan-fetch, so the
-connector hands it the plan set page by page (`get_plan_pages`, v2.3230); the person
-drags a PDF into the chat only when the set is unreadable to the intake account.
+**The Claude app (no repo needed) — v2.3207, Code first since v2.4231.** Desktop's *Add
+custom connector* screen cannot send a header, so the door is reached through the
+`mcp-remote` bridge in `claude_desktop_config.json` (`--header X-Twin-Token:${TWIN_TOKEN}`,
+key as an env value); the app's **Code tab** loads the same connector, no `.mcp.json` or
+environment variable needed. Bids → 🤖 Robots → Console → **Copy Code kickoff** copies
+`kickoffs/code-operator.md` with this project's URL filled in: the blind rule, a fence to
+the connector (no repo files, no other connector), and a serial `next_shadow` loop. A
+session without the key in hand cannot call plan-fetch, so the connector hands it the
+plan set page by page (`get_plan_pages`, v2.3230): in Claude Code `embed: true` lands
+each page as a file the session reads, and a page too heavy to embed is downloaded from
+its staged link. **Copy chat kickoff** (`kickoffs/desktop-operator.md`) is the fallback
+for a plain chat, which can open neither form — there a person drags each plan PDF in.
 `ct_finish_takeoff` handles the CountTooling leg server-side.
 
 **The toolkit and the skill (v2.3109).** `scripts/twin/` ships the shell helpers
@@ -147,7 +151,8 @@ long-run scorecard, since twins are excluded from human metrics but not from the
   fleet row on Settings → Digital twins for devs) mints a one-time setup code through the
   `twin-setup` edge function and shows one Terminal command. Pasted, it redeems the code — the
   key is minted server-side and returned once to that machine — merges the connector into
-  Desktop's config, quits/reopens Claude Desktop, and copies the kickoff. Devs can set up any
+  Desktop's config, quits/reopens Claude Desktop, and copies the kickoff (the bid robot's
+  Code kickoff, the pricer's chat kickoff — `kickoff_for` in the reply). Devs can set up any
   twin; other roles only the pricer. Kernel `buildDesktopSetupCommandFromCode`; table
   `twin_setup_codes`; revoke the resulting key by its label ("Wendi's MacBook") as usual.
 - **Audit**: `twin_runs` (every mint + mission, which credential), `created_by` on

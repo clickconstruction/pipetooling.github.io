@@ -1,10 +1,13 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { DESKTOP_KICKOFF, KICKOFF_CONNECTOR_PLACEHOLDER, PRICING_KICKOFF } from '../_shared/twinKickoffs.ts'
+import { CODE_KICKOFF, KICKOFF_CONNECTOR_PLACEHOLDER, PRICING_KICKOFF } from '../_shared/twinKickoffs.ts'
 import { twinMcpConnectorUrl } from '../_shared/twinConnectorUrl.ts'
 import { formatTwinMcpKey } from '../_shared/mcpKeyPrefixes.ts'
 
-// twin-setup v1.0.0 — "Set up on this Mac" (Price Matrix PR 6, docs/PRICE_MATRIX_PLAN.md).
+// twin-setup v1.1.0 — "Set up on this Mac" (Price Matrix PR 6, docs/PRICE_MATRIX_PLAN.md).
+// v1.1.0 (v2.4231): the bid robot's redeem hands back the Claude Code kickoff and says so
+// (`kickoff_for: 'code'`), so the command tells the person to paste it into a Code session;
+// the pricing robot keeps its chat kickoff (`kickoff_for: 'chat'`).
 //
 // The one-time setup for a robot on Claude Desktop used to be three hand steps: issue a
 // key, paste it into a Terminal command, quit and reopen Desktop. This function collapses
@@ -83,8 +86,13 @@ function kindOf(u: Pick<TwinUser, 'twin_kind'>): TwinKind {
   return u.twin_kind === 'pricer' ? 'pricer' : 'estimator'
 }
 
+/** Where the kickoff is pasted: the bid robot runs in a Claude Code session, the pricer in a chat. */
+function kickoffHarness(kind: TwinKind): 'code' | 'chat' {
+  return kind === 'pricer' ? 'chat' : 'code'
+}
+
 function kickoffFor(kind: TwinKind, connectorUrl: string): string {
-  const doc = kind === 'pricer' ? PRICING_KICKOFF : DESKTOP_KICKOFF
+  const doc = kind === 'pricer' ? PRICING_KICKOFF : CODE_KICKOFF
   return doc.split(KICKOFF_CONNECTOR_PLACEHOLDER).join(connectorUrl)
 }
 
@@ -225,6 +233,7 @@ serve(async (req) => {
         label: claimed.label,
         connector_url: connectorUrl,
         kickoff: kickoffFor(kind, connectorUrl),
+        kickoff_for: kickoffHarness(kind),
         check_call: kind === 'pricer' ? 'call get_pricing_guide on twin-mcp' : 'call get_brief on twin-mcp',
       })
     }

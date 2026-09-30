@@ -9,8 +9,8 @@ import { BTN, BTN_PRIMARY, CARD, CARD_TITLE, MUTED, TWIN_VIOLET } from '../bids/
  * the twin half of what v2.3686 gave the Dev MCP keys card). It walks a person through the
  * three ways the key is used, plainest first: a claude.ai custom connector with the key in a
  * request header (no Terminal, works on a phone — Path 0 of to-dos/mcp-servers.md), the
- * Terminal command for a Claude Desktop without that option, and the handoff for a Claude
- * Code operator. The key itself never goes in a chat; the buttons copy what each way needs.
+ * Terminal command for a Claude Desktop without that option, and the Claude Code kickoff
+ * and handoff on the Console. The key itself never goes in a chat; the buttons copy what each way needs.
  */
 
 const CODE: CSSProperties = { display: 'block', fontSize: '0.75rem', overflowWrap: 'anywhere', padding: '0.4rem 0.5rem', background: 'var(--surface)', borderRadius: 5, border: '1px solid var(--border)' }
@@ -43,7 +43,7 @@ export default function TwinFreshKeyPanel({ twinName, twinEmail, token, copy, on
       <ol style={STEPS}>
         <li>On claude.ai open <strong>Customize → Connectors → Add custom connector</strong>. Name it <em>{twinName}</em>; the address is <code>{TWIN_MCP_PUBLIC_URL}</code>.</li>
         <li>Choose <strong>No sign-in</strong>. Under <strong>Request headers</strong> pick <code>authorization</code> and paste the header value from the button below. Press Add.</li>
-        <li>Start a <strong>new incognito chat</strong>, turn the connector on under the ＋ menu, and paste the kickoff from <Link to={CONSOLE_HREF} style={LINK}>Robots → Console → Copy Desktop kickoff</Link>. The robot reads its brief and says the connector answered.</li>
+        <li>Start a <strong>new incognito chat</strong>, turn the connector on under the ＋ menu, and paste the kickoff from <Link to={CONSOLE_HREF} style={LINK}>Robots → Console → Copy chat kickoff</Link>. The robot reads its brief and says the connector answered.</li>
       </ol>
       <div style={ROW}>
         <button type="button" style={BTN_PRIMARY} onClick={() => void copy(mcpConnectorHeader(token), 'the header value')}>Copy header value</button>
@@ -55,7 +55,7 @@ export default function TwinFreshKeyPanel({ twinName, twinEmail, token, copy, on
       <ol style={STEPS}>
         <li>Press <strong>Copy Desktop setup command</strong>. Open <strong>Terminal</strong> (press ⌘ and Space together, type <em>Terminal</em>, press Return), paste (⌘ V), press Return.</li>
         <li>It asks for the key: press <strong>Copy key</strong>, paste, press Return — the prompt is silent, so nothing lands in a history. It writes Claude Desktop's connector config and says what to do next.</li>
-        <li>Quit Claude Desktop (⌘ Q), open it again, and paste the same kickoff into a new incognito chat. Next time, skip the key entirely with <strong>Set up on this Mac</strong> on the robot's row.</li>
+        <li>Quit Claude Desktop (⌘ Q) and open it again. Then paste <strong>Copy Code kickoff</strong> from the Console into a new session on the Code tab — it reads the plans itself — or the chat kickoff into a new incognito chat. Next time, skip the key entirely with <strong>Set up on this Mac</strong> on the robot's row.</li>
       </ol>
       <div style={ROW}>
         <button type="button" style={BTN} onClick={() => void copy(buildDesktopSetupCommand({ connectorUrl: TWIN_MCP_PUBLIC_URL }), 'the Claude Desktop setup command')}>Copy Desktop setup command</button>
@@ -64,7 +64,7 @@ export default function TwinFreshKeyPanel({ twinName, twinEmail, token, copy, on
       </div>
 
       <p style={{ ...MUTED, margin: '0.7rem 0 0' }}>
-        For a Claude Code operator or any other harness, hand the key over with docs/twins/TWIN_HARNESS.md; the handoff prompt is on <Link to={CONSOLE_HREF} style={LINK}>Robots → Console</Link>. The key never goes in a chat: it is {twinEmail}'s seat, and revoking its label cuts that machine off.
+        For the hourly Claude Code routine or any other harness, hand the key over with docs/twins/TWIN_HARNESS.md; the handoff prompt is on <Link to={CONSOLE_HREF} style={LINK}>Robots → Console</Link>. The key never goes in a chat: it is {twinEmail}'s seat, and revoking its label cuts that machine off.
       </p>
     </div>
   )

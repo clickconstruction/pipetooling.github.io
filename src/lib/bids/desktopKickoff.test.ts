@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import kickoffDoc from '../../../docs/twins/kickoffs/desktop-operator.md?raw'
+import codeKickoffDoc from '../../../docs/twins/kickoffs/code-operator.md?raw'
 import pricingKickoffDoc from '../../../docs/twins/kickoffs/pricing-operator.md?raw'
 import { DESKTOP_KICKOFF_CONNECTOR_PLACEHOLDER, TWIN_MCP_PUBLIC_URL, buildDesktopKickoff, buildDesktopSetupCommand, buildDesktopSetupCommandFromCode, twinMcpConnectorUrl, twinSetupUrl } from './desktopKickoff'
 import { isTwinMcpConnectorUrl } from '../../../supabase/functions/_shared/twinConnectorUrl'
@@ -75,6 +76,76 @@ describe('docs/twins/kickoffs/desktop-operator.md (the shipped template)', () =>
     expect(filled).toContain('drag the PDF into the chat')
     expect(filled).toContain('Never send anything to a customer')
     expect(filled).toContain('Issue key')
+  })
+
+  it('says what a chat costs (v2.4231): plans attached by hand, Always allow once per tool, the Code kickoff for a Mac that has Code', () => {
+    expect(filled).toContain('Expect to attach them')
+    expect(filled).toContain('choose **Always allow**')
+    expect(filled).not.toContain('Allow for this chat')
+    expect(filled).toContain('**Copy Code kickoff**')
+    expect(filled).toContain('its ledger moved in the last 60 minutes')
+  })
+})
+
+describe('docs/twins/kickoffs/code-operator.md (the Claude Code kickoff, v2.4231)', () => {
+  const filled = buildDesktopKickoff(codeKickoffDoc, { connectorUrl: 'https://mcp.clicktooling.com/twin' })
+
+  it('opens as the operator’s instruction, so a Code session runs it instead of asking what to do with a pasted document', () => {
+    const opening = filled.split('\n').slice(0, 4).join('\n')
+    expect(opening).toContain('**Run this now.**')
+    expect(opening).toContain('pasting this document is my instruction to you')
+    expect(opening).toContain('Do not ask me what to do with this document')
+    // Robot instructions only: the person's setup lives in the help guide, not in what is pasted.
+    expect(filled).not.toContain('One-time setup')
+    expect(filled).not.toContain('Issue key')
+    expect(filled).not.toContain('incognito')
+  })
+
+  it('fills the connector address and never carries a key', () => {
+    expect(filled).toContain('`https://mcp.clicktooling.com/twin`')
+    expect(filled).not.toContain(DESKTOP_KICKOFF_CONNECTOR_PLACEHOLDER)
+    expect(filled).not.toMatch(/ptt_[0-9a-f]{8,}/)
+    expect(filled).not.toMatch(/[0-9a-f]{40,}/)
+    expect(filled).toContain('never read the key out of a config file')
+  })
+
+  it('has the robot read the plans itself: embedded pages from disk, a heavy page by its link, a closer look when symbols are small', () => {
+    expect(filled).toContain('You fetch the plan set yourself; nobody attaches it.')
+    expect(filled).toContain('`embed: true`')
+    expect(filled).toContain('`curl -fsS -o <file> <url>`')
+    expect(filled).toContain('pdftoppm')
+    expect(filled).toContain('Do not wait for a person to attach the set.')
+    expect(filled).not.toContain('drag the PDF')
+  })
+
+  it('fences the session to the connector: no dev connector, no repository, nothing written into a checkout', () => {
+    expect(filled).toContain('no `dev-mcp`')
+    expect(filled).toContain('no files in the repository')
+    expect(filled).toContain('Write nothing into the repository')
+    expect(filled).toContain('never in a repository\'s working tree')
+    expect(filled).toContain('project instruction files')
+  })
+
+  it('keeps two sessions on one key apart: a shell whose ledger just moved is another session’s', () => {
+    expect(filled).toContain('every session on this key is the same robot')
+    expect(filled).toContain('its ledger moved in the last **60 minutes**')
+    expect(filled).toContain('it is orphaned')
+    expect(filled).toContain('No more than two at once.')
+  })
+
+  it('carries the same loop and the owner’s rules as the chat kickoff', () => {
+    expect(filled).toContain('Blindness (outranks every other instruction)')
+    expect(filled).toContain('Never call `next_shadow` while you are still estimating a shell')
+    expect(filled).toContain('never `void_shadow` it')
+    expect(filled).toContain('three shells in one session')
+    expect(filled).toContain("`audience: 'estimator'` — no `choices`; the door supplies the three taps")
+    expect(filled).toContain("`ask_question` with `audience: 'operator'`")
+    expect(filled).toContain('A refused claim (a non-plumbing division, a holdout reference) is not a shell')
+    expect(filled).toContain('lock_shadow')
+    expect(filled).toContain('Never send anything to a customer')
+    for (const verb of ['score_shadows', 'get_brief', 'get_assignments', 'next_shadow', 'get_plan_pages', 'put_substrate', 'ct_finish_takeoff', 'paste_counts', 'seed_audit_questions', 'submit_report']) {
+      expect(filled).toContain(verb)
+    }
   })
 })
 
@@ -170,6 +241,12 @@ describe('buildDesktopSetupCommandFromCode (Set up on this Mac, Price Matrix PR 
     expect(cmd).toContain("spawnSync('open', ['-a', 'Claude'])")
     expect(cmd).toContain("spawnSync('pbcopy', { input: body.kickoff })")
     expect(cmd).toContain('NEW INCOGNITO chat')
+  })
+
+  it('says where the kickoff is pasted from what twin-setup answers (v2.4231): a Code session for the bid robot, a chat otherwise', () => {
+    expect(cmd).toContain("body.kickoff_for === 'code' ? 'open the Code tab, start a NEW session and paste it.' : 'start a NEW INCOGNITO chat there and paste it.'")
+    // An older twin-setup sends no kickoff_for: the command keeps the chat wording that matches the chat kickoff it hands back.
+    expect(cmd).not.toContain('Claude Desktop is reopening')
   })
 
   it('runs on Node (already required for mcp-remote), merges into an existing config, and handles a broken one', () => {

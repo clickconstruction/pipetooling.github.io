@@ -6,7 +6,8 @@ import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import { buildRobotQueue } from '../../lib/bids/robotQueue'
 import { buildDesktopKickoff, buildDesktopSetupCommand, TWIN_MCP_PUBLIC_URL } from '../../lib/bids/desktopKickoff'
 import { relativeTimeFrom } from '../../lib/twinConsoleDisplay'
-// The two operator prompts are markdown files in the repo — the source of truth — copied whole.
+// The operator prompts are markdown files in the repo — the source of truth — copied whole.
+import codeKickoffDoc from '../../../docs/twins/kickoffs/code-operator.md?raw'
 import desktopKickoffDoc from '../../../docs/twins/kickoffs/desktop-operator.md?raw'
 import shadowOperatorPrompt from '../../../docs/twins/kickoffs/shadow-operator.md?raw'
 import pricingKickoffDoc from '../../../docs/twins/kickoffs/pricing-operator.md?raw'
@@ -20,9 +21,10 @@ import { BTN, BTN_PRIMARY, CARD, CARD_TITLE, CHIP, MUTED, PROMPT_PRE, STEP_REF, 
 
 /**
  * The 🤖 Console lens (v2.3224, dev only): the operator's desk. Everything a
- * person does to RUN the robots — start one from Claude Desktop or hand the
- * hourly Claude Code routine to someone, see which bids want a robot, answer
- * what blocked one, watch the runs come in — lives here, beside the Robot
+ * person does to RUN the robots — start a batch in a Claude Code session
+ * (v2.4231: the first way, it reads the plans itself) or in a Claude chat,
+ * hand the hourly Claude Code routine to someone, see which bids want a robot,
+ * answer what blocked one, watch the runs come in — lives here, beside the Robot
  * Board, Audits and Scoreboard the estimators use. The half that is account
  * and credential admin (mint a twin, issue and revoke keys, the safety rungs,
  * endpoints, the kill switch, the calibration standard) stays on Settings →
@@ -35,6 +37,8 @@ type Props = {
   onOpenQueue: () => void
 }
 
+type PreviewKey = 'setup' | 'code' | 'kickoff' | 'handoff' | 'pricing'
+
 type TwinRow = { id: string; name: string | null; email: string; read_only: boolean; counttooling_user_id?: string | null }
 type CredRow = { twin_user_id: string; label: string; created_at: string; last_used_at: string | null; revoked_at: string | null }
 
@@ -43,7 +47,7 @@ const SETTINGS_TWINS_HREF = '/settings?tab=settings-digital-twins'
 
 export function BidsRobotConsoleTab({ bids, twinBidBySourceId, onOpenQueue }: Props) {
   const { showToast } = useToastContext()
-  const [openPreview, setOpenPreview] = useState<'setup' | 'kickoff' | 'handoff' | 'pricing' | null>(null)
+  const [openPreview, setOpenPreview] = useState<PreviewKey | null>(null)
   const [fleet, setFleet] = useState<{ twins: TwinRow[]; creds: CredRow[] } | null>(null)
   // PR 6: "Set up on this Mac" — which robot the one-command setup is for (null = closed).
   const [setupTarget, setSetupTarget] = useState<TwinSetupTarget | null>(null)
@@ -52,6 +56,7 @@ export function BidsRobotConsoleTab({ bids, twinBidBySourceId, onOpenQueue }: Pr
 
   const connectorUrl = TWIN_MCP_PUBLIC_URL
   const setupCommand = useMemo(() => buildDesktopSetupCommand({ connectorUrl }), [connectorUrl])
+  const codeKickoff = useMemo(() => buildDesktopKickoff(codeKickoffDoc, { connectorUrl }), [connectorUrl])
   const desktopKickoff = useMemo(() => buildDesktopKickoff(desktopKickoffDoc, { connectorUrl }), [connectorUrl])
   // Price Matrix PR 3: the pricing robot's kickoff — same connector, its own seat and key.
   const pricingKickoff = useMemo(() => buildDesktopKickoff(pricingKickoffDoc, { connectorUrl }), [connectorUrl])
@@ -108,7 +113,7 @@ export function BidsRobotConsoleTab({ bids, twinBidBySourceId, onOpenQueue }: Pr
   const stepSub: React.CSSProperties = { display: 'block', color: 'var(--text-muted)', fontSize: '0.76rem' }
   const pathCol: React.CSSProperties = { border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.75rem', display: 'grid', gap: '0.55rem', alignContent: 'start', background: 'var(--surface)' }
   const pathHead: React.CSSProperties = { fontSize: '0.66rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: TWIN_VIOLET }
-  const previewLink = (key: 'setup' | 'kickoff' | 'handoff' | 'pricing', label: string) => (
+  const previewLink = (key: PreviewKey, label: string) => (
     <button
       type="button"
       onClick={() => setOpenPreview((cur) => (cur === key ? null : key))}
@@ -132,22 +137,22 @@ export function BidsRobotConsoleTab({ bids, twinBidBySourceId, onOpenQueue }: Pr
         .
       </p>
 
-      {/* Run the robots — the two ways a person starts one. */}
+      {/* Run the robots — Claude Code first (it reads the plans itself), a chat as the fallback. */}
       <div style={CARD}>
         <h4 style={CARD_TITLE}>
           <span style={STEP_REF}>▶</span>Run the robots
         </h4>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(19rem, 1fr))', gap: '0.7rem' }}>
           <div style={pathCol}>
-            <div style={pathHead}>From Claude Desktop · no repo, no terminal after setup</div>
+            <div style={pathHead}>From Claude Code · reads the plans itself</div>
             <div style={stepRow}>
               <span style={stepNo('1')}>1</span>
               <span style={stepText}>
                 Set up the connector
-                <span style={stepSub}>One Terminal command (Mac), once per machine: it mints the key on the server and writes it straight into Desktop's config — nobody sees it — then restarts Desktop with the kickoff on the clipboard.</span>
+                <span style={stepSub}>One Terminal command (Mac), once per machine: it mints the key on the server and writes it straight into Claude's config — nobody sees it — then restarts Claude with the kickoff on the clipboard. The Code tab and chats share the connector.</span>
               </span>
               <span style={{ display: 'inline-flex', gap: '0.35rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                <button type="button" style={BTN_PRIMARY} onClick={() => setSetupTarget({ kind: 'estimator' })} title="One Terminal command that connects Claude Desktop to the robot estimator on this Mac. The key is minted server-side and never shown.">
+                <button type="button" style={BTN_PRIMARY} onClick={() => setSetupTarget({ kind: 'estimator' })} title="One Terminal command that connects the Claude app on this Mac to the robot estimator. The key is minted server-side and never shown.">
                   Set up on this Mac
                 </button>
                 <button type="button" style={BTN} onClick={() => void copy(setupCommand, 'the Desktop setup command')} title="The key-based command: it asks for a key you issued by hand on Settings → Digital twins">
@@ -159,33 +164,45 @@ export function BidsRobotConsoleTab({ bids, twinBidBySourceId, onOpenQueue }: Pr
               <span style={stepNo('2')}>2</span>
               <span style={stepText}>
                 Start a batch
-                <span style={stepSub}>Paste into a new incognito chat. The robot works up to three shells, one at a time, and asks for each plan PDF.</span>
+                <span style={stepSub}>In the Claude app open the Code tab, start a new session and paste. The robot works up to three shells, one at a time, and pulls each plan set through the connector — nothing to attach. A second session can run beside it.</span>
               </span>
-              <button type="button" style={{ ...BTN_PRIMARY, background: '#3b82f6' }} onClick={() => void copy(desktopKickoff, 'the Claude Desktop kickoff')} title="Copies the whole kickoff: the setup steps for the person and the robot's instructions, with this project's connector filled in">
-                Copy Desktop kickoff
+              <button type="button" style={{ ...BTN_PRIMARY, background: '#3b82f6' }} onClick={() => void copy(codeKickoff, 'the Claude Code kickoff')} title="Copies the robot's instructions for a Claude Code session, with this project's connector filled in">
+                Copy Code kickoff
               </button>
             </div>
-            <div style={{ display: 'flex', gap: '0.9rem', flexWrap: 'wrap' }}>
-              {previewLink('setup', 'the setup command')}
-              {previewLink('kickoff', 'the kickoff')}
-            </div>
-            {openPreview === 'setup' ? <pre style={PROMPT_PRE}>{setupCommand}</pre> : null}
-            {openPreview === 'kickoff' ? <pre style={PROMPT_PRE}>{desktopKickoff}</pre> : null}
-          </div>
-          <div style={pathCol}>
-            <div style={pathHead}>From Claude Code · the hourly routine on a repo checkout</div>
             <div style={stepRow}>
               <span style={stepNo('↗')}>↗</span>
               <span style={stepText}>
                 Hand shadow coverage to someone
-                <span style={stepSub}>Their own key, the one allow rule, and the weekday routine with its prompt verbatim. They never see a robot's number.</span>
+                <span style={stepSub}>The hourly routine on a repo checkout: their own key, the one allow rule, and the weekday routine with its prompt verbatim. They never see a robot's number.</span>
               </span>
               <button type="button" style={BTN} onClick={() => void copy(shadowOperatorPrompt, 'the shadow-coverage handoff prompt')} title="Copies the whole handoff prompt — the new operator pastes it into Claude Code in a checkout of the repo">
                 Copy handoff prompt
               </button>
             </div>
-            <div>{previewLink('handoff', 'the handoff prompt')}</div>
+            <div style={{ display: 'flex', gap: '0.9rem', flexWrap: 'wrap' }}>
+              {previewLink('setup', 'the setup command')}
+              {previewLink('code', 'the Code kickoff')}
+              {previewLink('handoff', 'the handoff prompt')}
+            </div>
+            {openPreview === 'setup' ? <pre style={PROMPT_PRE}>{setupCommand}</pre> : null}
+            {openPreview === 'code' ? <pre style={PROMPT_PRE}>{codeKickoff}</pre> : null}
             {openPreview === 'handoff' ? <pre style={PROMPT_PRE}>{shadowOperatorPrompt}</pre> : null}
+          </div>
+          <div style={pathCol}>
+            <div style={pathHead}>From a Claude chat · when Code is not at hand</div>
+            <div style={stepRow}>
+              <span style={stepNo('↳')}>↳</span>
+              <span style={stepText}>
+                Start a batch in a chat
+                <span style={stepSub}>claude.ai, the phone, or a Mac without the Code tab — the same connector. Paste into a new incognito chat. A chat cannot open the plan pages, so the robot asks you to drag in each plan PDF, and Claude asks once for each robot tool: choose Always allow.</span>
+              </span>
+              <button type="button" style={BTN} onClick={() => void copy(desktopKickoff, 'the chat kickoff')} title="Copies the whole chat kickoff: the setup steps for the person and the robot's instructions, with this project's connector filled in">
+                Copy chat kickoff
+              </button>
+            </div>
+            <div>{previewLink('kickoff', 'the chat kickoff')}</div>
+            {openPreview === 'kickoff' ? <pre style={PROMPT_PRE}>{desktopKickoff}</pre> : null}
           </div>
           <div style={{ ...pathCol, border: `1.5px solid ${TWIN_VIOLET}`, background: 'var(--bg-violet-100)' }}>
             <div style={pathHead}>Pricing robot · never bids</div>
@@ -219,7 +236,8 @@ export function BidsRobotConsoleTab({ bids, twinBidBySourceId, onOpenQueue }: Pr
           </div>
         </div>
         <p style={{ ...MUTED, margin: '0.6rem 0 0' }}>
-          Sources of truth: <code style={{ fontSize: '0.7rem' }}>docs/twins/kickoffs/desktop-operator.md</code>,{' '}
+          Sources of truth: <code style={{ fontSize: '0.7rem' }}>docs/twins/kickoffs/code-operator.md</code>,{' '}
+          <code style={{ fontSize: '0.7rem' }}>docs/twins/kickoffs/desktop-operator.md</code>,{' '}
           <code style={{ fontSize: '0.7rem' }}>docs/twins/kickoffs/shadow-operator.md</code> and <code style={{ fontSize: '0.7rem' }}>docs/twins/kickoffs/pricing-operator.md</code>.
         </p>
       </div>

@@ -315,7 +315,7 @@ Each dossier gives the anchor, the verbs, the data touched, the helpers used, wh
 ## Test coverage
 
 - **`index.ts` itself: none.** No Deno test exists, no `src/**` test imports it, and it is neither type-checked nor linted in CI.
-- **Covered:** only the kernels it imports (tables above), plus `mcpRouterWorker.test.ts` (3, the Worker), `desktopKickoff.test.ts` (24, the connector URL) and `TwinSetupDialog.render.test.tsx` (2).
+- **Covered:** only the kernels it imports (tables above), plus `mcpRouterWorker.test.ts` (3, the Worker), `desktopKickoff.test.ts` (32, the connector URL and the kickoffs) and `TwinSetupDialog.render.test.tsx` (3).
 - **Money and gate risk flags, all untested:**
   - `paste_counts` pricing and tolerance
   - `put_quote` validation and price memory

@@ -5,7 +5,7 @@ file: HANDOFF.md
 type: Handoff / State of the program
 purpose: Everything a new operator needs to take over the digital-twins program — what is live, the fleet roadmap and its gates, how to run it day-to-day, where the secrets live, and the prioritized open threads
 audience: The incoming twins operator (a dev), AI agents
-last_updated: 2026-09-19
+last_updated: 2026-09-30
 key_sections:
   - name: "What is live today"
   - name: "The fleet roadmap & gates"
@@ -153,13 +153,16 @@ The working loops, in the order a day usually runs:
    *Robots have work waiting* — bids wanting a shadow + matrices queued, oldest ages, first of each;
    amber when a matrix went quiet or a request is a week old). Console → Open the queue: paste kickoff prompts for
    requested/ready live bids (shadows) and for backtest candidates on hungry axes;
-   classify unclassified references while you're there. The Console's **Copy Desktop
-   kickoff** (v2.3207) is the no-repo path: one prompt for a plain Claude Desktop chat
-   that works `next_shadow` serially, reading each plan set through `get_plan_pages`
-   (`kickoffs/desktop-operator.md`); **Copy setup command** (v2.3224) beside it is the
-   one-time connector setup — a Terminal one-liner that asks for the key, so the person
-   never edits Desktop's JSON by hand (the 2026-09-09 first run died on a config with no
-   `mcpServers` block).
+   classify unclassified references while you're there. The Console's **Copy Code
+   kickoff** (v2.4231) is the attended path: one prompt for a Claude Code session (the
+   Claude app's Code tab) that works `next_shadow` serially and reads each plan set itself
+   — `get_plan_pages` with `embed: true` lands the pages as files it can open
+   (`kickoffs/code-operator.md`). **Copy chat kickoff** (v2.3207, `kickoffs/desktop-operator.md`)
+   is the fallback for claude.ai or a phone: a chat can open neither the staged links nor
+   the inline PDFs, so a person drags each plan PDF in. **Set up on this Mac** beside them
+   is the one-time connector setup — one Terminal command, so the person never edits
+   Desktop's JSON by hand (the 2026-09-09 first run died on a config with no `mcpServers`
+   block) — and the Code tab loads the same connector.
    Answer **Operator questions** on the Console while you're there — a blocked robot
    parks the machine problems (sandbox, fence, unreadable file) in that lane.
 3b. **Price matrices** (v2.3270, `docs/PRICE_MATRIX_PLAN.md`) — a second seat, **Twin Pricer 1**

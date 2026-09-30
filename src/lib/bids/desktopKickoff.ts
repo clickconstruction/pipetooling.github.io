@@ -1,9 +1,12 @@
 /**
- * The Claude Desktop kickoff (v2.3207): the Robots → Queue lens copies
- * `docs/twins/kickoffs/desktop-operator.md` whole, with the one machine-specific
- * value filled in — the twin-mcp connector URL for the linked Supabase project.
- * The doc is the source of truth; this kernel only fills its placeholder, so
- * the copied prompt and the file never disagree.
+ * The robot kickoffs and the setup commands behind Bids → 🤖 Robots → Console.
+ *
+ * A kickoff is a markdown file in `docs/twins/kickoffs/` copied whole, with the one
+ * machine-specific value filled in — the twin-mcp connector URL. The doc is the
+ * source of truth; this kernel only fills its placeholder, so the copied prompt and
+ * the file never disagree. `code-operator.md` (v2.4231) is pasted into a Claude Code
+ * session, which reads the plans itself; `desktop-operator.md` (v2.3207) is the chat
+ * fallback, where a person attaches each plan PDF.
  */
 
 export const DESKTOP_KICKOFF_CONNECTOR_PLACEHOLDER = '{{CONNECTOR_URL}}'
@@ -88,9 +91,11 @@ const SETUP_CODE_RE = /^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{2}$/
  * one-time SETUP CODE instead of asking for a key. Pasted into Terminal it
  * redeems the code at twin-setup (which mints the key server-side and returns
  * it once, to this machine), merges the `twin-mcp` connector into Claude
- * Desktop's config with that key, quits and reopens Desktop so the connector
- * loads, and puts the robot's kickoff on the clipboard — so the person's next
- * move is one paste into a new incognito chat. The key is never printed, never
+ * Desktop's config with that key (the Claude app's Code tab loads the same
+ * connector), quits and reopens Desktop so the connector loads, and puts the
+ * robot's kickoff on the clipboard — so the person's next move is one paste:
+ * into a new Code session for the bid robot, a new incognito chat for the
+ * pricer (twin-setup's `kickoff_for`). The key is never printed, never
  * typed, never on a clipboard. The script is Node (Node is already required for
  * `mcp-remote`), so a Mac without the Xcode command-line tools' python3 works
  * too. macOS only: the config path and the quit/reopen are Desktop's on a Mac.
@@ -131,8 +136,10 @@ export function buildDesktopSetupCommandFromCode(opts: SetupCodeCommandOpts): st
     "    for (let i = 0; i < 30 && spawnSync('pgrep', ['-x', 'Claude']).status === 0; i++) spawnSync('sleep', ['0.5'])",
     '  }',
     "  spawnSync('open', ['-a', 'Claude'])",
-    "  if (body.kickoff) { spawnSync('pbcopy', { input: body.kickoff }); say('Claude Desktop is reopening. The kickoff is on your clipboard: start a NEW INCOGNITO chat there and paste it.') }",
-    "  else say('Claude Desktop is reopening. In a new chat type: ' + (body.check_call || 'call get_brief on twin-mcp'))",
+    // v2.4231: twin-setup says where its kickoff is pasted — the bid robot's in a Code session, the pricer's in a chat.
+    "  const where = body.kickoff_for === 'code' ? 'open the Code tab, start a NEW session and paste it.' : 'start a NEW INCOGNITO chat there and paste it.'",
+    "  if (body.kickoff) { spawnSync('pbcopy', { input: body.kickoff }); say('Claude is reopening. The kickoff is on your clipboard: ' + where) }",
+    "  else say('Claude is reopening. In a new chat type: ' + (body.check_call || 'call get_brief on twin-mcp'))",
     "})().catch((e) => { say('Setup failed: ' + e.message + '. Run it again, or ask a dev.'); process.exit(1) })",
     'NODEEOF',
     '', // a trailing newline: the pasted heredoc terminator must be followed by Return
