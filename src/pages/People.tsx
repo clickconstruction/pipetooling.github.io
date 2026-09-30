@@ -143,7 +143,7 @@ import {
   type PeopleHoursPendingCellEntry,
 } from '../lib/peopleHoursPendingByCell'
 import { countClosedPendingSessions, describePendingOutsideVisibleWeek, pendingOutsideVisibleWeek } from '../lib/payWeekAnchor'
-import { denverCalendarDayKey, localCalendarDayKey, todayYmdInAppTz } from '../utils/dateUtils'
+import { denverCalendarDayKey, formatWorkDateYmdWeekdayShortFriendly, localCalendarDayKey, todayYmdInAppTz } from '../utils/dateUtils'
 import { PeopleHoursPendingCellPopover } from '../components/people/PeopleHoursPendingCellPopover'
 import { PeopleHoursBulkApprovePendingModal } from '../components/people/PeopleHoursBulkApprovePendingModal'
 import { PeopleHoursApprovalsQueueModal } from '../components/people/PeopleHoursApprovalsQueueModal'
@@ -1581,6 +1581,27 @@ export default function People() {
   function sumClosedPendingClockHoursForPersonDate(personName: string, workDate: string): number {
     return pendingHoursSumsByCell.get(pendingByCellKey(personName.trim(), workDate)) ?? 0
   }
+  /** Approved clock hours per cell (v2.4263): the grid stops before a typed 0 writes over them. */
+  const approvedHoursSumsByCell = useMemo(
+    () => buildClosedPendingHoursSumsByCell(approvedClockSessions, hoursGridNameJoin.personNameByUserId),
+    [approvedClockSessions, hoursGridNameJoin],
+  )
+  const approvedClockHoursForCell = useCallback(
+    (personName: string, workDate: string) => approvedHoursSumsByCell.get(pendingByCellKey(personName.trim(), workDate)) ?? 0,
+    [approvedHoursSumsByCell],
+  )
+  const onTypedOverClockHours = useCallback(
+    (personName: string, workDate: string, clockHours: number) => {
+      void (async () => {
+        const ok = await confirmDialog({
+          message: `${personName} · ${formatWorkDateYmdWeekdayShortFriendly(workDate)} has ${clockHours.toFixed(2)} h approved from the clock. A 0 typed here would take those hours out of pay without changing the clock. Open the day and change the sessions instead — that is recorded, and someone else looks at it.`,
+          confirmLabel: 'Open the day',
+        })
+        if (ok) openHoursMyTimeForGridCell(personName, workDate)
+      })()
+    },
+    [confirmDialog, openHoursMyTimeForGridCell],
+  )
 
   /** Hours matrix: max(people_hours, pending clock) so manual-offer → session path stays visible; salary-only rows unchanged. */
   function getHoursGridDisplayHours(personName: string, workDate: string): number {
@@ -2563,6 +2584,8 @@ export default function People() {
                 hoursFlashPersonName={hoursFlashPersonName}
                 hoursDaysCorrect={hoursDaysCorrect}
                 typedPendingSessionIds={typedPendingSessionIds}
+                approvedClockHoursForCell={approvedClockHoursForCell}
+                onTypedOverClockHours={onTypedOverClockHours}
                 users={users}
                 canEditCrewJobs={canEditCrewJobs}
                 canAccessHours={canAccessHours}

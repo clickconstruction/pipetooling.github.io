@@ -252,6 +252,13 @@ export const APP_SETTINGS_KEY_CREW_PNL_SUB_EQUIVALENT_RATE = 'crew_pnl_sub_equiv
  * (Settings → People & accounts); all authenticated read.
  * @see `src/lib/people/assistantHoursWindow.ts`
  */
+/**
+ * Typed hours (v2.4242): whether the hold applies — `off` (the ledger only), `test` (sample
+ * accounts and ZZ-named people only) or `on`. Read by `typed_hours_rule_applies()`; dev writes
+ * (Settings → People & teams). The ledger and the second-look record run in every mode.
+ * @see `src/lib/clock/typedHoursSwitch.ts`
+ */
+export const APP_SETTINGS_KEY_TYPED_HOURS_SECOND_LOOK_V1 = 'typed_hours_second_look_v1' as const
 /** Quick time add (v2.3655 / v2.3677): who gets the door — a comma list of roles (`parseQuickAddRoles`); missing = the kernel's default list. */
 export const APP_SETTINGS_KEY_QUICK_ADD_ROLES_V1 = 'quick_add_roles_v1' as const
 /** Quick time add: the most minutes of quick adds one person may add in a day (`value_num`; the migration seeded 120). No `_v1` — `add_quick_time()` reads this exact key. */

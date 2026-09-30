@@ -1,8 +1,8 @@
 ---
 name: "Typed hours get a second look: the stamp, the hold, the worker's own door"
 number: 70
-group: ready
-status: PRs 1–4 shipped (v2.4242 the database · v2.4247 the stamp on the nine approval views · v2.4254 Needs You and Looks right · v2.4257 the worker's door) · next the grid stop and the switch
+group: close
+status: all five PRs built (v2.4242 the database · v2.4247 the stamp on the nine approval views · v2.4254 Needs You and Looks right · v2.4257 the worker's door · v2.4263 the grid stop and the switch) · left: the owner flips the switch to On, then this folder goes
 summary: >
   A clock session someone typed looked the same as a punch, and the assistant who typed it could
   approve it. Now the database records typed hours (who, when, the day before and after), holds the
@@ -10,11 +10,11 @@ summary: >
   the nine approval views, a Needs You card, a worker's "it did not clock me in" door, the Hours
   grid stopping before it writes over clocked hours, and the dev switch.
 next: >
-  PR 5 the grid stop, the dead Quickfill hours grid and the dev switch; then a dev flips the
-  switch from test to on in Settings.
-size: M (PRs 1–4, shipped) + S for the last PR
-blocker: Nothing — building.
-ver: v2.4242 · v2.4247 · v2.4254 · v2.4257
+  A dev flips the switch from Test accounts only to On for everyone (Settings → People & teams),
+  once the office has read the guide; then delete this folder.
+size: XS — one switch
+blocker: The owner's go to turn the rule on for everyone.
+ver: v2.4242 · v2.4247 · v2.4254 · v2.4257 · v2.4263
 ---
 
 # Typed hours get a second look
@@ -87,7 +87,8 @@ Approve all holding typed rows, the worker's door, the grid stop.
 4. **PR 4 — the worker's door** · shipped v2.4257. A small form (day, in, out, the job from that
    day's schedule, what happened) that inserts his own session; the ledger stamps it *typed by
    him, late*.
-5. **PR 5 — the grid stop**, delete `quickfill/HoursSection.tsx`, and the dev switch in Settings.
+5. **PR 5 — the grid stop**, delete `quickfill/HoursSection.tsx`, and the dev switch in Settings
+   · shipped v2.4263.
 6. Flip the switch to `on`; delete this folder.
 
 ## How to verify

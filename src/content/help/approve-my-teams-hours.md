@@ -70,6 +70,10 @@ Paige · Thu 9/24 · ✎ typed by Taunya · 6.5h → 9.0h
 
 Changing the times of a session that is already approved keeps it approved, so those hours count in pay straight away and no approval ever looks at them. They sit in their own section at the top of the queue: {{button:green|Looks right}} is the second look (not offered to whoever typed them, or to the person whose hours they are), and {{button:outline|Open day}} opens the day to fix it instead.
 
+One more stop, on the Hours grid: typing **0** into a day that has approved hours from the clock no longer takes them out of pay behind the clock's back. The grid asks, and {{button:outline|Open the day}} takes you to the sessions — change or reject them there, where it is recorded.
+
+A dev turns the rule on at Settings → People & teams → *Typed hours: a second person approves* (Off, Test accounts only, On for everyone). The pencil shows whatever is picked.
+
 A trim — a forgotten clock-out cut back — is recorded too (*trimmed by Taunya · 12.0h → 8.0h*) but holds nothing: the person who trimmed it may approve it.
 
 ## Everywhere else you can approve
