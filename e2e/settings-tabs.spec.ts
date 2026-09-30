@@ -23,7 +23,9 @@ import { test, expect } from '@playwright/test'
  *
  * Since v2.3816 `src/lib/settingsGroups.test.ts` reads this list and fails CI when it and the
  * dev's tab list differ — the rename to "Digital twins & samples" (v2.3705) went unseen for
- * over a hundred versions because this suite never gates a PR.
+ * over a hundred versions because this suite never gates a PR. Markers are not gated the same
+ * way: when a tab's wording moves on purpose (v2.4108 rewrote Contracts & terms as an index)
+ * this suite goes red on every deploy until the marker is amended here.
  */
 const TABS: Array<{ label: string; marker: RegExp | string; expand?: string }> = [
   { label: 'Your account', marker: 'My Profile' },
@@ -34,7 +36,9 @@ const TABS: Array<{ label: string; marker: RegExp | string; expand?: string }> =
   { label: 'Emails & reports', marker: 'Payment received notifications' },
   { label: 'What customers see', marker: 'Sample data:' },
   { label: 'What the team sees', marker: 'Sample data:' },
-  { label: 'Contracts & terms', marker: 'Contracts customers accept or sign' },
+  // The v2.4108 index dropped the "Contracts customers accept or sign" section heading; this
+  // line is the toolbar's intro and only renders once the wording has loaded (v2.4223).
+  { label: 'Contracts & terms', marker: 'The wording as it stands today' },
   { label: 'Company', marker: 'Company documents' },
   { label: 'Usage', marker: 'Where the time goes' },
   { label: 'Data & recovery', marker: /[Bb]ackup/ },
