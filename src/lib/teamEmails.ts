@@ -36,6 +36,7 @@ export type TeamSampleEmailId =
   | 'payment_forecast'
   | 'billed_awaiting'
   | 'weekly_money'
+  | 'weekly_movement'
   | 'signed_agreement_staff'
   | 'estimate_accepted_staff'
   | 'gc_word_ask'
@@ -283,8 +284,8 @@ export const TEAM_EMAILS: readonly TeamEmail[] = [
     label: 'Weekly movement',
     when: { kind: 'weekly', label: 'Mondays', order: 31 },
     recipients: { roles: OFFICE_AND_PRIMARY, decidedBy: 'role', rule: 'Devs, leaders, assistants, controllers and the primary — by role.' },
-    sampleSubject: () => 'Click Plumbing and Electrical — weekly movement',
-    render: { kind: 'soon', note: 'Built inside weekly-movement-email-dispatch.' },
+    sampleSubject: (c) => `Weekly movement — ${c.weekStartLabel} – ${c.weekEndLabel} — Click Plumbing and Electrical`,
+    render: { kind: 'sample', sample: 'weekly_movement' },
     manage: stream('weekly_movement', 'Emails & reports → Weekly movement'),
     reflects: ['the movement report'],
   },

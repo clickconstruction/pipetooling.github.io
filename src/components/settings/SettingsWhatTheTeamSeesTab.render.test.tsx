@@ -52,7 +52,7 @@ function mount() {
 describe('SettingsWhatTheTeamSeesTab', () => {
   it('opens on a controller’s week, grouped by when, with the count line', async () => {
     await mount()
-    expect(screen.getByTestId('wtts-coverage').textContent).toContain('25 emails · 16 render live · 9 built on the server (next release)')
+    expect(screen.getByTestId('wtts-coverage').textContent).toContain('25 emails · 17 render live · 8 built on the server (next release)')
     const headings = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent ?? '')
     expect(headings[0]).toContain('Every morning')
     expect(headings.some((h) => h.includes('When something happens'))).toBe(true)
@@ -92,8 +92,8 @@ describe('SettingsWhatTheTeamSeesTab', () => {
   })
   it('a soon row says which function builds it', async () => {
     await mount()
-    fireEvent.click(within(screen.getByTestId('wtts-row-weekly_movement')).getByRole('button', { name: 'Weekly movement' }))
-    expect(screen.getByTestId('wtts-expanded').textContent).toContain('weekly-movement-email-dispatch')
+    fireEvent.click(within(screen.getByTestId('wtts-row-schedule_day')).getByRole('button', { name: 'Dispatch schedule — one day' }))
+    expect(screen.getByTestId('wtts-expanded').textContent).toContain('schedule-day-email-dispatch')
   })
   it('a person reads the recipient lists: Malachi is not on the Paid job list', async () => {
     await mount()
@@ -107,7 +107,7 @@ describe('SettingsWhatTheTeamSeesTab', () => {
     await mount()
     fireEvent.click(screen.getByRole('button', { name: "Only what doesn't render yet" }))
     expect(screen.queryByTestId('wtts-row-money_waiting')).toBeNull()
-    expect(screen.getByTestId('wtts-row-weekly_movement')).toBeTruthy()
+    expect(screen.getByTestId('wtts-row-schedule_day')).toBeTruthy()
   })
 })
 

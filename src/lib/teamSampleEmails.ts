@@ -17,6 +17,7 @@ import { buildCrewDayEmailView, crewDayEmailSubject, crewDayEmailText, renderCre
 import { paymentForecastEmailSubject, paymentForecastEmailText, renderPaymentForecastEmail, type ForecastEmailPayload } from '../../supabase/functions/_shared/paymentForecastEmail'
 import { billedReportEmailSubject, billedReportEmailText, renderBilledReportEmail, type BilledReportPayload, type BilledReportRow } from '../../supabase/functions/_shared/billedReportEmail'
 import { renderWeeklyMoneyHtml, renderWeeklyMoneyText, weekLabelFromMonday, weeklyMoneySubject, type WeeklyMoneyPayload } from '../../supabase/functions/_shared/weeklyMoneyEmail'
+import { renderWeeklyMovementHtml, renderWeeklyMovementText, weeklyMovementSubject, type WeeklyMovementPayload, type WeeklyMovementPayloadEntry } from '../../supabase/functions/_shared/weeklyMovementEmail'
 
 export type BuiltTeamEmail = { subject: string; html: string; text: string }
 
@@ -272,9 +273,31 @@ export function sampleWeeklyMoneyPayload(weekMonday: string): WeeklyMoneyPayload
   }
 }
 
+/** The Weekly movement payload (lift 6): the sample company's stage moves in one week, one sent back. */
+export function sampleWeeklyMovementPayload(weekMonday: string): WeeklyMovementPayload {
+  const e = (event: string, job: string, display: string, address: string, weekday: string, mover: string, revenue: number, extra: Partial<WeeklyMovementPayloadEntry> = {}): WeeklyMovementPayloadEntry => ({ event_id: event, job_id: job, display, address, weekday, mover_name: mover, revenue, ...extra })
+  const working = [e('ev-1', 'job-5', '1057 · Hunter Homes — gas line', '77 Hunter Loop, Kyle, TX 78640', 'Mon', 'Wendi Douglas', 18_900), e('ev-2', 'job-6', '1060 · Structura — phase 2', '901 Structura Way, Buda, TX 78610', 'Wed', 'Wendi Douglas', 42_500)]
+  const ready = [e('ev-3', 'job-3', '1054 · Water heater replacement', SAMPLE_HOMEOWNER.address, 'Tue', 'Ana Lead', 4_380)]
+  const billed = [e('ev-4', 'job-1', '1041 · Cedar Bend Apartments — rough-in', '2530 Cedar Bend Dr, Kyle, TX 78640', 'Thu', 'Malachi Sample', 86_000), e('ev-5', 'job-3', '1054 · Water heater replacement', SAMPLE_HOMEOWNER.address, 'Thu', 'Malachi Sample', 4_380)]
+  const sent_backs = [e('ev-6', 'job-4', '1039 · Structura — pretest', '901 Structura Way, Buda, TX 78610', 'Fri', 'Wendi Douglas', 12_640, { from_label: 'Ready to bill', to_label: 'Working' })]
+  const sections = [
+    { to_status: 'working', label: 'Working', entries: working },
+    { to_status: 'ready_to_bill', label: 'Ready to bill', entries: ready },
+    { to_status: 'billed', label: 'Billed', entries: billed },
+  ].map((s) => ({ ...s, job_count: new Set(s.entries.map((x) => x.job_id)).size, total: s.entries.reduce((t, x) => t + x.revenue, 0) }))
+  const all = [...working, ...ready, ...billed, ...sent_backs]
+  return { generated_at: `${weekMonday}T12:00:00Z`, week_monday: weekMonday, sections, send_backs: sent_backs, move_count: all.length, job_count: new Set(all.map((x) => x.job_id)).size }
+}
+
 export function buildTeamSampleEmail(id: TeamSampleEmailId, ctx: TeamSampleContext): BuiltTeamEmail {
   const origin = ctx.origin
   switch (id) {
+    case 'weekly_movement': {
+      const monday = mondayOf(ctx.todayYmd)
+      const p = sampleWeeklyMovementPayload(monday)
+      const week = weekLabelFromMonday(monday)
+      return { subject: weeklyMovementSubject(week), html: renderWeeklyMovementHtml(p, week, ctx.sender?.name || undefined), text: renderWeeklyMovementText(p, week) }
+    }
     case 'weekly_money': {
       const monday = mondayOf(ctx.todayYmd)
       const p = sampleWeeklyMoneyPayload(monday)
