@@ -163,6 +163,33 @@ describe('groups and alternates from CountTooling (v2.4188)', () => {
     expect(out.sourceLink).toContain('t=12345678')
   })
 
+  it('schedule blocks are structure — a water row is not a count, an alternate\'s water block names the same alternate', () => {
+    const text = [
+      'WC\t12\t1',
+      '',
+      '--- Alternate: Break room ---',
+      '[Break room] WC\t1\t1',
+      '',
+      '--- Duct ---',
+      "24×12\t24 ga\t70'\t6.94 lb/ft\t486 lb",
+      'Bid weight\t\t\t\t1,804 lb',
+      '',
+      '--- Water sizing ---',
+      'Cold main\t1″\t3 fixtures · 12 WSFU\t8.0 gpm\t5.1 fps\t✓',
+      'Cold water total\t\t3 fixtures\t\t\t✓',
+      '',
+      '--- Alternate: Break room · Water sizing ---',
+      'Break room cold\t¾″\t1 fixture · 4 WSFU\t4.0 gpm\t9.2 fps\t⚠ over 8 fps',
+      'Sized at 8 fps cold / 5 fps hot, practice not code; public fixture units\t\t\t\t\t',
+      '',
+      'WH\t1\t2',
+    ].join('\n')
+    const { rows, skippedCount, alternateGroups } = parseCountsImportText(text)
+    expect(rows.map((r) => [r.fixture, r.count, r.group_tag])).toEqual([['WC', 12, null], ['WC', 1, 'Break room'], ['WH', 1, null]])
+    expect(skippedCount).toBe(0)
+    expect(alternateGroups).toEqual(['Break room'])
+  })
+
   it('a text with no alternate reports none', () => {
     expect(parseCountsImportText('WC\t4\t2').alternateGroups).toEqual([])
   })
