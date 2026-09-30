@@ -8,10 +8,10 @@ import type { VectorSession } from '../../lib/bridge/vectors'
 
 const field = (userId: string, workDate: string, hours: number, jobId: string): VectorSession => ({ userId, workDate, hours, jobId, onBid: false, officeJob: false, approved: true, pending: false })
 
-function grid(sessions: VectorSession[]) {
+function grid(sessions: VectorSession[], zoom: 'days' | 'weeks' | 'months' = 'days') {
   return buildVectorGrid({
-    zoom: 'days',
-    anchorYmd: '2026-09-14',
+    zoom,
+    anchorYmd: zoom === 'days' ? '2026-09-14' : '2026-09-30',
     todayYmd: '2026-09-30',
     mode: 'approved',
     people: [
@@ -40,7 +40,7 @@ const noop = () => {}
 describe('BridgeVectorDaysPanel', () => {
   it('draws a row per field person, a green and a red day, the week sums and the Field crew row', () => {
     const g = grid([field('u1', '2026-09-01', 8, 'j-good'), field('u2', '2026-09-01', 8, 'j-low'), { userId: 'u2', workDate: '2026-09-02', hours: 6, jobId: 'j-office', onBid: false, officeJob: true, approved: true, pending: false }])
-    renderWithProviders(<BridgeVectorDaysPanel grid={g} periodLabel="September 2026" isCurrent canPrev canNext={false} onPrev={noop} onNext={noop} loading={false} error={null} />)
+    renderWithProviders(<BridgeVectorDaysPanel grid={g} zoom="days" onZoom={noop} periodLabel="September 2026" isCurrent canPrev canNext={false} onPrev={noop} onNext={noop} loading={false} error={null} />)
     expect(screen.getByTestId('bridge-vector-days')).toBeTruthy()
     expect(screen.getAllByTestId('vector-day-row')).toHaveLength(2)
     const cells = screen.getAllByTestId('vector-day-cell')
@@ -54,9 +54,24 @@ describe('BridgeVectorDaysPanel', () => {
   })
 
   it('says so when the period has no field hours, and shows the error when the load failed', () => {
-    const { rerender } = renderWithProviders(<BridgeVectorDaysPanel grid={grid([])} periodLabel="August 2026" isCurrent={false} canPrev canNext onPrev={noop} onNext={noop} loading={false} error={null} />)
+    const { rerender } = renderWithProviders(<BridgeVectorDaysPanel grid={grid([])} zoom="days" onZoom={noop} periodLabel="August 2026" isCurrent={false} canPrev canNext onPrev={noop} onNext={noop} loading={false} error={null} />)
     expect(screen.getByText('No approved field hours in this period yet.')).toBeTruthy()
-    rerender(<BridgeVectorDaysPanel grid={null} periodLabel="August 2026" isCurrent={false} canPrev canNext onPrev={noop} onNext={noop} loading={false} error="boom" />)
+    rerender(<BridgeVectorDaysPanel grid={null} zoom="days" onZoom={noop} periodLabel="August 2026" isCurrent={false} canPrev canNext onPrev={noop} onNext={noop} loading={false} error="boom" />)
     expect(screen.getByText('boom')).toBeTruthy()
+  })
+
+  it('the Weeks and Months zooms draw a period cell per pay week or month, and the zoom row reports the pick', () => {
+    const sessions = [field('u1', '2026-09-01', 8, 'j-good'), field('u2', '2026-09-08', 8, 'j-low')]
+    const picks: string[] = []
+    const { rerender } = renderWithProviders(<BridgeVectorDaysPanel grid={grid(sessions, 'weeks')} zoom="weeks" onZoom={(z) => picks.push(z)} periodLabel="Jul 5 – Oct 3" isCurrent canPrev canNext={false} onPrev={noop} onNext={noop} loading={false} error={null} />)
+    expect(screen.getAllByTestId('vector-period-cell').map((c) => c.textContent)).toEqual(['+416', '≈−56'])
+    expect(screen.getByText('13 wk')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Weeks' }).getAttribute('aria-pressed')).toBe('true')
+    screen.getByRole('button', { name: 'Months' }).click()
+    expect(picks).toEqual(['months'])
+    rerender(<BridgeVectorDaysPanel grid={grid(sessions, 'months')} zoom="months" onZoom={noop} periodLabel="Oct 2025 – Sep 2026" isCurrent canPrev canNext={false} onPrev={noop} onNext={noop} loading={false} error={null} />)
+    expect(screen.getAllByTestId('vector-period-cell')).toHaveLength(2)
+    expect(screen.getByText('12 mo')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Previous 12 months' })).toBeTruthy()
   })
 })

@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
-import type { VectorBucket, VectorColumn, VectorGrid, VectorGridRow } from '../../lib/bridge/vectorDays'
+import type { VectorBucket, VectorColumn, VectorGrid, VectorGridRow, VectorZoom } from '../../lib/bridge/vectorDays'
+import { VECTOR_MONTHS_ZOOM_COUNT, VECTOR_WEEKS_ZOOM_COUNT } from '../../lib/bridge/vectorDays'
 import { reviewDoorHref } from '../../lib/people/reviewDoor'
 
 /**
@@ -8,8 +9,9 @@ import { reviewDoorHref } from '../../lib/people/reviewDoor'
  * per day: green when the day's hours earned more than they cost, red when
  * less, the shade by dollars per hour; a week sum after every Saturday and
  * the period's total at the end. Office and bid days are grey with their
- * hours — a cost, never a verdict. The kernel decides every number and the
- * order; this only draws.
+ * hours — a cost, never a verdict. Weeks and Months (v2.4219) are the same
+ * rows folded: a cell per pay week or per month, the shade the same. The
+ * kernel decides every number and the order; this only draws.
  */
 
 const shortUsd = (n: number): string => {
@@ -85,6 +87,31 @@ function DayCell({ b, col }: { b: VectorBucket | null; col: VectorColumn }) {
   )
 }
 
+/** A pay-week or month cell (Weeks / Months zooms): the day cell's shade, wider, hours only when the period had no field hours. */
+function PeriodCell({ b, col }: { b: VectorBucket | null; col: VectorColumn }) {
+  const wide: CSSProperties = { ...cellBase, width: 56, minWidth: 56, fontSize: '0.68rem' }
+  if (!b) return <td style={{ ...wide, background: col.future ? 'transparent' : 'var(--bg-muted)', color: 'var(--border-strong)' }}>{col.future ? '' : '·'}</td>
+  const title = bucketTitle(b, col)
+  if (b.contributionUsd == null || b.contributionPerHour == null) {
+    return (
+      <td style={{ ...wide, background: 'var(--bg-muted)' }} title={title}>
+        {hrs(b.officeBidHours)}
+      </td>
+    )
+  }
+  const s = shade(b.contributionPerHour)
+  return (
+    <td
+      style={{ ...wide, ...s, backgroundImage: b.guessedEarnedUsd > 0 ? GUESS_HATCH : undefined, borderStyle: b.pendingHours > 0 ? 'dashed' : 'solid', borderColor: b.pendingHours > 0 ? 'var(--border-strong)' : 'transparent', fontStyle: b.pendingHours > 0 ? 'italic' : undefined }}
+      title={title}
+      data-testid="vector-period-cell"
+    >
+      {b.guessedEarnedUsd > 0 ? '≈' : ''}
+      {shortUsd(b.contributionUsd)}
+    </td>
+  )
+}
+
 function SumCell({ b, col, bold }: { b: VectorBucket | null; col: VectorColumn | null; bold?: boolean }) {
   if (!b || (b.fieldHours <= 0 && b.officeBidHours <= 0)) return <td style={{ ...sumBase, color: 'var(--text-muted)', fontWeight: 400 }}>—</td>
   const c = b.contributionUsd
@@ -119,29 +146,44 @@ function Row({ r, grid }: { r: VectorGridRow; grid: VectorGrid }) {
           {r.isSalary ? ' · salaried' : ''}
         </span>
       </td>
-      {grid.columns.map((col, i) => (col.kind === 'day' ? <DayCell key={col.key} b={r.cells[i] ?? null} col={col} /> : <SumCell key={col.key} b={r.cells[i] ?? null} col={col} />))}
+      {grid.columns.map((col, i) => (col.kind === 'day' ? <DayCell key={col.key} b={r.cells[i] ?? null} col={col} /> : col.kind === 'weekSum' ? <SumCell key={col.key} b={r.cells[i] ?? null} col={col} /> : <PeriodCell key={col.key} b={r.cells[i] ?? null} col={col} />))}
       <SumCell b={r.total} col={null} />
     </tr>
   )
 }
 
-export function BridgeVectorDaysPanel(props: { grid: VectorGrid | null; periodLabel: string; isCurrent: boolean; canPrev: boolean; canNext: boolean; onPrev: () => void; onNext: () => void; loading: boolean; error: string | null }) {
-  const { grid } = props
-  const totalLabel = grid && grid.zoom === 'days' ? periodShort(grid.start) : 'total'
+const ZOOMS: Array<{ key: VectorZoom; word: string }> = [
+  { key: 'days', word: 'Days' },
+  { key: 'weeks', word: 'Weeks' },
+  { key: 'months', word: 'Months' },
+]
+const segBtn = (on: boolean): CSSProperties => ({ font: 'inherit', fontSize: '0.75rem', padding: '0.1rem 0.55rem', border: 'none', background: on ? 'var(--text)' : 'transparent', color: on ? 'var(--surface)' : 'var(--text)', fontWeight: on ? 700 : 400, cursor: 'pointer' })
+
+export function BridgeVectorDaysPanel(props: { grid: VectorGrid | null; zoom: VectorZoom; onZoom: (zoom: VectorZoom) => void; periodLabel: string; isCurrent: boolean; canPrev: boolean; canNext: boolean; onPrev: () => void; onNext: () => void; loading: boolean; error: string | null }) {
+  const { grid, zoom } = props
+  const totalLabel = zoom === 'days' ? (grid ? periodShort(grid.start) : 'total') : zoom === 'weeks' ? `${VECTOR_WEEKS_ZOOM_COUNT} wk` : `${VECTOR_MONTHS_ZOOM_COUNT} mo`
+  const stepWord = zoom === 'days' ? 'month' : zoom === 'weeks' ? `${VECTOR_WEEKS_ZOOM_COUNT} weeks` : `${VECTOR_MONTHS_ZOOM_COUNT} months`
   return (
     <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.7rem 0.9rem', marginTop: '0.6rem' }} data-testid="bridge-vector-days">
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
         <span style={label}>Vectors — by the day</span>
         <span style={det}>was each person's day worth it · field people · approved time</span>
+        <span role="group" aria-label="Zoom" style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden' }}>
+          {ZOOMS.map((z) => (
+            <button key={z.key} type="button" onClick={() => props.onZoom(z.key)} style={segBtn(z.key === zoom)} aria-pressed={z.key === zoom}>
+              {z.word}
+            </button>
+          ))}
+        </span>
         <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
-          <button type="button" onClick={props.onPrev} disabled={!props.canPrev} style={{ ...navBtn, opacity: props.canPrev ? 1 : 0.4 }} aria-label="Previous month">
+          <button type="button" onClick={props.onPrev} disabled={!props.canPrev} style={{ ...navBtn, opacity: props.canPrev ? 1 : 0.4 }} aria-label={`Previous ${stepWord}`}>
             ‹
           </button>
           <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>
             {props.periodLabel}
             {props.isCurrent ? <span style={{ ...det, fontWeight: 400 }}> so far</span> : null}
           </span>
-          <button type="button" onClick={props.onNext} disabled={!props.canNext} style={{ ...navBtn, opacity: props.canNext ? 1 : 0.4 }} aria-label="Next month">
+          <button type="button" onClick={props.onNext} disabled={!props.canNext} style={{ ...navBtn, opacity: props.canNext ? 1 : 0.4 }} aria-label={`Next ${stepWord}`}>
             ›
           </button>
         </span>
@@ -183,10 +225,11 @@ export function BridgeVectorDaysPanel(props: { grid: VectorGrid | null; periodLa
                 <td style={{ ...nameTd, fontWeight: 700, borderTop: '2px solid var(--border-strong)' }}>Field crew</td>
                 {grid.columns.map((col, i) => {
                   const b = grid.company.cells[i] ?? null
-                  if (col.kind !== 'day') return <SumCell key={col.key} b={b} col={col} bold />
+                  if (col.kind === 'weekSum') return <SumCell key={col.key} b={b} col={col} bold />
                   const c = b?.contributionUsd
+                  const wide = col.kind === 'day' ? {} : { width: 56, minWidth: 56 }
                   return (
-                    <td key={col.key} style={{ ...cellBase, borderTop: '2px solid var(--border-strong)', borderRadius: 0, fontWeight: 700, color: c == null ? 'var(--text-muted)' : c >= 0 ? 'var(--text-green-700)' : 'var(--text-red-700)' }} title={b ? bucketTitle(b, col) : undefined}>
+                    <td key={col.key} style={{ ...cellBase, ...wide, borderTop: '2px solid var(--border-strong)', borderRadius: 0, fontWeight: 700, color: c == null ? 'var(--text-muted)' : c >= 0 ? 'var(--text-green-700)' : 'var(--text-red-700)' }} title={b ? bucketTitle(b, col) : undefined}>
                       {c == null ? '' : shortUsd(c)}
                     </td>
                   )
@@ -207,7 +250,7 @@ export function BridgeVectorDaysPanel(props: { grid: VectorGrid | null; periodLa
         <span>Numbers are the day's contribution in dollars, short.</span>
       </div>
       <div style={{ ...det, marginTop: '0.3rem' }}>
-        The same rule as the table above, one day at a time: earned = field hours × the job's contract ÷ expected hours; labor = hours × the wage (a salaried person's day costs the flat workday). A red day means the job's rate is under the wage — priced low, no contract price, or run past its expected hours — and every hour on it reads the same, whoever worked it. Every new hour and % update re-prices every day on that job, so the grid is always as of today. Materials and subs are job costs, not a person's day.
+        The same rule as the table above, one day at a time (Weeks and Months are the same days folded into pay weeks and months): earned = field hours × the job's contract ÷ expected hours; labor = hours × the wage (a salaried person's day costs the flat workday). A red day means the job's rate is under the wage — priced low, no contract price, or run past its expected hours — and every hour on it reads the same, whoever worked it. Every new hour and % update re-prices every day on that job, so the grid is always as of today. Materials and subs are job costs, not a person's day.
       </div>
     </div>
   )

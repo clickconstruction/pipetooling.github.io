@@ -16,7 +16,7 @@ import { loadBridgeVectorInputs, type BridgeVectorInputs } from '../lib/bridge/l
 import { buildVectors } from '../lib/bridge/vectors'
 import { BridgeVectorDaysPanel } from '../components/bridge/BridgeVectorDaysPanel'
 import { loadVectorDaysInputs, type VectorDaysInputs } from '../lib/bridge/loadVectorDays'
-import { buildVectorGrid, monthStartOf, vectorAnchorStep, vectorRangeFor, vectorRangeLabel } from '../lib/bridge/vectorDays'
+import { buildVectorGrid, monthStartOf, vectorAnchorStep, vectorRangeFor, vectorRangeLabel, type VectorZoom } from '../lib/bridge/vectorDays'
 import { formatPayWeekLabel, payWeekContaining } from '../lib/payWeekAnchor'
 import { ymdAddDays } from '../utils/dateUtils'
 
@@ -54,7 +54,8 @@ export default function Bridge() {
   const [vectorInputs, setVectorInputs] = useState<BridgeVectorInputs | null>(null)
   const [vectorError, setVectorError] = useState<string | null>(null)
   const [vectorWeekStart, setVectorWeekStart] = useState<string | null>(null)
-  // Vectors by the day (v2.4217): the month drawn, its sessions and job rates (cached per period on this page).
+  // Vectors by the day (v2.4217): the period drawn (a month of days, 13 pay weeks or 12 months — v2.4219), its sessions and job rates (cached per period on this page).
+  const [daysZoom, setDaysZoom] = useState<VectorZoom>('days')
   const [daysAnchor, setDaysAnchor] = useState<string | null>(null)
   const [daysInputs, setDaysInputs] = useState<VectorDaysInputs | null>(null)
   const [daysError, setDaysError] = useState<string | null>(null)
@@ -234,8 +235,8 @@ export default function Bridge() {
     return buildVectors({ weekStart: vectorWeek.start, weekEnd: vectorWeek.end, ...inputs, assumedHalfJobs: new Set(data?.earned.assumedHalfJobs ?? []) })
   }, [vectorWeek, vectorInputs, data])
 
-  // Vectors by the day (v2.4217): one month of sessions + rates per anchor, loaded once the Bridge data is in.
-  const daysRange = useMemo(() => (data ? vectorRangeFor('days', daysAnchor ?? data.todayYmd) : null), [data, daysAnchor])
+  // Vectors by the day (v2.4217): the period's sessions + rates per zoom and anchor, loaded once the Bridge data is in.
+  const daysRange = useMemo(() => (data ? vectorRangeFor(daysZoom, daysAnchor ?? data.todayYmd) : null), [data, daysZoom, daysAnchor])
   useEffect(() => {
     if (!data || !daysRange) return
     const key = `${daysRange.start}:${daysRange.end}`
@@ -264,8 +265,8 @@ export default function Bridge() {
   const daysGrid = useMemo(() => {
     if (!data || !daysRange || !daysInputs || !vectorInputs) return null
     return buildVectorGrid({
-      zoom: 'days',
-      anchorYmd: daysRange.start,
+      zoom: daysZoom,
+      anchorYmd: daysZoom === 'days' ? daysRange.start : daysRange.end,
       todayYmd: data.todayYmd,
       mode: 'approved',
       people: vectorInputs.people,
@@ -275,7 +276,7 @@ export default function Bridge() {
       assumedHalfJobs: daysInputs.assumedHalfJobs,
       jobLabels: daysInputs.jobLabels,
     })
-  }, [data, daysRange, daysInputs, vectorInputs])
+  }, [data, daysZoom, daysRange, daysInputs, vectorInputs])
 
   // Truth check: paper profit vs the net position change over the chart's days — flows only, so it reads before cash is typed.
   const truth = useMemo<TruthCheck | null>(() => {
@@ -414,12 +415,17 @@ export default function Bridge() {
           {daysRange && (
             <BridgeVectorDaysPanel
               grid={daysGrid}
-              periodLabel={vectorRangeLabel('days', daysRange)}
+              zoom={daysZoom}
+              onZoom={(z) => {
+                setDaysZoom(z)
+                setDaysAnchor(null)
+              }}
+              periodLabel={vectorRangeLabel(daysZoom, daysRange)}
               isCurrent={daysRange.end >= data.todayYmd}
               canPrev={daysRange.start > monthStartOf(ymdAddDays(data.todayYmd, -730))}
               canNext={daysRange.end < data.todayYmd}
-              onPrev={() => setDaysAnchor(vectorAnchorStep('days', daysRange.start, -1))}
-              onNext={() => setDaysAnchor(vectorAnchorStep('days', daysRange.start, 1))}
+              onPrev={() => setDaysAnchor(vectorAnchorStep(daysZoom, daysZoom === 'days' ? daysRange.start : daysRange.end, -1))}
+              onNext={() => setDaysAnchor(vectorAnchorStep(daysZoom, daysZoom === 'days' ? daysRange.start : daysRange.end, 1))}
               loading={daysGrid == null && daysError == null}
               error={daysError ?? vectorError}
             />
