@@ -2254,6 +2254,8 @@ const response = await supabase.functions.invoke('send-checklist-notification', 
 
 ### send-report-email
 
+> **v2.4180 — the email is a kernel**: `buildReportEmail`, `ReportContent`, `renderFieldValue` and `escapeHtml` moved verbatim into [`_shared/fieldReportEmail.ts`](../supabase/functions/_shared/fieldReportEmail.ts); `index.ts` imports them, so Settings → What the team sees renders the email on sample data (punch list #60, lift 11 of 14). Redeploy after merge.
+
 **Purpose**: Emails a report to standing recipients configured in **`report_email_subscriptions`** (Jobs → Reports → **Email reports** → the person's row, or the Dashboard → Recent Reports mail button — one modal since v2.3570, one list by person since v2.3595). Resolves report content (template name, author, job/project/bid display, `field_values` with signature fields rendered as `[signature captured]`), sends via Resend, and records a `report_email_dispatch_log` row so each `(subscription, report)` is emailed at most once across both modes.
 
 - **`auto`** (`{ report_id }`) — fired fire-and-forget right after a report is created (next to `send-report-notification`). Emails every enabled subscription with `auto_send = true` whose scope matches — `all_authors`, or the report's `created_by_user_id` is in `report_email_subscription_authors`, or (v2.3480) the author is, or is led by, a leader in `report_email_subscription_team_leads` (`team_leader_assignments` read at send time) — skipping any already in the dispatch log. The client mirror of the rule is `subscriptionMatchesReport` in `src/lib/reportEmailSubscriptions.ts`.

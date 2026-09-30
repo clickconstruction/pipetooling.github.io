@@ -42,6 +42,7 @@ export type TeamSampleEmailId =
   | 'schedule_day'
   | 'schedule_share'
   | 'recurring_job_report'
+  | 'report_email'
   | 'signed_agreement_staff'
   | 'estimate_accepted_staff'
   | 'gc_word_ask'
@@ -277,8 +278,8 @@ export const TEAM_EMAILS: readonly TeamEmail[] = [
     label: 'Field report',
     when: { kind: 'event', label: 'When a report you subscribe to is filed', order: 19 },
     recipients: { roles: EVERYONE, decidedBy: 'setting', rule: 'Anyone subscribed to that report template (Emails & reports → Report subscriptions).' },
-    sampleSubject: () => 'Report — Daily log · J1054 Sam Sample',
-    render: { kind: 'soon', note: 'Built inside send-report-email over the filed report.' },
+    sampleSubject: () => 'Job completion — 1054 · Water heater replacement',
+    render: { kind: 'sample', sample: 'report_email' },
     manage: emails('Emails & reports → Report subscriptions'),
     reflects: ['report templates'],
   },
