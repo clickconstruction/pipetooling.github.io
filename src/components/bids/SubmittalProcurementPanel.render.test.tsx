@@ -6,7 +6,7 @@
  * and Send update recording a snapshot with the changes.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { SubmittalProcurementPanel } from './SubmittalProcurementPanel'
 import type { ProcurementItemSource } from '../../lib/submittals/procurementLog'
@@ -99,6 +99,96 @@ describe('SubmittalProcurementPanel', () => {
     expect(upd.changes).toHaveLength(2)
     expect(upd.line).toBe('hello')
     await waitFor(() => expect(screen.getByText(/last update 09\/28 to Dana W\./)).toBeTruthy())
+  })
+
+  it('v2.4239 · a date box saves a finished date only: a half-typed year writes nothing, a typed date waits for the box to be left, an emptied box saves null', async () => {
+    renderWithProviders(<SubmittalProcurementPanel bidId="b1" bidLabel="B482 Shipley" companyName="Click" items={items} reviewerNames={['Dana W.']} currentUser={{ id: 'u', name: 'Wendi' }} />)
+    await waitFor(() => expect(screen.getAllByTestId('procurement-row')).toHaveLength(2))
+    writes.length = 0
+    const settle = () => act(async () => { await new Promise((r) => setTimeout(r, 0)) })
+    const floatOf = (i: number) => screen.getAllByTestId('procurement-float')[i]!.textContent
+    const itemWrites = () => writes.filter((w) => w.table === 'bid_procurement_items')
+
+    // The browser hands over 0002-09-30 when the first digit of the year lands: nothing is written, and the float does not turn to "on site".
+    const delivered = screen.getByLabelText('BFP-1 delivered on') as HTMLInputElement
+    fireEvent.change(delivered, { target: { value: '0002-09-30' } })
+    await settle()
+    expect(itemWrites()).toHaveLength(0)
+    expect(delivered.value).toBe('0002-09-30')
+    expect(floatOf(0)).toBe('−14 d')
+    // The finished date (a pick from the calendar: no key pressed) writes once.
+    fireEvent.change(delivered, { target: { value: '2026-09-30' } })
+    await waitFor(() => expect(itemWrites()).toHaveLength(1))
+    await settle()
+    expect(itemWrites()).toEqual([{ table: 'bid_procurement_items', op: 'update', payload: { delivered_on: '2026-09-30' } }])
+
+    // Typed: the day 25 → "1" → "15" passes through 09/01; nothing is written until the box is left, then once.
+    writes.length = 0
+    const ordered = screen.getByLabelText('BFP-1 ordered on') as HTMLInputElement
+    fireEvent.keyDown(ordered, { key: '1' })
+    fireEvent.change(ordered, { target: { value: '2026-09-01' } })
+    fireEvent.keyDown(ordered, { key: '5' })
+    fireEvent.change(ordered, { target: { value: '2026-09-15' } })
+    await settle()
+    expect(itemWrites()).toHaveLength(0)
+    expect(ordered.value).toBe('2026-09-15')
+    fireEvent.blur(ordered)
+    await waitFor(() => expect(itemWrites()).toHaveLength(1))
+    expect(itemWrites()[0]).toMatchObject({ op: 'update', payload: { ordered_on: '2026-09-15' } })
+    await settle()
+
+    // Typed and left with the year half done: nothing is written, the box goes back to the saved date, and a line says why.
+    writes.length = 0
+    fireEvent.keyDown(ordered, { key: '2' })
+    fireEvent.change(ordered, { target: { value: '0002-09-25' } })
+    fireEvent.blur(ordered)
+    await settle()
+    expect(itemWrites()).toHaveLength(0)
+    expect(ordered.value).toBe('2026-09-25')
+    expect(screen.getByText(/That date was not finished, so it was not saved/)).toBeTruthy()
+
+    // Left with a part missing (09/dd/2026): the browser reports no date at all. That is not a cleared box — nothing is written.
+    fireEvent.keyDown(ordered, { key: 'Backspace' })
+    fireEvent.change(ordered, { target: { value: '' } })
+    Object.defineProperty(ordered, 'validity', { value: { badInput: true }, configurable: true })
+    fireEvent.blur(ordered)
+    await settle()
+    expect(itemWrites()).toHaveLength(0)
+    expect(ordered.value).toBe('2026-09-25')
+    Object.defineProperty(ordered, 'validity', { value: { badInput: false }, configurable: true })
+
+    // Enter saves a typed date without leaving the box; an emptied box saves null.
+    fireEvent.keyDown(ordered, { key: '6' })
+    fireEvent.change(ordered, { target: { value: '2026-09-26' } })
+    fireEvent.keyDown(ordered, { key: 'Enter' })
+    await waitFor(() => expect(itemWrites()).toHaveLength(1))
+    expect(itemWrites()[0]).toMatchObject({ payload: { ordered_on: '2026-09-26' } })
+    await settle()
+    writes.length = 0
+    fireEvent.keyDown(ordered, { key: 'Backspace' })
+    fireEvent.change(ordered, { target: { value: '' } })
+    fireEvent.blur(ordered)
+    await waitFor(() => expect(itemWrites()).toHaveLength(1))
+    expect(itemWrites()[0]).toMatchObject({ op: 'update', payload: { ordered_on: null } })
+    await settle()
+  })
+
+  it('v2.4239 · two boxes filled on a new row before the first save lands make one record: the second write updates it', async () => {
+    const before = state.records
+    state.records = before.filter((r) => r.tag !== 'WH-1')
+    try {
+      renderWithProviders(<SubmittalProcurementPanel bidId="b1" bidLabel="B482 Shipley" companyName="Click" items={items} reviewerNames={['Dana W.']} currentUser={{ id: 'u', name: 'Wendi' }} />)
+      await waitFor(() => expect(screen.getAllByTestId('procurement-row')).toHaveLength(2))
+      writes.length = 0
+      // Both changes land in one tick, against the same row with no record yet.
+      fireEvent.change(screen.getByLabelText('WH-1 ordered on'), { target: { value: '2026-09-24' } })
+      fireEvent.change(screen.getByLabelText('WH-1 delivered on'), { target: { value: '2026-10-01' } })
+      await waitFor(() => expect(writes).toHaveLength(2))
+      expect(writes.map((w) => w.op)).toEqual(['insert', 'update'])
+      expect(writes[1]!.payload).toEqual({ delivered_on: '2026-10-01' })
+    } finally {
+      state.records = before
+    }
   })
 
   it('v2.4113 · Download CSV saves the log as a file and Open in Google Sheets copies tab-separated rows then opens a new sheet', async () => {

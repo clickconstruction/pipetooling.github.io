@@ -7,6 +7,7 @@ import {
   gcScheduleWord,
   gcSubmittalWord,
   groupRowsByStage,
+  isPlausibleLogDate,
   longDate,
   monthDay,
   procurementAsks,
@@ -17,6 +18,7 @@ import {
   floatText,
   procurementHeadline,
   procurementUpdateText,
+  readLogDateEntry,
   shortDate,
   snapshotRows,
   stageDatesFromJob,
@@ -57,6 +59,42 @@ describe('dates', () => {
     expect(daysBetween('2026-10-20', '2026-10-06')).toBe(-14)
     expect(shortDate('2026-09-28')).toBe('09/28')
     expect(shortDate(null)).toBe('')
+  })
+
+  it('a log date is plausible only as a real day with a full year (a date box hands over 0002-… while the year is typed)', () => {
+    expect(isPlausibleLogDate('2026-09-30')).toBe(true)
+    expect(isPlausibleLogDate('2000-01-01')).toBe(true)
+    expect(isPlausibleLogDate('2100-12-31')).toBe(true)
+    // The year "2026" one digit at a time, and the date found on B375.
+    for (const typing of ['0002-09-30', '0020-09-30', '0202-09-30', '0001-02-12']) expect(isPlausibleLogDate(typing)).toBe(false)
+    expect(isPlausibleLogDate('1999-12-31')).toBe(false)
+    expect(isPlausibleLogDate('2101-01-01')).toBe(false)
+    expect(isPlausibleLogDate('20260-09-30')).toBe(false)
+    // Not a day on the calendar, not the shape, nothing at all.
+    expect(isPlausibleLogDate('2026-02-30')).toBe(false)
+    expect(isPlausibleLogDate('2026-13-01')).toBe(false)
+    expect(isPlausibleLogDate('2028-02-29')).toBe(true)
+    expect(isPlausibleLogDate('2026-02-29')).toBe(false)
+    expect(isPlausibleLogDate('09/30/2026')).toBe(false)
+    expect(isPlausibleLogDate('2026-09-30T00:00:00Z')).toBe(false)
+    expect(isPlausibleLogDate('')).toBe(false)
+    expect(isPlausibleLogDate(null)).toBe(false)
+    expect(isPlausibleLogDate(undefined)).toBe(false)
+  })
+
+  it('reads a date box: a finished date saves, an empty box clears, the stored date is no change, a half-typed year is unfinished', () => {
+    expect(readLogDateEntry('2026-09-30', null)).toEqual({ kind: 'save', value: '2026-09-30' })
+    expect(readLogDateEntry('2026-09-30', '2026-09-24')).toEqual({ kind: 'save', value: '2026-09-30' })
+    expect(readLogDateEntry('', '2026-09-24')).toEqual({ kind: 'save', value: null })
+    expect(readLogDateEntry('  ', '2026-09-24')).toEqual({ kind: 'save', value: null })
+    expect(readLogDateEntry('2026-09-24', '2026-09-24')).toEqual({ kind: 'unchanged' })
+    expect(readLogDateEntry('', null)).toEqual({ kind: 'unchanged' })
+    expect(readLogDateEntry('0002-09-30', null)).toEqual({ kind: 'unfinished' })
+    expect(readLogDateEntry('0202-09-30', '2026-09-24')).toEqual({ kind: 'unfinished' })
+    // A bad date already stored (B375's 0001-02-12) can still be cleared or replaced; it is never re-saved.
+    expect(readLogDateEntry('', '0001-02-12')).toEqual({ kind: 'save', value: null })
+    expect(readLogDateEntry('2026-02-12', '0001-02-12')).toEqual({ kind: 'save', value: '2026-02-12' })
+    expect(readLogDateEntry('0001-02-12', '0001-02-12')).toEqual({ kind: 'unchanged' })
   })
 })
 

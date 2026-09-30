@@ -64,6 +64,34 @@ export function shortDate(iso: string | null | undefined): string {
   return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`
 }
 
+/** The years a log date may carry. A date box hands over `0002-09-30` while the year is still being typed. */
+export const LOG_DATE_MIN_YEAR = 2000
+export const LOG_DATE_MAX_YEAR = 2100
+
+/** A finished, sensible log date: a real `YYYY-MM-DD` day with its year in the window. */
+export function isPlausibleLogDate(iso: string | null | undefined): boolean {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso ?? '')
+  if (!m) return false
+  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])]
+  if (y < LOG_DATE_MIN_YEAR || y > LOG_DATE_MAX_YEAR) return false
+  const day = new Date(Date.UTC(y, mo - 1, d))
+  return day.getUTCFullYear() === y && day.getUTCMonth() === mo - 1 && day.getUTCDate() === d
+}
+
+export type LogDateEntry = { kind: 'save'; value: string | null } | { kind: 'unchanged' } | { kind: 'unfinished' }
+
+/**
+ * What a date box's value means for the log: an empty box clears the date, a plausible
+ * date saves, the stored date again is no change, and anything else (a year half typed)
+ * is unfinished and never saved.
+ */
+export function readLogDateEntry(raw: string, stored: string | null): LogDateEntry {
+  const v = raw.trim()
+  if (v === (stored ?? '')) return { kind: 'unchanged' }
+  if (v === '') return { kind: 'save', value: null }
+  return isPlausibleLogDate(v) ? { kind: 'save', value: v } : { kind: 'unfinished' }
+}
+
 /* ────────────────────────────── inputs ────────────────────────────── */
 
 export type ProcurementDecisionKind = 'approved' | 'revise' | 'rejected'
