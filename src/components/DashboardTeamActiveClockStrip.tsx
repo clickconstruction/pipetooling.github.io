@@ -24,7 +24,10 @@ import {
   type JobsWorkedTodayStripRow,
   type TodaySessionStripRow,
 } from '../hooks/useDashboardMyTeamSectionState'
-import { approveClockSessions } from '../lib/approveClockSessions'
+import { approveClockSessions, heldFromApproveResult } from '../lib/approveClockSessions'
+import { describeHeld, typedStampsVersion } from '../lib/clock/typedHours'
+import { useTypedStamps } from '../hooks/useTypedStamps'
+import { TypedHoursStamp } from './clock/TypedHoursStamp'
 import { recordHoursApproved, type HoursApprovedSurface } from '../lib/hoursApprovedTelemetry'
 import { supabase } from '../lib/supabase'
 import { countDistinctJobsPerAssignee } from '../lib/currentlyInDispatchCounts'
@@ -1046,6 +1049,17 @@ export function DashboardTeamActiveClockStrip({
     return () => window.removeEventListener('keydown', onKey)
   }, [stripRejectConfirm, stripApproveBusy])
 
+  // Typed hours (v2.4247): a pencil beside the pill of a session someone typed; the actions window says who.
+  const stripSessions = useMemo(() => {
+    const all: TodaySessionStripRow[] = []
+    for (const row of clockedInTodayRows) for (const t of row.todaySessions) if (t.id) all.push(t)
+    for (const job of jobsWorkedTodayRows) for (const t of job.sessions) if (t.id) all.push(t)
+    return all
+  }, [clockedInTodayRows, jobsWorkedTodayRows])
+  const stripSessionIds = useMemo(() => stripSessions.map((t) => t.id), [stripSessions])
+  const stripSessionsVersion = useMemo(() => typedStampsVersion(stripSessions), [stripSessions])
+  const { stamps: typedStamps, reload: reloadTypedStamps } = useTypedStamps(stripSessionIds, stripSessionsVersion)
+
   const handleStripSessionApprove = useCallback(
     async (sessionId: string, surface: HoursApprovedSurface = 'strip-actions'): Promise<boolean> => {
       if (!sessionId) return false
@@ -1062,8 +1076,17 @@ export function DashboardTeamActiveClockStrip({
           onJobBidAssignError?.(row.error_message)
           return false
         }
+        // Held (the approver typed the hours, or they are the approver's own): nothing was approved.
+        const { heldOwn, heldTyped } = heldFromApproveResult(data)
+        const held = describeHeld(heldOwn, heldTyped)
+        if (held && (row?.approved_count ?? 0) === 0) {
+          onJobBidAssignError?.(`Not approved. ${held}`)
+          reloadTypedStamps()
+          return false
+        }
         setOptimisticStripApprovedIds((prev) => new Set(prev).add(sessionId))
         recordHoursApproved(authUserId, viewerRole, surface, row?.approved_count ?? 1)
+        reloadTypedStamps()
         onClockSessionsMutated?.()
         return true
       } finally {
@@ -1074,7 +1097,7 @@ export function DashboardTeamActiveClockStrip({
         })
       }
     },
-    [onClockSessionsMutated, onJobBidAssignError, authUserId, viewerRole],
+    [onClockSessionsMutated, onJobBidAssignError, authUserId, viewerRole, reloadTypedStamps],
   )
 
   /**
@@ -2145,7 +2168,8 @@ export function DashboardTeamActiveClockStrip({
                                                     status={stripApproveStatus}
                                                     interactive={
                                                       canApproveClockSessions === true &&
-                                                      stripApproveStatus === 'pending'
+                                                      stripApproveStatus === 'pending' &&
+                                                      !typedStamps.get(s.id)?.hold
                                                     }
                                                     actionsEligible={
                                                       canApproveClockSessions === true &&
@@ -2173,6 +2197,7 @@ export function DashboardTeamActiveClockStrip({
                                                     onReject={async () => {}}
                                                   />
                                                 ) : null}
+                                                <TypedHoursStamp stamp={typedStamps.get(s.id)} size="dot" />
                                                 <span
                                                   style={{
                                                     display: 'inline-flex',
@@ -2736,7 +2761,8 @@ export function DashboardTeamActiveClockStrip({
                                                 status={stripApproveStatus}
                                                 interactive={
                                                   canApproveClockSessions === true &&
-                                                  stripApproveStatus === 'pending'
+                                                  stripApproveStatus === 'pending' &&
+                                                  !typedStamps.get(s.id)?.hold
                                                 }
                                                 actionsEligible={
                                                   canApproveClockSessions === true &&
@@ -2764,6 +2790,7 @@ export function DashboardTeamActiveClockStrip({
                                                 onReject={async () => {}}
                                               />
                                             ) : null}
+                                            <TypedHoursStamp stamp={typedStamps.get(s.id)} size="dot" />
                                             <span
                                               style={{
                                                 display: 'inline-flex',
@@ -2931,6 +2958,7 @@ export function DashboardTeamActiveClockStrip({
     }}
     onSaved={() => onClockSessionsMutated?.()}
     onError={(msg) => onJobBidAssignError?.(msg)}
+    typedStamp={stripActionsPayload ? typedStamps.get(stripActionsPayload.sessionId) : null}
   />
   {stripRejectConfirm ? (
     <div

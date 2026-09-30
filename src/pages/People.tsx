@@ -132,6 +132,8 @@ import {
   scaleClosedSessionsToTargetHours,
   toDayEditorSession,
 } from '../lib/peopleHoursProportionalScale'
+import { useTypedStamps } from '../hooks/useTypedStamps'
+import { needsSecondLook, typedStampsVersion } from '../lib/clock/typedHours'
 import {
   buildClosedPendingHoursSumsByCell,
   buildHoursGridNameJoin,
@@ -1738,6 +1740,15 @@ export default function People() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [pendingClockSessions, peopleHours, showPeopleForHours, hoursDays, users, payConfig],
   )
+  // Typed hours (v2.4247): the pending sessions someone typed hours onto — the cell badge wears a pencil for them.
+  const pendingClockSessionIds = useMemo(() => pendingClockSessions.map((s) => s.id), [pendingClockSessions])
+  const pendingClockSessionsVersion = useMemo(() => typedStampsVersion(pendingClockSessions), [pendingClockSessions])
+  const { stamps: pendingTypedStamps } = useTypedStamps(pendingClockSessionIds, pendingClockSessionsVersion)
+  const typedPendingSessionIds = useMemo(() => {
+    const out = new Set<string>()
+    for (const [id, stamp] of pendingTypedStamps) if (needsSecondLook(stamp)) out.add(id)
+    return out
+  }, [pendingTypedStamps])
   /** People → Hours (J7-4): open sessions per day column, so the header can say "+N on the clock" next to a closed-sessions-only total. */
   const hoursGridLiveByWorkDate = useMemo(
     () =>
@@ -2547,6 +2558,7 @@ export default function People() {
                 hoursFlashWorkDate={hoursFlashWorkDate}
                 hoursFlashPersonName={hoursFlashPersonName}
                 hoursDaysCorrect={hoursDaysCorrect}
+                typedPendingSessionIds={typedPendingSessionIds}
                 users={users}
                 canEditCrewJobs={canEditCrewJobs}
                 canAccessHours={canAccessHours}

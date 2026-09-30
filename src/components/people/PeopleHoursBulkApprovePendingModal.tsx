@@ -1,5 +1,8 @@
 import { useState } from 'react'
-import { approveClockSessions } from '../../lib/approveClockSessions'
+import { approveClockSessions, heldFromApproveResult } from '../../lib/approveClockSessions'
+import { describeHeld, splitForApproveAll, typedStampsVersion } from '../../lib/clock/typedHours'
+import { useTypedStamps } from '../../hooks/useTypedStamps'
+import { TypedHoursStamp } from '../clock/TypedHoursStamp'
 import { recordHoursApproved } from '../../lib/hoursApprovedTelemetry'
 import { cellApprovalChips } from '../../lib/people/approvalsSessionChips'
 import type { SalariedPayConfigFlags } from '../../lib/salariedEffectiveHours'
@@ -41,27 +44,30 @@ export function PeopleHoursBulkApprovePendingModal({
     entries.map((e) => [`${e.personName}|${e.workDate}`, cellApprovalChips({ payConfig: payConfigFor?.(e.personName), sessions: e.sessions })] as const),
   )
   const anySalaryChip = entries.some((e) => payConfigFor?.(e.personName)?.is_salary === true)
+  // Typed hours (v2.4247): this window approves in one press, so it takes the punches only.
+  const { stamps } = useTypedStamps(summary.allSessionIds, typedStampsVersion(entries.flatMap((e) => e.sessions)))
+  const split = splitForApproveAll(summary.allSessionIds, stamps)
+  const setAside = split.typedIds.length + split.heldIds.length
 
   async function handleApproveAll() {
-    if (busy || summary.allSessionIds.length === 0) return
+    if (busy || split.punchIds.length === 0) return
     setBusy(true)
-    const { data, error } = await approveClockSessions(summary.allSessionIds)
+    const { data, error } = await approveClockSessions(split.punchIds)
     setBusy(false)
     if (error) {
       onError(error.message)
       return
     }
-    const result = (data ?? []) as Array<{ approved_count: number; error_message: string | null }>
-    const row = result[0]
+    const row = data?.[0]
     if (row?.error_message) {
       onError(row.error_message)
       return
     }
-    recordHoursApproved(authUser?.id, role, 'bulk-modal', row?.approved_count ?? summary.allSessionIds.length)
-    onShowToast(
-      `Approved ${row?.approved_count ?? summary.allSessionIds.length} session(s) — added to payroll`,
-      'success',
-    )
+    const approved = row?.approved_count ?? split.punchIds.length
+    const { heldOwn, heldTyped } = heldFromApproveResult(data)
+    const held = describeHeld(heldOwn, heldTyped)
+    if (approved > 0) recordHoursApproved(authUser?.id, role, 'bulk-modal', approved)
+    onShowToast(`Approved ${approved} session(s) — added to payroll${held ? `. ${held}` : ''}`, held ? 'warning' : 'success')
     onApproved()
     onClose()
   }
@@ -225,6 +231,10 @@ export function PeopleHoursBulkApprovePendingModal({
                       title={ranges}
                     >
                       {e.count}
+                      {(() => {
+                        const typedId = e.sessionIds.find((id) => split.typedIds.includes(id) || split.heldIds.includes(id))
+                        return typedId ? <TypedHoursStamp stamp={stamps.get(typedId)} size="compact" workDate={e.workDate} style={{ marginLeft: '0.4rem' }} /> : null
+                      })()}
                     </td>
                     <td
                       style={{
@@ -242,6 +252,13 @@ export function PeopleHoursBulkApprovePendingModal({
             </tbody>
           </table>
         </div>
+        {setAside > 0 ? (
+          <p data-testid="bulk-approve-set-aside" style={{ margin: '0 0 0.6rem', fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+            {setAside} session{setAside === 1 ? ' is' : 's are'} left out of this button
+            {split.typedIds.length > 0 ? ` — ${split.typedIds.length} typed by hand, approved one at a time from the cell or the approvals list` : ''}
+            {split.heldIds.length > 0 ? ` — ${split.heldIds.length} waiting on someone other than you` : ''}.
+          </p>
+        ) : null}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
           <button
             type="button"
@@ -262,19 +279,23 @@ export function PeopleHoursBulkApprovePendingModal({
           <button
             type="button"
             onClick={() => void handleApproveAll()}
-            disabled={busy || summary.totalSessions === 0}
+            disabled={busy || split.punchIds.length === 0}
             style={{
               padding: '0.4rem 0.9rem',
               fontSize: '0.875rem',
               fontWeight: 600,
               border: '1px solid #15803d',
-              background: busy || summary.totalSessions === 0 ? '#86efac' : '#22c55e',
+              background: busy || split.punchIds.length === 0 ? '#86efac' : '#22c55e',
               color: 'white',
               borderRadius: 4,
-              cursor: busy || summary.totalSessions === 0 ? 'not-allowed' : 'pointer',
+              cursor: busy || split.punchIds.length === 0 ? 'not-allowed' : 'pointer',
             }}
           >
-            {busy ? 'Approving…' : `Approve all ${summary.totalSessions} session${summary.totalSessions === 1 ? '' : 's'}`}
+            {busy
+              ? 'Approving…'
+              : setAside > 0
+                ? `Approve ${split.punchIds.length} ${split.punchIds.length === 1 ? 'punch' : 'punches'}`
+                : `Approve all ${summary.totalSessions} session${summary.totalSessions === 1 ? '' : 's'}`}
           </button>
         </div>
       </div>

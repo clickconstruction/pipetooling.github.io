@@ -2,7 +2,7 @@
 name: "Typed hours get a second look: the stamp, the hold, the worker's own door"
 number: 70
 group: ready
-status: claude/typed-hours-second-look · PR 1 (the database half) shipped v2.4242 · the screens are next
+status: PR 1 (the database) shipped v2.4242 · PR 2 (the stamp on the nine approval views) shipped v2.4247 · next the Needs You card
 summary: >
   A clock session someone typed looked the same as a punch, and the assistant who typed it could
   approve it. Now the database records typed hours (who, when, the day before and after), holds the
@@ -10,12 +10,11 @@ summary: >
   the nine approval views, a Needs You card, a worker's "it did not clock me in" door, the Hours
   grid stopping before it writes over clocked hours, and the dev switch.
 next: >
-  PR 2 the stamp and the held rows on the approval views; PR 3 the Needs You card and "Looks right";
-  PR 4 the worker's door; PR 5 the grid stop and the dead Quickfill hours grid; then a dev flips
-  the switch from test to on in Settings.
-size: M (PR 1, shipped) + S–M per screen PR × 4
+  PR 3 the Needs You card and "Looks right"; PR 4 the worker's door; PR 5 the grid stop and the
+  dead Quickfill hours grid; then a dev flips the switch from test to on in Settings.
+size: M (PRs 1–2, shipped) + S–M per screen PR × 3
 blocker: Nothing — building.
-ver: v2.4242
+ver: v2.4242 · v2.4247
 ---
 
 # Typed hours get a second look
@@ -79,9 +78,9 @@ Approve all holding typed rows, the worker's door, the grid stop.
 ## The plan
 
 1. **PR 1 — the database** · shipped v2.4242. No screen changes.
-2. **PR 2 — the stamp and the hold on the approval views.** `approveClockSessions` calls `_v2` and
-   falls back; `useTypedStamps(ids)` + `TypedHoursStamp` (full / compact / dot); each view shows the
-   stamp, takes held rows out of its *Approve all*, and says what it left.
+2. **PR 2 — the stamp and the hold on the approval views** · shipped v2.4247. `approveClockSessions`
+   calls `_v2` and falls back; `useTypedStamps(ids)` + `TypedHoursStamp` (full / compact / dot); each
+   view shows the stamp, takes typed and held rows out of its *Approve all*, and says what it left.
 3. **PR 3 — Needs You + "Looks right".** A card for dev / controller / office when typed hours wait
    on a second person; the approvals queue gets a *Typed by hand* filter and the approved-but-unlooked
    list with *Looks right*.

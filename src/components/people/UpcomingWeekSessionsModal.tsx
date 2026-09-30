@@ -3,7 +3,10 @@ import { weeklyQuickAddLine } from '../../lib/clock/quickTimeAdd'
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
-import { approveClockSessions } from '../../lib/approveClockSessions'
+import { approveClockSessions, heldFromApproveResult } from '../../lib/approveClockSessions'
+import { describeHeld, splitForApproveAll, typedStampsVersion } from '../../lib/clock/typedHours'
+import { useTypedStamps } from '../../hooks/useTypedStamps'
+import { TypedHoldNote, TypedHoursStamp } from '../clock/TypedHoursStamp'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import { shortJobOrBidLabelFromEmbeds } from '../../types/clockSessions'
@@ -113,8 +116,16 @@ export function UpcomingWeekSessionsModal({
     [sessions],
   )
 
+  // Typed hours (v2.4247): the stamp on each session, and the part of "Approve all" one press may take.
+  const sessionIds = useMemo(() => (sessions ?? []).map((x) => x.id), [sessions])
+  const sessionsVersion = useMemo(() => typedStampsVersion(sessions ?? []), [sessions])
+  const { stamps: typedStamps, reload: reloadTypedStamps } = useTypedStamps(sessionIds, sessionsVersion)
+  const approveAll = useMemo(() => splitForApproveAll(grouped?.pendingClosedIds ?? [], typedStamps), [grouped, typedStamps])
+  const approveAllSetAside = approveAll.typedIds.length + approveAll.heldIds.length
+
   function refreshAfterMutation() {
     setReloadTick((n) => n + 1)
+    reloadTypedStamps()
     onSessionsMutated()
   }
 
@@ -130,7 +141,9 @@ export function UpcomingWeekSessionsModal({
         return
       }
       const n = data?.[0]?.approved_count ?? ids.length
-      showToast(`Approved ${n} session${n === 1 ? '' : 's'}.`, 'success')
+      const { heldOwn, heldTyped } = heldFromApproveResult(data)
+      const held = describeHeld(heldOwn, heldTyped)
+      showToast(`Approved ${n} session${n === 1 ? '' : 's'}.${held ? ` ${held}` : ''}`, held ? 'warning' : 'success')
       refreshAfterMutation()
     } finally {
       if (bulk) setBulkBusy(false)
@@ -225,11 +238,12 @@ export function UpcomingWeekSessionsModal({
               </p>
             ) : null}
           </div>
-          {grouped && grouped.pendingClosedIds.length > 0 ? (
+          {grouped && approveAll.punchIds.length > 0 ? (
             <button
               type="button"
-              onClick={() => void handleApprove(grouped.pendingClosedIds, true)}
+              onClick={() => void handleApprove(approveAll.punchIds, true)}
               disabled={bulkBusy}
+              title={approveAllSetAside > 0 ? `${approveAllSetAside} typed by hand or held — approved one at a time, not by this button` : undefined}
               style={{
                 padding: '0.4rem 0.9rem',
                 background: bulkBusy ? '#9ca3af' : '#059669',
@@ -241,7 +255,11 @@ export function UpcomingWeekSessionsModal({
                 fontWeight: 600,
               }}
             >
-              {bulkBusy ? 'Approving…' : `Approve all (${grouped.pendingClosedIds.length})`}
+              {bulkBusy
+                ? 'Approving…'
+                : approveAllSetAside > 0
+                  ? `Approve ${approveAll.punchIds.length} ${approveAll.punchIds.length === 1 ? 'punch' : 'punches'}`
+                  : `Approve all (${grouped.pendingClosedIds.length})`}
             </button>
           ) : null}
           <button
@@ -296,6 +314,7 @@ export function UpcomingWeekSessionsModal({
                       prefixMap,
                     )
                     const notes = (s.notes ?? '').trim()
+                    const typedStamp = typedStamps.get(s.id)
                     return (
                       <li
                         key={s.id}
@@ -350,10 +369,13 @@ export function UpcomingWeekSessionsModal({
                         >
                           {approved ? 'Approved' : open ? 'Open' : 'Pending'}
                         </span>
+                        <TypedHoursStamp stamp={typedStamp} size="compact" workDate={s.work_date} />
+                        {pendingClosed && typedStamp?.hold ? <TypedHoldNote hold={typedStamp.hold} style={{ maxWidth: '11rem' }} /> : null}
                         {pendingClosed ? (
                           <>
                             <button
                               type="button"
+                              hidden={Boolean(typedStamp?.hold)}
                               onClick={() => void handleApprove([s.id], false)}
                               disabled={busy || bulkBusy}
                               style={{

@@ -8,6 +8,7 @@ import { formatDaySheetDayLabel, hoursGridCellStatus } from '../../lib/people/ho
 import { type HoursGridLiveByWorkDate, liveDayChipLabel, liveDayChipTitle } from '../../lib/people/hoursGridLiveByCell'
 import { pendingCellChipAriaLabel, pendingCellChipTitle } from '../../lib/people/hoursGridPendingChipCopy'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
+import { TYPED_PENCIL } from '../clock/TypedHoursStamp'
 import {
   type PeopleHoursPendingByCellMap,
   type PeopleHoursPendingCellEntry,
@@ -24,6 +25,8 @@ export interface PeopleHoursGridProps {
   hoursDays: string[]
   showPeopleForHours: string[]
   peopleHoursPendingByCellMap: PeopleHoursPendingByCellMap
+  /** Pending sessions someone typed hours onto, still waiting on a second look (v2.4247): the cell's badge wears a pencil. */
+  typedPendingSessionIds?: ReadonlySet<string>
   /** Open sessions per day column (J7-4): the header says "+N on the clock" because the cells count closed sessions only. */
   liveByWorkDate: HoursGridLiveByWorkDate
   jobHighlightPeople: Set<string>
@@ -64,6 +67,7 @@ export function PeopleHoursGrid({
   hoursFlashWorkDate,
   hoursFlashPersonName,
   hoursDaysCorrect,
+  typedPendingSessionIds,
   users,
   canEditCrewJobs,
   canAccessHours,
@@ -276,6 +280,7 @@ export function PeopleHoursGrid({
                 const showMyTimeCorner = gridDisplayHrs > 0 && !!hoursRowUser?.id
                 const pendingEntry = peopleHoursPendingByCellMap.get(pendingByCellKey(personName, d))
                 const showPendingBadge = !!pendingEntry && (canAccessHours || canAccessPay)
+                const pendingHasTyped = !!pendingEntry && !!typedPendingSessionIds && pendingEntry.sessionIds.some((id) => typedPendingSessionIds.has(id))
                 return (
                   <td
                     key={d}
@@ -504,7 +509,7 @@ export function PeopleHoursGrid({
                       <button
                         type="button"
                         aria-label={pendingCellChipAriaLabel({ personName, workDate: d, count: pendingEntry.count, diffHours: pendingEntry.diffHours })}
-                        title={pendingCellChipTitle(pendingEntry)}
+                        title={`${pendingCellChipTitle(pendingEntry)}${pendingHasTyped ? ' · some of it typed by hand, not punched' : ''}`}
                         onClick={(e) => {
                           e.stopPropagation()
                           const target = e.currentTarget
@@ -545,6 +550,7 @@ export function PeopleHoursGrid({
                       >
                         <span aria-hidden>!</span>
                         {pendingEntry.count}
+                        {pendingHasTyped ? <span data-testid="pending-cell-typed" aria-hidden>{TYPED_PENCIL}</span> : null}
                       </button>
                     ) : null}
                   </td>
