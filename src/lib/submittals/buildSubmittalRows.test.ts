@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildSubmittalRows, compareTags, rowsSentBack, summarizeChanges } from './buildSubmittalRows'
+import { buildSubmittalRows, compareTags, houseForRow, rowsSentBack, summarizeChanges } from './buildSubmittalRows'
 import type { PickInput, PreviousItem, SpecifiedInput, SubmittalRowDraft } from './buildSubmittalRows'
 
 const spec = (tag: string, fixture: string | null, manufacturer: string | null, model: string | null, description = `${fixture ?? tag}`): SpecifiedInput => ({
@@ -196,6 +196,31 @@ describe('buildSubmittalRows', () => {
     expect(acc.sheetFile).toBe(2)
     expect(acc.sheetPages).toEqual([7])
     expect(acc.changed).toBe(false)
+  })
+
+  it('a house set by hand on the row stands while the pick is the same quote line; a new pick brings its own house', () => {
+    const previous: PreviousItem[] = [
+      // Same pick as today's (ql-water-closet), but the office set National on the row by hand.
+      prevItem('WC-1', { submittedModel: 'CT708UVG#01', submittedLabel: 'TOTO CT708UVG#01 WALL HUNG BOWL 1.28GPF', status: 'as_specified', supplyHouseId: 'h-national', sourceQuoteLineId: 'ql-water-closet' }),
+      // Same pick, the house cleared by hand.
+      prevItem('FV-1', { submittedLabel: 'SLOAN ROYAL 111-1.28 ESS SENSOR FLUSHOMETER', status: 'as_specified', supplyHouseId: null, sourceQuoteLineId: 'ql-flush-valve' }),
+      // A different quote line was picked since: the new pick's house wins.
+      prevItem('LAV-1', { submittedLabel: 'KOHLER K-2210 CAXTON UNDERMOUNT', status: 'as_specified', supplyHouseId: 'h-national', sourceQuoteLineId: 'ql-an-older-quote' }),
+      // The accessory carries its hand-set house the same way.
+      prevItem('', { id: 'item-carrier', submittedLabel: 'ZURN Z1203 WALL CARRIER', status: 'accessory', supplyHouseId: 'h-national', sourceQuoteLineId: 'ql-carrier' }),
+    ]
+    const rows = buildSubmittalRows({ specified, picks, previous })
+    expect(byTag(rows, 'WC-1').supplyHouseId).toBe('h-national')
+    expect(byTag(rows, 'WC-1').houseName).toBeNull()
+    expect(byTag(rows, 'FV-1').supplyHouseId).toBeNull()
+    expect(byTag(rows, 'LAV-1').supplyHouseId).toBe('h-ferguson')
+    expect(byTag(rows, 'LAV-1').houseName).toBe('Ferguson')
+    expect(byTag(rows, '').supplyHouseId).toBe('h-national')
+    // No earlier row, or an earlier row that says nothing about its house: the pick's house.
+    expect(byTag(rows, 'WC-2').supplyHouseId).toBe('h-ferguson')
+    expect(byTag(buildSubmittalRows({ specified, picks, previous: [prevItem('WC-1', { status: 'as_specified' })] }), 'WC-1').supplyHouseId).toBe('h-ferguson')
+    // Nobody quoted it: no house, whatever the earlier row held.
+    expect(houseForRow(prevItem('PRV-1', { supplyHouseId: 'h-national', sourceQuoteLineId: null }), null)).toBeNull()
   })
 
   it('a near match (one-letter suffix) is as specified but flagged', () => {

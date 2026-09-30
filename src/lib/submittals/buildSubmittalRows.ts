@@ -45,6 +45,9 @@ export type PreviousItem = {
   sheetPages: number[]
   reviewDecision: 'approved' | 'revise' | 'rejected' | null
   reviewNote: string | null
+  /** The row's house and the pick it was built from — what `houseForRow` reads to keep a house set by hand. */
+  supplyHouseId?: string | null
+  sourceQuoteLineId?: string | null
 }
 
 export type ChangeNote = 'new row' | 'product changed' | 'status changed' | 'reason added' | 'now missing'
@@ -126,6 +129,17 @@ export function rowsSentBack(items: ReadonlyArray<PreviousItem>): PreviousItem[]
   return items.filter((i) => i.reviewDecision === 'revise' || i.reviewDecision === 'rejected')
 }
 
+/**
+ * The house a rebuilt row carries. The office can set a row's house by hand (the row editor),
+ * so while the pick behind the row is the same quote line the row's own house stands; a new
+ * pick brings its own house. A row with no pick, or no earlier row, takes the pick's.
+ */
+export function houseForRow(prev: PreviousItem | null, pick: Pick<PickInput, 'supplyHouseId' | 'quoteLineId'> | null): string | null {
+  const fromPick = pick?.supplyHouseId ?? null
+  if (!prev || !pick || prev.supplyHouseId === undefined) return fromPick
+  return prev.sourceQuoteLineId != null && prev.sourceQuoteLineId === pick.quoteLineId ? prev.supplyHouseId : fromPick
+}
+
 /** What changed against the previous revision's row (null = carried unchanged). */
 export function changeNoteFor(prev: PreviousItem | null, row: Pick<SubmittalRowDraft, 'submittedModel' | 'submittedLabel' | 'status' | 'reasonKind'>): ChangeNote | null {
   if (!prev) return 'new row'
@@ -189,6 +203,7 @@ export function buildSubmittalRows(args: {
 
     const partial = { submittedModel, submittedLabel, status, reasonKind }
     const changeNote = changeNoteFor(prev, partial)
+    const supplyHouseId = houseForRow(prev, pick)
     tagged.push({
       tag: spec.tag,
       sequenceOrder: 0,
@@ -198,8 +213,8 @@ export function buildSubmittalRows(args: {
       submittedManufacturer: null,
       submittedModel,
       submittedLabel,
-      supplyHouseId: pick?.supplyHouseId ?? null,
-      houseName: pick?.houseName ?? null,
+      supplyHouseId,
+      houseName: supplyHouseId === (pick?.supplyHouseId ?? null) ? pick?.houseName ?? null : null,
       sourceQuoteLineId: pick?.quoteLineId ?? null,
       status,
       near,
@@ -226,6 +241,7 @@ export function buildSubmittalRows(args: {
     const reasonNote = reasonFromPick ? pick.alternateReasonNote : prev?.reasonNote ?? null
     const leadTimeDays = pick.leadTimeDays ?? prev?.leadTimeDays ?? null
     const changeNote = changeNoteFor(prev, { submittedModel: label, submittedLabel: label, status, reasonKind })
+    const supplyHouseId = houseForRow(prev, pick)
     accessories.push({
       tag: '',
       sequenceOrder: 0,
@@ -235,8 +251,8 @@ export function buildSubmittalRows(args: {
       submittedManufacturer: null,
       submittedModel: label,
       submittedLabel: label,
-      supplyHouseId: pick.supplyHouseId,
-      houseName: pick.houseName,
+      supplyHouseId,
+      houseName: supplyHouseId === pick.supplyHouseId ? pick.houseName : null,
       sourceQuoteLineId: pick.quoteLineId,
       status,
       near,

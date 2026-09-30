@@ -72,3 +72,34 @@ describe('SubmittalItemEditDialog · entered call (5b)', () => {
     expect(onSave.mock.calls[0]![0]).toMatchObject({ entered: null, clearDecision: true })
   })
 })
+
+describe('SubmittalItemEditDialog · supply house', () => {
+  const houses = [{ id: 'h-moore', name: 'Moore Supply' }, { id: 'h-national', name: 'National Wholesale' }]
+
+  it('shows the row’s house, and Save carries a new one only when it was changed', () => {
+    const onSave = vi.fn<(p: SubmittalItemPatch) => void>()
+    const { unmount } = renderWithProviders(<SubmittalItemEditDialog item={item({ supply_house_id: 'h-moore' })} sourceFiles={[]} houses={houses} onSave={onSave} onClose={() => {}} />)
+    const picker = screen.getByLabelText('Supply house') as HTMLSelectElement
+    expect(picker.value).toBe('h-moore')
+    // Untouched: the patch says nothing about the house, so a save of something else cannot move it.
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    expect('supply_house_id' in onSave.mock.calls[0]![0]).toBe(false)
+    fireEvent.change(picker, { target: { value: 'h-national' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    expect(onSave.mock.calls[1]![0].supply_house_id).toBe('h-national')
+    fireEvent.change(picker, { target: { value: '' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    expect(onSave.mock.calls[2]![0].supply_house_id).toBeNull()
+    unmount()
+  })
+
+  it('is there on a shared revision too, keeps a house the list does not carry, and hides with no houses', () => {
+    const { unmount } = renderWithProviders(<SubmittalItemEditDialog item={item({ supply_house_id: 'h-gone' })} sourceFiles={[]} people={people} houses={houses} canEnterDecision onSave={() => {}} onClose={() => {}} />)
+    const picker = screen.getByLabelText('Supply house') as HTMLSelectElement
+    expect(picker.value).toBe('h-gone')
+    expect(screen.getByRole('option', { name: 'The house on this row' })).toBeTruthy()
+    unmount()
+    renderWithProviders(<SubmittalItemEditDialog item={item()} sourceFiles={[]} onSave={() => {}} onClose={() => {}} />)
+    expect(screen.queryByLabelText('Supply house')).toBeNull()
+  })
+})

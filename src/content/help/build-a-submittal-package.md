@@ -48,7 +48,7 @@ Wendi pastes the P002 schedule, picks NWS on the compare, and opens Submittals. 
 
 ## Fix a row
 
-Tap {{button:outline|Edit}} on any row. The editor takes the status. Superseded, equal or a design change is your call when the model numbers alone cannot tell. It takes the reason chips: {{chip:gray|Long lead time}} {{chip:gray|Discontinued}} {{chip:gray|In stock}} {{chip:gray|Or-equal clause}} {{chip:gray|Cost}} {{chip:gray|Other}}. An alternate or a design change owes a reason and a note. It takes the lead time: {{chip:gray|In stock}} {{chip:gray|1 wk}} {{chip:gray|2 wk}} {{chip:gray|4+ wk}}, or a typed one. And it takes the cut sheet. A row that owes a reason reads **say why**. A row with no sheet reads **sheet needed**. On a draft, **×** beside Edit takes a row off. A takeoff row is unticked in the pick list too. {{button:outline|+ Add from the takeoff…}} ticks more fixtures on.
+Tap {{button:outline|Edit}} on any row. The editor takes the status. Superseded, equal or a design change is your call when the model numbers alone cannot tell. It takes the reason chips: {{chip:gray|Long lead time}} {{chip:gray|Discontinued}} {{chip:gray|In stock}} {{chip:gray|Or-equal clause}} {{chip:gray|Cost}} {{chip:gray|Other}}. An alternate or a design change owes a reason and a note. It takes the lead time: {{chip:gray|In stock}} {{chip:gray|1 wk}} {{chip:gray|2 wk}} {{chip:gray|4+ wk}}, or a typed one. And it takes the cut sheet. It also takes the **supply house**, the house you buy the part from. Change it when you end up buying somewhere else. You can change it after the revision is shared too. The GC's room never shows the house. It shows under the product on your rows and on the procurement log. A row that owes a reason reads **say why**. A row with no sheet reads **sheet needed**. On a draft, **×** beside Edit takes a row off. A takeoff row is unticked in the pick list too. {{button:outline|+ Add from the takeoff…}} ticks more fixtures on.
 
 ## Split a combined fixture
 
@@ -81,7 +81,7 @@ The dropped PDF is a working file, not a record. The record is the pages on rows
 
 ## Rebuild, or start a new revision
 
-- {{button:outline|Rebuild rows from picks}} is for a draft. Use it when you changed picks on the compare, or added a tag to the schedule. Rows are rebuilt from today's picks. Sheets, reasons and lead times carry wherever the product is unchanged.
+- {{button:outline|Rebuild rows from picks}} is for a draft. Use it when you changed picks on the compare, or added a tag to the schedule. Rows are rebuilt from today's picks. Sheets, reasons and lead times carry wherever the product is unchanged. A supply house you set on a row stays while its pick is the same.
 - {{button:green|New revision}} is for after a share. Use it when the GC sent rows back, or the products changed. Every row carries into the new draft. A **Since Rev N** column says what changed. It reads *product changed*, *status changed*, *reason added*, *now missing*, *new row* or *carried*. An unshared draft you revise reads *superseded*. Only the newest revision can be revised. Older ones stay as the record.
 
 ## Build the package

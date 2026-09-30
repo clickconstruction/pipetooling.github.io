@@ -67,7 +67,7 @@ describe('source files', () => {
 describe('row ↔ item', () => {
   it('itemToPrevious carries what the next revision needs', () => {
     const prev = itemToPrevious(item({ reason_kind: 'lead_time', lead_time_days: 14, sheet_file: 0, sheet_pages: [3, 4], review_decision: 'revise', review_note: 'hold 1.0 gpf' }))
-    expect(prev).toEqual({ id: 'i1', tag: 'WC-1', submittedModel: 'CT728CUVG', submittedLabel: 'TOTO CT728CUVG#01', status: 'alternate', reasonKind: 'lead_time', reasonNote: null, leadTimeDays: 14, sheetFile: 0, sheetPages: [3, 4], reviewDecision: 'revise', reviewNote: 'hold 1.0 gpf' })
+    expect(prev).toEqual({ id: 'i1', tag: 'WC-1', submittedModel: 'CT728CUVG', submittedLabel: 'TOTO CT728CUVG#01', status: 'alternate', reasonKind: 'lead_time', reasonNote: null, leadTimeDays: 14, sheetFile: 0, sheetPages: [3, 4], reviewDecision: 'revise', reviewNote: 'hold 1.0 gpf', supplyHouseId: 'h1', sourceQuoteLineId: 'q1' })
   })
 
   it('draftToItemInsert writes every column the kernel decided, and stamps the sheet source when pages carried', () => {
