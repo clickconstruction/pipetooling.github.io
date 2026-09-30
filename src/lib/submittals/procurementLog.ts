@@ -556,7 +556,11 @@ export function groupRowsByStage(rows: ReadonlyArray<ProcurementRow>, stageDates
 }
 
 const cell = 'padding:0.4rem 0.45rem; border-bottom:1px solid #e5e7eb; vertical-align:top; font-size:0.82rem'
-const th = 'text-align:left; font-size:0.66em; text-transform:uppercase; letter-spacing:0.05em; color:#6b7280; border-bottom:1.5px solid #17191e; padding:0.3rem 0.45rem; white-space:nowrap'
+const th = 'text-align:left; font-size:0.66em; text-transform:uppercase; letter-spacing:0.05em; color:#6b7280; border-bottom:1.5px solid #17191e; padding:0.3rem 0.45rem; vertical-align:bottom'
+/** The sheet's seven columns. Every stage prints as its own table, so the widths are fixed here to keep the columns in line down the page. */
+const SHEET_COLUMNS: ReadonlyArray<readonly [label: string, widthPct: number]> = [['Item', 32], ['Submittal', 13], ['Ordered', 13], ['Lead time', 7], ['Expected on site', 12], ['Schedule', 11], ['Notes', 12]]
+const sheetCols = `<colgroup>${SHEET_COLUMNS.map(([, w]) => `<col style="width:${w}%"/>`).join('')}</colgroup>`
+const sheetLabels = `<tr>${SHEET_COLUMNS.map(([label]) => `<th style="${th}">${label}</th>`).join('')}</tr>`
 
 /**
  * The printed sheet (v2.4122): a letter to the GC. The company block and the To/Project lines
@@ -564,6 +568,11 @@ const th = 'text-align:left; font-size:0.66em; text-transform:uppercase; letter-
  * need from you* above the table, every cell in the GC's words, the row's own note in Notes,
  * the room's code at the foot, and the estimator's line that it is true and current. An update
  * marks its changed rows (amber, a dot) and says since when; a print says *as of* and marks nothing.
+ *
+ * Each stage is its own table whose header is the stage's band and the column labels, so the
+ * labels stand over every stage; a browser that repeats a table's header on a page break
+ * (Chromium, Firefox) prints them on every page. Safari repeats no header, so a stage after the
+ * first is kept on one page where it fits and carries its labels there with it.
  */
 export function buildProcurementUpdateHtml(input: ProcurementUpdateInput): string {
   const kind = input.kind ?? 'update'
@@ -592,20 +601,23 @@ export function buildProcurementUpdateHtml(input: ProcurementUpdateInput): strin
     return `<tr>
       <td style="${cell};${bg}">${chg ? '<span class="dot"></span>' : ''}${r.tag ? `<strong>${escapeHtml(r.tag)}</strong> ` : ''}${escapeHtml(r.product)}${r.supplyHouse ? ` <span style="color:#6b7280">· ${escapeHtml(r.supplyHouse)}</span>` : ''}</td>
       <td style="${cell};${bg}">${escapeHtml(gcSubmittalWord(r))}</td>
-      <td style="${cell};${bg}; white-space:nowrap">${ordered}</td>
-      <td style="${cell};${bg}; white-space:nowrap">${escapeHtml(describeLeadTime(r.leadTimeDays) ?? '—')}</td>
-      <td style="${cell};${bg}; white-space:nowrap">${expected}</td>
-      <td style="${cell};${bg}; white-space:nowrap${r.late ? '; color:#b91c1c; font-weight:700' : ''}">${escapeHtml(sched)}</td>
+      <td style="${cell};${bg}">${ordered}</td>
+      <td style="${cell};${bg}">${escapeHtml(describeLeadTime(r.leadTimeDays) ?? '—')}</td>
+      <td style="${cell};${bg}">${expected}</td>
+      <td style="${cell};${bg}${r.late ? '; color:#b91c1c; font-weight:700' : ''}">${escapeHtml(sched)}</td>
       <td style="${cell};${bg}; color:#4b5563">${notes}</td>
     </tr>`
   }
-  const bodyHtml = groups
-    .map((g) => {
+  const tablesHtml = groups
+    .map((g, i) => {
       const behind = g.rows.filter((r) => r.late).length
       const head = `${escapeHtml(g.label)} <span style="font-weight:400; color:#4b5563">· ${g.neededOn ? `needed on site ${escapeHtml(monthDay(g.neededOn))} · ` : ''}${g.rows.length} item${g.rows.length === 1 ? '' : 's'}${behind ? `, ${behind} behind` : ''}</span>`
-      return `<tr><td colspan="7" style="background:#f3f4f6; font-weight:700; padding:0.4rem 0.45rem; border-bottom:1px solid #d1d5db; font-size:0.85rem">${head}</td></tr>${g.rows.map(rowHtml).join('')}`
+      const band = `<tr><th colspan="${SHEET_COLUMNS.length}" style="text-align:left; background:#f3f4f6; font-weight:700; padding:0.4rem 0.45rem; border-bottom:1px solid #d1d5db; font-size:0.85rem">${head}</th></tr>`
+      // The first stage starts under the letter's opening and may run on; a later one moves whole to the next page where it fits.
+      return `<table class="stage${i > 0 ? ' keep' : ''}">${sheetCols}<thead>${band}${sheetLabels}</thead><tbody>${g.rows.map(rowHtml).join('')}</tbody></table>`
     })
     .join('')
+  const emptyHtml = `<table class="stage">${sheetCols}<thead>${sheetLabels}</thead><tbody><tr><td colspan="${SHEET_COLUMNS.length}" style="${cell}; color:#6b7280">No items on the log.</td></tr></tbody></table>`
 
   const asksHtml = asks.length || line
     ? `<div class="ask"><b>What we need from you</b><ul>${line ? `<li>${escapeHtml(line)}</li>` : ''}${asks.map((a) => `<li><strong>${escapeHtml(a.tag ?? a.product)}</strong>${a.tag ? ` ${escapeHtml(a.product)}` : ''} — ${escapeHtml(a.text)}</li>`).join('')}</ul></div>`
@@ -625,7 +637,11 @@ export function buildProcurementUpdateHtml(input: ProcurementUpdateInput): strin
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeHtml(input.bidLabel)} — ${escapeHtml(title)}</title><style>
   body { font-family: sans-serif; margin: 0.8in; color: #17191e; }
-  table { width: 100%; border-collapse: collapse; }
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  table.stage { margin-bottom: 0.7rem; }
+  table.keep, tr, .sign { break-inside: avoid; page-break-inside: avoid; }
+  thead { display: table-header-group; }
+  td { overflow-wrap: anywhere; }
   h1 { font-size: 1.25rem; margin: 0; }
   .sub { color: #4b5563; font-size: 0.85rem; margin: 0.15rem 0 0.9rem; }
   .lh { display: flex; justify-content: space-between; align-items: flex-start; gap: 1.5rem; border-bottom: 2px solid #17191e; padding-bottom: 0.7rem; margin-bottom: 1rem; }
@@ -650,10 +666,7 @@ export function buildProcurementUpdateHtml(input: ProcurementUpdateInput): strin
   <p class="sub">${subtitle}</p>
   ${metaHtml}
   ${asksHtml}
-  <table>
-    <thead><tr><th style="${th}">Item</th><th style="${th}">Submittal</th><th style="${th}">Ordered</th><th style="${th}">Lead time</th><th style="${th}">Expected on site</th><th style="${th}">Schedule</th><th style="${th}">Notes</th></tr></thead>
-    <tbody>${bodyHtml || `<tr><td colspan="7" style="${cell}; color:#6b7280">No items on the log.</td></tr>`}</tbody>
-  </table>
+  ${tablesHtml || emptyHtml}
   <p class="foot">Submittal = your reviewer’s decision on our submittal. Expected = our order date plus the supplier’s lead time, or the supplier’s own date where marked. Behind = the item lands after its stage starts, on the schedule you gave us.</p>
   ${roomHtml}
   ${signHtml}
