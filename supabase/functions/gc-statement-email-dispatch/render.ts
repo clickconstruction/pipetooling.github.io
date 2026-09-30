@@ -65,6 +65,7 @@ import {
   renderStatementByPropertyHtml,
   renderStatementByPropertyText,
   type StatementBillIn,
+  type StatementReceivedIn,
 } from '../_shared/gcStatementByProperty.ts'
 
 export {
@@ -78,6 +79,13 @@ export {
 
 const formatCurrency = (n: number) =>
   n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+/** Today as YYYY-MM-DD on the company calendar — the payments block's window counts back from it. */
+export function chicagoTodayYmd(now = new Date()): string {
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: APP_CALENDAR_TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now)
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? ''
+  return `${get('year')}-${get('month')}-${get('day')}`
+}
 
 export function chicagoDateStr(now = new Date()): string {
   return now.toLocaleDateString('en-US', {
@@ -168,6 +176,9 @@ export type GcStatementRenderExtras = {
   propertyIdByJob?: Readonly<Record<string, string | null>> | null
   /** What the account card's QR code loads — `cid:portal-qr` when the file is attached; null draws the card without a code. */
   qrImgSrc?: string | null
+  /** "Payments we have received" (v2.4260), read beside the payload; absent when the lane could not read them or the payer is a development. */
+  received?: readonly StatementReceivedIn[] | null
+  receivedSinceYmd?: string | null
 }
 
 /** The payload's rows as the shared statement reads them — mirror of the client's `gcStatementBillsOf`. */
@@ -202,6 +213,8 @@ export function renderGcStatementHtml(group: GcStatementPayloadGroup, dateStr: s
     bills: statementBillsOf(group, extras?.propertyIdByJob),
     officePhone,
     portalUrl,
+    received: extras?.received,
+    receivedSinceYmd: extras?.receivedSinceYmd,
     qrImgSrc: extras?.qrImgSrc,
     introText,
   })
@@ -214,6 +227,8 @@ export function renderGcStatementText(group: GcStatementPayloadGroup, dateStr: s
     bills: statementBillsOf(group, extras?.propertyIdByJob),
     officePhone,
     portalUrl,
+    received: extras?.received,
+    receivedSinceYmd: extras?.receivedSinceYmd,
     introText,
   })
 }
