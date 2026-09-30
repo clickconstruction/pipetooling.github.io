@@ -5,7 +5,7 @@ file: docs/twins/APP_DIRECTORY.md
 type: Twin reference / Directory
 purpose: Route-level map of the app for role-impersonating agents — where everything lives, who sees it, and a task→URL index. Shared by every docs/twins/<role>.md brief.
 audience: Digital Twins, AI Agents, Developers
-last_updated: 2026-09-10
+last_updated: 2026-09-30
 authority: Routes from src/App.tsx; role gates from src/lib/layoutRouteAccess.ts + docs/ACCESS_CONTROL.md (Page Access Matrix). When this file and the app disagree, the app wins — report the drift.
 ---
 
@@ -122,10 +122,12 @@ only (no Pricing / Cover Letter / Submission); no subs/helpers.
   memo** (v2.3232): a question you wrote before the one-decision rule — several decisions
   in one, no taps — waits here, not on Standing rulings; the owner splits it into one-tap
   questions posted as yours, or dismisses it (nothing re-asks on its own). **Run
-  the robots** — *Copy setup command* (a Terminal one-liner that asks for the robot key and
-  configures Claude Desktop's `twin-mcp` connector) and *Copy Desktop kickoff*
-  (`kickoffs/desktop-operator.md`, connector filled in) for the no-repo path; *Copy handoff
-  prompt* (`kickoffs/shadow-operator.md`) for the hourly Claude Code routine — then **Bids
+  the robots** — *Set up on this Mac* (one Terminal command that configures the Claude
+  app's `twin-mcp` connector) and *Copy Code kickoff* (`kickoffs/code-operator.md`,
+  connector filled in) for a batch in a Claude Code session, which reads the plans itself;
+  *Copy chat kickoff* (`kickoffs/desktop-operator.md`) for a plain chat, where a person
+  attaches them; *Copy handoff prompt* (`kickoffs/shadow-operator.md`) for the hourly
+  Claude Code routine — then **Bids
   to run** (requested / ready counts, door to the Queue), the fleet at a glance (door to
   Settings → Digital twins for keys, seats, rungs, the calibration standard), **Operator
   questions** (the `operator` lane of `twin_questions` — answer, promote to RFI, send to

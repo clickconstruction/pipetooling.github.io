@@ -1,6 +1,8 @@
 /**
  * "Set up on this Mac" (Price Matrix PR 6 — docs/PRICE_MATRIX_PLAN.md): the
- * one-click, one-paste way to connect Claude Desktop to a robot. The dialog
+ * one-click, one-paste way to connect the Claude app on a Mac to a robot —
+ * its chats and its Code tab share the connector (v2.4229: the bid robot's
+ * kickoff is pasted into a Code session, the pricer's into a chat). The dialog
  * asks twin-setup to mint a ten-minute, single-use SETUP CODE for the twin and
  * wraps it in a Terminal command (`buildDesktopSetupCommandFromCode`). Pasted
  * into Terminal, the command redeems the code — the key is minted server-side
@@ -171,12 +173,12 @@ export function TwinSetupDialog({ open, onClose, target }: TwinSetupDialogProps)
     <div style={overlay} onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
       <div role="dialog" aria-modal="true" aria-labelledby="twin-setup-title" style={panel}>
         <div>
-          <div style={eyebrow}>Claude Desktop · one-time setup</div>
+          <div style={eyebrow}>Claude on this Mac · one-time setup</div>
           <h3 id="twin-setup-title" style={{ margin: '0.15rem 0 0', fontSize: '1.05rem' }}>Set up {who} on this Mac</h3>
           <p style={{ ...MUTED, margin: '0.35rem 0 0' }}>
-            One command connects Claude Desktop to the robot. The robot key is made on the server and written straight into Desktop's
-            config — nobody sees it, nothing to paste but the command. Mac only; needs Node 18+ from nodejs.org (the command says so if
-            it is missing).
+            One command connects the Claude app on this Mac to the robot — its chats and its Code tab. The robot key is made on the
+            server and written straight into Claude's config — nobody sees it, nothing to paste but the command. Mac only; needs Node
+            18+ from nodejs.org (the command says so if it is missing).
           </p>
         </div>
 
@@ -227,18 +229,19 @@ export function TwinSetupDialog({ open, onClose, target }: TwinSetupDialogProps)
                 <span>
                   <b>Paste, press Return.</b>{' '}
                   <span style={MUTED}>
-                    Claude Desktop quits and reopens by itself with the robot connected, and the robot's kickoff lands on your clipboard.
+                    Claude quits and reopens by itself with the robot connected, and the robot's kickoff lands on your clipboard.
+                    Anything running in Claude stops with it, so finish or pause that first.
                   </span>
                 </span>
               </div>
               <div style={stepRow}>
                 <span style={stepNo}>4</span>
                 <span>
-                  <b>In Claude Desktop, start a new incognito chat and paste.</b>{' '}
+                  <b>{isPricer ? 'In Claude, start a new incognito chat and paste.' : 'In Claude, open the Code tab, start a new session and paste.'}</b>{' '}
                   <span style={MUTED}>
                     {isPricer
                       ? 'The robot reads its brief, then prices every queued request, oldest first, and asks you where the plans decide.'
-                      : 'The robot reads its brief and works the shadow queue one bid at a time.'}
+                      : 'The robot reads its brief and works the shadow queue one bid at a time, pulling each plan set itself.'}
                   </span>
                 </span>
               </div>

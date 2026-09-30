@@ -53,6 +53,21 @@ describe('TwinSetupDialog', () => {
     expect(pre).not.toMatch(/[0-9a-f]{32,}/)
     expect(screen.getByText(/one-time code for twin-pricer-1@twins.pipetooling.local/)).toBeTruthy()
     expect(screen.getByText(/prices every queued request/)).toBeTruthy()
+    expect(screen.getByText('In Claude, start a new incognito chat and paste.')).toBeTruthy()
+  })
+
+  it('sends the bid robot’s kickoff to a Code session (v2.4229)', async () => {
+    state.bodies = []
+    state.reply = { data: { ...(state.reply.data as Record<string, unknown>), twin_email: 'twin-estimator-1@twins.pipetooling.local', twin_kind: 'estimator', label: "Grace's Mac" }, error: null }
+    renderWithProviders(<TwinSetupDialog open onClose={() => {}} target={{ kind: 'estimator' }} />)
+    await settle()
+    expect(screen.getByText('Set up the robot estimator on this Mac')).toBeTruthy()
+    fireEvent.click(screen.getByText('Make my setup command'))
+    await waitFor(() => expect(screen.getByText('Copy the command')).toBeTruthy())
+    expect(state.bodies[0]).toEqual({ action: 'mint', label: '', kind: 'estimator' })
+    expect(screen.getByText('In Claude, open the Code tab, start a new session and paste.')).toBeTruthy()
+    expect(screen.getByText(/pulling each plan set itself/)).toBeTruthy()
+    expect(screen.getByText(/Anything running in Claude stops with it/)).toBeTruthy()
   })
 
   it('addresses a named twin by id and shows the server’s refusal', async () => {

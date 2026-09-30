@@ -76,7 +76,7 @@ export function robotLenses(input: { role: Role; activeTab: string; mirrorCount:
     lenses.push({
       key: 'robot-console',
       label: 'Console',
-      title: "Dev only — run the robots: the Claude Desktop setup command and kickoff, the Claude Code handoff, which bids want a robot, the robots' operator questions, and the run ledger.",
+      title: "Dev only — run the robots: the setup command, the Claude Code kickoff (and the chat one), the hourly routine's handoff, which bids want a robot, the robots' operator questions, and the run ledger.",
       badge: DEV_BADGE,
     })
   }
