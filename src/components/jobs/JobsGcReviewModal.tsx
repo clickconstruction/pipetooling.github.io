@@ -23,6 +23,8 @@ import {
 import { addDaysYmd, formatMinutes, parseHhMm } from '../../lib/emailSchedule/emailScheduleWeek'
 import type { StageRow } from '../../lib/jobsStagesBoard'
 import { buildGcReviewRollup, type GcReviewGroup, type GcReviewGroupBy } from '../../lib/gcReviewRollup'
+import { billSettled, lienWaiverCellForBill } from '../../lib/jobs/lienWaiverCell'
+import type { JobLienReleaseRow } from '../../lib/jobs/lienReleaseTracking'
 import {
   buildGcReviewShareAllEmailHtml,
   buildGcReviewShareAllEmailText,
@@ -384,6 +386,27 @@ export function JobsGcReviewModal({
   }, [certWeekStart])
   // Freeze the page behind the modal (v2.2144): the review scrolls inside its own panel; the Stages board under it must not.
   useBodyScrollLock(open)
+  // Lien waivers per bill (v2.4280): what each GC holds and what we owe them — the jobs' release rows, read once per open.
+  const [waiverRows, setWaiverRows] = useState<JobLienReleaseRow[]>([])
+  const waiverJobIds = useMemo(() => [...new Set([...billedActiveRows, ...collectionsRows].map((r) => r.job.id))].sort().join(','), [billedActiveRows, collectionsRows])
+  useEffect(() => {
+    if (!open || !waiverJobIds) {
+      setWaiverRows([])
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const { data } = await supabase.from('job_lien_releases').select('*').in('job_id', waiverJobIds.split(',')).is('voided_at', null)
+        if (!cancelled) setWaiverRows((data ?? []) as JobLienReleaseRow[])
+      } catch {
+        if (!cancelled) setWaiverRows([])
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, waiverJobIds])
   useEffect(() => {
     if (open) refreshCerts()
   }, [open, refreshCerts])
@@ -1321,6 +1344,7 @@ export function JobsGcReviewModal({
             <th style={{ padding: '0.2rem 0.4rem', fontWeight: 500 }}>Billed on</th>
             <th style={{ padding: '0.2rem 0.4rem', fontWeight: 500, textAlign: 'right' }}>Days</th>
             <th style={{ padding: '0.2rem 0.4rem', fontWeight: 500, textAlign: 'right' }}>Remaining</th>
+            {!g.isNoGc ? <th style={{ padding: '0.2rem 0.4rem', fontWeight: 500 }}>Lien waivers</th> : null}
           </tr>
         </thead>
         <tbody>
@@ -1384,6 +1408,33 @@ export function JobsGcReviewModal({
               <td style={{ padding: '0.3rem 0.4rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                 ${formatCurrency(r.remaining)}
               </td>
+              {!g.isNoGc ? (
+                <td style={{ padding: '0.3rem 0.4rem' }} data-testid="gc-review-waivers">
+                  {r.billed != null && r.key !== r.jobId
+                    ? (() => {
+                        // The two waivers a bill carries (v2.4280): they hold · we owe. A chip opens the job, where the Bill tab's door adds or sends the waiver.
+                        const cell = lienWaiverCellForBill(waiverRows, r.key, billSettled({ id: r.key, amount: r.billed }, (r.billPayments ?? []).map((p) => ({ invoice_id: p.invoice_id, amount: Number(p.amount ?? 0) }))))
+                        const tone = (t: 'green' | 'amber' | 'grey') =>
+                          t === 'green' ? { background: 'var(--bg-green-tint)', color: 'var(--text-green-700)' } : t === 'amber' ? { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' } : { background: 'var(--bg-subtle)', color: 'var(--text-muted)', border: '1px solid var(--border)' }
+                        return (
+                          <span style={{ display: 'inline-flex', gap: '0.3rem', flexWrap: 'wrap' }}>
+                            {cell.chips.map((c) => (
+                              <button
+                                key={c.half}
+                                type="button"
+                                onClick={() => onOpenJob?.(r.jobId)}
+                                title={cell.next === 'add_conditional' ? 'No waiver has gone with this bill — open the job’s Bill tab to add one' : cell.next === 'add_unconditional' ? 'The check has cleared — open the job to add the unconditional' : cell.next === 'sign' ? 'A waiver waits for the leader’s signature' : cell.next === 'send' ? 'A signed waiver has not been sent — open the job to send it' : 'Open the job'}
+                                style={{ font: 'inherit', display: 'inline-block', padding: '0.05rem 0.45rem', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, whiteSpace: 'nowrap', border: 'none', cursor: onOpenJob ? 'pointer' : 'default', ...tone(c.tone) }}
+                              >
+                                {c.text}
+                              </button>
+                            ))}
+                          </span>
+                        )
+                      })()
+                    : null}
+                </td>
+              ) : null}
             </tr>
           ))}
         </tbody>
