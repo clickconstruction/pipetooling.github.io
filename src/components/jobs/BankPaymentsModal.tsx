@@ -216,6 +216,9 @@ export default function BankPaymentsModal({
    */
   const [hiddenCandidates, setHiddenCandidates] = useState<MercuryCandidate[] | null>(null)
   const [hiddenLoading, setHiddenLoading] = useState(false)
+  /** One fetch at a time; a list refresh bumps the sequence so a stale result is dropped, never cancelled mid-flight. */
+  const hiddenInFlightRef = useRef(false)
+  const hiddenFetchSeqRef = useRef(0)
   const [arBankReturnedMarkMode, setArBankReturnedMarkMode] = useState(false)
   const [returnedToggleSavingId, setReturnedToggleSavingId] = useState<string | null>(null)
   const [listLoading, setListLoading] = useState(false)
@@ -656,6 +659,7 @@ export default function BankPaymentsModal({
     if (!open) return []
     void loadArClosed()
     setHiddenCandidates(null)
+    hiddenFetchSeqRef.current += 1
     const seq = ++listRequestSeqRef.current
     setListLoading(true)
     setListError(null)
@@ -706,10 +710,11 @@ export default function BankPaymentsModal({
    * pile is showing and kept until the list refreshes. Quiet on failure — the pile's
    * own search still works, only the fall-through is missed.
    */
+  const wantHiddenCandidates = open && !includeHiddenArDeposits && sortingConfigResolved && bankTxSearchQuery.trim().length > 0
   useEffect(() => {
-    if (!open || includeHiddenArDeposits || !sortingConfigResolved) return
-    if (!bankTxSearchQuery.trim() || hiddenCandidates != null || hiddenLoading) return
-    let cancelled = false
+    if (!wantHiddenCandidates || hiddenCandidates != null || hiddenInFlightRef.current) return
+    hiddenInFlightRef.current = true
+    const seq = hiddenFetchSeqRef.current
     setHiddenLoading(true)
     ;(async () => {
       try {
@@ -728,22 +733,20 @@ export default function BankPaymentsModal({
           async () => supabase.rpc('list_mercury_transactions_for_bank_payments', { p_filter }),
           'list_mercury_transactions_for_bank_payments',
         )
-        if (cancelled) return
+        if (seq !== hiddenFetchSeqRef.current) return
         const rows: MercuryCandidate[] = ((data ?? []) as MercuryCandidateRow[]).map((r) => ({
           ...r,
           bankReturn: mercuryBankReturnFromRaw(r.raw, r.posted_at, r.amount),
         }))
         setHiddenCandidates(rows)
       } catch {
-        if (!cancelled) setHiddenCandidates([])
+        if (seq === hiddenFetchSeqRef.current) setHiddenCandidates([])
       } finally {
-        if (!cancelled) setHiddenLoading(false)
+        hiddenInFlightRef.current = false
+        setHiddenLoading(false)
       }
     })()
-    return () => {
-      cancelled = true
-    }
-  }, [open, includeHiddenArDeposits, sortingConfigResolved, bankTxSearchQuery, hiddenCandidates, hiddenLoading, sortingConfig])
+  }, [wantHiddenCandidates, hiddenCandidates, sortingConfig])
 
   const toggleMercuryReturned = useCallback(
     async (mercuryTransactionId: string, nextReturned: boolean) => {
