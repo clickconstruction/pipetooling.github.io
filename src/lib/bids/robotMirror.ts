@@ -26,6 +26,7 @@ import { shadowCoverage, type ShadowCoverageBid } from './shadowCoverage'
 import type { ShadowRunRow } from './shadowStory'
 import type { RobotGap, RobotRowState } from './robotRowState'
 import { bestEffortGap, summarizeBestEffortMoves } from './bestEffort'
+import { referenceWholeValue } from '../../../supabase/functions/_shared/referenceWhole'
 
 export type MirrorSection = SubmissionSectionKey
 
@@ -33,6 +34,8 @@ export interface MirrorBid extends ShadowCoverageBid {
   id: string
   outcome: string | null
   bid_value: number | string | null
+  /** v2.4199: the letter's stamped add-ons — our number is the whole (base + offered alternates). */
+  cover_letter_alt_texts?: unknown
   working_board_archived_at?: string | null
   robot_requested_at?: string | null
   /** Live rows without a robot sort by due date, as the human board does. */
@@ -168,6 +171,8 @@ export const MIRROR_SECTION_LABELS: Record<MirrorSection, string> = {
   lost: 'Lost',
 }
 
+/** v2.4199: our number on a bid is the whole — the sent base plus the offered alternates' stamped add-ons. */
+const wholeOf = (b: Pick<MirrorBid, 'bid_value' | 'cover_letter_alt_texts'>): number | null => referenceWholeValue(b.bid_value, b.cover_letter_alt_texts)
 const num = (v: number | string | null | undefined): number | null => {
   if (v == null) return null
   const n = Number(v)
@@ -250,7 +255,7 @@ export function buildRobotMirror<B extends MirrorBid>(input: RobotMirrorInput<B>
       label: shellNum ? `shadow b${shellNum}` : 'shadow',
       status: shadowStatus(r),
       robotTotal: scored ? num(r.locked_total) : null,
-      ourValue: scored ? (num(r.reference_value) ?? num(human.bid_value)) : null,
+      ourValue: scored ? (num(r.reference_value) ?? wholeOf(human)) : null,
       deltaPct: scored ? num(r.delta_pct) : null,
       practice: r.teacher_standard === false,
       teacherName: r.teacher_name ?? null,
@@ -278,7 +283,7 @@ export function buildRobotMirror<B extends MirrorBid>(input: RobotMirrorInput<B>
       label: backtestLabel(shell?.project_name, s.run_label),
       status: s.gate_eligible === false && delta == null ? 'void' : s.gate_eligible === false && /void/i.test(s.scope_verdict ?? '') ? 'void' : 'scored',
       robotTotal: num(s.locked_total),
-      ourValue: num(s.reference_value) ?? num(human.bid_value),
+      ourValue: num(s.reference_value) ?? wholeOf(human),
       deltaPct: delta,
       practice: isPracticeTeacherScore(s, input.standardTeacherIds),
       teacherName: s.teacher_name ?? null,
@@ -304,7 +309,7 @@ export function buildRobotMirror<B extends MirrorBid>(input: RobotMirrorInput<B>
     // Audited and priced, human bid sent: the draft total stands in for the missing score
     // row. Seal rule: an unsent human bid never sees the draft, whatever the audit says.
     const draft = input.draftTotals?.get(shell.id)
-    const ours = num(human.bid_value)
+    const ours = wholeOf(human)
     const audited = !!audit && !!human.bid_date_sent && !!draft && draft.rowCount > 0 && draft.total > 0
     push(human.id, {
       kind: isBacktest ? 'backtest' : 'shadow',
@@ -375,7 +380,7 @@ export function buildRobotMirror<B extends MirrorBid>(input: RobotMirrorInput<B>
     const sentWithoutValue = !!b.bid_date_sent && !(num(b.bid_value) != null && (num(b.bid_value) as number) > 0)
     const note = latest.status === 'sealed' && sentWithoutValue ? 'no bid value on record' : null
     const bestEffort = input.bestEfforts?.get(b.id) ?? null
-    const gap = bestEffort && b.bid_date_sent ? bestEffortGap(bestEffort.value, b.bid_value) : null
+    const gap = bestEffort && b.bid_date_sent ? bestEffortGap(bestEffort.value, wholeOf(b)) : null
     sections[section].push({ bid: b, section, latest, earlier, note, bestEffort, gap })
     listedCount++
     if (latest.status === 'needs') needsCount++
@@ -404,7 +409,7 @@ export function buildRobotMirror<B extends MirrorBid>(input: RobotMirrorInput<B>
       const s = summarizeBestEffortMoves(
         input.humanBids
           .filter((b) => !!b.bid_date_sent && input.bestEfforts?.has(b.id))
-          .map((b) => ({ best: input.bestEfforts!.get(b.id)!.value, sent: b.bid_value })),
+          .map((b) => ({ best: input.bestEfforts!.get(b.id)!.value, sent: wholeOf(b) })),
       )
       return { count: s.moved, total: s.total }
     })(),

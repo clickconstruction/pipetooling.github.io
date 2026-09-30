@@ -1222,6 +1222,9 @@ export function BidsCoverLetterTab({
         const unpricedLeftOff = bundlePricings.length - pricedBundle.length
         const newLetterTotal = letterTotal(pricedBundle)
         const headlineAmount = useCustomAmount && !isNaN(customAmountNum) && customAmountNum >= 0 ? customAmountNum : newBundleActive ? (boardValueForRule(boardValueRule, bundleSectionsForBoard(bundlePricings), coverLetterRevenue) ?? newLetterTotal) : coverLetterRevenue
+        // v2.4199: the best effort is the WHOLE — the headline (base) plus every offered alternate's
+        // add-on — because the robot priced the alternate's rows too and is scored against it.
+        const bestEffortAmount = headlineAmount + (addAltSplit ? offeredAdd.reduce((sum, g) => sum + g.revenueSum, 0) : 0)
         // J13-F3: while Pricing lazy-loads the preview reads "ZERO 00/100 DOLLARS" — Mark sent was
         // guarded, but Print and Copy were not, so a $0 letter of a $15.8M bid could leave the building.
         // A custom amount needs no pricing rows, so it is never gated.
@@ -1537,7 +1540,7 @@ export function BidsCoverLetterTab({
                           {!multi && onBestEffortRecorded ? (
                             <BidBestEffortCard
                               bid={bid}
-                              amount={headlineAmount}
+                              amount={bestEffortAmount}
                               onRecorded={onBestEffortRecorded}
                               onOpenEnvelope={(id) => onOpenRobotEnvelope?.(id)}
                             />

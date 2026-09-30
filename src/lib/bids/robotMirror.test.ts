@@ -89,6 +89,24 @@ describe('buildRobotMirror', () => {
     expect(mirrorAuditChip(row!.latest)).toEqual({ text: 'audit waiting', tone: 'audit' })
   })
 
+  it('v2.4199: our number is the whole — the sent base plus the offered alternates\' stamped add-ons', () => {
+    const texts = { groups: { 'group:break room': { amount: 2717 }, 'group:roof': { offered: false, amount: 900 } } }
+    const b398 = human({ id: 'h398', bid_number: '398', bid_date_sent: '2026-09-30', bid_value: 10524, cover_letter_alt_texts: texts })
+    const m = buildRobotMirror({
+      humanBids: [b398],
+      shells: [shell({ id: 's419', bid_number: '419', twin_source_bid_id: 'h398' })],
+      shadowRuns: [run({ shadow_bid_number: '419', reference_bid_number: '398', status: 'scored', scored_at: '2026-09-30T15:00:00Z', locked_total: 13000, reference_value: null, delta_pct: null })],
+      scores: [],
+      audits: [],
+      bestEfforts: new Map([['h398', { value: 13241, recorded_at: '2026-09-29T15:00:00Z', recorded_by: null }]]),
+    })
+    const row = m.sections.pending[0]
+    expect(row?.latest.ourValue).toBe(13241)
+    // The best effort was the whole too, so the send did not move off it.
+    expect(row?.gap).toBeNull()
+    expect(m.moved).toEqual({ count: 0, total: 0 })
+  })
+
   it('pairs a pre-stamp shadow through the run\'s reference number when twin_source_bid_id is null', () => {
     const b396 = human({ id: 'h396', bid_number: '396', bid_date_sent: '2026-09-08', bid_value: null })
     const s419 = shell({ id: 's419', bid_number: '419' })
