@@ -117,7 +117,7 @@ type RoadStatus = 'done' | 'current' | 'waiting' | 'later'
  * open it); the current stage is ringed; a later stage is dashed so a first-timer sees
  * the whole road. `anchor` is the `data-tour` the strip's pills and the walkthrough jump to.
  */
-function RoadSection({ n, title, status, open, onToggle, anchor, summary, about, onHelp, last = false, children }: { n: number; title: ReactNode; status: RoadStatus; open: boolean; onToggle: () => void; anchor: string; summary?: ReactNode; about?: string; onHelp?: () => void; last?: boolean; children?: ReactNode }) {
+function RoadSection({ n, title, status, open, onToggle, anchor, summary, about, onHelp, last = false, always = false, children }: { n: number; title: ReactNode; status: RoadStatus; open: boolean; onToggle: () => void; anchor: string; summary?: ReactNode; about?: string; onHelp?: () => void; last?: boolean; /** v2.4201 · never out of reach (Procure): reads strong and draws a solid box even while the journey calls it later. */ always?: boolean; children?: ReactNode }) {
   const dot: CSSProperties = {
     width: 30, height: 30, borderRadius: '50%', display: 'grid', placeItems: 'center', fontWeight: 700, fontSize: '0.8125rem', flexShrink: 0,
     border: `2px solid ${status === 'done' ? '#16a34a' : status === 'current' ? '#2563eb' : status === 'waiting' ? '#d97706' : 'var(--border-strong)'}`,
@@ -132,7 +132,7 @@ function RoadSection({ n, title, status, open, onToggle, anchor, summary, about,
       </div>
       <section data-tour={anchor} data-testid={`road-${n}`} data-status={status} data-open={open} style={{ padding: '0.15rem 0 1rem', minWidth: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
-          <button type="button" onClick={onToggle} aria-expanded={open} style={{ ...btnQuiet, fontSize: '0.95rem', fontWeight: 700, color: status === 'later' ? 'var(--text-muted)' : 'var(--text-strong)', textAlign: 'left' }}>
+          <button type="button" onClick={onToggle} aria-expanded={open} style={{ ...btnQuiet, fontSize: '0.95rem', fontWeight: 700, color: status === 'later' && !always ? 'var(--text-muted)' : 'var(--text-strong)', textAlign: 'left' }}>
             {n} · {title} <span style={{ fontWeight: 400, fontSize: '0.75rem', color: 'var(--text-faint)' }}>{open ? '▴' : '▾'}</span>
           </button>
           {summary ? <span style={{ fontSize: '0.8125rem', color: status === 'done' ? 'var(--text-green-700)' : status === 'waiting' ? 'var(--text-amber-700)' : 'var(--text-muted)', minWidth: 0 }}>{summary}</span> : null}
@@ -148,7 +148,7 @@ function RoadSection({ n, title, status, open, onToggle, anchor, summary, about,
           </div>
         ) : null}
         {open && Children.toArray(children).some(Boolean) ? (
-          <div data-testid={`road-${n}-body`} style={{ marginTop: '0.5rem', border: `1px ${status === 'later' ? 'dashed' : 'solid'} ${status === 'current' ? '#2563eb' : 'var(--border)'}`, boxShadow: status === 'current' ? '0 0 0 3px var(--bg-blue-tint)' : undefined, borderRadius: 8, padding: '0.6rem 0.75rem', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <div data-testid={`road-${n}-body`} style={{ marginTop: '0.5rem', border: `1px ${status === 'later' && !always ? 'dashed' : 'solid'} ${status === 'current' ? '#2563eb' : 'var(--border)'}`, boxShadow: status === 'current' ? '0 0 0 3px var(--bg-blue-tint)' : undefined, borderRadius: 8, padding: '0.6rem 0.75rem', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             {children}
           </div>
         ) : null}
@@ -1347,13 +1347,25 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     else if (action === 'resubmit') void newRevision(true)
   }
   /** A pill click: scroll to the stage's controls and ring them for a moment. */
+  /**
+   * A pill jumps into its stage (v2.4201): the section opens — a later one included — then the page
+   * scrolls to the stage's controls and rings them. A folded stage's controls draw on the next frame,
+   * so the ring waits for it; the section itself is the fallback when a stage has no controls yet.
+   */
   function goToStage(stage: JourneyStage) {
-    const el = document.querySelector(`[data-tour="${stage.anchor}"]`)
-    if (!(el instanceof HTMLElement)) return
-    const reduced = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (typeof el.scrollIntoView === 'function') el.scrollIntoView({ block: 'center', behavior: reduced ? 'auto' : 'smooth' })
-    el.classList.add('submittal-journey-flash')
-    window.setTimeout(() => el.classList.remove('submittal-journey-flash'), 1600)
+    setSectionToggles((m) => (m[stage.key] === true ? m : { ...m, [stage.key]: true }))
+    const control = () => document.querySelector(`[data-tour="${stage.anchor}"]`)
+    const ring = () => {
+      const el = control() ?? document.querySelector(`[data-testid="road-${stage.number}"]`)
+      if (!(el instanceof HTMLElement)) return
+      const reduced = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      if (typeof el.scrollIntoView === 'function') el.scrollIntoView({ block: 'center', behavior: reduced ? 'auto' : 'smooth' })
+      el.classList.add('submittal-journey-flash')
+      window.setTimeout(() => el.classList.remove('submittal-journey-flash'), 1600)
+    }
+    if (control()) ring()
+    else if (typeof window.requestAnimationFrame === 'function') window.requestAnimationFrame(ring)
+    else window.setTimeout(ring, 0)
   }
   /** The strip's button and the ? beside the bid name start at the top; a stage's ? starts at that stage's stop (v2.4125). */
   function startWalkThrough(stage?: number) {
@@ -1397,6 +1409,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     if (key === 'picks' && scheduleReadLive) return true
     // v2.4169 · a stage you have not reached folds to its sentence; its controls draw only when you open it, and then held.
     if (key === 'build' && revisions.length === 0) return true
+    // v2.4201 · Procure is a side track the office works at any time (long-lead items go in before a row is approved), so it never folds on its own.
+    if (key === 'procure') return true
     if (stageStatus(key) === 'later') return false
     if (stageStatus(key) !== 'done') return true
     return currentStageKey != null && (readsFrom[currentStageKey] ?? []).includes(key)
@@ -2052,29 +2066,29 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                   <span style={smallMuted} data-testid="resubmit-caption">{gates.resubmit.on ? 'Fix the rows, then share again. The GC’s link shows the new version.' : gates.resubmit.why}</span>
                 </div>
               </RoadSection>
-
-              {/* 8 · Procure — a side track: open when it has work, never the Next stage until every row is approved */}
-              <RoadSection n={8} about={SUBMITTAL_STAGE_ABOUT[8]} onHelp={() => startWalkThrough(8)} title="Procure" status={stageStatus('procure')} open={sectionOpen('procure')} onToggle={() => toggleSection('procure')} anchor="submittals-procure-section" last
-                summary={procCounts ? `${procCounts.released} released · ${procCounts.ordered} ordered · ${procCounts.delivered} delivered${procCounts.late > 0 ? ` · ${procCounts.late} behind schedule` : ''}` : isNewest ? 'fills in as the GC approves rows' : 'on the newest version'}>
-                {isNewest && bidId && selectedBid ? (
-                  <SubmittalProcurementPanel
-                    bidId={bidId}
-                    bidLabel={bidDisplayName(selectedBid) || 'Bid'}
-                    companyName={companyName}
-                    letterhead={{ companyName: reportSettings.companyName, tagline: reportSettings.companyTagline, phone: reportSettings.officePhone, mailingAddress: reportSettings.mailingAddress }}
-                    projectAddress={selectedBid.address ?? null}
-                    gcName={selectedBid.customers?.name ?? selectedBid.bids_gc_builders?.name ?? null}
-                    roomUrl={room ? roomLink(window.location.origin, room.token) : null}
-                    items={procItems}
-                    reviewerNames={people.filter((p) => p.may_decide).map((p) => p.name)}
-                    currentUser={{ id: user?.id ?? null, name: profileName ?? '' }}
-                    busy={busy}
-                    onCounts={setProcCounts}
-                  />
-                ) : null}
-              </RoadSection>
             </>
           ) : null}
+
+              {/* 8 · Procure — a side track, always open (v2.4201) and drawn with or without a revision: long-lead items go in before a row is approved; never the Next stage until every row is approved */}
+            <RoadSection n={8} about={SUBMITTAL_STAGE_ABOUT[8]} onHelp={() => startWalkThrough(8)} title="Procure" status={stageStatus('procure')} open={sectionOpen('procure')} onToggle={() => toggleSection('procure')} anchor="submittals-procure-section" last always
+              summary={procCounts ? `${procCounts.released} released · ${procCounts.ordered} ordered · ${procCounts.delivered} delivered${procCounts.late > 0 ? ` · ${procCounts.late} behind schedule` : ''}` : isNewest || !selectedRev ? 'fills in as the GC approves rows · long-lead items can go in now' : 'on the newest version'}>
+              {(isNewest || !selectedRev) && bidId && selectedBid ? (
+                <SubmittalProcurementPanel
+                  bidId={bidId}
+                  bidLabel={bidDisplayName(selectedBid) || 'Bid'}
+                  companyName={companyName}
+                  letterhead={{ companyName: reportSettings.companyName, tagline: reportSettings.companyTagline, phone: reportSettings.officePhone, mailingAddress: reportSettings.mailingAddress }}
+                  projectAddress={selectedBid.address ?? null}
+                  gcName={selectedBid.customers?.name ?? selectedBid.bids_gc_builders?.name ?? null}
+                  roomUrl={room ? roomLink(window.location.origin, room.token) : null}
+                  items={procItems}
+                  reviewerNames={people.filter((p) => p.may_decide).map((p) => p.name)}
+                  currentUser={{ id: user?.id ?? null, name: profileName ?? '' }}
+                  busy={busy}
+                  onCounts={setProcCounts}
+                />
+              ) : null}
+            </RoadSection>
         </div>
       ) : null}
 

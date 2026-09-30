@@ -10,7 +10,7 @@ The robot that shadowed your bid sealed its own number before yours existed. The
 
 On the **Cover Letter**, after pricing, a card sits between the proposed amount and Mark sent: **Your best effort**. Tap {{button:blue|Record best effort · open the robot's envelope}} and two things happen: the letter's amount goes on the record as the number you would send right now, and the robot's sealed number opens beside it — while the bid can still change.
 
-- Your best effort is what the robot is scored against from then on. It cannot be re-recorded once you have seen the envelope; the bid can still change, and the bid note will say by how much.
+- Your best effort is what the robot is scored against from then on. On a bid that offers an alternate (see [offer an alternate on a bid](?g=offer-an-alternate-on-a-bid)), the number recorded is the whole — the proposed amount plus what each offered alternate adds — because the robot priced the alternate too. It cannot be re-recorded once you have seen the envelope; the bid can still change, and the bid note will say by how much.
 - Recording also marks the bid reviewed, so the flow strip's Review step fills in.
 - If the robot is still estimating, the card records your number anyway and says the envelope will open here when the robot locks. Sending is never blocked.
 

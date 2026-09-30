@@ -255,7 +255,11 @@ export function BidsCoverLetterTab({
     const next = stampAddAlternateAmounts(texts, split)
     if (JSON.stringify(next) !== JSON.stringify(texts)) await saveAltTexts(bidId, next)
   }
+  // v2.4198: which bid's wording is hydrated — the live stamp below must never run against the
+  // empty texts of a bid still loading (it would wipe the saved offered flags).
+  const altTextsLoadedFor = useRef<string | null>(null)
   useEffect(() => {
+    altTextsLoadedFor.current = null
     setAltTexts({})
     setAltTextEditor(null)
     const bid = selectedBidForPricing
@@ -265,10 +269,33 @@ export function BidsCoverLetterTab({
       const { data } = await supabase.from('bids').select('cover_letter_alt_texts').eq('id', bid.id).maybeSingle()
       if (cancelled) return
       setAltTexts(parseCoverLetterAltTexts((data as { cover_letter_alt_texts?: unknown } | null)?.cover_letter_alt_texts))
+      altTextsLoadedFor.current = bid.id
     })()
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on bid id; hydrates from the freshly selected bid
   }, [selectedBidForPricing?.id])
+  // v2.4198: the add-on amounts follow the price. Whenever the active version's alternate totals
+  // change, the stamped amounts are rewritten (debounced, only when they differ) so the Bid Board's
+  // "+$ alt" chip shows the moment an alternate is priced — not only after a send. Offered flags
+  // and wording are kept as saved; an open wording editor stays open.
+  const liveSplit = coverLetterPricingRows?.byAlternate ?? null
+  useEffect(() => {
+    const bidId = selectedBidForPricing?.id
+    if (!bidId || !liveSplit || altTextsLoadedFor.current !== bidId) return
+    const next = stampAddAlternateAmounts(altTexts, liveSplit)
+    if (JSON.stringify(next) === JSON.stringify(altTexts)) return
+    const handle = window.setTimeout(() => {
+      if (altTextsLoadedFor.current !== bidId) return
+      setAltTexts(next)
+      void supabase.from('bids').update({ cover_letter_alt_texts: next }).eq('id', bidId).select('id').then(({ data: rows, error }) => {
+        // A refused write (read-only seat) stays quiet — the letter on screen is already right.
+        if (error) showToast('Could not save the alternate amounts: ' + error.message, 'error')
+        else if (bidUpdateRefused(rows)) altTextsLoadedFor.current = null
+      })
+    }, 800)
+    return () => window.clearTimeout(handle)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- showToast is stable; the stamp keys on the bid, its wording and the live split
+  }, [selectedBidForPricing?.id, altTexts, liveSplit])
   async function saveAltTexts(bidId: string, next: CoverLetterAltTexts) {
     setAltTexts(next)
     setAltTextEditor(null)
@@ -1197,6 +1224,9 @@ export function BidsCoverLetterTab({
         const unpricedLeftOff = bundlePricings.length - pricedBundle.length
         const newLetterTotal = letterTotal(pricedBundle)
         const headlineAmount = useCustomAmount && !isNaN(customAmountNum) && customAmountNum >= 0 ? customAmountNum : newBundleActive ? (boardValueForRule(boardValueRule, bundleSectionsForBoard(bundlePricings), coverLetterRevenue) ?? newLetterTotal) : coverLetterRevenue
+        // v2.4199: the best effort is the WHOLE — the headline (base) plus every offered alternate's
+        // add-on — because the robot priced the alternate's rows too and is scored against it.
+        const bestEffortAmount = headlineAmount + (addAltSplit ? offeredAdd.reduce((sum, g) => sum + g.revenueSum, 0) : 0)
         // J13-F3: while Pricing lazy-loads the preview reads "ZERO 00/100 DOLLARS" — Mark sent was
         // guarded, but Print and Copy were not, so a $0 letter of a $15.8M bid could leave the building.
         // A custom amount needs no pricing rows, so it is never gated.
@@ -1512,7 +1542,7 @@ export function BidsCoverLetterTab({
                           {!multi && onBestEffortRecorded ? (
                             <BidBestEffortCard
                               bid={bid}
-                              amount={headlineAmount}
+                              amount={bestEffortAmount}
                               onRecorded={onBestEffortRecorded}
                               onOpenEnvelope={(id) => onOpenRobotEnvelope?.(id)}
                             />
