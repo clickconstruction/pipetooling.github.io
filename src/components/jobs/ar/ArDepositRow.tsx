@@ -9,6 +9,7 @@ import type { CSSProperties } from 'react'
 import type { MercuryKindBadge } from '../../../lib/bankPaymentsKindBadges'
 import { arDepositRowStateLabel, type ArDepositRowState, type ArDepositRowTone } from '../../../lib/jobs/arDepositRowState'
 import type { MercuryBankReturn } from '../../../lib/jobs/bankReturnedDeposits'
+import type { ArDepositTrail } from '../../../lib/jobs/arDepositTrail'
 import { APP_CALENDAR_TZ } from '../../../utils/dateUtils'
 import { KindBadgePill } from './KindBadgePill'
 
@@ -80,10 +81,36 @@ function memoSnippet(d: ArDepositRowDeposit): string | null {
   return first.length > 42 ? `${first.slice(0, 40).trimEnd()}…` : first
 }
 
+/** The trail (v2.4277): "→ **#650 ATI Schertz** today 4:02 PM by Taunya · was ~~#878 Take 5- Seguin~~ 9/29". */
+export function ArDepositTrailLine({ trail }: { trail: ArDepositTrail }) {
+  return (
+    <div
+      data-testid="ar-deposit-trail"
+      title={trail.words}
+      style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 3, lineHeight: 1.35, overflowWrap: 'anywhere' }}
+    >
+      {trail.parts.map((p, i) => (
+        <span key={i}>
+          {i > 0 ? ' · ' : ''}
+          {p.before}
+          {p.jobs.map((j, k) => (
+            <span key={k}>
+              {k > 0 ? ', ' : ''}
+              {p.kind === 'on' ? <strong style={{ color: 'var(--text-700)', fontWeight: 600 }}>{j}</strong> : <s style={{ opacity: 0.8 }}>{j}</s>}
+            </span>
+          ))}
+          {p.after}
+        </span>
+      ))}
+    </div>
+  )
+}
+
 export function ArDepositRow({
   deposit,
   active,
   state,
+  trail = null,
   kindBadges,
   markMode,
   canApply,
@@ -94,6 +121,8 @@ export function ArDepositRow({
   deposit: ArDepositRowDeposit
   active: boolean
   state: ArDepositRowState
+  /** v2.4277: where the deposit went; null while unknown or when nothing ever happened to it. */
+  trail?: ArDepositTrail | null
   kindBadges: Record<string, MercuryKindBadge>
   markMode: boolean
   canApply: boolean
@@ -140,6 +169,7 @@ export function ArDepositRow({
           <KindBadgePill kind={d.kind} kindBadges={kindBadges} />
           {snippet ? <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>“{snippet}”</span> : null}
         </div>
+        {trail ? <ArDepositTrailLine trail={trail} /> : null}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
         <ArStateChip state={state} bankReturn={d.bankReturn ?? null} />

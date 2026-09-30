@@ -87,6 +87,14 @@ import { ArCloseOut } from './ar/ArCloseOut'
 import { buildArCloseOutOffer, describeArCloseOut, type ArClosedRow } from '../../lib/jobs/arCloseOut'
 import { isMissingRpcError } from '../../lib/customers/customersListBundle'
 import { arSearchFallThrough } from '../../lib/jobs/arDepositSearch'
+import {
+  arTrailWhenWords,
+  bankFailedAtFromRaw,
+  buildArDepositTrail,
+  groupArDepositTrailRows,
+  type ArDepositTrail,
+  type ArDepositTrailRow,
+} from '../../lib/jobs/arDepositTrail'
 
 type MercuryCandidateRow =
   Database['public']['Functions']['list_mercury_transactions_for_bank_payments']['Returns'][number]
@@ -219,6 +227,9 @@ export default function BankPaymentsModal({
   /** One fetch at a time; a list refresh bumps the sequence so a stale result is dropped, never cancelled mid-flight. */
   const hiddenInFlightRef = useRef(false)
   const hiddenFetchSeqRef = useRef(0)
+  /** v2.4277: the trail under each row, keyed by deposit; cleared on every list refresh (rows may have moved). */
+  const [trailsById, setTrailsById] = useState<Map<string, ArDepositTrail | null>>(() => new Map())
+  const trailsUnavailableRef = useRef(false)
   const [arBankReturnedMarkMode, setArBankReturnedMarkMode] = useState(false)
   const [returnedToggleSavingId, setReturnedToggleSavingId] = useState<string | null>(null)
   const [listLoading, setListLoading] = useState(false)
@@ -660,6 +671,7 @@ export default function BankPaymentsModal({
     void loadArClosed()
     setHiddenCandidates(null)
     hiddenFetchSeqRef.current += 1
+    setTrailsById(new Map())
     const seq = ++listRequestSeqRef.current
     setListLoading(true)
     setListError(null)
@@ -747,6 +759,54 @@ export default function BankPaymentsModal({
       }
     })()
   }, [wantHiddenCandidates, hiddenCandidates, sortingConfig])
+
+  /**
+   * v2.4277: the trail under every row — where the deposit went, who, when. One read
+   * (`list_ar_deposit_trails`, at most 500 ids a call) for the rows on screen and the
+   * All rows behind a search; quiet when the RPC is not pushed yet or the read fails.
+   */
+  useEffect(() => {
+    if (!open || trailsUnavailableRef.current) return
+    const rows = [...candidates, ...(hiddenCandidates ?? [])]
+    const wanted = rows.filter((c) => !trailsById.has(c.mercury_transaction_id))
+    if (!wanted.length) return
+    let cancelled = false
+    ;(async () => {
+      const byId = new Map(wanted.map((c) => [c.mercury_transaction_id, c] as const))
+      const ids = [...byId.keys()]
+      const fetched: ArDepositTrailRow[] = []
+      for (let i = 0; i < ids.length; i += 500) {
+        const { data, error } = await supabase.rpc('list_ar_deposit_trails' as never, { p_tx_ids: ids.slice(i, i + 500) } as never)
+        if (error) {
+          if (isMissingRpcError(error.message)) trailsUnavailableRef.current = true
+          return
+        }
+        fetched.push(...((data ?? []) as ArDepositTrailRow[]))
+      }
+      if (cancelled) return
+      const grouped = groupArDepositTrailRows(fetched)
+      const now = new Date()
+      const whenWords = (iso: string) => arTrailWhenWords(iso, now, APP_CALENDAR_TZ)
+      setTrailsById((prev) => {
+        const next = new Map(prev)
+        for (const [id, c] of byId) {
+          next.set(
+            id,
+            buildArDepositTrail({
+              rows: grouped.get(id) ?? [],
+              returned: Boolean(c.returned) || c.bankReturn != null,
+              bankFailedAt: c.bankReturn ? bankFailedAtFromRaw(c.raw) : null,
+              whenWords,
+            }),
+          )
+        }
+        return next
+      })
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, candidates, hiddenCandidates, trailsById])
 
   const toggleMercuryReturned = useCallback(
     async (mercuryTransactionId: string, nextReturned: boolean) => {
@@ -1944,6 +2004,7 @@ export default function BankPaymentsModal({
                   deposit={c}
                   active={c.mercury_transaction_id === selectedId}
                   state={rowStates.get(c.mercury_transaction_id) ?? 'hand'}
+                  trail={trailsById.get(c.mercury_transaction_id) ?? null}
                   kindBadges={kindBadges}
                   markMode={arBankReturnedMarkMode}
                   canApply={canApply}
@@ -1977,6 +2038,7 @@ export default function BankPaymentsModal({
                   deposit={c}
                   active={c.mercury_transaction_id === selectedId}
                   state={elsewhereStates.get(c.mercury_transaction_id) ?? 'applied'}
+                  trail={trailsById.get(c.mercury_transaction_id) ?? null}
                   kindBadges={kindBadges}
                   markMode={arBankReturnedMarkMode}
                   canApply={canApply}
