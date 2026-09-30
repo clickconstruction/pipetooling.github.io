@@ -209,9 +209,9 @@ describe('column line parts (date on the label line, distance + fact under it)',
     expect(stripDoneParts(null, null, TODAY)).toEqual({ main: 'nothing booked', sub: null })
   })
   it('BILL / PAID from the billing detail labels', () => {
-    expect(stripBillParts({ ymd: '2026-09-20', labels: ['Invoice sent'] }, TODAY)).toEqual({ label: 'Bill', main: 'Sun Sep 20', sub: '2 days ago · sent' })
-    expect(stripBillParts({ ymd: '2026-09-20', labels: ['Invoice billed'] }, TODAY)).toEqual({ label: 'Bill', main: 'Sun Sep 20', sub: '2 days ago · billed' })
-    expect(stripBillParts({ ymd: '2026-09-20', labels: ['Invoice sent', 'Invoice billed'] }, TODAY)).toEqual({ label: 'Bill', main: 'Sun Sep 20', sub: '2 days ago · sent' })
+    expect(stripBillParts({ ymd: '2026-09-20', labels: ['Invoice sent'] }, TODAY)).toEqual({ label: 'Billed', main: 'Sun Sep 20', sub: '2 days ago · sent' })
+    expect(stripBillParts({ ymd: '2026-09-20', labels: ['Invoice billed'] }, TODAY)).toEqual({ label: 'Billed', main: 'Sun Sep 20', sub: '2 days ago · billed' })
+    expect(stripBillParts({ ymd: '2026-09-20', labels: ['Invoice sent', 'Invoice billed'] }, TODAY)).toEqual({ label: 'Billed', main: 'Sun Sep 20', sub: '2 days ago · sent' })
     expect(stripBillParts({ ymd: '2026-09-22', labels: ['Payment recorded', 'Invoice sent'] }, TODAY)).toEqual({ label: 'Paid', main: 'Tue Sep 22', sub: 'today · paid' })
   })
   it('FIELD (no strip): the later of worked and booked, with the distance', () => {

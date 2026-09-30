@@ -541,7 +541,7 @@ export function renderStagesFieldAndBillingLines(ctx: StagesRowRenderContext, jo
             {whenLine('Ends', 'isEnds', stripEndsParts(when, todayYmd), openCal, 'Last day on the calendar — open the job calendar')}
           </>
         ) : when.kind === 'done' ? (
-          whenLine('Done', 'isMuted', stripDoneParts(when.lastYmd, when.lastKind, todayYmd), openCal, 'Nothing on the calendar — open the job calendar')
+          whenLine('Done', 'isMuted isReached', stripDoneParts(when.lastYmd, when.lastKind, todayYmd), openCal, 'Nothing on the calendar — open the job calendar')
         ) : (
           <>
             <span className={`stagesWhenFlag${when.tone === 'amber' ? ' isAmber' : ''}`}>Not scheduled</span>
@@ -566,7 +566,7 @@ export function renderStagesFieldAndBillingLines(ctx: StagesRowRenderContext, jo
         <div className="stagesWhen" style={{ margin: '0 0 1px' }}>
           {whenLine(
             bill.label,
-            'isMuted',
+            'isMuted isReached',
             bill,
             (e) => {
               e.stopPropagation()

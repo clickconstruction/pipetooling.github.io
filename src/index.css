@@ -3148,6 +3148,13 @@ body.my-time-boundary-dragging {
 .stagesWhenLine.isMuted b {
   color: var(--text-muted);
 }
+/* DONE, BILLED and PAID name a stage the job has reached; the underline sets
+   them apart from NEXT / ENDS / LAST, which describe the calendar (v2.4203). */
+.stagesWhenLine.isReached b {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+}
 .stagesWhenSub {
   display: block;
   color: var(--text-muted);
