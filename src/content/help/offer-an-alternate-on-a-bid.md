@@ -41,6 +41,7 @@ Mark the bid **Won** (Edit Bid, or a GC's packet on the Bid Board) and it asks *
 
 - A declined alternate's rows stay on the bid, greyed **ALT · declined**, and leave the job's materials, book fill, schedule of values and labor hours. Nothing is deleted, so a customer who comes back for it later is one tick away.
 - The Bid Board shows the agreed value with a green **alt taken** chip, or **alt declined** when they passed.
+- **The bid room asks for you.** On the signable link, each offered alternate is an add-on card the customer can tick beside the option they choose — ticked to start, with what it covers and what it adds. Their signature records the answer the same way, so the Won dialog shows it already ticked.
 
 ## What the Bid Board shows
 
