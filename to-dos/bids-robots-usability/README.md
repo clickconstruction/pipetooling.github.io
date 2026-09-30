@@ -2,7 +2,7 @@
 name: "Bids → Robots: the Audits lens as a queue for the estimator's minutes"
 number: 63
 group: gated
-status: building — the owner took the draft's picks 2026-09-30 · PR 1 shipped v2.4230 (the open card, one question count, the strip off Audits) · PR 2 v2.4256 (the strip and caption on every lens) · PR 3 v2.4232 (the run-through) · PR 4 v2.4234 (the queue and two panes) · PRs 5–6 follow
+status: building — the owner took the draft's picks 2026-09-30 · PR 1 shipped v2.4230 (the open card, one question count, the strip off Audits) · PR 2 v2.4256 (the strip and caption on every lens) · PR 3 v2.4232 (the run-through) · PR 4 v2.4234 (the queue and two panes) · PR 5 v2.4261 (the card in the envelope's shape) · PR 6 follows
 summary: >
   Bids → 🤖 Robots → Audits stacks the robots' 19 open questions (16 cards, about 96 buttons), a
   coaching strip and all 40 audits, with the 8 sealed shadows mixed in and the auto-opened card at
@@ -85,4 +85,4 @@ Each PR is cut from fresh `main`, one claim each, auto-merge; no migration in an
 
 ## Where it stands
 
-Read, planned and mocked up 2026-09-29. The owner took the five calls as the draft's picks on 2026-09-30 (Questions as the heading word, two panes on desktop, shared questions first; a parked slate stays unbuilt, and the sealed-shadow dollar rule stays a harness call). PR 1 shipped as v2.4230, PR 2 as v2.4256 and PR 3 as v2.4232 and PR 4 as v2.4234; PRs 5–6 follow on the same day.
+Read, planned and mocked up 2026-09-29. The owner took the five calls as the draft's picks on 2026-09-30 (Questions as the heading word, two panes on desktop, shared questions first; a parked slate stays unbuilt, and the sealed-shadow dollar rule stays a harness call). PR 1 shipped as v2.4230, PR 2 as v2.4256 and PR 3 as v2.4232, PR 4 as v2.4234 and PR 5 as v2.4261; PR 6 (the guide, the glossary, the map — and this folder's retirement) follows.
