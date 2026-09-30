@@ -18,7 +18,7 @@ import { buildJobContractPaperEmail, buildJobContractReminderEmail, buildJobCont
 import { SAMPLE_JOB_CONTRACT } from './customerSample'
 import { testReportSampleEmail } from './jobs/testReportSample'
 import { buildBidPricingPackageEmailHtml, buildBidPricingPackagePlainText, buildBidPricingPackageTableHtml, type PackageExternalRow } from './buildBidPricingPackageHtml'
-import { buildGcStatementEmailHtml, buildGcStatementEmailText, gcStatementEmailSubject } from './jobsDocuments/gcStatementEmail'
+import { buildGcStatementEmailHtml, buildGcStatementEmailText, gcStatementEmailSubject, gcStatementQrDataUrl } from './jobsDocuments/gcStatementEmail'
 import type { GcReviewGroup } from './gcReviewRollup'
 import { buildRfqEmail } from './rfqEmail'
 import { composeJobAccountEmail } from './supplyHouseJobAccount'
@@ -188,18 +188,30 @@ export function buildSamplePricingPackageEmail(ctx: SampleEmailContext): BuiltEm
   }
 }
 
-/** The GC statement email (v2.3511): GC Review's own builder over two sample jobs, with the sample GC's portal as the pay link. */
+/** The GC statement email (v2.3511): GC Review's own builder over three sample bills at two properties, with the sample GC's portal as the pay link. */
 export function sampleGcStatementGroup(todayYmd: string): GcReviewGroup {
+  const bill = (key: string, jobId: string, hcp: string, jobName: string, jobAddress: string, daysAgo: number, billed: number, paid: number) => {
+    const paidOn = paid > 0 ? ymdPlusDays(todayYmd, -Math.max(1, daysAgo - 12)) : null
+    return {
+      key, jobId, hcp, jobName, jobAddress, customerName: SAMPLE_GC.company,
+      referenceDateDisplay: ymdPlusDays(todayYmd, -daysAgo), referenceYmd: ymdPlusDays(todayYmd, -daysAgo), referenceIsEstimate: false,
+      ageDays: daysAgo, remaining: billed - paid, inCollections: false, billed,
+      billPayments: paidOn ? [{ invoice_id: key, amount: paid, paid_on: paidOn, payment_type: 'check', reference_number: '4417', sequence_order: 1 }] : [],
+    }
+  }
   const rows = [
-    { key: 'sample-inv-1', jobId: 'sample-job-1', hcp: '1042', jobName: SAMPLE_BID.projectName, jobAddress: '4400 Sample Pkwy, Kyle, TX 78640', customerName: SAMPLE_GC.company, referenceDateDisplay: ymdPlusDays(todayYmd, -34), ageDays: 34, remaining: 15200, inCollections: false },
-    { key: 'sample-inv-2', jobId: 'sample-job-2', hcp: '1051', jobName: 'Bldg 3 top-out', jobAddress: '4400 Sample Pkwy, Kyle, TX 78640', customerName: SAMPLE_GC.company, referenceDateDisplay: ymdPlusDays(todayYmd, -6), ageDays: 6, remaining: 8450, inCollections: false },
+    bill('sample-inv-1', 'sample-job-1', '1042', SAMPLE_BID.projectName, '4400 Sample Pkwy, Kyle, TX 78640', 34, 20200, 5000),
+    bill('sample-inv-2', 'sample-job-2', '1051', 'Bldg 3 top-out', '4400 Sample Pkwy, Kyle, TX 78640', 6, 6450, 0),
+    bill('sample-inv-3', 'sample-job-3', '1058', 'Service Visit', '212 Example Ln, Buda, TX 78610', 9, 2000, 0),
   ]
-  return { key: 'sample-gc', gcId: 'sample-gc', gcName: SAMPLE_GC.company, isNoGc: false, rows, subtotal: 23650, jobCount: 2, oldestAgeDays: 34 }
+  return { key: 'sample-gc', gcId: 'sample-gc', gcName: SAMPLE_GC.company, isNoGc: false, rows, subtotal: 23650, jobCount: 3, oldestAgeDays: 34 }
 }
 
 export function buildSampleGcStatementEmail(ctx: SampleEmailContext): BuiltEmail {
   const group = sampleGcStatementGroup(ctx.todayYmd)
-  const opts = { dateStr: ctx.dateLabel, officePhone: PORTAL_COMPANY.phone || null, portalUrl: `${PORTAL_SHORT_ORIGIN}${SAMPLE_GC.portalSlug}` }
+  const portalUrl = `${PORTAL_SHORT_ORIGIN}${SAMPLE_GC.portalSlug}`
+  // A real send carries the QR code as an inline attachment; a browser cannot load `cid:`, so the sample inlines it.
+  const opts = { dateStr: ctx.dateLabel, officePhone: PORTAL_COMPANY.phone || null, portalUrl, qrImgSrc: gcStatementQrDataUrl(portalUrl) }
   return { subject: gcStatementEmailSubject(group, ctx.dateLabel), html: buildGcStatementEmailHtml(group, opts), text: buildGcStatementEmailText(group, opts) }
 }
 

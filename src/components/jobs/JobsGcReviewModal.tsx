@@ -29,6 +29,8 @@ import {
   buildGcStatementEmailHtml,
   buildGcStatementEmailPreviewHtml,
   buildGcStatementEmailText,
+  GC_STATEMENT_QR_CID_SRC,
+  gcStatementUnmatchedWords,
   gcReviewShareAllEmailSubject,
   gcStatementEmailSubject,
 } from '../../lib/jobsDocuments/gcStatementEmail'
@@ -239,6 +241,9 @@ export type SendGcStatementPayload = {
   ccEmails?: string[]
   subject: string
   emailHtml: string
+  /** The same body with the account card's QR code (v2.4255), and the portal it opens — the function attaches the code, or sends `emailHtml`. */
+  emailHtmlQr?: string | null
+  portalUrl?: string | null
   emailText: string
   total: number
   jobCount: number
@@ -1965,6 +1970,10 @@ export function JobsGcReviewModal({
               setRepeatWeekly={setEmailRepeatWeekly}
               disabled={emailSending}
             />
+            {/* Money on a job that no bill carries (v2.4255): the statement counts a bill paid only by payments on that bill. */}
+            {gcStatementUnmatchedWords(emailDialogGroup) ? (
+              <p role="note" data-testid="gc-statement-unmatched" style={{ margin: '0 0 0.6rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{gcStatementUnmatchedWords(emailDialogGroup)}</p>
+            ) : null}
             {emailError ? (
               <p style={{ margin: '0 0 0.6rem', fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>{emailError}</p>
             ) : null}
@@ -2047,6 +2056,8 @@ export function JobsGcReviewModal({
                   }
                   setEmailSending(true)
                   setEmailError(null)
+                  const sendPortalUrl = emailIncludePortal ? portalLinkFor(g)?.url ?? null : null
+                  const sendOpts = { dateStr, groupBy: effectiveGroupBy, officePhone: getPhysicalInvoiceIssuerForDocument().phone, portalUrl: sendPortalUrl, introText: emailIntroText }
                   void onSendStatement({
                     gcCustomerId: byDevelopment ? null : g.gcId,
                     gcName: g.gcName,
@@ -2054,8 +2065,11 @@ export function JobsGcReviewModal({
                     toEmail: emailDialogTo.trim(),
                     ccEmails: ccNow.emails,
                     subject: emailDialogSubject.trim() || gcStatementEmailSubject(g, dateStr),
-                    emailHtml: buildGcStatementEmailHtml(g, { dateStr, groupBy: effectiveGroupBy, officePhone: getPhysicalInvoiceIssuerForDocument().phone, portalUrl: emailIncludePortal ? portalLinkFor(g)?.url ?? null : null, introText: emailIntroText }),
-                    emailText: buildGcStatementEmailText(g, { dateStr, officePhone: getPhysicalInvoiceIssuerForDocument().phone, portalUrl: emailIncludePortal ? portalLinkFor(g)?.url ?? null : null, introText: emailIntroText }),
+                    emailHtml: buildGcStatementEmailHtml(g, sendOpts),
+                    // The card with its QR code: the function attaches the code and sends this body, or falls back to the one above.
+                    emailHtmlQr: sendPortalUrl ? buildGcStatementEmailHtml(g, { ...sendOpts, qrImgSrc: GC_STATEMENT_QR_CID_SRC }) : null,
+                    portalUrl: sendPortalUrl,
+                    emailText: buildGcStatementEmailText(g, sendOpts),
                     total: g.subtotal,
                     jobCount: g.jobCount,
                     replyTo: (() => {

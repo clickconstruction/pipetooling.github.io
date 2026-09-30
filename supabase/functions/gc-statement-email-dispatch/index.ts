@@ -38,6 +38,9 @@ import {
   findDuplicateStatementSend,
   type RecentStatementSend,
 } from '../_shared/gcStatementSendDedupe.ts'
+import { PORTAL_QR_CONTENT_ID, PORTAL_QR_FILENAME } from '../_shared/portalAccountCard.ts'
+import { qrMatrix } from '../_shared/qrMatrix.ts'
+import { bytesToBase64, qrPngBytes } from '../_shared/qrPng.ts'
 import {
   chicagoDateStr,
   gcShareAllSubject,
@@ -73,6 +76,27 @@ async function resolveGcPortalUrl(admin: any, customerId: string): Promise<strin
     return slug ? `${PORTAL_SHORT_ORIGIN}${slug}` : `${PORTAL_APP_ORIGIN}/portal?t=${all.token}`
   } catch {
     return null
+  }
+}
+
+/**
+ * Each job's property record, for the statement's property blocks (v2.4255).
+ * Read beside the payload, in chunks (an `.in()` list is a row-capped read);
+ * a failed read groups the statement by address alone, which still sends.
+ */
+// deno-lint-ignore no-explicit-any
+async function loadPropertyIdByJob(admin: any, jobIds: string[]): Promise<Record<string, string | null>> {
+  const out: Record<string, string | null> = {}
+  const ids = [...new Set(jobIds)]
+  try {
+    for (let i = 0; i < ids.length; i += 200) {
+      const { data, error } = await admin.from('jobs_ledger').select('id, customer_address_id').in('id', ids.slice(i, i + 200))
+      if (error) return {}
+      for (const j of (data ?? []) as Array<{ id: string; customer_address_id: string | null }>) out[j.id] = j.customer_address_id ?? null
+    }
+    return out
+  } catch {
+    return {}
   }
 }
 
@@ -283,8 +307,13 @@ serve(async (req) => {
         // The intro rides INSIDE the statement (journey-map #46) so the scheduled
         // lane and the client's Draft Message lane render one identical body —
         // src/lib/jobsDocuments/gcStatementEmailParity.test.ts pins it.
-        const html = isSingle ? renderGcStatementHtml(singleGroup!, dateStr, officePhone, portalUrl, wording.introText) : renderGcShareAllHtml(payload, dateStr, officePhone, wording.introText)
-        const text = isSingle ? renderGcStatementText(singleGroup!, dateStr, officePhone, portalUrl, wording.introText) : renderGcShareAllText(payload, dateStr, officePhone, wording.introText)
+        // One property at a time (v2.4255): the jobs' property records group the bills, and the
+        // account card carries the portal's QR code as an inline attachment — as a bill email does.
+        const propertyIdByJob = isSingle ? await loadPropertyIdByJob(admin, singleGroup!.rows.map((r) => r.job_id)) : null
+        const qrModules = portalUrl ? qrMatrix(portalUrl) : null
+        const extras = { propertyIdByJob, qrImgSrc: qrModules ? `cid:${PORTAL_QR_CONTENT_ID}` : null }
+        const html = isSingle ? renderGcStatementHtml(singleGroup!, dateStr, officePhone, portalUrl, wording.introText, extras) : renderGcShareAllHtml(payload, dateStr, officePhone, wording.introText)
+        const text = isSingle ? renderGcStatementText(singleGroup!, dateStr, officePhone, portalUrl, wording.introText, extras) : renderGcShareAllText(payload, dateStr, officePhone, wording.introText)
 
         const { data: requester } = await admin
           .from('users')
@@ -305,6 +334,7 @@ serve(async (req) => {
             html,
             text,
             ...(replyTo ? { reply_to: replyTo } : {}),
+            ...(isSingle && qrModules ? { attachments: [{ filename: PORTAL_QR_FILENAME, content: bytesToBase64(qrPngBytes(qrModules)), content_id: PORTAL_QR_CONTENT_ID }] } : {}),
           }),
         })
         if (!resendResponse.ok) {

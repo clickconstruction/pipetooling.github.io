@@ -1,45 +1,67 @@
 import type { GcReviewGroup, GcReviewGroupBy } from '../gcReviewRollup'
 import { formatCurrency } from '../jobs/jobFormatting'
+import {
+  GC_STATEMENT_COMPANY_NAME,
+  escapeHtml,
+  gcStatementFooterHtml,
+  gcStatementFooterLine,
+  gcStatementIntroHtml,
+  renderStatementByPropertyHtml,
+  renderStatementByPropertyText,
+  type StatementBillIn,
+} from '../../../supabase/functions/_shared/gcStatementByProperty'
+import { PORTAL_QR_CONTENT_ID } from '../../../supabase/functions/_shared/portalAccountCard'
+import { qrMatrix } from '../../../supabase/functions/_shared/qrMatrix'
+import { bytesToBase64, qrPngBytes } from '../../../supabase/functions/_shared/qrPng'
 
 /**
  * GC-facing statement email (v2.1414) — what a General Contractor actually
  * receives, whether pasted into a personal email (Copy for email →
  * copyRichHtmlToClipboard) or sent by the app (send-gc-statement-email).
  *
- * Deliberately different from the internal gcStatementReport print: leads with
- * the three things a GC cares about — job address, the date the bill was
- * sent, and the amount owed — with the job number small underneath for
- * reference. No days-past-due pressure language, no internal vocabulary.
- * Table-based with inline styles so Gmail/Outlook/Apple Mail render it
- * faithfully.
+ * Deliberately different from the internal gcStatementReport print: no
+ * days-past-due pressure language, no internal vocabulary.
  *
- * KEEP IN SYNC with supabase/functions/gc-statement-email-dispatch/render.ts —
- * the scheduled lane renders the same statement server-side from the RPC
- * payload. `gcStatementEmailParity.test.ts` pins the two byte-for-byte.
+ * The statement for one GC reads one property at a time (v2.4255): the total
+ * first, a block per property with its subtotal, a line per bill with the
+ * payment recorded against it, and the account card with its QR code. It is
+ * written once, in `supabase/functions/_shared/gcStatementByProperty.ts`, and
+ * the scheduled dispatcher (`gc-statement-email-dispatch/render.ts`) calls the
+ * same module — this file only maps GC Review's rows onto it.
+ * `gcStatementEmailParity.test.ts` pins the two mappings on one fixture.
+ *
+ * "Share all" (every GC in one email) keeps its flat table below; KEEP IT IN
+ * SYNC with render.ts `renderGcShareAllHtml` / `renderGcShareAllText`.
  */
 
-export const GC_STATEMENT_COMPANY_NAME = 'Click Plumbing and Electrical'
+export {
+  GC_STATEMENT_COMPANY_NAME,
+  GC_STATEMENT_FOOTER_LINE,
+  GC_STATEMENT_PAY_LINK_SRC,
+  gcStatementFooterHtml,
+  gcStatementFooterLine,
+  gcStatementIntroHtml,
+  gcStatementPayLineText,
+  gcStatementPayUrl,
+  officePhoneTelHref,
+} from '../../../supabase/functions/_shared/gcStatementByProperty'
+
 /** Subject-line short name (v2.2131, owner copy): "Click Plumbing open balances: Aug 22, 2026". */
 export const GC_STATEMENT_SUBJECT_NAME = 'Click Plumbing'
-export const GC_STATEMENT_FOOTER_LINE =
-  'Questions about a bill? Reply to this email or call the office.'
-
-/**
- * Footer line (v2.2133, owner copy): names the office number from Settings →
- * Company → invoice issuer (`physical_invoice_issuer_v1.phone`). Falls back to
- * the bare line when no number is configured.
- */
-export function gcStatementFooterLine(officePhone?: string | null): string {
-  const phone = (officePhone ?? '').trim()
-  return phone ? `Questions about a bill? Reply to this email or call the office at ${phone}.` : GC_STATEMENT_FOOTER_LINE
-}
 
 export type GcStatementEmailOpts = {
   dateStr?: string
   groupBy?: GcReviewGroupBy
   officePhone?: string | null
-  /** The GC's portal link (v2.2151) — renders the "Your account, any time" card with its Pay online line; omit/null for none. */
+  /** The GC's portal link (v2.2151) — draws the "Your account, any time" card; omit/null for none. */
   portalUrl?: string | null
+  /**
+   * What the card's QR code loads (v2.4255): `GC_STATEMENT_QR_CID_SRC` in a
+   * send (the function attaches the file), a data URL in a preview
+   * (`gcStatementQrDataUrl`). Omit/null for a card without a code — Copy for
+   * email, where a pasted picture may not travel.
+   */
+  qrImgSrc?: string | null
   /**
    * Intro paragraph above the statement (journey-map #46): the dev-saved
    * `gc_statement_scheduled` template body, rendered — the same words the
@@ -49,65 +71,21 @@ export type GcStatementEmailOpts = {
   introText?: string | null
 }
 
-/**
- * Attribution tag on the pay link (journey-map #46 telemetry): the portal
- * counts views, and `?src=gc-statement` lets #37's counter tell a statement
- * click from any other open. The portal ignores unknown query keys.
- */
-export const GC_STATEMENT_PAY_LINK_SRC = 'gc-statement'
+/** The QR code as an email loads it: an inline attachment the send function adds under this Content-ID. */
+export const GC_STATEMENT_QR_CID_SRC = `cid:${PORTAL_QR_CONTENT_ID}`
 
-/** The portal URL with the statement's `src` tag appended — mirror of render.ts `payUrl`. */
-export function gcStatementPayUrl(portalUrl: string | null | undefined): string | null {
+/** The portal's QR code as a data URL, for a preview a browser draws (it cannot load `cid:`); null when the address is too long for a code. */
+export function gcStatementQrDataUrl(portalUrl: string | null | undefined): string | null {
   const url = (portalUrl ?? '').trim()
-  if (!url) return null
-  return `${url}${url.includes('?') ? '&' : '?'}src=${GC_STATEMENT_PAY_LINK_SRC}`
+  const modules = url ? qrMatrix(url) : null
+  return modules ? `data:image/png;base64,${bytesToBase64(qrPngBytes(modules))}` : null
 }
 
 /**
- * Portal card under the statement table (v2.2151; says how to pay since
- * journey-map #46 — "Pay online any time at …", the office-side promise the
- * GC's copy never carried). Mirror of gc-statement-email-dispatch/render.ts
- * `portalCardHtml` — keep in sync.
- */
-export function gcStatementPortalCardHtml(portalUrl: string | null | undefined): string {
-  const url = (portalUrl ?? '').trim()
-  const href = gcStatementPayUrl(url)
-  if (!url || !href) return ''
-  const shown = url.replace(/^https?:\/\//, '')
-  return `<table role="presentation" style="width:100%;border-collapse:collapse;margin-top:14px"><tr>
-    <td style="border:1px solid #ddd6c8;border-left:4px solid #b0662f;background:#fbf7f0;border-radius:6px;padding:12px 14px">
-      <p style="margin:0;font-size:14px;font-weight:bold;color:#16283c">Your account, any time</p>
-      <p style="margin:3px 0 0;font-size:13px;color:#5a6b7e;line-height:1.4">Pay online any time at <a href="${escapeHtml(href)}" style="color:#b0662f;font-weight:bold;text-decoration:none">${escapeHtml(shown)}</a> — this statement stays current there.</p>
-    </td>
-  </tr></table>`
-}
-
-/** Plain-text counterpart of the portal card — the same pay line. */
-export function gcStatementPayLineText(portalUrl: string | null | undefined): string | null {
-  const href = gcStatementPayUrl(portalUrl)
-  return href ? `Pay online any time at ${href} — this statement stays current there.` : null
-}
-
-const escapeHtml = (s: string) =>
-  (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-
-/**
- * Intro paragraph (journey-map #46): the editable template body, escaped with
- * newlines as <br>, inside the statement's own font so it reads as one email.
- * Mirror of render.ts `introHtml`.
- */
-export function gcStatementIntroHtml(introText: string | null | undefined): string {
-  const text = (introText ?? '').trim()
-  if (!text) return ''
-  return `<p style="margin:0 0 12px;font-size:14px;color:#111827;line-height:1.45">${escapeHtml(text).replace(/\n/g, '<br>')}</p>
-  `
-}
-
-/**
- * Row label (journey-map #46 duplicate-name fix): the address leads; the job
- * name falls back to the lead only when there is no address, and then the
- * sub-line must not print it again ("Water Heater / Water Heater").
- * Mirror of render.ts `rowLabel`.
+ * Row label for the Share-all table (journey-map #46 duplicate-name fix): the
+ * address leads; the job name falls back to the lead only when there is no
+ * address, and then the sub-line must not print it again ("Water Heater /
+ * Water Heater"). Mirror of render.ts `rowLabel`.
  */
 export function gcStatementRowLabel(jobAddress: string | null | undefined, jobName: string | null | undefined, jobNumber: string | null | undefined): { lead: string; sub: string } {
   const address = (jobAddress ?? '').trim()
@@ -118,30 +96,52 @@ export function gcStatementRowLabel(jobAddress: string | null | undefined, jobNa
   return { lead, sub }
 }
 
-/** `tel:` target for the office number — US 10/11-digit → +1…, else +digits; null when no digits. */
-export function officePhoneTelHref(officePhone?: string | null): string | null {
-  const d = (officePhone ?? '').replace(/\D/g, '')
-  if (!d) return null
-  if (d.length === 10) return `tel:+1${d}`
-  if (d.length === 11 && d.startsWith('1')) return `tel:+${d}`
-  return `tel:+${d}`
-}
-
-/**
- * HTML footer (v2.2158): same sentence as gcStatementFooterLine, with the
- * office number as a tap-to-call link. Mirror of the dispatcher's render.ts
- * `gcStatementFooterHtml` — keep in sync.
- */
-export function gcStatementFooterHtml(officePhone?: string | null): string {
-  const phone = (officePhone ?? '').trim()
-  const tel = officePhoneTelHref(phone)
-  if (!phone || !tel) return escapeHtml(GC_STATEMENT_FOOTER_LINE)
-  return `Questions about a bill? Reply to this email or call the office at <a href="${escapeHtml(tel)}" style="color:#6b7280;font-weight:bold;text-decoration:none;white-space:nowrap">${escapeHtml(phone)}</a>.`
-}
-
 /** Recipient-neutral on purpose — safe to paste to anyone without leaking another GC's name. */
 export function gcStatementEmailSubject(_group: GcReviewGroup, dateStr: string): string {
   return `${GC_STATEMENT_SUBJECT_NAME} open balances: ${dateStr}`
+}
+
+/** GC Review's rows as the shared statement reads them — mirror of render.ts `statementBillsOf`. */
+export function gcStatementBillsOf(group: GcReviewGroup): StatementBillIn[] {
+  return group.rows.map((r) => ({
+    key: r.key,
+    jobId: r.jobId,
+    jobNumber: r.hcp,
+    jobName: r.jobName,
+    jobAddress: r.jobAddress,
+    customerName: r.customerName,
+    propertyId: r.propertyId ?? null,
+    sentYmd: r.referenceYmd ?? null,
+    sentIsEstimate: r.referenceIsEstimate ?? false,
+    // A row built without its bill (an old caller, a hand-made fixture) is worded as owed in full.
+    billed: r.billed === undefined ? r.remaining : r.billed,
+    owed: r.remaining,
+    payments: r.billed === undefined ? [] : r.billPayments ?? [],
+    retainageHeld: r.retainageHeld ?? null,
+  }))
+}
+
+/**
+ * Money on a job that no bill carries — for the office, before it sends. The
+ * statement counts a bill as paid only by payments recorded against it, so a
+ * payment put on the job with no bill picked leaves its bills reading owed in
+ * full. One entry per job, largest first.
+ */
+export function gcStatementUnmatchedPayments(group: GcReviewGroup): Array<{ jobId: string; hcp: string; amount: number }> {
+  const byJob = new Map<string, { jobId: string; hcp: string; amount: number }>()
+  for (const r of group.rows) {
+    const amount = Math.round((r.unmatchedOnJob ?? 0) * 100) / 100
+    if (amount > 0.005 && !byJob.has(r.jobId)) byJob.set(r.jobId, { jobId: r.jobId, hcp: r.hcp, amount })
+  }
+  return [...byJob.values()].sort((a, b) => b.amount - a.amount || a.hcp.localeCompare(b.hcp))
+}
+
+/** The office's sentence for `gcStatementUnmatchedPayments`; '' when every payment sits on a bill. */
+export function gcStatementUnmatchedWords(group: GcReviewGroup): string {
+  const jobs = gcStatementUnmatchedPayments(group)
+  if (jobs.length === 0) return ''
+  const list = jobs.map((j) => `${j.hcp && j.hcp !== '—' ? `Job ${j.hcp}` : 'A job with no number'} $${formatCurrency(j.amount)}`).join(' · ')
+  return `Paid on the job, not on a bill: ${list}. The statement shows ${jobs.length === 1 ? 'that job’s' : 'those jobs’'} bills as owed in full. If the money was for these bills, match it in Edit Job → Payments first.`
 }
 
 const statementRowsHtml = (rows: GcReviewGroup['rows']): string =>
@@ -170,26 +170,22 @@ const statementTableHeadHtml = `<thead><tr>
       <th style="padding:6px;border-bottom:2px solid #9ca3af;font-size:12px;color:#4b5563;text-align:right">Amount owed</th>
     </tr></thead>`
 
+const todayStr = (): string => new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+
 /** The email body as an HTML fragment (for clipboard + the send pipeline wraps it itself). */
 export function buildGcStatementEmailHtml(
   group: GcReviewGroup,
   opts?: GcStatementEmailOpts,
 ): string {
-  const dateStr = opts?.dateStr ?? new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-  return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px">
-  ${gcStatementIntroHtml(opts?.introText)}<p style="margin:0;font-size:16px;font-weight:bold;color:#111827">${escapeHtml(GC_STATEMENT_COMPANY_NAME)}</p>
-  <p style="margin:2px 0 12px;font-size:13px;color:#4b5563">Statement for ${escapeHtml(group.gcName)} · ${escapeHtml(dateStr)}</p>
-  <table style="width:100%;border-collapse:collapse">
-    ${statementTableHeadHtml}
-    <tbody>${statementRowsHtml(group.rows)}
-      <tr>
-        <td colspan="2" style="padding:9px 6px;font-size:14px;font-weight:bold;color:#111827">Total owed</td>
-        <td style="padding:9px 6px;font-size:14px;font-weight:bold;color:#111827;text-align:right">$${formatCurrency(group.subtotal)}</td>
-      </tr>
-    </tbody>
-  </table>${gcStatementPortalCardHtml(opts?.portalUrl)}
-  <p style="margin:12px 0 0;font-size:12px;color:#6b7280">${gcStatementFooterHtml(opts?.officePhone)}</p>
-</div>`
+  return renderStatementByPropertyHtml({
+    payerName: group.gcName,
+    dateStr: opts?.dateStr ?? todayStr(),
+    bills: gcStatementBillsOf(group),
+    officePhone: opts?.officePhone,
+    portalUrl: opts?.portalUrl,
+    qrImgSrc: opts?.qrImgSrc,
+    introText: opts?.introText,
+  })
 }
 
 /**
@@ -264,9 +260,11 @@ export function buildGcReviewShareAllEmailText(
 }
 
 /**
- * Standalone document for the Email… dialog's Preview window (v2.2061): the
- * exact email body the recipient gets, headed by the subject line, on a plain
- * light page (email clients render light regardless of app theme).
+ * Standalone document for the Email… dialog's Preview (v2.2061): the exact
+ * email body the recipient gets, headed by the subject line, on a plain light
+ * page (email clients render light regardless of app theme). The QR code is
+ * drawn from the portal address as a data URL — a browser cannot load the
+ * `cid:` a real send carries.
  */
 export function buildGcStatementEmailPreviewHtml(
   group: GcReviewGroup,
@@ -278,7 +276,7 @@ export function buildGcStatementEmailPreviewHtml(
   <div style="max-width:640px;margin:0 auto;padding:20px 16px">
     <p style="margin:0 0 2px;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:#6b7280">Preview — what the recipient sees</p>
     <p style="margin:0 0 14px;font-size:13px;color:#374151"><strong>Subject:</strong> ${escapeHtml(subject)}</p>
-    <div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:8px;padding:20px">${buildGcStatementEmailHtml(group, opts)}</div>
+    <div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:8px;padding:20px">${buildGcStatementEmailHtml(group, { ...opts, qrImgSrc: opts?.qrImgSrc ?? gcStatementQrDataUrl(opts?.portalUrl) })}</div>
   </div>
 </body></html>`
 }
@@ -288,18 +286,12 @@ export function buildGcStatementEmailText(
   group: GcReviewGroup,
   opts?: GcStatementEmailOpts,
 ): string {
-  const dateStr = opts?.dateStr ?? new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-  const payLine = gcStatementPayLineText(opts?.portalUrl)
-  return [
-    ...introTextLines(opts?.introText),
-    GC_STATEMENT_COMPANY_NAME,
-    `Statement for ${group.gcName} · ${dateStr}`,
-    '',
-    ...group.rows.map(statementRowText),
-    '',
-    `Total owed: $${formatCurrency(group.subtotal)}`,
-    '',
-    ...(payLine ? [payLine, ''] : []),
-    gcStatementFooterLine(opts?.officePhone),
-  ].join('\n')
+  return renderStatementByPropertyText({
+    payerName: group.gcName,
+    dateStr: opts?.dateStr ?? todayStr(),
+    bills: gcStatementBillsOf(group),
+    officePhone: opts?.officePhone,
+    portalUrl: opts?.portalUrl,
+    introText: opts?.introText,
+  })
 }

@@ -37,6 +37,17 @@ describe('portalAccountCardHtml ("Your account, any time")', () => {
   it('escapes the address', () => {
     expect(portalAccountCardHtml('https://my.clickplumbing.com/a"b', null)).toContain('href="https://my.clickplumbing.com/a&quot;b"')
   })
+
+  it('takes its own link and sentence (the GC statement’s tagged link), and is unchanged without them', () => {
+    const portal = 'https://my.clickplumbing.com/hartwell-homes-k7x2'
+    const html = portalAccountCardHtml(portal, 'cid:portal-qr', { href: `${portal}?src=gc-statement`, blurb: 'Pay online & see every open bill.' })
+    // Both links — the code and the words — follow the tagged address; the words still read as the plain one.
+    expect(html.split(`href="${portal}?src=gc-statement"`).length - 1).toBe(2)
+    expect(html).toContain('>my.clickplumbing.com/hartwell-homes-k7x2</a>')
+    expect(html).toContain('Pay online &amp; see every open bill. Scan the code with your phone camera.')
+    expect(html).not.toContain('Every open bill and payment, with no login.')
+    expect(portalAccountCardHtml(portal, 'cid:portal-qr', { href: ' ', blurb: null })).toBe(portalAccountCardHtml(portal, 'cid:portal-qr'))
+  })
 })
 
 describe('portalAddressInWords', () => {

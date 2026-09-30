@@ -1,18 +1,24 @@
 /**
  * GC statement email rendering for the scheduled dispatcher (v2.1426).
  *
- * KEEP IN SYNC with the client builders in
+ * The statement for one GC reads one property at a time (v2.4255) and is
+ * written once, in `_shared/gcStatementByProperty.ts` — the client's Draft
+ * Message, Preview and Copy for email lanes call the same module. This file
+ * maps the get_gc_statement_email_payload RPC's rows onto it (ISO ref_date +
+ * ref_is_estimate; the bill and the job's payments since v2.4100).
+ * `src/lib/jobsDocuments/gcStatementEmailParity.test.ts` pins this mapping and
+ * the client's (`gcStatementBillsOf`) on one fixture (journey-map #46).
+ *
+ * "Share all" (every GC in one email) keeps its flat table below; KEEP IT IN
+ * SYNC with the client's `buildGcReviewShareAllEmailHtml` / `…Text` in
  * src/lib/jobsDocuments/gcStatementEmail.ts — same table shape, same
- * recipient-safe vocabulary (job address / bill sent / amount owed; no
- * days-past-due, no Collections chips). The client builds from GcReviewGroup
- * (display strings precomputed); this module builds from the
- * get_gc_statement_email_payload RPC shape (ISO ref_date + ref_is_estimate).
- * `src/lib/jobsDocuments/gcStatementEmailParity.test.ts` pins the two
- * byte-for-byte on one fixture (journey-map #46).
+ * recipient-safe vocabulary (no days-past-due, no Collections chips).
  */
 
 export type GcStatementPayloadRow = {
   job_id: string
+  /** The bill's id, or the job's for a balance with no bill behind it. */
+  row_key?: string | null
   display_number: string | null
   job_name: string | null
   job_address: string | null
@@ -50,36 +56,25 @@ export type GcStatementPayload = {
 
 import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
 import { billPaidByWords, type PaidByBill, type PaidByPayment } from '../_shared/billPaidBy.ts'
+import {
+  GC_STATEMENT_COMPANY_NAME,
+  escapeHtml,
+  gcStatementFooterHtml,
+  gcStatementFooterLine,
+  gcStatementIntroHtml,
+  renderStatementByPropertyHtml,
+  renderStatementByPropertyText,
+  type StatementBillIn,
+} from '../_shared/gcStatementByProperty.ts'
 
-export const GC_STATEMENT_COMPANY_NAME = 'Click Plumbing and Electrical'
-export const GC_STATEMENT_FOOTER_LINE =
-  'Questions about a bill? Reply to this email or call the office.'
-
-/** Mirror of gcStatementFooterLine (v2.2133): office number from app_settings physical_invoice_issuer_v1.phone. */
-export function gcStatementFooterLine(officePhone?: string | null): string {
-  const phone = (officePhone ?? '').trim()
-  return phone ? `Questions about a bill? Reply to this email or call the office at ${phone}.` : GC_STATEMENT_FOOTER_LINE
-}
-
-/** `tel:` target for the office number — mirror of gcStatementEmail.ts officePhoneTelHref. */
-export function officePhoneTelHref(officePhone?: string | null): string | null {
-  const d = (officePhone ?? '').replace(/\D/g, '')
-  if (!d) return null
-  if (d.length === 10) return `tel:+1${d}`
-  if (d.length === 11 && d.startsWith('1')) return `tel:+${d}`
-  return `tel:+${d}`
-}
-
-/** HTML footer with a tap-to-call office number (v2.2158) — mirror of gcStatementEmail.ts gcStatementFooterHtml. */
-export function gcStatementFooterHtml(officePhone?: string | null): string {
-  const phone = (officePhone ?? '').trim()
-  const tel = officePhoneTelHref(phone)
-  if (!phone || !tel) return escapeHtml(gcStatementFooterLine(null))
-  return `Questions about a bill? Reply to this email or call the office at <a href="${escapeHtml(tel)}" style="color:#6b7280;font-weight:bold;text-decoration:none;white-space:nowrap">${escapeHtml(phone)}</a>.`
-}
-
-const escapeHtml = (s: string) =>
-  (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+export {
+  GC_STATEMENT_COMPANY_NAME,
+  GC_STATEMENT_FOOTER_LINE,
+  GC_STATEMENT_PAY_LINK_SRC,
+  gcStatementFooterHtml,
+  gcStatementFooterLine,
+  officePhoneTelHref,
+} from '../_shared/gcStatementByProperty.ts'
 
 const formatCurrency = (n: number) =>
   n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -162,86 +157,65 @@ const tableHeadHtml = `<thead><tr>
       <th style="padding:6px;border-bottom:2px solid #9ca3af;font-size:12px;color:#4b5563;text-align:right">Amount owed</th>
     </tr></thead>`
 
-/** Mirror of gcStatementEmail.ts GC_STATEMENT_PAY_LINK_SRC / gcStatementPayUrl (journey-map #46 telemetry tag). */
-export const GC_STATEMENT_PAY_LINK_SRC = 'gc-statement'
-export function payUrl(portalUrl: string | null | undefined): string | null {
-  const url = (portalUrl ?? '').trim()
-  if (!url) return null
-  return `${url}${url.includes('?') ? '&' : '?'}src=${GC_STATEMENT_PAY_LINK_SRC}`
-}
-
-/**
- * Portal card under the statement table (v2.2151; says how to pay since
- * journey-map #46). Mirror of src/lib/jobsDocuments/gcStatementEmail.ts
- * `gcStatementPortalCardHtml` — keep in sync.
- */
-export function portalCardHtml(portalUrl: string | null | undefined): string {
-  const url = (portalUrl ?? '').trim()
-  const href = payUrl(url)
-  if (!url || !href) return ''
-  const shown = url.replace(/^https?:\/\//, '')
-  return `<table role="presentation" style="width:100%;border-collapse:collapse;margin-top:14px"><tr>
-    <td style="border:1px solid #ddd6c8;border-left:4px solid #b0662f;background:#fbf7f0;border-radius:6px;padding:12px 14px">
-      <p style="margin:0;font-size:14px;font-weight:bold;color:#16283c">Your account, any time</p>
-      <p style="margin:3px 0 0;font-size:13px;color:#5a6b7e;line-height:1.4">Pay online any time at <a href="${escapeHtml(href)}" style="color:#b0662f;font-weight:bold;text-decoration:none">${escapeHtml(shown)}</a> — this statement stays current there.</p>
-    </td>
-  </tr></table>`
-}
-
-/** Plain-text pay line — mirror of gcStatementEmail.ts `gcStatementPayLineText`. */
-export function payLineText(portalUrl: string | null | undefined): string | null {
-  const href = payUrl(portalUrl)
-  return href ? `Pay online any time at ${href} — this statement stays current there.` : null
-}
-
-/**
- * Intro paragraph (journey-map #46): the dev-saved template body inside the
- * statement's own font. Mirror of gcStatementEmail.ts `gcStatementIntroHtml`.
- */
-export function introHtml(introText: string | null | undefined): string {
-  const text = (introText ?? '').trim()
-  if (!text) return ''
-  return `<p style="margin:0 0 12px;font-size:14px;color:#111827;line-height:1.45">${escapeHtml(text).replace(/\n/g, '<br>')}</p>
-  `
-}
-
 const introTextLines = (introText: string | null | undefined): string[] => {
   const text = (introText ?? '').trim()
   return text ? [text, ''] : []
 }
 
-/** Single-GC (or single-development) statement — mirror of buildGcStatementEmailHtml. */
-export function renderGcStatementHtml(group: GcStatementPayloadGroup, dateStr: string, officePhone?: string | null, portalUrl?: string | null, introText?: string | null): string {
-  return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px">
-  ${introHtml(introText)}<p style="margin:0;font-size:16px;font-weight:bold;color:#111827">${escapeHtml(GC_STATEMENT_COMPANY_NAME)}</p>
-  <p style="margin:2px 0 12px;font-size:13px;color:#4b5563">Statement for ${escapeHtml(group.entity_name)} · ${escapeHtml(dateStr)}</p>
-  <table style="width:100%;border-collapse:collapse">
-    ${tableHeadHtml}
-    <tbody>${rowsHtml(group.rows)}
-      <tr>
-        <td colspan="2" style="padding:9px 6px;font-size:14px;font-weight:bold;color:#111827">Total owed</td>
-        <td style="padding:9px 6px;font-size:14px;font-weight:bold;color:#111827;text-align:right">$${formatCurrency(group.subtotal)}</td>
-      </tr>
-    </tbody>
-  </table>${portalCardHtml(portalUrl)}
-  <p style="margin:12px 0 0;font-size:12px;color:#6b7280">${gcStatementFooterHtml(officePhone)}</p>
-</div>`
+/** What the dispatcher adds to the payload before it renders one statement. */
+export type GcStatementRenderExtras = {
+  /** Each job's property record (`jobs_ledger.customer_address_id`), read beside the payload; a job left out groups by its address. */
+  propertyIdByJob?: Readonly<Record<string, string | null>> | null
+  /** What the account card's QR code loads — `cid:portal-qr` when the file is attached; null draws the card without a code. */
+  qrImgSrc?: string | null
 }
 
-export function renderGcStatementText(group: GcStatementPayloadGroup, dateStr: string, officePhone?: string | null, portalUrl?: string | null, introText?: string | null): string {
-  const pay = payLineText(portalUrl)
-  return [
-    ...introTextLines(introText),
-    GC_STATEMENT_COMPANY_NAME,
-    `Statement for ${group.entity_name} · ${dateStr}`,
-    '',
-    ...group.rows.map(rowText),
-    '',
-    `Total owed: $${formatCurrency(group.subtotal)}`,
-    '',
-    ...(pay ? [pay, ''] : []),
-    gcStatementFooterLine(officePhone),
-  ].join('\n')
+/** The payload's rows as the shared statement reads them — mirror of the client's `gcStatementBillsOf`. */
+export function statementBillsOf(group: GcStatementPayloadGroup, propertyIdByJob?: Readonly<Record<string, string | null>> | null): StatementBillIn[] {
+  return group.rows.map((r) => {
+    // A payload from before v2.4100 carries no bill and no payments: the row is worded as owed in full.
+    const decorated = r.job_bills != null || r.job_payments != null
+    const jobPayments = r.job_payments ?? []
+    return {
+      key: r.row_key ?? r.invoice_id ?? r.job_id,
+      jobId: r.job_id,
+      jobNumber: r.display_number,
+      jobName: r.job_name,
+      jobAddress: r.job_address,
+      customerName: r.customer_name,
+      propertyId: propertyIdByJob?.[r.job_id] ?? null,
+      sentYmd: r.ref_date,
+      sentIsEstimate: r.ref_is_estimate,
+      billed: !decorated ? r.remaining : r.invoice_id ? r.invoice_amount ?? r.remaining : null,
+      owed: r.remaining,
+      payments: !decorated ? [] : r.invoice_id ? jobPayments.filter((p) => p.invoice_id === r.invoice_id) : jobPayments,
+      retainageHeld: r.retainage_held ?? null,
+    }
+  })
+}
+
+/** Single-GC (or single-development) statement — the same module the client's buildGcStatementEmailHtml calls. */
+export function renderGcStatementHtml(group: GcStatementPayloadGroup, dateStr: string, officePhone?: string | null, portalUrl?: string | null, introText?: string | null, extras?: GcStatementRenderExtras | null): string {
+  return renderStatementByPropertyHtml({
+    payerName: group.entity_name,
+    dateStr,
+    bills: statementBillsOf(group, extras?.propertyIdByJob),
+    officePhone,
+    portalUrl,
+    qrImgSrc: extras?.qrImgSrc,
+    introText,
+  })
+}
+
+export function renderGcStatementText(group: GcStatementPayloadGroup, dateStr: string, officePhone?: string | null, portalUrl?: string | null, introText?: string | null, extras?: GcStatementRenderExtras | null): string {
+  return renderStatementByPropertyText({
+    payerName: group.entity_name,
+    dateStr,
+    bills: statementBillsOf(group, extras?.propertyIdByJob),
+    officePhone,
+    portalUrl,
+    introText,
+  })
 }
 
 /** Whole-report email — mirror of buildGcReviewShareAllEmailHtml. */
@@ -257,7 +231,7 @@ export function renderGcShareAllHtml(payload: GcStatementPayload, dateStr: strin
     )
     .join('\n  ')
   return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px">
-  ${introHtml(introText)}<p style="margin:0;font-size:16px;font-weight:bold;color:#111827">${escapeHtml(GC_STATEMENT_COMPANY_NAME)}</p>
+  ${gcStatementIntroHtml(introText)}<p style="margin:0;font-size:16px;font-weight:bold;color:#111827">${escapeHtml(GC_STATEMENT_COMPANY_NAME)}</p>
   <p style="margin:2px 0 4px;font-size:13px;color:#4b5563">Open balances by ${scope} · ${escapeHtml(dateStr)}</p>
   ${sectionsHtml}
   <table style="width:100%;border-collapse:collapse;margin-top:14px">
