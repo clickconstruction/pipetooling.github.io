@@ -97,13 +97,16 @@ export function checkLabel(kind: CheckKind, number: string, opts?: { deposit?: b
   return opts?.deposit ? 'Bank deposit' : 'Payment'
 }
 
-const joinList = (items: string[]): string => (items.length <= 1 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`)
+/** "a", "a and b", "a, b and c". */
+export const joinList = (items: string[]): string => (items.length <= 1 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`)
 
-const labelOf = (p: PaidByPayment): string => {
+/** A payment as the GC would say it, with its day: "#48211 on Sep 24"; the label alone when no day is recorded. */
+export function paymentLabelWords(p: PaidByPayment): string {
   const label = checkLabel(paymentKind(p.payment_type), checkNumberText(p.reference_number), { deposit: isDepositRef(p.reference_number) })
   const when = ymd(p.paid_on)
   return when ? `${label} on ${formatYmdShort(when)}` : label
 }
+const labelOf = paymentLabelWords
 
 /**
  * The line under a bill: what paid it and when, and what is still open.

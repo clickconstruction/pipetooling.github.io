@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GC Statement by Property</title>
+<style>
+  /* Layout: a review sheet. Left, the email as the GC reads it (always on white paper, as mail clients draw it);
+     right, numbered notes keyed to pins on the paper. A switch flips the paper between Proposed and Today. */
+  :root {
+    --ground: #eef0f3; --surface: #ffffff; --subtle: #f6f7f9; --ink: #16283c; --muted: #5b6676;
+    --line: #d9dee5; --line-strong: #b9c2ce; --accent: #b0662f; --accent-ink: #ffffff;
+    --flag: #a3341f; --flag-bg: #fbe9e4;
+    /* The email's own palette (the bill email's): fixed, because mail renders light in either theme. */
+    --m-paper: #ffffff; --m-ink: #16283c; --m-muted: #5b6676; --m-rule: #e4dfd3; --m-cream: #f6f3ec;
+    --m-copper: #b0662f; --m-paid: #1a6b43; --m-grey: #6b7280; --m-greyline: #e5e7eb;
+    --ui: -apple-system, "Segoe UI", system-ui, Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #10151c; --surface: #18202a; --subtle: #1f2935; --ink: #e7ebf1; --muted: #9ba7b7;
+      --line: #2b3746; --line-strong: #3d4b5d; --accent: #d59055; --accent-ink: #10151c;
+      --flag: #f0907a; --flag-bg: #3a1d17; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #10151c; --surface: #18202a; --subtle: #1f2935; --ink: #e7ebf1; --muted: #9ba7b7;
+    --line: #2b3746; --line-strong: #3d4b5d; --accent: #d59055; --accent-ink: #10151c;
+    --flag: #f0907a; --flag-bg: #3a1d17; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 14px/1.5 var(--ui); padding-block: 0 56px; padding-inline: 16px; }
+  .wrap { max-width: 1060px; margin: 0 auto; }
+
+  header.top { padding: 26px 0 14px; border-bottom: 2px solid var(--ink); display: flex; justify-content: space-between; align-items: flex-end; gap: 12px 28px; flex-wrap: wrap; }
+  .eyebrow { margin: 0 0 4px; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; }
+  .lede { margin: 8px 0 0; color: var(--muted); max-width: 62ch; }
+  .stamp { font: 12px/1.6 var(--mono); color: var(--muted); max-width: 44ch; }
+
+  .bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 18px 0 12px; }
+  .seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 8px; overflow: hidden; background: var(--surface); }
+  .seg button { font: 600 13px var(--ui); color: var(--muted); background: transparent; border: 0; padding: 7px 16px; cursor: pointer; }
+  .seg button + button { border-left: 1px solid var(--line-strong); }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+  .seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .bar p { margin: 0; font-size: 12.5px; color: var(--muted); }
+
+  .sheet { display: grid; grid-template-columns: minmax(0, 600px) minmax(0, 1fr); gap: 28px; align-items: start; }
+  @media (max-width: 880px) { .sheet { grid-template-columns: minmax(0, 1fr); } }
+
+  /* ---------- the email, on paper ---------- */
+  .paper { background: var(--m-paper); color: var(--m-ink); border: 1px solid var(--line-strong); border-radius: 8px; margin-left: 12px; font: 15px/1.45 var(--ui); font-variant-numeric: tabular-nums; min-width: 0; }
+  .subject { margin: 0 0 8px 12px; font-size: 12.5px; color: var(--muted); }
+  .subject b { color: var(--ink); }
+  .pinned { position: relative; }
+  .pin { position: absolute; left: -31px; top: 2px; width: 22px; height: 22px; border-radius: 50%; background: var(--m-copper); color: #fff; font: 700 12px/22px var(--ui); text-align: center; box-shadow: 0 0 0 2px var(--m-paper); }
+  .pin.flag { background: #a3341f; }
+
+  /* proposed */
+  .p-band { background: var(--m-ink); color: #fff; padding: 14px 20px; border-radius: 7px 7px 0 0; }
+  .p-band b { display: block; font-size: 16px; font-weight: 600; }
+  .p-band span { font-size: 13px; opacity: .8; }
+  .p-body { padding: 18px 20px 20px; }
+  .p-sum small { display: block; color: var(--m-muted); font-size: 13px; }
+  .p-sum strong { display: block; font-size: 30px; line-height: 1.15; font-weight: 700; }
+  .p-sum p { margin: 4px 0 0; color: var(--m-muted); font-size: 13px; }
+  .p-cols, .p-row { display: grid; grid-template-columns: minmax(0, 1fr) 52px 96px; column-gap: 8px; }
+  .p-cols { margin-top: 18px; padding: 0 8px 5px; font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--m-muted); }
+  .p-cols span:last-child, .p-row > .owed { text-align: right; }
+  .p-prop { margin-bottom: 14px; }
+  .p-prop-h { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; background: var(--m-cream); padding: 8px; border-radius: 5px; }
+  .p-prop-h .where b { font-size: 15px; }
+  .p-prop-h .where span { font-size: 12.5px; color: var(--m-muted); white-space: nowrap; }
+  .p-prop-h .sub { font-weight: 700; white-space: nowrap; }
+  .p-row { padding: 7px 8px; border-bottom: 1px solid var(--m-rule); font-size: 14px; }
+  .p-row .what { min-width: 0; overflow-wrap: anywhere; }
+  .p-row .what i { font-style: normal; color: var(--m-muted); }
+  .p-row .sent { color: var(--m-muted); white-space: nowrap; }
+  .p-row .owed { font-weight: 600; white-space: nowrap; }
+  .p-row .paid { grid-column: 1 / -1; font-size: 12.5px; color: var(--m-paid); margin-top: 1px; }
+  .p-total { display: flex; justify-content: space-between; padding: 10px 8px 0; border-top: 2px solid var(--m-ink); font-weight: 700; font-size: 16px; }
+  .p-recv { margin-top: 22px; }
+  .p-recv h3 { margin: 0; font-size: 15px; }
+  .p-recv > p { margin: 1px 0 6px; font-size: 12.5px; color: var(--m-muted); }
+  .p-pay { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; column-gap: 8px; padding: 6px 8px; border-bottom: 1px solid var(--m-rule); font-size: 13.5px; }
+  .p-pay .d { color: var(--m-muted); white-space: nowrap; }
+  .p-pay .w i { font-style: normal; color: var(--m-muted); }
+  .p-pay .a { font-weight: 600; color: var(--m-paid); white-space: nowrap; }
+  .p-card { margin-top: 22px; background: var(--m-cream); border-radius: 8px; display: flex; gap: 14px; align-items: center; padding: 14px; }
+  .p-card svg { flex: none; width: 112px; height: 112px; background: #fff; border-radius: 4px; }
+  .p-card .t { min-width: 0; }
+  .p-card .t b { display: block; font-weight: 600; }
+  .p-card .t a { display: block; color: var(--m-copper); font-weight: 600; text-decoration: none; overflow-wrap: anywhere; }
+  .p-card .t span { display: block; margin-top: 4px; font-size: 13px; color: var(--m-muted); }
+  .p-foot { margin: 16px 0 0; padding-top: 12px; border-top: 1px solid var(--m-rule); font-size: 13px; color: var(--m-muted); }
+  @media (max-width: 440px) {
+    .p-card { flex-direction: column; align-items: flex-start; }
+    .p-body { padding-inline: 16px; } .p-band { padding-inline: 16px; }
+    .pin { left: -27px; }
+  }
+
+  /* today (as sent now: plain Arial table) */
+  .t-body { padding: 20px; font-family: Arial, Helvetica, sans-serif; color: #111827; }
+  .t-body .co { margin: 0; font-size: 16px; font-weight: bold; }
+  .t-body .for { margin: 2px 0 12px; font-size: 13px; color: #4b5563; }
+  .t-head, .t-row { display: grid; grid-template-columns: minmax(0, 1fr) 92px 92px; column-gap: 6px; }
+  .t-head { padding: 6px; border-bottom: 2px solid #9ca3af; font-size: 12px; font-weight: bold; color: #4b5563; }
+  .t-head span:last-child, .t-row .amt { text-align: right; }
+  .t-row { padding: 7px 6px; border-bottom: 1px solid var(--m-greyline); font-size: 14px; line-height: 1.3; }
+  .t-row .l { min-width: 0; overflow-wrap: anywhere; }
+  .t-row small { display: block; font-size: 11px; color: var(--m-grey); }
+  .t-more { padding: 9px 6px; font-size: 12px; color: var(--m-grey); font-style: italic; }
+  .t-card { margin-top: 14px; border: 1px solid #ddd6c8; border-left: 4px solid #b0662f; background: #fbf7f0; border-radius: 6px; padding: 12px 14px; }
+  .t-card b { display: block; font-size: 14px; color: #16283c; }
+  .t-card span { display: block; margin-top: 3px; font-size: 13px; color: #5a6b7e; line-height: 1.4; overflow-wrap: anywhere; }
+  .t-card span a { color: #b0662f; font-weight: bold; text-decoration: none; }
+  .t-foot { margin: 12px 0 0; font-size: 12px; color: var(--m-grey); }
+  @media (max-width: 440px) { .t-head, .t-row { grid-template-columns: minmax(0, 1fr) 62px 84px; } .t-body { padding: 16px; } }
+
+  /* ---------- notes ---------- */
+  .notes { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 14px); min-width: 0; }
+  @media (max-width: 880px) { .notes { position: static; } }
+  .notes h2 { margin: 0 0 10px; font-size: 16px; }
+  .notes ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+  .notes li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; }
+  .notes .n { width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); font: 700 12px/22px var(--ui); text-align: center; }
+  .notes .n.flag { background: var(--flag); color: var(--surface); }
+  .notes b { display: block; }
+  .notes span { color: var(--muted); font-size: 13px; }
+
+  section.calls { margin-top: 34px; border-top: 1px solid var(--line-strong); padding-top: 18px; }
+  section.calls h2 { margin: 0 0 4px; font-size: 18px; }
+  section.calls > p { margin: 0 0 12px; color: var(--muted); max-width: 70ch; }
+  .calls-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+  .call { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; min-width: 0; }
+  .call.flag { border-color: var(--flag); background: var(--flag-bg); }
+  .call h3 { margin: 0 0 4px; font-size: 14px; }
+  .call p { margin: 0; font-size: 13px; color: var(--muted); }
+  .call.flag p { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">GC Review · the statement email · mock-up</p>
+      <h1>The statement, one property at a time</h1>
+      <p class="lede">The same open bills a GC gets today, grouped under each property with its own subtotal, the payments shown where they landed, and a QR code beside the account link.</p>
+    </div>
+    <p class="stamp">Drawn from the Sep 30, 2026 preview for RMC- Dudley Mason. Addresses, jobs and amounts owed come from that preview. The payments, the account address and the office number are made up for the drawing.</p>
+  </header>
+
+  <div class="bar">
+    <div class="seg" role="group" aria-label="Which statement to show">
+      <button type="button" id="show-proposed" aria-pressed="true">Proposed</button>
+      <button type="button" id="show-today" aria-pressed="false">Today</button>
+    </div>
+    <p id="bar-note"></p>
+  </div>
+
+  <div class="sheet">
+    <div>
+      <p class="subject"><b>Subject:</b> Click Plumbing open balances: Sep 30, 2026</p>
+      <div class="paper" id="paper"></div>
+    </div>
+    <aside class="notes">
+      <h2 id="notes-h"></h2>
+      <ol id="notes"></ol>
+    </aside>
+  </div>
+
+  <section class="calls">
+    <h2>Four things to settle before this is built</h2>
+    <p>None of them changes the drawing much. Each changes what the builder writes.</p>
+    <div class="calls-grid">
+      <div class="call flag">
+        <h3>Job 273 says two things at once</h3>
+        <p>Today's preview shows three bills on job 273 as owed ($13,420.00, $3,500.00, $665.00) and, on the same rows, “paid in full”. One of the two is wrong. The new layout puts paid and owed side by side, so this has to be right first.</p>
+      </div>
+      <div class="call">
+        <h3>What counts as one property</h3>
+        <p>Jobs linked to the same property record group together. A job with no property record falls back to its cleaned-up address, the rule the portal already uses. “Lenox Hill” and “Lenox Hl” only merge when both jobs are linked to the one property.</p>
+      </div>
+      <div class="call">
+        <h3>How far back the payments list goes</h3>
+        <p>Drawn as the last 30 days. It could be “since the last statement we sent you” instead, which never shows the same check twice.</p>
+      </div>
+      <div class="call">
+        <h3>The QR code and “Copy for email”</h3>
+        <p>The code travels in statements the app sends, the way it does on a bill email. A statement copied into a personal mail program may lose the picture, so that lane keeps the link and the address in words.</p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  var QR_N = 33, QR_D = "M0 0h1v1h-1zM1 0h1v1h-1zM2 0h1v1h-1zM3 0h1v1h-1zM4 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM13 0h1v1h-1zM14 0h1v1h-1zM16 0h1v1h-1zM17 0h1v1h-1zM18 0h1v1h-1zM19 0h1v1h-1zM20 0h1v1h-1zM23 0h1v1h-1zM26 0h1v1h-1zM27 0h1v1h-1zM28 0h1v1h-1zM29 0h1v1h-1zM30 0h1v1h-1zM31 0h1v1h-1zM32 0h1v1h-1zM0 1h1v1h-1zM6 1h1v1h-1zM10 1h1v1h-1zM11 1h1v1h-1zM12 1h1v1h-1zM13 1h1v1h-1zM14 1h1v1h-1zM15 1h1v1h-1zM16 1h1v1h-1zM17 1h1v1h-1zM22 1h1v1h-1zM24 1h1v1h-1zM26 1h1v1h-1zM32 1h1v1h-1zM0 2h1v1h-1zM2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM6 2h1v1h-1zM8 2h1v1h-1zM11 2h1v1h-1zM13 2h1v1h-1zM16 2h1v1h-1zM17 2h1v1h-1zM18 2h1v1h-1zM19 2h1v1h-1zM21 2h1v1h-1zM26 2h1v1h-1zM28 2h1v1h-1zM29 2h1v1h-1zM30 2h1v1h-1zM32 2h1v1h-1zM0 3h1v1h-1zM2 3h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM6 3h1v1h-1zM8 3h1v1h-1zM9 3h1v1h-1zM10 3h1v1h-1zM12 3h1v1h-1zM14 3h1v1h-1zM16 3h1v1h-1zM20 3h1v1h-1zM23 3h1v1h-1zM24 3h1v1h-1zM26 3h1v1h-1zM28 3h1v1h-1zM29 3h1v1h-1zM30 3h1v1h-1zM32 3h1v1h-1zM0 4h1v1h-1zM2 4h1v1h-1zM3 4h1v1h-1zM4 4h1v1h-1zM6 4h1v1h-1zM8 4h1v1h-1zM9 4h1v1h-1zM12 4h1v1h-1zM15 4h1v1h-1zM17 4h1v1h-1zM18 4h1v1h-1zM23 4h1v1h-1zM26 4h1v1h-1zM28 4h1v1h-1zM29 4h1v1h-1zM30 4h1v1h-1zM32 4h1v1h-1zM0 5h1v1h-1zM6 5h1v1h-1zM8 5h1v1h-1zM10 5h1v1h-1zM12 5h1v1h-1zM13 5h1v1h-1zM15 5h1v1h-1zM16 5h1v1h-1zM18 5h1v1h-1zM20 5h1v1h-1zM21 5h1v1h-1zM26 5h1v1h-1zM32 5h1v1h-1zM0 6h1v1h-1zM1 6h1v1h-1zM2 6h1v1h-1zM3 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1zM8 6h1v1h-1zM10 6h1v1h-1zM12 6h1v1h-1zM14 6h1v1h-1zM16 6h1v1h-1zM18 6h1v1h-1zM20 6h1v1h-1zM22 6h1v1h-1zM24 6h1v1h-1zM26 6h1v1h-1zM27 6h1v1h-1zM28 6h1v1h-1zM29 6h1v1h-1zM30 6h1v1h-1zM31 6h1v1h-1zM32 6h1v1h-1zM8 7h1v1h-1zM10 7h1v1h-1zM11 7h1v1h-1zM15 7h1v1h-1zM21 7h1v1h-1zM22 7h1v1h-1zM23 7h1v1h-1zM0 8h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM4 8h1v1h-1zM5 8h1v1h-1zM6 8h1v1h-1zM10 8h1v1h-1zM12 8h1v1h-1zM13 8h1v1h-1zM14 8h1v1h-1zM15 8h1v1h-1zM17 8h1v1h-1zM22 8h1v1h-1zM23 8h1v1h-1zM24 8h1v1h-1zM26 8h1v1h-1zM27 8h1v1h-1zM28 8h1v1h-1zM29 8h1v1h-1zM30 8h1v1h-1zM0 9h1v1h-1zM2 9h1v1h-1zM3 9h1v1h-1zM4 9h1v1h-1zM9 9h1v1h-1zM10 9h1v1h-1zM18 9h1v1h-1zM19 9h1v1h-1zM20 9h1v1h-1zM23 9h1v1h-1zM26 9h1v1h-1zM27 9h1v1h-1zM29 9h1v1h-1zM30 9h1v1h-1zM32 9h1v1h-1zM0 10h1v1h-1zM1 10h1v1h-1zM6 10h1v1h-1zM9 10h1v1h-1zM10 10h1v1h-1zM15 10h1v1h-1zM16 10h1v1h-1zM18 10h1v1h-1zM20 10h1v1h-1zM21 10h1v1h-1zM22 10h1v1h-1zM26 10h1v1h-1zM28 10h1v1h-1zM30 10h1v1h-1zM31 10h1v1h-1zM1 11h1v1h-1zM3 11h1v1h-1zM4 11h1v1h-1zM11 11h1v1h-1zM14 11h1v1h-1zM15 11h1v1h-1zM16 11h1v1h-1zM20 11h1v1h-1zM21 11h1v1h-1zM22 11h1v1h-1zM23 11h1v1h-1zM24 11h1v1h-1zM25 11h1v1h-1zM28 11h1v1h-1zM29 11h1v1h-1zM30 11h1v1h-1zM31 11h1v1h-1zM1 12h1v1h-1zM3 12h1v1h-1zM5 12h1v1h-1zM6 12h1v1h-1zM18 12h1v1h-1zM19 12h1v1h-1zM22 12h1v1h-1zM24 12h1v1h-1zM28 12h1v1h-1zM29 12h1v1h-1zM31 12h1v1h-1zM32 12h1v1h-1zM3 13h1v1h-1zM5 13h1v1h-1zM7 13h1v1h-1zM10 13h1v1h-1zM14 13h1v1h-1zM15 13h1v1h-1zM16 13h1v1h-1zM17 13h1v1h-1zM20 13h1v1h-1zM21 13h1v1h-1zM23 13h1v1h-1zM26 13h1v1h-1zM29 13h1v1h-1zM30 13h1v1h-1zM31 13h1v1h-1zM32 13h1v1h-1zM2 14h1v1h-1zM4 14h1v1h-1zM5 14h1v1h-1zM6 14h1v1h-1zM7 14h1v1h-1zM8 14h1v1h-1zM9 14h1v1h-1zM10 14h1v1h-1zM12 14h1v1h-1zM13 14h1v1h-1zM17 14h1v1h-1zM19 14h1v1h-1zM25 14h1v1h-1zM26 14h1v1h-1zM30 14h1v1h-1zM31 14h1v1h-1zM0 15h1v1h-1zM1 15h1v1h-1zM2 15h1v1h-1zM3 15h1v1h-1zM8 15h1v1h-1zM10 15h1v1h-1zM11 15h1v1h-1zM12 15h1v1h-1zM13 15h1v1h-1zM14 15h1v1h-1zM16 15h1v1h-1zM18 15h1v1h-1zM19 15h1v1h-1zM20 15h1v1h-1zM21 15h1v1h-1zM22 15h1v1h-1zM23 15h1v1h-1zM24 15h1v1h-1zM25 15h1v1h-1zM26 15h1v1h-1zM29 15h1v1h-1zM30 15h1v1h-1zM0 16h1v1h-1zM1 16h1v1h-1zM2 16h1v1h-1zM3 16h1v1h-1zM4 16h1v1h-1zM5 16h1v1h-1zM6 16h1v1h-1zM7 16h1v1h-1zM12 16h1v1h-1zM17 16h1v1h-1zM19 16h1v1h-1zM22 16h1v1h-1zM24 16h1v1h-1zM25 16h1v1h-1zM27 16h1v1h-1zM28 16h1v1h-1zM29 16h1v1h-1zM32 16h1v1h-1zM1 17h1v1h-1zM7 17h1v1h-1zM9 17h1v1h-1zM10 17h1v1h-1zM11 17h1v1h-1zM12 17h1v1h-1zM14 17h1v1h-1zM16 17h1v1h-1zM17 17h1v1h-1zM18 17h1v1h-1zM19 17h1v1h-1zM20 17h1v1h-1zM23 17h1v1h-1zM26 17h1v1h-1zM27 17h1v1h-1zM29 17h1v1h-1zM30 17h1v1h-1zM32 17h1v1h-1zM0 18h1v1h-1zM1 18h1v1h-1zM2 18h1v1h-1zM6 18h1v1h-1zM9 18h1v1h-1zM11 18h1v1h-1zM15 18h1v1h-1zM16 18h1v1h-1zM17 18h1v1h-1zM20 18h1v1h-1zM24 18h1v1h-1zM25 18h1v1h-1zM26 18h1v1h-1zM27 18h1v1h-1zM28 18h1v1h-1zM30 18h1v1h-1zM1 19h1v1h-1zM3 19h1v1h-1zM4 19h1v1h-1zM12 19h1v1h-1zM13 19h1v1h-1zM16 19h1v1h-1zM17 19h1v1h-1zM18 19h1v1h-1zM20 19h1v1h-1zM21 19h1v1h-1zM22 19h1v1h-1zM23 19h1v1h-1zM25 19h1v1h-1zM27 19h1v1h-1zM28 19h1v1h-1zM29 19h1v1h-1zM30 19h1v1h-1zM31 19h1v1h-1zM32 19h1v1h-1zM4 20h1v1h-1zM5 20h1v1h-1zM6 20h1v1h-1zM8 20h1v1h-1zM9 20h1v1h-1zM10 20h1v1h-1zM11 20h1v1h-1zM12 20h1v1h-1zM16 20h1v1h-1zM23 20h1v1h-1zM25 20h1v1h-1zM27 20h1v1h-1zM28 20h1v1h-1zM29 20h1v1h-1zM0 21h1v1h-1zM1 21h1v1h-1zM2 21h1v1h-1zM3 21h1v1h-1zM5 21h1v1h-1zM9 21h1v1h-1zM12 21h1v1h-1zM14 21h1v1h-1zM15 21h1v1h-1zM18 21h1v1h-1zM22 21h1v1h-1zM23 21h1v1h-1zM26 21h1v1h-1zM29 21h1v1h-1zM30 21h1v1h-1zM32 21h1v1h-1zM0 22h1v1h-1zM4 22h1v1h-1zM6 22h1v1h-1zM7 22h1v1h-1zM15 22h1v1h-1zM16 22h1v1h-1zM17 22h1v1h-1zM25 22h1v1h-1zM26 22h1v1h-1zM27 22h1v1h-1zM29 22h1v1h-1zM30 22h1v1h-1zM31 22h1v1h-1zM0 23h1v1h-1zM2 23h1v1h-1zM3 23h1v1h-1zM5 23h1v1h-1zM7 23h1v1h-1zM9 23h1v1h-1zM10 23h1v1h-1zM14 23h1v1h-1zM15 23h1v1h-1zM19 23h1v1h-1zM21 23h1v1h-1zM22 23h1v1h-1zM24 23h1v1h-1zM25 23h1v1h-1zM28 23h1v1h-1zM29 23h1v1h-1zM30 23h1v1h-1zM32 23h1v1h-1zM0 24h1v1h-1zM5 24h1v1h-1zM6 24h1v1h-1zM7 24h1v1h-1zM9 24h1v1h-1zM10 24h1v1h-1zM11 24h1v1h-1zM12 24h1v1h-1zM15 24h1v1h-1zM17 24h1v1h-1zM18 24h1v1h-1zM20 24h1v1h-1zM22 24h1v1h-1zM24 24h1v1h-1zM25 24h1v1h-1zM26 24h1v1h-1zM27 24h1v1h-1zM28 24h1v1h-1zM8 25h1v1h-1zM9 25h1v1h-1zM10 25h1v1h-1zM11 25h1v1h-1zM12 25h1v1h-1zM13 25h1v1h-1zM16 25h1v1h-1zM18 25h1v1h-1zM19 25h1v1h-1zM20 25h1v1h-1zM21 25h1v1h-1zM22 25h1v1h-1zM24 25h1v1h-1zM28 25h1v1h-1zM30 25h1v1h-1zM32 25h1v1h-1zM0 26h1v1h-1zM1 26h1v1h-1zM2 26h1v1h-1zM3 26h1v1h-1zM4 26h1v1h-1zM5 26h1v1h-1zM6 26h1v1h-1zM12 26h1v1h-1zM15 26h1v1h-1zM16 26h1v1h-1zM18 26h1v1h-1zM22 26h1v1h-1zM23 26h1v1h-1zM24 26h1v1h-1zM26 26h1v1h-1zM28 26h1v1h-1zM30 26h1v1h-1zM31 26h1v1h-1zM0 27h1v1h-1zM6 27h1v1h-1zM8 27h1v1h-1zM12 27h1v1h-1zM14 27h1v1h-1zM20 27h1v1h-1zM21 27h1v1h-1zM22 27h1v1h-1zM24 27h1v1h-1zM28 27h1v1h-1zM29 27h1v1h-1zM30 27h1v1h-1zM31 27h1v1h-1zM0 28h1v1h-1zM2 28h1v1h-1zM3 28h1v1h-1zM4 28h1v1h-1zM6 28h1v1h-1zM8 28h1v1h-1zM9 28h1v1h-1zM13 28h1v1h-1zM15 28h1v1h-1zM18 28h1v1h-1zM19 28h1v1h-1zM20 28h1v1h-1zM22 28h1v1h-1zM24 28h1v1h-1zM25 28h1v1h-1zM26 28h1v1h-1zM27 28h1v1h-1zM28 28h1v1h-1zM29 28h1v1h-1zM31 28h1v1h-1zM32 28h1v1h-1zM0 29h1v1h-1zM2 29h1v1h-1zM3 29h1v1h-1zM4 29h1v1h-1zM6 29h1v1h-1zM8 29h1v1h-1zM9 29h1v1h-1zM10 29h1v1h-1zM12 29h1v1h-1zM13 29h1v1h-1zM15 29h1v1h-1zM16 29h1v1h-1zM17 29h1v1h-1zM19 29h1v1h-1zM21 29h1v1h-1zM22 29h1v1h-1zM23 29h1v1h-1zM24 29h1v1h-1zM25 29h1v1h-1zM28 29h1v1h-1zM29 29h1v1h-1zM30 29h1v1h-1zM31 29h1v1h-1zM32 29h1v1h-1zM0 30h1v1h-1zM2 30h1v1h-1zM3 30h1v1h-1zM4 30h1v1h-1zM6 30h1v1h-1zM8 30h1v1h-1zM9 30h1v1h-1zM13 30h1v1h-1zM17 30h1v1h-1zM21 30h1v1h-1zM25 30h1v1h-1zM26 30h1v1h-1zM27 30h1v1h-1zM30 30h1v1h-1zM0 31h1v1h-1zM6 31h1v1h-1zM9 31h1v1h-1zM10 31h1v1h-1zM12 31h1v1h-1zM14 31h1v1h-1zM16 31h1v1h-1zM18 31h1v1h-1zM21 31h1v1h-1zM25 31h1v1h-1zM26 31h1v1h-1zM28 31h1v1h-1zM29 31h1v1h-1zM30 31h1v1h-1zM0 32h1v1h-1zM1 32h1v1h-1zM2 32h1v1h-1zM3 32h1v1h-1zM4 32h1v1h-1zM5 32h1v1h-1zM6 32h1v1h-1zM8 32h1v1h-1zM9 32h1v1h-1zM11 32h1v1h-1zM12 32h1v1h-1zM13 32h1v1h-1zM14 32h1v1h-1zM17 32h1v1h-1zM19 32h1v1h-1zM22 32h1v1h-1zM23 32h1v1h-1zM24 32h1v1h-1zM25 32h1v1h-1zM27 32h1v1h-1zM31 32h1v1h-1z";
+  var PORTAL = 'my.clickplumbing.com/rmc-dudley-mason-k7x2';
+  var PHONE = '(210) 555-0100';
+  var usd = function (n) { return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+  var esc = function (s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+
+  // Open bills by property. `billed` is the bill; `paid` are payments applied to it (made up for the drawing).
+  var props = [
+    { street: '1780 FM 1343', city: 'Castroville', bills: [
+      { job: '372', sent: 'Sep 14', billed: 35200, paid: [{ amt: 17600, by: '#4402', on: 'Sep 22' }] } ] },
+    { street: '1875 Co Rd 777', city: 'Devine', bills: [
+      { job: '868', what: 'Service Visit', sent: 'Aug 18', billed: 2650 },
+      { job: '1008', what: 'Trip Charges', sent: 'Sep 3', billed: 1050 } ] },
+    { street: '233 Palomino Trail', city: 'Natalia', bills: [
+      { job: '800', what: 'Service Visit', sent: 'Aug 18', billed: 1600 },
+      { job: '651', sent: 'Sep 21', billed: 8780 } ] },
+    { street: '574 Co Rd 660', city: 'Devine', bills: [
+      { job: '186', sent: 'Aug 24', billed: 6200 } ] },
+    { street: '628 Terrell Rd', city: 'San Antonio', bills: [
+      { job: '890', sent: 'Jul 15', billed: 285 },
+      { job: '867', what: 'Service Visit', sent: 'Aug 18', billed: 1710 },
+      { job: '863', what: 'Service Visit', sent: 'Aug 18', billed: 1049 },
+      { job: '853', what: 'Service Visit', sent: 'Aug 18', billed: 595 },
+      { job: '258', sent: 'Aug 20', billed: 14800, paid: [{ amt: 5000, by: '#4417', on: 'Sep 8' }] },
+      { job: '608', sent: 'Aug 20', billed: 2245 },
+      { job: '226', sent: 'Aug 24', billed: 650 } ] },
+    { street: '9703 Lenox Hl', city: 'San Antonio', bills: [
+      { job: '273', what: 'Dudley (Lennox)', sent: 'Mar 16', billed: 13420 },
+      { job: '858', what: 'Service Visit', sent: 'Aug 18', billed: 7902 },
+      { job: '273', what: 'Dudley (Lennox)', sent: 'Aug 21', billed: 3500 },
+      { job: '273', what: 'Dudley (Lennox)', sent: 'Aug 21', billed: 665 },
+      { job: '1009', what: 'Lenox Check PU (reissued a bad check)', sent: 'Sep 3', billed: 350 },
+      { job: '881', sent: 'Sep 3', billed: 1050 } ] }
+  ];
+  var received = [
+    { on: 'Sep 22', by: 'Check #4402', where: '1780 FM 1343', job: 'Job 372', amt: 17600 },
+    { on: 'Sep 8', by: 'Check #4417', where: '628 Terrell Rd', job: 'Job 258', amt: 5000 },
+    { on: 'Sep 2', by: 'Check #4390', where: '1875 Co Rd 777', job: 'Job 868, an earlier bill, now paid in full', amt: 1200 }
+  ];
+  var paidOf = function (b) { return (b.paid || []).reduce(function (s, p) { return s + p.amt; }, 0); };
+  var owedOf = function (b) { return b.billed - paidOf(b); };
+
+  // Today's email, row for row as the Sep 30 preview printed it.
+  var today = [
+    ['1780 FM 1343, Castroville, TX 78009', 'Job 372 · Dudley Mason', 'Sep 14, 2026', 17600],
+    ['1875 Co Rd 777, Devine, TX', 'Job 1008 · Trip Charges', 'Sep 3, 2026', 1050],
+    ['1875 Co Rd 777, Devine, TX 78016', 'Job 868 · Service Visit — 1875 Co Rd 777 (HCP 868)', 'Aug 18, 2026', 2650],
+    ['233 Palomino Trail, Natalia, TX', 'Job 651 · Dudley Mason', 'Sep 21, 2026', 8780],
+    ['233 Palomino Trail, Natalia, TX 78059', 'Job 800 · Service Visit — 233 Palomino Trail (HCP 800)', 'Aug 18, 2026', 1600],
+    ['574 Co Rd 660, Devine TX 78016', 'Job 186 · Dudley Mason', 'Aug 24, 2026', 6200],
+    ['628 Terrell Rd, San Antonio, TX 78209', 'Job 890 · Dudley Mason', 'Jul 15, 2026', 285, null, 1],
+    ['628 Terrell Rd, San Antonio, TX 78209', 'Job 867 · Service Visit — 628 Terrell Rd (HCP 867)', 'Aug 18, 2026', 1710, null, 2],
+    ['628 Terrell Rd, San Antonio, TX 78209', 'Job 863 · Service Visit — 628 Terrell Rd (HCP 863)', 'Aug 18, 2026', 1049],
+    ['628 Terrell Rd, San Antonio, TX 78209', 'Job 853 · Service Visit — 628 Terrell Rd (HCP 853)', 'Aug 18, 2026', 595],
+    ['628 Terrell Rd, San Antonio, TX 78209', 'Job 258 · Dudley Mason', 'Aug 20, 2026', 9800],
+    ['628 Terrell Rd, San Antonio, TX 78209', 'Job 608 · Dudley Mason', 'Aug 20, 2026', 2245],
+    ['628 Terrell Rd, San Antonio, TX 78209', 'Job 226 · Dudley Mason', 'Aug 24, 2026', 650],
+    ['9703 Lenox Hill, San Antonio, TX', 'Job 1009 · Lenox Check PU (reissued a bad check)', 'Sep 3, 2026', 350, null, 3],
+    ['9703 Lenox Hl San Antonio, TX', 'Job 881 · Dudley Mason', 'Sep 3, 2026', 1050],
+    ['9703 Lenox Hl San Antonio, TX 78255', 'Job 273 · Dudley (Lennox)', 'Mar 16, 2026', 13420, 'paid in full by Payment on Oct 10 and Payment on Dec 19', 4],
+    ['9703 Lenox Hl San Antonio, TX 78255', 'Job 273 · Dudley (Lennox)', 'Aug 21, 2026', 3500, 'paid in full by Payment on Oct 10'],
+    ['9703 Lenox Hl San Antonio, TX 78255', 'Job 273 · Dudley (Lennox)', 'Aug 21, 2026', 665, 'paid in full by Payment on Oct 10'],
+    ['9703 Lenox Hl, San Antonio, TX', 'Job 858 · Service Visit — 9703 Lenox Hl (HCP 858)', 'Aug 18, 2026', 7902]
+  ];
+
+  var pin = function (n, flag) { return '<span class="pin' + (flag ? ' flag' : '') + '" aria-label="Note ' + n + '">' + n + '</span>'; };
+  var qrSvg = function () {
+    var q = 3, side = QR_N + q * 2;
+    return '<svg viewBox="0 0 ' + side + ' ' + side + '" role="img" aria-label="QR code for ' + PORTAL + '" shape-rendering="crispEdges"><rect width="' + side + '" height="' + side + '" fill="#ffffff"/><path transform="translate(' + q + ' ' + q + ')" fill="#16283c" d="' + QR_D + '"/></svg>';
+  };
+
+  function renderProposed() {
+    var billed = 0, paid = 0, count = 0;
+    props.forEach(function (p) { p.bills.forEach(function (b) { billed += b.billed; paid += paidOf(b); count++; }); });
+    var owed = billed - paid;
+    var h = '<div class="p-band"><b>Click Plumbing and Electrical</b><span>Statement for RMC- Dudley Mason · Sep 30, 2026</span></div><div class="p-body">';
+    h += '<div class="p-sum pinned">' + pin(1) + '<small>Owed now</small><strong>' + usd(owed) + '</strong><p>' + count + ' open bills at ' + props.length + ' properties. ' + usd(billed) + ' billed, ' + usd(paid) + ' paid so far.</p></div>';
+    h += '<div class="p-cols"><span>Bill</span><span>Sent</span><span>Still owed</span></div>';
+    props.forEach(function (p, pi) {
+      var sub = p.bills.reduce(function (s, b) { return s + owedOf(b); }, 0);
+      h += '<div class="p-prop"><div class="p-prop-h pinned">' + (pi === 0 ? pin(2) : '') + '<div class="where"><b>' + esc(p.street) + '</b> <span>' + esc(p.city) + ' · ' + p.bills.length + ' open bill' + (p.bills.length === 1 ? '' : 's') + '</span></div><div class="sub">' + usd(sub) + '</div></div>';
+      p.bills.forEach(function (b, bi) {
+        var pd = paidOf(b);
+        var paidLine = pd ? '<div class="paid pinned">' + (pi === 0 ? pin(4) : '') + b.paid.map(function (x) { return usd(x.amt) + ' paid by check ' + x.by + ' on ' + x.on; }).join(', ') + ', of ' + usd(b.billed) + ' billed</div>' : '';
+        h += '<div class="p-row pinned">' + (pi === 1 && bi === 0 ? pin(3) : '') + '<div class="what">Job ' + esc(b.job) + (b.what ? ' <i>· ' + esc(b.what) + '</i>' : '') + '</div><div class="sent">' + b.sent + '</div><div class="owed">' + usd(owedOf(b)) + '</div>' + paidLine + '</div>';
+      });
+      h += '</div>';
+    });
+    h += '<div class="p-total"><span>Total owed</span><span>' + usd(owed) + '</span></div>';
+    h += '<div class="p-recv pinned">' + pin(5) + '<h3>Payments we have received</h3><p>In the last 30 days. If one you sent is missing, reply and we will find it.</p>';
+    received.forEach(function (r) {
+      h += '<div class="p-pay"><div class="d">' + r.on + '</div><div class="w">' + r.by + ' <i>to ' + esc(r.where) + ' · ' + esc(r.job) + '</i></div><div class="a">' + usd(r.amt) + '</div></div>';
+    });
+    h += '</div>';
+    h += '<div class="p-card pinned">' + pin(6) + qrSvg() + '<div class="t"><b>Your account, any time</b><a href="#proposed">' + PORTAL + '</a><span>Pay online and see every open bill and payment, with no login. Scan the code with your phone camera.</span></div></div>';
+    h += '<p class="p-foot">Questions about a bill? Reply to this email or call the office at ' + PHONE + '.</p></div>';
+    return h;
+  }
+
+  function renderToday() {
+    var h = '<div class="t-body"><p class="co">Click Plumbing and Electrical</p><p class="for">Statement for RMC- Dudley Mason · Sep 30, 2026</p>';
+    h += '<div class="t-head"><span>Job address</span><span>Bill sent</span><span>Amount owed</span></div>';
+    today.forEach(function (r) {
+      h += '<div class="t-row pinned">' + (r[5] ? pin(r[5], r[5] === 4) : '') + '<div class="l">' + esc(r[0]) + '<small>' + esc(r[1]) + '</small><small>' + esc(r[4] || 'nothing applied yet') + '</small></div><div>' + r[2] + '</div><div class="amt">' + usd(r[3]) + '</div></div>';
+    });
+    h += '<div class="t-more">The Sep 30 preview goes on past this row; the screenshot stops here.</div>';
+    h += '<div class="t-card pinned">' + pin(5) + '<b>Your account, any time</b><span>Pay online any time at <a href="#today">' + PORTAL + '</a> — this statement stays current there.</span></div>';
+    h += '<p class="t-foot">Questions about a bill? Reply to this email or call the office at ' + PHONE + '.</p></div>';
+    return h;
+  }
+
+  var NOTES = {
+    proposed: { h: 'What changes', bar: 'The proposed email. Pins match the notes.', items: [
+      ['The total comes first', 'What is owed, across how many bills and properties, and how much has been paid. Today the total is the last line of a long table.'],
+      ['One block per property', 'The street is printed once, with the property’s own subtotal. The four spellings of 9703 Lenox Hl become one block of six bills.'],
+      ['One line per bill', 'Job number, the date it was sent, what is still owed. The job’s name shows only when it says something: “Trip Charges” stays, a repeat of the GC’s own name goes.'],
+      ['A payment sits under the bill it paid', 'Check number, date, and the amount of the bill it came off. A bill with nothing paid stays one quiet line, so “nothing applied yet” is no longer printed on nearly every row.'],
+      ['Payments we have received', 'Newest first, each with where it went. A bookkeeper can confirm a check landed without calling the office.'],
+      ['The link stays, the QR code joins it', 'The same card the bill email carries: the code, the address in words, one sentence. The pay-online promise moves into that sentence.']
+    ] },
+    today: { h: 'Where today’s is hard to read', bar: 'Today’s email, row for row from the Sep 30 preview.', items: [
+      ['No property breaks', '628 Terrell Rd is printed seven times in a row, with nothing to say where one property ends and the next begins, and no subtotal for any of them.'],
+      ['The job name repeats what the reader knows', '“Dudley Mason” under the GC’s own statement, or the address a second time inside “Service Visit — 628 Terrell Rd (HCP 867)”.'],
+      ['One property, four spellings', '“Lenox Hill”, “Lenox Hl” with and without the comma, with and without the ZIP. Sorted by address, they read as four places.'],
+      ['Paid in full, and still owed', 'Job 273’s three rows say “paid in full” beside an amount owed. Sixteen of the other rows say “nothing applied yet”, so the one line that matters is easy to miss.', true],
+      ['A link, no code', 'The account card has the address to type. Bill emails already carry a QR code beside it.']
+    ] }
+  };
+
+  function show(which) {
+    var n = NOTES[which];
+    document.getElementById('paper').innerHTML = which === 'today' ? renderToday() : renderProposed();
+    document.getElementById('notes-h').textContent = n.h;
+    document.getElementById('bar-note').textContent = n.bar;
+    document.getElementById('notes').innerHTML = n.items.map(function (it, i) {
+      return '<li><span class="n' + (it[2] ? ' flag' : '') + '">' + (i + 1) + '</span><div><b>' + it[0] + '</b><span>' + it[1] + '</span></div></li>';
+    }).join('');
+    document.getElementById('show-proposed').setAttribute('aria-pressed', String(which !== 'today'));
+    document.getElementById('show-today').setAttribute('aria-pressed', String(which === 'today'));
+  }
+  document.getElementById('show-proposed').addEventListener('click', function () { show('proposed'); });
+  document.getElementById('show-today').addEventListener('click', function () { show('today'); });
+  document.getElementById('paper').addEventListener('click', function (e) { if (e.target.closest('a')) e.preventDefault(); });
+  show(location.hash === '#today' ? 'today' : 'proposed');
+})();
+</script>
+
+</body>
+</html>

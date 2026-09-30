@@ -134,24 +134,27 @@ export function sortStageRowsForTotalByNameDetail(rows: StageRow[]): StageRow[] 
   })
 }
 
+/**
+ * The day a Billed row's bill went out: the billed date, else the estimated
+ * bill date (`isEstimate`); null for a job balance with no bill behind it.
+ */
+export function billedRowReferenceYmd(r: StageRow): { ymd: string; isEstimate: boolean } | null {
+  if (r.kind === 'job') return null
+  const billedAt = r.inv.billed_at?.trim()
+  if (billedAt) return { ymd: billedAt.length >= 10 ? billedAt.slice(0, 10) : billedAt, isEstimate: false }
+  const est = effectiveInvoiceEstBillDate(r.inv)
+  return est ? { ymd: est, isEstimate: true } : null
+}
+
 /** Reference date and whole calendar days since, for Billed Awaiting Payment printout. */
 export function printBilledRowReferenceDate(
   r: StageRow,
   now = new Date(),
 ): { display: string; ageDays: number | null } {
-  if (r.kind === 'job') return { display: '—', ageDays: null }
-  const billedAt = r.inv.billed_at?.trim()
-  if (billedAt) {
-    const datePart = billedAt.length >= 10 ? billedAt.slice(0, 10) : billedAt
-    const days = calendarDaysSinceDateUtc(datePart, now)
-    const display = formatYmdOrIsoDateForPrintDisplay(datePart)
-    if (days < 0) return { display, ageDays: null }
-    return { display, ageDays: days }
-  }
-  const est = effectiveInvoiceEstBillDate(r.inv)
-  if (!est) return { display: '—', ageDays: null }
-  const days = calendarDaysSinceDateUtc(est, now)
-  const display = `${formatYmdOrIsoDateForPrintDisplay(est)} (est.)`
+  const ref = billedRowReferenceYmd(r)
+  if (!ref) return { display: '—', ageDays: null }
+  const days = calendarDaysSinceDateUtc(ref.ymd, now)
+  const display = `${formatYmdOrIsoDateForPrintDisplay(ref.ymd)}${ref.isEstimate ? ' (est.)' : ''}`
   if (days < 0) return { display, ageDays: null }
   return { display, ageDays: days }
 }

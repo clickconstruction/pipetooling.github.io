@@ -3976,6 +3976,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                           cc_emails: p.ccEmails ?? [],
                           subject: p.subject,
                           email_html: p.emailHtml,
+                          ...(p.emailHtmlQr && p.portalUrl ? { email_html_qr: p.emailHtmlQr, portal_url: p.portalUrl } : {}),
                           email_text: p.emailText,
                           total: p.total,
                           job_count: p.jobCount,

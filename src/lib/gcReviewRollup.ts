@@ -1,5 +1,5 @@
 import type { StageRow } from './jobsStagesBoard'
-import { printBilledRowReferenceDate, stageRowBilledRemainingAmount } from './jobs/invoiceBilling'
+import { billedRowReferenceYmd, printBilledRowReferenceDate, stageRowBilledRemainingAmount } from './jobs/invoiceBilling'
 import { effectiveJobLedgerNumber } from './ledgerDisplayPrefixes'
 import { effectiveInvoiceParty } from './jobs/billToParty'
 import { billPaidByWords } from './jobs/gcChecksApplied'
@@ -38,6 +38,31 @@ export type GcReviewRow = {
   inCollections: boolean
   /** The line under the bill (v2.4044): what paid it and when, what is still open — or "nothing applied yet". */
   paidBy?: string
+  /**
+   * What the statement by property reads (v2.4255) — absent on a hand-built row,
+   * and the statement then groups by address and words no payment.
+   */
+  /** The job's property record (`jobs_ledger.customer_address_id`). */
+  propertyId?: string | null
+  /** The day the bill went out (YYYY-MM-DD), and whether that is the estimated bill date. */
+  referenceYmd?: string | null
+  referenceIsEstimate?: boolean
+  /** The bill's amount; null for a job balance with no bill behind it. */
+  billed?: number | null
+  /** Payments recorded against this bill; for a job balance, every payment on the job. */
+  billPayments?: GcReviewRowPayment[]
+  retainageHeld?: number | null
+  /** Money on the job that no bill carries — the statement cannot count it toward this bill. 0 for a job balance. */
+  unmatchedOnJob?: number
+}
+
+export type GcReviewRowPayment = {
+  invoice_id: string | null
+  amount: number | string | null
+  paid_on: string | null
+  payment_type: string | null
+  reference_number: string | null
+  sequence_order: number | null
 }
 
 export type GcReviewGroup = {
@@ -70,6 +95,19 @@ export function gcReviewRowKey(r: StageRow): string {
 
 function toReviewRow(r: StageRow, inCollections: boolean, now: Date): GcReviewRow {
   const ref = printBilledRowReferenceDate(r, now)
+  const refYmd = billedRowReferenceYmd(r)
+  const invoiceId = r.kind === 'job' ? null : r.inv.id
+  const jobPayments = r.job.payments ?? []
+  const billPayments: GcReviewRowPayment[] = jobPayments
+    .filter((p) => invoiceId == null || p.invoice_id === invoiceId)
+    .map((p) => ({
+      invoice_id: p.invoice_id ?? null,
+      amount: p.amount,
+      paid_on: p.paid_on ?? null,
+      payment_type: p.payment_type ?? null,
+      reference_number: p.reference_number ?? null,
+      sequence_order: p.sequence_order ?? null,
+    }))
   return {
     key: gcReviewRowKey(r),
     jobId: r.job.id,
@@ -82,6 +120,13 @@ function toReviewRow(r: StageRow, inCollections: boolean, now: Date): GcReviewRo
     remaining: stageRowBilledRemainingAmount(r),
     inCollections,
     paidBy: billPaidByWords(r.job, r.kind === 'job' ? null : r.inv),
+    propertyId: r.job.customer_address_id ?? null,
+    referenceYmd: refYmd?.ymd ?? null,
+    referenceIsEstimate: refYmd?.isEstimate ?? false,
+    billed: r.kind === 'job' ? null : Number(r.inv.amount ?? 0),
+    billPayments,
+    retainageHeld: r.job.lien_retainage_held == null ? null : Number(r.job.lien_retainage_held),
+    unmatchedOnJob: invoiceId == null ? 0 : jobPayments.filter((p) => !p.invoice_id).reduce((s, p) => s + Number(p.amount ?? 0), 0),
   }
 }
 

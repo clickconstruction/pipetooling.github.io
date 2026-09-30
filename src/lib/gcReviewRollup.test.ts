@@ -45,6 +45,32 @@ const KNIGHT = { id: 'gc-knight', name: 'Knight Contracting' }
 const LOBERG = { id: 'gc-loberg', name: 'Loberg Contracting' }
 
 describe('buildGcReviewRollup', () => {
+  it('each row carries what the statement by property reads: the property, the bill, the payments on it (v2.4255)', () => {
+    const payments = [
+      { id: 'p1', job_id: 'j1', invoice_id: 'i1', amount: 400, paid_on: '2026-07-10', payment_type: 'check', reference_number: '4821', sequence_order: 1 },
+      // On the job, on no bill — the statement cannot count it toward either bill.
+      { id: 'p2', job_id: 'j1', invoice_id: null, amount: 250, paid_on: '2025-12-19', payment_type: 'check', reference_number: '3001', sequence_order: 2 },
+    ]
+    const withBills = job({ id: 'j1', gcCustomer: KNIGHT, customer_address_id: 'prop-1', lien_retainage_held: 100, payments: payments as never })
+    const shell = job({ id: 'j2', gcCustomer: KNIGHT, revenue: 900, payments_made: 250, payments: [{ ...payments[1], id: 'p3', job_id: 'j2' }] as never })
+    const rollup = buildGcReviewRollup(
+      [
+        invRow({ id: 'i1', job: withBills, amount: 1000 }),
+        invRow({ id: 'i2', job: withBills, amount: 300, billed_at: null, estimated_bill_date: '2026-07-20' }),
+        { kind: 'job', job: shell } as StageRow,
+      ],
+      [],
+      { now: NOW },
+    )
+    const rows = Object.fromEntries(rollup.groups[0]!.rows.map((r) => [r.key, r]))
+    expect(rows.i1).toMatchObject({ propertyId: 'prop-1', referenceYmd: '2026-07-01', referenceIsEstimate: false, billed: 1000, remaining: 600, retainageHeld: 100, unmatchedOnJob: 250 })
+    expect(rows.i1!.billPayments).toEqual([{ invoice_id: 'i1', amount: 400, paid_on: '2026-07-10', payment_type: 'check', reference_number: '4821', sequence_order: 1 }])
+    expect(rows.i2).toMatchObject({ referenceYmd: '2026-07-20', referenceIsEstimate: true, billed: 300, remaining: 300, billPayments: [], unmatchedOnJob: 250 })
+    // A job balance with no bill: every payment on the job is its own, and nothing is left unmatched.
+    expect(rows.j2).toMatchObject({ propertyId: null, referenceYmd: null, billed: null, remaining: 650, unmatchedOnJob: 0 })
+    expect(rows.j2!.billPayments).toHaveLength(1)
+  })
+
   it('files a row under the GC only when the GC pays it (v2.3346)', () => {
     const gcPays = job({ id: 'j1', gcCustomer: KNIGHT })
     const ownerPays = job({ id: 'j2', gcCustomer: KNIGHT, bill_to_party: 'customer', customer_id: 'owner-2' })

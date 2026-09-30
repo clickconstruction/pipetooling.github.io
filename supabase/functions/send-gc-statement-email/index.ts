@@ -11,6 +11,9 @@ import {
   type RecentStatementSend,
 } from '../_shared/gcStatementSendDedupe.ts'
 import { resolveStatementReplyTo, type ReplyToPerson } from '../_shared/gcStatementReplyTo.ts'
+import { PORTAL_QR_CONTENT_ID, PORTAL_QR_FILENAME } from '../_shared/portalAccountCard.ts'
+import { qrMatrix } from '../_shared/qrMatrix.ts'
+import { bytesToBase64, qrPngBytes } from '../_shared/qrPng.ts'
 
 /**
  * Send a GC statement email (v2.1416, phase 2 of GC statements).
@@ -35,7 +38,26 @@ import { resolveStatementReplyTo, type ReplyToPerson } from '../_shared/gcStatem
  * `gcStatementSendDedupe` kernel — the same statement to the same address
  * inside the attended window (10 min, any lane) answers 200
  * `{ success: false, skipped: 'duplicate', error }` and nothing goes out.
+ *
+ * The QR code (v2.4255): a statement for one GC may come with `portal_url` and
+ * `email_html_qr` — the same body whose account card loads `cid:portal-qr`.
+ * When the address is one of ours and a code can be drawn, that body goes out
+ * with the code attached inline; otherwise `email_html` (the card without a
+ * code) does. A client that sends neither field gets what it always got.
  */
+
+/**
+ * Where a GC's portal lives: the short address, or the app's own `/portal?t=`
+ * link — on the origin this project is configured for, and on both names the
+ * app answers to (docs/DOMAIN_CUTOVER.md: the old one redirects, path kept).
+ */
+const PORTAL_SHORT_ORIGIN = 'https://my.clickplumbing.com/'
+const PORTAL_APP_ORIGINS = [Deno.env.get('APP_ORIGIN')?.trim() ?? '', 'https://clicktooling.com', 'https://pipetooling.com']
+  .map((o) => o.replace(/\/+$/, ''))
+  .filter(Boolean)
+function isPortalUrl(url: string): boolean {
+  return url.startsWith(PORTAL_SHORT_ORIGIN) || PORTAL_APP_ORIGINS.some((o) => url.startsWith(`${o}/portal?t=`))
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -102,6 +124,9 @@ serve(async (req) => {
       cc_emails?: unknown
       subject?: string
       email_html?: string
+      /** The same body with the account card's QR code (`cid:portal-qr`), and the portal the code opens. */
+      email_html_qr?: string
+      portal_url?: string
       email_text?: string
       total?: number
       job_count?: number
@@ -142,6 +167,11 @@ serve(async (req) => {
     if (emailHtml.length > MAX_HTML_CHARS) {
       return jsonResponse({ error: 'email_html too large' }, 400)
     }
+    // The body with the QR code goes out only when its code can be attached; anything short of that sends the plain body.
+    const emailHtmlQr = typeof body.email_html_qr === 'string' ? body.email_html_qr.trim() : ''
+    const portalUrl = typeof body.portal_url === 'string' ? body.portal_url.trim() : ''
+    const qrModules =
+      emailHtmlQr && emailHtmlQr.length <= MAX_HTML_CHARS && emailHtmlQr.includes(`cid:${PORTAL_QR_CONTENT_ID}`) && isPortalUrl(portalUrl) ? qrMatrix(portalUrl) : null
     if (!Number.isFinite(total) || total < 0 || jobCount < 0) {
       return jsonResponse({ error: 'total and job_count must be non-negative numbers' }, 400)
     }
@@ -227,9 +257,10 @@ serve(async (req) => {
         to: [toEmail],
         ...(ccAll.length ? { cc: ccAll } : {}),
         subject,
-        html: emailHtml,
+        html: qrModules ? emailHtmlQr : emailHtml,
         text: emailText,
         ...(replyTo ? { reply_to: replyTo } : {}),
+        ...(qrModules ? { attachments: [{ filename: PORTAL_QR_FILENAME, content: bytesToBase64(qrPngBytes(qrModules)), content_id: PORTAL_QR_CONTENT_ID }] } : {}),
       }),
     })
     if (!resendResponse.ok) {
@@ -266,7 +297,7 @@ serve(async (req) => {
       console.error('gc_statement_emails audit insert failed', auditErr)
     }
 
-    return jsonResponse({ success: true, resend_email_id: sent.id ?? null, reply_to: replies.replyTo, reply_to_name: replies.replyToName, on_behalf: replies.onBehalf })
+    return jsonResponse({ success: true, resend_email_id: sent.id ?? null, reply_to: replies.replyTo, reply_to_name: replies.replyToName, on_behalf: replies.onBehalf, qr_attached: !!qrModules })
   } catch (e) {
     console.error('send-gc-statement-email error', e)
     return jsonResponse({ error: 'Internal error' }, 500)

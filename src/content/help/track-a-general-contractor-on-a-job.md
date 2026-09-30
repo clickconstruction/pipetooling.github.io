@@ -46,7 +46,22 @@ The opened row then shows {{chip:green|✓ Certified · Taunya · 7:02 AM}} — 
 
 ## Send a statement to a GC
 
-Open the GC's row and pick **Copy** from its {{button:outline|Share}} menu — one click copies a **GC-facing statement** (job address, the date the bill was sent, and the amount owed, with a total). Paste it into Gmail, Outlook, or Apple Mail and it lands as a clean formatted table; a suggested subject line rides at the top of the copy so you can cut it into the subject field. This version is written for the GC's eyes — no internal chips or days-past-due language. **Print** in the same menu makes that GC's printable statement.
+Open the GC's row and pick **Copy** from its {{button:outline|Share}} menu — one click copies a **GC-facing statement**. It opens with what is owed, then reads one property at a time: the street once, with that property's own subtotal, and under it a line for each open bill — the job number, the day the bill was sent, what is still owed. Paste it into Gmail, Outlook, or Apple Mail and it lands as a clean formatted table; a suggested subject line rides at the top of the copy so you can cut it into the subject field. This version is written for the GC's eyes — no internal chips or days-past-due language. **Print** in the same menu makes that GC's printable statement.
+
+:::example What the GC reads
+**Owed now $23,650.00** — 3 open bills at 2 properties. $28,650.00 billed, $5,000.00 paid so far.
+**4400 Sample Pkwy** Kyle · 2 open bills — **$21,650.00**
+Job 1042 · Bldg 2 rough-in · Aug 27 · $15,200.00 — *$5,000.00 paid by #4417 on Sep 8, of $20,200.00 billed*
+Job 1051 · Bldg 3 top-out · Sep 24 · $6,450.00
+**212 Example Ln** Buda · 1 open bill — **$2,000.00**
+Job 1058 · Service Visit · Sep 21 · $2,000.00
+**Total owed $23,650.00**
+:::
+
+- **What counts as one property.** Jobs linked to the same property record share a block, however each job's address was typed; a job with no property record joins the block its cleaned-up address matches. If one place shows as two blocks, set the property on the job (Edit Job → Property record).
+- **The job's name** shows only when it says something — *Trip Charges* stays; a repeat of the GC's own name, or of the address the block is already headed by, is left off.
+- **A payment shows under the bill it was recorded against**, with the check number and the day. A bill with nothing paid is one plain line.
+- **Paid on the job, not on a bill.** When a job carries a payment that was never put on a bill, the Draft Message dialog says so before you send — *Paid on the job, not on a bill: Job 1042 $3,000.00.* The statement still shows that job's bills as owed in full. If the money was for those bills, match it in Edit Job → Payments, then send.
 
 ## Print a GC's unpaid invoices
 
@@ -68,7 +83,7 @@ Prefer the app to send it? Choose **Draft Message** from the same Share menu. Th
 
 Need someone else on the thread? The **CC** row under To takes teammates (tap a chip to add, tap again to remove) or any typed addresses, comma-separated, up to ten — it applies to Send now and to scheduled sends, and a weekly schedule keeps its CC list.
 
-If the GC has a portal, the dialog's **Include portal link** box is checked: the email ends with a small *Your account, any time* card that tells the GC how to pay — **"Pay online any time at my.clickplumbing.com/their-name — this statement stays current there."** Untick it to send the plain statement. Scheduled sends include the card automatically while the portal is active, and **Copy** pastes the same card, so what you preview is what they get.
+If the GC has a portal, the dialog's **Include portal link** box is checked: the email ends with a *Your account, any time* card: a **QR code** the GC can scan with a phone camera, their address in words beside it (**my.clickplumbing.com/their-name**), and one sentence — *Pay online and see every open bill and payment, with no login.* Untick it to send the plain statement. Scheduled sends include the card automatically while the portal is active. **Copy** pastes the card with the address and without the code — a picture pasted into a personal mail program does not always arrive.
 
 :::example Nothing owed? Nothing goes out
 Open Draft Message on a GC whose total is $0.00 and the dialog says **Nothing owed — no statement goes out.** with {{button:blue|Send statement}} greyed out — the app will not email anyone a "Total owed $0.00". (Schedule… is still allowed: a scheduled send rebuilds the statement that morning and skips itself if the balance is still zero.)
