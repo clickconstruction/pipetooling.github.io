@@ -76,6 +76,8 @@ export function pickOpenAudit<T extends { id: string; status: string }>(input: {
   workable: (audit: T) => boolean
 }): string | null {
   const { triaged, current, picked, ready, workable } = input
+  // v2.4234: on a phone the card is a full-screen panel with a close — a closed card is a pick of nothing, and it holds.
+  if (picked && current === null) return null
   const held = current ? triaged.find((a) => a.id === current) : undefined
   if (held && picked && workable(held)) return held.id
   if (!ready) return held && workable(held) ? held.id : null
