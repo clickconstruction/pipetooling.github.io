@@ -18,6 +18,8 @@ const DAY = '2026-07-27'
 function renderGrid(overrides?: {
   openManualHoursDraftFromBlur?: (personName: string, workDate: string, hoursDecimal: number) => void
   saveHours?: (personName: string, workDate: string, hours: number) => void
+  approvedClockHoursForCell?: (personName: string, workDate: string) => number
+  onTypedOverClockHours?: (personName: string, workDate: string, clockHours: number) => void
 }) {
   const openManualHoursDraftFromBlur = overrides?.openManualHoursDraftFromBlur ?? vi.fn()
   const saveHours = overrides?.saveHours ?? vi.fn()
@@ -50,6 +52,8 @@ function renderGrid(overrides?: {
       toggleHoursDayCorrect={() => {}}
       saveHours={saveHours}
       openManualHoursDraftFromBlur={openManualHoursDraftFromBlur}
+      approvedClockHoursForCell={overrides?.approvedClockHoursForCell}
+      onTypedOverClockHours={overrides?.onTypedOverClockHours}
     />,
   )
   const input = utils.container.querySelector<HTMLInputElement>('td input[type="text"]')
@@ -98,5 +102,25 @@ describe('PeopleHoursGrid cell keyboard commit', () => {
     fireEvent.blur(input)
     expect(openManualHoursDraftFromBlur).toHaveBeenCalledTimes(1)
     expect(openManualHoursDraftFromBlur).toHaveBeenCalledWith(PERSON, DAY, 4)
+  })
+
+  it('a typed 0 over approved clock hours is a stop, not a write (v2.4263)', () => {
+    const onTypedOverClockHours = vi.fn()
+    const { input, saveHours } = renderGrid({ approvedClockHoursForCell: () => 6.5, onTypedOverClockHours })
+    fireEvent.focus(input)
+    fireEvent.change(input, { target: { value: '0' } })
+    fireEvent.blur(input)
+    expect(onTypedOverClockHours).toHaveBeenCalledWith(PERSON, DAY, 6.5)
+    expect(saveHours).not.toHaveBeenCalled()
+  })
+
+  it('a typed 0 on a day with no clock hours still writes, as it always did', () => {
+    const onTypedOverClockHours = vi.fn()
+    const { input, saveHours } = renderGrid({ approvedClockHoursForCell: () => 0, onTypedOverClockHours })
+    fireEvent.focus(input)
+    fireEvent.change(input, { target: { value: '0' } })
+    fireEvent.blur(input)
+    expect(onTypedOverClockHours).not.toHaveBeenCalled()
+    expect(saveHours).toHaveBeenCalledWith(PERSON, DAY, 0)
   })
 })

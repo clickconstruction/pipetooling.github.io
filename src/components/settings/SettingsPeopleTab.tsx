@@ -7,6 +7,7 @@ import type { PersonRow, UserRow } from '../../types/settingsRows'
 import TeamFeedbackDevSettingsBlock from '../team-feedback/TeamFeedbackDevSettingsBlock'
 import AssistantHoursWindowSettingsBlock from './AssistantHoursWindowSettingsBlock'
 import QuickAddSettingsBlock from './QuickAddSettingsBlock'
+import TypedHoursSwitchBlock from './TypedHoursSwitchBlock'
 import { Link } from 'react-router-dom'
 import { useActiveAccountsModal } from '../../contexts/ActiveAccountsModalContext'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
@@ -463,6 +464,8 @@ export default function SettingsPeopleTab({
           <AssistantHoursWindowSettingsBlock />
 
           <QuickAddSettingsBlock />
+
+          <TypedHoursSwitchBlock />
 
           <TeamFeedbackDevSettingsBlock />
 

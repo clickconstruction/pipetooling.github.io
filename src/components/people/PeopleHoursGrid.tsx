@@ -27,6 +27,10 @@ export interface PeopleHoursGridProps {
   peopleHoursPendingByCellMap: PeopleHoursPendingByCellMap
   /** Pending sessions someone typed hours onto, still waiting on a second look (v2.4247): the cell's badge wears a pencil. */
   typedPendingSessionIds?: ReadonlySet<string>
+  /** Approved clock hours on a cell (v2.4263): a typed 0 there is a stop, not a write. */
+  approvedClockHoursForCell?: (personName: string, workDate: string) => number
+  /** The stop: the day has clocked hours a typed 0 would take out of pay without touching the clock. */
+  onTypedOverClockHours?: (personName: string, workDate: string, clockHours: number) => void
   /** Open sessions per day column (J7-4): the header says "+N on the clock" because the cells count closed sessions only. */
   liveByWorkDate: HoursGridLiveByWorkDate
   jobHighlightPeople: Set<string>
@@ -68,6 +72,8 @@ export function PeopleHoursGrid({
   hoursFlashPersonName,
   hoursDaysCorrect,
   typedPendingSessionIds,
+  approvedClockHoursForCell,
+  onTypedOverClockHours,
   users,
   canEditCrewJobs,
   canAccessHours,
@@ -448,8 +454,11 @@ export function PeopleHoursGrid({
                             canEditHours: canEditHours(personName),
                             dayIsMarkedCorrect: hoursDaysCorrect.has(d),
                           })
+                          const clockHrs = v === 0 && !shouldOfferManualSession ? (approvedClockHoursForCell?.(personName, d) ?? 0) : 0
                           if (shouldOfferManualSession) {
                             openManualHoursDraftFromBlur(personName, d, v)
+                          } else if (clockHrs > 0 && onTypedOverClockHours) {
+                            onTypedOverClockHours(personName, d, clockHrs)
                           } else {
                             void saveHours(personName, d, v)
                           }
@@ -748,7 +757,9 @@ export function PeopleHoursGrid({
           dayIsMarkedCorrect: dayLocked,
         })
         setDaySheetCell(null)
+        const clockHrs = v === 0 && !offer ? (approvedClockHoursForCell?.(personName, workDate) ?? 0) : 0
         if (offer) openManualHoursDraftFromBlur(personName, workDate, v)
+        else if (clockHrs > 0 && onTypedOverClockHours) onTypedOverClockHours(personName, workDate, clockHrs)
         else void saveHours(personName, workDate, v)
       }
       return (
