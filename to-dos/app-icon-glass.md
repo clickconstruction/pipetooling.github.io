@@ -1,8 +1,8 @@
 ---
 name: "The home-screen icon reads crisp under iOS 26's glass"
 number: 67
-group: ready
-status: open 2026-09-29 — v2.4158 centred the mark; the tile on the home screen still reads soft and grey next to native icons
+group: gated
+status: PR 1 shipped v2.4227 (exact-size renders, black ink, fatter wrench) · waiting on the owner's home-screen photo to decide item 3
 summary: >
   On an iOS 26 home screen the ClickTooling tile looks rough: the gear's dark ink goes muddy grey
   and its edges soften, while the Add to Home Screen sheet shows the same file crisp. The served
@@ -11,14 +11,14 @@ summary: >
   glass sits above their art instead of on it. A web clip cannot opt out, so the fix is art that
   survives the glass: exact-size renders, heavier ink, and possibly a dark tile.
 next: >
-  PR 1 (items 1 + 2 below, one PR, no owner call): extend `scripts/generate-app-icon.mjs` to
-  write 180 / 167 / 152 / 120 px renders beside the 1024 and link each with `sizes` in
-  `index.html`; switch the touch icon's ink to pure black and thicken the wrench cutout for the
-  touch icon only; measure the PNGs (see How to verify); ask the owner for a home-screen photo.
-  Then the owner decides item 3 from that photo.
+  After v2.4227 deploys: remove the icon from the phone, Add to Home Screen again, and photograph
+  it next to a native icon (Reduce Transparency off). From that photo the owner decides item 3, the
+  dark tile — PR 2 is a `TILE` option in the generator and the touch icons regenerated — or closes
+  the card if the tile now reads crisp.
 size: S
-blocker: None for PR 1. Item 3 needs the owner's call.
-opinion: build — PR 1 is cheap and inside the brand; the dark tile waits on a photo of PR 1's result.
+ver: v2.4227
+blocker: The owner's photo of the v2.4227 tile, then the call on item 3.
+opinion: your call — PR 1 shipped; the dark tile is a brand change and waits on a photo of PR 1's result.
 mockup: not required — the proof is a photo of the home screen; the generator renders the candidate PNGs to compare
 ---
 
@@ -61,8 +61,9 @@ here rather than build them that day.
 
 ## The plan
 
-- **PR 1** (items 1 + 2): `scripts/generate-app-icon.mjs` (sizes loop, ink and wrench rewrites),
-  `public/apple-touch-icon*.png`, `index.html` (the sized links), a release note + fragment.
+- **PR 1** (items 1 + 2) — shipped v2.4227: `scripts/generate-app-icon.mjs` (the sizes loop, the ink
+  and wrench rewrites), `public/apple-touch-icon*.png` (five files), `index.html` (the sized links).
+  Every render measured centred with the bottom teeth ≈17% out and the ink at 0.
 - **PR 2** (item 3, only if the owner picks it): a `TILE` option in the generator, the touch
   icons regenerated; nothing else changes.
 
