@@ -586,6 +586,8 @@ export default function People() {
   const [approvalsQueueOpen, setApprovalsQueueOpen] = useState(false)
   /** `&typed=1` beside `approvals=1` (the Needs You *Look at them* action): the queue opens on its Typed by hand filter. */
   const [approvalsQueueTypedOnly, setApprovalsQueueTypedOnly] = useState(false)
+  /** `&typist=<user id>` beside `typed=1` (the *Hours added in bulk* door, v2.4281): the queue narrows to what that person typed. */
+  const [approvalsQueueTypist, setApprovalsQueueTypist] = useState<{ id: string; name: string | null } | null>(null)
   const [approvalsQueueReloadKey, setApprovalsQueueReloadKey] = useState(0)
   /** Hours on a phone (v2.3889, punch list #30 PR 5d): Who's in · Approvals · Week & sessions; the tab as it was is the third view. */
   const [hoursPhoneView, setHoursPhoneView] = useState<HoursPhoneViewKey>('in')
@@ -790,12 +792,16 @@ export default function People() {
     if (!(canAccessHours || canAccessPay)) return
     setActiveTab('hours')
     setApprovalsQueueTypedOnly(searchParams.get('typed') === '1')
+    const typistId = searchParams.get('typist')
+    setApprovalsQueueTypist(typistId ? { id: typistId, name: searchParams.get('typistName') || null } : null)
     setApprovalsQueueOpen(true)
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev)
       next.set('tab', 'hours')
       next.delete('approvals')
       next.delete('typed')
+      next.delete('typist')
+      next.delete('typistName')
       return next
     }, { replace: true })
   }, [searchParams, canAccessHours, canAccessPay, setSearchParams])
@@ -3015,10 +3021,12 @@ export default function People() {
           reloadKey={approvalsQueueReloadKey}
           authUserId={authUser?.id}
           startTypedOnly={approvalsQueueTypedOnly}
+          startTypist={approvalsQueueTypist}
           onOpenDay={(day) => setHoursMyTimeEditor({ subjectUserId: day.userId, subjectDisplayName: day.personName, dateStr: day.workDate })}
           onClose={() => {
             setApprovalsQueueOpen(false)
             setApprovalsQueueTypedOnly(false)
+            setApprovalsQueueTypist(null)
           }}
           onChanged={() => {
             loadAllClockSessionsRef.current?.()

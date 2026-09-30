@@ -17,7 +17,7 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55433}"
 NAME="pgtest-typed-hours"
 BED="supabase/tests/typed_hours"
-MIGRATIONS=(supabase/migrations/20260930160727_typed_hours_second_look.sql supabase/migrations/20260930210418_assistant_hours_window_fence.sql)
+MIGRATIONS=(supabase/migrations/20260930160727_typed_hours_second_look.sql supabase/migrations/20260930210418_assistant_hours_window_fence.sql supabase/migrations/20260930233154_bulk_hours_alerts.sql)
 TMP="$(mktemp -d)"
 
 command -v psql >/dev/null || { echo "psql not on PATH"; exit 2; }

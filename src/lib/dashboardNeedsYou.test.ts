@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { NEEDS_YOU_RANK, buildNeedsYouItems, needsYouKind, rankNeedsYouItems, visibleNeedsYouItems, type NeedsYouInputs, type NeedsYouItem } from './dashboardNeedsYou'
 import type { BankReturnedPayments } from './jobs/bankReturnedDeposits'
+import type { BulkHoursAlert } from './clock/bulkHoursAlert'
 
 function inputs(overrides: Partial<NeedsYouInputs> = {}): NeedsYouInputs {
   return {
@@ -45,6 +46,25 @@ function inputs(overrides: Partial<NeedsYouInputs> = {}): NeedsYouInputs {
     labelApprovals: null,
     labelApprovalsMinAgeDays: 3,
     ...overrides,
+  }
+}
+
+function typedBurst(over: Partial<BulkHoursAlert> = {}): BulkHoursAlert {
+  return {
+    actorId: 'u-taunya',
+    actorName: 'Taunya',
+    days: 8,
+    people: 2,
+    seconds: 257_400,
+    waitingDays: 6,
+    firstTypedAt: '2026-09-30T15:00:00.000Z',
+    lastTypedAt: '2026-09-30T15:25:10.000Z',
+    windowStart: '2026-09-30T15:00:00.000Z',
+    windowEnd: '2026-09-30T16:00:00.000Z',
+    peopleNames: ['Darren', 'Michael A'],
+    firstWorkDate: '2026-09-21',
+    lastWorkDate: '2026-09-25',
+    ...over,
   }
 }
 
@@ -404,6 +424,28 @@ describe('buildNeedsYouItems', () => {
     const items = buildNeedsYouItems(inputs({ bulkDeleteAlerts: [burst({ bundles: 1 })] }))
     expect(items[0]?.title).toBe('Bulk deletion detected')
     expect(items[0]?.detail).toContain('Taunya deleted 1 record at once')
+  })
+
+  it('bulk-hours is a red item under the attack tier, days as the figure, snooze/dismiss secondaries', () => {
+    const items = buildNeedsYouItems(inputs({ jobFollowupCount: 9, bulkDeleteAlerts: [burst()], bulkHoursAlerts: [typedBurst()] }))
+    expect(items.map((i) => i.key)).toEqual(['bulk-delete', 'bulk-hours', 'job-followups'])
+    const bh = items[1]
+    expect(bh?.severity).toBe('red')
+    expect(bh?.kicker).toBe('Hours added in bulk')
+    expect(bh?.title).toBe('Taunya typed hours onto 8 days in 25 minutes')
+    expect(bh?.detail).toBe('Darren, Michael A · Sep 21–25 · 71.5 h the clock did not record, 6 days still waiting, 2 already looked at. Nothing is blocked; this is so a second person sees it the same day.')
+    expect(bh?.figure).toBe('8')
+    expect(bh?.actionLabel).toBe('Look at them')
+    expect(bh?.secondary?.map((s) => s.key)).toEqual(['snooze', 'dismiss'])
+  })
+
+  it('bulk-hours with several bursts sums the days; null or empty contributes no item', () => {
+    expect(buildNeedsYouItems(inputs({ bulkHoursAlerts: null }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ bulkHoursAlerts: [] }))).toEqual([])
+    const items = buildNeedsYouItems(inputs({ bulkHoursAlerts: [typedBurst(), typedBurst({ actorId: 'u-wendi', actorName: 'Wendi', days: 3 })] }))
+    expect(items[0]?.title).toBe('Hours typed in bulk 2 times')
+    expect(items[0]?.detail).toContain('11 days across 2 bursts by 2 people — newest: Taunya typed hours onto 8 days in 25 minutes.')
+    expect(items[0]?.figure).toBe('11')
   })
 
   it('claim-dev shares the alert tier (bigger figure first), keeping the rotate-the-code warning', () => {

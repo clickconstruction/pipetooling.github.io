@@ -8,6 +8,7 @@ import TeamFeedbackDevSettingsBlock from '../team-feedback/TeamFeedbackDevSettin
 import AssistantHoursWindowSettingsBlock from './AssistantHoursWindowSettingsBlock'
 import QuickAddSettingsBlock from './QuickAddSettingsBlock'
 import TypedHoursSwitchBlock from './TypedHoursSwitchBlock'
+import BulkHoursAlertSettingsBlock from './BulkHoursAlertSettingsBlock'
 import { Link } from 'react-router-dom'
 import { useActiveAccountsModal } from '../../contexts/ActiveAccountsModalContext'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
@@ -466,6 +467,8 @@ export default function SettingsPeopleTab({
           <QuickAddSettingsBlock />
 
           <TypedHoursSwitchBlock />
+
+          <BulkHoursAlertSettingsBlock />
 
           <TeamFeedbackDevSettingsBlock />
 

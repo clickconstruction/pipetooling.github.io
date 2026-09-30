@@ -160,6 +160,27 @@ export function parseBulkDeleteAlertEnabled(valueText: string | null | undefined
   return (valueText ?? '').trim() !== 'false'
 }
 
+/* ── Bulk hours alert (v2.4281): one person typed hours onto several days in a short time. The
+ * sibling of the bulk-deletion alert, read server-side by list_bulk_hours_alerts() — key names are
+ * load-bearing in SQL (20260930233154_bulk_hours_alerts.sql); defaults match its COALESCE fallbacks.
+ * Same parsers as the deletion alert. Dev writes; all authenticated read. */
+
+/** `value_text` — 'true'/'false'. Missing = enabled. */
+export const APP_SETTINGS_KEY_BULK_HOURS_ALERT_ENABLED = 'bulk_hours_alert_enabled_v1' as const
+/** `value_num` — alert when one person types hours onto at least this many distinct (person, day)s in a window. Missing = 2. */
+export const APP_SETTINGS_KEY_BULK_HOURS_ALERT_DAYS = 'bulk_hours_alert_days_v1' as const
+/** `value_num` — width of the detection window, in minutes. Missing = 60. */
+export const APP_SETTINGS_KEY_BULK_HOURS_ALERT_WINDOW_MINUTES = 'bulk_hours_alert_window_minutes_v1' as const
+/** `value_num` — how far back the Needs You card looks, in days. Missing = 7. */
+export const APP_SETTINGS_KEY_BULK_HOURS_ALERT_LOOKBACK_DAYS = 'bulk_hours_alert_lookback_days_v1' as const
+
+/** Defaults — must stay in sync with the COALESCE fallbacks in list_bulk_hours_alerts(). */
+export const BULK_HOURS_ALERT_DEFAULTS = {
+  days: 2,
+  windowMinutes: 60,
+  lookbackDays: 7,
+} as const
+
 /**
  * JSON in `value_text`: `{ability,drive,integrity}` dimension weights for the Team → Review composite
  * (normalized by `parseCompositeWeights`; missing = equal thirds). Dev writes; all authenticated read.
