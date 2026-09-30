@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { MissedClockInDoor } from './clock/MissedClockInDoor'
 import { supabase } from '../lib/supabase'
 import { displayNameFromAuthUser } from '../lib/displayNameFromAuthUser'
 import { useAuth } from '../hooks/useAuth'
@@ -778,6 +779,8 @@ export default function DashboardMyTimeSection({ userId, hoursDaysCorrect, disab
           <span aria-hidden>{showLastWeek ? '▼' : '▶'}</span>
           Last week
         </button>
+        {/* A day the clock missed (v2.4257): the person reports it, the office approves it. Not for salaried people. */}
+        {disableDayEditor ? null : <MissedClockInDoor userId={userId} variant="button" />}
         {/* Personal Time Off moved here from Settings → Your account (v2.1544). */}
         <button
           type="button"
