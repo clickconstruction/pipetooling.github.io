@@ -94,7 +94,7 @@ import {
   DEFAULT_TERMS_AND_WARRANTY,
   DEFAULT_EXCLUSIONS,
 } from '../lib/bidDocuments/coverLetter'
-import { archiveFromBoardBlockedReason, bidEligibleForWorkingBoardArchive, canUserArchiveBidOnWorkingBoard } from '../lib/workingBoardArchiveEligibility'
+import { archiveFromBoardBlockedReason, bidEligibleForWorkingBoardArchive, canUserArchiveBidOnWorkingBoard, type ArchiveReasonNames } from '../lib/workingBoardArchiveEligibility'
 import {
   bidDisplayName,
   getCustomerDisplay,
@@ -783,12 +783,18 @@ export default function Bids() {
     [authUser?.id, showToast, loadBids, setEditingBid],
   )
 
+  // The Estimator / Account Man dropdowns' names, so a refusal can say who may archive the bid.
+  const archiveReasonNames = useMemo<ArchiveReasonNames>(
+    () => Object.fromEntries(estimatorUsers.map((u) => [u.id, u.name || u.email])),
+    [estimatorUsers],
+  )
+
   const promptArchiveWorkingBoardBid = useCallback(
     (bidId: string) => {
       if (!authUser?.id) return
       const bid = bids.find((b) => b.id === bidId)
       // A greyed button still fires: say why, with the door, in the kernel's words.
-      const blocked = archiveFromBoardBlockedReason(bid, authUser.id, myRole)
+      const blocked = archiveFromBoardBlockedReason(bid, authUser.id, myRole, archiveReasonNames)
       if (blocked) {
         showToast(blocked, 'error')
         return
@@ -802,7 +808,7 @@ export default function Bids() {
       setWorkingBoardArchiveConfirmBidId(bidId)
       setWorkingBoardArchiveConfirmLabel(label)
     },
-    [authUser?.id, bids, myRole, showToast],
+    [authUser?.id, bids, myRole, showToast, archiveReasonNames],
   )
 
   useEffect(() => {
@@ -2535,7 +2541,7 @@ export default function Bids() {
             setDeleteBidModalOpen={setDeleteBidModalOpen}
             setDeleteConfirmProjectName={setDeleteConfirmProjectName}
             setError={setError}
-            archiveFromBoardBlockedReason={archiveFromBoardBlockedReason(editingBid ?? undefined, authUser?.id, myRole)}
+            archiveFromBoardBlockedReason={archiveFromBoardBlockedReason(editingBid ?? undefined, authUser?.id, myRole, archiveReasonNames)}
             archivedFromBoard={Boolean(editingBid?.working_board_archived_at)}
             archiveFromUnsentWorkingBusy={archiveWorkingBoardBusyBidId === editingBid?.id}
             onRequestArchiveFromUnsentWorking={
