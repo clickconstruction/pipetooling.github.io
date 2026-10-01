@@ -21,6 +21,7 @@ import {
   tradesMeaningForRole,
 } from '../../../lib/people/accountWrites'
 import type { PersonDeskUserRow } from '../../../hooks/usePersonDesk'
+import { MergeDuplicateDialog } from './MergeDuplicateDialog'
 import { BTN, BTN_BLUE, BTN_QUIET, BTN_RED, Chip, DESK_EDITOR_Z, DeskEmpty, DeskRow, DeskSection, LockTag, deskBtn } from '../personDeskShared'
 import type { UserRole } from '../../../hooks/useAuth'
 import { humanRoleLabel } from '../../../lib/roleLabels'
@@ -75,6 +76,7 @@ export function PersonDeskAccessSection({
   const [tradesDraft, setTradesDraft] = useState<string[] | null>(null)
   const [passwordOpen, setPasswordOpen] = useState(false)
   const [emailOpen, setEmailOpen] = useState(false)
+  const [mergeOpen, setMergeOpen] = useState(false)
 
   if (!user) {
     return (
@@ -430,31 +432,48 @@ export function PersonDeskAccessSection({
       <DeskRow
         label="Status"
         actions={
-          canArchiveAccount(viewer) && !isSelf ? (
-            u.archived_at ? (
-              <button type="button" style={deskBtn(BTN, busy != null)} disabled={busy != null} onClick={() => void restore()}>
-                {busy === 'restore' ? 'Restoring…' : 'Restore'}
+          <>
+            {editable && !u.archived_at ? (
+              <button type="button" style={deskBtn(BTN_QUIET, busy != null)} disabled={busy != null} onClick={() => setMergeOpen(true)} title="Fold another account, or a roster row with no login, into this person.">
+                Merge a duplicate…
               </button>
+            ) : null}
+            {canArchiveAccount(viewer) && !isSelf ? (
+              u.archived_at ? (
+                <button type="button" style={deskBtn(BTN, busy != null)} disabled={busy != null} onClick={() => void restore()}>
+                  {busy === 'restore' ? 'Restoring…' : 'Restore'}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  style={deskBtn(BTN_RED, busy != null)}
+                  disabled={busy != null}
+                  onClick={() => (onOpenFlow ? onOpenFlow('end') : void archiveDirect())}
+                  title={onOpenFlow ? 'Opens End employment: the final pay report, the salary template, customers, the roster row and the account, finished here.' : 'Archive the account. They can no longer sign in. A dev can restore it.'}
+                >
+                  {busy === 'archive' ? 'Archiving…' : 'Archive…'}
+                </button>
+              )
             ) : (
-              <button
-                type="button"
-                style={deskBtn(BTN_RED, busy != null)}
-                disabled={busy != null}
-                onClick={() => (onOpenFlow ? onOpenFlow('end') : void archiveDirect())}
-                title={onOpenFlow ? 'Opens End employment: the final pay report, the salary template, customers, the roster row and the account, finished here.' : 'Archive the account. They can no longer sign in. A dev can restore it.'}
-              >
-                {busy === 'archive' ? 'Archiving…' : 'Archive…'}
-              </button>
-            )
-          ) : (
-            <LockTag />
-          )
+              <LockTag />
+            )}
+          </>
         }
       >
         {u.archived_at ? <Chip tone="gray">Archived</Chip> : <Chip tone="green">Active</Chip>}
       </DeskRow>
 
       {passwordOpen ? <SetPasswordDialog userId={u.id} name={displayName} onClose={() => setPasswordOpen(false)} /> : null}
+      {mergeOpen ? (
+        <MergeDuplicateDialog
+          survivor={{ id: u.id, name: u.name, email: u.email, role: u.role, archived_at: u.archived_at, last_sign_in_at: u.last_sign_in_at ?? null }}
+          onClose={() => setMergeOpen(false)}
+          onMerged={() => {
+            setMergeOpen(false)
+            onChanged()
+          }}
+        />
+      ) : null}
       {emailOpen ? (
         <ChangeEmailDialog
           userId={u.id}
