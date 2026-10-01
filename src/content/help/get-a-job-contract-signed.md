@@ -9,11 +9,16 @@ Every job should have a signed agreement with its customer on file, even one tha
 
 ## Read the chip
 
-On **Jobs → Pipeline**, every job row carries a contract chip under the job name:
+On **Jobs → Pipeline**, every job row carries one contract chip under the job name. It is the row's only contract button. Before a job is billed, the chip turns amber when the contract is due:
 
-- {{chip:gray|No contract}}: nothing on file yet. This is the list to work.
+- {{chip:yellow|Contract by Sat Oct 3 · 2d}}: a crew is booked and nothing is on file. Get it signed before that day.
+- {{chip:yellow|No contract · crew on site}}: the crew has started and nothing is signed. Send it or file a signed copy.
+- {{chip:gray|No contract}}: nothing is on file and no crew is booked yet. A job with no price stays grey too, because a contract names the amount.
+- {{chip:gray|No subcontract on file}}: a job billed to a GC. Tap it to file their signed subcontract once. Tick every job it names and they all read signed. Its **Send ours or mark not needed** link opens the Contract window instead.
 - {{chip:yellow|Contract sent · opened 2× · 6d}}: out for signature. It says how many times the customer opened it and how long ago it went out.
 - {{chip:green|✍ Signed Sep 1 · M. Palmer}}: signed electronically, with the signer and date.
+
+Once a job is billed, a missing contract reads a grey {{chip:gray|No contract}}. A job in **Paid in full** shows no chip. On the phone board, the row's one chip asks only for the two amber cases.
 
 :::example Some jobs are already covered
 An estimate the customer accepted online, a bid the GC signed in the bid room, or a signed paper copy you uploaded all count as the agreement. Those rows show {{chip:green|✍ Signed · estimate #84}}, {{chip:green|✍ Signed · bid room}}, or {{chip:green|✍ On file · paper}} — no need to send anything.

@@ -36,6 +36,11 @@ export type AddJobContractSheetProps = {
   subtitle: string
   /** Edit mode: the paper whose jobs are being changed. */
   paper?: CoversPaper | null
+  /**
+   * v2.4342: the Pipeline's GC chip opens this sheet first; this link is its way to the job's Contract
+   * window instead (send our own contract, or answer Not needed). Absent = no link.
+   */
+  onOpenContractWindow?: () => void
   overlayZIndex?: number
 }
 
@@ -342,7 +347,18 @@ export default function AddJobContractSheet(p: AddJobContractSheetProps) {
         </div>
         {error ? <div style={{ fontSize: '0.8rem', color: 'var(--text-red-700)' }}>{error}</div> : null}
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+          {p.onOpenContractWindow ? (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={p.onOpenContractWindow}
+              data-testid="add-contract-open-window"
+              style={{ marginRight: 'auto', padding: 0, border: 'none', background: 'none', font: 'inherit', fontSize: '0.8rem', color: 'var(--text-link)', textDecoration: 'underline', textUnderlineOffset: 2, cursor: busy ? 'not-allowed' : 'pointer' }}
+            >
+              Send ours or mark not needed
+            </button>
+          ) : null}
           <button type="button" disabled={busy} onClick={p.onClose} style={{ ...field, cursor: busy ? 'not-allowed' : 'pointer', fontWeight: 500 }}>
             Cancel
           </button>

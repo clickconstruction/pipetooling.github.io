@@ -57,6 +57,22 @@ describe('AddJobContractSheet', () => {
     expect(fileSpy.mock.calls[0]![0]).toMatchObject({ jobIds: ['j251', 'j825'], link: 'https://docs.google.com/document/d/abc', signerName: 'Michael Palmer' })
   })
 
+  it('v2.4342 · opened from a GC row, the sheet offers the Contract window instead; without the opener there is no link', async () => {
+    const onOpenContractWindow = vi.fn()
+    const { unmount } = renderWithProviders(
+      <AddJobContractSheet open mode="add" onClose={() => undefined} anchorJob={{ id: 'j251', num: '251', where: '180 Go Away Rd' }} partyIds={['p']} signerName="Michael Palmer" subtitle="Job 251 · Michael Palmer's subcontract" onOpenContractWindow={onOpenContractWindow} />,
+    )
+    await screen.findAllByTestId('contract-covers-job')
+    fireEvent.click(screen.getByTestId('add-contract-open-window'))
+    expect(onOpenContractWindow).toHaveBeenCalledTimes(1)
+    unmount()
+    renderWithProviders(
+      <AddJobContractSheet open mode="add" onClose={() => undefined} anchorJob={{ id: 'j251', num: '251', where: '180 Go Away Rd' }} partyIds={['p']} signerName="Michael Palmer" subtitle="Job 251" />,
+    )
+    await screen.findAllByTestId('contract-covers-job')
+    expect(screen.queryByTestId('add-contract-open-window')).toBeNull()
+  })
+
   it('edit mode starts from the jobs the paper covers and saves only the change', async () => {
     const paper: CoversPaper = {
       key: 'g1',
