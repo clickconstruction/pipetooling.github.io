@@ -167,7 +167,8 @@ export default function LienReleaseSignModal({
                 ? `By signing, ${presentSigner.name} acknowledges having read this release of lien and agrees to issue it. Drawing the signature here has the same force and effect as a written signature under the federal ESIGN Act (15 U.S.C. § 7001) and the Texas UETA (Bus. & Com. Code ch. 322), and it prints on every copy of this document.`
                 : 'By signing, you acknowledge that you have read this release of lien and agree to issue it. Typing or drawing your signature here has the same force and effect as your written signature under the federal ESIGN Act (15 U.S.C. § 7001) and the Texas UETA (Bus. & Com. Code ch. 322), and it prints on every copy of this document.'
             }
-            agreeLabel={present ? `I, ${presentSigner.name}, have read this release and my drawn signature is as binding as ink.` : 'I have read this release and agree that my electronic signature is as binding as ink.'}
+            agreeLabel={present ? `I, ${presentSigner.name}, have read this release and agree to sign it.` : 'I have read this release and agree to sign it.'}
+            agreeAlign="center"
             submitLabel={present ? 'Sign it' : 'Sign release'}
             lockMode={present ? 'draw' : undefined}
           />

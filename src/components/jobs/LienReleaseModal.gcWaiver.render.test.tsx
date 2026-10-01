@@ -127,5 +127,9 @@ describe('LienReleaseModal — our waiver to the GC (v2.4274)', () => {
     expect(within(pad).queryByRole('button', { name: 'Type' })).toBeNull()
     expect((within(pad).getByPlaceholderText(/full legal name/i) as HTMLInputElement).value).toBe('Malachi Reyes')
     expect(within(pad).getByRole('button', { name: 'Sign it' })).toBeTruthy()
+    // v2.4339: the checkbox sentence fits on one line and the box sits centred against it.
+    const agree = within(pad).getByTestId('signature-agree')
+    expect(agree.textContent).toBe('I, Malachi Reyes, have read this release and agree to sign it.')
+    expect(agree.style.alignItems).toBe('center')
   })
 })

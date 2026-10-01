@@ -43,6 +43,12 @@ export type ContractAcceptSignatureFormProps = {
   lang?: SignatureFormLang
   /** v2.4274: one mode only, no Type / Draw switch — a present leader draws on someone else's screen. */
   lockMode?: SignatureMode
+  /**
+   * v2.4339: where the agree checkbox sits against its sentence. 'start' (the default — the customer,
+   * sub and contract pages) keeps it level with the first line; 'center' (the lien waiver pads, whose
+   * one-line sentence sits in the middle of the form) centres it against the line.
+   */
+  agreeAlign?: 'start' | 'center'
 }
 
 export function ContractAcceptSignatureForm({
@@ -60,6 +66,7 @@ export function ContractAcceptSignatureForm({
   submitLabel = 'Submit signature',
   lang,
   lockMode,
+  agreeAlign = 'start',
 }: ContractAcceptSignatureFormProps) {
   const s = signatureFormStrings(lang ?? consent?.lang)
   const [acceptMode, setAcceptMode] = useState<SignatureMode>(lockMode ?? 'type')
@@ -221,10 +228,11 @@ export function ContractAcceptSignatureForm({
         }}
       >
         <label
+          data-testid="signature-agree"
           style={{
             display: 'flex',
             gap: '0.5rem',
-            alignItems: 'flex-start',
+            alignItems: agreeAlign === 'center' ? 'center' : 'flex-start',
             marginTop: 0,
             textAlign: 'left',
           }}
