@@ -51,7 +51,7 @@ function renderSheet(over: Partial<Parameters<typeof RulingRunThroughSheet>[0]> 
 describe('RulingRunThroughSheet', () => {
   it('runs the questions in order: taps with the ★ first, the number keys, skip, the box, the end screen', async () => {
     const p = renderSheet()
-    expect(screen.getByText('Question 1 of 3')).toBeTruthy()
+    expect(screen.getByText('Question 1 of 3 · 4 questions')).toBeTruthy()
     expect(screen.getByText('0 answered · ~2 min left')).toBeTruthy()
     expect(screen.getByText('Grease interceptor')).toBeTruthy()
     expect(screen.getByText('asked on 2 bids · b496 → ours b490 · b495 → ours b489')).toBeTruthy()
@@ -63,7 +63,7 @@ describe('RulingRunThroughSheet', () => {
     // The 1 key takes the first tap.
     fireEvent.keyDown(window, { key: '1' })
     await waitFor(() => expect(p.onAnswer).toHaveBeenCalledWith(items[0], 'Site contractor — exclude'))
-    await waitFor(() => expect(screen.getByText('Question 2 of 3')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('Question 2 of 3 · 4 questions')).toBeTruthy())
     expect(screen.getByText('1 answered · ~2 min left')).toBeTruthy()
 
     // A question with no taps has the box; the placeholder speaks of one robot.
@@ -71,7 +71,7 @@ describe('RulingRunThroughSheet', () => {
     expect(screen.getByText('asked on 1 bid · b499')).toBeTruthy()
     // → skips it.
     fireEvent.keyDown(window, { key: 'ArrowRight' })
-    await waitFor(() => expect(screen.getByText('Question 3 of 3')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('Question 3 of 3 · 4 questions')).toBeTruthy())
     expect(screen.getByText('a job-wide question')).toBeTruthy()
 
     // No ★ here: Enter does nothing; 3 opens the box; typing + Enter answers.
@@ -97,21 +97,21 @@ describe('RulingRunThroughSheet', () => {
     const p = renderSheet({ onDismiss: vi.fn(async () => false) })
     fireEvent.keyDown(window, { key: 'Enter' })
     await waitFor(() => expect(p.onAnswer).toHaveBeenCalledWith(items[0], 'Site contractor — exclude'))
-    await waitFor(() => expect(screen.getByText('Question 2 of 3')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('Question 2 of 3 · 4 questions')).toBeTruthy())
     fireEvent.click(screen.getByRole('button', { name: 'Not mine' }))
     await waitFor(() => expect(p.onNotMine).toHaveBeenCalledWith(items[1]))
-    await waitFor(() => expect(screen.getByText('Question 3 of 3')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('Question 3 of 3 · 4 questions')).toBeTruthy())
     fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }))
     await waitFor(() => expect(p.onDismiss).toHaveBeenCalledWith(items[2]))
     // The dismiss was refused: still on question 3.
-    expect(screen.getByText('Question 3 of 3')).toBeTruthy()
+    expect(screen.getByText('Question 3 of 3 · 4 questions')).toBeTruthy()
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(p.onClose).toHaveBeenCalledTimes(1)
   })
 
   it('starts at the line that was tapped, and hides Not mine when the audience column is missing', () => {
     renderSheet({ startIndex: 1, audienceWritable: false })
-    expect(screen.getByText('Question 2 of 3')).toBeTruthy()
+    expect(screen.getByText('Question 2 of 3 · 4 questions')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Not mine' })).toBeNull()
     expect(screen.getByRole('button', { name: 'Dismiss' })).toBeTruthy()
   })

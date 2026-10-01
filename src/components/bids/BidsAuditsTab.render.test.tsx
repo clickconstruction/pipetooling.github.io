@@ -119,7 +119,12 @@ describe('BidsAuditsTab', () => {
     renderWithProviders(<BidsAuditsTab authUser={null} myRole="dev" />)
     // v2.4234: rows are named for the job, not the robot's copy.
     await waitFor(() => expect(screen.getAllByText(/MPH CASA LINDA/).length).toBeGreaterThan(0))
-    // Auto-expand of the first pending card lands one effect-tick after the row renders.
+    // v2.4295: jsdom is narrower than two panes, where the card is a full-screen panel — nothing
+    // opens on its own there (it would cover the sentence, the button and the queue); a row tap opens it.
+    await waitFor(() => expect(screen.getByTestId('queue-up-next')).toBeTruthy())
+    expect(screen.queryByTestId('audit-card')).toBeNull()
+    expect(screen.queryByTestId('queue-now')).toBeNull()
+    fireEvent.click(screen.getAllByTestId('audit-row').find((r) => /MPH CASA LINDA/.test(r.textContent ?? ''))!)
     await waitFor(() => expect(screen.getByText('Open takeoff (CountTooling) ↗')).toBeTruthy())
 
     const ctLink = screen.getByText('Open takeoff (CountTooling) ↗') as HTMLAnchorElement
@@ -197,7 +202,7 @@ describe('BidsAuditsTab', () => {
     // "b474" in a question is still a link to its bid, "ours b214" beside it (v2.3174/v2.3187).
     fireEvent.click(screen.getByRole('button', { name: 'Answer the 3 questions' }))
     // Two steps for three questions: the shared one answers two copies at once.
-    expect(await screen.findByText('Question 1 of 2')).toBeTruthy()
+    expect(await screen.findByText('Question 1 of 2 · 3 questions')).toBeTruthy()
     const sheet = screen.getByTestId('ruling-run-through')
     expect(sheet.textContent).toMatch(/Travel bands/)
     expect(sheet.textContent).toMatch(/Do we band travel by distance\?/)
@@ -205,7 +210,7 @@ describe('BidsAuditsTab', () => {
     expect(screen.getByPlaceholderText('Your ruling — answers every copy at once…')).toBeTruthy()
     expect(screen.getByText('Answer all 2')).toBeTruthy()
     fireEvent.keyDown(window, { key: 'ArrowRight' })
-    expect(await screen.findByText('Question 2 of 2')).toBeTruthy()
+    expect(await screen.findByText('Question 2 of 2 · 3 questions')).toBeTruthy()
     expect(screen.getByRole('button', { name: /1 ★ Bid it/ })).toBeTruthy()
     expect(screen.getByRole('button', { name: /2 No-go/ })).toBeTruthy()
     expect(screen.getByRole('button', { name: /3 Something else…/ })).toBeTruthy()
@@ -234,6 +239,7 @@ describe('BidsAuditsTab', () => {
   it('read-only roles (write RLS mirror) see the card without composers or Finish audit', async () => {
     renderWithProviders(<BidsAuditsTab authUser={null} myRole="superintendent" />)
     await waitFor(() => expect(screen.getAllByText(/MPH CASA LINDA/).length).toBeGreaterThan(0))
+    fireEvent.click(screen.getAllByTestId('audit-row').find((r) => /MPH CASA LINDA/.test(r.textContent ?? ''))!)
 
     // Content still renders… The audit row lands first; the auto-expand is an
     // effect tick later and the notes come back on a second query, so wait for

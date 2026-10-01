@@ -41,6 +41,43 @@ describe('pairAliases — one item, two names', () => {
   })
 })
 
+describe('pairAliases (v2.4295) — the live walk of b476: three of nine pairs were wrong', () => {
+  // The nine the fold offered on 2026-10-01, as the live card read them.
+  const live = {
+    missed: [
+      missed('RENTALS/ TRAVEL', 1, 20000), missed('EEW', 2, 6700), missed('S-3', 1, 5432), missed('OM-1', 1, 5375), missed('S-1', 1, 4350),
+      missed('SCAVENGER OUTLET', 1, 250), missed('TD-1', 1, 3350), missed('RP-1', 1, 2287), missed('4IN DOUBLE SANI WASTE', 1, 58),
+    ],
+    added: [
+      added('Travel & Rentals (per mile from office)', 249, 19920), added('Emergency Eyewash (EEW)', 2, 6700), added('Service/Mop Basin (rough-in)', 1, 5276), added('Oxygen Manifold (OM)', 1, 5375),
+      added('Water Heater (DWH)', 1, 4500), added('Scavenger Unit (SC-1)', 1, 3354), added('Trench Drain (TD)', 1, 3350), added('Recirculation Pump (RP)', 1, 2287), added('3" Sanitary Waste · Tee (PVC)', 1, 42),
+    ],
+  }
+  const labels = pairAliases(live).map(pairLabel)
+  it('keeps the six that are one item under two names', () => {
+    expect(labels).toEqual([
+      'RENTALS/ TRAVEL ↔ Travel & Rentals (per mile from office)',
+      'EEW ↔ Emergency Eyewash (EEW)',
+      'S-3 ↔ Service/Mop Basin (rough-in)',
+      'OM-1 ↔ Oxygen Manifold (OM)',
+      'TD-1 ↔ Trench Drain (TD)',
+      'RP-1 ↔ Recirculation Pump (RP)',
+    ])
+  })
+  it('a count of one is not "the same count": S-1 is not the water heater, a $250 outlet not a $3,354 unit', () => {
+    expect(labels.some((l) => l.startsWith('S-1 '))).toBe(false)
+    expect(labels.some((l) => l.startsWith('SCAVENGER OUTLET'))).toBe(false)
+    // …and a one-letter tag does not grab the next long name that starts with its letter.
+    expect(pairAliases({ missed: [missed('S-1', 1, 4350)], added: [added('Scavenger Unit (SC-1)', 1, 3354)] })).toEqual([])
+  })
+  it('two names that state different pipe sizes never pair', () => {
+    expect(labels.some((l) => l.startsWith('4IN DOUBLE SANI WASTE'))).toBe(false)
+    expect(pairAliases({ missed: [missed('4IN DOUBLE SANI WASTE', 6, 300)], added: [added('3" Sanitary Waste · Tee (PVC)', 6, 290)] })).toEqual([])
+    // The same size still pairs on the shared word.
+    expect(pairAliases({ missed: [missed('4IN DOUBLE SANI WASTE', 6, 300)], added: [added('4" Sanitary Waste double tee', 6, 290)] })).toHaveLength(1)
+  })
+})
+
 describe('topDifferences — the six biggest, a pair standing for its two rows', () => {
   it('leads with the 2IN WASTE gap and offers the RENTALS/TRAVEL pair in the six', () => {
     const { rows, hidden } = topDifferences(diff, pairAliases(diff))

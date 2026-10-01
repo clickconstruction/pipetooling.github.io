@@ -67,24 +67,48 @@ function shareWord(a: string, b: string): boolean {
 
 const closeDollars = (a: number, b: number, tol: number) => a > 0 && b > 0 && Math.abs(a - b) / Math.max(a, b) <= tol
 
+/** Both names state a pipe size and the sizes differ — 4IN DOUBLE SANI WASTE is not a 3" Sanitary Waste tee. */
+function sizesDiffer(a: string, b: string): boolean {
+  // The size as the name states it (4IN, 3", 1 1/2", 3/4in) — read here, not through the row
+  // signature, which drops the size on a name it cannot place.
+  const size = (label: string): string | null => {
+    const m = label.toLowerCase().replace(/[”″]/g, '"').match(/(\d+(?:\.\d+)?(?:[ -]\d\/\d)?|\d\/\d)\s*(?:"|in\b)/)
+    return m?.[1] ? m[1].replace(/\s+/g, '-') : null
+  }
+  const sa = size(a)
+  const sb = size(b)
+  return sa != null && sb != null && sa !== sb
+}
+
 /**
  * Missed ↔ added pairs that look like one item under two names: a shared word with the
  * dollars within 25% (or the same count), the short name's letters the long name's
  * initials, or the same count with the dollars within 15%. A dollar coincidence alone
  * never pairs (RENTALS/TRAVEL $20,000 is not Med Gas Outlet $19,950). Greedy: the surer
  * reason first, then dollar closeness; each entry pairs at most once.
+ *
+ * v2.4295 — three rules from the live walk of b476, where three of nine pairs were wrong:
+ * a count of ONE is not "the same count" (every equipment row is ×1, so S-1 paired with
+ * Water Heater (DWH) and SCAVENGER OUTLET $250 with Scavenger Unit $3,354); two names that
+ * state different pipe sizes never pair; and a one-letter tag (S-3) needs the dollars
+ * within 10% as well, since any long name starting with that letter fits it.
  */
 export function pairAliases(diff: Pick<TakeoffDiff, 'missed' | 'added'>): AliasPair[] {
   const tier: Record<AliasPair['reason'], number> = { words: 0, initials: 1, count: 2 }
   const candidates: Array<AliasPair & { gap: number }> = []
+  const tagLetters = (label: string) => label.toLowerCase().replace(/[^a-z]/g, '').length
   for (const m of diff.missed) {
     for (const a of diff.added) {
+      if (sizesDiffer(m.label, a.label)) continue
       const gap = Math.abs(m.ourExt - a.robotExt) / Math.max(m.ourExt, a.robotExt, 1)
-      const reason: AliasPair['reason'] | null = shareWord(m.label, a.label) && (closeDollars(m.ourExt, a.robotExt, 0.25) || m.ourCount === a.robotCount)
+      const sameCount = m.ourCount === a.robotCount && m.ourCount > 1
+      const initials = initialsMatch(m.label, a.label) ? m.label : initialsMatch(a.label, m.label) ? a.label : null
+      const initialsOk = initials != null && (tagLetters(initials) > 1 || closeDollars(m.ourExt, a.robotExt, 0.1))
+      const reason: AliasPair['reason'] | null = shareWord(m.label, a.label) && (closeDollars(m.ourExt, a.robotExt, 0.25) || sameCount)
         ? 'words'
-        : initialsMatch(m.label, a.label) || initialsMatch(a.label, m.label)
+        : initialsOk
           ? 'initials'
-          : m.ourCount === a.robotCount && closeDollars(m.ourExt, a.robotExt, 0.15)
+          : sameCount && closeDollars(m.ourExt, a.robotExt, 0.15)
             ? 'count'
             : null
       if (reason) candidates.push({ missed: m, added: a, reason, gap })

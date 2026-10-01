@@ -68,12 +68,17 @@ export function buildRunThrough(view: StandingRulingsView, rows: readonly TwinQu
   return [...shared.map((i) => ({ ...i, group: 'shared' as const })), ...today.map((i) => ({ ...i, group: 'today' as const })), ...older.map((i) => ({ ...i, group: 'older' as const }))]
 }
 
-/** The header's two parts: 'Question 3 of 19' and '2 answered · ~12 min left'. */
-export function runThroughProgress(index: number, total: number, answered: number): { position: string; progress: string } {
+/**
+ * The header's two parts: 'Question 3 of 16 · 19 questions' and '2 answered · ~12 min left'.
+ * v2.4295: `total` is the run's STEPS; a shared step answers several copies, so when the
+ * questions outnumber the steps the header says both — the button above said "Answer the 19
+ * questions" and the sheet used to open on "1 of 16" with nothing to connect the two.
+ */
+export function runThroughProgress(index: number, total: number, answered: number, questions: number = total): { position: string; progress: string } {
   const left = Math.max(0, total - answered)
   const min = questionMinutesEstimate(left)
   return {
-    position: `Question ${Math.min(index + 1, total)} of ${total}`,
+    position: `Question ${Math.min(index + 1, total)} of ${total}${questions > total ? ` · ${questions} questions` : ''}`,
     progress: `${answered} answered · ~${min} min left`,
   }
 }
