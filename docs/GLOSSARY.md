@@ -1057,7 +1057,7 @@ Reusable template collection (Takeoff, Labor, or Price book). Multiple versions 
 
 ### Job payment trace (move)
 
-A customer payment (`jobs_ledger_payments`) can be **moved** to another job from Edit Job → Bill, the ⋯ menu on its payment line (v2.3576, *Move to job…*; since v2.4288 the line sits under the bill it pays, or in ③ Other money on the job): `move_jobs_ledger_payment` re-points the live row (same id, dates, amount, memo, bank-deposit link; unlinked from an unsent bill on the way) and writes one `jobs_ledger_payment_events` row — `moved`, from → to, the snapshot, who, why. A payment a **sent** bill counted does not move (unlink first); a Stripe bill's never does. Both jobs draw the grey trace line from the event (`jobPaymentTraceLines`). The sub-sheet twin is the entry below.
+A customer payment (`jobs_ledger_payments`) can be **moved** to another job from Edit Job → Bill, the ⋯ menu on its payment line (v2.3576, *Move to job…*; since v2.4293 the line sits under the bill it pays, or in ③ Other money on the job): `move_jobs_ledger_payment` re-points the live row (same id, dates, amount, memo, bank-deposit link; unlinked from an unsent bill on the way) and writes one `jobs_ledger_payment_events` row — `moved`, from → to, the snapshot, who, why. A payment a **sent** bill counted does not move (unlink first); a Stripe bill's never does. Both jobs draw the grey trace line from the event (`jobPaymentTraceLines`). The sub-sheet twin is the entry below.
 
 ### Sub payment trace (move / remove / undo)
 

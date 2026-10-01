@@ -99,7 +99,7 @@ function menuItem(opts: { danger?: boolean; disabled?: boolean; on?: boolean } =
 const MENU_SUB: CSSProperties = { fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 400 }
 
 /**
- * One payment, one line (v2.4288): the amount, when it came and where from, the
+ * One payment, one line (v2.4293): the amount, when it came and where from, the
  * days after the bill went out, and a ⋯ menu holding the rare doors (the check
  * date, Move to job…, Unlink and remove, Undo part payment, Check didn't clear…,
  * the Stripe bill). A hand-typed row edits its boxes in a fold under the line

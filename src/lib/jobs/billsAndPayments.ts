@@ -1,5 +1,5 @@
 /**
- * Each bill shows the money that paid it (v2.4288). Pure: the words and
+ * Each bill shows the money that paid it (v2.4293). Pure: the words and
  * numbers the Bill tab draws under a bill for every payment counted toward it,
  * the bill's paid bar, and which payments sit on no bill at all.
  *

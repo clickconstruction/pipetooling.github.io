@@ -1,8 +1,8 @@
 import type { ReleaseNote } from '../../lib/releaseNotes'
 
 const note: ReleaseNote = {
-  version: 'v2.4288',
-  date: '2026-09-30',
+  version: 'v2.4293',
+  date: '2026-10-01',
   title: 'Edit Job → Bill: each bill shows the money that paid it',
   kind: 'feature',
   highlights: [

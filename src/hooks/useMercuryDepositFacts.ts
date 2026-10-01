@@ -6,7 +6,7 @@ type Linked = { mercury_transaction_id: string | null }
 
 /**
  * What the bank synced about the deposits behind a job's bank-linked payments
- * (v2.4288): the posting date (the one-tap check date), the payer the bank
+ * (v2.4293): the posting date (the one-tap check date), the payer the bank
  * named, the deposit kind, and the bank's verdict (a returned check syncs as
  * `failed` with the reason). One read per set of ids; fail-soft when the read
  * is refused — the lines then say "bank deposit" and no payer.

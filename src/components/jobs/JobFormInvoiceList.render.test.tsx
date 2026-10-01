@@ -259,7 +259,7 @@ describe('JobFormInvoiceList — the lien-waiver cell on a GC job (v2.4275)', ()
   })
 })
 
-describe('JobFormInvoiceList — the money that paid each bill (v2.4288)', () => {
+describe('JobFormInvoiceList — the money that paid each bill (v2.4293)', () => {
   it('with the line doors given, a bill draws a paid bar and one line per payment; without them, nothing', async () => {
     const jobRow = makeJob({
       customer_name: 'Loberg Contracting',

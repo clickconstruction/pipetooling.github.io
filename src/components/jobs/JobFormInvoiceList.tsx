@@ -80,7 +80,7 @@ type JobFormInvoiceListProps = {
   /** Fires when one of this list's dialogs (delete draft, send back, convert) opens/closes, so Edit Job can pause its Escape-to-close (v2.3839). */
   onOverlayOpenChange?: (open: boolean) => void
   /**
-   * v2.4288: each bill draws the payments counted toward it as lines under the
+   * v2.4293: each bill draws the payments counted toward it as lines under the
    * row, with a paid bar. The lines need the bank's facts, which rows are saved,
    * and the host's doors; without `paymentLineActions` no lines are drawn.
    */
@@ -395,7 +395,7 @@ export function JobFormInvoiceList({
     .filter((r): r is NonNullable<typeof r> => r != null)
     .sort((a, b) => compareInvoiceLedgerRows({ state: a.row.state, sentYmd: a.sentYmd }, { state: b.row.state, sentYmd: b.sentYmd }))
   const listedIds = new Set(rows.map((r) => r.inv.id))
-  // v2.4288: the lines under each bill — the same slices the money line counts, minus rows still being typed.
+  // v2.4293: the lines under each bill — the same slices the money line counts, minus rows still being typed.
   const linesByBill = paymentLineActions ? splitBillsAndPayments(invoices, payments, persistedLedgerPaymentIds ?? null).slicesByBill : null
   // Money on no listed bill: unlinked surplus the sent bills did not need, plus payments linked to a bill not listed here.
   const unappliedPaid = attribution.surplus + payments.reduce((s, p) => (p.invoice_id && !listedIds.has(p.invoice_id) ? s + (Number(p.amount) || 0) : s), 0)
@@ -772,7 +772,7 @@ export function JobFormInvoiceList({
               </div>
             ) : null}
             {(() => {
-              // v2.4288: the money that paid this bill, one line per payment, under a thin paid bar.
+              // v2.4293: the money that paid this bill, one line per payment, under a thin paid bar.
               const acts = paymentLineActions
               const slices = !isDraft && linesByBill && acts ? linesByBill.get(inv.id) ?? [] : []
               if (!acts || slices.length === 0) return null

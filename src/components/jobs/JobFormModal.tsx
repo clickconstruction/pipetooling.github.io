@@ -1043,7 +1043,7 @@ export default function JobFormModal({
   const [undoPartPaymentRow, setUndoPartPaymentRow] = useState<PaymentRow | null>(null)
   // v2.4082: "Check didn't clear…" on a whole-bill out-of-band mark — opens the Undo window with the send-back on.
   const [checkDidNotClearRow, setCheckDidNotClearRow] = useState<PaymentRow | null>(null)
-  // v2.4288: what the bank synced about the deposits behind bank-linked rows — the
+  // v2.4293: what the bank synced about the deposits behind bank-linked rows — the
   // payer it named, the posting date, its verdict — read once for both blocks.
   const bankFacts = useMercuryDepositFacts(payments)
   const [recordPaymentTarget, setRecordPaymentTarget] = useState<{

@@ -101,7 +101,7 @@ type JobFormPaymentsTableProps = {
 }
 
 /**
- * ③ in the Edit-Job billing section. Since v2.4288 a payment that pays a bill
+ * ③ in the Edit-Job billing section. Since v2.4293 a payment that pays a bill
  * is drawn under that bill in the Invoices block above, so this block holds
  * the rest — money on no bill, a payment linked to a bill not listed, and
  * rows still being typed — plus the entry flow for a cash or check payment,

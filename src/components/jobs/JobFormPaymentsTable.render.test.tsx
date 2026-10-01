@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Render tests for ③ — since v2.4288 the block for money on no bill. A payment
+ * Render tests for ③ — since v2.4293 the block for money on no bill. A payment
  * a bill counts is drawn under that bill in the Invoices block (see
  * JobFormInvoiceList.render.test.tsx and JobFormPaymentLine.render.test.tsx),
  * so what lives here is the entry flow, the rows still being typed, the
@@ -110,7 +110,7 @@ describe('JobFormPaymentsTable add-affordance placement', () => {
   })
 })
 
-describe('JobFormPaymentsTable — a payment a bill counts leaves ③ (v2.4288)', () => {
+describe('JobFormPaymentsTable — a payment a bill counts leaves ③ (v2.4293)', () => {
   it('a saved payment on a bill is not listed here; the block says where it went and takes the other heading', () => {
     renderTable([paymentRow({ invoice_id: 'inv-a', amount: 4720 })], { editing: jobWithTwoBills() })
     expect(screen.queryByTestId('payment-line')).toBeNull()

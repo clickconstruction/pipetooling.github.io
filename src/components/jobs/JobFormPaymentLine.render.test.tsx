@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Render tests for one payment line (v2.4288): the words a bank, Stripe and
+ * Render tests for one payment line (v2.4293): the words a bank, Stripe and
  * hand-typed row get, and which doors each one's ⋯ menu holds — the check
  * date, Move to job…, Unlink and remove, Undo part payment, Check didn't
  * clear…, Pin it to this bill, Edit details, Remove.

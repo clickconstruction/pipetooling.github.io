@@ -2550,7 +2550,7 @@ body.my-time-boundary-dragging {
 .jobInvoiceWords .mut {
   color: var(--text-muted);
 }
-/* v2.4288: the money that paid a bill, drawn under its row — and the ③ list of money on no bill. */
+/* v2.4293: the money that paid a bill, drawn under its row — and the ③ list of money on no bill. */
 .jobInvoicePaidBar {
   flex: 1 1 100%;
   height: 5px;
