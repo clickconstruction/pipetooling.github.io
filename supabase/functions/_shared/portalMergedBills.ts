@@ -78,6 +78,8 @@ export type PortalBillPaymentOut = {
 }
 
 export type PortalBillOut = {
+  /** The bill's jobs_ledger_invoices id (v2.4304: its lien waiver note keys on it); null for a job-level shell. */
+  invoiceId: string | null
   jobLabel: string
   jobNumber: string
   /** Bare job name (no number suffix) — the statement's fallback identity when a job has no address. */
@@ -236,6 +238,7 @@ export function buildPortalBills(args: {
     // nothing else — a bill sent to the other party never rides in this list.
     if (statementRoleFor(job, inv, viewerCustomerId) !== 'owed') continue
     bills.push({
+      invoiceId: inv.id,
       jobLabel: jobLabel(job),
       jobNumber: jobNumber(job),
       jobName: (job.job_name ?? '').trim() || null,
@@ -256,6 +259,7 @@ export function buildPortalBills(args: {
     if (open <= 0) continue
     if (statementRoleFor(job, null, viewerCustomerId) !== 'owed') continue
     bills.push({
+      invoiceId: null,
       jobLabel: jobLabel(job),
       jobNumber: jobNumber(job),
       jobName: (job.job_name ?? '').trim() || null,
@@ -283,6 +287,8 @@ export function buildPortalBills(args: {
  * is not in this list and not in the payload at all.
  */
 export type PortalSharedBillOut = {
+  /** The bill's jobs_ledger_invoices id (v2.4304: the owner's lien waiver note keys on it); null for a job-level shell. */
+  invoiceId: string | null
   /** The job's id — the handle "Ask the office" (v2.3378) sends back; the visit picker already carries job ids. */
   jobId: string
   jobLabel: string
@@ -335,6 +341,7 @@ export function buildPortalSharedBills(args: {
     const open = round2(Number(inv.amount ?? 0) - paid)
     if (open <= 0) continue
     out.push({
+      invoiceId: inv.id,
       jobId: job.id,
       jobLabel: jobLabel(job),
       jobNumber: jobNumber(job),
@@ -356,6 +363,7 @@ export function buildPortalSharedBills(args: {
     const open = round2(Number(job.revenue ?? 0) - paid)
     if (open <= 0) continue
     out.push({
+      invoiceId: null,
       jobId: job.id,
       jobLabel: jobLabel(job),
       jobNumber: jobNumber(job),

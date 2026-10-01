@@ -17,7 +17,7 @@ import {
 } from '../_shared/portalMergedBills.ts'
 import { buildPortalProperties } from '../_shared/portalProperties.ts'
 import { buildPortalChecks, type PortalChecksEventRow, type PortalChecksInvoiceRow, type PortalChecksPaymentRow } from '../_shared/portalChecks.ts'
-import { buildPortalWaivers, type PortalWaiverReleaseRow, type PortalWaiverRow } from '../_shared/portalWaivers.ts'
+import { buildPortalWaivers, type PortalWaiverInvoiceRow, type PortalWaiverReleaseRow, type PortalWaiverRow } from '../_shared/portalWaivers.ts'
 import { buildPortalPropertyNotices, type PortalNoticeFilingRow, type PortalPropertyNotice } from '../_shared/portalPropertyNotices.ts'
 import { openBillJobIds, owedJobIdsForViewer, PORTAL_OPEN_INVOICE_STATUS } from '../_shared/portalBillMembership.ts'
 import { linkMayBeStale, type OpenStripeBillRow } from '../_shared/stripeInvoiceLinkRefresh.ts'
@@ -317,7 +317,7 @@ serve(async (req) => {
       try {
         const jobIds = jobs.map((j) => j.id)
         const [{ data: cInv }, { data: cPay }] = await Promise.all([
-          admin.from('jobs_ledger_invoices').select('id, job_id, amount, status, billed_at, sequence_order, bill_to_party, bill_to_email').in('job_id', jobIds).in('status', ['billed', 'paid']),
+          admin.from('jobs_ledger_invoices').select('id, job_id, amount, status, billed_at, sequence_order, bill_to_party, bill_to_email, shown_to_party').in('job_id', jobIds).in('status', ['billed', 'paid']),
           admin.from('jobs_ledger_payments').select('id, job_id, invoice_id, amount, paid_on, sent_on, payment_type, reference_number, sequence_order').in('job_id', jobIds),
         ])
         const payRows = (cPay ?? []) as PortalChecksPaymentRow[]
@@ -338,19 +338,20 @@ serve(async (req) => {
       }
     }
 
-    // Waivers (v2.4278, our lien waiver to the GC PR 4): one row per sent bill the viewer pays
-    // with its two waivers; the signed PDFs are signed URLs good for an hour. Pre-scoped by
-    // _shared/portalWaivers.ts; a read failure leaves the section off — never the page.
+    // Waivers (v2.4278; v2.4304 Your papers): one row per sent bill with a SIGNED waiver — the
+    // bills the viewer pays, and on their own property the bills the office shared with them —
+    // the signed PDFs as signed URLs good for an hour. Pre-scoped by _shared/portalWaivers.ts;
+    // a read failure leaves waivers off — never the page.
     let waivers: Array<PortalWaiverRow & { conditional: PortalWaiverRow['conditional'] & { pdfUrl: string | null }; unconditional: PortalWaiverRow['unconditional'] & { pdfUrl: string | null } }> = []
     if (jobs.length > 0 && portalInv.length > 0) {
       try {
         const { data: relRaw } = await admin
           .from('job_lien_releases')
-          .select('id, job_id, form_type, status, invoice_ids, created_at, signed_at, sent_to_customer_at, signed_pdf_path, voided_at')
+          .select('id, job_id, form_type, status, invoice_ids, created_at, signed_at, sent_to_customer_at, signed_pdf_path, voided_at, signer_printed_name')
           .in('job_id', jobs.map((j) => j.id))
           .is('voided_at', null)
-          .in('status', ['issued', 'awaiting_signature', 'signed'])
-        const rows = buildPortalWaivers({ jobs, invoices: portalInv, payments: portalPay, releases: (relRaw ?? []) as PortalWaiverReleaseRow[], viewerCustomerId: link.customer_id })
+          .eq('status', 'signed')
+        const rows = buildPortalWaivers({ jobs, invoices: portalInv as PortalWaiverInvoiceRow[], payments: portalPay, releases: (relRaw ?? []) as PortalWaiverReleaseRow[], viewerCustomerId: link.customer_id })
         const urlFor = async (path: string | null): Promise<string | null> => {
           if (!path) return null
           const { data: signed } = await admin.storage.from('lien-release-documents').createSignedUrl(path, 3600)

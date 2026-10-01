@@ -160,12 +160,25 @@ Click a chip to open the job. The Bill tab's door adds or sends the waiver.
 
 ## What the GC sees
 
-The GC's room has a **Lien waivers** section. It shows one row per bill they pay.
+A waiver shows on the GC's account page once the leader has signed it. A waiver still waiting for his signature shows nowhere.
 
-- The **Conditional** column shows the waiver that came with the bill. It is a dated PDF they can open.
-- The **Unconditional** column shows the one that follows. It reads **when your check clears** until the money lands. Then it reads **on its way** while the leader signs. Then it is a PDF too.
+- Each open bill gets one more line in its note, beside the money it covers. It reads like {{chip:yellow|⤓ Lien waiver · conditional, signed Sep 29}}. The link opens the signed PDF.
+- The **Your papers** card lower on the page has a **Lien waivers** group. It sits between **Agreements** and **Test reports**. Each signed waiver is one row with a **View waiver** button. A paid bill keeps its waivers there after it leaves the bills.
+
+:::example A waiver in Your papers
+{{chip:yellow|SIGNED · Sep 29, 2026}} means the conditional waiver for an open bill.
+{{chip:green|PAID IN FULL · Sep 18, 2026}} means the unconditional waiver for a paid bill.
+:::
 
 Their bookkeeper can find every waiver there without calling the office. Open a GC's room from the globe on their Pipeline row. More on that room is in [share a customer their portal](/help/share-a-customer-their-portal).
+
+## What the owner sees
+
+The owner of the property may have an account page too. They see our waivers only on the bills the office shared with them. The bill's note carries the same waiver line. **Your papers** has a group named **Lien waivers on your property**. It keeps the unconditional waiver after the builder pays.
+
+## The email has the account page
+
+The waiver email names the bill and carries the signed PDF. When the GC has an account page, the email also ends with the **Your account, any time** card. It is the same card the bill emails carry, with the QR code and the short address. A GC with no account page gets the email without the card.
 
 ## Where the waiver lives afterward
 

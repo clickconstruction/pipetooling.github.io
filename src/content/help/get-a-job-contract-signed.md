@@ -195,7 +195,7 @@ If the job already has a draft or a contract out for signature, the pane shows t
 
 Leave **Remind by email every 3 days until signed** ticked when you send. The app then follows up by itself. It sends up to three reminders, each carrying the same link, with your address as the reply-to. Signing or voiding stops them. A resend restarts the clock. Devs can pause the whole lane from Settings with the `job_contract_reminders_disabled_v1` switch.
 
-Customers with a portal link also see **Your agreements** on their account page. It lists signed contracts with **View signed copy**. It lists any contract still waiting with **Review & sign**. That is the same durable link, so nobody has to dig for the email.
+Customers with a portal link also see the **Agreements** group of **Your papers** on their account page. It lists signed contracts with **View signed copy**. It lists any contract still waiting with **Review & sign**. That is the same durable link, so nobody has to dig for the email.
 
 ## The signed copy
 
