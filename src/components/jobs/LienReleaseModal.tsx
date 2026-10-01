@@ -47,7 +47,9 @@ import {
 import { LIEN_RELEASE_DOCUMENTS_BUCKET, lienReleaseMintedPdfPath } from '../../lib/jobs/lienReleaseDocuments'
 import LienReleaseSignModal from './LienReleaseSignModal'
 import { LienWaiverFootPreview } from './LienWaiverFootPreview'
-import { LienWaiverAmountMath, MarkedWaiverAmount } from './LienWaiverAmountMath'
+import { MarkedWaiverAmount, WaiverCoveredNote, WaiverMathBox, WaiverPaidNote } from './LienWaiverAmountMath'
+import { LienReleaseStepRow } from './LienReleaseStepRow'
+import { lienReleaseSteps } from '../../lib/jobs/lienReleaseSteps'
 import { lienWaiverAlreadyCovered, lienWaiverAmountMath, lienWaiverPaidUnwaived } from '../../lib/jobs/lienWaiverAmountMath'
 import {
   customerAddressLienGaps,
@@ -63,6 +65,8 @@ import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useNavigate } from 'react-router-dom'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { useAuth } from '../../hooks/useAuth'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
@@ -81,6 +85,11 @@ type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['R
  * signs now* lets the leader draw on this screen (or a phone handed to him) —
  * the signer of record is the leader, the device is named. A signed waiver has
  * *Send to <GC>*: the GC's billing email on a sub job, else the customer's.
+ *
+ * v2.4314: the left side is six numbered steps on a rail (`lienReleaseSteps`, `LienReleaseStepRow`)
+ * — 1 Pick the bills · 2 Check the form · 3 Check the amount · 4 Check the details · 5 Get it
+ * signed · 6 Send it — each a tick, the one to do, a fix, or waiting; a problem holds the steps
+ * after it; the page beside them stays in view and marks what the current step fills. 1200 px wide.
  */
 
 type MasterOption = { id: string; name: string }
@@ -888,11 +897,96 @@ export default function LienReleaseModal({
     }
   }, [fields, formType, jobNumber, pdfBusy, ensureMinted, renderSignature, showToast])
 
+  // v2.4314 — the window in six steps: what a fix was waved through, the details in edit mode, the history opened.
+  const navigate = useNavigate()
+  const [overrides, setOverrides] = useState<ReadonlySet<'covered' | 'early'>>(() => new Set())
+  const [editDetails, setEditDetails] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(false)
+  useEffect(() => {
+    if (!open) return
+    setOverrides(new Set())
+    setEditDetails(false)
+    setHistoryOpen(false)
+  }, [open, job?.id])
+  const detailKeys = useMemo(() => FIELD_ORDER.filter((k) => k !== 'amount' && lienWaiverUsesField(formType, k)), [formType])
+  const amountNum = fields ? Number((fields.amount ?? '').replace(/[$,\s]/g, '')) : 0
+  // A blank detail the page prints holds signing; a year still being typed does not (the footer and the issue check cover it).
+  const detailsMissing = fields ? detailKeys.filter((k) => k !== 'signerTitle' && !String(fields[k] ?? '').trim()).length : 0
+  const coveredBlocks = amountCoverage != null && !overrides.has('covered')
+  const steps = useMemo(
+    () =>
+      lienReleaseSteps({
+        billCount: invoices.length,
+        billsPicked: selectedInvoiceIds.size,
+        covered: coveredBlocks,
+        amount: Number.isFinite(amountNum) ? amountNum : 0,
+        tooEarly: amountMath?.tooEarly != null && !overrides.has('early'),
+        detailsMissing,
+        rowStatus,
+        sent: Boolean(releaseRow?.sent_to_customer_at),
+      }),
+    [invoices.length, selectedInvoiceIds, coveredBlocks, amountNum, amountMath, overrides, detailsMissing, rowStatus, releaseRow?.sent_to_customer_at],
+  )
+
   if (!open || !job || !fields) return null
 
-  const visibleFields = FIELD_ORDER.filter((k) => lienWaiverUsesField(formType, k))
   const paragraphs = buildLienWaiverParagraphs(formType, fields)
-  const foot = buildLienWaiverFoot(fields, null)
+  const signedFoot = rowStatus === 'signed' && releaseRow?.signer_printed_name ? { printedName: releaseRow.signer_printed_name, signedYmd: releaseRow.signed_at ? calendarYmdInAppTzFromIso(releaseRow.signed_at) : null } : null
+  const foot = buildLienWaiverFoot(fields, signedFoot)
+  const cur = steps.current
+  const stepAt = (n: number) => steps.steps[n - 1]!
+  const leadsInto = (n: number) => cur?.n === n + 1
+  const usd = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  const STEP_TITLES = ['Pick the bills', 'Check the form', 'Check the amount', 'Check the details', 'Get it signed', `Send it to ${sendToName}`]
+  const pickedNumbers = invoices.map((inv, idx) => (selectedInvoiceIds.has(inv.id) ? idx + 1 : 0)).filter((n) => n > 0)
+  const leaderName = presentSigner?.name ?? (fields.signerName.trim() || 'the leader')
+  const deviceName = (profileName ?? '').trim()
+  const others = liveLienReleases(historyRows).filter((r) => r.id !== releaseRow?.id)
+  const shownOthers = historyOpen ? others : others.slice(0, 1)
+  const showDetailInputs = editable && (editDetails || detailsMissing > 0)
+  const asked = rowStatus === 'awaiting_signature'
+  const choice: React.CSSProperties = { borderRadius: 10, padding: '0.7rem 0.85rem', fontFamily: 'inherit', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '0.2rem', minHeight: 76, cursor: mintBusy ? 'wait' : 'pointer' }
+  const quietBtn: React.CSSProperties = { padding: '0.4rem 0.8rem', fontSize: '0.8125rem', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-base)', fontFamily: 'inherit', cursor: 'pointer' }
+  const linkBtn: React.CSSProperties = { background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', textDecoration: 'underline' }
+  const discardDraft = () => {
+    if (!releaseRow) return
+    void (async () => {
+      await voidHistoryRelease(releaseRow)
+      onClose()
+    })()
+  }
+  const waivePaid = () => {
+    // The same bills, now as the waiver for money already in hand; the amount follows (a resumed draft keeps no prefill).
+    userTouchedRef.current = true
+    setFormType('unconditional_progress')
+    setField('amount', lienWaiverPrefillAmount('unconditional_progress', job, selectedInvoices).toFixed(2))
+  }
+  const historyRow = (r: JobLienReleaseRow) => (
+    <div key={r.id} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem', fontSize: '0.75rem' }}>
+      <span style={{ fontWeight: 700 }}>{lienReleaseFormLabel(r.form_type)}</span>
+      <span style={{ fontWeight: 700 }}>{Number(r.amount ?? 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</span>
+      <span style={{ color: 'var(--text-muted)' }}>{lienWaiverDate((r.created_at ?? '').slice(0, 10))}</span>
+      {lienReleaseChips(r).map((c) => (
+        <span key={c.label} style={lienChipStyle(c)}>
+          {c.label}
+        </span>
+      ))}
+      <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.6rem' }}>
+        <button type="button" onClick={() => viewHistoryRelease(r)} style={{ ...linkBtn, textDecoration: 'none', fontSize: '0.75rem' }}>
+          View
+        </button>
+        {voidPendingId === r.id ? (
+          <button type="button" onClick={() => void voidHistoryRelease(r)} style={{ ...linkBtn, textDecoration: 'none', color: 'var(--text-red-700)', fontWeight: 700, fontSize: '0.75rem' }}>
+            Confirm void
+          </button>
+        ) : (
+          <button type="button" onClick={() => setVoidPendingId(r.id)} title="Void this release record (the document itself is unaffected)" style={{ ...linkBtn, textDecoration: 'none', color: 'var(--text-muted)', fontWeight: 500, fontSize: '0.75rem' }}>
+            Void
+          </button>
+        )}
+      </span>
+    </div>
+  )
 
   return (
     <div
@@ -914,24 +1008,23 @@ export default function LienReleaseModal({
       <div
         style={{
           background: 'var(--surface)',
-          borderRadius: 8,
-          maxWidth: 880,
+          borderRadius: 10,
+          maxWidth: 1200,
           width: '100%',
-          maxHeight: 'min(92vh, 100%)',
+          maxHeight: 'min(94vh, 100%)',
           display: 'flex',
           flexDirection: 'column',
           boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
+        <div style={{ padding: '0.9rem 1.25rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
           <div>
-            <h2 id="lien-release-title" style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600 }}>
+            <h2 id="lien-release-title" style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700 }}>
               Release of Lien
             </h2>
-            <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-              {(job.job_name ?? '').trim() || 'Job'} · {jobNumber} —{' '}
-              {editable ? 'prefilled from the job; edits save themselves.' : 'issued — the document is locked as rendered.'}
+            <p style={{ margin: '0.3rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+              {(job.job_name ?? '').trim() || 'Job'} · job {jobNumber} · {sendToName} pays
             </p>
           </div>
           <button
@@ -944,256 +1037,237 @@ export default function LienReleaseModal({
           </button>
         </div>
 
-        <div style={{ padding: '0.75rem 1.25rem', borderBottom: '1px solid var(--border)', display: 'flex', flexWrap: 'wrap', gap: '0.6rem 1rem', alignItems: 'center' }} data-testid="lien-waiver-form">
-          {(() => {
-            const t = lienWaiverToggles(formType)
-            const pick = (next: Partial<typeof t>) => {
-              userTouchedRef.current = true
-              const nextForm = lienWaiverFormFrom({ ...t, ...next })
-              setFormType(nextForm)
-              refillFromSelection(nextForm, selectedInvoiceIds)
-            }
-            const picked = selectedInvoices.length === 1 && job ? pickLienWaiverForBill(job, selectedInvoices[0]!) : null
-            return (
-              <>
-                <div style={segWrap} role="group" aria-label="Conditional or unconditional">
-                  <button type="button" disabled={!editable} aria-pressed={t.conditional} onClick={() => pick({ conditional: true })} style={seg(t.conditional, !editable)}>
-                    Conditional
-                  </button>
-                  <button type="button" disabled={!editable} aria-pressed={!t.conditional} onClick={() => pick({ conditional: false })} style={seg(!t.conditional, !editable)}>
-                    Unconditional
-                  </button>
+        <div className="lienRelease-body">
+          <div className="lienRelease-steps">
+            {others.length > 0 ? (
+              <div style={{ marginBottom: '0.9rem', padding: '0.55rem 0.75rem', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-subtle)', display: 'flex', flexDirection: 'column', gap: '0.35rem' }} data-testid="lien-release-already">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ color: 'var(--text-muted)' }}>
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <path d="M14 2v6h6" />
+                  </svg>
+                  <span style={{ fontWeight: 700, color: 'var(--text-muted)' }}>Already on this job</span>
+                  {others.length > 1 ? (
+                    <button type="button" onClick={() => setHistoryOpen((v) => !v)} aria-expanded={historyOpen} style={{ ...linkBtn, marginLeft: 'auto', textDecoration: 'none', fontSize: '0.75rem' }}>
+                      {historyOpen ? 'Show fewer' : `Show all ${others.length}`}
+                    </button>
+                  ) : null}
                 </div>
-                <div style={segWrap} role="group" aria-label="Progress or final">
-                  <button type="button" disabled={!editable} aria-pressed={!t.final} onClick={() => pick({ final: false })} style={seg(!t.final, !editable)}>
-                    Progress
-                  </button>
-                  <button type="button" disabled={!editable} aria-pressed={t.final} onClick={() => pick({ final: true })} style={seg(t.final, !editable)}>
-                    Final
-                  </button>
-                </div>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                  {LIEN_WAIVER_FORM_CITES[formType]}
-                  {picked ? ` · ${picked.formType === formType ? 'picked from the bill' : 'the bill would pick ' + lienReleaseFormLabel(picked.formType)} · ${picked.facts.join(' · ')}` : ''}
-                </span>
-                <span style={{ flexBasis: '100%', fontSize: '0.8125rem', lineHeight: 1.45 }} data-testid="lien-waiver-why">
-                  {lienWaiverWhy(formType, fields.checkFrom || sendToName)}
-                </span>
-              </>
-            )
-          })()}
-        </div>
-
-        <div style={{ display: 'flex', flexWrap: 'wrap', overflowY: 'auto', flex: 1 }}>
-          <div style={{ flex: '1 1 18rem', minWidth: '17rem', padding: '1rem 1.25rem' }}>
-            {liveLienReleases(historyRows).length > 0 && (
-              <div
-                style={{
-                  marginBottom: '0.9rem',
-                  padding: '0.5rem 0.6rem',
-                  borderRadius: 8,
-                  background: 'var(--bg-blue-tint)',
-                  border: '1px solid var(--border-strong)',
-                }}
-              >
-                <div style={{ fontSize: '0.75rem', fontWeight: 700, marginBottom: '0.35rem' }}>Issued on this job</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                  {liveLienReleases(historyRows).map((r) => (
-                    <div
-                      key={r.id}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        flexWrap: 'wrap',
-                        gap: '0.4rem',
-                        background: 'var(--surface)',
-                        border: '1px solid var(--border)',
-                        borderRadius: 6,
-                        padding: '0.3rem 0.45rem',
-                        fontSize: '0.72rem',
-                      }}
-                    >
-                      <span style={{ fontWeight: 700 }}>{lienReleaseFormLabel(r.form_type)}</span>
-                      <span style={{ fontWeight: 700 }}>
-                        {Number(r.amount ?? 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
-                      </span>
-                      <span style={{ color: 'var(--text-muted)' }}>{lienWaiverDate((r.created_at ?? '').slice(0, 10))}</span>
-                      {lienReleaseChips(r).map((c) => (
-                        <span key={c.label} style={lienChipStyle(c)}>
-                          {c.label}
-                        </span>
-                      ))}
-                      <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem' }}>
-                        <button
-                          type="button"
-                          onClick={() => viewHistoryRelease(r)}
-                          style={{ background: 'none', border: 'none', color: 'var(--text-link)', fontWeight: 600, cursor: 'pointer', padding: 0, fontSize: '0.72rem' }}
-                        >
-                          View
-                        </button>
-                        {voidPendingId === r.id ? (
-                          <button
-                            type="button"
-                            onClick={() => void voidHistoryRelease(r)}
-                            style={{ background: 'none', border: 'none', color: 'var(--text-red-700)', fontWeight: 700, cursor: 'pointer', padding: 0, fontSize: '0.72rem' }}
-                          >
-                            Confirm void
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => setVoidPendingId(r.id)}
-                            title="Void this release record (the document itself is unaffected)"
-                            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0, fontSize: '0.72rem' }}
-                          >
-                            Void
-                          </button>
-                        )}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {/* Property record (v2.2614): the job's link into the customer's
-                address book — county / legal description / owner of record. */}
-            {linkedAddress ? (
-              <div style={{ marginBottom: '0.9rem', padding: '0.45rem 0.55rem', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-subtle)', fontSize: '0.75rem' }}>
-                <span style={{ fontWeight: 700 }}>Property record:</span> {linkedAddress.address}
-                {customerAddressLienReady(linkedAddress) ? (
-                  <span style={{ marginLeft: '0.4rem', fontWeight: 700, color: 'var(--text-green-700)' }}>✓ lien-ready</span>
-                ) : (
-                  <span style={{ marginLeft: '0.4rem', color: 'var(--text-amber-700)', fontWeight: 600 }}>
-                    missing {customerAddressLienGaps(linkedAddress).join(', ')} — add on the customer's addresses
-                  </span>
-                )}
-              </div>
-            ) : candidateAddresses.length > 0 ? (
-              <div style={{ marginBottom: '0.9rem', padding: '0.45rem 0.55rem', borderRadius: 8, border: '1px dashed var(--border-strong)', fontSize: '0.75rem', display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                <span style={{ fontWeight: 700 }}>Property record:</span>
-                <select value={linkChoiceId} onChange={(e) => setLinkChoiceId(e.target.value)} aria-label="Link a property record" style={{ flex: '1 1 10rem', padding: '0.25rem 0.35rem', fontSize: '0.75rem' }}>
-                  <option value="">— pick the property —</option>
-                  {candidateAddresses.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.address}
-                      {suggestCustomerAddressForJob(job.job_address ?? '', [r]) ? ' (matches job address)' : ''}
-                    </option>
-                  ))}
-                </select>
-                <button type="button" onClick={() => void linkPropertyRecord()} disabled={!linkChoiceId || linkBusy} style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', borderRadius: 6, border: '1px solid #2563eb', background: 'var(--surface)', color: 'var(--text-link)', cursor: linkChoiceId ? 'pointer' : 'not-allowed', fontWeight: 600 }}>
-                  {linkBusy ? 'Linking…' : 'Link'}
-                </button>
+                {shownOthers.map(historyRow)}
               </div>
             ) : null}
-            {invoices.length > 0 && (
-              <div style={{ marginBottom: '0.9rem' }}>
-                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
-                  Release covers bill line(s)
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+
+            <LienReleaseStepRow step={stepAt(1)} title={STEP_TITLES[0]!} say={invoices.length > 0 ? 'Pick the bill or bills this waiver is for.' : 'This job has no bills yet, so the waiver covers the whole job.'} nextIsCurrent={leadsInto(1)} summary={pickedNumbers.length > 0 ? pickedNumbers.map((n) => `#${n}`).join(' and ') : 'the whole job'}>
+              {invoices.length > 0 ? (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem' }}>
                   {invoices.map((i, idx) => {
                     const on = selectedInvoiceIds.has(i.id)
                     const openRem = lienWaiverInvoiceOpenRemaining(job, i)
+                    // v2.4296: the chip names what is still owed; the bill's face and any waiver on file under it.
+                    const face = Number(i.amount ?? 0)
+                    const paidOn = face - openRem
+                    const onFile = historyRows.some((r) => r.voided_at == null && lienReleaseStatus(r) !== 'draft' && r.id !== releaseRow?.id && (r.invoice_ids ?? []).includes(i.id))
+                    const sub = paidOn <= 0.005 ? 'nothing paid' : openRem <= 0.005 ? 'paid in full' : `of $${face.toLocaleString('en-US')}`
                     return (
                       <button
                         key={i.id}
                         type="button"
                         disabled={!editable}
+                        aria-pressed={on}
                         onClick={() => toggleInvoice(i.id)}
                         title={`${i.status === 'billed' ? 'Billed' : 'Ready to bill'} — $${Number(i.amount ?? 0).toLocaleString('en-US')} (open $${openRem.toLocaleString('en-US')})`}
                         style={{
-                          padding: '0.3rem 0.6rem',
+                          padding: '0.35rem 0.7rem',
                           fontSize: '0.8125rem',
-                          borderRadius: 6,
+                          borderRadius: 9,
                           border: on ? '2px solid #16a34a' : '1px solid var(--border-strong)',
                           background: on ? 'var(--bg-green-tint)' : 'var(--surface)',
-                          cursor: 'pointer',
-                          fontWeight: on ? 600 : 400,
+                          cursor: editable ? 'pointer' : 'default',
+                          fontFamily: 'inherit',
+                          color: 'inherit',
                         }}
                       >
-                        {(() => {
-                          // v2.4296: the chip names what is still owed; the bill's face and any waiver on file under it.
-                          const face = Number(i.amount ?? 0)
-                          const paidOn = face - openRem
-                          const onFile = historyRows.some((r) => r.voided_at == null && lienReleaseStatus(r) !== 'draft' && r.id !== releaseRow?.id && (r.invoice_ids ?? []).includes(i.id))
-                          const sub = paidOn <= 0.005 ? 'nothing paid' : openRem <= 0.005 ? 'paid in full' : `of $${face.toLocaleString('en-US')}`
-                          return (
-                            <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1 }}>
-                              <span style={{ fontWeight: 700 }}>
-                                #{idx + 1} · {openRem <= 0.005 ? `$${face.toLocaleString('en-US')}` : `${lienWaiverMoney(String(openRem))} owed`}
-                              </span>
-                              <span style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', fontWeight: 400 }}>
-                                {sub}
-                                {onFile ? ' · waiver on file' : ''}
-                              </span>
-                            </span>
-                          )
-                        })()}
+                        <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1 }}>
+                          <span style={{ fontWeight: 700 }}>
+                            #{idx + 1} · {openRem <= 0.005 ? `$${face.toLocaleString('en-US')}` : `${lienWaiverMoney(String(openRem))} owed`}
+                          </span>
+                          <span style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', fontWeight: 400 }}>
+                            {sub}
+                            {onFile ? ' · waiver on file' : ''}
+                          </span>
+                        </span>
                       </button>
                     )
                   })}
                 </div>
-                <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-                  Selection drives the amount and through-date; both stay editable below.
-                </div>
-              </div>
-            )}
-            {visibleFields.map((key) => (
-              <Fragment key={key}>
-              <label style={{ display: 'block', marginBottom: '0.65rem', fontSize: '0.875rem' }}>
-                <span style={{ display: 'block', fontWeight: 500, marginBottom: '0.2rem' }}>{FIELD_LABELS[key]}</span>
-                <input
-                  type={key === 'throughDate' || key === 'signedDate' ? 'date' : 'text'}
-                  value={fields[key]}
-                  disabled={!editable}
-                  onChange={(e) => setField(key, e.target.value)}
-                  style={{
-                    width: '100%',
-                    boxSizing: 'border-box',
-                    padding: '0.45rem 0.5rem',
-                    border: '1px solid var(--border-strong)',
-                    borderRadius: 4,
-                    fontSize: '0.875rem',
-                    opacity: editable ? 1 : 0.7,
-                  }}
-                />
-              </label>
-              {key === 'amount' ? (
-                <LienWaiverAmountMath
-                  math={amountMath}
+              ) : null}
+              {amountCoverage && coveredBlocks ? (
+                <WaiverCoveredNote
                   coverage={amountCoverage}
                   paidUnwaived={paidUnwaived}
-                  typedAmount={fields.amount}
-                  editable={editable}
                   canDiscard={rowStatus === 'draft'}
-                  onUseAmount={(n) => setField('amount', n.toFixed(2))}
-                  onOpenCovered={() => {
-                    if (amountCoverage) viewHistoryRelease(amountCoverage.release)
-                  }}
-                  onDiscard={() => {
-                    if (!releaseRow) return
-                    void (async () => {
-                      await voidHistoryRelease(releaseRow)
-                      onClose()
-                    })()
-                  }}
-                  onWaivePaid={() => {
-                    // The same bills, now as the waiver for money already in hand; the amount follows (a resumed draft keeps no prefill).
-                    userTouchedRef.current = true
-                    setFormType('unconditional_progress')
-                    if (job) setField('amount', lienWaiverPrefillAmount('unconditional_progress', job, selectedInvoices).toFixed(2))
-                  }}
-                  onHover={setAmountHot}
+                  onOpenCovered={() => viewHistoryRelease(amountCoverage.release)}
+                  onDiscard={discardDraft}
+                  onWaivePaid={waivePaid}
+                  onMakeAnyway={() => setOverrides((prev) => new Set([...prev, 'covered']))}
                 />
               ) : null}
-              </Fragment>
-            ))}
-            {rowStatus !== 'signed' && !releaseRow?.voided_at ? (
-              <div style={{ marginTop: '0.75rem', padding: '0.6rem 0.7rem', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-subtle)', fontSize: '0.75rem' }} data-testid="lien-waiver-signer">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <span style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)', fontSize: '0.6875rem' }}>Signed by the leader</span>
+            </LienReleaseStepRow>
+
+            <LienReleaseStepRow step={stepAt(2)} title={STEP_TITLES[1]!} say="The app picks the form from the bills. Change it only if the bills have it wrong." nextIsCurrent={leadsInto(2)} summary={`${lienReleaseFormLabel(formType)} · ${LIEN_WAIVER_FORM_CITES[formType]}`}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 0.75rem', alignItems: 'center' }} data-testid="lien-waiver-form">
+                {(() => {
+                  const t = lienWaiverToggles(formType)
+                  const pick = (next: Partial<typeof t>) => {
+                    userTouchedRef.current = true
+                    const nextForm = lienWaiverFormFrom({ ...t, ...next })
+                    setFormType(nextForm)
+                    refillFromSelection(nextForm, selectedInvoiceIds)
+                  }
+                  const picked = selectedInvoices.length === 1 ? pickLienWaiverForBill(job, selectedInvoices[0]!) : null
+                  return (
+                    <>
+                      <div style={segWrap} role="group" aria-label="Conditional or unconditional">
+                        <button type="button" disabled={!editable} aria-pressed={t.conditional} onClick={() => pick({ conditional: true })} style={seg(t.conditional, !editable)}>
+                          Conditional
+                        </button>
+                        <button type="button" disabled={!editable} aria-pressed={!t.conditional} onClick={() => pick({ conditional: false })} style={seg(!t.conditional, !editable)}>
+                          Unconditional
+                        </button>
+                      </div>
+                      <div style={segWrap} role="group" aria-label="Progress or final">
+                        <button type="button" disabled={!editable} aria-pressed={!t.final} onClick={() => pick({ final: false })} style={seg(!t.final, !editable)}>
+                          Progress
+                        </button>
+                        <button type="button" disabled={!editable} aria-pressed={t.final} onClick={() => pick({ final: true })} style={seg(t.final, !editable)}>
+                          Final
+                        </button>
+                      </div>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        {LIEN_WAIVER_FORM_CITES[formType]}
+                        {picked ? ` · ${picked.formType === formType ? 'picked from the bill' : 'the bill would pick ' + lienReleaseFormLabel(picked.formType)} · ${picked.facts.join(' · ')}` : ''}
+                      </span>
+                      <span style={{ flexBasis: '100%', fontSize: '0.8125rem', lineHeight: 1.45 }} data-testid="lien-waiver-why">
+                        {lienWaiverWhy(formType, fields.checkFrom || sendToName)}
+                      </span>
+                    </>
+                  )
+                })()}
+              </div>
+              {paidUnwaived != null && editable && !coveredBlocks ? <WaiverPaidNote paidUnwaived={paidUnwaived} onWaivePaid={waivePaid} /> : null}
+            </LienReleaseStepRow>
+
+            <LienReleaseStepRow step={stepAt(3)} title={STEP_TITLES[2]!} say="The amount comes from the bills. The box shows how." nextIsCurrent={leadsInto(3)} summary={`${usd(Number.isFinite(amountNum) ? amountNum : 0)}${amountMath ? ` · ${amountMath.totalLabel.toLowerCase()}` : ''}`}>
+              <label style={{ display: 'block', fontSize: '0.875rem', maxWidth: '14rem' }}>
+                <span style={{ display: 'block', fontWeight: 600, marginBottom: '0.2rem' }}>{FIELD_LABELS.amount}</span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={fields.amount}
+                  disabled={!editable}
+                  onChange={(e) => setField('amount', e.target.value)}
+                  style={{ width: '100%', boxSizing: 'border-box', padding: '0.45rem 0.55rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.875rem', fontFamily: 'inherit', opacity: editable ? 1 : 0.7 }}
+                />
+              </label>
+              <WaiverMathBox math={amountMath} typedAmount={fields.amount} editable={editable} onUseAmount={(n) => setField('amount', n.toFixed(2))} onHover={setAmountHot} onGoOn={() => setOverrides((prev) => new Set([...prev, 'early']))} />
+            </LienReleaseStepRow>
+
+            <LienReleaseStepRow step={stepAt(4)} title={STEP_TITLES[3]!} say={detailsMissing > 0 ? 'Fill in the blank ones below. The page prints them.' : 'These come from the job. Change one only if it is wrong.'} nextIsCurrent={leadsInto(4)} summary="from the job">
+              {showDetailInputs ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                  {detailKeys.map((key) => (
+                    <label key={key} style={{ display: 'block', fontSize: '0.875rem' }}>
+                      <span style={{ display: 'block', fontWeight: 600, marginBottom: '0.2rem' }}>{FIELD_LABELS[key]}</span>
+                      <input
+                        type={key === 'throughDate' || key === 'signedDate' ? 'date' : 'text'}
+                        value={fields[key]}
+                        disabled={!editable}
+                        onChange={(e) => setField(key, e.target.value)}
+                        style={{ width: '100%', boxSizing: 'border-box', padding: '0.45rem 0.55rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.875rem', fontFamily: 'inherit', opacity: editable ? 1 : 0.7 }}
+                      />
+                    </label>
+                  ))}
+                  {editDetails && detailsMissing === 0 ? (
+                    <div>
+                      <button type="button" onClick={() => setEditDetails(false)} style={quietBtn}>
+                        Done
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              ) : (
+                <>
+                  <dl style={{ display: 'grid', gridTemplateColumns: 'minmax(8rem, auto) minmax(0, 1fr)', rowGap: '0.35rem', columnGap: '0.9rem', margin: 0, fontSize: '0.8125rem' }} data-testid="lien-waiver-details">
+                    {detailKeys.map((key) => {
+                      const v = String(fields[key] ?? '').trim()
+                      const shown = key === 'throughDate' || key === 'signedDate' ? lienWaiverDate(v) : v || (key === 'signerTitle' ? 'none' : '—')
+                      return (
+                        <Fragment key={key}>
+                          <dt style={{ color: 'var(--text-muted)', margin: 0 }}>{FIELD_LABELS[key]}</dt>
+                          <dd style={{ margin: 0 }}>{shown}</dd>
+                        </Fragment>
+                      )
+                    })}
+                  </dl>
+                  {editable ? (
+                    <div>
+                      <button type="button" onClick={() => setEditDetails(true)} style={quietBtn}>
+                        Change a detail
+                      </button>
+                    </div>
+                  ) : null}
+                </>
+              )}
+              {/* Property record (v2.2614): the job's link into the customer's address book — county / legal description / owner of record. */}
+              {linkedAddress ? (
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  <span style={{ fontWeight: 700, color: 'var(--text-base)' }}>Property record:</span> {linkedAddress.address}
+                  {customerAddressLienReady(linkedAddress) ? (
+                    <span style={{ marginLeft: '0.4rem', fontWeight: 700, color: 'var(--text-green-700)' }}>✓ lien-ready</span>
+                  ) : (
+                    <span style={{ marginLeft: '0.4rem', color: 'var(--text-amber-700)', fontWeight: 600 }}>
+                      missing {customerAddressLienGaps(linkedAddress).join(', ')} — add on the customer's addresses
+                    </span>
+                  )}
+                </div>
+              ) : candidateAddresses.length > 0 ? (
+                <div style={{ padding: '0.45rem 0.55rem', borderRadius: 8, border: '1px dashed var(--border-strong)', fontSize: '0.75rem', display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span style={{ fontWeight: 700 }}>Property record:</span>
+                  <select value={linkChoiceId} onChange={(e) => setLinkChoiceId(e.target.value)} aria-label="Link a property record" style={{ flex: '1 1 10rem', padding: '0.25rem 0.35rem', fontSize: '0.75rem' }}>
+                    <option value="">— pick the property —</option>
+                    {candidateAddresses.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.address}
+                        {suggestCustomerAddressForJob(job.job_address ?? '', [r]) ? ' (matches job address)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <button type="button" onClick={() => void linkPropertyRecord()} disabled={!linkChoiceId || linkBusy} style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', borderRadius: 6, border: '1px solid #2563eb', background: 'var(--surface)', color: 'var(--text-link)', cursor: linkChoiceId ? 'pointer' : 'not-allowed', fontWeight: 600 }}>
+                    {linkBusy ? 'Linking…' : 'Link'}
+                  </button>
+                </div>
+              ) : null}
+            </LienReleaseStepRow>
+
+            <LienReleaseStepRow
+              step={stepAt(5)}
+              title={STEP_TITLES[4]!}
+              say={asked ? undefined : iAmTheSigner ? 'You are the leader on this job. Sign here and it is done.' : 'The leader signs for the company. Pick how he signs.'}
+              nextIsCurrent={leadsInto(5)}
+              summary={
+                releaseRow?.signer_printed_name
+                  ? `by ${releaseRow.signer_printed_name}${(() => {
+                      const d = releaseRow ? deviceNameFor(releaseRow) : null
+                      return d ? ` · drawn on ${d === 'this' ? 'this' : `${d}’s`} screen` : ''
+                    })()}`
+                  : 'signed'
+              }
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }} data-testid="lien-waiver-signer">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', flexWrap: 'wrap', fontSize: '0.8125rem' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Signs</span>
                   {masters.length > 1 ? (
-                    <select value={presentSignerId ?? ''} onChange={(e) => setPresentSignerId(e.target.value || null)} aria-label="Who signs" disabled={rowStatus === 'awaiting_signature'} style={{ fontSize: '0.75rem', padding: '0.15rem 0.3rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit' }}>
+                    <select value={presentSignerId ?? ''} onChange={(e) => setPresentSignerId(e.target.value || null)} aria-label="Who signs" disabled={asked} style={{ fontSize: '0.8125rem', padding: '0.25rem 0.4rem', border: '1px solid var(--border-strong)', borderRadius: 7, background: 'var(--surface)', color: 'inherit', fontFamily: 'inherit' }}>
                       {masters.map((m) => (
                         <option key={m.id} value={m.id}>
                           {m.name}
@@ -1201,81 +1275,165 @@ export default function LienReleaseModal({
                       ))}
                     </select>
                   ) : (
-                    <span style={{ fontWeight: 600 }}>{presentSigner?.name ?? (fields.signerName.trim() || 'the leader')}</span>
+                    <strong>{leaderName}</strong>
                   )}
-                  <span style={{ marginLeft: 'auto', ...segWrap }}>
-                    {iAmTheSigner ? null : rowStatus === 'awaiting_signature' ? (
-                      <span style={{ ...seg(true), cursor: 'default' }}>Later, from his desk ✓</span>
-                    ) : (
-                      <button type="button" onClick={() => void requestSignature()} disabled={mintBusy} style={seg(false)} title="Mint the release and ask him to sign from his own desk">
-                        Later, from his desk
+                  {fields.signerTitle.trim() ? (
+                    <span style={{ color: 'var(--text-muted)' }}>{fields.signerTitle.trim()}</span>
+                  ) : (
+                    <span style={{ color: 'var(--text-amber-800)', background: 'var(--bg-amber-100)', borderRadius: 999, padding: '0.1rem 0.6rem', fontSize: '0.75rem' }}>
+                      No title on the page ·{' '}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onClose()
+                          navigate('/settings?tab=settings-jobs&focus=issuer.signerName')
+                        }}
+                        style={{ ...linkBtn, color: 'var(--text-amber-800)', fontSize: '0.75rem' }}
+                      >
+                        Add his title in Settings ›
                       </button>
-                    )}
-                    <button type="button" onClick={() => void signNow()} disabled={mintBusy} style={seg(false)} data-testid="lien-waiver-sign-now" title={iAmTheSigner ? 'Sign it now' : 'He is here — he draws his signature on this screen'}>
-                      {iAmTheSigner ? '✍ Sign now' : '✍ He signs now'}
-                    </button>
-                  </span>
+                    </span>
+                  )}
                 </div>
-                <div style={{ color: 'var(--text-muted)', marginTop: '0.35rem' }}>
-                  {iAmTheSigner
-                    ? 'You are the leader on this job — sign here and it is done.'
-                    : `He signs now: this screen, or a phone handed to him, it is the same signature. He draws it, never types it. The record: drawn by ${presentSigner?.name ?? 'the leader'} on ${(profileName ?? '').trim() ? `${(profileName ?? '').trim()}’s` : 'your'} screen.`}
-                </div>
-              </div>
-            ) : null}
-            {rowStatus === 'awaiting_signature' && releaseRow ? (
-              <div style={{ marginTop: '0.75rem', padding: '0.5rem 0.6rem', borderRadius: 8, background: 'var(--bg-amber-100)', border: '1px solid var(--border-strong)', fontSize: '0.75rem' }}>
-                <div style={{ fontWeight: 700, color: 'var(--text-amber-800)' }}>
-                  ✍ Awaiting {fields.signerName.trim() || 'the signer'}
-                </div>
-                <div style={{ color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-                  Requested {lienWaiverDate((releaseRow.signature_requested_at ?? '').slice(0, 10))} — until it's signed, the release stays locked.
-                </div>
-                <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.35rem' }}>
-                  {authUser?.id && releaseRow.signer_user_id === authUser.id ? (
+                {asked && releaseRow ? (
+                  <div style={{ padding: '0.55rem 0.7rem', borderRadius: 9, background: 'var(--bg-amber-100)', border: '1px solid var(--border-strong)', fontSize: '0.8125rem', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                    <strong style={{ color: 'var(--text-amber-800)' }}>✍ Waiting for {fields.signerName.trim() || 'the signer'} to sign</strong>
+                    <span style={{ color: 'var(--text-muted)' }}>Asked for his signature {lienWaiverDate((releaseRow.signature_requested_at ?? '').slice(0, 10))}. Until it is signed, the waiver stays locked.</span>
+                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      {authUser?.id && releaseRow.signer_user_id === authUser.id ? (
+                        <button type="button" onClick={() => setSignOpen(true)} style={{ padding: '0.35rem 0.85rem', fontSize: '0.8125rem', fontWeight: 700, background: '#2563eb', color: '#ffffff', border: 'none', borderRadius: 7, cursor: 'pointer', fontFamily: 'inherit' }}>
+                          Sign now
+                        </button>
+                      ) : null}
+                      <button type="button" onClick={() => void cancelSignatureRequest()} style={{ ...linkBtn, fontSize: '0.8125rem' }}>
+                        Cancel request
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+                {rowStatus === 'issued' ? <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Printed for a paper signature. He can still sign it here instead.</div> : null}
+                {asked && authUser?.id && releaseRow?.signer_user_id === authUser.id ? null : (
+                  <div style={{ display: 'grid', gridTemplateColumns: iAmTheSigner || asked ? 'minmax(0, 1fr)' : 'repeat(auto-fit, minmax(12rem, 1fr))', gap: '0.6rem' }}>
                     <button
                       type="button"
-                      onClick={() => setSignOpen(true)}
-                      style={{ padding: '0.3rem 0.75rem', fontSize: '0.75rem', fontWeight: 700, background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+                      onClick={() => void signNow()}
+                      disabled={mintBusy}
+                      data-testid="lien-waiver-sign-now"
+                      aria-label={iAmTheSigner ? '✍ Sign it now' : '✍ He is here, he signs now'}
+                      aria-describedby="lien-waiver-sign-now-why"
+                      style={{ ...choice, border: 'none', background: '#2563eb', color: '#ffffff' }}
                     >
-                      Sign now
+                      <span style={{ fontSize: '0.95rem', fontWeight: 700 }}>{iAmTheSigner ? '✍ Sign it now' : '✍ He is here, he signs now'}</span>
+                      <span id="lien-waiver-sign-now-why" style={{ fontSize: '0.75rem', lineHeight: 1.4, opacity: 0.92 }}>
+                        {iAmTheSigner ? 'Draw or type your signature on this screen.' : 'Hand him the phone or turn the screen. He draws his signature.'}
+                      </span>
                     </button>
-                  ) : null}
-                  <button
-                    type="button"
-                    onClick={() => void cancelSignatureRequest()}
-                    style={{ background: 'none', border: 'none', color: 'var(--text-link)', fontSize: '0.75rem', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
-                  >
-                    Cancel request
-                  </button>
-                </div>
-              </div>
-            ) : rowStatus === 'signed' && releaseRow ? (
-              <div style={{ marginTop: '0.75rem', padding: '0.5rem 0.6rem', borderRadius: 8, background: 'var(--bg-green-tint)', border: '1px solid var(--border-strong)', fontSize: '0.75rem' }}>
-                <div style={{ fontWeight: 700, color: 'var(--text-green-700)' }}>
-                  ✓ Signed by {releaseRow.signer_printed_name ?? fields.signerName}
-                </div>
-                <div style={{ color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-                  {lienReleaseSignatureAuditLine(releaseRow, deviceNameFor(releaseRow)) ?? ''}
-                </div>
-                {releaseRow.sent_to_customer_at ? (
-                  <div style={{ color: 'var(--text-green-700)', marginTop: '0.2rem', fontWeight: 600 }}>Sent {lienWaiverDate((releaseRow.sent_to_customer_at ?? '').slice(0, 10))}</div>
+                    {iAmTheSigner || asked ? null : (
+                      <button
+                        type="button"
+                        onClick={() => void requestSignature()}
+                        disabled={mintBusy}
+                        aria-label="Send it to his desk"
+                        aria-describedby="lien-waiver-desk-why"
+                        style={{ ...choice, border: '1px solid #93c5fd', background: 'var(--surface)', color: 'var(--text-blue-700)' }}
+                      >
+                        <span style={{ fontSize: '0.95rem', fontWeight: 700 }}>Send it to his desk</span>
+                        <span id="lien-waiver-desk-why" style={{ fontSize: '0.75rem', lineHeight: 1.4, color: 'var(--text-700)' }}>
+                          He signs later from his Dashboard. It comes back here signed.
+                        </span>
+                      </button>
+                    )}
+                  </div>
+                )}
+                {iAmTheSigner ? null : (
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    The record will say: drawn by {leaderName} on {deviceName ? `${deviceName}’s` : 'your'} screen.
+                  </div>
+                )}
+                {rowStatus == null || rowStatus === 'draft' ? (
+                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
+                    <span>Signing on paper instead?</span>
+                    <button type="button" onClick={() => void printRelease()} disabled={mintBusy} style={linkBtn}>
+                      Print it
+                    </button>
+                    <span>then</span>
+                    <button type="button" onClick={() => void ensureMinted('issued')} disabled={mintBusy} style={linkBtn}>
+                      {mintBusy ? 'Recording…' : 'Mark issued'}
+                    </button>
+                  </div>
                 ) : null}
               </div>
-            ) : null}
+            </LienReleaseStepRow>
+
+            <LienReleaseStepRow step={stepAt(6)} title={STEP_TITLES[5]!} last waitLabel="Opens once he signs" say={`Email the signed PDF to ${sendToName}. You can also download or print it.`}>
+              {rowStatus === 'signed' && releaseRow && !releaseRow.voided_at ? (
+                <>
+                  <dl style={{ display: 'grid', gridTemplateColumns: '5.5rem minmax(0, 1fr)', rowGap: '0.3rem', columnGap: '0.9rem', margin: 0, fontSize: '0.8125rem' }}>
+                    <dt style={{ color: 'var(--text-muted)', margin: 0 }}>To</dt>
+                    <dd style={{ margin: 0 }}>
+                      {sendToName} · {sendRecipient ?? <span style={{ color: 'var(--text-amber-800)' }}>no email on file — add the GC’s billing email or the job’s customer email</span>}
+                    </dd>
+                    <dt style={{ color: 'var(--text-muted)', margin: 0 }}>Attached</dt>
+                    <dd style={{ margin: 0 }}>The signed PDF</dd>
+                    {releaseRow.sent_to_customer_at ? (
+                      <>
+                        <dt style={{ color: 'var(--text-muted)', margin: 0 }}>Sent</dt>
+                        <dd style={{ margin: 0, color: 'var(--text-green-700)', fontWeight: 600 }}>{lienWaiverDate((releaseRow.sent_to_customer_at ?? '').slice(0, 10))}</dd>
+                      </>
+                    ) : null}
+                  </dl>
+                  <div style={{ display: 'flex', gap: '0.55rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <button
+                      type="button"
+                      onClick={() => void sendToPayor()}
+                      disabled={sendBusy || !sendRecipient}
+                      title={sendRecipient ? `Email the signed waiver to ${sendRecipient}` : `No email on file for ${sendToName} — add the GC’s billing email or the job’s customer email`}
+                      data-testid="lien-waiver-send"
+                      style={{
+                        padding: '0.6rem 1.1rem',
+                        fontSize: '0.9rem',
+                        fontWeight: 700,
+                        borderRadius: 8,
+                        border: releaseRow.sent_to_customer_at ? '1px solid #2563eb' : 'none',
+                        background: !sendRecipient ? 'var(--bg-subtle)' : releaseRow.sent_to_customer_at ? 'var(--surface)' : '#2563eb',
+                        color: !sendRecipient ? 'var(--text-muted)' : releaseRow.sent_to_customer_at ? 'var(--text-link)' : '#ffffff',
+                        cursor: sendBusy || !sendRecipient ? 'default' : 'pointer',
+                        fontFamily: 'inherit',
+                      }}
+                    >
+                      {sendBusy ? 'Sending…' : releaseRow.sent_to_customer_at ? `Send again to ${sendToName}` : `Send to ${sendToName}`}
+                    </button>
+                    <button type="button" onClick={() => void downloadPdf()} disabled={pdfBusy} style={quietBtn}>
+                      {pdfBusy ? 'Building…' : 'Download PDF'}
+                    </button>
+                    <button type="button" onClick={() => void printRelease()} style={quietBtn}>
+                      Print
+                    </button>
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{lienReleaseSignatureAuditLine(releaseRow, deviceNameFor(releaseRow)) ?? ''}</div>
+                </>
+              ) : (
+                <div>
+                  <button type="button" disabled style={{ padding: '0.55rem 1rem', fontSize: '0.875rem', fontWeight: 650, borderRadius: 8, border: 'none', background: 'var(--bg-subtle)', color: 'var(--text-muted)', fontFamily: 'inherit' }}>
+                    Send to {sendToName}
+                  </button>
+                </div>
+              )}
+            </LienReleaseStepRow>
           </div>
 
-          {/* Live preview — pinned light like the printed document. */}
-          <div
-            data-theme="light"
-            style={{
-              flex: '1 1 20rem',
-              minWidth: '18rem',
-              padding: '1.25rem',
-              background: 'var(--bg-subtle)',
-              borderLeft: '1px solid var(--border)',
-            }}
-          >
+          {/* The page — pinned light like the printed document, kept in view while the steps scroll. */}
+          <div className="lienRelease-preview" data-theme="light">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.75rem', marginBottom: '0.6rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+              <span>
+                <strong style={{ color: 'var(--text-base)' }}>The page</strong> · {rowStatus === 'signed' ? 'signed' : 'it changes as you work'}
+              </span>
+              {rowStatus === 'signed' ? null : (
+                <button type="button" onClick={() => void downloadPdf()} disabled={pdfBusy || mintBusy} style={{ ...linkBtn, textDecoration: 'none', fontSize: '0.8125rem' }}>
+                  {pdfBusy ? 'Building…' : 'Download PDF'}
+                </button>
+              )}
+            </div>
             <div
               style={{
                 background: 'var(--surface)',
@@ -1287,109 +1445,51 @@ export default function LienReleaseModal({
                 fontSize: '0.8125rem',
                 lineHeight: 1.7,
                 boxShadow: '0 4px 14px rgba(0,0,0,0.08)',
+                opacity: cur?.n === 1 && cur.state === 'warn' ? 0.55 : 1,
               }}
             >
-              <p style={{ textAlign: 'center', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 0 0.9em' }}>
-                {lienWaiverTitle(formType)}
-              </p>
+              <p style={{ textAlign: 'center', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 0 0.9em' }}>{lienWaiverTitle(formType)}</p>
               {paragraphs.map((p, i) => (
                 <p key={i} style={{ margin: '0 0 0.7em' }}>
                   <MarkedWaiverAmount text={p} amountLabel={lienWaiverMoney(fields.amount)} on={amountHot} />
                 </p>
               ))}
-              <LienWaiverFootPreview foot={foot} />
+              <LienWaiverFootPreview foot={foot} highlight={cur?.n === 5 ? (iAmTheSigner ? '5 · You sign here' : '5 · He signs here') : null} />
             </div>
+            {cur?.n === 1 && cur.state === 'warn' ? <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--text-amber-800)', fontWeight: 600 }}>Greyed until step 1 is settled.</div> : null}
           </div>
         </div>
 
-        <div
-          style={{
-            padding: '0.9rem 1.25rem',
-            borderTop: '1px solid var(--border)',
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: '0.5rem',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
-          <span style={{ fontSize: '0.75rem', color: autosaveState === 'error' || autosaveState === 'held' ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
-            {!editable
-              ? ''
-              : autosaveState === 'saving'
-                ? 'Saving…'
-                : autosaveState === 'saved'
-                  ? 'All changes saved'
-                  : autosaveState === 'error'
-                    ? 'Draft not saved — check your connection'
-                    : autosaveState === 'held'
-                      ? draftHeldByDateMessage(new Date().getFullYear())
-                      : ''}
-          </span>
-          <span style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-            <button
-              type="button"
-              onClick={() => void printRelease()}
-              disabled={mintBusy}
-              style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: mintBusy ? 'wait' : 'pointer' }}
-            >
-              {rowStatus === 'signed' ? 'Print' : 'Print for signature'}
-            </button>
-            <button
-              type="button"
-              onClick={() => void downloadPdf()}
-              disabled={pdfBusy || mintBusy}
-              style={{
-                padding: '0.5rem 1rem',
-                fontSize: '0.875rem',
-                background: 'var(--surface)',
-                border: '1px solid #2563eb',
-                color: 'var(--text-link)',
-                borderRadius: 4,
-                cursor: pdfBusy || mintBusy ? 'wait' : 'pointer',
-              }}
-            >
-              {pdfBusy ? 'Building…' : 'Download PDF'}
-            </button>
-            {rowStatus === 'signed' && releaseRow && !releaseRow.voided_at ? (
-              <button
-                type="button"
-                onClick={() => void sendToPayor()}
-                disabled={sendBusy || !sendRecipient}
-                title={sendRecipient ? `Email the signed waiver to ${sendRecipient}` : `No email on file for ${sendToName} — add the GC’s billing email or the job’s customer email`}
-                data-testid="lien-waiver-send"
-                style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: sendRecipient ? '#2563eb' : 'var(--bg-subtle)', color: sendRecipient ? 'white' : 'var(--text-muted)', border: 'none', borderRadius: 4, cursor: sendBusy || !sendRecipient ? 'default' : 'pointer', fontWeight: 600 }}
-              >
-                {sendBusy ? 'Sending…' : releaseRow.sent_to_customer_at ? `Send again to ${sendToName}` : `Send to ${sendToName}`}
-              </button>
+        <div style={{ padding: '0.75rem 1.25rem', borderTop: '1px solid var(--border)', display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ display: 'flex', gap: '0.9rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '0.75rem', color: autosaveState === 'error' || autosaveState === 'held' ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
+              {!editable
+                ? ''
+                : autosaveState === 'saving'
+                  ? 'Saving…'
+                  : autosaveState === 'saved'
+                    ? 'All changes saved'
+                    : autosaveState === 'error'
+                      ? 'Draft not saved — check your connection'
+                      : autosaveState === 'held'
+                        ? draftHeldByDateMessage(new Date().getFullYear())
+                        : ''}
+            </span>
+            {/* The waiver being worked on is not in "Already on this job": dropping it lives here (two clicks, like the history's Void). */}
+            {releaseRow && !releaseRow.voided_at ? (
+              voidPendingId === releaseRow.id ? (
+                <button type="button" onClick={discardDraft} style={{ ...linkBtn, textDecoration: 'none', color: 'var(--text-red-700)', fontWeight: 700, fontSize: '0.75rem' }}>
+                  {rowStatus === 'draft' ? 'Confirm discard' : 'Confirm void'}
+                </button>
+              ) : (
+                <button type="button" onClick={() => setVoidPendingId(releaseRow.id)} style={{ ...linkBtn, textDecoration: 'none', color: 'var(--text-muted)', fontWeight: 500, fontSize: '0.75rem' }}>
+                  {rowStatus === 'draft' ? 'Discard this draft' : 'Void this waiver'}
+                </button>
+              )
             ) : null}
-            {rowStatus == null || rowStatus === 'draft' ? (
-              <button
-                type="button"
-                onClick={() => void ensureMinted('issued')}
-                disabled={mintBusy}
-                style={{
-                  padding: '0.5rem 1rem',
-                  fontSize: '0.875rem',
-                  background: '#2563eb',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 4,
-                  cursor: mintBusy ? 'wait' : 'pointer',
-                  fontWeight: 500,
-                }}
-              >
-                {mintBusy ? 'Recording…' : 'Mark issued'}
-              </button>
-            ) : (
-              <button
-                type="button"
-                disabled
-                style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: 'default', fontWeight: 500 }}
-              >
-                Issued ✓
-              </button>
-            )}
+          </span>
+          <span style={{ fontSize: '0.8125rem', fontWeight: 650, color: cur?.state === 'warn' ? 'var(--text-amber-800)' : 'var(--text-blue-700)' }} data-testid="lien-release-where">
+            {cur ? (cur.state === 'warn' ? `Step ${cur.n} needs you` : `You are on step ${cur.n} of 6 · ${STEP_TITLES[cur.n - 1]}`) : 'All six steps done'}
           </span>
         </div>
       </div>
