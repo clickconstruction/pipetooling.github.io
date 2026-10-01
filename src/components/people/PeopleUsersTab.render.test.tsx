@@ -5,7 +5,7 @@
  * tab's load, not from a prop.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { screen } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 import { PeopleUsersTab } from './PeopleUsersTab'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import type { UsersTabTagsApi } from '../../hooks/useUsersTabTags'
@@ -50,14 +50,16 @@ vi.mock('../../lib/supabase', () => {
   }
 })
 
+const DAY = 86_400_000
 const USERS: UserRow[] = [
-  { id: 'u1', email: 'alex@example.com', name: 'Alex Rivera', role: 'master_technician', notes: null, phone: null },
-  { id: 'u2', email: 'sam@example.com', name: 'Sam Lee', role: 'assistant', notes: null, phone: null },
+  { id: 'u1', email: 'alex@example.com', name: 'Alex Rivera', role: 'master_technician', notes: null, phone: null, last_sign_in_at: new Date(Date.now() - 12 * DAY).toISOString(), read_only: false },
+  { id: 'u2', email: 'sam@example.com', name: 'Sam Lee', role: 'assistant', notes: null, phone: null, last_sign_in_at: new Date().toISOString(), read_only: false },
+  { id: 'u3', email: 'kai@example.com', name: 'Kai Moss', role: 'helpers', notes: null, phone: null, last_sign_in_at: null, read_only: true, needs_supervision: true },
 ]
 
 const TAGS = { showUsersTabTags: false, showUsersTabTagOrgSignals: false } as unknown as UsersTabTagsApi
 
-function renderTab() {
+function renderTab(extra: { setTrainingMode?: (userId: string, on: boolean) => void } = {}) {
   return renderWithProviders(
     <PeopleUsersTab
       isDev={false}
@@ -86,6 +88,7 @@ function renderTab() {
       isAlreadyUser={() => false}
       invitingId={null}
       setInviteConfirm={() => {}}
+      {...extra}
     />,
   )
 }
@@ -101,5 +104,24 @@ describe('PeopleUsersTab', () => {
 
     expect(screen.getAllByText('Alex Rivera').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Sam Lee').length).toBeGreaterThan(0)
+  })
+
+  it('the Account lens reads each account\'s own sign-in and training mode', async () => {
+    renderTab({ setTrainingMode: () => {} })
+    fireEvent.click(await screen.findByRole('button', { name: 'Account' }))
+
+    // Before v2.4336 the roster rows dropped both fields and every account read "never signed in".
+    const alexRow = (await screen.findAllByText('Alex Rivera'))[0]!.closest('li')!
+    expect(within(alexRow).getByText('12d ago')).toBeTruthy()
+    const samRow = screen.getAllByText('Sam Lee')[0]!.closest('li')!
+    expect(within(samRow).getByText('today')).toBeTruthy()
+    const kaiRow = screen.getAllByText('Kai Moss')[0]!.closest('li')!
+    expect(within(kaiRow).getByText('never')).toBeTruthy()
+    expect((within(kaiRow).getByLabelText('Training mode (read-only): Kai Moss') as HTMLInputElement).checked).toBe(true)
+    expect((within(alexRow).getByLabelText('Training mode (read-only): Alex Rivera') as HTMLInputElement).checked).toBe(false)
+
+    // The Supervision column says it, so the row's own chip steps aside.
+    expect(within(kaiRow).queryByText('needs supervision')).toBeNull()
+    expect(within(kaiRow).getByText('needs')).toBeTruthy()
   })
 })
