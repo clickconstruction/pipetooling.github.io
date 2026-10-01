@@ -141,6 +141,24 @@ describe('PersonDeskAccessSection', () => {
     await vi.waitFor(() => expect(invoke).toHaveBeenCalledWith('set-user-password', { body: { user_id: 'u-kai', password: 'secret12' } }))
   })
 
+  it('Change… moves the sign-in email through change-user-email, after checking the address', async () => {
+    const { onChanged } = renderSection(KAI, DEV)
+    fireEvent.click(screen.getByRole('button', { name: 'Change…' }))
+    const dialog = screen.getByRole('dialog', { name: "Change Kai Moss's sign-in email" })
+    expect(within(dialog).getByText('Now: kai@example.com')).toBeTruthy()
+    fireEvent.change(within(dialog).getByLabelText('New email'), { target: { value: 'not an email' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Change email' }))
+    expect(await within(dialog).findByText('That email does not look right.')).toBeTruthy()
+    fireEvent.change(within(dialog).getByLabelText('New email'), { target: { value: 'KAI@example.com' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Change email' }))
+    expect(await within(dialog).findByText('That is the address they already sign in with.')).toBeTruthy()
+    expect(invoke).not.toHaveBeenCalled()
+    fireEvent.change(within(dialog).getByLabelText('New email'), { target: { value: ' Kai@ClickPlumbing.com ' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Change email' }))
+    await vi.waitFor(() => expect(invoke).toHaveBeenCalledWith('change-user-email', { body: { user_id: 'u-kai', email: 'kai@clickplumbing.com' } }))
+    await vi.waitFor(() => expect(onChanged).toHaveBeenCalled())
+  })
+
   it('an estimator has Extra access and a CountTooling row', () => {
     renderSection(WENDI, DEV)
     expect((screen.getByLabelText('Hiring board') as HTMLInputElement).checked).toBe(true)
@@ -155,6 +173,7 @@ describe('PersonDeskAccessSection', () => {
     expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Set password…' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Trades…' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Change…' })).toBeNull()
     expect(screen.getAllByText('dev only').length).toBeGreaterThan(0)
     expect((screen.getByLabelText('Can run a job on their own') as HTMLInputElement).disabled).toBe(false)
     expect(screen.getByRole('button', { name: 'Archive…' })).toBeTruthy()

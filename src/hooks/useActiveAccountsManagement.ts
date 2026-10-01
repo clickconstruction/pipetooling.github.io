@@ -22,6 +22,8 @@ import { executeCombinePeople, previewCombinePeople } from '../lib/combinePeople
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { inviteFormValid, roleChangeConfirmMessage, roleChosen, roleTakesServiceTypes, userCreatedTelemetryTarget, type RoleChoice } from '../lib/inviteUserForm'
 import { recordNavClick } from '../lib/navClickTelemetry'
+import { changeSignInEmail } from '../lib/people/accountWrites'
+import { checkSignInEmail } from '../../supabase/functions/_shared/signInEmailChange'
 
 /** External roster person (no login) offered as a merge-away candidate for subcontractor survivors. */
 export type ExternalMergePerson = {
@@ -415,6 +417,13 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
       return
     }
 
+    // v2.4344: a changed email moves the login too (change-user-email), never the app's copy alone.
+    const emailCheck = checkSignInEmail(editingUser?.email ?? null, trimmedEmail)
+    if (!emailCheck.ok) {
+      setEditError(emailCheck.error)
+      return
+    }
+
     if (trimmedName) {
       const isDuplicate = await checkDuplicateName(trimmedName, editingUserId)
       if (isDuplicate) {
@@ -457,6 +466,17 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
     }
     if (editingUser?.role === 'helpers') {
       updates.helpers_service_type_ids = editSubcontractorServiceTypeIds.length > 0 ? editSubcontractorServiceTypeIds : null
+    }
+    if (!emailCheck.unchanged) {
+      setUpdatingId(editingUserId)
+      try {
+        await changeSignInEmail(supabase, { userId: editingUserId, email: emailCheck.email })
+      } catch (e) {
+        setEditError(formatErrorMessage(e))
+        setUpdatingId(null)
+        return
+      }
+      updates.email = emailCheck.email
     }
     await updateUserProfile(editingUserId, updates, editingUser?.name, editingUser?.email)
     setEditingUserId(null)
