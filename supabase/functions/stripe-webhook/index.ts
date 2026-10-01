@@ -186,7 +186,7 @@ async function handleStripeInvoicePaidEvent(
     if (oob.p_reference_number) rpcArgs.p_reference_number = oob.p_reference_number
     if (oob.p_paid_on) rpcArgs.p_paid_on = oob.p_paid_on
     if (oob.p_internal_note) rpcArgs.p_internal_note = oob.p_internal_note
-    // v2.4276: who pressed Mark Paid, carried on the invoice's metadata → jobs_ledger_payments.created_by.
+    // v2.4289: who pressed Mark Paid, carried on the invoice's metadata → jobs_ledger_payments.created_by.
     if (oob.p_recorded_by) rpcArgs.p_recorded_by = oob.p_recorded_by
     const { data: rpcData, error: rpcErr } = await admin.rpc('mark_invoice_paid_from_stripe', rpcArgs)
 

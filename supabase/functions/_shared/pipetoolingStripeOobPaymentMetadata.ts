@@ -3,7 +3,7 @@ export const STRIPE_OOB_META_PAID_ON = 'pt_paid_on'
 export const STRIPE_OOB_META_PAYMENT_TYPE = 'pt_payment_type'
 export const STRIPE_OOB_META_REFERENCE = 'pt_reference'
 export const STRIPE_OOB_META_INTERNAL_NOTE = 'pt_internal_note'
-/** v2.4276: the user who pressed Mark Paid — the webhook writes the payment row with the service role, which has no auth.uid(). */
+/** v2.4289: the user who pressed Mark Paid — the webhook writes the payment row with the service role, which has no auth.uid(). */
 export const STRIPE_OOB_META_RECORDED_BY = 'pt_recorded_by'
 
 const STRIPE_METADATA_MAX_LEN = 500
@@ -20,7 +20,7 @@ export type OobPaymentMetadataInput = {
   payment_type: string
   reference_number?: string
   internal_note?: string
-  /** The caller's users.id (v2.4276). */
+  /** The caller's users.id (v2.4289). */
   recorded_by?: string
 }
 
@@ -44,7 +44,7 @@ export type ParsedOobMetadataForRpc = {
   p_reference_number?: string
   p_paid_on?: string
   p_internal_note?: string
-  /** v2.4276 → mark_invoice_paid_from_stripe(p_recorded_by) → jobs_ledger_payments.created_by. */
+  /** v2.4289 → mark_invoice_paid_from_stripe(p_recorded_by) → jobs_ledger_payments.created_by. */
   p_recorded_by?: string
 }
 

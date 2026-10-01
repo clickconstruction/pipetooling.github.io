@@ -1,7 +1,7 @@
 SET lock_timeout = '3s';
 
 -- Who applied a payment, and when it was linked to a bank deposit
--- (docs/migrations/20260930233000_payment_actor_and_link.md, punch list #74 PR 4).
+-- (docs/migrations/20260930235000_payment_actor_and_link.md, punch list #74 PR 4).
 --
 -- Until now the only record of who recorded a payment was the job history's "Payment" event,
 -- stamped with auth.uid(). Mark Paid on a Stripe bill (record-stripe-invoice-out-of-band-payment)
@@ -14,9 +14,9 @@ alter table public.jobs_ledger_payments
   add column if not exists linked_at timestamptz,
   add column if not exists linked_by uuid references public.users(id) on delete set null;
 
-comment on column public.jobs_ledger_payments.created_by is 'Who recorded the payment: auth.uid() at insert, or the caller an edge function names (v2.4276).';
-comment on column public.jobs_ledger_payments.linked_at is 'When mercury_transaction_id was set on a row that had none — a hand-recorded payment linked to its deposit (v2.4276).';
-comment on column public.jobs_ledger_payments.linked_by is 'Who linked it (v2.4276).';
+comment on column public.jobs_ledger_payments.created_by is 'Who recorded the payment: auth.uid() at insert, or the caller an edge function names (v2.4289).';
+comment on column public.jobs_ledger_payments.linked_at is 'When mercury_transaction_id was set on a row that had none — a hand-recorded payment linked to its deposit (v2.4289).';
+comment on column public.jobs_ledger_payments.linked_by is 'Who linked it (v2.4289).';
 
 -- One-time backfill: the history already knows who added most rows.
 update public.jobs_ledger_payments p
@@ -218,7 +218,7 @@ revoke all on function public.list_ar_deposit_trails(uuid[]) from public;
 grant execute on function public.list_ar_deposit_trails(uuid[]) to authenticated;
 
 comment on function public.list_ar_deposit_trails(uuid[]) is
-  'Accounts Receivable: every payment each deposit ever carried (live, and removed from deleted_records_archive) with who recorded it, how (recorded_by_hand when its reference is not the deposit''s Mercury id), when it was linked to the deposit, and who took it off — the trail line on the deposit row (v2.4274, v2.4276). Dev/master/assistant/controller/primary; at most 1000 ids per call.';
+  'Accounts Receivable: every payment each deposit ever carried (live, and removed from deleted_records_archive) with who recorded it, how (recorded_by_hand when its reference is not the deposit''s Mercury id), when it was linked to the deposit, and who took it off — the trail line on the deposit row (v2.4274, v2.4289). Dev/master/assistant/controller/primary; at most 1000 ids per call.';
 
 -- A full Mark Paid on a Stripe bill lands through stripe-webhook → mark_invoice_paid_from_stripe,
 -- also with the service role. The caller rides on the invoice's metadata (pt_recorded_by) and

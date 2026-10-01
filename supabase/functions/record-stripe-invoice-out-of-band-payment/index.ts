@@ -284,7 +284,7 @@ serve(async (req) => {
           reference_number: reference_number?.trim() || null,
           invoice_id: invRow.id,
           stripe_credit_note_id: creditNote.id,
-          // v2.4276: the service role has no auth.uid(); name the caller so the job history and
+          // v2.4289: the service role has no auth.uid(); name the caller so the job history and
           // the Accounts Receivable trail say who recorded the payment.
           created_by: user.id,
         })
@@ -321,7 +321,7 @@ serve(async (req) => {
       payment_type: truncateStripeMetadataValue(payment_type),
       reference_number: reference_number?.trim() || undefined,
       internal_note: internal_note?.trim() || undefined,
-      // v2.4276: the webhook writes the full-payment row with the service role; the caller rides on the metadata.
+      // v2.4289: the webhook writes the full-payment row with the service role; the caller rides on the metadata.
       recorded_by: user.id,
     })
 

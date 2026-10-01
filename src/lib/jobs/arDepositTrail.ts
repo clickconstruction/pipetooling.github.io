@@ -33,12 +33,12 @@ export type ArDepositTrailRow = {
   /** When and by whom it was taken off; null on a live payment. */
   removed_at: string | null
   removed_by: string | null
-  /** v2.4276: how it was recorded ("Check", "checkDeposit"), and its reference (a check number, or the deposit's Mercury id). */
+  /** v2.4289: how it was recorded ("Check", "checkDeposit"), and its reference (a check number, or the deposit's Mercury id). */
   payment_type?: string | null
   reference_number?: string | null
-  /** v2.4276: recorded by hand (Edit Job, Mark Paid) and linked to the deposit later, not applied from the deposit. */
+  /** v2.4289: recorded by hand (Edit Job, Mark Paid) and linked to the deposit later, not applied from the deposit. */
   recorded_by_hand?: boolean | null
-  /** v2.4276: when and by whom a hand-recorded payment was linked to this deposit; null before the stamp existed. */
+  /** v2.4289: when and by whom a hand-recorded payment was linked to this deposit; null before the stamp existed. */
   linked_at?: string | null
   linked_by?: string | null
 }
@@ -64,7 +64,7 @@ export type ArDepositTrail = {
 
 /**
  * The name the trail gives a row whose recorder is not on record. Empty: the "by …" is left
- * out. (v2.4274 said "the app"; v2.4276 found those rows were people — Mark Paid through an
+ * out. (v2.4274 said "the app"; v2.4289 found those rows were people — Mark Paid through an
  * edge function that dropped the name — so a missing name is left blank, never invented.)
  */
 export const AR_TRAIL_UNSIGNED = ''

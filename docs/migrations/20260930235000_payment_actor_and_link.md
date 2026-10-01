@@ -1,4 +1,4 @@
-# 20260930233000_payment_actor_and_link.sql (2026-09-30, v2.4276)
+# 20260930235000_payment_actor_and_link.sql (2026-09-30, v2.4289)
 
 Who recorded a payment, and when a hand-recorded payment was linked to its bank deposit (punch list #74 PR 4 of 4). Found on 2026-09-30: 13 of September's 38 Accounts Receivable payments had no name on their job-history event. All 13 were Stripe bills marked paid by check through `record-stripe-invoice-out-of-band-payment`, which inserts with the service role, so `auth.uid()` was null; the deposit was linked in Accounts Receivable afterwards, an UPDATE nothing logged.
 
