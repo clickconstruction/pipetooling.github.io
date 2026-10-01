@@ -187,6 +187,26 @@ describe('PeopleDayBookTab', () => {
     expect(H.rpc.mock.calls[0]![1]).toEqual({ p_from: '2026-08-10', p_to: '2026-08-16' })
   })
 
+  it('Month from a week that starts in the last month opens the month that holds today (v2.4291)', async () => {
+    // Oct 1 2026 is a Thursday: its week runs Mon Sep 28 – Sun Oct 4. Only Date is faked, so waitFor's timers still run.
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-01T17:00:00Z'))
+    try {
+      H.rpc.mockImplementation(async (_fn: unknown, args: unknown) => {
+        const a = args as { p_from: string; p_to: string }
+        return { data: payload({ from: a.p_from, to: a.p_to }), error: null }
+      })
+      renderWithProviders(<PeopleDayBookTab authUserId="u-robert" authRole="dev" canPickPerson />)
+      await waitFor(() => expect(H.rpc).toHaveBeenCalled())
+      expect(H.rpc.mock.calls[0]![1]).toMatchObject({ p_from: '2026-09-28', p_to: '2026-10-04' })
+      fireEvent.click(await screen.findByRole('button', { name: 'Month' }))
+      await waitFor(() => expect(H.rpc.mock.calls.some((c) => (c[1] as { p_from: string }).p_from === '2026-10-01')).toBe(true))
+      expect(H.rpc.mock.calls.at(-1)![1]).toMatchObject({ p_from: '2026-10-01', p_to: '2026-10-31' })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('tells the page where it is, so the next opening finds it', async () => {
     const memory: { current: { from: string; to: string; person: string | null; view?: 'week' | 'month' } | null } = { current: null }
     H.rpc.mockImplementation(async (_fn: unknown, args: unknown) => {
