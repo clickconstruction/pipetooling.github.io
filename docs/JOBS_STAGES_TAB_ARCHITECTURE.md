@@ -237,7 +237,7 @@ Function-returning-JSX style throughout (blocks `memo`); no hooks, no Supabase �
 | 982–986 / 991–1026 | `shouldSuppressStagesRowJobThreadToggle` / `renderStagesThreadExpandButton` | 5 / 36 | Table, CardList, both unified rows | |
 | 1034–1081 | `renderStagesSeeAllButton` (was `renderStagesViewReportsButton` + the Sessions link, v2.4324) | 48 | CardList, UnifiedJobRow (+ footer) | the trail's door where no activity box draws; words from `lib/jobs/stagesRowDoors.ts` |
 | 1090–1287 | `renderStagesQuickActionsStack` | 198 | Table, UnifiedTable | schedule, week dispatch, call, Dispatch, task (`showTaskDispatchButton`) |
-| 1296–1466 | `renderStagesJobCellActivityFooter` | 171 | Table, UnifiedTable | inner `renderStagesInvoiceJumpChips` 1321–1368, `renderStagesStripeEmailedCustomerHint` 1370–1423, `renderStagesContractChip` 1425–1454 (contract + ⚖ legal chip) |
+| 1296–1466 | `renderStagesJobCellActivityFooter` | 171 | Table, UnifiedTable | inner `renderStagesInvoiceJumpChips` 1321–1368, `renderStagesStripeEmailedCustomerHint` 1370–1423, `renderStagesContractChip` 1425–1454 (contract + ⚖ legal chip; since v2.4342 its words and door come from `stagesContractChipFor` → `contractRowChip`, shared with the phone card and the phone row's chip) |
 | 1468–1473 / 1475–1497 | `stagesRowHasProjectBanner` / `renderStagesProjectBannerRow` | 6 / 23 | Table, both unified rows | |
 | 1500–1518 | `renderStagesJobColumnEstimateFooter` | 19 | Table, CardList, both unified rows | |
 

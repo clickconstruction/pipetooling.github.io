@@ -268,4 +268,30 @@ describe('JobsStagesTable render smoke', () => {
     expect(within(dialog).getByTestId('property-kind-switch').getAttribute('data-kind')).toBe('unset')
     expect(within(dialog).getByRole('button', { name: 'Commercial' })).toBeTruthy()
   })
+
+  it('v2.4342 · the contract chip tells time: amber with a crew on site, grey with no date, none on Paid in Full', async () => {
+    const onSite = makeJob({ id: 'j-on', job_name: 'Crew On Site', status: 'working', revenue: 37745, last_work_date: '2026-09-30' })
+    const quiet = makeJob({ id: 'j-q', job_name: 'Nothing Booked', status: 'working', revenue: 500 })
+    const paid = makeJob({ id: 'j-p', job_name: 'Paid Job', status: 'paid', revenue: 900 })
+    const coverage = new Map([onSite, quiet, paid].map((j) => [j.id, { kind: 'none' as const }]))
+    const onOpenJobContract = vi.fn()
+    renderWithProviders(
+      <JobsStagesTable
+        {...makeProps({
+          jobList: [onSite, quiet, paid],
+          jobContractCoverageByJobId: coverage,
+          onOpenJobContract,
+          stagesUpcomingByJobId: { 'j-on': { ymd: '2099-01-02', timeStart: '08:00', timeEnd: '16:00', assigneeNames: [], note: null, bookedYmds: ['2099-01-02'], lastYmd: '2099-01-02', visitCount: 1 } },
+        })}
+      />,
+    )
+    await settle()
+    const rowOf = (id: string) => document.querySelector(`tr[data-stages-job-id="${id}"]`) as HTMLElement
+    const ask = within(rowOf('j-on')).getByRole('button', { name: /No contract · crew on site/ })
+    expect(ask.textContent).toBe('No contract · crew on site')
+    fireEvent.click(ask)
+    expect(onOpenJobContract).toHaveBeenCalledWith(onSite, 'contract')
+    expect(within(rowOf('j-q')).getByRole('button', { name: /No contract/ }).textContent).toBe('No contract')
+    expect(within(rowOf('j-p')).queryByRole('button', { name: /contract/i })).toBeNull()
+  })
 })

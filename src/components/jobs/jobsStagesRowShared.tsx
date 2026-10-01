@@ -58,6 +58,7 @@ import CustomerPortalGlobeButton from '../customers/CustomerPortalGlobeButton'
 import OwnerShareChip from './OwnerShareChip'
 import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 import { JobContractChip } from './JobContractChip'
+import { contractRowChipForJob, type ContractRowChip } from '../../lib/jobs/contractRowChip'
 import { legalRowChip, type LegalMatterRow } from '../../lib/legal/legalMatters'
 import type { JobContractCoverage } from '../../lib/jobs/jobContractCoverage'
 import { telHrefFor } from '../../lib/phoneContact'
@@ -136,8 +137,31 @@ export type StagesRowRenderContext = {
   onPropertyLinked?: (jobId: string, customerAddressId: string, kind: string) => void
   /** Legal portal PR 2 (v2.3313): the legal matter a Collections job belongs to — the ⚖ chip beside the contract chip. */
   legalMatterByJobId?: ReadonlyMap<string, LegalMatterRow>
-  /** Opens the job's Contract modal (PR 2); absent = the chip is a plain label. */
-  onOpenJobContract?: (job: JobWithDetails) => void
+  /**
+   * Opens the job's Contract modal (PR 2); absent = the chip is a plain label. Since v2.4342 the chip
+   * says which door it is (`contractRowChip`): `gc-paper` opens Add the contract on the GC's jobs.
+   */
+  onOpenJobContract?: (job: JobWithDetails, opens?: ContractRowChipOpens) => void
+}
+
+type ContractRowChipOpens = Extract<ContractRowChip, { show: true }>['opens']
+
+/**
+ * The row's contract chip (v2.4342): what it says and which door it opens, from the same feeds the
+ * strip reads. Null when the viewer cannot see contracts; `{ show: false }` on a Paid in Full row.
+ */
+export function stagesContractChipFor(
+  ctx: Pick<StagesRowRenderContext, 'jobContractCoverageByJobId' | 'stagesUpcomingByJobId' | 'stagesWorkedByJobId'>,
+  job: JobWithDetails,
+): ContractRowChip | null {
+  const coverage = ctx.jobContractCoverageByJobId
+  if (!coverage) return null
+  return contractRowChipForJob(job, {
+    coverage: coverage.get(job.id),
+    upcoming: ctx.stagesUpcomingByJobId[job.id] ?? null,
+    weekSoFar: ctx.stagesWorkedByJobId?.[job.id] ?? null,
+    todayYmd: scheduleTodayDateKey(),
+  })
 }
 
 
@@ -1497,14 +1521,20 @@ export function renderStagesJobCellActivityFooter(
   }
 
   function renderStagesContractChip(): ReactNode {
-    const coverage = ctx.jobContractCoverageByJobId
-    if (!coverage) return null
-    const cov = coverage.get(job.id)
+    const chip = stagesContractChipFor(ctx, job)
+    if (!chip) return null
     const open = ctx.onOpenJobContract
     const legal = legalRowChip(ctx.legalMatterByJobId?.get(job.id))
+    if (!chip.show && !legal) return null
     return (
       <div style={{ marginTop: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
-        <JobContractChip coverage={cov} onClick={open ? () => open(job) : undefined} />
+        {chip.show ? (
+          <JobContractChip
+            coverage={ctx.jobContractCoverageByJobId?.get(job.id)}
+            words={chip}
+            onClick={open ? () => open(job, chip.opens) : undefined}
+          />
+        ) : null}
         {legal ? (
           <span
             title="Legal desk — the account's standing with counsel"

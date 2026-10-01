@@ -1,7 +1,8 @@
 /**
  * The one line per job on the phone Pipeline (punch list #30, PR 2a). Nothing on the board
  * computed this before: "no bid value", "set % done", "quiet N d", "no contract", "draw 2
- * ready" each came from a different chip on a 600 px card. This kernel takes the readings
+ * ready" each came from a different chip on a 600 px card. Since v2.4342 the contract chip
+ * asks only when the desktop row's does: "contract by Sat Oct 3", "no contract · crew on site". This kernel takes the readings
  * those chips already make and picks ONE — first match wins, in the order the owner took on
  * 2026-09-23 — plus the grey line under the name (the next block and crew, then one fact).
  * Pure: every input is a value another kernel produced.
@@ -52,6 +53,12 @@ export type JobNextLineInput = {
   lienRunway?: LienPayRunway | null
   /** undefined = the viewer cannot see contracts (no chip, no fact). */
   contract: JobContractCoverage | null | undefined
+  /**
+   * v2.4342: the desktop row chip's ask (`contractRowChip` when its tone is `ask`: a crew booked or
+   * on site and nothing on file), in the phone's words. The phone chip asks only then; a plain gap
+   * is no longer amber on every row. null / undefined = no ask.
+   */
+  contractAsk?: { label: string; title: string } | null
   upcoming: StagesUpcomingAppointment | null
   crew: JobCrewPosition | null
   /** The billing clause as finished words — "billed 2 days ago" / "paid today" (v2.3792); null = none. */
@@ -77,7 +84,7 @@ function money(n: number): string {
 }
 
 export function pickJobNextChip(input: JobNextLineInput): JobNextChip | null {
-  const { view, money: bar, billSentAlert, quietDays, expectedPay, contract, stage, bankReturned, lienRunway } = input
+  const { view, money: bar, billSentAlert, quietDays, expectedPay, contractAsk, stage, bankReturned, lienRunway } = input
   if (view.mode === 'nobid') {
     return { label: 'no bid value', tone: 'red', action: 'no-bid', title: 'No line items on the job — nothing to bill against. Tap to add them.' }
   }
@@ -104,8 +111,8 @@ export function pickJobNextChip(input: JobNextLineInput): JobNextChip | null {
   if (expectedPay && expectedPay.state === 'late') {
     return { label: `${expectedPay.daysLate} d past expected`, tone: 'amber', action: 'bill-row', title: expectedPay.title }
   }
-  if (contract && contract.kind === 'none') {
-    return { label: 'no contract', tone: 'amber', action: 'contract', title: 'No agreement on file for this job. Tap to get one signed, or say one is not needed.' }
+  if (contractAsk) {
+    return { label: contractAsk.label, tone: 'amber', action: 'contract', title: `${contractAsk.title} Tap to open the Contract window.` }
   }
   if (view.stageBar) {
     const m = /draw (\d+) ready/i.exec(view.stageBar.caption)
