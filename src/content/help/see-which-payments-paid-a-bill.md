@@ -20,7 +20,7 @@ A line reads the amount first. Then the day the money came. Then where it came f
 
 ## By bill or by date
 
-Two buttons sit at the right of the **Bills and payments** heading. {{button:blue|By bill}} shows each bill with its payments under it. {{button:outline|By date}} puts the bills and the payments on one line of dates, oldest first. Each payment then says which bill it pays. The last row says how much is still open today. The app remembers your choice on this computer.
+Two buttons sit on the **Bills** row, just above the first bill. {{button:blue|By bill}} shows each bill with its payments under it. {{button:outline|By date}} puts the bills and the payments on one line of dates, oldest first. Each payment then says which bill it pays. The last row says how much is still open today. The app remembers your choice on this computer.
 
 ## Open the menu on a payment
 
