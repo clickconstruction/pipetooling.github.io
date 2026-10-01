@@ -2545,7 +2545,13 @@ body.my-time-boundary-dragging {
 .jobInvoiceWords .l2 .keep {
   white-space: nowrap;
   display: inline-flex;
-  gap: 0.625rem;
+  flex-wrap: wrap;
+  gap: 0 0.625rem;
+  min-width: 0;
+}
+/* v2.4300: the pair may break between its parts on a narrow row; each part stays whole. */
+.jobInvoiceWords .l2 .keep > * {
+  white-space: nowrap;
 }
 .jobInvoiceWords b {
   font-weight: 650;
@@ -2603,6 +2609,13 @@ body.my-time-boundary-dragging {
   border: 2px dashed var(--text-red-600);
   background: var(--surface);
 }
+@container job-invoice-ledger (max-width: 420px) {
+  .jobInvoiceLedger[data-view="date"] > .jobInvoiceRow,
+  .jobInvoiceLedger[data-view="date"] > .jobMoneyDateRow {
+    margin-left: 5px;
+    padding-left: 0.7rem;
+  }
+}
 .jobMoneyDateToday {
   font-size: 0.8125rem;
   font-weight: 650;
@@ -2656,12 +2669,28 @@ body.my-time-boundary-dragging {
   color: var(--text-700);
 }
 .jobPaymentLineMain {
+  /* v2.4300: amount · words · ⋯ in three columns, so a long line wraps inside the words
+     and the ⋯ stays beside the amount on a phone (it used to drop to a third line). */
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  column-gap: 0.5rem;
+}
+.jobPaymentLineMain .mid {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.25rem 0.5rem;
+  min-width: 0;
+  line-height: 1.45;
+}
+.jobPaymentLineMain .words {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .jobPaymentLineMain .amt {
+  white-space: nowrap;
+  line-height: 1.45;
   font-weight: 650;
   color: var(--text-green-700);
   font-variant-numeric: tabular-nums;
@@ -2676,9 +2705,9 @@ body.my-time-boundary-dragging {
   color: var(--text-muted);
 }
 .jobPaymentLineMenu {
-  margin-left: auto;
   position: relative;
   display: inline-flex;
+  margin-top: -0.2rem;
 }
 .jobPaymentLineMore {
   width: 28px;

@@ -193,3 +193,18 @@ describe('JobFormPaymentLine — a hand-typed row', () => {
     expect(acts.requestMovePaymentRow).toHaveBeenCalledWith(row)
   })
 })
+
+describe('JobFormPaymentLine — three cells, so a long line wraps inside its words (v2.4300)', () => {
+  it('the line is amount · one middle cell (words, chips, buttons) · ⋯, and nothing else', () => {
+    const row = paymentRow({ amount: 500, invoice_id: null, paid_on: '2026-09-22', mercury_transaction_id: 'mt1' })
+    renderLine(row, { bankFacts: { mt1: { ...bank, counterparty: 'Lober’s Construction Co', status: 'failed', failureReason: 'Insufficient funds' } } })
+    const main = screen.getByTestId('payment-line').firstElementChild as HTMLElement
+    expect(main.className).toBe('jobPaymentLineMain')
+    expect([...main.children].map((c) => c.className)).toEqual(['amt', 'mid', 'jobPaymentLineMenu'])
+    const mid = main.children[1] as HTMLElement
+    expect(mid.querySelector('.words')?.textContent).toContain('check from Lober’s Construction Co')
+    expect(within(mid).getByText('no bill picked')).toBeTruthy()
+    expect(within(mid).getByTestId('edit-job-payment-bank-returned-p1')).toBeTruthy()
+    expect(within(mid).getByRole('button', { name: 'Unlink bank deposit and remove this payment line' })).toBeTruthy()
+  })
+})
