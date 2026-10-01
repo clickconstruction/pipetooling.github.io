@@ -142,9 +142,28 @@ Have a paper scan instead? The small **Have a scan or photo instead?** link unde
 
 {{gif:get-a-job-contract-signed-file.gif|From the Pipeline row, the chip opens the Contract modal. File a signed contract opens the sheet. The pasted Google Doc link turns into the green linked line, and Record as signed lights up}}
 
+## One signed paper for several jobs
+
+A builder often signs one paper that names several of their jobs. File it once and tick the jobs it names. It never covers every job they have.
+
+1. Open the bill with **View bill** or **Bill Customer**.
+2. On the contract strip, press {{button:outline|Add the contract}}.
+3. Paste the Google Drive link. Have a scan instead? Press **Have a scan or photo instead?** and pick the file.
+4. Under **Which jobs does it cover?** this job is already ticked. Tick each other job the paper names. Paid jobs sit behind **Show their paid jobs**.
+5. Check **Signed by** and **Signed on**. A blank date files it as signed today.
+6. Press the green button. It counts the jobs, as in {{button:green|File for 3 jobs}}.
+
+Nothing is sent to the customer. Each ticked job reads {{chip:green|✍ On file · Google Doc}}. The strip on each one names the jobs the paper covers.
+
+:::example A paper on file for their other jobs
+Open the bill of a job the paper does not name yet. The strip says *A signed paper on file covers jobs 251 and 825. Does it name this job too?* Press **Open ↗** to read the paper. If it names this job, press **Add this job to it**. Nothing is added by itself.
+:::
+
+The customer's page has an **Agreements** card. It lists each signed paper with the jobs it covers. **Change the jobs…** ticks jobs on or off. **Take it off…** removes the paper from all its jobs. Under the papers is a list of their open jobs with no agreement.
+
 ## Where else it shows
 
-- **Bill Customer** and **View bill**: a strip at the top says whether an agreement is behind the bill. {{button:blue|Send contract}} or {{button:outline|View record}} sits right there. Billing is when the office most often notices a missing contract.
+- **Bill Customer** and **View bill**: a strip at the top says whether an agreement is behind the bill. With nothing on file it offers {{button:outline|Add the contract}} and {{button:blue|Send one to sign}}. A signed job shows {{button:outline|View record}} instead. Billing is when the office most often notices a missing contract.
 - **Job window → Edit**: a *Contract* row under the customer block.
 - **Documents → Jobs**: sent, signed and voided contracts list under each job. Click a signed one to open the Contract window on that record. Click an unsigned one to preview it.
 

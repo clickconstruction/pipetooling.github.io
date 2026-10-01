@@ -16,6 +16,10 @@ import { useJobContractCoverage } from '../../hooks/useJobContractCoverage'
 import { jobContractChipLabel, jobContractChipTitle } from '../../lib/jobs/jobContractCoverage'
 import { JobContractChip } from './JobContractChip'
 import JobContractModal from './JobContractModal'
+import AddJobContractSheet from './AddJobContractSheet'
+import JobContractSiblingOffer from './JobContractSiblingOffer'
+import { useJobContractPapers } from '../../hooks/useJobContractPapers'
+import { contractCoversLine, jobNumberLabel, siblingPaperOffers, streetOf } from '../../lib/jobs/jobContractCovers'
 
 const btn: React.CSSProperties = {
   padding: '0.25rem 0.6rem',
@@ -47,6 +51,10 @@ export default function JobContractStrip({
   /** The contract field (refresh, to-dos/contract-sweep-refresh): a customer who already has a contract with us — paste where it lives in Drive. */
   const [link, setLink] = useState('')
   const [filingLink, setFilingLink] = useState(false)
+  /** v2.4301: Add the contract — file a signed paper for this job and any other job of theirs it names. */
+  const [sheetOpen, setSheetOpen] = useState(false)
+  const papersOn = variant !== 'inline' && job != null && coverage != null
+  const { papers, numById, reload: reloadPapers } = useJobContractPapers([job?.customer_id, job?.gc_customer_id], papersOn)
   if (!job || coverage == null) return null
 
   const signer = (job.customer_name ?? '').trim() || (job.gcCustomer?.name ?? '').trim()
@@ -107,9 +115,14 @@ export default function JobContractStrip({
           ) : null}
         </span>
       ) : null}
+      {(coverage.kind === 'none' || coverage.kind === 'draft') && variant !== 'inline' ? (
+        <button type="button" style={{ ...btn, borderColor: 'var(--text-link)', color: 'var(--text-link)' }} onClick={() => setSheetOpen(true)} data-testid="contract-add-button">
+          Add the contract
+        </button>
+      ) : null}
       {coverage.kind === 'none' || coverage.kind === 'draft' ? (
         <button type="button" style={quiet ? btn : { ...btn, background: 'var(--text-link)', borderColor: 'var(--text-link)', color: 'white' }} onClick={() => setModalOpen(true)}>
-          Send contract
+          {variant === 'inline' ? 'Send contract' : 'Send one to sign'}
         </button>
       ) : coverage.kind === 'sent' ? (
         <button type="button" style={btn} onClick={() => setModalOpen(true)}>
@@ -130,27 +143,73 @@ export default function JobContractStrip({
         onChanged={() => void reload()}
         coverage={coverage}
       />
+      {sheetOpen ? (
+        <AddJobContractSheet
+          open
+          mode="add"
+          onClose={() => setSheetOpen(false)}
+          onDone={() => {
+            void reload()
+            void reloadPapers()
+          }}
+          anchorJob={{ id: job.id, num: jobNumberLabel(job), where: streetOf(job.job_address) }}
+          partyIds={[job.customer_id, job.gc_customer_id].filter((x): x is string => Boolean(x))}
+          signerName={signer}
+          subtitle={`Job ${jobNumberLabel(job)}${signer ? ` · ${signer}${!(job.customer_name ?? '').trim() && job.gcCustomer?.name ? ' is the GC on this job' : ''}` : ''}`}
+        />
+      ) : null}
     </>
   )
   if (variant === 'inline') return <span style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>{controls}</span>
+  // v2.4301: a paper filed for several jobs names them; a job with nothing on file hears of the paper its sibling jobs share.
+  const myPaper = coverage.kind === 'signed' && coverage.source === 'paper' ? papers.find((pp) => pp.jobIds.includes(job.id)) : undefined
+  const coversLine = myPaper ? contractCoversLine(myPaper.jobIds.map((id) => numById.get(id) ?? '')) : null
+  const offers = coverage.kind === 'none' || coverage.kind === 'draft' ? siblingPaperOffers(papers, job.id) : []
+  const siblingOffer = (
+    <JobContractSiblingOffer
+      jobId={job.id}
+      offers={offers}
+      numById={numById}
+      onAdded={() => {
+        void reload()
+        void reloadPapers()
+      }}
+    />
+  )
   if (variant === 'row') {
     return (
       <div className="billPaperworkRow" title={jobContractChipTitle(coverage)} data-testid="paperwork-contract-row">
         <span className="billPaperworkLabel">Contract</span>
         <span style={{ minWidth: 0, fontWeight: coverage.kind === 'none' ? 400 : 600 }}>{coverage.kind === 'none' ? 'No signed agreement on file' : label}</span>
         <span className="billPaperworkControls">{controls}</span>
+        {coversLine ? (
+          <span className="billPaperworkUnder" style={{ fontSize: '0.75rem', color: 'var(--text-green-800)' }} data-testid="contract-covers-line">
+            {coversLine}
+          </span>
+        ) : null}
+        {offers.length > 0 ? <div className="billPaperworkUnder">{siblingOffer}</div> : null}
       </div>
     )
   }
   const tone = coverage.kind === 'signed' ? 'var(--bg-green-tint)' : coverage.kind === 'sent' ? 'var(--bg-amber-tint)' : 'var(--bg-subtle)'
   return (
-    <div
-      title={jobContractChipTitle(coverage)}
-      style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', padding: '0.45rem 0.7rem', borderRadius: 8, background: tone, border: '1px solid var(--border)', marginBottom: '0.75rem', fontSize: '0.8rem' }}
-    >
-      <span style={{ color: 'var(--text-muted)' }}>Contract:</span>
-      <span style={{ flex: 1, minWidth: 0, fontWeight: 600 }}>{coverage.kind === 'none' ? 'No signed agreement on file for this job' : label}</span>
-      {controls}
+    <div style={{ marginBottom: '0.75rem' }}>
+      <div
+        title={jobContractChipTitle(coverage)}
+        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', padding: '0.45rem 0.7rem', borderRadius: 8, background: tone, border: '1px solid var(--border)', fontSize: '0.8rem' }}
+      >
+        <span style={{ color: 'var(--text-muted)' }}>Contract:</span>
+        <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <span style={{ fontWeight: 600 }}>{coverage.kind === 'none' ? 'Nothing on file for this job' : label}</span>
+          {coversLine ? (
+            <span style={{ fontSize: '0.74rem', color: 'var(--text-green-800)' }} data-testid="contract-covers-line">
+              {coversLine}
+            </span>
+          ) : null}
+        </span>
+        {controls}
+      </div>
+      {siblingOffer}
     </div>
   )
 }
