@@ -187,7 +187,7 @@ export default function LienReleaseModal({
   const [signOpen, setSignOpen] = useState(false)
   // True once the user actually edits — mere open/close never mints a draft.
   const userTouchedRef = useRef(false)
-  /** v2.4285: the signer lines follow the leader picked (and Settings → Invoices) until someone types in them. */
+  /** v2.4285: the signer lines follow the leader picked (and Settings → Jobs & billing) until someone types in them. */
   const signerTouchedRef = useRef(false)
   // Resumed drafts keep their saved fields — the prefill rebuild stays off.
   const hydratedDraftRef = useRef(false)
@@ -240,7 +240,7 @@ export default function LienReleaseModal({
           .map((u) => ({ id: u.id, name: (u.notes?.trim() || u.name?.trim() || 'the leader').replace(/,.*$/, '') }))
           .sort((a, b) => (a.id === job.master_user_id ? -1 : b.id === job.master_user_id ? 1 : a.name.localeCompare(b.name)))
         setMasters(rows)
-        // v2.4285: the company's signer (Settings → Invoices) is the default; the job's master, then anyone, after.
+        // v2.4285: the company's signer (Settings → Jobs & billing) is the default; the job's master, then anyone, after.
         const companySigner = (getPhysicalInvoiceIssuerDraft().signerName ?? '').trim().toLowerCase()
         const byCompany = companySigner ? rows.find((r) => r.name.trim().toLowerCase() === companySigner)?.id : undefined
         setPresentSignerId((cur) => cur ?? byCompany ?? job.master_user_id ?? rows[0]?.id ?? null)
@@ -459,7 +459,7 @@ export default function LienReleaseModal({
     if (hydratedDraftRef.current) return
     setFields((prev) => {
       // v2.4285: the signer of record is the leader picked under Signed by the leader — never the
-      // person at the keyboard — else the company's signer from Settings → Invoices, else the session's
+      // person at the keyboard — else the company's signer from Settings → Jobs & billing, else the session's
       // name; his title rides along when the name is the company signer's.
       const companySigner = (issuer?.signerName ?? '').trim()
       const leaderName = (presentSigner?.name ?? '').trim() || companySigner || signerNameFallback
