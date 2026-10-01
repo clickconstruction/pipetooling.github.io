@@ -566,6 +566,123 @@ export function JobFormInvoiceList({
         const convertElig = !isDraft && !inv.stripe_invoice_id && inv.external_send_channel !== 'stripe' && inv.status === 'billed' ? convertToStripeEligibility(inv, payments, editing) : null
         const menuOpen = menuFor === inv.id
         const menuId = `invoice-menu-${inv.id}`
+        const moreMenu = (
+          <span style={{ position: 'relative', display: 'inline-block' }} data-inv-menu>
+            <button
+              type="button"
+              className="jobInvoiceMore"
+              data-testid="invoice-row-menu"
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              aria-controls={menuOpen ? menuId : undefined}
+              aria-label={`More for the $${formatCurrency(row.amount)} ${isDraft ? 'draft' : 'bill'}`}
+              onClick={() => setMenuFor((prev) => (prev === inv.id ? null : inv.id))}
+            >
+              ⋯
+            </button>
+            {menuOpen ? (
+              <div role="menu" id={menuId} ref={menuRef} style={menuPanel}>
+                <div style={menuSection}>This bill</div>
+                {!isDraft && !isPaid && onRecordPayment ? (
+                  <button type="button" role="menuitem" onClick={() => { setMenuFor(null); onRecordPayment(inv) }} title="Record a cash or check payment on this bill" style={menuItem({})}>
+                    Record payment{menuSub('cash, check')}
+                  </button>
+                ) : null}
+                {isDraft && onAddDiscountLine ? (
+                  <button type="button" role="menuitem" onClick={() => { setMenuFor(null); onAddDiscountLine() }} title="Add a discount row in ① Line Items — it prints on this and every bill that carries the work it applies to" style={menuItem({})}>
+                    Add discount{menuSub('line item')}
+                  </button>
+                ) : null}
+                {!isDraft && !isPaid && canApplyAgreedWriteDown ? (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    disabled={writeDownRoom <= 0.005}
+                    aria-disabled={writeDownRoom <= 0.005}
+                    title={writeDownRoom <= 0.005 ? 'No room for a discount (billed amount equals payments on this line).' : 'Lower billed amount (agreed discount; Stripe uses a credit note).'}
+                    onClick={() => { setMenuFor(null); setAgreedWriteDownInvoice(inv) }}
+                    style={menuItem({ disabled: writeDownRoom <= 0.005 })}
+                  >
+                    Add discount{menuSub('credit note')}
+                  </button>
+                ) : null}
+                {convertElig ? (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    disabled={!convertElig.ok}
+                    title={convertElig.ok ? 'Create the hosted Stripe invoice for this bill — pay link, card payment. Billed date stays put; nothing is emailed.' : convertElig.reason}
+                    onClick={() => { setMenuFor(null); setConvertInvoice(inv) }}
+                    style={menuItem({ disabled: !convertElig.ok })}
+                  >
+                    ⚡ Make Stripe bill{menuSub('pay link')}
+                  </button>
+                ) : null}
+                <button type="button" role="menuitem" onClick={() => { setMenuFor(null); goToPipeline(inv, isDraft) }} title="Go to this invoice row on Pipeline" style={menuItem({})}>
+                  See in Pipeline
+                </button>
+                {hasDetailLine ? (
+                  <button
+                    type="button"
+                    role="menuitemcheckbox"
+                    aria-checked={detailOpen}
+                    onClick={() => {
+                      setMenuFor(null)
+                      setDetailOpenFor((prev) => {
+                        const next = new Set(prev)
+                        if (next.has(inv.id)) next.delete(inv.id)
+                        else next.add(inv.id)
+                        return next
+                      })
+                    }}
+                    style={menuItem({ on: detailOpen })}
+                  >
+                    {detailOpen ? 'Hide ' : 'Show '}{isDraft ? 'memo' : noteLine ? 'note' : 'memo & footer'}
+                  </button>
+                ) : null}
+
+                {shareOptions.length > 0 ? (
+                  <>
+                    <div style={{ ...menuSection, borderTop: '1px solid var(--border)', marginTop: 2, paddingTop: '0.4rem' }}>Who else sees this bill</div>
+                    {shareOptions.map((opt) => {
+                      const label = opt === 'gc' ? (gcName ?? 'The GC') : editing.customer_name?.trim() || 'The job customer'
+                      const on = shownTo === opt
+                      return (
+                        <button key={opt} type="button" role="menuitemradio" aria-checked={on} data-testid="invoice-shown-to-option" disabled={shownToSaving === inv.id} onClick={() => { setMenuFor(null); void pickShownTo(inv, opt) }} style={menuItem({ on })}>
+                          <span style={{ fontWeight: 600 }}>{on ? '✓ ' : ''}Shown on {label}’s statement</span>
+                          {menuSub(opt === 'gc' ? 'the GC, not billed' : 'the customer, not billed')}
+                        </button>
+                      )
+                    })}
+                    <button type="button" role="menuitemradio" aria-checked={shownTo == null} data-testid="invoice-shown-to-option" disabled={shownToSaving === inv.id} onClick={() => { setMenuFor(null); void pickShownTo(inv, null) }} style={menuItem({ on: shownTo == null })}>
+                      <span style={{ fontWeight: 600 }}>{shownTo == null ? '✓ ' : ''}Only the payer</span>
+                      {menuSub('hide it from their statement')}
+                    </button>
+                    <div style={{ color: 'var(--text-faint)', fontSize: '0.7rem', padding: '0.2rem 0.5rem 0.3rem' }}>Changes their portal on its next open. Never changes who pays or who was emailed.</div>
+                  </>
+                ) : null}
+
+                {isDraft && !inv.is_primary_rtb_bundle ? (
+                  <button type="button" role="menuitem" aria-label={`Delete draft invoice for $${formatCurrency(row.amount)}`} onClick={() => { setMenuFor(null); setConfirmDeleteInvoice(inv) }} style={menuItem({ danger: true, top: true })}>
+                    Delete draft
+                  </button>
+                ) : null}
+                {!isDraft && !isPaid ? (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    disabled={sendBackBlocked}
+                    title={sendBackBlocked ? 'Payments are applied to this bill — unlink them first (under this bill).' : 'Remove this bill and return its amount to unbilled. A Stripe payment link is voided so the customer cannot pay it.'}
+                    onClick={() => { setMenuFor(null); setSendBackAcknowledged(false); setConfirmSendBackInvoice(inv) }}
+                    style={menuItem({ danger: true, top: true, disabled: sendBackBlocked })}
+                  >
+                    Send back{menuSub(`unbills $${formatCurrency(row.amount)}`)}
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+          </span>
+        )
         return (
           <div key={inv.id} className="jobInvoiceRow" data-testid="invoice-row" data-state={row.state}>
             <span style={chipStyle(row.state)}>{isDraft ? 'Draft' : isPaid ? 'Paid' : 'Billed'}</span>
@@ -648,156 +765,7 @@ export function JobFormInvoiceList({
               </button>
             ) : null}
 
-            {!isDraft && !isPaid && onRecordPayment ? (
-              <button
-                type="button"
-                className="jobInvoiceRecord"
-                data-testid="invoice-record-payment"
-                onClick={() => onRecordPayment(inv)}
-                title={hasStripeShare ? 'Record a cash or check payment on this bill. Stripe marks the bill paid too, so the pay link stops working.' : 'Record a cash or check payment on this bill.'}
-              >
-                Record payment
-              </button>
-            ) : null}
-            {!isDraft && showWaiverCells
-              ? (() => {
-                  const cell = lienWaiverCellForBill(waiverRows, inv.id, billSettled(inv, payments))
-                  const chipTone = (t: 'green' | 'amber' | 'grey'): CSSProperties =>
-                    t === 'green'
-                      ? { background: 'var(--bg-green-tint)', color: 'var(--text-green-700)' }
-                      : t === 'amber'
-                        ? { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' }
-                        : { background: 'var(--bg-subtle)', color: 'var(--text-muted)', border: '1px solid var(--border)' }
-                  const door = cell.next === 'add_conditional' ? 'Add waiver ›' : cell.next === 'add_unconditional' ? 'Add the unconditional ›' : cell.next === 'sign' ? 'Sign it ›' : cell.next === 'send' ? 'Send it ›' : 'Waivers ›'
-                  return (
-                    <span className="jobInvoiceWaivers" data-testid="invoice-waiver-cell" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', flexWrap: 'wrap' }}>
-                      {cell.chips.map((c) => (
-                        <span key={c.half} title={`Lien waiver · ${c.text}`} style={{ display: 'inline-block', padding: '0.05rem 0.45rem', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, whiteSpace: 'nowrap', ...chipTone(c.tone) }}>
-                          {c.text}
-                        </span>
-                      ))}
-                      <button type="button" onClick={() => setWaiverFor(inv)} title="Open the Release of Lien window on this bill — pick the form, the leader signs, send it to the GC or download the PDF" style={{ ...btnGray, fontWeight: 600, color: cell.next ? 'var(--text-amber-800)' : undefined }} data-testid="invoice-waiver-door">
-                        {door}
-                      </button>
-                    </span>
-                  )
-                })()
-              : null}
-            <span style={{ position: 'relative', display: 'inline-block' }} data-inv-menu>
-              <button
-                type="button"
-                className="jobInvoiceMore"
-                data-testid="invoice-row-menu"
-                aria-haspopup="menu"
-                aria-expanded={menuOpen}
-                aria-controls={menuOpen ? menuId : undefined}
-                aria-label={`More for the $${formatCurrency(row.amount)} ${isDraft ? 'draft' : 'bill'}`}
-                onClick={() => setMenuFor((prev) => (prev === inv.id ? null : inv.id))}
-              >
-                ⋯
-              </button>
-              {menuOpen ? (
-                <div role="menu" id={menuId} ref={menuRef} style={menuPanel}>
-                  <div style={menuSection}>This bill</div>
-                  {!isDraft && !isPaid && onRecordPayment ? (
-                    <button type="button" role="menuitem" onClick={() => { setMenuFor(null); onRecordPayment(inv) }} title="Record a cash or check payment on this bill" style={menuItem({})}>
-                      Record payment{menuSub('cash, check')}
-                    </button>
-                  ) : null}
-                  {isDraft && onAddDiscountLine ? (
-                    <button type="button" role="menuitem" onClick={() => { setMenuFor(null); onAddDiscountLine() }} title="Add a discount row in ① Line Items — it prints on this and every bill that carries the work it applies to" style={menuItem({})}>
-                      Add discount{menuSub('line item')}
-                    </button>
-                  ) : null}
-                  {!isDraft && !isPaid && canApplyAgreedWriteDown ? (
-                    <button
-                      type="button"
-                      role="menuitem"
-                      disabled={writeDownRoom <= 0.005}
-                      aria-disabled={writeDownRoom <= 0.005}
-                      title={writeDownRoom <= 0.005 ? 'No room for a discount (billed amount equals payments on this line).' : 'Lower billed amount (agreed discount; Stripe uses a credit note).'}
-                      onClick={() => { setMenuFor(null); setAgreedWriteDownInvoice(inv) }}
-                      style={menuItem({ disabled: writeDownRoom <= 0.005 })}
-                    >
-                      Add discount{menuSub('credit note')}
-                    </button>
-                  ) : null}
-                  {convertElig ? (
-                    <button
-                      type="button"
-                      role="menuitem"
-                      disabled={!convertElig.ok}
-                      title={convertElig.ok ? 'Create the hosted Stripe invoice for this bill — pay link, card payment. Billed date stays put; nothing is emailed.' : convertElig.reason}
-                      onClick={() => { setMenuFor(null); setConvertInvoice(inv) }}
-                      style={menuItem({ disabled: !convertElig.ok })}
-                    >
-                      ⚡ Make Stripe bill{menuSub('pay link')}
-                    </button>
-                  ) : null}
-                  <button type="button" role="menuitem" onClick={() => { setMenuFor(null); goToPipeline(inv, isDraft) }} title="Go to this invoice row on Pipeline" style={menuItem({})}>
-                    See in Pipeline
-                  </button>
-                  {hasDetailLine ? (
-                    <button
-                      type="button"
-                      role="menuitemcheckbox"
-                      aria-checked={detailOpen}
-                      onClick={() => {
-                        setMenuFor(null)
-                        setDetailOpenFor((prev) => {
-                          const next = new Set(prev)
-                          if (next.has(inv.id)) next.delete(inv.id)
-                          else next.add(inv.id)
-                          return next
-                        })
-                      }}
-                      style={menuItem({ on: detailOpen })}
-                    >
-                      {detailOpen ? 'Hide ' : 'Show '}{isDraft ? 'memo' : noteLine ? 'note' : 'memo & footer'}
-                    </button>
-                  ) : null}
-
-                  {shareOptions.length > 0 ? (
-                    <>
-                      <div style={{ ...menuSection, borderTop: '1px solid var(--border)', marginTop: 2, paddingTop: '0.4rem' }}>Who else sees this bill</div>
-                      {shareOptions.map((opt) => {
-                        const label = opt === 'gc' ? (gcName ?? 'The GC') : editing.customer_name?.trim() || 'The job customer'
-                        const on = shownTo === opt
-                        return (
-                          <button key={opt} type="button" role="menuitemradio" aria-checked={on} data-testid="invoice-shown-to-option" disabled={shownToSaving === inv.id} onClick={() => { setMenuFor(null); void pickShownTo(inv, opt) }} style={menuItem({ on })}>
-                            <span style={{ fontWeight: 600 }}>{on ? '✓ ' : ''}Shown on {label}’s statement</span>
-                            {menuSub(opt === 'gc' ? 'the GC, not billed' : 'the customer, not billed')}
-                          </button>
-                        )
-                      })}
-                      <button type="button" role="menuitemradio" aria-checked={shownTo == null} data-testid="invoice-shown-to-option" disabled={shownToSaving === inv.id} onClick={() => { setMenuFor(null); void pickShownTo(inv, null) }} style={menuItem({ on: shownTo == null })}>
-                        <span style={{ fontWeight: 600 }}>{shownTo == null ? '✓ ' : ''}Only the payer</span>
-                        {menuSub('hide it from their statement')}
-                      </button>
-                      <div style={{ color: 'var(--text-faint)', fontSize: '0.7rem', padding: '0.2rem 0.5rem 0.3rem' }}>Changes their portal on its next open. Never changes who pays or who was emailed.</div>
-                    </>
-                  ) : null}
-
-                  {isDraft && !inv.is_primary_rtb_bundle ? (
-                    <button type="button" role="menuitem" aria-label={`Delete draft invoice for $${formatCurrency(row.amount)}`} onClick={() => { setMenuFor(null); setConfirmDeleteInvoice(inv) }} style={menuItem({ danger: true, top: true })}>
-                      Delete draft
-                    </button>
-                  ) : null}
-                  {!isDraft && !isPaid ? (
-                    <button
-                      type="button"
-                      role="menuitem"
-                      disabled={sendBackBlocked}
-                      title={sendBackBlocked ? 'Payments are applied to this bill — unlink them first (under this bill).' : 'Remove this bill and return its amount to unbilled. A Stripe payment link is voided so the customer cannot pay it.'}
-                      onClick={() => { setMenuFor(null); setSendBackAcknowledged(false); setConfirmSendBackInvoice(inv) }}
-                      style={menuItem({ danger: true, top: true, disabled: sendBackBlocked })}
-                    >
-                      Send back{menuSub(`unbills $${formatCurrency(row.amount)}`)}
-                    </button>
-                  ) : null}
-                </div>
-              ) : null}
-            </span>
+            {!(!isDraft && showWaiverCells) ? moreMenu : null}
 
             <div className="jobInvoiceWords">
               <span className="l1">
@@ -813,6 +781,44 @@ export function JobFormInvoiceList({
                 {row.promise ? <span className="said">{row.promise}</span> : null}
               </span>
             </div>
+            {/* v2.4309: Record payment sits at the end of the status words, and the waiver row (calm until a
+                waiver is under way) gets its own line held to the right, with the bill's ⋯ at its end. */}
+            {!isDraft && !isPaid && onRecordPayment ? (
+              <button
+                type="button"
+                className="jobInvoiceRecord"
+                data-testid="invoice-record-payment"
+                onClick={() => onRecordPayment(inv)}
+                title={hasStripeShare ? 'Record a cash or check payment on this bill. Stripe marks the bill paid too, so the pay link stops working.' : 'Record a cash or check payment on this bill.'}
+              >
+                Record payment
+              </button>
+            ) : null}
+            {!isDraft && showWaiverCells
+              ? (() => {
+                  const cell = lienWaiverCellForBill(waiverRows, inv.id, billSettled(inv, payments), { calm: true })
+                  const chipTone = (t: 'green' | 'amber' | 'grey'): CSSProperties =>
+                    t === 'green'
+                      ? { background: 'var(--bg-green-tint)', color: 'var(--text-green-700)' }
+                      : t === 'amber'
+                        ? { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' }
+                        : { background: 'var(--bg-subtle)', color: 'var(--text-muted)', border: '1px solid var(--border)' }
+                  const door = cell.next === 'add_conditional' ? 'Add waiver ›' : cell.next === 'add_unconditional' ? 'Add the unconditional ›' : cell.next === 'sign' ? 'Sign it ›' : cell.next === 'send' ? 'Send it ›' : 'Waivers ›'
+                  return (
+                    <span className="jobInvoiceWaivers" data-testid="invoice-waiver-cell">
+                      {cell.chips.map((c) => (
+                        <span key={c.half} title={`Lien waiver · ${c.text}`} style={{ display: 'inline-block', padding: '0.05rem 0.45rem', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, whiteSpace: 'nowrap', ...chipTone(c.tone) }}>
+                          {c.text}
+                        </span>
+                      ))}
+                      <button type="button" className="jobInvoiceWaiverDoor" onClick={() => setWaiverFor(inv)} title="Open the Release of Lien window on this bill — pick the form, the leader signs, send it to the GC or download the PDF" style={{ ...btnGray, fontWeight: 600, color: cell.nextIsOwed ? 'var(--text-amber-800)' : undefined }} data-testid="invoice-waiver-door">
+                        {door}
+                      </button>
+                      {moreMenu}
+                    </span>
+                  )
+                })()
+              : null}
             {hasDetailLine && detailOpen ? (
               <div className="jobInvoiceDetail">
                 {noteLine ? (<div><b>Note: </b>{noteLine}</div>) : null}

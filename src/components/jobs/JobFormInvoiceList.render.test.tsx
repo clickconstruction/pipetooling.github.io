@@ -43,11 +43,12 @@ const payment = (invoice_id: string | null, amount: number, paid_on: string | nu
   mercury_transaction_id: null,
 })
 
-function renderList(job: ReturnType<typeof makeJob>, payments: Payment[] = []) {
+function renderList(job: ReturnType<typeof makeJob>, payments: Payment[] = [], extra: { onRecordPayment?: (inv: unknown) => void } = {}) {
   return renderWithProviders(
     <JobFormInvoiceList
       editing={job}
       payments={payments}
+      onRecordPayment={extra.onRecordPayment}
       canApplyAgreedWriteDown={false}
       onClose={() => {}}
       onSavedRef={createRef<(() => void) | undefined>()}
@@ -244,18 +245,40 @@ describe('JobFormInvoiceList — the lien-waiver cell on a GC job (v2.4275)', ()
     )
     await settle()
     const cell = screen.getByTestId('invoice-waiver-cell')
-    expect(cell.textContent).toContain('Conditional · none — send it')
+    // v2.4309: calm until a waiver is under way — grey words, a plain door, the bill's ⋯ at the row's end.
+    expect(cell.textContent).toContain('Conditional · not added')
     expect(cell.textContent).toContain('Unconditional · when paid')
     const door = within(cell).getByTestId('invoice-waiver-door')
     expect(door.textContent).toBe('Add waiver ›')
+    expect(door.style.color).toBe('')
+    expect(within(cell).getByTestId('invoice-row-menu')).toBeTruthy()
     fireEvent.click(door)
     await settle()
     expect(await screen.findByRole('dialog', { name: 'Release of Lien' })).toBeTruthy()
   })
-  it('a direct job with no releases shows no waiver cell', async () => {
+  it('a direct job with no releases shows no waiver cell, and its ⋯ stays on the bill row', async () => {
     renderList(makeJob({ customer_name: 'Maria Delgado', invoices: [makeInvoice({ id: 'inv-open', status: 'billed', amount: 9800, is_primary_rtb_bundle: false, sent_to_customer_at: '2026-09-04T15:00:00Z', billed_at: '2026-09-04T15:00:00Z' })] }))
     await settle()
     expect(screen.queryByTestId('invoice-waiver-cell')).toBeNull()
+    expect(within(screen.getByTestId('invoice-row')).getByTestId('invoice-row-menu')).toBeTruthy()
+  })
+})
+
+describe('JobFormInvoiceList — Record payment at the end of the status words (v2.4309)', () => {
+  it('an open bill offers Record payment after who it went to and what is open', async () => {
+    const onRecordPayment = vi.fn()
+    renderList(
+      makeJob({ customer_name: 'Maria Delgado', invoices: [makeInvoice({ id: 'inv-open', status: 'billed', amount: 9800, is_primary_rtb_bundle: false, sent_to_customer_at: '2026-09-04T15:00:00Z', billed_at: '2026-09-04T15:00:00Z' })] }),
+      [],
+      { onRecordPayment },
+    )
+    await settle()
+    const row = screen.getByTestId('invoice-row')
+    const words = row.querySelector('.jobInvoiceWords') as HTMLElement
+    const record = within(row).getByTestId('invoice-record-payment')
+    expect(words.compareDocumentPosition(record) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    fireEvent.click(record)
+    expect(onRecordPayment).toHaveBeenCalledTimes(1)
   })
 })
 

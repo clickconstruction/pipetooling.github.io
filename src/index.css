@@ -3485,6 +3485,47 @@ body.my-time-boundary-dragging {
   border-radius: 4px;
   cursor: pointer;
 }
+/* v2.4309: the bill's waiver row — its own line, held to the right, with the bill's ⋯ at its end.
+   Its chips stay grey until a waiver on the bill is under way (`lienWaiverCellForBill` calm). */
+.jobInvoiceRow .jobInvoiceWaivers {
+  flex: 1 1 100%;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.3rem;
+}
+@container job-invoice-ledger (min-width: 421px) {
+  /* Wide: who it went to and what is open read as one line, and Record payment sits at its end. */
+  .jobInvoiceRow > .jobInvoiceWords {
+    flex: 1 1 14rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 0.625rem;
+  }
+  .jobInvoiceRow > .jobInvoiceWords .l1 {
+    display: inline;
+  }
+  .jobInvoiceRow .jobInvoiceRecord {
+    margin-left: auto;
+    align-self: center;
+  }
+}
+@media (pointer: coarse) {
+  /* A touch screen at the window's full width (an iPad) gets thumb-sized bill buttons too. */
+  .jobInvoiceRow .jobInvoiceRecord,
+  .jobInvoiceRow .jobInvoiceSend,
+  .jobInvoiceRow .jobInvoiceWaiverDoor,
+  .jobInvoiceLink,
+  .jobInvoiceChase button {
+    min-height: 44px;
+  }
+  .jobInvoiceMore {
+    width: 44px;
+    height: 44px;
+  }
+}
 .jobInvoiceSum {
   display: flex;
   justify-content: flex-end;
