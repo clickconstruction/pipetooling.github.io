@@ -49,6 +49,7 @@ import LienReleaseSignModal from './LienReleaseSignModal'
 import { LienWaiverFootPreview } from './LienWaiverFootPreview'
 import { MarkedWaiverAmount, WaiverCoveredNote, WaiverMathBox, WaiverPaidNote } from './LienWaiverAmountMath'
 import { LienReleaseStepRow } from './LienReleaseStepRow'
+import { MoneyTypingInput } from '../MoneyTypingInput'
 import { lienReleaseSteps } from '../../lib/jobs/lienReleaseSteps'
 import { lienWaiverAlreadyCovered, lienWaiverAmountMath, lienWaiverPaidUnwaived } from '../../lib/jobs/lienWaiverAmountMath'
 import {
@@ -1160,13 +1161,12 @@ export default function LienReleaseModal({
             <LienReleaseStepRow step={stepAt(3)} title={STEP_TITLES[2]!} say="The amount comes from the bills. The box shows how." nextIsCurrent={leadsInto(3)} summary={`${usd(Number.isFinite(amountNum) ? amountNum : 0)}${amountMath ? ` · ${amountMath.totalLabel.toLowerCase()}` : ''}`}>
               <label style={{ display: 'block', fontSize: '0.875rem', maxWidth: '14rem' }}>
                 <span style={{ display: 'block', fontWeight: 600, marginBottom: '0.2rem' }}>{FIELD_LABELS.amount}</span>
-                <input
-                  type="text"
-                  inputMode="decimal"
+                {/* v2.4334: commas while typing; the value kept stays plain ("17777.51"). */}
+                <MoneyTypingInput
                   value={fields.amount}
                   disabled={!editable}
-                  onChange={(e) => setField('amount', e.target.value)}
-                  style={{ width: '100%', boxSizing: 'border-box', padding: '0.45rem 0.55rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.875rem', fontFamily: 'inherit', opacity: editable ? 1 : 0.7 }}
+                  onChange={(v) => setField('amount', v)}
+                  style={{ width: '100%', boxSizing: 'border-box', padding: '0.45rem 0.55rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.875rem', fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums', opacity: editable ? 1 : 0.7 }}
                 />
               </label>
               <WaiverMathBox math={amountMath} typedAmount={fields.amount} editable={editable} onUseAmount={(n) => setField('amount', n.toFixed(2))} onHover={setAmountHot} onGoOn={() => setOverrides((prev) => new Set([...prev, 'early']))} />
