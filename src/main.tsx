@@ -6,7 +6,12 @@ import { AuthProvider } from './hooks/useAuth'
 import { tryClaimChunkRecoveryReload } from './lib/chunkLoadRecovery'
 import { hardReloadFromRoot } from './lib/hardReload'
 import { markInvitePendingFromHash, safeSessionStorage } from './lib/acceptInviteState'
+import { installModalBackdropGuard } from './lib/modalBackdropGuard'
 import './index.css'
+
+// A window closes on a click outside it only when the press and the release were both outside it:
+// a drag that starts inside (a signature off the pad's edge, a text selection) no longer closes it.
+installModalBackdropGuard()
 
 // A deploy replaces all hashed assets; when Vite's preload helper hits a stale-chunk 404
 // mid-navigation, reload once (guarded) for the fresh build instead of white-screening.

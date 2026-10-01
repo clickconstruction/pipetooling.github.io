@@ -195,6 +195,9 @@ CREATE FUNCTION create_project_with_template(...)
 ### Pure Logic Kernels
 Business logic is extracted into pure `.ts` modules in `src/lib/` with colocated vitest tests (`*.test.ts`) — kernels are the primary test pattern; components stay thin. Component render smokes (`*.render.test.tsx`, jsdom + `renderWithProviders` from `src/test/renderSmokeMocks.tsx`) cover wiring-level behavior; a smoke asserts on something the data load produces (`renderSettled(ui, { loaded })` / `settle()` in the harness), never on the line after `render()` or a container `findBy*`, and never widens a `waitFor` timeout to hide the race. ~2,055 test files (~420 of them render smokes).
 
+### Windows (modals)
+A window is a full-screen `position: fixed` backdrop that closes on `onClick` (not `onMouseDown`), holding a panel that stops the click (`onClick={(e) => e.stopPropagation()}`). [`modalBackdropGuard.ts`](../src/lib/modalBackdropGuard.ts), installed once in `main.tsx`, stops a backdrop click unless the press and the release were both on the backdrop, so a drag out of a window never closes it — no window needs its own drag guard (a backdrop under three quarters of the screen is not covered). A window drawn inside another window's backdrop but outside its panel stops its own backdrop click before closing, or a click outside it closes both.
+
 ### State Management
 - **Global**: React Context (Toast, ForceReload, modal openers, caches)
 - **Page-level**: `useState` / `useEffect`

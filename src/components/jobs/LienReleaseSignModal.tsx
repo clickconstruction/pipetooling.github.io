@@ -123,7 +123,12 @@ export default function LienReleaseSignModal({
       aria-modal="true"
       aria-label="Sign release of lien"
       style={{ position: 'fixed', inset: 0, zIndex: 1200, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
-      onClick={() => !submitting && onClose()}
+      onClick={(e) => {
+        // The pad is drawn inside the Release of Lien window's backdrop: a click outside the pad
+        // closes the pad only, not the window behind it (v2.4338).
+        e.stopPropagation()
+        if (!submitting) onClose()
+      }}
     >
       <div
         onClick={(e) => e.stopPropagation()}

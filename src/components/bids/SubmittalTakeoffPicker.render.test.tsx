@@ -99,4 +99,15 @@ describe('SubmittalTakeoffPicker', () => {
     expect(screen.getAllByTestId('takeoff-piece-run').map((r) => r.textContent)).toEqual(['Inside DWH1 & ET assembly SPACEX', 'On the takeoff'])
     expect(screen.getAllByTestId('takeoff-piece').map((c) => c.textContent)).toEqual(['RHEEM PROPH40-T2-RH400-SO', 'AMTROL ST-5 × 2', 'B&G 60B0B1001'])
   })
+
+  it('v2.4338 · a click outside When a row can split closes that window only, not the picker behind it', () => {
+    const onClose = vi.fn()
+    render(<SubmittalTakeoffPicker mode="build" revLabel="Rev 1" candidates={cands} onConfirm={() => {}} onClose={onClose} />)
+    fireEvent.click(screen.getByTestId('split-rule-link'))
+    const rule = screen.getByRole('dialog', { name: 'When a row can split' })
+    fireEvent.click(rule.parentElement!)
+    expect(screen.queryByRole('dialog', { name: 'When a row can split' })).toBeNull()
+    expect(onClose).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog', { name: 'Choose from the takeoff' })).toBeTruthy()
+  })
 })
