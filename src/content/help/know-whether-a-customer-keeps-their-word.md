@@ -62,6 +62,7 @@ Over time each customer builds a record. It holds promises made, how many were k
 **Under the chip on every Billed row.** A small line reads the customer's record without anyone filling anything in:
 
 - {{chip:gray|▂▅▃▇▂▁ Pays in 9–41d · keeps 3 of 7 · slips ~9d}} shows their record. The six bars are their last bills, days from bill to money. A bar is green at or under their usual. It is yellow up to half again. It is red beyond that. **Pays in 9–41d** is their real range over the last year. It comes from payments already recorded. So it is there from day one. **keeps 3 of 7** and **slips ~9d** appear once promises exist. They say how many promised dates they kept. They say how many days after their word the money usually lands. You hover for the sources.
+- {{chip:gray|2 checks came back · Apr}} joins the line when the bank sent back their checks this past year. It counts against whoever pays the bill, so a GC's bounced check counts against the GC. The same words sit on a new deposit from them in Accounts Receivable.
 - Office roles see the whole line. Primary sees the pay range only. A customer with fewer than two measured payments and no promises shows nothing. The row stays clean rather than pretending to a score.
 
 **In the Payment forecast.** A promised bill is filed by the promise plus that customer's usual slip. The row says "usually slips ~9d". A promise from a customer who runs nine days late lands in the week the money actually tends to arrive. The chip still shows the date they gave.

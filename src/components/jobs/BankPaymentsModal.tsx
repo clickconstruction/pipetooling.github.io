@@ -28,7 +28,7 @@ import { ArReturnCaseRow } from './ar/ArReturnCaseRow'
 import { ArReturnCasePane, type ArCaseCloseReason } from './ar/ArReturnCasePane'
 import SetPromisedPayDateModal from './SetPromisedPayDateModal'
 import { useArReturnCases } from '../../hooks/useArReturnCases'
-import { arCaseDay, arCaseMoney, arCaseThisReplaces, arReplacementFor, arReturnCaseView, type ArReturnCaseView } from '../../lib/jobs/arReturnCase'
+import { arCaseDay, arCaseMoney, arCaseThisReplaces, arPayerCameBackNote, arReplacementFor, arReturnCaseView, type ArReturnCaseView } from '../../lib/jobs/arReturnCase'
 import { ArHeaderMenu } from './ar/ArHeaderMenu'
 import { ModalFullScreenButton, useModalFullScreen } from '../ModalFullScreenToggle'
 import { ArDepositHeader } from './ar/ArDepositHeader'
@@ -2387,6 +2387,7 @@ export default function BankPaymentsModal({
                       active={c.mercury_transaction_id === selectedId}
                       state={rowStates.get(c.mercury_transaction_id) ?? 'hand'}
                       trail={trailsById.get(c.mercury_transaction_id) ?? null}
+                      cameBackNote={arDepositCameBack(c) ? null : arPayerCameBackNote(c.counterparty_name, returnCases.allCases, todayYmd, c.mercury_transaction_id)}
                       kindBadges={kindBadges}
                       markMode={arBankReturnedMarkMode}
                       canApply={canApply}

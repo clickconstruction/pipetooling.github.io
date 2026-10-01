@@ -111,6 +111,7 @@ export function ArDepositRow({
   active,
   state,
   trail = null,
+  cameBackNote = null,
   kindBadges,
   markMode,
   canApply,
@@ -123,6 +124,8 @@ export function ArDepositRow({
   state: ArDepositRowState
   /** v2.4277: where the deposit went; null while unknown or when nothing ever happened to it. */
   trail?: ArDepositTrail | null
+  /** v2.4328: "2 came back · Apr" — this payer's checks the bank sent back in the last year. */
+  cameBackNote?: string | null
   kindBadges: Record<string, MercuryKindBadge>
   markMode: boolean
   canApply: boolean
@@ -170,6 +173,11 @@ export function ArDepositRow({
           {snippet ? <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>“{snippet}”</span> : null}
         </div>
         {trail ? <ArDepositTrailLine trail={trail} /> : null}
+        {cameBackNote ? (
+          <div data-testid="ar-deposit-came-back-note" style={{ fontSize: '0.72rem', color: 'var(--text-amber-800)', marginTop: 3, fontWeight: 600 }}>
+            {cameBackNote}
+          </div>
+        ) : null}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
         <ArStateChip state={state} bankReturn={d.bankReturn ?? null} />

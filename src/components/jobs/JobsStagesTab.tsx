@@ -118,7 +118,7 @@ import { ManageJobPeopleModal } from './ManageJobPeopleModal'
 import { JobCalendarModal } from './JobCalendarModal'
 import { JobsStagesActivityExpandModal } from './JobsStagesActivityExpandModal'
 import NewReportModal from '../NewReportModal'
-import { calendarYmdInAppTzFromIso, companyWeekStartSundayContaining, getDefaultWeekRange } from '../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, companyWeekStartSundayContaining, getDefaultWeekRange, todayYmdInAppTz } from '../../utils/dateUtils'
 import { fetchStagesUpcomingScheduleForJobs, type StagesUpcomingAppointment } from '../../lib/stagesUpcomingSchedule'
 import { fetchStagesWeekSoFarForJobs, type StagesWeekSoFar } from '../../lib/stagesWorkedDays'
 import { stripBillParts, stripDistancePhrase, stripWeekStartYmd } from '../../lib/jobs/stagesScheduleStrip'
@@ -135,6 +135,8 @@ import { useForecastWorkMonths } from '../../hooks/useForecastWorkMonths'
 import PaymentChaseModal from './PaymentChaseModal'
 import { buildPaymentChaseQueue, summarizePaymentChase } from '../../lib/jobs/paymentChase'
 import { buildReliabilityLine } from '../../lib/jobs/paymentReliability'
+import { payerReturnsWords } from '../../lib/jobs/arReturnedCheckPayers'
+import { useArReturnedCheckPayers } from '../../hooks/useArReturnedCheckPayers'
 import BilledReliabilityLine from './BilledReliabilityLine'
 import type { StagesMoneyMoveKey } from '../../lib/jobs/stagesMoneyMoveLink'
 import FixBillLinesModal from './FixBillLinesModal'
@@ -951,6 +953,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     chaseTouches,
     loadChaseTouches,
   } = useBilledMoneyData({ canSeeBilledExpectedPay, canMarkPromisedPay })
+  // v2.4328 (punch list #76): the payer's checks the bank sent back this past year, for the pay history.
+  const returnsByPayer = useArReturnedCheckPayers(canMarkPromisedPay)
   const [chaseModalOpen, setChaseModalOpen] = useState(false)
   // Call mode reads FULL rows (names + send evidence) from EVERY non-paid
   // scope — billed invoices hang on working/waiting jobs too (a part-billed
@@ -1027,6 +1031,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           line={buildReliabilityLine(
             row.job.customer_id ? billedPaySpeeds?.receipts[row.job.customer_id] : null,
             canMarkPromisedPay ? promiseRecordsByCustomer?.get(stageRowPayerCustomerId(row) ?? '') ?? null : null,
+            canMarkPromisedPay ? payerReturnsWords(returnsByPayer?.get(stageRowPayerCustomerId(row) ?? ''), todayYmdInAppTz()) : null,
           )}
           showBars={false}
         />
@@ -1040,7 +1045,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         />
       )
     },
-    [lienRunwayFor, promisedPayDates, billedPaySpeeds, canMarkPromisedPay, promiseRecordsByCustomer],
+    [lienRunwayFor, promisedPayDates, billedPaySpeeds, canMarkPromisedPay, promiseRecordsByCustomer, returnsByPayer],
   )
   /**
    * The Lien desk's Calendar rows (v2.4101, punch list #55): every billed job with the runway its Pipeline row carries.
