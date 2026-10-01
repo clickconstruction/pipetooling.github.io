@@ -147,7 +147,9 @@ export function RulingRunThroughSheet({ items, startIndex = 0, bidIdByNumber, bi
     if (freeText || !choices) inputRef.current?.focus()
   }, [freeText, choices, index])
 
-  const progress = useMemo(() => runThroughProgress(index, total, outcomes.length), [index, total, outcomes.length])
+  // v2.4295: the questions the run answers — a shared step counts every copy — so the header agrees with the button.
+  const questionCount = useMemo(() => list.reduce((n, i) => n + i.questionIds.length, 0), [list])
+  const progress = useMemo(() => runThroughProgress(index, total, outcomes.length, questionCount), [index, total, outcomes.length, questionCount])
 
   // 'asked on 2 bids · b496 → ours b490 · b495 → ours b489'
   const askedLine = useMemo(() => {

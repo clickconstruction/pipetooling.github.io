@@ -83,6 +83,12 @@ describe('pickOpenAudit (v2.4230) — the open card is the top of the queue', ()
   it('a card closed by hand (v2.4234, the phone panel) stays closed', () => {
     expect(pickOpenAudit({ triaged, current: null, picked: true, ready: true, workable })).toBeNull()
   })
+  it('where the card would cover the queue (v2.4295, the phone panel) nothing opens until a row is tapped', () => {
+    expect(pickOpenAudit({ triaged, current: null, picked: false, ready: true, workable, autoOpen: false })).toBeNull()
+    // A card left open by the wider layout closes; a tapped one holds.
+    expect(pickOpenAudit({ triaged, current: 'top', picked: false, ready: true, workable, autoOpen: false })).toBeNull()
+    expect(pickOpenAudit({ triaged, current: 'old', picked: true, ready: true, workable, autoOpen: false })).toBe('old')
+  })
   it('keeps a workable held card through a reload that resets readiness', () => {
     expect(pickOpenAudit({ triaged, current: 'old', picked: true, ready: false, workable })).toBe('old')
   })
