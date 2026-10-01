@@ -342,6 +342,15 @@ describe('the four forms as two questions (v2.4274)', () => {
     expect(lienWaiverWhy('unconditional_progress', 'Knight')).toContain('Texas forbids requiring it before payment')
     expect(lienWaiverWhy('conditional_final', '')).toContain('The last bill')
   })
+  it('v2.4330: a bill settled by a check that has not cleared says when it clears; the form stays the unconditional', () => {
+    const inv1 = bill({ id: 'a', amount: 4478, sequence_order: 0, status: 'billed' })
+    const inv2 = bill({ id: 'b', amount: 2000, sequence_order: 1, status: 'billed' })
+    const job = jobWith({ invoices: [inv1, inv2], payments: [{ invoice_id: 'a', amount: 4478, paid_on: '2026-10-01', payment_type: 'Check' }] as never, revenue: 6478 })
+    expect(pickLienWaiverForBill(job, inv1, '2026-10-02')).toMatchObject({ formType: 'unconditional_progress', settled: true, clearsYmd: '2026-10-08', facts: ['Settled · the check clears about Oct 8', 'Bill 1 of 2 · not the last'] })
+    expect(pickLienWaiverForBill(job, inv1, '2026-10-09')).toMatchObject({ clearsYmd: null, facts: ['Settled', 'Bill 1 of 2 · not the last'] })
+    const byCard = jobWith({ invoices: [inv1, inv2], payments: [{ invoice_id: 'a', amount: 4478, paid_on: '2026-10-01', payment_type: 'Card (external)' }] as never, revenue: 6478 })
+    expect(pickLienWaiverForBill(byCard, inv1, '2026-10-02').clearsYmd).toBeNull()
+  })
   it('picks the waiver from the bill: unsettled progress bill → conditional progress; the settled last bill → unconditional final', () => {
     const inv1 = bill({ id: 'a', amount: 11240, sequence_order: 0, status: 'billed' })
     const inv2 = bill({ id: 'b', amount: 15406, sequence_order: 1, status: 'billed' })

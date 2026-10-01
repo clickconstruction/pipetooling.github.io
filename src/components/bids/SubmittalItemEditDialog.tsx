@@ -23,7 +23,7 @@ import type { SubmittalPersonRow } from '../../lib/submittals/submittalRoom'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { ProductStatusChip } from './ProductStatusChip'
 import { SubmittalPartsEditor } from './SubmittalPartsEditor'
-import { assemblyLine, partLeadTextsBad, partToDraft, rollUpFromParts, type PartDraft, type PartLeadTexts, type SubmittalPartRow } from '../../lib/submittals/itemParts'
+import { assemblyLine, partLeadTextsBad, partToDraft, rollUpFromParts, splitPartLabel, type PartDraft, type PartLeadTexts, type SubmittalPartRow } from '../../lib/submittals/itemParts'
 import { SubmittalReviewerPicker } from './SubmittalReviewerPicker'
 
 /** A decision the office enters on a reviewer's behalf (stage 5b): an existing person on the room, or one not on it yet. */
@@ -33,6 +33,8 @@ export type EnteredChoice = {
   person: ReviewerChoice
   /** The day of their call (YYYY-MM-DD) when it is not today: an approval that came by email last week. */
   on?: string
+  /** On a row with parts (2026-10-01): the parts the call covers; absent = every part the GC sees. */
+  partIds?: string[]
 }
 
 const Z = 10060
@@ -102,10 +104,15 @@ export function SubmittalItemEditDialog({ item, sourceFiles, people = [], houses
   const today = todayYmdInAppTz()
   const [enterOn, setEnterOn] = useState(today)
   const [clearDecision, setClearDecision] = useState(false)
+  // 2026-10-01 · a call entered on a row with parts covers the parts ticked here; all the GC sees to start.
+  const gcParts = parts.filter((p) => p.on_submittal)
+  const [enterParts, setEnterParts] = useState<Set<string>>(() => new Set(gcParts.map((p) => p.id)))
+  const enterPartsNone = gcParts.length > 0 && enterParts.size === 0
   const enterNewBad = reviewerPickBad(enterPick)
   const enterOnProblem = enteredOnProblem(enterOn, today)
-  const enterBad = enterOpen && enterDecision != null && (enterNewBad || enterOnProblem != null)
-  const entered: EnteredChoice | null = enterOpen && enterDecision && !enterNewBad && !enterOnProblem ? { decision: enterDecision, note: enterNote, person: reviewerChoiceFrom(enterPick), ...(enterOn && enterOn !== today ? { on: enterOn } : {}) } : null
+  const enterBad = enterOpen && enterDecision != null && (enterNewBad || enterOnProblem != null || enterPartsNone)
+  const partsChosen = gcParts.length > 0 && enterParts.size < gcParts.length ? { partIds: gcParts.filter((p) => enterParts.has(p.id)).map((p) => p.id) } : {}
+  const entered: EnteredChoice | null = enterOpen && enterDecision && !enterNewBad && !enterOnProblem && !enterPartsNone ? { decision: enterDecision, note: enterNote, person: reviewerChoiceFrom(enterPick), ...(enterOn && enterOn !== today ? { on: enterOn } : {}), ...partsChosen } : null
   const [status, setStatus] = useState<ProductStatus>(asStatus(item.status))
   const [reasonKind, setReasonKind] = useState<ReasonKind | null>(asReason(item.reason_kind))
   const [note, setNote] = useState(item.reason_note ?? '')
@@ -286,6 +293,21 @@ export function SubmittalItemEditDialog({ item, sourceFiles, people = [], houses
                   </label>
                   <input aria-label="Their note" placeholder={enterDecision === 'approved' ? 'their note, if any' : 'what they need instead'} value={enterNote} onChange={(e) => setEnterNote(e.target.value)} style={{ padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, font: 'inherit', fontSize: '0.8125rem', flex: 1, minWidth: 180, background: 'var(--surface)', color: 'var(--text-strong)' }} />
                 </div>
+                {gcParts.length > 1 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }} data-testid="entered-call-parts">
+                    <span style={smallMuted}>The parts this call covers</span>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.75rem' }}>
+                      {gcParts.map((p) => (
+                        <label key={p.id} style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-base)' }}>
+                          <input type="checkbox" checked={enterParts.has(p.id)} onChange={(e) => setEnterParts((cur) => { const next = new Set(cur); if (e.target.checked) next.add(p.id); else next.delete(p.id); return next })} />
+                          {splitPartLabel(p.label).head}
+                          {p.review_decision ? <span style={smallMuted}> · now {DECISION_LABELS[p.review_decision as ReviewDecision] ?? p.review_decision}</span> : null}
+                        </label>
+                      ))}
+                    </div>
+                    {enterPartsNone ? <span style={{ ...smallMuted, color: 'var(--text-amber-700)' }}>Tick at least one part.</span> : null}
+                  </div>
+                ) : null}
                 {enterDecision && enterNewBad ? <span style={{ ...smallMuted, color: 'var(--text-amber-700)' }}>A name and an email, so the record says whose call it is.</span> : null}
                 {enterOnProblem ? <span style={{ ...smallMuted, color: 'var(--text-amber-700)' }}>{enterOnProblem}</span> : null}
               </>

@@ -39,3 +39,39 @@ describe('RoomRevisionBody (v2.4187, #62 Layer 2 PR 1)', () => {
     expect(screen.getByTestId('room-row').textContent).toMatch(/Approved · Dana Whitfield · Sep 17 · “fine”/)
   })
 })
+
+describe('RoomRowCard · the GC calls each part (2026-10-01)', () => {
+  const part = (id: string, head: string, words: string, decision: RoomRow['decision'] = null, carried = false) => ({ id, label: `${head} ${words}`.trim(), head, words, quantity: 1, decision, ...(carried ? { carried: true } : {}) })
+  const wc = row({
+    id: 'wc', tag: 'WC-1, WC-2', kind: 'proposed', proposed: 'x',
+    parts: [
+      part('bowl', 'TOTO CT728CUVG#01', 'TORNADO FLUSH WALL MOUNTED TOILET', { kind: 'approved', note: null, byName: 'Dana Whitfield', byPersonId: 'p1', at: '2026-10-01T15:00:00Z' }, true),
+      part('valve', 'TOTO TET2LBI31#SS', '1.28 GPF FLUSHOMETER VALVE'),
+      part('seat', 'TOTO SC534#01', 'COMMERCIAL TOILET SEAT'),
+    ],
+  })
+
+  it('each part has its own call; a part approved on the last revision says so and asks nothing; Approve all takes the open ones', () => {
+    const onDecide = vi.fn()
+    render(<RoomRowCard row={wc} onDecide={onDecide} />)
+    expect(screen.getAllByTestId('room-part')).toHaveLength(3)
+    expect(screen.getByTestId('room-parts-summary').textContent).toBe('3 parts · 1 approved · 2 to go')
+    expect(screen.getByTestId('room-part-call').textContent).toMatch(/Approved on the last revision · Dana Whitfield · Oct 1/)
+    expect(screen.queryByRole('group', { name: 'Your call on TOTO CT728CUVG#01' })).toBeNull()
+    fireEvent.click(screen.getByRole('group', { name: 'Your call on TOTO TET2LBI31#SS' }).querySelector('button[aria-pressed="false"]:nth-child(2)')!)
+    expect(onDecide).toHaveBeenLastCalledWith('revise', 'valve')
+    fireEvent.click(screen.getByTestId('room-approve-parts'))
+    expect(onDecide.mock.calls.slice(1)).toEqual([['approved', 'valve'], ['approved', 'seat']])
+    expect(screen.queryByRole('group', { name: 'Your call on WC-1, WC-2' })).toBeNull()
+  })
+
+  it('the calls not sent yet count in the summary and light their buttons; read only draws no buttons', () => {
+    const { unmount } = render(<RoomRowCard row={wc} onDecide={() => {}} localParts={{ valve: 'revise' }} />)
+    expect(screen.getByTestId('room-parts-summary').textContent).toBe('3 parts · 1 approved · 1 revise · 1 to go')
+    expect(screen.getByRole('group', { name: 'Your call on TOTO TET2LBI31#SS' }).querySelector('[aria-pressed="true"]')!.textContent).toBe('Revise')
+    expect(screen.queryByTestId('room-approve-parts')).toBeNull()
+    unmount()
+    render(<RoomRowCard row={wc} readOnly />)
+    expect(screen.queryByRole('group', { name: /Your call on/ })).toBeNull()
+  })
+})

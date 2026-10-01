@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { PDFDocument } from 'pdf-lib'
 
-import { buildCoverModel, buildSubmittalPackage, packageFileName, planPackage, type PackageRowInput } from './submittalPackage'
+import { buildCoverModel, buildSubmittalPackage, packageFileName, planPackage, type PackageRowInput, packageSheets } from './submittalPackage'
 
 const row = (o: Partial<PackageRowInput>): PackageRowInput => ({ tag: 'X-1', status: 'as_specified', specified: 'TOTO CT708UVG', submitted: 'TOTO CT708UVG#01', house: 'NWS', reason: '', leadTime: 'in stock', sheetFile: null, sheetPages: [], ...o })
 
@@ -92,5 +92,19 @@ describe('buildSubmittalPackage', () => {
 describe('packageFileName', () => {
   it('is safe for a download', () => {
     expect(packageFileName(3, 'B398 · ZZ Test: "phase 2"')).toBe('Submittal Rev 3 - B398 · ZZ Test phase 2.pdf')
+  })
+})
+
+describe('a row whose parts carry their own sheets (2026-10-01)', () => {
+  const row = (o: Partial<PackageRowInput>): PackageRowInput => ({ tag: 'LAV-2', status: 'proposed', specified: '', submitted: 'SLOAN 3873021\nTOTO TLE25006U1#CP', house: null, reason: '', leadTime: '', sheetFile: 0, sheetPages: [49, 50, 51, 52], ...o })
+  it('lays out each part’s pages in part order, stamped with the part, and the cover reads the whole run', () => {
+    const plan = planPackage([row({ partSheets: [{ fileIndex: 0, pages: [49, 50], title: 'SLOAN 3873021 VITREOUS CHINA' }, { fileIndex: 0, pages: [51, 52], title: 'TOTO TLE25006U1#CP SPOUT' }] }), row({ tag: 'HB-3', submitted: 'WOODFORD B74C', sheetFile: 1, sheetPages: [3] })], 1)
+    expect(plan.rows.map((r) => r.startPage)).toEqual([2, 6])
+    expect(plan.totalPages).toBe(6)
+    expect(packageSheets(plan).map((s) => [s.tag, s.title, s.fileIndex, s.pages])).toEqual([
+      ['LAV-2', 'SLOAN 3873021 VITREOUS CHINA', 0, [49, 50]],
+      ['LAV-2', 'TOTO TLE25006U1#CP SPOUT', 0, [51, 52]],
+      ['HB-3', 'WOODFORD B74C', 1, [3]],
+    ])
   })
 })

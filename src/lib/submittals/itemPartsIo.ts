@@ -6,6 +6,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { fetchAllRowsChunkedIn } from '../supabasePaging'
 import { diffPartDrafts, rollUpFromParts, type PartDraft, type SubmittalPartInsert, type SubmittalPartRow } from './itemParts'
+import { rollUpPartDecisions } from '../../../supabase/functions/_shared/submittalRoomPayload'
 
 type Page<T> = PromiseLike<{ data: T[] | null; error: { message: string } | null }>
 
@@ -24,10 +25,26 @@ export async function loadItemParts(db: SupabaseClient, itemIds: ReadonlyArray<s
   }
 }
 
-/** Insert parts in batches of 200. */
+/**
+ * Rows with the same fields, in order, so each batch sends one shape. A batch insert fills a field
+ * one row leaves out with NULL, not the column's default: a split's copies (no procurement key)
+ * batched with the carried part (its key) failed on procure_key NOT NULL.
+ */
+export function partInsertBatches(rows: ReadonlyArray<SubmittalPartInsert>, size = 200): SubmittalPartInsert[][] {
+  const byShape = new Map<string, SubmittalPartInsert[]>()
+  for (const r of rows) {
+    const shape = Object.keys(r).filter((k) => r[k as keyof SubmittalPartInsert] !== undefined).sort().join(',')
+    byShape.set(shape, [...(byShape.get(shape) ?? []), r])
+  }
+  const out: SubmittalPartInsert[][] = []
+  for (const group of byShape.values()) for (let i = 0; i < group.length; i += size) out.push(group.slice(i, i + size))
+  return out
+}
+
+/** Insert parts, one shape per batch, 200 at a time. */
 export async function insertItemParts(db: SupabaseClient, rows: ReadonlyArray<SubmittalPartInsert>): Promise<void> {
-  for (let i = 0; i < rows.length; i += 200) {
-    const { error } = await db.from('bid_submittal_item_parts').insert(rows.slice(i, i + 200))
+  for (const batch of partInsertBatches(rows)) {
+    const { error } = await db.from('bid_submittal_item_parts').insert(batch)
     if (error) throw error
   }
 }
@@ -55,4 +72,51 @@ export async function saveItemParts(
   if (diff.inserts.length > 0) await insertItemParts(db, diff.inserts)
   const now = await loadItemParts(db, [itemId])
   return rollUpFromParts(now)
+}
+
+/** The reviewer's columns, as `enteredDecisionPatch` writes them on a row or a part. */
+export type CallPatch = {
+  review_decision: string | null
+  review_note: string | null
+  reviewed_by_person_id: string | null
+  reviewed_by_name: string | null
+  reviewed_by_email: string | null
+  reviewed_at: string | null
+  decision_source: string
+  decision_entered_by: string | null
+  decision_entered_by_name: string | null
+}
+
+/** Write a row's call from its parts' calls (`rollUpPartDecisions`, the room's own rule). */
+export async function writeRowCallFromParts(db: SupabaseClient, itemId: string): Promise<void> {
+  const parts = await loadItemParts(db, [itemId])
+  const { error } = await db.from('bid_submittal_items').update(rollUpPartDecisions(parts)).eq('id', itemId)
+  if (error) throw error
+}
+
+/**
+ * A call entered on a row that has parts the GC sees (2026-10-01): it lands on those parts —
+ * the ones named, else all of them; with `onlyOpen`, only the ones with no call yet — and the
+ * row reads the roll-up. Returns how many parts took it; 0 when the row has no part the GC
+ * sees, so the caller writes the row as before.
+ */
+export async function enterCallOnParts(db: SupabaseClient, itemId: string, patch: CallPatch, opts: { partIds?: ReadonlyArray<string> | null; onlyOpen?: boolean; parts?: ReadonlyArray<SubmittalPartRow> } = {}): Promise<number> {
+  const parts = opts.parts ?? (await loadItemParts(db, [itemId]))
+  const gc = parts.filter((p) => p.item_id === itemId && p.on_submittal)
+  if (gc.length === 0) return 0
+  const named = opts.partIds && opts.partIds.length > 0 ? new Set(opts.partIds) : null
+  const target = gc.filter((p) => (!named || named.has(p.id)) && (!opts.onlyOpen || !p.review_decision)).map((p) => p.id)
+  if (target.length > 0) {
+    const { error } = await db.from('bid_submittal_item_parts').update({ ...patch, updated_at: new Date().toISOString() }).in('id', target)
+    if (error) throw error
+  }
+  await writeRowCallFromParts(db, itemId)
+  return target.length
+}
+
+/** Take the entered and robot calls back off a row's parts, then write the row's roll-up. */
+export async function clearEnteredCallsOnParts(db: SupabaseClient, itemId: string, clear: CallPatch): Promise<void> {
+  const { error } = await db.from('bid_submittal_item_parts').update({ ...clear, updated_at: new Date().toISOString() }).eq('item_id', itemId).in('decision_source', ['entered', 'robot'])
+  if (error) throw error
+  await writeRowCallFromParts(db, itemId)
 }

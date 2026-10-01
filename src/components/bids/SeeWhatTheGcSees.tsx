@@ -3,7 +3,7 @@ import ResponsiveModalShell from '../ResponsiveModalShell'
 import { RoomRevisionBody } from './SubmittalRoomView'
 import { ROOM_COPPER, roomLabel, roomQuiet } from '../../lib/submittals/roomStyles'
 import { toRoomItemSource } from '../../lib/submittals/seeWhatTheySee'
-import { roomCounts, roomRowsFrom, type RoomItemSource, type RoomRevision } from '../../../supabase/functions/_shared/submittalRoomPayload'
+import { roomCounts, roomRowsFrom, type RoomItemSource, type RoomPartSource, type RoomRevision } from '../../../supabase/functions/_shared/submittalRoomPayload'
 
 /**
  * See what the GC sees (v2.4189, punch list #62 Layer 2): the reviewer's page for the rows
@@ -13,6 +13,7 @@ import { roomCounts, roomRowsFrom, type RoomItemSource, type RoomRevision } from
  */
 export function SeeWhatTheGcSees({
   items,
+  parts = [],
   revNumber,
   shared,
   hasPackage,
@@ -22,6 +23,8 @@ export function SeeWhatTheGcSees({
   onClose,
 }: {
   items: ReadonlyArray<RoomItemSource>
+  /** The rows' parts (2026-10-01); the GC's card lists the ones it sees. */
+  parts?: ReadonlyArray<RoomPartSource>
   revNumber: number
   shared: boolean
   hasPackage: boolean
@@ -31,9 +34,11 @@ export function SeeWhatTheGcSees({
   onClose: () => void
 }) {
   const rev = useMemo<RoomRevision>(() => {
-    const rows = roomRowsFrom(items.map(toRoomItemSource))
+    const byItem = new Map<string, RoomPartSource[]>()
+    for (const p of parts) byItem.set(p.item_id, [...(byItem.get(p.item_id) ?? []), p])
+    const rows = roomRowsFrom(items.map(toRoomItemSource), byItem)
     return { id: 'preview', rev: revNumber, sharedAt: null, current: true, hasPackage, rows, counts: roomCounts(rows) }
-  }, [items, revNumber, hasPackage])
+  }, [items, parts, revNumber, hasPackage])
 
   const body = (
     <div data-theme="light" data-testid="see-gc-pane" style={{ background: 'var(--bg-subtle)', color: 'var(--text-strong)', borderRadius: 10, padding: '0.9rem 0.9rem 1.1rem' }}>

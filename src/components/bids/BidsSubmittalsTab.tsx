@@ -29,8 +29,8 @@ import { PlugInScheduleModal } from './PlugInScheduleModal'
 import { SubmittalTakeoffPicker } from './SubmittalTakeoffPicker'
 import { loadTakeoffCandidates, saveTakeoffChoices, type TakeoffCandidatesLoad } from '../../lib/submittals/takeoffCandidatesIo'
 import { candidateToItemInserts, rowSplitTags, splitExplanation, type TakeoffCandidate } from '../../lib/submittals/takeoffCandidates'
-import { carryPartInsert, copyPartInsert, formatPartQty, partsByItem, partsFromPieces, submittedParts, type PartDraft, type SubmittalPartInsert, type SubmittalPartRow } from '../../lib/submittals/itemParts'
-import { insertItemParts, loadItemParts, saveItemParts } from '../../lib/submittals/itemPartsIo'
+import { carryPartInsert, copyPartInsert, formatPartQty, partCallsLine, partsByItem, partsFromPieces, rollUpFromParts, submittedParts, type PartDraft, type SubmittalPartInsert, type SubmittalPartRow } from '../../lib/submittals/itemParts'
+import { clearEnteredCallsOnParts, enterCallOnParts, insertItemParts, loadItemParts, saveItemParts } from '../../lib/submittals/itemPartsIo'
 import { SplitRuleModal } from './SplitRuleModal'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { procurementItemsFrom } from '../../lib/submittals/procurementLogIo'
@@ -55,6 +55,8 @@ import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview
 import { ProductStatusChip } from './ProductStatusChip'
 import { SubmittalItemEditDialog, type SubmittalItemPatch } from './SubmittalItemEditDialog'
 import { SubmittalPartsCell } from './SubmittalPartsCell'
+import { SubmittalHouseFileModal } from './SubmittalHouseFileModal'
+import { matchFileToRows, pairParts, defaultFileChoice, planFileApply, readHouseFile, type FileTagChoice, type FileTagMatch, type HouseFileRead } from '../../lib/submittals/houseFileParts'
 import { SubmittalApproveAllDialog, type ApproveAllChoice } from './SubmittalApproveAllDialog'
 import { SubmittalSheetStrip, type ThumbState } from './SubmittalSheetStrip'
 import { SubmittalAssignPagesModal } from './SubmittalAssignPagesModal'
@@ -76,7 +78,7 @@ import { assignmentsFromItems } from '../../lib/submittals/sheetStripModel'
 import { buildSubmittalRows, changeNoteFor, summarizeChanges, type PickInput, type SpecifiedInput } from '../../lib/submittals/buildSubmittalRows'
 import { needsReason, REASON_LABELS, type StatusOverride, COLUMN_HELP, STATUS_LABELS, STATUS_MEANINGS, type ProductStatus } from '../../lib/submittals/productStatus'
 import { describeLeadTime } from '../../lib/submittals/leadTime'
-import { buildCoverModel, buildSubmittalPackage, packageFileName, planPackage, renderCoverPdf, type PackageRowInput } from '../../lib/submittals/submittalPackage'
+import { buildCoverModel, buildSubmittalPackage, packageFileName, packageSheets, planPackage, renderCoverPdf, type PackageRowInput } from '../../lib/submittals/submittalPackage'
 import { cachedTestReportSettings, fetchTestReportSettings } from '../../lib/jobs/testReportSettings'
 import type { TestReportSettings } from '../../lib/jobs/testReport'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
@@ -229,6 +231,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   const [thumbs, setThumbs] = useState<Record<string, ThumbState>>({})
   /** v2.4143: the file open in the Assign pages walk. */
   const [assignFile, setAssignFile] = useState<number | null>(null)
+  /** 2026-10-01 · a house's file read into its parts, open in the review before anything is written. */
+  const [houseFile, setHouseFile] = useState<{ fileIndex: number; read: HouseFileRead; matches: FileTagMatch[] } | null>(null)
   /** Stage 4a: the bid's review room, the people on it, the events behind the trail. */
   const [room, setRoom] = useState<SubmittalRoomRow | null>(null)
   const [people, setPeople] = useState<SubmittalPersonRow[]>([])
@@ -694,13 +698,13 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
    * The parts of the rows a new revision carried: a row carried as it stood takes its parts; a row
    * the picks rebuilt takes them only while its product is the same.
    */
-  async function carryPartsOnto(newRows: ReadonlyArray<{ id: string; carried_from_item_id: string | null; submitted_label: string | null }>, previous: ReadonlyArray<SubmittalItemRow>, previousParts: Map<string, SubmittalPartRow[]>) {
+  async function carryPartsOnto(newRows: ReadonlyArray<{ id: string; carried_from_item_id: string | null; submitted_label: string | null }>, previous: ReadonlyArray<SubmittalItemRow>, previousParts: Map<string, SubmittalPartRow[]>, keepApprovals = false) {
     const prevById = new Map(previous.map((p) => [p.id, p] as const))
     const copies: SubmittalPartInsert[] = []
     for (const r of newRows) {
       const was = r.carried_from_item_id ? prevById.get(r.carried_from_item_id) : undefined
       if (!was || (r.submitted_label ?? '') !== (was.submitted_label ?? '')) continue
-      for (const p of previousParts.get(was.id) ?? []) copies.push(carryPartInsert(p, r.id))
+      for (const p of previousParts.get(was.id) ?? []) copies.push(carryPartInsert(p, r.id, keepApprovals))
     }
     await insertItemParts(db, copies)
   }
@@ -741,7 +745,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       if (inserts.length > 0) {
         const { data: made, error: insErr } = await db.from('bid_submittal_items').insert(inserts).select('id, carried_from_item_id, submitted_label')
         if (insErr) throw insErr
-        await carryPartsOnto((made ?? []) as Array<{ id: string; carried_from_item_id: string | null; submitted_label: string | null }>, previous, previousParts)
+        // A resubmit of the rows sent back: the parts the GC approved stand; only the parts sent back are asked again.
+        await carryPartsOnto((made ?? []) as Array<{ id: string; carried_from_item_id: string | null; submitted_label: string | null }>, previous, previousParts, onlySentBack)
       }
       if (asRevisionStatus(newestRev.status) === 'draft') {
         const { error: supErr } = await db.from('bid_submittals').update({ status: 'superseded' }).eq('id', newestRev.id)
@@ -1021,8 +1026,11 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         const it = a.tag ? byTag.get(a.tag) : null
         if (!it || a.proposed === 'question') continue
         const patch = enteredDecisionPatch({ decision: a.proposed, note: a.text || null, person: { id: person.id, name: person.name, email: person.email }, byUserId: user?.id ?? null, byName: profileName, now, source: 'robot' })
-        const { error } = await db.from('bid_submittal_items').update(patch).eq('id', it.id)
-        if (error) throw error
+        // A row with parts takes the mark on every part the GC sees; the row reads the roll-up.
+        if ((await enterCallOnParts(db, it.id, patch, { parts: partsOf.get(it.id) })) === 0) {
+          const { error } = await db.from('bid_submittal_items').update(patch).eq('id', it.id)
+          if (error) throw error
+        }
         counts[a.proposed] += 1
       }
       const n = counts.approved + counts.revise + counts.rejected
@@ -1082,6 +1090,14 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
           leadTime: describeLeadTime(it.lead_time_days) ?? '',
           sheetFile: it.sheet_file != null && sourceFiles[it.sheet_file] ? it.sheet_file : null,
           sheetPages: [...(it.sheet_pages ?? [])],
+          // 2026-10-01 · each part's own sheet, while the parts' pages are the row's (a later walk on the row wins).
+          ...(() => {
+            const withPages = gcParts.filter((p) => p.sheet_file != null && sourceFiles[p.sheet_file] && (p.sheet_pages ?? []).length > 0)
+            const union = [...new Set(withPages.flatMap((p) => p.sheet_pages))].sort((a, b) => a - b)
+            const rowPages = [...(it.sheet_pages ?? [])].sort((a, b) => a - b)
+            const agree = withPages.length > 0 && withPages.every((p) => p.sheet_file === it.sheet_file) && union.length === rowPages.length && union.every((pg, k) => pg === rowPages[k])
+            return agree ? { partSheets: withPages.map((p) => ({ fileIndex: p.sheet_file as number, pages: [...p.sheet_pages], title: p.label.trim() })) } : {}
+          })(),
         }
       })
       const coverInput = {
@@ -1102,7 +1118,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         plan = planPackage(rowsIn, cover.pages)
         cover = await renderCoverPdf(buildCoverModel(coverInput, plan), settings)
       }
-      const needed = new Set(plan.rows.filter((r) => r.startPage != null).map((r) => r.sheetFile as number))
+      const needed = new Set(packageSheets(plan).map((sh) => sh.fileIndex))
       const files: Array<Uint8Array | ArrayBuffer> = []
       for (const i of needed) {
         const f = sourceFiles[i]
@@ -1111,7 +1127,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         if (error || !data) continue
         files[i] = await data.arrayBuffer()
       }
-      const sheets = plan.rows.filter((r) => r.startPage != null).map((r) => ({ tag: r.tag, status: r.status, title: r.submitted.split('\n').join(' + '), fileIndex: r.sheetFile as number, pages: r.sheetPages }))
+      const sheets = packageSheets(plan)
       const result = await buildSubmittalPackage(cover.blob, files, sheets)
       const path = `${bidId}/${selectedRev.id}/package-rev${selectedRev.rev_number}.pdf`
       const up = await supabase.storage.from(SUBMITTALS_BUCKET).upload(path, result.blob, { contentType: 'application/pdf', upsert: true })
@@ -1156,6 +1172,96 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     } catch {
       setThumbs((t) => ({ ...t, [f.path]: 'error' }))
       showToast('Could not draw the pages — the file may not be a readable PDF.', 'error')
+    }
+  }
+
+  /** Read its parts… (2026-10-01): the file's pages read into the house's parts, set beside the rows for the review. */
+  async function readFileParts(fileIndex: number) {
+    const f = sourceFiles[fileIndex]
+    if (!f) return
+    setBusy(true)
+    try {
+      const bytes = await downloadFile(f.path)
+      const { openPdf } = await import('../../lib/submittals/pdfThumbnails')
+      const pdf = await openPdf(bytes)
+      const texts: string[] = []
+      try {
+        for (let p = 1; p <= pdf.numPages; p++) texts.push(await pdf.pageText(p).catch(() => ''))
+      } finally {
+        pdf.destroy()
+      }
+      const read = readHouseFile(texts)
+      if (!read) {
+        showToast(`${f.name} has no parts list the app can read: no job line stamped on its pages. Assign pages… walks it page by page.`, 'info')
+        return
+      }
+      setHouseFile({ fileIndex, read, matches: matchFileToRows(read, items, partsOf) })
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not read the file'), 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** Use the file's parts: each tag's choices written onto its rows (or a new row), then every row's roll-up. */
+  async function applyHouseFile(choices: FileTagChoice[], houseId: string | null) {
+    if (!houseFile || !selectedRev || !bidId) return
+    const { fileIndex, read, matches } = houseFile
+    setBusy(true)
+    try {
+      let seq = items.reduce((m, it) => Math.max(m, it.sequence_order), 0)
+      const touched: string[] = []
+      for (const [i, m] of matches.entries()) {
+        const choice = choices[i]
+        if (!choice?.use) continue
+        let targets = m.itemIds
+        if (targets.length === 0) {
+          if (!choice.addRow) continue
+          const fileParts = read.parts.filter((p) => p.tag === m.tag)
+          seq += 1
+          const { data, error } = await db.from('bid_submittal_items').insert({ submittal_id: selectedRev.id, tag: m.tag.replace(/\s*&\s*/g, ', '), sequence_order: seq, specified_description: fileParts[0]?.description || m.tag, status: 'proposed', sheet_pages: [] }).select('id').single()
+          if (error) throw error
+          targets = [(data as { id: string }).id]
+        }
+        for (const [k, itemId] of targets.entries()) {
+          const rowParts = partsOf.get(itemId) ?? []
+          // The review paired the first row; a split row of the same tag pairs on its own, with the same starting rules.
+          const tagChoice = k === 0 || m.itemIds.length === 0 ? choice : { ...defaultFileChoice({ ...m, ...pairParts(read.parts.filter((p) => p.tag === m.tag), rowParts) }), rename: false }
+          const tagMatch = k === 0 || m.itemIds.length === 0 ? m : { ...m, ...pairParts(read.parts.filter((p) => p.tag === m.tag), rowParts) }
+          const plan = planFileApply(tagMatch, tagChoice, itemId, rowParts, { fileIndex, houseId })
+          if (plan.deletes.length > 0) {
+            const { error } = await db.from('bid_submittal_item_parts').delete().in('id', plan.deletes)
+            if (error) throw error
+          }
+          const now = new Date().toISOString()
+          for (const u of plan.updates) {
+            const { error } = await db.from('bid_submittal_item_parts').update({ ...u.patch, updated_at: now }).eq('id', u.partId)
+            if (error) throw error
+          }
+          for (const o of plan.keptOrderOnly) {
+            const { error } = await db.from('bid_submittal_item_parts').update({ on_submittal: false, sequence_order: o.sequence_order, updated_at: now }).eq('id', o.partId)
+            if (error) throw error
+          }
+          await insertItemParts(db, plan.inserts.map((w) => ({ ...w, item_id: itemId, bid_id: bidId })))
+          const after = await loadItemParts(db, [itemId])
+          const { error } = await db.from('bid_submittal_items').update({ ...plan.rowPatch, ...rollUpFromParts(after) }).eq('id', itemId)
+          if (error) throw error
+          touched.push(itemId)
+        }
+      }
+      // The file is the house's: its record says so.
+      if (houseId !== (sourceFiles[fileIndex]?.houseId ?? null)) {
+        const next = sourceFiles.map((sf, i) => (i === fileIndex ? { ...sf, houseId, houseName: houses.find((h) => h.id === houseId)?.name ?? null } : sf))
+        await db.from('bid_submittals').update({ source_files: serializeSourceFiles(next) }).eq('id', selectedRev.id)
+      }
+      setHouseFile(null)
+      await load(bidId)
+      setItems(await loadItems(selectedRev.id))
+      showToast(`${touched.length} row${touched.length === 1 ? '' : 's'} took the file’s parts, each with its pages.`, 'success')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not use the file’s parts'), 'error')
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -1233,6 +1339,11 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       await writeItemPages(it.id, fileIndex, pages)
       nextRows.push({ ...it, sheet_pages: pages, sheet_file: pages.length > 0 ? fileIndex : null })
     }
+    // 2026-10-01 · a part's own pages follow the trim the same way.
+    for (const p of parts.filter((x) => x.sheet_file === fileIndex && (x.sheet_pages ?? []).length > 0)) {
+      const kept = (p.sheet_pages ?? []).map((pg) => result.map[pg]).filter((pg): pg is number => pg !== undefined)
+      await db.from('bid_submittal_item_parts').update({ sheet_pages: kept, sheet_file: kept.length > 0 ? fileIndex : null }).eq('id', p.id)
+    }
     const nextFiles: SourceFile[] = files.map((sf, i) => (i === fileIndex ? { ...sf, pages: result.kept, trimmedAt: new Date().toISOString(), droppedPages: result.dropped } : sf))
     const { error } = await db.from('bid_submittals').update({ source_files: serializeSourceFiles(nextFiles) }).eq('id', selectedRev.id)
     if (error) throw error
@@ -1273,6 +1384,12 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         if (it.sheet_file == null) continue
         if (it.sheet_file > fileIndex) await writeItemPages(it.id, it.sheet_file - 1, it.sheet_pages ?? [])
         else if (it.sheet_file === fileIndex) await writeItemPages(it.id, null, [])
+      }
+      // 2026-10-01 · and the parts' own files.
+      for (const p of parts) {
+        if (p.sheet_file == null) continue
+        if (p.sheet_file > fileIndex) await db.from('bid_submittal_item_parts').update({ sheet_file: p.sheet_file - 1 }).eq('id', p.id)
+        else if (p.sheet_file === fileIndex) await db.from('bid_submittal_item_parts').update({ sheet_file: null, sheet_pages: [] }).eq('id', p.id)
       }
       const { error } = await db.from('bid_submittals').update({ source_files: serializeSourceFiles(files) }).eq('id', selectedRev.id)
       if (error) throw error
@@ -1395,8 +1512,13 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       const { theRoom, person } = await roomAndReviewerFor(choice.person)
       const patch = enteredDecisionPatch({ decision: 'approved', note: choice.note, person, byUserId: user?.id ?? null, byName: profileName, now: enteredDecisionAt(choice.on, new Date(), todayYmdInAppTz()) })
       // A row the reviewer answered in the room a moment ago keeps that answer: the write takes only rows still without a call.
-      const ids = rows.map((r) => r.id)
       const written = new Set<string>()
+      // A row with parts: every part the GC sees with no call yet takes the approval; the row reads the roll-up.
+      for (const r of rows) {
+        if (!(partsOf.get(r.id) ?? []).some((p) => p.on_submittal)) continue
+        if ((await enterCallOnParts(db, r.id, patch, { parts: partsOf.get(r.id), onlyOpen: true })) > 0) written.add(r.id)
+      }
+      const ids = rows.filter((r) => !(partsOf.get(r.id) ?? []).some((p) => p.on_submittal)).map((r) => r.id)
       for (let i = 0; i < ids.length; i += 100) {
         const { data, error } = await db.from('bid_submittal_items').update(patch).in('id', ids.slice(i, i + 100)).is('review_decision', null).select('id')
         if (error) throw error
@@ -1460,14 +1582,21 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         // 5b · the reviewer's call, typed from their file, on the day they made it.
         const { theRoom, person } = await roomAndReviewerFor(entered.person)
         enteredFor = person
-        write = { ...write, ...enteredDecisionPatch({ decision: entered.decision, note: entered.note, person, byUserId: user?.id ?? null, byName: profileName, now: enteredDecisionAt(entered.on, new Date(), todayYmdInAppTz()) }) }
-        const counts = { approved: entered.decision === 'approved' ? 1 : 0, revise: entered.decision === 'revise' ? 1 : 0, rejected: entered.decision === 'rejected' ? 1 : 0 }
+        const callPatch = enteredDecisionPatch({ decision: entered.decision, note: entered.note, person, byUserId: user?.id ?? null, byName: profileName, now: enteredDecisionAt(entered.on, new Date(), todayYmdInAppTz()) })
+        // A row with parts: the call lands on the parts picked (all the GC sees by default); the row reads the roll-up.
+        const onParts = await enterCallOnParts(db, editing.id, callPatch, { partIds: entered.partIds ?? null })
+        if (onParts === 0) write = { ...write, ...callPatch }
+        const n = Math.max(1, onParts)
+        const counts = { approved: entered.decision === 'approved' ? n : 0, revise: entered.decision === 'revise' ? n : 0, rejected: entered.decision === 'rejected' ? n : 0 }
         const { error } = await db.from('bid_submittal_items').update(write).eq('id', editing.id)
         if (error) throw error
         await db.from('bid_submittal_messages').insert({ room_id: theRoom.id, submittal_id: selectedRev.id, person_id: null, author_kind: 'system', body: enteredEntryBody(person.name, counts, 'entered', entered.on ?? null), kind: 'decision', tags: editing.tag.trim() ? [editing.tag.trim()] : [], metadata: { entered_by: user?.id ?? null, rev_number: selectedRev.rev_number, counts, person_id: person.id, ...(entered.on ? { decided_on: entered.on } : {}) } })
         await db.from('bid_submittal_events').insert({ room_id: theRoom.id, submittal_id: selectedRev.id, person_id: person.id, event_type: 'decided', metadata: { ...counts, rev_number: selectedRev.rev_number, entered: true, by: user?.id ?? null, ...(entered.on ? { decided_on: entered.on } : {}) } })
       } else {
-        if (clearDecision) write = { ...write, ...CLEAR_DECISION_PATCH }
+        if (clearDecision) {
+          if ((partsOf.get(editing.id) ?? []).some((p) => p.on_submittal)) await clearEnteredCallsOnParts(db, editing.id, { ...CLEAR_DECISION_PATCH })
+          else write = { ...write, ...CLEAR_DECISION_PATCH }
+        }
         const { error } = await db.from('bid_submittal_items').update(write).eq('id', editing.id)
         if (error) throw error
       }
@@ -1867,7 +1996,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                         <th style={th}>Lead time</th>
                         <th style={th} title={COLUMN_HELP.sheet}>Sheet <span aria-hidden style={{ color: 'var(--text-faint)', fontWeight: 400 }}>?</span></th>
                         {previousRev ? <th style={th}>Since Rev {previousRev.rev_number}</th> : null}
-                        {decisions.decided > 0 ? <th style={th}>Their call</th> : null}
+                        {decisions.decided > 0 || parts.some((p) => p.review_decision) ? <th style={th}>Their call</th> : null}
                         <th style={th} />
                       </tr>
                     </thead>
@@ -1926,15 +2055,17 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                               )}
                             </td>
                             {previousRev ? <td style={{ ...td, color: note ? 'var(--text-amber-700)' : 'var(--text-faint)', fontWeight: note ? 600 : 400 }}>{note ?? 'carried'}</td> : null}
-                            {decisions.decided > 0 ? (
+                            {decisions.decided > 0 || parts.some((p) => p.review_decision) ? (
                               <td style={td} data-testid="their-call">
                                 {(() => {
                                   const d = asDecision(it.review_decision)
-                                  if (!d) return <span style={{ color: 'var(--text-faint)' }}>—</span>
+                                  const byPart = partCallsLine(partsOf.get(it.id) ?? [])
+                                  if (!d) return byPart ? <span style={{ color: 'var(--text-muted)', fontWeight: 600 }} data-testid="their-call-parts">{byPart}</span> : <span style={{ color: 'var(--text-faint)' }}>—</span>
                                   const color = d === 'approved' ? 'var(--text-green-700)' : d === 'revise' ? 'var(--text-amber-700)' : 'var(--text-red-700)'
                                   return (
                                     <span style={{ color, fontWeight: 600 }}>
                                       {DECISION_LABELS[d]}
+                                      {byPart ? <span style={sub} data-testid="their-call-parts">{byPart}</span> : null}
                                       <span style={sub}>{[it.reviewed_by_name, enteredSuffix(it), formatShortDate(it.reviewed_at)].filter(Boolean).join(' · ')}</span>
                                       {it.review_note ? <span style={sub}>“{it.review_note}”</span> : null}
                                     </span>
@@ -2023,6 +2154,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                     onAskRobot={(i) => void askRobot('file_cut_sheets', { file_index: i, path: sourceFiles[i]?.path, name: sourceFiles[i]?.name, pages: sourceFiles[i]?.pages }, selectedRev.id)}
                     onConfirmGuesses={(i) => void confirmGuesses(i)}
                     onAssignPages={(i) => setAssignFile(i)}
+                    onReadParts={(i) => void readFileParts(i)}
                   />
                 ) : null}
               </RoadSection>
@@ -2313,6 +2445,20 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
           onClose={() => setAssignFile(null)}
         />
       ) : null}
+      {houseFile && sourceFiles[houseFile.fileIndex] ? (
+        <SubmittalHouseFileModal
+          fileName={sourceFiles[houseFile.fileIndex]!.name}
+          read={houseFile.read}
+          matches={houseFile.matches}
+          rows={items}
+          partsByItem={partsOf}
+          houses={houses}
+          houseId={sourceFiles[houseFile.fileIndex]!.houseId}
+          busy={busy}
+          onApply={(c, h) => void applyHouseFile(c, h)}
+          onClose={() => setHouseFile(null)}
+        />
+      ) : null}
       {editing ? <SubmittalItemEditDialog item={editing} sourceFiles={sourceFiles} people={people} houses={houses} parts={partsOf.get(editing.id) ?? []} canEnterDecision canEditProduct={isDraft} onSave={(p) => void saveItem(p)} onClose={() => setEditing(null)} /> : null}
       {approvingAll && selectedRev ? (
         <SubmittalApproveAllDialog
@@ -2351,6 +2497,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     {seeGcOpen && selectedRev && isNewest && selectedBid ? (
       <SeeWhatTheGcSees
         items={items}
+        parts={parts}
         revNumber={selectedRev.rev_number}
         shared={asRevisionStatus(selectedRev.status) !== 'draft'}
         hasPackage={Boolean(selectedRev.package_path)}

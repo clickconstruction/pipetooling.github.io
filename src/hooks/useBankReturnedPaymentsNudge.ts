@@ -30,10 +30,11 @@ export function useBankReturnedPaymentsNudge(enabled: boolean): { returned: Bank
     try {
       const { data: txRows, error: txError } = await supabase
         .from('mercury_transactions')
-        .select('id, status, posted_at, amount, failure_reason:raw->>reasonForFailure')
+        .select('id, status, posted_at, amount, kind, failure_reason:raw->>reasonForFailure')
         .eq('status', 'failed')
         .gt('amount', 0)
-        .not('posted_at', 'is', null)
+        // v2.4320: no posted_at filter — a check can come back before it posts; the kernel's rule decides.
+        .order('created_at', { ascending: false })
         .limit(200)
       if (txError) throw txError
       const txById = new Map<string, BankReturnedTxRow>()

@@ -3,6 +3,7 @@ import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { PhysicalInvoiceIssuer } from '../physicalInvoiceIssuer'
 import { loadJsPDF } from '../loadJsPDF'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { billCheckClearsYmd } from '../jobs/checkClearing'
 import { isUnfinishedDate } from '../autosaveDateHold'
 import { unfinishedDateStopsMessage } from '../dateBoxEntry'
 
@@ -329,6 +330,8 @@ export type LienWaiverBillPick = {
   final: boolean
   /** The two facts as the window says them under the toggles. */
   facts: string[]
+  /** v2.4330: settled by a check that has not cleared yet — the day it clears. */
+  clearsYmd?: string | null
 }
 
 /**
@@ -337,7 +340,11 @@ export type LienWaiverBillPick = {
  * line and the minted lines together cover the job's revenue (to the dollar); a job with more to
  * bill, or an earlier line, is a progress payment.
  */
-export function pickLienWaiverForBill(job: Pick<JobWithDetails, 'invoices' | 'payments' | 'revenue'>, invoice: Pick<JobsLedgerInvoice, 'id' | 'amount' | 'sequence_order'> & { status?: string | null }): LienWaiverBillPick {
+export function pickLienWaiverForBill(
+  job: Pick<JobWithDetails, 'invoices' | 'payments' | 'revenue'>,
+  invoice: Pick<JobsLedgerInvoice, 'id' | 'amount' | 'sequence_order'> & { status?: string | null },
+  today: string = todayYmd(),
+): LienWaiverBillPick {
   const applied = (job.payments ?? []).filter((p) => p.invoice_id === invoice.id).reduce((s, p) => s + Number(p.amount ?? 0), 0)
   const amount = Number(invoice.amount ?? 0)
   // v2.4318: a bill marked paid is settled even when its payments name no bill.
@@ -349,11 +356,15 @@ export function pickLienWaiverForBill(job: Pick<JobWithDetails, 'invoices' | 'pa
   const final = Number(invoice.sequence_order ?? 0) >= lastSeq && (revenue <= 0 || billedTotal >= revenue - 1)
   const n = minted.length
   const idx = minted.filter((i) => Number(i.sequence_order ?? 0) < Number(invoice.sequence_order ?? 0)).length + 1
+  // v2.4330: paid by a check that may still come back — the unconditional is the form, but the window says when it clears.
+  const clearsYmd = settled ? billCheckClearsYmd(invoice.id, (job.payments ?? []).map((p) => ({ invoice_id: p.invoice_id, amount: p.amount, paid_on: p.paid_on ?? null, payment_type: p.payment_type ?? null })), today) : null
+  const clearsWords = clearsYmd ? new Date(`${clearsYmd}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }) : null
   return {
     formType: lienWaiverFormFrom({ conditional: !settled, final }),
     settled,
     final,
-    facts: [settled ? 'Settled' : 'Not settled yet', final ? (n > 1 ? `Bill ${idx} of ${n} · the last` : 'The only bill') : n > 1 ? `Bill ${idx} of ${n} · not the last` : 'More to bill'],
+    facts: [clearsWords ? `Settled · the check clears about ${clearsWords}` : settled ? 'Settled' : 'Not settled yet', final ? (n > 1 ? `Bill ${idx} of ${n} · the last` : 'The only bill') : n > 1 ? `Bill ${idx} of ${n} · not the last` : 'More to bill'],
+    clearsYmd,
   }
 }
 

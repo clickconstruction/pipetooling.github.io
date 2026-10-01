@@ -103,6 +103,8 @@ The line under the switches says why. It also shows the two facts it read from t
 
 Never send an unconditional form before the money has settled. Texas forbids requiring one before payment. The line under the switches reminds you.
 
+A check takes a week to clear. The bank can still send it back after the bill reads paid. An unconditional waiver holds even if it does. So when a bill is paid by check, the unconditional waits seven days. The Bill tab reads {{chip:gray|Unconditional · waits for the check · clears Oct 8}}. View bill says the same. The window still opens the unconditional, and its line says when the check clears. A card, a bank transfer or cash does not wait.
+
 ## Why the amount is less than the bill
 
 The amount is often smaller than the bill. The window shows the math under the **Amount** box.

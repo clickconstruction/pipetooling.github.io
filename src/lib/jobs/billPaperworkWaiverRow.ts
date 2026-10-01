@@ -66,7 +66,7 @@ function signerOf(half: LienWaiverHalf): string | null {
   return name ? (name.split(/\s+/)[0] ?? null) : null
 }
 
-function stepFor(half: 'conditional' | 'unconditional', h: LienWaiverHalf, settled: boolean): { text: string; state: WaiverStepState } {
+function stepFor(half: 'conditional' | 'unconditional', h: LienWaiverHalf, settled: boolean, clearing = false): { text: string; state: WaiverStepState } {
   const label = half === 'conditional' ? 'Conditional' : 'Unconditional'
   switch (h.state) {
     case 'sent':
@@ -78,7 +78,7 @@ function stepFor(half: 'conditional' | 'unconditional', h: LienWaiverHalf, settl
     case 'draft':
       return { text: `${label}, draft`, state: 'due' }
     case 'none':
-      if (half === 'unconditional') return settled ? { text: 'Unconditional, now', state: 'due' } : { text: 'Unconditional, when paid', state: 'open' }
+      if (half === 'unconditional') return clearing ? { text: 'Unconditional, once it clears', state: 'open' } : settled ? { text: 'Unconditional, now', state: 'due' } : { text: 'Unconditional, when paid', state: 'open' }
       return settled ? { text: 'No conditional', state: 'open' } : { text: 'Conditional, with this bill', state: 'due' }
   }
 }
@@ -86,7 +86,8 @@ function stepFor(half: 'conditional' | 'unconditional', h: LienWaiverHalf, settl
 export function billPaperworkWaiverRow(input: BillPaperworkWaiverInput): BillPaperworkWaiverRow {
   const { cell, pick, amount, isGc, recipientName, recipientEmail, billEmail, daysPastDue, paidYmd } = input
   const settled = cell.settled
-  const steps: BillPaperworkWaiverRow['steps'] = [stepFor('conditional', cell.conditional, settled), stepFor('unconditional', cell.unconditional, settled)]
+  const clearing = settled && cell.clearsYmd != null
+  const steps: BillPaperworkWaiverRow['steps'] = [stepFor('conditional', cell.conditional, settled), stepFor('unconditional', cell.unconditional, settled, clearing)]
   const money = waiverMoneyWords(amount)
   const who = recipientName.trim() || (isGc ? 'the GC' : 'the customer')
   const finalWord = pick.final ? ' final' : ''
@@ -127,6 +128,16 @@ export function billPaperworkWaiverRow(input: BillPaperworkWaiverInput): BillPap
       sub: `The money is in. ${isGc ? 'The GC' : 'The customer'} is owed the unconditional waiver now.`,
       subTone: 'amber',
       action: { kind: 'add_unconditional', label: 'Add the unconditional', primary: true },
+    })
+  }
+  // v2.4330: paid by a check still clearing — the unconditional waits, and says until when.
+  if (clearing && cell.unconditional.state === 'none' && cell.next == null) {
+    return row({
+      tone: 'plain',
+      headline: paidYmd ? `Paid ${shortDate(paidYmd)} by check. The unconditional waits for it to clear.` : 'Paid by check. The unconditional waits for it to clear.',
+      sub: `It clears about ${shortDate(cell.clearsYmd)}. An unconditional waiver holds even if the check comes back.`,
+      subTone: 'muted',
+      action: { kind: 'add_unconditional', label: 'Add the unconditional', primary: false },
     })
   }
   if (cell.next === 'add_conditional') {

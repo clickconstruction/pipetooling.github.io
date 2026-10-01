@@ -21,6 +21,11 @@ export type PackageRowInput = {
   /** Index into the revision's source files, and the 1-based pages there. */
   sheetFile: number | null
   sheetPages: number[]
+  /**
+   * 2026-10-01 · a row whose parts carry their own sheets: each part's file and pages, in part
+   * order, stamped with the part's name. When present it is the row's sheet.
+   */
+  partSheets?: Array<{ fileIndex: number; pages: number[]; title: string }>
 }
 
 export type PackagePlanRow = PackageRowInput & {
@@ -44,10 +49,11 @@ export function planPackage(rows: ReadonlyArray<PackageRowInput>, coverPages: nu
   const without: string[] = []
   let withSheet = 0
   for (const r of rows) {
-    const has = r.sheetFile != null && r.sheetPages.length > 0
+    const partPages = (r.partSheets ?? []).reduce((n, s) => n + s.pages.length, 0)
+    const has = partPages > 0 || (r.sheetFile != null && r.sheetPages.length > 0)
     if (has) {
       out.push({ ...r, startPage: next })
-      next += r.sheetPages.length
+      next += partPages > 0 ? partPages : r.sheetPages.length
       withSheet += 1
     } else {
       out.push({ ...r, startPage: null })
@@ -116,7 +122,10 @@ export function buildCoverModel(input: CoverInput, plan: PackagePlan): CoverMode
       STATUS_LABELS[r.status],
       r.reason || '—',
       r.leadTime || '—',
-      r.startPage != null ? `p. ${r.startPage}${r.sheetPages.length > 1 ? `–${r.startPage + r.sheetPages.length - 1}` : ''}` : r.status === 'missing' ? '—' : 'to follow',
+      r.startPage != null ? (() => {
+        const n = (r.partSheets ?? []).reduce((k, sh) => k + sh.pages.length, 0) || r.sheetPages.length
+        return `p. ${r.startPage}${n > 1 ? `–${r.startPage + n - 1}` : ''}`
+      })() : r.status === 'missing' ? '—' : 'to follow',
     ]),
     notes,
   }
@@ -394,4 +403,20 @@ export async function buildSubmittalPackage(
 export function packageFileName(revNumber: number, bidLabel: string): string {
   const base = `Submittal Rev ${revNumber} - ${bidLabel}`.replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim()
   return `${base}.pdf`
+}
+
+/**
+ * The sheets the package carries, in plan order: a row with part sheets gives one sheet per part
+ * (its pages, stamped with the part's name); any other row gives its own pages, stamped with
+ * its product (2026-10-01).
+ */
+export function packageSheets(plan: PackagePlan): PackageSheetInput[] {
+  const out: PackageSheetInput[] = []
+  for (const r of plan.rows) {
+    if (r.startPage == null) continue
+    const parts = (r.partSheets ?? []).filter((sh) => sh.pages.length > 0)
+    if (parts.length > 0) for (const sh of parts) out.push({ tag: r.tag, status: r.status, title: sh.title, fileIndex: sh.fileIndex, pages: sh.pages })
+    else if (r.sheetFile != null) out.push({ tag: r.tag, status: r.status, title: r.submitted.split('\n').join(' + '), fileIndex: r.sheetFile, pages: r.sheetPages })
+  }
+  return out
 }

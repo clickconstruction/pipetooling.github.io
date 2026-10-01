@@ -37,6 +37,11 @@ vi.mock('../../lib/submittals/submittalPackage', async (importOriginal) => {
 
 vi.mock('../../lib/submittals/pdfThumbnails', () => ({
   renderPdfThumbnails: (bytes: ArrayBuffer) => Promise.resolve(Array.from({ length: Math.max(1, bytes.byteLength / 2) }, (_, i) => `data:page${i + 1}`)),
+  // 2026-10-01 · Read its parts: the file reads as BP375's National Wholesale submittal.
+  openPdf: async () => {
+    const { BP375_NWS_PAGES } = await import('../../lib/submittals/houseFileParts.bp375.fixture')
+    return { numPages: BP375_NWS_PAGES.length, pageText: (p: number) => Promise.resolve(BP375_NWS_PAGES[p - 1] ?? ''), renderPage: () => Promise.resolve(''), destroy: () => {} }
+  },
 }))
 
 vi.mock('../../lib/submittals/trimPdf', () => ({
@@ -147,6 +152,15 @@ function builder(table: string) {
         const rows = (Array.isArray(rec.payload) ? (rec.payload as Record<string, unknown>[]) : [rec.payload as Record<string, unknown>]).map((r, i) => ({ id: `pt-${state.parts.length + i + 1}`, procure_key: `pk-${state.parts.length + i + 1}`, sheet_pages: [], quantity: 1, on_submittal: true, ...r }))
         state.parts = [...state.parts, ...rows]
         return { data: rows, error: null }
+      }
+      if (rec.op === 'delete' && table === 'bid_submittal_item_parts') {
+        const ids = rec.filters.find((f) => f[0] === 'id:in')?.[1] as string[] | undefined
+        state.parts = state.parts.filter((r) => !(ids ?? []).includes(r.id as string))
+      }
+      if (rec.op === 'update' && table === 'bid_submittal_item_parts') {
+        const ids = rec.filters.find((f) => f[0] === 'id:in')?.[1] as string[] | undefined
+        const id = rec.filters.find((f) => f[0] === 'id')?.[1]
+        state.parts = state.parts.map((r) => ((ids ? ids.includes(r.id as string) : r.id === id) ? { ...r, ...(rec.payload as Record<string, unknown>) } : r))
       }
       if (rec.op === 'update' && table === 'bid_submittals') {
         const id = rec.filters.find((f) => f[0] === 'id')?.[1]
@@ -668,6 +682,83 @@ describe('BidsSubmittalsTab', () => {
     const rows = screen.getAllByTestId('submittal-row')
     expect(rows.find((r) => r.textContent?.includes('WC-1'))!.textContent).toContain('Dana Whitfield · entered by Wendi · Sep 12')
     state.noRoom = false
+  })
+
+  it('2026-10-01 · approved whole: a row with parts takes the approval on every part the GC sees with no call, and reads the roll-up; a row without parts as before', async () => {
+    state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'shared', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [], shared_at: '2026-09-20T00:00:00Z', created_at: '2026-09-15T00:00:00Z' }]
+    state.items = [
+      item({ id: 'p-wc', tag: 'WC-1', sequence_order: 1, submitted_label: 'TOTO CT728CUVG#01 + TOTO TET2LBI31#SS', status: 'proposed' }),
+      item({ id: 'a-dwh', tag: 'DWH-1', sequence_order: 2, submitted_label: 'BRADFORD WHITE RE2HP50', status: 'proposed' }),
+    ]
+    state.parts = [
+      { id: 'pt-bowl', item_id: 'p-wc', bid_id: 'b398', sequence_order: 1, label: 'TOTO CT728CUVG#01 TOILET', quantity: 1, on_submittal: true, sheet_pages: [], review_decision: 'approved', reviewed_by_name: 'Dana Whitfield', reviewed_at: '2026-09-21T15:00:00Z', decision_source: 'room' },
+      { id: 'pt-valve', item_id: 'p-wc', bid_id: 'b398', sequence_order: 2, label: 'TOTO TET2LBI31#SS', quantity: 1, on_submittal: true, sheet_pages: [], review_decision: null, decision_source: 'room' },
+      { id: 'pt-stop', item_id: 'p-wc', bid_id: 'b398', sequence_order: 3, label: 'BRASSCRA PLB113XP ANG', quantity: 1, on_submittal: false, sheet_pages: [], review_decision: null, decision_source: 'room' },
+    ]
+    state.writes = []
+    state.noRoom = true
+    try {
+      mount()
+      await screen.findAllByTestId('submittal-row')
+      // The row with parts shows each part's call, and the count of calls over its parts.
+      await waitFor(() => expect(screen.getAllByTestId('row-part-call').map((e) => e.textContent)).toEqual(['✓ approved']))
+      expect(screen.getAllByTestId('their-call-parts')[0]!.textContent).toBe('1 approved · 1 to go')
+      fireEvent.click(screen.getByTestId('approve-all-open'))
+      const dialog = await screen.findByRole('dialog', { name: 'They approved Rev 1' })
+      fireEvent.change(within(dialog).getByLabelText('Reviewer name'), { target: { value: 'Dana Whitfield' } })
+      fireEvent.change(within(dialog).getByLabelText('Reviewer email'), { target: { value: 'dana@arch.test' } })
+      fireEvent.click(within(dialog).getByTestId('approve-all-save'))
+      await waitFor(() => expect(state.writes.some((w) => w.table === 'bid_submittal_events')).toBe(true))
+      const partUpd = state.writes.find((w) => w.table === 'bid_submittal_item_parts' && w.op === 'update')!
+      expect(partUpd.filters).toContainEqual(['id:in', ['pt-valve']])
+      expect(partUpd.payload).toMatchObject({ review_decision: 'approved', decision_source: 'entered' })
+      expect(state.parts.find((p) => p.id === 'pt-stop')!.review_decision).toBeNull()
+      // The row reads the roll-up: every part the GC sees is approved now.
+      expect(state.items.find((r) => r.id === 'p-wc')).toMatchObject({ review_decision: 'approved' })
+      const rowUpd = state.writes.filter((w) => w.table === 'bid_submittal_items' && w.op === 'update').find((w) => w.filters.some((f) => f[0] === 'id:in'))!
+      expect(rowUpd.filters).toContainEqual(['id:in', ['a-dwh']])
+    } finally {
+      state.parts = []
+      state.noRoom = false
+    }
+  })
+
+  it('2026-10-01 · Read its parts: the house’s file sits beside the rows; Use the file’s parts rewrites the parts it pairs, adds the rest, takes off what the estimator says, and gives the row the file’s pages', async () => {
+    state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, shared_at: null, created_at: '2026-09-15T00:00:00Z', source_files: [{ path: 'b398/rev-1/0.pdf', house_id: null, house_name: null, name: 'SPACEX BA-2 CORE & SHELL.pdf', pages: 75, trimmed_at: null, dropped_pages: null, names_rows: 12, sectioned: true }] }]
+    state.items = [item({ id: 'lav2', tag: 'LAV-2', sequence_order: 1, submitted_label: 'KOHLER 2215-0 LADENA WHITE + TOTO T25S51E#CP + BOBRICK B-8236', status: 'proposed', supply_house_id: null })]
+    state.parts = [
+      { id: 'pt-kohler', item_id: 'lav2', bid_id: 'b398', sequence_order: 1, label: 'KOHLER 2215-0 LADENA WHITE', quantity: 1, on_submittal: true, sheet_pages: [], procure_key: 'k1', decision_source: 'room' },
+      { id: 'pt-t25', item_id: 'lav2', bid_id: 'b398', sequence_order: 2, label: 'TOTO T25S51E#CP', quantity: 1, on_submittal: true, sheet_pages: [], procure_key: 'k2', decision_source: 'room' },
+      { id: 'pt-soap', item_id: 'lav2', bid_id: 'b398', sequence_order: 3, label: 'BOBRICK B-8236', quantity: 1, on_submittal: true, sheet_pages: [], procure_key: 'k3', decision_source: 'room' },
+      { id: 'pt-flange', item_id: 'lav2', bid_id: 'b398', sequence_order: 4, label: 'MAINLINE ML90105 POLISHED CHROME FLANGE', quantity: 2, on_submittal: false, sheet_pages: [], procure_key: 'k4', decision_source: 'room' },
+    ]
+    state.writes = []
+    try {
+      mount()
+      await screen.findAllByTestId('submittal-row')
+      fireEvent.click(await screen.findByTestId('read-parts-open'))
+      const dialog = await screen.findByRole('dialog', { name: 'What SPACEX BA-2 CORE & SHELL.pdf says' })
+      // Only the LAV-2 card is used here; every other tag is switched off.
+      for (const card of within(dialog).getAllByTestId('house-file-tag')) if (!card.textContent?.startsWith('LAV-2')) fireEvent.click(within(card).getAllByRole('checkbox')[0]!)
+      const lav = within(dialog).getAllByTestId('house-file-tag').find((c) => c.textContent?.startsWith('LAV-2'))!
+      fireEvent.change(within(within(lav).getAllByTestId('house-file-part')[0]!).getByRole('combobox'), { target: { value: 'pt-kohler' } })
+      expect(within(dialog).getByTestId('house-file-apply').textContent).toBe('Use the file’s parts on 1 row')
+      fireEvent.click(within(dialog).getByTestId('house-file-apply'))
+      await waitFor(() => expect(screen.queryByRole('dialog', { name: /says/ })).toBeNull())
+      // The Kohler is rewritten as the Sloan, the takeoff's name kept as what was priced; the soap dispenser is the same part, now with its pages.
+      expect(state.parts.find((p) => p.id === 'pt-kohler')).toMatchObject({ label: 'SLOAN 3873021 VITREOUS CHINA UNDERMOUNT LAVATORY', priced_label: 'KOHLER 2215-0 LADENA WHITE', source: 'file', sheet_file: 0, sheet_pages: [49, 50], on_submittal: true })
+      expect(state.parts.find((p) => p.id === 'pt-soap')).toMatchObject({ model: 'B-8236', sheet_pages: [53] })
+      // The T25S51E the file does not carry is taken off; the flange is kept, order only, after the file's parts.
+      expect(state.writes.find((w) => w.table === 'bid_submittal_item_parts' && w.op === 'delete')!.filters).toContainEqual(['id:in', ['pt-t25']])
+      expect(state.parts.find((p) => p.id === 'pt-flange')).toMatchObject({ on_submittal: false, sequence_order: 8 })
+      const inserted = state.writes.find((w) => w.table === 'bid_submittal_item_parts' && w.op === 'insert')!.payload as Array<Record<string, unknown>>
+      expect(inserted.map((p) => p.model)).toEqual(['TLE25006U1#CP', 'Z8743-PC', 'Z8802XL-LR-PC', 'Z8700-8B-PC', '170D-LF'])
+      // The row's sheet is every page the file's parts use.
+      const rowUpd = state.writes.filter((w) => w.table === 'bid_submittal_items' && w.op === 'update').pop()!
+      expect(rowUpd.payload).toMatchObject({ sheet_file: 0, sheet_pages: [49, 50, 51, 52, 53, 54, 55, 56, 57, 58], sheet_source: 'house' })
+    } finally {
+      state.parts = []
+    }
   })
 
   it('6b · a ready schedule read lists the sure and want-a-look tags; Confirm keeps the chosen tags and drops the rest', async () => {

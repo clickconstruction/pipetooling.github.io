@@ -28,6 +28,8 @@ const BUTTON_STYLES: Record<string, string> = {
   red: 'background:#dc2626;color:white;border:none;',
   purple: 'background:#7c3aed;color:white;border:none;',
   gray: 'background:#9ca3af;color:white;border:none;',
+  // v2.4329: the selected In order on the Bill tab's stage switch — the theme's strongest ink, so it reads in both themes.
+  dark: 'background:var(--text-strong);color:var(--surface);border:none;',
   outline: 'background:white;color:#1f2937;border:1px solid var(--border-strong);',
   'outline-blue': 'background:white;color:#1d4ed8;border:1px solid #93c5fd;',
   'outline-amber': 'background:white;color:#b45309;border:1px solid #fcd34d;',
@@ -123,8 +125,10 @@ function renderIcon(name: string): string {
   )
 }
 
+// The panel is drawn light (an app card on a light page). v2.4329: `data-theme="light"` pins what is inside it
+// to the light tokens too; without it the dark theme's pale text sat on the light panel and could not be read.
 const PANEL_OPEN_HTML = (caption: string) =>
-  `<div style="border:1px solid #e5e7eb;border-radius:8px;background:#f9fafb;padding:0.75rem 1rem;margin:0.75rem 0;">` +
+  `<div data-theme="light" style="border:1px solid #e5e7eb;border-radius:8px;background:#f9fafb;padding:0.75rem 1rem;margin:0.75rem 0;">` +
   `<div style="font-size:0.7rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.5rem;">` +
   `${caption ? `Example — ${escapeHtml(caption)}` : 'Example'}</div>`
 

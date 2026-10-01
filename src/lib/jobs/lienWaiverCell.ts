@@ -27,6 +27,8 @@ export type LienWaiverCell = {
   unconditional: LienWaiverHalf
   /** The bill's money has settled (the caller's read of payments against the bill). */
   settled: boolean
+  /** v2.4330: settled by a check that has not cleared yet — the day it clears; the unconditional waits until then. */
+  clearsYmd: string | null
   /** The one move owed on this bill: add the conditional, sign what is minted, send what is signed, add the unconditional once settled — or nothing. */
   next: 'add_conditional' | 'sign' | 'send' | 'add_unconditional' | null
   /** Short words for each half as a chip: "Conditional ✓ Sep 30", "Unconditional · when paid". */
@@ -64,7 +66,14 @@ function shortDate(ymd: string | null): string {
  * jobs had ever had a waiver when the owner asked for it; the old amber "Conditional · none — send
  * it" on every GC bill went unread.
  */
-export function lienWaiverCellForBill(releases: ReadonlyArray<JobLienReleaseRow>, invoiceId: string, settled: boolean): LienWaiverCell {
+export function lienWaiverCellForBill(
+  releases: ReadonlyArray<JobLienReleaseRow>,
+  invoiceId: string,
+  settled: boolean,
+  /** v2.4330: `billCheckClearsYmd` — a check on the bill still clearing; null when none is. */
+  clearsYmd: string | null = null,
+): LienWaiverCell {
+  const clearing = settled && clearsYmd != null
   const mine = liveLienReleases([...releases]).filter((r) => (r.invoice_ids ?? []).includes(invoiceId))
   const conditional = halfFor(mine.filter((r) => isConditionalLienForm(r.form_type)))
   const unconditional = halfFor(mine.filter((r) => !isConditionalLienForm(r.form_type)))
@@ -74,7 +83,7 @@ export function lienWaiverCellForBill(releases: ReadonlyArray<JobLienReleaseRow>
   const pending = [unconditional, conditional].find((h) => h.state === 'awaiting' || h.state === 'signed')
   if (pending?.state === 'awaiting') next = 'sign'
   else if (pending?.state === 'signed') next = 'send'
-  else if (settled && unconditional.state === 'none') next = 'add_unconditional'
+  else if (settled && unconditional.state === 'none') next = clearing ? null : 'add_unconditional'
   else if (!settled && conditional.state === 'none' && unconditional.state === 'none') next = 'add_conditional'
 
   const chipFor = (half: 'conditional' | 'unconditional', h: LienWaiverHalf): LienWaiverCell['chips'][number] => {
@@ -91,6 +100,7 @@ export function lienWaiverCellForBill(releases: ReadonlyArray<JobLienReleaseRow>
       case 'none':
         if (half === 'conditional') return { half, text: 'Conditional · not added', tone: 'grey' }
         if (!settled) return { half, text: 'Unconditional · when paid', tone: 'grey' }
+        if (clearing) return { half, text: `Unconditional · waits for the check · clears ${shortDate(clearsYmd)}`, tone: 'grey' }
         return underWay ? { half, text: 'Unconditional owed · settled', tone: 'amber' } : { half, text: 'Unconditional · not added', tone: 'grey' }
     }
   }
@@ -98,6 +108,7 @@ export function lienWaiverCellForBill(releases: ReadonlyArray<JobLienReleaseRow>
     conditional,
     unconditional,
     settled,
+    clearsYmd: clearing ? clearsYmd : null,
     next,
     chips: [chipFor('conditional', conditional), chipFor('unconditional', unconditional)],
     underWay,
