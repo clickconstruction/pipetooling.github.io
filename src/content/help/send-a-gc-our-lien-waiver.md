@@ -125,7 +125,7 @@ Two notes can show in the steps above the box.
 - An amber note in step 1 says the bill is already waived. Another live waiver covers it, so a second one would give up the same money twice. The steps after it wait. When money is paid and not waived yet, click {{button:blue|Waive the $17,777.51 already paid instead ›}}. Click {{button:outline|Open the signed one ›}} to see the other waiver. Click {{button:outline|Discard this draft}} to drop the new one. Click **Make it anyway** only when the app has it wrong.
 - A blue note in step 2 says money is paid and not waived yet. The GC is owed an unconditional progress waiver for it. Click {{button:outline|Waive the $17,777.51 paid ›}} to switch the window to that form.
 
-If you type over the amount, the window shows what the bills say. Click {{button:outline|Use $9,022.49}} to put it back. Hover the box to see the amount marked on the page.
+Commas appear as you type, so 17777.51 shows as 17,777.51. Leaving the box adds the cents. If you type over the amount, the window shows what the bills say. Click {{button:outline|Use $9,022.49}} to put it back. Hover the box to see the amount marked on the page.
 
 ## Set who signs for the company
 
