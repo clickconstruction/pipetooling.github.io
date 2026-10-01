@@ -1,0 +1,92 @@
+import type { JobLienReleaseRow } from './lienReleaseTracking'
+import { isConditionalLienForm, liveLienReleases } from './lienReleaseTracking'
+import { lienReleaseStatus } from './lienReleaseLifecycle'
+
+/**
+ * The lien-waiver cell on a bill (v2.4275): one pair per bill — the conditional that goes out
+ * with the bill, the unconditional that follows when the payment settles — read from the job's
+ * `job_lien_releases` rows whose `invoice_ids` cover the bill. Pure; the Bill tab, GC Review and
+ * the GC's room draw it.
+ *
+ * Each half is one of: none · draft · awaiting (the leader has not signed) · signed (not yet sent)
+ * · sent. The cell's `next` is the one move the office owes on this bill, or null.
+ */
+
+export type LienWaiverHalfState = 'none' | 'draft' | 'awaiting' | 'signed' | 'sent'
+
+export type LienWaiverHalf = {
+  state: LienWaiverHalfState
+  /** The release behind the state, when there is one. */
+  release: JobLienReleaseRow | null
+  /** YYYY-MM-DD of the step the state names: sent, signed, requested, created. */
+  ymd: string | null
+}
+
+export type LienWaiverCell = {
+  conditional: LienWaiverHalf
+  unconditional: LienWaiverHalf
+  /** The bill's money has settled (the caller's read of payments against the bill). */
+  settled: boolean
+  /** The one move owed on this bill: add the conditional, sign what is minted, send what is signed, add the unconditional once settled — or nothing. */
+  next: 'add_conditional' | 'sign' | 'send' | 'add_unconditional' | null
+  /** Short words for each half as a chip: "Conditional ✓ Sep 30", "Unconditional · when paid". */
+  chips: Array<{ half: 'conditional' | 'unconditional'; text: string; tone: 'green' | 'amber' | 'grey' }>
+}
+
+function halfFor(rows: JobLienReleaseRow[]): LienWaiverHalf {
+  // The newest row decides; a sent one beats a signed one beats an awaiting one.
+  const rank = (r: JobLienReleaseRow) => (r.sent_to_customer_at ? 4 : lienReleaseStatus(r) === 'signed' ? 3 : lienReleaseStatus(r) === 'awaiting_signature' ? 2 : lienReleaseStatus(r) === 'issued' ? 1.5 : 1)
+  const best = [...rows].sort((a, b) => rank(b) - rank(a) || b.created_at.localeCompare(a.created_at))[0]
+  if (!best) return { state: 'none', release: null, ymd: null }
+  if (best.sent_to_customer_at) return { state: 'sent', release: best, ymd: best.sent_to_customer_at.slice(0, 10) }
+  const s = lienReleaseStatus(best)
+  if (s === 'signed') return { state: 'signed', release: best, ymd: (best.signed_at ?? best.created_at).slice(0, 10) }
+  if (s === 'awaiting_signature') return { state: 'awaiting', release: best, ymd: (best.signature_requested_at ?? best.created_at).slice(0, 10) }
+  if (s === 'issued') return { state: 'awaiting', release: best, ymd: (best.minted_at ?? best.created_at).slice(0, 10) }
+  return { state: 'draft', release: best, ymd: best.created_at.slice(0, 10) }
+}
+
+function shortDate(ymd: string | null): string {
+  if (!ymd) return ''
+  const d = new Date(`${ymd}T12:00:00Z`)
+  return Number.isNaN(d.getTime()) ? ymd : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+}
+
+export function lienWaiverCellForBill(releases: ReadonlyArray<JobLienReleaseRow>, invoiceId: string, settled: boolean): LienWaiverCell {
+  const mine = liveLienReleases([...releases]).filter((r) => (r.invoice_ids ?? []).includes(invoiceId))
+  const conditional = halfFor(mine.filter((r) => isConditionalLienForm(r.form_type)))
+  const unconditional = halfFor(mine.filter((r) => !isConditionalLienForm(r.form_type)))
+
+  let next: LienWaiverCell['next'] = null
+  const pending = [unconditional, conditional].find((h) => h.state === 'awaiting' || h.state === 'signed')
+  if (pending?.state === 'awaiting') next = 'sign'
+  else if (pending?.state === 'signed') next = 'send'
+  else if (settled && unconditional.state === 'none') next = 'add_unconditional'
+  else if (!settled && conditional.state === 'none' && unconditional.state === 'none') next = 'add_conditional'
+
+  const chipFor = (half: 'conditional' | 'unconditional', h: LienWaiverHalf): LienWaiverCell['chips'][number] => {
+    const label = half === 'conditional' ? 'Conditional' : 'Unconditional'
+    switch (h.state) {
+      case 'sent':
+        return { half, text: `${label} ✓ sent ${shortDate(h.ymd)}`, tone: 'green' }
+      case 'signed':
+        return { half, text: `${label} ✓ signed · send it`, tone: 'amber' }
+      case 'awaiting':
+        return { half, text: `${label} · awaiting signature`, tone: 'amber' }
+      case 'draft':
+        return { half, text: `${label} · draft`, tone: 'grey' }
+      case 'none':
+        if (half === 'unconditional') return settled ? { half, text: 'Unconditional owed · settled', tone: 'amber' } : { half, text: 'Unconditional · when paid', tone: 'grey' }
+        return settled ? { half, text: 'Conditional · none', tone: 'grey' } : { half, text: 'Conditional · none — send it', tone: 'amber' }
+    }
+  }
+  return { conditional, unconditional, settled, next, chips: [chipFor('conditional', conditional), chipFor('unconditional', unconditional)] }
+}
+
+/** Payments applied to a bill reach its amount (to the cent). */
+export function billSettled(invoice: { id: string; amount: number | null }, payments: ReadonlyArray<{ invoice_id: string | null; amount: number | null }>): boolean {
+  const amount = Number(invoice.amount ?? 0)
+  if (amount <= 0) return false
+  const applied = payments.filter((p) => p.invoice_id === invoice.id).reduce((s, p) => s + Number(p.amount ?? 0), 0)
+  return applied >= amount - 0.005
+}

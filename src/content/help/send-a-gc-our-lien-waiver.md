@@ -2,11 +2,28 @@
 title: send a GC our lien waiver
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: lien waiver, GC, general contractor, conditional, unconditional, progress, final, release of lien, he signs now, sign now, send to the GC, waiver PDF, 53.284, bill, pay app
+keywords: lien waiver, GC, general contractor, conditional, unconditional, progress, final, release of lien, he signs now, sign now, send to the GC, waiver PDF, 53.284, bill, pay app, send with the bill, bill tab, add waiver
 ---
 A GC often wants a lien waiver with each bill. The waiver says we give up our lien right for that payment. Texas has four forms. The app picks the right one from the bill, and the leader signs it in the app.
 
-## Open the waiver from the bill
+## Send it with the bill
+
+1. Open **Bill Customer** on the GC job's draft bill.
+2. Look for the **Lien releases** strip. On a GC job it starts with a tick: **Send the lien waiver with this bill**. The tick is on.
+3. Read the line under it. It names the form the bill picks and says why.
+4. Send the bill as you always do.
+5. The **Release of Lien** window opens on that bill once it has gone. Get it signed and send it, as below.
+
+Untick the box if the GC does not want a waiver this time. The bill then goes alone.
+
+## A bill already sent
+
+1. Open the job and go to its **Bill** tab.
+2. Every sent bill on a GC job shows two chips. The first is the conditional waiver. The second is the unconditional one.
+3. The button beside them names the next move. {{button:outline|Add waiver ›}} means no waiver has gone yet. {{button:outline|Sign it ›}} means one waits for the leader. {{button:outline|Send it ›}} means one is signed but not sent. {{button:outline|Add the unconditional ›}} means the check has cleared.
+4. Click it. The **Release of Lien** window opens on that bill.
+
+## Open the waiver from the Pipeline
 
 1. Go to **Jobs** and open **Pipeline**.
 2. Find the job's row under **Billed Awaiting Payment**.

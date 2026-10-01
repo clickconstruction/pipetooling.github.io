@@ -230,3 +230,31 @@ describe('JobFormInvoiceList billed send-back (v2.1653, under ⋯)', () => {
     expect(within(menu).queryByText(/Maria Delgado/)).toBeNull()
   })
 })
+
+describe('JobFormInvoiceList — the lien-waiver cell on a GC job (v2.4275)', () => {
+  it('a sent bill on a GC job shows its two waiver chips and the next move; the door opens the Release of Lien window on that bill', async () => {
+    renderList(
+      makeJob({
+        customer_name: 'Hospital',
+        gc_customer_id: 'gc-knight',
+        gcCustomer: { id: 'gc-knight', name: 'Knight Contracting' },
+        revenue: 36000,
+        invoices: [makeInvoice({ id: 'inv-open', status: 'billed', amount: 15406, is_primary_rtb_bundle: false, sent_to_customer_at: '2026-09-30T15:00:00Z', billed_at: '2026-09-30T15:00:00Z' })],
+      }),
+    )
+    await settle()
+    const cell = screen.getByTestId('invoice-waiver-cell')
+    expect(cell.textContent).toContain('Conditional · none — send it')
+    expect(cell.textContent).toContain('Unconditional · when paid')
+    const door = within(cell).getByTestId('invoice-waiver-door')
+    expect(door.textContent).toBe('Add waiver ›')
+    fireEvent.click(door)
+    await settle()
+    expect(await screen.findByRole('dialog', { name: 'Release of Lien' })).toBeTruthy()
+  })
+  it('a direct job with no releases shows no waiver cell', async () => {
+    renderList(makeJob({ customer_name: 'Maria Delgado', invoices: [makeInvoice({ id: 'inv-open', status: 'billed', amount: 9800, is_primary_rtb_bundle: false, sent_to_customer_at: '2026-09-04T15:00:00Z', billed_at: '2026-09-04T15:00:00Z' })] }))
+    await settle()
+    expect(screen.queryByTestId('invoice-waiver-cell')).toBeNull()
+  })
+})

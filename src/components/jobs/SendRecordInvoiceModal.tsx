@@ -409,6 +409,7 @@ export default function SendRecordInvoiceModal({
   onClose,
   onSuccess,
   onAfterEnsureSuccess,
+  onSentWantWaiver,
   onAfterOobUnwindSuccess,
   onDiscountApplied,
   jobUpdating,
@@ -420,6 +421,8 @@ export default function SendRecordInvoiceModal({
   onSuccess: () => Promise<void>
   onAfterEnsureSuccess?: () => void | Promise<void>
   onAfterOobUnwindSuccess?: () => void | Promise<void>
+  /** v2.4275: the bill went with "send the lien waiver with this bill" ticked — the host opens the Release of Lien window on it. */
+  onSentWantWaiver?: (jobId: string, invoiceId: string) => void
   /** Discount tools (v2.3268): after `apply_job_discount` wrote a discount row — the opener re-reads the job's line items. */
   onDiscountApplied?: () => void | Promise<void>
   jobUpdating: boolean
@@ -454,6 +457,11 @@ export default function SendRecordInvoiceModal({
   const [physicalError, setPhysicalError] = useState<string | null>(null)
   /** Full job row for physical invoice line items + payments (same fetch as Stripe fixture multiline). */
   const [billCustomerJobDetails, setBillCustomerJobDetails] = useState<JobWithDetails | null>(null)
+  // v2.4275: on a GC job, the waiver travels with the bill unless the office unticks it.
+  const [waiverAfterSend, setWaiverAfterSend] = useState(false)
+  useEffect(() => {
+    setWaiverAfterSend(Boolean(billCustomerJobDetails?.gc_customer_id))
+  }, [billCustomerJobDetails?.id, billCustomerJobDetails?.gc_customer_id])
 
   /** True once the detail fetch for the open job has settled (row or null). */
   const [billCustomerJobDetailsLoaded, setBillCustomerJobDetailsLoaded] = useState(false)
@@ -1538,6 +1546,7 @@ export default function SendRecordInvoiceModal({
       }
       recordBillCustomerCommitted('physical')
       await onSuccess()
+      if (waiverAfterSend && job) onSentWantWaiver?.(job.id, invId)
       onClose()
     } catch (e) {
       // Timeout: the request wasn't cancelled — the email may still send when
@@ -1570,8 +1579,10 @@ export default function SendRecordInvoiceModal({
     setOutsideSubmitting(true)
     setOutsideError(null)
     const sentAt = sentDate.trim() ? new Date(sentDate + 'T12:00:00').toISOString() : new Date().toISOString()
+    let sentInvoiceId: string | null = null
     try {
       if (kind === 'invoice' && invoice) {
+        sentInvoiceId = invoice.id
         await withOperationTimeout(
           withSupabaseRetry(
             () =>
@@ -1595,6 +1606,7 @@ export default function SendRecordInvoiceModal({
         const ensured = await ensurePrimaryRowForCommit(amt)
         if (!ensured.ok) throw new Error(ensured.error)
         const invId = ensured.invoiceId
+        sentInvoiceId = invId
         await withOperationTimeout(
           withSupabaseRetry(
             () =>
@@ -1621,6 +1633,7 @@ export default function SendRecordInvoiceModal({
       }
       recordBillCustomerCommitted('housecallpro')
       await onSuccess()
+      if (waiverAfterSend && sentInvoiceId) onSentWantWaiver?.(job.id, sentInvoiceId)
       onClose()
     } catch (e) {
       // Timeout: the request wasn't cancelled — it may still land when the
@@ -1802,6 +1815,7 @@ export default function SendRecordInvoiceModal({
         })
       }
       await onSuccess()
+      if (waiverAfterSend) onSentWantWaiver?.(job.id, invId)
     } catch (e) {
       // Timeout: the request wasn't cancelled — the invoice may still be
       // created when the server recovers, so say so instead of implying failure.
@@ -2483,6 +2497,9 @@ export default function SendRecordInvoiceModal({
           jobId={jobRaw?.id ?? null}
           jobDetails={billCustomerJobDetails}
           jobNumber={effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—'}
+          invoiceId={kind === 'invoice' ? invoice?.id ?? null : null}
+          waiverAfterSend={waiverAfterSend}
+          onWaiverAfterSendChange={setWaiverAfterSend}
         />
 
         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', borderBottom: '1px solid var(--border)', flexWrap: 'wrap', alignItems: 'center' }}>

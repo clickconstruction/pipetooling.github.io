@@ -11,8 +11,12 @@ import {
   type JobLienReleaseRow,
 } from '../../lib/jobs/lienReleaseTracking'
 import {
+  LIEN_WAIVER_FORM_CITES,
+  LIEN_WAIVER_FORM_SHORT_LABELS,
   buildLienWaiverPrintHtml,
   lienWaiverDate,
+  lienWaiverWhy,
+  pickLienWaiverForBill,
   type LienWaiverFields,
   type LienWaiverFormType,
 } from '../../lib/jobsDocuments/lienWaiverRelease'
@@ -37,12 +41,19 @@ export default function BillCustomerLienReleaseStrip({
   jobId,
   jobDetails,
   jobNumber,
+  invoiceId = null,
+  waiverAfterSend = false,
+  onWaiverAfterSendChange,
 }: {
   open: boolean
   jobId: string | null
   /** Full job (invoices + payments) when the parent has it — enables clearance + new releases. */
   jobDetails: JobWithDetails | null
   jobNumber: string
+  /** v2.4275: the bill about to go — the waiver the bill picks and the tick that sends it along. */
+  invoiceId?: string | null
+  waiverAfterSend?: boolean
+  onWaiverAfterSendChange?: (on: boolean) => void
 }) {
   const { profileName } = useAuth()
   const { showToast } = useToastContext()
@@ -79,6 +90,10 @@ export default function BillCustomerLienReleaseStrip({
 
   const live = liveLienReleases(rows)
   const canIssue = jobDetails != null
+  // The bill about to go, on a GC job: which waiver it picks, and the tick (v2.4275).
+  const outgoing = jobDetails?.gc_customer_id && invoiceId ? (jobDetails.invoices ?? []).find((i) => i.id === invoiceId) ?? null : null
+  const outgoingPick = outgoing && jobDetails ? pickLienWaiverForBill(jobDetails, outgoing) : null
+  const gcName = (jobDetails?.gcCustomer?.name ?? '').trim()
 
   if (!open || (live.length === 0 && !canIssue)) return null
 
@@ -136,6 +151,22 @@ export default function BillCustomerLienReleaseStrip({
           </button>
         ) : null}
       </div>
+      {outgoingPick ? (
+        <div style={{ margin: '0 0 0.5rem', padding: '0.45rem 0.55rem', borderRadius: 6, background: 'var(--surface)', border: '1px solid var(--border-strong)', fontSize: '0.75rem' }} data-testid="bill-customer-waiver-tick">
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
+            <input type="checkbox" checked={waiverAfterSend} onChange={(e) => onWaiverAfterSendChange?.(e.target.checked)} style={{ marginTop: 2, width: 16, height: 16 }} />
+            <span>
+              <span style={{ fontWeight: 700 }}>Send the lien waiver with this bill</span>
+              <span style={{ color: 'var(--text-muted)' }}>
+                {' '}— {LIEN_WAIVER_FORM_SHORT_LABELS[outgoingPick.formType]} · {LIEN_WAIVER_FORM_CITES[outgoingPick.formType]} · {outgoingPick.facts.join(' · ')}
+              </span>
+              <span style={{ display: 'block', color: 'var(--text-muted)', marginTop: 2 }}>
+                {lienWaiverWhy(outgoingPick.formType, gcName)} The Release of Lien window opens on this bill once it has gone; the leader signs, then Send to {gcName || 'the GC'}.
+              </span>
+            </span>
+          </label>
+        </div>
+      ) : null}
       {live.length === 0 ? (
         <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
           None issued for this job yet — a conditional release usually travels with the payment request.
