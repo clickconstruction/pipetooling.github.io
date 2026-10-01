@@ -5,7 +5,8 @@ import { laborBookForTrade } from '../lib/bids/laborEntryProvenance'
 import { useBidBoardScope } from '../hooks/useBidBoardScope'
 import { useBidsLoadGates, useBidsPageData } from '../hooks/useBidsPageData'
 import { useBidsDeepLinks } from '../hooks/useBidsDeepLinks'
-import { loadBidMarks } from '../lib/bids/bidMarksStore'
+import { loadBidMarks, refreshBidMarkRequests, setBidMarkPeople, useBidMarks } from '../lib/bids/bidMarksStore'
+import { forMeByBid } from '../lib/bids/bidMarkRequests'
 import { BID_REVIEWED_EVENT } from '../lib/bids/bidReview'
 import { supabase } from '../lib/supabase'
 import { upsertBidNotesReadWatermark } from '../lib/userBidNotesReadState'
@@ -125,6 +126,15 @@ export default function Bids() {
   useEffect(() => {
     if (authUser?.id) void loadBidMarks(authUser.id)
   }, [authUser?.id])
+  // Marks for a teammate (v2.4297): the store names people from the Bids roster, and re-reads
+  // the requests whenever the tab comes back so "seen" and "done" reach the sender.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void refreshBidMarkRequests()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [])
   const { showToast } = useToastContext()
   const newCustomerModal = useNewCustomerModal()
   const bidPreview = useBidPreview()
@@ -178,6 +188,14 @@ export default function Bids() {
   // Role gates that say something (v2.2882): a superintendent's link to an
   // office-only tab toasts once and lands on the Bid board — not a silent rewrite.
   const { bounce: roleGateBounce } = useRoleGate(myRole, authUser?.id)
+  // Marks for a teammate (v2.4297): the people a bid can be marked for, and who sent one.
+  useEffect(() => {
+    setBidMarkPeople(
+      estimatorUsers
+        .filter((u) => canOpenBids(u.role as Parameters<typeof canOpenBids>[0]))
+        .map((u) => ({ id: u.id, name: (u.name ?? '').trim() || u.email || 'Someone', role: u.role ?? null })),
+    )
+  }, [estimatorUsers])
   const [activeTab, setActiveTab] = useState<BidsTabKey>('bid-board')
   
   // Service Types state
@@ -269,10 +287,13 @@ export default function Bids() {
   // "Only my bids" filter (shared across all eight workflow tab list views): bids the
   // current user is the account manager or estimator for. On by default (v2.2704).
   const [onlyMyBids, setOnlyMyBids] = useState(true)
+  // A bid someone marked for you (v2.4297) is yours too, so Only my bids never hides it.
+  const { requests: bidMarkRequests } = useBidMarks()
+  const bidsMarkedForMe = useMemo(() => forMeByBid(bidMarkRequests, authUser?.id ?? null), [bidMarkRequests, authUser?.id])
   const isMyBid = useCallback(
     (bid: BidWithBuilder) =>
-      !!authUser?.id && (bid.account_manager_id === authUser.id || bid.estimator_id === authUser.id),
-    [authUser?.id],
+      !!authUser?.id && (bid.account_manager_id === authUser.id || bid.estimator_id === authUser.id || bidsMarkedForMe.has(bid.id)),
+    [authUser?.id, bidsMarkedForMe],
   )
   // Bid Date Sent: the field, the checklist a new date needs, the note typed with it (hooks/useBidDateSentAttestation).
   const attestation = useBidDateSentAttestation({ serverBidDateSent: editingBid?.bid_date_sent ?? null, userId: authUser?.id ?? null })
