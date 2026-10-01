@@ -11822,9 +11822,12 @@ export type Database = {
         Row: {
           amount: number
           created_at: string | null
+          created_by: string | null
           id: string
           invoice_id: string | null
           job_id: string
+          linked_at: string | null
+          linked_by: string | null
           mercury_transaction_id: string | null
           note: string | null
           paid_on: string | null
@@ -11837,9 +11840,12 @@ export type Database = {
         Insert: {
           amount?: number
           created_at?: string | null
+          created_by?: string | null
           id?: string
           invoice_id?: string | null
           job_id: string
+          linked_at?: string | null
+          linked_by?: string | null
           mercury_transaction_id?: string | null
           note?: string | null
           paid_on?: string | null
@@ -11852,9 +11858,12 @@ export type Database = {
         Update: {
           amount?: number
           created_at?: string | null
+          created_by?: string | null
           id?: string
           invoice_id?: string | null
           job_id?: string
+          linked_at?: string | null
+          linked_by?: string | null
           mercury_transaction_id?: string | null
           note?: string | null
           paid_on?: string | null
@@ -11865,6 +11874,13 @@ export type Database = {
           stripe_credit_note_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "jobs_ledger_payments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "jobs_ledger_payments_invoice_id_fkey"
             columns: ["invoice_id"]
@@ -11877,6 +11893,13 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_ledger_payments_linked_by_fkey"
+            columns: ["linked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
@@ -23951,9 +23974,14 @@ export type Database = {
           job_id: string
           job_name: string
           job_number: string
+          linked_at: string
+          linked_by: string
           live: boolean
           mercury_transaction_id: string
           payment_id: string
+          payment_type: string
+          recorded_by_hand: boolean
+          reference_number: string
           removed_at: string
           removed_by: string
         }[]
@@ -24962,6 +24990,7 @@ export type Database = {
           p_invoice_id: string
           p_paid_on?: string
           p_payment_type?: string
+          p_recorded_by?: string
           p_reference_number?: string
         }
         Returns: Json
