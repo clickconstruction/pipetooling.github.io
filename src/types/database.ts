@@ -2351,6 +2351,7 @@ export type Database = {
         Row: {
           bid_id: string
           count_row_id: string
+          product_line_ids: string[] | null
           split: boolean
           ticked: boolean
           updated_at: string
@@ -2358,6 +2359,7 @@ export type Database = {
         Insert: {
           bid_id: string
           count_row_id: string
+          product_line_ids?: string[] | null
           split?: boolean
           ticked?: boolean
           updated_at?: string
@@ -2365,6 +2367,7 @@ export type Database = {
         Update: {
           bid_id?: string
           count_row_id?: string
+          product_line_ids?: string[] | null
           split?: boolean
           ticked?: boolean
           updated_at?: string

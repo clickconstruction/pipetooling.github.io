@@ -20,8 +20,8 @@ export type TakeoffCandidatesLoad = { candidates: TakeoffCandidate[]; fixtures: 
 export async function loadTakeoffCandidates(supabase: Client, bidId: string, opts: { selectedVersionId?: string | null; revisionId?: string | null } = {}): Promise<TakeoffCandidatesLoad> {
   const [rowsRes, linesRes, choicesRes, onRes] = await Promise.all([
     supabase.from('bids_count_rows').select('id, fixture, count, bid_version_id, sequence_order').eq('bid_id', bidId).order('sequence_order'),
-    supabase.from('bids_takeoff_rough_part_lines').select('count_row_id, part_id, source_template_id, quantity, unit_price, source_material_part_price_id, bid_version_id').eq('bid_id', bidId),
-    supabase.from('bid_submittal_takeoff_choices').select('count_row_id, ticked, split').eq('bid_id', bidId),
+    supabase.from('bids_takeoff_rough_part_lines').select('id, count_row_id, sequence_order, part_id, source_template_id, quantity, unit_price, source_material_part_price_id, bid_version_id').eq('bid_id', bidId).order('sequence_order'),
+    supabase.from('bid_submittal_takeoff_choices').select('count_row_id, ticked, split, product_line_ids').eq('bid_id', bidId),
     opts.revisionId ? supabase.from('bid_submittal_items').select('source_count_row_id').eq('submittal_id', opts.revisionId) : Promise.resolve({ data: [] as Array<{ source_count_row_id: string | null }> }),
   ])
   const sel = opts.selectedVersionId ?? null
@@ -32,9 +32,9 @@ export async function loadTakeoffCandidates(supabase: Client, bidId: string, opt
   const baseRows = allRows.filter((r) => r.bid_version_id == null && !named.has((r.fixture ?? '').trim().toUpperCase()))
   const countRows = [...versionRows, ...baseRows].map((r) => ({ id: r.id, fixture: r.fixture, count: Number(r.count) || 0 }))
   const rowIds = new Set(countRows.map((r) => r.id))
-  const lines: TakeoffLine[] = ((linesRes.data ?? []) as Array<{ count_row_id: string; part_id: string | null; source_template_id: string | null; quantity: number; unit_price: number; source_material_part_price_id: string | null }>)
+  const lines: TakeoffLine[] = ((linesRes.data ?? []) as Array<{ id?: string; count_row_id: string; sequence_order?: number | null; part_id: string | null; source_template_id: string | null; quantity: number; unit_price: number; source_material_part_price_id: string | null }>)
     .filter((l) => rowIds.has(l.count_row_id))
-    .map((l) => ({ countRowId: l.count_row_id, partId: l.part_id, sourceTemplateId: l.source_template_id, quantity: Number(l.quantity) || 0, unitPrice: Number(l.unit_price) || 0, sourceMaterialPartPriceId: l.source_material_part_price_id }))
+    .map((l) => ({ id: l.id, countRowId: l.count_row_id, sequenceOrder: l.sequence_order ?? undefined, partId: l.part_id, sourceTemplateId: l.source_template_id, quantity: Number(l.quantity) || 0, unitPrice: Number(l.unit_price) || 0, sourceMaterialPartPriceId: l.source_material_part_price_id }))
 
   const partIds = [...new Set(lines.map((l) => l.partId).filter((x): x is string => !!x))]
   const templateIds = [...new Set(lines.map((l) => l.sourceTemplateId).filter((x): x is string => !!x))]
@@ -58,20 +58,31 @@ export async function loadTakeoffCandidates(supabase: Client, bidId: string, opt
   }
   const choices = new Map<string, boolean>()
   const splits = new Map<string, boolean>()
-  for (const c of (choicesRes.data ?? []) as Array<{ count_row_id: string; ticked: boolean; split?: boolean | null }>) {
+  const productKeys = new Map<string, string[]>()
+  for (const c of (choicesRes.data ?? []) as Array<{ count_row_id: string; ticked: boolean; split?: boolean | null; product_line_ids?: string[] | null }>) {
     choices.set(c.count_row_id, c.ticked)
     if (c.split != null) splits.set(c.count_row_id, !!c.split)
+    if (Array.isArray(c.product_line_ids)) productKeys.set(c.count_row_id, c.product_line_ids)
   }
   const alreadyOn = new Set<string>()
   for (const it of (onRes.data ?? []) as Array<{ source_count_row_id: string | null }>) if (it.source_count_row_id) alreadyOn.add(it.source_count_row_id)
 
-  const candidates = takeoffCandidates({ countRows, lines, parts, templates, houses, choices, splits, alreadyOn })
+  const candidates = takeoffCandidates({ countRows, lines, parts, templates, houses, choices, splits, productKeys, alreadyOn })
   return { candidates, fixtures: candidates.length, withProduct: candidates.filter((c) => c.product).length }
 }
 
-/** The estimator's ticks (and splits, v2.4118), one upsert per fixture shown; a split not given is left as stored. */
-export async function saveTakeoffChoices(supabase: Client, bidId: string, ticks: ReadonlyMap<string, boolean>, splits?: ReadonlyMap<string, boolean>): Promise<void> {
-  const rows = [...ticks.entries()].map(([count_row_id, ticked]) => ({ bid_id: bidId, count_row_id, ticked, ...(splits?.has(count_row_id) ? { split: !!splits.get(count_row_id) } : {}) }))
+/**
+ * The estimator's ticks (and splits, v2.4118; and the pieces switched in the product, v2.4292), one upsert
+ * per fixture shown; a split or pieces not given are left as stored.
+ */
+export async function saveTakeoffChoices(supabase: Client, bidId: string, ticks: ReadonlyMap<string, boolean>, splits?: ReadonlyMap<string, boolean>, productKeys?: ReadonlyMap<string, ReadonlyArray<string>>): Promise<void> {
+  const rows = [...ticks.entries()].map(([count_row_id, ticked]) => ({
+    bid_id: bidId,
+    count_row_id,
+    ticked,
+    ...(splits?.has(count_row_id) ? { split: !!splits.get(count_row_id) } : {}),
+    ...(productKeys?.has(count_row_id) ? { product_line_ids: [...productKeys.get(count_row_id)!] } : {}),
+  }))
   if (rows.length === 0) return
   const { error } = await supabase.from('bid_submittal_takeoff_choices').upsert(rows, { onConflict: 'bid_id,count_row_id' })
   if (error) throw error
