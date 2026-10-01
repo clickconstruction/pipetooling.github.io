@@ -2,7 +2,7 @@
 title: read the bid board
 category: Office
 roles: dev, master_technician, assistant, estimator
-keywords: reply book, GC, packet, won, lost, outcome, bid board, jump strip, sections, pending, lost, show all, bid dropdown, notes, due date, last contact, days late, google maps, phone cards, trade pill, counts, sent 1/2, call queue, chase, quiet, robots tab, undo won, matches by value, link, cost it, costed, budget
+keywords: reply book, GC, packet, won, lost, outcome, bid board, jump strip, sections, pending, lost, show all, bid dropdown, notes, due date, last contact, days late, google maps, phone cards, trade pill, counts, sent 1/2, call queue, chase, quiet, robots tab, undo won, matches by value, link, cost it, costed, budget, mark, marked, hold
 order: 68
 ---
 The Bid Board shows every bid in five sections. It also shows Estimating Health at the bottom.
@@ -40,6 +40,8 @@ Each row leads with the bid number, flanked by **jump icons**. They are Counts, 
 - **GC lines**: under a multi-GC bid, one line per GC. Each reads *sent date · state · name*. **You tap the name** to read and leave notes about that GC on this bid. A 💬 count shows who has notes. The state pill still sets won or lost.
 
 Distance to the office lives in the row dropdown, along with the address. You tap the address there to open Google Maps.
+
+A row you marked wears a light violet wash and a thin bar at its left. You press and hold a row for half a second to mark it. You hold it again to clear it. The mark is yours alone and shows on every workflow tab too. {{button:outline|Marked}} beside the search box shows only your marked bids. See [find a bid on the workflow tabs](?g=find-a-bid-on-the-workflow-tabs).
 
 In the **Lost** section, every bid carries a **Why did we lose?** strip. When the loss has a reason recorded, it reads the reason, category first, then what they said. When it does not, the strip says so. It reads *Add why: an uncategorized loss can't teach the robots*. It puts the **six reason chips right on the row**. So recording the reason is one tap without opening anything. A note on the bid may even pre-suggest a chip with an amber ring. An uncategorized loss gets left out of the robot estimators' training math. That is why the strip asks.
 

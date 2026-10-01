@@ -16,6 +16,11 @@
  * before sanitizing and restored after as `href="/help?g=<slug>" data-guide=
  * "<slug>"`; GuideBrowser turns a click on `a[data-guide]` into an in-app
  * navigation. Only a bare slug (`[a-z0-9-]+`) survives the round trip.
+ *
+ * v2.4290: a link to a page of the app (`/settings?tab=settings-jobs&focus=issuer.signerName`,
+ * `/jobs?tab=stages&gcReview=1`, `/dashboard`) rides the same way — a second placeholder host,
+ * restored as `href="<path>" data-app="<path>"`; GuideBrowser navigates in place. Only a root
+ * path of plain URL characters (`[A-Za-z0-9/?&=#._%-]`, no `..`, no `//`) survives.
  */
 import { marked } from 'marked'
 import { sanitizeContractSigningHtml } from './sanitizeContractSigningHtml'
@@ -33,16 +38,44 @@ const GUIDE_LINK_HOST = 'https://guide.help.internal/'
 const IN_APP_GUIDE_HREF = /href="\/help(?:\/|\?g=)([a-z0-9-]+)"/gi
 const PLACEHOLDER_GUIDE_HREF = /href="https:\/\/guide\.help\.internal\/([a-z0-9-]+)"/g
 
-/** `href="/help/<slug>"` and `href="/help?g=<slug>"` → a placeholder https href the sanitizer keeps. */
+/** Placeholder host for a page of the app (v2.4290); the path rides after it, percent-encoded. */
+const PAGE_LINK_HOST = 'https://page.help.internal/'
+const IN_APP_PAGE_HREF = /href="(\/(?!help(?:[/?]|"))[A-Za-z0-9/?&;=#._%-]*)"/g
+const PLACEHOLDER_PAGE_HREF = /href="https:\/\/page\.help\.internal\/([A-Za-z0-9%._-]*)"/g
+
+/** A root path a guide may send the reader to: plain URL characters, no `..`, no protocol-relative `//`. */
+export function isHelpGuidePagePath(path: string): boolean {
+  return /^\/[A-Za-z0-9/?&=#._%-]*$/.test(path) && !path.includes('..') && !path.startsWith('//') && !path.startsWith('/help/') && !path.startsWith('/help?')
+}
+
+/** `href="/help/<slug>"` and `href="/help?g=<slug>"` → a placeholder https href the sanitizer keeps; a page path likewise. */
 export function encodeHelpGuideLinks(html: string): string {
   return html
     .split(GUIDE_LINK_HOST).join('') // defensive: authored text can't pre-bake the placeholder
+    .split(PAGE_LINK_HOST).join('')
     .replace(IN_APP_GUIDE_HREF, (_m, slug: string) => `href="${GUIDE_LINK_HOST}${slug.toLowerCase()}"`)
+    .replace(IN_APP_PAGE_HREF, (m, path: string) => {
+      // marked writes `&amp;` in attributes; the path travels plain and is re-escaped on restore.
+      const plain = path.replace(/&amp;/g, '&')
+      return isHelpGuidePagePath(plain) ? `href="${PAGE_LINK_HOST}${encodeURIComponent(plain)}"` : m
+    })
 }
 
 /** Inverse of encodeHelpGuideLinks: the in-app address plus the hook GuideBrowser navigates on. */
 export function restoreHelpGuideLinks(html: string): string {
-  return html.replace(PLACEHOLDER_GUIDE_HREF, (_m, slug: string) => `href="/help?g=${slug}" data-guide="${slug}"`)
+  return html
+    .replace(PLACEHOLDER_GUIDE_HREF, (_m, slug: string) => `href="/help?g=${slug}" data-guide="${slug}"`)
+    .replace(PLACEHOLDER_PAGE_HREF, (m, enc: string) => {
+      let path = ''
+      try {
+        path = decodeURIComponent(enc)
+      } catch {
+        return m
+      }
+      if (!isHelpGuidePagePath(path)) return m
+      const attr = path.replace(/&/g, '&amp;').replace(/"/g, '')
+      return `href="${attr}" data-app="${attr}"`
+    })
 }
 
 /** Replace code/pre tags (attributes dropped) with text markers that survive sanitizing. */

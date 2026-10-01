@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { HELP_GUIDES } from '../lib/helpGuideRegistry'
@@ -63,6 +63,7 @@ const categoryChipStyle: React.CSSProperties = {
 export function GuideBrowser({ autoFocusSearch = false }: { autoFocusSearch?: boolean }) {
   const { role } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
   const [query, setQuery] = useState('')
   const [showAll, setShowAll] = useState(false)
   /** Role lens: null = my normal view; a role = "show me what THEY see". */
@@ -176,11 +177,19 @@ export function GuideBrowser({ autoFocusSearch = false }: { autoFocusSearch?: bo
             onClick={(e) => {
               // A guide-to-guide link (`/help/<slug>` in the markdown) comes through
               // helpGuideHtml as `a[data-guide]`; open it in place instead of reloading.
-              const link = (e.target as HTMLElement).closest('a[data-guide]')
+              const link = (e.target as HTMLElement).closest('a[data-guide], a[data-app]')
               const slug = link?.getAttribute('data-guide')
-              if (!slug) return
-              e.preventDefault()
-              openGuide(slug)
+              if (slug) {
+                e.preventDefault()
+                openGuide(slug)
+                return
+              }
+              // v2.4290: a link to a page of the app (`/settings?…`, `/jobs?…`) — the router, not a reload.
+              const appPath = link?.getAttribute('data-app')
+              if (appPath && appPath.startsWith('/') && !appPath.startsWith('//')) {
+                e.preventDefault()
+                navigate(appPath)
+              }
             }}
             dangerouslySetInnerHTML={{ __html: articleHtml }}
           />
