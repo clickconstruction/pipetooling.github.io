@@ -2,7 +2,7 @@
 title: send a GC our lien waiver
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: lien waiver, amount, why less than the bill, still owed, paid so far, signs for the company, signer title, by, signature block, GC, general contractor, conditional, unconditional, progress, final, release of lien, he signs now, sign now, send to the GC, waiver PDF, 53.284, bill, pay app, send with the bill, bill tab, add waiver, waivers to sign, needs you, sign them, GC room, portal, what the GC sees, GC review, they hold, we owe
+keywords: lien waiver, six steps, step 1, step 5, change a detail, amount, why less than the bill, still owed, paid so far, signs for the company, signer title, by, signature block, GC, general contractor, conditional, unconditional, progress, final, release of lien, he signs now, sign now, send to the GC, waiver PDF, 53.284, bill, pay app, send with the bill, bill tab, add waiver, waivers to sign, needs you, sign them, GC room, portal, what the GC sees, GC review, they hold, we owe
 ---
 A GC often wants a lien waiver with each bill. The waiver says we give up our lien right for that payment. Texas has four forms. The app picks the right one from the bill, and the leader signs it in the app.
 
@@ -59,18 +59,40 @@ The **Contract** and **Sub work order** rows sit under the waiver. Their buttons
 1. Go to **Jobs** and open the [Pipeline](/jobs?tab=stages).
 2. Find the job's row under **Billed Awaiting Payment**. Click the heading if the section is folded.
 3. Click the blue release of lien button in the row's small icon row. The **Release of Lien** window opens.
-4. Check the green bill chips at the top. Pick the bill this waiver covers.
+4. Follow the six steps down the left side, as below.
+
+## Follow the six steps
+
+The window walks you down its left side in six steps. A line with an arrow joins each step to the next.
+
+1. **Pick the bills.** Click the bill or bills this waiver is for.
+2. **Check the form.** The app picks it from the bills.
+3. **Check the amount.** The box under it shows the math.
+4. **Check the details.** They come from the job. Click {{button:outline|Change a detail}} only if one is wrong.
+5. **Get it signed.** Pick how the leader signs.
+6. **Send it to the GC.** It opens once he has signed.
+
+A green tick means a step is done. The blue number is the step to do now. An amber mark means a step needs a fix, and the steps after it wait. The footer always says which step you are on.
+
+The page on the right stays in view while you work. It marks the part the current step fills.
+
+:::example The steps on a job
+{{chip:green|1 · Pick the bills · Done}}
+{{chip:green|4 · Check the details · Done}}
+{{chip:blue|5 · Get it signed · You are here}}
+{{chip:gray|6 · Send it to the GC · Opens once he signs}}
+:::
 
 ## Check the form the bill picked
 
-Two switches at the top pick the form. The app sets both from the bill.
+Two switches in step 2 pick the form. The app sets both from the bill.
 
 - **Conditional** or **Unconditional**. Conditional means the check has not cleared yet. It takes effect when the money lands. Unconditional means the money has settled.
 - **Progress** or **Final**. Progress means more bills will follow. Final means this is the last bill on the job.
 
 The line under the switches says why. It also shows the two facts it read from the bill. Change a switch if the bill has it wrong.
 
-{{gif:send-a-gc-our-lien-waiver-window.gif|The Release of Lien window: the two switches, the why line, the leader's box, the page's foot}}
+{{gif:send-a-gc-our-lien-waiver-window.gif|The Release of Lien window: the six steps down the left and the page beside them}}
 
 :::example The four forms
 {{chip:yellow|Conditional · progress}} goes out with a bill that is not the last one.
@@ -98,10 +120,10 @@ Check · Sep 28 · − 6,077.51
 **Still owed on bill #1 · $9,022.49**
 :::
 
-Two notes can show under the box.
+Two notes can show in the steps above the box.
 
-- An amber note says the bill is already waived. Another live waiver covers it, so a second one would give up the same money twice. Click {{button:outline|Open the signed one ›}} to see it. Click {{button:outline|Discard this draft}} to drop the new one.
-- A blue note says money is paid and not waived yet. The GC is owed an unconditional progress waiver for it. Click {{button:blue|Waive the $17,777.51 paid ›}} to switch the window to that form.
+- An amber note in step 1 says the bill is already waived. Another live waiver covers it, so a second one would give up the same money twice. The steps after it wait. When money is paid and not waived yet, click {{button:blue|Waive the $17,777.51 already paid instead ›}}. Click {{button:outline|Open the signed one ›}} to see the other waiver. Click {{button:outline|Discard this draft}} to drop the new one. Click **Make it anyway** only when the app has it wrong.
+- A blue note in step 2 says money is paid and not waived yet. The GC is owed an unconditional progress waiver for it. Click {{button:outline|Waive the $17,777.51 paid ›}} to switch the window to that form.
 
 If you type over the amount, the window shows what the bills say. Click {{button:outline|Use $9,022.49}} to put it back. Hover the box to see the amount marked on the page.
 
@@ -120,14 +142,20 @@ The Release of Lien window now opens on him. His name and title print under the 
 
 ## Get the leader to sign
 
-The **Signed by the leader** box names the leader who signs. It opens on the company's signer. Pick another leader from the list if this job needs one. There are two ways to sign.
+Step 5 names the leader who signs. It opens on the company's signer. Pick another leader from the list if this job needs one. There are two ways to sign.
 
-- {{button:outline|Later, from his desk}} sends the waiver to his Dashboard. He signs it when he is next at his own screen.
-- {{button:outline|✍ He signs now}} opens the signing pad right here. Use this when he is with you. Hand him the phone, or turn your screen to him.
+- {{button:blue|✍ He is here, he signs now}} opens the signing pad right here. Use this when he is with you. Hand him the phone, or turn your screen to him.
+- {{button:outline|Send it to his desk}} sends the waiver to his Dashboard. He signs it when he is next at his own screen. It comes back to the window signed.
+
+Signing on paper instead? Click **Print it**, then **Mark issued**.
+
+While it waits at his desk, step 5 says who it waits for. Click **Cancel request** to take it back.
+
+Step 5 also shows when no title will print. Click **Add his title in Settings** to set it once.
 
 When he signs now, he draws his signature with a finger or the mouse. He cannot type it. The pad locks to drawing whenever the signer is not the person signed in. This holds on every door into it, including {{button:outline|Sign it ›}} on the Bill tab. The record names him as the signer and names your device.
 
-If you are the leader, the button reads {{button:outline|✍ Sign now}}.
+If you are the leader, the button reads {{button:blue|✍ Sign it now}}.
 
 {{gif:send-a-gc-our-lien-waiver-signnow.gif|He signs now: the pad opens with his name on it and only draws. Not now closes it without signing}}
 
@@ -157,7 +185,7 @@ Untick **Send once signed** to sign without sending. The office sends it later f
 
 ## Send it or download it
 
-Once the waiver is signed, three buttons are ready.
+Once the waiver is signed, steps 1 to 5 fold to one line each. Step 6 is the one left, with three buttons.
 
 - {{button:blue|Send to the GC}} emails the signed PDF to the GC's billing address. The subject names the bill, so it lands in the same thread. On a job with no GC it goes to the customer.
 - {{button:outline|Download PDF}} saves the signed PDF to your computer.
@@ -201,7 +229,7 @@ The waiver email names the bill and carries the signed PDF. When the GC has an a
 
 ## Where the waiver lives afterward
 
-- In the **Release of Lien** window, under **Issued on this job**.
+- In the **Release of Lien** window, under **Already on this job**.
 - In the **Bill Customer** window, in the **Lien releases** strip.
 - On the leader's [Dashboard](/dashboard), in **Needs You**, when a conditional waiver's check has cleared and the unconditional one is owed.
 

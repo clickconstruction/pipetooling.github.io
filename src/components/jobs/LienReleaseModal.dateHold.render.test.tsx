@@ -62,6 +62,8 @@ async function pauseAfter(change: () => void) {
 
 async function openWaiver() {
   renderWithProviders(<LienReleaseModal open onClose={() => undefined} job={job} invoice={invoice} signerNameFallback="Robert Douglas, Managing Member" />)
+  // v2.4314: the details read as a list in step 4 until Change a detail opens their boxes.
+  fireEvent.click(await screen.findByRole('button', { name: 'Change a detail' }))
   await screen.findByLabelText('Signature date')
   await settle()
   db.writes = []
@@ -107,7 +109,7 @@ describe('LienReleaseModal — a date caught half typed', () => {
 describe('LienReleaseModal — a half-typed date and the clicks that issue the waiver', () => {
   const STOPS_SIGNATURE = /Finish the “Signature” date before this is issued\. Type the year in full, like \d{4}\./
 
-  it.each(['Mark issued', 'Print for signature', 'Download PDF', 'Later, from his desk', '✍ He signs now'])('%s mints nothing over a half-typed signature date: the toast names the box', async (button) => {
+  it.each(['Mark issued', 'Print it', 'Download PDF', 'Send it to his desk', '✍ He is here, he signs now'])('%s mints nothing over a half-typed signature date: the toast names the box', async (button) => {
     await openWaiver()
     await pauseAfter(() => fireEvent.change(signedBox(), { target: { value: '0026-09-30' } }))
     fireEvent.click(screen.getByRole('button', { name: button }))

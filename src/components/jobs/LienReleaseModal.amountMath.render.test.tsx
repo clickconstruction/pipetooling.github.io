@@ -151,7 +151,7 @@ describe('LienReleaseModal — a reopened draft follows its bills (v2.4296)', ()
     expect(document.body.textContent).toContain('in the sum of $15,722.49')
     expect(document.body.textContent).not.toContain('in the sum of $9,022.49')
     expect(screen.queryByTestId('lien-waiver-typed-over')).toBeNull()
-    expect((screen.getByLabelText('Check from (owner / GC)') as HTMLInputElement).value).toBe('Typed by hand LLC')
+    expect(within(screen.getByTestId('lien-waiver-details')).getByText('Typed by hand LLC')).toBeTruthy()
     // The through date follows the newest bill picked: bill #2, billed Sep 10.
     expect(document.body.textContent).toContain('September 10, 2026')
     // Taking bill #2 off again goes back to bill #1 alone.
