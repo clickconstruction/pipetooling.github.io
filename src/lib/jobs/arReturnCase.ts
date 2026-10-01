@@ -380,3 +380,33 @@ export function arCaseThisReplaces(deposit: ArReplacementDeposit, views: Readonl
 export function arCameBackCount(n: number): string {
   return `${n} came back`
 }
+
+/**
+ * v2.4328: the payer's history on a new deposit's row — how many of their checks came
+ * back in the last year (bank or rejected cases, open or closed), keyed by the first five
+ * letters of the name, so "Poolcorp" on a new deposit reads "2 came back · Apr".
+ */
+export function arPayerCameBackNote(
+  counterparty: string | null | undefined,
+  cases: ReadonlyArray<Pick<ArReturnCaseRow, 'mercury_transaction_id' | 'counterparty_name' | 'source' | 'failed_at' | 'opened_at'>>,
+  todayYmd: string,
+  exceptId?: string,
+): string | null {
+  const key = arPayerKey(counterparty)
+  if (!key) return null
+  const yearAgo = `${Number(todayYmd.slice(0, 4)) - 1}${todayYmd.slice(4)}`
+  let count = 0
+  let last: string | null = null
+  for (const c of cases) {
+    if (c.mercury_transaction_id === exceptId) continue
+    if (c.source !== 'bank' && c.source !== 'rejected') continue
+    if (arPayerKey(c.counterparty_name) !== key) continue
+    const ymd = appCalendarYmd(c.failed_at) ?? appCalendarYmd(c.opened_at)
+    if (!ymd || ymd < yearAgo) continue
+    count += 1
+    if (!last || ymd > last) last = ymd
+  }
+  if (count === 0 || !last) return null
+  const month = MONTHS[Number(last.slice(5, 7)) - 1] ?? ''
+  return `${count} came back · ${last.slice(0, 4) === todayYmd.slice(0, 4) ? month : `${month} ${last.slice(0, 4)}`}`
+}

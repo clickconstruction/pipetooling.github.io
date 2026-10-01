@@ -15,12 +15,16 @@ function isMissingRpc(message: string | undefined): boolean {
  * list without a Came back group, never an error over the deposits.
  */
 export function useArReturnCases(open: boolean, enabled: boolean): {
+  /** The open cases. */
   cases: ArReturnCaseRow[]
+  /** v2.4328: every case, closed too — the payer's history on a new deposit's row. */
+  allCases: ArReturnCaseRow[]
   trails: Map<string, ArDepositTrailRow[]>
   ready: boolean
   refresh: () => Promise<void>
 } {
   const [cases, setCases] = useState<ArReturnCaseRow[]>([])
+  const [allCases, setAllCases] = useState<ArReturnCaseRow[]>([])
   const [trails, setTrails] = useState<Map<string, ArDepositTrailRow[]>>(new Map())
   const [ready, setReady] = useState(false)
   const offRef = useRef(false)
@@ -33,15 +37,18 @@ export function useArReturnCases(open: boolean, enabled: boolean): {
     }
     const seq = ++seqRef.current
     try {
-      const { data, error } = await supabase.rpc('list_ar_return_cases' as never, { p_include_closed: false } as never)
+      const { data, error } = await supabase.rpc('list_ar_return_cases' as never, { p_include_closed: true } as never)
       if (seq !== seqRef.current) return
       if (error) {
         if (isMissingRpc(error.message)) offRef.current = true
         setCases([])
+        setAllCases([])
         setTrails(new Map())
         return
       }
-      const rows = ((data ?? []) as unknown as ArReturnCaseRow[]).filter((r) => r && typeof r.mercury_transaction_id === 'string')
+      const every = ((data ?? []) as unknown as ArReturnCaseRow[]).filter((r) => r && typeof r.mercury_transaction_id === 'string')
+      setAllCases(every)
+      const rows = every.filter((r) => r.closed_at == null)
       setCases(rows)
       const ids = rows.map((r) => r.mercury_transaction_id)
       if (ids.length === 0) {
@@ -54,6 +61,7 @@ export function useArReturnCases(open: boolean, enabled: boolean): {
     } catch {
       if (seq === seqRef.current) {
         setCases([])
+        setAllCases([])
         setTrails(new Map())
       }
     } finally {
@@ -65,5 +73,5 @@ export function useArReturnCases(open: boolean, enabled: boolean): {
     void refresh()
   }, [refresh])
 
-  return { cases, trails, ready, refresh }
+  return { cases, allCases, trails, ready, refresh }
 }

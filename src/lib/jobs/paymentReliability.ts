@@ -86,6 +86,8 @@ export type ReliabilityLine = {
   paysIn: string | null
   kept: string | null
   slip: string | null
+  /** v2.4328: "2 checks came back · Apr" — the payer's checks the bank sent back in the last year. */
+  bounced?: string | null
   bars: ReliabilityBar[]
   /** Everything joined with " · " — empty when nothing is known. */
   text: string
@@ -98,17 +100,23 @@ export type ReliabilityLine = {
  * promises exist and the viewer may see it (office roles); pass null for
  * primary, who sees the spread only.
  */
-export function buildReliabilityLine(receipts: ReadonlyArray<PayReceipt> | null | undefined, record: CustomerPromiseRecord | null | undefined): ReliabilityLine {
+export function buildReliabilityLine(
+  receipts: ReadonlyArray<PayReceipt> | null | undefined,
+  record: CustomerPromiseRecord | null | undefined,
+  /** v2.4328: the payer's returned checks, already in words ("2 checks came back · Apr"). */
+  bounced?: string | null,
+): ReliabilityLine {
   const spread = paySpeedSpread(receipts)
   const paysIn = formatPaysIn(spread)
   const kept = record ? formatKeptRecord(record) : null
   const slip = record ? formatUsualSlip(record) : null
-  const parts = [paysIn, kept, slip].filter((x): x is string => x != null)
+  const parts = [paysIn, kept, slip, bounced ?? null].filter((x): x is string => x != null)
   const titleParts: string[] = []
   if (spread) titleParts.push(`Days from bill to money over their last ${spread.samples} measurable payments (last 12 months): typically ${spread.loDays}–${spread.hiDays}, median ${spread.medianDays}.`)
   if (record && record.decided > 0) titleParts.push(`Promises: ${record.kept} kept, ${record.late} late, ${record.broken} broken${record.open ? `, ${record.open} open` : ''}${record.usualSlipDays != null && record.usualSlipDays >= 1 ? ` — money usually lands ~${Math.round(record.usualSlipDays)} days after the date they give` : ''}.`)
   else if (record && record.open > 0) titleParts.push(`${record.open} promise${record.open === 1 ? '' : 's'} open, none decided yet.`)
-  return { paysIn, kept, slip, bars: reliabilityBars(receipts, spread), text: parts.join(' · '), title: titleParts.join(' ') }
+  if (bounced) titleParts.push(`Checks from them the bank sent back in the last year: ${bounced.replace(/ · /, ', the last in ')}.`)
+  return { paysIn, kept, slip, bounced: bounced ?? null, bars: reliabilityBars(receipts, spread), text: parts.join(' · '), title: titleParts.join(' ') }
 }
 
 /**

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { arCaseDay, arCaseTakeOff, arCaseThisReplaces, arPayerKey, arReplacementFor, arReturnCaseView, type ArReturnCaseRow } from './arReturnCase'
+import { arCaseDay, arCaseTakeOff, arCaseThisReplaces, arPayerCameBackNote, arPayerKey, arReplacementFor, arReturnCaseView, type ArReturnCaseRow } from './arReturnCase'
 import type { ArDepositTrailRow } from './arDepositTrail'
 import { helpGuidePlainWordsFailures } from '../plainWords'
 
@@ -216,5 +216,16 @@ describe('the words are plain', () => {
   it('arCaseDay', () => {
     expect(arCaseDay('2026-09-18', TODAY)).toBe('Sep 18')
     expect(arCaseDay('2025-07-11', TODAY)).toBe('Jul 11, 2025')
+  })
+})
+
+describe('v2.4328: the payer remembers', () => {
+  const c = (id: string, name: string, failed: string, source = 'bank') => ({ mercury_transaction_id: id, counterparty_name: name, source, failed_at: failed, opened_at: failed })
+  it('Poolcorp: two in April on a new deposit, the deposit itself left out, older than a year dropped', () => {
+    const cases = [c('a', 'Poolcorp', '2026-04-01T15:00:00Z'), c('b', 'POOLCORP', '2026-04-13T15:00:00Z'), c('old', 'Poolcorp', '2025-03-01T15:00:00Z'), c('h', 'Poolcorp', '2026-05-01T15:00:00Z', 'hand')]
+    expect(arPayerCameBackNote('Poolcorp', cases, '2026-10-01')).toBe('2 came back · Apr')
+    expect(arPayerCameBackNote('Poolcorp', cases, '2026-10-01', 'b')).toBe('1 came back · Apr')
+    expect(arPayerCameBackNote('DRF', cases, '2026-10-01')).toBeNull()
+    expect(arPayerCameBackNote('Peter Garza', [c('g', 'Peter Garza', '2025-11-11T15:00:00Z')], '2026-10-01')).toBe('1 came back · Nov 2025')
   })
 })
