@@ -101,6 +101,9 @@ export function buildUsersTabKindRoster(k: PersonKind, users: UserRow[], people:
       notes: u.notes,
       role: u.role,
       needs_supervision: u.needs_supervision ?? null,
+      // The Account lens reads these two (v2.3702); without them every row read "never signed in".
+      read_only: u.read_only ?? null,
+      last_sign_in_at: u.last_sign_in_at ?? null,
     }))
   const liveUserIds = new Set(users.map((u) => u.id))
   const fromPeople = people

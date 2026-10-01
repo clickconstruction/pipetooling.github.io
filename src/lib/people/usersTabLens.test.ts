@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { lensForcesNoLoginOpen, parseUsersTabLens, resolveUsersTabLens, usersTabLensesFor } from './usersTabLens'
+import { lensForcesNoLoginOpen, lensSignInLabel, parseUsersTabLens, resolveUsersTabLens, usersTabLensesFor } from './usersTabLens'
 
 describe('Users tab lenses', () => {
   it('parses the URL param and falls back to contact for anything else', () => {
@@ -24,5 +24,14 @@ describe('Users tab lenses', () => {
   it('the pay lens keeps the no-login fold open so every pay-config person shows', () => {
     expect(lensForcesNoLoginOpen('pay')).toBe(true)
     expect(lensForcesNoLoginOpen('contact')).toBe(false)
+  })
+
+  it('the Sign-in cell drops the words its header already says', () => {
+    const now = Date.parse('2026-10-01T18:00:00Z')
+    expect(lensSignInLabel('2026-10-01T09:00:00Z', now)).toBe('today')
+    expect(lensSignInLabel('2026-09-19T12:00:00Z', now)).toBe('12d ago')
+    expect(lensSignInLabel('2026-07-01T12:00:00Z', now)).toBe('3mo ago')
+    expect(lensSignInLabel(null, now)).toBe('never')
+    expect(lensSignInLabel(undefined, now)).toBe('never')
   })
 })

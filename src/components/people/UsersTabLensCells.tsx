@@ -1,9 +1,8 @@
 import type { PayConfigRow } from '../../types/peoplePayConfig'
 import type { PersonDeskSectionId } from '../../lib/people/personDeskSections'
-import { describeLastSeen } from '../../lib/people/personKey'
 import { hasSupervisionSwitch } from '../../lib/people/supervision'
 import { humanRoleLabel } from '../../lib/roleLabels'
-import type { UsersTabLens } from '../../lib/people/usersTabLens'
+import { lensSignInLabel, type UsersTabLens } from '../../lib/people/usersTabLens'
 import { SalaryWorkScheduleSettings } from '../SalaryWorkScheduleSettings'
 import { BTN_RED, DESK_EDITOR_Z } from '../personDesk/personDeskShared'
 import { PAY_CELL_WIDTHS, PayConfigCells, payConfigRowOrEmpty, type PayConfigCellsProps } from './PayConfigCells'
@@ -66,9 +65,12 @@ export function UsersTabAccountCells({
   if (item.source !== 'user') {
     return (
       <span style={{ display: 'flex', gap: 6, marginLeft: 'auto', flexShrink: 0 }}>
-        <span style={{ ...CELL, width: ACCOUNT_CELL_WIDTHS.role + ACCOUNT_CELL_WIDTHS.signin + ACCOUNT_CELL_WIDTHS.training + ACCOUNT_CELL_WIDTHS.supervision + 18, color: 'var(--text-muted)', justifyContent: 'flex-end' }} title="A roster row with no app account — the ⋯ menu invites them">
-          no login
+        {/* The row's own "no login" chip already says it; the cells stay quiet so the columns line up. */}
+        <span style={{ ...CELL, width: ACCOUNT_CELL_WIDTHS.role }} aria-hidden />
+        <span style={{ ...CELL, width: ACCOUNT_CELL_WIDTHS.signin, color: 'var(--text-muted)' }} title="No app account yet. The ⋯ menu invites them.">
+          —
         </span>
+        <span style={{ ...CELL, width: ACCOUNT_CELL_WIDTHS.training + ACCOUNT_CELL_WIDTHS.supervision + 6 }} aria-hidden />
         <span style={{ ...CELL, width: ACCOUNT_CELL_WIDTHS.desk }}>
           {openDesk ? (
             <button type="button" onClick={() => openDesk('access')} style={{ border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem', textDecoration: 'underline' }}>
@@ -85,7 +87,9 @@ export function UsersTabAccountCells({
       <span style={{ ...CELL, width: ACCOUNT_CELL_WIDTHS.role }} title="Changing a role is the dev's, on the desk">
         {humanRoleLabel(item.role ?? '')}
       </span>
-      <span style={{ ...CELL, width: ACCOUNT_CELL_WIDTHS.signin, color: 'var(--text-muted)' }}>{describeLastSeen(item.last_sign_in_at ?? null, Date.now())}</span>
+      <span style={{ ...CELL, width: ACCOUNT_CELL_WIDTHS.signin, color: 'var(--text-muted)' }} title={item.last_sign_in_at ? `Last signed in ${new Date(item.last_sign_in_at).toLocaleString()}` : 'Has never signed in'}>
+        {lensSignInLabel(item.last_sign_in_at ?? null, Date.now())}
+      </span>
       <span style={{ ...CELL, width: ACCOUNT_CELL_WIDTHS.training }}>
         <input
           type="checkbox"
