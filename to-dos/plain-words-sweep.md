@@ -2,7 +2,7 @@
 name: "Plain words: the last 77 help guides"
 number: 75
 group: ready
-status: paused 2026-09-30 by the owner after 226 of 303 guides shipped (v2.4235 · 4258 · 4274 · 4275 · 4286) · the legacy list is the queue
+status: paused 2026-09-30 by the owner after 226 of 303 guides shipped (v2.4235 · 4258 · 4282 · 4283 · 4286) · the legacy list is the queue
 summary: >
   Plain words is the convention for every new or changed guide and walkthrough (v2.4233): one
   idea per sentence, none over 20 words, the control's exact name, a plain word beside a trade
@@ -22,7 +22,7 @@ next: >
   `plainWordsLegacy.ts` is deleted.
 size: M (two PRs of ~50 guides; about 70,000 words of prose to rewrite)
 blocker: None. The owner paused it; say go.
-ver: v2.4233 · 4235 · 4258 · 4274 · 4275 · 4286
+ver: v2.4233 · 4235 · 4258 · 4282 · 4283 · 4286
 opinion: build on when there is a quiet evening — every guide left is one a first-timer may open, and the rules already hold every new one
 mockup: not required — words only; the test and the checker are the proof
 ---
@@ -59,8 +59,8 @@ guides. Then, the same evening: "Let's pause on this for now and add it to the p
 |---|---|---|---|
 | 1 | 50 | v2.4235 | add-a-customer … create-an-assembly-while-doing-a-takeoff |
 | 2 | 50 | v2.4258 | create-rename-and-share-a-roadmap … job-followups |
-| 3 | 50 | v2.4274 | job-mode-clocking … price-a-bid-with-the-workbench |
-| 4 | 50 | v2.4275 | price-a-takeoff-in-sticks … see-how-many-jobs-ran-each-day |
+| 3 | 50 | v2.4282 | job-mode-clocking … price-a-bid-with-the-workbench |
+| 4 | 50 | v2.4283 | price-a-takeoff-in-sticks … see-how-many-jobs-ran-each-day |
 | 5 | 25 | v2.4286 | see-if-a-helper-worked-out … set-the-company-owner-account (the batch was cut short by a usage limit; the other 25 of its fifty are back on the list) |
 
 Other sessions removed a few rows on their own as their PRs touched guides — the convention

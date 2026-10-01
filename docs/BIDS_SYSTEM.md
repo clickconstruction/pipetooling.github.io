@@ -5,7 +5,7 @@ file: BIDS_SYSTEM.md
 type: System Documentation
 purpose: Complete documentation of the 14-tab Bids system including workflows, book systems, and integrations
 audience: Developers, Estimators, AI Agents
-last_updated: 2026-09-30
+last_updated: 2026-10-01
 estimated_read_time: 30-40 minutes
 difficulty: Intermediate to Advanced
 
@@ -263,7 +263,7 @@ Column order (left to right; leading **expand** chevron opens inline **Notes** �
 - Code: [`Bids.tsx`](../src/pages/Bids.tsx) (`bidSentAttestModalOpen`, `insertPendingBidSentFollowupSubmissionNoteAfterSave`).
 
 **Working-board archive (soft hide)** (**`RECENT_FEATURES.md`** **v2.518**):
-- **Archive from board** appears in the modal footer when the bid is eligible and not already archived. Opens the same confirm flow as before (`promptArchiveWorkingBoardBid`); confirm overlay stacks above the edit modal (**`z-index`** **1005**).
+- **Archive from board** is always in the modal footer (v2.4266): a bid that cannot be archived greys it, and a press says why and which field to change (`archiveFromBoardBlockedReason` in `src/lib/workingBoardArchiveEligibility.ts`, the words v2.4268); on an archived bid it reads **Put back on board**. An eligible press opens the same confirm flow as before (`promptArchiveWorkingBoardBid`); confirm overlay stacks above the edit modal (**`z-index`** **1005**).
 
 **Delete Bid Confirmation**:
 - **"Delete bid" button** in Edit Bid modal opens separate confirmation modal
@@ -1293,6 +1293,7 @@ Owner's rule: **versions draft the bid for different GCs; price options send mor
 - **Direct Costs sections** — the Labor and Pricing tabs carry Equipment / Permits / Subcontractors / Waste / Other direct-cost row sections on `cost_estimates` (commit `a2a8d4b` "Direct Costs sections + restructured cost breakdown"); row state lives in the pricing engine (`costEstimateEquipmentRows` … `pricingOtherRows`).
 - **Assembly-bundle pricing** — takeoff assemblies can be bundled and priced as a unit on the rough-materials flow (commit `c935eba` `feat/takeoff-assembly-bundles`; editable assembly names followed in `9fe1ad6`).
 - **My Bids toggle** — [`MyBidsToggle.tsx`](../src/components/bids/MyBidsToggle.tsx), rendered in the bid pickers of the Counts / Takeoff / Labor / Pricing / Cover Letter tabs to filter the list to bids where the current user is estimator or account manager.
+- **Grouped bid picker** (v2.4272) — [`BidPickerStandardList.tsx`](../src/components/bids/BidPickerStandardList.tsx), the one list the nine workflow tabs pick a bid from, draws the Bid Board's own headings (`src/lib/bidPickerGroups.ts`: Unsent / Working Bids · Not yet won or lost · Won · Started or Complete · Lost · Archived (Unsent/Working)); Lost and Archived start folded, the folds are one `localStorage` store (`bidPickerFolds`) across the tabs, and a search opens every group.
 - **Customer review modal** — [`BidBoardCustomerReviewModal.tsx`](../src/components/bids/BidBoardCustomerReviewModal.tsx) (**v2.641**): per-customer bid counts + team hours, opened from the Bid Board toolbar.
 
 ---

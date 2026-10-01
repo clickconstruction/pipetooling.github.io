@@ -8,7 +8,7 @@ covers:
   - src/components/jobs/SendRecordInvoiceModal.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-09-25
+last_updated: 2026-10-01
 ---
 
 > **Line numbers are as of `a05cef4c4`** (read from `npm run map -- src/components/jobs/SendRecordInvoiceModal.tsx`). They rot on the next commit — search the symbol; every region below names one.
@@ -71,7 +71,7 @@ Each section lists: render location (state gate + line range **as of `a05cef4c4`
 | Edit-dates dialog | `editDueDateOpen` 3781–3870 | 90 | inline | 3 (`editDueDateOpen`, `draftDueYmd`, `draftServiceYmd`) | opened from Stripe AND Physical; writes shared `sentDate`/`stripeDueDate` | low | **Stays in parent** (opened from 2+ tabs) |
 | Line-edit modal wiring | `BillCustomerPreviewLineEditModal` 3871–3884; `lineEditSession` 1917 + reset 1919–1921; openers 1934–1989 | ~70 | **extracted** (component) | 1 (`lineEditSession`) | Stripe preview lines AND Physical preview rows | — | wiring **stays in parent** |
 | `lineLeadingLowercaseHint` | memo 1820–1876 | 57 | inline | — | reads both tabs; builds a throwaway physical doc (2nd physical-doc copy) | low | stays (or into the seam) |
-| Lien releases strip (v2.2582) | L2481–2486 | mount only | **extracted** (`BillCustomerLienReleaseStrip`) | none in parent | reads `jobRaw?.id` + `billCustomerJobDetails`; owns its `job_lien_releases` I/O | low | done — fail-soft |
+| Lien releases strip (v2.2582) | L2481–2486 | mount only | **extracted** (`BillCustomerLienReleaseStrip`) | none in parent | reads `jobRaw?.id` + `billCustomerJobDetails`; owns its `job_lien_releases` I/O; since v2.4275 it leads with the **Send the lien waiver with this bill** tick on a GC job billing one draft, the three send paths call `onSentWantWaiver` when ticked, and the follow-up (`BillCustomerWaiverFollowUp`) lives in `BillCustomerModalContext` so the modal's own close does not unmount it | low | done — fail-soft |
 | Contract strip (Contract Desk PR 3, v2.2684) | L2479 | mount only | **extracted** (`JobContractStrip`) | none | reads `billCustomerJobDetails` | low | done |
 
 ### Coupling hot list (fact-sheet reader counts, drives the order below)

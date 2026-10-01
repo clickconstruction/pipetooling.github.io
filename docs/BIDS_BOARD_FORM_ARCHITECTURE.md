@@ -9,7 +9,7 @@ covers:
   - src/components/bids/BidFormModal.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-09-28
+last_updated: 2026-10-01
 ---
 
 ## What this surface is
@@ -252,7 +252,7 @@ Regenerate the fact sheet (`npm run map -- <file>`), re-read ranges from it, fli
 - Money: Bid Value (`bid-form-bid-value`, the board's `focus: 'bidValue'` target), Agreed Value, Maximum Profit — `type="number"` strings, wheel-blur. Notes textarea.
 
 ### F12 Save bar + close guard
-- Left: Delete bid… (opens the parent confirm), Archive from board (parent-computed eligibility). Right: autosave status line + Retry (edit) or "Required: …" (new), Open Counts (`saveBidAndOpenCounts`), primary submit (New Bid only). Close guard strip when `closeFlushState !== 'idle'` (saving, or Retry / Keep editing / Close without saving).
+- Left: Delete bid… (opens the parent confirm), Archive from board (always drawn since v2.4266 — `aria-disabled` with the parent's `archiveFromBoardBlockedReason` as its title when blocked, **Put back on board** on an archived bid). Right: autosave status line + Retry (edit) or "Required: …" (new), Open Counts (`saveBidAndOpenCounts`), primary submit (New Bid only). Close guard strip when `closeFlushState !== 'idle'` (saving, or Retry / Keep editing / Close without saving).
 - `<form onSubmit>` 594–604 swallows Enter while logging a contact or when autosave is on.
 - **Tests:** the only rendered coverage in either file — `BidFormModal.render.test.tsx` (178 lines, 4 tests: New Bid buttons, Edit has no Save + Enter submits nothing, failed autosave Retry, failed close-flush strip).
 

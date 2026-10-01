@@ -2,7 +2,7 @@
 name: "Accounts Receivable: where did that cheque go?"
 number: 74
 group: ready
-status: asked 2026-09-30 · drawn twice against 30 days of prod · prototype beside it · PR 1 (the search) v2.4273 open · PR 2 (the trail) v2.4277 open on feat/ar-deposit-trail, its migration 20260930230000 to push once it merges
+status: asked 2026-09-30 · drawn twice against 30 days of prod · prototype beside it · PR 1 (the search) v2.4273 and PR 2 (the trail) v2.4277 shipped 2026-09-30, migration 20260930230000 pushed · PR 3 and PR 4 not started
 summary: >
   The office searched Accounts Receivable for a $6,077.51 cheque and got "no match": it had
   been applied the day before, so it had left To match, the only list the search read. The
@@ -12,8 +12,7 @@ summary: >
   taken off, returned, who, when), the search looks in All when To match has nothing, and
   All reads by last action under day headings for the last 30 days.
 next: >
-  PR 2 the trail line on every deposit row (one read RPC over payments + the deleted-records
-  archive + the history's actors; kernel arDepositTrail.ts); PR 3 All ordered by last action;
+  PR 3 All ordered by last action;
   PR 4 who applied it — find the path that applies payments with no signed-in user (13 of 38
   rows this month) and say "the app" there.
 size: S (PR 1) · M (PR 2, a migration) · S (PR 3) · S–M (PR 4)

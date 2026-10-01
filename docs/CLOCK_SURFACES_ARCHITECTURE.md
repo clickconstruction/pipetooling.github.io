@@ -10,7 +10,7 @@ covers:
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
 sections: What this surface is; Shared substrate; Master summary table; DashboardTeamActiveClockStrip regions; ClockInOutButton regions; Stage-A pure-logic inventory; Test coverage; Preserve-quirks list; Recommended extraction order
-last_updated: 2026-09-25
+last_updated: 2026-10-01
 ---
 
 ## What this surface is
@@ -77,11 +77,11 @@ Because they are components, regions are gated by **state/props**, not an `activ
 - **Owned state:** `stripApproveBusy: ReadonlySet<string>`, `optimisticStripApprovedIds: ReadonlySet<string>`, `stripRejectConfirm: StripRejectClockSessionPayload | null`, `stripActionsSession: ClockSessionStripActionsPayload | null`.
 - **Derived:** `stripActionsPayload` memo (re-derives the actions-modal payload from live `clockedInTodayRows`, falls back to `normalizeStripActionsPayloadFallback`); plain consts `rejectModalBusy` / `actionsModalBusy` (1509–1513, not memos).
 - **Effects:** iOS/WebKit double-`requestAnimationFrame` `getSelection().removeAllRanges()` after Session actions opens (913–928); prune `optimisticStripApprovedIds` once refetch delivers real `approved_at` or the row vanished (991–1011, uses `deriveClockSessionStripApproveStatus`); close the actions modal when its session disappears (1013–1019) or reverts to open (1021–1031); Escape closes the reject dialog unless busy (1037–1047).
-- **Handlers:** `handleStripSessionApprove(sessionId, surface)` (1049–1078; [`approveClockSessions`](../src/lib/approveClockSessions.ts) → RPC `approve_clock_sessions`, adds to optimistic set, `recordHoursApproved(authUserId, viewerRole, surface, count)` via [`hoursApprovedTelemetry`](../src/lib/hoursApprovedTelemetry.ts), `onClockSessionsMutated`); `handleStripPillApprove(sessionId, personLabel, timeRangeLabel)` (1087–1099; `useConfirmDialog` "Approve <who>'s session (<span>)? This adds the hours to payroll." then approve as `'strip-pill'`; both pill mounts — 2171 and 2762 — route through it; the actions modal's Approve stays unconfirmed as `'strip-actions'`); `handleStripSessionRevoke` (1101–1144; `useConfirmDialog` "Revoke this session? …" then RPC `revoke_clock_sessions`); `requestStripSessionReject` / `requestRejectFromActionsModal` / `cancelStripSessionReject` / `performStripSessionReject` (1146–1196, cancel at 1033–1035; direct UPDATE `clock_sessions` set `rejected_at`, `rejected_by = authUserId`).
+- **Handlers:** `handleStripSessionApprove(sessionId, surface)` (1049–1078; [`approveClockSessions`](../src/lib/approveClockSessions.ts) → RPC `approve_clock_sessions_v2`, the old name as its fallback; since v2.4247 a typed row the database held is not painted approved and the pill wears the pencil — `useTypedStamps`, `TypedHoursStamp`; adds to optimistic set, `recordHoursApproved(authUserId, viewerRole, surface, count)` via [`hoursApprovedTelemetry`](../src/lib/hoursApprovedTelemetry.ts), `onClockSessionsMutated`); `handleStripPillApprove(sessionId, personLabel, timeRangeLabel)` (1087–1099; `useConfirmDialog` "Approve <who>'s session (<span>)? This adds the hours to payroll." then approve as `'strip-pill'`; both pill mounts — 2171 and 2762 — route through it; the actions modal's Approve stays unconfirmed as `'strip-actions'`); `handleStripSessionRevoke` (1101–1144; `useConfirmDialog` "Revoke this session? …" then RPC `revoke_clock_sessions`); `requestStripSessionReject` / `requestRejectFromActionsModal` / `cancelStripSessionReject` / `performStripSessionReject` (1146–1196, cancel at 1033–1035; direct UPDATE `clock_sessions` set `rejected_at`, `rejected_by = authUserId`).
 - **Supabase:** `clock_sessions` (UPDATE reject), RPCs `approve_clock_sessions` (via lib) and `revoke_clock_sessions`. Errors surface through `onJobBidAssignError`.
 - **Sub-components:** [`ClockSessionStripActionsModal`](../src/components/ClockSessionStripActionsModal.tsx) (**extracted**, 549 lines), [`ClockSessionStripApproveControl`](../src/components/ClockSessionStripApproveControl.tsx) (**extracted**, 360 lines — also exports `deriveClockSessionStripApproveStatus`). The reject-confirm dialog is **inline**.
 - **External coupling:** `authUserId`, `canApproveClockSessions`, `onClockSessionsMutated`, `onJobBidAssignError`, `viewerRole`; consumed by S4 and S5 row rendering AND by the S4 focused-row filter.
-- **Tests:** `hoursApprovedTelemetry.test.ts` only. `approveClockSessions`, `deriveClockSessionStripApproveStatus`, the prune rule and the pill-confirm path are untested — **payroll-write path with no tests**.
+- **Tests:** `hoursApprovedTelemetry.test.ts` and `approveClockSessions.test.ts` (4, v2.4247). `deriveClockSessionStripApproveStatus`, the prune rule and the pill-confirm path are untested — **the strip's side of the payroll-write path has no tests**.
 - **Extraction status + risk + approach:** Inline. **Medium risk; the seam S4/S5 need** — `useClockSessionStripApprovals(...)` returning `{ optimisticStripApprovedIds, stripApproveBusy, approve, pillApprove, revoke, requestReject, openActions, stripActionsPayload, … }`, destructured by the strip so S4/S5 references don't change (inject `confirmDialog`). The inline reject dialog can move to its own component verbatim at any time (props: payload, busy, onCancel, onConfirm, titleId, z-index). Modal mounting stays in the strip (opened from two tables).
 
 ### S3 — Currently In table + its dispatch cluster
@@ -237,7 +237,7 @@ Neither component has a render smoke (`*.render.test.tsx`) and no test imports e
 | Region | Tested | Untested — risk |
 |---|---|---|
 | S1 | — | **all 25 module helpers (codecs included); duration math feeds the payroll-approval view (hours shown next to the Approve pill)** |
-| S2 | `hoursApprovedTelemetry.test.ts` | **`approveClockSessions`, `deriveClockSessionStripApproveStatus`, optimistic prune, pill confirm — the strip's payroll writes** |
+| S2 | `hoursApprovedTelemetry.test.ts`, `approveClockSessions.test.ts` | **`deriveClockSessionStripApproveStatus`, optimistic prune, pill confirm — the strip's payroll writes** |
 | S3 | `currentlyInDispatchCounts.test.ts`, `ManagePersonDayModal.render.test.tsx` | salary Today `max()`, row branches |
 | S4 | — | focused filter, `useLayoutEffect` auto-correction |
 | S5 | `reportForViewFromJobLedgerRow.test.ts`, `ReportViewModal.render.test.tsx` | merged header, report lookup, overlap map |

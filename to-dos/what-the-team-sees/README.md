@@ -10,7 +10,7 @@ summary: >
   lands, who gets it, the From, the subject with sample values filled in, and the email itself
   where the app can build one. Fourteen digests build their HTML inside their edge functions;
   each is lifted into a kernel in its own PR and its row turns from "next release" to live.
-next: the owner's look at the live tab once the train has merged and the seven functions are redeployed (`crew-day-email-dispatch payment-forecast-email-dispatch billed-report-email weekly-money-email-dispatch weekly-movement-email-dispatch paid-job-email schedule-day-email-dispatch recurring-job-report-dispatch send-report-email ct-roster-audit`), then retire.
+next: the owner's look at the live tab — the train has merged, and `npm run check:edge-drift` read every function deployed and current on 2026-10-01 (`crew-day-email-dispatch payment-forecast-email-dispatch billed-report-email weekly-money-email-dispatch weekly-movement-email-dispatch paid-job-email schedule-day-email-dispatch recurring-job-report-dispatch send-report-email ct-roster-audit`), then retire.
 size: M (PR 1, shipped) + S–M per digest × 14
 blocker: None.
 opinion: build on, one digest at a time — every lift also gives a digest the unit test it never had
