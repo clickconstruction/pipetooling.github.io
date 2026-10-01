@@ -29,11 +29,11 @@ Untick the box if the GC does not want a waiver this time. The bill then goes al
 ## A bill already sent
 
 1. Open the job and go to its **Bill** tab.
-2. Every sent bill on a GC job shows two chips. The first is the conditional waiver. The second is the unconditional one.
+2. Every sent bill on a GC job shows two chips. The first is the conditional waiver. The second is the unconditional one. They sit on their own line at the right, with the bill's ⋯ at the end. They stay grey until a waiver on that bill is under way.
 3. The button beside them names the next move. {{button:outline|Add waiver ›}} means no waiver has gone yet. {{button:outline|Sign it ›}} means one waits for the leader. {{button:outline|Send it ›}} means one is signed but not sent. {{button:outline|Add the unconditional ›}} means the check has cleared.
 4. Click it. The **Release of Lien** window opens on that bill.
 
-{{gif:send-a-gc-our-lien-waiver-billtab.gif|The Bill tab: a sent bill ends with its two waiver chips and the door to the next move}}
+{{gif:send-a-gc-our-lien-waiver-billtab.gif|The Bill tab: the waiver row sits at the right. Its door opens the Release of Lien window.}}
 
 ## From View bill
 
@@ -167,7 +167,7 @@ If the button is grey, the GC has no billing email on file. Add it on the GC's c
 
 ## On GC Review
 
-Open a GC's row in [GC Review](/jobs?tab=stages&gcReview=1). Each bill ends with two chips. They read the same way as on the Bill tab.
+Open a GC's row in [GC Review](/jobs?tab=stages&gcReview=1). Each bill ends with two chips, like on the Bill tab. One thing differs. GC Review marks a bill with no conditional yet in amber, as a reminder before you call.
 
 - Green means done. {{chip:green|Conditional ✓ sent Sep 30}}
 - Amber is the move before the call. {{chip:yellow|Conditional · none — send it}}
