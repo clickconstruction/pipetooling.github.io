@@ -1,14 +1,17 @@
 // @vitest-environment jsdom
 /**
  * Render smoke for the Lien desk's Calendar tab (v2.4101 the shell, v2.4152
- * the body): the to-do strip the columns write, the key, the density strip
- * with the today pill, a GC row with counted flags and its jobs' marks on
- * the shared axis, lien-gone closed by default, the search narrows, a row
- * opens the job, and the phone list instead of the axis. The grouping, the
- * axis and every mark come from lib/jobs/lienCalendar.ts (kernel-tested).
+ * the body): a GC row with counted flags and its jobs' marks on the shared
+ * axis, the search narrows, a row opens the job, and the phone list instead
+ * of the axis. The grouping, the axis and every mark come from
+ * lib/jobs/lienCalendar.ts (kernel-tested).
  * v2.4265: the work tick and its date, the grey wash past a dead lien, a job
- * row that speaks only when it differs from its GC, and the key as a strip
- * whose long words open on a tap.
+ * row that speaks only when it differs from its GC, and the key whose long
+ * words open on a tap.
+ * v2.4340: the pills and the buckets (lib/jobs/lienCalendarBuckets.ts) —
+ * each job counted once at its next date, Overdue folded at the top, a
+ * picked pill shows its bucket alone, Draft the N on a bar, the counts on
+ * the date row and the key one line at the bottom.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
@@ -51,6 +54,11 @@ function rowOf(number: string): HTMLElement {
   return screen.getByRole('button', { name: new RegExp(`^${number}`) }).closest('[role="row"]') as HTMLElement
 }
 
+/** The Overdue section's bar (the pill of the same name filters instead). */
+function overdueBar(): HTMLElement {
+  return within(screen.getByTestId('lien-cal-bucket-overdue')).getByRole('button', { name: /^Overdue/ })
+}
+
 function mount(over: Partial<Parameters<typeof LienDeskCalendarTab>[0]> = {}) {
   const onOpen = vi.fn()
   render(<LienDeskCalendarTab rows={rows} todayYmd={TODAY} onOpenJob={onOpen} {...over} />)
@@ -58,28 +66,64 @@ function mount(over: Partial<Parameters<typeof LienDeskCalendarTab>[0]> = {}) {
 }
 
 describe('LienDeskCalendarTab', () => {
-  it('the first fold is a to-do the columns write, with the key and the density strip under it', () => {
+  // On Sep 28 the two RMC notices fall due Oct 15 (next month), the two direct liens Nov 16 (later), and Knight's lien is gone.
+  it('the pills count each job once at its next date; All shows every bucket that has a job, Overdue folded at the top', () => {
     mount()
-    const todo = screen.getByTestId('lien-cal-todo')
-    expect(todo.textContent).toContain('By Oct 15 · 17 d')
-    expect(todo.textContent).toContain('2 notices to RMC · Dudley Mason · $17.7k')
-    expect(todo.textContent).toContain('Before that')
-    expect(todo.textContent).toContain('1 property has no kind')
-    expect(todo.textContent).toContain('By Nov 16 · 49 d')
+    expect(within(screen.getByTestId('lien-cal-pills')).getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual([
+      'All · 5 jobs · $25,284',
+      'Overdue · 1 job · $658',
+      'This month · 0 jobs · $0',
+      'Next month · 2 jobs · $17,702',
+      'Later · 2 jobs · $6,924',
+    ])
+    expect(screen.getByRole('button', { name: /^All · 5 jobs/ }).getAttribute('aria-pressed')).toBe('true')
+    const sections = screen.getAllByTestId(/^lien-cal-bucket-/)
+    expect(sections.map((s) => s.getAttribute('data-testid'))).toEqual(['lien-cal-bucket-overdue', 'lien-cal-bucket-next_month', 'lien-cal-bucket-later'])
+    const overdue = within(sections[0]!).getByRole('button', { name: /^Overdue/ })
+    expect(overdue.getAttribute('aria-expanded')).toBe('false')
+    expect(sections[0]!.textContent).toContain('1 job · nothing left to file · money still owed')
+    expect(overdue.getAttribute('title')).toContain('Collections or the Legal desk can chase it.')
+    expect(sections[1]!.textContent).toContain('by Oct 15 · in 17 days · 2 notices to RMC · Dudley Mason')
+    expect(sections[2]!.textContent).toContain('by Nov 16 · in 49 days · 2 liens to file')
+    // the date row: the search, each 15th with how many jobs it is the next date for, today
+    expect(screen.getAllByTestId('lien-cal-date-count').map((c) => c.textContent)).toEqual(['2', '2'])
+    expect(screen.getByTestId('lien-cal-today-pill').textContent).toBe('today · Sep 28')
+    expect(screen.getByTestId('lien-cal-today-line')).toBeTruthy()
     const key = screen.getByTestId('lien-cal-key')
     expect(key.textContent).toContain('Notice owed')
     expect(key.textContent).toContain('Last day worked')
     expect(key.textContent).not.toContain('§ 53.056')
-    expect(screen.getByTestId('lien-cal-today-pill').textContent).toBe('today · Sep 28')
-    expect(screen.getByTestId('lien-cal-today-line')).toBeTruthy()
-    expect(screen.getByTestId('lien-cal-density').textContent).toContain('Oct 15')
+    expect(screen.queryByTestId('lien-cal-todo')).toBeNull()
+    expect(screen.queryByTestId('lien-cal-density')).toBeNull()
   })
 
-  it('groups: the GC row folds its flags with a count, its jobs draw their marks; Lien gone is closed by default', () => {
+  it('a pill shows its bucket alone and shades its stretch; a second tap goes back to All', () => {
+    mount()
+    fireEvent.click(screen.getByRole('button', { name: /^Later · 2 jobs/ }))
+    expect(screen.getAllByTestId(/^lien-cal-bucket-/).map((s) => s.getAttribute('data-testid'))).toEqual(['lien-cal-bucket-later'])
+    expect(screen.getByTestId('lien-cal-band')).toBeTruthy()
+    expect(screen.queryByText('Rizvi')).toBeNull()
+    expect(screen.getByText('Mike Holub')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /^Later · 2 jobs/ }))
+    expect(screen.getAllByTestId(/^lien-cal-bucket-/)).toHaveLength(3)
+    expect(screen.queryByTestId('lien-cal-band')).toBeNull()
+    // an empty month says so
+    fireEvent.click(screen.getByRole('button', { name: /^This month · 0 jobs/ }))
+    expect(screen.getByText('Nothing else falls due in September.')).toBeTruthy()
+    // the Overdue pill opens Overdue; All folds it again
+    fireEvent.click(screen.getByRole('button', { name: /^Overdue · 1 job/ }))
+    expect(screen.getByText('Knight')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /^All · 5 jobs/ }))
+    expect(screen.queryByText('Knight')).toBeNull()
+  })
+
+  it('groups: the GC row folds its flags with a count, its jobs draw their marks; Overdue opens to its rows', () => {
     mount()
     const rmc = screen.getByTestId('lien-cal-group-gc:gc1')
     expect(rmc.textContent).toContain('RMC · Dudley Mason')
-    expect(rmc.textContent).toContain('send 2 notices by Oct 15 · 17 d')
+    // the bar names Oct 15, so the GC row says only what to send
+    expect(rmc.textContent).toContain('send 2 notices')
+    expect(rmc.textContent).not.toContain('by Oct 15')
     expect(rmc.querySelector('[title="2 notices owed by Oct 15"]')).toBeTruthy()
     // Umar Khan: the sent month's check, the owed month's hollow flag (a door), the kind bracket
     const tracks = screen.getAllByTestId('lien-cal-track')
@@ -94,15 +138,17 @@ describe('LienDeskCalendarTab', () => {
     expect(screen.getByTitle(/Expected to pay Sep 30/)).toBeTruthy()
     expect(screen.getByTitle('Room — the money is expected before the lien date')).toBeTruthy()
     expect(screen.queryByText('Knight')).toBeNull()
-    fireEvent.click(within(screen.getByTestId('lien-cal-group-gone')).getByRole('button', { name: /Lien gone/ }))
+    fireEvent.click(overdueBar())
     expect(screen.getByText('Knight')).toBeTruthy()
+    // Overdue's rows sit straight under its bar: no Lien gone row repeating it
+    expect(screen.queryByTestId('lien-cal-group-gone')).toBeNull()
     expect(screen.getByTitle(/The notice window closed May 15 unsent/)).toBeTruthy()
   })
 
   it('every row starts at its work tick; a job dated from its creation day says so in amber (v2.4265)', () => {
     mount()
     const ticks = screen.getAllByTestId('lien-cal-work')
-    expect(ticks.length).toBe(4) // Rizvi, Umar Khan, Holub, Garza; Knight's is folded under Lien gone
+    expect(ticks.length).toBe(4) // Rizvi, Umar Khan, Holub, Garza; Knight's is folded under Overdue
     expect(ticks.filter((t) => t.textContent === 'Aug 12').length).toBe(2)
     expect(screen.getByText('Aug 20')).toBeTruthy()
     expect(screen.getByText('Aug · no hours')).toBeTruthy()
@@ -121,18 +167,17 @@ describe('LienDeskCalendarTab', () => {
     expect(screen.getByRole('button', { name: 'Record when Ana Garza expects to pay · 512 PLUM' })).toBeTruthy()
   })
 
-  it('a dead row goes grey past the day its lien died, with the reason under the flag (v2.4265)', () => {
+  it('a dead row goes grey past the day its lien died, with that day under the flag (v2.4265)', () => {
     mount()
     expect(screen.queryByTestId('lien-cal-gone')).toBeNull()
-    fireEvent.click(within(screen.getByTestId('lien-cal-group-gone')).getByRole('button', { name: /Lien gone/ }))
+    fireEvent.click(overdueBar())
     const wash = screen.getByTestId('lien-cal-gone')
-    expect(wash.textContent).toContain('notice not sent by May 15')
-    expect(wash.textContent).toContain('nothing left to file after this day')
+    expect(wash.textContent).toBe('notice not sent by May 15')
     const knight = screen.getAllByTestId('lien-cal-row-money').find((m) => m.textContent?.startsWith('$658'))!
     expect(knight.textContent).toBe('$658still owed')
   })
 
-  it('the key is a strip: a tap opens the long words, a second tap or Esc closes them, and its door acts (v2.4265)', () => {
+  it('the key is one line: a tap opens the long words, a second tap or Esc closes them, and its door acts (v2.4265)', () => {
     mount({ canWrite: true })
     expect(screen.queryByTestId('lien-cal-key-panel')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Kind not set' }))
@@ -152,7 +197,7 @@ describe('LienDeskCalendarTab', () => {
     expect(screen.queryByTestId('lien-cal-key-panel')).toBeNull()
   })
 
-  it('a row and a hollow flag open the job; the search narrows the groups', () => {
+  it('a row and a hollow flag open the job; the search narrows the buckets and their counts', () => {
     const { onOpen } = mount()
     fireEvent.click(screen.getByRole('button', { name: /^890 PLUM/ }))
     expect(onOpen).toHaveBeenCalledWith('a')
@@ -161,41 +206,57 @@ describe('LienDeskCalendarTab', () => {
     fireEvent.change(screen.getByLabelText('Search the lien calendar'), { target: { value: 'holub' } })
     expect(screen.queryByText('RMC · Dudley Mason')).toBeNull()
     expect(screen.getByText('Direct — we contracted with the owner')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'All · 1 job · $5,724' })).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('Search the lien calendar'), { target: { value: 'nobody' } })
+    expect(screen.getByText('No billed job matches that.')).toBeTruthy()
+    // the search stays on the board, so it can be cleared
+    expect(screen.getByLabelText('Search the lien calendar')).toBeTruthy()
   })
 
-  it('the to-do’s doors act only when the parent wires them', () => {
+  it('Draft the N sits on the bar whose notices the desk lists; the kinds door is the pen’s', () => {
     const onDraft = vi.fn()
     mount({ onDraft })
     fireEvent.click(screen.getByRole('button', { name: 'Draft the two ›' }))
     expect(onDraft).toHaveBeenCalledWith('2026-10-15', ['a', 'b'])
-    expect(screen.queryByRole('button', { name: /Set kinds/ })).toBeNull()
+    // without the pen the toolbar names the kinds, it does not open them
+    expect(screen.getByText('1 kind not set')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /kind not set/ })).toBeNull()
   })
 
-  it('a job worked over several months: its GC row names the earliest notice and sorts by it; the phone sentence agrees (v2.4308)', () => {
+  it('a job worked over several months: counted once at its earliest notice, its GC row in that month; the phone line agrees (v2.4308)', () => {
     // Job 878, read live on 2026-10-01: commercial, worked June through September, no notice recorded.
     // The row said "send the notice by Dec 15 · 75 d" and sorted near the bottom while July's notice was due Oct 15.
     const OCT_1 = '2026-10-01'
     const seguin: LienCalendarJob = { jobId: 's', number: '878', name: 'Take 5- Seguin', customer: '', gcId: 'gc-sp', gcName: 'Southern Post Construction', address: '380 TX-123, Seguin', openBalance: 38625, isSub: true, runway: buildLienPayRunway({ ...base, todayYmd: OCT_1, openBalance: 38625, propertyKind: 'non_residential', lastWorkYmd: '2026-09-21', isSub: true, workMonths: ['2026-06', '2026-07', '2026-08', '2026-09'] }), lastWorkYmd: '2026-09-21' }
     const later: LienCalendarJob = { jobId: 'h', number: '983', name: 'Water Heater removal', customer: '', gcId: 'gc-hi', gcName: 'H & I Construction', address: '25233 Four Iron Ct', openBalance: 350, isSub: true, runway: buildLienPayRunway({ ...base, todayYmd: OCT_1, openBalance: 350, lastWorkYmd: '2026-09-03', isSub: true, workMonths: ['2026-09'] }), lastWorkYmd: '2026-09-03' }
     render(<LienDeskCalendarTab rows={[later, seguin]} todayYmd={OCT_1} onOpenJob={vi.fn()} />)
-    const groups = screen.getAllByTestId(/^lien-cal-group-gc:/)
-    expect(groups.map((g) => g.getAttribute('data-testid'))).toEqual(['lien-cal-group-gc:gc-sp', 'lien-cal-group-gc:gc-hi'])
-    expect(groups[0]!.textContent).toContain('send the notice by Oct 15 · 14 d')
-    expect(groups[1]!.textContent).toContain('send the notice by Nov 16 · 46 d')
+    expect(within(screen.getByTestId('lien-cal-bucket-this_month')).getByTestId('lien-cal-group-gc:gc-sp').textContent).toContain('send the notice')
+    expect(screen.getByTestId('lien-cal-bucket-this_month').textContent).toContain('by Oct 15 · in 14 days · 1 notice to Southern Post Construction')
+    expect(within(screen.getByTestId('lien-cal-bucket-next_month')).getByTestId('lien-cal-group-gc:gc-hi')).toBeTruthy()
+    expect(screen.getByTestId('lien-cal-bucket-next_month').textContent).toContain('by Nov 16 · in 46 days')
     // July, August and September each carry a hollow flag; June's window closed, so it draws none
     expect(within(rowOf('878')).getAllByRole('button', { name: /A § 53.056 notice is owed for (July|August|September) 2026/ })).toHaveLength(3)
     cleanup()
     render(<LienDeskCalendarTab rows={[later, seguin]} todayYmd={OCT_1} onOpenJob={vi.fn()} isMobile />)
-    expect(screen.getByText('notice by Oct 15 · lien by Jan 15 — send the notice · 14 d')).toBeTruthy()
+    expect(screen.getByText('notice by Oct 15 · lien by Jan 15')).toBeTruthy()
   })
 
-  it('on a phone: no axis — the column cards, then the sentences', () => {
-    mount({ isMobile: true })
+  it('on a phone: no axis — the pills, then each bucket’s rows as sentences', () => {
+    const onDraft = vi.fn()
+    mount({ isMobile: true, onDraft })
     const phone = screen.getByTestId('lien-cal-phone')
-    expect(within(phone).getByText('Oct 15 · 17 d')).toBeTruthy()
-    expect(within(phone).getByText('2 notices')).toBeTruthy()
-    expect(screen.queryByTestId('lien-cal-density')).toBeNull()
+    expect(within(phone).getAllByTestId(/^lien-cal-bucket-/).map((s) => s.getAttribute('data-testid'))).toEqual(['lien-cal-bucket-overdue', 'lien-cal-bucket-next_month', 'lien-cal-bucket-later'])
+    expect(within(phone).getAllByText('notice by Oct 15 · lien by Nov 16')).toHaveLength(2)
+    fireEvent.click(within(phone).getByRole('button', { name: 'Draft the two ›' }))
+    expect(onDraft).toHaveBeenCalledWith('2026-10-15', ['a', 'b'])
+    expect(screen.getByRole('button', { name: /^Next month · 2 jobs/ })).toBeTruthy()
+    expect(screen.queryByTestId('lien-cal-dates')).toBeNull()
     expect(screen.queryByTestId('lien-cal-key')).toBeNull()
+    // the search sits behind its button
+    expect(screen.queryByLabelText('Search the lien calendar')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }))
+    fireEvent.change(screen.getByLabelText('Search the lien calendar'), { target: { value: 'garza' } })
+    expect(within(screen.getByTestId('lien-cal-phone')).getAllByTestId(/^lien-cal-bucket-/)).toHaveLength(1)
   })
 })
 
@@ -206,14 +267,14 @@ describe('before the Pipeline has read its billed jobs (v2.4321)', () => {
     mount({ rows: null, isMobile })
     expect(screen.getByText('Reading the board…')).toBeTruthy()
     expect(screen.queryByText(/0 jobs/)).toBeNull()
+    expect(screen.queryByTestId('lien-cal-pills')).toBeNull()
     expect(screen.queryByText('Nothing billed is on a lien clock.')).toBeNull()
-    expect(screen.queryByTestId('lien-cal-todo')).toBeNull()
     expect(screen.queryByTestId('lien-cal-phone')).toBeNull()
   })
 
   it('an empty board that was read is empty: the count, then the sentence', () => {
     mount({ rows: [], isMobile: true })
-    expect(screen.getByText('every billed job on the statute’s calendar · 0 jobs · $0 open')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'All · 0 jobs · $0' })).toBeTruthy()
     expect(screen.getByText('Nothing billed is on a lien clock.')).toBeTruthy()
     expect(screen.queryByText('Reading the board…')).toBeNull()
   })
@@ -254,12 +315,12 @@ describe('the pen (v2.4153)', () => {
     await waitFor(() => expect(promiseWrites).toHaveLength(1))
     expect(promiseWrites[0]).toMatchObject({ jobIds: ['a', 'b'], ymd: '2026-10-09', saidBy: 'RMC · Dudley Mason' })
   })
-  it('a density bar leads the to-do; Set kinds opens the sheet biggest first and writes the kind', async () => {
+  it('the toolbar’s kinds door opens the sheet biggest first and writes the kind', async () => {
     const onChanged = vi.fn()
     mount({ canWrite: true, onChanged })
-    fireEvent.click(screen.getByRole('button', { name: /Nov 16: .* — lead the to-do with this column/ }))
-    expect(screen.getByTestId('lien-cal-todo').textContent).toMatch(/^BY NOV 16 · 49 D/i)
-    fireEvent.click(screen.getByRole('button', { name: 'Set kinds, biggest first ›' }))
+    const door = screen.getByRole('button', { name: '1 kind not set ›' })
+    fireEvent.click(door)
+    expect(door.getAttribute('aria-expanded')).toBe('true')
     const sheet = screen.getByTestId('lien-cal-kinds')
     expect(within(sheet).getByTestId('lien-cal-kind-b').textContent).toContain('881 PLUM · Umar Khan')
     fireEvent.click(within(within(sheet).getByTestId('lien-cal-kind-b')).getByRole('button', { name: /residential/i }))

@@ -3869,6 +3869,34 @@ body.my-time-boundary-dragging {
 .lienShareItem { background: var(--surface); }
 .lienShareItem:hover, .lienShareItem:focus-visible { background: var(--bg-subtle); }
 .lienShareItem[aria-checked="true"] { background: var(--bg-blue-tint); }
+/* Lien calendar (v2.4340): the bucket pills, the kinds door, the search on the date row and Draft the N. A pill's colours ride on custom properties so :hover can still move its border. */
+.lienCalToolbar { container: lien-cal-toolbar / inline-size; scrollbar-width: none; }
+.lienCalToolbar::-webkit-scrollbar { display: none; }
+.lienCalPill { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 11px; border-radius: 999px; border: 1px solid var(--pill-border, var(--border)); background: var(--pill-bg, var(--surface)); color: var(--pill-ink, var(--text-700)); font: inherit; font-size: 0.78rem; white-space: nowrap; cursor: pointer; flex: none; }
+.lienCalPill:hover { border-color: var(--border-strong); }
+.lienCalPill[aria-pressed='true'], .lienCalPill[aria-pressed='true']:hover { border-color: var(--pill-border, var(--border-blue)); }
+.lienCalPillPhone { min-height: 36px; font-size: 0.8125rem; }
+.lienCalPillCount { font-weight: 700; font-variant-numeric: tabular-nums; padding: 0 6px; border-radius: 999px; background: var(--bg-200); color: var(--text-strong); font-size: 0.72rem; line-height: 1.45; }
+.lienCalPillDate, .lienCalPillMoney { opacity: 0.85; font-variant-numeric: tabular-nums; }
+.lienCalKinds { display: inline-flex; align-items: center; min-height: 30px; padding: 0 10px; border-radius: 999px; border: 1px dashed var(--border-amber); background: var(--bg-amber-tint); color: var(--text-amber-800); font: inherit; font-size: 0.75rem; font-weight: 600; white-space: nowrap; flex: none; }
+button.lienCalKinds { cursor: pointer; }
+button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-style: solid; }
+.lienCalPill:focus-visible, .lienCalKinds:focus-visible, .lienCalDraft:focus-visible { outline: 2px solid var(--border-blue); outline-offset: 2px; }
+.lienCalSearch { display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); }
+.lienCalSearch:focus-within { border-color: var(--text-link); }
+.lienCalSearch input { flex: 1; min-width: 0; border: none; outline: none; background: transparent; font: inherit; font-size: 0.8125rem; color: inherit; }
+.lienCalDateCount { position: absolute; left: 100%; bottom: 0; margin-left: 4px; padding: 0 5px; border-radius: 8px; font-size: 0.625rem; font-weight: 700; line-height: 1.5; font-variant-numeric: tabular-nums; }
+.lienCalDraft { border: none; border-radius: 7px; padding: 4px 11px; background: var(--text-amber-800); color: var(--surface); font: inherit; font-size: 0.75rem; font-weight: 700; white-space: nowrap; cursor: pointer; }
+.lienCalDraft:hover { opacity: 0.9; }
+.lienCalDraftPhone { min-height: 40px; padding: 0 14px; font-size: 0.8125rem; }
+/* The picked bucket's stretch of the axis: it lies over the rows, so it tints the paper and leaves every mark its full ink. */
+.lienCalBand { mix-blend-mode: multiply; }
+:root[data-theme='dark'] .lienCalBand { mix-blend-mode: screen; opacity: 0.4; }
+@container lien-cal-toolbar (max-width: 1060px) { .lienCalPillDate { display: none; } }
+@container lien-cal-toolbar (max-width: 900px) { .lienCalPillMoney { display: none; } }
+.lienCalAxis { container: lien-cal-axis / inline-size; }
+.lienCalDateShort { display: none; }
+@container lien-cal-axis (max-width: 420px) { .lienCalDateFull, .lienCalDateCount { display: none; } .lienCalDateShort { display: inline; } }
 .lienMonthsClaimCol { display: grid; align-content: center; gap: 0.35rem; min-width: 9.5rem; }
 .lienMonthsClaimTail { padding-left: 1.1rem; font-size: 0.72rem; color: var(--text-muted); line-height: 1.4; }
 .lienMonthsHistory { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem; padding-top: 0.5rem; border-top: 1px solid var(--border); }

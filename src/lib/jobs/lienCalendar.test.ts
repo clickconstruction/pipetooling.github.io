@@ -87,7 +87,8 @@ describe('buildLienCalendar', () => {
 })
 
 // ---- PR C (v2.4152): the shared axis, the marks, the density and the to-do ----
-import { LIEN_CALENDAR_KEY, closedYmdFor, commercialLienByFor, lienCalendarAxis, lienCalendarDensity, lienCalendarGroupFlags, lienCalendarMarks, lienCalendarTodo, noticeFlagsFor, rowWord, sharedPropertyNote, workMarkFor } from './lienCalendar'
+import { LIEN_CALENDAR_KEY, closedYmdFor, commercialLienByFor, lienCalendarAxis, lienCalendarGroupFlags, lienCalendarMarks, noticeFlagsFor, rowWord, sharedPropertyNote, workMarkFor } from './lienCalendar'
+import { buildLienCalendarBoard } from './lienCalendarBuckets'
 
 const TODAY = '2026-09-28'
 
@@ -188,7 +189,7 @@ describe('lienCalendarMarks', () => {
   })
 })
 
-describe('the GC row, the density and the to-do', () => {
+describe('the GC row and the key', () => {
   const rows = [
     job({ jobId: 'a', ...RMC, isSub: true, openBalance: 9800, r: { lastWorkYmd: '2026-08-12' } }),
     job({ jobId: 'b', ...RMC, isSub: true, openBalance: 7902, r: { lastWorkYmd: '2026-08-20', propertyKind: '' }, lastWorkYmd: '2026-08-20' }),
@@ -205,27 +206,6 @@ describe('the GC row, the density and the to-do', () => {
       ['2026-10-15', 3, 0],
       ['2026-11-16', 0, 3],
     ])
-  })
-  it('counts what lands on each 15th', () => {
-    const density = lienCalendarDensity(cal, axis)
-    const oct = density.find((c) => c.ymd === '2026-10-15')!
-    expect(oct.notices.count).toBe(3)
-    expect(oct.notices.total).toBe(9800 + 7902 + 4100)
-    expect([...oct.notices.gcIds]).toEqual(['gc-rmc'])
-    const nov = density.find((c) => c.ymd === '2026-11-16')!
-    expect(nov.notices.count).toBe(1)
-    expect(nov.liens.count).toBe(4)
-  })
-  it('writes the three sentences and their actions', () => {
-    const density = lienCalendarDensity(cal, axis)
-    const todo = lienCalendarTodo(cal, density, new Map(cal.jobs.map((j) => [j.jobId, j])))
-    expect(todo.map((t) => t.heading)).toEqual(['By Oct 15 · 17 d', 'Before that', 'By Nov 16 · 49 d'])
-    expect(todo[0]!.sentence).toBe('3 notices to RMC · Dudley Mason · $21.8k')
-    expect(todo[0]!.action).toMatchObject({ kind: 'draft', ymd: '2026-10-15', label: 'Draft the three' })
-    expect(todo[1]!.sentence).toBe('1 property has no kind — its flag could sit a month later · $7.9k')
-    expect(todo[1]!.action).toMatchObject({ kind: 'kinds', jobIds: ['b'] })
-    expect(todo[2]!.sentence).toBe('1 notice to Hunter Homes · 4 liens to file · $40.2k')
-    expect(todo[2]!.action).toBeNull()
   })
   it('the key names every glyph the rows can draw, each with a few words and the long ones (v2.4265)', () => {
     const glyphs = LIEN_CALENDAR_KEY.map((k) => k.glyph)
@@ -290,18 +270,18 @@ describe('the notice that counts is the earliest one still owed (v2.4308)', () =
     expect(rowWord(later, { kind: 'gc', jobs: [seguin, later] })).toEqual({ text: 'notice by Nov 16 · 46 d', tone: 'amber' })
   })
 
-  it('one flag per month still owed, none for a closed month; the Oct 15 column counts all three', () => {
+  it('one flag per month still owed, none for a closed month; This month counts all three', () => {
     const seguin = cal.jobs.find((j) => j.jobId === '878')!
     expect(noticeFlagsFor(seguin)).toEqual([
       { ymd: '2026-10-15', done: false, monthKey: '2026-07' },
       { ymd: '2026-11-16', done: false, monthKey: '2026-08' },
       { ymd: '2026-12-15', done: false, monthKey: '2026-09' },
     ])
-    const axis = lienCalendarAxis(cal.jobs, OCT_1)
-    const density = lienCalendarDensity(cal, axis)
-    expect(density.find((c) => c.ymd === '2026-10-15')!.notices.jobIds).toEqual(['878', '891', '650'])
-    const todo = lienCalendarTodo(cal, density, new Map(cal.jobs.map((j) => [j.jobId, j])))
-    expect(todo[0]).toMatchObject({ heading: 'By Oct 15 · 14 d', sentence: '3 notices across 3 GCs · $81.5k' })
+    // each job counted once, at July's date: This month holds the three, H & I's September notice is next month's
+    const board = buildLienCalendarBoard(rows, '', OCT_1)
+    expect(board.buckets[1]!.jobs.map((j) => j.jobId)).toEqual(['878', '891', '650'])
+    expect(board.buckets[1]!.facts).toBe('by Oct 15 · in 14 days · 3 notices across 3 GCs')
+    expect(board.buckets[2]!.jobs.map((j) => j.jobId)).toEqual(['983'])
   })
 
   it('a job with no property kind draws its flags where its words are, on the residential clock', () => {
