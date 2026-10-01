@@ -19,17 +19,19 @@
  * shared with `mercury-webhook` (`supabase/functions/_shared/bankReturnedDeposits.ts`).
  */
 
-import { asText, jobLabelForBankReturn, mercuryBankReturn, type BankReturnedJobRow, type MercuryBankReturn } from '../../../supabase/functions/_shared/bankReturnedDeposits'
+import { asText, isBankReturnReason, jobLabelForBankReturn, mercuryBankReturn, BANK_RETURN_REASON_PHRASES, type BankReturnedJobRow, type MercuryBankReturn } from '../../../supabase/functions/_shared/bankReturnedDeposits'
 
 // The rule itself lives beside the webhook (v2.3804) so the office's notice and these
 // reads agree on what a bank return is; this file re-exports it for the app.
-export { jobLabelForBankReturn, mercuryBankReturn, type BankReturnedJobRow, type MercuryBankReturn }
+export { BANK_RETURN_REASON_PHRASES, isBankReturnReason, jobLabelForBankReturn, mercuryBankReturn, type BankReturnedJobRow, type MercuryBankReturn }
 
 /** The same rule read off Mercury's raw payload (the AR list's RPC returns `raw`, not the status column). */
 export function mercuryBankReturnFromRaw(
   raw: unknown,
   postedAt: string | null | undefined,
   amount: number | string | null | undefined,
+  /** v2.4320: the row's kind; falls back to Mercury's own `kind` in the payload. */
+  kind?: string | null,
 ): MercuryBankReturn | null {
   const o = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : null
   return mercuryBankReturn({
@@ -37,6 +39,7 @@ export function mercuryBankReturnFromRaw(
     posted_at: postedAt,
     amount,
     failureReason: o ? asText(o.reasonForFailure) : '',
+    kind: kind ?? (o ? asText(o.kind) : ''),
   })
 }
 
@@ -66,7 +69,7 @@ export type BankReturnedPayments = {
 }
 
 export type BankReturnedPaymentRow = { id: string; job_id: string; amount: number | string | null; mercury_transaction_id: string | null }
-export type BankReturnedTxRow = { id: string; status: string | null; posted_at: string | null; amount: number | string | null; failure_reason?: string | null }
+export type BankReturnedTxRow = { id: string; status: string | null; posted_at: string | null; amount: number | string | null; failure_reason?: string | null; kind?: string | null }
 
 
 /** Recorded payments whose deposit the bank returned — the money still counted as paid on a job. */
@@ -80,7 +83,7 @@ export function summarizeBankReturnedPayments(
     if (!p.mercury_transaction_id) continue
     const tx = txById.get(p.mercury_transaction_id)
     if (!tx) continue
-    const ret = mercuryBankReturn({ status: tx.status, posted_at: tx.posted_at, amount: tx.amount, failureReason: tx.failure_reason })
+    const ret = mercuryBankReturn({ status: tx.status, posted_at: tx.posted_at, amount: tx.amount, failureReason: tx.failure_reason, kind: tx.kind })
     if (!ret) continue
     const amount = Math.abs(Number(p.amount) || 0)
     if (amount <= 0) continue

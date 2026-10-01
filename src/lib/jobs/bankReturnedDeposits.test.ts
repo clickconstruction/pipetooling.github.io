@@ -1,5 +1,9 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
+  BANK_RETURN_REASON_PHRASES,
+  isBankReturnReason,
   bankReturnedBadgeTitle,
   bankReturnedBadgeWords,
   bankReturnedByJob,
@@ -9,6 +13,7 @@ import {
   mercuryBankReturnFromRaw,
   summarizeBankReturnedPayments,
 } from './bankReturnedDeposits'
+import { arReturnCaseSituation, noticeInputFromCase, type ArReturnCaseRow } from '../../../supabase/functions/_shared/bankReturnedDeposits'
 
 describe('mercuryBankReturn', () => {
   it('is a return only when the deposit posted, then failed, and was money in', () => {
@@ -98,5 +103,98 @@ describe('the Pipeline row badge (v2.3806)', () => {
       'This job still counts a deposit the bank returned (Insufficient funds) — $13,680 — as paid. Open ③ Payments received; Unlink and remove takes it off the job and marks the deposit returned in Accounts Receivable.',
     )
     expect(bankReturnedBadgeTitle({ count: 2, total: 100, reason: '' })).toContain('2 deposits the bank returned — $100 — as paid')
+  })
+})
+
+describe('v2.4320: a check can come back before it posts', () => {
+  it('a check deposit that failed with a bank reason and no posting date is a return (Peter Garza, Jul 2025)', () => {
+    expect(mercuryBankReturn({ status: 'failed', posted_at: null, amount: 2700, failureReason: 'Insufficient funds', kind: 'checkDeposit' })).toEqual({ reason: 'Insufficient funds' })
+    expect(mercuryBankReturnFromRaw({ status: 'failed', reasonForFailure: 'Stop payment', kind: 'checkDeposit' }, null, 500)).toEqual({ reason: 'Stop payment' })
+  })
+  it("Mercury's own processing failure is not a return — that check never reached the bank", () => {
+    expect(
+      mercuryBankReturn({ status: 'failed', posted_at: null, amount: 600, failureReason: 'There was an issue with this transaction. Please contact help@mercury.com.', kind: 'checkDeposit' }),
+    ).toBeNull()
+  })
+  it('an internal transfer short of funds is not a return, even though "transfer" holds "nsf"', () => {
+    expect(
+      mercuryBankReturn({ status: 'failed', posted_at: null, amount: 3000, failureReason: "Account Taunya 6101 doesn't have enough funds to support a $3,000.00 transfer", kind: 'internalTransfer' }),
+    ).toBeNull()
+    expect(isBankReturnReason("doesn't have enough funds to support a $3,000.00 transfer")).toBe(false)
+  })
+  it('without a kind, an unposted failure stays out', () => {
+    expect(mercuryBankReturn({ status: 'failed', posted_at: null, amount: 2700, failureReason: 'Insufficient funds' })).toBeNull()
+  })
+  it('the SQL rule in the migration names the same phrases', () => {
+    const sql = readFileSync(resolve(__dirname, '../../../supabase/migrations/20261001230000_ar_returned_check_cases.sql'), 'utf8')
+    const block = sql.slice(sql.indexOf('FUNCTION public.mercury_bank_return_reason'), sql.indexOf('$function$;', sql.indexOf('FUNCTION public.mercury_bank_return_reason')))
+    const inSql = [...block.matchAll(/^\s+'([a-z ]+)',?$/gm)].map((m) => m[1])
+    expect(inSql).toEqual([...BANK_RETURN_REASON_PHRASES])
+  })
+})
+
+describe('v2.4320: a case row → the notice', () => {
+  const base: ArReturnCaseRow = {
+    mercury_transaction_id: 'tx-1',
+    counterparty_name: 'Loberg',
+    amount: '5622.49',
+    kind: 'checkDeposit',
+    posted_at: '2026-09-28T22:01:00Z',
+    failed_at: '2026-10-01T13:41:00Z',
+    bank_reason: 'Stop payment',
+    source: 'bank',
+    opened_at: '2026-10-01T13:41:00Z',
+    closed_at: null,
+    closed_reason: null,
+    closed_note: null,
+    closed_by: null,
+    replaced_by_mercury_transaction_id: null,
+    notified_at: null,
+    live_payments: [],
+    last_job: { job_id: 'job-650', job_number: '650', job_name: 'ATI Schertz — As per plans', removed_at: '2026-10-01T02:19:00Z', removed_by: 'Taunya' },
+    recorded_payment: null,
+  }
+  it('off its job: the last job and the day it came off, on the company calendar (9:19 PM CT Sep 30 is Sep 30)', () => {
+    const input = noticeInputFromCase(base, 'https://clicktooling.com')
+    expect(input.situation).toBe('off_job')
+    expect(input.lastJob).toEqual({ jobId: 'job-650', jobLabel: 'J650 ATI Schertz — As per plans', offYmd: '2026-09-30' })
+    expect(input.postedYmd).toBe('2026-09-28')
+    expect(input.amount).toBe(5622.49)
+  })
+  it('on jobs: the payments fold per job, biggest first', () => {
+    const row: ArReturnCaseRow = {
+      ...base,
+      last_job: null,
+      live_payments: [
+        { payment_id: 'p1', job_id: 'j963', job_number: '963', job_name: 'Knight Springtown Vet', amount: 2090, invoice_id: 'i1' },
+        { payment_id: 'p2', job_id: 'j977', job_number: '977', job_name: 'Springtown', amount: 11181.48, invoice_id: 'i2' },
+        { payment_id: 'p3', job_id: 'j963', job_number: '963', job_name: 'Knight Springtown Vet', amount: 1482, invoice_id: 'i3' },
+      ],
+    }
+    const input = noticeInputFromCase(row, 'https://clicktooling.com')
+    expect(input.situation).toBe('on_jobs')
+    expect(input.jobs.map((j) => [j.jobLabel, j.amount])).toEqual([
+      ['J977 Springtown', 11181.48],
+      ['J963 Knight Springtown Vet', 3572],
+    ])
+  })
+  it('rejected: the recorded payment it matches', () => {
+    const row: ArReturnCaseRow = {
+      ...base,
+      counterparty_name: 'Sal Iannotti',
+      amount: 600,
+      posted_at: null,
+      source: 'rejected',
+      last_job: null,
+      recorded_payment: { payment_id: 'p9', job_id: 'job-1040', job_number: '1040', job_name: 'Iannotti PRV', amount: 600, paid_on: '2026-09-29' },
+    }
+    const input = noticeInputFromCase(row, 'https://clicktooling.com')
+    expect(arReturnCaseSituation(row)).toBe('rejected')
+    expect(input.recorded).toEqual({ jobId: 'job-1040', jobLabel: 'J1040 Iannotti PRV', amount: 600, paidYmd: '2026-09-29' })
+    expect(input.postedYmd).toBeNull()
+  })
+  it('never on a job', () => {
+    expect(arReturnCaseSituation({ source: 'bank', live_payments: [], last_job: null })).toBe('never_on_job')
+    expect(arReturnCaseSituation({ source: 'hand', live_payments: null, last_job: null })).toBe('never_on_job')
   })
 })
