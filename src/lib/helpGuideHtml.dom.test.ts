@@ -15,10 +15,18 @@ describe('helpGuideMarkdownToSafeHtml (DOM sanitizer)', () => {
     expect(out).toContain('data-guide="texas-lien-rules-the-app-follows"')
   })
 
-  it('still drops a relative link that is not a guide (the sanitizer rule stands)', () => {
-    const out = helpGuideMarkdownToSafeHtml('Go to [jobs](/jobs?tab=stages).')
+  it('v2.4290: keeps a link to a page of the app as its path plus the data-app hook', () => {
+    const out = helpGuideMarkdownToSafeHtml('Go to [GC Review](/jobs?tab=stages&gcReview=1).')
+    expect(out).toContain('>GC Review</a>')
+    expect(out).toContain('href="/jobs?tab=stages&amp;gcReview=1"')
+    expect(out).toContain('data-app="/jobs?tab=stages&amp;gcReview=1"')
+  })
+
+  it('still drops a relative link that is not a root path (the sanitizer rule stands)', () => {
+    const out = helpGuideMarkdownToSafeHtml('Go to [jobs](jobs/stages) or [x](/jobs/../etc).')
     expect(out).toContain('>jobs</a>')
-    expect(out).not.toContain('href="/jobs')
+    expect(out).not.toContain('href="jobs')
+    expect(out).not.toContain('href="/jobs/..')
   })
 
   it('keeps an absolute https link as before', () => {
