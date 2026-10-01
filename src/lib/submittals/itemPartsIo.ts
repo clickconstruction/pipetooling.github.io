@@ -24,10 +24,26 @@ export async function loadItemParts(db: SupabaseClient, itemIds: ReadonlyArray<s
   }
 }
 
-/** Insert parts in batches of 200. */
+/**
+ * Rows with the same fields, in order, so each batch sends one shape. A batch insert fills a field
+ * one row leaves out with NULL, not the column's default: a split's copies (no procurement key)
+ * batched with the carried part (its key) failed on procure_key NOT NULL.
+ */
+export function partInsertBatches(rows: ReadonlyArray<SubmittalPartInsert>, size = 200): SubmittalPartInsert[][] {
+  const byShape = new Map<string, SubmittalPartInsert[]>()
+  for (const r of rows) {
+    const shape = Object.keys(r).filter((k) => r[k as keyof SubmittalPartInsert] !== undefined).sort().join(',')
+    byShape.set(shape, [...(byShape.get(shape) ?? []), r])
+  }
+  const out: SubmittalPartInsert[][] = []
+  for (const group of byShape.values()) for (let i = 0; i < group.length; i += size) out.push(group.slice(i, i + size))
+  return out
+}
+
+/** Insert parts, one shape per batch, 200 at a time. */
 export async function insertItemParts(db: SupabaseClient, rows: ReadonlyArray<SubmittalPartInsert>): Promise<void> {
-  for (let i = 0; i < rows.length; i += 200) {
-    const { error } = await db.from('bid_submittal_item_parts').insert(rows.slice(i, i + 200))
+  for (const batch of partInsertBatches(rows)) {
+    const { error } = await db.from('bid_submittal_item_parts').insert(batch)
     if (error) throw error
   }
 }
