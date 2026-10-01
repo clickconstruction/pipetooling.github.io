@@ -418,7 +418,7 @@ describe('JobsStagesTab render smoke', () => {
     // The scope lands: the billed job is on the board and the Calendar counts it.
     cache.merged = ['working', 'billed_all']
     view.rerender(<JobsStagesTab ref={ref} {...props} jobs={[...boardJobs(), makeJob({ job_name: 'Billed Lennox', status: 'billed' })]} />)
-    expect(await screen.findByText(/^every billed job on the statute’s calendar · 1 job · \$1,000 open/)).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'All · 1 job · $1,000' })).toBeTruthy()
     expect(screen.queryByText('Reading the board…')).toBeNull()
     localStorage.removeItem('pipetooling_jobs_map_hidden')
   })
