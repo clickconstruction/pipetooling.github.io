@@ -18,7 +18,7 @@ A promise is a date a customer named for paying a bill. It gets recorded in four
 - **Recording a late payment.** A payment may land two weeks or more after its bill with no promise on the job. Then the *Mark paid* window asks **Did they promise a date for this?** You tap the day it came, or one of the Fridays before it, or *No*. Answering writes the promise from memory while it is fresh. Skipping is fine. Nothing is guessed.
 
 :::example Taking a promise on the phone
-Tanya at Done Right says the cheque run is Friday. On the row, click *② Expected Sep 5 · 12 d past* in the dates block, pick Friday, type "Tanya, their office", tap **Phone**, save. The row becomes *They said Fri* and the record has who said it.
+Tanya at Done Right says the cheque run is Friday. On the row, click *② Expected Sep 5 · 12d past* in the dates block, pick Friday, type "Tanya, their office", tap **Phone**, save. The row becomes *They said Fri* and the record has who said it.
 :::
 
 Each promise remembers who at the customer said it, who on our side heard it, and when. Changing the date on a row does **not** overwrite the old promise. The first one stays on record. The new one is a second promise on the same bill. The modal says so. Clearing a promised date takes it off the chip but keeps the promise in the record. It was still said.

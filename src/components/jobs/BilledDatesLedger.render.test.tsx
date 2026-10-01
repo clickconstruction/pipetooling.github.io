@@ -22,12 +22,12 @@ const ledger = buildBilledDatesLedger({ todayYmd: today, row, data, promise: nul
 describe('BilledDatesLedger (v2.4205)', () => {
   it('draws three rows — the notice is the one deadline — and no verdict when the notice row is the to-do', () => {
     render(<BilledDatesLedger ledger={ledger} />)
-    expect(screen.getByTestId('ledger-row-billed').textContent).toBe('Billed Sep 2312 d ago')
-    expect(screen.getByTestId('ledger-row-money').textContent).toBe('Expected Oct 41 d past')
-    expect(screen.getByTestId('ledger-row-notice').textContent).toBe('Lien notice by Oct 1510 d')
+    expect(screen.getByTestId('ledger-row-billed').textContent).toBe('Billed Sep 2312d ago')
+    expect(screen.getByTestId('ledger-row-money').textContent).toBe('Expected Oct 41d past')
+    expect(screen.getByTestId('ledger-row-notice').textContent).toBe('Lien notice by Oct 1510d')
     expect(screen.queryByTestId('ledger-row-lien')).toBeNull()
     expect(screen.queryByTestId('ledger-verdict')).toBeNull()
-    expect(screen.getByTestId('billed-dates-ledger').getAttribute('aria-label')).toBe('Billed Sep 23 · 12 d ago · Expected Oct 4 · 1 d past · Lien notice by Oct 15 · 10 d')
+    expect(screen.getByTestId('billed-dates-ledger').getAttribute('aria-label')).toBe('Billed Sep 23 · 12d ago · Expected Oct 4 · 1d past · Lien notice by Oct 15 · 10d')
     // Without handlers nothing is a button.
     expect(screen.queryByRole('button')).toBeNull()
   })
@@ -38,7 +38,7 @@ describe('BilledDatesLedger (v2.4205)', () => {
     const rowClick = vi.fn()
     render(
       <div onClick={rowClick}>
-        <BilledDatesLedger ledger={ledger} onMoney={onMoney} onLienDesk={onLienDesk} evidence={<span data-testid="evidence">usually pays in 2–8 d</span>} />
+        <BilledDatesLedger ledger={ledger} onMoney={onMoney} onLienDesk={onLienDesk} evidence={<span data-testid="evidence">Pays in 2–8d</span>} />
       </div>,
     )
     fireEvent.click(screen.getByTestId('ledger-row-money'))
@@ -64,13 +64,13 @@ describe('BilledDatesLedger (v2.4205)', () => {
     const onLienDesk = vi.fn()
     const onMoney = vi.fn()
     render(<BilledDatesLedger ledger={calm} onLienDesk={onLienDesk} onMoney={onMoney} />)
-    expect(screen.getByTestId('ledger-verdict').textContent).toBe('Can run late66 d')
+    expect(screen.getByTestId('ledger-verdict').textContent).toBe('Can run late66d')
     fireEvent.click(screen.getByTestId('ledger-verdict'))
     expect(onLienDesk).toHaveBeenCalledTimes(1)
     document.body.innerHTML = ''
     const late = buildBilledDatesLedger({ todayYmd: today, row, data, promise: null, runway: buildLienPayRunway({ todayYmd: today, openBalance: 15406, lastWorkYmd: '2026-08-14', propertyKind: 'residential', expectedPayYmd: '2026-10-04', filedYmd: null, releasedYmd: null, isSub: false }), inCollections: false })
     render(<BilledDatesLedger ledger={late} onLienDesk={onLienDesk} onMoney={onMoney} />)
-    expect(screen.getByTestId('ledger-verdict').textContent).toBe('Ask for a date1 d past')
+    expect(screen.getByTestId('ledger-verdict').textContent).toBe('Ask for a date1d past')
     fireEvent.click(screen.getByTestId('ledger-verdict'))
     expect(onMoney).toHaveBeenCalledTimes(1)
     document.body.innerHTML = ''
