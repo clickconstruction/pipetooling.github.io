@@ -796,7 +796,7 @@ export function JobFormInvoiceList({
             ) : null}
             {!isDraft && showWaiverCells
               ? (() => {
-                  const cell = lienWaiverCellForBill(waiverRows, inv.id, billSettled(inv, payments), { calm: true })
+                  const cell = lienWaiverCellForBill(waiverRows, inv.id, billSettled(inv, payments))
                   const chipTone = (t: 'green' | 'amber' | 'grey'): CSSProperties =>
                     t === 'green'
                       ? { background: 'var(--bg-green-tint)', color: 'var(--text-green-700)' }

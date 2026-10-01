@@ -167,15 +167,15 @@ If the button is grey, the GC has no billing email on file. Add it on the GC's c
 
 ## On GC Review
 
-Open a GC's row in [GC Review](/jobs?tab=stages&gcReview=1). Each bill ends with two chips, like on the Bill tab. One thing differs. GC Review marks a bill with no conditional yet in amber, as a reminder before you call.
+Open a GC's row in [GC Review](/jobs?tab=stages&gcReview=1). Each bill ends with two chips. They read the same way as on the Bill tab.
 
 - Green means done. {{chip:green|Conditional ✓ sent Sep 30}}
-- Amber is the move before the call. {{chip:yellow|Conditional · none — send it}}
-- Grey waits on the money. {{chip:gray|Unconditional · when paid}}
+- Amber means a waiver you started needs its next step. {{chip:yellow|Conditional ✓ signed · send it}}
+- Grey means no waiver yet, or one that waits on the money. {{chip:gray|Conditional · not added}}
 
 Click a chip to open the job. The Bill tab's door adds or sends the waiver.
 
-{{gif:send-a-gc-our-lien-waiver-gcreview.gif|GC Review: open a GC's bills and each row ends with its two waiver chips}}
+{{gif:send-a-gc-our-lien-waiver-gcreview.gif|GC Review: Knight's bills read grey with no waiver started. Loberg's signed one is amber.}}
 
 ## What the GC sees
 
