@@ -11,7 +11,7 @@ Two accounts come from a re-invite, a typo'd email, or an old archived login. **
 
 ## Where
 
-Open **Manage accounts…** and click {{button:red|Merge users}}. You find it at Settings → People & teams, beside the pointer to People → Users → Account. You also find it on a person's desk under Access & account.
+Open **Manage accounts…** and click {{button:red|Merge users}}. You find it at Settings → People & teams, beside the pointer to People → Users → Account.
 
 ## The rules
 

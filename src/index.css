@@ -4610,3 +4610,21 @@ div.bid-mark-board-row[data-marked='true'] { box-shadow: inset 3px 0 0 var(--bid
 .lienStep-label[data-state='warn'] { color: var(--text-amber-800); }
 .lienStep-say { margin: 0; font-size: 0.8125rem; line-height: 1.45; color: var(--text-700); }
 .lienStep-summary { font-size: 0.8125rem; color: var(--text-muted); min-width: 0; }
+
+/* Account on the desk (PR B): on a phone the Access & account rows stack — the label on its own
+   line, then the value and its buttons — so a role menu and Trades… never share 150 px. The
+   grid columns are an inline style on DeskRow, hence !important. */
+@media (max-width: 640px) {
+  [data-desk-section="access"] .person-desk-row {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    row-gap: 0.25rem !important;
+  }
+  [data-desk-section="access"] .person-desk-row > span:first-child {
+    grid-column: 1 / -1;
+    font-size: 0.75rem;
+  }
+  [data-desk-section="access"] .person-desk-row button,
+  [data-desk-section="access"] .person-desk-row select {
+    min-height: 36px;
+  }
+}

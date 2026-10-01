@@ -108,7 +108,7 @@ export function UsersTabAccountCells({
       </span>
       <span style={{ ...CELL, width: ACCOUNT_CELL_WIDTHS.desk }}>
         {openDesk ? (
-          <button type="button" onClick={() => openDesk('access')} title="Password, name, email, merge, archive — on their desk" style={{ border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem', textDecoration: 'underline' }}>
+          <button type="button" onClick={() => openDesk('access')} title="Name, email, trades, password and archive, on their desk" style={{ border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem', textDecoration: 'underline' }}>
             Desk
           </button>
         ) : null}

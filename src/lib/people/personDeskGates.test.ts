@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canArchiveAccount, canEditAccount, canOpenPersonDesk, canOpenPersonQuickSheet, canSetTrainingMode, type PersonDeskViewer } from './personDeskGates'
+import { canArchiveAccount, canEditAccount, canOpenPersonDesk, canOpenPersonQuickSheet, canSetSupervision, canSetTrainingMode, type PersonDeskViewer } from './personDeskGates'
 
 function viewer(p: Partial<PersonDeskViewer>): PersonDeskViewer {
   return { role: 'assistant', isDev: false, canAccessPay: false, canAccessHours: true, canAccessVehicles: true, canAccessLicenses: true, canAccessContracts: true, readOnly: false, ...p }
@@ -38,5 +38,13 @@ describe('personDeskGates (v2.2713 widenings)', () => {
     expect(canSetTrainingMode(viewer({ role: 'controller', readOnly: true }))).toBe(false)
     expect(canEditAccount(viewer({ role: 'controller', canAccessPay: true }))).toBe(false)
     expect(canEditAccount(viewer({ role: 'dev', isDev: true }))).toBe(true)
+  })
+
+  it("supervision is the office's call as the database guard says: dev, master or assistant", () => {
+    expect(canSetSupervision(viewer({ role: 'dev', isDev: true }))).toBe(true)
+    expect(canSetSupervision(viewer({ role: 'master_technician' }))).toBe(true)
+    expect(canSetSupervision(viewer({ role: 'assistant' }))).toBe(true)
+    expect(canSetSupervision(viewer({ role: 'controller', canAccessPay: true }))).toBe(false)
+    expect(canSetSupervision(viewer({ role: 'assistant', readOnly: true }))).toBe(false)
   })
 })
