@@ -5,13 +5,15 @@ roles: dev, master_technician, assistant
 keywords: pipeline, stages, sections, collapse, expand, ready to bill, faster, loading
 order: 76
 ---
-The Pipeline board now loads **only the sections you have open** — everything else stays collapsed showing its live count and dollar total, without loading a single row. That makes the board open in a blink and keeps it light on the database all day.
+The Pipeline board loads only the sections you have open. Everything else stays collapsed, so the board opens in a blink.
+
+A collapsed section still shows its live count and dollar total, without loading a single row. That keeps the board light on the database all day.
 
 ## How it works
 
-- A fresh device starts with **Ready to Bill** open and everything else collapsed. Tap any section header (▶) to expand it — its rows load right then (you'll see a brief *— loading* next to the title).
-- **Whatever you leave open is remembered on that device.** If you live in Working, open it once — every visit after that loads Working from the start.
-- Collapsed headers aren't stale: the counts, totals, the 30+/90+ aging chips, and **Capable of Being Billed** all stay live from a lightweight stats read, even for sections that never load rows.
+- A fresh device starts with **Ready to Bill** open and everything else collapsed. Tap any section header, the ▶ line, to expand it. Its rows load right then. You will see a brief *— loading* next to the title.
+- **Whatever you leave open is remembered on that device.** If you live in Working, open it once. Every visit after that loads Working from the start.
+- Collapsed headers are not stale. The counts, totals, the 30+/90+ aging chips and **Capable of Being Billed** all stay live. They come from a lightweight stats read, even for sections that never load rows.
 
 :::example A dispatcher's board
 ▶ Waiting (17) - $272.3k &nbsp;·&nbsp; ▼ Working (31) - $322.5k &nbsp;·&nbsp; ▼ Ready to Bill (6) - $13.1k
@@ -21,8 +23,8 @@ Waiting stays collapsed all week — its 17 jobs are never fetched, but the head
 
 ## When everything loads anyway
 
-Some tools need the whole board, and they fetch it automatically the moment you use them: typing in **search**, the **#** number jump, the GC/Development/Account-man filters (and hidden groups), and the cross-section tools (Weekly money, GC Review, Accounts Receivable, Capable of Being Billed breakdown). You never have to think about what's loaded — using a tool loads what it needs.
+Some tools need the whole board. They fetch it automatically the moment you use them. Those are typing in **search**, the **#** number jump, and the GC, Development and Account-man filters, plus hidden groups. GC means the general contractor. The cross-section tools do too: Weekly money, GC Review, Accounts Receivable and the Capable of Being Billed breakdown. You never have to think about what is loaded. Using a tool loads what it needs.
 
-While a search is active, the matching text **lights up amber** on every result — in the job number, name, address, customer, GC, and development — so you can see at a glance why each row matched.
+While a search is active, the matching text **lights up amber** on every result. It lights in the job number, name, address, customer, GC and development. So you can see at a glance why each row matched.
 
-**Paid in Full** works exactly as before: expand it (or use the search chip / # jump) to load paid jobs on demand.
+**Paid in Full** works exactly as before. Expand it to load paid jobs on demand. The search chip or the # jump loads them too.

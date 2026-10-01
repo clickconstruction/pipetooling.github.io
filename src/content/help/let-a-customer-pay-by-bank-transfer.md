@@ -4,23 +4,25 @@ category: Billing & Money
 roles: dev, master_technician, assistant, controller
 keywords: ACH, wire, bank transfer, direct deposit, routing number, account number, remittance, mail a check, check address, portal statement, accounts receivable
 ---
-Some customers pay by ACH, wire or a mailed check instead of the {{button:blue|PAY ONLINE}} button. Their statement page carries the details they need, collapsed under the ledger, and the office can read the same details inside **Accounts Receivable** while a customer is on the phone. The numbers live in the database only, never in the app's source, so publishing the app never publishes the account.
+Some customers pay by bank transfer or a mailed check instead of the online button. Their statement page carries the details they need.
+
+They may pay by ACH, a direct bank deposit, by wire, a same-day bank transfer, or by a mailed check. That is instead of the {{button:blue|PAY ONLINE}} button. The details sit collapsed under the ledger on their statement page. The office can read the same details inside **Accounts Receivable** while a customer is on the phone. The numbers live in the database only, never in the app's source. So publishing the app never publishes the account.
 
 ## Enter the details once
 
 A master or dev opens **Settings → Company → Bank transfer details** and fills in:
 
-- **Pay to** — the legal name on the account, exactly as the bank has it.
-- **Routing number** and **Account number** — the routing number is checked for a typo before it saves.
-- **Bank name** and the **note under it** — for a Mercury account, the bank is the partner bank, so the note tells the customer why their bank shows a different name.
-- **Beneficiary address** — some wire forms require it.
-- **Where checks must be mailed** — the statement then reads *Checks can only be received at … Checks mailed anywhere else need to be re-issued.* Leave it blank and the checks line disappears.
+- **Pay to** is the legal name on the account, exactly as the bank has it.
+- **Routing number** and **Account number**. The routing number is checked for a typo before it saves.
+- **Bank name** and the **note under it**. For a Mercury account, the bank is the partner bank. So the note tells the customer why their bank shows a different name.
+- **Beneficiary address**. Some wire forms require it.
+- **Where checks must be mailed**. The statement then reads *Checks can only be received at … Checks mailed anywhere else need to be re-issued.* You leave it blank and the checks line disappears.
 
-The **Show on the customer statement page** box turns the whole card on or off without clearing anything. Nothing shows to a customer until the payee, routing and account are all filled, or a check address is set.
+The **Show on the customer statement page** box turns the whole card on or off without clearing anything. Nothing shows to a customer until the payee, routing and account are all filled. A check address alone also makes it show.
 
 ## What the customer sees
 
-Under **Total due** on their statement page sits one quiet line: **Prefer to pay with a different method?** Tapping it opens two halves — the transfer details, and a separate box for checks — so the bank's beneficiary address and the check mailing address are never confused for each other:
+Under **Total due** on their statement page sits one quiet line: **Prefer to pay with a different method?** The customer taps it and two halves open. One half is the transfer details. The other is a separate box for checks. So the bank's beneficiary address and the check mailing address are never confused for each other:
 
 :::example The opened card
 **BY BANK TRANSFER — ACH (DIRECT DEPOSIT) OR WIRE**
@@ -36,17 +38,17 @@ Under **Total due** on their statement page sits one quiet line: **Prefer to pay
 ● You can always call (512) 360-0599 before sending anything for clarity.
 :::
 
-The memo line is built for them from their name and their open job numbers, so the deposit lands with the words Accounts Receivable needs to match it. A printed statement carries the card open, because paper is where wire details get used.
+The memo line is built for them from their name and their open job numbers. So the deposit lands with the words Accounts Receivable needs to match it. A printed statement carries the card open. Paper is where wire details get used.
 
-The last line offers the office number. If a customer ever gets an email with different bank details in your name, that call is what catches it, so keep the number current.
+The last line offers the office number. A customer may one day get an email with different bank details in your name. That call is what catches it. So keep the number current.
 
 ## Reading them in Accounts Receivable
 
-Open **Accounts Receivable** from Jobs → Pipeline → Billed Awaiting Payment and click {{button:outline|🏦 Bank transfer details}} in the header. The panel shows the same record with {{button:outline|Copy}} chips, the checks line and the guard line, so the answer to "where do I wire it?" is one click away while the customer is still on the phone. A master or dev gets a link to Settings → Company from the same panel.
+You open **Accounts Receivable** from Jobs → Pipeline → Billed Awaiting Payment. You click {{button:outline|🏦 Bank transfer details}} in the header. The panel shows the same record with {{button:outline|Copy}} chips, the checks line and the guard line. So the answer to "where do I wire it" is one click away. The customer is still on the phone. A master or dev gets a link to Settings → Company from the same panel.
 
 ## Keeping the account safe
 
-A routing and account number is what is printed on every paper check the company writes, so sharing it with customers is the exposure you already carry. The two habits that keep it that way:
+A routing and account number is printed on every paper check the company writes. So sharing it with customers is the exposure you already carry. Two habits keep it that way:
 
-- Keep the receiving account swept to a working balance, so an unexpected debit or a counterfeit check bounces instead of clearing.
-- Turn the bank's own ACH debit block or allowlist on, if it offers one, and keep debit alerts on. Deposits still come in; pulls do not.
+- You keep the receiving account swept to a working balance. Then an unexpected debit or a counterfeit check bounces instead of clearing.
+- You turn on the bank's own ACH debit block or allowlist, if it offers one. You keep debit alerts on. Deposits still come in. Pulls do not.
