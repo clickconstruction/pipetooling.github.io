@@ -29,7 +29,7 @@ export const SUBMITTAL_TOUR_STEPS: SpotlightTourStep[] = [
   {
     anchor: 'submittals-takeoff',
     title: 'From the takeoff',
-    body: 'You counted these fixtures on the takeoff. Tick the ones the GC needs to approve. Then tap Build Rev 1, the first version of your submittal. Each ticked fixture becomes a row. Each fixture’s parts show as chips. The bowl, valve, seat and carrier start on. Stops and supplies start off.',
+    body: 'You counted these fixtures on the takeoff. Tick the ones the GC needs to approve. Then tap Build Rev 1, the first version of your submittal. Each ticked fixture becomes a row. Each fixture’s parts show as chips. The GC sees the bowl, valve, seat and carrier. Stops and supplies start as order only.',
   },
   {
     anchor: 'submittals-plug-in',

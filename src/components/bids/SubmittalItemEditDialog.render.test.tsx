@@ -10,6 +10,7 @@ import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { SubmittalItemEditDialog, type SubmittalItemPatch } from './SubmittalItemEditDialog'
 import type { SubmittalItemRow } from '../../lib/submittals/submittalRevision'
 import type { SubmittalPersonRow } from '../../lib/submittals/submittalRoom'
+import type { SubmittalPartRow } from '../../lib/submittals/itemParts'
 
 const item = (o: Partial<SubmittalItemRow> = {}): SubmittalItemRow => ({ id: 'i1', submittal_id: 'r2', tag: 'WC-1', sequence_order: 1, status: 'alternate', specified_manufacturer: 'TOTO', specified_model: 'CT708UVG#01', specified_description: 'WATER CLOSET', submitted_manufacturer: 'TOTO', submitted_model: 'CT728', submitted_label: 'TOTO CT728 kit', supply_house_id: null, source_quote_line_id: null, source_count_row_id: null, reason_kind: 'lead_time', reason_note: null, lead_time_days: 14, sheet_file: null, sheet_pages: [], sheet_source: null, review_decision: null, review_note: null, reviewed_at: null, reviewed_by_name: null, reviewed_by_email: null, reviewed_by_person_id: null, carried_from_item_id: null, decision_source: 'room', decision_entered_by: null, decision_entered_by_name: null, created_at: '', updated_at: '', ...o })
 const people = [{ id: 'p1', room_id: 'room', name: 'Dana Whitfield', email: 'dana@arch.test', role: 'architect', may_decide: true, token: 't', how: 'named', invited_by: null, first_seen_at: null, last_seen_at: null, open_count: 0, closed_at: null, created_at: '', updated_at: '' }] as unknown as SubmittalPersonRow[]
@@ -101,5 +102,55 @@ describe('SubmittalItemEditDialog · supply house', () => {
     unmount()
     renderWithProviders(<SubmittalItemEditDialog item={item()} sourceFiles={[]} onSave={() => {}} onClose={() => {}} />)
     expect(screen.queryByLabelText('Supply house')).toBeNull()
+  })
+})
+
+describe('SubmittalItemEditDialog · parts, each bought on its own (2026-10-01)', () => {
+  const part = (id: string, label: string, seq: number, extra: Partial<SubmittalPartRow> = {}): SubmittalPartRow => ({ id, item_id: 'i1', bid_id: 'b1', sequence_order: seq, label, manufacturer: null, model: null, description: null, quantity: 1, on_submittal: true, source: 'takeoff', part_id: null, source_line_id: null, source_template_item_id: null, assembly: 'LAV 1 assembly SPACEX', priced_label: null, reason_note: null, supply_house_id: null, lead_time_days: null, stage: null, sheet_file: null, sheet_pages: [], review_decision: null, review_note: null, reviewed_at: null, reviewed_by_name: null, reviewed_by_email: null, reviewed_by_person_id: null, decision_source: 'room', decision_entered_by: null, decision_entered_by_name: null, procure_key: `k-${id}`, carried_from_part_id: null, created_at: '', updated_at: '', ...extra })
+  const parts = [part('tsl', 'TSL.MON.B.38.2.PS1.BK MONOLITH B SERIES', 1), part('faucet', 'TOTO T25S51E#CP', 2), part('stop', 'BRASSCRA PLB113XP ANG', 3, { on_submittal: false })]
+  const houses = [{ id: 'h-moore', name: 'Moore Supply' }, { id: 'h-nws', name: 'National Wholesale' }]
+
+  it('on a draft: every part is listed, a house, a lead time and a stage go on a part, one is switched to order only, one is typed in; Save hands back the parts', () => {
+    const onSave = vi.fn<(p: SubmittalItemPatch) => void>()
+    renderWithProviders(<SubmittalItemEditDialog item={item({ tag: 'LAV-1', status: 'proposed' })} parts={parts} houses={houses} sourceFiles={[]} canEditProduct onSave={onSave} onClose={() => {}} />)
+    expect(screen.getAllByTestId('part-editor-row')).toHaveLength(3)
+    expect(screen.getByTestId('parts-editor').textContent).toContain('2 the GC sees · 1 order only · from LAV 1 assembly SPACEX')
+    // The row's own house and lead time are read from its parts.
+    expect(screen.queryByRole('combobox', { name: 'Supply house' })).toBeNull()
+    fireEvent.change(screen.getByLabelText('House for part 1'), { target: { value: 'h-nws' } })
+    fireEvent.change(screen.getByLabelText('Lead time for part 1'), { target: { value: '6 wk' } })
+    fireEvent.change(screen.getByLabelText('Stage for part 1'), { target: { value: 'trim_set' } })
+    expect(screen.getByTestId('parts-roll-up').textContent).toContain('6 wk, the longest among the parts the GC sees.')
+    fireEvent.click(screen.getByLabelText('The GC sees part 2'))
+    fireEvent.click(screen.getByTestId('add-part'))
+    fireEvent.change(screen.getByLabelText('Part 4'), { target: { value: 'LEONARD 170D-LF' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    const saved = onSave.mock.calls[0]![0]
+    expect(saved.parts!.map((d) => [d.id ?? 'new', d.label, d.on_submittal, d.supply_house_id, d.lead_time_days, d.stage])).toEqual([
+      ['tsl', 'TSL.MON.B.38.2.PS1.BK MONOLITH B SERIES', true, 'h-nws', 42, 'trim_set'],
+      ['faucet', 'TOTO T25S51E#CP', false, null, null, null],
+      ['stop', 'BRASSCRA PLB113XP ANG', false, null, null, null],
+      ['new', 'LEONARD 170D-LF', true, null, null, null],
+    ])
+    expect('submitted_label' in saved).toBe(false)
+    expect('supply_house_id' in saved).toBe(false)
+  })
+
+  it('a lead time that does not read holds Save; on a shared revision a part’s name and switch are fixed', () => {
+    renderWithProviders(<SubmittalItemEditDialog item={item({ tag: 'LAV-1' })} parts={parts} houses={houses} sourceFiles={[]} onSave={() => {}} onClose={() => {}} />)
+    expect(screen.queryByLabelText('Part 1')).toBeNull()
+    expect((screen.getByLabelText('The GC sees part 1') as HTMLInputElement).disabled).toBe(true)
+    expect(screen.queryByTestId('add-part')).toBeNull()
+    fireEvent.change(screen.getByLabelText('Lead time for part 2'), { target: { value: 'soonish' } })
+    expect((screen.getByRole('button', { name: 'Save' }) as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('a row with no parts can be listed as parts on a draft, starting from its product', () => {
+    const onSave = vi.fn<(p: SubmittalItemPatch) => void>()
+    renderWithProviders(<SubmittalItemEditDialog item={item()} houses={houses} sourceFiles={[]} canEditProduct onSave={onSave} onClose={() => {}} />)
+    fireEvent.click(screen.getByTestId('list-as-parts'))
+    expect((screen.getByLabelText('Part 1') as HTMLInputElement).value).toBe('TOTO CT728 kit')
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    expect(onSave.mock.calls[0]![0].parts).toEqual([{ label: 'TOTO CT728 kit', quantity: 1, on_submittal: true, supply_house_id: null, lead_time_days: 14, stage: null }])
   })
 })

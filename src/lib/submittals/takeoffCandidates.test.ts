@@ -194,3 +194,77 @@ describe('the candidates', () => {
     expect(withProductKeys(def, ['l2', 'l1'])).toMatchObject({ productKeys: ['l1', 'l2'], supplyHouseId: 'h-reece', supplyHouseName: 'Reece' })
   })
 })
+
+describe('parts, not assemblies (2026-10-01): an assembly line opens into the parts inside it', () => {
+  // BP375's LAV 1 and DWH1 & ET as the price book holds them on 2026-10-01 (makers as stored).
+  const bp = new Map([
+    ['tsl', { name: 'TSL.MON.B.38.2.PS1.BK MONOLITH B SERIES', manufacturer: 'TSL', partTypeName: null }],
+    ['faucet', { name: 'T25S51E#CP', manufacturer: 'TOTO', partTypeName: null }],
+    ['supply', { name: 'BRASSCRAFT/PLUMBSHOP PLS1-16AF 3/8 COMP X 1/2 FIP X 16 IN SS SUPPLY', manufacturer: 'BRASSCRAFT', partTypeName: null }],
+    ['grid', { name: '|HYDRAPRO H20008 CP BRASS COMMERCIAL LAVATORY GRID DRAIN WITH OVERFLOW', manufacturer: 'HYDRAPRO', partTypeName: null }],
+    ['trap', { name: 'MLZ8700 11/4 CHROME PLATED 17 GUAGE SEMI CAST BRASS P-TRAP', manufacturer: 'MAINLINE', partTypeName: null }],
+    ['stop', { name: 'BRASSCRA PLB113XP 1/2 NOM COMPX3/8 OD COMP W/LOOSEKEY ANG', manufacturer: null, partTypeName: 'Sink' }],
+    ['flange', { name: 'MAINLINE ML90105 POLISHED CHROME 5/8 OD LOW PATTERN SURE GRIP FLANGE', manufacturer: null, partTypeName: 'Sink' }],
+    ['soap', { name: 'B-8236', manufacturer: 'BOBRICK', partTypeName: null }],
+    ['heater', { name: 'PROPH40-T2-RH400-SO', manufacturer: 'RHEEM', partTypeName: null }],
+    ['tank', { name: 'AMTROL 2.0GAL ST-5 THERM-X-TROL EXPANSION TANK', manufacturer: 'AMTROL', partTypeName: 'Other' }],
+    ['pump', { name: '60B0B1001', manufacturer: 'B&G', partTypeName: null }],
+  ])
+  const templates = new Map([['t-lav1', 'LAV 1 assembly SPACEX'], ['t-dwh', 'DWH1 & ET assembly SPACEX'], ['t-trim', 'LAV trim kit'], ['t-loop', 'loop']])
+  const item = (id: string, partId: string | null, sequenceOrder: number, quantity = 1, nestedTemplateId: string | null = null) => ({ id, partId, nestedTemplateId, quantity, sequenceOrder })
+  const assemblies = new Map([
+    ['t-lav1', [item('i-tsl', 'tsl', 1), item('i-faucet', 'faucet', 2), item('i-supply', 'supply', 3, 2), item('i-grid', 'grid', 4), item('i-trap', 'trap', 5), item('i-stop', 'stop', 6), item('i-flange', 'flange', 7), item('i-soap', 'soap', 8)]],
+    ['t-dwh', [item('i-heater', 'heater', 1), item('i-tank', 'tank', 2)]],
+    ['t-trim', [item('n-supply', 'supply', 1, 2), item('n-stop', 'stop', 2)]],
+    ['t-loop', [item('n-loop', null, 1, 1, 't-loop')]],
+  ])
+  const moore = new Map([['pr-m', { houseId: 'h-moore', houseName: 'Moore Supply' }]])
+
+  it('LAV 1: eight parts in the assembly’s order, maker first unless the name starts with it, the trim order only, the supplies two to a fixture', () => {
+    const pieces = productPiecesOf('lav1', [line({ id: 'l-lav1', countRowId: 'lav1', sourceTemplateId: 't-lav1', quantity: 1 })], bp, templates, new Map(), assemblies)
+    expect(pieces.map((p) => [p.label, p.trim, p.quantity])).toEqual([
+      ['TSL.MON.B.38.2.PS1.BK MONOLITH B SERIES', false, 1],
+      ['TOTO T25S51E#CP', false, 1],
+      ['BRASSCRAFT/PLUMBSHOP PLS1-16AF 3/8 COMP X 1/2 FIP X 16 IN SS SUPPLY', true, 2],
+      ['HYDRAPRO |HYDRAPRO H20008 CP BRASS COMMERCIAL LAVATORY GRID DRAIN WITH OVERFLOW', true, 1],
+      ['MAINLINE MLZ8700 11/4 CHROME PLATED 17 GUAGE SEMI CAST BRASS P-TRAP', true, 1],
+      ['BRASSCRA PLB113XP 1/2 NOM COMPX3/8 OD COMP W/LOOSEKEY ANG', true, 1],
+      ['MAINLINE ML90105 POLISHED CHROME 5/8 OD LOW PATTERN SURE GRIP FLANGE', true, 1],
+      ['BOBRICK B-8236', false, 1],
+    ])
+    expect(pieces.every((p) => p.assembly === 'LAV 1 assembly SPACEX' && p.lineId === 'l-lav1')).toBe(true)
+    expect(pieces[0]!.key).toBe('i-tsl')
+    expect(productFromPieces(pieces, defaultProductKeys(pieces)).product).toBe('TSL.MON.B.38.2.PS1.BK MONOLITH B SERIES + TOTO T25S51E#CP + BOBRICK B-8236')
+  })
+
+  it('DWH1 & ET: the assembly’s parts, then the loose parts on the takeoff, each with its own house', () => {
+    const lines = [
+      line({ id: 'l-dwh', countRowId: 'dwh', sequenceOrder: 1, sourceTemplateId: 't-dwh' }),
+      line({ id: 'l-pump', countRowId: 'dwh', sequenceOrder: 2, partId: 'pump', sourceMaterialPartPriceId: 'pr-m' }),
+    ]
+    const pieces = productPiecesOf('dwh', lines, bp, templates, moore, assemblies)
+    expect(pieces.map((p) => [p.key, p.houseName, p.assembly])).toEqual([['i-heater', null, 'DWH1 & ET assembly SPACEX'], ['i-tank', null, 'DWH1 & ET assembly SPACEX'], ['l-pump', 'Moore Supply', null]])
+  })
+
+  it('a nested assembly opens with its quantities multiplied through; a loop stops; an unread assembly stays one piece', () => {
+    const nested = new Map([...assemblies, ['t-outer', [item('o-tsl', 'tsl', 1), item('o-kit', null, 2, 3, 't-trim')]]])
+    const pieces = productPiecesOf('x', [line({ id: 'l-x', countRowId: 'x', sourceTemplateId: 't-outer', quantity: 2 })], bp, new Map([...templates, ['t-outer', 'outer']]), new Map(), nested)
+    expect(pieces.map((p) => [p.key, p.quantity])).toEqual([['o-tsl', 2], ['n-supply', 12], ['n-stop', 6]])
+    expect(productPiecesOf('y', [line({ countRowId: 'y', sourceTemplateId: 't-loop' })], bp, templates, new Map(), assemblies).map((p) => p.label)).toEqual(['loop'])
+    expect(productPiecesOf('z', [line({ id: 'l-z', countRowId: 'z', sourceTemplateId: 't-lav1' })], bp, templates).map((p) => [p.key, p.label])).toEqual([['l-z', 'LAV 1 assembly SPACEX']])
+  })
+
+  it('a stored choice that named the whole assembly line stands for its parts the GC sees by default', () => {
+    const [c] = takeoffCandidates({
+      countRows: [{ id: 'lav1', fixture: 'LAV 1', count: 2 }],
+      lines: [line({ id: 'l-lav1', countRowId: 'lav1', sourceTemplateId: 't-lav1' })],
+      parts: bp,
+      templates,
+      assemblies,
+      houses: new Map(),
+      productKeys: new Map([['lav1', ['l-lav1']]]),
+    })
+    expect(c!.productKeys).toEqual(['i-tsl', 'i-faucet', 'i-soap'])
+    expect(c!.storedProductKeys).toEqual(['l-lav1'])
+  })
+})

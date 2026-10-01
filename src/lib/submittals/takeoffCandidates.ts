@@ -8,6 +8,11 @@
  * order, trim left off by name; one line alone named flush valves and stops) — grouped so the
  * estimator prunes on one screen: fixtures and equipment (ticked), fixtures with no
  * part yet (offered), pipe and allowances (unticked; nobody submits pipe). Pure.
+ *
+ * Parts, not assemblies (Wendi, 2026-10-01): a line priced from a price-book assembly opens
+ * into the parts inside it (nested assemblies too), each a piece of its own with its quantity
+ * per fixture. Every piece is bought; trim is "order only" — on the procurement log, off the
+ * GC's submittal — instead of off.
  */
 import { compareTags } from './buildSubmittalRows'
 
@@ -26,6 +31,8 @@ export type TakeoffLine = {
 }
 export type TakeoffPart = { name: string; manufacturer?: string | null; partTypeName: string | null }
 export type TakeoffHouse = { houseId: string; houseName: string }
+/** One item inside a price-book assembly (`material_template_items`): a part, or another assembly. */
+export type TakeoffAssemblyItem = { id: string; partId: string | null; nestedTemplateId: string | null; quantity: number; sequenceOrder: number }
 
 export type CandidateGroup = 'fixtures' | 'no_part' | 'pipe_allowance'
 
@@ -69,6 +76,8 @@ export type TakeoffCandidatesInput = {
   parts: ReadonlyMap<string, TakeoffPart>
   /** Assembly bundle names, by template id. */
   templates: ReadonlyMap<string, string>
+  /** What is inside each assembly, by template id (nested assemblies included); a bundle not here stays one piece. */
+  assemblies?: ReadonlyMap<string, ReadonlyArray<TakeoffAssemblyItem>> | null
   /** The house behind a catalog price row, by price id. */
   houses: ReadonlyMap<string, TakeoffHouse>
   choices?: ReadonlyMap<string, boolean> | null
@@ -113,17 +122,26 @@ export function tagsFromFixtureName(name: string | null | undefined): string[] {
   return []
 }
 
-/** One line under a fixture as a piece of its product (v2.4292). */
+/** One part under a fixture (v2.4292): a takeoff line, or a part inside the assembly a line was priced from. */
 export type ProductPiece = {
-  /** The part line's id, else `<countRowId>:<n>`. */
+  /** The part line's id; a part inside an assembly is keyed by its assembly item's id; else `<countRowId>:<n>`. */
   key: string
   label: string
   partId: string | null
   partTypeName: string | null
-  /** Stops, supplies, traps, flanges and the like — left off the product by default. */
+  /** Stops, supplies, traps, flanges and the like — order only by default: bought, but not on the GC's submittal. */
   trim: boolean
   houseId: string | null
   houseName: string | null
+  /** How many go on one fixture: the line's quantity, times the assembly's for a part inside one. */
+  quantity: number
+  /** The takeoff line the piece came from. */
+  lineId: string | null
+  /** The assembly item, for a part inside an assembly. */
+  templateItemId: string | null
+  /** The assembly's name, for a part inside one. */
+  assembly: string | null
+  manufacturer: string | null
 }
 
 /**
@@ -133,37 +151,87 @@ export type ProductPiece = {
  */
 export const TRIM_NAME = /\b(?:ANGLE\s*STOPS?|STOPS?|ANG|LOOSE\s*KEY|SUPPL(?:Y|IES)|P-?\s*TRAPS?|TRAPS?(?!\s*PRIMER)|TAIL\s*PIECES?|TAILPIECES?|FLANGES?|ESCUTCHEONS?|GRID\s*DRAINS?|WAX|BOLTS?|RISERS?)\b/i
 
-/** Every priced line under a fixture, in takeoff order: a part by its name (maker first), a bundle by its name. */
+/** A part's name with its maker first, once. */
+function partLabel(p: TakeoffPart): string {
+  return p.manufacturer && !p.name.toUpperCase().startsWith(p.manufacturer.toUpperCase()) ? `${p.manufacturer} ${p.name}` : p.name
+}
+
+/**
+ * The parts inside an assembly, in its own order, nested assemblies opened, quantities multiplied
+ * through. A cycle or a runaway depth stops the walk rather than looping.
+ */
+export function expandAssembly(
+  templateId: string,
+  assemblies: ReadonlyMap<string, ReadonlyArray<TakeoffAssemblyItem>>,
+  multiplier = 1,
+  path: ReadonlySet<string> = new Set(),
+): Array<{ item: TakeoffAssemblyItem; partId: string; quantity: number }> {
+  if (path.has(templateId) || path.size > 6) return []
+  const items = [...(assemblies.get(templateId) ?? [])].sort((a, b) => a.sequenceOrder - b.sequenceOrder)
+  const next = new Set(path).add(templateId)
+  const out: Array<{ item: TakeoffAssemblyItem; partId: string; quantity: number }> = []
+  for (const it of items) {
+    const q = (Number(it.quantity) || 0) * multiplier
+    if (it.partId) out.push({ item: it, partId: it.partId, quantity: q })
+    else if (it.nestedTemplateId) out.push(...expandAssembly(it.nestedTemplateId, assemblies, q, next))
+  }
+  return out
+}
+
+/**
+ * Every part under a fixture, in takeoff order: a part line by its name (maker first); an
+ * assembly line opened into the parts inside it (when they were read), each its own piece; an
+ * assembly whose insides were not read stays one piece by its name.
+ */
 export function productPiecesOf(
   countRowId: string,
   lines: ReadonlyArray<TakeoffLine>,
   parts: ReadonlyMap<string, TakeoffPart>,
   templates: ReadonlyMap<string, string>,
   houses: ReadonlyMap<string, TakeoffHouse> = new Map(),
+  assemblies: ReadonlyMap<string, ReadonlyArray<TakeoffAssemblyItem>> = new Map(),
 ): ProductPiece[] {
   const ordered = lines.map((l, i) => ({ l, i })).sort((a, b) => (a.l.sequenceOrder ?? a.i) - (b.l.sequenceOrder ?? b.i) || a.i - b.i)
   const out: ProductPiece[] = []
+  const used = new Set<string>()
   for (const { l, i } of ordered) {
-    let label: string | null = null
-    let partTypeName: string | null = null
-    let bundle = false
+    const house = l.sourceMaterialPartPriceId ? houses.get(l.sourceMaterialPartPriceId) ?? null : null
+    const lineQty = Number(l.quantity) || 0
+    const base = { houseId: house?.houseId ?? null, houseName: house?.houseName ?? null, lineId: l.id ?? null }
     if (l.partId) {
       const p = parts.get(l.partId)
       if (!p) continue
-      label = p.manufacturer && !p.name.toUpperCase().startsWith(p.manufacturer.toUpperCase()) ? `${p.manufacturer} ${p.name}` : p.name
-      partTypeName = p.partTypeName
-    } else if (l.sourceTemplateId) {
-      label = templates.get(l.sourceTemplateId) ?? null
-      bundle = true
+      const label = partLabel(p).trim()
+      const key = l.id ?? `${countRowId}:${i}`
+      used.add(key)
+      out.push({ key, label, partId: l.partId, partTypeName: p.partTypeName, trim: TRIM_NAME.test(label), quantity: lineQty || 1, templateItemId: null, assembly: null, manufacturer: p.manufacturer ?? null, ...base })
+      continue
     }
-    if (!label) continue
-    const house = l.sourceMaterialPartPriceId ? houses.get(l.sourceMaterialPartPriceId) ?? null : null
-    out.push({ key: l.id ?? `${countRowId}:${i}`, label: label.trim(), partId: l.partId, partTypeName, trim: !bundle && TRIM_NAME.test(label), houseId: house?.houseId ?? null, houseName: house?.houseName ?? null })
+    if (!l.sourceTemplateId) continue
+    const name = templates.get(l.sourceTemplateId) ?? null
+    const inside = assemblies.has(l.sourceTemplateId) ? expandAssembly(l.sourceTemplateId, assemblies, lineQty || 1) : []
+    const known = inside.filter((x) => parts.has(x.partId))
+    if (known.length === 0) {
+      // Not read (or empty): the assembly stays one piece by its name, as before.
+      if (!name) continue
+      const key = l.id ?? `${countRowId}:${i}`
+      used.add(key)
+      out.push({ key, label: name.trim(), partId: null, partTypeName: null, trim: false, quantity: lineQty || 1, templateItemId: null, assembly: null, manufacturer: null, ...base })
+      continue
+    }
+    for (const x of known) {
+      const p = parts.get(x.partId)!
+      const label = partLabel(p).trim()
+      // An assembly item's id keys the piece; the same item twice under one fixture keeps its line beside it.
+      const key = used.has(x.item.id) ? `${l.id ?? `${countRowId}:${i}`}:${x.item.id}` : x.item.id
+      used.add(key)
+      out.push({ key, label, partId: x.partId, partTypeName: p.partTypeName, trim: TRIM_NAME.test(label), quantity: x.quantity, templateItemId: x.item.id, assembly: name, manufacturer: p.manufacturer ?? null, ...base })
+    }
   }
   return out
 }
 
-/** The pieces on by default: everything that is not trim; when all of it is trim, the first line. */
+/** The pieces the GC sees by default: everything that is not trim; when all of it is trim, the first line. The rest is order only. */
 export function defaultProductKeys(pieces: ReadonlyArray<ProductPiece>): string[] {
   const on = pieces.filter((p) => !p.trim).map((p) => p.key)
   return on.length > 0 ? on : pieces.slice(0, 1).map((p) => p.key)
@@ -212,12 +280,16 @@ export function takeoffCandidates(input: TakeoffCandidatesInput): TakeoffCandida
   for (const row of input.countRows) {
     const fixture = (row.fixture ?? '').trim()
     if (!fixture) continue
-    const pieces = productPiecesOf(row.id, byRow.get(row.id) ?? [], input.parts, input.templates, input.houses)
+    const pieces = productPiecesOf(row.id, byRow.get(row.id) ?? [], input.parts, input.templates, input.houses, input.assemblies ?? new Map())
     const defaults = defaultProductKeys(pieces)
     // A stored choice holds while any of its pieces is still on the takeoff; otherwise the rule decides again.
-    const stored = input.productKeys?.get(row.id) ?? null
+    // A key that named a whole assembly line (stored before assemblies opened) stands for that assembly's default parts.
+    const storedRaw = input.productKeys?.get(row.id) ?? null
+    const stored = storedRaw
+      ? [...new Set(storedRaw.flatMap((k) => (pieces.some((p) => p.key === k) ? [k] : pieces.filter((p) => p.lineId === k && p.templateItemId && !p.trim).map((p) => p.key))))]
+      : null
     const storedValid = stored ? pieces.filter((p) => stored.includes(p.key)).map((p) => p.key) : null
-    const productKeys = stored && (storedValid!.length > 0 || stored.length === 0) ? storedValid! : defaults
+    const productKeys = stored && (storedValid!.length > 0 || storedRaw!.length === 0) ? storedValid! : defaults
     const made = productFromPieces(pieces, productKeys)
     const group = groupOf(fixture, pieces.find((p) => defaults.includes(p.key)) ?? null)
     const tags = tagsFromFixtureName(fixture)
@@ -233,7 +305,7 @@ export function takeoffCandidates(input: TakeoffCandidatesInput): TakeoffCandida
       tags,
       product: made.product,
       pieces,
-      storedProductKeys: stored ? [...stored] : null,
+      storedProductKeys: storedRaw ? [...storedRaw] : null,
       productKeys,
       partId: made.partId,
       supplyHouseId: made.houseId,

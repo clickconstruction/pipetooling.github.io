@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { asDecision, asReason, asStatus, describeRevision, describeRevisionChip, describeWhatIsLeft, draftToItemInsert, formatPages, itemToPrevious, needsSheet, parsePageRange, parseSourceFiles, revisionTiles, serializeSourceFiles } from './submittalRevision'
+import { asDecision, asReason, asStatus, carriedRowInsert, rowsToCarry, describeRevision, describeRevisionChip, describeWhatIsLeft, draftToItemInsert, formatPages, itemToPrevious, needsSheet, parsePageRange, parseSourceFiles, revisionTiles, serializeSourceFiles } from './submittalRevision'
 import type { SubmittalItemRow } from './submittalRevision'
 import type { SubmittalRowDraft } from './buildSubmittalRows'
 
@@ -134,5 +134,28 @@ describe('describeWhatIsLeft (v2.4125)', () => {
   it('says so when nothing is left', () => {
     expect(describeWhatIsLeft({ ...tiles, alternatesWithoutReason: 0, designChangesWithoutReason: 0, missing: 0, sheetsNeeded: 0 })).toBe('22 rows. Every row has its reason and its cut sheet.')
     expect(describeWhatIsLeft({ ...tiles, rows: 0, alternatesWithoutReason: 0, designChangesWithoutReason: 0, missing: 0, sheetsNeeded: 0 })).toBe('0 rows.')
+  })
+})
+
+describe('a new revision carries the rows the picks do not rebuild (2026-10-01)', () => {
+  // BP375: Rev 1 built from the takeoff, a carrier typed by hand, and one row a pick built.
+  const fromTakeoff = item({ id: 'lav1', tag: 'LAV-1', source_quote_line_id: null, source_count_row_id: 'cr-lav1', specified_manufacturer: null, specified_model: null, specified_description: 'LAV 1', status: 'proposed', review_decision: 'approved', reviewed_by_name: 'Dana', sheet_file: 0, sheet_pages: [30, 31] })
+  const byHand = item({ id: 'carrier', tag: 'WC CARRIER', source_quote_line_id: null, specified_manufacturer: null, specified_model: null, status: 'accessory' })
+  const fromPick = item({ id: 'wc', tag: 'WC-1' })
+
+  it('carries the takeoff row and the hand row; leaves the picked row to the rebuild, and a row it already carried', () => {
+    expect(rowsToCarry([fromTakeoff, byHand, fromPick], []).map((r) => r.id)).toEqual(['lav1', 'carrier'])
+    expect(rowsToCarry([fromTakeoff, byHand], [{ carriedFromItemId: 'carrier' }]).map((r) => r.id)).toEqual(['lav1'])
+  })
+
+  it('a schedule row the schedule no longer lists is not carried', () => {
+    const scheduleRow = item({ id: 'old', tag: 'HB-9', source_quote_line_id: null, specified_manufacturer: 'WOODFORD', specified_model: 'B74C' })
+    expect(rowsToCarry([scheduleRow], [])).toEqual([])
+  })
+
+  it('the carried row stands as it was, points back, and its call starts blank', () => {
+    const ins = carriedRowInsert(fromTakeoff, 's2', 4)
+    expect(ins).toMatchObject({ submittal_id: 's2', tag: 'LAV-1', sequence_order: 4, source_count_row_id: 'cr-lav1', status: 'proposed', sheet_file: 0, sheet_pages: [30, 31], carried_from_item_id: 'lav1' })
+    expect('review_decision' in ins).toBe(false)
   })
 })

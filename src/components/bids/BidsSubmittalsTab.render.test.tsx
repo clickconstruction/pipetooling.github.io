@@ -15,7 +15,7 @@ import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import { BidsSubmittalsTab } from './BidsSubmittalsTab'
 
 type Rec = { table: string; op: string; payload: unknown; filters: Array<[string, unknown]> }
-const state: { revisions: Record<string, unknown>[]; items: Record<string, unknown>[]; tasks: Record<string, unknown>[]; writes: Rec[]; storage: string[]; packageCalls: Array<{ files: number; sheets: string[] }>; noSources: boolean; takeoff: boolean; /** the bid has no review room yet: the room and people reads answer null, as PostgREST does */ noRoom: boolean; seat: { unrevoked_seats: number; last_used_at: string | null } | null } = { revisions: [], items: [], tasks: [], writes: [], storage: [], packageCalls: [], noSources: false, takeoff: false, noRoom: false, seat: { unrevoked_seats: 1, last_used_at: new Date().toISOString() } }
+const state: { revisions: Record<string, unknown>[]; items: Record<string, unknown>[]; /** 2026-10-01 · the rows' parts */ parts: Record<string, unknown>[]; tasks: Record<string, unknown>[]; writes: Rec[]; storage: string[]; packageCalls: Array<{ files: number; sheets: string[] }>; noSources: boolean; takeoff: boolean; /** the bid has no review room yet: the room and people reads answer null, as PostgREST does */ noRoom: boolean; seat: { unrevoked_seats: number; last_used_at: string | null } | null } = { revisions: [], items: [], parts: [], tasks: [], writes: [], storage: [], packageCalls: [], noSources: false, takeoff: false, noRoom: false, seat: { unrevoked_seats: 1, last_used_at: new Date().toISOString() } }
 
 vi.mock('../../lib/jobs/testReportSettings', () => {
   const settings = { companyName: 'Click Plumbing', companyTagline: 'Plumbing', officePhone: '(512) 555-0100', mailingAddress: '' }
@@ -105,6 +105,7 @@ function builder(table: string) {
   b.is = chain
   b.ilike = chain
   b.limit = chain
+  b.range = chain
   b.eq = (col: string, val: unknown) => {
     rec.filters.push([col, val])
     return b
@@ -142,6 +143,11 @@ function builder(table: string) {
         state.items = [...state.items, ...rows]
         return { data: rows, error: null }
       }
+      if (rec.op === 'insert' && table === 'bid_submittal_item_parts') {
+        const rows = (Array.isArray(rec.payload) ? (rec.payload as Record<string, unknown>[]) : [rec.payload as Record<string, unknown>]).map((r, i) => ({ id: `pt-${state.parts.length + i + 1}`, procure_key: `pk-${state.parts.length + i + 1}`, sheet_pages: [], quantity: 1, on_submittal: true, ...r }))
+        state.parts = [...state.parts, ...rows]
+        return { data: rows, error: null }
+      }
       if (rec.op === 'update' && table === 'bid_submittals') {
         const id = rec.filters.find((f) => f[0] === 'id')?.[1]
         state.revisions = state.revisions.map((r) => (r.id === id ? { ...r, ...(rec.payload as Record<string, unknown>) } : r))
@@ -175,6 +181,10 @@ function builder(table: string) {
     if (table === 'bid_submittal_items') {
       const sid = rec.filters.find((f) => f[0] === 'submittal_id')?.[1]
       return { data: state.items.filter((r) => r.submittal_id === sid), error: null }
+    }
+    if (table === 'bid_submittal_item_parts') {
+      const ids = (rec.filters.find((f) => f[0] === 'item_id:in')?.[1] as string[] | undefined) ?? []
+      return { data: state.parts.filter((r) => ids.includes(r.item_id as string)), error: null }
     }
     return { data: [], error: null }
   }
@@ -718,11 +728,18 @@ describe('BidsSubmittalsTab', () => {
         ['UTILITY SINK', 'missing', null, null, 'c-us'],
       ])
       expect(rows[1]).toMatchObject({ specified_description: 'WC 1&2', sequence_order: 2, submittal_id: 'rev-1' })
+      // Parts, not assemblies (2026-10-01): each row carries its fixture's parts; the sink has none yet.
+      const partWrites = state.writes.find((w) => w.op === 'insert' && w.table === 'bid_submittal_item_parts')!.payload as Record<string, unknown>[]
+      expect(partWrites.map((r) => [r.item_id, r.label, r.on_submittal, r.supply_house_id, r.bid_id])).toEqual([
+        ['it-1', 'A.O. Smith BTH-199 WATER HEATER', true, null, 'b398'],
+        ['it-2', 'TOTO CT708UVG#01 WALL HUNG BOWL', true, 'h-reece', 'b398'],
+      ])
       const ticks = state.writes.find((w) => w.op === 'upsert')!.payload as Array<{ count_row_id: string; ticked: boolean }>
       expect(ticks.map((t) => [t.count_row_id, t.ticked])).toEqual([['c-wh', true], ['c-wc', true], ['c-us', true], ['c-pipe', false]])
       // The built revision: three rows, the picker gone, the source line now reads the takeoff as done.
       expect(await screen.findByTestId('revision-line')).toBeTruthy()
       expect(screen.getAllByTestId('submittal-row')).toHaveLength(3)
+      await waitFor(() => expect(screen.getAllByTestId('row-part').map((p) => p.textContent)).toEqual(['A.O. Smith BTH-199WATER HEATER', 'TOTO CT708UVG#01WALL HUNG BOWL']))
       expect(screen.queryByRole('dialog', { name: 'Choose from the takeoff' })).toBeNull()
       expect(screen.getByTestId('add-from-takeoff').textContent).toBe('+ Add from the takeoff…')
       // × on the sink: off the draft, and unticked on the takeoff list.

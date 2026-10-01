@@ -29,6 +29,8 @@ import { PlugInScheduleModal } from './PlugInScheduleModal'
 import { SubmittalTakeoffPicker } from './SubmittalTakeoffPicker'
 import { loadTakeoffCandidates, saveTakeoffChoices, type TakeoffCandidatesLoad } from '../../lib/submittals/takeoffCandidatesIo'
 import { candidateToItemInserts, rowSplitTags, splitExplanation, type TakeoffCandidate } from '../../lib/submittals/takeoffCandidates'
+import { carryPartInsert, copyPartInsert, formatPartQty, partsByItem, partsFromPieces, submittedParts, type PartDraft, type SubmittalPartInsert, type SubmittalPartRow } from '../../lib/submittals/itemParts'
+import { insertItemParts, loadItemParts, saveItemParts } from '../../lib/submittals/itemPartsIo'
 import { SplitRuleModal } from './SplitRuleModal'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { procurementItemsFrom } from '../../lib/submittals/procurementLogIo'
@@ -52,6 +54,7 @@ import { BidPickerSearchRow } from './BidPickerSearchRow'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
 import { ProductStatusChip } from './ProductStatusChip'
 import { SubmittalItemEditDialog, type SubmittalItemPatch } from './SubmittalItemEditDialog'
+import { SubmittalPartsCell } from './SubmittalPartsCell'
 import { SubmittalApproveAllDialog, type ApproveAllChoice } from './SubmittalApproveAllDialog'
 import { SubmittalSheetStrip, type ThumbState } from './SubmittalSheetStrip'
 import { SubmittalAssignPagesModal } from './SubmittalAssignPagesModal'
@@ -97,7 +100,7 @@ import {
   SUBMITTALS_BUCKET,
   type SourceFile,
   type SubmittalItemRow,
-  type SubmittalRevisionRow, blankSubmittalItem, NEW_ROW_ID } from '../../lib/submittals/submittalRevision'
+  type SubmittalRevisionRow, blankSubmittalItem, carriedRowInsert, NEW_ROW_ID, rowsToCarry } from '../../lib/submittals/submittalRevision'
 
 // The stage 1–2 tables are hand-typed until the regen chore; the untyped client keeps a checkout ahead of the push honest.
 const db = supabase as unknown as SupabaseClient
@@ -198,6 +201,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   const [revisions, setRevisions] = useState<SubmittalRevisionRow[]>([])
   const [selectedRevId, setSelectedRevId] = useState<string | null>(null)
   const [items, setItems] = useState<SubmittalItemRow[]>([])
+  // Parts, not assemblies (2026-10-01): each row's parts — what is bought and what the GC reviews.
+  const [parts, setParts] = useState<SubmittalPartRow[]>([])
   // The road (v2.4090): "Open every stage" (remembered per device) and the per-section toggles.
   const [openAllStages, setOpenAllStages] = useState<boolean>(() => hasOpenEveryStage())
   // By hand (v2.4090): the schedule typed or pasted here, no robot and no trip to Pricing.
@@ -458,6 +463,22 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   }, [assignFile, sourceFiles, tasks])
   const reviewerFiles: ReviewerFile[] = useMemo(() => parseReviewerFiles((selectedRev as { reviewer_files?: unknown } | null)?.reviewer_files ?? null), [selectedRev])
   const tiles = useMemo(() => revisionTiles(items), [items])
+  // The parts reload whenever the rows do (every write reloads the rows).
+  useEffect(() => {
+    let cancelled = false
+    const ids = items.map((it) => it.id)
+    if (ids.length === 0) {
+      setParts([])
+      return
+    }
+    void loadItemParts(db, ids).then((rows) => {
+      if (!cancelled) setParts(rows)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [items])
+  const partsOf = useMemo(() => partsByItem(parts), [parts])
   const decisions = useMemo(() => summarizeDecisions(items), [items])
   // Rows one "they approved all of it" entry would cover: no call yet, and a product to approve.
   const approvableRows = useMemo(() => rowsToApproveAll(items), [items])
@@ -559,10 +580,29 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       }
       // v2.4118 · a split candidate becomes one row per tag; the sequence runs on through them.
       const inserts: ReturnType<typeof candidateToItemInserts> = []
-      for (const c of rows) inserts.push(...candidateToItemInserts(c, revId, seq + inserts.length + 1))
+      const fromCandidate: TakeoffCandidate[] = []
+      for (const c of rows) {
+        const made = candidateToItemInserts(c, revId, seq + inserts.length + 1)
+        inserts.push(...made)
+        for (let k = 0; k < made.length; k++) fromCandidate.push(c)
+      }
+      let partsNote = ''
       if (inserts.length > 0) {
-        const { error } = await db.from('bid_submittal_items').insert(inserts)
+        const { data, error } = await db.from('bid_submittal_items').insert(inserts).select('id, sequence_order')
         if (error) throw error
+        // Parts, not assemblies: every row carries its fixture's parts — the GC's and the order-only ones.
+        const idBySeq = new Map(((data ?? []) as Array<{ id: string; sequence_order: number }>).map((r) => [r.sequence_order, r.id] as const))
+        const partRows: SubmittalPartInsert[] = []
+        inserts.forEach((ins, i) => {
+          const itemId = idBySeq.get(ins.sequence_order)
+          const c = fromCandidate[i]
+          if (itemId && c && c.pieces.length > 0) partRows.push(...partsFromPieces(c.pieces, c.productKeys, itemId, bidId))
+        })
+        try {
+          await insertItemParts(db, partRows)
+        } catch (e) {
+          partsNote = ` The parts under each row did not save (${formatErrorMessage(e, 'unknown')}); the rows read as before.`
+        }
       }
       await saveTakeoffChoices(db, bidId, ticks, splits, productKeys)
       setTakeoffPicker(null)
@@ -572,11 +612,11 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       if (takeoffPicker === 'build') {
         setSelectedRevId(revId)
         await load(bidId)
-        showToast(`Rev 1 built · ${tail}.`, 'success')
+        showToast(`Rev 1 built · ${tail}.${partsNote}`, partsNote ? 'info' : 'success')
       } else {
         setItems(await loadItems(revId))
         setTakeoff(await loadTakeoffCandidates(db, bidId, { selectedVersionId: bidsRef.current.find((b) => b.id === bidId)?.selected_bid_version_id ?? null }))
-        showToast(`Added · ${tail}.`, 'success')
+        showToast(`Added · ${tail}.${partsNote}`, partsNote ? 'info' : 'success')
       }
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not build from the takeoff'), 'error')
@@ -608,7 +648,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     if (!bidId || !selectedRev || asRevisionStatus(selectedRev.status) !== 'draft') return
     const tags = rowSplitTags(it.tag)
     if (tags.length < 2) return
-    const ok = await confirm({ title: `Split ${it.tag.trim()} into ${tags.length} rows`, message: `${tags.join(', ')} each get their own row with the same product, house, lead time and sheet pages. Their calls stay blank until the reviewer decides each one. Nothing changes on the takeoff.`, confirmLabel: `Split into ${tags.length} rows` })
+    const ok = await confirm({ title: `Split ${it.tag.trim()} into ${tags.length} rows`, message: `${tags.join(', ')} each get their own row with the same parts, house, lead time and sheet pages. Their calls stay blank until the reviewer decides each one. Nothing changes on the takeoff.`, confirmLabel: `Split into ${tags.length} rows` })
     if (!ok) return
     setBusy(true)
     try {
@@ -620,15 +660,25 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       }
       const { error: delErr } = await db.from('bid_submittal_items').delete().eq('id', it.id)
       if (delErr) throw delErr
-      const { error } = await db.from('bid_submittal_items').insert(tags.map((tag, i) => ({
+      const rowParts = partsOf.get(it.id) ?? []
+      const { data: made, error } = await db.from('bid_submittal_items').insert(tags.map((tag, i) => ({
         submittal_id: it.submittal_id, tag, sequence_order: it.sequence_order + i,
         specified_manufacturer: it.specified_manufacturer, specified_model: it.specified_model, specified_description: it.specified_description,
         submitted_manufacturer: it.submitted_manufacturer, submitted_model: it.submitted_model, submitted_label: it.submitted_label,
         supply_house_id: it.supply_house_id, source_quote_line_id: it.source_quote_line_id, source_count_row_id: it.source_count_row_id,
         status: it.status, reason_kind: it.reason_kind, reason_note: it.reason_note, lead_time_days: it.lead_time_days,
         sheet_file: it.sheet_file, sheet_pages: it.sheet_pages, sheet_source: it.sheet_source,
-      })))
+      }))).select('id, sequence_order')
       if (error) throw error
+      // Each tag's row gets the fixture's parts; each is bought on its own, so only the first keeps the procurement line.
+      if (rowParts.length > 0) {
+        const newRows = ((made ?? []) as Array<{ id: string; sequence_order: number }>).sort((a, b) => a.sequence_order - b.sequence_order)
+        const copies: SubmittalPartInsert[] = []
+        newRows.forEach((r, i) => {
+          for (const p of rowParts) copies.push(i === 0 ? carryPartInsert(p, r.id) : copyPartInsert(p, r.id))
+        })
+        await insertItemParts(db, copies)
+      }
       if (it.source_count_row_id) await saveTakeoffChoices(db, bidId, new Map([[it.source_count_row_id, true]]), new Map([[it.source_count_row_id, true]]))
       setItems(await loadItems(selectedRev.id))
       if (it.source_count_row_id) setTakeoff(await loadTakeoffCandidates(db, bidId, { selectedVersionId: bidsRef.current.find((b) => b.id === bidId)?.selected_bid_version_id ?? null }))
@@ -640,17 +690,39 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     }
   }
 
+  /**
+   * The parts of the rows a new revision carried: a row carried as it stood takes its parts; a row
+   * the picks rebuilt takes them only while its product is the same.
+   */
+  async function carryPartsOnto(newRows: ReadonlyArray<{ id: string; carried_from_item_id: string | null; submitted_label: string | null }>, previous: ReadonlyArray<SubmittalItemRow>, previousParts: Map<string, SubmittalPartRow[]>) {
+    const prevById = new Map(previous.map((p) => [p.id, p] as const))
+    const copies: SubmittalPartInsert[] = []
+    for (const r of newRows) {
+      const was = r.carried_from_item_id ? prevById.get(r.carried_from_item_id) : undefined
+      if (!was || (r.submitted_label ?? '') !== (was.submitted_label ?? '')) continue
+      for (const p of previousParts.get(was.id) ?? []) copies.push(carryPartInsert(p, r.id))
+    }
+    await insertItemParts(db, copies)
+  }
+
   async function newRevision(onlySentBack = false) {
     if (!bidId || !newestRev) return
-    const previous = newestRev.id === selectedRev?.id ? items : await loadItems(newestRev.id)
+    const onNewest = newestRev.id === selectedRev?.id
+    const previous = onNewest ? items : await loadItems(newestRev.id)
+    const previousParts = onNewest ? partsOf : partsByItem(await loadItemParts(db, previous.map((p) => p.id)))
     const sentBack = itemsSentBack(previous)
     const preview = buildSubmittalRows({ specified, picks, previous: previous.map(itemToPrevious), overrides: overridesByTag })
     const kept = onlySentBack ? preview.filter((r) => sentBack.some((it) => (r.tag.trim() ? it.tag === r.tag : it.submitted_label === r.submittedLabel))) : preview
+    // 2026-10-01 · the rows the picks do not rebuild (from the takeoff, typed by hand) carry as they stand.
+    const carried = rowsToCarry(previous, preview)
+    const carriedKept = onlySentBack ? carried.filter((it) => sentBack.some((sb) => sb.id === it.id)) : carried
+    const total = kept.length + carriedKept.length
+    const fromPicks = specified.length > 0 || picks.length > 0
     const ok = await confirm({
-      title: onlySentBack ? `Rev ${newestRev.rev_number + 1} from the ${sentBack.length} row${sentBack.length === 1 ? '' : 's'} sent back` : `Rev ${newestRev.rev_number + 1} from today's picks`,
+      title: onlySentBack ? `Rev ${newestRev.rev_number + 1} from the ${sentBack.length} row${sentBack.length === 1 ? '' : 's'} sent back` : fromPicks ? `Rev ${newestRev.rev_number + 1} from today's picks` : `Rev ${newestRev.rev_number + 1} from Rev ${newestRev.rev_number}`,
       message: onlySentBack
-        ? `Only the rows the reviewer marked Revise or Reject on Rev ${newestRev.rev_number} carry into the new draft — ${kept.length} row${kept.length === 1 ? '' : 's'}. The rest stand as approved on Rev ${newestRev.rev_number}.`
-        : `${summarizeChanges(preview)} against Rev ${newestRev.rev_number}. Sheets, reasons and lead times carry where the product is unchanged.${asRevisionStatus(newestRev.status) === 'draft' ? ` Rev ${newestRev.rev_number} was never shared and will read superseded.` : ''}`,
+        ? `Only the rows the reviewer marked Revise or Reject on Rev ${newestRev.rev_number} carry into the new draft — ${total} row${total === 1 ? '' : 's'}. The rest stand as approved on Rev ${newestRev.rev_number}.`
+        : `${preview.length > 0 ? `${summarizeChanges(preview)} against Rev ${newestRev.rev_number}. ` : ''}${carried.length > 0 ? `${carried.length} row${carried.length === 1 ? '' : 's'} from the takeoff or typed by hand carry as ${carried.length === 1 ? 'it stands' : 'they stand'}, with ${carried.length === 1 ? 'its' : 'their'} parts. ` : ''}Sheets, reasons and lead times carry where the product is unchanged.${asRevisionStatus(newestRev.status) === 'draft' ? ` Rev ${newestRev.rev_number} was never shared and will read superseded.` : ''}`,
       confirmLabel: `Build Rev ${newestRev.rev_number + 1}`,
     })
     if (!ok) return
@@ -663,12 +735,14 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         .single()
       if (error) throw error
       const revId = (data as { id: string }).id
-      if (onlySentBack) {
-        if (kept.length > 0) {
-          const { error: insErr } = await db.from('bid_submittal_items').insert(kept.map((r, i) => draftToItemInsert({ ...r, sequenceOrder: i + 1 }, revId)))
-          if (insErr) throw insErr
-        }
-      } else await writeRows(revId, previous)
+      const rebuilt = kept.map((r, i) => draftToItemInsert({ ...r, sequenceOrder: i + 1 }, revId))
+      const carriedRows = [...carriedKept].sort((a, b) => a.sequence_order - b.sequence_order).map((it, i) => carriedRowInsert(it, revId, rebuilt.length + i + 1))
+      const inserts = [...rebuilt, ...carriedRows]
+      if (inserts.length > 0) {
+        const { data: made, error: insErr } = await db.from('bid_submittal_items').insert(inserts).select('id, carried_from_item_id, submitted_label')
+        if (insErr) throw insErr
+        await carryPartsOnto((made ?? []) as Array<{ id: string; carried_from_item_id: string | null; submitted_label: string | null }>, previous, previousParts)
+      }
       if (asRevisionStatus(newestRev.status) === 'draft') {
         const { error: supErr } = await db.from('bid_submittals').update({ status: 'superseded' }).eq('id', newestRev.id)
         if (supErr) throw supErr
@@ -684,17 +758,28 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
 
   async function rebuildRows() {
     if (!bidId || !selectedRev) return
+    // 2026-10-01 · the rows the picks do not build (from the takeoff, typed by hand) stay as they are, after the rebuilt ones.
+    const stay = rowsToCarry(items, buildSubmittalRows({ specified, picks, previous: items.map(itemToPrevious), overrides: overridesByTag }))
     const ok = await confirm({
       title: 'Rebuild the rows from the picks',
-      message: 'Every row is built again from today\'s picks on Pricing. Sheets, reasons and lead times stay where the product did not change. A supply house you set on a row stays while its pick is the same. A row whose product changed starts over.',
+      message: `Every row the picks built is built again from today's picks on Pricing. Sheets, reasons and lead times stay where the product did not change. A supply house you set on a row stays while its pick is the same. A row whose product changed starts over.${stay.length > 0 ? ` The ${stay.length} row${stay.length === 1 ? '' : 's'} from the takeoff or typed by hand stay as ${stay.length === 1 ? 'it is' : 'they are'}.` : ''}`,
       confirmLabel: 'Rebuild',
     })
     if (!ok) return
     setBusy(true)
     try {
-      const { error } = await db.from('bid_submittal_items').delete().eq('submittal_id', selectedRev.id)
-      if (error) throw error
-      await writeRows(selectedRev.id, items)
+      const stayIds = new Set(stay.map((it) => it.id))
+      const goIds = items.filter((it) => !stayIds.has(it.id)).map((it) => it.id)
+      for (let i = 0; i < goIds.length; i += 100) {
+        const { error } = await db.from('bid_submittal_items').delete().in('id', goIds.slice(i, i + 100))
+        if (error) throw error
+      }
+      const n = await writeRows(selectedRev.id, items)
+      for (const [i, it] of [...stay].sort((a, b) => a.sequence_order - b.sequence_order).entries()) {
+        if (it.sequence_order === n + i + 1) continue
+        const { error } = await db.from('bid_submittal_items').update({ sequence_order: n + i + 1 }).eq('id', it.id)
+        if (error) throw error
+      }
       setItems(await loadItems(selectedRev.id))
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Could not rebuild the rows.', 'error')
@@ -985,11 +1070,13 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       const settings = await fetchTestReportSettings()
       const rowsIn: PackageRowInput[] = items.map((it) => {
         const reason = asReason(it.reason_kind)
+        // 2026-10-01 · a row with parts lists the parts the GC sees, one per line.
+        const gcParts = submittedParts(partsOf.get(it.id) ?? [])
         return {
           tag: it.tag,
           status: asStatus(it.status),
           specified: [it.specified_manufacturer, it.specified_model].filter(Boolean).join(' ') || it.specified_description || '',
-          submitted: it.submitted_label ?? it.submitted_model ?? '',
+          submitted: gcParts.length > 0 ? gcParts.map((p) => `${p.label.trim()}${formatPartQty(p.quantity) ? ` (${formatPartQty(p.quantity)})` : ''}`).join('\n') : it.submitted_label ?? it.submitted_model ?? '',
           house: null,
           reason: [reason ? REASON_LABELS[reason] : '', it.reason_note ?? ''].filter(Boolean).join(' · '),
           leadTime: describeLeadTime(it.lead_time_days) ?? '',
@@ -1024,7 +1111,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         if (error || !data) continue
         files[i] = await data.arrayBuffer()
       }
-      const sheets = plan.rows.filter((r) => r.startPage != null).map((r) => ({ tag: r.tag, status: r.status, title: r.submitted, fileIndex: r.sheetFile as number, pages: r.sheetPages }))
+      const sheets = plan.rows.filter((r) => r.startPage != null).map((r) => ({ tag: r.tag, status: r.status, title: r.submitted.split('\n').join(' + '), fileIndex: r.sheetFile as number, pages: r.sheetPages }))
       const result = await buildSubmittalPackage(cover.blob, files, sheets)
       const path = `${bidId}/${selectedRev.id}/package-rev${selectedRev.rev_number}.pdf`
       const up = await supabase.storage.from(SUBMITTALS_BUCKET).upload(path, result.blob, { contentType: 'application/pdf', upsert: true })
@@ -1336,15 +1423,30 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     }
   }
 
+  /** The row's parts as the editor left them, saved; the row's own label, house and lead time read from them (2026-10-01). */
+  async function savePartsOf(itemId: string, drafts: PartDraft[] | undefined): Promise<Record<string, unknown>> {
+    if (!drafts || !bidId) return {}
+    const r = await saveItemParts(db, itemId, bidId, partsOf.get(itemId) ?? [], drafts)
+    return { submitted_label: r.submitted_label, supply_house_id: r.supply_house_id, lead_time_days: r.lead_time_days }
+  }
+
   async function saveItem(patch: SubmittalItemPatch) {
     if (!editing || !selectedRev || !bidId) return
-    const { entered, clearDecision, ...rowPatch } = patch
+    const { entered, clearDecision, parts: partDrafts, ...rowPatch } = patch
     if (editing.id === NEW_ROW_ID) {
       // v2.4105 · the row by hand lands now, with what the editor holds; a call on it is entered with Edit once it exists.
-      const { error } = await db.from('bid_submittal_items').insert({ submittal_id: selectedRev.id, sequence_order: editing.sequence_order, ...rowPatch, tag: rowPatch.tag ?? '', sheet_pages: rowPatch.sheet_pages ?? [] })
+      const { data: made, error } = await db.from('bid_submittal_items').insert({ submittal_id: selectedRev.id, sequence_order: editing.sequence_order, ...rowPatch, tag: rowPatch.tag ?? '', sheet_pages: rowPatch.sheet_pages ?? [] }).select('id').single()
       if (error) {
         showToast(formatErrorMessage(error, 'Could not add the row'), 'error')
         return
+      }
+      if (partDrafts && made) {
+        try {
+          const rollUp = await savePartsOf((made as { id: string }).id, partDrafts)
+          await db.from('bid_submittal_items').update(rollUp).eq('id', (made as { id: string }).id)
+        } catch (e) {
+          showToast(formatErrorMessage(e, 'The row is in, but its parts did not save'), 'error')
+        }
       }
       setEditing(null)
       setItems(await loadItems(selectedRev.id))
@@ -1352,7 +1454,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       return
     }
     try {
-      let write: Record<string, unknown> = { ...rowPatch }
+      let write: Record<string, unknown> = { ...rowPatch, ...(await savePartsOf(editing.id, partDrafts)) }
       let enteredFor: { id: string; name: string } | null = null
       if (entered) {
         // 5b · the reviewer's call, typed from their file, on the day they made it.
@@ -1733,7 +1835,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
 
             {selectedRev ? (
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                {isDraft ? (
+                {isDraft && (picks.length > 0 || specified.length > 0) ? (
                   <button type="button" disabled={busy} onClick={() => void rebuildRows()} style={btn} title="Build every row again from today's picks. Your edits stay where the product did not change">
                     Rebuild rows from picks
                   </button>
@@ -1793,9 +1895,15 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                               {it.specified_description ? <span style={sub}>{it.specified_description}</span> : null}
                             </td>
                             <td style={td}>
-                              {it.submitted_label ?? it.submitted_model ?? <span style={{ color: 'var(--text-faint)' }}>—</span>}
-                              {it.submitted_label && it.submitted_model && it.submitted_label !== it.submitted_model ? <span style={sub}>{it.submitted_model}</span> : null}
-                              {it.supply_house_id && houseNameById.get(it.supply_house_id) ? <span style={sub} data-testid="row-house">{houseNameById.get(it.supply_house_id)}</span> : null}
+                              {(partsOf.get(it.id) ?? []).length > 0 ? (
+                                <SubmittalPartsCell parts={partsOf.get(it.id) ?? []} houseNameById={houseNameById} />
+                              ) : (
+                                <>
+                                  {it.submitted_label ?? it.submitted_model ?? <span style={{ color: 'var(--text-faint)' }}>—</span>}
+                                  {it.submitted_label && it.submitted_model && it.submitted_label !== it.submitted_model ? <span style={sub}>{it.submitted_model}</span> : null}
+                                  {it.supply_house_id && houseNameById.get(it.supply_house_id) ? <span style={sub} data-testid="row-house">{houseNameById.get(it.supply_house_id)}</span> : null}
+                                </>
+                              )}
                             </td>
                             <td style={td}>
                               <ProductStatusChip status={status} size="md" />
@@ -2205,7 +2313,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
           onClose={() => setAssignFile(null)}
         />
       ) : null}
-      {editing ? <SubmittalItemEditDialog item={editing} sourceFiles={sourceFiles} people={people} houses={houses} canEnterDecision canEditProduct={isDraft} onSave={(p) => void saveItem(p)} onClose={() => setEditing(null)} /> : null}
+      {editing ? <SubmittalItemEditDialog item={editing} sourceFiles={sourceFiles} people={people} houses={houses} parts={partsOf.get(editing.id) ?? []} canEnterDecision canEditProduct={isDraft} onSave={(p) => void saveItem(p)} onClose={() => setEditing(null)} /> : null}
       {approvingAll && selectedRev ? (
         <SubmittalApproveAllDialog
           revLabel={`Rev ${selectedRev.rev_number}`}
