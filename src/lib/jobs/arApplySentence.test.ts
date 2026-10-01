@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { arApplySentence, arNextDepositId } from './arApplySentence'
+import { arApplySentence, arDepositCameBack, arNextDepositId } from './arApplySentence'
 
 const targets = new Map([
   ['inv-992', { hcpNumber: '992', jobName: 'Johnson pretest', customerName: 'Done Right Foundation', remaining: 250 }],
@@ -8,6 +8,19 @@ const targets = new Map([
 const payments = new Map([['pay-1', { amount: 2918.22, hcp_number: '989', job_name: 'Take 5 Seguin' }]])
 
 describe('arApplySentence', () => {
+  it('v2.4313: a check that came back says so before anything else, even with lines picked', () => {
+    const lines = [{ kind: 'billed' as const, targetKey: 'k', amountStr: '250' }]
+    const targetByKey = new Map([['k', { hcpNumber: '992', jobName: 'Test', customerName: 'DRF', remaining: 250 }]])
+    const s = arApplySentence({ lines, targetByKey, paymentById: new Map(), depositRemaining: 250, validation: 'too much', cameBack: true })
+    expect(s).toEqual({ text: 'This check came back, so it cannot pay a bill.', tone: 'warn', total: 0 })
+  })
+  it('v2.4313: arDepositCameBack — a hand mark or the bank, never a plain row', () => {
+    expect(arDepositCameBack({ returned: true, bankReturn: null })).toBe(true)
+    expect(arDepositCameBack({ returned: false, bankReturn: { reason: 'Stop payment' } })).toBe(true)
+    expect(arDepositCameBack({ returned: null, bankReturn: null })).toBe(false)
+    expect(arDepositCameBack({})).toBe(false)
+    expect(arDepositCameBack(null)).toBe(false)
+  })
   it('waits for a pick', () => {
     const s = arApplySentence({ lines: [{ kind: 'billed', targetKey: '', amountStr: '' }], targetByKey: targets, paymentById: payments, depositRemaining: 1855.7, validation: null })
     expect(s).toEqual({ text: 'Remaining $1,855.70 — pick a bill, or link a recorded payment.', tone: 'waiting', total: 0 })

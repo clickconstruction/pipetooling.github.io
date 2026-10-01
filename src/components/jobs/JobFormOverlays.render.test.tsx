@@ -87,6 +87,21 @@ describe('JobFormMercuryUnlinkConfirm', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
+  it('v2.4313: a check the bank sent back says so, and never says its money is available again', async () => {
+    const bankFacts = { 'mtx-1': { postedYmd: '2026-09-18', counterparty: 'Southern Post', kind: 'checkDeposit', status: 'failed', failureReason: 'Insufficient funds' } }
+    await renderSettled(<JobFormMercuryUnlinkConfirm rowId="p1" payments={payments} editing={editing} busyRowId={null} onCancel={() => {}} onConfirm={() => {}} zIndex={1011} bankFacts={bankFacts} />, { loaded: () => screen.findByText('Unlink and remove?') })
+    expect(screen.getByTestId('unlink-bounced-words').textContent).toBe('The bank sent this check back: Insufficient funds. Taking it off puts the money back on the bill as owed.')
+    expect(screen.getByText(/It cannot pay another bill/)).toBeTruthy()
+    expect(screen.queryByText(/available again/)).toBeNull()
+    expect(screen.queryByText(/could double-count/)).toBeNull()
+    expect(screen.getByText(/This job is Paid/)).toBeTruthy()
+  })
+  it('a deposit the bank still holds keeps the double-count words', async () => {
+    const bankFacts = { 'mtx-1': { postedYmd: '2026-09-18', counterparty: 'DRF', kind: 'checkDeposit', status: 'sent', failureReason: null } }
+    await renderSettled(<JobFormMercuryUnlinkConfirm rowId="p1" payments={payments} editing={editing} busyRowId={null} onCancel={() => {}} onConfirm={() => {}} zIndex={1011} bankFacts={bankFacts} />, { loaded: () => screen.findByText('Unlink and remove?') })
+    expect(screen.getByText(/available again/)).toBeTruthy()
+    expect(screen.queryByTestId('unlink-bounced-words')).toBeNull()
+  })
   it('while the unlink runs, both buttons are disabled and read Removing…, and the backdrop does not cancel', async () => {
     const onCancel = vi.fn()
     await renderSettled(<JobFormMercuryUnlinkConfirm rowId="p1" payments={payments} editing={editing} busyRowId="p1" onCancel={onCancel} onConfirm={() => {}} zIndex={1011} />, { loaded: () => screen.findByText('Unlink and remove?') })

@@ -36,7 +36,7 @@ import {
   orderArBilledLineTargets,
 } from '../../lib/jobs/arBilledLineOptions'
 import { arAllocationProgress } from '../../lib/jobs/arAllocationProgress'
-import { arApplySentence, arNextDepositId } from '../../lib/jobs/arApplySentence'
+import { AR_CAME_BACK_SENTENCE, arApplySentence, arDepositCameBack, arNextDepositId } from '../../lib/jobs/arApplySentence'
 import { arDepositRowStates, arDepositSummary, arDepositSummaryWords } from '../../lib/jobs/arDepositRowState'
 import { mercuryDebitCardIdFromRaw } from '../../lib/mercuryRawDebitCard'
 import { bankReturnedChipWords, mercuryBankReturnFromRaw, type MercuryBankReturn } from '../../lib/jobs/bankReturnedDeposits'
@@ -311,8 +311,10 @@ export default function BankPaymentsModal({
     [candidates, foundElsewhere, selectedId],
   )
 
+  /** v2.4313: the bank sent the selected check back, or someone marked it returned — it pays no bill. */
+  const selectedCameBack = arDepositCameBack(selected)
   const canAllocateRemaining = useMemo(
-    () => selected != null && Number(selected.remaining_available) > AR_BANK_REMAINING_EPS,
+    () => selected != null && !arDepositCameBack(selected) && Number(selected.remaining_available) > AR_BANK_REMAINING_EPS,
     [selected],
   )
 
@@ -1400,6 +1402,7 @@ export default function BankPaymentsModal({
         closeOutOffered: closeOutOffer != null,
         booksIncome: arApplyBooksIncome(bankLabel),
         bankLabelStays: arBankLabelStays(bankLabel),
+        cameBack: arDepositCameBack(selected),
       }),
     [allocLines, targetByKey, recordedPaymentById, selected, validationMessage, tipOffer, closeOutOffer, bankLabel],
   )
@@ -2221,6 +2224,18 @@ export default function BankPaymentsModal({
                             })}
                           </ul>
                         </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  {selectedCameBack ? (
+                    <div
+                      data-testid="ar-came-back-note"
+                      style={{ margin: '0.75rem 0', padding: '0.65rem 0.8rem', border: '1px solid var(--border-red)', background: 'var(--bg-red-tint)', borderRadius: 8, fontSize: '0.875rem', color: 'var(--text-red-700)' }}
+                    >
+                      <div style={{ fontWeight: 600 }}>{AR_CAME_BACK_SENTENCE}</div>
+                      {selected.bankReturn == null ? (
+                        <div style={{ marginTop: 4, color: 'var(--text-700)' }}>If it did not bounce, untick Returned under ⋯ → Mark returned deposits.</div>
                       ) : null}
                     </div>
                   ) : null}

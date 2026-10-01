@@ -1,3 +1,4 @@
+import type { MercuryDepositFacts } from '../../lib/jobs/billsAndPayments'
 import { unlinkLeavesStripeBillUntouched } from '../../lib/jobs/jobFormPaymentPredicates'
 import type { PaymentRow } from '../../lib/jobs/jobFormTypes'
 import { normalizeJobsLedgerStatus } from '../../lib/jobsLedgerStatusPipeline'
@@ -14,6 +15,8 @@ export type JobFormMercuryUnlinkConfirmProps = {
   onCancel: () => void
   onConfirm: () => void
   zIndex: number
+  /** v2.4313: what the bank synced about each linked deposit, keyed by its id — a `failed` one is a check the bank sent back. */
+  bankFacts?: Record<string, MercuryDepositFacts>
 }
 
 /**
@@ -21,7 +24,12 @@ export type JobFormMercuryUnlinkConfirmProps = {
  * (§18 of the Job form map): the double-count warning, the Stripe-untouched note when it applies,
  * the demote-to-Billed note on a Paid job. Out of the shell whole (v2.3872); the RPC stays there.
  */
-export function JobFormMercuryUnlinkConfirm({ rowId, payments, editing, busyRowId, onCancel, onConfirm, zIndex }: JobFormMercuryUnlinkConfirmProps) {
+export function JobFormMercuryUnlinkConfirm({ rowId, payments, editing, busyRowId, onCancel, onConfirm, zIndex, bankFacts }: JobFormMercuryUnlinkConfirmProps) {
+  const row = rowId ? payments.find((r) => r.id === rowId) ?? null : null
+  const facts = row?.mercury_transaction_id ? bankFacts?.[row.mercury_transaction_id] : undefined
+  // v2.4313: a check the bank sent back never comes back to To match — the old words said its money would.
+  const bounced = facts?.status === 'failed'
+  const bankReason = (facts?.failureReason ?? '').trim()
   return (
     <>
     {rowId && (
@@ -63,21 +71,39 @@ export function JobFormMercuryUnlinkConfirm({ rowId, payments, editing, busyRowI
             Unlink and remove?
           </h2>
           <div style={{ fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.5 }}>
-            <p style={{ margin: '0 0 0.75rem' }}>
-              Remove this payment line from the job and unlink it from the bank deposit? The bank transaction will
-              show those funds as available again in Jobs → Stages → Accounts Receivable.
-            </p>
-            <p
-              style={{
-                margin:
-                  normalizeJobsLedgerStatus(editing?.status) === 'paid' ? '0 0 0.75rem' : '0 0 1rem',
-              }}
-            >
-              Only do this to fix a mistaken link or payment. Applying the same deposit again without fixing data
-              could double-count.
-            </p>
+            {bounced ? (
+              <>
+                <p data-testid="unlink-bounced-words" style={{ margin: '0 0 0.75rem' }}>
+                  The bank sent this check back{bankReason ? `: ${bankReason}` : ''}. Taking it off puts the money back on the bill as owed.
+                </p>
+                <p
+                  style={{
+                    margin:
+                      normalizeJobsLedgerStatus(editing?.status) === 'paid' ? '0 0 0.75rem' : '0 0 1rem',
+                  }}
+                >
+                  The deposit is marked returned in Accounts Receivable. It cannot pay another bill.
+                </p>
+              </>
+            ) : (
+              <>
+                <p style={{ margin: '0 0 0.75rem' }}>
+                  Remove this payment line from the job and unlink it from the bank deposit? The bank transaction will
+                  show those funds as available again in Jobs → Stages → Accounts Receivable.
+                </p>
+                <p
+                  style={{
+                    margin:
+                      normalizeJobsLedgerStatus(editing?.status) === 'paid' ? '0 0 0.75rem' : '0 0 1rem',
+                  }}
+                >
+                  Only do this to fix a mistaken link or payment. Applying the same deposit again without fixing data
+                  could double-count.
+                </p>
+              </>
+            )}
             {(() => {
-              const unlinkRow = payments.find((r) => r.id === rowId) ?? null
+              const unlinkRow = row
               return unlinkRow && unlinkLeavesStripeBillUntouched(unlinkRow, editing) ? (
                 <p style={{ margin: '0 0 1rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
                   This bill went out through Stripe, and Stripe never recorded this payment — its pay link still asks

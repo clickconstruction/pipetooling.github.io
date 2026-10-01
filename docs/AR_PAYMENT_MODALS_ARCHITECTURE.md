@@ -295,7 +295,7 @@ Gates after every step: `npm run typecheck && npm run lint && npm test`.
 ## Hazards
 
 **Money paths (BankPaymentsModal)**
-- Five write endpoints, seven call sites: `apply_mercury_bank_payment_allocations` (manual `submitApply` + serial sweep), `record_job_tip_from_deposit`, `record-stripe-invoice-out-of-band-payment`, `set_mercury_transaction_ar_closed` (close + reopen), `set_mercury_transaction_ar_returned`. The RPC `p_paid_on` is the deposit's posted day — never user-editable (`applyDisabled` requires it).
+- Five write endpoints, seven call sites: `apply_mercury_bank_payment_allocations` (manual `submitApply` + serial sweep), `record_job_tip_from_deposit`, `record-stripe-invoice-out-of-band-payment`, `set_mercury_transaction_ar_closed` (close + reopen), `set_mercury_transaction_ar_returned`. The RPC `p_paid_on` is the deposit's posted day — never user-editable (`applyDisabled` requires it). A deposit that came back (Mercury `failed`, or marked returned) can be linked by none of them: `canAllocateRemaining` is false for it and trigger `jobs_ledger_payments_refuse_returned_deposit` raises (v2.4313).
 - **`p_allow_stripe_hosted`** is `stripeAllocationSelected` in `submitApply` (only reachable after the confirmation checkbox) and hard `false` in the sweep. Keep both.
 - **Apply first, Stripe close second.** A failed OOB close leaves the allocation standing and parks the modal on the retry panel; `applyDisabled` includes `stripeCloseResults != null`, so a second apply can't fire. `retryFailedStripeCloses` closes the modal on success (no "next").
 - **Sweep double-apply guard:** prior `ok` results carry forward (466–470) and `sweepPairsPending` excludes them — preserve when moving.
