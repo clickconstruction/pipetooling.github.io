@@ -10,7 +10,7 @@ A lien release is a paper that gives up your lien rights for the work it covers.
 
 ## Open the release
 
-Open the **Pipeline** board. Every job row in **Ready to Bill**, **Billed Awaiting Payment**, or **Collections** has a blue release-of-lien button. It sits in the row's small icon row, first, next to share. Tap it. The **Release of Lien** window opens with everything filled in from the job. On a phone, it's **Release of lien** in the card's ⋯ menu.
+Open the **Pipeline** board. Every job row in **Ready to Bill**, **Billed Awaiting Payment**, or **Collections** has a blue release-of-lien button. It sits in the small icons under **Edit**, between share and the orange lien hammer. Tap it. The **Release of Lien** window opens with everything filled in from the job. On a phone, it's **Release of lien** in the card's ⋯ menu.
 
 ## Pick the right form
 

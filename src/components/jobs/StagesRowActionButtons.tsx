@@ -4,7 +4,9 @@
  * times — so a glyph or title change could miss a copy. One component per icon; the caller
  * still decides when it shows and what its click does, exactly as before.
  */
+import { Children, type ReactNode } from 'react'
 import { FileCheck2, FileSpreadsheet } from 'lucide-react'
+import { stagesRowIconsPerRow } from '../../lib/jobs/stagesRowIconGrid'
 
 const iconButtonStyle = {
   padding: '0.25rem',
@@ -15,6 +17,39 @@ const iconButtonStyle = {
   alignItems: 'center',
   justifyContent: 'center',
 } as const
+
+const ICON_CELL = '1.75rem'
+const ICON_GAP = '0.35rem'
+
+/**
+ * The block the row's icons sit in (v2.4305, owner ask): at most four a row, the rows split
+ * evenly (five read 3 over 2) and centred under Edit. Every icon gets the same square cell,
+ * so a boxed icon (release issued, demand out, hazmat fee) lines up with the plain ones.
+ */
+export function StagesRowIcons({ children }: { children: ReactNode }) {
+  const icons = Children.toArray(children)
+  const perRow = stagesRowIconsPerRow(icons.length)
+  if (perRow === 0) return null
+  return (
+    <div
+      data-stages-row-icons=""
+      style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        justifyContent: 'center',
+        gap: ICON_GAP,
+        alignSelf: 'center',
+        maxWidth: `calc(${perRow} * ${ICON_CELL} + ${perRow - 1} * ${ICON_GAP})`,
+      }}
+    >
+      {icons.map((icon, i) => (
+        <span key={i} style={{ width: ICON_CELL, height: ICON_CELL, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+          {icon}
+        </span>
+      ))}
+    </div>
+  )
+}
 
 /** Test report — hydrostatic, pinpoint or gas (the orange wrench). */
 export function StagesTestReportButton({ onClick }: { onClick: () => void }) {
