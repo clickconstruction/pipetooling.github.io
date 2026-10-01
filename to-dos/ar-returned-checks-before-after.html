@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Returned checks in Accounts Receivable</title>
+<style>
+  /* Layout: before (two panels), after (four panels), the second pass, the open calls. */
+  :root {
+    --ground: #F3F4F6; --surface: #FFFFFF; --subtle: #F8FAFC; --ink: #111827; --muted: #6B7280;
+    --line: #E5E7EB; --line-strong: #CBD5E1;
+    --green: #15803D; --green-bg: #DCFCE7; --red: #B91C1C; --red-bg: #FEE2E2; --amber: #B45309; --amber-bg: #FEF3C7;
+    --blue: #1D4ED8; --blue-bg: #DBEAFE;
+    --font-body: -apple-system, "Segoe UI", system-ui, sans-serif; --font-mono: ui-monospace, Menlo, monospace;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 14px/1.5 var(--font-body); padding: 0 20px 64px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; max-width: 30ch; }
+  .stamp { font-family: var(--font-mono); font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 18px; margin: 34px 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; }
+  h2 .tag.before { background: var(--red-bg); color: var(--red); }
+  h2 .tag.after { background: var(--green-bg); color: var(--green); }
+  h2 .tag.call { background: var(--amber-bg); color: var(--amber); }
+  .lede { margin: 0 0 14px; color: var(--muted); max-width: 84ch; }
+  .lede b { color: var(--ink); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; align-items: start; }
+  .panel { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
+  .panel .cap { padding: 8px 12px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--subtle); border-bottom: 1px solid var(--line); }
+  .panel .in { padding: 12px; }
+  .panel .verdict { padding: 10px 12px; background: var(--subtle); font-size: 12.5px; margin-top: auto; border-top: 1px solid var(--line); }
+  .panel .verdict b { display: block; }
+
+  .seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 8px; overflow: hidden; font-size: 12px; margin-bottom: 10px; }
+  .seg span { padding: 4px 10px; color: var(--muted); border-left: 1px solid var(--line); }
+  .seg span:first-child { border-left: 0; }
+  .seg span.on { background: var(--blue-bg); color: var(--blue); font-weight: 700; }
+  .seg span.ret { background: var(--red-bg); color: var(--red); font-weight: 700; }
+  .row { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; font-size: 12.5px; }
+  .row .head { display: flex; justify-content: space-between; gap: 10px; font-weight: 700; }
+  .row .head .amt { font-variant-numeric: tabular-nums; }
+  .row .meta { color: var(--muted); font-size: 12px; }
+  .row.gone { border-style: dashed; opacity: .55; }
+  .chip { display: inline-block; border-radius: 999px; padding: 0 8px; font-size: 11px; font-weight: 700; }
+  .chip.red { background: var(--red-bg); color: var(--red); }
+  .chip.amber { background: var(--amber-bg); color: var(--amber); }
+  .chip.green { background: var(--green-bg); color: var(--green); }
+  .chip.quiet { background: var(--subtle); color: var(--muted); border: 1px dashed var(--line-strong); }
+  .steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
+  .step { border: 1px solid var(--line); border-radius: 6px; padding: 5px 7px; font-size: 11.5px; min-width: 0; }
+  .step b { display: block; font-size: 11.5px; }
+  .step span { color: var(--muted); }
+  .step.done b { color: var(--green); }
+  .step.ask { background: var(--amber-bg); border-color: var(--amber); }
+  .step.ask b { color: var(--amber); }
+  .step.late { border-color: var(--red); }
+  .step.late b { color: var(--red); }
+  .step.wait { border-style: dashed; }
+  .btn { display: inline-block; border: 1px solid var(--line-strong); border-radius: 6px; padding: 1px 8px; background: var(--surface); font-size: 11.5px; margin-top: 4px; }
+  .btn.danger { border-color: var(--red); color: var(--red); font-weight: 700; }
+  .card { border: 1px solid var(--amber); background: var(--amber-bg); border-radius: 8px; padding: 9px 11px; font-size: 12.5px; }
+  .card b { display: block; }
+  .card .meta { color: var(--ink); opacity: .8; }
+  ul.notes { margin: 0; padding-left: 18px; max-width: 90ch; }
+  ul.notes li { margin: 4px 0; }
+  @media (max-width: 420px) { .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">Punch list #76 · Accounts Receivable</p>
+      <h1>A returned check is a case, not a chip</h1>
+    </div>
+    <div class="stamp">drawn 2026-10-01<br>from prod: 7 returns in 18 months, 2 open</div>
+  </header>
+
+  <h2><span class="tag before">Before</span> A bounce is noticed only while a job carries it</h2>
+  <p class="lede">The bank's return flips the deposit to failed. <b>On a job</b>, the office gets an email, a Needs You card, a Pipeline badge and Unlink and remove. <b>Not on a job</b>, the row just leaves the list.</p>
+  <div class="grid">
+    <div class="panel">
+      <div class="cap">Accounts Receivable · Oct 1</div>
+      <div class="in">
+        <div class="seg"><span class="on">To match · 4</span><span>All</span></div>
+        <div class="row gone">
+          <div class="head"><span>Loberg · check</span><span class="amt">$5,622.49</span></div>
+          <div class="meta">was here yesterday · gone today, no word</div>
+        </div>
+        <div class="row">
+          <div class="head"><span>Another payer · check</span><span class="amt">$4,478.00</span></div>
+          <div class="meta">posted Sep 28</div>
+        </div>
+      </div>
+      <div class="verdict"><b>Nobody is told.</b>Loberg's check was off #650 a day before the bank stopped it, so no notice, no card and no badge fired.</div>
+    </div>
+    <div class="panel">
+      <div class="cap">Under All · the same day</div>
+      <div class="in">
+        <div class="row">
+          <div class="head"><span>Southern Post · check</span><span class="amt">$13,680.00</span></div>
+          <div class="meta"><span class="chip red">returned by the bank · Insufficient funds</span></div>
+          <div class="meta">was #878 Take 5 – Seguin · taken off 9/24 by Taunya</div>
+        </div>
+      </div>
+      <div class="verdict"><b>The story stops at "taken off".</b>Eight days on, nothing says whether the customer was called or a new check is coming.</div>
+    </div>
+  </div>
+
+  <h2><span class="tag after">After</span> Every return is told, worked in one place, and closed</h2>
+  <p class="lede">Four pieces. The lane draws <b>only while a case is open</b>, so most weeks Accounts Receivable looks as it does today.</p>
+  <div class="grid">
+    <div class="panel">
+      <div class="cap">1 · The Returned lane</div>
+      <div class="in">
+        <div class="seg"><span>To match · 4</span><span>All</span><span class="ret">Returned · 2 open</span></div>
+        <div class="row">
+          <div class="head"><span>Loberg · Stop payment</span><span class="amt">$5,622.49</span></div>
+          <div class="meta">posted Sep 28 · came back today, 3 days later</div>
+          <div class="steps">
+            <div class="step done"><b>Came back</b><span>Oct 1 · the bank</span></div>
+            <div class="step done"><b>Off the job</b><span>was #650 · 9/30</span></div>
+            <div class="step ask"><b>Customer told?</b><span class="btn">They said…</span></div>
+            <div class="step wait"><b>Replaced</b><span>waiting · day 0</span></div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="head"><span>Southern Post · Insufficient funds</span><span class="amt">$13,680.00</span></div>
+          <div class="meta">posted Sep 18 · came back Sep 23, 5 days later</div>
+          <div class="steps">
+            <div class="step done"><b>Came back</b><span>Sep 23 · the bank</span></div>
+            <div class="step done"><b>Off the job</b><span>#878 · 9/24 · Taunya</span></div>
+            <div class="step ask"><b>Customer told?</b><span class="btn">They said…</span></div>
+            <div class="step late"><b>No replacement · 8 d</b><span class="btn">Match one</span> <span class="btn">Not coming</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="verdict"><b>Four steps, open until replaced.</b>A later deposit from the same payer for the same amount is offered as the replacement.</div>
+    </div>
+
+    <div class="panel">
+      <div class="cap">2 · Take it off the job, from here</div>
+      <div class="in">
+        <div class="row">
+          <div class="head"><span>#878 Take 5 – Seguin · bill 1</span><span class="amt">$13,680.00</span></div>
+          <div class="meta">Taking it off: 35% paid becomes 0% · bill 1 goes back to Billed · the lien notice can be drafted · no waiver went out on this bill</div>
+          <span class="btn danger">Take it off the job</span>
+        </div>
+      </div>
+      <div class="verdict"><b>One press, every job the check was split across.</b>The bank's word still never takes money off by itself: a person presses.</div>
+    </div>
+
+    <div class="panel">
+      <div class="cap">3 · Needs You, for a return that is not on a job</div>
+      <div class="in">
+        <div class="card">
+          <b>The bank returned Loberg's $5,622.49 check</b>
+          <span class="meta">Stop payment. It is not on a job. It was on #650 until 9/30.</span><br>
+          <span class="btn">Open it in Accounts Receivable</span>
+        </div>
+      </div>
+      <div class="verdict"><b>The same card and the same email</b>, with words for a check no job carries.</div>
+    </div>
+
+    <div class="panel">
+      <div class="cap">4 · Check clearing</div>
+      <div class="in">
+        <div class="row">
+          <div class="head"><span>Paid $4,478.00</span><span class="chip amber">check clearing · until Oct 6</span></div>
+          <div class="meta">Lien waiver: <span class="chip green">Conditional ✓ sent</span> <span class="chip quiet">Unconditional · when the check clears</span></div>
+        </div>
+        <div class="row">
+          <div class="head"><span>Pay history</span><span></span></div>
+          <div class="meta">usually pays in 2–8 d · kept 3 of 4 dates · <b style="color:var(--red)">1 check returned · Sep 2026</b></div>
+        </div>
+      </div>
+      <div class="verdict"><b>Every real return came back inside six days.</b>57 of the last 71 check payments were applied inside that window.</div>
+    </div>
+  </div>
+
+  <h2>The second pass: is this the best we can do?</h2>
+  <ul class="notes">
+    <li><b>The lane is not a standing list.</b> Four returns in six months does not earn a third tab every day. It draws while a case is open and goes when the last one closes.</li>
+    <li><b>"Customer told" is not a new store.</b> It is the They said… promise the Pipeline already keeps. A promise newer than the bounce marks the step done.</li>
+    <li><b>"Replaced" is suggested, not typed.</b> Applying the suggested deposit to the same bill closes the case by itself.</li>
+    <li><b>Cut:</b> an email to the customer about the bounce (the office calls) and a returned-checks report (the lane and All are the report at this volume).</li>
+  </ul>
+
+  <h2><span class="tag call">Your call</span> Three things only the owner can decide</h2>
+  <ul class="notes">
+    <li><b>The clearing window.</b> Hold the unconditional waiver until a check has cleared, and for how many days? Drawn at 7. A GC who wants it the day they pay would wait a week. Counsel's view is worth having.</li>
+    <li><b>A returned-check fee.</b> Offer a fee line on the bill when a check bounces? Texas caps the fee and the amount is not yet verified.</li>
+    <li><b>Who hears about a return that is not on a job.</b> The people told when a payment lands, or everyone who can open Accounts Receivable.</li>
+  </ul>
+</div>
+</body>
+</html>
