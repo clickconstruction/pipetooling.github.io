@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
 /**
  * Render smoke for the Workbench "?" card (region P2 of the Pricing map): the four lines,
- * the solo and the many-GC wording, and every door reports.
+ * the solo and the many-GC wording, every door reports, and every line reads in plain words
+ * (v2.4310).
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { plainWordsFailures } from '../../lib/plainWords'
 import { WorkbenchHelpCard } from './WorkbenchHelpCard'
 
 function props(over: Partial<Parameters<typeof WorkbenchHelpCard>[0]> = {}) {
@@ -19,14 +21,33 @@ describe('WorkbenchHelpCard', () => {
     renderWithProviders(<WorkbenchHelpCard {...props()} />)
     const card = screen.getByRole('dialog', { name: 'How this page works' })
     for (const k of ['Type a price', 'Solve', 'This bid', 'Labor & cost']) expect(screen.getByText(k)).toBeTruthy()
-    expect(card.textContent).toContain('one packet — Acme sees Base.')
+    expect(card.textContent).toContain('This bid has one packet, the copy one GC gets. Acme sees Base.')
     expect(screen.queryByText('This GC')).toBeNull()
   })
 
   it('more than one price or GC: "This GC" names whose packet is on screen', () => {
     renderWithProviders(<WorkbenchHelpCard {...props({ solo: false })} />)
-    expect(screen.getByRole('dialog').textContent).toContain('Acme Builders — ★ base is what they see on their letter')
+    expect(screen.getByRole('dialog').textContent).toContain('You are on the packet for Acme Builders, their copy of the bid. The ★ base is the price they see on their letter.')
     expect(screen.queryByText('This bid')).toBeNull()
+  })
+
+  it.each([
+    ['a solo bid', true],
+    ['more than one price or GC', false],
+  ])('%s: every line reads in plain words (src/lib/plainWords.ts)', (_name, solo) => {
+    renderWithProviders(<WorkbenchHelpCard {...props({ solo, gcName: 'Burd & Assoc', gcShort: 'Burd' })} />)
+    const lines = Array.from(screen.getByRole('dialog').querySelectorAll('[data-help-line]'))
+    expect(lines).toHaveLength(4)
+    for (const line of lines) {
+      const text = (line.textContent ?? '').replace(/\s+/g, ' ').trim()
+      expect(plainWordsFailures(text), `${line.getAttribute('data-help-line')}: ${text}`).toEqual([])
+    }
+  })
+
+  it('the solver line names the controls by their exact names', () => {
+    renderWithProviders(<WorkbenchHelpCard {...props()} />)
+    const solve = screen.getByRole('dialog').querySelector('[data-help-line="Solve"]')?.textContent ?? ''
+    for (const control of ['Solver ›', 'Apply', 'Discard']) expect(solve).toContain(control)
   })
 
   it('the guide link points at the Workbench guide', () => {

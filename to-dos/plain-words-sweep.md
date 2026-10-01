@@ -19,7 +19,7 @@ next: >
   before the PR and re-read any guide main changed meanwhile. Batch 6 is the first fifty rows
   (`see-how-often-we-go-back` … ), batch 7 the last 27 minus whatever other PRs have rewritten
   since; then the list is empty and `plainWordsLegacy.ts` is deleted. Separately, *Left for a person
-  to read* below: the Workbench's ? card, and the words the rewriters had to guess.
+  to read* below: the words the rewriters had to guess.
 size: M (two PRs, 50 and 27 guides; about 70,000 words of prose to rewrite)
 blocker: None. The owner paused it; say go.
 ver: v2.4233 · 4235 · 4258 · 4282 · 4283 · 4286
@@ -67,10 +67,6 @@ working. `grep -c "^  '" src/lib/plainWordsLegacy.ts` is the live count.
 
 None of these fail a test; each wants someone who knows the screens or the trade.
 
-- **The Workbench's ? card** (`src/components/bids/WorkbenchHelpCard.tsx`, Bids → Pricing → ?).
-  Its four lines (*Type a price*, *Solve*, *This bid* / *This GC*, *Labor & cost*) still read in
-  the old voice, with dashes and a parenthesis. The walkthrough it opens was rewritten in v2.4228;
-  the card was noted on #58 and lost when that row closed. Small: four strings and a test case.
 - **Two counts that do not match their lists**, kept as written because the rules forbid changing
   a number: *see every contract side by side* says "four lines" above six bullets; *reconcile Cash
   App payments* says "four buttons" above five.
