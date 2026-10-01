@@ -771,6 +771,39 @@ export type Database = {
           },
         ]
       }
+      bid_marks: {
+        Row: {
+          bid_id: string
+          marked_at: string
+          user_id: string
+        }
+        Insert: {
+          bid_id: string
+          marked_at?: string
+          user_id: string
+        }
+        Update: {
+          bid_id?: string
+          marked_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_marks_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_marks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_payment_schedule_rows: {
         Row: {
           bid_id: string

@@ -5,6 +5,7 @@ import { laborBookForTrade } from '../lib/bids/laborEntryProvenance'
 import { useBidBoardScope } from '../hooks/useBidBoardScope'
 import { useBidsLoadGates, useBidsPageData } from '../hooks/useBidsPageData'
 import { useBidsDeepLinks } from '../hooks/useBidsDeepLinks'
+import { loadBidMarks } from '../lib/bids/bidMarksStore'
 import { BID_REVIEWED_EVENT } from '../lib/bids/bidReview'
 import { supabase } from '../lib/supabase'
 import { upsertBidNotesReadWatermark } from '../lib/userBidNotesReadState'
@@ -120,6 +121,10 @@ type Customer = Database['public']['Tables']['customers']['Row']
 
 export default function Bids() {
   const { user: authUser, profileName, role: authRole } = useAuth()
+  // Bid marks (v2.4287): the person's own marks, loaded once per sign-in for every bid surface.
+  useEffect(() => {
+    if (authUser?.id) void loadBidMarks(authUser.id)
+  }, [authUser?.id])
   const { showToast } = useToastContext()
   const newCustomerModal = useNewCustomerModal()
   const bidPreview = useBidPreview()
