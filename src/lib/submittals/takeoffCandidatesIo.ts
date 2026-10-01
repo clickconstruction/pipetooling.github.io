@@ -6,11 +6,44 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '../../types/database'
-import { takeoffCandidates, type TakeoffCandidate, type TakeoffHouse, type TakeoffLine, type TakeoffPart } from './takeoffCandidates'
+import { fetchAllRowsChunkedIn } from '../supabasePaging'
+import { takeoffCandidates, type TakeoffAssemblyItem, type TakeoffCandidate, type TakeoffHouse, type TakeoffLine, type TakeoffPart } from './takeoffCandidates'
 
 type Client = SupabaseClient<Database>
 
 export type TakeoffCandidatesLoad = { candidates: TakeoffCandidate[]; fixtures: number; withProduct: number }
+
+type AssemblyItemRow = { id: string; template_id: string; item_type: string; part_id: string | null; nested_template_id: string | null; quantity: number; sequence_order: number }
+
+/**
+ * What is inside the given assemblies, nested assemblies opened level by level (at most six), by
+ * template id. Paged with a stable order (the row-cap rule). A failed read leaves the assemblies
+ * closed — each stays one piece by its name.
+ */
+export async function loadAssemblyContents(supabase: Client, templateIds: ReadonlyArray<string>): Promise<Map<string, TakeoffAssemblyItem[]>> {
+  const out = new Map<string, TakeoffAssemblyItem[]>()
+  let next = [...new Set(templateIds)].filter(Boolean)
+  for (let depth = 0; depth < 6 && next.length > 0; depth++) {
+    let rows: AssemblyItemRow[]
+    try {
+      rows = await fetchAllRowsChunkedIn<AssemblyItemRow, string>(
+        next,
+        (chunk, from, to) =>
+          supabase.from('material_template_items').select('id, template_id, item_type, part_id, nested_template_id, quantity, sequence_order').in('template_id', chunk).order('id', { ascending: true }).range(from, to) as unknown as PromiseLike<{ data: AssemblyItemRow[] | null; error: { message: string } | null }>,
+        'load assembly contents',
+      )
+    } catch {
+      return out
+    }
+    for (const id of next) if (!out.has(id)) out.set(id, [])
+    for (const r of rows) {
+      const item: TakeoffAssemblyItem = { id: r.id, partId: r.item_type === 'part' ? r.part_id : null, nestedTemplateId: r.item_type === 'template' ? r.nested_template_id : null, quantity: Number(r.quantity) || 0, sequenceOrder: Number(r.sequence_order) || 0 }
+      out.get(r.template_id)?.push(item)
+    }
+    next = [...new Set(rows.map((r) => (r.item_type === 'template' ? r.nested_template_id : null)).filter((x): x is string => !!x && !out.has(x)))]
+  }
+  return out
+}
 
 /**
  * The takeoff's fixtures as submittal candidates. Rows on the bid's selected version
@@ -36,11 +69,20 @@ export async function loadTakeoffCandidates(supabase: Client, bidId: string, opt
     .filter((l) => rowIds.has(l.count_row_id))
     .map((l) => ({ id: l.id, countRowId: l.count_row_id, sequenceOrder: l.sequence_order ?? undefined, partId: l.part_id, sourceTemplateId: l.source_template_id, quantity: Number(l.quantity) || 0, unitPrice: Number(l.unit_price) || 0, sourceMaterialPartPriceId: l.source_material_part_price_id }))
 
-  const partIds = [...new Set(lines.map((l) => l.partId).filter((x): x is string => !!x))]
   const templateIds = [...new Set(lines.map((l) => l.sourceTemplateId).filter((x): x is string => !!x))]
+  // Parts, not assemblies (2026-10-01): open every assembly the takeoff priced from, and read its parts too.
+  const assemblies = await loadAssemblyContents(supabase, templateIds)
+  const insideIds = [...assemblies.values()].flatMap((items) => items.map((it) => it.partId).filter((x): x is string => !!x))
+  const partIds = [...new Set([...lines.map((l) => l.partId).filter((x): x is string => !!x), ...insideIds])]
   const priceIds = [...new Set(lines.map((l) => l.sourceMaterialPartPriceId).filter((x): x is string => !!x))]
   const [partsRes, templatesRes, pricesRes] = await Promise.all([
-    partIds.length ? supabase.from('material_parts').select('id, name, manufacturer, part_types(name)').in('id', partIds) : Promise.resolve({ data: [] }),
+    partIds.length
+      ? fetchAllRowsChunkedIn<{ id: string; name: string; manufacturer: string | null; part_types: { name: string } | { name: string }[] | null }, string>(
+          partIds,
+          (chunk, from, to) => supabase.from('material_parts').select('id, name, manufacturer, part_types(name)').in('id', chunk).order('id', { ascending: true }).range(from, to) as unknown as PromiseLike<{ data: Array<{ id: string; name: string; manufacturer: string | null; part_types: { name: string } | { name: string }[] | null }> | null; error: { message: string } | null }>,
+          'load takeoff parts',
+        ).then((data) => ({ data }), () => ({ data: [] }))
+      : Promise.resolve({ data: [] }),
     templateIds.length ? supabase.from('material_templates').select('id, name').in('id', templateIds) : Promise.resolve({ data: [] }),
     priceIds.length ? supabase.from('material_part_prices').select('id, supply_house_id, supply_houses(name)').in('id', priceIds) : Promise.resolve({ data: [] }),
   ])
@@ -67,7 +109,7 @@ export async function loadTakeoffCandidates(supabase: Client, bidId: string, opt
   const alreadyOn = new Set<string>()
   for (const it of (onRes.data ?? []) as Array<{ source_count_row_id: string | null }>) if (it.source_count_row_id) alreadyOn.add(it.source_count_row_id)
 
-  const candidates = takeoffCandidates({ countRows, lines, parts, templates, houses, choices, splits, productKeys, alreadyOn })
+  const candidates = takeoffCandidates({ countRows, lines, parts, templates, assemblies, houses, choices, splits, productKeys, alreadyOn })
   return { candidates, fixtures: candidates.length, withProduct: candidates.filter((c) => c.product).length }
 }
 

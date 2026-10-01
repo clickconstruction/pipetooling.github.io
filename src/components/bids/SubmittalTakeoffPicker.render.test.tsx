@@ -66,25 +66,37 @@ describe('SubmittalTakeoffPicker', () => {
     expect([...splits.entries()]).toEqual([['c-wc', true]])
   })
 
-  it('v2.4292 · each part is a chip; trim starts off, a tap switches a part, the product line follows, and Confirm hands back the parts switched', () => {
-    const piece = (key: string, label: string, trim = false) => ({ key, label, partId: key, partTypeName: null, trim, houseId: 'h-m', houseName: 'Moore Supply' })
+  it('v2.4292 · each part is a chip; trim starts order only, a tap switches a part, the product line follows, and Confirm hands back the parts the GC sees', () => {
+    const piece = (key: string, label: string, trim = false) => ({ key, label, partId: key, partTypeName: null, trim, houseId: 'h-m', houseName: 'Moore Supply', quantity: 1, lineId: key, templateItemId: null, assembly: null, manufacturer: null })
     const lav = cand({ countRowId: 'c-lav2', fixture: 'LAV2', tagText: 'LAV-2', tags: ['LAV-2'], group: 'fixtures', count: 6, supplyHouseName: 'Moore Supply',
       pieces: [piece('l1', '2215-0 LADENA WHITE'), piece('l2', 'T25S51E#CP'), piece('l3', 'BRASSCRA PLB113XP 1/2 NOM COMPX3/8 OD COMP W/LOOSEKEY ANG', true)],
       productKeys: ['l1', 'l2'], product: '2215-0 LADENA WHITE + T25S51E#CP' })
     const onConfirm = vi.fn()
     render(<SubmittalTakeoffPicker mode="build" revLabel="Rev 1" candidates={[lav]} onConfirm={onConfirm} onClose={() => {}} />)
     const chips = screen.getAllByTestId('takeoff-piece')
-    expect(chips.map((c) => [c.textContent, c.getAttribute('aria-pressed')])).toEqual([['2215-0 LADENA WHITE', 'true'], ['T25S51E#CP', 'true'], ['BRASSCRA PLB113XP 1/2 NOM COMPX3/… · trim', 'false']])
+    expect(chips.map((c) => [c.textContent, c.getAttribute('aria-pressed')])).toEqual([['2215-0 LADENA WHITE', 'true'], ['T25S51E#CP', 'true'], ['BRASSCRA PLB113XP 1/2 NOM COMPX3/… · order only', 'false']])
+    expect(screen.getByTestId('takeoff-part-count').textContent).toBe('3 parts · the GC sees 2 · 1 order only')
+    expect(screen.queryByTestId('takeoff-piece-run')).toBeNull()
     expect(screen.getByTestId('takeoff-product').textContent).toBe('2215-0 LADENA WHITE + T25S51E#CP')
     fireEvent.click(screen.getByRole('button', { name: 'T25S51E#CP' }))
     expect(screen.getByTestId('takeoff-product').textContent).toBe('2215-0 LADENA WHITE')
     fireEvent.click(screen.getByRole('button', { name: '2215-0 LADENA WHITE' }))
-    expect(screen.getByTestId('takeoff-product').textContent).toBe('every part switched off — the row comes in to type with Edit')
+    expect(screen.getByTestId('takeoff-product').textContent).toBe('every part order only — the row comes in to type with Edit')
     expect(screen.getByTestId('takeoff-bar').textContent).toBe('1 row will go on Rev 1 · 0 with a product, 1 to type')
-    fireEvent.click(screen.getByRole('button', { name: 'T25S51E#CP' }))
+    fireEvent.click(screen.getByRole('button', { name: 'T25S51E#CP, order only' }))
     fireEvent.click(screen.getByTestId('takeoff-confirm'))
     const [rows, , , keys] = onConfirm.mock.calls[0] as [TakeoffCandidate[], unknown, unknown, Map<string, string[]>]
     expect(rows[0]).toMatchObject({ product: 'T25S51E#CP', productKeys: ['l2'], supplyHouseName: 'Moore Supply' })
     expect([...keys.entries()]).toEqual([['c-lav2', ['l2']]])
+  })
+
+  it('parts, not assemblies · an assembly’s parts sit under its name, the loose lines under On the takeoff, with how many on a fixture', () => {
+    const piece = (key: string, label: string, assembly: string | null, quantity = 1) => ({ key, label, partId: key, partTypeName: null, trim: false, houseId: null, houseName: null, quantity, lineId: assembly ? 'l-dwh' : key, templateItemId: assembly ? key : null, assembly, manufacturer: null })
+    const dwh = cand({ countRowId: 'c-dwh', fixture: 'DWH1 & ET', tagText: 'DWH-1', tags: ['DWH-1'], group: 'fixtures', count: 1,
+      pieces: [piece('i-heater', 'RHEEM PROPH40-T2-RH400-SO', 'DWH1 & ET assembly SPACEX'), piece('i-tank', 'AMTROL ST-5', 'DWH1 & ET assembly SPACEX', 2), piece('l-pump', 'B&G 60B0B1001', null)],
+      productKeys: ['i-heater', 'i-tank', 'l-pump'], product: 'RHEEM PROPH40-T2-RH400-SO + AMTROL ST-5 + B&G 60B0B1001' })
+    render(<SubmittalTakeoffPicker mode="build" revLabel="Rev 1" candidates={[dwh]} onConfirm={() => {}} onClose={() => {}} />)
+    expect(screen.getAllByTestId('takeoff-piece-run').map((r) => r.textContent)).toEqual(['Inside DWH1 & ET assembly SPACEX', 'On the takeoff'])
+    expect(screen.getAllByTestId('takeoff-piece').map((c) => c.textContent)).toEqual(['RHEEM PROPH40-T2-RH400-SO', 'AMTROL ST-5 × 2', 'B&G 60B0B1001'])
   })
 })

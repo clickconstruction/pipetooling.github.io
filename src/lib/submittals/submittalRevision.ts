@@ -125,6 +125,43 @@ export function draftToItemInsert(draft: SubmittalRowDraft, submittalId: string)
   }
 }
 
+/**
+ * The rows a new revision carries as they stand (2026-10-01): the rows the schedule and the
+ * picks do not rebuild — a row from the takeoff, a row typed by hand. Before this, a revision
+ * built from the takeoff came out of New revision empty. A row the rebuild already carried
+ * forward is left to it; a row that came from a pick is the rebuild's to keep or drop.
+ */
+export function rowsToCarry(previous: ReadonlyArray<SubmittalItemRow>, rebuilt: ReadonlyArray<Pick<SubmittalRowDraft, 'carriedFromItemId'>>): SubmittalItemRow[] {
+  const covered = new Set(rebuilt.map((r) => r.carriedFromItemId).filter((x): x is string => !!x))
+  return previous.filter((it) => !covered.has(it.id) && !it.source_quote_line_id && (it.source_count_row_id != null || (!it.specified_manufacturer && !it.specified_model)))
+}
+
+/** A carried row's insert onto the next revision: the row as it stands, pointing back; the reviewer's call starts blank. */
+export function carriedRowInsert(it: SubmittalItemRow, submittalId: string, sequenceOrder: number): SubmittalItemInsert {
+  return {
+    submittal_id: submittalId,
+    tag: it.tag,
+    sequence_order: sequenceOrder,
+    specified_manufacturer: it.specified_manufacturer,
+    specified_model: it.specified_model,
+    specified_description: it.specified_description,
+    submitted_manufacturer: it.submitted_manufacturer,
+    submitted_model: it.submitted_model,
+    submitted_label: it.submitted_label,
+    supply_house_id: it.supply_house_id,
+    source_quote_line_id: it.source_quote_line_id,
+    source_count_row_id: it.source_count_row_id,
+    status: it.status,
+    reason_kind: it.reason_kind,
+    reason_note: it.reason_note,
+    lead_time_days: it.lead_time_days,
+    sheet_file: it.sheet_file,
+    sheet_pages: [...(it.sheet_pages ?? [])],
+    sheet_source: it.sheet_source,
+    carried_from_item_id: it.id,
+  }
+}
+
 /** A row wants a cut sheet unless nobody quoted it. */
 export function needsSheet(item: Pick<SubmittalItemRow, 'status' | 'sheet_pages'>): boolean {
   return asStatus(item.status) !== 'missing' && (item.sheet_pages ?? []).length === 0
