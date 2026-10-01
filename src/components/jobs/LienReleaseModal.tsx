@@ -493,14 +493,26 @@ export default function LienReleaseModal({
     setFields((prev) => (prev ? { ...prev, [key]: value } : prev))
   }
 
+  /**
+   * v2.4296: a resumed draft keeps its typed fields, but the amount and the through date follow the
+   * bills and the form — before this, a chip clicked on a reopened draft changed the selection and
+   * left the amount and the page as they were (job 650's draft: both bills, $9,022.49 — bill #1's).
+   * A fresh window gets the same through the prefill effect.
+   */
+  const refillFromSelection = (nextForm: LienWaiverFormType, nextIds: ReadonlySet<string>) => {
+    if (!hydratedDraftRef.current || !job) return
+    const picked = invoices.filter((i) => nextIds.has(i.id))
+    const pre = buildLienWaiverPrefill(nextForm, { job, invoices: picked, issuer, ownerName, signerName: '' })
+    setFields((prev) => (prev ? { ...prev, amount: pre.amount, throughDate: pre.throughDate } : prev))
+  }
+
   const toggleInvoice = (id: string) => {
     userTouchedRef.current = true
-    setSelectedInvoiceIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
+    const next = new Set(selectedInvoiceIds)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    setSelectedInvoiceIds(next)
+    refillFromSelection(formType, next)
   }
 
   const editable = lienReleaseIsEditable(releaseRow)
@@ -937,7 +949,9 @@ export default function LienReleaseModal({
             const t = lienWaiverToggles(formType)
             const pick = (next: Partial<typeof t>) => {
               userTouchedRef.current = true
-              setFormType(lienWaiverFormFrom({ ...t, ...next }))
+              const nextForm = lienWaiverFormFrom({ ...t, ...next })
+              setFormType(nextForm)
+              refillFromSelection(nextForm, selectedInvoiceIds)
             }
             const picked = selectedInvoices.length === 1 && job ? pickLienWaiverForBill(job, selectedInvoices[0]!) : null
             return (

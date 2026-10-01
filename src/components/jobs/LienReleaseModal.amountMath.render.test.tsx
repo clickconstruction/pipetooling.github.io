@@ -121,3 +121,54 @@ describe('LienReleaseModal — how the amount is figured (v2.4296)', () => {
     expect((screen.getByLabelText('Amount ($)') as HTMLInputElement).value).toBe('17777.51')
   })
 })
+
+// v2.4296: a reopened draft — the amount and through date follow the bills and the form; typed fields stay.
+const DRAFT = {
+  id: 'draft-1',
+  job_id: 'j650',
+  form_type: 'conditional_progress',
+  status: 'draft',
+  amount: 9022.49,
+  invoice_ids: ['b1'],
+  voided_at: null,
+  created_at: '2026-10-01T16:31:20Z',
+  minted_at: null,
+  signed_at: null,
+  fields: { amount: '9022.49', checkFrom: 'Typed by hand LLC', companyName: 'Click Plumbing and Electrical', projectDescription: 'ATI Schertz', throughDate: '2026-07-15', signedDate: '2026-10-01', signerName: 'Malachi Whites', signerTitle: '' },
+}
+const chip = (n: number) => screen.getAllByRole('button').find((b) => b.textContent?.trim().startsWith(`#${n} `))!
+const amountBox = () => (screen.getByLabelText('Amount ($)') as HTMLInputElement).value
+
+describe('LienReleaseModal — a reopened draft follows its bills (v2.4296)', () => {
+  it('adding bill #2 refills the amount, the through date and the page; a typed field stays', async () => {
+    db.releases = [DRAFT]
+    renderWithProviders(<LienReleaseModal open onClose={() => undefined} job={job} invoice={bill1} signerNameFallback="Malachi Whites" />)
+    await screen.findByTestId('lien-waiver-form')
+    await settle()
+    await waitFor(() => expect(amountBox()).toBe('9022.49'))
+    fireEvent.click(chip(2))
+    await waitFor(() => expect(amountBox()).toBe('15722.49'))
+    expect(document.body.textContent).toContain('in the sum of $15,722.49')
+    expect(document.body.textContent).not.toContain('in the sum of $9,022.49')
+    expect(screen.queryByTestId('lien-waiver-typed-over')).toBeNull()
+    expect((screen.getByLabelText('Check from (owner / GC)') as HTMLInputElement).value).toBe('Typed by hand LLC')
+    // The through date follows the newest bill picked: bill #2, billed Sep 10.
+    expect(document.body.textContent).toContain('September 10, 2026')
+    // Taking bill #2 off again goes back to bill #1 alone.
+    fireEvent.click(chip(2))
+    await waitFor(() => expect(amountBox()).toBe('9022.49'))
+  })
+
+  it('switching the form refills the amount for that form', async () => {
+    db.releases = [DRAFT]
+    renderWithProviders(<LienReleaseModal open onClose={() => undefined} job={job} invoice={bill1} signerNameFallback="Malachi Whites" />)
+    const form = await screen.findByTestId('lien-waiver-form')
+    await settle()
+    await waitFor(() => expect(amountBox()).toBe('9022.49'))
+    fireEvent.click(within(form).getByRole('button', { name: 'Unconditional' }))
+    await waitFor(() => expect(amountBox()).toBe('17777.51'))
+    fireEvent.click(within(form).getByRole('button', { name: 'Conditional' }))
+    await waitFor(() => expect(amountBox()).toBe('9022.49'))
+  })
+})
+
