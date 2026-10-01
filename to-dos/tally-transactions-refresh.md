@@ -2,7 +2,7 @@
 name: "Job Parts Tally → Transactions: the team's queue, sorted where it is"
 number: 72
 group: ready
-status: asked 2026-09-30 · read against 90 days of prod · drawn as before / after, redrawn the same day as pass 2 (a person's day is the unit; the real Before is the Team purchases modal) · the row-cap defect it found shipped as v2.4259 · not built · the owner's look pending
+status: asked 2026-09-30 · read against 90 days of prod · drawn as before / after, redrawn the same day as pass 2 (a person's day is the unit; the real Before is the Team purchases modal) · the row-cap defect it found shipped as v2.4259 · the owner's go 2026-10-01 ("I like it — build to spec later") · not started
 summary: >
   The Transactions tab was built for the card holder to sort their own purchases, with a phone
   Sort mode and a clock-out nudge. Ninety days of production say the field does not: one assistant
@@ -17,11 +17,14 @@ summary: >
   holder's phone card carrying the same chip, and the page measuring its own guesses so the owner
   can later let the surest rule auto-apply.
 next: >
-  The owner's look at the mock-up and four calls (fuel on a two-job day; auto-apply gated on
-  measured accuracy; which roles see the team view; retire Materials Estimate). Then PR 1, the
-  suggestion kernel, then the team queue.
+  PR 1, the suggestion kernel, built to the pass-2 page beside this file (its cases are the
+  tests); then PR 2, the team queue. The four calls on the page are taken as drawn unless the
+  owner says otherwise before PR 2: even split leads on a two-job day with by-hours a chip away;
+  no rule auto-applies until PR 5 has measured it; dev, master, assistant and controller see the
+  team view; Materials Estimate retires. Ten minutes with Taunya on her wrong-guess cases before
+  PR 2.
 size: M (five PRs; the kernel and the queue are the two real ones)
-blocker: The owner's look, and ten minutes with Taunya on what she does when a guess is wrong.
+blocker: None.
 ver: —
 opinion: build — the sorter's minute per charge becomes a glance and a tap, and the page can prove its rules before any of them runs on its own.
 mockup: tally-transactions-refresh-before-after.html
@@ -34,7 +37,9 @@ mockup: tally-transactions-refresh-before-after.html
 2026-09-30: "take a look at the page /tally?tab=transactions — it was built a long time ago and I
 think worthy of a refresh to make it more useful. Take a look and understand how it works and how
 it's been used and come up with some proposals of how it could work better, then make a mockup and
-ask yourself is this the best we can do?"
+ask yourself is this the best we can do?" On pass 1: "is this the best we can do on the mockup?"
+On pass 2, 2026-10-01: "I like the job parts tally refresh, please add it to the punchlist so
+someone else can see the mockups and build to spec later."
 
 ## What the data says (prod, last 90 days, read-only over the pooler)
 
@@ -70,7 +75,15 @@ capped it at 1,000 rows, so a card past that lost its oldest rows before the dat
 payroll merge ran. Both callers now read through `lib/tally/fetchTallyLinkedMercuryRows.ts`
 (`docs/recent-features/v2.4259.md`).
 
-## The decision (drawn; the owner's look pending)
+## Where it stands
+
+The owner looked at pass 2 on 2026-10-01 and said build it to spec, later, by whoever picks it
+up. **The spec is the page beside this file** (`tally-transactions-refresh-before-after.html`,
+pass 2 — it replaced pass 1 in place; the same page is the artifact linked below). Every
+callout, chip reason and owner's call on it is the build list; the plan below is the order.
+Nothing is started. When PR 1 is cut, put the branch name in `status` and drop a session card.
+
+## The decision (drawn; the owner's go taken)
 
 One page for the sorter, with the guess on the card. Detail in the mock-up's callouts (the page
 beside this file; the same page as an artifact — https://claude.ai/artifact/WTDeVjMCS2mVBgb5TEzwWG);
