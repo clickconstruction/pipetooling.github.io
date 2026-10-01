@@ -88,6 +88,12 @@ export function SubmittalPartsEditor({
                 </>
               ) : null}
             </div>
+            {d.priced_label ? (
+              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.75rem', color: 'var(--text-amber-700)' }} data-testid="part-priced">
+                <span>In place of the priced <b style={{ fontWeight: 600 }}>{d.priced_label}</b>.</span>
+                <input type="text" aria-label={`Why part ${i + 1} and not the one priced`} placeholder="why: the GC's spec, lead time, the house's stock…" value={d.reason_note ?? ''} onChange={(e) => set(i, { reason_note: e.target.value })} style={{ ...inputStyle, flex: '1 1 14rem' }} />
+              </div>
+            ) : null}
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
               <label style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center', fontSize: '0.8125rem', color: d.on_submittal ? 'var(--text-strong)' : 'var(--text-muted)', cursor: canEditProduct ? 'pointer' : 'default' }} title="Off: order only. It is bought, and it shows on the procurement log, but not on the GC's submittal.">
                 <input type="checkbox" aria-label={`The GC sees part ${i + 1}`} checked={d.on_submittal} disabled={!canEditProduct} onChange={(e) => set(i, { on_submittal: e.target.checked })} />

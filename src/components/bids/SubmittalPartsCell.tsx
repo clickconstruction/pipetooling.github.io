@@ -6,6 +6,7 @@
  */
 import type { CSSProperties } from 'react'
 import { assemblyLine, formatPartQty, orderOnlyLine, partHouseIds, splitPartLabel, submittedParts, type SubmittalPartRow } from '../../lib/submittals/itemParts'
+import { formatPages } from '../../lib/submittals/submittalRevision'
 
 const quiet: CSSProperties = { fontSize: '0.7rem', color: 'var(--text-muted)' }
 const CALL: Record<string, { word: string; color: string }> = {
@@ -30,6 +31,7 @@ export function SubmittalPartsCell({ parts, houseNameById }: { parts: ReadonlyAr
             <b style={{ fontWeight: 600, color: 'var(--text-strong)', whiteSpace: 'nowrap' }}>{head}</b>
             {words ? <span style={{ ...quiet, fontSize: '0.75rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{words}</span> : null}
             {qty ? <span style={{ ...quiet, fontSize: '0.75rem', whiteSpace: 'nowrap' }}>{qty}</span> : null}
+            {(p.sheet_pages ?? []).length > 0 ? <span style={{ ...quiet, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }} data-testid="row-part-pages">{formatPages(p.sheet_pages)}</span> : null}
             {p.review_decision && CALL[p.review_decision] ? (
               <span style={{ fontSize: '0.7rem', fontWeight: 700, whiteSpace: 'nowrap', color: CALL[p.review_decision]!.color }} title={[p.reviewed_by_name, p.review_note ? `“${p.review_note}”` : '', p.decision_source === 'carried' ? 'approved on the last revision' : ''].filter(Boolean).join(' · ')} data-testid="row-part-call">
                 {CALL[p.review_decision]!.word}
@@ -38,6 +40,11 @@ export function SubmittalPartsCell({ parts, houseNameById }: { parts: ReadonlyAr
           </span>
         )
       })}
+      {shown.filter((p) => p.priced_label).map((p) => (
+        <span key={`priced-${p.id}`} style={{ ...quiet, color: p.reason_note ? 'var(--text-muted)' : 'var(--text-amber-700)' }} data-testid="row-part-priced">
+          {splitPartLabel(p.label).head} in place of the priced {splitPartLabel(p.priced_label).head}{p.reason_note ? `: ${p.reason_note}` : ' · say why with Edit'}
+        </span>
+      ))}
       {orderOnly ? (
         <span style={quiet} data-testid="row-order-only" title="Bought for the fixture, but not on the GC's submittal">
           Ordered, not submitted: {orderOnly}

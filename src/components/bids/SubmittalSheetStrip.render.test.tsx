@@ -102,4 +102,18 @@ describe('SubmittalSheetStrip', () => {
     expect(onConfirm).toHaveBeenCalledWith(0)
     expect(screen.queryByRole('button', { name: 'Ask the robot to split this file' })).toBeNull()
   })
+
+  it('2026-10-01 · Read its parts… leads on a house file with section stamps, sits beside Assign pages on an unread one, and is gone on a file that has none', () => {
+    const onReadParts = vi.fn()
+    const { unmount } = render(<SubmittalSheetStrip files={[{ ...files[0]!, sectioned: true }]} items={[]} thumbnails={{}} busy={false} onNeedThumbnails={() => {}} onAssign={() => {}} onUnassign={() => {}} onDone={() => {}} onRemove={() => {}} onAssignPages={() => {}} onReadParts={onReadParts} />)
+    fireEvent.click(screen.getByTestId('read-parts-open'))
+    expect(onReadParts).toHaveBeenCalledWith(0)
+    expect((screen.getByTestId('read-parts-open') as HTMLElement).style.background).toBe('rgb(37, 99, 235)')
+    unmount()
+    const second = render(<SubmittalSheetStrip files={files} items={[]} thumbnails={{}} busy={false} onNeedThumbnails={() => {}} onAssign={() => {}} onUnassign={() => {}} onDone={() => {}} onRemove={() => {}} onAssignPages={() => {}} onReadParts={onReadParts} />)
+    expect(screen.getByTestId('read-parts-open')).toBeTruthy()
+    second.unmount()
+    render(<SubmittalSheetStrip files={[{ ...files[0]!, sectioned: false }]} items={[]} thumbnails={{}} busy={false} onNeedThumbnails={() => {}} onAssign={() => {}} onUnassign={() => {}} onDone={() => {}} onRemove={() => {}} onAssignPages={() => {}} onReadParts={onReadParts} />)
+    expect(screen.queryByTestId('read-parts-open')).toBeNull()
+  })
 })

@@ -237,10 +237,14 @@ export type PartDraft = {
   supply_house_id: string | null
   lead_time_days: number | null
   stage: PartStage | null
+  /** Why this part and not the one priced (a part from the house's file in the takeoff's part's place). */
+  reason_note?: string | null
+  /** What the takeoff priced in its place — read only in the editor. */
+  priced_label?: string | null
 }
 
 export function partToDraft(p: SubmittalPartRow): PartDraft {
-  return { id: p.id, label: p.label, quantity: Number(p.quantity), on_submittal: p.on_submittal, supply_house_id: p.supply_house_id, lead_time_days: p.lead_time_days, stage: asPartStage(p.stage) }
+  return { id: p.id, label: p.label, quantity: Number(p.quantity), on_submittal: p.on_submittal, supply_house_id: p.supply_house_id, lead_time_days: p.lead_time_days, stage: asPartStage(p.stage), reason_note: p.reason_note ?? null, priced_label: p.priced_label ?? null }
 }
 
 /**
@@ -280,6 +284,7 @@ export function diffPartDrafts(
     if ((was.supply_house_id ?? null) !== d.supply_house_id) patch.supply_house_id = d.supply_house_id
     if ((was.lead_time_days ?? null) !== d.lead_time_days) patch.lead_time_days = d.lead_time_days
     if (asPartStage(was.stage) !== d.stage) patch.stage = d.stage
+    if (d.reason_note !== undefined && (was.reason_note ?? null) !== (d.reason_note?.trim() || null)) patch.reason_note = d.reason_note?.trim() || null
     if (Object.keys(patch).length > 0) updates.push({ id: was.id, patch })
   })
   return { deletes, updates, inserts }
