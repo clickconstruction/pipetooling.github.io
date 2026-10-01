@@ -102,6 +102,7 @@ export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   { kind: 'sender', ref: 'send-workflow-notification', audience: 'staff', exempt: 'Workflow step notifications to app users.' },
   { kind: 'sender', ref: 'statement-round-email-dispatch', audience: 'staff', exempt: 'The office\'s "Your statement round" email.' },
   { kind: 'sender', ref: 'gc-word-ask', audience: 'staff', exempt: 'The ask-by-link email to an account man — the office asking its own people.' },
+  { kind: 'sender', ref: 'send-lien-desk-summary', audience: 'staff', exempt: 'Where the liens stand — the Lien desk’s Share emailing the people who use the desk.' },
   { kind: 'sender', ref: 'sync-resend-emails', audience: 'staff', exempt: 'Dev tooling: mirrors the Resend log.' },
   { kind: 'sender', ref: 'test-email', audience: 'staff', exempt: 'Settings → Email templates & testing.' },
   { kind: 'sender', ref: 'weekly-movement-email-dispatch', audience: 'staff', exempt: 'The office\'s weekly stage-moves report.' },

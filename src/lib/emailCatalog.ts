@@ -210,6 +210,17 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     variants: ['a second channel beside certified mail (v2.3436)'],
   },
   {
+    id: 'lien_desk_summary',
+    name: 'Where the liens stand (Lien desk Share)',
+    group: 'lien',
+    audience: 'team',
+    builtWhere: 'server',
+    sender: 'send-lien-desk-summary',
+    editable: { kind: 'hardcoded' },
+    subjectExample: 'Liens, Oct 1: 23 notices due, $173,597, first by Oct 15',
+    variants: ['[TEST] to the sender (Email me a test)', 'one GC instead of the whole desk'],
+  },
+  {
     id: 'lien_release_to_customer',
     name: 'Signed lien release to customer',
     group: 'lien',

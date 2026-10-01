@@ -3802,6 +3802,10 @@ body.my-time-boundary-dragging {
 .lienMonthsClaim strong { font-size: 1.35rem; line-height: 1.2; color: var(--text-strong); }
 .lienDeskFooterSlot { display: grid; gap: 0.5rem; padding: 0.6rem 1.25rem 0.9rem; border-top: 1px solid var(--border); background: var(--bg-subtle); }
 .lienDeskFooterSlot:empty { display: none; }
+/* Lien desk Share (v2.4311): the What to send menu's rows — hover and the picked one need a class (an inline background would beat :hover). */
+.lienShareItem { background: var(--surface); }
+.lienShareItem:hover, .lienShareItem:focus-visible { background: var(--bg-subtle); }
+.lienShareItem[aria-checked="true"] { background: var(--bg-blue-tint); }
 .lienMonthsClaimCol { display: grid; align-content: center; gap: 0.35rem; min-width: 9.5rem; }
 .lienMonthsClaimTail { padding-left: 1.1rem; font-size: 0.72rem; color: var(--text-muted); line-height: 1.4; }
 .lienMonthsHistory { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem; padding-top: 0.5rem; border-top: 1px solid var(--border); }

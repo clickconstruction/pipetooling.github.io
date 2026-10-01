@@ -28,6 +28,8 @@ import { buildBankReturnNoticeEmail, type BankReturnNoticeInput } from '../../su
 import { renderCtRosterAuditEmail } from '../../supabase/functions/_shared/ctRosterAuditEmail'
 import type { CtRosterDiff } from '../../supabase/functions/_shared/ctRosterDiff'
 import { readyToBillSubject, readyToBillText, renderReadyToBillDetailed, type ReadyToBillPayload } from '../../supabase/functions/_shared/readyToBillEmail'
+import { lienStatusEmailHtml, lienStatusEmailText, lienStatusSubject, type LienStatusPayload } from '../../supabase/functions/_shared/lienDeskStatus'
+import { ymdAddDays } from '../../supabase/functions/_shared/appTimeZone'
 
 export type BuiltTeamEmail = { subject: string; html: string; text: string }
 
@@ -85,6 +87,50 @@ const SAMPLE_WORD_ASK_GCS = [
   { gcName: 'RMC · Dudley Mason', amount: 98_500, promise: null },
   { gcName: 'Structura', amount: 89_000, promise: { payBy: '2026-09-20', late: true, daysLate: 9 } },
 ] as const
+
+/**
+ * Where the liens stand for the sample company (v2.4311): five notices across three GCs, one
+ * waiting for approval, one owner to find, an affidavit short its legal description, and two
+ * windows already gone. The months and dates count from today so the email reads right any day.
+ */
+export function sampleLienStatusPayload(todayYmd: string): LienStatusPayload {
+  const month = (back: number) => {
+    const m = /^(\d{4})-(\d{2})/.exec(todayYmd)
+    const d = new Date(Date.UTC(Number(m?.[1] ?? 2026), Number(m?.[2] ?? 1) - 1 - back, 1))
+    return d.toISOString().slice(0, 7)
+  }
+  const soon = ymdAddDays(todayYmd, 14)
+  const later = ymdAddDays(todayYmd, 46)
+  const job = (n: number, name: string, gc: string, owed: number, months: string[], where: LienStatusPayload['jobs'][number]['where'], byYmd = soon, sinceYmd = '') => ({
+    jobId: `00000000-0000-4000-8000-00000000${n}`,
+    number: String(n),
+    name,
+    gc,
+    owed,
+    months,
+    where,
+    byYmd,
+    sinceYmd,
+  })
+  return {
+    v: 1,
+    asOf: `${todayYmd}T19:14:00.000Z`,
+    todayYmd,
+    gc: null,
+    jobs: [
+      job(1048, 'Cedar Bend Apartments, Building A', SAMPLE_GC.company, 24_800, [month(2)], 'approval', soon, ymdAddDays(todayYmd, -5)),
+      job(1052, 'Cedar Bend Apartments, Building B', SAMPLE_GC.company, 12_150, [month(2)], 'draft'),
+      job(1031, 'Lennox remodel', 'RMC · Dudley Mason', 9_800, [month(2), month(1)], 'draft'),
+      job(1039, 'Service visit, 628 Terrell Rd', 'RMC · Dudley Mason', 1_710, [month(1)], 'owner'),
+      job(1044, 'Mission Hills drains', 'Structura', 6_400, [month(1)], 'draft', later),
+    ],
+    liens: [{ number: '1012', name: 'Wildflower', gc: '', owed: 603, byYmd: soon, needs: ['legal'] }],
+    kindsUnset: 1,
+    trackingOwed: 0,
+    pastWindow: { jobs: 2, owed: 3_450 },
+    retainage: { jobs: 0, held: 0, firstYmd: '' },
+  }
+}
 
 /**
  * The Money waiting digest's payload for the sample company (v2.4161): three customers off
@@ -606,6 +652,11 @@ export function buildTeamSampleEmail(id: TeamSampleEmailId, ctx: TeamSampleConte
     case 'task_reminder_fallback': {
       const text = `Reminder: Pull the permit for ${SAMPLE_HOMEOWNER.name} — due today.\n\nOpen your checklist: ${origin}/checklist`
       return { subject: 'Task reminder', text, html: escapeEmailHtml(text).replace(/\n/g, '<br>') }
+    }
+    case 'lien_desk_summary': {
+      const p = sampleLienStatusPayload(ctx.todayYmd)
+      const o = { appUrl: origin, senderName: ctx.sender?.name ?? 'The office', note: '', readerIsLeader: ctx.recipient.role === 'master_technician' }
+      return { subject: lienStatusSubject(p), html: lienStatusEmailHtml(p, o), text: lienStatusEmailText(p, o) }
     }
     case 'test_email': {
       const text = `This is a test from Settings → Email templates.\n\nIf you can read this, Resend delivered it and the From line is right.`

@@ -129,6 +129,25 @@ const baseProps = {
 }
 
 describe('LienDeskModal', () => {
+  it('the title bar’s Share opens where the liens stand, from the same place on every tab (v2.4311)', async () => {
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} />)
+    await settle()
+    const share = document.querySelector('[data-lien-desk-share]') as HTMLButtonElement
+    expect(share.textContent).toContain('Share')
+    expect(share.getAttribute('aria-expanded')).toBe('false')
+    fireEvent.click(screen.getByRole('tab', { name: 'Calendar' }))
+    await settle()
+    expect(document.querySelector('[data-lien-desk-share]')).toBe(share)
+    fireEvent.click(share)
+    await settle()
+    const panel = screen.getByRole('dialog', { name: 'Share where the liens stand' })
+    expect(panel.textContent).toContain('We are about to send a lien notice on 1 job.')
+    expect(panel.textContent).toContain('$33,500 is owed on it.')
+    expect(share.getAttribute('aria-expanded')).toBe('true')
+    fireEvent.click(share)
+    expect(screen.queryByRole('dialog', { name: 'Share where the liens stand' })).toBeNull()
+  })
+
   it('lists the job under Needs the owner, blocks the send, and offers the Find the owner door', async () => {
     const onOpenEditJob = vi.fn()
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} onOpenEditJob={onOpenEditJob} />)
