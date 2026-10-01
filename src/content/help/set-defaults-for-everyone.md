@@ -6,11 +6,13 @@ keywords: defaults, org defaults, role defaults, new phone, new device, mobile c
 order: 40
 ---
 
-Some switches used to live only on the phone that set them: **Mobile cards** on Pipeline, **payroll auto-apply** on the Tally, the **Stripe mode**, and which alerts you had dismissed. A new or wiped phone started from scratch every time, and nothing on the server knew what the company preferred. Two things changed.
+Some switches used to live only on the phone that set them. A new or wiped phone started from scratch every time.
+
+Those switches were **Mobile cards** on Pipeline, **payroll auto-apply** on the Tally and the **Stripe mode**. Which alerts you had dismissed lived there too. Nothing on the server knew what the company preferred. Two things changed.
 
 ## Defaults for everyone
 
-**Settings → Company → Defaults for everyone** (dev and leader) is one short list. Each setting says what it does, with three dropdowns under it — **Everyone**, **Field roles**, **Office roles**. Set out as a table, a company's choices might read:
+**Settings → Company → Defaults for everyone** is one short list. Devs and leaders see it. Each setting says what it does, with three dropdowns under it. They are **Everyone**, **Field roles** and **Office roles**. Set out as a table, a company's choices might read:
 
 :::example For example
 | Setting | Everyone | Field roles | Office roles |
@@ -21,18 +23,18 @@ Some switches used to live only on the phone that set them: **Mobile cards** on 
 | Ran long on the Team board | Standard (1.5× the block and 1.5 h over) | No default | No default |
 :::
 
-- **Everyone** is the company-wide answer. A **role dropdown** beats it for those roles (field = subs, helpers, superintendents; office = everyone else).
-- A device that has **chosen for itself** keeps its choice — the ⋯ menu on Pipeline, the toggle on Tally, the Stripe switch in billing all still work exactly as before. The list only decides what a device starts on when it hasn't said anything.
-- **No default** means "each device decides as it does today" (Mobile cards keeps its width rule: phones under 560 px start on cards).
+- **Everyone** is the company-wide answer. A **role dropdown** beats it for those roles. Field roles are subs, helpers and superintendents. Office roles are everyone else.
+- A device that has **chosen for itself** keeps its choice. The ⋯ menu on Pipeline, the toggle on Tally and the Stripe switch in billing all still work as before. The list only decides what a device starts on when it has not said anything.
+- **No default** means each device decides as it does today. Mobile cards keeps its width rule: phones under 560 px start on cards.
 
-Job Mode already has its own role default (on for subs and helpers) and isn't in this list.
+Job Mode already has its own role default, on for subs and helpers. It is not in this list.
 
 ## Dismissed alerts follow you
 
-When you dismiss the bulk-deletions notice, the claim-dev alert or the rejected-notification banner, that is now remembered on your account, not just on that browser. A new phone starts with the same alerts dismissed. Nothing to set up.
+When you dismiss the bulk-deletions notice, the claim-dev alert or the rejected-notification banner, that is now remembered on your account. It is not tied to that browser. A new phone starts with the same alerts dismissed. Nothing to set up.
 
 ## Things worth knowing
 
-- Changing a default doesn't reach into devices that already chose; it reaches the ones that haven't.
+- Changing a default does not reach into devices that already chose. It reaches the ones that have not.
 - Stripe mode: **Live** is the real account. Only set **Test** as a default while rehearsing, and set it back.
-- Ran long on the Team board: how far past its dispatch block a clocked day runs before Jobs → Team flags it — gentle (1.25× and 1 h over), standard (1.5× and 1.5 h over), loose (2× and 2 h over), or off. Field and office roles can differ.
+- Ran long on the Team board sets how far a clocked day may run past its dispatch block. Beyond that, Jobs → Team flags it. Gentle is 1.25× and 1 h over. Standard is 1.5× and 1.5 h over. Loose is 2× and 2 h over. Or off. Field and office roles can differ.
