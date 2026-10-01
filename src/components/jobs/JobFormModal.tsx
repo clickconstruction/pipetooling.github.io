@@ -2996,6 +2996,7 @@ export default function JobFormModal({
                 onBillRow={(id) => void billStageRow(id)}
                 billingFixtureId={billingStageFixtureId}
                 disabled={creatingSegmentInvoice}
+                coverage={segmentCoverage}
               />
               <JobFormInvoiceList
                 editing={editing}
