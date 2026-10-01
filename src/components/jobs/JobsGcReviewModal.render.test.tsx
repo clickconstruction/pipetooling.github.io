@@ -129,6 +129,11 @@ describe('JobsGcReviewModal', () => {
     const knight = within(rowFor('Knight Contracting'))
     expect(knight.getByRole('table')).toBeTruthy()
     expect(knight.getByText(/651 · Palomino Trail/)).toBeTruthy()
+    // The bill's two lien waivers (v2.4280): nothing sent yet on an open bill — the conditional is owed, the unconditional waits for the check.
+    expect(knight.getByText('Lien waivers')).toBeTruthy()
+    const waivers = knight.getByTestId('gc-review-waivers')
+    expect(waivers.textContent).toContain('Conditional · none — send it')
+    expect(waivers.textContent).toContain('Unconditional · when paid')
     expect(knight.getByText(/✓ Certified · Taunya/)).toBeTruthy()
     expect(knight.getByRole('button', { name: 'Share statement for Knight Contracting' })).toBeTruthy()
     expect(screen.getAllByRole('table')).toHaveLength(1)

@@ -2,7 +2,7 @@
 title: send a GC our lien waiver
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: lien waiver, GC, general contractor, conditional, unconditional, progress, final, release of lien, he signs now, sign now, send to the GC, waiver PDF, 53.284, bill, pay app, send with the bill, bill tab, add waiver, waivers to sign, needs you, sign them, GC room, portal, what the GC sees
+keywords: lien waiver, GC, general contractor, conditional, unconditional, progress, final, release of lien, he signs now, sign now, send to the GC, waiver PDF, 53.284, bill, pay app, send with the bill, bill tab, add waiver, waivers to sign, needs you, sign them, GC room, portal, what the GC sees, GC review, they hold, we owe
 ---
 A GC often wants a lien waiver with each bill. The waiver says we give up our lien right for that payment. Texas has four forms. The app picks the right one from the bill, and the leader signs it in the app.
 
@@ -80,6 +80,16 @@ Once the waiver is signed, three buttons are ready.
 - {{button:outline|Print}} opens the letter for a printer.
 
 If the button is grey, the GC has no billing email on file. Add it on the GC's customer record and come back.
+
+## On GC Review
+
+Open a GC's row in **GC Review**. Each bill ends with two chips. They read the same way as on the Bill tab.
+
+- Green means done. {{chip:green|Conditional ✓ sent Sep 30}}
+- Amber is the move before the call. {{chip:yellow|Conditional · none — send it}}
+- Grey waits on the money. {{chip:gray|Unconditional · when paid}}
+
+Click a chip to open the job. The Bill tab's door adds or sends the waiver.
 
 ## What the GC sees
 
