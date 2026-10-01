@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import {
@@ -12,6 +12,8 @@ import {
   lienWaiverDatesUnfinished,
   lienWaiverFormFrom,
   lienWaiverInvoiceOpenRemaining,
+  lienWaiverMoney,
+  lienWaiverPrefillAmount,
   lienWaiverPdfFilename,
   lienWaiverTitle,
   lienWaiverToggles,
@@ -45,6 +47,8 @@ import {
 import { LIEN_RELEASE_DOCUMENTS_BUCKET, lienReleaseMintedPdfPath } from '../../lib/jobs/lienReleaseDocuments'
 import LienReleaseSignModal from './LienReleaseSignModal'
 import { LienWaiverFootPreview } from './LienWaiverFootPreview'
+import { LienWaiverAmountMath, MarkedWaiverAmount } from './LienWaiverAmountMath'
+import { lienWaiverAlreadyCovered, lienWaiverAmountMath, lienWaiverPaidUnwaived } from '../../lib/jobs/lienWaiverAmountMath'
 import {
   customerAddressLienGaps,
   customerAddressLienReady,
@@ -501,6 +505,14 @@ export default function LienReleaseModal({
 
   const editable = lienReleaseIsEditable(releaseRow)
   const rowStatus = releaseRow ? lienReleaseStatus(releaseRow) : null
+  // v2.4296: how the amount is figured, a waiver already covering a picked bill, paid money not yet waived.
+  const [amountHot, setAmountHot] = useState(false)
+  const amountMath = useMemo(() => (job ? lienWaiverAmountMath(formType, job, selectedInvoices, invoices) : null), [job, formType, selectedInvoices, invoices])
+  const amountCoverage = useMemo(
+    () => (editable ? lienWaiverAlreadyCovered(formType, selectedInvoices.map((i) => i.id), invoices, historyRows, releaseRow?.id ?? null) : null),
+    [editable, formType, selectedInvoices, invoices, historyRows, releaseRow?.id],
+  )
+  const paidUnwaived = useMemo(() => (job && editable ? lienWaiverPaidUnwaived(formType, job, selectedInvoices, historyRows) : null), [job, editable, formType, selectedInvoices, historyRows])
 
   /** The exact row payload for the current document state (draft and mint share it). */
   const buildRowPayload = useCallback(() => {
@@ -1085,7 +1097,24 @@ export default function LienReleaseModal({
                           fontWeight: on ? 600 : 400,
                         }}
                       >
-                        #{idx + 1} · ${Number(i.amount ?? 0).toLocaleString('en-US')}
+                        {(() => {
+                          // v2.4296: the chip names what is still owed; the bill's face and any waiver on file under it.
+                          const face = Number(i.amount ?? 0)
+                          const paidOn = face - openRem
+                          const onFile = historyRows.some((r) => r.voided_at == null && lienReleaseStatus(r) !== 'draft' && r.id !== releaseRow?.id && (r.invoice_ids ?? []).includes(i.id))
+                          const sub = paidOn <= 0.005 ? 'nothing paid' : openRem <= 0.005 ? 'paid in full' : `of $${face.toLocaleString('en-US')}`
+                          return (
+                            <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1 }}>
+                              <span style={{ fontWeight: 700 }}>
+                                #{idx + 1} · {openRem <= 0.005 ? `$${face.toLocaleString('en-US')}` : `${lienWaiverMoney(String(openRem))} owed`}
+                              </span>
+                              <span style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', fontWeight: 400 }}>
+                                {sub}
+                                {onFile ? ' · waiver on file' : ''}
+                              </span>
+                            </span>
+                          )
+                        })()}
                       </button>
                     )
                   })}
@@ -1096,7 +1125,8 @@ export default function LienReleaseModal({
               </div>
             )}
             {visibleFields.map((key) => (
-              <label key={key} style={{ display: 'block', marginBottom: '0.65rem', fontSize: '0.875rem' }}>
+              <Fragment key={key}>
+              <label style={{ display: 'block', marginBottom: '0.65rem', fontSize: '0.875rem' }}>
                 <span style={{ display: 'block', fontWeight: 500, marginBottom: '0.2rem' }}>{FIELD_LABELS[key]}</span>
                 <input
                   type={key === 'throughDate' || key === 'signedDate' ? 'date' : 'text'}
@@ -1114,6 +1144,35 @@ export default function LienReleaseModal({
                   }}
                 />
               </label>
+              {key === 'amount' ? (
+                <LienWaiverAmountMath
+                  math={amountMath}
+                  coverage={amountCoverage}
+                  paidUnwaived={paidUnwaived}
+                  typedAmount={fields.amount}
+                  editable={editable}
+                  canDiscard={rowStatus === 'draft'}
+                  onUseAmount={(n) => setField('amount', n.toFixed(2))}
+                  onOpenCovered={() => {
+                    if (amountCoverage) viewHistoryRelease(amountCoverage.release)
+                  }}
+                  onDiscard={() => {
+                    if (!releaseRow) return
+                    void (async () => {
+                      await voidHistoryRelease(releaseRow)
+                      onClose()
+                    })()
+                  }}
+                  onWaivePaid={() => {
+                    // The same bills, now as the waiver for money already in hand; the amount follows (a resumed draft keeps no prefill).
+                    userTouchedRef.current = true
+                    setFormType('unconditional_progress')
+                    if (job) setField('amount', lienWaiverPrefillAmount('unconditional_progress', job, selectedInvoices).toFixed(2))
+                  }}
+                  onHover={setAmountHot}
+                />
+              ) : null}
+              </Fragment>
             ))}
             {rowStatus !== 'signed' && !releaseRow?.voided_at ? (
               <div style={{ marginTop: '0.75rem', padding: '0.6rem 0.7rem', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-subtle)', fontSize: '0.75rem' }} data-testid="lien-waiver-signer">
@@ -1221,7 +1280,7 @@ export default function LienReleaseModal({
               </p>
               {paragraphs.map((p, i) => (
                 <p key={i} style={{ margin: '0 0 0.7em' }}>
-                  {p}
+                  <MarkedWaiverAmount text={p} amountLabel={lienWaiverMoney(fields.amount)} on={amountHot} />
                 </p>
               ))}
               <LienWaiverFootPreview foot={foot} />
