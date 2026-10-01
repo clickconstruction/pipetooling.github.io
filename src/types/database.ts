@@ -10268,6 +10268,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "job_lien_releases_signed_on_device_of_fkey"
+            columns: ["signed_on_device_of"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "job_lien_releases_signer_user_id_fkey"
             columns: ["signer_user_id"]
             isOneToOne: false
