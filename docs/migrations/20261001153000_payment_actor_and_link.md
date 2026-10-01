@@ -1,4 +1,4 @@
-# 20260930235000_payment_actor_and_link.sql (2026-09-30, v2.4289)
+# 20261001153000_payment_actor_and_link.sql (2026-10-01, v2.4289)
 
 Who recorded a payment, and when a hand-recorded payment was linked to its bank deposit (punch list #74 PR 4 of 4). Found on 2026-09-30: 13 of September's 38 Accounts Receivable payments had no name on their job-history event. All 13 were Stripe bills marked paid by check through `record-stripe-invoice-out-of-band-payment`, which inserts with the service role, so `auth.uid()` was null; the deposit was linked in Accounts Receivable afterwards, an UPDATE nothing logged.
 
@@ -9,4 +9,4 @@ Who recorded a payment, and when a hand-recorded payment was linked to its bank 
 - **`list_ar_deposit_trails`** — dropped and remade (the return shape grows): `payment_type`, `reference_number`, `recorded_by_hand` (the reference is not the deposit's Mercury id), `linked_at`, `linked_by`; `applied_by` is `created_by`'s name first, the history's actor second.
 - **`mark_invoice_paid_from_stripe`** — the 5-argument form dropped, remade from its live body (`pg_get_functiondef`, 2026-09-30) with `p_recorded_by uuid default null` written to `created_by`. A full Mark Paid lands here through `stripe-webhook`, which reads the caller from the invoice's `pt_recorded_by` metadata (the function sets it). The old webhook's 5-named-argument call still resolves (the default fills the sixth).
 
-Apply order: **client first** (the trail reads the new columns as optional), then `supabase db push` from a main checkout together with `20260930230000`, then `supabase functions deploy record-stripe-invoice-out-of-band-payment` and `supabase functions deploy stripe-webhook` (both now send the caller; until the column and the argument exist those calls would fail, so the push comes before the deploys), then the gen-types PR.
+Apply order: **client first** (the trail reads the new columns as optional), then `supabase db push` from a main checkout (`20260930230000` is already on prod), then `supabase functions deploy record-stripe-invoice-out-of-band-payment` and `supabase functions deploy stripe-webhook` (both now send the caller; until the column and the argument exist those calls would fail, so the push comes before the deploys), then the gen-types PR.

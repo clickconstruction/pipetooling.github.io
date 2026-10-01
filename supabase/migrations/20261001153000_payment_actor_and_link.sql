@@ -1,7 +1,7 @@
 SET lock_timeout = '3s';
 
 -- Who applied a payment, and when it was linked to a bank deposit
--- (docs/migrations/20260930235000_payment_actor_and_link.md, punch list #74 PR 4).
+-- (docs/migrations/20261001153000_payment_actor_and_link.md, punch list #74 PR 4).
 --
 -- Until now the only record of who recorded a payment was the job history's "Payment" event,
 -- stamped with auth.uid(). Mark Paid on a Stripe bill (record-stripe-invoice-out-of-band-payment)
