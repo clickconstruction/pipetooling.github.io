@@ -112,6 +112,7 @@ export function ArDepositRow({
   state,
   trail = null,
   cameBackNote = null,
+  clearsNote = null,
   kindBadges,
   markMode,
   canApply,
@@ -126,6 +127,8 @@ export function ArDepositRow({
   trail?: ArDepositTrail | null
   /** v2.4328: "2 came back · Apr" — this payer's checks the bank sent back in the last year. */
   cameBackNote?: string | null
+  /** v2.4333: "clears about Oct 8" — an applied check that can still come back. */
+  clearsNote?: string | null
   kindBadges: Record<string, MercuryKindBadge>
   markMode: boolean
   canApply: boolean
@@ -176,6 +179,11 @@ export function ArDepositRow({
         {cameBackNote ? (
           <div data-testid="ar-deposit-came-back-note" style={{ fontSize: '0.72rem', color: 'var(--text-amber-800)', marginTop: 3, fontWeight: 600 }}>
             {cameBackNote}
+          </div>
+        ) : null}
+        {clearsNote ? (
+          <div data-testid="ar-deposit-clears-note" style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 3 }}>
+            {clearsNote}
           </div>
         ) : null}
       </div>

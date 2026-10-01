@@ -179,6 +179,8 @@ You press {{button:blue|Bill Customer}}. The modal opens on **Stripe bill**. It 
 
 A job needs a linked customer before it can be billed. For Stripe the customer needs an email. The modal guides you if something is missing.
 
+Sometimes checks from the payer came back this past year. Then the modal says so. It reads {{chip:yellow|2 checks came back · Apr}} and suggests a card or a bank transfer. It never stops the bill.
+
 **Opening Bill Customer changes nothing.** The RTB amount you see is worked out on the spot. It comes from the job total, payments made and the invoices already on the job. The bill row itself is written only when you press a send button. Those are {{button:blue|Create Stripe invoice}}, {{button:blue|Save}} on HouseCall Pro, or {{button:blue|Send invoice}} on Physical. You press {{button:outline|Cancel}} and the job is exactly as you found it. No draft appears and no draft resizes.
 
 :::example If the remainder moved while the modal was open

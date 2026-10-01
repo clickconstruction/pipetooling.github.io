@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CHECK_CLEAR_DAYS, billCheckClearsYmd, isCheckPayment } from './checkClearing'
+import { CHECK_CLEAR_DAYS, billCheckClearsYmd, depositClearsYmd, isCheckPayment } from './checkClearing'
 import { lienWaiverCellForBill } from './lienWaiverCell'
 
 const pay = (over: Partial<{ invoice_id: string | null; amount: number; paid_on: string | null; payment_type: string | null }>) => ({
@@ -43,5 +43,15 @@ describe('the waiver cell waits for the check', () => {
     const open = lienWaiverCellForBill([], 'inv-1', false, '2026-10-08')
     expect(open.clearsYmd).toBeNull()
     expect(open.next).toBe('add_conditional')
+  })
+})
+
+describe('v2.4333: depositClearsYmd — the Accounts Receivable row of an applied check', () => {
+  it('posted Oct 1 and applied: clears Oct 8; untouched, a card, or a week old: nothing', () => {
+    expect(depositClearsYmd({ kind: 'checkDeposit', consumed: 4478 }, '2026-10-01', '2026-10-02')).toBe('2026-10-08')
+    expect(depositClearsYmd({ kind: 'checkDeposit', consumed: 0 }, '2026-10-01', '2026-10-02')).toBeNull()
+    expect(depositClearsYmd({ kind: 'externalTransfer', consumed: 100 }, '2026-10-01', '2026-10-02')).toBeNull()
+    expect(depositClearsYmd({ kind: 'checkDeposit', consumed: 4478 }, '2026-10-01', '2026-10-08')).toBeNull()
+    expect(depositClearsYmd({ kind: 'checkDeposit', consumed: 4478 }, null, '2026-10-02')).toBeNull()
   })
 })
