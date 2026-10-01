@@ -11,7 +11,8 @@ When the office decides someone can, you flip the switch. That one switch is the
 
 ## Flip the switch
 
-- **Settings → Active accounts**: every helper and sub row has a checkbox under their last login, *Needs supervision*. You untick it and the label reads *Can run a job*.
+- **People → Users → Account**: every helper and sub row has a box in the **Supervision** column. You tick it and the row reads *can run*.
+- **Their desk**: the **Supervision** row under Access & account. You tick **Can run a job on their own**.
 - **People → Users**: you open the ⋯ menu on a helper or sub and choose *Can run a job*. You choose *Needs supervision* to put it back. The row shows a small chip with the current state.
 
 Only a dev, a master or an assistant can flip it, and never on their own account. New helper and sub accounts start with it on.

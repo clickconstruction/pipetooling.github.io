@@ -61,7 +61,8 @@ export function PersonDeskBody({
   useEffect(() => {
     if (serviceTypeNames.size > 0) return
     void (async () => {
-      const { data } = await supabase.from('service_types').select('id, name')
+      // In the app's own trade order, so the Trades… checklist reads like everywhere else.
+      const { data } = await supabase.from('service_types').select('id, name').order('sequence_order', { ascending: true })
       const m = new Map<string, string>()
       for (const r of (data ?? []) as Array<{ id: string; name: string }>) m.set(r.id, r.name)
       setServiceTypeNames(m)

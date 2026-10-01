@@ -8,6 +8,11 @@ export type PersonDeskUserRow = PersonKeyUserRow & {
   superintendent_service_type_ids: string[] | null
   subcontractor_service_type_ids: string[] | null
   helpers_service_type_ids: string[] | null
+  /** Account on the desk (PR B): the switches and seat the Active Accounts window used to hold. */
+  needs_supervision: boolean | null
+  team_prospects_access: boolean | null
+  estimator_prospects_access: boolean | null
+  counttooling_user_id: string | null
 }
 
 export type PersonDeskData = {
@@ -20,7 +25,7 @@ export type PersonDeskData = {
 }
 
 const USER_SELECT =
-  'id, name, email, role, archived_at, read_only, last_sign_in_at, estimator_service_type_ids, primary_service_type_ids, superintendent_service_type_ids, subcontractor_service_type_ids, helpers_service_type_ids'
+  'id, name, email, role, archived_at, read_only, last_sign_in_at, estimator_service_type_ids, primary_service_type_ids, superintendent_service_type_ids, subcontractor_service_type_ids, helpers_service_type_ids, needs_supervision, team_prospects_access, estimator_prospects_access, counttooling_user_id'
 const PERSON_SELECT = 'id, name, email, kind, archived_at, account_user_id'
 
 /**

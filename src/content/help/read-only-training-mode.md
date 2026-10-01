@@ -20,7 +20,7 @@ If the invite link expires before they use it, you run **Invite via email** agai
 ## Turn it on for an existing account
 
 1. You open People → Users and switch to the **Account** lens. The Training checkbox is on every row there. Or you open the person's desk.
-2. You find the person's row. In the **Last login** column, you tick the {{chip:yellow|Read-only}} checkbox under their last-login time. The Person Desk's *Access & account* section has the same switch on its **Training mode** row.
+2. You find the person's row and tick its **Training** box. On the desk, the same switch is the **Read-only** box on the **Training mode** row.
 
 :::example What they experience
 They sign in normally and see an amber **Training mode — read-only** banner at the top of every page. Browsing, searching, and opening records all work; anything that would save a change is rejected with an error instead of saving. Clocking in and out is the exception — punches save normally and go through the usual hours approval.
