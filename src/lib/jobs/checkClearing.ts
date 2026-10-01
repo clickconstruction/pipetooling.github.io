@@ -40,3 +40,19 @@ export function billCheckClearsYmd(invoiceId: string, payments: ReadonlyArray<Cl
   const clears = ymdAddDays(latest, days)
   return clears > todayYmd ? clears : null
 }
+
+/**
+ * v2.4333: a check deposit applied to bills that has not cleared yet — "clears about Oct 8" on
+ * its Accounts Receivable row. The deposit's posting day (the company calendar) plus `days`;
+ * null for anything but a check deposit, one nothing was applied from, or one that has cleared.
+ */
+export function depositClearsYmd(
+  d: { kind?: string | null; posted_at?: string | null; consumed?: number | string | null },
+  postedYmd: string | null,
+  todayYmd: string,
+  days: number = CHECK_CLEAR_DAYS,
+): string | null {
+  if ((d.kind ?? '') !== 'checkDeposit' || !((Number(d.consumed) || 0) > 0) || !postedYmd) return null
+  const clears = ymdAddDays(postedYmd, days)
+  return clears > todayYmd ? clears : null
+}

@@ -47,6 +47,7 @@ import {
 } from '../../../supabase/functions/_shared/paidJobBillGuard'
 import BillCustomerLienReleaseStrip from './BillCustomerLienReleaseStrip'
 import BillCustomerOwnerLine from './BillCustomerOwnerLine'
+import { BillCustomerReturnedChecksLine } from './BillCustomerReturnedChecksLine'
 import JobContractStrip from './JobContractStrip'
 import { StripeBillPreSubmitPreview } from './StripeBillPreSubmitPreview'
 import StripeBillingModeToggle from './StripeBillingModeToggle'
@@ -2324,6 +2325,8 @@ export default function SendRecordInvoiceModal({
             never a gate, and outside the email-gated Send-to block so a job whose customer row has no
             email still sees it (found in the 2026-09-15 live pass). */}
         <BillCustomerOwnerLine jobId={job.id} userId={authUser?.id ?? null} />
+        {/* v2.4333 (punch list #76): the payer's checks the bank sent back this past year — never a gate. */}
+        <BillCustomerReturnedChecksLine payerCustomerId={contactsCustomerId} />
       </>
     )
   }
