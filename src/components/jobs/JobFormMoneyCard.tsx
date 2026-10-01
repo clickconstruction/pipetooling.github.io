@@ -236,18 +236,21 @@ export function JobFormMoneyCard({
             const busy = billingFixtureId === l.key
             return (
               <div key={l.key} className="jobMoneyLine" data-testid={`money-line-${l.key}`}>
-                <span className="tick">
-                  {l.selectable ? (
+                {l.selectable ? (
+                  // A label, so on a touch screen its 44 px ring (index.css) picks the line too.
+                  <label className="tick">
                     <input
                       type="checkbox"
                       checked={selectedIds.has(l.key)}
                       onChange={() => onToggleSegment(l.key)}
                       aria-label={`Pick ${l.label} for a bill`}
                     />
-                  ) : (
+                  </label>
+                ) : (
+                  <span className="tick">
                     <span aria-hidden className="dot" style={{ background: seg ? blockFill(seg) : 'var(--border-strong)' }} />
-                  )}
-                </span>
+                  </span>
+                )}
                 <span className="what">
                   <b className="nm">{l.label}</b>
                   <span className={`words tone-${l.tone}`}>

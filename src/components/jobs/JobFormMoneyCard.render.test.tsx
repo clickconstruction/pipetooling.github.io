@@ -117,6 +117,18 @@ describe('the money card — lines and coverage (v2.1132, v2.4303)', () => {
     expect(onToggleSegment).toHaveBeenLastCalledWith('b')
   })
 
+  it('touch: the tick box sits in a label, so a press beside the box (its 44 px ring) picks the line too', () => {
+    const onToggleSegment = vi.fn()
+    renderCard({ fixtures, coverage, bar: { total: 3000, paid: 0, billedUnpaid: 1500, draft: 0, remaining: 1500 }, onToggleSegment })
+    const box = within(screen.getByTestId('money-line-c')).getByRole('checkbox')
+    const label = box.closest('label.tick')
+    expect(label).toBeTruthy()
+    fireEvent.click(label!)
+    expect(onToggleSegment).toHaveBeenLastCalledWith('c')
+    // A line that cannot be picked keeps its plain dot, with no label to press.
+    expect(screen.getByTestId('money-line-a').querySelector('label.tick')).toBeNull()
+  })
+
   it('bills the picked lines for what is left on them, and says what was taken off', () => {
     const onBillPicked = vi.fn()
     renderCard({

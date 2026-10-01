@@ -909,6 +909,7 @@ export function JobFormFixturesSection({
                         autoFocus
                         type="text"
                         inputMode="decimal"
+                        className="jobLineTotalInput"
                         aria-label="Job Total — type the total you agreed and the discount takes the difference"
                         value={totalDraft}
                         onChange={(e) => setTotalDraft(e.target.value.replace(/[^0-9.,]/g, ''))}
