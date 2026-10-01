@@ -41,6 +41,16 @@ function input(releases: JobLienReleaseRow[], over: Partial<BillPaperworkWaiverI
 const SENTENCE_RULES = /[—–;()]/
 
 describe('billPaperworkWaiverRow (v2.4299)', () => {
+  it('v2.4330: paid by a check still clearing — the unconditional waits, says until when, and is not the filled button', () => {
+    const r = billPaperworkWaiverRow({ ...input([rel({ id: 'c1', form_type: 'conditional_progress', status: 'issued', sent_to_customer_at: '2026-09-30T15:00:00Z' })], {}, true), cell: lienWaiverCellForBill([rel({ id: 'c1', form_type: 'conditional_progress', status: 'issued', sent_to_customer_at: '2026-09-30T15:00:00Z' })], 'inv', true, '2026-10-08'), paidYmd: '2026-10-01' })
+    expect(r.tone).toBe('plain')
+    expect(r.headline).toBe('Paid Oct 1 by check. The unconditional waits for it to clear.')
+    expect(r.sub).toBe('It clears about Oct 8. An unconditional waiver holds even if the check comes back.')
+    expect(r.action).toEqual({ kind: 'add_unconditional', label: 'Add the unconditional', primary: false })
+    expect(r.steps[1]).toEqual({ text: 'Unconditional, once it clears', state: 'open' })
+    expect(SENTENCE_RULES.test(r.headline) || SENTENCE_RULES.test(r.sub ?? '')).toBe(false)
+  })
+
   it('job 251 today: nothing started, past due, a GC with no email — the row says the stake and offers the bill’s email', () => {
     const row = billPaperworkWaiverRow(input([], { recipientEmail: null, daysPastDue: 35 }))
     expect(row).toMatchObject({
