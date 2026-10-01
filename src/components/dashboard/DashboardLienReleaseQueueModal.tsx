@@ -206,7 +206,7 @@ export function DashboardLienReleaseQueueModal({
               </h2>
               <p style={{ margin: '0.25rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)', maxWidth: '66ch' }}>
                 Each release below was issued as conditional and its check has since cleared. The customer is owed the
-                unconditional version. Issuing it removes the row.
+                unconditional version. Issuing it removes the row; the Release of Lien window it opens has <strong>Send to the GC</strong> once it is signed.
               </p>
             </div>
             <button
