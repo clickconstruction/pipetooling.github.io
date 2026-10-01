@@ -36,10 +36,13 @@ const btn: React.CSSProperties = {
 export default function JobContractStrip({
   job,
   variant = 'strip',
+  quiet = false,
 }: {
   job: JobWithDetails | null
-  /** strip = boxed line (bill modals); inline = chip + buttons only (fact row value). */
-  variant?: 'strip' | 'inline'
+  /** strip = boxed line (bill modals); inline = chip + buttons only (fact row value); row = one row of View bill's paperwork card (v2.4299). */
+  variant?: 'strip' | 'inline' | 'row'
+  /** Row only: another row of the card holds the move that matters, so Send contract is drawn plain. */
+  quiet?: boolean
 }) {
   const { coverage, rows, reload } = useJobContractCoverage(job)
   const { user: authUser } = useAuth()
@@ -80,7 +83,7 @@ export default function JobContractStrip({
   const openPrimary = () => setModalOpen(true)
   const controls = (
     <>
-      <JobContractChip coverage={coverage} onClick={openPrimary} />
+      {variant === 'row' ? null : <JobContractChip coverage={coverage} onClick={openPrimary} />}
       {coverage.kind === 'signed' && coverage.documentUrl ? (
         <a href={coverage.documentUrl} target="_blank" rel="noreferrer" style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-link)', textDecoration: 'none', whiteSpace: 'nowrap' }} data-testid="contract-open-link">
           Open the contract ↗
@@ -118,7 +121,7 @@ export default function JobContractStrip({
         </button>
       ) : null}
       {coverage.kind === 'none' || coverage.kind === 'draft' ? (
-        <button type="button" style={{ ...btn, background: 'var(--text-link)', borderColor: 'var(--text-link)', color: 'white' }} onClick={() => setModalOpen(true)}>
+        <button type="button" style={quiet ? btn : { ...btn, background: 'var(--text-link)', borderColor: 'var(--text-link)', color: 'white' }} onClick={() => setModalOpen(true)}>
           {variant === 'inline' ? 'Send contract' : 'Send one to sign'}
         </button>
       ) : coverage.kind === 'sent' ? (
@@ -158,11 +161,37 @@ export default function JobContractStrip({
     </>
   )
   if (variant === 'inline') return <span style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>{controls}</span>
-  const tone = coverage.kind === 'signed' ? 'var(--bg-green-tint)' : coverage.kind === 'sent' ? 'var(--bg-amber-tint)' : 'var(--bg-subtle)'
   // v2.4301: a paper filed for several jobs names them; a job with nothing on file hears of the paper its sibling jobs share.
   const myPaper = coverage.kind === 'signed' && coverage.source === 'paper' ? papers.find((pp) => pp.jobIds.includes(job.id)) : undefined
   const coversLine = myPaper ? contractCoversLine(myPaper.jobIds.map((id) => numById.get(id) ?? '')) : null
   const offers = coverage.kind === 'none' || coverage.kind === 'draft' ? siblingPaperOffers(papers, job.id) : []
+  const siblingOffer = (
+    <JobContractSiblingOffer
+      jobId={job.id}
+      offers={offers}
+      numById={numById}
+      onAdded={() => {
+        void reload()
+        void reloadPapers()
+      }}
+    />
+  )
+  if (variant === 'row') {
+    return (
+      <div className="billPaperworkRow" title={jobContractChipTitle(coverage)} data-testid="paperwork-contract-row">
+        <span className="billPaperworkLabel">Contract</span>
+        <span style={{ minWidth: 0, fontWeight: coverage.kind === 'none' ? 400 : 600 }}>{coverage.kind === 'none' ? 'No signed agreement on file' : label}</span>
+        <span className="billPaperworkControls">{controls}</span>
+        {coversLine ? (
+          <span className="billPaperworkUnder" style={{ fontSize: '0.75rem', color: 'var(--text-green-800)' }} data-testid="contract-covers-line">
+            {coversLine}
+          </span>
+        ) : null}
+        {offers.length > 0 ? <div className="billPaperworkUnder">{siblingOffer}</div> : null}
+      </div>
+    )
+  }
+  const tone = coverage.kind === 'signed' ? 'var(--bg-green-tint)' : coverage.kind === 'sent' ? 'var(--bg-amber-tint)' : 'var(--bg-subtle)'
   return (
     <div style={{ marginBottom: '0.75rem' }}>
       <div
@@ -180,15 +209,7 @@ export default function JobContractStrip({
         </span>
         {controls}
       </div>
-      <JobContractSiblingOffer
-        jobId={job.id}
-        offers={offers}
-        numById={numById}
-        onAdded={() => {
-          void reload()
-          void reloadPapers()
-        }}
-      />
+      {siblingOffer}
     </div>
   )
 }

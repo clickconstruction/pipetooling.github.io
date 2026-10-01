@@ -21,19 +21,25 @@ function entryMetaLabel(atIso: string): string {
  * in chat order — 1 = oldest at the top, newest at the bottom, the box keeps
  * itself scrolled to the newest (owner request v2.2062; numbers are stable
  * references: "check note 3" never shifts) —
- * a floating "+ Add" pill, and a sliding composer bar summoned by it. The feed
+ * a strip UNDER the box (v2.4302: See all · + Add · report pill — nothing
+ * sits on the notes any more), and a composer bar that opens in the strip's
+ * place. The box keeps its height; the strip uses the dead space below. The feed
  * beyond the latest entry lazy-loads on first pointer interaction via the
  * thread expand's existing loader; posting goes through the same thread-note
  * pipeline as the panel composer (optimistic entry, realtime for others).
  */
 
-const boxStyle: CSSProperties = {
-  position: 'relative',
+const columnStyle: CSSProperties = {
   // No max width: the box spans the Job cell's entire middle (v2.1594) —
   // identity keeps its natural width, the box takes every remaining pixel.
   flex: '1 1 260px',
   minWidth: 240,
   marginLeft: 'auto',
+  display: 'flex',
+  flexDirection: 'column',
+}
+
+const boxStyle: CSSProperties = {
   border: '1px solid var(--border-strong)',
   borderRadius: 10,
   background: 'var(--bg-subtle)',
@@ -41,6 +47,9 @@ const boxStyle: CSSProperties = {
   fontSize: '0.75rem',
   textAlign: 'left',
 }
+
+/** The strip and the composer share one height, so opening the composer never moves the row. */
+const STRIP_HEIGHT = 22
 
 const numStyle: CSSProperties = {
   display: 'inline-flex',
@@ -167,122 +176,123 @@ export function JobsStagesActivityBox({ job, ctx, loadActivityForJob, submitNote
 
   return (
     <div
-      style={boxStyle}
+      style={columnStyle}
       onPointerEnter={ensureLoaded}
       onFocusCapture={ensureLoaded}
       aria-label={`Job activity for ${(job.job_name ?? '').trim() || 'job'}`}
     >
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation()
-          ctx.openJobActivityExpand(job)
-        }}
-        aria-label="Expand job activity"
-        title="Expand job activity"
-        style={{
-          position: 'absolute',
-          top: 5,
-          right: 5,
-          zIndex: 2,
-          width: 22,
-          height: 22,
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: 'transparent',
-          border: 'none',
-          borderRadius: 6,
-          color: 'var(--text-faint)',
-          cursor: 'pointer',
-          padding: 0,
-        }}
-      >
-        <svg
-          width="13"
-          height="13"
-          viewBox="0 0 16 16"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-        >
-          <path d="M9.5 2.5h4v4" />
-          <path d="M13.5 2.5 9 7" />
-          <path d="M6.5 13.5h-4v-4" />
-          <path d="M2.5 13.5 7 9" />
-        </svg>
-      </button>
-      {up ? (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation()
-            ctx.openJobCalendar(job)
-          }}
-          title="Next scheduled appointment — open the job calendar"
+      <div style={boxStyle}>
+        {up ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              ctx.openJobCalendar(job)
+            }}
+            title="Next scheduled appointment — open the job calendar"
+            style={{
+              display: 'block',
+              width: '100%',
+              margin: '0 0 4px',
+              padding: '0 8px',
+              // Longhands only — a `border` shorthand + `borderLeft` mix trips
+              // React's style-diff warning when unkeyed siblings shift (v2.770).
+              borderTop: 'none',
+              borderRight: 'none',
+              borderBottom: 'none',
+              borderLeft: '3px solid var(--border-green)',
+              background: 'transparent',
+              cursor: 'pointer',
+              textAlign: 'left',
+              font: 'inherit',
+              fontSize: '0.6875rem',
+              color: 'var(--text-muted)',
+            }}
+          >
+            <span style={{ fontWeight: 700, fontSize: '0.65rem', textTransform: 'uppercase', color: '#15803d' }}>Next</span>
+            <span style={{ margin: '0 0.35rem' }}>·</span>
+            {formatStagesNextDateLabel(up.ymd)} {formatStagesCompactWindow(up.timeStart, up.timeEnd)} · {up.assigneeNames.join(', ')}
+          </button>
+        ) : null}
+        {/* Nothing floats over the feed (v2.4302): it takes the box's full width. */}
+        <div
+          ref={feedScrollRef}
           style={{
-            display: 'block',
-            width: '100%',
-            margin: '0 0 4px',
-            // Right inset keeps the NEXT text clear of the corner expand button.
-            padding: '0 26px 0 8px',
-            // Longhands only — a `border` shorthand + `borderLeft` mix trips
-            // React's style-diff warning when unkeyed siblings shift (v2.770).
-            borderTop: 'none',
-            borderRight: 'none',
-            borderBottom: 'none',
-            borderLeft: '3px solid var(--border-green)',
-            background: 'transparent',
-            cursor: 'pointer',
-            textAlign: 'left',
-            font: 'inherit',
-            fontSize: '0.6875rem',
-            color: 'var(--text-muted)',
+            maxHeight: 96,
+            overflowY: 'auto',
+            scrollbarWidth: 'thin',
           }}
         >
-          <span style={{ fontWeight: 700, fontSize: '0.65rem', textTransform: 'uppercase', color: '#15803d' }}>Next</span>
-          <span style={{ margin: '0 0.35rem' }}>·</span>
-          {formatStagesNextDateLabel(up.ymd)} {formatStagesCompactWindow(up.timeStart, up.timeEnd)} · {up.assigneeNames.join(', ')}
-        </button>
-      ) : null}
-      <div
-        ref={feedScrollRef}
-        style={{
-          maxHeight: 96,
-          overflowY: 'auto',
-          paddingRight: composerOpen ? 0 : 52,
-          scrollbarWidth: 'thin',
-        }}
-      >
-        {loaded ? (
-          feed.map(entryLine)
-        ) : teaser ? (
-          <div style={{ display: 'flex', alignItems: 'flex-start', marginTop: 2 }}>
-            <span style={{ minWidth: 0, color: 'var(--text-700)', overflow: 'hidden', display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2, lineHeight: 1.45 }}>
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.6875rem' }}>
-                {entryMetaLabel(teaser.atIso)}
-              </span>{' '}
-              <strong style={{ color: 'var(--text-strong)' }}>{teaser.authorName ?? '—'}</strong>
-              <span style={{ color: 'var(--text-faint)', margin: '0 5px' }}>|</span>
-              {teaser.body}
-            </span>
-          </div>
-        ) : null}
-        {empty ? (
-          // Same vertical metrics as the one-line teaser so empty boxes match
-          // the height of boxes with one line of activity.
-          <div style={{ color: 'var(--text-faint)', marginTop: 2, lineHeight: 1.45, textAlign: 'center' }}>
-            No activity yet — post the first note
-          </div>
-        ) : null}
+          {loaded ? (
+            feed.map(entryLine)
+          ) : teaser ? (
+            <div style={{ display: 'flex', alignItems: 'flex-start', marginTop: 2 }}>
+              <span style={{ minWidth: 0, color: 'var(--text-700)', overflow: 'hidden', display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2, lineHeight: 1.45 }}>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.6875rem' }}>
+                  {entryMetaLabel(teaser.atIso)}
+                </span>{' '}
+                <strong style={{ color: 'var(--text-strong)' }}>{teaser.authorName ?? '—'}</strong>
+                <span style={{ color: 'var(--text-faint)', margin: '0 5px' }}>|</span>
+                {teaser.body}
+              </span>
+            </div>
+          ) : null}
+          {empty ? (
+            // Same vertical metrics as the one-line teaser so empty boxes match
+            // the height of boxes with one line of activity.
+            <div style={{ color: 'var(--text-faint)', marginTop: 2, lineHeight: 1.45, textAlign: 'center' }}>
+              No activity yet — post the first note
+            </div>
+          ) : null}
+        </div>
       </div>
-      {/* Floating pills (v2.3197): + Add, then the report pill to its right — one flex
-          row so both share a height and a bottom edge (owner call). */}
-      {!composerOpen && (submitNoteWithBody || ctx.openNewReportForJob) ? (
-        <div style={{ position: 'absolute', right: 8, bottom: 8, zIndex: 2, display: 'flex', alignItems: 'stretch', gap: 6 }}>
+      {/* The strip under the box (v2.4302, owner call: the box keeps its height, the
+          buttons go below it). See all on the left (the old corner arrows, now with
+          the count); + Add, then the report pill, on the right. */}
+      {!composerOpen ? (
+        <div style={{ display: 'flex', alignItems: 'stretch', gap: 6, marginTop: 4, height: STRIP_HEIGHT }}>
+          {!empty ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                ctx.openJobActivityExpand(job)
+              }}
+              aria-label="Expand job activity"
+              title="Open every note and report on this job"
+              className="stages-activity-see-all"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                background: 'transparent',
+                border: 'none',
+                padding: '0 4px',
+                font: 'inherit',
+                fontSize: '0.71875rem',
+                cursor: 'pointer',
+              }}
+            >
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M9.5 2.5h4v4" />
+                <path d="M13.5 2.5 9 7" />
+                <path d="M6.5 13.5h-4v-4" />
+                <path d="M2.5 13.5 7 9" />
+              </svg>
+              {loaded ? `See all ${feed.length}` : 'See all'}
+            </button>
+          ) : null}
+          <div style={{ flex: 1 }} />
           {submitNoteWithBody ? (
             <button
               type="button"
@@ -296,11 +306,10 @@ export function JobsStagesActivityBox({ job, ctx, loadActivityForJob, submitNote
                 color: '#fff',
                 border: 'none',
                 borderRadius: 999,
-                padding: '4px 13px',
+                padding: '0 13px',
                 fontSize: '0.71875rem',
                 fontWeight: 700,
                 cursor: 'pointer',
-                boxShadow: '0 2px 10px rgba(0,0,0,0.35)',
               }}
             >
               + Add
@@ -325,30 +334,25 @@ export function JobsStagesActivityBox({ job, ctx, loadActivityForJob, submitNote
                 borderRadius: 999,
                 padding: '0 9px',
                 cursor: 'pointer',
-                boxShadow: '0 2px 10px rgba(0,0,0,0.25)',
               }}
             >
               <JobsWorkedTodayReportIcon decorative />
             </button>
           ) : null}
         </div>
-      ) : null}
-      {composerOpen ? (
+      ) : (
         <div
           style={{
-            position: 'absolute',
-            left: 8,
-            right: 8,
-            bottom: 6,
-            zIndex: 3,
             display: 'flex',
             gap: 6,
             alignItems: 'center',
+            marginTop: 4,
+            height: STRIP_HEIGHT,
+            boxSizing: 'border-box',
             background: 'var(--surface)',
             border: '1px solid #3b82f6',
             borderRadius: 999,
-            padding: '4px 6px 4px 12px',
-            boxShadow: '0 6px 18px rgba(0,0,0,0.35)',
+            padding: '0 4px 0 12px',
           }}
         >
           <input
@@ -371,7 +375,7 @@ export function JobsStagesActivityBox({ job, ctx, loadActivityForJob, submitNote
               void post()
             }}
             disabled={submitting}
-            style={{ background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 999, padding: '3px 12px', fontSize: '0.71875rem', fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer' }}
+            style={{ background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 999, padding: '1px 12px', fontSize: '0.71875rem', fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer' }}
           >
             {submitting ? '…' : 'Post'}
           </button>
@@ -387,7 +391,7 @@ export function JobsStagesActivityBox({ job, ctx, loadActivityForJob, submitNote
             ✕
           </button>
         </div>
-      ) : null}
+      )}
     </div>
   )
 }

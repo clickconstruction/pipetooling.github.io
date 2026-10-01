@@ -771,6 +771,64 @@ export type Database = {
           },
         ]
       }
+      bid_mark_requests: {
+        Row: {
+          bid_id: string
+          closed_at: string | null
+          created_at: string
+          for_user_id: string
+          from_user_id: string
+          id: string
+          note: string
+          outcome: string | null
+          seen_at: string | null
+        }
+        Insert: {
+          bid_id: string
+          closed_at?: string | null
+          created_at?: string
+          for_user_id: string
+          from_user_id: string
+          id?: string
+          note?: string
+          outcome?: string | null
+          seen_at?: string | null
+        }
+        Update: {
+          bid_id?: string
+          closed_at?: string | null
+          created_at?: string
+          for_user_id?: string
+          from_user_id?: string
+          id?: string
+          note?: string
+          outcome?: string | null
+          seen_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_mark_requests_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_mark_requests_for_user_id_fkey"
+            columns: ["for_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_mark_requests_from_user_id_fkey"
+            columns: ["from_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_marks: {
         Row: {
           bid_id: string
@@ -22903,6 +22961,15 @@ export type Database = {
         Returns: number
       }
       bid_estimate_breakdown: { Args: { p_bid_id: string }; Returns: Json }
+      bid_mark_request_take_back: {
+        Args: { p_request_id: string }
+        Returns: number
+      }
+      bid_mark_requests_close: {
+        Args: { p_bid_id: string; p_outcome: string }
+        Returns: number
+      }
+      bid_mark_requests_seen: { Args: { p_bid_id: string }; Returns: number }
       bid_pricing_history: {
         Args: { p_service_type_id: string }
         Returns: {
@@ -24972,6 +25039,10 @@ export type Database = {
         Args: { p_inbox: string; p_phone: string; p_request_id: string }
         Returns: boolean
       }
+      mark_bid_for: {
+        Args: { p_bid_id: string; p_for_user_id: string; p_note?: string }
+        Returns: string
+      }
       mark_customer_portal_slug_shared: {
         Args: { p_customer_id: string }
         Returns: Json
@@ -26085,6 +26156,7 @@ export type Database = {
         Returns: boolean
       }
       user_has_prospects_staff_access: { Args: never; Returns: boolean }
+      user_has_push_device: { Args: { p_user_id: string }; Returns: boolean }
       user_has_schedule_block_for_customer: {
         Args: { p_customer_id: string }
         Returns: boolean
@@ -26103,6 +26175,7 @@ export type Database = {
         Args: { bid_uuid: string }
         Returns: boolean
       }
+      user_opens_bids: { Args: { p_user_id: string }; Returns: boolean }
       user_owns_working_board_column: {
         Args: { column_uuid: string }
         Returns: boolean

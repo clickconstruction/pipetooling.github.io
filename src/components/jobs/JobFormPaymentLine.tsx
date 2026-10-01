@@ -155,38 +155,41 @@ export function JobFormPaymentLine({ row, bill, sliceAmount, partial, job, bankF
         <span className="amt" aria-label={`Payment amount ${formatCurrency(amount)} dollars`}>
           {partial && sliceAmount != null ? `$${formatCurrency(sliceAmount)} of ${amountText}` : amountText}
         </span>
-        <span className="words">
-          {words.dateText} · {sourceWords(source, bank)}
-          {billWords ? <span className="bill"> · {billWords}</span> : null}
-          {words.daysText && words.daysTone === 'ok' ? <span className="mut"> · {words.daysText}</span> : null}
+        {/* v2.4300: one middle cell, so long words wrap inside it and the ⋯ stays on the first line. */}
+        <span className="mid">
+          <span className="words">
+            {words.dateText} · {sourceWords(source, bank)}
+            {billWords ? <span className="bill"> · {billWords}</span> : null}
+            {words.daysText && words.daysTone === 'ok' ? <span className="mut"> · {words.daysText}</span> : null}
+          </span>
+          {words.returned ? (
+            <span className="jobPaymentChip red" data-testid={`edit-job-payment-bank-returned-${row.id}`} title="Mercury reports this deposit failed — the check did not clear. Unlink and remove takes the payment off the job and marks the deposit returned in Accounts Receivable.">
+              {words.returned}
+            </span>
+          ) : null}
+          {bill && words.countedHere ? (
+            <span className="jobPaymentChip amber" title="This payment is on the job with no bill picked. The oldest open bill counts it for now.">
+              no bill picked
+            </span>
+          ) : null}
+          {canPinHere ? (
+            <button type="button" className="jobPaymentLinePin" onClick={() => actions.updatePaymentRow(row.id, { invoice_id: bill!.id })} title="Apply this payment to this bill for good">
+              Pin it to this bill
+            </button>
+          ) : null}
+          {words.returned && unlinkShown ? (
+            <button
+              type="button"
+              className="jobPaymentLineUnlink"
+              disabled={unlinking}
+              onClick={() => actions.setUnlinkMercuryConfirmRowId(row.id)}
+              aria-label="Unlink bank deposit and remove this payment line"
+              title="The bank returned this deposit. Remove the payment from the job; the deposit is marked returned in Accounts Receivable."
+            >
+              {unlinking ? 'Removing…' : 'Unlink and remove'}
+            </button>
+          ) : null}
         </span>
-        {words.returned ? (
-          <span className="jobPaymentChip red" data-testid={`edit-job-payment-bank-returned-${row.id}`} title="Mercury reports this deposit failed — the check did not clear. Unlink and remove takes the payment off the job and marks the deposit returned in Accounts Receivable.">
-            {words.returned}
-          </span>
-        ) : null}
-        {bill && words.countedHere ? (
-          <span className="jobPaymentChip amber" title="This payment is on the job with no bill picked. The oldest open bill counts it for now.">
-            no bill picked
-          </span>
-        ) : null}
-        {canPinHere ? (
-          <button type="button" className="jobPaymentLinePin" onClick={() => actions.updatePaymentRow(row.id, { invoice_id: bill!.id })} title="Apply this payment to this bill for good">
-            Pin it to this bill
-          </button>
-        ) : null}
-        {words.returned && unlinkShown ? (
-          <button
-            type="button"
-            className="jobPaymentLineUnlink"
-            disabled={unlinking}
-            onClick={() => actions.setUnlinkMercuryConfirmRowId(row.id)}
-            aria-label="Unlink bank deposit and remove this payment line"
-            title="The bank returned this deposit. Remove the payment from the job; the deposit is marked returned in Accounts Receivable."
-          >
-            {unlinking ? 'Removing…' : 'Unlink and remove'}
-          </button>
-        ) : null}
         <span className="jobPaymentLineMenu" ref={menuRef}>
           <button
             type="button"

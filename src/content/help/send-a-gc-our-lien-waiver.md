@@ -2,7 +2,7 @@
 title: send a GC our lien waiver
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: lien waiver, signs for the company, signer title, by, signature block, GC, general contractor, conditional, unconditional, progress, final, release of lien, he signs now, sign now, send to the GC, waiver PDF, 53.284, bill, pay app, send with the bill, bill tab, add waiver, waivers to sign, needs you, sign them, GC room, portal, what the GC sees, GC review, they hold, we owe
+keywords: lien waiver, amount, why less than the bill, still owed, paid so far, signs for the company, signer title, by, signature block, GC, general contractor, conditional, unconditional, progress, final, release of lien, he signs now, sign now, send to the GC, waiver PDF, 53.284, bill, pay app, send with the bill, bill tab, add waiver, waivers to sign, needs you, sign them, GC room, portal, what the GC sees, GC review, they hold, we owe
 ---
 A GC often wants a lien waiver with each bill. The waiver says we give up our lien right for that payment. Texas has four forms. The app picks the right one from the bill, and the leader signs it in the app.
 
@@ -35,6 +35,25 @@ Untick the box if the GC does not want a waiver this time. The bill then goes al
 
 {{gif:send-a-gc-our-lien-waiver-billtab.gif|The Bill tab: a sent bill ends with its two waiver chips and the door to the next move}}
 
+## From View bill
+
+**View bill** opens a sent bill. On a GC job it starts with a card of the bill's papers. The first row is the **Lien waiver** row.
+
+1. Read the row's headline. It names the waiver and the money. For example, **Conditional for $4,720 not sent**.
+2. Read the line under it. A bill past its due date says how many days. A GC often waits for the waiver before it pays.
+3. Read the two dots. The first is the conditional waiver. The second is the unconditional one. Amber means owed now. Green means sent.
+4. Click the row's button. It names the next move. {{button:blue|Add waiver}}, {{button:blue|Sign it}}, {{button:blue|Send to the GC}} or {{button:blue|Add the unconditional}}. The **Release of Lien** window opens on this bill.
+
+The GC may have no email for waivers yet. The row then offers the email the bill went to. Click **Use** and the address is saved on the GC's customer record. It never replaces an email someone typed there.
+
+The **Contract** and **Sub work order** rows sit under the waiver. Their buttons are plain while a waiver move is owed.
+
+:::example The waiver row on View bill
+{{chip:yellow|Conditional for $4,720 not sent}} {{button:blue|Add waiver}}
+{{chip:yellow|Signed by Malachi. Not sent yet.}} {{button:blue|Send to the GC}}
+{{chip:green|Both waivers sent}} {{button:outline|View}}
+:::
+
 ## Open the waiver from the Pipeline
 
 1. Go to **Jobs** and open the [Pipeline](/jobs?tab=stages).
@@ -61,6 +80,30 @@ The line under the switches says why. It also shows the two facts it read from t
 :::
 
 Never send an unconditional form before the money has settled. Texas forbids requiring one before payment. The line under the switches reminds you.
+
+## Why the amount is less than the bill
+
+The amount is often smaller than the bill. The window shows the math under the **Amount** box.
+
+- Each bill chip says what is still owed. For example, {{chip:green|#1 · $9,022.49 owed}} is part of a $26,800 bill.
+- The box lists the bill, then each payment on it with its date, then the total. The total is the amount on the waiver.
+- A conditional waiver covers the money still to come. That is the bill less what was paid.
+- An unconditional progress waiver covers the money already paid.
+- An unconditional final waiver covers the whole bill. The box says **Not yet** while money is still owed.
+
+:::example Bill #1 on a job
+Bill #1 · billed Jul 15 · $26,800.00
+Check · Sep 14 · − 11,700.00
+Check · Sep 28 · − 6,077.51
+**Still owed on bill #1 · $9,022.49**
+:::
+
+Two notes can show under the box.
+
+- An amber note says the bill is already waived. Another live waiver covers it, so a second one would give up the same money twice. Click {{button:outline|Open the signed one ›}} to see it. Click {{button:outline|Discard this draft}} to drop the new one.
+- A blue note says money is paid and not waived yet. The GC is owed an unconditional progress waiver for it. Click {{button:blue|Waive the $17,777.51 paid ›}} to switch the window to that form.
+
+If you type over the amount, the window shows what the bills say. Click {{button:outline|Use $9,022.49}} to put it back. Hover the box to see the amount marked on the page.
 
 ## Set who signs for the company
 

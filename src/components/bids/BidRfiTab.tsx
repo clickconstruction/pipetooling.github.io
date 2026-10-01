@@ -163,7 +163,7 @@ export function BidRfiTab({ bids, onlyMyBids, setOnlyMyBids, isMyBid, authUser, 
                 ×
               </button>
             ) : null}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
               <BidWorkflowTabTitleWithPreview
                 bid={bid}
                 previewEnabled={bidPreview != null}

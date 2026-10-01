@@ -603,6 +603,10 @@ verify_jwt = false
 [functions.send-checklist-notification]
 verify_jwt = false
 
+# Push for a bid marked for a teammate (v2.4297): Bearer + getUser, caller must be the request's sender.
+[functions.notify-bid-mark]
+verify_jwt = false
+
 [functions.send-report-notification]
 verify_jwt = false
 
