@@ -65,11 +65,29 @@ describe('buildArDepositTrail', () => {
     expect(t.parts.map((p) => p.kind)).toEqual(['was', 'bankFailed', 'off'])
     expect(t.lastTouchedAt).toBe('2026-09-24T13:43:04.000Z')
   })
+  it('taken off first, stopped by the bank after: the order it happened, and no "marked returned" on a take-off that came before the return', () => {
+    // Loberg, 2026-09-30/10-01: Taunya took it off #650 on 9/30; the bank stopped the cheque the next morning.
+    const lobergStopped = { ...lobergGone, removed_at: '2026-09-30T20:22:26Z' }
+    const nextDay = (iso: string) => arTrailWhenWords(iso, new Date('2026-10-01T15:00:00Z'), TZ)
+    const t = buildArDepositTrail({ rows: [lobergStopped], returned: true, bankFailedAt: '2026-10-01T13:41:01Z', whenWords: nextDay })!
+    expect(t.words).toBe('was #650 ATI Schertz — As per plans 9/29 by Taunya · taken off 9/30 by Taunya · bank failed it today 8:41 AM')
+    expect(t.parts.map((p) => p.kind)).toEqual(['was', 'off', 'bankFailed'])
+  })
   it('taken off and not put back: the row in To match says where it was', () => {
     const t = buildArDepositTrail({ rows: [lobergGone], returned: false, bankFailedAt: null, whenWords: when })!
     expect(t.words).toBe('was #650 ATI Schertz — As per plans 9/29 by Taunya · taken off today 4:02 PM by Taunya')
   })
-  it('rows nobody signed for say "the app"; one deposit over several jobs on one day is one part', () => {
+  it('a payment recorded by hand and linked later says both steps, with or without the names', () => {
+    const marked = row({ payment_id: 'm', live: true, job_number: '1025', job_name: 'Tovi Polk Repairs', applied_at: '2026-09-28T16:56:30Z', applied_by: null, payment_type: 'Check', reference_number: '3463', recorded_by_hand: true })
+    expect(buildArDepositTrail({ rows: [marked], returned: false, bankFailedAt: null, whenWords: when })!.words).toBe(
+      '→ #1025 Tovi Polk Repairs · recorded as Check 3463 9/28 · linked to this deposit later',
+    )
+    const stamped = { ...marked, applied_by: 'Taunya', linked_at: '2026-09-30T21:10:00Z', linked_by: 'Grace' }
+    const t = buildArDepositTrail({ rows: [stamped], returned: false, bankFailedAt: null, whenWords: when })!
+    expect(t.words).toBe('→ #1025 Tovi Polk Repairs · recorded as Check 3463 9/28 by Taunya · linked to this deposit today 4:10 PM by Grace')
+    expect(t.lastTouchedAt).toBe('2026-09-30T21:10:00.000Z')
+  })
+  it('a row whose recorder is not on record says no name; one deposit over several jobs on one day is one part', () => {
     const rows = [
       row({ payment_id: 'a', live: true, job_number: '', job_name: 'Springtown', applied_at: '2026-09-17T15:50:00Z', applied_by: 'Taunya' }),
       row({ payment_id: 'b', live: true, job_number: '', job_name: 'Springtown- HVAC', applied_at: '2026-09-17T15:51:00Z', applied_by: 'Taunya' }),
@@ -77,8 +95,8 @@ describe('buildArDepositTrail', () => {
     ]
     expect(buildArDepositTrail({ rows, returned: false, bankFailedAt: null, whenWords: when })!.words).toBe('→ Springtown, Springtown- HVAC 9/17 by Taunya')
     const unsigned = [row({ payment_id: 'd', live: true, job_number: '1025', job_name: 'Tovi Polk Repairs', applied_at: '2026-09-28T16:56:00Z' })]
-    expect(buildArDepositTrail({ rows: unsigned, returned: false, bankFailedAt: null, whenWords: when })!.words).toBe('→ #1025 Tovi Polk Repairs 9/28 by the app')
-    expect(buildArDepositTrail({ rows: unsigned, returned: false, bankFailedAt: null, whenWords: when, unsignedName: '—' })!.words).toBe('→ #1025 Tovi Polk Repairs 9/28 by —')
+    expect(buildArDepositTrail({ rows: unsigned, returned: false, bankFailedAt: null, whenWords: when })!.words).toBe('→ #1025 Tovi Polk Repairs 9/28')
+    expect(buildArDepositTrail({ rows: unsigned, returned: false, bankFailedAt: null, whenWords: when, unsignedName: 'someone' })!.words).toBe('→ #1025 Tovi Polk Repairs 9/28 by someone')
   })
   it('a bounce still on the job (nobody has taken it off) ends on the bank; nothing at all is null', () => {
     const still = row({ payment_id: 'x', live: true, job_number: '878', job_name: 'Take 5- Seguin', applied_at: '2026-09-21T15:06:44Z', applied_by: 'Taunya' })
@@ -95,8 +113,14 @@ describe('buildArDepositTrail', () => {
     ]
     const t = buildArDepositTrail({ rows, returned: false, bankFailedAt: null, whenWords: when })!
     // e2's removal is within the move window of e3's apply → a move; e1's is not → taken off.
+    // Each take-off reads right after its own job.
     expect(t.words).toBe(
-      '→ Hamilton Valley Management 9/2 by Taunya · was #690 Mission Pet Health 9/1 · was a job the archive did not keep 9/2 · taken off 9/2 by Taunya',
+      '→ Hamilton Valley Management 9/2 by Taunya · was #690 Mission Pet Health 9/1 · taken off 9/2 by Taunya · was a job the archive did not keep 9/2',
+    )
+    // As prod has it: the second removal (Robert's) is not a move, and both land the same day — each still reads after its own job.
+    const twoOffs = rows.map((r) => (r.payment_id === 'e2' ? { ...r, removed_at: '2026-09-02T16:00:00Z' } : r))
+    expect(buildArDepositTrail({ rows: twoOffs, returned: false, bankFailedAt: null, whenWords: when })!.words).toBe(
+      '→ Hamilton Valley Management 9/2 by Taunya · was #690 Mission Pet Health 9/1 · taken off 9/2 by Taunya · was a job the archive did not keep 9/2 · taken off 9/2 by Robert',
     )
   })
 })

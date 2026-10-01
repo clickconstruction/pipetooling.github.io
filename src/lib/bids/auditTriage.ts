@@ -74,12 +74,20 @@ export function pickOpenAudit<T extends { id: string; status: string }>(input: {
   ready: boolean
   /** Neither sealed nor unpriced. */
   workable: (audit: T) => boolean
+  /**
+   * v2.4295: whether a card may open on its own. True in the two-pane layout, where the card
+   * sits beside the queue; false below it, where the card is a full-screen panel that would
+   * cover the sentence, the button and the queue on arrival. Defaults to true.
+   */
+  autoOpen?: boolean
 }): string | null {
-  const { triaged, current, picked, ready, workable } = input
+  const { triaged, current, picked, ready, workable, autoOpen = true } = input
   // v2.4234: on a phone the card is a full-screen panel with a close — a closed card is a pick of nothing, and it holds.
   if (picked && current === null) return null
   const held = current ? triaged.find((a) => a.id === current) : undefined
   if (held && picked && workable(held)) return held.id
+  // v2.4295: nothing opens until a row is tapped where the card would cover the queue.
+  if (!autoOpen) return null
   if (!ready) return held && workable(held) ? held.id : null
   return triaged.find((a) => a.status === 'pending' && workable(a))?.id ?? null
 }

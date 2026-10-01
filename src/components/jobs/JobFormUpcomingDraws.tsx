@@ -7,6 +7,7 @@
  * path. Everything else says what it is waiting on. Pure render.
  */
 import type { StagePlan, StagePlanRow } from '../../lib/jobs/stagePlan'
+import type { JobDollarCoverage } from '../../lib/jobs/jobSegmentsCoverage'
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import { drawRowLabel, upcomingDrawRows } from '../../lib/jobs/stagePlanForm'
 import { StageKindBadge } from './StageKindControls'
@@ -16,15 +17,19 @@ type JobFormUpcomingDrawsProps = {
   onBillRow: (fixtureId: string) => void
   billingFixtureId: string | null
   disabled?: boolean
+  /** v2.4303: money billed by amount — a line it covers leaves the list, a part-covered line shows what is left. */
+  coverage?: JobDollarCoverage | null
 }
 
-function waitingWords(r: StagePlanRow, plan: StagePlan): string {
+function waitingWords(r: StagePlanRow, plan: StagePlan, coverage: JobDollarCoverage | null | undefined): string {
   if (r.draw === 'ready') {
     if (r.kind === 'order') return `passed${r.passedOn ? ' inspection' : ''} · not yet billed`
     return `done${r.doneOn ? '' : ''} · not yet billed`
   }
   if (r.draw === 'waits') {
-    const blocker = plan.rows.find((p) => p.kind === 'order' && p.number != null && r.number != null && p.number < r.number && !p.invoiceId && p.amount > 0)
+    const blocker = plan.rows.find(
+      (p) => p.kind === 'order' && p.number != null && r.number != null && p.number < r.number && !p.invoiceId && p.amount > 0 && !coverage?.bySegmentKey[p.fixtureId]?.fullyCovered,
+    )
     return blocker ? `passed · waits on stage ${blocker.number}` : 'passed · waits on the stage above'
   }
   if (r.kind === 'order') return r.work === 'passed' ? 'after the stage above' : 'after it passes inspection'
@@ -32,8 +37,8 @@ function waitingWords(r: StagePlanRow, plan: StagePlan): string {
   return 'with the final draw'
 }
 
-export function JobFormUpcomingDraws({ plan, onBillRow, billingFixtureId, disabled = false }: JobFormUpcomingDrawsProps) {
-  const rows = upcomingDrawRows(plan)
+export function JobFormUpcomingDraws({ plan, onBillRow, billingFixtureId, disabled = false, coverage = null }: JobFormUpcomingDrawsProps) {
+  const rows = upcomingDrawRows(plan, coverage)
   if (rows.length === 0) return null
   return (
     <div data-testid="upcoming-draws" style={{ marginBottom: '1rem' }}>
@@ -60,7 +65,10 @@ export function JobFormUpcomingDraws({ plan, onBillRow, billingFixtureId, disabl
               <StageKindBadge row={r} size={22} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{drawRowLabel(r)}</div>
-                <div style={{ fontSize: '0.75rem', color: ready ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>{waitingWords(r, plan)}</div>
+                <div style={{ fontSize: '0.75rem', color: ready ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>
+                  {waitingWords(r, plan, coverage)}
+                  {r.coveredDollars > 0 ? ` · $${formatCurrency(r.coveredDollars)} of $${formatCurrency(r.amount)} already billed` : ''}
+                </div>
               </div>
               {ready ? (
                 <button
@@ -88,7 +96,7 @@ export function JobFormUpcomingDraws({ plan, onBillRow, billingFixtureId, disabl
                 </span>
               )}
               <span style={{ fontSize: '0.875rem', fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: 'var(--text-700)', whiteSpace: 'nowrap', minWidth: '5.5rem', textAlign: 'right' }}>
-                ${formatCurrency(r.amount)}
+                ${formatCurrency(r.leftDollars)}
               </span>
             </div>
           )

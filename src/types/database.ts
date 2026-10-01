@@ -771,6 +771,97 @@ export type Database = {
           },
         ]
       }
+      bid_mark_requests: {
+        Row: {
+          bid_id: string
+          closed_at: string | null
+          created_at: string
+          for_user_id: string
+          from_user_id: string
+          id: string
+          note: string
+          outcome: string | null
+          seen_at: string | null
+        }
+        Insert: {
+          bid_id: string
+          closed_at?: string | null
+          created_at?: string
+          for_user_id: string
+          from_user_id: string
+          id?: string
+          note?: string
+          outcome?: string | null
+          seen_at?: string | null
+        }
+        Update: {
+          bid_id?: string
+          closed_at?: string | null
+          created_at?: string
+          for_user_id?: string
+          from_user_id?: string
+          id?: string
+          note?: string
+          outcome?: string | null
+          seen_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_mark_requests_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_mark_requests_for_user_id_fkey"
+            columns: ["for_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_mark_requests_from_user_id_fkey"
+            columns: ["from_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bid_marks: {
+        Row: {
+          bid_id: string
+          marked_at: string
+          user_id: string
+        }
+        Insert: {
+          bid_id: string
+          marked_at?: string
+          user_id: string
+        }
+        Update: {
+          bid_id?: string
+          marked_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_marks_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_marks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_payment_schedule_rows: {
         Row: {
           bid_id: string
@@ -2351,6 +2442,7 @@ export type Database = {
         Row: {
           bid_id: string
           count_row_id: string
+          product_line_ids: string[] | null
           split: boolean
           ticked: boolean
           updated_at: string
@@ -2358,6 +2450,7 @@ export type Database = {
         Insert: {
           bid_id: string
           count_row_id: string
+          product_line_ids?: string[] | null
           split?: boolean
           ticked?: boolean
           updated_at?: string
@@ -2365,6 +2458,7 @@ export type Database = {
         Update: {
           bid_id?: string
           count_row_id?: string
+          product_line_ids?: string[] | null
           split?: boolean
           ticked?: boolean
           updated_at?: string
@@ -11786,9 +11880,12 @@ export type Database = {
         Row: {
           amount: number
           created_at: string | null
+          created_by: string | null
           id: string
           invoice_id: string | null
           job_id: string
+          linked_at: string | null
+          linked_by: string | null
           mercury_transaction_id: string | null
           note: string | null
           paid_on: string | null
@@ -11801,9 +11898,12 @@ export type Database = {
         Insert: {
           amount?: number
           created_at?: string | null
+          created_by?: string | null
           id?: string
           invoice_id?: string | null
           job_id: string
+          linked_at?: string | null
+          linked_by?: string | null
           mercury_transaction_id?: string | null
           note?: string | null
           paid_on?: string | null
@@ -11816,9 +11916,12 @@ export type Database = {
         Update: {
           amount?: number
           created_at?: string | null
+          created_by?: string | null
           id?: string
           invoice_id?: string | null
           job_id?: string
+          linked_at?: string | null
+          linked_by?: string | null
           mercury_transaction_id?: string | null
           note?: string | null
           paid_on?: string | null
@@ -11829,6 +11932,13 @@ export type Database = {
           stripe_credit_note_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "jobs_ledger_payments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "jobs_ledger_payments_invoice_id_fkey"
             columns: ["invoice_id"]
@@ -11841,6 +11951,13 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_ledger_payments_linked_by_fkey"
+            columns: ["linked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
@@ -22841,6 +22958,15 @@ export type Database = {
         Returns: number
       }
       bid_estimate_breakdown: { Args: { p_bid_id: string }; Returns: Json }
+      bid_mark_request_take_back: {
+        Args: { p_request_id: string }
+        Returns: number
+      }
+      bid_mark_requests_close: {
+        Args: { p_bid_id: string; p_outcome: string }
+        Returns: number
+      }
+      bid_mark_requests_seen: { Args: { p_bid_id: string }; Returns: number }
       bid_pricing_history: {
         Args: { p_service_type_id: string }
         Returns: {
@@ -23915,9 +24041,14 @@ export type Database = {
           job_id: string
           job_name: string
           job_number: string
+          linked_at: string
+          linked_by: string
           live: boolean
           mercury_transaction_id: string
           payment_id: string
+          payment_type: string
+          recorded_by_hand: boolean
+          reference_number: string
           removed_at: string
           removed_by: string
         }[]
@@ -24905,6 +25036,10 @@ export type Database = {
         Args: { p_inbox: string; p_phone: string; p_request_id: string }
         Returns: boolean
       }
+      mark_bid_for: {
+        Args: { p_bid_id: string; p_for_user_id: string; p_note?: string }
+        Returns: string
+      }
       mark_customer_portal_slug_shared: {
         Args: { p_customer_id: string }
         Returns: Json
@@ -24926,6 +25061,7 @@ export type Database = {
           p_invoice_id: string
           p_paid_on?: string
           p_payment_type?: string
+          p_recorded_by?: string
           p_reference_number?: string
         }
         Returns: Json
@@ -26017,6 +26153,7 @@ export type Database = {
         Returns: boolean
       }
       user_has_prospects_staff_access: { Args: never; Returns: boolean }
+      user_has_push_device: { Args: { p_user_id: string }; Returns: boolean }
       user_has_schedule_block_for_customer: {
         Args: { p_customer_id: string }
         Returns: boolean
@@ -26035,6 +26172,7 @@ export type Database = {
         Args: { bid_uuid: string }
         Returns: boolean
       }
+      user_opens_bids: { Args: { p_user_id: string }; Returns: boolean }
       user_owns_working_board_column: {
         Args: { column_uuid: string }
         Returns: boolean

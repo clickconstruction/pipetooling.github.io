@@ -5,6 +5,7 @@
  */
 import type { FixtureRow } from './jobFormTypes'
 import { discountSharesByWorkRow, isDiscountRow, netWorkLineCents } from './discountLine'
+import type { JobDollarCoverage } from './jobSegmentsCoverage'
 import {
   buildStagePlan,
   type StageKind,
@@ -81,9 +82,36 @@ export function drawLabelsByInvoiceId(plan: StagePlan): Record<string, string> {
   return out
 }
 
-/** The "Still to bill" list: uninvoiced money with a rule behind it, in plan order. */
-export function upcomingDrawRows(plan: StagePlan): StagePlanRow[] {
-  return plan.rows.filter((r) => !r.invoiceId && r.amount > 0 && (r.draw === 'ready' || r.draw === 'waits' || r.draw === 'later'))
+/** A Still to bill row: what is already billed against it by amount, and what is left. */
+export type UpcomingDrawRow = StagePlanRow & { coveredDollars: number; leftDollars: number }
+
+/**
+ * The "Still to bill" list: uninvoiced money with a rule behind it, in plan order.
+ *
+ * v2.4303: a bill made by amount names no line, so the plan reads its lines as unbilled. Given the
+ * Bill tab's `coverage` (the waterfall the ② strip hatches with), a line covered to the cent leaves
+ * the list, a line covered in part stays for what is left, and a passed stage no longer waits on a
+ * stage above it that is covered to the cent. The plan itself, shared with the portal, is unchanged.
+ */
+export function upcomingDrawRows(plan: StagePlan, coverage?: JobDollarCoverage | null): UpcomingDrawRow[] {
+  const coveredCents = (r: StagePlanRow) =>
+    Math.min(Math.round(r.amount * 100), Math.round((coverage?.bySegmentKey[r.fixtureId]?.coveredDollars ?? 0) * 100))
+  const fullyCovered = (r: StagePlanRow) => r.amount > 0 && coveredCents(r) >= Math.round(r.amount * 100)
+  const out: UpcomingDrawRow[] = []
+  for (const r of plan.rows) {
+    if (r.invoiceId || r.amount <= 0 || !(r.draw === 'ready' || r.draw === 'waits' || r.draw === 'later')) continue
+    if (fullyCovered(r)) continue
+    let draw = r.draw
+    if (draw === 'waits' && r.number != null) {
+      const holding = plan.rows.some(
+        (p) => p.kind === 'order' && p.number != null && p.number < r.number! && !p.invoiceId && p.amount > 0 && !fullyCovered(p),
+      )
+      if (!holding) draw = 'ready'
+    }
+    const c = coveredCents(r)
+    out.push({ ...r, draw, coveredDollars: c / 100, leftDollars: (Math.round(r.amount * 100) - c) / 100 })
+  }
+  return out
 }
 
 export function drawRowLabel(r: StagePlanRow): string {

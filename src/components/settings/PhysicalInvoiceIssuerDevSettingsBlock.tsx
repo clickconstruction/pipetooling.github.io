@@ -10,7 +10,7 @@ import {
   type PhysicalInvoiceIssuer,
 } from '../../lib/physicalInvoiceIssuer'
 
-export default function PhysicalInvoiceIssuerDevSettingsBlock({ focusField = null }: { /** A field to open on and ring for a moment (v2.3697): 'companyName' | 'addressText' — the Lien desk's door. */ focusField?: string | null } = {}) {
+export default function PhysicalInvoiceIssuerDevSettingsBlock({ focusField = null }: { /** A field to open on and ring for a moment (v2.3697): 'companyName' | 'addressText' — the Lien desk's door; 'signerName' — the lien waiver guide's (v2.4290). */ focusField?: string | null } = {}) {
   const { role: authRole } = useAuth()
   const { showToast } = useToastContext()
   const [open, setOpen] = useState(Boolean(focusField))
@@ -135,7 +135,9 @@ export default function PhysicalInvoiceIssuerDevSettingsBlock({ focusField = nul
             <div>
               <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: 4 }}>Signs for the company</label>
               <input
-                style={{ ...inputStyle }}
+                style={{ ...inputStyle, ...ringStyle('signerName') }}
+                ref={ring === 'signerName' ? (ringRef as React.RefObject<HTMLInputElement>) : undefined}
+                data-settings-focus="issuer.signerName"
                 aria-label="Signs for the company — name"
                 placeholder="Malachi Whites"
                 value={draft.signerName ?? ''}

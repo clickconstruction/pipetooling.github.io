@@ -100,6 +100,7 @@ import { portalTokenUrl } from '../../lib/portal/gcPortalLink'
 import { useGcPortalLinks } from '../../hooks/useGcPortalLinks'
 import { JobFormHazmatRiderRows } from './JobFormHazmatRidersStrip'
 import { JobFormPaymentsTable } from './JobFormPaymentsTable'
+import { useMercuryDepositFacts } from '../../hooks/useMercuryDepositFacts'
 import { JobPaymentMoveModal } from './JobPaymentMoveModal'
 import { JobFormPartsCostSection } from './JobFormPartsCostSection'
 import { JobFormLaborCostPanel } from './JobFormLaborCostPanel'
@@ -140,7 +141,7 @@ import {
   segmentBoundaryMarks,
   segmentSelectionNetSummary,
 } from '../../lib/jobs/jobSegmentsCoverage'
-import { InvoicesSectionHeading, JobFormSegmentsBar, JobFormSegmentsCreateAction } from './JobFormSegmentsBar'
+import { InvoicesSectionHeading, JobFormSegmentsBar, JobFormSegmentsCreateAction, type BillsAndPaymentsView } from './JobFormSegmentsBar'
 import { MultipleSegmentGeneratorModal } from './MultipleSegmentGeneratorModal'
 import type { SegmentGeneratorPayloadLine } from '../../lib/jobs/segmentGenerator'
 import { resolveEffectiveJobMasterUserId } from '../../lib/resolveEffectiveJobMasterUserId'
@@ -185,6 +186,9 @@ import { JobFormCreateCustomerModal } from './JobFormCreateCustomerModal'
 import { extractContactFromCustomer, getCustomerDisplay } from '../../lib/jobs/jobFormCustomerDisplay'
 import { formatJobFormBidLinkTitle } from '../../lib/jobs/jobFormBidLinkTitle'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
+
+/** v2.4294: the Bill tab's By bill / By date choice, per browser. */
+export const BILLS_VIEW_STORAGE_KEY = 'pipetooling.jobBill.view'
 
 type CustomerRow = Database['public']['Tables']['customers']['Row']
 type UserRow = { id: string; name: string; email: string | null; role: string }
@@ -1042,6 +1046,25 @@ export default function JobFormModal({
   const [undoPartPaymentRow, setUndoPartPaymentRow] = useState<PaymentRow | null>(null)
   // v2.4082: "Check didn't clear…" on a whole-bill out-of-band mark — opens the Undo window with the send-back on.
   const [checkDidNotClearRow, setCheckDidNotClearRow] = useState<PaymentRow | null>(null)
+  // v2.4293: what the bank synced about the deposits behind bank-linked rows — the
+  // payer it named, the posting date, its verdict — read once for both blocks.
+  const bankFacts = useMercuryDepositFacts(payments)
+  // v2.4294: By bill or By date, remembered per browser like the Bid Board folds; storage may be blocked.
+  const [billsView, setBillsView] = useState<BillsAndPaymentsView>(() => {
+    try {
+      return window.localStorage.getItem(BILLS_VIEW_STORAGE_KEY) === 'date' ? 'date' : 'bill'
+    } catch {
+      return 'bill'
+    }
+  })
+  const changeBillsView = (next: BillsAndPaymentsView) => {
+    setBillsView(next)
+    try {
+      window.localStorage.setItem(BILLS_VIEW_STORAGE_KEY, next)
+    } catch {
+      /* the choice still holds for this visit */
+    }
+  }
   const [recordPaymentTarget, setRecordPaymentTarget] = useState<{
     inv: JobsLedgerInvoiceRow
     amount: number | null
@@ -2973,11 +2996,26 @@ export default function JobFormModal({
                 onBillRow={(id) => void billStageRow(id)}
                 billingFixtureId={billingStageFixtureId}
                 disabled={creatingSegmentInvoice}
+                coverage={segmentCoverage}
               />
               <JobFormInvoiceList
                 editing={editing}
                 onOverlayOpenChange={setInvoiceListOverlayOpen}
                 payments={payments}
+                bankFacts={bankFacts}
+                persistedLedgerPaymentIds={persistedLedgerPaymentIds}
+                unlinkingMercuryPaymentId={unlinkingMercuryPaymentId}
+                view={billsView}
+                onViewChange={changeBillsView}
+                paymentLineActions={{
+                  updatePaymentRow,
+                  requestRemovePaymentRow,
+                  requestMovePaymentRow: setPaymentMoveRow,
+                  setUnlinkMercuryConfirmRowId,
+                  setBillViewInvoice,
+                  requestUndoPartPayment: (row) => setUndoPartPaymentRow(row),
+                  requestCheckDidNotClear: (row) => setCheckDidNotClearRow(row),
+                }}
                 drawLabelByInvoiceId={drawLabelByInvoiceId}
                 canApplyAgreedWriteDown={canApplyAgreedWriteDown}
                 hazmatInvoiceIds={hazmatInvoiceIds}
@@ -3007,6 +3045,7 @@ export default function JobFormModal({
             <JobFormPaymentsTable
               editing={editing}
               payments={payments}
+              bankFacts={bankFacts}
               persistedLedgerPaymentIds={persistedLedgerPaymentIds}
               unlinkingMercuryPaymentId={unlinkingMercuryPaymentId}
               updatePaymentRow={updatePaymentRow}

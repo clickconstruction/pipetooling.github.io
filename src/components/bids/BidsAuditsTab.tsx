@@ -493,9 +493,9 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
         return
       }
     }
-    const next = pickOpenAudit({ triaged, current: expandedId, picked: pickedByHand, ready: !loading && refsLoaded, workable })
+    const next = pickOpenAudit({ triaged, current: expandedId, picked: pickedByHand, ready: !loading && refsLoaded, workable, autoOpen: twoPanes })
     if (next !== expandedId) setExpandedId(next)
-  }, [triaged, isSealed, workable, focusAuditId, expandedId, pickedByHand, loading, refsLoaded])
+  }, [triaged, isSealed, workable, focusAuditId, expandedId, pickedByHand, loading, refsLoaded, twoPanes])
   const openCard = (id: string) => {
     setPickedByHand(true)
     setExpandedId(id)
@@ -639,8 +639,9 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
   const finishAudit = async (audit: AuditWithBid) => {
     await setAuditStatus(audit, 'finish')
     // The pick is released: the next card is the top of the queue as the signals now read.
-    setPickedByHand(false)
+    // v2.4295: on the phone panel "Finish audit → next" IS the tap that opens the next card, so it holds.
     const next = triaged.find((a) => a.id !== audit.id && a.status === 'pending' && workable(a))
+    setPickedByHand(!twoPanes && !!next)
     setExpandedId(next?.id ?? null)
   }
   const reopenAudit = (audit: AuditWithBid) => setAuditStatus(audit, 'reopen')

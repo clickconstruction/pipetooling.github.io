@@ -215,6 +215,17 @@ button:focus-visible {
   --bg-muted: #f3f4f6;
   --bg-200: #e5e7eb;
   --bg-blue-tint: #eff6ff;
+  /* Bid marks (v2.4287): violet so a mark never reads as Pending amber, due-date red or Won green. */
+  --bid-mark: #7c3aed;
+  --bid-mark-text: #5b21b6;
+  --bid-mark-wash: rgba(124, 58, 237, 0.1);
+  --bid-mark-wash-strong: rgba(124, 58, 237, 0.16);
+  --bid-mark-wash-board: rgba(124, 58, 237, 0.07);
+  /* Marks for a teammate (v2.4297): the filled circle's text, the solid button, the not-seen dot (blue, never Pending amber). */
+  --bid-mark-on: #ffffff;
+  --bid-mark-solid: #7c3aed;
+  --bid-mark-new: #0284c7;
+  --bid-mark-done: #15803d;
   --bg-sky-tint: #f0f9ff;
   --bg-red-tint: #fef2f2;
   --bg-red-100: #fee2e2;
@@ -322,6 +333,15 @@ button:focus-visible {
   --bg-muted: #374151;
   --bg-200: #4b5563;
   --bg-blue-tint: #1e3358;
+  --bid-mark: #a78bfa;
+  --bid-mark-text: #c4b5fd;
+  --bid-mark-wash: rgba(167, 139, 250, 0.16);
+  --bid-mark-wash-strong: rgba(167, 139, 250, 0.28);
+  --bid-mark-wash-board: rgba(167, 139, 250, 0.09);
+  --bid-mark-on: #1b1033;
+  --bid-mark-solid: #7c3aed;
+  --bid-mark-new: #38bdf8;
+  --bid-mark-done: #86efac;
   --bg-sky-tint: #16324a;
   --bg-red-tint: #3b1a1a;
   --bg-red-100: #4c1d1d;
@@ -2487,6 +2507,8 @@ body.my-time-boundary-dragging {
 .jobInvoiceLedgerHdr {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
   font-size: 0.6875rem;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -2494,6 +2516,10 @@ body.my-time-boundary-dragging {
   color: var(--text-muted);
   padding: 0.125rem 0 0.375rem;
   border-bottom: 1px solid var(--border);
+}
+/* v2.4298: the By bill / By date switch sits at the right of the Bills row. */
+.jobInvoiceLedgerHdrSwitch {
+  margin-left: auto;
 }
 .jobInvoiceRow {
   display: flex;
@@ -2534,7 +2560,13 @@ body.my-time-boundary-dragging {
 .jobInvoiceWords .l2 .keep {
   white-space: nowrap;
   display: inline-flex;
-  gap: 0.625rem;
+  flex-wrap: wrap;
+  gap: 0 0.625rem;
+  min-width: 0;
+}
+/* v2.4300: the pair may break between its parts on a narrow row; each part stays whole. */
+.jobInvoiceWords .l2 .keep > * {
+  white-space: nowrap;
 }
 .jobInvoiceWords b {
   font-weight: 650;
@@ -2550,6 +2582,368 @@ body.my-time-boundary-dragging {
 .jobInvoiceWords .mut {
   color: var(--text-muted);
 }
+/* v2.4294: By date — bills and payments on one date line, a rail down the left with a dot per row. */
+.jobInvoiceLedger[data-view="date"] > .jobInvoiceRow,
+.jobInvoiceLedger[data-view="date"] > .jobMoneyDateRow {
+  position: relative;
+  margin-left: 6px;
+  padding-left: 1rem;
+  border-left: 2px solid var(--border);
+}
+.jobInvoiceLedger[data-view="date"] > .jobInvoiceRow::before,
+.jobInvoiceLedger[data-view="date"] > .jobMoneyDateRow::before {
+  content: '';
+  position: absolute;
+  left: -7px;
+  top: 0.9rem;
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  box-sizing: border-box;
+  border: 2px solid var(--text-blue-700);
+  background: var(--surface);
+}
+.jobInvoiceLedger[data-view="date"] > .jobMoneyDateRow {
+  padding-top: 0.45rem;
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid var(--border);
+}
+.jobInvoiceLedger[data-view="date"] > .jobMoneyDateRow::before {
+  top: 0.7rem;
+  border-color: var(--text-green-700);
+  background: var(--text-green-700);
+}
+.jobInvoiceLedger[data-view="date"] > .jobMoneyDateRow:has([data-source="hand"])::before {
+  border-color: var(--text-amber-800);
+  background: var(--surface);
+}
+.jobInvoiceLedger[data-view="date"] > .jobMoneyDateRow.today {
+  border-bottom: none;
+}
+.jobInvoiceLedger[data-view="date"] > .jobMoneyDateRow.today::before {
+  border: 2px dashed var(--text-red-600);
+  background: var(--surface);
+}
+@container job-invoice-ledger (max-width: 420px) {
+  .jobInvoiceLedger[data-view="date"] > .jobInvoiceRow,
+  .jobInvoiceLedger[data-view="date"] > .jobMoneyDateRow {
+    margin-left: 5px;
+    padding-left: 0.7rem;
+  }
+}
+.jobMoneyDateToday {
+  font-size: 0.8125rem;
+  font-weight: 650;
+  color: var(--text-red-600);
+}
+.jobPaymentLineMain .bill {
+  color: var(--text-700);
+}
+
+/* v2.4293: the money that paid a bill, drawn under its row — and the ③ list of money on no bill. */
+.jobInvoicePaidBar {
+  flex: 1 1 100%;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--bg-muted);
+  display: flex;
+  overflow: hidden;
+  margin-top: 2px;
+}
+.jobInvoicePaidBar span {
+  display: block;
+  height: 100%;
+  background: var(--text-green-700);
+}
+.jobInvoicePaidBar span + span {
+  border-left: 1px solid var(--surface);
+  opacity: 0.75;
+}
+.jobInvoicePayments {
+  flex: 1 1 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding-left: 0.75rem;
+  border-left: 2px solid var(--border);
+  margin-top: 0.25rem;
+}
+.jobPaymentsList {
+  display: flex;
+  flex-direction: column;
+}
+.jobPaymentsList > .jobPaymentLine {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.jobPaymentLine {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.8125rem;
+  color: var(--text-700);
+}
+.jobPaymentLineMain {
+  /* v2.4300: amount · words · ⋯ in three columns, so a long line wraps inside the words
+     and the ⋯ stays beside the amount on a phone (it used to drop to a third line). */
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  column-gap: 0.5rem;
+}
+.jobPaymentLineMain .mid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+  min-width: 0;
+  line-height: 1.45;
+}
+.jobPaymentLineMain .words {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.jobPaymentLineMain .amt {
+  white-space: nowrap;
+  line-height: 1.45;
+  font-weight: 650;
+  color: var(--text-green-700);
+  font-variant-numeric: tabular-nums;
+}
+.jobPaymentLine[data-source="hand"] .amt {
+  color: var(--text-strong);
+}
+.jobPaymentLineMain .words {
+  color: var(--text-700);
+}
+.jobPaymentLineMain .mut {
+  color: var(--text-muted);
+}
+.jobPaymentLineMenu {
+  position: relative;
+  display: inline-flex;
+  margin-top: -0.2rem;
+}
+.jobPaymentLineMore {
+  width: 28px;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1;
+}
+.jobPaymentLineMore:hover,
+.jobPaymentLineMore[aria-expanded="true"] {
+  background: var(--bg-muted);
+  color: var(--text-strong);
+}
+.jobPaymentLinePin {
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-link);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.jobPaymentLineUnlink {
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-red-800);
+  background: var(--surface);
+  border: 1px solid var(--border-red);
+  border-radius: 6px;
+  padding: 0.2rem 0.55rem;
+  cursor: pointer;
+}
+.jobPaymentLineSub {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.jobPaymentLineSub .warn {
+  color: var(--text-red-600);
+  font-weight: 600;
+}
+.jobPaymentChip {
+  display: inline-block;
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.jobPaymentChip.amber {
+  background: var(--bg-amber-tint);
+  color: var(--text-amber-800);
+  border: 1px solid var(--border-amber);
+}
+.jobPaymentChip.red {
+  background: var(--bg-red-tint);
+  color: var(--text-red-800);
+  border: 1px solid var(--border-red);
+}
+.jobPaymentLineEdit {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem 0.6rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-subtle);
+  margin-top: 0.25rem;
+}
+.jobPaymentLineEdit label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.jobPaymentLineEdit .wide {
+  grid-column: 1 / -1;
+}
+.jobPaymentLineEdit input,
+.jobPaymentLineEdit select {
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-base);
+  padding: 0.3rem 0.45rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  background: var(--surface);
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.jobPaymentLineAmountBox {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--surface);
+}
+.jobPaymentLineAmountBox > span {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--text-muted);
+  background: var(--bg-subtle);
+  border-right: 1px solid var(--border);
+}
+.jobPaymentLineAmountBox input {
+  border: none;
+  border-radius: 0;
+  text-align: right;
+}
+
+/* View bill's paperwork card (v2.4299): the bill's lien waiver, the job's contract and its sub
+   work order as rows of one card, divided by hairlines. A row is label, words, the one door; the
+   waiver row may add a line, a two-step track and the email fix under its words. */
+.billPaperworkCard {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 0.75rem;
+  overflow: hidden;
+  font-size: 0.8125rem;
+  background: var(--surface);
+}
+.billPaperworkCard > * + * {
+  border-top: 1px solid var(--border);
+}
+.billPaperworkRow {
+  display: grid;
+  grid-template-columns: 6.25rem minmax(0, 1fr) auto;
+  column-gap: 0.65rem;
+  row-gap: 0.3rem;
+  align-items: center;
+  padding: 0.5rem 0.7rem;
+}
+.billPaperworkLabel {
+  color: var(--text-muted);
+}
+.billPaperworkControls {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.billPaperworkRow > .billPaperworkUnder {
+  grid-column: 2 / 4;
+}
+.billPaperworkRow--quiet {
+  padding-top: 0.35rem;
+  padding-bottom: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--text-faint);
+}
+.billPaperworkRow--quiet .billPaperworkLabel {
+  color: var(--text-faint);
+}
+.billPaperworkStep {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.billPaperworkDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+.billPaperworkLink {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--text-link);
+  cursor: pointer;
+}
+.billPaperworkLink:hover {
+  text-decoration: underline;
+}
+@media (max-width: 560px) {
+  .billPaperworkRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .billPaperworkRow > .billPaperworkUnder {
+    grid-column: auto;
+  }
+  .billPaperworkLabel {
+    font-size: 0.75rem;
+  }
+  .billPaperworkControls {
+    justify-content: stretch;
+    order: 10;
+  }
+  .billPaperworkStepJoin {
+    display: none;
+  }
+  .billPaperworkControls > button {
+    flex: 1 1 auto;
+    min-height: 44px;
+  }
+}
+
 .jobInvoiceChase {
   display: inline-flex;
   align-items: center;
@@ -2645,7 +3039,8 @@ body.my-time-boundary-dragging {
   color: var(--text-600);
 }
 @container job-invoice-ledger (max-width: 420px) {
-  .jobInvoiceLedgerHdr {
+  /* Stacked rows need no column label; the row stays only to carry the switch. */
+  .jobInvoiceLedgerHdr:not(:has(.jobInvoiceLedgerHdrSwitch)) {
     display: none;
   }
   .jobInvoiceRow {
@@ -3503,3 +3898,93 @@ button.gcStep:hover > em { text-decoration: underline; }
 .rcpMark.check { border-radius: 3px; }
 .rcpMark.on { background: var(--text-link); border-color: var(--text-link); }
 .rcpNone { padding: 0.5rem 0.6rem; font-size: 0.78rem; color: var(--text-muted); }
+
+/* Bid marks (v2.4287): hold a row, or click its circle, to mark it. The mark is the person's own
+   (bid_marks); the same row on every workflow tab, lighter on the Bid Board. The hold sets
+   data-holding on the row and the fill line animates on it. */
+.bid-mark-rowwrap { position: relative; display: flex; align-items: stretch; border-bottom: 1px solid var(--border); background: var(--surface); transition: background 160ms; }
+.bid-mark-rowwrap:hover { background: var(--bg-subtle); }
+.bid-mark-rowwrap[data-marked='true'] { background: var(--bid-mark-wash); }
+.bid-mark-rowwrap[data-marked='true']::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--bid-mark); pointer-events: none; }
+.bid-mark-rowwrap[data-finished='true']::before { background: repeating-linear-gradient(to bottom, var(--bid-mark) 0 6px, transparent 6px 10px); }
+.bid-mark-row-main { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.bid-mark-row-main:focus-visible { outline: 2px solid var(--text-link); outline-offset: -2px; }
+.bid-mark-dot { flex: 0 0 44px; min-height: 44px; display: flex; align-items: center; justify-content: center; padding: 0; border: none; background: transparent; cursor: pointer; opacity: 0; transition: opacity 120ms; }
+.bid-mark-rowwrap:hover .bid-mark-dot, .bid-mark-dot:focus-visible, .bid-mark-dot[aria-pressed='true'] { opacity: 1; }
+@media (hover: none) { .bid-mark-dot { opacity: 0.45; } .bid-mark-dot[aria-pressed='true'] { opacity: 1; } }
+.bid-mark-dot__ring { display: block; width: 16px; height: 16px; border-radius: 50%; box-sizing: border-box; border: 2px solid var(--bid-mark); background: transparent; }
+.bid-mark-dot[aria-pressed='true'] .bid-mark-dot__ring { background: var(--bid-mark); }
+.bid-mark-since { flex: 0 0 auto; font-size: 0.75rem; color: var(--bid-mark-text); white-space: nowrap; }
+.bid-mark-hold-fill { position: absolute; left: 0; bottom: 0; height: 3px; width: 0; background: var(--bid-mark); pointer-events: none; }
+[data-holding='true'] .bid-mark-hold-fill { animation: bid-mark-hold-fill var(--bid-mark-hold-ms, 500ms) linear forwards; }
+@keyframes bid-mark-hold-fill { from { width: 0; } to { width: 100%; } }
+@media (prefers-reduced-motion: reduce) { [data-holding='true'] .bid-mark-hold-fill { animation: none; width: 100%; } }
+.bid-mark-toggle { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.5rem 0.85rem; white-space: nowrap; border: 1px solid var(--bid-mark); border-radius: 4px; cursor: pointer; background: var(--surface); color: var(--bid-mark-text); font: inherit; font-size: 0.875rem; font-weight: 600; box-sizing: border-box; }
+.bid-mark-toggle[data-on='true'] { background: var(--bid-mark-wash-strong); }
+.bid-mark-toggle--title { padding: 0.2rem 0.6rem; font-size: 0.8rem; vertical-align: middle; }
+.bid-mark-toggle__dot { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--bid-mark); box-sizing: border-box; background: transparent; flex: 0 0 auto; }
+.bid-mark-toggle[data-on='true'] .bid-mark-toggle__dot { background: var(--bid-mark); }
+.bid-mark-footer { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; padding: 0.5rem 0.25rem 0; font-size: 0.8rem; color: var(--text-muted); }
+.bid-mark-footer__button { margin-left: auto; padding: 0.35rem 0.6rem; border: 1px solid var(--border-strong); border-radius: 4px; background: var(--surface); color: var(--text-700); font: inherit; font-size: 0.8rem; cursor: pointer; }
+.bid-mark-footer__button + .bid-mark-footer__button { margin-left: 0; }
+.bid-mark-board-row { -webkit-touch-callout: none; }
+.bid-mark-board-row[data-marked='true'] { background: var(--bid-mark-wash-board); }
+tr.bid-mark-board-row[data-marked='true'] > td:first-child { box-shadow: inset 3px 0 0 var(--bid-mark); }
+div.bid-mark-board-row[data-marked='true'] { box-shadow: inset 3px 0 0 var(--bid-mark); }
+
+/* Marks for a teammate (v2.4297): the sender's initial (filled) on the receiver's rows, the
+   receiver's initial (outlined) on the sender's, the card either opens, the For someone… form,
+   and the receiver's strip under the open bid's title. */
+.bid-mark-initial-wrap { display: inline-flex; align-items: center; justify-content: center; }
+.bid-mark-initial-wrap--row { flex: 0 0 44px; align-self: stretch; }
+.bid-mark-initial-wrap--board { margin-right: 0.25rem; vertical-align: middle; }
+.bid-mark-initial-button { display: inline-flex; align-items: center; justify-content: center; min-width: 32px; min-height: 32px; padding: 0; border: none; background: transparent; cursor: pointer; }
+.bid-mark-initial-wrap--row .bid-mark-initial-button { width: 44px; height: 44px; }
+.bid-mark-initial-button:focus-visible { outline: 2px solid var(--text-link); outline-offset: -2px; border-radius: 50%; }
+.bid-mark-initial { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; box-sizing: border-box; font-size: 11px; font-weight: 800; line-height: 1; flex: 0 0 auto; }
+.bid-mark-initial[data-variant='for-me'] { background: var(--bid-mark); color: var(--bid-mark-on); }
+.bid-mark-initial[data-variant='sent'] { border: 2px solid var(--bid-mark); color: var(--bid-mark-text); background: transparent; }
+.bid-mark-initial[data-variant='sent'][data-tone='done'] { border-color: var(--bid-mark-done); color: var(--bid-mark-done); }
+.bid-mark-initial[data-variant='sent'][data-tone='passed'] { border-style: dashed; }
+.bid-mark-initial__new { position: absolute; right: -3px; top: -3px; width: 9px; height: 9px; border-radius: 50%; background: var(--bid-mark-new); border: 2px solid var(--surface); }
+.bid-mark-initial__more { position: absolute; right: -10px; bottom: -6px; font-size: 9px; font-weight: 700; color: var(--bid-mark-text); }
+.bid-mark-floating { position: fixed; z-index: 1200; }
+.bid-mark-card { display: flex; flex-direction: column; gap: 0.5rem; box-sizing: border-box; width: 100%; padding: 0.8rem 0.9rem; background: var(--surface); color: var(--text-strong); border: 1px solid var(--border-strong); border-radius: 10px; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28); font-size: 0.875rem; text-align: left; font-weight: 400; white-space: normal; }
+.bid-mark-card__item { display: flex; flex-direction: column; gap: 0.2rem; }
+.bid-mark-card__head { font-weight: 700; font-size: 0.85rem; }
+.bid-mark-card__note { font-size: 0.9rem; line-height: 1.45; }
+.bid-mark-card__state { font-size: 0.8rem; color: var(--text-muted); }
+.bid-mark-card__state[data-tone='waiting'] { color: var(--bid-mark-new); }
+.bid-mark-card__state[data-tone='done'] { color: var(--bid-mark-done); }
+.bid-mark-card__label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.78rem; color: var(--text-muted); }
+.bid-mark-card__actions { display: flex; align-items: center; justify-content: flex-end; gap: 0.5rem; flex-wrap: wrap; }
+.bid-mark-card__primary { min-height: 36px; padding: 0 0.9rem; border: none; border-radius: 6px; background: var(--bid-mark-solid); color: #ffffff; font: inherit; font-weight: 600; cursor: pointer; }
+.bid-mark-card__primary:disabled { opacity: 0.55; cursor: default; }
+.bid-mark-card__secondary { min-height: 36px; padding: 0 0.8rem; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); color: var(--text-700); font: inherit; cursor: pointer; }
+.bid-mark-card__link { min-height: 36px; padding: 0 0.25rem; border: none; background: transparent; color: var(--text-muted); font: inherit; text-decoration: underline; cursor: pointer; margin-right: auto; }
+.bid-mark-for-someone { position: relative; display: inline-flex; vertical-align: middle; }
+.bid-mark-card--form { position: absolute; top: calc(100% + 6px); left: 0; z-index: 60; width: 340px; font-size: 0.875rem; }
+.bid-mark-people { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.bid-mark-person { display: inline-flex; align-items: center; gap: 0.45rem; min-height: 40px; padding: 0.2rem 0.75rem 0.2rem 0.3rem; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-strong); font: inherit; font-size: 0.85rem; cursor: pointer; }
+.bid-mark-person[aria-pressed='true'] { border-color: var(--bid-mark); background: var(--bid-mark-wash-strong); }
+.bid-mark-person__avatar { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; background: var(--bg-muted); font-weight: 700; font-size: 0.75rem; }
+.bid-mark-person[aria-pressed='true'] .bid-mark-person__avatar { background: var(--bid-mark); color: var(--bid-mark-on); }
+.bid-mark-person__text { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.2; }
+.bid-mark-person__sub { font-size: 0.7rem; color: var(--text-muted); }
+.bid-mark-select, .bid-mark-input { min-height: 36px; padding: 0 0.5rem; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); color: var(--text-strong); font: inherit; font-size: 0.875rem; box-sizing: border-box; width: 100%; }
+.bid-mark-check { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer; }
+.bid-mark-check input { width: 18px; height: 18px; }
+.bid-mark-toggle__for-you { padding: 0 0.45rem; border-radius: 999px; background: var(--bid-mark-solid); color: #ffffff; font-size: 0.72rem; font-weight: 700; }
+.bid-mark-sent-status { display: inline-flex; align-items: center; gap: 0.2rem; font-size: 0.78rem; font-weight: 400; color: var(--bid-mark-text); vertical-align: middle; }
+.bid-mark-sent-status[data-tone='done'] { color: var(--bid-mark-done); }
+.bid-mark-request-line { display: block; margin-top: 0.15rem; font-size: 0.8rem; color: var(--bid-mark-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bid-mark-since[data-tone='waiting'] { color: var(--bid-mark-new); }
+.bid-mark-since[data-tone='done'] { color: var(--bid-mark-done); }
+.bid-mark-strip { flex: 1 1 100%; display: flex; align-items: center; flex-wrap: wrap; gap: 0.6rem 0.9rem; padding: 0.6rem 0.8rem; border-radius: 8px; background: var(--bid-mark-wash); box-shadow: inset 4px 0 0 var(--bid-mark); box-sizing: border-box; }
+.bid-mark-strip__item { display: flex; align-items: center; gap: 0.6rem; min-width: 0; flex: 1 1 280px; }
+.bid-mark-strip__item .bid-mark-initial { width: 28px; height: 28px; font-size: 13px; }
+.bid-mark-strip__text { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
+.bid-mark-strip__head { font-size: 0.8rem; color: var(--bid-mark-text); }
+.bid-mark-strip__note { font-size: 0.95rem; }
+.bid-mark-strip__actions { flex: 0 0 auto; margin-left: auto; }
+.bid-mark-strip__actions .bid-mark-card__link { margin-right: 0; }

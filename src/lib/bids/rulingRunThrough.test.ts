@@ -85,6 +85,10 @@ describe('runThroughProgress', () => {
     expect(runThroughProgress(18, 19, 18)).toEqual({ position: 'Question 19 of 19', progress: '18 answered · ~1 min left' })
     expect(runThroughProgress(19, 19, 19).position).toBe('Question 19 of 19')
   })
+  it('says both counts when shared questions make fewer steps than questions (v2.4295)', () => {
+    expect(runThroughProgress(0, 16, 0, 19).position).toBe('Question 1 of 16 · 19 questions')
+    expect(runThroughProgress(0, 16, 0, 16).position).toBe('Question 1 of 16')
+  })
 })
 
 describe('sizeTodaySentence', () => {

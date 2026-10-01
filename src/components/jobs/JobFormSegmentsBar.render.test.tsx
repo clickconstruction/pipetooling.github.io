@@ -7,7 +7,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
-import { InvoicesSectionHeading, JobFormSegmentsBar, JobFormSegmentsCreateAction } from './JobFormSegmentsBar'
+import { BillsViewSwitch, InvoicesSectionHeading, JobFormSegmentsBar, JobFormSegmentsCreateAction } from './JobFormSegmentsBar'
 import type { FixtureRow } from '../../lib/jobs/jobFormTypes'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 
@@ -31,7 +31,7 @@ function renderBar() {
 describe('InvoicesSectionHeading flow explainer (moved beside the ② heading, v2.1146)', () => {
   it('is collapsed by default and expands with the sample chips', () => {
     renderWithProviders(<InvoicesSectionHeading sampleDollars={400} jobLabel="Job 742" />)
-    expect(screen.getByText('② Invoices')).toBeTruthy()
+    expect(screen.getByText('② Bills and payments')).toBeTruthy()
     expect(screen.queryByText(/green card/)).toBeNull()
     fireEvent.click(screen.getByText(/How invoices and jobs move/))
     expect(screen.getByText(/green card/)).toBeTruthy()
@@ -126,5 +126,24 @@ describe('JobFormSegmentsBar dollar-invoice coverage (v2.1132)', () => {
   it('renders no coverage chrome without the prop', () => {
     renderBar()
     expect(screen.queryByText('Covered by other bills')).toBeNull()
+  })
+})
+
+describe('BillsViewSwitch — By bill / By date (v2.4294; on the Bills row since v2.4298)', () => {
+  it('says which view is on and reports a press', () => {
+    const picked: string[] = []
+    renderWithProviders(<BillsViewSwitch view="bill" onViewChange={(v) => picked.push(v)} />)
+    const byBill = screen.getByRole('button', { name: 'By bill' })
+    const byDate = screen.getByRole('button', { name: 'By date' })
+    expect(byBill.getAttribute('aria-pressed')).toBe('true')
+    expect(byDate.getAttribute('aria-pressed')).toBe('false')
+    fireEvent.click(byDate)
+    expect(picked).toEqual(['date'])
+  })
+
+  it('is no longer on the ② heading', () => {
+    renderWithProviders(<InvoicesSectionHeading sampleDollars={400} jobLabel="Job 742" />)
+    expect(screen.getByText('② Bills and payments')).toBeTruthy()
+    expect(screen.queryByTestId('bills-view-switch')).toBeNull()
   })
 })

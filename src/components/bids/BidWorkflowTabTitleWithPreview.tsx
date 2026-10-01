@@ -3,6 +3,7 @@ import type { Bid } from '../../types/bids'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import { formatBidLedgerNumberLabel, resolveBidLedgerPrefix } from '../../lib/ledgerDisplayPrefixes'
 import { bidDisplayName, bidWorkflowTabHeading } from '../../lib/bids/bidFormatting'
+import { BidMarkButton, BidMarkForSomeone, BidMarkRequestStrip, BidMarkSentStatus } from './BidMarkControls'
 
 type BidWorkflowTabTitleWithPreviewProps = {
   bid: Bid
@@ -11,39 +12,66 @@ type BidWorkflowTabTitleWithPreviewProps = {
   h2Style?: CSSProperties
 }
 
+/**
+ * The open bid's title on every workflow tab. After the name sits the bid's Mark button
+ * (v2.4287): *Mark* / *Marked · today*, so a bid can be marked for later without closing
+ * it and finding its row again; then *For someone…* (v2.4297), which marks it for a
+ * teammate with a note, and where a mark you sent stands. When someone marked the bid for
+ * you, their note sits under the title on its own line with Done and Not for me — a sibling
+ * of the heading, full width, so it wraps under the title in the host's header row.
+ */
 export function BidWorkflowTabTitleWithPreview({ bid, previewEnabled, onOpenPreview, h2Style }: BidWorkflowTabTitleWithPreviewProps) {
   const prefixMap = useLedgerPrefixMap()
   const mergedH2Style: CSSProperties = h2Style ?? { margin: 0 }
   const name = bidDisplayName(bid).trim()
   const label = name || 'Bid'
   const num = bid.bid_number?.trim()
+  const mark = (
+    <>
+      {' '}
+      <BidMarkButton bidId={bid.id} /> <BidMarkForSomeone bid={bid} /> <BidMarkSentStatus bidId={bid.id} />
+    </>
+  )
+  const strip = <BidMarkRequestStrip bidId={bid.id} />
   if (!previewEnabled || !num) {
-    return <h2 style={mergedH2Style}>{bidWorkflowTabHeading(bid, prefixMap)}</h2>
+    return (
+      <>
+        <h2 style={mergedH2Style}>
+          {bidWorkflowTabHeading(bid, prefixMap)}
+          {mark}
+        </h2>
+        {strip}
+      </>
+    )
   }
   const numLabel = formatBidLedgerNumberLabel(resolveBidLedgerPrefix(bid.service_type_id, prefixMap), num)
   const previewA11y = `Preview bid ${numLabel}`
   return (
-    <h2 style={mergedH2Style}>
-      <button
-        type="button"
-        onClick={onOpenPreview}
-        title={previewA11y}
-        aria-label={previewA11y}
-        style={{
-          background: 'none',
-          border: 'none',
-          padding: 0,
-          margin: 0,
-          font: 'inherit',
-          color: 'var(--text-blue-500)',
-          cursor: 'pointer',
-          textDecoration: 'underline',
-        }}
-      >
-        {numLabel}
-      </button>
-      {' '}
-      {label}
-    </h2>
+    <>
+      <h2 style={mergedH2Style}>
+        <button
+          type="button"
+          onClick={onOpenPreview}
+          title={previewA11y}
+          aria-label={previewA11y}
+          style={{
+            background: 'none',
+            border: 'none',
+            padding: 0,
+            margin: 0,
+            font: 'inherit',
+            color: 'var(--text-blue-500)',
+            cursor: 'pointer',
+            textDecoration: 'underline',
+          }}
+        >
+          {numLabel}
+        </button>
+        {' '}
+        {label}
+        {mark}
+      </h2>
+      {strip}
+    </>
   )
 }

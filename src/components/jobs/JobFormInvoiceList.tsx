@@ -36,6 +36,9 @@ import { invoiceRowMenuSide, type InvoiceRowMenuSide } from '../../lib/jobs/invo
 import { billSettled, lienWaiverCellForBill } from '../../lib/jobs/lienWaiverCell'
 import type { JobLienReleaseRow } from '../../lib/jobs/lienReleaseTracking'
 import LienReleaseModal from './LienReleaseModal'
+import { billPaidBar, orderMoneyByDate, splitBillsAndPayments, type MercuryDepositFacts, type MoneyByDateItem } from '../../lib/jobs/billsAndPayments'
+import { BillsViewSwitch, type BillsAndPaymentsView } from './JobFormSegmentsBar'
+import { JobFormPaymentLine, type PaymentLineActions } from './JobFormPaymentLine'
 
 type JobFormInvoiceListProps = {
   editing: JobWithDetails
@@ -77,6 +80,23 @@ type JobFormInvoiceListProps = {
   onRecordPayment?: (inv: JobsLedgerInvoiceRow) => void
   /** Fires when one of this list's dialogs (delete draft, send back, convert) opens/closes, so Edit Job can pause its Escape-to-close (v2.3839). */
   onOverlayOpenChange?: (open: boolean) => void
+  /**
+   * v2.4293: each bill draws the payments counted toward it as lines under the
+   * row, with a paid bar. The lines need the bank's facts, which rows are saved,
+   * and the host's doors; without `paymentLineActions` no lines are drawn.
+   */
+  bankFacts?: Record<string, MercuryDepositFacts>
+  persistedLedgerPaymentIds?: Set<string>
+  unlinkingMercuryPaymentId?: string | null
+  paymentLineActions?: PaymentLineActions
+  /**
+   * v2.4294: 'date' lists the bills and the payments on one date line, oldest first —
+   * each payment its own row naming the bill it pays, and a closing "still open" line.
+   * 'bill' (the default) draws each payment under its bill. Needs `paymentLineActions`.
+   */
+  view?: BillsAndPaymentsView
+  /** v2.4298: with `paymentLineActions`, the Bills header row draws the By bill / By date switch at its right and reports a press here. */
+  onViewChange?: (view: BillsAndPaymentsView) => void
 }
 
 /**
@@ -109,6 +129,12 @@ export function JobFormInvoiceList({
   onFixturesChangedOutside,
   onRecordPayment,
   onOverlayOpenChange,
+  bankFacts,
+  persistedLedgerPaymentIds,
+  unlinkingMercuryPaymentId,
+  paymentLineActions,
+  view = 'bill',
+  onViewChange,
 }: JobFormInvoiceListProps) {
   const navigate = useNavigate()
   const { showToast } = useToastContext()
@@ -380,6 +406,23 @@ export function JobFormInvoiceList({
     .filter((r): r is NonNullable<typeof r> => r != null)
     .sort((a, b) => compareInvoiceLedgerRows({ state: a.row.state, sentYmd: a.sentYmd }, { state: b.row.state, sentYmd: b.sentYmd }))
   const listedIds = new Set(rows.map((r) => r.inv.id))
+  // v2.4293: the lines under each bill — the same slices the money line counts, minus rows still being typed.
+  const linesByBill = paymentLineActions ? splitBillsAndPayments(invoices, payments, persistedLedgerPaymentIds ?? null).slicesByBill : null
+  // v2.4294: what the list walks — the bills (By bill), or bills and payments on one date line (By date).
+  type DatePayment = Extract<MoneyByDateItem, { kind: 'payment' }>
+  type ListItem = { kind: 'bill'; r: (typeof rows)[number] } | DatePayment
+  const byDate = view === 'date' && linesByBill != null && paymentLineActions != null
+  const rowById = new Map(rows.map((r) => [r.inv.id, r]))
+  const listItems: ListItem[] = byDate
+    ? orderMoneyByDate(
+        rows.map((r) => r.inv),
+        linesByBill,
+      ).flatMap((i): ListItem[] => {
+        if (i.kind === 'payment') return [i]
+        const r = rowById.get(i.inv.id)
+        return r ? [{ kind: 'bill', r }] : []
+      })
+    : rows.map((r) => ({ kind: 'bill', r }))
   // Money on no listed bill: unlinked surplus the sent bills did not need, plus payments linked to a bill not listed here.
   const unappliedPaid = attribution.surplus + payments.reduce((s, p) => (p.invoice_id && !listedIds.has(p.invoice_id) ? s + (Number(p.amount) || 0) : s), 0)
   const totals = invoiceLedgerTotals(rows.map((r) => r.row), unappliedPaid)
@@ -475,12 +518,35 @@ export function JobFormInvoiceList({
   const menuSub = (text: string) => <span style={{ color: 'var(--text-muted)', marginLeft: 6, fontSize: '0.75rem' }}>{text}</span>
 
   return (
-    <div className="jobInvoiceLedger" ref={ledgerRef}>
+    <div className="jobInvoiceLedger" ref={ledgerRef} data-view={byDate ? 'date' : 'bill'}>
       <div className="jobInvoiceLedgerHdr">
         <span>Bills</span>
-        <span>Next</span>
+        {onViewChange && paymentLineActions ? (
+          <span className="jobInvoiceLedgerHdrSwitch">
+            <BillsViewSwitch view={view} onViewChange={onViewChange} />
+          </span>
+        ) : null}
       </div>
-      {rows.map(({ inv, row, party, billTo }) => {
+      {listItems.map((item) => {
+        if (item.kind === 'payment') {
+          // By date: the payment stands on its own row, so it names the bill it pays.
+          const first = item.bills[0] ?? null
+          return (
+            <div key={`pay-${item.payment.id}`} className="jobMoneyDateRow" data-testid="date-payment-row">
+              <JobFormPaymentLine
+                row={item.payment}
+                bill={first ? first.inv : null}
+                job={editing}
+                bankFacts={bankFacts ?? {}}
+                persisted={persistedLedgerPaymentIds?.has(item.payment.id) ?? true}
+                unlinking={unlinkingMercuryPaymentId === item.payment.id}
+                actions={paymentLineActions!}
+                billWords={item.billWords}
+              />
+            </div>
+          )
+        }
+        const { inv, row, party, billTo } = item.r
         const isDraft = row.state === 'draft'
         const isPaid = row.state === 'paid'
         const hasStripeShare = (inv.stripe_invoice_id ?? '').trim().length > 0 && (inv.hosted_invoice_url ?? '').trim().length > 0
@@ -722,7 +788,7 @@ export function JobFormInvoiceList({
                       type="button"
                       role="menuitem"
                       disabled={sendBackBlocked}
-                      title={sendBackBlocked ? 'Payments are applied to this bill — unlink them first (Payments received below).' : 'Remove this bill and return its amount to unbilled. A Stripe payment link is voided so the customer cannot pay it.'}
+                      title={sendBackBlocked ? 'Payments are applied to this bill — unlink them first (under this bill).' : 'Remove this bill and return its amount to unbilled. A Stripe payment link is voided so the customer cannot pay it.'}
                       onClick={() => { setMenuFor(null); setSendBackAcknowledged(false); setConfirmSendBackInvoice(inv) }}
                       style={menuItem({ danger: true, top: true, disabled: sendBackBlocked })}
                     >
@@ -754,9 +820,57 @@ export function JobFormInvoiceList({
                 {footerLine ? (<div><b>Footer: </b>{footerLine}</div>) : null}
               </div>
             ) : null}
+            {(() => {
+              // v2.4293: the money that paid this bill, one line per payment, under a thin paid bar.
+              const acts = paymentLineActions
+              // By date draws the payments as their own rows, so the bill keeps only its bar.
+              const slices = !isDraft && linesByBill && acts ? linesByBill.get(inv.id) ?? [] : []
+              if (byDate && slices.length > 0) {
+                const bar = billPaidBar(row.amount, slices)
+                return (
+                  <div className="jobInvoicePaidBar" aria-hidden="true" data-testid="invoice-paid-bar">
+                    {bar.segments.map((s) => (
+                      <span key={s.paymentId} style={{ width: `${(s.frac * 100).toFixed(2)}%` }} />
+                    ))}
+                  </div>
+                )
+              }
+              if (!acts || slices.length === 0) return null
+              const bar = billPaidBar(row.amount, slices)
+              return (
+                <>
+                  <div className="jobInvoicePaidBar" aria-hidden="true" data-testid="invoice-paid-bar">
+                    {bar.segments.map((s) => (
+                      <span key={s.paymentId} style={{ width: `${(s.frac * 100).toFixed(2)}%` }} />
+                    ))}
+                  </div>
+                  <div className="jobInvoicePayments" data-testid="invoice-payments">
+                    {slices.map((s) => (
+                      <JobFormPaymentLine
+                        key={s.payment.id}
+                        row={s.payment}
+                        bill={inv}
+                        sliceAmount={s.amount}
+                        partial={s.partial}
+                        job={editing}
+                        bankFacts={bankFacts ?? {}}
+                        persisted={persistedLedgerPaymentIds?.has(s.payment.id) ?? true}
+                        unlinking={unlinkingMercuryPaymentId === s.payment.id}
+                        actions={acts}
+                      />
+                    ))}
+                  </div>
+                </>
+              )
+            })()}
           </div>
         )
       })}
+      {byDate && totals.open > 0.005 ? (
+        <div className="jobMoneyDateRow today" data-testid="date-today-row">
+          <span className="jobMoneyDateToday">Today · ${formatCurrency(totals.open)} still open</span>
+        </div>
+      ) : null}
       <div className="jobInvoiceSum" data-testid="invoice-sum">
         {totals.toBill > 0 ? <span>to bill <b>${formatCurrency(totals.toBill)}</b></span> : null}
         {totals.paid > 0 ? <span>paid <b>${formatCurrency(totals.paid)}</b></span> : null}

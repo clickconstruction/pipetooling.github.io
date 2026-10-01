@@ -53,6 +53,11 @@ import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { useBidFlowReview } from '../../hooks/useBidFlowReview'
 import { useBidReplyBook } from '../../hooks/useBidReplyBook'
 import { BidReplyBookModal } from './BidReplyBookModal'
+import { useToastContext } from '../../contexts/ToastContext'
+import { bidMarkHoldHandlers } from '../../lib/bids/bidMarkHold'
+import { isBidMarked } from '../../lib/bids/bidMarks'
+import { toggleBidMarkNow } from '../../lib/bids/bidMarksStore'
+import { BID_MARK_SAVE_FAILED, BidMarkInitial, MarkedBidsToggle, useBidMarkRequests, useFinishBidRequests } from './BidMarkControls'
 
 type BidBoardSectionOpenState = {
   unsent: boolean
@@ -247,6 +252,27 @@ export function BidsBidBoardTab({
     selfHighlightStyle,
   } = useBidBoardSelfHighlight(authUser?.id)
   const [bidBoardSearchQuery, setBidBoardSearchQuery] = useState('')
+  // Bid marks (v2.4287): the person's own marks — the lighter wash on a row, the hold that makes one, the Marked switch.
+  // Marks for a teammate (v2.4297): a row marked for you wears the sender's initial and the wash;
+  // a hold on it finishes it. A row you marked for someone wears their initial, outlined.
+  const { marks: bidMarks, onlyMarked: onlyMarkedBidsOn, forMe: bidMarksForMe, fromMe: bidMarksFromMe, nameOf: bidMarkNameOf } = useBidMarkRequests()
+  const finishBidMarkRequests = useFinishBidRequests()
+  const { showToast: showBidMarkToast } = useToastContext()
+  const toggleBidMark = (bidId: string) => {
+    if (bidMarksForMe.has(bidId)) {
+      finishBidMarkRequests(bidId, 'done')
+      return
+    }
+    void toggleBidMarkNow(bidId).catch(() => showBidMarkToast(BID_MARK_SAVE_FAILED, 'error'))
+  }
+  const isBidMarkedOrForMe = (bidId: string) => isBidMarked(bidMarks, bidId) || bidMarksForMe.has(bidId)
+  const renderBidMarkInitial = (bid: BidWithBuilder) => {
+    const forMe = bidMarksForMe.get(bid.id)
+    if (forMe && forMe.length > 0) return <BidMarkInitial bidId={bid.id} variant="for-me" requests={forMe} name={bidMarkNameOf(forMe[0]!.from_user_id)} size="board" />
+    const sent = bidMarksFromMe.get(bid.id)
+    if (sent) return <BidMarkInitial bidId={bid.id} variant="sent" requests={[sent]} name={bidMarkNameOf(sent.for_user_id)} size="board" />
+    return null
+  }
   const [expandedBidBoardBidId, setExpandedBidBoardBidId] = useState<string | null>(null)
   // Bids by GC (v2.2162): per-GC packets for every bid on the board → the GC lines under a row.
   const [bidBoardNotesTab, setBidBoardNotesTab] = useState<BidBoardNotesTab>('all')
@@ -342,7 +368,7 @@ export function BidsBidBoardTab({
   const bidsForBoardUnreadRef = useRef(bids)
   bidsForBoardUnreadRef.current = bids
 
-  const filteredBidsForBidBoard = bidBoardSearchQuery.trim()
+  const searchedBidsForBidBoard = bidBoardSearchQuery.trim()
     ? bids.filter(
         (b) =>
           (b.project_name?.toLowerCase().includes(bidBoardSearchQuery.toLowerCase()) ?? false) ||
@@ -352,6 +378,7 @@ export function BidsBidBoardTab({
           (b.bids_gc_builders?.name?.toLowerCase().includes(bidBoardSearchQuery.toLowerCase()) ?? false)
       )
     : bids
+  const filteredBidsForBidBoard = onlyMarkedBidsOn ? searchedBidsForBidBoard.filter((b) => isBidMarkedOrForMe(b.id)) : searchedBidsForBidBoard
 
   const bidBoardBuckets = useMemo(() => {
     const buckets: Record<SubmissionSectionKey, BidWithBuilder[]> = {
@@ -1183,11 +1210,14 @@ export function BidsBidBoardTab({
       <Fragment key={bid.id}>
         <tr
           id={`bid-board-row-${bid.id}`}
-          className={bid.id === rowHighlightId ? BID_FLOW_LANDING_CLASS : undefined}
+          className={bid.id === rowHighlightId ? `${BID_FLOW_LANDING_CLASS} bid-mark-board-row` : 'bid-mark-board-row'}
+          data-marked={isBidMarkedOrForMe(bid.id) ? 'true' : undefined}
           data-deeplink-gen={bid.id === deepLinkHighlightId ? deepLinkHighlightGen : undefined}
+          {...bidMarkHoldHandlers(`board:${bid.id}`, () => toggleBidMark(bid.id))}
           onClick={(e) => handleBidBoardRowClick(e, bid.id)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && e.target === e.currentTarget) toggleBidBoardRowExpanded(bid.id)
+          if ((e.key === 'h' || e.key === 'H') && e.target === e.currentTarget) toggleBidMark(bid.id)
           }}
           tabIndex={0}
           onMouseEnter={() => mapHoverStore.set(bid.id)}
@@ -1199,8 +1229,10 @@ export function BidsBidBoardTab({
             cursor: 'pointer',
           }}
         >
-          <td style={{ padding: '0.0625rem 0.4rem 0.0625rem 0.15rem', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+          <td style={{ position: 'relative', padding: '0.0625rem 0.4rem 0.0625rem 0.15rem', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+            {renderBidMarkInitial(bid)}
             {renderBidBoardBidNumberCluster(bid)}
+            <span aria-hidden="true" className="bid-mark-hold-fill" />
           </td>
           <td
             style={{
@@ -1424,11 +1456,14 @@ export function BidsBidBoardTab({
       <div
         key={bid.id}
         id={`bid-board-row-${bid.id}`}
-        className={bid.id === rowHighlightId ? BID_FLOW_LANDING_CLASS : undefined}
+        className={bid.id === rowHighlightId ? `${BID_FLOW_LANDING_CLASS} bid-mark-board-row` : 'bid-mark-board-row'}
+        data-marked={isBidMarkedOrForMe(bid.id) ? 'true' : undefined}
         data-deeplink-gen={bid.id === deepLinkHighlightId ? deepLinkHighlightGen : undefined}
+        {...bidMarkHoldHandlers(`board:${bid.id}`, () => toggleBidMark(bid.id))}
         onClick={(e) => handleBidBoardRowClick(e, bid.id)}
         onKeyDown={(e) => {
           if (e.key === 'Enter' && e.target === e.currentTarget) toggleBidBoardRowExpanded(bid.id)
+          if ((e.key === 'h' || e.key === 'H') && e.target === e.currentTarget) toggleBidMark(bid.id)
         }}
         tabIndex={0}
         role="button"
@@ -1440,13 +1475,16 @@ export function BidsBidBoardTab({
           padding: '0.5rem 0.6rem',
           background: 'var(--surface)',
           cursor: 'pointer',
+          position: 'relative',
         }}
       >
+        <span aria-hidden="true" className="bid-mark-hold-fill" />
         {/* Header row wraps (v2.3171): the icon cluster (5–7 buttons + the number) plus the
             inline due chip + "sent" label need up to ~390px, and a 375px phone card is ~320px
             wide. `nowrap` here pushed the chip past the card and gave the whole Bid Board a
             sideways scroll; wrapping drops the chip to its own right-aligned line instead. */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem 0.4rem', flexWrap: 'wrap', minWidth: 0 }}>
+          {renderBidMarkInitial(bid)}
           {renderBidBoardBidNumberCluster(bid)}
           <span style={{ marginLeft: 'auto' }}>{renderBidBoardDueChip(bid, true)}</span>
         </div>
@@ -1543,6 +1581,7 @@ export function BidsBidBoardTab({
           style={{ flex: '1 1 auto', minWidth: 0, height: 36, padding: '0 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
         />
         <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+          <MarkedBidsToggle compact={narrowViewport} />
           <button
             type="button"
             onClick={() => setWorkingBoardArchivedModalOpen(true)}

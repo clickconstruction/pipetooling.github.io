@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useState, type CSSProperties } from 'react'
-import { candidateBar, candidateCounts, GROUP_LABELS, splitExplanation, type CandidateGroup, type TakeoffCandidate } from '../../lib/submittals/takeoffCandidates'
+import { candidateBar, candidateCounts, GROUP_LABELS, splitExplanation, withProductKeys, type CandidateGroup, type ProductPiece, type TakeoffCandidate } from '../../lib/submittals/takeoffCandidates'
 import { SplitRuleModal } from './SplitRuleModal'
 
 type Props = {
@@ -8,8 +8,11 @@ type Props = {
   revLabel: string
   candidates: ReadonlyArray<TakeoffCandidate>
   busy?: boolean
-  /** The ticked candidates (with `split` as switched), every tick, and every split switched here (v2.4118). */
-  onConfirm: (ticked: ReadonlyArray<TakeoffCandidate>, ticks: ReadonlyMap<string, boolean>, splits: ReadonlyMap<string, boolean>) => void
+  /**
+   * The ticked candidates (with `split` and the product as switched), every tick, every split switched
+   * here (v2.4118), and the pieces switched here, by count row (v2.4292).
+   */
+  onConfirm: (ticked: ReadonlyArray<TakeoffCandidate>, ticks: ReadonlyMap<string, boolean>, splits: ReadonlyMap<string, boolean>, productKeys: ReadonlyMap<string, ReadonlyArray<string>>) => void
   onClose: () => void
 }
 
@@ -24,6 +27,13 @@ const inp: CSSProperties = { margin: 0 }
 const quiet: CSSProperties = { fontSize: '0.78rem', color: 'var(--text-muted)' }
 const btn: CSSProperties = { padding: '0.4rem 0.8rem', background: 'var(--surface)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem', fontWeight: 500 }
 const btnPrimary: CSSProperties = { ...btn, background: '#2563eb', borderColor: '#2563eb', color: 'white', fontWeight: 600 }
+const chipBase: CSSProperties = { font: 'inherit', fontSize: '0.74rem', lineHeight: 1.3, borderRadius: 999, padding: '0.06rem 0.5rem', cursor: 'pointer', maxWidth: '16rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
+
+/** A piece's chip text: the part number and a word or two, not the whole catalog line. */
+function chipText(p: ProductPiece): string {
+  const t = p.label.replace(/\s+/g, ' ').trim()
+  return t.length > 34 ? `${t.slice(0, 33).trimEnd()}…` : t
+}
 
 /**
  * Choose from the takeoff (v2.4107): the takeoff's fixtures in three groups with the
@@ -31,7 +41,15 @@ const btnPrimary: CSSProperties = { ...btn, background: '#2563eb', borderColor: 
  * start ticked, pipe and allowances unticked; the estimator prunes here, once, and the
  * ticks are remembered on the bid. The parent writes the rows and the ticks.
  */
-export function SubmittalTakeoffPicker({ mode, revLabel, candidates, busy = false, onConfirm, onClose }: Props) {
+export function SubmittalTakeoffPicker({ mode, revLabel, candidates: given, busy = false, onConfirm, onClose }: Props) {
+  // v2.4292 · the pieces switched here, by count row; every count, bar and row below reads the product as switched.
+  const [pieceKeys, setPieceKeys] = useState<Map<string, string[]>>(() => new Map())
+  const candidates = useMemo(() => given.map((c) => (pieceKeys.has(c.countRowId) ? withProductKeys(c, pieceKeys.get(c.countRowId)!) : c)), [given, pieceKeys])
+  const togglePiece = (c: TakeoffCandidate, key: string) => {
+    const on = c.productKeys.includes(key)
+    const next = c.pieces.map((p) => p.key).filter((k) => (k === key ? !on : c.productKeys.includes(k)))
+    setPieceKeys((m) => new Map(m).set(c.countRowId, next))
+  }
   const [ticks, setTicks] = useState<Map<string, boolean>>(() => new Map(candidates.map((c) => [c.countRowId, c.ticked && !c.alreadyOn])))
   // v2.4118 · the Split switch, per row whose name spells out more than one tag; starts from the stored split.
   const [splits, setSplits] = useState<Map<string, boolean>>(() => new Map(candidates.filter((c) => c.canSplit).map((c) => [c.countRowId, c.split])))
@@ -47,7 +65,7 @@ export function SubmittalTakeoffPicker({ mode, revLabel, candidates, busy = fals
     for (const c of candidates) if (c.product && !c.alreadyOn) next.set(c.countRowId, true)
     return next
   })
-  const confirm = () => onConfirm(candidates.filter(isOn).map((c) => ({ ...c, split: isSplit(c) })), ticks, splits)
+  const confirm = () => onConfirm(candidates.filter(isOn).map((c) => ({ ...c, split: isSplit(c) })), ticks, splits, pieceKeys)
 
   return (
     <div role="presentation" onMouseDown={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
@@ -55,7 +73,7 @@ export function SubmittalTakeoffPicker({ mode, revLabel, candidates, busy = fals
         <div style={{ padding: '1rem 1.25rem 0.5rem', display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
           <div>
             <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'var(--text-strong)' }}>Choose from the takeoff</h3>
-            <p style={{ ...quiet, margin: '0.2rem 0 0' }}>One row per fixture; the part under it is the product, with the house it came from. Your ticks are remembered on the bid.</p>
+            <p style={{ ...quiet, margin: '0.2rem 0 0' }}>One row per fixture; its parts are the product, with the house they came from. Stops, supplies, traps and flanges start off — tap a part to switch it. Your choices are remembered on the bid.</p>
           </div>
           <button type="button" onClick={onClose} aria-label="Close" style={{ ...btn, padding: '0.2rem 0.55rem' }}>×</button>
         </div>
@@ -76,7 +94,32 @@ export function SubmittalTakeoffPicker({ mode, revLabel, candidates, busy = fals
                         <b>{c.tagText || c.fixture}</b>
                         {c.tagText ? <span style={quiet}> · {c.fixture}</span> : null}
                         <span style={quiet}> × {c.count}</span>
-                        <span style={{ ...quiet, display: 'block' }}>{c.product ?? (c.group === 'no_part' ? 'no part yet — cost it on Takeoffs, or type the product with Edit' : c.group === 'pipe_allowance' ? 'pipe or allowance' : '')}{c.alreadyOn ? ' · already on this revision' : ''}</span>
+                        <span style={{ ...quiet, display: 'block' }} data-testid="takeoff-product">{c.product ?? (c.pieces.length > 0 ? 'every part switched off — the row comes in to type with Edit' : c.group === 'no_part' ? 'no part yet — cost it on Takeoffs, or type the product with Edit' : c.group === 'pipe_allowance' ? 'pipe or allowance' : '')}{c.alreadyOn ? ' · already on this revision' : ''}</span>
+                        {c.pieces.length > 1 && !c.alreadyOn && c.group !== 'pipe_allowance' ? (
+                          <span style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem', marginTop: '0.25rem' }} data-testid="takeoff-pieces">
+                            {c.pieces.map((p) => {
+                              const on = c.productKeys.includes(p.key)
+                              return (
+                                <button
+                                  key={p.key}
+                                  type="button"
+                                  aria-pressed={on}
+                                  aria-label={p.label}
+                                  title={`${p.label}${p.trim ? ' · trim, off unless you switch it on' : ''}${p.houseName ? ` · ${p.houseName}` : ''}`}
+                                  disabled={busy}
+                                  onClick={() => togglePiece(c, p.key)}
+                                  style={on
+                                    ? { ...chipBase, background: 'var(--bg-blue-tint)', border: '1px solid #2563eb', color: 'var(--text-blue-700)', fontWeight: 600 }
+                                    : { ...chipBase, background: 'var(--surface)', border: '1px dashed var(--border-strong)', color: 'var(--text-faint)' }}
+                                  data-testid="takeoff-piece"
+                                  data-trim={p.trim ? 'true' : undefined}
+                                >
+                                  {chipText(p)}{p.trim && !on ? <span style={{ fontWeight: 400, opacity: 0.8 }}> · trim</span> : null}
+                                </button>
+                              )
+                            })}
+                          </span>
+                        ) : null}
                       </span>
                       {c.canSplit && !c.alreadyOn ? (
                         <label style={{ ...quiet, display: 'inline-flex', alignItems: 'center', gap: '0.3rem', whiteSpace: 'nowrap', cursor: 'pointer', color: isSplit(c) ? 'var(--text-blue-700)' : 'var(--text-muted)', fontWeight: isSplit(c) ? 600 : 400 }} title={`This name spells out ${c.tags.length} tags. Off: one row, ${c.tags.join(', ')}. On: a row each.`}>

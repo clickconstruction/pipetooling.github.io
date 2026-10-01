@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type CSSProperties } from 'react'
 import { BILLED_COLOR, DRAFT_COLOR, PAID_COLOR, UNBILLED_COLOR } from './MoneyLifecycleBar'
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
@@ -41,6 +41,45 @@ type JobFormSegmentsBarProps = {
   plan?: StagePlan | null
 }
 
+/** How the ② block lists its money (v2.4294): each bill with the payments under it, or everything on one date line. */
+export type BillsAndPaymentsView = 'bill' | 'date'
+
+/**
+ * The By bill / By date switch (v2.4294). It changes only the bill list, so since v2.4298 it sits on
+ * that list's own Bills header row (`JobFormInvoiceList`) rather than on the ② heading.
+ */
+export function BillsViewSwitch({ view, onViewChange }: { view: BillsAndPaymentsView; onViewChange: (view: BillsAndPaymentsView) => void }) {
+  const switchBtn = (key: BillsAndPaymentsView): CSSProperties => ({
+    padding: '0.2rem 0.6rem',
+    fontSize: '0.75rem',
+    fontWeight: view === key ? 600 : 500,
+    // The header row is small caps; the switch reads as ordinary words.
+    textTransform: 'none',
+    letterSpacing: 'normal',
+    border: 'none',
+    background: view === key ? '#2563eb' : 'var(--surface)',
+    color: view === key ? '#ffffff' : 'var(--text-700)',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    whiteSpace: 'nowrap',
+  })
+  return (
+    <div
+      role="group"
+      aria-label="How to list the money"
+      data-testid="bills-view-switch"
+      style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden' }}
+    >
+      <button type="button" onClick={() => onViewChange('bill')} aria-pressed={view !== 'date'} title="Each bill, with the payments that paid it under it" style={switchBtn('bill')}>
+        By bill
+      </button>
+      <button type="button" onClick={() => onViewChange('date')} aria-pressed={view === 'date'} title="Bills going out and money coming in on one date line, oldest first" style={switchBtn('date')}>
+        By date
+      </button>
+    </div>
+  )
+}
+
 /**
  * "② Invoices" heading with the ⓘ how-it-moves explainer beside it (v2.1146) —
  * the trigger used to live inside the segment strip's header row; the modal
@@ -58,7 +97,7 @@ export function InvoicesSectionHeading({
     <div style={{ marginBottom: '0.75rem' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', flexWrap: 'wrap' }}>
         <span style={{ fontWeight: 400, textDecoration: 'underline', fontSize: '0.9375rem', color: 'var(--text-700)' }}>
-          ② Invoices
+          ② Bills and payments
         </span>
         <button
           type="button"
