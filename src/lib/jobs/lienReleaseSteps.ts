@@ -80,3 +80,30 @@ export function lienReleaseSteps(i: ReleaseStepsInput): ReleaseSteps {
   })
   return { steps, current: steps.find((s) => s.state === 'now' || s.state === 'warn') ?? null }
 }
+
+/**
+ * Click to look (v2.4337): a folded step opens read-only on a click, and the page beside the steps
+ * marks the part that step filled in — the amount for the bills and the amount, the title for the
+ * form, the project line for the details, the signature block for the signing. Step 6 fills nothing.
+ */
+export type ReleasePagePart = 'amount' | 'title' | 'project' | 'signature'
+
+export function releaseStepPagePart(n: number): ReleasePagePart | null {
+  if (n === 1 || n === 3) return 'amount'
+  if (n === 2) return 'title'
+  if (n === 4) return 'project'
+  if (n === 5) return 'signature'
+  return null
+}
+
+/**
+ * The line an opened, folded step shows: why it cannot be changed here, and the way to change it.
+ * A requested signature locks the waiver until the request is cancelled; a signed one stays as he
+ * signed it, so a change is a new waiver he signs again. Null while nothing is folded.
+ */
+export function releaseStepLookNote(rowStatus: ReleaseStepsInput['rowStatus'], sent: boolean): string | null {
+  if (rowStatus === 'awaiting_signature') return 'Read only while it waits for his signature. To change it, click Cancel request in step 5 first.'
+  if (rowStatus === 'signed' && sent) return 'Read only. It is signed and sent. To change it, click Void this waiver at the bottom and send a new one.'
+  if (rowStatus === 'signed') return 'Read only. It is signed. To change it, click Void this waiver at the bottom and make a new one. He signs it again.'
+  return null
+}

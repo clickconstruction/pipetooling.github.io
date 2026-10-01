@@ -2,7 +2,7 @@
 title: send a GC our lien waiver
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: lien waiver, sign on the line, signature in ink, drawn signature, type it instead, six steps, step 1, step 5, change a detail, amount, why less than the bill, still owed, paid so far, signs for the company, signer title, by, signature block, GC, general contractor, conditional, unconditional, progress, final, release of lien, he signs now, sign now, send to the GC, waiver PDF, 53.284, bill, pay app, send with the bill, bill tab, add waiver, waivers to sign, needs you, sign them, GC room, portal, what the GC sees, GC review, they hold, we owe
+keywords: lien waiver, look back, folded step, read only, sign on the line, signature in ink, drawn signature, type it instead, six steps, step 1, step 5, change a detail, amount, why less than the bill, still owed, paid so far, signs for the company, signer title, by, signature block, GC, general contractor, conditional, unconditional, progress, final, release of lien, he signs now, sign now, send to the GC, waiver PDF, 53.284, bill, pay app, send with the bill, bill tab, add waiver, waivers to sign, needs you, sign them, GC room, portal, what the GC sees, GC review, they hold, we owe
 ---
 A GC often wants a lien waiver with each bill. The waiver says we give up our lien right for that payment. Texas has four forms. The app picks the right one from the bill, and the leader signs it in the app.
 
@@ -82,6 +82,16 @@ The page on the right stays in view while you work. It marks the part the curren
 {{chip:blue|5 · Get it signed · You are here}}
 {{chip:gray|6 · Send it to the GC · Opens once he signs}}
 :::
+
+### Look back at a folded step
+
+Steps fold to one line each once he has the waiver to sign, and again once he has signed. You can still look at any of them before you send.
+
+1. Click a folded step, or its number on the left. It opens where it is.
+2. Read it. It is read only, and the page on the right marks the part that step filled in.
+3. Click {{button:outline|Fold}} to close it again.
+
+A step you open says how to change it. While he has it to sign, click **Cancel request** in step 5 first. Once he has signed, the waiver stays as he signed it. To fix it, click **Void this waiver** at the bottom and make a new one. He signs the new one.
 
 ## Check the form the bill picked
 
