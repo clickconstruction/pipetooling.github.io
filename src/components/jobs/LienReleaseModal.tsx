@@ -6,8 +6,8 @@ import {
   buildLienWaiverParagraphs,
   buildLienWaiverPdfBlob,
   buildLienWaiverPrefill,
+  buildLienWaiverFoot,
   buildLienWaiverPrintHtml,
-  buildLienWaiverSignatureLines,
   lienWaiverDate,
   lienWaiverDatesUnfinished,
   lienWaiverFormFrom,
@@ -37,12 +37,14 @@ import {
   lienReleaseChips,
   lienReleaseIsEditable,
   lienReleaseIsMinted,
+  lienReleaseRowSignature,
   lienReleaseSignatureAuditLine,
   lienReleaseStatus,
   type LienReleaseChip,
 } from '../../lib/jobs/lienReleaseLifecycle'
 import { LIEN_RELEASE_DOCUMENTS_BUCKET, lienReleaseMintedPdfPath } from '../../lib/jobs/lienReleaseDocuments'
 import LienReleaseSignModal from './LienReleaseSignModal'
+import { LienWaiverFootPreview } from './LienWaiverFootPreview'
 import {
   customerAddressLienGaps,
   customerAddressLienReady,
@@ -98,8 +100,8 @@ const FIELD_LABELS: Record<keyof LienWaiverFields, string> = {
   projectDescription: 'Project (name — address)',
   throughDate: 'Progress payments through',
   signedDate: 'Signature date',
-  signerName: 'Signed by',
-  signerTitle: 'Signer title',
+  signerName: 'Signed by (the leader)',
+  signerTitle: 'His title',
 }
 
 const FIELD_ORDER: (keyof LienWaiverFields)[] = [
@@ -185,6 +187,8 @@ export default function LienReleaseModal({
   const [signOpen, setSignOpen] = useState(false)
   // True once the user actually edits — mere open/close never mints a draft.
   const userTouchedRef = useRef(false)
+  /** v2.4285: the signer lines follow the leader picked (and Settings → Invoices) until someone types in them. */
+  const signerTouchedRef = useRef(false)
   // Resumed drafts keep their saved fields — the prefill rebuild stays off.
   const hydratedDraftRef = useRef(false)
   // Issued-on-this-job history (v2.2588): reachable from every row with the
@@ -236,7 +240,10 @@ export default function LienReleaseModal({
           .map((u) => ({ id: u.id, name: (u.notes?.trim() || u.name?.trim() || 'the leader').replace(/,.*$/, '') }))
           .sort((a, b) => (a.id === job.master_user_id ? -1 : b.id === job.master_user_id ? 1 : a.name.localeCompare(b.name)))
         setMasters(rows)
-        setPresentSignerId((cur) => cur ?? job.master_user_id ?? rows[0]?.id ?? null)
+        // v2.4285: the company's signer (Settings → Invoices) is the default; the job's master, then anyone, after.
+        const companySigner = (getPhysicalInvoiceIssuerDraft().signerName ?? '').trim().toLowerCase()
+        const byCompany = companySigner ? rows.find((r) => r.name.trim().toLowerCase() === companySigner)?.id : undefined
+        setPresentSignerId((cur) => cur ?? byCompany ?? job.master_user_id ?? rows[0]?.id ?? null)
       } catch {
         setMasters([])
       }
@@ -380,6 +387,7 @@ export default function LienReleaseModal({
     setAutosaveState('idle')
     setSignOpen(false)
     userTouchedRef.current = false
+    signerTouchedRef.current = false
     hydratedDraftRef.current = false
     const selectable = selectableInvoices(job)
     if (invoice && selectable.some((i) => i.id === invoice.id)) {
@@ -428,6 +436,19 @@ export default function LienReleaseModal({
     [invoices, selectedInvoiceIds],
   )
 
+  const presentSigner = useMemo(() => masters.find((m) => m.id === presentSignerId) ?? null, [masters, presentSignerId])
+  const iAmTheSigner = presentSigner != null && presentSigner.id === authUser?.id
+  /**
+   * v2.4285: whoever the row names as signer (else the leader picked) is the signer of record on
+   * every path into the pad — not only He signs now. When that is not the signed-in user the pad
+   * locks to drawing, so a typed name can never stand in for the leader's hand (job 650's first waiver).
+   */
+  const signerOfRecord = useMemo(() => {
+    const id = releaseRow?.signer_user_id ?? presentSignerId
+    const m = (id ? masters.find((x) => x.id === id) : null) ?? presentSigner
+    return m && m.id !== authUser?.id ? m : null
+  }, [releaseRow?.signer_user_id, presentSignerId, masters, presentSigner, authUser?.id])
+
   // Rebuild the prefill whenever its inputs change; keep user-typed signer lines.
   // A resumed draft opts out entirely — its saved fields ARE the document.
   useEffect(() => {
@@ -437,26 +458,34 @@ export default function LienReleaseModal({
     }
     if (hydratedDraftRef.current) return
     setFields((prev) => {
+      // v2.4285: the signer of record is the leader picked under Signed by the leader — never the
+      // person at the keyboard — else the company's signer from Settings → Invoices, else the session's
+      // name; his title rides along when the name is the company signer's.
+      const companySigner = (issuer?.signerName ?? '').trim()
+      const leaderName = (presentSigner?.name ?? '').trim() || companySigner || signerNameFallback
+      const sameAsCompany = companySigner !== '' && leaderName.toLowerCase() === companySigner.toLowerCase()
       const next = buildLienWaiverPrefill(formType, {
         job,
         invoices: selectedInvoices,
         issuer,
         ownerName,
-        signerName: signerNameFallback,
+        signerName: leaderName,
+        signerTitle: sameAsCompany ? (issuer?.signerTitle ?? '') : '',
       })
       if (!prev) return next
       return {
         ...next,
-        signerName: prev.signerName.trim() ? prev.signerName : next.signerName,
-        signerTitle: prev.signerTitle.trim() ? prev.signerTitle : next.signerTitle,
+        signerName: signerTouchedRef.current && prev.signerName.trim() ? prev.signerName : next.signerName,
+        signerTitle: signerTouchedRef.current ? prev.signerTitle : next.signerTitle,
       }
     })
-  }, [open, job, formType, selectedInvoices, issuer, ownerName, signerNameFallback])
+  }, [open, job, formType, selectedInvoices, issuer, ownerName, signerNameFallback, presentSigner])
 
   const jobNumber = job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—' : '—'
 
   const setField = (key: keyof LienWaiverFields, value: string) => {
     userTouchedRef.current = true
+    if (key === 'signerName' || key === 'signerTitle') signerTouchedRef.current = true
     setFields((prev) => (prev ? { ...prev, [key]: value } : prev))
   }
 
@@ -722,8 +751,6 @@ export default function LienReleaseModal({
     setPresentOpen(true)
   }, [job, presentSignerId, releaseRow, ensureMinted, authUser?.id, showToast])
 
-  const presentSigner = useMemo(() => masters.find((m) => m.id === presentSignerId) ?? null, [masters, presentSignerId])
-  const iAmTheSigner = presentSigner != null && presentSigner.id === authUser?.id
   const gcName = (job?.gcCustomer?.name ?? '').trim()
   const sendToName = gcName || (job?.customer_name ?? '').trim() || 'the customer'
   const sendRecipient = gcName ? gcEmail : (job?.customer_email ?? '').trim() || null
@@ -753,16 +780,15 @@ export default function LienReleaseModal({
     }
   }, [job, releaseRow, sendBusy, selectedInvoices, invoices, jobNumber, sendRecipient, showToast, loadHistory, onIssued])
 
-  /** Signature for renders of the live row (typed renders inline; drawn falls back to the printed name — the stored signed PDF carries the ink). */
-  const renderSignature = useCallback((row: JobLienReleaseRow | null): LienWaiverSignature | null => {
-    if (!row || lienReleaseStatus(row) !== 'signed' || !row.signer_printed_name) return null
-    return {
-      mode: 'type',
-      printedName: row.signer_printed_name,
-      auditLine:
-        lienReleaseSignatureAuditLine({ signed_at: row.signed_at, signer_consented_at: row.signer_consented_at }) ?? '',
-    }
-  }, [])
+  /** Whose screen a row was signed on, for the audit sentence: this session's name, or "the office" for another's. */
+  const deviceNameFor = useCallback(
+    (row: Pick<JobLienReleaseRow, 'signed_on_device_of' | 'signer_user_id'>): string | null =>
+      row.signed_on_device_of && row.signed_on_device_of !== row.signer_user_id ? (row.signed_on_device_of === authUser?.id ? (profileName ?? '').trim() || 'this' : 'the office') : null,
+    [authUser?.id, profileName],
+  )
+
+  /** Signature for renders of the live row (v2.4285: the shared reading — drawn falls back to the printed name; the stored signed PDF carries the ink). */
+  const renderSignature = useCallback((row: JobLienReleaseRow | null): LienWaiverSignature | null => (row ? lienReleaseRowSignature(row, deviceNameFor(row)) : null), [deviceNameFor])
 
   // Every output action mints first (no paper without the record) and renders
   // the signature once one exists.
@@ -842,7 +868,7 @@ export default function LienReleaseModal({
 
   const visibleFields = FIELD_ORDER.filter((k) => lienWaiverUsesField(formType, k))
   const paragraphs = buildLienWaiverParagraphs(formType, fields)
-  const signatureLines = buildLienWaiverSignatureLines(fields)
+  const foot = buildLienWaiverFoot(fields, null)
 
   return (
     <div
@@ -1120,7 +1146,7 @@ export default function LienReleaseModal({
                 <div style={{ color: 'var(--text-muted)', marginTop: '0.35rem' }}>
                   {iAmTheSigner
                     ? 'You are the leader on this job — sign here and it is done.'
-                    : `He signs now: this screen, or a phone handed to him, it is the same signature. The record: signed by ${presentSigner?.name ?? 'the leader'} · on ${(profileName ?? '').trim() || 'your'} device.`}
+                    : `He signs now: this screen, or a phone handed to him, it is the same signature. He draws it, never types it. The record: drawn by ${presentSigner?.name ?? 'the leader'} on ${(profileName ?? '').trim() ? `${(profileName ?? '').trim()}’s` : 'your'} screen.`}
                 </div>
               </div>
             ) : null}
@@ -1157,7 +1183,7 @@ export default function LienReleaseModal({
                   ✓ Signed by {releaseRow.signer_printed_name ?? fields.signerName}
                 </div>
                 <div style={{ color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-                  {lienReleaseSignatureAuditLine(releaseRow, releaseRow.signed_on_device_of && releaseRow.signed_on_device_of !== releaseRow.signer_user_id ? (releaseRow.signed_on_device_of === authUser?.id ? (profileName ?? '').trim() || 'this' : 'the office’s') : null) ?? ''}
+                  {lienReleaseSignatureAuditLine(releaseRow, deviceNameFor(releaseRow)) ?? ''}
                 </div>
                 {releaseRow.sent_to_customer_at ? (
                   <div style={{ color: 'var(--text-green-700)', marginTop: '0.2rem', fontWeight: 600 }}>Sent {lienWaiverDate((releaseRow.sent_to_customer_at ?? '').slice(0, 10))}</div>
@@ -1198,11 +1224,7 @@ export default function LienReleaseModal({
                   {p}
                 </p>
               ))}
-              {signatureLines.map((l) => (
-                <p key={l.label} style={{ margin: '1.1em 0 0' }}>
-                  {l.label}: {l.value ? <strong>{l.value}</strong> : '______________________'}
-                </p>
-              ))}
+              <LienWaiverFootPreview foot={foot} />
             </div>
           </div>
         </div>
@@ -1306,7 +1328,7 @@ export default function LienReleaseModal({
         }}
         release={releaseRow}
         jobNumber={jobNumber}
-        presentSigner={presentOpen && presentSigner && !iAmTheSigner ? presentSigner : null}
+        presentSigner={signerOfRecord}
         deviceUserName={(profileName ?? '').trim() || null}
         onSigned={() => {
           void loadHistory()

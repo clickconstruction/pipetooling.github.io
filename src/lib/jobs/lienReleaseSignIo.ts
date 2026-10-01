@@ -5,6 +5,7 @@ import { LIEN_RELEASE_DOCUMENTS_BUCKET } from './lienReleaseDocuments'
 import { validateReportSignatureDataUrlForSubmit } from '../reportSignatureField'
 import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 /**
  * Signing a lien release, the one write shared by the sign modal and the leader's Waivers to sign
@@ -48,12 +49,16 @@ export async function signLienRelease(args: SignLienReleaseArgs): Promise<SignLi
       /* the row stamp below is the signature of record */
     }
   }
-  const audit = lienReleaseSignatureAuditLine({ signed_at: signedAtIso, signer_consented_at: signedAtIso }, present ? onDevice.name : null)
+  const audit = lienReleaseSignatureAuditLine(
+    { signed_at: signedAtIso, signer_consented_at: signedAtIso, signer_printed_name: payload.printedName, signer_signature_mode: payload.mode },
+    present ? onDevice.name : null,
+  )
   const signature: LienWaiverSignature = {
     mode: payload.mode,
     printedName: payload.printedName,
     pngDataUrl: payload.mode === 'draw' ? payload.signaturePngBase64 : null,
     auditLine: audit ?? '',
+    signedYmd: calendarYmdInAppTzFromIso(signedAtIso),
   }
   try {
     await withSupabaseRetry(

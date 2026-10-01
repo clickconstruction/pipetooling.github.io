@@ -28,7 +28,7 @@ import {
   lienReleaseSnapshotToWaiverFields,
   type JobLienReleaseRow,
 } from '../lib/jobs/lienReleaseTracking'
-import { lienReleaseChipColors, lienReleaseChips, lienReleaseSignatureAuditLine, lienReleaseStatus } from '../lib/jobs/lienReleaseLifecycle'
+import { lienReleaseChipColors, lienReleaseChips, lienReleaseRowSignature } from '../lib/jobs/lienReleaseLifecycle'
 import { formatContractStamp, jobContractChipColors, jobContractChips, jobContractSignatureAuditLine, type JobContractRow } from '../lib/jobs/jobContractLifecycle'
 import JobContractModal from '../components/jobs/JobContractModal'
 import type { JobWithDetails } from '../types/jobWithDetails'
@@ -1110,18 +1110,7 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
                     ))}
                     {jobLienReleases.map((rel) => {
                       const relForm = isLienWaiverFormType(rel.form_type) ? rel.form_type : 'conditional_progress'
-                      const signature: LienWaiverSignature | null =
-                        lienReleaseStatus(rel) === 'signed' && rel.signer_printed_name
-                          ? {
-                              mode: 'type',
-                              printedName: rel.signer_printed_name,
-                              auditLine:
-                                lienReleaseSignatureAuditLine({
-                                  signed_at: rel.signed_at,
-                                  signer_consented_at: rel.signer_consented_at,
-                                }) ?? '',
-                            }
-                          : null
+                      const signature: LienWaiverSignature | null = lienReleaseRowSignature(rel)
                       return (
                         <tr key={rel.id}>
                           <td colSpan={6} style={{ ...tdStyle, paddingLeft: '1.75rem', background: 'var(--bg-page)' }}>

@@ -2,13 +2,14 @@ import { useCallback, useMemo, useState } from 'react'
 import { ContractAcceptSignatureForm } from '../contracts/ContractAcceptSignatureForm'
 import type { EstimateAcceptSubmitPayload } from '../estimates/EstimateAcceptBody'
 import {
+  buildLienWaiverFoot,
   buildLienWaiverParagraphs,
-  buildLienWaiverSignatureLines,
   lienWaiverTitle,
   type LienWaiverFields,
   type LienWaiverFormType,
 } from '../../lib/jobsDocuments/lienWaiverRelease'
 import { signLienRelease } from '../../lib/jobs/lienReleaseSignIo'
+import { LienWaiverFootPreview } from './LienWaiverFootPreview'
 import {
   isLienWaiverFormType,
   lienReleaseFieldsFromSnapshot,
@@ -114,7 +115,7 @@ export default function LienReleaseSignModal({
 
   if (!open || !release || !fields) return null
   const paragraphs = buildLienWaiverParagraphs(formType, fields)
-  const signatureLines = buildLienWaiverSignatureLines(fields)
+  const foot = buildLienWaiverFoot({ ...fields, signerName: presentSigner?.name.trim() || fields.signerName }, null)
 
   return (
     <div
@@ -134,7 +135,7 @@ export default function LienReleaseSignModal({
           </h2>
           <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
             {present
-              ? `Read it, then draw the signature below. The record: signed by ${presentSigner.name}${deviceUserName ? ` · on ${deviceUserName}’s device` : ''}.`
+              ? `Read it, then draw the signature below. The record: drawn by ${presentSigner.name}${deviceUserName ? `, on ${deviceUserName}’s screen` : ''}.`
               : 'Read it, then sign below. The signature prints on every copy of this document.'}
           </p>
         </div>
@@ -148,11 +149,7 @@ export default function LienReleaseSignModal({
                 {p}
               </p>
             ))}
-            {signatureLines.map((l) => (
-              <p key={l.label} style={{ margin: '1.1em 0 0' }}>
-                {l.label}: {l.value ? <strong>{l.value}</strong> : '______________________'}
-              </p>
-            ))}
+            <LienWaiverFootPreview foot={foot} />
           </div>
         </div>
         <div style={{ padding: '0 1.25rem 1.25rem' }}>

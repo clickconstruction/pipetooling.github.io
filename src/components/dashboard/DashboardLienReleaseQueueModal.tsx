@@ -11,7 +11,7 @@ import {
   type JobLienReleaseRow,
   type LienUnconditionalQueueRow,
 } from '../../lib/jobs/lienReleaseTracking'
-import { lienReleaseSignatureAuditLine, lienReleaseStatus } from '../../lib/jobs/lienReleaseLifecycle'
+import { lienReleaseRowSignature } from '../../lib/jobs/lienReleaseLifecycle'
 import {
   buildLienWaiverPrintHtml,
   type LienWaiverFormType,
@@ -46,14 +46,9 @@ function shortDate(ymd: string): string {
   return Number.isNaN(d.getTime()) ? ymd : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-/** Signed releases re-render with their typed signature (same rule as the release window's history box). */
+/** Signed releases re-render from the row (v2.4285: the shared reading — the row's mode, the day signed). */
 function signatureForRow(row: JobLienReleaseRow): LienWaiverSignature | null {
-  if (lienReleaseStatus(row) !== 'signed' || !row.signer_printed_name) return null
-  return {
-    mode: 'type',
-    printedName: row.signer_printed_name,
-    auditLine: lienReleaseSignatureAuditLine({ signed_at: row.signed_at, signer_consented_at: row.signer_consented_at }) ?? '',
-  }
+  return lienReleaseRowSignature(row)
 }
 
 const linkButtonStyle: CSSProperties = {

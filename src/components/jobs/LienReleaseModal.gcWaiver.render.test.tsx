@@ -115,7 +115,7 @@ describe('LienReleaseModal — our waiver to the GC (v2.4274)', () => {
     await settle()
     const signer = screen.getByTestId('lien-waiver-signer')
     expect((within(signer).getByLabelText('Who signs') as HTMLSelectElement).value).toBe('master-1')
-    expect(signer.textContent).toContain('signed by Malachi Reyes · on Taunya device')
+    expect(signer.textContent).toContain('drawn by Malachi Reyes on Taunya’s screen')
     fireEvent.click(screen.getByTestId('lien-waiver-sign-now'))
     await waitFor(() => expect(db.writes.some((w) => w.payload.status === 'awaiting_signature')).toBe(true))
     const mint = db.writes.find((w) => w.payload.status === 'awaiting_signature')!.payload
@@ -123,7 +123,7 @@ describe('LienReleaseModal — our waiver to the GC (v2.4274)', () => {
     expect(mint.form_type).toBe('conditional_progress')
     const pad = await screen.findByRole('dialog', { name: 'Sign release of lien' })
     expect(pad.textContent).toContain('Malachi Reyes signs here — Job 977')
-    expect(pad.textContent).toContain('on Taunya’s device')
+    expect(pad.textContent).toContain('on Taunya’s screen')
     expect(within(pad).queryByRole('button', { name: 'Type' })).toBeNull()
     expect((within(pad).getByPlaceholderText(/full legal name/i) as HTMLInputElement).value).toBe('Malachi Reyes')
     expect(within(pad).getByRole('button', { name: 'Sign it' })).toBeTruthy()

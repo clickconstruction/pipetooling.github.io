@@ -4,6 +4,7 @@ import {
   lienReleaseChips,
   lienReleaseIsEditable,
   lienReleaseIsMinted,
+  lienReleaseRowSignature,
   lienReleaseSignatureAuditLine,
   lienReleaseStatus,
 } from './lienReleaseLifecycle'
@@ -54,16 +55,30 @@ describe('lienReleaseLifecycle', () => {
     expect(canRequestLienSignature({ status: 'issued', voided_at: '2026-09-02T00:00:00Z' })).toBe(false)
   })
 
-  it('audit line stamps Chicago time and consent; null without a signed_at', () => {
+  it('audit sentence (v2.4285): how, who, when in Chicago time, whose screen, consent; null without a signed_at', () => {
     expect(lienReleaseSignatureAuditLine({ signed_at: null, signer_consented_at: null })).toBeNull()
-    const line = lienReleaseSignatureAuditLine({
-      signed_at: '2026-09-01T20:41:00Z',
-      signer_consented_at: '2026-09-01T20:41:00Z',
+    const drawn = lienReleaseSignatureAuditLine(
+      { signed_at: '2026-10-01T02:19:00Z', signer_consented_at: '2026-10-01T02:19:00Z', signer_printed_name: 'Malachi Whites', signer_signature_mode: 'draw' },
+      'Robert',
+    )
+    expect(drawn).toBe('Drawn by Malachi Whites in ClickTooling on Sep 30, 2026 at 9:19 PM CT, on Robert’s screen, consent recorded.')
+    const typed = lienReleaseSignatureAuditLine({ signed_at: '2026-09-01T20:41:00Z', signer_consented_at: '2026-09-01T20:41:00Z', signer_printed_name: 'Malachi Whites', signer_signature_mode: 'type' })
+    expect(typed).toBe('Typed by Malachi Whites in ClickTooling on Sep 1, 2026 at 3:41 PM CT, consent recorded.')
+    // Rows from before the loop carry no name — the old opener, still a sentence.
+    const legacy = lienReleaseSignatureAuditLine({ signed_at: '2026-09-01T20:41:00Z', signer_consented_at: null })
+    expect(legacy).toBe('Signed electronically in ClickTooling on Sep 1, 2026 at 3:41 PM CT.')
+    expect(legacy).not.toContain('consent recorded')
+  })
+  it('lienReleaseRowSignature reads a signed row as the renderers’ signature — the row’s mode, the day signed', () => {
+    const row = { status: 'signed', signed_at: '2026-10-01T02:19:00Z', signer_consented_at: '2026-10-01T02:19:00Z', signer_printed_name: 'Malachi Whites', signer_signature_mode: 'draw' }
+    expect(lienReleaseRowSignature(row)).toEqual({
+      mode: 'draw',
+      printedName: 'Malachi Whites',
+      pngDataUrl: null,
+      auditLine: 'Drawn by Malachi Whites in ClickTooling on Sep 30, 2026 at 9:19 PM CT, consent recorded.',
+      signedYmd: '2026-09-30',
     })
-    expect(line).toContain('Signed electronically in ClickTooling')
-    expect(line).toContain('Sep 1, 2026')
-    expect(line).toContain('consent recorded')
-    const noConsent = lienReleaseSignatureAuditLine({ signed_at: '2026-09-01T20:41:00Z', signer_consented_at: null })
-    expect(noConsent).not.toContain('consent recorded')
+    expect(lienReleaseRowSignature({ ...row, status: 'awaiting_signature' })).toBeNull()
+    expect(lienReleaseRowSignature({ ...row, signer_printed_name: null })).toBeNull()
   })
 })
