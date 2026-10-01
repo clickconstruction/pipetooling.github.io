@@ -2,7 +2,7 @@
 
 > The five screen recordings worth adding to `/help` guides, with capture scripts and the exact `{{gif:}}` lines to paste once each file lands in `public/help/`. Also the standing conventions for any future recording. Static screenshots are deliberately NOT used in guides — see Conventions for why.
 
-last_updated: 2026-09-08
+last_updated: 2026-10-01
 
 ## Conventions (apply to every recording)
 
@@ -11,7 +11,7 @@ last_updated: 2026-09-08
 - **Light theme**, phone-width viewport for phone-first flows, desktop width otherwise. 10–20 seconds, no audio, end on the completed state.
 - **File goes in `public/help/`**, named after the guide slug (`<slug>.gif`). GIFs are lazy-loaded and excluded from the service-worker precache (see `vite.config.ts`) — keep each under ~3 MB so they load acceptably in the field.
 - **Re-record when the surface changes** — same rule as text: docs ship with features. If your PR visibly changes a recorded surface, re-capture in the same PR or delete the token until someone can.
-- Token syntax: `{{gif:<file>|<caption>}}` (see `src/lib/helpGuideIllustrations.ts`).
+- Token syntax: `{{gif:<file>|<caption>}}` (see `src/lib/helpGuideIllustrations.ts`). A guide links to a page of the app with an ordinary Markdown link to its root path — `[GC Review](/jobs?tab=stages&gcReview=1)` — and to another guide with `/help/<slug>` (v2.4290, `helpGuideHtml.ts`).
 
 ## The five recordings
 
@@ -57,6 +57,7 @@ Chosen for traffic × spatial complexity — flows where "where is it / how does
 | Job contract: chip → modal → Copy link (`get-a-job-contract-signed.gif`, desktop, 1.8 MB, Chrome recording as dev on Job 922 — the minted link was voided afterwards) | ✅ 2026-09-03 | ✅ |
 | Signed agreement view: green chip → record → scroll to the framed signature block → Share ▾ → Email a copy… (`get-a-job-contract-signed-view.gif`, desktop, 2.6 MB, 15 frames; re-recorded 2026-09-03 for the v2.2724 signature block, Chrome as dev on Job 1005, sheet cancelled). **Re-take due:** the view folded into the Contract window's signed state (v2.4183 — the paper as signed, then the Share · Keep · Later rows); the guide unlinks the gif until it is re-recorded | 🔁 re-take (v2.4183) | — |
 | File a signed contract: chip → modal → File a signed contract → paste the Google Doc link → green linked line → Record as signed lit (`get-a-job-contract-signed-file.gif`, desktop, 2.4 MB, 11 s at 8 fps; Playwright video → ffmpeg on Job 922 as dev, sheet cancelled before Record — Claude in Chrome was disconnected, so no click overlays) | ✅ 2026-09-04 | ✅ |
+| Send a GC our lien waiver — five clips (`send-a-gc-our-lien-waiver-settings/-window/-signnow/-billtab/-gcreview.gif`; the GC's-room clip waits for a GC with a waiver and a portal link, desktop 1280×800 cropped to 712, 2.0–3.0 MB each; Playwright + installed Chrome as dev on the local dev server, light theme forced through `themeOverride`; the pad clip on scratch job 1054, its awaiting row voided after) | ✅ 2026-10-01 | ✅ |
 | Onboard a new subcontractor (assign packet + compliance panel) | ✅ 2026-09-03 (two clips, `onboard-a-new-subcontractor.gif` + `-compliance.gif`; captured from a dev account — no read-only training account exists yet) | ✅ |
 | Stage Plan — the Bill tab sets the stage: the kind selector under a row (three-way when recorded; two-way In order / Any time since v2.3696), the badge and the strip follow, Still to bill (`split-a-job-into-stages.gif`, desktop light, Playwright video → ffmpeg 8 fps on a throwaway job as dev, deleted after) | ✅ 2026-09-08 | ✅ |
 | Stage Plan — Edit Job → Stages: the eye, See it as the customer, the drawer (`show-a-gc-the-stages-you-plan.gif`, same recipe) | ✅ 2026-09-08 | ✅ |
