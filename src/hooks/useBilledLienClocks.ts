@@ -25,23 +25,40 @@ export type BilledLienClock = {
   workMonths: string[] | null
 }
 
+/** A record and the job list it was read for. */
+export type BilledLienClocksRead = { key: string; byJob: Record<string, BilledLienClock> }
+
+/**
+ * What the hook answers for the list `key` (v2.4321). A record read for an
+ * earlier list stays up while the new list reads, so a refresh never blanks
+ * the Pipeline's runways. An empty record does not: an empty list's `{}`, or a
+ * failed read's, would tell the Lien desk's Calendar that nothing billed is on
+ * a clock when the billed jobs have only just loaded. It answers null, still
+ * reading, instead.
+ */
+export function billedLienClocksFor(read: BilledLienClocksRead | null, key: string): Record<string, BilledLienClock> | null {
+  if (!read) return null
+  if (read.key !== key && Object.keys(read.byJob).length === 0) return null
+  return read.byJob
+}
+
 /**
  * The lien-clock facts the Pipeline's Billed and Collections rows need for
  * their runway (v2.4051): each job's property kind (the residential clock is
  * a month shorter), whether an affidavit or a release is already on file,
  * which months a sub job's § 53.056 notices cover (v2.4096), and which months
  * a sub job was worked (v2.4308 — the sessions `last_work_date` counts, so the
- * notice date is the earliest month still owed). Three small reads, chunked; null while loading, empty on error so the
- * rows simply draw no runway. Keyed on the job ids so a re-rendered but
- * unchanged list does not refetch.
+ * notice date is the earliest month still owed). Three small reads, chunked; null while loading
+ * (`billedLienClocksFor`), empty on error so the rows simply draw no runway. Keyed on the job ids
+ * so a re-rendered but unchanged list does not refetch.
  */
 export function useBilledLienClocks(jobs: ReadonlyArray<BilledLienClockJob> | null, refreshKey = 0): Record<string, BilledLienClock> | null {
-  const [byJob, setByJob] = useState<Record<string, BilledLienClock> | null>(null)
+  const [read, setRead] = useState<BilledLienClocksRead | null>(null)
   const key = jobs ? jobs.map((j) => `${j.id}:${j.customer_address_id ?? ''}:${j.gc_customer_id ?? ''}`).join('|') : ''
 
   useEffect(() => {
     if (!jobs || jobs.length === 0) {
-      setByJob(jobs ? {} : null)
+      setRead(jobs ? { key, byJob: {} } : null)
       return
     }
     let cancelled = false
@@ -136,9 +153,9 @@ export function useBilledLienClocks(jobs: ReadonlyArray<BilledLienClockJob> | nu
             workMonths: workedByJob ? [...(workedByJob.get(j.id) ?? [])].sort() : null,
           }
         }
-        setByJob(next)
+        setRead({ key, byJob: next })
       } catch {
-        if (!cancelled) setByJob({})
+        if (!cancelled) setRead({ key, byJob: {} })
       }
     })()
     return () => {
@@ -148,5 +165,5 @@ export function useBilledLienClocks(jobs: ReadonlyArray<BilledLienClockJob> | nu
     // v2.4153: a bump refetches for the same list — the Lien calendar's pen wrote a property kind.
   }, [key, refreshKey])
 
-  return byJob
+  return billedLienClocksFor(read, key)
 }

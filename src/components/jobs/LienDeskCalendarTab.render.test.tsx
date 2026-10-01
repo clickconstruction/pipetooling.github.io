@@ -53,7 +53,7 @@ function rowOf(number: string): HTMLElement {
 
 function mount(over: Partial<Parameters<typeof LienDeskCalendarTab>[0]> = {}) {
   const onOpen = vi.fn()
-  render(<LienDeskCalendarTab rows={rows} loading={false} todayYmd={TODAY} onOpenJob={onOpen} {...over} />)
+  render(<LienDeskCalendarTab rows={rows} todayYmd={TODAY} onOpenJob={onOpen} {...over} />)
   return { onOpen }
 }
 
@@ -177,7 +177,7 @@ describe('LienDeskCalendarTab', () => {
     const OCT_1 = '2026-10-01'
     const seguin: LienCalendarJob = { jobId: 's', number: '878', name: 'Take 5- Seguin', customer: '', gcId: 'gc-sp', gcName: 'Southern Post Construction', address: '380 TX-123, Seguin', openBalance: 38625, isSub: true, runway: buildLienPayRunway({ ...base, todayYmd: OCT_1, openBalance: 38625, propertyKind: 'non_residential', lastWorkYmd: '2026-09-21', isSub: true, workMonths: ['2026-06', '2026-07', '2026-08', '2026-09'] }), lastWorkYmd: '2026-09-21' }
     const later: LienCalendarJob = { jobId: 'h', number: '983', name: 'Water Heater removal', customer: '', gcId: 'gc-hi', gcName: 'H & I Construction', address: '25233 Four Iron Ct', openBalance: 350, isSub: true, runway: buildLienPayRunway({ ...base, todayYmd: OCT_1, openBalance: 350, lastWorkYmd: '2026-09-03', isSub: true, workMonths: ['2026-09'] }), lastWorkYmd: '2026-09-03' }
-    render(<LienDeskCalendarTab rows={[later, seguin]} loading={false} todayYmd={OCT_1} onOpenJob={vi.fn()} />)
+    render(<LienDeskCalendarTab rows={[later, seguin]} todayYmd={OCT_1} onOpenJob={vi.fn()} />)
     const groups = screen.getAllByTestId(/^lien-cal-group-gc:/)
     expect(groups.map((g) => g.getAttribute('data-testid'))).toEqual(['lien-cal-group-gc:gc-sp', 'lien-cal-group-gc:gc-hi'])
     expect(groups[0]!.textContent).toContain('send the notice by Oct 15 · 14 d')
@@ -185,7 +185,7 @@ describe('LienDeskCalendarTab', () => {
     // July, August and September each carry a hollow flag; June's window closed, so it draws none
     expect(within(rowOf('878')).getAllByRole('button', { name: /A § 53.056 notice is owed for (July|August|September) 2026/ })).toHaveLength(3)
     cleanup()
-    render(<LienDeskCalendarTab rows={[later, seguin]} loading={false} todayYmd={OCT_1} onOpenJob={vi.fn()} isMobile />)
+    render(<LienDeskCalendarTab rows={[later, seguin]} todayYmd={OCT_1} onOpenJob={vi.fn()} isMobile />)
     expect(screen.getByText('notice by Oct 15 · lien by Jan 15 — send the notice · 14 d')).toBeTruthy()
   })
 
@@ -196,6 +196,26 @@ describe('LienDeskCalendarTab', () => {
     expect(within(phone).getByText('2 notices')).toBeTruthy()
     expect(screen.queryByTestId('lien-cal-density')).toBeNull()
     expect(screen.queryByTestId('lien-cal-key')).toBeNull()
+  })
+})
+
+describe('before the Pipeline has read its billed jobs (v2.4321)', () => {
+  // The phone board loads a stage's rows only when its chip is picked, so the desk can open before
+  // the billed jobs are on the board. It said "0 jobs · $0 open" and "Nothing billed is on a lien clock."
+  it.each([false, true])('rows not read yet say so, never 0 jobs (phone: %s)', (isMobile) => {
+    mount({ rows: null, isMobile })
+    expect(screen.getByText('Reading the board…')).toBeTruthy()
+    expect(screen.queryByText(/0 jobs/)).toBeNull()
+    expect(screen.queryByText('Nothing billed is on a lien clock.')).toBeNull()
+    expect(screen.queryByTestId('lien-cal-todo')).toBeNull()
+    expect(screen.queryByTestId('lien-cal-phone')).toBeNull()
+  })
+
+  it('an empty board that was read is empty: the count, then the sentence', () => {
+    mount({ rows: [], isMobile: true })
+    expect(screen.getByText('every billed job on the statute’s calendar · 0 jobs · $0 open')).toBeTruthy()
+    expect(screen.getByText('Nothing billed is on a lien clock.')).toBeTruthy()
+    expect(screen.queryByText('Reading the board…')).toBeNull()
   })
 })
 
