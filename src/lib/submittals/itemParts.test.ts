@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { assemblyLine, carryPartInsert, copyPartInsert, diffPartDrafts, formatPartQty, orderOnlyLine, partHouseIds, partsByItem, partsFromPieces, partToDraft, rollUpFromParts, splitPartLabel, submittedParts, trimWord, type SubmittalPartRow } from './itemParts'
+import { assemblyLine, carryPartInsert, copyPartInsert, partCallsLine, diffPartDrafts, formatPartQty, orderOnlyLine, partHouseIds, partsByItem, partsFromPieces, partToDraft, rollUpFromParts, splitPartLabel, submittedParts, trimWord, type SubmittalPartRow } from './itemParts'
 import type { ProductPiece } from './takeoffCandidates'
 
 const part = (p: Partial<SubmittalPartRow> & { id: string; label: string }): SubmittalPartRow => ({
@@ -137,5 +137,20 @@ describe('the editor’s save', () => {
     const before = [part({ id: 'a', label: 'ZURN Z1201', manufacturer: 'ZURN', model: 'Z1201', part_id: 'p-zurn' })]
     const d = diffPartDrafts(before, [{ ...partToDraft(before[0]!), label: 'JOSAM 12694' }], 'item-1', 'bid-1')
     expect(d.updates).toEqual([{ id: 'a', patch: { label: 'JOSAM 12694', manufacturer: null, model: null, part_id: null } }])
+  })
+})
+
+describe('calls on parts (2026-10-01)', () => {
+  it('a resubmit carries an approved part’s approval, marked carried; a part sent back starts blank', () => {
+    const approved = part({ id: 'bowl', label: 'TOTO CT728CUVG#01', review_decision: 'approved', reviewed_by_name: 'Dana', reviewed_at: '2026-10-08T15:00:00Z', reviewed_by_person_id: 'p1' })
+    const sent = part({ id: 'valve', label: 'TOTO TET2LBI31#SS', review_decision: 'revise', review_note: '1.0 gpf' })
+    expect(carryPartInsert(approved, 'item-2', true)).toMatchObject({ review_decision: 'approved', reviewed_by_name: 'Dana', reviewed_at: '2026-10-08T15:00:00Z', decision_source: 'carried', carried_from_part_id: 'bowl' })
+    expect('review_decision' in carryPartInsert(sent, 'item-2', true)).toBe(false)
+    expect('review_decision' in carryPartInsert(approved, 'item-2')).toBe(false)
+  })
+
+  it('counts the calls over the parts the GC sees', () => {
+    expect(partCallsLine([part({ id: 'a', label: 'A', review_decision: 'approved' }), part({ id: 'b', label: 'B', review_decision: 'revise' }), part({ id: 'c', label: 'C' }), part({ id: 'd', label: 'D', on_submittal: false, review_decision: 'approved' })])).toBe('1 approved · 1 revise · 1 to go')
+    expect(partCallsLine([part({ id: 'a', label: 'A' })])).toBe('')
   })
 })

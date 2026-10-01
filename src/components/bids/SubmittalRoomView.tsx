@@ -1,6 +1,7 @@
 import { useState, type CSSProperties, type ReactNode } from 'react'
 import { ROOM_COPPER, roomCard, roomLabel, roomQuiet, roomShortDate } from '../../lib/submittals/roomStyles'
-import { roomHeadline, roomSubline, type RoomRevision, type RoomRow } from '../../../supabase/functions/_shared/submittalRoomPayload'
+import { pendingKey } from '../../lib/submittals/submittalRoom'
+import { roomHeadline, roomSubline, type RoomPart, type RoomRevision, type RoomRow } from '../../../supabase/functions/_shared/submittalRoomPayload'
 
 /**
  * The reviewer's view of one revision (v2.4187, punch list #62 Layer 2 PR 1): the headline
@@ -11,6 +12,22 @@ import { roomHeadline, roomSubline, type RoomRevision, type RoomRow } from '../.
  */
 
 export type DecisionKind = NonNullable<RoomRow['decision']>['kind']
+
+
+const DECISION_WORD: Record<DecisionKind, string> = { approved: 'Approved', revise: 'Revise', rejected: 'Rejected' }
+const DECISION_INK: Record<DecisionKind, string> = { approved: '#1f7a3a', revise: ROOM_COPPER, rejected: '#b42318' }
+
+/** "3 approved · 1 revise · 2 to go" over a card's parts, counting the calls not sent yet. */
+function partsSummary(parts: ReadonlyArray<RoomPart>, localParts: Record<string, DecisionKind | undefined>): string {
+  const c = { approved: 0, revise: 0, rejected: 0, open: 0 }
+  for (const p of parts) {
+    const k = localParts[p.id] ?? p.decision?.kind
+    if (k) c[k] += 1
+    else c.open += 1
+  }
+  const bits = [c.approved ? `${c.approved} approved` : '', c.revise ? `${c.revise} revise` : '', c.rejected ? `${c.rejected} rejected` : '', c.open ? `${c.open} to go` : ''].filter(Boolean)
+  return `${parts.length} parts${bits.length ? ` · ${bits.join(' · ')}` : ''}`
+}
 
 const seg = (on: boolean, tone: 'g' | 'a' | 'r'): CSSProperties => ({
   padding: '0.5rem 0.85rem',
@@ -23,10 +40,13 @@ const seg = (on: boolean, tone: 'g' | 'a' | 'r'): CSSProperties => ({
   color: on ? 'white' : 'var(--text-muted)',
 })
 
-export function RoomRowCard({ row, local, onDecide, readOnly = false }: { row: RoomRow; local?: DecisionKind; onDecide?: (kind: DecisionKind) => void; readOnly?: boolean }) {
+export function RoomRowCard({ row, local, localParts = {}, onDecide, readOnly = false }: { row: RoomRow; local?: DecisionKind; /** calls not sent yet, by part (2026-10-01) */ localParts?: Record<string, DecisionKind | undefined>; onDecide?: (kind: DecisionKind, partId?: string) => void; readOnly?: boolean }) {
   const differs = row.kind === 'differs' || row.kind === 'proposed'
   const shown = local ?? row.decision?.kind
   const tone = row.kind === 'added' ? 'var(--text-muted)' : row.performanceChange ? '#b42318' : ROOM_COPPER
+  const parts = row.parts ?? []
+  const canCall = differs && !readOnly && !!onDecide
+  const openParts = parts.filter((p) => !p.decision && !localParts[p.id])
   return (
     <div style={{ ...roomCard, borderColor: differs && !row.decision ? ROOM_COPPER : 'var(--border)' }} data-testid="room-row">
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' }}>
@@ -40,14 +60,51 @@ export function RoomRowCard({ row, local, onDecide, readOnly = false }: { row: R
           The plans: <b style={{ color: 'var(--text-strong)' }}>{row.plans}</b>
         </div>
       ) : null}
-      {row.proposed ? (
+      {parts.length > 0 ? (
+        <div style={{ marginTop: 4 }} data-testid="room-parts">
+          <div style={{ ...roomQuiet, display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+            <span>{row.kind === 'matches' ? 'Submitted' : 'Proposed'}:</span>
+            <span data-testid="room-parts-summary">{partsSummary(parts, localParts)}</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', marginTop: 2 }}>
+            {parts.map((p) => {
+              const pending = localParts[p.id]
+              const callShown = pending ?? p.decision?.kind
+              return (
+                <div key={p.id} style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '0.35rem 0.75rem', padding: '0.45rem 0', borderTop: '1px solid var(--border)' }} data-testid="room-part">
+                  <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: '1 1 14rem' }}>
+                    <b style={{ fontSize: '0.9rem', overflowWrap: 'anywhere' }}>{p.head}{p.quantity > 1 ? <span style={{ ...roomQuiet, fontWeight: 400 }}> × {p.quantity}</span> : null}</b>
+                    {p.words ? <span style={{ ...roomQuiet, overflowWrap: 'anywhere' }}>{p.words}</span> : null}
+                    {p.decision && !pending ? (
+                      <span style={{ fontSize: '0.78rem', marginTop: 2, color: DECISION_INK[p.decision.kind] }} data-testid="room-part-call">
+                        <b>{DECISION_WORD[p.decision.kind]}</b>
+                        {p.carried ? ' on the last revision' : ''}
+                        {p.decision.byName ? ` · ${p.decision.byName}` : ''}
+                        {p.decision.at ? ` · ${roomShortDate(p.decision.at)}` : ''}
+                        {p.decision.note ? <span style={roomQuiet}> · “{p.decision.note}”</span> : null}
+                      </span>
+                    ) : null}
+                  </span>
+                  {canCall && (!p.decision || pending || !p.carried) ? (
+                    <span style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden', flexShrink: 0 }} role="group" aria-label={`Your call on ${p.head}`}>
+                      <button type="button" aria-pressed={callShown === 'approved'} onClick={() => onDecide!('approved', p.id)} style={{ ...seg(callShown === 'approved', 'g'), padding: '0.4rem 0.6rem', fontSize: '0.8rem' }}>Approve</button>
+                      <button type="button" aria-pressed={callShown === 'revise'} onClick={() => onDecide!('revise', p.id)} style={{ ...seg(callShown === 'revise', 'a'), padding: '0.4rem 0.6rem', fontSize: '0.8rem' }}>Revise</button>
+                      <button type="button" aria-pressed={callShown === 'rejected'} onClick={() => onDecide!('rejected', p.id)} style={{ ...seg(callShown === 'rejected', 'r'), padding: '0.4rem 0.6rem', fontSize: '0.8rem' }}>Reject</button>
+                    </span>
+                  ) : null}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      ) : row.proposed ? (
         <div style={{ marginTop: 2, fontSize: '0.9rem' }}>
           {row.kind === 'matches' ? 'Submitted' : 'Proposed'}: <b>{row.proposed}</b>
         </div>
       ) : null}
       {row.why ? <div style={{ ...roomQuiet, marginTop: 4 }}>{row.kind === 'differs' ? 'Why: ' : ''}{row.why}</div> : null}
       {row.performanceChange ? <div style={{ marginTop: 4, fontSize: '0.8rem', color: '#b42318' }}>This changes a performance value on the plans.</div> : null}
-      {row.decision ? (
+      {row.decision && parts.length === 0 ? (
         <div style={{ marginTop: 8, fontSize: '0.8rem', color: 'var(--text-strong)' }}>
           <b>{row.decision.kind === 'revise' ? 'Revise' : row.decision.kind === 'approved' ? 'Approved' : 'Rejected'}</b>
           {row.decision.byName ? ` · ${row.decision.byName}` : ''}
@@ -55,11 +112,16 @@ export function RoomRowCard({ row, local, onDecide, readOnly = false }: { row: R
           {row.decision.note ? <span style={roomQuiet}> · “{row.decision.note}”</span> : null}
         </div>
       ) : null}
-      {differs && !readOnly && onDecide ? (
+      {canCall && parts.length > 0 && openParts.length > 1 ? (
+        <button type="button" onClick={() => { for (const p of openParts) onDecide!('approved', p.id) }} style={{ marginTop: 8, padding: '0.55rem 1rem', minHeight: 44, borderRadius: 6, border: '1px solid #1f7a3a', background: '#1f7a3a', color: 'white', font: 'inherit', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer' }} data-testid="room-approve-parts">
+          Approve all {openParts.length}
+        </button>
+      ) : null}
+      {canCall && parts.length === 0 ? (
         <div style={{ marginTop: 10, display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden' }} role="group" aria-label={`Your call on ${row.tag}`}>
-          <button type="button" aria-pressed={shown === 'approved'} onClick={() => onDecide('approved')} style={seg(shown === 'approved', 'g')}>Approve</button>
-          <button type="button" aria-pressed={shown === 'revise'} onClick={() => onDecide('revise')} style={seg(shown === 'revise', 'a')}>Revise</button>
-          <button type="button" aria-pressed={shown === 'rejected'} onClick={() => onDecide('rejected')} style={seg(shown === 'rejected', 'r')}>Reject</button>
+          <button type="button" aria-pressed={shown === 'approved'} onClick={() => onDecide!('approved')} style={seg(shown === 'approved', 'g')}>Approve</button>
+          <button type="button" aria-pressed={shown === 'revise'} onClick={() => onDecide!('revise')} style={seg(shown === 'revise', 'a')}>Revise</button>
+          <button type="button" aria-pressed={shown === 'rejected'} onClick={() => onDecide!('rejected')} style={seg(shown === 'rejected', 'r')}>Reject</button>
         </div>
       ) : null}
     </div>
@@ -80,14 +142,24 @@ export function RoomRevisionBody({
   personLine,
 }: {
   rev: RoomRevision
+  /** Calls not sent yet, keyed by `pendingKey(row, part?)`. */
   pending?: Record<string, { decision: DecisionKind; note: string }>
-  onDecide?: (rowId: string, kind: DecisionKind) => void
+  onDecide?: (rowId: string, kind: DecisionKind, partId?: string) => void
   readOnly?: boolean
   afterSubline?: ReactNode
   personLine?: ReactNode
 }) {
   const [showMatches, setShowMatches] = useState(false)
-  const rowCard = (r: RoomRow) => <RoomRowCard key={r.id} row={r} local={pending?.[r.id]?.decision} onDecide={onDecide ? (k) => onDecide(r.id, k) : undefined} readOnly={readOnly} />
+  const rowCard = (r: RoomRow) => (
+    <RoomRowCard
+      key={r.id}
+      row={r}
+      local={pending?.[r.id]?.decision}
+      localParts={Object.fromEntries((r.parts ?? []).map((p) => [p.id, pending?.[pendingKey(r.id, p.id)]?.decision]))}
+      onDecide={onDecide ? (k, partId) => (partId ? onDecide(r.id, k, partId) : onDecide(r.id, k)) : undefined}
+      readOnly={readOnly}
+    />
+  )
   return (
     <>
       <div style={{ ...roomCard, borderLeft: `4px solid ${ROOM_COPPER}` }} data-testid="room-headline">

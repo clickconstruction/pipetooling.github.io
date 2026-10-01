@@ -29,8 +29,8 @@ import { PlugInScheduleModal } from './PlugInScheduleModal'
 import { SubmittalTakeoffPicker } from './SubmittalTakeoffPicker'
 import { loadTakeoffCandidates, saveTakeoffChoices, type TakeoffCandidatesLoad } from '../../lib/submittals/takeoffCandidatesIo'
 import { candidateToItemInserts, rowSplitTags, splitExplanation, type TakeoffCandidate } from '../../lib/submittals/takeoffCandidates'
-import { carryPartInsert, copyPartInsert, formatPartQty, partsByItem, partsFromPieces, submittedParts, type PartDraft, type SubmittalPartInsert, type SubmittalPartRow } from '../../lib/submittals/itemParts'
-import { insertItemParts, loadItemParts, saveItemParts } from '../../lib/submittals/itemPartsIo'
+import { carryPartInsert, copyPartInsert, formatPartQty, partCallsLine, partsByItem, partsFromPieces, submittedParts, type PartDraft, type SubmittalPartInsert, type SubmittalPartRow } from '../../lib/submittals/itemParts'
+import { clearEnteredCallsOnParts, enterCallOnParts, insertItemParts, loadItemParts, saveItemParts } from '../../lib/submittals/itemPartsIo'
 import { SplitRuleModal } from './SplitRuleModal'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { procurementItemsFrom } from '../../lib/submittals/procurementLogIo'
@@ -694,13 +694,13 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
    * The parts of the rows a new revision carried: a row carried as it stood takes its parts; a row
    * the picks rebuilt takes them only while its product is the same.
    */
-  async function carryPartsOnto(newRows: ReadonlyArray<{ id: string; carried_from_item_id: string | null; submitted_label: string | null }>, previous: ReadonlyArray<SubmittalItemRow>, previousParts: Map<string, SubmittalPartRow[]>) {
+  async function carryPartsOnto(newRows: ReadonlyArray<{ id: string; carried_from_item_id: string | null; submitted_label: string | null }>, previous: ReadonlyArray<SubmittalItemRow>, previousParts: Map<string, SubmittalPartRow[]>, keepApprovals = false) {
     const prevById = new Map(previous.map((p) => [p.id, p] as const))
     const copies: SubmittalPartInsert[] = []
     for (const r of newRows) {
       const was = r.carried_from_item_id ? prevById.get(r.carried_from_item_id) : undefined
       if (!was || (r.submitted_label ?? '') !== (was.submitted_label ?? '')) continue
-      for (const p of previousParts.get(was.id) ?? []) copies.push(carryPartInsert(p, r.id))
+      for (const p of previousParts.get(was.id) ?? []) copies.push(carryPartInsert(p, r.id, keepApprovals))
     }
     await insertItemParts(db, copies)
   }
@@ -741,7 +741,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       if (inserts.length > 0) {
         const { data: made, error: insErr } = await db.from('bid_submittal_items').insert(inserts).select('id, carried_from_item_id, submitted_label')
         if (insErr) throw insErr
-        await carryPartsOnto((made ?? []) as Array<{ id: string; carried_from_item_id: string | null; submitted_label: string | null }>, previous, previousParts)
+        // A resubmit of the rows sent back: the parts the GC approved stand; only the parts sent back are asked again.
+        await carryPartsOnto((made ?? []) as Array<{ id: string; carried_from_item_id: string | null; submitted_label: string | null }>, previous, previousParts, onlySentBack)
       }
       if (asRevisionStatus(newestRev.status) === 'draft') {
         const { error: supErr } = await db.from('bid_submittals').update({ status: 'superseded' }).eq('id', newestRev.id)
@@ -1021,8 +1022,11 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         const it = a.tag ? byTag.get(a.tag) : null
         if (!it || a.proposed === 'question') continue
         const patch = enteredDecisionPatch({ decision: a.proposed, note: a.text || null, person: { id: person.id, name: person.name, email: person.email }, byUserId: user?.id ?? null, byName: profileName, now, source: 'robot' })
-        const { error } = await db.from('bid_submittal_items').update(patch).eq('id', it.id)
-        if (error) throw error
+        // A row with parts takes the mark on every part the GC sees; the row reads the roll-up.
+        if ((await enterCallOnParts(db, it.id, patch, { parts: partsOf.get(it.id) })) === 0) {
+          const { error } = await db.from('bid_submittal_items').update(patch).eq('id', it.id)
+          if (error) throw error
+        }
         counts[a.proposed] += 1
       }
       const n = counts.approved + counts.revise + counts.rejected
@@ -1395,8 +1399,13 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       const { theRoom, person } = await roomAndReviewerFor(choice.person)
       const patch = enteredDecisionPatch({ decision: 'approved', note: choice.note, person, byUserId: user?.id ?? null, byName: profileName, now: enteredDecisionAt(choice.on, new Date(), todayYmdInAppTz()) })
       // A row the reviewer answered in the room a moment ago keeps that answer: the write takes only rows still without a call.
-      const ids = rows.map((r) => r.id)
       const written = new Set<string>()
+      // A row with parts: every part the GC sees with no call yet takes the approval; the row reads the roll-up.
+      for (const r of rows) {
+        if (!(partsOf.get(r.id) ?? []).some((p) => p.on_submittal)) continue
+        if ((await enterCallOnParts(db, r.id, patch, { parts: partsOf.get(r.id), onlyOpen: true })) > 0) written.add(r.id)
+      }
+      const ids = rows.filter((r) => !(partsOf.get(r.id) ?? []).some((p) => p.on_submittal)).map((r) => r.id)
       for (let i = 0; i < ids.length; i += 100) {
         const { data, error } = await db.from('bid_submittal_items').update(patch).in('id', ids.slice(i, i + 100)).is('review_decision', null).select('id')
         if (error) throw error
@@ -1460,14 +1469,21 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         // 5b · the reviewer's call, typed from their file, on the day they made it.
         const { theRoom, person } = await roomAndReviewerFor(entered.person)
         enteredFor = person
-        write = { ...write, ...enteredDecisionPatch({ decision: entered.decision, note: entered.note, person, byUserId: user?.id ?? null, byName: profileName, now: enteredDecisionAt(entered.on, new Date(), todayYmdInAppTz()) }) }
-        const counts = { approved: entered.decision === 'approved' ? 1 : 0, revise: entered.decision === 'revise' ? 1 : 0, rejected: entered.decision === 'rejected' ? 1 : 0 }
+        const callPatch = enteredDecisionPatch({ decision: entered.decision, note: entered.note, person, byUserId: user?.id ?? null, byName: profileName, now: enteredDecisionAt(entered.on, new Date(), todayYmdInAppTz()) })
+        // A row with parts: the call lands on the parts picked (all the GC sees by default); the row reads the roll-up.
+        const onParts = await enterCallOnParts(db, editing.id, callPatch, { partIds: entered.partIds ?? null })
+        if (onParts === 0) write = { ...write, ...callPatch }
+        const n = Math.max(1, onParts)
+        const counts = { approved: entered.decision === 'approved' ? n : 0, revise: entered.decision === 'revise' ? n : 0, rejected: entered.decision === 'rejected' ? n : 0 }
         const { error } = await db.from('bid_submittal_items').update(write).eq('id', editing.id)
         if (error) throw error
         await db.from('bid_submittal_messages').insert({ room_id: theRoom.id, submittal_id: selectedRev.id, person_id: null, author_kind: 'system', body: enteredEntryBody(person.name, counts, 'entered', entered.on ?? null), kind: 'decision', tags: editing.tag.trim() ? [editing.tag.trim()] : [], metadata: { entered_by: user?.id ?? null, rev_number: selectedRev.rev_number, counts, person_id: person.id, ...(entered.on ? { decided_on: entered.on } : {}) } })
         await db.from('bid_submittal_events').insert({ room_id: theRoom.id, submittal_id: selectedRev.id, person_id: person.id, event_type: 'decided', metadata: { ...counts, rev_number: selectedRev.rev_number, entered: true, by: user?.id ?? null, ...(entered.on ? { decided_on: entered.on } : {}) } })
       } else {
-        if (clearDecision) write = { ...write, ...CLEAR_DECISION_PATCH }
+        if (clearDecision) {
+          if ((partsOf.get(editing.id) ?? []).some((p) => p.on_submittal)) await clearEnteredCallsOnParts(db, editing.id, { ...CLEAR_DECISION_PATCH })
+          else write = { ...write, ...CLEAR_DECISION_PATCH }
+        }
         const { error } = await db.from('bid_submittal_items').update(write).eq('id', editing.id)
         if (error) throw error
       }
@@ -1867,7 +1883,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                         <th style={th}>Lead time</th>
                         <th style={th} title={COLUMN_HELP.sheet}>Sheet <span aria-hidden style={{ color: 'var(--text-faint)', fontWeight: 400 }}>?</span></th>
                         {previousRev ? <th style={th}>Since Rev {previousRev.rev_number}</th> : null}
-                        {decisions.decided > 0 ? <th style={th}>Their call</th> : null}
+                        {decisions.decided > 0 || parts.some((p) => p.review_decision) ? <th style={th}>Their call</th> : null}
                         <th style={th} />
                       </tr>
                     </thead>
@@ -1926,15 +1942,17 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                               )}
                             </td>
                             {previousRev ? <td style={{ ...td, color: note ? 'var(--text-amber-700)' : 'var(--text-faint)', fontWeight: note ? 600 : 400 }}>{note ?? 'carried'}</td> : null}
-                            {decisions.decided > 0 ? (
+                            {decisions.decided > 0 || parts.some((p) => p.review_decision) ? (
                               <td style={td} data-testid="their-call">
                                 {(() => {
                                   const d = asDecision(it.review_decision)
-                                  if (!d) return <span style={{ color: 'var(--text-faint)' }}>—</span>
+                                  const byPart = partCallsLine(partsOf.get(it.id) ?? [])
+                                  if (!d) return byPart ? <span style={{ color: 'var(--text-muted)', fontWeight: 600 }} data-testid="their-call-parts">{byPart}</span> : <span style={{ color: 'var(--text-faint)' }}>—</span>
                                   const color = d === 'approved' ? 'var(--text-green-700)' : d === 'revise' ? 'var(--text-amber-700)' : 'var(--text-red-700)'
                                   return (
                                     <span style={{ color, fontWeight: 600 }}>
                                       {DECISION_LABELS[d]}
+                                      {byPart ? <span style={sub} data-testid="their-call-parts">{byPart}</span> : null}
                                       <span style={sub}>{[it.reviewed_by_name, enteredSuffix(it), formatShortDate(it.reviewed_at)].filter(Boolean).join(' · ')}</span>
                                       {it.review_note ? <span style={sub}>“{it.review_note}”</span> : null}
                                     </span>
@@ -2351,6 +2369,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     {seeGcOpen && selectedRev && isNewest && selectedBid ? (
       <SeeWhatTheGcSees
         items={items}
+        parts={parts}
         revNumber={selectedRev.rev_number}
         shared={asRevisionStatus(selectedRev.status) !== 'draft'}
         hasPackage={Boolean(selectedRev.package_path)}

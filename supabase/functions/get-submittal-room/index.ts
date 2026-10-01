@@ -14,7 +14,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { DEFAULT_TEST_REPORT_SETTINGS, parseTestReportSettings } from '../_shared/testReport.ts'
-import { asRoomRole, roomCounts, roomRowsFrom, type RoomItemSource, type RoomMessage,
+import { asRoomRole, roomCounts, roomRowsFrom, type RoomItemSource, type RoomMessage, type RoomPartSource,
   type RoomProcurement, type RoomRevision, type SubmittalRoomPayload } from '../_shared/submittalRoomPayload.ts'
 import { stageDatesFromJob } from '../_shared/procurementStageDates.ts'
 import { sampleStateFromToken } from '../_shared/customerSample.ts'
@@ -101,8 +101,20 @@ serve(async (req) => {
       .in('submittal_id', ids)
     const byRev = new Map<string, RoomItemSource[]>()
     for (const it of (items ?? []) as Array<RoomItemSource & { submittal_id: string }>) byRev.set(it.submittal_id, [...(byRev.get(it.submittal_id) ?? []), it])
+    // The rows' parts the GC sees, each with its own call (2026-10-01); a missing table reads as none.
+    const itemIds = ((items ?? []) as Array<{ id: string }>).map((it) => it.id)
+    const partsByItem = new Map<string, RoomPartSource[]>()
+    for (let i = 0; i < itemIds.length; i += 200) {
+      const { data: partRows, error: partErr } = await admin
+        .from('bid_submittal_item_parts')
+        .select('id, item_id, sequence_order, label, quantity, on_submittal, review_decision, review_note, reviewed_by_name, reviewed_by_person_id, reviewed_at, decision_source')
+        .in('item_id', itemIds.slice(i, i + 200))
+        .eq('on_submittal', true)
+      if (partErr) break
+      for (const p of (partRows ?? []) as RoomPartSource[]) partsByItem.set(p.item_id, [...(partsByItem.get(p.item_id) ?? []), p])
+    }
     const revisions: RoomRevision[] = revRows.map((r, i) => {
-      const rows = roomRowsFrom(byRev.get(r.id) ?? [])
+      const rows = roomRowsFrom(byRev.get(r.id) ?? [], partsByItem)
       return { id: r.id, rev: r.rev_number, sharedAt: r.shared_at, current: i === 0, hasPackage: !!r.package_path, rows, counts: roomCounts(rows) }
     })
 

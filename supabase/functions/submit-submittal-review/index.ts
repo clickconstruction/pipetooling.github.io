@@ -10,8 +10,10 @@
  *     event, and one high-priority inbox row (estimator when the group has anyone, else
  *     dispatch) carrying the question. A room-token caller who has not identified gets 403
  *     `identify_first`; a closed room 410; five asks an hour per person, then 429.
- *   - `decide`   { token (personal), submittalId, decisions: [{ itemId, decision, note? }] }
- *     → the items' review columns with the person's name, email and id; refused when the
+ *   - `decide`   { token (personal), submittalId, decisions: [{ itemId, partId?, decision, note? }] }
+ *     → the items' review columns with the person's name, email and id — on a row with parts
+ *     (2026-10-01) the call lands on the part named (or on every part the GC sees), and the
+ *     row carries the roll-up (`rollUpPartDecisions`); refused when the
  *     room or the person's link is closed (410), the person is marked watching (403), the
  *     revision is not the newest shared one (409 stale_revision), or the rows are not on
  *     that revision (404). A `decided` event with the counts.
@@ -20,8 +22,8 @@
  */
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { askTitle, decideVerdict, decisionCounts, decisionEntryBody, IDENTIFY_PER_HOUR, messageVerdict, parseDecideBody, parseIdentifyBody, parseMessageBody, resolveIdentify } from '../_shared/submittalReviewActions.ts'
-import { asRoomRole, ROOM_ROLE_LABELS } from '../_shared/submittalRoomPayload.ts'
+import { askTitle, decideVerdict, decisionCounts, decisionEntryBody, IDENTIFY_PER_HOUR, messageVerdict, parseDecideBody, parseIdentifyBody, parseMessageBody, planDecideWrites, resolveIdentify } from '../_shared/submittalReviewActions.ts'
+import { asRoomRole, rollUpPartDecisions, ROOM_ROLE_LABELS, type RoomPartSource } from '../_shared/submittalRoomPayload.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -136,12 +138,36 @@ serve(async (req) => {
       const applied = v.decisions.filter((d) => onRevision.has(d.itemId))
       if (applied.length === 0) return json({ error: 'Those rows are not on this revision.', code: 'not_found' }, 404)
       const now = new Date().toISOString()
-      for (const d of applied) {
+      const who = { reviewed_by_name: person.name, reviewed_by_email: person.email, reviewed_by_person_id: person.id, reviewed_at: now }
+      // The rows' parts the GC sees (2026-10-01); a missing table (before its push) reads as none.
+      const itemIds = [...new Set(applied.map((d) => d.itemId))]
+      const { data: partRows, error: partErr } = await admin.from('bid_submittal_item_parts').select('id, item_id, on_submittal').in('item_id', itemIds)
+      const gcParts = new Map<string, string[]>()
+      if (!partErr) for (const p of (partRows ?? []) as Array<{ id: string; item_id: string; on_submittal: boolean }>) if (p.on_submittal) gcParts.set(p.item_id, [...(gcParts.get(p.item_id) ?? []), p.id])
+      const plan = planDecideWrites(applied, gcParts)
+      for (const d of plan.rows) {
         const { error } = await admin
           .from('bid_submittal_items')
-          .update({ review_decision: d.decision, review_note: d.note, reviewed_by_name: person.name, reviewed_by_email: person.email, reviewed_by_person_id: person.id, reviewed_at: now })
+          .update({ review_decision: d.decision, review_note: d.note, ...who })
           .eq('id', d.itemId)
         if (error) throw error
+      }
+      for (const d of plan.parts) {
+        const { error } = await admin
+          .from('bid_submittal_item_parts')
+          .update({ review_decision: d.decision, review_note: d.note, ...who, decision_source: 'room', decision_entered_by: null, decision_entered_by_name: null, updated_at: now })
+          .eq('id', d.partId)
+        if (error) throw error
+      }
+      // Each row with parts carries their roll-up, so every reader of the row keeps working.
+      if (plan.itemsWithParts.length > 0) {
+        const { data: now2 } = await admin.from('bid_submittal_item_parts').select('id, item_id, sequence_order, label, quantity, on_submittal, review_decision, review_note, reviewed_by_name, reviewed_by_email, reviewed_by_person_id, reviewed_at, decision_source, decision_entered_by, decision_entered_by_name').in('item_id', plan.itemsWithParts)
+        const byItem = new Map<string, RoomPartSource[]>()
+        for (const p of (now2 ?? []) as RoomPartSource[]) byItem.set(p.item_id, [...(byItem.get(p.item_id) ?? []), p])
+        for (const itemId of plan.itemsWithParts) {
+          const { error } = await admin.from('bid_submittal_items').update(rollUpPartDecisions(byItem.get(itemId) ?? [])).eq('id', itemId)
+          if (error) throw error
+        }
       }
       const counts = decisionCounts(applied)
       await admin.from('bid_submittal_events').insert({ room_id: room.id, person_id: person.id, submittal_id: v.submittalId, event_type: 'decided', metadata: { ...counts, rev_number: s?.rev_number ?? null }, client_ip: clientIp(req), user_agent: req.headers.get('user-agent') })

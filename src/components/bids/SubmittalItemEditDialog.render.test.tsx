@@ -145,6 +145,23 @@ describe('SubmittalItemEditDialog · parts, each bought on its own (2026-10-01)'
     expect((screen.getByRole('button', { name: 'Save' }) as HTMLButtonElement).disabled).toBe(true)
   })
 
+  it('a call entered on a row with parts covers the parts ticked; all the GC sees to start, none holds Save', () => {
+    const onSave = vi.fn<(p: SubmittalItemPatch) => void>()
+    renderWithProviders(<SubmittalItemEditDialog item={item({ tag: 'LAV-1' })} parts={parts} houses={houses} people={people} sourceFiles={[]} canEnterDecision onSave={onSave} onClose={() => {}} />)
+    fireEvent.click(screen.getByTestId('enter-call-open'))
+    fireEvent.click(screen.getByRole('button', { name: 'Revise' }))
+    const box = screen.getByTestId('entered-call-parts')
+    expect(box.textContent).toContain('TSL.MON.B.38.2.PS1.BK')
+    expect(box.textContent).not.toContain('BRASSCRA')
+    fireEvent.click(screen.getByRole('checkbox', { name: /TSL\.MON/ }))
+    fireEvent.click(screen.getByRole('checkbox', { name: /TOTO T25S51E#CP/ }))
+    expect(screen.getByText('Tick at least one part.')).toBeTruthy()
+    expect((screen.getByRole('button', { name: 'Save' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(screen.getByRole('checkbox', { name: /TOTO T25S51E#CP/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    expect(onSave.mock.calls[0]![0].entered).toMatchObject({ decision: 'revise', person: { id: 'p1' }, partIds: ['faucet'] })
+  })
+
   it('a row with no parts can be listed as parts on a draft, starting from its product', () => {
     const onSave = vi.fn<(p: SubmittalItemPatch) => void>()
     renderWithProviders(<SubmittalItemEditDialog item={item()} houses={houses} sourceFiles={[]} canEditProduct onSave={onSave} onClose={() => {}} />)
