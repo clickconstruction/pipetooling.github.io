@@ -39,12 +39,17 @@ const TODAY = '2026-09-28'
 const base = { todayYmd: TODAY, openBalance: 1000, propertyKind: 'residential', expectedPayYmd: null, filedYmd: null, releasedYmd: null }
 const rows: LienCalendarJob[] = [
   { jobId: 'a', number: '890 PLUM', name: 'Rizvi', customer: 'Dudley Mason', gcId: 'gc1', gcName: 'RMC · Dudley Mason', address: '628 Terrell Rd', openBalance: 9800, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 9800, lastWorkYmd: '2026-08-12', isSub: true }), lastWorkYmd: '2026-08-12' },
-  { jobId: 'b', number: '881 PLUM', name: 'Umar Khan', customer: 'Dudley Mason', gcId: 'gc1', gcName: 'RMC · Dudley Mason', address: '9703 Lenox Hl', openBalance: 7902, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 7902, lastWorkYmd: '2026-08-20', propertyKind: '', isSub: true }), lastWorkYmd: '2026-08-20', addressId: 'addr-b', months: [{ key: '2026-07', due: '2026-09-15', state: 'sent' }, { key: '2026-08', due: '2026-10-15', state: 'due' }] },
+  { jobId: 'b', number: '881 PLUM', name: 'Umar Khan', customer: 'Dudley Mason', gcId: 'gc1', gcName: 'RMC · Dudley Mason', address: '9703 Lenox Hl', openBalance: 7902, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 7902, lastWorkYmd: '2026-08-20', propertyKind: '', isSub: true, workMonths: ['2026-07', '2026-08'], noticedMonths: ['2026-07'] }), lastWorkYmd: '2026-08-20', addressId: 'addr-b' },
   { jobId: 'd', number: '473 PLUM', name: 'Mike Holub', customer: 'Michael Holub', gcId: null, gcName: null, address: '109 Tuscarora', openBalance: 5724, isSub: false, runway: buildLienPayRunway({ ...base, openBalance: 5724, lastWorkYmd: '2026-08-12', expectedPayYmd: '2026-09-30' }), lastWorkYmd: '2026-08-12' },
   { jobId: 'e', number: '663 PLUM', name: 'Knight', customer: 'Knight Contracting', gcId: 'gc2', gcName: 'Knight Contracting', address: '', openBalance: 658, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 658, lastWorkYmd: '2026-03-01', isSub: true }), lastWorkYmd: '2026-03-01' },
   // a direct job with no pay date — the one row that draws its own dashed dot (under a GC the GC row's dot speaks)
   { jobId: 'f', number: '512 PLUM', name: 'Garza', customer: 'Ana Garza', gcId: null, gcName: null, address: '77 Alamo Pl', openBalance: 1200, isSub: false, runway: buildLienPayRunway({ ...base, openBalance: 1200, lastWorkYmd: null, createdAt: '2026-08-03T15:00:00Z' }), lastWorkYmd: null },
 ]
+
+/** A job's row on the board, found by its number. */
+function rowOf(number: string): HTMLElement {
+  return screen.getByRole('button', { name: new RegExp(`^${number}`) }).closest('[role="row"]') as HTMLElement
+}
 
 function mount(over: Partial<Parameters<typeof LienDeskCalendarTab>[0]> = {}) {
   const onOpen = vi.fn()
@@ -79,8 +84,11 @@ describe('LienDeskCalendarTab', () => {
     // Umar Khan: the sent month's check, the owed month's hollow flag (a door), the kind bracket
     const tracks = screen.getAllByTestId('lien-cal-track')
     expect(tracks.length).toBe(4)
-    expect(screen.getByRole('button', { name: /A § 53.056 notice is owed for August 2026 — send it by Oct 15/ })).toBeTruthy()
-    expect(screen.getByTitle('The July 2026 notice is on file')).toBeTruthy()
+    const umar = rowOf('881 PLUM')
+    expect(within(umar).getByRole('button', { name: /A § 53.056 notice is owed for August 2026 — send it by Oct 15/ })).toBeTruthy()
+    expect(within(umar).getByTitle('The July 2026 notice is on file')).toBeTruthy()
+    // every flag names its month — Rizvi's August too, which used to say "the last work month"
+    expect(within(rowOf('890 PLUM')).getByRole('button', { name: /A § 53.056 notice is owed for August 2026 — send it by Oct 15/ })).toBeTruthy()
     expect(screen.getByTitle(/Property kind not set: residential would be the first date, commercial Dec 15/)).toBeTruthy()
     // Mike Holub: a pay dot and room
     expect(screen.getByTitle(/Expected to pay Sep 30/)).toBeTruthy()
@@ -148,7 +156,7 @@ describe('LienDeskCalendarTab', () => {
     const { onOpen } = mount()
     fireEvent.click(screen.getByRole('button', { name: /^890 PLUM/ }))
     expect(onOpen).toHaveBeenCalledWith('a')
-    fireEvent.click(screen.getByRole('button', { name: /A § 53.056 notice is owed for August 2026/ }))
+    fireEvent.click(within(rowOf('881 PLUM')).getByRole('button', { name: /A § 53.056 notice is owed for August 2026/ }))
     expect(onOpen).toHaveBeenLastCalledWith('b')
     fireEvent.change(screen.getByLabelText('Search the lien calendar'), { target: { value: 'holub' } })
     expect(screen.queryByText('RMC · Dudley Mason')).toBeNull()
@@ -161,6 +169,24 @@ describe('LienDeskCalendarTab', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Draft the two ›' }))
     expect(onDraft).toHaveBeenCalledWith('2026-10-15', ['a', 'b'])
     expect(screen.queryByRole('button', { name: /Set kinds/ })).toBeNull()
+  })
+
+  it('a job worked over several months: its GC row names the earliest notice and sorts by it; the phone sentence agrees (v2.4308)', () => {
+    // Job 878, read live on 2026-10-01: commercial, worked June through September, no notice recorded.
+    // The row said "send the notice by Dec 15 · 75 d" and sorted near the bottom while July's notice was due Oct 15.
+    const OCT_1 = '2026-10-01'
+    const seguin: LienCalendarJob = { jobId: 's', number: '878', name: 'Take 5- Seguin', customer: '', gcId: 'gc-sp', gcName: 'Southern Post Construction', address: '380 TX-123, Seguin', openBalance: 38625, isSub: true, runway: buildLienPayRunway({ ...base, todayYmd: OCT_1, openBalance: 38625, propertyKind: 'non_residential', lastWorkYmd: '2026-09-21', isSub: true, workMonths: ['2026-06', '2026-07', '2026-08', '2026-09'] }), lastWorkYmd: '2026-09-21' }
+    const later: LienCalendarJob = { jobId: 'h', number: '983', name: 'Water Heater removal', customer: '', gcId: 'gc-hi', gcName: 'H & I Construction', address: '25233 Four Iron Ct', openBalance: 350, isSub: true, runway: buildLienPayRunway({ ...base, todayYmd: OCT_1, openBalance: 350, lastWorkYmd: '2026-09-03', isSub: true, workMonths: ['2026-09'] }), lastWorkYmd: '2026-09-03' }
+    render(<LienDeskCalendarTab rows={[later, seguin]} loading={false} todayYmd={OCT_1} onOpenJob={vi.fn()} />)
+    const groups = screen.getAllByTestId(/^lien-cal-group-gc:/)
+    expect(groups.map((g) => g.getAttribute('data-testid'))).toEqual(['lien-cal-group-gc:gc-sp', 'lien-cal-group-gc:gc-hi'])
+    expect(groups[0]!.textContent).toContain('send the notice by Oct 15 · 14 d')
+    expect(groups[1]!.textContent).toContain('send the notice by Nov 16 · 46 d')
+    // July, August and September each carry a hollow flag; June's window closed, so it draws none
+    expect(within(rowOf('878')).getAllByRole('button', { name: /A § 53.056 notice is owed for (July|August|September) 2026/ })).toHaveLength(3)
+    cleanup()
+    render(<LienDeskCalendarTab rows={[later, seguin]} loading={false} todayYmd={OCT_1} onOpenJob={vi.fn()} isMobile />)
+    expect(screen.getByText('notice by Oct 15 · lien by Jan 15 — send the notice · 14 d')).toBeTruthy()
   })
 
   it('on a phone: no axis — the column cards, then the sentences', () => {

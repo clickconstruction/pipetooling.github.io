@@ -166,17 +166,13 @@ describe('lienCalendarMarks', () => {
     expect(created.runway.kindAssumed).toBe(true)
     expect(commercialLienByFor(created)).toBe('2026-12-15')
   })
-  it('the months carry one hollow flag per unpaid month and a check for a sent one; the kind bracket reaches the commercial date', () => {
+  it('the work months carry one hollow flag per unpaid month and a check for a sent one; the kind bracket reaches the commercial date', () => {
     const j = job({
       jobId: 'a',
       ...RMC,
       isSub: true,
       lastWorkYmd: '2026-08-12',
-      r: { lastWorkYmd: '2026-08-12', propertyKind: '' },
-      months: [
-        { key: '2026-07', due: '2026-09-15', state: 'sent' },
-        { key: '2026-08', due: '2026-10-15', state: 'due' },
-      ],
+      r: { lastWorkYmd: '2026-08-12', propertyKind: '', workMonths: ['2026-07', '2026-08'], noticedMonths: ['2026-07'] },
     })
     expect(j.runway.kindAssumed).toBe(true)
     expect(noticeFlagsFor(j)).toEqual([
@@ -256,6 +252,67 @@ describe('the GC row, the density and the to-do', () => {
     expect(sharedPropertyNote([{ address: '628 Terrell Rd' }, { address: '' }, { address: '' }])).toBe('')
     const two = buildLienCalendar([job({ jobId: 'a', ...RMC, address: '9703 Lenox Hl' }), job({ jobId: 'b', ...RMC, address: '9703 Lenox Hl' })], '')
     expect(two.groups[0]!.sub).toBe('GC · 2 jobs · 2 notices owed · 2 at one property')
+  })
+})
+
+
+// ---- v2.4308: a job worked over several months owes its earliest notice first ----
+describe('the notice that counts is the earliest one still owed (v2.4308)', () => {
+  // The Calendar read live on 2026-10-01: three GCs' jobs each worked several months, no notice
+  // recorded, all commercial. July's notices are due Oct 15; the last month's are later.
+  const OCT_1 = '2026-10-01'
+  const commercial = { todayYmd: OCT_1, propertyKind: 'non_residential' }
+  const rows = [
+    job({ jobId: '878', number: '878', name: 'Take 5- Seguin', gcId: 'gc-sp', gcName: 'Southern Post Construction', openBalance: 38625, r: { ...commercial, lastWorkYmd: '2026-09-21', workMonths: ['2026-06', '2026-07', '2026-08', '2026-09'] } }),
+    job({ jobId: '891', number: '891', name: 'Take 5- Liberty Hill', gcId: 'gc-burd', gcName: 'Burd & Assoc.', openBalance: 27199, r: { ...commercial, lastWorkYmd: '2026-08-11', workMonths: ['2026-07', '2026-08'] } }),
+    job({ jobId: '650', number: '650', name: 'ATI Schertz', gcId: 'gc-loberg', gcName: 'Loberg Contracting', openBalance: 15722, r: { ...commercial, lastWorkYmd: '2026-09-08', workMonths: ['2026-06', '2026-07', '2026-08', '2026-09'] } }),
+    // a GC whose one notice really is Nov 16: worked September only, residential
+    job({ jobId: '983', number: '983', name: 'Water Heater removal', gcId: 'gc-hi', gcName: 'H & I Construction', openBalance: 350, r: { todayYmd: OCT_1, lastWorkYmd: '2026-09-03', workMonths: ['2026-09'] } }),
+  ]
+  const cal = buildLienCalendar(rows, '')
+
+  it('each GC row names July’s date, and the groups sort by it', () => {
+    expect(cal.groups.map((g) => [g.name, g.word])).toEqual([
+      ['Southern Post Construction', 'send the notice by Oct 15 · 14 d'],
+      ['Burd & Assoc.', 'send the notice by Oct 15 · 14 d'],
+      ['Loberg Contracting', 'send the notice by Oct 15 · 14 d'],
+      ['H & I Construction', 'send the notice by Nov 16 · 46 d'],
+    ])
+    expect(cal.totals.noticesOwed).toBe(4)
+  })
+
+  it('a job row’s sentence names the same date as its GC row', () => {
+    const seguin = cal.jobs.find((j) => j.jobId === '878')!
+    expect(seguin.runway.lines).toEqual(['notice by Oct 15 · lien by Jan 15', 'send the notice · 14 d'])
+    expect(rowWord(seguin, cal.groups[0]!)).toBeNull()
+    // beside July's notice, a job whose first notice is later says its own date
+    const later = cal.jobs.find((j) => j.jobId === '983')!
+    expect(rowWord(later, { kind: 'gc', jobs: [seguin, later] })).toEqual({ text: 'notice by Nov 16 · 46 d', tone: 'amber' })
+  })
+
+  it('one flag per month still owed, none for a closed month; the Oct 15 column counts all three', () => {
+    const seguin = cal.jobs.find((j) => j.jobId === '878')!
+    expect(noticeFlagsFor(seguin)).toEqual([
+      { ymd: '2026-10-15', done: false, monthKey: '2026-07' },
+      { ymd: '2026-11-16', done: false, monthKey: '2026-08' },
+      { ymd: '2026-12-15', done: false, monthKey: '2026-09' },
+    ])
+    const axis = lienCalendarAxis(cal.jobs, OCT_1)
+    const density = lienCalendarDensity(cal, axis)
+    expect(density.find((c) => c.ymd === '2026-10-15')!.notices.jobIds).toEqual(['878', '891', '650'])
+    const todo = lienCalendarTodo(cal, density, new Map(cal.jobs.map((j) => [j.jobId, j])))
+    expect(todo[0]).toMatchObject({ heading: 'By Oct 15 · 14 d', sentence: '3 notices across 3 GCs · $81.5k' })
+  })
+
+  it('a job with no property kind draws its flags where its words are, on the residential clock', () => {
+    // Job 927, Mike Holub – Candelaria: July through September, no kind. July's window closed Sep 15 on
+    // the residential clock; August's notice is the first owed. (Before, the flags sat a month later than the words.)
+    const holub = job({ jobId: '927', gcId: 'gc-holub', gcName: 'Michael Holub', r: { todayYmd: OCT_1, propertyKind: '', lastWorkYmd: '2026-09-09', workMonths: ['2026-07', '2026-08', '2026-09'] } })
+    expect(holub.runway.noticeByYmd).toBe('2026-10-15')
+    expect(noticeFlagsFor(holub)).toEqual([
+      { ymd: '2026-10-15', done: false, monthKey: '2026-08' },
+      { ymd: '2026-11-16', done: false, monthKey: '2026-09' },
+    ])
   })
 })
 
