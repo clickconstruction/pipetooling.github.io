@@ -16,7 +16,7 @@ import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { buildClickToolingUrl } from '../../lib/jobs/jobAddressUrls'
 import { useTestReportModalOptional } from '../../contexts/TestReportModalContext'
 import { ShareJobButton } from './ShareJobButton'
-import { StagesAiaG702Button, StagesHazmatFeeButton, StagesTestReportButton } from './StagesRowActionButtons'
+import { StagesAiaG702Button, StagesHazmatFeeButton, StagesRowIcons, StagesTestReportButton } from './StagesRowActionButtons'
 import { showAiaG702G703 } from '../../lib/aiaG702G703Eligibility'
 import { useChecklistAddModal } from '../../contexts/ChecklistAddModalContext'
 import { useDispatchTaskModal } from '../../contexts/DispatchTaskModalContext'
@@ -500,7 +500,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                         >
                           Edit
                         </button>
-                        <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', justifyContent: 'flex-end' }}>
+                        <StagesRowIcons>
                             {/* Share first — same order as the billing stages' icon row
                                 (v2.2576); closes the v2.1452 gap where Waiting/Working
                                 rows missed the "every Pipeline row" promise. */}
@@ -511,7 +511,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                             <StagesTestReportButton onClick={() => openTestReportFor(j)} />
                             {showAiaG702G703(authRole, j) ? <StagesAiaG702Button onClick={() => setAiaG702StagesJob(j)} /> : null}
                             {canCreateHazmatFee ? <StagesHazmatFeeButton onClick={() => openHazmatFee(j)} hasFee={hazmatFeeJobIds?.has(j.id) === true} /> : null}
-                        </div>
+                        </StagesRowIcons>
                       </div>
                     </div>
                   </td>

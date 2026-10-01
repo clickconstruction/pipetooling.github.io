@@ -14,7 +14,7 @@ import { Fragment } from 'react'
 import { JobsStagesActivityBox } from './JobsStagesActivityBox'
 import { STAGES_EDIT_MODE_RAIL_WIDTH, stagesOpenRowStyle, accountManOnlyStripeStyle, renderJobAddressWithMap, renderStagesEditModeRail, renderStagesJobColumnEstimateFooter, renderStagesJobHcpSubline, renderStagesProjectBannerRow, renderStagesThreadExpandButton, renderStagesViewReportsButton, shouldSuppressStagesRowJobThreadToggle, stagesRowHasProjectBanner, stagesActionMoveStackStyle } from './jobsStagesRowShared'
 import { ShareJobButton } from './ShareJobButton'
-import { StagesAiaG702Button, StagesHazmatFeeButton, StagesLienInstrumentsButton, StagesLienReleaseButton, StagesTestReportButton } from './StagesRowActionButtons'
+import { StagesAiaG702Button, StagesHazmatFeeButton, StagesLienInstrumentsButton, StagesLienReleaseButton, StagesRowIcons, StagesTestReportButton } from './StagesRowActionButtons'
 import { StagesCrewLine } from './StagesCrewLine'
 import { StagesExpandedThreadRow } from './StagesExpandedThreadRow'
 import { formatCurrency, formatTimeSince, formatUsdNoCents } from '../../lib/jobs/jobFormatting'
@@ -354,8 +354,7 @@ export function StagesUnifiedJobRow({ row, t }: { row: StagesUnifiedJobRowKind; 
             >
               Edit
             </button>
-            <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', justifyContent: 'flex-end' }}>
-                {onOpenLienRelease ? <StagesLienReleaseButton onClick={() => onOpenLienRelease({ job: j, invoice: bundleInv ?? null })} hasRelease={lienReleaseJobIds?.has(j.id) === true} /> : null}
+            <StagesRowIcons>
                 <ShareJobButton
                   jobId={j.id}
                   fields={{ hcpNumber: j.hcp_number, jobName: j.job_name, jobAddress: j.job_address }}
@@ -363,6 +362,7 @@ export function StagesUnifiedJobRow({ row, t }: { row: StagesUnifiedJobRowKind; 
                 {showClickTooling && (
                   <StagesTestReportButton onClick={() => openTestReportFor(j)} />
                 )}
+                {onOpenLienRelease ? <StagesLienReleaseButton onClick={() => onOpenLienRelease({ job: j, invoice: bundleInv ?? null })} hasRelease={lienReleaseJobIds?.has(j.id) === true} /> : null}
                 {onOpenLienTooling &&
                   (() => {
                     let invForLien: JobsLedgerInvoice | null = bundleInv ?? null
@@ -376,7 +376,7 @@ export function StagesUnifiedJobRow({ row, t }: { row: StagesUnifiedJobRowKind; 
                   })()}
                 {showAiaG702G703(authRole, j) ? <StagesAiaG702Button onClick={() => setAiaG702StagesJob(j)} /> : null}
                 {canCreateHazmatFee ? <StagesHazmatFeeButton onClick={() => openHazmatFee(j)} hasFee={hazmatFeeJobIds?.has(j.id) === true} /> : null}
-            </div>
+            </StagesRowIcons>
             {/* v2.4147 (owner): Send back and Collections live under the icons, stacked
                 full width — off the Progress cell, where they sat under the lien runway. */}
             {((sendBackBelowRemaining && (bundleInv ? bundleInvWithJob != null : onJobSendBack != null)) || onJobMoveToCollections) ? (
