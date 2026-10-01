@@ -18,7 +18,8 @@ next: >
   run the checker and the structure diff, drop the rows, release note + fragment, merge main
   before the PR and re-read any guide main changed meanwhile. Batch 6 is the first fifty rows
   (`see-how-often-we-go-back` … ), batch 7 the last 27 minus whatever other PRs have rewritten
-  since; then the list is empty and `plainWordsLegacy.ts` is deleted.
+  since; then the list is empty and `plainWordsLegacy.ts` is deleted. Separately, *Left for a person
+  to read* below: the Workbench's ? card, and the words the rewriters had to guess.
 size: M (two PRs, 50 and 27 guides; about 70,000 words of prose to rewrite)
 blocker: None. The owner paused it; say go.
 ver: v2.4233 · 4235 · 4258 · 4282 · 4283 · 4286
@@ -48,9 +49,6 @@ guides. Then, the same evening: "Let's pause on this for now and add it to the p
   `:::example` panel word for word, every mock-UI token and link, every fact. The first paragraph
   is two plain sentences (the share card's line). Screen text the app prints with a dash, a dot
   or parentheses is quoted in italics, the rule's exemption; a bold label becomes bold-italic.
-- **Two stale counts were kept as written**, since the rules forbid changing a number: *see
-  every contract side by side* says "four lines" above six bullets; *reconcile Cash App
-  payments* says "four buttons" above five. Worth a glance by someone who knows the screens.
 
 ## Where it stands
 
@@ -64,6 +62,48 @@ guides. Then, the same evening: "Let's pause on this for now and add it to the p
 
 Other sessions removed a few rows on their own as their PRs touched guides — the convention
 working. `grep -c "^  '" src/lib/plainWordsLegacy.ts` is the live count.
+
+## Left for a person to read
+
+None of these fail a test; each wants someone who knows the screens or the trade.
+
+- **The Workbench's ? card** (`src/components/bids/WorkbenchHelpCard.tsx`, Bids → Pricing → ?).
+  Its four lines (*Type a price*, *Solve*, *This bid* / *This GC*, *Labor & cost*) still read in
+  the old voice, with dashes and a parenthesis. The walkthrough it opens was rewritten in v2.4228;
+  the card was noted on #58 and lost when that row closed. Small: four strings and a test case.
+- **Two counts that do not match their lists**, kept as written because the rules forbid changing
+  a number: *see every contract side by side* says "four lines" above six bullets; *reconcile Cash
+  App payments* says "four buttons" above five.
+- **Three phrases kept word for word** because the rewriter could not tell what they mean:
+  - *file a lien and never miss its deadlines*: "The first bill on a GC job is the last net."
+  - *fill and sign a form on my phone*: "the lens skips it."
+  - *estimate labor hours on a bid*: "the same lens A the Overhead tab shows."
+- **"pretest"** is left without a plain word, twice, in *choose who gets the bill*.
+- **Plain words the rewriters said they guessed at.** Each sits beside the trade word the first
+  time it appears; a wrong one is a one-line fix.
+
+| Guide | Guessed |
+|---|---|
+| choose who gets the bill | the portals, "the pages a customer or GC signs in to" |
+| crew P&L | a sub sheet, "a subcontractor's labor sheet" |
+| drill into the Dashboard money cards | burn, "the money the office spends" |
+| find a job address from the field | the ledger, "the app's list of jobs" |
+| find a supply house and its rep | a rep, a job account, aging |
+| give a customer a lien release | the legal description, "the lot as the county records name it" |
+| import a takeoff from CountTooling | a takeoff, "the count of fixtures and pipe runs from the drawings" |
+| job address city line breaks | the AIA G702/G703, "the standard progress-billing form" |
+| job charges timeline | overhead, "the office's running cost" |
+| let the robots shadow a bid | first drafts, "the first pass at our bids"; a lens, "one of the group's views" |
+| quickfill | Moneyfill, "the weekly money close page" |
+| read a partner's balance from the office | rate-tier days, "the days already stamped with their pay rate" |
+| read field reports on the Dashboard | a field report, "what a tech files from the job" |
+| record sub labor on a job | the assembler, "the work order builder" |
+| reports | a turnaway, "a visit where the work could not be done" |
+| review a collections account before it goes to your attorney | writing it down, the contingency %, exhibits |
+| run the robots from Claude Desktop | a shadow, a shell, a price matrix, a harness |
+| run your GC statement round | retainage, certification |
+| see a customer's full history and lifetime value | lien-ready, "the record a lien filing needs is complete" |
+| see how close the robots are | a shadow run, "the robot pricing a live bid before our number exists" |
 
 ## The recipe (what worked)
 
