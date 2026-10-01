@@ -220,7 +220,9 @@ export default function PeopleDayBookTab({ authUserId, authRole, canPickPerson, 
   const rangeLabel = wholeMonth ? dayBookMonthLabel(range.from) : dayBookRangeLabel(range.from, range.to)
   const showMonth = () => {
     setViewMode('month')
-    setRange((r) => dayBookMonthOf(r.from))
+    // A week that holds today opens today's month, as Week does (v2.4291): the week of
+    // Oct 1 starts Sep 28, and opening the month of its first day showed September.
+    setRange((r) => (r.from <= today && today <= r.to ? dayBookMonthOf(today) : dayBookMonthOf(r.from)))
   }
   const showWeek = () => {
     setViewMode('week')
