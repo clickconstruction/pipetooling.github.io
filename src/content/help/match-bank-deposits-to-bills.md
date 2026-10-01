@@ -2,7 +2,7 @@
 title: match bank deposits to the bills they pay
 category: Billing & Money
 roles: dev, master_technician, assistant, controller, primary
-keywords: accounts receivable, bank deposits, mercury, allocate, apply payment, counterparty, check, match, tip, overpaid, paid too much, leftover, close out, bank interest, vendor refund, owner deposit, not a customer, reopen, bounced check, returned check, insufficient funds, stop payment, nsf
+keywords: accounts receivable, bank deposits, mercury, allocate, apply payment, counterparty, check, match, tip, overpaid, paid too much, leftover, close out, bank interest, vendor refund, owner deposit, not a customer, reopen, bounced check, returned check, insufficient funds, stop payment, nsf, came back, new check, rejected check, never reached the bank, take it off, stop payment case
 ---
 Money that lands in the bank is not done yet. Each deposit still has to be applied to the bill it pays. Then the job shows paid and nobody chases the money. You do that in **Accounts Receivable**. Open it from Jobs → Pipeline, from the Dashboard's {{button:blue|Match deposits}} nudge, or at `/accounts-receivable`.
 
@@ -124,24 +124,45 @@ Pick the reason: **Bank interest**, **Vendor refund**, **Owner deposit**, or **S
 - **Banking is separate.** Closing out says *this is not receivables*. It does not label the deposit. Label it in Banking → Accounting as you would any other bank transaction, so the P&L reads right.
 - Marked returned? Unmark it first if it did not actually bounce. A returned deposit cannot be closed out.
 
-## If a check bounces after you matched it
+## When a check comes back
 
-A check can be matched to a bill and returned by the bank days later. Mercury syncs the deposit as failed, with the bank's reason. The payment row on the job says so. Open the job, then ③ Payments received. The row wears {{chip:red|⚠ Returned by the bank · Insufficient funds}}. Press {{button:outline|Unlink and remove}} on that row and confirm. The payment comes off the job. The bill and the job's balance read unpaid again. The deposit is marked **returned** in Accounts Receivable in the same step. It never comes back to To match. The confirm says the bank sent the check back.
+A check can come back days after it posted. The bank says why. It may read *Insufficient funds*, *Stop payment* or *Refer to maker*. The app opens a case for it the moment Mercury says so. This happens whether the check is on a job or not.
 
-A check that came back cannot pay a bill. Find it under All and select it. Its pane reads *This check came back, so it cannot pay a bill.* Apply stays off. A deposit marked returned by hand reads the same. If it did not bounce, untick Returned under **Mark returned deposits**.
+### Came back, on top of To match
 
-This works on a Stripe bill too. A deposit matched here is only a row in the app. Stripe never learned of it, and the bill's pay link kept asking for the full amount. So there is nothing on Stripe's side to undo, and the confirm says so. The two payments Stripe does hold keep their own doors. A part payment recorded as a credit note has **Undo part payment** on its row. A bill marked paid by check through Mark Paid has **Check didn't clear…** on its row. That opens the Undo out-of-band payment window, which also sends the bill back so it can be billed again. See *bill a customer and get paid*.
+Every open case sits under **Came back** at the top of To match. The header counts them. It reads *2 came back · nothing to match*. Each row says where the check is now. It may read *off #878 since 9/24 · no new check in 8 days*. Select a row to open its case.
 
-:::example the GC's check came back
-Take 5 – Seguin: a $13,680 check from the GC was matched to the first draw on Sep 21 and returned for insufficient funds on Sep 23. On the job the row reads *⚠ Returned by the bank · Insufficient funds*; Unlink and remove puts the $15,200 draw back to unpaid, the job's open balance back to $38,625, and the deposit leaves To match as returned. The lien notice then claims the whole balance.
+The case tells the story first. It lists when the check posted, who applied it and when the bank sent it back. Then it says what that costs. It may read *#878 owes the $13,680 again.* Then it gives one next step.
+
+:::example the case of Southern Post's check
+**Southern Post · $13,680** {{chip:red|came back · Insufficient funds}}
+Sep 21 Taunya applied it to #878 Take 5- Seguin. Sep 23 The bank sent it back.
+**Next:** Get a new check from Southern Post. It has been 8 days. {{button:blue|They said…}}
 :::
 
-Every removal is kept on the job's payment record. That holds the amount, the bill it was on, who removed it and why. So the trail survives the row.
+- **Still on a job.** The next step is {{button:red|Take it off the job}}. It reads back what changes on each job first. It may read *$11,181.78 comes off bill 2.* One press takes it off every job it paid. Each job's history keeps the removal and who did it. A bill Stripe holds as paid must be undone there first. The read-back says so.
+- **Off its jobs.** The next step is to get a new check. Press {{button:blue|They said…}} to record the date the customer named. The case then waits for that date. A stopped check asks you to find out why it was stopped.
+- **The new check arrives.** A deposit may land from the same payer for the same amount. Then the case says *This looks like the new check.* Press {{button:blue|Use it as the new check}}. The bills the old check paid fill in. Press Apply, and the case closes.
+- **It ends another way.** Open **More**. Pick **Settled another way** or **Not coming** and add a note. The case closes with your name on it.
 
-**You don't have to go looking.** The moment Mercury reports the return, the office gets an email and a push. This happens whether the check is on a job or not. The email reads *The bank sent back Southern Post's $13,680 check.* It then says where the check is now. On a job, it links straight to that payments row. Taken off a job, it names the job that owes the money again. It goes to the people on the **Payment made** email stream, under Settings → Email streams. When that list is empty it goes to the whole office. It is sent only once per check.  On the Pipeline the job's Billed Awaiting Payment row wears {{chip:red|⚠ check returned · $13,680}} beside its paid figure. On a phone it is the row's one chip. Click it to land on the payments row. The Dashboard's **Needs you** card says so too. It reads *A deposit the bank returned is still counted as paid ($13,680)*. It names the job, the amount and the bank's reason. {{button:outline|Open J878}} lands you on that ③ Payments received row. Until the payment comes off, the job still reads paid everywhere. That is why the card is amber.
+A check that came back cannot pay a bill. Its pane has no bills to pick and Apply stays off.
 
-A check can also fail before it ever reaches the bank. Mercury says *There was an issue with this transaction*. Most of these are simply deposited again. Sometimes one is not, and a payment for the same amount was recorded by hand. Then the office hears about that too. The email reads *Mercury could not take in Sal Iannotti's $600 check.* It names the job that still reads paid.
+### A check marked returned by hand
 
-:::example a returned check nobody matched yet
-A check that bounces before anyone matched it never needs a thing from you. It leaves **To match** on its own, is never swept or closed out, and under **To match · All** wears {{chip:red|returned by the bank · Insufficient funds}} (or *Stop payment*, *Refer to maker* — the bank's own words). Only a check the bank first accepted and then returned counts; one Mercury never took in the first place ("there was an issue with this transaction", usually re-deposited) raises nothing.
-:::
+**Mark returned deposits** behind {{button:outline|⋯}} still puts a Returned tick on each row. Ticking one the bank never sent back asks first. It reads *Did the bank send DRF's $250 check back?* Say yes and it opens a case. Say no when it is not a customer's payment. Then close it out with a reason instead. A case marked by hand has **It did not bounce** under More. That puts it back in To match.
+
+### A check that never reached the bank
+
+Mercury can refuse a check before it posts. It reads *There was an issue with this transaction*. Most of these are simply deposited again. Sometimes one is not, and a payment for the same amount was recorded by hand. After five days the app opens a case for it. The case reads *never reached the bank* and names the job that still reads paid. Deposit the check again and the case closes on its own. If it was paid another way, say so in the case. If it will not be paid, take the payment off the job from the case.
+
+### You don't have to go looking
+
+The moment Mercury reports the return, the office gets an email and a push. The email reads *The bank sent back Southern Post's $13,680 check.* It then says where the check is now and links to its case. It goes to the people on the **Payment made** email stream, under Settings → Email streams. When that list is empty it goes to the whole office. It is sent only once per check.
+
+On the Pipeline the money card reads *2 checks came back*. The job's Billed Awaiting Payment row wears {{chip:red|⚠ check returned · $13,680}} while a payment still counts it. The Dashboard's **Needs you** card names each check and opens its case.
+
+### On a Stripe bill
+
+This works on a Stripe bill too. A deposit matched here is only a row in the app. Stripe never learned of it. So there is nothing on Stripe's side to undo. The two payments Stripe does hold keep their own doors. A part payment recorded as a credit note has **Undo part payment** on its row. A bill marked paid by check through Mark Paid has **Check didn't clear…** on its row. That opens the Undo out-of-band payment window. It also sends the bill back so it can be billed again. See *bill a customer and get paid*.
+
+You can still take one payment off by hand. Open the job, then ③ Payments received. Press {{button:outline|Unlink and remove}} on the row. The confirm says the bank sent the check back. Every removal is kept on the job's payment record. That holds the amount, the bill it was on, who removed it and why.

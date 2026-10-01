@@ -14,6 +14,7 @@ import { formatDispatchNoteDaysAgoShortPhrase } from '../utils/dispatchNoteDispl
 import type { RobotLockedShadow } from './bids/robotLockedShadows'
 import { formatYmdMonthDay } from './jobs/billedExpectedPay'
 import type { BankReturnedPayments } from './jobs/bankReturnedDeposits'
+import { arReturnCaseView, type ArReturnCaseRow } from './jobs/arReturnCase'
 
 /**
  * Needs You card (v2.2339, CX-audit Phase 3): the pure item builder behind the
@@ -257,6 +258,10 @@ export type NeedsYouInputs = {
    */
   bankReturnedEnabled?: boolean
   bankReturned?: BankReturnedPayments | null
+  /** v2.4325: the open cases of checks that came back (on a job or not); preferred over bankReturned when present. */
+  bankReturnCases?: ArReturnCaseRow[] | null
+  /** Today on the company calendar, for the cases' words. */
+  todayYmd?: string
   tallyStaleUnlinkedCount: number | null
   /** Every unlinked row (no age filter) — what `/tally` will say on open (v2.2896). Null while loading. */
   tallyUnlinkedCount?: number | null
@@ -832,7 +837,32 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
     })
   }
 
-  if (inputs.bankReturnedEnabled && inputs.bankReturned && inputs.bankReturned.count > 0) {
+  if (inputs.bankReturnedEnabled && inputs.bankReturnCases && inputs.bankReturnCases.length > 0) {
+    const views = inputs.bankReturnCases.map((row) => arReturnCaseView({ row, trail: [], todayYmd: inputs.todayYmd ?? row.opened_at?.slice(0, 10) ?? '' }))
+    const n = views.length
+    const total = views.reduce((sum, v) => sum + v.amount, 0)
+    const money = (v: number) => v.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+    const first = views[0]!
+    const rows = views
+      .slice(0, 3)
+      .map((v) => `${v.payer} · ${money(v.amount)} · ${v.rowLine}`)
+      .join(' — ')
+    const more = n > 3 ? ` and ${n - 3} more` : ''
+    items.push({
+      key: 'returned-check',
+      severity: 'amber',
+      kicker: 'Money received',
+      title:
+        n === 1
+          ? first.source === 'rejected'
+            ? `${first.payer}'s ${money(first.amount)} check never reached the bank`
+            : `${first.payer}'s ${money(first.amount)} check came back`
+          : `${n} checks came back (${money(total)})`,
+      detail: `${rows}${more}. Each one sits on top of To match in Accounts Receivable with its next step.`,
+      figure: String(n),
+      actionLabel: n === 1 ? 'Open the check' : 'Open Accounts Receivable',
+    })
+  } else if (inputs.bankReturnedEnabled && inputs.bankReturned && inputs.bankReturned.count > 0) {
     const r = inputs.bankReturned
     const n = r.count
     const money = (v: number) => v.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })

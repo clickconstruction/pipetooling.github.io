@@ -573,6 +573,8 @@ export function DashboardPinnedQuickRow({
     testReportsReady: testReportsNudge.drafts,
     bankReturnedEnabled,
     bankReturned: bankReturnedNudge.returned,
+    bankReturnCases: bankReturnedNudge.cases,
+    todayYmd: todayYmdInAppTz(),
     submittalsEnabled,
     submittalNudge: submittalsNudge.nudge,
     demandDeadlineEnabled: lienUnconditionalEnabled,
@@ -735,9 +737,12 @@ export function DashboardPinnedQuickRow({
               const first = item.key === 'submittal-lead-time' ? n?.leadTime.first : item.key === 'submittal-sent-back' ? n?.sentBack.first : item.key === 'submittal-unopened' ? n?.unopened.first : n?.notStarted.first
               navigate(first ? `/bids?tab=submittals&bidId=${encodeURIComponent(first.bidId)}` : '/bids?tab=submittals')
             } else if (item.key === 'returned-check') {
-              // Edit Job → ③ Payments received: the row wears the Returned chip and Unlink and remove does the work (v2.3784).
+              // v2.4325: the case in Accounts Receivable; before the cases load, Edit Job → ③ Payments received (v2.3784).
+              const cases = bankReturnedNudge.cases ?? []
               const first = bankReturnedNudge.returned?.first ?? null
-              navigate(first ? `/jobs?tab=stages&edit=${encodeURIComponent(first.jobId)}&editFocus=payments` : '/jobs?tab=stages')
+              if (cases.length === 1) navigate(`/accounts-receivable?check=${encodeURIComponent(cases[0]!.mercury_transaction_id)}`)
+              else if (cases.length > 1) navigate('/accounts-receivable')
+              else navigate(first ? `/jobs?tab=stages&edit=${encodeURIComponent(first.jobId)}&editFocus=payments` : '/jobs?tab=stages')
             } else if (item.key === 'test-reports-ready') {
               // Open the first draft in the Test report modal; the Stages board is the fallback.
               const first = testReportsNudge.drafts?.first ?? null

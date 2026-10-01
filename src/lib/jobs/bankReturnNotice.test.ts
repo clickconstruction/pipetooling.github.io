@@ -42,10 +42,10 @@ describe('the office notice for a returned deposit (v2.3804)', () => {
       'The reason is Insufficient funds.',
       'The bank took it Sep 18.',
       'It is still counted as paid on J878 Take 5- Seguin.',
-      'Take it off the job. In Edit Job, press Unlink and remove on that payment.',
+      'Take it off the job in Accounts Receivable.',
     ])
     const split = { ...take5, jobs: [take5.jobs[0]!, { jobId: 'b', jobLabel: 'J858 Lenox', amount: 500 }] }
-    expect(bankReturnNoticeSentences(split).slice(2)).toEqual(['It is still counted as paid on 2 jobs.', 'Take it off each job. In Edit Job, press Unlink and remove on each payment.'])
+    expect(bankReturnNoticeSentences(split).slice(2)).toEqual(['It is still counted as paid on 2 jobs.', 'Take it off in Accounts Receivable. One press covers every job.'])
   })
 
   it('off its job (Loberg, Oct 1): where it was, and who owes the money again', () => {
@@ -98,7 +98,7 @@ describe('the office notice for a returned deposit (v2.3804)', () => {
     expect(buildBankReturnNoticePush(iannotti, 'tx-i')).toEqual({
       title: 'A check never reached the bank · $600',
       body: 'Sal Iannotti. J1040 Iannotti PRV still reads paid.',
-      url: '/jobs?tab=stages&edit=job-1040&editFocus=payments',
+      url: '/accounts-receivable',
       tag: 'bank-return-tx-i',
     })
   })
@@ -148,9 +148,15 @@ describe('the office notice for a returned deposit (v2.3804)', () => {
     expect(push).toEqual({
       title: 'A check came back · $13,680',
       body: 'Southern Post · Insufficient funds. Still counted as paid on J878 Take 5- Seguin.',
-      url: '/jobs?tab=stages&edit=6e30e4f4-da91-40a5-9c39-45dce996c1d2&editFocus=payments',
+      url: '/accounts-receivable',
       tag: 'bank-return-tx-1',
     })
+    // v2.4325: with the deposit's id the push and the email open its case.
+    expect(buildBankReturnNoticePush({ ...take5, caseId: 'tx 1' }, 'tx-1').url).toBe('/accounts-receivable?check=tx%201')
+    expect(bankReturnNoticeLinks({ ...take5, caseId: 'tx-1' }).map((l) => l.path)).toEqual([
+      '/accounts-receivable?check=tx-1',
+      '/jobs?tab=stages&edit=6e30e4f4-da91-40a5-9c39-45dce996c1d2&editFocus=payments',
+    ])
     expect(buildBankReturnNoticePush({ ...take5, jobs: [] }, 'tx-2').url).toBe('/accounts-receivable')
     expect(bankReturnPaymentsPath('a b')).toBe('/jobs?tab=stages&edit=a%20b&editFocus=payments')
   })

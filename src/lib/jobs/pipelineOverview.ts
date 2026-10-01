@@ -94,8 +94,11 @@ export function buildPipelineMoneyMoves(input: {
   stats: StagesHeaderStats
   arUnallocatedCount: number | null
   canOpenAr: boolean
+  /** v2.4325: open cases of checks that came back — they lead the Accounts Receivable card. */
+  arCameBackCount?: number | null
 }): PipelineMove[] {
   const { stats, arUnallocatedCount, canOpenAr } = input
+  const cameBack = input.arCameBackCount ?? 0
   const moves: PipelineMove[] = []
   if (stats.capableToBill > 0) {
     moves.push({
@@ -121,7 +124,16 @@ export function buildPipelineMoneyMoves(input: {
   // daily payments surface, not just an alarm.
   if (canOpenAr) {
     const n = arUnallocatedCount ?? 0
-    if (n > 0) {
+    if (cameBack > 0) {
+      moves.push({
+        key: 'allocate-deposits',
+        icon: '💵',
+        claim: `${cameBack} check${cameBack === 1 ? '' : 's'} came back`,
+        why: n > 0 ? `the bank sent ${cameBack === 1 ? 'it' : 'them'} back · and ${n} deposit${n === 1 ? '' : 's'} to apply` : `the bank sent ${cameBack === 1 ? 'it' : 'them'} back · settle each in Accounts Receivable`,
+        actionLabel: 'Accounts Receivable',
+        badgeCount: cameBack,
+      })
+    } else if (n > 0) {
       moves.push({
         key: 'allocate-deposits',
         icon: '💵',
