@@ -3795,3 +3795,8 @@ button.gcStep:hover > em { text-decoration: underline; }
 .bid-mark-board-row[data-marked='true'] { background: var(--bid-mark-wash-board); }
 tr.bid-mark-board-row[data-marked='true'] > td:first-child { box-shadow: inset 3px 0 0 var(--bid-mark); }
 div.bid-mark-board-row[data-marked='true'] { box-shadow: inset 3px 0 0 var(--bid-mark); }
+
+/* Pipeline row activity box: the See all door in the strip under the box (v2.4302). */
+.stages-activity-see-all { color: var(--text-muted); border-radius: 6px; }
+.stages-activity-see-all:hover,
+.stages-activity-see-all:focus-visible { color: var(--text-blue-700); }

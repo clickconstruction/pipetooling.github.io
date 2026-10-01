@@ -14,7 +14,7 @@ It looks the same wherever you open it from. The floating window, the panel unde
 Three ways in, same content:
 
 1. Click the {{button:outline-blue|2 Reports}} button in a job's **Job** column. The count varies.
-2. On wide screens, click the small expand arrows in the top-right corner of the row's **Job activity box**.
+2. On wide screens, click **See all** in the strip under the row's **Job activity box**.
 3. Click a row's **▶ notes toggle** to open the panel under the row. Its ⛶ button takes it full screen.
 
 The job's identity sits at the top. That is the {{chip:blue|Job: 4821}} number badge, service type, job name and address. Close the floating window with the **✕**, the **Esc** key, or the dark backdrop. **Esc** also exits full screen.
