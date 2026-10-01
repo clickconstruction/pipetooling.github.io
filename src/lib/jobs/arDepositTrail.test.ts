@@ -65,6 +65,14 @@ describe('buildArDepositTrail', () => {
     expect(t.parts.map((p) => p.kind)).toEqual(['was', 'bankFailed', 'off'])
     expect(t.lastTouchedAt).toBe('2026-09-24T13:43:04.000Z')
   })
+  it('taken off first, stopped by the bank after: the order it happened, and no "marked returned" on a take-off that came before the return', () => {
+    // Loberg, 2026-09-30/10-01: Taunya took it off #650 on 9/30; the bank stopped the cheque the next morning.
+    const lobergStopped = { ...lobergGone, removed_at: '2026-09-30T20:22:26Z' }
+    const nextDay = (iso: string) => arTrailWhenWords(iso, new Date('2026-10-01T15:00:00Z'), TZ)
+    const t = buildArDepositTrail({ rows: [lobergStopped], returned: true, bankFailedAt: '2026-10-01T13:41:01Z', whenWords: nextDay })!
+    expect(t.words).toBe('was #650 ATI Schertz — As per plans 9/29 by Taunya · taken off 9/30 by Taunya · bank failed it today 8:41 AM')
+    expect(t.parts.map((p) => p.kind)).toEqual(['was', 'off', 'bankFailed'])
+  })
   it('taken off and not put back: the row in To match says where it was', () => {
     const t = buildArDepositTrail({ rows: [lobergGone], returned: false, bankFailedAt: null, whenWords: when })!
     expect(t.words).toBe('was #650 ATI Schertz — As per plans 9/29 by Taunya · taken off today 4:02 PM by Taunya')
@@ -105,8 +113,14 @@ describe('buildArDepositTrail', () => {
     ]
     const t = buildArDepositTrail({ rows, returned: false, bankFailedAt: null, whenWords: when })!
     // e2's removal is within the move window of e3's apply → a move; e1's is not → taken off.
+    // Each take-off reads right after its own job.
     expect(t.words).toBe(
-      '→ Hamilton Valley Management 9/2 by Taunya · was #690 Mission Pet Health 9/1 · was a job the archive did not keep 9/2 · taken off 9/2 by Taunya',
+      '→ Hamilton Valley Management 9/2 by Taunya · was #690 Mission Pet Health 9/1 · taken off 9/2 by Taunya · was a job the archive did not keep 9/2',
+    )
+    // As prod has it: the second removal (Robert's) is not a move, and both land the same day — each still reads after its own job.
+    const twoOffs = rows.map((r) => (r.payment_id === 'e2' ? { ...r, removed_at: '2026-09-02T16:00:00Z' } : r))
+    expect(buildArDepositTrail({ rows: twoOffs, returned: false, bankFailedAt: null, whenWords: when })!.words).toBe(
+      '→ Hamilton Valley Management 9/2 by Taunya · was #690 Mission Pet Health 9/1 · taken off 9/2 by Taunya · was a job the archive did not keep 9/2 · taken off 9/2 by Robert',
     )
   })
 })

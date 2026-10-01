@@ -148,28 +148,49 @@ export function buildArDepositTrail(args: {
   ].sort((a, b) => b.at - a.at)
   parts.push(...onParts.map((p) => p.part))
 
-  // Where it used to be, oldest first; a removal followed by a live apply within minutes is a move.
-  const offParts: ArTrailPart[] = []
-  for (const r of [...gone].sort((a, b) => ms(a.applied_at) - ms(b.applied_at))) {
+  // The history: each old job followed by its own take-off, oldest job first; the bank's failure
+  // goes before the first take-off that came after it, else last (v2.4289, found live on the Elgin
+  // and Loberg rows). A removal followed by a live apply within minutes is a move: no take-off.
+  const failedMs = ms(args.bankFailedAt)
+  const history: Array<{ part: ArTrailPart; at: number; group: number; offAt: number | null }> = []
+  const goneByApplied = [...gone].sort((a, b) => ms(a.applied_at) - ms(b.applied_at))
+  for (const [group, r] of goneByApplied.entries()) {
+    const appliedMs = ms(r.applied_at)
     const removedMs = ms(r.removed_at)
     const moved =
       !args.returned &&
       Number.isFinite(removedMs) &&
       live.some((l) => Math.abs(ms(l.applied_at) - removedMs) <= MOVE_WINDOW_MS)
     const appliedWords = [when(r.applied_at), r.applied_by ? `by ${r.applied_by}` : ''].filter(Boolean).join(' ')
-    parts.push({ kind: 'was', jobs: [arTrailJobLabel(r)], before: 'was ', after: appliedWords ? ` ${appliedWords}` : '' })
-    if (Number.isFinite(ms(r.applied_at))) times.push(ms(r.applied_at))
+    history.push({
+      part: { kind: 'was', jobs: [arTrailJobLabel(r)], before: 'was ', after: appliedWords ? ` ${appliedWords}` : '' },
+      at: appliedMs,
+      group,
+      offAt: null,
+    })
+    if (Number.isFinite(appliedMs)) times.push(appliedMs)
     if (Number.isFinite(removedMs)) times.push(removedMs)
     if (!moved && r.removed_at) {
-      const verb = args.returned ? 'taken off, marked returned' : 'taken off'
-      offParts.push({ kind: 'off', jobs: [], before: `${verb} ${when(r.removed_at)}${by(r.removed_by)}`, after: '' })
+      // "marked returned" only when the take-off answered a return: a hand-marked one, or one after the bank's failure.
+      const answeredReturn = args.returned && (!Number.isFinite(failedMs) || removedMs >= failedMs)
+      const verb = answeredReturn ? 'taken off, marked returned' : 'taken off'
+      history.push({
+        part: { kind: 'off', jobs: [], before: `${verb} ${when(r.removed_at)}${by(r.removed_by)}`, after: '' },
+        at: removedMs,
+        group,
+        offAt: Number.isFinite(removedMs) ? removedMs : null,
+      })
     }
   }
+  const ordered = history.map((h) => h.part)
   if (args.bankFailedAt) {
-    parts.push({ kind: 'bankFailed', jobs: [], before: `bank failed it ${when(args.bankFailedAt)}`, after: '' })
-    if (Number.isFinite(ms(args.bankFailedAt))) times.push(ms(args.bankFailedAt))
+    const failedPart: ArTrailPart = { kind: 'bankFailed', jobs: [], before: `bank failed it ${when(args.bankFailedAt)}`, after: '' }
+    const firstOffAfter = Number.isFinite(failedMs) ? history.findIndex((h) => h.offAt != null && h.offAt >= failedMs) : -1
+    if (firstOffAfter >= 0) ordered.splice(firstOffAfter, 0, failedPart)
+    else ordered.push(failedPart)
+    if (Number.isFinite(failedMs)) times.push(failedMs)
   }
-  parts.push(...offParts)
+  parts.push(...ordered)
 
   const words = parts.map((p) => `${p.before}${p.jobs.join(', ')}${p.after}`).join(' · ')
   const last = times.length ? Math.max(...times) : Number.NaN
