@@ -201,7 +201,7 @@ describe('PeopleDayBookTab', () => {
       expect(H.rpc.mock.calls[0]![1]).toMatchObject({ p_from: '2026-09-28', p_to: '2026-10-04' })
       fireEvent.click(await screen.findByRole('button', { name: 'Month' }))
       await waitFor(() => expect(H.rpc.mock.calls.some((c) => (c[1] as { p_from: string }).p_from === '2026-10-01')).toBe(true))
-      expect(H.rpc.mock.calls.at(-1)![1]).toMatchObject({ p_from: '2026-10-01', p_to: '2026-10-31' })
+      expect(H.rpc.mock.calls[H.rpc.mock.calls.length - 1]![1]).toMatchObject({ p_from: '2026-10-01', p_to: '2026-10-31' })
     } finally {
       vi.useRealTimers()
     }
