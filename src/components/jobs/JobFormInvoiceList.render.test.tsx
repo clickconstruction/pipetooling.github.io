@@ -310,3 +310,57 @@ describe('JobFormInvoiceList — the money that paid each bill (v2.4293)', () =>
     expect(lines[1]!.textContent).toContain('· 75 d')
   })
 })
+
+describe('JobFormInvoiceList — By date (v2.4294)', () => {
+  it('lists the bills and the payments on one date line, oldest first, each payment naming its bill, and ends on what is still open', async () => {
+    const jobRow = makeJob({
+      customer_name: 'Loberg Contracting',
+      invoices: [
+        makeInvoice({ id: 'inv-big', status: 'billed', amount: 26800, is_primary_rtb_bundle: false, sent_to_customer_at: '2026-07-15T15:00:00Z', billed_at: '2026-07-15T15:00:00Z' }),
+        makeInvoice({ id: 'inv-small', status: 'billed', amount: 6700, is_primary_rtb_bundle: false, sent_to_customer_at: '2026-09-10T15:00:00Z', billed_at: '2026-09-10T15:00:00Z' }),
+      ],
+    })
+    const paid = [payment('inv-big', 11700, '2026-09-14'), payment('inv-big', 6077.51, '2026-09-28')]
+    renderWithProviders(
+      <JobFormInvoiceList
+        editing={jobRow}
+        payments={paid}
+        canApplyAgreedWriteDown={false}
+        onClose={() => {}}
+        onSavedRef={createRef<(() => void) | undefined>()}
+        setEditing={() => {}}
+        setBillViewInvoice={() => {}}
+        setAgreedWriteDownInvoice={() => {}}
+        refreshEditingJobAndHydratePayments={() => {}}
+        onInvoiceDeleted={() => {}}
+        onEditBillTo={() => {}}
+        nestedOverlayZIndex={1000}
+        bankFacts={{}}
+        persistedLedgerPaymentIds={new Set(paid.map((p) => p.id))}
+        unlinkingMercuryPaymentId={null}
+        paymentLineActions={{
+          updatePaymentRow: () => {},
+          requestRemovePaymentRow: () => {},
+          requestMovePaymentRow: () => {},
+          setUnlinkMercuryConfirmRowId: () => {},
+          setBillViewInvoice: () => {},
+        }}
+        view="date"
+      />,
+    )
+    await settle()
+    const ledger = screen.getAllByTestId('invoice-row')[0]!.parentElement!
+    expect(ledger.getAttribute('data-view')).toBe('date')
+    const order = [...ledger.children]
+      .map((el) => el.getAttribute('data-testid') === 'invoice-row' ? `bill:${el.textContent?.match(/\$[\d,]+\.\d\d/)?.[0]}` : el.getAttribute('data-testid') === 'date-payment-row' ? `pay:${el.textContent?.match(/\$[\d,]+\.\d\d/)?.[0]}` : null)
+      .filter(Boolean)
+    expect(order).toEqual(['bill:$26,800.00', 'bill:$6,700.00', 'pay:$11,700.00', 'pay:$6,077.51'])
+    const payRows = screen.getAllByTestId('date-payment-row')
+    expect(payRows[0]!.textContent).toContain('pays the $26,800 bill')
+    expect(payRows[0]!.textContent).toContain('· 61 d')
+    // The bills keep their bar but not the lines, which are their own rows here.
+    expect(screen.queryByTestId('invoice-payments')).toBeNull()
+    expect(screen.getAllByTestId('invoice-paid-bar')).toHaveLength(1)
+    expect(screen.getByTestId('date-today-row').textContent).toBe('Today · $15,722.49 still open')
+  })
+})

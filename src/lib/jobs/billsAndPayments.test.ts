@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { JobsLedgerInvoiceRow, PaymentRow } from './jobFormTypes'
-import { billPaidBar, billSentYmd, daysAfterBill, instrumentWord, paymentLineWords, paymentSource, sourceWords, splitBillsAndPayments } from './billsAndPayments'
+import { billPaidBar, billSentYmd, daysAfterBill, instrumentWord, orderMoneyByDate, paymentLineWords, paymentSource, sourceWords, splitBillsAndPayments } from './billsAndPayments'
 
 function payment(over: Partial<PaymentRow> = {}): PaymentRow {
   return {
@@ -147,6 +147,24 @@ describe('splitBillsAndPayments — where every payment is drawn', () => {
     const split = splitBillsAndPayments(invoices, payments, new Set(['saved']))
     expect(split.slicesByBill.get('old')!.map((s) => s.payment.id)).toEqual(['saved'])
     expect(split.onNoBill.map((p) => p.id)).toEqual(['draft'])
+  })
+})
+
+describe('orderMoneyByDate — the By date reading', () => {
+  it('bills by the day they went out and payments by the day they came, oldest first, a split payment as one row naming both bills, undated last', () => {
+    const old = invoice({ id: 'old', amount: 1000, sent_to_customer_at: '2026-07-01T00:00:00Z' })
+    const newer = invoice({ id: 'new', amount: 500, sent_to_customer_at: '2026-08-01T00:00:00Z' })
+    const draft = invoice({ id: 'draft', amount: 300, status: 'ready_to_bill', sent_to_customer_at: null })
+    const loose = payment({ id: 'loose', amount: 1200, invoice_id: null, paid_on: '2026-08-01' })
+    const pinned = payment({ id: 'pinned', amount: 100, invoice_id: 'new', paid_on: '2026-07-20' })
+    const undated = payment({ id: 'undated', amount: 50, invoice_id: 'old', paid_on: null })
+    const split = splitBillsAndPayments([old, newer, draft], [loose, pinned, undated])
+    const items = orderMoneyByDate([old, newer, draft], split.slicesByBill)
+    expect(items.map((i) => (i.kind === 'bill' ? `bill:${i.inv.id}` : `pay:${i.payment.id}`))).toEqual(['bill:old', 'pay:pinned', 'bill:new', 'pay:loose', 'bill:draft', 'pay:undated'])
+    const looseRow = items.find((i) => i.kind === 'payment' && i.payment.id === 'loose')
+    expect(looseRow && looseRow.kind === 'payment' ? looseRow.billWords : null).toBe('pays the $1,000 bill and the $500 bill')
+    const pinnedRow = items.find((i) => i.kind === 'payment' && i.payment.id === 'pinned')
+    expect(pinnedRow && pinnedRow.kind === 'payment' ? pinnedRow.billWords : null).toBe('pays the $500 bill')
   })
 })
 

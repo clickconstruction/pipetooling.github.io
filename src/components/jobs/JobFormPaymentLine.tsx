@@ -56,6 +56,8 @@ export type JobFormPaymentLineProps = {
   actions: PaymentLineActions
   /** ③ only: what hangs under the line — the bill chips, the Stripe hand-off. */
   children?: ReactNode
+  /** By date (v2.4294): the line stands on its own, so it names its bill — "pays the $26,800 bill". */
+  billWords?: string | null
 }
 
 const MENU_PANEL: CSSProperties = {
@@ -106,7 +108,7 @@ const MENU_SUB: CSSProperties = { fontSize: '0.72rem', color: 'var(--text-muted)
  * ("Edit details"); a draft row opens that fold at once. Drawn under the bill
  * it pays in the Invoices block, and in ③ for money on no bill.
  */
-export function JobFormPaymentLine({ row, bill, sliceAmount, partial, job, bankFacts, persisted, unlinking, actions, children }: JobFormPaymentLineProps) {
+export function JobFormPaymentLine({ row, bill, sliceAmount, partial, job, bankFacts, persisted, unlinking, actions, children, billWords }: JobFormPaymentLineProps) {
   const { role: authRole } = useAuth()
   const bank = row.mercury_transaction_id ? bankFacts[row.mercury_transaction_id] ?? null : null
   const source = paymentSource(row, job, bank)
@@ -155,6 +157,7 @@ export function JobFormPaymentLine({ row, bill, sliceAmount, partial, job, bankF
         </span>
         <span className="words">
           {words.dateText} · {sourceWords(source, bank)}
+          {billWords ? <span className="bill"> · {billWords}</span> : null}
           {words.daysText && words.daysTone === 'ok' ? <span className="mut"> · {words.daysText}</span> : null}
         </span>
         {words.returned ? (

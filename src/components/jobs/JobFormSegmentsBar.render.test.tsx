@@ -128,3 +128,19 @@ describe('JobFormSegmentsBar dollar-invoice coverage (v2.1132)', () => {
     expect(screen.queryByText('Covered by other bills')).toBeNull()
   })
 })
+
+describe('InvoicesSectionHeading — the By bill / By date switch (v2.4294)', () => {
+  it('draws no switch without a handler; with one, it says which view is on and reports a press', () => {
+    const { unmount } = renderWithProviders(<InvoicesSectionHeading sampleDollars={400} jobLabel="Job 742" />)
+    expect(screen.queryByTestId('bills-view-switch')).toBeNull()
+    unmount()
+    const picked: string[] = []
+    renderWithProviders(<InvoicesSectionHeading sampleDollars={400} jobLabel="Job 742" view="bill" onViewChange={(v) => picked.push(v)} />)
+    const byBill = screen.getByRole('button', { name: 'By bill' })
+    const byDate = screen.getByRole('button', { name: 'By date' })
+    expect(byBill.getAttribute('aria-pressed')).toBe('true')
+    expect(byDate.getAttribute('aria-pressed')).toBe('false')
+    fireEvent.click(byDate)
+    expect(picked).toEqual(['date'])
+  })
+})

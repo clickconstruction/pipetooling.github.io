@@ -2561,6 +2561,57 @@ body.my-time-boundary-dragging {
 .jobInvoiceWords .mut {
   color: var(--text-muted);
 }
+/* v2.4294: By date — bills and payments on one date line, a rail down the left with a dot per row. */
+.jobInvoiceLedger[data-view="date"] > .jobInvoiceRow,
+.jobInvoiceLedger[data-view="date"] > .jobMoneyDateRow {
+  position: relative;
+  margin-left: 6px;
+  padding-left: 1rem;
+  border-left: 2px solid var(--border);
+}
+.jobInvoiceLedger[data-view="date"] > .jobInvoiceRow::before,
+.jobInvoiceLedger[data-view="date"] > .jobMoneyDateRow::before {
+  content: '';
+  position: absolute;
+  left: -7px;
+  top: 0.9rem;
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  box-sizing: border-box;
+  border: 2px solid var(--text-blue-700);
+  background: var(--surface);
+}
+.jobInvoiceLedger[data-view="date"] > .jobMoneyDateRow {
+  padding-top: 0.45rem;
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid var(--border);
+}
+.jobInvoiceLedger[data-view="date"] > .jobMoneyDateRow::before {
+  top: 0.7rem;
+  border-color: var(--text-green-700);
+  background: var(--text-green-700);
+}
+.jobInvoiceLedger[data-view="date"] > .jobMoneyDateRow:has([data-source="hand"])::before {
+  border-color: var(--text-amber-800);
+  background: var(--surface);
+}
+.jobInvoiceLedger[data-view="date"] > .jobMoneyDateRow.today {
+  border-bottom: none;
+}
+.jobInvoiceLedger[data-view="date"] > .jobMoneyDateRow.today::before {
+  border: 2px dashed var(--text-red-600);
+  background: var(--surface);
+}
+.jobMoneyDateToday {
+  font-size: 0.8125rem;
+  font-weight: 650;
+  color: var(--text-red-600);
+}
+.jobPaymentLineMain .bill {
+  color: var(--text-700);
+}
+
 /* v2.4293: the money that paid a bill, drawn under its row — and the ③ list of money on no bill. */
 .jobInvoicePaidBar {
   flex: 1 1 100%;

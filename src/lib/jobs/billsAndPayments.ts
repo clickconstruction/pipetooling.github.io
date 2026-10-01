@@ -186,6 +186,59 @@ export function billPaidBar(billAmount: number, slices: ReadonlyArray<PaymentSli
   return { segments, paidFrac: Math.min(1, used) }
 }
 
+/** One row of the By date reading (v2.4294): a bill going out, or a payment coming in. */
+export type MoneyByDateItem =
+  | { kind: 'bill'; inv: JobsLedgerInvoiceRow; ymd: string | null }
+  | {
+      kind: 'payment'
+      payment: PaymentRow
+      ymd: string | null
+      /** Every bill the payment is counted toward, in slice order; the first is the line's own bill. */
+      bills: Array<{ inv: JobsLedgerInvoiceRow; amount: number; partial: boolean }>
+      /** "pays the $26,800 bill" · "pays the $1,000 bill and the $500 bill" · "on the job, no bill". */
+      billWords: string
+    }
+
+function billDollars(n: number): string {
+  const whole = Math.round(n) === n
+  return `$${n.toLocaleString('en-US', { minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: 2 })}`
+}
+
+/**
+ * The bills and the payments on one date line, oldest first (v2.4294): a bill dated by the
+ * day it went out, a payment by the day it came. A payment counted toward two bills is one
+ * row naming both. Undated rows (a draft, a payment with no date) come last. On the same
+ * day the bill comes before the money.
+ */
+export function orderMoneyByDate(
+  invoices: ReadonlyArray<JobsLedgerInvoiceRow>,
+  slicesByBill: ReadonlyMap<string, ReadonlyArray<PaymentSlice<PaymentRow>>>,
+): MoneyByDateItem[] {
+  const items: MoneyByDateItem[] = invoices.map((inv) => ({ kind: 'bill', inv, ymd: billSentYmd(inv) }))
+  const byPayment = new Map<string, { payment: PaymentRow; bills: Array<{ inv: JobsLedgerInvoiceRow; amount: number; partial: boolean }> }>()
+  for (const inv of invoices) {
+    for (const s of slicesByBill.get(inv.id) ?? []) {
+      const entry = byPayment.get(s.payment.id) ?? { payment: s.payment, bills: [] }
+      entry.bills.push({ inv, amount: s.amount, partial: s.partial })
+      byPayment.set(s.payment.id, entry)
+    }
+  }
+  for (const { payment, bills } of byPayment.values()) {
+    const names = bills.map((b) => `the ${billDollars(Number(b.inv.amount ?? 0))} bill`)
+    const billWords = names.length === 0 ? 'on the job, no bill' : `pays ${names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`}`
+    items.push({ kind: 'payment', payment, ymd: payment.paid_on ? String(payment.paid_on).slice(0, 10) : null, bills, billWords })
+  }
+  const rank = (i: MoneyByDateItem) => (i.kind === 'bill' ? 0 : 1)
+  return items.sort((a, b) => {
+    if (a.ymd == null || b.ymd == null) {
+      if (a.ymd == null && b.ymd == null) return rank(a) - rank(b)
+      return a.ymd == null ? 1 : -1
+    }
+    if (a.ymd !== b.ymd) return a.ymd < b.ymd ? -1 : 1
+    return rank(a) - rank(b)
+  })
+}
+
 export type BillsAndPayments = {
   /** The slices under each listed bill, in payment order. */
   slicesByBill: Map<string, PaymentSlice<PaymentRow>[]>
