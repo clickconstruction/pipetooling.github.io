@@ -4,7 +4,8 @@
  * A bid priced from a takeoff has no quote picks and often no pasted schedule, yet
  * the takeoff already names every product: the part lines under each fixture, with
  * the house they came from. This kernel turns the takeoff's fixtures into submittal
- * candidates — one per fixture, the part under it as the product — grouped so the
+ * candidates — one per fixture, its parts as the product (v2.4292: every line in takeoff
+ * order, trim left off by name; one line alone named flush valves and stops) — grouped so the
  * estimator prunes on one screen: fixtures and equipment (ticked), fixtures with no
  * part yet (offered), pipe and allowances (unticked; nobody submits pipe). Pure.
  */
@@ -12,7 +13,11 @@ import { compareTags } from './buildSubmittalRows'
 
 export type TakeoffCountRow = { id: string; fixture: string | null; count: number }
 export type TakeoffLine = {
+  /** The part line's id — the key a piece is remembered by (v2.4292). */
+  id?: string
   countRowId: string
+  /** The line's place under its fixture on the takeoff; the estimator lists the fixture first. */
+  sequenceOrder?: number
   partId: string | null
   sourceTemplateId: string | null
   quantity: number
@@ -31,8 +36,14 @@ export type TakeoffCandidate = {
   /** "WC-1, WC-2" — the tags read off the fixture name; '' when none could be read. */
   tagText: string
   tags: string[]
-  /** The product under the fixture, or null when nothing priced sits under it. */
+  /** The product: the switched-on pieces joined with " + ", or null when none is on (v2.4292). */
   product: string | null
+  /** Every line under the fixture, in takeoff order, trim marked (v2.4292). */
+  pieces: ProductPiece[]
+  /** The estimator's stored pieces, when there are any; null = the default rule. */
+  storedProductKeys: string[] | null
+  /** The pieces that make the product, in takeoff order. */
+  productKeys: string[]
   partId: string | null
   supplyHouseId: string | null
   supplyHouseName: string | null
@@ -63,6 +74,8 @@ export type TakeoffCandidatesInput = {
   choices?: ReadonlyMap<string, boolean> | null
   /** The estimator's stored splits by count row id (v2.4118). */
   splits?: ReadonlyMap<string, boolean> | null
+  /** The estimator's stored pieces by count row id (v2.4292). */
+  productKeys?: ReadonlyMap<string, ReadonlyArray<string>> | null
   /** Count rows already on the revision (their `source_count_row_id`). */
   alreadyOn?: ReadonlySet<string> | null
 }
@@ -100,33 +113,86 @@ export function tagsFromFixtureName(name: string | null | undefined): string[] {
   return []
 }
 
-/** The one line that is the product under a fixture: a fixture-typed part first, else the priciest line; a bundle by its name. */
-export function productLineOf(lines: ReadonlyArray<TakeoffLine>, parts: ReadonlyMap<string, TakeoffPart>, templates: ReadonlyMap<string, string>): { line: TakeoffLine; label: string; partTypeName: string | null } | null {
-  let best: { line: TakeoffLine; label: string; partTypeName: string | null; score: number } | null = null
-  for (const line of lines) {
+/** One line under a fixture as a piece of its product (v2.4292). */
+export type ProductPiece = {
+  /** The part line's id, else `<countRowId>:<n>`. */
+  key: string
+  label: string
+  partId: string | null
+  partTypeName: string | null
+  /** Stops, supplies, traps, flanges and the like — left off the product by default. */
+  trim: boolean
+  houseId: string | null
+  houseName: string | null
+}
+
+/**
+ * Trim, read from the part's NAME, never its type: the price book files a stop under "Sink"
+ * because it goes with sinks (v2.4292 — BP375's LAV2 named its angle stop as the product).
+ * "ANG" and "LOOSEKEY" catch BrassCraft's stop names; a trap primer is a valve, not trim.
+ */
+export const TRIM_NAME = /\b(?:ANGLE\s*STOPS?|STOPS?|ANG|LOOSE\s*KEY|SUPPL(?:Y|IES)|P-?\s*TRAPS?|TRAPS?(?!\s*PRIMER)|TAIL\s*PIECES?|TAILPIECES?|FLANGES?|ESCUTCHEONS?|GRID\s*DRAINS?|WAX|BOLTS?|RISERS?)\b/i
+
+/** Every priced line under a fixture, in takeoff order: a part by its name (maker first), a bundle by its name. */
+export function productPiecesOf(
+  countRowId: string,
+  lines: ReadonlyArray<TakeoffLine>,
+  parts: ReadonlyMap<string, TakeoffPart>,
+  templates: ReadonlyMap<string, string>,
+  houses: ReadonlyMap<string, TakeoffHouse> = new Map(),
+): ProductPiece[] {
+  const ordered = lines.map((l, i) => ({ l, i })).sort((a, b) => (a.l.sequenceOrder ?? a.i) - (b.l.sequenceOrder ?? b.i) || a.i - b.i)
+  const out: ProductPiece[] = []
+  for (const { l, i } of ordered) {
     let label: string | null = null
     let partTypeName: string | null = null
-    if (line.partId) {
-      const p = parts.get(line.partId)
+    let bundle = false
+    if (l.partId) {
+      const p = parts.get(l.partId)
       if (!p) continue
       label = p.manufacturer && !p.name.toUpperCase().startsWith(p.manufacturer.toUpperCase()) ? `${p.manufacturer} ${p.name}` : p.name
       partTypeName = p.partTypeName
-    } else if (line.sourceTemplateId) {
-      label = templates.get(line.sourceTemplateId) ?? null
+    } else if (l.sourceTemplateId) {
+      label = templates.get(l.sourceTemplateId) ?? null
+      bundle = true
     }
     if (!label) continue
-    const money = (Number(line.unitPrice) || 0) * (Number(line.quantity) || 0)
-    const typed = partTypeName != null && FIXTURE_TYPE.test(partTypeName)
-    const score = (typed ? 1_000_000_000 : 0) + money
-    if (!best || score > best.score) best = { line, label, partTypeName, score }
+    const house = l.sourceMaterialPartPriceId ? houses.get(l.sourceMaterialPartPriceId) ?? null : null
+    out.push({ key: l.id ?? `${countRowId}:${i}`, label: label.trim(), partId: l.partId, partTypeName, trim: !bundle && TRIM_NAME.test(label), houseId: house?.houseId ?? null, houseName: house?.houseName ?? null })
   }
-  return best ? { line: best.line, label: best.label, partTypeName: best.partTypeName } : null
+  return out
 }
 
-function groupOf(fixture: string, product: ReturnType<typeof productLineOf>): CandidateGroup {
+/** The pieces on by default: everything that is not trim; when all of it is trim, the first line. */
+export function defaultProductKeys(pieces: ReadonlyArray<ProductPiece>): string[] {
+  const on = pieces.filter((p) => !p.trim).map((p) => p.key)
+  return on.length > 0 ? on : pieces.slice(0, 1).map((p) => p.key)
+}
+
+/** The product the pieces make: their names joined in takeoff order; the part and house of the first on piece that has them. */
+export function productFromPieces(pieces: ReadonlyArray<ProductPiece>, keys: ReadonlyArray<string>): { product: string | null; partId: string | null; houseId: string | null; houseName: string | null } {
+  const on = new Set(keys)
+  const chosen = pieces.filter((p) => on.has(p.key))
+  const priced = chosen.find((p) => p.houseId) ?? null
+  return {
+    product: chosen.length > 0 ? chosen.map((p) => p.label).join(' + ') : null,
+    partId: chosen.find((p) => p.partId)?.partId ?? null,
+    houseId: priced?.houseId ?? null,
+    houseName: priced?.houseName ?? null,
+  }
+}
+
+/** The candidate with these pieces making its product (the picker's chips, v2.4292). */
+export function withProductKeys(c: TakeoffCandidate, keys: ReadonlyArray<string>): TakeoffCandidate {
+  const valid = c.pieces.filter((p) => keys.includes(p.key)).map((p) => p.key)
+  const made = productFromPieces(c.pieces, valid)
+  return { ...c, productKeys: valid, product: made.product, partId: made.partId, supplyHouseId: made.houseId, supplyHouseName: made.houseName }
+}
+
+function groupOf(fixture: string, main: ProductPiece | null): CandidateGroup {
   if (PIPE_NAME.test(fixture)) return 'pipe_allowance'
-  if (product && product.partTypeName && PIPE_TYPE.test(product.partTypeName) && !FIXTURE_TYPE.test(product.partTypeName)) return 'pipe_allowance'
-  if (!product) return ALLOWANCE_NAME.test(fixture) ? 'pipe_allowance' : 'no_part'
+  if (main && main.partTypeName && PIPE_TYPE.test(main.partTypeName) && !FIXTURE_TYPE.test(main.partTypeName)) return 'pipe_allowance'
+  if (!main) return ALLOWANCE_NAME.test(fixture) ? 'pipe_allowance' : 'no_part'
   return 'fixtures'
 }
 
@@ -146,9 +212,14 @@ export function takeoffCandidates(input: TakeoffCandidatesInput): TakeoffCandida
   for (const row of input.countRows) {
     const fixture = (row.fixture ?? '').trim()
     if (!fixture) continue
-    const product = productLineOf(byRow.get(row.id) ?? [], input.parts, input.templates)
-    const group = groupOf(fixture, product)
-    const house = product?.line.sourceMaterialPartPriceId ? input.houses.get(product.line.sourceMaterialPartPriceId) ?? null : null
+    const pieces = productPiecesOf(row.id, byRow.get(row.id) ?? [], input.parts, input.templates, input.houses)
+    const defaults = defaultProductKeys(pieces)
+    // A stored choice holds while any of its pieces is still on the takeoff; otherwise the rule decides again.
+    const stored = input.productKeys?.get(row.id) ?? null
+    const storedValid = stored ? pieces.filter((p) => stored.includes(p.key)).map((p) => p.key) : null
+    const productKeys = stored && (storedValid!.length > 0 || stored.length === 0) ? storedValid! : defaults
+    const made = productFromPieces(pieces, productKeys)
+    const group = groupOf(fixture, pieces.find((p) => defaults.includes(p.key)) ?? null)
     const tags = tagsFromFixtureName(fixture)
     const defaultTicked = group === 'fixtures'
     const storedTick = input.choices?.get(row.id) ?? null
@@ -160,10 +231,13 @@ export function takeoffCandidates(input: TakeoffCandidatesInput): TakeoffCandida
       count: Number(row.count) || 0,
       tagText: tags.join(', '),
       tags,
-      product: product?.label ?? null,
-      partId: product?.line.partId ?? null,
-      supplyHouseId: house?.houseId ?? null,
-      supplyHouseName: house?.houseName ?? null,
+      product: made.product,
+      pieces,
+      storedProductKeys: stored ? [...stored] : null,
+      productKeys,
+      partId: made.partId,
+      supplyHouseId: made.houseId,
+      supplyHouseName: made.houseName,
       group,
       defaultTicked,
       storedTick,
