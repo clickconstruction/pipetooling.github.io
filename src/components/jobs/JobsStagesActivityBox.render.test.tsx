@@ -119,7 +119,7 @@ describe('JobsStagesActivityBox', () => {
     expect(screen.getByLabelText("Add a note to this job's activity")).toBeTruthy()
   })
 
-  it('corner expand button opens the shared full-page modal via ctx', async () => {
+  it('See all under the box names the count and opens the shared full-page modal via ctx (v2.4302)', async () => {
     const openJobActivityExpand = vi.fn()
     const job = makeJob({ job_name: 'Shearer Pinpoint' })
     renderWithProviders(
@@ -127,14 +127,37 @@ describe('JobsStagesActivityBox', () => {
         job={job}
         ctx={makeCtx({
           openJobActivityExpand,
-          jobThreadActivityByJobId: { [job.id]: [] } as StagesRowRenderContext['jobThreadActivityByJobId'],
+          jobThreadActivityByJobId: {
+            [job.id]: [
+              note('n1', '2026-08-10T12:00:00Z', 'older note'),
+              note('n2', '2026-08-11T12:00:00Z', 'newer note'),
+            ],
+          } as StagesRowRenderContext['jobThreadActivityByJobId'],
         })}
         submitNoteWithBody={vi.fn(async () => true)}
       />,
     )
     await settle()
-    fireEvent.click(screen.getByLabelText('Expand job activity'))
+    const seeAll = screen.getByLabelText('Expand job activity')
+    expect(seeAll.textContent).toBe('See all 2')
+    fireEvent.click(seeAll)
     expect(openJobActivityExpand).toHaveBeenCalledWith(job)
+  })
+
+  it('an empty box has no See all; the composer takes the strip’s place under the box (v2.4302)', async () => {
+    const job = makeJob({ job_name: 'Cop Properties' })
+    renderWithProviders(
+      <JobsStagesActivityBox
+        job={job}
+        ctx={makeCtx({ jobThreadActivityByJobId: { [job.id]: [] } as StagesRowRenderContext['jobThreadActivityByJobId'] })}
+        submitNoteWithBody={vi.fn(async () => true)}
+      />,
+    )
+    await settle()
+    expect(screen.queryByLabelText('Expand job activity')).toBeNull()
+    fireEvent.click(screen.getByLabelText("Add a note to this job's activity"))
+    expect(screen.getByLabelText('Note text')).toBeTruthy()
+    expect(screen.queryByLabelText("Add a note to this job's activity")).toBeNull()
   })
 
   it('submits through the note pipeline on Enter', async () => {

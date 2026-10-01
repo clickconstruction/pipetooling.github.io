@@ -10,6 +10,7 @@ import {
   StagesHazmatFeeButton,
   StagesLienInstrumentsButton,
   StagesLienReleaseButton,
+  StagesRowIcons,
   StagesTestReportButton,
 } from './StagesRowActionButtons'
 
@@ -46,5 +47,27 @@ describe('StagesRowActionButtons', () => {
     expect(screen.getByLabelText('Release of lien').style.border).toBe('2px solid rgb(37, 99, 235)')
     expect(screen.getByLabelText('Create a hazmat fee for this job').getAttribute('title')).toMatch(/click to add another/)
     expect(screen.getByLabelText('Create a hazmat fee for this job').style.border).toBe('2px solid rgb(34, 197, 94)')
+  })
+
+  it('the icon block drops empty slots and caps each row at four, split evenly', () => {
+    const { container } = render(
+      <StagesRowIcons>
+        <StagesTestReportButton onClick={vi.fn()} />
+        {null}
+        <StagesLienInstrumentsButton onClick={vi.fn()} demandOut={false} />
+        <StagesLienReleaseButton onClick={vi.fn()} hasRelease={false} />
+        {false}
+        <StagesAiaG702Button onClick={vi.fn()} />
+        <StagesHazmatFeeButton onClick={vi.fn()} hasFee={false} />
+      </StagesRowIcons>,
+    )
+    const block = container.querySelector('[data-stages-row-icons]') as HTMLElement
+    expect(block.children).toHaveLength(5)
+    expect(block.style.maxWidth).toBe('calc(3 * 1.75rem + 2 * 0.35rem)')
+  })
+
+  it('an empty icon block draws nothing', () => {
+    const { container } = render(<StagesRowIcons>{null}</StagesRowIcons>)
+    expect(container.querySelector('[data-stages-row-icons]')).toBeNull()
   })
 })
