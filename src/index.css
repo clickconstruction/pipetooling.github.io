@@ -2494,6 +2494,476 @@ body.my-time-boundary-dragging {
   [data-waiting='true'] { animation: none !important; }
 }
 
+/* Job window → Bill → the money card and Make a bill (v2.4307). The window is 560 px at most and a
+   full-bleed sheet on a phone, so a container query (not the viewport) decides the layout: under
+   420 px the figures go two by two, a line's words drop under its name and the buttons go full
+   width. Touch screens get 44 px targets and 16 px boxes (an iPhone zooms the page into a smaller box). */
+.jobMoneyCard {
+  container: job-money-card / inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.75rem;
+  background: var(--bg-subtle);
+  margin-bottom: 0.75rem;
+}
+.jobMoneyFigs {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 0.5rem;
+  align-items: start;
+}
+.jobMoneyFig {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  padding: 0.1rem 0.2rem;
+}
+.jobMoneyFig .k {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.jobMoneyFig .v {
+  font-size: 1.125rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.jobMoneyPctLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.jobMoneyPct {
+  width: 3.1rem;
+  padding: 0.15rem 0.3rem;
+  font: inherit;
+  font-size: 0.8125rem;
+  color: var(--text-strong);
+  text-align: right;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface);
+}
+.jobMoneyBar {
+  position: relative;
+}
+.jobMoneyBar.hasMark {
+  padding-top: 1.05rem;
+}
+.jobMoneyBlocks {
+  display: flex;
+  gap: 3px;
+  height: 16px;
+}
+.jobMoneyBlock {
+  position: relative;
+  min-width: 6px;
+  height: 100%;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  overflow: hidden;
+  cursor: default;
+}
+.jobMoneyBlock:disabled {
+  opacity: 1;
+}
+.jobMoneyBlock:not(:disabled) {
+  cursor: pointer;
+}
+.jobMoneyBlock:not(:disabled):hover {
+  filter: brightness(0.93);
+}
+.jobMoneyBlock:focus-visible {
+  outline: 2px solid var(--text-link);
+  outline-offset: 2px;
+}
+.jobMoneyBlock.picked {
+  box-shadow: inset 0 0 0 2px var(--text-strong);
+}
+.jobMoneyBlock .cover {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+.jobMoneyMark {
+  position: absolute;
+  bottom: -3px;
+  width: 3px;
+  height: 22px;
+  margin-left: -1.5px;
+  border-radius: 2px;
+  background: var(--text-strong);
+  pointer-events: none;
+}
+.jobMoneyMarkLabel {
+  position: absolute;
+  top: 0;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--text-strong);
+  white-space: nowrap;
+}
+.jobMoneyDoneNotBilled {
+  font-size: 0.8125rem;
+  color: var(--text-amber-800);
+}
+.jobMoneyLines {
+  display: flex;
+  flex-direction: column;
+}
+.jobMoneyLine {
+  display: grid;
+  grid-template-columns: 1.25rem minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0 0.6rem;
+  min-height: 2.25rem;
+  padding: 0.3rem 0;
+  border-top: 1px solid var(--border);
+  font-size: 0.8125rem;
+}
+.jobMoneyLine .tick {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.jobMoneyLine .tick input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+.jobMoneyLine .dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+}
+.jobMoneyLine .what {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.1rem 0.75rem;
+  min-width: 0;
+}
+.jobMoneyLine .nm {
+  min-width: 0;
+  font-weight: 600;
+  color: var(--text-700);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.jobMoneyLine .words {
+  font-size: 0.78125rem;
+}
+.jobMoneyLine .words.tone-green {
+  color: var(--text-green-800);
+}
+.jobMoneyLine .words.tone-blue,
+.jobMoneyLine .words.tone-draft {
+  color: var(--text-blue-700);
+}
+.jobMoneyLine .words.tone-amber {
+  color: var(--text-amber-800);
+  font-weight: 600;
+}
+.jobMoneyLine .words.tone-muted {
+  color: var(--text-muted);
+}
+.jobMoneyLine .amt {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-strong);
+  white-space: nowrap;
+}
+.jobMoneyBillIt {
+  min-height: 30px;
+  padding: 0 0.7rem;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #ffffff;
+  background: #16a34a;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.jobMoneyBillIt:hover:not(:disabled) {
+  background: #15803d;
+}
+.jobMoneyBillIt:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.jobMoneyPicked {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.75rem;
+}
+.jobMoneyPickedBtn {
+  min-height: 34px;
+  padding: 0 0.8rem;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #ffffff;
+  background: #2563eb;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.jobMoneyPickedBtn:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+.jobMoneyPickedBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.jobMoneyPickedNote {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.jobMoneyPickedNote.over {
+  color: var(--text-red-600);
+  font-weight: 600;
+}
+.jobMakeBill {
+  container: job-make-bill / inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  border: 2px solid var(--border-blue);
+  border-radius: 12px;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  background: var(--surface);
+}
+.jobMakeBillHd {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.25rem 0.75rem;
+}
+.jobMakeBillHd b {
+  font-size: 0.9375rem;
+  color: var(--text-strong);
+}
+.jobMakeBillHd span {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.jobMakeBillWhole {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.75rem;
+}
+.jobMakeBillWhole .hint,
+.jobMakeBillPartFoot .hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.jobMakeBillWholeBtn {
+  min-height: 36px;
+  padding: 0 0.9rem;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #ffffff;
+  background: #2563eb;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.jobMakeBillWholeBtn:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+.jobMakeBillWholeBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.jobMakeBillPartToggle {
+  align-self: flex-start;
+  padding: 0.2rem 0;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-700);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.jobMakeBillPartToggle:hover {
+  color: var(--text-link);
+}
+.jobMakeBillPart {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+.jobMakeBillAmountRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.5rem;
+}
+.jobMakeBillPick {
+  min-height: 30px;
+  padding: 0 0.6rem;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-blue-700);
+  background: var(--bg-blue-tint);
+  border: 1px solid var(--border-blue);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.jobMakeBillPick:hover {
+  border-color: var(--text-link);
+}
+.jobMakeBillAmount {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+.jobMakeBillAmount input {
+  width: 7rem;
+  padding: 0.25rem 0.4rem;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--text-strong);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface);
+}
+.jobMakeBillPartFoot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.4rem 0.75rem;
+}
+.jobMakeBillPartBtn {
+  min-height: 34px;
+  padding: 0 0.85rem;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #ffffff;
+  background: #16a34a;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.jobMakeBillPartBtn.move {
+  background: #2563eb;
+}
+.jobMakeBillPartBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.jobFormStagesNoteToggle {
+  padding: 0;
+  font: inherit;
+  font-size: 0.75rem;
+  color: var(--text-link);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.jobFormStagesNoteToggle:hover {
+  text-decoration: underline;
+}
+@container job-money-card (max-width: 420px) {
+  .jobMoneyFigs {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .jobMoneyLine .what {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .jobMoneyLine .nm {
+    white-space: normal;
+  }
+}
+@container job-make-bill (max-width: 420px) {
+  .jobMakeBillWholeBtn,
+  .jobMakeBillPartBtn,
+  .jobMakeBillPartToggle {
+    width: 100%;
+  }
+  .jobMakeBillPartToggle {
+    text-align: left;
+  }
+  .jobMakeBillAmount {
+    flex: 1 1 100%;
+  }
+  .jobMakeBillAmount input {
+    flex: 1 1 auto;
+    width: auto;
+  }
+}
+@media (pointer: coarse) {
+  .jobMoneyPct,
+  .jobMakeBillAmount input {
+    min-height: 44px;
+    font-size: 16px;
+  }
+  .jobMoneyLine {
+    min-height: 44px;
+  }
+  .jobMoneyLine .tick input {
+    width: 22px;
+    height: 22px;
+  }
+  .jobMoneyBlocks {
+    height: 20px;
+  }
+  .jobMoneyBillIt,
+  .jobMoneyPickedBtn,
+  .jobMakeBillWholeBtn,
+  .jobMakeBillPartBtn,
+  .jobMakeBillPick,
+  .jobMakeBillPartToggle,
+  .jobFormStagesNoteToggle {
+    min-height: 44px;
+  }
+  .stageKindSelector button {
+    min-height: 44px;
+    padding: 0 0.85rem !important;
+    font-size: 0.8125rem !important;
+  }
+}
+
 /* Job window → Bill → Invoices list (v2.3478): one row per bill, three lines each —
    chip · amount · actions / who / money. The Job window is capped at 560px on every
    screen and is a full-bleed sheet at ≤640px, so the list only ever has ~530px or

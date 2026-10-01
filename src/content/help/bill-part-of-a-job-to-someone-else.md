@@ -24,7 +24,7 @@ The tenant gets their own invoice — Stripe payment page or PDF email, whicheve
 
 The same works for any split, not just hazmat fees:
 
-1. In **Edit Job → ② Invoices**, create the draft you want. Break one off with **Make Invoice**, or select segments in the strip.
+1. In **Edit Job → ② Bills and payments**, make the draft you want. Use **Bill part of it** under **Make a bill**. Or tick lines on the money card and press {{button:blue|Bill the 2 picked · $1,500}}.
 2. On the draft's row, click {{button:outline|Bill to ▾}}. The menu lists the job customer. It lists the job's GC, the general contractor, when there is one. It also lists **Someone else…**. Pick that and enter the recipient. The row shows an amber {{chip:yellow|→ name}} chip. So anyone can see this invoice bills someone else.
 3. **Send bill…** as usual. The Bill Customer window shows a banner naming the alternate recipient. So there are no surprises before you press send.
 

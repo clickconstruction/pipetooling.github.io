@@ -113,8 +113,8 @@ describe('JobWindowModal', () => {
 
     fireEvent.change(name, { target: { value: 'Kitchen rough-in B' } })
 
-    // Billing lives on the Bill tab, not Edit.
-    const billingRow = () => screen.getByText('Remaining to bill')
+    // Billing lives on the Bill tab, not Edit (since v2.4307 the ② money card).
+    const billingRow = () => screen.getByTestId('money-card')
     expect(billingRow().closest('div[style*="none"]')).toBeTruthy()
 
     fireEvent.click(tab('Bill'))
@@ -137,7 +137,7 @@ describe('JobWindowModal', () => {
     expect(tab('Costs').getAttribute('aria-selected')).toBe('true')
     // …visible on Costs, and the billing half is now the hidden one.
     expect(partsRow().closest('div[style*="none"]')).toBeNull()
-    expect(screen.getByText('Remaining to bill').closest('div[style*="none"]')).toBeTruthy()
+    expect(screen.getByTestId('money-card').closest('div[style*="none"]')).toBeTruthy()
   })
 
   it('the ✕ routes through the form close and closes the window', async () => {

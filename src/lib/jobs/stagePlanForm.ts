@@ -82,11 +82,12 @@ export function drawLabelsByInvoiceId(plan: StagePlan): Record<string, string> {
   return out
 }
 
-/** A Still to bill row: what is already billed against it by amount, and what is left. */
+/** An unbilled stage row: what is already billed against it by amount, and what is left. */
 export type UpcomingDrawRow = StagePlanRow & { coveredDollars: number; leftDollars: number }
 
 /**
- * The "Still to bill" list: uninvoiced money with a rule behind it, in plan order.
+ * Uninvoiced money with a rule behind it, in plan order: the old Still to bill list, and since v2.4307
+ * what the ② money card's rows read for ready / waits (`billTabLines`).
  *
  * v2.4303: a bill made by amount names no line, so the plan reads its lines as unbilled. Given the
  * Bill tab's `coverage` (the waterfall the ② strip hatches with), a line covered to the cent leaves

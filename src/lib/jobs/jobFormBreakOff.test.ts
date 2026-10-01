@@ -112,9 +112,15 @@ describe('breakOffPrefillAmountStringFromJob', () => {
   it('prefills 80% of gross when little is paid', () => {
     expect(breakOffPrefillAmountStringFromJob(job({ revenue: 1000 }))).toBe('800.00')
   })
-  it('prefills 95% once more than 80% is already paid', () => {
-    expect(breakOffPrefillAmountStringFromJob(job({ revenue: 1000, payments: [{ amount: 850 } as never] }))).toBe('150.00')
-    // 95% target = 950, but remaining = 1000−850 = 150 → clamped to 150
+  it('v2.4307: starts empty when the target would be the whole remainder — that has its own button', () => {
+    // 95% target = 950, but remaining = 1000−850 = 150: the whole rest, so no part amount.
+    expect(breakOffPrefillAmountStringFromJob(job({ revenue: 1000, payments: [{ amount: 850 } as never] }))).toBe('')
+    // 80% target = 800, remaining = 1000−300 = 700: the whole rest again.
+    expect(breakOffPrefillAmountStringFromJob(job({ revenue: 1000, payments: [{ amount: 300 } as never] }))).toBe('')
+  })
+  it('keeps a part amount below what is left', () => {
+    // A $2,000 job with a $100 deposit: 80% = $1,600, under the $1,900 left.
+    expect(breakOffPrefillAmountStringFromJob(job({ revenue: 2000, payments: [{ amount: 100 } as never] }))).toBe('1600.00')
   })
   it('is empty when nothing is left to bill', () => {
     expect(breakOffPrefillAmountStringFromJob(job({ revenue: 0 }))).toBe('')
@@ -182,8 +188,8 @@ describe('the break-off button — a press counts only if the button still means
 
   it('says what happened and what each button would do', () => {
     expect(breakOffButtonChangedWords('move_to_ready_to_bill', 1_200)).toBe(
-      'That was more than is left to bill, so the amount is now $1,200.00 — everything left on the job. Billing all of it moves the job to Ready to Bill: press Ready to Bill to do that, or type a smaller amount for an invoice.',
+      'That was more than is left to bill, so the amount is now $1,200.00 — everything left on the job. Billing all of it moves the job to Ready to Bill: press Move to Ready to Bill to do that, or type a smaller amount for a bill.',
     )
-    expect(breakOffButtonChangedWords('new_invoice', 350.5)).toBe('The amount changed to $350.50 as you pressed. Check it, then press New Invoice.')
+    expect(breakOffButtonChangedWords('new_invoice', 350.5)).toBe('The amount changed to $350.50 as you pressed. Check it, then press Make a bill.')
   })
 })

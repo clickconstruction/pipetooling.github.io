@@ -72,6 +72,7 @@ const KIND_OPTIONS: Array<{ value: StageKind; label: string; title: string; on: 
 export function StageKindSelector({ value, onChange, disabled = false, rowName }: { value: StageKind | null; onChange: (kind: StageKind) => void; disabled?: boolean; rowName?: string }) {
   return (
     <span
+      className="stageKindSelector"
       role="radiogroup"
       aria-label={rowName ? `Stage kind for ${rowName}` : 'Stage kind'}
       style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 5, overflow: 'hidden', flexShrink: 0, opacity: disabled ? 0.6 : 1 }}

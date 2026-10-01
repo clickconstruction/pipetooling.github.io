@@ -225,6 +225,13 @@ describe('useJobFormInvoiceActions — a typed amount (createInvoice)', () => {
     expect(ui.openBillCustomer.mock.calls[0]?.[0].payload).toMatchObject({ kind: 'job', job: { id: 'job-1', customer_id: 'cust-1' } })
   })
 
+  it('v2.4307: Make a bill passes the whole remainder itself — an empty amount box still opens Bill Customer', async () => {
+    const { result } = mount({ editing: job({ status: 'ready_to_bill' }), newInvoiceAmount: '' })
+    await act(() => result.current.createInvoice(1500))
+    expect(steps()).toEqual(['flush'])
+    expect(ui.openBillCustomer).toHaveBeenCalledTimes(1)
+  })
+
   it('…unless the job has no customer to bill', async () => {
     const { result } = mount({ editing: job({ status: 'ready_to_bill', customer_id: null }), newInvoiceAmount: '1500' })
     await act(() => result.current.createInvoice())
@@ -370,6 +377,20 @@ describe('useJobFormInvoiceActions — Working → Ready to Bill', () => {
     expect(spies.setEditing).toHaveBeenCalledWith(db.found)
     expect(spies.onSaved).toHaveBeenCalledTimes(1)
     expect(result.current.movingJobToReadyToBill).toBe(false)
+  })
+
+  it('v2.4307: Make a bill passes the remainder itself, so an empty amount box still moves the job', async () => {
+    db.found = job({ status: 'ready_to_bill' })
+    const { result } = mount({ newInvoiceAmount: '' })
+    await act(() => result.current.moveWorkingJobToReadyToBillFromEdit(1500))
+    expect(steps()).toEqual(['flush', 'rpc:update_job_status'])
+  })
+
+  it('v2.4307: a passed amount that is not the whole remainder is refused like a typed one', async () => {
+    const { result, spies } = mount({ newInvoiceAmount: '1500' })
+    await act(() => result.current.moveWorkingJobToReadyToBillFromEdit(900))
+    expect(lastError(spies.setError)).toBe('Enter the full unallocated amount to move this job to Ready to Bill.')
+    expect(steps()).toEqual(['flush'])
   })
 
   it('shows what the status change refused, a failed bill prep, or a missing sign-in — and writes no further', async () => {
