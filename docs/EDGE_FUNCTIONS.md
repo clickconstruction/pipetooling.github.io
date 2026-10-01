@@ -152,6 +152,7 @@ when_to_read:
    - [send-report-email](#send-report-email)
    - [notify-dispatch-request](#notify-dispatch-request)
    - [notify-estimator-request](#notify-estimator-request)
+   - [notify-bid-mark](#notify-bid-mark)
    - [notify-team-lead-clock](#notify-team-lead-clock)
    - [send-scheduled-reminders](#send-scheduled-reminders)
    - [recurring-job-report-preview](#recurring-job-report-preview)
@@ -2291,6 +2292,36 @@ const response = await supabase.functions.invoke('send-checklist-notification', 
 **Used by**: report save flows ([`NewReportModal.tsx`](../src/components/NewReportModal.tsx), [`AdditionalReportModal.tsx`](../src/components/AdditionalReportModal.tsx), `submitStatusReportFromStepper.ts`) for `auto`; [`ReportEmailRecipientsPanel.tsx`](../src/components/dashboard/ReportEmailRecipientsPanel.tsx) "Send now" for `manual` (mounted from the Dashboard's Recent Reports card and, since v2.3480, Jobs → Reports).
 
 **Deploy**: `supabase functions deploy send-report-email` (manual, per repo convention).
+
+---
+
+### notify-bid-mark
+
+**Purpose** (v2.4297): the one phone notification for a bid marked for a teammate. "Mark this bid for someone" (the **For someone…** button in an open bid's title) calls it only when the sender ticks **Also send it to <name>'s phone**, right after `mark_bid_for()` returns the request id.
+
+**Endpoint**: `POST /functions/v1/notify-bid-mark`
+
+**Required Role**: any signed-in user, but only the request's **sender** (`bid_mark_requests.from_user_id`); anyone else gets 403. A closed request returns 200 with `push_sent: 0`.
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` (missing VAPID keys return 200 with `push_sent: 0`).
+
+**Verify JWT**: `false` at the gateway (`config.toml`); the function checks the bearer with `getUser` and the sender with the service role.
+
+#### Request body
+
+```json
+{ "request_id": "<bid_mark_requests.id>" }
+```
+
+The caller sends no text: the function writes the title (*Wendi marked a bid for you*) and the body (*B494 SPACEX BA02 9 GANG RESTROOMS: Reprice the trim.*) from the row, so no one can push arbitrary words to a teammate. The tap opens `/bids?tab=counts&bidId=<bid>`. One push per registered device (`push_subscriptions`), logged to `notification_history` with `template_type = 'bid_mark'` when at least one went out.
+
+#### Response
+
+```json
+{ "success": true, "push_sent": 1 }
+```
+
+**Deploy**: `supabase functions deploy notify-bid-mark` after the `20261001170000_bid_mark_requests.sql` push (it reads `bid_mark_requests`).
 
 ---
 

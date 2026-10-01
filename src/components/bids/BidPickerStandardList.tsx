@@ -39,10 +39,11 @@ import {
   type BidPickerGroupKey,
 } from '../../lib/bidPickerGroups'
 import { bidMarkHoldHandlers } from '../../lib/bids/bidMarkHold'
-import { bidMarkSinceWords, isBidMarked, isFinishedBidForMark, onlyMarkedBids, splitBidMarks } from '../../lib/bids/bidMarks'
-import { clearBidMarks, toggleBidMarkNow, useBidMarks } from '../../lib/bids/bidMarksStore'
+import { bidMarkSinceWords, isBidMarked, isFinishedBidForMark, splitBidMarks } from '../../lib/bids/bidMarks'
+import { clearBidMarks, toggleBidMarkNow } from '../../lib/bids/bidMarksStore'
 import { useToastContext } from '../../contexts/ToastContext'
-import { BID_MARK_SAVE_FAILED, BidMarkDot } from './BidMarkControls'
+import { BID_MARK_SAVE_FAILED, BidMarkDot, useBidMarkRequests, useFinishBidRequests } from './BidMarkControls'
+import { receiverLine, senderStateWords, senderTone } from '../../lib/bids/bidMarkRequests'
 import { useBidPickerSortView } from './BidPickerSortToggle'
 import { UnifiedSearchResultRow } from '../search/UnifiedSearchResultRow'
 import type { UnifiedSearchResult } from '../../utils/unifiedJobBidSearch'
@@ -129,13 +130,20 @@ export function BidPickerStandardList({
 }) {
   const sortView = useBidPickerSortView()
   const folds = useBidPickerFolds()
-  const { marks, onlyMarked } = useBidMarks()
+  const { marks, onlyMarked, forMe, fromMe, nameOf } = useBidMarkRequests()
+  const finishRequests = useFinishBidRequests()
   const { showToast } = useToastContext()
-  const shown = useMemo(() => (onlyMarked ? onlyMarkedBids(marks, bids) : bids), [onlyMarked, marks, bids])
+  // Marked shows what you marked and what someone marked for you (v2.4297).
+  const shown = useMemo(() => (onlyMarked ? bids.filter((b) => isBidMarked(marks, b.id) || forMe.has(b.id)) : bids), [onlyMarked, marks, forMe, bids])
   const groups = useMemo(() => groupBidsForPicker(shown, sortView), [shown, sortView])
   const marksHere = useMemo(() => splitBidMarks(marks, bids), [marks, bids])
   const now = new Date()
+  // A hold (or H) on a row someone marked for you finishes it; anywhere else it is your own mark.
   const toggleMark = (bidId: string) => {
+    if (forMe.has(bidId)) {
+      finishRequests(bidId, 'done')
+      return
+    }
     void toggleBidMarkNow(bidId).catch(() => showToast(BID_MARK_SAVE_FAILED, 'error'))
   }
   const clearMarks = (ids: string[]) => {
@@ -198,9 +206,12 @@ export function BidPickerStandardList({
                 {group.bids.map((bid) => {
                   const marked = isBidMarked(marks, bid.id)
                   const finished = marked && isFinishedBidForMark(bid)
+                  const forMeHere = forMe.get(bid.id)
+                  const newestForMe = forMeHere?.[0]
+                  const sentHere = !marked && !newestForMe ? fromMe.get(bid.id) : undefined
                   const label = `${(bid.bid_number ?? '').trim()} ${bidDisplayName(bid)}`.trim() || 'this bid'
                   return (
-                    <div key={bid.id} className="bid-mark-rowwrap" data-marked={marked ? 'true' : undefined} data-finished={finished ? 'true' : undefined}>
+                    <div key={bid.id} className="bid-mark-rowwrap" data-marked={marked || newestForMe ? 'true' : undefined} data-finished={finished && !newestForMe ? 'true' : undefined}>
                       <BidMarkDot bidId={bid.id} bidLabel={label} />
                       <button
                         type="button"
@@ -213,7 +224,7 @@ export function BidPickerStandardList({
                             toggleMark(bid.id)
                           }
                         }}
-                        title={marked ? 'Open the bid. Hold to clear the mark.' : 'Open the bid. Hold to mark it.'}
+                        title={newestForMe ? 'Open the bid. Hold when you are done.' : marked ? 'Open the bid. Hold to clear the mark.' : 'Open the bid. Hold to mark it.'}
                         style={{
                           position: 'relative',
                           display: 'block',
@@ -255,8 +266,14 @@ export function BidPickerStandardList({
                               prefixMap={prefixMap}
                               bidEvidence={bidWithBuilderEvidence(bid)}
                             />
+                            {newestForMe ? <span className="bid-mark-request-line">{receiverLine(newestForMe, nameOf(newestForMe.from_user_id))}</span> : null}
                           </span>
-                          {marked ? (
+                          {sentHere ? (
+                            <span className="bid-mark-since" data-tone={senderTone(sentHere)}>
+                              {senderStateWords(sentHere, nameOf(sentHere.for_user_id), now)}
+                            </span>
+                          ) : null}
+                          {marked && !newestForMe ? (
                             <span className="bid-mark-since" title={finished ? 'This bid is won, lost, started or archived. The mark can be cleared below.' : undefined}>
                               {bidMarkSinceWords(marks[bid.id] ?? '', now)}
                             </span>

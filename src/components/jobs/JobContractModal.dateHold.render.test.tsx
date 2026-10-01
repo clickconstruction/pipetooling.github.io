@@ -125,6 +125,25 @@ describe('JobContractModal — a date caught half typed', () => {
   })
 })
 
+describe('JobContractModal — one edit, one save', () => {
+  it('the save does not set off the next one: the window stays still after a single edit', async () => {
+    await openDraftOnItsDates()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      fireEvent.change(screen.getByLabelText('Estimated completion date'), { target: { value: '2026-11-15' } })
+      for (let i = 0; i < 6; i++) {
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(900)
+        })
+      }
+    } finally {
+      vi.useRealTimers()
+    }
+    await settle()
+    expect(db.updates).toHaveLength(1)
+  })
+})
+
 describe('JobContractModal — a half-typed date and the clicks that take the draft out', () => {
   const STOPS_OUT = /Finish the “Start” date before this goes out\. Type the year in full, like \d{4}\./
   const typeStart = (value: string) => pauseAfter(() => fireEvent.change(startBox(), { target: { value } }))

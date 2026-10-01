@@ -37,7 +37,7 @@ import { billSettled, lienWaiverCellForBill } from '../../lib/jobs/lienWaiverCel
 import type { JobLienReleaseRow } from '../../lib/jobs/lienReleaseTracking'
 import LienReleaseModal from './LienReleaseModal'
 import { billPaidBar, orderMoneyByDate, splitBillsAndPayments, type MercuryDepositFacts, type MoneyByDateItem } from '../../lib/jobs/billsAndPayments'
-import type { BillsAndPaymentsView } from './JobFormSegmentsBar'
+import { BillsViewSwitch, type BillsAndPaymentsView } from './JobFormSegmentsBar'
 import { JobFormPaymentLine, type PaymentLineActions } from './JobFormPaymentLine'
 
 type JobFormInvoiceListProps = {
@@ -95,6 +95,8 @@ type JobFormInvoiceListProps = {
    * 'bill' (the default) draws each payment under its bill. Needs `paymentLineActions`.
    */
   view?: BillsAndPaymentsView
+  /** v2.4298: with `paymentLineActions`, the Bills header row draws the By bill / By date switch at its right and reports a press here. */
+  onViewChange?: (view: BillsAndPaymentsView) => void
 }
 
 /**
@@ -132,6 +134,7 @@ export function JobFormInvoiceList({
   unlinkingMercuryPaymentId,
   paymentLineActions,
   view = 'bill',
+  onViewChange,
 }: JobFormInvoiceListProps) {
   const navigate = useNavigate()
   const { showToast } = useToastContext()
@@ -518,7 +521,11 @@ export function JobFormInvoiceList({
     <div className="jobInvoiceLedger" ref={ledgerRef} data-view={byDate ? 'date' : 'bill'}>
       <div className="jobInvoiceLedgerHdr">
         <span>Bills</span>
-        <span>Next</span>
+        {onViewChange && paymentLineActions ? (
+          <span className="jobInvoiceLedgerHdrSwitch">
+            <BillsViewSwitch view={view} onViewChange={onViewChange} />
+          </span>
+        ) : null}
       </div>
       {listItems.map((item) => {
         if (item.kind === 'payment') {

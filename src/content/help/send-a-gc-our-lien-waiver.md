@@ -35,6 +35,25 @@ Untick the box if the GC does not want a waiver this time. The bill then goes al
 
 {{gif:send-a-gc-our-lien-waiver-billtab.gif|The Bill tab: a sent bill ends with its two waiver chips and the door to the next move}}
 
+## From View bill
+
+**View bill** opens a sent bill. On a GC job it starts with a card of the bill's papers. The first row is the **Lien waiver** row.
+
+1. Read the row's headline. It names the waiver and the money. For example, **Conditional for $4,720 not sent**.
+2. Read the line under it. A bill past its due date says how many days. A GC often waits for the waiver before it pays.
+3. Read the two dots. The first is the conditional waiver. The second is the unconditional one. Amber means owed now. Green means sent.
+4. Click the row's button. It names the next move. {{button:blue|Add waiver}}, {{button:blue|Sign it}}, {{button:blue|Send to the GC}} or {{button:blue|Add the unconditional}}. The **Release of Lien** window opens on this bill.
+
+The GC may have no email for waivers yet. The row then offers the email the bill went to. Click **Use** and the address is saved on the GC's customer record. It never replaces an email someone typed there.
+
+The **Contract** and **Sub work order** rows sit under the waiver. Their buttons are plain while a waiver move is owed.
+
+:::example The waiver row on View bill
+{{chip:yellow|Conditional for $4,720 not sent}} {{button:blue|Add waiver}}
+{{chip:yellow|Signed by Malachi. Not sent yet.}} {{button:blue|Send to the GC}}
+{{chip:green|Both waivers sent}} {{button:outline|View}}
+:::
+
 ## Open the waiver from the Pipeline
 
 1. Go to **Jobs** and open the [Pipeline](/jobs?tab=stages).

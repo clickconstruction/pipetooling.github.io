@@ -96,3 +96,69 @@ describe('discount rows (v2.3252+)', () => {
     ])
   })
 })
+
+describe('Still to bill counts money billed by amount (v2.4303)', () => {
+  // Job 1059, Seaver Pretest: one ◆ line, $250, billed as a plain $250 bill that names no line.
+  const seaver = stagePlanFromForm({
+    fixtures: [row({ id: 'pre', name: 'Pretest', stage_kind: 'any', line_unit_price: 250 })],
+    windows: [],
+    orders: [],
+    sheets: [],
+    invoices: [{ id: 'inv-250', status: 'billed', billed_at: '2026-09-30T15:00:00Z' }],
+    payments: [],
+    todayYmd: '2026-10-01',
+  })
+  const covered = (byId: Record<string, number>, amounts: Record<string, number>) => ({
+    unattributedDollars: 0,
+    remainingDollars: 0,
+    bySegmentKey: Object.fromEntries(Object.entries(byId).map(([id, c]) => [id, { coveredDollars: c, fullyCovered: c >= (amounts[id] ?? 0) }])),
+  })
+
+  it('a line the bills already cover to the cent leaves the list', () => {
+    expect(upcomingDrawRows(seaver).map((r) => r.fixtureId)).toEqual(['pre'])
+    expect(upcomingDrawRows(seaver, covered({ pre: 250 }, { pre: 250 }))).toEqual([])
+  })
+
+  it('a line covered in part stays, for what is left, and says how much is billed', () => {
+    const rows = upcomingDrawRows(seaver, covered({ pre: 100 }, { pre: 250 }))
+    expect(rows.map((r) => [r.fixtureId, r.amount, r.coveredDollars, r.leftDollars])).toEqual([['pre', 250, 100, 150]])
+  })
+
+  it('with no coverage every row is left in full', () => {
+    expect(upcomingDrawRows(seaver).map((r) => [r.coveredDollars, r.leftDollars])).toEqual([[0, 250]])
+  })
+
+  it('a passed stage no longer waits on a stage above it that the bills cover', () => {
+    const plan = stagePlanFromForm({
+      fixtures: [
+        row({ id: 'rough', name: 'Rough-in', stage_kind: 'order', line_unit_price: 1000 }),
+        row({ id: 'top', name: 'Top-out', stage_kind: 'order', line_unit_price: 1000 }),
+      ],
+      windows: [
+        { id: 'w-rough', fixture_id: 'rough', window_start: '2026-09-01', window_end: '2026-09-02' },
+        { id: 'w-top', fixture_id: 'top', window_start: '2026-09-08', window_end: '2026-09-09' },
+      ],
+      orders: [
+        { id: 'o-rough', stage_window_id: 'w-rough', status: 'settled', picked_start: '2026-09-01', picked_end: '2026-09-02', labor_job_id: 's-rough' },
+        { id: 'o-top', stage_window_id: 'w-top', status: 'settled', picked_start: '2026-09-08', picked_end: '2026-09-09', labor_job_id: 's-top' },
+      ],
+      sheets: [
+        { id: 's-rough', stage: 'customer_pay', progress_pct: 100, stage_changed_at: '2026-09-02T15:00:00Z' },
+        { id: 's-top', stage: 'customer_pay', progress_pct: 100, stage_changed_at: '2026-09-09T15:00:00Z' },
+      ],
+      invoices: [{ id: 'inv-amt', status: 'billed', billed_at: '2026-09-03T15:00:00Z' }],
+      payments: [],
+      todayYmd: '2026-09-10',
+    })
+    expect(upcomingDrawRows(plan).map((r) => [r.fixtureId, r.draw])).toEqual([
+      ['rough', 'ready'],
+      ['top', 'waits'],
+    ])
+    expect(upcomingDrawRows(plan, covered({ rough: 1000 }, { rough: 1000 })).map((r) => [r.fixtureId, r.draw])).toEqual([['top', 'ready']])
+    // Covered only in part, the stage above still holds the one below.
+    expect(upcomingDrawRows(plan, covered({ rough: 400 }, { rough: 1000 })).map((r) => [r.fixtureId, r.draw])).toEqual([
+      ['rough', 'ready'],
+      ['top', 'waits'],
+    ])
+  })
+})

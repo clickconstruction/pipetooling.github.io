@@ -2943,8 +2943,6 @@ export default function JobFormModal({
               <InvoicesSectionHeading
                 sampleDollars={billingSegments[0]?.dollars ?? null}
                 jobLabel={editing.hcp_number?.trim() ? `Job ${editing.hcp_number.trim()}` : null}
-                view={billsView}
-                onViewChange={changeBillsView}
               />
               <JobFormSegmentsBar
                 fixtures={fixtures}
@@ -2998,6 +2996,7 @@ export default function JobFormModal({
                 onBillRow={(id) => void billStageRow(id)}
                 billingFixtureId={billingStageFixtureId}
                 disabled={creatingSegmentInvoice}
+                coverage={segmentCoverage}
               />
               <JobFormInvoiceList
                 editing={editing}
@@ -3007,6 +3006,7 @@ export default function JobFormModal({
                 persistedLedgerPaymentIds={persistedLedgerPaymentIds}
                 unlinkingMercuryPaymentId={unlinkingMercuryPaymentId}
                 view={billsView}
+                onViewChange={changeBillsView}
                 paymentLineActions={{
                   updatePaymentRow,
                   requestRemovePaymentRow,

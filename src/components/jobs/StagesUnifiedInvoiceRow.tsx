@@ -11,7 +11,7 @@ import type { StagesUnifiedRowContext } from './JobsStagesUnifiedTable'
 import { Fragment } from 'react'
 import { STAGES_EDIT_MODE_RAIL_WIDTH, stagesOpenRowStyle, accountManOnlyStripeStyle, renderJobAddressWithMap, renderStagesEditModeRail, renderStagesJobColumnEstimateFooter, renderStagesProjectBannerRow, renderStagesThreadExpandButton, shouldSuppressStagesRowJobThreadToggle, stagesInvoiceRowAccentRailStyle, stagesInvoiceRowAccentRowStyle, stagesRowHasProjectBanner, stagesActionMoveStackStyle } from './jobsStagesRowShared'
 import { ShareJobButton } from './ShareJobButton'
-import { StagesAiaG702Button, StagesLienInstrumentsButton, StagesLienReleaseButton, StagesTestReportButton } from './StagesRowActionButtons'
+import { StagesAiaG702Button, StagesLienInstrumentsButton, StagesLienReleaseButton, StagesRowIcons, StagesTestReportButton } from './StagesRowActionButtons'
 import { StagesCrewLine } from './StagesCrewLine'
 import { StagesExpandedThreadRow } from './StagesExpandedThreadRow'
 import { effectiveInvoiceEstBillDate } from '../../lib/jobs/invoiceBilling'
@@ -311,8 +311,7 @@ export function StagesUnifiedInvoiceRow({ row, t }: { row: StagesUnifiedInvoiceR
             >
               Edit
             </button>
-            <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', justifyContent: 'flex-end' }}>
-            {onOpenLienRelease ? <StagesLienReleaseButton onClick={() => onOpenLienRelease({ job, invoice: inv })} hasRelease={lienReleaseJobIds?.has(job.id) === true} /> : null}
+            <StagesRowIcons>
             <ShareJobButton
               jobId={job.id}
               fields={{ hcpNumber: job.hcp_number, jobName: job.job_name, jobAddress: job.job_address }}
@@ -320,11 +319,12 @@ export function StagesUnifiedInvoiceRow({ row, t }: { row: StagesUnifiedInvoiceR
             {showClickTooling && (
               <StagesTestReportButton onClick={() => openTestReportFor(job)} />
             )}
+            {onOpenLienRelease ? <StagesLienReleaseButton onClick={() => onOpenLienRelease({ job, invoice: inv })} hasRelease={lienReleaseJobIds?.has(job.id) === true} /> : null}
             {onOpenLienTooling ? (
               <StagesLienInstrumentsButton onClick={() => onOpenLienTooling({ job, invoice: inv })} demandOut={demandOutJobIds?.has(job.id) === true} />
             ) : null}
             {showAiaG702G703(authRole, job, inv) ? <StagesAiaG702Button onClick={() => setAiaG702StagesJob(job)} /> : null}
-            </div>
+            </StagesRowIcons>
             {/* v2.4147 (owner): Send back and Collections live under the icons, stacked full width. */}
             {(sendBackBelowRemaining || onJobMoveToCollections) ? (
               <div style={stagesActionMoveStackStyle}>

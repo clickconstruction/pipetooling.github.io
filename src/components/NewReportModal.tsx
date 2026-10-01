@@ -151,7 +151,9 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
     void (async () => {
       try {
         // Bound: a detached `supabase.rpc` loses `this` and throws before the request leaves.
-        const rpc = supabase.rpc.bind(supabase) as unknown as (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>
+        // Cast the client, not `rpc.bind` (binding the typed overloads trips TS2589 as database.ts grows).
+        const untyped = supabase as unknown as { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }> }
+        const rpc = (fn: string, args: Record<string, unknown>) => untyped.rpc(fn, args)
         const { data, error } = await rpc('list_job_stage_progress', { p_job_id: jobId })
         if (cancelled) return
         if (error || !Array.isArray(data)) {
@@ -482,7 +484,10 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
     // Stage-weighted (v2.3192): stamp the stage's progress on its line item (best-effort;
     // the report already carries the number, and the RPC may not exist before the push).
     if (jobLedgerId && stageModeActive && stagePick) {
-      const rpc = supabase.rpc.bind(supabase) as unknown as (fn: string, args: Record<string, unknown>) => Promise<{ error: { message: string } | null }>
+      // Untyped on purpose (the RPC may not exist before the push). Cast the client, not `rpc.bind`: binding
+      // the typed overloads instantiates every function in database.ts and trips TS2589 as the list grows.
+      const untyped = supabase as unknown as { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ error: { message: string } | null }> }
+      const rpc = (fn: string, args: Record<string, unknown>) => untyped.rpc(fn, args)
       try {
         await rpc('record_stage_progress', { p_job_id: jobLedgerId, p_fixture_id: stagePick.fixtureId, p_pct: stagePick.pct, p_report_id: inserted?.id ?? null })
       } catch {

@@ -221,6 +221,11 @@ button:focus-visible {
   --bid-mark-wash: rgba(124, 58, 237, 0.1);
   --bid-mark-wash-strong: rgba(124, 58, 237, 0.16);
   --bid-mark-wash-board: rgba(124, 58, 237, 0.07);
+  /* Marks for a teammate (v2.4297): the filled circle's text, the solid button, the not-seen dot (blue, never Pending amber). */
+  --bid-mark-on: #ffffff;
+  --bid-mark-solid: #7c3aed;
+  --bid-mark-new: #0284c7;
+  --bid-mark-done: #15803d;
   --bg-sky-tint: #f0f9ff;
   --bg-red-tint: #fef2f2;
   --bg-red-100: #fee2e2;
@@ -333,6 +338,10 @@ button:focus-visible {
   --bid-mark-wash: rgba(167, 139, 250, 0.16);
   --bid-mark-wash-strong: rgba(167, 139, 250, 0.28);
   --bid-mark-wash-board: rgba(167, 139, 250, 0.09);
+  --bid-mark-on: #1b1033;
+  --bid-mark-solid: #7c3aed;
+  --bid-mark-new: #38bdf8;
+  --bid-mark-done: #86efac;
   --bg-sky-tint: #16324a;
   --bg-red-tint: #3b1a1a;
   --bg-red-100: #4c1d1d;
@@ -2498,6 +2507,8 @@ body.my-time-boundary-dragging {
 .jobInvoiceLedgerHdr {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
   font-size: 0.6875rem;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -2505,6 +2516,10 @@ body.my-time-boundary-dragging {
   color: var(--text-muted);
   padding: 0.125rem 0 0.375rem;
   border-bottom: 1px solid var(--border);
+}
+/* v2.4298: the By bill / By date switch sits at the right of the Bills row. */
+.jobInvoiceLedgerHdrSwitch {
+  margin-left: auto;
 }
 .jobInvoiceRow {
   display: flex;
@@ -2545,7 +2560,13 @@ body.my-time-boundary-dragging {
 .jobInvoiceWords .l2 .keep {
   white-space: nowrap;
   display: inline-flex;
-  gap: 0.625rem;
+  flex-wrap: wrap;
+  gap: 0 0.625rem;
+  min-width: 0;
+}
+/* v2.4300: the pair may break between its parts on a narrow row; each part stays whole. */
+.jobInvoiceWords .l2 .keep > * {
+  white-space: nowrap;
 }
 .jobInvoiceWords b {
   font-weight: 650;
@@ -2603,6 +2624,13 @@ body.my-time-boundary-dragging {
   border: 2px dashed var(--text-red-600);
   background: var(--surface);
 }
+@container job-invoice-ledger (max-width: 420px) {
+  .jobInvoiceLedger[data-view="date"] > .jobInvoiceRow,
+  .jobInvoiceLedger[data-view="date"] > .jobMoneyDateRow {
+    margin-left: 5px;
+    padding-left: 0.7rem;
+  }
+}
 .jobMoneyDateToday {
   font-size: 0.8125rem;
   font-weight: 650;
@@ -2656,12 +2684,28 @@ body.my-time-boundary-dragging {
   color: var(--text-700);
 }
 .jobPaymentLineMain {
+  /* v2.4300: amount · words · ⋯ in three columns, so a long line wraps inside the words
+     and the ⋯ stays beside the amount on a phone (it used to drop to a third line). */
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  column-gap: 0.5rem;
+}
+.jobPaymentLineMain .mid {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.25rem 0.5rem;
+  min-width: 0;
+  line-height: 1.45;
+}
+.jobPaymentLineMain .words {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .jobPaymentLineMain .amt {
+  white-space: nowrap;
+  line-height: 1.45;
   font-weight: 650;
   color: var(--text-green-700);
   font-variant-numeric: tabular-nums;
@@ -2676,9 +2720,9 @@ body.my-time-boundary-dragging {
   color: var(--text-muted);
 }
 .jobPaymentLineMenu {
-  margin-left: auto;
   position: relative;
   display: inline-flex;
+  margin-top: -0.2rem;
 }
 .jobPaymentLineMore {
   width: 28px;
@@ -2809,6 +2853,97 @@ body.my-time-boundary-dragging {
   text-align: right;
 }
 
+/* View bill's paperwork card (v2.4299): the bill's lien waiver, the job's contract and its sub
+   work order as rows of one card, divided by hairlines. A row is label, words, the one door; the
+   waiver row may add a line, a two-step track and the email fix under its words. */
+.billPaperworkCard {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 0.75rem;
+  overflow: hidden;
+  font-size: 0.8125rem;
+  background: var(--surface);
+}
+.billPaperworkCard > * + * {
+  border-top: 1px solid var(--border);
+}
+.billPaperworkRow {
+  display: grid;
+  grid-template-columns: 6.25rem minmax(0, 1fr) auto;
+  column-gap: 0.65rem;
+  row-gap: 0.3rem;
+  align-items: center;
+  padding: 0.5rem 0.7rem;
+}
+.billPaperworkLabel {
+  color: var(--text-muted);
+}
+.billPaperworkControls {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.billPaperworkRow > .billPaperworkUnder {
+  grid-column: 2 / 4;
+}
+.billPaperworkRow--quiet {
+  padding-top: 0.35rem;
+  padding-bottom: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--text-faint);
+}
+.billPaperworkRow--quiet .billPaperworkLabel {
+  color: var(--text-faint);
+}
+.billPaperworkStep {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.billPaperworkDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+.billPaperworkLink {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--text-link);
+  cursor: pointer;
+}
+.billPaperworkLink:hover {
+  text-decoration: underline;
+}
+@media (max-width: 560px) {
+  .billPaperworkRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .billPaperworkRow > .billPaperworkUnder {
+    grid-column: auto;
+  }
+  .billPaperworkLabel {
+    font-size: 0.75rem;
+  }
+  .billPaperworkControls {
+    justify-content: stretch;
+    order: 10;
+  }
+  .billPaperworkStepJoin {
+    display: none;
+  }
+  .billPaperworkControls > button {
+    flex: 1 1 auto;
+    min-height: 44px;
+  }
+}
+
 .jobInvoiceChase {
   display: inline-flex;
   align-items: center;
@@ -2904,7 +3039,8 @@ body.my-time-boundary-dragging {
   color: var(--text-600);
 }
 @container job-invoice-ledger (max-width: 420px) {
-  .jobInvoiceLedgerHdr {
+  /* Stacked rows need no column label; the row stays only to carry the switch. */
+  .jobInvoiceLedgerHdr:not(:has(.jobInvoiceLedgerHdrSwitch)) {
     display: none;
   }
   .jobInvoiceRow {
@@ -3795,3 +3931,65 @@ button.gcStep:hover > em { text-decoration: underline; }
 .bid-mark-board-row[data-marked='true'] { background: var(--bid-mark-wash-board); }
 tr.bid-mark-board-row[data-marked='true'] > td:first-child { box-shadow: inset 3px 0 0 var(--bid-mark); }
 div.bid-mark-board-row[data-marked='true'] { box-shadow: inset 3px 0 0 var(--bid-mark); }
+
+/* Marks for a teammate (v2.4297): the sender's initial (filled) on the receiver's rows, the
+   receiver's initial (outlined) on the sender's, the card either opens, the For someone… form,
+   and the receiver's strip under the open bid's title. */
+.bid-mark-initial-wrap { display: inline-flex; align-items: center; justify-content: center; }
+.bid-mark-initial-wrap--row { flex: 0 0 44px; align-self: stretch; }
+.bid-mark-initial-wrap--board { margin-right: 0.25rem; vertical-align: middle; }
+.bid-mark-initial-button { display: inline-flex; align-items: center; justify-content: center; min-width: 32px; min-height: 32px; padding: 0; border: none; background: transparent; cursor: pointer; }
+.bid-mark-initial-wrap--row .bid-mark-initial-button { width: 44px; height: 44px; }
+.bid-mark-initial-button:focus-visible { outline: 2px solid var(--text-link); outline-offset: -2px; border-radius: 50%; }
+.bid-mark-initial { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; box-sizing: border-box; font-size: 11px; font-weight: 800; line-height: 1; flex: 0 0 auto; }
+.bid-mark-initial[data-variant='for-me'] { background: var(--bid-mark); color: var(--bid-mark-on); }
+.bid-mark-initial[data-variant='sent'] { border: 2px solid var(--bid-mark); color: var(--bid-mark-text); background: transparent; }
+.bid-mark-initial[data-variant='sent'][data-tone='done'] { border-color: var(--bid-mark-done); color: var(--bid-mark-done); }
+.bid-mark-initial[data-variant='sent'][data-tone='passed'] { border-style: dashed; }
+.bid-mark-initial__new { position: absolute; right: -3px; top: -3px; width: 9px; height: 9px; border-radius: 50%; background: var(--bid-mark-new); border: 2px solid var(--surface); }
+.bid-mark-initial__more { position: absolute; right: -10px; bottom: -6px; font-size: 9px; font-weight: 700; color: var(--bid-mark-text); }
+.bid-mark-floating { position: fixed; z-index: 1200; }
+.bid-mark-card { display: flex; flex-direction: column; gap: 0.5rem; box-sizing: border-box; width: 100%; padding: 0.8rem 0.9rem; background: var(--surface); color: var(--text-strong); border: 1px solid var(--border-strong); border-radius: 10px; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28); font-size: 0.875rem; text-align: left; font-weight: 400; white-space: normal; }
+.bid-mark-card__item { display: flex; flex-direction: column; gap: 0.2rem; }
+.bid-mark-card__head { font-weight: 700; font-size: 0.85rem; }
+.bid-mark-card__note { font-size: 0.9rem; line-height: 1.45; }
+.bid-mark-card__state { font-size: 0.8rem; color: var(--text-muted); }
+.bid-mark-card__state[data-tone='waiting'] { color: var(--bid-mark-new); }
+.bid-mark-card__state[data-tone='done'] { color: var(--bid-mark-done); }
+.bid-mark-card__label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.78rem; color: var(--text-muted); }
+.bid-mark-card__actions { display: flex; align-items: center; justify-content: flex-end; gap: 0.5rem; flex-wrap: wrap; }
+.bid-mark-card__primary { min-height: 36px; padding: 0 0.9rem; border: none; border-radius: 6px; background: var(--bid-mark-solid); color: #ffffff; font: inherit; font-weight: 600; cursor: pointer; }
+.bid-mark-card__primary:disabled { opacity: 0.55; cursor: default; }
+.bid-mark-card__secondary { min-height: 36px; padding: 0 0.8rem; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); color: var(--text-700); font: inherit; cursor: pointer; }
+.bid-mark-card__link { min-height: 36px; padding: 0 0.25rem; border: none; background: transparent; color: var(--text-muted); font: inherit; text-decoration: underline; cursor: pointer; margin-right: auto; }
+.bid-mark-for-someone { position: relative; display: inline-flex; vertical-align: middle; }
+.bid-mark-card--form { position: absolute; top: calc(100% + 6px); left: 0; z-index: 60; width: 340px; font-size: 0.875rem; }
+.bid-mark-people { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.bid-mark-person { display: inline-flex; align-items: center; gap: 0.45rem; min-height: 40px; padding: 0.2rem 0.75rem 0.2rem 0.3rem; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-strong); font: inherit; font-size: 0.85rem; cursor: pointer; }
+.bid-mark-person[aria-pressed='true'] { border-color: var(--bid-mark); background: var(--bid-mark-wash-strong); }
+.bid-mark-person__avatar { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; background: var(--bg-muted); font-weight: 700; font-size: 0.75rem; }
+.bid-mark-person[aria-pressed='true'] .bid-mark-person__avatar { background: var(--bid-mark); color: var(--bid-mark-on); }
+.bid-mark-person__text { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.2; }
+.bid-mark-person__sub { font-size: 0.7rem; color: var(--text-muted); }
+.bid-mark-select, .bid-mark-input { min-height: 36px; padding: 0 0.5rem; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); color: var(--text-strong); font: inherit; font-size: 0.875rem; box-sizing: border-box; width: 100%; }
+.bid-mark-check { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer; }
+.bid-mark-check input { width: 18px; height: 18px; }
+.bid-mark-toggle__for-you { padding: 0 0.45rem; border-radius: 999px; background: var(--bid-mark-solid); color: #ffffff; font-size: 0.72rem; font-weight: 700; }
+.bid-mark-sent-status { display: inline-flex; align-items: center; gap: 0.2rem; font-size: 0.78rem; font-weight: 400; color: var(--bid-mark-text); vertical-align: middle; }
+.bid-mark-sent-status[data-tone='done'] { color: var(--bid-mark-done); }
+.bid-mark-request-line { display: block; margin-top: 0.15rem; font-size: 0.8rem; color: var(--bid-mark-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bid-mark-since[data-tone='waiting'] { color: var(--bid-mark-new); }
+.bid-mark-since[data-tone='done'] { color: var(--bid-mark-done); }
+.bid-mark-strip { flex: 1 1 100%; display: flex; align-items: center; flex-wrap: wrap; gap: 0.6rem 0.9rem; padding: 0.6rem 0.8rem; border-radius: 8px; background: var(--bid-mark-wash); box-shadow: inset 4px 0 0 var(--bid-mark); box-sizing: border-box; }
+.bid-mark-strip__item { display: flex; align-items: center; gap: 0.6rem; min-width: 0; flex: 1 1 280px; }
+.bid-mark-strip__item .bid-mark-initial { width: 28px; height: 28px; font-size: 13px; }
+.bid-mark-strip__text { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
+.bid-mark-strip__head { font-size: 0.8rem; color: var(--bid-mark-text); }
+.bid-mark-strip__note { font-size: 0.95rem; }
+.bid-mark-strip__actions { flex: 0 0 auto; margin-left: auto; }
+.bid-mark-strip__actions .bid-mark-card__link { margin-right: 0; }
+
+/* Pipeline row activity box: the See all door in the strip under the box (v2.4302). */
+.stages-activity-see-all { color: var(--text-muted); border-radius: 6px; }
+.stages-activity-see-all:hover,
+.stages-activity-see-all:focus-visible { color: var(--text-blue-700); }
