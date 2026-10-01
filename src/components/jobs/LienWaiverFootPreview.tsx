@@ -9,11 +9,17 @@ import type { LienWaiverFoot } from '../../lib/jobsDocuments/lienWaiverRelease'
  *
  * v2.4314: `highlight` marks the block for the Release of Lien window's step that fills it — a
  * dashed outline and a tag such as "5 · He signs here". It never prints.
+ *
+ * v2.4335: `inkUrl` is the drawn signature of a signed waiver, sitting on the line above the name.
  */
-export function LienWaiverFootPreview({ foot, highlight = null }: { foot: LienWaiverFoot; highlight?: string | null }) {
+export function LienWaiverFootPreview({ foot, highlight = null, inkUrl = null }: { foot: LienWaiverFoot; highlight?: string | null; inkUrl?: string | null }) {
   const lines = (
     <>
-      <div style={{ height: '2.2em' }} />
+      {inkUrl ? (
+        <img data-testid="lien-waiver-foot-ink" src={inkUrl} alt={`Signature of ${foot.name}`} style={{ display: 'block', height: '3.6em', width: 'auto', maxWidth: '100%', objectFit: 'contain', objectPosition: 'left bottom' }} />
+      ) : (
+        <div style={{ height: '2.2em' }} />
+      )}
       <div style={{ borderTop: '1px solid var(--text-base)', paddingTop: '0.4em', lineHeight: 1.45 }}>
         <strong>{foot.name}</strong>, {foot.company}
       </div>
