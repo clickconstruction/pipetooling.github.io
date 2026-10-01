@@ -50,6 +50,8 @@ type Props = {
   onApproved?: (approved: number) => void
   /** Open on the Typed by hand filter (the Needs You *Look at them* action, v2.4254). */
   startTypedOnly?: boolean
+  /** With `startTypedOnly`: only what this person (a `users.id`) typed — the *Hours added in bulk* door (v2.4281). The name is for the chip when none of their rows is pending. */
+  startTypist?: { id: string; name: string | null } | null
   /** Opens a person's day in the clock-day editor — the "or fix it" beside Looks right. Hosts without one show no button. */
   onOpenDay?: (day: { userId: string; personName: string; workDate: string }) => void
 }
@@ -103,7 +105,7 @@ function FlagSummary({ counts, prefix }: { counts: ApprovalsQueueFlagCounts; pre
   )
 }
 
-export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSession, authUserId, reloadKey, pinUserId, pinDisplayName, zIndex = 60, surface = 'approvals-queue', onApproved, startTypedOnly, onOpenDay }: Props) {
+export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSession, authUserId, reloadKey, pinUserId, pinDisplayName, zIndex = 60, surface = 'approvals-queue', onApproved, startTypedOnly, startTypist, onOpenDay }: Props) {
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
   const prefixMap = useLedgerPrefixMap()
@@ -116,6 +118,8 @@ export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSessi
   const [flaggedOnly, setFlaggedOnly] = useState(false)
   /** v2.4247: only the sessions someone typed hours onto — the ones that want a second person. */
   const [typedOnly, setTypedOnly] = useState(startTypedOnly === true)
+  /** v2.4281: narrow the typed rows to one typist (the bulk-hours door); cleared with its chip. */
+  const [typist, setTypist] = useState<string | null>(startTypedOnly === true ? (startTypist?.id ?? null) : null)
   /** Hours typed onto sessions that are already approved: they count in pay now and wait on a "Looks right" (v2.4254). */
   const [typedOntoApproved, setTypedOntoApproved] = useState<TypedWaitingRow[]>([])
   const [lookBusyId, setLookBusyId] = useState<string | null>(null)
@@ -190,12 +194,22 @@ export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSessi
         for (const s of w.sessions) {
           if (flaggedOnly && !s.flagged) continue
           if (typedOnly && !isTypedByHand(stamps.get(s.id))) continue
+          if (typedOnly && typist && !(stamps.get(s.id)?.entries ?? []).some((e) => e.kind === 'added' && e.typedBy === typist)) continue
           keep.add(s.id)
         }
       }
     }
     return buildApprovalsQueue((rows ?? []).filter((r) => keep.has(r.id)), { todayYmd })
-  }, [flaggedOnly, typedOnly, fullQueue, rows, todayYmd, stamps])
+  }, [flaggedOnly, typedOnly, typist, fullQueue, rows, todayYmd, stamps])
+  /** The typist's name as the stamps say it, for the chip. */
+  const typistName = useMemo(() => {
+    if (!typist) return null
+    for (const st of stamps.values()) {
+      const e = st.entries.find((x) => x.typedBy === typist)
+      if (e) return e.typedByName
+    }
+    return startTypist?.id === typist ? (startTypist.name ?? null) : null
+  }, [typist, stamps, startTypist])
 
   const removeLocally = useCallback((ids: string[]) => {
     setRows((prev) => (prev ? withoutSessionIds(prev, ids) : prev))
@@ -577,6 +591,16 @@ export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSessi
               <input type="checkbox" checked={typedOnly} onChange={(e) => setTypedOnly(e.target.checked)} />
               Typed by hand · {typedCount}
             </label>
+          ) : null}
+          {typedOnly && typist ? (
+            <button
+              type="button"
+              onClick={() => setTypist(null)}
+              title="Only what this person typed. Press to see everything typed by hand."
+              style={{ ...BTN_QUIET, borderRadius: 999, fontSize: '0.78125rem' }}
+            >
+              typed by {typistName ?? 'one person'} ×
+            </button>
           ) : null}
           {typedCount > 0 || typedOnly ? null : (
             <span style={{ fontSize: '0.78125rem', color: 'var(--text-muted)' }}>People lead with the oldest stall. Open a week to see its sessions.</span>

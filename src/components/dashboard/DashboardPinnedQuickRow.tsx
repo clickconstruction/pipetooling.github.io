@@ -25,6 +25,7 @@ import { useGcReviewWeekNudge } from '../../hooks/useGcReviewWeekNudge'
 import { gcReviewNudgeState, gcReviewWeekdayIndex } from '../../lib/jobs/gcReviewCertification'
 import { useLostBidNudge } from '../../hooks/useLostBidNudge'
 import { useBulkDeleteNudge } from '../../hooks/useBulkDeleteNudge'
+import { useBulkHoursNudge } from '../../hooks/useBulkHoursNudge'
 import { useBidAuditsPendingCount } from '../../hooks/useBidAuditsPendingCount'
 import { useRobotLockedShadows } from '../../hooks/useRobotLockedShadows'
 import { canWorkRobotAudits } from '../../lib/bids/bidAudits'
@@ -394,6 +395,8 @@ export function DashboardPinnedQuickRow({
   const { nudge: statementRound } = useStatementRoundNudge(!hideBanners && Boolean(authUserId) && officeEligible)
   const gcReviewNudge = gcReviewStatus != null ? gcReviewNudgeState(gcReviewStatus) : null
   const bulkDelete = useBulkDeleteNudge(hideBanners ? undefined : authUserId)
+  // Bursts of typed hours (v2.4281): the RPC itself answers only the approving roles.
+  const bulkHours = useBulkHoursNudge(hideBanners ? undefined : authUserId)
   const claimDev = useClaimDevAttemptsNudge(hideBanners ? undefined : authUserId)
 
   // Robot audits (v2.2573): the auditing roles = the bid_audits write set
@@ -533,6 +536,7 @@ export function DashboardPinnedQuickRow({
     gcReviewNudge,
     gcReviewIsWednesday: gcReviewWeekdayIndex() === 3,
     bulkDeleteAlerts: bulkDelete.visibleAlerts,
+    bulkHoursAlerts: bulkHours.visibleAlerts,
     claimDevRefusedCount: claimDev.visibleCount,
     claimDevLookbackDays: CLAIM_DEV_LOOKBACK_DAYS,
     robotAuditsEnabled,
@@ -807,6 +811,12 @@ export function DashboardPinnedQuickRow({
               navigate('/people?tab=hours&approvals=1')
             } else if (item.key === 'typed-hours') {
               navigate('/people?tab=hours&approvals=1&typed=1')
+            } else if (item.key === 'bulk-hours') {
+              // The queue on its Typed by hand filter, narrowed to the newest burst's typist.
+              const newest = bulkHours.visibleAlerts?.[0]
+              navigate(
+                `/people?tab=hours&approvals=1&typed=1${newest ? `&typist=${encodeURIComponent(newest.actorId)}&typistName=${encodeURIComponent(newest.actorName)}` : ''}`,
+              )
             } else if (item.key === 'label-approvals') {
               navigate('/banking?tab=accounting')
             } else if (item.key === 'dispatch-requests-aged' || item.key === 'customer-waiting') {
@@ -822,6 +832,9 @@ export function DashboardPinnedQuickRow({
             if (item.key === 'bulk-delete') {
               if (key === 'snooze') bulkDelete.snooze24h()
               else if (key === 'dismiss') bulkDelete.dismissUntilCountIncreases()
+            } else if (item.key === 'bulk-hours') {
+              if (key === 'snooze') bulkHours.snooze24h()
+              else if (key === 'dismiss') bulkHours.dismissUntilCountIncreases()
             } else if (item.key === 'claim-dev') {
               if (key === 'snooze') claimDev.snooze24h()
               else if (key === 'dismiss') claimDev.dismissUntilItHappensAgain()
