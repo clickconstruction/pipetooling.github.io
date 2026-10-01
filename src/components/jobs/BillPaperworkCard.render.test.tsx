@@ -87,7 +87,7 @@ describe('BillPaperworkCard (v2.4299)', () => {
     expect(row.textContent).toContain('Conditional for $4,720 not sent')
     expect(row.getAttribute('data-tone')).toBe('amber')
     expect(screen.getByTestId('paperwork-waiver-sub').textContent).toBe('A GC often waits for this waiver before it pays.')
-    expect(seen.contractQuiet.at(-1)).toBe(true)
+    expect(seen.contractQuiet[seen.contractQuiet.length - 1]).toBe(true)
 
     fireEvent.click(screen.getByTestId('paperwork-waiver-door'))
     expect((await screen.findByTestId('release-window-stub')).textContent).toBe('inv-251')
@@ -111,6 +111,6 @@ describe('BillPaperworkCard (v2.4299)', () => {
     })
     await settle()
     expect(screen.queryByTestId('paperwork-waiver-row')).toBeNull()
-    expect(seen.contractQuiet.at(-1)).toBe(false)
+    expect(seen.contractQuiet[seen.contractQuiet.length - 1]).toBe(false)
   })
 })
