@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { FileCheck2 } from 'lucide-react'
 import type { EstimateAcceptSubmitPayload } from '../estimates/EstimateAcceptBody'
-import { ContractAcceptSignatureForm } from '../contracts/ContractAcceptSignatureForm'
+import { LienWaiverSignAgree, LienWaiverSignOnPage } from '../jobs/LienWaiverSignOnPage'
+import { lienWaiverSignPayload, type LienWaiverSignOnPageHandle } from '../../lib/jobs/lienWaiverSignPayload'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
@@ -9,8 +11,7 @@ import { lienInboxJobLabel, type LienInboxRow } from '../../lib/jobs/lienRelease
 import { isLienWaiverFormType, lienReleaseFormLabel, lienReleaseSnapshotToWaiverFields } from '../../lib/jobs/lienReleaseTracking'
 import { resolveLienWaiverRecipient, signLienRelease } from '../../lib/jobs/lienReleaseSignIo'
 import { sendLienReleaseEmailToCustomer } from '../../lib/sendLienReleaseEmail'
-import { LIEN_WAIVER_FORM_CITES, buildLienWaiverFoot, buildLienWaiverParagraphs, lienWaiverTitle, type LienWaiverFormType } from '../../lib/jobsDocuments/lienWaiverRelease'
-import { LienWaiverFootPreview } from '../jobs/LienWaiverFootPreview'
+import { LIEN_WAIVER_FORM_CITES, buildLienWaiverFoot, buildLienWaiverParagraphs, lienWaiverDate, lienWaiverTitle, type LienWaiverFormType } from '../../lib/jobsDocuments/lienWaiverRelease'
 import { supabase } from '../../lib/supabase'
 
 /**
@@ -46,6 +47,8 @@ export function DashboardLienWaiversToSignModal({ open, onClose, rows, onChanged
   const isNarrow = useNarrowViewport640()
   const [pickedId, setPickedId] = useState<string | null>(null)
   const [printedName, setPrintedName] = useState('')
+  // v2.4335: he signs on the page's own line; the pad is read when the button is pressed.
+  const padRef = useRef<LienWaiverSignOnPageHandle>(null)
   const [agreed, setAgreed] = useState(false)
   const [busy, setBusy] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
@@ -194,7 +197,7 @@ export function DashboardLienWaiversToSignModal({ open, onClose, rows, onChanged
                       {para}
                     </p>
                   ))}
-                  <LienWaiverFootPreview foot={buildLienWaiverFoot(fields, null)} />
+                  <LienWaiverSignOnPage key={picked.id} ref={padRef} foot={buildLienWaiverFoot(fields, null)} signedLabel={`Signed ${lienWaiverDate(todayYmdInAppTz())}`} allowTyped disabled={busy} />
                 </div>
                 <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.25rem 0.9rem 0.9rem', fontSize: '0.8125rem' }}>
                   <div style={{ fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)', marginTop: '0.75rem' }}>
@@ -214,19 +217,28 @@ export function DashboardLienWaiversToSignModal({ open, onClose, rows, onChanged
                       'No email on file for the payor — signed, it waits in the office’s Signed · ready to send lane.'
                     )}
                   </div>
-                  <ContractAcceptSignatureForm
-                    printedName={printedName}
-                    agreed={agreed}
-                    onPrintedNameChange={setPrintedName}
-                    onAgreedChange={setAgreed}
-                    formError={formError}
-                    submitting={busy}
-                    onSubmit={(payload) => void sign(payload)}
-                    heading="Sign"
-                    disclosure="By signing, you acknowledge that you have read this release of lien and agree to issue it. Typing or drawing your signature here has the same force and effect as your written signature under the federal ESIGN Act (15 U.S.C. § 7001) and the Texas UETA (Bus. & Com. Code ch. 322), and it prints on every copy of this document."
-                    agreeLabel="I have read this release and agree that my electronic signature is as binding as ink."
-                    submitLabel={sendAfter && recipient !== 'loading' && recipient ? `✍ Sign · send to ${payorName || recipient.name}` : '✍ Sign'}
-                  />
+                  <div style={{ marginTop: '0.75rem' }}>
+                    <LienWaiverSignAgree
+                      disclosure="By signing, you acknowledge that you have read this release of lien and agree to issue it. Drawing or typing your signature here has the same force and effect as your written signature under the federal ESIGN Act (15 U.S.C. § 7001) and the Texas UETA (Bus. & Com. Code ch. 322), and it prints on every copy of this document."
+                      agreeLabel="I have read this release and agree that my electronic signature is as binding as ink."
+                      agreed={agreed}
+                      onAgreedChange={(v) => {
+                        setAgreed(v)
+                        setFormError(null)
+                      }}
+                      error={formError}
+                      submitting={busy}
+                      submitLabel={sendAfter && recipient !== 'loading' && recipient ? `✍ Sign · send to ${payorName || recipient.name}` : '✍ Sign'}
+                      onSubmit={() => {
+                        const r = lienWaiverSignPayload(padRef.current, printedName, agreed)
+                        if ('error' in r) {
+                          setFormError(r.error)
+                          return
+                        }
+                        void sign(r.payload)
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
             ) : null}

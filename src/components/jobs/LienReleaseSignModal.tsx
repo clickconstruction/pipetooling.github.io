@@ -1,15 +1,17 @@
-import { useCallback, useMemo, useState } from 'react'
-import { ContractAcceptSignatureForm } from '../contracts/ContractAcceptSignatureForm'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import type { EstimateAcceptSubmitPayload } from '../estimates/EstimateAcceptBody'
+import { LienWaiverSignAgree, LienWaiverSignOnPage } from './LienWaiverSignOnPage'
+import { lienWaiverSignPayload, type LienWaiverSignOnPageHandle } from '../../lib/jobs/lienWaiverSignPayload'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 import {
   buildLienWaiverFoot,
+  lienWaiverDate,
   buildLienWaiverParagraphs,
   lienWaiverTitle,
   type LienWaiverFields,
   type LienWaiverFormType,
 } from '../../lib/jobsDocuments/lienWaiverRelease'
 import { signLienRelease } from '../../lib/jobs/lienReleaseSignIo'
-import { LienWaiverFootPreview } from './LienWaiverFootPreview'
 import {
   isLienWaiverFormType,
   lienReleaseFieldsFromSnapshot,
@@ -29,6 +31,9 @@ import { useAuth } from '../../hooks/useAuth'
  * screen — the assistant's, or a phone handed to him. The signer of record is
  * the leader; `signed_on_device_of` names whose session it was, and the audit
  * line says so. Drawn, not typed: a typed name would be the assistant's keys.
+ *
+ * v2.4335: he signs on the page itself — the pad is the signature line at the foot of the page
+ * (`LienWaiverSignOnPage`), his printed name under it as text, the agreement and the button below.
  */
 export default function LienReleaseSignModal({
   open,
@@ -76,13 +81,15 @@ export default function LienReleaseSignModal({
     }
   }, [release])
 
-  // Seed the printed name from the document's "Signed by" line — or the present leader's name — once per release.
+  // v2.4335: the name under the line is the signer of record — the present leader, else the
+  // document's Signed by line — shown as text, not a box. Reset once per release.
   if (open && release && fields && seededFor !== release.id) {
     setSeededFor(release.id)
-    setPrintedName(presentSigner?.name.trim() || fields.signerName)
+    setPrintedName(presentSigner?.name.trim() || fields.signerName.trim())
     setAgreed(false)
     setFormError(null)
   }
+  const padRef = useRef<LienWaiverSignOnPageHandle>(null)
   const present = presentSigner != null && presentSigner.id !== authUser?.id
 
   const sign = useCallback(
@@ -115,7 +122,7 @@ export default function LienReleaseSignModal({
 
   if (!open || !release || !fields) return null
   const paragraphs = buildLienWaiverParagraphs(formType, fields)
-  const foot = buildLienWaiverFoot({ ...fields, signerName: presentSigner?.name.trim() || fields.signerName }, null)
+  const foot = buildLienWaiverFoot({ ...fields, signerName: printedName || presentSigner?.name.trim() || fields.signerName }, null)
 
   return (
     <div
@@ -135,8 +142,8 @@ export default function LienReleaseSignModal({
           </h2>
           <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
             {present
-              ? `Read it, then draw the signature below. The record: drawn by ${presentSigner.name}${deviceUserName ? `, on ${deviceUserName}’s screen` : ''}.`
-              : 'Read it, then sign below. The signature prints on every copy of this document.'}
+              ? `Read it, then draw the signature on the line at the foot of the page. The record: drawn by ${presentSigner.name}${deviceUserName ? `, on ${deviceUserName}’s screen` : ''}.`
+              : 'Read it, then sign on the line at the foot of the page. The signature prints there on every copy.'}
           </p>
         </div>
         <div data-theme="light" style={{ padding: '1rem 1.25rem', background: 'var(--bg-subtle)' }}>
@@ -149,36 +156,35 @@ export default function LienReleaseSignModal({
                 {p}
               </p>
             ))}
-            <LienWaiverFootPreview foot={foot} />
+            <LienWaiverSignOnPage ref={padRef} foot={foot} signedLabel={`Signed ${lienWaiverDate(todayYmdInAppTz())}`} allowTyped={!present} disabled={submitting} />
           </div>
         </div>
-        <div style={{ padding: '0 1.25rem 1.25rem' }}>
-          <ContractAcceptSignatureForm
-            printedName={printedName}
-            agreed={agreed}
-            onPrintedNameChange={setPrintedName}
-            onAgreedChange={setAgreed}
-            formError={formError}
-            submitting={submitting}
-            onSubmit={(payload) => void sign(payload)}
-            heading={present ? `${presentSigner.name} signs` : 'Sign release'}
+        <div style={{ padding: '1rem 1.25rem 1.25rem' }}>
+          <LienWaiverSignAgree
             disclosure={
               present
                 ? `By signing, ${presentSigner.name} acknowledges having read this release of lien and agrees to issue it. Drawing the signature here has the same force and effect as a written signature under the federal ESIGN Act (15 U.S.C. § 7001) and the Texas UETA (Bus. & Com. Code ch. 322), and it prints on every copy of this document.`
-                : 'By signing, you acknowledge that you have read this release of lien and agree to issue it. Typing or drawing your signature here has the same force and effect as your written signature under the federal ESIGN Act (15 U.S.C. § 7001) and the Texas UETA (Bus. & Com. Code ch. 322), and it prints on every copy of this document.'
+                : 'By signing, you acknowledge that you have read this release of lien and agree to issue it. Drawing or typing your signature here has the same force and effect as your written signature under the federal ESIGN Act (15 U.S.C. § 7001) and the Texas UETA (Bus. & Com. Code ch. 322), and it prints on every copy of this document.'
             }
             agreeLabel={present ? `I, ${presentSigner.name}, have read this release and my drawn signature is as binding as ink.` : 'I have read this release and agree that my electronic signature is as binding as ink.'}
+            agreed={agreed}
+            onAgreedChange={(v) => {
+              setAgreed(v)
+              setFormError(null)
+            }}
+            error={formError}
+            submitting={submitting}
             submitLabel={present ? 'Sign it' : 'Sign release'}
-            lockMode={present ? 'draw' : undefined}
+            onSubmit={() => {
+              const r = lienWaiverSignPayload(padRef.current, printedName, agreed)
+              if ('error' in r) {
+                setFormError(r.error)
+                return
+              }
+              void sign(r.payload)
+            }}
+            onCancel={onClose}
           />
-          <button
-            type="button"
-            disabled={submitting}
-            onClick={onClose}
-            style={{ display: 'block', margin: '0.75rem auto 0', padding: '0.4rem 1rem', fontSize: '0.8125rem', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 6, cursor: 'pointer' }}
-          >
-            Not now
-          </button>
         </div>
       </div>
     </div>

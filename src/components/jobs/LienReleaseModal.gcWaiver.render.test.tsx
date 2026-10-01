@@ -12,6 +12,8 @@ import LienReleaseModal from './LienReleaseModal'
 
 vi.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'assistant-1' }, role: 'assistant', profileName: 'Taunya' }) }))
 // jsdom has no canvas: the pad is a stub with the handle's shape.
+// jsdom draws nothing: the line's canvas gets no 2D context (and no "not implemented" noise).
+HTMLCanvasElement.prototype.getContext = (() => null) as never
 vi.mock('signature_pad', () => ({
   default: class {
     off() {}
@@ -124,8 +126,10 @@ describe('LienReleaseModal — our waiver to the GC (v2.4274)', () => {
     const pad = await screen.findByRole('dialog', { name: 'Sign release of lien' })
     expect(pad.textContent).toContain('Malachi Reyes signs here — Job 977')
     expect(pad.textContent).toContain('on Taunya’s screen')
-    expect(within(pad).queryByRole('button', { name: 'Type' })).toBeNull()
-    expect((within(pad).getByPlaceholderText(/full legal name/i) as HTMLInputElement).value).toBe('Malachi Reyes')
+    // v2.4335: he signs on the page's own line; his name is printed under it, not typed in a box.
+    expect(within(pad).queryByRole('button', { name: 'Type it instead' })).toBeNull()
+    expect(within(pad).queryByRole('textbox')).toBeNull()
+    expect(within(pad).getByTestId('lien-waiver-sign-foot').textContent).toContain('Malachi Reyes, Click')
     expect(within(pad).getByRole('button', { name: 'Sign it' })).toBeTruthy()
   })
 })

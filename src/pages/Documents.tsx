@@ -28,13 +28,14 @@ import {
   lienReleaseSnapshotToWaiverFields,
   type JobLienReleaseRow,
 } from '../lib/jobs/lienReleaseTracking'
-import { lienReleaseChipColors, lienReleaseChips, lienReleaseRowSignature } from '../lib/jobs/lienReleaseLifecycle'
+import { lienReleaseChipColors, lienReleaseChips } from '../lib/jobs/lienReleaseLifecycle'
 import { formatContractStamp, jobContractChipColors, jobContractChips, jobContractSignatureAuditLine, type JobContractRow } from '../lib/jobs/jobContractLifecycle'
 import JobContractModal from '../components/jobs/JobContractModal'
 import type { JobWithDetails } from '../types/jobWithDetails'
 import { buildJobContractRecordHtml } from '../components/jobs/JobContractRecordModal'
 import { buildLienWaiverPrintHtml, type LienWaiverSignature } from '../lib/jobsDocuments/lienWaiverRelease'
-import { openHtmlPreviewWindow } from '../lib/jobsDocuments/printWindow'
+import { openHtmlPreviewWindow, openHtmlWindowWhenReady } from '../lib/jobsDocuments/printWindow'
+import { lienReleaseRowSignatureWithInk } from '../lib/jobs/lienReleaseInk'
 import { billingTypeLabel } from '../components/jobs/HostedStripeBillPanel'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { effectiveJobLedgerNumber, formatJobLedgerDocTitle } from '../lib/ledgerDisplayPrefixes'
@@ -1110,22 +1111,19 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
                     ))}
                     {jobLienReleases.map((rel) => {
                       const relForm = isLienWaiverFormType(rel.form_type) ? rel.form_type : 'conditional_progress'
-                      const signature: LienWaiverSignature | null = lienReleaseRowSignature(rel)
                       return (
                         <tr key={rel.id}>
                           <td colSpan={6} style={{ ...tdStyle, paddingLeft: '1.75rem', background: 'var(--bg-page)' }}>
                             <button
                               type="button"
                               onClick={() => {
-                                const ok = openHtmlPreviewWindow(
-                                  buildLienWaiverPrintHtml(
-                                    relForm,
-                                    lienReleaseSnapshotToWaiverFields(rel),
-                                    jobNum || '—',
-                                    signature,
-                                  ),
-                                )
-                                if (!ok) showToast('Popup blocked — allow popups to view the release.', 'error')
+                                // v2.4335: the page as signed, with the ink stored at signing.
+                                void openHtmlWindowWhenReady(async () => {
+                                  const signature: LienWaiverSignature | null = await lienReleaseRowSignatureWithInk(rel)
+                                  return buildLienWaiverPrintHtml(relForm, lienReleaseSnapshotToWaiverFields(rel), jobNum || '—', signature)
+                                }).then((ok) => {
+                                  if (!ok) showToast('Popup blocked — allow popups to view the release.', 'error')
+                                })
                               }}
                               style={{
                                 border: 'none',

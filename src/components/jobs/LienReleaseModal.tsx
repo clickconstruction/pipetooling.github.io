@@ -27,7 +27,8 @@ import {
 } from '../../lib/jobsDocuments/lienWaiverRelease'
 import { sendLienReleaseEmailToCustomer } from '../../lib/sendLienReleaseEmail'
 import { draftHeldByDateMessage } from '../../lib/autosaveDateHold'
-import { openHtmlPreviewWindow, openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
+import { openHtmlPrintWindow, openHtmlWindowWhenReady } from '../../lib/jobsDocuments/printWindow'
+import { lienReleaseRowSignatureWithInk, lienReleaseSignedPdfBlob, loadLienReleaseInk } from '../../lib/jobs/lienReleaseInk'
 import {
   isLienWaiverFormType,
   lienReleaseFieldsFromSnapshot,
@@ -529,6 +530,21 @@ export default function LienReleaseModal({
   const rowStatus = releaseRow ? lienReleaseStatus(releaseRow) : null
   // v2.4296: how the amount is figured, a waiver already covering a picked bill, paid money not yet waived.
   const [amountHot, setAmountHot] = useState(false)
+  // v2.4335: once signed, the page shows the ink stored at signing (it showed only the name).
+  const [inkUrl, setInkUrl] = useState<string | null>(null)
+  useEffect(() => {
+    if (!releaseRow || lienReleaseStatus(releaseRow) !== 'signed') {
+      setInkUrl(null)
+      return
+    }
+    let cancelled = false
+    void loadLienReleaseInk(releaseRow).then((u) => {
+      if (!cancelled) setInkUrl(u)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [releaseRow])
   const amountMath = useMemo(() => (job ? lienWaiverAmountMath(formType, job, selectedInvoices, invoices) : null), [job, formType, selectedInvoices, invoices])
   const amountCoverage = useMemo(
     () => (editable ? lienWaiverAlreadyCovered(formType, selectedInvoices.map((i) => i.id), invoices, historyRows, releaseRow?.id ?? null) : null),
@@ -821,7 +837,7 @@ export default function LienReleaseModal({
     [authUser?.id, profileName],
   )
 
-  /** Signature for renders of the live row (v2.4285: the shared reading — drawn falls back to the printed name; the stored signed PDF carries the ink). */
+  /** Signature for renders of an unsigned row (v2.4285: the shared reading). A signed row reads its stored ink instead (v2.4335, lienReleaseInk). */
   const renderSignature = useCallback((row: JobLienReleaseRow | null): LienWaiverSignature | null => (row ? lienReleaseRowSignature(row, deviceNameFor(row)) : null), [deviceNameFor])
 
   // Every output action mints first (no paper without the record) and renders
@@ -830,9 +846,13 @@ export default function LienReleaseModal({
     if (!fields) return
     const row = await ensureMinted('issued')
     if (!row) return
-    const ok = openHtmlPrintWindow(buildLienWaiverPrintHtml(formType, fields, jobNumber, renderSignature(row)))
+    // v2.4335: a signed waiver prints with the ink stored at signing (it printed the name in type).
+    const ok =
+      lienReleaseStatus(row) === 'signed'
+        ? await openHtmlWindowWhenReady(async () => buildLienWaiverPrintHtml(formType, fields, jobNumber, await lienReleaseRowSignatureWithInk(row, deviceNameFor(row))), { print: true })
+        : openHtmlPrintWindow(buildLienWaiverPrintHtml(formType, fields, jobNumber, renderSignature(row)))
     if (!ok) showToast('Popup blocked — allow popups to print.', 'error')
-  }, [fields, formType, jobNumber, ensureMinted, renderSignature, showToast])
+  }, [fields, formType, jobNumber, ensureMinted, renderSignature, deviceNameFor, showToast])
 
   const viewHistoryRelease = useCallback(
     (r: JobLienReleaseRow) => {
@@ -848,10 +868,12 @@ export default function LienReleaseModal({
         signerName: snapshot.signerName ?? '',
         signerTitle: snapshot.signerTitle ?? '',
       }
-      const ok = openHtmlPreviewWindow(buildLienWaiverPrintHtml(historyForm, historyFields, jobNumber, renderSignature(r)))
-      if (!ok) showToast('Popup blocked — allow popups to view the release.', 'error')
+      // v2.4335: the page as signed, with the stored ink.
+      void openHtmlWindowWhenReady(async () => buildLienWaiverPrintHtml(historyForm, historyFields, jobNumber, await lienReleaseRowSignatureWithInk(r, deviceNameFor(r)))).then((ok) => {
+        if (!ok) showToast('Popup blocked — allow popups to view the release.', 'error')
+      })
     },
-    [jobNumber, renderSignature, showToast],
+    [jobNumber, deviceNameFor, showToast],
   )
 
   const voidHistoryRelease = useCallback(
@@ -882,7 +904,10 @@ export default function LienReleaseModal({
     if (!row) return
     setPdfBusy(true)
     try {
-      const blob = await buildLienWaiverPdfBlob(formType, fields, renderSignature(row))
+      // v2.4335: a signed waiver downloads as it was signed — the stored PDF with the ink, the same file
+      // the GC gets (it was rebuilt here without the picture, the name in italic type over the line).
+      const blob =
+        lienReleaseStatus(row) === 'signed' ? await lienReleaseSignedPdfBlob(row, formType, fields, deviceNameFor(row)) : await buildLienWaiverPdfBlob(formType, fields, renderSignature(row))
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -896,7 +921,7 @@ export default function LienReleaseModal({
     } finally {
       setPdfBusy(false)
     }
-  }, [fields, formType, jobNumber, pdfBusy, ensureMinted, renderSignature, showToast])
+  }, [fields, formType, jobNumber, pdfBusy, ensureMinted, renderSignature, deviceNameFor, showToast])
 
   // v2.4314 — the window in six steps: what a fix was waved through, the details in edit mode, the history opened.
   const navigate = useNavigate()
@@ -1454,7 +1479,7 @@ export default function LienReleaseModal({
                   <MarkedWaiverAmount text={p} amountLabel={lienWaiverMoney(fields.amount)} on={amountHot} />
                 </p>
               ))}
-              <LienWaiverFootPreview foot={foot} highlight={cur?.n === 5 ? (iAmTheSigner ? '5 · You sign here' : '5 · He signs here') : null} />
+              <LienWaiverFootPreview foot={foot} inkUrl={rowStatus === 'signed' ? inkUrl : null} highlight={cur?.n === 5 ? (iAmTheSigner ? '5 · You sign here' : '5 · He signs here') : null} />
             </div>
             {cur?.n === 1 && cur.state === 'warn' ? <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--text-amber-800)', fontWeight: 600 }}>Greyed until step 1 is settled.</div> : null}
           </div>
