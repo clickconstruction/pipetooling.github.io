@@ -1413,6 +1413,7 @@ export function JobsGcReviewModal({
                   {r.billed != null && r.key !== r.jobId
                     ? (() => {
                         // The two waivers a bill carries (v2.4280): they hold · we owe. A chip opens the job, where the Bill tab's door adds or sends the waiver.
+                        // Calm like the Bill tab since v2.4317: grey until a waiver on the bill is under way, amber only when its next step is owed.
                         const cell = lienWaiverCellForBill(waiverRows, r.key, billSettled({ id: r.key, amount: r.billed }, (r.billPayments ?? []).map((p) => ({ invoice_id: p.invoice_id, amount: Number(p.amount ?? 0) }))))
                         const tone = (t: 'green' | 'amber' | 'grey') =>
                           t === 'green' ? { background: 'var(--bg-green-tint)', color: 'var(--text-green-700)' } : t === 'amber' ? { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' } : { background: 'var(--bg-subtle)', color: 'var(--text-muted)', border: '1px solid var(--border)' }

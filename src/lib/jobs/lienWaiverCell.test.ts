@@ -34,11 +34,11 @@ function rel(over: Partial<JobLienReleaseRow> & { id: string; form_type: string;
 }
 
 describe('lienWaiverCellForBill (v2.4275)', () => {
-  it('a bill with nothing yet: the conditional is owed while the money is out, the unconditional waits for it', () => {
+  it('a bill with nothing yet: adding the conditional is the next move, and both chips stay grey (calm since v2.4309)', () => {
     const cell = lienWaiverCellForBill([], 'inv-1', false)
     expect(cell.next).toBe('add_conditional')
-    expect(cell.chips.map((c) => c.text)).toEqual(['Conditional · none — send it', 'Unconditional · when paid'])
-    expect(cell.chips.map((c) => c.tone)).toEqual(['amber', 'grey'])
+    expect(cell.chips.map((c) => c.text)).toEqual(['Conditional · not added', 'Unconditional · when paid'])
+    expect(cell.chips.map((c) => c.tone)).toEqual(['grey', 'grey'])
   })
   it('a sent conditional and an open bill: nothing owed; once settled, the unconditional is', () => {
     const rows = [rel({ id: 'c', form_type: 'conditional_progress', invoice_ids: ['inv-1'], status: 'signed', signed_at: '2026-09-30T16:00:00Z', sent_to_customer_at: '2026-09-30T16:05:00Z' })]
@@ -78,17 +78,17 @@ describe('lienWaiverCellForBill (v2.4275)', () => {
   })
 })
 
-describe('lienWaiverCellForBill — calm, the Bill tab (v2.4309)', () => {
+describe('lienWaiverCellForBill — calm, the Bill tab (v2.4309) and GC Review (v2.4317)', () => {
   const sentConditional = rel({ id: 'c', form_type: 'conditional_progress', invoice_ids: ['inv-1'], status: 'signed', signed_at: '2026-09-30T16:00:00Z', sent_to_customer_at: '2026-09-30T16:05:00Z' })
 
   it('a bill with no waiver started stays grey, open or settled, and still offers to add one', () => {
-    const open = lienWaiverCellForBill([], 'inv-1', false, { calm: true })
+    const open = lienWaiverCellForBill([], 'inv-1', false)
     expect(open.chips.map((c) => [c.text, c.tone])).toEqual([
       ['Conditional · not added', 'grey'],
       ['Unconditional · when paid', 'grey'],
     ])
     expect([open.next, open.underWay, open.nextIsOwed]).toEqual(['add_conditional', false, false])
-    const settled = lienWaiverCellForBill([], 'inv-1', true, { calm: true })
+    const settled = lienWaiverCellForBill([], 'inv-1', true)
     expect(settled.chips.map((c) => [c.text, c.tone])).toEqual([
       ['Conditional · not added', 'grey'],
       ['Unconditional · not added', 'grey'],
@@ -98,16 +98,11 @@ describe('lienWaiverCellForBill — calm, the Bill tab (v2.4309)', () => {
 
   it('a waiver under way keeps its amber: signed and not sent, or the unconditional owed after a sent conditional', () => {
     const signed = rel({ id: 's', form_type: 'conditional_final', invoice_ids: ['inv-1'], status: 'signed', signed_at: '2026-09-30T10:00:00Z' })
-    const cell = lienWaiverCellForBill([signed], 'inv-1', false, { calm: true })
+    const cell = lienWaiverCellForBill([signed], 'inv-1', false)
     expect(cell.chips[0]).toEqual({ half: 'conditional', text: 'Conditional ✓ signed · send it', tone: 'amber' })
     expect([cell.next, cell.underWay, cell.nextIsOwed]).toEqual(['send', true, true])
-    const owed = lienWaiverCellForBill([sentConditional], 'inv-1', true, { calm: true })
+    const owed = lienWaiverCellForBill([sentConditional], 'inv-1', true)
     expect(owed.chips[1]).toEqual({ half: 'unconditional', text: 'Unconditional owed · settled', tone: 'amber' })
     expect([owed.next, owed.nextIsOwed]).toEqual(['add_unconditional', true])
-  })
-
-  it('GC Review keeps the move before the call: without calm, an open bill with no conditional reads amber', () => {
-    expect(lienWaiverCellForBill([], 'inv-1', false).chips[0]).toEqual({ half: 'conditional', text: 'Conditional · none — send it', tone: 'amber' })
-    expect(lienWaiverCellForBill([], 'inv-1', false).nextIsOwed).toBe(false)
   })
 })
