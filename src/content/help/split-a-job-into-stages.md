@@ -39,6 +39,12 @@ How it bills over the job: Rough-in passes → *draw 1* is ready → {{button:gr
 
 ## Set up the stages in ① Line Items
 
+:::example Under one line in ① Line Items, before and after you press In order
+◆ **Top-out** $3,000 {{button:outline|In order}} {{button:amber|Any time}}
+
+② **Top-out** $3,000 {{button:dark|In order}} {{button:outline|Any time}}
+:::
+
 1. Open the job from Jobs → Pipeline → {{button:outline|Edit}} → **Bill**. Find **① Line Items**.
 2. Enter one line per stage of work, with its price.
 3. Under each stage's name, press **In order**. The badge at the left of the row turns into its number. In-order rows are numbered top to bottom.
@@ -70,6 +76,16 @@ Click the blue **Multiple Segment Generator** link in the ① Line Items caption
 The money card at the top of **② Bills and payments** shows the whole job as blocks. There is one block per line item, in stage order. The in-order stages come first by number, then the any-time stages. Each block's color is where its draw stands. Green is {{chip:green|Paid}}. Blue is {{chip:blue|Billed}}. Light blue is **Drafted**, a Ready to Bill invoice that has not gone out. Yellow is {{chip:yellow|Ready to bill}}, with nothing drafted yet. Hatched yellow **waits on its stage**. It passed, but the stage above it is not on an invoice yet. Gray is **later**. A dark marker across the blocks is the job's **% done**.
 
 Under the blocks, each line gets a row. The row says where its work stands when the job has stage dates. Examples are *passed Sep 4* and *on site Sep 9 – 10 · 50%*. It always says where its money stands. Examples are *billed Sep 5 · open*, *paid Aug 29* and *after it passes inspection*. A row the rule says is ready reads *ready to bill* and gets a {{button:green|Bill it}} button.
+
+:::example The money card's rows on a three-draw job with a permit line
+**Draw 1 · Rough-in** $3,000 {{chip:green|paid Aug 29}}
+
+**Draw 2 · Top-out** $3,000 {{chip:yellow|ready to bill}} {{button:green|Bill it}}
+
+**Draw 3 · Trim** $3,000 {{chip:gray|after it passes inspection}}
+
+**◆ Permit & misc** $600 {{chip:gray|not billed}}
+:::
 
 Money can go out as a **dollar-amount bill**, from **Bill part of it** or a partial invoice. That bill is not tied to any one line item. So it shows as blue **hatching** across the blocks, first items first. A line covered to the cent reads *covered* on its row. A line covered in part says how much, like *$1,000 of $3,000 covered*.
 
