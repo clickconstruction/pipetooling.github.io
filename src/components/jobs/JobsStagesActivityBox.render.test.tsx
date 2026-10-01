@@ -144,6 +144,45 @@ describe('JobsStagesActivityBox', () => {
     expect(openJobActivityExpand).toHaveBeenCalledWith(job)
   })
 
+  it('See all carries the report count and a report line wears the link blue (v2.4324)', async () => {
+    const job = makeJob({ job_name: 'Water Sample Test' })
+    renderWithProviders(
+      <JobsStagesActivityBox
+        job={job}
+        ctx={makeCtx({
+          jobThreadActivityByJobId: {
+            [job.id]: [
+              note('n1', '2026-09-30T17:09:00Z', 'Leaving job', 'Abraham'),
+              { kind: 'report' as const, report: { id: 'r1', created_at: '2026-09-30T17:15:00Z', created_by_name: 'Abraham', template_name: 'Crew report' } },
+            ],
+          } as unknown as StagesRowRenderContext['jobThreadActivityByJobId'],
+        })}
+        submitNoteWithBody={vi.fn(async () => true)}
+      />,
+    )
+    await settle()
+    expect(screen.getByLabelText('Expand job activity').textContent).toBe('See all 2 · 1 report')
+    expect(screen.getByLabelText('Entry 2, a report')).toBeTruthy()
+    expect(screen.getByLabelText('Entry 1')).toBeTruthy()
+  })
+
+  it('before the feed loads, See all reads the job’s report count', async () => {
+    const job = makeJob({ job_name: 'Water Sample Test', report_count: 1 })
+    renderWithProviders(
+      <JobsStagesActivityBox
+        job={job}
+        ctx={makeCtx({
+          jobThreadStatsByJobId: {
+            [job.id]: { note_count: 3, last_note_at: '2026-09-30T17:09:00Z', last_note_preview: 'Leaving job', last_note_author_name: 'Abraham' },
+          } as unknown as StagesRowRenderContext['jobThreadStatsByJobId'],
+        })}
+        submitNoteWithBody={vi.fn(async () => true)}
+      />,
+    )
+    await settle()
+    expect(screen.getByLabelText('Expand job activity').textContent).toBe('See all · 1 report')
+  })
+
   it('an empty box has no See all; the composer takes the strip’s place under the box (v2.4302)', async () => {
     const job = makeJob({ job_name: 'Cop Properties' })
     renderWithProviders(

@@ -14,8 +14,8 @@ import type { StagesUpcomingAppointment } from '../../lib/stagesUpcomingSchedule
  * {@link JobActivityView}, the same body the expanded row's panel renders
  * (v2.1673), so the two can no longer drift apart.
  *
- * Opened by the activity box's corner expand button and the row's "N Reports"
- * chip. Closed by ✕, Escape, or the backdrop; Escape while typing first blurs
+ * Opened by See all: the activity box's strip on a wide row, the Job column's
+ * pill where there is no box (it was the "N Reports" chip until v2.4324). Closed by ✕, Escape, or the backdrop; Escape while typing first blurs
  * the composer (draft kept) so a stray key never eats an unfinished note.
  * Below 700px the card drops its inset and rounding and goes edge to edge —
  * the whole screen is the card on a phone.

@@ -27,6 +27,12 @@ import {
  * Edits write clock_sessions.notes / job_schedule_blocks.note directly; RLS
  * decides who may (pay-approved office for sessions, dispatch editors for
  * blocks) and denials surface as a toast.
+ *
+ * Since v2.4324 the man-hours chip is the row's one door to time (the row's
+ * Sessions link is gone): when the opener passes `onOpenSessionNotes` (office
+ * roles), the header carries **Session notes ›**, which closes this window and
+ * opens Session notes pinned to the job — the place to move a session that
+ * belongs on another job.
  */
 
 type Props = {
@@ -34,10 +40,12 @@ type Props = {
   hcpNumber: string | null
   clickNumber?: string | null
   jobName: string | null
+  /** Office roles: opens Session notes pinned to this job. Absent = no link. */
+  onOpenSessionNotes?: (() => void) | null
   onClose: () => void
 }
 
-export default function JobHoursStoryModal({ jobId, hcpNumber, clickNumber, jobName, onClose }: Props) {
+export default function JobHoursStoryModal({ jobId, hcpNumber, clickNumber, jobName, onOpenSessionNotes, onClose }: Props) {
   const { showToast } = useToastContext()
   const narrow = useMatchMedia('(max-width: 700px)')
   const [loading, setLoading] = useState(true)
@@ -51,6 +59,31 @@ export default function JobHoursStoryModal({ jobId, hcpNumber, clickNumber, jobN
   const [copied, setCopied] = useState(false)
 
   useBodyScrollLock(true)
+
+  const sessionNotesLink = onOpenSessionNotes ? (
+    <button
+      type="button"
+      data-hours-session-notes=""
+      onClick={() => {
+        onClose()
+        onOpenSessionNotes()
+      }}
+      title="Every session on this job, one line each, where you can move one to another job"
+      style={{
+        background: 'none',
+        border: 'none',
+        padding: narrow ? '0.45rem 0' : 0,
+        color: 'var(--text-link)',
+        fontWeight: 600,
+        fontSize: '0.76rem',
+        cursor: 'pointer',
+        whiteSpace: 'nowrap',
+        flexShrink: 0,
+      }}
+    >
+      Session notes ›
+    </button>
+  ) : null
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -251,7 +284,9 @@ export default function JobHoursStoryModal({ jobId, hcpNumber, clickNumber, jobN
                 ? 'Loading…'
                 : `${formatMinutesAsHhMm(totals.totalMinutes)} worked · ${totals.peopleCount} ${totals.peopleCount === 1 ? 'person' : 'people'} · ${totals.dayCount} ${totals.dayCount === 1 ? 'day' : 'days'}${totals.openSessionCount > 0 ? ` · ${totals.openSessionCount} clocked in now` : ''}`}
             </div>
+            {narrow ? sessionNotesLink : null}
           </div>
+          {narrow ? null : sessionNotesLink}
           <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.76rem', color: 'var(--text-slate-600)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
             <input type="checkbox" checked={overlay} onChange={(e) => setOverlay(e.target.checked)} style={{ margin: 0, cursor: 'pointer' }} />
             Overlay schedule

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
  * Render tests for the full-page Job activity modal (opened by the activity
- * box's expand button and the row's "N Reports" chip): day-grouped numbered
+ * box's See all and the row's See all pill): day-grouped numbered
  * feed with interleaved timeline items, the All/Notes/Reports/Status/Billing/
  * Crew filter, the % complete editor, team/people header, ✕ / Escape close,
  * and the composer posting through the shared thread-note pipeline.

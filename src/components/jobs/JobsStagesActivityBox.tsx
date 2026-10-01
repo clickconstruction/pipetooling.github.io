@@ -4,6 +4,7 @@ import type { StagesRowRenderContext } from './jobsStagesRowShared'
 import { buildJobActivityBoxFeed, stripRedundantStampBody, type JobActivityBoxEntry } from '../../lib/jobs/jobActivityBoxFeed'
 import { formatStagesCompactWindow, formatStagesNextDateLabel } from '../../lib/stagesUpcomingSchedule'
 import { JobsWorkedTodayReportIcon } from '../icons/JobsWorkedTodayReportIcon'
+import { seeAllDoorWords } from '../../lib/jobs/stagesRowDoors'
 import {
   formatDispatchNoteDaysAgoShort,
   formatDispatchNoteWeekdayShortTimeChicago,
@@ -23,7 +24,9 @@ function entryMetaLabel(atIso: string): string {
  * references: "check note 3" never shifts) —
  * a strip UNDER the box (v2.4302: See all · + Add · report pill — nothing
  * sits on the notes any more), and a composer bar that opens in the strip's
- * place. The box keeps its height; the strip uses the dead space below. The feed
+ * place. Since v2.4324 See all is the row's one door to the trail (the Job
+ * column's Reports pill is gone where the box draws): it carries the report
+ * count, and a report's number wears the link blue. The box keeps its height; the strip uses the dead space below. The feed
  * beyond the latest entry lazy-loads on first pointer interaction via the
  * thread expand's existing loader; posting goes through the same thread-note
  * pipeline as the panel composer (optimistic entry, realtime for others).
@@ -68,10 +71,19 @@ const numStyle: CSSProperties = {
   marginTop: 1,
 }
 
+/** A report's number wears the link blue (v2.4324): the row's Reports pill is gone, so the box says which lines are reports. */
+const reportNumStyle: CSSProperties = {
+  ...numStyle,
+  border: '1px solid var(--text-link)',
+  color: 'var(--text-link)',
+  background: 'var(--bg-blue-tint)',
+}
+
 function entryLine(e: JobActivityBoxEntry) {
+  const report = e.kind === 'report'
   return (
-    <div key={`${e.kind}-${e.number}-${e.atIso}`} style={{ display: 'flex', alignItems: 'flex-start', marginTop: 5 }}>
-      <span style={numStyle} aria-label={`Entry ${e.number}`}>{e.number}</span>
+    <div key={`${e.kind}-${e.number}-${e.atIso}`} data-activity-entry-kind={e.kind} style={{ display: 'flex', alignItems: 'flex-start', marginTop: 5 }}>
+      <span style={report ? reportNumStyle : numStyle} aria-label={report ? `Entry ${e.number}, a report` : `Entry ${e.number}`}>{e.number}</span>
       <span
         style={{
           minWidth: 0,
@@ -84,6 +96,11 @@ function entryLine(e: JobActivityBoxEntry) {
         }}
         title={`(${e.number}) ${formatDispatchNoteWeekdayShortTimeChicago(e.atIso)} ${e.authorName ?? ''} — ${e.body}`}
       >
+        {report ? (
+          <span style={{ marginRight: 4 }}>
+            <JobsWorkedTodayReportIcon decorative />
+          </span>
+        ) : null}
         <span style={{ color: 'var(--text-muted)', fontSize: '0.6875rem' }}>
           {entryMetaLabel(e.atIso)}
         </span>{' '}
@@ -289,7 +306,7 @@ export function JobsStagesActivityBox({ job, ctx, loadActivityForJob, submitNote
                 <path d="M6.5 13.5h-4v-4" />
                 <path d="M2.5 13.5 7 9" />
               </svg>
-              {loaded ? `See all ${feed.length}` : 'See all'}
+              {seeAllDoorWords(loaded ? feed.length : null, loaded ? feed.filter((e) => e.kind === 'report').length : (job.report_count ?? 0))}
             </button>
           ) : null}
           <div style={{ flex: 1 }} />

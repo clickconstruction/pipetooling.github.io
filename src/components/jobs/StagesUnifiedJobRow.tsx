@@ -12,7 +12,7 @@ import type { Database } from '../../types/database'
 import type { StagesUnifiedRowContext } from './JobsStagesUnifiedTable'
 import { Fragment } from 'react'
 import { JobsStagesActivityBox } from './JobsStagesActivityBox'
-import { STAGES_EDIT_MODE_RAIL_WIDTH, stagesOpenRowStyle, accountManOnlyStripeStyle, renderJobAddressWithMap, renderStagesEditModeRail, renderStagesJobColumnEstimateFooter, renderStagesJobHcpSubline, renderStagesProjectBannerRow, renderStagesThreadExpandButton, renderStagesViewReportsButton, shouldSuppressStagesRowJobThreadToggle, stagesRowHasProjectBanner, stagesActionMoveStackStyle } from './jobsStagesRowShared'
+import { STAGES_EDIT_MODE_RAIL_WIDTH, stagesOpenRowStyle, accountManOnlyStripeStyle, renderJobAddressWithMap, renderStagesEditModeRail, renderStagesJobColumnEstimateFooter, renderStagesJobHcpSubline, renderStagesProjectBannerRow, renderStagesSeeAllButton, renderStagesThreadExpandButton, shouldSuppressStagesRowJobThreadToggle, stagesRowHasProjectBanner, stagesActionMoveStackStyle } from './jobsStagesRowShared'
 import { ShareJobButton } from './ShareJobButton'
 import { StagesAiaG702Button, StagesHazmatFeeButton, StagesLienInstrumentsButton, StagesLienReleaseButton, StagesRowIcons, StagesTestReportButton } from './StagesRowActionButtons'
 import { StagesCrewLine } from './StagesCrewLine'
@@ -24,6 +24,7 @@ import { progressPaymentForJob } from '../../lib/jobs/progressPaymentForJob'
 import { showAiaG702G703 } from '../../lib/aiaG702G703Eligibility'
 import { stagesAddedStampLabel } from '../../lib/jobsStagesSortMode'
 import { stagesBillSentPctAlert } from '../../lib/jobs/stagesBillSentPctAlert'
+import { datesBlockBilledYmd } from '../../lib/jobs/stagesRowDoors'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
@@ -127,7 +128,7 @@ export function StagesUnifiedJobRow({ row, t }: { row: StagesUnifiedJobRowKind; 
         <div style={{ flex: 1, minWidth: 0 }}>
         <StagesCrewLine job={j} />
         {renderStagesJobHcpSubline(j, { marginTop: '0.15rem' }, t.stagesSortMode === 'added' ? stagesAddedStampLabel(j.created_at) : null)}
-        {renderStagesFieldAndBillingLines(j)}
+        {renderStagesFieldAndBillingLines(j, { datesBilledYmd: t.billedLienRunway && bundleInv ? datesBlockBilledYmd(bundleInv) : null })}
         </div>
         </div>
       </td>
@@ -147,11 +148,14 @@ export function StagesUnifiedJobRow({ row, t }: { row: StagesUnifiedJobRowKind; 
         {renderJobCustomerLine(j)}
         {bundleInv != null && row.kind === 'job_with_merged_billed' ? (
           // The "Billed line: $X open" text was redundant with the
-          // Progress column (v2.1155) — the Reports pill moved here
-          // from the Activity cell instead.
-          <div style={{ marginTop: '0.25rem' }}>
-            {renderStagesViewReportsButton(stagesRowSharedCtx, j)}
-          </div>
+          // Progress column (v2.1155) — the See all pill (the Reports pill
+          // until v2.4324) sits here instead; on a wide screen the activity
+          // box's strip is the door, so nothing draws.
+          !wideViewport ? (
+            <div style={{ marginTop: '0.25rem' }}>
+              {renderStagesSeeAllButton(stagesRowSharedCtx, j)}
+            </div>
+          ) : null
         ) : bundleInv != null ? (
           <div
             style={{ fontSize: '0.75rem', color: 'var(--text-blue-800)', marginTop: '0.25rem' }}
@@ -161,7 +165,7 @@ export function StagesUnifiedJobRow({ row, t }: { row: StagesUnifiedJobRowKind; 
           </div>
         ) : null}
         {renderStagesJobColumnEstimateFooter(j.linkedEstimateForStages)}
-        {renderStagesJobCellActivityFooter(j, bundleInv ?? undefined, row.kind === 'job_with_merged_billed' ? { hideReportsButton: true } : undefined)}
+        {renderStagesJobCellActivityFooter(j, bundleInv ?? undefined, { hideSeeAllButton: row.kind === 'job_with_merged_billed' || wideViewport })}
         </div>
         {wideViewport ? (
           <JobsStagesActivityBox

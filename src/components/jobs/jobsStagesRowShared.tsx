@@ -62,6 +62,7 @@ import { legalRowChip, type LegalMatterRow } from '../../lib/legal/legalMatters'
 import type { JobContractCoverage } from '../../lib/jobs/jobContractCoverage'
 import { telHrefFor } from '../../lib/phoneContact'
 import { scheduleDispatchWeekUrl } from '../../lib/scheduleDispatchDayLink'
+import { crewBillLineRepeatsDates, seeAllDoorWords } from '../../lib/jobs/stagesRowDoors'
 
 type CustomerRow = Database['public']['Tables']['customers']['Row']
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
@@ -81,8 +82,11 @@ export type StagesRowRenderContext = {
   openEditJobAndCreateCustomerFlow: (job: JobWithDetails) => void
   /** Opens the customer profile modal (v2.1322); optional — surfaces without the provider omit it. */
   openCustomerProfile?: (customerId: string) => void
-  /** Opens the job work-story modal from the man-hours chip (v2.1766); optional like openCustomerProfile. */
-  openJobHoursStory?: (target: { jobId: string; hcpNumber: string | null; clickNumber?: string | null; jobName: string | null }) => void
+  /**
+   * Opens the job work-story modal from the man-hours chip (v2.1766); optional like openCustomerProfile.
+   * Since v2.4324 the chip is the row's one door to time: `onOpenSessionNotes` puts a Session notes link in the window's header.
+   */
+  openJobHoursStory?: (target: { jobId: string; hcpNumber: string | null; clickNumber?: string | null; jobName: string | null; onOpenSessionNotes?: (() => void) | null }) => void
   stagesManHoursByJobId: Map<string, number>
   stagesManHoursLoading: boolean
   /** v2.3419: where the crew is per job (`useJobCrewPositions`); empty until the feed answers. */
@@ -98,9 +102,10 @@ export type StagesRowRenderContext = {
   /** v2.3197: the activity box's report pill — opens New Report preselected on this job. Absent = no pill. */
   openNewReportForJob?: (job: JobWithDetails) => void
   /**
-   * Opens the Pipeline "Session notes" view pinned to this job (the per-job
-   * door beside "N Reports"). Null/absent when the viewer's role can't open it —
-   * the tables read it from `SessionNotesOpenerContext`.
+   * Opens the Pipeline "Session notes" view pinned to this job — since v2.4324
+   * from the work-story window's header, reached by the man-hours chip (the
+   * row's Sessions link is gone). Null/absent when the viewer's role can't open
+   * it — the tables read it from `SessionNotesOpenerContext`.
    */
   openSessionNotesForJob?: ((job: JobWithDetails) => void) | null
   openJobCalendar: (job: JobWithDetails) => void
@@ -503,7 +508,17 @@ function whenLine(label: string, tone: string, parts: StripLineParts, onClick: (
   )
 }
 
-export function renderStagesFieldAndBillingLines(ctx: StagesRowRenderContext, job: JobWithDetails) {
+export function renderStagesFieldAndBillingLines(
+  ctx: StagesRowRenderContext,
+  job: JobWithDetails,
+  opts?: {
+    /**
+     * The date the row's dates block prints on its Billed line (`datesBlockBilledYmd`), when the row
+     * draws one. A Billed line here would repeat it, so it goes (v2.4324); a Paid line stays.
+     */
+    datesBilledYmd?: string | null
+  },
+) {
   const { showToast, stagesManHoursByJobId, stagesManHoursLoading, stagesLaborBreakdownByJobId, openJobCalendar } = ctx
   const jYmd = deriveStagesFieldReferenceYmd({
     lastWorkDate: job.last_work_date,
@@ -520,7 +535,11 @@ export function renderStagesFieldAndBillingLines(ctx: StagesRowRenderContext, jo
   }), jCode ? `j: ${jCode}.` : null]
     .filter(Boolean)
     .join(' ') || null
-  const bill = bDetail ? stripBillParts(bDetail, todayYmd) : null
+  const billParts = bDetail ? stripBillParts(bDetail, todayYmd) : null
+  const bill =
+    billParts && crewBillLineRepeatsDates({ billLabel: billParts.label, jobStatus: job.status, datesBilledYmd: opts?.datesBilledYmd ?? null })
+      ? null
+      : billParts
   const bTitle = bDetail ? `${bDetail.tooltip} · b: ${formatEstimatedCompletionDisplay(bDetail.ymd) ?? '—'}` : undefined
   const lineStyle = {
     fontSize: '0.75rem',
@@ -592,6 +611,14 @@ export function renderStagesFieldAndBillingLines(ctx: StagesRowRenderContext, jo
               .join(' · ')
           : 'Man-hours applied (crew assignments)'
         const openStory = ctx.openJobHoursStory
+        const openSessionNotes = ctx.openSessionNotesForJob
+        const storyTarget = {
+          jobId: job.id,
+          hcpNumber: job.hcp_number,
+          clickNumber: job.click_number,
+          jobName: job.job_name,
+          onOpenSessionNotes: openSessionNotes ? () => openSessionNotes(job) : null,
+        }
         return (
           <div
             role={openStory ? 'button' : undefined}
@@ -600,7 +627,7 @@ export function renderStagesFieldAndBillingLines(ctx: StagesRowRenderContext, jo
               openStory
                 ? (e) => {
                     e.stopPropagation()
-                    openStory({ jobId: job.id, hcpNumber: job.hcp_number, clickNumber: job.click_number, jobName: job.job_name })
+                    openStory(storyTarget)
                   }
                 : undefined
             }
@@ -610,7 +637,7 @@ export function renderStagesFieldAndBillingLines(ctx: StagesRowRenderContext, jo
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault()
                       e.stopPropagation()
-                      openStory({ jobId: job.id, hcpNumber: job.hcp_number, clickNumber: job.click_number, jobName: job.job_name })
+                      openStory(storyTarget)
                     }
                   }
                 : undefined
@@ -1099,57 +1126,48 @@ export function renderStagesThreadExpandButton(ctx: StagesRowRenderContext, jobI
   )
 }
 
-/** The "N Report(s)" pill — normally the Activity cell's footer; billed merged
- * rows render it in the Job column instead (v2.1155), where the redundant
- * "Billed line: $X open" text used to sit. At zero reports it demotes to
- * quiet borderless "Reports" text (v2.1475): a bordered pill in an otherwise
- * empty Activity cell was the loudest element on the row while advertising
- * nothing, and the contrast is what lets rows with real field activity pop. */
-export function renderStagesViewReportsButton(ctx: StagesRowRenderContext, job: JobWithDetails) {
-  const cellReportCount = job.report_count ?? 0
-  const hasReports = cellReportCount > 0
-  const openSessionNotes = ctx.openSessionNotesForJob
+/**
+ * The row's door into the job's notes and reports where there is no activity
+ * box: under 1100 px, on standalone bill rows and on the phone cards (v2.4324;
+ * it was the "N Reports" pill, which opened the same window as the box's
+ * See all, plus a Sessions link the man-hours chip now carries). Same words as
+ * the box's door (`seeAllDoorWords`): quiet *See all* text, bordered blue with
+ * the count when the job has reports, so a row with field reports still stands
+ * out (v2.1475). Billed merged rows draw it higher in the Job column (v2.1155).
+ */
+export function renderStagesSeeAllButton(ctx: StagesRowRenderContext, job: JobWithDetails) {
+  const reports = job.report_count ?? 0
+  const hasReports = reports > 0
   return (
     <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', gap: 2, flexShrink: 0 }}>
       <button
         type="button"
         onClick={() => ctx.openJobActivityExpand(job)}
-        title="Open the full-page job activity view"
+        title="Open every note and report on this job"
+        aria-label="Expand job activity"
+        data-stages-see-all=""
         style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 4,
           padding: '0.2rem 0.5rem',
           fontSize: '0.75rem',
           background: 'none',
-          color: hasReports ? 'var(--text-link)' : 'var(--text-faint)',
+          color: hasReports ? 'var(--text-link)' : 'var(--text-muted)',
           border: hasReports ? '1px solid #2563eb' : '1px solid transparent',
           borderRadius: 4,
           cursor: 'pointer',
           whiteSpace: 'nowrap',
         }}
       >
-        {hasReports ? `${cellReportCount} Report${cellReportCount !== 1 ? 's' : ''}` : 'Reports'}
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M9.5 2.5h4v4" />
+          <path d="M13.5 2.5 9 7" />
+          <path d="M6.5 13.5h-4v-4" />
+          <path d="M2.5 13.5 7 9" />
+        </svg>
+        {seeAllDoorWords(null, reports)}
       </button>
-      {openSessionNotes ? (
-        // The per-job door into Session notes: every clock session on this job,
-        // one line each, pinned on open. Quiet like zero-report "Reports".
-        <button
-          type="button"
-          onClick={() => openSessionNotes(job)}
-          title="Every clock session on this job, one line each — Session notes"
-          aria-label={`Session notes for ${(job.job_name ?? '').trim() || 'this job'}`}
-          style={{
-            padding: '0.2rem 0.5rem',
-            fontSize: '0.75rem',
-            background: 'none',
-            color: 'var(--text-faint)',
-            border: '1px solid transparent',
-            borderRadius: 4,
-            cursor: 'pointer',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          Sessions
-        </button>
-      ) : null}
     </div>
   )
 }
@@ -1160,6 +1178,8 @@ export function renderStagesViewReportsButton(ctx: StagesRowRenderContext, job: 
  * send-as-task (purple). Lived at the left edge of the Activity cell until
  * v2.1530; now renders at the left edge of the Crew & Dates cell in both
  * Stages tables (owner request — the mobile card list has its own shortcut row).
+ * The ✍ contract door (v2.2681) left the stack in v2.4324: the contract chip
+ * under the job opens the same window and says where the contract stands.
  */
 export function renderStagesQuickActionsStack(ctx: StagesRowRenderContext, job: JobWithDetails) {
   const {
@@ -1243,30 +1263,6 @@ export function renderStagesQuickActionsStack(ctx: StagesRowRenderContext, job: 
             >
               <path d="M128 96L512 96C547.3 96 576 124.7 576 160L576 480C576 515.3 547.3 544 512 544L128 544C92.7 544 64 515.3 64 480L64 160C64 124.7 92.7 96 128 96zM128 192L128 480L232 480L232 192L128 192zM280 192L280 480L360 480L360 192L280 192zM408 192L408 480L512 480L512 192L408 192z" />
             </svg>
-          </button>
-        ) : null}
-        {ctx.onOpenJobContract ? (
-          <button
-            type="button"
-            onClick={() => ctx.onOpenJobContract?.(job)}
-            title={
-              ctx.jobContractCoverageByJobId?.get(job.id)?.kind === 'none'
-                ? 'Send contract — this job has no signed agreement on file'
-                : 'Contract — send, resend, or view the signed record'
-            }
-            aria-label="Open the job contract"
-            style={{
-              ...quickIconButtonStyle,
-              cursor: 'pointer',
-              color: 'var(--text-orange-700)',
-              fontSize: 15,
-              lineHeight: 1,
-              borderRadius: 6,
-              background: ctx.jobContractCoverageByJobId?.get(job.id)?.kind === 'none' ? 'var(--bg-orange-tint)' : 'none',
-              border: ctx.jobContractCoverageByJobId?.get(job.id)?.kind === 'none' ? '1.5px solid #c2410c' : 'none',
-            }}
-          >
-            <span aria-hidden>✍</span>
           </button>
         ) : null}
         {customerPhone ? (
@@ -1363,7 +1359,8 @@ export function renderStagesQuickActionsStack(ctx: StagesRowRenderContext, job: 
 /**
  * Job-cell activity footer (v2.1555): the survivors of the Activity column's
  * removal — invoice jump chips, the bill emailed/Resend hint, and the
- * Reports button — rendered at the bottom of the Job cell in both Stages
+ * See all pill (the Reports button until v2.4324; hidden where the activity
+ * box draws its own) — rendered at the bottom of the Job cell in both Stages
  * tables. The note-count chevron rides the job-name line via
  * renderStagesThreadExpandButton; the mobile card list keeps its own zones.
  */
@@ -1373,8 +1370,11 @@ export function renderStagesJobCellActivityFooter(
   opts?: {
     /** Billing line whose bill emailed/Resend hint shows under the job. */
     billingLineForStripeHint?: JobsLedgerInvoice | null
-    /** Billed merged rows render the Reports pill higher in the Job cell (v2.1155). */
-    hideReportsButton?: boolean
+    /**
+     * No See all pill: the row draws the activity box, whose strip is the door (v2.4324),
+     * or a billed merged row draws the pill higher in the Job cell (v2.1155).
+     */
+    hideSeeAllButton?: boolean
   },
 ) {
   const { applyStagesInvoiceFocus, authRole, loadJobs } = ctx
@@ -1532,8 +1532,8 @@ export function renderStagesJobCellActivityFooter(
       {renderStagesInvoiceJumpChips(job)}
       {renderStagesContractChip()}
       {renderStagesStripeEmailedCustomerHint()}
-      {opts?.hideReportsButton ? null : (
-        <div style={{ marginTop: '0.35rem' }}>{renderStagesViewReportsButton(ctx, job)}</div>
+      {opts?.hideSeeAllButton ? null : (
+        <div style={{ marginTop: '0.35rem' }}>{renderStagesSeeAllButton(ctx, job)}</div>
       )}
     </>
   )

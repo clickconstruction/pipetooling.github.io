@@ -262,8 +262,8 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
   const renderStagesFieldAndBillingLines = (job: JobWithDetails) =>
     renderStagesFieldAndBillingLinesWithCtx(stagesRowSharedCtx, job)
   const renderJobCustomerLine = (job: JobWithDetails) => renderJobCustomerLineWithCtx(stagesRowSharedCtx, job)
-  const renderStagesJobCellActivityFooter = (job: JobWithDetails, billingLineForStripeHint?: JobsLedgerInvoice | null) =>
-    renderStagesJobCellActivityFooterWithCtx(stagesRowSharedCtx, job, { billingLineForStripeHint })
+  const renderStagesJobCellActivityFooter = (job: JobWithDetails, billingLineForStripeHint?: JobsLedgerInvoice | null, opts?: { hideSeeAllButton?: boolean }) =>
+    renderStagesJobCellActivityFooterWithCtx(stagesRowSharedCtx, job, { billingLineForStripeHint, ...opts })
 
   const renderStagesQuickActionsStack = (job: JobWithDetails) =>
     renderStagesQuickActionsStackWithCtx(stagesRowSharedCtx, job)
@@ -383,7 +383,8 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                   {renderJobAddressWithMap(stagesRowSharedCtx, j)}
                   {renderJobCustomerLine(j)}
                   {renderStagesJobColumnEstimateFooter(j.linkedEstimateForStages)}
-                  {renderStagesJobCellActivityFooter(j, stagesJobLevelStripeEmailedHintInvoice(j))}
+                  {/* v2.4324: where the activity box draws, its See all is the door — no pill here. */}
+                  {renderStagesJobCellActivityFooter(j, stagesJobLevelStripeEmailedHintInvoice(j), { hideSeeAllButton: wideViewport })}
                   </div>
                   {wideViewport ? (
                     <JobsStagesActivityBox

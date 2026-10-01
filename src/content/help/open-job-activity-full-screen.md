@@ -2,7 +2,7 @@
 title: open a job's activity full screen
 category: Office
 roles: all
-keywords: job activity, notes, full screen, fullscreen, expand, reports button, mobile, stages, thread, numbered, compact
+keywords: job activity, notes, full screen, fullscreen, expand, see all, reports button, mobile, stages, thread, numbered, compact
 order: 63
 ---
 A job's whole trail opens as one view on Jobs → Pipeline. You see every note, report, schedule, clock, status and billing event in one numbered feed.
@@ -13,8 +13,8 @@ It looks the same wherever you open it from. The floating window, the panel unde
 
 Three ways in, same content:
 
-1. Click the {{button:outline-blue|2 Reports}} button in a job's **Job** column. The count varies.
-2. On wide screens, click **See all** in the strip under the row's **Job activity box**.
+1. On wide screens, click **See all** in the strip under the row's **Job activity box**. When the job has reports it says so, like *See all 9 · 1 report*.
+2. On narrower screens and phone cards, click the **See all** button in the job's **Job** column. A blue border means the job has reports.
 3. Click a row's **▶ notes toggle** to open the panel under the row. Its ⛶ button takes it full screen.
 
 The job's identity sits at the top. That is the {{chip:blue|Job: 4821}} number badge, service type, job name and address. Close the floating window with the **✕**, the **Esc** key, or the dark backdrop. **Esc** also exits full screen.

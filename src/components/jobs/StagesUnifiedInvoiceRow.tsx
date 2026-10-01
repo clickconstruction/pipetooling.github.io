@@ -21,6 +21,7 @@ import { jobBillingUnallocatedDollars, type InvoiceWithJob } from '../../lib/job
 import { progressPaymentForJob } from '../../lib/jobs/progressPaymentForJob'
 import { showAiaG702G703 } from '../../lib/aiaG702G703Eligibility'
 import { stagesBillSentPctAlert } from '../../lib/jobs/stagesBillSentPctAlert'
+import { datesBlockBilledYmd } from '../../lib/jobs/stagesRowDoors'
 
 export type StagesUnifiedInvoiceRowKind = Extract<StageRow, { kind: 'invoice' }>
 
@@ -120,7 +121,7 @@ export function StagesUnifiedInvoiceRow({ row, t }: { row: StagesUnifiedInvoiceR
             {stagesInvoiceRowHcpLabel}
           </div>
         )}
-        {renderStagesFieldAndBillingLines(job)}
+        {renderStagesFieldAndBillingLines(job, { datesBilledYmd: t.billedLienRunway ? datesBlockBilledYmd(inv) : null })}
         {(() => {
           const eff = effectiveInvoiceEstBillDate(inv)
           const display = formatEstimatedCompletionDisplay(eff)

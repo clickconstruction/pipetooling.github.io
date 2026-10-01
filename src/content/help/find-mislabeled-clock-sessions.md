@@ -12,10 +12,10 @@ The time goes to a job, a bid, or the office. Sometimes the pick is wrong and th
 
 ## Where it is
 
-Go to **Jobs → Pipeline**. Two doors open the same view:
+Go to **Jobs → Pipeline**. Three doors open the same view:
 
 - The round **clock** button inside the search bar, next to the {{chip:gray|#}} jump chip. Use it for searching across everyone. Hover it and it says "Session notes".
-- The small **Sessions** link beside **N Reports** on any job row. It is also in the job activity pop-out. The view opens with that job already pinned. You see everyone who clocked time on it.
+- The **Session notes ›** link at the top of a job's hours window. Tap the ⏱ hours chip on any job row to open that window. The pop-out from **See all** has a **Sessions** button too. Either way the view opens with that job already pinned. You see everyone who clocked time on it.
 - A **day** in **Jobs → Job Summary → Days**. The view opens pinned to that day and grouped by job. A {{chip:blue|Day: Wed Sep 2 ✕}} chip replaces the window chips. Clear it to go back to the last 30 days.
 
 Everyone in the office can open it. What you see inside follows the same rules as People → Hours. A role without pay access only sees the sessions it could already read there.
@@ -51,7 +51,7 @@ Use **Change** when the right job isn't the one in the note. Use **Assign** when
 
 ## Reading a job's story
 
-Pin a job from the row's **Sessions** link, or by clicking its chip. Then group by **Day** or **Person**. Some notes read as one-offs on their own. *"leak under sink"*, then *"callback, leak under sink again"* three days later. They line up as a pattern when they sit next to each other. **Open on board ›** on any job row closes the view and flashes that job on the Pipeline.
+Pin a job from the **Session notes ›** link in its hours window, or by clicking its chip. Then group by **Day** or **Person**. Some notes read as one-offs on their own. *"leak under sink"*, then *"callback, leak under sink again"* three days later. They line up as a pattern when they sit next to each other. **Open on board ›** on any job row closes the view and flashes that job on the Pipeline.
 
 ## Limits
 

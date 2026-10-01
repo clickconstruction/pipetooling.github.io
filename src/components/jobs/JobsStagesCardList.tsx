@@ -60,7 +60,7 @@ import {
   renderStagesJobHcpChip,
   renderStagesThreadExpandButton,
   renderStagesThreadFullscreenJobHeader,
-  renderStagesViewReportsButton,
+  renderStagesSeeAllButton,
   renderStagesEditModeRail,
   renderStagesScheduleStripCells,
   shouldSuppressStagesRowJobThreadToggle,
@@ -293,7 +293,8 @@ function cardMetaChips(ctx: StagesRowRenderContext, job: JobWithDetails, openLab
             aria-label={`Man-hours applied: ${hours === '…' ? 'loading' : hours} — open the work story`}
             onClick={(e) => {
               e.stopPropagation()
-              ctx.openJobHoursStory?.({ jobId: job.id, hcpNumber: job.hcp_number, clickNumber: job.click_number, jobName: job.job_name })
+              const openSessionNotes = ctx.openSessionNotesForJob
+              ctx.openJobHoursStory?.({ jobId: job.id, hcpNumber: job.hcp_number, clickNumber: job.click_number, jobName: job.job_name, onOpenSessionNotes: openSessionNotes ? () => openSessionNotes(job) : null })
             }}
             style={{ ...cardChipStyle, cursor: 'pointer' }}
           >
@@ -503,7 +504,7 @@ function cardMoreActionsTitle(job: JobWithDetails): string {
 
 /**
  * The card's action row (zoned card): a hairline-separated foot carrying
- * Reports + invoice jump chips + the j/b/hours meta chips, then call + the ⋯
+ * See all (Reports until v2.4324) + invoice jump chips + the j/b/hours meta chips, then call + the ⋯
  * sheet opener. The old always-visible icon rail (assign, week dispatch,
  * dispatch note, send-as-task, job detail, share) lives in the ⋯ sheet now.
  */
@@ -516,7 +517,7 @@ function cardFooterRow(
   return (
     <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem', borderTop: '1px solid var(--border)', paddingTop: '0.4rem', marginTop: '0.1rem' }}>
       {cardInvoiceChips(ctx, job)}
-      {renderStagesViewReportsButton(ctx, job)}
+      {renderStagesSeeAllButton(ctx, job)}
       {ctx.jobContractCoverageByJobId ? (
         <JobContractChip
           coverage={ctx.jobContractCoverageByJobId.get(job.id)}

@@ -24,6 +24,10 @@ You turn on **Overlay schedule** in the header. The dispatch calendar's blocks f
 Mrs. Tison calls asking what the crew did last week. Open her job's work story: "Fri, Aug 15 — Michael A: Gas line pressure test — passed · Bryan: Water heater install + strapping." Read it to her, or send it.
 :::
 
+## Move a session to another job
+
+Office roles see **Session notes ›** at the top of the window. You tap it, and Session notes opens on this job. Each session is one line there. A session booked to the wrong job gets **Change**. See [find clock sessions booked to the wrong job](/help/find-mislabeled-clock-sessions).
+
 ## Hand it over
 
 - You tap {{button:blue|Copy work summary}}. It puts a dated, per-person summary of every described session on your clipboard. You paste it into a text or email.

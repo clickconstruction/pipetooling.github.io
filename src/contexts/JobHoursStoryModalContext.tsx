@@ -13,6 +13,8 @@ export type JobHoursStoryTarget = {
   hcpNumber: string | null
   clickNumber?: string | null
   jobName: string | null
+  /** Office roles (v2.4324): the window's Session notes link, opened pinned to the job. */
+  onOpenSessionNotes?: (() => void) | null
 }
 
 export type JobHoursStoryModalContextValue = {
@@ -39,6 +41,7 @@ export function JobHoursStoryModalProvider({ children }: { children: ReactNode }
           hcpNumber={openState.target.hcpNumber}
           clickNumber={openState.target.clickNumber}
           jobName={openState.target.jobName}
+          onOpenSessionNotes={openState.target.onOpenSessionNotes ?? null}
           onClose={() => setOpenState(null)}
         />
       )}
