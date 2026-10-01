@@ -1,10 +1,12 @@
 /**
  * The row above the bid picker on the nine bid workflow tabs — Counts, Takeoffs, Labor,
  * Pricing, Cover Letter, Submittals, RFI, Change Order, Lien Release: the search box, the
- * sort-view switcher and "Only my bids". Each tab carried its own copy of these eleven lines.
+ * sort-view switcher, "Only my bids" and the *Marked* switch (v2.4287). Each tab carried its
+ * own copy of these eleven lines.
  *
  * The tab keeps the query (its filter reads it) and the page keeps "only my bids" (one shared
- * choice); the sort view is the module store behind `BidPickerSortToggle`.
+ * choice); the sort view is the module store behind `BidPickerSortToggle`, and the marks and
+ * the Marked switch are the module store behind `bidMarksStore`.
  *
  * `searchesBidNumber`: the six estimating tabs match a bid number too and say so; the three
  * paper tabs (RFI, Change Order, Lien Release) search the project and the GC only, and their
@@ -12,6 +14,7 @@
  */
 import { BidPickerSortToggle } from './BidPickerSortToggle'
 import { MyBidsToggle } from './MyBidsToggle'
+import { MarkedBidsToggle } from './BidMarkControls'
 
 export const BID_PICKER_PLACEHOLDER_WITH_NUMBER = 'Search bids (bid #, project name, or GC/Builder)...'
 export const BID_PICKER_PLACEHOLDER = 'Search bids (project name or GC/Builder)...'
@@ -40,6 +43,7 @@ export function BidPickerSearchRow({
       />
       <BidPickerSortToggle />
       <MyBidsToggle active={onlyMyBids} onChange={onOnlyMyBidsChange} />
+      <MarkedBidsToggle />
     </div>
   )
 }

@@ -273,6 +273,10 @@ A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the
 - **What**: a read-side aggregate over `deleted_records_archive` (no new capture). Flags one `(actor, time-bucket)` per burst where `count(distinct group_key) >= bundles` **OR** `count(*) >= rows`. Counts **bundles** (whole jobs/bids/customers), because one job delete archives ~20 rows and a row-only threshold would fire on every ordinary delete.
 - **Scope**: **excludes the caller's own deletions** by design — other devs still see your bursts, so no spree is invisible to everyone. Thresholds live in `app_settings` (`bulk_delete_alert_*_v1`, all-read/dev-write) and are read server-side so the notice and its numbers cannot disagree.
 
+### Bid marks — a person's own flags on bids (v2.4287, `20261001001500_bid_marks.sql`)
+- **What**: `bid_marks` (`user_id`, `bid_id`, `marked_at`), one row per (person, bid) — "hold a row to mark it" on the nine bid workflow tabs and the Bid Board. Says nothing about the bid and changes no count.
+- **Who**: the person only — SELECT / INSERT / DELETE each `user_id = auth.uid()`, no UPDATE policy, `anon` nothing. There is no cross-person read, dev included. Read-only (training) accounts cannot mark (`apply_read_only_*`).
+
 ### Bulk hours alert (v2.4281, `20260930233154_bulk_hours_alerts.sql`)
 - **Who**: whoever approves hours — `list_bulk_hours_alerts()` is `SECURITY DEFINER` with `WHERE is_dev() OR has_payroll_access() OR is_assistant()`; anyone else gets zero rows. Surfaced as the red **Hours added in bulk** item on the Dashboard's Needs You card (snooze / dismiss like the deletion notice); thresholds on the dev-only **Settings → People & teams → Bulk hours alert** block.
 - **What**: a read-side aggregate over `clock_typed_entries` (`kind = 'added'`, the typed-hours ledger below), one `(typist, time-bucket)` per burst with at least `bulk_hours_alert_days_v1` distinct **(person, day)** pairs — days, not sessions. **Look at them** opens the approvals queue on *Typed by hand* narrowed to that typist (`&typist=`).

@@ -215,6 +215,12 @@ button:focus-visible {
   --bg-muted: #f3f4f6;
   --bg-200: #e5e7eb;
   --bg-blue-tint: #eff6ff;
+  /* Bid marks (v2.4287): violet so a mark never reads as Pending amber, due-date red or Won green. */
+  --bid-mark: #7c3aed;
+  --bid-mark-text: #5b21b6;
+  --bid-mark-wash: rgba(124, 58, 237, 0.1);
+  --bid-mark-wash-strong: rgba(124, 58, 237, 0.16);
+  --bid-mark-wash-board: rgba(124, 58, 237, 0.07);
   --bg-sky-tint: #f0f9ff;
   --bg-red-tint: #fef2f2;
   --bg-red-100: #fee2e2;
@@ -322,6 +328,11 @@ button:focus-visible {
   --bg-muted: #374151;
   --bg-200: #4b5563;
   --bg-blue-tint: #1e3358;
+  --bid-mark: #a78bfa;
+  --bid-mark-text: #c4b5fd;
+  --bid-mark-wash: rgba(167, 139, 250, 0.16);
+  --bid-mark-wash-strong: rgba(167, 139, 250, 0.28);
+  --bid-mark-wash-board: rgba(167, 139, 250, 0.09);
   --bg-sky-tint: #16324a;
   --bg-red-tint: #3b1a1a;
   --bg-red-100: #4c1d1d;
@@ -3503,3 +3514,36 @@ button.gcStep:hover > em { text-decoration: underline; }
 .rcpMark.check { border-radius: 3px; }
 .rcpMark.on { background: var(--text-link); border-color: var(--text-link); }
 .rcpNone { padding: 0.5rem 0.6rem; font-size: 0.78rem; color: var(--text-muted); }
+
+/* Bid marks (v2.4287): hold a row, or click its circle, to mark it. The mark is the person's own
+   (bid_marks); the same row on every workflow tab, lighter on the Bid Board. The hold sets
+   data-holding on the row and the fill line animates on it. */
+.bid-mark-rowwrap { position: relative; display: flex; align-items: stretch; border-bottom: 1px solid var(--border); background: var(--surface); transition: background 160ms; }
+.bid-mark-rowwrap:hover { background: var(--bg-subtle); }
+.bid-mark-rowwrap[data-marked='true'] { background: var(--bid-mark-wash); }
+.bid-mark-rowwrap[data-marked='true']::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--bid-mark); pointer-events: none; }
+.bid-mark-rowwrap[data-finished='true']::before { background: repeating-linear-gradient(to bottom, var(--bid-mark) 0 6px, transparent 6px 10px); }
+.bid-mark-row-main { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.bid-mark-row-main:focus-visible { outline: 2px solid var(--text-link); outline-offset: -2px; }
+.bid-mark-dot { flex: 0 0 44px; min-height: 44px; display: flex; align-items: center; justify-content: center; padding: 0; border: none; background: transparent; cursor: pointer; opacity: 0; transition: opacity 120ms; }
+.bid-mark-rowwrap:hover .bid-mark-dot, .bid-mark-dot:focus-visible, .bid-mark-dot[aria-pressed='true'] { opacity: 1; }
+@media (hover: none) { .bid-mark-dot { opacity: 0.45; } .bid-mark-dot[aria-pressed='true'] { opacity: 1; } }
+.bid-mark-dot__ring { display: block; width: 16px; height: 16px; border-radius: 50%; box-sizing: border-box; border: 2px solid var(--bid-mark); background: transparent; }
+.bid-mark-dot[aria-pressed='true'] .bid-mark-dot__ring { background: var(--bid-mark); }
+.bid-mark-since { flex: 0 0 auto; font-size: 0.75rem; color: var(--bid-mark-text); white-space: nowrap; }
+.bid-mark-hold-fill { position: absolute; left: 0; bottom: 0; height: 3px; width: 0; background: var(--bid-mark); pointer-events: none; }
+[data-holding='true'] .bid-mark-hold-fill { animation: bid-mark-hold-fill var(--bid-mark-hold-ms, 500ms) linear forwards; }
+@keyframes bid-mark-hold-fill { from { width: 0; } to { width: 100%; } }
+@media (prefers-reduced-motion: reduce) { [data-holding='true'] .bid-mark-hold-fill { animation: none; width: 100%; } }
+.bid-mark-toggle { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.5rem 0.85rem; white-space: nowrap; border: 1px solid var(--bid-mark); border-radius: 4px; cursor: pointer; background: var(--surface); color: var(--bid-mark-text); font: inherit; font-size: 0.875rem; font-weight: 600; box-sizing: border-box; }
+.bid-mark-toggle[data-on='true'] { background: var(--bid-mark-wash-strong); }
+.bid-mark-toggle--title { padding: 0.2rem 0.6rem; font-size: 0.8rem; vertical-align: middle; }
+.bid-mark-toggle__dot { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--bid-mark); box-sizing: border-box; background: transparent; flex: 0 0 auto; }
+.bid-mark-toggle[data-on='true'] .bid-mark-toggle__dot { background: var(--bid-mark); }
+.bid-mark-footer { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; padding: 0.5rem 0.25rem 0; font-size: 0.8rem; color: var(--text-muted); }
+.bid-mark-footer__button { margin-left: auto; padding: 0.35rem 0.6rem; border: 1px solid var(--border-strong); border-radius: 4px; background: var(--surface); color: var(--text-700); font: inherit; font-size: 0.8rem; cursor: pointer; }
+.bid-mark-footer__button + .bid-mark-footer__button { margin-left: 0; }
+.bid-mark-board-row { -webkit-touch-callout: none; }
+.bid-mark-board-row[data-marked='true'] { background: var(--bid-mark-wash-board); }
+tr.bid-mark-board-row[data-marked='true'] > td:first-child { box-shadow: inset 3px 0 0 var(--bid-mark); }
+div.bid-mark-board-row[data-marked='true'] { box-shadow: inset 3px 0 0 var(--bid-mark); }

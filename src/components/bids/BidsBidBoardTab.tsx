@@ -53,6 +53,11 @@ import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { useBidFlowReview } from '../../hooks/useBidFlowReview'
 import { useBidReplyBook } from '../../hooks/useBidReplyBook'
 import { BidReplyBookModal } from './BidReplyBookModal'
+import { useToastContext } from '../../contexts/ToastContext'
+import { bidMarkHoldHandlers } from '../../lib/bids/bidMarkHold'
+import { isBidMarked, onlyMarkedBids } from '../../lib/bids/bidMarks'
+import { toggleBidMarkNow, useBidMarks } from '../../lib/bids/bidMarksStore'
+import { BID_MARK_SAVE_FAILED, MarkedBidsToggle } from './BidMarkControls'
 
 type BidBoardSectionOpenState = {
   unsent: boolean
@@ -247,6 +252,12 @@ export function BidsBidBoardTab({
     selfHighlightStyle,
   } = useBidBoardSelfHighlight(authUser?.id)
   const [bidBoardSearchQuery, setBidBoardSearchQuery] = useState('')
+  // Bid marks (v2.4287): the person's own marks — the lighter wash on a row, the hold that makes one, the Marked switch.
+  const { marks: bidMarks, onlyMarked: onlyMarkedBidsOn } = useBidMarks()
+  const { showToast: showBidMarkToast } = useToastContext()
+  const toggleBidMark = (bidId: string) => {
+    void toggleBidMarkNow(bidId).catch(() => showBidMarkToast(BID_MARK_SAVE_FAILED, 'error'))
+  }
   const [expandedBidBoardBidId, setExpandedBidBoardBidId] = useState<string | null>(null)
   // Bids by GC (v2.2162): per-GC packets for every bid on the board → the GC lines under a row.
   const [bidBoardNotesTab, setBidBoardNotesTab] = useState<BidBoardNotesTab>('all')
@@ -342,7 +353,7 @@ export function BidsBidBoardTab({
   const bidsForBoardUnreadRef = useRef(bids)
   bidsForBoardUnreadRef.current = bids
 
-  const filteredBidsForBidBoard = bidBoardSearchQuery.trim()
+  const searchedBidsForBidBoard = bidBoardSearchQuery.trim()
     ? bids.filter(
         (b) =>
           (b.project_name?.toLowerCase().includes(bidBoardSearchQuery.toLowerCase()) ?? false) ||
@@ -352,6 +363,7 @@ export function BidsBidBoardTab({
           (b.bids_gc_builders?.name?.toLowerCase().includes(bidBoardSearchQuery.toLowerCase()) ?? false)
       )
     : bids
+  const filteredBidsForBidBoard = onlyMarkedBidsOn ? onlyMarkedBids(bidMarks, searchedBidsForBidBoard) : searchedBidsForBidBoard
 
   const bidBoardBuckets = useMemo(() => {
     const buckets: Record<SubmissionSectionKey, BidWithBuilder[]> = {
@@ -1183,11 +1195,14 @@ export function BidsBidBoardTab({
       <Fragment key={bid.id}>
         <tr
           id={`bid-board-row-${bid.id}`}
-          className={bid.id === rowHighlightId ? BID_FLOW_LANDING_CLASS : undefined}
+          className={bid.id === rowHighlightId ? `${BID_FLOW_LANDING_CLASS} bid-mark-board-row` : 'bid-mark-board-row'}
+          data-marked={isBidMarked(bidMarks, bid.id) ? 'true' : undefined}
           data-deeplink-gen={bid.id === deepLinkHighlightId ? deepLinkHighlightGen : undefined}
+          {...bidMarkHoldHandlers(`board:${bid.id}`, () => toggleBidMark(bid.id))}
           onClick={(e) => handleBidBoardRowClick(e, bid.id)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && e.target === e.currentTarget) toggleBidBoardRowExpanded(bid.id)
+          if ((e.key === 'h' || e.key === 'H') && e.target === e.currentTarget) toggleBidMark(bid.id)
           }}
           tabIndex={0}
           onMouseEnter={() => mapHoverStore.set(bid.id)}
@@ -1199,8 +1214,9 @@ export function BidsBidBoardTab({
             cursor: 'pointer',
           }}
         >
-          <td style={{ padding: '0.0625rem 0.4rem 0.0625rem 0.15rem', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+          <td style={{ position: 'relative', padding: '0.0625rem 0.4rem 0.0625rem 0.15rem', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
             {renderBidBoardBidNumberCluster(bid)}
+            <span aria-hidden="true" className="bid-mark-hold-fill" />
           </td>
           <td
             style={{
@@ -1424,11 +1440,14 @@ export function BidsBidBoardTab({
       <div
         key={bid.id}
         id={`bid-board-row-${bid.id}`}
-        className={bid.id === rowHighlightId ? BID_FLOW_LANDING_CLASS : undefined}
+        className={bid.id === rowHighlightId ? `${BID_FLOW_LANDING_CLASS} bid-mark-board-row` : 'bid-mark-board-row'}
+        data-marked={isBidMarked(bidMarks, bid.id) ? 'true' : undefined}
         data-deeplink-gen={bid.id === deepLinkHighlightId ? deepLinkHighlightGen : undefined}
+        {...bidMarkHoldHandlers(`board:${bid.id}`, () => toggleBidMark(bid.id))}
         onClick={(e) => handleBidBoardRowClick(e, bid.id)}
         onKeyDown={(e) => {
           if (e.key === 'Enter' && e.target === e.currentTarget) toggleBidBoardRowExpanded(bid.id)
+          if ((e.key === 'h' || e.key === 'H') && e.target === e.currentTarget) toggleBidMark(bid.id)
         }}
         tabIndex={0}
         role="button"
@@ -1440,8 +1459,10 @@ export function BidsBidBoardTab({
           padding: '0.5rem 0.6rem',
           background: 'var(--surface)',
           cursor: 'pointer',
+          position: 'relative',
         }}
       >
+        <span aria-hidden="true" className="bid-mark-hold-fill" />
         {/* Header row wraps (v2.3171): the icon cluster (5–7 buttons + the number) plus the
             inline due chip + "sent" label need up to ~390px, and a 375px phone card is ~320px
             wide. `nowrap` here pushed the chip past the card and gave the whole Bid Board a
@@ -1543,6 +1564,7 @@ export function BidsBidBoardTab({
           style={{ flex: '1 1 auto', minWidth: 0, height: 36, padding: '0 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
         />
         <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+          <MarkedBidsToggle compact={narrowViewport} />
           <button
             type="button"
             onClick={() => setWorkingBoardArchivedModalOpen(true)}
