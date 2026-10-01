@@ -2964,6 +2964,69 @@ body.my-time-boundary-dragging {
   }
 }
 
+/* Job window → Bill → ① Line Items on a phone (v2.4312). Under 640 px every
+   line stacks (`.jobLineItems--stacked`, JobFormFixturesSection): the name takes
+   the row beside its badge and ▲▼, and the ×/$ boxes (a discount's entry) and
+   the trash sit on a line under it. The ▲▼ column stands beside both lines, so
+   on touch each arrow is half that height. --job-line-move is the column's
+   width plus its 4 px gap; the lines under a row (Pays, the stage switch, a
+   discount's readout) start past it, under the name. */
+.jobLineItems--stacked {
+  --job-line-move: 22px;
+}
+.jobLineItems--stacked .jobLineMove {
+  width: calc(var(--job-line-move) - 4px);
+}
+.jobLineItems--stacked .jobLineMove button {
+  flex: 1 1 0;
+  display: flex;
+  justify-content: center;
+}
+.jobLineItems--stacked .jobLineMove button:first-child {
+  align-items: flex-end;
+}
+.jobLineItems--stacked .jobLineMove button:last-child {
+  align-items: flex-start;
+}
+.jobLineNumbers {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+@media (pointer: coarse) {
+  .jobLineItems--stacked {
+    --job-line-move: 36px;
+  }
+  .jobLineItems--stacked .jobLineMove button {
+    font-size: 0.8125rem !important;
+  }
+  .jobLineItems--stacked .jobLineName textarea {
+    padding-top: 0.7rem !important;
+    padding-bottom: 0.7rem !important;
+  }
+  .jobLineItems--stacked .jobLinePencilSlot {
+    padding: 0 !important;
+  }
+  .jobLineItems--stacked .jobLinePencil {
+    min-width: 44px;
+    min-height: 42px;
+    justify-content: center;
+  }
+  .jobLineNumbers .jobLineBox,
+  .jobLineNumbers .jobLineTwin {
+    min-height: 44px;
+  }
+  .jobLineNumbers .jobLineTwin {
+    align-items: center !important;
+  }
+  .jobLineNumbers .jobLineDelete {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
 /* Job window → Bill → Invoices list (v2.3478): one row per bill, three lines each —
    chip · amount · actions / who / money. The Job window is capped at 560px on every
    screen and is a full-bleed sheet at ≤640px, so the list only ever has ~530px or
