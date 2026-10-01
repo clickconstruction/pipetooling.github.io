@@ -3988,3 +3988,8 @@ div.bid-mark-board-row[data-marked='true'] { box-shadow: inset 3px 0 0 var(--bid
 .bid-mark-strip__note { font-size: 0.95rem; }
 .bid-mark-strip__actions { flex: 0 0 auto; margin-left: auto; }
 .bid-mark-strip__actions .bid-mark-card__link { margin-right: 0; }
+
+/* Pipeline row activity box: the See all door in the strip under the box (v2.4302). */
+.stages-activity-see-all { color: var(--text-muted); border-radius: 6px; }
+.stages-activity-see-all:hover,
+.stages-activity-see-all:focus-visible { color: var(--text-blue-700); }
