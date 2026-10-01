@@ -141,7 +141,7 @@ import {
   segmentBoundaryMarks,
   segmentSelectionNetSummary,
 } from '../../lib/jobs/jobSegmentsCoverage'
-import { InvoicesSectionHeading, JobFormSegmentsBar, JobFormSegmentsCreateAction } from './JobFormSegmentsBar'
+import { InvoicesSectionHeading, JobFormSegmentsBar, JobFormSegmentsCreateAction, type BillsAndPaymentsView } from './JobFormSegmentsBar'
 import { MultipleSegmentGeneratorModal } from './MultipleSegmentGeneratorModal'
 import type { SegmentGeneratorPayloadLine } from '../../lib/jobs/segmentGenerator'
 import { resolveEffectiveJobMasterUserId } from '../../lib/resolveEffectiveJobMasterUserId'
@@ -186,6 +186,9 @@ import { JobFormCreateCustomerModal } from './JobFormCreateCustomerModal'
 import { extractContactFromCustomer, getCustomerDisplay } from '../../lib/jobs/jobFormCustomerDisplay'
 import { formatJobFormBidLinkTitle } from '../../lib/jobs/jobFormBidLinkTitle'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
+
+/** v2.4294: the Bill tab's By bill / By date choice, per browser. */
+export const BILLS_VIEW_STORAGE_KEY = 'pipetooling.jobBill.view'
 
 type CustomerRow = Database['public']['Tables']['customers']['Row']
 type UserRow = { id: string; name: string; email: string | null; role: string }
@@ -1046,6 +1049,22 @@ export default function JobFormModal({
   // v2.4293: what the bank synced about the deposits behind bank-linked rows — the
   // payer it named, the posting date, its verdict — read once for both blocks.
   const bankFacts = useMercuryDepositFacts(payments)
+  // v2.4294: By bill or By date, remembered per browser like the Bid Board folds; storage may be blocked.
+  const [billsView, setBillsView] = useState<BillsAndPaymentsView>(() => {
+    try {
+      return window.localStorage.getItem(BILLS_VIEW_STORAGE_KEY) === 'date' ? 'date' : 'bill'
+    } catch {
+      return 'bill'
+    }
+  })
+  const changeBillsView = (next: BillsAndPaymentsView) => {
+    setBillsView(next)
+    try {
+      window.localStorage.setItem(BILLS_VIEW_STORAGE_KEY, next)
+    } catch {
+      /* the choice still holds for this visit */
+    }
+  }
   const [recordPaymentTarget, setRecordPaymentTarget] = useState<{
     inv: JobsLedgerInvoiceRow
     amount: number | null
@@ -2924,6 +2943,8 @@ export default function JobFormModal({
               <InvoicesSectionHeading
                 sampleDollars={billingSegments[0]?.dollars ?? null}
                 jobLabel={editing.hcp_number?.trim() ? `Job ${editing.hcp_number.trim()}` : null}
+                view={billsView}
+                onViewChange={changeBillsView}
               />
               <JobFormSegmentsBar
                 fixtures={fixtures}
@@ -2985,6 +3006,7 @@ export default function JobFormModal({
                 bankFacts={bankFacts}
                 persistedLedgerPaymentIds={persistedLedgerPaymentIds}
                 unlinkingMercuryPaymentId={unlinkingMercuryPaymentId}
+                view={billsView}
                 paymentLineActions={{
                   updatePaymentRow,
                   requestRemovePaymentRow,

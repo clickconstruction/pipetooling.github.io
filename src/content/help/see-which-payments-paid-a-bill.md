@@ -2,7 +2,7 @@
 title: see which payments paid a bill
 category: Billing & Money
 roles: dev, master_technician, assistant, controller, primary
-keywords: payments received, bill, paid bar, check from, bank deposit, pin it to this bill, no bill picked, move to job, unlink and remove, check date, edit details, other money on the job, days after the bill
+keywords: payments received, by bill, by date, timeline, bill, paid bar, check from, bank deposit, pin it to this bill, no bill picked, move to job, unlink and remove, check date, edit details, other money on the job, days after the bill
 ---
 Open a job and press the **Bill** tab. Each bill lists the payments that paid it. You can see what is still owed on every bill at a glance.
 
@@ -17,6 +17,10 @@ A bill is one row. It shows the amount, who it went to, and what is still open. 
 :::
 
 A line reads the amount first. Then the day the money came. Then where it came from. A bank deposit names the payer the way the bank saw it. A card payment reads *card through Stripe*. A payment you typed reads *check · typed by hand*. The last number is how many days after the bill went out the money came.
+
+## By bill or by date
+
+Two buttons sit at the right of the **Bills and payments** heading. {{button:blue|By bill}} shows each bill with its payments under it. {{button:outline|By date}} puts the bills and the payments on one line of dates, oldest first. Each payment then says which bill it pays. The last row says how much is still open today. The app remembers your choice on this computer.
 
 ## Open the menu on a payment
 
