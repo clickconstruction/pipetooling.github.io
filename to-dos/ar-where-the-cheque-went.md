@@ -2,7 +2,7 @@
 name: "Accounts Receivable: where did that cheque go?"
 number: 74
 group: ready
-status: asked 2026-09-30 · drawn twice against 30 days of prod · prototype beside it · PR 1 (the search) v2.4273 open · PR 2 (the trail) v2.4274 open on feat/ar-deposit-trail, its migration 20260930230000 to push once it merges · PR 3 (All by last action) v2.4275 open on feat/ar-all-by-last-action
+status: asked 2026-09-30 · drawn twice against 30 days of prod · prototype beside it · PR 1 (the search) v2.4273 open · PR 2 (the trail) v2.4274 open on feat/ar-deposit-trail, its migration 20260930230000 to push once it merges · PR 3 (All by last action) v2.4288 open on feat/ar-all-by-last-action
 summary: >
   The office searched Accounts Receivable for a $6,077.51 cheque and got "no match": it had
   been applied the day before, so it had left To match, the only list the search read. The
