@@ -34,6 +34,8 @@ import { compareInvoiceLedgerRows, invoiceLedgerRow, invoiceLedgerTotals, type I
 import { useJobBilledExpectedPay } from '../../hooks/useJobBilledExpectedPay'
 import { invoiceRowMenuSide, type InvoiceRowMenuSide } from '../../lib/jobs/invoiceRowMenuSide'
 import { billSettled, lienWaiverCellForBill } from '../../lib/jobs/lienWaiverCell'
+import { billCheckClearsYmd } from '../../lib/jobs/checkClearing'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 import type { JobLienReleaseRow } from '../../lib/jobs/lienReleaseTracking'
 import LienReleaseModal from './LienReleaseModal'
 import { billPaidBar, orderMoneyByDate, splitBillsAndPayments, type MercuryDepositFacts, type MoneyByDateItem } from '../../lib/jobs/billsAndPayments'
@@ -796,7 +798,8 @@ export function JobFormInvoiceList({
             ) : null}
             {!isDraft && showWaiverCells
               ? (() => {
-                  const cell = lienWaiverCellForBill(waiverRows, inv.id, billSettled(inv, payments))
+                  // v2.4330: a check still clearing on this bill holds the unconditional back.
+                  const cell = lienWaiverCellForBill(waiverRows, inv.id, billSettled(inv, payments), billCheckClearsYmd(inv.id, payments, todayYmdInAppTz()))
                   const chipTone = (t: 'green' | 'amber' | 'grey'): CSSProperties =>
                     t === 'green'
                       ? { background: 'var(--bg-green-tint)', color: 'var(--text-green-700)' }

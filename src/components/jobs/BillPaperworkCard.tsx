@@ -4,6 +4,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { denverCalendarDayKey } from '../../utils/dateUtils'
+import { billCheckClearsYmd } from '../../lib/jobs/checkClearing'
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { liveLienReleases, type JobLienReleaseRow } from '../../lib/jobs/lienReleaseTracking'
@@ -107,9 +108,10 @@ export default function BillPaperworkCard({
   if (showWaiver && releases) {
     const payments = job.payments ?? []
     const settled = billSettled(invoice, payments)
-    const cell = lienWaiverCellForBill(releases, invoice.id, settled)
-    const pick = pickLienWaiverForBill(job, invoice)
     const todayYmd = denverCalendarDayKey(Date.now())
+    // v2.4330: a check still clearing on this bill holds the unconditional back.
+    const cell = lienWaiverCellForBill(releases, invoice.id, settled, billCheckClearsYmd(invoice.id, payments, todayYmd))
+    const pick = pickLienWaiverForBill(job, invoice, todayYmd)
     const dueYmd = dueUnix != null ? denverCalendarDayKey(dueUnix * 1000) : null
     const paidYmd = settled
       ? payments
