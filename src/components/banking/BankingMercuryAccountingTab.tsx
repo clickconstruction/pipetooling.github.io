@@ -2821,7 +2821,7 @@ export function BankingMercuryAccountingTab({
             padding: '1rem',
             boxSizing: 'border-box',
           }}
-          onMouseDown={(e) => {
+          onClick={(e) => {
             if (e.target === e.currentTarget) setTestModalOpen(false)
           }}
         >

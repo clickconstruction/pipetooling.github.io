@@ -195,7 +195,7 @@ export function SpecSectionAuditModal({ open, onClose }: { open: boolean; onClos
     <div
       style={overlay}
       role="presentation"
-      onMouseDown={(e) => {
+      onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
     >

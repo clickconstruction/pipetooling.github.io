@@ -36,7 +36,7 @@ export function MyTimeDiscardChangesConfirm({
         justifyContent: 'center',
         padding: '1rem',
       }}
-      onMouseDown={(e) => {
+      onClick={(e) => {
         if (e.target !== e.currentTarget) return
         onKeepEditing()
       }}

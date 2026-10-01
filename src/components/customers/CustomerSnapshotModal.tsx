@@ -273,7 +273,7 @@ export function CustomerSnapshotModal({ open, onClose, customerId, gcBuilder }: 
     }
 
     return (
-      <div style={overlayStyle} role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
+      <div style={overlayStyle} role="presentation" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
         <div role="dialog" aria-modal="true" aria-labelledby="customer-snapshot-title" style={panelStyle} onMouseDown={(e) => e.stopPropagation()}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', marginBottom: '1rem' }}>
             <h2 id="customer-snapshot-title" style={{ margin: 0, fontSize: '1.15rem' }}>
@@ -443,7 +443,7 @@ export function CustomerSnapshotModal({ open, onClose, customerId, gcBuilder }: 
 
   if (gcBuilder) {
     return (
-      <div style={overlayStyle} role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
+      <div style={overlayStyle} role="presentation" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
         <div role="dialog" aria-modal="true" aria-labelledby="gc-builder-snapshot-title" style={panelStyle} onMouseDown={(e) => e.stopPropagation()}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', marginBottom: '1rem' }}>
             <h2 id="gc-builder-snapshot-title" style={{ margin: 0, fontSize: '1.15rem' }}>

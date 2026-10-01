@@ -86,7 +86,7 @@ export function PeopleHoursBulkApprovePendingModal({
         justifyContent: 'center',
         zIndex: 60,
       }}
-      onMouseDown={(e) => {
+      onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
     >

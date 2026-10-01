@@ -59,9 +59,12 @@ describe('MyTimeNotComingInConfirm', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
     expect(onCancel).toHaveBeenCalledTimes(1)
 
-    fireEvent.mouseDown(dialog)
+    fireEvent.click(dialog)
     expect(onCancel).toHaveBeenCalledTimes(1)
+    // A press alone no longer closes it; the click (press and release) does (v2.4347).
     fireEvent.mouseDown(screen.getByRole('presentation'))
+    expect(onCancel).toHaveBeenCalledTimes(1)
+    fireEvent.click(screen.getByRole('presentation'))
     expect(onCancel).toHaveBeenCalledTimes(2)
   })
 
@@ -82,7 +85,7 @@ describe('MyTimeNotComingInConfirm', () => {
     expect(cancel.disabled).toBe(true)
     fireEvent.click(confirm)
     fireEvent.click(cancel)
-    fireEvent.mouseDown(screen.getByRole('presentation'))
+    fireEvent.click(screen.getByRole('presentation'))
     expect(onConfirm).not.toHaveBeenCalled()
     expect(onCancel).not.toHaveBeenCalled()
   })
@@ -115,9 +118,11 @@ describe('MyTimeDiscardChangesConfirm', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }))
     expect(onKeepEditing).toHaveBeenCalledTimes(1)
 
-    fireEvent.mouseDown(dialog)
+    fireEvent.click(dialog)
     expect(onKeepEditing).toHaveBeenCalledTimes(1)
     fireEvent.mouseDown(screen.getByRole('presentation'))
+    expect(onKeepEditing).toHaveBeenCalledTimes(1)
+    fireEvent.click(screen.getByRole('presentation'))
     expect(onKeepEditing).toHaveBeenCalledTimes(2)
     expect(onDiscard).toHaveBeenCalledTimes(1)
   })

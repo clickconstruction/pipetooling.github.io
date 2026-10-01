@@ -1585,7 +1585,7 @@ export function BidFormModal(props: BidFormModalProps) {
                 justifyContent: 'center',
                 zIndex: 1002,
               }}
-              onMouseDown={(e) => {
+              onClick={(e) => {
                 if (e.target === e.currentTarget) setServiceTypeSwitchOpen(false)
               }}
             >

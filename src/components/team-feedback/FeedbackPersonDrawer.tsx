@@ -44,7 +44,7 @@ export default function FeedbackPersonDrawer({ row, reviews, submissions, openPr
 
   if (typeof document === 'undefined') return null
   return createPortal(
-    <div role="presentation" onMouseDown={(e) => e.target === e.currentTarget && onClose()} style={backdrop}>
+    <div role="presentation" onClick={(e) => e.target === e.currentTarget && onClose()} style={backdrop}>
       <div role="dialog" aria-modal="true" aria-labelledby="feedback-person-title" onMouseDown={(e) => e.stopPropagation()} style={{ ...panel, width: narrow ? '100%' : 'min(560px, 100%)' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap', padding: '0.85rem 1rem', borderBottom: '1px solid var(--border)' }}>
           <h2 id="feedback-person-title" style={{ margin: 0, fontSize: '1.05rem', color: 'var(--text-strong)' }}>

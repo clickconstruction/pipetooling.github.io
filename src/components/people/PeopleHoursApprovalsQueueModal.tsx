@@ -523,7 +523,7 @@ export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSessi
       aria-modal="true"
       aria-label="Hours approvals, every week"
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex }}
-      onMouseDown={(e) => {
+      onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
     >

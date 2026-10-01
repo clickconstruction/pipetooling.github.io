@@ -119,7 +119,7 @@ export default function DocumentsJobBilledInvoiceModal({
         boxSizing: 'border-box',
       }}
       role="presentation"
-      onMouseDown={(e) => {
+      onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
     >

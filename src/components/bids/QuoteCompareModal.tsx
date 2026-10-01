@@ -538,7 +538,7 @@ export function QuoteCompareModal({
 
   let lastSection: string | null | undefined
   return createPortal(
-    <div style={overlay} role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
+    <div style={overlay} role="presentation" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
       <div role="dialog" aria-modal="true" aria-label="Supply house quotes" style={panel} onMouseDown={(e) => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
           <div>
@@ -818,7 +818,7 @@ export function QuoteCompareModal({
             if (!row || !cell?.kit?.needsChoice) return null
             const nc = cell.kit.needsChoice
             return (
-              <div style={{ ...overlay, zIndex: MODAL_Z + 5, alignItems: 'center' }} role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) setSettling(null) }}>
+              <div style={{ ...overlay, zIndex: MODAL_Z + 5, alignItems: 'center' }} role="presentation" onClick={(e) => { if (e.target === e.currentTarget) setSettling(null) }}>
                 <div role="dialog" aria-modal="true" aria-label={`Choose the ${nc.group} for ${row.fixture}`} style={{ ...panel, maxWidth: 520 }} onMouseDown={(e) => e.stopPropagation()}>
                   <div>
                     <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'var(--text-strong)' }}>
@@ -1032,7 +1032,7 @@ function PickAnnotationDialog({
   const smallMuted: CSSProperties = { fontSize: '0.75rem', color: 'var(--text-muted)' }
 
   return (
-    <div style={{ ...overlay, zIndex: MODAL_Z + 5, alignItems: 'center' }} role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
+    <div style={{ ...overlay, zIndex: MODAL_Z + 5, alignItems: 'center' }} role="presentation" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
       <div role="dialog" aria-modal="true" aria-label={`${fixture} against the schedule`} style={{ ...panel, maxWidth: 560 }} onMouseDown={(e) => e.stopPropagation()}>
         <div>
           <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'var(--text-strong)' }}>

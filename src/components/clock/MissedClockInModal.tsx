@@ -209,7 +209,7 @@ export function MissedClockInModal({ userId, onClose, onSaved }: Props) {
       aria-modal="true"
       aria-label="It did not clock me in"
       style={{ position: 'fixed', inset: 0, zIndex: 1300, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.75rem' }}
-      onMouseDown={(e) => {
+      onClick={(e) => {
         if (e.target === e.currentTarget && !saving) onClose()
       }}
     >

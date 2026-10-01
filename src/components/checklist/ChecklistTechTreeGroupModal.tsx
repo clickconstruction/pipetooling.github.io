@@ -105,7 +105,7 @@ export function ChecklistTechTreeGroupModal({
         justifyContent: 'center',
         padding: 16,
       }}
-      onMouseDown={(e) => {
+      onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
     >

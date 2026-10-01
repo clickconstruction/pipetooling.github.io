@@ -40,7 +40,7 @@ export function PersonDeskDrawer() {
       aria-modal="true"
       aria-label={`Person Desk: ${payload.displayName ?? 'person'}`}
       style={{ position: 'fixed', inset: 0, zIndex: DESK_Z, background: 'rgba(17,24,39,0.32)', display: 'flex', justifyContent: 'flex-end' }}
-      onMouseDown={(e) => {
+      onClick={(e) => {
         if (e.target === e.currentTarget) desk.close()
       }}
     >
