@@ -142,12 +142,24 @@ export type ProcurementItemSource = {
   shared: boolean
   /** The takeoff count row the item came from (v2.4107); two rows sharing one were split from it (v2.4118). */
   sourceCountRowId?: string | null
+  /** 2026-10-01 · a part of the row: its procure key, the log's line for it from revision to revision. */
+  partKey?: string | null
+  /** The part's place on its row, so a tag's parts read in order. */
+  partOrder?: number
+  /** Bought, not on the GC's submittal (trim): released with its fixture, off the GC's copies. */
+  orderOnly?: boolean
+  /** How many to order: the fixtures counted × how many go on one. */
+  quantity?: number | null
+  /** The part's own stage, when it differs from the fixture's. */
+  stage?: ProcurementStage | null
 }
 
 /** A `bid_procurement_items` row. */
 export type ProcurementRecord = {
   id: string | null
   tag: string | null
+  /** 2026-10-01 · the part this line is for (its procure key); null = the tag's own line or a hand row. */
+  partKey?: string | null
   label: string
   leadTimeDays: number | null
   stage: ProcurementStage | null
@@ -198,6 +210,12 @@ export type ProcurementRow = {
   late: boolean
   /** The other tags split from the same count row (v2.4118) — "counted with WC-2", so nobody orders the count twice. */
   countedWith: string[]
+  /** 2026-10-01 · the part this line is for; null on a tag's own line and a hand row. */
+  partKey?: string | null
+  /** Bought, not on the GC's submittal: kept off the GC's copies. */
+  orderOnly?: boolean
+  /** How many to order, when the takeoff says. */
+  quantity?: number | null
 }
 
 export type ProcurementLogInput = {
@@ -208,7 +226,7 @@ export type ProcurementLogInput = {
   stageDates: StageDates
 }
 
-const emptyRecord = (tag: string | null): ProcurementRecord => ({ id: null, tag, label: '', leadTimeDays: null, stage: null, orderedOn: null, poRef: '', expectedOn: null, deliveredOn: null, note: '', sortOrder: 0 })
+const emptyRecord = (tag: string | null, partKey: string | null = null): ProcurementRecord => ({ id: null, tag, partKey, label: '', leadTimeDays: null, stage: null, orderedOn: null, poRef: '', expectedOn: null, deliveredOn: null, note: '', sortOrder: 0 })
 
 function rowFrom(source: ProcurementItemSource | null, rec: ProcurementRecord, stage: ProcurementStage | null, stageDates: StageDates, countedWith: string[] = []): ProcurementRow {
   const isHand = source == null
@@ -242,8 +260,11 @@ function rowFrom(source: ProcurementItemSource | null, rec: ProcurementRecord, s
             ? 'awaiting'
             : 'not_submitted'
   return {
-    key: source ? source.tag : `hand:${rec.id ?? rec.label}`,
+    key: source ? (source.partKey ? `part:${source.partKey}` : source.tag) : `hand:${rec.id ?? rec.label}`,
     tag: source ? source.tag : null,
+    partKey: source?.partKey ?? null,
+    orderOnly: source?.orderOnly ?? false,
+    quantity: source?.quantity ?? null,
     isHand,
     recordId: rec.id,
     product: source ? source.product : rec.label,
@@ -268,21 +289,90 @@ function rowFrom(source: ProcurementItemSource | null, rec: ProcurementRecord, s
   }
 }
 
-/** The log: one row per submittal tag (in tag order), then the hand rows (in their order). */
+/**
+ * The log: one row per submittal tag — or, for a row with parts (2026-10-01), one per part under
+ * its tag, in the row's order — in tag order, then the hand rows (in their order). A tag whose
+ * own line holds dates from before it had parts keeps that line too, so nothing typed is lost.
+ */
 export function buildProcurementLog(input: ProcurementLogInput): ProcurementRow[] {
   const byTag = new Map<string, ProcurementRecord>()
+  const byPart = new Map<string, ProcurementRecord>()
   const hand: ProcurementRecord[] = []
   for (const r of input.records) {
-    if (r.tag) byTag.set(r.tag, r)
+    if (r.partKey) byPart.set(r.partKey, r)
+    else if (r.tag) byTag.set(r.tag, r)
     else hand.push(r)
   }
   const byCountRow = new Map<string, string[]>()
-  for (const it of input.items) if (it.sourceCountRowId) byCountRow.set(it.sourceCountRowId, [...(byCountRow.get(it.sourceCountRowId) ?? []), it.tag])
-  const tagged = [...input.items]
-    .sort((a, b) => compareTags(a.tag, b.tag))
-    .map((it) => rowFrom(it, byTag.get(it.tag) ?? emptyRecord(it.tag), input.tagStage[it.tag] ?? null, input.stageDates, it.sourceCountRowId ? (byCountRow.get(it.sourceCountRowId) ?? []).filter((t) => t !== it.tag).sort(compareTags) : []))
+  for (const it of input.items) if (it.sourceCountRowId && !(byCountRow.get(it.sourceCountRowId) ?? []).includes(it.tag)) byCountRow.set(it.sourceCountRowId, [...(byCountRow.get(it.sourceCountRowId) ?? []), it.tag])
+  const tagsWithParts = new Set(input.items.filter((it) => it.partKey).map((it) => it.tag))
+  const sources: ProcurementItemSource[] = [...input.items]
+  // A tag's line from before its parts, holding something typed: kept as the fixture's own line.
+  for (const tag of tagsWithParts) {
+    const rec = byTag.get(tag)
+    if (rec && (rec.orderedOn || rec.poRef || rec.expectedOn || rec.deliveredOn || rec.note)) {
+      const first = input.items.find((it) => it.tag === tag)!
+      sources.push({ tag, product: 'the fixture, as logged before its parts', supplyHouse: null, leadTimeDays: rec.leadTimeDays, decision: first.decision, shared: first.shared, sourceCountRowId: first.sourceCountRowId ?? null, partOrder: -1 })
+    }
+  }
+  const tagged = sources
+    .sort((a, b) => compareTags(a.tag, b.tag) || (a.partOrder ?? 0) - (b.partOrder ?? 0))
+    .map((it) => {
+      const rec = it.partKey ? byPart.get(it.partKey) ?? emptyRecord(it.tag, it.partKey) : byTag.get(it.tag) ?? emptyRecord(it.tag)
+      const countedWith = it.sourceCountRowId ? (byCountRow.get(it.sourceCountRowId) ?? []).filter((t) => t !== it.tag).sort(compareTags) : []
+      return rowFrom(it, rec, it.stage ?? input.tagStage[it.tag] ?? null, input.stageDates, countedWith)
+    })
   const handRows = hand.sort((a, b) => a.sortOrder - b.sortOrder).map((r) => rowFrom(null, r, r.stage, input.stageDates))
   return [...tagged, ...handRows]
+}
+
+/** The lines the GC's copies carry: every line but the parts bought as order only (2026-10-01). */
+export function gcProcurementRows(rows: ReadonlyArray<ProcurementRow>): ProcurementRow[] {
+  return rows.filter((r) => !r.orderOnly)
+}
+
+export type ProcurementLens = 'to_order' | 'by_tag' | 'by_house'
+
+export type ProcurementSection = { key: string; title: string; note: string; rows: ProcurementRow[] }
+
+/**
+ * The log grouped three ways (2026-10-01). **To order**: what to buy now (released, not ordered;
+ * by house, the soonest order-by first), then what waits on the GC, then what is on order, then
+ * what has landed. **By tag**: one group per tag, its lines in the row's order. **By house**: one
+ * group per house, a line with no house last.
+ */
+export function procurementSections(rows: ReadonlyArray<ProcurementRow>, lens: ProcurementLens): ProcurementSection[] {
+  const byKey = (list: ProcurementRow[], keyOf: (r: ProcurementRow) => string) => {
+    const out = new Map<string, ProcurementRow[]>()
+    for (const r of list) out.set(keyOf(r), [...(out.get(keyOf(r)) ?? []), r])
+    return out
+  }
+  if (lens === 'by_tag') {
+    return [...byKey([...rows], (r) => (r.isHand ? 'Added by hand' : r.tag ?? '')).entries()].map(([k, list]) => ({ key: `tag:${k}`, title: k, note: lineCount(list), rows: list }))
+  }
+  if (lens === 'by_house') {
+    const houses = [...byKey([...rows], (r) => r.supplyHouse ?? '').entries()].sort(([a], [b]) => (a === '' ? 1 : b === '' ? -1 : a.localeCompare(b)))
+    return houses.map(([k, list]) => ({ key: `house:${k}`, title: k || 'No house yet', note: lineCount(list), rows: list }))
+  }
+  const toBuy = rows.filter((r) => r.status === 'released')
+  const waiting = rows.filter((r) => r.status === 'awaiting' || r.status === 'sent_back' || r.status === 'not_submitted')
+  const onOrder = rows.filter((r) => r.status === 'ordered')
+  const landed = rows.filter((r) => r.status === 'delivered')
+  const soonest = (a: ProcurementRow, b: ProcurementRow) => (a.orderBy ?? '9999').localeCompare(b.orderBy ?? '9999') || compareTags(a.tag ?? '', b.tag ?? '')
+  const out: ProcurementSection[] = []
+  const houses = [...byKey(toBuy, (r) => r.supplyHouse ?? '').entries()].map(([k, list]) => [k, list.sort(soonest)] as const).sort(([a, la], [b, lb]) => soonest(la[0]!, lb[0]!) || (a === '' ? 1 : b === '' ? -1 : a.localeCompare(b)))
+  for (const [k, list] of houses) {
+    const first = list.find((r) => r.orderBy)?.orderBy ?? null
+    out.push({ key: `buy:${k}`, title: k ? `Order now · ${k}` : 'Order now · no house yet', note: `${lineCount(list)}${first ? ` · the first by ${shortDate(first)}` : ''}${k ? '' : ' · set a house to order'}`, rows: list })
+  }
+  if (waiting.length > 0) out.push({ key: 'waiting', title: 'Waiting on the GC', note: `${lineCount(waiting)} · not ordered until they approve it`, rows: waiting })
+  if (onOrder.length > 0) out.push({ key: 'on_order', title: 'On order', note: lineCount(onOrder), rows: onOrder })
+  if (landed.length > 0) out.push({ key: 'landed', title: 'Delivered', note: lineCount(landed), rows: landed })
+  return out
+}
+
+function lineCount(list: ReadonlyArray<ProcurementRow>): string {
+  return `${list.length} line${list.length === 1 ? '' : 's'}`
 }
 
 export type ProcurementCounts = { released: number; ordered: number; delivered: number; late: number; awaiting: number; sentBack: number }

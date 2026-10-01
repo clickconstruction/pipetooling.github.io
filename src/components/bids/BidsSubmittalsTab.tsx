@@ -493,13 +493,13 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       setProcCounts(null)
       return
     }
-    void procurementItemsFrom(supabase, items, selectedRev.status !== 'draft').then((rows) => {
+    void procurementItemsFrom(supabase, items, selectedRev.status !== 'draft', parts).then((rows) => {
       if (!cancelled) setProcItems(rows)
     })
     return () => {
       cancelled = true
     }
-  }, [items, selectedRev, newestRev])
+  }, [items, parts, selectedRev, newestRev])
   useEffect(() => {
     void fetchTestReportSettings().then(setReportSettings).catch(() => undefined)
   }, [])

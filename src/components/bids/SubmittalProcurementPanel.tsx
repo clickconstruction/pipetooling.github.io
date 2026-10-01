@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
@@ -14,6 +14,8 @@ import {
   buildProcurementUpdateHtml,
   diffProcurementLog,
   floatText,
+  gcProcurementRows,
+  procurementSections,
   PROCUREMENT_STAGE_LABELS,
   procurementCounts,
   procurementHeadline,
@@ -27,6 +29,7 @@ import {
   submittalWord,
   toIsoDate,
   type ProcurementItemSource,
+  type ProcurementLens,
   type ProcurementRecord,
   type ProcurementRow,
   type ProcurementSheetLetterhead,
@@ -72,6 +75,17 @@ const link: CSSProperties = { background: 'none', border: 'none', padding: 0, cu
 const inp: CSSProperties = { padding: '0.2rem 0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8125rem', boxSizing: 'border-box', font: 'inherit', background: 'var(--surface)', color: 'var(--text-base)' }
 
 type DateField = 'ordered_on' | 'expected_on' | 'delivered_on'
+
+const LENS_KEY = 'submittals_procure_lens'
+const LENS_WORDS: Record<ProcurementLens, string> = { to_order: 'To order', by_tag: 'By tag', by_house: 'By house' }
+function readLens(): ProcurementLens {
+  try {
+    const v = localStorage.getItem(LENS_KEY)
+    return v === 'by_tag' || v === 'by_house' || v === 'to_order' ? v : 'to_order'
+  } catch {
+    return 'to_order'
+  }
+}
 type Draft = Partial<Record<'po' | 'note' | 'label' | 'lead' | DateField, string>>
 
 /**
@@ -97,6 +111,19 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
   const [sendLine, setSendLine] = useState('')
   const [updatesOpen, setUpdatesOpen] = useState(false)
   const [sheetAssets, setSheetAssets] = useState<ProcurementSheetAssets>({ logoDataUrl: null, roomQrSvg: null })
+  // 2026-10-01 · the log three ways (remembered on the device), and lines ticked to mark at once.
+  const [lens, setLensState] = useState<ProcurementLens>(() => readLens())
+  const setLens = (next: ProcurementLens) => {
+    setLensState(next)
+    try {
+      localStorage.setItem(LENS_KEY, next)
+    } catch {
+      // No storage on this device: the switch still works for the visit.
+    }
+  }
+  const [ticked, setTicked] = useState<Set<string>>(() => new Set())
+  const [bulkOrdered, setBulkOrdered] = useState('')
+  const [bulkPo, setBulkPo] = useState('')
 
   const tagsKey = items.map((i) => i.tag).join('|')
 
@@ -152,8 +179,11 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
   }, [roomUrl])
 
   const rows = useMemo(() => buildProcurementLog({ items, records, tagStage, stageDates }), [items, records, tagStage, stageDates])
+  // What the GC's copies carry: every line but the parts bought as order only.
+  const gcRows = useMemo(() => gcProcurementRows(rows), [rows])
+  const sections = useMemo(() => procurementSections(rows, lens), [rows, lens])
   const lastUpdate = updates[0] ?? null
-  const changes = useMemo(() => diffProcurementLog(lastUpdate ? lastUpdate.rows : null, rows), [lastUpdate, rows])
+  const changes = useMemo(() => diffProcurementLog(lastUpdate ? lastUpdate.rows : null, gcRows), [lastUpdate, gcRows])
   const hasStageDates = Object.keys(stageDates).length > 0
   // Today, for the soft line under each date ("2 days ago").
   const today = toIsoDate(new Date())
@@ -186,13 +216,13 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
     const run = async () => {
       setSaving(true)
       try {
-        const recordId = row.recordId ?? (row.tag ? recordsRef.current.find((r) => r.tag === row.tag)?.id ?? null : null)
+        const recordId = row.recordId ?? (row.partKey ? recordsRef.current.find((r) => r.partKey === row.partKey)?.id ?? null : row.tag ? recordsRef.current.find((r) => r.tag === row.tag && !r.partKey)?.id ?? null : null)
         if (recordId) {
           const { error } = await supabase.from('bid_procurement_items').update(patch).eq('id', recordId)
           if (error) throw error
         } else {
           const maxSort = recordsRef.current.reduce((m, r) => Math.max(m, r.sortOrder), -1)
-          const { error } = await supabase.from('bid_procurement_items').insert({ bid_id: bidId, tag: row.tag, sort_order: maxSort + 1, ...patch })
+          const { error } = await supabase.from('bid_procurement_items').insert({ bid_id: bidId, tag: row.tag, ...(row.partKey ? { part_key: row.partKey } : {}), sort_order: maxSort + 1, ...patch } as never)
           if (error) throw error
         }
         await reloadRecords()
@@ -324,6 +354,27 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
     }
   }
 
+  /** Mark every ticked line ordered on one day with one PO — one order to one house, many parts (2026-10-01). */
+  async function markTicked(field: 'ordered_on' | 'delivered_on') {
+    const chosen = rows.filter((r) => ticked.has(r.key))
+    if (chosen.length === 0) return
+    let on = today
+    if (field === 'ordered_on' && bulkOrdered.trim()) {
+      const entry = readTypedLogDate(bulkOrdered, today)
+      if (entry.kind !== 'date') {
+        showToast(`“${bulkOrdered.trim()}” does not read as a date. Type the month and the day, like 9/23.`, 'info')
+        return
+      }
+      on = entry.iso
+    }
+    const po = bulkPo.trim().slice(0, 60)
+    for (const r of chosen) await write(r, field === 'ordered_on' ? { ordered_on: on, ...(po ? { po_ref: po } : {}) } : { delivered_on: on })
+    setTicked(new Set())
+    setBulkOrdered('')
+    setBulkPo('')
+    showToast(`${chosen.length} line${chosen.length === 1 ? '' : 's'} marked ${field === 'ordered_on' ? `ordered ${shortDate(on)}${po ? ` on ${po}` : ''}` : `delivered ${shortDate(on)}`}.`, 'success')
+  }
+
   async function addHandRow() {
     setSaving(true)
     try {
@@ -368,7 +419,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
   }
 
   function updateInput(sentOn: string, updateNumber: number) {
-    return { ...letter, kind: 'update' as const, updateNumber, sentOn, sinceOn: lastUpdate ? lastUpdate.sentAt.slice(0, 10) : null, rows, changes, line: sendLine }
+    return { ...letter, kind: 'update' as const, updateNumber, sentOn, sinceOn: lastUpdate ? lastUpdate.sentAt.slice(0, 10) : null, rows: gcRows, changes, line: sendLine }
   }
 
   /** Print the log: the log as it stands — no update number, nothing marked. */
@@ -416,7 +467,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
     const input = updateInput(today, updates.length + 1)
     setSaving(true)
     try {
-      const { error } = await supabase.from('bid_procurement_updates').insert({ bid_id: bidId, sent_by: currentUser.id, sent_by_name: currentUser.name, sent_to: sendTo.trim().slice(0, 300), line: sendLine.trim().slice(0, 1000), rows: snapshotRows(rows) as unknown as never, changes: changes as unknown as never })
+      const { error } = await supabase.from('bid_procurement_updates').insert({ bid_id: bidId, sent_by: currentUser.id, sent_by_name: currentUser.name, sent_to: sendTo.trim().slice(0, 300), line: sendLine.trim().slice(0, 1000), rows: snapshotRows(gcRows) as unknown as never, changes: changes as unknown as never })
       if (error) throw error
       await reloadUpdates()
       setSendOpen(false)
@@ -432,6 +483,70 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
 
   const disabled = busy || saving
 
+  /** One line of the log; `underTag` drops the tag on a part line drawn under its tag's heading. */
+  function renderRow(r: ProcurementRow, underTag: boolean) {
+    const late = r.late
+    const changed = changes.some((c) => c.key === r.key)
+    return (
+      <tr key={r.key} data-testid="procurement-row" data-part={r.partKey ? 'true' : undefined} style={{ background: ticked.has(r.key) ? 'var(--bg-blue-tint)' : changed ? 'var(--bg-amber-100)' : undefined }}>
+        <td style={{ ...td, width: 28, textAlign: 'center' }}>
+          <input type="checkbox" aria-label={`Pick ${r.tag ?? r.product}${r.partKey ? ` ${r.product}` : ''}`} checked={ticked.has(r.key)} onChange={(e) => setTicked((cur) => { const next = new Set(cur); if (e.target.checked) next.add(r.key); else next.delete(r.key); return next })} data-testid="procurement-tick" />
+        </td>
+        <td style={{ ...itemTd, ...(underTag && r.partKey ? { paddingLeft: '1.2rem' } : null) }} data-testid="procurement-item">
+          {r.isHand ? (
+            <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+              <input type="text" aria-label="Item" placeholder="What it is (no cut sheet)" value={draftOf(r.key, 'label', r.product)} onChange={(e) => setDraft(r.key, 'label', e.target.value)} onBlur={() => void commitText(r, 'label')} maxLength={200} style={{ ...inp, flex: 1, minWidth: 0 }} />
+              {r.stage ? <span style={{ ...smallMuted, whiteSpace: 'nowrap' }}>{PROCUREMENT_STAGE_LABELS[r.stage]}</span> : (
+                <select aria-label="Stage" value="" onChange={(e) => void write(r, { stage: (e.target.value || null) as ProcurementStage | null })} style={inp}>
+                  <option value="">stage…</option>
+                  {(['rough_in', 'top_out', 'trim_set'] as const).map((s) => <option key={s} value={s}>{PROCUREMENT_STAGE_LABELS[s]}</option>)}
+                </select>
+              )}
+            </div>
+          ) : (
+            <>
+              <div>{underTag && r.partKey ? null : <b style={itemTag}>{r.tag}</b>}{r.product}</div>
+              <div style={smallMuted}>
+                {r.supplyHouse ? `${r.supplyHouse} · ` : r.partKey ? 'no house yet · ' : ''}
+                {r.stage ? PROCUREMENT_STAGE_LABELS[r.stage] : 'no stage on the takeoff'}
+                {r.orderOnly ? <span data-testid="procurement-order-only"> · order only, not on the GC’s copy</span> : null}
+                {r.countedWith.length > 0 ? <span data-testid="procurement-counted-with"> · counted with {r.countedWith.join(', ')} on the takeoff</span> : null}
+              </div>
+            </>
+          )}
+        </td>
+        <td style={{ ...tdCenter, fontWeight: 600 }} data-testid="procurement-qty">{r.quantity != null ? r.quantity : <span style={smallMuted}>—</span>}</td>
+        <td style={{ ...td, whiteSpace: 'nowrap' }}><span style={{ color: r.submittal === 'approved' ? 'var(--text-green-700)' : r.submittal === 'revise' || r.submittal === 'rejected' ? 'var(--text-amber-700)' : 'var(--text-muted)' }}>{submittalWord(r)}</span></td>
+        <td style={{ ...tdCenter }}>{r.releasedOn ? shortDate(r.releasedOn) : <span style={smallMuted}>—</span>}</td>
+        <td style={{ ...tdCenter }}>{dateCell(r, 'ordered_on', r.orderedOn, { label: `${r.tag ?? r.product} ordered on`, disabled: busy })}</td>
+        <td style={td}><input type="text" aria-label={`${r.tag ?? r.product} PO`} placeholder="PO" value={draftOf(r.key, 'po', r.poRef)} onChange={(e) => setDraft(r.key, 'po', e.target.value)} onBlur={() => void commitText(r, 'po')} maxLength={60} style={{ ...inp, width: '5.2rem' }} /></td>
+        <td style={{ ...tdCenter }}>
+          {r.isHand ? (
+            <input type="text" aria-label="Lead time" placeholder="2 wk" value={draftOf(r.key, 'lead', describeLeadTime(r.leadTimeDays) ?? '')} onChange={(e) => setDraft(r.key, 'lead', e.target.value)} onBlur={() => void commitText(r, 'lead')} style={{ ...inp, width: '4.6rem' }} />
+          ) : (
+            describeLeadTime(r.leadTimeDays) ?? <span style={smallMuted}>—</span>
+          )}
+        </td>
+        <td style={{ ...tdCenter }}>
+          {dateCell(r, 'expected_on', r.expectedOn, {
+            label: `${r.tag ?? r.product} expected on`,
+            title: r.expectedSource === 'derived' ? `${shortDate(r.orderedOn)} + ${describeLeadTime(r.leadTimeDays)}; type the house's own date to override` : r.expectedSource === 'house' ? "The house's date; clear it to go back to ordered + lead time" : 'Order date + lead time, or the house’s own date',
+            disabled: busy || !!r.deliveredOn,
+            background: r.expectedSource === 'house' ? 'var(--bg-amber-100)' : r.expectedSource === 'derived' ? 'var(--bg-muted)' : 'var(--surface)',
+            under: r.expectedSource === 'house' ? 'house said' : null,
+            empty: r.deliveredOn ? '—' : undefined,
+          })}
+        </td>
+        <td style={{ ...tdCenter }}>{r.requiredOn ? shortDate(r.requiredOn) : <span style={smallMuted}>—</span>}</td>
+        <td style={{ ...tdCenter, fontWeight: late ? 700 : 500, color: late ? 'var(--text-red-700)' : r.deliveredOn ? 'var(--text-green-700)' : r.floatDays != null ? 'var(--text-green-700)' : 'var(--text-muted)' }} data-testid="procurement-float">{floatText(r)}</td>
+        <td style={{ ...tdCenter }}>{dateCell(r, 'delivered_on', r.deliveredOn, { label: `${r.tag ?? r.product} delivered on`, disabled: busy })}</td>
+        <td style={{ ...td, minWidth: 160 }}><input type="text" aria-label={`${r.tag ?? r.product} note`} placeholder="note for the GC" value={draftOf(r.key, 'note', r.note)} onChange={(e) => setDraft(r.key, 'note', e.target.value)} onBlur={() => void commitText(r, 'note')} maxLength={500} style={{ ...inp, width: '100%' }} /></td>
+        <td style={{ ...td, whiteSpace: 'nowrap' }}>{r.isHand ? <button type="button" onClick={() => void removeHandRow(r)} disabled={disabled} title="Remove this item" aria-label={`Remove ${r.product || 'item'}`} style={{ ...link, color: 'var(--text-red-600)', textDecoration: 'none', fontSize: '0.95rem' }}>×</button> : null}</td>
+    </tr>
+    )
+  }
+
+
   return (
     <div data-testid="submittal-procurement" data-tour="submittals-procure" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.75rem', background: 'var(--surface)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
@@ -445,11 +560,43 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
         </span>
       </div>
 
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div role="group" aria-label="Show the log" style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden' }} data-testid="procurement-lens">
+          {(Object.keys(LENS_WORDS) as ProcurementLens[]).map((k, i) => (
+            <button key={k} type="button" aria-pressed={lens === k} onClick={() => setLens(k)} style={{ padding: '0.3rem 0.8rem', minHeight: 34, border: 'none', borderLeft: i > 0 ? '1px solid var(--border-strong)' : 'none', font: 'inherit', fontSize: '0.8rem', fontWeight: lens === k ? 700 : 500, cursor: 'pointer', background: lens === k ? '#2563eb' : 'var(--surface)', color: lens === k ? 'white' : 'var(--text-base)' }}>
+              {LENS_WORDS[k]}
+            </button>
+          ))}
+        </div>
+        {lens === 'to_order' && loaded ? <span style={{ fontSize: '0.8125rem', color: 'var(--text-strong)' }} data-testid="procurement-next">{toOrderLine(sections)}</span> : null}
+      </div>
+
+      {ticked.size > 0 ? (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem 0.75rem', alignItems: 'center', padding: '0.5rem 0.7rem', border: '1px solid #2563eb', background: 'var(--bg-blue-tint)', borderRadius: 6 }} data-testid="procurement-bulk">
+          <b style={{ fontSize: '0.8125rem', color: 'var(--text-blue-700)' }}>{ticked.size} line{ticked.size === 1 ? '' : 's'} ticked</b>
+          <label style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center', fontSize: '0.8rem' }}>
+            Ordered
+            <input type="text" aria-label="Ordered on, for every ticked line" placeholder={logDateRead(today, today)} value={bulkOrdered} onChange={(e) => setBulkOrdered(e.target.value)} style={{ ...inp, width: '4.6rem', textAlign: 'center' }} />
+          </label>
+          <label style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center', fontSize: '0.8rem' }}>
+            PO
+            <input type="text" aria-label="PO, for every ticked line" placeholder="PO number" value={bulkPo} onChange={(e) => setBulkPo(e.target.value)} maxLength={60} style={{ ...inp, width: '8rem' }} />
+          </label>
+          <span style={{ display: 'flex', gap: '0.4rem', marginLeft: 'auto', flexWrap: 'wrap' }}>
+            <button type="button" disabled={disabled} onClick={() => setTicked(new Set())} style={btn}>Clear</button>
+            <button type="button" disabled={disabled} onClick={() => void markTicked('delivered_on')} style={btn} data-testid="procurement-bulk-delivered">Mark {ticked.size} delivered today</button>
+            <button type="button" disabled={disabled} onClick={() => void markTicked('ordered_on')} style={btnPrimary} data-testid="procurement-bulk-ordered">Mark {ticked.size} ordered</button>
+          </span>
+        </div>
+      ) : null}
+
       <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1080, fontVariantNumeric: 'tabular-nums' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1140, fontVariantNumeric: 'tabular-nums' }}>
           <thead>
             <tr>
+              <th style={{ ...th, width: 28 }} aria-label="Pick" />
               <th style={th}>Item</th>
+              <th style={thCenter}>Qty</th>
               <th style={th}>Submittal</th>
               <th style={thCenter}>Released</th>
               <th style={thCenter}>Ordered</th>
@@ -466,65 +613,31 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
           <tbody data-testid="procurement-rows">
             {rows.length === 0 ? (
               <tr>
-                <td style={td} colSpan={12}>
+                <td style={td} colSpan={14}>
                   <span style={smallMuted}>No rows yet. The submittal's rows appear here once a revision is shared; + Add item for a long-lead item with no cut sheet.</span>
                 </td>
               </tr>
             ) : null}
-            {rows.map((r) => {
-              const late = r.late
-              const changed = changes.some((c) => c.key === r.key)
+            {sections.map((sec) => {
+              // By tag, a tag with one line needs no heading of its own.
+              const heading = lens !== 'by_tag' || sec.rows.length > 1 || (sec.rows[0]?.isHand ?? false)
+              const keys = sec.rows.map((r) => r.key)
+              const allOn = keys.length > 0 && keys.every((k) => ticked.has(k))
               return (
-                <tr key={r.key} data-testid="procurement-row" style={{ background: changed ? 'var(--bg-amber-100)' : undefined }}>
-                  <td style={itemTd} data-testid="procurement-item">
-                    {r.isHand ? (
-                      <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                        <input type="text" aria-label="Item" placeholder="What it is (no cut sheet)" value={draftOf(r.key, 'label', r.product)} onChange={(e) => setDraft(r.key, 'label', e.target.value)} onBlur={() => void commitText(r, 'label')} maxLength={200} style={{ ...inp, flex: 1, minWidth: 0 }} />
-                        {r.stage ? <span style={{ ...smallMuted, whiteSpace: 'nowrap' }}>{PROCUREMENT_STAGE_LABELS[r.stage]}</span> : (
-                          <select aria-label="Stage" value="" onChange={(e) => void write(r, { stage: (e.target.value || null) as ProcurementStage | null })} style={inp}>
-                            <option value="">stage…</option>
-                            {(['rough_in', 'top_out', 'trim_set'] as const).map((s) => <option key={s} value={s}>{PROCUREMENT_STAGE_LABELS[s]}</option>)}
-                          </select>
-                        )}
-                      </div>
-                    ) : (
-                      <>
-                        <div><b style={itemTag}>{r.tag}</b>{r.product}</div>
-                        <div style={smallMuted}>
-                          {r.supplyHouse ? `${r.supplyHouse} · ` : ''}
-                          {r.stage ? PROCUREMENT_STAGE_LABELS[r.stage] : 'no stage on the takeoff'}
-                          {r.countedWith.length > 0 ? <span data-testid="procurement-counted-with"> · counted with {r.countedWith.join(', ')} on the takeoff</span> : null}
-                        </div>
-                      </>
-                    )}
-                  </td>
-                  <td style={{ ...td, whiteSpace: 'nowrap' }}><span style={{ color: r.submittal === 'approved' ? 'var(--text-green-700)' : r.submittal === 'revise' || r.submittal === 'rejected' ? 'var(--text-amber-700)' : 'var(--text-muted)' }}>{submittalWord(r)}</span></td>
-                  <td style={{ ...tdCenter }}>{r.releasedOn ? shortDate(r.releasedOn) : <span style={smallMuted}>—</span>}</td>
-                  <td style={{ ...tdCenter }}>{dateCell(r, 'ordered_on', r.orderedOn, { label: `${r.tag ?? r.product} ordered on`, disabled: busy })}</td>
-                  <td style={td}><input type="text" aria-label={`${r.tag ?? r.product} PO`} placeholder="PO" value={draftOf(r.key, 'po', r.poRef)} onChange={(e) => setDraft(r.key, 'po', e.target.value)} onBlur={() => void commitText(r, 'po')} maxLength={60} style={{ ...inp, width: '5.2rem' }} /></td>
-                  <td style={{ ...tdCenter }}>
-                    {r.isHand ? (
-                      <input type="text" aria-label="Lead time" placeholder="2 wk" value={draftOf(r.key, 'lead', describeLeadTime(r.leadTimeDays) ?? '')} onChange={(e) => setDraft(r.key, 'lead', e.target.value)} onBlur={() => void commitText(r, 'lead')} style={{ ...inp, width: '4.6rem' }} />
-                    ) : (
-                      describeLeadTime(r.leadTimeDays) ?? <span style={smallMuted}>—</span>
-                    )}
-                  </td>
-                  <td style={{ ...tdCenter }}>
-                    {dateCell(r, 'expected_on', r.expectedOn, {
-                      label: `${r.tag ?? r.product} expected on`,
-                      title: r.expectedSource === 'derived' ? `${shortDate(r.orderedOn)} + ${describeLeadTime(r.leadTimeDays)}; type the house's own date to override` : r.expectedSource === 'house' ? "The house's date; clear it to go back to ordered + lead time" : 'Order date + lead time, or the house’s own date',
-                      disabled: busy || !!r.deliveredOn,
-                      background: r.expectedSource === 'house' ? 'var(--bg-amber-100)' : r.expectedSource === 'derived' ? 'var(--bg-muted)' : 'var(--surface)',
-                      under: r.expectedSource === 'house' ? 'house said' : null,
-                      empty: r.deliveredOn ? '—' : undefined,
-                    })}
-                  </td>
-                  <td style={{ ...tdCenter }}>{r.requiredOn ? shortDate(r.requiredOn) : <span style={smallMuted}>—</span>}</td>
-                  <td style={{ ...tdCenter, fontWeight: late ? 700 : 500, color: late ? 'var(--text-red-700)' : r.deliveredOn ? 'var(--text-green-700)' : r.floatDays != null ? 'var(--text-green-700)' : 'var(--text-muted)' }} data-testid="procurement-float">{floatText(r)}</td>
-                  <td style={{ ...tdCenter }}>{dateCell(r, 'delivered_on', r.deliveredOn, { label: `${r.tag ?? r.product} delivered on`, disabled: busy })}</td>
-                  <td style={{ ...td, minWidth: 160 }}><input type="text" aria-label={`${r.tag ?? r.product} note`} placeholder="note for the GC" value={draftOf(r.key, 'note', r.note)} onChange={(e) => setDraft(r.key, 'note', e.target.value)} onBlur={() => void commitText(r, 'note')} maxLength={500} style={{ ...inp, width: '100%' }} /></td>
-                  <td style={{ ...td, whiteSpace: 'nowrap' }}>{r.isHand ? <button type="button" onClick={() => void removeHandRow(r)} disabled={disabled} title="Remove this item" aria-label={`Remove ${r.product || 'item'}`} style={{ ...link, color: 'var(--text-red-600)', textDecoration: 'none', fontSize: '0.95rem' }}>×</button> : null}</td>
-                </tr>
+                <Fragment key={sec.key}>
+                  {heading ? (
+                    <tr data-testid="procurement-section">
+                      <td colSpan={14} style={{ ...td, background: 'var(--bg-subtle)', padding: '0.4rem 0.4rem' }}>
+                        <label style={{ display: 'inline-flex', gap: '0.5rem', alignItems: 'center', cursor: 'pointer' }}>
+                          <input type="checkbox" aria-label={`Pick every line under ${sec.title}`} checked={allOn} onChange={(e) => setTicked((cur) => { const next = new Set(cur); for (const k of keys) { if (e.target.checked) next.add(k); else next.delete(k) } return next })} />
+                          <b style={{ color: 'var(--text-strong)' }}>{sec.title}</b>
+                          <span style={smallMuted}>{sec.note}</span>
+                        </label>
+                      </td>
+                    </tr>
+                  ) : null}
+                  {sec.rows.map((r) => renderRow(r, lens === 'by_tag' && heading))}
+                </Fragment>
               )
             })}
           </tbody>
@@ -611,4 +724,12 @@ function rowsFromSnapshot(snap: ProcurementUpdate['rows']): ProcurementRow[] {
     status: s.status,
     late: s.floatDays != null && s.floatDays < 0,
   }))
+}
+
+/** The To order lens's one line: how many lines to order now, and the first order-by date. */
+function toOrderLine(sections: ReadonlyArray<{ key: string; rows: ProcurementRow[] }>): string {
+  const buy = sections.filter((s) => s.key.startsWith('buy:')).flatMap((s) => s.rows)
+  if (buy.length === 0) return 'Nothing is approved and waiting to be ordered.'
+  const first = buy.map((r) => r.orderBy).filter((d): d is string => !!d).sort()[0] ?? null
+  return `${buy.length} line${buy.length === 1 ? ' is' : 's are'} approved and not ordered.${first ? ` The first must be ordered by ${shortDate(first)}.` : ''}`
 }

@@ -8,6 +8,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '../../types/database'
 import { loadStageSplitsForBid } from '../bids/materialsByStageIo'
 import { asDecision } from './submittalRevision'
+import type { SubmittalPartRow } from './itemParts'
+import { asPartStage } from './itemParts'
 import {
   stageDatesFromJob,
   tagStagesFrom,
@@ -26,6 +28,8 @@ export function procurementRecordFromRow(r: ProcurementItemRow): ProcurementReco
   return {
     id: r.id,
     tag: r.tag,
+    // 2026-10-01 · a part's line (typed by hand until the types regen after the push).
+    partKey: (r as ProcurementItemRow & { part_key?: string | null }).part_key ?? null,
     label: r.label ?? '',
     leadTimeDays: r.lead_time_days,
     stage: (r.stage as ProcurementStage | null) ?? null,
@@ -84,30 +88,58 @@ export async function loadStageDatesForBid(supabase: Client, bidId: string): Pro
   return { jobId: job.id, stageDates: stageDatesFromJob(fixtures ?? [], windows ?? []) }
 }
 
-type ItemLike = { tag: string; submitted_manufacturer: string | null; submitted_model: string | null; submitted_label: string | null; specified_manufacturer: string | null; specified_model: string | null; specified_description: string | null; lead_time_days: number | null; review_decision: string | null; reviewed_at: string | null; supply_house_id: string | null; source_count_row_id?: string | null }
+type ItemLike = { id?: string; tag: string; submitted_manufacturer: string | null; submitted_model: string | null; submitted_label: string | null; specified_manufacturer: string | null; specified_model: string | null; specified_description: string | null; lead_time_days: number | null; review_decision: string | null; reviewed_at: string | null; supply_house_id: string | null; source_count_row_id?: string | null }
 
-/** The newest revision's rows as the log reads them; the house names come from one read. */
-export async function procurementItemsFrom(supabase: Client, items: ReadonlyArray<ItemLike>, shared: boolean): Promise<ProcurementItemSource[]> {
-  const houseIds = [...new Set(items.map((i) => i.supply_house_id).filter((x): x is string => !!x))]
+/**
+ * The newest revision's rows as the log reads them; the house names come from one read. A row
+ * with parts (2026-10-01) gives one line per part: the part's name, house, lead time and stage,
+ * the fixtures counted × how many go on one, and its call — its own, else the row's; an order-only
+ * part takes the row's call (it is released with its fixture).
+ */
+export async function procurementItemsFrom(supabase: Client, items: ReadonlyArray<ItemLike>, shared: boolean, parts: ReadonlyArray<SubmittalPartRow> = []): Promise<ProcurementItemSource[]> {
+  const houseIds = [...new Set([...items.map((i) => i.supply_house_id), ...parts.map((p) => p.supply_house_id)].filter((x): x is string => !!x))]
   const names = new Map<string, string>()
   if (houseIds.length > 0) {
     const { data } = await supabase.from('supply_houses').select('id, name').in('id', houseIds)
     for (const h of data ?? []) names.set(h.id, h.name)
   }
-  return items
-    .filter((i) => i.tag.trim())
-    .map((i) => {
-      const submitted = [i.submitted_manufacturer, i.submitted_model].filter(Boolean).join(' ') || i.submitted_label || ''
-      const specified = [i.specified_manufacturer, i.specified_model].filter(Boolean).join(' ') || i.specified_description || ''
-      const d = asDecision(i.review_decision)
-      return {
-        tag: i.tag.trim(),
-        product: submitted || specified || '(no product)',
-        supplyHouse: i.supply_house_id ? names.get(i.supply_house_id) ?? null : null,
-        leadTimeDays: i.lead_time_days,
-        decision: d ? { kind: d, at: i.reviewed_at } : null,
-        shared,
-        sourceCountRowId: i.source_count_row_id ?? null,
-      }
-    })
+  // How many fixtures the takeoff counted, for the parts' quantities.
+  const countRowIds = [...new Set(items.filter((i) => parts.some((p) => p.item_id === (i as ItemLike & { id?: string }).id)).map((i) => i.source_count_row_id).filter((x): x is string => !!x))]
+  const counts = new Map<string, number>()
+  if (countRowIds.length > 0) {
+    const { data } = await supabase.from('bids_count_rows').select('id, count').in('id', countRowIds)
+    for (const c of (data ?? []) as Array<{ id: string; count: number }>) counts.set(c.id, Number(c.count) || 0)
+  }
+  const out: ProcurementItemSource[] = []
+  for (const i of items) {
+    if (!i.tag.trim()) continue
+    const submitted = [i.submitted_manufacturer, i.submitted_model].filter(Boolean).join(' ') || i.submitted_label || ''
+    const specified = [i.specified_manufacturer, i.specified_model].filter(Boolean).join(' ') || i.specified_description || ''
+    const d = asDecision(i.review_decision)
+    const rowDecision = d ? { kind: d, at: i.reviewed_at } : null
+    const base = { tag: i.tag.trim(), shared, sourceCountRowId: i.source_count_row_id ?? null }
+    const itemId = (i as ItemLike & { id?: string }).id
+    const rowParts = itemId ? parts.filter((p) => p.item_id === itemId).sort((a, b) => a.sequence_order - b.sequence_order) : []
+    if (rowParts.length === 0) {
+      out.push({ ...base, product: submitted || specified || '(no product)', supplyHouse: i.supply_house_id ? names.get(i.supply_house_id) ?? null : null, leadTimeDays: i.lead_time_days, decision: rowDecision })
+      continue
+    }
+    const fixtures = i.source_count_row_id ? counts.get(i.source_count_row_id) ?? null : null
+    for (const p of rowParts) {
+      const own = asDecision(p.review_decision)
+      out.push({
+        ...base,
+        product: p.label.trim(),
+        supplyHouse: p.supply_house_id ? names.get(p.supply_house_id) ?? null : null,
+        leadTimeDays: p.lead_time_days ?? i.lead_time_days,
+        decision: !p.on_submittal ? rowDecision : own ? { kind: own, at: p.reviewed_at } : rowDecision,
+        partKey: p.procure_key,
+        partOrder: p.sequence_order,
+        orderOnly: !p.on_submittal,
+        quantity: fixtures != null ? fixtures * Number(p.quantity) : null,
+        stage: asPartStage(p.stage),
+      })
+    }
+  }
+  return out
 }
