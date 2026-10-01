@@ -18,6 +18,8 @@ export type PortalCompany = {
 }
 
 export type PortalBill = {
+  /** The bill's id (v2.4304: its lien waiver note keys on it); null for a job-level shell or a function from before it. */
+  invoiceId: string | null
   jobLabel: string
   jobNumber: string
   /** Bare job name — the line-one fallback when a job has no address. */
@@ -61,6 +63,8 @@ export type PortalTestReport = {
  * button, never in the balance.
  */
 export type PortalSharedBill = {
+  /** The bill's id (v2.4304: the owner's lien waiver note keys on it); null for a shell or a function from before it. */
+  invoiceId: string | null
   /** The job's id, the handle "Ask the office" sends back (v2.3378); null from a function that predates it. */
   jobId: string | null
   jobLabel: string
@@ -116,9 +120,19 @@ export type PortalPayload = {
 
 export type PortalChecksPayload = { jobs: ChecksJobIn[]; events: ChecksEventIn[] }
 
-export type PortalWaiverHalfState = 'none' | 'signing' | 'signed' | 'sent'
-export type PortalWaiverHalf = { state: PortalWaiverHalfState; ymd: string | null; pdfUrl: string | null }
+/** A half shows once it is signed (v2.4304): signed (not yet emailed) or sent; anything else is none. */
+export type PortalWaiverHalfState = 'none' | 'signed' | 'sent'
+export type PortalWaiverHalf = {
+  state: PortalWaiverHalfState
+  ymd: string | null
+  pdfUrl: string | null
+  /** conditional_progress · conditional_final · unconditional_progress · unconditional_final; null from a function before v2.4304. */
+  formType: string | null
+  signerName: string | null
+}
 export type PortalWaiverRow = {
+  /** payer: a bill the viewer pays · owner: a bill on the viewer's property that the office shared with them (v2.4304). */
+  audience: 'payer' | 'owner'
   jobId: string
   jobLabel: string
   jobAddress: string | null
@@ -181,6 +195,7 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
       const amount = num(b.amount)
       if (amount <= 0) continue
       bills.push({
+        invoiceId: typeof b.invoiceId === 'string' && b.invoiceId.trim() ? b.invoiceId : null,
         jobLabel: str(b.jobLabel, 'Job'),
         jobNumber: str(b.jobNumber),
         jobName: typeof b.jobName === 'string' && b.jobName.trim() ? b.jobName : null,
@@ -236,6 +251,7 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
       const billedTo = typeof b.billedTo === 'string' ? b.billedTo.trim() : ''
       if (!billedTo) continue
       sharedBills.push({
+        invoiceId: typeof b.invoiceId === 'string' && b.invoiceId.trim() ? b.invoiceId : null,
         jobId: typeof b.jobId === 'string' && b.jobId.trim() ? b.jobId : null,
         jobLabel: str(b.jobLabel, 'Job'),
         jobNumber: str(b.jobNumber),
@@ -292,16 +308,23 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
   if (Array.isArray(r.waivers)) {
     const half = (h: unknown): PortalWaiverHalf => {
       const o = h && typeof h === 'object' ? (h as Record<string, unknown>) : {}
-      const state: PortalWaiverHalfState = o.state === 'sent' || o.state === 'signed' || o.state === 'signing' ? o.state : 'none'
+      // A function from before v2.4304 also sends "signing": the page shows a waiver only once signed.
+      const state: PortalWaiverHalfState = o.state === 'sent' || o.state === 'signed' ? o.state : 'none'
       return {
         state,
         ymd: typeof o.ymd === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(o.ymd) ? o.ymd : null,
         pdfUrl: typeof o.pdfUrl === 'string' && /^https?:\/\//.test(o.pdfUrl) ? o.pdfUrl : null,
+        formType: typeof o.formType === 'string' && o.formType.trim() ? o.formType : null,
+        signerName: typeof o.signerName === 'string' && o.signerName.trim() ? o.signerName.trim() : null,
       }
     }
     for (const w of r.waivers as Array<Record<string, unknown>>) {
       if (w == null || typeof w !== 'object' || typeof w.jobId !== 'string' || typeof w.invoiceId !== 'string') continue
+      const conditional = half(w.conditional)
+      const unconditional = half(w.unconditional)
+      if (conditional.state === 'none' && unconditional.state === 'none') continue
       waivers.push({
+        audience: w.audience === 'owner' ? 'owner' : 'payer',
         jobId: w.jobId,
         jobLabel: str(w.jobLabel, 'Job'),
         jobAddress: typeof w.jobAddress === 'string' && w.jobAddress.trim() ? w.jobAddress : null,
@@ -311,8 +334,8 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
         billedYmd: typeof w.billedYmd === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(w.billedYmd) ? w.billedYmd : null,
         paid: w.paid === true,
         final: w.final === true,
-        conditional: half(w.conditional),
-        unconditional: half(w.unconditional),
+        conditional,
+        unconditional,
       })
     }
   }

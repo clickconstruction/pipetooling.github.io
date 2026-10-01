@@ -11,6 +11,9 @@
 import { CARD, COPPER, FAINT, HAIR, INK, MUTED, PAPER_RED } from '../../lib/portal/portalTheme'
 import { formatPortalDate, formatPortalUsd, portalDaysSinceBilled, splitPortalAddress, type PortalSharedBill } from '../../lib/portal/portalPayload'
 import { PortalShareAsk } from './PortalShareAsk'
+import { PortalWaiverNoteLink } from './PortalWaiverPapers'
+import { portalWaiverNote } from '../../lib/portal/portalWaiverPapers'
+import type { PortalWaiverRow } from '../../lib/portal/portalPayload'
 
 export type PortalSharedBillsCardProps = {
   bills: PortalSharedBill[]
@@ -19,6 +22,8 @@ export type PortalSharedBillsCardProps = {
   token?: string | null
   /** Job numbers a recorded notice covers (v2.3825): the owner's rows on them read "on the notice above". */
   noticedJobNumbers?: ReadonlySet<string>
+  /** Lien waivers (v2.4304): on the owner's rows, a signed waiver is a note on its bill. */
+  waivers?: PortalWaiverRow[]
 }
 
 const WORDING = {
@@ -44,7 +49,7 @@ function sum(list: PortalSharedBill[]): number {
   return Math.round(list.reduce((s, b) => s + b.amount, 0) * 100) / 100
 }
 
-function SharedGroup({ role, bills, todayYmd, token, noticed }: { role: 'gc' | 'customer'; bills: PortalSharedBill[]; todayYmd: string; token: string | null; noticed?: ReadonlySet<string> }) {
+function SharedGroup({ role, bills, todayYmd, token, noticed, waivers = [] }: { role: 'gc' | 'customer'; bills: PortalSharedBill[]; todayYmd: string; token: string | null; noticed?: ReadonlySet<string>; waivers?: PortalWaiverRow[] }) {
   const underNotice = role === 'customer' && !!noticed && bills.some((b) => b.jobNumber && noticed.has(b.jobNumber))
   const words = underNotice ? WORDING.customerNoticed : WORDING[role]
   const owners = new Set(bills.map((b) => b.billedTo)).size
@@ -90,6 +95,15 @@ function SharedGroup({ role, bills, todayYmd, token, noticed }: { role: 'gc' | '
                   </span>
                 ))}
               </div>
+              {(() => {
+                // The owner's waivers only: a GC reading a customer's bill holds no waiver of ours.
+                const note = role === 'customer' ? portalWaiverNote(waivers.filter((w) => w.audience === 'owner'), b.invoiceId) : null
+                return note ? (
+                  <div style={{ fontSize: 11.5, marginTop: 2 }}>
+                    <PortalWaiverNoteLink note={note} />
+                  </div>
+                ) : null
+              })()}
               {role === 'gc' && token && b.jobId ? (
                 <PortalShareAsk token={token} jobId={b.jobId} billLabel={[b.jobNumber ? `J${b.jobNumber}` : null, addr?.street ?? b.jobName ?? b.jobLabel].filter(Boolean).join(' · ')} amount={b.amount} formatUsd={formatPortalUsd} />
               ) : null}
@@ -109,13 +123,13 @@ function SharedGroup({ role, bills, todayYmd, token, noticed }: { role: 'gc' | '
   )
 }
 
-export function PortalSharedBillsCard({ bills, todayYmd, token = null, noticedJobNumbers }: PortalSharedBillsCardProps) {
+export function PortalSharedBillsCard({ bills, todayYmd, token = null, noticedJobNumbers, waivers = [] }: PortalSharedBillsCardProps) {
   const asGc = bills.filter((b) => b.viewerRole === 'gc')
   const asCustomer = bills.filter((b) => b.viewerRole === 'customer')
   return (
     <>
       {asGc.length > 0 ? <SharedGroup role="gc" bills={asGc} todayYmd={todayYmd} token={token} /> : null}
-      {asCustomer.length > 0 ? <SharedGroup role="customer" bills={asCustomer} todayYmd={todayYmd} token={token} noticed={noticedJobNumbers} /> : null}
+      {asCustomer.length > 0 ? <SharedGroup role="customer" bills={asCustomer} todayYmd={todayYmd} token={token} noticed={noticedJobNumbers} waivers={waivers} /> : null}
     </>
   )
 }

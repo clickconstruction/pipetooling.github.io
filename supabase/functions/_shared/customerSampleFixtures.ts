@@ -139,10 +139,31 @@ function sampleGcStages(todayYmd: string, jobLabel: string, jobAddress: string) 
 }
 
 /** customer-portal, sample token: the homeowner's statement (one fresh bill, one partly paid), or (`gc`) the contractor's view of the properties they GC. */
+type SampleWaiverHalf = { state: 'signed' | 'sent'; ymd: string; formType: string }
+/** One sample waiver row (v2.4304), the shape `_shared/portalWaivers.ts` sends after the PDF links are signed. */
+function sampleWaiver(
+  audience: 'payer' | 'owner',
+  jobId: string,
+  bill: { jobLabel: string; jobAddress: string },
+  invoiceId: string,
+  billLabel: string,
+  amount: number,
+  billedYmd: string,
+  paid: boolean,
+  final: boolean,
+  conditional: SampleWaiverHalf | null,
+  unconditional: SampleWaiverHalf | null,
+): Record<string, unknown> {
+  const half = (h: SampleWaiverHalf | null) =>
+    h ? { state: h.state, ymd: h.ymd, pdfUrl: null, releaseId: null, formType: h.formType, signerName: 'Malachi Whites' } : { state: 'none', ymd: null, pdfUrl: null, releaseId: null, formType: null, signerName: null }
+  return { audience, jobId, jobLabel: bill.jobLabel, jobAddress: bill.jobAddress, invoiceId, billLabel, amount, billedYmd, paid, final, conditional: half(conditional), unconditional: half(unconditional) }
+}
+
 export function sampleCustomerPortalResponse(company: SamplePortalCompany, state: SampleState, todayYmd: string, appOrigin: string): Record<string, unknown> {
   const gc = state === 'gc'
   const payUrl = `${appOrigin.replace(/\/$/, '')}/portal?t=${SAMPLE_TOKEN}#pay`
   const openBill = {
+    invoiceId: 'sample-inv-open',
     jobLabel: gc ? 'Cedar Bend Apartments · Job 1002' : 'Water heater replacement · Job 1001',
     jobNumber: gc ? '1002' : '1001',
     jobName: gc ? 'Cedar Bend Apartments' : 'Water heater replacement',
@@ -159,6 +180,7 @@ export function sampleCustomerPortalResponse(company: SamplePortalCompany, state
     totalPaid: 0,
   }
   const paidBill = {
+    invoiceId: 'sample-inv-paid',
     jobLabel: gc ? 'Hunter Road Studios · Job 0998' : 'Kitchen faucet and disposal · Job 0994',
     jobNumber: gc ? '0998' : '0994',
     jobName: gc ? 'Hunter Road Studios' : 'Kitchen faucet and disposal',
@@ -201,6 +223,14 @@ export function sampleCustomerPortalResponse(company: SamplePortalCompany, state
           { id: 'sample-report-2', jobId: 'sample-job-paid', jobNumber: paidBill.jobNumber, jobLabel: paidBill.jobLabel, jobAddress: paidBill.jobAddress, reportLabel: 'Sewer Post-Test Hydrostatic', title: 'Sewer Post-Test Hydrostatic Test Report', result: 'pass', testDateYmd: ymdPlusDays(todayYmd, -41), certifierName: 'Malachi Whites', certifierLicense: '#RMP41130', sentAt: ymdPlusDays(todayYmd, -40) },
         ]
       : [{ id: 'sample-report-1', jobId: 'sample-job-open', jobNumber: openBill.jobNumber, jobLabel: openBill.jobLabel, jobAddress: openBill.jobAddress, reportLabel: 'Gas Test', title: 'Gas Test Report', result: null, testDateYmd: ymdPlusDays(todayYmd, -4), certifierName: 'Malachi Whites', certifierLicense: '#RMP41130', sentAt: ymdPlusDays(todayYmd, -3) }],
+    // Lien waivers (v2.4304): the GC's signed waivers — a note on each open bill and the Your papers rows. No files behind sample rows.
+    waivers: gc
+      ? [
+          sampleWaiver('payer', 'sample-job-open', openBill, 'sample-inv-open', 'Bill 2 of 3', 18_200, ymdPlusDays(todayYmd, -3), false, false, { state: 'signed', ymd: ymdPlusDays(todayYmd, -2), formType: 'conditional_progress' }, null),
+          sampleWaiver('payer', 'sample-job-paid', paidBill, 'sample-inv-paid', 'Bill', 12_200, ymdPlusDays(todayYmd, -40), false, true, { state: 'sent', ymd: ymdPlusDays(todayYmd, -40), formType: 'conditional_final' }, null),
+          sampleWaiver('payer', 'sample-job-open', openBill, 'sample-inv-open-1', 'Bill 1 of 3', 14_050, ymdPlusDays(todayYmd, -30), true, false, { state: 'sent', ymd: ymdPlusDays(todayYmd, -26), formType: 'conditional_progress' }, { state: 'sent', ymd: ymdPlusDays(todayYmd, -13), formType: 'unconditional_progress' }),
+        ]
+      : [],
     stages: gc ? sampleGcStages(todayYmd, openBill.jobLabel, openBill.jobAddress) : [],
     // Bank transfer details (v2.3308): invented numbers so the walkthrough shows the collapsed
     // card; the live row lives in company_bank_transfer_details, never in this file.

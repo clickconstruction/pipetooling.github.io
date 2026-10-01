@@ -2,6 +2,12 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { COMPANY_EMAIL_FROM } from '../_shared/emailFrom.ts'
+import { loadPortalReturnUrl } from '../_shared/customerPortalReturnUrl.ts'
+import { ensurePortalShortAddress } from '../_shared/portalShortAddress.ts'
+import { PORTAL_QR_CONTENT_ID, PORTAL_QR_FILENAME } from '../_shared/portalAccountCard.ts'
+import { qrMatrix } from '../_shared/qrMatrix.ts'
+import { bytesToBase64, qrPngBytes } from '../_shared/qrPng.ts'
+import { waiverEmailRecipientCustomerId, withWaiverAccountCard } from '../_shared/lienWaiverEmailCard.ts'
 
 // Email a SIGNED lien release to the job's customer, PDF attached (v2.2621 —
 // the signing loop's "ready to send" lane). Mirrors send-physical-invoice-email:
@@ -85,7 +91,7 @@ serve(async (req) => {
 
     const { data: jl, error: jlErr } = await userClient
       .from('jobs_ledger')
-      .select('id, customer_email, gc_customer_id')
+      .select('id, customer_id, customer_email, gc_customer_id')
       .eq('id', jobId)
       .single()
     if (jlErr || !jl) return jsonResponse({ error: 'Job not found' }, 403)
@@ -95,9 +101,10 @@ serve(async (req) => {
     const jobEmail = typeof jl.customer_email === 'string' ? jl.customer_email.trim().toLowerCase() : ''
     if (jobEmail) allowed.add(jobEmail)
     const gcId = typeof jl.gc_customer_id === 'string' ? jl.gc_customer_id : null
+    let gcEmail = ''
     if (gcId) {
       const { data: gc } = await userClient.from('customers').select('billing_email').eq('id', gcId).maybeSingle()
-      const gcEmail = typeof gc?.billing_email === 'string' ? gc.billing_email.trim().toLowerCase() : ''
+      gcEmail = typeof gc?.billing_email === 'string' ? gc.billing_email.trim().toLowerCase() : ''
       if (gcEmail) allowed.add(gcEmail)
     }
     if (allowed.size === 0) return jsonResponse({ error: 'Job has no customer or GC email; add it on Edit Job or the GC’s record' }, 400)
@@ -111,10 +118,41 @@ serve(async (req) => {
       typeof body.email_text === 'string' && body.email_text.trim().length > 0
         ? body.email_text.trim()
         : 'Please find the signed release of lien attached as a PDF.'
-    const htmlBody =
+    const htmlBodyIn =
       typeof body.email_html === 'string' && body.email_html.trim().length > 0
         ? body.email_html.trim()
         : `<p>${textPlain.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`
+
+    // The account card (v2.4304): the bill emails' "Your account, any time" card — QR code and
+    // short address — when the recipient has a portal. The address is read here, never taken
+    // from the body; any failure sends the waiver without the card.
+    let portalUrl: string | null = null
+    let qrBase64: string | null = null
+    try {
+      const recipientId = waiverEmailRecipientCustomerId({
+        recipientEmail: customerEmailIn,
+        jobCustomerId: typeof jl.customer_id === 'string' ? jl.customer_id : null,
+        jobCustomerEmail: jobEmail,
+        gcCustomerId: gcId,
+        gcBillingEmail: gcEmail,
+      })
+      const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+      if (recipientId && serviceKey) {
+        const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } })
+        const appOrigin = Deno.env.get('APP_ORIGIN')?.trim() || 'https://clicktooling.com'
+        await ensurePortalShortAddress(admin, recipientId, user.id)
+        portalUrl = await loadPortalReturnUrl(admin, recipientId, appOrigin, { paid: false })
+        const modules = portalUrl ? qrMatrix(portalUrl) : null
+        qrBase64 = modules ? bytesToBase64(qrPngBytes(modules)) : null
+      }
+    } catch (e) {
+      console.warn('send-lien-release-email: account card skipped —', e instanceof Error ? e.message : String(e))
+      portalUrl = null
+      qrBase64 = null
+    }
+    const withCard = withWaiverAccountCard({ html: htmlBodyIn, text: textPlain }, portalUrl, qrBase64 ? `cid:${PORTAL_QR_CONTENT_ID}` : null)
+    const htmlBody = withCard.html
+    const textBody = withCard.text
 
     const resendResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -127,8 +165,11 @@ serve(async (req) => {
         to: [customerEmailIn],
         subject,
         html: htmlBody,
-        text: textPlain,
-        attachments: [{ filename: pdfFilename.replace(/[^a-zA-Z0-9._-]/g, '_'), content: pdfBase64 }],
+        text: textBody,
+        attachments: [
+          { filename: pdfFilename.replace(/[^a-zA-Z0-9._-]/g, '_'), content: pdfBase64 },
+          ...(qrBase64 ? [{ filename: PORTAL_QR_FILENAME, content: qrBase64, content_id: PORTAL_QR_CONTENT_ID }] : []),
+        ],
       }),
     })
     if (!resendResponse.ok) {

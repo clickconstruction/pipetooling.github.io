@@ -8,6 +8,7 @@ import {
 } from './portalJobGroups'
 
 const bill = (over: Partial<PortalBill>): PortalBill => ({
+  invoiceId: null,
   jobLabel: 'Job',
   jobNumber: '',
   jobName: null,

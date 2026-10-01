@@ -34,9 +34,10 @@ import {
   type PortalBillsSnapshot,
 } from '../lib/portal/portalPaidFlip'
 import { CARD, COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER, PAPER_GREEN, PAPER_RED } from '../lib/portal/portalTheme'
-import { foldPortalTestReports, portalCertifierLine, type PortalTestReport } from '../lib/portal/portalPayload'
+import { foldPortalTestReports, portalCertifierLine, type PortalTestReport, type PortalWaiverRow } from '../lib/portal/portalPayload'
 import PortalPaymentsSection from '../components/portal/PortalPaymentsSection'
-import PortalWaiversSection from '../components/portal/PortalWaiversSection'
+import { PortalPapersGroupHeading, PortalWaiverNoteLink, PortalWaiverPaperGroup } from '../components/portal/PortalWaiverPapers'
+import { portalWaiverNote, type PortalWaiverNote } from '../lib/portal/portalWaiverPapers'
 import { phoneContact } from '../lib/phoneContact'
 
 /**
@@ -277,8 +278,6 @@ export default function CustomerPortal() {
             )}
             <PortalStatement requestToken={state.payload.requestToken ?? token} payload={state.payload} today={today} />
             {state.payload.checks ? <PortalPaymentsSection checks={state.payload.checks} formatUsd={formatPortalUsd} /> : null}
-            {/* Lien waivers (v2.4278): one pair per bill the viewer pays — the conditional that came with it, the unconditional that follows. */}
-            <PortalWaiversSection waivers={state.payload.waivers} formatUsd={formatPortalUsd} />
             <div data-screen-only>
               <PortalRequestForms token={state.payload.requestToken ?? token} payload={state.payload} />
             </div>
@@ -302,6 +301,10 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
   // Test reports card (v2.3312): five, then "Show all N reports".
   const [showAllReports, setShowAllReports] = useState(false)
   const reportsFold = foldPortalTestReports(payload.testReports, showAllReports)
+  const papers = {
+    any: payload.agreements.length > 0 || payload.waivers.length > 0 || payload.testReports.length > 0,
+    payerWaivers: payload.waivers.some((w) => w.audience === 'payer'),
+  }
   // Same local-date basis as the header's date line, for the Billed age sub-lines.
   const d = new Date()
   const todayYmd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -344,6 +347,8 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
           [data-bill-amount]{font-size:18px}
           [data-bill-pay]{display:block;text-align:center;padding:11px 16px}
           [data-bill-check]{justify-self:start}
+          /* The bill's lien waiver note (v2.4304): its own full-width row, tall enough to tap. */
+          [data-bill-waiver]{display:flex !important;align-items:center;gap:4px;min-height:44px;margin-top:6px;border-top:1px dashed ${HAIR};border-bottom:1px dashed ${HAIR};font-size:13px}
         }
         @media print {
           html,body{background:${PAPER} !important}
@@ -456,6 +461,7 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
                 printHeading={`${payload.customerName} · ${today} · Job ${i + 1} of ${groups.length}`}
                 reports={payload.testReports.filter((r) => portalReportBelongsToGroup(r, g))}
                 reportUrl={(r) => portalTestReportUrl(requestToken, r)}
+                waivers={payload.waivers}
               />
             ))}
             <div data-print-page>
@@ -480,7 +486,7 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
       {payload.propertyNotices.map((n) => (
         <PortalPropertyNoticeCard key={n.key} notice={n} phone={payload.company.phone} companyName={payload.company.name} />
       ))}
-      {payload.sharedBills.length > 0 ? <PortalSharedBillsCard bills={payload.sharedBills} todayYmd={todayYmd} token={requestToken} noticedJobNumbers={new Set(payload.propertyNotices.flatMap((n) => n.jobNumbers))} /> : null}
+      {payload.sharedBills.length > 0 ? <PortalSharedBillsCard bills={payload.sharedBills} todayYmd={todayYmd} token={requestToken} noticedJobNumbers={new Set(payload.propertyNotices.flatMap((n) => n.jobNumbers))} waivers={payload.waivers} /> : null}
 
       {/* Bank transfer details (v2.3308): collapsed under the ledger — ACH / wire
           details, the memo to write, where checks must go. From Supabase, never
@@ -515,16 +521,22 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
         </div>
       ) : null}
 
-      {/* Your agreements (Contract Desk PR 5): signed records and open signing links. */}
-      {payload.agreements.length > 0 ? (
-        <div data-screen-only style={{ margin: '1.4rem 0 0', background: CARD, border: `1px solid ${HAIR}`, padding: '1rem 1.3rem' }}>
-          <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: MUTED, marginBottom: 8 }}>
-            Your agreements
+      {/* Your papers (v2.4304): the signed records in one card — agreements (Contract Desk PR 5),
+          lien waivers (one group for the bills you pay, one for the bills on your property that
+          our office shared with you) and test reports (v2.3304, folded past five). Every row reads
+          the same way: the address, what it is, a status word with its date, one button. */}
+      {papers.any ? (
+        <div data-screen-only data-portal-papers style={{ margin: '1.4rem 0 0', background: CARD, border: `1px solid ${HAIR}`, padding: '1rem 1.3rem' }}>
+          <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: MUTED, marginBottom: 10 }}>
+            Your papers
           </div>
+          {payload.agreements.length > 0 ? (
+            <div data-portal-agreements>
+              <PortalPapersGroupHeading first>Agreements</PortalPapersGroupHeading>
           {payload.agreements.map((a, i) => (
             <div
               key={i}
-              style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '8px 0', borderTop: i === 0 ? 'none' : `1px solid ${HAIR}`, fontSize: 13.5 }}
+              style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '8px 0', borderTop: `1px solid ${HAIR}`, fontSize: 13.5 }}
             >
               <div style={{ flex: '1 1 220px', minWidth: 0 }}>
                 <div style={{ fontWeight: 700 }}>{a.jobLabel}</div>
@@ -547,17 +559,15 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
               ) : null}
             </div>
           ))}
-        </div>
-      ) : null}
-
-      {/* Test reports (v2.3304): the standing record — every sent report, paid jobs included; folded past five (v2.3312). */}
-      {payload.testReports.length > 0 ? (
-        <div data-screen-only style={{ margin: '1.4rem 0 0', background: CARD, border: `1px solid ${HAIR}`, padding: '1rem 1.3rem' }}>
-          <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: MUTED, marginBottom: 8 }}>
-            Test reports
-          </div>
-          {reportsFold.visible.map((r, i) => (
-            <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '8px 0', borderTop: i === 0 ? 'none' : `1px solid ${HAIR}`, fontSize: 13.5 }}>
+            </div>
+          ) : null}
+          <PortalWaiverPaperGroup waivers={payload.waivers} audience="payer" formatUsd={formatPortalUsd} first={payload.agreements.length === 0} />
+          <PortalWaiverPaperGroup waivers={payload.waivers} audience="owner" formatUsd={formatPortalUsd} first={payload.agreements.length === 0 && !papers.payerWaivers} />
+          {payload.testReports.length > 0 ? (
+            <div data-portal-test-reports>
+              <PortalPapersGroupHeading first={payload.agreements.length === 0 && payload.waivers.length === 0}>Test reports</PortalPapersGroupHeading>
+          {reportsFold.visible.map((r) => (
+            <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '8px 0', borderTop: `1px solid ${HAIR}`, fontSize: 13.5 }}>
               <div style={{ flex: '1 1 220px', minWidth: 0 }}>
                 <div style={{ fontWeight: 700 }}>{splitPortalAddress(r.jobAddress)?.street ?? r.jobLabel}</div>
                 <div style={{ color: MUTED, fontSize: 12.5 }}>
@@ -580,6 +590,8 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
             >
               {showAllReports ? 'Show fewer' : `Show all ${payload.testReports.length} reports`}
             </button>
+          ) : null}
+            </div>
           ) : null}
         </div>
       ) : null}
@@ -652,6 +664,7 @@ function PortalJobGroupSection({
   printHeading,
   reports = [],
   reportUrl,
+  waivers = [],
 }: {
   group: PortalJobGroup
   todayYmd: string
@@ -660,6 +673,8 @@ function PortalJobGroupSection({
   /** Test reports (v2.3304) sent on this job — the line between the band and the bill. */
   reports?: PortalTestReport[]
   reportUrl?: (r: PortalTestReport) => string | null
+  /** Lien waivers (v2.4304): a signed waiver is a note on its bill. */
+  waivers?: PortalWaiverRow[]
 }) {
   const addr = splitPortalAddress(group.jobAddress)
   const headline = addr?.street ?? group.jobName ?? group.jobLabel
@@ -728,7 +743,7 @@ function PortalJobGroupSection({
         </div>
       ))}
       {group.bills.map((b, i) => (
-        <PortalBillRow key={i} bill={b} todayYmd={todayYmd} isLast={i === group.bills.length - 1} />
+        <PortalBillRow key={i} bill={b} todayYmd={todayYmd} isLast={i === group.bills.length - 1} waiverNote={portalWaiverNote(waivers.filter((w) => w.audience === 'payer'), b.invoiceId)} />
       ))}
       {group.showRecap && (
         <div style={{ margin: '10px 0 2px auto', width: 'min(320px, 100%)', boxSizing: 'border-box', background: CARD, border: `1px solid ${HAIR}`, padding: '10px 14px 11px', fontSize: 12 }}>
@@ -771,7 +786,7 @@ function PortalJobGroupSection({
 }
 
 /** One bill line inside a job group: date + age, what was billed, what's still due, how to pay. */
-function PortalBillRow({ bill, todayYmd, isLast }: { bill: PortalBill; todayYmd: string; isLast: boolean }) {
+function PortalBillRow({ bill, todayYmd, isLast, waiverNote = null }: { bill: PortalBill; todayYmd: string; isLast: boolean; waiverNote?: PortalWaiverNote | null }) {
   const age = portalDaysSinceBilled(bill.billedOn, todayYmd)
   return (
     <div data-portal-bill data-last={isLast ? '' : undefined} style={{ fontSize: 13.5 }}>
@@ -801,6 +816,13 @@ function PortalBillRow({ bill, todayYmd, isLast }: { bill: PortalBill; todayYmd:
         {/* What paid this bill and when (v2.4044) — the answer to "did you get
             our check?" before it is asked; an open bill says so plainly. */}
         <span data-bill-paid-by>{portalBillPaidByWords(bill, { usd: formatPortalUsd, date: formatPortalDate })}</span>
+        {/* Lien waiver (v2.4304): one more fact about the bill, beside the money it covers. */}
+        {waiverNote ? (
+          <>
+            <br />
+            <PortalWaiverNoteLink note={waiverNote} />
+          </>
+        ) : null}
       </span>
       <span data-bill-amount style={{ textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{formatPortalUsd(bill.amount)}</span>
       {bill.payUrl ? (
