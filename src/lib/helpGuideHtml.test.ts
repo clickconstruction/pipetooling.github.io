@@ -5,6 +5,7 @@ import {
   helpGuideMarkdownToSafeHtml,
   restoreHelpCodeTags,
   restoreHelpGuideLinks,
+  isHelpGuidePagePath,
 } from './helpGuideHtml'
 
 describe('encode/restore help code tags', () => {
@@ -37,8 +38,27 @@ describe('encode/restore in-app guide links', () => {
   })
 
   it('leaves other hrefs alone and refuses anything but a bare slug', () => {
-    const html = '<a href="/jobs?tab=stages">j</a> <a href="https://example.com/help/x">e</a> <a href="/help/../etc">bad</a>'
+    const html = '<a href="https://example.com/help/x">e</a> <a href="/help/../etc">bad</a> <a href="mailto:x@y.z">m</a>'
     expect(restoreHelpGuideLinks(encodeHelpGuideLinks(html))).toBe(html)
+  })
+
+  it('v2.4290: a page of the app rides through as its path plus a data-app hook', () => {
+    const html = '<a href="/jobs?tab=stages&amp;gcReview=1">g</a> <a href="/settings?tab=settings-jobs&amp;focus=issuer.signerName">s</a> <a href="/dashboard">d</a>'
+    const out = restoreHelpGuideLinks(encodeHelpGuideLinks(html))
+    expect(out).toBe(
+      '<a href="/jobs?tab=stages&amp;gcReview=1" data-app="/jobs?tab=stages&amp;gcReview=1">g</a> ' +
+        '<a href="/settings?tab=settings-jobs&amp;focus=issuer.signerName" data-app="/settings?tab=settings-jobs&amp;focus=issuer.signerName">s</a> ' +
+        '<a href="/dashboard" data-app="/dashboard">d</a>',
+    )
+    expect(encodeHelpGuideLinks('<a href="/dashboard">d</a>')).toBe('<a href="https://page.help.internal/%2Fdashboard">d</a>')
+  })
+
+  it('v2.4290: refuses a page path with .., a protocol-relative start, or a pre-baked placeholder', () => {
+    const html = '<a href="/jobs/../etc">a</a> <a href="//evil.example/x">b</a>'
+    expect(restoreHelpGuideLinks(encodeHelpGuideLinks(html))).toBe(html)
+    expect(encodeHelpGuideLinks('<a href="https://page.help.internal/%2Fevil">x</a>')).toBe('<a href="%2Fevil">x</a>')
+    expect(isHelpGuidePagePath('/jobs?tab=stages')).toBe(true)
+    expect(isHelpGuidePagePath('javascript:alert(1)')).toBe(false)
   })
 
   it('strips a pre-baked placeholder so authored text cannot mint a data-guide hook', () => {

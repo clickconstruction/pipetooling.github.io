@@ -6,6 +6,16 @@ keywords: lien waiver, signs for the company, signer title, by, signature block,
 ---
 A GC often wants a lien waiver with each bill. The waiver says we give up our lien right for that payment. Texas has four forms. The app picks the right one from the bill, and the leader signs it in the app.
 
+The work happens in five places. Each link opens that place.
+
+- [Settings](/settings?tab=settings-jobs&focus=issuer.signerName) holds who signs for the company.
+- The [Pipeline](/jobs?tab=stages) has the Release of Lien window on every billed job.
+- The job's **Bill** tab shows each bill's two waivers.
+- The leader's [Dashboard](/dashboard) holds the waivers waiting for his signature.
+- [GC Review](/jobs?tab=stages&gcReview=1) shows what each GC holds and what we owe.
+
+This guide is about our waiver to a GC. The waiver we collect from a sub is in [send a sub the right lien waiver](/help/send-a-lien-waiver).
+
 ## Send it with the bill
 
 1. Open **Bill Customer** on the GC job's draft bill.
@@ -23,10 +33,12 @@ Untick the box if the GC does not want a waiver this time. The bill then goes al
 3. The button beside them names the next move. {{button:outline|Add waiver ›}} means no waiver has gone yet. {{button:outline|Sign it ›}} means one waits for the leader. {{button:outline|Send it ›}} means one is signed but not sent. {{button:outline|Add the unconditional ›}} means the check has cleared.
 4. Click it. The **Release of Lien** window opens on that bill.
 
+{{gif:send-a-gc-our-lien-waiver-billtab.gif|The Bill tab: a sent bill ends with its two waiver chips and the door to the next move}}
+
 ## Open the waiver from the Pipeline
 
-1. Go to **Jobs** and open **Pipeline**.
-2. Find the job's row under **Billed Awaiting Payment**.
+1. Go to **Jobs** and open the [Pipeline](/jobs?tab=stages).
+2. Find the job's row under **Billed Awaiting Payment**. Click the heading if the section is folded.
 3. Click the blue release of lien button in the row's small icon row. The **Release of Lien** window opens.
 4. Check the green bill chips at the top. Pick the bill this waiver covers.
 
@@ -38,6 +50,8 @@ Two switches at the top pick the form. The app sets both from the bill.
 - **Progress** or **Final**. Progress means more bills will follow. Final means this is the last bill on the job.
 
 The line under the switches says why. It also shows the two facts it read from the bill. Change a switch if the bill has it wrong.
+
+{{gif:send-a-gc-our-lien-waiver-window.gif|The Release of Lien window: the two switches, the why line, the leader's box, the page's foot}}
 
 :::example The four forms
 {{chip:yellow|Conditional · progress}} goes out with a bill that is not the last one.
@@ -52,12 +66,14 @@ Never send an unconditional form before the money has settled. Texas forbids req
 
 Do this once. It fills the signer and his title on every waiver.
 
-1. Go to **Settings** and open **Jobs & billing**.
-2. Open the **Physical invoice** block. Find the line **Signs for the company**. Type the leader's name.
+1. Open [Settings, Jobs & billing](/settings?tab=settings-jobs&focus=issuer.signerName). The link lands on the right line.
+2. The **Physical invoice** block is open. Find the line **Signs for the company**. Type the leader's name.
 3. Type his title in **His title**. For example, Owner. Or Responsible Master Plumber.
 4. Click {{button:blue|Save}}.
 
 The Release of Lien window now opens on him. His name and title print under the signature.
+
+{{gif:send-a-gc-our-lien-waiver-settings.gif|Settings, Jobs & billing: the Physical invoice block with Signs for the company and His title}}
 
 ## Get the leader to sign
 
@@ -69,6 +85,8 @@ The **Signed by the leader** box names the leader who signs. It opens on the com
 When he signs now, he draws his signature with a finger or the mouse. He cannot type it. The pad locks to drawing whenever the signer is not the person signed in. This holds on every door into it, including {{button:outline|Sign it ›}} on the Bill tab. The record names him as the signer and names your device.
 
 If you are the leader, the button reads {{button:outline|✍ Sign now}}.
+
+{{gif:send-a-gc-our-lien-waiver-signnow.gif|He signs now: the pad opens with his name on it and only draws. Not now closes it without signing}}
 
 ## What prints under the signature
 
@@ -84,7 +102,7 @@ The same block prints on the page, the PDF, the email and the GC's room.
 
 ## Sign several at once
 
-A leader with waivers waiting sees a card on his Dashboard. It reads **N lien waivers wait for your signature**.
+A leader with waivers waiting sees a card on his [Dashboard](/dashboard). It reads **N lien waivers wait for your signature**.
 
 1. Click {{button:outline|Sign them}}. The **Waivers to sign** seat opens.
 2. The list is on the left. Each row names the GC, the job, the form and the amount.
@@ -106,13 +124,15 @@ If the button is grey, the GC has no billing email on file. Add it on the GC's c
 
 ## On GC Review
 
-Open a GC's row in **GC Review**. Each bill ends with two chips. They read the same way as on the Bill tab.
+Open a GC's row in [GC Review](/jobs?tab=stages&gcReview=1). Each bill ends with two chips. They read the same way as on the Bill tab.
 
 - Green means done. {{chip:green|Conditional ✓ sent Sep 30}}
 - Amber is the move before the call. {{chip:yellow|Conditional · none — send it}}
 - Grey waits on the money. {{chip:gray|Unconditional · when paid}}
 
 Click a chip to open the job. The Bill tab's door adds or sends the waiver.
+
+{{gif:send-a-gc-our-lien-waiver-gcreview.gif|GC Review: open a GC's bills and each row ends with its two waiver chips}}
 
 ## What the GC sees
 
@@ -121,10 +141,12 @@ The GC's room has a **Lien waivers** section. It shows one row per bill they pay
 - The **Conditional** column shows the waiver that came with the bill. It is a dated PDF they can open.
 - The **Unconditional** column shows the one that follows. It reads **when your check clears** until the money lands. Then it reads **on its way** while the leader signs. Then it is a PDF too.
 
-Their bookkeeper can find every waiver there without calling the office.
+Their bookkeeper can find every waiver there without calling the office. Open a GC's room from the globe on their Pipeline row. More on that room is in [share a customer their portal](/help/share-a-customer-their-portal).
 
 ## Where the waiver lives afterward
 
 - In the **Release of Lien** window, under **Issued on this job**.
 - In the **Bill Customer** window, in the **Lien releases** strip.
-- On the leader's Dashboard, in **Needs You**, when a conditional waiver's check has cleared and the unconditional one is owed.
+- On the leader's [Dashboard](/dashboard), in **Needs You**, when a conditional waiver's check has cleared and the unconditional one is owed.
+
+Related guides: [give a customer a lien release](/help/give-a-customer-a-lien-release) and [understand how liens work and which lien tool to use](/help/understand-how-liens-work-and-which-lien-tool-to-use).
