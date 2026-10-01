@@ -42,6 +42,97 @@ export type RoomItemSource = {
   reviewed_at: string | null
 }
 
+/**
+ * A part of a row (2026-10-01, `bid_submittal_item_parts`), as the functions read it. Only the
+ * parts the GC sees reach the room; an order-only part (trim) never does.
+ */
+export type RoomPartSource = {
+  id: string
+  item_id: string
+  sequence_order: number
+  label: string
+  quantity: number | string
+  on_submittal: boolean
+  review_decision: string | null
+  review_note: string | null
+  reviewed_by_name: string | null
+  reviewed_by_email?: string | null
+  reviewed_by_person_id: string | null
+  reviewed_at: string | null
+  decision_source?: string | null
+  decision_entered_by?: string | null
+  decision_entered_by_name?: string | null
+}
+
+/** One part on the GC's card: read model first, with its own call. */
+export type RoomPart = {
+  id: string
+  label: string
+  /** The maker and model ("TOTO CT728CUVG#01"); `words` is the catalog name after it. */
+  head: string
+  words: string
+  /** How many go on one fixture. */
+  quantity: number
+  decision: RoomRow['decision']
+  /** The call came forward from the revision before (an approved part on a resubmitted row). */
+  carried?: boolean
+}
+
+/**
+ * A part's label read model first: the maker and the model number, then the catalog words. The
+ * head runs to the first word with a digit in it, within the first three words; a label with no
+ * model number up front is all head ("ELKAY APRON").
+ */
+export function splitPartLabel(label: string | null | undefined): { head: string; words: string } {
+  const tokens = (label ?? '').trim().split(/\s+/).filter(Boolean)
+  const at = tokens.slice(0, 3).findIndex((t) => /\d/.test(t))
+  if (at < 0) return { head: tokens.join(' '), words: '' }
+  return { head: tokens.slice(0, at + 1).join(' '), words: tokens.slice(at + 1).join(' ') }
+}
+
+type DecisionKind3 = 'approved' | 'revise' | 'rejected'
+const asKind = (v: string | null | undefined): DecisionKind3 | null => (v === 'approved' || v === 'revise' || v === 'rejected' ? v : null)
+
+/**
+ * A row's call from its parts' calls (the parts the GC sees). A part sent back sends the row
+ * back at once — Reject over Revise — even while other parts wait; a row is Approved when every
+ * part is; otherwise it is open. The note names the parts that carry one; the name and time are
+ * the latest call's. Every column null while the row is open.
+ */
+export function rollUpPartDecisions(parts: ReadonlyArray<Pick<RoomPartSource, 'label' | 'sequence_order' | 'on_submittal' | 'review_decision' | 'review_note' | 'reviewed_by_name' | 'reviewed_by_email' | 'reviewed_by_person_id' | 'reviewed_at' | 'decision_source' | 'decision_entered_by' | 'decision_entered_by_name'>>): {
+  review_decision: DecisionKind3 | null
+  review_note: string | null
+  reviewed_by_name: string | null
+  reviewed_by_email: string | null
+  reviewed_by_person_id: string | null
+  reviewed_at: string | null
+  decision_source: 'room' | 'entered' | 'robot'
+  decision_entered_by: string | null
+  decision_entered_by_name: string | null
+} {
+  const open = { review_decision: null, review_note: null, reviewed_by_name: null, reviewed_by_email: null, reviewed_by_person_id: null, reviewed_at: null, decision_source: 'room' as const, decision_entered_by: null, decision_entered_by_name: null }
+  const on = [...parts].filter((p) => p.on_submittal).sort((a, b) => a.sequence_order - b.sequence_order)
+  if (on.length === 0) return open
+  const kinds = on.map((p) => asKind(p.review_decision))
+  const decision: DecisionKind3 | null = kinds.includes('rejected') ? 'rejected' : kinds.includes('revise') ? 'revise' : kinds.every((k) => k === 'approved') ? 'approved' : null
+  if (!decision) return open
+  const decided = on.filter((p) => asKind(p.review_decision))
+  const latest = [...decided].sort((a, b) => String(b.reviewed_at ?? '').localeCompare(String(a.reviewed_at ?? '')))[0]!
+  const notes = on.filter((p) => (p.review_note ?? '').trim()).map((p) => `${splitPartLabel(p.label).head}: ${(p.review_note ?? '').trim()}`)
+  const src = latest.decision_source === 'entered' || latest.decision_source === 'robot' ? latest.decision_source : 'room'
+  return {
+    review_decision: decision,
+    review_note: notes.length > 0 ? notes.join(' · ') : null,
+    reviewed_by_name: latest.reviewed_by_name ?? null,
+    reviewed_by_email: latest.reviewed_by_email ?? null,
+    reviewed_by_person_id: latest.reviewed_by_person_id ?? null,
+    reviewed_at: latest.reviewed_at ?? null,
+    decision_source: src,
+    decision_entered_by: src === 'room' ? null : latest.decision_entered_by ?? null,
+    decision_entered_by_name: src === 'room' ? null : latest.decision_entered_by_name ?? null,
+  }
+}
+
 /** The customer's four words. */
 export type RoomRowKind = 'matches' | 'differs' | 'not_quoted' | 'added' | 'proposed'
 
@@ -62,6 +153,8 @@ export type RoomRow = {
   decision: { kind: 'approved' | 'revise' | 'rejected'; note: string | null; byName: string | null; byPersonId: string | null; at: string | null } | null
   /** The pick's lead time in days (0 = in stock), for the procurement card (v2.4087). */
   leadTimeDays?: number | null
+  /** The parts the GC sees, each with its own call (2026-10-01); absent on a row with no parts. */
+  parts?: RoomPart[]
 }
 
 const REASON_WORDS: Record<string, string> = {
@@ -118,13 +211,33 @@ export function whySentence(item: Pick<RoomItemSource, 'status' | 'reason_kind' 
   return sentence.endsWith('.') ? sentence : `${sentence}.`
 }
 
-export function roomRowFrom(item: RoomItemSource): RoomRow {
+/** The GC's parts of a row, model first, each with its own call. */
+export function roomPartsFrom(parts: ReadonlyArray<RoomPartSource>): RoomPart[] {
+  return [...parts]
+    .filter((p) => p.on_submittal)
+    .sort((a, b) => a.sequence_order - b.sequence_order)
+    .map((p) => {
+      const d = asKind(p.review_decision)
+      const { head, words } = splitPartLabel(p.label)
+      return {
+        id: p.id,
+        label: p.label.trim(),
+        head,
+        words,
+        quantity: Number(p.quantity) || 0,
+        decision: d ? { kind: d, note: p.review_note, byName: p.reviewed_by_name, byPersonId: p.reviewed_by_person_id, at: p.reviewed_at } : null,
+        ...(p.decision_source === 'carried' ? { carried: true } : {}),
+      }
+    })
+}
+
+export function roomRowFrom(item: RoomItemSource, parts: ReadonlyArray<RoomPartSource> = []): RoomRow {
   const kind = roomKindOf(item.status)
   const plans = join([join([item.specified_manufacturer, item.specified_model], ' '), item.specified_description])
   const proposed = (item.submitted_label ?? '').trim() || join([item.submitted_manufacturer, item.submitted_model], ' ')
-  const kindOf = (v: string | null): 'approved' | 'revise' | 'rejected' | null => (v === 'approved' || v === 'revise' || v === 'rejected' ? v : null)
-  const decided = kindOf(item.review_decision)
+  const decided = asKind(item.review_decision)
   const decision = decided ? { kind: decided, note: item.review_note, byName: item.reviewed_by_name, byPersonId: item.reviewed_by_person_id, at: item.reviewed_at } : null
+  const gcParts = roomPartsFrom(parts)
   return {
     id: item.id,
     tag: item.tag.trim(),
@@ -136,6 +249,7 @@ export function roomRowFrom(item: RoomItemSource): RoomRow {
     sheetPages: (item.sheet_pages ?? []).length,
     decision,
     leadTimeDays: item.lead_time_days ?? null,
+    ...(gcParts.length > 0 ? { parts: gcParts } : {}),
   }
 }
 
@@ -165,9 +279,9 @@ export function roomCounts(rows: ReadonlyArray<RoomRow>): RoomRevision['counts']
 }
 
 /** Differing rows first (in tag order), then added, then not quoted; the matching rows keep their order for the fold. */
-export function roomRowsFrom(items: ReadonlyArray<RoomItemSource>): RoomRow[] {
+export function roomRowsFrom(items: ReadonlyArray<RoomItemSource>, partsByItem: ReadonlyMap<string, ReadonlyArray<RoomPartSource>> = new Map()): RoomRow[] {
   const sorted = [...items].sort((a, b) => a.sequence_order - b.sequence_order)
-  const rows = sorted.map(roomRowFrom)
+  const rows = sorted.map((it) => roomRowFrom(it, partsByItem.get(it.id) ?? []))
   const order: Record<RoomRowKind, number> = { differs: 0, proposed: 1, added: 2, not_quoted: 3, matches: 4 }
   return rows.map((r, i) => ({ r, i })).sort((a, b) => order[a.r.kind] - order[b.r.kind] || a.i - b.i).map((x) => x.r)
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { cleanName, decideVerdict, decisionCounts, normalizeEmail, parseDecideBody, parseIdentifyBody, resolveIdentify, askTitle, decisionEntryBody, messageVerdict, parseMessageBody, MESSAGES_PER_HOUR } from '../../../supabase/functions/_shared/submittalReviewActions'
+import { cleanName, decideVerdict, decisionCounts, normalizeEmail, parseDecideBody, planDecideWrites, parseIdentifyBody, resolveIdentify, askTitle, decisionEntryBody, messageVerdict, parseMessageBody, MESSAGES_PER_HOUR } from '../../../supabase/functions/_shared/submittalReviewActions'
 
 describe('identify', () => {
   it('cleans the name and email, reads the role, spots the honeypot and the forwarded token', () => {
@@ -69,5 +69,25 @@ describe('stage 5a — the conversation', () => {
     expect(decisionEntryBody({ approved: 1, revise: 0, rejected: 0 })).toBe('decided 1 row · 1 approve')
     expect(askTitle({ personName: 'Dana Whitfield', roleLabel: 'architect', tags: ['WC-1'], bidLabel: 'B398 ZZ Test', revNumber: 2 })).toBe('Dana Whitfield (architect) asked about WC-1 on B398 ZZ Test Rev 2')
     expect(askTitle({ personName: 'Pat', roleLabel: 'builder', tags: [], bidLabel: 'B398', revNumber: null })).toBe('Pat (builder) asked on B398')
+  })
+})
+
+describe('a call on a part (2026-10-01)', () => {
+  it('the body may name a part', () => {
+    const r = parseDecideBody({ token: 't', submittalId: 's', decisions: [{ itemId: 'wc', partId: 'valve', decision: 'revise', note: ' 1.0 gpf ' }, { itemId: 'fd', decision: 'approved' }] })
+    expect(r).toEqual({ ok: true, value: { token: 't', submittalId: 's', decisions: [{ itemId: 'wc', partId: 'valve', decision: 'revise', note: '1.0 gpf' }, { itemId: 'fd', decision: 'approved', note: null }] } })
+  })
+
+  it('lands on the part named; a call on a row with parts lands on each part not called on its own; a row with no parts takes it; a stranger part is dropped', () => {
+    const gc = new Map([['wc', ['bowl', 'valve', 'carrier']]])
+    const plan = planDecideWrites([
+      { itemId: 'wc', partId: 'valve', decision: 'revise', note: '1.0 gpf' },
+      { itemId: 'wc', decision: 'approved', note: null },
+      { itemId: 'wc', partId: 'not-mine', decision: 'approved', note: null },
+      { itemId: 'fd', decision: 'approved', note: 'fine' },
+    ], gc)
+    expect(plan.parts.map((p) => [p.partId, p.decision])).toEqual([['valve', 'revise'], ['bowl', 'approved'], ['carrier', 'approved']])
+    expect(plan.rows).toEqual([{ itemId: 'fd', decision: 'approved', note: 'fine' }])
+    expect(plan.itemsWithParts).toEqual(['wc'])
   })
 })

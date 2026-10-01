@@ -15,10 +15,10 @@ import { useSearchParams } from 'react-router-dom'
 
 import { staffAwarePublicHeaders } from '../lib/publicFunctionStaffHeaders'
 import { PUBLIC_PREVIEW_PARAM, isPreviewFlag } from '../lib/publicViewCounting'
-import { describeThreadEntry, parseSubmittalRoomPayload, ROOM_ROLE_LABELS } from '../lib/submittals/submittalRoom'
+import { describeThreadEntry, parseSubmittalRoomPayload, pendingKey, ROOM_ROLE_LABELS } from '../lib/submittals/submittalRoom'
 import { sampleStateFromToken } from '../lib/customerSampleMode'
 import { SampleModeBanner } from '../components/SampleModeBanner'
-import { ROOM_ROLES, type RoomMessage, type RoomRevision, type RoomRole, type SubmittalRoomPayload } from '../../supabase/functions/_shared/submittalRoomPayload'
+import { ROOM_ROLES, rollUpPartDecisions, type RoomMessage, type RoomRevision, type RoomRole, type RoomRow, type SubmittalRoomPayload } from '../../supabase/functions/_shared/submittalRoomPayload'
 import type { DecisionKind } from '../../supabase/functions/_shared/submittalReviewActions'
 import { buildProcurementLog, floatText, procurementHeadline, shortDate as logDate, statusText, tagStagesFrom, type ProcurementItemSource, type ProcurementRecord, type ProcurementStage, type StageDates } from '../lib/submittals/procurementLog'
 import type { StageSplitRecord, StageSplitSource } from '../lib/bids/materialsByStage'
@@ -40,6 +40,26 @@ function shortDate(iso: string | null): string {
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
+
+/**
+ * A row as it will read once the calls not sent yet land (2026-10-01): a part called here takes
+ * the call, and a row with parts reads its call from them the way the office will
+ * (`rollUpPartDecisions`); a row with no parts takes its own call.
+ */
+function foldPending(row: RoomRow, pending: Record<string, { decision: DecisionKind; note: string }>, byName: string, at: string): RoomRow {
+  const parts = row.parts ?? []
+  if (parts.length === 0) {
+    const d = pending[row.id]
+    return d ? { ...row, decision: { kind: d.decision, note: d.note.trim() || null, byName, byPersonId: null, at } } : row
+  }
+  if (!parts.some((p) => pending[pendingKey(row.id, p.id)])) return row
+  const nextParts = parts.map((p) => {
+    const d = pending[pendingKey(row.id, p.id)]
+    return d ? { ...p, decision: { kind: d.decision, note: d.note.trim() || null, byName, byPersonId: null, at }, carried: undefined } : p
+  })
+  const r = rollUpPartDecisions(nextParts.map((p, i) => ({ label: p.label, sequence_order: i, on_submittal: true, review_decision: p.decision?.kind ?? null, review_note: p.decision?.note ?? null, reviewed_by_name: p.decision?.byName ?? null, reviewed_by_person_id: p.decision?.byPersonId ?? null, reviewed_at: p.decision?.at ?? null })))
+  return { ...row, parts: nextParts, decision: r.review_decision ? { kind: r.review_decision, note: r.review_note, byName: r.reviewed_by_name, byPersonId: r.reviewed_by_person_id, at: r.reviewed_at } : null }
+}
 
 export default function SubmittalRoom() {
   const [params] = useSearchParams()
@@ -127,8 +147,9 @@ export default function SubmittalRoom() {
     }
   }
 
-  function decide(rowId: string, kind: DecisionKind) {
-    setPending((p) => ({ ...p, [rowId]: { decision: kind, note: p[rowId]?.note ?? '' } }))
+  function decide(rowId: string, kind: DecisionKind, partId?: string) {
+    const key = pendingKey(rowId, partId)
+    setPending((p) => ({ ...p, [key]: { decision: kind, note: p[key]?.note ?? '' } }))
     setSent(null)
     if (!me) setIdentifyOpen(true)
   }
@@ -217,7 +238,10 @@ export default function SubmittalRoom() {
 
   async function sendReview() {
     if (!me || !rev) return
-    const decisions = Object.entries(pending).map(([itemId, d]) => ({ itemId, decision: d.decision, note: d.note.trim() || undefined }))
+    const decisions = Object.entries(pending).map(([key, d]) => {
+      const [itemId, partId] = key.split(':')
+      return { itemId: itemId!, ...(partId ? { partId } : {}), decision: d.decision, note: d.note.trim() || undefined }
+    })
     if (decisions.length === 0) return
     if (sample) {
       setSent(`${decisions.length} recorded as ${me.name}. Thank you. (Sample — nothing was saved.)`)
@@ -254,8 +278,11 @@ export default function SubmittalRoom() {
                 ? r
                 : {
                     ...r,
-                    rows: r.rows.map((row) => (pending[row.id] ? { ...row, decision: { kind: pending[row.id]!.decision, note: pending[row.id]!.note.trim() || null, byName: me.name, byPersonId: null, at } } : row)),
-                    counts: { ...r.counts, decided: r.rows.filter((row) => row.decision || pending[row.id]).length, open: r.rows.filter((row) => (row.kind === 'differs' || row.kind === 'proposed') && !row.decision && !pending[row.id]).length },
+                    rows: r.rows.map((row) => foldPending(row, pending, me.name, at)),
+                    counts: (() => {
+                      const rows = r.rows.map((row) => foldPending(row, pending, me.name, at))
+                      return { ...r.counts, decided: rows.filter((row) => row.decision).length, open: rows.filter((row) => (row.kind === 'differs' || row.kind === 'proposed') && !row.decision).length }
+                    })(),
                   },
             ),
           },
@@ -339,11 +366,14 @@ export default function SubmittalRoom() {
               <div style={{ ...card, marginTop: 10, borderColor: COPPER }} data-testid="room-pending">
                 <div style={{ ...label, color: COPPER }}>Your notes · optional</div>
                 {Object.entries(pending).map(([id, d]) => {
-                  const row = rev.rows.find((r) => r.id === id)
+                  const [rowId, partId] = id.split(':')
+                  const row = rev.rows.find((r) => r.id === rowId)
+                  const part = partId ? row?.parts?.find((p) => p.id === partId) : undefined
+                  const what = `${row?.tag || 'Accessory'}${part ? ` · ${part.head}` : ''}`
                   return (
-                    <div key={id} style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 8, alignItems: 'center', marginTop: 6, fontSize: '0.85rem' }}>
-                      <span><b>{row?.tag || 'Accessory'}</b> · {d.decision === 'revise' ? 'Revise' : d.decision === 'rejected' ? 'Reject' : 'Approve'}</span>
-                      <input aria-label={`Note on ${row?.tag || 'accessory'}`} value={d.note} placeholder={d.decision === 'approved' ? 'a note, if any' : 'what you need instead'} onChange={(e) => setPending((p) => ({ ...p, [id]: { decision: d.decision, note: e.target.value } }))} style={{ padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6, font: 'inherit', fontSize: '0.85rem', background: 'var(--surface)', color: 'var(--text-strong)' }} />
+                    <div key={id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, auto) minmax(8rem, 1fr)', gap: 8, alignItems: 'center', marginTop: 6, fontSize: '0.85rem' }}>
+                      <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}><b>{what}</b> · {d.decision === 'revise' ? 'Revise' : d.decision === 'rejected' ? 'Reject' : 'Approve'}</span>
+                      <input aria-label={`Note on ${what}`} value={d.note} placeholder={d.decision === 'approved' ? 'a note, if any' : 'what you need instead'} onChange={(e) => setPending((p) => ({ ...p, [id]: { decision: d.decision, note: e.target.value } }))} style={{ padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6, font: 'inherit', fontSize: '0.85rem', background: 'var(--surface)', color: 'var(--text-strong)', minWidth: 0 }} />
                     </div>
                   )
                 })}
@@ -351,11 +381,11 @@ export default function SubmittalRoom() {
             ) : null}
             <div style={{ ...card, marginTop: 12, background: 'var(--bg-muted)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }} data-testid="room-footer">
               <span style={{ fontSize: '0.85rem' }}>
-                <b>{rev.counts.decided} decided · {Math.max(0, rev.counts.open - Object.keys(pending).filter((id) => rev.rows.find((r) => r.id === id && r.kind === 'differs' && !r.decision)).length)} to go</b>
+                <b>{rev.counts.decided} decided · {rev.rows.filter((r) => (r.kind === 'differs' || r.kind === 'proposed') && !foldPending(r, pending, me?.name ?? '', '').decision).length} to go</b>
                 {Object.keys(pending).length > 0 ? <span style={quiet}> · {Object.keys(pending).length} to send</span> : null}
               </span>
               {rev.counts.open > 0 && me?.mayDecide !== false ? (
-                <button type="button" onClick={() => { for (const r of rev.rows) if (r.kind === 'differs' && !r.decision && !pending[r.id]) decide(r.id, 'approved') }} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.85rem', fontWeight: 700, color: COPPER, cursor: 'pointer' }}>
+                <button type="button" onClick={() => { for (const r of rev.rows) { if ((r.kind !== 'differs' && r.kind !== 'proposed') || r.decision) continue; if ((r.parts ?? []).length > 0) { for (const p of r.parts!) if (!p.decision && !pending[pendingKey(r.id, p.id)]) decide(r.id, 'approved', p.id) } else if (!pending[r.id]) decide(r.id, 'approved') } }} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.85rem', fontWeight: 700, color: COPPER, cursor: 'pointer' }}>
                   Approve all {rev.counts.open} as marked
                 </button>
               ) : null}

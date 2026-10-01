@@ -148,6 +148,11 @@ function builder(table: string) {
         state.parts = [...state.parts, ...rows]
         return { data: rows, error: null }
       }
+      if (rec.op === 'update' && table === 'bid_submittal_item_parts') {
+        const ids = rec.filters.find((f) => f[0] === 'id:in')?.[1] as string[] | undefined
+        const id = rec.filters.find((f) => f[0] === 'id')?.[1]
+        state.parts = state.parts.map((r) => ((ids ? ids.includes(r.id as string) : r.id === id) ? { ...r, ...(rec.payload as Record<string, unknown>) } : r))
+      }
       if (rec.op === 'update' && table === 'bid_submittals') {
         const id = rec.filters.find((f) => f[0] === 'id')?.[1]
         state.revisions = state.revisions.map((r) => (r.id === id ? { ...r, ...(rec.payload as Record<string, unknown>) } : r))
@@ -668,6 +673,45 @@ describe('BidsSubmittalsTab', () => {
     const rows = screen.getAllByTestId('submittal-row')
     expect(rows.find((r) => r.textContent?.includes('WC-1'))!.textContent).toContain('Dana Whitfield · entered by Wendi · Sep 12')
     state.noRoom = false
+  })
+
+  it('2026-10-01 · approved whole: a row with parts takes the approval on every part the GC sees with no call, and reads the roll-up; a row without parts as before', async () => {
+    state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'shared', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [], shared_at: '2026-09-20T00:00:00Z', created_at: '2026-09-15T00:00:00Z' }]
+    state.items = [
+      item({ id: 'p-wc', tag: 'WC-1', sequence_order: 1, submitted_label: 'TOTO CT728CUVG#01 + TOTO TET2LBI31#SS', status: 'proposed' }),
+      item({ id: 'a-dwh', tag: 'DWH-1', sequence_order: 2, submitted_label: 'BRADFORD WHITE RE2HP50', status: 'proposed' }),
+    ]
+    state.parts = [
+      { id: 'pt-bowl', item_id: 'p-wc', bid_id: 'b398', sequence_order: 1, label: 'TOTO CT728CUVG#01 TOILET', quantity: 1, on_submittal: true, sheet_pages: [], review_decision: 'approved', reviewed_by_name: 'Dana Whitfield', reviewed_at: '2026-09-21T15:00:00Z', decision_source: 'room' },
+      { id: 'pt-valve', item_id: 'p-wc', bid_id: 'b398', sequence_order: 2, label: 'TOTO TET2LBI31#SS', quantity: 1, on_submittal: true, sheet_pages: [], review_decision: null, decision_source: 'room' },
+      { id: 'pt-stop', item_id: 'p-wc', bid_id: 'b398', sequence_order: 3, label: 'BRASSCRA PLB113XP ANG', quantity: 1, on_submittal: false, sheet_pages: [], review_decision: null, decision_source: 'room' },
+    ]
+    state.writes = []
+    state.noRoom = true
+    try {
+      mount()
+      await screen.findAllByTestId('submittal-row')
+      // The row with parts shows each part's call, and the count of calls over its parts.
+      await waitFor(() => expect(screen.getAllByTestId('row-part-call').map((e) => e.textContent)).toEqual(['✓ approved']))
+      expect(screen.getAllByTestId('their-call-parts')[0]!.textContent).toBe('1 approved · 1 to go')
+      fireEvent.click(screen.getByTestId('approve-all-open'))
+      const dialog = await screen.findByRole('dialog', { name: 'They approved Rev 1' })
+      fireEvent.change(within(dialog).getByLabelText('Reviewer name'), { target: { value: 'Dana Whitfield' } })
+      fireEvent.change(within(dialog).getByLabelText('Reviewer email'), { target: { value: 'dana@arch.test' } })
+      fireEvent.click(within(dialog).getByTestId('approve-all-save'))
+      await waitFor(() => expect(state.writes.some((w) => w.table === 'bid_submittal_events')).toBe(true))
+      const partUpd = state.writes.find((w) => w.table === 'bid_submittal_item_parts' && w.op === 'update')!
+      expect(partUpd.filters).toContainEqual(['id:in', ['pt-valve']])
+      expect(partUpd.payload).toMatchObject({ review_decision: 'approved', decision_source: 'entered' })
+      expect(state.parts.find((p) => p.id === 'pt-stop')!.review_decision).toBeNull()
+      // The row reads the roll-up: every part the GC sees is approved now.
+      expect(state.items.find((r) => r.id === 'p-wc')).toMatchObject({ review_decision: 'approved' })
+      const rowUpd = state.writes.filter((w) => w.table === 'bid_submittal_items' && w.op === 'update').find((w) => w.filters.some((f) => f[0] === 'id:in'))!
+      expect(rowUpd.filters).toContainEqual(['id:in', ['a-dwh']])
+    } finally {
+      state.parts = []
+      state.noRoom = false
+    }
   })
 
   it('6b · a ready schedule read lists the sure and want-a-look tags; Confirm keeps the chosen tags and drops the rest', async () => {

@@ -264,3 +264,30 @@ describe('SubmittalRoom · identify and decide (4a-ii)', () => {
     })
   })
 })
+
+describe('SubmittalRoom · a call on each part (2026-10-01)', () => {
+  it('a row with parts takes a call per part; the note names the part; Send posts each part with its row', async () => {
+    const parts = [
+      { id: 'bowl', label: 'TOTO CT728CUVG#01 TOILET', head: 'TOTO CT728CUVG#01', words: 'TOILET', quantity: 1, decision: null },
+      { id: 'valve', label: 'TOTO TET2LBI31#SS 1.28 GPF', head: 'TOTO TET2LBI31#SS', words: '1.28 GPF', quantity: 1, decision: null },
+    ]
+    const rows = [row({ id: 'wc', tag: 'WC-1', kind: 'proposed', proposed: 'TOTO CT728CUVG#01 TOILET + TOTO TET2LBI31#SS 1.28 GPF', parts })]
+    const calls: Array<{ body: unknown }> = []
+    vi.stubGlobal('fetch', vi.fn((url: string, init?: RequestInit) => {
+      if (String(url).includes('get-submittal-room')) return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(payload({ person: { id: 'p1', name: 'Dana Whitfield', role: 'architect', mayDecide: true }, revisions: [{ id: 'rev-3', rev: 3, sharedAt: '2026-10-08T15:00:00Z', current: true, hasPackage: true, rows, counts: { total: 1, matches: 0, differs: 0, notQuoted: 0, added: 0, proposed: 1, decided: 0, open: 1 } }] })) } as Response)
+      calls.push({ body: JSON.parse(String(init?.body ?? '{}')) })
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: true, decided: 2 }) } as Response)
+    }))
+    mount('/submittal?t=ptok')
+    await screen.findByText('1 row needs a call')
+    fireEvent.click(within(screen.getByRole('group', { name: 'Your call on TOTO TET2LBI31#SS' })).getByRole('button', { name: 'Revise' }))
+    fireEvent.change(screen.getByLabelText('Note on WC-1 · TOTO TET2LBI31#SS'), { target: { value: 'plans call 1.0 gpf' } })
+    fireEvent.click(within(screen.getByRole('group', { name: 'Your call on TOTO CT728CUVG#01' })).getByRole('button', { name: 'Approve' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Send my review' }))
+    await screen.findByRole('status')
+    expect(calls[0]?.body).toEqual({ action: 'decide', token: 'ptok', submittalId: 'rev-3', decisions: [{ itemId: 'wc', partId: 'valve', decision: 'revise', note: 'plans call 1.0 gpf' }, { itemId: 'wc', partId: 'bowl', decision: 'approved' }] })
+    // The page reads the row the way the office will: a part sent back sends the row back.
+    expect(screen.getByTestId('room-row').textContent).toMatch(/2 parts · 1 approved · 1 revise/)
+    expect(screen.getByTestId('room-footer').textContent).toMatch(/1 decided · 0 to go/)
+  })
+})

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { asRoomRole, roomCounts, roomHeadline, roomKindOf, roomRowFrom, roomRowsFrom, roomSubline, whySentence, type RoomItemSource } from '../../../supabase/functions/_shared/submittalRoomPayload'
+import { asRoomRole, rollUpPartDecisions, roomCounts, roomHeadline, roomKindOf, roomPartsFrom, roomRowFrom, roomRowsFrom, roomSubline, splitPartLabel, whySentence, type RoomItemSource, type RoomPartSource } from '../../../supabase/functions/_shared/submittalRoomPayload'
 
 const item = (o: Partial<RoomItemSource>): RoomItemSource => ({
   id: 'i', tag: 'X-1', sequence_order: 1, specified_manufacturer: null, specified_model: null, specified_description: null, submitted_manufacturer: null, submitted_model: null, submitted_label: null,
@@ -60,5 +60,39 @@ describe('the room\'s rows, counts and headline', () => {
   it('roles fall back to other', () => {
     expect(asRoomRole('architect')).toBe('architect')
     expect(asRoomRole('gc')).toBe('other')
+  })
+})
+
+describe('the GC calls each part (2026-10-01)', () => {
+  // WC-1, WC-2 on SpaceX: the four parts in National Wholesale's file, the seat order only here for the test.
+  const part = (id: string, label: string, seq: number, extra: Partial<RoomPartSource> = {}): RoomPartSource => ({ id, item_id: 'wc', sequence_order: seq, label, quantity: 1, on_submittal: true, review_decision: null, review_note: null, reviewed_by_name: null, reviewed_by_person_id: null, reviewed_at: null, ...extra })
+  const bowl = part('bowl', 'TOTO CT728CUVG#01 TORNADO FLUSH COMMERCIAL FLUSHOMETER WALL MOUNTED TOILET', 1)
+  const valve = part('valve', 'TOTO TET2LBI31#SS ECOPOWER 1.28 GPF FLUSHOMETER VALVE', 2)
+  const carrier = part('carrier', 'JOSAM 12694 4" NH double adjustable horizontal closet carrier', 3)
+  const stop = part('stop', 'BRASSCRA PLB113XP ANG', 4, { on_submittal: false })
+  const call = (p: RoomPartSource, review_decision: string, at: string, extra: Partial<RoomPartSource> = {}) => ({ ...p, review_decision, reviewed_at: at, reviewed_by_name: 'Dana Whitfield', reviewed_by_person_id: 'p1', ...extra })
+
+  it('reads a label model first, as the office does', () => {
+    expect(splitPartLabel(bowl.label)).toEqual({ head: 'TOTO CT728CUVG#01', words: 'TORNADO FLUSH COMMERCIAL FLUSHOMETER WALL MOUNTED TOILET' })
+  })
+
+  it('the card lists only the parts the GC sees, each with its own call; a carried call says so', () => {
+    const parts = roomPartsFrom([stop, call(valve, 'revise', '2026-10-08T15:00:00Z', { review_note: 'plans call 1.0 gpf' }), call(bowl, 'approved', '2026-10-01T15:00:00Z', { decision_source: 'carried' }), carrier])
+    expect(parts.map((p) => [p.id, p.head, p.decision?.kind ?? null, p.carried ?? false])).toEqual([['bowl', 'TOTO CT728CUVG#01', 'approved', true], ['valve', 'TOTO TET2LBI31#SS', 'revise', false], ['carrier', 'JOSAM 12694', null, false]])
+    const item = { id: 'wc', tag: 'WC-1, WC-2', sequence_order: 1, specified_manufacturer: null, specified_model: null, specified_description: 'WC 1&2', submitted_manufacturer: null, submitted_model: null, submitted_label: 'A + B', status: 'proposed', reason_kind: null, reason_note: null, lead_time_days: null, sheet_pages: [], review_decision: null, review_note: null, reviewed_by_name: null, reviewed_by_person_id: null, reviewed_at: null }
+    expect(roomRowFrom(item, [bowl, valve, carrier, stop]).parts!.map((p) => p.id)).toEqual(['bowl', 'valve', 'carrier'])
+    expect('parts' in roomRowFrom(item)).toBe(false)
+    expect(roomRowsFrom([item], new Map([['wc', [stop]]]))[0]!.parts).toBeUndefined()
+  })
+
+  it('a part sent back sends the row back at once; every part approved approves it; otherwise it is open', () => {
+    expect(rollUpPartDecisions([bowl, valve, carrier, stop]).review_decision).toBeNull()
+    expect(rollUpPartDecisions([call(bowl, 'approved', '2026-10-08T15:00:00Z'), valve, carrier]).review_decision).toBeNull()
+    const sentBack = rollUpPartDecisions([call(bowl, 'approved', '2026-10-08T15:00:00Z'), call(valve, 'revise', '2026-10-08T16:00:00Z', { review_note: 'plans call 1.0 gpf' }), carrier, stop])
+    expect(sentBack).toMatchObject({ review_decision: 'revise', review_note: 'TOTO TET2LBI31#SS: plans call 1.0 gpf', reviewed_by_name: 'Dana Whitfield', reviewed_at: '2026-10-08T16:00:00Z', decision_source: 'room' })
+    expect(rollUpPartDecisions([call(bowl, 'rejected', '2026-10-08T15:00:00Z'), call(valve, 'revise', '2026-10-08T16:00:00Z')]).review_decision).toBe('rejected')
+    const all = rollUpPartDecisions([call(bowl, 'approved', '2026-10-08T15:00:00Z'), call(valve, 'approved', '2026-10-08T15:00:00Z'), call(carrier, 'approved', '2026-10-09T15:00:00Z', { decision_source: 'entered', decision_entered_by: 'u1', decision_entered_by_name: 'Wendi' }), stop])
+    expect(all).toMatchObject({ review_decision: 'approved', review_note: null, reviewed_at: '2026-10-09T15:00:00Z', decision_source: 'entered', decision_entered_by_name: 'Wendi' })
+    expect(rollUpPartDecisions([stop]).review_decision).toBeNull()
   })
 })

@@ -49,9 +49,9 @@ export function parseIdentifyBody(body: unknown): { ok: true; value: IdentifyBod
   return { ok: true, value: { token, name, email, role: asRoomRole(b.role), viaToken, honeypot } }
 }
 
-export type DecideBody = { token: string; submittalId: string; decisions: Array<{ itemId: string; decision: DecisionKind; note: string | null }> }
+export type DecideBody = { token: string; submittalId: string; decisions: Array<{ itemId: string; partId?: string | null; decision: DecisionKind; note: string | null }> }
 
-/** `{ action: 'decide', token (personal), submittalId, decisions: [{ itemId, decision, note? }] }` */
+/** `{ action: 'decide', token (personal), submittalId, decisions: [{ itemId, partId?, decision, note? }] }` — a `partId` calls one part of the row (2026-10-01). */
 export function parseDecideBody(body: unknown): { ok: true; value: DecideBody } | { ok: false; error: string } {
   if (!body || typeof body !== 'object') return { ok: false, error: 'Nothing to record.' }
   const b = body as Record<string, unknown>
@@ -69,7 +69,8 @@ export function parseDecideBody(body: unknown): { ok: true; value: DecideBody } 
     const decision = typeof d.decision === 'string' && (DECISION_KINDS as ReadonlyArray<string>).includes(d.decision) ? (d.decision as DecisionKind) : null
     if (!itemId || !decision) continue
     const note = typeof d.note === 'string' ? d.note.trim().slice(0, NOTE_MAX) : ''
-    decisions.push({ itemId, decision, note: note || null })
+    const partId = typeof d.partId === 'string' && d.partId.trim() ? d.partId.trim() : null
+    decisions.push({ itemId, ...(partId ? { partId } : {}), decision, note: note || null })
   }
   if (decisions.length === 0) return { ok: false, error: 'Nothing to record.' }
   return { ok: true, value: { token, submittalId, decisions } }
@@ -177,4 +178,33 @@ export function askTitle(args: { personName: string; roleLabel: string; tags: st
   const about = args.tags.length ? ` about ${args.tags.slice(0, 3).join(', ')}${args.tags.length > 3 ? '…' : ''}` : ''
   const rev = args.revNumber ? ` Rev ${args.revNumber}` : ''
   return `${args.personName} (${args.roleLabel}) asked${about} on ${args.bidLabel}${rev}`
+}
+
+/**
+ * Where each call lands (2026-10-01, a row's parts). A call naming a part lands on that part
+ * when it is one of the row's parts the GC sees; a call on a row that has such parts lands on
+ * every one of them (the whole fixture); a call on a row with no parts lands on the row, as
+ * before. A part that is not the row's, or is order only, is dropped.
+ */
+export function planDecideWrites(
+  decisions: ReadonlyArray<{ itemId: string; partId?: string | null; decision: DecisionKind; note: string | null }>,
+  gcPartsByItem: ReadonlyMap<string, ReadonlyArray<string>>,
+): { parts: Array<{ partId: string; itemId: string; decision: DecisionKind; note: string | null }>; rows: Array<{ itemId: string; decision: DecisionKind; note: string | null }>; itemsWithParts: string[] } {
+  const parts = new Map<string, { partId: string; itemId: string; decision: DecisionKind; note: string | null }>()
+  const rows: Array<{ itemId: string; decision: DecisionKind; note: string | null }> = []
+  for (const d of decisions) {
+    const gc = gcPartsByItem.get(d.itemId) ?? []
+    if (d.partId) {
+      if (gc.includes(d.partId)) parts.set(d.partId, { partId: d.partId, itemId: d.itemId, decision: d.decision, note: d.note })
+      continue
+    }
+    if (gc.length > 0) {
+      // A part called on its own in the same batch keeps that call.
+      for (const id of gc) if (!parts.has(id)) parts.set(id, { partId: id, itemId: d.itemId, decision: d.decision, note: d.note })
+      continue
+    }
+    rows.push({ itemId: d.itemId, decision: d.decision, note: d.note })
+  }
+  const list = [...parts.values()]
+  return { parts: list, rows, itemsWithParts: [...new Set(list.map((p) => p.itemId))] }
 }

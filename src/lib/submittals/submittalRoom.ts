@@ -165,3 +165,8 @@ export function summarizeThread(messages: ReadonlyArray<RoomMessage>, tz: string
   const when = last.at ? new Date(last.at).toLocaleDateString('en-US', { timeZone: tz, month: 'short', day: 'numeric' }) : ''
   return `${messages.length} ${messages.length === 1 ? 'entry' : 'entries'} · last: ${who} ${verb}${when ? ` ${when}` : ''}`
 }
+
+/** The room page's calls not sent yet are keyed by row, or by row and part (2026-10-01). */
+export function pendingKey(rowId: string, partId?: string | null): string {
+  return partId ? `${rowId}:${partId}` : rowId
+}

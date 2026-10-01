@@ -8,6 +8,11 @@ import type { CSSProperties } from 'react'
 import { assemblyLine, formatPartQty, orderOnlyLine, partHouseIds, splitPartLabel, submittedParts, type SubmittalPartRow } from '../../lib/submittals/itemParts'
 
 const quiet: CSSProperties = { fontSize: '0.7rem', color: 'var(--text-muted)' }
+const CALL: Record<string, { word: string; color: string }> = {
+  approved: { word: '✓ approved', color: 'var(--text-green-700)' },
+  revise: { word: 'revise', color: 'var(--text-amber-700)' },
+  rejected: { word: 'rejected', color: 'var(--text-red-700)' },
+}
 
 export function SubmittalPartsCell({ parts, houseNameById }: { parts: ReadonlyArray<SubmittalPartRow>; houseNameById: ReadonlyMap<string, string> }) {
   const shown = submittedParts(parts)
@@ -25,6 +30,11 @@ export function SubmittalPartsCell({ parts, houseNameById }: { parts: ReadonlyAr
             <b style={{ fontWeight: 600, color: 'var(--text-strong)', whiteSpace: 'nowrap' }}>{head}</b>
             {words ? <span style={{ ...quiet, fontSize: '0.75rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{words}</span> : null}
             {qty ? <span style={{ ...quiet, fontSize: '0.75rem', whiteSpace: 'nowrap' }}>{qty}</span> : null}
+            {p.review_decision && CALL[p.review_decision] ? (
+              <span style={{ fontSize: '0.7rem', fontWeight: 700, whiteSpace: 'nowrap', color: CALL[p.review_decision]!.color }} title={[p.reviewed_by_name, p.review_note ? `“${p.review_note}”` : '', p.decision_source === 'carried' ? 'approved on the last revision' : ''].filter(Boolean).join(' · ')} data-testid="row-part-call">
+                {CALL[p.review_decision]!.word}
+              </span>
+            ) : null}
           </span>
         )
       })}

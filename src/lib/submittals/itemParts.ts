@@ -10,6 +10,7 @@
  */
 import type { ProductPiece } from './takeoffCandidates'
 import { parseLeadTime } from './leadTime'
+import { splitPartLabel } from '../../../supabase/functions/_shared/submittalRoomPayload'
 
 export type PartStage = 'rough_in' | 'top_out' | 'trim_set'
 export type PartSource = 'takeoff' | 'file' | 'hand'
@@ -77,6 +78,13 @@ export type SubmittalPartInsert = {
   sheet_pages?: number[]
   procure_key?: string
   carried_from_part_id?: string | null
+  review_decision?: string | null
+  review_note?: string | null
+  reviewed_at?: string | null
+  reviewed_by_name?: string | null
+  reviewed_by_email?: string | null
+  reviewed_by_person_id?: string | null
+  decision_source?: 'room' | 'entered' | 'robot' | 'carried'
 }
 
 export const STAGE_WORDS: Record<PartStage, string> = { rough_in: 'Rough In', top_out: 'Top Out', trim_set: 'Trim Set' }
@@ -85,19 +93,8 @@ export function asPartStage(v: string | null | undefined): PartStage | null {
   return v === 'rough_in' || v === 'top_out' || v === 'trim_set' ? v : null
 }
 
-/**
- * A part's label read model first: the maker and the model number bold, the catalog words
- * after it quiet. The head runs to the first word with a digit in it, within the first three
- * words; a label with no model number up front is all head ("ELKAY APRON").
- *   "TOTO CT728CUVG#01 TORNADO FLUSH …" → head "TOTO CT728CUVG#01", words "TORNADO FLUSH …"
- *   "TSL TSL.MON.B.38.2.PS1.BK MONOLITH B SERIES" → head "TSL TSL.MON.B.38.2.PS1.BK", words "MONOLITH B SERIES"
- */
-export function splitPartLabel(label: string | null | undefined): { head: string; words: string } {
-  const tokens = (label ?? '').trim().split(/\s+/).filter(Boolean)
-  const at = tokens.slice(0, 3).findIndex((t) => /\d/.test(t))
-  if (at < 0) return { head: tokens.join(' '), words: '' }
-  return { head: tokens.slice(0, at + 1).join(' '), words: tokens.slice(at + 1).join(' ') }
-}
+/** A part's label read model first — the room's own reader, so the office and the GC split it the same way. */
+export { splitPartLabel }
 
 /** "× 2" for more than one on a fixture; "" for one. Whole numbers stay whole. */
 export function formatPartQty(q: number | null | undefined): string {
@@ -187,8 +184,13 @@ export function partsFromPieces(pieces: ReadonlyArray<ProductPiece>, onKeys: Rea
   }))
 }
 
-/** A part carried onto the next revision's row: the same part and its procurement key; the call starts blank. */
-export function carryPartInsert(p: SubmittalPartRow, itemId: string): SubmittalPartInsert {
+/**
+ * A part carried onto the next revision's row: the same part and its procurement key; the call
+ * starts blank — unless `keepApproval` and the part was approved, when the approval comes along
+ * marked carried (a resubmit of the parts sent back: the approved parts stand).
+ */
+export function carryPartInsert(p: SubmittalPartRow, itemId: string, keepApproval = false): SubmittalPartInsert {
+  const approved = keepApproval && p.review_decision === 'approved'
   return {
     item_id: itemId,
     bid_id: p.bid_id,
@@ -213,6 +215,9 @@ export function carryPartInsert(p: SubmittalPartRow, itemId: string): SubmittalP
     sheet_pages: [...(p.sheet_pages ?? [])],
     procure_key: p.procure_key,
     carried_from_part_id: p.id,
+    ...(approved
+      ? { review_decision: 'approved', review_note: p.review_note, reviewed_at: p.reviewed_at, reviewed_by_name: p.reviewed_by_name, reviewed_by_email: p.reviewed_by_email, reviewed_by_person_id: p.reviewed_by_person_id, decision_source: 'carried' as const }
+      : {}),
   }
 }
 
@@ -304,4 +309,16 @@ export function partLeadTextsBad(leadTexts: PartLeadTexts, count: number): boole
     if (t != null && t.trim() !== '' && parseLeadTime(t) == null) return true
   }
   return false
+}
+
+/** "2 approved · 1 revise · 1 to go" over the parts the GC sees; "" when none has a call yet. */
+export function partCallsLine(parts: ReadonlyArray<Pick<SubmittalPartRow, 'on_submittal' | 'review_decision'>>): string {
+  const gc = parts.filter((p) => p.on_submittal)
+  const c = { approved: 0, revise: 0, rejected: 0, open: 0 }
+  for (const p of gc) {
+    if (p.review_decision === 'approved' || p.review_decision === 'revise' || p.review_decision === 'rejected') c[p.review_decision] += 1
+    else c.open += 1
+  }
+  if (c.approved + c.revise + c.rejected === 0) return ''
+  return [c.approved ? `${c.approved} approved` : '', c.revise ? `${c.revise} revise` : '', c.rejected ? `${c.rejected} rejected` : '', c.open ? `${c.open} to go` : ''].filter(Boolean).join(' · ')
 }
