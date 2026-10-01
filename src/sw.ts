@@ -3,6 +3,7 @@
 import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching'
 import { NavigationRoute, registerRoute } from 'workbox-routing'
 import { clientsClaim } from 'workbox-core'
+import { notificationClickHref, notificationClickWindow } from './lib/notificationClick'
 
 declare let self: ServiceWorkerGlobalScope
 
@@ -54,21 +55,20 @@ self.addEventListener('push', (event: PushEvent) => {
   event.waitUntil(self.registration.showNotification(title, options))
 })
 
-// Web Push: open app when notification is clicked
+// Web Push: open app when notification is clicked. Pushes carry a path ('/checklist'),
+// resolved against this origin before anything parses it (v2.4323).
 self.addEventListener('notificationclick', (event: NotificationEvent) => {
   event.notification.close()
-  const url = (event.notification.data?.url as string) || '/'
+  const href = notificationClickHref(event.notification.data?.url, self.location.origin)
   event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      for (const client of clientList) {
-        if (client.url === url || client.url.startsWith(new URL(url).origin)) {
-          client.focus()
-          client.navigate(url)
-          return
-        }
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (clientList) => {
+      const client = notificationClickWindow(clientList, href)
+      if (client) {
+        await Promise.allSettled([client.focus(), client.navigate(href)])
+        return
       }
       if (self.clients.openWindow) {
-        return self.clients.openWindow(url)
+        await self.clients.openWindow(href)
       }
     })
   )
