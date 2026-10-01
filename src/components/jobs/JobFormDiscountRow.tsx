@@ -166,7 +166,7 @@ export function JobFormDiscountRow({
     .filter((s) => s.cents > 0)
 
   const entryField = (
-      <span style={{ ...GROUP_STYLE, ...(locked ? { opacity: 0.75 } : {}) }}>
+      <span className="jobLineBox" style={{ ...GROUP_STYLE, ...(locked ? { opacity: 0.75 } : {}) }}>
         <button
           type="button"
           onClick={swapMode}
@@ -236,6 +236,7 @@ export function JobFormDiscountRow({
   const twinButton = (
       <button
         type="button"
+        className="jobLineTwin"
         onClick={swapMode}
         disabled={locked}
         title={pctMode ? 'The dollars this comes to — tap to enter dollars instead' : 'The percent this comes to — tap to enter a percent instead'}
@@ -268,6 +269,7 @@ export function JobFormDiscountRow({
     fixtures.length === 1 || locked ? null : (
       <button
         type="button"
+        className="jobLineDelete"
         onClick={() => removeFixtureRow(row.id)}
         title="Remove"
         aria-label="Remove discount"
@@ -282,6 +284,8 @@ export function JobFormDiscountRow({
           alignItems: 'center',
           justifyContent: 'center',
           flexShrink: 0,
+          // Phone (v2.4312): the trash keeps to the right edge, under the work rows' trash.
+          ...(narrowViewport ? { marginLeft: 'auto' } : {}),
         }}
       >
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden>
@@ -292,7 +296,7 @@ export function JobFormDiscountRow({
 
   const nameField = (
     <div style={{ flex: 1, minWidth: 0 }}>
-      <div style={{ display: 'flex', alignItems: 'stretch', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden' }}>
+      <div className="jobLineName" style={{ display: 'flex', alignItems: 'stretch', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden' }}>
         <label htmlFor={nameFieldId} style={VISUALLY_HIDDEN}>
           Discount name
         </label>
@@ -367,12 +371,21 @@ export function JobFormDiscountRow({
           ))}
         </div>
       )}
+      {narrowViewport && (
+        <div data-testid="discount-entry-line" className="jobLineNumbers">
+          {entryGroup}
+          {deleteButton}
+        </div>
+      )}
     </div>
   )
 
+  // Desktop holds the badge and ▲▼ to the name field's height; on a phone they
+  // stand beside the name and the entry line under it, as on a work row (v2.4312).
+  const gutterHeight: CSSProperties = narrowViewport ? {} : { height: 34, alignSelf: 'flex-start' }
   const moveButtons =
     fixtures.length > 1 ? (
-      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', flexShrink: 0, height: 34, alignSelf: 'flex-start' }}>
+      <div className="jobLineMove" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', flexShrink: 0, ...gutterHeight }}>
         <button
           type="button"
           onClick={() => moveFixtureRow(row.id, 'up')}
@@ -396,7 +409,8 @@ export function JobFormDiscountRow({
       </div>
     ) : null
 
-  const secondLineIndent = `calc(0.75rem${showBadgeColumn ? ' + 34px' : ''}${fixtures.length > 1 ? ' + 22px' : ''})`
+  // --job-line-move: the ▲▼ column's width + gap, wider on a touch phone (index.css).
+  const secondLineIndent = `calc(0.75rem${showBadgeColumn ? ' + 34px' : ''}${fixtures.length > 1 ? ' + var(--job-line-move, 22px)' : ''})`
 
   return (
     <Fragment>
@@ -404,19 +418,13 @@ export function JobFormDiscountRow({
         <td colSpan={narrowViewport ? 3 : undefined} style={{ padding: '0.45rem 0.75rem', paddingBottom: '0.25rem', minWidth: 0, verticalAlign: 'top' }}>
           <div style={{ display: 'flex', alignItems: 'stretch', gap: 4 }}>
             {showBadgeColumn && (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 34, flexShrink: 0, alignSelf: 'flex-start' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, flexShrink: 0, ...gutterHeight }}>
                 <DiscountBadge />
               </div>
             )}
             {moveButtons}
             {nameField}
           </div>
-          {narrowViewport && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, paddingLeft: secondLineIndent, flexWrap: 'wrap' }}>
-              {entryGroup}
-              {deleteButton}
-            </div>
-          )}
         </td>
         {!narrowViewport && (
           <td colSpan={2} style={{ padding: '0.45rem 0.75rem 0.25rem 0', verticalAlign: 'top' }}>
