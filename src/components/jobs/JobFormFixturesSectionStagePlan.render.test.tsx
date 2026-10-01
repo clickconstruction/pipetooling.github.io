@@ -104,4 +104,21 @@ describe('JobFormUpcomingDraws', () => {
     fireEvent.click(bill[0]!)
     expect(onBillRow).toHaveBeenCalledWith('c')
   })
+
+  it('v2.4303: a line the bills cover by amount leaves the list; a part-covered line shows what is left', () => {
+    const coverage = {
+      unattributedDollars: 2150,
+      remainingDollars: 8700,
+      bySegmentKey: { c: { coveredDollars: 1850, fullyCovered: true }, d: { coveredDollars: 300, fullyCovered: false } },
+    }
+    renderWithProviders(<JobFormUpcomingDraws plan={plan} onBillRow={() => {}} billingFixtureId={null} coverage={coverage} />)
+    expect(screen.queryByText('◆ Relocate water heater')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Bill it' })).toBeNull()
+    expect(screen.getAllByTestId(/^draw-row-/)).toHaveLength(2)
+    const permit = screen.getByText('Permit & misc').closest('[data-testid^="draw-row-"]') as HTMLElement
+    expect(permit.textContent).toContain('$300.00 of $600.00 already billed')
+    expect(permit.textContent).toContain('$300.00')
+    expect(permit.textContent).not.toMatch(/\$600\.00$/)
+  })
 })
+
