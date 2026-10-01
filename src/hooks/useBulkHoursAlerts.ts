@@ -26,9 +26,7 @@ export function useBulkHoursAlerts(enabled: boolean): { alerts: BulkHoursAlert[]
     setLoading(true)
     void (async () => {
       try {
-        // The RPC lands in src/types/database.ts with the regen that follows the push; until then the name is a string.
-        const rpc = supabase.rpc as unknown as (fn: string) => ReturnType<typeof supabase.rpc<'list_bulk_deletion_alerts'>>
-        const data = await withSupabaseRetry(async () => rpc('list_bulk_hours_alerts'), 'load bulk hours alerts')
+        const data = await withSupabaseRetry(async () => supabase.rpc('list_bulk_hours_alerts'), 'load bulk hours alerts')
         if (cancelled) return
         const rows = Array.isArray(data) ? data : []
         setAlerts(rows.map(parseBulkHoursAlertRow).filter((a): a is BulkHoursAlert => a != null))
