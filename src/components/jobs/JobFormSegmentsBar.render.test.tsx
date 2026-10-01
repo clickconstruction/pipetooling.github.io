@@ -31,7 +31,7 @@ function renderBar() {
 describe('InvoicesSectionHeading flow explainer (moved beside the ② heading, v2.1146)', () => {
   it('is collapsed by default and expands with the sample chips', () => {
     renderWithProviders(<InvoicesSectionHeading sampleDollars={400} jobLabel="Job 742" />)
-    expect(screen.getByText('② Invoices')).toBeTruthy()
+    expect(screen.getByText('② Bills and payments')).toBeTruthy()
     expect(screen.queryByText(/green card/)).toBeNull()
     fireEvent.click(screen.getByText(/How invoices and jobs move/))
     expect(screen.getByText(/green card/)).toBeTruthy()

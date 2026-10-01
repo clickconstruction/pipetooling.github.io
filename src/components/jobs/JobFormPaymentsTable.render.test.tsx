@@ -1,19 +1,20 @@
 // @vitest-environment jsdom
 /**
- * Render tests for the ③ Payments received add-affordance placement: the add
- * (+) control lives centered BELOW the table (never inline in a row's action
- * cluster next to the trash icon), appearing while manual entry is open; when
- * it is closed, the centered "+ Record a cash or check payment" pill is
- * the single add affordance instead.
+ * Render tests for ③ — since v2.4288 the block for money on no bill. A payment
+ * a bill counts is drawn under that bill in the Invoices block (see
+ * JobFormInvoiceList.render.test.tsx and JobFormPaymentLine.render.test.tsx),
+ * so what lives here is the entry flow, the rows still being typed, the
+ * bill-apply chips for money the office has to place, and the Stripe hand-off.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 import { renderWithProviders, useAuthModuleMock } from '../../test/renderSmokeMocks'
 import { JobFormPaymentsTable } from './JobFormPaymentsTable'
 import type { PaymentRow } from '../../lib/jobs/jobFormTypes'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 
 vi.mock('../../hooks/useAuth', async () => useAuthModuleMock())
+vi.mock('../../hooks/useJobPaymentTrace', () => ({ useJobPaymentTrace: () => ({ events: [], labelFor: () => null }) }))
 
 function paymentRow(overrides: Partial<PaymentRow> = {}): PaymentRow {
   return {
@@ -30,26 +31,28 @@ function paymentRow(overrides: Partial<PaymentRow> = {}): PaymentRow {
   }
 }
 
-const moveRequests: string[] = []
-
 const handoffs: Array<{ invoiceId: string; amount: number; draftRowId: string }> = []
 
 function renderTable(
   payments: PaymentRow[],
-  addPaymentRow: () => void = () => {},
-  editing: JobWithDetails | null = null,
-  updatePaymentRow: (id: string, updates: Partial<PaymentRow>) => void = () => {},
+  opts: {
+    addPaymentRow?: () => void
+    editing?: JobWithDetails | null
+    updatePaymentRow?: (id: string, updates: Partial<PaymentRow>) => void
+    /** Which rows are saved; default: all of them. */
+    persisted?: Set<string>
+  } = {},
 ) {
   return renderWithProviders(
     <JobFormPaymentsTable
-      editing={editing}
+      editing={opts.editing ?? null}
       payments={payments}
-      persistedLedgerPaymentIds={new Set(payments.map((p) => p.id))}
+      persistedLedgerPaymentIds={opts.persisted ?? new Set(payments.map((p) => p.id))}
       unlinkingMercuryPaymentId={null}
-      updatePaymentRow={updatePaymentRow}
-      addPaymentRow={addPaymentRow}
+      updatePaymentRow={opts.updatePaymentRow ?? (() => {})}
+      addPaymentRow={opts.addPaymentRow ?? (() => {})}
       requestRemovePaymentRow={() => {}}
-      requestMovePaymentRow={(row) => moveRequests.push(row.id)}
+      requestMovePaymentRow={() => {}}
       setUnlinkMercuryConfirmRowId={() => {}}
       setBillViewInvoice={() => {}}
       onRecordPaymentOnBill={(inv, o) => handoffs.push({ invoiceId: inv.id, amount: o.amount, draftRowId: o.draftRowId })}
@@ -78,34 +81,67 @@ function jobWithTwoBills(): JobWithDetails {
   } as unknown as JobWithDetails
 }
 
+function openRowMenu(amountText: string) {
+  fireEvent.click(screen.getByLabelText(`More for the ${amountText} payment`))
+  return screen.getByRole('menu')
+}
+
 describe('JobFormPaymentsTable add-affordance placement', () => {
   it('shows the record-payment pill (and no + button) while manual entry is closed', () => {
     renderTable([paymentRow()])
     expect(screen.getByText('+ Record a cash or check payment')).toBeTruthy()
     expect(screen.queryByLabelText('Add payment line')).toBeNull()
-    // The saved row keeps its pencil + trash cluster.
-    expect(screen.getByLabelText('Toggle payment details')).toBeTruthy()
-    expect(screen.getByLabelText('Remove payment row')).toBeTruthy()
+    // The saved row is one line with its ⋯ menu; the boxes wait behind Edit details.
+    expect(screen.getByLabelText('More for the $3,000.00 payment')).toBeTruthy()
+    expect(screen.queryByLabelText('Payment amount')).toBeNull()
+    expect(screen.getByText('③ Payments received')).toBeTruthy()
   })
 
-  it('opening manual entry swaps the pill for a centered + below the table', () => {
+  it('opening manual entry swaps the pill for a centered + below the list', () => {
     const add = vi.fn()
-    renderTable([paymentRow()], add)
+    renderTable([paymentRow()], { addPaymentRow: add })
     fireEvent.click(screen.getByText('+ Record a cash or check payment'))
     expect(add).toHaveBeenCalledTimes(1)
     expect(screen.queryByText('+ Record a cash or check payment')).toBeNull()
     const plus = screen.getByLabelText('Add payment line')
-    // The + must sit below the table, never inside a row's action cluster.
-    expect(plus.closest('table')).toBeNull()
+    expect(plus.closest('[data-testid="payment-line"]')).toBeNull()
     fireEvent.click(plus)
     expect(add).toHaveBeenCalledTimes(2)
   })
 })
 
-describe('JobFormPaymentsTable — the Sent date (v2.4244)', () => {
-  it('a date picked in the Sent box is handed to the form as the row’s Sent date, and clearing it as none', () => {
+describe('JobFormPaymentsTable — a payment a bill counts leaves ③ (v2.4288)', () => {
+  it('a saved payment on a bill is not listed here; the block says where it went and takes the other heading', () => {
+    renderTable([paymentRow({ invoice_id: 'inv-a', amount: 4720 })], { editing: jobWithTwoBills() })
+    expect(screen.queryByTestId('payment-line')).toBeNull()
+    expect(screen.getByTestId('payments-all-under-bills')).toBeTruthy()
+    expect(screen.getByText('③ Other money on the job')).toBeTruthy()
+    expect(screen.queryByText(/aren’t applied to a bill/)).toBeNull()
+  })
+
+  it('a saved payment with no bill picked that the oldest bill counts leaves ③ too; one no bill needs stays', () => {
+    renderTable(
+      [paymentRow({ id: 'placed', amount: 9440 }), paymentRow({ id: 'placed2', amount: 4720, paid_on: '2026-03-01' }), paymentRow({ id: 'extra', amount: 100, paid_on: '2026-03-12' })],
+      { editing: jobWithTwoBills() },
+    )
+    const lines = screen.getAllByTestId('payment-line')
+    expect(lines.map((l) => l.getAttribute('data-payment-id'))).toEqual(['extra'])
+  })
+
+  it('a row still being typed stays here whatever the rule would count it toward', () => {
+    renderTable([paymentRow({ id: 'draft', amount: 9440 })], { editing: jobWithTwoBills(), persisted: new Set() })
+    expect(screen.getByTestId('payment-line').getAttribute('data-payment-id')).toBe('draft')
+    // A draft opens its boxes at once.
+    expect(screen.getByLabelText('Payment amount')).toBeTruthy()
+  })
+})
+
+describe('JobFormPaymentsTable — the check date (v2.4244, now behind Edit details)', () => {
+  it('a date picked in the check-date box is handed to the form as the row’s Sent date, and clearing it as none', () => {
     const update = vi.fn()
-    renderTable([paymentRow({ sent_on: '2026-02-20' })], () => {}, null, update)
+    renderTable([paymentRow({ sent_on: '2026-02-20' })], { updatePaymentRow: update })
+    const menu = openRowMenu('$3,000.00')
+    fireEvent.click(within(menu).getByRole('menuitemcheckbox', { name: /Edit details/ }))
     const sent = screen.getByLabelText('Payment sent date') as HTMLInputElement
     expect(sent.value).toBe('2026-02-20')
     fireEvent.change(sent, { target: { value: '2026-02-24' } })
@@ -115,66 +151,48 @@ describe('JobFormPaymentsTable — the Sent date (v2.4244)', () => {
   })
 })
 
-describe('JobFormPaymentsTable bill-apply chips (v2.2570)', () => {
-  it('one unapplied payment: inline chips with the amount match first, one tap applies', () => {
+describe('JobFormPaymentsTable bill-apply chips (v2.2570) — for money still being placed', () => {
+  it('one unapplied draft: inline chips with the amount match first, one tap applies', () => {
     const update = vi.fn()
-    renderTable([paymentRow({ amount: 9440 })], () => {}, jobWithTwoBills(), update)
+    renderTable([paymentRow({ amount: 9440 })], { editing: jobWithTwoBills(), updatePaymentRow: update, persisted: new Set() })
     expect(screen.getByText(/Which bill does this \$9,440\.00 pay/)).toBeTruthy()
     const chips = screen.getAllByTitle(/Apply this payment to the/)
-    // Match ($9,440 bill) sorts before the older non-match.
     expect(chips[0]?.textContent).toContain('9,440.00 bill')
     expect(chips[0]?.textContent).toContain('matches this payment')
     fireEvent.click(chips[0]!)
     expect(update).toHaveBeenCalledWith('p1', { invoice_id: 'inv-b' })
-    // Deliberate-unassigned stays available and collapses to the compact chip.
     fireEvent.click(screen.getByText('Keep as job payment'))
     expect(screen.getByText('⚠ Not applied — pick bill')).toBeTruthy()
   })
 
-  it('two unapplied payments: the match bar carries the explanation and opens the panel', () => {
+  it('two unapplied drafts: the match bar carries the explanation and opens the panel', () => {
     renderTable(
       [paymentRow({ id: 'p1', amount: 9440 }), paymentRow({ id: 'p2', amount: 9440, paid_on: '2026-03-12' })],
-      () => {},
-      jobWithTwoBills(),
+      { editing: jobWithTwoBills(), persisted: new Set() },
     )
     expect(screen.getByText(/2 payments aren’t applied to a bill/)).toBeTruthy()
-    // Rows shrink to compact chips; no inline chip lists yet.
     expect(screen.getAllByText('⚠ Not applied — pick bill')).toHaveLength(2)
     expect(screen.queryByTitle(/Apply this payment to the/)).toBeNull()
     fireEvent.click(screen.getByText('Match payments…'))
-    // Panel: one chip pair per payment, with live remaining balances.
     expect(screen.getAllByTitle(/Apply this payment to the/)).toHaveLength(4)
     expect(screen.getAllByText(/received Feb 26, 2026/).length).toBeGreaterThan(0)
-  })
-
-  it('no bar and no chips when payments are applied or the job has no open bills', () => {
-    renderTable([paymentRow({ invoice_id: 'inv-a', amount: 4720 })], () => {}, jobWithTwoBills())
-    expect(screen.queryByText(/aren’t applied to a bill/)).toBeNull()
-    expect(screen.queryByTitle(/Apply this payment to the/)).toBeNull()
-    // Applied rows summarize what they pay.
-    expect(screen.getByText(/✓ pays the \$4,720\.00 bill · sent Aug 27, 2026/)).toBeTruthy()
   })
 })
 
 describe('JobFormPaymentsTable — cash on a Stripe bill (v2.3692)', () => {
-  it('a real unlinked row on a Stripe-only job gets the hand-off note, not a bill chip, and stays editable', () => {
+  it('a real unlinked draft on a Stripe-only job gets the hand-off note, not a bill chip, and stays editable', () => {
     handoffs.length = 0
-    renderTable([paymentRow({ id: 'draft', amount: 1500, invoice_id: null })], () => {}, jobWithOneStripeBill())
-    // No chip and no "which bill" flag — the Stripe bill is not a hand-typed target.
+    renderTable([paymentRow({ id: 'draft', amount: 1500 })], { editing: jobWithOneStripeBill(), persisted: new Set() })
     expect(screen.queryByTitle(/Apply this payment to the/)).toBeNull()
     expect(screen.queryByText(/Which bill does this/)).toBeNull()
     expect(screen.getByText(/The \$1,500\.00 bill went out through Stripe/)).toBeTruthy()
-    // The amount box is still a box: the row did not lock.
     expect(screen.getByLabelText('Payment amount')).toBeTruthy()
-    expect(screen.getByLabelText('Remove payment row')).toBeTruthy()
     fireEvent.click(screen.getByText('Record on the $1,500.00 bill →'))
     expect(handoffs).toEqual([{ invoiceId: 'inv-s', amount: 1500, draftRowId: 'draft' }])
   })
 
-  it('Applies to never lists a Stripe bill; with nothing else open the selector is not shown', () => {
-    renderTable([paymentRow({ id: 'draft', amount: 1500, invoice_id: null })], () => {}, jobWithOneStripeBill())
-    // The draft is unsaved in spirit but rendered with details open by the toggle.
-    fireEvent.click(screen.getByLabelText('Toggle payment details'))
+  it('Pays never lists a Stripe bill; with nothing else open the selector is not shown', () => {
+    renderTable([paymentRow({ id: 'draft', amount: 1500 })], { editing: jobWithOneStripeBill(), persisted: new Set() })
     expect(screen.queryByLabelText('Apply this payment to a specific invoice')).toBeNull()
   })
 
@@ -187,140 +205,24 @@ describe('JobFormPaymentsTable — cash on a Stripe bill (v2.3692)', () => {
         { id: 'inv-plain', status: 'billed', amount: 400, sent_to_customer_at: '2026-09-01T12:00:00Z' },
       ],
     } as unknown as JobWithDetails
-    renderTable([paymentRow({ id: 'draft', amount: 400, invoice_id: null })], () => {}, mixed)
+    renderTable([paymentRow({ id: 'draft', amount: 400 })], { editing: mixed, persisted: new Set() })
     const chips = screen.getAllByTitle(/Apply this payment to the/)
     expect(chips).toHaveLength(1)
     expect(chips[0]?.textContent).toContain('400.00 bill')
     expect(screen.getByText('Record on the $1,500.00 bill →')).toBeTruthy()
-    fireEvent.click(screen.getByLabelText('Toggle payment details'))
     const select = screen.getByLabelText('Apply this payment to a specific invoice') as HTMLSelectElement
     expect([...select.options].map((o) => o.value)).toEqual(['', 'inv-plain'])
   })
-
-  it('a row already on the Stripe bill keeps its lock (Stripe wrote it)', () => {
-    renderTable([paymentRow({ id: 'p-stripe', amount: 1500, invoice_id: 'inv-s' })], () => {}, jobWithOneStripeBill())
-    expect(screen.queryByLabelText('Payment amount')).toBeNull()
-    expect(screen.getByLabelText('Payment amount 1,500.00 dollars')).toBeTruthy()
-    expect(screen.queryByText(/went out through Stripe/)).toBeNull()
-    expect(screen.queryByText('Undo part payment')).toBeNull()
-  })
-
-  // v2.3695: a part payment (credit-note row) on a still-open Stripe bill can be undone from its row.
-  it('a part payment on an open Stripe bill offers Undo part payment; a paid bill does not', () => {
-    const undone: string[] = []
-    const { unmount } = renderWithProviders(
-      <JobFormPaymentsTable
-        editing={jobWithOneStripeBill()}
-        payments={[paymentRow({ id: 'p-part', amount: 1000, invoice_id: 'inv-s', stripe_credit_note_id: 'cn_1' })]}
-        persistedLedgerPaymentIds={new Set(['p-part'])}
-        unlinkingMercuryPaymentId={null}
-        updatePaymentRow={() => {}}
-        addPaymentRow={() => {}}
-        requestRemovePaymentRow={() => {}}
-        requestMovePaymentRow={() => {}}
-        setUnlinkMercuryConfirmRowId={() => {}}
-        setBillViewInvoice={() => {}}
-        requestUndoPartPayment={(row) => undone.push(row.id)}
-      />,
-    )
-    expect(screen.getByLabelText('Payment amount 1,000.00 dollars')).toBeTruthy()
-    fireEvent.click(screen.getByText('Undo part payment'))
-    expect(undone).toEqual(['p-part'])
-    unmount()
-    const paidJob = { ...jobWithOneStripeBill(), invoices: [{ ...jobWithOneStripeBill().invoices[0], status: 'paid' }] } as unknown as JobWithDetails
-    renderWithProviders(
-      <JobFormPaymentsTable
-        editing={paidJob}
-        payments={[paymentRow({ id: 'p-part', amount: 1000, invoice_id: 'inv-s', stripe_credit_note_id: 'cn_1' })]}
-        persistedLedgerPaymentIds={new Set(['p-part'])}
-        unlinkingMercuryPaymentId={null}
-        updatePaymentRow={() => {}}
-        addPaymentRow={() => {}}
-        requestRemovePaymentRow={() => {}}
-        requestMovePaymentRow={() => {}}
-        setUnlinkMercuryConfirmRowId={() => {}}
-        setBillViewInvoice={() => {}}
-        requestUndoPartPayment={(row) => undone.push(row.id)}
-      />,
-    )
-    expect(screen.queryByText('Undo part payment')).toBeNull()
-  })
-
-  // v2.4082: a whole-bill out-of-band mark (Mark Paid · check) on a bill still Paid offers "Check didn't clear…";
-  // the same row on a bill already back to Billed, or a credit-note row, does not.
-  it('a Stripe-held check payment on a Paid bill offers Check didn’t clear…, a Billed bill does not', () => {
-    const asked: string[] = []
-    const base = jobWithOneStripeBill()
-    const paidJob = { ...base, invoices: [{ ...base.invoices[0], status: 'paid', stripe_invoice_status: 'paid' }] } as unknown as JobWithDetails
-    const { unmount } = renderWithProviders(
-      <JobFormPaymentsTable
-        editing={paidJob}
-        payments={[paymentRow({ id: 'p-check', amount: 1500, invoice_id: 'inv-s', payment_type: 'Check' })]}
-        persistedLedgerPaymentIds={new Set(['p-check'])}
-        unlinkingMercuryPaymentId={null}
-        updatePaymentRow={() => {}}
-        addPaymentRow={() => {}}
-        requestRemovePaymentRow={() => {}}
-        requestMovePaymentRow={() => {}}
-        setUnlinkMercuryConfirmRowId={() => {}}
-        setBillViewInvoice={() => {}}
-        requestCheckDidNotClear={(row) => asked.push(row.id)}
-      />,
-    )
-    fireEvent.click(screen.getByText("Check didn't clear…"))
-    expect(asked).toEqual(['p-check'])
-    expect(screen.queryByLabelText('Remove payment row')).toBeNull()
-    unmount()
-    const billedAgain = { ...base, invoices: [{ ...base.invoices[0], status: 'billed', stripe_invoice_status: 'paid' }] } as unknown as JobWithDetails
-    renderWithProviders(
-      <JobFormPaymentsTable
-        editing={billedAgain}
-        payments={[paymentRow({ id: 'p-check', amount: 1500, invoice_id: 'inv-s', payment_type: 'Check' })]}
-        persistedLedgerPaymentIds={new Set(['p-check'])}
-        unlinkingMercuryPaymentId={null}
-        updatePaymentRow={() => {}}
-        addPaymentRow={() => {}}
-        requestRemovePaymentRow={() => {}}
-        requestMovePaymentRow={() => {}}
-        setUnlinkMercuryConfirmRowId={() => {}}
-        setBillViewInvoice={() => {}}
-        requestCheckDidNotClear={(row) => asked.push(row.id)}
-      />,
-    )
-    expect(screen.queryByText("Check didn't clear…")).toBeNull()
-  })
 })
 
-describe('JobFormPaymentsTable — Move to job… (v2.3576)', () => {
-  it('a saved manual row offers Move to job… and reports; an unsaved draft does not', () => {
-    moveRequests.length = 0
-    const { unmount } = renderTable([paymentRow({ id: 'p1', amount: 2400 })], () => {}, jobWithTwoBills())
-    const move = screen.getByText('Move to job…') as HTMLButtonElement
-    expect(move.disabled).toBe(false)
-    fireEvent.click(move)
-    expect(moveRequests).toEqual(['p1'])
+describe('JobFormPaymentsTable — Move to job… lives in the ⋯ menu (v2.3576)', () => {
+  it('a saved row on no bill offers it; a draft does not', () => {
+    const { unmount } = renderTable([paymentRow({ id: 'p1', amount: 2400 })])
+    const menu = openRowMenu('$2,400.00')
+    expect(menu.textContent).toContain('Move to job…')
     unmount()
-    renderWithProviders(
-      <JobFormPaymentsTable
-        editing={jobWithTwoBills()}
-        payments={[paymentRow({ id: 'draft-1', amount: 100 })]}
-        persistedLedgerPaymentIds={new Set()}
-        unlinkingMercuryPaymentId={null}
-        updatePaymentRow={() => {}}
-        addPaymentRow={() => {}}
-        requestRemovePaymentRow={() => {}}
-        requestMovePaymentRow={() => {}}
-        setUnlinkMercuryConfirmRowId={() => {}}
-        setBillViewInvoice={() => {}}
-      />,
-    )
-    expect(screen.queryByText('Move to job…')).toBeNull()
-  })
-
-  it('a payment a sent bill counted keeps Move to job… but disabled, saying to unlink first', () => {
-    renderTable([paymentRow({ id: 'p2', amount: 4720, invoice_id: 'inv-a' })], () => {}, jobWithTwoBills())
-    const move = screen.getByText('Move to job…') as HTMLButtonElement
-    expect(move.disabled).toBe(true)
-    expect(move.getAttribute('title')).toBe('A sent bill counted it — unlink it from the $4,720 bill first')
+    renderTable([paymentRow({ id: 'draft-1', amount: 100 })], { persisted: new Set() })
+    const draftMenu = openRowMenu('$100.00')
+    expect(draftMenu.textContent).not.toContain('Move to job…')
   })
 })

@@ -100,6 +100,7 @@ import { portalTokenUrl } from '../../lib/portal/gcPortalLink'
 import { useGcPortalLinks } from '../../hooks/useGcPortalLinks'
 import { JobFormHazmatRiderRows } from './JobFormHazmatRidersStrip'
 import { JobFormPaymentsTable } from './JobFormPaymentsTable'
+import { useMercuryDepositFacts } from '../../hooks/useMercuryDepositFacts'
 import { JobPaymentMoveModal } from './JobPaymentMoveModal'
 import { JobFormPartsCostSection } from './JobFormPartsCostSection'
 import { JobFormLaborCostPanel } from './JobFormLaborCostPanel'
@@ -1042,6 +1043,9 @@ export default function JobFormModal({
   const [undoPartPaymentRow, setUndoPartPaymentRow] = useState<PaymentRow | null>(null)
   // v2.4082: "Check didn't clear…" on a whole-bill out-of-band mark — opens the Undo window with the send-back on.
   const [checkDidNotClearRow, setCheckDidNotClearRow] = useState<PaymentRow | null>(null)
+  // v2.4288: what the bank synced about the deposits behind bank-linked rows — the
+  // payer it named, the posting date, its verdict — read once for both blocks.
+  const bankFacts = useMercuryDepositFacts(payments)
   const [recordPaymentTarget, setRecordPaymentTarget] = useState<{
     inv: JobsLedgerInvoiceRow
     amount: number | null
@@ -2978,6 +2982,18 @@ export default function JobFormModal({
                 editing={editing}
                 onOverlayOpenChange={setInvoiceListOverlayOpen}
                 payments={payments}
+                bankFacts={bankFacts}
+                persistedLedgerPaymentIds={persistedLedgerPaymentIds}
+                unlinkingMercuryPaymentId={unlinkingMercuryPaymentId}
+                paymentLineActions={{
+                  updatePaymentRow,
+                  requestRemovePaymentRow,
+                  requestMovePaymentRow: setPaymentMoveRow,
+                  setUnlinkMercuryConfirmRowId,
+                  setBillViewInvoice,
+                  requestUndoPartPayment: (row) => setUndoPartPaymentRow(row),
+                  requestCheckDidNotClear: (row) => setCheckDidNotClearRow(row),
+                }}
                 drawLabelByInvoiceId={drawLabelByInvoiceId}
                 canApplyAgreedWriteDown={canApplyAgreedWriteDown}
                 hazmatInvoiceIds={hazmatInvoiceIds}
@@ -3007,6 +3023,7 @@ export default function JobFormModal({
             <JobFormPaymentsTable
               editing={editing}
               payments={payments}
+              bankFacts={bankFacts}
               persistedLedgerPaymentIds={persistedLedgerPaymentIds}
               unlinkingMercuryPaymentId={unlinkingMercuryPaymentId}
               updatePaymentRow={updatePaymentRow}

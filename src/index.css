@@ -2550,6 +2550,203 @@ body.my-time-boundary-dragging {
 .jobInvoiceWords .mut {
   color: var(--text-muted);
 }
+/* v2.4288: the money that paid a bill, drawn under its row — and the ③ list of money on no bill. */
+.jobInvoicePaidBar {
+  flex: 1 1 100%;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--bg-muted);
+  display: flex;
+  overflow: hidden;
+  margin-top: 2px;
+}
+.jobInvoicePaidBar span {
+  display: block;
+  height: 100%;
+  background: var(--text-green-700);
+}
+.jobInvoicePaidBar span + span {
+  border-left: 1px solid var(--surface);
+  opacity: 0.75;
+}
+.jobInvoicePayments {
+  flex: 1 1 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding-left: 0.75rem;
+  border-left: 2px solid var(--border);
+  margin-top: 0.25rem;
+}
+.jobPaymentsList {
+  display: flex;
+  flex-direction: column;
+}
+.jobPaymentsList > .jobPaymentLine {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.jobPaymentLine {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.8125rem;
+  color: var(--text-700);
+}
+.jobPaymentLineMain {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+}
+.jobPaymentLineMain .amt {
+  font-weight: 650;
+  color: var(--text-green-700);
+  font-variant-numeric: tabular-nums;
+}
+.jobPaymentLine[data-source="hand"] .amt {
+  color: var(--text-strong);
+}
+.jobPaymentLineMain .words {
+  color: var(--text-700);
+}
+.jobPaymentLineMain .mut {
+  color: var(--text-muted);
+}
+.jobPaymentLineMenu {
+  margin-left: auto;
+  position: relative;
+  display: inline-flex;
+}
+.jobPaymentLineMore {
+  width: 28px;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1;
+}
+.jobPaymentLineMore:hover,
+.jobPaymentLineMore[aria-expanded="true"] {
+  background: var(--bg-muted);
+  color: var(--text-strong);
+}
+.jobPaymentLinePin {
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-link);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.jobPaymentLineUnlink {
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-red-800);
+  background: var(--surface);
+  border: 1px solid var(--border-red);
+  border-radius: 6px;
+  padding: 0.2rem 0.55rem;
+  cursor: pointer;
+}
+.jobPaymentLineSub {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.jobPaymentLineSub .warn {
+  color: var(--text-red-600);
+  font-weight: 600;
+}
+.jobPaymentChip {
+  display: inline-block;
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.jobPaymentChip.amber {
+  background: var(--bg-amber-tint);
+  color: var(--text-amber-800);
+  border: 1px solid var(--border-amber);
+}
+.jobPaymentChip.red {
+  background: var(--bg-red-tint);
+  color: var(--text-red-800);
+  border: 1px solid var(--border-red);
+}
+.jobPaymentLineEdit {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem 0.6rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-subtle);
+  margin-top: 0.25rem;
+}
+.jobPaymentLineEdit label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.jobPaymentLineEdit .wide {
+  grid-column: 1 / -1;
+}
+.jobPaymentLineEdit input,
+.jobPaymentLineEdit select {
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-base);
+  padding: 0.3rem 0.45rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  background: var(--surface);
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.jobPaymentLineAmountBox {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--surface);
+}
+.jobPaymentLineAmountBox > span {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--text-muted);
+  background: var(--bg-subtle);
+  border-right: 1px solid var(--border);
+}
+.jobPaymentLineAmountBox input {
+  border: none;
+  border-radius: 0;
+  text-align: right;
+}
+
 .jobInvoiceChase {
   display: inline-flex;
   align-items: center;

@@ -258,3 +258,55 @@ describe('JobFormInvoiceList — the lien-waiver cell on a GC job (v2.4275)', ()
     expect(screen.queryByTestId('invoice-waiver-cell')).toBeNull()
   })
 })
+
+describe('JobFormInvoiceList — the money that paid each bill (v2.4288)', () => {
+  it('with the line doors given, a bill draws a paid bar and one line per payment; without them, nothing', async () => {
+    const jobRow = makeJob({
+      customer_name: 'Loberg Contracting',
+      invoices: [makeInvoice({ id: 'inv-open', status: 'billed', amount: 26800, is_primary_rtb_bundle: false, sent_to_customer_at: '2026-07-15T15:00:00Z', billed_at: '2026-07-15T15:00:00Z' })],
+    })
+    const paid = [payment('inv-open', 11700, '2026-09-14'), payment('inv-open', 6077.51, '2026-09-28')]
+    const { unmount } = renderList(jobRow, paid)
+    await settle()
+    expect(screen.queryByTestId('invoice-payments')).toBeNull()
+    unmount()
+    renderWithProviders(
+      <JobFormInvoiceList
+        editing={jobRow}
+        payments={paid}
+        canApplyAgreedWriteDown={false}
+        onClose={() => {}}
+        onSavedRef={createRef<(() => void) | undefined>()}
+        setEditing={() => {}}
+        setBillViewInvoice={() => {}}
+        setAgreedWriteDownInvoice={() => {}}
+        refreshEditingJobAndHydratePayments={() => {}}
+        onInvoiceDeleted={() => {}}
+        onEditBillTo={() => {}}
+        nestedOverlayZIndex={1000}
+        bankFacts={{}}
+        persistedLedgerPaymentIds={new Set(paid.map((p) => p.id))}
+        unlinkingMercuryPaymentId={null}
+        paymentLineActions={{
+          updatePaymentRow: () => {},
+          requestRemovePaymentRow: () => {},
+          requestMovePaymentRow: () => {},
+          setUnlinkMercuryConfirmRowId: () => {},
+          setBillViewInvoice: () => {},
+        }}
+      />,
+    )
+    await settle()
+    const row = screen.getByTestId('invoice-row')
+    expect(within(row).getByText('$9,022.49 open')).toBeTruthy()
+    const bar = within(row).getByTestId('invoice-paid-bar')
+    expect(bar.children).toHaveLength(2)
+    expect((bar.children[0] as HTMLElement).style.width).toBe('43.66%')
+    const lines = within(within(row).getByTestId('invoice-payments')).getAllByTestId('payment-line')
+    expect(lines).toHaveLength(2)
+    expect(lines[0]!.textContent).toContain('$11,700.00')
+    expect(lines[0]!.textContent).toContain('Sep 14 · typed by hand')
+    expect(lines[0]!.textContent).toContain('· 61 d')
+    expect(lines[1]!.textContent).toContain('· 75 d')
+  })
+})
