@@ -29,8 +29,7 @@ import {
   statusText,
   tagMatchesFixture,
   type ProcurementItemSource,
-  type ProcurementRecord,
-} from './procurementLog'
+  type ProcurementRecord, gcProcurementRows, procurementSections } from './procurementLog'
 
 const item = (p: Partial<ProcurementItemSource> & { tag: string; product: string }): ProcurementItemSource => ({ supplyHouse: null, leadTimeDays: null, decision: null, shared: true, ...p })
 const rec = (p: Partial<ProcurementRecord> & { tag: string | null }): ProcurementRecord => ({ id: 'r-' + (p.tag ?? p.label ?? 'x'), label: '', leadTimeDays: null, stage: null, orderedOn: null, poRef: '', expectedOn: null, deliveredOn: null, note: '', sortOrder: 0, ...p })
@@ -364,5 +363,58 @@ describe('the GC’s words', () => {
     expect(longDate('2026-09-28')).toBe('September 28, 2026')
     expect(monthDay(null)).toBe('')
     expect(stageDatesWords({})).toBe('')
+  })
+})
+
+describe('a line per part (2026-10-01)', () => {
+  const stageDates = { rough_in: '2026-10-06', trim_set: '2026-11-17' }
+  const approved = { kind: 'approved' as const, at: '2026-09-22T15:00:00Z' }
+  const items: ProcurementItemSource[] = [
+    { tag: 'WC-1', product: 'TOTO CT728CUVG#01', supplyHouse: 'National Wholesale', leadTimeDays: 21, decision: approved, shared: true, partKey: 'k-bowl', partOrder: 1, quantity: 10 },
+    { tag: 'WC-1', product: 'JOSAM 12694 carrier', supplyHouse: 'National Wholesale', leadTimeDays: 14, decision: approved, shared: true, partKey: 'k-carrier', partOrder: 3, quantity: 10, stage: 'rough_in' },
+    { tag: 'WC-1', product: 'TOTO TET2LBI31#SS', supplyHouse: null, leadTimeDays: 14, decision: { kind: 'revise', at: '2026-09-22T15:00:00Z' }, shared: true, partKey: 'k-valve', partOrder: 2, quantity: 10 },
+    { tag: 'WC-1', product: 'BRASSCRA PLB113XP ANG', supplyHouse: 'Moore Supply', leadTimeDays: 7, decision: approved, shared: true, partKey: 'k-stop', partOrder: 4, orderOnly: true, quantity: 10 },
+    { tag: 'HB-3', product: 'WOODFORD B74C', supplyHouse: 'Moore Supply', leadTimeDays: 7, decision: approved, shared: true },
+  ]
+  const records: ProcurementRecord[] = [
+    { id: 'r1', tag: 'WC-1', partKey: 'k-carrier', label: '', leadTimeDays: null, stage: null, orderedOn: '2026-09-23', poRef: 'space x carriers.', expectedOn: null, deliveredOn: '2026-09-29', note: '', sortOrder: 0 },
+    { id: 'r2', tag: 'WC-1', partKey: null, label: '', leadTimeDays: null, stage: null, orderedOn: null, poRef: '', expectedOn: null, deliveredOn: null, note: 'called the house', sortOrder: 1 },
+  ]
+  const rows = buildProcurementLog({ items, records, tagStage: { 'WC-1': 'trim_set', 'HB-3': 'trim_set' }, stageDates })
+
+  it('each part is its own line in the row’s order, with its own record, stage and quantity; the tag’s old line stays while it holds something', () => {
+    expect(rows.map((r) => [r.key, r.status, r.quantity ?? null])).toEqual([
+      ['HB-3', 'released', null],
+      ['WC-1', 'released', null],
+      ['part:k-bowl', 'released', 10],
+      ['part:k-valve', 'sent_back', 10],
+      ['part:k-carrier', 'delivered', 10],
+      ['part:k-stop', 'released', 10],
+    ])
+    expect(rows.find((r) => r.key === 'part:k-carrier')).toMatchObject({ stage: 'rough_in', requiredOn: '2026-10-06', poRef: 'space x carriers.' })
+    expect(rows.find((r) => r.key === 'part:k-bowl')).toMatchObject({ stage: 'trim_set', orderBy: '2026-10-27' })
+    expect(rows.find((r) => r.key === 'WC-1')).toMatchObject({ product: 'the fixture, as logged before its parts', note: 'called the house' })
+  })
+
+  it('the GC’s copies leave the order-only lines off', () => {
+    expect(gcProcurementRows(rows).map((r) => r.key)).not.toContain('part:k-stop')
+    expect(gcProcurementRows(rows)).toHaveLength(5)
+  })
+
+  it('To order: what to buy now by house, the soonest first; then waiting, on order, delivered', () => {
+    const s = procurementSections(rows, 'to_order')
+    expect(s.map((x) => [x.title, x.rows.map((r) => r.key)])).toEqual([
+      ['Order now · National Wholesale', ['part:k-bowl']],
+      ['Order now · Moore Supply', ['HB-3', 'part:k-stop']],
+      ['Order now · no house yet', ['WC-1']],
+      ['Waiting on the GC', ['part:k-valve']],
+      ['Delivered', ['part:k-carrier']],
+    ])
+    expect(s[0]!.note).toBe('1 line · the first by 10/27')
+  })
+
+  it('By tag and By house group the same lines', () => {
+    expect(procurementSections(rows, 'by_tag').map((x) => [x.title, x.rows.length])).toEqual([['HB-3', 1], ['WC-1', 5]])
+    expect(procurementSections(rows, 'by_house').map((x) => [x.title, x.rows.length])).toEqual([['Moore Supply', 2], ['National Wholesale', 2], ['No house yet', 2]])
   })
 })

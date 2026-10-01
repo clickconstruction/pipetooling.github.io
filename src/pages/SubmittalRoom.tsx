@@ -507,10 +507,16 @@ export default function SubmittalRoom() {
  * same kernel the office uses, from the pieces the room fetch carries.
  */
 function ProcurementCard({ rev, procurement, companyName }: { rev: RoomRevision; procurement: NonNullable<SubmittalRoomPayload['procurement']>; companyName: string }) {
+  // A row with parts (2026-10-01): a line per part the GC sees, each with its own call; the order-only parts never reach the room.
   const items: ProcurementItemSource[] = rev.rows
     .filter((r) => r.tag.trim())
-    .map((r) => ({ tag: r.tag.trim(), product: r.proposed || r.plans || '(no product)', supplyHouse: null, leadTimeDays: r.leadTimeDays ?? null, decision: r.decision ? { kind: r.decision.kind, at: r.decision.at } : null, shared: true }))
-  const records: ProcurementRecord[] = procurement.records.map((x, i) => ({ id: `room-${i}`, tag: x.tag, label: x.label, leadTimeDays: x.leadTimeDays, stage: (x.stage as ProcurementStage | null) ?? null, orderedOn: x.orderedOn, poRef: '', expectedOn: x.expectedOn, deliveredOn: x.deliveredOn, note: x.note, sortOrder: x.sortOrder }))
+    .flatMap((r): ProcurementItemSource[] => {
+      const base = { tag: r.tag.trim(), supplyHouse: null, leadTimeDays: r.leadTimeDays ?? null, shared: true }
+      const parts = (r.parts ?? []).filter((p) => p.procureKey)
+      if (parts.length === 0) return [{ ...base, product: r.proposed || r.plans || '(no product)', decision: r.decision ? { kind: r.decision.kind, at: r.decision.at } : null }]
+      return parts.map((p, k) => ({ ...base, product: p.head, decision: p.decision ? { kind: p.decision.kind, at: p.decision.at } : r.decision ? { kind: r.decision.kind, at: r.decision.at } : null, partKey: p.procureKey, partOrder: k + 1 }))
+    })
+  const records: ProcurementRecord[] = procurement.records.map((x, i) => ({ id: `room-${i}`, tag: x.tag, partKey: x.partKey ?? null, label: x.label, leadTimeDays: x.leadTimeDays, stage: (x.stage as ProcurementStage | null) ?? null, orderedOn: x.orderedOn, poRef: '', expectedOn: x.expectedOn, deliveredOn: x.deliveredOn, note: x.note, sortOrder: x.sortOrder }))
   const splits: StageSplitRecord[] = procurement.splits.map((sp) => ({ countRowId: sp.countRowId, lineId: sp.lineId, partId: sp.partId, weights: { rough_in: sp.roughIn, top_out: sp.topOut, trim_set: sp.trimSet }, source: (['hand', 'rule', 'book', 'assembly'].includes(sp.source) ? sp.source : 'hand') as StageSplitSource }))
   const tagStage = tagStagesFrom(procurement.countRows, splits, items.map((i) => i.tag))
   const rows = buildProcurementLog({ items, records, tagStage, stageDates: procurement.stageDates as StageDates }).filter((r) => r.status !== 'not_submitted' && r.status !== 'awaiting' || r.isHand)

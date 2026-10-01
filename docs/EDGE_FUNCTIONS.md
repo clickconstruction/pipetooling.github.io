@@ -1367,6 +1367,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Proposed rows (v2.4107)**: an item with `status = 'proposed'` (built from the takeoff on a bid with no schedule) is `RoomRowKind 'proposed'` — ordered right after the differing rows, counted in `counts.proposed` and open until decided, its why sentence *What we intend to install; the plans' schedule was not on the bid to compare against.* Redeploy after `20260929015024` is applied.
 
+**Parts on the Procurement card (v2.4327)**: each part carries its `procureKey` and each record its `partKey`, so the card draws a line per part the GC sees. Redeploy after `20261001223000`.
+
 **Parts (v2.4322)**: each row carries `parts` — the parts the GC sees from `bid_submittal_item_parts` (`on_submittal = true`; an order-only part never reaches the room), model first (`splitPartLabel`), each with its own `decision` and `carried` when an approval came forward from the revision before (`roomPartsFrom`). A row with no parts has no `parts` key. A missing table reads as no parts.
 
 **Used by**: [`SubmittalRoom.tsx`](../src/pages/SubmittalRoom.tsx). **Deploy**: `bash scripts/deploy-functions.sh get-submittal-room` after `20260916015805` is applied (again after `20260928204228` for the procurement card, after `20260929015024` for proposed rows, and after `20261001200000` for parts).

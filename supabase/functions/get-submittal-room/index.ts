@@ -107,7 +107,7 @@ serve(async (req) => {
     for (let i = 0; i < itemIds.length; i += 200) {
       const { data: partRows, error: partErr } = await admin
         .from('bid_submittal_item_parts')
-        .select('id, item_id, sequence_order, label, quantity, on_submittal, review_decision, review_note, reviewed_by_name, reviewed_by_person_id, reviewed_at, decision_source')
+        .select('id, item_id, sequence_order, label, quantity, on_submittal, review_decision, review_note, reviewed_by_name, reviewed_by_person_id, reviewed_at, decision_source, procure_key')
         .in('item_id', itemIds.slice(i, i + 200))
         .eq('on_submittal', true)
       if (partErr) break
@@ -170,7 +170,7 @@ serve(async (req) => {
     let procurement: RoomProcurement | undefined
     try {
       const [recs, countRows, splits, job, upd] = await Promise.all([
-        admin.from('bid_procurement_items').select('tag, label, lead_time_days, stage, ordered_on, expected_on, delivered_on, note, sort_order').eq('bid_id', room.bid_id).order('sort_order'),
+        admin.from('bid_procurement_items').select('*').eq('bid_id', room.bid_id).order('sort_order'),
         admin.from('bids_count_rows').select('id, fixture').eq('bid_id', room.bid_id),
         admin.from('bid_takeoff_stage_splits').select('count_row_id, line_id, part_id, rough_in, top_out, trim_set, source').eq('bid_id', room.bid_id),
         admin.from('jobs_ledger').select('id').eq('bid_id', room.bid_id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
@@ -185,8 +185,10 @@ serve(async (req) => {
         ])
         stageDates = stageDatesFromJob((fixtures ?? []) as Array<{ id: string; name: string; stage_kind: string | null }>, (windows ?? []) as Array<{ fixture_id: string; window_start: string | null }>) as Record<string, string>
       }
+      // Never the PO or the house: the card carries status and dates. A part's line keeps its key (2026-10-01).
       const records = ((recs.data ?? []) as Array<Record<string, unknown>>).map((r) => ({
         tag: (r.tag as string | null) ?? null,
+        partKey: (r.part_key as string | null | undefined) ?? null,
         label: String(r.label ?? ''),
         leadTimeDays: r.lead_time_days == null ? null : Number(r.lead_time_days),
         stage: (r.stage as string | null) ?? null,

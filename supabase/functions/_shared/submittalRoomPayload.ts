@@ -62,6 +62,8 @@ export type RoomPartSource = {
   decision_source?: string | null
   decision_entered_by?: string | null
   decision_entered_by_name?: string | null
+  /** The part's line on the procurement log (2026-10-01). */
+  procure_key?: string | null
 }
 
 /** One part on the GC's card: read model first, with its own call. */
@@ -76,6 +78,8 @@ export type RoomPart = {
   decision: RoomRow['decision']
   /** The call came forward from the revision before (an approved part on a resubmitted row). */
   carried?: boolean
+  /** The part's line on the procurement log card. */
+  procureKey?: string | null
 }
 
 /**
@@ -227,6 +231,7 @@ export function roomPartsFrom(parts: ReadonlyArray<RoomPartSource>): RoomPart[] 
         quantity: Number(p.quantity) || 0,
         decision: d ? { kind: d, note: p.review_note, byName: p.reviewed_by_name, byPersonId: p.reviewed_by_person_id, at: p.reviewed_at } : null,
         ...(p.decision_source === 'carried' ? { carried: true } : {}),
+        ...(p.procure_key ? { procureKey: p.procure_key } : {}),
       }
     })
 }
@@ -327,7 +332,7 @@ export type RoomMessage = {
  * out each tag's stage), the job's stage dates, and when the office last sent an update.
  */
 export type RoomProcurement = {
-  records: Array<{ tag: string | null; label: string; leadTimeDays: number | null; stage: string | null; orderedOn: string | null; expectedOn: string | null; deliveredOn: string | null; note: string; sortOrder: number }>
+  records: Array<{ tag: string | null; /** 2026-10-01 · a part's line */ partKey?: string | null; label: string; leadTimeDays: number | null; stage: string | null; orderedOn: string | null; expectedOn: string | null; deliveredOn: string | null; note: string; sortOrder: number }>
   countRows: Array<{ id: string; fixture: string | null }>
   splits: Array<{ countRowId: string; lineId: string | null; partId: string | null; roughIn: number; topOut: number; trimSet: number; source: string }>
   stageDates: Record<string, string>

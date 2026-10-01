@@ -15,11 +15,11 @@ describe('the procurement log as a spreadsheet (v2.4113)', () => {
   ]
 
   it('carries the printed sheet’s columns with dates a sheet reads, and escapes for CSV', () => {
-    expect(PROCUREMENT_EXPORT_COLUMNS).toHaveLength(15)
-    expect(procurementExportRows(rows)[0]).toEqual(['WC-1', 'TOTO TET2UB31#SS', 'Moore Supply', 'Trim set', 'Approved 09/17', '2026-09-17', '2026-09-28', '118', '2 wk', '2026-10-12', 'order date + lead time', '2026-11-17', '36 d', '', ''])
-    expect(procurementExportRows(rows)[2]).toEqual(['', 'Grease interceptor 750 gal', '', '', 'n/a', '', '', '', '6 wk', '', '', '', '', '', ''])
+    expect(PROCUREMENT_EXPORT_COLUMNS).toHaveLength(17)
+    expect(procurementExportRows(rows)[0]).toEqual(['WC-1', 'TOTO TET2UB31#SS', '', 'Moore Supply', 'Trim set', 'Approved 09/17', '2026-09-17', '2026-09-28', '118', '2 wk', '2026-10-12', 'order date + lead time', '2026-11-17', '36 d', '', '', 'yes'])
+    expect(procurementExportRows(rows)[2]).toEqual(['', 'Grease interceptor 750 gal', '', '', '', 'n/a', '', '', '', '6 wk', '', '', '', '', '', '', 'yes'])
     const csv = procurementLogCsv(rows)
-    expect(csv.split('\r\n')[0]).toBe('Tag,Product,Supply house,Stage,Submittal,Released,Ordered,PO,Lead time,Expected,Expected from,Required,Float,Delivered,Note')
+    expect(csv.split('\r\n')[0]).toBe('Tag,Product,Qty,Supply house,Stage,Submittal,Released,Ordered,PO,Lead time,Expected,Expected from,Required,Float,Delivered,Note,GC sees')
     expect(csv).toContain('"Watts 909 RPZ, 2"""')
     expect(csv).toContain('"Ferguson: 10/20\nearliest"')
     expect(csv.endsWith('\r\n')).toBe(true)
@@ -29,7 +29,14 @@ describe('the procurement log as a spreadsheet (v2.4113)', () => {
     const tsv = procurementLogTsv(rows)
     const lines = tsv.split('\n')
     expect(lines).toHaveLength(4)
-    expect(lines[2]).toBe('BFP-1\tWatts 909 RPZ, 2"\tFerguson\tRough-in\tApproved 09/17\t2026-09-17\t2026-09-28\t118\t2 wk\t2026-10-20\thouse\t2026-10-06\t−14 d\t\tFerguson: 10/20 earliest')
+    expect(lines[2]).toBe('BFP-1\tWatts 909 RPZ, 2"\t\tFerguson\tRough-in\tApproved 09/17\t2026-09-17\t2026-09-28\t118\t2 wk\t2026-10-20\thouse\t2026-10-06\t−14 d\t\tFerguson: 10/20 earliest\tyes')
     expect(procurementLogFileName('B375 · SPACEX BA-02N Architectural', '2026-09-29')).toBe('procurement-log_B375-SPACEX-BA-02N-Architectural_2026-09-29.csv')
+  })
+
+  it('2026-10-01 · a part’s line carries how many to order, and a part bought as order only says it is not the GC’s', () => {
+    const part = row({ key: 'part:k1', partKey: 'k1', product: 'BRASSCRA PLB113XP ANG', quantity: 12, orderOnly: true })
+    const out = procurementExportRows([part])[0]!
+    expect(out[2]).toBe('12')
+    expect(out[16]).toBe('no, order only')
   })
 })

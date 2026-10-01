@@ -7,7 +7,7 @@ import { escapeCsvField } from '../domTableToCsv'
 import { describeLeadTime } from './leadTime'
 import { floatText, submittalWord, type ProcurementRow } from './procurementLog'
 
-export const PROCUREMENT_EXPORT_COLUMNS = ['Tag', 'Product', 'Supply house', 'Stage', 'Submittal', 'Released', 'Ordered', 'PO', 'Lead time', 'Expected', 'Expected from', 'Required', 'Float', 'Delivered', 'Note'] as const
+export const PROCUREMENT_EXPORT_COLUMNS = ['Tag', 'Product', 'Qty', 'Supply house', 'Stage', 'Submittal', 'Released', 'Ordered', 'PO', 'Lead time', 'Expected', 'Expected from', 'Required', 'Float', 'Delivered', 'Note', 'GC sees'] as const
 
 const STAGE_WORDS: Record<string, string> = { rough_in: 'Rough-in', top_out: 'Top-out', trim_set: 'Trim set' }
 
@@ -16,6 +16,7 @@ export function procurementExportRows(rows: ReadonlyArray<ProcurementRow>): stri
   return rows.map((r) => [
     r.tag ?? '',
     r.product,
+    r.quantity != null ? String(r.quantity) : '',
     r.supplyHouse ?? '',
     r.stage ? STAGE_WORDS[r.stage] ?? r.stage : '',
     submittalWord(r),
@@ -29,6 +30,8 @@ export function procurementExportRows(rows: ReadonlyArray<ProcurementRow>): stri
     floatText(r),
     r.deliveredOn ?? '',
     r.note,
+    // 2026-10-01 · a part bought as order only is the office's line, not the GC's.
+    r.orderOnly ? 'no, order only' : 'yes',
   ])
 }
 
