@@ -2945,6 +2945,16 @@ body.my-time-boundary-dragging {
     width: 22px;
     height: 22px;
   }
+  /* The tick box's label reaches 44 px around it (the line is 44 px tall), so a thumb
+     that lands beside the box still picks the line; nothing on the line moves. */
+  .jobMoneyLine label.tick {
+    position: relative;
+  }
+  .jobMoneyLine label.tick::after {
+    content: '';
+    position: absolute;
+    inset: -11px;
+  }
   .jobMoneyBlocks {
     height: 20px;
   }
@@ -3024,6 +3034,13 @@ body.my-time-boundary-dragging {
   .jobLineNumbers .jobLineDelete {
     min-width: 44px;
     min-height: 44px;
+  }
+  /* An iPhone zooms the page into a box whose text is under 16 px when it is tapped.
+     The stacked boxes size in ch, so they grow with the text. */
+  .jobLineItems--stacked input,
+  .jobLineItems--stacked textarea,
+  .jobLineTotalInput {
+    font-size: 16px !important;
   }
 }
 
@@ -3251,6 +3268,8 @@ body.my-time-boundary-dragging {
 }
 .jobPaymentLineMain .mut {
   color: var(--text-muted);
+  /* "· 61 d" wraps as one piece; the number never leaves its d behind. */
+  white-space: nowrap;
 }
 .jobPaymentLineMenu {
   position: relative;
@@ -3584,7 +3603,8 @@ body.my-time-boundary-dragging {
   .jobInvoiceChase button {
     min-height: 44px;
   }
-  .jobInvoiceMore {
+  .jobInvoiceMore,
+  .jobPaymentLineMore {
     width: 44px;
     height: 44px;
   }
