@@ -67,6 +67,9 @@ describe('stage 5a — the conversation', () => {
   it('words the system entry and the inbox title', () => {
     expect(decisionEntryBody({ approved: 0, revise: 2, rejected: 1 })).toBe('decided 3 rows · 2 revise · 1 reject')
     expect(decisionEntryBody({ approved: 1, revise: 0, rejected: 0 })).toBe('decided 1 row · 1 approve')
+    // Calls on parts: the rows and the parts they sit on, not one row per call (2026-10-01).
+    expect(decisionEntryBody({ approved: 1, revise: 1, rejected: 0 }, { rows: 1, parts: 2 })).toBe('decided 1 row · 2 parts · 1 approve · 1 revise')
+    expect(decisionEntryBody({ approved: 2, revise: 0, rejected: 0 }, { rows: 2, parts: 0 })).toBe('decided 2 rows · 2 approve')
     expect(askTitle({ personName: 'Dana Whitfield', roleLabel: 'architect', tags: ['WC-1'], bidLabel: 'B398 ZZ Test', revNumber: 2 })).toBe('Dana Whitfield (architect) asked about WC-1 on B398 ZZ Test Rev 2')
     expect(askTitle({ personName: 'Pat', roleLabel: 'builder', tags: [], bidLabel: 'B398', revNumber: null })).toBe('Pat (builder) asked on B398')
   })

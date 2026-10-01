@@ -2,7 +2,7 @@
 title: send a GC our lien waiver
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: lien waiver, six steps, step 1, step 5, change a detail, amount, why less than the bill, still owed, paid so far, signs for the company, signer title, by, signature block, GC, general contractor, conditional, unconditional, progress, final, release of lien, he signs now, sign now, send to the GC, waiver PDF, 53.284, bill, pay app, send with the bill, bill tab, add waiver, waivers to sign, needs you, sign them, GC room, portal, what the GC sees, GC review, they hold, we owe
+keywords: lien waiver, sign on the line, signature in ink, drawn signature, type it instead, six steps, step 1, step 5, change a detail, amount, why less than the bill, still owed, paid so far, signs for the company, signer title, by, signature block, GC, general contractor, conditional, unconditional, progress, final, release of lien, he signs now, sign now, send to the GC, waiver PDF, 53.284, bill, pay app, send with the bill, bill tab, add waiver, waivers to sign, needs you, sign them, GC room, portal, what the GC sees, GC review, they hold, we owe
 ---
 A GC often wants a lien waiver with each bill. The waiver says we give up our lien right for that payment. Texas has four forms. The app picks the right one from the bill, and the leader signs it in the app.
 
@@ -155,23 +155,25 @@ While it waits at his desk, step 5 says who it waits for. Click **Cancel request
 
 Step 5 also shows when no title will print. Click **Add his title in Settings** to set it once.
 
-When he signs now, he draws his signature with a finger or the mouse. He cannot type it. The pad locks to drawing whenever the signer is not the person signed in. This holds on every door into it, including {{button:outline|Sign it ›}} on the Bill tab. The record names him as the signer and names your device.
+When he signs now, the waiver's page opens. Its foot has a blue box marked **Sign here, on the line**. He draws his signature on that line with a finger or the mouse. His name is already printed under the line, so there is nothing to type. He cannot type the signature either. The line takes only drawing whenever the signer is not the person signed in. This holds on every door into it, including {{button:outline|Sign it ›}} on the Bill tab. The record names him as the signer and names your device.
+
+Nothing is signed until there is ink on the line. Then he ticks the box and clicks {{button:amber|Sign it}}. Click **Clear** to start the signature again.
 
 If you are the leader, the button reads {{button:blue|✍ Sign it now}}.
 
-{{gif:send-a-gc-our-lien-waiver-signnow.gif|He signs now: the pad opens with his name on it and only draws. Not now closes it without signing}}
+{{gif:send-a-gc-our-lien-waiver-signnow.gif|He signs now: he draws on the line at the foot of the page, over his printed name. Not now closes it without signing}}
 
 ## What prints under the signature
 
 The foot of the waiver is one block.
 
-- His drawn signature sits above a rule.
+- His drawn signature sits on a rule. The blank space around it is trimmed, so it prints at the same size wherever he drew it.
 - Under the rule comes his name and the company on one line. For example, **Malachi Whites**, Click Plumbing and Electrical.
 - His title comes next. It is left out when none is set.
 - Then the day he signed.
 - A grey sentence says how it was signed, by whom, when, and on whose screen. The two statutes sit under it.
 
-The same block prints on the page, the PDF, the email and the GC's room.
+The same block prints on every copy. That means the page in the window, the PDF, **Print**, **View**, the email and the GC's room. Each copy shows the signature he drew, never his name in type.
 
 ## Sign several at once
 
@@ -180,7 +182,7 @@ A leader with waivers waiting sees a card on his [Dashboard](/dashboard). It rea
 1. Click {{button:outline|Sign them}}. The **Waivers to sign** seat opens.
 2. The list is on the left. Each row names the GC, the job, the form and the amount.
 3. Click a row. Its full page shows on the right. Read it.
-4. Type or draw your signature under the page. Tick the box. Click {{button:blue|✍ Sign · send to the GC}}.
+4. Sign on the line at the foot of the page. Draw it with a finger or the mouse. At your own desk you may click **Type it instead**. Tick the box. Click {{button:amber|✍ Sign · send to the GC}}.
 5. The waiver goes to the GC by email. The next row loads.
 
 Untick **Send once signed** to sign without sending. The office sends it later from the job.
@@ -190,7 +192,7 @@ Untick **Send once signed** to sign without sending. The office sends it later f
 Once the waiver is signed, steps 1 to 5 fold to one line each. Step 6 is the one left, with three buttons.
 
 - {{button:blue|Send to the GC}} emails the signed PDF to the GC's billing address. The subject names the bill, so it lands in the same thread. On a job with no GC it goes to the customer.
-- {{button:outline|Download PDF}} saves the signed PDF to your computer.
+- {{button:outline|Download PDF}} saves the signed PDF to your computer. It is the same file the GC gets, with his signature in ink.
 - {{button:outline|Print}} opens the letter for a printer.
 
 If the button is grey, the GC has no billing email on file. Add it on the GC's customer record and come back.

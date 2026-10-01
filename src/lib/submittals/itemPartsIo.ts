@@ -6,6 +6,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { fetchAllRowsChunkedIn } from '../supabasePaging'
 import { diffPartDrafts, rollUpFromParts, type PartDraft, type SubmittalPartInsert, type SubmittalPartRow } from './itemParts'
+import type { PartWrites } from './refreshFromTakeoff'
 import { rollUpPartDecisions } from '../../../supabase/functions/_shared/submittalRoomPayload'
 
 type Page<T> = PromiseLike<{ data: T[] | null; error: { message: string } | null }>
@@ -119,4 +120,41 @@ export async function clearEnteredCallsOnParts(db: SupabaseClient, itemId: strin
   const { error } = await db.from('bid_submittal_item_parts').update({ ...clear, updated_at: new Date().toISOString() }).eq('item_id', itemId).in('decision_source', ['entered', 'robot'])
   if (error) throw error
   await writeRowCallFromParts(db, itemId)
+}
+
+/**
+ * Write a refresh or a fold on one row's parts (2026-10-01): delete, update, insert, then the
+ * row's label, house and lead time from the parts it now holds.
+ */
+export async function applyPartWrites(db: SupabaseClient, itemId: string, w: PartWrites): Promise<void> {
+  if (w.deletes.length > 0) {
+    const { error } = await db.from('bid_submittal_item_parts').delete().in('id', w.deletes)
+    if (error) throw error
+  }
+  for (const u of w.updates) {
+    const { error } = await db.from('bid_submittal_item_parts').update({ ...u.patch, updated_at: new Date().toISOString() }).eq('id', u.id)
+    if (error) throw error
+  }
+  if (w.inserts.length > 0) await insertItemParts(db, w.inserts)
+  const { error } = await db.from('bid_submittal_items').update(rollUpFromParts(await loadItemParts(db, [itemId]))).eq('id', itemId)
+  if (error) throw error
+}
+
+/**
+ * A tag's own procurement line moved onto a part (a fold): the dates typed for the row it was
+ * stay with the part it became. A tag with no line moves nothing, and before the part lines'
+ * column is pushed nothing moves (the log then keeps the fixture's line as logged before its parts).
+ */
+export async function moveProcurementLines(db: SupabaseClient, bidId: string, moves: ReadonlyArray<{ tag: string; partKey: string }>, intoTag: string): Promise<void> {
+  for (const m of moves) {
+    // Read first: a bid with no line for the tag writes nothing.
+    const { data, error: readErr } = await db.from('bid_procurement_items').select('*').eq('bid_id', bidId).eq('tag', m.tag)
+    if (readErr) throw readErr
+    const line = ((data ?? []) as Array<{ id: string; part_key?: string | null }>).find((r) => !r.part_key)
+    if (!line) continue
+    // A database without part lines yet (a client ahead of the push): the line stays on its tag.
+    if (!('part_key' in line)) return
+    const { error } = await db.from('bid_procurement_items').update({ part_key: m.partKey, tag: intoTag }).eq('id', line.id)
+    if (error) throw error
+  }
 }

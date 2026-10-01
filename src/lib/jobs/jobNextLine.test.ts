@@ -114,7 +114,13 @@ describe('jobNextLine — the chip, first match wins', () => {
     expect(
       jobNextLine(base({ stage: 'billed', expectedPay: { expectedYmd: '2026-09-10', state: 'late', source: 'customer', medianDays: 30, daysLate: 12, label: '12d past expected', title: 't' } })).chip,
     ).toMatchObject({ label: '12 d past expected', tone: 'amber', action: 'bill-row' })
-    expect(jobNextLine(base({ contract: { kind: 'none' } })).chip).toMatchObject({ label: 'no contract', tone: 'amber', action: 'contract' })
+    expect(jobNextLine(base({ contract: { kind: 'none' }, contractAsk: { label: 'contract by Sat Oct 3', title: 'The crew is booked for Sat Oct 3.' } })).chip).toMatchObject({
+      label: 'contract by Sat Oct 3',
+      tone: 'amber',
+      action: 'contract',
+    })
+    // v2.4342: a gap with no crew booked or on site is no longer an amber chip on every row.
+    expect(jobNextLine(base({ contract: { kind: 'none' } })).chip).toBeNull()
     const signed = jobNextLine(base({ contract: { kind: 'signed', source: 'estimate', signedAt: '2026-09-20T00:00:00Z', estimateNumber: 146 } as never }))
     expect(signed.chip).toBeNull()
     expect(signed.line).toContain('Signed')
@@ -150,7 +156,7 @@ describe('jobNextLine — the grey line', () => {
 
 describe('phoneRowPasses / abbreviateTimeSince / advanceConsequence', () => {
   it('filters on the kernel’s own flags', () => {
-    const needs = jobNextLine(base({ contract: { kind: 'none' } }))
+    const needs = jobNextLine(base({ contract: { kind: 'none' }, contractAsk: { label: 'no contract · crew on site', title: 't' } }))
     const plain = jobNextLine(base())
     expect(phoneRowPasses(needs, 'needs')).toBe(true)
     expect(phoneRowPasses(plain, 'needs')).toBe(false)

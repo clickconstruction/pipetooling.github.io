@@ -90,6 +90,9 @@ import BilledDatesLedger from './BilledDatesLedger'
 import type { BilledRowBillLine } from './JobsStagesUnifiedTable'
 import SetPromisedPayDateModal from './SetPromisedPayDateModal'
 import JobContractModal from './JobContractModal'
+import AddJobContractSheet from './AddJobContractSheet'
+import { jobNumberLabel, streetOf } from '../../lib/jobs/jobContractCovers'
+import { contractRowChipForJob } from '../../lib/jobs/contractRowChip'
 import { useJobContractsNudge } from '../../hooks/useJobContractsNudge'
 import { useJobCrewPositions } from '../../hooks/useJobCrewPositions'
 import type { ContractStage } from '../../lib/jobs/jobContractNudge'
@@ -839,10 +842,16 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const canSeeJobContracts =
     stagesGates.isStagesOfficeRole(authRole)
   const { jobContractCoverageByJobId, loadJobContractCoverage } = useJobContractCoverage(jobs, canSeeJobContracts)
-  /** The Contract modal (Contract Desk PR 2) — opened from the row chip and the ✍ quick action. */
+  /** The Contract modal (Contract Desk PR 2) — opened from the row chip (the ✍ quick action left in v2.4324). */
   const [jobContractModalJob, setJobContractModalJob] = useState<JobWithDetails | null>(null)
   /** v2.4183: every chip opens the one window — a green one lands on its signed state (the window reads the coverage). */
   const openJobContract = canSeeJobContracts ? (j: JobWithDetails) => setJobContractModalJob(j) : undefined
+  /** v2.4342: a GC job with nothing on file — the chip reads *No subcontract on file* and opens Add the contract on that GC's jobs. */
+  const [gcPaperSheetJob, setGcPaperSheetJob] = useState<JobWithDetails | null>(null)
+  /** The row chip's door (`contractRowChip`'s `opens`): the GC paper sheet, else the Contract window. */
+  const openContractChip = canSeeJobContracts
+    ? (j: JobWithDetails, opens?: 'contract' | 'gc-paper') => (opens === 'gc-paper' && j.gc_customer_id ? setGcPaperSheetJob(j) : setJobContractModalJob(j))
+    : undefined
   /** The contract sweep (PR 4): every live job with nothing on file, one row each. ?contractSweep=1 deep-links it. */
   // Contract coverage card (v2.2738): company-wide counts per stage — the
   // board loads Billed/Collections lazily, so the card never reads off loaded rows.
@@ -2389,7 +2398,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     loadJobs,
     onDevelopmentFilter: setStagesDevelopmentFilter,
     jobContractCoverageByJobId: canSeeJobContracts ? jobContractCoverageByJobId : undefined,
-    onOpenJobContract: openJobContract,
+    onOpenJobContract: openContractChip,
     legalMatterByJobId: legalMatters.byJobId,
     propertyKindByJobId: propertyKinds.byJobId,
     onPropertyKindSaved: propertyKinds.setKind,
@@ -2421,6 +2430,18 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       expectedPay,
       bankReturned: bankReturnedByJobId.get(job.id) ?? null,
       contract: canSeeJobContracts ? (jobContractCoverageByJobId.get(job.id) ?? null) : undefined,
+      contractAsk: canSeeJobContracts
+        ? (() => {
+            // v2.4342: the phone chip asks when the desktop row's chip does (`contractRowChip`).
+            const chip = contractRowChipForJob(job, {
+              coverage: jobContractCoverageByJobId.get(job.id),
+              upcoming: stagesUpcomingByJobId[job.id] ?? null,
+              weekSoFar: stagesWorkedByJobId[job.id] ?? null,
+              todayYmd: phoneTodayYmd,
+            })
+            return chip.show && chip.tone === 'ask' && chip.phoneLabel ? { label: chip.phoneLabel, title: chip.title } : null
+          })()
+        : null,
       upcoming: stagesUpcomingByJobId[job.id] ?? null,
       crew,
       billDisplay: bDetail
@@ -4574,6 +4595,26 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         onEditJob={(j) => openEdit(j)}
         coverage={jobContractModalJob ? jobContractCoverageByJobId.get(jobContractModalJob.id) ?? null : null}
       />
+      {gcPaperSheetJob ? (
+        <AddJobContractSheet
+          open
+          mode="add"
+          onClose={() => setGcPaperSheetJob(null)}
+          onDone={() => {
+            void loadJobContractCoverage()
+            window.dispatchEvent(new Event('job-contract-changed'))
+          }}
+          anchorJob={{ id: gcPaperSheetJob.id, num: jobNumberLabel(gcPaperSheetJob), where: streetOf(gcPaperSheetJob.job_address) }}
+          partyIds={[gcPaperSheetJob.gc_customer_id].filter((x): x is string => Boolean(x))}
+          signerName={(gcPaperSheetJob.gcCustomer?.name ?? '').trim()}
+          subtitle={`Job ${jobNumberLabel(gcPaperSheetJob)} · ${(gcPaperSheetJob.gcCustomer?.name ?? '').trim() || 'the GC'}'s subcontract`}
+          onOpenContractWindow={() => {
+            const j = gcPaperSheetJob
+            setGcPaperSheetJob(null)
+            setJobContractModalJob(j)
+          }}
+        />
+      ) : null}
       <JobsContractSweepModal
         open={contractSweepOpen}
         onClose={() => setContractSweepOpen(false)}

@@ -67,7 +67,8 @@ const td: CSSProperties = { padding: '0.35rem 0.4rem', borderBottom: '1px solid 
 const thCenter: CSSProperties = { ...th, textAlign: 'center' }
 const tdCenter: CSSProperties = { ...td, whiteSpace: 'nowrap', textAlign: 'center' }
 // The Item cell: the tag in bold, then the product on the same line, so a long name wraps across one wide cell.
-const itemTd: CSSProperties = { ...td, minWidth: '19rem', lineHeight: 1.35 }
+// On a phone the item and its tick fit the screen; the dates scroll beside them.
+const itemTd: CSSProperties = { ...td, width: 'min(19rem, 52vw)', minWidth: 'min(19rem, 52vw)', lineHeight: 1.35, overflowWrap: 'anywhere' }
 const itemTag: CSSProperties = { fontWeight: 700, color: 'var(--text-strong)', marginRight: '0.45rem' }
 const btn: CSSProperties = { padding: '0.35rem 0.75rem', background: 'var(--surface)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem', fontWeight: 500 }
 const btnPrimary: CSSProperties = { ...btn, background: '#2563eb', borderColor: '#2563eb', color: 'white', fontWeight: 600 }

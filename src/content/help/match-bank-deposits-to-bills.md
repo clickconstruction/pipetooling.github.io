@@ -126,7 +126,7 @@ Pick the reason: **Bank interest**, **Vendor refund**, **Owner deposit**, or **S
 
 ## When a check comes back
 
-A check can come back days after it posted. The bank says why. It may read *Insufficient funds*, *Stop payment* or *Refer to maker*. The app opens a case for it the moment Mercury says so. This happens whether the check is on a job or not.
+A check can come back days after it posted. Under All, a check applied in the past week reads *clears about Oct 8* until then. The bank says why when one comes back. It may read *Insufficient funds*, *Stop payment* or *Refer to maker*. The app opens a case for it the moment Mercury says so. This happens whether the check is on a job or not.
 
 ### Came back, on top of To match
 

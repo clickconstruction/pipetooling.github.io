@@ -169,7 +169,8 @@ export function UsersTabRow({
         <span aria-hidden title={rail.reasons.join(' · ') || 'Nothing needs you'} style={{ width: 8, height: 8, borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
         <PersonNameDoor name={item.name} userId={isAccount ? item.id : null} personId={isAccount ? rail.personId : item.id} style={{ fontWeight: 600, color: 'var(--text-link)' }} />
         {isAccount ? <Chip tone="gray">login</Chip> : <Chip tone="ghost" title="A roster row with no app account — their portal, paperwork and pay work without one">no login</Chip>}
-        {isAccount && hasSupervisionSwitch(item.role) ? (
+        {/* A lens with columns (Account, Pay) says supervision in its own column or not at all. */}
+        {isAccount && !cells && hasSupervisionSwitch(item.role) ? (
           item.needs_supervision === false ? (
             <Chip tone="green" title="Can run a job on their own — counts as coverage for a job-day (v2.3611). Flip it from the ⋯ menu.">can run a job</Chip>
           ) : (

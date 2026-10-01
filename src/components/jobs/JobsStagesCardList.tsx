@@ -64,6 +64,7 @@ import {
   renderStagesEditModeRail,
   renderStagesScheduleStripCells,
   shouldSuppressStagesRowJobThreadToggle,
+  stagesContractChipFor,
   stagesWhenForJob,
   STAGES_EDIT_MODE_RAIL_WIDTH,
   stagesInvoiceRowAccentRowStyle,
@@ -518,13 +519,19 @@ function cardFooterRow(
     <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem', borderTop: '1px solid var(--border)', paddingTop: '0.4rem', marginTop: '0.1rem' }}>
       {cardInvoiceChips(ctx, job)}
       {renderStagesSeeAllButton(ctx, job)}
-      {ctx.jobContractCoverageByJobId ? (
-        <JobContractChip
-          coverage={ctx.jobContractCoverageByJobId.get(job.id)}
-          onClick={ctx.onOpenJobContract ? () => ctx.onOpenJobContract?.(job) : undefined}
-          compact
-        />
-      ) : null}
+      {(() => {
+        // v2.4342: the same words and door as the desktop row (`contractRowChip`); no chip on Paid in Full.
+        const chip = stagesContractChipFor(ctx, job)
+        if (!chip?.show) return null
+        return (
+          <JobContractChip
+            coverage={ctx.jobContractCoverageByJobId?.get(job.id)}
+            words={chip}
+            onClick={ctx.onOpenJobContract ? () => ctx.onOpenJobContract?.(job, chip.opens) : undefined}
+            compact
+          />
+        )
+      })()}
       {(() => {
         const legal = legalRowChip(ctx.legalMatterByJobId?.get(job.id))
         return legal ? (

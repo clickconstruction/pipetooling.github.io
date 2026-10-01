@@ -28,6 +28,7 @@ import { ArReturnCaseRow } from './ar/ArReturnCaseRow'
 import { ArReturnCasePane, type ArCaseCloseReason } from './ar/ArReturnCasePane'
 import SetPromisedPayDateModal from './SetPromisedPayDateModal'
 import { useArReturnCases } from '../../hooks/useArReturnCases'
+import { depositClearsYmd } from '../../lib/jobs/checkClearing'
 import { arCaseDay, arCaseMoney, arCaseThisReplaces, arPayerCameBackNote, arReplacementFor, arReturnCaseView, type ArReturnCaseView } from '../../lib/jobs/arReturnCase'
 import { ArHeaderMenu } from './ar/ArHeaderMenu'
 import { ModalFullScreenButton, useModalFullScreen } from '../ModalFullScreenToggle'
@@ -194,6 +195,14 @@ export type BankPaymentsModalProps = {
  * the jobs_ledger_payments id and the amount is locked to that row.
  */
 type AllocLine = { id: string; kind: 'billed' | 'payment'; targetKey: string; amountStr: string }
+
+/** v2.4333: "clears about Oct 8" under an applied check that can still come back (checkClearing.ts). */
+function arDepositClearsNote(c: { kind?: string | null; posted_at?: string | null; consumed?: number | string | null; returned?: boolean | null; bankReturn?: unknown }, todayYmd: string): string | null {
+  if (arDepositCameBack(c)) return null
+  const postedYmd = c.posted_at ? denverCalendarDayKey(new Date(c.posted_at).getTime()) : null
+  const clears = depositClearsYmd(c, postedYmd, todayYmd)
+  return clears ? `clears about ${arCaseDay(clears, todayYmd)}` : null
+}
 
 export default function BankPaymentsModal({
   open,
@@ -2388,6 +2397,7 @@ export default function BankPaymentsModal({
                       state={rowStates.get(c.mercury_transaction_id) ?? 'hand'}
                       trail={trailsById.get(c.mercury_transaction_id) ?? null}
                       cameBackNote={arDepositCameBack(c) ? null : arPayerCameBackNote(c.counterparty_name, returnCases.allCases, todayYmd, c.mercury_transaction_id)}
+                      clearsNote={arDepositClearsNote(c, todayYmd)}
                       kindBadges={kindBadges}
                       markMode={arBankReturnedMarkMode}
                       canApply={canApply}

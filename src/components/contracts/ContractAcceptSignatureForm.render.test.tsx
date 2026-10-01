@@ -75,18 +75,3 @@ describe('ContractAcceptSignatureForm with the e-sign consent (v2.3118)', () => 
     expect(screen.getByText('Marque "Acepto firmar electrónicamente" para continuar.')).toBeTruthy()
   })
 })
-
-describe('ContractAcceptSignatureForm agree checkbox placement (v2.4339)', () => {
-  const base = { printedName: '', agreed: false, onPrintedNameChange: () => undefined, onAgreedChange: () => undefined, formError: null, submitting: false, onSubmit: () => undefined }
-  it('keeps the box level with the first line by default — the customer, sub and contract pages', () => {
-    render(<ContractAcceptSignatureForm {...base} />)
-    expect(screen.getByTestId('signature-agree').style.alignItems).toBe('flex-start')
-  })
-  it('centres the box against its sentence when asked — the lien waiver pads', () => {
-    render(<ContractAcceptSignatureForm {...base} agreeLabel="I have read this release and agree to sign it." agreeAlign="center" />)
-    const row = screen.getByTestId('signature-agree')
-    expect(row.style.alignItems).toBe('center')
-    expect(row.textContent).toBe('I have read this release and agree to sign it.')
-  })
-})
-

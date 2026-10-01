@@ -352,7 +352,43 @@ describe('one door for each thing on the row (v2.4324)', () => {
     await settle()
     expect(screen.queryByRole('button', { name: 'Open the job contract' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: /No contract/ }))
-    expect(onOpenJobContract).toHaveBeenCalledWith(job)
+    expect(onOpenJobContract).toHaveBeenCalledWith(job, 'contract')
+  })
+
+  it('v2.4342 · a GC job reads No subcontract on file and opens the GC paper door', async () => {
+    const { job, rows } = billedRow()
+    job.gc_customer_id = 'gc-dudley'
+    // No id on the GC: its 🌐 portal button reads useAuth, which this file does not mock.
+    job.gcCustomer = { name: 'RMC- Dudley Mason' } as never
+    const onOpenJobContract = vi.fn()
+    renderWithProviders(
+      <JobsStagesUnifiedTable
+        {...makeProps({ rows, onOpenJobContract, jobContractCoverageByJobId: new Map([[job.id, { kind: 'none' as const }]]) })}
+      />,
+    )
+    await settle()
+    const chip = screen.getByRole('button', { name: /No subcontract on file/ })
+    expect(chip.getAttribute('title')).toContain('RMC- Dudley Mason')
+    fireEvent.click(chip)
+    expect(onOpenJobContract).toHaveBeenCalledWith(job, 'gc-paper')
+  })
+
+  it('v2.4342 · a priced Ready to Bill job with a crew booked and nothing on file asks by that day', async () => {
+    const job = makeJob({ job_name: 'Booked Ask Job', status: 'ready_to_bill', revenue: 350 })
+    const rows: StageRow[] = [{ kind: 'job', job }]
+    renderWithProviders(
+      <JobsStagesUnifiedTable
+        {...makeProps({
+          rows,
+          onOpenJobContract: vi.fn(),
+          jobContractCoverageByJobId: new Map([[job.id, { kind: 'none' as const }]]),
+          stagesUpcomingByJobId: { [job.id]: { ymd: '2099-01-02', timeStart: '08:00', timeEnd: '12:00', assigneeNames: [], note: null, bookedYmds: ['2099-01-02'], lastYmd: '2099-01-02', visitCount: 1 } },
+        })}
+      />,
+    )
+    await settle()
+    const chip = screen.getByRole('button', { name: /Contract by Fri Jan 2/ })
+    expect(chip.textContent).toMatch(/^Contract by Fri Jan 2 · \d+d$/)
   })
 
   it('a billed row with a dates block does not repeat Billed under the crew', async () => {

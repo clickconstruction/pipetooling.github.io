@@ -53,6 +53,15 @@ export function canSetTrainingMode(v: PersonDeskViewer): boolean {
   return isOffboardingRole(v) && !v.readOnly
 }
 
+/**
+ * Supervision (v2.3611): whether a helper or sub can run a job on their own. Mirrors
+ * `users_guard_privileged_columns`: a dev, a master or an assistant, never on their own row
+ * (the desk checks the row). Account on the desk (PR B) puts the switch on the desk.
+ */
+export function canSetSupervision(v: PersonDeskViewer): boolean {
+  return !v.readOnly && (v.isDev || v.role === 'master_technician' || v.role === 'assistant')
+}
+
 /** Imitate stays dev-only in the UI regardless of what the edge function admits. */
 export function canImitate(v: PersonDeskViewer): boolean {
   return v.isDev

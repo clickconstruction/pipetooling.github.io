@@ -761,6 +761,67 @@ describe('BidsSubmittalsTab', () => {
     }
   })
 
+  it('2026-10-01 · a draft catching up: a takeoff row built before parts reads differently; Refresh from the takeoff writes its parts and leaves a row that reads the same', async () => {
+    state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, shared_at: null, created_at: '2026-09-15T00:00:00Z', source_files: [] }]
+    state.items = [
+      item({ id: 'wh', tag: 'DWH-1, ET', sequence_order: 1, submitted_label: 'A.O. Smith BTH-199 WATER HEATER', status: 'proposed', source_count_row_id: 'c-wh' }),
+      item({ id: 'wc', tag: 'WC-1, WC-2', sequence_order: 2, submitted_label: 'TOTO CT708UVG#01 WALL HUNG BOWL', status: 'proposed', source_count_row_id: 'c-wc' }),
+    ]
+    state.parts = [{ id: 'pt-wc', item_id: 'wc', bid_id: 'b398', sequence_order: 1, label: 'TOTO CT708UVG#01 WALL HUNG BOWL', quantity: 1, on_submittal: true, source: 'takeoff', source_line_id: null, source_template_item_id: null, sheet_pages: [], procure_key: 'k-wc', decision_source: 'room' }]
+    state.takeoff = true
+    state.writes = []
+    try {
+      mount()
+      const strip = await screen.findByTestId('draft-catch-up')
+      await waitFor(() => expect(strip.textContent).toContain('The takeoff reads differently for DWH-1, ET.'))
+      fireEvent.click(within(strip).getByTestId('refresh-from-takeoff'))
+      const dialog = await screen.findByRole('dialog', { name: 'Refresh from the takeoff' })
+      expect(within(dialog).getAllByTestId('refresh-row')).toHaveLength(1)
+      expect(within(dialog).getByTestId('refresh-skipped').textContent).toBe('WC-1, WC-2 reads the same as the takeoff.')
+      fireEvent.click(within(dialog).getByTestId('refresh-confirm'))
+      await waitFor(() => expect(state.parts.filter((p) => p.item_id === 'wh')).toHaveLength(1))
+      expect(state.parts.find((p) => p.item_id === 'wh')).toMatchObject({ source: 'takeoff', on_submittal: true })
+      expect(String(state.parts.find((p) => p.item_id === 'wh')!.label)).toContain('BTH-199')
+      // The row that read the same is not touched.
+      expect(state.writes.some((w) => w.table === 'bid_submittal_item_parts' && w.op !== 'insert')).toBe(false)
+    } finally {
+      state.parts = []
+      state.takeoff = false
+    }
+  })
+
+  it('2026-10-01 · a draft catching up: a hand row whose note names another row reads like its part; Make it a part folds it in as a part and the row leaves', async () => {
+    state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, shared_at: null, created_at: '2026-09-15T00:00:00Z', source_files: [] }]
+    state.items = [
+      item({ id: 'wc', tag: 'WC-1', sequence_order: 1, submitted_label: 'TOTO CT708UVG', status: 'proposed', lead_time_days: 14 }),
+      item({ id: 'car', tag: 'CAR-1', sequence_order: 2, submitted_label: 'JOSAM 12674 CARRIER', status: 'accessory', reason_note: 'Carrier for WC-1.', lead_time_days: 21, sheet_pages: [40] }),
+    ]
+    state.parts = []
+    state.writes = []
+    try {
+      mount()
+      const hint = await screen.findByTestId('fold-hint')
+      expect(hint.textContent).toBe('CAR-1 reads like a part of WC-1.Make it a part…')
+      // The hand row carries its own door too; the fixture with a product does not.
+      expect(screen.getAllByTestId('fold-row')).toHaveLength(2)
+      fireEvent.click(within(hint).getByTestId('fold-hint-open'))
+      const dialog = await screen.findByRole('dialog', { name: 'Make CAR-1 a part of another row' })
+      expect(within(dialog).getByTestId('fold-preview').textContent).toContain('WC-1 will list for the GC: TOTO CT708UVG + JOSAM 12674.')
+      fireEvent.click(within(dialog).getByTestId('fold-confirm'))
+      await waitFor(() => expect(state.items.some((r) => r.id === 'car')).toBe(false))
+      // WC-1 lists its own product first, then the carrier with its house, lead time and pages.
+      const wcParts = state.parts.filter((p) => p.item_id === 'wc').sort((a, b) => (a.sequence_order as number) - (b.sequence_order as number))
+      expect(wcParts.map((p) => [p.label, p.source, p.on_submittal])).toEqual([['TOTO CT708UVG', 'hand', true], ['JOSAM 12674 CARRIER', 'hand', true]])
+      expect(wcParts[1]).toMatchObject({ lead_time_days: 21, sheet_pages: [40], supply_house_id: 'h-nws' })
+      // The row reads its parts: the longest lead time.
+      const rollUp = state.writes.find((w) => w.table === 'bid_submittal_items' && w.op === 'update' && (w.payload as Record<string, unknown>).lead_time_days === 21)
+      expect(rollUp?.filters).toContainEqual(['id', 'wc'])
+      await waitFor(() => expect(screen.queryByTestId('fold-hint')).toBeNull())
+    } finally {
+      state.parts = []
+    }
+  })
+
   it('6b · a ready schedule read lists the sure and want-a-look tags; Confirm keeps the chosen tags and drops the rest', async () => {
     state.revisions = []
     state.items = []

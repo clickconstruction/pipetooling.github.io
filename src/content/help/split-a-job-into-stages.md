@@ -40,9 +40,11 @@ How it bills over the job: Rough-in passes → *draw 1* is ready → {{button:gr
 ## Set up the stages in ① Line Items
 
 :::example Under one line in ① Line Items, before and after you press In order
-◆ **Top-out** $3,000 {{button:outline|In order}} {{button:amber|Any time}}
+◆ **Top-out** $3,000
+{{button:outline|In order}} {{button:amber|Any time}}
 
-② **Top-out** $3,000 {{button:dark|In order}} {{button:outline|Any time}}
+② **Top-out** $3,000
+{{button:dark|In order}} {{button:outline|Any time}}
 :::
 
 1. Open the job from Jobs → Pipeline → {{button:outline|Edit}} → **Bill**. Find **① Line Items**.

@@ -4,8 +4,8 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useLienSignatureLanes } from '../../hooks/useLienSignatureLanes'
 import { lienInboxJobLabel, type LienInboxRow } from '../../lib/jobs/lienReleaseInboxLanes'
 import { lienReleaseFormLabel, lienReleaseSnapshotToWaiverFields, isLienWaiverFormType } from '../../lib/jobs/lienReleaseTracking'
-import { lienReleaseRowSignature } from '../../lib/jobs/lienReleaseLifecycle'
-import { buildLienWaiverPdfBlob, lienWaiverPdfFilename, type LienWaiverSignature } from '../../lib/jobsDocuments/lienWaiverRelease'
+import { lienWaiverPdfFilename } from '../../lib/jobsDocuments/lienWaiverRelease'
+import { lienReleaseSignedPdfBlob } from '../../lib/jobs/lienReleaseInk'
 import { sendLienReleaseEmailToCustomer } from '../../lib/sendLienReleaseEmail'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
@@ -46,8 +46,8 @@ export default function LienSignatureInboxSection() {
   async function downloadSignedPdf(r: LienInboxRow) {
     try {
       const formType = isLienWaiverFormType(r.form_type) ? r.form_type : 'conditional_progress'
-      const signature: LienWaiverSignature | null = lienReleaseRowSignature(r)
-      const blob = await buildLienWaiverPdfBlob(formType, lienReleaseSnapshotToWaiverFields(r), signature)
+      // v2.4335: the signed PDF as signed (the stored file, with the ink), rebuilt with the ink only when it is missing.
+      const blob = await lienReleaseSignedPdfBlob(r, formType, lienReleaseSnapshotToWaiverFields(r))
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url

@@ -11,7 +11,7 @@ Their jobs, clock time, reports, and history stay attached to the account. It ju
 
 ## How to archive
 
-Everything happens in one dialog, **Manage accounts…**. You find it at Settings → People & teams, beside the pointer to People → Users → Account. You also find it on a person's desk → Access & account. Use the search bar at the top to jump straight to the account. It matches name, email, or role. It filters the archived list too. Two ways in, same dialog:
+Everything happens in one dialog, **Manage accounts…**. You find it at Settings → People & teams, beside the pointer to People → Users → Account. Use the search bar at the top to jump straight to the account. It matches name, email, or role. It filters the archived list too. Two ways in, same dialog:
 
 1. **From the top**: click {{button:red|Archive user}} and pick the account from the dropdown.
 2. **From a row**: click {{button:outline|Edit}} on the account. Then click the red {{button:red|Archive}} button at the end of the actions. The dialog opens with that account already selected.
