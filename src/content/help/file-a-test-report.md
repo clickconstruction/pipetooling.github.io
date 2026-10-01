@@ -61,7 +61,7 @@ Drafts pile up under **Needs you** as "3 test reports are ready to send" (office
 
 ## What the customer sees
 
-Once a report is sent it shows on the customer's or the GC's portal statement. It sits on the job it belongs to. It shows {{chip:green|PASS}} or {{chip:red|FAIL}}, the date and who certified. A **View report** button opens the exact PDF they were emailed. A **Test reports** card lower on the page keeps every sent report, paid jobs included. Drafts never appear there. Preview both on **Settings → What customers see**.
+Once a report is sent it shows on the customer's or the GC's portal statement. It sits on the job it belongs to. It shows {{chip:green|PASS}} or {{chip:red|FAIL}}, the date and who certified. A **View report** button opens the exact PDF they were emailed. The **Test reports** group of the **Your papers** card lower on the page keeps every sent report, paid jobs included. Drafts never appear there. Preview both on **Settings → What customers see**.
 
 ## Where they are filed
 

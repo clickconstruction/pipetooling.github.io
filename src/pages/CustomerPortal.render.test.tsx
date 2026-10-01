@@ -388,3 +388,60 @@ describe('test reports card (v2.3304, fold v2.3312)', () => {
     expect(screen.getAllByText('$1,700.00').length).toBeGreaterThanOrEqual(2)
   })
 })
+
+describe('lien waivers (v2.4304): a note on the bill, a group in Your papers', () => {
+  const signedHalf = (formType: string, ymd: string, pdfUrl: string | null, state = 'signed') => ({ state, ymd, pdfUrl, releaseId: 'r', formType, signerName: 'Malachi Whites' })
+  const none = { state: 'none', ymd: null, pdfUrl: null, releaseId: null, formType: null, signerName: null }
+
+  it('the payer’s signed waiver is a note on its bill and a row in Your papers; a still-signing one shows nowhere', async () => {
+    const withWaivers = {
+      ...payload,
+      bills: [{ ...payload.bills[0], invoiceId: 'inv-612' }, { ...payload.bills[1], invoiceId: 'inv-655' }],
+      agreements: [{ jobLabel: 'Water heater replacement · Job 612', jobAddress: '3827 Sage Ridge Dr', status: 'signed', templateName: 'Residential service agreement', amountCents: 145000, signedAt: '2026-08-01T00:00:00Z', signerName: 'Michael Hageman', sentAt: null, signUrl: null }],
+      waivers: [
+        { audience: 'payer', jobId: 'j612', jobLabel: 'Water heater replacement · Job 612', jobAddress: '3827 Sage Ridge Dr, San Antonio, TX 78258', invoiceId: 'inv-612', billLabel: 'Bill', amount: 1450, billedYmd: '2026-08-04', paid: false, final: true, conditional: signedHalf('conditional_final', '2026-08-05', 'https://files.test/c.pdf'), unconditional: none },
+        // A function from before v2.4304 may still send a "signing" half: it never shows.
+        { audience: 'payer', jobId: 'j655', jobLabel: 'Service call · Job 655', jobAddress: null, invoiceId: 'inv-655', billLabel: 'Bill', amount: 250, billedYmd: '2026-08-18', paid: false, final: true, conditional: { ...none, state: 'signing' }, unconditional: none },
+      ],
+    }
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(withWaivers), { status: 200 })))
+    mountAt('/portal?t=abcdef1234567890abcdef')
+    await waitFor(() => expect(screen.getByText('Michael Hageman')).toBeTruthy())
+    const notes = document.querySelectorAll('[data-bill-waiver]')
+    expect(notes).toHaveLength(1)
+    expect(notes[0]!.textContent).toBe('⤓ Lien waiver · conditional final, signed Aug 5')
+    expect((notes[0]!.querySelector('a') as HTMLAnchorElement).href).toBe('https://files.test/c.pdf')
+    const papers = document.querySelector('[data-portal-papers]') as HTMLElement
+    expect(papers.textContent).toContain('Your papers')
+    expect(papers.querySelector('[data-portal-agreements]')).toBeTruthy()
+    const group = papers.querySelector('[data-portal-waivers][data-audience="payer"]') as HTMLElement
+    expect(group.textContent).toContain('Lien waivers')
+    expect(group.querySelectorAll('[data-portal-waiver]')).toHaveLength(1)
+    expect(group.textContent).toContain('Conditional final · $1,450.00 · signed by Malachi Whites')
+    expect(group.textContent).toContain('SIGNED')
+    expect(screen.getByText('View waiver').getAttribute('href')).toBe('https://files.test/c.pdf')
+    expect(papers.querySelector('[data-audience="owner"]')).toBeNull()
+  })
+
+  it('the owner sees the waiver on a shared bill and a Lien waivers on your property group, paid bills included', async () => {
+    const ownerView = {
+      ...payload,
+      bills: [],
+      totalDue: 0,
+      sharedBills: [{ invoiceId: 'inv-b2', jobLabel: 'Cedar Bend · Job 1002', jobNumber: '1002', jobName: 'Cedar Bend', jobAddress: '2530 Hunter Rd, San Marcos, TX 78666', amount: 18200, billedAmount: 18200, totalPaid: 0, billedOn: '2026-09-28', billedTo: 'Sample Contracting', viewerRole: 'customer' }],
+      waivers: [
+        { audience: 'owner', jobId: 'j1002', jobLabel: 'Cedar Bend · Job 1002', jobAddress: '2530 Hunter Rd, San Marcos, TX 78666', invoiceId: 'inv-b2', billLabel: 'Bill 2 of 3', amount: 18200, billedYmd: '2026-09-28', paid: false, final: false, conditional: signedHalf('conditional_progress', '2026-09-29', null), unconditional: none },
+        { audience: 'owner', jobId: 'j1002', jobLabel: 'Cedar Bend · Job 1002', jobAddress: '2530 Hunter Rd, San Marcos, TX 78666', invoiceId: 'inv-b1', billLabel: 'Bill 1 of 3', amount: 14050, billedYmd: '2026-09-01', paid: true, final: false, conditional: none, unconditional: signedHalf('unconditional_progress', '2026-09-18', null, 'sent') },
+      ],
+    }
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(ownerView), { status: 200 })))
+    mountAt('/portal?t=abcdef1234567890abcdef')
+    await waitFor(() => expect(screen.getByText('Michael Hageman')).toBeTruthy())
+    const shared = document.querySelector('[data-portal-shared-bills][data-role="customer"]') as HTMLElement
+    expect(shared.querySelector('[data-bill-waiver]')!.textContent).toBe('⤓ Lien waiver · conditional, signed Sep 29')
+    const group = document.querySelector('[data-portal-waivers][data-audience="owner"]') as HTMLElement
+    expect(group.textContent).toContain('Lien waivers on your property')
+    expect(group.querySelectorAll('[data-portal-waiver]')).toHaveLength(2)
+    expect(group.textContent).toContain('PAID IN FULL')
+  })
+})
