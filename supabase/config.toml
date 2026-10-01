@@ -531,6 +531,10 @@ verify_jwt = false
 [functions.send-lien-filing-email]
 verify_jwt = false
 
+# Lien desk Share → Email a teammate (v2.4311): the desk's numbers as a payload, rendered here by _shared/lienDeskStatus.ts; JWT + desk-role check in function, recipients are desk users only.
+[functions.send-lien-desk-summary]
+verify_jwt = false
+
 
 # GC Review statement email: Resend send + gc_statement_emails audit; JWT + role check in function (v2.1416).
 [functions.send-gc-statement-email]

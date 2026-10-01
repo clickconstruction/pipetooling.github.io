@@ -81,11 +81,12 @@ describe('whose week', () => {
 describe('coverage', () => {
   it('counts the three render kinds and reads as one line', () => {
     const c = teamEmailCoverage()
-    expect(c.total).toBe(25)
-    expect(c.sample + c.real + c.soon).toBe(25)
-    expect(c.sample).toBe(25)
+    // 26 since v2.4311: where the liens stand, from the Lien desk's Share.
+    expect(c.total).toBe(26)
+    expect(c.sample + c.real + c.soon).toBe(26)
+    expect(c.sample).toBe(26)
     expect(c.real).toBe(0)
-    expect(teamCoverageLine(c)).toBe('25 emails · 25 render live')
+    expect(teamCoverageLine(c)).toBe('26 emails · 26 render live')
     expect(teamCoverageLine({ total: 1, sample: 1, real: 0, soon: 0 })).toBe('1 email · 1 render live')
   })
 })

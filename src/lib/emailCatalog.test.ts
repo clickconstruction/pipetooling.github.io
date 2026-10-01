@@ -42,7 +42,8 @@ describe('EMAIL_CATALOG', () => {
     // +1 (v2.3804): the "check returned" notice to the office (mercury-webhook, once per deposit).
     // +1 (v2.3985): the ask-by-link email to an account man (gc-word-ask).
     // +1 (v2.4020): the payer's own Stripe bill email (send-stripe-invoice), which Stripe used to send.
-    expect(EMAIL_CATALOG).toHaveLength(43)
+    // +1 (v2.4311): where the liens stand, from the Lien desk's Share (send-lien-desk-summary).
+    expect(EMAIL_CATALOG).toHaveLength(44)
     for (const e of EMAIL_CATALOG) {
       expect(e.sender.trim().length).toBeGreaterThan(0)
       expect(e.subjectExample.trim().length).toBeGreaterThan(0)

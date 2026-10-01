@@ -183,6 +183,7 @@ when_to_read:
    - [open-test-report-pdf](#open-test-report-pdf)
    - [auto-send-test-reports](#auto-send-test-reports)
    - [send-lien-filing-email](#send-lien-filing-email)
+   - [send-lien-desk-summary](#send-lien-desk-summary)
    - [send-stripe-invoice](#send-stripe-invoice)
    - [update-collect-payment-stripe-customer-email](#update-collect-payment-stripe-customer-email)
    - [get-stripe-invoice-details](#get-stripe-invoice-details)
@@ -3184,6 +3185,14 @@ Body: `{ release_id, job_id, customer_email, subject?, email_text?, email_html?,
 **Endpoint**: `POST /functions/v1/send-lien-filing-email` · **Authentication**: Bearer JWT, `auth.getUser` in-body, user-scoped client — the access check is an RLS read of the `jobs_ledger` row (office/master only). `verify_jwt = false` on the gateway (send-physical-invoice-email pattern). **Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`.
 
 Body: `{ job_id, to_email, recipient_label?, subject?, email_text?, pdf_base64, pdf_filename?, email_type? }` — `email_type` (v2.3436) is `'lien_filing_notice'` (default) or `'demand_letter'` (the final demand letter packet: the letter and its exhibits as one PDF, from the Lien instruments modal's *Email with the PDF…*); it sets the send log's `email_type` and the default subject/body. Guards: job must be readable by the caller; valid `to_email`; PDF ≤ 6M base64 chars. Success: `{ success: true, resend_email_id }` — the function writes nothing; the client persists the send record. Sends are logged with `email_type: 'lien_filing_notice'` (v2.2664), the row's id in the Settings email catalog.
+
+### send-lien-desk-summary
+
+**Purpose** (v2.4311): the Lien desk's **Share → Email a teammate…** — where the liens stand (who we are about to lien, for how much, by when) emailed to people who use the desk. The browser sends the desk's numbers as a payload, never HTML: [`_shared/lienDeskStatus.ts`](../supabase/functions/_shared/lienDeskStatus.ts) parses it (`parseLienStatusPayload`: typed, capped, `jobId` uuid-shaped, five piles only) and renders the email (`lienStatusEmailHtml` / `lienStatusEmailText`) with the same renderer the browser previewed. Team email: From `EMAIL_FROM` (*ClickTooling*), Reply to the sender; the desk link is built from `APP_ORIGIN`. Client caller: [`LienDeskEmailSheet`](../src/components/jobs/LienDeskEmailSheet.tsx) through `sendLienStatusEmail` in [`lienDeskShareIo.ts`](../src/lib/jobs/lienDeskShareIo.ts).
+
+**Endpoint**: `POST /functions/v1/send-lien-desk-summary` · **Authentication**: Bearer JWT, `auth.getUser` in-body; the sender's `users` row read with the service role must be dev / master_technician / assistant / controller, not archived, not a sample, not `read_only` (a training account gets 403). `verify_jwt = false` on the gateway. **Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, optional `APP_ORIGIN`, `EMAIL_FROM`.
+
+Body: `{ mode: 'send' | 'test', payload, recipient_user_ids?, subject?, note? }`. `send`: 1–5 user ids, each a desk role with an email, not archived, not a sample or digital twin (else 400 naming the person); one email per person, worded *Waiting for your approval* for a master technician. `test`: one copy to the sender with `[TEST]` on the subject. `subject` (≤ 200, line breaks removed) defaults to `lienStatusSubject`; `note` (≤ 280) prints on top as *<sender> wrote:*. Success: `{ sent_to: string[], failed: { name, error }[] }`; 502 when nobody got it. Every send logs `email_send_log` as `lien_desk_summary` through `sendEmailViaResend`; the function writes nothing else.
 
 ### send-physical-invoice-email
 

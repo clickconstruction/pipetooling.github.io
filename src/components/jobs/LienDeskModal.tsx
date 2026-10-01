@@ -65,6 +65,8 @@ import type { LienCalendarJob } from '../../lib/jobs/lienCalendar'
 import { callLetterFactsFor, practiceCallFacts, type CallerJobHit, type CallerMatchInput, type DeskJobRef } from '../../lib/jobs/lienCallerMatch'
 import { DEFAULT_CLAIMANT_NAME } from '../../lib/jobs/lienNoticeDraft'
 import LienDeskRunModal from './LienDeskRunModal'
+import LienDeskShare from './LienDeskShare'
+import { Share } from 'lucide-react'
 import LienDeskAffidavitPane, { affidavitDeadlineWords } from './LienDeskAffidavitPane'
 import LienDeskRetainagePane from './LienDeskRetainagePane'
 import { LIEN_RETAINAGE_PILES, contractEndedWords, retainageDeadlineWords, type LienRetainagePile } from '../../lib/jobs/lienDeskRetainage'
@@ -298,6 +300,11 @@ export default function LienDeskModal({
   const [kindBusy, setKindBusy] = useState(false)
   // The run (v2.3410): every approved notice as one packet + one tracking form.
   const [runOpen, setRunOpen] = useState(false)
+  // Share where the liens stand (v2.4311): the title bar's panel; the numbers are read each time it opens.
+  const [shareOpen, setShareOpen] = useState(false)
+  useEffect(() => {
+    if (!open) setShareOpen(false)
+  }, [open])
   // The kind (v2.3412): notices per month, or the one affidavit per job.
   const [kind, setKind] = useState<'notice' | 'affidavit' | 'retainage' | 'timeline' | 'calendar'>(initialKind ?? 'notice')
   // The Timeline tab (v2.3768): the book is read the first time the tab opens and kept for the modal's life.
@@ -1904,27 +1911,57 @@ export default function LienDeskModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{ background: 'var(--surface)', borderRadius: fullScreen ? 0 : 10, width: fullScreen ? '100vw' : 'min(1140px, calc(100vw - 2rem))', height: fullScreen ? 'calc(100dvh - var(--app-bottom-chrome, 0px))' : undefined, maxHeight: fullScreen ? 'calc(100dvh - var(--app-bottom-chrome, 0px))' : 'calc(100dvh - 2rem - var(--app-bottom-chrome, 0px))', display: 'grid', gridTemplateRows: 'auto 1fr auto', overflow: 'hidden' }}
+        style={{ background: 'var(--surface)', borderRadius: fullScreen ? 0 : 10, width: fullScreen ? '100vw' : 'min(1140px, calc(100vw - 2rem))', height: fullScreen ? 'calc(100dvh - var(--app-bottom-chrome, 0px))' : undefined, maxHeight: fullScreen ? 'calc(100dvh - var(--app-bottom-chrome, 0px))' : 'calc(100dvh - 2rem - var(--app-bottom-chrome, 0px))', display: 'grid', gridTemplateRows: 'auto 1fr auto', gridTemplateColumns: 'minmax(0, 1fr)', overflow: 'hidden' }}
         data-lien-desk-panel
       >
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem 0.5rem', padding: '0.7rem 2.6rem 0.6rem 1.25rem', borderBottom: '1px solid var(--border)' }}>
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem 0.5rem', padding: `0.7rem ${isMobile ? '1rem' : showToggle ? '6.2rem' : '2.6rem'} 0.6rem 1.25rem`, borderBottom: '1px solid var(--border)' }}>
           <h2
-            style={{ margin: '0 0.4rem 0 0', fontSize: '1.125rem', cursor: 'help' }}
+            // On a phone the title has its line to itself, its right end kept clear for Share and × (v2.4311); the rows under it get the card's width.
+            style={{ margin: '0 0.4rem 0 0', fontSize: '1.125rem', cursor: 'help', ...(isMobile ? { flexBasis: '100%', paddingRight: '5.2rem', boxSizing: 'border-box' } : {}) }}
             title="Every unpaid work month on a job with a GC needs its own § 53.056 notice — the office readies and drafts, the leader approves once per GC or per notice, the run goes out and is recorded. The help guide “send lien notices from the Lien desk” has the whole flow."
           >
             ⏱ Lien desk
           </h2>
           {showToggle ? <ModalFullScreenButton fullScreen={fullScreen} onToggle={toggleFullScreen} style={{ position: 'absolute', right: '3.1rem', top: '0.55rem' }} /> : null}
           <button type="button" onClick={onClose} aria-label="Close" style={{ position: 'absolute', right: '0.8rem', top: '0.5rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}>×</button>
-          <div role="tablist" aria-label="Kind" style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 7, overflow: 'hidden', marginRight: '0.4rem' }}>
+          {/* v2.4311: the tab row is 375 px of labels — on a phone it scrolls sideways inside the card instead of pushing the title bar (and ×, and Share) off the screen. */}
+          <div role="tablist" aria-label="Kind" style={{ display: 'inline-flex', maxWidth: '100%', minWidth: 0, border: '1px solid var(--border-strong)', borderRadius: 7, overflowX: 'auto', overflowY: 'hidden', marginRight: '0.4rem' }}>
             {(['calendar', 'notice', 'affidavit', 'retainage', 'timeline'] as const).map((k) => (
-              <button key={k} type="button" role="tab" aria-selected={kind === k} onClick={() => setKind(k)} style={{ padding: '2px 10px', border: 'none', background: kind === k ? FILL.primary : 'var(--surface)', color: kind === k ? '#fff' : 'var(--text-700)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }} title={k === 'retainage' ? 'The § 53.057 notice of claim for unpaid retainage — one per job, 30 days after our contract on it ends' : k === 'timeline' ? 'Every billed job with money open and a lien month — the whole path, sorted by the next date; Print the grid for counsel' : undefined}>
+              <button key={k} type="button" role="tab" aria-selected={kind === k} onClick={() => setKind(k)} style={{ flexShrink: 0, whiteSpace: 'nowrap', padding: '2px 10px', border: 'none', background: kind === k ? FILL.primary : 'var(--surface)', color: kind === k ? '#fff' : 'var(--text-700)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }} title={k === 'retainage' ? 'The § 53.057 notice of claim for unpaid retainage — one per job, 30 days after our contract on it ends' : k === 'timeline' ? 'Every billed job with money open and a lien month — the whole path, sorted by the next date; Print the grid for counsel' : undefined}>
                 {k === 'calendar' ? 'Calendar' : k === 'notice' ? `Notices${counts ? ` · ${entries.filter((e) => e.pile !== 'sent').length}` : ''}` : k === 'affidavit' ? `Affidavits${data ? ` · ${affCount}` : ''}` : k === 'retainage' ? `Retainage${data ? ` · ${retCount}` : ''}` : `Timeline${book ? ` · ${book.counts.due}` : ''}`}
               </button>
             ))}
           </div>
           <LienRulesDoor where={kind === 'affidavit' ? 'desk_affidavit' : 'desk_notice'} style={{ marginRight: '0.4rem' }} />
           {office ? <LienCallerDoor input={callerInput} onPick={(h) => setCallerJobId(h.jobId)} onOpenJob={openDeskJob} onPractice={() => setPracticeCallOpen(true)} style={{ marginRight: '0.4rem' }} /> : null}
+          {/* Share where the liens stand (v2.4311): the same place on every tab — the end of the title line; beside × on a phone. The title bar's right padding keeps every line clear of the full-screen toggle and × (before v2.4311 it cleared × alone, and § The rules ran under the toggle at 768 px). */}
+          <span style={isMobile ? { position: 'absolute', right: '2.9rem', top: '0.35rem' } : { position: 'relative', display: 'inline-flex', marginLeft: 'auto' }}>
+            <button
+              type="button"
+              onClick={() => setShareOpen((o) => !o)}
+              disabled={!data}
+              aria-haspopup="dialog"
+              aria-expanded={shareOpen}
+              aria-label={isMobile ? 'Share where the liens stand' : undefined}
+              data-lien-desk-share
+              title="Share where the liens stand: who we are about to lien, for how much, and by when"
+              style={{
+                ...btn('plain', !data),
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                ...(isMobile ? { width: 40, height: 40, padding: 0, borderRadius: 10 } : {}),
+                ...(shareOpen ? { background: 'var(--bg-blue-tint)', borderColor: 'var(--border-blue)', color: 'var(--text-blue-800)' } : {}),
+              }}
+            >
+              <Share size={isMobile ? 19 : 15} aria-hidden />
+              {isMobile ? null : 'Share'}
+            </button>
+            {shareOpen && data ? (
+              <LienDeskShare isMobile={isMobile} data={data} calendarRows={calendarRows} todayYmd={todayYmd} me={{ id: authUserId, name: authName }} onClose={() => setShareOpen(false)} />
+            ) : null}
+          </span>
           {/* The second line (v2.3817): the piles on the left, Put a GC on notice and the run on the right. */}
           <span aria-hidden data-lien-desk-header-break style={{ flexBasis: '100%', height: 0 }} />
           {kind === 'retainage'

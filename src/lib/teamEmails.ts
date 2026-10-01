@@ -1,6 +1,6 @@
 /**
  * What the team sees (Settings, dev-only, punch list #60, v2.4142): every email the app sends
- * someone on the team — the 25 `team` and `internal` rows of the outbound catalog — as a
+ * someone on the team — the 26 `team` and `internal` rows of the outbound catalog — as a
  * person's week: when it lands, who gets it, the subject with sample values filled in, and how
  * the tab can show it. Pure data and pure functions; the tab, the tests and the guard agree.
  *
@@ -15,6 +15,8 @@
  */
 import type { UserRole } from '../hooks/useAuth'
 import { emailStreamCardId, type EmailStreamKey } from './emailLogStreamLink'
+import { lienStatusMonthDay } from '../../supabase/functions/_shared/lienDeskStatus'
+import { ymdAddDays } from '../../supabase/functions/_shared/appTimeZone'
 
 export type TeamEmailWhenKind = 'morning' | 'event' | 'weekly' | 'once'
 
@@ -48,6 +50,7 @@ export type TeamSampleEmailId =
   | 'signed_agreement_staff'
   | 'estimate_accepted_staff'
   | 'gc_word_ask'
+  | 'lien_desk_summary'
   | 'bid_room_activity_staff'
   | 'portal_request_staff'
   | 'contract_for_signature'
@@ -401,6 +404,17 @@ export const TEAM_EMAILS: readonly TeamEmail[] = [
     render: { kind: 'sample', sample: 'test_email' },
     manage: templates('Email templates → Test'),
     reflects: [],
+  },
+  {
+    id: 'lien_desk_summary',
+    label: 'Where the liens stand',
+    when: { kind: 'once', label: 'When someone on the Lien desk sends it', order: 44 },
+    recipients: { roles: OFFICE, decidedBy: 'event', rule: 'The people the sender picks on the Lien desk’s Share: devs, leaders, assistants and controllers.' },
+    sampleSubject: (c) => `Liens, ${lienStatusMonthDay(c.todayYmd)}: 5 notices due, $54,860, first by ${lienStatusMonthDay(ymdAddDays(c.todayYmd, 14))}`,
+    render: { kind: 'sample', sample: 'lien_desk_summary' },
+    manage: emails('Lien desk → Share → Email a teammate'),
+    reflects: ['the Lien desk’s notices, affidavits and Calendar'],
+    guide: 'share-where-our-liens-stand',
   },
 ]
 
