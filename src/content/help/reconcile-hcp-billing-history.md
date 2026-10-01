@@ -4,28 +4,30 @@ category: Office
 roles: dev
 keywords: housecall pro, hcp, import, reconcile, backfill, bill dates, payment dates, pay speed, invoices export, payments report
 ---
-Jobs that lived in HouseCall Pro before the migration often have payments with no bill attached and dates that mean the wrong thing — which starves the pay-speed math behind the Payment forecast. **{{icon:gear}} Settings → Jobs & billing → HCP reconcile** fixes that from HCP's own exports, and it's safe to re-run any time: it previews everything first, and a second run of the same files finds nothing left to do.
+Jobs that came over from HouseCall Pro often have payments with no bill and dates that mean the wrong thing. The HCP reconcile tool fixes that from HCP's own exports.
 
-## Lane 1 — bill dates & links
+Those wrong dates starve the pay-speed math behind the Payment forecast. You open **{{icon:gear}} Settings → Jobs & billing → HCP reconcile**. It is safe to re-run any time. It previews everything first. A second run of the same files finds nothing left to do.
 
-Feed it the HCP **invoices export** (in HCP: Customers → Invoices → Actions → Export). For each *paid* HCP invoice it can match to exactly one app job, it:
+## Lane 1: bill dates & links
 
-- creates a dated, already-paid bill on jobs that have payments but no bill at all — invisible to the board, pure history;
-- stamps the HCP send date onto bills that have no date;
-- attaches loose payments to the job's bill so they count.
+You feed it the HCP **invoices export**. In HCP that is Customers → Invoices → Actions → Export. It looks at each *paid* HCP invoice it can match to exactly one app job. For each one it does three things:
 
-It never imports **open** HCP invoices — since the migration, this app is the system of record for open money. Everything it skips is listed with a reason.
+- It creates a dated, already-paid bill on jobs that have payments but no bill at all. That bill is invisible to the board. It is pure history.
+- It stamps the HCP send date onto bills that have no date.
+- It attaches loose payments to the job's bill so they count.
 
-## Lane 2 — true payment dates
+It never imports **open** HCP invoices. Since the migration, the move off HCP, this app is the system of record for open money. That means this app is the one true list of what is still owed. Everything it skips is listed with a reason.
 
-Feed it two files: the HCP **payments report** (Reporting → Payments — HCP emails it to you) and the HCP **jobs export** (the bridge that turns each payment's customer + job-created time into a job number).
+## Lane 2: true payment dates
 
-- Where one payment on a job matches one app payment by amount, the app date is corrected to the day the money actually arrived.
-- Where one imported lump equals several real payments, the lump is split into them — same total, true dates.
-- Bank-dated (Mercury) and Stripe payments are **never** touched — those dates are already authoritative. Payments HCP knows about but the app doesn't are **never** auto-added; money changes are yours to make deliberately.
+You feed it two files. The first is the HCP **payments report**, from Reporting → Payments. HCP emails it to you. The second is the HCP **jobs export**. That export is the bridge. It turns each payment's customer and job-created time into a job number.
+
+- Where one payment on a job matches one app payment by amount, the app date is corrected. It becomes the day the money actually arrived.
+- Where one imported lump equals several real payments, the lump is split into them. The total stays the same, and the dates are true.
+- Bank-dated Mercury payments and Stripe payments are **never** touched. Those dates are already authoritative. Payments HCP knows about but the app does not are **never** auto-added. Money changes are yours to make deliberately.
 
 :::example Why bother?
 A check recorded as "paid the day we billed" teaches the forecast that the customer pays instantly. The payments report says it actually cleared 11 days later — after reconciling, the customer's {{chip:blue|pays in ~11d}} chip tells the truth, and the corrected rows count as verified history instead of being quarantined.
 :::
 
-Corrected and split rows carry a note tag (`hcp-paydate-corrected-…` / `hcp-payments-split-…`) — that tag is what lets the pay-speed math trust them.
+Corrected and split rows carry a note tag, `hcp-paydate-corrected-…` or `hcp-payments-split-…`. That tag is what lets the pay-speed math trust them.
