@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
-import { chunkIds } from '../lib/supabasePaging'
+import { chunkIds, fetchAllRowsChunkedIn } from '../lib/supabasePaging'
 
 export type BilledLienClockJob = {
   id: string
@@ -21,13 +21,17 @@ export type BilledLienClock = {
   noticedMonths: string[]
   /** A live § 53.056 notice exists on the job, whatever months it lists. */
   noticeOnFile: boolean
+  /** 'YYYY-MM' months with approved hours on a sub job (v2.4308) — a notice is owed for each; [] on a direct job; null when the read failed (the runway then counts the last month alone). */
+  workMonths: string[] | null
 }
 
 /**
  * The lien-clock facts the Pipeline's Billed and Collections rows need for
  * their runway (v2.4051): each job's property kind (the residential clock is
- * a month shorter), whether an affidavit or a release is already on file, and
- * which months a sub job's § 53.056 notices cover (v2.4096). Two small reads, chunked; null while loading, empty on error so the
+ * a month shorter), whether an affidavit or a release is already on file,
+ * which months a sub job's § 53.056 notices cover (v2.4096), and which months
+ * a sub job was worked (v2.4308 — the sessions `last_work_date` counts, so the
+ * notice date is the earliest month still owed). Three small reads, chunked; null while loading, empty on error so the
  * rows simply draw no runway. Keyed on the job ids so a re-rendered but
  * unchanged list does not refetch.
  */
@@ -89,6 +93,37 @@ export function useBilledLienClocks(jobs: ReadonlyArray<BilledLienClockJob> | nu
             }
           }
         }
+        // The months each sub job was worked (v2.4308): the same approved sessions `last_work_date` counts.
+        // A failed read leaves them unknown — the runway then counts the last month alone, as before.
+        let workedByJob: Map<string, Set<string>> | null = new Map()
+        try {
+          const subIds = [...new Set(jobs.filter((j) => j.gc_customer_id).map((j) => j.id))]
+          const sessions = await fetchAllRowsChunkedIn<{ job_ledger_id: string | null; work_date: string }, string>(
+            subIds,
+            (chunk, from, to) =>
+              supabase
+                .from('clock_sessions')
+                .select('job_ledger_id, work_date')
+                .in('job_ledger_id', chunk)
+                .not('approved_at', 'is', null)
+                .is('rejected_at', null)
+                .is('revoked_at', null)
+                .order('job_ledger_id', { ascending: true })
+                .order('work_date', { ascending: true })
+                .order('id', { ascending: true })
+                .range(from, to),
+            'lien runway: work months',
+          )
+          for (const s of sessions) {
+            const month = (s.work_date ?? '').slice(0, 7)
+            if (!s.job_ledger_id || !/^\d{4}-\d{2}$/.test(month)) continue
+            const set = workedByJob.get(s.job_ledger_id) ?? new Set<string>()
+            set.add(month)
+            workedByJob.set(s.job_ledger_id, set)
+          }
+        } catch {
+          workedByJob = null
+        }
         if (cancelled) return
         const next: Record<string, BilledLienClock> = {}
         for (const j of jobs) {
@@ -98,6 +133,7 @@ export function useBilledLienClocks(jobs: ReadonlyArray<BilledLienClockJob> | nu
             releasedYmd: releasedByJob.get(j.id) ?? null,
             noticedMonths: [...(noticedByJob.get(j.id) ?? [])].sort(),
             noticeOnFile: noticeOnFile.has(j.id),
+            workMonths: workedByJob ? [...(workedByJob.get(j.id) ?? [])].sort() : null,
           }
         }
         setByJob(next)

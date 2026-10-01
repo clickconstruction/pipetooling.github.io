@@ -19,7 +19,10 @@ import { DATED_FROM_CREATION_WORDS } from './lienDesk'
  * - a sub job (a GC on the job) whose § 53.056 notice for the work month is
  *   not recorded → the notice is the first deadline: a hollow flag ahead of
  *   the lien flag and "send the notice"; a notice window already closed
- *   means the lien for that month is gone (v2.4096);
+ *   means the lien for that month is gone (v2.4096). A sub owes one notice
+ *   per month worked, so when the work months are known the date is the
+ *   earliest month still owed whose window is open (v2.4308); the lien date
+ *   and a closed window still follow the last month;
  * - no last work month → the job's creation month stands in, as on the Lien
  *   desk (`datedFromCreation`); with neither, nothing;
  * - the window already closed → "lien gone · window closed <day>";
@@ -57,7 +60,16 @@ export type LienRunwayInput = {
   noticedMonths?: ReadonlyArray<string>
   /** A live notice that lists no months still counts as the work month's notice. */
   anyNoticeOnFile?: boolean
+  /**
+   * 'YYYY-MM' months with approved hours (v2.4308). A sub owes a § 53.056 notice for each, so the
+   * notice date is the earliest one still owed; null → the last work month stands alone. Months
+   * after the last work month are left out.
+   */
+  workMonths?: ReadonlyArray<string> | null
 }
+
+/** One work month's § 53.056 notice on the runway's clock: recorded, owed with its window open, or closed unsent. */
+export type LienRunwayNoticeMonth = { key: string; ymd: string; state: 'sent' | 'owed' | 'closed' }
 
 export type LienRunwayMarks = {
   /** Days from today at the runway's right edge (> every mark). */
@@ -87,7 +99,7 @@ export type LienPayRunway = {
   lienByYmd: string
   /** Days from today to the flag (negative once closed); null when unknown. */
   daysToLien: number | null
-  /** The § 53.056 notice date for the work month on a sub job, 'YYYY-MM-DD'; '' on direct jobs or when unknown. */
+  /** The § 53.056 notice date on a sub job, 'YYYY-MM-DD': the earliest month still owed, else the last work month's; '' on direct jobs or when unknown. */
   noticeByYmd: string
   /** Days from today to the notice date; null when there is none. */
   daysToNotice: number | null
@@ -101,6 +113,8 @@ export type LienPayRunway = {
   basisYmd: string
   /** On a closed row, which window shut: the § 53.056 notice's, or the § 53.052 lien's; null otherwise (v2.4265). */
   closedBy: 'notice' | 'lien' | null
+  /** Every work month's notice on a sub job, oldest first — the last month always, the earlier ones once the work months are known (the Lien calendar's flags, v2.4308); [] on direct jobs. */
+  noticeMonths: ReadonlyArray<LienRunwayNoticeMonth>
   /** The right-edge label under the track ('' when there is no track). */
   endLabel: string
   marks: LienRunwayMarks | null
@@ -127,6 +141,7 @@ const NONE: LienPayRunway = {
   datedFromCreation: false,
   basisYmd: '',
   closedBy: null,
+  noticeMonths: [],
   endLabel: '',
   marks: null,
   sortKey: Number.MAX_SAFE_INTEGER,
@@ -177,6 +192,48 @@ function basisWords(lastWorkYmd: string, propertyKind: string, kindAssumed: bool
   return `Counts from the last work month (${from}) · ${kindWords}: the 15th of the ${nth} month after (§ 53.052)`
 }
 
+/**
+ * Every work month's § 53.056 notice on the runway's clock (v2.4308): the last work month always,
+ * plus each earlier month the work months name; a later month or a key that is not a month is left
+ * out. A month is sent when a live notice names it, closed when its date passed unsent, else owed.
+ */
+function noticeMonthsFor(
+  workMonths: ReadonlyArray<string> | null | undefined,
+  workMonth: string,
+  kind: 'residential' | 'non_residential',
+  todayYmd: string,
+  isSent: (key: string) => boolean,
+): LienRunwayNoticeMonth[] {
+  const keys = new Set([workMonth])
+  for (const raw of workMonths ?? []) {
+    const key = (raw ?? '').trim().slice(0, 7)
+    if (/^\d{4}-\d{2}$/.test(key) && key < workMonth) keys.add(key)
+  }
+  const out: LienRunwayNoticeMonth[] = []
+  for (const key of [...keys].sort()) {
+    const ymd = noticeDeadlineForMonth(key, kind)
+    const days = ymd ? daysBetweenYmd(todayYmd, ymd) : null
+    if (days == null) continue
+    out.push({ key, ymd, state: isSent(key) ? 'sent' : days < 0 ? 'closed' : 'owed' })
+  }
+  return out
+}
+
+function monthWords(key: string, withYear: boolean): string {
+  return new Date(`${key}-15T12:00:00Z`).toLocaleDateString('en-US', { month: 'long', ...(withYear ? { year: 'numeric' } : {}), timeZone: 'UTC' })
+}
+
+/** The hover's first clause on a notice owed: the work month's own, one earlier month by name, or every month owed with the first date. */
+function noticeOwedWords(owed: ReadonlyArray<LienRunwayNoticeMonth>, workMonth: string, noticeWords: string): string {
+  const only = owed.length === 1 ? owed[0]! : null
+  if (only && only.key === workMonth) return `A § 53.056 notice for this work month is owed to the owner and the GC by ${noticeWords}`
+  if (only) return `A § 53.056 notice for the ${monthWords(only.key, true)} work is owed to the owner and the GC by ${noticeWords}`
+  const years = new Set(owed.map((m) => m.key.slice(0, 4)))
+  const names = owed.map((m) => monthWords(m.key, years.size > 1))
+  const list = `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}${years.size === 1 ? ` ${[...years][0]}` : ''}`
+  return `§ 53.056 notices for ${list} are owed to the owner and the GC, the first by ${noticeWords}`
+}
+
 export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
   if (!(input.openBalance > 0)) return NONE
   if (input.releasedYmd) return NONE
@@ -214,19 +271,25 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
   const lienWords = formatYmdMonthDay(lienBy)
   const wordsOf = (lines: string[]) => lines.join(' · ')
 
-  // § 53.056: a sub's notice for the work month comes before any lien (v2.4096).
+  // § 53.056: a sub's notice for each work month comes before any lien (v2.4096). With the work
+  // months known, the date is the earliest month still owed (v2.4308) — every month on the runway's
+  // own clock, so an unset kind keeps the earlier, residential date.
   const isSub = input.isSub === true
   const workMonth = lastWork.slice(0, 7)
   const kindEff = input.propertyKind === 'non_residential' ? 'non_residential' : 'residential'
-  const noticeBy = isSub ? noticeDeadlineForMonth(lastWork, kindEff) : ''
   const noticedMonths = input.noticedMonths ?? []
   const noticeSent = isSub && (noticedMonths.includes(workMonth) || (input.anyNoticeOnFile === true && noticedMonths.length === 0))
+  const noticeMonths = isSub ? noticeMonthsFor(input.workMonths, workMonth, kindEff, today, (key) => (key === workMonth ? noticeSent : noticedMonths.includes(key))) : []
+  const lastNotice = noticeMonths[noticeMonths.length - 1] ?? null
+  const owedMonths = noticeMonths.filter((m) => m.state === 'owed')
+  const noticeBy = owedMonths[0]?.ymd ?? lastNotice?.ymd ?? ''
   const daysToNotice = noticeBy ? daysBetweenYmd(today, noticeBy) : null
-  const noticeOwed = isSub && !noticeSent && daysToNotice != null
+  const noticeOwed = owedMonths.length > 0 && daysToNotice != null
   const noticeWords = noticeBy ? formatYmdMonthDay(noticeBy) : ''
   const noticeNote = isSub && noticeSent ? ' The § 53.056 notice for this month is recorded.' : ''
 
-  if (noticeOwed && daysToNotice < 0) {
+  // The last month's window closed unsent: every earlier window closed before it.
+  if (lastNotice?.state === 'closed' && daysToNotice != null) {
     return {
       ...NONE,
       state: 'closed',
@@ -244,6 +307,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       datedFromCreation,
       basisYmd,
       closedBy: 'notice',
+      noticeMonths,
       sortKey: 2_000_000 + daysToNotice,
     }
   }
@@ -266,6 +330,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       datedFromCreation,
       basisYmd,
       closedBy: 'lien',
+      noticeMonths,
       sortKey: 2_000_000 + daysToLien,
     }
   }
@@ -280,7 +345,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
   const pct = (d: number) => Math.round((1000 * d) / endDays) / 10
   const lienMark = { days: daysToLien, pct: pct(daysToLien) }
   const endLabel = formatYmdMonthDay(addDaysYmd(today, endDays))
-  const noticeMark = isSub && daysToNotice != null && daysToNotice >= 0 ? { days: daysToNotice, pct: pct(daysToNotice), done: noticeSent } : null
+  const noticeMark = isSub && daysToNotice != null && daysToNotice >= 0 ? { days: daysToNotice, pct: pct(daysToNotice), done: !noticeOwed } : null
   const payMark = livePay != null ? { days: livePay, pct: pct(livePay) } : null
 
   if (noticeOwed) {
@@ -290,7 +355,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       tone: daysToNotice <= LIEN_RUNWAY_RED_DAYS ? 'red' : 'amber',
       words: wordsOf(lines),
       lines,
-      title: `A § 53.056 notice for this work month is owed to the owner and the GC by ${noticeWords}; the lien affidavit can then be filed by ${lienWords}. Send it from the Lien desk. ${basis}.${kindNote}`,
+      title: `${noticeOwedWords(owedMonths, workMonth, noticeWords)}; the lien affidavit can then be filed by ${lienWords}. Send ${owedMonths.length > 1 ? 'them' : 'it'} from the Lien desk. ${basis}.${kindNote}`,
       chipLabel: `notice in ${daysWords(daysToNotice)}`,
       lienByYmd: lienBy,
       daysToLien,
@@ -301,6 +366,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       datedFromCreation,
       basisYmd,
       closedBy: null,
+      noticeMonths,
       endLabel,
       marks: { endDays, pay: payMark, lien: lienMark, notice: noticeMark, gap: null },
       sortKey: daysToNotice,
@@ -326,6 +392,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       datedFromCreation,
       basisYmd,
       closedBy: null,
+      noticeMonths,
       endLabel,
       marks: { endDays, pay: { days: livePay, pct: pct(livePay) }, lien: lienMark, notice: noticeMark, gap: { fromPct: lienMark.pct, toPct: pct(livePay), kind: 'short' } },
       sortKey: daysToLien,
@@ -351,6 +418,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       datedFromCreation,
       basisYmd,
       closedBy: null,
+      noticeMonths,
       endLabel,
       marks: { endDays, pay: { days: livePay, pct: pct(livePay) }, lien: lienMark, notice: noticeMark, gap: { fromPct: pct(livePay), toPct: lienMark.pct, kind: 'room' } },
       sortKey: 1_000_000 + daysToLien,
@@ -376,6 +444,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
     datedFromCreation,
     basisYmd,
     closedBy: null,
+    noticeMonths,
     endLabel,
     marks: { endDays, pay: null, lien: lienMark, notice: noticeMark, gap: null },
     sortKey: 500_000 + daysToLien,

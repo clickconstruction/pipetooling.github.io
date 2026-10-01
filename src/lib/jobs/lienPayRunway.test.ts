@@ -243,6 +243,97 @@ describe('a sub job: the § 53.056 notice comes first (v2.4096)', () => {
   })
 })
 
+describe('every work month: the notice that counts is the earliest one still owed (v2.4308)', () => {
+  // Job 878, Take 5 – Seguin, read live on 2026-10-01: a commercial sub job worked June through
+  // September with no notice recorded. June's window closed Sep 15; July's notice is due Oct 15,
+  // August's Nov 16 (Nov 15 is a Sunday), September's Dec 15. The lien still counts from September.
+  const seguin = (over: Partial<LienRunwayInput> = {}) =>
+    input({ todayYmd: '2026-10-01', openBalance: 38625, lastWorkYmd: '2026-09-21', propertyKind: 'non_residential', isSub: true, workMonths: ['2026-06', '2026-07', '2026-08', '2026-09'], ...over })
+
+  it('878: the notice date is July’s, not September’s; the lien date still follows the last month', () => {
+    const r = buildLienPayRunway(seguin())
+    expect(r.state).toBe('notice_due')
+    expect(r.noticeByYmd).toBe('2026-10-15')
+    expect(r.daysToNotice).toBe(14)
+    expect(r.lienByYmd).toBe('2027-01-15')
+    expect(r.lines).toEqual(['notice by Oct 15 · lien by Jan 15', 'send the notice · 14 d'])
+    expect(r.chipLabel).toBe('notice in 14 d')
+    expect(r.tone).toBe('amber')
+    expect(r.sortKey).toBe(14)
+    expect(r.marks!.notice).toEqual({ days: 14, pct: expect.any(Number), done: false })
+    expect(r.noticeMonths).toEqual([
+      { key: '2026-06', ymd: '2026-09-15', state: 'closed' },
+      { key: '2026-07', ymd: '2026-10-15', state: 'owed' },
+      { key: '2026-08', ymd: '2026-11-16', state: 'owed' },
+      { key: '2026-09', ymd: '2026-12-15', state: 'owed' },
+    ])
+    expect(r.title).toContain('§ 53.056 notices for July, August and September 2026 are owed')
+    expect(r.title).toContain('the first by Oct 15')
+    expect(lienRunwayWantsTheChip(r)).toBe(true)
+  })
+
+  it('without the work months the last month stands alone, as before they load', () => {
+    const r = buildLienPayRunway(seguin({ workMonths: null }))
+    expect(r.noticeByYmd).toBe('2026-12-15')
+    expect(r.daysToNotice).toBe(75)
+    expect(r.noticeMonths).toEqual([{ key: '2026-09', ymd: '2026-12-15', state: 'owed' }])
+    expect(r.title).toContain('A § 53.056 notice for this work month is owed')
+  })
+
+  it('a recorded month drops out; the next month still owed sets the date', () => {
+    const r = buildLienPayRunway(seguin({ noticedMonths: ['2026-07'] }))
+    expect(r.noticeByYmd).toBe('2026-11-16')
+    expect(r.daysToNotice).toBe(46)
+    expect(r.noticeMonths.find((m) => m.key === '2026-07')?.state).toBe('sent')
+  })
+
+  it('the last month on file and an earlier month still open: a notice is still owed', () => {
+    const r = buildLienPayRunway(seguin({ workMonths: ['2026-08', '2026-09'], noticedMonths: ['2026-09'] }))
+    expect(r.state).toBe('notice_due')
+    expect(r.noticeByYmd).toBe('2026-11-16')
+    expect(r.title).toContain('A § 53.056 notice for the August 2026 work is owed')
+    expect(r.noticeSent).toBe(true) // the last month's notice is the one on file
+  })
+
+  it('every month on file: the ordinary reading, with the last month’s check', () => {
+    const r = buildLienPayRunway(seguin({ noticedMonths: ['2026-07', '2026-08', '2026-09'], expectedPayYmd: '2026-10-20' }))
+    expect(r.state).toBe('room')
+    expect(r.noticeByYmd).toBe('2026-12-15')
+    expect(r.marks!.notice).toEqual({ days: 75, pct: expect.any(Number), done: true })
+    expect(r.noticeMonths.map((m) => m.state)).toEqual(['closed', 'sent', 'sent', 'sent'])
+  })
+
+  it('a month after the last work month is not counted, nor a key that is not a month', () => {
+    const r = buildLienPayRunway(seguin({ workMonths: ['2026-07-14', '2026-10', 'junk'] }))
+    expect(r.noticeMonths.map((m) => m.key)).toEqual(['2026-07', '2026-09'])
+  })
+
+  it('no property kind: every month on the residential clock, the earlier one (927)', () => {
+    // Job 927, Mike Holub – Candelaria: worked July through September, no kind on the property record.
+    const r = buildLienPayRunway(seguin({ propertyKind: '', lastWorkYmd: '2026-09-09', workMonths: ['2026-07', '2026-08', '2026-09'] }))
+    expect(r.kindAssumed).toBe(true)
+    expect(r.noticeMonths).toEqual([
+      { key: '2026-07', ymd: '2026-09-15', state: 'closed' },
+      { key: '2026-08', ymd: '2026-10-15', state: 'owed' },
+      { key: '2026-09', ymd: '2026-11-16', state: 'owed' },
+    ])
+    expect(r.noticeByYmd).toBe('2026-10-15')
+  })
+
+  it('the last month closed unsent: the lien is gone, whatever came before it', () => {
+    const r = buildLienPayRunway(seguin({ lastWorkYmd: '2026-06-20', workMonths: ['2026-05', '2026-06'] }))
+    expect(r.state).toBe('closed')
+    expect(r.closedBy).toBe('notice')
+    expect(r.noticeByYmd).toBe('2026-09-15')
+  })
+
+  it('a direct job has no notice months', () => {
+    const r = buildLienPayRunway(seguin({ isSub: false }))
+    expect(r.noticeByYmd).toBe('')
+    expect(r.noticeMonths).toEqual([])
+  })
+})
+
 describe('lienRunwayWantsTheChip', () => {
   it('file first and lien gone always take the chip; a flag inside 21 days takes it; a far flag does not', () => {
     expect(lienRunwayWantsTheChip(buildLienPayRunway(input({ lastWorkYmd: '2026-08-12', expectedPayYmd: '2026-11-20' })))).toBe(true)
