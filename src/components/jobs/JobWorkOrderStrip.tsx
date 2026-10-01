@@ -33,8 +33,8 @@ export default function JobWorkOrderStrip({
 }: {
   /** Null while the job is unsaved (New Job): the row explains the door opens after the first save. */
   job: JobWithDetails | null
-  /** strip = boxed line (bill panels); inline = chip + buttons only (fact row value). */
-  variant?: 'strip' | 'inline'
+  /** strip = boxed line (bill panels); inline = chip + buttons only (fact row value); row = one row of View bill's paperwork card (v2.4299). */
+  variant?: 'strip' | 'inline' | 'row'
   authUserId: string | undefined
   /** View bill: chip + View only — the money-out side is read there, not written. */
   readOnly?: boolean
@@ -65,7 +65,7 @@ export default function JobWorkOrderStrip({
             : 'Re-offer…'
   const controls = (
     <>
-      <JobWorkOrderChip coverage={coverage} onClick={primary} />
+      {variant === 'row' ? null : <JobWorkOrderChip coverage={coverage} onClick={primary} />}
       {readOnly && coverage.kind === 'none' ? null : (
         <button
           type="button"
@@ -98,6 +98,32 @@ export default function JobWorkOrderStrip({
     </>
   )
   if (variant === 'inline') return <span style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>{controls}</span>
+  if (variant === 'row') {
+    // Nothing for a sub on this job: one faint line, no door (View bill reads the money-out side, it does not write it).
+    if (coverage.kind === 'none') {
+      return (
+        <div className="billPaperworkRow billPaperworkRow--quiet" data-testid="paperwork-work-order-row">
+          <span className="billPaperworkLabel">Sub work order</span>
+          <span>None on this job</span>
+        </div>
+      )
+    }
+    return (
+      <div className="billPaperworkRow" title={workOrderChipTitle(coverage)} data-testid="paperwork-work-order-row">
+        <span className="billPaperworkLabel">Sub work order</span>
+        <span style={{ minWidth: 0 }}>
+          {coverage.kind === 'signed'
+            ? `${coverage.subName} signed${coverage.signedOn ? ` ${coverage.signedOn}` : ''}`
+            : coverage.kind === 'sent'
+              ? `Sent to ${coverage.subName}${coverage.expired ? '. The offer expired.' : ''}`
+              : coverage.kind === 'draft'
+                ? `Drafted for ${coverage.subName}${coverage.unpriced ? '. No price yet.' : ''}`
+                : `${coverage.subName} declined`}
+        </span>
+        <span className="billPaperworkControls">{controls}</span>
+      </div>
+    )
+  }
   const tone = coverage.kind === 'signed' ? 'var(--bg-green-tint)' : coverage.kind === 'sent' ? 'var(--bg-amber-tint)' : 'var(--bg-subtle)'
   return (
     <div

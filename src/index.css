@@ -2853,6 +2853,97 @@ body.my-time-boundary-dragging {
   text-align: right;
 }
 
+/* View bill's paperwork card (v2.4299): the bill's lien waiver, the job's contract and its sub
+   work order as rows of one card, divided by hairlines. A row is label, words, the one door; the
+   waiver row may add a line, a two-step track and the email fix under its words. */
+.billPaperworkCard {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 0.75rem;
+  overflow: hidden;
+  font-size: 0.8125rem;
+  background: var(--surface);
+}
+.billPaperworkCard > * + * {
+  border-top: 1px solid var(--border);
+}
+.billPaperworkRow {
+  display: grid;
+  grid-template-columns: 6.25rem minmax(0, 1fr) auto;
+  column-gap: 0.65rem;
+  row-gap: 0.3rem;
+  align-items: center;
+  padding: 0.5rem 0.7rem;
+}
+.billPaperworkLabel {
+  color: var(--text-muted);
+}
+.billPaperworkControls {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.billPaperworkRow > .billPaperworkUnder {
+  grid-column: 2 / 4;
+}
+.billPaperworkRow--quiet {
+  padding-top: 0.35rem;
+  padding-bottom: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--text-faint);
+}
+.billPaperworkRow--quiet .billPaperworkLabel {
+  color: var(--text-faint);
+}
+.billPaperworkStep {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.billPaperworkDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+.billPaperworkLink {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--text-link);
+  cursor: pointer;
+}
+.billPaperworkLink:hover {
+  text-decoration: underline;
+}
+@media (max-width: 560px) {
+  .billPaperworkRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .billPaperworkRow > .billPaperworkUnder {
+    grid-column: auto;
+  }
+  .billPaperworkLabel {
+    font-size: 0.75rem;
+  }
+  .billPaperworkControls {
+    justify-content: stretch;
+    order: 10;
+  }
+  .billPaperworkStepJoin {
+    display: none;
+  }
+  .billPaperworkControls > button {
+    flex: 1 1 auto;
+    min-height: 44px;
+  }
+}
+
 .jobInvoiceChase {
   display: inline-flex;
   align-items: center;

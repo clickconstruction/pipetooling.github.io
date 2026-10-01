@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
 import JobContractStrip from './JobContractStrip'
 import JobWorkOrderStrip from './JobWorkOrderStrip'
+import BillPaperworkCard from './BillPaperworkCard'
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import type { Database } from '../../types/database'
@@ -356,10 +357,18 @@ export function HostedStripeBillPanel({
 
   return (
     <>
-      {/* Contract Desk PR 3: the agreement behind this bill, or the door to send one. */}
-      <JobContractStrip job={job} />
-      {/* Work Orders tab PR 3: the sub work order behind this job, read-only here. */}
-      <JobWorkOrderStrip job={job} authUserId={undefined} readOnly />
+      {viewBillOnClose ? (
+        // View bill (v2.4299): the bill's lien waiver, the contract and the sub work order as one card.
+        // Bill Customer's success view keeps the two strips; its own lien strip sits above them.
+        <BillPaperworkCard job={job} invoice={inv} billEmail={stripeDetail?.customer_email ?? null} dueUnix={stripeDetail?.due_date ?? null} />
+      ) : (
+        <>
+          {/* Contract Desk PR 3: the agreement behind this bill, or the door to send one. */}
+          <JobContractStrip job={job} />
+          {/* Work Orders tab PR 3: the sub work order behind this job, read-only here. */}
+          <JobWorkOrderStrip job={job} authUserId={undefined} readOnly />
+        </>
+      )}
       {isStripeHosted ? (
         <>
           {stripeLoading ? (
