@@ -444,15 +444,20 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
   // Autosave — debounced from the first real edit; stops once sent. A start or completion date
   // caught half typed (the year "2026" arrives as 0002, 0020, 0202) holds the draft until it is
   // finished: the dates ride inside `fields`, so the rest cannot be written without them.
+  // The timer reads the newest flushDraft through a ref: a save stores the row it wrote, which
+  // makes a new flushDraft, and re-arming on that set off the next save — one edit saved again
+  // every second for as long as the window stayed open, and the status line bounced the window.
   const datesUnfinished = jobContractDatesUnfinished(fields)
+  const flushDraftRef = useRef(flushDraft)
+  flushDraftRef.current = flushDraft
   useEffect(() => {
     if (!open || !job || !editable || !userTouchedRef.current) return
     const t = window.setTimeout(() => {
       if (datesUnfinished) setAutosaveState('held')
-      else void flushDraft()
+      else void flushDraftRef.current()
     }, 800)
     return () => window.clearTimeout(t)
-  }, [open, job, editable, fields, datesUnfinished, recipientName, recipientEmail, recipientPhone, coSigner, ccText, remindersEnabled, templateId, flushDraft])
+  }, [open, job, editable, fields, datesUnfinished, recipientName, recipientEmail, recipientPhone, coSigner, ccText, remindersEnabled, templateId])
 
   const applyScopeText = (text: string) => {
     setScopeText(text)
