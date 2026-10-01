@@ -564,7 +564,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   // v2.3806 (punch list #40 PR 3): deposits the bank returned that a job still counts as paid — the
   // Dashboard card's read, once per board, folded per job for the Billed rows' badge and the phone chip.
   const bankReturnedEnabled = stagesGates.canSeeBankReturned(authRole)
-  const { returned: bankReturned, reload: reloadBankReturned } = useBankReturnedPaymentsNudge(bankReturnedEnabled)
+  const { returned: bankReturned, cases: bankReturnCases, reload: reloadBankReturned } = useBankReturnedPaymentsNudge(bankReturnedEnabled)
   const bankReturnedByJobId = useMemo(() => bankReturnedByJob(bankReturned?.items ?? []), [bankReturned])
   const openPaymentsReceived = useCallback(
     (job: JobWithDetails) =>
@@ -2889,6 +2889,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   canSeeCharts={stagesGates.canSeeStagesMoneyCharts(authRole)}
                   canSeeCollected={stagesGates.canSeeStagesMoneyCharts(authRole)}
                   arUnallocatedCount={typeof arBankTxUnallocatedCount === 'number' ? arBankTxUnallocatedCount : null}
+                  arCameBackCount={bankReturnCases ? bankReturnCases.length : null}
                   // Money-move buttons clear a live search first (v2.1960, owner
                   // request) — a leftover query would narrow the very list each
                   // button promises to show.
@@ -4367,7 +4368,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       />
       <BankPaymentsModal
         open={bankPaymentsModalOpen}
-        onClose={() => setBankPaymentsModalOpen(false)}
+        onClose={() => {
+          setBankPaymentsModalOpen(false)
+          // v2.4325: a case closed or a check taken off in there changes the card and the row badges.
+          reloadBankReturned()
+        }}
         authUserId={authUser?.id}
         authRole={authRole}
         billedRows={bankPaymentsModalBilledRows}

@@ -37,6 +37,8 @@ type PipelineOverviewProps = {
   /** dev/controller only (owner calls, v2.1916 + v2.2299): the collected-cash card. */
   canSeeCollected: boolean
   arUnallocatedCount: number | null
+  /** v2.4325: open cases of checks that came back. */
+  arCameBackCount?: number | null
   onOpenCapable: () => void
   /** WAITING ON CUSTOMERS card → the per-customer "who owes what" breakdown (v2.1929). */
   onOpenBilledBreakdown: () => void
@@ -159,6 +161,7 @@ export function PipelineOverview({
   canSeeCharts,
   canSeeCollected,
   arUnallocatedCount,
+  arCameBackCount = null,
   onOpenCapable,
   onOpenBilledBreakdown,
   onOpenProfitChart,
@@ -187,7 +190,7 @@ export function PipelineOverview({
     )
   }
   const cards = buildPipelineMoneyStory(stats, { includeCollected: canSeeCollected })
-  const moves = buildPipelineMoneyMoves({ stats, arUnallocatedCount, canOpenAr })
+  const moves = buildPipelineMoneyMoves({ stats, arUnallocatedCount, canOpenAr, arCameBackCount })
   const fixups = buildPipelineFixups(fixupCounts)
   const cardAction: Record<PipelineStoryCard['key'], (() => void) | undefined> = {
     'ready-to-ask': onOpenCapable,

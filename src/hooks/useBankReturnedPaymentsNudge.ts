@@ -7,6 +7,7 @@ import {
   type BankReturnedPayments,
   type BankReturnedTxRow,
 } from '../lib/jobs/bankReturnedDeposits'
+import type { ArReturnCaseRow } from '../lib/jobs/arReturnCase'
 
 /**
  * The Dashboard's "N deposits the bank returned are still counted as paid"
@@ -18,8 +19,10 @@ import {
  * RLS scopes `mercury_transactions` to dev / master / assistant-like; a
  * role that cannot read it gets no card.
  */
-export function useBankReturnedPaymentsNudge(enabled: boolean): { returned: BankReturnedPayments | null; reload: () => void } {
+export function useBankReturnedPaymentsNudge(enabled: boolean): { returned: BankReturnedPayments | null; cases: ArReturnCaseRow[] | null; reload: () => void } {
   const [returned, setReturned] = useState<BankReturnedPayments | null>(null)
+  /** v2.4325: every open case of a check that came back, on a job or not (`list_ar_return_cases`); null when the read is refused. */
+  const [cases, setCases] = useState<ArReturnCaseRow[] | null>(null)
   const [nonce, setNonce] = useState(0)
 
   const load = useCallback(async () => {
@@ -65,9 +68,23 @@ export function useBankReturnedPaymentsNudge(enabled: boolean): { returned: Bank
     }
   }, [enabled])
 
+  const loadCases = useCallback(async () => {
+    if (!enabled) {
+      setCases(null)
+      return
+    }
+    try {
+      const { data, error } = await supabase.rpc('list_ar_return_cases' as never, { p_include_closed: false } as never)
+      setCases(error ? null : ((data ?? []) as unknown as ArReturnCaseRow[]))
+    } catch {
+      setCases(null)
+    }
+  }, [enabled])
+
   useEffect(() => {
     void load()
-  }, [load, nonce])
+    void loadCases()
+  }, [load, loadCases, nonce])
 
-  return { returned, reload: () => setNonce((n) => n + 1) }
+  return { returned, cases, reload: () => setNonce((n) => n + 1) }
 }

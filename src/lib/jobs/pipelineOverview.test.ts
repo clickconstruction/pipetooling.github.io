@@ -92,6 +92,14 @@ describe('buildPipelineMoneyMoves', () => {
     expect(ar.idle).toBeUndefined()
   })
 
+  it('v2.4325: checks that came back lead the Accounts Receivable card', () => {
+    const one = buildPipelineMoneyMoves({ stats: stats(), arUnallocatedCount: 0, canOpenAr: true, arCameBackCount: 1 })
+    expect(one.find((m) => m.key === 'allocate-deposits')).toMatchObject({ claim: '1 check came back', why: 'the bank sent it back · settle each in Accounts Receivable', badgeCount: 1 })
+    const both = buildPipelineMoneyMoves({ stats: stats(), arUnallocatedCount: 3, canOpenAr: true, arCameBackCount: 2 })
+    expect(both.find((m) => m.key === 'allocate-deposits')).toMatchObject({ claim: '2 checks came back', why: 'the bank sent them back · and 3 deposits to apply', badgeCount: 2 })
+    expect(buildPipelineMoneyMoves({ stats: stats(), arUnallocatedCount: 2, canOpenAr: true, arCameBackCount: 0 }).find((m) => m.key === 'allocate-deposits')?.claim).toBe('Allocate 2 bank deposits')
+  })
+
   it('AR move is suppressed for roles that cannot open Accounts Receivable', () => {
     const moves = buildPipelineMoneyMoves({ stats: stats(), arUnallocatedCount: 2, canOpenAr: false })
     expect(moves.some((m) => m.key === 'allocate-deposits')).toBe(false)

@@ -34,6 +34,9 @@ export default function JobsAccountsReceivable() {
     void runFetchJobs(null)
   }, [authLoading, user?.id, runFetchJobs])
 
+  /** v2.4325: `?check=<deposit id>` — the notices and the Dashboard card open a returned check's case. */
+  const initialDepositId = useMemo(() => new URLSearchParams(location.search).get('check'), [location.search])
+
   const bankPaymentsModalBilledRows = useMemo(
     () => buildJobsStagesBoardLists(jobs, '').billedRows,
     [jobs],
@@ -110,6 +113,7 @@ export default function JobsAccountsReceivable() {
         billedRows={bankPaymentsModalBilledRows}
         billedTargetsLoading={jobsListLoading && bankPaymentsModalBilledRows.length === 0}
         onApplied={onApplied}
+        initialDepositId={initialDepositId}
         onOpenEditJob={(jobId) =>
           jobFormModal?.openEditJob(jobId, { onSaved: () => void runFetchJobs(null) })
         }

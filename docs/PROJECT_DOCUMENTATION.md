@@ -2744,7 +2744,7 @@ The page behind any modal, sheet, or dialog is frozen **app-wide without per-mod
 - `/workflows/:projectId` - Workflow management
 - `/people` - People page: six group tabs (People, Pay, Paperwork, Fleet & Housing, Review, Feedback) each with a row of views (v2.2811); `?tab=<view key>` (e.g. `hours`, `pay_stubs`, `contracts`, `person`, dev `feedback`) addresses a view directly
 - `/jobs` - Jobs (Reports, Stages, Billing, Team Labor, Subs [Work / Pay], Crew P&L, Parts, Job Summary, Inspections tabs; `?tab=work_orders` / `?tab=sub_sheet_ledger` still land on Subs)
-- `/accounts-receivable` - AR view sharing the Jobs list cache
+- `/accounts-receivable` - AR view sharing the Jobs list cache; `?check=<deposit id>` opens that deposit or a returned check's case (v2.4325)
 - `/schedule-dispatch` - Schedule Dispatch hub / job-week grids
 - `/banking` - Mercury banking (sorting, attributions)
 - `/quickfill` - Quickfill daily-review sections

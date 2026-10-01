@@ -575,6 +575,39 @@ describe('buildNeedsYouItems', () => {
     expect(many[0]?.detail).not.toContain('J903')
   })
 
+  it('v2.4325: the case list drives the card — on a job or not, one sentence per check, the case opens', () => {
+    const row = (over: Record<string, unknown>) =>
+      ({
+        mercury_transaction_id: 'tx',
+        counterparty_name: 'Loberg',
+        amount: 5622.49,
+        kind: 'checkDeposit',
+        posted_at: '2026-09-28T22:00:00Z',
+        failed_at: '2026-10-01T13:41:00Z',
+        bank_reason: 'Stop payment',
+        source: 'bank',
+        opened_at: '2026-10-01T13:41:00Z',
+        closed_at: null,
+        closed_reason: null,
+        closed_note: null,
+        closed_by: null,
+        replaced_by_mercury_transaction_id: null,
+        notified_at: null,
+        live_payments: [],
+        last_job: { job_id: 'job-650', job_number: '650', job_name: 'ATI Schertz', removed_at: '2026-10-01T02:19:00Z', removed_by: 'Taunya', job_revenue: 33500, job_payments_made: 24477.51 },
+        recorded_payment: null,
+        ...over,
+      }) as never
+    const one = buildNeedsYouItems(inputs({ bankReturnedEnabled: true, bankReturnCases: [row({})], todayYmd: '2026-10-01' }))
+    expect(one[0]).toMatchObject({ key: 'returned-check', severity: 'amber', title: "Loberg's $5,622 check came back", figure: '1', actionLabel: 'Open the check' })
+    expect(one[0]?.detail).toBe('Loberg · $5,622 · off #650 since 9/30 · came back today. Each one sits on top of To match in Accounts Receivable with its next step.')
+    const rejected = buildNeedsYouItems(inputs({ bankReturnedEnabled: true, bankReturnCases: [row({ counterparty_name: 'Sal Iannotti', amount: 600, source: 'rejected', last_job: null, recorded_payment: { payment_id: 'p', job_id: 'j', job_number: '1040', job_name: 'Iannotti PRV', amount: 600, paid_on: '2026-09-29', job_revenue: 600, job_payments_made: 600 } })], todayYmd: '2026-10-01' }))
+    expect(rejected[0]?.title).toBe("Sal Iannotti's $600 check never reached the bank")
+    const two = buildNeedsYouItems(inputs({ bankReturnedEnabled: true, bankReturnCases: [row({}), row({ mercury_transaction_id: 'tx2', counterparty_name: 'Southern Post', amount: 13680 })], todayYmd: '2026-10-01' }))
+    expect(two[0]).toMatchObject({ title: '2 checks came back ($19,302)', actionLabel: 'Open Accounts Receivable' })
+    expect(buildNeedsYouItems(inputs({ bankReturnedEnabled: true, bankReturnCases: [], todayYmd: '2026-10-01' }))).toEqual([])
+  })
+
   it('returned-check shares the received-money tier with ar-deposits, above lien-unconditional', () => {
     const items = buildNeedsYouItems(
       inputs({

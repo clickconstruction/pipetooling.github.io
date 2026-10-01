@@ -119,6 +119,8 @@ export type BankReturnNoticeInput = {
   recorded?: { jobId: string; jobLabel: string; amount: number; paidYmd: string | null } | null
   /** rejected: the day Mercury refused it. */
   failedYmd?: string | null
+  /** v2.4325: the deposit's id — the links open its case in Accounts Receivable. */
+  caseId?: string | null
 }
 
 const money = (n: number): string => `$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -144,6 +146,11 @@ export function bankReturnPaymentsPath(jobId: string): string {
 
 /** Accounts Receivable, where a case off every job is worked. */
 export const AR_RETURN_CASES_PATH = '/accounts-receivable'
+
+/** v2.4325: Accounts Receivable opened on this check's case. */
+export function bankReturnCasePath(transactionId: string | null | undefined): string {
+  return transactionId ? `${AR_RETURN_CASES_PATH}?check=${encodeURIComponent(transactionId)}` : AR_RETURN_CASES_PATH
+}
 
 function possessive(name: string): string {
   const n = name.trim()
@@ -194,7 +201,7 @@ export function bankReturnNoticeSentences(input: BankReturnNoticeInput): string[
   if (situation === 'on_jobs') {
     const first = input.jobs[0]
     out.push(input.jobs.length === 1 && first ? `It is still counted as paid on ${first.jobLabel}.` : `It is still counted as paid on ${input.jobs.length} jobs.`)
-    out.push(input.jobs.length === 1 ? 'Take it off the job. In Edit Job, press Unlink and remove on that payment.' : 'Take it off each job. In Edit Job, press Unlink and remove on each payment.')
+    out.push(input.jobs.length === 1 ? 'Take it off the job in Accounts Receivable.' : 'Take it off in Accounts Receivable. One press covers every job.')
   } else if (situation === 'off_job') {
     const last = input.lastJob
     if (last) {
@@ -228,9 +235,10 @@ export function bankReturnNoticeSubject(input: BankReturnNoticeInput): string {
 /** Where the notice's button goes: the job's payments while a job still carries it, else Accounts Receivable. */
 export function bankReturnNoticeLinks(input: BankReturnNoticeInput): Array<{ label: string; path: string }> {
   const situation = situationOf(input)
-  if (situation === 'on_jobs') return input.jobs.map((j) => ({ label: `${j.jobLabel} · ${money(j.amount)}`, path: bankReturnPaymentsPath(j.jobId) }))
-  if ((situation === 'rejected' || situation === 'never_on_job') && input.recorded) return [{ label: `Open ${input.recorded.jobLabel}`, path: bankReturnPaymentsPath(input.recorded.jobId) }]
-  return [{ label: 'Open it in Accounts Receivable', path: AR_RETURN_CASES_PATH }]
+  const theCase = { label: 'Open it in Accounts Receivable', path: bankReturnCasePath(input.caseId) }
+  if (situation === 'on_jobs') return [theCase, ...input.jobs.map((j) => ({ label: `${j.jobLabel} · ${money(j.amount)}`, path: bankReturnPaymentsPath(j.jobId) }))]
+  if ((situation === 'rejected' || situation === 'never_on_job') && input.recorded) return [theCase, { label: `Open ${input.recorded.jobLabel}`, path: bankReturnPaymentsPath(input.recorded.jobId) }]
+  return [theCase]
 }
 
 const NOTICE_FOOT = 'Nothing comes off a job on its own. A person presses the button, and that is the record.'
@@ -359,5 +367,6 @@ export function noticeInputFromCase(row: ArReturnCaseRow, appOrigin: string): Ba
     lastJob: row.last_job ? { jobId: row.last_job.job_id, jobLabel: arReturnCaseJobLabel(row.last_job), offYmd: appCalendarYmd(row.last_job.removed_at) } : null,
     recorded: rec ? { jobId: rec.job_id, jobLabel: arReturnCaseJobLabel(rec), amount: Math.abs(Number(rec.amount) || 0), paidYmd: rec.paid_on ? String(rec.paid_on).slice(0, 10) : null } : null,
     failedYmd: appCalendarYmd(row.failed_at),
+    caseId: row.mercury_transaction_id,
   }
 }

@@ -2,7 +2,7 @@
 name: "Accounts Receivable: a returned check is a case, not a chip"
 number: 76
 group: ready
-status: asked 2026-10-01 · read against 19 months of prod (8 real returns, 2 open today) · second pass planned and drawn 2026-10-01 · owner said build it all · PR 1 v2.4313 (stop the leaks) · PR 2 v2.4320 (the case opens itself, one notice per case) · PRs 3–5 next on claude/returned-checks-pr*
+status: asked 2026-10-01 · read against 19 months of prod (8 real returns, 2 open today) · second pass planned and drawn 2026-10-01 · owner said build it all · PR 1 v2.4313 (stop the leaks) · PR 2 v2.4320 (the case opens itself, one notice per case) · PR 3 v2.4325 (work the case in Accounts Receivable) · PRs 4–5 next on claude/returned-checks-pr*
 summary: >
   The app notices a check the bank returned only while a job still carries it (the email, the
   Needs You card, the Pipeline badge and Unlink and remove, punch list #40). A return that is
@@ -13,8 +13,7 @@ summary: >
   replacement is matched, a "check clearing" chip that the unconditional lien waiver waits
   for, and the bounce on the customer's pay history.
 next: >
-  PR 3 work the case in Accounts Receivable (Came back on top of To match, the story, the stake,
-  one next step, take it off every job, the new check suggested); PR 4 the payer remembers;
+  PR 4 the payer remembers;
   PR 5 the unconditional waiver waits 7 days for a check to clear.
 size: S (PR 1) · M (PR 2, a migration + a cron function) · M (PR 3) · S (PR 4) · M (PR 5)
 blocker: None. The owner took the drawn defaults on 2026-10-01 — 7 days for the waiver, the Payment made list hears every return, no fee for now.
@@ -88,7 +87,7 @@ The first draft was eight PRs with a four-step lane and a clearing chip on every
 
 1. **PR 1 — stop the leaks** (v2.4313). A returned check cannot be applied, in the window or the database (a trigger on `jobs_ledger_payments`). The count leaves it out. Unlink and remove on a bounced check stops saying the money is available again.
 2. **PR 2 — the case opens itself** (v2.4320). `mercury_transaction_ar_returned` grows into the case (opened, source bank / hand / rejected, reason, replaced by, closed with a reason, who and when). A trigger on `mercury_transactions` opens one whenever any writer marks a check failed with a return, so the Banking page's Sync can no longer flip one silently. The rule also takes a bank's return reason with no posting date (Peter Garza, Jul 2025). A rejected, never-posted check opens a case only when a recorded payment matches it and it is not deposited again within 5 days (a nightly sweep). One notice per case, on a job or not, to the Payment made list. A hand mark asks whether the bank returned it or it is not a customer's payment (a $119.56 Texas Mutual check was hidden with Mark returned). Historical returns are backfilled; those with a same-payer, same-amount deposit after them close as replaced.
-3. **PR 3 — work the case in Accounts Receivable.** Came back sits on top of To match until the case closes. The pane says what happened, what it costs (the job's balance again, its lien notice) and one next step: take it off every job (read back first, one press), get a new check (*They said…*), or deposit a rejected check again. The new check is suggested when it lands; Settled another way and Not coming close it. The Pipeline says *N checks came back*.
+3. **PR 3 — work the case in Accounts Receivable** (v2.4325). Came back sits on top of To match until the case closes. The pane says what happened, what it costs (the job's balance again, its lien notice) and one next step: take it off every job (read back first, one press), get a new check (*They said…*), or deposit a rejected check again. The new check is suggested when it lands; Settled another way and Not coming close it. The Pipeline says *N checks came back*.
 4. **PR 4 — the payer remembers.** *2 checks came back · Apr* on the Billed row's pay history and the deposit row.
 5. **PR 5 — the unconditional waiver waits for the check to clear**, 7 days after a check posts.
 

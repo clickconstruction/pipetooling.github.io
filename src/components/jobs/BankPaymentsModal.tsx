@@ -24,6 +24,11 @@ import {
   type MercuryKindBadge,
 } from '../../lib/bankPaymentsKindBadges'
 import { ArDepositRow } from './ar/ArDepositRow'
+import { ArReturnCaseRow } from './ar/ArReturnCaseRow'
+import { ArReturnCasePane, type ArCaseCloseReason } from './ar/ArReturnCasePane'
+import SetPromisedPayDateModal from './SetPromisedPayDateModal'
+import { useArReturnCases } from '../../hooks/useArReturnCases'
+import { arCaseDay, arCaseMoney, arCaseThisReplaces, arReplacementFor, arReturnCaseView, type ArReturnCaseView } from '../../lib/jobs/arReturnCase'
 import { ArHeaderMenu } from './ar/ArHeaderMenu'
 import { ModalFullScreenButton, useModalFullScreen } from '../ModalFullScreenToggle'
 import { ArDepositHeader } from './ar/ArDepositHeader'
@@ -50,7 +55,7 @@ import {
   type StageRow,
 } from '../../lib/jobsStagesBoard'
 import { useMercuryLedgerNicknames } from '../../hooks/useMercuryLedgerNicknames'
-import { APP_CALENDAR_TZ, denverCalendarDayKey, formatWorkDateYmdFriendly } from '../../utils/dateUtils'
+import { APP_CALENDAR_TZ, denverCalendarDayKey, formatWorkDateYmdFriendly, todayYmdInAppTz } from '../../utils/dateUtils'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import type { Database } from '../../types/database'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
@@ -179,6 +184,8 @@ export type BankPaymentsModalProps = {
   onApplied: () => void | Promise<void>
   /** Applied breakdown: open Edit job for this jobs_ledger id (e.g. from Jobs + JobFormModalContext). */
   onOpenEditJob?: (jobId: string) => void
+  /** v2.4325: select this deposit (or returned-check case) when the window opens — `/accounts-receivable?check=<id>`. */
+  initialDepositId?: string | null
 }
 
 /**
@@ -197,6 +204,7 @@ export default function BankPaymentsModal({
   billedTargetsLoading = false,
   onApplied,
   onOpenEditJob,
+  initialDepositId = null,
 }: BankPaymentsModalProps) {
   const { nicknameByAccount, nicknameByDebitCard } = useMercuryLedgerNicknames({ enabled: open })
   const [sortingConfig, setSortingConfig] = useState<BankingSortingConfigV1>(
@@ -337,6 +345,82 @@ export default function BankPaymentsModal({
 
   const { showToast } = useToastContext()
   const canApply = canRoleApplyBankPayments(authRole)
+
+  // v2.4325 (punch list #76 PR 3): checks that came back are cases, worked on top of To match.
+  const returnCases = useArReturnCases(open, canApply)
+  const todayYmd = todayYmdInAppTz()
+  const caseViews = useMemo<ArReturnCaseView[]>(
+    () => returnCases.cases.map((row) => arReturnCaseView({ row, trail: returnCases.trails.get(row.mercury_transaction_id) ?? [], todayYmd })),
+    [returnCases.cases, returnCases.trails, todayYmd],
+  )
+  /** The case ids, for the selection writers that would otherwise fall back to the first deposit. */
+  const caseIdsRef = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    caseIdsRef.current = new Set(caseViews.map((v) => v.id))
+  }, [caseViews])
+  const caseViewsShown = useMemo(() => {
+    if (includeHiddenArDeposits) return []
+    const q = bankTxSearchQuery.trim().toLowerCase()
+    if (!q) return caseViews
+    return caseViews.filter((v) => v.payer.toLowerCase().includes(q) || formatMoney(v.amount).includes(q) || v.rowLine.toLowerCase().includes(q))
+  }, [caseViews, includeHiddenArDeposits, bankTxSearchQuery])
+  const selectedCaseView = useMemo(() => caseViews.find((v) => v.id === selectedId) ?? null, [caseViews, selectedId])
+  /** The To match deposit that looks like the selected case's new check. */
+  const caseReplacement = useMemo(
+    () => (selectedCaseView ? arReplacementFor(selectedCaseView, candidates.filter((c) => !arDepositCameBack(c))) : null),
+    [selectedCaseView, candidates],
+  )
+  /** The open case the selected deposit may be the new check for. */
+  const depositReplacesCase = useMemo(
+    () => (selected && !selectedCaseView && !arDepositCameBack(selected) ? arCaseThisReplaces(selected, caseViews) : null),
+    [selected, selectedCaseView, caseViews],
+  )
+  const [caseBusy, setCaseBusy] = useState<'take_off' | 'close' | 'recorded' | 'unmark' | null>(null)
+  const [caseError, setCaseError] = useState<string | null>(null)
+  const [theySaidJob, setTheySaidJob] = useState<{ jobId: string; label: string } | null>(null)
+  /** Use it as the new check: the case the deposit being applied replaces; closed when the apply lands. */
+  const replacingRef = useRef<{ caseId: string; depositId: string } | null>(null)
+  /** Set before selecting the new check, so the lines fill after the selection's reset has run. */
+  const pendingPrefillRef = useRef<{ caseId: string; depositId: string } | null>(null)
+  /** A hand mark on a deposit the bank never failed: asked first (v2.4325). */
+  const [markAsk, setMarkAsk] = useState<{ id: string; payer: string; amount: number } | null>(null)
+  // Narrow window (a phone): the list and the pane take turns; a tap opens the pane, ‹ Deposits goes back.
+  const bodyRef = useRef<HTMLDivElement | null>(null)
+  const [bodyWidth, setBodyWidth] = useState<number | null>(null)
+  const [mobilePane, setMobilePane] = useState(false)
+  const narrow = bodyWidth != null && bodyWidth > 0 && bodyWidth < 640
+  const selectRow = useCallback((id: string) => {
+    setSelectedId(id)
+    setMobilePane(true)
+  }, [])
+  useEffect(() => {
+    setCaseError(null)
+  }, [selectedId])
+
+  /** Fill the allocation lines with the bills a returned check paid, for its new check. */
+  const fillReplacementLines = useCallback(
+    (caseId: string, depositId: string, depositRemaining: number) => {
+      const v = caseViews.find((x) => x.id === caseId)
+      if (!v) return
+      let left = depositRemaining
+      const lines: AllocLine[] = []
+      for (const b of v.billsItPaid) {
+        const key = b.invoiceId && targetByKey.has(`inv:${b.invoiceId}`) ? `inv:${b.invoiceId}` : targetByKey.has(`job:${b.jobId}`) ? `job:${b.jobId}` : null
+        if (!key) continue
+        const t = targetByKey.get(key)
+        if (!t) continue
+        const amt = Math.min(b.amount, Number(t.remaining) || 0, left)
+        if (!(amt > 0.005)) continue
+        left -= amt
+        const existing = lines.find((l) => l.targetKey === key)
+        if (existing) existing.amountStr = (Number(existing.amountStr) + amt).toFixed(2)
+        else lines.push({ id: crypto.randomUUID(), kind: 'billed', targetKey: key, amountStr: amt.toFixed(2) })
+      }
+      if (lines.length > 0) setAllocLines(lines)
+      replacingRef.current = { caseId, depositId }
+    },
+    [caseViews, targetByKey],
+  )
 
   /** List is loading OR the first fetch is still held for the org sorting config (cold cache). */
   const listBusy = listLoading || !sortingConfigResolved
@@ -720,6 +804,7 @@ export default function BankPaymentsModal({
       setCandidates(rows)
       setSelectedId((prev) => {
         if (prev && rows.some((r) => r.mercury_transaction_id === prev)) return prev
+        if (prev && caseIdsRef.current.has(prev)) return prev
         const first = rows[0]
         return first?.mercury_transaction_id ?? null
       })
@@ -949,6 +1034,19 @@ export default function BankPaymentsModal({
     setStripeCloseResults(null)
     setLinkSteerDismissedLineIds(new Set())
   }, [open, selectedId])
+
+  // v2.4325: Use it as the new check — after the reset above clears the lines, fill the bills the returned check paid.
+  useEffect(() => {
+    if (!open) return
+    const pending = pendingPrefillRef.current
+    if (pending && pending.depositId === selectedId) {
+      pendingPrefillRef.current = null
+      const dep = candidates.find((c) => c.mercury_transaction_id === pending.depositId)
+      fillReplacementLines(pending.caseId, pending.depositId, Number(dep?.remaining_available) || 0)
+    } else if (replacingRef.current && replacingRef.current.depositId !== selectedId) {
+      replacingRef.current = null
+    }
+  }, [open, selectedId, candidates, fillReplacementLines])
 
   // Recorded-payment candidates for the "Payment received" allocation kind
   // (v2.1191). Fail-soft: before the RPC is deployed (or on any error) the list
@@ -1197,9 +1295,45 @@ export default function BankPaymentsModal({
     setSelectedId((prev) => {
       if (prev && filteredCandidates.some((r) => r.mercury_transaction_id === prev)) return prev
       if (prev && foundElsewhere.some((r) => r.mercury_transaction_id === prev)) return prev
-      return orderedFiltered[0]?.mercury_transaction_id ?? foundElsewhere[0]?.mercury_transaction_id ?? null
+      if (prev && caseViews.some((v) => v.id === prev)) return prev
+      return orderedFiltered[0]?.mercury_transaction_id ?? foundElsewhere[0]?.mercury_transaction_id ?? caseViewsShown[0]?.id ?? null
     })
-  }, [open, filteredCandidates, orderedFiltered, foundElsewhere])
+  }, [open, filteredCandidates, orderedFiltered, foundElsewhere, caseViews, caseViewsShown])
+
+  // v2.4325: /accounts-receivable?check=<id> — select that deposit or case once it has loaded.
+  const initialAppliedRef = useRef(false)
+  useEffect(() => {
+    if (!open) {
+      initialAppliedRef.current = false
+      return
+    }
+    if (initialAppliedRef.current || !initialDepositId) return
+    if (caseViews.some((v) => v.id === initialDepositId) || candidates.some((c) => c.mercury_transaction_id === initialDepositId)) {
+      initialAppliedRef.current = true
+      setSelectedId(initialDepositId)
+      setMobilePane(true)
+    }
+  }, [open, initialDepositId, caseViews, candidates])
+
+  // Measure the window's body for the narrow layout (the modal mounts closed, so measure when it opens).
+  useEffect(() => {
+    if (!open) return
+    const el = bodyRef.current
+    if (!el) return
+    const read = () => setBodyWidth(el.getBoundingClientRect().width || null)
+    read()
+    // The window's resize too: a ResizeObserver can lag where the page is not painting.
+    window.addEventListener('resize', read)
+    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(read)
+    ro?.observe(el)
+    return () => {
+      window.removeEventListener('resize', read)
+      ro?.disconnect()
+    }
+  }, [open])
+  useEffect(() => {
+    if (!open) setMobilePane(false)
+  }, [open])
 
   const loadMercurySamplesForConfigModal = useCallback(async () => {
     const { data, error } = await supabase
@@ -1539,6 +1673,12 @@ export default function BankPaymentsModal({
       // Applied-means-Income: the trigger inside that RPC labelled the deposit
       // when the switch was on and nothing had labelled it — say so, once.
       showToast(arAppliedToast(applySentence.total, arApplyBooksIncome(bankLabel)), 'success')
+      // v2.4325: this deposit was used as the new check for a case — the apply landed, so the case closes.
+      const replacing = replacingRef.current
+      if (replacing && replacing.depositId === selected.mercury_transaction_id) {
+        replacingRef.current = null
+        await closeReplacedCase(replacing.caseId, replacing.depositId)
+      }
       // v2.1639: allocation applied — now close exactly-covered Stripe-hosted
       // bills in Stripe so the emailed links die. Failures keep the modal open
       // on a retry panel (the allocation itself already stands).
@@ -1566,6 +1706,120 @@ export default function BankPaymentsModal({
     } finally {
       setApplySubmitting(false)
     }
+  }
+
+  // ---- v2.4325: the case of a check that came back --------------------------------------
+
+  /** One case RPC: the result, or the message the office reads. */
+  async function runCaseRpc(fn: string, args: Record<string, unknown>): Promise<{ ok: true; data: Record<string, unknown> | null } | { ok: false; message: string }> {
+    const { data, error } = await supabase.rpc(fn as never, args as never)
+    if (error) return { ok: false, message: error.message || 'That did not go through.' }
+    const d = (data ?? null) as Record<string, unknown> | null
+    if (d && typeof d.error === 'string') return { ok: false, message: d.error }
+    return { ok: true, data: d }
+  }
+
+  async function afterCaseWrite(moneyMoved: boolean) {
+    await returnCases.refresh()
+    void refreshList()
+    if (moneyMoved) await onApplied()
+  }
+
+  async function takeCaseOffJobs() {
+    if (!selectedCaseView || !canApply) return
+    setCaseBusy('take_off')
+    setCaseError(null)
+    try {
+      const res = await runCaseRpc('take_returned_check_off_jobs', { p_mercury_transaction_id: selectedCaseView.id })
+      if (!res.ok) {
+        setCaseError(res.message)
+        return
+      }
+      const n = Number(res.data?.removed) || 0
+      const jobs = Array.isArray(res.data?.jobs) ? (res.data?.jobs as unknown[]).length : 0
+      showToast(`Taken off ${jobs === 1 ? 'the job' : `${jobs} jobs`} · ${n} payment${n === 1 ? '' : 's'}.`, 'success')
+      await afterCaseWrite(true)
+    } finally {
+      setCaseBusy(null)
+    }
+  }
+
+  async function closeCase(reason: ArCaseCloseReason, note: string) {
+    if (!selectedCaseView || !canApply) return
+    setCaseBusy('close')
+    setCaseError(null)
+    try {
+      const res = await runCaseRpc('close_ar_return_case', { p_mercury_transaction_id: selectedCaseView.id, p_reason: reason, p_note: note.trim() || null, p_replaced_by: null })
+      if (!res.ok) {
+        setCaseError(res.message)
+        return
+      }
+      showToast(reason === 'settled_other_way' ? 'Closed as settled another way.' : 'Closed as not coming.', 'success')
+      setSelectedId(null)
+      await afterCaseWrite(false)
+    } finally {
+      setCaseBusy(null)
+    }
+  }
+
+  async function closeReplacedCase(caseId: string, depositId: string) {
+    const res = await runCaseRpc('close_ar_return_case', { p_mercury_transaction_id: caseId, p_reason: 'replaced', p_note: null, p_replaced_by: depositId })
+    if (res.ok) showToast('The new check is on the bill. The case is closed.', 'success')
+    else showToast(`The check is applied, but the case did not close: ${res.message}`, 'error')
+    await returnCases.refresh()
+  }
+
+  async function takeRecordedPaymentOff() {
+    const rec = selectedCaseView?.recorded
+    if (!selectedCaseView || !rec || !canApply) return
+    setCaseBusy('recorded')
+    setCaseError(null)
+    try {
+      const res = await runCaseRpc('remove_jobs_ledger_payment_and_reconcile', { p_payment_id: rec.paymentId })
+      if (!res.ok) {
+        setCaseError(res.message)
+        return
+      }
+      showToast(`${arCaseMoney(rec.amount)} is off ${rec.label.split(' ')[0]}. The job owes it again.`, 'success')
+      await afterCaseWrite(true)
+    } finally {
+      setCaseBusy(null)
+    }
+  }
+
+  async function caseNotBounced() {
+    if (!selectedCaseView || !canApply) return
+    const id = selectedCaseView.id
+    setCaseBusy('unmark')
+    setCaseError(null)
+    try {
+      const res = await runCaseRpc('set_mercury_transaction_ar_returned', { p_mercury_transaction_id: id, p_returned: false })
+      if (!res.ok) {
+        setCaseError(res.message)
+        return
+      }
+      showToast('Unmarked. It is back in To match.', 'success')
+      await returnCases.refresh()
+      const rows = await refreshList()
+      if (rows.some((r) => r.mercury_transaction_id === id)) setSelectedId(id)
+    } finally {
+      setCaseBusy(null)
+    }
+  }
+
+  function useCaseReplacement() {
+    if (!selectedCaseView || !caseReplacement) return
+    pendingPrefillRef.current = { caseId: selectedCaseView.id, depositId: caseReplacement.mercury_transaction_id }
+    selectRow(caseReplacement.mercury_transaction_id)
+  }
+
+  /** The Returned tick in Mark returned deposits: a deposit the bank never failed is asked about first. */
+  function requestToggleReturned(c: MercuryCandidate, next: boolean) {
+    if (next && c.bankReturn == null) {
+      setMarkAsk({ id: c.mercury_transaction_id, payer: (c.counterparty_name ?? '').trim() || 'this customer', amount: Math.abs(Number(c.amount) || 0) })
+      return
+    }
+    void toggleMercuryReturned(c.mercury_transaction_id, next).then(() => returnCases.refresh())
   }
 
   /** v2.4065: the title-bar toggle — the window fills the screen above the app's bottom bar, and remembers the choice. */
@@ -1624,10 +1878,22 @@ export default function BankPaymentsModal({
             Accounts Receivable
           </h2>
           {/* AR refresh (v2.3379): the header summarises the pile instead of explaining the modal. */}
-          {depositSummary ? (
+          {depositSummary || caseViews.length > 0 ? (
             <span data-testid="ar-summary" style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', flex: '1 1 auto', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              <strong style={{ color: 'var(--text-strong)' }}>{depositSummary.count}</strong> to match ·{' '}
-              <strong style={{ color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{depositSummary.money}</strong> unapplied
+              {caseViews.length > 0 ? (
+                <>
+                  <strong style={{ color: 'var(--text-red-700)' }}>{caseViews.length} came back</strong>
+                  {' · '}
+                </>
+              ) : null}
+              {depositSummary ? (
+                <>
+                  <strong style={{ color: 'var(--text-strong)' }}>{depositSummary.count}</strong> to match ·{' '}
+                  <strong style={{ color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{depositSummary.money}</strong> unapplied
+                </>
+              ) : (
+                'nothing to match'
+              )}
             </span>
           ) : (
             <span style={{ flex: '1 1 auto' }} />
@@ -1893,6 +2159,7 @@ export default function BankPaymentsModal({
             </div>
           ) : null}
           <div
+            ref={bodyRef}
             style={{
               display: 'flex',
               flex: 1,
@@ -1903,11 +2170,12 @@ export default function BankPaymentsModal({
             aria-hidden={listBusy}
           >
           <div
+            data-testid="ar-list-column"
             style={{
-              width: '42%',
-              minWidth: 260,
-              borderRight: '1px solid var(--border)',
-              display: 'flex',
+              width: narrow ? '100%' : '42%',
+              minWidth: narrow ? 0 : 260,
+              borderRight: narrow ? 'none' : '1px solid var(--border)',
+              display: narrow && mobilePane ? 'none' : 'flex',
               flexDirection: 'column',
               minHeight: 0,
             }}
@@ -1938,6 +2206,47 @@ export default function BankPaymentsModal({
                 </button>
               </div>
             </div>
+            {markAsk ? (
+              <div
+                data-testid="ar-mark-ask"
+                style={{ margin: '0 0.5rem 0.5rem', padding: '0.6rem 0.7rem', border: '1px solid var(--border-amber)', background: 'var(--bg-amber-tint)', borderRadius: 8, fontSize: '0.8125rem', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}
+              >
+                <span style={{ fontWeight: 600, color: 'var(--text-amber-900)' }}>
+                  Did the bank send {markAsk.payer}&rsquo;s {arCaseMoney(markAsk.amount)} check back?
+                </span>
+                <span style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const id = markAsk.id
+                      setMarkAsk(null)
+                      void toggleMercuryReturned(id, true).then(() => returnCases.refresh())
+                    }}
+                    style={{ font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, padding: '0.35rem 0.7rem', minHeight: 36, borderRadius: 6, border: '1px solid #b91c1c', background: '#b91c1c', color: 'white', cursor: 'pointer' }}
+                  >
+                    Yes, it bounced
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const id = markAsk.id
+                      setMarkAsk(null)
+                      selectRow(id)
+                    }}
+                    style={{ font: 'inherit', fontSize: '0.8125rem', padding: '0.35rem 0.7rem', minHeight: 36, borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer' }}
+                  >
+                    No. It is not a customer&rsquo;s payment
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMarkAsk(null)}
+                    style={{ font: 'inherit', fontSize: '0.8125rem', padding: '0.35rem 0.7rem', minHeight: 36, borderRadius: 6, border: 'none', background: 'transparent', color: 'var(--text-link)', cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                </span>
+              </div>
+            ) : null}
             <div style={{ padding: '0 0.5rem 0.5rem', flexShrink: 0 }}>
               <input
                 id="ar-bank-tx-search"
@@ -2004,8 +2313,45 @@ export default function BankPaymentsModal({
               {listError && (
                 <p style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-red-700)' }}>{listError}</p>
               )}
+              {caseViewsShown.length > 0 ? (
+                <div data-testid="ar-came-back-group">
+                  <div
+                    style={{
+                      padding: '0.45rem 0.75rem',
+                      fontSize: '0.6875rem',
+                      fontWeight: 700,
+                      letterSpacing: '0.06em',
+                      textTransform: 'uppercase',
+                      color: 'var(--text-red-700)',
+                      background: 'var(--bg-red-tint)',
+                      borderBottom: '1px solid var(--border-red)',
+                    }}
+                  >
+                    Came back · {caseViewsShown.length}
+                  </div>
+                  {caseViewsShown.map((v) => (
+                    <ArReturnCaseRow key={v.id} view={v} active={v.id === selectedId} onSelect={() => selectRow(v.id)} />
+                  ))}
+                  <div
+                    style={{
+                      padding: '0.45rem 0.75rem',
+                      fontSize: '0.6875rem',
+                      fontWeight: 700,
+                      letterSpacing: '0.06em',
+                      textTransform: 'uppercase',
+                      color: 'var(--text-muted)',
+                      background: 'var(--bg-subtle)',
+                      borderBottom: '1px solid var(--border)',
+                    }}
+                  >
+                    To match
+                  </div>
+                </div>
+              ) : null}
               {!listBusy && !listError && candidates.length === 0 && (
-                <p style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>No matching transactions.</p>
+                <p style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                  {caseViewsShown.length > 0 ? 'Nothing to match. Every deposit is on a bill.' : 'No matching transactions.'}
+                </p>
               )}
               {!listBusy && !listError && candidates.length > 0 && filteredCandidates.length === 0 && search.empty === 'unsearched' && !hiddenLoading && (
                 <p style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
@@ -2045,8 +2391,8 @@ export default function BankPaymentsModal({
                       markMode={arBankReturnedMarkMode}
                       canApply={canApply}
                       savingReturned={returnedToggleSavingId === c.mercury_transaction_id}
-                      onSelect={() => setSelectedId(c.mercury_transaction_id)}
-                      onToggleReturned={(next) => void toggleMercuryReturned(c.mercury_transaction_id, next)}
+                      onSelect={() => selectRow(c.mercury_transaction_id)}
+                      onToggleReturned={(next) => requestToggleReturned(c, next)}
                     />
                   ))}
                 </div>
@@ -2081,19 +2427,45 @@ export default function BankPaymentsModal({
                   markMode={arBankReturnedMarkMode}
                   canApply={canApply}
                   savingReturned={returnedToggleSavingId === c.mercury_transaction_id}
-                  onSelect={() => setSelectedId(c.mercury_transaction_id)}
-                  onToggleReturned={(next) => void toggleMercuryReturned(c.mercury_transaction_id, next)}
+                  onSelect={() => selectRow(c.mercury_transaction_id)}
+                  onToggleReturned={(next) => requestToggleReturned(c, next)}
                 />
               ))}
             </div>
           </div>
 
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0 }}>
+          <div data-testid="ar-pane-column" style={{ flex: 1, display: narrow && !mobilePane ? 'none' : 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0 }}>
             <div style={{ flex: 1, overflow: 'auto', padding: '1rem 1.25rem' }}>
-              {!selected ? (
+              {selectedCaseView ? (
+                <ArReturnCasePane
+                  view={selectedCaseView}
+                  todayYmd={todayYmd}
+                  canApply={canApply}
+                  replacement={caseReplacement}
+                  busy={caseBusy}
+                  error={caseError}
+                  onTakeOff={() => void takeCaseOffJobs()}
+                  onTheySaid={() => (selectedCaseView.promiseJob ? setTheySaidJob(selectedCaseView.promiseJob) : undefined)}
+                  onUseReplacement={useCaseReplacement}
+                  onClose={(reason, note) => void closeCase(reason, note)}
+                  onTakeRecordedOff={() => void takeRecordedPaymentOff()}
+                  onNotBounced={() => void caseNotBounced()}
+                  onOpenJob={onOpenEditJob}
+                  onBack={narrow ? () => setMobilePane(false) : undefined}
+                />
+              ) : !selected ? (
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Select a bank transaction.</p>
               ) : (
                 <>
+                  {narrow ? (
+                    <button
+                      type="button"
+                      onClick={() => setMobilePane(false)}
+                      style={{ font: 'inherit', fontSize: '0.875rem', border: 'none', background: 'transparent', color: 'var(--text-link)', padding: '0.25rem 0', minHeight: 44, cursor: 'pointer', marginBottom: '0.5rem' }}
+                    >
+                      ‹ Deposits
+                    </button>
+                  ) : null}
                   <ArDepositHeader
                     name={(selected.counterparty_name ?? '').trim() || 'Unnamed deposit'}
                     amount={Math.abs(Number(selected.amount))}
@@ -2228,6 +2600,27 @@ export default function BankPaymentsModal({
                     </div>
                   ) : null}
 
+                  {depositReplacesCase && canApply && canAllocateRemaining ? (
+                    <div
+                      data-testid="ar-replacement-note"
+                      style={{ margin: '0.75rem 0', padding: '0.65rem 0.8rem', border: '1px solid var(--border-green)', background: 'var(--bg-green-tint)', borderRadius: 8, fontSize: '0.875rem', color: 'var(--text-green-800)', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}
+                    >
+                      <span style={{ fontWeight: 600 }}>
+                        This looks like the new check for the {arCaseMoney(depositReplacesCase.amount)} that came back
+                        {depositReplacesCase.cameBackYmd ? ` on ${arCaseDay(depositReplacesCase.cameBackYmd, todayYmd)}` : ''}.
+                      </span>
+                      <span>
+                        <button
+                          type="button"
+                          data-testid="ar-replacement-fill"
+                          onClick={() => fillReplacementLines(depositReplacesCase.id, selected.mercury_transaction_id, Number(selected.remaining_available) || 0)}
+                          style={{ font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, padding: '0.35rem 0.75rem', minHeight: 36, borderRadius: 6, border: '1px solid #2563eb', background: '#2563eb', color: 'white', cursor: 'pointer' }}
+                        >
+                          {depositReplacesCase.billsItPaid.length > 0 ? 'Fill in the bills it paid' : 'Use it as the new check'}
+                        </button>
+                      </span>
+                    </div>
+                  ) : null}
                   {selectedCameBack ? (
                     <div
                       data-testid="ar-came-back-note"
@@ -2773,7 +3166,7 @@ export default function BankPaymentsModal({
               >
                 Cancel
               </button>
-              {nextDepositId && !applyDisabled ? (
+              {!selectedCaseView && nextDepositId && !applyDisabled ? (
                 <button
                   type="button"
                   onClick={() => void submitApply('next')}
@@ -2791,28 +3184,43 @@ export default function BankPaymentsModal({
                   Apply &amp; next ›
                 </button>
               ) : null}
-              <button
-                type="button"
-                disabled={applyDisabled}
-                onClick={() => void submitApply()}
-                style={{
-                  padding: '0.45rem 0.9rem',
-                  borderRadius: 4,
-                  border: 'none',
-                  background: applyDisabled ? '#d1d5db' : '#2563eb',
-                  color: 'white',
-                  cursor: applyDisabled ? 'not-allowed' : 'pointer',
-                  fontWeight: 600,
-                  fontVariantNumeric: 'tabular-nums',
-                }}
-              >
-                {applySubmitting ? 'Applying…' : applySentence.total > 0 && !applyDisabled ? `Apply $${formatMoney(applySentence.total)}` : 'Apply'}
-              </button>
+              {selectedCaseView ? null : (
+                <button
+                  type="button"
+                  disabled={applyDisabled}
+                  onClick={() => void submitApply()}
+                  style={{
+                    padding: '0.45rem 0.9rem',
+                    borderRadius: 4,
+                    border: 'none',
+                    background: applyDisabled ? '#d1d5db' : '#2563eb',
+                    color: 'white',
+                    cursor: applyDisabled ? 'not-allowed' : 'pointer',
+                    fontWeight: 600,
+                    fontVariantNumeric: 'tabular-nums',
+                  }}
+                >
+                  {applySubmitting ? 'Applying…' : applySentence.total > 0 && !applyDisabled ? `Apply $${formatMoney(applySentence.total)}` : 'Apply'}
+                </button>
+              )}
             </div>
           </div>
         </div>
       </div>
       </div>
+
+      {theySaidJob ? (
+        <SetPromisedPayDateModal
+          jobId={theySaidJob.jobId}
+          jobLabel={theySaidJob.label}
+          initialYmd={null}
+          onClose={() => setTheySaidJob(null)}
+          onSaved={() => {
+            setTheySaidJob(null)
+            void returnCases.refresh()
+          }}
+        />
+      ) : null}
 
       <BankingSortingConfigModal
         open={sortingConfigModalOpen}
