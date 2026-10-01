@@ -11,6 +11,8 @@
  * viewers with pay access. `?lens=` on the URL is the deep link the Payroll tab uses.
  */
 
+import { describeLastSeen } from './personKey'
+
 export type UsersTabLens = 'contact' | 'account' | 'pay'
 
 export const USERS_TAB_LENSES: ReadonlyArray<{ key: UsersTabLens; label: string; title: string }> = [
@@ -42,3 +44,12 @@ export function lensForcesNoLoginOpen(lens: UsersTabLens): boolean {
 
 /** The deep link the Payroll tab's old "People pay config" button becomes. */
 export const USERS_TAB_PAY_LENS_PATH = '/people?tab=users&lens=pay'
+
+/**
+ * The Account lens's Sign-in cell: the column header already says "Sign-in", so the words are
+ * the desk's `describeLastSeen` without its "signed in" — "today", "12d ago", "2mo ago", "never".
+ */
+export function lensSignInLabel(lastSignInIso: string | null | undefined, nowMs: number): string {
+  if (!lastSignInIso) return 'never'
+  return describeLastSeen(lastSignInIso, nowMs).replace(/^signed in /, '')
+}

@@ -311,7 +311,7 @@ export function PeopleUsersTab({
     if (lens === 'account') {
       return (
         <UsersTabAccountCells
-          item={{ source: item.source, id: item.id, name: item.name, role: 'role' in item ? item.role : null, needs_supervision: 'needs_supervision' in item ? item.needs_supervision : null, read_only: item.source === 'user' ? ((item as unknown as UserRow).read_only ?? null) : null, last_sign_in_at: item.source === 'user' ? ((item as unknown as UserRow).last_sign_in_at ?? null) : null }}
+          item={{ source: item.source, id: item.id, name: item.name, role: 'role' in item ? item.role : null, needs_supervision: 'needs_supervision' in item ? item.needs_supervision : null, read_only: 'read_only' in item ? (item.read_only ?? null) : null, last_sign_in_at: 'last_sign_in_at' in item ? (item.last_sign_in_at ?? null) : null }}
           isSelf={item.source === 'user' && item.id === authUserId}
           canSetTraining={Boolean(setTrainingMode)}
           onSetTraining={setTrainingMode}
@@ -347,7 +347,7 @@ export function PeopleUsersTab({
     return (
       <UsersTabRow
         key={item.source === 'user' ? `user-${item.id}` : `people-${item.id}`}
-        item={{ source: item.source, id: item.id, name: item.name, email: item.email, phone: ('phone' in item ? item.phone : null) ?? null, notes: ('notes' in item ? item.notes : null) ?? null, master_user_id: person?.master_user_id, role: 'role' in item ? item.role : null, needs_supervision: 'needs_supervision' in item ? item.needs_supervision : null, read_only: item.source === 'user' ? ((item as unknown as UserRow).read_only ?? null) : null, last_sign_in_at: item.source === 'user' ? ((item as unknown as UserRow).last_sign_in_at ?? null) : null }}
+        item={{ source: item.source, id: item.id, name: item.name, email: item.email, phone: ('phone' in item ? item.phone : null) ?? null, notes: ('notes' in item ? item.notes : null) ?? null, master_user_id: person?.master_user_id, role: 'role' in item ? item.role : null, needs_supervision: 'needs_supervision' in item ? item.needs_supervision : null, read_only: 'read_only' in item ? (item.read_only ?? null) : null, last_sign_in_at: 'last_sign_in_at' in item ? (item.last_sign_in_at ?? null) : null }}
         cells={lensCellsFor(item, sectionKind)}
         rail={rail}
         narrowViewport={narrowViewport}
@@ -419,7 +419,7 @@ export function PeopleUsersTab({
   function renderGroup(sectionKind: PersonKind | 'dev') {
     const items: UsersTabRosterListRow[] =
       sectionKind === 'dev'
-        ? users.filter((u) => u.role === 'dev').map((u) => ({ source: 'user' as const, id: u.id, name: u.name, email: u.email, phone: u.phone ?? null, notes: u.notes, role: u.role, needs_supervision: u.needs_supervision ?? null }))
+        ? users.filter((u) => u.role === 'dev').map((u) => ({ source: 'user' as const, id: u.id, name: u.name, email: u.email, phone: u.phone ?? null, notes: u.notes, role: u.role, needs_supervision: u.needs_supervision ?? null, read_only: u.read_only ?? null, last_sign_in_at: u.last_sign_in_at ?? null }))
         : byKind(sectionKind)
     const label = sectionKind === 'dev' ? 'Devs' : KIND_LABELS[sectionKind]
     const rails = items.map((item) => ({ item, rail: railFor(sectionKind, item) }))
@@ -511,7 +511,7 @@ export function PeopleUsersTab({
         const rails: RailRow[] = []
         for (const sec of USERS_TAB_SECTIONS) {
           if (sec.type === 'dev') {
-            if (isDev) for (const u of users.filter((x) => x.role === 'dev')) rails.push(railFor('dev', { source: 'user', id: u.id, name: u.name, email: u.email, phone: u.phone ?? null, notes: u.notes, role: u.role, needs_supervision: u.needs_supervision ?? null }))
+            if (isDev) for (const u of users.filter((x) => x.role === 'dev')) rails.push(railFor('dev', { source: 'user', id: u.id, name: u.name, email: u.email, phone: u.phone ?? null, notes: u.notes, role: u.role, needs_supervision: u.needs_supervision ?? null, read_only: u.read_only ?? null, last_sign_in_at: u.last_sign_in_at ?? null }))
           } else {
             for (const item of byKind(sec.kind)) rails.push(railFor(sec.kind, item))
           }

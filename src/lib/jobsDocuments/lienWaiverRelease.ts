@@ -423,7 +423,7 @@ export function buildLienWaiverFootHtml(f: LienWaiverFields, signature?: LienWai
   const foot = buildLienWaiverFoot(f, signature)
   const ink = signature
     ? signature.mode === 'draw' && signature.pngDataUrl
-      ? `<img src="${signature.pngDataUrl}" alt="Signature of ${esc(signature.printedName)}" style="display:block;max-width:280px;max-height:110px" />`
+      ? `<img src="${signature.pngDataUrl}" alt="Signature of ${esc(signature.printedName)}" style="display:block;height:64px;width:auto;max-width:320px;object-fit:contain;object-position:left bottom" />`
       : `<div style="font-family:'Great Vibes', cursive; font-size:2.1em; line-height:1.15">${esc(signature.printedName)}</div>`
     : `<div style="height:3.2em"></div>`
   const lines =
@@ -493,6 +493,29 @@ export function lienWaiverPdfFilename(formType: LienWaiverFormType, jobNumber: s
 }
 
 const PAGE_MARGIN = 22
+
+/** The drawn signature's row above the rule on the PDF, in mm (v2.4335). */
+export const LIEN_WAIVER_INK_ROW_MM = 20
+const LIEN_WAIVER_INK_HEIGHT_MM = 17
+const LIEN_WAIVER_INK_MAX_WIDTH_MM = 80
+
+/**
+ * The size a drawn signature prints at on the PDF (v2.4335): 17 mm tall with its own proportions,
+ * narrowed to 80 mm when it is very wide. The ink is trimmed to its strokes first
+ * (`trimSignatureInk`), so every signature reads the same size on the line, wherever on the pad it
+ * was drawn.
+ */
+export function lienWaiverInkBox(widthPx: number, heightPx: number): { w: number; h: number } {
+  if (!(widthPx > 0) || !(heightPx > 0)) return { w: 62, h: LIEN_WAIVER_INK_HEIGHT_MM }
+  const aspect = widthPx / heightPx
+  let h = LIEN_WAIVER_INK_HEIGHT_MM
+  let w = h * aspect
+  if (w > LIEN_WAIVER_INK_MAX_WIDTH_MM) {
+    w = LIEN_WAIVER_INK_MAX_WIDTH_MM
+    h = w / aspect
+  }
+  return { w: Math.round(w * 100) / 100, h: Math.round(h * 100) / 100 }
+}
 const MAX_TEXT_WIDTH_MM = 172
 const PAGE_CONTENT_MAX_Y = 265
 
@@ -567,8 +590,12 @@ export async function buildLienWaiverPdfBlob(
           let drawn = false
           if (signature.mode === 'draw' && signature.pngDataUrl) {
             try {
-              doc.addImage(signature.pngDataUrl, 'PNG', PAGE_MARGIN, y, 62, 24)
-              y += 26
+              // v2.4335: its own proportions, bottom on the line (it was the whole pad box, 62×24 mm);
+              // compressed, or jsPDF stores the pixels raw (~300 KB a page for a 13 KB drawing).
+              const props = doc.getImageProperties(signature.pngDataUrl)
+              const box = lienWaiverInkBox(props.width, props.height)
+              doc.addImage(signature.pngDataUrl, 'PNG', PAGE_MARGIN + 1, y + LIEN_WAIVER_INK_ROW_MM - box.h, box.w, box.h, undefined, 'FAST')
+              y += LIEN_WAIVER_INK_ROW_MM + 1
               drawn = true
             } catch {
               /* bad image data — the typed rendering below */

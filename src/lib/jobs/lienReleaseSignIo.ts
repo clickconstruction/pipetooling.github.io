@@ -6,6 +6,7 @@ import { validateReportSignatureDataUrlForSubmit } from '../reportSignatureField
 import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { trimSignatureInk } from '../signatureInkTrim'
 
 /**
  * Signing a lien release, the one write shared by the sign modal and the leader's Waivers to sign
@@ -37,12 +38,16 @@ export async function signLienRelease(args: SignLienReleaseArgs): Promise<SignLi
   }
   let signaturePath: string | null = null
   const signedAtIso = new Date().toISOString()
+  // v2.4335: the drawing is trimmed to its ink before it is stored, so the signed PDF and every
+  // later copy print it the same size, on the line (the whole pad box used to print).
+  let ink: string | null = null
   if (payload.mode === 'draw') {
     const invalid = validateReportSignatureDataUrlForSubmit(payload.signaturePngBase64)
     if (invalid) return { ok: false, message: invalid }
+    ink = await trimSignatureInk(payload.signaturePngBase64)
     try {
       const path = `${releaseId}/${crypto.randomUUID()}.png`
-      const bytes = await (await fetch(payload.signaturePngBase64)).blob()
+      const bytes = await (await fetch(ink)).blob()
       const { error } = await supabase.storage.from(LIEN_RELEASE_DOCUMENTS_BUCKET).upload(path, bytes, { contentType: 'image/png' })
       if (!error) signaturePath = path
     } catch {
@@ -56,7 +61,7 @@ export async function signLienRelease(args: SignLienReleaseArgs): Promise<SignLi
   const signature: LienWaiverSignature = {
     mode: payload.mode,
     printedName: payload.printedName,
-    pngDataUrl: payload.mode === 'draw' ? payload.signaturePngBase64 : null,
+    pngDataUrl: payload.mode === 'draw' ? ink : null,
     auditLine: audit ?? '',
     signedYmd: calendarYmdInAppTzFromIso(signedAtIso),
   }

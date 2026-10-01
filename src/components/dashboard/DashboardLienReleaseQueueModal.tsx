@@ -11,13 +11,13 @@ import {
   type JobLienReleaseRow,
   type LienUnconditionalQueueRow,
 } from '../../lib/jobs/lienReleaseTracking'
-import { lienReleaseRowSignature } from '../../lib/jobs/lienReleaseLifecycle'
 import {
   buildLienWaiverPrintHtml,
   type LienWaiverFormType,
   type LienWaiverSignature,
 } from '../../lib/jobsDocuments/lienWaiverRelease'
-import { openHtmlPreviewWindow } from '../../lib/jobsDocuments/printWindow'
+import { openHtmlWindowWhenReady } from '../../lib/jobsDocuments/printWindow'
+import { lienReleaseRowSignatureWithInk } from '../../lib/jobs/lienReleaseInk'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import LienReleaseModal from '../jobs/LienReleaseModal'
 
@@ -46,9 +46,9 @@ function shortDate(ymd: string): string {
   return Number.isNaN(d.getTime()) ? ymd : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-/** Signed releases re-render from the row (v2.4285: the shared reading — the row's mode, the day signed). */
-function signatureForRow(row: JobLienReleaseRow): LienWaiverSignature | null {
-  return lienReleaseRowSignature(row)
+/** Signed releases re-render from the row with the ink stored at signing (v2.4285 the shared reading; v2.4335 the ink). */
+function signatureForRow(row: JobLienReleaseRow): Promise<LienWaiverSignature | null> {
+  return lienReleaseRowSignatureWithInk(row)
 }
 
 const linkButtonStyle: CSSProperties = {
@@ -107,13 +107,11 @@ export function DashboardLienReleaseQueueModal({
       const formType: LienWaiverFormType = isLienWaiverFormType(row.release.form_type)
         ? row.release.form_type
         : 'conditional_progress'
-      const html = buildLienWaiverPrintHtml(
-        formType,
-        lienReleaseSnapshotToWaiverFields(row.release),
-        row.jobNumber || '—',
-        signatureForRow(row.release),
-      )
-      if (!openHtmlPreviewWindow(html)) showToast('Popup blocked — allow popups to view the release.', 'error')
+      void openHtmlWindowWhenReady(async () =>
+        buildLienWaiverPrintHtml(formType, lienReleaseSnapshotToWaiverFields(row.release), row.jobNumber || '—', await signatureForRow(row.release)),
+      ).then((ok) => {
+        if (!ok) showToast('Popup blocked — allow popups to view the release.', 'error')
+      })
     },
     [showToast],
   )
