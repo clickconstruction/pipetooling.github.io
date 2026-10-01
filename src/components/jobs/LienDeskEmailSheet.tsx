@@ -11,6 +11,9 @@ import { LIEN_STATUS_NOTE_MAX, lienStatusEmailHtml, lienStatusFacts, lienStatusS
 
 const PRIMARY = '#2563eb'
 
+/** Where the email comes from and where replies go; outside mail is the user's own (the owner's rule). */
+const FROM_WORDS = 'Sends from ClickTooling, and replies come to you. Mail to anyone outside the company goes from your own inbox, so use Send… for that.'
+
 const label: CSSProperties = { padding: '9px 0 9px 18px', color: 'var(--text-muted)', fontSize: '0.8rem' }
 const cell: CSSProperties = { padding: '7px 18px 7px 0', fontSize: '0.84rem', minWidth: 0 }
 const boxHead: CSSProperties = { fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }
@@ -127,13 +130,13 @@ export default function LienDeskEmailSheet(p: LienDeskEmailSheetProps) {
   return (
     <>
     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 'var(--app-bottom-chrome, 0px)', zIndex: 40, background: 'rgba(17,24,39,0.42)', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'left', fontWeight: 400 }} onClick={p.onClose}>
-      <div role="dialog" aria-modal="true" aria-label="Email where the liens stand" data-lien-share-email-sheet onClick={(e) => e.stopPropagation()} style={{ ...card, display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr) auto', overflow: 'hidden', background: 'var(--surface)', color: 'var(--text-base)' }}>
+      <div role="dialog" aria-modal="true" aria-label="Email where the liens stand" data-lien-share-email-sheet onClick={(e) => e.stopPropagation()} style={{ ...card, display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr) auto', gridTemplateColumns: 'minmax(0, 1fr)', overflow: 'hidden', background: 'var(--surface)', color: 'var(--text-base)' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, padding: '12px 18px 10px', borderBottom: '1px solid var(--border)' }}>
-          <button type="button" onClick={p.onBack} style={{ border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', font: 'inherit', fontSize: '0.8rem', fontWeight: 600, padding: 0 }}>
+          <button type="button" onClick={p.onBack} style={{ border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', font: 'inherit', fontSize: '0.8rem', fontWeight: 600, padding: 0, whiteSpace: 'nowrap' }}>
             ‹ Back
           </button>
-          <strong style={{ fontSize: '0.98rem' }}>Email where the liens stand</strong>
-          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>as of {p.asOfWords}</span>
+          <strong style={{ fontSize: '0.98rem', minWidth: 0 }}>Email where the liens stand</strong>
+          {p.isMobile ? null : <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>as of {p.asOfWords}</span>}
           <button type="button" onClick={p.onClose} aria-label="Close" style={{ marginLeft: 'auto', border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.2rem', lineHeight: 1, padding: 0 }}>
             ×
           </button>
@@ -184,19 +187,19 @@ export default function LienDeskEmailSheet(p: LienDeskEmailSheetProps) {
             </div>
           </div>
 
-          <div style={{ padding: '12px 18px 0', display: 'grid', gap: 12 }}>
-            <div style={{ display: 'grid', gap: 4 }}>
+          <div style={{ padding: '12px 18px 0', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 4 }}>
               <div style={boxHead}>What to send</div>
               <LienShareScopeMenu options={p.options} value={p.scope} onChange={(s) => { setSubjectTyped(null); p.onScope(s) }} big={p.isMobile} />
             </div>
-            <div style={{ display: 'grid', gap: 4 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 4 }}>
               <label htmlFor="lien-share-note" style={boxHead}>
                 A note on top · optional
               </label>
               <textarea id="lien-share-note" rows={2} maxLength={LIEN_STATUS_NOTE_MAX} value={note} onChange={(e) => setNote(e.target.value)} placeholder={names.length === 1 ? `A line for ${names[0]}` : 'A line for the people you pick'} style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text-base)', font: 'inherit', fontSize: '0.84rem', resize: 'vertical' }} />
               {note.length > LIEN_STATUS_NOTE_MAX - 40 ? <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textAlign: 'right' }}>{note.length} / {LIEN_STATUS_NOTE_MAX}</div> : null}
             </div>
-            <div style={{ display: 'grid', gap: 4, paddingBottom: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 4, paddingBottom: 12 }}>
               <div style={{ display: 'flex', alignItems: 'baseline' }}>
                 <span style={boxHead}>The email</span>
                 <button type="button" onClick={() => void show(subject, html)} data-lien-share-preview-email style={{ marginLeft: 'auto', border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', font: 'inherit', fontSize: '0.8rem', fontWeight: 600, padding: 0 }}>
@@ -209,6 +212,7 @@ export default function LienDeskEmailSheet(p: LienDeskEmailSheetProps) {
                 srcDoc={previewFrameHtml(html)}
                 style={{ width: '100%', height: p.isMobile ? 220 : 260, border: '1px solid var(--border)', borderRadius: 9, background: 'var(--bg-page)', display: 'block' }}
               />
+              {p.isMobile ? <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.4, marginTop: 6 }}>{FROM_WORDS}</div> : null}
             </div>
           </div>
         </div>
@@ -219,9 +223,7 @@ export default function LienDeskEmailSheet(p: LienDeskEmailSheetProps) {
               {error}
             </div>
           ) : null}
-          <span style={{ flex: '1 1 260px', fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
-            Sends from ClickTooling, and replies come to you. Mail to anyone outside the company goes from your own inbox, so use Send… for that.
-          </span>
+          {p.isMobile ? null : <span style={{ flex: '1 1 260px', fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>{FROM_WORDS}</span>}
           <button type="button" onClick={() => void send('test')} disabled={busy != null} data-lien-share-test style={{ ...plainBtn, opacity: busy ? 0.6 : 1, minHeight: p.isMobile ? 44 : undefined }}>
             {busy === 'test' ? 'Sending…' : 'Email me a test'}
           </button>

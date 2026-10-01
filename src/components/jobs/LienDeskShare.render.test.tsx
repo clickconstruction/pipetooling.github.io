@@ -54,8 +54,8 @@ const data = {
   gcsById: { 'gc-sp': { id: 'gc-sp', name: 'Southern Post Construction' }, 'gc-kn': { id: 'gc-kn', name: 'Knight Contracting' }, 'gc-rmc': { id: 'gc-rmc', name: 'RMC- Dudley Mason' } },
 } as unknown as LienDeskData
 
-type Nav = Navigator & { share?: unknown }
-const nav = navigator as Nav
+// jsdom has no share sheet; the tests that need one add it and remove it again.
+const nav = navigator as unknown as { share?: unknown }
 let writeText: ReturnType<typeof vi.fn>
 
 beforeEach(() => {
@@ -130,6 +130,16 @@ describe('LienDeskShare — the panel', () => {
     await settle()
     expect(writeText).toHaveBeenCalledWith(preview())
     expect(await screen.findByText('Copied. Paste it into a text, an email or a chat.')).toBeTruthy()
+  })
+
+  it('a refused copy says the one thing left to do, never a share sheet that was not there', async () => {
+    writeText.mockRejectedValueOnce(Object.assign(new Error('Document is not focused.'), { name: 'NotAllowedError' }))
+    renderShare()
+    await settle()
+    fireEvent.click(document.querySelector('[data-lien-share-send]')!)
+    await settle()
+    expect(await screen.findByText('Could not copy the message. Select it and copy it by hand.')).toBeTruthy()
+    expect(screen.queryByText(/share sheet/)).toBeNull()
   })
 
   it('counsel’s line copies the firm’s live link', async () => {

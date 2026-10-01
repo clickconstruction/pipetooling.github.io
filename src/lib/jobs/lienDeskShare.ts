@@ -34,10 +34,18 @@ const LIEN_PILES_TO_FILE: ReadonlySet<LienAffidavitPile> = new Set<LienAffidavit
 /** Retainage notices whose clock runs and that have not gone out. */
 const RETAINAGE_TO_SEND: ReadonlySet<LienRetainagePile> = new Set<LienRetainagePile>(['needs_owner', 'to_draft', 'awaiting', 'ready', 'held'])
 
+/** A service visit's name ends with its own number, "(HCP 858)"; the message already leads with 858, so it says it once. */
+export function lienShareJobName(number: string, name: string): string {
+  const n = number.trim()
+  if (!n) return name.trim()
+  return name.replace(new RegExp(`\\s*\\((?:HCP|#)\\s*${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\)\\s*$`, 'i'), '').trim()
+}
+
 function jobWords(data: LienDeskData, jobId: string): { number: string; name: string } {
   const j = data.jobsById[jobId]
   if (!j) return { number: jobId.slice(0, 8), name: '' }
-  return { number: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—', name: (j.job_name ?? '').trim() }
+  const number = effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'
+  return { number, name: lienShareJobName(number, j.job_name ?? '') }
 }
 
 function gcName(data: LienDeskData, gcId: string | null): string {

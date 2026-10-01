@@ -252,13 +252,17 @@ function retainageLine(p: LienStatusPayload): string {
   return `Retainage notices to send: ${count(r.jobs, 'job', 'jobs')}, ${money(r.held)} held${r.firstYmd ? `, the first by ${lienStatusMonthDay(r.firstYmd)}` : ''}.`
 }
 
-function toDoSentences(p: LienStatusPayload): string[] {
+/** The office's chores, one sentence each; `explain` adds why a property kind matters (the email has the room). */
+function toDoSentences(p: LienStatusPayload, explain = false): string[] {
   const draft = p.jobs.filter((j) => j.where === 'draft').length
   const owners = p.jobs.filter((j) => j.where === 'owner').length
   const out: string[] = []
   if (draft) out.push(`Draft ${count(draft, 'notice', 'notices')}.`)
   if (owners) out.push(`Find ${count(owners, 'owner', 'owners')} of record.`)
-  if (p.kindsUnset) out.push(`Set the property kind on ${count(p.kindsUnset, 'job', 'jobs')}.`)
+  if (p.kindsUnset) {
+    const why = p.kindsUnset === 1 ? ' If it is a home, its dates come a month sooner.' : ' If any is a home, its dates come a month sooner.'
+    out.push(`Set the property kind on ${count(p.kindsUnset, 'job', 'jobs')}.${explain ? why : ''}`)
+  }
   if (p.trackingOwed) out.push(`Type the tracking number on ${count(p.trackingOwed, 'mailed notice', 'mailed notices')}.`)
   return out
 }
@@ -375,9 +379,8 @@ export function lienStatusEmailText(p: LienStatusPayload, o: LienStatusEmailOpti
   }
   const ret = retainageLine(p)
   if (ret) L.push('', ret)
-  const todo = toDoSentences(p)
-  const kinds = kindsSentence(p)
-  if (todo.length || kinds) L.push('', 'Still to do:', ...todo.map((s) => `• ${s}`), ...(kinds ? [kinds] : []))
+  const todo = toDoSentences(p, true)
+  if (todo.length) L.push('', 'Still to do:', ...todo.map((s) => `• ${s}`))
   const past = pastWindowSentence(p, Boolean(p.gc))
   if (past) L.push('', past)
   L.push('', `Open the Lien desk: ${deskUrl(p, o.appUrl)}`, '', `${o.senderName} sent this from the Lien desk in ClickTooling. Reply to write back to ${o.senderName}. These numbers are from ${lienStatusAsOfWords(p.asOf)}. The desk always has today’s.`)
@@ -390,12 +393,13 @@ const FAINT = '#a8a29e'
 const RULE = '#e7e5e4'
 const ROW_RULE = '#f0efee'
 
+/** One figure tile. Inline blocks with a floor width: three across a desktop email, two then one on a phone, no media query needed. */
 function tile(value: string, label: string, tone: 'plain' | 'amber' | 'blue'): string {
   const c = tone === 'amber' ? { bg: '#fffbeb', border: '#fcd34d', ink: '#92400e' } : tone === 'blue' ? { bg: '#eff6ff', border: '#93c5fd', ink: '#1e40af' } : { bg: '#ffffff', border: RULE, ink: INK }
-  return `<td width="33%" style="padding:0 4px;vertical-align:top;"><div style="background:${c.bg};border:1px solid ${c.border};border-radius:8px;padding:10px 12px;">
-    <div style="font-size:19px;font-weight:bold;color:${c.ink};">${esc(value)}</div>
+  return `<div class="lsTile" style="display:inline-block;vertical-align:top;box-sizing:border-box;width:31.3%;min-width:150px;margin:0 2% 8px 0;background:${c.bg};border:1px solid ${c.border};border-radius:8px;padding:10px 12px;font-size:13px;">
+    <div style="font-size:19px;font-weight:bold;color:${c.ink};white-space:nowrap;">${esc(value)}</div>
     <div style="font-size:12px;color:${tone === 'plain' ? MUTED : c.ink};">${esc(label)}</div>
-  </div></td>`
+  </div>`
 }
 
 function sectionTitle(text: string): string {
@@ -409,11 +413,9 @@ export function lienStatusEmailHtml(p: LienStatusPayload, o: LienStatusEmailOpti
   const url = esc(deskUrl(p, o.appUrl))
   const groups = lienStatusGroups(p.jobs)
   const tiles = p.jobs.length
-    ? `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin:14px 0 0;"><tr>
-        ${tile(money(f.owed), p.jobs.length === 1 ? 'owed on that job' : 'owed on those jobs', 'plain')}
+    ? `<div style="margin:14px 0 0;font-size:0;line-height:1.3;">${tile(money(f.owed), p.jobs.length === 1 ? 'owed on that job' : 'owed on those jobs', 'plain')}
         ${f.firstYmd && f.firstDays != null ? tile(lienStatusMonthDay(f.firstYmd), `first mail-by date, ${inDaysWords(f.firstDays)}`, 'amber') : tile('—', 'no mail-by date open', 'plain')}
-        ${tile(f.waiting.length ? `${f.waiting.length} · ${money(f.waiting.reduce((s, j) => s + j.owed, 0))}` : '0', o.readerIsLeader ? 'wait for your approval' : 'wait for approval', f.waiting.length ? 'blue' : 'plain')}
-      </tr></table>`
+${f.waiting.length ? tile(`${f.waiting.length} · ${money(f.waiting.reduce((s, j) => s + j.owed, 0))}`, o.readerIsLeader ? 'wait for your approval' : 'wait for approval', 'blue') : tile('None', 'waiting for approval', 'plain')}</div>`
     : ''
   const waiting = f.waiting.length
     ? `${sectionTitle(o.readerIsLeader ? 'Waiting for your approval' : 'Waiting for approval')}
@@ -456,13 +458,13 @@ export function lienStatusEmailHtml(p: LienStatusPayload, o: LienStatusEmailOpti
     : ''
   const retText = retainageLine(p)
   const retainage = retText ? `${sectionTitle('Retainage notices')}<p style="margin:0;font-size:13.5px;line-height:1.5;color:#44403c;">${esc(retText.replace(/^Retainage notices to send: /, ''))}</p>` : ''
-  const todo = toDoSentences(p)
-  const kinds = kindsSentence(p)
-  const toDo = todo.length || kinds ? `${sectionTitle('Still to do')}${todo.map((s) => `<div style="font-size:13px;line-height:1.6;color:#44403c;">&bull; ${esc(s)}</div>`).join('')}${kinds ? `<p style="margin:6px 0 0;font-size:13px;line-height:1.5;color:#44403c;">${esc(kinds)}</p>` : ''}` : ''
+  const todo = toDoSentences(p, true)
+  const toDo = todo.length ? `${sectionTitle('Still to do')}${todo.map((s) => `<div style="font-size:13px;line-height:1.6;color:#44403c;">&bull; ${esc(s)}</div>`).join('')}` : ''
   const pastText = pastWindowSentence(p, Boolean(p.gc))
   const past = pastText ? `${sectionTitle('Past the window')}<p style="margin:0;font-size:13.5px;line-height:1.5;color:#44403c;">${esc(pastText)}</p>` : ''
   const lines = headline(p)
   return `
+  <style>@media (max-width: 520px) { .lsTile { width: 100% !important; min-width: 0 !important; margin-right: 0 !important; } }</style>
   <div style="background:#f5f5f4;padding:16px;">
     <div style="margin:0 auto;max-width:640px;background:#ffffff;border:1px solid ${RULE};border-radius:8px;padding:24px 26px;font-family:Arial,Helvetica,sans-serif;color:${INK};">
       ${note ? `<div style="background:#eff6ff;border-radius:8px;padding:10px 13px;margin:0 0 18px;font-size:14px;line-height:1.45;color:#1e3a8a;"><b>${esc(o.senderName)} wrote:</b> ${esc(note)}</div>` : ''}

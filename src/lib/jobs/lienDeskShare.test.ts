@@ -4,7 +4,7 @@ import type { LienCalendarJob } from './lienCalendar'
 import { buildLienDeskQueue, summarizeLienDeskForNeedsYou, type LienDeskItemRow, type LienNoticeMonthRow } from './lienDesk'
 import { buildLienAffidavitQueue, type LienAffidavitRow } from './lienDeskAffidavits'
 import { EMPTY_LIEN_RETAINAGE_QUEUE } from './lienDeskRetainage'
-import { buildLienStatusPayload, lienShareScopeOptions } from './lienDeskShare'
+import { buildLienStatusPayload, lienShareJobName, lienShareScopeOptions } from './lienDeskShare'
 import { lienStatusText } from '../../../supabase/functions/_shared/lienDeskStatus'
 
 const TODAY = '2026-10-01'
@@ -165,5 +165,15 @@ describe('lienShareScopeOptions — the What to send menu', () => {
 
   it('offers only the whole desk before the desk loads', () => {
     expect(lienShareScopeOptions(null)).toEqual([{ key: 'all', name: 'Everything on the desk', jobs: 0, owed: 0, firstYmd: '', waiting: 0, needOwner: 0 }])
+  })
+})
+
+describe('lienShareJobName', () => {
+  it('drops a trailing (HCP n) that repeats the number the line leads with, and nothing else', () => {
+    expect(lienShareJobName('858', 'Service Visit — 9703 Lenox Hl (HCP 858)')).toBe('Service Visit — 9703 Lenox Hl')
+    expect(lienShareJobName('858', 'Service Visit (HCP 859)')).toBe('Service Visit (HCP 859)')
+    expect(lienShareJobName('922', 'Michael Palmer (Ivan Kopecky)')).toBe('Michael Palmer (Ivan Kopecky)')
+    expect(lienShareJobName('1046 PLUM', 'Pretest (#1046 PLUM)')).toBe('Pretest')
+    expect(lienShareJobName('', ' Dudley Mason ')).toBe('Dudley Mason')
   })
 })

@@ -11,6 +11,7 @@ import LienDeskSharePanel from './LienDeskSharePanel'
 import LienDeskEmailSheet from './LienDeskEmailSheet'
 
 const COPIED = 'Copied. Paste it into a text, an email or a chat.'
+const COPY_FAILED = 'Could not copy the message. Select it and copy it by hand.'
 
 function namesWords(names: readonly string[]): string {
   if (names.length <= 1) return names[0] ?? 'them'
@@ -65,12 +66,12 @@ export default function LienDeskShare({
 
   const copy = (value: string, done: string) => {
     if (!navigator.clipboard) {
-      showToast('Could not copy. Select the message and copy it by hand.', 'error')
+      showToast(COPY_FAILED, 'error')
       return
     }
     navigator.clipboard.writeText(value).then(
       () => showToast(done, 'success'),
-      () => showToast('Could not copy. Select the message and copy it by hand.', 'error'),
+      () => showToast(COPY_FAILED, 'error'),
     )
   }
 
@@ -108,7 +109,8 @@ export default function LienDeskShare({
         void runJobShare({ title: lienStatusSubject(payload), text, url }, navigator).then((outcome) => {
           if (outcome === 'shared') onClose()
           else if (outcome === 'copied') showToast(COPIED, 'success')
-          else if (outcome === 'failed') showToast('Could not open the share sheet. Press Copy instead.', 'error')
+          // 'failed' = no share sheet took it and the copy was refused too: say the one thing left to do.
+          else if (outcome === 'failed') showToast(COPY_FAILED, 'error')
         })
       }}
       onCopy={() => copy(`${text}\n${url}`, COPIED)}

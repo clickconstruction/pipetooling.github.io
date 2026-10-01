@@ -204,6 +204,18 @@ describe('the team email', () => {
     expect(lienStatusEmailHtml(OCT1, { ...o, readerIsLeader: false })).toContain('Waiting for approval')
   })
 
+  it('one GC’s email says the kind point once, under Still to do, and shows no empty approvals tile', () => {
+    const text = lienStatusEmailText(knight(), { ...o, note: '' })
+    expect(text).toContain('• Set the property kind on 3 jobs. If any is a home, its dates come a month sooner.')
+    expect(text).not.toContain('Knight Contracting jobs have no property kind set')
+    expect(text.match(/property kind/g)).toHaveLength(1)
+    const html = lienStatusEmailHtml(knight(), { ...o, note: '' })
+    expect(html.match(/property kind/g)).toHaveLength(1)
+    expect(html).toContain('>None</div>')
+    expect(html).toContain('waiting for approval')
+    expect(html).not.toContain('wait for your approval')
+  })
+
   it('escapes every name it prints', () => {
     const bad = { ...OCT1, jobs: [job('1', '<img src=x onerror=alert(1)>', 'GC & "Co"', 10, ['2026-09'], 'draft')], liens: [] }
     const html = lienStatusEmailHtml(bad, { ...o, note: '<b>hi</b>' })
