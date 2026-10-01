@@ -52,6 +52,8 @@ begin
 end;
 $function$;
 
+revoke all on function public.jobs_ledger_payments_stamp_actor() from public, anon, authenticated;
+
 drop trigger if exists jobs_ledger_payments_stamp_actor on public.jobs_ledger_payments;
 create trigger jobs_ledger_payments_stamp_actor
   before insert or update of mercury_transaction_id on public.jobs_ledger_payments
@@ -214,7 +216,9 @@ begin
 end;
 $function$;
 
-revoke all on function public.list_ar_deposit_trails(uuid[]) from public;
+-- Supabase's default privileges grant every new public function to anon and authenticated;
+-- revoking from PUBLIC does not remove those, so each role is named (20260930230000 left anon on).
+revoke all on function public.list_ar_deposit_trails(uuid[]) from public, anon;
 grant execute on function public.list_ar_deposit_trails(uuid[]) to authenticated;
 
 comment on function public.list_ar_deposit_trails(uuid[]) is
@@ -337,5 +341,7 @@ BEGIN
 END;
 $function$;
 
-revoke all on function public.mark_invoice_paid_from_stripe(uuid, text, text, date, text, uuid) from public;
+-- Service role only, as live (proacl {postgres, service_role} on 2026-10-01). It marks invoices paid,
+-- so the default anon/authenticated grants on a re-created function must not survive.
+revoke all on function public.mark_invoice_paid_from_stripe(uuid, text, text, date, text, uuid) from public, anon, authenticated;
 grant execute on function public.mark_invoice_paid_from_stripe(uuid, text, text, date, text, uuid) to service_role;
