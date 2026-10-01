@@ -30,7 +30,8 @@ import { SubmittalTakeoffPicker } from './SubmittalTakeoffPicker'
 import { loadTakeoffCandidates, saveTakeoffChoices, type TakeoffCandidatesLoad } from '../../lib/submittals/takeoffCandidatesIo'
 import { candidateToItemInserts, rowSplitTags, splitExplanation, type TakeoffCandidate } from '../../lib/submittals/takeoffCandidates'
 import { carryPartInsert, copyPartInsert, formatPartQty, partCallsLine, partsByItem, partsFromPieces, rollUpFromParts, submittedParts, type PartDraft, type SubmittalPartInsert, type SubmittalPartRow } from '../../lib/submittals/itemParts'
-import { clearEnteredCallsOnParts, enterCallOnParts, insertItemParts, loadItemParts, saveItemParts } from '../../lib/submittals/itemPartsIo'
+import { applyPartWrites, clearEnteredCallsOnParts, enterCallOnParts, insertItemParts, loadItemParts, moveProcurementLines, saveItemParts, writeRowCallFromParts } from '../../lib/submittals/itemPartsIo'
+import { foldSuggestions, foldWrites, planTakeoffRefresh, takeoffRefreshWrites } from '../../lib/submittals/refreshFromTakeoff'
 import { SplitRuleModal } from './SplitRuleModal'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { procurementItemsFrom } from '../../lib/submittals/procurementLogIo'
@@ -56,6 +57,7 @@ import { ProductStatusChip } from './ProductStatusChip'
 import { SubmittalItemEditDialog, type SubmittalItemPatch } from './SubmittalItemEditDialog'
 import { SubmittalPartsCell } from './SubmittalPartsCell'
 import { SubmittalHouseFileModal } from './SubmittalHouseFileModal'
+import { SubmittalFoldModal, SubmittalTakeoffRefreshModal } from './SubmittalRefreshModals'
 import { matchFileToRows, pairParts, defaultFileChoice, planFileApply, readHouseFile, type FileTagChoice, type FileTagMatch, type HouseFileRead } from '../../lib/submittals/houseFileParts'
 import { SubmittalApproveAllDialog, type ApproveAllChoice } from './SubmittalApproveAllDialog'
 import { SubmittalSheetStrip, type ThumbState } from './SubmittalSheetStrip'
@@ -214,6 +216,9 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   const [takeoffPicker, setTakeoffPicker] = useState<'build' | 'add' | null>(null)
   // v2.4118 · "When a row can split", opened from the rows' footer.
   const [splitRuleOpen, setSplitRuleOpen] = useState(false)
+  /** 2026-10-01 · a draft catching up: the takeoff's parts on its rows, a hand row folded into a fixture. */
+  const [refreshOpen, setRefreshOpen] = useState(false)
+  const [foldFrom, setFoldFrom] = useState<{ fromId: string; intoId: string | null } | null>(null)
   const [sectionToggles, setSectionToggles] = useState<Partial<Record<JourneyStageKey, boolean>>>({})
   // Procure (v2.4083): the newest revision's rows as the log reads them, and the counts the strip's pill lights on.
   const [procItems, setProcItems] = useState<ProcurementItemSource[]>([])
@@ -689,6 +694,73 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       showToast(`Split into ${tags.join(', ')}.`, 'success')
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not split the row'), 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /**
+   * 2026-10-01 · Refresh from the takeoff: each draft row the takeoff now reads differently takes
+   * its parts (refreshFromTakeoff.ts); a part the takeoff still has keeps what was set on it.
+   */
+  async function refreshRowsFromTakeoff() {
+    if (!bidId || !selectedRev || asRevisionStatus(selectedRev.status) !== 'draft' || !takeoff) return
+    setBusy(true)
+    try {
+      const plan = planTakeoffRefresh(items, partsOf, takeoff.candidates)
+      const byCountRow = new Map(takeoff.candidates.map((c) => [c.countRowId, c] as const))
+      let n = 0
+      for (const r of plan.rows) {
+        const it = items.find((x) => x.id === r.itemId)
+        const c = it?.source_count_row_id ? byCountRow.get(it.source_count_row_id) : undefined
+        if (!it || !c) continue
+        await applyPartWrites(db, it.id, takeoffRefreshWrites(partsOf.get(it.id) ?? [], c, it.id, bidId))
+        n++
+      }
+      setRefreshOpen(false)
+      setItems(await loadItems(selectedRev.id))
+      showToast(`${n} row${n === 1 ? '' : 's'} took the takeoff’s parts.`, 'success')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not refresh from the takeoff'), 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+  async function openTakeoffRefresh() {
+    if (!bidId) return
+    // The takeoff read fresh, so the list shows what it says now.
+    try {
+      setTakeoff(await loadTakeoffCandidates(db, bidId, { selectedVersionId: bidsRef.current.find((b) => b.id === bidId)?.selected_bid_version_id ?? null }))
+    } catch {
+      // The takeoff already loaded stands.
+    }
+    setRefreshOpen(true)
+  }
+
+  /**
+   * 2026-10-01 · Make it a part of…: a draft row typed by hand for another row's fixture (BP375's
+   * carriers) becomes a part of that row; its order dates move onto the part, then the row leaves.
+   */
+  async function foldRowInto(fromId: string, intoId: string) {
+    const from = items.find((x) => x.id === fromId)
+    const into = items.find((x) => x.id === intoId)
+    if (!bidId || !selectedRev || asRevisionStatus(selectedRev.status) !== 'draft' || !from || !into) return
+    setBusy(true)
+    try {
+      const plan = foldWrites(from, into, partsOf.get(into.id) ?? [], bidId, () => crypto.randomUUID())
+      await applyPartWrites(db, into.id, plan)
+      // The row's call reads its parts: a carrier the GC has not called leaves the fixture open.
+      await writeRowCallFromParts(db, into.id)
+      // A tag another row still carries keeps its own line.
+      const moves = plan.moveLines.filter((m) => m.tag === into.tag.trim() || !items.some((x) => x.id !== from.id && x.tag.trim() === m.tag))
+      await moveProcurementLines(db, bidId, moves, into.tag.trim())
+      const { error } = await db.from('bid_submittal_items').delete().eq('id', from.id)
+      if (error) throw error
+      setFoldFrom(null)
+      setItems(await loadItems(selectedRev.id))
+      showToast(`${from.tag.trim() || 'The row'} is now a part of ${into.tag.trim() || 'the row'}.`, 'success')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not make it a part'), 'error')
     } finally {
       setBusy(false)
     }
@@ -1701,6 +1773,9 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
 
   const bid = selectedBid
   const isDraft = selectedRev ? asRevisionStatus(selectedRev.status) === 'draft' : false
+  // 2026-10-01 · what a draft could catch up on: rows the takeoff reads differently, hand rows that read like another row's part.
+  const refreshPlan = isDraft && takeoff ? planTakeoffRefresh(items, partsOf, takeoff.candidates) : { rows: [], skipped: [] }
+  const foldHints = isDraft ? foldSuggestions(items, partsOf) : []
 
   // The road (v2.4090): a done stage folds to its line; the current stage and the stage it reads from stay open;
   // "Open every stage" (remembered per device) and the walkthrough open everything.
@@ -2082,6 +2157,11 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                                   Split
                                 </button>
                               ) : null}
+                              {isDraft && !it.source_count_row_id && (partsOf.get(it.id) ?? []).length === 0 && items.length > 1 ? (
+                                <button type="button" aria-label={`Make ${it.tag.trim() || 'this row'} a part of another row`} disabled={busy} onClick={() => setFoldFrom({ fromId: it.id, intoId: foldHints.find((h) => h.fromId === it.id)?.intoId ?? null })} title="Fold this row into another row's fixture, as one of its parts" style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem', marginLeft: '0.3rem' }} data-testid="fold-row">
+                                  Part of…
+                                </button>
+                              ) : null}
                               {isDraft ? (
                                 <button type="button" aria-label={`Remove ${it.tag.trim() || 'accessory'}`} disabled={busy} onClick={() => void removeRow(it)} title={it.source_count_row_id ? 'Off this draft, and unticked on the takeoff list' : 'Off this draft'} style={{ ...btn, padding: '0.2rem 0.5rem', fontSize: '0.75rem', marginLeft: '0.3rem', color: 'var(--text-muted)' }}>
                                   ×
@@ -2117,6 +2197,31 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                     </p>
                   )
                 })() : null}
+                {isDraft && (refreshPlan.rows.length > 0 || foldHints.length > 0) ? (
+                  // 2026-10-01 · what this draft could catch up on, said where the rows are.
+                  <div style={{ marginTop: '0.5rem', padding: '0.5rem 0.7rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-blue-tint)', display: 'flex', flexDirection: 'column', gap: '0.35rem' }} data-testid="draft-catch-up">
+                    {refreshPlan.rows.length > 0 ? (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem 0.6rem', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-base)' }}>
+                        <span style={{ flex: '1 1 16rem', minWidth: 0 }}>
+                          The takeoff reads differently for <b style={{ color: 'var(--text-strong)' }}>{refreshPlan.rows.map((r) => r.tag).slice(0, 4).join(', ')}{refreshPlan.rows.length > 4 ? ` and ${refreshPlan.rows.length - 4} more` : ''}</b>.
+                        </span>
+                        <button type="button" disabled={busy} onClick={() => void openTakeoffRefresh()} style={{ ...btn, borderColor: '#2563eb', color: 'var(--text-blue-700)', fontWeight: 600 }} data-testid="refresh-from-takeoff">
+                          Refresh from the takeoff…
+                        </button>
+                      </div>
+                    ) : null}
+                    {foldHints.map((h) => (
+                      <div key={h.fromId} style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem 0.6rem', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-base)' }} data-testid="fold-hint">
+                        <span style={{ flex: '1 1 16rem', minWidth: 0 }}>
+                          <b style={{ color: 'var(--text-strong)' }}>{h.fromTag}</b> reads like a part of <b style={{ color: 'var(--text-strong)' }}>{h.intoTag}</b>.
+                        </span>
+                        <button type="button" disabled={busy} onClick={() => setFoldFrom({ fromId: h.fromId, intoId: h.intoId })} style={{ ...btn, borderColor: '#2563eb', color: 'var(--text-blue-700)', fontWeight: 600 }} data-testid="fold-hint-open">
+                          Make it a part…
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '0.5rem' }}>
                   <button type="button" disabled={busy} onClick={() => fileInput.current?.click()} style={btn} title="Save the house's PDF on this version. Then put each page on its row" data-tour="submittals-drop">
                     Drop a vendor PDF
@@ -2471,6 +2576,10 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
           onSave={(c) => void approveAll(c)}
           onClose={() => setApprovingAll(false)}
         />
+      ) : null}
+      {refreshOpen ? <SubmittalTakeoffRefreshModal rows={refreshPlan.rows} skipped={refreshPlan.skipped} busy={busy} onConfirm={() => void refreshRowsFromTakeoff()} onClose={() => setRefreshOpen(false)} /> : null}
+      {foldFrom && items.some((x) => x.id === foldFrom.fromId) ? (
+        <SubmittalFoldModal from={items.find((x) => x.id === foldFrom.fromId)!} rows={items} partsByItem={partsOf} suggestedIntoId={foldFrom.intoId} busy={busy} onConfirm={(intoId) => void foldRowInto(foldFrom.fromId, intoId)} onClose={() => setFoldFrom(null)} />
       ) : null}
       {splitRuleOpen ? <SplitRuleModal examples={splitExplanation(takeoffCandidatesForPicker)} onClose={() => setSplitRuleOpen(false)} /> : null}
       {takeoffPicker && takeoff ? (

@@ -97,7 +97,8 @@ export function SubmittalPartsEditor({
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
               <label style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center', fontSize: '0.8125rem', color: d.on_submittal ? 'var(--text-strong)' : 'var(--text-muted)', cursor: canEditProduct ? 'pointer' : 'default' }} title="Off: order only. It is bought, and it shows on the procurement log, but not on the GC's submittal.">
                 <input type="checkbox" aria-label={`The GC sees part ${i + 1}`} checked={d.on_submittal} disabled={!canEditProduct} onChange={(e) => set(i, { on_submittal: e.target.checked })} />
-                {d.on_submittal ? 'GC sees it' : 'Order only'}
+                GC sees it
+                {d.on_submittal ? null : <span style={small}>· no, order only</span>}
               </label>
               <label style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center', ...small }}>
                 each fixture
@@ -123,7 +124,7 @@ export function SubmittalPartsEditor({
                 }}
                 style={{ ...inputStyle, width: '6.5rem', borderColor: leadBad ? '#dc2626' : 'var(--border-strong)' }}
               />
-              <select aria-label={`Stage for part ${i + 1}`} value={d.stage ?? ''} onChange={(e) => set(i, { stage: (e.target.value || null) as PartStage | null })} style={{ ...inputStyle, maxWidth: '9rem' }} title="When it is needed on the job. Blank: the fixture's stage.">
+              <select aria-label={`Stage for part ${i + 1}`} value={d.stage ?? ''} onChange={(e) => set(i, { stage: (e.target.value || null) as PartStage | null })} style={{ ...inputStyle, maxWidth: '11rem' }} title="When it is needed on the job. Blank: the fixture's stage.">
                 <option value="">the fixture's stage</option>
                 {(Object.keys(STAGE_WORDS) as PartStage[]).map((k) => (
                   <option key={k} value={k}>{STAGE_WORDS[k]}</option>

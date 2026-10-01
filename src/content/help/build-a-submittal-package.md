@@ -2,7 +2,7 @@
 title: build a submittal package
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: to order, by house, mark ordered, qty, read its parts, house file, parts list, procurement log, procurement, released, ordered, lead time, expected, required, float, order by, delivered, send update, submittal, submittals, walkthrough, tour, where you are, journey, next step, cut sheet, cut sheets, fixture schedule, specified, submitted, alternate, superseded, equal, design change, missing, accessory, revision, rev, package, vendor pdf, in lieu of, GC approval, product data
+keywords: refresh from the takeoff, make it a part, part of, carrier, to order, by house, mark ordered, qty, read its parts, house file, parts list, procurement log, procurement, released, ordered, lead time, expected, required, float, order by, delivered, send update, submittal, submittals, walkthrough, tour, where you are, journey, next step, cut sheet, cut sheets, fixture schedule, specified, submitted, alternate, superseded, equal, design change, missing, accessory, revision, rev, package, vendor pdf, in lieu of, GC approval, product data
 ---
 A submittal is the list of products you will install. The GC approves it before anything is ordered.
 
@@ -54,6 +54,17 @@ A row from the takeoff lists its parts, one per line. The maker and the model co
 
 :::example LAV-1 on SpaceX
 LAV-1 was priced from *LAV 1 assembly SPACEX*. The row used to read just that name. Now it lists the TSL lavatory, the TOTO faucet and the Bobrick soap dispenser. A quiet line under them reads *Ordered, not submitted: supply × 2, grid drain, P-trap, stop, flange*.
+:::
+
+## Catch a draft up
+
+A draft can fall behind its takeoff. Maybe an assembly opened into its parts after the row was built. Maybe someone switched which parts the GC sees. A blue box over the row buttons names those rows. Tap {{button:outline|Refresh from the takeoff…}}. A list shows each row as it reads now and as it will read. Tap {{button:blue|Refresh 2 rows}}. Each row takes the takeoff's parts. A part the takeoff still has keeps its house, lead time, stage, pages and call. A row whose parts came from the house's file is left as it is.
+
+A row typed by hand for another fixture can join that fixture as a part. Carriers often come in this way, with a note like *Carrier for WC-1 and WC-2*. The blue box then reads *CAR-1 reads like a part of WC-1, WC-2*. Tap {{button:outline|Make it a part…}}. Or tap **Part of…** on any row typed by hand. Pick the row it belongs to. The window shows what that row will list for the GC. Tap {{button:blue|Make it a part of WC-1}}. The carrier keeps its house, lead time, cut sheet pages and order dates. Its own row leaves the draft. The fixture's call opens again until the GC calls the carrier.
+
+:::example A draft that fell behind
+The takeoff reads differently for **LAV-1**. {{button:outline|Refresh from the takeoff…}}
+**CAR-1** reads like a part of **WC-1, WC-2**. {{button:outline|Make it a part…}}
 :::
 
 ## Split a combined fixture

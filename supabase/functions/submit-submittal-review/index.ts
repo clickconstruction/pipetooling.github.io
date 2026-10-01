@@ -177,7 +177,7 @@ serve(async (req) => {
         submittal_id: v.submittalId,
         person_id: person.id,
         author_kind: 'system',
-        body: `${person.name} ${decisionEntryBody(counts)}`,
+        body: `${person.name} ${decisionEntryBody(counts, { rows: new Set(applied.map((d) => d.itemId)).size, parts: applied.filter((d) => d.partId).length })}`,
         kind: 'decision',
         metadata: { counts, rev_number: s?.rev_number ?? null, by_person_id: person.id },
       })
