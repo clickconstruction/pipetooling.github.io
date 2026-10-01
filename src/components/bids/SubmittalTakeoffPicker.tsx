@@ -80,14 +80,14 @@ export function SubmittalTakeoffPicker({ mode, revLabel, candidates: given, busy
   const confirm = () => onConfirm(candidates.filter(isOn).map((c) => ({ ...c, split: isSplit(c) })), ticks, splits, pieceKeys)
 
   return (
-    <div role="presentation" onMouseDown={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+    <div role="presentation" onMouseDown={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 10060, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
       <div role="dialog" aria-modal="true" aria-label="Choose from the takeoff" onMouseDown={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 8, maxWidth: 820, width: '100%', maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
-        <div style={{ padding: '1rem 1.25rem 0.5rem', display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
-          <div>
+        <div style={{ padding: '1rem 1.25rem 0.5rem', display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'flex-start' }}>
+          <div style={{ flex: '1 1 auto', minWidth: 0 }}>
             <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'var(--text-strong)' }}>Choose from the takeoff</h3>
             <p style={{ ...quiet, margin: '0.2rem 0 0' }}>One row per fixture. Every part under it is bought. An assembly opens into the parts inside it. Stops, supplies, traps and flanges start as order only. They go on the procurement log but not on the GC’s submittal. Tap a part to switch it. Your choices are remembered on the bid.</p>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close" style={{ ...btn, padding: '0.2rem 0.55rem' }}>×</button>
+          <button type="button" onClick={onClose} aria-label="Close" style={{ ...btn, padding: '0.2rem 0.55rem', flexShrink: 0 }}>×</button>
         </div>
         <div style={{ overflowY: 'auto', padding: '0 1.25rem', flex: 1 }}>
           {groups.map(({ g, items }) => {

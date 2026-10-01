@@ -166,11 +166,16 @@ export function messageVerdict(c: MessageContext): MessageVerdict {
   return { ok: true }
 }
 
-/** The system entry a decision posts into the thread: "decided 3 rows · 2 revise · 1 reject". */
-export function decisionEntryBody(counts: { approved: number; revise: number; rejected: number }): string {
+/**
+ * The system entry a decision posts into the thread: "decided 3 rows · 2 revise · 1 reject". When
+ * calls landed on parts, `scope` names the rows and the parts, so two parts on one row read
+ * "decided 1 row · 2 parts · 1 approve · 1 revise", not "2 rows".
+ */
+export function decisionEntryBody(counts: { approved: number; revise: number; rejected: number }, scope?: { rows: number; parts: number }): string {
   const n = counts.approved + counts.revise + counts.rejected
   const parts = [counts.approved ? `${counts.approved} approve` : '', counts.revise ? `${counts.revise} revise` : '', counts.rejected ? `${counts.rejected} reject` : ''].filter(Boolean)
-  return `decided ${n} row${n === 1 ? '' : 's'}${parts.length ? ` · ${parts.join(' · ')}` : ''}`
+  const what = scope && scope.parts > 0 ? `${scope.rows} row${scope.rows === 1 ? '' : 's'} · ${scope.parts} part${scope.parts === 1 ? '' : 's'}` : `${n} row${n === 1 ? '' : 's'}`
+  return `decided ${what}${parts.length ? ` · ${parts.join(' · ')}` : ''}`
 }
 
 /** The inbox row's title: "Dana Whitfield (architect) asked about WC-1 on B398 Rev 2". */

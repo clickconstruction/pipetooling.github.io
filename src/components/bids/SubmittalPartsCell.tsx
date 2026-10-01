@@ -29,7 +29,8 @@ export function SubmittalPartsCell({ parts, houseNameById }: { parts: ReadonlyAr
         return (
           <span key={p.id} title={`${p.label}${qty ? ` ${qty} per fixture` : ''}`} style={{ display: 'flex', gap: '0.35rem', alignItems: 'baseline', minWidth: 0, maxWidth: '30rem' }} data-testid="row-part">
             <b style={{ fontWeight: 600, color: 'var(--text-strong)', whiteSpace: 'nowrap' }}>{head}</b>
-            {words ? <span style={{ ...quiet, fontSize: '0.75rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{words}</span> : null}
+            {/* One line, clamped: unlike nowrap, the column can still narrow to fit a tablet. */}
+            {words ? <span style={{ ...quiet, fontSize: '0.75rem', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden', overflowWrap: 'anywhere', minWidth: 0, flex: '1 1 auto' }}>{words}</span> : null}
             {qty ? <span style={{ ...quiet, fontSize: '0.75rem', whiteSpace: 'nowrap' }}>{qty}</span> : null}
             {(p.sheet_pages ?? []).length > 0 ? <span style={{ ...quiet, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }} data-testid="row-part-pages">{formatPages(p.sheet_pages)}</span> : null}
             {p.review_decision && CALL[p.review_decision] ? (
