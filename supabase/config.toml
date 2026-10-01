@@ -584,6 +584,10 @@ verify_jwt = false
 [functions.set-user-password]
 verify_jwt = false
 
+# Dev: change the email someone signs in with (auth.users + public.users together, v2.4344). JWT + users.role=dev in function.
+[functions.change-user-email]
+verify_jwt = false
+
 # Staff/dev: Bearer + getUser + role checks in function (archive / restore / create user / claim dev).
 [functions.archive-user]
 verify_jwt = false

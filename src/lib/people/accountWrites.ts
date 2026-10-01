@@ -191,3 +191,19 @@ export async function createCountToolingSeat(client: Client, args: { userId: str
   await updateUser(client, args.userId, { counttooling_user_id: ctId })
   return ctId
 }
+
+/**
+ * Change the email they sign in with (PR C, v2.4344): `change-user-email` moves the login and
+ * the app's copy together. Before it, an email edit changed only the copy the app shows.
+ */
+export async function changeSignInEmail(client: Client, args: { userId: string; email: string }): Promise<{ email: string; unchanged: boolean; rosterRowsUpdated: number }> {
+  try {
+    const { data, error } = await client.functions.invoke('change-user-email', { body: { user_id: args.userId, email: args.email } })
+    if (error) throw error
+    const res = (data ?? {}) as { error?: string; email?: string; unchanged?: boolean; rosterRowsUpdated?: number }
+    if (res.error) throw new Error(res.error)
+    return { email: res.email ?? args.email, unchanged: Boolean(res.unchanged), rosterRowsUpdated: res.rosterRowsUpdated ?? 0 }
+  } catch (e) {
+    throw new Error(await functionError(e))
+  }
+}

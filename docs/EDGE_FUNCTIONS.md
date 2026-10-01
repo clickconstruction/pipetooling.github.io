@@ -164,6 +164,7 @@ when_to_read:
    - [billed-report-email](#billed-report-email)
    - [sync-salary-sessions](#sync-salary-sessions)
    - [set-user-password](#set-user-password)
+   - [change-user-email](#change-user-email)
    - [claim-dev](#claim-dev)
    - [test-email](#test-email)
    - [create-stripe-invoice](#create-stripe-invoice)
@@ -2824,6 +2825,34 @@ const response = await supabase.functions.invoke('set-user-password', {
 
 ---
 
+### change-user-email
+
+**Purpose** (v2.4344, *Account on the desk* PR C): change the email someone **signs in with**. It moves the login (`auth.users.email`, confirmed so no confirmation email goes out) and the app's copy (`public.users.email`) together, then the account's own roster row (`people` where `account_user_id` is them) only where it still held the old address. Before it, the Active Accounts window's Edit wrote `public.users.email` alone, so the app showed one address while the person signed in with another. If the app's copy cannot be written, the login is put back. The CountTooling seat is joined by uuid, not email, so it needs nothing.
+
+**Endpoint**: `POST /functions/v1/change-user-email` · `verify_jwt = false` in `config.toml` (Bearer + `getUser` + `users.role` checked in the function, like `set-user-password`)
+
+**Required Role**: `dev`
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+
+**Callers**: the person desk's Access & account → Email → **Change…** (`changeSignInEmail` in [`src/lib/people/accountWrites.ts`](../src/lib/people/accountWrites.ts)), and the Active Accounts window's Edit → Save when the email changed (`useActiveAccountsManagement.saveUserEdits`).
+
+#### Request
+
+```typescript
+{ user_id: string; email: string }
+```
+
+The address is checked by the shared rule [`_shared/signInEmailChange.ts`](../supabase/functions/_shared/signInEmailChange.ts) (`checkSignInEmail`: trimmed, lowercased, shaped like an email), the same rule the desk's window uses before it calls.
+
+#### Responses
+
+- **200** `{ success: true, email, previous, rosterRowsUpdated }`, or `{ success: true, unchanged: true, email }` when it is the address they already have.
+- **400** `Type the new email first.` · `That email does not look right.` · `The login did not change: <auth error>` (for example an address another login already has).
+- **401** no or expired session · **403** `Forbidden - Only devs can change a sign-in email` · **404** `No account with that id`.
+- **409** `<name> already signs in with <email>.` when another `public.users` row has the address.
+- **500** `Nothing changed: <error>` when the app's copy failed and the login was put back.
+
 ### claim-dev
 
 **Purpose**: **Break-glass only (v2.706).** Promote the current user to dev *when no usable dev is available* — bootstrapping the first dev, or recovering when every dev is archived or read-only. It is **not** a general self-promotion path: if a usable dev exists, use **Settings → People & accounts** instead.
@@ -4371,6 +4400,7 @@ supabase functions deploy login-as-user
 supabase functions deploy dev-login
 supabase functions deploy send-workflow-notification
 supabase functions deploy set-user-password
+supabase functions deploy change-user-email
 supabase functions deploy test-email
 ```
 

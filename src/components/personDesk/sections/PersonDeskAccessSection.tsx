@@ -6,7 +6,9 @@ import { useConfirmDialog } from '../../../contexts/ConfirmDialogContext'
 import { canArchiveAccount, canEditAccount, canSetSupervision, canSetTrainingMode, type PersonDeskViewer } from '../../../lib/people/personDeskGates'
 import { describeLastSeen } from '../../../lib/people/personKey'
 import { hasSupervisionSwitch } from '../../../lib/people/supervision'
+import { checkSignInEmail } from '../../../../supabase/functions/_shared/signInEmailChange'
 import {
+  changeSignInEmail,
   createCountToolingSeat,
   extraAccessForRole,
   passwordProblem,
@@ -72,6 +74,7 @@ export function PersonDeskAccessSection({
   const [nameError, setNameError] = useState<string | null>(null)
   const [tradesDraft, setTradesDraft] = useState<string[] | null>(null)
   const [passwordOpen, setPasswordOpen] = useState(false)
+  const [emailOpen, setEmailOpen] = useState(false)
 
   if (!user) {
     return (
@@ -256,7 +259,18 @@ export function PersonDeskAccessSection({
         )}
       </DeskRow>
 
-      <DeskRow label="Email" actions={devLock}>
+      <DeskRow
+        label="Email"
+        actions={
+          editable ? (
+            <button type="button" style={deskBtn(BTN, busy != null)} disabled={busy != null} onClick={() => setEmailOpen(true)}>
+              Change…
+            </button>
+          ) : (
+            devLock
+          )
+        }
+      >
         <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{u.email ?? 'no email'}</span>
         {u.email ? <span style={HINT}>They sign in with this address.</span> : null}
       </DeskRow>
@@ -441,6 +455,18 @@ export function PersonDeskAccessSection({
       </DeskRow>
 
       {passwordOpen ? <SetPasswordDialog userId={u.id} name={displayName} onClose={() => setPasswordOpen(false)} /> : null}
+      {emailOpen ? (
+        <ChangeEmailDialog
+          userId={u.id}
+          name={displayName}
+          current={u.email}
+          onClose={() => setEmailOpen(false)}
+          onChanged={() => {
+            setEmailOpen(false)
+            onChanged()
+          }}
+        />
+      ) : null}
     </DeskSection>
   )
 }
@@ -503,6 +529,72 @@ function SetPasswordDialog({ userId, name, onClose }: { userId: string; name: st
           </button>
         </div>
         <p style={{ margin: 0, paddingTop: '0.55rem', borderTop: '1px solid var(--border)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>A sign-in email is often easier. It signs them in without a password.</p>
+      </form>
+    </div>
+  )
+}
+
+/**
+ * Change… (dev, PR C): the email they sign in with. `change-user-email` moves the login and the
+ * app's copy together; the window checks the address with the same rule first.
+ */
+function ChangeEmailDialog({ userId, name, current, onClose, onChanged }: { userId: string; name: string; current: string | null; onClose: () => void; onChanged: () => void }) {
+  const { showToast } = useToastContext()
+  const [email, setEmail] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  async function submit(e: FormEvent) {
+    e.preventDefault()
+    const check = checkSignInEmail(current, email)
+    if (!check.ok) {
+      setError(check.error)
+      return
+    }
+    if (check.unchanged) {
+      setError('That is the address they already sign in with.')
+      return
+    }
+    setSaving(true)
+    setError(null)
+    try {
+      const res = await changeSignInEmail(supabase, { userId, email: check.email })
+      showToast(`${name} signs in with ${res.email} now.`, 'success')
+      onChanged()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'That did not save')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const field: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.78125rem', fontWeight: 600, color: 'var(--text-700)' }
+  const input: React.CSSProperties = { fontSize: '0.875rem', padding: '0.4rem 0.55rem', border: '1px solid var(--border-strong)', borderRadius: 5, fontFamily: 'inherit', fontWeight: 400, background: 'var(--surface)', color: 'var(--text-base)' }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: DESK_EDITOR_Z, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onMouseDown={(e) => e.target === e.currentTarget && !saving && onClose()}>
+      <form role="dialog" aria-modal="true" aria-label={`Change ${name}'s sign-in email`} noValidate onSubmit={(e) => void submit(e)} style={{ background: 'var(--surface)', borderRadius: 8, width: 'min(420px, 100%)', padding: '1rem 1.1rem', boxShadow: '0 16px 40px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
+        <h2 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-strong)' }}>Change {name}'s sign-in email</h2>
+        <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-700)', overflowWrap: 'anywhere' }}>Now: {current ?? 'no email'}</p>
+        <label style={field}>
+          New email
+          <input type="email" autoComplete="off" autoFocus value={email} onChange={(e) => setEmail(e.target.value)} style={input} />
+        </label>
+        <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-700)' }}>They sign in with the new address from now on. The old one stops working.</p>
+        {error ? (
+          <p role="alert" style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-red-600)' }}>
+            {error}
+          </p>
+        ) : null}
+        <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
+          <button type="button" style={BTN_QUIET} disabled={saving} onClick={onClose}>
+            Cancel
+          </button>
+          <button type="submit" style={deskBtn(BTN_BLUE, saving)} disabled={saving}>
+            {saving ? 'Changing…' : 'Change email'}
+          </button>
+        </div>
+        <p style={{ margin: 0, paddingTop: '0.55rem', borderTop: '1px solid var(--border)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Their hours, pay and jobs stay with them. Only the address changes.</p>
       </form>
     </div>
   )
