@@ -23905,6 +23905,23 @@ export type Database = {
           payment_id: string
         }[]
       }
+      list_ar_deposit_trails: {
+        Args: { p_tx_ids: string[] }
+        Returns: {
+          amount: number
+          applied_at: string
+          applied_by: string
+          invoice_id: string
+          job_id: string
+          job_name: string
+          job_number: string
+          live: boolean
+          mercury_transaction_id: string
+          payment_id: string
+          removed_at: string
+          removed_by: string
+        }[]
+      }
       list_assigned_jobs_for_dashboard: {
         Args: never
         Returns: {
@@ -23982,6 +23999,24 @@ export type Database = {
           bundles: number
           row_count: number
           tables: string[]
+          window_end: string
+          window_start: string
+        }[]
+      }
+      list_bulk_hours_alerts: {
+        Args: never
+        Returns: {
+          actor_id: string
+          actor_name: string
+          days: number
+          first_typed_at: string
+          first_work_date: string
+          last_typed_at: string
+          last_work_date: string
+          people: number
+          people_names: string[]
+          seconds: number
+          waiting_days: number
           window_end: string
           window_start: string
         }[]
