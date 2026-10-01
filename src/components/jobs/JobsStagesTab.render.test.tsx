@@ -15,7 +15,10 @@ import { fireEvent, screen, within } from '@testing-library/react'
 
 // v2.1824: the tab reads the scope API straight from the cache context; the
 // smoke props still supply `jobs`, so present every scope as merged (row-derived
-// headers and bodies, exactly the pre-scoping behavior these tests pin).
+// headers and bodies, exactly the pre-scoping behavior these tests pin). A test
+// may narrow `merged` and read which scopes the tab `asked` for (v2.4321).
+const ALL_SCOPES = ['waiting', 'working', 'ready_to_bill', 'billed_all', 'paid']
+const cache = vi.hoisted(() => ({ merged: [] as string[], asked: [] as string[] }))
 vi.mock('../../contexts/JobsListCacheContext', async () => {
   const actual = await vi.importActual<typeof import('../../contexts/JobsListCacheContext')>(
     '../../contexts/JobsListCacheContext',
@@ -23,9 +26,11 @@ vi.mock('../../contexts/JobsListCacheContext', async () => {
   return {
     ...actual,
     useJobsListCache: () => ({
-      mergedScopes: new Set(['waiting', 'working', 'ready_to_bill', 'billed_all', 'paid']),
+      mergedScopes: new Set(cache.merged),
       scopeLoading: new Set(),
-      fetchScopeIfNeeded: async () => {},
+      fetchScopeIfNeeded: async (scope: string) => {
+        cache.asked.push(scope)
+      },
       headerStats: null,
     }),
   }
@@ -134,6 +139,8 @@ describe('JobsStagesTab render smoke', () => {
       'pipetooling_stages_sections_v2',
       JSON.stringify({ waiting: false, working: true, readyToBill: true, billed: true, collections: true, paid: false }),
     )
+    cache.merged = [...ALL_SCOPES]
+    cache.asked = []
   })
 
   it('mounts with active=false without rendering the board (hooks still run)', async () => {
@@ -387,6 +394,33 @@ describe('JobsStagesTab render smoke', () => {
     })
     // BankPaymentsModal flips from mounted-closed to open without crashing
     expect(document.body.textContent).toContain('Accounts Receivable')
+  })
+
+  it('the Lien desk asks for the billed jobs the board has not loaded; its Calendar reads the board until they land (v2.4321)', async () => {
+    // The phone board's shape: one stage loaded, Billed folded, no map asking for every scope.
+    localStorage.setItem(
+      'pipetooling_stages_sections_v2',
+      JSON.stringify({ waiting: false, working: true, readyToBill: false, billed: false, collections: false, paid: false }),
+    )
+    localStorage.setItem('pipetooling_jobs_map_hidden', '1')
+    cache.merged = ['working']
+    const ref = createRef<JobsStagesTabHandle>()
+    const props = makeProps({ jobs: boardJobs() })
+    const view = renderWithProviders(<JobsStagesTab ref={ref} {...props} />)
+    await settle()
+    expect(cache.asked).not.toContain('billed_all')
+    await act(async () => {
+      ref.current!.openLienDesk()
+    })
+    expect(cache.asked).toContain('billed_all')
+    expect(screen.getByText('Reading the board…')).toBeTruthy()
+    expect(screen.queryByText('Nothing billed is on a lien clock.')).toBeNull()
+    // The scope lands: the billed job is on the board and the Calendar counts it.
+    cache.merged = ['working', 'billed_all']
+    view.rerender(<JobsStagesTab ref={ref} {...props} jobs={[...boardJobs(), makeJob({ job_name: 'Billed Lennox', status: 'billed' })]} />)
+    expect(await screen.findByText(/^every billed job on the statute’s calendar · 1 job · \$1,000 open/)).toBeTruthy()
+    expect(screen.queryByText('Reading the board…')).toBeNull()
+    localStorage.removeItem('pipetooling_jobs_map_hidden')
   })
 
   describe('section moves (the shared stagesSectionActionProps, map step 6)', () => {

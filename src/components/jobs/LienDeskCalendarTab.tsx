@@ -57,8 +57,8 @@ import PropertyKindSwitch from './PropertyKindSwitch'
  */
 
 export type LienDeskCalendarTabProps = {
+  /** Null while the Pipeline reads its billed jobs and their clocks: the tab says so instead of counting 0 jobs (v2.4321). */
   rows: ReadonlyArray<LienCalendarJob> | null
-  loading: boolean
   todayYmd: string
   onOpenJob: (jobId: string) => void
   /** Phone: no axis, the column cards and the sentences instead. */
@@ -628,7 +628,7 @@ function PhoneList({ density, groups, onOpenJob }: { density: LienCalendarDensit
   )
 }
 
-export default function LienDeskCalendarTab({ rows, loading, todayYmd, onOpenJob, isMobile = false, canWrite = false, onDraft, onOpenEditJob, onChanged }: LienDeskCalendarTabProps) {
+export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, isMobile = false, canWrite = false, onDraft, onOpenEditJob, onChanged }: LienDeskCalendarTabProps) {
   const [query, setQuery] = useState('')
   const [pen, setPen] = useState<PenTarget | null>(null)
   const [kindsOpen, setKindsOpen] = useState(false)
@@ -657,7 +657,7 @@ export default function LienDeskCalendarTab({ rows, loading, todayYmd, onOpenJob
     <div className="lienDeskCalendar" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.6rem 0.75rem', borderBottom: '1px solid var(--border)', flexWrap: 'wrap' }}>
         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-          {loading && !rows ? 'Reading the board…' : `every billed job on the statute’s calendar · ${cal.totals.jobs} ${cal.totals.jobs === 1 ? 'job' : 'jobs'} · ${formatUsdNoCents(cal.totals.open)} open${cal.totals.noticesOwed ? ` · ${cal.totals.noticesOwed} ${cal.totals.noticesOwed === 1 ? 'notice' : 'notices'} owed` : ''}${cal.totals.gone ? ` · ${cal.totals.gone} lien${cal.totals.gone === 1 ? '' : 's'} gone` : ''}`}
+          {!rows ? 'Reading the board…' : `every billed job on the statute’s calendar · ${cal.totals.jobs} ${cal.totals.jobs === 1 ? 'job' : 'jobs'} · ${formatUsdNoCents(cal.totals.open)} open${cal.totals.noticesOwed ? ` · ${cal.totals.noticesOwed} ${cal.totals.noticesOwed === 1 ? 'notice' : 'notices'} owed` : ''}${cal.totals.gone ? ` · ${cal.totals.gone} lien${cal.totals.gone === 1 ? '' : 's'} gone` : ''}`}
         </div>
         <label style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, border: '1px solid var(--border-strong)', borderRadius: 6, padding: '3px 8px', background: 'var(--surface)', minWidth: 'min(320px, 100%)' }}>
           <span aria-hidden style={{ color: 'var(--text-muted)' }}>⌕</span>
@@ -681,7 +681,7 @@ export default function LienDeskCalendarTab({ rows, loading, todayYmd, onOpenJob
         />
       ) : null}
       <div style={{ overflowY: 'auto', minHeight: 0, position: 'relative' }}>
-        {!loading && rows && cal.groups.length === 0 ? (
+        {rows && cal.groups.length === 0 ? (
           <div style={{ padding: '1.5rem 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{query.trim() ? 'No billed job matches that.' : 'Nothing billed is on a lien clock.'}</div>
         ) : null}
         {axis && isMobile ? (

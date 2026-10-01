@@ -1042,9 +1042,13 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     },
     [lienRunwayFor, promisedPayDates, billedPaySpeeds, canMarkPromisedPay, promiseRecordsByCustomer],
   )
-  /** The Lien desk's Calendar rows (v2.4101, punch list #55): every billed job with the runway its Pipeline row carries; null until the clocks load. */
+  /**
+   * The Lien desk's Calendar rows (v2.4101, punch list #55): every billed job with the runway its Pipeline row carries.
+   * Null until the board holds its billed jobs and their clocks load (v2.4321): the phone board reads a stage's rows only
+   * when its chip is picked, and an unread board is not an empty one.
+   */
   const lienCalendarRows = useMemo<LienCalendarJob[] | null>(() => {
-    if (!billedLienClocks) return null
+    if (!cacheMergedScopes.has(scopeForStagesSection('billed')) || !billedLienClocks) return null
     const out: LienCalendarJob[] = []
     for (const job of jobs) {
       if (job.status !== 'billed') continue
@@ -1067,7 +1071,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       })
     }
     return out
-  }, [jobs, billedLienClocks, lienRunwayFor])
+  }, [jobs, billedLienClocks, lienRunwayFor, cacheMergedScopes])
   const billedBillLineRenderer = useCallback(
     (row: StageRow): BilledRowBillLine | null => {
       // v2.4168: no words under the bar on a Billed row — the dates block under
@@ -1473,6 +1477,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const [gcNotice, setGcNotice] = useState<{ gcId: string } | null>(null)
   const [gcNoticeRereadKey, setGcNoticeRereadKey] = useState(0)
   const { data: lienDeskData, loading: lienDeskLoading, refetch: refetchLienDesk } = useLienDeskData(lienDeskEligible, forecastTodayYmd, { light: lienDesk == null })
+  // The Calendar's rows are the board's billed jobs (`lienCalendarRows`), which the phone board loads only
+  // while Billed is its stage — so the open desk fetches that scope, in the Legal desk's retry-until-merged shape.
+  useEffect(() => {
+    if (lienDesk == null) return
+    void cacheFetchScopeIfNeeded(scopeForStagesSection('billed'), customerFilterForFetch)
+  }, [lienDesk, cacheMergedScopes, cacheScopeLoading, customerFilterForFetch, cacheFetchScopeIfNeeded])
   const lienDeskCount = lienDeskCountOf(lienDeskData?.summary)
   // Today's Money Opportunities' lien card (v2.3799, punch list #34) — the desk's summary, folded once per load.
   const lienDeskMoneyCard = useMemo(() => buildLienDeskMoneyCard(lienDeskData?.summary, forecastTodayYmd), [lienDeskData, forecastTodayYmd])

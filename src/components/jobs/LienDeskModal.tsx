@@ -142,7 +142,7 @@ export type LienDeskModalProps = {
   legalSignoff?: { stateFor: (jobId: string) => LegalSignoffState | null; ask: (jobId: string, text: string) => Promise<string | null> } | null
   /** Open on the affidavit kind (the Dashboard's filing-window card), the retainage kind (v2.3753), the Timeline tab (v2.3768) or the Calendar (v2.4101). */
   initialKind?: 'notice' | 'affidavit' | 'retainage' | 'timeline' | 'calendar'
-  /** The Calendar kind (v2.4101, punch list #55): every billed / collections job with its runway — the Pipeline hands them in; null while its clocks load. */
+  /** The Calendar kind (v2.4101, punch list #55): every billed / collections job with its runway — the Pipeline hands them in; null while it reads its billed jobs and their clocks. */
   calendarRows?: ReadonlyArray<LienCalendarJob> | null
   /** A Calendar row opens the job's Lien window. */
   onOpenCalendarJob?: (jobId: string) => void
@@ -2059,7 +2059,6 @@ export default function LienDeskModal({
           {kind === 'calendar' ? (
             <LienDeskCalendarTab
               rows={calendarRows ?? null}
-              loading={loading}
               todayYmd={todayYmd}
               isMobile={isMobile}
               canWrite={office}
