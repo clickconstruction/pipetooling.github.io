@@ -199,7 +199,7 @@ export default function JobContractStrip({
         style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', padding: '0.45rem 0.7rem', borderRadius: 8, background: tone, border: '1px solid var(--border)', fontSize: '0.8rem' }}
       >
         <span style={{ color: 'var(--text-muted)' }}>Contract:</span>
-        <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
+        <span style={{ flex: '1 1 150px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
           <span style={{ fontWeight: 600 }}>{coverage.kind === 'none' ? 'Nothing on file for this job' : label}</span>
           {coversLine ? (
             <span style={{ fontSize: '0.74rem', color: 'var(--text-green-800)' }} data-testid="contract-covers-line">

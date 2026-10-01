@@ -11,7 +11,7 @@ import { supabase } from '../../lib/supabase'
 import AddJobContractSheet from '../jobs/AddJobContractSheet'
 import { JOB_CONTRACT_BUCKET } from '../../lib/jobs/jobContractFileWrite'
 import { buildJobContractCoverage, type JobContractRowLike, type SignedEstimateLike } from '../../lib/jobs/jobContractCoverage'
-import { jobNumberLabel, jobNumberSortKey, jobStatusWord, streetOf, type CoversPaper } from '../../lib/jobs/jobContractCovers'
+import { allOfCount, jobNumberLabel, jobNumberSortKey, jobStatusWord, streetOf, type CoversPaper } from '../../lib/jobs/jobContractCovers'
 import {
   loadContractRowsForJobs,
   loadPartyJobs,
@@ -160,9 +160,12 @@ export default function CustomerAgreementsCard({ customerId, customerName }: { c
                 ) : null}
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {paper.jobIds.map((id) => {
-                  const j = jobById.get(id)
-                  if (!j) return null
+                {paper.jobIds
+                  .map((id) => jobById.get(id))
+                  .filter((j): j is PartyJob => j != null)
+                  .sort((a, b) => jobNumberSortKey(jobNumberLabel(a)) - jobNumberSortKey(jobNumberLabel(b)))
+                  .map((j) => {
+                  const id = j.id
                   return (
                     <Link key={id} to={`/jobs?jobDetail=${id}`} style={{ padding: '2px 9px', borderRadius: 999, border: '1px solid var(--border-green-soft)', background: 'var(--surface)', fontSize: '0.74rem', color: 'inherit', textDecoration: 'none' }}>
                       {jobNumberLabel(j)}
@@ -174,7 +177,7 @@ export default function CustomerAgreementsCard({ customerId, customerName }: { c
               <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap', alignItems: 'center' }}>
                 {confirmOff === paper.key ? (
                   <>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-amber-800)' }}>Take it off {paper.jobIds.length === 1 ? 'its job' : `all ${paper.jobIds.length} jobs`}?</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-amber-800)' }}>Take it off {paper.jobIds.length === 1 ? 'its job' : `${allOfCount(paper.jobIds.length)} jobs`}?</span>
                     <button type="button" style={smallBtn} disabled={busy} onClick={() => setConfirmOff(null)}>
                       Keep it
                     </button>

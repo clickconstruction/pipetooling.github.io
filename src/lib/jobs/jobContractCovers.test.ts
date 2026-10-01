@@ -37,6 +37,7 @@ describe('words', () => {
   it('says nothing extra for a paper that covers only its own job', () => {
     expect(contractCoversLine(['251'])).toBeNull()
     expect(contractCoversLine(['251', '825', '843'])).toBe('Covers jobs 251, 825 and 843')
+    expect(contractCoversLine(['1064', '1054'])).toBe('Covers jobs 1054 and 1064')
   })
   it('keeps the street of an address', () => {
     expect(streetOf('180 Go Away Rd, Blanco, TX 78606')).toBe('180 Go Away Rd')
@@ -48,13 +49,14 @@ describe('words', () => {
       summary: 'Jobs 251, 825 and 843 will read signed and on file. One paper covers all 3.',
       button: 'File for 3 jobs',
     })
+    expect(coversSheetWords(['1054', '1064'], 'add').summary).toBe('Jobs 1054 and 1064 will read signed and on file. One paper covers both.')
     expect(coversSheetWords([], 'add').button).toBe('File it')
     expect(coversSheetWords(['251', '825'], 'edit').summary).toBe('The paper will cover jobs 251 and 825.')
     expect(coversSheetWords([], 'edit').button).toBe('Save')
   })
   it('the offer names the jobs the paper covers', () => {
     expect(siblingOfferWords(['251'])).toBe('A signed paper on file covers job 251. Does it name this job too?')
-    expect(siblingOfferWords(['251', '825', '843'])).toBe('A signed paper on file covers jobs 251, 825 and 843. Does it name this job too?')
+    expect(siblingOfferWords(['843', '251', '825'])).toBe('A signed paper on file covers jobs 251, 825 and 843. Does it name this job too?')
   })
 })
 
