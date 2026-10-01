@@ -29,6 +29,18 @@ describe('expandHelpIllustrations', () => {
     expect(html).not.toContain('<now>')
   })
 
+  it('pins an example panel to the light theme, so its words stay readable in dark mode (v2.4329)', () => {
+    const html = expandHelpIllustrations('[[[help-panel-open|A%20line]]]words[[[help-panel-close]]]')
+    expect(html.startsWith('<div data-theme="light"')).toBe(true)
+    expect(html).toContain('Example — A line')
+  })
+
+  it('renders the dark button the way the stage switch draws a selected In order (v2.4329)', () => {
+    const html = expandHelpIllustrations('[[[help-ill|button,dark,In%20order]]]')
+    expect(html).toContain('background:var(--text-strong);color:var(--surface)')
+    expect(html).toContain('In order')
+  })
+
   it('falls back to the outline style for unknown button variants', () => {
     const html = expandHelpIllustrations('[[[help-ill|button,plaid,Save]]]')
     expect(html).toContain('border:1px solid var(--border-strong)')
