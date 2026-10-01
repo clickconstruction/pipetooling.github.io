@@ -337,10 +337,11 @@ export type LienWaiverBillPick = {
  * line and the minted lines together cover the job's revenue (to the dollar); a job with more to
  * bill, or an earlier line, is a progress payment.
  */
-export function pickLienWaiverForBill(job: Pick<JobWithDetails, 'invoices' | 'payments' | 'revenue'>, invoice: Pick<JobsLedgerInvoice, 'id' | 'amount' | 'sequence_order'>): LienWaiverBillPick {
+export function pickLienWaiverForBill(job: Pick<JobWithDetails, 'invoices' | 'payments' | 'revenue'>, invoice: Pick<JobsLedgerInvoice, 'id' | 'amount' | 'sequence_order'> & { status?: string | null }): LienWaiverBillPick {
   const applied = (job.payments ?? []).filter((p) => p.invoice_id === invoice.id).reduce((s, p) => s + Number(p.amount ?? 0), 0)
   const amount = Number(invoice.amount ?? 0)
-  const settled = amount > 0 && applied >= amount - 0.005
+  // v2.4318: a bill marked paid is settled even when its payments name no bill.
+  const settled = invoice.status === 'paid' || (amount > 0 && applied >= amount - 0.005)
   const minted = (job.invoices ?? []).filter((i) => i.status === 'billed' || i.status === 'ready_to_bill' || i.status === 'paid')
   const lastSeq = Math.max(...minted.map((i) => Number(i.sequence_order ?? 0)), Number(invoice.sequence_order ?? 0))
   const billedTotal = minted.reduce((s, i) => s + Number(i.amount ?? 0), 0)

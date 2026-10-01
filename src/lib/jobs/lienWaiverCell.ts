@@ -105,8 +105,13 @@ export function lienWaiverCellForBill(releases: ReadonlyArray<JobLienReleaseRow>
   }
 }
 
-/** Payments applied to a bill reach its amount (to the cent). */
-export function billSettled(invoice: { id: string; amount: number | null }, payments: ReadonlyArray<{ invoice_id: string | null; amount: number | null }>): boolean {
+/**
+ * The bill's money has settled: it is marked paid, or the payments applied to it reach its
+ * amount (to the cent). v2.4318: a bill marked paid counts even when its payments carry no
+ * `invoice_id` (job 251: both paid bills read "when paid" and offered the conditional).
+ */
+export function billSettled(invoice: { id: string; amount: number | null; status?: string | null }, payments: ReadonlyArray<{ invoice_id: string | null; amount: number | null }>): boolean {
+  if (invoice.status === 'paid') return true
   const amount = Number(invoice.amount ?? 0)
   if (amount <= 0) return false
   const applied = payments.filter((p) => p.invoice_id === invoice.id).reduce((s, p) => s + Number(p.amount ?? 0), 0)

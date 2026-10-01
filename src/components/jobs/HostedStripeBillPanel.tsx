@@ -386,7 +386,6 @@ export function HostedStripeBillPanel({
                 position: 'relative',
                 marginBottom: '0.75rem',
                 padding: '0.75rem',
-                paddingRight: '9.5rem',
                 background: 'var(--bg-page)',
                 borderRadius: 6,
                 border: '1px solid var(--border)',
@@ -414,11 +413,12 @@ export function HostedStripeBillPanel({
               >
                 Customer pay page
               </button>
-              <div style={{ ...stripeHeroAmountText, marginBottom: '0.25rem' }}>
+              {/* v2.4318: only the amount and due lines make room for the pay-page button; the To / Memo / Footer rows take the full width (on a phone the email no longer breaks mid-word). */}
+              <div style={{ ...stripeHeroAmountText, marginBottom: '0.25rem', paddingRight: '9.5rem' }}>
                 {formatStripeCents(stripeDetail.amount_remaining, stripeDetail.currency)}
               </div>
               {stripeDetail.due_date != null ? (
-                <div style={{ fontSize: '0.875rem', color: 'var(--text-700)', marginBottom: '0.65rem' }}>
+                <div style={{ fontSize: '0.875rem', color: 'var(--text-700)', marginBottom: '0.65rem', paddingRight: '9.5rem' }}>
                   Due {formatStripeDueDateChicago(stripeDetail.due_date)}
                 </div>
               ) : (

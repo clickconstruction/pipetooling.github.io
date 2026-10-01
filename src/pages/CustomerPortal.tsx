@@ -348,6 +348,8 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
           [data-bill-pay]{display:block;text-align:center;padding:11px 16px}
           [data-bill-check]{justify-self:start}
           /* The bill's lien waiver note (v2.4304): its own full-width row, tall enough to tap. */
+          /* Your papers' View buttons (v2.4318): tall enough to tap. */
+          [data-portal-paper-button]{display:inline-flex !important;align-items:center;min-height:44px;box-sizing:border-box}
           [data-bill-waiver]{display:flex !important;align-items:center;gap:4px;min-height:44px;margin-top:6px;border-top:1px dashed ${HAIR};border-bottom:1px dashed ${HAIR};font-size:13px}
         }
         @media print {
@@ -552,6 +554,7 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
               {a.signUrl ? (
                 <a
                   href={a.signUrl}
+                  data-portal-paper-button
                   style={{ display: 'inline-block', border: `1px solid ${a.status === 'signed' ? INK : COPPER}`, background: a.status === 'signed' ? CARD : COPPER, color: a.status === 'signed' ? INK : '#fff', fontSize: 12.5, fontWeight: 600, padding: '6px 14px', textDecoration: 'none', whiteSpace: 'nowrap' }}
                 >
                   {a.status === 'signed' ? 'View signed copy' : 'Review & sign'}
@@ -618,13 +621,13 @@ function PortalViewReportLink({ href }: { href: string | null }) {
   const style = { display: 'inline-block', border: `1px solid ${INK}`, background: CARD, color: INK, fontSize: 12.5, fontWeight: 600, padding: '6px 14px', textDecoration: 'none', whiteSpace: 'nowrap' as const }
   if (!href) {
     return (
-      <span data-screen-only title="Sample statement — no file behind this row" style={{ ...style, opacity: 0.55 }}>
+      <span data-screen-only data-portal-paper-button title="Sample statement — no file behind this row" style={{ ...style, opacity: 0.55 }}>
         View report
       </span>
     )
   }
   return (
-    <a data-screen-only href={href} target="_blank" rel="noopener noreferrer" style={style}>
+    <a data-screen-only data-portal-paper-button href={href} target="_blank" rel="noopener noreferrer" style={style}>
       View report
     </a>
   )
@@ -810,6 +813,7 @@ function PortalBillRow({ bill, todayYmd, isLast, waiverNote = null }: { bill: Po
             <span style={{ color: MUTED, fontVariantNumeric: 'tabular-nums' }}>
               {formatPortalUsd(portalBillBilledAmount(bill))}
             </span>
+            {/* The space keeps "billed $X paid …" apart on a phone, where the line break is hidden. */}{' '}
             <br />
           </>
         )}

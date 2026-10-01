@@ -116,7 +116,7 @@ export default function JobContractStrip({
         </span>
       ) : null}
       {(coverage.kind === 'none' || coverage.kind === 'draft') && variant !== 'inline' ? (
-        <button type="button" style={{ ...btn, borderColor: 'var(--text-link)', color: 'var(--text-link)' }} onClick={() => setSheetOpen(true)} data-testid="contract-add-button">
+        <button type="button" style={quiet ? btn : { ...btn, borderColor: 'var(--text-link)', color: 'var(--text-link)' }} onClick={() => setSheetOpen(true)} data-testid="contract-add-button">
           Add the contract
         </button>
       ) : null}
@@ -180,7 +180,7 @@ export default function JobContractStrip({
     return (
       <div className="billPaperworkRow" title={jobContractChipTitle(coverage)} data-testid="paperwork-contract-row">
         <span className="billPaperworkLabel">Contract</span>
-        <span style={{ minWidth: 0, fontWeight: coverage.kind === 'none' ? 400 : 600 }}>{coverage.kind === 'none' ? 'No signed agreement on file' : label}</span>
+        <span style={{ minWidth: 0, fontWeight: coverage.kind === 'none' ? 400 : 600 }}>{coverage.kind === 'none' ? 'None on file' : label}</span>
         <span className="billPaperworkControls">{controls}</span>
         {coversLine ? (
           <span className="billPaperworkUnder" style={{ fontSize: '0.75rem', color: 'var(--text-green-800)' }} data-testid="contract-covers-line">

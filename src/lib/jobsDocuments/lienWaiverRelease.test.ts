@@ -352,6 +352,9 @@ describe('the four forms as two questions (v2.4274)', () => {
     const paidAll = jobWith({ invoices: [inv1, inv2, inv3], payments: [{ invoice_id: 'a', amount: 11240 }, { invoice_id: 'b', amount: 15406 }, { invoice_id: 'c', amount: 9354 }] as never, revenue: 36000 })
     expect(pickLienWaiverForBill(paidAll, inv3)).toMatchObject({ formType: 'unconditional_final', settled: true, final: true, facts: ['Settled', 'Bill 3 of 3 · the last'] })
     expect(pickLienWaiverForBill(job, inv3)).toMatchObject({ formType: 'conditional_final', final: true })
+    // v2.4318: marked paid with the payment on no bill (job 251) → settled, so the unconditional
+    const markedPaid = bill({ id: 'p', amount: 9440, sequence_order: 0, status: 'paid' })
+    expect(pickLienWaiverForBill(jobWith({ invoices: [markedPaid, inv2], payments: [{ invoice_id: null, amount: 9440 }] as never, revenue: 36000 }), markedPaid)).toMatchObject({ formType: 'unconditional_progress', settled: true })
     // more still to bill than the minted lines cover → the "last" line is still a progress payment
     const moreToBill = jobWith({ invoices: [inv1, inv2], payments: [], revenue: 36000 })
     expect(pickLienWaiverForBill(moreToBill, inv2)).toMatchObject({ formType: 'conditional_progress', final: false })

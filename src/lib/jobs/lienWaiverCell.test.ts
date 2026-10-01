@@ -76,6 +76,11 @@ describe('lienWaiverCellForBill (v2.4275)', () => {
     expect(billSettled({ id: 'a', amount: 100 }, [{ invoice_id: 'a', amount: 60 }, { invoice_id: 'b', amount: 40 }])).toBe(false)
     expect(billSettled({ id: 'a', amount: 0 }, [])).toBe(false)
   })
+  it('billSettled (v2.4318): a bill marked paid is settled though its payments name no bill (job 251)', () => {
+    expect(billSettled({ id: 'a', amount: 9440, status: 'paid' }, [{ invoice_id: null, amount: 9440 }])).toBe(true)
+    expect(billSettled({ id: 'a', amount: 9440, status: 'billed' }, [{ invoice_id: null, amount: 9440 }])).toBe(false)
+    expect(lienWaiverCellForBill([], 'a', billSettled({ id: 'a', amount: 9440, status: 'paid' }, [])).next).toBe('add_unconditional')
+  })
 })
 
 describe('lienWaiverCellForBill — calm, the Bill tab (v2.4309) and GC Review (v2.4317)', () => {

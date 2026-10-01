@@ -41,13 +41,13 @@ function ViewWaiverLink({ href }: { href: string | null }) {
   const style = { display: 'inline-block', border: `1px solid ${INK}`, background: CARD, color: INK, fontSize: 12.5, fontWeight: 600, padding: '6px 14px', textDecoration: 'none', whiteSpace: 'nowrap' as const }
   if (!href) {
     return (
-      <span title={SAMPLE_TITLE} style={{ ...style, opacity: 0.55 }}>
+      <span title={SAMPLE_TITLE} data-portal-paper-button style={{ ...style, opacity: 0.55 }}>
         View waiver
       </span>
     )
   }
   return (
-    <a href={href} target="_blank" rel="noopener noreferrer" style={style} data-portal-waiver-pdf>
+    <a href={href} target="_blank" rel="noopener noreferrer" style={style} data-portal-waiver-pdf data-portal-paper-button>
       View waiver
     </a>
   )
