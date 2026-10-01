@@ -15,7 +15,7 @@ import { buildHazmatFeeNoticeHtml, type HazmatNoticeJobInfo } from '../jobsDocum
 import type { HazmatIncidentDraft } from '../hazmatFee'
 import { buildDemandLetterPrintHtml, type DemandLetterFields } from '../jobsDocuments/demandLetter'
 import { buildLienNoticeBlocks, filingDocPrintHtml, type FilingDocExtras, type LienNoticeFields } from '../jobsDocuments/lienFilingDocuments'
-import { buildLienWaiverParagraphs, buildLienWaiverSignatureLines, lienWaiverTitle, type LienWaiverFields, type LienWaiverFormType } from '../jobsDocuments/lienWaiverRelease'
+import { buildLienWaiverFoot, buildLienWaiverParagraphs, lienWaiverFootLines, lienWaiverTitle, type LienWaiverFields, type LienWaiverFormType } from '../jobsDocuments/lienWaiverRelease'
 
 export type PaperId = 'bill-by-email' | 'hazmat-notice' | 'demand-letter' | 'owner-notice' | 'lien-release'
 
@@ -203,8 +203,8 @@ export function sampleLienRelease(todayYmd: string): PaperSample {
   const { formType, fields } = sampleLienReleaseInputs(todayYmd)
   const title = lienWaiverTitle(formType)
   const paragraphs = buildLienWaiverParagraphs(formType, fields)
-  const lines = buildLienWaiverSignatureLines(fields)
-  const html = `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>body{font:15px/1.5 Georgia,serif;color:#16283c;background:#fff;margin:0;padding:32px 40px;max-width:720px}h1{font-size:19px;text-align:center;margin:0 0 20px}p{margin:0 0 12px}.sig{margin-top:28px;display:grid;gap:14px}.sig div{border-top:1px solid #16283c;padding-top:4px;font-size:13px;max-width:320px}</style></head><body><h1>${esc(title)}</h1>${paragraphs.map((p) => `<p>${esc(p)}</p>`).join('')}<div class="sig">${lines.map((l) => `<div>${esc(l.label)}${l.value ? `: ${esc(l.value)}` : ''}</div>`).join('')}</div></body></html>`
+  const lines = lienWaiverFootLines(buildLienWaiverFoot(fields, null))
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>body{font:15px/1.5 Georgia,serif;color:#16283c;background:#fff;margin:0;padding:32px 40px;max-width:720px}h1{font-size:19px;text-align:center;margin:0 0 20px}p{margin:0 0 12px}.sig{margin-top:56px;border-top:1px solid #16283c;padding-top:6px;font-size:13px;max-width:420px}.sig div{margin:0 0 2px}</style></head><body><h1>${esc(title)}</h1>${paragraphs.map((p) => `<p>${esc(p)}</p>`).join('')}<div class="sig">${lines.map((l, i) => (i === 0 ? `<div><strong>${esc(l.split(', ')[0] ?? l)}</strong>${esc(l.slice((l.split(', ')[0] ?? l).length))}</div>` : `<div>${esc(l)}</div>`)).join('')}</div></body></html>`
   return {
     title,
     subject: `Lien release — ${SAMPLE_JOB.name}`,

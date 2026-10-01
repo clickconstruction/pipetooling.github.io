@@ -8,7 +8,7 @@ import {
   parsePhysicalInvoiceIssuerStoredJson,
 } from './physicalInvoiceIssuer'
 
-const EMPTY = { companyName: '', addressText: '', phone: '', email: '', tagline: '', licenseLine: '' }
+const EMPTY = { companyName: '', addressText: '', phone: '', email: '', tagline: '', licenseLine: '', signerName: '', signerTitle: '' }
 
 describe('parsePhysicalInvoiceIssuerStoredJson', () => {
   it('returns all-empty fields for anything that is not an object', () => {
@@ -25,6 +25,8 @@ describe('parsePhysicalInvoiceIssuerStoredJson', () => {
         phone: 5551234, // wrong type → blank
         email: 'office@example.com',
         licenseLine: 'M-12345',
+        signerName: 'Malachi Whites',
+        signerTitle: 'Owner',
         unknownField: 'ignored',
       }),
     ).toEqual({
@@ -34,6 +36,8 @@ describe('parsePhysicalInvoiceIssuerStoredJson', () => {
       email: 'office@example.com',
       tagline: '',
       licenseLine: 'M-12345',
+      signerName: 'Malachi Whites',
+      signerTitle: 'Owner',
     })
   })
 })

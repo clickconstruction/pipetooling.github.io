@@ -9,7 +9,8 @@ import { lienInboxJobLabel, type LienInboxRow } from '../../lib/jobs/lienRelease
 import { isLienWaiverFormType, lienReleaseFormLabel, lienReleaseSnapshotToWaiverFields } from '../../lib/jobs/lienReleaseTracking'
 import { resolveLienWaiverRecipient, signLienRelease } from '../../lib/jobs/lienReleaseSignIo'
 import { sendLienReleaseEmailToCustomer } from '../../lib/sendLienReleaseEmail'
-import { LIEN_WAIVER_FORM_CITES, buildLienWaiverParagraphs, buildLienWaiverSignatureLines, lienWaiverTitle, type LienWaiverFormType } from '../../lib/jobsDocuments/lienWaiverRelease'
+import { LIEN_WAIVER_FORM_CITES, buildLienWaiverFoot, buildLienWaiverParagraphs, lienWaiverTitle, type LienWaiverFormType } from '../../lib/jobsDocuments/lienWaiverRelease'
+import { LienWaiverFootPreview } from '../jobs/LienWaiverFootPreview'
 import { supabase } from '../../lib/supabase'
 
 /**
@@ -193,11 +194,7 @@ export function DashboardLienWaiversToSignModal({ open, onClose, rows, onChanged
                       {para}
                     </p>
                   ))}
-                  {buildLienWaiverSignatureLines(fields).map((l) => (
-                    <p key={l.label} style={{ margin: '1.1em 0 0' }}>
-                      {l.label}: {l.value ? <strong>{l.value}</strong> : '______________________'}
-                    </p>
-                  ))}
+                  <LienWaiverFootPreview foot={buildLienWaiverFoot(fields, null)} />
                 </div>
                 <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.25rem 0.9rem 0.9rem', fontSize: '0.8125rem' }}>
                   <div style={{ fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)', marginTop: '0.75rem' }}>

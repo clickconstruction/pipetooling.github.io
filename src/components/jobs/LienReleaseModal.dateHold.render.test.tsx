@@ -83,7 +83,7 @@ describe('LienReleaseModal — a date caught half typed', () => {
   it('the finished year saves the draft with the date, as a column and inside its fields', async () => {
     await openWaiver()
     await pauseAfter(() => fireEvent.change(signedBox(), { target: { value: '0202-09-30' } }))
-    await pauseAfter(() => fireEvent.change(screen.getByLabelText('Signer title'), { target: { value: 'Managing Member' } }))
+    await pauseAfter(() => fireEvent.change(screen.getByLabelText('His title'), { target: { value: 'Managing Member' } }))
     expect(db.writes).toEqual([])
     await pauseAfter(() => fireEvent.change(signedBox(), { target: { value: '2026-09-30' } }))
     expect(db.writes).toHaveLength(1)

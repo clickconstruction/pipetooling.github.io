@@ -18,7 +18,7 @@ import {
   lienReleaseSnapshotToWaiverFields,
   type JobLienReleaseRow,
 } from './jobs/lienReleaseTracking'
-import { lienReleaseSignatureAuditLine, lienReleaseStatus } from './jobs/lienReleaseLifecycle'
+import { lienReleaseRowSignature, lienReleaseStatus } from './jobs/lienReleaseLifecycle'
 import { LIEN_RELEASE_DOCUMENTS_BUCKET } from './jobs/lienReleaseDocuments'
 import { readEdgeFunctionErrorBody } from './readEdgeFunctionErrorBody'
 import { formatErrorMessage } from '../utils/errorHandling'
@@ -90,20 +90,7 @@ export async function sendLienReleaseEmailToCustomer(
       }
     }
     if (!pdfBase64) {
-      const signature: LienWaiverSignature | null = release.signer_printed_name
-        ? {
-            mode: 'type',
-            printedName: release.signer_printed_name,
-            auditLine:
-              lienReleaseSignatureAuditLine(
-                {
-                  signed_at: release.signed_at,
-                  signer_consented_at: release.signer_consented_at,
-                },
-                opts.onDeviceOf ?? null,
-              ) ?? '',
-          }
-        : null
+      const signature: LienWaiverSignature | null = lienReleaseRowSignature(release, opts.onDeviceOf ?? null)
       pdfBase64 = await blobToBase64(await buildLienWaiverPdfBlob(formType, fields, signature))
     }
     if (pdfBase64.length > MAX_PDF_BASE64_CHARS) return { ok: false, message: 'The signed PDF is too large to email.' }

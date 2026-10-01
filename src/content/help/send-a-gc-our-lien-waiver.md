@@ -2,7 +2,7 @@
 title: send a GC our lien waiver
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: lien waiver, GC, general contractor, conditional, unconditional, progress, final, release of lien, he signs now, sign now, send to the GC, waiver PDF, 53.284, bill, pay app, send with the bill, bill tab, add waiver, waivers to sign, needs you, sign them, GC room, portal, what the GC sees, GC review, they hold, we owe
+keywords: lien waiver, signs for the company, signer title, by, signature block, GC, general contractor, conditional, unconditional, progress, final, release of lien, he signs now, sign now, send to the GC, waiver PDF, 53.284, bill, pay app, send with the bill, bill tab, add waiver, waivers to sign, needs you, sign them, GC room, portal, what the GC sees, GC review, they hold, we owe
 ---
 A GC often wants a lien waiver with each bill. The waiver says we give up our lien right for that payment. Texas has four forms. The app picks the right one from the bill, and the leader signs it in the app.
 
@@ -48,16 +48,39 @@ The line under the switches says why. It also shows the two facts it read from t
 
 Never send an unconditional form before the money has settled. Texas forbids requiring one before payment. The line under the switches reminds you.
 
+## Set who signs for the company
+
+Do this once. It fills the signer and his title on every waiver.
+
+1. Go to **Settings** and open **Invoices**.
+2. Find the line **Signs for the company**. Type the leader's name.
+3. Type his title in **His title**. For example, Owner. Or Responsible Master Plumber.
+4. Click {{button:blue|Save}}.
+
+The Release of Lien window now opens on him. His name and title print under the signature.
+
 ## Get the leader to sign
 
-The **Signed by the leader** box names the leader on the job. There are two ways to sign.
+The **Signed by the leader** box names the leader who signs. It opens on the company's signer. Pick another leader from the list if this job needs one. There are two ways to sign.
 
 - {{button:outline|Later, from his desk}} sends the waiver to his Dashboard. He signs it when he is next at his own screen.
 - {{button:outline|✍ He signs now}} opens the signing pad right here. Use this when he is with you. Hand him the phone, or turn your screen to him.
 
-When he signs now, he draws his signature with a finger or the mouse. He cannot type it. The record names him as the signer and names your device. The signature prints on every copy.
+When he signs now, he draws his signature with a finger or the mouse. He cannot type it. The pad locks to drawing whenever the signer is not the person signed in. This holds on every door into it, including {{button:outline|Sign it ›}} on the Bill tab. The record names him as the signer and names your device.
 
 If you are the leader, the button reads {{button:outline|✍ Sign now}}.
+
+## What prints under the signature
+
+The foot of the waiver is one block.
+
+- His drawn signature sits above a rule.
+- Under the rule comes his name and the company on one line. For example, **Malachi Whites**, Click Plumbing and Electrical.
+- His title comes next. It is left out when none is set.
+- Then the day he signed.
+- A grey sentence says how it was signed, by whom, when, and on whose screen. The two statutes sit under it.
+
+The same block prints on the page, the PDF, the email and the GC's room.
 
 ## Sign several at once
 
