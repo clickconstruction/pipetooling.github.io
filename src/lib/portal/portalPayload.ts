@@ -110,9 +110,27 @@ export type PortalPayload = {
   promise: { promisedYmd: string; source: 'office' | 'customer' } | null
   /** Your payments (v2.4053): the viewer's jobs with the bills they pay and the payments on them, pre-scoped by `_shared/portalChecks.ts`; null from a function without it. */
   checks: PortalChecksPayload | null
+  /** Waivers (v2.4278): one row per sent bill the viewer pays, with the conditional and unconditional lien waivers it carries — `_shared/portalWaivers.ts`; [] from a function without it. */
+  waivers: PortalWaiverRow[]
 }
 
 export type PortalChecksPayload = { jobs: ChecksJobIn[]; events: ChecksEventIn[] }
+
+export type PortalWaiverHalfState = 'none' | 'signing' | 'signed' | 'sent'
+export type PortalWaiverHalf = { state: PortalWaiverHalfState; ymd: string | null; pdfUrl: string | null }
+export type PortalWaiverRow = {
+  jobId: string
+  jobLabel: string
+  jobAddress: string | null
+  invoiceId: string
+  billLabel: string
+  amount: number
+  billedYmd: string | null
+  paid: boolean
+  final: boolean
+  conditional: PortalWaiverHalf
+  unconditional: PortalWaiverHalf
+}
 
 /** Stage Plan PR 5: the GC's sequence, in the company's voice — mirrors `GcView` in `_shared/stagePlan.ts`. */
 export type PortalGcStepState = 'done' | 'now' | 'next' | 'later'
@@ -270,6 +288,34 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
       })
     }
   }
+  const waivers: PortalWaiverRow[] = []
+  if (Array.isArray(r.waivers)) {
+    const half = (h: unknown): PortalWaiverHalf => {
+      const o = h && typeof h === 'object' ? (h as Record<string, unknown>) : {}
+      const state: PortalWaiverHalfState = o.state === 'sent' || o.state === 'signed' || o.state === 'signing' ? o.state : 'none'
+      return {
+        state,
+        ymd: typeof o.ymd === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(o.ymd) ? o.ymd : null,
+        pdfUrl: typeof o.pdfUrl === 'string' && /^https?:\/\//.test(o.pdfUrl) ? o.pdfUrl : null,
+      }
+    }
+    for (const w of r.waivers as Array<Record<string, unknown>>) {
+      if (w == null || typeof w !== 'object' || typeof w.jobId !== 'string' || typeof w.invoiceId !== 'string') continue
+      waivers.push({
+        jobId: w.jobId,
+        jobLabel: str(w.jobLabel, 'Job'),
+        jobAddress: typeof w.jobAddress === 'string' && w.jobAddress.trim() ? w.jobAddress : null,
+        invoiceId: w.invoiceId,
+        billLabel: str(w.billLabel, 'Bill'),
+        amount: num(w.amount),
+        billedYmd: typeof w.billedYmd === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(w.billedYmd) ? w.billedYmd : null,
+        paid: w.paid === true,
+        final: w.final === true,
+        conditional: half(w.conditional),
+        unconditional: half(w.unconditional),
+      })
+    }
+  }
   return {
     company: {
       name: str(companyRaw.name, 'Click Plumbing and Electrical'),
@@ -290,6 +336,7 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
     requestToken: typeof r.requestToken === 'string' && r.requestToken.trim() ? r.requestToken : null,
     slug: typeof r.slug === 'string' && r.slug.trim() ? r.slug.trim() : null,
     agreements,
+    waivers,
     testReports: parsePortalTestReports(r.testReports),
     bankTransfer: bankTransferDetailsForPortal(parseBankTransferDetails(r.bankTransfer)),
     stages: Array.isArray(r.stages) ? r.stages.map(parseJobStages).filter((x): x is PortalJobStages => x != null) : [],

@@ -78,6 +78,14 @@ A dev turns the rule on at Settings → People & teams → *Typed hours: a secon
 
 A trim is a forgotten clock-out cut back. It is recorded too, like *trimmed by Taunya · 12.0h → 8.0h*. But it holds nothing. The person who trimmed it may approve it.
 
+### Hours added in bulk
+
+When one person types hours onto two or more days inside an hour, **Needs you** gets a red item. It reads like *Taunya typed hours onto 8 days in 25 minutes*. Under it are the people, the days, the hours, and how many days still wait. Whoever typed never sees their own burst. Everyone else who approves hours does. Nothing is blocked by it. It is there so a second person sees it the same day.
+
+{{button:red|Look at them}} opens the queue on **Typed by hand**, narrowed to what that person typed. A chip like {{chip:gray|typed by Taunya ×}} widens it back to everything typed by hand. {{button:outline|Snooze 24h}} hides it for a day. {{button:outline|Dismiss until count increases}} hides it until new bursts arrive.
+
+A dev sets the numbers at Settings → People & teams → *Bulk hours alert*. Out of the box a burst is two days inside an hour, looked for over the last seven days.
+
 ## Everywhere else you can approve
 
 Office roles approve from more than the My Team card. Those roles are assistant, controller and leader. Every one of these places adds the hours to payroll the same way, through the same rule:

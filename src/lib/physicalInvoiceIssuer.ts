@@ -12,6 +12,10 @@ export type PhysicalInvoiceIssuer = {
   email: string
   tagline: string
   licenseLine: string
+  /** v2.4285: who signs for the company — the leader whose name prints under a lien waiver's signature rule. */
+  signerName?: string
+  /** His title on that line: "Owner · Responsible Master Plumber". Empty leaves the line off the page. */
+  signerTitle?: string
 }
 
 const LS_KEY = 'physical_invoice_issuer_v1'
@@ -23,6 +27,8 @@ const EMPTY: PhysicalInvoiceIssuer = {
   email: '',
   tagline: '',
   licenseLine: '',
+  signerName: '',
+  signerTitle: '',
 }
 
 let sessionIssuer: PhysicalInvoiceIssuer | undefined
@@ -35,6 +41,8 @@ function cloneIssuer(i: PhysicalInvoiceIssuer): PhysicalInvoiceIssuer {
     email: i.email,
     tagline: i.tagline,
     licenseLine: i.licenseLine,
+    signerName: i.signerName ?? '',
+    signerTitle: i.signerTitle ?? '',
   }
 }
 
@@ -51,6 +59,8 @@ export function parsePhysicalInvoiceIssuerStoredJson(parsed: unknown): PhysicalI
     email: typeof o.email === 'string' ? o.email : '',
     tagline: typeof o.tagline === 'string' ? o.tagline : '',
     licenseLine: typeof o.licenseLine === 'string' ? o.licenseLine : '',
+    signerName: typeof o.signerName === 'string' ? o.signerName : '',
+    signerTitle: typeof o.signerTitle === 'string' ? o.signerTitle : '',
   }
 }
 

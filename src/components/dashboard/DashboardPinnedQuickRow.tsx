@@ -25,6 +25,7 @@ import { useGcReviewWeekNudge } from '../../hooks/useGcReviewWeekNudge'
 import { gcReviewNudgeState, gcReviewWeekdayIndex } from '../../lib/jobs/gcReviewCertification'
 import { useLostBidNudge } from '../../hooks/useLostBidNudge'
 import { useBulkDeleteNudge } from '../../hooks/useBulkDeleteNudge'
+import { useBulkHoursNudge } from '../../hooks/useBulkHoursNudge'
 import { useBidAuditsPendingCount } from '../../hooks/useBidAuditsPendingCount'
 import { useRobotLockedShadows } from '../../hooks/useRobotLockedShadows'
 import { canWorkRobotAudits } from '../../lib/bids/bidAudits'
@@ -66,6 +67,8 @@ import {
 import type { DispatchAgingSummary } from '../../lib/dispatchInboxAging'
 import { DashboardStaleTallyStaffFollowUpModal } from '../DashboardStaleTallyStaffFollowUpModal'
 import { DashboardLienReleaseQueueModal } from './DashboardLienReleaseQueueModal'
+import { DashboardLienWaiversToSignModal } from './DashboardLienWaiversToSignModal'
+import { useLienSignatureLanes } from '../../hooks/useLienSignatureLanes'
 import { DashboardArDepositsModal } from './DashboardArDepositsModal'
 import NewReportModal from '../NewReportModal'
 import type { PinnedItem } from '../../lib/pinnedTabs'
@@ -392,6 +395,8 @@ export function DashboardPinnedQuickRow({
   const { nudge: statementRound } = useStatementRoundNudge(!hideBanners && Boolean(authUserId) && officeEligible)
   const gcReviewNudge = gcReviewStatus != null ? gcReviewNudgeState(gcReviewStatus) : null
   const bulkDelete = useBulkDeleteNudge(hideBanners ? undefined : authUserId)
+  // Bursts of typed hours (v2.4281): the RPC itself answers only the approving roles.
+  const bulkHours = useBulkHoursNudge(hideBanners ? undefined : authUserId)
   const claimDev = useClaimDevAttemptsNudge(hideBanners ? undefined : authUserId)
 
   // Robot audits (v2.2573): the auditing roles = the bid_audits write set
@@ -428,6 +433,12 @@ export function DashboardPinnedQuickRow({
   const lienUnconditionalEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const { owed: lienUnconditionalOwed, queue: lienReleaseQueue, refetch: refetchLienReleasesOwed } = useLienReleasesOwedNudge(lienUnconditionalEnabled)
   const [lienReleaseQueueOpen, setLienReleaseQueueOpen] = useState(false)
+  // Lien waivers awaiting MY signature (v2.4276): the leader's seat. Signers only — the lanes hook
+  // already scopes to me; the enable keeps the read off the roles that never sign.
+  const lienWaiversToSignEnabled = !hideBanners && Boolean(authUserId) && (role === 'master_technician' || role === 'dev')
+  const { lanes: lienSignatureLanes, refetch: refetchLienSignatureLanes } = useLienSignatureLanes(lienWaiversToSignEnabled)
+  const lienWaiversToSign = lienWaiversToSignEnabled ? { count: lienSignatureLanes.toSign.length, total: lienSignatureLanes.toSign.reduce((sum, r) => sum + Number(r.amount ?? 0), 0) } : null
+  const [lienWaiversToSignOpen, setLienWaiversToSignOpen] = useState(false)
   const { overdue: demandDeadlineOverdue } = useDemandDeadlinesNudge(lienUnconditionalEnabled)
   const { watch: lienWatch } = useLienWatchNudge(lienUnconditionalEnabled)
   // The Lien desk (v2.3405): notices due per unpaid work month — the office's drafting pile, the leader's approvals.
@@ -525,6 +536,7 @@ export function DashboardPinnedQuickRow({
     gcReviewNudge,
     gcReviewIsWednesday: gcReviewWeekdayIndex() === 3,
     bulkDeleteAlerts: bulkDelete.visibleAlerts,
+    bulkHoursAlerts: bulkHours.visibleAlerts,
     claimDevRefusedCount: claimDev.visibleCount,
     claimDevLookbackDays: CLAIM_DEV_LOOKBACK_DAYS,
     robotAuditsEnabled,
@@ -535,6 +547,8 @@ export function DashboardPinnedQuickRow({
     d22UncodedCount,
     lienUnconditionalEnabled,
     lienUnconditionalOwed,
+    lienWaiversToSignEnabled,
+    lienWaiversToSign,
     contractNudgeEnabled,
     contractNudge,
     unpricedWorkOrdersEnabled,
@@ -773,6 +787,9 @@ export function DashboardPinnedQuickRow({
             } else if (item.key === 'lien-unconditional') {
               // The queue (v2.2751): issue each unconditional follow-up from its row.
               setLienReleaseQueueOpen(true)
+            } else if (item.key === 'lien-waivers-to-sign') {
+              // The leader's seat (v2.4276): the list, the page, the pad.
+              setLienWaiversToSignOpen(true)
             } else if (item.key === 'demand-deadline') {
               navigate('/jobs?tab=stages')
             } else if (item.key === 'lien-notice-batch') {
@@ -794,6 +811,12 @@ export function DashboardPinnedQuickRow({
               navigate('/people?tab=hours&approvals=1')
             } else if (item.key === 'typed-hours') {
               navigate('/people?tab=hours&approvals=1&typed=1')
+            } else if (item.key === 'bulk-hours') {
+              // The queue on its Typed by hand filter, narrowed to the newest burst's typist.
+              const newest = bulkHours.visibleAlerts?.[0]
+              navigate(
+                `/people?tab=hours&approvals=1&typed=1${newest ? `&typist=${encodeURIComponent(newest.actorId)}&typistName=${encodeURIComponent(newest.actorName)}` : ''}`,
+              )
             } else if (item.key === 'label-approvals') {
               navigate('/banking?tab=accounting')
             } else if (item.key === 'dispatch-requests-aged' || item.key === 'customer-waiting') {
@@ -809,6 +832,9 @@ export function DashboardPinnedQuickRow({
             if (item.key === 'bulk-delete') {
               if (key === 'snooze') bulkDelete.snooze24h()
               else if (key === 'dismiss') bulkDelete.dismissUntilCountIncreases()
+            } else if (item.key === 'bulk-hours') {
+              if (key === 'snooze') bulkHours.snooze24h()
+              else if (key === 'dismiss') bulkHours.dismissUntilCountIncreases()
             } else if (item.key === 'claim-dev') {
               if (key === 'snooze') claimDev.snooze24h()
               else if (key === 'dismiss') claimDev.dismissUntilItHappensAgain()
@@ -874,6 +900,9 @@ export function DashboardPinnedQuickRow({
           rows={lienReleaseQueue}
           onChanged={refetchLienReleasesOwed}
         />
+      )}
+      {renderModals && (
+        <DashboardLienWaiversToSignModal open={lienWaiversToSignOpen} onClose={() => setLienWaiversToSignOpen(false)} rows={lienSignatureLanes.toSign} onChanged={refetchLienSignatureLanes} />
       )}
       {renderModals && (
         <DashboardArDepositsModal

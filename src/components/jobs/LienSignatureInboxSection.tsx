@@ -4,7 +4,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useLienSignatureLanes } from '../../hooks/useLienSignatureLanes'
 import { lienInboxJobLabel, type LienInboxRow } from '../../lib/jobs/lienReleaseInboxLanes'
 import { lienReleaseFormLabel, lienReleaseSnapshotToWaiverFields, isLienWaiverFormType } from '../../lib/jobs/lienReleaseTracking'
-import { lienReleaseSignatureAuditLine } from '../../lib/jobs/lienReleaseLifecycle'
+import { lienReleaseRowSignature } from '../../lib/jobs/lienReleaseLifecycle'
 import { buildLienWaiverPdfBlob, lienWaiverPdfFilename, type LienWaiverSignature } from '../../lib/jobsDocuments/lienWaiverRelease'
 import { sendLienReleaseEmailToCustomer } from '../../lib/sendLienReleaseEmail'
 import { supabase } from '../../lib/supabase'
@@ -46,14 +46,7 @@ export default function LienSignatureInboxSection() {
   async function downloadSignedPdf(r: LienInboxRow) {
     try {
       const formType = isLienWaiverFormType(r.form_type) ? r.form_type : 'conditional_progress'
-      const signature: LienWaiverSignature | null = r.signer_printed_name
-        ? {
-            mode: 'type',
-            printedName: r.signer_printed_name,
-            auditLine:
-              lienReleaseSignatureAuditLine({ signed_at: r.signed_at, signer_consented_at: r.signer_consented_at }) ?? '',
-          }
-        : null
+      const signature: LienWaiverSignature | null = lienReleaseRowSignature(r)
       const blob = await buildLienWaiverPdfBlob(formType, lienReleaseSnapshotToWaiverFields(r), signature)
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')

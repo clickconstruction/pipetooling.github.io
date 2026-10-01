@@ -6,24 +6,26 @@ keywords: builder, GC, duplicate, two spellings, merge, keep separate, alias, H&
 order: 74
 ---
 
-A builder typed two ways — "H & I" and "H&I", "Acme Builders" and "ACME builders LLC" — used to be two cards on **Bids → Followup → Why we lost**, each with half the history and its own hit rate. Two things fix that now.
+A builder typed two ways used to be two cards on the Why we lost list. Two things fix that now.
+
+Take "H & I" and "H&I", or "Acme Builders" and "ACME builders LLC". Each spelling was its own card on **Bids → Followup → Why we lost**. Each card held half the history and its own hit rate, the share of bids won.
 
 ## Most spellings fold on their own
 
-Case, punctuation, extra spaces, accents and "&" no longer count: "H & I" and "H&I" are one card, "José" and "Jose" are one person, "WATTS" and "watts" are one manufacturer chip. Nothing to do.
+Case, punctuation, extra spaces, accents and "&" no longer count. "H & I" and "H&I" are one card. "José" and "Jose" are one person. "WATTS" and "watts" are one manufacturer chip. Nothing to do.
 
 ## When two names still look alike
 
-If two cards could be the same builder but the rule can't be sure (say "Acme Builders" and "Acme Builders LLC"), an amber line appears above the cards:
+Two cards could be the same builder, but the rule cannot be sure. Say "Acme Builders" and "Acme Builders LLC". Then an amber line appears above the cards:
 
 :::example The prompt
 These look like the same builder: **Acme Builders** and **Acme Builders LLC** — 7 lost bids between them. {{button:outline|Merge into Acme Builders}} {{button:outline|Merge into Acme Builders LLC}} {{button:outline|Keep separate}}
 :::
 
-- **Merge into …** folds the other spelling into the one you picked. Every lens that groups by builder reads the same answer, so the cards join everywhere on the next load. Nothing on the bids themselves changes; only the grouping does.
+- **Merge into …** folds the other spelling into the one you picked. Every lens, or view, that groups by builder reads the same answer. So the cards join everywhere on the next load. Nothing on the bids themselves changes. Only the grouping does.
 - **Keep separate** records that they are different and stops the prompt for that pair.
 
-One pair shows at a time; answer it and the next one appears if there is one.
+One pair shows at a time. Answer it, and the next one appears if there is one.
 
 ## Builders that are customers
 
@@ -31,4 +33,4 @@ A builder that is already a customer groups by the customer, not the name. If tw
 
 ## Undoing a merge
 
-Ask a dev: merges live in one small table, one row per spelling, and removing the row un-merges on the next load.
+Ask a dev. Merges live in one small table, one row per spelling. Removing the row un-merges on the next load.

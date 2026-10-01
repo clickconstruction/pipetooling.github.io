@@ -5,23 +5,25 @@ roles: dev
 keywords: merge users, duplicate account, archive, active accounts, combine accounts
 order: 40
 ---
-When the same person ends up with two accounts (a re-invite, a typo'd email, an old archived login), **Merge users** moves everything from one account onto the other, so history lives in one place.
+The same person can end up with two accounts. Merge users moves everything from one account onto the other, so history lives in one place.
+
+Two accounts come from a re-invite, a typo'd email, or an old archived login. **Merge users** folds the two together.
 
 ## Where
 
-Open **Manage accounts…** (Settings → People & teams, beside the pointer to People → Users → Account, or a person's desk → Access & account) and click {{button:red|Merge users}}.
+Open **Manage accounts…** and click {{button:red|Merge users}}. You find it at Settings → People & teams, beside the pointer to People → Users → Account. You also find it on a person's desk under Access & account.
 
 ## The rules
 
 1. Both accounts must have the **same role**.
-2. The account being merged away must be **archived**, or **never signed into**. Two accounts that have both been used cannot merge — archive one first.
+2. The account being merged away must be **archived**, or **never signed into**. Two accounts that have both been used cannot merge. Archive one first.
 3. If one of the two is live, the live one must be the account you **keep**. Merging two archived accounts keeps the survivor archived.
 
 ## How it works
 
-1. Pick the account to **keep**, then the account to **merge away**. The list only offers eligible accounts — expand **Why isn't an account listed?** under it to see each left-out account and the rule it fails (wrong role, still signed into, or the live one must be the survivor). The Person Desk's {{button:outline|Manage account…}} opens this same dialog.
-2. Click {{button:outline|Preview merge}} — you'll see exactly what would move (clock sessions, reports, job and bid assignments, notes, banking attributions, and so on), without changing anything.
-3. Click {{button:red|Merge now}}. Everything the merged-away account owned now belongs to the kept account; the merged-away account stays archived with its email intact and its sign-in banned.
+1. Pick the account to **keep**, then the account to **merge away**. The list only offers eligible accounts. Expand **Why isn't an account listed?** under it. It shows each left-out account and the rule it fails. The rule is wrong role, still signed into, or the live one must be the survivor. The Person Desk's {{button:outline|Manage account…}} opens this same dialog.
+2. Click {{button:outline|Preview merge}}. You see exactly what would move, without changing anything. That means clock sessions, reports, job and bid assignments, notes, banking attributions, and so on.
+3. Click {{button:red|Merge now}}. Everything the merged-away account owned now belongs to the kept account. The merged-away account stays archived with its email intact and its sign-in banned.
 
 :::example Good to know
 Merging cannot be undone. Pay history recorded under the old account's display name stays under that name — it belongs to the person's roster entry, which is not changed by an account merge.
@@ -29,4 +31,4 @@ Merging cannot be undone. Pay history recorded under the old account's display n
 
 ## Merging an external subcontractor into an account
 
-When the account you keep is a **Subcontractor**, the "merge away" list also offers **external subcontractors** — roster rows with no login (the External Subcontractors section on People → Users). Pick one and the flow changes slightly: instead of moving login-account data, their **hours, pay records, crew records, and sub sheets fold onto the kept account's roster identity**, and the external row is archived (never deleted). If the kept account doesn't have a roster entry yet, the external person is simply **linked to the account as its roster entry** — their records already follow them, so nothing moves and nothing is archived; the preview tells you which of the two will happen.
+The account you keep may be a **Subcontractor**. Then the "merge away" list also offers **external subcontractors**. Those are rows on the roster, the people list, with no login. They sit in the External Subcontractors section on People → Users. Pick one and the flow changes slightly. No login-account data moves. Instead their **hours, pay records, crew records, and sub sheets fold onto the kept account's roster identity**. The external row is archived, never deleted. The kept account may not have a roster entry yet. Then the external person is simply **linked to the account as its roster entry**. Their records already follow them, so nothing moves and nothing is archived. The preview tells you which of the two will happen.

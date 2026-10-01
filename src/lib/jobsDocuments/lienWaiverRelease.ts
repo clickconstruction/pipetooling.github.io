@@ -218,15 +218,37 @@ export function buildLienWaiverParagraphs(formType: LienWaiverFormType, f: LienW
   }
 }
 
-export type LienWaiverSignatureLine = { label: string; value: string }
+/**
+ * The foot of the page (v2.4285): one signature block in place of the Date / Contractor / By /
+ * Title label stack. Under the rule, the signer of record and the company on one line —
+ * "Malachi Whites, Click Plumbing and Electrical" — his title when one is set (never a blank
+ * line), and the day he signed. Unsigned, the rule waits for ink and the date is a blank.
+ */
+export type LienWaiverFoot = {
+  /** The signer of record — the signature's printed name once signed, else the window's Signed by. */
+  name: string
+  company: string
+  /** "Owner · Responsible Master Plumber"; null leaves the line out. */
+  title: string | null
+  /** "Signed September 30, 2026"; null before signing. */
+  signed: string | null
+}
 
-export function buildLienWaiverSignatureLines(f: LienWaiverFields): LienWaiverSignatureLine[] {
-  return [
-    { label: 'Date', value: lienWaiverDate(f.signedDate) },
-    { label: 'Contractor', value: f.companyName.trim() || '—' },
-    { label: 'By', value: f.signerName.trim() },
-    { label: 'Title', value: f.signerTitle.trim() },
-  ]
+export function buildLienWaiverFoot(f: LienWaiverFields, signature?: { printedName: string; signedYmd?: string | null } | null): LienWaiverFoot {
+  const name = (signature?.printedName ?? '').trim() || f.signerName.trim() || '—'
+  const title = f.signerTitle.trim()
+  const signedYmd = signature ? (signature.signedYmd ?? '').trim() || f.signedDate.trim() : ''
+  return {
+    name,
+    company: f.companyName.trim() || '—',
+    title: title || null,
+    signed: signature ? `Signed ${lienWaiverDate(signedYmd)}` : null,
+  }
+}
+
+/** The foot as plain lines (copy-for-email text, the sample paper). */
+export function lienWaiverFootLines(foot: LienWaiverFoot): string[] {
+  return [`${foot.name}, ${foot.company}`, ...(foot.title ? [foot.title] : []), foot.signed ?? 'Signed ______________________']
 }
 
 // ---------- prefill ----------
@@ -238,7 +260,10 @@ export type LienWaiverPrefillContext = {
   issuer: PhysicalInvoiceIssuer | null
   /** From job_property_owners when present; falls back to the job's customer. */
   ownerName: string | null
+  /** The leader of record — the one picked under Signed by the leader, else the company's signer, else the session's name. */
   signerName: string
+  /** v2.4285: his title from Settings → Jobs & billing → Physical invoice (Signs for the company); '' leaves the line off the page. */
+  signerTitle?: string
 }
 
 function sumAppliedToInvoice(job: JobWithDetails, invoiceId: string): number {
@@ -347,7 +372,7 @@ export function buildLienWaiverPrefill(formType: LienWaiverFormType, ctx: LienWa
     throughDate,
     signedDate: todayYmd(),
     signerName: signerName.trim(),
-    signerTitle: '',
+    signerTitle: (ctx.signerTitle ?? '').trim(),
   }
 }
 
@@ -361,25 +386,6 @@ function esc(s: string): string {
     .replace(/"/g, '&quot;')
 }
 
-/** Body fragment shared by print and copy-for-email (inline styles only). */
-export function buildLienWaiverEmailHtml(formType: LienWaiverFormType, f: LienWaiverFields): string {
-  const title = `<p style="text-align:center;margin:0 0 1em 0;font-weight:700;text-transform:uppercase;letter-spacing:0.04em">${esc(lienWaiverTitle(formType))}</p>`
-  const body = buildLienWaiverParagraphs(formType, f)
-    .map((p) => `<p style="margin:0 0 0.75em 0">${esc(p)}</p>`)
-    .join('')
-  const sig = buildLienWaiverSignatureLines(f)
-    .map((l) => `<p style="margin:1.25em 0 0 0">${esc(l.label)}: ${l.value ? '<strong>' + esc(l.value) + '</strong>' : '______________________'}</p>`)
-    .join('')
-  return title + body + sig
-}
-
-export function buildLienWaiverEmailText(formType: LienWaiverFormType, f: LienWaiverFields): string {
-  const sig = buildLienWaiverSignatureLines(f)
-    .map((l) => `${l.label}: ${l.value || '______________________'}`)
-    .join('\n\n')
-  return [lienWaiverTitle(formType).toUpperCase(), '', ...buildLienWaiverParagraphs(formType, f), '', sig].join('\n\n')
-}
-
 // ---------- electronic signature (v2.2619, the signing loop) ----------
 
 export type LienWaiverSignature = {
@@ -387,21 +393,49 @@ export type LienWaiverSignature = {
   printedName: string
   /** PNG data URL for draw-mode signatures; ignored for typed. */
   pngDataUrl?: string | null
-  /** The one-line audit stamp (see lienReleaseSignatureAuditLine) rendered under the signature. */
+  /** The audit sentence (see lienReleaseSignatureAuditLine) under the block: who, how, when, whose screen. */
   auditLine: string
+  /** v2.4285: the day signed (app calendar), for the foot's "Signed …" line; the fields' signature date when absent. */
+  signedYmd?: string | null
 }
 
-/** The signature block appended to every rendering of a signed release. */
-export function buildLienWaiverSignatureHtml(sig: LienWaiverSignature): string {
-  const name =
-    sig.mode === 'draw' && sig.pngDataUrl
-      ? `<img src="${sig.pngDataUrl}" alt="Signature of ${esc(sig.printedName)}" style="display:block;max-width:280px;max-height:110px" />`
-      : `<div style="font-family:'Great Vibes', cursive; font-size:2.1em; line-height:1.15">${esc(sig.printedName)}</div>`
-  return (
-    `<div style="margin-top:1.4em">${name}` +
-    `<div style="border-top:1px solid #1a1a1a; width:280px; margin-top:0.2em; padding-top:0.2em; font-size:0.85em">${esc(sig.printedName)}</div>` +
-    `<p style="margin:0.5em 0 0; font-family:system-ui,sans-serif; font-size:0.7em; color:#6b7280">${esc(sig.auditLine)}</p></div>`
-  )
+/** The second grey line under every signed rendering (v2.4285) — the two statutes, once, a shade lighter. */
+export const LIEN_WAIVER_ESIGN_LINE = 'Binding as a signature in ink under the ESIGN Act (15 U.S.C. § 7001) and the Texas UETA (Bus. & Com. Code ch. 322).'
+
+/**
+ * The foot of the page as HTML (v2.4285): the signature — drawn PNG, or the typed name in the
+ * cursive face — above the rule; under it the name and company, the title, the day signed; then
+ * the audit sentence and the statute line in grey. Unsigned: the rule waits, the date is a blank.
+ */
+export function buildLienWaiverFootHtml(f: LienWaiverFields, signature?: LienWaiverSignature | null): string {
+  const foot = buildLienWaiverFoot(f, signature)
+  const ink = signature
+    ? signature.mode === 'draw' && signature.pngDataUrl
+      ? `<img src="${signature.pngDataUrl}" alt="Signature of ${esc(signature.printedName)}" style="display:block;max-width:280px;max-height:110px" />`
+      : `<div style="font-family:'Great Vibes', cursive; font-size:2.1em; line-height:1.15">${esc(signature.printedName)}</div>`
+    : `<div style="height:3.2em"></div>`
+  const lines =
+    `<div style="border-top:1px solid #1a1a1a; width:min(420px,100%); margin-top:0.2em; padding-top:0.4em; line-height:1.45"><strong>${esc(foot.name)}</strong>, ${esc(foot.company)}</div>` +
+    (foot.title ? `<div style="font-size:0.9em; line-height:1.5; color:#3d3d3d">${esc(foot.title)}</div>` : '') +
+    `<div style="font-size:0.9em; line-height:1.5; color:#3d3d3d">${foot.signed ? esc(foot.signed) : 'Signed ______________________'}</div>`
+  const audit = signature
+    ? `<p style="margin:1.4em 0 0; font-family:system-ui,sans-serif; font-size:0.7em; line-height:1.6; color:#5b6168; max-width:640px">${esc(signature.auditLine)}<br><span style="color:#7a7f86">${esc(LIEN_WAIVER_ESIGN_LINE)}</span></p>`
+    : ''
+  return `<div style="margin-top:2.2em">${ink}${lines}${audit}</div>`
+}
+
+/** Body fragment shared by print and copy-for-email (inline styles only); signed releases carry the signature in the foot. */
+export function buildLienWaiverEmailHtml(formType: LienWaiverFormType, f: LienWaiverFields, signature?: LienWaiverSignature | null): string {
+  const title = `<p style="text-align:center;margin:0 0 1em 0;font-weight:700;text-transform:uppercase;letter-spacing:0.04em">${esc(lienWaiverTitle(formType))}</p>`
+  const body = buildLienWaiverParagraphs(formType, f)
+    .map((p) => `<p style="margin:0 0 0.75em 0">${esc(p)}</p>`)
+    .join('')
+  return title + body + buildLienWaiverFootHtml(f, signature)
+}
+
+export function buildLienWaiverEmailText(formType: LienWaiverFormType, f: LienWaiverFields): string {
+  const sig = lienWaiverFootLines(buildLienWaiverFoot(f, null)).join('\n')
+  return [lienWaiverTitle(formType).toUpperCase(), '', ...buildLienWaiverParagraphs(formType, f), '', '______________________________', sig].join('\n\n')
 }
 
 /** Full standalone print document — pinned light like all customer-facing paper. Signed releases carry the signature block. */
@@ -412,10 +446,9 @@ export function buildLienWaiverPrintHtml(
   signature?: LienWaiverSignature | null,
 ): string {
   const fontLink =
-    signature && signature.mode === 'type'
+    signature && !(signature.mode === 'draw' && signature.pngDataUrl)
       ? `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap">`
       : ''
-  const sigHtml = signature ? buildLienWaiverSignatureHtml(signature) : ''
   // Company letterhead line (v2.2663) — same family look as the lien filings.
   const letterhead = f.companyName.trim()
     ? `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:1.5rem;margin:0 0 1.2em;padding-bottom:0.5em;border-bottom:1px solid #cfcbc2"><div style="font-weight:700;font-size:1.12em">${esc(f.companyName.trim())}</div><div style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:0.7em;color:#7a756c">Job #${esc(jobNumber)}</div></div>`
@@ -424,7 +457,7 @@ export function buildLienWaiverPrintHtml(
 <style>
   body { font-family: Georgia, 'Times New Roman', serif; color: #1a1a1a; background: #fff; max-width: 42rem; margin: 2.5rem auto; padding: 0 1.5rem; font-size: 0.95rem; line-height: 1.75; }
   @media print { body { margin: 0.5in auto; } }
-</style></head><body>${letterhead}${buildLienWaiverEmailHtml(formType, f)}${sigHtml}</body></html>`
+</style></head><body>${letterhead}${buildLienWaiverEmailHtml(formType, f, signature)}</body></html>`
 }
 
 // ---------- PDF ----------
@@ -432,13 +465,13 @@ export function buildLienWaiverPrintHtml(
 export type LienWaiverPdfBlock =
   | { kind: 'title'; text: string }
   | { kind: 'paragraph'; text: string }
-  | { kind: 'signature'; label: string; value: string }
+  | { kind: 'foot'; foot: LienWaiverFoot }
 
-export function buildLienWaiverPdfModel(formType: LienWaiverFormType, f: LienWaiverFields): LienWaiverPdfBlock[] {
+export function buildLienWaiverPdfModel(formType: LienWaiverFormType, f: LienWaiverFields, signature?: LienWaiverSignature | null): LienWaiverPdfBlock[] {
   return [
     { kind: 'title', text: lienWaiverTitle(formType) },
     ...buildLienWaiverParagraphs(formType, f).map((text): LienWaiverPdfBlock => ({ kind: 'paragraph', text })),
-    ...buildLienWaiverSignatureLines(f).map((l): LienWaiverPdfBlock => ({ kind: 'signature', label: l.label, value: l.value })),
+    { kind: 'foot', foot: buildLienWaiverFoot(f, signature) },
   ]
 }
 
@@ -496,7 +529,7 @@ export async function buildLienWaiverPdfBlob(
     }
   }
 
-  for (const block of buildLienWaiverPdfModel(formType, f)) {
+  for (const block of buildLienWaiverPdfModel(formType, f, signature)) {
     switch (block.kind) {
       case 'title':
         doc.setFont('times', 'bold')
@@ -510,59 +543,66 @@ export async function buildLienWaiverPdfBlob(
         writeWrapped(block.text, 6.2)
         y += 3
         break
-      case 'signature': {
-        y += 7
-        ensureRoom(8)
-        doc.setFont('times', 'normal')
-        doc.setFontSize(11.5)
-        if (block.value) {
-          doc.text(`${block.label}: ${block.value}`, PAGE_MARGIN, y)
+      case 'foot': {
+        // The foot (v2.4285): the signature above one rule, the signer and company under it.
+        // The whole block moves to a fresh page rather than split across two.
+        ensureRoom(signature ? 62 : 40)
+        y += 10
+        if (signature) {
+          // Draw-mode embeds the captured PNG; typed renders the name in italic
+          // serif (jsPDF has no webfont — the cursive face is a screen nicety, the
+          // printed name + audit line are what carry legal weight).
+          let drawn = false
+          if (signature.mode === 'draw' && signature.pngDataUrl) {
+            try {
+              doc.addImage(signature.pngDataUrl, 'PNG', PAGE_MARGIN, y, 62, 24)
+              y += 26
+              drawn = true
+            } catch {
+              /* bad image data — the typed rendering below */
+            }
+          }
+          if (!drawn) {
+            doc.setFont('times', 'italic')
+            doc.setFontSize(19)
+            writeWrapped(signature.printedName, 9)
+          }
         } else {
-          doc.text(`${block.label}: `, PAGE_MARGIN, y)
-          const labelWidth = doc.getTextWidth(`${block.label}: `)
-          doc.setDrawColor(26, 26, 26)
-          doc.line(PAGE_MARGIN + labelWidth, y + 1, PAGE_MARGIN + labelWidth + 70, y + 1)
+          y += 18
         }
+        doc.setDrawColor(26, 26, 26)
+        doc.setLineWidth(0.3)
+        doc.line(PAGE_MARGIN, y, PAGE_MARGIN + 110, y)
+        y += 5.5
+        doc.setTextColor(26, 26, 26)
+        doc.setFont('times', 'bold')
+        doc.setFontSize(11)
+        doc.text(block.foot.name, PAGE_MARGIN, y)
+        const nameWidth = doc.getTextWidth(block.foot.name)
+        doc.setFont('times', 'normal')
+        doc.text(`, ${block.foot.company}`, PAGE_MARGIN + nameWidth, y)
+        y += 5.5
+        doc.setFontSize(10)
+        doc.setTextColor(61, 61, 61)
+        if (block.foot.title) {
+          doc.text(block.foot.title, PAGE_MARGIN, y)
+          y += 5
+        }
+        doc.text(block.foot.signed ?? 'Signed ______________________', PAGE_MARGIN, y)
+        y += 5
+        if (signature) {
+          y += 4
+          doc.setFont('helvetica', 'normal')
+          doc.setFontSize(7.5)
+          doc.setTextColor(91, 97, 104)
+          writeWrapped(signature.auditLine, 3.8)
+          doc.setTextColor(122, 127, 134)
+          writeWrapped(LIEN_WAIVER_ESIGN_LINE, 3.8)
+        }
+        doc.setTextColor(26, 26, 26)
         break
       }
     }
-  }
-
-  if (signature) {
-    y += 10
-    // Draw-mode embeds the captured PNG; typed renders the name in italic
-    // serif (jsPDF has no webfont — the cursive face is a screen nicety, the
-    // printed name + audit line are what carry legal weight).
-    if (signature.mode === 'draw' && signature.pngDataUrl) {
-      ensureRoom(30)
-      try {
-        doc.addImage(signature.pngDataUrl, 'PNG', PAGE_MARGIN, y, 62, 24)
-        y += 26
-      } catch {
-        // Bad image data — fall through to the typed rendering below.
-        doc.setFont('times', 'italic')
-        doc.setFontSize(19)
-        writeWrapped(signature.printedName, 9)
-      }
-    } else {
-      ensureRoom(12)
-      doc.setFont('times', 'italic')
-      doc.setFontSize(19)
-      writeWrapped(signature.printedName, 9)
-    }
-    ensureRoom(12)
-    doc.setDrawColor(26, 26, 26)
-    doc.line(PAGE_MARGIN, y, PAGE_MARGIN + 70, y)
-    y += 5
-    doc.setFont('times', 'normal')
-    doc.setFontSize(10)
-    doc.text(signature.printedName, PAGE_MARGIN, y)
-    y += 5.5
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(7.5)
-    doc.setTextColor(107, 114, 128)
-    doc.text(signature.auditLine, PAGE_MARGIN, y)
-    doc.setTextColor(26, 26, 26)
   }
 
   // Page footer (v2.2663): form title left, page number right, every page.

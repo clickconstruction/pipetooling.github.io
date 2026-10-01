@@ -33,6 +33,9 @@ import { ConvertBillToStripeModal } from './ConvertBillToStripeModal'
 import { compareInvoiceLedgerRows, invoiceLedgerRow, invoiceLedgerTotals, type InvoiceLedgerState, ledgerDollars } from '../../lib/jobs/invoiceLedgerRow'
 import { useJobBilledExpectedPay } from '../../hooks/useJobBilledExpectedPay'
 import { invoiceRowMenuSide, type InvoiceRowMenuSide } from '../../lib/jobs/invoiceRowMenuSide'
+import { billSettled, lienWaiverCellForBill } from '../../lib/jobs/lienWaiverCell'
+import type { JobLienReleaseRow } from '../../lib/jobs/lienReleaseTracking'
+import LienReleaseModal from './LienReleaseModal'
 
 type JobFormInvoiceListProps = {
   editing: JobWithDetails
@@ -109,8 +112,32 @@ export function JobFormInvoiceList({
 }: JobFormInvoiceListProps) {
   const navigate = useNavigate()
   const { showToast } = useToastContext()
-  const { role: authRole } = useAuth()
+  const { role: authRole, profileName } = useAuth()
   const billCustomer = useBillCustomerModal()
+  // Lien waivers per bill (v2.4275): the job's release rows, read here so each bill's cell can say
+  // what the GC holds and what we owe; the cell's door is the Release of Lien window on that bill.
+  const [waiverRows, setWaiverRows] = useState<JobLienReleaseRow[]>([])
+  const [waiverFor, setWaiverFor] = useState<JobsLedgerInvoiceRow | null>(null)
+  const jobId = editing?.id ?? null
+  useEffect(() => {
+    if (!jobId) {
+      setWaiverRows([])
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const { data } = await supabase.from('job_lien_releases').select('*').eq('job_id', jobId).order('created_at', { ascending: false })
+        if (!cancelled) setWaiverRows((data ?? []) as JobLienReleaseRow[])
+      } catch {
+        if (!cancelled) setWaiverRows([])
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [jobId, waiverFor])
+  const showWaiverCells = Boolean(editing?.gc_customer_id) || waiverRows.some((r) => !r.voided_at)
   const [confirmDeleteInvoice, setConfirmDeleteInvoice] = useState<JobsLedgerInvoiceRow | null>(null)
   const [deletingDraft, setDeletingDraft] = useState(false)
   const [confirmSendBackInvoice, setConfirmSendBackInvoice] = useState<JobsLedgerInvoiceRow | null>(null)
@@ -566,6 +593,30 @@ export function JobFormInvoiceList({
                 Record payment
               </button>
             ) : null}
+            {!isDraft && showWaiverCells
+              ? (() => {
+                  const cell = lienWaiverCellForBill(waiverRows, inv.id, billSettled(inv, payments))
+                  const chipTone = (t: 'green' | 'amber' | 'grey'): CSSProperties =>
+                    t === 'green'
+                      ? { background: 'var(--bg-green-tint)', color: 'var(--text-green-700)' }
+                      : t === 'amber'
+                        ? { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' }
+                        : { background: 'var(--bg-subtle)', color: 'var(--text-muted)', border: '1px solid var(--border)' }
+                  const door = cell.next === 'add_conditional' ? 'Add waiver ›' : cell.next === 'add_unconditional' ? 'Add the unconditional ›' : cell.next === 'sign' ? 'Sign it ›' : cell.next === 'send' ? 'Send it ›' : 'Waivers ›'
+                  return (
+                    <span className="jobInvoiceWaivers" data-testid="invoice-waiver-cell" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', flexWrap: 'wrap' }}>
+                      {cell.chips.map((c) => (
+                        <span key={c.half} title={`Lien waiver · ${c.text}`} style={{ display: 'inline-block', padding: '0.05rem 0.45rem', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, whiteSpace: 'nowrap', ...chipTone(c.tone) }}>
+                          {c.text}
+                        </span>
+                      ))}
+                      <button type="button" onClick={() => setWaiverFor(inv)} title="Open the Release of Lien window on this bill — pick the form, the leader signs, send it to the GC or download the PDF" style={{ ...btnGray, fontWeight: 600, color: cell.next ? 'var(--text-amber-800)' : undefined }} data-testid="invoice-waiver-door">
+                        {door}
+                      </button>
+                    </span>
+                  )
+                })()
+              : null}
             <span style={{ position: 'relative', display: 'inline-block' }} data-inv-menu>
               <button
                 type="button"
@@ -876,6 +927,15 @@ export function JobFormInvoiceList({
               onSavedRef.current?.()
             })()
           }}
+        />
+      ) : null}
+      {editing ? (
+        <LienReleaseModal
+          open={waiverFor != null}
+          onClose={() => setWaiverFor(null)}
+          job={editing}
+          invoice={waiverFor}
+          signerNameFallback={(profileName ?? '').trim()}
         />
       ) : null}
     </div>

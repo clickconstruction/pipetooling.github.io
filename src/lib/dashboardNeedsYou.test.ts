@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { NEEDS_YOU_RANK, buildNeedsYouItems, needsYouKind, rankNeedsYouItems, visibleNeedsYouItems, type NeedsYouInputs, type NeedsYouItem } from './dashboardNeedsYou'
 import type { BankReturnedPayments } from './jobs/bankReturnedDeposits'
+import type { BulkHoursAlert } from './clock/bulkHoursAlert'
 
 function inputs(overrides: Partial<NeedsYouInputs> = {}): NeedsYouInputs {
   return {
@@ -34,6 +35,8 @@ function inputs(overrides: Partial<NeedsYouInputs> = {}): NeedsYouInputs {
     d22UncodedCount: 0,
     lienUnconditionalEnabled: true,
     lienUnconditionalOwed: null,
+    lienWaiversToSignEnabled: true,
+    lienWaiversToSign: null,
     demandDeadlineEnabled: true,
     demandDeadlineOverdue: null,
     lienWatchEnabled: true,
@@ -45,6 +48,25 @@ function inputs(overrides: Partial<NeedsYouInputs> = {}): NeedsYouInputs {
     labelApprovals: null,
     labelApprovalsMinAgeDays: 3,
     ...overrides,
+  }
+}
+
+function typedBurst(over: Partial<BulkHoursAlert> = {}): BulkHoursAlert {
+  return {
+    actorId: 'u-taunya',
+    actorName: 'Taunya',
+    days: 8,
+    people: 2,
+    seconds: 257_400,
+    waitingDays: 6,
+    firstTypedAt: '2026-09-30T15:00:00.000Z',
+    lastTypedAt: '2026-09-30T15:25:10.000Z',
+    windowStart: '2026-09-30T15:00:00.000Z',
+    windowEnd: '2026-09-30T16:00:00.000Z',
+    peopleNames: ['Darren', 'Michael A'],
+    firstWorkDate: '2026-09-21',
+    lastWorkDate: '2026-09-25',
+    ...over,
   }
 }
 
@@ -404,6 +426,28 @@ describe('buildNeedsYouItems', () => {
     const items = buildNeedsYouItems(inputs({ bulkDeleteAlerts: [burst({ bundles: 1 })] }))
     expect(items[0]?.title).toBe('Bulk deletion detected')
     expect(items[0]?.detail).toContain('Taunya deleted 1 record at once')
+  })
+
+  it('bulk-hours is a red item under the attack tier, days as the figure, snooze/dismiss secondaries', () => {
+    const items = buildNeedsYouItems(inputs({ jobFollowupCount: 9, bulkDeleteAlerts: [burst()], bulkHoursAlerts: [typedBurst()] }))
+    expect(items.map((i) => i.key)).toEqual(['bulk-delete', 'bulk-hours', 'job-followups'])
+    const bh = items[1]
+    expect(bh?.severity).toBe('red')
+    expect(bh?.kicker).toBe('Hours added in bulk')
+    expect(bh?.title).toBe('Taunya typed hours onto 8 days in 25 minutes')
+    expect(bh?.detail).toBe('Darren, Michael A · Sep 21–25 · 71.5 h the clock did not record, 6 days still waiting, 2 already looked at. Nothing is blocked; this is so a second person sees it the same day.')
+    expect(bh?.figure).toBe('8')
+    expect(bh?.actionLabel).toBe('Look at them')
+    expect(bh?.secondary?.map((s) => s.key)).toEqual(['snooze', 'dismiss'])
+  })
+
+  it('bulk-hours with several bursts sums the days; null or empty contributes no item', () => {
+    expect(buildNeedsYouItems(inputs({ bulkHoursAlerts: null }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ bulkHoursAlerts: [] }))).toEqual([])
+    const items = buildNeedsYouItems(inputs({ bulkHoursAlerts: [typedBurst(), typedBurst({ actorId: 'u-wendi', actorName: 'Wendi', days: 3 })] }))
+    expect(items[0]?.title).toBe('Hours typed in bulk 2 times')
+    expect(items[0]?.detail).toContain('11 days across 2 bursts by 2 people — newest: Taunya typed hours onto 8 days in 25 minutes.')
+    expect(items[0]?.figure).toBe('11')
   })
 
   it('claim-dev shares the alert tier (bigger figure first), keeping the rotate-the-code warning', () => {
@@ -1102,5 +1146,18 @@ describe('tracking owed (v2.4119)', () => {
     expect(card).toMatchObject({ severity: 'amber', kicker: 'Lien notices', title: '2 mailed notices have no tracking number', figure: '2', actionLabel: 'Open the Lien desk' })
     expect(card.detail).toContain('3 certified sends have no number')
     expect(buildNeedsYouItems(inputs({ lienWatch: { noticeDue: [], filingDue: [], serveDue: [], trackingOwed: [] } })).some((i) => i.key === 'lien-tracking-owed')).toBe(false)
+  })
+})
+
+describe('lien-waivers-to-sign (v2.4276)', () => {
+  it('an amber money-tier item for the signer, naming the count and the dollars; gone at zero, disabled, or while loading', () => {
+    const one = buildNeedsYouItems(inputs({ lienWaiversToSign: { count: 1, total: 15406 } }))
+    expect(one.map((i) => i.key)).toEqual(['lien-waivers-to-sign'])
+    expect(one[0]).toMatchObject({ severity: 'amber', kicker: 'Lien waivers', title: 'A lien waiver waits for your signature · $15,406', figure: '1', actionLabel: 'Sign it' })
+    const four = buildNeedsYouItems(inputs({ lienWaiversToSign: { count: 4, total: 38077 } }))
+    expect(four[0]).toMatchObject({ title: '4 lien waivers wait for your signature · $38,077', actionLabel: 'Sign them' })
+    expect(buildNeedsYouItems(inputs({ lienWaiversToSign: { count: 0, total: 0 } }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ lienWaiversToSignEnabled: false, lienWaiversToSign: { count: 2, total: 100 } }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ lienWaiversToSign: null }))).toEqual([])
   })
 })

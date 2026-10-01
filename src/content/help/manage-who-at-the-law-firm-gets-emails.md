@@ -4,21 +4,23 @@ category: Billing & Money
 roles: dev, master_technician, assistant, controller
 keywords: legal, attorney, law firm, portal, emails, notifications, digest, confirm, unsubscribe, pause, recipients
 ---
-The firm decides who at the firm hears from us and how often. The office sees the same rules and keeps two overrides. Two guards nobody can switch off: a new address is inert until its owner clicks a confirmation, and every email carries a one-click stop.
+You open the Legal desk to see who at the law firm gets our emails. The firm sets the rules on its portal, and the office keeps two overrides.
+
+Two guards nobody can switch off. A new address is inert until its owner clicks a confirmation. Every email carries a one-click stop.
 
 ## What the firm sets, on their portal
 
-On the portal's **Notifications** page each person at the firm has one rule:
+The firm opens the **Notifications** page on its portal. Each person at the firm has one rule there:
 
-- **Right away** or **Weekly digest** — and for the digest, which weekday and Central time.
-- **Every matter** or **Only my matters** — the matters where they are named as the handling person.
+- **Right away** or **Weekly digest**. A digest also picks a weekday and a Central time.
+- **Every matter** or **Only my matters**. A matter is one account sent to the firm. My matters are the ones where the person is named as the handling person.
 - {{button:outline|Stop emails to this person}} and {{button:outline|Turn emails back on}}.
 
-**Add a person** sends that address one confirmation email and nothing else until they click *Yes, email me*. The handling person on a matter hears about it under their own rule — right away or in their digest — even when they chose *only my matters*. Nobody hears anything until they are on this list and confirmed; the firm's contact email on the office's Settings page is a contact, not a subscription.
+**Add a person** sends that address one confirmation email. Nothing else goes out until they click *Yes, email me*. The handling person on a matter always hears about it. They hear under their own rule, right away or in their digest. That holds even when they chose *only my matters*. Nobody hears anything until they are on this list and confirmed. The firm's contact email on the office's Settings page is a contact, not a subscription.
 
 ## What they hear about
 
-- A new account referred to them (the moment a dev marks it attorney-ready).
+- A new account referred to them. The email goes the moment a dev marks it attorney-ready.
 - The office answering one of their questions.
 - An account pulled back.
 
@@ -26,10 +28,10 @@ Right-away people get one email per event within five minutes. Digest people get
 
 ## What the office sees and controls
 
-On the Legal desk header, {{button:outline|✉ Firm's emails}} lists every person with their rule and status ({{chip:green|confirmed}} · {{chip:yellow|not confirmed}} · {{chip:gray|stopped}}). Two overrides:
+You press {{button:outline|✉ Firm's emails}} on the Legal desk header. It lists every person with their rule and status. The status is {{chip:green|confirmed}}, {{chip:yellow|not confirmed}} or {{chip:gray|stopped}}. The office has two overrides:
 
 - {{button:outline|Remove}} takes a person off the list.
-- {{button:outline|Pause all emails to the firm}} holds every email; events queue and send when you resume. The portal keeps working meanwhile.
+- {{button:outline|Pause all emails to the firm}} holds every email. Events queue and send when you resume. The portal keeps working meanwhile.
 
 The **Mark attorney ready** sheet shows who will hear about that release, by their rules: *Email now*, *In their digest*, *Not confirmed*, *Not emailed*.
 
@@ -39,4 +41,4 @@ Until the firm adds its people on the portal, nobody is emailed — the matter s
 
 ## Wording
 
-The three emails — account referred (also the office-answered and pulled-back variants), the weekly digest, and the confirmation — are listed in the Outbound email catalog on Settings → Email templates as `legal-notify-dispatch` / `submit-legal-portal` sends; their wording is fixed in this release.
+There are three emails: account referred, the weekly digest, and the confirmation. The account-referred email also has an office-answered variant and a pulled-back variant. All three are listed in the Outbound email catalog on Settings → Email templates. They show as `legal-notify-dispatch` and `submit-legal-portal` sends. Their wording is fixed in this release.

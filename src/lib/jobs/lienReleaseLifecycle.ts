@@ -6,8 +6,7 @@
  * signature audit line every rendering carries.
  */
 import type { JobLienReleaseRow } from './lienReleaseTracking'
-import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
-import { esignAuditSuffix } from '../esignConsent'
+import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 export type LienReleaseStatus = 'draft' | 'issued' | 'awaiting_signature' | 'signed'
 
@@ -56,27 +55,53 @@ export function canRequestLienSignature(
   return s === 'draft' || s === 'issued'
 }
 
-/** The one-line electronic-signature audit every rendering carries under the signature. */
+/**
+ * The audit sentence every signed rendering carries under the signature block (v2.4285 — one
+ * sentence that says how, who, when and whose screen; the statutes are the renderer's second
+ * line, `LIEN_WAIVER_ESIGN_LINE`): "Drawn by Malachi Whites in ClickTooling on Sep 30, 2026 at
+ * 9:19 PM CT, on Robert’s screen, consent recorded." Without the signer's name on the row (rows
+ * signed before v2.2619's loop) it opens "Signed electronically in ClickTooling on …".
+ */
 export function lienReleaseSignatureAuditLine(
   row: {
     signed_at: string | null
     signer_consented_at: string | null
+    signer_printed_name?: string | null
+    signer_signature_mode?: string | null
   },
-  /** v2.4274: the leader signed on someone else's screen — named after the stamp ("· on Taunya’s device"). */
+  /** v2.4274: the leader signed on someone else's screen — named in the sentence ("on Taunya’s screen"). */
   onDeviceOf?: string | null,
 ): string | null {
   if (!row.signed_at) return null
   const when = new Date(row.signed_at)
-  const stamp = new Intl.DateTimeFormat('en-US', {
-    timeZone: APP_CALENDAR_TZ,
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(when)
+  const day = new Intl.DateTimeFormat('en-US', { timeZone: APP_CALENDAR_TZ, month: 'short', day: 'numeric', year: 'numeric' }).format(when)
+  const clock = new Intl.DateTimeFormat('en-US', { timeZone: APP_CALENDAR_TZ, hour: 'numeric', minute: '2-digit' }).format(when)
   const device = (onDeviceOf ?? '').trim()
-  return `Signed electronically in ClickTooling · ${stamp} CT${row.signer_consented_at ? ` · consent recorded${esignAuditSuffix()}` : ''}${device ? ` · on ${device}’s device` : ''}`
+  const name = (row.signer_printed_name ?? '').trim()
+  const how = row.signer_signature_mode === 'draw' ? 'Drawn' : row.signer_signature_mode === 'type' ? 'Typed' : null
+  const opener = name && how ? `${how} by ${name} in ClickTooling` : name ? `Signed electronically by ${name} in ClickTooling` : 'Signed electronically in ClickTooling'
+  return `${opener} on ${day} at ${clock} CT${device ? `, on ${device}’s screen` : ''}${row.signer_consented_at ? ', consent recorded' : ''}.`
+}
+
+/**
+ * A signed row as the renderers' signature (v2.4285 — the one place every re-rendering reads it:
+ * the window's print and PDF, the Documents page, the cleared-releases queue, the signature inbox,
+ * the email's regenerated PDF). The mode is the row's, so the audit sentence tells the truth; the
+ * drawn PNG is not on the row, so a drawn re-rendering shows the printed name in the cursive face —
+ * the stored signed PDF carries the ink itself.
+ */
+export function lienReleaseRowSignature(
+  row: Pick<JobLienReleaseRow, 'status' | 'signed_at' | 'signer_consented_at' | 'signer_printed_name' | 'signer_signature_mode'>,
+  onDeviceOf?: string | null,
+): { mode: 'type' | 'draw'; printedName: string; pngDataUrl: null; auditLine: string; signedYmd: string | null } | null {
+  if (lienReleaseStatus(row) !== 'signed' || !row.signer_printed_name) return null
+  return {
+    mode: row.signer_signature_mode === 'draw' ? 'draw' : 'type',
+    printedName: row.signer_printed_name,
+    pngDataUrl: null,
+    auditLine: lienReleaseSignatureAuditLine(row, onDeviceOf) ?? '',
+    signedYmd: row.signed_at ? calendarYmdInAppTzFromIso(row.signed_at) : null,
+  }
 }
 
 /** Theme-token chip colors per lifecycle tone — shared by the modal history and Documents rows. */

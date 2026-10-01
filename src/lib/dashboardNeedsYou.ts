@@ -9,6 +9,7 @@ import type { RoadmapNudge } from './dashboardRoadmapNudge'
 import { gcReviewGcsToDo, type GcReviewNudgeState } from './jobs/gcReviewCertification'
 import type { GcReviewWeekStatus } from './gcReviewCertifications'
 import type { BulkDeleteAlert } from '../hooks/useBulkDeleteAlerts'
+import { bulkHoursAlertDetail, bulkHoursAlertTitle, bulkHoursAlertsSummary, type BulkHoursAlert } from './clock/bulkHoursAlert'
 import { formatDispatchNoteDaysAgoShortPhrase } from '../utils/dispatchNoteDisplay'
 import type { RobotLockedShadow } from './bids/robotLockedShadows'
 import { formatYmdMonthDay } from './jobs/billedExpectedPay'
@@ -75,10 +76,12 @@ export type NeedsYouItem = {
     | 'job-followups'
     | 'gc-review-weekly'
     | 'bulk-delete'
+    | 'bulk-hours'
     | 'claim-dev'
     | 'robot-audits'
     | 'robot-locked'
     | 'lien-unconditional'
+    | 'lien-waivers-to-sign'
     | 'demand-deadline'
     | 'lien-serve-copy'
   | 'lien-tracking-owed'
@@ -145,12 +148,16 @@ export type NeedsYouItem = {
  */
 export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'bulk-delete': 0,
+  // A burst of typed hours is not an attack, but it is the one thing a second person must see the same day.
+  'bulk-hours': 5,
   'claim-dev': 0,
   'customer-waiting': 0,
   'ar-deposits': 10,
   // Money tier: a returned check still counted as paid overstates the job, the Pipeline and the lien claim.
   'returned-check': 10,
   'lien-unconditional': 20,
+  // The leader's own signatures on waivers going to GCs (v2.4276): a bill is waiting on it.
+  'lien-waivers-to-sign': 20,
   'gc-review-weekly': 20,
   'tally-self': 30,
   'tally-team': 30,
@@ -332,6 +339,13 @@ export type NeedsYouInputs = {
    */
   bulkDeleteAlerts: BulkDeleteAlert[] | null
   /**
+   * Bursts of typed hours (v2.4281) — one person typed hours onto several days
+   * in a short time; null when hidden (not an approver, snoozed, dismissed; the
+   * hook owns that). Red like bulk-delete for the same reason: it never drains
+   * on its own, and a second person should see it the same day.
+   */
+  bulkHoursAlerts?: BulkHoursAlert[] | null
+  /**
    * Refused break-glass dev-code attempts (v2.2492) — null when hidden
    * (the hook owns loading/snooze/dismiss). Red like bulk-delete: an attack
    * indicator, not a work queue.
@@ -371,6 +385,12 @@ export type NeedsYouInputs = {
    */
   lienUnconditionalEnabled: boolean
   lienUnconditionalOwed: { count: number; total: number } | null
+  /**
+   * Lien waivers awaiting THIS user's signature (v2.4276) — the office minted them for bills to
+   * GCs and asked the leader to sign. Null while loading; the lanes hook reports empty on error.
+   */
+  lienWaiversToSignEnabled: boolean
+  lienWaiversToSign: { count: number; total: number } | null
   /**
    * Demand letters past their named deadline with money still open (v2.2640).
    * Null while loading; the hook reports zero on error so the card stays quiet.
@@ -796,6 +816,22 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
     })
   }
 
+  if (inputs.lienWaiversToSignEnabled && (inputs.lienWaiversToSign?.count ?? 0) > 0) {
+    const { count: n, total } = inputs.lienWaiversToSign as { count: number; total: number }
+    const money = total.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+    items.push({
+      key: 'lien-waivers-to-sign',
+      severity: 'amber',
+      kicker: 'Lien waivers',
+      title: n === 1 ? `A lien waiver waits for your signature · ${money}` : `${n} lien waivers wait for your signature · ${money}`,
+      detail:
+        (n === 1 ? 'The office drafted a waiver for a bill to a GC; the bill has gone and the waiver follows the moment you sign.' : 'The office drafted waivers for bills to GCs; each bill has gone and its waiver follows the moment you sign.') +
+        ' Open the list: the page is on the right, sign it there, the next one loads.',
+      figure: String(n),
+      actionLabel: n === 1 ? 'Sign it' : 'Sign them',
+    })
+  }
+
   if (inputs.bankReturnedEnabled && inputs.bankReturned && inputs.bankReturned.count > 0) {
     const r = inputs.bankReturned
     const n = r.count
@@ -1010,6 +1046,27 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
           : `${totalBundles} records across ${count} bursts by ${actors} ${actors === 1 ? 'person' : 'people'} — newest: ${newest.actor_name} ${formatDispatchNoteDaysAgoShortPhrase(newest.window_start)}. Review them in Recently deleted.`,
       figure: count > 99 ? '99+' : String(count),
       actionLabel: 'Review deletions',
+      secondary: [
+        { key: 'snooze', label: 'Snooze 24h' },
+        { key: 'dismiss', label: 'Dismiss until count increases' },
+      ],
+    })
+  }
+
+  if (inputs.bulkHoursAlerts != null && inputs.bulkHoursAlerts.length > 0) {
+    const alerts = inputs.bulkHoursAlerts
+    const newest = alerts[0] as BulkHoursAlert
+    const days = alerts.reduce((sum, a) => sum + a.days, 0)
+    items.push({
+      key: 'bulk-hours',
+      severity: 'red',
+      kicker: 'Hours added in bulk',
+      title: alerts.length === 1 ? bulkHoursAlertTitle(newest) : `Hours typed in bulk ${alerts.length} times`,
+      detail:
+        (alerts.length === 1 ? bulkHoursAlertDetail(newest) : bulkHoursAlertsSummary(alerts)) +
+        ' Nothing is blocked; this is so a second person sees it the same day.',
+      figure: days > 99 ? '99+' : String(days),
+      actionLabel: 'Look at them',
       secondary: [
         { key: 'snooze', label: 'Snooze 24h' },
         { key: 'dismiss', label: 'Dismiss until count increases' },

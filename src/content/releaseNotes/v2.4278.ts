@@ -3,12 +3,12 @@ import type { ReleaseNote } from '../../lib/releaseNotes'
 const note: ReleaseNote = {
   version: 'v2.4278',
   date: '2026-09-30',
-  title: 'Help: twenty-five more guides in plain words',
+  title: 'Our lien waiver to the GC: the GC’s room shows every waiver, one pair per bill',
   kind: 'feature',
-  roles: ['dev', 'master_technician', 'assistant', 'controller', 'estimator', 'subcontractor', 'helpers', 'primary', 'superintendent'],
   highlights: [
-    'Twenty-five more help guides, from "see if a helper worked out" through "set the company owner account", are rewritten in plain words: one idea per sentence, none over twenty words, every button and chip named exactly, a plain word beside each trade word the first time.',
-    'Nothing in the app changes. 226 of 303 guides are done; the rest are on the punch list.',
+    'A GC’s room (the customer portal) gains a Lien waivers section: one row per bill they pay, with two columns — the conditional waiver that came with the bill and the unconditional that follows when their check clears. Each is a dated PDF they can open, “on its way” while our leader signs, or “when your check clears” — so their bookkeeper never has to ask.',
+    'A homeowner’s page shows the section only when a bill carries a waiver. Nothing about who pays what changes: a GC sees only the bills that are theirs.',
+    'The Dashboard’s cleared-releases queue says where Send to the GC is once the unconditional is signed.',
   ],
 }
 

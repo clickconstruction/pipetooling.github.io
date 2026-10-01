@@ -131,6 +131,32 @@ export default function PhysicalInvoiceIssuerDevSettingsBlock({ focusField = nul
             value={draft.licenseLine}
             onChange={(e) => setDraft((d) => ({ ...d, licenseLine: e.target.value }))}
           />
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1.4fr)', gap: '0.75rem', marginBottom: '0.25rem' }} data-testid="issuer-signer">
+            <div>
+              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: 4 }}>Signs for the company</label>
+              <input
+                style={{ ...inputStyle }}
+                aria-label="Signs for the company — name"
+                placeholder="Malachi Whites"
+                value={draft.signerName ?? ''}
+                onChange={(e) => setDraft((d) => ({ ...d, signerName: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: 4 }}>His title</label>
+              <input
+                style={{ ...inputStyle }}
+                aria-label="Signs for the company — title"
+                placeholder="Owner · Responsible Master Plumber"
+                value={draft.signerTitle ?? ''}
+                onChange={(e) => setDraft((d) => ({ ...d, signerTitle: e.target.value }))}
+              />
+            </div>
+          </div>
+          <p style={{ margin: '0 0 0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            Prints under the signature on every lien waiver — <strong>{(draft.signerName ?? '').trim() || 'Malachi Whites'}</strong>, {draft.companyName.trim() || 'the company'}
+            {(draft.signerTitle ?? '').trim() ? ` · ${(draft.signerTitle ?? '').trim()}` : ''}. He is the leader the Release of Lien window opens on.
+          </p>
           <button
             type="button"
             disabled={saving}

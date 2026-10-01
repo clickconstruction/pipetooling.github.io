@@ -6,8 +6,10 @@ import {
   buildLienWaiverPdfModel,
   buildLienWaiverPrefill,
   buildLienWaiverPrintHtml,
-  buildLienWaiverSignatureHtml,
-  buildLienWaiverSignatureLines,
+  buildLienWaiverFoot,
+  buildLienWaiverFootHtml,
+  lienWaiverFootLines,
+  LIEN_WAIVER_ESIGN_LINE,
   lienWaiverDate,
   lienWaiverDatesUnfinished,
   lienWaiverUnfinishedDateBlocksIssue,
@@ -147,20 +149,36 @@ describe('buildLienWaiverParagraphs', () => {
   })
 })
 
-describe('signature block', () => {
-  it('renders date/contractor/by/title, empty signer values stay blank for wet signing', () => {
-    const lines = buildLienWaiverSignatureLines({ ...FIELDS, signerName: '', signerTitle: '' })
-    expect(lines.map((l) => l.label)).toEqual(['Date', 'Contractor', 'By', 'Title'])
-    expect(lines[0]?.value).toBe('September 1, 2026')
-    expect(lines[1]?.value).toBe('ClickConstruction LLC')
-    expect(lines[2]?.value).toBe('')
-    expect(lines[3]?.value).toBe('')
+describe('the foot of the page (v2.4285)', () => {
+  it('unsigned: the signer and company on one line, the title, and a blank for the day signed', () => {
+    const foot = buildLienWaiverFoot(FIELDS, null)
+    expect(foot).toEqual({ name: 'Robert Douglas', company: 'ClickConstruction LLC', title: 'Managing Member', signed: null })
+    expect(lienWaiverFootLines(foot)).toEqual(['Robert Douglas, ClickConstruction LLC', 'Managing Member', 'Signed ______________________'])
   })
-  it('text builder renders blank signature slots as fill-in lines', () => {
+  it('no title: the line is left out, never a blank', () => {
+    const foot = buildLienWaiverFoot({ ...FIELDS, signerTitle: '  ' }, null)
+    expect(foot.title).toBeNull()
+    expect(lienWaiverFootLines(foot)).toHaveLength(2)
+    expect(buildLienWaiverFootHtml({ ...FIELDS, signerTitle: '' }, null)).not.toContain('Title')
+  })
+  it('signed: the signature’s printed name is the signer of record and the day signed is the signature’s, not the draft’s', () => {
+    const foot = buildLienWaiverFoot({ ...FIELDS, signerName: 'Robert' }, { printedName: 'Malachi Whites', signedYmd: '2026-09-30' })
+    expect(foot.name).toBe('Malachi Whites')
+    expect(foot.signed).toBe('Signed September 30, 2026')
+    // Without a signed day the fields' signature date stands in.
+    expect(buildLienWaiverFoot(FIELDS, { printedName: 'Malachi Whites' }).signed).toBe('Signed September 1, 2026')
+  })
+  it('never prints By: or Title: label lines; the text copy carries the foot under a rule', () => {
     const text = buildLienWaiverEmailText('conditional_progress', { ...FIELDS, signerTitle: '' })
-    expect(text).toContain('By: Robert Douglas')
-    expect(text).toContain('Title: ______________________')
+    expect(text).not.toContain('By:')
+    expect(text).not.toContain('Title:')
+    expect(text).toContain('Robert Douglas, ClickConstruction LLC')
+    expect(text).toContain('Signed ______________________')
     expect(text.startsWith('CONDITIONAL WAIVER AND RELEASE ON PROGRESS PAYMENT')).toBe(true)
+    const html = buildLienWaiverPrintHtml('conditional_progress', FIELDS, '650')
+    expect(html).not.toContain('By:')
+    expect(html).not.toContain('Contractor:')
+    expect(html).toContain('<strong>Robert Douglas</strong>, ClickConstruction LLC')
   })
 })
 
@@ -230,11 +248,13 @@ describe('buildLienWaiverPrefill', () => {
 })
 
 describe('pdf model + filename', () => {
-  it('model is title, paragraphs, then four signature blocks', () => {
+  it('model is title, paragraphs, then the one foot block (v2.4285)', () => {
     const model = buildLienWaiverPdfModel('conditional_progress', FIELDS)
     expect(model[0]).toEqual({ kind: 'title', text: 'Conditional Waiver and Release on Progress Payment' })
     expect(model.filter((b) => b.kind === 'paragraph')).toHaveLength(4)
-    expect(model.filter((b) => b.kind === 'signature')).toHaveLength(4)
+    expect(model[model.length - 1]).toEqual({ kind: 'foot', foot: { name: 'Robert Douglas', company: 'ClickConstruction LLC', title: 'Managing Member', signed: null } })
+    const signed = buildLienWaiverPdfModel('conditional_progress', FIELDS, { mode: 'draw', printedName: 'Malachi Whites', auditLine: 'x', signedYmd: '2026-09-30' })
+    expect(signed[signed.length - 1]).toEqual({ kind: 'foot', foot: { name: 'Malachi Whites', company: 'ClickConstruction LLC', title: 'Managing Member', signed: 'Signed September 30, 2026' } })
   })
   it('filename slugs the form type and job number', () => {
     expect(lienWaiverPdfFilename('conditional_progress', 'JP650')).toBe('lien-release-conditional-progress-JP650.pdf')
@@ -245,31 +265,35 @@ describe('pdf model + filename', () => {
 describe('electronic signature rendering (v2.2619)', () => {
   const SIG_TYPED = {
     mode: 'type' as const,
-    printedName: 'Malachi Whites, Master Plumber (#RMP41130)',
-    auditLine: 'Signed electronically in ClickTooling · Sep 1, 2026, 3:41 PM CT · consent recorded',
+    printedName: 'Malachi Whites',
+    auditLine: 'Typed by Malachi Whites in ClickTooling on Sep 1, 2026 at 3:41 PM CT, consent recorded.',
+    signedYmd: '2026-09-01',
   }
 
-  it('typed signature renders the cursive name, printed-name rule, and audit line', () => {
-    const html = buildLienWaiverSignatureHtml(SIG_TYPED)
+  it('typed signature renders the cursive name above the rule, the name and company under it, the audit sentence and the statute line', () => {
+    const html = buildLienWaiverFootHtml(FIELDS, SIG_TYPED)
     expect(html).toContain('Great Vibes')
-    expect(html).toContain('Malachi Whites, Master Plumber (#RMP41130)')
-    expect(html).toContain('Signed electronically in ClickTooling')
+    expect(html).toContain('<strong>Malachi Whites</strong>, ClickConstruction LLC')
+    expect(html).toContain('Signed September 1, 2026')
+    expect(html).toContain('Typed by Malachi Whites in ClickTooling')
+    expect(html).toContain(LIEN_WAIVER_ESIGN_LINE.replace('&', '&amp;'))
     expect(html).not.toContain('<img')
   })
 
   it('drawn signature embeds the PNG and never the cursive block', () => {
-    const html = buildLienWaiverSignatureHtml({ ...SIG_TYPED, mode: 'draw', pngDataUrl: 'data:image/png;base64,AAAA' })
+    const html = buildLienWaiverFootHtml(FIELDS, { ...SIG_TYPED, mode: 'draw', pngDataUrl: 'data:image/png;base64,AAAA' })
     expect(html).toContain('<img src="data:image/png;base64,AAAA"')
     expect(html).not.toContain('Great Vibes')
   })
 
-  it('print HTML carries the signature block and the webfont only when typed', () => {
+  it('print HTML carries the signature block and the webfont only when the name is typed', () => {
     const signed = buildLienWaiverPrintHtml('unconditional_final', FIELDS, '1003', SIG_TYPED)
     expect(signed).toContain('fonts.googleapis.com')
-    expect(signed).toContain('Signed electronically in ClickTooling')
+    expect(signed).toContain('Typed by Malachi Whites in ClickTooling')
     const unsigned = buildLienWaiverPrintHtml('unconditional_final', FIELDS, '1003')
     expect(unsigned).not.toContain('fonts.googleapis.com')
-    expect(unsigned).not.toContain('Signed electronically')
+    expect(unsigned).not.toContain('in ClickTooling')
+    expect(unsigned).not.toContain('ESIGN')
     const drawn = buildLienWaiverPrintHtml('unconditional_final', FIELDS, '1003', {
       ...SIG_TYPED,
       mode: 'draw',
@@ -280,7 +304,7 @@ describe('electronic signature rendering (v2.2619)', () => {
   })
 
   it('escapes markup in the printed name and audit line', () => {
-    const html = buildLienWaiverSignatureHtml({ ...SIG_TYPED, printedName: 'A <b>bold</b> & co', auditLine: 'x < y' })
+    const html = buildLienWaiverFootHtml(FIELDS, { ...SIG_TYPED, printedName: 'A <b>bold</b> & co', auditLine: 'x < y' })
     expect(html).not.toContain('<b>bold</b>')
     expect(html).toContain('&lt;b&gt;')
     expect(html).toContain('x &lt; y')
