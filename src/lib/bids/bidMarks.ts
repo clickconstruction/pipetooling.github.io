@@ -61,14 +61,24 @@ function localDayNumber(d: Date): number {
  * unreadable stamp prints plain "marked".
  */
 export function bidMarkSinceWords(markedAt: string, now: Date): string {
-  const at = new Date(markedAt)
-  if (Number.isNaN(at.getTime())) return 'marked'
-  const days = localDayNumber(now) - localDayNumber(at)
-  if (days <= 0) return 'marked today'
-  if (days === 1) return 'marked yesterday'
-  if (days < 7) return `marked ${WEEKDAY[at.getDay()]}`
-  const md = `${MONTH[at.getMonth()]} ${at.getDate()}`
-  return at.getFullYear() === now.getFullYear() ? `marked ${md}` : `marked ${md}, ${at.getFullYear()}`
+  const day = bidMarkDayWords(markedAt, now)
+  return day ? `marked ${day}` : 'marked'
+}
+
+/**
+ * When something happened, in the viewer's local calendar: "today", "yesterday", a weekday
+ * inside the last week, else "Sep 12" (with the year once it is not this year). Empty for a
+ * stamp it cannot read. The words behind "marked Fri" and "seen Tue" (v2.4297).
+ */
+export function bidMarkDayWords(at: string, now: Date): string {
+  const d = new Date(at)
+  if (Number.isNaN(d.getTime())) return ''
+  const days = localDayNumber(now) - localDayNumber(d)
+  if (days <= 0) return 'today'
+  if (days === 1) return 'yesterday'
+  if (days < 7) return WEEKDAY[d.getDay()] ?? ''
+  const md = `${MONTH[d.getMonth()]} ${d.getDate()}`
+  return d.getFullYear() === now.getFullYear() ? md : `${md}, ${d.getFullYear()}`
 }
 
 export type BidForMark = Pick<BidPickerGroupBid, 'outcome' | 'bid_date_sent' | 'working_board_archived_at'> & { id: string }
