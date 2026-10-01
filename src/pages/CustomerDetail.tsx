@@ -21,6 +21,7 @@ import { fetchCustomerProfile, type CustomerProfileData } from '../lib/customers
 import { useAuth } from '../hooks/useAuth'
 import { canSeeWhatCustomersSee } from '../lib/settingsGroups'
 import { PersonJourneyStrips } from '../components/journeys/PersonJourneyStrips'
+import CustomerAgreementsCard from '../components/customers/CustomerAgreementsCard'
 import {
   buildCustomerActivityFeed,
   filterActivityFeed,
@@ -473,6 +474,9 @@ export default function CustomerDetail() {
               {estimateOutcomes ? `${estimateOutcomes.accepted} / ${estimateOutcomes.decided}` : '—'}
             </MoneyCell>
           </div>
+
+          {/* v2.4301: Agreements — the signed papers on file for their jobs and the jobs each covers. Office roles only. */}
+          {canSeeWhatCustomersSee(myRole) && customerId ? <CustomerAgreementsCard customerId={customerId} customerName={data.customer.name} /> : null}
 
           {/* v2.3508: Their journey — the What-customers-see strips for this customer, as it actually went. Office roles only; reads only. */}
           {canSeeWhatCustomersSee(myRole) ? (

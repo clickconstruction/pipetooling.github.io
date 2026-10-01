@@ -9437,6 +9437,7 @@ export type Database = {
           co_signer_printed_name: string | null
           co_signer_signature_storage_path: string | null
           co_signer_user_agent: string | null
+          covers_group_id: string | null
           created_at: string
           created_by: string | null
           fields: Json
@@ -9495,6 +9496,7 @@ export type Database = {
           co_signer_printed_name?: string | null
           co_signer_signature_storage_path?: string | null
           co_signer_user_agent?: string | null
+          covers_group_id?: string | null
           created_at?: string
           created_by?: string | null
           fields?: Json
@@ -9553,6 +9555,7 @@ export type Database = {
           co_signer_printed_name?: string | null
           co_signer_signature_storage_path?: string | null
           co_signer_user_agent?: string | null
+          covers_group_id?: string | null
           created_at?: string
           created_by?: string | null
           fields?: Json
