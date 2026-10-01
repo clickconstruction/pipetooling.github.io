@@ -29,7 +29,7 @@ They live under Settings → System → **Digital twins & samples**. They are hi
 They are not read-only. A sample can press a button, save a note or advance a candidate. That write is stamped with the sample's own name. You turn on **training mode** on a sample if you want a look-only one.
 
 :::example Does an assistant see the Hiring pill?
-Settings → View as… → **Assistant**. You are *Sample assistant*; open Prospects: no Hiring pill, because the sample has no Hiring switch. Exit. Active accounts → tick Hiring on *Sample assistant*. View as → Assistant again, back to Prospects: the pill is there.
+Settings → View as… → **Assistant**. You are *Sample assistant*; open Prospects: no Hiring pill, because the sample has no Hiring switch. Exit. Settings → System → **Digital twins & samples** → {{button:outline|Desk}} beside *Sample assistant* → tick **Hiring board**. View as → Assistant again, back to Prospects: the pill is there.
 :::
 
 The older **Imitate** buttons on People → Users and the person desk still work. Since v2.3606 they land on the page you were on too.

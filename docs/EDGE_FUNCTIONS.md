@@ -402,7 +402,7 @@ const response = await supabase.functions.invoke('create-user', {
 6. Upserts the corresponding `public.users` record with role, name, any service-type restriction, and `read_only` (the training-mode flag chosen in the dialog — v2.2872). The service-role write passes `users_guard_privileged_columns` (`auth.uid()` IS NULL), so no migration was needed.
 7. Returns user details (incl. `read_only`)
 
-**Called from**: Active Accounts → **Manually add user** ([`useActiveAccountsManagement.ts`](../src/hooks/useActiveAccountsManagement.ts) `handleManualAdd`). Since v2.2872 the dialog opens with no role selected and **Create user** stays disabled until one is chosen (`inviteFormValid`, [`src/lib/inviteUserForm.ts`](../src/lib/inviteUserForm.ts)).
+**Called from**: People → Users → **+ Hire** → *Set a password now* (`createHireLogin` in [`src/lib/people/hireWrites.ts`](../src/lib/people/hireWrites.ts), v2.4348; it was the retired Active Accounts window's *Manually add user*), the sample accounts card, the twin minter and Hiring's *Try out*.
 
 **Deployment**: See [`supabase/functions/create-user/DEPLOY.md`](../supabase/functions/create-user/DEPLOY.md)
 
@@ -418,7 +418,7 @@ const response = await supabase.functions.invoke('create-user', {
 
 **Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`
 
-**Called from**: Active Accounts → "Invite via email" ([`useActiveAccountsManagement.ts`](../src/hooks/useActiveAccountsManagement.ts) `handleInvite`; the dialog opens with no role selected and **Send invite** stays disabled until one is chosen — v2.2872) and People → Users → invite roster entry ([`People.tsx`](../src/pages/People.tsx) `inviteAsUser`, role derived from the roster kind).
+**Called from**: People → Users → **+ Hire** → *Email them a link* (`inviteHire` in [`src/lib/people/hireWrites.ts`](../src/lib/people/hireWrites.ts); the retired Active Accounts window's *Invite via email* until v2.4348) and People → Users → invite roster entry ([`People.tsx`](../src/pages/People.tsx) `inviteAsUser`, role derived from the roster kind).
 
 #### Request Parameters
 
@@ -473,7 +473,7 @@ The emailed link verifies through Supabase Auth and redirects to **`/accept-invi
 
 **Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`
 
-**Called from**: Settings → People & Accounts → Active Accounts → "Send email to sign in" ([`Settings.tsx`](../src/pages/Settings.tsx) `sendSignInEmail`).
+**Called from**: the person desk's Access & account → Sign-in → **Send sign-in email** ([`PersonDeskAccessSection.tsx`](../src/components/personDesk/sections/PersonDeskAccessSection.tsx)); the retired Active Accounts window's *Send email to sign in* until v2.4348.
 
 #### Request Parameters
 
@@ -532,7 +532,7 @@ interface MergeUsersRequest {
 // or { error: string, code?: string } with 400/401/403/404/409/500
 ```
 
-**Used by**: Active Accounts → **Merge users** dialog (Preview merge = `dry_run: true`, then Merge now). See `RECENT_FEATURES.md` v2.652; guide `merge-user-accounts.md`.
+**Used by**: the person desk's **Merge a duplicate…** (`previewAccountMerge` / `runAccountMerge` in [`src/lib/people/accountMerge.ts`](../src/lib/people/accountMerge.ts), v2.4346; Preview merge = `dry_run: true`, then Merge now). The Active Accounts window's Merge users dialog retired in v2.4348. See `RECENT_FEATURES.md` v2.652; guide `merge-user-accounts.md`.
 
 ### notify-help-feedback
 
@@ -2835,7 +2835,7 @@ const response = await supabase.functions.invoke('set-user-password', {
 
 **Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
 
-**Callers**: the person desk's Access & account → Email → **Change…** (`changeSignInEmail` in [`src/lib/people/accountWrites.ts`](../src/lib/people/accountWrites.ts)), and the Active Accounts window's Edit → Save when the email changed (`useActiveAccountsManagement.saveUserEdits`).
+**Callers**: the person desk's Access & account → Email → **Change…** (`changeSignInEmail` in [`src/lib/people/accountWrites.ts`](../src/lib/people/accountWrites.ts)). The Active Accounts window's Edit → Save called it too until that window retired (v2.4348).
 
 #### Request
 

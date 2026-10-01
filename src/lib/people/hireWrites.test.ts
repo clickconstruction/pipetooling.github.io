@@ -57,3 +57,18 @@ describe('hirePlan', () => {
     expect(problems).toEqual(expect.arrayContaining(['A name is required.', 'That email does not look right.', 'Pick a start date.']))
   })
 })
+
+describe('hirePlan — a password set now (PR D2)', () => {
+  it('the login step says the password, and the two boxes must match', () => {
+    const ok = hirePlan({ ...base, signInBy: 'password', password: 'secret12', passwordAgain: 'secret12' }, devCaps)
+    expect(ok.problems).toEqual([])
+    expect(ok.steps[0]).toMatchObject({ id: 'account', label: 'Login' })
+    expect(hirePlan({ ...base, signInBy: 'password', password: 'secret12', passwordAgain: 'nope' }, devCaps).problems).toContain('The two passwords do not match.')
+    expect(hirePlan({ ...base, signInBy: 'password', password: 'abc', passwordAgain: 'abc' }, devCaps).problems).toContain('Use at least 6 characters.')
+  })
+
+  it('an email link stays the default and asks for no password', () => {
+    expect(hirePlan(base, devCaps).steps[0]).toMatchObject({ id: 'account', label: 'Invite' })
+    expect(hirePlan({ ...base, signInBy: 'email', password: '' }, devCaps).problems).toEqual([])
+  })
+})

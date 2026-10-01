@@ -12,7 +12,7 @@
  * - archived accounts are never active;
  * - digital twins are never active on a human surface (their home is
  *   Settings → Digital twins and the Robot Board), and neither are the View-as
- *   sample accounts (v2.3606; their home is Active accounts → Sample accounts);
+ *   sample accounts (v2.3606; their home is Settings → System → Digital twins & samples);
  * - dev accounts are the fixtures lane (`test` is a dev row) — they show only
  *   when the viewer is dev, unless a surface opts in with `includeDev: true`
  *   because it legitimately assigns work to the owner.

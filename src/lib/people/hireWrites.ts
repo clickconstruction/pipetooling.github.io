@@ -18,6 +18,7 @@ import type { PersonKind } from '../../hooks/usePeopleRoster'
 import { KIND_LABELS, KIND_TO_USER_ROLE } from '../../components/people/peopleUsersTabShared'
 import { syncSalaryClockSessionsForUserDay, denverWorkDateToday } from '../salaryScheduleSync'
 import { materializePacketForPerson, type PacketPersonDoc, type PacketTemplateDoc } from './materializePacket'
+import { passwordProblem } from './accountWrites'
 
 type Client = SupabaseClient<Database>
 
@@ -28,6 +29,14 @@ export type HireInput = {
   email: string
   /** Send the invite that makes the login (dev only — `invite-user`). */
   invite: boolean
+  /**
+   * PR D2 (Account on the desk): how the login is made. `email` (the default) emails them a
+   * link (`invite-user`); `password` makes it now with a password the office hands over
+   * (`create-user`), what the retired Active Accounts window called Manually add user.
+   */
+  signInBy?: 'email' | 'password'
+  password?: string
+  passwordAgain?: string
   startInTraining: boolean
   startDate: string
   hourlyWage: number | null
@@ -52,6 +61,10 @@ export function hirePlan(input: HireInput, caps: HireCaps): { steps: HireStep[];
   if (!name) problems.push('A name is required.')
   if (input.invite && !email) problems.push('An email is required to send an invite.')
   if (input.invite && !caps.canInvite) problems.push('Only a dev can send the invite — add them to the roster now and ask a dev to invite them.')
+  if (input.invite && input.signInBy === 'password') {
+    const pw = passwordProblem(input.password ?? '', input.passwordAgain ?? '')
+    if (pw) problems.push(pw)
+  }
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) problems.push('That email does not look right.')
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.startDate)) problems.push('Pick a start date.')
   const paid = !NO_PAY_KINDS.has(input.kind)
@@ -63,7 +76,8 @@ export function hirePlan(input: HireInput, caps: HireCaps): { steps: HireStep[];
 
   const steps: HireStep[] = []
   const kindLabel = KIND_LABELS[input.kind]
-  if (input.invite) steps.push({ id: 'account', label: 'Invite', detail: `${email || 'their email'} as ${kindLabel} — the login and the roster row, linked` })
+  if (input.invite && input.signInBy === 'password') steps.push({ id: 'account', label: 'Login', detail: `${email || 'their email'} as ${kindLabel}, with the password you set — the login and the roster row, linked` })
+  else if (input.invite) steps.push({ id: 'account', label: 'Invite', detail: `${email || 'their email'} as ${kindLabel} — the login and the roster row, linked` })
   else steps.push({ id: 'roster', label: 'Roster row', detail: `${name || 'the person'} as ${kindLabel}, starting ${input.startDate}` })
   if (paid && caps.canAccessPay) {
     steps.push({
@@ -117,6 +131,24 @@ export async function inviteHire(
     const body = data as { error?: string; user_id?: string; person_id?: string | null } | null
     if (body?.error) throw new Error(body.error)
     return { userId: body?.user_id ?? null, personId: body?.person_id ?? null }
+  } catch (e) {
+    throw new Error(await fnErrorMessage(e))
+  }
+}
+
+/** `create-user` (dev): the login with a password set now, no email, and the linked roster row. */
+export async function createHireLogin(
+  supabase: Client,
+  args: { email: string; kind: PersonKind; name: string; password: string; startInTraining: boolean; startDate: string },
+): Promise<{ userId: string | null; personId: string | null }> {
+  try {
+    const { data, error } = await supabase.functions.invoke('create-user', {
+      body: { email: args.email.trim().toLowerCase(), password: args.password, role: KIND_TO_USER_ROLE[args.kind], name: args.name.trim(), read_only: args.startInTraining, start_date: args.startDate },
+    })
+    if (error) throw error
+    const body = data as { error?: string; user?: { id?: string; person_id?: string | null } } | null
+    if (body?.error) throw new Error(body.error)
+    return { userId: body?.user?.id ?? null, personId: body?.user?.person_id ?? null }
   } catch (e) {
     throw new Error(await fnErrorMessage(e))
   }

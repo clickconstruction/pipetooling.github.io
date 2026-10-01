@@ -1038,7 +1038,7 @@ export function PeopleUsersTab({
               </p>
               {candidates.length === 0 ? (
                 <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-red-700)' }}>
-                  No unlinked {wantedRole ?? ''} accounts to link. Create the account first (Manage accounts).
+                  No unlinked {wantedRole ?? ''} accounts to link. Make the account first with + Hire.
                 </p>
               ) : (
                 <select
