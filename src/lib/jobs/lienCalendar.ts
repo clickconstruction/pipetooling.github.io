@@ -1,7 +1,6 @@
 import { daysBetweenYmd, type LienPayRunway, type LienRunwayTone } from './lienPayRunway'
 import { filingDeadlineForMonth } from './lienDeadlines'
 import { formatYmdMonthDay } from './billedExpectedPay'
-import type { NoticeState } from './forecastWorkMonths'
 
 /**
  * The Lien calendar (v2.4101, punch list #55 PR B): every billed or
@@ -15,6 +14,8 @@ import type { NoticeState } from './forecastWorkMonths'
  * v2.4265: the work tick (the day every date was counted from, hollow when it is the
  * creation day), the grey wash past the day a lien died, a job row that speaks only when
  * its deadline differs from its GC's, and a key of short words with the long ones on a tap.
+ * v2.4308: the runway knows every work month, so its notice date is the earliest month still
+ * owed and the flags are its own months — the words, the sort and the flags read one date.
  */
 
 export type LienCalendarJob = {
@@ -31,14 +32,9 @@ export type LienCalendarJob = {
   runway: LienPayRunway
   /** The job's last work day — the commercial lien date for the kind bracket is counted from it. */
   lastWorkYmd?: string | null
-  /** Every work month's § 53.056 notice (from `buildWorkMonthsByJob`), when the clock sessions have loaded; null → the runway's last-month flag stands in. */
-  months?: ReadonlyArray<LienCalendarMonth> | null
   /** The linked property record (`customer_addresses.id`) — where a kind is written (PR D). */
   addressId?: string | null
 }
-
-/** One work month's notice on the calendar: its statutory deadline and where it stands. */
-export type LienCalendarMonth = { key: string; due: string; state: NoticeState }
 
 export type LienCalendarGroupKind = 'gc' | 'direct' | 'gone'
 
@@ -226,15 +222,14 @@ function addDays(ymd: string, days: number): string {
   return d.toISOString().slice(0, 10)
 }
 
-/** A job's notice flags: every unpaid month when the clock sessions are in, else the runway's one flag. */
-export function noticeFlagsFor(job: Pick<LienCalendarJob, 'runway' | 'months' | 'isSub'>): Array<{ ymd: string; done: boolean; monthKey: string | null }> {
+/**
+ * A job's notice flags: one per work month the runway knows — hollow while owed, a check once on file;
+ * a month whose window closed unsent draws none. The runway's own months (v2.4308), so a flag sits on
+ * the same clock as the words and the earliest hollow flag is the date the GC row names.
+ */
+export function noticeFlagsFor(job: Pick<LienCalendarJob, 'runway' | 'isSub'>): Array<{ ymd: string; done: boolean; monthKey: string }> {
   if (!job.isSub || job.runway.state === 'closed' || job.runway.state === 'filed') return []
-  if (job.months && job.months.length) {
-    return job.months.filter((m) => m.state !== 'closed').map((m) => ({ ymd: m.due, done: m.state === 'sent', monthKey: m.key }))
-  }
-  const n = job.runway.marks?.notice
-  if (!n || !job.runway.noticeByYmd) return []
-  return [{ ymd: job.runway.noticeByYmd, done: n.done, monthKey: null }]
+  return job.runway.noticeMonths.filter((m) => m.state !== 'closed').map((m) => ({ ymd: m.ymd, done: m.state === 'sent', monthKey: m.key }))
 }
 
 /** The commercial lien date when the property kind is not set — the bracket's far end. */
@@ -312,7 +307,7 @@ function monthShort(ymd: string): string {
 }
 
 /**
- * The work tick (v2.4265): the day every date on the row was counted from — the last approved
+ * The work tick (v2.4265): the day the row's lien date was counted from — the last approved
  * clock day, drawn solid with its date; or, on a job with no hours, the creation day, drawn hollow
  * and amber with "Jun · no hours (created)". A day before the axis's left edge sits at the edge
  * with a "◂". Null when the runway has no basis.
@@ -483,8 +478,8 @@ export const LIEN_CALENDAR_KEY: ReadonlyArray<LienCalendarKeyEntry> = [
   {
     glyph: 'work',
     short: 'Last day worked',
-    label: 'the last day worked — every date on the row is counted from its month',
-    long: 'The last approved clock day on the job. Texas counts every lien date from the month the work was done (§ 53.052, § 53.056), so this tick is where the whole row starts — a wrong tick moves every flag. If it looks wrong, the job’s clock sessions are where to look.',
+    label: 'the last day worked — the row’s lien date is counted from its month',
+    long: 'The last approved clock day on the job. Texas counts every lien date from the month the work was done: the lien flag from this tick’s month (§ 53.052), and a notice flag from each month worked (§ 53.056). A wrong tick moves the lien flag. If it looks wrong, the job’s clock sessions are where to look.',
   },
   {
     glyph: 'work_hollow',

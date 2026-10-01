@@ -2,7 +2,7 @@
  * Bids → Pricing: the "?" card (v2.2376) — the Workbench in four scannable lines; the tour
  * and the full guide ride in its footer, so one icon is the whole help story. Region P2 of
  * `docs/BIDS_PRICING_LABOR_TABS_ARCHITECTURE.md`; the JSX moved out of `BidsPricingTab` as it
- * was. Renders and reports only. The lines are written in plain words (v2.4308, the rules in
+ * was. Renders and reports only. The lines are written in plain words (v2.4310, the rules in
  * `src/lib/plainWords.ts`); each line's body carries `data-help-line` so the render test can
  * hold them to the rules.
  */

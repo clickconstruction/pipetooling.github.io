@@ -159,7 +159,7 @@ function Glyph({ kind, tone = 'amber', count }: { kind: LienCalendarKeyGlyph | '
 function markTitle(m: LienCalendarMark, j: LienCalendarJob): string {
   switch (m.kind) {
     case 'work':
-      return m.fromCreation ? `No approved hours — the board counts from the month the job was created (${labelOf(m.ymd)}). Approve the hours or check the month before a notice goes out.` : `Last day worked: ${labelOf(m.ymd)} — every date on this row is counted from its month`
+      return m.fromCreation ? `No approved hours — the board counts from the month the job was created (${labelOf(m.ymd)}). Approve the hours or check the month before a notice goes out.` : `Last day worked: ${labelOf(m.ymd)} — the lien date counts from its month, each notice from its own month`
     case 'gone':
       return m.by === 'notice' ? `The § 53.056 notice was due ${labelOf(m.ymd)} and none is recorded — the lien for that work is gone. Nothing can be filed after this day; the money is still owed.` : `The § 53.052 window closed ${labelOf(m.ymd)} with nothing filed — the lien is gone. Nothing can be filed after this day; the money is still owed.`
     case 'pay':
@@ -743,7 +743,7 @@ export default function LienDeskCalendarTab({ rows, loading, todayYmd, onOpenJob
         )}
       </div>
       {axis && !isMobile ? (
-        <div style={{ padding: '6px 14px', borderTop: '1px solid var(--border)', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>Rows are doors: a job opens its Lien window; a flag opens that month’s notice. Each row starts at its last day worked — every date is counted from that month. The GC row folds its jobs’ flags with a count and says the next move once; a job speaks only when its deadline differs{penOn ? '. A dot opens “They said…” — the GC row’s one dot is its word for every job' : ''}.</div>
+        <div style={{ padding: '6px 14px', borderTop: '1px solid var(--border)', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>Rows are doors: a job opens its Lien window; a flag opens that month’s notice. Each row starts at its last day worked — the lien date counts from that month, each notice from its own month. The GC row folds its jobs’ flags with a count and says the next move once; a job speaks only when its deadline differs{penOn ? '. A dot opens “They said…” — the GC row’s one dot is its word for every job' : ''}.</div>
       ) : null}
     </div>
   )
