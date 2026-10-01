@@ -714,7 +714,7 @@ export default function BankPaymentsModal({
       )
       if (seq !== listRequestSeqRef.current) return []
       const rows: MercuryCandidate[] = ((data ?? []) as MercuryCandidateRow[])
-        .map((r) => ({ ...r, bankReturn: mercuryBankReturnFromRaw(r.raw, r.posted_at, r.amount) }))
+        .map((r) => ({ ...r, bankReturn: mercuryBankReturnFromRaw(r.raw, r.posted_at, r.amount, r.kind) }))
         // A deposit the bank returned leaves To match like a hand-marked one; All still lists it with its chip.
         .filter((r) => includeHiddenArDeposits || r.bankReturn == null)
       setCandidates(rows)
@@ -766,7 +766,7 @@ export default function BankPaymentsModal({
         if (seq !== hiddenFetchSeqRef.current) return
         const rows: MercuryCandidate[] = ((data ?? []) as MercuryCandidateRow[]).map((r) => ({
           ...r,
-          bankReturn: mercuryBankReturnFromRaw(r.raw, r.posted_at, r.amount),
+          bankReturn: mercuryBankReturnFromRaw(r.raw, r.posted_at, r.amount, r.kind),
         }))
         setHiddenCandidates(rows)
       } catch {

@@ -102,9 +102,12 @@ describe('team sample emails (What the team sees)', () => {
   })
   it('the Check returned notice is the webhook\u2019s own builder over the sample deposit (lift 12)', () => {
     const built = buildTeamSampleEmail('bank_return', ctx)
-    expect(built.subject).toBe('Check returned · $13,680 · J1057 Hunter Homes – gas line · Insufficient funds')
-    expect(built.text.startsWith('Hunter Homes\u2019 check for $13,680 on J1057 Hunter Homes – gas line came back: Insufficient funds.'.replace('\u2019', "'"))).toBe(true)
-    expect(built.text).toContain('The bank took it Sep 26 and has now sent it back.')
+    // v2.4320: one notice per case, the words in plain sentences.
+    expect(built.subject).toBe('A check came back · Hunter Homes · $13,680')
+    expect(built.text.startsWith("The bank sent back Hunter Homes' $13,680 check.")).toBe(true)
+    expect(built.text).toContain('The reason is Insufficient funds.')
+    expect(built.text).toContain('The bank took it Sep 26.')
+    expect(built.text).toContain('It is still counted as paid on J1057 Hunter Homes – gas line.')
     expect(built.html).toContain(`${ctx.origin}/jobs?tab=stages&amp;edit=job-5&amp;editFocus=payments`)
   })
   it('the roster audit is the function\u2019s own renderer over the sample diff (lift 13 — every row renders live)', () => {
