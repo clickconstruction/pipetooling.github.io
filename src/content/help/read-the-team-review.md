@@ -5,13 +5,15 @@ roles: dev
 keywords: review, team summary, profit after overhead, ranked, verdict, prior period, trend, math, drawer, hygiene, pending approvals, no bill, percent complete, salaried, field crew, office
 order: 63
 ---
-**People → Review** answers three questions about a period, in order: how did the team do, who carried it, and where does each person's number come from. It opens on the **Ranked** view; the classic column table is one click away with {{button:outline|Table}} and the tab remembers which you last used.
+People → Review answers three questions about a period, in order. How did the team do, who carried it, and where does each person's number come from.
+
+It opens on the **Ranked** view. The classic column table is one click away with {{button:outline|Table}}. The tab remembers which you last used.
 
 ## The verdict
 
-The first card is **profit after overhead** for the period, with a pill comparing it to the period just before it — the same length, ending the day before this one starts. {{chip:green|↑ +8% vs the prior period}} means the team earned more this time, {{chip:yellow|↓ −12% vs the prior period}} less, and anything inside ±5% reads as **flat**. Under it: how many people are field crew and what they earned per field hour, how many are office & bids and what their time cost, and how many logged no time at all.
+The first card is **profit after overhead** for the period. A pill compares it to the period just before it. That prior period is the same length, ending the day before this one starts. {{chip:green|↑ +8% vs the prior period}} means the team earned more this time. {{chip:yellow|↓ −12% vs the prior period}} means less. Anything inside ±5% reads as **flat**. Under it the card says how many people are field crew and what they earned per field hour. It says how many are office & bids and what their time cost. It says how many logged no time at all.
 
-The second card shows **how gross became profit**: one bar split into parts, subs & labor, overhead labor, parts burden, and profit, with the dollars and share of gross for each.
+The second card shows **how gross became profit**. It is one bar split into parts. The parts are subs & labor, overhead labor, parts burden, and profit. Each shows the dollars and its share of gross.
 
 ## What is skewing the numbers
 
@@ -24,23 +26,23 @@ An amber strip appears when something is quietly distorting the period. Each lin
 **$478 of office-type charges on 3 field jobs** — 3 card charges the bank filed as software, utilities, insurance, internet or medical count as parts there — usually office spend, sometimes a dump fee or permit (Post Oak Landfill $397, City of Shavano Park $68, Dropbox $13). Confirm or re-sort. {{button:blue|Sort in Banking ›}}
 :::
 
-The office-type line reads the bank's own category on each card purchase, so it is a prompt, not a verdict: a landfill fee filed under "Utilities" is a real job cost and can stay; a software subscription on a field job belongs on the office job. Both are fixed in {{button:blue|Banking → Sorting}}.
+The office-type line reads the bank's own category on each card purchase. So it is a prompt, not a verdict. A landfill fee filed under Utilities is a real job cost and can stay. A software subscription on a field job belongs on the office job. Both are fixed in {{button:blue|Banking → Sorting}}.
 
 When the period is clean the strip disappears.
 
 ## The ranking
 
-Everyone sits on one axis. Bars grow to the right of the zero line for profit and to the left for losses. **Office & bids** people are negative by construction — their wages are the overhead pool, so a red bar there is the cost of running the office, not a bad job. The Overhead tab is where that pool is judged; here it only shows who it is. **(s)** marks a salaried person; their hours are their clocked sessions, like everyone else's.
+Everyone sits on one axis. Bars grow to the right of the zero line for profit and to the left for losses. **Office & bids** people are negative by construction. Their wages are the overhead pool. So a red bar there is the cost of running the office, not a bad job. The Overhead tab is where that pool is judged. Here it only shows who it is. ***(s)*** marks a salaried person. Their hours are their clocked sessions, like everyone else's.
 
-Change the axis with **Rank by**: profit after overhead, profit per hour, gross revenue, or net revenue. Type in **Search by name** to narrow the list.
+You change the axis with **Rank by**. The choices are profit after overhead, profit per hour, gross revenue, or net revenue. You type in **Search by name** to narrow the list.
 
 ## Coming here from the Bridge
 
-A name on the Bridge's Vectors panel opens this tab on that pay week with the person already expanded. The address carries the week and the name, so it can be shared; the tab reads it once and then behaves like any other visit — change the period or click another name freely.
+A name on the Bridge's Vectors panel opens this tab on that pay week with the person already expanded. The address carries the week and the name, so it can be shared. The tab reads it once and then behaves like any other visit. You can change the period or click another name freely.
 
 ## Where a number comes from
 
-Click a name. The drawer beside the list shows the formula with this period's figures:
+You click a name. The drawer beside the list shows the formula with this period's figures:
 
 :::example Malachi · where $21,894 comes from
 Gross revenue **$49,063** — 18 jobs, each job's bill × % complete, then his share by labor cost
@@ -54,19 +56,19 @@ Net revenue **$23,326**
 Profit after overhead **$20,517** · ÷ 176 clocked hours = **$117/hr**
 :::
 
-**What moves it** lists the things that would change that number the most: jobs with no % complete and how much of his gross rides on them, jobs with no bill amount, one job carrying most of the total, the worst job in the period, hours that landed on no job, and crew assignments with zero hours. **Watch-outs** are the standing caveats — revenue uses today's % complete, so a period's number moves when a job progresses later, and only a person's own office time is charged as overhead here.
+**What moves it** lists the things that would change that number the most. Those are jobs with no % complete and how much of his gross rides on them. Jobs with no bill amount. One job carrying most of the total. The worst job in the period. Hours that landed on no job. And crew assignments with zero hours. **Watch-outs** are the standing caveats. Revenue uses today's % complete, so a period's number moves when a job progresses later. Only a person's own office time is charged as overhead here.
 
 ### The vehicle deal
 
-Each person's **Vehicle** on Pay config decides one more line. {{chip:green|🚚 $8.32/h}} means a company truck: the truck they hold is priced all-in per field hour. {{chip:blue|🚗 $6.10/h}} means their own vehicle with fuel paid: their fuel per field hour, as part of employing them. Either way their fuel-tag card charges leave the job purchases, so nobody else carries them. The chip sits beside the name on every ranked bar; the rates come from People → Vehicles → Wheels.
+Each person's **Vehicle** on Pay config decides one more line. {{chip:green|🚚 $8.32/h}} means a company truck. The truck they hold is priced all-in per field hour. {{chip:blue|🚗 $6.10/h}} means their own vehicle with fuel paid. Their fuel per field hour counts as part of employing them. Either way their fuel-tag card charges leave the job purchases, so nobody else carries them. The chip sits beside the name on every ranked bar. The rates come from People → Vehicles → Wheels.
 
 ## How earned is counted
 
-Review counts a person's revenue the way the Bridge does, so the two agree to the dollar for the same hours:
+Review counts a person's revenue the way the Bridge does. So the two agree to the dollar for the same hours:
 
-- **Value created on a job** = the contract × how far along it is. A job that is ready to bill, billed, or paid is 100% whatever its % says. A job with a % uses it. A job with no % is counted as **half done** and marked *(assumed)* — set the % and the mark goes away.
-- **Your share of that value** = your clock hours on the job in the period ÷ the job's lifetime clock hours, every person counted. Wages play no part, so two people with the same hours on the same job get the same share.
-- **Sub labor sheets** are a job cost. They have no clock hours, so they never earn a share of revenue; they show on the cost side.
+- **Value created on a job** = the contract × how far along it is. A job that is ready to bill, billed, or paid is 100% whatever its % says. A job with a % uses it. A job with no % is counted as **half done** and marked *(assumed)*. You set the % and the mark goes away.
+- **Your share of that value** = your clock hours on the job this period ÷ the job's lifetime clock hours. Lifetime clock hours count every person on the job. Wages play no part. So two people with the same hours on the same job get the same share.
+- **Sub labor sheets** are a job cost. They have no clock hours, so they never earn a share of revenue. They show on the cost side.
 
 :::example The Gross drilldown
 Job · Total bill $10,000 · % complete 40% · Value created $4,000 · Your hours (period) 8.0 · Job hours (lifetime) 100.0 · Share 8.0% · Allocated $320
@@ -74,9 +76,9 @@ Job · Total bill $10,000 · % complete 40% · Value created $4,000 · Your hour
 
 ## Jobs worked, per job
 
-Below the drawer, **Jobs Worked** lists one line per job, best profit first: your hours and labor on it, your share of the job's lifetime hours, your revenue and profit, and the per-hour rates. The heading says how many day rows sit behind the lines and how many of those carry zero hours. Two chips call out jobs that distort the math: {{chip:yellow|no bill}} (labor there is pure loss until a bill amount is set) and {{chip:yellow|% assumed}} (no % complete on the ledger, so the job is counted as half done).
+Below the drawer, **Jobs Worked** lists one line per job, best profit first. Each line shows your hours and labor on it and your share of the job's lifetime hours. It shows your revenue and profit and the per-hour rates. The heading says how many day rows sit behind the lines and how many of those carry zero hours. Two chips call out jobs that distort the math. {{chip:yellow|no bill}} means labor there is pure loss until a bill amount is set. {{chip:yellow|% assumed}} means no % complete on the ledger, so the job is counted as half done.
 
-Click a job line to open its days. Each day row is what it always was — click it again for the full breakdown of that day's revenue, costs, and the three overhead methods.
+You click a job line to open its days. Each day row is what it always was. You click it again for the full breakdown of that day's revenue, costs, and the three overhead methods.
 
 ## Tasks that pile up
 
@@ -92,4 +94,4 @@ One-off tasks still show one per line with their scheduled date. The heading tel
 
 ## When you want the columns
 
-{{button:outline|Table}} brings back the Team Summary table with every column, the per-cell drilldowns, Print, and Open in new window. The two views read the same numbers, so switching never changes a total.
+{{button:outline|Table}} brings back the Team Summary table with every column. It has the per-cell drilldowns, Print, and Open in new window. The two views read the same numbers, so switching never changes a total.

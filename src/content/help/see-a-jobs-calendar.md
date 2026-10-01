@@ -5,11 +5,13 @@ roles: all
 keywords: job calendar, schedule, appointments, dispatch, field date, who is scheduled, month view, worked days, two-week strip, not scheduled, when is the job scheduled, ends, this week, later, next first, sort by next visit, days ago, billed, paid, b:, j:
 order: 64
 ---
-Every job on **Jobs → Pipeline** carries a **two-week strip** in the Crew & Dates column: ten small cells, this week and next, Monday first. A blue cell is a day someone is booked on the job; the outlined cell is today. Under it the row says it in words:
+Every job on Jobs → Pipeline carries a two-week strip in the Crew & Dates column. Ten small cells show this week and next, Monday first.
 
-- {{chip:green|NEXT}} **Wed Sep 23**, then *tomorrow · 8–10 AM*, and {{chip:blue|ENDS}} **Fri Sep 25**, then *in 3 days · 3 visits* — the first appointment and the last day on the calendar. One visit reads *same day*.
-- {{chip:yellow|NOT SCHEDULED}} with **Activity Thu Sep 17**, then *6 days ago · worked* (or *none yet* when nobody has been out) — nothing booked from today on. On a Working job the flag is amber; on a Waiting job it is grey, because nothing booked is what Waiting means. Planners get an **Assign work…** link right under it.
-- **Done** with the last day on site (*worked*, or *booked, no hrs*) — nothing booked and the job is at 100 %, or already past Working.
+A blue cell is a day someone is booked on the job. The outlined cell is today. Under it the row says it in words:
+
+- {{chip:green|NEXT}} **Wed Sep 23**, then *tomorrow · 8–10 AM*, is the first appointment. {{chip:blue|ENDS}} **Fri Sep 25**, then *in 3 days · 3 visits*, is the last day on the calendar. One visit reads *same day*.
+- {{chip:yellow|NOT SCHEDULED}} with **Activity Thu Sep 17**, then *6 days ago · worked*, means nothing is booked from today on. It reads *none yet* when nobody has been out. On a Working job the flag is amber. On a Waiting job it is grey, because nothing booked is what Waiting means. Planners get an **Assign work…** link right under it.
+- **Done** with the last day on site means nothing is booked. The job is at 100 %, or already past Working. The day reads *worked* or *booked, no hrs*.
 
 :::example A scheduled row and an unscheduled one
 ▢ ▣ ▣ ▣ ▢ · ▢ ▢ ▢ ▢ ▢ &nbsp; NEXT Wed Sep 23 · 8–10 AM &nbsp; ENDS Fri Sep 25 · 3 visits
@@ -17,38 +19,38 @@ Every job on **Jobs → Pipeline** carries a **two-week strip** in the Crew & Da
 ▢ ▢ ▢ ▢ ▢ · ▢ ▢ ▢ ▢ ▢ &nbsp; NOT SCHEDULED &nbsp; Activity Thu Sep 17 · worked &nbsp; Assign work…
 :::
 
-A Saturday block shows as a sixth cell on its week; days booked beyond next week are counted in the strip's hover text. The days that have passed say what happened: a **green ✓** where someone clocked approved hours, a **hollow blue** cell where a crew was booked and nobody clocked, grey where nothing was planned. Hover the strip to see who worked each ticked day. Today's cell stays plain blue until the day is over. On the phone cards the same strip sits in the chip row, with **→ Fri Sep 25** when the plan runs past the next visit and the **not scheduled** chip when nothing is booked.
+A Saturday block shows as a sixth cell on its week. Days booked beyond next week are counted in the strip's hover text. The days that have passed say what happened. A **green ✓** marks a day where someone clocked approved hours. A **hollow blue** cell marks a day where a crew was booked and nobody clocked. Grey means nothing was planned. Hover the strip to see who worked each ticked day. Today's cell stays plain blue until the day is over. On the phone cards the same strip sits in the chip row. There it shows **→ Fri Sep 25** when the plan runs past the next visit. It shows the **not scheduled** chip when nothing is booked.
 
 ## Find the ones with no date
 
-The **Working** header carries four pills — {{chip:gray|All 40}} {{chip:yellow|Not scheduled 14}} {{chip:gray|This week 19}} {{chip:gray|Later 7}} — counted from the same strip. Pick one and the Working rows narrow to it. *Not scheduled* means nothing booked from today on and the job under 100 %; finished jobs with nothing booked are not gaps, and a line under the list says how many were left out. Beside the pills, {{button:outline|⇅ Next first}} reorders every section by the next booked visit: today's at the top, unbooked rows oldest-last-worked first, finished rows last. Press it again for the usual job-number order; the ⋯ menu's Sort group offers the same pick.
+The **Working** header carries four pills: {{chip:gray|All 40}} {{chip:yellow|Not scheduled 14}} {{chip:gray|This week 19}} {{chip:gray|Later 7}}. They are counted from the same strip. Pick one and the Working rows narrow to it. *Not scheduled* means nothing booked from today on and the job under 100 %. Finished jobs with nothing booked are not gaps. A line under the list says how many were left out. Beside the pills, {{button:outline|⇅ Next first}} reorders every section by the next booked visit. Today's go at the top. Unbooked rows follow, oldest last worked first. Finished rows go last. Press it again for the usual job-number order. The ⋯ menu's Sort group offers the same pick.
 
-Every dated line puts the calendar date first and the distance from today under it — *today, yesterday, tomorrow, 2 days ago, in 3 days*, then weeks and months further out. The billing line works the same way: {{chip:gray|BILLED}} **Mon Sep 21**, then *2 days ago · sent* (or *billed*), or {{chip:gray|PAID}} when the latest event is a payment; an underlined label — **Done**, **Billed**, **Paid**, **Activity** — means it already happened, where *Next* and *Ends* say what is coming; a job with no billing yet shows no line at all. The old `j: T+1 (tue)` and `b: T+2 (mon)` codes still show when you hover a line.
+Every dated line puts the calendar date first and the distance from today under it. That reads *today, yesterday, tomorrow, 2 days ago, in 3 days*, then weeks and months further out. The billing line works the same way. It reads {{chip:gray|BILLED}} **Mon Sep 21**, then *2 days ago · sent* or *billed*. It reads {{chip:gray|PAID}} when the latest event is a payment. An underlined label means it already happened: **Done**, **Billed**, **Paid** or **Activity**. *Next* and *Ends* say what is coming. A job with no billing yet shows no line at all. The old *j: T+1 (tue)* and *b: T+2 (mon)* codes still show when you hover a line.
 
-Clicking the strip or any of the lines opens the **Job Calendar**: a month view of which days the job sits on whose calendar, with every appointment listed below.
+Clicking the strip or any of the lines opens the **Job Calendar**. That is a month view of which days the job sits on whose calendar. Every appointment is listed below.
 
 ## Open it
 
-1. On **Jobs → Pipeline**, find the job's two-week strip in the Crew & Dates column (or the **NEXT** / **ENDS** / **ACTIVITY** line under it).
-2. Click it. The Job Calendar opens with the job's number, service type, name, and address at the top.
+1. On **Jobs → Pipeline**, find the job's two-week strip in the Crew & Dates column. Or find the **NEXT**, **ENDS** or **ACTIVITY** line under it.
+2. Click it. The Job Calendar opens with the job's number, service type, name and address at the top.
 
-The same green **NEXT** summary is pinned at the top of the **Job activity / notes** panel when you expand a job — every job with an upcoming appointment shows the date, time window, crew, and dispatch note there; click it for the whole plan. (On the mobile cards view, the green **Next** chip on a card opens it too.)
+Expand a job. The same green **NEXT** summary is pinned at the top of the **Job activity / notes** panel. Every job with an upcoming appointment shows the date, time window, crew and dispatch note there. Click it for the whole plan. On the mobile cards view, the green **Next** chip on a card opens it too.
 
 It also opens from two other places:
 
-- **A job's Detail window** — the calendar icon at the top right of the header.
-- **Job Mode** — the small **Job calendar** link under the job header shows the plan for the job you're on (view only).
+- **A job's Detail window** has the calendar icon at the top right of the header.
+- **Job Mode** has the small **Job calendar** link under the job header. It shows the plan for the job you are on, view only.
 
 ## Read the calendar
 
-- The summary line tells you the shape of the schedule at a glance: *3 scheduled days · 2 people · Fri, Jul 31 – Tue, Aug 4*, plus the **next** upcoming appointment.
-- The month grid shows a **colored dot for each person** scheduled that day — the legend beside the month name maps colors to people. Use {{button:outline|‹}} {{button:outline|›}} to move between months.
-- Today has a blue outline. A small green **✓** under a day means someone actually worked it (an approved clock session).
-- **Click any day to highlight it** (click again to un-highlight). Days with appointments also jump the list below to themselves. Days with nothing scheduled or worked show in grey.
+- The summary line tells you the shape of the schedule at a glance. It reads like *3 scheduled days · 2 people · Fri, Jul 31 – Tue, Aug 4*, plus the **next** upcoming appointment.
+- The month grid shows a **colored dot for each person** scheduled that day. The legend beside the month name maps colors to people. Use {{button:outline|‹}} {{button:outline|›}} to move between months.
+- Today has a blue outline. A small green **✓** under a day means someone actually worked it. That is an approved clock session.
+- **Click any day to highlight it**. Click again to un-highlight. Days with appointments also jump the list below to themselves. Days with nothing scheduled or worked show in grey.
 
 ## The appointment list
 
-Below the grid, every appointment is listed — **Upcoming** first (soonest at the top), then **Past** (dimmed, most recent first). Each row shows the date, the time window, everyone on the appointment, and its note.
+Below the grid, every appointment is listed. **Upcoming** comes first, soonest at the top. **Past** follows, dimmed, most recent first. Each row shows the date, the time window, everyone on the appointment and its note.
 
 :::example An appointment row
 **Fri, Jul 31** &nbsp; 9:30 AM–11:00 AM &nbsp; Abraham
@@ -58,5 +60,5 @@ clean out to the right of the front door next to the sidewalk
 
 ## Act on it
 
-- {{button:outline-blue|Open week dispatch}} jumps to the full dispatch grid focused on this job — **on the week of the highlighted day**, if one is highlighted.
-- {{button:green|Schedule…}} (planner roles) opens the same scheduling window as the activity panel, right on top of the calendar — **pre-set to the highlighted day** (the button even says so, e.g. *Schedule Tue, Jul 14…*). Add the block, and the calendar reflects it when reopened.
+- {{button:outline-blue|Open week dispatch}} jumps to the full dispatch grid focused on this job. If a day is highlighted, it opens **on the week of the highlighted day**.
+- {{button:green|Schedule…}} is for planner roles. It opens the same scheduling window as the activity panel, right on top of the calendar. It is **pre-set to the highlighted day**. The button even says so, like *Schedule Tue, Jul 14…*. Add the block, and the calendar reflects it when reopened.
