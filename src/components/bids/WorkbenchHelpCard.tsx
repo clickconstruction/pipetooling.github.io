@@ -2,7 +2,9 @@
  * Bids → Pricing: the "?" card (v2.2376) — the Workbench in four scannable lines; the tour
  * and the full guide ride in its footer, so one icon is the whole help story. Region P2 of
  * `docs/BIDS_PRICING_LABOR_TABS_ARCHITECTURE.md`; the JSX moved out of `BidsPricingTab` as it
- * was. Renders and reports only.
+ * was. Renders and reports only. The lines are written in plain words (v2.4304, the rules in
+ * `src/lib/plainWords.ts`); each line's body carries `data-help-line` so the render test can
+ * hold them to the rules.
  */
 import type { CSSProperties, ReactNode } from 'react'
 import { Link } from 'react-router-dom'
@@ -30,7 +32,7 @@ export function WorkbenchHelpCard({
   const infoRow = (k: string, body: ReactNode) => (
     <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', padding: '0.5rem 0.95rem', borderBottom: '1px solid var(--border)' }}>
       <span style={{ flex: '0 0 7.5rem', fontWeight: 700, color: 'var(--text-strong)', fontSize: '0.8rem' }}>{k}</span>
-      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{body}</span>
+      <span data-help-line={k} style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{body}</span>
     </div>
   )
   return (
@@ -42,31 +44,36 @@ export function WorkbenchHelpCard({
         {infoRow(
           'Type a price',
           <>
-            saves when you leave the field <span style={{ color: 'var(--text-green-700)', fontSize: '0.68rem', fontWeight: 700 }}>saved ✓</span>
+            Type a price in a row. It saves when you leave the field, and the row reads{' '}
+            <span style={{ color: 'var(--text-green-700)', fontSize: '0.68rem', fontWeight: 700 }}>saved ✓</span>.
           </>,
         )}
         {infoRow(
           'Solve',
           <>
-            previews prices in amber{' '}
-            <span style={{ border: '1px solid var(--text-amber-700)', background: 'var(--bg-amber-tint)', borderRadius: 4, padding: '0 0.3rem', fontSize: '0.72rem', fontVariantNumeric: 'tabular-nums', color: 'var(--text-strong)' }}>150</span>{' '}
-            — <b style={strong}>Apply</b> writes them, <b style={strong}>Discard</b> clears them. Previews wait on this device and never reach the GC.
+            Tap <b style={strong}>Solver ›</b> for suggested prices. They show in amber, like{' '}
+            <span style={{ border: '1px solid var(--text-amber-700)', background: 'var(--bg-amber-tint)', borderRadius: 4, padding: '0 0.3rem', fontSize: '0.72rem', fontVariantNumeric: 'tabular-nums', color: 'var(--text-strong)' }}>150</span>
+            . They are previews, prices not saved yet. Tap <b style={strong}>Apply</b> to keep them or <b style={strong}>Discard</b> to clear them.
+            Previews wait on this device. The GC never sees them.
           </>,
         )}
         {solo
           ? infoRow(
               'This bid',
               <>
-                one packet — {gcShort} sees <b style={strong}>{firstScenarioName}</b>. <b style={strong}>＋ Add price</b> starts another price or GC.
+                This bid has one packet, the copy one GC gets. {gcShort} sees <b style={strong}>{firstScenarioName}</b>. Tap{' '}
+                <b style={strong}>＋ Add price</b> to start another price or GC.
               </>,
             )
           : infoRow(
               'This GC',
               <>
-                {gcName} — <span style={{ color: 'var(--text-green-600)', fontWeight: 700 }}>★</span> base is what they see on their letter; switch GC or price option at the top.
+                You are on the packet for {gcName}, their copy of the bid. The{' '}
+                <span style={{ color: 'var(--text-green-600)', fontWeight: 700 }}>★</span> base is the price they see on their letter. Switch the GC or
+                the price option at the top.
               </>,
             )}
-        {infoRow('Labor & cost', <>shared by the whole package — switching bids changes revenue, not cost.</>)}
+        {infoRow('Labor & cost', <>Labor and cost are shared by the whole package. Switching bids changes the revenue, not the cost.</>)}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', padding: '0.6rem 0.95rem', background: 'var(--bg-subtle)' }}>
           <button
             type="button"
