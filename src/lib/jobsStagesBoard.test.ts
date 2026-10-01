@@ -1463,6 +1463,9 @@ describe('v2.3775 — a partly paid billed line counts for what is still unpaid 
     sent_on: null,
     sequence_order: 0,
     stripe_credit_note_id: null,
+    created_by: null,
+    linked_at: null,
+    linked_by: null,
   })
   const billed = rtbInvoiceStub({ id: 'inv-billed', job_id: 'job-978', amount: 1072.5, status: 'billed' })
   const job978 = jobStub({

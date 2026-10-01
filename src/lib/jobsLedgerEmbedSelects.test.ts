@@ -30,6 +30,8 @@ const INVOICE_COLS = ['agreed_write_down_at', 'agreed_write_down_previous_amount
 const INVOICE_OMITTED = ['agreed_write_down_by', 'agreed_write_down_note', 'agreed_write_down_stripe_credit_note_id'] as const satisfies ReadonlyArray<keyof Row<'jobs_ledger_invoices'>>
 
 const PAYMENT_COLS = ['amount', 'created_at', 'id', 'invoice_id', 'job_id', 'mercury_transaction_id', 'note', 'paid_on', 'payment_type', 'reference_number', 'sent_on', 'sequence_order', 'stripe_credit_note_id'] as const satisfies ReadonlyArray<keyof Row<'jobs_ledger_payments'>>
+/** Deliberately not embedded: who recorded and linked a payment is read by Accounts Receivable's trail RPC (v2.4289), never off a job. */
+const PAYMENT_OMITTED = ['created_by', 'linked_at', 'linked_by'] as const satisfies ReadonlyArray<keyof Row<'jobs_ledger_payments'>>
 
 const MATERIAL_COLS = ['amount', 'created_at', 'description', 'id', 'job_id', 'sequence_order'] as const satisfies ReadonlyArray<keyof Row<'jobs_ledger_materials'>>
 /** Deliberately not embedded: the Plug-in Quotes memory writes it and never reads it back off a job. */
@@ -46,7 +48,7 @@ const embedsIn = (select: string) => [...select.matchAll(/([a-z_]+)(?::[a-z_]+)?
 describe('child embeds', () => {
   it('each embed is exactly its sorted, deduplicated column list — every name a real column, every omission deliberate (both enforced by tsc)', () => {
     expect(coversEveryColumn<Missing<'jobs_ledger_invoices', (typeof INVOICE_COLS)[number] | (typeof INVOICE_OMITTED)[number]>>()).toBe(true)
-    expect(coversEveryColumn<Missing<'jobs_ledger_payments', (typeof PAYMENT_COLS)[number]>>()).toBe(true)
+    expect(coversEveryColumn<Missing<'jobs_ledger_payments', (typeof PAYMENT_COLS)[number] | (typeof PAYMENT_OMITTED)[number]>>()).toBe(true)
     expect(coversEveryColumn<Missing<'jobs_ledger_materials', (typeof MATERIAL_COLS)[number] | (typeof MATERIAL_OMITTED)[number]>>()).toBe(true)
     expect(coversEveryColumn<Missing<'jobs_ledger_fixtures', (typeof FIXTURE_COLS)[number]>>()).toBe(true)
     expect(coversEveryColumn<Missing<'jobs_ledger_team_members', (typeof TEAM_MEMBER_COLS)[number]>>()).toBe(true)
