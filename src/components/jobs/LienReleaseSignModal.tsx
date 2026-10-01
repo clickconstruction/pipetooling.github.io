@@ -3,23 +3,17 @@ import { ContractAcceptSignatureForm } from '../contracts/ContractAcceptSignatur
 import type { EstimateAcceptSubmitPayload } from '../estimates/EstimateAcceptBody'
 import {
   buildLienWaiverParagraphs,
-  buildLienWaiverPdfBlob,
   buildLienWaiverSignatureLines,
   lienWaiverTitle,
   type LienWaiverFields,
   type LienWaiverFormType,
-  type LienWaiverSignature,
 } from '../../lib/jobsDocuments/lienWaiverRelease'
+import { signLienRelease } from '../../lib/jobs/lienReleaseSignIo'
 import {
   isLienWaiverFormType,
   lienReleaseFieldsFromSnapshot,
   type JobLienReleaseRow,
 } from '../../lib/jobs/lienReleaseTracking'
-import { lienReleaseSignatureAuditLine } from '../../lib/jobs/lienReleaseLifecycle'
-import { validateReportSignatureDataUrlForSubmit } from '../../lib/reportSignatureField'
-import { LIEN_RELEASE_DOCUMENTS_BUCKET } from '../../lib/jobs/lienReleaseDocuments'
-import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 
@@ -96,76 +90,21 @@ export default function LienReleaseSignModal({
       setSubmitting(true)
       setFormError(null)
       try {
-        let signaturePath: string | null = null
-        const signedAtIso = new Date().toISOString()
-        if (present && payload.mode !== 'draw') {
-          setFormError('Draw the signature. A typed name would be this screen’s keyboard, not the leader’s hand.')
+        const r = await signLienRelease({
+          releaseId: release.id,
+          formType,
+          fields,
+          payload,
+          signer: { userId: present ? presentSigner.id : (authUser?.id ?? null) },
+          onDevice: present ? { userId: authUser?.id ?? null, name: deviceUserName } : null,
+        })
+        if (!r.ok) {
+          setFormError(r.message)
           return
         }
-        if (payload.mode === 'draw') {
-          const invalid = validateReportSignatureDataUrlForSubmit(payload.signaturePngBase64)
-          if (invalid) {
-            setFormError(invalid)
-            return
-          }
-          // Best-effort upload — the row stamp below is the signature of record.
-          try {
-            const path = `${release.id}/${crypto.randomUUID()}.png`
-            const bytes = await (await fetch(payload.signaturePngBase64)).blob()
-            const { error } = await supabase.storage
-              .from(LIEN_RELEASE_DOCUMENTS_BUCKET)
-              .upload(path, bytes, { contentType: 'image/png' })
-            if (!error) signaturePath = path
-          } catch {
-            /* bucket may not exist yet — row stamp still records the signature */
-          }
-        }
-
-        const audit = lienReleaseSignatureAuditLine({ signed_at: signedAtIso, signer_consented_at: signedAtIso }, present ? deviceUserName : null)
-        const signature: LienWaiverSignature = {
-          mode: payload.mode,
-          printedName: payload.printedName,
-          pngDataUrl: payload.mode === 'draw' ? payload.signaturePngBase64 : null,
-          auditLine: audit ?? '',
-        }
-
-        // Stamp the row FIRST — this is the legal record; the stored PDF is the audit copy.
-        await withSupabaseRetry(
-          () =>
-            supabase
-              .from('job_lien_releases')
-              .update({
-                status: 'signed',
-                signed_at: signedAtIso,
-                signer_printed_name: payload.printedName,
-                signer_signature_mode: payload.mode,
-                signer_signature_storage_path: signaturePath,
-                signer_consented_at: signedAtIso,
-                signer_user_id: present ? presentSigner.id : (authUser?.id ?? null),
-                signed_on_device_of: present ? (authUser?.id ?? null) : null,
-              })
-              .eq('id', release.id)
-              .eq('status', 'awaiting_signature'),
-          'sign lien release',
-        )
-
-        try {
-          const pdf = await buildLienWaiverPdfBlob(formType, fields, signature)
-          const { error } = await supabase.storage
-            .from(LIEN_RELEASE_DOCUMENTS_BUCKET)
-            .upload(`${release.id}/signed.pdf`, pdf, { contentType: 'application/pdf', upsert: true })
-          if (!error) {
-            await supabase.from('job_lien_releases').update({ signed_pdf_path: `${release.id}/signed.pdf` }).eq('id', release.id)
-          }
-        } catch {
-          /* regenerable from the snapshot + row stamp */
-        }
-
         showToast('Release signed.', 'success')
         onSigned?.()
         onClose()
-      } catch {
-        setFormError('Could not record the signature — nothing was saved. Try again.')
       } finally {
         setSubmitting(false)
       }
