@@ -5,33 +5,35 @@ roles: dev
 keywords: wheels, vehicle, truck, fuel, gas, own vehicle, company truck, per field hour, rate, arrangement, pay config, review, insurance, registration, service
 ---
 
-Some people drive their own truck and the company pays their fuel. Others drive a company truck, and the company carries fuel, insurance, registration and service. Those are two different deals, and **Wheels** on People → Vehicles shows what each one costs per field hour so they can be compared honestly.
+Some people drive their own truck and the company pays their fuel. Others drive a company truck that the company carries all-in.
+
+A company truck means the company carries fuel, insurance, registration and service. Those are two different deals. **Wheels** on People → Vehicles shows what each one costs per field hour. So they can be compared honestly.
 
 ## Set the deal on Pay config
 
-Open Payroll → {{button:outline|Pay config}} and pick a **Vehicle** for each person:
+You open Payroll → {{button:outline|Pay config}} and pick a **Vehicle** for each person:
 
-- {{chip:blue|🚗 Own vehicle · fuel paid}} — their fuel counts as part of employing them. The rate is their fuel-tag card charges divided by their field hours.
-- {{chip:green|🚚 Company truck}} — the truck they hold on Vehicles is priced all-in: fuel, insurance while on a plan, registration and service, divided by their field hours.
-- **None** — rides along or works in the office. Nothing changes; their fuel stays on the job as parts.
+- {{chip:blue|🚗 Own vehicle · fuel paid}} means their fuel counts as part of employing them. The rate is their fuel-tag card charges divided by their field hours.
+- {{chip:green|🚚 Company truck}} means the truck they hold on Vehicles is priced all-in. That is fuel, insurance while on a plan, registration and service, divided by their field hours.
+- **None** means they ride along or work in the office. Nothing changes. Their fuel stays on the job as parts.
 
-People → Review charges the deal per field hour: the line shows in a person's math drawer, the deal chip sits beside their name on the ranking, and their fuel is kept out of the job purchases so nobody else carries it.
+People → Review charges the deal per field hour. The line shows in a person's math drawer. The deal chip sits beside their name on the ranking. Their fuel is kept out of the job purchases so nobody else carries it.
 
 ## Read the Wheels report
 
-People → Vehicles → **🛞 Wheels** lists everyone with a deal (or with fuel in the last 90 days):
+People → Vehicles → **🛞 Wheels** lists everyone with a deal. It also lists anyone with fuel in the last 90 days:
 
 :::example Wheels · last 90 days
 Micah · {{chip:blue|🚗 $6.10/h}} · fuel $903 · 148.0 h · rate **$6.10**
 Malachi · {{chip:green|🚚 $8.32/h}} · 2019 Ford F-150 · fuel $3,018 · 496.5 h · rate **$8.32** — F-150 · $4,132 ÷ 496.5 field h
 :::
 
-The line above the table averages the two deals, which is the comparison that tells you whether paying fuel on a personal truck is cheaper than running one of your own.
+The line above the table averages the two deals. That comparison tells you whether paying fuel on a personal truck is cheaper than running one of your own.
 
-- **Fuel** is every debit-card purchase in the ⛽ Fuel & gas tag attributed to the person. Card fuel with no person on it is listed by card above the table — each name is a door to Banking → Debit cards, where you link the card to its person (past and future purchases fill in) or mark it a company card. Company-card purchases (GPS, charging, subscriptions) are management tools, never fuel; they show as **Not fuel** with the card names. A payment that was not on a card never counts as fuel; if one is filed under a vehicle label, the **Not counted** line names it so you can fix the label.
+- **Fuel** is every debit-card purchase in the ⛽ Fuel & gas tag attributed to the person. Card fuel with no person on it is listed by card above the table. Each name is a door to Banking → Debit cards. There you link the card to its person, or mark it a company card. When you link it, past and future purchases fill in. Company-card purchases are management tools, never fuel. Those are GPS, charging and subscriptions. They show as **Not fuel** with the card names. A payment that was not on a card never counts as fuel. One may be filed under a vehicle label. Then the **Not counted** line names it so you can fix the label.
 - **Field hours** are approved clock sessions on jobs, the same hours the parts burden divides by.
-- **Override** lets you type a flat $/field hour for a person; blank goes back to the computed rate.
+- **Override** lets you type a flat $/field hour for a person. Blank goes back to the computed rate.
 
 ## The truck table
 
-Under the people, each company truck shows its running cost for the window: the holder's fuel, insurance plus registration pro-rated over the 90 days, service events with a cost, the total, and the rate per holder field hour. Parked or unassigned trucks list what they carried with no hours against them. Wear (the truck's own value over its life) is not included yet.
+Under the people, each company truck shows its running cost for the window. That is the holder's fuel, insurance plus registration pro-rated over the 90 days, and service events with a cost. It shows the total, and the rate per holder field hour. Parked or unassigned trucks list what they carried with no hours against them. Wear is not included yet. Wear is the truck's own value over its life.
