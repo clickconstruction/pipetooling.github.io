@@ -58,7 +58,7 @@ export function InvoicesSectionHeading({
     <div style={{ marginBottom: '0.75rem' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', flexWrap: 'wrap' }}>
         <span style={{ fontWeight: 400, textDecoration: 'underline', fontSize: '0.9375rem', color: 'var(--text-700)' }}>
-          ② Invoices
+          ② Bills and payments
         </span>
         <button
           type="button"

@@ -278,7 +278,7 @@ Baseline: `job_id` FK CASCADE, `amount`, `sequence_order`, `paid_on` (user-enter
 
 ### Display surfaces
 
-Edit Job "Payments received" table (locked Stripe/Mercury rows; refs via `src/lib/abbreviatePaymentReference.ts`); Dashboard billing pipeline Applied/Open; `useDashboardFinancials` AR buckets, Quickfill `BilledAwaitingPaymentSection` and the `useBilledTotal` headline (all three = `lib/billing/billTruth.ts` since v2.2862); `HostedStripeBillPanel` paid-at fallback; Job Summary charges timeline (`src/lib/jobChargesTimeline.ts`); physical-invoice payment history; the job activity feed.
+Edit Job Bill tab — the payment lines under each bill and ③ Other money on the job (v2.4293; locked Stripe/Mercury rows, the payer from `mercury_transactions.counterparty_name`); Dashboard billing pipeline Applied/Open; `useDashboardFinancials` AR buckets, Quickfill `BilledAwaitingPaymentSection` and the `useBilledTotal` headline (all three = `lib/billing/billTruth.ts` since v2.2862); `HostedStripeBillPanel` paid-at fallback; Job Summary charges timeline (`src/lib/jobChargesTimeline.ts`); physical-invoice payment history; the job activity feed.
 
 ## System of record (the 2026-08-24 policy)
 
