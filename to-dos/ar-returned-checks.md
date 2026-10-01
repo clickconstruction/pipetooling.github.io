@@ -2,7 +2,7 @@
 name: "Accounts Receivable: a returned check is a case, not a chip"
 number: 76
 group: ready
-status: asked 2026-10-01 · read against 18 months of prod (7 real returns, 2 open today) · drawn as before / after · not built
+status: asked 2026-10-01 · read against 19 months of prod (8 real returns, 2 open today) · second pass planned and drawn 2026-10-01 · owner said build it all · PR 1 v2.4313 (stop the leaks) in review · PRs 2–5 next on claude/returned-checks-pr*
 summary: >
   The app notices a check the bank returned only while a job still carries it (the email, the
   Needs You card, the Pipeline badge and Unlink and remove, punch list #40). A return that is
@@ -13,14 +13,14 @@ summary: >
   replacement is matched, a "check clearing" chip that the unconditional lien waiver waits
   for, and the bounce on the customer's pay history.
 next: >
-  PR 1 tell the office on every return, applied or not (the Needs You card and the webhook's
-  notice); PR 2 Take it off the job from Accounts Receivable, with the consequences read back;
-  PR 3 the Returned lane (a migration: the case's state and the replacement's link); PR 4 the
-  clearing chip and the waiver's wait, after the owner's call; PR 5 the bounce on the pay
-  history.
-size: S (PR 1) · S–M (PR 2) · M (PR 3, a migration) · M (PR 4) · S (PR 5)
-blocker: None for PRs 1–3. PR 4 waits on the owner's call on the clearing window (and counsel's view on holding the unconditional waiver). The returned-check fee is an owner call of its own.
-opinion: build PRs 1 and 2 first — small, and they close the hole Loberg's check fell through on 2026-10-01
+  PR 2 the case opens itself (the returned table becomes the case; any writer of a failed check
+  opens it; one notice per case, on a job or not; rejected checks that a recorded payment matches);
+  PR 3 work the case in Accounts Receivable (Came back on top of To match, the story, the stake,
+  one next step, take it off every job, the new check suggested); PR 4 the payer remembers;
+  PR 5 the unconditional waiver waits 7 days for a check to clear.
+size: S (PR 1) · M (PR 2, a migration + a cron function) · M (PR 3) · S (PR 4) · M (PR 5)
+blocker: None. The owner took the drawn defaults on 2026-10-01 — 7 days for the waiver, the Payment made list hears every return, no fee for now.
+opinion: build in order; PR 1 closes the hole Loberg's check fell through on 2026-10-01
 ---
 
 # Accounts Receivable: a returned check is a case, not a chip
@@ -52,7 +52,7 @@ Mercury reports a returned check by flipping the original deposit to `status = f
 
 ## The decision (the first drawing, then the second pass)
 
-Mock-up: `ar-returned-checks-before-after.html` — before, after, the second pass and the open calls.
+Mock-up: `ar-returned-checks-before-after.html` — before, after, the second pass and the open calls. The build plan's own pass (plan, two critiques, twelve boards): *Returned checks — #76 mock-up* — https://claude.ai/artifact/9qbiCTmbaXnfPVKhFULoCN
 
 - **Tell the office on every return.** The same card and the same notice, with words for a check that is not on a job: *The bank returned Loberg's $5,622.49 check (Stop payment). It is not on a job. It was on #650 until 9/30.*
 - **Take it off the job from Accounts Receivable.** One press on the returned deposit covers every job it was split across. The consequences are read back first: the job's paid figure, the bill going back to Billed, the lien notice that can now be drafted, a waiver that already went out.
@@ -84,15 +84,17 @@ Mock-up: `ar-returned-checks-before-after.html` — before, after, the second pa
 - Settled and clearing (PR 4): `billSettled` and `lienWaiverCellForBill` in `src/lib/jobs/lienWaiverCell.ts`, `pickLienWaiverForBill` in `src/lib/jobsDocuments/lienWaiverRelease.ts`, the GC's room (`_shared/portalWaivers.ts`, which already says *when your check clears*).
 - The pay history (PR 5): `BilledReliabilityLine` and its kernel.
 
-## The plan
+## The plan (second pass, 2026-10-01)
 
-1. **PR 1 — tell the office on every return.** The nudge reads returned deposits with no live payment too (a window of days, dismissed per deposit); the webhook's notice fires for them with the not-on-a-job words; `count_mercury_transactions_for_bank_payments` stops counting a failed deposit. Client, one function redeploy, one small migration for the count.
-2. **PR 2 — Take it off the job from Accounts Receivable.** The returned deposit's pane lists each payment it carries with a kernel-built read-back and one button; the Pipeline badge and the card re-read after it.
-3. **PR 3 — the Returned lane.** The migration for the case's state; the lane tab while a case is open; the four steps; the replacement suggestion; *Not coming* with a reason.
-4. **PR 4 — check clearing** (after the owner's call): a kernel beside `billSettled`, the chip wherever a paid figure shows, the waiver cell's wait, the guide.
-5. **PR 5 — the bounce on the pay history.**
+The first draft was eight PRs with a four-step lane and a clearing chip on every paid figure. Cut back because returns are rare (eight in nineteen months) and the cost is in the misses: Southern Post's $13,680 for eight days, Peter Garza's $2,700 for fourteen months, Sal Iannotti's $600 now.
 
-Later, not planned: a returned deposit that matches a hand-recorded check by customer and amount offers to link the two (gap 5).
+1. **PR 1 — stop the leaks** (v2.4313). A returned check cannot be applied, in the window or the database (a trigger on `jobs_ledger_payments`). The count leaves it out. Unlink and remove on a bounced check stops saying the money is available again.
+2. **PR 2 — the case opens itself.** `mercury_transaction_ar_returned` grows into the case (opened, source bank / hand / rejected, reason, replaced by, closed with a reason, who and when). A trigger on `mercury_transactions` opens one whenever any writer marks a check failed with a return, so the Banking page's Sync can no longer flip one silently. The rule also takes a bank's return reason with no posting date (Peter Garza, Jul 2025). A rejected, never-posted check opens a case only when a recorded payment matches it and it is not deposited again within 5 days (a nightly sweep). One notice per case, on a job or not, to the Payment made list. A hand mark asks whether the bank returned it or it is not a customer's payment (a $119.56 Texas Mutual check was hidden with Mark returned). Historical returns are backfilled; those with a same-payer, same-amount deposit after them close as replaced.
+3. **PR 3 — work the case in Accounts Receivable.** Came back sits on top of To match until the case closes. The pane says what happened, what it costs (the job's balance again, its lien notice) and one next step: take it off every job (read back first, one press), get a new check (*They said…*), or deposit a rejected check again. The new check is suggested when it lands; Settled another way and Not coming close it. The Pipeline says *N checks came back*.
+4. **PR 4 — the payer remembers.** *2 checks came back · Apr* on the Billed row's pay history and the deposit row.
+5. **PR 5 — the unconditional waiver waits for the check to clear**, 7 days after a check posts.
+
+Later, not planned: Stripe disputes and failed bank debits, a returned-check fee line, a check recorded by hand and never deposited.
 
 ## How to verify
 

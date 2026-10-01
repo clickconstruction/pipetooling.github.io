@@ -126,7 +126,9 @@ Pick the reason: **Bank interest**, **Vendor refund**, **Owner deposit**, or **S
 
 ## If a check bounces after you matched it
 
-A check can be matched to a bill and returned by the bank days later. Mercury syncs the deposit as failed, with the bank's reason. The payment row on the job says so. Open the job, then ③ Payments received. The row wears {{chip:red|⚠ Returned by the bank · Insufficient funds}}. Press {{button:outline|Unlink and remove}} on that row and confirm. The payment comes off the job. The bill and the job's balance read unpaid again. The deposit is marked **returned** in Accounts Receivable in the same step. It never comes back to To match.
+A check can be matched to a bill and returned by the bank days later. Mercury syncs the deposit as failed, with the bank's reason. The payment row on the job says so. Open the job, then ③ Payments received. The row wears {{chip:red|⚠ Returned by the bank · Insufficient funds}}. Press {{button:outline|Unlink and remove}} on that row and confirm. The payment comes off the job. The bill and the job's balance read unpaid again. The deposit is marked **returned** in Accounts Receivable in the same step. It never comes back to To match. The confirm says the bank sent the check back.
+
+A check that came back cannot pay a bill. Find it under All and select it. Its pane reads *This check came back, so it cannot pay a bill.* Apply stays off. A deposit marked returned by hand reads the same. If it did not bounce, untick Returned under **Mark returned deposits**.
 
 This works on a Stripe bill too. A deposit matched here is only a row in the app. Stripe never learned of it, and the bill's pay link kept asking for the full amount. So there is nothing on Stripe's side to undo, and the confirm says so. The two payments Stripe does hold keep their own doors. A part payment recorded as a credit note has **Undo part payment** on its row. A bill marked paid by check through Mark Paid has **Check didn't clear…** on its row. That opens the Undo out-of-band payment window, which also sends the bill back so it can be billed again. See *bill a customer and get paid*.
 

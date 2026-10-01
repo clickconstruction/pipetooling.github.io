@@ -3225,7 +3225,7 @@ export default function JobFormModal({
       </div>
       <JobFormPaymentRemoveConfirm open={paymentRemoveConfirmRowId != null} preview={paymentRemovePreview} confirmsPersistedRpc={paymentRemoveConfirmsPersistedRpc} busy={paymentRemoveRpcBusy} onCancel={() => setPaymentRemoveConfirmRowId(null)} onConfirm={() => void confirmRemovePaymentRow()} zIndex={JOB_FORM_NESTED_OVERLAY_Z_INDEX} />
       <JobFormStripeLinePreviewDialog open={stripeFixturePreviewOpen} rows={stripeFixturePreviewRows} onClose={closeStripeFixturePreview} zIndex={JOB_FORM_NESTED_OVERLAY_Z_INDEX} />
-      <JobFormMercuryUnlinkConfirm rowId={unlinkMercuryConfirmRowId} payments={payments} editing={editing} busyRowId={unlinkingMercuryPaymentId} onCancel={() => setUnlinkMercuryConfirmRowId(null)} onConfirm={confirmUnlinkMercuryFromBankRow} zIndex={JOB_FORM_NESTED_OVERLAY_Z_INDEX} />
+      <JobFormMercuryUnlinkConfirm rowId={unlinkMercuryConfirmRowId} payments={payments} editing={editing} busyRowId={unlinkingMercuryPaymentId} onCancel={() => setUnlinkMercuryConfirmRowId(null)} onConfirm={confirmUnlinkMercuryFromBankRow} zIndex={JOB_FORM_NESTED_OVERLAY_Z_INDEX} bankFacts={bankFacts} />
       <JobFormDeleteMigrateModals
         editing={editing}
         deleteJobConfirmOpen={deleteJobConfirmOpen}

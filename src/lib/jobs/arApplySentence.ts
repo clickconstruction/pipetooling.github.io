@@ -25,6 +25,18 @@ function targetWords(t: ArApplyTargetSlice): string {
   return `${t.hcpNumber.trim() || '—'}${who ? ` · ${who}` : ''}`
 }
 
+/** v2.4313: the one sentence a returned check gets in place of the allocation editor and the footer. */
+export const AR_CAME_BACK_SENTENCE = 'This check came back, so it cannot pay a bill.'
+
+/**
+ * v2.4313: a deposit that can pay no bill — the bank sent it back (Mercury `failed`
+ * after posting), or a person marked it returned. The window shows no allocation
+ * editor for it, and the database refuses the link either way.
+ */
+export function arDepositCameBack(d: { returned?: boolean | null; bankReturn?: unknown } | null | undefined): boolean {
+  return d != null && (Boolean(d.returned) || d.bankReturn != null)
+}
+
 export function arApplySentence(args: {
   lines: ReadonlyArray<ArApplyLineSlice>
   targetByKey: ReadonlyMap<string, ArApplyTargetSlice>
@@ -39,7 +51,10 @@ export function arApplySentence(args: {
   booksIncome?: boolean
   /** Applied-means-Income: the deposit already carries this other label, which Apply leaves alone. */
   bankLabelStays?: string | null
+  /** v2.4313: the bank sent this check back, or someone marked it returned — it can pay no bill. */
+  cameBack?: boolean
 }): ArApplySentence {
+  if (args.cameBack) return { text: AR_CAME_BACK_SENTENCE, tone: 'warn', total: 0 }
   if (args.validation) return { text: args.validation, tone: 'warn', total: 0 }
   const remaining = Math.max(0, Number(args.depositRemaining) || 0)
   if (remaining <= 0.005) return { text: 'Nothing left to allocate on this deposit.', tone: 'waiting', total: 0 }
