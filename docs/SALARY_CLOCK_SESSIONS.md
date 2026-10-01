@@ -5,7 +5,7 @@ file: SALARY_CLOCK_SESSIONS.md
 type: Runbook / Reference
 purpose: Salaried auto-session sync behavior (salary_sync_one_user_clock_sessions)
 audience: Developers, Operators
-last_updated: 2026-08-02
+last_updated: 2026-10-01
 ---
 
 > **Audience**: Developers and operators changing pay, My Time, or salary Settings.  
@@ -45,7 +45,9 @@ There is **no** stored salary amount or per-person daily-hours override; the 8 h
    `teamLabor.ts`, `get_man_hours_by_job()` RPC, unassigned-field-time) — the plain flat 8/0.
    The shared kernel [`src/lib/salariedEffectiveHours.ts`](../src/lib/salariedEffectiveHours.ts)
    is on `main` (PR #182, merged 2026-07-13) and is imported by `People.tsx`,
-   `quickfill/HoursSection.tsx` and `HoursUnassignedModal.tsx` (`CrewJobsBlock.tsx` until v2.2986).
+   `HoursUnassignedModal.tsx`, the two approvals modals and the `teamBoard` / `hoursGridCost` /
+   `vectorDays` kernels (`CrewJobsBlock.tsx` until v2.2986; `quickfill/HoursSection.tsx` until
+   v2.4263 deleted it).
    Note: `src/utils/teamLabor.ts` and `src/lib/people/derivePersonTeamSummary.ts` still
    derive the 8/0 rule **inline** rather than via the kernel.
    **Recorded time (v2.3179, migration `20260909022534`)**: the cost tier reads **recorded**

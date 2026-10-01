@@ -8,7 +8,7 @@ covers:
   - src/components/jobs/JobFormModal.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-09-28
+last_updated: 2026-10-01
 ---
 
 ## Overview
@@ -280,7 +280,7 @@ Standalone shows a "Billing" header with the billing-slice status; embedded show
 
 ### 10–11. Invoice list — extracted (#430)
 
-`JobFormInvoiceList` (875 lines, render-tested; row list since v2.3478). It self-sources router/toast/Bill Customer; every modal it opens is shell state (`billViewInvoice`, `agreedWriteDownInvoice`, `billToEditorInvoice`, `recordPaymentTarget`). Callbacks: `onInvoiceDeleted` → `clearFixtureLinksForDeletedInvoice` (746–748, mirrors ON DELETE SET NULL so a later reinsert can't carry a dead `invoice_id`), `onAddDiscountLine`, `onFixturesChangedOutside` → `rehydrateFixturesFromDb`.
+`JobFormInvoiceList` (943 lines, render-tested; row list since v2.3478; since v2.4275 every sent or paid bill on a GC job carries the two waiver chips and one door into the Release of Lien window — `lienWaiverCellForBill`, the job's releases read by the list itself, fail-soft). It self-sources router/toast/Bill Customer; every modal it opens is shell state (`billViewInvoice`, `agreedWriteDownInvoice`, `billToEditorInvoice`, `recordPaymentTarget`). Callbacks: `onInvoiceDeleted` → `clearFixtureLinksForDeletedInvoice` (746–748, mirrors ON DELETE SET NULL so a later reinsert can't carry a dead `invoice_id`), `onAddDiscountLine`, `onFixturesChangedOutside` → `rehydrateFixturesFromDb`.
 
 ### 12. Payments — extracted (#431), actions in `useJobFormPaymentActions` (v2.3956), one line per payment (v2.4293)
 

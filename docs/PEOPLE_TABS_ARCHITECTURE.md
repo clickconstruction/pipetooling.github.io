@@ -8,7 +8,7 @@ covers:
   - src/pages/People.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-09-25
+last_updated: 2026-10-01
 ---
 
 ## Overview
@@ -163,7 +163,7 @@ See the [`hours` dossier](#hours--hours--pay-grid-the-hub) for the section table
 
 | Region | Anchors | State / refs | Data | Tests |
 |---|---|---|---|---|
-| Range + assistant floor | `hoursDateStart` 471, `hoursDateEnd` 556; floor 564–604 (`app_settings` load 567–581, `hoursFloorYmd` 583–589, snap-back 591–596, clamped setters 597–604); `shiftHoursWeek` 2914–2926; `ensureHoursRangeIncludesDate` 2838–2841 | 3 | `app_settings` | `assistantHoursWindow.test.ts`, `appSettingsKeys.test.ts` |
+| Range + assistant floor | `hoursDateStart` 471, `hoursDateEnd` 556; floor 564–604 (`app_settings` load 567–581, `hoursFloorYmd` 583–589, snap-back 591–596, clamped setters 597–604; since v2.4271 the load and `hoursFloorYmd` come from [`useAssistantHoursWindow`](../src/hooks/useAssistantHoursWindow.ts), shared with Who's where and `ClockSessionEditSplitModal`); `shiftHoursWeek` 2914–2926; `ensureHoursRangeIncludesDate` 2838–2841 | 3 | `app_settings` | `assistantHoursWindow.test.ts`, `appSettingsKeys.test.ts` |
 | Data hooks | `usePeopleHoursData` 610–646, `useCrewJobMap` 647–653, `usePendingHoursApprovalsNudge` 706; realtime fan-out 2440–2454 (`realtimeCallbacksRef` 606); refresh refs `loadPeopleHoursRef` 750, `loadAllClockSessionsRef` 2433 | n/a | `people_hours`, `clock_sessions`, `people_crew_*` (hooks) | no hook tests |
 | Load cycle | effect 2199–2233 (80 ms delay; pay config, hours, display order, days-correct, 3 session queues, teams, archived names, roster view); crew effect 2427–2431; `loadArchivedUserNames` 1306–1313, `loadRosterPeople` 1316–1323 | `hoursTabLoading` 354, `archivedUserNames` 412, `payRoster` 414; ref 356 | rpc `get_archived_user_names`, roster view via `fetchRosterPeople` | `rosterPeople.test.ts`, `hoursGridRoster.test.ts` |
 | Deep links | `?approvals=1` 952–963; `?section=rejected` 965–992; review-date focus/flash 994–1046 | `hoursFocusRequest` 540, `hoursFlashWorkDate`/`PersonName` 541–542; refs 357–358 (`hoursTableScrollRef` 357 also goes to `PeopleHoursGrid`) | n/a | untested |
@@ -249,7 +249,7 @@ Extracted to [`PeopleOverheadTab`](../src/components/people/PeopleOverheadTab.ts
 | Section nav | 3767–3812 | inline | `jumpToHoursTabSection` 420–428 |
 | Clock strip | 3813–3881 | inline header (Match sessions + Approvals buttons with amber badges) + [`PeopleHoursDashboardClockStrip`](../src/components/people/PeopleHoursDashboardClockStrip.tsx) (528) | badges from `unassignedSessionCount` (704, `fetchUnassignedClockSessionCount`) and `usePendingHoursApprovalsNudge` (706) |
 | Week range | 3882–3890 | [`PeopleHoursWeekRange`](../src/components/people/PeopleHoursWeekRange.tsx) (174; 7 props) | assistant floor (`minDateYmd`, v2.1592) |
-| Hours grid | 3893–3980 | [`PeopleHoursGridJobHighlight`](../src/components/people/PeopleHoursGridJobHighlight.tsx) (173), [`PeopleHoursPendingBanner`](../src/components/people/PeopleHoursPendingBanner.tsx) (123; `onOpenQueue` v2.2694, `outsideWeekLine` v2.2858), [`PeopleHoursGrid`](../src/components/people/PeopleHoursGrid.tsx) (863; **27 props**) | Align hours button (`canEditCrewJobs`, v2.1098). The grid owns its cell-edit state. The parent passes the shared predicates as function props. |
+| Hours grid | 3893–3980 | [`PeopleHoursGridJobHighlight`](../src/components/people/PeopleHoursGridJobHighlight.tsx) (173), [`PeopleHoursPendingBanner`](../src/components/people/PeopleHoursPendingBanner.tsx) (123; `onOpenQueue` v2.2694, `outsideWeekLine` v2.2858), [`PeopleHoursGrid`](../src/components/people/PeopleHoursGrid.tsx) (880; **30 props** — `approvedClockHoursForCell` and `onTypedOverClockHours` stop a typed 0 from covering approved clock hours, v2.4263) | Align hours button (`canEditCrewJobs`, v2.1098). The grid owns its cell-edit state. The parent passes the shared predicates as function props. |
 | Sessions | 3981–4008 | [`PeopleHoursSessions`](../src/components/people/PeopleHoursSessions.tsx) (371; 26 props) | Force-clock-out / approve / reject / revoke happen inside. Reloads go through `loadAllClockSessionsRef` / `loadPeopleHoursRef`. |
 | Due by team | 4015–4022 | [`PeopleHoursDueSummaries`](../src/components/people/PeopleHoursDueSummaries.tsx) (137) | `teamLedgerModalTeam` lives inside |
 | Teams | 4023–4045 | [`PeopleHoursTeams`](../src/components/people/PeopleHoursTeams.tsx) (288; **21 props**) | Team CRUD + 6 state are `usePeopleHoursTeams` (v2.3913); the page passes them through |
@@ -261,7 +261,7 @@ Extracted to [`PeopleOverheadTab`](../src/components/people/PeopleOverheadTab.ts
 - **Grid roster (v2.2915 J7-6; v2.3698):** `showPeopleForHours` = `buildHoursGridRoster({ payConfigRows, archivedUserNames, payRoster, displayOrder })` (2847; [`hoursGridRoster.ts`](../src/lib/people/hoursGridRoster.ts)). It takes the pay-config rows, removes archived account names, removes whatever the roster view (`public.roster_people` via [`rosterPeople.ts`](../src/lib/people/rosterPeople.ts)) says is not a person, and keeps org display order. A null index means "no verdict". Every hours-or-pay viewer loads both, so an assistant sees the owner's grid. The header's **"+N on the clock"** comes from [`hoursGridLiveByCell.ts`](../src/lib/people/hoursGridLiveByCell.ts) (J7-4). The pending chip copy comes from [`hoursGridPendingChipCopy.ts`](../src/lib/people/hoursGridPendingChipCopy.ts) (J7-N1).
 - **Owned state:** 37 `useState` + 7 refs ([Hours shell](#hours-shell)). **Shared-owner** of `hoursDaysCorrect` (Payroll reads), `archivedUserNames` (review, offsets, contracts read), `payRoster` (review reads), and `hoursMyTimeEditor` (with Review and Payroll).
 - **Supabase (parent side):** `hours_days_correct`, `people_teams`, `people_team_members`, `people_hours_display_order`, `app_settings`, rpc `get_archived_user_names`, the roster view. Through the hooks: `people_hours`, `clock_sessions`, `people_crew_jobs`/`_bids`. `hours_reviewed` and `salary_work_schedule_templates` are no longer touched by the parent. `people_cost_matrix_*` was dropped by `20260715090000`.
-- **Render tests:** `PeopleHoursGrid.render`, `PeopleHoursGridDaySheet.render`, `PeopleHoursWeekRange.render`, `MatchClockSessionsModal.render`, `HoursUnassignedModal.render`. There are none for the shell, Sessions, Teams, DueSummaries or the approvals modals.
+- **Render tests:** `PeopleHoursGrid.render`, `PeopleHoursGridDaySheet.render`, `PeopleHoursWeekRange.render`, `MatchClockSessionsModal.render`, `HoursUnassignedModal.render`, and since v2.4247 `PeopleHoursPendingCellPopover.render` and `PeopleHoursApprovalsQueueModal.render`. There are none for the shell, Sessions, Teams, DueSummaries or the bulk-approve modal.
 - **Coupling/risk: very high.** Extract **last**, after Payroll's `useDraftPayroll` seam.
 
 ### `vehicles`: Vehicles
