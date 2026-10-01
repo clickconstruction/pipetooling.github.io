@@ -41,6 +41,7 @@ export function SubmittalSheetStrip({
   robotSeat,
   onConfirmGuesses,
   onAssignPages,
+  onReadParts,
 }: {
   files: SourceFile[]
   items: SubmittalItemRow[]
@@ -64,6 +65,8 @@ export function SubmittalSheetStrip({
   onConfirmGuesses?: (fileIndex: number) => void
   /** v2.4143 · opens the Assign pages walk for the file. */
   onAssignPages?: (fileIndex: number) => void
+  /** 2026-10-01 · reads a house's submittal file into its parts, for the review. */
+  onReadParts?: (fileIndex: number) => void
 }) {
   const [picked, setPicked] = useState<{ fileIndex: number; page: number } | null>(null)
   /** Folds the user opened or closed by hand; a file whose pages are already drawn starts open. */
@@ -105,14 +108,19 @@ export function SubmittalSheetStrip({
                 {standing.hint ? <span style={{ color: 'var(--text-amber-700)' }} data-testid="file-hint">· {standing.hint}</span> : null}
                 {robotLines?.[fileIndex] ? <span style={{ fontStyle: 'italic' }} data-testid="robot-line">· {robotLines[fileIndex]}</span> : null}
               </span>
-              <span style={{ display: 'flex', gap: '0.3rem', alignItems: 'center', justifyContent: 'flex-end' }}>
+              <span style={{ display: 'flex', gap: '0.3rem', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                 {confirmLabels?.[fileIndex] && onConfirmGuesses ? (
                   <button type="button" disabled={busy} onClick={() => onConfirmGuesses(fileIndex)} style={{ ...btn, background: '#16a34a', borderColor: '#16a34a', color: 'white', fontWeight: 600 }} data-testid="confirm-guesses">
                     {confirmLabels[fileIndex]}
                   </button>
                 ) : null}
+                {onReadParts && f.sectioned !== false ? (
+                  <button type="button" disabled={busy} onClick={() => onReadParts(fileIndex)} style={f.sectioned ? { ...btn, background: '#2563eb', borderColor: '#2563eb', color: 'white', fontWeight: 600 } : btn} title="Read the house's own parts list: every part under each tag, with its pages, beside your rows" data-testid="read-parts-open">
+                    Read its parts…
+                  </button>
+                ) : null}
                 {onAssignPages ? (
-                  <button type="button" disabled={busy} onClick={() => onAssignPages(fileIndex)} style={{ ...btn, background: '#2563eb', borderColor: '#2563eb', color: 'white', fontWeight: 600 }} title="Walk every page at reading size and put each on its row — the answer pre-filled where the page names a model" data-testid="assign-pages-open">
+                  <button type="button" disabled={busy} onClick={() => onAssignPages(fileIndex)} style={f.sectioned && onReadParts ? btn : { ...btn, background: '#2563eb', borderColor: '#2563eb', color: 'white', fontWeight: 600 }} title="Walk every page at reading size and put each on its row — the answer pre-filled where the page names a model" data-testid="assign-pages-open">
                     Assign pages…
                   </button>
                 ) : null}
