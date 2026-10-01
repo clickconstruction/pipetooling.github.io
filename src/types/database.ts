@@ -1269,6 +1269,7 @@ export type Database = {
           lead_time_days: number | null
           note: string
           ordered_on: string | null
+          part_key: string | null
           po_ref: string
           sort_order: number
           stage: string | null
@@ -1285,6 +1286,7 @@ export type Database = {
           lead_time_days?: number | null
           note?: string
           ordered_on?: string | null
+          part_key?: string | null
           po_ref?: string
           sort_order?: number
           stage?: string | null
@@ -1301,6 +1303,7 @@ export type Database = {
           lead_time_days?: number | null
           note?: string
           ordered_on?: string | null
+          part_key?: string | null
           po_ref?: string
           sort_order?: number
           stage?: string | null
@@ -2075,6 +2078,170 @@ export type Database = {
             columns: ["submittal_id"]
             isOneToOne: false
             referencedRelation: "bid_submittals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bid_submittal_item_parts: {
+        Row: {
+          assembly: string | null
+          bid_id: string
+          carried_from_part_id: string | null
+          created_at: string
+          decision_entered_by: string | null
+          decision_entered_by_name: string | null
+          decision_source: string
+          description: string | null
+          id: string
+          item_id: string
+          label: string
+          lead_time_days: number | null
+          manufacturer: string | null
+          model: string | null
+          on_submittal: boolean
+          part_id: string | null
+          priced_label: string | null
+          procure_key: string
+          quantity: number
+          reason_note: string | null
+          review_decision: string | null
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by_email: string | null
+          reviewed_by_name: string | null
+          reviewed_by_person_id: string | null
+          sequence_order: number
+          sheet_file: number | null
+          sheet_pages: number[]
+          source: string
+          source_line_id: string | null
+          source_template_item_id: string | null
+          stage: string | null
+          supply_house_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          assembly?: string | null
+          bid_id: string
+          carried_from_part_id?: string | null
+          created_at?: string
+          decision_entered_by?: string | null
+          decision_entered_by_name?: string | null
+          decision_source?: string
+          description?: string | null
+          id?: string
+          item_id: string
+          label: string
+          lead_time_days?: number | null
+          manufacturer?: string | null
+          model?: string | null
+          on_submittal?: boolean
+          part_id?: string | null
+          priced_label?: string | null
+          procure_key?: string
+          quantity?: number
+          reason_note?: string | null
+          review_decision?: string | null
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by_email?: string | null
+          reviewed_by_name?: string | null
+          reviewed_by_person_id?: string | null
+          sequence_order?: number
+          sheet_file?: number | null
+          sheet_pages?: number[]
+          source?: string
+          source_line_id?: string | null
+          source_template_item_id?: string | null
+          stage?: string | null
+          supply_house_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assembly?: string | null
+          bid_id?: string
+          carried_from_part_id?: string | null
+          created_at?: string
+          decision_entered_by?: string | null
+          decision_entered_by_name?: string | null
+          decision_source?: string
+          description?: string | null
+          id?: string
+          item_id?: string
+          label?: string
+          lead_time_days?: number | null
+          manufacturer?: string | null
+          model?: string | null
+          on_submittal?: boolean
+          part_id?: string | null
+          priced_label?: string | null
+          procure_key?: string
+          quantity?: number
+          reason_note?: string | null
+          review_decision?: string | null
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by_email?: string | null
+          reviewed_by_name?: string | null
+          reviewed_by_person_id?: string | null
+          sequence_order?: number
+          sheet_file?: number | null
+          sheet_pages?: number[]
+          source?: string
+          source_line_id?: string | null
+          source_template_item_id?: string | null
+          stage?: string | null
+          supply_house_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_submittal_item_parts_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_submittal_item_parts_carried_from_part_id_fkey"
+            columns: ["carried_from_part_id"]
+            isOneToOne: false
+            referencedRelation: "bid_submittal_item_parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_submittal_item_parts_decision_entered_by_fkey"
+            columns: ["decision_entered_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_submittal_item_parts_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "bid_submittal_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_submittal_item_parts_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "material_parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_submittal_item_parts_reviewed_by_person_id_fkey"
+            columns: ["reviewed_by_person_id"]
+            isOneToOne: false
+            referencedRelation: "bid_submittal_people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_submittal_item_parts_supply_house_id_fkey"
+            columns: ["supply_house_id"]
+            isOneToOne: false
+            referencedRelation: "supply_houses"
             referencedColumns: ["id"]
           },
         ]
@@ -13901,24 +14068,62 @@ export type Database = {
       }
       mercury_transaction_ar_returned: {
         Row: {
+          bank_reason: string | null
+          closed_at: string | null
+          closed_by: string | null
+          closed_note: string | null
+          closed_reason: string | null
           mercury_transaction_id: string
+          opened_at: string | null
+          replaced_by_mercury_transaction_id: string | null
           returned: boolean
+          source: string | null
           updated_at: string
           updated_by: string | null
         }
         Insert: {
+          bank_reason?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
+          closed_note?: string | null
+          closed_reason?: string | null
           mercury_transaction_id: string
+          opened_at?: string | null
+          replaced_by_mercury_transaction_id?: string | null
           returned?: boolean
+          source?: string | null
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
+          bank_reason?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
+          closed_note?: string | null
+          closed_reason?: string | null
           mercury_transaction_id?: string
+          opened_at?: string | null
+          replaced_by_mercury_transaction_id?: string | null
           returned?: boolean
+          source?: string | null
           updated_at?: string
           updated_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "mercury_transaction_ar_return_replaced_by_mercury_transact_fkey"
+            columns: ["replaced_by_mercury_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "mercury_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mercury_transaction_ar_returned_closed_by_fkey"
+            columns: ["closed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "mercury_transaction_ar_returned_mercury_transaction_id_fkey"
             columns: ["mercury_transaction_id"]
@@ -22744,6 +22949,8 @@ export type Database = {
       }
     }
     Functions: {
+      _ar_payer_key: { Args: { p: string }; Returns: string }
+      _ar_try_timestamptz: { Args: { p: string }; Returns: string }
       _mercury_raw_debit_card_id_lower: {
         Args: { p_raw: Json }
         Returns: string
@@ -23145,6 +23352,15 @@ export type Database = {
       clone_price_book_version_to_bid: {
         Args: { p_bid_id: string; p_name: string; p_source_version_id: string }
         Returns: string
+      }
+      close_ar_return_case: {
+        Args: {
+          p_mercury_transaction_id: string
+          p_note?: string
+          p_reason: string
+          p_replaced_by?: string
+        }
+        Returns: Json
       }
       company_owner_user_id: { Args: never; Returns: string }
       complete_job_collect_payment_flow_for_invoice: {
@@ -24054,6 +24270,30 @@ export type Database = {
           reference_number: string
           removed_at: string
           removed_by: string
+        }[]
+      }
+      list_ar_return_cases: {
+        Args: { p_include_closed?: boolean }
+        Returns: {
+          amount: number
+          bank_reason: string
+          closed_at: string
+          closed_by: string
+          closed_note: string
+          closed_reason: string
+          counterparty_name: string
+          failed_at: string
+          kind: string
+          last_job: Json
+          live_payments: Json
+          mercury_transaction_id: string
+          notified_at: string
+          opened_at: string
+          posted_at: string
+          promise: Json
+          recorded_payment: Json
+          replaced_by_mercury_transaction_id: string
+          source: string
         }[]
       }
       list_assigned_jobs_for_dashboard: {
@@ -25101,6 +25341,16 @@ export type Database = {
         Args: { p_bid_id: string; p_name: string }
         Returns: string
       }
+      mercury_bank_return_reason: {
+        Args: {
+          p_amount: number
+          p_kind: string
+          p_posted_at: string
+          p_reason: string
+          p_status: string
+        }
+        Returns: string
+      }
       mercury_debit_card_id_from_raw: { Args: { p_raw: Json }; Returns: string }
       merge_customers: {
         Args: { p_field_choices: Json; p_survivor: string; p_victim: string }
@@ -25180,6 +25430,7 @@ export type Database = {
         Args: { p_license_id: string; p_link: string }
         Returns: string
       }
+      open_ar_rejected_check_cases: { Args: never; Returns: Json }
       partner_job_cost_buckets: { Args: { p_job_id: string }; Returns: Json }
       partner_job_costing_payload: {
         Args: { p_job_id: string; p_partnership_id: string }
@@ -25363,6 +25614,10 @@ export type Database = {
       remove_labor_job_payment: {
         Args: { p_payment_id: string; p_reason?: string }
         Returns: string
+      }
+      reopen_ar_return_case: {
+        Args: { p_mercury_transaction_id: string }
+        Returns: Json
       }
       replace_estimate_catalog_payload: {
         Args: { p_payload: Json }
@@ -25911,6 +26166,7 @@ export type Database = {
         }
         Returns: Json
       }
+      submittal_item_bid: { Args: { p_item_id: string }; Returns: string }
       submittal_robot_liveness: { Args: never; Returns: Json }
       suggest_bids_for_job: {
         Args: { p_job_id: string }
@@ -25974,6 +26230,10 @@ export type Database = {
       sync_salary_clock_sessions_for_user_day: {
         Args: { p_user_id: string; p_work_date: string }
         Returns: undefined
+      }
+      take_returned_check_off_jobs: {
+        Args: { p_mercury_transaction_id: string }
+        Returns: Json
       }
       takeoff_fixture_history: {
         Args: {
