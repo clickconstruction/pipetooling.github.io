@@ -394,12 +394,13 @@ describe('JobFormInvoiceList — the switch on the Bills row (v2.4298)', () => {
       invoices: [makeInvoice({ id: 'inv-1', status: 'billed', amount: 250, is_primary_rtb_bundle: false, sent_to_customer_at: '2026-09-30T15:00:00Z', billed_at: '2026-09-30T15:00:00Z' })],
     })
 
-  it('draws By bill / By date between Bills and Next, shows the view it is given, and reports a press', async () => {
+  it('draws By bill / By date at the right of the Bills row (no Next label), shows the view it is given, and reports a press', async () => {
     const picked: string[] = []
     renderWithProviders(<JobFormInvoiceList editing={jobRow()} {...props([])} paymentLineActions={actions} view="date" onViewChange={(v) => picked.push(v)} />)
     await settle()
     const hdr = screen.getByText('Bills').parentElement!
-    expect([...hdr.children].map((el) => el.textContent)).toEqual(['Bills', 'By billBy date', 'Next'])
+    expect([...hdr.children].map((el) => el.textContent)).toEqual(['Bills', 'By billBy date'])
+    expect(screen.queryByText('Next')).toBeNull()
     expect(within(hdr).getByRole('button', { name: 'By date' }).getAttribute('aria-pressed')).toBe('true')
     fireEvent.click(within(hdr).getByRole('button', { name: 'By bill' }))
     expect(picked).toEqual(['bill'])

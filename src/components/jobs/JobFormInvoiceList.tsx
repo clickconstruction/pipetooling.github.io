@@ -95,7 +95,7 @@ type JobFormInvoiceListProps = {
    * 'bill' (the default) draws each payment under its bill. Needs `paymentLineActions`.
    */
   view?: BillsAndPaymentsView
-  /** v2.4298: with `paymentLineActions`, the Bills header row draws the By bill / By date switch and reports a press here. */
+  /** v2.4298: with `paymentLineActions`, the Bills header row draws the By bill / By date switch at its right and reports a press here. */
   onViewChange?: (view: BillsAndPaymentsView) => void
 }
 
@@ -526,7 +526,6 @@ export function JobFormInvoiceList({
             <BillsViewSwitch view={view} onViewChange={onViewChange} />
           </span>
         ) : null}
-        <span className="jobInvoiceLedgerHdrNext">Next</span>
       </div>
       {listItems.map((item) => {
         if (item.kind === 'payment') {

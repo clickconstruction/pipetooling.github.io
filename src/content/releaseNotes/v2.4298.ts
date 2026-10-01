@@ -7,6 +7,7 @@ const note: ReleaseNote = {
   kind: 'feature',
   highlights: [
     'The By bill and By date buttons moved down to the Bills row, right above the bills they change. They used to sit on the Bills and payments heading, far above the list.',
+    'The Next label on that row is gone. It named the buttons at the right of each bill, and did not say so.',
     'On a phone the switch sits on the Bills row too.',
   ],
 }

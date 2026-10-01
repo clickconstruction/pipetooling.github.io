@@ -2508,7 +2508,7 @@ body.my-time-boundary-dragging {
   padding: 0.125rem 0 0.375rem;
   border-bottom: 1px solid var(--border);
 }
-/* v2.4298: the By bill / By date switch sits on the Bills row, against its Next label. */
+/* v2.4298: the By bill / By date switch sits at the right of the Bills row. */
 .jobInvoiceLedgerHdrSwitch {
   margin-left: auto;
 }
@@ -2910,11 +2910,8 @@ body.my-time-boundary-dragging {
   color: var(--text-600);
 }
 @container job-invoice-ledger (max-width: 420px) {
-  /* Stacked rows have no Next column; the row stays only to carry the switch. */
+  /* Stacked rows need no column label; the row stays only to carry the switch. */
   .jobInvoiceLedgerHdr:not(:has(.jobInvoiceLedgerHdrSwitch)) {
-    display: none;
-  }
-  .jobInvoiceLedgerHdrNext {
     display: none;
   }
   .jobInvoiceRow {
