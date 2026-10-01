@@ -1,32 +1,15 @@
 // @vitest-environment jsdom
 /**
- * Render-smoke tests for the ② Invoices segment strip's "How invoices and
- * jobs move" explainer (v2.1074): the ⓘ toggle expands the green-card /
- * blue-card story with the job's real first-segment amount and job label,
- * and collapses again.
+ * Render-smoke tests for the ② heading's "How invoices and jobs move"
+ * explainer (v2.1074): the ⓘ toggle expands the green-card / blue-card story
+ * with the job's real first-segment amount and job label, and collapses
+ * again; and the By bill / By date switch. The strip they sat beside became
+ * the money card in v2.4307 (`JobFormMoneyCard.render.test.tsx`).
  */
 import { describe, expect, it } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
-import { BillsViewSwitch, InvoicesSectionHeading, JobFormSegmentsBar, JobFormSegmentsCreateAction } from './JobFormSegmentsBar'
-import type { FixtureRow } from '../../lib/jobs/jobFormTypes'
+import { BillsViewSwitch, InvoicesSectionHeading } from './JobFormSegmentsBar'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
-
-const fixtures: FixtureRow[] = [
-  { id: 'a', name: 'Rough In', count: 1, line_unit_price: 400, line_description: '', invoice_id: null },
-  { id: 'b', name: 'Top Out', count: 1, line_unit_price: 600, line_description: '', invoice_id: null },
-]
-
-function renderBar() {
-  return renderWithProviders(
-    <JobFormSegmentsBar
-      fixtures={fixtures}
-      riderFeesDollars={0}
-      invoiceStatusById={{}}
-      selectedIds={new Set<string>()}
-      onToggleSegment={() => {}}
-    />,
-  )
-}
 
 describe('InvoicesSectionHeading flow explainer (moved beside the ② heading, v2.1146)', () => {
   it('is collapsed by default and expands with the sample chips', () => {
@@ -47,85 +30,6 @@ describe('InvoicesSectionHeading flow explainer (moved beside the ② heading, v
     fireEvent.click(toggle)
     fireEvent.click(toggle)
     expect(screen.queryByText(/green card/)).toBeNull()
-  })
-
-  it('the bar itself no longer renders the explainer trigger', () => {
-    renderBar()
-    expect(screen.queryByText(/How invoices and jobs move/)).toBeNull()
-  })
-})
-
-describe('JobFormSegmentsBar dollar-invoice coverage (v2.1132)', () => {
-  // $500 invoiced by dollar amount on a $1,000 job: Rough In ($400) fully
-  // covered, Top Out ($600) covered $100, $500 left to bill.
-  const coverage = {
-    unattributedDollars: 500,
-    remainingDollars: 500,
-    bySegmentKey: {
-      a: { coveredDollars: 400, fullyCovered: true },
-      b: { coveredDollars: 100, fullyCovered: false },
-    },
-  }
-
-  function renderWithCoverage(selectedIds = new Set<string>()) {
-    return renderWithProviders(
-      <JobFormSegmentsBar
-        fixtures={fixtures}
-        riderFeesDollars={0}
-        invoiceStatusById={{}}
-        selectedIds={selectedIds}
-        onToggleSegment={() => {}}
-        coverage={coverage}
-      />,
-    )
-  }
-
-  function renderCreateAction(selectedIds = new Set<string>(), cov = coverage) {
-    return renderWithProviders(
-      <JobFormSegmentsCreateAction
-        fixtures={fixtures}
-        riderFeesDollars={0}
-        invoiceStatusById={{}}
-        selectedIds={selectedIds}
-        onCreateInvoiceFromSelection={() => {}}
-        creatingFromSelection={false}
-        coverage={cov}
-      />,
-    )
-  }
-
-  it('shows the legend entry and per-row coverage chips (banner removed v2.1141)', () => {
-    renderWithCoverage()
-    expect(screen.queryByText(/of this job is already paid or on bills/)).toBeNull()
-    expect(screen.getByText('Covered by other bills')).toBeTruthy()
-    expect(screen.getByText('covered')).toBeTruthy()
-    expect(screen.getByText('$100.00 covered')).toBeTruthy()
-  })
-
-  it('locks the fully covered row (no checkbox) but keeps the partial row selectable', () => {
-    renderWithCoverage()
-    expect(screen.queryByLabelText('Select segment Rough In for invoicing')).toBeNull()
-    expect(screen.getByLabelText('Select segment Top Out for invoicing')).toBeTruthy()
-  })
-
-  it('bills the remaining on the selection: covered dollars are subtracted from the amount', () => {
-    renderCreateAction(new Set(['b']))
-    // Top Out is $600 with $100 covered — the button offers the $500 net.
-    const button = screen.getByText(/Create invoice from remaining on 1 segment \(\$500\.00\)/) as HTMLButtonElement
-    expect(button.disabled).toBe(false)
-    expect(screen.getByText(/\$100\.00 already covered is subtracted/)).toBeTruthy()
-  })
-
-  it('backstop: disables Create invoice when the net still exceeds a stale remaining, with the red note', () => {
-    renderCreateAction(new Set(['b']), { ...coverage, remainingDollars: 400 })
-    const button = screen.getByText(/Create invoice from remaining on 1 segment \(\$500\.00\)/) as HTMLButtonElement
-    expect(button.disabled).toBe(true)
-    expect(screen.getByText(/Exceeds the \$400\.00 left to bill/)).toBeTruthy()
-  })
-
-  it('renders no coverage chrome without the prop', () => {
-    renderBar()
-    expect(screen.queryByText('Covered by other bills')).toBeNull()
   })
 })
 

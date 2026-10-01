@@ -25,8 +25,6 @@ A sub is a subcontractor, an outside crew you hire. A GC is the general contract
 
 Every line item on the job is a stage. Under each row in **① Line Items** the **In order / Any time** selector says whether it waits its turn. See *split a job into stages and bill stage by stage*. In-order rows are numbered top to bottom and wait for the one above. Any-time rows, the change orders, have their own dates. The rows you set to In order are the stages the rest of this guide schedules. The draws, the stage payments you bill, follow them.
 
-{{gif:split-a-job-into-stages.gif|Bill → ① Line Items: In order / Any time under each row; the strip and Still to bill follow}}
-
 ## 1 · Set the window — Jobs → Subs → Work
 
 {{gif:schedule-a-sub-subs-tab.gif|Jobs → Subs → Work: jobs grouped, the Window column with the GC chip, a bell on every job}}

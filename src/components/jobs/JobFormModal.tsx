@@ -87,7 +87,9 @@ import { useBreakOffSlider } from './useBreakOffSlider'
 import { useJobCostSnapshot } from './useJobCostSnapshot'
 import { useJobMigrate } from './useJobMigrate'
 import { JobFormInvoiceList } from './JobFormInvoiceList'
-import { JobFormUpcomingDraws } from './JobFormUpcomingDraws'
+import { JobFormMoneyCard } from './JobFormMoneyCard'
+import { JobFormMakeABill } from './JobFormMakeABill'
+import { billTabFigures, billTabLines, wholeRestAction } from '../../lib/jobs/billTabMoney'
 import { useJobStagePlanInputs } from '../../hooks/useJobStagePlanInputs'
 import { drawLabelsByInvoiceId, stagePlanFromForm } from '../../lib/jobs/stagePlanForm'
 import { fixtureRowsFromDb } from '../../lib/jobs/jobFormFixtureHydrate'
@@ -104,7 +106,6 @@ import { useMercuryDepositFacts } from '../../hooks/useMercuryDepositFacts'
 import { JobPaymentMoveModal } from './JobPaymentMoveModal'
 import { JobFormPartsCostSection } from './JobFormPartsCostSection'
 import { JobFormLaborCostPanel } from './JobFormLaborCostPanel'
-import { JobFormBreakOffSection, JobFormBreakOffTrack } from './JobFormBreakOffSection'
 import { JobFormFixturesSection } from './JobFormFixturesSection'
 import { JobFormPeoplePicker } from './JobFormPeoplePicker'
 import { JobFormAccountManSection } from './JobFormAccountManSection'
@@ -141,7 +142,7 @@ import {
   segmentBoundaryMarks,
   segmentSelectionNetSummary,
 } from '../../lib/jobs/jobSegmentsCoverage'
-import { InvoicesSectionHeading, JobFormSegmentsBar, JobFormSegmentsCreateAction, type BillsAndPaymentsView } from './JobFormSegmentsBar'
+import { InvoicesSectionHeading, type BillsAndPaymentsView } from './JobFormSegmentsBar'
 import { MultipleSegmentGeneratorModal } from './MultipleSegmentGeneratorModal'
 import type { SegmentGeneratorPayloadLine } from '../../lib/jobs/segmentGenerator'
 import { resolveEffectiveJobMasterUserId } from '../../lib/resolveEffectiveJobMasterUserId'
@@ -604,6 +605,19 @@ export default function JobFormModal({
     [fixtures, stagePlanInputs.inputs, editing?.invoices, payments, stagePlanToday],
   )
   const drawLabelByInvoiceId = useMemo(() => drawLabelsByInvoiceId(stagePlan), [stagePlan])
+  // v2.4307: the ② money card — its blocks run in plan order (Order stages, then Any, then plain), as the
+  // old strip's did; each line's words, the figures and the picked-lines total come from `billTabMoney`.
+  const billTabSegments = useMemo(() => {
+    const byId = new Map(fixtures.map((f) => [f.id, f] as const))
+    const inPlan = stagePlan.rows.map((r) => byId.get(r.fixtureId)).filter((f): f is FixtureRow => !!f)
+    const seen = new Set(inPlan.map((f) => f.id))
+    return buildJobSegmentsBar({ fixtures: [...inPlan, ...fixtures.filter((f) => !seen.has(f.id))], riderFeesDollars, invoiceStatusById: fixtureInvoiceStatusById })
+  }, [fixtures, stagePlan, riderFeesDollars, fixtureInvoiceStatusById])
+  const billTabLineRows = useMemo(
+    () => billTabLines({ segments: billTabSegments, coverage: segmentCoverage, plan: stagePlan }),
+    [billTabSegments, segmentCoverage, stagePlan],
+  )
+  const billTabFigs = useMemo(() => billTabFigures(billingBar, editing?.pct_complete ?? null), [billingBar, editing?.pct_complete])
   // Stage Plan PR 4: the Edit tab's read-out and the "as the customer sees it" drawer.
   const [stagesDrawerOpen, setStagesDrawerOpen] = useState(false)
   // The drawer's "Open the portal ↗": the GC's real link when one is minted, else the sample page.
@@ -922,7 +936,7 @@ export default function JobFormModal({
   const breakOff = useBreakOffSlider({ jobTotalBidDollars: jobTotalWithRidersDollars, payments, editing })
   // Only these three are read/written by the shell's money-path handlers
   // (createInvoice / moveWorkingJobToReadyToBillFromEdit); the rest of the hook
-  // output is consumed by JobFormBreakOffSection via the `breakOff` prop.
+  // output is consumed by JobFormMakeABill (v2.4307) via the `breakOff` prop.
   const { newInvoiceAmount, setNewInvoiceAmount, setNewInvoiceAmountInputFocused } = breakOff
   // Team chips can reference users outside the picker's role-filtered list — a
   // dev on the crew, or an ARCHIVED crew member (the users SELECT policy hides
@@ -2869,18 +2883,15 @@ export default function JobFormModal({
                 </div>
               ) : null
             )}
-            <div ref={focusFieldFlash === 'pct' ? focusFieldRef : undefined} data-job-form-focus={focusFieldFlash === 'pct' ? 'pct' : undefined} style={focusFieldFlash === 'pct' ? FOCUS_FIELD_RING : undefined}>
+            {/* v2.4307: an open job's money is the ② money card (Done · Paid · Billed · Left, the % done box,
+                a block per line); the New Job form, with no bills yet, keeps this bar. */}
+            {!editing ? (
+            <div>
             <MoneyLifecycleBar
               hasBar={billingBar.hasBar}
-              barTitle={[
-                `Job total ${'$'}${formatCurrency(billingBar.total)} — paid ${'$'}${formatCurrency(billingBar.paid)}, billed unpaid ${'$'}${formatCurrency(billingBar.billedUnpaid)}, draft ${'$'}${formatCurrency(billingBar.draft)}`,
-                editing?.pct_complete != null ? `field progress ${Math.round(editing.pct_complete)}% (yellow dot)` : null,
-              ]
-                .filter(Boolean)
-                .join(' · ')}
-              pctComplete={editing?.pct_complete ?? null}
+              barTitle={`Job total ${'$'}${formatCurrency(billingBar.total)} — paid ${'$'}${formatCurrency(billingBar.paid)}, billed unpaid ${'$'}${formatCurrency(billingBar.billedUnpaid)}, draft ${'$'}${formatCurrency(billingBar.draft)}`}
+              pctComplete={null}
               pctSaving={pctSaving}
-              onPctCommit={editing?.id ? commitPctComplete : undefined}
               marks={billingBarMarks}
               segments={[
                 { key: 'paid', frac: billingBar.paidFrac, color: PAID_COLOR },
@@ -2924,6 +2935,7 @@ export default function JobFormModal({
               }}
             />
             </div>
+            ) : null}
           </div>
           {/* Job-account note (v2.3257): job window only — the standalone New
               Job form has no job yet. Renders nothing without a packet on record. */}
@@ -2944,40 +2956,33 @@ export default function JobFormModal({
                 sampleDollars={billingSegments[0]?.dollars ?? null}
                 jobLabel={editing.hcp_number?.trim() ? `Job ${editing.hcp_number.trim()}` : null}
               />
-              <JobFormSegmentsBar
-                fixtures={fixtures}
-                trackSlot={
-                  <JobFormBreakOffTrack
-                    breakOff={breakOff}
-                    billsAheadRemedyHint={billsAheadRemedyHint(editing.invoices ?? [], payments)}
-                  />
-                }
-                axisTotalDollars={jobTotalBidDollars}
-                riderFeesDollars={riderFeesDollars}
-                invoiceStatusById={fixtureInvoiceStatusById}
+              <JobFormMoneyCard
+                figures={billTabFigs}
+                segments={billTabSegments}
+                lines={billTabLineRows}
+                plan={stagePlan}
+                coverage={segmentCoverage}
+                onPctCommit={editing?.id ? commitPctComplete : undefined}
+                pctSaving={pctSaving}
+                pctFocusRef={focusFieldFlash === 'pct' ? focusFieldRef : undefined}
+                pctFocusFlash={focusFieldFlash === 'pct'}
                 selectedIds={selectedSegmentIds}
                 onToggleSegment={toggleSegmentSelected}
-                coverage={segmentCoverage}
-                plan={stagePlan}
-              />
-              {editing ? (
-                <JobFormBreakOffSection
-                  breakOff={breakOff}
-                  jobTotalBidDollars={jobTotalBidDollars}
-                  movingJobToReadyToBill={movingJobToReadyToBill}
-                  creatingInvoice={creatingInvoice}
-                  createInvoice={createInvoice}
-                  moveWorkingJobToReadyToBillFromEdit={moveWorkingJobToReadyToBillFromEdit}
-                />
-              ) : null}
-              <JobFormSegmentsCreateAction
-                fixtures={fixtures}
-                riderFeesDollars={riderFeesDollars}
-                invoiceStatusById={fixtureInvoiceStatusById}
-                selectedIds={selectedSegmentIds}
-                onCreateInvoiceFromSelection={createInvoiceFromSelectedSegments}
-                creatingFromSelection={creatingSegmentInvoice}
-                coverage={segmentCoverage}
+                onBillRow={(id) => void billStageRow(id)}
+                billingFixtureId={billingStageFixtureId}
+                billingDisabled={creatingSegmentInvoice}
+                picked={(() => {
+                  // The cents-exact backstop: with consistent coverage the net can't pass what is left, but stale state still can.
+                  const sel = segmentSelectionNetSummary(fixtures, selectedSegmentIds, segmentCoverage)
+                  return {
+                    count: sel.count,
+                    netDollars: sel.netDollars,
+                    coveredDollars: sel.coveredDollars,
+                    over: Math.round(sel.netDollars * 100) > Math.round(segmentCoverage.remainingDollars * 100),
+                  }
+                })()}
+                onBillPicked={() => void createInvoiceFromSelectedSegments()}
+                billingPicked={creatingSegmentInvoice}
                 payerCarves={
                   billToParty === 'split'
                     ? payerCarvePlan.map((c) => ({
@@ -2991,12 +2996,21 @@ export default function JobFormModal({
                 onCarveByPayer={() => void carveInvoicesByPayer()}
                 carvingByPayer={carvingByPayer}
               />
-              <JobFormUpcomingDraws
-                plan={stagePlan}
-                onBillRow={(id) => void billStageRow(id)}
-                billingFixtureId={billingStageFixtureId}
-                disabled={creatingSegmentInvoice}
-                coverage={segmentCoverage}
+              <JobFormMakeABill
+                breakOff={breakOff}
+                jobTotalDollars={jobTotalWithRidersDollars}
+                leftToBill={billTabFigs.leftToBill}
+                wholeRest={wholeRestAction(editing.status, breakOff.breakOffRemaining)}
+                onWholeRest={(a) => {
+                  if (a.kind === 'move_to_ready_to_bill') void moveWorkingJobToReadyToBillFromEdit(a.amount)
+                  else void createInvoice(a.amount)
+                }}
+                hasOrderStages={stagePlan.orderCount > 0}
+                movingJobToReadyToBill={movingJobToReadyToBill}
+                creatingInvoice={creatingInvoice}
+                createInvoice={() => void createInvoice()}
+                moveWorkingJobToReadyToBillFromEdit={() => void moveWorkingJobToReadyToBillFromEdit()}
+                billsAheadRemedyHint={billsAheadRemedyHint(editing.invoices ?? [], payments)}
               />
               <JobFormInvoiceList
                 editing={editing}
