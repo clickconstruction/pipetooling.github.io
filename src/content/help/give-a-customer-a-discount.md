@@ -38,7 +38,7 @@ Some customers always get a rate. That may be a repeat customer, or a GC with a 
 
 A discount follows the work it applies to. When you bill a stage, that stage's share of the discount rides on the same bill as a labeled line. With Rough In it reads *Negotiated discount (10%) −$1,509.80*. The draws together always add up to the whole discount to the cent. The customer sees the discount on every bill, never a mystery credit on the last one. The row itself shows the first few shares. It reads *On the customer's bill: Negotiated discount (10%) −$1,509.80 with Rough In, −$1,509.80 with Top Out, −$754.90 with Trim Set*.
 
-The ② Invoices strip and the Make Invoice slider already show the job after the discount. Nothing there needs a second thought.
+The money card and **Make a bill** already show the job after the discount. Nothing there needs a second thought.
 
 ## Only part of the job?
 

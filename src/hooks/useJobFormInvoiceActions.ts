@@ -62,8 +62,10 @@ export type JobFormInvoiceActions = {
   /** The hazmat incident "Bill separately…" is running for. */
   billingFeeSeparatelyId: string | null
   carvingByPayer: boolean
-  createInvoice: () => Promise<void>
-  moveWorkingJobToReadyToBillFromEdit: () => Promise<void>
+  /** `amountOverride` (v2.4307): bill this amount instead of the one in the amount box — Make a bill's whole-rest button. */
+  createInvoice: (amountOverride?: number) => Promise<void>
+  /** `amountOverride` (v2.4307): Make a bill's whole-rest button passes the remainder instead of filling the amount box. */
+  moveWorkingJobToReadyToBillFromEdit: (amountOverride?: number) => Promise<void>
   createInvoiceFromSelectedSegments: () => Promise<string | null>
   billStageRow: (fixtureId: string) => Promise<void>
   carveInvoicesByPayer: () => Promise<void>
@@ -113,12 +115,12 @@ export function useJobFormInvoiceActions(args: JobFormInvoiceActionsArgs): JobFo
     return unallocatedBillableDollars(jobTotalWithRidersDollars, jobFormPaidDollars(payments), editing?.invoices, payments)
   }
 
-  async function moveWorkingJobToReadyToBillFromEdit() {
+  async function moveWorkingJobToReadyToBillFromEdit(amountOverride?: number) {
     if (!editing || editing.status !== 'working') return
     // Make the DB match the on-screen totals before the status/invoice writes.
     await flushBillingAutosave()
     const remaining = getEditJobBillableRemaining()
-    const amount = parseMoneyInputToNumber(newInvoiceAmount)
+    const amount = typeof amountOverride === 'number' ? amountOverride : parseMoneyInputToNumber(newInvoiceAmount)
     if (!isFullRemainingAmount(amount, remaining)) {
       setError('Enter the full unallocated amount to move this job to Ready to Bill.')
       return
@@ -288,12 +290,12 @@ export function useJobFormInvoiceActions(args: JobFormInvoiceActionsArgs): JobFo
     }
   }
 
-  async function createInvoice() {
+  async function createInvoice(amountOverride?: number) {
     if (!editing) return
     // Make the DB match the on-screen totals before the invoice is written.
     await flushBillingAutosave()
     const plan = planTypedInvoice({
-      typedAmount: parseMoneyInputToNumber(newInvoiceAmount),
+      typedAmount: typeof amountOverride === 'number' ? amountOverride : parseMoneyInputToNumber(newInvoiceAmount),
       remainingDollars: getEditJobBillableRemaining(),
       jobStatus: editing.status,
     })

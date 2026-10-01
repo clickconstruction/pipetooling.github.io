@@ -1,14 +1,14 @@
 // @vitest-environment jsdom
 /**
  * Stage Plan PR 2 render smokes: with a plan, every named row carries its
- * badge, the In order / Any time selector and the state line; picking a kind
+ * badge and the In order / Any time selector (the state words moved to the ②
+ * money card's rows in v2.4307, and the note to a tap); picking a kind
  * writes stage_kind through updateFixtureRow; a row on an invoice keeps its
  * selector disabled; without a plan the grid renders exactly as before.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen } from '@testing-library/react'
 import { JobFormFixturesSection } from './JobFormFixturesSection'
-import { JobFormUpcomingDraws } from './JobFormUpcomingDraws'
 import type { FixtureRow } from '../../lib/jobs/jobFormTypes'
 import { stagePlanFromForm } from '../../lib/jobs/stagePlanForm'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
@@ -54,7 +54,7 @@ function renderSection(withPlan: boolean, updateFixtureRow = vi.fn()) {
 }
 
 describe('JobFormFixturesSection with a Stage Plan', () => {
-  it('draws a badge, a selector and the state line under every named row', () => {
+  it('draws a badge and a selector under every named row; the stage note opens on a tap', () => {
     renderSection(true)
     expect(screen.getAllByTestId('stage-badge')).toHaveLength(4)
     expect(screen.getAllByTestId('stage-line')).toHaveLength(4)
@@ -62,10 +62,11 @@ describe('JobFormFixturesSection with a Stage Plan', () => {
     expect(screen.getByLabelText('Stage 2, current')).toBeTruthy()
     expect(screen.getByLabelText('Any-time stage, done')).toBeTruthy()
     expect(screen.getByLabelText('Plain line item')).toBeTruthy()
-    expect(screen.getByText('draw 1 paid Aug 29')).toBeTruthy()
-    expect(screen.getByText('◆ done Sep 16')).toBeTruthy()
-    expect(screen.getByText('bills with the final draw')).toBeTruthy()
-    expect(screen.getByText(/The second line is the stage/)).toBeTruthy()
+    // v2.4307: where the work and money stand is said on the ② money card, not here.
+    expect(screen.queryByText('draw 1 paid Aug 29')).toBeNull()
+    expect(screen.queryByTestId('stages-note')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'ⓘ How stages work' }))
+    expect(screen.getByTestId('stages-note').textContent).toMatch(/^The switch under each line sets its stage\./)
   })
 
   it('picking a kind writes stage_kind for that row; an invoiced row keeps its selector disabled', () => {
@@ -90,35 +91,3 @@ describe('JobFormFixturesSection with a Stage Plan', () => {
     expect(screen.queryAllByTestId('stage-line')).toHaveLength(0)
   })
 })
-
-describe('JobFormUpcomingDraws', () => {
-  it('lists the money still to bill and offers Bill it on the ready row only', () => {
-    const onBillRow = vi.fn()
-    renderWithProviders(<JobFormUpcomingDraws plan={plan} onBillRow={onBillRow} billingFixtureId={null} />)
-    expect(screen.getByText('Still to bill')).toBeTruthy()
-    expect(screen.getAllByTestId(/^draw-row-/).map((el) => el.getAttribute('data-testid'))).toEqual(['draw-row-later', 'draw-row-ready', 'draw-row-later'])
-    expect(screen.getByText('Draw 2 · Top-out')).toBeTruthy()
-    expect(screen.getByText('◆ Relocate water heater')).toBeTruthy()
-    const bill = screen.getAllByRole('button', { name: 'Bill it' })
-    expect(bill).toHaveLength(1)
-    fireEvent.click(bill[0]!)
-    expect(onBillRow).toHaveBeenCalledWith('c')
-  })
-
-  it('v2.4303: a line the bills cover by amount leaves the list; a part-covered line shows what is left', () => {
-    const coverage = {
-      unattributedDollars: 2150,
-      remainingDollars: 8700,
-      bySegmentKey: { c: { coveredDollars: 1850, fullyCovered: true }, d: { coveredDollars: 300, fullyCovered: false } },
-    }
-    renderWithProviders(<JobFormUpcomingDraws plan={plan} onBillRow={() => {}} billingFixtureId={null} coverage={coverage} />)
-    expect(screen.queryByText('◆ Relocate water heater')).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Bill it' })).toBeNull()
-    expect(screen.getAllByTestId(/^draw-row-/)).toHaveLength(2)
-    const permit = screen.getByText('Permit & misc').closest('[data-testid^="draw-row-"]') as HTMLElement
-    expect(permit.textContent).toContain('$300.00 of $600.00 already billed')
-    expect(permit.textContent).toContain('$300.00')
-    expect(permit.textContent).not.toMatch(/\$600\.00$/)
-  })
-})
-

@@ -2,7 +2,7 @@
 /**
  * Render smoke for the Workbench "?" card (region P2 of the Pricing map): the four lines,
  * the solo and the many-GC wording, every door reports, and every line reads in plain words
- * (v2.4307).
+ * (v2.4308).
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen } from '@testing-library/react'

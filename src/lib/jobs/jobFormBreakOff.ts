@@ -96,6 +96,12 @@ export function snapBreakOffCombinedPctToStep(
   return Math.min(max, Math.max(min, snapped))
 }
 
+/**
+ * The amount Make a bill's "Bill part of it" box starts with: 80% of the job (95% once more than
+ * 80% is paid), never more than is left. v2.4307: when that would be the whole remainder the box
+ * starts empty, since the whole rest has its own button (Move to Ready to Bill / Bill the rest) and
+ * a full box only repeated it, with a "bills ahead of the field" warning on top.
+ */
 export function breakOffPrefillAmountStringFromJob(job: JobWithDetails): string {
   const gross = job.revenue != null ? Number(job.revenue) : 0
   const paid = (job.payments ?? []).reduce((s, p) => s + (Number(p.amount) || 0), 0)
@@ -104,10 +110,9 @@ export function breakOffPrefillAmountStringFromJob(job: JobWithDetails): string 
   const paidCents = Math.round(paid * 100)
   const threshold80Cents = Math.round(0.8 * gross * 100)
   const rawTarget = paidCents > threshold80Cents ? 0.95 * gross : 0.8 * gross
-  const useCents = Math.min(
-    Math.round(remaining * 100),
-    Math.max(0, Math.round(rawTarget * 100)),
-  )
+  const remainingCents = Math.round(remaining * 100)
+  const useCents = Math.min(remainingCents, Math.max(0, Math.round(rawTarget * 100)))
+  if (useCents >= remainingCents) return ''
   const amount = useCents / 100
   return amount > 0 ? amount.toFixed(2) : ''
 }
@@ -133,7 +138,8 @@ export function breakOffPressStillMeansTheSame(pressed: BreakOffButtonAction | n
 /** What the form says when a press is set aside because the button changed under it. */
 export function breakOffButtonChangedWords(now: BreakOffButtonAction, amountDollars: number): string {
   const amount = `$${amountDollars.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  // v2.4307: the buttons are "Move to Ready to Bill · $X" and "Make a $X bill" (Make a bill → Bill part of it).
   return now === 'move_to_ready_to_bill'
-    ? `That was more than is left to bill, so the amount is now ${amount} — everything left on the job. Billing all of it moves the job to Ready to Bill: press Ready to Bill to do that, or type a smaller amount for an invoice.`
-    : `The amount changed to ${amount} as you pressed. Check it, then press New Invoice.`
+    ? `That was more than is left to bill, so the amount is now ${amount} — everything left on the job. Billing all of it moves the job to Ready to Bill: press Move to Ready to Bill to do that, or type a smaller amount for a bill.`
+    : `The amount changed to ${amount} as you pressed. Check it, then press Make a bill.`
 }

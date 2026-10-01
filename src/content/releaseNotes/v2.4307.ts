@@ -3,12 +3,13 @@ import type { ReleaseNote } from '../../lib/releaseNotes'
 const note: ReleaseNote = {
   version: 'v2.4307',
   date: '2026-10-01',
-  title: 'Pricing: the ? card reads in plain words',
+  title: 'Edit Job → Bill: the money said once, and Make a bill',
   kind: 'feature',
-  roles: ['dev', 'master_technician', 'assistant', 'estimator', 'controller'],
   highlights: [
-    'The four lines on the Workbench’s ? card are rewritten in short sentences, the way its walkthrough already reads: what to tap, what happens, and what the GC sees.',
-    'A packet is explained as the copy of the bid one GC gets, and a preview as a price not saved yet. The card names Solver ›, Apply, Discard and ＋ Add price exactly.',
+    'One money card says what is done, paid, billed and left to bill. Each line is a block with the % done marker across them, and a row saying where its money stands.',
+    'Make a bill shows only while money is left. One button bills all of it. Bill part of it keeps the amount box and the slider.',
+    'Tick lines on the card to bill them, or press Bill it on a stage that is ready.',
+    'In order / Any time stays under each line. The stage note opens from How stages work.',
   ],
 }
 

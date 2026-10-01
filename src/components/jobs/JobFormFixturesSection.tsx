@@ -8,7 +8,7 @@ import { normalizeFixtureDisplayName } from '../../lib/jobs/jobFormRows'
 import { fixtureInvoiceLinkChip, fixtureRowIsLocked } from '../../lib/jobs/jobFormFixtureLinks'
 import type { StagePlan } from '../../lib/jobs/stagePlan'
 import { formFixtureKind } from '../../lib/jobs/stagePlanForm'
-import { StageKindBadge, StageKindSelector, StageStateLine } from './StageKindControls'
+import { StageKindBadge, StageKindSelector } from './StageKindControls'
 import {
   STRIPE_INVOICE_LINE_DESCRIPTION_MAX,
   stripeInvoiceFixtureLineLength,
@@ -164,6 +164,8 @@ export function JobFormFixturesSection({
   const [totalEditing, setTotalEditing] = useState(false)
   const [totalDraft, setTotalDraft] = useState('')
   const [totalHint, setTotalHint] = useState<string | null>(null)
+  // v2.4307: the stage note opens on a tap instead of sitting under every job's line items.
+  const [stagesNoteOpen, setStagesNoteOpen] = useState(false)
   const totalHintTimer = useRef<number | null>(null)
   useEffect(
     () => () => {
@@ -730,9 +732,10 @@ export function JobFormFixturesSection({
                           ) : null}
                           {plan && planRow && (
                             /* Stage Plan (PR 2): the second line IS the stage — the
-                               Order / Any / — selector, then where the work and its
-                               draw stand. Indented past the badge and the ▲▼ column so
-                               it reads under the name field. */
+                               In order / Any time selector. Where the work and its money
+                               stand is said once, on the line's row in the ② money card
+                               (v2.4307). Indented past the badge and the ▲▼ column so it
+                               reads under the name field. */
                             <div
                               data-testid="stage-line"
                               style={{
@@ -749,7 +752,6 @@ export function JobFormFixturesSection({
                                 rowName={row.name}
                                 onChange={(kind) => updateFixtureRow(row.id, { stage_kind: kind })}
                               />
-                              <StageStateLine parts={planRow.stateParts} />
                             </div>
                           )}
                           {scopeExpanded ? (
@@ -1000,11 +1002,23 @@ export function JobFormFixturesSection({
               </span>
             </div>
             {plan && plan.rows.length > 0 && (
-              <p style={{ margin: '0.5rem 0 0', fontSize: '0.75rem', lineHeight: 1.5, color: 'var(--text-muted)' }}>
-                <strong style={{ color: 'var(--text-700)' }}>The second line is the stage.</strong> In-order rows are numbered top to bottom and wait for the one above; any-time
-                rows can happen whenever. ▲▼ still sets the order; the badge and the rest of the line follow.
-                {hasDiscount ? <> <strong style={{ color: 'var(--text-700)' }}>A discount</strong> is never a stage: it follows the work it applies to onto every draw.</> : null}
-              </p>
+              <div style={{ margin: '0.4rem 0 0' }}>
+                <button
+                  type="button"
+                  className="jobFormStagesNoteToggle"
+                  aria-expanded={stagesNoteOpen}
+                  onClick={() => setStagesNoteOpen((v) => !v)}
+                >
+                  ⓘ How stages work
+                </button>
+                {stagesNoteOpen ? (
+                  <p data-testid="stages-note" style={{ margin: '0.35rem 0 0', fontSize: '0.75rem', lineHeight: 1.5, color: 'var(--text-muted)' }}>
+                    The switch under each line sets its stage. In order lines are numbered from the top, and each one waits for the line above it. Any time lines can
+                    happen whenever. ▲▼ sets the order, and the number follows.
+                    {hasDiscount ? <> A discount is never a stage. It follows the work it takes money off, onto every bill.</> : null}
+                  </p>
+                ) : null}
+              </div>
             )}
           </div>
   )

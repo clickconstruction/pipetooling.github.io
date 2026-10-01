@@ -49,7 +49,6 @@ export const LEGACY_PLAIN_WORDS_GUIDES: ReadonlySet<string> = new Set([
   'sort-the-pipeline-by-percent-complete',
   'sort-the-pipeline-by-time-added',
   'split-a-bill-so-a-customer-can-pay-with-multiple-cards',
-  'split-a-job-into-stages',
   'staff-and-discuss-roadmap-tasks',
   'stage-a-takeoff-for-a-schedule-of-values',
   'start-here-as-a-master',
