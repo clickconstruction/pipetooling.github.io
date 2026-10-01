@@ -20,9 +20,19 @@ export function joinJobNumbers(nums: ReadonlyArray<string>): string {
   return `${list.slice(0, -1).join(', ')} and ${list[list.length - 1]}`
 }
 
+/** Job numbers in the order a person reads them: 251 before 825 before 1054. */
+export function sortJobNumbers(nums: ReadonlyArray<string>): string[] {
+  return nums.filter((n) => n.trim()).sort((a, b) => jobNumberSortKey(a) - jobNumberSortKey(b) || a.localeCompare(b))
+}
+
+/** "both" for two, "all 3" for more. */
+export function allOfCount(n: number): string {
+  return n === 2 ? 'both' : `all ${n}`
+}
+
 /** The strip's line under a signed paper that covers more than this job; null for one job. */
 export function contractCoversLine(jobNumbers: ReadonlyArray<string>): string | null {
-  const list = jobNumbers.filter((n) => n.trim())
+  const list = sortJobNumbers(jobNumbers)
   if (list.length < 2) return null
   return `Covers jobs ${joinJobNumbers(list)}`
 }
@@ -116,7 +126,7 @@ export function coversSheetWords(pickedNums: ReadonlyArray<string>, mode: 'add' 
   }
   if (n === 0) return { summary: 'Pick at least one job the paper names.', button: 'File it' }
   if (n === 1) return { summary: `Job ${list[0]} will read signed and on file.`, button: 'File for this job' }
-  return { summary: `Jobs ${joinJobNumbers(list)} will read signed and on file. One paper covers all ${n}.`, button: `File for ${n} jobs` }
+  return { summary: `Jobs ${joinJobNumbers(list)} will read signed and on file. One paper covers ${allOfCount(n)}.`, button: `File for ${n} jobs` }
 }
 
 /** What changes when the office saves new ticks for a paper that already covers some jobs. */
@@ -189,7 +199,7 @@ export function siblingPaperOffers(papers: ReadonlyArray<CoversPaper>, jobId: st
 
 /** The offer's sentence: "A signed paper covers jobs 251, 825 and 843. Does it name this job too?" */
 export function siblingOfferWords(jobNumbers: ReadonlyArray<string>): string {
-  const list = jobNumbers.filter((n) => n.trim())
+  const list = sortJobNumbers(jobNumbers)
   const which = list.length === 1 ? `job ${list[0]}` : `jobs ${joinJobNumbers(list)}`
   return `A signed paper on file covers ${which}. Does it name this job too?`
 }
