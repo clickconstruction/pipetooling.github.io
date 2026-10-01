@@ -52,8 +52,8 @@ Never send an unconditional form before the money has settled. Texas forbids req
 
 Do this once. It fills the signer and his title on every waiver.
 
-1. Go to **Settings** and open **Invoices**.
-2. Find the line **Signs for the company**. Type the leader's name.
+1. Go to **Settings** and open **Jobs & billing**.
+2. Open the **Physical invoice** block. Find the line **Signs for the company**. Type the leader's name.
 3. Type his title in **His title**. For example, Owner. Or Responsible Master Plumber.
 4. Click {{button:blue|Save}}.
 

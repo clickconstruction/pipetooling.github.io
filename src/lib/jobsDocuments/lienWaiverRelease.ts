@@ -262,7 +262,7 @@ export type LienWaiverPrefillContext = {
   ownerName: string | null
   /** The leader of record — the one picked under Signed by the leader, else the company's signer, else the session's name. */
   signerName: string
-  /** v2.4285: his title from Settings → Invoices (Signs for the company); '' leaves the line off the page. */
+  /** v2.4285: his title from Settings → Jobs & billing → Physical invoice (Signs for the company); '' leaves the line off the page. */
   signerTitle?: string
 }
 
