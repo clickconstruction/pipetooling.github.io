@@ -283,3 +283,96 @@ describe('JobsStagesUnifiedTable render smoke', () => {
     expect(boxed[0]?.title).toContain('has a hazmat fee')
   })
 })
+
+describe('one door for each thing on the row (v2.4324)', () => {
+  function billedRow(overrides: { report_count?: number; billedAt?: string } = {}) {
+    const job = makeJob({ job_name: 'Door Merged Job', status: 'billed', report_count: overrides.report_count ?? 0 })
+    const inv = makeInvoice({ job_id: job.id, amount: 350, status: 'billed', billed_at: overrides.billedAt ?? '2026-09-03T15:00:00+00:00' })
+    job.invoices = [inv]
+    const rows: StageRow[] = [{ kind: 'job_with_merged_billed', job, inv }]
+    return { job, inv, rows }
+  }
+  function crewLineLabels(): string[] {
+    return Array.from(document.querySelectorAll('.stagesWhenLine b')).map((b) => (b.textContent ?? '').trim())
+  }
+  function withWideScreen(run: () => Promise<void>) {
+    const original = window.matchMedia
+    window.matchMedia = ((query: string) => ({
+      matches: query === '(min-width: 1100px)',
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    })) as typeof window.matchMedia
+    return run().finally(() => {
+      window.matchMedia = original
+    })
+  }
+
+  it('under 1100 px the Job column has one See all pill, no Reports and no Sessions', async () => {
+    const { rows } = billedRow()
+    const openJobActivityExpand = vi.fn()
+    renderWithProviders(<JobsStagesUnifiedTable {...makeProps({ rows, openJobActivityExpand })} />)
+    await settle()
+    const pill = screen.getByRole('button', { name: 'Expand job activity' })
+    expect(pill.textContent).toBe('See all')
+    expect(screen.queryByRole('button', { name: /^\d* ?Reports?$/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Sessions|Session notes/ })).toBeNull()
+    fireEvent.click(pill)
+    expect(openJobActivityExpand).toHaveBeenCalledTimes(1)
+  })
+
+  it('the pill carries the report count the Reports pill used to show', async () => {
+    const { rows } = billedRow({ report_count: 2 })
+    renderWithProviders(<JobsStagesUnifiedTable {...makeProps({ rows })} />)
+    await settle()
+    expect(screen.getByRole('button', { name: 'Expand job activity' }).textContent).toBe('See all · 2 reports')
+  })
+
+  it('on a wide screen the activity box is the door: no pill in the Job column', async () => {
+    await withWideScreen(async () => {
+      const { rows } = billedRow({ report_count: 1 })
+      renderWithProviders(<JobsStagesUnifiedTable {...makeProps({ rows })} />)
+      await settle()
+      expect(document.querySelector('[data-stages-see-all]')).toBeNull()
+    })
+  })
+
+  it('the contract chip is the one contract door: no ✍ in the quick-action stack', async () => {
+    const { job, rows } = billedRow()
+    const onOpenJobContract = vi.fn()
+    renderWithProviders(
+      <JobsStagesUnifiedTable
+        {...makeProps({ rows, onOpenJobContract, jobContractCoverageByJobId: new Map([[job.id, { kind: 'none' as const }]]) })}
+      />,
+    )
+    await settle()
+    expect(screen.queryByRole('button', { name: 'Open the job contract' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /No contract/ }))
+    expect(onOpenJobContract).toHaveBeenCalledWith(job)
+  })
+
+  it('a billed row with a dates block does not repeat Billed under the crew', async () => {
+    const { rows } = billedRow()
+    renderWithProviders(<JobsStagesUnifiedTable {...makeProps({ rows, billedLienRunway: () => <span data-testid="dates-block" /> })} />)
+    await settle()
+    expect(screen.getByTestId('dates-block')).toBeTruthy()
+    expect(crewLineLabels()).not.toContain('Billed')
+  })
+
+  it('without a dates block the Billed line stays, and a Paid line always stays', async () => {
+    const { rows } = billedRow()
+    renderWithProviders(<JobsStagesUnifiedTable {...makeProps({ rows })} />)
+    await settle()
+    expect(crewLineLabels()).toContain('Billed')
+    document.body.innerHTML = ''
+    const paid = billedRow()
+    paid.job.payments = [{ ...({} as (typeof paid.job.payments)[number]), id: 'pay-1', job_id: paid.job.id, paid_on: '2026-09-20', amount: 100 }]
+    renderWithProviders(<JobsStagesUnifiedTable {...makeProps({ rows: paid.rows, billedLienRunway: () => null })} />)
+    await settle()
+    expect(crewLineLabels()).toContain('Paid')
+  })
+})

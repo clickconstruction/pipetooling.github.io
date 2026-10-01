@@ -173,9 +173,9 @@ export type StagesUnifiedRowContext = Omit<JobsStagesUnifiedTableProps, 'jobSend
   Required<Pick<JobsStagesUnifiedTableProps, 'jobSendBackLabel' | 'invoiceBundleActionLabel' | 'invoiceStandaloneActionLabel' | 'flashInvoiceId' | 'showClickTooling'>> & {
     openTestReportFor: (job: JobWithDetails) => void
     stagesRowSharedCtx: StagesRowRenderContext
-    renderStagesFieldAndBillingLines: (job: JobWithDetails) => ReactNode
+    renderStagesFieldAndBillingLines: (job: JobWithDetails, opts?: { datesBilledYmd?: string | null }) => ReactNode
     renderJobCustomerLine: (job: JobWithDetails) => ReactNode
-    renderStagesJobCellActivityFooter: (job: JobWithDetails, billingLineForStripeHint?: JobsLedgerInvoice | null, opts?: { hideReportsButton?: boolean }) => ReactNode
+    renderStagesJobCellActivityFooter: (job: JobWithDetails, billingLineForStripeHint?: JobsLedgerInvoice | null, opts?: { hideSeeAllButton?: boolean }) => ReactNode
     renderStagesQuickActionsStack: (job: JobWithDetails) => ReactNode
     renderJobNoteLine: (j: JobWithDetails) => ReactNode
     unifiedStagesColCount: number
@@ -291,13 +291,13 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
     onPropertyLinked,
     onOpenJobContract,
   }
-  const renderStagesFieldAndBillingLines = (job: JobWithDetails) =>
-    renderStagesFieldAndBillingLinesWithCtx(stagesRowSharedCtx, job)
+  const renderStagesFieldAndBillingLines = (job: JobWithDetails, opts?: { datesBilledYmd?: string | null }) =>
+    renderStagesFieldAndBillingLinesWithCtx(stagesRowSharedCtx, job, opts)
   const renderJobCustomerLine = (job: JobWithDetails) => renderJobCustomerLineWithCtx(stagesRowSharedCtx, job)
   const renderStagesJobCellActivityFooter = (
     job: JobWithDetails,
     billingLineForStripeHint?: JobsLedgerInvoice | null,
-    opts?: { hideReportsButton?: boolean },
+    opts?: { hideSeeAllButton?: boolean },
   ) => renderStagesJobCellActivityFooterWithCtx(stagesRowSharedCtx, job, { billingLineForStripeHint, ...opts })
 
   const renderStagesQuickActionsStack = (job: JobWithDetails) =>

@@ -39,9 +39,10 @@ import {
  * office can spot a session booked to Office that plainly belongs on a job
  * ("helped terry on 961 trim") and read a job's crew history for patterns.
  *
- * Doors: the toolbar pill (global search) and the per-job "Sessions" chip
- * beside "N Reports" / in the activity expand header (arrives pinned to the
- * job). The per-job doors go through `SessionNotesOpenerContext`
+ * Doors: the toolbar pill (global search) and, pinned to the job, the
+ * Sessions pill in the activity expand header and (since v2.4324, when the
+ * row's Sessions link went) the Session notes link in the work-story window
+ * the man-hours chip opens. The per-job doors go through `SessionNotesOpenerContext`
  * (sessionNotesOpenerContext.ts), provided by the tab only for office roles —
  * the same no-prop-threading move as StagesSearchMark.
  *

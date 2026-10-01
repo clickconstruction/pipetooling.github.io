@@ -53,7 +53,7 @@ You can also set the filter by hand. Open the **⋯** menu at the right end of t
 
 ## Send a contract
 
-Tap the {{chip:gray|No contract}} chip on the row, or the **✍** icon in the row's quick-action stack. The Contract window opens with everything prefilled from the job, in two columns. The agreement sits on the left, as the customer will see it. On the right sits one question: **How this one gets signed**.
+Tap the {{chip:gray|No contract}} chip on the row. The Contract window opens with everything prefilled from the job, in two columns. The agreement sits on the left, as the customer will see it. On the right sits one question: **How this one gets signed**.
 
 {{gif:get-a-job-contract-signed.gif|From the Pipeline row, the chip opens the Contract window. The agreement sits on the left as the customer sees it, edited in place. The rail on the right has the answer picked and one button that follows it}}
 
