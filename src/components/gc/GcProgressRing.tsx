@@ -34,7 +34,12 @@ export function GcProgressRing({
   const [shown, setShown] = useState(0)
   useEffect(() => {
     const id = requestAnimationFrame(() => setShown(target))
-    return () => cancelAnimationFrame(id)
+    // A hidden tab never runs animation frames: the timer fills the ring anyway.
+    const fallback = window.setTimeout(() => setShown(target), 150)
+    return () => {
+      cancelAnimationFrame(id)
+      window.clearTimeout(fallback)
+    }
   }, [target])
 
   const [hovered, setHovered] = useState(false)

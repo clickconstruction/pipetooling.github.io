@@ -656,25 +656,28 @@ function biddingProgress(state: GcState, project: GcProject): StageProgress {
   }
   const number: ProgressGroup = {
     key: 'number',
-    label: 'A number to carry',
-    why: 'Our price needs one number for every trade.',
+    label: 'A real number to carry',
+    why: 'Our price needs a real quote for every trade. Our own guess fills the price but does not count.',
     items: project.packages.map((pkg) => {
       const amount = carriedAmount(pkg)
       const n = bidsIn(pkg).length
       const carriedFrom = pkg.invites.find((i) => i.id === (pkg.awardedInviteId ?? pkg.carried))
       const who = carriedFrom ? partnerById(state, carriedFrom.partnerId)?.company : null
+      const quotes = `${n} ${n === 1 ? 'quote' : 'quotes'} in`
       return {
         label: pkg.trade,
-        done: amount !== null,
+        // The owner's rule (2026-10-02): a guess never closes a trade. Only a real quote does,
+        // or our own crew's number from a Trades mode bid.
+        done: amount !== null && !isGuess(pkg),
         detail:
           amount === null
             ? n > 0
-              ? `${n} ${n === 1 ? 'quote' : 'quotes'} in. Pick one to carry.`
+              ? `${quotes}. Pick one to carry.`
               : 'No quote yet.'
             : pkg.selfPerform
               ? `Our own crew, ${thousands(amount)}K`
-              : pkg.carried === 'plug'
-                ? `Our own guess for now, ${thousands(amount)}K`
+              : isGuess(pkg)
+                ? `Our guess of ${thousands(amount)}K is in the price. ${n > 0 ? `${quotes}. Carry one to close it.` : 'Get a quote to close it.'}`
                 : `${who ?? 'Carried'}, ${thousands(amount)}K`,
       }
     }),
@@ -929,6 +932,11 @@ export function packageCoverage(pkg: TradePackage): Coverage {
   if (bidsIn(pkg).length > 0) return 'bids'
   if (pkg.invites.some((i) => i.status !== 'declined')) return 'waiting'
   return 'empty'
+}
+
+/** The trade's number in our price is our own budget, not anyone's quote. */
+export function isGuess(pkg: TradePackage): boolean {
+  return !pkg.selfPerform && !pkg.awardedInviteId && !pkg.sow && pkg.carried === 'plug'
 }
 
 export function carriedAmount(pkg: TradePackage): number | null {

@@ -67,6 +67,7 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 | Where | What it does |
 |---|---|
 | **New here?** (top right) | An 11-stop spotlight walkthrough of the three stages on the Project Board: each stage's question, what you do in it, how it ends, then where to try it. Stops in `src/lib/gcMode/gcTour.ts`, on the app's `SpotlightTour`. |
+| The ring on each row | How far the project is through its stage (`stageProgress` in the model; `GcProgressRing`). Hover it, tap it on a phone, or tab to it: a card lists what the ring counts by type, what is left in each spelled out, what is done in one line, and an *Also* list it does not count. Bidding: enough quotes (2 per hired trade), a number to carry, quotes on the newest plans, our bid sent. Buyout: the Get started checklist by kind of step (the owner side, awarded, master agreement, insurance, W-9, statement of work). Building: work reported per trade, weighted by its statement of work; draws and waivers waiting under *Also*. |
 | **Project Board** | Projects in three sections: Bidding to the owner, Buying out, Building. Each row leads with the days left before our bid (red inside a week, amber inside two), then the name, the owner and architect (each a link), chips, the Bid Board's folder and plans icons, and the price. |
 | Plans icon on a row | A plans window over the board: newest set first, the sheet list by discipline, what the last addendum changed, arrow keys flip sheets. Drawings are stand-ins. |
 | Owner or architect name | One company window, shaped by what the company is to us: an owner gets money, how they buy and pay, projects we build for them; an architect gets addenda and questions waiting on them. One call log either way. |
@@ -104,6 +105,10 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 - **A new set of plans emails the right people**: every company bidding while we bid; once the
   job is ours, only the company on each trade.
 - **Communication is tracked per ask**, and a promised quote date is watched.
+- **A guess never closes a trade.** Our own budget carried as a trade's number fills the price,
+  but the ring and the board's chip count only a real quote (or our own crew's number from a
+  Trades mode bid). The chip names the guesses ("· 1 on our guess"); the card says "Carry one to
+  close it" (`isGuess` in the model).
 - **Click does the GC work itself** (answered 2026-10-02, was open question 1): "It's for Click
   doing GC work ourselves, but the entire app is designed in a way where a later company could
   put their company in this app." Build for one company; name nothing Click-only, so a later

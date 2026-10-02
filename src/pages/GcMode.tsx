@@ -22,6 +22,7 @@ import { Btn, Card, Chip, Stat, type Tone } from '../components/gc/gcUi'
 import { useMatchMedia } from '../hooks/useMatchMedia'
 import {
   carriedAmount,
+  isGuess,
   currentRev,
   daysUntil,
   followUps,
@@ -348,9 +349,12 @@ export default function GcMode() {
   )
 }
 
+/** A guess is not a number here: the chip counts real quotes and our own crew, and names the guesses. */
 function coverageWords(project: GcProject): string {
-  const withNumber = project.packages.filter((p) => carriedAmount(p) !== null).length
-  return `${withNumber} of ${project.packages.length} trades have a number`
+  const real = project.packages.filter((p) => carriedAmount(p) !== null && !isGuess(p)).length
+  const guessed = project.packages.filter(isGuess).length
+  const base = `${real} of ${project.packages.length} trades have a real number`
+  return guessed > 0 ? `${base} · ${guessed} on our guess` : base
 }
 
 function GcIcon({ d, size = 20 }: { d: string; size?: number }) {
@@ -523,7 +527,7 @@ function ProjectRow({
         </span>
       </span>
       <span style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', ...under }}>
-        <Chip tone={totals.holes.length > 0 ? 'red' : 'green'}>{coverageWords(project)}</Chip>
+        <Chip tone={totals.holes.length > 0 ? 'red' : totals.plugged.length > 0 ? 'amber' : 'green'}>{coverageWords(project)}</Chip>
         {chase > 0 && (
           <button
             type="button"
@@ -561,8 +565,12 @@ function ProjectRow({
       </span>
       <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', fontSize: '1.05rem', textAlign: 'right', ...(narrow ? { gridColumn: '3 / -1' } : null) }}>
         {money(totals.price)}
-        {totals.holes.length > 0 && (
+        {totals.holes.length > 0 ? (
           <span style={{ display: 'block', fontWeight: 400, fontSize: '0.75rem', color: 'var(--text-red-700)' }}>so far, with holes</span>
+        ) : (
+          totals.plugged.length > 0 && (
+            <span style={{ display: 'block', fontWeight: 400, fontSize: '0.75rem', color: 'var(--text-amber-800)' }}>with our guesses in it</span>
+          )
         )}
       </span>
     </div>
