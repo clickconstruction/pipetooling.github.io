@@ -102,7 +102,6 @@ export default function LienInstrumentsModal({
   invoice,
   signerNameFallback,
   authEmail,
-  onOpenExternalPrefill,
   onRecorded,
   initialTab,
   noticeMonths,
@@ -116,7 +115,6 @@ export default function LienInstrumentsModal({
   signerNameFallback: string
   authEmail: string
   /** Fallback to the external lientooling.com field-review flow (the pre-v2.2640 modal). */
-  onOpenExternalPrefill: () => void
   /** Fired after a letter is recorded so openers can refresh badges/watches. */
   onRecorded?: () => void
   /** Land on this tab when the window opens (the forecast's Send notice… door opens on 'notice'). */
@@ -824,15 +822,6 @@ export default function LienInstrumentsModal({
     ...(hasFiledAffidavit ? ([['release_record', 'Release of record']] as const) : []),
   ] as const
   const rulesWhere = activeTab === 'demand' ? 'window_demand' : activeTab === 'notice' ? 'window_notice' : activeTab === 'affidavit' ? 'window_affidavit' : 'window_release'
-  const externalPrefillDoor = (
-    <button
-      type="button"
-      onClick={onOpenExternalPrefill}
-      style={{ padding: '0.4rem 0.75rem', fontSize: '0.8125rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer' }}
-    >
-      lientooling.com ↗
-    </button>
-  )
 
   return (
     <div
@@ -889,10 +878,7 @@ export default function LienInstrumentsModal({
           </p>
           {timeline ? (
             isMobile ? (
-              <LienWindowFoldedSteps timeline={timeline} foot={<>
-                <span style={{ marginRight: 'auto', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Fill it in on the lien site</span>
-                {externalPrefillDoor}
-              </>} />
+              <LienWindowFoldedSteps timeline={timeline} />
             ) : (
               <div data-lien-window-timeline style={{ marginTop: '0.6rem', border: '1px solid var(--border)', borderRadius: 9, padding: '0.55rem 0.8rem 0.5rem', background: 'var(--surface)' }}>
                 <LienTimelineStrip timeline={timeline} />
@@ -940,7 +926,6 @@ export default function LienInstrumentsModal({
             </button>
           ))}
           <LienRulesDoor where={rulesWhere} style={{ marginLeft: 'auto', padding: '0.35rem 0.75rem', fontSize: '0.8125rem' }} />
-          <span style={{ marginLeft: 'auto', display: 'inline-flex' }}>{externalPrefillDoor}</span>
         </div>
         )}
 

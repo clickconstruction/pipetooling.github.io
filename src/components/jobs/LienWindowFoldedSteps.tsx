@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import LienTimelineStrip from './LienTimelineStrip'
 import { lienTimelineFoldSummary, type LienTimeline } from '../../lib/jobs/lienTimeline'
@@ -11,7 +11,6 @@ import { useLienTimelineView } from '../../hooks/useLienTimelineView'
  * A press drops the steps down OVER the paper, so opening them never squeezes it again; the
  * strip, the grey behind the steps and Escape put them away. It always opens folded.
  *
- * `foot` is the row under the dropped steps (the window puts lientooling.com there).
  * `[data-lien-window-card]` on an ancestor says where the dropped steps must end.
  */
 
@@ -21,7 +20,7 @@ function nextColor(tone: LienTimeline['next']['tone']): string {
   return tone === 'red' ? 'var(--text-red-600)' : tone === 'amber' ? 'var(--text-amber-800)' : tone === 'green' ? 'var(--text-green-800)' : 'var(--text-strong)'
 }
 
-export default function LienWindowFoldedSteps({ timeline, foot }: { timeline: LienTimeline; foot?: ReactNode }) {
+export default function LienWindowFoldedSteps({ timeline }: { timeline: LienTimeline }) {
   const [open, setOpen] = useState(false)
   const [maxHeight, setMaxHeight] = useState<number | null>(null)
   const stripRef = useRef<HTMLButtonElement | null>(null)
@@ -94,7 +93,7 @@ export default function LienWindowFoldedSteps({ timeline, foot }: { timeline: Li
           <div
             id={panelId}
             data-lien-window-fold-panel
-            style={{ position: 'absolute', left: -6, right: -6, top: 'calc(100% + 5px)', maxHeight: maxHeight ?? 'calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 15.5rem)', overflowY: 'auto', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 10, boxShadow: '0 14px 30px -6px rgba(0,0,0,0.3)', padding: '0.55rem 0.75rem 0' }}
+            style={{ position: 'absolute', left: -6, right: -6, top: 'calc(100% + 5px)', maxHeight: maxHeight ?? 'calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 15.5rem)', overflowY: 'auto', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 10, boxShadow: '0 14px 30px -6px rgba(0,0,0,0.3)', padding: '0.55rem 0.75rem' }}
           >
             {/* The sentence and who we wait on are on the strip above; the steps do not say them twice. */}
             <LienTimelineStrip timeline={timeline} layout="list" withNext={false} />
@@ -106,7 +105,6 @@ export default function LienWindowFoldedSteps({ timeline, foot }: { timeline: Li
                 {view === 'windows' && timeline.windowsAside ? <span>{timeline.windowsAside}</span> : null}
               </div>
             ) : null}
-            {foot ? <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem', borderTop: '1px solid var(--border)', marginTop: '0.5rem', padding: '0.4rem 0' }}>{foot}</div> : <div style={{ height: '0.55rem' }} />}
           </div>
         ) : null}
       </div>
