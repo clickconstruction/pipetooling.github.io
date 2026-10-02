@@ -5,7 +5,7 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-09-30
+last_updated: 2026-10-02
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
@@ -174,6 +174,10 @@ Credentials: created without a password by the migration; set out-of-band (`ALTE
 
 - **`bid_takeoff_stage_splits`** (one stage split per scope: a fixture, a part line / bundle line, or a part inside a bundle — three weights + `source`) and **`bids.include_materials_by_stage`** / **`bids.sov_material_factor`**. RLS mirrors `bid_payment_schedule_rows`: SELECT / INSERT / UPDATE / DELETE for dev, master_technician, assistant, controller, estimator, primary, superintendent **and** `can_access_bid_for_pricing(bid_id)`; subs and helpers have no access. Both read-only appliers and the digital-twin write fence run. The company factor is the `app_settings` row `bid_sov_material_factor_v1` (dev writes from Settings; all authenticated read).
 - **`bid_sov_stage_overrides`** (a typed labor figure and a note per stage) and **`bid_sov_lines`** (the estimator's own schedule lines), with **`bids.sov_shape`** / **`sov_split_labor_material`** / **`sov_letter_total_only`** (v2.4075, `20260928191629_bid_sov_labor_material.sql`): the same RLS as `bid_takeoff_stage_splits` above — the bid-pricing role list **and** `can_access_bid_for_pricing(bid_id)`; both read-only appliers and the twin write fence run. The company labor share is `app_settings` `bid_sov_labor_share_pct_v1` (dev writes from Settings).
+
+### Quoted fixture costs on a copy (v2.4413, `20261002130000_bid_copies_carry_costs_prices_one_version.sql`)
+
+- **`bid_count_row_custom_costs`** (a supply house cost applied to a fixture, v2.2655) is written by dev, master_technician, assistant, controller and estimator only: fewer roles than may make a version or a duplicate of a bid (primaries and superintendents may). So the copy functions carry the quoted costs only when **`can_write_bid_custom_costs()`** says the caller is one of those five (a `SECURITY DEFINER` read of the caller's role, EXECUTE for authenticated and service_role). A primary's or a superintendent's new version or duplicate is made without them, and nothing fails. An adopt by one of them leaves the costs under the retired bid, as RLS hides the rows from the UPDATE.
 
 ### Cost batches — dev-or-agent cost reallocation through two definer RPCs; `cost_agent` role (v2.3196, `20260909161532_cost_batches.sql`)
 

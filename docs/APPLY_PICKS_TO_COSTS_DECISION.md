@@ -36,6 +36,11 @@ sale-side `bid_count_row_custom_prices`:
     source: 'quoted' · quote_line_id · lot_group_id (nullable)
     applied_by / applied_at
 
+  Since v2.4413 `count_row_id` is a foreign key (ON DELETE CASCADE), and the
+  rows follow a copy: a new version and a same-trade duplicate copy them, a
+  package under a new `lot_group_id` each time; an adopt moves them; a
+  duplicate into another trade leaves them.
+
 - Applied ONLY via an explicit **Apply picks to costs** button on the
   compare view, showing a before/after margin preview first.
 - Overridden rows wear a tag — **"cost from Ferguson · 9/2"** — with

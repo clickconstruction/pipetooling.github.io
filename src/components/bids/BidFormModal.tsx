@@ -1625,7 +1625,7 @@ export function BidFormModal(props: BidFormModalProps) {
                   </button>
                 </div>
                 <p style={{ margin: '0 0 1rem 0', fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>
-                  Open an existing bid for the same customer and project name, copy this bid’s counts and estimate data into a new bid for another service type, or duplicate it within the same trade.
+                  You can open a bid this customer already has for this project. You can copy this bid into another trade, or duplicate it in this trade. A copy takes the counts, the takeoff, the labor and this bid’s own prices. A bid with versions copies the version you are on.
                 </p>
                 {!editingBid ? (
                   <p style={{ margin: '0 0 1rem 0', fontSize: '0.8125rem', color: 'var(--text-amber-700)' }}>
@@ -1688,7 +1688,7 @@ export function BidFormModal(props: BidFormModalProps) {
                         : `Duplicate this ${selectedServiceType.name} bid`}
                     </button>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>
-                      Makes a same-trade copy named “{'{project}'} (copy)” with counts and estimate data.
+                      Makes a copy in this trade named “{'{project}'} (copy)”. A bid with versions copies the version you are on.
                     </span>
                   </div>
                 ) : null}
