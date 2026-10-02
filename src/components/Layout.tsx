@@ -820,7 +820,18 @@ export default function Layout() {
       <BodyScrollLockSentinel />
       <DailyGoalsGateOverlay />
       <div
-        style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: '100vh',
+          // v2.2184: fixed page chrome (the Quickfill / Dashboard section dock) and windows read this to
+          // sit ABOVE the Dispatch / Job mode footer instead of behind it. Set here, not on <main>, so
+          // the Person desk and the header's windows, mounted outside <main>, read it too (v2.4380).
+          ['--app-bottom-chrome' as string]:
+            dispatchModeActive || jobModeFooterActive
+              ? `calc(${DISPATCH_MODE_FOOTER_HEIGHT_PX}px + env(safe-area-inset-bottom))`
+              : '0px',
+        }}
         {...(dailyGoalsGateOpen ? { inert: true as const } : {})}
       >
       <AddTaskShortcutBanner role={role} />
@@ -1915,12 +1926,6 @@ export default function Layout() {
             dispatchModeActive || jobModeFooterActive
               ? `calc(${DISPATCH_MODE_FOOTER_HEIGHT_PX}px + env(safe-area-inset-bottom))`
               : undefined,
-          // v2.2184: fixed page chrome (the Quickfill / Dashboard section dock)
-          // reads this to sit ABOVE the Dispatch / Job mode footer instead of behind it.
-          ['--app-bottom-chrome' as string]:
-            dispatchModeActive || jobModeFooterActive
-              ? `calc(${DISPATCH_MODE_FOOTER_HEIGHT_PX}px + env(safe-area-inset-bottom))`
-              : '0px',
         }}
       >
         {farmModeActive ? <FarmModeChip onExit={exitFarmMode} /> : null}
