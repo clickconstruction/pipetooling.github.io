@@ -112,6 +112,7 @@ when_to_read:
    - [get-job-contract](#get-job-contract)
    - [sign-job-contract](#sign-job-contract)
    - [remind-job-contracts](#remind-job-contracts)
+   - [remind-bid-followups](#remind-bid-followups)
    - [share-job-contract](#share-job-contract)
    - [send-submittal-reply-email](#send-submittal-reply-email)
    - [file-submittal-package](#file-submittal-package)
@@ -1564,6 +1565,20 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 ---
 
 **v2.3510 (What customers see PR 2):** the reminder's subject, text and HTML come from `_shared/jobContractEmail.ts` → `buildJobContractReminderEmail`; the cron path is otherwise unchanged.
+
+### remind-bid-followups
+
+**Purpose**: The phone reminder for a bid's call-again day (punch list #80, v2.4427): one push on the morning of the day to the person who owns the bid.
+
+**Endpoint**: `POST /functions/v1/remind-bid-followups` — `{}` (optional `dry_run: true`: reports what would be sent in `preview` and writes nothing); `X-Cron-Secret` header (or `cron_secret` in the body) must match.
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`
+
+**Gateway**: `verify_jwt = false`; the cron secret is the credential. Scheduled hourly (`:08`) by pg_cron job `bid-followup-reminders` (migration `20261002160000`).
+
+**Behavior**: Kill switch `app_settings` `bid_followup_reminders_disabled_v1 = '1'` → `{ skipped: 'disabled' }`. Before 8 AM office time (`APP_CALENDAR_TZ`) it does nothing, so the hourly schedule needs no daylight-saving arithmetic. Otherwise it reads up to 200 bids with `next_followup_on <= today` and no outcome and keeps the ones `bidDueForReminder` passes ([`_shared/bidFollowupReminder.ts`](../supabase/functions/_shared/bidFollowupReminder.ts)): sent, not adopted, the day still standing (no contact logged on or after it), not a digital twin's bid, and no `bid_followup_reminders` row for that bid and day. For each it inserts the ledger row **first** (the unique `(bid_id, due_on)` key makes a second tick a no-op), then pushes to every device of the recipient: the bid's account manager, else its estimator, else whoever set the day (`next_followup_entry_id` → `created_by`). The words are the function's own: *Bid follow-up due today* (or *was due Sep 20*), *City of Riverton, BP82 City re-pipe. Ask for J. Rayburn.*; the notification opens `/bids?tab=call-queue`. A push that reached a device is logged to `notification_history` (`template_type = 'bid_followup'`) and counted in the ledger row's `push_sent`. A person with no device still gets the ledger row: the Dashboard's Needs You item is their reminder. One reminder per bid and day; a day moved later is a new day.
+
+**Response**: `{ ok, due, reminded, sent }`.
 
 ### share-job-contract
 

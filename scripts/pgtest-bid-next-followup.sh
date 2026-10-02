@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs supabase/tests/bid_next_followup against a throwaway copy of the WHOLE schema (v2.4419).
+# Runs supabase/tests/bid_next_followup against a throwaway copy of the WHOLE schema (v2.4419, v2.4427).
 #
 #   npm run test:pg:bid-next-followup
 #
@@ -30,8 +30,9 @@ psql_as supabase_admin -f - < supabase/tests/combined_copies/00_prod_extras.sql 
 for f in supabase/migrations/*.sql; do
   psql_as postgres -f - < "$f" >/dev/null 2>"/tmp/$NAME.err" || { echo "FAILED applying $f"; grep -E -A6 "ERROR|FATAL" "/tmp/$NAME.err" | head -20; exit 1; }
 done
-# A second run of the migration must change nothing.
+# A second run of each migration must change nothing.
 psql_as postgres -f - < "$MIGRATION" >/dev/null 2>&1
+psql_as postgres -f - < supabase/migrations/20261002160000_bid_followup_reminders.sql >/dev/null 2>"/tmp/$NAME.err" || { echo "FAILED re-applying the reminders migration"; grep -E -A6 "ERROR|FATAL" "/tmp/$NAME.err" | head -20; exit 1; }
 for bed in bid_next_followup; do
   out="$(psql_as postgres -f - < "supabase/tests/$bed/20_scenario.sql" 2>&1 || true)"
   if ! grep -q "${bed} PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi

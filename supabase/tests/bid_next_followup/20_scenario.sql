@@ -105,16 +105,25 @@ SELECT fut.refused('who to ask for with no day', $q$INSERT INTO public.bids_subm
 DELETE FROM public.customer_contact_persons WHERE id = '00000000-0000-0000-0000-00000000f0b1';
 SELECT fut.same('removing the person keeps the day and drops the name', fut.state('00000000-0000-0000-0000-00000000f0d2'), '2027-01-12 | no person | budget | Holding for the next budget year');
 
+-- The reminder ledger (v2.4427): the office reads it; only the service role writes it.
+SELECT fut.refused('an estimator writing the reminder ledger', $q$INSERT INTO public.bid_followup_reminders (bid_id, due_on) VALUES ('00000000-0000-0000-0000-00000000f0d2', '2027-01-12')$q$, 'permission denied');
+
 -- A primary may not write this log at all, so cannot set a day.
 SELECT set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000f0e2","role":"authenticated"}', true);
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000f0e2', true);
 SELECT fut.refused('a primary setting a day', $q$INSERT INTO public.bids_submission_entries (bid_id, notes, next_followup_on) VALUES ('00000000-0000-0000-0000-00000000f0d1', 'x', '2027-03-01')$q$, 'row-level security');
 
 RESET ROLE;
+SELECT fut.same('the hourly reminder job is scheduled once', (SELECT count(*)::text || ' ' || min(schedule) FROM cron.job WHERE jobname = 'bid-followup-reminders'), '1 8 * * * *');
+INSERT INTO public.bid_followup_reminders (bid_id, due_on, recipient_user_id) VALUES ('00000000-0000-0000-0000-00000000f0d2', '2027-01-12', '00000000-0000-0000-0000-00000000f0e1');
+SELECT fut.refused('a second reminder for the same bid and day', $q$INSERT INTO public.bid_followup_reminders (bid_id, due_on) VALUES ('00000000-0000-0000-0000-00000000f0d2', '2027-01-12')$q$, 'bid_followup_reminders_bid_day_uniq');
+INSERT INTO public.bid_followup_reminders (bid_id, due_on) VALUES ('00000000-0000-0000-0000-00000000f0d2', '2027-02-01');
+SELECT fut.same('a day moved later may remind again', (SELECT count(*)::text FROM public.bid_followup_reminders WHERE bid_id = '00000000-0000-0000-0000-00000000f0d2'), '2');
+
 -- The bid points at its entry and the entry at its bid. Deleting the bid must still go through.
 DELETE FROM public.bids WHERE id = '00000000-0000-0000-0000-00000000f0d2';
-SELECT fut.same('a bid with a day deletes cleanly, entries and all',
-  (SELECT count(*)::text FROM public.bids WHERE id = '00000000-0000-0000-0000-00000000f0d2') || ' ' || (SELECT count(*)::text FROM public.bids_submission_entries WHERE bid_id = '00000000-0000-0000-0000-00000000f0d2'),
-  '0 0');
+SELECT fut.same('a bid with a day deletes cleanly: entries, reminders and all',
+  (SELECT count(*)::text FROM public.bids WHERE id = '00000000-0000-0000-0000-00000000f0d2') || ' ' || (SELECT count(*)::text FROM public.bids_submission_entries WHERE bid_id = '00000000-0000-0000-0000-00000000f0d2') || ' ' || (SELECT count(*)::text FROM public.bid_followup_reminders WHERE bid_id = '00000000-0000-0000-0000-00000000f0d2'),
+  '0 0 0');
 SELECT 'bid_next_followup PASSED' AS result;
 ROLLBACK;
