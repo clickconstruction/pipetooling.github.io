@@ -60,8 +60,7 @@ type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['R
  * generated from the job's real billing history (dated notice list from
  * invoice sends, Stripe re-sends, and call-mode collection touches), recorded
  * with its tracking number in `job_demand_letters`, and watched after its
- * deadline. The § 53.056 notice and mechanic's-lien tabs land with phase 3;
- * lientooling.com stays one click away via the external prefill fallback.
+ * deadline. The § 53.056 notice and mechanic's-lien tabs landed with phase 3.
  * Document content lives in `src/lib/jobsDocuments/demandLetter.ts`.
  */
 
@@ -114,7 +113,6 @@ export default function LienInstrumentsModal({
   /** Job master's People "Full name and title" with session-name fallback. */
   signerNameFallback: string
   authEmail: string
-  /** Fallback to the external lientooling.com field-review flow (the pre-v2.2640 modal). */
   /** Fired after a letter is recorded so openers can refresh badges/watches. */
   onRecorded?: () => void
   /** Land on this tab when the window opens (the forecast's Send notice… door opens on 'notice'). */

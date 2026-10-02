@@ -306,7 +306,6 @@ Verification per step: `npm run typecheck && npm run lint && npm test`, behavior
 | [`GcOnNoticeModal.tsx`](../src/components/jobs/GcOnNoticeModal.tsx) | 1,133 | JobsStagesTab | Put a GC on notice (`onPutGcOnNotice`, `?gcnotice=`) | render 5 |
 | [`LienReleaseModal.tsx`](../src/components/jobs/LienReleaseModal.tsx) | 1,346 | JobsStagesTab, DashboardLienReleaseQueueModal, BillCustomerLienReleaseStrip, BillCustomerWaiverFollowUp and JobFormInvoiceList (both v2.4275) | releases (timeline tail); since v2.4274 the GC waiver's two questions, *He signs now* and *Send to the GC* | render 8 (`dateHold` 6, `gcWaiver` 2) |
 | [`LienFilingTabs.tsx`](../src/components/jobs/LienFilingTabs.tsx) | 851 | LienInstrumentsModal | the Lien window's filing tabs | none |
-| `LienToolingPrefillModal.tsx` | 466 | JobsStagesTab | lien-tooling prefill | none |
 | `LienWaiverSendModal.tsx` | 275 | JobsSubLaborTab | waivers | render 3 |
 | `LienSignatureInboxSection.tsx` / `LienReleaseSignModal.tsx` / `DashboardLienWaiversToSignModal.tsx` (v2.4276) | 219 / 186 / 238 | inboxes / LienReleaseModal and the inbox section / the Dashboard's `lien-waivers-to-sign` Needs You item | release signing — the sign and send writes are one module, `lib/jobs/lienReleaseSignIo.ts`, and the page's foot is `LienWaiverFootPreview` (v2.4285) | none / none / render 2 |
 | Parent `JobsStagesTab.tsx` | 5,099 | Jobs page | mounts the desk; mapped in [`JOBS_STAGES_TAB_ARCHITECTURE.md`](./JOBS_STAGES_TAB_ARCHITECTURE.md) | — |
