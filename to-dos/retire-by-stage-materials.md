@@ -195,7 +195,7 @@ Defaults if he says yes (veto any of them on the row):
      run `supabase db push` after the merge.
    - No table drop (decision 4).
 
-Close #78 first if it is still open. It makes a new version or a duplicate keep Combined's stage
+#78 shipped first, as v2.4388: a new version, a duplicate and an adopt keep Combined's stage
 boxes, which are the only stage data a bid has once this ships.
 
 ## How to verify
