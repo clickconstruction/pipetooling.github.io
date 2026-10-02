@@ -44,6 +44,7 @@ function line(id: string, over: Record<string, unknown> = {}) {
     row: { n: 3 },
     bid: openBid,
     price: {
+      id: 'price-copper-reece',
       part_id: 'copper',
       supply_house_id: 'reece',
       price: 11,
@@ -62,7 +63,7 @@ describe('basketFromLines', () => {
       { serviceTypeId: PLUMBING, twinUserIds: new Set() },
     )
     expect(basket).toEqual([
-      { partId: 'copper', houseId: 'reece', partName: '2IN COPPER', houseName: 'Reece', spend: 60 + 10 + 60 + 60, price: 11, priceUpdatedDay: '2026-08-21', openBidCount: 2 },
+      { priceId: 'price-copper-reece', partId: 'copper', houseId: 'reece', partName: '2IN COPPER', houseName: 'Reece', spend: 60 + 10 + 60 + 60, price: 11, priceUpdatedDay: '2026-08-21', openBidCount: 2 },
     ])
   })
 

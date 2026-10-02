@@ -30,6 +30,10 @@ export const FAINT_COVERAGE = 0.25
 export const MIN_FRESH_SHARE = 0.5
 /** Below this move either way, a change reads "about the same". */
 export const SAME_BAND = 0.01
+/** Check N prices (v2.4392): the parts you spend most on, checked once a month. */
+export const CHECK_COUNT = 20
+/** The card reminds you when the oldest of those was last checked longer ago than this. */
+export const CHECK_DUE_DAYS = 30
 
 /** A move to 1.5× or more, or to half or less — or a price that is not a price. */
 export function isBigJump(oldPrice: number, newPrice: number): boolean {
@@ -54,6 +58,8 @@ export type PriceEvent = {
 
 /** One part at one supply house, as the takeoffs price it. */
 export type BasketPair = {
+  /** The `material_part_prices` row (one per part + house). */
+  priceId: string
   partId: string
   houseId: string
   partName: string
@@ -91,6 +97,20 @@ export type MovedPrice = {
   openBidCount: number
 }
 
+/** One line of Check 20 prices. */
+export type CheckItem = {
+  priceId: string
+  partId: string
+  houseId: string
+  partName: string
+  houseName: string
+  price: number
+  /** When the price was last entered, changed or confirmed; null = no date on record. */
+  lastCheckedDay: string | null
+  /** This part's share of the basket's spend. */
+  spendShare: number
+}
+
 export type MaterialPriceIndex = {
   baseMonth: string
   months: IndexMonth[]
@@ -106,6 +126,11 @@ export type MaterialPriceIndex = {
   showNumber: boolean
   /** The latest ordinary move per price in the last 30 days, newest first. */
   moved: MovedPrice[]
+  /**
+   * Check 20 prices: the {@link CHECK_COUNT} parts you spend most on, oldest check first; their
+   * share of spend; and whether the oldest was checked more than {@link CHECK_DUE_DAYS} days ago.
+   */
+  checks: { items: CheckItem[]; spendShare: number; due: boolean; oldestDay: string | null }
   pairCount: number
   totalSpend: number
 }
@@ -200,11 +225,13 @@ export function computeMaterialPriceIndex(args: {
   const latest = months[months.length - 1]!.index
   const threeBack = months.length > 3 ? months[months.length - 4]! : null
 
+  const lastChecked = new Map<string, string | null>()
   let within30 = 0
   let within90 = 0
   for (const p of basket) {
     const events = eventsByPair.get(pairKey(p.partId, p.houseId))!
     const lastDay = events.length > 0 ? events.reduce((d, e) => (e.day > d ? e.day : d), events[0]!.day) : p.priceUpdatedDay
+    lastChecked.set(pairKey(p.partId, p.houseId), lastDay)
     const age = lastDay ? ymdDaysBetween(lastDay, today) : null
     if (age == null) continue
     if (age <= 30) within30 += p.spend
@@ -229,6 +256,28 @@ export function computeMaterialPriceIndex(args: {
       return { partId: p.partId, houseId: p.houseId, partName: p.partName, houseName: p.houseName, day: e.day, oldPrice: e.oldPrice!, newPrice: e.newPrice, change: e.newPrice / e.oldPrice! - 1, openBidCount: p.openBidCount }
     })
 
+  const top = [...basket].sort((a, b) => b.spend - a.spend).slice(0, CHECK_COUNT)
+  const items: CheckItem[] = top
+    .map((p) => ({
+      priceId: p.priceId,
+      partId: p.partId,
+      houseId: p.houseId,
+      partName: p.partName,
+      houseName: p.houseName,
+      price: p.price,
+      lastCheckedDay: lastChecked.get(pairKey(p.partId, p.houseId)) ?? null,
+      spendShare: p.spend / totalSpend,
+    }))
+    .sort((a, b) => (a.lastCheckedDay ?? '').localeCompare(b.lastCheckedDay ?? '') || b.spendShare - a.spendShare)
+  const oldestDay = items.length > 0 ? items[0]!.lastCheckedDay : null
+  const oldestAge = oldestDay ? ymdDaysBetween(oldestDay, today) : null
+  const checks = {
+    items,
+    spendShare: items.reduce((s, i) => s + i.spendShare, 0),
+    due: items.length > 0 && (oldestAge == null || oldestAge > CHECK_DUE_DAYS),
+    oldestDay,
+  }
+
   return {
     baseMonth,
     months,
@@ -238,6 +287,7 @@ export function computeMaterialPriceIndex(args: {
     freshness,
     showNumber: within30 / totalSpend + within90 / totalSpend >= MIN_FRESH_SHARE,
     moved,
+    checks,
     pairCount: basket.length,
     totalSpend,
   }
@@ -269,4 +319,15 @@ export function verdictText(index: Pick<MaterialPriceIndex, 'sinceBase' | 'baseM
 export function changeText(change: number): string {
   const words = describeChange(change)
   return words.kind === 'same' ? 'about the same' : `${words.kind} ${words.pct}`
+}
+
+/**
+ * A typed price, as Check 20 prices reads it: `$1,234.50` → 1234.5. Null for anything that is not
+ * a price above $0 and under the {@link PLACEHOLDER_PRICE} stand-in.
+ */
+export function parsePriceInput(raw: string): number | null {
+  const cleaned = raw.replace(/[$,\s]/g, '')
+  if (!/^\d+(\.\d+)?$|^\.\d+$/.test(cleaned)) return null
+  const n = Number(cleaned)
+  return n > 0 && n < PLACEHOLDER_PRICE ? Math.round(n * 100) / 100 : null
 }

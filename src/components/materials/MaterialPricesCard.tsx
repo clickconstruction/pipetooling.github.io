@@ -2,13 +2,17 @@
  * Materials → Parts Book: What your materials cost (v2.4391). One card over the parts list: the
  * month-by-month number for the parts you bid with, how fresh the prices behind it are, and the
  * prices that moved lately. The math is `lib/materials/materialPriceIndex.ts`; the reads are
- * `useMaterialPriceIndex`. Renders and reports nothing else; it writes nothing.
+ * `useMaterialPriceIndex`. Its one door that writes is Check 20 prices (v2.4392,
+ * `CheckPricesWindow` over `lib/materials/priceCheckIo.ts`); the card reads again after it.
  */
-import type { CSSProperties } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { useMaterialPriceIndex, type MaterialPriceIndexState } from '../../hooks/useMaterialPriceIndex'
 import { helpGuideHref } from '../../lib/helpGuideAnchors'
 import { changeText, monthName, verdictText, type IndexMonth, type MaterialPriceIndex } from '../../lib/materials/materialPriceIndex'
+import { confirmPriceToday, savePriceToday } from '../../lib/materials/priceCheckIo'
+import { supabase } from '../../lib/supabase'
 import { formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
+import { CheckPricesWindow } from './CheckPricesWindow'
 
 export const MATERIAL_PRICES_GUIDE = 'track-what-your-materials-cost'
 
@@ -76,8 +80,34 @@ function FreshnessBar({ freshness }: { freshness: MaterialPriceIndex['freshness'
   )
 }
 
+/** Check 20 prices on the card (v2.4392): the reminder when it is due, the button, what the 20 cover. */
+function CheckPricesDoor({ checks, onOpen }: { checks: MaterialPriceIndex['checks']; onOpen: () => void }) {
+  const n = checks.items.length
+  if (n === 0) return null
+  const btn: CSSProperties = { minHeight: 40, padding: '0 0.9rem', borderRadius: 8, font: 'inherit', fontSize: '0.875rem', cursor: 'pointer', alignSelf: 'flex-start' }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginTop: '0.25rem' }}>
+      {checks.due ? (
+        <div style={{ fontSize: '0.8125rem', color: 'var(--text-amber-800)' }}>
+          {checks.oldestDay ? `The oldest of your top ${n} was last checked ${formatWorkDateYmdMonthDayShort(checks.oldestDay)}.` : `Some of your top ${n} have no check on record.`}
+        </div>
+      ) : (
+        <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>All of your top {n} were checked in the last 30 days.</div>
+      )}
+      <button
+        type="button"
+        onClick={onOpen}
+        style={checks.due ? { ...btn, border: '1px solid #2563eb', background: '#2563eb', color: '#fff', fontWeight: 600 } : { ...btn, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)' }}
+      >
+        Check {n} prices
+      </button>
+      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{n} parts are {pct(checks.spendShare)} of what you bid. About ten minutes.</span>
+    </div>
+  )
+}
+
 /** The card for a computed index; the loading and error states are one quiet line. */
-export function MaterialPricesCardView({ state }: { state: MaterialPriceIndexState }) {
+export function MaterialPricesCardView({ state, onOpenCheck }: { state: MaterialPriceIndexState; onOpenCheck?: () => void }) {
   if (state.status === 'loading') return <div style={{ ...muted, marginBottom: '1rem' }}>Reading your material prices…</div>
   if (state.status === 'error') return <div style={{ ...muted, marginBottom: '1rem' }}>Couldn’t read your material prices just now.</div>
   const index = state.index
@@ -118,6 +148,7 @@ export function MaterialPricesCardView({ state }: { state: MaterialPriceIndexSta
           <span style={label}>How fresh</span>
           <FreshnessBar freshness={index.freshness} />
           <div style={{ fontSize: '0.8125rem' }}>{pct(index.freshness.older)} of your bid dollars sit on a price older than 90 days.</div>
+          {onOpenCheck ? <CheckPricesDoor checks={index.checks} onOpen={onOpenCheck} /> : null}
         </div>
       </div>
       {index.moved.length > 0 ? (
@@ -144,8 +175,26 @@ export function MaterialPricesCardView({ state }: { state: MaterialPriceIndexSta
   )
 }
 
-/** The Parts Book's card for the trade on screen. */
+/** The Parts Book's card for the trade on screen, with Check 20 prices behind its button. */
 export function MaterialPricesCard({ serviceTypeId }: { serviceTypeId: string | null }) {
-  const state = useMaterialPriceIndex(serviceTypeId)
-  return <MaterialPricesCardView state={state} />
+  const [reloadKey, setReloadKey] = useState(0)
+  const [checking, setChecking] = useState(false)
+  const state = useMaterialPriceIndex(serviceTypeId, reloadKey)
+  const ready = state.status === 'ready' && state.index ? state : null
+  return (
+    <>
+      <MaterialPricesCardView state={state} onOpenCheck={() => setChecking(true)} />
+      {checking && ready?.index ? (
+        <CheckPricesWindow
+          items={ready.index.checks.items}
+          onConfirm={(priceId) => confirmPriceToday(supabase, priceId, ready.today)}
+          onSave={(priceId, price) => savePriceToday(supabase, priceId, price, ready.today)}
+          onClose={(changed) => {
+            setChecking(false)
+            if (changed) setReloadKey((k) => k + 1)
+          }}
+        />
+      ) : null}
+    </>
+  )
 }

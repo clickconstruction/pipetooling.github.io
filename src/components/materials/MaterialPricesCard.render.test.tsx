@@ -4,8 +4,8 @@
  * and empty states, the number with its line and freshness, the honest "not enough fresh prices",
  * and the prices that moved lately.
  */
-import { afterEach, describe, expect, it } from 'vitest'
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { MaterialPricesCardView } from './MaterialPricesCard'
 import type { MaterialPriceIndex } from '../../lib/materials/materialPriceIndex'
 
@@ -25,6 +25,15 @@ const index = (over: Partial<MaterialPriceIndex> = {}): MaterialPriceIndex => ({
     { partId: 'pvc', houseId: 'reece', partName: '4IN 90 PVC', houseName: 'Reece', day: '2026-09-21', oldPrice: 19.52, newPrice: 17.56, change: 17.56 / 19.52 - 1, openBidCount: 6 },
     { partId: 'tank', houseId: 'reece', partName: 'EXPANSION TANK', houseName: 'Reece', day: '2026-09-18', oldPrice: 83.8, newPrice: 86.67, change: 86.67 / 83.8 - 1, openBidCount: 0 },
   ],
+  checks: {
+    items: [
+      { priceId: 'p-toilet', partId: 'toilet', houseId: 'moore', partName: 'ETWS-1490-CM-BS', houseName: 'Moore Supply', price: 1993.1, lastCheckedDay: '2026-04-14', spendShare: 0.031 },
+      { priceId: 'p-pvc', partId: 'pvc', houseId: 'reece', partName: '3IN PVC TUBING', houseName: 'Reece', price: 10.8, lastCheckedDay: '2026-06-12', spendShare: 0.029 },
+    ],
+    spendShare: 0.61,
+    due: true,
+    oldestDay: '2026-04-14',
+  },
   pairCount: 653,
   totalSpend: 1_000_000,
   ...over,
@@ -90,5 +99,29 @@ describe('MaterialPricesCardView', () => {
     expect(c.textContent).not.toContain('against 100')
     expect(c.querySelector('svg')).toBeNull()
     expect(c.textContent).toContain('75% of your bid dollars sit on a price older than 90 days.')
+  })
+
+  it('Check prices: the reminder when the oldest is due, a blue button, and what the parts cover', () => {
+    const onOpenCheck = vi.fn()
+    render(<MaterialPricesCardView state={{ status: 'ready', index: index(), today: '2026-10-02' }} onOpenCheck={onOpenCheck} />)
+    const c = card()
+    expect(c.textContent).toContain('The oldest of your top 2 was last checked Apr 14.')
+    expect(c.textContent).toContain('2 parts are 61% of what you bid. About ten minutes.')
+    const button = within(c).getByRole('button', { name: 'Check 2 prices' })
+    expect(button.getAttribute('style')).toContain('rgb(37, 99, 235)')
+    fireEvent.click(button)
+    expect(onOpenCheck).toHaveBeenCalledTimes(1)
+  })
+
+  it('Check prices when nothing is due: a plain button and a calm line', () => {
+    render(<MaterialPricesCardView state={{ status: 'ready', index: index({ checks: { ...index().checks, due: false, oldestDay: '2026-09-20' } }), today: '2026-10-02' }} onOpenCheck={() => {}} />)
+    const c = card()
+    expect(c.textContent).toContain('All of your top 2 were checked in the last 30 days.')
+    expect(within(c).getByRole('button', { name: 'Check 2 prices' }).getAttribute('style')).not.toContain('rgb(37, 99, 235)')
+  })
+
+  it('no button where nothing can open the window', () => {
+    render(<MaterialPricesCardView state={{ status: 'ready', index: index(), today: '2026-10-02' }} />)
+    expect(within(card()).queryByRole('button')).toBeNull()
   })
 })
