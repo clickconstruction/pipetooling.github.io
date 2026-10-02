@@ -5,8 +5,9 @@ import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
 import { pickLegacyDataTemplateId } from '../lib/bids/legacyTemplatePricing'
 import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../lib/bids/updateGuard'
 import { expandTemplate } from '../lib/materialPOUtils'
-import { roughMaterialsTotalWithRounding, type RoughLineDbRow } from '../lib/bids/takeoffOrderRounding'
-import { normalizeMaterialsModel, roughCountMultiplier, type MaterialsModel, type TakeoffStage } from '../lib/bids/bidTakeoffHelpers'
+import type { RoughLineDbRow } from '../lib/bids/takeoffOrderRounding'
+import { combinedMaterials } from '../lib/bids/bidMaterials'
+import { normalizeMaterialsModel, type MaterialsModel, type TakeoffStage } from '../lib/bids/bidTakeoffHelpers'
 import { loadTeamLaborDataForBids, type TeamLaborBidRow } from '../utils/teamLabor'
 import { loadBidAssignedCosts } from '../lib/bids/loadBidAssignedCosts'
 import type { BidAssignedCosts } from '../lib/bids/bidAssignedCosts'
@@ -540,19 +541,12 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
           ((crsForCount ?? []) as Array<{ id: string; count: number | null }>).map((r) => [r.id, r.count]),
         )
         // v2.3407: the sticks are in the number — Σ count × qty × price plus the order rounding's extra.
-        const rounded = roughMaterialsTotalWithRounding((roughLines ?? []) as RoughLineDbRow[], countByRowId)
-        setCostEstimateMaterialTotalRoughIn(rounded.total)
+        const combined = combinedMaterials((roughLines ?? []) as RoughLineDbRow[], countByRowId)
+        setCostEstimateMaterialTotalRoughIn(combined.total)
         setCostEstimateMaterialTotalTopOut(null)
         setCostEstimateMaterialTotalTrimSet(null)
         // v2.4202: the same number per count row (as the Pricing load keeps it) for the Labor card's split.
-        const perRow: Record<string, number> = {}
-        for (const ln of (roughLines ?? []) as Array<{ count_row_id: string; quantity: number | string | null; unit_price: number | string | null }>) {
-          perRow[ln.count_row_id] = (perRow[ln.count_row_id] ?? 0) + Number(ln.quantity) * Number(ln.unit_price)
-        }
-        for (const [rowId, count] of countByRowId) {
-          perRow[rowId] = (perRow[rowId] ?? 0) * roughCountMultiplier(count) + (rounded.rounding.extraByCountRow.get(rowId) ?? 0)
-        }
-        setCostEstimateFixtureMaterials(perRow)
+        setCostEstimateFixtureMaterials(combined.byCountRowId)
       } else {
         setCostEstimateFixtureMaterials({})
         const rough = est.purchase_order_id_rough_in ? await loadPOTotal(est.purchase_order_id_rough_in) : 0
@@ -1110,12 +1104,12 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
       if (roughLinesRes.error) {
         console.error('Failed to load rough part lines for pricing:', roughLinesRes.error)
       }
-      const roughLines = (roughLinesRes.data ?? []) as Array<RoughLineDbRow & { count_row_id: string }>
+      const roughLines = (roughLinesRes.data ?? []) as RoughLineDbRow[]
       const countByRowId = new Map(countRows.map((cr) => [cr.id, cr.count]))
       // v2.3407: the sticks are in the number, and each fixture carries its share of the extra
       // so the per-fixture materials still add up to the bid.
-      const rounded = roughMaterialsTotalWithRounding(roughLines, countByRowId)
-      setPricingMaterialTotalRoughIn(rounded.total)
+      const combined = combinedMaterials(roughLines, countByRowId)
+      setPricingMaterialTotalRoughIn(combined.total)
       setPricingMaterialTotalTopOut(null)
       setPricingMaterialTotalTrimSet(null)
 
@@ -1134,18 +1128,8 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
       }
       setPricingLaborRows((laborRes.data as CostEstimateLaborRow[]) ?? [])
 
-      const fixtureMaterials: Record<string, number> = {}
-      for (const countRow of countRows) {
-        let sum = 0
-        for (const ln of roughLines) {
-          if (ln.count_row_id === countRow.id) {
-            sum += Number(ln.quantity) * Number(ln.unit_price)
-          }
-        }
-        fixtureMaterials[countRow.id] = sum * roughCountMultiplier(countRow.count) + (rounded.rounding.extraByCountRow.get(countRow.id) ?? 0)
-      }
       if (pricingBidIdRef.current === bidId) {
-        setPricingFixtureMaterialsFromTakeoff(fixtureMaterials)
+        setPricingFixtureMaterialsFromTakeoff(combined.byCountRowId)
       }
       return
     }

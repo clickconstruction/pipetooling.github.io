@@ -265,6 +265,54 @@ describe('downloadApprovalPdf — a priced, costed, split bid', () => {
   })
 })
 
+describe('downloadApprovalPdf — a Combined bid (materials from the takeoff’s part lines, v2.4368)', () => {
+  /**
+   * Scenario A on Combined. The estimate still links the By Stage PO (a bid switched over),
+   * which must not count. 4 lavs × 5 ft + 2 WCs × 2.5 ft of copper = 25 ft → 40 ft of 20 ft
+   * sticks, $30 extra; plus a $150 valve per WC: $350 + $30 = $380 of materials.
+   */
+  const combinedData: Record<string, unknown> = {
+    ...fullData,
+    bids: [{ materials_model: 'rough', include_payment_schedule: true, bid_to_marked_plans: true }],
+    bids_takeoff_rough_part_lines: [
+      { count_row_id: 'r1', part_id: 'copper', quantity: 5, unit_price: 2, order_increment: 20, order_increment_unit: 'ft_stick' },
+      { count_row_id: 'r2', part_id: 'copper', quantity: 2.5, unit_price: 2, order_increment: 20, order_increment_unit: 'ft_stick' },
+      { count_row_id: 'r2', part_id: 'valve', quantity: 1, unit_price: 150, order_increment: null, order_increment_unit: null },
+    ],
+  }
+  beforeEach(async () => {
+    route = (table) => (combinedData[table] as unknown[]) ?? []
+    await downloadApprovalPdf(ctxBase({ ...bidBase, materials_model: 'rough' }))
+  })
+
+  it('costs page 1 with the takeoff’s materials, so the margin matches Pricing', () => {
+    expect(textsOn(1)).toEqual(expect.arrayContaining([
+      'Cost estimate: $1,115.00', // $380 materials + 14 h × $50 + $35 driving
+      'Price Book: Standard 2026 | Revenue: $3,800.00 | Margin: 70.7%', // (3,800 − 1,115) ÷ 3,800
+    ]))
+  })
+
+  it('reads the active version’s part lines once and never the stage PO the estimate still links', () => {
+    const lineQueries = queries.filter((q) => q.table === 'bids_takeoff_rough_part_lines')
+    expect(lineQueries).toHaveLength(1)
+    expect(eqArg(lineQueries[0]!.steps, 'bid_id')).toBe('bid1')
+    expect(eqArg(lineQueries[0]!.steps, 'bid_version_id')).toBe('v1')
+    expect(queries.some((q) => q.table === 'purchase_order_items')).toBe(false)
+  })
+
+  it('prints one Materials line on the Labor page instead of three PO lines', () => {
+    const p3 = textsOn(3)
+    expect(p3).toEqual(expect.arrayContaining(['Materials', '$380.00', 'Materials Total', 'Labor total', '$735.00', 'Grand total', '$1,115.00']))
+    expect(p3.filter((t) => t.startsWith('PO ('))).toEqual([])
+    expect(p3.filter((t) => t === 'Materials')).toHaveLength(2) // the heading and the table's one line
+  })
+
+  it('leaves the revenue and the letter as they were', () => {
+    expect(call('Total Revenue: $3,800.00')).toMatchObject({ page: 2, font: 'bold' })
+    expect(textsOn(4).some((t) => t.includes('THREE THOUSAND EIGHT HUNDRED 00/100 DOLLARS ($3,800.00)'))).toBe(true)
+  })
+})
+
 describe('downloadApprovalPdf — an unpriced, uncosted, unsplit bid with a GC from the builder table', () => {
   it('says so on each page, uses the typed custom amount, and falls back to "Bid" in the title and filename', async () => {
     route = (table) => (table === 'bids' ? [{ include_payment_schedule: false }] : [])
