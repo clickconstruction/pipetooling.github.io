@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import {
@@ -825,6 +825,8 @@ export default function LienInstrumentsModal({
     ['affidavit', "Mechanic's lien"],
     ...(hasFiledAffidavit ? ([['release_record', 'Release of record']] as const) : []),
   ] as const
+  // A foot button on a phone: half the row, its name on up to two lines.
+  const phoneFootButton: CSSProperties = isMobile ? { padding: '0.35rem 0.5rem', fontSize: '0.8125rem', lineHeight: 1.25, minHeight: 44 } : {}
   const rulesWhere = activeTab === 'demand' ? 'window_demand' : activeTab === 'notice' ? 'window_notice' : activeTab === 'affidavit' ? 'window_affidavit' : 'window_release'
 
   return (
@@ -1394,15 +1396,18 @@ export default function LienInstrumentsModal({
               Deadline watch: if the covered lines are still unpaid after {demandDate(fields.deadlineDate)}, a Needs You card hands you the next step.
             </div>
           </div>
-        ) : (
-          <div style={{ padding: '0.9rem 1.25rem', borderTop: '1px solid var(--border)', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', justifyContent: 'flex-end' }}>
-            <button type="button" onClick={onClose} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>
-              Cancel
-            </button>
-            <button type="button" onClick={() => void printLetter()} disabled={pdfBusy} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: pdfBusy ? 'wait' : 'pointer' }}>
+        ) : isMobile && emailOpen ? null : (
+          // The foot. On a phone (v2.4409) the four doors sit in two rows of two and × closes the window, so Cancel is not drawn; while the email panel is open it stands in for this row (it has its own Back and Send).
+          <div data-demand-foot style={isMobile ? { padding: '0.6rem 1rem', borderTop: '1px solid var(--border)', display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.5rem' } : { padding: '0.9rem 1.25rem', borderTop: '1px solid var(--border)', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', justifyContent: 'flex-end' }}>
+            {isMobile ? null : (
+              <button type="button" onClick={onClose} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>
+                Cancel
+              </button>
+            )}
+            <button type="button" onClick={() => void printLetter()} disabled={pdfBusy} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: pdfBusy ? 'wait' : 'pointer', ...phoneFootButton }}>
               Print packet
             </button>
-            <button type="button" onClick={() => void downloadPdf()} disabled={pdfBusy} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: pdfBusy ? 'wait' : 'pointer' }}>
+            <button type="button" onClick={() => void downloadPdf()} disabled={pdfBusy} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: pdfBusy ? 'wait' : 'pointer', ...phoneFootButton }}>
               {pdfBusy ? 'Building…' : 'Download PDF'}{pdfBusy ? '' : ` · ${1 + (fields.enclosures ?? []).length} documents`}
             </button>
             <button
@@ -1413,11 +1418,11 @@ export default function LienInstrumentsModal({
                 setRecordOpen(false)
               }}
               disabled={pdfBusy || emailBusy}
-              style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: 'pointer' }}
+              style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: 'pointer', ...phoneFootButton }}
             >
               Email with the PDF…
             </button>
-            <button type="button" onClick={() => setRecordOpen(true)} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: '#b45309', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}>
+            <button type="button" onClick={() => setRecordOpen(true)} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: '#b45309', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600, ...phoneFootButton }}>
               Save &amp; record send…
             </button>
           </div>
