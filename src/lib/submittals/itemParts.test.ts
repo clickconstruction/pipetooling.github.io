@@ -172,3 +172,30 @@ describe('carriers (2026-10-02)', () => {
     expect(doubledKinds([wc[0]!, { ...wc[1]!, on_submittal: false }])).toEqual([])
   })
 })
+
+describe('2026-10-02 · a part is one of three', () => {
+  const d = (o: Partial<import('./itemParts').PartDraft> = {}): import('./itemParts').PartDraft => ({ id: 'p1', label: 'TOTO T25S51E#CP', quantity: 1, on_submittal: true, supply_house_id: null, lead_time_days: null, stage: null, ...o })
+
+  it('reads and sets the pick; back from left out it takes whichever was pressed', async () => {
+    const { partPickOf, withPartPick, keptPartDrafts } = await import('./itemParts')
+    expect([partPickOf(d()), partPickOf(d({ on_submittal: false })), partPickOf(d({ left_out: true }))]).toEqual(['gc', 'order', 'out'])
+    const out = withPartPick(d(), 'out')
+    expect([out.left_out, out.on_submittal]).toEqual([true, true])
+    expect(withPartPick(out, 'order')).toMatchObject({ left_out: false, on_submittal: false })
+    expect(keptPartDrafts([d(), out])).toHaveLength(1)
+  })
+
+  it('Save takes a left-out part off the row, and the bid remembers it by its place on the takeoff', async () => {
+    const { diffPartDrafts, leftOutPieceKeys, partToDraft, partPieceKey } = await import('./itemParts')
+    const before = [
+      { id: 'a', source_line_id: 'line-1', source_template_item_id: 'tpl-bowl', label: 'BOWL', quantity: 1, on_submittal: true, sequence_order: 1 },
+      { id: 'b', source_line_id: 'line-2', source_template_item_id: null, label: 'STOP', quantity: 1, on_submittal: false, sequence_order: 2 },
+      { id: 'c', source_line_id: null, source_template_item_id: null, label: 'TYPED BY HAND', quantity: 1, on_submittal: false, sequence_order: 3 },
+    ] as unknown as import('./itemParts').SubmittalPartRow[]
+    const drafts = before.map(partToDraft).map((x) => (x.id === 'a' ? x : { ...x, left_out: true }))
+    expect(diffPartDrafts(before, drafts, 'i1', 'b1').deletes).toEqual(['b', 'c'])
+    // The assembly item wins over its line; a part typed by hand has nothing to remember.
+    expect(partPieceKey(before[0]!)).toBe('tpl-bowl')
+    expect(leftOutPieceKeys(before, drafts)).toEqual(['line-2'])
+  })
+})

@@ -39,3 +39,31 @@ export async function loadBidOrderFacts(db: Client, bidId: string): Promise<Map<
   }
   return out
 }
+
+/** By procure key, what the log holds for each of a row's parts ("Ordered 09/23"); only the parts somebody bought. */
+export async function loadPartOrderWords(db: Client, bidId: string, tag: string, words: (facts: LogOrderFact[]) => string): Promise<Map<string, string>> {
+  const out = new Map<string, string>()
+  if (!tag.trim()) return out
+  const { data, error } = await db.from('bid_procurement_items').select('part_key, ordered_on, delivered_on, po_ref').eq('bid_id', bidId).eq('tag', tag)
+  if (error) throw error
+  for (const r of (data ?? []) as Array<{ part_key: string | null; ordered_on: string | null; delivered_on: string | null; po_ref: string | null }>) {
+    if (!r.part_key) continue
+    const w = words([{ orderedOn: r.ordered_on, deliveredOn: r.delivered_on, poRef: r.po_ref }])
+    if (w) out.set(r.part_key, w)
+  }
+  return out
+}
+
+/**
+ * The takeoff lines left off a fixture, added to what the bid already remembers for it, so a
+ * refresh from the takeoff does not bring the parts back. The tick and the other picks are left as stored.
+ */
+export async function rememberLeftOutLines(db: Client, bidId: string, countRowId: string, keys: ReadonlyArray<string>): Promise<void> {
+  if (keys.length === 0) return
+  const { data, error } = await db.from('bid_submittal_takeoff_choices').select('left_out_line_ids').eq('bid_id', bidId).eq('count_row_id', countRowId).maybeSingle()
+  if (error) throw error
+  const have = ((data as { left_out_line_ids?: string[] | null } | null)?.left_out_line_ids ?? []) as string[]
+  const next = [...new Set([...have, ...keys])]
+  const { error: upErr } = await db.from('bid_submittal_takeoff_choices').upsert({ bid_id: bidId, count_row_id: countRowId, left_out_line_ids: next }, { onConflict: 'bid_id,count_row_id' })
+  if (upErr) throw upErr
+}

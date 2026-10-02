@@ -5,8 +5,11 @@
  * (`SubmittalAnswerDialog`; the answer itself is no longer entered here).
  */
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
+import { cleanup } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
+
+const unmountAll = () => cleanup()
 import { SubmittalItemEditDialog, type SubmittalItemPatch } from './SubmittalItemEditDialog'
 import type { SubmittalItemRow } from '../../lib/submittals/submittalRevision'
 import type { SubmittalPartRow } from '../../lib/submittals/itemParts'
@@ -127,7 +130,7 @@ describe('SubmittalItemEditDialog · parts, each bought on its own (2026-10-01)'
     fireEvent.change(screen.getByLabelText('Lead time for part 1'), { target: { value: '6 wk' } })
     fireEvent.change(screen.getByLabelText('Stage for part 1'), { target: { value: 'trim_set' } })
     expect(screen.getByTestId('parts-roll-up').textContent).toContain('6 wk, the longest among the parts the GC sees.')
-    fireEvent.click(screen.getByLabelText('The GC sees part 2'))
+    fireEvent.click(within(screen.getByRole('group', { name: 'What happens to part 2' })).getByRole('button', { name: 'Order only' }))
     fireEvent.click(screen.getByTestId('add-part'))
     fireEvent.change(screen.getByLabelText('Part 4'), { target: { value: 'LEONARD 170D-LF' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
@@ -171,9 +174,43 @@ describe('SubmittalItemEditDialog · parts, each bought on its own (2026-10-01)'
   it('a lead time that does not read holds Save; on a shared revision a part’s name and switch are fixed', () => {
     renderWithProviders(<SubmittalItemEditDialog item={item({ tag: 'LAV-1' })} parts={parts} houses={houses} sourceFiles={[]} onSave={() => {}} onClose={() => {}} />)
     expect(screen.queryByLabelText('Part 1')).toBeNull()
-    expect((screen.getByLabelText('The GC sees part 1') as HTMLInputElement).disabled).toBe(true)
+    expect(within(screen.getByRole('group', { name: 'What happens to part 1' })).getAllByRole('button').every((b) => (b as HTMLButtonElement).disabled)).toBe(true)
     expect(screen.queryByTestId('add-part')).toBeNull()
     fireEvent.change(screen.getByLabelText('Lead time for part 2'), { target: { value: 'soonish' } })
+    expect((screen.getByRole('button', { name: 'Save' }) as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('2026-10-02 · each part is one of three: Left out greys it, Save takes it off the row, and it can be brought back before Save', () => {
+    const onSave = vi.fn<(p: SubmittalItemPatch) => void>()
+    renderWithProviders(<SubmittalItemEditDialog item={item({ tag: 'LAV-1', status: 'proposed' })} parts={parts} houses={houses} sourceFiles={[]} canEditProduct onSave={onSave} onClose={() => {}} />)
+    const picks = (n: number) => within(screen.getByRole('group', { name: `What happens to part ${n}` }))
+    const lit = (n: number) => picks(n).getAllByRole('button').find((b) => b.getAttribute('aria-pressed') === 'true')!.textContent
+    expect([lit(1), lit(2), lit(3)]).toEqual(['GC sees it', 'GC sees it', 'Order only'])
+    fireEvent.click(picks(3).getByRole('button', { name: 'Left out' }))
+    expect(lit(3)).toBe('Left out')
+    expect(screen.getByTestId('part-left-out').textContent).toBe('not submitted, not ordered · Save takes it off')
+    expect(screen.getByTestId('parts-editor').textContent).toContain('2 the GC sees · 1 left out')
+    // Its house, lead time and stage are not asked while it is left out.
+    expect(screen.queryByLabelText('House for part 3')).toBeNull()
+    // Changed her mind on part 2: left out, then back as order only.
+    fireEvent.click(picks(2).getByRole('button', { name: 'Left out' }))
+    fireEvent.click(picks(2).getByRole('button', { name: 'Order only' }))
+    expect(lit(2)).toBe('Order only')
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    const saved = onSave.mock.calls[0]![0]
+    expect(saved.parts!.map((d) => [d.id, d.on_submittal, d.left_out ?? false])).toEqual([['tsl', true, false], ['faucet', false, false], ['stop', false, true]])
+  })
+
+  it('2026-10-02 · a part the log holds an order for cannot be left out; every part left out holds Save and points at the row’s ×', () => {
+    renderWithProviders(<SubmittalItemEditDialog item={item({ tag: 'LAV-1', status: 'proposed' })} parts={parts} houses={houses} sourceFiles={[]} canEditProduct boughtParts={new Map([['faucet', 'Ordered 09/23, on site 09/29']])} onSave={() => {}} onClose={() => {}} />)
+    const picks = (n: number) => within(screen.getByRole('group', { name: `What happens to part ${n}` }))
+    expect((picks(2).getByRole('button', { name: 'Left out' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByTestId('part-bought').textContent).toBe('Ordered 09/23, on site 09/29')
+    expect((picks(2).getByRole('button', { name: 'Order only' }) as HTMLButtonElement).disabled).toBe(false)
+    unmountAll()
+    renderWithProviders(<SubmittalItemEditDialog item={item({ tag: 'LAV-1', status: 'proposed' })} parts={parts} houses={houses} sourceFiles={[]} canEditProduct onSave={() => {}} onClose={() => {}} />)
+    for (const n of [1, 2, 3]) fireEvent.click(within(screen.getByRole('group', { name: `What happens to part ${n}` })).getByRole('button', { name: 'Left out' }))
+    expect(screen.getByTestId('all-parts-out').textContent).toBe('Every part is left out. To leave the whole fixture out, use the × on its row.')
     expect((screen.getByRole('button', { name: 'Save' }) as HTMLButtonElement).disabled).toBe(true)
   })
 

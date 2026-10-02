@@ -26,7 +26,7 @@ import { DECISION_LABELS } from '../../lib/submittals/reviewDecisions'
 import { enteredSuffix } from '../../lib/submittals/enteredDecisions'
 import { ProductStatusChip } from './ProductStatusChip'
 import { SubmittalPartsEditor } from './SubmittalPartsEditor'
-import { assemblyLine, partCallsLine, partLeadTextsBad, partToDraft, rollUpFromParts, type PartDraft, type PartLeadTexts, type SubmittalPartRow } from '../../lib/submittals/itemParts'
+import { assemblyLine, keptPartDrafts, partCallsLine, partLeadTextsBad, partToDraft, rollUpFromParts, type PartDraft, type PartLeadTexts, type SubmittalPartRow } from '../../lib/submittals/itemParts'
 
 const Z = 10060
 
@@ -74,15 +74,17 @@ const chipButton = (on: boolean): CSSProperties => ({
 const fieldLabel: CSSProperties = { fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 const inputStyle: CSSProperties = { padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, font: 'inherit', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-strong)' }
 
-export function SubmittalItemEditDialog({ item, sourceFiles, houses = [], parts = [], canEnterDecision = false, canEditProduct = false, orderOnly = false, focusPartId = null, focusHouse = false, onSave, onClose }: { /** 2026-10-02 · the row is order only: the GC never sees it, so no status, reason, note, cut sheet or call is asked */ orderOnly?: boolean; item: SubmittalItemRow; sourceFiles: SourceFile[]; /** the part a Procure line opened the window on (2026-10-02) */ focusPartId?: string | null; /** a Procure line opened the window on a row with no parts: its house box is scrolled to and ready */ focusHouse?: boolean; /** the row's parts (2026-10-01) */ parts?: ReadonlyArray<SubmittalPartRow>; /** the supply houses to pick from; none hides the picker */ houses?: ReadonlyArray<{ id: string; name: string }>; /** the row exists, so their answer can be recorded on it */ canEnterDecision?: boolean; /** a draft: the tag and the product can be typed (v2.4090) */ canEditProduct?: boolean; onSave: (patch: SubmittalItemPatch) => void; onClose: () => void }) {
+export function SubmittalItemEditDialog({ item, sourceFiles, houses = [], parts = [], canEnterDecision = false, canEditProduct = false, orderOnly = false, boughtParts, focusPartId = null, focusHouse = false, onSave, onClose }: { /** by part id: "Ordered 09/23" when the log holds an order for the part, so it cannot be left out */ boughtParts?: ReadonlyMap<string, string>; /** 2026-10-02 · the row is order only: the GC never sees it, so no status, reason, note, cut sheet or call is asked */ orderOnly?: boolean; item: SubmittalItemRow; sourceFiles: SourceFile[]; /** the part a Procure line opened the window on (2026-10-02) */ focusPartId?: string | null; /** a Procure line opened the window on a row with no parts: its house box is scrolled to and ready */ focusHouse?: boolean; /** the row's parts (2026-10-01) */ parts?: ReadonlyArray<SubmittalPartRow>; /** the supply houses to pick from; none hides the picker */ houses?: ReadonlyArray<{ id: string; name: string }>; /** the row exists, so their answer can be recorded on it */ canEnterDecision?: boolean; /** a draft: the tag and the product can be typed (v2.4090) */ canEditProduct?: boolean; onSave: (patch: SubmittalItemPatch) => void; onClose: () => void }) {
   const [tagText, setTagText] = useState(item.tag)
   const [submittedText, setSubmittedText] = useState(item.submitted_label ?? [item.submitted_manufacturer, item.submitted_model].filter(Boolean).join(' '))
   const [houseId, setHouseId] = useState<string | null>(item.supply_house_id ?? null)
   // 2026-10-01 · the row's parts; null = the row is one product typed as a line.
   const [partDrafts, setPartDrafts] = useState<PartDraft[] | null>(() => (parts.length > 0 ? parts.map(partToDraft) : null))
   const [partLeadTexts, setPartLeadTexts] = useState<PartLeadTexts>({})
-  const partsBad = partDrafts != null && partLeadTextsBad(partLeadTexts, partDrafts.length)
-  const partsRollUp = partDrafts ? rollUpFromParts(partDrafts.filter((d) => d.label.trim()).map((d, i) => ({ ...d, label: d.label.trim(), sequence_order: i + 1 }))) : null
+  // 2026-10-02 · every part left out would leave a row with nothing on it: that is the row's ×, not a Save.
+  const allPartsOut = partDrafts != null && partDrafts.length > 0 && keptPartDrafts(partDrafts).length === 0
+  const partsBad = partDrafts != null && (partLeadTextsBad(partLeadTexts, partDrafts.length) || allPartsOut)
+  const partsRollUp = partDrafts ? rollUpFromParts(keptPartDrafts(partDrafts).filter((d) => d.label.trim()).map((d, i) => ({ ...d, label: d.label.trim(), sequence_order: i + 1 }))) : null
   const houseChanged = houseId !== (item.supply_house_id ?? null)
   // What the reviewer answered is read here and entered in its own window.
   const currentDecision = asDecision(item.review_decision)
@@ -157,7 +159,10 @@ export function SubmittalItemEditDialog({ item, sourceFiles, houses = [], parts 
         {/* The fields scroll; the title above and the Save row below hold still. */}
         <div data-testid="edit-row-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', flex: '1 1 auto', minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', margin: '0 -1.25rem', padding: '0.15rem 1.25rem' }}>
         {partDrafts != null ? (
-          <SubmittalPartsEditor drafts={partDrafts} onChange={setPartDrafts} leadTexts={partLeadTexts} onLeadTexts={setPartLeadTexts} houses={houses} canEditProduct={canEditProduct} assembly={assemblyLine(parts)} focusId={focusPartId} fixtureOrderOnly={orderOnly} />
+          <SubmittalPartsEditor drafts={partDrafts} onChange={setPartDrafts} leadTexts={partLeadTexts} onLeadTexts={setPartLeadTexts} houses={houses} canEditProduct={canEditProduct} assembly={assemblyLine(parts)} focusId={focusPartId} fixtureOrderOnly={orderOnly} bought={boughtParts} />
+          ) : null}
+        {allPartsOut ? (
+          <span style={{ fontSize: '0.78rem', color: 'var(--text-amber-700)' }} data-testid="all-parts-out">Every part is left out. To leave the whole fixture out, use the × on its row.</span>
         ) : null}
 
         {orderOnly ? null : (

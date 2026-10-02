@@ -259,6 +259,39 @@ export type PartDraft = {
   reason_note?: string | null
   /** What the takeoff priced in its place — read only in the editor. */
   priced_label?: string | null
+  /** 2026-10-02 · left out in the editor: not submitted and not ordered. Save takes the part off the row. */
+  left_out?: boolean
+}
+
+/** The three things a part can be (2026-10-02): the GC sees it, order only (bought, not shown), or left out. */
+export type PartPick = 'gc' | 'order' | 'out'
+
+export function partPickOf(d: Pick<PartDraft, 'on_submittal' | 'left_out'>): PartPick {
+  return d.left_out ? 'out' : d.on_submittal ? 'gc' : 'order'
+}
+
+/** What a pick sets on the draft. Back from left out, the part keeps whichever of the other two was pressed. */
+export function withPartPick(d: PartDraft, pick: PartPick): PartDraft {
+  return pick === 'out' ? { ...d, left_out: true } : { ...d, left_out: false, on_submittal: pick === 'gc' }
+}
+
+/** The drafts Save keeps: every part not left out. */
+export function keptPartDrafts<T extends Pick<PartDraft, 'left_out'>>(drafts: ReadonlyArray<T>): T[] {
+  return drafts.filter((d) => !d.left_out)
+}
+
+/**
+ * A takeoff part's identity on the takeoff: the assembly item it sits in, else its takeoff line.
+ * It is what the bid remembers a left-out part by, so a refresh from the takeoff does not bring it back.
+ */
+export function partPieceKey(p: { source_template_item_id?: string | null; source_line_id?: string | null }): string | null {
+  return p.source_template_item_id ?? p.source_line_id ?? null
+}
+
+/** The takeoff keys of the parts the editor left out: what to remember on the bid. Parts typed by hand have none. */
+export function leftOutPieceKeys(before: ReadonlyArray<SubmittalPartRow>, drafts: ReadonlyArray<PartDraft>): string[] {
+  const out = new Set(drafts.filter((d) => d.left_out && d.id).map((d) => d.id!))
+  return [...new Set(before.filter((p) => out.has(p.id)).map(partPieceKey).filter((k): k is string => !!k))]
 }
 
 export function partToDraft(p: SubmittalPartRow): PartDraft {
@@ -275,7 +308,8 @@ export function diffPartDrafts(
   itemId: string,
   bidId: string,
 ): { deletes: string[]; updates: Array<{ id: string; patch: Partial<SubmittalPartInsert> }>; inserts: SubmittalPartInsert[] } {
-  const kept = after.map((d) => ({ ...d, label: d.label.trim() })).filter((d) => d.label)
+  // A part left out in the editor (2026-10-02) comes off the row like one taken off.
+  const kept = keptPartDrafts(after).map((d) => ({ ...d, label: d.label.trim() })).filter((d) => d.label)
   const keptIds = new Set(kept.map((d) => d.id).filter((x): x is string => !!x))
   const byId = new Map(before.map((p) => [p.id, p]))
   const deletes = before.filter((p) => !keptIds.has(p.id)).map((p) => p.id)

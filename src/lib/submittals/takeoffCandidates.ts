@@ -66,6 +66,8 @@ export type TakeoffCandidate = {
   onAs?: 'gc' | 'order' | null
   /** 2026-10-02 · the bid remembers the fixture as order only: it comes on as a row the GC never sees. */
   storedOrderOnly?: boolean
+  /** 2026-10-02 · the lines left off the fixture: not in `pieces`, so no row, refresh or count reads them; kept here to bring one back. */
+  leftOutPieces?: ProductPiece[]
   /** The name spells out more than one tag (WC 1&2 → WC-1, WC-2), so the row may split (v2.4118). */
   canSplit: boolean
   /** The estimator's stored split, when there is one. */
@@ -93,6 +95,8 @@ export type TakeoffCandidatesInput = {
   alreadyOn?: ReadonlySet<string> | null
   /** The estimator's stored order-only picks by count row id (2026-10-02). */
   orderOnly?: ReadonlyMap<string, boolean> | null
+  /** The takeoff lines left off each fixture, by count row id (2026-10-02). */
+  leftOut?: ReadonlyMap<string, ReadonlyArray<string>> | null
 }
 
 const PIPE_NAME = /\bft\s+of\b|\bpipe\b|\btubing\b|\bconduit\b/i
@@ -286,7 +290,11 @@ export function takeoffCandidates(input: TakeoffCandidatesInput): TakeoffCandida
   for (const row of input.countRows) {
     const fixture = (row.fixture ?? '').trim()
     if (!fixture) continue
-    const pieces = productPiecesOf(row.id, byRow.get(row.id) ?? [], input.parts, input.templates, input.houses, input.assemblies ?? new Map())
+    const everyPiece = productPiecesOf(row.id, byRow.get(row.id) ?? [], input.parts, input.templates, input.houses, input.assemblies ?? new Map())
+    // A line the estimator left off the fixture is not one of its pieces: nothing downstream submits, orders or refreshes it.
+    const offKeys = new Set(input.leftOut?.get(row.id) ?? [])
+    const pieces = offKeys.size > 0 ? everyPiece.filter((p) => !offKeys.has(p.key)) : everyPiece
+    const leftOutPieces = offKeys.size > 0 ? everyPiece.filter((p) => offKeys.has(p.key)) : []
     const defaults = defaultProductKeys(pieces)
     // A stored choice holds while any of its pieces is still on the takeoff; otherwise the rule decides again.
     // A key that named a whole assembly line (stored before assemblies opened) stands for that assembly's default parts.
@@ -322,6 +330,7 @@ export function takeoffCandidates(input: TakeoffCandidatesInput): TakeoffCandida
       ticked: storedTick ?? defaultTicked,
       alreadyOn: input.alreadyOn?.has(row.id) ?? false,
       storedOrderOnly: input.orderOnly?.get(row.id) ?? false,
+      ...(leftOutPieces.length > 0 ? { leftOutPieces } : {}),
       canSplit,
       storedSplit,
       split: canSplit && (storedSplit ?? false),
