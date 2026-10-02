@@ -1,0 +1,67 @@
+/**
+ * Props for rendering the Pipeline's phone card list (`JobsStagesCardList`) in a render test:
+ * no jobs, every handler a stub. Its own render test and the nested-window cases
+ * (`components/nestedWindows.render.test.tsx`) share it.
+ */
+import { vi } from 'vitest'
+import type { JobsStagesTableProps } from '../components/jobs/JobsStagesTable'
+
+export function makeStagesCardListProps(overrides: Partial<JobsStagesTableProps> = {}): JobsStagesTableProps {
+  return {
+    jobList: [],
+    actionLabel: 'Move to Working',
+    onAction: vi.fn(),
+    showTimeOpen: true,
+    onSendBack: undefined,
+    onSendBackSimple: undefined,
+    showPctComplete: false,
+    stagesJobFlashId: null,
+    stagesEditMode: false,
+    renderStagesOpenDetailJobName: (j) => <div>{j.job_name ?? '—'}</div>,
+    stagesStatusUpdatingId: null,
+    pctCompleteSavingId: null,
+    updateJobPctComplete: vi.fn(async () => {}),
+    commitStagesPctWithNote: vi.fn(async () => {}),
+    setCreatePartialInvoiceAmount: vi.fn(),
+    setCreatePartialInvoiceJob: vi.fn(),
+    openEdit: vi.fn(),
+    openStagesDetailJobModal: vi.fn(),
+    setAiaG702StagesJob: vi.fn(),
+    canCreateHazmatFee: false,
+    openHazmatFee: vi.fn(),
+    canEditJobPctComplete: true,
+    canManageJobPeople: true,
+    setManageJobPeople: vi.fn(),
+    jobThreadNotesLoadingId: null,
+    jobThreadDraft: '',
+    jobThreadSubmittingId: null,
+    setJobThreadDraft: vi.fn(),
+    submitJobThreadNote: vi.fn(async () => {}),
+    authUser: { id: 'smoke-auth-user-1' } as JobsStagesTableProps['authUser'],
+    showToast: vi.fn(),
+    customers: [],
+    openEditJobAndCreateCustomerFlow: vi.fn(),
+    stagesManHoursByJobId: new Map(),
+    stagesManHoursLoading: false,
+    crewByJobId: new Map(),
+    stagesLaborBreakdownByJobId: new Map(),
+    expandedJobThreadId: null,
+    toggleStagesJobThreadExpanded: vi.fn(),
+    jobThreadStatsByJobId: {},
+    jobThreadActivityByJobId: {},
+    openJobThreadFullscreen: vi.fn(),
+    openJobActivityExpand: vi.fn(),
+    openJobCalendar: vi.fn(),
+    stagesUpcomingByJobId: {},
+    stagesWorkedByJobId: {},
+    jobThreadFullscreen: false,
+    setJobThreadFullscreen: vi.fn(),
+    applyStagesInvoiceFocus: vi.fn(() => true),
+    canOpenJobScheduleModal: true,
+    setScheduleModalJob: vi.fn(),
+    openQuickAssignForJob: vi.fn(),
+    authRole: 'dev',
+    loadJobs: vi.fn(async () => []),
+    ...overrides,
+  }
+}
