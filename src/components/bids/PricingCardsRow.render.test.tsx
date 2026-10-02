@@ -69,6 +69,14 @@ describe('AddPriceDoorButton', () => {
     rerender(<AddPriceDoorButton cloning onOpenDoor={onOpenDoor} />)
     expect((screen.getByRole('button', { name: 'Duplicating…' }) as HTMLButtonElement).disabled).toBe(true)
   })
+
+  it('reads on one line on a one-row strip, and breaks in two only beside the tall cards', () => {
+    const { rerender } = render(<AddPriceDoorButton cloning={false} onOpenDoor={() => {}} />)
+    expect(screen.getByRole('button').querySelector('br')).toBeNull()
+    expect(screen.getByRole('button').textContent).toBe('＋Add price')
+    rerender(<AddPriceDoorButton cloning={false} onOpenDoor={() => {}} stacked />)
+    expect(screen.getByRole('button').querySelector('br')).not.toBeNull()
+  })
 })
 
 describe('PricingCardsRow — the solo band', () => {
