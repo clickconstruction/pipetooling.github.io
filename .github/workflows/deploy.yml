@@ -66,6 +66,9 @@ jobs:
       - name: Changed help guides read in plain words
         run: npm run check:plain-words
 
+      - name: Windows drawn inside windows stop their own backdrop click
+        run: npm run check:nested-windows
+
       - name: Test
         run: npm test
         env:
