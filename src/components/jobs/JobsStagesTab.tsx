@@ -4562,11 +4562,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         noticeMonths={lienInstrumentsModal?.noticeMonths ?? null}
         signerNameFallback={lienDeskSignerFor(lienInstrumentsModal?.job?.master_user_id ?? null)}
         authEmail={authUser?.email?.trim() ?? ''}
-        onOpenExternalPrefill={() => {
-          const ctx = lienInstrumentsModal
-          setLienInstrumentsModal(null)
-          if (ctx) setLienToolingPrefillModal(ctx)
-        }}
         onRecorded={() => {
           void loadDemandOutJobIds()
           // A recorded notice that names the desk item's months sends the item (v2.3405).

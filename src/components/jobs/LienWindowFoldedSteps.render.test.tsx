@@ -5,7 +5,7 @@
  * them and Escape put them away. Wiring only: the words are lienTimelineFoldSummary's.
  */
 import { afterEach, describe, expect, it } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render } from '@testing-library/react'
 import LienWindowFoldedSteps from './LienWindowFoldedSteps'
 import { buildLienTimeline } from '../../lib/jobs/lienTimeline'
 
@@ -35,17 +35,16 @@ const panel = () => document.querySelector('[data-lien-window-fold-panel]') as H
 
 describe('LienWindowFoldedSteps', () => {
   it('folded: the strip says the next step, who we wait on and the closed window; no steps are drawn', () => {
-    render(<LienWindowFoldedSteps timeline={timeline} foot={<button type="button">lientooling.com ↗</button>} />)
+    render(<LienWindowFoldedSteps timeline={timeline} />)
     expect(strip().getAttribute('aria-expanded')).toBe('false')
     expect(strip().textContent).toContain(timeline.next.words)
     expect(strip().textContent).toContain('waiting on us')
     expect(document.querySelector('[data-lien-window-fold-closed]')?.textContent).toBe('1 window closed')
     expect(panel()).toBeNull()
-    expect(screen.queryByText('lientooling.com ↗')).toBeNull()
   })
 
-  it('a press drops the steps and the foot; the sentence is not said twice', () => {
-    render(<LienWindowFoldedSteps timeline={timeline} foot={<button type="button">lientooling.com ↗</button>} />)
+  it('a press drops the steps and nothing else; the sentence is not said twice', () => {
+    render(<LienWindowFoldedSteps timeline={timeline} />)
     fireEvent.click(strip())
     expect(strip().getAttribute('aria-expanded')).toBe('true')
     expect(strip().getAttribute('aria-controls')).toBe(panel()!.id)
@@ -53,7 +52,9 @@ describe('LienWindowFoldedSteps', () => {
     expect(panel()!.textContent).toContain('§ 53.052')
     expect(panel()!.querySelector('[data-lien-timeline-next]')).toBeNull()
     expect(panel()!.querySelector('[data-lien-timeline-waiting]')).toBeNull()
-    expect(screen.getByText('lientooling.com ↗')).toBeTruthy()
+    // no door out to lientooling.com (v2.4403): the papers are all made in this window
+    expect(panel()!.querySelector('button:not([aria-pressed])')).toBeNull()
+    expect(panel()!.textContent).not.toContain('lientooling')
   })
 
   it('the strip, the grey behind the steps and Escape each put them away', () => {
