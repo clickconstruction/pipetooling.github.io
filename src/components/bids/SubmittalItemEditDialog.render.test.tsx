@@ -34,6 +34,17 @@ describe('SubmittalItemEditDialog · entered call (5b)', () => {
     expect(onSave.mock.calls[0]![0].clearDecision).toBe(false)
   })
 
+  it('2026-10-02 · it says nothing is sent: before the section opens, for a person on the room, and where a new email is typed', () => {
+    renderWithProviders(<SubmittalItemEditDialog item={item()} sourceFiles={[]} people={people} canEnterDecision onSave={() => {}} onClose={() => {}} />)
+    expect(screen.getByTestId('entered-call').textContent).toContain('This only records their call. Nobody is emailed.')
+    fireEvent.click(screen.getByTestId('enter-call-open'))
+    // Dana is on the room: no email is asked for, and the line says nobody is contacted.
+    expect(screen.getByTestId('reviewer-no-contact').textContent).toBe('Only for the record. Nobody is emailed or contacted.')
+    fireEvent.change(screen.getByLabelText('Whose call'), { target: { value: 'new' } })
+    expect(screen.getByTestId('reviewer-no-contact').textContent).toBe('Only for the record. Nobody is emailed or contacted. The email stays in the office. It tells the room who they are if they open it later.')
+    expect((screen.getByLabelText('Reviewer email') as HTMLInputElement).placeholder).toBe('their email')
+  })
+
   it('a reviewer not on the room needs a name and an email before Save; then the new person rides along', () => {
     const onSave = vi.fn<(p: SubmittalItemPatch) => void>()
     renderWithProviders(<SubmittalItemEditDialog item={item()} sourceFiles={[]} people={people} canEnterDecision onSave={onSave} onClose={() => {}} />)
