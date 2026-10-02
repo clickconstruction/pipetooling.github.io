@@ -5,7 +5,7 @@ file: docs/E2E_SMOKE.md
 type: Engineering / Testing
 purpose: What the Playwright Tier-1 smoke suite covers, how it authenticates, when it runs, and the rules for extending it (read-only, structural assertions, non-gating).
 audience: Developers, AI Agents
-last_updated: 2026-09-15
+last_updated: 2026-10-02
 ---
 
 ## What this is
@@ -38,3 +38,29 @@ There is no staging environment, so production is the only real render target. T
 - Auth: `e2e/auth.setup.ts` signs in once and stores the Supabase session as `storageState` (`e2e/.auth/`, gitignored); every spec reuses it.
 
 - `e2e/submittal-room.spec.ts` (v2.3485): `/submittal` with no token renders *This link is incomplete.* — the review room's public route is wired and does not bounce to sign-in. Read-only.
+
+## The Bids live walk
+
+A different animal from the suite above: it **writes**, it runs against a **local dev server** as the dev login, and nobody runs it but the person changing Bids. [`scripts/bids-live-walk.mjs`](../scripts/bids-live-walk.mjs) (`npm run walk:bids -- …`) does an estimator's day on a throwaway version of BP398 *ZZ Test*: twenty steps across Takeoffs, Labor, Pricing, Cover Letter and the Approval PDF, each recording what the screen said. It was written for the By Stage retirement (punch list #77), where it caught the one bug the unit suites missed.
+
+**When:** before merging a change to Takeoffs, Labor, Pricing, Cover Letter or the pricing engine, and once more on `origin/main` after it deploys.
+
+```bash
+PORT=5175 npm run walk:bids -- login                    # dev-login once (the dev server must be up)
+git checkout --detach origin/main                       # the baseline
+PORT=5175 npm run walk:bids -- walk out/main
+PORT=5175 npm run walk:bids -- snapshot out/main 398,490,375
+git checkout my-branch
+PORT=5175 npm run walk:bids -- walk out/branch
+PORT=5175 npm run walk:bids -- snapshot out/branch 398,490,375
+npm run walk:bids -- diff out/main out/branch           # steps and tab lines that differ; exits 1 when any do
+rm e2e/.auth/bids-walk.json                             # a real prod session
+```
+
+**Rules.**
+
+1. **It writes only to its sandbox.** `walk` makes a version named *ZZ walk (delete me)* from *To Plans*, edits that, deletes it, and its last step checks *To Plans* reads as before. The one write outside the version is the bid's labor rate, changed and put back. `snapshot` reads only.
+2. **Only on a ZZ test bid.** `BID` defaults to 398. Never point it at a live bid.
+3. **A difference is a question, not a verdict.** Prod data moves: the company labor rate shifts a cent when its 90-day window rolls at midnight. Read each differing line and say why it differs.
+4. **Not in CI.** It needs the dev-login secret and it writes to prod.
+
