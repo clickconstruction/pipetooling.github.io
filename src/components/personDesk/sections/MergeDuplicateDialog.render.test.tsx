@@ -49,4 +49,17 @@ describe('MergeDuplicateDialog', () => {
     await vi.waitFor(() => expect(onMerged).toHaveBeenCalled())
     expect(invoke).toHaveBeenCalledWith('merge-users', { body: { survivor_user_id: 'u-keep', absorbed_user_id: 'u-old', dry_run: false } })
   })
+
+  it('v2.4370 · a press outside alone leaves it open; a click outside closes it, a click inside does not', async () => {
+    const onClose = vi.fn()
+    renderWithProviders(<MergeDuplicateDialog survivor={USERS[0]!} onClose={onClose} onMerged={() => {}} />)
+    const dialog = screen.getByRole('dialog', { name: 'Merge a duplicate into Kai Moss' })
+    await within(dialog).findByLabelText('The duplicate')
+    const backdrop = dialog.parentElement!
+    fireEvent.mouseDown(backdrop)
+    fireEvent.click(dialog)
+    expect(onClose).not.toHaveBeenCalled()
+    fireEvent.click(backdrop)
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
 })
