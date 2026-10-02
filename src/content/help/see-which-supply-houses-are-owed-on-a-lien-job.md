@@ -20,9 +20,9 @@ The mark shows on the Calendar. It also shows on the Notices, Affidavits and Ret
 
 ## See only those jobs
 
-On the Calendar, press the storefront button beside the pills. It shows a count of the jobs that still owe a house. The Calendar then shows only those jobs, still sorted by month. Press it again to see every job.
+On the Calendar, press the storefront button. On a computer it sits beside the search box. On a phone it sits before the pills. It shows a count of the jobs that still owe a house.
 
-On a computer with a wide window, the button reads {{button:outline|Houses owed}}.
+The Calendar then shows only those jobs, still sorted by month. Press it again to see every job.
 
 ## Read the card
 
