@@ -3,8 +3,8 @@
  * Render-smoke tests for BidsTakeoffTab — the safety net for its
  * sub-decomposition (see docs/BIDS_TAKEOFF_TAB_ARCHITECTURE.md). Pins
  * crash-on-mount for the main regions BEFORE extractions move code: the
- * no-bid picker, the exact ("By Stage") body with its takeoff-book selector,
- * and the two Combined views (Old retired v2.3588). NOT behavior tests.
+ * no-bid picker and the two Combined views (Old retired v2.3588), which a bid
+ * still flagged By Stage opens on too (By Stage retired v2.4389). NOT behavior tests.
  *
  * The tab is a props component (its selection + engine live in Bids.tsx), so
  * this is a makeProps exercise over the ~53-prop seam; supabase is stubbed
@@ -33,7 +33,7 @@ function makeBid(p: Record<string, unknown> = {}) {
     bid_number: '101',
     project_name: 'Smoke Project',
     builder_name: 'Smoke Builder',
-    materials_model: 'exact',
+    materials_model: 'rough',
     service_type_id: 'st-1',
     created_at: '2026-07-01T00:00:00Z',
     ...p,
@@ -88,7 +88,6 @@ function makeProps(overrides: Partial<Props> = {}): Props {
     ensureCostEstimateForBid: vi.fn(async () => {}),
     loadMaterialTemplates: vi.fn(async () => {}),
     setCostEstimatePO: vi.fn(),
-    openMaterialsModelSwitch: vi.fn(),
     onSelectBid: vi.fn(),
     onClose: vi.fn(),
     onEditBid: vi.fn(),
@@ -109,12 +108,17 @@ describe('BidsTakeoffTab render smoke', () => {
     expect(screen.getByPlaceholderText(PICKER_ANCHOR)).toBeTruthy()
   })
 
-  it('mounts the exact ("By Stage") body with the takeoff-book selector', async () => {
+  it('opens a bid still flagged By Stage on One at a time like any other bid, with no Materials pills (v2.4389)', async () => {
+    window.localStorage.removeItem('bids_takeoff_view_v1')
     renderWithProviders(
       <BidsTakeoffTab {...makeProps({ selectedBidForTakeoff: makeBid({ materials_model: 'exact' }) })} />,
     )
-    expect((await screen.findAllByText('Takeoff book')).length).toBeGreaterThan(0)
+    expect(await screen.findByTestId('takeoff-focus-view')).toBeTruthy()
+    expect(screen.getByTestId('takeoff-view-chooser')).toBeTruthy()
     expect(screen.queryByPlaceholderText(PICKER_ANCHOR)).toBeNull()
+    expect(screen.queryByRole('button', { name: 'By Stage' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Combined' })).toBeNull()
+    expect(screen.queryByText('Create purchase orders for Stages')).toBeNull()
   })
 
   it('mounts a Combined bid on One at a time by default, with the chooser up on a fresh device (v2.3588)', async () => {
@@ -191,12 +195,6 @@ describe('BidsTakeoffTab render smoke', () => {
     }
   })
 
-  it('never asks on a By Stage bid', async () => {
-    renderWithProviders(<BidsTakeoffTab {...makeProps({ selectedBidForTakeoff: makeBid({ materials_model: 'exact' }) })} />)
-    expect((await screen.findAllByText('Takeoff book')).length).toBeGreaterThan(0)
-    expect(screen.queryByTestId('takeoff-view-chooser')).toBeNull()
-  })
-
   it('does not ask again once the device remembers a view — a remembered pick of the retired Old lands on One at a time (v2.3165, v2.3588)', async () => {
     window.localStorage.setItem('bids_takeoff_view_v1', 'old')
     try {
@@ -236,23 +234,29 @@ describe('BidsTakeoffTab render smoke', () => {
     }
   })
 
-  it('keeps the By Stage editor on an exact bid whatever view the device remembers — no pills, no notice (v2.3588)', async () => {
+  it('a bid still flagged By Stage follows the view the device remembers (v2.4389)', async () => {
     window.localStorage.setItem('bids_takeoff_view_v1', 'new2')
     try {
-      renderWithProviders(<BidsTakeoffTab {...makeProps({ selectedBidForTakeoff: makeBid({ materials_model: 'exact' }) })} />)
-      expect((await screen.findAllByText('Takeoff book')).length).toBeGreaterThan(0)
-      expect(screen.queryByText('This bid uses By Stage materials')).toBeNull()
-      expect(screen.queryByRole('tablist', { name: 'Takeoffs view' })).toBeNull()
-      expect(screen.queryByTestId('takeoff-cost-rail-view')).toBeNull()
+      renderWithProviders(
+        <BidsTakeoffTab
+          {...makeProps({
+            selectedBidForTakeoff: makeBid({ materials_model: 'exact' }),
+            takeoffCountRows: [{ id: 'row-1', bid_id: 'bid-1', fixture: 'WC-1', count: 2, sequence_order: 1 } as unknown as Props['takeoffCountRows'][number]],
+          })}
+        />,
+      )
+      expect(await screen.findByTestId('takeoff-cost-rail-view')).toBeTruthy()
+      expect(screen.getByRole('tablist', { name: 'Takeoffs view' })).toBeTruthy()
+      expect(screen.queryByText('Create purchase orders for Stages')).toBeNull()
     } finally {
       window.localStorage.removeItem('bids_takeoff_view_v1')
     }
   })
 
-  it('mounts with a null materials_model (normalizeMaterialsModel default path)', async () => {
+  it('mounts a bid with no materials_model as Combined', async () => {
     renderWithProviders(
       <BidsTakeoffTab {...makeProps({ selectedBidForTakeoff: makeBid({ materials_model: null }) })} />,
     )
-    expect((await screen.findAllByText('Takeoff book')).length).toBeGreaterThan(0)
+    expect(await screen.findByTestId('takeoff-focus-view')).toBeTruthy()
   })
 })

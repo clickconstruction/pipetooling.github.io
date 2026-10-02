@@ -42,4 +42,4 @@ Individual part lines work the same way. A line normally prices at the **lowest*
 
 ## Editing an assembly later
 
-The **Edit Assembly** form works the same way. You reach it from a bundle line's breakdown or a By Stage mapping. One search over parts and assemblies sits at the top. Picking a result adds it to the assembly immediately at quantity 1. Adjust quantities right in the items list. Changes save when you leave the field. To change a bundle price, **click the price itself**, type the new number, and press Enter. Escape backs out without saving. The quick **Add Parts** dialog on a mapped assembly uses a searchable part picker too. It has the same create-a-part-on-the-spot option when nothing matches.
+The **Edit Assembly** form works the same way. You reach it from a bundle line's breakdown. One search over parts and assemblies sits at the top. Picking a result adds it to the assembly immediately at quantity 1. Adjust quantities right in the items list. Changes save when you leave the field. To change a bundle price, **click the price itself**, type the new number, and press Enter. Escape backs out without saving.

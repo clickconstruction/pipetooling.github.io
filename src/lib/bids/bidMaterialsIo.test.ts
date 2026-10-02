@@ -67,18 +67,17 @@ describe('loadBidMaterials', () => {
     expect(filter(lineQuery.steps, 'eq', 'bid_version_id')).toBeUndefined()
   })
 
-  it('reads a By Stage bid from its stage POs, never from the part lines it may have parked', async () => {
+  it('reads a bid still flagged By Stage from its part lines, never from the stage POs it links (v2.4389)', async () => {
     const { client, queries } = fakeClient({ bids: [{ materials_model: 'exact' }], bids_takeoff_rough_part_lines: roughLines, purchase_order_items: poItems })
     const m = await loadBidMaterials(client, { bidId: 'bid1', bidVersionId: 'v1', countRows, costEstimate: stagePos })
-    expect(m).toEqual({ model: 'exact', roughIn: 401, topOut: 0, trimSet: 401, total: 802, byCountRowId: {} })
-    expect(queries.filter((q) => q.table === 'purchase_order_items').map((q) => filter(q.steps, 'eq', 'purchase_order_id'))).toEqual(['po-rough', 'po-trim'])
-    expect(queries.some((q) => q.table === 'bids_takeoff_rough_part_lines')).toBe(false)
+    expect(m).toEqual({ model: 'rough', roughIn: 380, topOut: 0, trimSet: 0, total: 380, byCountRowId: { lav: 64, wc: 316 } })
+    expect(queries.some((q) => q.table === 'purchase_order_items')).toBe(false)
   })
 
-  it('reads an unknown model as By Stage, the column’s only other value', async () => {
+  it('reads an unknown model as Combined', async () => {
     const { client } = fakeClient({ bids: [{ materials_model: null }], bids_takeoff_rough_part_lines: roughLines, purchase_order_items: poItems })
-    const m = await loadBidMaterials(client, { bidId: 'bid1', bidVersionId: null, countRows, costEstimate: stagePos, fallbackModel: 'rough' })
-    expect(m.model).toBe('exact')
+    const m = await loadBidMaterials(client, { bidId: 'bid1', bidVersionId: null, countRows, costEstimate: stagePos, fallbackModel: 'exact' })
+    expect(m).toMatchObject({ model: 'rough', total: 380 })
   })
 
   it('falls back to the model the caller holds when the fresh read fails', async () => {
@@ -87,10 +86,10 @@ describe('loadBidMaterials', () => {
     expect(m).toMatchObject({ model: 'rough', total: 380 })
   })
 
-  it('gives a By Stage bid with no cost estimate $0 without reading a PO', async () => {
+  it('gives a bid flagged By Stage with no part lines $0 without reading a PO', async () => {
     const { client, queries } = fakeClient({ bids: [{ materials_model: 'exact' }], purchase_order_items: poItems })
-    const m = await loadBidMaterials(client, { bidId: 'bid1', bidVersionId: null, countRows, costEstimate: null })
-    expect(m).toEqual({ model: 'exact', roughIn: 0, topOut: 0, trimSet: 0, total: 0, byCountRowId: {} })
+    const m = await loadBidMaterials(client, { bidId: 'bid1', bidVersionId: null, countRows, costEstimate: stagePos })
+    expect(m).toMatchObject({ model: 'rough', roughIn: 0, topOut: 0, trimSet: 0, total: 0 })
     expect(queries.some((q) => q.table === 'purchase_order_items')).toBe(false)
   })
 })

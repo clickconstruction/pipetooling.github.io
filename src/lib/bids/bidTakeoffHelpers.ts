@@ -36,14 +36,12 @@ export function resolveRoughQtyOnClose(draft: string, originalQty: number | null
 }
 
 /**
- * One-line caption for the By Stage / Combined pills and the switch confirm (J11-F4):
- * the first structural decision of every takeoff had no on-surface explanation.
+ * Every bid prices its materials one way since v2.4389: the Combined part lines
+ * (`bids_takeoff_rough_part_lines`). By Stage (`'exact'`: assembly picks priced through three
+ * stage purchase orders) is retired, so a bid still flagged By Stage reads as Combined.
  */
-export const MATERIALS_MODEL_CAPTION =
-  'By Stage = exact assemblies per rough-in / top-out / trim-set stage. Combined = one rough parts list for the whole job.'
-
-export function normalizeMaterialsModel(v: string | null | undefined): MaterialsModel {
-  return v === 'rough' ? 'rough' : 'exact'
+export function normalizeMaterialsModel(_v: string | null | undefined): MaterialsModel {
+  return 'rough'
 }
 
 /** Takeoffs: single-column label for fixture + count row (e.g. `(5) Toilet`). */

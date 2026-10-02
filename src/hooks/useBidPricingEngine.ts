@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { jobScopeRows } from '../lib/bids/alternateAcceptance'
 import { supabase } from '../lib/supabase'
-import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
+import { withSupabaseRetry } from '../utils/errorHandling'
 import { pickLegacyDataTemplateId } from '../lib/bids/legacyTemplatePricing'
 import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../lib/bids/updateGuard'
 import { expandTemplate } from '../lib/materialPOUtils'
 import type { RoughLineDbRow } from '../lib/bids/takeoffOrderRounding'
 import { combinedMaterials } from '../lib/bids/bidMaterials'
-import { normalizeMaterialsModel, type MaterialsModel, type TakeoffStage } from '../lib/bids/bidTakeoffHelpers'
+import { normalizeMaterialsModel, type TakeoffStage } from '../lib/bids/bidTakeoffHelpers'
 import { loadTeamLaborDataForBids, type TeamLaborBidRow } from '../utils/teamLabor'
 import { loadBidAssignedCosts } from '../lib/bids/loadBidAssignedCosts'
 import type { BidAssignedCosts } from '../lib/bids/bidAssignedCosts'
@@ -59,7 +59,6 @@ export type UseBidPricingEngineDeps = {
   authUser: { id: string } | null
   setError: (value: string | null) => void
   loadBids: (serviceTypeId?: string | null) => Promise<BidWithBuilder[]>
-  setSharedBid: (bid: BidWithBuilder | null) => void
 }
 
 /**
@@ -80,7 +79,6 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     authUser,
     setError,
     loadBids,
-    setSharedBid,
   } = deps
 
   // --- Counts ---
@@ -94,12 +92,6 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
   const [takeoffRoughCatalogLowestByPartId, setTakeoffRoughCatalogLowestByPartId] = useState<
     Record<string, { price: number; supplyHouseName: string }>
   >({})
-  const [materialsModelSwitchModal, setMaterialsModelSwitchModal] = useState<{
-    open: boolean
-    next: MaterialsModel | null
-    sourceTab: 'takeoffs' | 'labor' | 'pricing' | null
-  }>({ open: false, next: null, sourceTab: null })
-  const [materialsModelBusy, setMaterialsModelBusy] = useState(false)
   const [materialTemplates, setMaterialTemplates] = useState<MaterialTemplateWithAssemblyType[]>([])
   const [draftPOs, setDraftPOs] = useState<DraftPO[]>([])
   const [takeoffBookVersions, setTakeoffBookVersions] = useState<TakeoffBookVersion[]>([])
@@ -1375,47 +1367,6 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     }
   }
 
-  function openMaterialsModelSwitch(next: MaterialsModel, sourceTab: 'takeoffs' | 'labor' | 'pricing') {
-    const bid = selectedBidForTakeoff ?? selectedBidForCostEstimate ?? selectedBidForPricing
-    if (!bid) return
-    const current = normalizeMaterialsModel(bid.materials_model)
-    if (next === current) return
-    setMaterialsModelSwitchModal({ open: true, next, sourceTab })
-  }
-
-  async function confirmMaterialsModelSwitch() {
-    const next = materialsModelSwitchModal.next
-    const bid = selectedBidForTakeoff ?? selectedBidForCostEstimate ?? selectedBidForPricing
-    if (!next || !bid) {
-      setMaterialsModelSwitchModal({ open: false, next: null, sourceTab: null })
-      return
-    }
-    setMaterialsModelBusy(true)
-    setError(null)
-    try {
-      const updatedRows = await withSupabaseRetry(
-        async () =>
-          supabase
-            .from('bids')
-            .update({ materials_model: next })
-            .eq('id', bid.id)
-            .select('id'),
-        'update bid materials_model'
-      )
-      if (bidUpdateRefused(updatedRows)) throw new Error(BID_UPDATE_NOT_APPLIED_MESSAGE)
-      const rows = await loadBids()
-      const fresh = rows.find((b) => b.id === bid.id)
-      if (fresh) setSharedBid(fresh)
-      if (selectedBidForTakeoff?.id === bid.id) await loadTakeoffCountRows(bid.id)
-      if (selectedBidForCostEstimate?.id === bid.id) await loadCostEstimate(bid.id)
-      setMaterialsModelSwitchModal({ open: false, next: null, sourceTab: null })
-    } catch (e) {
-      setError(formatErrorMessage(e, 'Failed to switch materials model'))
-    } finally {
-      setMaterialsModelBusy(false)
-    }
-  }
-
   useEffect(() => {
     const bid = selectedBidForCounts
     if (!bid?.id) {
@@ -1688,10 +1639,6 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     setTakeoffRoughPartLines,
     takeoffRoughCatalogLowestByPartId,
     setTakeoffRoughCatalogLowestByPartId,
-    materialsModelSwitchModal,
-    setMaterialsModelSwitchModal,
-    materialsModelBusy,
-    setMaterialsModelBusy,
     materialTemplates,
     setMaterialTemplates,
     draftPOs,
@@ -1842,7 +1789,5 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     loadPricingDataForBid,
     saveBidSelectedPriceBookVersion,
     setCostEstimatePO,
-    openMaterialsModelSwitch,
-    confirmMaterialsModelSwitch,
   }
 }

@@ -148,7 +148,11 @@ const ctxBase = (bid: Record<string, unknown>): ApprovalPdfContext => ({
   },
 })
 
-/** Scenario A: split bid on version v1 with a GC override, priced, costed, schedule of values on. */
+/**
+ * Scenario A: split bid on version v1 with a GC override, priced, costed, schedule of values on.
+ * Its estimate links a By Stage purchase order and it has no part lines: By Stage is retired
+ * (v2.4389), so the PO is never read and the materials are $0.
+ */
 const fullData: Record<string, unknown> = {
   bid_versions: [{ id: 'v1', name: 'Base', sort_order: 1, include_in_submission: false, is_alternate: false, starred_price_book_version_id: 'pb1', customer_id: 'c2', customers: { id: 'c2', name: 'Override GC', address: '2 Over St, Buda TX' } }],
   price_book_versions: [{ id: 'pb1', name: 'Standard 2026', bid_version_id: 'v1', sort_order: 0, created_at: '2026-09-01T00:00:00Z', include_in_submission: false }],
@@ -208,7 +212,7 @@ describe('downloadApprovalPdf — a priced, costed, split bid', () => {
     }
     const entryQueries = queries.filter((q) => q.table === 'price_book_entries')
     expect(entryQueries.every((q) => eqArg(q.steps, 'version_id') === 'pb1')).toBe(true)
-    expect(queries.filter((q) => q.table === 'purchase_order_items').every((q) => eqArg(q.steps, 'purchase_order_id') === 'po1')).toBe(true)
+    expect(queries.some((q) => q.table === 'purchase_order_items')).toBe(false)
   })
 
   it('page 1 lists the builder, project, contact, links (long URLs shortened, blanks as —) and the margins', () => {
@@ -227,8 +231,8 @@ describe('downloadApprovalPdf — a priced, costed, split bid', () => {
       'Project Folder: ',
       'Job Plans: ',
       'Margins',
-      'Cost estimate: $1,136.00', // 401 materials + 14 h × $50 + 3.5 trips × $1 × 10 mi; the $100 estimator time is not cost (v2.3293)
-      'Price Book: Standard 2026 | Revenue: $3,800.00 | Margin: 70.1%' // (3,800 − 1,136) ÷ 3,800 — estimator time left the cost (v2.3293),
+      'Cost estimate: $735.00', // no part lines, so $0 materials + 14 h × $50 + 3.5 trips × $1 × 10 mi; the $100 estimator time is not cost (v2.3293)
+      'Price Book: Standard 2026 | Revenue: $3,800.00 | Margin: 80.7%' // (3,800 − 735) ÷ 3,800 — estimator time left the cost (v2.3293),
     ]))
     expect(FakeJsPDF.last!.links).toEqual([
       { page: 1, text: 'https://drive.test/oak', url: 'https://drive.test/oak' },
@@ -247,18 +251,19 @@ describe('downloadApprovalPdf — a priced, costed, split bid', () => {
     expect(call('Total Revenue: $3,800.00')).toMatchObject({ page: 2, font: 'bold' })
   })
 
-  it('page 3 shows materials by PO, the labor rows and rate, driving and estimator lines, and the summary', () => {
+  it('page 3 shows one Materials line and no stage PO, the labor rows and rate, driving and estimator lines, and the summary', () => {
     const p3 = textsOn(3)
     expect(p3).toEqual(expect.arrayContaining([
-      'Materials', 'PO (Rough In)', '$401.00', 'PO (Top Out)', 'PO (Trim Set)', '$0.00', 'Materials Total',
+      'Materials', '$0.00', 'Materials Total',
       'Labor — Rate: $50.00/hr',
       'Lavatory', '4', '1.00', '0.50', '10.00',
       'Water Closet', '2', '2.00', '4.00',
       'Labor total: $700.00',
       '(14.00 hrs × $50.00/hr)',
       'Driving cost: 3.5 trips × $1.00/mi × 10mi = $35.00',
-      'Summary', 'Labor', '$700.00', 'Driving', '$35.00', 'Labor total', '$735.00', 'Grand total', '$1,136.00',
+      'Summary', 'Labor', '$700.00', 'Driving', '$35.00', 'Labor total', '$735.00', 'Grand total', '$735.00',
     ]))
+    expect(p3.filter((t) => t.startsWith('PO ('))).toEqual([])
     // Estimator time is a fact, not cost (v2.3293): the $100 flat amount is not printed and not in the totals.
     expect(p3.some((t) => t.startsWith('Estimator'))).toBe(false)
     expect(p3.some((t) => t.startsWith('Travel cost'))).toBe(false)
@@ -283,8 +288,7 @@ describe('downloadApprovalPdf — a priced, costed, split bid', () => {
 
 describe('downloadApprovalPdf — a Combined bid (materials from the takeoff’s part lines, v2.4368)', () => {
   /**
-   * Scenario A on Combined. The estimate still links the By Stage PO (a bid switched over),
-   * which must not count. 4 lavs × 5 ft + 2 WCs × 2.5 ft of copper = 25 ft → 40 ft of 20 ft
+   * Scenario A with part lines. The estimate still links the By Stage PO, which must not count. 4 lavs × 5 ft + 2 WCs × 2.5 ft of copper = 25 ft → 40 ft of 20 ft
    * sticks, $30 extra; plus a $150 valve per WC: $350 + $30 = $380 of materials.
    */
   const combinedData: Record<string, unknown> = {
@@ -382,7 +386,7 @@ describe('downloadApprovalPdf — a split bid whose saved price belongs to its o
   it('lists the margins of the active version’s prices only', async () => {
     await download()
     const p1 = textsOn(1)
-    expect(p1).toContain('Price Book: Written to Plan | Revenue: $22,000.00 | Margin: 94.8%') // (22,000 − 1,136) ÷ 22,000
+    expect(p1).toContain('Price Book: Written to Plan | Revenue: $22,000.00 | Margin: 96.7%') // (22,000 − 735) ÷ 22,000
     expect(p1.some((t) => t.startsWith('Price Book: Value Engineered'))).toBe(false)
   })
 

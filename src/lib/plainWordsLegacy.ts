@@ -54,7 +54,6 @@ export const LEGACY_PLAIN_WORDS_GUIDES: ReadonlySet<string> = new Set([
   'start-here-as-a-primary',
   'start-here-as-a-sub',
   'start-here-as-a-superintendent',
-  'start-here-as-an-estimator',
   'start-here-in-the-office',
   'sub-labor-outstanding',
   'supervise-a-crew',

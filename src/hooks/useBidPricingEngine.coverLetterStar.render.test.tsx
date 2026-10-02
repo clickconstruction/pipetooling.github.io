@@ -73,7 +73,6 @@ function mount(initial: Props) {
         authUser: { id: 'u1' },
         setError: () => {},
         loadBids: async () => [],
-        setSharedBid: () => {},
       }),
     { initialProps: initial },
   )

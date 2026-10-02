@@ -7,7 +7,6 @@ import { breakdownJumpDomId, breakdownJumpMissMessage, laborRowDomId, type Break
 import { usePendingRowFlash } from '../../hooks/usePendingRowFlash'
 import { formatCurrency } from '../../lib/format'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
-import { MATERIALS_MODEL_CAPTION, normalizeMaterialsModel, type MaterialsModel } from '../../lib/bids/bidTakeoffHelpers'
 import { laborRowHours } from '../../lib/bids/laborRowHours'
 import { drivingSummaryFromInputs, laborTotalFromInputs, travelSummaryFromInputs } from '../../lib/bids/laborTabCostSummaries'
 import {
@@ -145,7 +144,6 @@ type BidsLaborTabProps = {
   setLaborBookEntriesVersionId: Dispatch<SetStateAction<string | null>>
   loadLaborBookVersions: () => Promise<void>
   loadLaborBookEntries: (versionId: string | null) => Promise<void>
-  openMaterialsModelSwitch: (next: MaterialsModel, sourceTab: 'takeoffs' | 'labor' | 'pricing') => void
   // Callbacks
   onSelectBid: (bid: BidWithBuilder) => void
   onClose: () => void
@@ -223,7 +221,6 @@ export function BidsLaborTab({
   setLaborBookEntriesVersionId,
   loadLaborBookVersions,
   loadLaborBookEntries,
-  openMaterialsModelSwitch,
   onSelectBid,
   onClose,
   onEditBid,
@@ -800,70 +797,6 @@ export function BidsLaborTab({
               ) : null}
             </div>
           </div>
-          {(() => {
-            const ceMaterialsModel = normalizeMaterialsModel(selectedBidForCostEstimate.materials_model)
-            return (
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'flex-end',
-                  alignItems: 'center',
-                  gap: '0.25rem',
-                  flexWrap: 'wrap',
-                  marginBottom: '0.75rem',
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: '0.875rem',
-                    fontWeight: 500,
-                    marginRight: '0.25rem',
-                    color: 'var(--text-600)',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  Materials
-                </span>
-                <button
-                  type="button"
-                  onClick={() => openMaterialsModelSwitch('exact', 'labor')}
-                  style={{
-                    padding: '0.35rem 0.75rem',
-                    fontSize: '0.8125rem',
-                    border: '1px solid var(--border-strong)',
-                    borderRadius: 4,
-                    background: ceMaterialsModel === 'exact' ? 'var(--bg-200)' : 'var(--surface)',
-                    cursor: 'pointer',
-                    fontWeight: ceMaterialsModel === 'exact' ? 600 : 400,
-                    color: ceMaterialsModel === 'exact' ? 'var(--text-strong)' : 'var(--text-muted)',
-                    boxShadow: ceMaterialsModel === 'exact' ? '0 0 0 2px #374151' : 'none',
-                  }}
-                >
-                  By Stage
-                </button>
-                <button
-                  type="button"
-                  onClick={() => openMaterialsModelSwitch('rough', 'labor')}
-                  style={{
-                    padding: '0.35rem 0.75rem',
-                    fontSize: '0.8125rem',
-                    border: '1px solid var(--border-strong)',
-                    borderRadius: 4,
-                    background: ceMaterialsModel === 'rough' ? 'var(--bg-200)' : 'var(--surface)',
-                    cursor: 'pointer',
-                    fontWeight: ceMaterialsModel === 'rough' ? 600 : 400,
-                    color: ceMaterialsModel === 'rough' ? 'var(--text-strong)' : 'var(--text-muted)',
-                    boxShadow: ceMaterialsModel === 'rough' ? '0 0 0 2px #374151' : 'none',
-                  }}
-                >
-                  Combined
-                </button>
-                <span style={{ flexBasis: '100%', textAlign: 'right', fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.35 }}>
-                  {MATERIALS_MODEL_CAPTION}
-                </span>
-              </div>
-            )
-          })()}
           {panel === 'skeleton' ? (
             // J11-F1: while this bid's Version is still resolving, say so — the empty sentence
             // below used to render here and read as deleted work (same pattern as Pricing, v2.2367).
