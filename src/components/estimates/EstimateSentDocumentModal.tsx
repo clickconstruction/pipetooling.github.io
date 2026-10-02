@@ -125,7 +125,7 @@ export default function EstimateSentDocumentModal({ open, onClose, estimateId }:
       style={{
         position: 'fixed',
         inset: 0,
-        zIndex: 80,
+        zIndex: 780,
         background: 'rgba(0,0,0,0.45)',
         display: 'flex',
         alignItems: 'center',

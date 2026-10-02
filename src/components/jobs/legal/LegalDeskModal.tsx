@@ -195,7 +195,7 @@ function daysAgo(iso: string | null | undefined, todayYmd: string): number | nul
 }
 
 export default function LegalDeskModal(props: LegalDeskModalProps) {
-  const { open, onClose, collectionsJobs, jobsLoading = false, contractCoverage, users, companyName, initialPayerKey = null, initialTab = null, legal = null, canMarkReady = false, canEditReview = false, overlayZIndex = 60 } = props
+  const { open, onClose, collectionsJobs, jobsLoading = false, contractCoverage, users, companyName, initialPayerKey = null, initialTab = null, legal = null, canMarkReady = false, canEditReview = false, overlayZIndex = 760 } = props
   const { showToast } = useToastContext()
   const editCustomer = useEditCustomerModal()
   const todayYmd = todayYmdInAppTz()

@@ -448,7 +448,7 @@ export default function SubPortalGlobeButton({
       <SubPortalVisitsModal personId={visitsOpen ? personId : null} personName={personName} onClose={() => { setVisitsOpen(false); visits.reload() }} />
       {open && (
         <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 80, padding: '1rem' }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 780, padding: '1rem' }}
           onClick={() => setOpen(false)}
         >
           <div

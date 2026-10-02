@@ -455,7 +455,7 @@ export default function TeamReviewSection({
 
       {subTab === 'rate' && scheduleOpen ? (
         <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: '1rem' }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 760, padding: '1rem' }}
           onClick={() => setScheduleOpen(false)}
         >
           <div

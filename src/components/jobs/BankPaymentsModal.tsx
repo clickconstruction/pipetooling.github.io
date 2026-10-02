@@ -2053,7 +2053,7 @@ export default function BankPaymentsModal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 70,
+        zIndex: 770,
         padding: fullScreen ? 0 : 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
         boxSizing: 'border-box',
       }}

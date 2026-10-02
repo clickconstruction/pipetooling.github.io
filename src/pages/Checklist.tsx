@@ -1011,7 +1011,7 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 50,
+            zIndex: 750,
             padding: '1rem',
           }}
           onClick={(e) => e.target === e.currentTarget && setFwdInstance(null)}
@@ -2909,7 +2909,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 55,
+            zIndex: 755,
             padding: '1rem',
           }}
           onClick={() => {
@@ -2990,7 +2990,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 50,
+            zIndex: 750,
             padding: '1rem',
           }}
           onClick={(e) => e.target === e.currentTarget && setFwdInstance(null)}
@@ -3672,7 +3672,7 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId, onOpenR
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 50,
+            zIndex: 750,
             padding: '1rem',
           }}
           onClick={() => {

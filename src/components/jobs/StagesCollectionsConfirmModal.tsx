@@ -3,8 +3,8 @@
  *
  * Moved verbatim out of `JobsStagesTab.tsx`. The note draft stays controlled by the tab (the
  * openers clear it); the confirm — `set_job_collections_flag`, the toast, the reload and the
- * follow-moves focus — stays in the tab as `onConfirm`. z 80 so it paints over call mode
- * (z 70) when opened from its Collections chip (B6 / J4-7).
+ * follow-moves focus — stays in the tab as `onConfirm`. z 780 so it paints over call mode
+ * (z 770) when opened from its Collections chip (B6 / J4-7).
  */
 import type { JobWithDetails } from '../../types/jobWithDetails'
 
@@ -30,7 +30,7 @@ export function StagesCollectionsConfirmModal({
   onConfirm: () => void | Promise<void>
 }) {
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 80 }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 780 }}>
       <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 420 }}>
         <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>
           {confirm.direction === 'to' ? 'Move to Collections?' : 'Send back to Billed?'}

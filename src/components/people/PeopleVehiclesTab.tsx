@@ -2085,7 +2085,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
       </div>
 
       {vehicleFormOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 710, padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))' }}>
           {/* Compact layout (v2.1671): short fields share rows and the dialog
               caps at 90vh with its own scroll, so small viewports can always
               reach Save/Cancel (the old stacked form clipped both). */}
@@ -2180,7 +2180,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
       )}
 
       {handOffVehicle && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 710 }}>
           <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 300, maxWidth: 380 }}>
             <h3 style={{ marginTop: 0, marginBottom: 4 }}>
               {holderByVehicle.get(handOffVehicle.id) ? 'Hand off vehicle' : 'Assign vehicle'}
@@ -2254,7 +2254,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
       )}
 
       {serviceFormOpen && selectedVehicleId && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 710 }}>
           <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 300, maxWidth: 380 }}>
             <h3 style={{ marginTop: 0 }}>Log service</h3>
             <div style={{ marginBottom: '1rem' }}>
@@ -2314,7 +2314,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
       )}
 
       {problemFormOpen && selectedVehicleId && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 710 }}>
           <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 300, maxWidth: 400 }}>
             <h3 style={{ marginTop: 0 }}>Report a problem</h3>
             <div style={{ marginBottom: '1rem' }}>
@@ -2373,7 +2373,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
       )}
 
       {resolvingProblem && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 710 }}>
           <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 300, maxWidth: 400 }}>
             <h3 style={{ marginTop: 0, marginBottom: 4 }}>Resolve problem</h3>
             <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{resolvingProblem.description}</p>
@@ -2410,7 +2410,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
       )}
 
       {valueFormOpen && selectedVehicleId && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 710 }}>
           <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 280 }}>
             <h3 style={{ marginTop: 0 }}>Update replacement value</h3>
             <div style={{ marginBottom: '1rem' }}>
@@ -2430,7 +2430,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
       )}
 
       {plansOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 710 }}>
           <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 560, width: '92%', maxHeight: '85vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.75rem' }}>
               <h3 style={{ margin: 0 }}>Insurance plans</h3>
@@ -2523,7 +2523,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
 
       {/* Check-in settings (v2.2199, dev-only): the cadence + questions that drive Quickfill's Vehicle check-ins station. */}
       {checkinSettingsOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }} onClick={() => setCheckinSettingsOpen(false)}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 710 }} onClick={() => setCheckinSettingsOpen(false)}>
           <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 520, width: '92%', maxHeight: '85vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
             <h3 style={{ marginTop: 0, marginBottom: '0.35rem' }}>Check-in settings</h3>
             <p style={{ margin: '0 0 1rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
@@ -2629,7 +2629,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
       )}
 
       {planFormOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 11 }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 711 }}>
           <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 300, maxWidth: 380 }}>
             <h3 style={{ marginTop: 0 }}>{editingPlan ? 'Edit plan' : 'Add insurance plan'}</h3>
             <div style={{ marginBottom: '1rem' }}>
@@ -2675,7 +2675,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
       )}
 
       {insVehicle && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 11 }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 711 }}>
           <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 300, maxWidth: 380 }}>
             <h3 style={{ marginTop: 0, marginBottom: 4 }}>
               {insuranceByVehicle.get(insVehicle.id) ? 'Change insurance plan' : 'Add to insurance'}
@@ -2804,7 +2804,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
         />
       )}
       {editTask && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 11 }} onClick={() => { if (!editTaskSaving) setEditTask(null) }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 711 }} onClick={() => { if (!editTaskSaving) setEditTask(null) }}>
           <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 300, maxWidth: 420, width: '100%' }} onClick={(e) => e.stopPropagation()}>
             <h3 style={{ marginTop: 0, marginBottom: 4 }}>Edit maintenance task</h3>
             <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
@@ -2854,7 +2854,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
         </div>
       )}
       {assignTask && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 11 }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 711 }}>
           <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 300, maxWidth: 380 }}>
             <h3 style={{ marginTop: 0, marginBottom: 4 }}>Assign maintenance task</h3>
             <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
@@ -2907,7 +2907,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
       )}
 
       {takeOffPeriod && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 11 }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 711 }}>
           <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 300, maxWidth: 380 }}>
             <h3 style={{ marginTop: 0, marginBottom: 4 }}>Take off insurance</h3>
             <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>

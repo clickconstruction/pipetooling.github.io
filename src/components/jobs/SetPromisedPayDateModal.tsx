@@ -146,7 +146,7 @@ export default function SetPromisedPayDateModal({
       role="dialog"
       aria-modal="true"
       aria-label="They said — record a promised payment date"
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 70 }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 770 }}
       onClick={onClose}
     >
       <div

@@ -114,7 +114,7 @@ export function TakeoffViewChooser({
   const card: CSSProperties = { textAlign: 'left', border: '1px solid var(--border)', borderRadius: 12, background: 'var(--surface)', color: 'inherit', padding: '12px 12px 14px', display: 'flex', flexDirection: 'column', gap: 10, cursor: 'pointer', font: 'inherit', minWidth: 0 }
 
   return (
-    <div data-testid="takeoff-view-chooser" style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0, 0, 0, 0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+    <div data-testid="takeoff-view-chooser" style={{ position: 'fixed', inset: 0, zIndex: 760, background: 'rgba(0, 0, 0, 0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <div role="dialog" aria-modal="true" aria-labelledby="takeoff-view-chooser-title" style={{ width: 'min(960px, 100%)', maxHeight: '100%', overflowY: 'auto', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, boxShadow: '0 24px 60px rgba(0, 0, 0, 0.25)', padding: '22px 24px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <div style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>

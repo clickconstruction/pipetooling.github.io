@@ -18,7 +18,7 @@ export default function DocumentsJobBilledInvoiceModal({
   open,
   invoice,
   onClose,
-  overlayZIndex = 70,
+  overlayZIndex = 770,
 }: {
   open: boolean
   invoice: JobsLedgerInvoice | null

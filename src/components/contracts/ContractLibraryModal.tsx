@@ -397,7 +397,7 @@ export function ContractLibraryModal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 12,
+        zIndex: 712,
         padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
       }}
     >
@@ -786,7 +786,7 @@ export function ContractLibraryModal({
           style={{
             position: 'fixed',
             inset: 0,
-            zIndex: 13,
+            zIndex: 713,
             background: 'rgba(0,0,0,0.45)',
             display: 'flex',
             alignItems: 'center',

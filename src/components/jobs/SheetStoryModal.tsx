@@ -387,7 +387,7 @@ export function SheetStoryModal({ sheetId, onClose, jobs, authUserId, onOpenShee
   const label = sheet ? `${sheet.job_number ? `#${sheet.job_number}` : 'Sub sheet'}${story?.job?.customer_name ? ` · ${story.job.customer_name}` : ''}${sheet.address ? ` · ${sheet.address}` : ''}` : ''
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 56, overflowY: 'auto', padding: '2rem 1rem' }} onClick={onClose}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 756, overflowY: 'auto', padding: '2rem 1rem' }} onClick={onClose}>
       <div role="dialog" aria-modal="true" aria-label="Sheet story" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 12, width: 'min(780px, 100%)', boxShadow: '0 20px 60px rgba(0,0,0,.25)', border: '1px solid var(--border)', overflow: 'hidden' }}>
         <div style={{ padding: '0.9rem 1.1rem 0.75rem', borderBottom: '1px solid var(--border)', display: 'grid', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>

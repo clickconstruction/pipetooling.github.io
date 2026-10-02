@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
- * The Person desk ends above the Dispatch / Job mode footer (v2.4380). The bar is fixed at z 1000
- * over the desk (z 60), and the desk's last row — Merge a duplicate…, Archive — sat under it.
+ * The Person desk ends above the Dispatch / Job mode footer (v2.4380). The bar was fixed at z 1000
+ * over the desk (z 60) then, and the desk's last row — Merge a duplicate…, Archive — sat under it.
  */
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'

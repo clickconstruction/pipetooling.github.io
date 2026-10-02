@@ -174,7 +174,7 @@ export default function LinkJobsToCustomersModal({
       role="dialog"
       aria-modal="true"
       aria-label="Link jobs to customers"
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: '1rem' }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 760, padding: '1rem' }}
       onClick={() => {
         if (!saving) onClose()
       }}

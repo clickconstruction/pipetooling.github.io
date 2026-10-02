@@ -288,7 +288,7 @@ export default function BackfillHcpPaymentsModal({
       role="dialog"
       aria-modal="true"
       aria-label="Backfill payment history from HouseCall Pro"
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: '1rem' }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 760, padding: '1rem' }}
       onClick={() => {
         if (!saving) onClose()
       }}

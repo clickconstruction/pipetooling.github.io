@@ -21,7 +21,7 @@ const overlayStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  zIndex: 10,
+  zIndex: 710,
   padding: '1rem',
 }
 const shellStyle: React.CSSProperties = {

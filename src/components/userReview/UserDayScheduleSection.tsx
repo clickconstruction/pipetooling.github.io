@@ -149,7 +149,7 @@ export type UserDayScheduleSectionProps = {
   canSwitchUser?: boolean
   /**
    * Offer "Create new job" in the "+" job picker (v2.2909, J1-F8). Person Desk (page and
-   * drawer, z 60) turns it on; the User Review modal leaves it off because the New Job
+   * drawer, z 760) turns it on; the User Review modal leaves it off because the New Job
    * form (z 1010) would open BEHIND it (z 1200).
    */
   allowCreateNewJob?: boolean

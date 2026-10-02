@@ -60,6 +60,9 @@ jobs:
       - name: Windows close on a click outside, not on the press
         run: npm run check:backdrop-click
 
+      - name: Every window stands above the Dispatch / Job mode dock
+        run: npm run check:window-z
+
       - name: Every dim full-screen backdrop holds a panel marked as a modal
         run: npm run check:dialog-role
 

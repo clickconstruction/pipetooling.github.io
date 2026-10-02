@@ -1935,9 +1935,9 @@ export default function LienDeskModal({
       role="dialog"
       aria-modal="true"
       aria-label="Lien desk"
-      // The Dispatch / Job mode footer is fixed at z 1000; the overlay ends above it (--app-bottom-chrome, v2.2184) so the buttons are never under the bar (v2.3522).
+      // The overlay ends above the Dispatch / Job mode footer (--app-bottom-chrome, v2.2184) so the buttons are never under the bar (v2.3522).
       // The top pads by the status bar (--app-top-chrome, v2.4397) so the title, Share and × are never under an iPhone's clock.
-      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 'var(--app-bottom-chrome, 0px)', paddingTop: 'var(--app-top-chrome, 0px)', background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 80 }}
+      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 'var(--app-bottom-chrome, 0px)', paddingTop: 'var(--app-top-chrome, 0px)', background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 780 }}
       onClick={onClose}
     >
       <div

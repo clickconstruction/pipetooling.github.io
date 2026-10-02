@@ -33,7 +33,7 @@ export default function JobBookModal({ open, onClose, onDbError }: JobBookModalP
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 60,
+        zIndex: 760,
       }}
       onClick={onClose}
     >

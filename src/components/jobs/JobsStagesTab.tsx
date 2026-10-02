@@ -4271,7 +4271,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           canEmailMoneyWaiting={stagesGates.isStagesOfficeRole(authRole)}
           onOpenJobStacked={(jobId, onSaved) => {
             // v2.2311: the Job window (z 1010) stacks above the drill-down
-            // (z 80) — nothing closes, and every save refreshes the list.
+            // (z 780) — nothing closes, and every save refreshes the list.
             tryOpenEditJob(jobId, { initialTab: 'bill', onSaved })
           }}
           onPaySpeedsChanged={() => void refreshBilledPaySpeeds()}
@@ -4306,7 +4306,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             setChaseModalOpen(false)
             applyStagesInvoiceFocus(invoiceId)
           }}
-          // B6 / J4-7: the board's typed confirm layers over call mode (z 80 > 70);
+          // B6 / J4-7: the board's typed confirm layers over call mode (z 780 > 770);
           // the session snapshot stays put while the flag writes.
           onMoveToCollections={
             // same office pool as the section's Collections button (server RPC is authoritative)

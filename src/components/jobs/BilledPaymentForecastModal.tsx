@@ -177,7 +177,7 @@ export default function BilledPaymentForecastModal({
       role="dialog"
       aria-modal="true"
       aria-label="Billed Awaiting Payment payment forecast"
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 760 }}
       onClick={onClose}
     >
       <div

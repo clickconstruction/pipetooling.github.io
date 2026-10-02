@@ -3310,7 +3310,7 @@ export default function Prospects() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 50,
+            zIndex: 750,
           }}
           onClick={() => { if (!saving) { setEditModalOpen(false); setEditingProspect(null) } }}
         >
@@ -3451,7 +3451,7 @@ export default function Prospects() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 50,
+            zIndex: 750,
           }}
           onClick={() => !saving && setCallbackModalOpen(false)}
         >
@@ -3528,7 +3528,7 @@ export default function Prospects() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 50,
+            zIndex: 750,
           }}
           onClick={() => !copyTemplateSaving && setEditingCopyTemplateKey(null)}
         >
@@ -3664,7 +3664,7 @@ export default function Prospects() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 50,
+            zIndex: 750,
           }}
           onClick={() => setCopyBlankFieldsModalOpen(false)}
         >
@@ -3709,7 +3709,7 @@ export default function Prospects() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 50,
+            zIndex: 750,
           }}
           onClick={() => setTimerHistoryModalOpen(false)}
         >
@@ -3783,7 +3783,7 @@ export default function Prospects() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 50,
+            zIndex: 750,
           }}
           onClick={() => setMyTimeModalOpen(false)}
         >
@@ -3862,7 +3862,7 @@ export default function Prospects() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 50,
+            zIndex: 750,
           }}
           onClick={() => !saving && setNewProspectModalOpen(false)}
         >

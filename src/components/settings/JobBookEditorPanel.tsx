@@ -473,7 +473,7 @@ export default function JobBookEditorPanel({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 70,
+            zIndex: 770,
           }}
           onClick={cancelDeleteConfirm}
         >

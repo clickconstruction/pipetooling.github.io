@@ -105,7 +105,7 @@ function FlagSummary({ counts, prefix }: { counts: ApprovalsQueueFlagCounts; pre
   )
 }
 
-export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSession, authUserId, reloadKey, pinUserId, pinDisplayName, zIndex = 60, surface = 'approvals-queue', onApproved, startTypedOnly, startTypist, onOpenDay }: Props) {
+export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSession, authUserId, reloadKey, pinUserId, pinDisplayName, zIndex = 760, surface = 'approvals-queue', onApproved, startTypedOnly, startTypist, onOpenDay }: Props) {
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
   const prefixMap = useLedgerPrefixMap()

@@ -769,7 +769,7 @@ export function PeopleUsersTab({
             bid_id: editSession.bid_id,
             approved_at: editSession.approved_at,
           }}
-          zIndex={110}
+          zIndex={810}
           onClose={() => setEditSession(null)}
           onSaved={() => {
             setHoursQueueReload((k) => k + 1)
@@ -1028,7 +1028,7 @@ export function PeopleUsersTab({
             role="dialog"
             aria-modal="true"
             aria-label={`Link ${linkTarget.name} to an app account`}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 760 }}
           >
             <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 440 }}>
               <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.125rem' }}>Link {linkTarget.name} to an account</h2>

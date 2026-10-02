@@ -63,7 +63,7 @@ export function ViewAsPanel({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 60, padding: '4rem 1rem 1rem' }}>
+    <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 760, padding: '4rem 1rem 1rem' }}>
       <div role="dialog" aria-modal="true" aria-label="View as" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: 10, width: 'min(720px, 100%)', maxHeight: 'calc(100vh - 6rem)', overflow: 'auto', boxShadow: '0 12px 32px rgba(0,0,0,0.25)', padding: '1rem 1.25rem' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', marginBottom: '0.5rem' }}>
           <h2 style={{ margin: 0, fontSize: '1.1rem' }}>View as…</h2>

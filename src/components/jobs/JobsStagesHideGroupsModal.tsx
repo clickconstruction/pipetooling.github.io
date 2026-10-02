@@ -39,7 +39,7 @@ export default function JobsStagesHideGroupsModal({ open, onClose, jobs, filters
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 60,
+        zIndex: 760,
         padding: '1rem',
       }}
       onClick={onClose}

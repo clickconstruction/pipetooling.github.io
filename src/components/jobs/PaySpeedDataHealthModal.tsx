@@ -268,7 +268,7 @@ export default function PaySpeedDataHealthModal({
       role="dialog"
       aria-modal="true"
       aria-label="Data health transactions"
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 80 }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 780 }}
       onClick={onClose}
     >
       <div

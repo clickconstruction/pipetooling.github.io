@@ -274,7 +274,7 @@ export function JobsWeeklyMoneyModal({ open, initialMondayYmd, onClose, showToas
       role="dialog"
       aria-modal="true"
       aria-label="Weekly money movement — money out and in per job"
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 760 }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}

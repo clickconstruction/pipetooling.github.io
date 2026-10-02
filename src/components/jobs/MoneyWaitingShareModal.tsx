@@ -211,7 +211,7 @@ export default function MoneyWaitingShareModal({ onClose }: { onClose: () => voi
       role="dialog"
       aria-modal="true"
       aria-label="Email money waiting report"
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 70 }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 770 }}
       onClick={onClose}
     >
       <div

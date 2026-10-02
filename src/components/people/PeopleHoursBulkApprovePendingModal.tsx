@@ -84,7 +84,7 @@ export function PeopleHoursBulkApprovePendingModal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 60,
+        zIndex: 760,
       }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()

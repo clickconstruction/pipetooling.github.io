@@ -26,7 +26,7 @@ export function DashboardContractSigningPromptModal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 100,
+        zIndex: 800,
         padding: '1rem',
         boxSizing: 'border-box',
       }}

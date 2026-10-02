@@ -190,6 +190,7 @@ export function PeopleHoursPhoneView({
       ) : null}
 
       {person ? (
+        // window-z: allow — a phone page, not a window: the dock stays on top of it and its last 5rem are left clear for it.
         <div role="dialog" aria-modal="true" aria-label={`${person.name} · hours`} data-hours-phone-person={person.userId} style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'var(--bg-page)', overflowY: 'auto', padding: 'calc(0.5rem + env(safe-area-inset-top, 0px)) 0.75rem calc(5rem + env(safe-area-inset-bottom, 0px))', boxSizing: 'border-box' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '0.6rem' }}>
             <button type="button" onClick={() => setPerson(null)} aria-label="Back to hours" style={{ minHeight: 44, padding: '0 0.7rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontWeight: 600, cursor: 'pointer' }}>

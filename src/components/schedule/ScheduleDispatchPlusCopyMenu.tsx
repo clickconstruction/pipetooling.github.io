@@ -65,7 +65,7 @@ export function ScheduleDispatchPlusCopyMenu({
   onClose,
   onLinkedCopy,
   onSoloCopy,
-  zIndex = 200,
+  zIndex = 900,
 }: ScheduleDispatchPlusCopyMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null)

@@ -93,7 +93,7 @@ export default function GcFindCheckModal({ gcId, gcName, onClose }: Props) {
           onClose()
         }
       }}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 64 }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 764 }}
     >
       <div
         onClick={(e) => e.stopPropagation()}

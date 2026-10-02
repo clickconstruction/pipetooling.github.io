@@ -16,6 +16,7 @@ import {
 } from './BidsPriceBookDrawer'
 import type { PriceBookEntryWithFixture, PriceBookVersion } from '../../lib/bids/bidPricingEngineTypes'
 import { settle } from '../../test/renderSmokeMocks'
+import { DISPATCH_MODE_FOOTER_Z_INDEX } from '../dispatchMode/DispatchModeFooter'
 
 const version = (id: string, name: string, o: Record<string, unknown> = {}) =>
   ({ id, name, bid_id: null, is_robot: false, sort_order: 0, ...o }) as unknown as PriceBookVersion
@@ -60,6 +61,14 @@ function parts(over: { books?: Partial<PriceBookDrawerBooks>; entries?: Partial<
 }
 
 describe('BidsPriceBookDrawer', () => {
+  it('runs the height of the screen above the dock, so its last entry is never under it (v2.4431)', async () => {
+    render(<BidsPriceBookDrawer {...parts()} />)
+    await settle()
+    const drawer = screen.getByRole('dialog', { name: 'Price book' })
+    expect(drawer.style.position).toBe('fixed')
+    expect(Number(drawer.style.zIndex)).toBeGreaterThan(DISPATCH_MODE_FOOTER_Z_INDEX)
+  })
+
   it('names the browsed book, stars the one feeding the bid, and every door reports', async () => {
     const p = parts()
     render(<BidsPriceBookDrawer {...p} />)

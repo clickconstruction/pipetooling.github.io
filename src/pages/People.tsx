@@ -2805,7 +2805,7 @@ export default function People() {
       )}
 
       {formOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }} onClick={(e) => { if (e.target === e.currentTarget && !saving) closeForm() }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 710 }} onClick={(e) => { if (e.target === e.currentTarget && !saving) closeForm() }}>
           <div role="dialog" aria-modal="true" aria-labelledby="roster-form-title" style={{ background: 'var(--surface)', padding: '1.25rem 1.5rem', borderRadius: 8, width: 'min(480px, 94vw)', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
             <div>
               <h2 id="roster-form-title" style={{ margin: 0, fontSize: '1.125rem' }}>{editing ? 'Edit person' : 'Add to roster'}</h2>
@@ -2879,7 +2879,7 @@ export default function People() {
         </div>
       )}
       {inviteConfirm && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 710 }}>
           <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
             <p style={{ marginBottom: '1rem' }}>They&apos;ll get an email to set their own password.</p>
             <div style={{ display: 'flex', gap: 8 }}>

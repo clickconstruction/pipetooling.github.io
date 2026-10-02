@@ -98,7 +98,7 @@ export default function SubcontractorJobActivityModal({ open, onClose, jobId, hc
         position: 'fixed',
         inset: 0,
         background: 'rgba(0,0,0,0.45)',
-        zIndex: 58,
+        zIndex: 758,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',

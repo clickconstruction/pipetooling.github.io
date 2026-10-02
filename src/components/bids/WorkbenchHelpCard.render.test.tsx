@@ -9,6 +9,7 @@ import { cleanup, fireEvent, screen } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { plainWordsFailures } from '../../lib/plainWords'
 import { WorkbenchHelpCard } from './WorkbenchHelpCard'
+import { DISPATCH_MODE_FOOTER_Z_INDEX } from '../dispatchMode/DispatchModeFooter'
 
 function props(over: Partial<Parameters<typeof WorkbenchHelpCard>[0]> = {}) {
   return { solo: true, firstScenarioName: 'Base', gcName: 'Acme Builders', gcShort: 'Acme', onClose: vi.fn(), onTakeTour: vi.fn(), ...over }
@@ -70,5 +71,12 @@ describe('WorkbenchHelpCard', () => {
     fireEvent.click(screen.getByRole('button', { name: '▶ Take the tour' }))
     expect(onTakeTour).toHaveBeenCalledTimes(1)
     expect(onClose).toHaveBeenCalledTimes(3)
+  })
+
+  it('the card stands above the dock, so its footer is never under it (v2.4431)', () => {
+    renderWithProviders(<WorkbenchHelpCard {...props()} />)
+    const backdrop = screen.getByRole('presentation')
+    expect(backdrop.style.position).toBe('fixed')
+    expect(Number(backdrop.style.zIndex)).toBeGreaterThan(DISPATCH_MODE_FOOTER_Z_INDEX)
   })
 })
