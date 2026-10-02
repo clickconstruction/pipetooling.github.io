@@ -516,6 +516,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "bid_count_row_custom_costs_count_row_id_fkey"
+            columns: ["count_row_id"]
+            isOneToOne: false
+            referencedRelation: "bids_count_rows"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "bid_count_row_custom_costs_quote_line_id_fkey"
             columns: ["quote_line_id"]
             isOneToOne: false
@@ -11143,6 +11150,67 @@ export type Database = {
           },
           {
             foreignKeyName: "job_supply_house_accounts_supply_house_id_fkey"
+            columns: ["supply_house_id"]
+            isOneToOne: false
+            referencedRelation: "supply_houses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_supply_house_words: {
+        Row: {
+          id: string
+          job_id: string
+          note: string
+          noted_at: string
+          noted_by: string | null
+          noted_by_name: string
+          notice_on: string | null
+          said_by: string
+          supply_house_id: string
+          their_balance: number | null
+        }
+        Insert: {
+          id?: string
+          job_id: string
+          note?: string
+          noted_at?: string
+          noted_by?: string | null
+          noted_by_name?: string
+          notice_on?: string | null
+          said_by?: string
+          supply_house_id: string
+          their_balance?: number | null
+        }
+        Update: {
+          id?: string
+          job_id?: string
+          note?: string
+          noted_at?: string
+          noted_by?: string | null
+          noted_by_name?: string
+          notice_on?: string | null
+          said_by?: string
+          supply_house_id?: string
+          their_balance?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_supply_house_words_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_supply_house_words_noted_by_fkey"
+            columns: ["noted_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_supply_house_words_supply_house_id_fkey"
             columns: ["supply_house_id"]
             isOneToOne: false
             referencedRelation: "supply_houses"
@@ -23402,6 +23470,7 @@ export type Database = {
         Returns: boolean
       }
       can_view_inspection_portal_credentials: { Args: never; Returns: boolean }
+      can_write_bid_custom_costs: { Args: never; Returns: boolean }
       can_write_job_budget: { Args: { p_job_id: string }; Returns: boolean }
       can_write_payment_promises: { Args: never; Returns: boolean }
       check_out_project: { Args: { p_project_id: string }; Returns: Json }
