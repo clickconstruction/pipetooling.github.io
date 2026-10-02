@@ -2531,7 +2531,7 @@ export type Database = {
         Row: {
           closed_at: string | null
           created_at: string
-          email: string
+          email: string | null
           first_seen_at: string | null
           how: string
           id: string
@@ -2548,7 +2548,7 @@ export type Database = {
         Insert: {
           closed_at?: string | null
           created_at?: string
-          email: string
+          email: string | null
           first_seen_at?: string | null
           how?: string
           id?: string
@@ -2565,7 +2565,7 @@ export type Database = {
         Update: {
           closed_at?: string | null
           created_at?: string
-          email?: string
+          email?: string | null
           first_seen_at?: string | null
           how?: string
           id?: string

@@ -18,7 +18,7 @@ describe('SubmittalApproveAllDialog', () => {
     renderWithProviders(<SubmittalApproveAllDialog revLabel="Rev 1" rows={14} alreadyDecided={0} missing={0} people={people} onSave={onSave} onClose={() => {}} />)
     expect(screen.getByRole('dialog', { name: 'They approved Rev 1' })).toBeTruthy()
     expect(screen.getByTestId('approve-all-scope').textContent).toBe('This marks 14 rows Approved in one entry.')
-    expect((screen.getByLabelText('Whose call') as HTMLSelectElement).value).toBe('p1')
+    expect((screen.getByLabelText('Who answered') as HTMLSelectElement).value).toBe('p1')
     const day = screen.getByLabelText('Approved on') as HTMLInputElement
     expect(day.max).toBe(day.value)
     fireEvent.change(screen.getByLabelText('Their note'), { target: { value: 'approved as submitted' } })
@@ -64,7 +64,7 @@ describe('SubmittalApproveAllDialog', () => {
     expect(body.contains(screen.getByRole('button', { name: 'Cancel' }))).toBe(false)
     expect(body.contains(screen.getByTestId('approve-all-save'))).toBe(false)
     // Inside it: every field.
-    expect(body.contains(screen.getByLabelText('Whose call'))).toBe(true)
+    expect(body.contains(screen.getByLabelText('Who answered'))).toBe(true)
     expect(body.contains(screen.getByLabelText('Approved on'))).toBe(true)
     expect(body.contains(screen.getByLabelText('Their note'))).toBe(true)
   })

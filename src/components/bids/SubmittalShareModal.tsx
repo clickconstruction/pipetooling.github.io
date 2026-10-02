@@ -96,7 +96,7 @@ export function SubmittalShareModal({
         // on_conflict cannot name — so read who is already in and insert only the new.
         const { data: already, error: readErr } = await db.from('bid_submittal_people').select('email').eq('room_id', (theRoom as SubmittalRoomRow).id)
         if (readErr) throw readErr
-        const have = new Set(((already ?? []) as Array<{ email: string }>).map((p) => p.email.toLowerCase()))
+        const have = new Set(((already ?? []) as Array<{ email: string | null }>).map((p) => (p.email ?? '').toLowerCase()).filter(Boolean))
         const fresh = filled.filter((p) => !have.has(p.email.trim().toLowerCase()))
         if (fresh.length > 0) {
           const { error } = await db.from('bid_submittal_people').insert(
