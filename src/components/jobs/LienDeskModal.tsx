@@ -1620,6 +1620,9 @@ export default function LienDeskModal({
           setByHandOpen(false)
           onChanged()
         }}
+        // On a phone (v2.4446) the step is a sheet over the desk's card, as in the Lien window: in the footer its 120 px fields cut off their own values.
+        layout={isMobile ? 'sheet' : 'box'}
+        onCloseWindow={onClose}
       />
     ) : null
 
@@ -1960,7 +1963,7 @@ export default function LienDeskModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{ background: 'var(--surface)', borderRadius: fullScreen ? 0 : 10, width: fullScreen ? '100vw' : 'min(1140px, calc(100vw - 2rem))', height: fullScreen ? 'calc(100dvh - var(--app-top-chrome, 0px) - var(--app-bottom-chrome, 0px))' : undefined, maxHeight: fullScreen ? 'calc(100dvh - var(--app-top-chrome, 0px) - var(--app-bottom-chrome, 0px))' : 'calc(100dvh - 2rem - var(--app-top-chrome, 0px) - var(--app-bottom-chrome, 0px))', display: 'grid', gridTemplateRows: 'auto 1fr auto', gridTemplateColumns: 'minmax(0, 1fr)', overflow: 'hidden' }}
+        style={{ position: 'relative', background: 'var(--surface)', borderRadius: fullScreen ? 0 : 10, width: fullScreen ? '100vw' : 'min(1140px, calc(100vw - 2rem))', height: fullScreen ? 'calc(100dvh - var(--app-top-chrome, 0px) - var(--app-bottom-chrome, 0px))' : undefined, maxHeight: fullScreen ? 'calc(100dvh - var(--app-top-chrome, 0px) - var(--app-bottom-chrome, 0px))' : 'calc(100dvh - 2rem - var(--app-top-chrome, 0px) - var(--app-bottom-chrome, 0px))', display: 'grid', gridTemplateRows: 'auto 1fr auto', gridTemplateColumns: 'minmax(0, 1fr)', overflow: 'hidden' }}
         data-lien-desk-panel
       >
         {/* v2.4355: the spacing between the title, the tabs and the doors is the class's column gap (no margins), so a desk narrower than 1,100 px can close it up. */}

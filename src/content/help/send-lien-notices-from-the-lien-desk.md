@@ -111,7 +111,7 @@ A notice already sent to him has {{button:amber|He is here — record it ▸}} o
 
 Some notices are printed here and mailed by hand. One paper may even cover several jobs at a property. Record it with **Already mailed? Record it…**, the quiet link under {{button:outline|Save draft}}.
 
-Type when it went out, how and to whom. Type the claim and the months as they were printed, and the link to the saved copy. Then tick the other unpaid jobs at the property it covered.
+Type when it went out, how and to whom. Type the claim and the months as they were printed, and the link to the saved copy. Then tick the other unpaid jobs at the property it covered. On a phone this step opens as its own page over the desk, and **Back** returns to the notice.
 
 The record lands on every one of those jobs, and the desk stops asking for them. When the paper's claim differs from the app's, the record shows both figures. Neither one is rewritten. The Lien window's notice tab has the same door, {{button:outline|Already sent — record it…}}.
 
