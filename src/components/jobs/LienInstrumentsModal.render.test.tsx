@@ -80,6 +80,13 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     expect(document.querySelector('[data-lien-window-papers]')).toBeNull()
     expect(screen.getByTestId('lien-rules-door')).toBeTruthy()
     expect(screen.queryByText(/lientooling/)).toBeNull()
+    // a computer's foot keeps Cancel and its one wrapping row, and the email panel opens above it (v2.4409 changes a phone only)
+    const foot = document.querySelector('[data-demand-foot]') as HTMLElement
+    expect(foot.style.display).toBe('flex')
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Email with the PDF…' }))
+    expect(document.querySelector('[data-demand-email]')).toBeTruthy()
+    expect(document.querySelector('[data-demand-foot]')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Close' }))
     expect(onClose).toHaveBeenCalledTimes(1)
   })
@@ -106,6 +113,18 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
       fireEvent.click(document.querySelector('[data-lien-window-fold-scrim]')!)
       expect(document.querySelector('[data-lien-window-fold-panel]')).toBeNull()
       expect(onClose).not.toHaveBeenCalled()
+      // the Demand letter's foot (v2.4409): four doors in two rows, no Cancel beside ×, and the email panel stands in for the row while it is open
+      fireEvent.click(screen.getByRole('tab', { name: 'Demand letter' }))
+      const foot = () => document.querySelector('[data-demand-foot]') as HTMLElement | null
+      expect(foot()!.style.display).toBe('grid')
+      expect([...foot()!.querySelectorAll('button')].map((b) => b.textContent!.replace(/ · \d+ documents$/, ''))).toEqual(['Print packet', 'Download PDF', 'Email with the PDF…', 'Save & record send…'])
+      expect(screen.queryByRole('button', { name: 'Cancel' })).toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: 'Email with the PDF…' }))
+      expect(document.querySelector('[data-demand-email]')).toBeTruthy()
+      expect(foot()).toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: 'Back' }))
+      expect(document.querySelector('[data-demand-email]')).toBeNull()
+      expect(foot()).toBeTruthy()
       fireEvent.click(screen.getByRole('button', { name: 'Close' }))
       expect(onClose).toHaveBeenCalledTimes(1)
     } finally {

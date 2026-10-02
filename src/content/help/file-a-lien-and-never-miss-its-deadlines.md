@@ -24,6 +24,8 @@ On a phone the window keeps its top short, so the paper gets the room.
 - Tap the strip again, or the grey area, to put the steps away.
 - The papers sit in one bar: **Demand letter**, **§ 53.056 notice** and **Mechanic's lien**.
 - **§ The rules** and **×** sit beside the title.
+- On **Demand letter** the four buttons at the foot sit in two rows. **×** closes the window, so there is no **Cancel**.
+- {{button:outline-blue|Email with the PDF…}} opens its own panel in place of those buttons. **Back** brings them back.
 
 ## Step 1 — the § 53.056 notice (sub jobs only)
 
