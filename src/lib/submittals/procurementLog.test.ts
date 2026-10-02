@@ -29,7 +29,7 @@ import {
   statusText,
   tagMatchesFixture,
   type ProcurementItemSource,
-  type ProcurementRecord, gcProcurementRows, lineStatus, logIsDraft, procurementSections, tagRollUp } from './procurementLog'
+  type ProcurementRecord, gcProcurementRows, lineStatus, logIsDraft, orderBlockers, procurementSections, tagRollUp } from './procurementLog'
 
 const item = (p: Partial<ProcurementItemSource> & { tag: string; product: string }): ProcurementItemSource => ({ supplyHouse: null, leadTimeDays: null, decision: null, shared: true, ...p })
 const rec = (p: Partial<ProcurementRecord> & { tag: string | null }): ProcurementRecord => ({ id: 'r-' + (p.tag ?? p.label ?? 'x'), label: '', leadTimeDays: null, stage: null, orderedOn: null, poRef: '', expectedOn: null, deliveredOn: null, note: '', sortOrder: 0, ...p })
@@ -496,5 +496,28 @@ describe('2026-10-02 · a line in a phrase, a tag in a heading', () => {
     expect(logIsDraft(lines)).toBe(false)
     expect(logIsDraft(lines.filter((r) => r.partKey === 'k-draft'))).toBe(true)
     expect(logIsDraft([])).toBe(false)
+  })
+})
+
+describe('2026-10-02 · what still blocks ordering', () => {
+  it('counts the lines not yet ordered that have no lead time, no house or no stage; a row with no product is named; hand and ordered lines are left out', () => {
+    const lines = buildProcurementLog({
+      items: [
+        item({ tag: 'WC-1', product: 'TOTO CT728CUVG#01', partKey: 'k-bowl', supplyHouse: 'Moore Supply', leadTimeDays: 21, stage: 'trim_set', itemId: 'row-wc' }),
+        item({ tag: 'WC-1', product: 'TOTO TET2UB31#SS', partKey: 'k-valve', supplyHouse: 'Moore Supply', itemId: 'row-wc' }),
+        item({ tag: 'WC-1', product: 'BRASSCRA PLB113XP', partKey: 'k-stop', itemId: 'row-wc', orderOnly: true, stage: 'trim_set' }),
+        item({ tag: 'WC-1', product: 'JOSAM 12694 carrier', partKey: 'k-josam', itemId: 'row-wc' }),
+        item({ tag: 'UTILITY SINK', product: '(no product)', itemId: 'row-us' }),
+      ],
+      records: [{ id: 'r1', tag: 'WC-1', partKey: 'k-josam', label: '', leadTimeDays: null, stage: null, orderedOn: '2026-09-23', poRef: '', expectedOn: null, deliveredOn: null, note: '', sortOrder: 0 }, { id: 'r2', tag: null, label: 'Gas regulator', leadTimeDays: null, stage: null, orderedOn: null, poRef: '', expectedOn: null, deliveredOn: null, note: '', sortOrder: 1 }],
+      tagStage: {},
+      stageDates: {},
+    })
+    expect(orderBlockers(lines)).toEqual({
+      noLead: ['part:k-valve', 'part:k-stop'],
+      noHouse: ['part:k-stop'],
+      noStage: ['part:k-valve'],
+      noProduct: [{ key: 'UTILITY SINK', tag: 'UTILITY SINK', itemId: 'row-us' }],
+    })
   })
 })

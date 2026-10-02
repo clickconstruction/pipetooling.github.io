@@ -141,6 +141,43 @@ export async function applyPartWrites(db: SupabaseClient, itemId: string, w: Par
 }
 
 /**
+ * The office's facts on many log lines at once (2026-10-02, the procurement log's tick bar): the
+ * house, the lead time and the stage. A part's line writes its part (matched by row and procure
+ * key, so the same part on an older revision is left as it was); a row's own line writes the
+ * row's house and lead time (a row has no stage of its own). Each row with parts then reads its
+ * roll-up again. Returns how many lines took it.
+ */
+export async function setLineFacts(
+  db: SupabaseClient,
+  lines: ReadonlyArray<{ itemId: string; partKey: string | null }>,
+  patch: { supply_house_id?: string | null; lead_time_days?: number | null; stage?: string | null },
+): Promise<number> {
+  const now = new Date().toISOString()
+  const rowPatch: Record<string, unknown> = {}
+  if ('supply_house_id' in patch) rowPatch.supply_house_id = patch.supply_house_id
+  if ('lead_time_days' in patch) rowPatch.lead_time_days = patch.lead_time_days
+  let done = 0
+  const withParts = new Set<string>()
+  for (const l of lines) {
+    if (l.partKey) {
+      const { error } = await db.from('bid_submittal_item_parts').update({ ...patch, updated_at: now }).eq('item_id', l.itemId).eq('procure_key', l.partKey)
+      if (error) throw error
+      withParts.add(l.itemId)
+      done++
+    } else if (Object.keys(rowPatch).length > 0) {
+      const { error } = await db.from('bid_submittal_items').update(rowPatch).eq('id', l.itemId)
+      if (error) throw error
+      done++
+    }
+  }
+  for (const itemId of withParts) {
+    const { error } = await db.from('bid_submittal_items').update(rollUpFromParts(await loadItemParts(db, [itemId]))).eq('id', itemId)
+    if (error) throw error
+  }
+  return done
+}
+
+/**
  * A tag's own procurement line moved onto a part (a fold): the dates typed for the row it was
  * stay with the part it became. A tag with no line moves nothing, and before the part lines'
  * column is pushed nothing moves (the log then keeps the fixture's line as logged before its parts).

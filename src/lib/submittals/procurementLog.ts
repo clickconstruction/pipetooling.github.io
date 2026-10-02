@@ -442,6 +442,29 @@ export function lineStatus(r: ProcurementRow): LineStatus {
   return { tone: 'none', text: '', sub: extra([]) }
 }
 
+export type OrderBlockers = { noLead: string[]; noHouse: string[]; noStage: string[]; noProduct: Array<{ key: string; tag: string; itemId: string | null }> }
+
+/**
+ * What still blocks ordering (2026-10-02, BP375: 0 of 46 parts had a lead time, 18 no house,
+ * 8 no stage): the line keys missing each, over the lines not yet ordered (an ordered line has
+ * its house). A row with no product is its own item. Hand lines are left out: they are typed
+ * on the log itself.
+ */
+export function orderBlockers(rows: ReadonlyArray<ProcurementRow>): OrderBlockers {
+  const out: OrderBlockers = { noLead: [], noHouse: [], noStage: [], noProduct: [] }
+  for (const r of rows) {
+    if (r.isHand || r.orderedOn || r.deliveredOn) continue
+    if (!r.partKey && r.product === '(no product)') {
+      out.noProduct.push({ key: r.key, tag: r.tag ?? '', itemId: r.itemId ?? null })
+      continue
+    }
+    if (r.leadTimeDays == null) out.noLead.push(r.key)
+    if (!r.supplyHouse) out.noHouse.push(r.key)
+    if (!r.stage) out.noStage.push(r.key)
+  }
+  return out
+}
+
 /** No line has gone to the GC yet: the log says so once instead of on every line. */
 export function logIsDraft(rows: ReadonlyArray<ProcurementRow>): boolean {
   const sent = rows.filter((r) => !r.isHand)

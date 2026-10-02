@@ -6,7 +6,7 @@
  * and Send update recording a snapshot with the changes.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { SubmittalProcurementPanel } from './SubmittalProcurementPanel'
 import type { ProcurementItemSource } from '../../lib/submittals/procurementLog'
@@ -34,7 +34,7 @@ vi.mock('../../lib/supabase', () => {
   const builder = (table: string, op: string, payload?: unknown) => {
     const b: Record<string, unknown> = {}
     const chain = () => b
-    for (const m of ['eq', 'in', 'order', 'limit', 'select']) b[m] = chain
+    for (const m of ['eq', 'in', 'order', 'limit', 'select', 'range', 'is']) b[m] = chain
     b.maybeSingle = () => ({ then: (res: (v: unknown) => void) => res({ data: answer(table), error: null }) })
     b.then = (res: (v: unknown) => void) => {
       if (op !== 'select') {
@@ -400,6 +400,43 @@ describe('SubmittalProcurementPanel', () => {
     // Away from its fixture, a part names its assembly.
     fireEvent.click(screen.getByRole('button', { name: 'By house' }))
     expect(screen.getAllByTestId('procurement-in-assembly').map((x) => x.textContent)).toContain('in EWC1 assembly')
+    localStorage.removeItem('submittals_procure_lens')
+  })
+
+  it('2026-10-02 · Before you can order counts what is missing; Tick the N ticks those lines; the tick bar sets one house and one lead time on all of them', async () => {
+    localStorage.setItem('submittals_procure_lens', 'by_tag')
+    state.records = []
+    writes.length = 0
+    const onLinesChanged = vi.fn()
+    const lines: ProcurementItemSource[] = [
+      { tag: 'LAV-1', product: 'TOTO T25S51E#CP', supplyHouse: null, leadTimeDays: null, decision: null, shared: false, partKey: 'k-faucet', partOrder: 1, itemId: 'row-lav', stage: 'trim_set' },
+      { tag: 'LAV-1', product: 'BOBRICK B-8236', supplyHouse: null, leadTimeDays: null, decision: null, shared: false, partKey: 'k-soap', partOrder: 2, itemId: 'row-lav', stage: 'trim_set' },
+      { tag: 'HB-3', product: 'WOODFORD B74C', supplyHouse: 'Moore Supply', leadTimeDays: 14, decision: null, shared: false, itemId: 'row-hb' },
+      { tag: 'UTILITY SINK', product: '(no product)', supplyHouse: null, leadTimeDays: null, decision: null, shared: false, itemId: 'row-us' },
+    ]
+    renderWithProviders(<SubmittalProcurementPanel bidId="b1" bidLabel="B375" companyName="Click" items={lines} reviewerNames={[]} currentUser={{ id: 'u', name: 'Wendi' }} houses={[{ id: 'h-moore', name: 'Moore Supply' }, { id: 'h-nws', name: 'National Wholesale' }]} onLinesChanged={onLinesChanged} onOpenItem={() => {}} />)
+    const box = await screen.findByTestId('procurement-blockers')
+    expect(screen.getByTestId('procurement-blocker-lead').textContent).toBe('2 parts have no lead time, so no order-by date can be worked out.Tick the 2')
+    expect(screen.getByTestId('procurement-blocker-house').textContent).toBe('2 parts have no house.Tick the 2')
+    // HB-3 has no takeoff stage: one line.
+    expect(screen.getByTestId('procurement-blocker-stage').textContent).toBe('1 part has no stage.Tick the 1')
+    expect(screen.getByTestId('procurement-blocker-product').textContent).toBe('UTILITY SINK has no product yet.Open it')
+    expect(box).toBeTruthy()
+    fireEvent.click(within(screen.getByTestId('procurement-blocker-house')).getByRole('button', { name: 'Tick the 2' }))
+    expect(screen.getByTestId('procurement-bulk').textContent).toContain('2 lines ticked')
+    const set = screen.getByTestId('procurement-bulk-set') as HTMLButtonElement
+    expect(set.disabled).toBe(true)
+    fireEvent.change(screen.getByLabelText('House, for every ticked line'), { target: { value: 'h-nws' } })
+    fireEvent.change(screen.getByLabelText('Lead time, for every ticked line'), { target: { value: '3 wk' } })
+    fireEvent.click(set)
+    await waitFor(() => expect(onLinesChanged).toHaveBeenCalledTimes(1))
+    const partWrites = writes.filter((w) => w.table === 'bid_submittal_item_parts' && w.op === 'update')
+    expect(partWrites).toHaveLength(2)
+    expect(partWrites[0]!.payload).toMatchObject({ supply_house_id: 'h-nws', lead_time_days: 21 })
+    // The row reads its parts again.
+    expect(writes.some((w) => w.table === 'bid_submittal_items' && w.op === 'update')).toBe(true)
+    expect(screen.queryByTestId('procurement-bulk')).toBeNull()
+    await waitFor(() => expect(screen.getByText('National Wholesale, 3 wk set on 2 lines.')).toBeTruthy())
     localStorage.removeItem('submittals_procure_lens')
   })
 })
