@@ -40,6 +40,8 @@ import { buildLienTimelineFromWindow } from '../../lib/jobs/lienTimelineDesk'
 import LienTimelineStrip from './LienTimelineStrip'
 import LienWindowFoldedSteps from './LienWindowFoldedSteps'
 import { useIsMobile } from '../../hooks/useIsMobile'
+import { useLienJobSuppliers } from '../../hooks/useLienJobSuppliers'
+import { LienJobSuppliersCard } from './LienJobSuppliers'
 import { useForecastWorkMonths } from '../../hooks/useForecastWorkMonths'
 import { type CustomerAddressRow, type JobPropertyOwnerLike } from '../../lib/jobs/lienProperty'
 import LienFilingTabs from './LienFilingTabs'
@@ -588,6 +590,10 @@ export default function LienInstrumentsModal({
   const { byJob: windowWorkMonths } = useForecastWorkMonths(open ? forecastJobs : null, todayYmdLocal())
   // On a phone (v2.4398) the steps fold to one strip and the papers are one bar; the bar says when a paper is past its right edge.
   const isMobile = useIsMobile()
+  // Supply houses on this job (v2.4404): one folded line in the header, the desk's card when opened.
+  const supplierJobIds = useMemo(() => (job ? [job.id] : []), [job])
+  const suppliers = useLienJobSuppliers(supplierJobIds, open && job != null)
+  const supplierJob = job ? suppliers.byJob.get(job.id) : undefined
   const tabBarRef = useRef<HTMLDivElement | null>(null)
   const [tabBarMore, setTabBarMore] = useState(false)
   const readTabBar = useCallback(() => {
@@ -898,6 +904,21 @@ export default function LienInstrumentsModal({
                 <LienTimelineStrip timeline={timeline} />
               </div>
             )
+          ) : null}
+          {supplierJob ? (
+            // The header does not scroll, so the opened card scrolls inside its own height and the paper keeps the window.
+            <div style={{ marginTop: isMobile ? '0.4rem' : '0.6rem', maxHeight: '42dvh', overflowY: 'auto' }}>
+              <LienJobSuppliersCard
+                job={supplierJob}
+                propertyKind={propertyKind}
+                todayYmd={todayYmdLocal()}
+                openBalance={Math.max(0, Number(job.revenue ?? 0) - Number(job.payments_made ?? 0))}
+                payerName={(job.gcCustomer?.name ?? '').trim() || (job.customer_name ?? '').trim()}
+                jobLabel={`${jobNumber} · ${(job.job_name ?? '').trim() || 'Job'}`}
+                isMobile={isMobile}
+                startFolded
+              />
+            </div>
           ) : null}
         </div>
 

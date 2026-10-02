@@ -133,6 +133,18 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
     if (param) setFilter(filterFromParam(param))
   }, [searchParams])
   const [expandedJobId, setExpandedJobId] = useState<string | null>(null)
+  // `?job=<id>` (v2.4404): the Lien desk's door. Once the rows are in, that job's statement opens and scrolls into view.
+  const jobParam = searchParams.get('job')
+  const jobParamDoneRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!active || !view || !jobParam || jobParamDoneRef.current === jobParam) return
+    jobParamDoneRef.current = jobParam
+    if (!view.rows.some((r) => r.jobId === jobParam)) return
+    setFilter('all')
+    setExpandedJobId(jobParam)
+    // After the rows have laid out: a frame is too early on a cold load.
+    window.setTimeout(() => document.querySelector(`[data-held-job="${CSS.escape(jobParam)}"]`)?.scrollIntoView({ block: 'start' }), 250)
+  }, [active, view, jobParam])
   const loadStartedRef = useRef(false)
 
   async function load() {
@@ -492,7 +504,7 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
                   const expanded = expandedJobId === row.jobId
                   const dimmed = row.status === 'settled'
                   return (
-                    <div key={row.jobId} style={{ borderTop: i === 0 ? 'none' : '1px solid var(--border)' }}>
+                    <div key={row.jobId} data-held-job={row.jobId} style={{ borderTop: i === 0 ? 'none' : '1px solid var(--border)', scrollMarginTop: 96 }}>
                       <div
                         role="button"
                         tabIndex={0}

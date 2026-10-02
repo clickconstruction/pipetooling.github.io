@@ -214,6 +214,7 @@ button:focus-visible {
   --text-blue-800: #1e40af;
   --text-green-800: #166534;
   --text-emerald-800: #065f46;
+  --text-teal-700: #0f766e; /* a job account: the storefront and its words (v2.4404) */
   --text-red-900: #7f1d1d;
   --text-sky-700: #0369a1;
   --text-sky-800: #075985;
@@ -333,6 +334,7 @@ button:focus-visible {
   --text-blue-800: #93c5fd;
   --text-green-800: #86efac;
   --text-emerald-800: #6ee7b7;
+  --text-teal-700: #5eead4;
   --text-red-900: #fca5a5;
   --text-sky-700: #7dd3fc;
   --text-sky-800: #7dd3fc;

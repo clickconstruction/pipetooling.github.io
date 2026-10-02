@@ -302,4 +302,6 @@ Nothing is mailed or recorded until the run is recorded. Afterwards, the GC's ro
 - **Approve, hold and set a standing rule:** a dev or a master technician. The database refuses an approval from anyone else. It also refuses a send on a spoken word without a note.
 - **Put a GC on notice:** the office opens it and readies the owners. Approving all of it is for the master or a dev. A send on the spoken word is for an assistant, a controller or a dev.
 
+A storefront on a row means a supply house is still owed on that job. The card that explains it is in [see which supply houses are owed on a lien job](/help/see-which-supply-houses-are-owed-on-a-lien-job).
+
 The Texas rules behind these dates are in [read the Texas lien rules the app follows](/help/texas-lien-rules-the-app-follows).

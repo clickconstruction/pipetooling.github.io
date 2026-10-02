@@ -9,7 +9,7 @@ covers:
   - src/components/SupplyHousesTab.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-09-28
+last_updated: 2026-10-02
 ---
 
 ## Overview
@@ -182,7 +182,7 @@ Page-level modals: `PartFormModal` (extracted; opened from Parts Book, Assembly 
 
 - **Parent JSX:** always-mounted `<MaterialsJobAccountsTab active myRole onOpenSupplyHouse>` 1973–1985; returns null when inactive or for non-office roles (literal role check).
 - **What it is:** per-job money flow — `jobs_ledger.revenue`/`payments_made` against `supply_house_invoice_job_allocations` × `supply_house_invoices`; "holding for suppliers" = unpaid supplier balances on jobs the customer has paid.
-- **Inside the tab:** all state; loads on first activation via `fetchAllRows`/`fetchAllRowsChunkedIn` + `withSupabaseRetry`; kernel `buildJobAccountsView`/`classifyJobAccount` (tested); Open job via `useJobFormModal().openEditJob`.
+- **Inside the tab:** all state; loads on first activation via `fetchAllRows`/`fetchAllRowsChunkedIn` + `withSupabaseRetry`; kernel `buildJobAccountsView`/`classifyJobAccount` (tested); Open job via `useJobFormModal().openEditJob`; `?job=<id>` (the Lien desk's door, v2.4404) opens that job's statement and scrolls to it.
 - **External coupling:** `onOpenSupplyHouse(houseId)` → parent sets `supplyHouseToAutoOpen`, switches to `supply-houses`; `SupplyHousesTab` auto-opens the house once its list has it (effect 517–524). The service-type row is hidden on this tab (1361).
 
 ### `po-generator` — PO Generator
