@@ -29,9 +29,11 @@ type Props = {
   /** Add a person to the customer for good; absent = the bid has no customer to add one to. */
   onAddPerson?: (name: string, phone: string) => Promise<FollowupPickPerson | null>
   saving: boolean
-  saveLabel: string
-  onSave: () => void
-  onCancel: () => void
+  /** False = the questions only, inside a form that has its own Save (Edit Bid → Log contact…). */
+  actions?: boolean
+  saveLabel?: string
+  onSave?: () => void
+  onCancel?: () => void
   /** Said beside Save while no day is picked. */
   noDayHint: string
   /** Offer **No date**: the bid has a day and this takes it away. */
@@ -56,7 +58,7 @@ function chipStyle(on: boolean, dashed = false): CSSProperties {
   }
 }
 
-export function FollowupPickPanel({ todayYmd, value, onChange, people, onAddPerson, saving, saveLabel, onSave, onCancel, noDayHint, onRemove }: Props) {
+export function FollowupPickPanel({ todayYmd, value, onChange, people, onAddPerson, saving, actions = true, saveLabel = 'Save', onSave, onCancel, noDayHint, onRemove }: Props) {
   const [dateOpen, setDateOpen] = useState(false)
   const [personOpen, setPersonOpen] = useState(false)
   const [personName, setPersonName] = useState('')
@@ -92,7 +94,7 @@ export function FollowupPickPanel({ todayYmd, value, onChange, people, onAddPers
   const inputStyle: CSSProperties = { font: 'inherit', fontSize: '0.75rem', padding: '0.22rem 0.45rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-strong)' }
 
   return (
-    <div role="group" aria-label="When to call again" style={{ marginTop: '0.5rem', borderTop: '1px dashed var(--border-strong)', paddingTop: '0.35rem' }}>
+    <div role="group" aria-label="When to call again" style={actions ? { marginTop: '0.5rem', borderTop: '1px dashed var(--border-strong)', paddingTop: '0.35rem' } : undefined}>
       <div style={rowStyle}>
         <span style={labelStyle}>Call again</span>
         {quick.map((q) => (
@@ -200,6 +202,12 @@ export function FollowupPickPanel({ todayYmd, value, onChange, people, onAddPers
         </>
       ) : null}
 
+      {!actions ? (
+        <div style={{ ...rowStyle, fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+          <span style={labelStyle} aria-hidden />
+          {value.ymd ? `Out of the queue until ${followupDateLabel(value.ymd, todayYmd)}.` : noDayHint}
+        </div>
+      ) : (
       <div style={rowStyle}>
         <span style={labelStyle} aria-hidden />
         <button
@@ -217,6 +225,7 @@ export function FollowupPickPanel({ todayYmd, value, onChange, people, onAddPers
           {value.ymd ? `Out of the queue until ${followupDateLabel(value.ymd, todayYmd)}.` : noDayHint}
         </span>
       </div>
+      )}
     </div>
   )
 }

@@ -54,7 +54,7 @@ The **Later** line over the cards unfolds the parked bids, the soonest day first
 
 A day holds until you log a call on that day or after it. A call before the day leaves it alone. So a call in November does not erase January 5.
 
-A bid has one day, even when it went to several GCs. A parked bid is not asked for its bid tab either. The builder's own date counts too. That is the **next follow-up** you promise at the end of a call session. A bid with no day of its own waits on its builder's.
+A bid has one day, even when it went to several GCs. A parked bid is not asked for its bid tab either. The old lenses leave it alone too. **Waiting to hear** reads it as caught up. **By builder** and **By status** do not paint it red. The Bid Board and the **By builder** card show the day as a small chip. The builder's own date counts too. That is the **next follow-up** you promise at the end of a call session. A bid with no day of its own waits on its builder's.
 
 Everything below still works exactly as before, behind the **Old:** divider. That is the four original lenses:
 
@@ -159,7 +159,7 @@ The tab may arrive **in writing**, as a GC email listing every number. Then flip
 
 Every tap writes a bid note and stamps **Last Contact**. The pill goes green and the next bid opens. So the Bid Board and By builder queue stay current for free. On a multi-GC bid the tap remembers **which GC** you talked to. One rule to know: only real contacts move the Last Contact clock. A real contact is an entry with a method: call, text, email or in person. A plain note you write to yourself doesn't silence the gone-quiet nag.
 
-Need to record a call after the fact? **Edit Bid → Log contact…** takes the method, the time, the GC, and what was said. The time can be backdated. The rest of the form keeps saving on its own around it. Logging a contact is its own record, never lost to a form save. **Lost…** reveals the same six reason chips as the Why we lost lens. A loss you learn about on the chase call gets its reason recorded on the spot. It never joins the unexplained backlog. Type **what they said** in the note box first and it saves with the tap.
+Need to record a call after the fact? **Edit Bid → Log contact…** takes the method, the time, the GC, and what was said. The time can be backdated. On a sent bid with no answer it also asks **Call again**, the same three questions as the Call queue. Under it, the **Call again** line shows the day the bid has. {{button:outline|Set a day…}} or {{button:outline|Change…}} moves the day with no call. The rest of the form keeps saving on its own around it. Logging a contact is its own record, never lost to a form save. **Lost…** reveals the same six reason chips as the Why we lost lens. A loss you learn about on the chase call gets its reason recorded on the spot. It never joins the unexplained backlog. Type **what they said** in the note box first and it saves with the tap.
 
 
 ## One bid, several GCs — every queue knows

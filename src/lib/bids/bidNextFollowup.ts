@@ -17,7 +17,7 @@
  */
 
 import { bidNeedsChase, PENDING_CHASE_STALE_CONTACT_DAYS } from '../bidPendingChase'
-import { calendarYmdInAppTzFromIso, formatWorkDateYmdWeekdayShortFriendly, ymdAddDays, ymdDaysBetween } from '../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, formatWorkDateYmdMonthDayShort, formatWorkDateYmdWeekdayShortFriendly, ymdAddDays, ymdDaysBetween } from '../../utils/dateUtils'
 
 export type FollowupReasonKey = 'budget' | 'owner_deciding' | 'not_awarded' | 'other'
 
@@ -297,4 +297,38 @@ export function bidFollowupColumns(bid: unknown): BidFollowupColumns {
     reason: isFollowupReasonKey(reason) ? reason : null,
     entryId: str(row.next_followup_entry_id),
   }
+}
+
+// --- The day on other screens (v2.4421) --------------------------------------
+
+/**
+ * The chip beside a bid wherever it is listed: only for a bid standing on a day of its own.
+ * "call again Tue, Jan 5 · J. Rayburn", "call today", "call was due Tue, Sep 29".
+ */
+export function followupChip(args: {
+  bid: unknown
+  sentIso: string | null
+  lastContactIso: string | null
+  todayYmd: string
+  nowIso: string
+  personName?: string | null
+}): { label: string; /** For a narrow column: "Jan 5", "today", "was Sep 29". */ short: string; tone: 'red' | 'amber' | 'blue'; title: string } | null {
+  const cols = bidFollowupColumns(args.bid)
+  if (!cols.nextYmd || !args.sentIso) return null
+  const f = resolveBidFollowup({ sentIso: args.sentIso, lastContactIso: args.lastContactIso, bidNextYmd: cols.nextYmd }, args.todayYmd, args.nowIso)
+  if (f.source !== 'bid' || !f.dueYmd) return null
+  const day = followupDateLabel(f.dueYmd, args.todayYmd)
+  const person = args.personName?.trim() ? ` · ${args.personName.trim()}` : ''
+  const waiting = followupReasonLabel(cols.reason)
+  const title = [`Call again ${day}`, args.personName?.trim() ? `ask for ${args.personName.trim()}` : null, waiting && cols.reason !== 'other' ? `waiting on ${waiting.charAt(0).toLowerCase()}${waiting.slice(1)}` : null].filter(Boolean).join(' · ')
+  const md = formatWorkDateYmdMonthDayShort(f.dueYmd)
+  if (f.state === 'overdue') return { label: `call was due ${day}${person}`, short: `was ${md}`, tone: 'red', title }
+  if (f.state === 'due') return { label: `call today${person}`, short: 'today', tone: 'amber', title }
+  return { label: `call again ${day}${person}`, short: md, tone: 'blue', title }
+}
+
+/** A bid parked on its own day still ahead: the lenses that nag about quiet bids leave it alone. */
+export function bidIsParked(bid: unknown, lastContactIso: string | null, todayYmd: string): boolean {
+  const cols = bidFollowupColumns(bid)
+  return followupDayStands(cols.nextYmd, lastContactIso) && cols.nextYmd > todayYmd
 }

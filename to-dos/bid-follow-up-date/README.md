@@ -2,16 +2,16 @@
 name: "Call again on a date: follow-up dates for bids"
 number: 80
 group: ready
-status: building on claude/bid-next-followup-* · PR 1 (the database) is v2.4419 · PR 2 (the Call queue) is v2.4420
+status: building on claude/bid-next-followup-* · PRs 1 to 3 are v2.4419, v2.4420 and v2.4421
 summary: >
   A GC says "next budget year, call us in January". The Call queue could only bring a bid back
   every seven days, and nothing held the date or who to ask for. Now a contact can say when to
   call again, who to ask for and what the bid waits on. The queue sorts by what is due, and the
   date shows on the Dashboard, the Calendar and the phone on the day.
-next: PR 3, the Bid Board chip, the Edit Bid field and the two old lenses.
+next: PR 4, the Dashboard Needs You item and the Calendar chip.
 size: M — five small PRs
 blocker: none
-ver: v2.4419 · 4420
+ver: v2.4419 · 4420 · 4421
 opinion: do — the owner approved the mock-up and the re-sort on 2026-10-02
 ---
 
@@ -66,7 +66,7 @@ the seven-day rule, and a second place to look); "on hold" as a special state.
 2. **The Call queue** (v2.4420), shipped: the three questions under Left message, Still pending and Rebid / RFQ; Due,
    Overdue, No date yet and Later; the due card with who to ask for and what they said last time;
    *change date* on a Later row.
-3. **The rest of Bids**: the chip on the Bid Board row and the By builder card; the field beside
+3. **The rest of Bids** (v2.4421), shipped: the chip on the Bid Board row and the By builder card; the field beside
    Log contact in Edit Bid; Waiting to hear stops listing a parked bid as needing a chase.
 4. **Dashboard and Calendar**: a Needs You item for picked dates due or overdue; a chip on the day.
 5. **The phone**: a notification on the morning of the date to the account manager.
