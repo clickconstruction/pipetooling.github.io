@@ -1,23 +1,38 @@
 /**
- * Bids → Pricing: "This number vs your history" (Workbench iteration 3; bid tabs v2.2085) —
- * the pure half of the history block in region P2 of
+ * Bids → Pricing: the estimated-margin slice of "Bids like this" (Workbench iteration 3; bid
+ * tabs v2.2085; the fitted scale and the plain verdict v2.4418) — region P2 of
  * `docs/BIDS_PRICING_LABOR_TABS_ARCHITECTURE.md`. Margins here are estimates: a past bid's
  * value against its stored cost estimate, no clocked labor.
  *
- * The block shows only with three or more past bids that were won or lost on price. The scale
- * runs 20 %–65 %; a mark outside it draws at the nearer end.
+ * The slice shows only with three or more past bids that were won or lost on price and carry
+ * a usable cost estimate. The scale fits what it draws, in tens.
  */
 import { countTabsMatchedOrBeaten, marginPctToMatchTabLow } from '../bidTabCapture'
 import type { BidPricingHistoryRow } from '../../types/database-functions'
 
-export const MARGIN_HISTORY_SCALE_MIN = 20
-export const MARGIN_HISTORY_SCALE_MAX = 65
-/** Fewer won + lost-on-price bids than this and the block stays away. */
+/** The scale never runs past these, whatever it has to draw. */
+export const MARGIN_HISTORY_SCALE_FLOOR = -20
+export const MARGIN_HISTORY_SCALE_CEILING = 100
+/** The scale is never narrower than this many points. */
+export const MARGIN_HISTORY_SCALE_MIN_SPAN = 30
+/** Fewer won + lost-on-price bids than this and the slice stays away. */
 export const MARGIN_HISTORY_MIN_BIDS = 3
+/** Fewer dots than this and the slice says its evidence is thin. */
+export const MARGIN_HISTORY_THIN_BELOW = 10
+/** Half a point of tolerance wherever a margin is compared with a past bid's. */
+const TOLERANCE = 0.5
 
 export type MarginHistoryBid = BidPricingHistoryRow & { /** Estimated margin, a fraction. */ m: number }
 export type MarginHistoryTabMark = { label: string; matchPct: number; customerId: string | null }
-export type MarginHistoryVerdict = { text: string; color: string }
+export type MarginHistoryTone = 'good' | 'warn' | 'neutral'
+export type MarginHistoryVerdict = {
+  /** The few words on the folded line, after the margin itself: "above your one win". */
+  chip: string
+  /** The full sentences under the scale. */
+  sentence: string
+  tone: MarginHistoryTone
+}
+export type MarginHistoryScale = { min: number; max: number; ticks: number[] }
 
 export type PricingMarginHistoryView = {
   won: MarginHistoryBid[]
@@ -29,6 +44,12 @@ export type PricingMarginHistoryView = {
   tabsMatched: number | null
   /** This GC's own tabs, once there are two: the range of margins that matched their lows. */
   gcTabs: { count: number; lowPct: number; highPct: number } | null
+  /** Fitted to every dot, every tab mark and the current margin. */
+  scale: MarginHistoryScale
+  /** Every past bid won or lost on price, with a usable cost estimate or not. */
+  decidedOnNumber: number
+  /** True while the dots are too few to lean on. */
+  thin: boolean
 }
 
 /** A past bid's estimated margin as a fraction; null when it has no value to divide by. */
@@ -36,35 +57,111 @@ export function marginOfHistoryRow(h: Pick<BidPricingHistoryRow, 'bid_value' | '
   return h.bid_value > 0 ? (h.bid_value - h.est_cost) / h.bid_value : null
 }
 
-/** Where a margin sits on the 20–65 scale, as a CSS `left`. */
-export function marginHistoryScaleLeft(mPct: number): string {
-  const clamped = Math.min(MARGIN_HISTORY_SCALE_MAX, Math.max(MARGIN_HISTORY_SCALE_MIN, mPct))
-  return `${((clamped - MARGIN_HISTORY_SCALE_MIN) / (MARGIN_HISTORY_SCALE_MAX - MARGIN_HISTORY_SCALE_MIN)) * 100}%`
-}
-
-/** Where the current margin stands against the wins and the price losses at or below it (half a point of tolerance). */
-export function marginHistoryVerdict(currentMargin: number | null, won: readonly MarginHistoryBid[], lostPrice: readonly MarginHistoryBid[]): MarginHistoryVerdict | null {
-  if (currentMargin == null) return null
-  const curPct = currentMargin * 100
-  const wonAtOrBelow = won.filter((h) => h.m * 100 <= curPct + 0.5).length
-  const lossesAtOrBelow = lostPrice.filter((h) => h.m * 100 <= curPct + 0.5).length
-  const maxWon = won.length ? Math.max(...won.map((h) => h.m * 100)) : null
-  if (maxWon != null && curPct <= maxWon && lossesAtOrBelow === 0) {
-    return { text: `In your winning range — ${wonAtOrBelow} of ${won.length} wins priced at or below ${Math.round(curPct)}% (estimated margins).`, color: 'var(--text-green-600)' }
-  }
-  if (maxWon != null && curPct <= maxWon) {
-    return { text: `Mixed territory — wins exist here, but ${lossesAtOrBelow} price-loss${lossesAtOrBelow !== 1 ? 'es' : ''} sit at or below ${Math.round(curPct)}%.`, color: 'var(--text-amber-700)' }
-  }
-  if (maxWon != null) {
-    return { text: `Above every recorded win (max ${Math.round(maxWon)}%) — ${lostPrice.length} bid${lostPrice.length !== 1 ? 's' : ''} lost on price in this range.`, color: 'var(--text-red-700)' }
-  }
-  return null
+/**
+ * A loss on price: the structured category when one is recorded (any surface's tapped reason
+ * counts). The free-text regex is the fallback for a loss with no category, from before
+ * categories existed — a recorded category is never overruled by a word in the note.
+ */
+export function isPriceLoss(h: Pick<BidPricingHistoryRow, 'outcome' | 'loss_category' | 'loss_reason'>): boolean {
+  if (h.outcome !== 'lost') return false
+  const category = h.loss_category ?? null
+  return category ? category === 'price' : /price/i.test(h.loss_reason ?? '')
 }
 
 /**
- * Everything the block draws, or null when it stays away: no history, or fewer than three
- * past bids won or lost on price. The bid on screen and bids with no cost estimate never
- * count; a margin outside −20 %…95 % is a barely-filled estimate and is left out.
+ * The scale that fits a set of margins (percent): padded two points, snapped out to tens, held
+ * inside −20…100 and never narrower than thirty points. Ticks every ten, every twenty once the
+ * scale is wider than sixty.
+ */
+export function marginHistoryScale(pcts: readonly number[]): MarginHistoryScale {
+  const clamp = (v: number) => Math.min(MARGIN_HISTORY_SCALE_CEILING, Math.max(MARGIN_HISTORY_SCALE_FLOOR, v))
+  const usable = pcts.filter((p) => Number.isFinite(p)).map(clamp)
+  let min = usable.length ? Math.floor((Math.min(...usable) - 2) / 10) * 10 : 20
+  let max = usable.length ? Math.ceil((Math.max(...usable) + 2) / 10) * 10 : 50
+  min = clamp(min)
+  max = clamp(max)
+  while (max - min < MARGIN_HISTORY_SCALE_MIN_SPAN) {
+    if (max < MARGIN_HISTORY_SCALE_CEILING) max += 10
+    if (max - min < MARGIN_HISTORY_SCALE_MIN_SPAN && min > MARGIN_HISTORY_SCALE_FLOOR) min -= 10
+  }
+  const step = max - min > 60 ? 20 : 10
+  const ticks: number[] = []
+  for (let t = min; t <= max; t += step) ticks.push(t)
+  return { min, max, ticks }
+}
+
+/** Where a margin sits on a fitted scale, as a CSS `left`; a mark outside it draws at the nearer end. */
+export function marginHistoryScaleLeft(mPct: number, scale: Pick<MarginHistoryScale, 'min' | 'max'>): string {
+  const clamped = Math.min(scale.max, Math.max(scale.min, mPct))
+  return `${((clamped - scale.min) / (scale.max - scale.min)) * 100}%`
+}
+
+const bidsWord = (n: number) => `${n} bid${n === 1 ? '' : 's'}`
+
+/** "at 84%" for one margin, "at 79–95%" for a spread. */
+function atRange(pcts: readonly number[]): string {
+  const lo = Math.round(Math.min(...pcts))
+  const hi = Math.round(Math.max(...pcts))
+  return lo === hi ? `at ${lo}%` : `at ${lo}–${hi}%`
+}
+
+/**
+ * Where the current margin stands against the wins and the price losses (half a point of
+ * tolerance): above every win, below every win, or among them. It never calls a margin below
+ * every win a "winning range".
+ */
+export function marginHistoryVerdict(currentMargin: number | null, won: readonly MarginHistoryBid[], lostPrice: readonly MarginHistoryBid[]): MarginHistoryVerdict | null {
+  if (currentMargin == null) return null
+  const cur = currentMargin * 100
+  const c = Math.round(cur)
+  const wins = won.map((h) => h.m * 100)
+  const losses = lostPrice.map((h) => h.m * 100)
+  if (wins.length === 0 && losses.length === 0) return null
+  const lossesAtOrBelow = losses.filter((l) => l <= cur + TOLERANCE).length
+  const lossTail = lossesAtOrBelow > 0 ? ` ${bidsWord(lossesAtOrBelow)} lost on price at or below it.` : ' No bid lost on price this low.'
+
+  if (wins.length === 0) {
+    const minLoss = Math.min(...losses)
+    if (cur >= minLoss - TOLERANCE) {
+      return { chip: 'where bids lost on price', sentence: `No win has a usable cost estimate. ${bidsWord(lossesAtOrBelow)} lost on price at or below ${c}%.`, tone: 'warn' }
+    }
+    return { chip: 'below every price loss', sentence: `No win has a usable cost estimate. Every price loss was above ${c}% (lowest ${Math.round(minLoss)}%).`, tone: 'neutral' }
+  }
+
+  const one = wins.length === 1
+  const maxWon = Math.max(...wins)
+  const minWon = Math.min(...wins)
+  if (cur > maxWon + TOLERANCE) {
+    const lossPart = losses.length > 0 ? ` ${bidsWord(losses.length)} lost on price ${atRange(losses)}.` : ''
+    return {
+      chip: one ? 'above your one win' : `above all ${wins.length} wins`,
+      sentence: `${c}% is above ${one ? `your one win (${Math.round(maxWon)}%)` : `every win (highest ${Math.round(maxWon)}%)`}.${lossPart}`,
+      tone: 'warn',
+    }
+  }
+  if (cur < minWon - TOLERANCE) {
+    return {
+      chip: one ? 'below your one win' : `below all ${wins.length} wins`,
+      sentence: `${c}% is below ${one ? `your one win (${Math.round(minWon)}%)` : `every win (lowest ${Math.round(minWon)}%)`}.${lossTail}`,
+      tone: lossesAtOrBelow > 0 ? 'warn' : 'neutral',
+    }
+  }
+  if (one) {
+    return { chip: 'level with your one win', sentence: `${c}% is level with your one win.${lossTail}`, tone: lossesAtOrBelow > 0 ? 'warn' : 'good' }
+  }
+  const winsAtOrAbove = wins.filter((w) => w >= cur - TOLERANCE).length
+  return {
+    chip: lossesAtOrBelow > 0 ? 'wins and price losses here' : 'in your winning range',
+    sentence: `${winsAtOrAbove} of ${wins.length} wins were priced at ${c}% or higher.${lossTail}`,
+    tone: lossesAtOrBelow > 0 ? 'warn' : 'good',
+  }
+}
+
+/**
+ * Everything the margin slice draws, or null when it stays away: no history, or fewer than
+ * three past bids won or lost on price with a usable cost estimate. The bid on screen and bids
+ * with no cost estimate never count; a margin outside −20 %…95 % is a barely-filled estimate
+ * and is left out.
  */
 export function pricingMarginHistoryView(args: {
   history: readonly BidPricingHistoryRow[] | null
@@ -76,18 +173,17 @@ export function pricingMarginHistoryView(args: {
 }): PricingMarginHistoryView | null {
   const { history, currentBidId, currentMargin, gcCustomerId } = args
   if (!history || history.length === 0) return null
-  const usable = history
-    .filter((h) => h.bid_id !== currentBidId && h.est_cost > 0)
+  const others = history.filter((h) => h.bid_id !== currentBidId)
+  const usable = others
+    .filter((h) => h.est_cost > 0)
     .map((h) => ({ ...h, m: marginOfHistoryRow(h) }))
     .filter((h): h is MarginHistoryBid => h.m != null && h.m > -0.2 && h.m < 0.95)
   const won = usable.filter((h) => h.outcome === 'won')
-  // Structured category first (any surface's tapped reason counts); the
-  // free-text regex stays as the pre-category-era fallback.
-  const lostPrice = usable.filter((h) => h.outcome === 'lost' && ((h.loss_category ?? null) === 'price' || /price/i.test(h.loss_reason ?? '')))
+  const lostPrice = usable.filter(isPriceLoss)
   // Recorded bid tabs (v2.2085) → "the margin that would have matched that tab's low".
   const tabMarks: MarginHistoryTabMark[] = []
-  for (const h of history) {
-    if (h.bid_id === currentBidId || h.est_cost <= 0) continue
+  for (const h of others) {
+    if (h.est_cost <= 0) continue
     const matchPct = marginPctToMatchTabLow(h.bid_tab_low ?? null, h.est_cost)
     // Same sanity band as the win/loss dots — a barely-filled cost estimate
     // would otherwise pin a meaningless mark to the scale's edge.
@@ -105,5 +201,13 @@ export function pricingMarginHistoryView(args: {
     verdict: marginHistoryVerdict(currentMargin, won, lostPrice),
     tabsMatched: hasTabsLine ? countTabsMatchedOrBeaten(currentMargin * 100, tabMarks.map((t) => t.matchPct)) : null,
     gcTabs: gcPcts.length >= 2 ? { count: gcPcts.length, lowPct: gcPcts[0]!, highPct: gcPcts[gcPcts.length - 1]! } : null,
+    scale: marginHistoryScale([
+      ...won.map((h) => h.m * 100),
+      ...lostPrice.map((h) => h.m * 100),
+      ...tabMarks.map((t) => t.matchPct),
+      ...(currentMargin != null ? [currentMargin * 100] : []),
+    ]),
+    decidedOnNumber: others.filter((h) => h.outcome === 'won' || isPriceLoss(h)).length,
+    thin: won.length + lostPrice.length < MARGIN_HISTORY_THIN_BELOW,
   }
 }

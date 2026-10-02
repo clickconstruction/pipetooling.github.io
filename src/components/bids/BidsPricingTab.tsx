@@ -56,7 +56,7 @@ import { usePricingQuoteDesk } from '../../hooks/usePricingQuoteDesk'
 import { AdoptBidModal } from './AdoptBidModal'
 import { PricingShareMenu } from './PricingShareMenu'
 import { PricingStarChooserDialog } from './PricingStarChooserDialog'
-import { PricingMarginHistory } from './PricingMarginHistory'
+import { PricingBidsLikeThis } from './PricingBidsLikeThis'
 import { WorkbenchHelpCard } from './WorkbenchHelpCard'
 import { usePricingMarginHistory } from '../../hooks/usePricingMarginHistory'
 import { useWorkbenchHelp } from '../../hooks/useWorkbenchHelp'
@@ -3035,11 +3035,13 @@ export function BidsPricingTab({
                     </div>
                     </div>
 
-                    <PricingMarginHistory
+                    <PricingBidsLikeThis
                       history={wbHistory}
                       currentBidId={selectedBidForPricing?.id}
+                      currentPrice={effRevenue}
                       currentMargin={effMargin}
                       gcCustomerId={selectedBidForPricing?.customer_id ?? null}
+                      gcName={selectedBidForPricing?.customers?.name ?? null}
                     />
                     {/* Batch 2: short label — "N of M priced" (owner). v2.2378: collapsed behind the
                         solver-line chip by default — this row renders only while the chip is expanded. */}
