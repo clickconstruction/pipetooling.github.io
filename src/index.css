@@ -3905,6 +3905,8 @@ body.my-time-boundary-dragging {
 .lienShareItem { background: var(--surface); }
 .lienShareItem:hover, .lienShareItem:focus-visible { background: var(--bg-subtle); }
 .lienShareItem[aria-checked="true"] { background: var(--bg-blue-tint); }
+/* The Lien window on a phone (v2.4422): a record sheet is drawn over the card, so the card holds its full height while one is up, however short the paper under it. */
+[data-lien-window-card]:has(> [data-lien-record-sheet]) { height: min(92vh, 100%); }
 /* The Lien desk's title bar (v2.4355): the title, the tabs and the doors are spaced by the column gap. On a desk narrower than 1,100 px (a window under 1,132 px; a phone keeps its own layout) the gaps close up, the tabs narrow and Share shows its icon, its word still the button's name, so the bar keeps one line. A viewport query on purpose: a container query on the bar would trap the fixed Share sheet inside it. */
 .lienDeskTitleBar { gap: 0.4rem 0.9rem; }
 .lienDeskKindTab { padding: 2px 10px; }

@@ -856,8 +856,7 @@ export default function LienInstrumentsModal({
           maxWidth: 920,
           width: '100%',
           maxHeight: 'min(92vh, 100%)',
-          // The phone's record sheet is drawn over the card (v2.4414), so the card holds its full height while the sheet is up.
-          height: recordSheetOpen ? 'min(92vh, 100%)' : undefined,
+          // A phone's record sheet is drawn over the card (v2.4414); index.css keeps the card at its full height while one is up.
           position: 'relative',
           display: 'flex',
           flexDirection: 'column',
@@ -1473,6 +1472,7 @@ export default function LienInstrumentsModal({
               void loadFilings()
               onRecorded?.()
             }}
+            onClose={onClose}
           />
         )}
       </div>
