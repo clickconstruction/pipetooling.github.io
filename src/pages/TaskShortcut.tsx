@@ -57,9 +57,10 @@ function StandaloneCreateInner() {
 
   return (
     <>
-      {/* Sign-in photo backdrop (matches the sign-in page), behind both the launcher and modal. */}
+      {/* Sign-in photo backdrop (matches the sign-in page), behind both the launcher and modal. A picture, not a window: the page scroll lock leaves it alone. */}
       <div
         aria-hidden
+        data-page-scroll="allow"
         style={{
           position: 'fixed',
           inset: 0,

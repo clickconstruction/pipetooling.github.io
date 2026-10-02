@@ -263,7 +263,7 @@ The shell is everything around a page. `App.tsx` decides which of **69 `<Route>`
 
 ### K. Banners, overlays and global modal mounts
 
-- **Order in `layoutBody`:** `CustomerWaitingProvider` 834 (2 realtime channels) → `BodyScrollLockSentinel` 836 → `DailyGoalsGateOverlay` 837 (outside the inert div) → root div with `inert` while `dailyGoalsGateOpen` 838–841 → `AddTaskShortcutBanner` 842 → twin banner 843–857 (`useIsDigitalTwin`) → training-mode read-only banner 858–872 (`readOnly`) → `CustomerWaitingBanner` 874 → nav → `HeaderGlobalSearchNavLayer` 1998 → `<main>`: `FarmModeChip` 2019, `AssistantReadyToBillBanner` 2020 (polls `jobs_ledger`), `EasterEggHost` 2035 → 12 modal/deep-link mounts 2292–2303 (**inside** the inert div).
+- **Order in `layoutBody`:** `CustomerWaitingProvider` 834 (2 realtime channels) → `DailyGoalsGateOverlay` 837 (outside the inert div) → root div with `inert` while `dailyGoalsGateOpen` 838–841 → `AddTaskShortcutBanner` 842 → twin banner 843–857 (`useIsDigitalTwin`) → training-mode read-only banner 858–872 (`readOnly`) → `CustomerWaitingBanner` 874 → nav → `HeaderGlobalSearchNavLayer` 1998 → `<main>`: `FarmModeChip` 2019, `AssistantReadyToBillBanner` 2020 (polls `jobs_ledger`), `EasterEggHost` 2035 → 12 modal/deep-link mounts 2292–2303 (**inside** the inert div).
 - **Tests:** `CustomerWaitingBanner` (3, injects a value provider), `customerWaiting.test.ts` (10, the context's kernel), `AssistantReadyToBillBanner` (3), `FloatingEasterEgg` (3), `bodyScrollLock.test.ts` (13). `AddTaskShortcutBanner`, `DailyGoalsGateOverlay`, `FarmModeChip`, the realtime `CustomerWaitingProvider` and the two inline banners are untested.
 - **Approach:** the two inline banners could become `ShellStatusBanners` (~30 lines). Low value.
 
