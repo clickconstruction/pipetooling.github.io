@@ -1793,7 +1793,7 @@ bids:
   profit (numeric(14,2), nullable)
   estimated_job_start_date (date, nullable)
   distance_from_office (text, nullable) -- Miles, free text
-  materials_model (text, required, default 'rough') -- CHECK 'exact' | 'rough'; every reader treats a bid as 'rough' since By Stage retired (v2.4389)
+  materials_model (text, required, default 'rough') -- always 'rough' since v2.4405 (By Stage retired v2.4389; the 151 old 'exact' flags were flipped); the CHECK still allows 'exact'
   include_payment_schedule (boolean, default false) -- 20260702120000
   working_board_archived_at (timestamptz, nullable) -- 20260511015410
   working_board_archived_by (uuid, nullable)
