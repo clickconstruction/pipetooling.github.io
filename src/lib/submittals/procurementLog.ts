@@ -131,6 +131,29 @@ export function readTypedLogDate(text: string, asOf: string): TypedLogDate {
 
 export type ProcurementDecisionKind = 'approved' | 'revise' | 'rejected'
 
+export type ProcurementDecision = { kind: ProcurementDecisionKind; at: string | null }
+
+/**
+ * The call a part's line reads (2026-10-02). Its own, when the GC called that part. A row no
+ * part of which was called was called whole, so its call covers every part. Once any part has a
+ * call of its own, the row's call is the roll-up of its parts — one part sent back sends the row
+ * back — and says nothing about a part nobody called: that part is still open. Only an approved
+ * roll-up (every part the GC sees approved) reaches further, to release the order-only parts
+ * with their fixture.
+ */
+export function partLineDecision(input: {
+  /** The GC sees this part; an order-only part is never called itself. */
+  onSubmittal: boolean
+  own: ProcurementDecision | null
+  row: ProcurementDecision | null
+  /** Some part the GC sees on this row carries a call of its own. */
+  rowCalledByPart: boolean
+}): ProcurementDecision | null {
+  if (input.onSubmittal && input.own) return input.own
+  if (!input.rowCalledByPart) return input.row
+  return input.row?.kind === 'approved' ? input.row : null
+}
+
 /** A submittal row as the log reads it (the newest revision's items). */
 export type ProcurementItemSource = {
   tag: string
@@ -138,7 +161,7 @@ export type ProcurementItemSource = {
   product: string
   supplyHouse: string | null
   leadTimeDays: number | null
-  decision: { kind: ProcurementDecisionKind; at: string | null } | null
+  decision: ProcurementDecision | null
   /** The revision has been shared (a row with no decision is then "awaiting"). */
   shared: boolean
   /** The takeoff count row the item came from (v2.4107); two rows sharing one were split from it (v2.4118). */
