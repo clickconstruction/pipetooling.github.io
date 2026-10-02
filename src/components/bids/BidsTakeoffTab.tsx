@@ -1667,9 +1667,10 @@ export function BidsTakeoffTab({
                     }}
                     reviewStamp={bidFlowReview.stampFor(selectedBidForTakeoff)}
                   />
-                  <TakeoffViewPills view={takeoffView} onChange={switchTakeoffView} />
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  {/* v2.4416 (owner): the view pills ride the right end of the title row, beside Print. */}
+                  <TakeoffViewPills view={takeoffView} onChange={switchTakeoffView} />
                   <button
                     type="button"
                     onClick={() => void printTakeoffBreakdown()}

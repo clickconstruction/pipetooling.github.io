@@ -7,7 +7,7 @@ order: 85
 ---
 One at a time on Bids → Takeoffs walks a takeoff one fixture at a time. A takeoff is the list of fixtures counted from the plans.
 
-The first time you open a bid on this device, a box appears. It asks **How do you want to cost this takeoff?** It shows a picture of each view. Click {{button:outline|One at a time}} or press **1** and it opens. Your pick is remembered, so the box does not come back. From then on bids open straight in the view you chose. The {{chip:blue|One at a time}} pill beside the bid name switches any time. {{chip:gray|Sheet}} is the whole sheet with the cost rail. The classic Old tab retired in September 2026. A device that had picked it opens One at a time.
+The first time you open a bid on this device, a box appears. It asks **How do you want to cost this takeoff?** It shows a picture of each view. Click {{button:outline|One at a time}} or press **1** and it opens. Your pick is remembered, so the box does not come back. From then on bids open straight in the view you chose. The {{chip:blue|One at a time}} pill switches any time. It sits at the right end of the title row, beside **Print**. {{chip:gray|Sheet}} is the whole sheet with the cost rail. The classic Old tab retired in September 2026. A device that had picked it opens One at a time.
 
 ## The strip
 

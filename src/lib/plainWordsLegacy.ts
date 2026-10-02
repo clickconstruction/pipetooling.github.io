@@ -10,7 +10,6 @@
  */
 export const LEGACY_PLAIN_WORDS_GUIDES: ReadonlySet<string> = new Set([
   'see-how-often-we-go-back',
-  'see-what-pricing-sees-on-takeoffs',
   'see-what-the-office-got-done',
   'see-what-the-team-sees',
   'see-what-to-do-next-on-a-roadmap',
