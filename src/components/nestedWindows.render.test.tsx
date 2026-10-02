@@ -17,6 +17,12 @@
  * opened or shut the Bid Board row, and outside Cost this task it toggled the Checklist row's
  * activity. Those windows are here too, with Mark account opened, which rows and other windows
  * draw; the stand-in plays the row. `check-nested-windows.mjs --rows` finds new ones.
+ *
+ * The Pipeline (v2.4359): the Stripe "Email this invoice?" confirm sits in a job row and is drawn
+ * on <body>, so a click in it found no button above it there and the row opened or shut the
+ * job's thread; the stand-in uses the row's own rule. A card (Mobile cards) draws its open thread
+ * inside itself, so a tap in the thread, inline or full screen, folded the card; the real card is
+ * here.
  */
 import type { ReactElement } from 'react'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
@@ -34,6 +40,11 @@ import { ApplyScheduleApprovedConfirmModal } from './clock-sessions/ApplySchedul
 import { BidGcNotesPopover } from './bids/BidGcNotesPopover'
 import ChecklistCostModal from './checklist/ChecklistCostModal'
 import { MarkJobAccountOpenedModal } from './materials/MarkJobAccountOpenedModal'
+import { StripeInvoiceSendFromStripeButton } from './jobs/StripeInvoiceSendFromStripeButton'
+import { shouldSuppressStagesRowJobThreadToggle } from './jobs/jobsStagesRowShared'
+import JobsStagesCardList from './jobs/JobsStagesCardList'
+import { makeJob } from '../test/renderSmokeMocks'
+import { makeStagesCardListProps } from '../test/stagesCardListProps'
 import { practiceCallFacts } from '../lib/jobs/lienCallerMatch'
 
 vi.mock('../hooks/useAuth', async () => {
@@ -134,5 +145,67 @@ describe('a window drawn inside another window or a row', () => {
     fireEvent.click(backdrop())
     expect(onClose).toHaveBeenCalledTimes(1)
     expect(windowBehind).not.toHaveBeenCalled()
+  })
+})
+
+describe('the Stripe "Email this invoice?" confirm in a Pipeline row', () => {
+  /** Opens the confirm from a row that toggles the way the Pipeline row does; returns the row's toggle. */
+  async function openConfirm() {
+    const rowToggles = vi.fn()
+    renderWithProviders(
+      <div onClick={(e) => (shouldSuppressStagesRowJobThreadToggle(e.target) ? undefined : rowToggles())}>
+        <StripeInvoiceSendFromStripeButton jobsLedgerInvoiceId="inv-1" stripeInvoiceId="in_1" customerEmail="ap@example.com" stripeModeForBilling="live" compact micro unboxed hideInlineSuccessLine buttonLabel="Resend" />
+      </div>,
+    )
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: /Resend/ }))
+    await settle()
+    return rowToggles
+  }
+  const confirm = () => screen.queryByRole('dialog', { name: 'Email this invoice?' })
+
+  it('a click on its words leaves it open and the row alone', async () => {
+    const rowToggles = await openConfirm()
+    fireEvent.click(screen.getByText('Most recent sends (ClickTooling)'))
+    expect(confirm()).toBeTruthy()
+    expect(rowToggles).not.toHaveBeenCalled()
+  })
+
+  it('a click outside closes it only, not the row', async () => {
+    const rowToggles = await openConfirm()
+    fireEvent.click(confirm()?.parentElement as HTMLElement)
+    expect(confirm()).toBeNull()
+    expect(rowToggles).not.toHaveBeenCalled()
+  })
+})
+
+describe('the open thread on a Pipeline card (Mobile cards)', () => {
+  /** A card with its thread open; returns the card's toggle. */
+  async function openCard(fullscreen: boolean) {
+    const toggle = vi.fn()
+    const job = makeJob({ job_name: 'Ellison kitchen' })
+    renderWithProviders(
+      <JobsStagesCardList {...makeStagesCardListProps({ jobList: [job], expandedJobThreadId: job.id, jobThreadFullscreen: fullscreen, toggleStagesJobThreadExpanded: toggle })} />,
+    )
+    await settle()
+    return toggle
+  }
+
+  it('a tap on the card above the thread still folds it', async () => {
+    const toggle = await openCard(false)
+    fireEvent.click(screen.getByText('Ellison kitchen'))
+    expect(toggle).toHaveBeenCalledTimes(1)
+  })
+
+  it('a tap in the thread leaves the card open', async () => {
+    const toggle = await openCard(false)
+    fireEvent.click(screen.getByText('Job activity / notes'))
+    expect(toggle).not.toHaveBeenCalled()
+  })
+
+  it('a tap in the full-screen thread leaves it open', async () => {
+    const toggle = await openCard(true)
+    fireEvent.click(screen.getByText('esc to close'))
+    expect(toggle).not.toHaveBeenCalled()
   })
 })

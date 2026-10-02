@@ -24,7 +24,9 @@
  * Usage: node scripts/check-nested-windows.mjs [--rows]
  *   Exits 1 when a backdrop holds a window that lets the click through.
  *   --rows also lists clickable containers that are not backdrops (a table row whose onClick
- *   toggles it) holding such a window — the same bubbling, reported only.
+ *   toggles it) holding such a window — the same bubbling, reported only. A container is any
+ *   element whose handler does more than stop or prevent the event (v2.4359; it used to need a
+ *   child that stops the click, which missed the Pipeline's <tr> rows and cards).
  */
 import { createRequire } from 'node:module'
 import { execSync } from 'node:child_process'
@@ -172,6 +174,36 @@ const isStopCall = (x) => {
   x = strip(x)
   return !!x && ts.isCallExpression(x) && ts.isPropertyAccessExpression(x.expression) && x.expression.name.text === 'stopPropagation'
 }
+const STOPPERS = new Set(['stopPropagation', 'stopImmediatePropagation', 'preventDefault'])
+/**
+ * True when a handler does nothing but stop or prevent the event, in every branch:
+ * `(e) => e.preventDefault()`, `paneMode ? undefined : (e) => e.stopPropagation()`.
+ * A prop or a function it cannot see into may do anything, so it is not inert.
+ */
+function isInert(e, depth = 0) {
+  e = strip(e)
+  if (!e) return true
+  if (depth > 6) return false
+  if (e.kind === ts.SyntaxKind.NullKeyword || e.kind === ts.SyntaxKind.FalseKeyword || (ts.isIdentifier(e) && e.text === 'undefined')) return true
+  if (ts.isConditionalExpression(e)) return isInert(e.whenTrue, depth + 1) && isInert(e.whenFalse, depth + 1)
+  if (ts.isBinaryExpression(e)) {
+    const op = e.operatorToken.kind
+    if (op === ts.SyntaxKind.AmpersandAmpersandToken) return isInert(e.right, depth + 1)
+    if (op === ts.SyntaxKind.BarBarToken || op === ts.SyntaxKind.QuestionQuestionToken) return isInert(e.left, depth + 1) && isInert(e.right, depth + 1)
+  }
+  const fn = isFn(e) ? e : ts.isIdentifier(e) || ts.isPropertyAccessExpression(e) ? fnOfDecl(resolveDecl(e)) : null
+  if (!fn?.body) return false
+  let inert = true
+  const visit = (n) => {
+    if (ts.isCallExpression(n) || ts.isNewExpression(n)) {
+      const callee = strip(n.expression)
+      if (!ts.isCallExpression(n) || !ts.isPropertyAccessExpression(callee) || !STOPPERS.has(callee.name.text)) inert = false
+    }
+    if (inert) ts.forEachChild(n, visit)
+  }
+  visit(fn.body)
+  return inert
+}
 /** What a handler attribute does: its text, whether it always stops the event, whether it checks the target. */
 function handlerInfo(a) {
   const e = attrExpr(a)
@@ -188,7 +220,7 @@ function handlerInfo(a) {
     if (!ts.isBlock(fn.body)) stopsAlways = isStopCall(fn.body) || (ts.isBinaryExpression(strip(fn.body)) && /stopPropagation\(\)/.test(fn.body.getText()))
     else stopsAlways = fn.body.statements.some((st) => ts.isExpressionStatement(st) && isStopCall(st.expression) && !fn.body.statements.slice(0, fn.body.statements.indexOf(st)).some((p) => ts.isReturnStatement(p) || ts.isIfStatement(p)))
   }
-  return { text, stopsAlways, targetCheck: TARGET_CHECK.test(text), onlyStops: /^\(?\s*\w*\s*\)?\s*=>\s*\{?\s*\w+\.stopPropagation\(\)\s*;?\s*\}?$/.test(se.getText().trim()) }
+  return { text, stopsAlways, targetCheck: TARGET_CHECK.test(text), onlyStops: /^\(?\s*\w*\s*\)?\s*=>\s*\{?\s*\w+\.stopPropagation\(\)\s*;?\s*\}?$/.test(se.getText().trim()), inert: isInert(se) }
 }
 function handlersOf(el) {
   const out = {}
@@ -344,21 +376,6 @@ function outermostFn(n) {
   for (let p = n.parent; p; p = p.parent) if (ts.isFunctionDeclaration(p) || isFn(p) || ts.isMethodDeclaration(p)) best = p
   return best
 }
-function hasStopperChild(el, ev, depth = 0) {
-  if (!ts.isJsxElement(el) || depth > 2) return false
-  const els = []
-  const collect = (y) => {
-    y = ts.isJsxExpression(y) ? y.expression : y
-    y = y && (ts.isJsxElement(y) || ts.isJsxSelfClosingElement(y) || ts.isJsxFragment(y) ? y : strip(y))
-    if (!y) return
-    if (ts.isJsxElement(y) || ts.isJsxSelfClosingElement(y)) els.push(y)
-    else if (ts.isJsxFragment(y)) y.children.forEach(collect)
-    else if (ts.isConditionalExpression(y)) [y.whenTrue, y.whenFalse].forEach(collect)
-    else if (ts.isBinaryExpression(y)) collect(y.right)
-  }
-  el.children.forEach(collect)
-  return els.some((c) => (isIntrinsic(c) && handlersOf(c)[ev]?.stopsAlways) || hasStopperChild(c, ev, depth + 1))
-}
 /** A `nested-windows: allow — <why>` comment up to two lines above the element or inside its opening tag. */
 function allowed(node) {
   const sf = node.getSourceFile()
@@ -376,11 +393,11 @@ for (const f of files) {
   const visit = (n) => {
     if ((ts.isJsxElement(n) || ts.isJsxSelfClosingElement(n)) && isIntrinsic(n)) {
       for (const [ev, h] of Object.entries(handlersOf(n))) {
-        if (h.onlyStops || (h.stopsAlways && !CLOSES.test(h.text))) continue
         const fixed = isFixedLayer(n)
-        if (!fixed && !hasStopperChild(n, ev)) continue
+        // A backdrop is a fixed layer that closes; a row is any other element whose handler does more than stop the event.
+        if (fixed ? h.onlyStops || (h.stopsAlways && !CLOSES.test(h.text)) : !ROWS || h.inert) continue
         if (fixed) backdrops += 1
-        if (h.targetCheck || !ts.isJsxElement(n) || (!fixed && !ROWS)) continue
+        if (h.targetCheck || !ts.isJsxElement(n)) continue
         const fn = outermostFn(n)
         const hits = []
         const outerAllowed = allowed(n)

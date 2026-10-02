@@ -593,7 +593,13 @@ type StagesCardThreadProps = Pick<
 
 function renderCardThreadPanel(p: StagesCardThreadProps, ctx: StagesRowRenderContext, j: JobWithDetails) {
   return (
-    <div style={{ borderTop: '1px solid var(--border)', paddingTop: '0.5rem', background: 'var(--bg-subtle)', margin: '0 -0.75rem -0.6rem', padding: '0.5rem 0.75rem 0.6rem' }}>
+    // A tap in the open thread stays in it, inline or full screen (a portal, still inside the
+    // card in React's tree): the card folds from above the thread, as the table's thread row
+    // does (v2.4359).
+    <div
+      onClick={(e) => e.stopPropagation()}
+      style={{ borderTop: '1px solid var(--border)', paddingTop: '0.5rem', background: 'var(--bg-subtle)', margin: '0 -0.75rem -0.6rem', padding: '0.5rem 0.75rem 0.6rem' }}
+    >
       <JobsStagesThreadPanel
         job={j}
         activity={ctx.jobThreadActivityByJobId[j.id] ?? []}

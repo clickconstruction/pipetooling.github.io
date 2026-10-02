@@ -356,6 +356,9 @@ export function StripeInvoiceSendFromStripeButton({
               padding: '1rem',
             }}
             onClick={(e) => {
+              // The confirm is drawn inside a Pipeline row that opens its thread on a click, and
+              // React bubbles a portal's click to it: stop it here (v2.4359).
+              e.stopPropagation()
               if (e.target === e.currentTarget) setConfirmOpen(false)
             }}
           >
@@ -364,6 +367,7 @@ export function StripeInvoiceSendFromStripeButton({
               aria-modal="true"
               aria-labelledby="stripe-send-invoice-confirm-title"
               onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
               style={{
                 background: 'var(--surface)',
                 borderRadius: 8,
