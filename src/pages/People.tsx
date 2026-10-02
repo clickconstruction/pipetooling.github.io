@@ -1986,6 +1986,7 @@ export default function People() {
 
       {activeTab === 'users' && (
         <PeopleUsersTab
+          reloadRoster={() => void loadPeople()}
           isDev={isDev}
           narrowViewport={narrowViewport}
           users={users}

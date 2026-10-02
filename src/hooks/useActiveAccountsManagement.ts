@@ -18,11 +18,11 @@ import { cascadePersonNameInPayTables, getPersonNamesForUser } from '../lib/casc
 import { EXTERNAL_MERGE_OPTION_PREFIX } from '../lib/mergeUserAccounts'
 import { archiveChoiceBlocker, archiveRequestBody, type ArchiveReassignMode } from '../lib/archiveUserDialog'
 import { resolveCompanyOwnerUserId } from '../lib/companyOwner'
-import { executeCombinePeople, previewCombinePeople } from '../lib/combinePeople'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { inviteFormValid, roleChangeConfirmMessage, roleChosen, roleTakesServiceTypes, userCreatedTelemetryTarget, type RoleChoice } from '../lib/inviteUserForm'
 import { recordNavClick } from '../lib/navClickTelemetry'
 import { changeSignInEmail } from '../lib/people/accountWrites'
+import { previewAccountMerge, previewExternalMerge, runAccountMerge, runExternalMerge as runExternalMergeKernel } from '../lib/people/accountMerge'
 import { checkSignInEmail } from '../../supabase/functions/_shared/signInEmailChange'
 
 /** External roster person (no login) offered as a merge-away candidate for subcontractor survivors. */
@@ -874,68 +874,16 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
       setMergeError('Selection is stale — close and reopen Merge users.')
       return
     }
-    const survivorName = (survivor.name || survivor.email).trim()
     setMergeError(null)
     setMergeSubmitting(true)
     try {
-      const { data: existingRows, error: eExisting } = await supabase
-        .from('people')
-        .select('id, name, account_user_id')
-        .eq('account_user_id', survivor.id)
-        .is('archived_at', null)
-        .order('created_at', { ascending: true })
-        .limit(1)
-      if (eExisting) throw new Error(eExisting.message)
-      const existing = existingRows?.[0] ?? null
-
+      // v2.4345: the same steps the person desk's Merge a duplicate… runs (lib/people/accountMerge.ts).
+      const args = { survivor: { id: survivor.id, name: survivor.name, email: survivor.email }, person: { id: person.id, name: person.name } }
       if (dryRun) {
-        if (!existing) {
-          // No roster row to fold into — the merge is a pure account link (see below).
-          setMergePreview({
-            moved: {},
-            warnings: [
-              `${survivorName} has no roster person row yet, so "${person.name}" will simply be linked to the account as its roster entry. Their hours, pay records, crew records, and sub sheets already follow this person — nothing needs to move, and nothing is archived.`,
-            ],
-          })
-          return
-        }
-        const p = await previewCombinePeople(person.id, person.name)
-        const moved: Record<string, number> = {}
-        for (const line of p.lines) {
-          const n = Math.max(line.nameRows, line.idRows)
-          if (n > 0) moved[line.table] = n
-        }
-        if (p.laborSheets > 0) moved['sub sheets (assigned names)'] = p.laborSheets
-        const warnings = [
-          `"${person.name}" is an external roster person (no login) — their hours, pay records, crew records, and sub sheets fold onto ${survivorName}'s roster identity, then the external row is archived (never deleted). Login accounts are not touched.`,
-        ]
-        setMergePreview({ moved, warnings })
+        setMergePreview(await previewExternalMerge(supabase, args))
         return
       }
-
-      if (!existing) {
-        // Link, don't insert: RLS only lets you INSERT people rows you own, but devs can
-        // UPDATE any row — and linking is the correct semantic anyway (the external row
-        // becomes the account's roster entry; its records already follow it).
-        const { error: eLink } = await supabase
-          .from('people')
-          .update({ account_user_id: survivor.id })
-          .eq('id', person.id)
-        if (eLink) throw new Error(`link ${person.name} to ${survivorName}: ${eLink.message}`)
-        showToast(`Linked ${person.name} to ${survivorName}'s account as its roster entry.`, 'success')
-        setMergeOpen(false)
-        await reloadAfterMutation()
-        return
-      }
-
-      const result = await executeCombinePeople({
-        source: { id: person.id, name: person.name, account_user_id: null },
-        target: { id: existing.id, name: existing.name, account_user_id: existing.account_user_id },
-      })
-      showToast(
-        `Merged ${person.name} into ${survivorName}: ${result.renamedRows} rows renamed, ${result.repointedRows} repointed, ${result.sheetsRewritten} sheets updated. External row archived.`,
-        'success',
-      )
+      showToast(await runExternalMergeKernel(supabase, args), 'success')
       setMergeOpen(false)
       await reloadAfterMutation()
     } catch (e) {
@@ -956,41 +904,18 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
     }
     setMergeError(null)
     setMergeSubmitting(true)
-    const { data, error: eFn } = await supabase.functions.invoke('merge-users', {
-      body: {
-        survivor_user_id: mergeSurvivorId,
-        absorbed_user_id: mergeAbsorbedId,
-        dry_run: dryRun,
-      },
-    })
-    setMergeSubmitting(false)
-    if (eFn) {
-      let msg = eFn.message
-      if (eFn instanceof FunctionsHttpError && eFn.context?.json) {
-        try {
-          const b = (await eFn.context.json()) as { error?: string } | null
-          if (b?.error) msg = b.error
-        } catch {
-          /* ignore */
-        }
+    try {
+      const args = { survivorId: mergeSurvivorId, absorbedId: mergeAbsorbedId }
+      if (dryRun) {
+        setMergePreview(await previewAccountMerge(supabase, args))
+        return
       }
-      setMergeError(msg)
+      await runAccountMerge(supabase, args)
+    } catch (e) {
+      setMergeError(e instanceof Error ? e.message : 'Merge failed.')
       return
-    }
-    const res = data as {
-      success?: boolean
-      error?: string
-      dry_run?: boolean
-      moved?: Record<string, number>
-      warnings?: string[]
-    } | null
-    if (!res?.success) {
-      setMergeError(res?.error || 'Merge failed.')
-      return
-    }
-    if (dryRun) {
-      setMergePreview({ moved: res.moved ?? {}, warnings: res.warnings ?? [] })
-      return
+    } finally {
+      setMergeSubmitting(false)
     }
     showToast('Accounts merged.', 'success')
     setMergeOpen(false)

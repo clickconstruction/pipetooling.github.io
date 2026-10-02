@@ -34,6 +34,13 @@ import {
   type UsersTabSection,
 } from './peopleUsersTabShared'
 import CombinePeopleModal from './CombinePeopleModal'
+import { useAuth } from '../../hooks/useAuth'
+import { canArchiveAccount } from '../../lib/people/personDeskGates'
+import { supabase } from '../../lib/supabase'
+import { humanRoleLabel } from '../../lib/roleLabels'
+
+/** Account on the desk, PR D1: an archived login, listed under Archived beside the roster rows. */
+type ArchivedLogin = { id: string; name: string | null; email: string | null; role: string; archived_at: string }
 
 type EditingUserNote = { id: string; name: string; notes: string; phone: string }
 
@@ -84,6 +91,8 @@ interface PeopleUsersTabProps {
   isAlreadyUser: (email: string | null) => boolean
   invitingId: string | null
   setInviteConfirm: (person: Person | null) => void
+  /** Account on the desk, PR D1: reload the roster after an archived login is restored here. */
+  reloadRoster?: () => void
 }
 
 export function PeopleUsersTab({
@@ -118,6 +127,7 @@ export function PeopleUsersTab({
   isAlreadyUser,
   invitingId,
   setInviteConfirm,
+  reloadRoster,
 }: PeopleUsersTabProps) {
   const { pushEnabledUserIds, contractSigningStatusByPersonName, personProjects } = useUsersTabRowSignals({ canSeePushStatus, canAccessContracts })
   const [loggingInAsId, setLoggingInAsId] = useState<string | null>(null)
@@ -139,6 +149,41 @@ export function PeopleUsersTab({
   // Person Desk door (v2.2701): the name opens the per-person drawer for office roles.
   const personDesk = useOptionalPersonDesk()
   const access = usePeopleAccess(authUserId)
+  // Archived logins (PR D1): who may restore one is who may archive one (archive-user / restore-user).
+  const { role: authRole, readOnly: authReadOnly } = useAuth()
+  const canRestoreLogins = canArchiveAccount({ role: authRole, isDev, canAccessPay: access.canAccessPay, canAccessHours: false, canAccessVehicles: false, canAccessLicenses: false, canAccessContracts: false, readOnly: authReadOnly })
+  const [archivedLogins, setArchivedLogins] = useState<ArchivedLogin[]>([])
+  const [restoringLoginId, setRestoringLoginId] = useState<string | null>(null)
+  const loadArchivedLogins = useCallback(async () => {
+    if (!canRestoreLogins) return
+    const { data } = await supabase
+      .from('users')
+      .select('id, name, email, role, archived_at, is_sample, is_digital_twin')
+      .not('archived_at', 'is', null)
+      .order('archived_at', { ascending: false })
+      .limit(200)
+    setArchivedLogins(((data ?? []) as Array<ArchivedLogin & { is_sample?: boolean | null; is_digital_twin?: boolean | null }>).filter((u) => !u.is_sample && !u.is_digital_twin))
+  }, [canRestoreLogins])
+  useEffect(() => {
+    void loadArchivedLogins()
+  }, [loadArchivedLogins])
+  async function restoreLogin(u: ArchivedLogin) {
+    setRestoringLoginId(u.id)
+    try {
+      const { data, error: e } = await supabase.functions.invoke('restore-user', { body: { user_id: u.id } })
+      const msg = e?.message ?? (data as { error?: string } | null)?.error
+      if (msg) {
+        showToast(msg, 'error')
+        return
+      }
+      showToast(`${u.name ?? u.email} can sign in again.`, 'success')
+      await loadArchivedLogins()
+      reloadRoster?.()
+    } finally {
+      setRestoringLoginId(null)
+    }
+  }
+  const archivedCount = archivedPeople.length + archivedLogins.length
   const lens: UsersTabLens = resolveUsersTabLens(searchParams.get('lens'), { canAccessPay: access.canAccessPay && Boolean(payLens), narrowViewport })
   const lensChoices = usersTabLensesFor({ canAccessPay: access.canAccessPay && Boolean(payLens), narrowViewport })
   function setLens(next: UsersTabLens) {
@@ -522,7 +567,7 @@ export function PeopleUsersTab({
   const phoneTools: Array<{ key: string; label: string; onClick: () => void }> = [
     {
       key: 'archived',
-      label: `Archived (${archivedPeople.length})`,
+      label: `Archived (${archivedCount})`,
       onClick: () => {
         setArchivedSectionOpen((prev) => !prev)
         setTimeout(() => document.getElementById('users-tab-archived')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
@@ -647,7 +692,7 @@ export function PeopleUsersTab({
             style={{ whiteSpace: 'nowrap', padding: '0.3rem 0.75rem' }}
             aria-expanded={archivedSectionOpen}
           >
-            Archived ({archivedPeople.length})
+            Archived ({archivedCount})
           </button>
           {canCreatePeopleInRoster && onOpenHire ? (
             <button type="button" onClick={onOpenHire} style={{ whiteSpace: 'nowrap', padding: '0.3rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }} title="One form: the person, their login, pay, workday and paperwork (v2.3701)">
@@ -759,10 +804,49 @@ export function PeopleUsersTab({
           }}
         >
           <span style={{ fontSize: '0.75rem' }}>{archivedSectionOpen ? '▼' : '▶'}</span>
-          Archived people ({archivedPeople.length})
+          Archived ({archivedCount})
         </button>
+        {archivedSectionOpen && canRestoreLogins ? (
+          <div style={{ padding: '0 1rem 1rem 1rem' }}>
+            <h3 style={{ margin: '0 0 0.4rem', fontSize: '0.875rem' }}>Logins ({archivedLogins.length})</h3>
+            {archivedLogins.length === 0 ? (
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No archived logins.</p>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }} aria-label="Archived logins">
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid var(--border)', textAlign: 'left' }}>
+                      <th style={{ padding: '0.5rem 0.75rem' }}>Name</th>
+                      <th style={{ padding: '0.5rem 0.75rem' }}>Role</th>
+                      <th style={{ padding: '0.5rem 0.75rem' }}>Archived</th>
+                      <th style={{ padding: '0.5rem 0.75rem' }}></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {archivedLogins.map((u) => (
+                      <tr key={u.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                        <td style={{ padding: '0.5rem 0.75rem' }}>
+                          {u.name ?? '—'}
+                          {u.email ? <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{u.email}</div> : null}
+                        </td>
+                        <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem' }}>{humanRoleLabel(u.role)}</td>
+                        <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem' }}>{new Date(u.archived_at).toLocaleDateString()}</td>
+                        <td style={{ padding: '0.5rem 0.75rem' }}>
+                          <button type="button" onClick={() => void restoreLogin(u)} disabled={restoringLoginId === u.id} style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }} title="They can sign in again with the same email and history.">
+                            {restoringLoginId === u.id ? 'Restoring…' : 'Restore'}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        ) : null}
         {archivedSectionOpen && (
           <div style={{ padding: '0 1rem 1rem 1rem' }}>
+            {canRestoreLogins ? <h3 style={{ margin: '0 0 0.4rem', fontSize: '0.875rem' }}>Roster rows ({archivedPeople.length})</h3> : null}
             {archivedPeople.length === 0 ? (
               <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No archived people.</p>
             ) : (
