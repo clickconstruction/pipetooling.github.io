@@ -220,7 +220,7 @@ export function DashboardLienWaiversToSignModal({ open, onClose, rows, onChanged
                   <div style={{ marginTop: '0.75rem' }}>
                     <LienWaiverSignAgree
                       disclosure="By signing, you acknowledge that you have read this release of lien and agree to issue it. Drawing or typing your signature here has the same force and effect as your written signature under the federal ESIGN Act (15 U.S.C. § 7001) and the Texas UETA (Bus. & Com. Code ch. 322), and it prints on every copy of this document."
-                      agreeLabel="I have read this release and agree that my electronic signature is as binding as ink."
+                      agreeLabel="I have read this release and agree to sign it."
                       agreed={agreed}
                       onAgreedChange={(v) => {
                         setAgreed(v)

@@ -130,6 +130,8 @@ describe('DashboardLienWaiversToSignModal (v2.4276)', () => {
     expect(screen.getByTestId('lien-waiver-sign-foot').textContent).toContain('Typed signature')
     fireEvent.click(screen.getByRole('button', { name: '✍ Sign' }))
     expect(screen.getByRole('alert').textContent).toBe('Tick the box to agree first.')
+    // v2.4339: the seat takes the pad's shorter sentence.
+    expect(screen.getByTestId('lien-waiver-agree-row').textContent).toBe('I have read this release and agree to sign it.')
     fireEvent.click(screen.getByLabelText(/I have read this release/))
     fireEvent.click(screen.getByRole('button', { name: '✍ Sign' }))
     await waitFor(() => expect(io.signs).toHaveLength(1))
