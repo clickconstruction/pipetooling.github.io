@@ -447,6 +447,42 @@ describe('SubmittalProcurementPanel', () => {
     localStorage.removeItem('submittals_procure_lens')
   })
 
+  it('2026-10-02 · a blocker’s count is a link: it shows only those parts, out of their folds, until Show every line', async () => {
+    localStorage.removeItem('submittals_procure_lens')
+    state.records = []
+    const lines: ProcurementItemSource[] = [
+      { tag: 'LAV-1', product: 'TOTO T25S51E#CP', supplyHouse: 'Moore Supply', leadTimeDays: 14, decision: null, shared: true, partKey: 'k-faucet', partOrder: 1, itemId: 'row-lav', stage: 'trim_set' },
+      { tag: 'LAV-1', product: 'BOBRICK B-8236', supplyHouse: 'Moore Supply', leadTimeDays: 14, decision: null, shared: true, partKey: 'k-soap', partOrder: 2, itemId: 'row-lav' },
+      { tag: 'WHA-200', product: 'ZURN Z1700-200-OV', supplyHouse: 'National Wholesale', leadTimeDays: 7, decision: null, shared: true, partKey: 'k-wha', partOrder: 1, itemId: 'row-wha' },
+      { tag: 'HB-3', product: 'WOODFORD B74C', supplyHouse: 'Moore Supply', leadTimeDays: 14, decision: { kind: 'approved', at: '2026-09-22T15:00:00Z' }, shared: true, itemId: 'row-hb', stage: 'rough_in' },
+    ]
+    renderWithProviders(<SubmittalProcurementPanel bidId="b1" bidLabel="B375" companyName="Click" items={lines} reviewerNames={[]} currentUser={{ id: 'u', name: 'Wendi' }} houses={[{ id: 'h-moore', name: 'Moore Supply' }]} onOpenItem={() => {}} />)
+    const stage = await screen.findByTestId('procurement-blocker-stage')
+    expect(stage.textContent).toBe('2 parts have no stage.Tick the 2')
+    // To order: the lines waiting on the GC are folded one per house, so the two parts are out of sight.
+    expect(screen.getAllByTestId('procurement-house-fold')).toHaveLength(2)
+    expect(screen.queryByText('BOBRICK B-8236')).toBeNull()
+    const link = within(stage).getByRole('button', { name: 'Show the 2 parts with no stage' })
+    fireEvent.click(link)
+    // Only the two parts, by name, with no fold to open; the line above still says what is ready to buy.
+    expect(screen.getByTestId('procurement-only').textContent).toBe('2 parts with no stage. The other lines are hidden.Show every line')
+    expect(screen.getAllByTestId('procurement-open-row').map((d) => d.textContent)).toEqual(['LAV-1BOBRICK B-8236', 'WHA-200ZURN Z1700-200-OV'])
+    expect(screen.queryByTestId('procurement-house-fold')).toBeNull()
+    expect(screen.queryByText('WOODFORD B74C')).toBeNull()
+    expect(link.getAttribute('aria-pressed')).toBe('true')
+    expect(stage.textContent).toBe('2 parts have no stage. Shown below.Tick the 2')
+    expect(screen.getByTestId('procurement-next').textContent).toContain('1 line is approved and not ordered.')
+    // Tick the 2 still works on the short list.
+    fireEvent.click(within(stage).getByRole('button', { name: 'Tick the 2' }))
+    expect(screen.getAllByTestId('procurement-tick').every((t) => (t as HTMLInputElement).checked)).toBe(true)
+    // The link again, or Show every line, brings the log back.
+    fireEvent.click(within(screen.getByTestId('procurement-only')).getByRole('button', { name: 'Show every line' }))
+    expect(screen.queryByTestId('procurement-only')).toBeNull()
+    expect(screen.getAllByTestId('procurement-house-fold')).toHaveLength(2)
+    expect(screen.getByText('WOODFORD B74C')).toBeTruthy()
+    expect(stage.textContent).toBe('2 parts have no stage.Tick the 2')
+  })
+
   it('2026-10-02 · on a phone each part is a short card: no table, the qty, house and stage on one line, its dates open under it', async () => {
     localStorage.setItem('submittals_procure_lens', 'by_tag')
     state.records = []

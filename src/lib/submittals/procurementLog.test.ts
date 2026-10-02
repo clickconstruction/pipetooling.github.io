@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
+  BLOCKER_KINDS,
+  BLOCKER_WORDS,
+  blockerKeys,
+  rowsForBlocker,
   addDays,
   buildProcurementLog,
   approveBy,
@@ -553,6 +557,31 @@ describe('2026-10-02 · what still blocks ordering', () => {
       noStage: ['part:k-valve'],
       noProduct: [{ key: 'UTILITY SINK', tag: 'UTILITY SINK', itemId: 'row-us' }],
     })
+  })
+
+  it('the log narrows to the lines one blocker names, and comes back whole when it names none', () => {
+    const lines = buildProcurementLog({
+      items: [
+        item({ tag: 'WC-1', product: 'TOTO CT728CUVG#01', partKey: 'k-bowl', supplyHouse: 'Moore Supply', leadTimeDays: 21, stage: 'trim_set' }),
+        item({ tag: 'WC-1', product: 'TOTO TET2UB31#SS', partKey: 'k-valve', supplyHouse: 'Moore Supply' }),
+        item({ tag: 'LAV-1', product: 'TOTO T25S51E#CP', partKey: 'k-faucet', leadTimeDays: 14 }),
+      ],
+      records: [],
+      tagStage: {},
+      stageDates: {},
+    })
+    const b = orderBlockers(lines)
+    // In the log's own order: LAV-1 before WC-1.
+    expect(blockerKeys(b, 'stage')).toEqual(['part:k-faucet', 'part:k-valve'])
+    expect(rowsForBlocker(lines, b, 'stage')).toMatchObject({ only: 'stage', rows: [{ key: 'part:k-faucet' }, { key: 'part:k-valve' }] })
+    expect(rowsForBlocker(lines, b, 'house').rows.map((r) => r.key)).toEqual(['part:k-faucet'])
+    expect(rowsForBlocker(lines, b, 'lead').rows.map((r) => r.key)).toEqual(['part:k-valve'])
+    // Nothing picked: every line.
+    expect(rowsForBlocker(lines, b, null)).toMatchObject({ only: null, rows: [{}, {}, {}] })
+    // The last line fixed: the blocker names nothing, so the whole log is back and nothing is picked.
+    const fixed = { ...b, noStage: [] }
+    expect(rowsForBlocker(lines, fixed, 'stage')).toMatchObject({ only: null, rows: [{}, {}, {}] })
+    expect(BLOCKER_KINDS.map((k) => BLOCKER_WORDS[k])).toEqual(['no lead time', 'no house', 'no stage'])
   })
 })
 
