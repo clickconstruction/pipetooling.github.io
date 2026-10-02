@@ -91,9 +91,9 @@ describe('jobNextLine — the chip, first match wins', () => {
     expect(jobNextLine(base({ stage: 'billed', quietDays: 9, lienRunway: runway })).chip?.label).toBe('quiet 9 d')
   })
 
-  it('no bid value beats everything', () => {
+  it('no price yet beats everything', () => {
     const n = jobNextLine(base({ view: view({ mode: 'nobid' }), billSentAlert: { sentAt: null, label: 'x', title: 't' }, quietDays: 20 }))
-    expect(n.chip).toMatchObject({ label: 'no bid value', tone: 'red', action: 'no-bid' })
+    expect(n.chip).toMatchObject({ label: 'no price yet', tone: 'red', action: 'no-bid' })
     expect(n.needsMe).toBe(true)
   })
   it('a returned check beats everything but a missing bid (v2.3806): red, opens ③ Payments received', () => {

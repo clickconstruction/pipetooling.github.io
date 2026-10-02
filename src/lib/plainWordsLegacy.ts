@@ -78,7 +78,6 @@ export const LEGACY_PLAIN_WORDS_GUIDES: ReadonlySet<string> = new Set([
   'use-the-reply-book',
   'watch-a-job-for-sub-updates',
   'work-the-hours-grid-on-a-phone',
-  'work-the-pipeline-from-my-phone',
   'work-the-prospect-calling-queue',
   'work-the-punch-list',
   'write-a-change-order',
