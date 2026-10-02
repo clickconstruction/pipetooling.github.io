@@ -131,6 +131,7 @@ export function SpotlightTour({ steps, onClose, guideHref, guideLabel, startInde
   }
 
   return createPortal(
+    // status-bar: allow — the hole and the card are placed from the control they point at, not from this layer
     <div style={{ position: 'fixed', inset: 0, zIndex: 1000 }} onClick={onClose} data-page-scroll="allow" data-testid="spotlight-tour-overlay">
       {hole ? (
         <div

@@ -27,6 +27,7 @@
     "check:backdrop-click": "node scripts/codemods/backdrop-click-sweep.mjs --check",
     "check:window-z": "node scripts/codemods/window-z-above-dock.mjs --check",
     "check:dialog-role": "node scripts/codemods/dialog-role-sweep.mjs --check",
+    "check:status-bar": "node scripts/codemods/window-below-status-bar.mjs --check",
     "map": "node scripts/map-surface.mjs",
     "claim": "vite-node scripts/claim-version.ts",
     "brand:pipe-wordmark": "vite-node scripts/pipe-wordmark-assets.ts",
