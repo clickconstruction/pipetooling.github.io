@@ -322,6 +322,7 @@ A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the
 ### Accounts Receivable close-out books the label (`close_out_ar_deposit`, v2.4363)
 - **Who**: the AR roles of `set_mercury_transaction_ar_closed` — office staff (`is_office_staff()`) and **`primary`**; `ar_deposit_booking` (the read) the same. Both SECURITY DEFINER.
 - **What it widens**: for the one deposit being closed out, it writes the Banking label and may **approve that deposit's own waiting rule match** — an assistant cannot Approve on Banking → Accounting (`bulk_approve_accounting_label_suggestions` is dev · master · controller). Labels otherwise stay office-staff writes; Reopen takes off only a label the close-out chose (`mercury_transaction_ar_close_labels`).
+- **Book it as Income** (`ar_book_applied_deposit_income`, v2.4369): the same AR roles may write Income over any label on a deposit that paid a bill; the replaced label is kept in `mercury_transaction_ar_income_labels.previous_label_id` and goes back when the last payment leaves.
 
 ---
 

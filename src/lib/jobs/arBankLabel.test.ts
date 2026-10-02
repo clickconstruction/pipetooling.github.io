@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  arAppliedIncomeFix,
   arAppliedToast,
   arApplyBooksIncome,
   arBankLabelIsIncome,
@@ -73,5 +74,22 @@ describe('arAppliedToast', () => {
     expect(arAppliedToast(5574.6, true)).toBe('Applied $5,574.60 · booked as Income')
     expect(arAppliedToast(5574.6, false)).toBe('Applied $5,574.60')
     expect(arAppliedToast(0, true)).toBe('Applied · booked as Income')
+  })
+})
+
+describe('arAppliedIncomeFix (v2.4369 Book it as Income)', () => {
+  const taxes = { labelName: 'Taxes and Licenses', labelDefaultKey: 'taxes_licenses' }
+  it('a deposit that paid a bill under another label: the words, with the rule when a rule did it', () => {
+    expect(arAppliedIncomeFix(taxes, 4890, 'City of Seguin - Taxes and Licenses')).toEqual({
+      text: 'Banking books it as Taxes and Licenses. It paid a bill, so it is income.',
+      ruleLine: 'Your rule City of Seguin labelled it. In Banking, that rule can be limited to money going out.',
+    })
+    expect(arAppliedIncomeFix(taxes, 4890, null)?.ruleLine).toBeNull()
+  })
+  it('nothing when it paid nothing, carries no label, or is Income already', () => {
+    expect(arAppliedIncomeFix(taxes, 0)).toBeNull()
+    expect(arAppliedIncomeFix({ labelName: null, labelDefaultKey: null }, 4890)).toBeNull()
+    expect(arAppliedIncomeFix({ labelName: 'Income', labelDefaultKey: 'income_part_i' }, 4890)).toBeNull()
+    expect(arAppliedIncomeFix(null, 4890)).toBeNull()
   })
 })

@@ -80,6 +80,7 @@ import { readEdgeFunctionErrorBody } from '../../lib/readEdgeFunctionErrorBody'
 import { buildArTipOffer } from '../../lib/jobs/arTipOffer'
 import {
   AR_APPLIED_INCOME_SETTING_KEY,
+  arAppliedIncomeFix,
   arAppliedToast,
   arApplyBooksIncome,
   arBankLabelNote,
@@ -278,6 +279,9 @@ export default function BankPaymentsModal({
   /** Applied-means-Income: the org switch (read once per open) and the selected deposit's Banking label. */
   const [arIncomeSwitchOn, setArIncomeSwitchOn] = useState<boolean>(false)
   const [bankLabel, setBankLabel] = useState<ArBankLabelSlice | null>(null)
+  /** v2.4369: bumped after Book it as Income so the label is read again. */
+  const [bankLabelSeq, setBankLabelSeq] = useState(0)
+  const [incomeFixBusy, setIncomeFixBusy] = useState(false)
   // The tip offer (v2.3496): money left on a deposit whose bills are settled.
   const [tipJobId, setTipJobId] = useState<string | null>(null)
   const [tipConfirming, setTipConfirming] = useState(false)
@@ -1319,7 +1323,9 @@ export default function BankPaymentsModal({
 
   // v2.4363: how Banking books the deposit, read while the strip or the closed record shows.
   // The payee's last close-out picks the reason, unless the person already pressed one.
-  const wantCloseBooking = closeOutOffer != null || closedRow != null
+  // v2.4369: also for a deposit that paid a bill under another label, to name the rule that did it.
+  const appliedLabelOff = selected != null && arAppliedIncomeFix(bankLabel, Number(selected.consumed) || 0) != null
+  const wantCloseBooking = closeOutOffer != null || closedRow != null || appliedLabelOff
   useEffect(() => {
     const txId = selected?.mercury_transaction_id
     setCloseBooking(null)
@@ -1693,10 +1699,42 @@ export default function BankPaymentsModal({
     return () => {
       cancelled = true
     }
-  }, [open, selected?.mercury_transaction_id, arIncomeSwitchOn])
+  }, [open, selected?.mercury_transaction_id, arIncomeSwitchOn, bankLabelSeq])
 
   /** The one-line deviation note under the header — only when the label is something other than Income. */
   const bankLabelNote = useMemo(() => arBankLabelNote(bankLabel), [bankLabel])
+
+  /** v2.4369 Book it as Income: the words and the button for a deposit that paid a bill under another label. */
+  const appliedIncomeFix = useMemo(
+    () =>
+      selected
+        ? arAppliedIncomeFix(bankLabel, Number(selected.consumed) || 0, closeBooking?.labelBy === 'rule' ? closeBooking.ruleName : null)
+        : null,
+    [selected, bankLabel, closeBooking],
+  )
+
+  const bookAppliedIncome = useCallback(async () => {
+    const txId = selected?.mercury_transaction_id
+    if (!txId) return
+    setIncomeFixBusy(true)
+    try {
+      const data = await withSupabaseRetry(
+        async () => supabase.rpc('ar_book_applied_deposit_income' as never, { p_mercury_transaction_id: txId } as never),
+        'ar_book_applied_deposit_income',
+      )
+      const payload = data as { ok?: boolean; error?: string } | null
+      if (payload && typeof payload === 'object' && typeof payload.error === 'string') throw new Error(payload.error)
+      showToast('Booked as Income in Banking.', 'success')
+      setBankLabelSeq((n) => n + 1)
+      setCloseBookingSeq((n) => n + 1)
+    } catch (e: unknown) {
+      const server = e && typeof e === 'object' && 'serverMessage' in e ? (e as { serverMessage?: string }).serverMessage : undefined
+      const msg = server || (e instanceof Error ? e.message : 'Could not book it as Income')
+      showToast(isMissingRpcError(msg) ? 'This is not live in the database yet — the change still has to be pushed.' : msg, 'error')
+    } finally {
+      setIncomeFixBusy(false)
+    }
+  }, [selected?.mercury_transaction_id, showToast])
 
   /** AR refresh PR 4 (v2.3382): the footer's words — what Apply will do, or why it can't yet. */
   const applySentence = useMemo(
@@ -2672,7 +2710,52 @@ export default function BankPaymentsModal({
                     consumed={Number(selected.consumed) || 0}
                     progress={allocationProgress}
                   />
-                  {bankLabelNote ? (
+                  {appliedIncomeFix ? (
+                    <div
+                      data-testid="ar-applied-income-fix"
+                      style={{
+                        marginBottom: '0.75rem',
+                        border: '1px solid var(--border-amber)',
+                        background: 'var(--bg-amber-tint)',
+                        borderRadius: 8,
+                        padding: '0.6rem 0.75rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem',
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      <div style={{ flex: '1 1 240px', minWidth: 0 }}>
+                        <div style={{ fontSize: '0.875rem', color: 'var(--text-amber-900)' }}>{appliedIncomeFix.text}</div>
+                        {appliedIncomeFix.ruleLine ? (
+                          <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 2 }}>{appliedIncomeFix.ruleLine}</div>
+                        ) : null}
+                      </div>
+                      {canApply ? (
+                        <button
+                          type="button"
+                          data-testid="ar-applied-income-fix-button"
+                          onClick={() => void bookAppliedIncome()}
+                          disabled={incomeFixBusy}
+                          style={{
+                            fontFamily: 'inherit',
+                            fontSize: '0.875rem',
+                            fontWeight: 600,
+                            padding: '0.5rem 0.9rem',
+                            borderRadius: 8,
+                            minHeight: 44,
+                            border: '1px solid var(--text-strong)',
+                            background: 'var(--text-strong)',
+                            color: 'var(--surface)',
+                            cursor: incomeFixBusy ? 'default' : 'pointer',
+                            opacity: incomeFixBusy ? 0.55 : 1,
+                          }}
+                        >
+                          {incomeFixBusy ? 'Booking…' : 'Book it as Income'}
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : bankLabelNote ? (
                     <div
                       data-testid="ar-bank-label-note"
                       style={{ marginBottom: '0.75rem', fontSize: '0.8125rem', color: 'var(--text-amber-700)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}
