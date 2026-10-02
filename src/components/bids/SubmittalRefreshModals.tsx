@@ -5,8 +5,8 @@
  * Josam carriers) into that row as a part. Both hand the choice back; the tab writes it.
  */
 import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
-import { foldWrites, type RefreshPlanRow, type RefreshSkip } from '../../lib/submittals/refreshFromTakeoff'
-import type { SubmittalPartRow } from '../../lib/submittals/itemParts'
+import { foldReplaceSuggestion, foldWrites, type RefreshPlanRow, type RefreshSkip } from '../../lib/submittals/refreshFromTakeoff'
+import { splitPartLabel, type SubmittalPartRow } from '../../lib/submittals/itemParts'
 import type { SubmittalItemRow } from '../../lib/submittals/submittalRevision'
 
 const quiet: CSSProperties = { fontSize: '0.78rem', color: 'var(--text-muted)' }
@@ -80,11 +80,20 @@ export function SubmittalTakeoffRefreshModal({ rows, skipped, busy = false, onCo
   )
 }
 
-export function SubmittalFoldModal({ from, rows, partsByItem, suggestedIntoId, busy = false, onConfirm, onClose }: { from: SubmittalItemRow; rows: ReadonlyArray<SubmittalItemRow>; partsByItem: ReadonlyMap<string, ReadonlyArray<SubmittalPartRow>>; suggestedIntoId: string | null; busy?: boolean; onConfirm: (intoId: string) => void; onClose: () => void }) {
+export function SubmittalFoldModal({ from, rows, partsByItem, suggestedIntoId, busy = false, onConfirm, onClose }: { from: SubmittalItemRow; rows: ReadonlyArray<SubmittalItemRow>; partsByItem: ReadonlyMap<string, ReadonlyArray<SubmittalPartRow>>; suggestedIntoId: string | null; busy?: boolean; onConfirm: (intoId: string, replaceId: string | null) => void; onClose: () => void }) {
   const others = rows.filter((r) => r.id !== from.id)
-  const [intoId, setIntoId] = useState<string>(suggestedIntoId && others.some((r) => r.id === suggestedIntoId) ? suggestedIntoId : '')
+  const startInto = suggestedIntoId && others.some((r) => r.id === suggestedIntoId) ? suggestedIntoId : ''
+  const [intoId, setIntoId] = useState<string>(startInto)
   const into = others.find((r) => r.id === intoId) ?? null
-  const preview = useMemo(() => (into ? foldWrites(from, into, partsByItem.get(into.id) ?? [], into.submittal_id, () => 'preview') : null), [from, into, partsByItem])
+  const intoParts = useMemo(() => (into ? [...(partsByItem.get(into.id) ?? [])].sort((a, b) => a.sequence_order - b.sequence_order) : []), [into, partsByItem])
+  // 2026-10-02 · in place of: the row's own carrier is picked for a carrier; nothing otherwise.
+  const [replaceId, setReplaceId] = useState<string>(() => (startInto ? foldReplaceSuggestion(from, [...(partsByItem.get(startInto) ?? [])]) ?? '' : ''))
+  const pickInto = (id: string) => {
+    setIntoId(id)
+    setReplaceId(id ? foldReplaceSuggestion(from, [...(partsByItem.get(id) ?? [])]) ?? '' : '')
+  }
+  const preview = useMemo(() => (into ? foldWrites(from, into, intoParts, into.submittal_id, () => 'preview', { replaceId: replaceId || null }) : null), [from, into, intoParts, replaceId])
+  const replaced = intoParts.find((p) => p.id === replaceId) ?? null
   const fromTag = from.tag.trim() || 'This row'
   const intoTag = into?.tag.trim() || 'the row'
   return (
@@ -96,7 +105,7 @@ export function SubmittalFoldModal({ from, rows, partsByItem, suggestedIntoId, b
       footer={
         <>
           <button type="button" disabled={busy} onClick={onClose} style={btn}>Cancel</button>
-          <button type="button" disabled={busy || !into} onClick={() => into && onConfirm(into.id)} style={btnPrimary} data-testid="fold-confirm">
+          <button type="button" disabled={busy || !into} onClick={() => into && onConfirm(into.id, replaceId || null)} style={btnPrimary} data-testid="fold-confirm">
             {busy ? 'Moving…' : into ? `Make it a part of ${intoTag}` : 'Pick a row'}
           </button>
         </>
@@ -107,7 +116,7 @@ export function SubmittalFoldModal({ from, rows, partsByItem, suggestedIntoId, b
       </p>
       <label style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>
         Part of
-        <select aria-label="The row it becomes a part of" value={intoId} disabled={busy} onChange={(e) => setIntoId(e.target.value)} style={select} data-testid="fold-into">
+        <select aria-label="The row it becomes a part of" value={intoId} disabled={busy} onChange={(e) => pickInto(e.target.value)} style={select} data-testid="fold-into">
           <option value="">Pick a row…</option>
           {others.map((r) => (
             <option key={r.id} value={r.id}>
@@ -116,10 +125,27 @@ export function SubmittalFoldModal({ from, rows, partsByItem, suggestedIntoId, b
           ))}
         </select>
       </label>
+      {into && intoParts.length > 0 ? (
+        <label style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>
+          In place of
+          <select aria-label="The part it takes the place of" value={replaceId} disabled={busy} onChange={(e) => setReplaceId(e.target.value)} style={select} data-testid="fold-replace">
+            <option value="">Nothing. Add it as an extra part</option>
+            {intoParts.map((p) => (
+              <option key={p.id} value={p.id}>
+                {splitPartLabel(p.label).head}{p.on_submittal ? '' : ' · order only'}{p.id === foldReplaceSuggestion(from, intoParts) ? ' · the same kind of part' : ''}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
       {preview ? (
         <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-base)', lineHeight: 1.45, overflowWrap: 'anywhere' }} data-testid="fold-preview">
           {intoTag} will list for the GC: <b style={{ color: 'var(--text-strong)' }}>{preview.after}</b>.
-          <span style={{ ...quiet, display: 'block', marginTop: '0.2rem' }}>The {fromTag} row leaves this draft.</span>
+          <span style={{ ...quiet, display: 'block', marginTop: '0.2rem' }}>
+            {replaced ? `${splitPartLabel(preview.inserts[preview.inserts.length - 1]!.label).head} reads in place of the priced ${splitPartLabel(replaced.label).head}, which comes off. ` : ''}
+            {preview.inserts[preview.inserts.length - 1]!.stage === 'rough_in' ? 'It goes in at Rough In, like every carrier. ' : ''}
+            The {fromTag} row leaves this draft.
+          </span>
         </p>
       ) : null}
     </Shell>

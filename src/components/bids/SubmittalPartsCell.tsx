@@ -5,7 +5,7 @@
  * out of, and every house they come from.
  */
 import type { CSSProperties } from 'react'
-import { assemblyLine, formatPartQty, orderOnlyLine, partHouseIds, splitPartLabel, submittedParts, type SubmittalPartRow } from '../../lib/submittals/itemParts'
+import { assemblyLine, doubledKinds, formatPartQty, orderOnlyLine, partHouseIds, splitPartLabel, submittedParts, type SubmittalPartRow } from '../../lib/submittals/itemParts'
 import { formatPages } from '../../lib/submittals/submittalRevision'
 
 const quiet: CSSProperties = { fontSize: '0.7rem', color: 'var(--text-muted)' }
@@ -46,6 +46,11 @@ export function SubmittalPartsCell({ parts, houseNameById }: { parts: ReadonlyAr
           {splitPartLabel(p.label).head} in place of the priced {splitPartLabel(p.priced_label).head}{p.reason_note ? `: ${p.reason_note}` : ' · say why with Edit'}
         </span>
       ))}
+      {doubledKinds(parts).includes('carrier') ? (
+        <span style={{ ...quiet, color: 'var(--text-amber-700)', fontWeight: 600 }} data-testid="row-two-carriers" title="A fixture needs one carrier. Tap Edit and take off the one you are not buying.">
+          Two carriers. One may be extra.
+        </span>
+      ) : null}
       {orderOnly ? (
         <span style={quiet} data-testid="row-order-only" title="Bought for the fixture, but not on the GC's submittal">
           Ordered, not submitted: {orderOnly}

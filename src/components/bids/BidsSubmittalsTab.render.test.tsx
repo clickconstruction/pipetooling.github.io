@@ -864,6 +864,40 @@ describe('BidsSubmittalsTab', () => {
     }
   })
 
+  it('2026-10-02 · a fixture listing two carriers says so; Make it a part takes the place of the takeoff’s carrier, at Rough In', async () => {
+    state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, shared_at: null, created_at: '2026-09-15T00:00:00Z', source_files: [] }]
+    state.items = [
+      item({ id: 'wc', tag: 'WC-1, WC-2', sequence_order: 1, submitted_label: 'TOTO CT728CUVG#01 + ZURN Z1201', status: 'proposed', source_count_row_id: 'c-wc' }),
+      item({ id: 'car', tag: 'WC CARRIER', sequence_order: 2, submitted_label: 'JOSAM 12694 4" NH double adjustable horizontal closet carrier', status: 'accessory', reason_note: 'Carrier for WC-1 and WC-2.', supply_house_id: 'h-nws' }),
+      item({ id: 'ur', tag: 'UR-1', sequence_order: 3, submitted_label: 'TOTO UT105UVG#01', status: 'proposed' }),
+    ]
+    state.parts = [
+      { id: 'pt-bowl', item_id: 'wc', bid_id: 'b398', sequence_order: 1, label: 'TOTO CT728CUVG#01 TORNADO FLUSH TOILET', quantity: 1, on_submittal: true, source: 'takeoff', sheet_pages: [], procure_key: 'k-bowl', decision_source: 'room' },
+      { id: 'pt-zurn', item_id: 'wc', bid_id: 'b398', sequence_order: 2, label: 'ZURN Z1201-NR4-CL12-RYK17 NH DURA-COAT CI ADJ HORIZONTAL SIPHON JET EZCARRY W/RT HAND INLET', quantity: 1, on_submittal: true, source: 'takeoff', sheet_pages: [], procure_key: 'k-zurn', decision_source: 'room' },
+      { id: 'pt-u1', item_id: 'ur', bid_id: 'b398', sequence_order: 1, label: 'TOTO UT105UVG#01', quantity: 1, on_submittal: true, source: 'hand', sheet_pages: [], procure_key: 'k-u1', decision_source: 'room' },
+      { id: 'pt-u2', item_id: 'ur', bid_id: 'b398', sequence_order: 2, label: 'ZURN Z1222 URINAL CARRIER', quantity: 1, on_submittal: true, source: 'hand', sheet_pages: [], procure_key: 'k-u2', decision_source: 'room' },
+      { id: 'pt-u3', item_id: 'ur', bid_id: 'b398', sequence_order: 3, label: 'JOSAM 17560-UR floor mount urinal carrier', quantity: 1, on_submittal: true, source: 'hand', sheet_pages: [], procure_key: 'k-u3', decision_source: 'room' },
+    ]
+    state.writes = []
+    try {
+      mount()
+      // UR-1 already lists two carriers: the row says so.
+      await waitFor(() => expect(screen.getAllByTestId('row-two-carriers')).toHaveLength(1))
+      const hint = await screen.findByTestId('fold-hint')
+      fireEvent.click(within(hint).getByTestId('fold-hint-open'))
+      const dialog = await screen.findByRole('dialog', { name: 'Make WC CARRIER a part of another row' })
+      expect((within(dialog).getByTestId('fold-replace') as HTMLSelectElement).value).toBe('pt-zurn')
+      fireEvent.click(within(dialog).getByTestId('fold-confirm'))
+      await waitFor(() => expect(state.items.some((r) => r.id === 'car')).toBe(false))
+      const wcParts = state.parts.filter((p) => p.item_id === 'wc').sort((a, b) => (a.sequence_order as number) - (b.sequence_order as number))
+      expect(wcParts.map((p) => [p.label, p.sequence_order])).toEqual([['TOTO CT728CUVG#01 TORNADO FLUSH TOILET', 1], ['JOSAM 12694 4" NH double adjustable horizontal closet carrier', 2]])
+      expect(wcParts[1]).toMatchObject({ priced_label: 'ZURN Z1201-NR4-CL12-RYK17 NH DURA-COAT CI ADJ HORIZONTAL SIPHON JET EZCARRY W/RT HAND INLET', stage: 'rough_in', supply_house_id: 'h-nws' })
+      expect(state.writes.find((w) => w.table === 'bid_submittal_item_parts' && w.op === 'delete')!.filters).toContainEqual(['id:in', ['pt-zurn']])
+    } finally {
+      state.parts = []
+    }
+  })
+
   it('2026-10-01 · a draft catching up: a hand row whose note names another row reads like its part; Make it a part folds it in as a part and the row leaves', async () => {
     state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, shared_at: null, created_at: '2026-09-15T00:00:00Z', source_files: [] }]
     state.items = [

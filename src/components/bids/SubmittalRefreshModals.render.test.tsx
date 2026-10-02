@@ -51,16 +51,34 @@ describe('SubmittalFoldModal', () => {
   const parts = new Map([['ur', [part('u1', 'ur', 'SLOAN WEUS-1000', 1)]]])
 
   it('starts on the row its note names, shows what that row will list, and folds on the button', () => {
-    const onConfirm = vi.fn<(id: string) => void>()
+    const onConfirm = vi.fn<(id: string, replaceId: string | null) => void>()
     render(<SubmittalFoldModal from={car} rows={[wc, ur, car]} partsByItem={parts} suggestedIntoId="wc" onConfirm={onConfirm} onClose={() => {}} />)
     expect(screen.getByRole('dialog', { name: 'Make CAR-1 a part of another row' })).toBeTruthy()
     const pick = screen.getByRole('combobox', { name: 'The row it becomes a part of' }) as HTMLSelectElement
     expect(pick.value).toBe('wc')
     // The row itself is not offered.
     expect([...pick.options].map((o) => o.value)).toEqual(['', 'wc', 'ur'])
-    expect(screen.getByTestId('fold-preview').textContent).toBe('WC-1, WC-2 will list for the GC: TOTO CT708UVG + JOSAM 12674.The CAR-1 row leaves this draft.')
+    expect(screen.getByTestId('fold-preview').textContent).toBe('WC-1, WC-2 will list for the GC: TOTO CT708UVG + JOSAM 12674.It goes in at Rough In, like every carrier. The CAR-1 row leaves this draft.')
+    // A row with no parts yet has nothing to take the place of.
+    expect(screen.queryByTestId('fold-replace')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Make it a part of WC-1, WC-2' }))
-    expect(onConfirm).toHaveBeenCalledWith('wc')
+    expect(onConfirm).toHaveBeenCalledWith('wc', null)
+  })
+
+  it('2026-10-02 · in place of: on a row with its own carrier, that carrier is picked; the preview drops it; Nothing keeps it', () => {
+    const onConfirm = vi.fn<(id: string, replaceId: string | null) => void>()
+    const wcParts = new Map([['wc', [part('w-bowl', 'wc', 'TOTO CT728CUVG#01 TORNADO FLUSH TOILET', 1), part('w-seat', 'wc', 'MAINLINE ML1055SSC000 WHT ELONG', 2), part('w-zurn', 'wc', 'ZURN Z1201-NR4-CL12-RYK17 NH DURA-COAT CI ADJ HORIZONTAL SIPHON JET EZCARRY W/RT HAND INLET', 3)]]])
+    render(<SubmittalFoldModal from={car} rows={[wc, ur, car]} partsByItem={wcParts} suggestedIntoId="wc" onConfirm={onConfirm} onClose={() => {}} />)
+    const replace = screen.getByRole('combobox', { name: 'The part it takes the place of' }) as HTMLSelectElement
+    expect(replace.value).toBe('w-zurn')
+    expect([...replace.options].map((o) => o.textContent)).toEqual(['Nothing. Add it as an extra part', 'TOTO CT728CUVG#01', 'MAINLINE ML1055SSC000', 'ZURN Z1201-NR4-CL12-RYK17 · the same kind of part'])
+    expect(screen.getByTestId('fold-preview').textContent).toBe('WC-1, WC-2 will list for the GC: TOTO CT728CUVG#01 + MAINLINE ML1055SSC000 + JOSAM 12674.JOSAM 12674 reads in place of the priced ZURN Z1201-NR4-CL12-RYK17, which comes off. It goes in at Rough In, like every carrier. The CAR-1 row leaves this draft.')
+    fireEvent.click(screen.getByRole('button', { name: 'Make it a part of WC-1, WC-2' }))
+    expect(onConfirm).toHaveBeenLastCalledWith('wc', 'w-zurn')
+    fireEvent.change(replace, { target: { value: '' } })
+    expect(screen.getByTestId('fold-preview').textContent).toContain('TOTO CT728CUVG#01 + MAINLINE ML1055SSC000 + ZURN Z1201-NR4-CL12-RYK17 + JOSAM 12674.')
+    fireEvent.click(screen.getByRole('button', { name: 'Make it a part of WC-1, WC-2' }))
+    expect(onConfirm).toHaveBeenLastCalledWith('wc', null)
   })
 
   it('with no suggestion it waits for a pick; the preview follows the pick', () => {

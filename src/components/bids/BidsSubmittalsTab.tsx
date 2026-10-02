@@ -746,13 +746,13 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
    * 2026-10-01 · Make it a part of…: a draft row typed by hand for another row's fixture (BP375's
    * carriers) becomes a part of that row; its order dates move onto the part, then the row leaves.
    */
-  async function foldRowInto(fromId: string, intoId: string) {
+  async function foldRowInto(fromId: string, intoId: string, replaceId: string | null = null) {
     const from = items.find((x) => x.id === fromId)
     const into = items.find((x) => x.id === intoId)
     if (!bidId || !selectedRev || asRevisionStatus(selectedRev.status) !== 'draft' || !from || !into) return
     setBusy(true)
     try {
-      const plan = foldWrites(from, into, partsOf.get(into.id) ?? [], bidId, () => crypto.randomUUID())
+      const plan = foldWrites(from, into, partsOf.get(into.id) ?? [], bidId, () => crypto.randomUUID(), { replaceId })
       await applyPartWrites(db, into.id, plan)
       // The row's call reads its parts: a carrier the GC has not called leaves the fixture open.
       await writeRowCallFromParts(db, into.id)
@@ -2592,7 +2592,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       ) : null}
       {refreshOpen ? <SubmittalTakeoffRefreshModal rows={refreshPlan.rows} skipped={refreshPlan.skipped} busy={busy} onConfirm={() => void refreshRowsFromTakeoff()} onClose={() => setRefreshOpen(false)} /> : null}
       {foldFrom && items.some((x) => x.id === foldFrom.fromId) ? (
-        <SubmittalFoldModal from={items.find((x) => x.id === foldFrom.fromId)!} rows={items} partsByItem={partsOf} suggestedIntoId={foldFrom.intoId} busy={busy} onConfirm={(intoId) => void foldRowInto(foldFrom.fromId, intoId)} onClose={() => setFoldFrom(null)} />
+        <SubmittalFoldModal from={items.find((x) => x.id === foldFrom.fromId)!} rows={items} partsByItem={partsOf} suggestedIntoId={foldFrom.intoId} busy={busy} onConfirm={(intoId, replaceId) => void foldRowInto(foldFrom.fromId, intoId, replaceId)} onClose={() => setFoldFrom(null)} />
       ) : null}
       {splitRuleOpen ? <SplitRuleModal examples={splitExplanation(takeoffCandidatesForPicker)} onClose={() => setSplitRuleOpen(false)} /> : null}
       {takeoffPicker && takeoff ? (

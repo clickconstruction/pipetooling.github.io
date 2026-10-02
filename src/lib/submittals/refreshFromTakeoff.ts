@@ -7,7 +7,7 @@
  * by hand for one fixture's part — BP375's three Josam carriers, "Carrier for WC-1 and WC-2." —
  * can be **folded** into that fixture as a part, its order and delivery dates with it. Pure.
  */
-import { asPartStage, formatPartQty, partsFromPieces, splitPartLabel, type SubmittalPartInsert, type SubmittalPartRow } from './itemParts'
+import { asPartStage, formatPartQty, isCarrier, partsFromPieces, splitPartLabel, type SubmittalPartInsert, type SubmittalPartRow } from './itemParts'
 import type { TakeoffCandidate } from './takeoffCandidates'
 import type { SubmittalItemRow } from './submittalRevision'
 import { tagSet } from './houseFileParts'
@@ -195,9 +195,12 @@ export type FoldPlan = PartWrites & {
  * fixture. Each row's procurement line moves onto its part, so an order date typed for the
  * carrier holds. The folded row itself is the caller's to delete. `mint` makes procurement keys.
  */
-export function foldWrites(from: SubmittalItemRow, into: SubmittalItemRow, intoParts: ReadonlyArray<SubmittalPartRow>, bidId: string, mint: () => string): FoldPlan {
+export function foldWrites(from: SubmittalItemRow, into: SubmittalItemRow, intoParts: ReadonlyArray<SubmittalPartRow>, bidId: string, mint: () => string, opts: { replaceId?: string | null } = {}): FoldPlan {
   const inserts: SubmittalPartInsert[] = []
   const moveLines: Array<{ tag: string; partKey: string }> = []
+  // 2026-10-02 · in place of one of the row's parts: the folded part takes its place and its
+  // name as what was priced, and that part comes off (BP375: the Josam in place of the Zurn).
+  const replaced = opts.replaceId ? intoParts.find((p) => p.id === opts.replaceId) ?? null : null
   let seq = intoParts.reduce((m, p) => Math.max(m, p.sequence_order), 0)
   if (intoParts.length === 0) {
     const key = mint()
@@ -205,8 +208,30 @@ export function foldWrites(from: SubmittalItemRow, into: SubmittalItemRow, intoP
     if (into.tag.trim()) moveLines.push({ tag: into.tag.trim(), partKey: key })
   }
   const key = mint()
-  inserts.push(rowAsPart(from, into.id, bidId, ++seq, key))
+  const folded = rowAsPart(from, into.id, bidId, replaced ? replaced.sequence_order : ++seq, key)
+  if (replaced) {
+    folded.priced_label = replaced.label
+    folded.on_submittal = replaced.on_submittal
+  }
+  // A carrier goes in at Rough In.
+  if (isCarrier(folded.label)) folded.stage = 'rough_in'
+  inserts.push(folded)
   if (from.tag.trim()) moveLines.push({ tag: from.tag.trim(), partKey: key })
-  const gcSees = [...intoParts.filter((p) => p.on_submittal).sort((a, b) => a.sequence_order - b.sequence_order).map((p) => p.label), ...inserts.map((p) => p.label)]
-  return { deletes: [], updates: [], inserts, moveLines, after: short(gcSees) }
+  const kept = intoParts.filter((p) => p.id !== replaced?.id)
+  const gcSees = [...kept.filter((p) => p.on_submittal).map((p) => ({ label: p.label, seq: p.sequence_order })), ...inserts.filter((p) => p.on_submittal !== false).map((p) => ({ label: p.label, seq: p.sequence_order }))]
+    .sort((a, b) => a.seq - b.seq)
+    .map((p) => p.label)
+  return { deletes: replaced ? [replaced.id] : [], updates: [], inserts, moveLines, after: short(gcSees) }
+}
+
+/**
+ * The part a folded row most likely replaces on the row it joins: a carrier for a carrier
+ * (BP375's Josam in place of the takeoff's Zurn). Null when nothing matches; the window then
+ * adds it as an extra part unless the estimator picks one.
+ */
+export function foldReplaceSuggestion(from: SubmittalItemRow, intoParts: ReadonlyArray<SubmittalPartRow>): string | null {
+  const label = (from.submitted_label ?? '').trim() || [from.submitted_manufacturer, from.submitted_model].filter(Boolean).join(' ')
+  if (!isCarrier(label) && !isCarrier(from.tag) && !isCarrier(from.reason_note)) return null
+  const match = intoParts.filter((p) => isCarrier(p.label)).sort((a, b) => a.sequence_order - b.sequence_order)
+  return match.length === 1 ? match[0]!.id : null
 }
