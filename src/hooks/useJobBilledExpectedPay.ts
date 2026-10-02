@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
@@ -13,6 +13,7 @@ import {
 } from '../lib/jobs/billedExpectedPay'
 import { effectiveInvoiceEstBillDate } from '../lib/jobs/invoiceBilling'
 import type { JobsLedgerInvoiceRow } from '../lib/jobs/jobFormTypes'
+import { paySpeedPayer, type PayerNamedJob } from '../lib/jobs/billToParty'
 
 /** Who may see the expected-pay math — the same gate as the Stages card chip. */
 export function canSeeBilledExpectedPay(role: string | null | undefined): boolean {
@@ -25,7 +26,7 @@ export function canSeeBilledExpectedPay(role: string | null | undefined): boolea
  * per mount, fail-soft (a glanceable extra — never blocks the tab), and
  * returns a resolver the Invoices list calls per open bill.
  */
-export function useJobBilledExpectedPay(job: { id: string; customer_id: string | null }): (inv: JobsLedgerInvoiceRow) => ExpectedPayModel | null {
+export function useJobBilledExpectedPay(job: { id: string } & PayerNamedJob): (inv: JobsLedgerInvoiceRow) => ExpectedPayModel | null {
   const { role } = useAuth()
   const allowed = canSeeBilledExpectedPay(role)
   const [paySpeeds, setPaySpeeds] = useState<PaySpeedData | null>(null)
@@ -52,16 +53,26 @@ export function useJobBilledExpectedPay(job: { id: string; customer_id: string |
     }
   }, [allowed])
 
+  // The payer fields, not the job object: the Invoices list passes a fresh literal each render.
+  const { customer_id, gc_customer_id, bill_to_party, customer_name } = job
+  const gcName = job.gcCustomer?.name ?? null
+  const payerJob = useMemo<PayerNamedJob>(
+    () => ({ customer_id, gc_customer_id, bill_to_party, customer_name, gcCustomer: { name: gcName } }),
+    [customer_id, gc_customer_id, bill_to_party, customer_name, gcName],
+  )
+
   return useCallback(
     (inv: JobsLedgerInvoiceRow) => {
       if (!allowed) return null
+      // v2.4365: the bill's payer's pace (the GC on a GC-billed bill), as on the Pipeline row.
+      const payer = paySpeedPayer(payerJob, inv)
       return billedExpectedPayModel(
-        { billedAtIso: inv.billed_at, estBillYmd: effectiveInvoiceEstBillDate(inv), customerId: job.customer_id },
+        { billedAtIso: inv.billed_at, estBillYmd: effectiveInvoiceEstBillDate(inv), customerId: payer.id, payerName: payer.name },
         paySpeeds,
         calendarYmdInAppTzFromIso(new Date().toISOString()),
         promises?.[job.id] ?? null,
       )
     },
-    [allowed, job.id, job.customer_id, paySpeeds, promises],
+    [allowed, job.id, payerJob, paySpeeds, promises],
   )
 }

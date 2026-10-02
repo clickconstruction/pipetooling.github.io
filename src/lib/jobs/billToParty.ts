@@ -121,6 +121,26 @@ export function stageRowPayerCustomerId(row: { kind: string; job: JobPartyFields
   return payerCustomerId(row.job, effectiveInvoiceParty(row.job, inv))
 }
 
+/** The job fields that name a payer: who pays, and what they are called. */
+export type PayerNamedJob = JobPartyFields & {
+  customer_name?: string | null
+  gcCustomer?: { name?: string | null } | null
+}
+
+/**
+ * Whose pay speed a bill is measured against (v2.4365): whoever the bill went to, the GC on a
+ * GC-billed bill. The same payer `pay_speed_samples()` counts each payment for (v2.4362), so
+ * `PaySpeedData.customers` and `.receipts` are keyed on this id. A bill to someone else (a typed
+ * recipient) has no history of its own: the id is null and the estimate uses the company median.
+ */
+export function paySpeedPayer(job: PayerNamedJob, inv: InvoicePartyFields | null | undefined): { id: string | null; name: string | null } {
+  const party = effectiveInvoiceParty(job, inv ?? null)
+  const id = payerCustomerId(job, party)
+  const name =
+    party === 'gc' ? (job.gcCustomer?.name ?? '').trim() || null : party === 'customer' ? (job.customer_name ?? '').trim() || null : null
+  return { id, name }
+}
+
 /**
  * A standing rule on the GC (v2.3353): when the customer picked as a job's GC
  * carries `gc_pays_by_default`, a job that still sits on the default rule

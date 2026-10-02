@@ -2,7 +2,7 @@ import type { StageRow } from '../jobsStagesBoard'
 import { effectiveInvoiceEstBillDate, stageRowBilledRemainingAmount } from './invoiceBilling'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 import { slipAdjustedYmd } from './paymentReliability'
-import { effectiveInvoiceParty, payerCustomerId } from './billToParty'
+import { paySpeedPayer } from './billToParty'
 import {
   billedExpectedPayModel,
   daysBetweenYmd,
@@ -130,20 +130,23 @@ export function buildBilledPaymentForecast(
     const job = r.job
     const number = effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—'
     const name = (job.job_name ?? '').trim()
+    // The payer is whoever the bill went to (v2.3346): whose word a promise is, and
+    // since v2.4365 whose pace the estimate reads (the GC on a GC-billed bill).
+    const payer = paySpeedPayer(job, r.inv)
+    const payerId = payer.id
     const model = billedExpectedPayModel(
       {
         billedAtIso: r.inv.billed_at,
         estBillYmd: effectiveInvoiceEstBillDate(r.inv),
-        customerId: job.customer_id,
+        customerId: payerId,
+        payerName: payer.name,
       },
       paySpeeds,
       todayYmd,
       promises?.[job.id] ?? null,
     )
     // A promise is bucketed by when the money usually lands after the date
-    // this customer gives, not by the date itself (Their Word PR 3). The
-    // payer is whoever the bill went to (v2.3346) — that's whose word it is.
-    const payerId = payerCustomerId(job, effectiveInvoiceParty(job, r.inv))
+    // this customer gives, not by the date itself (Their Word PR 3).
     const rawSlip = model?.source === 'promised' && payerId ? slipByCustomer?.[payerId] : undefined
     const slipDays = rawSlip != null && Number.isFinite(rawSlip) && rawSlip >= 1 ? Math.round(rawSlip) : null
     const forecastYmd = model ? (slipDays ? slipAdjustedYmd(model.expectedYmd, slipDays) : model.expectedYmd) : null
@@ -151,8 +154,8 @@ export function buildBilledPaymentForecast(
       invoiceId: r.inv.id,
       jobId: job.id,
       label: name ? `${number} · ${name}` : number,
-      customerName: (job.customer_name ?? '').trim() || null,
-      segment: (job.customer_id && paySpeeds?.customerTypes[job.customer_id]) || null,
+      customerName: payer.name ?? ((job.customer_name ?? '').trim() || null),
+      segment: (payerId && paySpeeds?.customerTypes[payerId]) || null,
       open,
       model,
       slipDays,
