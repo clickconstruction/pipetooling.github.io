@@ -65,4 +65,40 @@ describe('LienNoticeByHandPane', () => {
     expect(screen.getByTestId('by-hand-problems').textContent).toContain('The send date is in the future')
     expect((screen.getByTestId('by-hand-record') as HTMLButtonElement).disabled).toBe(true)
   })
+  it('layout "sheet" (v2.4423) is the same step on the Lien window’s record sheet: full-width fields, rows to tick, the same record', async () => {
+    const onRecorded = vi.fn()
+    const onClose = vi.fn()
+    const onCloseWindow = vi.fn()
+    recordMock.mockClear()
+    renderWithProviders(<LienNoticeByHandPane layout="sheet" onCloseWindow={onCloseWindow} job={job} fields={fields} appClaim={17_585} appClaimIsTimely={false} defaultMonths={['2026-08']} todayYmd="2026-09-23" userId="u1" onClose={onClose} onRecorded={onRecorded} />)
+    await settle()
+    const sheet = document.querySelector('[data-lien-record-sheet="notice_by_hand"]') as HTMLElement
+    expect(sheet).toBeTruthy()
+    expect(sheet.querySelector('[data-lien-record-summary]')!.textContent).toContain('273 · Dudley (Lennox)')
+    // the prefill and the fields, in 16 px type
+    expect((screen.getByLabelText('Claim as printed') as HTMLInputElement).value).toBe('17585')
+    expect((screen.getByLabelText('Months as printed') as HTMLInputElement).value).toBe('2026-08')
+    for (const name of ['Sent on', 'How it went', 'Tracking', 'Claim as printed', 'Months as printed', 'Saved copy — link', 'Saved copy — note']) {
+      expect((screen.getByLabelText(name) as HTMLElement).style.fontSize).toBe('1rem')
+    }
+    // what is missing greys the one button, and says so above it
+    const action = sheet.querySelector('[data-lien-record-action]') as HTMLButtonElement
+    expect(action.textContent).toBe('Record it on 1 job')
+    fireEvent.click(screen.getByLabelText('owner of record'))
+    fireEvent.click(screen.getByLabelText('original contractor'))
+    expect(screen.getByTestId('by-hand-problems').textContent).toContain('Still needed')
+    expect(action.disabled).toBe(true)
+    fireEvent.click(screen.getByLabelText('owner of record'))
+    expect(action.disabled).toBe(false)
+    // another job at the property rides the same paper
+    fireEvent.click(screen.getByLabelText('Also covers 866'))
+    expect(action.textContent).toBe('Record it on 2 jobs')
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    expect(onCloseWindow).toHaveBeenCalledTimes(1)
+    fireEvent.click(action)
+    await waitFor(() => expect(onRecorded).toHaveBeenCalledWith({ filingIds: ['f1', 'f2'], jobs: 2 }))
+    expect(recordMock).toHaveBeenCalledTimes(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }))
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
 })

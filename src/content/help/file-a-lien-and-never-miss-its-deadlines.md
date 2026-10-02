@@ -26,8 +26,9 @@ On a phone the window keeps its top short, so the paper gets the room.
 - **§ The rules** and **×** sit beside the title.
 - On **Demand letter** the four buttons at the foot sit in two rows. **×** closes the window, so there is no **Cancel**.
 - {{button:outline-blue|Email with the PDF…}} opens its own panel in place of those buttons. **Back** brings them back.
-- Each record step opens as its own page over the window. That covers **Save & record sends…**, **Record filing…** and **Record service…**.
+- Each record step opens as its own page over the window. That covers **Save & record sends…**, {{button:outline|Already sent — record it…}}, **Record filing…** and **Record service…**.
 - The page names the paper and the job at the top. **Back** returns to the paper where you left it.
+- On **Release of record** nothing opens. Its boxes fill the width and its buttons sit in two rows.
 
 ## Step 1 — the § 53.056 notice (sub jobs only)
 

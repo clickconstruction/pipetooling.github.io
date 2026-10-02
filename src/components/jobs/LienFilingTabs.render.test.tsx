@@ -18,6 +18,11 @@ vi.mock('../../lib/supabase', async () => {
   return { supabase: makeSupabaseStub() }
 })
 
+vi.mock('../../lib/jobs/lienNoticeByHandIo', () => ({
+  loadJobsAtProperty: async () => [],
+  recordLienNoticeByHand: async () => ({ packetId: 'p1', filingIds: ['f1'] }),
+}))
+
 afterEach(() => cleanup())
 
 const job = makeJob({ id: 'job-650', hcp_number: '650', job_name: 'ATI Schertz — As per plans', job_address: '100 Main St, Schertz, TX 78154', status: 'billed', revenue: 15722.49, payments_made: 0 })
@@ -120,6 +125,49 @@ describe('LienFilingTabs · record steps', () => {
       expect(sheet()!.querySelector('[data-lien-record-summary]')!.textContent).toContain('Service is due October 6, 2026.')
       expect((screen.getByLabelText('Served on') as HTMLInputElement).type).toBe('date')
       expect(sheet()!.querySelector('[data-lien-record-action]')!.textContent).toBe('Record service')
+    })
+  })
+
+  it('Already sent — record it… (v2.4423): a box in the tab on a computer, a sheet on a phone', () => {
+    renderWithProviders(<LienFilingTabs {...props({})} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Already sent — record it…' }))
+    expect(screen.getByTestId('lien-notice-by-hand')).toBeTruthy()
+    expect(sheet()).toBeNull()
+    cleanup()
+    onPhone(() => {
+      const onClose = vi.fn()
+      renderWithProviders(<LienFilingTabs {...props({ onClose })} />)
+      fireEvent.click(screen.getByRole('button', { name: 'Already sent — record it…' }))
+      expect(sheet()!.getAttribute('data-lien-record-sheet')).toBe('notice_by_hand')
+      expect(sheet()!.querySelector('[data-lien-record-summary]')!.textContent).toContain('650 · ATI Schertz — As per plans')
+      expect((screen.getByLabelText('Claim as printed') as HTMLInputElement).value).toBe('15722.49')
+      fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+      expect(onClose).toHaveBeenCalledTimes(1)
+      fireEvent.click(screen.getByRole('button', { name: 'Back' }))
+      expect(sheet()).toBeNull()
+      expect(screen.getByRole('button', { name: 'Already sent — record it…' })).toBeTruthy()
+    })
+  })
+
+  it('Release of record (v2.4423): no sheet, since nothing opens; a phone gets the same fields at full width and the buttons as a grid', () => {
+    const filed = { id: 'f-1', job_id: 'job-650', kind: 'affidavit', filed_at: '2026-10-01', serve_due: '2026-10-06', served_at: '2026-10-03', voided_at: null, county: 'Guadalupe', recording_number: '2026-0001', months_covered: [], sends: [], fields: {}, created_at: '2026-10-01T15:00:00Z' }
+    renderWithProviders(<LienFilingTabs {...props({ activeTab: 'release_record', isSub: false, filings: [filed as never] })} />)
+    const computer = document.querySelector('[data-lien-release-actions]') as HTMLElement
+    expect(computer.style.display).toBe('flex')
+    expect((screen.getByLabelText('Payment / satisfaction date') as HTMLInputElement).style.fontSize).toBe('0.8125rem')
+    cleanup()
+    onPhone(() => {
+      renderWithProviders(<LienFilingTabs {...props({ activeTab: 'release_record', isSub: false, filings: [filed as never] })} />)
+      expect(sheet()).toBeNull()
+      const date = screen.getByLabelText('Payment / satisfaction date') as HTMLInputElement
+      expect(date.type).toBe('date')
+      expect(date.style.fontSize).toBe('1rem')
+      expect(date.style.width).toBe('100%')
+      expect((screen.getByLabelText('Saved copy — link') as HTMLInputElement).style.width).toBe('100%')
+      const actions = document.querySelector('[data-lien-release-actions]') as HTMLElement
+      expect(actions.style.display).toBe('grid')
+      expect([...actions.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Print for notarization', 'Download PDF', 'Save release record'])
+      expect((actions.querySelectorAll('button')[2] as HTMLElement).style.gridColumn).toBe('1 / -1')
     })
   })
 })
