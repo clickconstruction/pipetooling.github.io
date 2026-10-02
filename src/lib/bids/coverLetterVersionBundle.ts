@@ -33,12 +33,31 @@ export type BundlePricing = {
  * null (a version legitimately may have no prices yet). Mirrors `deriveActivePricingId`'s split
  * branch so the letter and the Workbench agree on which scenario is "the customer's".
  */
-export function starredPricingIdForVersion(version: BundleVersion, pricings: BundlePricing[]): string | null {
+export function starredPricingIdForVersion(
+  version: Pick<BundleVersion, 'id' | 'starred_price_book_version_id'>,
+  pricings: ReadonlyArray<BundlePricing>,
+): string | null {
   const own = pricings.filter((p) => p.bid_version_id === version.id)
   if (own.length === 0) return null
   const saved = version.starred_price_book_version_id
   if (saved && own.some((p) => p.id === saved)) return saved
-  const sorted = [...own].sort(
+  return firstPricingId(own)
+}
+
+/**
+ * The ★ of a VERSION-LESS bid: its saved `selected_price_book_version_id` when that is one of the
+ * bid's unsplit pricing copies, else the first of them, else null (no copy — a legacy bid may still
+ * price on a shared book). Mirrors `deriveActivePricingId`'s unsplit rule.
+ */
+export function unsplitStarPricingId(pricings: ReadonlyArray<BundlePricing>, savedStarId: string | null): string | null {
+  const unsplit = pricings.filter((p) => p.bid_version_id == null)
+  if (savedStarId && unsplit.some((p) => p.id === savedStarId)) return savedStarId
+  return firstPricingId(unsplit)
+}
+
+/** Lowest sort_order, then oldest. */
+function firstPricingId(pricings: ReadonlyArray<BundlePricing>): string | null {
+  const sorted = [...pricings].sort(
     (a, b) => a.sort_order - b.sort_order || String(a.created_at ?? '').localeCompare(String(b.created_at ?? '')),
   )
   return sorted[0]?.id ?? null
@@ -61,7 +80,7 @@ export type BundleSectionPlan = {
  * version OFFERS to its GC (`price_book_versions.include_in_submission`), priced on that version's
  * counts. Only versions flagged `include_in_submission` contribute.
  */
-export function planLetterSections(versions: BundleVersion[], pricings: BundlePricing[]): BundleSectionPlan[] {
+export function planLetterSections(versions: ReadonlyArray<BundleVersion>, pricings: ReadonlyArray<BundlePricing>): BundleSectionPlan[] {
   const included = versions.filter((v) => v.include_in_submission)
   const bySort = (a: BundleVersion, b: BundleVersion) => a.sort_order - b.sort_order || a.name.localeCompare(b.name)
   const base = included.filter((v) => !v.is_alternate).sort(bySort)
@@ -86,22 +105,16 @@ export function planLetterSections(versions: BundleVersion[], pricings: BundlePr
 }
 
 /**
- * Letter sections for a VERSION-LESS bid (v2.2392): the bid's ★ pricing (its saved
- * `selected_price_book_version_id` when it's an unsplit copy, else the first unsplit pricing —
- * mirroring `deriveActivePricingId`'s unsplit rule) as the base section, plus each OFFERED
- * non-★ unsplit pricing (G1 `include_in_submission`) as an alternate. Empty when nothing is
- * offered — the plain single letter needs no bundle.
+ * Letter sections for a VERSION-LESS bid (v2.2392): the bid's ★ pricing (`unsplitStarPricingId`)
+ * as the base section, plus each OFFERED non-★ unsplit pricing (G1 `include_in_submission`) as an
+ * alternate. Empty when nothing is offered — the plain single letter needs no bundle.
  */
 export function planUnsplitLetterSections(
   pricings: BundlePricing[],
   savedStarId: string | null,
 ): Array<{ name: string; pricingId: string; isAlternate: boolean; offeredPricingId?: string }> {
   const unsplit = pricings.filter((p) => p.bid_version_id == null)
-  const starId = savedStarId && unsplit.some((p) => p.id === savedStarId)
-    ? savedStarId
-    : [...unsplit].sort(
-        (a, b) => a.sort_order - b.sort_order || String(a.created_at ?? '').localeCompare(String(b.created_at ?? '')),
-      )[0]?.id ?? null
+  const starId = unsplitStarPricingId(pricings, savedStarId)
   if (!starId) return []
   const offered = unsplit
     .filter((p) => p.include_in_submission && p.id !== starId)

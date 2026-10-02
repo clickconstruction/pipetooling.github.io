@@ -9,6 +9,8 @@ import { fetchBidRoomStates } from '../../lib/bids/fetchBidRoomStates'
 import { roomGcKey, type BidRoomStateSummary } from '../../lib/bids/bidRoomState'
 import { BidRoomStateChip } from './BidRoomStateChip'
 import { SearchableSelect } from '../SearchableSelect'
+import { starredPricingIdForVersion, type BundlePricing } from '../../lib/bids/coverLetterVersionBundle'
+import { letterPriceCountByVersion } from '../../lib/bids/versionStar'
 
 type BidVersionPickerProps = {
   bidId: string
@@ -92,26 +94,22 @@ export function BidVersionPicker({
   const [renameGcCustomerId, setRenameGcCustomerId] = useState('')
   const [gcCustomers, setGcCustomers] = useState<Array<{ id: string; name: string }> | null>(null)
   const [gcNamesById, setGcNamesById] = useState<Record<string, string>>({})
-  // v2.2203: "gets N prices" per GC group — the ★ plus offered alternates of each version.
-  const [offeredByVersion, setOfferedByVersion] = useState<Record<string, number>>({})
+  // The bid's prices: each version's ★ is read from them the letter's way (a saved ★ that belongs to
+  // another version stands its first price in, v2.4377), and "gets N prices" counts the letter's sections.
+  const [pricings, setPricings] = useState<BundlePricing[]>([])
   const [reloadTick, setReloadTick] = useState(0)
   useEffect(() => {
     let cancelled = false
     void (async () => {
-      const { data } = await supabase.from('price_book_versions').select('id, bid_version_id, include_in_submission').eq('bid_id', bidId)
+      const { data } = await supabase.from('price_book_versions').select('id, name, bid_version_id, include_in_submission, sort_order, created_at').eq('bid_id', bidId)
       if (cancelled || !data) return
-      const counts: Record<string, number> = {}
-      for (const v of bidVersions) {
-        let n = v.starred_price_book_version_id ? 1 : 0
-        for (const o of data) {
-          if (o.bid_version_id === v.id && o.include_in_submission && o.id !== v.starred_price_book_version_id) n += 1
-        }
-        counts[v.id] = n
-      }
-      setOfferedByVersion(counts)
+      setPricings(data)
     })()
     return () => { cancelled = true }
   }, [bidId, bidVersions, reloadTick])
+  // v2.2203: "gets N prices" per GC group — the ★ plus offered alternates of each version, as the letter draws them.
+  const pricesOnLetter = letterPriceCountByVersion(bidVersions, pricings)
+  const starOf = (v: BidVersion) => starredPricingIdForVersion(v, pricings)
 
   // "Also sent to" GCs (bid_gc_recipients) — those without a version show as shared-letter groups (v2.2163).
   const [recipients, setRecipients] = useState<Array<{ customerId: string; name: string }>>([])
@@ -225,7 +223,7 @@ export function BidVersionPicker({
       } else {
         const src = bidVersions.find((v) => v.id === addGc.fromVersionId) ?? bidVersions[0]
         if (!src) return
-        const srcPricing = src.starred_price_book_version_id ?? (src.id === selectedBidVersionId ? pricingSource : null)
+        const srcPricing = starOf(src) ?? (src.id === selectedBidVersionId ? pricingSource : null)
         const { data, error } = await supabase.rpc('create_bid_version', {
           p_bid_id: bidId,
           p_name: name,
@@ -287,7 +285,7 @@ export function BidVersionPicker({
   // v2.2365: the "Another version" modal's chosen source and the ★ its prices would clone from
   // (same derivation as ＋ Add GC: the source's ★, or the active facet when the source is selected).
   const newFromVersion = isUnsplit ? null : (bidVersions.find((v) => v.id === newFromVersionId) ?? bidVersions.find((v) => v.id === selectedBidVersionId) ?? bidVersions[0] ?? null)
-  const newFromPricing = isUnsplit ? pricingSource : newFromVersion ? (newFromVersion.starred_price_book_version_id ?? (newFromVersion.id === selectedBidVersionId ? pricingSource : null)) : null
+  const newFromPricing = isUnsplit ? pricingSource : newFromVersion ? (starOf(newFromVersion) ?? (newFromVersion.id === selectedBidVersionId ? pricingSource : null)) : null
   const newFromPricingName = pricingSourceNames?.[newFromPricing ?? ''] ?? null
 
   async function submitNewVersion() {
@@ -445,7 +443,10 @@ export function BidVersionPicker({
   }, [bidId])
   if (!groups.some((g) => g.key === '') && (isUnsplit || groups.length === 0)) groups.unshift({ key: '', gcId: null, name: bidGcName ?? 'the GC', versions: [], sentOn: null, sentValue: null, outcome: null })
   const fmtSent = (ymd: string) => { const [, m, d] = ymd.split('-'); return m && d ? `${Number(m)}/${Number(d)}` : ymd }
-  const starNameOf = (v: BidVersion) => (v.starred_price_book_version_id ? pricingSourceNames?.[v.starred_price_book_version_id] ?? null : null)
+  const starNameOf = (v: BidVersion) => {
+    const id = starOf(v)
+    return id ? pricingSourceNames?.[id] ?? pricings.find((p) => p.id === id)?.name ?? null : null
+  }
 
   if (resolvePanel !== 'content') {
     // Loading (or failed) resolve: never claim "one packet" from a not-yet-loaded list.
@@ -531,7 +532,7 @@ export function BidVersionPicker({
                   {sentOn ? `sent ${fmtSent(sentOn)}` : 'not sent'}{isUnsplit ? ' · one packet' : ''}{g.versions.length > 1 ? ` · ${g.versions.length} versions` : ''}
                   {(() => {
                     // v2.2203: how many prices this GC receives (★ + offered alternates across their versions).
-                    const n = g.versions.reduce((sum, v) => sum + (offeredByVersion[v.id] ?? 0), 0)
+                    const n = g.versions.reduce((sum, v) => sum + (pricesOnLetter[v.id] ?? 0), 0)
                     return g.versions.length > 0 && n > 0 ? (
                       <span title="Prices on this GC's letter — the ★ base plus offered alternates" style={{ marginLeft: '0.35rem', fontSize: '0.6rem', fontWeight: 700, background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', borderRadius: 999, padding: '0.06rem 0.4rem', whiteSpace: 'nowrap' }}>
                         gets {n} price{n === 1 ? '' : 's'}

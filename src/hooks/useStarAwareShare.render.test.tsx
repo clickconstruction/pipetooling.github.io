@@ -87,8 +87,10 @@ function makeInputs(over: { starId?: string | null; viewedId?: string | null } =
 const viewedPackage = { rows: [{ fixture: 'WC-1', count: 4, unitPrice: 300, revenue: 1200, omitFromSubmissionDocuments: false }], totalRevenue: 1200 }
 const errors: Array<string | null> = []
 
-function Probe({ inputs, pick }: { inputs: PricingShareInputs | null; pick?: StarChoice }) {
-  const s = useStarAwareShare({ inputs, selectedBidVersionId: 'v1', pricingPackageSource: viewedPackage, setError: (m) => errors.push(m) })
+/** `starPricingId` defaults to the bid column, as the tab passes it for a bid whose ★ is its own. */
+function Probe({ inputs, pick, starPricingId }: { inputs: PricingShareInputs | null; pick?: StarChoice; starPricingId?: string | null }) {
+  const star = starPricingId !== undefined ? starPricingId : (inputs?.bid.selected_price_book_version_id ?? null)
+  const s = useStarAwareShare({ inputs, selectedBidVersionId: 'v1', starPricingId: star, pricingPackageSource: viewedPackage, setError: (m) => errors.push(m) })
   const o = s.shareOverride
   return (
     <div>
@@ -162,6 +164,15 @@ describe('useStarAwareShare', () => {
     expect(printed[0]?.selectedPricingVersionId).toBe('pB')
     expect(printed[0]?.viewModel).toBe('price')
     expect(printed[0]?.teamLaborCost).toBe(320)
+  })
+
+  it('reads the ★ it is handed, not the bid column: a stray bid-level ★ opens no chooser (BP385, v2.4377)', async () => {
+    // The bid column names pA; the version on screen resolves its ★ to pB, the price being viewed.
+    await mount(<Probe inputs={makeInputs()} starPricingId="pB" />)
+    fireEvent.click(screen.getByText('ask share'))
+    await screen.findByText('package:open · chooser:none/star · busy:no')
+    expect(override()).toBe('none')
+    expect(loads).toEqual([])
   })
 
   it('with another scenario on screen, each door opens the chooser on the ★ and runs nothing yet', async () => {
