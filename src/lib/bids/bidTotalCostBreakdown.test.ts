@@ -39,7 +39,7 @@ describe('computeBidCostBreakdown', () => {
     expect(b.permitCost).toBe(1_240)
     expect(b.equipmentRentalCost).toBe(1_900)
     expect(b.otherDirectCost).toBe(9_640)
-    // Estimator time ($500) and team labor ($446) are reported, not in the total (v2.3293).
+    // Estimator time ($500) and team labor ($446) are reported, not in the total (v2.3294).
     expect(b.laborCostWithDriving).toBeCloseTo(b.laborCost + b.drivingCost + 1_200, 6)
     expect(b.directCost).toBeCloseTo(b.laborCostWithDriving + 9_640, 6)
     expect(b.totalCost).toBeCloseTo(61_300 + b.directCost, 6)

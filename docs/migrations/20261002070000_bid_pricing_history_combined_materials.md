@@ -13,6 +13,6 @@
 
 **Dry run** on prod in `BEGIN … ROLLBACK` (as `postgres`, every service type, before vs after): 73 rows before and after. 24 Combined rows gained their materials (+$502,577 in total) and one By Stage row gained $14.96. Spot checks against the app's Labor tab: BP190 +$8,368.34 and BP483 +$47,211.84, BP483 being its selected base version, not the $46,282.85 alternate. BP339 +$140,598.95, BP363 +$23,203.62. Plumbing's strip went from 0 to 6 dots (2 won, 4 lost on price; average won margin 86.6%). BP286 ($1,450 bid value against $3,501.60 of parts) now falls outside the band. Plumbing runs in about 21 ms.
 
-**Still different from the Workbench** (left as they were; separate follow-up): labor hours use the pre-v2.3291 rule (`is_fixed` or × count; no sub, task or per-100-ft kinds), and the estimator time ($10 a count row, or the flat amount) is still added, though v2.3293 took it out of the Workbench's cost.
+**Still different from the Workbench** (left as they were; aligned in v2.4372, [`20261002080000`](20261002080000_bid_pricing_history_kernel_parity.md)): labor hours use the pre-v2.3291 rule (`is_fixed` or × count; no sub, task or per-100-ft kinds), and the estimator time ($10 a count row, or the flat amount) is still added, though v2.3294 took it out of the Workbench's cost.
 
 Apply with `supabase db push` after the PR merges. No client change is needed and the return shape is unchanged, so deploy order does not matter and the types do not change.

@@ -14,7 +14,7 @@
  *   travel        people × nights × (meals + hotel)
  *   other direct  equipment · permits · subs · waste · other (stage amounts)
  *
- * Reported but NOT in the total (v2.3293, "estimator time retired"): the old
+ * Reported but NOT in the total (v2.3294, "estimator time retired"): the old
  * estimator-time box (flat, or $/count × count rows) and the team labor
  * clocked on the bid itself. Bid labor is a recorded fact that already sits in
  * the overhead pool — the job's Burn treats overhead the same way — so the
@@ -88,7 +88,7 @@ export type BidCostBreakdown = {
   otherCost: number
   /** equipment + permits + subs + waste + other. */
   otherDirectCost: number
-  /** labor + driving + travel — the Labor page's "Labor total". Estimator time and team labor are reported above, not added (v2.3293). */
+  /** labor + driving + travel — the Labor page's "Labor total". Estimator time and team labor are reported above, not added (v2.3294). */
   laborCostWithDriving: number
   /** Everything but materials: laborCostWithDriving + otherDirectCost. */
   directCost: number
