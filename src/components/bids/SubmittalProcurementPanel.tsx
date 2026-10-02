@@ -58,6 +58,8 @@ type Props = {
   busy?: boolean
   /** The strip's Procure pill reads these. */
   onCounts?: (c: { released: number; ordered: number; delivered: number; late: number }) => void
+  /** A tap on a line's item opens its row's Edit window, on that part (2026-10-02, Grace: no scrolling back and forth). */
+  onOpenItem?: (line: { itemId: string; partKey: string | null }) => void
 }
 
 const smallMuted: CSSProperties = { fontSize: '0.75rem', color: 'var(--text-muted)' }
@@ -96,7 +98,7 @@ type Draft = Partial<Record<'po' | 'note' | 'label' | 'lead' | DateField, string
  * the delivered date and a note. Send update records a dated snapshot with what
  * changed, opens the sheet to print, and copies the text for the email.
  */
-export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items, reviewerNames, currentUser, letterhead = null, projectAddress = null, gcName = null, roomUrl = null, busy = false, onCounts }: Props) {
+export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items, reviewerNames, currentUser, letterhead = null, projectAddress = null, gcName = null, roomUrl = null, busy = false, onCounts, onOpenItem }: Props) {
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
   const [records, setRecords] = useState<ProcurementRecord[]>([])
@@ -505,15 +507,34 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
               )}
             </div>
           ) : (
-            <>
-              <div>{underTag && r.partKey ? null : <b style={itemTag}>{r.tag}</b>}{r.product}</div>
-              <div style={smallMuted}>
-                {r.supplyHouse ? `${r.supplyHouse} · ` : r.partKey ? 'no house yet · ' : ''}
-                {r.stage ? PROCUREMENT_STAGE_LABELS[r.stage] : 'no stage on the takeoff'}
-                {r.orderOnly ? <span data-testid="procurement-order-only"> · order only, not on the GC’s copy</span> : null}
-                {r.countedWith.length > 0 ? <span data-testid="procurement-counted-with"> · counted with {r.countedWith.join(', ')} on the takeoff</span> : null}
-              </div>
-            </>
+            (() => {
+              const body = (
+                <>
+                  <div>{underTag && r.partKey ? null : <b style={itemTag}>{r.tag}</b>}<span className="procure-item-name">{r.product}</span></div>
+                  <div style={smallMuted}>
+                    {r.supplyHouse ? `${r.supplyHouse} · ` : r.partKey ? 'no house yet · ' : ''}
+                    {r.stage ? PROCUREMENT_STAGE_LABELS[r.stage] : 'no stage on the takeoff'}
+                    {r.orderOnly ? <span data-testid="procurement-order-only"> · order only, not on the GC’s copy</span> : null}
+                    {r.countedWith.length > 0 ? <span data-testid="procurement-counted-with"> · counted with {r.countedWith.join(', ')} on the takeoff</span> : null}
+                    {onOpenItem && r.itemId ? <span className="procure-item-edit" aria-hidden="true"> · Edit</span> : null}
+                  </div>
+                </>
+              )
+              // The line opens its row's Edit window: the house, lead time and stage are changed there.
+              return onOpenItem && r.itemId ? (
+                <button
+                  type="button"
+                  className="procure-item-open"
+                  onClick={() => onOpenItem({ itemId: r.itemId!, partKey: r.partKey ?? null })}
+                  title={`Open ${r.tag ?? 'the row'} to change ${r.partKey ? 'this part’s' : 'its'} house, lead time or stage`}
+                  data-testid="procurement-open-row"
+                >
+                  {body}
+                </button>
+              ) : (
+                body
+              )
+            })()
           )}
         </td>
         <td style={{ ...tdCenter, fontWeight: 600 }} data-testid="procurement-qty">{r.quantity != null ? r.quantity : <span style={smallMuted}>—</span>}</td>

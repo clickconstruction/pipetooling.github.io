@@ -152,6 +152,8 @@ export type ProcurementItemSource = {
   quantity?: number | null
   /** The part's own stage, when it differs from the fixture's. */
   stage?: ProcurementStage | null
+  /** The submittal row the line is for, so a tap on the line opens that row (2026-10-02). */
+  itemId?: string | null
 }
 
 /** A `bid_procurement_items` row. */
@@ -216,6 +218,8 @@ export type ProcurementRow = {
   orderOnly?: boolean
   /** How many to order, when the takeoff says. */
   quantity?: number | null
+  /** The submittal row behind the line; null on a hand row. */
+  itemId?: string | null
 }
 
 export type ProcurementLogInput = {
@@ -263,6 +267,7 @@ function rowFrom(source: ProcurementItemSource | null, rec: ProcurementRecord, s
     key: source ? (source.partKey ? `part:${source.partKey}` : source.tag) : `hand:${rec.id ?? rec.label}`,
     tag: source ? source.tag : null,
     partKey: source?.partKey ?? null,
+    itemId: source?.itemId ?? null,
     orderOnly: source?.orderOnly ?? false,
     quantity: source?.quantity ?? null,
     isHand,
@@ -312,7 +317,7 @@ export function buildProcurementLog(input: ProcurementLogInput): ProcurementRow[
     const rec = byTag.get(tag)
     if (rec && (rec.orderedOn || rec.poRef || rec.expectedOn || rec.deliveredOn || rec.note)) {
       const first = input.items.find((it) => it.tag === tag)!
-      sources.push({ tag, product: 'the fixture, as logged before its parts', supplyHouse: null, leadTimeDays: rec.leadTimeDays, decision: first.decision, shared: first.shared, sourceCountRowId: first.sourceCountRowId ?? null, partOrder: -1 })
+      sources.push({ tag, product: 'the fixture, as logged before its parts', supplyHouse: null, leadTimeDays: rec.leadTimeDays, decision: first.decision, shared: first.shared, sourceCountRowId: first.sourceCountRowId ?? null, partOrder: -1, itemId: first.itemId ?? null })
     }
   }
   const tagged = sources

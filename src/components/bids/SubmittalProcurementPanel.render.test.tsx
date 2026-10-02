@@ -284,4 +284,27 @@ describe('SubmittalProcurementPanel', () => {
     ])
     localStorage.removeItem('submittals_procure_lens')
   })
+
+  it('2026-10-02 · a line with a row behind it opens that row: the tap hands back the row and the part; a hand line and a panel with no door stay text', async () => {
+    state.records = []
+    const onOpenItem = vi.fn<(line: { itemId: string; partKey: string | null }) => void>()
+    const rowItems: ProcurementItemSource[] = [
+      { tag: 'DWH-1', product: 'WATTS LFN36M1 0556031 VACUUM RELIEF VALVE', supplyHouse: 'Moore Supply', leadTimeDays: 14, decision: null, shared: false, partKey: 'k-watts', partOrder: 2, itemId: 'row-dwh', stage: 'trim_set' },
+      { tag: 'HB-3', product: 'WOODFORD B74C', supplyHouse: 'Moore Supply', leadTimeDays: null, decision: null, shared: false, itemId: 'row-hb' },
+    ]
+    const { unmount } = renderWithProviders(<SubmittalProcurementPanel bidId="b1" bidLabel="B375" companyName="Click" items={rowItems} reviewerNames={[]} currentUser={{ id: 'u', name: 'Wendi' }} onOpenItem={onOpenItem} />)
+    const doors = await screen.findAllByTestId('procurement-open-row')
+    expect(doors.map((d) => d.textContent)).toEqual(['DWH-1WATTS LFN36M1 0556031 VACUUM RELIEF VALVEMoore Supply · Trim Set · Edit', 'HB-3WOODFORD B74CMoore Supply · no stage on the takeoff · Edit'])
+    expect(doors[0]!.getAttribute('title')).toBe('Open DWH-1 to change this part’s house, lead time or stage')
+    fireEvent.click(doors[0]!)
+    expect(onOpenItem).toHaveBeenLastCalledWith({ itemId: 'row-dwh', partKey: 'k-watts' })
+    // A row typed as one product opens on the row itself.
+    fireEvent.click(doors[1]!)
+    expect(onOpenItem).toHaveBeenLastCalledWith({ itemId: 'row-hb', partKey: null })
+    unmount()
+    // No door given (the GC's copies, older callers): the item is plain text.
+    renderWithProviders(<SubmittalProcurementPanel bidId="b1" bidLabel="B375" companyName="Click" items={rowItems} reviewerNames={[]} currentUser={{ id: 'u', name: 'Wendi' }} />)
+    await screen.findAllByTestId('procurement-item')
+    expect(screen.queryByTestId('procurement-open-row')).toBeNull()
+  })
 })

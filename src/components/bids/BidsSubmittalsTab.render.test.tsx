@@ -518,8 +518,8 @@ describe('BidsSubmittalsTab', () => {
     await waitFor(() => expect(state.writes.some((w) => w.op === 'update' && w.table === 'bid_submittal_items')).toBe(true))
     const upd = state.writes.find((w) => w.op === 'update' && w.table === 'bid_submittal_items')!
     expect(upd.filters).toEqual([['id', 'it-1']])
-    // A draft's editor also carries the tag and the product (v2.4090), unchanged here.
-    expect(upd.payload).toEqual({ status: 'alternate', reason_kind: 'lead_time', reason_note: null, lead_time_days: 7, sheet_file: 0, sheet_pages: [5], sheet_source: 'estimator', tag: 'DWH-1', submitted_label: 'BRADFORD WHITE RE2HP50 50 GAL' })
+    // A draft's editor also carries the product (v2.4090), unchanged here; the tag only when it was changed (2026-10-02).
+    expect(upd.payload).toEqual({ status: 'alternate', reason_kind: 'lead_time', reason_note: null, lead_time_days: 7, sheet_file: 0, sheet_pages: [5], sheet_source: 'estimator', submitted_label: 'BRADFORD WHITE RE2HP50 50 GAL' })
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
     expect(within(screen.getAllByTestId('submittal-row')[0]!).getByText('Lead time')).toBeTruthy()
   })
@@ -787,6 +787,44 @@ describe('BidsSubmittalsTab', () => {
     } finally {
       state.parts = []
       state.takeoff = false
+    }
+  })
+
+  it('2026-10-02 · a Procure line opens its row’s Edit window over the log, on the part tapped; what is changed there is saved on that part', async () => {
+    state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, shared_at: null, created_at: '2026-09-15T00:00:00Z', source_files: [] }]
+    state.items = [item({ id: 'dwh', tag: 'DWH-1', sequence_order: 1, submitted_label: 'RHEEM PROPH40 + WATTS LFN36M1', status: 'proposed', supply_house_id: null })]
+    state.parts = [
+      { id: 'pt-rheem', item_id: 'dwh', bid_id: 'b398', sequence_order: 1, label: 'RHEEM PROPH40-T2-RH400-SO', quantity: 1, on_submittal: true, source: 'takeoff', sheet_pages: [], procure_key: 'k-rheem', decision_source: 'room', supply_house_id: null },
+      { id: 'pt-watts', item_id: 'dwh', bid_id: 'b398', sequence_order: 2, label: 'WATTS LFN36M1 0556031 VACUUM RELIEF VALVE', quantity: 1, on_submittal: true, source: 'takeoff', sheet_pages: [], procure_key: 'k-watts', decision_source: 'room', supply_house_id: null },
+    ]
+    state.writes = []
+    try {
+      mount()
+      const door = await waitFor(() => {
+        // The part's own line, once the parts are read (before that the row reads as one line).
+        const d = screen.getAllByTestId('procurement-open-row').find((b) => b.textContent?.startsWith('WATTS LFN36M1') || (b.textContent?.includes('WATTS LFN36M1 0556031') && b.getAttribute('title')?.includes('this part')))
+        if (!d) throw new Error('no line yet')
+        return d
+      })
+      fireEvent.click(door)
+      const dialog = await screen.findByRole('dialog', { name: 'Edit DWH-1' })
+      const ringed = within(dialog).getAllByTestId('part-editor-row').filter((r) => r.getAttribute('data-focused') === 'true')
+      expect(ringed).toHaveLength(1)
+      expect((ringed[0]!.querySelector('input[aria-label="Part 2"]') as HTMLInputElement).value).toBe('WATTS LFN36M1 0556031 VACUUM RELIEF VALVE')
+      // No houses on this bid's list here, so the part's lead time box is the one made ready.
+      expect(document.activeElement).toBe(within(dialog).getByLabelText('Lead time for part 2'))
+      fireEvent.change(within(dialog).getByLabelText('Lead time for part 2'), { target: { value: '2 wk' } })
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
+      await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Edit DWH-1' })).toBeNull())
+      expect(state.parts.find((p) => p.id === 'pt-watts')).toMatchObject({ lead_time_days: 14 })
+      // The tag was not touched, so it is not rewritten.
+      expect(state.writes.filter((w) => w.table === 'bid_submittal_items' && w.op === 'update').some((w) => 'tag' in (w.payload as Record<string, unknown>))).toBe(false)
+      // Opened from the rows table, the same window has no part ringed.
+      fireEvent.click(screen.getByRole('button', { name: 'Edit DWH-1' }))
+      const again = await screen.findByRole('dialog', { name: 'Edit DWH-1' })
+      expect(within(again).getAllByTestId('part-editor-row').some((r) => r.getAttribute('data-focused') === 'true')).toBe(false)
+    } finally {
+      state.parts = []
     }
   })
 
