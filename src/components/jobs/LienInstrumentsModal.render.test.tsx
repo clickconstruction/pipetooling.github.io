@@ -73,6 +73,46 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     expect(screen.queryByText(/File by /)).toBeNull()
   })
 
+  it('a computer keeps the steps as a row and the five doors, and has a × that closes (v2.4398)', async () => {
+    const onClose = vi.fn()
+    renderWithProviders(<LienInstrumentsModal {...baseProps} onClose={onClose} job={job()} />)
+    await waitFor(() => expect(document.querySelector('[data-lien-window-timeline]')).toBeTruthy())
+    expect(document.querySelector('[data-lien-window-fold]')).toBeNull()
+    expect(document.querySelector('[data-lien-window-papers]')).toBeNull()
+    expect(screen.getByText('lientooling.com ↗')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('a phone folds the steps to one strip, puts the papers in one bar, and keeps lientooling.com under the dropped steps (v2.4398)', async () => {
+    const before = window.matchMedia
+    window.matchMedia = ((query: string) => ({ matches: query.includes('max-width: 640px'), media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
+    try {
+      const onClose = vi.fn()
+      renderWithProviders(<LienInstrumentsModal {...baseProps} onClose={onClose} job={job()} />)
+      await waitFor(() => expect(document.querySelector('[data-lien-window-fold-strip]')).toBeTruthy())
+      expect(document.querySelector('[data-lien-window-timeline]')).toBeNull()
+      expect(document.querySelector('[data-lien-window-fold-strip]')!.textContent).toMatch(/^Next /)
+      const bar = document.querySelector('[data-lien-window-papers]')!
+      expect([...bar.querySelectorAll('[role="tab"]')].map((t) => t.textContent)).toEqual(['Demand letter', '§ 53.056 notice', "Mechanic's lien"])
+      expect(bar.querySelector('[aria-selected="true"]')?.textContent).toBe('Demand letter')
+      fireEvent.click(screen.getByRole('tab', { name: '§ 53.056 notice' }))
+      expect(bar.querySelector('[aria-selected="true"]')?.textContent).toBe('§ 53.056 notice')
+      expect(screen.getByTestId('lien-rules-door')).toBeTruthy()
+      expect(screen.queryByText('lientooling.com ↗')).toBeNull()
+      fireEvent.click(document.querySelector('[data-lien-window-fold-strip]')!)
+      expect(screen.getByText('lientooling.com ↗')).toBeTruthy()
+      // the grey behind the steps closes the steps, never the window
+      fireEvent.click(document.querySelector('[data-lien-window-fold-scrim]')!)
+      expect(document.querySelector('[data-lien-window-fold-panel]')).toBeNull()
+      expect(onClose).not.toHaveBeenCalled()
+      fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+      expect(onClose).toHaveBeenCalledTimes(1)
+    } finally {
+      window.matchMedia = before
+    }
+  })
+
   it('demands of the GC the bill went to, points the owner to the notice, and lists the bill as sent', async () => {
     renderWithProviders(<LienInstrumentsModal {...baseProps} job={job()} />)
     await settle()

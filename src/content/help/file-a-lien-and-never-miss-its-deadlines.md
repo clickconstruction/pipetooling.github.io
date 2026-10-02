@@ -14,6 +14,17 @@ The window header shows the job's two dates: **⏱ Notice by …** and **File by
 
 **What the clock keys on.** Both dates count from the job's **last work month**. That is the month of the job's last work date, which is the latest **approved clock session** on the job. The app does not track which month each dollar was billed in. So it uses that one month as the basis. The notice's *months covered* is what you attest. Two consequences follow. A job with no approved clock sessions shows no dates, so approve the hours first. If the crew goes back for a day, the clock moves to that later month.
 
+## On a phone
+
+On a phone the window keeps its top short, so the paper gets the room.
+
+- The steps fold into one strip under the job's name. The strip says the next step and the days left.
+- The strip also says who you are waiting on. A red chip counts every notice window that closed.
+- Tap the strip to see the steps. They drop down over the paper and do not push it.
+- Tap the strip again, or the grey area, to put the steps away.
+- The papers sit in one bar: **Demand letter**, **§ 53.056 notice** and **Mechanic's lien**.
+- **§ The rules** and **×** sit beside the title. **lientooling.com ↗** sits under the steps.
+
 ## Step 1 — the § 53.056 notice (sub jobs only)
 
 If the job has a GC, unpaid work months need a **notice of claim**. GC means the general contractor. The notice is the statute's own form, filled in by the app. It goes to **both** the owner of record and the GC. It is due by the 15th of the 2nd month after the work on residential jobs. On commercial jobs it is the 3rd month.
