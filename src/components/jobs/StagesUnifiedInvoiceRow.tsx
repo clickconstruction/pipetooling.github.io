@@ -245,8 +245,6 @@ export function StagesUnifiedInvoiceRow({ row, t }: { row: StagesUnifiedInvoiceR
             onPctCommit={(n) => updateJobPctComplete(job.id, n, job.pct_complete ?? null)}
             onNoBidValueClick={() => openEdit(job, { fixturesSectionHighlight: true })}
             onStageClick={() => openEdit(job, { fixturesSectionHighlight: true })}
-            wordsOverride={billLine?.words ?? null}
-            hideWords={billLine?.hideWords}
             footnote={sentBillLine ? null : (() => {
               // A draft (Ready to Bill) still reads as a draft; a sent bill says
               // what is paid and left on it instead (v2.4349, below the cell).

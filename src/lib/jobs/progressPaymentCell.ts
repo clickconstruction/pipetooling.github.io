@@ -46,6 +46,8 @@ export type ProgressPaymentSegment = {
   state: 'done' | 'live' | 'later'
   /** Share of the bar, 0–100 (after the minimum-width floor); sums to 100. */
   widthPct: number
+  /** Share of the job's money, 0–100 (before the floor) — where a job-level % lands inside the segment (v2.4351). */
+  sharePct: number
   /** 0–100 — the work channel. */
   fillPct: number
   /** The label the segment may carry when wide enough (the component decides). */
@@ -323,6 +325,7 @@ export function buildProgressPaymentView(input: ProgressPaymentInput): ProgressP
         number: s.number,
         state,
         widthPct: s.widthPct,
+        sharePct: s.sharePct,
         fillPct: fill,
         label,
         money: m,
@@ -377,6 +380,7 @@ export function buildProgressPaymentView(input: ProgressPaymentInput): ProgressP
       number: null,
       state,
       widthPct: widths[i]!,
+      sharePct: shares[i]!,
       fillPct: fill,
       label,
       money: m,

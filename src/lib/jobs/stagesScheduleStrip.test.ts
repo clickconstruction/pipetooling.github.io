@@ -208,6 +208,12 @@ describe('column line parts (date on the label line, distance + fact under it)',
     expect(stripDoneParts('2026-09-21', 'scheduled', TODAY)).toEqual({ main: 'Mon Sep 21', sub: 'yesterday · booked, no hrs' })
     expect(stripDoneParts(null, null, TODAY)).toEqual({ main: 'nothing booked', sub: null })
   })
+  it('v2.4351: a sub sheet with no clock-ins is said on the Activity / Done line', () => {
+    expect(stripLastParts(null, null, TODAY, { onSubSheet: true })).toEqual({ main: 'none yet', sub: 'on a sub sheet' })
+    expect(stripLastParts('2026-05-26', 'worked', TODAY, { onSubSheet: true }).sub).toMatch(/· worked · on a sub sheet$/)
+    expect(stripDoneParts('2026-09-21', 'scheduled', TODAY, { onSubSheet: true })).toEqual({ main: 'Mon Sep 21', sub: 'yesterday · booked, no hrs · on a sub sheet' })
+    expect(stripLastParts(null, null, TODAY, { onSubSheet: false })).toEqual({ main: 'none yet', sub: null })
+  })
   it('BILL / PAID from the billing detail labels', () => {
     expect(stripBillParts({ ymd: '2026-09-20', labels: ['Invoice sent'] }, TODAY)).toEqual({ label: 'Billed', main: 'Sun Sep 20', sub: '2 days ago · sent' })
     expect(stripBillParts({ ymd: '2026-09-20', labels: ['Invoice billed'] }, TODAY)).toEqual({ label: 'Billed', main: 'Sun Sep 20', sub: '2 days ago · billed' })

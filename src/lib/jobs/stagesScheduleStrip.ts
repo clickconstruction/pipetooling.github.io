@@ -242,10 +242,17 @@ export function stripEndsParts(when: Extract<StagesWhen, { kind: 'scheduled' }>,
   }
 }
 
-/** ACTIVITY (the line under Not scheduled; it read LAST until v2.4209): "Tue Sep 22" over "yesterday · worked" / "booked, no hrs"; "none yet" alone. */
-export function stripLastParts(lastYmd: string | null, lastKind: 'worked' | 'scheduled' | null, todayYmd: string): StripLineParts {
-  if (!lastYmd) return { main: 'none yet', sub: null }
-  return { main: formatStripDate(lastYmd), sub: joinSub(stripDistancePhrase(lastYmd, todayYmd), lastKind === 'scheduled' ? 'booked, no hrs' : 'worked') }
+/** The words a sub's sheet adds when nobody has clocked in on the job (v2.4351: moved here from the words under the bar). */
+export const STRIP_ON_SUB_SHEET = 'on a sub sheet'
+
+/**
+ * ACTIVITY (the line under Not scheduled; it read LAST until v2.4209): "Tue Sep 22" over "yesterday · worked" / "booked, no hrs"; "none yet" alone.
+ * `onSubSheet` (v2.4351): a sub's sheet lists the job and nobody has clocked in — "none yet" over "on a sub sheet".
+ */
+export function stripLastParts(lastYmd: string | null, lastKind: 'worked' | 'scheduled' | null, todayYmd: string, opts: { onSubSheet?: boolean } = {}): StripLineParts {
+  const sheet = opts.onSubSheet ? STRIP_ON_SUB_SHEET : null
+  if (!lastYmd) return { main: 'none yet', sub: sheet }
+  return { main: formatStripDate(lastYmd), sub: joinSub(joinSub(stripDistancePhrase(lastYmd, todayYmd), lastKind === 'scheduled' ? 'booked, no hrs' : 'worked'), sheet) }
 }
 
 /**
@@ -253,9 +260,10 @@ export function stripLastParts(lastYmd: string | null, lastKind: 'worked' | 'sch
  * fact the LAST line carries (v2.4128; it read "last visit", which the DONE
  * label and a past date already said); "nothing booked" alone.
  */
-export function stripDoneParts(lastYmd: string | null, lastKind: 'worked' | 'scheduled' | null, todayYmd: string): StripLineParts {
-  if (!lastYmd) return { main: 'nothing booked', sub: null }
-  return { main: formatStripDate(lastYmd), sub: joinSub(stripDistancePhrase(lastYmd, todayYmd), lastKind === 'scheduled' ? 'booked, no hrs' : 'worked') }
+export function stripDoneParts(lastYmd: string | null, lastKind: 'worked' | 'scheduled' | null, todayYmd: string, opts: { onSubSheet?: boolean } = {}): StripLineParts {
+  const sheet = opts.onSubSheet ? STRIP_ON_SUB_SHEET : null
+  if (!lastYmd) return { main: 'nothing booked', sub: sheet }
+  return { main: formatStripDate(lastYmd), sub: joinSub(joinSub(stripDistancePhrase(lastYmd, todayYmd), lastKind === 'scheduled' ? 'booked, no hrs' : 'worked'), sheet) }
 }
 
 /**

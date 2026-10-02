@@ -22,6 +22,7 @@ Chosen for traffic × spatial complexity — flows where "where is it / how does
 - **Script**: Jobs → Pipeline → a job in Ready to Bill → Bill Customer → walk the modal to the (unsent) preview → close.
 - **Write warning**: merely OPENING Bill Customer runs `ensure_single_ready_to_bill_invoice_for_job` and can insert the draft invoice row — record against an owner-designated test job (the HCP record-only channel is the safe one), never a live customer job.
 - **Paste when captured**: `{{gif:ready-to-bill-pipeline.gif|Billing a Ready to Bill job from the Pipeline}}`
+- **Re-take due (v2.4351)**: the Pipeline rows behind the Bill Customer window still show the bar from before the money bar (work fill, yellow dot era). The window itself is current, so the guide keeps the link until it is re-recorded against the test job.
 
 ### 2. Add a block on Schedule Dispatch
 - **Guide**: `schedule-dispatch.md` · desktop width

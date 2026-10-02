@@ -189,8 +189,6 @@ export function StagesUnifiedJobRow({ row, t }: { row: StagesUnifiedJobRowKind; 
                 onPctCommit={(n) => updateJobPctComplete(j.id, n, j.pct_complete ?? null)}
                 onNoBidValueClick={() => openEdit(j, { fixturesSectionHighlight: true })}
                 onStageClick={() => openEdit(j, { fixturesSectionHighlight: true })}
-                wordsOverride={billLine?.words ?? null}
-                hideWords={billLine?.hideWords}
                 footnote={showRemaining ? (() => {
                   const u = jobBillingUnallocatedDollars(j)
                   return u > 0 ? (
@@ -213,8 +211,6 @@ export function StagesUnifiedJobRow({ row, t }: { row: StagesUnifiedJobRowKind; 
                 onPctCommit={(n) => updateJobPctComplete(j.id, n, j.pct_complete ?? null)}
                 onNoBidValueClick={() => openEdit(j, { fixturesSectionHighlight: true })}
                 onStageClick={() => openEdit(j, { fixturesSectionHighlight: true })}
-                wordsOverride={billLine?.words ?? null}
-                hideWords={billLine?.hideWords}
                 footnote={
                   row.kind === 'job_with_merged_billed'
                     ? // A merged row exists only for a job with exactly one sent bill
