@@ -175,6 +175,7 @@ export function DispatchModeFooter({
   return (
     <nav
       aria-label={variant === 'job' ? 'Job Mode tabs' : 'Dispatch Mode tabs'}
+      data-app-bottom-chrome=""
       aria-hidden={keyboardOpen || undefined}
       style={{
         position: 'fixed',
