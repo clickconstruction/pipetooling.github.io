@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  buildExactTakeoffBreakdownHtml,
-  buildRoughTakeoffBreakdownHtml,
-  type ExactTakeoffBreakdownInput,
-  type RoughTakeoffBreakdownInput,
-} from './takeoffBreakdown'
+import { buildRoughTakeoffBreakdownHtml, type RoughTakeoffBreakdownInput } from './takeoffBreakdown'
 
 function tbodyContents(html: string): string[] {
   return Array.from(html.matchAll(/<tbody>([\s\S]*?)<\/tbody>/g)).map((m) => m[1] ?? '')
@@ -81,61 +76,5 @@ describe('buildRoughTakeoffBreakdownHtml', () => {
     const html = buildRoughTakeoffBreakdownHtml({ title: 't', rows: [{ id: 'r1', fixture: 'F', count: 1 }], lines: [], partNameById: {} })
     expect(html).toContain('<!DOCTYPE html>')
     expect(tbodyContents(html)).toHaveLength(0)
-  })
-})
-
-describe('buildExactTakeoffBreakdownHtml', () => {
-  const base: ExactTakeoffBreakdownInput = {
-    title: 'My Bid — Takeoff Breakdown',
-    stages: [
-      {
-        stageLabel: 'Rough In',
-        rows: [
-          {
-            fixture: 'Toilet',
-            count: 3,
-            parts: [
-              { partName: 'Closet Flange', quantity: 3, templateName: 'Toilet Rough' },
-              { partName: 'Wax Ring', quantity: 3, templateName: 'Toilet Rough' },
-            ],
-          },
-        ],
-      },
-      {
-        stageLabel: 'Trim Set',
-        rows: [{ fixture: 'Sink', count: 2, parts: [{ partName: 'Faucet', quantity: 2, templateName: 'Sink Trim' }] }],
-      },
-    ],
-  }
-
-  it('renders one stage heading per stage and the (Count: N) label', () => {
-    const html = buildExactTakeoffBreakdownHtml(base)
-    expect(html).toContain('>Rough In</h2>')
-    expect(html).toContain('>Trim Set</h2>')
-    expect(html).toContain('Toilet (Count: 3)')
-    expect(html).toContain('Sink (Count: 2)')
-  })
-
-  it('renders parts in the given order with quantity and assembly', () => {
-    const body = tbodyContents(buildExactTakeoffBreakdownHtml(base))[0] ?? ''
-    expect(body.indexOf('Closet Flange')).toBeLessThan(body.indexOf('Wax Ring'))
-    expect(body).toContain('Toilet Rough')
-  })
-
-  it('escapes the title, fixture, part and template names', () => {
-    const html = buildExactTakeoffBreakdownHtml({
-      title: 'T & <U>',
-      stages: [{ stageLabel: 'Rough In', rows: [{ fixture: 'A&B', count: 1, parts: [{ partName: '<p>', quantity: 1, templateName: 'x&y' }] }] }],
-    })
-    expect(html).toContain('<title>T &amp; &lt;U&gt;</title>')
-    expect(html).toContain('A&amp;B (Count: 1)')
-    expect(html).toContain('&lt;p&gt;')
-    expect(html).toContain('x&amp;y')
-  })
-
-  it('produces a doc with no sections when stages is empty', () => {
-    const html = buildExactTakeoffBreakdownHtml({ title: 't', stages: [] })
-    expect(html).toContain('<!DOCTYPE html>')
-    expect(html).not.toContain('<h2')
   })
 })

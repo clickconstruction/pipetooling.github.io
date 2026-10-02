@@ -4,10 +4,8 @@ import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { pickLegacyDataTemplateId } from '../lib/bids/legacyTemplatePricing'
 import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../lib/bids/updateGuard'
-import { expandTemplate } from '../lib/materialPOUtils'
 import type { RoughLineDbRow } from '../lib/bids/takeoffOrderRounding'
 import { combinedMaterials } from '../lib/bids/bidMaterials'
-import { normalizeMaterialsModel, type TakeoffStage } from '../lib/bids/bidTakeoffHelpers'
 import { loadTeamLaborDataForBids, type TeamLaborBidRow } from '../utils/teamLabor'
 import { loadBidAssignedCosts } from '../lib/bids/loadBidAssignedCosts'
 import type { BidAssignedCosts } from '../lib/bids/bidAssignedCosts'
@@ -28,8 +26,6 @@ import type {
   CostEstimateSubcontractorRow,
   CostEstimateWasteRow,
   CostEstimateOtherRow,
-  CostEstimatePO,
-  DraftPO,
   FixtureLaborDefault,
   LaborBookVersion,
   LaborBookEntry,
@@ -44,7 +40,6 @@ import type {
   TakeoffBookEntry,
   TakeoffBookEntryItem,
   TakeoffBookEntryWithItems,
-  TakeoffMapping,
   TakeoffRoughPartLineRow,
 } from '../lib/bids/bidPricingEngineTypes'
 import { asLaborEntryKind, asLaborUnit, type LaborEntryKind, type LaborUnit } from '../lib/bids/laborBookMatch'
@@ -87,13 +82,11 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
 
   // --- Takeoffs ---
   const [takeoffCountRows, setTakeoffCountRows] = useState<BidCountRow[]>([])
-  const [takeoffMappings, setTakeoffMappings] = useState<TakeoffMapping[]>([])
   const [takeoffRoughPartLines, setTakeoffRoughPartLines] = useState<TakeoffRoughPartLineRow[]>([])
   const [takeoffRoughCatalogLowestByPartId, setTakeoffRoughCatalogLowestByPartId] = useState<
     Record<string, { price: number; supplyHouseName: string }>
   >({})
   const [materialTemplates, setMaterialTemplates] = useState<MaterialTemplateWithAssemblyType[]>([])
-  const [draftPOs, setDraftPOs] = useState<DraftPO[]>([])
   const [takeoffBookVersions, setTakeoffBookVersions] = useState<TakeoffBookVersion[]>([])
   const [takeoffBookEntries, setTakeoffBookEntries] = useState<TakeoffBookEntryWithItems[]>([])
   const [selectedTakeoffBookVersionId, setSelectedTakeoffBookVersionId] = useState<string | null>(null)
@@ -103,7 +96,6 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
   const [costEstimate, setCostEstimate] = useState<CostEstimate | null>(null)
   const [costEstimateLaborRows, setCostEstimateLaborRows] = useState<CostEstimateLaborRow[]>([])
   const [costEstimateCountRows, setCostEstimateCountRows] = useState<BidCountRow[]>([])
-  const [purchaseOrdersForCostEstimate, setPurchaseOrdersForCostEstimate] = useState<CostEstimatePO[]>([])
   const [costEstimateMaterialTotalRoughIn, setCostEstimateMaterialTotalRoughIn] = useState<number | null>(null)
   const [costEstimateMaterialTotalTopOut, setCostEstimateMaterialTotalTopOut] = useState<number | null>(null)
   const [costEstimateMaterialTotalTrimSet, setCostEstimateMaterialTotalTrimSet] = useState<number | null>(null)
@@ -240,21 +232,16 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
   }
 
   async function loadTakeoffCountRows(bidId: string) {
-    const [{ data, error }, bidMetaRes] = await Promise.all([
-      applyVersionFilter(supabase.from('bids_count_rows').select('*').eq('bid_id', bidId), activeVersionIdForBid(bidId))
-        .order('sequence_order', { ascending: true }),
-      supabase.from('bids').select('materials_model').eq('id', bidId).maybeSingle(),
-    ])
+    const { data, error } = await applyVersionFilter(supabase.from('bids_count_rows').select('*').eq('bid_id', bidId), activeVersionIdForBid(bidId))
+      .order('sequence_order', { ascending: true })
     if (error) {
       setError(`Failed to load count rows: ${error.message}`)
       return
     }
     const rows = (data as BidCountRow[]) ?? []
     setTakeoffCountRows(rows)
-    const mm = normalizeMaterialsModel((bidMetaRes.data as { materials_model?: string } | null)?.materials_model)
 
-    if (mm === 'rough') {
-      setTakeoffMappings([])
+    {
       const { data: roughData, error: roughErr } = await applyVersionFilter(
         supabase.from('bids_takeoff_rough_part_lines').select('*').eq('bid_id', bidId),
         activeVersionIdForBid(bidId),
@@ -293,58 +280,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
           isSaved: true,
         }))
       )
-      return
     }
-
-    setTakeoffRoughPartLines([])
-
-    const { data: mappingsData, error: mappingsError } = await applyVersionFilter(
-      supabase.from('bids_takeoff_template_mappings').select('*').eq('bid_id', bidId),
-      activeVersionIdForBid(bidId),
-    ).order('sequence_order', { ascending: true })
-
-    if (mappingsError) {
-      console.error('Failed to load takeoff mappings:', mappingsError)
-    }
-
-    const savedMappings =
-      (mappingsData as Array<{
-        id: string
-        count_row_id: string
-        template_id: string
-        stage: string
-        quantity: number
-      }> | null) ?? []
-
-    const mappings: TakeoffMapping[] = []
-
-    for (const row of rows) {
-      const saved = savedMappings.filter((m) => m.count_row_id === row.id)
-
-      if (saved.length > 0) {
-        for (const s of saved) {
-          mappings.push({
-            id: s.id,
-            countRowId: s.count_row_id,
-            templateId: s.template_id,
-            stage: s.stage as TakeoffStage,
-            quantity: s.quantity,
-            isSaved: true,
-          })
-        }
-      } else {
-        mappings.push({
-          id: crypto.randomUUID(),
-          countRowId: row.id,
-          templateId: '',
-          stage: 'rough_in' as TakeoffStage,
-          quantity: Number(row.count),
-          isSaved: false,
-        })
-      }
-    }
-
-    setTakeoffMappings(mappings)
   }
 
   async function loadMaterialTemplates() {
@@ -362,19 +298,6 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
       return
     }
     setMaterialTemplates((data as MaterialTemplateWithAssemblyType[]) ?? [])
-  }
-
-  async function loadDraftPOs() {
-    const { data, error } = await supabase
-      .from('purchase_orders')
-      .select('id, name')
-      .eq('status', 'draft')
-      .order('updated_at', { ascending: false })
-    if (error) {
-      setError(`Failed to load draft POs: ${error.message}`)
-      return
-    }
-    setDraftPOs((data as DraftPO[]) ?? [])
   }
 
   async function loadTakeoffBookVersions() {
@@ -455,35 +378,8 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     await loadBids()
   }
 
-  async function loadPurchaseOrdersForCostEstimate() {
-    const { data, error } = await supabase
-      .from('purchase_orders')
-      .select('id, name, stage')
-      .order('updated_at', { ascending: false })
-    if (error) {
-      setError(`Failed to load purchase orders: ${error.message}`)
-      return
-    }
-    setPurchaseOrdersForCostEstimate((data as CostEstimatePO[]) ?? [])
-  }
-
-  async function loadPOTotal(poId: string, signal?: AbortSignal): Promise<number> {
-    const qBase = supabase
-      .from('purchase_order_items')
-      .select('price_at_time, quantity')
-      .eq('purchase_order_id', poId)
-    const q = signal ? qBase.abortSignal(signal) : qBase
-    const { data, error } = await q
-    if (error) return 0
-    const items = (data as { price_at_time: number; quantity: number }[]) ?? []
-    return items.reduce((sum, i) => sum + Number(i.price_at_time) * Number(i.quantity), 0)
-  }
-
   async function loadCostEstimate(bidId: string) {
-    const [{ data: existing, error: e }, bidMmRes] = await Promise.all([
-      supabase.from('cost_estimates').select('*').eq('bid_id', bidId).maybeSingle(),
-      supabase.from('bids').select('materials_model').eq('id', bidId).maybeSingle(),
-    ])
+    const { data: existing, error: e } = await supabase.from('cost_estimates').select('*').eq('bid_id', bidId).maybeSingle()
     if (e) {
       setError(`Failed to load labor costs: ${e.message}`)
       setCostEstimate(null)
@@ -491,7 +387,6 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     }
     const est = (existing as CostEstimate | null) ?? null
     setCostEstimate(est)
-    const mm = normalizeMaterialsModel((bidMmRes.data as { materials_model?: string } | null)?.materials_model)
     if (est) {
       setLaborRateInput(est.labor_rate != null ? String(est.labor_rate) : '')
       setDrivingCostRate((est as any).driving_cost_rate?.toString() ?? '0.70')
@@ -517,7 +412,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
         setCostEstimateWasteRows((wasteRows as CostEstimateWasteRow[]) ?? [])
         setCostEstimateOtherRows((otherRows as CostEstimateOtherRow[]) ?? [])
       }
-      if (mm === 'rough') {
+      {
         // v2.2988: scope the lines to the active version like the count rows below — an
         // unscoped read summed the other version's lines at ×1 (their count rows are not in the map).
         const [{ data: roughLines }, { data: crsForCount }] = await Promise.all([
@@ -540,14 +435,6 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
         setCostEstimateMaterialTotalTrimSet(null)
         // v2.4202: the same number per count row (as the Pricing load keeps it) for the Labor card's split.
         setCostEstimateFixtureMaterials(combined.byCountRowId)
-      } else {
-        setCostEstimateFixtureMaterials({})
-        const rough = est.purchase_order_id_rough_in ? await loadPOTotal(est.purchase_order_id_rough_in) : 0
-        const top = est.purchase_order_id_top_out ? await loadPOTotal(est.purchase_order_id_top_out) : 0
-        const trim = est.purchase_order_id_trim_set ? await loadPOTotal(est.purchase_order_id_trim_set) : 0
-        setCostEstimateMaterialTotalRoughIn(est.purchase_order_id_rough_in ? rough : null)
-        setCostEstimateMaterialTotalTopOut(est.purchase_order_id_top_out ? top : null)
-        setCostEstimateMaterialTotalTrimSet(est.purchase_order_id_trim_set ? trim : null)
       }
     } else {
       setLaborRateInput('')
@@ -1026,7 +913,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     }
 
     try {
-    const [countRes, estRes, bidMetaRes, mappingsRes, roughLinesRes] = await Promise.all([
+    const [countRes, estRes, roughLinesRes] = await Promise.all([
       (() => {
         const qBase = applyVersionFilter(supabase.from('bids_count_rows').select('*').eq('bid_id', bidId), activeVersionIdForBid(bidId)).order('sequence_order', { ascending: true })
         const q = signal ? qBase.abortSignal(signal) : qBase
@@ -1036,16 +923,6 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
         const qBase = supabase.from('cost_estimates').select('*').eq('bid_id', bidId)
         const q = signal ? qBase.abortSignal(signal) : qBase
         return q.maybeSingle()
-      })(),
-      (() => {
-        const qBase = supabase.from('bids').select('materials_model').eq('id', bidId)
-        const q = signal ? qBase.abortSignal(signal) : qBase
-        return q.maybeSingle()
-      })(),
-      (() => {
-        const qBase = applyVersionFilter(supabase.from('bids_takeoff_template_mappings').select('id, count_row_id, template_id, stage, quantity').eq('bid_id', bidId), activeVersionIdForBid(bidId))
-        const q = signal ? qBase.abortSignal(signal) : qBase
-        return q
       })(),
       (() => {
         const qBase = applyVersionFilter(supabase
@@ -1091,9 +968,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
       setPricingOtherRows((otherRows as CostEstimateOtherRow[]) ?? [])
     }
 
-    const mm = normalizeMaterialsModel((bidMetaRes.data as { materials_model?: string } | null)?.materials_model)
-
-    if (mm === 'rough') {
+    {
       if (roughLinesRes.error) {
         console.error('Failed to load rough part lines for pricing:', roughLinesRes.error)
       }
@@ -1124,91 +999,6 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
       if (pricingBidIdRef.current === bidId) {
         setPricingFixtureMaterialsFromTakeoff(combined.byCountRowId)
       }
-      return
-    }
-
-    // Phase 2: parallel fetches (all need est) — Exact materials model
-    const loadPOItems = async (poId: string | null) => {
-      if (!poId) return []
-      const base = supabase
-        .from('purchase_order_items')
-        .select('part_id, quantity, price_at_time')
-        .eq('purchase_order_id', poId)
-      const { data, error } = await (signal ? base.abortSignal(signal) : base)
-      if (error) return []
-      return (data as Array<{ part_id: string; quantity: number; price_at_time: number }>) ?? []
-    }
-    const [roughTotal, topTotal, trimTotal, laborRes, roughItems, topItems, trimItems] = await Promise.all([
-      est.purchase_order_id_rough_in ? loadPOTotal(est.purchase_order_id_rough_in, signal) : Promise.resolve(0),
-      est.purchase_order_id_top_out ? loadPOTotal(est.purchase_order_id_top_out, signal) : Promise.resolve(0),
-      est.purchase_order_id_trim_set ? loadPOTotal(est.purchase_order_id_trim_set, signal) : Promise.resolve(0),
-      (() => {
-        const base = supabase.from('cost_estimate_labor_rows').select('*').eq('cost_estimate_id', est.id).order('sequence_order', { ascending: true })
-        return signal ? base.abortSignal(signal) : base
-      })(),
-      loadPOItems(est.purchase_order_id_rough_in),
-      loadPOItems(est.purchase_order_id_top_out),
-      loadPOItems(est.purchase_order_id_trim_set),
-    ])
-
-    if (signal?.aborted) return
-
-    setPricingMaterialTotalRoughIn(est.purchase_order_id_rough_in ? roughTotal : null)
-    setPricingMaterialTotalTopOut(est.purchase_order_id_top_out ? topTotal : null)
-    setPricingMaterialTotalTrimSet(est.purchase_order_id_trim_set ? trimTotal : null)
-
-    if (laborRes.error) {
-      setPricingLaborRows([])
-      setPricingFixtureMaterialsFromTakeoff({})
-      return
-    }
-    setPricingLaborRows((laborRes.data as CostEstimateLaborRow[]) ?? [])
-
-    // Progressive loading: show table with proportional materials immediately; compute per-fixture materials in background
-    setPricingFixtureMaterialsFromTakeoff({})
-
-    const partPriceByStage: Record<string, Record<string, number>> = {
-      rough_in: Object.fromEntries(roughItems.map((i) => [i.part_id, i.price_at_time])),
-      top_out: Object.fromEntries(topItems.map((i) => [i.part_id, i.price_at_time])),
-      trim_set: Object.fromEntries(trimItems.map((i) => [i.part_id, i.price_at_time])),
-    }
-    const mappings = (mappingsRes.data as Array<{ id: string; count_row_id: string; template_id: string; stage: string; quantity: number }>) ?? []
-
-    if (mappings.length > 0) {
-      void (async () => {
-        // Deduplicate and parallelize expandTemplate
-        const uniqueKeys = new Set(mappings.map((m) => `${m.template_id}:${m.quantity}`))
-        const cache = new Map<string, Array<{ part_id: string; quantity: number }>>()
-        await Promise.all(
-          [...uniqueKeys].map(async (key) => {
-            const [tid, qtyStr] = key.split(':')
-            const qty = Number(qtyStr ?? 0)
-            const parts = await expandTemplate(supabase, tid ?? '', qty)
-            cache.set(key, parts)
-          })
-        )
-
-        // Compute fixtureMaterials from cache (sync)
-        const fixtureMaterials: Record<string, number> = {}
-        for (const countRow of countRows) {
-          const rowMappings = mappings.filter((m) => m.count_row_id === countRow.id)
-          if (rowMappings.length === 0) continue
-          let sum = 0
-          for (const m of rowMappings) {
-            const parts = cache.get(`${m.template_id}:${m.quantity}`) ?? []
-            const priceMap = partPriceByStage[m.stage] ?? {}
-            for (const { part_id, quantity } of parts) {
-              const price = priceMap[part_id] ?? 0
-              sum += quantity * price
-            }
-          }
-          fixtureMaterials[countRow.id] = sum
-        }
-
-        if (pricingBidIdRef.current === bidId) {
-          setPricingFixtureMaterialsFromTakeoff(fixtureMaterials)
-        }
-      })()
     }
     } catch (e) {
       const isAbort = (x: unknown) =>
@@ -1349,24 +1139,6 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     await saveBidSelectedBidVersion(bidId, versionId)
   }
 
-  function setCostEstimatePO(stage: 'rough_in' | 'top_out' | 'trim_set', poId: string) {
-    if (!costEstimate) return
-    const key = stage === 'rough_in' ? 'purchase_order_id_rough_in' : stage === 'top_out' ? 'purchase_order_id_top_out' : 'purchase_order_id_trim_set'
-    const id = poId || null
-    setCostEstimate((prev) => (prev ? { ...prev, [key]: id } : null))
-    if (id) {
-      loadPOTotal(id).then((total) => {
-        if (stage === 'rough_in') setCostEstimateMaterialTotalRoughIn(total)
-        else if (stage === 'top_out') setCostEstimateMaterialTotalTopOut(total)
-        else setCostEstimateMaterialTotalTrimSet(total)
-      })
-    } else {
-      if (stage === 'rough_in') setCostEstimateMaterialTotalRoughIn(null)
-      else if (stage === 'top_out') setCostEstimateMaterialTotalTopOut(null)
-      else setCostEstimateMaterialTotalTrimSet(null)
-    }
-  }
-
   useEffect(() => {
     const bid = selectedBidForCounts
     if (!bid?.id) {
@@ -1394,7 +1166,6 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     if (!bid?.id) {
       takeoffBidIdRef.current = null
       setTakeoffCountRows([])
-      setTakeoffMappings([])
       setTakeoffRoughPartLines([])
       setTakeoffRoughCatalogLowestByPartId({})
       return
@@ -1416,13 +1187,12 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     return () => {
       cancelled = true
     }
-  }, [selectedBidForTakeoff?.id, selectedBidForTakeoff?.materials_model, selectedBidVersionId, activeTab])
+  }, [selectedBidForTakeoff?.id, selectedBidVersionId, activeTab])
 
   useEffect(() => {
     const t = setTimeout(() => {
       if (activeTab === 'takeoffs') {
         loadMaterialTemplates()
-        loadDraftPOs()
         loadTakeoffBookVersions()
       }
       if (activeTab === 'pricing' || activeTab === 'cover-letter' || activeTab === 'submission-followup') {
@@ -1461,7 +1231,6 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
   useEffect(() => {
     if (activeTab === 'labor' || activeTab === 'takeoffs') {
       const t = setTimeout(() => {
-        loadPurchaseOrdersForCostEstimate()
         loadLaborBookVersions()
       }, 80)
       return () => clearTimeout(t)
@@ -1560,7 +1329,6 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     selectedBidForPricing?.id,
     selectedBidForPricing?.selected_bid_version_id,
     selectedBidForPricing?.selected_price_book_version_id,
-    selectedBidForPricing?.materials_model,
     selectedBidVersionId,
     selectedPricingVersionId,
     pricingResolveRetryTick,
@@ -1633,16 +1401,12 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     // takeoffs
     takeoffCountRows,
     setTakeoffCountRows,
-    takeoffMappings,
-    setTakeoffMappings,
     takeoffRoughPartLines,
     setTakeoffRoughPartLines,
     takeoffRoughCatalogLowestByPartId,
     setTakeoffRoughCatalogLowestByPartId,
     materialTemplates,
     setMaterialTemplates,
-    draftPOs,
-    setDraftPOs,
     takeoffBookVersions,
     setTakeoffBookVersions,
     takeoffBookEntries,
@@ -1659,8 +1423,6 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     costEstimateCountRows,
     setCostEstimateCountRows,
     costEstimateFixtureMaterials,
-    purchaseOrdersForCostEstimate,
-    setPurchaseOrdersForCostEstimate,
     costEstimateMaterialTotalRoughIn,
     setCostEstimateMaterialTotalRoughIn,
     costEstimateMaterialTotalTopOut,
@@ -1761,12 +1523,9 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     refreshAfterCountsChange,
     loadTakeoffCountRows,
     loadMaterialTemplates,
-    loadDraftPOs,
     loadTakeoffBookVersions,
     loadTakeoffBookEntries,
     saveBidSelectedTakeoffBookVersion,
-    loadPurchaseOrdersForCostEstimate,
-    loadPOTotal,
     loadCostEstimate,
     loadCostEstimateCountRows,
     loadFixtureLaborDefaults,
@@ -1788,6 +1547,5 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     loadBidPricingAssignments,
     loadPricingDataForBid,
     saveBidSelectedPriceBookVersion,
-    setCostEstimatePO,
   }
 }

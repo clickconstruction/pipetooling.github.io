@@ -208,7 +208,7 @@ Sizes are `wc -l` @ a05cef4c4. "Own map" = that file's internals are mapped else
 
 - **Render location:** 4383–4463 — `BidVersionPicker` (4386–4400) + `BidsTakeoffTab`.
 - **Parent-owned:** `selectedBidForTakeoff`; `costEstimatePOModalTaxPercent` **and its setter** (the only writer); `selectedBidForCostEstimate` (read by its cost-estimate materials summary and the PO-create reload guard); the cost-estimate loader effect (2225–2283, gated on `labor || takeoffs`).
-- **Engine props:** 32 takeoff/cost-estimate values + loaders (`takeoffCountRows`, mappings, rough lines, book versions/entries, `costEstimate*`, `loadDraftPOs`, `ensureCostEstimateForBid`, `setCostEstimatePO`, …).
+- **Engine props:** the takeoff values + loaders (`takeoffCountRows`, the part lines, book versions/entries, `costEstimateCountRows`, the materials total, …); the mappings, the PO lists and loaders and `setCostEstimatePO` went with By Stage (v2.4396).
 - **Edit door:** `onEditBid={openEditBid}` is passed (4460) but the child never reads it (a dead prop); like Counts, which gets no `onEditBid`, it reaches the Edit window only through `openBidFlowDoor`.
 - **Status:** extracted; internals → **[`BIDS_TAKEOFF_TAB_ARCHITECTURE.md`](./BIDS_TAKEOFF_TAB_ARCHITECTURE.md)**.
 
@@ -319,7 +319,7 @@ These primitives are touched by many tabs; any extracted piece must be handed th
 | `refreshAfterCountsChange` | in hook | Fan-out: on any count change, reloads takeoff + labor for the same bid |
 | `loadCostEstimate` / `ensureCostEstimateForBid` / `loadCostEstimateData` | in hook | One `cost_estimates` row per bid (Takeoffs ↔ Labor ↔ Pricing bridge) |
 | `loadPricingDataForBid` | in hook | Aggregates counts + labor + takeoff materials; also called by `openPackageMap` |
-| ~~`openMaterialsModelSwitch` / `confirmMaterialsModelSwitch`~~ | removed v2.4389 | the `bids.materials_model` toggle on Takeoffs and Labor; By Stage is retired and every bid reads as Combined |
+| ~~`openMaterialsModelSwitch` / `confirmMaterialsModelSwitch`~~ | removed v2.4389 | the `bids.materials_model` toggle on Takeoffs and Labor; By Stage is retired, and since v2.4396 no client code reads the column |
 | `bidVersions` / `selectedBidVersionId` / `selectedBidVersionIdRef` / `switchActiveVersion` | in hook | **Bid Versions**; the ref is what the parent's cost-estimate effect checks before loading |
 | `pricingResolve` / `retryPricingResolve` / `costEstimateResolve` | in hook | Resolve state behind `pricingResolvePanel` (version pickers, Pricing, `laborPanel`) |
 | `selectedPricingVersionId` / `templatePriceBookVersions` / `defaultPriceBookTemplateId` / `versionClonePricingSourceId` | in hook | Bid-scoped Pricings, master templates, remembered default |

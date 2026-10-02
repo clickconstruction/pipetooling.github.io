@@ -56,15 +56,11 @@ export function bookFillMessage(r: BookFillResult): string {
   return parts.join(' · ') + '.'
 }
 
-/** Label, enabled state, and hover title for the book button in each materials model. */
+/** Label, enabled state, and hover title for the book button. */
 export function fillFromBookLabel(
   plan: BookFillPlan | null,
   applying: boolean,
-  rough: boolean,
 ): { label: string; disabled: boolean; title: string } {
-  if (!rough) {
-    return { label: applying ? 'Applying…' : 'Apply Matching Fixture Assemblies', disabled: applying, title: '' }
-  }
   const n = plan?.fillable.length ?? 0
   if (applying) return { label: 'Filling…', disabled: true, title: '' }
   if (n > 0) {

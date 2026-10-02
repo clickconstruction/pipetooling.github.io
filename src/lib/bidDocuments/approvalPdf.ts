@@ -211,14 +211,12 @@ export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void
   const countRowsReview = (countDataReview as BidCountRow[]) ?? []
   const { data: estForReview } = await supabase.from('cost_estimates').select('*').eq('bid_id', bidId).maybeSingle()
   const estForReviewData = estForReview as CostEstimate | null
-  // One materials read serves the three pages (v2.4368). The bid's model picks the store, as on Pricing:
-  // the stage POs for By Stage, the active version's part lines with the order rounding for Combined.
+  // One materials read serves the three pages (v2.4368): the active version's part lines with
+  // the order rounding, as on Pricing.
   const bidMaterials = await loadBidMaterials(supabase, {
     bidId,
     bidVersionId: countsVersionId,
     countRows: countRowsReview,
-    costEstimate: estForReviewData,
-    fallbackModel: b.materials_model,
   })
   if (estForReviewData) {
     reviewGroupHasCostEstimate = true

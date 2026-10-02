@@ -1,14 +1,12 @@
 /**
- * Pure builders for the Bids -> Takeoffs "Print" documents.
+ * Pure builder for the Bids -> Takeoffs "Print" document.
  *
- * Extracted from `src/pages/Bids.tsx` (`printTakeoffBreakdown`). There are two variants matching
- * the bid's materials model:
- *   - `rough`  : one table per fixture of (part, unit price, qty, extended total).
- *   - `exact`  : parts/assemblies grouped per stage, then per fixture, for audit.
+ * Extracted from `src/pages/Bids.tsx` (`printTakeoffBreakdown`): one table per fixture of
+ * (part, unit price, qty, extended total). The By Stage variant, parts grouped per stage, went
+ * when By Stage retired (v2.4389).
  *
- * Both are pure HTML-string builders. The caller (`Bids.tsx`) does all async data gathering
- * (supabase part-name lookups, `expandTemplate`, sorting, stage-label mapping) and then prints the
- * result via `printHtmlInNewWindow`. No DOM/React/Supabase here.
+ * A pure HTML-string builder. The caller does the async data gathering (part-name lookups) and
+ * prints the result via `printHtmlInNewWindow`. No DOM/React/Supabase here.
  */
 
 import { escapeHtml } from './htmlDoc'
@@ -24,21 +22,6 @@ export interface RoughTakeoffBreakdownInput {
   partNameById: Record<string, string>
   /** Materials by stage (v2.3673): each fixture's stage in margin words ("2", "1 + 2 (½ · ½)", "mixed"); absent or '' = nothing printed. */
   stageTextByRowId?: Record<string, string>
-}
-
-export interface ExactTakeoffBreakdownInput {
-  /** Raw (unescaped) document title; the builder escapes it. */
-  title: string
-  stages: Array<{
-    /** Already mapped via STAGE_LABELS by the caller. */
-    stageLabel: string
-    rows: Array<{
-      fixture: string
-      count: number
-      /** Pre-sorted by the caller. */
-      parts: Array<{ partName: string; quantity: number; templateName: string }>
-    }>
-  }>
 }
 
 export function buildRoughTakeoffBreakdownHtml(input: RoughTakeoffBreakdownInput): string {
@@ -75,37 +58,5 @@ export function buildRoughTakeoffBreakdownHtml(input: RoughTakeoffBreakdownInput
   <h1>${title}</h1>
   <p style="font-size:0.875rem; color:#6b7280">Unit prices and extended costs per fixture (rough takeoff).</p>
   ${rowsHtml}
-</body></html>`
-}
-
-export function buildExactTakeoffBreakdownHtml(input: ExactTakeoffBreakdownInput): string {
-  const title = escapeHtml(input.title)
-  const sectionHtmls = input.stages.map((stage) => {
-    let stageHtml = `<h2 style="margin-top:1.5rem; margin-bottom:0.75rem; border-bottom:1px solid #ccc; padding-bottom:0.25rem">${stage.stageLabel}</h2>`
-    for (const row of stage.rows) {
-      const partRows = row.parts
-        .map((p) => `<tr><td style="padding:0.25rem 0.5rem; border:1px solid #ccc">${escapeHtml(p.partName)}</td><td style="padding:0.25rem 0.5rem; text-align:center; border:1px solid #ccc">${p.quantity}</td><td style="padding:0.25rem 0.5rem; border:1px solid #ccc">${escapeHtml(p.templateName)}</td></tr>`)
-        .join('')
-      stageHtml += `
-          <div style="margin-bottom:1rem">
-            <h3 style="margin:0.5rem 0 0.25rem 0; font-size:1rem">${escapeHtml(row.fixture)} (Count: ${row.count})</h3>
-            <table style="width:100%; border-collapse:collapse; font-size:0.875rem; margin-left:0.5rem">
-              <thead style="background:#f9fafb"><tr><th style="padding:0.25rem 0.5rem; text-align:left; border:1px solid #ccc">Part</th><th style="padding:0.25rem 0.5rem; text-align:center; border:1px solid #ccc">Qty</th><th style="padding:0.25rem 0.5rem; text-align:left; border:1px solid #ccc">Assembly</th></tr></thead>
-              <tbody>${partRows}</tbody>
-            </table>
-          </div>`
-    }
-    return stageHtml
-  })
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>
-  body { font-family: sans-serif; margin: 1in; }
-  table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
-  th, td { border: 1px solid #ccc; padding: 0.25rem 0.5rem; }
-  th { background: #f9fafb; }
-  @media print { body { margin: 0.5in; } }
-</style></head><body>
-  <h1>${title}</h1>
-  <p style="font-size:0.875rem; color:#6b7280">Breakdown of parts and assemblies per stage for audit.</p>
-  ${sectionHtmls.join('')}
 </body></html>`
 }

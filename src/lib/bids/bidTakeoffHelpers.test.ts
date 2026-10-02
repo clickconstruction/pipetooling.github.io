@@ -3,7 +3,6 @@ import {
   clampRoughQtyFromDraft,
   resolveRoughQtyOnClose,
   roughQtyToDraftString,
-  normalizeMaterialsModel,
   takeoffFixtureCountLabel,
   sumRoughLinesPreTax,
   roughCountMultiplier,
@@ -40,16 +39,6 @@ describe('roughQtyToDraftString', () => {
 
   it('round-trips a clamped draft', () => {
     expect(clampRoughQtyFromDraft(roughQtyToDraftString(2.25))).toBe(2.25)
-  })
-})
-
-describe('normalizeMaterialsModel', () => {
-  it('reads every bid as Combined: By Stage is retired (v2.4389)', () => {
-    expect(normalizeMaterialsModel('rough')).toBe('rough')
-    expect(normalizeMaterialsModel('exact')).toBe('rough')
-    expect(normalizeMaterialsModel(null)).toBe('rough')
-    expect(normalizeMaterialsModel(undefined)).toBe('rough')
-    expect(normalizeMaterialsModel('something')).toBe('rough')
   })
 })
 

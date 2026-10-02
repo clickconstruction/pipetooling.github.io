@@ -61,7 +61,6 @@ import type {
   CostEstimateSubcontractorRow,
   CostEstimateWasteRow,
   CostEstimateOtherRow,
-  CostEstimatePO,
   LaborBookVersion,
   LaborBookEntryWithFixture,
 } from '../../lib/bids/bidPricingEngineTypes'
@@ -104,7 +103,6 @@ type BidsLaborTabProps = {
   costEstimateFixtureMaterials?: Record<string, number>
   /** What renders under the bid header: skeleton while the Version resolves, the empty sentence only for a settled zero-row bid (`laborEmptyState`). */
   panel: LaborTabPanel
-  purchaseOrdersForCostEstimate: CostEstimatePO[]
   costEstimateMaterialTotalRoughIn: number | null
   costEstimateMaterialTotalTopOut: number | null
   costEstimateMaterialTotalTrimSet: number | null
@@ -182,7 +180,6 @@ export function BidsLaborTab({
   costEstimateCountRows,
   costEstimateFixtureMaterials,
   panel,
-  purchaseOrdersForCostEstimate,
   costEstimateMaterialTotalRoughIn,
   costEstimateMaterialTotalTopOut,
   costEstimateMaterialTotalTrimSet,
@@ -376,9 +373,6 @@ export function BidsLaborTab({
       await supabase
         .from('cost_estimates')
         .update({
-          purchase_order_id_rough_in: costEstimate.purchase_order_id_rough_in || null,
-          purchase_order_id_top_out: costEstimate.purchase_order_id_top_out || null,
-          purchase_order_id_trim_set: costEstimate.purchase_order_id_trim_set || null,
           ...payload.values,
         })
         .eq('id', costEstimate.id)
@@ -668,10 +662,7 @@ export function BidsLaborTab({
       costEstimate,
       laborRows: costEstimateLaborRows,
       countRows: costEstimateCountRows,
-      purchaseOrders: purchaseOrdersForCostEstimate,
       materialTotalRoughIn: costEstimateMaterialTotalRoughIn,
-      materialTotalTopOut: costEstimateMaterialTotalTopOut,
-      materialTotalTrimSet: costEstimateMaterialTotalTrimSet,
       laborRateInput,
       drivingCostRate,
       hoursPerTrip,
@@ -823,7 +814,7 @@ export function BidsLaborTab({
                     bidValue={selectedBidForCostEstimate.bid_value != null ? Number(selectedBidForCostEstimate.bid_value) : null}
                     rows={costEstimateLaborRows}
                     ratePerHour={laborRateInput.trim() === '' ? null : parseFloat(laborRateInput) || null}
-                    materialsSource={purchaseOrdersForCostEstimate.length > 0 || (costEstimateMaterialTotalRoughIn ?? 0) + (costEstimateMaterialTotalTopOut ?? 0) + (costEstimateMaterialTotalTrimSet ?? 0) > 0 ? 'takeoff' : 'none'}
+                    materialsSource={(costEstimateMaterialTotalRoughIn ?? 0) + (costEstimateMaterialTotalTopOut ?? 0) + (costEstimateMaterialTotalTrimSet ?? 0) > 0 ? 'takeoff' : 'none'}
                     appliedBookVersionId={selectedLaborBookVersionId}
                     appliedBookName={laborBookVersions.find((v) => v.id === selectedLaborBookVersionId)?.name ?? null}
                     costEstimateId={costEstimate?.id ?? null}

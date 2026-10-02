@@ -5,14 +5,12 @@ import { SearchableSelect } from '../SearchableSelect'
 import { TakeoffItemSearchCombobox } from './TakeoffItemSearchCombobox'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { mergeItemIntoDrafts, mergeTemplateItemDrafts, mergedPartQuantity } from '../../lib/bids/mergeTemplateItemDrafts'
-import { getTemplatePartsPreview } from '../../lib/materialPOUtils'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import type { RoughTakeoffMaterialPart } from './SortableRoughPartLineRow'
 import type { TakeoffPartPricesModalTarget } from './TakeoffPartPricesModal'
 import type { Database } from '../../types/database'
 import type { MaterialTemplateWithAssemblyType, TakeoffRoughPartLineRow } from '../../lib/bids/bidPricingEngineTypes'
-import type { TakeoffStage } from '../../lib/bids/bidTakeoffHelpers'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 
@@ -36,9 +34,6 @@ export type TakeoffAssemblyAuthoringModalsProps = {
   /** Parts catalog stays parent-owned (its two load effects are shared with the
    * rough body until T8's `useTakeoffPartsCatalog` seam). */
   takeoffAddTemplateParts: RoughTakeoffMaterialPart[]
-  /** Preview cache stays parent-owned (the exact body + preview modal read it);
-   * the cluster invalidates/refetches entries after item mutations. */
-  setTakeoffTemplatePreviewCache: Dispatch<SetStateAction<Record<string, { part_name: string; quantity: number }[] | 'loading' | null>>>
   invalidateBundleParts: (templateId: string) => void
   filterPartsByQuery: (parts: RoughTakeoffMaterialPart[], query: string, limit?: number) => RoughTakeoffMaterialPart[]
   filterTemplatesByQuery: (templates: MaterialTemplateWithAssemblyType[], query: string, limit?: number) => MaterialTemplateWithAssemblyType[]
@@ -48,8 +43,6 @@ export type TakeoffAssemblyAuthoringModalsProps = {
   // Save-as-Assembly bridge stay PARENT-owned — see BIDS_TAKEOFF_TAB_ARCHITECTURE.md T7)
   takeoffAddTemplateModalOpen: boolean
   setTakeoffAddTemplateModalOpen: Dispatch<SetStateAction<boolean>>
-  takeoffAddTemplateForMappingId: string | null
-  setTakeoffAddTemplateForMappingId: Dispatch<SetStateAction<string | null>>
   takeoffNewTemplateName: string
   setTakeoffNewTemplateName: Dispatch<SetStateAction<string>>
   takeoffNewTemplateItems: TakeoffNewTemplateItemDraft[]
@@ -60,22 +53,9 @@ export type TakeoffAssemblyAuthoringModalsProps = {
   setSaveAsAssemblyCountRowId: Dispatch<SetStateAction<string | null>>
   takeoffNewTemplateApplyPriceIndex: number | null
   setTakeoffNewTemplateApplyPriceIndex: Dispatch<SetStateAction<number | null>>
-  setTakeoffMapping: (mappingId: string, updates: { templateId?: string; stage?: TakeoffStage; quantity?: number }) => void
   takeoffRoughPartLines: TakeoffRoughPartLineRow[]
   setTakeoffRoughPartLines: Dispatch<SetStateAction<TakeoffRoughPartLineRow[]>>
   insertRoughBundleLine: (countRowId: string, templateId: string, unitPrice: number) => Promise<TakeoffRoughPartLineRow>
-  // Add Parts to Template modal (open pointer + selected-part picker states parent-owned)
-  addPartsToTemplateModalOpen: boolean
-  setAddPartsToTemplateModalOpen: Dispatch<SetStateAction<boolean>>
-  addPartsToTemplateId: string | null
-  setAddPartsToTemplateId: Dispatch<SetStateAction<string | null>>
-  addPartsToTemplateName: string | null
-  setAddPartsToTemplateName: Dispatch<SetStateAction<string | null>>
-  addPartsSelectedPartId: string
-  /** Create-from-picker staged id (v2.1394): when set, auto-add to the template and close. */
-  addPartsAutoAddPartId: string
-  setAddPartsAutoAddPartId: Dispatch<SetStateAction<string>>
-  setAddPartsSelectedPartId: Dispatch<SetStateAction<string>>
   // Edit Template modal (open pointer + PartFormModal-routed part id parent-owned)
   editTemplateModalOpen: boolean
   setEditTemplateModalOpen: Dispatch<SetStateAction<boolean>>
@@ -88,18 +68,18 @@ export type TakeoffAssemblyAuthoringModalsProps = {
 }
 
 /**
- * Assembly authoring modal cluster — Add Assembly / Add Parts to Template /
- * Edit Template — extracted verbatim from BidsTakeoffTab.tsx (T7; see
- * BIDS_TAKEOFF_TAB_ARCHITECTURE.md). Opened from BOTH materials models and
- * writes the org-wide materials catalog (material_templates /
+ * Assembly authoring modal cluster — Add Assembly / Edit Template — extracted
+ * verbatim from BidsTakeoffTab.tsx (T7; see BIDS_TAKEOFF_TAB_ARCHITECTURE.md).
+ * Writes the org-wide materials catalog (material_templates /
  * material_template_items / material_template_prices).
  *
  * Parent-owned (passed as props): the modal open pointers, the picker states
  * `handleBidsPartFormSave` routes into after a PartFormModal save, the
  * Save-as-Assembly bridge (`saveAsAssemblyCountRowId` +
  * `takeoffNewTemplateApplyPriceIndex`), the Add Assembly name/items drafts
- * (seeded by the rough region's `openSaveAsAssemblyFromRough`), the parts
- * catalog + its load effects, and the template parts-preview cache.
+ * (seeded by the rough region's `openSaveAsAssemblyFromRough`), and the parts
+ * catalog + its load effects. The Add Parts to Template modal and the parts-preview
+ * cache went with By Stage, the only editor that opened or read them (v2.4389).
  */
 export function TakeoffAssemblyAuthoringModals({
   error,
@@ -109,7 +89,6 @@ export function TakeoffAssemblyAuthoringModals({
   materialTemplates,
   loadMaterialTemplates,
   takeoffAddTemplateParts,
-  setTakeoffTemplatePreviewCache,
   invalidateBundleParts,
   filterPartsByQuery,
   filterTemplatesByQuery,
@@ -117,8 +96,6 @@ export function TakeoffAssemblyAuthoringModals({
   setPartPricesModal,
   takeoffAddTemplateModalOpen,
   setTakeoffAddTemplateModalOpen,
-  takeoffAddTemplateForMappingId,
-  setTakeoffAddTemplateForMappingId,
   takeoffNewTemplateName,
   setTakeoffNewTemplateName,
   takeoffNewTemplateItems,
@@ -129,20 +106,9 @@ export function TakeoffAssemblyAuthoringModals({
   setSaveAsAssemblyCountRowId,
   takeoffNewTemplateApplyPriceIndex,
   setTakeoffNewTemplateApplyPriceIndex,
-  setTakeoffMapping,
   takeoffRoughPartLines,
   setTakeoffRoughPartLines,
   insertRoughBundleLine,
-  addPartsToTemplateModalOpen,
-  setAddPartsToTemplateModalOpen,
-  addPartsToTemplateId,
-  setAddPartsToTemplateId,
-  addPartsToTemplateName,
-  setAddPartsToTemplateName,
-  addPartsSelectedPartId,
-  addPartsAutoAddPartId,
-  setAddPartsAutoAddPartId,
-  setAddPartsSelectedPartId,
   editTemplateModalOpen,
   setEditTemplateModalOpen,
   editTemplateModalId,
@@ -165,10 +131,6 @@ export function TakeoffAssemblyAuthoringModals({
   const [savingTakeoffNewTemplate, setSavingTakeoffNewTemplate] = useState(false)
   const narrowViewport = useNarrowViewport640()
 
-  // Add Parts to Template modal internals
-  const [addPartsQuantity, setAddPartsQuantity] = useState('1')
-  const [savingTemplateParts, setSavingTemplateParts] = useState(false)
-
   // Edit Template modal internals
   const [editTemplateItems, setEditTemplateItems] = useState<Array<{ id: string; item_type: string; part_id: string | null; nested_template_id: string | null; quantity: number; sequence_order: number }>>([])
   const [editTemplateAddingItem, setEditTemplateAddingItem] = useState(false)
@@ -184,7 +146,6 @@ export function TakeoffAssemblyAuthoringModals({
 
   function closeTakeoffAddTemplateModal() {
     setTakeoffAddTemplateModalOpen(false)
-    setTakeoffAddTemplateForMappingId(null)
     setTakeoffNewTemplateName('')
     setTakeoffNewTemplateDescription('')
     setTakeoffNewTemplateItems([])
@@ -251,9 +212,6 @@ export function TakeoffAssemblyAuthoringModals({
       }
     }
     await loadMaterialTemplates()
-    if (takeoffAddTemplateForMappingId) {
-      setTakeoffMapping(takeoffAddTemplateForMappingId, { templateId })
-    }
 
     // Save-as-Assembly override: if launched from a rough count row and the user picked
     // a bundle price with "Use for takeoff", collapse that fixture's individual part lines
@@ -322,96 +280,6 @@ export function TakeoffAssemblyAuthoringModals({
       if (next[index]) next[index] = { ...next[index]!, quantity: qty }
       return next
     })
-  }
-
-  function closeAddPartsToTemplateModal() {
-    setAddPartsToTemplateModalOpen(false)
-    setAddPartsToTemplateId(null)
-    setAddPartsToTemplateName(null)
-    setAddPartsSelectedPartId('')
-    setAddPartsAutoAddPartId('')
-    setAddPartsQuantity('1')
-  }
-
-  // PartFormModal routing (v2.1394): a part minted from this modal's picker is
-  // committed straight to the template — same contract as the Add/Edit
-  // Assembly flows (v2.1326/27) — using the current quantity input (default 1).
-  // savePartsToTemplate reloads previews and closes the modal.
-  useEffect(() => {
-    if (!addPartsToTemplateModalOpen || !addPartsAutoAddPartId) return
-    if (addPartsAutoAddPartId !== addPartsSelectedPartId) return
-    if (savingTemplateParts) return
-    setAddPartsAutoAddPartId('')
-    void savePartsToTemplate()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addPartsToTemplateModalOpen, addPartsAutoAddPartId, addPartsSelectedPartId, savingTemplateParts])
-
-  async function savePartsToTemplate() {
-    if (!addPartsToTemplateId || !addPartsSelectedPartId) return
-
-    setSavingTemplateParts(true)
-    setError(null)
-
-    const qty = Math.max(1, parseInt(addPartsQuantity, 10) || 1)
-
-    // Check if part already exists in template - if so, add to quantity instead of inserting
-    const { data: existingPart } = await supabase
-      .from('material_template_items')
-      .select('id, quantity')
-      .eq('template_id', addPartsToTemplateId)
-      .eq('part_id', addPartsSelectedPartId)
-      .eq('item_type', 'part')
-      .maybeSingle()
-
-    if (existingPart) {
-      const { error: updateErr } = await supabase
-        .from('material_template_items')
-        .update({ quantity: mergedPartQuantity(existingPart.quantity, qty) })
-        .eq('id', existingPart.id)
-      if (updateErr) {
-        setError(updateErr.message)
-        setSavingTemplateParts(false)
-        return
-      }
-    } else {
-      const { data: seqData } = await supabase
-        .from('material_template_items')
-        .select('sequence_order')
-        .eq('template_id', addPartsToTemplateId)
-        .order('sequence_order', { ascending: false })
-        .limit(1)
-      const maxOrder = seqData && seqData.length > 0 ? (seqData[0]?.sequence_order ?? 0) : 0
-
-      const { error: insertError } = await supabase
-        .from('material_template_items')
-        .insert({
-          template_id: addPartsToTemplateId,
-          item_type: 'part',
-          part_id: addPartsSelectedPartId,
-          nested_template_id: null,
-          quantity: qty,
-          sequence_order: maxOrder + 1,
-          notes: null,
-        })
-
-      if (insertError) {
-        setError(insertError.message)
-        setSavingTemplateParts(false)
-        return
-      }
-    }
-
-    // Reload template previews
-    await loadMaterialTemplates()
-
-    // Reload the preview for this specific template
-    setTakeoffTemplatePreviewCache((prev) => ({ ...prev, [addPartsToTemplateId]: 'loading' }))
-    getTemplatePartsPreview(supabase, addPartsToTemplateId)
-      .then((res) => setTakeoffTemplatePreviewCache((p) => ({ ...p, [addPartsToTemplateId]: res })))
-      .catch(() => setTakeoffTemplatePreviewCache((p) => ({ ...p, [addPartsToTemplateId]: null })))
-
-    setSavingTemplateParts(false)
-    closeAddPartsToTemplateModal()
   }
 
   // Reset + load when the Edit Assembly modal opens — mirrors the pre-T7 async
@@ -553,10 +421,6 @@ export function TakeoffAssemblyAuthoringModals({
     if (!editTemplateModalId) return
     await loadEditTemplateItems(editTemplateModalId)
     invalidateBundleParts(editTemplateModalId)
-    setTakeoffTemplatePreviewCache((prev) => ({ ...prev, [editTemplateModalId]: 'loading' }))
-    getTemplatePartsPreview(supabase, editTemplateModalId)
-      .then((res) => setTakeoffTemplatePreviewCache((p) => ({ ...p, [editTemplateModalId]: res })))
-      .catch(() => setTakeoffTemplatePreviewCache((p) => ({ ...p, [editTemplateModalId]: null })))
   }
 
   /** Unified-search pick → DB write at qty 1 (existing parts merge +1; adjust
@@ -634,10 +498,6 @@ export function TakeoffAssemblyAuthoringModals({
     } else {
       await loadEditTemplateItems(editTemplateModalId)
       invalidateBundleParts(editTemplateModalId)
-      setTakeoffTemplatePreviewCache((prev) => ({ ...prev, [editTemplateModalId]: 'loading' }))
-      getTemplatePartsPreview(supabase, editTemplateModalId)
-        .then((res) => setTakeoffTemplatePreviewCache((p) => ({ ...p, [editTemplateModalId]: res })))
-        .catch(() => setTakeoffTemplatePreviewCache((p) => ({ ...p, [editTemplateModalId]: null })))
     }
   }
 
@@ -830,127 +690,6 @@ export function TakeoffAssemblyAuthoringModals({
               </div>
             </form>
         </ModalShell>
-      )}
-
-      {/* Add Parts to Template Modal */}
-      {addPartsToTemplateModalOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
-            inset: 0,
-            background: 'rgba(0,0,0,0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-          }}
-          onClick={closeAddPartsToTemplateModal}
-        >
-          <div role="dialog" aria-modal="true"
-            style={{
-              background: 'var(--surface)',
-              padding: '1.5rem',
-              borderRadius: 8,
-              maxWidth: 500,
-              width: '90%',
-              maxHeight: 'min(90vh, 100%)',
-              overflow: 'auto',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Add Parts to {addPartsToTemplateName}</h3>
-              <button
-                type="button"
-                onClick={closeAddPartsToTemplateModal}
-                style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-muted)' }}
-              >
-                ×
-              </button>
-            </div>
-
-            {error && (
-              <div style={{ marginBottom: '1rem', padding: '0.75rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', borderRadius: 4, fontSize: '0.875rem' }}>
-                {error}
-              </div>
-            )}
-
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Select Part *</label>
-              <SearchableSelect
-                value={addPartsSelectedPartId}
-                onChange={setAddPartsSelectedPartId}
-                options={takeoffAddTemplateParts.map((p) => ({
-                  value: p.id,
-                  label: [p.name, p.manufacturer, p.part_types?.name, p.notes].filter(Boolean).join(' '),
-                  labelContent: (
-                    <span style={{ display: 'block' }}>
-                      <span style={{ display: 'block', fontWeight: 500 }}>{p.name}</span>
-                      {(p.manufacturer || p.part_types?.name) && (
-                        <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                          {[p.manufacturer, p.part_types?.name].filter(Boolean).join(' · ')}
-                        </span>
-                      )}
-                    </span>
-                  ),
-                }))}
-                placeholder={takeoffAddTemplateParts.length === 0 ? 'Loading parts…' : 'Search parts…'}
-                listAriaLabel="Parts"
-                listMaxHeightPx={200}
-                portalZIndex={1200}
-                noMatchesAction={{
-                  label: (q) => `+ Add “${q}” as a new part…`,
-                  onSelect: (q) => openBidsPartFormForCreate(q),
-                }}
-              />
-            </div>
-
-            <div style={{ marginBottom: '1.5rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Quantity *</label>
-              <input
-                type="number"
-                min="1"
-                value={addPartsQuantity}
-                onChange={(e) => setAddPartsQuantity(e.target.value)}
-                onKeyDown={(e) => {
-                  // Enter = Add to Assembly (there is no form here; buttons are type=button)
-                  if (e.key === 'Enter' && addPartsSelectedPartId && !savingTemplateParts) {
-                    e.preventDefault()
-                    void savePartsToTemplate()
-                  }
-                }}
-                style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-              />
-            </div>
-
-            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                onClick={closeAddPartsToTemplateModal}
-                style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={savePartsToTemplate}
-                disabled={!addPartsSelectedPartId || savingTemplateParts}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: addPartsSelectedPartId && !savingTemplateParts ? '#3b82f6' : '#9ca3af',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 4,
-                  cursor: addPartsSelectedPartId && !savingTemplateParts ? 'pointer' : 'not-allowed'
-                }}
-              >
-                {savingTemplateParts ? 'Adding...' : 'Add to Assembly'}
-              </button>
-            </div>
-          </div>
-        </div>
       )}
 
       {/* Edit Template Modal */}

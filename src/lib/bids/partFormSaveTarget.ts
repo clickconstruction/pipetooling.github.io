@@ -15,7 +15,6 @@
  */
 
 export type PartFormSaveTarget =
-  | { kind: 'addPartsToTemplate' }
   | { kind: 'editTemplateItem' }
   | { kind: 'roughLine'; lineId: string }
   | { kind: 'assemblyDraftItem' }
@@ -23,14 +22,12 @@ export type PartFormSaveTarget =
 export function resolvePartFormSaveTarget(input: {
   /** Line id captured at click time — immune to the blur race. */
   capturedRoughLineId: string | null
-  addPartsToTemplateModalOpen: boolean
   editTemplateModalOpen: boolean
   /** Live picker state; may already be null by save time. */
   livePickerLineId: string | null
 }): PartFormSaveTarget {
   const captured = input.capturedRoughLineId?.trim()
   if (captured) return { kind: 'roughLine', lineId: captured }
-  if (input.addPartsToTemplateModalOpen) return { kind: 'addPartsToTemplate' }
   if (input.editTemplateModalOpen) return { kind: 'editTemplateItem' }
   const live = input.livePickerLineId?.trim()
   if (live) return { kind: 'roughLine', lineId: live }

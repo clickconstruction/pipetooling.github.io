@@ -64,20 +64,6 @@ export interface RoughLaborPageInput {
   }>
 }
 
-export interface ExactLaborPageInput {
-  /** Raw (unescaped) title; the builder escapes it. */
-  title: string
-  rows: LaborPageRow[]
-  totals: LaborPageTotals | null
-  costs: LaborPageCosts
-  pos: Array<{
-    stageLabel: string
-    poName: string
-    stageMaterialTotal: number
-    items: Array<{ part_name: string; quantity: number; price_at_time: number; template_name: string | null }>
-  }>
-}
-
 function docShell(rawTitle: string, body: string): string {
   const title = escapeHtml(rawTitle)
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>
@@ -153,33 +139,6 @@ function laborTableAndSummary(
   </div>`
 }
 
-function generatePOSummary(
-  items: Array<{ part_name: string; quantity: number; price_at_time: number; template_name: string | null }>,
-  stageLabel: string,
-  taxPercent: number,
-): string {
-  if (items.length === 0) return '<p style="margin:0.5rem 0; font-size:0.875rem; color:#6b7280;">No items in this PO.</p>'
-  const tableRows = items
-    .map((item) => {
-      const qty = item.quantity.toLocaleString('en-US')
-      const price = item.price_at_time.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-      const itemTotal = (item.quantity * item.price_at_time).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-      return `<tr><td style="padding:0.25rem 0.5rem">${escapeHtml(item.part_name)}</td><td style="padding:0.25rem 0.5rem; text-align:center">${qty}</td><td style="padding:0.25rem 0.5rem; text-align:right">$${price}</td><td style="padding:0.25rem 0.5rem; text-align:right">$${itemTotal}</td></tr>`
-    })
-    .join('')
-  const subtotal = items.reduce((sum, item) => sum + item.quantity * item.price_at_time, 0)
-  const taxAmount = subtotal * (taxPercent / 100)
-  const stageTotal = subtotal + taxAmount
-  const totalFormatted = subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-  const taxFormatted = taxAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-  const stageTotalFormatted = stageTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-  return `
-        <table style="width:100%; border-collapse:collapse; margin:0.5rem 0; font-size:0.875rem">
-          <thead style="background:#f9fafb"><tr><th style="padding:0.25rem 0.5rem; text-align:left; border:1px solid #ccc">Part</th><th style="padding:0.25rem 0.5rem; text-align:center; border:1px solid #ccc">Qty</th><th style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">Price</th><th style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">Total</th></tr></thead>
-          <tbody>${tableRows}<tr style="background:#f9fafb; font-weight:600"><td colspan="3" style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">Subtotal:</td><td style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">$${totalFormatted}</td></tr><tr style="background:#f9fafb; font-weight:600"><td colspan="3" style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">Tax:</td><td style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">$${taxFormatted}</td></tr><tr style="background:#f9fafb; font-weight:600"><td colspan="3" style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">${stageLabel} Total:</td><td style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">$${stageTotalFormatted}</td></tr></tbody>
-        </table>`
-}
-
 export function buildRoughLaborPageHtml(input: RoughLaborPageInput): string {
   const { title, rows, totals, costs, materials } = input
   const roughMaterialsBlocks = materials
@@ -210,23 +169,5 @@ export function buildRoughLaborPageHtml(input: RoughLaborPageInput): string {
   <p style="font-weight:600; text-align:right;">Materials total (pre-tax): $${formatCurrency(costs.totalMaterials)}</p>`
   const body = `${materialsBody}
   ${laborTableAndSummary(rows, totals, costs, 'Materials total (pre-tax):')}`
-  return docShell(title, body)
-}
-
-export function buildExactLaborPageHtml(input: ExactLaborPageInput): string {
-  const { title, rows, totals, costs, pos } = input
-  const poSections = pos
-    .map(
-      (po) => `  <div class="po-section">
-    <p style="margin:0 0 0.25rem; font-weight:600"><strong>PO (${po.stageLabel})</strong> ${escapeHtml(po.poName)} — $${formatCurrency(po.stageMaterialTotal)}</p>
-    ${generatePOSummary(po.items, po.stageLabel, costs.taxPercent)}
-  </div>`,
-    )
-    .join('\n')
-  const materialsBody = `<h2>Materials</h2>
-${poSections}
-  <p style="font-weight:600; text-align:right;">Materials Total: $${formatCurrency(costs.totalMaterials)}</p>`
-  const body = `${materialsBody}
-  ${laborTableAndSummary(rows, totals, costs, 'Materials Total:')}`
   return docShell(title, body)
 }

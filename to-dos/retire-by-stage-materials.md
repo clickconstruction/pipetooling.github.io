@@ -2,7 +2,7 @@
 name: "Takeoffs: retire By Stage, so every bid prices its materials one way"
 number: 77
 group: gated
-status: the owner's yes 2026-10-01 · PR 1 shipped as v2.4389 (the pills and the switch window are gone, every bid reads as Combined) · PR 2 (delete the dead code) and PR 3 (flip the flags) left
+status: the owner's yes 2026-10-01 · PR 1 shipped as v2.4389 (the pills and the switch window are gone) · PR 2 shipped as v2.4396 (the By Stage code is deleted) · PR 3 (flip the flags) left
 summary: >
   Every bid stores its materials one of two ways, picked by the By Stage / Combined pills on
   Takeoffs and Labor. By Stage keeps "this assembly at this stage" picks with no prices, and gets
@@ -14,10 +14,10 @@ summary: >
   April. The pills read like a view switch, but they swap the bid onto a separate, mostly empty
   set of data. Retire it: the pills, the By Stage editor and the stage purchase orders go, and
   every bid is Combined.
-next: PR 2 deletes the By Stage editor and the stage PO code. PR 3 flips the flags after a recount on prod.
-size: M — three PRs; PR 2 deletes about 1,000 lines of BidsTakeoffTab.tsx
+next: PR 3: recount on prod, then flip the 151 flags to Combined and restate the column comment.
+size: S — one migration left
 blocker: PR 3 needs a read of prod first. The office's word on B82, B83 and B85 is still open.
-ver: v2.3588 · Materials by stage v2.3671 · 3672 · 3673 · 3675 · leftovers fixed v2.4368 · 4371 · PR 1 v2.4389
+ver: v2.3588 · Materials by stage v2.3671 · 3672 · 3673 · 3675 · leftovers fixed v2.4368 · 4371 · PR 1 v2.4389 · PR 2 v2.4396
 opinion: build — By Stage feeds nothing built since the summer, and its switch hides a bid's Combined list behind an empty editor.
 mockup: not required — a retirement; the two pills and the By Stage editor go, and every Combined screen stays as it is
 ---
@@ -222,8 +222,19 @@ boxes, which are the only stage data a bid has once this ships.
 
 ## Where it stands
 
-PR 1 shipped as v2.4389: the pills and the switch window are gone, and every bid reads as
-Combined. Its fragment lists what the check before the build found, including the readers this
-plan missed. #78 shipped first as v2.4388. PR 2 and PR 3 are left. The two $0-materials
-leftovers found by the review shipped earlier: the Approval PDF (v2.4368) and Pricing's win and
-loss history (v2.4371, with its migration).
+PR 1 shipped as v2.4389 and PR 2 as v2.4396. Every bid reads as Combined and the By Stage code is
+gone. #78 shipped first as v2.4388, and the live test of it found v2.4393 (a new version shows its
+stage boxes right away). Each fragment says what was tested and how.
+
+**Left:**
+
+- **PR 3, the flags.** `UPDATE bids SET materials_model = 'rough' WHERE materials_model = 'exact'`
+  and the column comment, as planned above. Recount first: the 151 was read on 2026-10-01 by an
+  earlier session and not recounted since.
+- **B82, B83 and B85.** Their Pricing reads no materials now. The office marks them lost or no-bid,
+  or someone redoes the takeoff. `bid_estimate_breakdown` and `bid_pricing_history` still count
+  their stage POs first.
+- **Residuals, none urgent:** the three material slots in the engine and `computeBidCostBreakdown`
+  (two are always empty now); twin-mcp's scorer and `docs/twins/missions/estimator.md` still name
+  `bids_takeoff_template_mappings`; dropping that table, `bids.materials_model` and the stage PO
+  columns.

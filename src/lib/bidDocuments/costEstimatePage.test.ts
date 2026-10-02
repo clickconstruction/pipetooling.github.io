@@ -33,13 +33,10 @@ vi.mock('../supabase', () => ({ supabase: { from: (table: string) => builder(tab
 const printHtml = vi.fn((_html: string) => undefined)
 vi.mock('./htmlDoc', () => ({ printHtmlInNewWindow: (html: string) => printHtml(html) }))
 const buildRough = vi.fn((_a: unknown) => '<rough/>')
-const buildExact = vi.fn((_a: unknown) => '<exact/>')
-vi.mock('./laborPage', () => ({ buildRoughLaborPageHtml: (a: unknown) => buildRough(a), buildExactLaborPageHtml: (a: unknown) => buildExact(a) }))
+vi.mock('./laborPage', () => ({ buildRoughLaborPageHtml: (a: unknown) => buildRough(a) }))
 const buildSub = vi.fn((_a: unknown) => '<sub/>')
 const buildAllSubs = vi.fn((_a: unknown) => '<subs/>')
 vi.mock('./laborSubSheet', () => ({ buildLaborSubSheetHtml: (a: unknown) => buildSub(a), buildAllLaborSubSheetsHtml: (a: unknown) => buildAllSubs(a) }))
-const buildPo = vi.fn((_a: unknown) => '<po/>')
-vi.mock('./costEstimatePO', () => ({ buildCostEstimatePOHtml: (a: unknown) => buildPo(a) }))
 
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import type { BidCountRow } from '../../types/bids'
@@ -47,8 +44,6 @@ import type { CostEstimate, CostEstimateLaborRow } from '../bids/bidPricingEngin
 import { sumRoughLinesPreTaxWithCount } from '../bids/bidTakeoffHelpers'
 import {
   printAllSubSheets,
-  printCostEstimatePOForReview,
-  printCostEstimatePOForSupplyHouse,
   printCostEstimatePage,
   printRoughInSubSheet,
   printTopOutSubSheet,
@@ -72,10 +67,7 @@ function ctx(over: Partial<CostEstimatePrintContext> = {}): CostEstimatePrintCon
     costEstimate: CE,
     laborRows: LABOR,
     countRows: COUNTS,
-    purchaseOrders: [{ id: 'po-r', name: 'Rough PO #12', stage: 'rough_in' }, { id: 'po-t', name: 'Top PO #13', stage: 'top_out' }],
     materialTotalRoughIn: null,
-    materialTotalTopOut: null,
-    materialTotalTrimSet: null,
     laborRateInput: '85',
     drivingCostRate: '',
     hoursPerTrip: '',
@@ -96,7 +88,7 @@ const stepArgs = (c: Call, m: string) => c.steps.find((s) => s.method === m)?.ar
 
 beforeEach(() => {
   calls.length = 0
-  printHtml.mockClear(); buildRough.mockClear(); buildExact.mockClear(); buildSub.mockClear(); buildAllSubs.mockClear(); buildPo.mockClear()
+  printHtml.mockClear(); buildRough.mockClear(); buildSub.mockClear(); buildAllSubs.mockClear()
   handler = (c) => {
     if (c.table === 'bids_takeoff_rough_part_lines') return { data: ROUGH_LINES, error: null }
     if (c.table === 'material_parts') return { data: [{ id: 'p1', name: 'Wax ring' }, { id: 'p2', name: 'P-trap' }], error: null }
@@ -114,7 +106,6 @@ describe('printCostEstimatePage — rough materials model', () => {
   it('reads the version\'s rough lines, resolves part and bundle names, groups materials per count row, and prints the rough page with the full cost math', async () => {
     await printCostEstimatePage(ctx())
     expect(printHtml).toHaveBeenCalledWith('<rough/>')
-    expect(buildExact).not.toHaveBeenCalled()
 
     const [linesCall] = table('bids_takeoff_rough_part_lines')
     expect(stepArgs(linesCall!, 'eq')).toEqual(['bid_id', 'bid-1'])
@@ -188,7 +179,6 @@ describe('printCostEstimatePage — a bid still flagged By Stage (retired v2.438
   it('prints the Combined page from its part lines and reads no stage PO', async () => {
     await printCostEstimatePage(ctx({ bid: bid({ materials_model: 'exact' }) }))
     expect(buildRough).toHaveBeenCalledTimes(1)
-    expect(buildExact).not.toHaveBeenCalled()
     expect(table('bids_takeoff_rough_part_lines')).toHaveLength(1)
     expect(table('purchase_order_items')).toHaveLength(0)
   })
@@ -196,11 +186,10 @@ describe('printCostEstimatePage — a bid still flagged By Stage (retired v2.438
   it('an unset model is Combined too', async () => {
     await printCostEstimatePage(ctx({ bid: bid({ materials_model: undefined }), costEstimate: null }))
     expect(buildRough).toHaveBeenCalledTimes(1)
-    expect(buildExact).not.toHaveBeenCalled()
   })
 })
 
-describe('sub sheets and PO prints', () => {
+describe('sub sheets', () => {
   it('each sub sheet passes its stage, the bid name and the parsed rate', () => {
     printRoughInSubSheet(ctx({ laborRateInput: ' 72.5 ' }))
     printTopOutSubSheet(ctx({ laborRateInput: '' }))
@@ -214,13 +203,5 @@ describe('sub sheets and PO prints', () => {
     printAllSubSheets(ctx({ laborRateInput: '85' }))
     expect(buildAllSubs).toHaveBeenCalledWith({ bidName: 'Hyper Kidz', rows: LABOR, rate: 85 })
     expect(printHtml).toHaveBeenLastCalledWith('<subs/>')
-  })
-  it('the PO print helpers pick the variant', () => {
-    const items = [{ part_name: 'Flange', quantity: 2, price_at_time: 9, template_name: null }]
-    printCostEstimatePOForReview('PO #12', items, 8.25)
-    printCostEstimatePOForSupplyHouse('PO #12', items, 8.25)
-    expect(buildPo.mock.calls.map((c) => (c[0] as { variant: string }).variant)).toEqual(['review', 'supplyHouse'])
-    expect(buildPo.mock.calls[0]![0]).toEqual({ variant: 'review', poName: 'PO #12', items, taxPercent: 8.25 })
-    expect(printHtml).toHaveBeenCalledTimes(2)
   })
 })
