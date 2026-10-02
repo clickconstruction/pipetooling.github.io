@@ -2441,7 +2441,7 @@ export default function JobFormModal({
           zIndex: JOB_FORM_OVERLAY_Z_INDEX,
         }}
       >
-        <div style={{ background: 'var(--surface)', padding: '1.25rem 1.5rem', borderRadius: 8, fontSize: '0.9375rem' }}>Loading…</div>
+        <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.25rem 1.5rem', borderRadius: 8, fontSize: '0.9375rem' }}>Loading…</div>
       </div>
     )
   }
