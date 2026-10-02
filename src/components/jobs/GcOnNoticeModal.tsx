@@ -610,10 +610,10 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
     if (index >= 0) setPreview({ index, month })
   }
 
-  // The Dispatch / Job mode footer is fixed at z 1000; the overlay ends above it (--app-bottom-chrome) so the footer's buttons are never under the bar — as on the desk (v2.3522).
+  // The Dispatch / Job mode footer is fixed at z 1000; the overlay ends above it (--app-bottom-chrome) so the footer's buttons are never under the bar — as on the desk (v2.3522). The top pads by the status bar (--app-top-chrome), as on the desk.
   return (
-    <div role="dialog" aria-modal="true" aria-label="Put a GC on notice" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 'var(--app-bottom-chrome, 0px)', background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 90 }} onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: fullScreen ? 0 : 10, width: fullScreen ? '100vw' : 'min(1140px, calc(100vw - 2rem))', height: fullScreen ? 'calc(100dvh - var(--app-bottom-chrome, 0px))' : undefined, maxHeight: fullScreen ? 'calc(100dvh - var(--app-bottom-chrome, 0px))' : 'calc(100dvh - 2rem - var(--app-bottom-chrome, 0px))', display: 'grid', gridTemplateRows: 'auto 1fr auto', overflow: 'hidden' }} data-gc-on-notice-panel>
+    <div role="dialog" aria-modal="true" aria-label="Put a GC on notice" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 'var(--app-bottom-chrome, 0px)', paddingTop: 'var(--app-top-chrome, 0px)', background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 90 }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: fullScreen ? 0 : 10, width: fullScreen ? '100vw' : 'min(1140px, calc(100vw - 2rem))', height: fullScreen ? 'calc(100dvh - var(--app-top-chrome, 0px) - var(--app-bottom-chrome, 0px))' : undefined, maxHeight: fullScreen ? 'calc(100dvh - var(--app-top-chrome, 0px) - var(--app-bottom-chrome, 0px))' : 'calc(100dvh - 2rem - var(--app-top-chrome, 0px) - var(--app-bottom-chrome, 0px))', display: 'grid', gridTemplateRows: 'auto 1fr auto', overflow: 'hidden' }} data-gc-on-notice-panel>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', padding: '0.85rem 1.25rem 0.7rem', borderBottom: '1px solid var(--border)' }}>
           <div style={{ display: 'grid', gap: '0.25rem', minWidth: 0 }}>
             <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
