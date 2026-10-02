@@ -35,7 +35,6 @@ export function SubmittalJourneyStrip({
   offerWalkThrough,
   onDismissOffer,
   onSeeGc,
-  seeGcOpen = false,
 }: {
   journey: SubmittalJourney
   busy: boolean
@@ -47,9 +46,8 @@ export function SubmittalJourneyStrip({
   /** The first open on this device: a line under the pills offers the walkthrough in words. */
   offerWalkThrough: boolean
   onDismissOffer: () => void
-  /** v2.4189 · opens the pane that draws the GC's page from the rows as they stand (#62). */
+  /** v2.4189 · opens the window that draws the GC's page from the rows as they stand (#62; a window since 2026-10-02). */
   onSeeGc?: () => void
-  seeGcOpen?: boolean
 }) {
   const { stages, next } = journey
   const lead = next.kind === 'next' ? 'Next: ' : next.kind === 'waiting' ? 'Waiting: ' : 'Done: '
@@ -59,8 +57,8 @@ export function SubmittalJourneyStrip({
         <span aria-hidden />
         <span style={{ display: 'inline-flex', gap: '0.4rem', flexWrap: 'wrap' }}>
           {onSeeGc ? (
-            <button type="button" onClick={onSeeGc} aria-pressed={seeGcOpen} style={{ ...btn, ...(seeGcOpen ? { borderColor: '#2563eb', color: 'var(--text-blue-700)', background: 'var(--bg-blue-tint)' } : {}) }} title="The GC's page for the rows as they stand, beside the road; it follows your edits" data-testid="see-gc">
-            {seeGcOpen ? 'Hide what the GC sees' : 'See what the GC sees'}
+            <button type="button" onClick={onSeeGc} aria-haspopup="dialog" style={btn} title="The GC's page for the rows as they stand, in a window" data-testid="see-gc">
+              See what the GC sees
             </button>
           ) : null}
           <button type="button" onClick={onWalkThrough} style={btn} title="A one-minute walkthrough of every stage, from the schedule to the GC's approval">

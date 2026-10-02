@@ -1816,7 +1816,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   const isNewest = selectedRev != null && newestRev != null && selectedRev.id === newestRev.id
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: seeGcOpen && selectedRev && isNewest && !narrowViewport640 ? 'minmax(0, 1fr) 400px' : 'minmax(0, 1fr)', gap: '1rem', alignItems: 'start' }}>
+    // One column: What the GC sees opens in a window over the road (2026-10-02), not a pane beside it.
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '1rem', alignItems: 'start' }}>
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem', minWidth: 0 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', flexWrap: 'wrap' }}>
         <div style={{ minWidth: 0 }}>
@@ -1876,8 +1877,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
           onAction={runJourneyAction}
           onGoToStage={goToStage}
           onWalkThrough={() => startWalkThrough()}
-          onSeeGc={selectedRev && isNewest ? () => setSeeGcOpen((v) => !v) : undefined}
-          seeGcOpen={seeGcOpen}
+          onSeeGc={selectedRev && isNewest ? () => setSeeGcOpen(true) : undefined}
           offerWalkThrough={offerWalkThrough}
           onDismissOffer={() => {
             markSubmittalWalkthroughSeen()
@@ -2625,7 +2625,6 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         hasPackage={Boolean(selectedRev.package_path)}
         company={{ name: companyName, tagline: reportSettings.companyTagline, phone: reportSettings.officePhone }}
         bid={{ label: bidDisplayName(selectedBid) || 'Bid', projectName: selectedBid.project_name ?? null, address: selectedBid.address ?? null }}
-        narrow={narrowViewport640}
         onClose={() => setSeeGcOpen(false)}
       />
     ) : null}
