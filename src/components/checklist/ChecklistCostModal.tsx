@@ -215,7 +215,12 @@ export default function ChecklistCostModal({
         zIndex: 1001,
         padding: isNarrow ? 0 : '1rem',
       }}
-      onClick={onClose}
+      onClick={(e) => {
+        // The Checklist draws this inside a row that shows its activity on a click: a click
+        // outside closes this window only, and the row stays as it was (v2.4356).
+        e.stopPropagation()
+        onClose()
+      }}
     >
       <div
         role="dialog"
