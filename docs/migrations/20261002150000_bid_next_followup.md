@@ -24,7 +24,7 @@ Punch list #80, PR 1 of 5: where a bid's **call-again date** lives. Additive onl
 
 **Whether a date is still live is not stored.** A date is spent once a contact is logged on or after it; the kernel that reads the roll-up decides that from `last_contact` (PR 2). The seven-day default is never written.
 
-**One date per bid**, not per GC: a bid sent to two GCs shares its date (the owner's pick; see the to-do).
+**One date per bid**, not per GC: a bid sent to two GCs shares its date (the owner's pick, 2026-10-02).
 
 **Locks.** `ALTER TABLE … ADD COLUMN` on `bids` and `bids_submission_entries` (nullable, or with a constant default: no rewrite) and the foreign keys validate 409 bids and the log, all NULL. `lock_timeout = '3s'`.
 
