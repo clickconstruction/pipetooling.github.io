@@ -285,7 +285,7 @@ export function SubmittalItemEditDialog({ item, sourceFiles, people = [], houses
                 <button type="button" onClick={() => setEnterOpen(true)} style={{ background: 'none', border: '1px dashed var(--border-strong)', borderRadius: 4, padding: '0.3rem 0.6rem', font: 'inherit', fontSize: '0.8125rem', color: 'var(--text-base)', cursor: 'pointer' }} data-testid="enter-call-open">
                   Enter a call from their PDF or email
                 </button>
-                <span style={{ ...smallMuted, marginLeft: '0.5rem' }}>The record reads “entered by you”; the room never shows the file.</span>
+                <span style={{ ...smallMuted, marginLeft: '0.5rem' }}>This only records their call. Nobody is emailed. The record reads “entered by you”. The room never shows the file.</span>
               </div>
             ) : (
               <>
