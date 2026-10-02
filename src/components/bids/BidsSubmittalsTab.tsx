@@ -2536,6 +2536,11 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                   currentUser={{ id: user?.id ?? null, name: profileName ?? '' }}
                   busy={busy}
                   onCounts={setProcCounts}
+                  houses={houses}
+                  onLinesChanged={() => {
+                    // House, lead time or stage set from the log's tick bar: the rows and their parts read again.
+                    if (selectedRev) void loadItems(selectedRev.id).then(setItems)
+                  }}
                   onOpenItem={({ itemId, partKey }) => {
                     // The row's Edit window over the log, on the part tapped: no scrolling up to the rows.
                     const it = items.find((x) => x.id === itemId)

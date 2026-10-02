@@ -10,6 +10,7 @@ import { loadProcurementSheetAssets, type ProcurementSheetAssets } from '../../l
 import { describeLeadTime, parseLeadTime } from '../../lib/submittals/leadTime'
 import { splitPartLabel } from '../../lib/submittals/itemParts'
 import { tagBlock, type TagGuide } from '../../lib/submittals/procurementTagBlocks'
+import { setLineFacts } from '../../lib/submittals/itemPartsIo'
 import { isPlausibleDate, readDateBoxEntry } from '../../lib/dateBoxEntry'
 import {
   buildProcurementLog,
@@ -25,6 +26,7 @@ import {
   lineStatus,
   logDateRead,
   logIsDraft,
+  orderBlockers,
   readTypedLogDate,
   shortDate,
   daysAgoWords,
@@ -65,6 +67,10 @@ type Props = {
   onCounts?: (c: { released: number; ordered: number; delivered: number; late: number }) => void
   /** A tap on a line's item opens its row's Edit window, on that part (2026-10-02, Grace: no scrolling back and forth). */
   onOpenItem?: (line: { itemId: string; partKey: string | null }) => void
+  /** The supply houses the tick bar can set on many lines at once (2026-10-02). */
+  houses?: ReadonlyArray<{ id: string; name: string }>
+  /** The rows' parts changed from the log (house, lead time, stage): the caller reads them again. */
+  onLinesChanged?: () => void
 }
 
 const smallMuted: CSSProperties = { fontSize: '0.75rem', color: 'var(--text-muted)' }
@@ -80,6 +86,7 @@ const itemTd: CSSProperties = { ...td, minWidth: 'min(14rem, 46vw)', lineHeight:
 const editorField: CSSProperties = { display: 'flex', flexDirection: 'column', gap: '0.2rem', alignItems: 'flex-start' }
 const editorLabel: CSSProperties = { fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 const COLS = 8
+const blockerLine: CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', padding: '0.3rem 0', borderTop: '1px solid var(--border-amber)' }
 const STATUS_COLOR: Record<LineStatus['tone'], string> = { done: 'var(--text-green-700)', late: 'var(--text-red-700)', ordered: 'var(--text-strong)', act: 'var(--text-blue-700)', back: 'var(--text-amber-700)', waiting: 'var(--text-muted)', none: 'var(--text-muted)' }
 const itemTag: CSSProperties = { fontWeight: 700, color: 'var(--text-strong)', marginRight: '0.45rem' }
 
@@ -129,7 +136,7 @@ type Draft = Partial<Record<'po' | 'note' | 'label' | 'lead' | DateField, string
  * the delivered date and a note. Send update records a dated snapshot with what
  * changed, opens the sheet to print, and copies the text for the email.
  */
-export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items, reviewerNames, currentUser, letterhead = null, projectAddress = null, gcName = null, roomUrl = null, busy = false, onCounts, onOpenItem }: Props) {
+export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items, reviewerNames, currentUser, letterhead = null, projectAddress = null, gcName = null, roomUrl = null, busy = false, onCounts, onOpenItem, houses = [], onLinesChanged }: Props) {
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
   const [records, setRecords] = useState<ProcurementRecord[]>([])
@@ -160,6 +167,11 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
   const [openLines, setOpenLines] = useState<Set<string>>(() => new Set())
   const [bulkOrdered, setBulkOrdered] = useState('')
   const [bulkPo, setBulkPo] = useState('')
+  // 2026-10-02 · the office's facts for every ticked line: house, lead time, stage.
+  const [bulkHouse, setBulkHouse] = useState('')
+  const [bulkLead, setBulkLead] = useState('')
+  const [bulkStage, setBulkStage] = useState('')
+  const bulkRef = useRef<HTMLDivElement | null>(null)
 
   const tagsKey = items.map((i) => i.tag).join('|')
 
@@ -218,6 +230,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
   // What the GC's copies carry: every line but the parts bought as order only.
   const gcRows = useMemo(() => gcProcurementRows(rows), [rows])
   const sections = useMemo(() => procurementSections(rows, lens), [rows, lens])
+  const blockers = useMemo(() => orderBlockers(rows), [rows])
   const lastUpdate = updates[0] ?? null
   const changes = useMemo(() => diffProcurementLog(lastUpdate ? lastUpdate.rows : null, gcRows), [lastUpdate, gcRows])
   const hasStageDates = Object.keys(stageDates).length > 0
@@ -409,6 +422,44 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
     setBulkOrdered('')
     setBulkPo('')
     showToast(`${chosen.length} line${chosen.length === 1 ? '' : 's'} marked ${field === 'ordered_on' ? `ordered ${shortDate(on)}${po ? ` on ${po}` : ''}` : `delivered ${shortDate(on)}`}.`, 'success')
+  }
+
+  /** Set the house, lead time and stage on every ticked line that has a row behind it (2026-10-02). */
+  async function setTickedFacts() {
+    const chosen = rows.filter((r) => ticked.has(r.key) && r.itemId)
+    const patch: { supply_house_id?: string | null; lead_time_days?: number | null; stage?: string | null } = {}
+    if (bulkHouse) patch.supply_house_id = bulkHouse
+    if (bulkLead.trim()) {
+      const days = parseLeadTime(bulkLead)
+      if (days == null) {
+        showToast(`“${bulkLead.trim()}” does not read as a lead time. Type it like 3 wk or 10 days.`, 'info')
+        return
+      }
+      patch.lead_time_days = days
+    }
+    if (bulkStage) patch.stage = bulkStage
+    if (chosen.length === 0 || Object.keys(patch).length === 0) return
+    setSaving(true)
+    try {
+      const n = await setLineFacts(supabase, chosen.map((r) => ({ itemId: r.itemId!, partKey: r.partKey ?? null })), patch)
+      setTicked(new Set())
+      setBulkHouse('')
+      setBulkLead('')
+      setBulkStage('')
+      onLinesChanged?.()
+      const what = [patch.supply_house_id ? houses.find((h) => h.id === patch.supply_house_id)?.name ?? 'the house' : '', patch.lead_time_days != null ? describeLeadTime(patch.lead_time_days) : '', patch.stage ? PROCUREMENT_STAGE_LABELS[patch.stage as ProcurementStage] : ''].filter(Boolean).join(', ')
+      showToast(`${what} set on ${n} line${n === 1 ? '' : 's'}.`, 'success')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not set them'), 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  /** Tick the lines a blocker names, and bring the tick bar into view. */
+  function tickLines(keys: ReadonlyArray<string>) {
+    setTicked(new Set(keys))
+    window.setTimeout(() => bulkRef.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' }), 0)
   }
 
   async function addHandRow() {
@@ -693,9 +744,54 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
         </div>
       ) : null}
 
+      {loaded && (blockers.noLead.length > 0 || blockers.noHouse.length > 0 || blockers.noStage.length > 0 || blockers.noProduct.length > 0) ? (
+        // 2026-10-02 · what still blocks ordering, counted once, each a tap away from the tick bar.
+        <div style={{ background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', borderRadius: 8, padding: '0.5rem 0.75rem', display: 'flex', flexDirection: 'column' }} data-testid="procurement-blockers">
+          <b style={{ fontSize: '0.85rem', color: 'var(--text-strong)', paddingBottom: '0.3rem' }}>Before you can order</b>
+          {([
+            ['lead', blockers.noLead, (n: number) => <><b>{n} part{n === 1 ? '' : 's'}</b> {n === 1 ? 'has' : 'have'} no lead time, so no order-by date can be worked out.</>],
+            ['house', blockers.noHouse, (n: number) => <><b>{n} part{n === 1 ? '' : 's'}</b> {n === 1 ? 'has' : 'have'} no house.</>],
+            ['stage', blockers.noStage, (n: number) => <><b>{n} part{n === 1 ? '' : 's'}</b> {n === 1 ? 'has' : 'have'} no stage.</>],
+          ] as const).filter(([, keys]) => keys.length > 0).map(([k, keys, words]) => (
+            <div key={k} style={blockerLine} data-testid={`procurement-blocker-${k}`}>
+              <span style={{ fontSize: '0.8125rem' }}>{words(keys.length)}</span>
+              <button type="button" onClick={() => tickLines(keys)} style={{ ...btn, color: 'var(--text-blue-700)', fontWeight: 600, flexShrink: 0 }}>Tick the {keys.length}</button>
+            </div>
+          ))}
+          {blockers.noProduct.map((p) => (
+            <div key={p.key} style={blockerLine} data-testid="procurement-blocker-product">
+              <span style={{ fontSize: '0.8125rem' }}><b>{p.tag}</b> has no product yet.</span>
+              {onOpenItem && p.itemId ? <button type="button" onClick={() => onOpenItem({ itemId: p.itemId!, partKey: null })} style={{ ...btn, color: 'var(--text-blue-700)', fontWeight: 600, flexShrink: 0 }}>Open it</button> : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
+
       {ticked.size > 0 ? (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem 0.75rem', alignItems: 'center', padding: '0.5rem 0.7rem', border: '1px solid #2563eb', background: 'var(--bg-blue-tint)', borderRadius: 6 }} data-testid="procurement-bulk">
+        <div ref={bulkRef} style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem 0.75rem', alignItems: 'center', padding: '0.5rem 0.7rem', border: '1px solid #2563eb', background: 'var(--bg-blue-tint)', borderRadius: 6 }} data-testid="procurement-bulk">
           <b style={{ fontSize: '0.8125rem', color: 'var(--text-blue-700)' }}>{ticked.size} line{ticked.size === 1 ? '' : 's'} ticked</b>
+          {/* 2026-10-02 · set the office's facts on every ticked line: one house, one lead time, one stage. */}
+          <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: '0.4rem 0.6rem', alignItems: 'center', width: '100%' }} data-testid="procurement-bulk-facts">
+            <label style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center', fontSize: '0.8rem' }}>
+              House
+              <select aria-label="House, for every ticked line" value={bulkHouse} onChange={(e) => setBulkHouse(e.target.value)} style={{ ...inp, maxWidth: '12rem' }}>
+                <option value="">keep</option>
+                {houses.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}
+              </select>
+            </label>
+            <label style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center', fontSize: '0.8rem' }}>
+              Lead time
+              <input type="text" aria-label="Lead time, for every ticked line" placeholder="3 wk" value={bulkLead} onChange={(e) => setBulkLead(e.target.value)} style={{ ...inp, width: '5rem' }} />
+            </label>
+            <label style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center', fontSize: '0.8rem' }}>
+              Stage
+              <select aria-label="Stage, for every ticked line" value={bulkStage} onChange={(e) => setBulkStage(e.target.value)} style={inp}>
+                <option value="">keep</option>
+                {(['rough_in', 'top_out', 'trim_set'] as const).map((st) => <option key={st} value={st}>{PROCUREMENT_STAGE_LABELS[st]}</option>)}
+              </select>
+            </label>
+            <button type="button" disabled={disabled || (!bulkHouse && !bulkLead.trim() && !bulkStage)} onClick={() => void setTickedFacts()} style={btnPrimary} data-testid="procurement-bulk-set">Set on {ticked.size} line{ticked.size === 1 ? '' : 's'}</button>
+          </span>
           <label style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center', fontSize: '0.8rem' }}>
             Ordered
             <input type="text" aria-label="Ordered on, for every ticked line" placeholder={logDateRead(today, today)} value={bulkOrdered} onChange={(e) => setBulkOrdered(e.target.value)} style={{ ...inp, width: '4.6rem', textAlign: 'center' }} />
