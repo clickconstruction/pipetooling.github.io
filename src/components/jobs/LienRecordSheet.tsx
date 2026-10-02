@@ -15,7 +15,7 @@ import { ChevronLeft } from 'lucide-react'
  */
 
 export interface LienRecordSheetProps {
-  /** Which step this is, for tests and styles — `demand`, `notice_sends`, `affidavit_filing`, `affidavit_service`. */
+  /** Which step this is, for tests and styles — `demand`, `notice_sends`, `notice_by_hand`, `affidavit_filing`, `affidavit_service`. */
   kind: string
   title: string
   /** `Demand letter · $15,722.49` */
@@ -25,7 +25,8 @@ export interface LienRecordSheetProps {
   children: ReactNode
   /** The small print above the button. */
   note?: string
-  action: { label: string; busyLabel: string; busy: boolean; onClick: () => void; fill: string }
+  /** `disabled` greys the button while the step still needs something (the caller says what, above it). */
+  action: { label: string; busyLabel: string; busy: boolean; onClick: () => void; fill: string; disabled?: boolean }
   onBack: () => void
   /** Closes the whole window; the × is not drawn without it. */
   onClose?: () => void
@@ -53,7 +54,7 @@ export default function LienRecordSheet(p: LienRecordSheetProps) {
         </div>
         {p.children}
         {p.note ? <div style={{ fontSize: '0.75rem', lineHeight: 1.5, color: 'var(--text-muted)' }}>{p.note}</div> : null}
-        <button type="button" data-lien-record-action onClick={p.action.onClick} disabled={p.action.busy} style={{ minHeight: 48, fontSize: '0.9375rem', background: p.action.fill, color: 'white', border: 'none', borderRadius: 6, cursor: p.action.busy ? 'wait' : 'pointer', fontWeight: 600 }}>
+        <button type="button" data-lien-record-action onClick={p.action.onClick} disabled={p.action.busy || p.action.disabled} style={{ minHeight: 48, fontSize: '0.9375rem', background: p.action.fill, color: 'white', border: 'none', borderRadius: 6, cursor: p.action.busy ? 'wait' : p.action.disabled ? 'not-allowed' : 'pointer', fontWeight: 600, opacity: p.action.disabled ? 0.6 : 1 }}>
           {p.action.busy ? p.action.busyLabel : p.action.label}
         </button>
       </div>

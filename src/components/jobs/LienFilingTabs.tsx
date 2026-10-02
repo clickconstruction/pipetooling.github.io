@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { cleanStoredAddress } from '../../lib/displayAddress'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
@@ -801,6 +801,8 @@ export default function LienFilingTabs({
                     setRecordStep(null)
                     onChanged()
                   }}
+                  layout={isMobile ? 'sheet' : 'box'}
+                  onCloseWindow={onClose}
                 />
               ) : (
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -929,6 +931,7 @@ export default function LienFilingTabs({
   }
 
   // release_record
+  const releasePhoneButton: CSSProperties = isMobile ? { minHeight: 44, padding: '0.35rem 0.5rem', lineHeight: 1.25 } : {}
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', overflowY: 'auto', flex: 1 }}>
       <div style={{ flex: '1 1 20rem', minWidth: '18rem', padding: '1rem 1.25rem' }}>
@@ -942,19 +945,20 @@ export default function LienFilingTabs({
             <div style={{ fontSize: '0.8125rem', marginBottom: '0.6rem' }}>
               <b>Releasing:</b> instrument #{filedAffidavit.recording_number || '—'} · filed {demandDate(filedAffidavit.filed_at ?? '')} · {filedAffidavit.county || property.county} County
             </div>
+            {/* Nothing opens here, so there is no sheet: on a phone (v2.4423) the same fields are full width in place and the three buttons are a grid. */}
             <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: '0.7rem' }}>
-              <span style={{ display: 'block', fontWeight: 500, marginBottom: '0.2rem' }}>Payment / satisfaction date</span>
-              <input type="date" value={releasePaymentDate} onChange={(e) => setReleasePaymentDate(e.target.value)} style={{ padding: '0.4rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8125rem' }} />
+              <span style={isMobile ? recordSheetLabel : { display: 'block', fontWeight: 500, marginBottom: '0.2rem' }}>Payment / satisfaction date</span>
+              <input type="date" value={releasePaymentDate} onChange={(e) => setReleasePaymentDate(e.target.value)} style={isMobile ? recordSheetField : { padding: '0.4rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8125rem' }} />
             </label>
-            {savedCopyRow}
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-              <button type="button" onClick={printDoc} style={{ padding: '0.45rem 0.9rem', fontSize: '0.8125rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: 'pointer' }}>
+            {isMobile ? <div style={{ marginBottom: '0.8rem' }}>{sheetSavedCopy}</div> : savedCopyRow}
+            <div data-lien-release-actions style={isMobile ? { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.5rem' } : { display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <button type="button" onClick={printDoc} style={{ padding: '0.45rem 0.9rem', fontSize: '0.8125rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: 'pointer', ...releasePhoneButton }}>
                 Print for notarization
               </button>
-              <button type="button" onClick={() => void downloadPdf()} disabled={pdfBusy} style={{ padding: '0.45rem 0.9rem', fontSize: '0.8125rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: pdfBusy ? 'wait' : 'pointer' }}>
+              <button type="button" onClick={() => void downloadPdf()} disabled={pdfBusy} style={{ padding: '0.45rem 0.9rem', fontSize: '0.8125rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: pdfBusy ? 'wait' : 'pointer', ...releasePhoneButton }}>
                 {pdfBusy ? 'Building…' : 'Download PDF'}
               </button>
-              <button type="button" onClick={() => void recordRelease()} disabled={busy} style={{ padding: '0.45rem 1rem', fontSize: '0.8125rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: busy ? 'wait' : 'pointer', fontWeight: 600 }}>
+              <button type="button" onClick={() => void recordRelease()} disabled={busy} style={{ padding: '0.45rem 1rem', fontSize: '0.8125rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: busy ? 'wait' : 'pointer', fontWeight: 600, ...releasePhoneButton, ...(isMobile ? { gridColumn: '1 / -1' } : {}) }}>
                 {busy ? 'Saving…' : 'Save release record'}
               </button>
             </div>
