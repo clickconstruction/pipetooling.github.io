@@ -83,6 +83,12 @@ describe('a copy of a takeoff names every column of the rows it copies (v2.4388)
     // The stage purchase orders belong to the bid they were raised on.
     ['a duplicate: the cost estimate', duplicateBody, 'cost_estimates', [...OWN, 'purchase_order_id_rough_in', 'purchase_order_id_top_out', 'purchase_order_id_trim_set']],
     ['a duplicate: labor rows', duplicateBody, 'cost_estimate_labor_rows', ['id', 'created_at']],
+    // Quoted fixture costs (v2.4413). A new version keeps every column; applied_at is the day the quote was applied.
+    ['the count-row clone: quoted costs', cloneBody, 'bid_count_row_custom_costs', ['id']],
+    ['a duplicate: quoted costs', duplicateBody, 'bid_count_row_custom_costs', ['id']],
+    // The bid's own prices (v2.4413). A copy is one plain bid (no version), and a robot's mark is not a human copy's.
+    ['a duplicate: the bid\'s own prices', duplicateBody, 'price_book_versions', ['id', 'created_at', 'bid_version_id', 'is_robot']],
+    ['a duplicate: their book entries', duplicateBody, 'price_book_entries', ['id', 'created_at']],
   ] as const)('%s', (_what, body, table, leftOut) => {
     const columns = tableColumns.get(table)
     expect(columns, `${table} is in database.ts`).toBeDefined()
@@ -95,11 +101,11 @@ describe('a copy of a takeoff names every column of the rows it copies (v2.4388)
 
 describe('every table that hangs off a count row is handled by every copy (v2.4388)', () => {
   /**
-   * Not carried yet, by any of the three: punch list #79. Quoted fixture costs are per bid and
-   * grouped into packages that revert together; a submittal's takeoff picks belong to the bid the
-   * submittal was built on. Remove a row here in the PR that teaches the copies about it.
+   * Left behind on purpose (the owner's yes, 2026-10-02, punch list #79): a submittal's takeoff
+   * picks belong to the bid the submittal was built on. A submittal is built after the award, and
+   * a bid is copied or adopted before it is sent. A new table goes here only with a decision.
    */
-  const NOT_CARRIED_YET = ['bid_count_row_custom_costs', 'bid_submittal_takeoff_choices']
+  const NOT_CARRIED_YET = ['bid_submittal_takeoff_choices']
   const hangingOffCountRows = [...tableColumns].filter(([, cols]) => cols.includes('count_row_id') && cols.includes('bid_id')).map(([t]) => t).sort()
 
   it('knows the tables', () => {
@@ -129,3 +135,23 @@ describe('every table that hangs off a count row is handled by every copy (v2.43
     expect(adoptBody).toMatch(new RegExp(`UPDATE public\\.${table}\\s+SET bid_id = p_target_bid_id`))
   })
 })
+
+describe('a duplicate is one version and owns its prices (v2.4413)', () => {
+  it('copies only the count rows of the version the bid is on', () => {
+    expect(duplicateBody).toMatch(/ORDER BY \(bv\.id = v_src\.selected_bid_version_id\) DESC NULLS LAST, bv\.sort_order, bv\.created_at/)
+    expect(duplicateBody).toMatch(/FROM public\.bids_count_rows\s+WHERE bid_id = p_source_bid_id\s+AND bid_version_id IS NOT DISTINCT FROM v_version/)
+  })
+
+  it.each(['bid_count_row_custom_prices', 'bid_count_row_submission_hides', 'bid_pricing_assignments'])('re-keys %s onto the cloned price, and leaves a row on an uncloned price of the first bid', (table) => {
+    const insert = duplicateBody.slice(duplicateBody.indexOf(`INSERT INTO public.${table}`))
+    const statement = insert.slice(0, insert.indexOf(';'))
+    expect(statement).toContain('COALESCE(pm.new_id,')
+    expect(statement).toContain('(pv.bid_id IS NULL OR pm.new_id IS NOT NULL)')
+  })
+
+  it('copies quoted costs only within the trade, and only for a caller who may write them', () => {
+    expect(duplicateBody).toContain('IF v_src.service_type_id = p_target_service_type_id AND public.can_write_bid_custom_costs() THEN')
+    expect(cloneBody).toContain('IF public.can_write_bid_custom_costs() THEN')
+  })
+})
+

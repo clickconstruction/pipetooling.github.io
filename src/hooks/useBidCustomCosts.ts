@@ -19,7 +19,12 @@ export type BidCustomCost = {
   applied_at: string
 }
 
-export function useBidCustomCosts(bidId: string | null) {
+/**
+ * `versionId` is only a reason to read again: the rows are the whole bid's, but a version made a
+ * moment ago brought copies of its source's costs with it (v2.4413), and the list read when the
+ * bid opened does not hold them.
+ */
+export function useBidCustomCosts(bidId: string | null, versionId: string | null = null) {
   const [customCosts, setCustomCosts] = useState<BidCustomCost[]>([])
 
   const reloadCustomCosts = useCallback(async () => {
@@ -36,7 +41,7 @@ export function useBidCustomCosts(bidId: string | null) {
 
   useEffect(() => {
     void reloadCustomCosts()
-  }, [reloadCustomCosts])
+  }, [reloadCustomCosts, versionId])
 
   return { customCosts, reloadCustomCosts }
 }

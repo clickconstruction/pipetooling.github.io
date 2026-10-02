@@ -1391,7 +1391,7 @@ export default function Bids() {
     </ScrollableTabStrip>
   )
 
-  const { customCosts: bidCountRowCustomCosts, reloadCustomCosts: reloadBidCustomCosts } = useBidCustomCosts(selectedBidForPricing?.id ?? null)
+  const { customCosts: bidCountRowCustomCosts, reloadCustomCosts: reloadBidCustomCosts } = useBidCustomCosts(selectedBidForPricing?.id ?? null, selectedBidVersionId)
 
   const { pricingRowsForGrid, pricingPackageSource, coverLetterPricingRows } = useBidPricingRows({
     selectedBidForPricing,

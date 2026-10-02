@@ -257,7 +257,7 @@ Regenerate the fact sheet (`npm run map -- <file>`), re-read ranges from it, fli
 - **Tests:** the only rendered coverage in either file — `BidFormModal.render.test.tsx` (178 lines, 4 tests: New Bid buttons, Edit has no Save + Enter submits nothing, failed autosave Retry, failed close-flush strip).
 
 ### F13 Copy Bid dialog
-- Same-trade "Duplicate this … bid" + per-other-trade "Open B<n>" siblings and "Copy to new … bid"; both call the parent's `onDuplicateBidToServiceType` (RPC `duplicate_bid_to_service_type`) with `duplicatingToServiceTypeId` as the busy key; disabled for unsaved bids.
+- Same-trade "Duplicate this … bid" + per-other-trade "Open B<n>" siblings and "Copy to new … bid"; both call the parent's `onDuplicateBidToServiceType` (RPC `duplicate_bid_to_service_type`) with `duplicatingToServiceTypeId` as the busy key; disabled for unsaved bids. The dialog's two sentences say what a copy takes and that a bid with versions copies the version it is on (v2.4413).
 - **Approach:** first Stage B move — `BidCopyBidDialog` taking `open`, `onClose`, `editingBid`/`savingBid`, service types, siblings and the two parent callbacks (`onDuplicateBidToServiceType`, `onOpenExistingBidFromServiceTypeSwitch`; `onServiceTypeSwitchModalOpen` is the header's, via `openServiceTypeSwitch`); it owns `duplicatingToServiceTypeId`. `serviceTypeSwitchOpen`, the Esc effect and the report-up effect stay in the form.
 
 ---
