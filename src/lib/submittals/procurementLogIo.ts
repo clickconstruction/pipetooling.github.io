@@ -11,6 +11,7 @@ import { asDecision } from './submittalRevision'
 import type { SubmittalPartRow } from './itemParts'
 import { asPartStage, isCarrier } from './itemParts'
 import {
+  partLineDecision,
   stageDatesFromJob,
   tagStagesFrom,
   type ProcurementItemSource,
@@ -93,8 +94,8 @@ type ItemLike = { id?: string; tag: string; submitted_manufacturer: string | nul
 /**
  * The newest revision's rows as the log reads them; the house names come from one read. A row
  * with parts (2026-10-01) gives one line per part: the part's name, house, lead time and stage,
- * the fixtures counted × how many go on one, and its call — its own, else the row's; an order-only
- * part takes the row's call (it is released with its fixture).
+ * the fixtures counted × how many go on one, and its call (`partLineDecision`: its own; the
+ * row's when the row was called whole; an order-only part is released with its fixture).
  */
 export async function procurementItemsFrom(supabase: Client, items: ReadonlyArray<ItemLike>, shared: boolean, parts: ReadonlyArray<SubmittalPartRow> = []): Promise<ProcurementItemSource[]> {
   const houseIds = [...new Set([...items.map((i) => i.supply_house_id), ...parts.map((p) => p.supply_house_id)].filter((x): x is string => !!x))]
@@ -130,6 +131,7 @@ export async function procurementItemsFrom(supabase: Client, items: ReadonlyArra
       continue
     }
     const fixtureCount = i.source_count_row_id ? counts.get(i.source_count_row_id) ?? null : null
+    const rowCalledByPart = rowParts.some((p) => p.on_submittal && asDecision(p.review_decision) != null)
     for (const p of rowParts) {
       const own = asDecision(p.review_decision)
       out.push({
@@ -137,7 +139,7 @@ export async function procurementItemsFrom(supabase: Client, items: ReadonlyArra
         product: p.label.trim(),
         supplyHouse: p.supply_house_id ? names.get(p.supply_house_id) ?? null : null,
         leadTimeDays: p.lead_time_days ?? i.lead_time_days,
-        decision: !p.on_submittal ? rowDecision : own ? { kind: own, at: p.reviewed_at } : rowDecision,
+        decision: partLineDecision({ onSubmittal: p.on_submittal, own: own ? { kind: own, at: p.reviewed_at } : null, row: rowDecision, rowCalledByPart }),
         partKey: p.procure_key,
         partOrder: p.sequence_order,
         orderOnly: !p.on_submittal,

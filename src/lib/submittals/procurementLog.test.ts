@@ -9,6 +9,7 @@ import {
   groupRowsByStage,
   longDate,
   monthDay,
+  partLineDecision,
   procurementAsks,
   stageDatesWords,
   daysBetween,
@@ -28,6 +29,7 @@ import {
   stageOfWeights,
   statusText,
   tagMatchesFixture,
+  type ProcurementDecision,
   type ProcurementItemSource,
   type ProcurementRecord, foldByHouse, gcProcurementRows, houseFoldNote, lineStatus, logIsDraft, orderBlockers, procurementSections, tagRollUp } from './procurementLog'
 
@@ -496,6 +498,38 @@ describe('2026-10-02 · a line in a phrase, a tag in a heading', () => {
     expect(logIsDraft(lines)).toBe(false)
     expect(logIsDraft(lines.filter((r) => r.partKey === 'k-draft'))).toBe(true)
     expect(logIsDraft([])).toBe(false)
+  })
+})
+
+describe('2026-10-02 · the call a part’s line reads', () => {
+  const rejectedCall: ProcurementDecision = { kind: 'rejected', at: '2026-10-02T19:11:00Z' }
+  const approvedCall: ProcurementDecision = { kind: 'approved', at: '2026-09-22T15:00:00Z' }
+  const reviseCall: ProcurementDecision = { kind: 'revise', at: '2026-09-23T15:00:00Z' }
+
+  it('one part sent back does not send its neighbours back: WC-1’s flush valve is rejected, the bowl, the seat and the carrier are still open', () => {
+    // The row reads Rejected, the roll-up of its parts.
+    const line = (own: ProcurementDecision | null, onSubmittal = true) => partLineDecision({ onSubmittal, own, row: rejectedCall, rowCalledByPart: true })
+    expect(line(rejectedCall)).toEqual(rejectedCall)
+    expect(line(null)).toBeNull()
+    // A part approved on the same row keeps its approval, whatever the row rolls up to.
+    expect(line(approvedCall)).toEqual(approvedCall)
+    // An order-only part was not sent back either. It waits for its fixture.
+    expect(line(null, false)).toBeNull()
+    expect(partLineDecision({ onSubmittal: true, own: null, row: reviseCall, rowCalledByPart: true })).toBeNull()
+  })
+
+  it('a row called whole, with no call on any part, covers every part', () => {
+    for (const row of [approvedCall, reviseCall, rejectedCall]) {
+      expect(partLineDecision({ onSubmittal: true, own: null, row, rowCalledByPart: false })).toEqual(row)
+      expect(partLineDecision({ onSubmittal: false, own: null, row, rowCalledByPart: false })).toEqual(row)
+    }
+    expect(partLineDecision({ onSubmittal: true, own: null, row: null, rowCalledByPart: false })).toBeNull()
+  })
+
+  it('every part approved releases the order-only parts with the fixture, on the row’s date', () => {
+    expect(partLineDecision({ onSubmittal: false, own: null, row: approvedCall, rowCalledByPart: true })).toEqual(approvedCall)
+    // An order-only part never reads a call of its own, even if one was left on it.
+    expect(partLineDecision({ onSubmittal: false, own: rejectedCall, row: approvedCall, rowCalledByPart: true })).toEqual(approvedCall)
   })
 })
 
