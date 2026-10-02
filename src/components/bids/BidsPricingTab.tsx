@@ -62,6 +62,8 @@ import { usePricingMarginHistory } from '../../hooks/usePricingMarginHistory'
 import { useWorkbenchHelp } from '../../hooks/useWorkbenchHelp'
 import { WORKBENCH_GUIDE_HREF, workbenchHelpFacts } from '../../lib/bids/workbenchHelp'
 import { useStarAwareShare } from '../../hooks/useStarAwareShare'
+import { useTakeoffPriceDrift } from '../../hooks/useTakeoffPriceDrift'
+import { PricingMaterialsTodayNote } from './TakeoffPriceDrift'
 import { pricingNameOf } from '../../lib/bids/starAwareShare'
 import type { ComputeBidPricingRowsResult } from '../../lib/bidPricingRowCalculations'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -1446,6 +1448,8 @@ export function BidsPricingTab({
   // Iteration 3 — win/loss calibration history for this service type (the read sits where its
   // effect stood, so the tab's effects run in the order they did).
   const wbHistory = usePricingMarginHistory(selectedServiceTypeId)
+  // v2.4395: the version's materials at today's book, one line under the sent-vs-today line.
+  const materialsToday = useTakeoffPriceDrift({ bidId: selectedBidForPricing?.id, versionId: selectedBidVersionId, enabled: !!selectedBidForPricing })
 
   /**
    * Workbench view/★ split (v2.2013): the bid's saved `selected_price_book_version_id` is the
@@ -3022,6 +3026,12 @@ export function BidsPricingTab({
                         </div>
                       )
                     })()}
+                    <PricingMaterialsTodayNote
+                      drift={materialsToday}
+                      onSeeTakeoffs={() => {
+                        if (selectedBidForPricing) onNavigateBidToTab(selectedBidForPricing, 'takeoffs')
+                      }}
+                    />
                     </div>
                     </div>
 
