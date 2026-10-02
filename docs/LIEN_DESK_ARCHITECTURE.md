@@ -8,12 +8,14 @@ covers:
   - src/components/jobs/LienDeskModal.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-10-01
+last_updated: 2026-10-02
 ---
 
 > **Line numbers are as of `a05cef4c4`** (the `mapped_at` commit) and drift with every edit — search the symbol named beside each range. Regenerate the fact sheet with `npm run map -- src/components/jobs/LienDeskModal.tsx`. The file is the busiest component this week (37 commits in 90 days; its 29 since 2026-09-18 lead every component — over 90 days `JobsStagesTab.tsx` has more); re-check ranges before any move.
 
 ## What this surface is
+
+> **v2.4404 (supply houses on a job):** above the early return the desk calls `useLienJobSuppliers` over every job on the three lists and the Calendar (`supplierJobIds`), and keeps `supplierMarks` (`lienSupplierMark` per job, only while a house is owed). Each list row's words end with `LienSupplierMarkLine`; region E draws `LienJobSuppliersCard` under `LienDeskGates` when the job has supplier invoices (`supplierJob`); `LienDeskCalendarTab` takes `supplierMarks`. Kernel [`lienJobSuppliers.ts`](../src/lib/jobs/lienJobSuppliers.ts) (13 tests); the money agrees with `materials/jobAccountsFlow.ts` by test. The Lien window mounts the same card folded (`startFolded`).
 
 > **v2.4355 (the title bar on one line):** region A's spacing moved from inline margins to the `lienDeskTitleBar` column gap (`index.css`), the tab buttons to `lienDeskKindTab`, and Share's word to a `lienDeskShareWord` span. A viewport from 641 to 1,131 px closes the gap, narrows the tabs and hides the word, so a desk narrower than 1,100 px keeps one title line. No container query: one on the bar would trap the phone's fixed Share sheet.
 
@@ -296,6 +298,7 @@ Verification per step: `npm run typecheck && npm run lint && npm test`, behavior
 | `LienWordRecordRow` | 72 | 1555, 1639 | none (desk smoke) |
 | `PropertyKindSwitch` | 52 | 1088 | none (desk smoke 382) |
 | `LienRulesDoor` | 38 | 1841 | none |
+| `LienJobSuppliersCard` / `LienSupplierMarkLine` (`LienJobSuppliers.tsx`, v2.4404) | 205 | region E under the gates; every list row | desk smoke (2) |
 | hooks `useLienDeskData` / `useLienTimelineBook` / `useNoticePayPage` | 374 / 112 / 55 | parent 1613 / 296 / 522 | none / none / render 2 |
 
 **Large sibling Lien surfaces** (candidates for their own maps):

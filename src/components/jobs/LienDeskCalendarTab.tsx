@@ -28,6 +28,8 @@ import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import PropertyKindSwitch from './PropertyKindSwitch'
+import { LienSupplierMarkLine } from './LienJobSuppliers'
+import type { LienSupplierMark } from '../../lib/jobs/lienJobSuppliers'
 
 /**
  * The Lien desk's Calendar tab (v2.4101 the shell; v2.4152 the body — punch
@@ -74,6 +76,8 @@ export type LienDeskCalendarTabProps = {
   onOpenEditJob?: (jobId: string) => void
   /** The pen wrote something: a promise, or a property kind. */
   onChanged?: (what: 'promise' | 'kind') => void
+  /** Jobs where a supply house is still owed (v2.4404): the row shows a storefront and the money. */
+  supplierMarks?: ReadonlyMap<string, LienSupplierMark>
 }
 
 /** A GC can sit in two buckets, so a group's pen names its bucket too (`scope`). */
@@ -442,7 +446,7 @@ function GroupHeader({ g, open, onToggle, axis, onPen }: { g: LienCalendarGroup;
   )
 }
 
-function JobRow({ j, g, index, axis, onOpen, onPen }: { j: LienCalendarJob; g: LienCalendarGroup; index: number; axis: LienCalendarAxis | null; onOpen: () => void; onPen?: (pct: number) => void }) {
+function JobRow({ j, g, index, axis, onOpen, onPen, mark }: { j: LienCalendarJob; g: LienCalendarGroup; index: number; axis: LienCalendarAxis | null; onOpen: () => void; onPen?: (pct: number) => void; mark?: LienSupplierMark }) {
   // Under a GC row its one dot speaks for every job; a job draws the dashed dot only on its own.
   const marks = axis ? lienCalendarMarks(j, axis, { payMissingDot: g.kind !== 'gc' }) : []
   const word = rowWord(j, g)
@@ -453,6 +457,11 @@ function JobRow({ j, g, index, axis, onOpen, onPen }: { j: LienCalendarJob; g: L
         <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
           <span style={cellNum}>{j.number}</span>
           <span style={{ fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{j.name}</span>
+          {mark ? (
+            <span style={{ flex: 'none', fontSize: '0.6875rem', position: 'relative' }}>
+              <LienSupplierMarkLine mark={mark} short />
+            </span>
+          ) : null}
         </span>
         <span style={{ display: 'block', fontSize: '0.6875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {j.customer}
@@ -669,7 +678,7 @@ function KeyStrip({ openGlyph, onToggle, doors, onDoor }: { openGlyph: LienCalen
 }
 
 /** Phone: the buckets as sections of two-line sentences — no axis. */
-function PhoneBoard({ shown, folded, onFold, onDraft, onOpenJob, query }: { shown: LienCalendarBucket[]; folded: ReadonlySet<string>; onFold: (key: string) => void; onDraft?: (ymd: string, jobIds: string[]) => void; onOpenJob: (id: string) => void; query: string }) {
+function PhoneBoard({ shown, folded, onFold, onDraft, onOpenJob, query, marks }: { shown: LienCalendarBucket[]; folded: ReadonlySet<string>; onFold: (key: string) => void; onDraft?: (ymd: string, jobIds: string[]) => void; onOpenJob: (id: string) => void; query: string; marks?: ReadonlyMap<string, LienSupplierMark> }) {
   return (
     <div data-testid="lien-cal-phone">
       {shown.map((b) => {
@@ -694,7 +703,10 @@ function PhoneBoard({ shown, folded, onFold, onDraft, onOpenJob, query }: { show
                           <span style={{ fontSize: '0.8125rem', fontWeight: 600, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{j.name}</span>
                           <span style={{ marginLeft: 'auto', fontSize: '0.8125rem', fontVariantNumeric: 'tabular-nums', color: j.runway.state === 'closed' ? 'var(--text-muted)' : undefined }}>{formatUsdNoCents(j.openBalance)}</span>
                         </span>
-                        <span title={j.runway.lines.join(' · ')} style={{ display: 'block', fontSize: '0.6875rem', color: TONE[j.runway.tone], fontWeight: 600, marginTop: 1 }}>{lienPhoneLine(j)}</span>
+                        <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, fontSize: '0.6875rem', marginTop: 1, position: 'relative' }}>
+                          <span title={j.runway.lines.join(' · ')} style={{ color: TONE[j.runway.tone], fontWeight: 600, minWidth: 0 }}>{lienPhoneLine(j)}</span>
+                          <LienSupplierMarkLine mark={marks?.get(j.jobId)} short />
+                        </span>
                       </button>
                     ))}
                   </div>
@@ -707,7 +719,7 @@ function PhoneBoard({ shown, folded, onFold, onDraft, onOpenJob, query }: { show
   )
 }
 
-export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, isMobile = false, canWrite = false, onDraft, onOpenEditJob, onChanged }: LienDeskCalendarTabProps) {
+export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, isMobile = false, canWrite = false, onDraft, onOpenEditJob, onChanged, supplierMarks }: LienDeskCalendarTabProps) {
   const [query, setQuery] = useState('')
   const [pen, setPen] = useState<PenTarget | null>(null)
   const [kindsOpen, setKindsOpen] = useState(false)
@@ -782,7 +794,7 @@ export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, isMobil
           board.count === 0 ? (
             <div style={{ padding: '1.5rem 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>No billed job matches that.</div>
           ) : (
-            <PhoneBoard shown={shown} folded={folded} onFold={fold} onDraft={onDraft} onOpenJob={onOpenJob} query={query} />
+            <PhoneBoard shown={shown} folded={folded} onFold={fold} onDraft={onDraft} onOpenJob={onOpenJob} query={query} marks={supplierMarks} />
           )
         ) : null}
         {rows && !isMobile && axis && (board.count > 0 || query.trim()) ? (
@@ -819,7 +831,7 @@ export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, isMobil
                                 {groupOpen
                                   ? g.jobs.map((j, index) => (
                                       <div key={j.jobId} style={{ position: 'relative' }}>
-                                        <JobRow j={j} g={g} index={index} axis={axis} onOpen={() => onOpenJob(j.jobId)} onPen={penOn ? (pct) => setPen({ kind: 'job', job: j, pct }) : undefined} />
+                                        <JobRow j={j} g={g} index={index} axis={axis} onOpen={() => onOpenJob(j.jobId)} onPen={penOn ? (pct) => setPen({ kind: 'job', job: j, pct }) : undefined} mark={supplierMarks?.get(j.jobId)} />
                                         {pen && pen.kind === 'job' && pen.job.jobId === j.jobId ? (
                                           <div style={{ ...GRID, position: 'absolute', left: 0, right: 0, top: 0, pointerEvents: 'none' }}>
                                             <div />

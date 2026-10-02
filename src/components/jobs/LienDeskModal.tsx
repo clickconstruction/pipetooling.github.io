@@ -49,6 +49,7 @@ import { useNoticePayPage } from '../../hooks/useNoticePayPage'
 import { payPageBlocks, payPageSummary } from '../../lib/jobs/lienNoticePayPage'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useIsMobile } from '../../hooks/useIsMobile'
+import { useLienJobSuppliers } from '../../hooks/useLienJobSuppliers'
 import { ModalFullScreenButton, useModalFullScreen } from '../ModalFullScreenToggle'
 import { buildLienDeskRun, buildLienRetainageRun, runCoverNoteBlocks } from '../../lib/jobs/lienDeskRun'
 import { affidavitMonthWord, counselCoverLetterTemplate, coverLetterKindFor, fillCoverLetter, letterTwoTemplate } from '../../lib/jobs/gcOnNotice'
@@ -67,6 +68,8 @@ import { DEFAULT_CLAIMANT_NAME } from '../../lib/jobs/lienNoticeDraft'
 import LienDeskRunModal from './LienDeskRunModal'
 import LienDeskShare from './LienDeskShare'
 import { Share } from 'lucide-react'
+import { LienJobSuppliersCard, LienSupplierMarkLine } from './LienJobSuppliers'
+import { lienSupplierMark, type LienSupplierMark } from '../../lib/jobs/lienJobSuppliers'
 import LienDeskAffidavitPane, { affidavitDeadlineWords } from './LienDeskAffidavitPane'
 import LienDeskRetainagePane from './LienDeskRetainagePane'
 import { LIEN_RETAINAGE_PILES, contractEndedWords, retainageDeadlineWords, type LienRetainagePile } from '../../lib/jobs/lienDeskRetainage'
@@ -345,6 +348,24 @@ export default function LienDeskModal({
   const [affFooterEl, setAffFooterEl] = useState<HTMLDivElement | null>(null)
 
   const entries = data?.queue.entries ?? []
+  // Supply houses on the desk's jobs (v2.4404): a mark on a row while a house is still owed, and the card in the pane.
+  const supplierJobIds = useMemo(() => {
+    const ids = new Set<string>()
+    for (const e of data?.queue.entries ?? []) ids.add(e.jobId)
+    for (const e of data?.affidavits.entries ?? []) ids.add(e.jobId)
+    for (const e of data?.retainage.entries ?? []) ids.add(e.jobId)
+    for (const r of calendarRows ?? []) ids.add(r.jobId)
+    return [...ids]
+  }, [data, calendarRows])
+  const suppliers = useLienJobSuppliers(supplierJobIds, open)
+  const supplierMarks = useMemo(() => {
+    const marks = new Map<string, LienSupplierMark>()
+    for (const [jobId, job] of suppliers.byJob) {
+      const mark = lienSupplierMark(job)
+      if (mark) marks.set(jobId, mark)
+    }
+    return marks
+  }, [suppliers.byJob])
   // The Calendar's "Draft the N" (v2.4153): the notice list narrows to those jobs until the chip is cleared.
   const [calendarJobFilter, setCalendarJobFilter] = useState<{ ymd: string; jobIds: ReadonlySet<string> } | null>(null)
   const visible = useMemo(() => {
@@ -454,6 +475,7 @@ export default function LienDeskModal({
   const monthsList = [...months].sort()
 
   const openBalance = selected?.openBalance ?? 0
+  const supplierJob = selected ? suppliers.byJob.get(selected.jobId) : undefined
   // The claim set by hand (v2.3682): an amount off the moving balance, carried until cleared; the notice claims the rest.
   const correction = selected && data ? data.claimCorrectionsByJob[selected.jobId] ?? null : null
   const lastSentAt = selected && data ? data.items.filter((i) => i.job_id === selected.jobId && i.status === 'sent' && i.sent_at).map((i) => i.sent_at as string).sort().pop() ?? null : null
@@ -879,6 +901,7 @@ export default function LienDeskModal({
                       const tone = lt.state === 'overdue' ? chip('var(--bg-red-tint)', 'var(--text-red-600)') : lt.state === 'due' ? chip('var(--bg-amber-tint)', 'var(--text-amber-800)') : lt.state === 'sent' || lt.state === 'gc_authorized' || lt.state === 'owner_called' ? chip('var(--bg-green-tint)', 'var(--text-green-800)') : chip('var(--bg-subtle)', 'var(--text-muted)')
                       return <span style={tone} data-lien-letter-two={lt.state}>{lt.words}</span>
                     })()}
+                    <LienSupplierMarkLine mark={supplierMarks.get(e.jobId)} />
                   </span>
                 </button>
               )
@@ -1232,6 +1255,11 @@ export default function LienDeskModal({
         }}
       />
 
+      {/* Supply houses on this job (v2.4404): a second claim can ride the same property. Not drawn when the job bought nothing. */}
+      {supplierJob ? (
+        <LienJobSuppliersCard job={supplierJob} propertyKind={property.propertyKind ?? ''} todayYmd={todayYmd} openBalance={openBalance} payerName={gc?.name ?? ''} jobLabel={jobLabel(job, selected.jobId)} isMobile={isMobile} />
+      ) : null}
+
       {/* A carried correction nobody has looked at since the last notice (v2.3682): the paper says so and asks before it goes. */}
       {correction && correctionNeedsLook(correction, lastSentAt) ? (
         <div data-lien-claim-carry-strip style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.3rem 0.8rem', padding: '0.5rem 0.75rem', borderRadius: 9, border: '1px solid var(--border-amber)', background: 'var(--bg-amber-tint)', fontSize: '0.8125rem' }}>
@@ -1436,6 +1464,7 @@ export default function LienDeskModal({
                     })()}
                     <span>last work {workMonthShort(e.lastMonth)}</span>
                     {missing.length ? <span>· missing {missing.join(', ')}</span> : null}
+                    <LienSupplierMarkLine mark={supplierMarks.get(e.jobId)} />
                   </span>
                 </button>
               )
@@ -1514,6 +1543,7 @@ export default function LienDeskModal({
                     <span style={chip(severityColors(e.severity).bg, severityColors(e.severity).fg)}>{retainageDeadlineWords(e, formatYmdMonthDay)}</span>
                     <span>{contractEndedWords(e.contractEndedHow, e.contractEndedOn, formatYmdMonthDay)}</span>
                     <span>· {e.inClaim ? 'in the § 53.056 claim' : 'not yet in a § 53.056 claim'}</span>
+                    <LienSupplierMarkLine mark={supplierMarks.get(e.jobId)} />
                   </span>
                 </button>
               )
@@ -2062,6 +2092,7 @@ export default function LienDeskModal({
           {kind === 'calendar' ? (
             <LienDeskCalendarTab
               rows={calendarRows ?? null}
+              supplierMarks={supplierMarks}
               todayYmd={todayYmd}
               isMobile={isMobile}
               canWrite={office}

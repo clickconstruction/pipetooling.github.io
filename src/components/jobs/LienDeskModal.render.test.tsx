@@ -19,6 +19,7 @@ import type { LienDeskData } from '../../hooks/useLienDeskData'
 import { buildLienAffidavitQueue, type LienAffidavitRow } from '../../lib/jobs/lienDeskAffidavits'
 import { proposalFromLookupPayload } from '../../lib/customers/propertyLookupClient'
 import { resetPropertyLookupCache } from '../../lib/customers/propertyLookupCache'
+import { buildLienSupplierJobs, type LienSupplierJob } from '../../lib/jobs/lienJobSuppliers'
 
 vi.mock('../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
@@ -45,6 +46,9 @@ vi.mock('../../lib/jobs/lienClaimCorrectionIo', async () => {
 const savePropertyKindMock = vi.fn()
 const payPageState: { rows: Array<{ invoiceId: string; label: string; description: string; openAmount: number; payable: boolean }>; assets: Record<string, { svg: string; png: string | null }>; loading: boolean } = { rows: [], assets: {}, loading: false }
 vi.mock('../../hooks/useNoticePayPage', () => ({ useNoticePayPage: () => payPageState }))
+// Supply houses on the desk's jobs (v2.4404): the read is a seam; the kernel has its own tests.
+const supplierState: { byJob: Map<string, LienSupplierJob> } = { byJob: new Map() }
+vi.mock('../../hooks/useLienJobSuppliers', () => ({ useLienJobSuppliers: () => ({ byJob: supplierState.byJob, loaded: true }) }))
 vi.mock('../../lib/jobs/propertyKindWrite', () => ({
   savePropertyKind: (...args: unknown[]) => savePropertyKindMock(...args),
   savePropertyHomestead: vi.fn(),
@@ -64,6 +68,7 @@ vi.mock('../../lib/jobs/ownerConfirmWrite', () => ({
 afterEach(cleanup)
 beforeEach(() => {
   resetPropertyLookupCache()
+  supplierState.byJob = new Map()
   lookupMock.mockReset()
   lookupMock.mockResolvedValue({ ok: false, error: 'not_found' })
   confirmMock.mockReset()
@@ -1042,5 +1047,44 @@ describe('LienDeskModal the owner’s call and the piles (v2.3767)', () => {
     expect(panel.style.borderRadius).toBe('10px')
     expect(screen.getByRole('button', { name: 'Full screen' })).toBeTruthy()
     expect(window.localStorage.getItem('modal_full_screen_lien-desk')).toBeNull()
+  })
+  it('marks a job where a supply house is owed, draws its card, and copies the paragraph (v2.4404)', async () => {
+    supplierState.byJob = buildLienSupplierJobs({
+      invoices: [
+        { id: 'r1', supply_house_id: 'reece', amount: 1480, is_paid: true, invoice_date: '2026-06-20', paidYmd: '2026-07-09', on_job_account: false },
+        { id: 'r2', supply_house_id: 'reece', amount: 9612.4, is_paid: false, invoice_date: '2026-07-18', paidYmd: null, on_job_account: false },
+      ],
+      allocations: [
+        { invoice_id: 'r1', job_id: 'j650', pct: 100 },
+        { invoice_id: 'r2', job_id: 'j650', pct: 100 },
+      ],
+      houses: [{ id: 'reece', name: 'Reece' }],
+    })
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} />)
+    await settle()
+    const mark = document.querySelector('[data-lien-supplier-mark]')
+    expect(mark?.textContent).toContain('1 house owed $9,612')
+    const card = document.querySelector<HTMLElement>('[data-lien-suppliers-card="owed"]')!
+    expect(card).toBeTruthy()
+    expect(within(card).getByText('July materials')).toBeTruthy()
+    // July on a commercial clock is due Oct 15; today is Sep 14.
+    expect(within(card).getByText('by Oct 15')).toBeTruthy()
+    expect(card.querySelector('[data-lien-suppliers-verdict]')?.textContent).toBe('The $33,500.00 Loberg Contracting owes us covers what the houses are owed.')
+    fireEvent.click(within(card).getByRole('button', { name: 'Copy for an email' }))
+    await settle()
+    expect(writeText).toHaveBeenCalledTimes(1)
+    const text = String(writeText.mock.calls[0]![0])
+    expect(text).toContain('Supply houses on 650 · ATI Schertz')
+    expect(text).toContain('Reece is owed $9,612.40. Its oldest unpaid materials are from July. We expect its own notice by October 15.')
+    expect(within(card).getByRole('link', { name: 'Open in Held for suppliers ›' }).getAttribute('href')).toBe('/materials?tab=job-accounts&job=j650')
+  })
+
+  it('draws no card and no mark on a job that bought nothing (v2.4404)', async () => {
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} />)
+    await settle()
+    expect(document.querySelector('[data-lien-suppliers-card]')).toBeNull()
+    expect(document.querySelector('[data-lien-supplier-mark]')).toBeNull()
   })
 })
