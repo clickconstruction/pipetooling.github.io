@@ -198,8 +198,15 @@ function moved(before: GcState, after: GcState) {
 
 // Play the walk once; each step's test reads the state after it.
 const states: GcState[] = [initialGcState()]
-for (const step of STEPS) states.push(gcReducer(states[states.length - 1], step.action))
-const finalState = states[states.length - 1]
+for (const step of STEPS) states.push(gcReducer(stateAt(states.length - 1), step.action))
+const finalState = stateAt(states.length - 1)
+
+/** The state after `i` steps (0: before any). */
+function stateAt(i: number): GcState {
+  const s = states[i]
+  if (!s) throw new Error(`no state after step ${i}`)
+  return s
+}
 
 describe('GC mode golden walk', () => {
   it('uses every action type at least once', () => {
@@ -216,21 +223,21 @@ describe('GC mode golden walk', () => {
   })
 
   it('every step changes the state (no step is a silent no-op)', () => {
-    const still = STEPS.filter((_, i) => states[i + 1] === states[i]).map((s) => s.label)
+    const still = STEPS.filter((_, i) => stateAt(i + 1) === stateAt(i)).map((s) => s.label)
     expect(still).toEqual([])
   })
 
   it('starts on 2026-10-02', () => {
-    expect(states[0].today).toBe('2026-10-02')
+    expect(stateAt(0).today).toBe('2026-10-02')
   })
 
   it('before any step', () => {
-    expect(readings(states[0])).toMatchSnapshot()
+    expect(readings(stateAt(0))).toMatchSnapshot()
   })
 
   STEPS.forEach((step, i) => {
     it(`step ${String(i + 1).padStart(2, '0')}: ${step.label}`, () => {
-      expect(moved(states[i], states[i + 1])).toMatchSnapshot()
+      expect(moved(stateAt(i), stateAt(i + 1))).toMatchSnapshot()
     })
   })
 
