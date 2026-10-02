@@ -18,8 +18,8 @@ import { formatKeptRecord, formatUsualSlip, type CustomerPromiseRecord } from '.
 
 /** Bars in the sparkline: the customer's most recent measurable bills. */
 export const RELIABILITY_SPARK_BARS = 6
-/** Fewer measurable payments than this and there is no spread to show. */
-export const RELIABILITY_MIN_RECEIPTS = 2
+/** Fewer measurable payments than this and there is no spread to show. 1 since v2.4376 ("Pays in ~74d"), as the Expected date. */
+export const RELIABILITY_MIN_RECEIPTS = 1
 
 export type PaySpeedSpread = {
   /** Typical fast end (25th percentile; the minimum with < 4 samples). */

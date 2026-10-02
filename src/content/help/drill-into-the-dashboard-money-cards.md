@@ -35,7 +35,7 @@ Each customer row shows their open bills as a small **bar**. Each segment is one
 
 The right side is two tight columns. The first is days waiting over their average pay speed. "35d avg" is their own 12-month median, or the company average when they have no history. The second is open dollars over the job count. Hover either column for the full story, with exact cents and where the average comes from.
 
-- Bill colors read against **that customer's** usual speed. {{chip:green|on pace}} is at or under it. {{chip:yellow|past their avg}} is over it. {{chip:red|2× their avg}} is at twice it or more. The legend at the top of the list spells this out. A customer with too little history reads against the company average instead.
+- Bill colors read against **that customer's** usual speed. {{chip:green|on pace}} is at or under it. {{chip:yellow|past their avg}} is over it. {{chip:red|2× their avg}} is at twice it or more. The legend at the top of the list spells this out. A customer with no measured payment yet reads against the company average instead. One payment is enough to use their own pace.
 - The two pace totals above the list are click-to-filter. They read like {{chip:red|Past their pace $161k · 18}} and {{chip:green|On pace $9.2k · 6}}. On-pace customers fold into one quiet row. So the list is only as long as the problem.
 - {{button:blue|Slowest first}} is the call order. It puts the most overdue against their own pace on top. {{button:outline|Biggest}} sorts by open dollars.
 - Tap a row to unfold **every bill they owe**. Each shows the wait chip, job link, billed date and amount, with the line items already unfolded. The globe on the row opens their customer portal.

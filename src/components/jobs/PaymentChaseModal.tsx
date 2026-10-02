@@ -4,7 +4,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { extractContactFromCustomer } from '../../lib/customerContactDisplay'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
-import { formatYmdMonthDay, type PaySpeedData } from '../../lib/jobs/billedExpectedPay'
+import { PAY_SPEED_MIN_SAMPLES, formatYmdMonthDay, type PaySpeedData } from '../../lib/jobs/billedExpectedPay'
 import { addPaymentChaseTouch, recordPromiseForJobs } from '../../lib/jobs/paymentChaseIo'
 import {
   CHASE_COLLECTIONS_SUGGESTION_THRESHOLD,
@@ -519,7 +519,7 @@ export default function PaymentChaseModal({
 
   const speedLine = (c: ChaseCustomer): string => {
     const own = paySpeeds?.customers[c.customerId]
-    if (own && own.samples >= 3) return `usually pays in ~${own.medianDays}d`
+    if (own && own.samples >= PAY_SPEED_MIN_SAMPLES) return `usually pays in ~${own.medianDays}d`
     const company = paySpeeds?.company
     return company ? `company avg (~${company.medianDays}d)` : ''
   }

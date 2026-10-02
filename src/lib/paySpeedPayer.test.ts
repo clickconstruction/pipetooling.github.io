@@ -42,7 +42,15 @@ describe('the estimate reads the payer', () => {
     expect(m?.state).toBe('upcoming')
     expect(m?.title).toBe("Billed Sep 3 + RMC- Dudley Mason's median pay speed (~35 days over 4 payments, last 12 months) → expected Oct 8")
   })
-  it('thin history falls back to the company and says whose history is thin', () => {
+  it('one payment is enough (v2.4376): TF Harper’s single 74-day payment sets the date, and the hover says so', () => {
+    const one = { ...speeds, customers: { ...speeds.customers, 'gc-harper': { medianDays: 74, samples: 1 } } } as PaySpeedData
+    const m = billedExpectedPayModel({ billedAtIso: '2026-07-12T15:00:00Z', estBillYmd: null, customerId: 'gc-harper', payerName: 'TF Harper' }, one, '2026-10-01')
+    expect(m?.source).toBe('customer')
+    expect(m?.expectedYmd).toBe('2026-09-24')
+    expect(m?.daysLate).toBe(7)
+    expect(m?.title).toContain("TF Harper's median pay speed (~74 days over 1 payment, last 12 months)")
+  })
+  it('no history at all falls back to the company and says whose history is thin', () => {
     const m = billedExpectedPayModel({ billedAtIso: '2026-09-03T15:00:00Z', estBillYmd: null, customerId: 'gc-thin', payerName: 'Southern Post Construction' }, speeds, '2026-10-01')
     expect(m?.source).toBe('company')
     expect(m?.title).toContain('Southern Post Construction has too little payment history')

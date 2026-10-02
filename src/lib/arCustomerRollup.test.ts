@@ -49,26 +49,31 @@ describe('buildArCustomerRollup', () => {
     expect(dudley.bills.map((b) => b.item.key)).toEqual(['a', 'b'])
   })
 
-  it('uses the customer median only at PAY_SPEED_MIN_SAMPLES, else the company median', () => {
+  it('uses the customer median from their first payment (v2.4376), else the company median', () => {
     const data = speeds({
-      customers: { c1: { medianDays: 35, samples: 5 }, c2: { medianDays: 40, samples: 2 } },
+      customers: { c1: { medianDays: 35, samples: 5 }, c2: { medianDays: 40, samples: 1 } },
     })
     const rollup = buildArCustomerRollup(
       [
         item({ key: 'a', amount: 100, customerId: 'c1', customerName: 'Own', dateYmd: '2026-08-12' }),
-        item({ key: 'b', amount: 100, customerId: 'c2', customerName: 'Thin', dateYmd: '2026-08-12' }),
+        item({ key: 'b', amount: 100, customerId: 'c2', customerName: 'One payment', dateYmd: '2026-08-12' }),
+        item({ key: 'c', amount: 100, customerId: 'c3', customerName: 'None yet', dateYmd: '2026-08-12' }),
       ],
       data,
       TODAY,
     )
     const own = rollup.rows.find((r) => r.customerId === 'c1')!
-    const thin = rollup.rows.find((r) => r.customerId === 'c2')!
+    const one = rollup.rows.find((r) => r.customerId === 'c2')!
+    const none = rollup.rows.find((r) => r.customerId === 'c3')!
     expect(own.baselineDays).toBe(35)
     expect(own.ownMedianDays).toBe(35)
     expect(own.pastPace).toBe(false) // 20d wait, ~35d baseline
-    expect(thin.baselineDays).toBe(6) // company fallback
-    expect(thin.ownMedianDays).toBeNull()
-    expect(thin.pastPace).toBe(true) // 20d wait past ~6d
+    expect(one.baselineDays).toBe(40) // a single payment is their own pace now
+    expect(one.ownMedianDays).toBe(40)
+    expect(one.pastPace).toBe(false)
+    expect(none.baselineDays).toBe(6) // no history: company fallback
+    expect(none.ownMedianDays).toBeNull()
+    expect(none.pastPace).toBe(true) // 20d wait past ~6d
   })
 
   it('tones bills against the baseline: ok at/under, warn over, late at 2x, undated without a date', () => {

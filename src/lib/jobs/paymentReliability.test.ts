@@ -8,10 +8,10 @@ function receipt(gapDays: number, paidYmd = '2026-09-01'): PayReceipt {
 }
 
 describe('paySpeedSpread', () => {
-  it('needs two measurable payments', () => {
+  it('needs one measurable payment (v2.4376; was two)', () => {
     expect(paySpeedSpread([])).toBeNull()
-    expect(paySpeedSpread([receipt(30)])).toBeNull()
     expect(paySpeedSpread(null)).toBeNull()
+    expect(paySpeedSpread([receipt(74)])).toMatchObject({ loDays: 74, hiDays: 74, medianDays: 74, samples: 1 })
   })
   it('uses min–max under four samples and the interquartile range from four', () => {
     expect(paySpeedSpread([receipt(41), receipt(9)])).toMatchObject({ loDays: 9, hiDays: 41, medianDays: 25, samples: 2 })

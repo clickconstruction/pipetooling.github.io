@@ -7,9 +7,9 @@
  * customer's median days-to-pay from get_billed_customer_pay_speeds (the
  * server-side mirror of customerProfileStats.customerDaysToPay).
  *
- * Customers with fewer than PAY_SPEED_MIN_SAMPLES measurable payments fall
- * back to the company-wide median and the chip says so ("company avg") —
- * a low-sample median is an anecdote, not a norm. A row is "late" once
+ * Customers with fewer than PAY_SPEED_MIN_SAMPLES measurable payments (since
+ * v2.4376: none at all) fall back to the company-wide median and the chip says
+ * so ("company avg"). A row is "late" once
  * today is past the expected date: the customer is now slower than their
  * own history, which is a sharper follow-up signal than a flat 30/90 bucket.
  */
@@ -53,8 +53,13 @@ export type PaySpeedData = {
   quality: PaySpeedQuality | null
 }
 
-/** Below this many samples a customer's own median is ignored for the company fallback. */
-export const PAY_SPEED_MIN_SAMPLES = 3
+/**
+ * Below this many samples a customer's own median is ignored for the company fallback.
+ * 1 since v2.4376 (owner call, 2026-10-02: "use the builder's history after only one payment"):
+ * a payer's own record beats the company median, which homeowners pull down. Was 3.
+ * The hover says how many payments it rests on ("~74 days over 1 payment").
+ */
+export const PAY_SPEED_MIN_SAMPLES = 1
 
 function asStat(v: unknown): PaySpeedStat | null {
   if (v == null || typeof v !== 'object') return null
@@ -282,7 +287,7 @@ export function billedExpectedPayModel(
   const who = (input.payerName ?? '').trim() || 'this customer'
   const title =
     source === 'customer'
-      ? `Billed ${formatYmdMonthDay(refYmd)} + ${who}'s median pay speed (~${stat.medianDays} days over ${stat.samples} payments, last 12 months) → expected ${formatYmdMonthDay(expectedYmd)}`
+      ? `Billed ${formatYmdMonthDay(refYmd)} + ${who}'s median pay speed (~${stat.medianDays} days over ${stat.samples} payment${stat.samples === 1 ? '' : 's'}, last 12 months) → expected ${formatYmdMonthDay(expectedYmd)}`
       : `Billed ${formatYmdMonthDay(refYmd)} + the company-wide median pay speed (~${stat.medianDays} days — ${who} has too little payment history) → expected ${formatYmdMonthDay(expectedYmd)}`
 
   return { expectedYmd, state, source, medianDays: stat.medianDays, daysLate, label, title }

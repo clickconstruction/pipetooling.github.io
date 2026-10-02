@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import type { StageRow } from '../../lib/jobsStagesBoard'
 import type { CustomerSegment, PayReceipt, PaySpeedData, PaySpeedStat } from '../../lib/jobs/billedExpectedPay'
-import { PAY_SPEED_MIN_SAMPLES, formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
+import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import {
   buildPaySpeedsBreakdown,
   formatYmdSlash,
@@ -23,7 +23,7 @@ import { useIsMobile } from '../../hooks/useIsMobile'
  * (v2.2382; replaced the drift dumbbells, whose 60-day axis clipped the
  * worst rows) — and one customer list puts the slowest payers with their
  * open dollars on top. Thin-history customers
- * (< PAY_SPEED_MIN_SAMPLES payments) sit muted at the bottom of the same
+ * (no measurable payment yet; v2.4376, was < 3) sit muted at the bottom of the same
  * list with a "—" median, because their forecasts run on the company
  * median.
  */
@@ -371,7 +371,7 @@ export default function PaySpeedsBreakdownModal({
         </div>
         <p style={{ margin: '0.3rem 0 1rem', fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '68ch' }}>
           Median days from bill to payment, per customer, last 12 months — the clock the Payment forecast runs on. A
-          customer under {PAY_SPEED_MIN_SAMPLES} payments falls back to the company median.
+          customer with no measurable payment yet falls back to the company median.
         </p>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.6rem', marginBottom: '0.6rem' }}>
@@ -668,8 +668,8 @@ export default function PaySpeedsBreakdownModal({
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', margin: '0 0 0.4rem', flexWrap: 'wrap' }}>
               <h3 style={{ margin: 0, fontSize: '0.85rem' }}>By customer — slowest first</h3>
               <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>
-                the top of this list is your follow-up list · click a row to see the payments behind its median · — = under{' '}
-                {PAY_SPEED_MIN_SAMPLES} payments, forecast uses the company median
+                the top of this list is your follow-up list · click a row to see the payments behind its median · — = no
+                measurable payment yet, forecast uses the company median
                 {companyMedian != null ? ` (~${companyMedian}d)` : ''}
               </span>
             </div>

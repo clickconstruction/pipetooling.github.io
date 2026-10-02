@@ -84,7 +84,7 @@ describe('PaySpeedsBreakdownModal render smoke', () => {
     render(<PaySpeedsBreakdownModal todayYmd="2026-08-26" rows={rows} paySpeeds={speeds} onClose={vi.fn()} />)
     await settle()
     expect(screen.queryByText('05/01–05/17')).toBeNull()
-    const row = screen.getByTitle('Show the payments behind this median')
+    const row = screen.getAllByTitle('Show the payments behind this median')[0]!
     fireEvent.click(row)
     // All four receipts, gap pill + MM/DD–MM/DD dates.
     expect(screen.getByText('+16')).toBeTruthy()
@@ -111,7 +111,7 @@ describe('PaySpeedsBreakdownModal render smoke', () => {
     const openJob = vi.fn()
     render(<PaySpeedsBreakdownModal todayYmd="2026-08-26" rows={rows} paySpeeds={withJob} onClose={vi.fn()} onOpenJobDetail={openJob} />)
     await settle()
-    fireEvent.click(screen.getByTitle('Show the payments behind this median'))
+    fireEvent.click(screen.getAllByTitle('Show the payments behind this median')[0]!)
     expect(screen.getByText('Panel swap')).toBeTruthy()
     expect(screen.getByText(/1207 Kingsbury Ln/)).toBeTruthy()
     fireEvent.click(screen.getByTitle('Billed Jun 3 → paid Jun 15 (+12 days) — open the job'))
@@ -120,13 +120,16 @@ describe('PaySpeedsBreakdownModal render smoke', () => {
     expect(screen.getByTitle('Billed May 1 → paid May 17 (+16 days)')).toBeTruthy()
   })
 
-  it('thin-history rows expand too — receipts when they exist, the why-empty note when they do not', async () => {
+  it('a one-payment customer ranks on it (v2.4376); the thin rows are customers with none, and say why', async () => {
     render(<PaySpeedsBreakdownModal todayYmd="2026-08-26" rows={rows} paySpeeds={speeds} onClose={vi.fn()} />)
     await settle()
-    const thinRows = screen.getAllByTitle('Show this customer’s payments')
-    expect(thinRows).toHaveLength(2) // Ingram (1 pmt) + RMC (0 pmts)
-    for (const r of thinRows) fireEvent.click(r)
+    const ranked = screen.getAllByTitle('Show the payments behind this median')
+    expect(ranked).toHaveLength(2) // Knight (4 pmts), then Ingram (1 pmt)
+    fireEvent.click(ranked[1]!)
     expect(screen.getByText('04/28–05/05')).toBeTruthy()
+    const thinRows = screen.getAllByTitle('Show this customer’s payments')
+    expect(thinRows).toHaveLength(1) // RMC (0 pmts)
+    fireEvent.click(thinRows[0]!)
     expect(screen.getByText(/nothing measurable yet/)).toBeTruthy()
   })
 
@@ -134,7 +137,7 @@ describe('PaySpeedsBreakdownModal render smoke', () => {
     const v2speeds: PaySpeedData = { ...speeds, receipts: {} }
     render(<PaySpeedsBreakdownModal todayYmd="2026-08-26" rows={[invRow('knight', 'Knight Contracting', 100)]} paySpeeds={v2speeds} onClose={vi.fn()} />)
     await settle()
-    fireEvent.click(screen.getByTitle('Show the payments behind this median'))
+    fireEvent.click(screen.getAllByTitle('Show the payments behind this median')[0]!)
     expect(screen.getByText(/Payment dates aren’t available yet/)).toBeTruthy()
   })
 
@@ -142,7 +145,7 @@ describe('PaySpeedsBreakdownModal render smoke', () => {
     const onOpen = vi.fn()
     render(<PaySpeedsBreakdownModal todayYmd="2026-08-26" rows={rows} paySpeeds={speeds} onClose={vi.fn()} onOpenCustomerBills={onOpen} />)
     await settle()
-    fireEvent.click(screen.getByTitle('Show the payments behind this median'))
+    fireEvent.click(screen.getAllByTitle('Show the payments behind this median')[0]!)
     fireEvent.click(screen.getByRole('button', { name: 'See these bills on the board →' }))
     expect(onOpen).toHaveBeenCalledWith('Knight Contracting')
   })

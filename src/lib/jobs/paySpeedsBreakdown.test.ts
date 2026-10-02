@@ -10,7 +10,7 @@ const speeds: PaySpeedData = {
     knight: { medianDays: 25, samples: 6 },
     harper: { medianDays: 44, samples: 3 },
     holub: { medianDays: 7, samples: 4 },
-    weiss: { medianDays: 30, samples: 2 }, // thin — under the 3-sample floor
+    weiss: { medianDays: 30, samples: 2 }, // two payments — ranks on their own median since v2.4376 (the floor was 3)
   },
   segments: {
     residential: { medianDays: 7, samples: 8 },
@@ -50,13 +50,15 @@ describe('buildPaySpeedsBreakdown', () => {
       invRow('harper', 'TF Harper', 2918),
       invRow('holub', 'Michael Holub', 2375),
       invRow('weiss', 'Weiss Services', 1625),
+      invRow('newco', 'New Co', 500),
     ]
     const b = buildPaySpeedsBreakdown(rows, speeds)
-    expect(b.ranked.map((c) => c.customerId)).toEqual(['harper', 'knight', 'holub'])
+    expect(b.ranked.map((c) => c.customerId)).toEqual(['harper', 'weiss', 'knight', 'holub'])
     expect(b.ranked[0]).toMatchObject({ medianDays: 44, samples: 3, open: 2918, segment: 'commercial' })
-    expect(b.ranked[1]?.open).toBe(1800) // both Knight bills summed
-    expect(b.thin).toHaveLength(1)
-    expect(b.thin[0]).toMatchObject({ customerId: 'weiss', medianDays: null, samples: 2, open: 1625 })
+    expect(b.ranked[1]).toMatchObject({ customerId: 'weiss', medianDays: 30, samples: 2, open: 1625 })
+    expect(b.ranked[2]?.open).toBe(1800) // both Knight bills summed
+    expect(b.thin).toHaveLength(1) // only a customer with no measurable payment
+    expect(b.thin[0]).toMatchObject({ customerId: 'newco', medianDays: null, samples: 0, open: 500 })
   })
 
   it('attaches each customer’s receipts (empty when the payload has none)', () => {
@@ -64,7 +66,7 @@ describe('buildPaySpeedsBreakdown', () => {
     const b = buildPaySpeedsBreakdown(rows, speeds)
     expect(b.ranked.find((c) => c.customerId === 'knight')?.receipts).toHaveLength(2)
     expect(b.ranked.find((c) => c.customerId === 'harper')?.receipts).toEqual([])
-    expect(b.thin[0]?.receipts).toEqual([{ billedYmd: '2026-04-28', paidYmd: '2026-05-05', gapDays: 7, jobId: null, jobName: null, address: null }])
+    expect(b.ranked.find((c) => c.customerId === 'weiss')?.receipts).toEqual([{ billedYmd: '2026-04-28', paidYmd: '2026-05-05', gapDays: 7, jobId: null, jobName: null, address: null }])
   })
 
   it('skips job rows, fully-paid rows, and rows without a customer', () => {

@@ -63,7 +63,8 @@ export type ForecastEmailPayload = {
   promises: Record<string, PayloadPromise>
 }
 
-export const PAY_SPEED_MIN_SAMPLES = 3
+/** Mirrors src/lib/jobs/billedExpectedPay.ts: 1 since v2.4376 (a payer's own record from the first payment; was 3). */
+export const PAY_SPEED_MIN_SAMPLES = 1
 
 const MS_PER_DAY = 86_400_000
 

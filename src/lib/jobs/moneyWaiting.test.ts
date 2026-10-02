@@ -12,7 +12,7 @@ function speeds(overrides?: Partial<PaySpeedData>): PaySpeedData {
     customers: {
       rmc: { medianDays: 35, samples: 5 },
       ingram: { medianDays: 8, samples: 4 },
-      holub: { medianDays: 30, samples: 1 }, // thin — under the 3-sample floor
+      holub: { medianDays: 30, samples: 1 }, // one payment — their own pace since v2.4376 (the floor was 3)
     },
     segments: { residential: null, commercial: null },
     customerTypes: { rmc: 'commercial', ingram: 'residential' },
@@ -88,9 +88,12 @@ describe('buildMoneyWaiting', () => {
     expect(m!.onPaceOpen).toBe(5000)
   })
 
-  it('thin-history customers baseline on the company median and report ownMedianDays null', () => {
-    const m = buildMoneyWaiting([invRow('holub', 'Holub', 900, '2026-08-10')], speeds(), TODAY)
-    const row = m!.rows[0]!
+  it('one payment is a customer’s own pace (v2.4376); no history baselines on the company median', () => {
+    const one = buildMoneyWaiting([invRow('holub', 'Holub', 900, '2026-08-10')], speeds(), TODAY)!
+    expect(one.rows).toEqual([]) // 16d wait, under Holub's own ~30d
+    expect(one.onPaceCount).toBe(1)
+    const none = buildMoneyWaiting([invRow('newco', 'New Co', 900, '2026-08-10')], speeds(), TODAY)!
+    const row = none.rows[0]!
     expect(row.ownMedianDays).toBeNull()
     expect(row.baselineDays).toBe(6)
     expect(row.oldestWaitDays).toBe(16)
