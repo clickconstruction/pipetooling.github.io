@@ -13,7 +13,7 @@ import BankPaymentsModal from './BankPaymentsModal'
 import { buildBilledStageRows } from '../../lib/jobsStagesBoard'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 
-const scenario = vi.hoisted(() => ({ label: null as null | { name: string; default_key: string | null } }))
+const scenario = vi.hoisted(() => ({ label: null as null | { name: string; default_key: string | null }, closed: false }))
 
 const DEPOSITS = [
   {
@@ -64,6 +64,14 @@ vi.mock('../../lib/supabase', async () => {
       })
     }
     if (table === 'mercury_transaction_ar_income_labels') return fixed({ data: null, error: null })
+    if (table === 'mercury_transaction_ar_closed') {
+      return fixed({
+        data: scenario.closed
+          ? [{ mercury_transaction_id: 'mtx-seguin', reason: 'vendor_refund', note: null, closed_at: '2026-10-01T23:00:00Z', closed_by: null }]
+          : [],
+        error: null,
+      })
+    }
     return baseFrom(table, ...rest)
   }
   return { supabase: stub }
@@ -114,6 +122,17 @@ describe('BankPaymentsModal · applied means income (render smoke)', () => {
       expect(screen.getByTestId('ar-bank-label-note').textContent).toBe('Labelled Taxes and Licenses in Banking, not Income. Apply leaves that alone.')
     })
     expect(screen.getByTestId('ar-apply-sentence').textContent).toMatch(/Stays Taxes and Licenses in Banking\.$/)
+  })
+
+  it('a closed-out deposit: the record names the label, and the Apply note is gone (v2.4374)', async () => {
+    scenario.label = { name: 'Insurance', default_key: 'insurance' }
+    scenario.closed = true
+    renderWithProviders(
+      <BankPaymentsModal open onClose={() => {}} authUserId="smoke-auth-user-1" authRole="assistant" billedRows={[]} onApplied={() => {}} />,
+    )
+    await screen.findByText(/Closed out · Vendor refund/)
+    expect(screen.queryByTestId('ar-bank-label-note')).toBeNull()
+    scenario.closed = false
   })
 
   it('an unlabelled deposit: no note, and the footer says Apply books it as Income', async () => {
