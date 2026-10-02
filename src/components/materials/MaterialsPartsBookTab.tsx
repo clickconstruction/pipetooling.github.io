@@ -3,6 +3,7 @@ import type { Database } from '../../types/database'
 import { computeLoadAllDisplayParts, manufacturerFacetOptions } from '../../lib/materials/materialsFilters'
 import type { PartType, PartWithPrices } from '../../hooks/useMaterialsCatalog'
 import { MaterialPricesCard } from './MaterialPricesCard'
+import { supabase } from '../../lib/supabase'
 
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
 
@@ -99,7 +100,14 @@ export function MaterialsPartsBookTab({
 
   return (
         <div>
-          <MaterialPricesCard serviceTypeId={serviceTypeId || null} />
+          <MaterialPricesCard
+            serviceTypeId={serviceTypeId || null}
+            onFixPrice={async (partId) => {
+              // v2.4394: a price that looks wrong opens the part's own prices, the same window as the list's.
+              const { data } = await supabase.from('material_parts').select('*').eq('id', partId).maybeSingle()
+              if (data) setViewingPartPrices(data as MaterialPart)
+            }}
+          />
           <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <button type="button" onClick={openAddPart} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
               Add Part

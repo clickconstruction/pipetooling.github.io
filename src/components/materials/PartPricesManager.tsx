@@ -4,6 +4,7 @@ import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { useToastContext } from '../../contexts/ToastContext'
 import type { Database } from '../../types/database'
 import { SupplyHouseWebsiteLink } from '../SupplyHouseWebsiteLink'
+import { PRICE_HISTORY_TONE_COLOR, priceHistoryChange } from '../../lib/materials/priceHistoryChange'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
@@ -322,9 +323,8 @@ export function PartPricesManager({
                     </thead>
                     <tbody>
                       {priceHistory.map((h) => {
-                        const changePercent = h.price_change_percent
-                        const isIncrease = changePercent !== null && changePercent > 0
-                        const isDecrease = changePercent !== null && changePercent < 0
+                        // v2.4394: a buyer's colors — a rise orange ▲, a drop blue ▼; the same price again reads Checked.
+                        const change = priceHistoryChange(h)
                         return (
                           <tr key={h.id} style={{ borderBottom: '1px solid var(--border)' }}>
                             <td style={{ padding: '0.75rem' }}>
@@ -334,15 +334,8 @@ export function PartPricesManager({
                               {h.old_price !== null ? `$${h.old_price.toFixed(2)}` : '-'}
                             </td>
                             <td style={{ padding: '0.75rem', fontWeight: 500 }}>${h.new_price.toFixed(2)}</td>
-                            <td style={{ 
-                              padding: '0.75rem',
-                              fontWeight: 600,
-                              color: isIncrease ? '#059669' : isDecrease ? 'var(--text-red-600)' : 'var(--text-muted)'
-                            }}>
-                              {changePercent !== null 
-                                ? `${isIncrease ? '+' : ''}${changePercent.toFixed(2)}%`
-                                : '-'
-                              }
+                            <td style={{ padding: '0.75rem', fontWeight: 600, color: PRICE_HISTORY_TONE_COLOR[change.tone] }}>
+                              {change.text}
                             </td>
                             <td style={{ padding: '0.75rem' }}>
                               {h.effective_date || '-'}

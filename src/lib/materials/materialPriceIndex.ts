@@ -72,6 +72,8 @@ export type BasketPair = {
   priceUpdatedDay: string | null
   /** Open bids (no outcome, not adopted, not a robot's) with a line priced from it. */
   openBidCount: number
+  /** Those bids' labels (`BP338`), in number order (v2.4394). */
+  openBidLabels?: string[]
 }
 
 export type IndexMonth = {
@@ -111,6 +113,26 @@ export type CheckItem = {
   spendShare: number
 }
 
+/**
+ * A book price that looks wrong (v2.4394): a stand-in ($0, or $999,999 and up), or a price whose
+ * last change was a big jump and that nobody has confirmed since. Each is left out of the number;
+ * the card lists it with the open bids it sits on, to fix or to confirm.
+ */
+export type SuspectPrice = {
+  priceId: string
+  partId: string
+  houseId: string
+  partName: string
+  houseName: string
+  price: number
+  /** The last real price before it; null when there was none. */
+  previousPrice: number | null
+  /** The day it changed to what it reads now; null when the history has no record. */
+  day: string | null
+  reason: 'stand-in' | 'jump'
+  openBidLabels: string[]
+}
+
 export type MaterialPriceIndex = {
   baseMonth: string
   months: IndexMonth[]
@@ -131,6 +153,8 @@ export type MaterialPriceIndex = {
    * share of spend; and whether the oldest was checked more than {@link CHECK_DUE_DAYS} days ago.
    */
   checks: { items: CheckItem[]; spendShare: number; due: boolean; oldestDay: string | null }
+  /** Prices that look wrong, biggest spend first (v2.4394). */
+  suspects: SuspectPrice[]
   pairCount: number
   totalSpend: number
 }
@@ -278,6 +302,39 @@ export function computeMaterialPriceIndex(args: {
     oldestDay,
   }
 
+  const suspects: SuspectPrice[] = []
+  for (const p of [...basket].sort((a, b) => b.spend - a.spend)) {
+    const events = eventsByPair.get(pairKey(p.partId, p.houseId))!
+    const last = events.length > 0 ? events[events.length - 1]! : null
+    const standIn = !(p.price > 0) || p.price >= PLACEHOLDER_PRICE
+    const jumped = !standIn && last != null && last.oldPrice != null && last.oldPrice !== last.newPrice && isBigJump(last.oldPrice, last.newPrice)
+    if (!standIn && !jumped) continue
+    // The last real price before this one: walk back past stand-ins.
+    let previous: number | null = null
+    for (let i = events.length - 1; i >= 0 && previous == null; i--) {
+      const e = events[i]!
+      const candidates = i === events.length - 1 ? [e.oldPrice] : [e.newPrice, e.oldPrice]
+      for (const c of candidates) {
+        if (c != null && c > 0 && c < PLACEHOLDER_PRICE && (standIn || c !== p.price)) {
+          previous = c
+          break
+        }
+      }
+    }
+    suspects.push({
+      priceId: p.priceId,
+      partId: p.partId,
+      houseId: p.houseId,
+      partName: p.partName,
+      houseName: p.houseName,
+      price: p.price,
+      previousPrice: previous,
+      day: last?.day ?? null,
+      reason: standIn ? 'stand-in' : 'jump',
+      openBidLabels: p.openBidLabels ?? [],
+    })
+  }
+
   return {
     baseMonth,
     months,
@@ -288,6 +345,7 @@ export function computeMaterialPriceIndex(args: {
     showNumber: within30 / totalSpend + within90 / totalSpend >= MIN_FRESH_SHARE,
     moved,
     checks,
+    suspects,
     pairCount: basket.length,
     totalSpend,
   }
