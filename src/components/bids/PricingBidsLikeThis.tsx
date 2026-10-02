@@ -1,13 +1,14 @@
 /**
  * Bids → Pricing: "Bids like this" (v2.4418; it was "This number vs your history") — the
- * record block of region P2 of `docs/BIDS_PRICING_LABOR_TABS_ARCHITECTURE.md`. One line when
- * folded: bids this size, this GC, and where the margin stands. Unfolded: what happened to
- * the bids this size, the ones decided on our number by name, and the estimated-margin scale.
+ * record block of region P2 of `docs/BIDS_PRICING_LABOR_TABS_ARCHITECTURE.md`. Since v2.4448
+ * it is three chips on the bid's title line, no card: bids this size, this GC, and where the
+ * margin stands. *Compare* opens a floating panel under them: what happened to the bids this
+ * size, the ones decided on our number by name, and the estimated-margin scale. The panel
+ * closes on Escape, on a click outside, and with the Compare button.
  * What it draws is decided by `lib/bids/bidsLikeThis`; it renders nothing when that is null.
  */
-import type { CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 
-import { useBidsLikeThisFold } from '../../hooks/useBidsLikeThisFold'
 import { bidsLikeThisView, formatCompactDollars, type LikeThisChip, type LikeThisTally, type LikeThisTone } from '../../lib/bids/bidsLikeThis'
 import { marginHistoryScaleLeft } from '../../lib/bids/pricingMarginHistory'
 import type { BidPricingHistoryRow } from '../../types/database-functions'
@@ -75,35 +76,57 @@ export function PricingBidsLikeThis({
   /** The GC's name as the bid shows it; "This GC" without one. */
   gcName?: string | null
 }) {
-  const { expanded, toggle } = useBidsLikeThisFold()
+  const [open, setOpen] = useState(false)
+  // The panel is as wide as it can be without running off the right of the window.
+  const [panelMaxWidth, setPanelMaxWidth] = useState<number | null>(null)
+  const rootRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    const onDown = (e: MouseEvent) => {
+      if (rootRef.current && e.target instanceof Node && !rootRef.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('keydown', onKey)
+    document.addEventListener('mousedown', onDown)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('mousedown', onDown)
+    }
+  }, [open])
   const view = bidsLikeThisView({ history, currentBidId, currentPrice, currentMargin, gcCustomerId, gcName })
   if (!view) return null
   const { size, gc, margin } = view
   const cur = currentMargin
   const x = (pct: number) => (margin ? marginHistoryScaleLeft(pct, margin.scale) : '0%')
   const dots = margin ? margin.won.length + margin.lostPrice.length : 0
+  const toggle = () => {
+    if (!open && rootRef.current) setPanelMaxWidth(Math.max(280, document.documentElement.clientWidth - rootRef.current.getBoundingClientRect().left - 16))
+    setOpen((v) => !v)
+  }
   return (
-    <div data-testid="pricing-bids-like-this" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, marginBottom: '0.9rem' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem 0.5rem', flexWrap: 'wrap', padding: '0.45rem 0.8rem' }}>
-        <span style={{ fontSize: '0.85rem', fontWeight: 700, marginRight: '0.15rem' }} title="What happened to decided bids like this one: the same size, the same GC, and where this margin stands against them">
-          Bids like this
-        </span>
-        {size ? <Chip chip={size.chip} /> : null}
-        {gc ? <Chip chip={gc.chip} title={gcName ?? undefined} /> : null}
-        {margin?.chip ? <Chip chip={margin.chip} /> : null}
-        <span style={{ flex: '1 1 0' }} />
-        <button
-          type="button"
-          onClick={toggle}
-          aria-expanded={expanded}
-          style={{ font: 'inherit', fontSize: '0.75rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.16rem 0.55rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer', flex: '0 0 auto' }}
+    <div ref={rootRef} data-testid="pricing-bids-like-this" style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+      {size ? <Chip chip={size.chip} /> : null}
+      {gc ? <Chip chip={gc.chip} title={gcName ?? undefined} /> : null}
+      {margin?.chip ? <Chip chip={margin.chip} /> : null}
+      <button
+        type="button"
+        onClick={toggle}
+        aria-expanded={open}
+        title="Bids like this: what happened to decided bids like this one — the same size, the same GC, and where this margin stands against them"
+        style={{ font: 'inherit', fontSize: '0.75rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.14rem 0.55rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer', flex: '0 0 auto' }}
+      >
+        {open ? 'Hide' : size ? `Compare ${size.tally.total} bid${size.tally.total === 1 ? '' : 's'}` : 'Compare'}
+        <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>{open ? '▴' : '▾'}</span>
+      </button>
+      {open ? (
+        <div
+          role="dialog"
+          aria-label="Bids like this"
+          style={{ position: 'absolute', top: 'calc(100% + 0.4rem)', left: 0, zIndex: 40, width: '44rem', maxWidth: panelMaxWidth ?? 'calc(100vw - 2rem)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0, 0, 0, 0.14)', padding: '0.65rem 0.8rem 0.8rem', display: 'grid', gap: '0.85rem', textAlign: 'left', fontWeight: 400 }}
         >
-          {expanded ? 'Hide' : size ? `Compare ${size.tally.total} bid${size.tally.total === 1 ? '' : 's'}` : 'Compare'}
-          <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>{expanded ? '▾' : '▸'}</span>
-        </button>
-      </div>
-      {expanded ? (
-        <div style={{ borderTop: '1px solid var(--border)', padding: '0.65rem 0.8rem 0.8rem', display: 'grid', gap: '0.85rem' }}>
+          <div style={{ fontSize: '0.85rem', fontWeight: 700 }}>Bids like this</div>
           {size ? (
             <div>
               <div style={caption}>
@@ -116,7 +139,7 @@ export function PricingBidsLikeThis({
               {size.rows.map((r, i) => (
                 <div
                   key={r.bidId}
-                  style={{ maxWidth: '46rem', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto auto', gap: '0.15rem 0.75rem', alignItems: 'baseline', padding: '0.28rem 0', fontSize: '0.8rem', borderTop: i === 0 ? 'none' : '1px solid var(--border)' }}
+                  style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto auto', gap: '0.15rem 0.75rem', alignItems: 'baseline', padding: '0.28rem 0', fontSize: '0.8rem', borderTop: i === 0 ? 'none' : '1px solid var(--border)' }}
                 >
                   <span style={{ minWidth: 0 }}>
                     <span style={{ display: 'block', overflowWrap: 'anywhere' }} title={r.name}>{r.name}</span>

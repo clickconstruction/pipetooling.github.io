@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
+import { createPortal } from 'react-dom'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
 import { formatRevenueMultiple } from '../../lib/bids/bidFormatting'
@@ -1448,6 +1449,9 @@ export function BidsPricingTab({
   // Iteration 3 — win/loss calibration history for this service type (the read sits where its
   // effect stood, so the tab's effects run in the order they did).
   const wbHistory = usePricingMarginHistory(selectedServiceTypeId)
+  // v2.4448: the header slot "Bids like this" is portalled into (a state, not a ref, so the
+  // first render after the slot mounts draws the chips).
+  const [bidsLikeThisSlot, setBidsLikeThisSlot] = useState<HTMLSpanElement | null>(null)
   // v2.4395: the version's materials at today's book, one line under the sent-vs-today line.
   const materialsToday = useTakeoffPriceDrift({ bidId: selectedBidForPricing?.id, versionId: selectedBidVersionId, enabled: !!selectedBidForPricing })
 
@@ -2139,13 +2143,19 @@ export function BidsPricingTab({
             />
             ) : null}
             <div id="pricing-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', flex: '0 0 auto', flexWrap: 'wrap', gap: '0.75rem' }}>
+              {/* v2.4448: the group may shrink (minWidth 0) so its own items wrap inside it; at its
+                  max-content width the chips pushed the flow strip off the right of a 1,400 px window. */}
+              <div style={{ display: 'flex', alignItems: 'center', flex: '1 1 auto', minWidth: 0, flexWrap: 'wrap', gap: '0.75rem' }}>
                 <BidWorkflowTabTitleWithPreview
                   bid={selectedBidForPricing}
                   previewEnabled={bidPreview != null}
                   onOpenPreview={() => bidPreview?.openBidPreviewFromBid(selectedBidForPricing)}
                   h2Style={{ margin: 0, flex: '0 0 auto' }}
                 />
+                {/* v2.4448: "Bids like this" sits here, after the title. Its numbers (the Workbench's
+                    effective revenue and margin) are derived further down, inside the Workbench block,
+                    so that block portals the chips into this slot. */}
+                <span ref={setBidsLikeThisSlot} style={{ display: 'inline-flex', alignItems: 'center' }} />
                 <BidFlowStrip
                   variant="inline"
                   expanded={flowFold.expanded}
@@ -3035,14 +3045,19 @@ export function BidsPricingTab({
                     </div>
                     </div>
 
-                    <PricingBidsLikeThis
-                      history={wbHistory}
-                      currentBidId={selectedBidForPricing?.id}
-                      currentPrice={effRevenue}
-                      currentMargin={effMargin}
-                      gcCustomerId={selectedBidForPricing?.customer_id ?? null}
-                      gcName={selectedBidForPricing?.customers?.name ?? null}
-                    />
+                    {bidsLikeThisSlot
+                      ? createPortal(
+                          <PricingBidsLikeThis
+                            history={wbHistory}
+                            currentBidId={selectedBidForPricing?.id}
+                            currentPrice={effRevenue}
+                            currentMargin={effMargin}
+                            gcCustomerId={selectedBidForPricing?.customer_id ?? null}
+                            gcName={selectedBidForPricing?.customers?.name ?? null}
+                          />,
+                          bidsLikeThisSlot,
+                        )
+                      : null}
                     {/* Batch 2: short label — "N of M priced" (owner). v2.2378: collapsed behind the
                         solver-line chip by default — this row renders only while the chip is expanded. */}
                     {(wbCoverageOpen || wbShowUnpricedOnly) && costed.length > 0 ? (

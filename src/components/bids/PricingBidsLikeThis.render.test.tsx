@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 /**
  * Render smoke for "Bids like this" (region P2 of the Pricing map): nothing until there is a
- * bid like this one; one line of chips when folded; the outcome bar, the named bids, the GC's
- * record and the margin scale when unfolded; and the fold is remembered on the device.
+ * bid like this one; chips and a Compare button on the title line; the outcome bar, the named
+ * bids, the GC's record and the margin scale in the floating panel, which closes on Escape and
+ * on a click outside.
  */
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { PricingBidsLikeThis } from './PricingBidsLikeThis'
 import type { BidPricingHistoryRow } from '../../types/database-functions'
@@ -15,10 +16,8 @@ function bid(outcome: 'won' | 'lost', marginPct: number, over: Partial<BidPricin
   seq += 1
   return { bid_id: `h${seq}`, project_name: `Project ${seq}`, outcome, loss_reason: null, loss_category: outcome === 'lost' ? 'price' : null, bid_value: 1000 / (1 - marginPct / 100), est_cost: 1000, ...over }
 }
-const FOLD_KEY = 'pt.pricing.bidsLikeThis.expanded'
 const open = () => fireEvent.click(screen.getByRole('button', { name: /Compare/ }))
 
-beforeEach(() => window.localStorage.clear())
 afterEach(() => cleanup())
 
 describe('PricingBidsLikeThis', () => {
@@ -29,11 +28,12 @@ describe('PricingBidsLikeThis', () => {
     expect(container.textContent).toBe('')
   })
 
-  it('folded: the title, a chip per fact and the Compare button — no panel', () => {
+  it('closed: a chip per fact and the Compare button — no panel, no title', () => {
     // values 1,429 / 1,818 / 2,000 against a price of 1,700 → all three are this size
     const history = [bid('won', 30, { customer_id: 'gc1' }), bid('won', 45), bid('lost', 50)]
     render(<PricingBidsLikeThis history={history} currentBidId="b1" currentPrice={1700} currentMargin={0.4} gcCustomerId="gc1" />)
-    expect(screen.getByText('Bids like this')).toBeTruthy()
+    expect(screen.queryByText('Bids like this')).toBeNull()
+    expect(screen.queryByRole('dialog')).toBeNull()
     expect(screen.getByText('This size · 2 won · 1 lost on price')).toBeTruthy()
     expect(screen.getByText('This GC · 1 won of 1')).toBeTruthy()
     expect(screen.getByText('40% · in your winning range')).toBeTruthy()
@@ -43,7 +43,7 @@ describe('PricingBidsLikeThis', () => {
     expect(screen.queryByText(/Estimated margin/)).toBeNull()
   })
 
-  it('unfolded: the outcome bar, the named bids, the GC’s record and the margin scale', () => {
+  it('open: the panel is a dialog with the outcome bar, the named bids, the GC’s record and the margin scale', () => {
     const history = [
       bid('won', 30, { project_name: 'Oak Ave', customer_id: 'gc1' }),
       bid('won', 45),
@@ -54,6 +54,7 @@ describe('PricingBidsLikeThis', () => {
     const { container } = render(<PricingBidsLikeThis history={history} currentBidId="b1" currentPrice={1700} currentMargin={0.4} gcCustomerId="gc1" />)
     open()
     expect(screen.getByRole('button', { name: /Hide/ }).getAttribute('aria-expanded')).toBe('true')
+    expect(screen.getByRole('dialog', { name: 'Bids like this' })).toBeTruthy()
     expect(container.textContent).toContain('What happened to 5 decided bids between $850 and $3k')
     expect(container.textContent).toContain('2 won')
     expect(container.textContent).toContain('1 lost on price')
@@ -106,16 +107,25 @@ describe('PricingBidsLikeThis', () => {
     expect(screen.getAllByText('40%')).toHaveLength(1)
   })
 
-  it('remembers the fold on the device', () => {
+  it('the panel closes with Hide, with Escape, and with a click outside — not with a click inside', () => {
     const history = [bid('won', 30), bid('won', 45), bid('lost', 50)]
-    const first = render(<PricingBidsLikeThis history={history} currentBidId="b1" currentPrice={1700} currentMargin={0.4} gcCustomerId={null} />)
+    render(
+      <div>
+        <button type="button">elsewhere</button>
+        <PricingBidsLikeThis history={history} currentBidId="b1" currentPrice={1700} currentMargin={0.4} gcCustomerId={null} />
+      </div>,
+    )
     open()
-    expect(window.localStorage.getItem(FOLD_KEY)).toBe('1')
-    first.unmount()
-    render(<PricingBidsLikeThis history={history} currentBidId="b2" currentPrice={1700} currentMargin={0.4} gcCustomerId={null} />)
-    expect(screen.getByText(/What happened to/)).toBeTruthy()
+    expect(screen.getByRole('dialog')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: /Hide/ }))
-    expect(window.localStorage.getItem(FOLD_KEY)).toBe('0')
-    expect(screen.queryByText(/What happened to/)).toBeNull()
+    expect(screen.queryByRole('dialog')).toBeNull()
+    open()
+    fireEvent.mouseDown(screen.getByText(/What happened to/))
+    expect(screen.getByRole('dialog')).toBeTruthy()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByRole('dialog')).toBeNull()
+    open()
+    fireEvent.mouseDown(screen.getByRole('button', { name: 'elsewhere' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 })
