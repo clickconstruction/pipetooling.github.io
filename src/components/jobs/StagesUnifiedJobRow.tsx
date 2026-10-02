@@ -18,7 +18,6 @@ import { StagesAiaG702Button, StagesHazmatFeeButton, StagesLienInstrumentsButton
 import { StagesCrewLine } from './StagesCrewLine'
 import { StagesExpandedThreadRow } from './StagesExpandedThreadRow'
 import { formatCurrency, formatTimeSince, formatUsdNoCents } from '../../lib/jobs/jobFormatting'
-import { invoiceOpenRemainingOnJob, sumInvoiceAppliedFromJobPayments } from '../../lib/jobs/invoiceBilling'
 import { jobBillingUnallocatedDollars, type InvoiceWithJob } from '../../lib/jobsStagesBoard'
 import { progressPaymentForJob } from '../../lib/jobs/progressPaymentForJob'
 import { showAiaG702G703 } from '../../lib/aiaG702G703Eligibility'
@@ -218,18 +217,11 @@ export function StagesUnifiedJobRow({ row, t }: { row: StagesUnifiedJobRowKind; 
                 hideWords={billLine?.hideWords}
                 footnote={
                   row.kind === 'job_with_merged_billed'
-                    ? (() => {
-                        // v2.3459: "This bill: $X paid · $Y left" only when the job carries
-                        // more than one sent bill — with a single bill the legend above
-                        // already prints the same two numbers.
-                        if ((j.invoices ?? []).filter((i) => i.status === 'billed').length < 2) return null
-                        const ap = sumInvoiceAppliedFromJobPayments(j, bundleInv.id)
-                        return (
-                          <span title="This row's billed line">
-                            {`This bill: ${formatUsdNoCents(ap)} paid · ${formatUsdNoCents(invoiceOpenRemainingOnJob(bundleInv, j))} left`}
-                          </span>
-                        )
-                      })()
+                    ? // A merged row exists only for a job with exactly one sent bill
+                      // (`buildBilledStageRows`), so the legend above already prints its
+                      // paid and open; two or more sent bills draw one bill row each,
+                      // which carry the This bill line (v2.4349).
+                      null
                     : (
                         <span title="Amount on this billing line">{`${formatUsdNoCents(Number(bundleInv.amount))} remainder`}</span>
                       )
