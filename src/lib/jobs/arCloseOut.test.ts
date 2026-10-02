@@ -59,6 +59,10 @@ describe('describeArCloseOut / arCloseReasonLabel', () => {
     expect(describeArCloseOut({ mercury_transaction_id: 'x', reason: 'vendor_refund', note: 'Ferguson', closed_at: '2026-09-16T20:00:00Z', closed_by: null }, fmt)).toBe('Vendor refund · Sep 16, 2026')
     expect(describeArCloseOut({ mercury_transaction_id: 'x', reason: 'other', note: 'Insurance payout', closed_at: '2026-09-16T20:00:00Z', closed_by: null }, fmt)).toBe('Something else — Insurance payout · Sep 16, 2026')
   })
+  it('names the Banking label when it is known (v2.4363)', () => {
+    expect(describeArCloseOut({ mercury_transaction_id: 'x', reason: 'vendor_refund', note: null, closed_at: '2026-09-16T20:00:00Z', closed_by: null }, fmt, 'Insurance')).toBe('Vendor refund · Insurance · Sep 16, 2026')
+    expect(describeArCloseOut({ mercury_transaction_id: 'x', reason: 'vendor_refund', note: null, closed_at: '2026-09-16T20:00:00Z', closed_by: null }, fmt, '  ')).toBe('Vendor refund · Sep 16, 2026')
+  })
   it('falls back to a plain label for an unknown reason', () => {
     expect(arCloseReasonLabel('mystery')).toBe('Closed out')
   })
