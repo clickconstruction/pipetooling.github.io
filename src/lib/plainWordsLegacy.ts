@@ -21,7 +21,6 @@ export const LEGACY_PLAIN_WORDS_GUIDES: ReadonlySet<string> = new Set([
   'see-where-someone-stands-on-pay',
   'see-where-you-win-and-lose-with-a-builder',
   'see-whether-the-crew-was-full',
-  'see-which-paid-jobs-still-owe-supply-houses',
   'see-who-was-on-which-job',
   'see-your-bids-on-a-map',
   'see-your-email-schedule',

@@ -55,7 +55,7 @@ interface ServiceType {
 
 
 export default function Materials() {
-  const { user: authUser } = useAuth()
+  const { user: authUser, profileName: authProfileName } = useAuth()
   const confirmDialog = useConfirmDialog()
   const location = useLocation()
   const navigate = useNavigate()
@@ -1977,6 +1977,7 @@ export default function Materials() {
       <MaterialsJobAccountsTab
         active={activeTab === 'job-accounts'}
         myRole={myRole}
+        authName={authProfileName?.trim() ?? ''}
         onOpenSupplyHouse={(houseId) => {
           setSupplyHouseToAutoOpen(houseId)
           setActiveTab('supply-houses')

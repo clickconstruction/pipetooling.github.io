@@ -58,7 +58,7 @@ const input: CSSProperties = { minHeight: 34, padding: '0 9px', border: '1px sol
  * notice goes out, with who said it. Saved, it shows over our estimate on the card and in
  * the copied paragraph. Clear takes the word off and the estimate comes back.
  */
-function WordForm({ row, jobId, authName, isMobile, onDone, onCancel }: { row: LienSupplierCardRow; jobId: string; authName: string; isMobile: boolean; onDone: () => void; onCancel: () => void }) {
+export function LienSupplierWordForm({ row, jobId, authName, isMobile, onDone, onCancel }: { row: LienSupplierCardRow; jobId: string; authName: string; isMobile: boolean; onDone: () => void; onCancel: () => void }) {
   const { showToast } = useToastContext()
   const [balance, setBalance] = useState(row.word?.balance != null ? formatCurrency(row.word.balance) : '')
   const [noticeYmd, setNoticeYmd] = useState(row.word?.noticeYmd ?? '')
@@ -196,7 +196,7 @@ export function LienJobSuppliersCard({
     ) : null
   const wordForm = (r: LienSupplierCardRow) =>
     word && editingHouse === r.houseId ? (
-      <WordForm
+      <LienSupplierWordForm
         key={r.houseId}
         row={r}
         jobId={job.jobId}
