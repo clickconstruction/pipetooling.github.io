@@ -409,7 +409,7 @@ describe('BidsSubmittalsTab', () => {
     expect(legend.textContent).toContain('As specified — the exact product the plans named')
     expect(legend.textContent).toContain('Alternate — a stand-in for what the plans named, say why')
     expect(legend.textContent).toContain('Cut sheet — the maker’s page for the product')
-    expect(screen.getByTestId('road-3-about').textContent).toContain('Check each row. Is it the product the plans asked for?')
+    expect(screen.getByTestId('road-3-about').textContent).toContain('Check each row and its parts. Is it the product the plans asked for?')
   })
 
   it('v2.4169 · a stage you have not reached folds to its sentence; opened early, its button is held with the reason; an empty stage draws no box', async () => {
@@ -759,6 +759,41 @@ describe('BidsSubmittalsTab', () => {
       expect(rowUpd.payload).toMatchObject({ sheet_file: 0, sheet_pages: [49, 50, 51, 52, 53, 54, 55, 56, 57, 58], sheet_source: 'house' })
     } finally {
       state.parts = []
+    }
+  })
+
+  it('v2.4366 · on a draft the takeoff has moved past, the walkthrough stops on the blue box between Fix the rows and Add the cut sheets', async () => {
+    if (typeof window.matchMedia !== 'function') window.matchMedia = (() => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} })) as unknown as typeof window.matchMedia
+    state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, shared_at: null, created_at: '2026-09-15T00:00:00Z', source_files: [] }]
+    state.items = [item({ id: 'wh', tag: 'DWH-1, ET', sequence_order: 1, submitted_label: 'A.O. Smith BTH-199 WATER HEATER', status: 'proposed', source_count_row_id: 'c-wh' })]
+    state.parts = []
+    state.takeoff = true
+    try {
+      mount()
+      await screen.findByTestId('draft-catch-up')
+      fireEvent.click(screen.getAllByRole('button', { name: 'Walk me through it ▶' })[0] as HTMLElement)
+      const titles: string[] = []
+      for (let i = 0; i < 14; i++) {
+        const dialog = screen.queryByRole('dialog')
+        if (!dialog) break
+        const title = dialog.getAttribute('aria-label') ?? ''
+        if (titles.includes(title)) break
+        titles.push(title)
+        if (title === 'Step 3. Catch a draft up') {
+          // Its anchor is on the page, so it is a real stop, not a centred card.
+          expect(within(dialog).queryByTestId('tour-missing')).toBeNull()
+          expect(dialog.textContent).toContain('Tap Refresh from the takeoff to bring in the new parts.')
+        }
+        const next = within(dialog).queryByRole('button', { name: 'Next →' })
+        if (!next) break
+        fireEvent.click(next)
+      }
+      const at = titles.indexOf('Step 3. Catch a draft up')
+      expect(at).toBeGreaterThan(0)
+      expect(titles[at - 1]).toBe('Step 3. Fix the rows')
+      expect(titles[at + 1]).toBe('Step 3. Add the cut sheets')
+    } finally {
+      state.takeoff = false
     }
   })
 

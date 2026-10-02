@@ -11,9 +11,16 @@ import { PLAIN_WORDS_GLUE as GLUE, PLAIN_WORDS_MAX_SENTENCE_WORDS as MAX_WORDS, 
  */
 
 describe('submittal walkthrough plain words', () => {
-  it('walks thirteen stops, each anchor once', () => {
-    expect(SUBMITTAL_TOUR_STEPS).toHaveLength(13)
-    expect(new Set(SUBMITTAL_TOUR_STEPS.map((s) => s.anchor)).size).toBe(13)
+  it('walks fourteen stops, each anchor once', () => {
+    expect(SUBMITTAL_TOUR_STEPS).toHaveLength(14)
+    expect(new Set(SUBMITTAL_TOUR_STEPS.map((s) => s.anchor)).size).toBe(14)
+  })
+
+  it('v2.4366 · the catch-up stop shows only where the blue box is: it carries no missing words', () => {
+    const stop = SUBMITTAL_TOUR_STEPS.find((s) => s.anchor === 'submittals-catch-up')
+    expect(stop?.missingBody).toBeUndefined()
+    expect(stop?.body).toContain('Refresh from the takeoff')
+    expect(stop?.body).toContain('Make it a part')
   })
 
   it.each(SUBMITTAL_TOUR_STEPS.map((s) => [s.title, s] as const))('%s — short sentences, nothing glued', (_title, step) => {
