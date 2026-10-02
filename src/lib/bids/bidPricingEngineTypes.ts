@@ -1,5 +1,4 @@
 import type { Database } from '../../types/database'
-import type { TakeoffStage } from './bidTakeoffHelpers'
 
 export type MaterialTemplate = Database['public']['Tables']['material_templates']['Row']
 export type MaterialTemplateWithAssemblyType = MaterialTemplate & { assembly_types?: { name: string } | null }
@@ -25,8 +24,6 @@ export type TakeoffBookEntry = Database['public']['Tables']['takeoff_book_entrie
 export type TakeoffBookEntryItem = Database['public']['Tables']['takeoff_book_entry_items']['Row']
 export type TakeoffBookEntryWithItems = TakeoffBookEntry & { items: TakeoffBookEntryItem[] }
 
-export type TakeoffMapping = { id: string; countRowId: string; templateId: string; stage: TakeoffStage; quantity: number; isSaved: boolean }
-
 export type TakeoffRoughPartLineRow = {
   id: string
   countRowId: string
@@ -51,9 +48,6 @@ export type TakeoffRoughPartLineRow = {
   sequenceOrder: number
   isSaved: boolean
 }
-
-export type DraftPO = { id: string; name: string }
-export type CostEstimatePO = { id: string; name: string; stage: string | null }
 
 export type LaborBookEntryWithFixture = LaborBookEntry & {
   fixture_types?: { name: string } | null

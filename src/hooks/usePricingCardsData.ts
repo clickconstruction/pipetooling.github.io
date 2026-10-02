@@ -12,7 +12,6 @@
 import { useEffect, useState } from 'react'
 
 import { supabase } from '../lib/supabase'
-import { normalizeMaterialsModel } from '../lib/bids/bidTakeoffHelpers'
 import { sameGcAlternateVersions } from '../lib/bids/ownTakeoffAlternates'
 import { countRowsByOtherBidVersion, gcIdsToLoad, needsOtherBidVersionRows } from '../lib/bids/pricingCardsData'
 import { scenarioCardRevenues } from '../lib/bids/scenarioCardRevenues'
@@ -110,8 +109,7 @@ export type AlternateVersionCardData = { revenue: number | null; materials: numb
 
 /**
  * Own-takeoff alternates (v2.2404, Wendi): per alternate-version card, its ★'s revenue on ITS
- * counts, and its own pre-tax takeoff materials ('rough' model only — the exact model's POs are
- * bid-wide). Read again when the bid, the version on screen or the versions change.
+ * counts, and its own pre-tax takeoff materials. Read again when the bid, the version on screen or the versions change.
  */
 export function useAlternateVersionData(args: {
   bidId: string | null | undefined
@@ -131,20 +129,16 @@ export function useAlternateVersionData(args: {
     }
     let cancelled = false
     void (async () => {
-      const { data: bidMeta } = await supabase.from('bids').select('materials_model').eq('id', bidId).maybeSingle()
-      const mm = normalizeMaterialsModel((bidMeta as { materials_model?: string } | null)?.materials_model)
       const out: Record<string, AlternateVersionCardData> = {}
       await Promise.all(
         alts.map(async (v) => {
           const [countsRes, roughRes] = await Promise.all([
             supabase.from('bids_count_rows').select('*').eq('bid_id', bidId).eq('bid_version_id', v.id).order('sequence_order', { ascending: true }),
-            mm === 'rough'
-              ? supabase.from('bids_takeoff_rough_part_lines').select('count_row_id, part_id, quantity, unit_price, order_increment, order_increment_unit').eq('bid_id', bidId).eq('bid_version_id', v.id)
-              : Promise.resolve({ data: null }),
+            supabase.from('bids_takeoff_rough_part_lines').select('count_row_id, part_id, quantity, unit_price, order_increment, order_increment_unit').eq('bid_id', bidId).eq('bid_version_id', v.id),
           ])
           const counts = (countsRes.data as BidCountRow[] | null) ?? []
           let materials: number | null = null
-          if (mm === 'rough' && roughRes.data) {
+          if (roughRes.data) {
             const lines = roughRes.data as RoughLineDbRow[]
             // v2.3407: with the sticks, the same number the engine and the strip show.
             materials = roughMaterialsTotalWithRounding(lines, new Map(counts.map((c) => [c.id, c.count]))).total

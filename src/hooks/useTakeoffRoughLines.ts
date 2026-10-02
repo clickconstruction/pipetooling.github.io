@@ -5,7 +5,6 @@ import { supabase } from '../lib/supabase'
 import { expandTemplate } from '../lib/materialPOUtils'
 import { fetchLowestPartPrice, fetchLowestPartPricesBatch } from '../lib/materialPartCatalogPrice'
 import { loadPartsByIds, missingPartIds, mergeCatalogParts } from '../lib/materials/partsCatalog'
-import { normalizeMaterialsModel } from '../lib/bids/bidTakeoffHelpers'
 import { effectiveOrderIncrement, type OrderIncrementFields } from '../lib/materials/orderIncrement'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import type { useToastContext } from '../contexts/ToastContext'
@@ -27,7 +26,7 @@ const TAKEOFF_LINE_NOT_APPLIED_MESSAGE = refusedUpdateMessage('takeoff line')
  * the v2.2755 missing-part fallback never re-requests an id it has tried.
  */
 export function useTakeoffRoughLines<P extends { id: string; name: string }>(args: {
-  selectedBidForTakeoff: { id: string; materials_model: string | null | undefined } | null
+  selectedBidForTakeoff: { id: string } | null
   selectedBidVersionId: string | null
   activeTab: string
   takeoffRoughPartLines: TakeoffRoughPartLineRow[]
@@ -355,11 +354,7 @@ export function useTakeoffRoughLines<P extends { id: string; name: string }>(arg
         await persistTakeoffRoughPartLine(line)
       }
 
-      if (
-        activeTab === 'takeoffs' &&
-        selectedBidForTakeoff?.id &&
-        normalizeMaterialsModel(selectedBidForTakeoff.materials_model) === 'rough'
-      ) {
+      if (activeTab === 'takeoffs' && selectedBidForTakeoff?.id) {
         void refreshTakeoffRoughCatalogLowest(partIds)
       }
 
@@ -514,11 +509,7 @@ export function useTakeoffRoughLines<P extends { id: string; name: string }>(arg
       result.fixturesFilled += 1
       result.linesAdded += rowLines.length
     }
-    if (
-      allPartIds.size > 0 &&
-      activeTab === 'takeoffs' &&
-      normalizeMaterialsModel(selectedBidForTakeoff.materials_model) === 'rough'
-    ) {
+    if (allPartIds.size > 0 && activeTab === 'takeoffs') {
       void refreshTakeoffRoughCatalogLowest(Array.from(allPartIds))
     }
     return result
@@ -589,7 +580,7 @@ export function useTakeoffRoughLines<P extends { id: string; name: string }>(arg
       await persistTakeoffRoughPartLine(line)
     }
     result.linesAdded = newLines.length
-    if (partIds.length > 0 && activeTab === 'takeoffs' && normalizeMaterialsModel(selectedBidForTakeoff.materials_model) === 'rough') {
+    if (partIds.length > 0 && activeTab === 'takeoffs') {
       void refreshTakeoffRoughCatalogLowest(partIds)
     }
     return result

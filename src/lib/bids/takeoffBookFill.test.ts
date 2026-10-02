@@ -41,17 +41,12 @@ describe('bookFillMessage', () => {
 })
 
 describe('fillFromBookLabel', () => {
-  it('keeps the By Stage button as it was', () => {
-    expect(fillFromBookLabel(null, false, false)).toEqual({ label: 'Apply Matching Fixture Assemblies', disabled: false, title: '' })
-    expect(fillFromBookLabel(null, true, false).label).toBe('Applying…')
-  })
-
   it('names the match count under Combined and explains a disabled button', () => {
     const plan = planBookFill(rows, [], entries)
-    expect(fillFromBookLabel(plan, false, true)).toMatchObject({ label: 'Fill from book · 3 matches', disabled: false })
-    expect(fillFromBookLabel(plan, true, true)).toMatchObject({ label: 'Filling…', disabled: true })
+    expect(fillFromBookLabel(plan, false)).toMatchObject({ label: 'Fill from book · 3 matches', disabled: false })
+    expect(fillFromBookLabel(plan, true)).toMatchObject({ label: 'Filling…', disabled: true })
     const done = planBookFill(rows, [line('a', 'r-wc'), line('b', 'r-s1'), line('c', 'r-s2')], entries)
-    expect(fillFromBookLabel(done, false, true)).toMatchObject({ label: 'Fill from book · 0 matches', disabled: true, title: 'Every fixture this book matches already has lines' })
-    expect(fillFromBookLabel({ fillable: [], matched: 0, alreadyCosted: 0 }, false, true).title).toContain('No entry in this book matches')
+    expect(fillFromBookLabel(done, false)).toMatchObject({ label: 'Fill from book · 0 matches', disabled: true, title: 'Every fixture this book matches already has lines' })
+    expect(fillFromBookLabel({ fillable: [], matched: 0, alreadyCosted: 0 }, false).title).toContain('No entry in this book matches')
   })
 })

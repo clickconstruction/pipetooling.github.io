@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { getTemplatePartsPreview } from '../lib/materialPOUtils'
 import { loadPartsCatalog } from '../lib/materials/partsCatalog'
-import { normalizeMaterialsModel } from '../lib/bids/bidTakeoffHelpers'
 import type { PartType } from '../components/bids/SortableRoughPartLineRow'
 import type { Database } from '../types/database'
 
@@ -11,33 +9,27 @@ type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 /**
  * The parts-catalog substrate of the Takeoffs tab — the T8 seam of
  * docs/BIDS_TAKEOFF_TAB_ARCHITECTURE.md, moved out of BidsTakeoffTab as is
- * (v2.2770): the service type's parts (paged, v2.2755) loaded when the
- * Combined model is active or any assembly-authoring modal is open, the
- * supply houses + part types the modals need, and the exact-model
- * assembly-preview cache filled lazily per mapped template.
+ * (v2.2770): the service type's parts (paged, v2.2755) loaded when a bid is
+ * open on Takeoffs or an assembly-authoring modal is open, and the supply
+ * houses + part types the modals need.
  */
 export function useTakeoffPartsCatalog<P extends { id: string; name: string }>(args: {
   activeTab: string
   selectedServiceTypeId: string
-  selectedBidForTakeoff: { id: string; materials_model: string | null | undefined } | null
-  takeoffMappings: ReadonlyArray<{ templateId: string }>
+  selectedBidForTakeoff: { id: string } | null
   takeoffAddTemplateModalOpen: boolean
-  addPartsToTemplateModalOpen: boolean
   editTemplateModalOpen: boolean
 }) {
   const {
     activeTab,
     selectedServiceTypeId,
     selectedBidForTakeoff,
-    takeoffMappings,
     takeoffAddTemplateModalOpen,
-    addPartsToTemplateModalOpen,
     editTemplateModalOpen,
   } = args
   const [takeoffAddTemplateParts, setTakeoffAddTemplateParts] = useState<P[]>([])
   const [supplyHouses, setSupplyHouses] = useState<SupplyHouse[]>([])
   const [partTypes, setPartTypes] = useState<PartType[]>([])
-  const [takeoffTemplatePreviewCache, setTakeoffTemplatePreviewCache] = useState<Record<string, { part_name: string; quantity: number }[] | 'loading' | null>>({})
 
   async function loadPartTypes() {
     if (!selectedServiceTypeId) {
@@ -80,7 +72,6 @@ export function useTakeoffPartsCatalog<P extends { id: string; name: string }>(a
 
   useEffect(() => {
     if (activeTab !== 'takeoffs' || !selectedServiceTypeId || !selectedBidForTakeoff?.id) return
-    if (normalizeMaterialsModel(selectedBidForTakeoff.materials_model) !== 'rough') return
     void (async () => {
       try {
         setTakeoffAddTemplateParts(await loadPartsCatalog<P>(supabase, selectedServiceTypeId))
@@ -88,10 +79,10 @@ export function useTakeoffPartsCatalog<P extends { id: string; name: string }>(a
         console.error('Failed to load the parts catalog:', e)
       }
     })()
-  }, [activeTab, selectedBidForTakeoff?.id, selectedBidForTakeoff?.materials_model, selectedServiceTypeId, supabase])
+  }, [activeTab, selectedBidForTakeoff?.id, selectedServiceTypeId, supabase])
 
   useEffect(() => {
-    if (!takeoffAddTemplateModalOpen && !addPartsToTemplateModalOpen && !editTemplateModalOpen) return
+    if (!takeoffAddTemplateModalOpen && !editTemplateModalOpen) return
     if (!selectedServiceTypeId) {
       setTakeoffAddTemplateParts([])
       return
@@ -107,31 +98,12 @@ export function useTakeoffPartsCatalog<P extends { id: string; name: string }>(a
       }
     })()
     return () => { cancelled = true }
-  }, [takeoffAddTemplateModalOpen, addPartsToTemplateModalOpen, editTemplateModalOpen, selectedServiceTypeId])
-
-  useEffect(() => {
-    const idsToLoad = Array.from(
-      new Set(takeoffMappings.map((m) => m.templateId).filter(Boolean))
-    ).filter((id) => takeoffTemplatePreviewCache[id] === undefined)
-    if (idsToLoad.length === 0) return
-    setTakeoffTemplatePreviewCache((prev) => {
-      const next = { ...prev }
-      for (const id of idsToLoad) next[id] = 'loading'
-      return next
-    })
-    for (const tid of idsToLoad) {
-      getTemplatePartsPreview(supabase, tid)
-        .then((res) => setTakeoffTemplatePreviewCache((p) => ({ ...p, [tid]: res })))
-        .catch(() => setTakeoffTemplatePreviewCache((p) => ({ ...p, [tid]: null })))
-    }
-  }, [takeoffMappings, takeoffTemplatePreviewCache])
+  }, [takeoffAddTemplateModalOpen, editTemplateModalOpen, selectedServiceTypeId])
 
   return {
     takeoffAddTemplateParts,
     setTakeoffAddTemplateParts,
     supplyHouses,
     partTypes,
-    takeoffTemplatePreviewCache,
-    setTakeoffTemplatePreviewCache,
   }
 }

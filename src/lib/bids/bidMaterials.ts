@@ -1,56 +1,31 @@
 /**
- * A bid's materials cost, read the way its materials model stores it (v2.4368).
+ * A bid's materials cost, from the takeoff's part lines (v2.4368): Σ fixture count ×
+ * quantity × unit price, plus the order rounding's extra (`roughMaterialsTotalWithRounding`).
  *
- * By Stage (`exact`) prices materials only through the three draft stage POs on
- * the cost estimate. Combined (`rough`, every bid since May 2026) prices them
- * from the takeoff's part lines: Σ fixture count × quantity × unit price, plus
- * the order rounding's extra (`roughMaterialsTotalWithRounding`). The two stores
- * are separate (a switch never copies lines), so the model picks one and the
- * other is ignored. A reader that summed the POs for every bid showed a
- * Combined bid $0 materials and an overstated margin.
- *
- * The pricing engine (Labor and Pricing) and the Approval PDF read Combined
- * through `combinedMaterials`, so the documents say what the tabs say. Pure;
- * the reads live in `bidMaterialsIo.ts`.
+ * The pricing engine (Labor and Pricing) and the Approval PDF both read it through
+ * `combinedMaterials`, so the documents say what the tabs say. Pure; the reads live in
+ * `bidMaterialsIo.ts`. Until By Stage retired (v2.4389) a second model priced materials
+ * from three stage purchase orders instead; no reader counts those now.
  */
-import { roughCountMultiplier, type MaterialsModel } from './bidTakeoffHelpers'
+import { roughCountMultiplier } from './bidTakeoffHelpers'
 import { roughMaterialsTotalWithRounding, type RoughLineDbRow } from './takeoffOrderRounding'
 
-export type StagePoTotals = { roughIn: number; topOut: number; trimSet: number }
-
 export type BidMaterials = {
-  model: MaterialsModel
   /**
-   * The three slots `computeBidCostBreakdown` reads. By Stage: each stage's PO.
-   * Combined: the whole list in `roughIn` and 0 in the other two, as the engine sets them.
+   * The three slots `computeBidCostBreakdown` reads: the whole list in `roughIn` and 0 in
+   * the other two, as the engine sets them.
    */
   roughIn: number
   topOut: number
   trimSet: number
   /** Pre-tax. */
   total: number
-  /**
-   * Combined: each count row's materials with its slice of the rounding, the
-   * Pricing table's per-fixture number. By Stage: empty, so `computeBidPricingRows`
-   * shares the PO total over the rows by labor hours.
-   */
+  /** Each count row's materials with its slice of the rounding, the Pricing table's per-fixture number. */
   byCountRowId: Record<string, number>
 }
 
-/** By Stage: the three stage POs as they are. */
-export function stagePoMaterials(po: StagePoTotals): BidMaterials {
-  return {
-    model: 'exact',
-    roughIn: po.roughIn,
-    topOut: po.topOut,
-    trimSet: po.trimSet,
-    total: po.roughIn + po.topOut + po.trimSet,
-    byCountRowId: {},
-  }
-}
-
 /**
- * Combined: the version's part lines over its count rows. The total carries the
+ * The version's part lines over its count rows. The total carries the
  * sticks; each count row in `countByRowId` gets Σ its lines' quantity × price,
  * times its count, plus its share of the rounding. A line whose count row is not
  * in the map still sums at ×1 in the total, the same as the Takeoffs strip.
@@ -69,16 +44,10 @@ export function combinedMaterials(
   for (const [rowId, count] of countByRowId) {
     byCountRowId[rowId] = (perUnitByRow.get(rowId) ?? 0) * roughCountMultiplier(count) + (rounded.rounding.extraByCountRow.get(rowId) ?? 0)
   }
-  return { model: 'rough', roughIn: rounded.total, topOut: 0, trimSet: 0, total: rounded.total, byCountRowId }
+  return { roughIn: rounded.total, topOut: 0, trimSet: 0, total: rounded.total, byCountRowId }
 }
 
-/** The materials lines a document prints: one for Combined; for By Stage the three POs and their total. */
+/** The materials line a document prints. */
 export function materialsLines(m: BidMaterials): Array<{ label: string; amount: number }> {
-  if (m.model === 'rough') return [{ label: 'Materials', amount: m.total }]
-  return [
-    { label: 'PO (Rough In)', amount: m.roughIn },
-    { label: 'PO (Top Out)', amount: m.topOut },
-    { label: 'PO (Trim Set)', amount: m.trimSet },
-    { label: 'Materials Total', amount: m.total },
-  ]
+  return [{ label: 'Materials', amount: m.total }]
 }

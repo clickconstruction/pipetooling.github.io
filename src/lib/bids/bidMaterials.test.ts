@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { combinedMaterials, materialsLines, stagePoMaterials } from './bidMaterials'
+import { combinedMaterials, materialsLines } from './bidMaterials'
 import { roughMaterialsTotalWithRounding, type RoughLineDbRow } from './takeoffOrderRounding'
 
 /**
@@ -22,7 +22,7 @@ const lines: RoughLineDbRow[] = [
 describe('combinedMaterials', () => {
   it('totals Σ count × quantity × price plus the order rounding, all in the Rough In slot', () => {
     const m = combinedMaterials(lines, counts)
-    expect(m).toMatchObject({ model: 'rough', roughIn: 380, topOut: 0, trimSet: 0, total: 380 })
+    expect(m).toMatchObject({ roughIn: 380, topOut: 0, trimSet: 0, total: 380 })
     expect(m.total).toBe(roughMaterialsTotalWithRounding(lines, counts).total)
   })
 
@@ -56,34 +56,12 @@ describe('combinedMaterials', () => {
   })
 
   it('reads an empty takeoff as $0 with a zero row per fixture', () => {
-    expect(combinedMaterials([], counts)).toEqual({ model: 'rough', roughIn: 0, topOut: 0, trimSet: 0, total: 0, byCountRowId: { lav: 0, wc: 0, hidden: 0 } })
-  })
-})
-
-describe('stagePoMaterials', () => {
-  it('keeps each stage PO in its slot, totals them, and leaves the per-fixture split to the labor hours', () => {
-    expect(stagePoMaterials({ roughIn: 401, topOut: 120.5, trimSet: 0 })).toEqual({
-      model: 'exact',
-      roughIn: 401,
-      topOut: 120.5,
-      trimSet: 0,
-      total: 521.5,
-      byCountRowId: {},
-    })
+    expect(combinedMaterials([], counts)).toEqual({ roughIn: 0, topOut: 0, trimSet: 0, total: 0, byCountRowId: { lav: 0, wc: 0, hidden: 0 } })
   })
 })
 
 describe('materialsLines', () => {
-  it('prints one Materials line for a Combined bid', () => {
+  it('prints one Materials line', () => {
     expect(materialsLines(combinedMaterials(lines, counts))).toEqual([{ label: 'Materials', amount: 380 }])
-  })
-
-  it('prints the three stage POs and their total for a By Stage bid', () => {
-    expect(materialsLines(stagePoMaterials({ roughIn: 401, topOut: 0, trimSet: 99 }))).toEqual([
-      { label: 'PO (Rough In)', amount: 401 },
-      { label: 'PO (Top Out)', amount: 0 },
-      { label: 'PO (Trim Set)', amount: 99 },
-      { label: 'Materials Total', amount: 500 },
-    ])
   })
 })

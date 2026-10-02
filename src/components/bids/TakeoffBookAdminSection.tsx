@@ -1,7 +1,7 @@
 import { useState, type Dispatch, type SetStateAction } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
-import { STAGE_LABELS, type TakeoffStage } from '../../lib/bids/bidTakeoffHelpers'
+import type { TakeoffStage } from '../../lib/bids/bidTakeoffHelpers'
 import type {
   MaterialTemplateWithAssemblyType,
   TakeoffBookEntryWithItems,
@@ -64,6 +64,8 @@ export function TakeoffBookAdminSection({
   const [editingTakeoffBookEntry, setEditingTakeoffBookEntry] = useState<TakeoffBookEntryWithItems | null>(null)
   const [takeoffBookEntryFixtureName, setTakeoffBookEntryFixtureName] = useState('')
   const [takeoffBookEntryAliasNames, setTakeoffBookEntryAliasNames] = useState('')
+  // `stage` is kept and written as it was (new rows: Rough In), but no longer shown: only By Stage, retired
+  // in v2.4389, read it. A fixture's stages are the boxes on the takeoff and the entry's remembered split.
   const [takeoffBookEntryItemRows, setTakeoffBookEntryItemRows] = useState<Array<{ templateId: string; stage: TakeoffStage }>>([{ templateId: '', stage: 'rough_in' }])
   const [savingTakeoffBookEntry, setSavingTakeoffBookEntry] = useState(false)
 
@@ -255,7 +257,7 @@ export function TakeoffBookAdminSection({
     const n = entry.items.length
     if (
       !(await confirmDialog({
-        message: `Delete "${entry.fixture_name ?? ''}" and its ${n} template/stage pair(s) from this takeoff book?`,
+        message: `Delete "${entry.fixture_name ?? ''}" and its ${n} assembl${n === 1 ? 'y' : 'ies'} from this takeoff book?`,
         confirmLabel: 'Delete',
         danger: true,
       }))
@@ -351,7 +353,6 @@ export function TakeoffBookAdminSection({
                         <tr>
                           <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Fixture or Tie-in</th>
                           <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Assembly</th>
-                          <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Stage</th>
                           <th style={{ padding: '0.5rem', width: 60, borderBottom: '1px solid var(--border)' }} />
                         </tr>
                       </thead>
@@ -362,7 +363,6 @@ export function TakeoffBookAdminSection({
                               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '0.25rem' }}>also: {entry.alias_names.join(', ')}</span>
                             ) : null}</td>
                             <td style={{ padding: '0.5rem' }}>{entry.items.length === 0 ? '—' : entry.items.map((i) => materialTemplates.find((t) => t.id === i.template_id)?.name ?? i.template_id).join(', ')}</td>
-                            <td style={{ padding: '0.5rem' }}>{entry.items.length === 0 ? '—' : entry.items.map((i) => STAGE_LABELS[i.stage as TakeoffStage] ?? i.stage).join(', ')}</td>
                             <td style={{ padding: '0.5rem' }}>
                               <button type="button" onClick={() => openEditTakeoffBookEntry(entry)} style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer' }} title="Edit">✎</button>
                             </td>
@@ -454,9 +454,9 @@ export function TakeoffBookAdminSection({
                     style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginBottom: '0.25rem', boxSizing: 'border-box' }}
                     placeholder="e.g. WC, Commode"
                   />
-                  <p style={{ margin: '0 0 0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>If any of these match a count row's Fixture or Tie-in, these assemblies and stages are applied.</p>
+                  <p style={{ margin: '0 0 0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>If any of these match a count row's Fixture or Tie-in, these assemblies fill it.</p>
                   <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Assembly / Stage</label>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Assembly</label>
                     {takeoffBookEntryItemRows.map((row, idx) => (
                       <div key={idx} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
                         <select
@@ -467,15 +467,6 @@ export function TakeoffBookAdminSection({
                           <option value="">— Select assembly —</option>
                           {materialTemplates.map((t) => (
                             <option key={t.id} value={t.id}>{t.name}</option>
-                          ))}
-                        </select>
-                        <select
-                          value={row.stage}
-                          onChange={(e) => setTakeoffBookEntryItemRows((prev) => prev.map((r, i) => (i === idx ? { ...r, stage: e.target.value as TakeoffStage } : r)))}
-                          style={{ flex: '0 0 auto', minWidth: 100, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
-                        >
-                          {(['rough_in', 'top_out', 'trim_set'] as const).map((s) => (
-                            <option key={s} value={s}>{STAGE_LABELS[s]}</option>
                           ))}
                         </select>
                         <button
@@ -494,7 +485,7 @@ export function TakeoffBookAdminSection({
                       onClick={() => setTakeoffBookEntryItemRows((prev) => [...prev, { templateId: '', stage: 'rough_in' }])}
                       style={{ marginTop: '0.25rem', padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
                     >
-                      Add assembly & stage
+                      Add assembly
                     </button>
                   </div>
                   <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>

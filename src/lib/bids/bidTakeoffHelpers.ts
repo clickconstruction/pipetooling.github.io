@@ -5,7 +5,6 @@
 import type { BidCountRow } from '../../types/bids'
 
 export type TakeoffStage = 'rough_in' | 'top_out' | 'trim_set'
-export type MaterialsModel = 'exact' | 'rough'
 
 export const STAGE_LABELS: Record<TakeoffStage, string> = { rough_in: 'Rough In', top_out: 'Top Out', trim_set: 'Trim Set' }
 
@@ -33,15 +32,6 @@ export function resolveRoughQtyOnClose(draft: string, originalQty: number | null
     return Math.max(0.0001, originalQty)
   }
   return clampRoughQtyFromDraft(draft)
-}
-
-/**
- * Every bid prices its materials one way since v2.4389: the Combined part lines
- * (`bids_takeoff_rough_part_lines`). By Stage (`'exact'`: assembly picks priced through three
- * stage purchase orders) is retired, so a bid still flagged By Stage reads as Combined.
- */
-export function normalizeMaterialsModel(_v: string | null | undefined): MaterialsModel {
-  return 'rough'
 }
 
 /** Takeoffs: single-column label for fixture + count row (e.g. `(5) Toilet`). */

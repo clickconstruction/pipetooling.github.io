@@ -9,8 +9,7 @@ import { isTypingTarget } from '../../lib/bids/takeoffFocus'
  * tab's normal view switch (so the pills and the seamless hop keep working) and is
  * remembered on the device, so the box does not come back (v2.3165); the pills
  * beside the bid name switch views from then on. There is no way past the box
- * without choosing. Keys 1 · 2 pick a card. By Stage bids never see it (the
- * tab skips it — those views are Combined-only).
+ * without choosing. Keys 1 · 2 pick a card.
  */
 
 const ACCENT = '#3b82f6'

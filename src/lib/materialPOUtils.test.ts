@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addExpandedPartsToPO, expandTemplate, getTemplatePartsPreview } from './materialPOUtils'
+import { addExpandedPartsToPO, expandTemplate } from './materialPOUtils'
 
 type Result = { data: unknown; error?: unknown }
 
@@ -54,29 +54,6 @@ describe('expandTemplate', () => {
   it('returns [] when the template has no items', async () => {
     const { client } = makeClient({ queries: { material_template_items: [{ data: [] }] } })
     expect(await expandTemplate(client, 'tpl-1')).toEqual([])
-  })
-})
-
-describe('getTemplatePartsPreview', () => {
-  it('merges duplicate parts, resolves names, and sorts by name', async () => {
-    const { client } = makeClient({
-      queries: {
-        material_template_items: [
-          {
-            data: [
-              tplItem({ part_id: 'p-b', quantity: 1 }),
-              tplItem({ part_id: 'p-a', quantity: 2 }),
-              tplItem({ part_id: 'p-b', quantity: 3 }),
-            ],
-          },
-        ],
-        material_parts: [{ data: [{ id: 'p-a', name: 'Elbow' }, { id: 'p-b', name: 'Tee' }] }],
-      },
-    })
-    expect(await getTemplatePartsPreview(client, 'tpl-1')).toEqual([
-      { part_name: 'Elbow', quantity: 2 },
-      { part_name: 'Tee', quantity: 4 },
-    ])
   })
 })
 

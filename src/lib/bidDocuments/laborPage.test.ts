@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  buildExactLaborPageHtml,
   buildRoughLaborPageHtml,
-  type ExactLaborPageInput,
   type LaborPageCosts,
   type RoughLaborPageInput,
 } from './laborPage'
@@ -98,73 +96,7 @@ describe('buildRoughLaborPageHtml', () => {
   })
 })
 
-describe('buildExactLaborPageHtml', () => {
-  const base: ExactLaborPageInput = {
-    title: 'My Bid — Labor',
-    rows,
-    totals,
-    costs: baseCosts,
-    pos: [
-      {
-        stageLabel: 'Rough In',
-        poName: 'Job Parts 523',
-        stageMaterialTotal: 206.71,
-        items: [{ part_name: 'Coupling', quantity: 10, price_at_time: 2.5, template_name: 'Tmpl' }],
-      },
-      { stageLabel: 'Top Out', poName: '—', stageMaterialTotal: 0, items: [] },
-      { stageLabel: 'Trim Set', poName: '—', stageMaterialTotal: 0, items: [] },
-    ],
-  }
-
-  it('renders three PO sections with the PO (stage) headers and names', () => {
-    const html = buildExactLaborPageHtml(base)
-    expect(html).toContain('<strong>PO (Rough In)</strong> Job Parts 523 — $206.71')
-    expect(html).toContain('<strong>PO (Top Out)</strong> — — $0.00')
-    expect(html).toContain('<strong>PO (Trim Set)</strong> — — $0.00')
-  })
-
-  it('uses the exact materials heading and "Materials Total:" summary label', () => {
-    const html = buildExactLaborPageHtml(base)
-    expect(html).toContain('<h2>Materials</h2>')
-    expect(html).toContain('Materials Total: $206.71')
-  })
-
-  it('renders Subtotal/Tax/stage Total rows for a non-empty PO', () => {
-    const html = buildExactLaborPageHtml(base)
-    // Subtotal = 10 * 2.5 = 25.00 ; tax @8.25% = 2.06 ; total = 27.06
-    expect(html).toContain('Subtotal:')
-    expect(html).toContain('$25.00')
-    expect(html).toContain('Tax:')
-    expect(html).toContain('$2.06')
-    expect(html).toContain('Rough In Total:')
-    expect(html).toContain('$27.06')
-  })
-
-  it('shows the empty-PO state for stages without items', () => {
-    const html = buildExactLaborPageHtml(base)
-    expect(html).toContain('No items in this PO.')
-  })
-
-  it('escapes PO names and item part names', () => {
-    const html = buildExactLaborPageHtml({
-      ...base,
-      pos: [
-        {
-          stageLabel: 'Rough In',
-          poName: 'PO & <1>',
-          stageMaterialTotal: 1,
-          items: [{ part_name: 'P & <q>', quantity: 1, price_at_time: 1, template_name: null }],
-        },
-        { stageLabel: 'Top Out', poName: '—', stageMaterialTotal: 0, items: [] },
-        { stageLabel: 'Trim Set', poName: '—', stageMaterialTotal: 0, items: [] },
-      ],
-    })
-    expect(html).toContain('PO &amp; &lt;1&gt;')
-    expect(html).toContain('P &amp; &lt;q&gt;')
-  })
-})
-
-describe('laborTableAndSummary (shared, via both builders)', () => {
+describe('laborTableAndSummary', () => {
   const base: RoughLaborPageInput = {
     title: 'T',
     rows,

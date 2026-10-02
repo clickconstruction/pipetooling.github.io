@@ -4,7 +4,6 @@ import { resolvePartFormSaveTarget } from './partFormSaveTarget'
 function input(partial: Partial<Parameters<typeof resolvePartFormSaveTarget>[0]> = {}) {
   return {
     capturedRoughLineId: null,
-    addPartsToTemplateModalOpen: false,
     editTemplateModalOpen: false,
     livePickerLineId: null,
     ...partial,
@@ -27,18 +26,14 @@ describe('resolvePartFormSaveTarget', () => {
     expect(resolvePartFormSaveTarget(input({ livePickerLineId: 'line-2' }))).toEqual({ kind: 'roughLine', lineId: 'line-2' })
   })
 
-  it('a captured line wins over both assembly modals (its capture is explicit)', () => {
-    expect(
-      resolvePartFormSaveTarget(
-        input({ capturedRoughLineId: 'line-3', addPartsToTemplateModalOpen: true, editTemplateModalOpen: true }),
-      ),
-    ).toEqual({ kind: 'roughLine', lineId: 'line-3' })
+  it('a captured line wins over the Edit Assembly modal (its capture is explicit)', () => {
+    expect(resolvePartFormSaveTarget(input({ capturedRoughLineId: 'line-3', editTemplateModalOpen: true }))).toEqual({
+      kind: 'roughLine',
+      lineId: 'line-3',
+    })
   })
 
-  it('routes the two assembly modals when no line was captured, add-parts first', () => {
-    expect(resolvePartFormSaveTarget(input({ addPartsToTemplateModalOpen: true, editTemplateModalOpen: true }))).toEqual({
-      kind: 'addPartsToTemplate',
-    })
+  it('routes into the Edit Assembly modal when no line was captured', () => {
     expect(resolvePartFormSaveTarget(input({ editTemplateModalOpen: true }))).toEqual({ kind: 'editTemplateItem' })
   })
 

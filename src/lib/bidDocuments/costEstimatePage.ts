@@ -1,15 +1,14 @@
 import { supabase } from '../supabase'
 import { printHtmlInNewWindow } from './htmlDoc'
-import { buildCostEstimatePOHtml, type CostEstimatePOModalItem } from './costEstimatePO'
-import { buildRoughLaborPageHtml, buildExactLaborPageHtml } from './laborPage'
+import { buildRoughLaborPageHtml } from './laborPage'
 import { buildLaborSubSheetHtml, buildAllLaborSubSheetsHtml } from './laborSubSheet'
 import { laborRowHours, laborRowRough, laborRowTop, laborRowTrim } from '../bids/laborRowHours'
-import { normalizeMaterialsModel, sumRoughLinesPreTaxWithCount } from '../bids/bidTakeoffHelpers'
+import { sumRoughLinesPreTaxWithCount } from '../bids/bidTakeoffHelpers'
 import { computeBidCostBreakdown, type DirectCostRowLike } from '../bids/bidTotalCostBreakdown'
 import { bidDisplayName } from '../bids/bidFormatting'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import type { BidCountRow } from '../../types/bids'
-import type { CostEstimate, CostEstimateLaborRow, CostEstimatePO } from '../bids/bidPricingEngineTypes'
+import type { CostEstimate, CostEstimateLaborRow } from '../bids/bidPricingEngineTypes'
 
 export type CostEstimatePrintContext = {
   bid: BidWithBuilder
@@ -18,10 +17,8 @@ export type CostEstimatePrintContext = {
   costEstimate: CostEstimate | null
   laborRows: CostEstimateLaborRow[]
   countRows: BidCountRow[]
-  purchaseOrders: CostEstimatePO[]
+  /** The takeoff's materials as the Labor tab holds them; null reads the part lines here instead. */
   materialTotalRoughIn: number | null
-  materialTotalTopOut: number | null
-  materialTotalTrimSet: number | null
   laborRateInput: string
   drivingCostRate: string
   hoursPerTrip: string
@@ -30,16 +27,8 @@ export type CostEstimatePrintContext = {
   directCostRows?: ReadonlyArray<DirectCostRowLike> | null
 }
 
-export function printCostEstimatePOForReview(poName: string, items: CostEstimatePOModalItem[], taxPercent: number) {
-  printHtmlInNewWindow(buildCostEstimatePOHtml({ variant: 'review', poName, items, taxPercent }))
-}
-
-export function printCostEstimatePOForSupplyHouse(poName: string, items: CostEstimatePOModalItem[], taxPercent: number) {
-  printHtmlInNewWindow(buildCostEstimatePOHtml({ variant: 'supplyHouse', poName, items, taxPercent }))
-}
-
 export async function printCostEstimatePage(ctx: CostEstimatePrintContext) {
-  const { bid, costEstimate, laborRows: estimateLaborRows, countRows, purchaseOrders } = ctx
+  const { bid, costEstimate, laborRows: estimateLaborRows, countRows } = ctx
   const title = (bidDisplayName(bid) || 'Bid') + ' — Labor'
   const laborRows = estimateLaborRows.map((row) => ({
     fixture: row.fixture ?? null,
@@ -57,7 +46,7 @@ export async function printCostEstimatePage(ctx: CostEstimatePrintContext) {
           trim: estimateLaborRows.reduce((s, r) => s + laborRowTrim(r), 0),
         }
       : null
-  if (normalizeMaterialsModel(bid.materials_model) === 'rough') {
+  {
     const bidId = bid.id
     const roughQuery = supabase
       .from('bids_takeoff_rough_part_lines')
@@ -123,67 +112,7 @@ export async function printCostEstimatePage(ctx: CostEstimatePrintContext) {
         materials,
       }),
     )
-    return
   }
-  const poRoughName = purchaseOrders.find((p) => p.id === costEstimate?.purchase_order_id_rough_in)?.name ?? '—'
-  const poTopName = purchaseOrders.find((p) => p.id === costEstimate?.purchase_order_id_top_out)?.name ?? '—'
-  const poTrimName = purchaseOrders.find((p) => p.id === costEstimate?.purchase_order_id_trim_set)?.name ?? '—'
-  const matRough = ctx.materialTotalRoughIn ?? 0
-  const matTop = ctx.materialTotalTopOut ?? 0
-  const matTrim = ctx.materialTotalTrimSet ?? 0
-  const totalMaterials = matRough + matTop + matTrim
-
-  // Load PO items for each stage
-  const loadPOItems = async (poId: string | null | undefined) => {
-    if (!poId) return []
-    const { data, error } = await supabase
-      .from('purchase_order_items')
-      .select('quantity, price_at_time, material_parts(name), source_template:material_templates!source_template_id(id, name)')
-      .eq('purchase_order_id', poId)
-      .order('sequence_order', { ascending: true })
-    if (error) return []
-    const rows = (data ?? []) as unknown as Array<{ quantity: number; price_at_time: number; material_parts: { name: string } | null; source_template: { id: string; name: string } | null }>
-    return rows.map(row => ({
-      part_name: row.material_parts?.name ?? '—',
-      quantity: row.quantity,
-      price_at_time: row.price_at_time,
-      template_name: row.source_template?.name ?? null
-    }))
-  }
-
-  const [roughItems, topItems, trimItems] = await Promise.all([
-    loadPOItems(costEstimate?.purchase_order_id_rough_in),
-    loadPOItems(costEstimate?.purchase_order_id_top_out),
-    loadPOItems(costEstimate?.purchase_order_id_trim_set)
-  ])
-
-  const taxPercent = ctx.taxPercent
-  const b = computeBidCostBreakdown({
-    materialTotalRoughIn: matRough,
-    materialTotalTopOut: matTop,
-    materialTotalTrimSet: matTrim,
-    laborRate: ctx.laborRateInput.trim() === '' ? 0 : parseFloat(ctx.laborRateInput) || 0,
-    laborRows: estimateLaborRows,
-    distanceFromOffice: bid.distance_from_office ?? null,
-    costEstimate,
-    countRowsLength: countRows.length,
-    directCostRows: ctx.directCostRows,
-    ratePerMileOverride: parseFloat(ctx.drivingCostRate) || 0.7,
-    hoursPerTripOverride: parseFloat(ctx.hoursPerTrip) || 2.0,
-  })
-  printHtmlInNewWindow(
-    buildExactLaborPageHtml({
-      title,
-      rows: laborRows,
-      totals: laborTotals,
-      costs: { totalMaterials, taxPercent, rate: b.rate, totalHours: b.totalLaborHours, laborCost: b.laborCost, distance: b.distance, ratePerMile: b.ratePerMile, numTrips: b.numTrips, drivingCost: b.drivingCost, estimatorCost: b.estimatorCost, travelCost: b.travelCost, laborCostWithDriving: b.laborCostWithDriving, otherDirectCost: b.otherDirectCost, grandTotal: b.totalCost },
-      pos: [
-        { stageLabel: 'Rough In', poName: poRoughName, stageMaterialTotal: matRough, items: roughItems },
-        { stageLabel: 'Top Out', poName: poTopName, stageMaterialTotal: matTop, items: topItems },
-        { stageLabel: 'Trim Set', poName: poTrimName, stageMaterialTotal: matTrim, items: trimItems },
-      ],
-    }),
-  )
 }
 
 export function printRoughInSubSheet(ctx: CostEstimatePrintContext) {

@@ -486,11 +486,9 @@ export default function Bids() {
   const {
     countRows, setCountRows, skipNextLoadCountRowsRef,
     takeoffCountRows,
-    takeoffMappings, setTakeoffMappings,
     takeoffRoughPartLines, setTakeoffRoughPartLines,
     takeoffRoughCatalogLowestByPartId, setTakeoffRoughCatalogLowestByPartId,
     materialTemplates,
-    draftPOs,
     takeoffBookVersions,
     takeoffBookEntries, setTakeoffBookEntries,
     selectedTakeoffBookVersionId, setSelectedTakeoffBookVersionId,
@@ -499,7 +497,6 @@ export default function Bids() {
     costEstimateLaborRows, setCostEstimateLaborRows,
     costEstimateCountRows, setCostEstimateCountRows,
     costEstimateFixtureMaterials,
-    purchaseOrdersForCostEstimate,
     costEstimateMaterialTotalRoughIn,
     costEstimateMaterialTotalTopOut,
     costEstimateMaterialTotalTrimSet,
@@ -549,12 +546,11 @@ export default function Bids() {
     pricingLaborRate,
     pricingFixtureMaterialsFromTakeoff,
     refreshAfterCountsChange, loadMaterialTemplates,
-    loadDraftPOs, loadTakeoffBookVersions, loadTakeoffBookEntries, saveBidSelectedTakeoffBookVersion,
-    loadPurchaseOrdersForCostEstimate, loadCostEstimate,
-    ensureCostEstimateForBid, loadCostEstimateData,
+    loadTakeoffBookVersions, loadTakeoffBookEntries, saveBidSelectedTakeoffBookVersion,
+    loadCostEstimateData,
     loadLaborBookVersions, loadLaborBookEntries,
     loadTemplatePriceBookVersions, loadBidPricings, loadBidVersions, loadPriceBookEntries, loadBidPricingAssignments, loadPricingDataForBid,
-    saveBidSelectedPriceBookVersion, setCostEstimatePO,
+    saveBidSelectedPriceBookVersion,
   } = useBidPricingEngine({
     selectedBidForCounts,
     selectedBidForTakeoff,
@@ -1019,7 +1015,6 @@ export default function Bids() {
     activeTab,
     selectedBidForCostEstimate?.id,
     selectedBidForCostEstimate?.selected_labor_book_version_id,
-    selectedBidForCostEstimate?.materials_model,
     selectedLaborBookVersionId,
     laborBookVersions,
     selectedBidVersionId,
@@ -2071,20 +2066,16 @@ export default function Bids() {
           setError={setError}
           selectedServiceTypeId={selectedServiceTypeId}
           serviceTypes={serviceTypes}
-          authUser={authUser}
           loadBids={loadBids}
           activeTab={activeTab}
           costEstimatePOModalTaxPercent={costEstimatePOModalTaxPercent}
           setCostEstimatePOModalTaxPercent={setCostEstimatePOModalTaxPercent}
           takeoffCountRows={takeoffCountRows}
-          takeoffMappings={takeoffMappings}
-          setTakeoffMappings={setTakeoffMappings}
           takeoffRoughPartLines={takeoffRoughPartLines}
           setTakeoffRoughPartLines={setTakeoffRoughPartLines}
                                       takeoffRoughCatalogLowestByPartId={takeoffRoughCatalogLowestByPartId}
           setTakeoffRoughCatalogLowestByPartId={setTakeoffRoughCatalogLowestByPartId}
                                       materialTemplates={materialTemplates}
-          draftPOs={draftPOs}
           takeoffBookVersions={takeoffBookVersions}
           takeoffBookEntries={takeoffBookEntries}
           setTakeoffBookEntries={setTakeoffBookEntries}
@@ -2092,21 +2083,12 @@ export default function Bids() {
           setSelectedTakeoffBookVersionId={setSelectedTakeoffBookVersionId}
           takeoffBookEntriesVersionId={takeoffBookEntriesVersionId}
           setTakeoffBookEntriesVersionId={setTakeoffBookEntriesVersionId}
-          costEstimate={costEstimate}
           costEstimateCountRows={costEstimateCountRows}
-          purchaseOrdersForCostEstimate={purchaseOrdersForCostEstimate}
           costEstimateMaterialTotalRoughIn={costEstimateMaterialTotalRoughIn}
-          costEstimateMaterialTotalTopOut={costEstimateMaterialTotalTopOut}
-          costEstimateMaterialTotalTrimSet={costEstimateMaterialTotalTrimSet}
-          loadDraftPOs={loadDraftPOs}
           loadTakeoffBookVersions={loadTakeoffBookVersions}
           loadTakeoffBookEntries={loadTakeoffBookEntries}
           saveBidSelectedTakeoffBookVersion={saveBidSelectedTakeoffBookVersion}
-          loadPurchaseOrdersForCostEstimate={loadPurchaseOrdersForCostEstimate}
-          loadCostEstimate={loadCostEstimate}
-          ensureCostEstimateForBid={ensureCostEstimateForBid}
           loadMaterialTemplates={loadMaterialTemplates}
-          setCostEstimatePO={setCostEstimatePO}
           onSelectBid={(bid) => selectBidAndSyncUrl(bid, 'takeoffs')}
           onlyMyBids={onlyMyBids}
           setOnlyMyBids={setOnlyMyBids}
@@ -2145,7 +2127,6 @@ export default function Bids() {
           costEstimateCountRows={costEstimateCountRows}
           costEstimateFixtureMaterials={costEstimateFixtureMaterials}
           panel={laborPanel}
-          purchaseOrdersForCostEstimate={purchaseOrdersForCostEstimate}
           costEstimateMaterialTotalRoughIn={costEstimateMaterialTotalRoughIn}
           costEstimateMaterialTotalTopOut={costEstimateMaterialTotalTopOut}
           costEstimateMaterialTotalTrimSet={costEstimateMaterialTotalTrimSet}

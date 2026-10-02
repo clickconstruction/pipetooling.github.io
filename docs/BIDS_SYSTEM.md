@@ -552,7 +552,7 @@ The Takeoff Book provides standardized mappings from fixture names to material a
 **Structure**:
 - **Fixture or Tie-in** - Primary name (e.g., "Toilet", "Sink")
 - **Additional names (aliases)** - Comma-separated alternative names (e.g., "Water Closet, WC")
-- **Multiple (Assembly, Stage) pairs** - One entry can have multiple assembly/stage combinations
+- **Assemblies** - One entry can name several assemblies
 
 **Alias Matching**:
 - Case-insensitive matching
@@ -564,116 +564,33 @@ The Takeoff Book provides standardized mappings from fixture names to material a
 Entry: "Toilet"
 Aliases: "Water Closet, WC, Commode"
 Items:
-  - Assembly: "Standard Toilet", Stage: "Rough In"
-  - Assembly: "Standard Toilet", Stage: "Top Out"
-  - Assembly: "Standard Toilet", Stage: "Trim Set"
+  - Assembly: "TOILET ROUGH IN"
+  - Assembly: "TOILET TOP OUT"
+  - Assembly: "TOILET TRIM"
 ```
 
-When applying this entry to a count row with Fixture="WC" and Count=5:
-- Creates 3 takeoff mappings (one per item)
-- Each mapping: Assembly="Standard Toilet", Quantity=5, Stage varies
+When this entry fills a count row with Fixture="WC" and no lines yet:
+- Each assembly's parts become priced part lines under the fixture
+- Which stage a fixture, line or part belongs to is set by the 1 · 2 · 3 boxes (*Materials by stage* below), not by the entry's items
 
 #### Entry Management UI
 
 **Entry Form** (for adding/editing):
 - Fixture or Tie-in (text input)
 - Additional names (textarea, comma-separated)
-- **Multiple Assembly/Stage Rows**:
+- **Assembly rows**:
   - Add/Remove buttons for rows
   - Assembly dropdown
-  - Stage dropdown (Rough In, Top Out, Trim Set)
-  - Each row stored separately in `takeoff_book_entry_items` table
+  - Each row stored separately in `takeoff_book_entry_items` table (its `stage` column is still written, Rough In for a new row, but no longer shown: only By Stage read it, v2.4396)
 
 **Apply Takeoff Book Button** (one label since By Stage retired, v2.4389):
 - Reads **Fill from book · N matches** (kernel `src/lib/bids/takeoffBookFill.ts`; matching via `takeoffBookMatch.ts` on the normalized fixture key, so `wc` matches `WC-12`). Expands each matched entry's assemblies into priced part lines on every fixture that has no lines yet (`useTakeoffRoughLines.fillRowsFromAssemblies`); fixtures with lines are never touched; the summary shows beside the button. Disabled at 0 matches with a hover reason. The bid's selected book loads its entries onto the tab for this.
 
 **Delete entries**: Delete is available only inside the edit modal for each entry (no in-row delete button).
 
-### Takeoff Mappings Table
+### By Stage: the mappings table and purchase orders from a takeoff (retired)
 
-**Columns**:
-- **Fixture** - From count row
-- **Count** - Quantity
-- **Assembly** - Material assembly dropdown (searchable)
-- **Quantity** - Number of this assembly per fixture (default 1)
-- **Stage** - Rough In, Top Out, or Trim Set
-- **Actions** - Add Assembly, Remove
-
-**Features**:
-- **Multiple assemblies per fixture**: Click "Add assembly" to add another row for same fixture
-- Each mapping has unique ID
-- Remove unwanted mappings individually
-
-### Assembly Search/Filter
-
-**Location**: Centered above mappings table
-
-**Features**:
-- **360px width** input field
-- Placeholder: "only show assemblies with these words"
-- Filters assembly dropdown options in real-time
-- Always includes currently selected assemblies (even if filtered out)
-- Case-insensitive search across assembly names
-
-### Purchase Order Creation
-
-#### Create Purchase Order
-
-**Button**: "Create purchase order"
-
-**Process**:
-1. Validates at least one mapping exists
-2. Creates new draft PO with name "Takeoff PO for [Bid Name]"
-3. For each mapping:
-   - Expands template recursively (handles nested templates)
-   - Adds parts to PO with:
-     - `from_template` tag
-     - Stage information
-     - Calculated quantities (Count × Template Quantity × Part Quantity)
-4. Opens Materials page with new PO
-
-**Utility**: Uses `expandTemplate()` from `materialPOUtils.ts` (internal; assemblies are stored as `material_templates` in the database)
-
-#### Add to Selected PO
-
-**Button**: "Add to selected PO"
-
-**Requirements**:
-- Draft PO must be selected from dropdown
-- Cannot add to finalized POs
-
-**Process**:
-1. Validates draft PO selected
-2. Expands all template mappings
-3. Adds parts to existing PO (appends to current items)
-4. Shows success message
-
-#### Print Breakdown
-
-**Button**: "Print Breakdown"
-
-**Purpose**: Produces a printable report for master plumber audit, showing what parts and assemblies make up the POs per stage.
-
-**Report structure**:
-- **Per stage** (Rough In, Top Out, Trim Set): Only stages with mappings are shown
-- **Per count line item** (fixture + count): Parts grouped by each fixture/count row
-- **Parts table** for each fixture: Part | Qty | Assembly (template the part comes from)
-- Parts are not merged across assemblies; each row shows its assembly for full traceability
-
-**Behavior**:
-- Disabled when no assemblies are mapped
-- Opens print preview in new window; closes after print/cancel
-- Uses same print styling as the Labor tab's cost estimate
-
-#### View Purchase Order Link
-
-After creating or adding to PO:
-- **"View purchase order" link** appears
-- Navigates to `/materials` with `state.openPOId`
-- Materials page:
-  - Opens Purchase Orders tab
-  - Displays specified PO
-  - Clears `location.state` to avoid re-opening on refresh
+Until v2.4389 a bid could instead be set to **By Stage**: a table of fixture × assembly × stage picks (`bids_takeoff_template_mappings`), **Create purchase orders for Stages** / **Add to selected PO** (one draft PO per stage, linked on `cost_estimates.purchase_order_id_*`, the bid's only source of a materials figure), a per-stage **Print Breakdown** and a **View purchase order** link. The owner retired it on 2026-10-01: v2.4389 switched it off and v2.4396 deleted the editor and every reader. The table, the PO columns and the rows in them stay; nothing in the app reads them but `bid_estimate_breakdown` and `bid_pricing_history`, which still count a linked stage PO first. Purchase orders are made from **Job Parts Tally** or **PO Builder**.
 
 ### Database Tables
 
@@ -700,7 +617,7 @@ UNIQUE (version_id, fixture_name)
 id (uuid, PK)
 entry_id (uuid, FK → takeoff_book_entries ON DELETE CASCADE)
 template_id (uuid, FK → material_templates ON DELETE CASCADE)
-stage (text) -- 'Rough In', 'Top Out', 'Trim Set'
+stage (text) -- 'rough_in' | 'top_out' | 'trim_set'; written, no longer shown or read (By Stage retired, v2.4396)
 created_at (timestamptz)
 ```
 
@@ -2139,7 +2056,6 @@ Bids table access:
 
 **Utility Functions** (`src/lib/materialPOUtils.ts`):
 - `expandTemplate(templateId, quantity)`: Recursively expands nested templates
-- `getTemplatePartsPreview(templateId)`: Preview parts before adding
 - `addExpandedPartsToPO(poId, parts)`: Add parts to existing PO
 
 ### Linking POs to the Cost Estimate

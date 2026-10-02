@@ -1,10 +1,8 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react'
 import { createPortal } from 'react-dom'
-import { Link } from 'react-router-dom'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { supabase } from '../../lib/supabase'
-import { loadPOItemsSummary } from '../../lib/bids/poItemsSummary'
 import { loadPartsCatalog } from '../../lib/materials/partsCatalog'
 import { useTakeoffPartsCatalog } from '../../hooks/useTakeoffPartsCatalog'
 import { useTakeoffRoughLines } from '../../hooks/useTakeoffRoughLines'
@@ -14,22 +12,18 @@ import { BidsTakeoffMaterialsSummarySection } from './BidsTakeoffMaterialsSummar
 import { TakeoffPartPricesModal } from './TakeoffPartPricesModal'
 import { TakeoffBundleBreakdownModal } from './TakeoffBundleBreakdownModal'
 import { TakeoffAssemblyAuthoringModals, type TakeoffNewTemplateItemDraft } from './TakeoffAssemblyAuthoringModals'
-import { addExpandedPartsToPO, expandTemplate } from '../../lib/materialPOUtils'
 import { fetchLowestPartPricesBatch } from '../../lib/materialPartCatalogPrice'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { printHtmlInNewWindow } from '../../lib/bidDocuments/htmlDoc'
-import { buildRoughTakeoffBreakdownHtml, buildExactTakeoffBreakdownHtml } from '../../lib/bidDocuments/takeoffBreakdown'
+import { buildRoughTakeoffBreakdownHtml } from '../../lib/bidDocuments/takeoffBreakdown'
 import { bidDisplayName } from '../../lib/bids/bidFormatting'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
 import {
   clampRoughQtyFromDraft,
   resolveRoughQtyOnClose,
-  normalizeMaterialsModel,
   takeoffFixtureCountLabel,
   mergePartLinesToTakeoffTemplateItems,
   saveAsAssemblyDefaultName,
-  STAGE_LABELS,
-  type TakeoffStage,
 } from '../../lib/bids/bidTakeoffHelpers'
 import { loadBundlePartLines, type BundlePartLine } from '../../lib/bids/assemblyBundleBreakdown'
 import type { PartAssemblyEntry } from '../../lib/bids/partAssemblyIndex'
@@ -89,7 +83,6 @@ import { bidNumberMatchesQuery, type LedgerPrefixMap } from '../../lib/ledgerDis
 import { PartFormModal } from '../PartFormModal'
 import { resolvePartFormSaveTarget } from '../../lib/bids/partFormSaveTarget'
 import { NumericEntryPad } from '../NumericEntryPad'
-import { TakeoffPartEditIcon } from '../icons/TakeoffPartEditIcon'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { useBookPrices } from '../../hooks/useTakeoffPriceDrift'
@@ -108,8 +101,6 @@ import { isAlternateRow } from '../../lib/bids/countSheet'
 import { isDeclinedRow, jobScopeRows } from '../../lib/bids/alternateAcceptance'
 import type {
   MaterialTemplateWithAssemblyType,
-  TakeoffBookEntry,
-  TakeoffMapping,
   TakeoffRoughPartLineRow,
 } from '../../lib/bids/bidPricingEngineTypes'
 
@@ -145,7 +136,6 @@ interface BidsTakeoffTabProps {
   setError: (message: string | null) => void
   selectedServiceTypeId: string
   serviceTypes: ServiceType[]
-  authUser: { id: string } | null
   loadBids: (serviceTypeId?: string | null) => Promise<BidWithBuilder[]>
   activeTab: string
   // Shared controlled state
@@ -153,14 +143,11 @@ interface BidsTakeoffTabProps {
   setCostEstimatePOModalTaxPercent: Dispatch<SetStateAction<string>>
   // Engine values + setters/loaders
   takeoffCountRows: BidsTakeoffEngine['takeoffCountRows']
-  takeoffMappings: BidsTakeoffEngine['takeoffMappings']
-  setTakeoffMappings: BidsTakeoffEngine['setTakeoffMappings']
   takeoffRoughPartLines: BidsTakeoffEngine['takeoffRoughPartLines']
   setTakeoffRoughPartLines: BidsTakeoffEngine['setTakeoffRoughPartLines']
   takeoffRoughCatalogLowestByPartId: BidsTakeoffEngine['takeoffRoughCatalogLowestByPartId']
   setTakeoffRoughCatalogLowestByPartId: BidsTakeoffEngine['setTakeoffRoughCatalogLowestByPartId']
   materialTemplates: BidsTakeoffEngine['materialTemplates']
-  draftPOs: BidsTakeoffEngine['draftPOs']
   takeoffBookVersions: BidsTakeoffEngine['takeoffBookVersions']
   takeoffBookEntries: BidsTakeoffEngine['takeoffBookEntries']
   setTakeoffBookEntries: BidsTakeoffEngine['setTakeoffBookEntries']
@@ -168,21 +155,12 @@ interface BidsTakeoffTabProps {
   setSelectedTakeoffBookVersionId: BidsTakeoffEngine['setSelectedTakeoffBookVersionId']
   takeoffBookEntriesVersionId: BidsTakeoffEngine['takeoffBookEntriesVersionId']
   setTakeoffBookEntriesVersionId: BidsTakeoffEngine['setTakeoffBookEntriesVersionId']
-  costEstimate: BidsTakeoffEngine['costEstimate']
   costEstimateCountRows: BidsTakeoffEngine['costEstimateCountRows']
-  purchaseOrdersForCostEstimate: BidsTakeoffEngine['purchaseOrdersForCostEstimate']
   costEstimateMaterialTotalRoughIn: BidsTakeoffEngine['costEstimateMaterialTotalRoughIn']
-  costEstimateMaterialTotalTopOut: BidsTakeoffEngine['costEstimateMaterialTotalTopOut']
-  costEstimateMaterialTotalTrimSet: BidsTakeoffEngine['costEstimateMaterialTotalTrimSet']
-  loadDraftPOs: BidsTakeoffEngine['loadDraftPOs']
   loadTakeoffBookVersions: BidsTakeoffEngine['loadTakeoffBookVersions']
   loadTakeoffBookEntries: BidsTakeoffEngine['loadTakeoffBookEntries']
   saveBidSelectedTakeoffBookVersion: BidsTakeoffEngine['saveBidSelectedTakeoffBookVersion']
-  loadPurchaseOrdersForCostEstimate: BidsTakeoffEngine['loadPurchaseOrdersForCostEstimate']
-  loadCostEstimate: BidsTakeoffEngine['loadCostEstimate']
-  ensureCostEstimateForBid: BidsTakeoffEngine['ensureCostEstimateForBid']
   loadMaterialTemplates: BidsTakeoffEngine['loadMaterialTemplates']
-  setCostEstimatePO: BidsTakeoffEngine['setCostEstimatePO']
   // Callbacks
   onSelectBid: (bid: BidWithBuilder) => void
   onClose: () => void
@@ -212,20 +190,16 @@ export function BidsTakeoffTab({
   setError,
   selectedServiceTypeId,
   serviceTypes,
-  authUser,
   loadBids,
   activeTab,
   costEstimatePOModalTaxPercent,
   setCostEstimatePOModalTaxPercent,
   takeoffCountRows,
-  takeoffMappings,
-  setTakeoffMappings,
   takeoffRoughPartLines,
   setTakeoffRoughPartLines,
   takeoffRoughCatalogLowestByPartId,
   setTakeoffRoughCatalogLowestByPartId,
   materialTemplates,
-  draftPOs,
   takeoffBookVersions,
   takeoffBookEntries,
   setTakeoffBookEntries,
@@ -233,21 +207,12 @@ export function BidsTakeoffTab({
   setSelectedTakeoffBookVersionId,
   takeoffBookEntriesVersionId,
   setTakeoffBookEntriesVersionId,
-  costEstimate,
   costEstimateCountRows,
-  purchaseOrdersForCostEstimate,
   costEstimateMaterialTotalRoughIn,
-  costEstimateMaterialTotalTopOut,
-  costEstimateMaterialTotalTrimSet,
-  loadDraftPOs,
   loadTakeoffBookVersions,
   loadTakeoffBookEntries,
   saveBidSelectedTakeoffBookVersion,
-  loadPurchaseOrdersForCostEstimate,
-  loadCostEstimate,
-  ensureCostEstimateForBid,
   loadMaterialTemplates,
-  setCostEstimatePO,
   onSelectBid,
   onClose,
   ledgerPrefixMap,
@@ -314,32 +279,16 @@ export function BidsTakeoffTab({
   const roughQtyNumpadOriginalRef = useRef<number | null>(null)
   const roughQtyBlurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [takeoffRemoveConfirm, setTakeoffRemoveConfirm] = useState<
-    null | { kind: 'rough_line'; lineId: string } | { kind: 'exact_mapping'; mappingId: string }
+    null | { kind: 'rough_line'; lineId: string }
   >(null)
   const takeoffRemoveConfirmDeleteRef = useRef<HTMLButtonElement>(null)
-  const [takeoffExistingPOId, setTakeoffExistingPOId] = useState('')
-  const [takeoffCreatingPO, setTakeoffCreatingPO] = useState(false)
-  const [takeoffAddingToPO, setTakeoffAddingToPO] = useState(false)
   const [takeoffPrinting, setTakeoffPrinting] = useState(false)
-  const [takeoffSuccessMessage, setTakeoffSuccessMessage] = useState<string | null>(null)
-  const [takeoffTemplatePickerOpenMappingId, setTakeoffTemplatePickerOpenMappingId] = useState<string | null>(null)
-  const [takeoffTemplatePickerQuery, setTakeoffTemplatePickerQuery] = useState('')
-  const takeoffTemplatePickerInputRefs = useRef<Map<string, HTMLInputElement>>(new Map())
-  const [takeoffTemplatePickerAnchor, setTakeoffTemplatePickerAnchor] = useState<
-    { top: number; left: number; width: number } | null
-  >(null)
-  const [takeoffCreatedPOId, setTakeoffCreatedPOId] = useState<string | null>(null)
-  const [takeoffPreviewModalTemplateId, setTakeoffPreviewModalTemplateId] = useState<string | null>(null)
-  const [takeoffPreviewModalTemplateName, setTakeoffPreviewModalTemplateName] = useState<string | null>(null)
-  const [takeoffExistingPOItems, setTakeoffExistingPOItems] = useState<Array<{ part_name: string; quantity: number; price_at_time: number; template_name: string | null }> | 'loading' | null>(null)
   const [applyingTakeoffBookTemplates, setApplyingTakeoffBookTemplates] = useState(false)
-  const [takeoffBookApplyMessage, setTakeoffBookApplyMessage] = useState<string | null>(null)
   // Assembly authoring cluster (T7): the modal open pointers, the states
   // handleBidsPartFormSave routes into, and the Add-Assembly drafts seeded by
   // openSaveAsAssemblyFromRough stay parent-owned; the rest of the cluster's
   // state lives in TakeoffAssemblyAuthoringModals.
   const [takeoffAddTemplateModalOpen, setTakeoffAddTemplateModalOpen] = useState(false)
-  const [takeoffAddTemplateForMappingId, setTakeoffAddTemplateForMappingId] = useState<string | null>(null)
   const [takeoffNewTemplateName, setTakeoffNewTemplateName] = useState('')
   const [takeoffNewTemplateItems, setTakeoffNewTemplateItems] = useState<TakeoffNewTemplateItemDraft[]>([])
   // When the Add-Assembly modal was opened via "Save as Assembly" from a rough count
@@ -412,15 +361,6 @@ export function BidsTakeoffTab({
     bidsPartFormIsEditRef.current = false
   }
 
-  // Add Parts to Template Modal state (open pointer + PartFormModal-routed picker states)
-  const [addPartsToTemplateModalOpen, setAddPartsToTemplateModalOpen] = useState(false)
-  const [addPartsToTemplateId, setAddPartsToTemplateId] = useState<string | null>(null)
-  const [addPartsToTemplateName, setAddPartsToTemplateName] = useState<string | null>(null)
-  const [addPartsSelectedPartId, setAddPartsSelectedPartId] = useState('')
-  // Staged id for the create-from-picker flow (v2.1394): when the part form
-  // minted this part, the Add-Parts modal auto-adds it (qty input, default 1)
-  // instead of only pre-selecting. Normal picker selections never set this.
-  const [addPartsAutoAddPartId, setAddPartsAutoAddPartId] = useState('')
 
   // Part Prices modal (check/modify prices from Add Assembly / Edit Assembly item rows)
   const [partPricesModal, setPartPricesModal] = useState<{ partId: string; partName: string; defaultAddPrice?: string } | null>(null)
@@ -448,21 +388,17 @@ export function BidsTakeoffTab({
 
 
 
-  // T8 seam (v2.2770): the parts catalog + supply houses / part types + the exact-model preview cache.
+  // T8 seam (v2.2770): the parts catalog + supply houses / part types.
   const {
     takeoffAddTemplateParts,
     setTakeoffAddTemplateParts,
     supplyHouses,
     partTypes,
-    takeoffTemplatePreviewCache,
-    setTakeoffTemplatePreviewCache,
   } = useTakeoffPartsCatalog<MaterialPartWithType>({
     activeTab,
     selectedServiceTypeId,
     selectedBidForTakeoff,
-    takeoffMappings,
     takeoffAddTemplateModalOpen,
-    addPartsToTemplateModalOpen,
     editTemplateModalOpen,
   })
 
@@ -527,26 +463,25 @@ export function BidsTakeoffTab({
     void loadTakeoffBookEntries(selectedTakeoffBookVersionId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, selectedBidForTakeoff?.id, selectedTakeoffBookVersionId])
-  const takeoffIsRough = normalizeMaterialsModel(selectedBidForTakeoff?.materials_model) === 'rough'
-  // The view chooser (v2.3082): a Combined bid opened here asks which view to work in — but only
+  // The view chooser (v2.3082): a bid opened here asks which view to work in — but only
   // until this device has picked once (v2.3165, Wendi: "stop asking me every time"). After that the
   // remembered view opens straight away and the pills beside the bid name are the way to switch.
-  // By Stage bids skip it (One at a time / Sheet are Combined-only). A pick goes through
+  // A pick goes through
   // switchTakeoffView so the device remembers it and the seamless hop still lands the fixture.
   const [takeoffChooserOpen, setTakeoffChooserOpen] = useState(false)
   useEffect(() => {
     setTakeoffChooserOpen(
-      !!selectedBidForTakeoff?.id && takeoffIsRough && !hasStoredTakeoffView(typeof window !== 'undefined' ? window.localStorage : null),
+      !!selectedBidForTakeoff?.id && !hasStoredTakeoffView(typeof window !== 'undefined' ? window.localStorage : null),
     )
-  }, [selectedBidForTakeoff?.id, takeoffIsRough])
+  }, [selectedBidForTakeoff?.id])
   // v2.4211: once the bid is won, a declined alternate's rows stay on the sheet (grey mark) but leave
   // the materials total, the book fill and the schedule of values — the job's numbers.
   const jobRows = useMemo(() => jobScopeRows(takeoffCountRows, selectedBidForTakeoff), [takeoffCountRows, selectedBidForTakeoff])
   const bookFillPlan = useMemo(() => {
-    if (!takeoffIsRough || !selectedTakeoffBookVersionId || takeoffBookEntriesVersionId !== selectedTakeoffBookVersionId) return null
+    if (!selectedTakeoffBookVersionId || takeoffBookEntriesVersionId !== selectedTakeoffBookVersionId) return null
     return planBookFill(jobRows, takeoffRoughPartLines, takeoffBookEntries)
-  }, [takeoffIsRough, selectedTakeoffBookVersionId, takeoffBookEntriesVersionId, jobRows, takeoffRoughPartLines, takeoffBookEntries])
-  const bookFillButton = fillFromBookLabel(bookFillPlan, applyingTakeoffBookTemplates, takeoffIsRough)
+  }, [selectedTakeoffBookVersionId, takeoffBookEntriesVersionId, jobRows, takeoffRoughPartLines, takeoffBookEntries])
+  const bookFillButton = fillFromBookLabel(bookFillPlan, applyingTakeoffBookTemplates)
   // New 1 / New 2 substrate (v2.2778): coverage is the same math the Labor tab and Workbench use.
   const takeoffCoverage = useMemo(() => summarizeTakeoffCoverage(jobRows, takeoffRoughPartLines), [jobRows, takeoffRoughPartLines])
   // v2.4191: the bid's alternate groups — the rail splits materials by them; an alternate's row wears the ALT mark.
@@ -561,7 +496,7 @@ export function BidsTakeoffTab({
   // Materials by stage (v2.3672): load the splits + the factor with the bid, and again when the
   // version changes (v2.4393): a version made a moment ago brought its boxes with it (v2.4388),
   // and the list read when the bid opened does not hold them.
-  const stageBidId = takeoffIsRough ? (selectedBidForTakeoff?.id ?? null) : null
+  const stageBidId = selectedBidForTakeoff?.id ?? null
   const stageBidFactorRaw = selectedBidForTakeoff?.sov_material_factor ?? null
   useEffect(() => {
     setStageFillNote(null)
@@ -588,8 +523,8 @@ export function BidsTakeoffTab({
   const stageLookup = useMemo(() => indexStageSplits(stageSplits), [stageSplits])
   // PR 4: the assemblies' memory for the bundles on this bid (keyed like the bundle-parts cache).
   const stageBundleTemplateIdsKey = useMemo(
-    () => (takeoffIsRough ? Array.from(new Set(takeoffRoughPartLines.filter((l) => l.partId == null && l.sourceTemplateId).map((l) => l.sourceTemplateId as string))).sort().join(',') : ''),
-    [takeoffIsRough, takeoffRoughPartLines],
+    () => Array.from(new Set(takeoffRoughPartLines.filter((l) => l.partId == null && l.sourceTemplateId).map((l) => l.sourceTemplateId as string))).sort().join(','),
+    [takeoffRoughPartLines],
   )
   useEffect(() => {
     const ids = stageBundleTemplateIdsKey.split(',').filter(Boolean)
@@ -612,14 +547,14 @@ export function BidsTakeoffTab({
   // PR 4: what the book remembers for each matched fixture.
   const bookStageSplitByRow = useMemo(() => {
     const m = new Map<string, StageWeights>()
-    if (!takeoffIsRough || takeoffBookEntries.length === 0) return m
+    if (takeoffBookEntries.length === 0) return m
     const byEntry = new Map(takeoffBookEntries.map((e) => [e.id, e]))
     for (const [rowId, match] of matchBookEntries(takeoffCountRows, takeoffBookEntries, takeoffBookEntries.flatMap((e) => e.items))) {
       const w = parseStageSplitJson(byEntry.get(match.entryId)?.stage_split)
       if (w) m.set(rowId, w)
     }
     return m
-  }, [takeoffIsRough, takeoffBookEntries, takeoffCountRows])
+  }, [takeoffBookEntries, takeoffCountRows])
   const stageBundleParts = useMemo(() => {
     const m = new Map<string, BundlePartInput[]>()
     for (const [templateId, lines] of Object.entries(bundlePartsByTemplateId)) m.set(templateId, bundlePartInputs(lines))
@@ -649,7 +584,7 @@ export function BidsTakeoffTab({
   }, [rowJump, takeoffView])
   // Shared by One at a time / Sheet (v2.2781): one fixture-history call per Combined bid.
   const takeoffHistory = useTakeoffFixtureHistory({
-    bidId: takeoffIsRough ? selectedBidForTakeoff?.id ?? null : null,
+    bidId: selectedBidForTakeoff?.id ?? null,
     serviceTypeId: selectedServiceTypeId,
     countRows: takeoffCountRows,
   })
@@ -658,7 +593,7 @@ export function BidsTakeoffTab({
   // v2.4395: the materials at today's book — each line as priced against its book row today.
   const confirmDialog = useConfirmDialog()
   const driftPriceIds = useMemo(() => takeoffRoughPartLines.map((l) => l.sourceMaterialPartPriceId ?? '').filter(Boolean), [takeoffRoughPartLines])
-  const driftBook = useBookPrices(driftPriceIds, activeTab === 'takeoffs' && takeoffIsRough)
+  const driftBook = useBookPrices(driftPriceIds, activeTab === 'takeoffs')
   const takeoffDrift = useMemo(() => {
     const countByRowId = new Map(takeoffCountRows.map((r) => [r.id, r.count]))
     return takeoffPriceDrift(
@@ -882,30 +817,6 @@ export function BidsTakeoffTab({
     return () => window.removeEventListener('keydown', onKey)
   }, [takeoffRemoveConfirm])
 
-  useEffect(() => {
-    if (takeoffTemplatePickerOpenMappingId == null) {
-      setTakeoffTemplatePickerAnchor(null)
-      return
-    }
-    const recompute = () => {
-      const el = takeoffTemplatePickerInputRefs.current.get(takeoffTemplatePickerOpenMappingId)
-      if (!el) return
-      const rect = el.getBoundingClientRect()
-      setTakeoffTemplatePickerAnchor({
-        top: rect.bottom + 2,
-        left: rect.left,
-        width: rect.width,
-      })
-    }
-    recompute()
-    window.addEventListener('resize', recompute)
-    window.addEventListener('scroll', recompute, true)
-    return () => {
-      window.removeEventListener('resize', recompute)
-      window.removeEventListener('scroll', recompute, true)
-    }
-  }, [takeoffTemplatePickerOpenMappingId])
-
   function openSaveAsAssemblyFromRough(countRowId: string, row: BidCountRow) {
     const lines = takeoffRoughPartLines
       .filter(
@@ -917,7 +828,6 @@ export function BidsTakeoffTab({
     const merged = mergePartLinesToTakeoffTemplateItems(lines)
     setTakeoffNewTemplateItems(merged)
     setTakeoffNewTemplateName(saveAsAssemblyDefaultName(row.fixture, selectedBidForTakeoff?.project_name))
-    setTakeoffAddTemplateForMappingId(null)
     setSaveAsAssemblyCountRowId(countRowId)
     setTakeoffNewTemplateApplyPriceIndex(null)
     setTakeoffNewItemPartId('')
@@ -949,16 +859,6 @@ export function BidsTakeoffTab({
     setRoughAddAssemblyModalCountRowId(countRowId)
   }
 
-  // Add Parts to Existing Template Modal Functions (open pointer stays here;
-  // the modal body + save/close live in TakeoffAssemblyAuthoringModals)
-  function openAddPartsToTemplateModal(templateId: string, templateName: string) {
-    setAddPartsToTemplateId(templateId)
-    setAddPartsToTemplateName(templateName)
-    setAddPartsSelectedPartId('')
-    setAddPartsAutoAddPartId('')
-    setAddPartsToTemplateModalOpen(true)
-  }
-
   // Edit Template Modal Functions (open pointer stays here; the reset + item/
   // price loads moved into TakeoffAssemblyAuthoringModals' open-edge effect)
   function openEditTemplateModal(templateId: string, templateName: string) {
@@ -986,17 +886,10 @@ export function BidsTakeoffTab({
     if (!wasEdit) {
       const target = resolvePartFormSaveTarget({
         capturedRoughLineId,
-        addPartsToTemplateModalOpen,
         editTemplateModalOpen,
         livePickerLineId: takeoffRoughPartPickerLineId,
       })
       switch (target.kind) {
-        case 'addPartsToTemplate':
-          // v2.1394: stage for auto-add — the modal's effect commits it with
-          // the current quantity input and closes, like its sibling flows.
-          setAddPartsSelectedPartId(part.id)
-          setAddPartsAutoAddPartId(part.id)
-          break
         case 'editTemplateItem':
           // Edit Assembly's create-new flow: the cluster consumes this id and
           // adds the part straight to the assembly (v2.1327).
@@ -1035,233 +928,24 @@ export function BidsTakeoffTab({
 
   async function applyTakeoffBookTemplates() {
     if (!selectedBidForTakeoff || takeoffCountRows.length === 0 || !selectedTakeoffBookVersionId) return
-    if (normalizeMaterialsModel(selectedBidForTakeoff.materials_model) === 'rough') {
-      // Combined (v2.2776): expand every matched assembly into part lines on the fixtures that have none.
-      if (!bookFillPlan || bookFillPlan.fillable.length === 0) {
-        setTakeoffBookApplyMessage(
-          bookFillPlan && bookFillPlan.matched > 0 ? 'Every fixture this book matches already has lines.' : 'No entry in this book matches these fixtures yet.',
-        )
-        setTimeout(() => setTakeoffBookApplyMessage(null), 4000)
-        return
-      }
-      setApplyingTakeoffBookTemplates(true)
-      setError(null)
-      try {
-        const result = await fillRowsFromAssemblies(bookFillPlan.fillable.map((m) => ({ countRowId: m.countRowId, templateIds: m.templateIds })))
-        setTakeoffBookApplyMessage(bookFillMessage(result))
-        setTimeout(() => setTakeoffBookApplyMessage(null), 6000)
-      } catch (e) {
-        showToast(formatErrorMessage(e, 'Failed to fill from the book'), 'error')
-      } finally {
-        setApplyingTakeoffBookTemplates(false)
-      }
+    // v2.2776: expand every matched assembly into part lines on the fixtures that have none.
+    // The summary is a toast: the line it used to print on sat in the Old view (retired v2.3588).
+    if (!bookFillPlan || bookFillPlan.fillable.length === 0) {
+      showToast(
+        bookFillPlan && bookFillPlan.matched > 0 ? 'Every fixture this book matches already has lines.' : 'No entry in this book matches these fixtures yet.',
+        'info',
+      )
       return
     }
-    setTakeoffBookApplyMessage(null)
     setApplyingTakeoffBookTemplates(true)
     setError(null)
     try {
-      const { data: entriesData, error: entriesErr } = await supabase
-        .from('takeoff_book_entries')
-        .select('id, fixture_name, alias_names')
-        .eq('version_id', selectedTakeoffBookVersionId)
-        .order('sequence_order', { ascending: true })
-      if (entriesErr) {
-        setError(`Failed to load takeoff book entries: ${entriesErr.message}`)
-        setApplyingTakeoffBookTemplates(false)
-        return
-      }
-      const entriesList = (entriesData as Pick<TakeoffBookEntry, 'id' | 'fixture_name' | 'alias_names'>[]) ?? []
-      if (entriesList.length === 0) {
-        setTakeoffBookApplyMessage('No new assemblies to add.')
-        setTimeout(() => setTakeoffBookApplyMessage(null), 3000)
-        setApplyingTakeoffBookTemplates(false)
-        return
-      }
-      const entryIds = entriesList.map((e) => e.id)
-      const { data: itemsData, error: itemsErr } = await supabase
-        .from('takeoff_book_entry_items')
-        .select('entry_id, template_id, stage')
-        .in('entry_id', entryIds)
-        .order('sequence_order', { ascending: true })
-      if (itemsErr) {
-        setError(`Failed to load takeoff book entry items: ${itemsErr.message}`)
-        setApplyingTakeoffBookTemplates(false)
-        return
-      }
-      const itemsList = (itemsData as { entry_id: string; template_id: string; stage: string }[]) ?? []
-      const itemsByEntryId = new Map<string, { template_id: string; stage: string }[]>()
-      for (const item of itemsList) {
-        const list = itemsByEntryId.get(item.entry_id) ?? []
-        list.push({ template_id: item.template_id, stage: item.stage })
-        itemsByEntryId.set(item.entry_id, list)
-      }
-      const existingKeys = new Set(
-        takeoffMappings
-          .filter((m) => m.templateId && m.stage)
-          .map((m) => `${m.countRowId}:${m.templateId}:${m.stage}`)
-      )
-      const toAdd: TakeoffMapping[] = []
-      for (const row of takeoffCountRows) {
-        const fixtureLower = (row.fixture ?? '').toLowerCase()
-        for (const entry of entriesList) {
-          const matchesPrimary = entry.fixture_name.toLowerCase() === fixtureLower
-          const matchesAlias = (entry.alias_names ?? []).some((alias: string) => alias.trim().toLowerCase() === fixtureLower)
-          if (!matchesPrimary && !matchesAlias) continue
-          const items = itemsByEntryId.get(entry.id) ?? []
-          for (const item of items) {
-            const key = `${row.id}:${item.template_id}:${item.stage}`
-            if (existingKeys.has(key)) continue
-            existingKeys.add(key)
-            toAdd.push({
-              id: crypto.randomUUID(),
-              countRowId: row.id,
-              templateId: item.template_id,
-              stage: item.stage as TakeoffStage,
-              quantity: Number(row.count),
-              isSaved: false,
-            })
-          }
-        }
-      }
-      if (toAdd.length > 0) setTakeoffMappings((prev) => [...prev, ...toAdd])
-      setTakeoffBookApplyMessage(toAdd.length === 0 ? 'No new assemblies to add.' : `Applied ${toAdd.length} assembly(ies).`)
-      setTimeout(() => setTakeoffBookApplyMessage(null), 3000)
+      const result = await fillRowsFromAssemblies(bookFillPlan.fillable.map((m) => ({ countRowId: m.countRowId, templateIds: m.templateIds })))
+      showToast(bookFillMessage(result), 'success')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Failed to fill from the book'), 'error')
     } finally {
       setApplyingTakeoffBookTemplates(false)
-    }
-  }
-
-  function setTakeoffMapping(mappingId: string, updates: { templateId?: string; stage?: TakeoffStage; quantity?: number }) {
-    setTakeoffMappings((prev) => {
-      const originalMapping = prev.find(m => m.id === mappingId)
-      
-      // Check if we're changing template or stage on a saved mapping
-      // If so, we need to delete the old one and insert a new one
-      const isChangingUniqueFields = originalMapping?.isSaved && (
-        (updates.templateId !== undefined && updates.templateId !== originalMapping.templateId) ||
-        (updates.stage !== undefined && updates.stage !== originalMapping.stage)
-      )
-      
-      let mappingToSave: TakeoffMapping | null = null
-      
-      const updated = prev.map((m) => {
-        if (m.id === mappingId) {
-          const updatedMapping = { 
-            ...m, 
-            ...(updates.templateId !== undefined && { templateId: updates.templateId }), 
-            ...(updates.stage !== undefined && { stage: updates.stage }), 
-            ...(updates.quantity !== undefined && { quantity: updates.quantity }) 
-          }
-          
-          // If changing unique constraint fields, mark as not saved and generate new ID
-          if (isChangingUniqueFields) {
-            mappingToSave = { ...updatedMapping, isSaved: false, id: crypto.randomUUID() }
-            return mappingToSave
-          }
-          
-          mappingToSave = updatedMapping
-          return updatedMapping
-        }
-        return m
-      })
-      
-      // Delete old mapping if we're changing unique fields
-      if (isChangingUniqueFields && originalMapping) {
-        supabase
-          .from('bids_takeoff_template_mappings')
-          .delete()
-          .eq('id', originalMapping.id)
-          .then(({ error }) => {
-            if (error) {
-              console.error('Failed to delete old takeoff mapping:', error)
-            }
-          })
-      }
-      
-      // Save the updated mapping to database
-      if (mappingToSave) {
-        saveTakeoffMapping(mappingToSave)
-      }
-      
-      return updated
-    })
-  }
-
-  async function saveTakeoffMapping(mapping: TakeoffMapping) {
-    if (!selectedBidForTakeoff?.id || !mapping.templateId) return
-    
-    const mappingData: any = {
-      bid_id: selectedBidForTakeoff.id,
-      bid_version_id: selectedBidVersionId,
-      count_row_id: mapping.countRowId,
-      template_id: mapping.templateId,
-      stage: mapping.stage,
-      quantity: mapping.quantity,
-      sequence_order: takeoffMappings.filter(m => m.countRowId === mapping.countRowId).indexOf(mapping)
-    }
-    
-    // Include ID if this is an existing mapping to ensure we update the correct record
-    if (mapping.isSaved) {
-      mappingData.id = mapping.id
-    }
-    
-    // Use upsert to handle both insert and update cases
-    // When ID is provided, it updates that specific record
-    // When ID is not provided and there's a conflict on the unique constraint, it updates the conflicting record
-    const { data, error } = await supabase
-      .from('bids_takeoff_template_mappings')
-      .upsert(mappingData, {
-        onConflict: 'count_row_id,template_id,stage,bid_version_id',
-        ignoreDuplicates: false
-      })
-      .select()
-      .single()
-    
-    if (error) {
-      console.error('Failed to save takeoff mapping:', error)
-      setError(`Failed to save template assignment: ${error.message}`)
-    } else if (data && !mapping.isSaved) {
-      // Update local state with database ID for newly created mappings
-      const savedId = (data as { id: string }).id
-      setTakeoffMappings(prev => prev.map(m => 
-        m.id === mapping.id ? { ...m, id: savedId, isSaved: true } : m
-      ))
-    }
-  }
-
-  function addTakeoffTemplate(countRowId: string, count?: number) {
-    const quantity = count != null && !Number.isNaN(Number(count)) ? Math.max(1, Number(count)) : 1
-    const newMapping: TakeoffMapping = { 
-      id: crypto.randomUUID(), 
-      countRowId, 
-      templateId: '', 
-      stage: 'rough_in', 
-      quantity,
-      isSaved: false
-    }
-    setTakeoffMappings((prev) => [...prev, newMapping])
-    // Don't save yet - wait until user selects a template
-  }
-
-  async function removeTakeoffMapping(mappingId: string) {
-    const mapping = takeoffMappings.find(m => m.id === mappingId)
-    
-    // Remove from local state first for immediate UI update
-    setTakeoffMappings((prev) => prev.filter((m) => m.id !== mappingId))
-    
-    // If it was saved to database, delete it
-    if (mapping?.isSaved) {
-      const { error } = await supabase
-        .from('bids_takeoff_template_mappings')
-        .delete()
-        .eq('id', mappingId)
-      
-      if (error) {
-        console.error('Failed to delete takeoff mapping:', error)
-        // Revert local change on error
-        setTakeoffMappings((prev) => [...prev, mapping])
-      }
     }
   }
 
@@ -1353,124 +1037,12 @@ export function BidsTakeoffTab({
     if (!takeoffRemoveConfirm) return
     const target = takeoffRemoveConfirm
     setTakeoffRemoveConfirm(null)
-    if (target.kind === 'rough_line') void removeTakeoffRoughPartLine(target.lineId)
-    else void removeTakeoffMapping(target.mappingId)
-  }
-
-  async function createPOFromTakeoff() {
-    if (!authUser?.id || !selectedBidForTakeoff) return
-    const mapped = takeoffMappings.filter((m) => m.templateId.trim())
-    if (mapped.length === 0) {
-      setError('Select an assembly for at least one fixture to create a purchase order.')
-      return
-    }
-    setTakeoffCreatingPO(true)
-    setError(null)
-    setTakeoffSuccessMessage(null)
-    const projectName = selectedBidForTakeoff.project_name?.trim() || 'Project'
-    const dateStr = new Date().toLocaleDateString()
-    const stages: TakeoffStage[] = ['rough_in', 'top_out', 'trim_set']
-    const createdIds: string[] = []
-    const createdLabels: string[] = []
-    const createdByStage: Partial<Record<'rough_in' | 'top_out' | 'trim_set', string>> = {}
-    for (const stage of stages) {
-      const mappingsForStage = mapped.filter((m) => m.stage === stage)
-      if (mappingsForStage.length === 0) continue
-      const stageLabel = STAGE_LABELS[stage]
-      const poName = `${projectName} – Takeoff ${dateStr} – ${stageLabel}`
-      const { data: poData, error: poError } = await supabase
-        .from('purchase_orders')
-        .insert({
-          name: poName,
-          status: 'draft',
-          created_by: authUser.id,
-          notes: null,
-          stage,
-          service_type_id: selectedServiceTypeId,
-        })
-        .select('id')
-        .single()
-      if (poError) {
-        setError(`Failed to create PO: ${poError.message}`)
-        setTakeoffCreatingPO(false)
-        return
-      }
-      const allParts: Array<{ part_id: string; quantity: number }> = []
-      for (const m of mappingsForStage) {
-        const qty = Math.max(1, Math.round(Number(m.quantity)) || 1)
-        const parts = await expandTemplate(supabase, m.templateId, qty)
-        allParts.push(...parts)
-      }
-      const addErr = await addExpandedPartsToPO(supabase, poData.id, allParts)
-      if (addErr) {
-        setError(addErr)
-        setTakeoffCreatingPO(false)
-        return
-      }
-      createdIds.push(poData.id)
-      createdLabels.push(stageLabel)
-      createdByStage[stage] = poData.id
-    }
-    setTakeoffCreatingPO(false)
-    setTakeoffSuccessMessage(
-      createdLabels.length === 1
-        ? `Purchase order "${projectName} – Takeoff ${dateStr} – ${createdLabels[0]}" created. Open Materials → Purchase Orders to edit.`
-        : `Purchase orders created for ${createdLabels.join(', ')}. Open Materials → Purchase Orders to edit.`
-    )
-    setTakeoffCreatedPOId(createdIds[0] ?? null)
-    loadDraftPOs()
-    if (selectedBidForTakeoff?.id && Object.keys(createdByStage).length > 0) {
-      const est = await ensureCostEstimateForBid(selectedBidForTakeoff.id)
-      if (est) {
-        await supabase
-          .from('cost_estimates')
-          .update({
-            purchase_order_id_rough_in: createdByStage.rough_in ?? est.purchase_order_id_rough_in ?? null,
-            purchase_order_id_top_out: createdByStage.top_out ?? est.purchase_order_id_top_out ?? null,
-            purchase_order_id_trim_set: createdByStage.trim_set ?? est.purchase_order_id_trim_set ?? null,
-          })
-          .eq('id', est.id)
-        await loadPurchaseOrdersForCostEstimate()
-        if ((activeTab === 'labor' || activeTab === 'takeoffs') && selectedBidForCostEstimate?.id === selectedBidForTakeoff.id) {
-          await loadCostEstimate(selectedBidForTakeoff.id)
-        }
-      }
-    }
-  }
-
-  async function addTakeoffToExistingPO() {
-    if (!authUser?.id || !takeoffExistingPOId.trim()) return
-    const mapped = takeoffMappings.filter((m) => m.templateId.trim())
-    if (mapped.length === 0) {
-      setError('Select an assembly for at least one fixture to add to a purchase order.')
-      return
-    }
-    setTakeoffAddingToPO(true)
-    setError(null)
-    setTakeoffSuccessMessage(null)
-    for (const m of mapped) {
-      const qty = Math.max(1, Math.round(Number(m.quantity)) || 1)
-      const parts = await expandTemplate(supabase, m.templateId, qty)
-      const addErr = await addExpandedPartsToPO(supabase, takeoffExistingPOId, parts, m.templateId)
-      if (addErr) {
-        setError(addErr)
-        setTakeoffAddingToPO(false)
-        return
-      }
-    }
-    setTakeoffAddingToPO(false)
-    const po = draftPOs.find((p) => p.id === takeoffExistingPOId)
-    setTakeoffSuccessMessage(`Items added to "${po?.name ?? 'purchase order'}". Open Materials → Purchase Orders to view.`)
-    setTakeoffCreatedPOId(takeoffExistingPOId)
-    loadDraftPOs()
-    setTakeoffExistingPOItems('loading')
-    const items = await loadPOItemsSummary(supabase, takeoffExistingPOId)
-    setTakeoffExistingPOItems(items)
+    void removeTakeoffRoughPartLine(target.lineId)
   }
 
   async function printTakeoffBreakdown() {
     if (!selectedBidForTakeoff) return
-    if (normalizeMaterialsModel(selectedBidForTakeoff.materials_model) === 'rough') {
+    {
       const filled = takeoffRoughPartLines.filter((l) => (l.partId ?? '').trim() || l.sourceTemplateId)
       if (filled.length === 0) {
         setError('Add at least one part line with a selected part to print.')
@@ -1510,93 +1082,14 @@ export function BidsTakeoffTab({
       } finally {
         setTakeoffPrinting(false)
       }
-      return
-    }
-    const mapped = takeoffMappings.filter((m) => m.templateId.trim())
-    if (mapped.length === 0) {
-      setError('No assemblies mapped. Select an assembly for at least one fixture to print.')
-      return
-    }
-    setTakeoffPrinting(true)
-    setError(null)
-    try {
-      const stageOrder: TakeoffStage[] = ['rough_in', 'top_out', 'trim_set']
-      const stages: Array<{
-        stageLabel: string
-        rows: Array<{ fixture: string; count: number; parts: Array<{ partName: string; quantity: number; templateName: string }> }>
-      }> = []
-
-      for (const stage of stageOrder) {
-        const mappingsForStage = mapped.filter((m) => m.stage === stage)
-        if (mappingsForStage.length === 0) continue
-
-        const countRowIds = Array.from(new Set(mappingsForStage.map((m) => m.countRowId)))
-        const stageRows: Array<{ fixture: string; count: number; parts: Array<{ partName: string; quantity: number; templateName: string }> }> = []
-
-        for (const countRowId of countRowIds) {
-          const row = takeoffCountRows.find((r) => r.id === countRowId)
-          const fixture = row?.fixture ?? '—'
-          const count = row ? Number(row.count) : 0
-          const mappingsForRow = mappingsForStage.filter((m) => m.countRowId === countRowId)
-
-          // Parts for this count line item, with template association (don't merge so we keep template per part)
-          const partsWithTemplate: Array<{ part_id: string; quantity: number; template_name: string }> = []
-          for (const m of mappingsForRow) {
-            const qty = Math.max(1, Math.round(Number(m.quantity)) || 1)
-            const parts = await expandTemplate(supabase, m.templateId, qty)
-            const templateName = materialTemplates.find((t) => t.id === m.templateId)?.name ?? '—'
-            for (const { part_id, quantity } of parts) {
-              partsWithTemplate.push({ part_id, quantity, template_name: templateName })
-            }
-          }
-
-          const partIds = Array.from(new Set(partsWithTemplate.map((p) => p.part_id)))
-          const { data: partsData } = await supabase.from('material_parts').select('id, name').in('id', partIds)
-          const nameById = new Map<string, string>()
-          for (const p of partsData ?? []) {
-            if (p?.id) nameById.set(p.id, p.name ?? '')
-          }
-
-          const parts = partsWithTemplate
-            .sort((a, b) => {
-              const nameCmp = (nameById.get(a.part_id) ?? '').localeCompare(nameById.get(b.part_id) ?? '')
-              if (nameCmp !== 0) return nameCmp
-              return a.template_name.localeCompare(b.template_name)
-            })
-            .map((p) => ({
-              partName: nameById.get(p.part_id) ?? p.part_id.slice(0, 8),
-              quantity: p.quantity,
-              templateName: p.template_name,
-            }))
-
-          stageRows.push({ fixture, count, parts })
-        }
-
-        stages.push({ stageLabel: STAGE_LABELS[stage], rows: stageRows })
-      }
-
-      if (stages.length === 0) {
-        setError('No mappings with assemblies to print.')
-        return
-      }
-
-      printHtmlInNewWindow(
-        buildExactTakeoffBreakdownHtml({
-          title: (bidDisplayName(selectedBidForTakeoff) || 'Bid') + ' — Takeoff Breakdown',
-          stages,
-        }),
-      )
-    } finally {
-      setTakeoffPrinting(false)
     }
   }
 
   const takeoffRoughCatalogLowestPartIdsKey = useMemo(() => {
     if (activeTab !== 'takeoffs' || !selectedBidForTakeoff?.id) return ''
-    if (normalizeMaterialsModel(selectedBidForTakeoff.materials_model) !== 'rough') return ''
     const ids = takeoffRoughPartLines.map((l) => (l.partId ?? '').trim()).filter(Boolean)
     return Array.from(new Set(ids)).sort().join(',')
-  }, [activeTab, selectedBidForTakeoff?.id, selectedBidForTakeoff?.materials_model, takeoffRoughPartLines])
+  }, [activeTab, selectedBidForTakeoff?.id, takeoffRoughPartLines])
 
   useEffect(() => {
     if (!takeoffRoughCatalogLowestPartIdsKey) {
@@ -1626,12 +1119,11 @@ export function BidsTakeoffTab({
   // Distinct assembly template ids among the on-screen Combined bundle lines.
   const takeoffBundleTemplateIdsKey = useMemo(() => {
     if (activeTab !== 'takeoffs' || !selectedBidForTakeoff?.id) return ''
-    if (normalizeMaterialsModel(selectedBidForTakeoff.materials_model) !== 'rough') return ''
     const ids = takeoffRoughPartLines
       .filter((l) => l.partId == null && l.sourceTemplateId)
       .map((l) => l.sourceTemplateId as string)
     return Array.from(new Set(ids)).sort().join(',')
-  }, [activeTab, selectedBidForTakeoff?.id, selectedBidForTakeoff?.materials_model, takeoffRoughPartLines])
+  }, [activeTab, selectedBidForTakeoff?.id, takeoffRoughPartLines])
 
   // Lazily load the grayed part rows for each bundle assembly that isn't cached yet.
   useEffect(() => {
@@ -1680,14 +1172,12 @@ export function BidsTakeoffTab({
     prevPartPricesModalRef.current = partPricesModal
     if (prev == null || partPricesModal != null) return
     if (activeTab !== 'takeoffs' || !selectedBidForTakeoff?.id) return
-    if (normalizeMaterialsModel(selectedBidForTakeoff.materials_model) !== 'rough') return
     if (!takeoffRoughCatalogLowestPartIdsKey) return
     void refreshTakeoffRoughCatalogLowest(takeoffRoughCatalogLowestPartIdsKey.split(',').filter(Boolean))
   }, [
     partPricesModal,
     activeTab,
     selectedBidForTakeoff?.id,
-    selectedBidForTakeoff?.materials_model,
     takeoffRoughCatalogLowestPartIdsKey,
     refreshTakeoffRoughCatalogLowest,
   ])
@@ -1696,7 +1186,6 @@ export function BidsTakeoffTab({
 
   useEffect(() => {
     if (activeTab !== 'takeoffs' || !selectedBidForTakeoff?.id) return
-    if (normalizeMaterialsModel(selectedBidForTakeoff.materials_model) !== 'rough') return
     let cancelled = false
     void (async () => {
       const index = await loadPartAssemblyIndex(supabase)
@@ -1704,24 +1193,7 @@ export function BidsTakeoffTab({
       setPartAssemblyIndex(index)
     })()
     return () => { cancelled = true }
-  }, [activeTab, selectedBidForTakeoff?.id, selectedBidForTakeoff?.materials_model, supabase, materialTemplates])
-
-
-  useEffect(() => {
-    if (!takeoffExistingPOId.trim()) {
-      setTakeoffExistingPOItems(null)
-      return
-    }
-    setTakeoffExistingPOItems('loading')
-    let cancelled = false
-    void (async () => {
-      const items = await loadPOItemsSummary(supabase, takeoffExistingPOId)
-      if (cancelled) return
-      setTakeoffExistingPOItems(items)
-    })()
-    return () => { cancelled = true }
-  }, [takeoffExistingPOId])
-
+  }, [activeTab, selectedBidForTakeoff?.id, supabase, materialTemplates])
 
 
   function applyBundleQuoteToLine(lineId: string, price: number, supplyHouseName: string) {
@@ -1750,8 +1222,6 @@ export function BidsTakeoffTab({
       )
     : bidsScopedForTakeoff
 
-  const takeoffMappedCount = takeoffMappings.filter((m) => m.templateId.trim()).length
-
   function filterTemplatesByQuery(
     templates: MaterialTemplateWithAssemblyType[],
     query: string,
@@ -1762,14 +1232,6 @@ export function BidsTakeoffTab({
     return templates
       .filter((t) => [t.name, t.description].some((f) => (f || '').toLowerCase().includes(q)))
       .slice(0, limit)
-  }
-
-  function takeoffTemplatePickerOptions(mapping: TakeoffMapping): MaterialTemplateWithAssemblyType[] {
-    const filtered = filterTemplatesByQuery(materialTemplates, takeoffTemplatePickerQuery, 50)
-    const selected = mapping.templateId ? materialTemplates.find((t) => t.id === mapping.templateId) : null
-    if (!selected) return filtered
-    if (filtered.some((t) => t.id === selected.id)) return filtered
-    return [selected, ...filtered]
   }
 
   function filterPartsByQuery(parts: MaterialPartWithType[], query: string, limit = 50): MaterialPartWithType[] {
@@ -2163,7 +1625,7 @@ export function BidsTakeoffTab({
               {narrowViewport640 ? (
                 <button
                   type="button"
-                  onClick={() => { onClose(); setTakeoffCreatedPOId(null) }}
+                  onClick={onClose}
                   title="Close"
                   aria-label="Close"
                   style={bidDetailCloseFloatMobileStyle}
@@ -2205,7 +1667,7 @@ export function BidsTakeoffTab({
                     }}
                     reviewStamp={bidFlowReview.stampFor(selectedBidForTakeoff)}
                   />
-                  {takeoffIsRough ? <TakeoffViewPills view={takeoffView} onChange={switchTakeoffView} /> : null}
+                  <TakeoffViewPills view={takeoffView} onChange={switchTakeoffView} />
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                   <button
@@ -2219,7 +1681,7 @@ export function BidsTakeoffTab({
                   {!narrowViewport640 ? (
                     <button
                       type="button"
-                      onClick={() => { onClose(); setTakeoffCreatedPOId(null) }}
+                      onClick={onClose}
                       title="Close"
                       aria-label="Close"
                       style={bidDetailCloseXStyle}
@@ -2242,17 +1704,14 @@ export function BidsTakeoffTab({
                   }}
                 />
               ) : null}
-              {takeoffIsRough ? (
-                <TakeoffPriceDriftLine
-                  drift={takeoffDrift}
-                  lock={takeoffLock}
-                  sentDay={selectedBidForTakeoff.bid_date_sent ? formatSentDay(selectedBidForTakeoff.bid_date_sent, new Date().getFullYear()) : null}
-                  refreshing={refreshingTakeoffPrices}
-                  onRefresh={() => void refreshTakeoffPrices()}
-                />
-              ) : null}
-              {takeoffIsRough ? (
-                takeoffView === 'new1' ? (
+              <TakeoffPriceDriftLine
+                drift={takeoffDrift}
+                lock={takeoffLock}
+                sentDay={selectedBidForTakeoff.bid_date_sent ? formatSentDay(selectedBidForTakeoff.bid_date_sent, new Date().getFullYear()) : null}
+                refreshing={refreshingTakeoffPrices}
+                onRefresh={() => void refreshTakeoffPrices()}
+              />
+              {takeoffView === 'new1' ? (
                   <TakeoffFocusView
                     bidId={selectedBidForTakeoff.id}
                     countRows={takeoffCountRows}
@@ -2313,410 +1772,7 @@ export function BidsTakeoffTab({
                       />
                     }
                   />
-                )
-              ) : (
-              <>
-              {/* Takeoff book selector (left) + Apply button (right), styled like the Labor tab. */}
-              <div style={{ marginBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                <div>
-                  <label style={{ fontSize: '0.875rem', marginRight: '0.5rem' }}>Takeoff book</label>
-                  <select
-                    value={selectedTakeoffBookVersionId ?? ''}
-                    onChange={(e) => {
-                      const v = e.target.value
-                      if (v) {
-                        setSelectedTakeoffBookVersionId(v)
-                        saveBidSelectedTakeoffBookVersion(selectedBidForTakeoff.id, v)
-                      } else {
-                        setSelectedTakeoffBookVersionId(null)
-                        saveBidSelectedTakeoffBookVersion(selectedBidForTakeoff.id, null)
-                      }
-                    }}
-                    title={takeoffBookVersions.find((v) => v.id === selectedTakeoffBookVersionId)?.name ?? undefined}
-                    style={{ padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, minWidth: '12rem' }}
-                  >
-                    <option value="">— Select a book —</option>
-                    {takeoffBookVersions.map((v) => (
-                      <option key={v.id} value={v.id}>{v.name}</option>
-                    ))}
-                  </select>
-                </div>
-                {takeoffCountRows.length > 0 && selectedTakeoffBookVersionId && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <button
-                      type="button"
-                      onClick={() => applyTakeoffBookTemplates()}
-                      disabled={bookFillButton.disabled}
-                      title={bookFillButton.title || undefined}
-                      style={{
-                        padding: '0.35rem 0.75rem',
-                        background: bookFillButton.disabled ? '#9ca3af' : '#3b82f6',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: 4,
-                        cursor: applyingTakeoffBookTemplates ? 'wait' : bookFillButton.disabled ? 'default' : 'pointer',
-                        fontSize: '0.875rem',
-                      }}
-                    >
-                      {bookFillButton.label}
-                    </button>
-                    {takeoffBookApplyMessage && (
-                      <span style={{ color: 'var(--text-green-600)', fontSize: '0.875rem' }}>{takeoffBookApplyMessage}</span>
-                    )}
-                  </div>
                 )}
-              </div>
-              {takeoffCountRows.length === 0 ? (
-                <p style={{ color: 'var(--text-muted)', margin: 0 }}>Add fixtures in the Counts tab first.</p>
-              ) : (
-                <>
-                  {/* By Stage (exact) bids keep the classic editor — the retired Old view's body with its Combined paths removed (v2.3588). */}
-                  <>
-                  <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                    Select an Assembly for each Fixture or Tie-in you want to include in a PO (Purchase Order). Materials broken down by stage allows for staged billing.
-                  </p>
-                  <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
-                    <table id="takeoff-lines" style={{ width: '100%', borderCollapse: 'collapse' }}>
-                      <thead style={{ background: 'var(--bg-subtle)' }}>
-                        <tr>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Fixture or Tie-in</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Assembly</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Parts</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Stage</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Quantity</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {takeoffCountRows.map((row) => {
-                          const mappingsForRow = takeoffMappings.filter((m) => m.countRowId === row.id)
-                          if (mappingsForRow.length === 0) {
-                            return (
-                              <tr key={row.id} id={takeoffRowDomId(row.id)} style={{ borderBottom: '1px solid var(--border)', background: rowJumpFlashCountRowId === row.id ? 'var(--bg-blue-tint)' : undefined, transition: 'background 400ms ease' }}>
-                                <td style={{ padding: '0.75rem' }}>{takeoffFixtureCountLabel(row)}{altChip(row)}</td>
-                                <td colSpan={5} style={{ padding: '0.75rem' }}>
-                                  <button
-                                    type="button"
-                                    onClick={() => addTakeoffTemplate(row.id, Number(row.count))}
-                                    style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                                  >
-                                    Add assembly
-                                  </button>
-                                </td>
-                              </tr>
-                            )
-                          }
-                          const PREVIEW_MAX_PARTS = 5
-                          return (
-                            <Fragment key={row.id}>
-                              {mappingsForRow.map((mapping, mappingIdx) => {
-                                const preview = mapping.templateId ? takeoffTemplatePreviewCache[mapping.templateId] : undefined
-                                const templateName = mapping.templateId ? materialTemplates.find((t) => t.id === mapping.templateId)?.name ?? null : null
-                                let partsCell: React.ReactNode = '—'
-                                if (mapping.templateId) {
-                                  if (preview === undefined || preview === 'loading') partsCell = 'Loading…'
-                                  else if (preview === null) partsCell = 'Error loading parts'
-                                  else if (!Array.isArray(preview) || preview.length === 0) partsCell = (
-                                    <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                                      No parts{' '}
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          openAddPartsToTemplateModal(mapping.templateId!, templateName!)
-                                        }}
-                                        style={{
-                                          padding: '0.25rem 0.5rem',
-                                          background: '#3b82f6',
-                                          color: 'white',
-                                          border: 'none',
-                                          borderRadius: 4,
-                                          cursor: 'pointer',
-                                          fontSize: '0.75rem',
-                                          fontWeight: 500
-                                        }}
-                                      >
-                                        Add Parts
-                                      </button>
-                                    </span>
-                                  )
-                                  else {
-                                    const short = preview.slice(0, PREVIEW_MAX_PARTS).map((p) => `${p.part_name} (${p.quantity})`).join(', ')
-                                    const rest = preview.length > PREVIEW_MAX_PARTS ? preview.length - PREVIEW_MAX_PARTS : 0
-                                    partsCell = (
-                                      <span style={{ fontSize: '0.875rem' }}>
-                                        {short}
-                                        {rest > 0 && (
-                                          <>
-                                            {' '}
-                                            <button
-                                              type="button"
-                                              onClick={() => { setTakeoffPreviewModalTemplateId(mapping.templateId); setTakeoffPreviewModalTemplateName(templateName) }}
-                                              style={{ background: 'none', border: 'none', color: 'var(--text-blue-500)', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
-                                            >
-                                              and {rest} more
-                                            </button>
-                                          </>
-                                        )}
-                                        {rest === 0 && preview.length > 2 && (
-                                          <>
-                                            {' '}
-                                            <button
-                                              type="button"
-                                              onClick={() => { setTakeoffPreviewModalTemplateId(mapping.templateId); setTakeoffPreviewModalTemplateName(templateName) }}
-                                              style={{ background: 'none', border: 'none', color: 'var(--text-blue-500)', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
-                                            >
-                                              View all
-                                            </button>
-                                          </>
-                                        )}
-                                      </span>
-                                    )
-                                  }
-                                }
-                                return (
-                                  <tr key={mapping.id} id={mappingIdx === 0 ? takeoffRowDomId(row.id) : undefined} style={{ borderBottom: '1px solid var(--border)', background: rowJumpFlashCountRowId === row.id ? 'var(--bg-blue-tint)' : undefined, transition: 'background 400ms ease' }}>
-                                    <td style={{ padding: '0.75rem' }}>{takeoffFixtureCountLabel(row)}{altChip(row)}</td>
-                                    <td style={{ padding: '0.75rem' }}>
-                                      <div style={{ position: 'relative' }}>
-                                        <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
-                                          <input
-                                            ref={(el) => {
-                                              if (el) takeoffTemplatePickerInputRefs.current.set(mapping.id, el)
-                                              else takeoffTemplatePickerInputRefs.current.delete(mapping.id)
-                                            }}
-                                            type="text"
-                                            value={takeoffTemplatePickerOpenMappingId === mapping.id ? takeoffTemplatePickerQuery : (mapping.templateId ? (materialTemplates.find((t) => t.id === mapping.templateId)?.name ?? '') : '')}
-                                            onChange={(e) => setTakeoffTemplatePickerQuery(e.target.value)}
-                                            onFocus={() => { setTakeoffTemplatePickerOpenMappingId(mapping.id); setTakeoffTemplatePickerQuery('') }}
-                                            onBlur={() => setTimeout(() => setTakeoffTemplatePickerOpenMappingId(null), 150)}
-                                            onKeyDown={(e) => { if (e.key === 'Escape') setTakeoffTemplatePickerOpenMappingId(null) }}
-                                            readOnly={takeoffTemplatePickerOpenMappingId !== mapping.id && !!mapping.templateId}
-                                            placeholder="Search assemblies by name or description…"
-                                            style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: takeoffTemplatePickerOpenMappingId !== mapping.id && mapping.templateId ? 'var(--bg-muted)' : undefined }}
-                                          />
-                                          {mapping.templateId && takeoffTemplatePickerOpenMappingId !== mapping.id && (
-                                            <button
-                                              type="button"
-                                              onClick={() => { setTakeoffMapping(mapping.id, { templateId: '' }); setTakeoffTemplatePickerOpenMappingId(mapping.id); setTakeoffTemplatePickerQuery('') }}
-                                              style={{ padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', whiteSpace: 'nowrap' }}
-                                            >
-                                              Clear
-                                            </button>
-                                          )}
-                                        </div>
-                                        {mapping.templateId && takeoffTemplatePickerOpenMappingId !== mapping.id ? (
-                                          <div
-                                            style={{
-                                              display: 'flex',
-                                              alignItems: 'center',
-                                              justifyContent: 'space-between',
-                                              gap: '0.35rem',
-                                              marginTop: '0.2rem',
-                                              minWidth: 0,
-                                            }}
-                                          >
-                                            <span
-                                              style={{
-                                                fontSize: '0.7rem',
-                                                color: 'var(--text-muted)',
-                                                textAlign: 'left',
-                                                overflow: 'hidden',
-                                                textOverflow: 'ellipsis',
-                                                whiteSpace: 'nowrap',
-                                                minWidth: 0,
-                                                flex: 1,
-                                              }}
-                                            >
-                                              {(() => {
-                                                const assemblyTypeName =
-                                                  materialTemplates.find((t) => t.id === mapping.templateId)
-                                                    ?.assembly_types?.name ?? '—'
-                                                return `Assembly · ${assemblyTypeName}`
-                                              })()}
-                                            </span>
-                                            <button
-                                              type="button"
-                                              aria-label="Edit assembly"
-                                              title="Edit assembly"
-                                              onClick={(e) => {
-                                                e.stopPropagation()
-                                                openEditTemplateModal(mapping.templateId!, templateName ?? '')
-                                              }}
-                                              style={{
-                                                flexShrink: 0,
-                                                display: 'inline-flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                minWidth: 28,
-                                                minHeight: 28,
-                                                padding: '0.2rem',
-                                                background: 'none',
-                                                border: 'none',
-                                                borderRadius: 4,
-                                                cursor: 'pointer',
-                                                color: 'var(--text-muted)',
-                                              }}
-                                            >
-                                              <TakeoffPartEditIcon />
-                                            </button>
-                                          </div>
-                                        ) : null}
-                                      </div>
-                                    </td>
-                                    <td style={{ padding: '0.75rem', fontSize: '0.875rem', maxWidth: 280 }}>{partsCell}</td>
-                                    <td style={{ padding: '0.75rem' }}>
-                                      <select
-                                        value={mapping.stage}
-                                        onChange={(e) => setTakeoffMapping(mapping.id, { stage: e.target.value as TakeoffStage })}
-                                        style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                                      >
-                                        {(['rough_in', 'top_out', 'trim_set'] as const).map((s) => (
-                                          <option key={s} value={s}>{STAGE_LABELS[s]}</option>
-                                        ))}
-                                      </select>
-                                    </td>
-                                    <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                                      <input
-                                        type="number"
-                                        min={1}
-                                        value={mapping.quantity}
-                                        onChange={(e) => setTakeoffMapping(mapping.id, { quantity: e.target.value === '' ? 1 : Number(e.target.value) })}
-                                        style={{ width: 80, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'center' }}
-                                      />
-                                    </td>
-                                    <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                                      <button
-                                        type="button"
-                                        onClick={() => setTakeoffRemoveConfirm({ kind: 'exact_mapping', mappingId: mapping.id })}
-                                        style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-red-tint)', color: 'var(--text-red-700)', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
-                                      >
-                                        Remove
-                                      </button>
-                                    </td>
-                                  </tr>
-                                )
-                              })}
-                              <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                                <td style={{ padding: '0.75rem' }} />
-                                <td colSpan={5} style={{ padding: '0.75rem' }}>
-                                  <button
-                                    type="button"
-                                    onClick={() => addTakeoffTemplate(row.id, Number(row.count))}
-                                    style={{ padding: '0.5rem 1rem', background: 'var(--bg-indigo-100)', color: 'var(--text-indigo-800)', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                                  >
-                                    Add assembly
-                                  </button>
-                                </td>
-                              </tr>
-                            </Fragment>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                  <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginTop: '1rem', flexWrap: 'wrap' }}>
-                    <button
-                      type="button"
-                      onClick={createPOFromTakeoff}
-                      disabled={takeoffCreatingPO || takeoffMappedCount === 0}
-                      style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: takeoffCreatingPO || takeoffMappedCount === 0 ? 'not-allowed' : 'pointer' }}
-                    >
-                      {takeoffCreatingPO ? 'Creating…' : 'Create purchase orders for Stages'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={printTakeoffBreakdown}
-                      disabled={takeoffPrinting || takeoffMappedCount === 0}
-                      style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: takeoffPrinting || takeoffMappedCount === 0 ? 'not-allowed' : 'pointer' }}
-                    >
-                      {takeoffPrinting ? 'Preparing…' : 'Print Breakdown'}
-                    </button>
-                    <select
-                      value={takeoffExistingPOId}
-                      onChange={(e) => setTakeoffExistingPOId(e.target.value)}
-                      style={{ padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, minWidth: 200 }}
-                    >
-                      <option value="">OR add to existing PO…</option>
-                      {draftPOs.map((po) => (
-                        <option key={po.id} value={po.id}>{po.name}</option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      onClick={addTakeoffToExistingPO}
-                      disabled={takeoffAddingToPO || takeoffMappedCount === 0 || !takeoffExistingPOId.trim()}
-                      style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: takeoffAddingToPO || takeoffMappedCount === 0 || !takeoffExistingPOId ? 'not-allowed' : 'pointer' }}
-                    >
-                      {takeoffAddingToPO ? 'Adding…' : 'Add to selected PO'}
-                    </button>
-                  </div>
-                  {takeoffExistingPOId.trim() && (
-                    <div style={{ marginTop: '1rem', border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden', maxHeight: 240, overflowY: 'auto' }}>
-                      <div style={{ padding: '0.5rem 0.75rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)', fontWeight: 600, fontSize: '0.875rem' }}>
-                        Current items in this PO
-                      </div>
-                      {takeoffExistingPOItems === 'loading' && (
-                        <p style={{ padding: '0.75rem 1rem', margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading current items…</p>
-                      )}
-                      {takeoffExistingPOItems === null && (
-                        <p style={{ padding: '0.75rem 1rem', margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Could not load items.</p>
-                      )}
-                      {Array.isArray(takeoffExistingPOItems) && takeoffExistingPOItems.length === 0 && (
-                        <p style={{ padding: '0.75rem 1rem', margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>This PO has no items yet.</p>
-                      )}
-                      {Array.isArray(takeoffExistingPOItems) && takeoffExistingPOItems.length > 0 && (
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                          <thead style={{ background: 'var(--bg-subtle)' }}>
-                            <tr>
-                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Part</th>
-                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Assembly</th>
-                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Qty</th>
-                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Price</th>
-                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Total</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {takeoffExistingPOItems.map((item, i) => (
-                              <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
-                                <td style={{ padding: '0.5rem 0.75rem' }}>{item.part_name}</td>
-                                <td style={{ padding: '0.5rem 0.75rem' }}>{item.template_name ?? '—'}</td>
-                                <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>{item.quantity}</td>
-                                <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${item.price_at_time.toFixed(2)}</td>
-                                <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${(item.quantity * item.price_at_time).toFixed(2)}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                          <tfoot style={{ background: 'var(--bg-subtle)' }}>
-                            <tr>
-                              <td colSpan={4} style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600, borderTop: '1px solid var(--border)' }}>Grand Total:</td>
-                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600, borderTop: '1px solid var(--border)' }}>
-                                ${takeoffExistingPOItems.reduce((sum, item) => sum + item.quantity * item.price_at_time, 0).toFixed(2)}
-                              </td>
-                            </tr>
-                          </tfoot>
-                        </table>
-                      )}
-                    </div>
-                  )}
-                  </>
-                  {takeoffSuccessMessage && (
-                    <p style={{ margin: '1rem 0 0', color: 'var(--text-green-600)', fontSize: '0.875rem' }}>{takeoffSuccessMessage}</p>
-                  )}
-                  {takeoffCreatedPOId && (
-                    <p style={{ margin: '0.75rem 0 0' }}>
-                      <Link
-                        to="/materials"
-                        state={{ openPOId: takeoffCreatedPOId }}
-                        style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', textDecoration: 'none', display: 'inline-block' }}
-                      >
-                        View purchase order
-                      </Link>
-                    </p>
-                  )}
-                </>
-              )}
-              </>
-              )}
             </div>
           )}
 
@@ -2886,80 +1942,6 @@ export function BidsTakeoffTab({
             </div>
           )}
 
-          {takeoffPreviewModalTemplateId && (
-            <div
-              style={{
-                position: 'fixed',
-                inset: 0,
-                background: 'rgba(0,0,0,0.4)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                zIndex: 50,
-              }}
-              onClick={() => { setTakeoffPreviewModalTemplateId(null); setTakeoffPreviewModalTemplateName(null) }}
-            >
-              <div
-                style={{
-                  background: 'var(--surface)',
-                  borderRadius: 8,
-                  padding: '1.5rem',
-                  maxWidth: 420,
-                  maxHeight: '80vh',
-                  overflow: 'auto',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                  <h3 style={{ margin: 0, fontSize: '1rem' }}>{takeoffPreviewModalTemplateName ?? 'Assembly parts'}</h3>
-                  <button
-                    type="button"
-                    onClick={() => { setTakeoffPreviewModalTemplateId(null); setTakeoffPreviewModalTemplateName(null) }}
-                    style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
-                  >
-                    Close
-                  </button>
-                </div>
-                {(() => {
-                  const preview = takeoffTemplatePreviewCache[takeoffPreviewModalTemplateId]
-                  if (preview === 'loading') return <p style={{ margin: 0, color: 'var(--text-muted)' }}>Loading…</p>
-                  if (preview === null) return <p style={{ margin: 0, color: 'var(--text-red-700)' }}>Error loading parts.</p>
-                  if (!preview || preview.length === 0) return (
-                    <div>
-                      <p style={{ margin: 0, marginBottom: '1rem', color: 'var(--text-muted)' }}>No parts in this assembly.</p>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          openAddPartsToTemplateModal(takeoffPreviewModalTemplateId, takeoffPreviewModalTemplateName!)
-                          setTakeoffPreviewModalTemplateId(null)
-                          setTakeoffPreviewModalTemplateName(null)
-                        }}
-                        style={{
-                          padding: '0.5rem 1rem',
-                          background: '#3b82f6',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: 4,
-                          cursor: 'pointer',
-                          fontWeight: 500
-                        }}
-                      >
-                        Add Parts
-                      </button>
-                    </div>
-                  )
-                  return (
-                    <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
-                      {preview.map((p, i) => (
-                        <li key={i} style={{ marginBottom: '0.25rem' }}>{p.part_name} ({p.quantity})</li>
-                      ))}
-                    </ul>
-                  )
-                })()}
-              </div>
-            </div>
-          )}
           {!selectedBidForTakeoff && (
             <BidPickerStandardList
               bids={filteredBidsForTakeoff}
@@ -2987,17 +1969,12 @@ export function BidsTakeoffTab({
             saveBidSelectedTakeoffBookVersion={saveBidSelectedTakeoffBookVersion}
             loadBids={loadBids}
           />
-          {/* Cost-estimate materials section + PO review modal (moved from Labor tab) */}
+          {/* The takeoff's materials roll-up */}
           <BidsTakeoffMaterialsSummarySection
             selectedBidForTakeoff={selectedBidForTakeoff}
             selectedBidForCostEstimate={selectedBidForCostEstimate}
-            costEstimate={costEstimate}
             costEstimateCountRows={costEstimateCountRows}
-            purchaseOrdersForCostEstimate={purchaseOrdersForCostEstimate}
             costEstimateMaterialTotalRoughIn={costEstimateMaterialTotalRoughIn}
-            costEstimateMaterialTotalTopOut={costEstimateMaterialTotalTopOut}
-            costEstimateMaterialTotalTrimSet={costEstimateMaterialTotalTrimSet}
-            setCostEstimatePO={setCostEstimatePO}
             costEstimatePOModalTaxPercent={costEstimatePOModalTaxPercent}
             setCostEstimatePOModalTaxPercent={setCostEstimatePOModalTaxPercent}
           />
@@ -3028,7 +2005,6 @@ export function BidsTakeoffTab({
         materialTemplates={materialTemplates}
         loadMaterialTemplates={loadMaterialTemplates}
         takeoffAddTemplateParts={takeoffAddTemplateParts}
-        setTakeoffTemplatePreviewCache={setTakeoffTemplatePreviewCache}
         invalidateBundleParts={invalidateBundleParts}
         filterPartsByQuery={filterPartsByQuery}
         filterTemplatesByQuery={filterTemplatesByQuery}
@@ -3036,8 +2012,6 @@ export function BidsTakeoffTab({
         setPartPricesModal={setPartPricesModal}
         takeoffAddTemplateModalOpen={takeoffAddTemplateModalOpen}
         setTakeoffAddTemplateModalOpen={setTakeoffAddTemplateModalOpen}
-        takeoffAddTemplateForMappingId={takeoffAddTemplateForMappingId}
-        setTakeoffAddTemplateForMappingId={setTakeoffAddTemplateForMappingId}
         takeoffNewTemplateName={takeoffNewTemplateName}
         setTakeoffNewTemplateName={setTakeoffNewTemplateName}
         takeoffNewTemplateItems={takeoffNewTemplateItems}
@@ -3048,20 +2022,9 @@ export function BidsTakeoffTab({
         setSaveAsAssemblyCountRowId={setSaveAsAssemblyCountRowId}
         takeoffNewTemplateApplyPriceIndex={takeoffNewTemplateApplyPriceIndex}
         setTakeoffNewTemplateApplyPriceIndex={setTakeoffNewTemplateApplyPriceIndex}
-        setTakeoffMapping={setTakeoffMapping}
         takeoffRoughPartLines={takeoffRoughPartLines}
         setTakeoffRoughPartLines={setTakeoffRoughPartLines}
         insertRoughBundleLine={insertRoughBundleLine}
-        addPartsToTemplateModalOpen={addPartsToTemplateModalOpen}
-        setAddPartsToTemplateModalOpen={setAddPartsToTemplateModalOpen}
-        addPartsToTemplateId={addPartsToTemplateId}
-        setAddPartsToTemplateId={setAddPartsToTemplateId}
-        addPartsToTemplateName={addPartsToTemplateName}
-        setAddPartsToTemplateName={setAddPartsToTemplateName}
-        addPartsSelectedPartId={addPartsSelectedPartId}
-        setAddPartsSelectedPartId={setAddPartsSelectedPartId}
-        addPartsAutoAddPartId={addPartsAutoAddPartId}
-        setAddPartsAutoAddPartId={setAddPartsAutoAddPartId}
         editTemplateModalOpen={editTemplateModalOpen}
         setEditTemplateModalOpen={setEditTemplateModalOpen}
         editTemplateModalId={editTemplateModalId}
@@ -3120,69 +2083,6 @@ export function BidsTakeoffTab({
                 }}
               />
             </div>,
-            document.body
-          )
-        : null}
-      {takeoffTemplatePickerOpenMappingId != null && takeoffTemplatePickerAnchor
-        ? createPortal(
-            <ul
-              onMouseDown={(e) => e.preventDefault()}
-              style={{
-                position: 'fixed',
-                top: takeoffTemplatePickerAnchor.top,
-                left: takeoffTemplatePickerAnchor.left,
-                width: takeoffTemplatePickerAnchor.width,
-                margin: 0,
-                padding: 0,
-                listStyle: 'none',
-                maxHeight: 240,
-                overflowY: 'auto',
-                border: '1px solid var(--border-strong)',
-                borderRadius: 4,
-                background: 'var(--surface)',
-                zIndex: 1200,
-                boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
-              }}
-            >
-              {(() => {
-                const openMapping = takeoffMappings.find((m) => m.id === takeoffTemplatePickerOpenMappingId)
-                if (!openMapping) return null
-                const options = takeoffTemplatePickerOptions(openMapping)
-                return options.length === 0 ? (
-                  <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>
-                    No templates match.{' '}
-                    <button
-                      type="button"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => {
-                        setTakeoffAddTemplateModalOpen(true)
-                        setTakeoffAddTemplateForMappingId(openMapping.id)
-                        setTakeoffTemplatePickerOpenMappingId(null)
-                      }}
-                      style={{ marginLeft: '0.25rem', padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-                    >
-                      Add assembly
-                    </button>
-                  </li>
-                ) : (
-                  options.map((t) => (
-                    <li
-                      key={t.id}
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => {
-                        setTakeoffMapping(openMapping.id, { templateId: t.id })
-                        setTakeoffTemplatePickerQuery('')
-                        setTakeoffTemplatePickerOpenMappingId(null)
-                      }}
-                      style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}
-                    >
-                      <div style={{ fontWeight: 500 }}>{t.name}</div>
-                      {t.description && <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{t.description}</div>}
-                    </li>
-                  ))
-                )
-              })()}
-            </ul>,
             document.body
           )
         : null}
