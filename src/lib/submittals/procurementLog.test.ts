@@ -29,7 +29,7 @@ import {
   statusText,
   tagMatchesFixture,
   type ProcurementItemSource,
-  type ProcurementRecord, gcProcurementRows, procurementSections } from './procurementLog'
+  type ProcurementRecord, gcProcurementRows, lineStatus, logIsDraft, procurementSections, tagRollUp } from './procurementLog'
 
 const item = (p: Partial<ProcurementItemSource> & { tag: string; product: string }): ProcurementItemSource => ({ supplyHouse: null, leadTimeDays: null, decision: null, shared: true, ...p })
 const rec = (p: Partial<ProcurementRecord> & { tag: string | null }): ProcurementRecord => ({ id: 'r-' + (p.tag ?? p.label ?? 'x'), label: '', leadTimeDays: null, stage: null, orderedOn: null, poRef: '', expectedOn: null, deliveredOn: null, note: '', sortOrder: 0, ...p })
@@ -431,5 +431,70 @@ describe('a line per part (2026-10-01)', () => {
   it('By tag and By house group the same lines', () => {
     expect(procurementSections(rows, 'by_tag').map((x) => [x.title, x.rows.length])).toEqual([['HB-3', 1], ['WC-1', 5]])
     expect(procurementSections(rows, 'by_house').map((x) => [x.title, x.rows.length])).toEqual([['Moore Supply', 2], ['National Wholesale', 2], ['No house yet', 2]])
+  })
+  it('2026-10-02 · By tag: the GC’s parts first, then the order-only ones, and where they start', () => {
+    const wc = procurementSections(rows, 'by_tag').find((x) => x.title === 'WC-1')!
+    expect(wc.rows.map((r) => r.key)).toEqual(['WC-1', 'part:k-bowl', 'part:k-valve', 'part:k-carrier', 'part:k-stop'])
+    expect(wc.orderOnlyFrom).toBe(4)
+    expect(wc.warn).toBeUndefined()
+  })
+
+  it('2026-10-02 · a tag listing two carriers the GC sees is flagged; an order-only carrier does not count', () => {
+    const two = buildProcurementLog({ items: [
+      item({ tag: 'WC-1', product: 'ZURN Z1201 EZCARRY', partKey: 'k-zurn', partOrder: 1 }),
+      item({ tag: 'WC-1', product: 'JOSAM 12694 closet carrier', partKey: 'k-josam', partOrder: 2 }),
+    ], records: [], tagStage: {}, stageDates: {} })
+    expect(procurementSections(two, 'by_tag')[0]!.warn).toBe('Two carriers')
+    const one = buildProcurementLog({ items: [
+      item({ tag: 'WC-1', product: 'ZURN Z1201 EZCARRY', partKey: 'k-zurn', partOrder: 1, orderOnly: true }),
+      item({ tag: 'WC-1', product: 'JOSAM 12694 closet carrier', partKey: 'k-josam', partOrder: 2 }),
+    ], records: [], tagStage: {}, stageDates: {} })
+    expect(procurementSections(one, 'by_tag')[0]!.warn).toBeUndefined()
+  })
+})
+
+describe('2026-10-02 · a line in a phrase, a tag in a heading', () => {
+  const stageDates = { rough_in: '2026-10-06', trim_set: '2026-11-17' }
+  const approved = { kind: 'approved' as const, at: '2026-09-22T15:00:00Z' }
+  const rec = (p: Partial<ProcurementRecord> & { partKey: string }): ProcurementRecord => ({ id: 'r-' + p.partKey, tag: 'WC-1', label: '', leadTimeDays: null, stage: null, orderedOn: null, poRef: '', expectedOn: null, deliveredOn: null, note: '', sortOrder: 0, ...p })
+  const lines = buildProcurementLog({
+    items: [
+      item({ tag: 'WC-1', product: 'JOSAM 12694 carrier', partKey: 'k-on-site', decision: approved, fixture: 'WC 1&2', fixtureCount: 10, stage: 'rough_in' }),
+      item({ tag: 'WC-1', product: 'TOTO CT728CUVG#01', partKey: 'k-late', decision: approved, leadTimeDays: 21, fixture: 'WC 1&2', fixtureCount: 10, stage: 'rough_in' }),
+      item({ tag: 'WC-1', product: 'TOTO TET2UB31#SS', partKey: 'k-ordered', decision: approved, leadTimeDays: 14, fixture: 'WC 1&2', fixtureCount: 10, stage: 'trim_set' }),
+      item({ tag: 'WC-1', product: 'MAINLINE ML1055SSC000', partKey: 'k-release', decision: approved, leadTimeDays: 7, stage: 'trim_set' }),
+      item({ tag: 'WC-1', product: 'BRASSCRA PLB113XP', partKey: 'k-back', decision: { kind: 'revise', at: '2026-09-22T15:00:00Z' } }),
+      item({ tag: 'WC-1', product: 'BRASSCRAFT PLS1', partKey: 'k-wait', decision: null }),
+      item({ tag: 'WC-1', product: 'DRAFT PART', partKey: 'k-draft', decision: null, shared: false }),
+    ],
+    records: [
+      rec({ partKey: 'k-on-site', orderedOn: '2026-09-23', deliveredOn: '2026-09-29', poRef: 'space x carriers.' }),
+      rec({ partKey: 'k-late', orderedOn: '2026-09-25', expectedOn: '2026-10-20', poRef: '118', note: 'house is short' }),
+      rec({ partKey: 'k-ordered', orderedOn: '2026-09-25' }),
+    ],
+    tagStage: {},
+    stageDates,
+  })
+  const of = (k: string) => lineStatus(lines.find((r) => r.partKey === k)!)
+
+  it('says on site, late, ordered, order by, sent back, waiting, or nothing on a draft', () => {
+    expect(of('k-on-site')).toEqual({ tone: 'done', text: '✓ On site 09/29', sub: 'ordered 09/23 · PO space x carriers.' })
+    expect(of('k-late')).toEqual({ tone: 'late', text: 'Arrives 10/20, 14 d late', sub: 'ordered 09/25 · needed 10/06 · PO 118 · note: house is short' })
+    expect(of('k-ordered')).toEqual({ tone: 'ordered', text: 'Ordered · arrives 10/09', sub: 'ordered 09/25' })
+    expect(of('k-release')).toEqual({ tone: 'act', text: 'Order by 11/10', sub: 'released 09/22 · needed 11/17' })
+    expect(of('k-back')).toEqual({ tone: 'back', text: 'Sent back by the GC', sub: '' })
+    expect(of('k-wait')).toEqual({ tone: 'waiting', text: 'Waiting on the GC', sub: '' })
+    expect(of('k-draft')).toEqual({ tone: 'none', text: '', sub: '' })
+  })
+
+  it('a tag’s heading names the fixture, how many, the parts and how far along', () => {
+    expect(tagRollUp(lines)).toBe('WC 1&2 × 10 · 7 parts · 2 ordered · 1 on site')
+    expect(tagRollUp(lines.slice(3, 4))).toBe('1 part')
+  })
+
+  it('a log is a draft when no line has gone to the GC', () => {
+    expect(logIsDraft(lines)).toBe(false)
+    expect(logIsDraft(lines.filter((r) => r.partKey === 'k-draft'))).toBe(true)
+    expect(logIsDraft([])).toBe(false)
   })
 })

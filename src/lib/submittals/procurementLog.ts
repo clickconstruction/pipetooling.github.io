@@ -15,6 +15,7 @@ import { escapeHtml } from '../bidDocuments/htmlDoc'
 import { isPlausibleDate } from '../dateBoxEntry'
 import { compareTags } from './buildSubmittalRows'
 import { describeLeadTime } from './leadTime'
+import { isCarrier } from './itemParts'
 import { normalizeTag } from './parseFixtureSchedule'
 import { tagsFromFixtureName } from './takeoffCandidates'
 import type { TakeoffStage } from '../bids/bidTakeoffHelpers'
@@ -154,6 +155,11 @@ export type ProcurementItemSource = {
   stage?: ProcurementStage | null
   /** The submittal row the line is for, so a tap on the line opens that row (2026-10-02). */
   itemId?: string | null
+  /** The takeoff's fixture name and how many it counted ("WC 1&2", 10), for the tag's heading (2026-10-02). */
+  fixture?: string | null
+  fixtureCount?: number | null
+  /** What the takeoff priced in this part's place, when it differs. */
+  pricedLabel?: string | null
 }
 
 /** A `bid_procurement_items` row. */
@@ -220,6 +226,9 @@ export type ProcurementRow = {
   quantity?: number | null
   /** The submittal row behind the line; null on a hand row. */
   itemId?: string | null
+  fixture?: string | null
+  fixtureCount?: number | null
+  pricedLabel?: string | null
 }
 
 export type ProcurementLogInput = {
@@ -268,6 +277,9 @@ function rowFrom(source: ProcurementItemSource | null, rec: ProcurementRecord, s
     tag: source ? source.tag : null,
     partKey: source?.partKey ?? null,
     itemId: source?.itemId ?? null,
+    fixture: source?.fixture ?? null,
+    fixtureCount: source?.fixtureCount ?? null,
+    pricedLabel: source?.pricedLabel ?? null,
     orderOnly: source?.orderOnly ?? false,
     quantity: source?.quantity ?? null,
     isHand,
@@ -338,7 +350,7 @@ export function gcProcurementRows(rows: ReadonlyArray<ProcurementRow>): Procurem
 
 export type ProcurementLens = 'to_order' | 'by_tag' | 'by_house'
 
-export type ProcurementSection = { key: string; title: string; note: string; rows: ProcurementRow[] }
+export type ProcurementSection = { key: string; title: string; note: string; rows: ProcurementRow[]; /** A fixture listing two carriers (2026-10-02). */ warn?: string; /** By tag: where the order-only parts start, after the GC's. */ orderOnlyFrom?: number }
 
 /**
  * The log grouped three ways (2026-10-01). **To order**: what to buy now (released, not ordered;
@@ -353,7 +365,13 @@ export function procurementSections(rows: ReadonlyArray<ProcurementRow>, lens: P
     return out
   }
   if (lens === 'by_tag') {
-    return [...byKey([...rows], (r) => (r.isHand ? 'Added by hand' : r.tag ?? '')).entries()].map(([k, list]) => ({ key: `tag:${k}`, title: k, note: lineCount(list), rows: list }))
+    return [...byKey([...rows], (r) => (r.isHand ? 'Added by hand' : r.tag ?? '')).entries()].map(([k, list]) => {
+      // The GC's parts first, then what is ordered but not sent to the GC (2026-10-02).
+      const gc = list.filter((r) => !r.orderOnly)
+      const orderOnly = list.filter((r) => r.orderOnly)
+      const carriers = gc.filter((r) => r.partKey && isCarrier(r.product)).length
+      return { key: `tag:${k}`, title: k, note: tagRollUp(list), rows: [...gc, ...orderOnly], ...(carriers > 1 ? { warn: 'Two carriers' } : {}), ...(gc.length > 0 && orderOnly.length > 0 ? { orderOnlyFrom: gc.length } : {}) }
+    })
   }
   if (lens === 'by_house') {
     const houses = [...byKey([...rows], (r) => r.supplyHouse ?? '').entries()].sort(([a], [b]) => (a === '' ? 1 : b === '' ? -1 : a.localeCompare(b)))
@@ -378,6 +396,48 @@ export function procurementSections(rows: ReadonlyArray<ProcurementRow>, lens: P
 
 function lineCount(list: ReadonlyArray<ProcurementRow>): string {
   return `${list.length} line${list.length === 1 ? '' : 's'}`
+}
+
+/** A tag's heading (2026-10-02): "WC 1&2 × 10 · 4 parts · 1 ordered · 1 on site". */
+export function tagRollUp(list: ReadonlyArray<ProcurementRow>): string {
+  const first = list.find((r) => r.fixture)
+  const parts = list.filter((r) => r.partKey).length
+  const onSite = list.filter((r) => r.deliveredOn).length
+  const ordered = list.filter((r) => r.orderedOn && !r.deliveredOn).length
+  return [
+    first?.fixture ? `${first.fixture}${first.fixtureCount != null ? ` × ${first.fixtureCount}` : ''}` : '',
+    parts > 0 ? `${parts} part${parts === 1 ? '' : 's'}` : list.length > 1 ? lineCount(list) : '',
+    ordered > 0 ? `${ordered} ordered` : '',
+    onSite > 0 ? `${onSite} on site` : '',
+  ].filter(Boolean).join(' · ')
+}
+
+export type LineStatus = { tone: 'done' | 'late' | 'ordered' | 'act' | 'back' | 'waiting' | 'none'; text: string; sub: string }
+
+/**
+ * One line's status in a phrase, where the log used to draw seven date columns (2026-10-02):
+ * on site, ordered (and when it arrives, red when that is after the stage needs it), released
+ * and when to order by, sent back, waiting on the GC — or nothing on a draft, which the log
+ * says once at its top. The sub line carries the PO and a note for the GC.
+ */
+export function lineStatus(r: ProcurementRow): LineStatus {
+  const extra = (bits: Array<string | false | null | undefined>) => [...bits, r.note ? `note: ${r.note}` : ''].filter(Boolean).join(' · ')
+  const po = r.poRef ? `PO ${r.poRef}` : ''
+  if (r.deliveredOn) return { tone: 'done', text: `✓ On site ${shortDate(r.deliveredOn)}`, sub: extra([r.orderedOn && `ordered ${shortDate(r.orderedOn)}`, po]) }
+  if (r.orderedOn) {
+    if (r.late && r.expectedOn && r.floatDays != null) return { tone: 'late', text: `Arrives ${shortDate(r.expectedOn)}, ${-r.floatDays} d late`, sub: extra([`ordered ${shortDate(r.orderedOn)}`, r.requiredOn && `needed ${shortDate(r.requiredOn)}`, po]) }
+    return { tone: 'ordered', text: r.expectedOn ? `Ordered · arrives ${shortDate(r.expectedOn)}` : `Ordered ${shortDate(r.orderedOn)}`, sub: extra([r.expectedOn && `ordered ${shortDate(r.orderedOn)}`, po]) }
+  }
+  if (r.status === 'released') return { tone: 'act', text: r.orderBy ? `Order by ${shortDate(r.orderBy)}` : 'Released, not ordered', sub: extra([r.releasedOn && `released ${shortDate(r.releasedOn)}`, r.requiredOn && `needed ${shortDate(r.requiredOn)}`]) }
+  if (r.status === 'sent_back') return { tone: 'back', text: r.submittal === 'rejected' ? 'Rejected by the GC' : 'Sent back by the GC', sub: extra([]) }
+  if (r.status === 'awaiting') return { tone: 'waiting', text: 'Waiting on the GC', sub: extra([]) }
+  return { tone: 'none', text: '', sub: extra([]) }
+}
+
+/** No line has gone to the GC yet: the log says so once instead of on every line. */
+export function logIsDraft(rows: ReadonlyArray<ProcurementRow>): boolean {
+  const sent = rows.filter((r) => !r.isHand)
+  return sent.length > 0 && sent.every((r) => r.submittal === 'none')
 }
 
 export type ProcurementCounts = { released: number; ordered: number; delivered: number; late: number; awaiting: number; sentBack: number }

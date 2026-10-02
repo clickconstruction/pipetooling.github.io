@@ -4736,3 +4736,10 @@ div.bid-mark-board-row[data-marked='true'] { box-shadow: inset 3px 0 0 var(--bid
    "He signs here" tag steps aside (its outline is inline, so the override needs !important). */
 .lienRelease-preview[data-look-part]:not([data-look-part='signature']) [data-testid='lien-waiver-foot'][data-highlight='true'] { border-color: transparent !important; background: transparent !important; }
 .lienRelease-preview[data-look-part]:not([data-look-part='signature']) [data-testid='lien-waiver-foot'][data-highlight='true'] > span:first-child { display: none !important; }
+/* Procurement log (2026-10-02): a line's status is a button that opens its dates under it. */
+.procure-status { display: block; width: 100%; margin: -0.2rem -0.3rem; padding: 0.2rem 0.3rem; border: none; border-radius: 6px; background: transparent; color: inherit; font: inherit; font-size: 0.8125rem; text-align: left; cursor: pointer; }
+.procure-status:hover { background: var(--bg-blue-tint); }
+.procure-status:focus-visible { outline: 2px solid var(--text-link); outline-offset: 0; }
+.procure-status[aria-expanded='true'] { background: var(--bg-blue-tint); }
+.procure-house-name { text-decoration: underline dotted; text-underline-offset: 3px; text-decoration-color: var(--border-strong); }
+.procure-item-open:hover .procure-house-name { text-decoration: underline solid; text-decoration-color: currentColor; }
