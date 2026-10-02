@@ -29,7 +29,7 @@ import {
   statusText,
   tagMatchesFixture,
   type ProcurementItemSource,
-  type ProcurementRecord, gcProcurementRows, lineStatus, logIsDraft, orderBlockers, procurementSections, tagRollUp } from './procurementLog'
+  type ProcurementRecord, foldByHouse, gcProcurementRows, houseFoldNote, lineStatus, logIsDraft, orderBlockers, procurementSections, tagRollUp } from './procurementLog'
 
 const item = (p: Partial<ProcurementItemSource> & { tag: string; product: string }): ProcurementItemSource => ({ supplyHouse: null, leadTimeDays: null, decision: null, shared: true, ...p })
 const rec = (p: Partial<ProcurementRecord> & { tag: string | null }): ProcurementRecord => ({ id: 'r-' + (p.tag ?? p.label ?? 'x'), label: '', leadTimeDays: null, stage: null, orderedOn: null, poRef: '', expectedOn: null, deliveredOn: null, note: '', sortOrder: 0, ...p })
@@ -507,7 +507,7 @@ describe('2026-10-02 · what still blocks ordering', () => {
         item({ tag: 'WC-1', product: 'TOTO TET2UB31#SS', partKey: 'k-valve', supplyHouse: 'Moore Supply', itemId: 'row-wc' }),
         item({ tag: 'WC-1', product: 'BRASSCRA PLB113XP', partKey: 'k-stop', itemId: 'row-wc', orderOnly: true, stage: 'trim_set' }),
         item({ tag: 'WC-1', product: 'JOSAM 12694 carrier', partKey: 'k-josam', itemId: 'row-wc' }),
-        item({ tag: 'UTILITY SINK', product: '(no product)', itemId: 'row-us' }),
+        item({ tag: 'UTILITY SINK', product: 'UTILITY SINK', itemId: 'row-us', noProduct: true }),
       ],
       records: [{ id: 'r1', tag: 'WC-1', partKey: 'k-josam', label: '', leadTimeDays: null, stage: null, orderedOn: '2026-09-23', poRef: '', expectedOn: null, deliveredOn: null, note: '', sortOrder: 0 }, { id: 'r2', tag: null, label: 'Gas regulator', leadTimeDays: null, stage: null, orderedOn: null, poRef: '', expectedOn: null, deliveredOn: null, note: '', sortOrder: 1 }],
       tagStage: {},
@@ -519,5 +519,27 @@ describe('2026-10-02 · what still blocks ordering', () => {
       noStage: ['part:k-valve'],
       noProduct: [{ key: 'UTILITY SINK', tag: 'UTILITY SINK', itemId: 'row-us' }],
     })
+  })
+})
+
+describe('2026-10-02 · lines folded one per house', () => {
+  it('names the houses A to Z, then the lines with no house; each says its parts and order-only count', () => {
+    const lines = buildProcurementLog({
+      items: [
+        item({ tag: 'LAV-1', product: 'TOTO T25S51E#CP', partKey: 'a', supplyHouse: 'Reece' }),
+        item({ tag: 'LAV-1', product: 'BRASSCRA PLB113XP', partKey: 'b', orderOnly: true }),
+        item({ tag: 'WC-1', product: 'TOTO CT728CUVG#01', partKey: 'c', supplyHouse: 'Moore Supply' }),
+        item({ tag: 'WC-1', product: 'MAINLINE ML1055SSC000', partKey: 'd', supplyHouse: 'Moore Supply', orderOnly: true }),
+      ],
+      records: [],
+      tagStage: {},
+      stageDates: {},
+    })
+    const folds = foldByHouse(lines)
+    expect(folds.map((f) => [f.house, f.rows.length, houseFoldNote(f)])).toEqual([
+      ['Moore Supply', 2, '2 parts · 1 order only'],
+      ['Reece', 1, '1 part'],
+      [null, 1, '1 part · 1 order only · pick a house to order'],
+    ])
   })
 })
