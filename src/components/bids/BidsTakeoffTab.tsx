@@ -91,6 +91,12 @@ import { resolvePartFormSaveTarget } from '../../lib/bids/partFormSaveTarget'
 import { NumericEntryPad } from '../NumericEntryPad'
 import { TakeoffPartEditIcon } from '../icons/TakeoffPartEditIcon'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
+import { useBookPrices } from '../../hooks/useTakeoffPriceDrift'
+import { roughCountMultiplier } from '../../lib/bids/bidTakeoffHelpers'
+import { formatSentDay, pricingLockState, readRevisedBids } from '../../lib/bids/pricingLock'
+import { gapWords, takeoffPriceDrift } from '../../lib/bids/takeoffPriceDrift'
+import { TakeoffPriceDriftLine } from './TakeoffPriceDrift'
 import { breakdownJumpDomId, breakdownJumpMissMessage, takeoffRowDomId, type BreakdownJumpTarget } from '../../lib/bids/bidTabRowJump'
 import { usePendingRowFlash } from '../../hooks/usePendingRowFlash'
 import type { useBidPreview } from '../../contexts/BidPreviewModalContext'
@@ -648,6 +654,51 @@ export function BidsTakeoffTab({
     countRows: takeoffCountRows,
   })
   const takeoffPartNameById = useMemo(() => new Map(takeoffAddTemplateParts.map((p) => [p.id, p.name])), [takeoffAddTemplateParts])
+
+  // v2.4395: the materials at today's book — each line as priced against its book row today.
+  const confirmDialog = useConfirmDialog()
+  const driftPriceIds = useMemo(() => takeoffRoughPartLines.map((l) => l.sourceMaterialPartPriceId ?? '').filter(Boolean), [takeoffRoughPartLines])
+  const driftBook = useBookPrices(driftPriceIds, activeTab === 'takeoffs' && takeoffIsRough)
+  const takeoffDrift = useMemo(() => {
+    const countByRowId = new Map(takeoffCountRows.map((r) => [r.id, r.count]))
+    return takeoffPriceDrift(
+      // Every line counts toward the materials (a bundle line too); only book-priced ones can move.
+      takeoffRoughPartLines
+        .map((l) => ({
+          id: l.id,
+          partName: (l.partId ? takeoffPartNameById.get(l.partId) : null) ?? '',
+          quantity: l.quantity,
+          unitPrice: l.unitPrice,
+          count: roughCountMultiplier(countByRowId.get(l.countRowId)),
+          sourcePriceId: l.sourceMaterialPartPriceId,
+        })),
+      driftBook,
+    )
+  }, [takeoffRoughPartLines, takeoffCountRows, takeoffPartNameById, driftBook])
+  const takeoffLock = pricingLockState({
+    bidDateSent: selectedBidForTakeoff?.bid_date_sent,
+    bidId: selectedBidForTakeoff?.id,
+    revised: readRevisedBids(typeof window !== 'undefined' ? window.sessionStorage : null),
+  })
+  const [refreshingTakeoffPrices, setRefreshingTakeoffPrices] = useState(false)
+  /** Refresh prices: every moved book-priced line to today's price from its own row, after a confirm. */
+  async function refreshTakeoffPrices() {
+    const plan = takeoffDrift.refresh
+    if (plan.length === 0 || refreshingTakeoffPrices) return
+    const ok = await confirmDialog({
+      title: `Refresh ${plan.length === 1 ? '1 price' : `${plan.length} prices`} to today’s book?`,
+      message: `These materials will cost ${gapWords(takeoffDrift.gap)}. Prices you typed stay as they are.`,
+      confirmLabel: 'Refresh prices',
+    })
+    if (!ok) return
+    setRefreshingTakeoffPrices(true)
+    try {
+      for (const r of plan) updateTakeoffRoughPartLine(r.lineId, { unitPrice: r.unitPrice })
+      showToast(`Refreshed ${plan.length === 1 ? '1 price' : `${plan.length} prices`} to today’s book.`, 'success')
+    } finally {
+      setRefreshingTakeoffPrices(false)
+    }
+  }
   // New 2's "Request quotes" door reuses the Pricing tab's RfqComposeModal (plan decision 7).
   const [takeoffRfqScope, setTakeoffRfqScope] = useState<{ lines: Array<{ fixture: string; count: number; unit?: string | null }>; text: string } | null>(null)
   const [takeoffOpenRfqHouseIds, setTakeoffOpenRfqHouseIds] = useState<Set<string>>(new Set())
@@ -2189,6 +2240,15 @@ export function BidsTakeoffTab({
                     // Picking the view already showing still counts as the device's pick (v2.3165).
                     else writeStoredTakeoffView(typeof window !== 'undefined' ? window.localStorage : null, v)
                   }}
+                />
+              ) : null}
+              {takeoffIsRough ? (
+                <TakeoffPriceDriftLine
+                  drift={takeoffDrift}
+                  lock={takeoffLock}
+                  sentDay={selectedBidForTakeoff.bid_date_sent ? formatSentDay(selectedBidForTakeoff.bid_date_sent, new Date().getFullYear()) : null}
+                  refreshing={refreshingTakeoffPrices}
+                  onRefresh={() => void refreshTakeoffPrices()}
                 />
               ) : null}
               {takeoffIsRough ? (
