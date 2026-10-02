@@ -57,6 +57,9 @@ jobs:
       - name: Windows drawn inside windows stop their own backdrop click
         run: npm run check:nested-windows
 
+      - name: Windows close on a click outside, not on the press
+        run: npm run check:backdrop-click
+
       - name: Test
         run: npm test
         env:
