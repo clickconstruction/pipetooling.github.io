@@ -94,6 +94,11 @@ describe('PricingBidsLikeThis', () => {
     expect(screen.getByText('82% is above your one win (79%). 3 bids lost on price at 84–94%.')).toBeTruthy()
   })
 
+  it('renders nothing on a bid with no price and no margin yet', () => {
+    const { container } = render(<PricingBidsLikeThis history={[bid('won', 30), bid('won', 45), bid('lost', 50)]} currentBidId="b1" currentPrice={0} currentMargin={null} gcCustomerId="gc9" gcName="City of Seguin" />)
+    expect(container.textContent).toBe('')
+  })
+
   it('with no margin on the Workbench there is no margin chip and no pointer', () => {
     render(<PricingBidsLikeThis history={[bid('won', 30), bid('won', 45), bid('lost', 50)]} currentBidId="b1" currentPrice={1700} currentMargin={null} gcCustomerId={null} />)
     expect(screen.queryByText(/winning range|above|below/)).toBeNull()

@@ -114,7 +114,7 @@ function sizeChip(t: LikeThisTally): LikeThisChip {
 
 /**
  * Everything the block draws, or null when it stays away: no decided bid this size, none for
- * this GC and too few margins to compare. The bid on screen never counts.
+ * this GC and no margin to place among the past ones. The bid on screen never counts.
  */
 export function bidsLikeThisView(args: {
   history: readonly BidPricingHistoryRow[] | null
@@ -180,12 +180,13 @@ export function bidsLikeThisView(args: {
         chip: { text: `${gcShort} · ${tally.won} won of ${tally.total}`, tone: 'neutral' },
         sentence: `With ${gcName ?? 'this GC'}: ${tally.total} decided bid${tally.total === 1 ? '' : 's'}. ${tallyParts(tally).join(', ')}.`,
       }
-    } else if (size || margin) {
-      // A first decided bid is a fact worth a chip only beside the other two.
+    } else if (size || margin?.chip) {
+      // A first decided bid is a fact worth a chip only beside one of the other two chips.
       gc = { tally, chip: { text: `${gcShort} · no decided bids yet`, tone: 'neutral' }, sentence: null }
     }
   }
 
-  if (!size && !margin && !gc) return null
+  // No chip, no block: a bid with no price yet has nothing to be compared with (v2.4425).
+  if (!size && !gc && !margin?.chip) return null
   return { size, gc, margin }
 }

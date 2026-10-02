@@ -183,9 +183,21 @@ describe('bidsLikeThisView — the margin', () => {
     expect(v?.margin?.chip).toEqual({ text: '45% · above all 2 wins', tone: 'warn' })
   })
 
-  it('has the scale but no chip with no margin on the Workbench yet', () => {
-    const v = view([atMargin('won', 40), atMargin('won', 30), atMargin('lost', 50)], { margin: null })
+  it('has the scale but no margin chip with no margin on the Workbench yet, beside another fact', () => {
+    // 1,667 / 1,429 / 2,000 against a price of 1,700 → a size fact
+    const v = view([atMargin('won', 40), atMargin('won', 30), atMargin('lost', 50)], { margin: null, price: 1700 })
     expect(v?.margin?.chip).toBeNull()
     expect(v?.margin?.won).toHaveLength(2)
+  })
+
+  it('a bid with no price and no margin yet has no block: the scale alone is not a fact about it', () => {
+    const rows = [atMargin('won', 40), atMargin('won', 30), atMargin('lost', 50)]
+    expect(view(rows, { margin: null, price: null })).toBeNull()
+    // … and a GC with no decided bid does not bring it back (B82, City of Seguin, 2026-10-02)
+    expect(view(rows, { margin: null, price: 0, gc: 'gc1', gcName: 'City of Seguin' })).toBeNull()
+    // a GC with a record still does
+    const withGc = view([...rows, bid('won', 5_000, { customer_id: 'gc1' })], { margin: null, price: null, gc: 'gc1' })
+    expect(withGc?.gc?.chip.text).toBe('This GC · 1 won of 1')
+    expect(withGc?.margin?.chip).toBeNull()
   })
 })
