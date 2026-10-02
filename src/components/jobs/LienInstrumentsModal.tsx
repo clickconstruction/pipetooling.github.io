@@ -39,6 +39,7 @@ import { computeJobLienClock, type JobLienFilingRow } from '../../lib/jobs/lienD
 import { buildLienTimelineFromWindow } from '../../lib/jobs/lienTimelineDesk'
 import LienTimelineStrip from './LienTimelineStrip'
 import LienWindowFoldedSteps from './LienWindowFoldedSteps'
+import DemandRecordSendSheet from './DemandRecordSendSheet'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { useLienJobSuppliers } from '../../hooks/useLienJobSuppliers'
 import { LienJobSuppliersCard } from './LienJobSuppliers'
@@ -825,6 +826,8 @@ export default function LienInstrumentsModal({
     ['affidavit', "Mechanic's lien"],
     ...(hasFiledAffidavit ? ([['release_record', 'Release of record']] as const) : []),
   ] as const
+  // Save & record send… on a phone is a sheet over the whole card (v2.4414); a computer keeps the panel at the foot.
+  const recordSheetOpen = isMobile && recordOpen && activeTab === 'demand'
   // A foot button on a phone: half the row, its name on up to two lines.
   const phoneFootButton: CSSProperties = isMobile ? { padding: '0.35rem 0.5rem', fontSize: '0.8125rem', lineHeight: 1.25, minHeight: 44 } : {}
   const rulesWhere = activeTab === 'demand' ? 'window_demand' : activeTab === 'notice' ? 'window_notice' : activeTab === 'affidavit' ? 'window_affidavit' : 'window_release'
@@ -853,6 +856,9 @@ export default function LienInstrumentsModal({
           maxWidth: 920,
           width: '100%',
           maxHeight: 'min(92vh, 100%)',
+          // The phone's record sheet is drawn over the card (v2.4414), so the card holds its full height while the sheet is up.
+          height: recordSheetOpen ? 'min(92vh, 100%)' : undefined,
+          position: 'relative',
           display: 'flex',
           flexDirection: 'column',
           boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
@@ -860,6 +866,24 @@ export default function LienInstrumentsModal({
         onClick={(e) => e.stopPropagation()}
         data-lien-window-card
       >
+        {recordSheetOpen ? (
+          <DemandRecordSendSheet
+            headline={`Demand letter · ${demandMoney(fields.outstanding)}`}
+            lines={[`${(job.job_name ?? '').trim() || 'Job'} · ${jobNumber}`, ...(fields.deadlineDate ? [`Pay by ${demandDate(fields.deadlineDate)}`] : [])]}
+            methods={SENT_METHODS}
+            method={recordMethod}
+            onMethod={setRecordMethod}
+            tracking={recordTracking}
+            onTracking={setRecordTracking}
+            sentOn={recordSentOn}
+            onSentOn={setRecordSentOn}
+            note={`Deadline watch: if the covered lines are still unpaid after ${demandDate(fields.deadlineDate)}, a Needs You card hands you the next step.`}
+            busy={recordBusy}
+            onBack={() => setRecordOpen(false)}
+            onClose={onClose}
+            onRecord={() => void recordSend()}
+          />
+        ) : null}
         {/* The title bar. On a phone (v2.4398) the title, § The rules and × share one line and the steps fold to a strip, so the paper below gets the window; a computer keeps the steps as a row and gains the ×. */}
         <div style={{ position: 'relative', padding: isMobile ? '0.35rem 1rem 0.65rem' : '1rem 1.25rem', borderBottom: '1px solid var(--border)' }}>
           {isMobile ? (
@@ -1366,8 +1390,8 @@ export default function LienInstrumentsModal({
             </div>
           </div>
         ) : null}
-        {recordOpen ? (
-          <div style={{ padding: '0.9rem 1.25rem', borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>
+        {recordSheetOpen ? null : recordOpen ? (
+          <div data-demand-record-panel style={{ padding: '0.9rem 1.25rem', borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>
             <div style={{ fontSize: '0.8125rem', fontWeight: 700, marginBottom: '0.45rem' }}>Record the send — the letter only counts if it can be proven</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '0.55rem' }}>
               {SENT_METHODS.map((m) => (
