@@ -116,7 +116,7 @@ export default function LienDeskSharePanel(p: LienDeskSharePanelProps) {
   }, [])
 
   const sheet: CSSProperties = p.isMobile
-    ? { position: 'fixed', left: 0, right: 0, bottom: 'var(--app-bottom-chrome, 0px)', maxHeight: 'calc(100dvh - var(--app-bottom-chrome, 0px) - 3.5rem)', borderRadius: '16px 16px 0 0', boxShadow: '0 -10px 30px -10px rgba(0,0,0,0.35)' }
+    ? { position: 'fixed', left: 0, right: 0, bottom: 'var(--app-bottom-chrome, 0px)', maxHeight: 'calc(100dvh - var(--app-top-chrome, 0px) - var(--app-bottom-chrome, 0px) - 3.5rem)', borderRadius: '16px 16px 0 0', boxShadow: '0 -10px 30px -10px rgba(0,0,0,0.35)' }
     : { position: 'absolute', right: 0, top: 'calc(100% + 8px)', width: 'min(460px, calc(100vw - 2rem))', maxHeight: 'calc(100dvh - 9rem - var(--app-bottom-chrome, 0px))', borderRadius: 10, border: '1px solid var(--border-strong)', boxShadow: '0 14px 30px -6px rgba(0,0,0,0.3)' }
 
   return (

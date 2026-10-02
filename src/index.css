@@ -3,6 +3,8 @@
 }
 
 :root {
+  /* The iPhone status bar / notch (v2.4397): a window whose backdrop starts at the top of the screen pads by this, the twin of --app-bottom-chrome. */
+  --app-top-chrome: env(safe-area-inset-top, 0px);
   font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   line-height: 1.5;
   font-weight: 400;

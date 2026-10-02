@@ -219,6 +219,8 @@ describe('GcOnNoticeModal', () => {
     // the fill is a literal that holds in dark mode (v2.3664), and the overlay ends above the Dispatch / Job mode footer
     expect(screen.getByTestId('gc-notice-approve-all').style.background).toBe('rgb(22, 101, 52)')
     expect(screen.getByRole('dialog', { name: 'Put a GC on notice' }).style.bottom).toBe('var(--app-bottom-chrome, 0px)')
+    // and leaves room for an iPhone's status bar at the top (v2.4397)
+    expect(screen.getByRole('dialog', { name: 'Put a GC on notice' }).style.paddingTop).toBe('var(--app-top-chrome, 0px)')
     // Use on the roll's row writes the property and re-reads
     fireEvent.click(screen.getByTestId('gc-notice-use'))
     await waitFor(() => expect(confirmMock).toHaveBeenCalledTimes(1))
