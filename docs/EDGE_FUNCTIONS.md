@@ -3391,6 +3391,8 @@ interface SendPhysicalInvoiceEmailBody {
 
 ### payment-forecast-email-dispatch
 
+> **v2.4376 — one payment is enough**: `PAY_SPEED_MIN_SAMPLES` in `_shared/paymentForecastCore.ts` is 1 (was 3), as in the app; `money-waiting-email-dispatch` imports the same constant. Redeploy both.
+
 > **v2.4365 — the payer's pace**: [`_shared/paymentForecastCore.ts`](../supabase/functions/_shared/paymentForecastCore.ts) looks each row's pay speed up under `payer_id` (whoever the bill went to; the payload carries it since migration `20261002030000`, whose medians are keyed on the payer) and names `payer_name`, falling back to `customer_id` / `customer_name` on an older payload (`rowPaySpeedKey`). Redeploy after the push.
 
 > **v2.4164 — the renderer is a kernel**: `render.ts` is a binding over [`_shared/paymentForecastEmail.ts`](../supabase/functions/_shared/paymentForecastEmail.ts) (moved verbatim; the app origin is an argument), so Settings → What the team sees renders the digest on sample data (punch list #60, lift 3 of 14). Redeploy after merge.
