@@ -68,7 +68,10 @@ import { anonymousOpens, asPersonHow, describeHow, describeRoomLine, describeTra
 import { replyToRoom } from '../../lib/submittals/replyToRoom'
 import type { RoomMessage } from '../../../supabase/functions/_shared/submittalRoomPayload'
 import { APP_CALENDAR_TZ as ROOM_TZ, todayYmdInAppTz } from '../../utils/dateUtils'
-import { gcRows, orderOnlyInsert } from '../../lib/submittals/orderOnly'
+import { boughtWords, gcRows, isOrderOnlyRow, orderOnlyInsert, orderOnlyRows } from '../../lib/submittals/orderOnly'
+import { loadRowOrderFacts, writeRowOrderOnly } from '../../lib/submittals/orderOnlyIo'
+import { SubmittalOrderOnlyRows } from './SubmittalOrderOnlyRows'
+import { SubmittalTakeOffDialog } from './SubmittalTakeOffDialog'
 import { DECISION_LABELS, decisionsAsText, describeDecisions, itemsSentBack, summarizeDecisions } from '../../lib/submittals/reviewDecisions'
 import { describeEnteredCount, describeReviewerFile, parseReviewerFiles, reviewerFileKind, reviewerFilePath, serializeReviewerFiles, type ReviewerFile } from '../../lib/submittals/reviewerFiles'
 import { CLEAR_DECISION_PATCH, enteredDecisionAt, enteredDecisionPatch, enteredEntryBody, enteredSuffix, rowsToApproveAll } from '../../lib/submittals/enteredDecisions'
@@ -234,6 +237,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     if (!editing) setEditFocus(null)
   }, [editing])
   const [approvingAll, setApprovingAll] = useState(false)
+  /** 2026-10-02 · the × on a draft row: the row, and what the log already holds for it ("Ordered 09/23"; '' = nothing bought). */
+  const [takeOff, setTakeOff] = useState<{ item: SubmittalItemRow; bought: string } | null>(null)
   const fileInput = useRef<HTMLInputElement | null>(null)
   const bidsRef = useRef(bids)
   bidsRef.current = bids
@@ -479,6 +484,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   const reviewerFiles: ReviewerFile[] = useMemo(() => parseReviewerFiles((selectedRev as { reviewer_files?: unknown } | null)?.reviewer_files ?? null), [selectedRev])
   // 2026-10-02 · the rows the GC sees: an order-only row is bought, never counted, packaged or called.
   const gcItems = useMemo(() => gcRows(items), [items])
+  const orderOnlyItems = useMemo(() => orderOnlyRows(items), [items])
   const tiles = useMemo(() => revisionTiles(gcItems), [gcItems])
   // The parts reload whenever the rows do (every write reloads the rows).
   useEffect(() => {
@@ -642,16 +648,62 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     }
   }
   /** v2.4107 · a draft row leaves; a row that came from the takeoff is unticked there too, so the choice holds. */
+  /** What the procurement log already holds for a row: "Ordered 09/23, on site 09/29", or '' when nothing is bought. */
+  async function boughtOnLog(it: SubmittalItemRow): Promise<string> {
+    if (!bidId) return ''
+    try {
+      return boughtWords(await loadRowOrderFacts(supabase, bidId, it.tag))
+    } catch {
+      // The log could not be read: the row is treated as bought, so nothing ordered is dropped unseen.
+      return 'The procurement log could not be read'
+    }
+  }
+
+  /** 2026-10-02 · the × on a row the GC sees: the window asks whether the fixture is still bought. */
+  async function askTakeOff(it: SubmittalItemRow) {
+    if (!bidId || !selectedRev || asRevisionStatus(selectedRev.status) !== 'draft') return
+    setTakeOff({ item: it, bought: await boughtOnLog(it) })
+  }
+
+  /** Order only, or back to a row the GC sees; the bid remembers it for a row from the takeoff. */
+  async function setOrderOnly(it: SubmittalItemRow, on: boolean) {
+    if (!bidId || !selectedRev || asRevisionStatus(selectedRev.status) !== 'draft') return
+    setBusy(true)
+    try {
+      await writeRowOrderOnly(supabase, bidId, it, on)
+      setItems(await loadItems(selectedRev.id))
+      setTakeOff(null)
+      showToast(on ? `${it.tag.trim() || 'The row'} is order only. The GC will not see it; it stays on the procurement log.` : `${it.tag.trim() || 'The row'} is back on the submittal.`, 'success')
+    } catch (e) {
+      showToast(formatErrorMessage(e, on ? 'Could not set the row order only' : 'Could not put the row back'), 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** The × on an order-only row: left out, after one question. A fixture the log holds an order for stays. */
+  async function leaveOrderOnlyOut(it: SubmittalItemRow) {
+    if (!bidId || !selectedRev || asRevisionStatus(selectedRev.status) !== 'draft') return
+    const bought = await boughtOnLog(it)
+    if (bought) {
+      showToast(`${it.tag.trim() || 'The row'} cannot be left out. ${bought}.`, 'error')
+      return
+    }
+    const ok = await confirm({ title: `Leave ${it.tag.trim() || 'this row'} out`, message: it.source_count_row_id ? 'It leaves this draft and the procurement log. The fixture is unticked on the takeoff list so it stays out next time.' : 'It leaves this draft and the procurement log.', confirmLabel: 'Leave out', danger: true })
+    if (!ok) return
+    await removeRow(it)
+  }
+
+  /** Left out: the row leaves the draft (and so the procurement log), and the takeoff list remembers it. */
   async function removeRow(it: SubmittalItemRow) {
     if (!bidId || !selectedRev || asRevisionStatus(selectedRev.status) !== 'draft') return
-    const ok = await confirm({ title: `Remove ${it.tag.trim() || 'this row'}`, message: it.source_count_row_id ? 'The row leaves this draft, and the fixture is unticked on the takeoff list so it stays out next time.' : 'The row leaves this draft.', confirmLabel: 'Remove', danger: true })
-    if (!ok) return
     setBusy(true)
     try {
       const { error } = await db.from('bid_submittal_items').delete().eq('id', it.id)
       if (error) throw error
       if (it.source_count_row_id) await saveTakeoffChoices(db, bidId, new Map([[it.source_count_row_id, false]]))
       setItems(await loadItems(selectedRev.id))
+      setTakeOff(null)
       if (it.source_count_row_id) setTakeoff(await loadTakeoffCandidates(db, bidId, { selectedVersionId: bidsRef.current.find((b) => b.id === bidId)?.selected_bid_version_id ?? null }))
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not remove the row'), 'error')
@@ -797,10 +849,11 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     const previousParts = onNewest ? partsOf : partsByItem(await loadItemParts(db, previous.map((p) => p.id)))
     const sentBack = itemsSentBack(previous)
     const preview = buildSubmittalRows({ specified, picks, previous: previous.map(itemToPrevious), overrides: overridesByTag })
-    const kept = onlySentBack ? preview.filter((r) => sentBack.some((it) => (r.tag.trim() ? it.tag === r.tag : it.submitted_label === r.submittedLabel))) : preview
+    // 2026-10-02 · an order-only row was never the reviewer's to send back: it carries either way, so it stays on the log.
+    const kept = onlySentBack ? preview.filter((r) => r.orderOnly || sentBack.some((it) => (r.tag.trim() ? it.tag === r.tag : it.submitted_label === r.submittedLabel))) : preview
     // 2026-10-01 · the rows the picks do not rebuild (from the takeoff, typed by hand) carry as they stand.
     const carried = rowsToCarry(previous, preview)
-    const carriedKept = onlySentBack ? carried.filter((it) => sentBack.some((sb) => sb.id === it.id)) : carried
+    const carriedKept = onlySentBack ? carried.filter((it) => isOrderOnlyRow(it) || sentBack.some((sb) => sb.id === it.id)) : carried
     const total = kept.length + carriedKept.length
     const fromPicks = specified.length > 0 || picks.length > 0
     const ok = await confirm({
@@ -2092,7 +2145,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                           </td>
                         </tr>
                       ) : null}
-                      {items.map((it) => {
+                      {gcItems.map((it) => {
                         const status = asStatus(it.status)
                         const reason = asReason(it.reason_kind)
                         const lead = describeLeadTime(it.lead_time_days)
@@ -2172,7 +2225,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                                 </button>
                               ) : null}
                               {isDraft ? (
-                                <button type="button" aria-label={`Remove ${it.tag.trim() || 'accessory'}`} disabled={busy} onClick={() => void removeRow(it)} title={it.source_count_row_id ? 'Off this draft, and unticked on the takeoff list' : 'Off this draft'} style={{ ...btn, padding: '0.2rem 0.5rem', fontSize: '0.75rem', marginLeft: '0.3rem', color: 'var(--text-muted)' }}>
+                                <button type="button" aria-label={`Remove ${it.tag.trim() || 'accessory'}`} disabled={busy} onClick={() => void askTakeOff(it)} title="Take it off the submittal: order only, or left out" style={{ ...btn, padding: '0.2rem 0.5rem', fontSize: '0.75rem', marginLeft: '0.3rem', color: 'var(--text-muted)' }}>
                                   ×
                                 </button>
                               ) : null}
@@ -2180,6 +2233,17 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                           </tr>
                         )
                       })}
+                      <SubmittalOrderOnlyRows
+                        items={orderOnlyItems}
+                        partsOf={partsOf}
+                        houseNameById={houseNameById}
+                        columns={8 + (previousRev ? 1 : 0) + (decisions.decided > 0 || parts.some((p) => p.review_decision) ? 1 : 0)}
+                        isDraft={isDraft}
+                        busy={busy}
+                        onPutBack={(it) => void setOrderOnly(it, false)}
+                        onEdit={setEditing}
+                        onLeaveOut={(it) => void leaveOrderOnlyOut(it)}
+                      />
                     </tbody>
                   </table>
                 </div>
@@ -2586,7 +2650,17 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
           onClose={() => setHouseFile(null)}
         />
       ) : null}
-      {editing ? <SubmittalItemEditDialog item={editing} sourceFiles={sourceFiles} people={people} houses={houses} parts={partsOf.get(editing.id) ?? []} canEnterDecision canEditProduct={isDraft} focusPartId={editFocus?.itemId === editing.id ? editFocus.partId : null} focusHouse={editFocus?.itemId === editing.id && editFocus.house && editFocus.partId == null} onSave={(p) => void saveItem(p)} onClose={() => setEditing(null)} /> : null}
+      {editing ? <SubmittalItemEditDialog item={editing} sourceFiles={sourceFiles} people={people} houses={houses} parts={partsOf.get(editing.id) ?? []} canEnterDecision canEditProduct={isDraft} orderOnly={isOrderOnlyRow(editing)} focusPartId={editFocus?.itemId === editing.id ? editFocus.partId : null} focusHouse={editFocus?.itemId === editing.id && editFocus.house && editFocus.partId == null} onSave={(p) => void saveItem(p)} onClose={() => setEditing(null)} /> : null}
+      {takeOff ? (
+        <SubmittalTakeOffDialog
+          tag={takeOff.item.tag}
+          bought={takeOff.bought}
+          busy={busy}
+          onOrderOnly={() => void setOrderOnly(takeOff.item, true)}
+          onLeaveOut={() => void removeRow(takeOff.item)}
+          onClose={() => setTakeOff(null)}
+        />
+      ) : null}
       {approvingAll && selectedRev ? (
         <SubmittalApproveAllDialog
           revLabel={`Rev ${selectedRev.rev_number}`}

@@ -818,7 +818,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
       {loaded && logIsDraft(rows) ? (
         // 2026-10-02 · said once, not "Not shared" on every line.
         <div style={{ fontSize: '0.8125rem', color: 'var(--text-strong)', background: 'var(--bg-muted)', borderRadius: 6, padding: '0.4rem 0.6rem' }} data-testid="procurement-draft">
-          This version is a draft, so nothing is released yet. The GC releases each part when they approve it.
+          This version is a draft, so nothing is released yet. The GC releases each part when they approve it.{rows.some((r) => r.noGc) ? ' Order-only fixtures wait for nobody: they are ready to order now.' : ''}
         </div>
       ) : null}
 

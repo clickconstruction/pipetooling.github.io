@@ -56,6 +56,18 @@ A row from the takeoff lists its parts, one per line. The maker and the model co
 LAV-1 was priced from *LAV 1 assembly SPACEX*. The row used to read just that name. Now it lists the TSL lavatory, the TOTO faucet and the Bobrick soap dispenser. A quiet line under them reads *Ordered, not submitted: supply × 2, grid drain, P-trap, stop, flange*.
 :::
 
+## Buy a fixture without the GC
+
+Some fixtures need no submittal. You still buy them. On a draft, tap **×** on the row. A window asks if you still buy it.
+
+{{button:outline|Order only}} keeps the fixture on the procurement log. The GC does not see it. It leaves the package, the review room and the cut sheet count. It needs no status, no reason and no cut sheet.
+
+**Left out** takes the fixture off the submittal and off the log. Use it for a fixture another trade buys. A fixture you have already ordered cannot be left out. The window says when it was ordered.
+
+Order-only fixtures sit under the rows in a group of their own. Tap {{button:outline|Put on the submittal}} to send one to the GC after all. Tap **Edit** to set each part's house, lead time and stage.
+
+On the procurement log an order-only fixture does not wait on the GC. It reads *Ready to order* right away. The GC's copy of the log leaves it out.
+
 ## Catch a draft up
 
 A draft can fall behind its takeoff. Maybe an assembly opened into its parts after the row was built. Maybe someone switched which parts the GC sees. A blue box over the row buttons names those rows. Tap {{button:outline|Refresh from the takeoff…}}. A list shows each row as it reads now and as it will read. Tap {{button:blue|Refresh 2 rows}}. Each row takes the takeoff's parts. A part the takeoff still has keeps its house, lead time, stage, pages and call. A row whose parts came from the house's file is left as it is.

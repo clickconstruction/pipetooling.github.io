@@ -15,7 +15,7 @@ import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import { BidsSubmittalsTab } from './BidsSubmittalsTab'
 
 type Rec = { table: string; op: string; payload: unknown; filters: Array<[string, unknown]> }
-const state: { revisions: Record<string, unknown>[]; items: Record<string, unknown>[]; /** 2026-10-01 · the rows' parts */ parts: Record<string, unknown>[]; tasks: Record<string, unknown>[]; writes: Rec[]; storage: string[]; packageCalls: Array<{ files: number; sheets: string[] }>; noSources: boolean; takeoff: boolean; /** the bid has no review room yet: the room and people reads answer null, as PostgREST does */ noRoom: boolean; seat: { unrevoked_seats: number; last_used_at: string | null } | null } = { revisions: [], items: [], parts: [], tasks: [], writes: [], storage: [], packageCalls: [], noSources: false, takeoff: false, noRoom: false, seat: { unrevoked_seats: 1, last_used_at: new Date().toISOString() } }
+const state: { /** 2026-10-02 · what the procurement log holds, for the left-out guard */ procRecords?: Record<string, unknown>[]; revisions: Record<string, unknown>[]; items: Record<string, unknown>[]; /** 2026-10-01 · the rows' parts */ parts: Record<string, unknown>[]; tasks: Record<string, unknown>[]; writes: Rec[]; storage: string[]; packageCalls: Array<{ files: number; sheets: string[] }>; noSources: boolean; takeoff: boolean; /** the bid has no review room yet: the room and people reads answer null, as PostgREST does */ noRoom: boolean; seat: { unrevoked_seats: number; last_used_at: string | null } | null } = { revisions: [], items: [], parts: [], tasks: [], writes: [], storage: [], packageCalls: [], noSources: false, takeoff: false, noRoom: false, seat: { unrevoked_seats: 1, last_used_at: new Date().toISOString() } }
 
 vi.mock('../../lib/jobs/testReportSettings', () => {
   const settings = { companyName: 'Click Plumbing', companyTagline: 'Plumbing', officePhone: '(512) 555-0100', mailingAddress: '' }
@@ -200,6 +200,7 @@ function builder(table: string) {
       const ids = (rec.filters.find((f) => f[0] === 'item_id:in')?.[1] as string[] | undefined) ?? []
       return { data: state.parts.filter((r) => ids.includes(r.item_id as string)), error: null }
     }
+    if (table === 'bid_procurement_items') return { data: state.procRecords ?? [], error: null }
     return { data: [], error: null }
   }
   b.single = () => Promise.resolve((() => { const r = run(); return Array.isArray(r.data) ? { ...r, data: r.data[0] ?? null } : r })())
@@ -1010,9 +1011,10 @@ describe('BidsSubmittalsTab', () => {
       // × on the sink: off the draft, and unticked on the takeoff list.
       state.writes = []
       fireEvent.click(screen.getByRole('button', { name: 'Remove UTILITY SINK' }))
-      const confirmDialog = await screen.findByRole('alertdialog')
-      expect(confirmDialog.textContent).toMatch(/unticked on the takeoff list/)
-      fireEvent.click(within(confirmDialog).getByRole('button', { name: 'Remove' }))
+      // 2026-10-02 · the × asks whether the fixture is still bought; Left out is what it did before.
+      const takeOff = await screen.findByRole('dialog', { name: 'Take UTILITY SINK off the submittal' })
+      expect(takeOff.textContent).toContain('The GC will not see it. Do you still buy it?')
+      fireEvent.click(within(takeOff).getByTestId('take-off-leave-out'))
       await waitFor(() => expect(state.writes.some((w) => w.op === 'upsert')).toBe(true))
       expect(state.writes.find((w) => w.op === 'delete')!.filters).toEqual([['id', 'it-3']])
       expect(state.writes.find((w) => w.op === 'upsert')!.payload).toEqual([{ bid_id: 'b398', count_row_id: 'c-us', ticked: false }])
@@ -1020,6 +1022,84 @@ describe('BidsSubmittalsTab', () => {
     } finally {
       state.noSources = false
       state.takeoff = false
+    }
+  })
+
+  it('2026-10-02 · Order only: the × asks, the row leaves the GC’s rows for its own group and the counts, the bid remembers it, and Put on the submittal brings it back', async () => {
+    state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [], shared_at: null, created_at: '2026-09-15T00:00:00Z' }]
+    state.items = [
+      item({ id: 'it-1', tag: 'DWH-1', sequence_order: 1, submitted_label: 'A.O. Smith BTH-199', status: 'proposed', source_count_row_id: 'c-wh' }),
+      item({ id: 'it-2', tag: 'FCO', sequence_order: 2, submitted_label: 'ZURN ZN1400-2NL', status: 'proposed', source_count_row_id: 'c-wc' }),
+      item({ id: 'it-3', tag: 'WHA-200', sequence_order: 3, submitted_label: 'ZURN Z1700-200-OV', status: 'proposed' }),
+    ]
+    state.writes = []
+    state.tasks = []
+    state.parts = []
+    state.procRecords = []
+    try {
+      mount()
+      await waitFor(() => expect(screen.getAllByTestId('submittal-row')).toHaveLength(3))
+      expect(screen.queryByTestId('order-only-heading')).toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: 'Remove FCO' }))
+      const takeOff = await screen.findByRole('dialog', { name: 'Take FCO off the submittal' })
+      // Nothing is bought yet, so both answers are open.
+      expect((within(takeOff).getByTestId('take-off-leave-out') as HTMLButtonElement).disabled).toBe(false)
+      fireEvent.click(within(takeOff).getByTestId('take-off-order-only'))
+      await waitFor(() => expect(screen.getAllByTestId('order-only-row')).toHaveLength(1))
+      // The row is kept, flagged; the bid remembers the fixture as ticked and order only.
+      expect(state.writes.some((w) => w.op === 'delete')).toBe(false)
+      expect(state.writes.find((w) => w.op === 'update' && w.table === 'bid_submittal_items')).toMatchObject({ payload: { order_only: true }, filters: [['id', 'it-2']] })
+      expect(state.writes.find((w) => w.op === 'upsert')!.payload).toEqual([{ bid_id: 'b398', count_row_id: 'c-wc', ticked: true, order_only: true }])
+      // Two rows for the GC; FCO sits under its own heading with its product and no status to ask.
+      expect(screen.getAllByTestId('submittal-row').map((r) => r.textContent)).toHaveLength(2)
+      expect(screen.getByTestId('order-only-heading').textContent).toContain('Order only · 1 fixture · you buy it, the GC does not see it')
+      expect(screen.getByTestId('order-only-row').textContent).toContain('FCO')
+      expect(screen.getByTestId('order-only-row').textContent).toContain('ZURN ZN1400-2NL')
+      expect(screen.queryByRole('dialog', { name: 'Take FCO off the submittal' })).toBeNull()
+      // Its Edit window asks nothing the GC would read.
+      fireEvent.click(screen.getByRole('button', { name: 'Edit FCO' }))
+      const edit = await screen.findByRole('dialog', { name: 'Edit FCO' })
+      expect(within(edit).getByTestId('edit-order-only').textContent).toBe('Order only · the GC does not see it')
+      expect(within(edit).queryByLabelText('Note')).toBeNull()
+      expect(within(edit).queryByRole('button', { name: 'As specified' })).toBeNull()
+      fireEvent.click(within(edit).getByRole('button', { name: 'Cancel' }))
+      // Back onto the submittal.
+      state.writes = []
+      fireEvent.click(screen.getByRole('button', { name: 'Put FCO on the submittal' }))
+      await waitFor(() => expect(screen.getAllByTestId('submittal-row')).toHaveLength(3))
+      expect(state.writes.find((w) => w.op === 'update' && w.table === 'bid_submittal_items')).toMatchObject({ payload: { order_only: false }, filters: [['id', 'it-2']] })
+      expect(state.writes.find((w) => w.op === 'upsert')!.payload).toEqual([{ bid_id: 'b398', count_row_id: 'c-wc', ticked: true, order_only: false }])
+      expect(screen.queryByTestId('order-only-heading')).toBeNull()
+    } finally {
+      state.procRecords = []
+    }
+  })
+
+  it('2026-10-02 · a fixture the log holds an order for cannot be left out: the window says why, and Order only is still open', async () => {
+    state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [], shared_at: null, created_at: '2026-09-15T00:00:00Z' }]
+    state.items = [
+      item({ id: 'it-1', tag: 'EWC-1', sequence_order: 1, submitted_label: 'ELKAY LZSTL8WSLK', status: 'proposed' }),
+      item({ id: 'it-2', tag: 'FCO', sequence_order: 2, submitted_label: 'ZURN ZN1400-2NL', status: 'proposed', order_only: true }),
+    ]
+    state.writes = []
+    state.tasks = []
+    state.parts = []
+    state.procRecords = [{ id: 'pr-1', bid_id: 'b398', tag: 'EWC-1', ordered_on: '2026-09-23', delivered_on: '2026-09-29', po_ref: 'space x carriers', sort_order: 1, label: '' }]
+    try {
+      mount()
+      await waitFor(() => expect(screen.getAllByTestId('submittal-row')).toHaveLength(1))
+      // A row stored order only reads in its group from the first load.
+      expect(screen.getAllByTestId('order-only-row')).toHaveLength(1)
+      fireEvent.click(screen.getByRole('button', { name: 'Remove EWC-1' }))
+      const takeOff = await screen.findByRole('dialog', { name: 'Take EWC-1 off the submittal' })
+      const out = within(takeOff).getByTestId('take-off-leave-out') as HTMLButtonElement
+      expect(out.disabled).toBe(true)
+      expect(out.textContent).toContain('Ordered 09/23, on site 09/29. It cannot be left out.')
+      expect((within(takeOff).getByTestId('take-off-order-only') as HTMLButtonElement).disabled).toBe(false)
+      fireEvent.click(within(takeOff).getByRole('button', { name: 'Cancel' }))
+      expect(state.writes).toEqual([])
+    } finally {
+      state.procRecords = []
     }
   })
 
