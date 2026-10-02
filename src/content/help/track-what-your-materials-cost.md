@@ -2,7 +2,7 @@
 title: track what your materials cost
 category: Office
 roles: dev, master_technician, assistant, estimator
-keywords: material prices, inflation, price creep, price history, price index, parts book, supply house prices, stale prices, fresh prices, copper, pvc, what your materials cost, check 20 prices, confirm a price, same price
+keywords: material prices, inflation, price creep, price history, price index, parts book, supply house prices, stale prices, fresh prices, copper, pvc, what your materials cost, check 20 prices, confirm a price, same price, wrong price, typo, 999999, price looks wrong
 order: 83
 ---
 Materials → Parts Book opens with a card called What your materials cost. It compares what the parts you bid with cost today against February. It also says how fresh those prices are.
@@ -39,7 +39,17 @@ Materials → Parts Book opens with a card called What your materials cost. It c
 
 - A jump to one and a half times the old price or more is set aside. So is a drop to half or less. Those are usually a fixed typo or a pack size, not the market.
 - A price of $999,999 is a stand-in, so it never counts.
+- Each one shows in the amber box until someone fixes it or says it is right.
 - Robot web research prices stay out. So do the robots' own bids.
+
+## Prices that look wrong
+
+- A price that looks wrong shows in an amber box on the card. It says what the price reads and what it was before.
+- It also names the open bids that use it.
+- Press {{button:outline-amber|Fix price}} to open that part's prices and change it.
+- If a big change is real, press {{button:outline-amber|It’s right}}. The card counts the price again from then on.
+- A $999,999 stand-in can only be fixed.
+- In a part's Price History, a rise reads orange with ▲ and a drop reads blue with ▼. The same price again reads Checked.
 
 ## Moved lately
 

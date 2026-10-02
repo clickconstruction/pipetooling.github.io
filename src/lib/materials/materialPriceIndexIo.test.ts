@@ -16,7 +16,8 @@ function fakeClient(tables: Record<string, unknown[]>, failing: ReadonlySet<stri
             if (prop === 'then') {
               return (resolve: (v: { data: unknown; error: unknown }) => void) => {
                 if (failing.has(table)) return resolve({ data: null, error: { message: 'boom', code: '42501' } })
-                resolve({ data: tables[table] ?? [], error: null })
+                const rows = tables[table] ?? []
+                resolve({ data: steps.some((st) => st.method === 'maybeSingle') ? (rows[0] ?? null) : rows, error: null })
               }
             }
             return (...args: unknown[]) => {
@@ -59,11 +60,16 @@ function line(id: string, over: Record<string, unknown> = {}) {
 describe('basketFromLines', () => {
   it('weights each part + house by quantity × price × fixture count, and counts its open bids once each', () => {
     const basket = basketFromLines(
-      [line('l1'), line('l2', { quantity: 1, row: { n: null } }), line('l3', { bid_id: 'bid-2' }), line('l4', { bid_id: 'bid-3', bid: { ...openBid, outcome: 'won' } })],
-      { serviceTypeId: PLUMBING, twinUserIds: new Set() },
+      [
+        line('l1', { bid: { ...openBid, bid_number: '385' } }),
+        line('l2', { quantity: 1, row: { n: null }, bid: { ...openBid, bid_number: '385' } }),
+        line('l3', { bid_id: 'bid-2', bid: { ...openBid, bid_number: '96' } }),
+        line('l4', { bid_id: 'bid-3', bid: { ...openBid, bid_number: '338', outcome: 'won' } }),
+      ],
+      { serviceTypeId: PLUMBING, twinUserIds: new Set(), bidPrefix: 'BP' },
     )
     expect(basket).toEqual([
-      { priceId: 'price-copper-reece', partId: 'copper', houseId: 'reece', partName: '2IN COPPER', houseName: 'Reece', spend: 60 + 10 + 60 + 60, price: 11, priceUpdatedDay: '2026-08-21', openBidCount: 2 },
+      { priceId: 'price-copper-reece', partId: 'copper', houseId: 'reece', partName: '2IN COPPER', houseName: 'Reece', spend: 60 + 10 + 60 + 60, price: 11, priceUpdatedDay: '2026-08-21', openBidCount: 2, openBidLabels: ['BP96', 'BP385'] },
     ])
   })
 
@@ -121,6 +127,15 @@ describe('loadMaterialPriceIndexInputs', () => {
     const history = queries.find((q) => q.table === 'material_part_price_history')!
     expect(history.steps.filter((s) => s.method === 'order').map((s) => s.args[0])).toEqual(['changed_at', 'id'])
     expect(history.steps).toContainEqual({ method: 'range', args: [0, 999] })
+  })
+
+  it('labels open bids with the trade’s own prefix, and B when it has none', async () => {
+    const withPrefix = fakeClient({ service_types: [{ ledger_bid_prefix: 'BP' }], bids_takeoff_rough_part_lines: [line('l1', { bid: { ...openBid, bid_number: '338' } })], material_part_price_history: [] })
+    expect((await loadMaterialPriceIndexInputs(withPrefix.client, { serviceTypeId: PLUMBING, today: '2026-10-02' })).basket[0]!.openBidLabels).toEqual(['BP338'])
+    const st = withPrefix.queries.find((q) => q.table === 'service_types')!
+    expect(st.steps).toContainEqual({ method: 'eq', args: ['id', PLUMBING] })
+    const blank = fakeClient({ service_types: [{ ledger_bid_prefix: ' ' }], bids_takeoff_rough_part_lines: [line('l1', { bid: { ...openBid, bid_number: '338' } })], material_part_price_history: [] })
+    expect((await loadMaterialPriceIndexInputs(blank.client, { serviceTypeId: PLUMBING, today: '2026-10-02' })).basket[0]!.openBidLabels).toEqual(['B338'])
   })
 
   it('reads on with no twins when the reader may not see users', async () => {

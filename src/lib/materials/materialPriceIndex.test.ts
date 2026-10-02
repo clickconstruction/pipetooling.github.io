@@ -279,3 +279,42 @@ describe('parsePriceInput', () => {
     expect(parsePriceInput('999999')).toBeNull()
   })
 })
+
+describe('prices that look wrong', () => {
+  it('lists a stand-in with the last real price before it, the day it landed and its open bids', () => {
+    const out = computeMaterialPriceIndex({
+      events: [ev('sink', '2026-07-17', null, 653.93), ev('sink', '2026-07-17', 653.93, 0), ev('sink', '2026-07-17', 0, 999_999)],
+      basket: [pair('sink', { price: 999_999, houseName: 'Reece', openBidLabels: ['BP338'] }), pair('ok')],
+      today: '2026-10-02',
+    })!
+    expect(out.suspects).toEqual([
+      { priceId: 'price-sink-reece', partId: 'sink', houseId: 'reece', partName: 'SINK', houseName: 'Reece', price: 999_999, previousPrice: 653.93, day: '2026-07-17', reason: 'stand-in', openBidLabels: ['BP338'] },
+    ])
+  })
+
+  it('lists a big jump nobody confirmed, and drops it once someone confirms the price', () => {
+    const jump = [ev('clamp', '2026-02-02', 0.56, 28.06)]
+    const listed = computeMaterialPriceIndex({ events: jump, basket: [pair('clamp', { price: 28.06 })], today: '2026-10-02' })!
+    expect(listed.suspects).toMatchObject([{ partId: 'clamp', reason: 'jump', previousPrice: 0.56, price: 28.06, day: '2026-02-02', openBidLabels: [] }])
+    const confirmed = computeMaterialPriceIndex({ events: [...jump, ev('clamp', '2026-10-01', 28.06, 28.06)], basket: [pair('clamp', { price: 28.06 })], today: '2026-10-02' })!
+    expect(confirmed.suspects).toEqual([])
+  })
+
+  it('leaves ordinary moves, first prices and a fixed typo alone', () => {
+    const out = computeMaterialPriceIndex({
+      events: [ev('a', '2026-05-01', 10, 12), ev('b', '2026-05-01', null, 4.38), ev('c', '2026-02-02', 438, 4.38), ev('c', '2026-03-02', 4.38, 4.5)],
+      basket: [pair('a', { price: 12 }), pair('b', { price: 4.38 }), pair('c', { price: 4.5 })],
+      today: '2026-10-02',
+    })!
+    expect(out.suspects).toEqual([])
+  })
+
+  it('a price with no history that reads $999,999 is still a stand-in, biggest spend first', () => {
+    const out = computeMaterialPriceIndex({
+      events: [],
+      basket: [pair('small', { price: 999_999, spend: 10 }), pair('big', { price: 1_000_000, spend: 500 })],
+      today: '2026-10-02',
+    })!
+    expect(out.suspects.map((x) => [x.partId, x.previousPrice, x.day])).toEqual([['big', null, null], ['small', null, null]])
+  })
+})

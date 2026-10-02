@@ -20,6 +20,7 @@ import { MaterialsPoGeneratorTab } from '../components/materials/MaterialsPoGene
 import { MaterialsJobAccountsTab } from '../components/materials/MaterialsJobAccountsTab'
 import { MaterialsPurchaseOrdersTab } from '../components/materials/MaterialsPurchaseOrdersTab'
 import { MaterialsPartsBookTab } from '../components/materials/MaterialsPartsBookTab'
+import { MATERIAL_PRICES_CHANGED_EVENT } from '../components/materials/MaterialPricesCard'
 import { MaterialsAssemblyBookTab } from '../components/materials/MaterialsAssemblyBookTab'
 import { MaterialsPoBuilderTab } from '../components/materials/MaterialsPoBuilderTab'
 import { useMaterialsPurchaseOrders } from '../hooks/useMaterialsPurchaseOrders'
@@ -1565,6 +1566,8 @@ export default function Materials() {
                 reloadPartsFirstPage()
               }}
               onPricesUpdated={(updatedPrices) => {
+                // v2.4394: What your materials cost reads the book again.
+                window.dispatchEvent(new Event(MATERIAL_PRICES_CHANGED_EVENT))
                 const partId = viewingPartPrices.id
                 setParts(prev =>
                   prev.map(p =>

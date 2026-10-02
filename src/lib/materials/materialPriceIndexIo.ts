@@ -10,6 +10,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { isRobotBid } from '../bidBoardScope'
 import { roughCountMultiplier } from '../bids/bidTakeoffHelpers'
+import { DEFAULT_BID_LEDGER_PREFIX } from '../ledgerDisplayPrefixes'
 import { fetchAllRows } from '../supabasePaging'
 import { calendarYmdInAppTzFromIso, startOfYmdInAppTzMs, ymdAddDays } from '../../utils/dateUtils'
 import { withSupabaseRetry } from '../../utils/errorHandling'
@@ -27,7 +28,7 @@ type LineRow = {
   unit_price: number | string | null
   bid_id: string
   row: { n: number | string | null } | null
-  bid: { outcome: string | null; adopted_into_bid_id: string | null; estimator_id: string | null; created_by: string | null } | null
+  bid: { bid_number?: string | null; outcome: string | null; adopted_into_bid_id: string | null; estimator_id: string | null; created_by: string | null } | null
   price: {
     id: string
     part_id: string
@@ -49,7 +50,7 @@ type HistoryRow = {
 }
 
 export const BASKET_LINE_SELECT =
-  'id, quantity, unit_price, bid_id, row:bids_count_rows(n:count), bid:bids(outcome, adopted_into_bid_id, estimator_id, created_by), price:material_part_prices(id, part_id, supply_house_id, price, updated_at, part:material_parts(name, service_type_id, is_robot), house:supply_houses(name))'
+  'id, quantity, unit_price, bid_id, row:bids_count_rows(n:count), bid:bids(bid_number, outcome, adopted_into_bid_id, estimator_id, created_by), price:material_part_prices(id, part_id, supply_house_id, price, updated_at, part:material_parts(name, service_type_id, is_robot), house:supply_houses(name))'
 
 /** The twins' user ids, to leave a robot's bids out; empty when the reader may not see them. */
 async function loadTwinUserIds(db: SupabaseClient): Promise<ReadonlySet<string>> {
@@ -62,9 +63,29 @@ async function loadTwinUserIds(db: SupabaseClient): Promise<ReadonlySet<string>>
   }
 }
 
+/** The trade's bid prefix (`BP`), as every bid label shows it; the default when it cannot be read. */
+async function loadBidPrefix(db: SupabaseClient, serviceTypeId: string): Promise<string> {
+  try {
+    const { data } = await db.from('service_types').select('ledger_bid_prefix').eq('id', serviceTypeId).maybeSingle()
+    const prefix = ((data as { ledger_bid_prefix?: string | null } | null)?.ledger_bid_prefix ?? '').trim()
+    return prefix || DEFAULT_BID_LEDGER_PREFIX
+  } catch {
+    return DEFAULT_BID_LEDGER_PREFIX
+  }
+}
+
+/** Bid labels in number order: `BP96` before `BP338`. */
+function sortBidLabels(labels: Iterable<string>): string[] {
+  return [...labels].sort((a, b) => a.localeCompare(b, 'en-US', { numeric: true }))
+}
+
 /** Fold takeoff lines into basket pairs: spend, today's price, names and open bids per part + house. */
-export function basketFromLines(rows: ReadonlyArray<LineRow>, opts: { serviceTypeId: string; twinUserIds: ReadonlySet<string> }): BasketPair[] {
-  const pairs = new Map<string, BasketPair & { openBids: Set<string> }>()
+export function basketFromLines(
+  rows: ReadonlyArray<LineRow>,
+  opts: { serviceTypeId: string; twinUserIds: ReadonlySet<string>; bidPrefix?: string },
+): BasketPair[] {
+  const prefix = opts.bidPrefix ?? DEFAULT_BID_LEDGER_PREFIX
+  const pairs = new Map<string, BasketPair & { openBids: Set<string>; labels: Set<string> }>()
   for (const line of rows) {
     const price = line.price
     if (!price?.part || price.part.is_robot) continue
@@ -88,13 +109,18 @@ export function basketFromLines(rows: ReadonlyArray<LineRow>, opts: { serviceTyp
         priceUpdatedDay: price.updated_at ? calendarYmdInAppTzFromIso(price.updated_at) : null,
         openBidCount: 0,
         openBids: new Set(),
+        labels: new Set(),
       }
       pairs.set(key, pair)
     }
     pair.spend += qty * unit * roughCountMultiplier(line.row?.n)
-    if (line.bid && line.bid.outcome == null && line.bid.adopted_into_bid_id == null) pair.openBids.add(line.bid_id)
+    if (line.bid && line.bid.outcome == null && line.bid.adopted_into_bid_id == null) {
+      pair.openBids.add(line.bid_id)
+      const number = (line.bid.bid_number ?? '').trim()
+      if (number) pair.labels.add(`${prefix}${number}`)
+    }
   }
-  return [...pairs.values()].map(({ openBids, ...p }) => ({ ...p, openBidCount: openBids.size }))
+  return [...pairs.values()].map(({ openBids, labels, ...p }) => ({ ...p, openBidCount: openBids.size, openBidLabels: sortBidLabels(labels) }))
 }
 
 /** History rows as price events; a row without a part, a house or a new price is skipped. */
@@ -120,8 +146,9 @@ export async function loadMaterialPriceIndexInputs(
   args: { serviceTypeId: string; today: string },
 ): Promise<{ basket: BasketPair[]; events: PriceEvent[] }> {
   const sinceIso = new Date(startOfYmdInAppTzMs(ymdAddDays(args.today, -BASKET_DAYS))).toISOString()
-  const [twinUserIds, lines, history] = await Promise.all([
+  const [twinUserIds, bidPrefix, lines, history] = await Promise.all([
     loadTwinUserIds(db),
+    loadBidPrefix(db, args.serviceTypeId),
     fetchAllRows<LineRow>(
       async (from, to) => ({
         data: (await withSupabaseRetry(
@@ -157,7 +184,7 @@ export async function loadMaterialPriceIndexInputs(
       'load price history',
     ),
   ])
-  const basket = basketFromLines(lines, { serviceTypeId: args.serviceTypeId, twinUserIds })
+  const basket = basketFromLines(lines, { serviceTypeId: args.serviceTypeId, twinUserIds, bidPrefix })
   const inBasket = new Set(basket.map((p) => `${p.partId}|${p.houseId}`))
   const events = eventsFromHistory(history).filter((e) => inBasket.has(`${e.partId}|${e.houseId}`))
   return { basket, events }

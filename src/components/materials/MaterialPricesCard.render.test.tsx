@@ -34,10 +34,14 @@ const index = (over: Partial<MaterialPriceIndex> = {}): MaterialPriceIndex => ({
     due: true,
     oldestDay: '2026-04-14',
   },
+  suspects: [],
   pairCount: 653,
   totalSpend: 1_000_000,
   ...over,
 })
+
+const sink = { priceId: 'p-sink', partId: 'sink', houseId: 'reece', partName: 'RIVERBY 33 X 22 SINK', houseName: 'Reece', price: 999_999, previousPrice: 653.93, day: '2026-07-17', reason: 'stand-in' as const, openBidLabels: ['BP338'] }
+const clamp = { priceId: 'p-clamp', partId: 'clamp', houseId: 'reece', partName: '1-1/2 CLAMP ALL', houseName: 'Reece', price: 28.06, previousPrice: 0.56, day: '2026-02-02', reason: 'jump' as const, openBidLabels: [] }
 
 const card = () => screen.getByRole('region', { name: 'What your materials cost' })
 
@@ -123,5 +127,38 @@ describe('MaterialPricesCardView', () => {
   it('no button where nothing can open the window', () => {
     render(<MaterialPricesCardView state={{ status: 'ready', index: index(), today: '2026-10-02' }} />)
     expect(within(card()).queryByRole('button')).toBeNull()
+  })
+
+  it('prices that look wrong: what each reads, what it was, the bids it sits on, and Fix price', () => {
+    const onFixPrice = vi.fn()
+    render(<MaterialPricesCardView state={{ status: 'ready', index: index({ suspects: [sink, clamp] }), today: '2026-10-02' }} onFixPrice={onFixPrice} onConfirmPrice={vi.fn()} />)
+    const c = card()
+    expect(c.textContent).toContain('2 prices look wrong')
+    expect(c.textContent).toContain('RIVERBY 33 X 22 SINK at Reece reads $999,999.00.')
+    expect(c.textContent).toContain('It was $653.93 before Jul 17. On BP338.')
+    expect(c.textContent).toContain('It was $0.56 before Feb 2. No open bid uses it.')
+    expect(c.textContent).toContain('Prices that look wrong are left out of the number.')
+    fireEvent.click(within(c).getAllByRole('button', { name: 'Fix price' })[0]!)
+    expect(onFixPrice).toHaveBeenCalledWith('sink')
+  })
+
+  it('It’s right confirms a big jump, never a stand-in, and says why when it fails', async () => {
+    const onConfirmPrice = vi.fn(async () => ({ ok: false as const, message: 'This account can’t change prices.' }))
+    render(<MaterialPricesCardView state={{ status: 'ready', index: index({ suspects: [sink, clamp] }), today: '2026-10-02' }} onConfirmPrice={onConfirmPrice} />)
+    const c = card()
+    const right = within(c).getAllByRole('button', { name: 'It’s right' })
+    expect(right).toHaveLength(1)
+    fireEvent.click(right[0]!)
+    expect(onConfirmPrice).toHaveBeenCalledWith('p-clamp')
+    await within(c).findByText('Couldn’t save: This account can’t change prices.')
+  })
+
+  it('shows three and counts the rest', () => {
+    const many = [sink, clamp, { ...clamp, priceId: 'p3', partId: 'c3' }, { ...clamp, priceId: 'p4', partId: 'c4' }, { ...clamp, priceId: 'p5', partId: 'c5' }]
+    render(<MaterialPricesCardView state={{ status: 'ready', index: index({ suspects: many }), today: '2026-10-02' }} />)
+    const c = card()
+    expect(c.textContent).toContain('5 prices look wrong')
+    expect(c.textContent).toContain('And 2 more.')
+    expect(within(c).queryByRole('button', { name: 'Fix price' })).toBeNull()
   })
 })

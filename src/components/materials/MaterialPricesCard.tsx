@@ -2,19 +2,24 @@
  * Materials → Parts Book: What your materials cost (v2.4391). One card over the parts list: the
  * month-by-month number for the parts you bid with, how fresh the prices behind it are, and the
  * prices that moved lately. The math is `lib/materials/materialPriceIndex.ts`; the reads are
- * `useMaterialPriceIndex`. Its one door that writes is Check 20 prices (v2.4392,
- * `CheckPricesWindow` over `lib/materials/priceCheckIo.ts`); the card reads again after it.
+ * `useMaterialPriceIndex`. Its doors that write are Check 20 prices (v2.4392,
+ * `CheckPricesWindow` over `lib/materials/priceCheckIo.ts`) and It's right on a price that looks
+ * wrong (v2.4394); the card reads again after either, and after the page's Part Prices window
+ * fires {@link MATERIAL_PRICES_CHANGED_EVENT}.
  */
-import { useState, type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { useMaterialPriceIndex, type MaterialPriceIndexState } from '../../hooks/useMaterialPriceIndex'
 import { helpGuideHref } from '../../lib/helpGuideAnchors'
-import { changeText, monthName, verdictText, type IndexMonth, type MaterialPriceIndex } from '../../lib/materials/materialPriceIndex'
-import { confirmPriceToday, savePriceToday } from '../../lib/materials/priceCheckIo'
+import { changeText, monthName, verdictText, type IndexMonth, type MaterialPriceIndex, type SuspectPrice } from '../../lib/materials/materialPriceIndex'
+import { confirmPriceToday, savePriceToday, type PriceCheckResult } from '../../lib/materials/priceCheckIo'
+import { formatCurrency } from '../../lib/format'
 import { supabase } from '../../lib/supabase'
 import { formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
 import { CheckPricesWindow } from './CheckPricesWindow'
 
 export const MATERIAL_PRICES_GUIDE = 'track-what-your-materials-cost'
+/** Fired on `window` when a book price changed somewhere on the page (v2.4394: the Part Prices window); the card reads again. */
+export const MATERIAL_PRICES_CHANGED_EVENT = 'material-prices-changed'
 
 const label: CSSProperties = { fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 const muted: CSSProperties = { fontSize: '0.8125rem', color: 'var(--text-muted)' }
@@ -106,8 +111,88 @@ function CheckPricesDoor({ checks, onOpen }: { checks: MaterialPriceIndex['check
   )
 }
 
+/** "1 price looks wrong" (v2.4394): each stand-in or unconfirmed big jump, the bids it sits on, a way to fix or confirm it. */
+function SuspectPrices({
+  suspects,
+  onFixPrice,
+  onConfirmPrice,
+}: {
+  suspects: SuspectPrice[]
+  onFixPrice?: (partId: string) => void
+  onConfirmPrice?: (priceId: string) => Promise<PriceCheckResult>
+}) {
+  const [busy, setBusy] = useState<string | null>(null)
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  if (suspects.length === 0) return null
+  const shown = suspects.slice(0, 3)
+  const btn: CSSProperties = { minHeight: 36, padding: '0 0.75rem', borderRadius: 8, border: '1px solid var(--border-amber)', background: 'var(--surface)', color: 'var(--text-amber-900)', font: 'inherit', fontSize: '0.8125rem', cursor: 'pointer' }
+  const bids = (labels: string[]) => {
+    if (labels.length === 0) return 'No open bid uses it.'
+    const named = labels.slice(0, 3).join(', ')
+    return labels.length > 3 ? `On ${named} and ${labels.length - 3} more.` : `On ${named}.`
+  }
+  return (
+    <div style={{ flex: '1 1 260px', minWidth: 0, border: '1px solid var(--border-amber)', background: 'var(--bg-amber-tint)', borderRadius: 10, padding: '0.75rem 0.85rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+      <strong style={{ color: 'var(--text-amber-900)' }}>{suspects.length === 1 ? '1 price looks wrong' : `${suspects.length} prices look wrong`}</strong>
+      {shown.map((x) => (
+        <div key={x.priceId} style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', fontSize: '0.8125rem', color: 'var(--text-amber-900)' }}>
+          <div>
+            <strong style={{ overflowWrap: 'anywhere' }}>{x.partName}</strong> at {x.houseName} reads <strong>${formatCurrency(x.price)}</strong>.
+          </div>
+          <div>
+            {x.previousPrice != null
+              ? x.day ? `It was $${formatCurrency(x.previousPrice)} before ${formatWorkDateYmdMonthDayShort(x.day)}.` : `It was $${formatCurrency(x.previousPrice)}.`
+              : 'No earlier price is on record.'}{' '}
+            {bids(x.openBidLabels)}
+          </div>
+          {onFixPrice || (onConfirmPrice && x.reason === 'jump') ? (
+            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+              {onFixPrice ? <button type="button" style={btn} onClick={() => onFixPrice(x.partId)}>Fix price</button> : null}
+              {onConfirmPrice && x.reason === 'jump' ? (
+                <button
+                  type="button"
+                  style={btn}
+                  disabled={busy === x.priceId}
+                  onClick={async () => {
+                    setBusy(x.priceId)
+                    const result = await onConfirmPrice(x.priceId)
+                    setBusy(null)
+                    setErrors((prev) => {
+                      const next = { ...prev }
+                      if (result.ok) delete next[x.priceId]
+                      else next[x.priceId] = `Couldn’t save: ${result.message}`
+                      return next
+                    })
+                  }}
+                >
+                  {busy === x.priceId ? 'Saving…' : 'It’s right'}
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+          {errors[x.priceId] ? <div style={{ color: 'var(--text-red-700)' }}>{errors[x.priceId]}</div> : null}
+        </div>
+      ))}
+      {suspects.length > shown.length ? <div style={{ fontSize: '0.75rem', color: 'var(--text-amber-900)' }}>And {suspects.length - shown.length} more.</div> : null}
+      <div style={{ fontSize: '0.75rem', color: 'var(--text-amber-900)' }}>Prices that look wrong are left out of the number.</div>
+    </div>
+  )
+}
+
 /** The card for a computed index; the loading and error states are one quiet line. */
-export function MaterialPricesCardView({ state, onOpenCheck }: { state: MaterialPriceIndexState; onOpenCheck?: () => void }) {
+export function MaterialPricesCardView({
+  state,
+  onOpenCheck,
+  onFixPrice,
+  onConfirmPrice,
+}: {
+  state: MaterialPriceIndexState
+  onOpenCheck?: () => void
+  /** Open the part's prices to fix one that looks wrong (v2.4394). */
+  onFixPrice?: (partId: string) => void
+  /** "It's right": confirm a big jump today (v2.4394). */
+  onConfirmPrice?: (priceId: string) => Promise<PriceCheckResult>
+}) {
   if (state.status === 'loading') return <div style={{ ...muted, marginBottom: '1rem' }}>Reading your material prices…</div>
   if (state.status === 'error') return <div style={{ ...muted, marginBottom: '1rem' }}>Couldn’t read your material prices just now.</div>
   const index = state.index
@@ -150,6 +235,7 @@ export function MaterialPricesCardView({ state, onOpenCheck }: { state: Material
           <div style={{ fontSize: '0.8125rem' }}>{pct(index.freshness.older)} of your bid dollars sit on a price older than 90 days.</div>
           {onOpenCheck ? <CheckPricesDoor checks={index.checks} onOpen={onOpenCheck} /> : null}
         </div>
+        <SuspectPrices suspects={index.suspects} onFixPrice={onFixPrice} onConfirmPrice={onConfirmPrice} />
       </div>
       {index.moved.length > 0 ? (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -176,14 +262,32 @@ export function MaterialPricesCardView({ state, onOpenCheck }: { state: Material
 }
 
 /** The Parts Book's card for the trade on screen, with Check 20 prices behind its button. */
-export function MaterialPricesCard({ serviceTypeId }: { serviceTypeId: string | null }) {
+export function MaterialPricesCard({ serviceTypeId, onFixPrice }: { serviceTypeId: string | null; onFixPrice?: (partId: string) => void }) {
   const [reloadKey, setReloadKey] = useState(0)
   const [checking, setChecking] = useState(false)
   const state = useMaterialPriceIndex(serviceTypeId, reloadKey)
   const ready = state.status === 'ready' && state.index ? state : null
+  useEffect(() => {
+    const reread = () => setReloadKey((k) => k + 1)
+    window.addEventListener(MATERIAL_PRICES_CHANGED_EVENT, reread)
+    return () => window.removeEventListener(MATERIAL_PRICES_CHANGED_EVENT, reread)
+  }, [])
   return (
     <>
-      <MaterialPricesCardView state={state} onOpenCheck={() => setChecking(true)} />
+      <MaterialPricesCardView
+        state={state}
+        onOpenCheck={() => setChecking(true)}
+        onFixPrice={onFixPrice}
+        onConfirmPrice={
+          ready
+            ? async (priceId) => {
+                const result = await confirmPriceToday(supabase, priceId, ready.today)
+                if (result.ok) setReloadKey((k) => k + 1)
+                return result
+              }
+            : undefined
+        }
+      />
       {checking && ready?.index ? (
         <CheckPricesWindow
           items={ready.index.checks.items}
