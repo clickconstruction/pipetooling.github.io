@@ -14,7 +14,9 @@ export function StagesBillRowLine({ line, compact = false }: { line: Line; compa
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'baseline',
-        gap: '0.5rem',
+        // v2.4353: a big bill wraps its left amount under the words instead of cutting the words off.
+        flexWrap: 'wrap',
+        gap: '0 0.5rem',
         width: '100%',
         maxWidth: '100%',
         boxSizing: 'border-box',
@@ -25,11 +27,11 @@ export function StagesBillRowLine({ line, compact = false }: { line: Line; compa
         fontVariantNumeric: 'tabular-nums',
       }}
     >
-      <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      <span style={{ whiteSpace: 'nowrap' }}>
         <b style={{ fontWeight: 600, color: 'var(--text-strong)' }}>This bill</b>
         <span style={{ color: 'var(--text-muted)' }}>{` · ${line.paid}`}</span>
       </span>
-      <span style={{ fontWeight: 600, color: 'var(--text-strong)', whiteSpace: 'nowrap' }}>{line.left}</span>
+      <span style={{ fontWeight: 600, color: 'var(--text-strong)', whiteSpace: 'nowrap', marginLeft: 'auto' }}>{line.left}</span>
     </div>
   )
 }

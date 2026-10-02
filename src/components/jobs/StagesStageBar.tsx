@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react'
 import type { ProgressPaymentView } from '../../lib/jobs/progressPaymentCell'
-import { buildJobMoneyBar, MONEY_BAR_TONE, MONEY_BAR_TRACK, stageNameLabel } from '../../lib/jobs/jobMoneyBar'
+import { buildJobMoneyBar, MONEY_BAR_TONE, MONEY_BAR_TRACK, stageNameLabel, type MoneyBarBillMark } from '../../lib/jobs/jobMoneyBar'
 import { useMeasuredWidth } from '../../hooks/useMeasuredWidth'
 
 /**
@@ -56,7 +56,14 @@ function tickStyle(leftPct: number, hollow: boolean): CSSProperties {
   }
 }
 
-export function StagesStageBar({ view, pctComplete, compact = false, onStageClick }: { view: ProgressPaymentView; pctComplete: number | null; compact?: boolean; onStageClick?: () => void }) {
+export function StagesStageBar({ view, pctComplete, compact = false, onStageClick, billMark = null }: {
+  view: ProgressPaymentView
+  pctComplete: number | null
+  compact?: boolean
+  onStageClick?: () => void
+  /** v2.4353: on a bill row of a job with two or more bills, which part of the bar is this row's bill (`billMarkFor`). */
+  billMark?: MoneyBarBillMark | null
+}) {
   const [barRef, barWidth] = useMeasuredWidth<HTMLDivElement>()
   const bar = buildJobMoneyBar(view, { pctComplete })
   if (bar.blocks.length === 0) return null
@@ -72,7 +79,7 @@ export function StagesStageBar({ view, pctComplete, compact = false, onStageClic
           aria-label={view.words.full}
           title={`${bar.blocks.map((b) => b.title).join('\n')}${bar.tick ? `\n${bar.tick.pct}% done${bar.tick.hollow ? ', older than the last day worked' : ''}` : ''}${onStageClick ? `\n${STAGE_CLICK_TITLE}` : ''}`}
           data-money-bar
-          style={{ position: 'relative', padding: '3px 0', minWidth: 0 }}
+          style={{ position: 'relative', padding: billMark?.kind === 'bracket' ? '3px 0 9px' : '3px 0', minWidth: 0 }}
         >
           <div style={{ display: 'flex', gap: BLOCK_GAP, height: BAR_HEIGHT, minWidth: 0 }}>
             {bar.blocks.map((b) => (
@@ -89,29 +96,41 @@ export function StagesStageBar({ view, pctComplete, compact = false, onStageClic
             ))}
           </div>
           {bar.tick ? <span aria-hidden data-progress-tick={bar.tick.hollow ? 'hollow' : 'solid'} style={tickStyle(bar.tick.leftPct, bar.tick.hollow)} /> : null}
+          {billMark?.kind === 'bracket' ? (
+            <span
+              aria-hidden
+              data-bill-bracket
+              title={billMark.title}
+              style={{ position: 'absolute', bottom: 0, height: 6, left: `${billMark.leftPct}%`, width: `${billMark.widthPct}%`, border: '2px solid var(--text-strong)', borderTop: 'none', borderRadius: '0 0 2px 2px', boxSizing: 'border-box' }}
+            />
+          ) : null}
         </div>
       </BarShell>
 
       {bar.names ? (
         <div role="list" aria-label="Stages" style={{ display: 'flex', gap: BLOCK_GAP, minWidth: 0, fontSize: '0.65625rem', lineHeight: 1.2 }}>
-          {bar.names.map((n) => (
+          {bar.names.map((n) => {
+            // On a bill row the stage its bill names is the bold one (v2.4353); else the crew's stage.
+            const bold = billMark?.kind === 'stage' ? n.key === billMark.key : n.bold
+            return (
             <span
               key={n.key}
               role="listitem"
-              title={`Stage ${n.number} · ${n.name}${n.done ? ' · done' : n.bold ? ' · the crew is on it' : ''}`}
+              title={`Stage ${n.number} · ${n.name}${billMark?.kind === 'stage' && bold ? ` · ${billMark.title}` : n.done ? ' · done' : n.bold ? ' · the crew is on it' : ''}`}
               style={{
                 flex: `${n.widthPct} 1 0px`,
                 minWidth: 0,
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
-                fontWeight: n.bold ? 700 : 400,
-                color: n.bold ? 'var(--text-strong)' : 'var(--text-muted)',
+                fontWeight: bold ? 700 : 400,
+                color: bold ? 'var(--text-strong)' : 'var(--text-muted)',
               }}
             >
               {stageNameLabel(n, blockPx(n.widthPct))}
             </span>
-          ))}
+            )
+          })}
         </div>
       ) : null}
     </div>

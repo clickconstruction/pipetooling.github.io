@@ -95,7 +95,8 @@ export type ProgressPaymentInput = {
   money: StagesMoneyBarModel
   stageBar: PipelineStageBar | null
   fixtures: ReadonlyArray<ProgressPaymentFixture>
-  invoices: ReadonlyArray<{ id: string; status: string }>
+  /** `amount` and `applied` (payments linked to the invoice) let a part-paid bill's named lines read part paid (v2.4353). */
+  invoices: ReadonlyArray<{ id: string; status: string; amount?: number | string | null; applied?: number }>
   crew: JobCrewPosition | null | undefined
   /** jobs_ledger.pct_complete. */
   pctComplete: number | null | undefined
@@ -194,26 +195,43 @@ export function moneyClause(money: StagesMoneyBarModel): { text: string; tone: P
 
 type Pool = { paid: number; billed: number; unbilled: number }
 
+type PourInvoice = { status: string; amount: number | null; applied: number }
+
 function pourMoney(
-  amounts: ReadonlyArray<{ key: string; amount: number; invoiceStatus: string | null }>,
+  amounts: ReadonlyArray<{ key: string; amount: number; invoiceId: string | null }>,
   money: StagesMoneyBarModel,
+  invoices: ReadonlyMap<string, PourInvoice>,
 ): Map<string, MoneyChannel> {
   const pool: Pool = { paid: Math.max(0, money.paid), billed: Math.max(0, money.billedUnpaid), unbilled: Math.max(0, money.doneNotBilled ?? 0) }
   const alloc = new Map<string, Pool>()
   for (const a of amounts) alloc.set(a.key, { paid: 0, billed: 0, unbilled: 0 })
-  // 1. A line an invoice names takes that invoice's money first.
-  for (const a of amounts) {
-    if (a.amount <= 0 || !a.invoiceStatus) continue
-    const slot = alloc.get(a.key)!
-    if (a.invoiceStatus === 'paid') {
-      const take = Math.min(a.amount, pool.paid)
-      slot.paid = take
-      pool.paid -= take
-    } else if (a.invoiceStatus === 'billed') {
-      const take = Math.min(a.amount, pool.billed)
-      slot.billed = take
-      pool.billed -= take
+  // 1. A line an invoice names takes that invoice's money first: what is paid on it, then
+  //    what is still open on it (v2.4353 — a part-paid bill's line used to read all billed).
+  //    A paid invoice covers its lines; a sent one is paid by the payments linked to it.
+  const left = new Map<string, { paid: number; open: number }>()
+  for (const [id, inv] of invoices) {
+    if (inv.status === 'paid') left.set(id, { paid: inv.amount ?? Infinity, open: 0 })
+    else if (inv.status === 'billed') {
+      const amount = inv.amount ?? Infinity
+      const paid = Math.min(Math.max(0, inv.applied), amount)
+      left.set(id, { paid, open: Math.max(0, amount - paid) })
     }
+  }
+  for (const a of amounts) {
+    if (a.amount <= 0 || !a.invoiceId) continue
+    const inv = left.get(a.invoiceId)
+    if (!inv) continue
+    const slot = alloc.get(a.key)!
+    let room = a.amount
+    const paid = Math.min(room, inv.paid, pool.paid)
+    slot.paid += paid
+    inv.paid -= paid
+    pool.paid -= paid
+    room -= paid
+    const billed = Math.min(room, inv.open, pool.billed)
+    slot.billed += billed
+    inv.open -= billed
+    pool.billed -= billed
   }
   // 2. The rest pours in order: paid, then billed, then done-not-billed.
   for (const kind of ['paid', 'billed', 'unbilled'] as const) {
@@ -252,6 +270,9 @@ export function buildProgressPaymentView(input: ProgressPaymentInput): ProgressP
   const stale = percentIsStale(crew, input.pctComplete)
   const invoiceStatus = new Map(input.invoices.map((i) => [i.id, i.status]))
   const statusOf = (invoiceId: string | null) => (invoiceId ? invoiceStatus.get(invoiceId) ?? null : null)
+  const pourInvoices = new Map<string, PourInvoice>(
+    input.invoices.map((i) => [i.id, { status: i.status, amount: i.amount != null && Number.isFinite(Number(i.amount)) ? Number(i.amount) : null, applied: i.applied ?? 0 }]),
+  )
 
   if (!money.hasBar) {
     const hasCrew = !!(crew && (crew.lastWorkYmd || crew.sheet))
@@ -297,8 +318,9 @@ export function buildProgressPaymentView(input: ProgressPaymentInput): ProgressP
     const shares = segs.map((s) => s.sharePct)
     const doneShare = segs.reduce((acc, _s, i) => (liveIdx !== -1 && i < liveIdx ? acc + shares[i]! : liveIdx === -1 ? acc + shares[i]! : acc), 0)
     const pour = pourMoney(
-      segs.map((s) => ({ key: s.fixtureId, amount: s.amount, invoiceStatus: statusOf(fixtureById.get(s.fixtureId)?.invoice_id ?? null) })),
+      segs.map((s) => ({ key: s.fixtureId, amount: s.amount, invoiceId: fixtureById.get(s.fixtureId)?.invoice_id ?? null })),
       money,
+      pourInvoices,
     )
     // v2.3459: the live chip no longer carries the crew's name (the row's Crew &
     // Dates column lists them); "today" stays — it says the crew is here now.
@@ -356,13 +378,13 @@ export function buildProgressPaymentView(input: ProgressPaymentInput): ProgressP
   const priced = [...input.fixtures]
     .filter((f) => (Number(f.count) || 0) * (Number(f.line_unit_price) || 0) > 0)
     .sort((a, b) => (a.sequence_order ?? 0) - (b.sequence_order ?? 0))
-  const lines = priced.length > 0 ? priced.map((f) => ({ key: f.id, name: (f.name ?? '').trim() || 'Line item', amount: round2((Number(f.count) || 0) * (Number(f.line_unit_price) || 0)), invoiceStatus: statusOf(f.invoice_id) })) : [{ key: 'job', name: 'Job', amount: money.total, invoiceStatus: null }]
+  const lines = priced.length > 0 ? priced.map((f) => ({ key: f.id, name: (f.name ?? '').trim() || 'Line item', amount: round2((Number(f.count) || 0) * (Number(f.line_unit_price) || 0)), invoiceId: f.invoice_id })) : [{ key: 'job', name: 'Job', amount: money.total, invoiceId: null }]
   const widths = widthsOf(lines.map((l) => l.amount))
   const shares = (() => {
     const t = lines.reduce((s, l) => s + Math.max(0, l.amount), 0)
     return lines.map((l) => (t > 0 ? (Math.max(0, l.amount) / t) * 100 : 100 / lines.length))
   })()
-  const pour = pourMoney(lines, money)
+  const pour = pourMoney(lines, money, pourInvoices)
   const pct = percent && !stale ? percent.pct : null
   let poured = 0
   const segments: ProgressPaymentSegment[] = lines.map((l, i) => {

@@ -16,6 +16,7 @@ import { StagesCrewLine } from './StagesCrewLine'
 import { StagesExpandedThreadRow } from './StagesExpandedThreadRow'
 import { effectiveInvoiceEstBillDate, sumInvoiceAppliedFromJobPayments } from '../../lib/jobs/invoiceBilling'
 import { stagesBillRowLine } from '../../lib/jobs/stagesBillRowLine'
+import { billMarkFor } from '../../lib/jobs/jobMoneyBar'
 import { StagesBillRowLine } from './StagesBillRowLine'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { formatEstimatedCompletionDisplay, formatUsdNoCents } from '../../lib/jobs/jobFormatting'
@@ -75,6 +76,9 @@ export function StagesUnifiedInvoiceRow({ row, t }: { row: StagesUnifiedInvoiceR
   } = t
   const { inv, job } = row
   const invWithJob: InvoiceWithJob = { ...inv, job }
+  const progress = progressPaymentForJob(job, stagesRowSharedCtx.crewByJobId.get(job.id) ?? null)
+  // v2.4353: on a job with two or more bills, which part of the bar is this row's bill.
+  const billMark = inv.status === 'billed' ? billMarkFor(progress.view, { billId: inv.id, fixtures: job.fixtures ?? [], invoices: job.invoices ?? [] }) : null
   // v2.4349: a sent bill's row says what is paid and left on that bill.
   const sentBillLine =
     inv.status === 'billed'
@@ -237,8 +241,9 @@ export function StagesUnifiedInvoiceRow({ row, t }: { row: StagesUnifiedInvoiceR
       <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
           <StagesProgressPaymentCell
-            model={progressPaymentForJob(job, stagesRowSharedCtx.crewByJobId.get(job.id) ?? null).model}
-            view={progressPaymentForJob(job, stagesRowSharedCtx.crewByJobId.get(job.id) ?? null).view}
+            model={progress.model}
+            view={progress.view}
+            billMark={billMark}
             pctComplete={job.pct_complete ?? null}
             billSentAlert={stagesBillSentPctAlert(job)}
             pctSaving={pctCompleteSavingId === job.id}

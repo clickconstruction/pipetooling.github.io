@@ -20,6 +20,7 @@ import { StagesExpandedThreadRow } from './StagesExpandedThreadRow'
 import { formatCurrency, formatTimeSince, formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { jobBillingUnallocatedDollars, type InvoiceWithJob } from '../../lib/jobsStagesBoard'
 import { progressPaymentForJob } from '../../lib/jobs/progressPaymentForJob'
+import { billMarkFor } from '../../lib/jobs/jobMoneyBar'
 import { showAiaG702G703 } from '../../lib/aiaG702G703Eligibility'
 import { stagesAddedStampLabel } from '../../lib/jobsStagesSortMode'
 import { stagesBillSentPctAlert } from '../../lib/jobs/stagesBillSentPctAlert'
@@ -87,6 +88,7 @@ export function StagesUnifiedJobRow({ row, t }: { row: StagesUnifiedJobRowKind; 
       : null
   const bundleInvWithJob: InvoiceWithJob | null =
     bundleInv != null ? { ...bundleInv, job: j } : null
+  const progress = progressPaymentForJob(j, stagesRowSharedCtx.crewByJobId.get(j.id) ?? null)
   const bundleRowKey =
     bundleInv != null
       ? row.kind === 'job_with_primary_rtb'
@@ -181,8 +183,8 @@ export function StagesUnifiedJobRow({ row, t }: { row: StagesUnifiedJobRowKind; 
           {!bundleInv ? (
             <>
               <StagesProgressPaymentCell
-                model={progressPaymentForJob(j, stagesRowSharedCtx.crewByJobId.get(j.id) ?? null).model}
-      view={progressPaymentForJob(j, stagesRowSharedCtx.crewByJobId.get(j.id) ?? null).view}
+                model={progress.model}
+                view={progress.view}
                 pctComplete={j.pct_complete ?? null}
                 billSentAlert={stagesBillSentPctAlert(j)}
                 pctSaving={pctCompleteSavingId === j.id}
@@ -203,8 +205,9 @@ export function StagesUnifiedJobRow({ row, t }: { row: StagesUnifiedJobRowKind; 
           ) : (
             <>
               <StagesProgressPaymentCell
-                model={progressPaymentForJob(j, stagesRowSharedCtx.crewByJobId.get(j.id) ?? null).model}
-      view={progressPaymentForJob(j, stagesRowSharedCtx.crewByJobId.get(j.id) ?? null).view}
+                model={progress.model}
+                view={progress.view}
+                billMark={bundleInv.status === 'billed' && row.kind === 'job_with_merged_billed' ? billMarkFor(progress.view, { billId: bundleInv.id, fixtures: j.fixtures ?? [], invoices: j.invoices ?? [] }) : null}
                 pctComplete={j.pct_complete ?? null}
                 billSentAlert={stagesBillSentPctAlert(j)}
                 pctSaving={pctCompleteSavingId === j.id}

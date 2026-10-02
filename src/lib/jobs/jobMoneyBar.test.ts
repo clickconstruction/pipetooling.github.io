@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { blockMoneyWords, buildJobMoneyBar, tickLeftPct } from './jobMoneyBar'
+import { billMarkFor, blockMoneyWords, buildJobMoneyBar, tickLeftPct } from './jobMoneyBar'
 import { crewPositionsFromRpc, type JobCrewPositionRpcRow } from './jobCrewPosition'
 import { progressPaymentForJob } from './progressPaymentForJob'
 
@@ -109,13 +109,35 @@ describe('buildJobMoneyBar', () => {
     expect(bar.tick).toEqual({ leftPct: 100, hollow: false, pct: 100 })
   })
 
-  it('Vasquez (1019): one line, all amber, and the % date beside the box', () => {
+  it('Vasquez (1019): one line, all amber; a finished job leaves the date off', () => {
     const crew = crewPositionsFromRpc([crewRow({ job_ledger_id: 'vz', pct_set_at: '2026-09-23T15:00:00Z', pct_source: 'manual' })], today).get('vz')!
     const { view } = progressPaymentForJob({ id: 'vz', revenue: 450, payments_made: 0, pct_complete: 100, status: 'waiting', fixtures: [line('p', 'Pinpoint', 450, 0)], invoices: [], payments: [] }, crew, today)
     const bar = buildJobMoneyBar(view, { pctComplete: 100 })
     expect(bar.blocks[0]!.slices).toEqual([{ tone: 'unbilled', pct: 100 }])
     expect(bar.blocks[0]!.title).toBe('Pinpoint · $450 · $450 done, not billed')
-    expect(bar.date).toEqual({ text: 'Sep 23', stale: false, title: '100% typed Sep 23.' })
+    expect(bar.date).toBeNull()
+    // The same 100% with the crew on site since keeps its amber date.
+    const since = crewPositionsFromRpc([crewRow({ job_ledger_id: 'vz', last_work_date: '2026-09-29', last_day_people: ['Abraham'], sessions_60d: 1, people_60d: 1, pct_set_at: '2026-09-23T15:00:00Z', pct_source: 'manual' })], today).get('vz')!
+    const again = progressPaymentForJob({ id: 'vz', revenue: 450, payments_made: 0, pct_complete: 100, status: 'waiting', fixtures: [line('p', 'Pinpoint', 450, 0)], invoices: [], payments: [] }, since, today)
+    expect(buildJobMoneyBar(again.view, { pctComplete: 100 }).date).toEqual({ text: 'Sep 23', stale: true, title: '100% typed Sep 23. The crew has worked since, so the % may be behind.' })
+  })
+
+  it('Knight Springtown Vet (963): a part-paid bill that names a line fills it green for what is paid on it, blue for the rest', () => {
+    const invoices = [
+      { id: 'b0', status: 'billed', amount: 2_200, sequence_order: 0 },
+      { id: 'b2', status: 'billed', amount: 1_560, sequence_order: 2 },
+      { id: 'b3', status: 'billed', amount: 3_002.45, sequence_order: 3 },
+    ]
+    const payments = [{ invoice_id: 'b0', paid_on: '2026-09-10', amount: 2_090 }, { invoice_id: 'b2', paid_on: '2026-09-10', amount: 1_482 }]
+    const { view, model } = progressPaymentForJob(
+      { id: 'vet', revenue: 6_762.45, payments_made: 3_572, pct_complete: 100, status: 'billed', fixtures: [{ ...line('co', 'CHANGE ORDER: Chip and move copper manifold', 2_200, 0), invoice_id: 'b0' }, line('pl', 'Plumbing according to spec', 4_562.45, 1)], invoices, payments },
+      null,
+      today,
+    )
+    expect(model.billedUnpaid).toBeCloseTo(3_190.45, 2)
+    const bar = buildJobMoneyBar(view, { pctComplete: 100 })
+    expect(bar.blocks.map((b) => b.slices.map((s) => `${s.tone} ${Math.round(s.pct)}`))).toEqual([['paid 95', 'billed 5'], ['paid 32', 'billed 68']])
+    expect(bar.names).toBeNull()
   })
 
   it('an empty box with a field report: the date words say the report', () => {
@@ -143,5 +165,61 @@ describe('blockMoneyWords', () => {
     expect(blockMoneyWords({ amount: 1_000, money: { paidFrac: 0.4, billedFrac: 0.6, unbilledFrac: 0 } })).toBe('$400 paid · $600 billed')
     expect(blockMoneyWords({ amount: 1_000, money: { paidFrac: 0, billedFrac: 0.5, unbilledFrac: 0.2 } })).toBe('$500 billed · $200 done, not billed')
     expect(blockMoneyWords({ amount: 1_000, money: { paidFrac: 0, billedFrac: 0, unbilledFrac: 0 } })).toBe('nothing billed')
+  })
+})
+
+describe('billMarkFor (which part of the bar a bill row is about, v2.4353)', () => {
+  const springtownInvoices = [
+    { id: 'i1', status: 'paid', amount: 13_412, sequence_order: 0 },
+    { id: 'i2', status: 'billed', amount: 11_770.3, sequence_order: 1 },
+    { id: 'i3', status: 'billed', amount: 3_635.92, sequence_order: 2 },
+  ]
+  const springtown = progressPaymentForJob(
+    { id: 'sp', revenue: 40_000, payments_made: 24_593.78, pct_complete: 100, status: 'billed', fixtures: [line('e', 'Electrical according to spec', 40_000, 0)], invoices: springtownInvoices, payments: [] },
+    null,
+    today,
+  )
+
+  it('Springtown (one line, bills by amount): each bill sits where the bills before it leave off', () => {
+    const fixtures = [{ id: 'e', invoice_id: null }]
+    const b2 = billMarkFor(springtown.view, { billId: 'i2', fixtures, invoices: springtownInvoices })
+    expect(b2?.kind).toBe('bracket')
+    if (b2?.kind !== 'bracket') throw new Error('bracket')
+    expect(b2.leftPct).toBeCloseTo(33.53, 1)
+    expect(b2.leftPct + b2.widthPct).toBeCloseTo(62.96, 1)
+    expect(b2.title).toBe("This row's bill: $11,770")
+    const b3 = billMarkFor(springtown.view, { billId: 'i3', fixtures, invoices: springtownInvoices })
+    if (b3?.kind !== 'bracket') throw new Error('bracket')
+    expect(b3.leftPct).toBeCloseTo(62.96, 1)
+    expect(b3.leftPct + b3.widthPct).toBeCloseTo(72.05, 1)
+  })
+
+  it('a job with one bill out and none paid draws no mark (the whole bar is that bill); a draft does not count', () => {
+    const invoices = [{ id: 'a', status: 'billed', amount: 350 }, { id: 'd', status: 'ready_to_bill', amount: 100 }]
+    const { view } = progressPaymentForJob({ id: 'lx', revenue: 450, payments_made: 0, pct_complete: 100, status: 'billed', fixtures: [line('t', 'Trip charge', 450, 0)], invoices, payments: [] }, null, today)
+    expect(billMarkFor(view, { billId: 'a', fixtures: [{ id: 't' }], invoices })).toBeNull()
+  })
+
+  it('Palmer (922, stages): a bill that names one stage bolds that stage instead of a bracket', () => {
+    const invoices = [{ id: 'b1', status: 'billed', amount: 2_000, sequence_order: 0 }, { id: 'b2', status: 'billed', amount: 2_000, sequence_order: 1 }]
+    const fixtures = [{ ...stage('r', 'Rough In', 2_000, 0), invoice_id: 'b1' }, { ...stage('t', 'Top Out', 2_000, 1), invoice_id: 'b2' }, stage('s', 'Trim Set', 1_000, 2)]
+    const { view } = progressPaymentForJob({ id: 'palmer', revenue: 5_000, payments_made: 0, pct_complete: 30, status: 'working', fixtures, invoices, payments: [] }, null, today)
+    expect(billMarkFor(view, { billId: 'b2', fixtures, invoices })).toEqual({ kind: 'stage', key: 't', title: "This row's bill: $2,000" })
+  })
+
+  it('a bill that names two lines of a plain job spans their blocks', () => {
+    const invoices = [{ id: 'x', status: 'paid', amount: 1_000, sequence_order: 0 }, { id: 'y', status: 'billed', amount: 3_000, sequence_order: 1 }]
+    const fixtures = [{ ...line('a', 'Rough plumbing', 1_000, 0), invoice_id: 'x' }, { ...line('b', 'Fixtures', 2_000, 1), invoice_id: 'y' }, { ...line('c', 'Water heater', 1_000, 2), invoice_id: 'y' }]
+    const { view } = progressPaymentForJob({ id: 'two', revenue: 4_000, payments_made: 1_000, pct_complete: 100, status: 'billed', fixtures, invoices, payments: [] }, null, today)
+    const mark = billMarkFor(view, { billId: 'y', fixtures, invoices })
+    if (mark?.kind !== 'bracket') throw new Error('bracket')
+    expect(mark.leftPct).toBeCloseTo(view.segments[0]!.widthPct, 5)
+    expect(mark.leftPct + mark.widthPct).toBeCloseTo(100, 5)
+  })
+
+  it('no mark for an unknown bill or a job with no price', () => {
+    expect(billMarkFor(springtown.view, { billId: 'nope', fixtures: [], invoices: springtownInvoices })).toBeNull()
+    const none = progressPaymentForJob({ id: 'x', revenue: 0, payments_made: 0, pct_complete: null, status: 'billed', fixtures: [], invoices: [], payments: [] }, null, today)
+    expect(billMarkFor(none.view, { billId: 'i2', fixtures: [], invoices: springtownInvoices })).toBeNull()
   })
 })

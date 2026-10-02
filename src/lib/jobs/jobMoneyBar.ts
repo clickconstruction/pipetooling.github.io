@@ -133,7 +133,8 @@ export function buildJobMoneyBar(view: ProgressPaymentView, opts: { pctComplete:
         number: String(s.number ?? i + 1),
         name: stageSegs[i]?.short || s.name,
         done: s.state === 'done',
-        bold: s.state === 'live',
+        // The crew's stage — none once the job reads 100% (v2.4353: a billed Final read as where the crew is).
+        bold: s.state === 'live' && !(pct != null && pct >= 100),
       }))
     : null
   return { blocks, tick, names, date: dateOf(view, opts.pctComplete) }
@@ -142,6 +143,8 @@ export function buildJobMoneyBar(view: ProgressPaymentView, opts: { pctComplete:
 function dateOf(view: ProgressPaymentView, pctComplete: number | null): MoneyBarDate | null {
   const p = view.percent
   if (!p || !p.at) return null
+  // A finished job's date says nothing the bill dates don't, unless the crew has worked since (v2.4353).
+  if (p.pct >= 100 && !view.stale) return null
   const day = formatWorkDateYmdMonthDayShort(p.at.slice(0, 10))
   const source = p.source === 'report' ? 'reported' : p.source === 'seed' ? 'set' : 'typed'
   const staleWords = view.stale ? ' The crew has worked since, so the % may be behind.' : ''
@@ -169,4 +172,56 @@ export function stageNameLabel(n: MoneyBarName, blockPx: number | null): string 
   if (blockPx == null || namePx(full) <= blockPx) return full
   const short = `${n.number}${n.done ? ' ✓' : ''}`
   return short
+}
+
+/**
+ * Which part of the bar a bill row's own bill is (v2.4353, pass 4) — only on a job with two
+ * or more bills out or paid, where every bill row draws the same bar. A stage job whose
+ * bill names one stage bolds that stage's name; any other job gets a bracket under the
+ * bar from where the bill starts to where it ends. A bill that names line items spans
+ * those blocks; a bill made by amount sits where the bills before it, in billing order,
+ * leave off — the order the money is poured in.
+ */
+export type MoneyBarBillMark =
+  | { kind: 'bracket'; leftPct: number; widthPct: number; title: string }
+  | { kind: 'stage'; key: string; title: string }
+
+export type MoneyBarBillInput = {
+  billId: string
+  fixtures: ReadonlyArray<{ id: string; invoice_id?: string | null }>
+  invoices: ReadonlyArray<{ id: string; status: string; amount?: number | string | null; sequence_order?: number | null; billed_at?: string | null }>
+}
+
+export function billMarkFor(view: ProgressPaymentView, input: MoneyBarBillInput): MoneyBarBillMark | null {
+  if (view.mode === 'nobid' || view.segments.length === 0) return null
+  const bills = input.invoices.filter((i) => i.status === 'billed' || i.status === 'paid')
+  if (bills.length < 2) return null
+  const bill = bills.find((b) => b.id === input.billId)
+  if (!bill) return null
+  const amount = Math.max(0, Number(bill.amount ?? 0) || 0)
+  const title = `This row's bill: ${formatUsdNoCents(amount)}`
+  const named = new Set(input.fixtures.filter((f) => f.invoice_id === input.billId).map((f) => f.id))
+  const namedIdx = view.segments.map((s, i) => (named.has(s.key) ? i : -1)).filter((i) => i >= 0)
+  if (view.mode === 'stages' && namedIdx.length === 1) return { kind: 'stage', key: view.segments[namedIdx[0]!]!.key, title }
+  let left: number
+  let right: number
+  if (namedIdx.length > 0) {
+    const first = namedIdx[0]!
+    const last = namedIdx[namedIdx.length - 1]!
+    left = view.segments.slice(0, first).reduce((s, x) => s + x.widthPct, 0)
+    right = view.segments.slice(0, last + 1).reduce((s, x) => s + x.widthPct, 0)
+  } else {
+    const total = view.segments.reduce((s, x) => s + Math.max(0, x.amount), 0)
+    if (total <= 0) return null
+    const ordered = [...bills].sort((a, b) => (a.sequence_order ?? 0) - (b.sequence_order ?? 0) || String(a.billed_at ?? '').localeCompare(String(b.billed_at ?? '')))
+    let before = 0
+    for (const b of ordered) {
+      if (b.id === input.billId) break
+      before += Math.max(0, Number(b.amount ?? 0) || 0)
+    }
+    left = tickLeftPct(view.segments, (before / total) * 100)
+    right = tickLeftPct(view.segments, Math.min(100, ((before + amount) / total) * 100))
+  }
+  if (!(right > left)) return null
+  return { kind: 'bracket', leftPct: left, widthPct: Math.max(1.5, right - left), title }
 }

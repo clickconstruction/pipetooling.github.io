@@ -18,6 +18,7 @@ import {
 import { jobBillingUnallocatedDollars, jobPartialInvoiceRemainingDollars } from '../../lib/jobsStagesBoard'
 import type { InvoiceWithJob } from '../../lib/jobsStagesBoard'
 import { stagesBillRowLine } from '../../lib/jobs/stagesBillRowLine'
+import { billMarkFor } from '../../lib/jobs/jobMoneyBar'
 import { StagesBillRowLine } from './StagesBillRowLine'
 import { progressPaymentForJob } from '../../lib/jobs/progressPaymentForJob'
 import { stagesBillSentPctAlert } from '../../lib/jobs/stagesBillSentPctAlert'
@@ -1196,6 +1197,7 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
         const inv = row.kind === 'job' ? null : row.inv
         const invWithJob: InvoiceWithJob | null = inv ? { ...inv, job: j } : null
         const billLine = props.billedBillLine?.(row) ?? null
+        const cardProgress = progressPaymentForJob(j, ctx.crewByJobId.get(j.id) ?? null)
         const key =
           row.kind === 'invoice'
             ? `inv-${row.inv.id}`
@@ -1274,8 +1276,9 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
               ) : null}
               <StagesProgressPaymentCell
                 compact
-                model={progressPaymentForJob(j, ctx.crewByJobId.get(j.id) ?? null).model}
-                    view={progressPaymentForJob(j, ctx.crewByJobId.get(j.id) ?? null).view}
+                model={cardProgress.model}
+                view={cardProgress.view}
+                billMark={inv && inv.status === 'billed' ? billMarkFor(cardProgress.view, { billId: inv.id, fixtures: j.fixtures ?? [], invoices: j.invoices ?? [] }) : null}
                 pctComplete={j.pct_complete ?? null}
                 billSentAlert={stagesBillSentPctAlert(j)}
                 pctSaving={pctCompleteSavingId === j.id}

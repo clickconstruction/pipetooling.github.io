@@ -1,7 +1,7 @@
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import type { StagesMoneyBarModel } from '../../lib/stagesMoneyBar'
 import type { ProgressPaymentView } from '../../lib/jobs/progressPaymentCell'
-import { buildJobMoneyBar, MONEY_BAR_TRACK } from '../../lib/jobs/jobMoneyBar'
+import { buildJobMoneyBar, MONEY_BAR_TRACK, type MoneyBarBillMark } from '../../lib/jobs/jobMoneyBar'
 import StagesStageBar from './StagesStageBar'
 import type { StagesBillSentPctAlert } from '../../lib/jobs/stagesBillSentPctAlert'
 
@@ -53,6 +53,8 @@ type StagesProgressPaymentCellProps = {
    * that only tells.
    */
   onStageClick?: () => void
+  /** v2.4353: a bill row's own bill on the bar (`billMarkFor`); null on job rows and single-bill jobs. */
+  billMark?: MoneyBarBillMark | null
 }
 
 function swatch(color?: string) {
@@ -78,7 +80,7 @@ function swatch(color?: string) {
  * total on top, a paid/unbilled bar of the total bill, and a labeled legend.
  * Pure presentation — all math comes in via the model (see stagesMoneyBar.ts).
  */
-export default function StagesProgressPaymentCell({ model, pctComplete, pctSaving, onPctCommit, footnote, onNoBidValueClick, compact = false, view = null, billSentAlert = null, onStageClick }: StagesProgressPaymentCellProps) {
+export default function StagesProgressPaymentCell({ model, pctComplete, pctSaving, onPctCommit, footnote, onNoBidValueClick, compact = false, view = null, billSentAlert = null, onStageClick, billMark = null }: StagesProgressPaymentCellProps) {
   // The legend's amber and empty rows belong to the classic money reading; on a
   // job drawn as stages the bar already says which stage the money is on.
   const stageBar = view?.mode === 'stages'
@@ -252,7 +254,7 @@ export default function StagesProgressPaymentCell({ model, pctComplete, pctSavin
             </div>
           </div>
         ) : (
-          <StagesStageBar view={view} pctComplete={pctComplete} compact={compact} onStageClick={onStageClick} />
+          <StagesStageBar view={view} pctComplete={pctComplete} compact={compact} onStageClick={onStageClick} billMark={billMark} />
         )
       ) : (
       <div
