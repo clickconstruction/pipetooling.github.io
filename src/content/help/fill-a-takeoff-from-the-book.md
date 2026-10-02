@@ -2,10 +2,10 @@
 title: fill a takeoff from the book
 category: Bids & Estimating
 roles: dev, master_technician, assistant, estimator
-keywords: takeoff book, fill from book, combined, assemblies, part lines, apply matching, fixtures, uncosted
+keywords: takeoff book, fill from book, assemblies, part lines, apply matching, fixtures, uncosted
 order: 84
 ---
-The Takeoff book remembers which assembly a fixture usually gets. On Bids → Takeoffs it can fill a Combined takeoff in one click.
+The Takeoff book remembers which assembly a fixture usually gets. On Bids → Takeoffs it can fill a takeoff in one click.
 
 An assembly is the set of parts a fixture needs. Every fixture the book recognizes that has no part lines yet gets its assembly expanded into priced part lines.
 
@@ -30,7 +30,3 @@ Fixtures that already have lines are never touched. Clicking again after a fill 
 ## Grow the book
 
 Entries live in the **Takeoff book** section at the bottom of the tab. Add a fixture name, its aliases, and the assembly it should get. The more names the book knows, the more of each new bid it fills before you start.
-
-## By Stage bids
-
-On a bid using **By Stage** materials, the same button still reads **Apply Matching Fixture Assemblies**. It maps each entry's assembly and stage onto the fixture, exactly as before.

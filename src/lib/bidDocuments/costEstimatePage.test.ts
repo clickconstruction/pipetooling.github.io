@@ -184,40 +184,19 @@ describe('printCostEstimatePage — rough materials model', () => {
   })
 })
 
-describe('printCostEstimatePage — exact materials model', () => {
-  it('loads each stage PO\'s items in sequence order, names the POs, sums the stage totals, and prints the exact page', async () => {
-    await printCostEstimatePage(ctx({ bid: bid({ materials_model: 'exact' }), materialTotalRoughIn: 1000, materialTotalTopOut: 250.5, materialTotalTrimSet: null }))
-    expect(printHtml).toHaveBeenCalledWith('<exact/>')
-    expect(buildRough).not.toHaveBeenCalled()
-    expect(table('bids_takeoff_rough_part_lines')).toHaveLength(0)
-
-    const poCalls = table('purchase_order_items')
-    expect(poCalls.map((c) => stepArgs(c, 'eq')?.[1])).toEqual(['po-r', 'po-t']) // trim has no PO → no query
-    expect(stepArgs(poCalls[0]!, 'order')).toEqual(['sequence_order', { ascending: true }])
-
-    const input = buildExact.mock.calls[0]![0] as Record<string, unknown>
-    expect(input.title).toBe('Hyper Kidz — Labor')
-    expect(input.pos).toEqual([
-      { stageLabel: 'Rough In', poName: 'Rough PO #12', stageMaterialTotal: 1000, items: [{ part_name: 'Closet flange', quantity: 3, price_at_time: 12.5, template_name: null }, { part_name: '—', quantity: 1, price_at_time: 40, template_name: 'WC rough-in' }] },
-      { stageLabel: 'Top Out', poName: 'Top PO #13', stageMaterialTotal: 250.5, items: [] },
-      { stageLabel: 'Trim Set', poName: '—', stageMaterialTotal: 0, items: [] },
-    ])
-    expect(input.costs).toEqual({ ...EXPECTED_COSTS, totalMaterials: 1250.5, grandTotal: 1250.5 + 1290 })
-  })
-
-  it('a PO read that errors contributes no items and nothing else breaks', async () => {
-    handler = (c) => (c.table === 'purchase_order_items' ? { data: null, error: { message: 'boom' } } : { data: [], error: null })
+describe('printCostEstimatePage — a bid still flagged By Stage (retired v2.4389)', () => {
+  it('prints the Combined page from its part lines and reads no stage PO', async () => {
     await printCostEstimatePage(ctx({ bid: bid({ materials_model: 'exact' }) }))
-    const input = buildExact.mock.calls[0]![0] as { pos: Array<{ items: unknown[] }> }
-    expect(input.pos.map((p) => p.items)).toEqual([[], [], []])
+    expect(buildRough).toHaveBeenCalledTimes(1)
+    expect(buildExact).not.toHaveBeenCalled()
+    expect(table('bids_takeoff_rough_part_lines')).toHaveLength(1)
+    expect(table('purchase_order_items')).toHaveLength(0)
   })
 
-  it('anything but "rough" is the exact model, including unset', async () => {
+  it('an unset model is Combined too', async () => {
     await printCostEstimatePage(ctx({ bid: bid({ materials_model: undefined }), costEstimate: null }))
-    expect(buildExact).toHaveBeenCalledTimes(1)
-    const input = buildExact.mock.calls[0]![0] as { pos: Array<{ poName: string }>; costs: { estimatorCost: number; travelCost: number } }
-    expect(input.pos.map((p) => p.poName)).toEqual(['—', '—', '—'])
-    expect(input.costs).toMatchObject({ estimatorCost: 20, travelCost: 0 }) // no estimate: 2 rows × $10 default, no travel
+    expect(buildRough).toHaveBeenCalledTimes(1)
+    expect(buildExact).not.toHaveBeenCalled()
   })
 })
 

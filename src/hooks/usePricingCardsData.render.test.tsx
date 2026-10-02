@@ -186,12 +186,13 @@ describe('useAlternateVersionData', () => {
     expect(loadInputs).toHaveBeenCalledWith('b1', 'pAlt')
   })
 
-  it('an exact-model bid reads no takeoff lines and leaves the materials out', async () => {
+  it('a bid still flagged By Stage reads its takeoff lines like any other (v2.4389)', async () => {
     db.single.bids = { materials_model: 'exact' }
     db.tables.bids_count_rows = [countRow('a1', 3, 'alt')] as unknown as Row[]
+    db.tables.bids_takeoff_rough_part_lines = [{ bid_id: 'b1', bid_version_id: 'alt', count_row_id: 'a1', part_id: 'p1', quantity: 2, unit_price: 5, order_increment: null, order_increment_unit: null }]
     render(<AltProbe bidId="b1" selectedBidVersionId="v1" bidVersions={versions} loadInputs={loadInputs} />)
     await settle()
-    expect(shown()).toEqual({ alt: { revenue: 90, materials: null }, alt2: { revenue: null, materials: null } })
-    expect(readsOf('bids_takeoff_rough_part_lines')).toEqual([])
+    expect(shown()).toEqual({ alt: { revenue: 90, materials: 30 }, alt2: { revenue: null, materials: 0 } })
+    expect(readsOf('bids_takeoff_rough_part_lines').length).toBeGreaterThan(0)
   })
 })

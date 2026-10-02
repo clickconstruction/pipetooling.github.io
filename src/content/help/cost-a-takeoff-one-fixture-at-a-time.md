@@ -5,7 +5,7 @@ roles: dev, master_technician, assistant, estimator
 keywords: takeoff, one at a time, new 1, one fixture at a time, sheet, guided, book, remember, previous bid, same as, use these lines, done next, uncosted, coverage
 order: 85
 ---
-One at a time on Bids → Takeoffs walks a Combined takeoff one fixture at a time. A takeoff is the list of fixtures counted from the plans.
+One at a time on Bids → Takeoffs walks a takeoff one fixture at a time. A takeoff is the list of fixtures counted from the plans.
 
 The first time you open a bid on this device, a box appears. It asks **How do you want to cost this takeoff?** It shows a picture of each view. Click {{button:outline|One at a time}} or press **1** and it opens. Your pick is remembered, so the box does not come back. From then on bids open straight in the view you chose. The {{chip:blue|One at a time}} pill beside the bid name switches any time. {{chip:gray|Sheet}} is the whole sheet with the cost rail. The classic Old tab retired in September 2026. A device that had picked it opens One at a time.
 
@@ -37,5 +37,3 @@ This is the same line editor as the sheet. You search parts, pick a catalog pric
 Tick **Remember these lines for "wc"** to teach the book. The fixture's parts are saved as an assembly named *wc · book*. If that name is taken, a numbered sibling is made. Nothing is edited in place. The book gets an entry for the name. Or it gets the plan-tag form as an alias, another name for an entry it already has. The next bid's `WC-7` row will show the suggestion.
 
 {{button:blue|Done · next uncosted}} saves the Remember choice and moves to the next fixture with no lines. **Enter** does the same when you are not typing and no button or dialog has the focus. Enter on a focused button presses that button. {{button:outline|Skip}} moves down one without remembering.
-
-By Stage bids have no view pills. They open straight on the classic By Stage editor, where you select an assembly per fixture.

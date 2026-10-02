@@ -44,10 +44,7 @@ This lane makes a real document: parts, quantities, a chosen supply house per li
 3. **Materials → Purchase Orders** lists every PO for the trade pill, Draft or Finalized. You open one to add notes or confirm prices. The **Confirmed** column shows who checked the number and how long ago. You can **Print** it. A draft prints every house's price beside the chosen one. The supply-house print shows just the chosen prices with tax. Or press {{button:outline|Duplicate as Draft}} for a repeat order.
 4. {{button:green|Finalize}} locks it. The confirm says so: *It will become immutable.* A finalized PO can't be edited. Only a one-time note can be added. It becomes pickable as a line item on a project's Workflow and Forecast.
 
-Two other doors make POs in this lane without visiting PO Builder:
-
-- **Bids → Takeoffs** on a **By Stage** bid. A takeoff is the bid's parts list. You map an assembly onto each fixture. Then {{button:blue|Create purchase orders for Stages}} makes one PO per stage: rough-in, top-out and trim-set. Those POs are what the bid's "exact materials" totals add up. So don't delete a takeoff's PO to tidy the list. The bid's material cost estimate is reading it. See [choose By Stage or Combined](?g=choose-by-stage-or-combined-for-materials).
-- **Job Parts Tally** turns a tallied job's parts into a PO with one tap. It is stamped with whoever tallied it.
+One other door makes a PO in this lane without visiting PO Builder. **Job Parts Tally** turns a tallied job's parts into a PO with one tap. It is stamped with whoever tallied it.
 
 ## Three prices for one part: all true
 

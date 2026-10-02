@@ -30,7 +30,6 @@ import {
   saveAsAssemblyDefaultName,
   STAGE_LABELS,
   type TakeoffStage,
-  MATERIALS_MODEL_CAPTION,
 } from '../../lib/bids/bidTakeoffHelpers'
 import { loadBundlePartLines, type BundlePartLine } from '../../lib/bids/assemblyBundleBreakdown'
 import type { PartAssemblyEntry } from '../../lib/bids/partAssemblyIndex'
@@ -178,7 +177,6 @@ interface BidsTakeoffTabProps {
   ensureCostEstimateForBid: BidsTakeoffEngine['ensureCostEstimateForBid']
   loadMaterialTemplates: BidsTakeoffEngine['loadMaterialTemplates']
   setCostEstimatePO: BidsTakeoffEngine['setCostEstimatePO']
-  openMaterialsModelSwitch: BidsTakeoffEngine['openMaterialsModelSwitch']
   // Callbacks
   onSelectBid: (bid: BidWithBuilder) => void
   onClose: () => void
@@ -244,7 +242,6 @@ export function BidsTakeoffTab({
   ensureCostEstimateForBid,
   loadMaterialTemplates,
   setCostEstimatePO,
-  openMaterialsModelSwitch,
   onSelectBid,
   onClose,
   ledgerPrefixMap,
@@ -2192,62 +2189,6 @@ export function BidsTakeoffTab({
                   }}
                 />
               ) : null}
-              {/* Materials model (By Stage / Combined) — shared by every view (v2.2782): the only door to flip a bid's model. */}
-              {(() => {
-                const takeoffMaterialsModel = normalizeMaterialsModel(selectedBidForTakeoff.materials_model)
-                return (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.25rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-                    <span
-                      style={{
-                        fontSize: '0.875rem',
-                        fontWeight: 500,
-                        marginRight: '0.25rem',
-                        color: 'var(--text-600)',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      Materials
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => openMaterialsModelSwitch('exact', 'takeoffs')}
-                      style={{
-                        padding: '0.35rem 0.75rem',
-                        fontSize: '0.8125rem',
-                        border: '1px solid var(--border-strong)',
-                        borderRadius: 4,
-                        background: takeoffMaterialsModel === 'exact' ? 'var(--bg-200)' : 'var(--surface)',
-                        cursor: 'pointer',
-                        fontWeight: takeoffMaterialsModel === 'exact' ? 600 : 400,
-                        color: takeoffMaterialsModel === 'exact' ? 'var(--text-strong)' : 'var(--text-muted)',
-                        boxShadow: takeoffMaterialsModel === 'exact' ? '0 0 0 2px #374151' : 'none',
-                      }}
-                    >
-                      By Stage
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => openMaterialsModelSwitch('rough', 'takeoffs')}
-                      style={{
-                        padding: '0.35rem 0.75rem',
-                        fontSize: '0.8125rem',
-                        border: '1px solid var(--border-strong)',
-                        borderRadius: 4,
-                        background: takeoffMaterialsModel === 'rough' ? 'var(--bg-200)' : 'var(--surface)',
-                        cursor: 'pointer',
-                        fontWeight: takeoffMaterialsModel === 'rough' ? 600 : 400,
-                        color: takeoffMaterialsModel === 'rough' ? 'var(--text-strong)' : 'var(--text-muted)',
-                        boxShadow: takeoffMaterialsModel === 'rough' ? '0 0 0 2px #374151' : 'none',
-                      }}
-                    >
-                      Combined
-                    </button>
-                    <span style={{ flexBasis: '100%', textAlign: 'right', fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.35 }}>
-                      {MATERIALS_MODEL_CAPTION}
-                    </span>
-                  </div>
-                )
-              })()}
               {takeoffIsRough ? (
                 takeoffView === 'new1' ? (
                   <TakeoffFocusView

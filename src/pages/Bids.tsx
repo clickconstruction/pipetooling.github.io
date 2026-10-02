@@ -112,7 +112,6 @@ import { extractContactInfo } from '../lib/bids/bidContactInfo'
 import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../lib/bids/updateGuard'
 import { useBidEditForm } from '../lib/bids/useBidEditForm'
 import { rememberSharedBidId } from '../lib/bids/sharedBidPointer'
-import { MATERIALS_MODEL_CAPTION } from '../lib/bids/bidTakeoffHelpers'
 
 type GcBuilder = Database['public']['Tables']['bids_gc_builders']['Row']
 type Customer = Database['public']['Tables']['customers']['Row']
@@ -490,8 +489,6 @@ export default function Bids() {
     takeoffMappings, setTakeoffMappings,
     takeoffRoughPartLines, setTakeoffRoughPartLines,
     takeoffRoughCatalogLowestByPartId, setTakeoffRoughCatalogLowestByPartId,
-    materialsModelSwitchModal, setMaterialsModelSwitchModal,
-    materialsModelBusy,
     materialTemplates,
     draftPOs,
     takeoffBookVersions,
@@ -557,7 +554,7 @@ export default function Bids() {
     ensureCostEstimateForBid, loadCostEstimateData,
     loadLaborBookVersions, loadLaborBookEntries,
     loadTemplatePriceBookVersions, loadBidPricings, loadBidVersions, loadPriceBookEntries, loadBidPricingAssignments, loadPricingDataForBid,
-    saveBidSelectedPriceBookVersion, setCostEstimatePO, openMaterialsModelSwitch, confirmMaterialsModelSwitch,
+    saveBidSelectedPriceBookVersion, setCostEstimatePO,
   } = useBidPricingEngine({
     selectedBidForCounts,
     selectedBidForTakeoff,
@@ -568,7 +565,6 @@ export default function Bids() {
     authUser,
     setError,
     loadBids,
-    setSharedBid,
   })
 
 
@@ -1206,7 +1202,6 @@ export default function Bids() {
         selectedBidVersionId={selectedBidVersionId}
         currentPricingId={selectedPricingVersionId}
         fallbackPricingSourceId={versionClonePricingSourceId}
-        isExactMaterials={bid.materials_model === 'exact'}
         onSwitch={(versionId) => switchActiveVersion(bid.id, versionId)}
         reloadVersions={() => Promise.all([loadBidVersions(bid.id), loadBidPricings(bid.id)]).then(() => {})}
         pricingSourceNames={Object.fromEntries([...priceBookVersions, ...templatePriceBookVersions].map((v) => [v.id, v.name]))}
@@ -1568,83 +1563,6 @@ export default function Bids() {
         {error && (
           <div style={{ padding: '0.75rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', borderRadius: 4, marginBottom: '1rem' }}>
             {error}
-          </div>
-        )}
-
-        {materialsModelSwitchModal.open && (
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="materials-model-switch-title"
-            style={{
-              position: 'fixed',
-              inset: 0,
-              background: 'rgba(0,0,0,0.45)',
-              zIndex: 2000,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '1rem',
-            }}
-            onClick={() => {
-              if (!materialsModelBusy) setMaterialsModelSwitchModal({ open: false, next: null, sourceTab: null })
-            }}
-          >
-            <div
-              style={{
-                background: 'var(--surface)',
-                padding: '1.5rem',
-                borderRadius: 8,
-                maxWidth: 420,
-                width: '100%',
-                boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 id="materials-model-switch-title" style={{ margin: '0 0 0.75rem', fontSize: '1.05rem' }}>
-                Switch materials model?
-              </h3>
-              <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.5 }}>
-                {MATERIALS_MODEL_CAPTION}
-              </p>
-              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.5 }}>
-                By Stage and Combined data are stored separately. Switching does not copy lines from the other mode.
-              </p>
-              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  disabled={materialsModelBusy}
-                  onClick={() => setMaterialsModelSwitchModal({ open: false, next: null, sourceTab: null })}
-                  style={{
-                    padding: '0.4rem 0.85rem',
-                    background: 'var(--bg-muted)',
-                    border: '1px solid var(--border-strong)',
-                    borderRadius: 4,
-                    cursor: materialsModelBusy ? 'wait' : 'pointer',
-                    fontSize: '0.875rem',
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  disabled={materialsModelBusy}
-                  onClick={() => void confirmMaterialsModelSwitch()}
-                  style={{
-                    padding: '0.4rem 0.85rem',
-                    background: '#111827',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: 4,
-                    cursor: materialsModelBusy ? 'wait' : 'pointer',
-                    fontSize: '0.875rem',
-                    fontWeight: 600,
-                  }}
-                >
-                  {materialsModelBusy ? 'Switching…' : 'Switch'}
-                </button>
-              </div>
-            </div>
           </div>
         )}
 
@@ -2189,7 +2107,6 @@ export default function Bids() {
           ensureCostEstimateForBid={ensureCostEstimateForBid}
           loadMaterialTemplates={loadMaterialTemplates}
           setCostEstimatePO={setCostEstimatePO}
-          openMaterialsModelSwitch={openMaterialsModelSwitch}
           onSelectBid={(bid) => selectBidAndSyncUrl(bid, 'takeoffs')}
           onlyMyBids={onlyMyBids}
           setOnlyMyBids={setOnlyMyBids}
@@ -2270,7 +2187,6 @@ export default function Bids() {
           viewerUserId={authUser?.id ?? null}
           viewerRole={authRole}
           selectedServiceTypeName={serviceTypes.find((st) => st.id === selectedServiceTypeId)?.name ?? null}
-          openMaterialsModelSwitch={openMaterialsModelSwitch}
           onSelectBid={(bid) => selectBidAndSyncUrl(bid, 'labor')}
           onlyMyBids={onlyMyBids}
           setOnlyMyBids={setOnlyMyBids}

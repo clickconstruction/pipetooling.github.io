@@ -73,7 +73,6 @@ function mount() {
       authUser: { id: 'u1' },
       setError: () => {},
       loadBids: async () => [],
-      setSharedBid: () => {},
     }),
   )
 }

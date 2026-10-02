@@ -2,7 +2,7 @@
 name: "Takeoffs: retire By Stage, so every bid prices its materials one way"
 number: 77
 group: gated
-status: found 2026-10-01 reviewing Takeoffs with Grace · its two $0-materials leftovers shipped as v2.4368 and v2.4371 · the retirement not started
+status: the owner's yes 2026-10-01 · PR 1 shipped as v2.4389 (the pills and the switch window are gone, every bid reads as Combined) · PR 2 (delete the dead code) and PR 3 (flip the flags) left
 summary: >
   Every bid stores its materials one of two ways, picked by the By Stage / Combined pills on
   Takeoffs and Labor. By Stage keeps "this assembly at this stage" picks with no prices, and gets
@@ -14,10 +14,10 @@ summary: >
   April. The pills read like a view switch, but they swap the bid onto a separate, mostly empty
   set of data. Retire it: the pills, the By Stage editor and the stage purchase orders go, and
   every bid is Combined.
-next: The owner presses Do or Drop on this row. On Do, the office's word on B82, B83 and B85 first, then PR 1.
+next: PR 2 deletes the By Stage editor and the stage PO code. PR 3 flips the flags after a recount on prod.
 size: M — three PRs; PR 2 deletes about 1,000 lines of BidsTakeoffTab.tsx
-blocker: The owner's yes — By Stage's fate has been his call since v2.3588.
-ver: v2.3588 · Materials by stage v2.3671 · 3672 · 3673 · 3675 · leftovers fixed v2.4368 · 4371
+blocker: PR 3 needs a read of prod first. The office's word on B82, B83 and B85 is still open.
+ver: v2.3588 · Materials by stage v2.3671 · 3672 · 3673 · 3675 · leftovers fixed v2.4368 · 4371 · PR 1 v2.4389
 opinion: build — By Stage feeds nothing built since the summer, and its switch hides a bid's Combined list behind an empty editor.
 mockup: not required — a retirement; the two pills and the By Stage editor go, and every Combined screen stays as it is
 ---
@@ -222,6 +222,8 @@ boxes, which are the only stage data a bid has once this ships.
 
 ## Where it stands
 
-Nothing built. Reviewing it turned up two places that counted materials only from the By Stage
-POs, so every Combined bid showed $0 materials there. Both are fixed: the Approval PDF (v2.4368)
-and Pricing's win and loss history (v2.4371, with its migration). Reviewing it also found #78.
+PR 1 shipped as v2.4389: the pills and the switch window are gone, and every bid reads as
+Combined. Its fragment lists what the check before the build found, including the readers this
+plan missed. #78 shipped first as v2.4388. PR 2 and PR 3 are left. The two $0-materials
+leftovers found by the review shipped earlier: the Approval PDF (v2.4368) and Pricing's win and
+loss history (v2.4371, with its migration).

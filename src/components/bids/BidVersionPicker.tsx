@@ -20,8 +20,6 @@ type BidVersionPickerProps = {
   currentPricingId: string | null
   /** Fallback pricing source (a template) when the bid has no current pricing yet. */
   fallbackPricingSourceId: string | null
-  /** When the bid uses the 'exact' materials model, show the shared-PO caveat. */
-  isExactMaterials?: boolean
   /** Activate a Version (hook switchActiveVersion). */
   onSwitch: (versionId: string) => void
   /** Reload the versions list after create/rename/delete. */
@@ -61,7 +59,6 @@ export function BidVersionPicker({
   selectedBidVersionId,
   currentPricingId,
   fallbackPricingSourceId,
-  isExactMaterials,
   onSwitch,
   reloadVersions,
   // v2.2203: Send… → removed from the strip; prop kept so call sites don't churn.
@@ -594,11 +591,6 @@ export function BidVersionPicker({
           </button>
         ) : null}
       </div>
-      {isExactMaterials && !isUnsplit && (
-        <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber-soft)', borderRadius: 4, padding: '0.35rem 0.5rem' }}>
-          This bid uses By-Stage materials — material totals come from shared purchase orders and aren’t versioned.
-        </div>
-      )}
 
       {modalOpen && (
         <Overlay onClose={() => !busy && setModalOpen(false)}>

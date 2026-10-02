@@ -44,12 +44,12 @@ describe('roughQtyToDraftString', () => {
 })
 
 describe('normalizeMaterialsModel', () => {
-  it('maps rough to rough and everything else to exact', () => {
+  it('reads every bid as Combined: By Stage is retired (v2.4389)', () => {
     expect(normalizeMaterialsModel('rough')).toBe('rough')
-    expect(normalizeMaterialsModel('exact')).toBe('exact')
-    expect(normalizeMaterialsModel(null)).toBe('exact')
-    expect(normalizeMaterialsModel(undefined)).toBe('exact')
-    expect(normalizeMaterialsModel('something')).toBe('exact')
+    expect(normalizeMaterialsModel('exact')).toBe('rough')
+    expect(normalizeMaterialsModel(null)).toBe('rough')
+    expect(normalizeMaterialsModel(undefined)).toBe('rough')
+    expect(normalizeMaterialsModel('something')).toBe('rough')
   })
 })
 
