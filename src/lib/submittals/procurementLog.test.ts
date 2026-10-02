@@ -396,6 +396,21 @@ describe('a line per part (2026-10-01)', () => {
     expect(rows.find((r) => r.key === 'WC-1')).toMatchObject({ product: 'the fixture, as logged before its parts', note: 'called the house' })
   })
 
+  it('2026-10-02 · each line names the row behind it, so a tap opens that row; the tag’s old line opens its fixture; a hand line has none', () => {
+    const withRows = items.map((it) => ({ ...it, itemId: it.tag === 'WC-1' ? 'row-wc' : 'row-hb' }))
+    const hand: ProcurementRecord = { id: 'r-hand', tag: null, partKey: null, label: 'Gas regulator', leadTimeDays: null, stage: null, orderedOn: null, poRef: '', expectedOn: null, deliveredOn: null, note: '', sortOrder: 2 }
+    const lines = buildProcurementLog({ items: withRows, records: [...records, hand], tagStage: { 'WC-1': 'trim_set', 'HB-3': 'trim_set' }, stageDates })
+    expect(lines.map((r) => [r.key, r.itemId ?? null])).toEqual([
+      ['HB-3', 'row-hb'],
+      ['WC-1', 'row-wc'],
+      ['part:k-bowl', 'row-wc'],
+      ['part:k-valve', 'row-wc'],
+      ['part:k-carrier', 'row-wc'],
+      ['part:k-stop', 'row-wc'],
+      ['hand:r-hand', null],
+    ])
+  })
+
   it('the GC’s copies leave the order-only lines off', () => {
     expect(gcProcurementRows(rows).map((r) => r.key)).not.toContain('part:k-stop')
     expect(gcProcurementRows(rows)).toHaveLength(5)

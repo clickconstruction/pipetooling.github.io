@@ -6,7 +6,7 @@
  * the GC has already read them, so only the office's facts (house, lead time, stage, how many)
  * change. Controlled: the row editor holds the drafts and saves them.
  */
-import type { CSSProperties } from 'react'
+import { useEffect, useRef, type CSSProperties } from 'react'
 import { describeLeadTime, parseLeadTime } from '../../lib/submittals/leadTime'
 import { STAGE_WORDS, type PartDraft, type PartLeadTexts, type PartStage } from '../../lib/submittals/itemParts'
 
@@ -23,6 +23,7 @@ export function SubmittalPartsEditor({
   houses,
   canEditProduct,
   assembly,
+  focusId = null,
 }: {
   drafts: PartDraft[]
   onChange: (next: PartDraft[]) => void
@@ -33,7 +34,18 @@ export function SubmittalPartsEditor({
   canEditProduct: boolean
   /** "from LAV 1 assembly SPACEX", when the parts came out of one. */
   assembly?: string
+  /** The part a Procure line opened the editor on (2026-10-02): ringed, scrolled to, its house box focused. */
+  focusId?: string | null
 }) {
+  const focusRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    const el = focusRef.current
+    if (!el) return
+    el.scrollIntoView?.({ block: 'center' })
+    const box = el.querySelector<HTMLElement>('select[aria-label^="House for part"]') ?? el.querySelector<HTMLElement>('input[aria-label^="Lead time for part"]')
+    box?.focus({ preventScroll: true })
+    // Once, on open: the editor keeps its own place after that.
+  }, [])
   const set = (i: number, patch: Partial<PartDraft>) => onChange(drafts.map((d, k) => (k === i ? { ...d, ...patch } : d)))
   const move = (i: number, by: -1 | 1) => {
     const j = i + by
@@ -72,8 +84,15 @@ export function SubmittalPartsEditor({
       {drafts.map((d, i) => {
         const leadText = leadTexts[i] ?? (d.lead_time_days != null ? describeLeadTime(d.lead_time_days) ?? '' : '')
         const leadBad = leadText.trim() !== '' && parseLeadTime(leadText) == null
+        const focused = focusId != null && d.id === focusId
         return (
-          <div key={d.id ?? `new-${i}`} style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '0.45rem 0.55rem', display: 'flex', flexDirection: 'column', gap: '0.4rem', background: d.on_submittal ? 'var(--surface)' : 'var(--bg-subtle)' }} data-testid="part-editor-row">
+          <div
+            key={d.id ?? `new-${i}`}
+            ref={focused ? focusRef : undefined}
+            style={{ border: focused ? '2px solid #2563eb' : '1px solid var(--border)', borderRadius: 6, padding: focused ? 'calc(0.45rem - 1px) calc(0.55rem - 1px)' : '0.45rem 0.55rem', display: 'flex', flexDirection: 'column', gap: '0.4rem', background: focused ? 'var(--bg-blue-tint)' : d.on_submittal ? 'var(--surface)' : 'var(--bg-subtle)' }}
+            data-testid="part-editor-row"
+            data-focused={focused ? 'true' : undefined}
+          >
             <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
               {canEditProduct ? (
                 <input type="text" aria-label={`Part ${i + 1}`} placeholder="maker and model, e.g. TOTO CT728CUVG#01" value={d.label} onChange={(e) => set(i, { label: e.target.value })} style={{ ...inputStyle, flex: 1 }} />

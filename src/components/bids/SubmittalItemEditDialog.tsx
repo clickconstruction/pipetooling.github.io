@@ -85,7 +85,7 @@ const chipButton = (on: boolean): CSSProperties => ({
 const fieldLabel: CSSProperties = { fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 const inputStyle: CSSProperties = { padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, font: 'inherit', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-strong)' }
 
-export function SubmittalItemEditDialog({ item, sourceFiles, people = [], houses = [], parts = [], canEnterDecision = false, canEditProduct = false, onSave, onClose }: { item: SubmittalItemRow; sourceFiles: SourceFile[]; /** the row's parts (2026-10-01) */ parts?: ReadonlyArray<SubmittalPartRow>; /** the supply houses to pick from; none hides the picker */ houses?: ReadonlyArray<{ id: string; name: string }>; /** the room's people, for the on-behalf-of picker (5b) */ people?: SubmittalPersonRow[]; /** the revision was shared, so a reviewer's call makes sense */ canEnterDecision?: boolean; /** a draft: the tag and the product can be typed (v2.4090) */ canEditProduct?: boolean; onSave: (patch: SubmittalItemPatch) => void; onClose: () => void }) {
+export function SubmittalItemEditDialog({ item, sourceFiles, people = [], houses = [], parts = [], canEnterDecision = false, canEditProduct = false, focusPartId = null, onSave, onClose }: { item: SubmittalItemRow; sourceFiles: SourceFile[]; /** the part a Procure line opened the window on (2026-10-02) */ focusPartId?: string | null; /** the row's parts (2026-10-01) */ parts?: ReadonlyArray<SubmittalPartRow>; /** the supply houses to pick from; none hides the picker */ houses?: ReadonlyArray<{ id: string; name: string }>; /** the room's people, for the on-behalf-of picker (5b) */ people?: SubmittalPersonRow[]; /** the revision was shared, so a reviewer's call makes sense */ canEnterDecision?: boolean; /** a draft: the tag and the product can be typed (v2.4090) */ canEditProduct?: boolean; onSave: (patch: SubmittalItemPatch) => void; onClose: () => void }) {
   const [tagText, setTagText] = useState(item.tag)
   const [submittedText, setSubmittedText] = useState(item.submitted_label ?? [item.submitted_manufacturer, item.submitted_model].filter(Boolean).join(' '))
   const [houseId, setHouseId] = useState<string | null>(item.supply_house_id ?? null)
@@ -157,7 +157,7 @@ export function SubmittalItemEditDialog({ item, sourceFiles, people = [], houses
         </div>
 
         {partDrafts != null ? (
-          <SubmittalPartsEditor drafts={partDrafts} onChange={setPartDrafts} leadTexts={partLeadTexts} onLeadTexts={setPartLeadTexts} houses={houses} canEditProduct={canEditProduct} assembly={assemblyLine(parts)} />
+          <SubmittalPartsEditor drafts={partDrafts} onChange={setPartDrafts} leadTexts={partLeadTexts} onLeadTexts={setPartLeadTexts} houses={houses} canEditProduct={canEditProduct} assembly={assemblyLine(parts)} focusId={focusPartId} />
         ) : null}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
@@ -333,7 +333,7 @@ export function SubmittalItemEditDialog({ item, sourceFiles, people = [], houses
                   sheet_file: file && pages.length > 0 ? sheetFile : null,
                   sheet_pages: file ? pages : [],
                   sheet_source: file && pages.length > 0 ? 'estimator' : null,
-                  ...(canEditProduct ? { tag: tagText.trim().toUpperCase(), ...(partDrafts == null ? { submitted_label: submittedText.trim() || null } : {}) } : {}),
+                  ...(canEditProduct ? { ...(tagText.trim() !== item.tag.trim() ? { tag: tagText.trim().toUpperCase() } : {}), ...(partDrafts == null ? { submitted_label: submittedText.trim() || null } : {}) } : {}),
                   ...(houseChanged && partDrafts == null ? { supply_house_id: houseId } : {}),
                   ...(partDrafts != null ? { parts: partDrafts } : {}),
                   entered,

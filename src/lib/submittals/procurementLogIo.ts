@@ -117,8 +117,8 @@ export async function procurementItemsFrom(supabase: Client, items: ReadonlyArra
     const specified = [i.specified_manufacturer, i.specified_model].filter(Boolean).join(' ') || i.specified_description || ''
     const d = asDecision(i.review_decision)
     const rowDecision = d ? { kind: d, at: i.reviewed_at } : null
-    const base = { tag: i.tag.trim(), shared, sourceCountRowId: i.source_count_row_id ?? null }
     const itemId = (i as ItemLike & { id?: string }).id
+    const base = { tag: i.tag.trim(), shared, sourceCountRowId: i.source_count_row_id ?? null, itemId: itemId ?? null }
     const rowParts = itemId ? parts.filter((p) => p.item_id === itemId).sort((a, b) => a.sequence_order - b.sequence_order) : []
     if (rowParts.length === 0) {
       out.push({ ...base, product: submitted || specified || '(no product)', supplyHouse: i.supply_house_id ? names.get(i.supply_house_id) ?? null : null, leadTimeDays: i.lead_time_days, decision: rowDecision })
