@@ -20,7 +20,7 @@ describe('submittalJourney', () => {
 
   it('v2.4107 · a bid priced from a takeoff, with no picks, is told to choose from the takeoff', () => {
     const j = submittalJourney({ ...base, scheduleTags: 0, picks: 0, takeoff: { fixtures: 26, withProduct: 22 } })
-    expect(j.next).toEqual({ kind: 'next', text: 'The takeoff has 26 fixtures. 22 of them have a part. Tick the ones to submit, then build Rev 1 from them. You can type the plans’ schedule later. Then each row is checked against it.', action: 'choose_from_takeoff', actionLabel: 'Choose from the takeoff' })
+    expect(j.next).toEqual({ kind: 'next', text: 'The takeoff has 26 fixtures. 22 of them have a part. Pick what the GC sees, then build Rev 1 from them. You can type the plans’ schedule later. Then each row is checked against it.', action: 'choose_from_takeoff', actionLabel: 'Choose from the takeoff' })
     expect(statuses({ ...base, scheduleTags: 0, picks: 0, takeoff: { fixtures: 26, withProduct: 22 } })).toBe('current,later,later,later,later,later,later,later')
     // Once Rev 1 exists from the takeoff, stage 1 is done even with no picks.
     expect(statuses({ ...base, scheduleTags: 0, picks: 0, takeoff: { fixtures: 26, withProduct: 22 }, rev: draft() })).toMatch(/^done,done/)
