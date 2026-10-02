@@ -1506,6 +1506,7 @@ export default function Materials() {
       <MaterialsPartsBookTab
         active={activeTab === 'parts-book'}
         authUser={authUser}
+        serviceTypeId={selectedServiceTypeId}
         parts={parts}
         allParts={allParts}
         partTypes={partTypes}

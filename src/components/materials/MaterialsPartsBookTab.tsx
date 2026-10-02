@@ -2,6 +2,7 @@ import { Fragment, type Dispatch, type SetStateAction } from 'react'
 import type { Database } from '../../types/database'
 import { computeLoadAllDisplayParts, manufacturerFacetOptions } from '../../lib/materials/materialsFilters'
 import type { PartType, PartWithPrices } from '../../hooks/useMaterialsCatalog'
+import { MaterialPricesCard } from './MaterialPricesCard'
 
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
 
@@ -10,6 +11,8 @@ export type MaterialsPartsBookTabProps = {
    * in useMaterialsCatalog) and expansion state survive tab switches. */
   active: boolean
   authUser: { id: string } | null
+  /** The trade on screen — What your materials cost reads its parts (v2.4391). */
+  serviceTypeId: string
   // Catalog engine (useMaterialsCatalog, parent-owned)
   parts: PartWithPrices[]
   allParts: PartWithPrices[]
@@ -51,6 +54,7 @@ export type MaterialsPartsBookTabProps = {
 export function MaterialsPartsBookTab({
   active,
   authUser,
+  serviceTypeId,
   parts,
   allParts,
   partTypes,
@@ -95,6 +99,7 @@ export function MaterialsPartsBookTab({
 
   return (
         <div>
+          <MaterialPricesCard serviceTypeId={serviceTypeId || null} />
           <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <button type="button" onClick={openAddPart} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
               Add Part

@@ -1135,7 +1135,7 @@ Historical record of price changes. Automatically tracked via database trigger.
 
 **Tracked**: old_price, new_price, price_change_percent, changed_at, changed_by, notes
 
-**Purpose**: Audit trail and analysis of price trends
+**Purpose**: Audit trail, and the source of **What your materials cost** (v2.4391), the card atop Materials → Parts Book: the parts takeoffs price from, weighted by bid spend, as a monthly number against February 2026 = 100, with a jump to 1.5× or half set aside and the share of spend checked in 90 days beside it ([`materialPriceIndex.ts`](../src/lib/materials/materialPriceIndex.ts))
 
 ### Price Confirmation
 Assistant verification of a price before ordering. Tracked per PO item.

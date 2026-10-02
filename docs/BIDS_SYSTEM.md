@@ -2181,7 +2181,7 @@ Bids table access:
 
 ### Planned Features
 - Bid comparison reports (compare multiple bids side-by-side)
-- Historical pricing analysis (track price trends over time)
+- Historical pricing analysis (track price trends over time) — materials started v2.4391: *What your materials cost* on Materials → Parts Book
 - Automated bid reminders (notify when follow-up needed)
 - Template suggestions (AI-powered template recommendations)
 - Bid performance metrics (win rate, average margin, etc.)
