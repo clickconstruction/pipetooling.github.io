@@ -218,7 +218,10 @@ export type ExpectedPayRowInput = {
   billedAtIso: string | null
   /** Effective est. bill date (YYYY-MM-DD) — the board's aging fallback clock. */
   estBillYmd: string | null
+  /** Whose history the estimate reads: since v2.4365 the bill's payer (`paySpeedPayer`), the GC on a GC-billed bill. */
   customerId: string | null
+  /** The payer's name for the hover (v2.4365): "RMC- Dudley Mason's median pay speed". */
+  payerName?: string | null
 }
 
 /** The row's bill reference date as YYYY-MM-DD (same precedence as printBilledRowReferenceDate). */
@@ -275,10 +278,12 @@ export function billedExpectedPayModel(
     state === 'late'
       ? `${daysLate}d past expected · ${speedPart}`
       : `Expect pay ~${formatYmdMonthDay(expectedYmd)} · ${speedPart}`
+  // v2.4365: the hover names whose history it read (the payer); unnamed, it stays "this customer".
+  const who = (input.payerName ?? '').trim() || 'this customer'
   const title =
     source === 'customer'
-      ? `Billed ${formatYmdMonthDay(refYmd)} + this customer's median pay speed (~${stat.medianDays} days over ${stat.samples} payments, last 12 months) → expected ${formatYmdMonthDay(expectedYmd)}`
-      : `Billed ${formatYmdMonthDay(refYmd)} + the company-wide median pay speed (~${stat.medianDays} days — this customer has too little payment history) → expected ${formatYmdMonthDay(expectedYmd)}`
+      ? `Billed ${formatYmdMonthDay(refYmd)} + ${who}'s median pay speed (~${stat.medianDays} days over ${stat.samples} payments, last 12 months) → expected ${formatYmdMonthDay(expectedYmd)}`
+      : `Billed ${formatYmdMonthDay(refYmd)} + the company-wide median pay speed (~${stat.medianDays} days — ${who} has too little payment history) → expected ${formatYmdMonthDay(expectedYmd)}`
 
   return { expectedYmd, state, source, medianDays: stat.medianDays, daysLate, label, title }
 }
