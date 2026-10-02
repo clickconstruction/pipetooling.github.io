@@ -80,3 +80,69 @@ describe('LegalDeskModal', () => {
     expect(screen.getByText('Nothing is in Collections.')).toBeTruthy()
   })
 })
+
+/**
+ * The desk's sheets and its Apply discount window are drawn inside the desk's backdrop, outside
+ * its panel. A click there carried on to the desk's backdrop and closed the desk (v2.4352): a
+ * click outside a sheet closed both, and Apply discount — no backdrop handler of its own — closed
+ * the desk on the first click anywhere in it.
+ */
+describe('LegalDeskModal · a window inside the desk (v2.4352)', () => {
+  const firm = { id: 'firm-1', name: 'Barnes & Holt', handling_name: 'Dana Holt', email: 'dana@barnes.test', phone: '', contingency_pct: 33, filing_cost: 350, active: true }
+  const legal = {
+    available: true,
+    loading: false,
+    firm,
+    firms: [firm],
+    matters: [],
+    byPayerKey: new Map(),
+    byJobId: new Map(),
+    jobIdsByMatter: new Map(),
+    entriesByMatter: new Map(),
+    recipients: [],
+    firmPaused: false,
+    reload: async () => {},
+  }
+  const renderDesk = async (extra: { canMarkReady?: boolean; canEditReview?: boolean }) => {
+    const onClose = vi.fn()
+    renderWithProviders(<LegalDeskModal open collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} onClose={onClose} legal={legal} {...extra} />)
+    await settle()
+    return onClose
+  }
+  const desk = () => screen.queryByRole('dialog', { name: /^Legal desk/ })
+
+  it('a click outside Ask a dev to review closes the sheet only', async () => {
+    const onClose = await renderDesk({ canEditReview: true })
+    fireEvent.click(screen.getByRole('button', { name: 'Ask a dev to review…' }))
+    fireEvent.click(screen.getByRole('dialog', { name: 'Ask a dev to review' }).parentElement!)
+    expect(screen.queryByRole('dialog', { name: 'Ask a dev to review' })).toBeNull()
+    expect(onClose).not.toHaveBeenCalled()
+    expect(desk()).toBeTruthy()
+  })
+
+  it('a click outside Mark attorney-ready, the firm preview or the firm’s emails closes that one only', async () => {
+    const onClose = await renderDesk({ canMarkReady: true, canEditReview: true })
+    fireEvent.click(screen.getByRole('button', { name: '⚖ Mark attorney ready…' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Preview what the firm sees ↗' }))
+    fireEvent.click(screen.getByRole('dialog', { name: 'What the firm will see' }).parentElement!)
+    expect(screen.queryByRole('dialog', { name: 'What the firm will see' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Firm’s emails ↗' }))
+    fireEvent.click(screen.getByRole('dialog', { name: 'Who at the firm hears from us' }).parentElement!)
+    expect(screen.queryByRole('dialog', { name: 'Who at the firm hears from us' })).toBeNull()
+    expect(screen.getByRole('dialog', { name: 'Mark attorney-ready' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('dialog', { name: 'Mark attorney-ready' }).parentElement!)
+    expect(screen.queryByRole('dialog', { name: 'Mark attorney-ready' })).toBeNull()
+    expect(onClose).not.toHaveBeenCalled()
+    expect(desk()).toBeTruthy()
+  })
+
+  it('a click in Apply discount, or outside it, leaves the desk open', async () => {
+    const onClose = await renderDesk({ canEditReview: true })
+    fireEvent.click(screen.getAllByRole('button', { name: 'Write down…' })[0]!)
+    fireEvent.click(screen.getByRole('heading', { name: 'Apply discount' }))
+    fireEvent.click(screen.getByRole('dialog', { name: 'Apply discount' }))
+    expect(onClose).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog', { name: 'Apply discount' })).toBeTruthy()
+    expect(desk()).toBeTruthy()
+  })
+})

@@ -37,7 +37,10 @@ export function ApplyScheduleApprovedConfirmModal({
         justifyContent: 'center',
         zIndex: 1005,
       }}
-      onClick={() => {
+      onClick={(e) => {
+        // Hours align draws this inside its own backdrop: a click outside cancels this only, not
+        // the window behind it (v2.4352).
+        e.stopPropagation()
         if (!busy) onCancel()
       }}
       role="presentation"

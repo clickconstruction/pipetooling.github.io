@@ -183,7 +183,12 @@ export default function ReportViewModal({ open, report, onClose, viewerRole, zIn
         justifyContent: 'center',
         zIndex,
       }}
-      onClick={(e) => e.target === e.currentTarget && onClose()}
+      onClick={(e) => {
+        // The customer summary draws this inside its own backdrop: a click outside closes the
+        // report only, not the summary behind it (v2.4352).
+        e.stopPropagation()
+        if (e.target === e.currentTarget) onClose()
+      }}
     >
       {/* This panel is the scroller — the title bar sticks so the × stays reachable
           on a phone instead of scrolling away down a long report (v2.990 pattern). */}
