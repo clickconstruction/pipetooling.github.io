@@ -101,6 +101,8 @@ Mail the printed packet yourself. Then press {{button:amber|Save & record sendâ€
 3. Set the mailing day in *Sent on (effective on mailing)*. A notice counts from the day it is mailed.
 4. Press {{button:amber|Record}}.
 
+On a phone this step opens as its own page over the window. The top of the page names the letter, the amount and the pay-by date. **Back** returns to the letter.
+
 Recording creates the record and starts the deadline watch. Nothing is mailed from the app. The legal path stays on paper, where it can be proven.
 
 ## The deadline watch
