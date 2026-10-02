@@ -23,6 +23,8 @@ import {
 import { submissionHiddenIdsForVersion } from '../bids/submissionHides'
 import { laborRowHours } from '../bids/laborRowHours'
 import { computeBidCostBreakdown, type DirectCostRowLike } from '../bids/bidTotalCostBreakdown'
+import { materialsLines } from '../bids/bidMaterials'
+import { loadBidMaterials } from '../bids/bidMaterialsIo'
 import { bidDisplayName, formatCompactCurrency, formatDesignDrawingPlanDate } from '../bids/bidFormatting'
 import { formatCurrency } from '../format'
 import { extractContactInfo } from '../bids/bidContactInfo'
@@ -60,17 +62,6 @@ export type ApprovalPdfContext = {
     includeFixturesPerPlan: boolean
     includeSignature: boolean
   }
-}
-
-/** Sum of `price_at_time * quantity` for a purchase order's items. */
-async function loadPOTotal(poId: string): Promise<number> {
-  const { data, error } = await supabase
-    .from('purchase_order_items')
-    .select('price_at_time, quantity')
-    .eq('purchase_order_id', poId)
-  if (error) return 0
-  const items = (data as { price_at_time: number; quantity: number }[]) ?? []
-  return items.reduce((sum, i) => sum + Number(i.price_at_time) * Number(i.quantity), 0)
 }
 
 export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void> {
@@ -177,32 +168,35 @@ export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void
   let reviewGroupHasCostEstimate = false
   const reviewGroupPricingByVersion: Array<{ versionName: string; revenue: number; margin: number | null; complete: boolean }> = []
   let reviewPdfLaborRows: CostEstimateLaborRow[] = []
-  let reviewPdfTotalMaterials = 0
   let reviewPdfLaborRate = 0
   const { data: countDataReview } = await countRowsQuery().order('sequence_order', { ascending: true })
   const countRowsReview = (countDataReview as BidCountRow[]) ?? []
   const { data: estForReview } = await supabase.from('cost_estimates').select('*').eq('bid_id', bidId).maybeSingle()
   const estForReviewData = estForReview as CostEstimate | null
+  // One materials read serves the three pages (v2.4368). The bid's model picks the store, as on Pricing:
+  // the stage POs for By Stage, the active version's part lines with the order rounding for Combined.
+  const bidMaterials = await loadBidMaterials(supabase, {
+    bidId,
+    bidVersionId: countsVersionId,
+    countRows: countRowsReview,
+    costEstimate: estForReviewData,
+    fallbackModel: b.materials_model,
+  })
   if (estForReviewData) {
     reviewGroupHasCostEstimate = true
-    const [laborResR, roughR, topR, trimR, directR] = await Promise.all([
+    const [laborResR, directR] = await Promise.all([
       supabase.from('cost_estimate_labor_rows').select('*').eq('cost_estimate_id', estForReviewData.id).order('sequence_order', { ascending: true }),
-      estForReviewData.purchase_order_id_rough_in ? loadPOTotal(estForReviewData.purchase_order_id_rough_in) : Promise.resolve(0),
-      estForReviewData.purchase_order_id_top_out ? loadPOTotal(estForReviewData.purchase_order_id_top_out) : Promise.resolve(0),
-      estForReviewData.purchase_order_id_trim_set ? loadPOTotal(estForReviewData.purchase_order_id_trim_set) : Promise.resolve(0),
       supabase.from('cost_estimate_direct_costs').select('kind, rough_in, top_out, trim_set').eq('cost_estimate_id', estForReviewData.id),
     ])
     const laborRowsR = (laborResR.data as CostEstimateLaborRow[]) ?? []
-    const totalMaterialsR = (roughR ?? 0) + (topR ?? 0) + (trimR ?? 0)
     const rateR = estForReviewData.labor_rate != null ? Number(estForReviewData.labor_rate) : 0
     reviewPdfLaborRows = laborRowsR
-    reviewPdfTotalMaterials = totalMaterialsR
     reviewPdfLaborRate = rateR
     // One total (v2.3292): the same breakdown the Workbench, the Pricing CSV and the Labor page read — travel and the direct-cost tables included.
     reviewGroupCostEstimateAmount = computeBidCostBreakdown({
-      materialTotalRoughIn: roughR ?? 0,
-      materialTotalTopOut: topR ?? 0,
-      materialTotalTrimSet: trimR ?? 0,
+      materialTotalRoughIn: bidMaterials.roughIn,
+      materialTotalTopOut: bidMaterials.topOut,
+      materialTotalTrimSet: bidMaterials.trimSet,
       laborRate: rateR,
       laborRows: laborRowsR,
       distanceFromOffice: b.distance_from_office ?? null,
@@ -242,10 +236,10 @@ export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void
       entries: entriesR,
       customUnitPriceByCountRowId: customMapR,
       laborRows: reviewPdfLaborRows,
-      totalMaterials: reviewPdfTotalMaterials,
+      totalMaterials: bidMaterials.total,
       laborRate: reviewPdfLaborRate,
       taxPercent: 8.25,
-      materialsFromTakeoffByCountRowId: {},
+      materialsFromTakeoffByCountRowId: bidMaterials.byCountRowId,
       hiddenSubmissionCountRowIds: hiddenR,
     })
     const totalRevenueR = computedR.totalRevenue
@@ -333,14 +327,9 @@ export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void
     let rateP2 = 0
     const estQuickData = ((await supabase.from('cost_estimates').select('*').eq('bid_id', bidId).maybeSingle()).data) as CostEstimate | null
     if (estQuickData) {
-      const [lrP2, r0, t0, tr0] = await Promise.all([
-        supabase.from('cost_estimate_labor_rows').select('*').eq('cost_estimate_id', estQuickData.id).order('sequence_order', { ascending: true }),
-        estQuickData.purchase_order_id_rough_in ? loadPOTotal(estQuickData.purchase_order_id_rough_in) : Promise.resolve(0),
-        estQuickData.purchase_order_id_top_out ? loadPOTotal(estQuickData.purchase_order_id_top_out) : Promise.resolve(0),
-        estQuickData.purchase_order_id_trim_set ? loadPOTotal(estQuickData.purchase_order_id_trim_set) : Promise.resolve(0),
-      ])
+      const lrP2 = await supabase.from('cost_estimate_labor_rows').select('*').eq('cost_estimate_id', estQuickData.id).order('sequence_order', { ascending: true })
       laborRowsP2 = (lrP2.data as CostEstimateLaborRow[]) ?? []
-      totalMatP2 = (r0 ?? 0) + (t0 ?? 0) + (tr0 ?? 0)
+      totalMatP2 = bidMaterials.total
       rateP2 = estQuickData.labor_rate != null ? Number(estQuickData.labor_rate) : 0
     }
 
@@ -358,7 +347,7 @@ export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void
       totalMaterials: totalMatP2,
       laborRate: rateP2,
       taxPercent: 8.25,
-      materialsFromTakeoffByCountRowId: {},
+      materialsFromTakeoffByCountRowId: bidMaterials.byCountRowId,
       hiddenSubmissionCountRowIds: hiddenP2,
     })
     const totalRevenue = approvalPricingForCover.totalRevenue
@@ -404,22 +393,19 @@ export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void
   if (!est) {
     push('No labor costs created.')
   } else {
-    const [laborRes, roughTotal, topTotal, trimTotal, countRes, directRes] = await Promise.all([
+    const [laborRes, countRes, directRes] = await Promise.all([
       supabase.from('cost_estimate_labor_rows').select('*').eq('cost_estimate_id', est.id).order('sequence_order', { ascending: true }),
-      est.purchase_order_id_rough_in ? loadPOTotal(est.purchase_order_id_rough_in) : Promise.resolve(0),
-      est.purchase_order_id_top_out ? loadPOTotal(est.purchase_order_id_top_out) : Promise.resolve(0),
-      est.purchase_order_id_trim_set ? loadPOTotal(est.purchase_order_id_trim_set) : Promise.resolve(0),
       countRowsQuery(),
       supabase.from('cost_estimate_direct_costs').select('kind, rough_in, top_out, trim_set').eq('cost_estimate_id', est.id),
     ])
     const laborRows = (laborRes.data as CostEstimateLaborRow[]) ?? []
     const countRowsForEst = (countRes.data as { id: string }[]) ?? []
-    const totalMaterials = (roughTotal ?? 0) + (topTotal ?? 0) + (trimTotal ?? 0)
+    const totalMaterials = bidMaterials.total
     const rate = est.labor_rate != null ? Number(est.labor_rate) : 0
     const breakdown = computeBidCostBreakdown({
-      materialTotalRoughIn: roughTotal ?? 0,
-      materialTotalTopOut: topTotal ?? 0,
-      materialTotalTrimSet: trimTotal ?? 0,
+      materialTotalRoughIn: bidMaterials.roughIn,
+      materialTotalTopOut: bidMaterials.topOut,
+      materialTotalTrimSet: bidMaterials.trimSet,
       laborRate: rate,
       laborRows,
       distanceFromOffice: b.distance_from_office ?? null,
@@ -432,12 +418,8 @@ export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void
     push('Materials')
     y += lineHeight
     const materialsColWidths = [100, 70]
-    y = drawTable(y, materialsColWidths, ['Item', 'Amount'], [
-      ['PO (Rough In)', `$${formatCurrency(roughTotal ?? 0)}`],
-      ['PO (Top Out)', `$${formatCurrency(topTotal ?? 0)}`],
-      ['PO (Trim Set)', `$${formatCurrency(trimTotal ?? 0)}`],
-      ['Materials Total', `$${formatCurrency(totalMaterials)}`],
-    ])
+    // By Stage: the three stage POs and their total. Combined: one line, the parts list with the order rounding.
+    y = drawTable(y, materialsColWidths, ['Item', 'Amount'], materialsLines(bidMaterials).map((l) => [l.label, `$${formatCurrency(l.amount)}`]))
     y += lineHeight
     push(`Labor — Rate: $${formatCurrency(rate)}/hr`)
     y += lineHeight
