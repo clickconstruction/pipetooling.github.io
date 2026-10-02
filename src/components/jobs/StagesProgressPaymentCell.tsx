@@ -92,6 +92,9 @@ export default function StagesProgressPaymentCell({ model, pctComplete, pctSavin
   /** A legend row prints when the classic bar asks for every row, else only when it carries money. */
   const legendShows = (v: number | null | undefined) => !view || hasMoney(v)
   const legendHidden = noPrice && !hasMoney(model.paid)
+  /** What the grey part of the bar holds: the bid less paid, billed and done-not-billed, in the
+   *  whole dollars those rows print, so the printed rows add up to the printed bid. */
+  const greyUsd = Math.max(0, Math.round(model.total) - Math.round(Math.min(model.paid, model.total)) - Math.round(model.billedUnpaid) - Math.round(model.doneNotBilled ?? 0))
   const rowStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem' }
   // whiteSpace nowrap (v2.3462): a legend label never wraps — "Done, not billed" used to break onto two lines in the 12rem column; the column is 14.5rem now.
   const labelStyle: React.CSSProperties = { fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }
@@ -106,8 +109,9 @@ export default function StagesProgressPaymentCell({ model, pctComplete, pctSavin
     // grew to the sentence and spilled under the action buttons. Bounded to the
     // wrapper, the bar and the sentence clip inside the column like the job table.
     <div className="stagesMoney" style={{ display: 'flex', flexDirection: 'column', gap: compact ? '0.2rem' : '0.3rem', minWidth: compact ? 0 : '11rem', width: '100%', maxWidth: '100%', boxSizing: 'border-box', textAlign: 'left' }}>
-      {/* v2.4351: the row may wrap — a six-figure bid beside a % date drops under it, held right. */}
-      <div style={{ ...rowStyle, flexWrap: 'wrap', gap: '2px 0.35rem' }}>
+      {/* v2.4351: the row may wrap — a bid that does not fit beside the % date drops under it, held right.
+          v2.4387: the date is its own item, so a long one drops a line or ends in … instead of running out of the cell. */}
+      <div style={{ ...rowStyle, flexWrap: 'wrap', gap: view ? '2px 0.3rem' : '2px 0.35rem', justifyContent: view ? 'flex-start' : rowStyle.justifyContent }}>
         <span style={{ whiteSpace: 'nowrap' }}>
           {onPctCommit ? (
             <>
@@ -142,14 +146,16 @@ export default function StagesProgressPaymentCell({ model, pctComplete, pctSavin
                 aria-invalid={alert ? true : undefined}
                 title={alert?.title}
                 data-bill-sent-alert={alert ? 'on' : undefined}
+                // v2.4387: no spinner arrows beside the pass-4 bar — they covered "100" in the narrow box.
+                className={view ? 'no-spinner' : undefined}
                 style={{
-                  // v2.4351: 2.25rem (was 2.75) — "100" still fits, and the % date beside
-                  // the box keeps a five-figure bid on the same line.
-                  width: view ? '2.25rem' : '2.75rem',
+                  // v2.4351: 2.25rem (was 2.75) — the % date beside the box keeps a five-figure
+                  // bid on the same line. v2.4387: 2rem, spinners off — "$44,000 bid" missed by 3 px.
+                  width: view ? '2rem' : '2.75rem',
                   // v2.4128: no vertical padding and a tight line box, so the
                   // underline sits at the number's own bottom edge instead of a
                   // quarter-inch under it, and the "% done · $X bid" row is one text line tall.
-                  padding: '0 0.25rem',
+                  padding: view ? '0 0.2rem' : '0 0.25rem',
                   lineHeight: 1.15,
                   height: '1.15em',
                   boxSizing: 'content-box',
@@ -162,17 +168,12 @@ export default function StagesProgressPaymentCell({ model, pctComplete, pctSavin
                   background: alert ? 'var(--bg-red-tint)' : 'transparent',
                 }}
               />
-              <span style={pctLabelStyle}> % done</span>
-              {barDate ? (
-                <span data-pct-date={barDate.stale ? 'stale' : 'fresh'} title={barDate.title} style={{ fontSize: '0.6875rem', color: barDate.stale ? 'var(--text-amber-700)' : 'var(--text-muted)' }}>{` · ${barDate.text}`}</span>
-              ) : null}
+              {/* v2.4387: no space beside the pass-4 box — the centred number leaves room enough. */}
+              <span style={pctLabelStyle}>{view ? '% done' : ' % done'}</span>
             </>
           ) : pctComplete != null ? (
             <span style={labelStyle}>
               <span style={{ color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{pctComplete}</span> % done
-              {barDate ? (
-                <span data-pct-date={barDate.stale ? 'stale' : 'fresh'} title={barDate.title} style={{ color: barDate.stale ? 'var(--text-amber-700)' : undefined }}>{` · ${barDate.text}`}</span>
-              ) : null}
             </span>
           ) : alert ? (
             // Read-only viewer (no edit right): the same red box, empty, so the
@@ -196,6 +197,13 @@ export default function StagesProgressPaymentCell({ model, pctComplete, pctSavin
             <span style={labelStyle}>&nbsp;</span>
           )}
         </span>
+        {barDate && (onPctCommit || pctComplete != null) ? (
+          <span
+            data-pct-date={barDate.stale ? 'stale' : 'fresh'}
+            title={barDate.title}
+            style={{ fontSize: '0.6875rem', color: barDate.stale ? 'var(--text-amber-700)' : 'var(--text-muted)', whiteSpace: 'nowrap', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}
+          >{`· ${barDate.text}`}</span>
+        ) : null}
         {model.hasBar ? (
           <span style={{ ...labelStyle, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', marginLeft: 'auto' }}>
             {`${formatUsdNoCents(model.total)} bid`}
@@ -391,14 +399,16 @@ export default function StagesProgressPaymentCell({ model, pctComplete, pctSavin
           <span style={amountStyle} data-done-not-billed>{model.doneNotBilled != null ? formatUsdNoCents(model.doneNotBilled) : '—'}</span>
         </div>
         )}
-        {stageBar || !model.hasBar || model.notDone == null || !legendShows(model.notDone) ? null : (
-        <div style={rowStyle} title="Work not done yet (bid − % done × bid); the grey part of the bar">
+        {/* v2.4387: the grey part's own dollars. With billing ahead of the % the grey is smaller
+            than the work not done, and the row read "0% Not done $11,273" beside a bid it overran. */}
+        {stageBar || !model.hasBar || model.notDone == null || !legendShows(greyUsd) ? null : (
+        <div style={rowStyle} title="Work not done and not billed yet; the grey part of the bar">
           <span style={{ ...labelStyle, fontVariantNumeric: 'tabular-nums' }}>
             {swatch(view ? MONEY_BAR_TRACK : undefined)}
             {`${Math.max(0, 100 - Math.round(model.paidFrac * 100) - Math.round(model.billedFrac * 100) - Math.round(model.unbilledFrac * 100))}% `}
             Not done
           </span>
-          <span style={amountStyle} data-not-done>{formatUsdNoCents(model.notDone)}</span>
+          <span style={amountStyle} data-not-done>{formatUsdNoCents(greyUsd)}</span>
         </div>
         )}
         <div

@@ -78,7 +78,7 @@ export function StagesUnifiedInvoiceRow({ row, t }: { row: StagesUnifiedInvoiceR
   const invWithJob: InvoiceWithJob = { ...inv, job }
   const progress = progressPaymentForJob(job, stagesRowSharedCtx.crewByJobId.get(job.id) ?? null)
   // v2.4353: on a job with two or more bills, which part of the bar is this row's bill.
-  const billMark = inv.status === 'billed' ? billMarkFor(progress.view, { billId: inv.id, fixtures: job.fixtures ?? [], invoices: job.invoices ?? [] }) : null
+  const billMark = inv.status === 'billed' ? billMarkFor(progress.view, { billId: inv.id, fixtures: job.fixtures ?? [], invoices: job.invoices ?? [], payments: job.payments ?? [] }) : null
   // v2.4349: a sent bill's row says what is paid and left on that bill.
   const sentBillLine =
     inv.status === 'billed'

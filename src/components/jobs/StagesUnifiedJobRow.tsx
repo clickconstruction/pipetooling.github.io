@@ -207,7 +207,7 @@ export function StagesUnifiedJobRow({ row, t }: { row: StagesUnifiedJobRowKind; 
               <StagesProgressPaymentCell
                 model={progress.model}
                 view={progress.view}
-                billMark={bundleInv.status === 'billed' && row.kind === 'job_with_merged_billed' ? billMarkFor(progress.view, { billId: bundleInv.id, fixtures: j.fixtures ?? [], invoices: j.invoices ?? [] }) : null}
+                billMark={bundleInv.status === 'billed' && row.kind === 'job_with_merged_billed' ? billMarkFor(progress.view, { billId: bundleInv.id, fixtures: j.fixtures ?? [], invoices: j.invoices ?? [], payments: j.payments ?? [] }) : null}
                 pctComplete={j.pct_complete ?? null}
                 billSentAlert={stagesBillSentPctAlert(j)}
                 pctSaving={pctCompleteSavingId === j.id}

@@ -1278,7 +1278,7 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
                 compact
                 model={cardProgress.model}
                 view={cardProgress.view}
-                billMark={inv && inv.status === 'billed' ? billMarkFor(cardProgress.view, { billId: inv.id, fixtures: j.fixtures ?? [], invoices: j.invoices ?? [] }) : null}
+                billMark={inv && inv.status === 'billed' ? billMarkFor(cardProgress.view, { billId: inv.id, fixtures: j.fixtures ?? [], invoices: j.invoices ?? [], payments: j.payments ?? [] }) : null}
                 pctComplete={j.pct_complete ?? null}
                 billSentAlert={stagesBillSentPctAlert(j)}
                 pctSaving={pctCompleteSavingId === j.id}
