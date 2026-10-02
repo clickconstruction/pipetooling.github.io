@@ -7,6 +7,7 @@ import SignIn from './pages/SignIn'
 import BidRoom from './pages/BidRoom'
 import SubmittalRoom from './pages/SubmittalRoom'
 import DevLogin from './pages/DevLogin'
+import BodyScrollLockSentinel from './components/BodyScrollLockSentinel'
 import ResetPassword from './pages/ResetPassword'
 import ResetPasswordConfirm from './pages/ResetPasswordConfirm'
 import AcceptInvite from './pages/AcceptInvite'
@@ -208,6 +209,8 @@ function AppContent() {
     <>
       <AuthHandler />
       <UpdatePrompt />
+      {/* Freezes the page behind ANY blocking overlay (modal, sheet, dialog) on every route, the public pages too; opt-out via data-page-scroll="allow". */}
+      <BodyScrollLockSentinel />
       <Routes>
         <Route path="/sign-in" element={<SignInRoute />} />
         <Route path="/dev-login" element={<DevLogin />} />

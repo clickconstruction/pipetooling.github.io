@@ -10,7 +10,8 @@ import { findBlockingOverlays } from '../lib/blockingOverlay'
 import { createFrameFallbackScheduler } from '../lib/frameFallbackScheduler'
 
 /**
- * App-wide body scroll lock (v2.2186). Mounted once in Layout. Watches the DOM
+ * App-wide body scroll lock (v2.2186). Mounted once at the app root (`AppContent`),
+ * outside the signed-in layout, so the public pages have it too. Watches the DOM
  * (MutationObserver, coalesced to one recompute per animation frame) and holds
  * the reference-counted lock from `bodyScrollLock.ts` while any blocking
  * overlay — a fixed layer covering the viewport — is on screen. That covers

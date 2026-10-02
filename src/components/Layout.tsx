@@ -95,7 +95,6 @@ import { PHONE_DOCK_CHANGED_EVENT, readPhoneDockSlotsRaw, resolveDockSlots, swap
 import { IMPERSONATION_CHROME_BUTTON_STYLE, impersonationReturnPath, readImpersonationStash } from '../lib/impersonationSession'
 import { useIsPartner } from '../hooks/useIsPartner'
 import { PartnerStatementNavLink } from './partner/PartnerStatementNavLink'
-import BodyScrollLockSentinel from './BodyScrollLockSentinel'
 
 const navStyle = ({ isActive }: { isActive: boolean }) => ({
   fontWeight: isActive ? 600 : undefined,
@@ -816,8 +815,6 @@ export default function Layout() {
     // Customer Waiting (v2.3248): one app-wide subscription behind the banner slot
     // below and the Needs You item inside the Outlet. Inert for ineligible viewers.
     <CustomerWaitingProvider>
-      {/* v2.2186: freezes the page behind ANY blocking overlay (modal, sheet, dialog); opt-out via data-page-scroll="allow". */}
-      <BodyScrollLockSentinel />
       <DailyGoalsGateOverlay />
       <div
         style={{
