@@ -770,7 +770,7 @@ export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRo
                 {current.job.revenue != null && current.job.revenue > 0 ? (
                   <span style={chipStyle('var(--bg-slate-100)', 'var(--text-slate-600)')}>Bid {usd(current.job.revenue)}</span>
                 ) : (
-                  <span style={chipStyle('#fee2e2', '#b91c1c')}>no bid value</span>
+                  <span style={chipStyle('#fee2e2', '#b91c1c')}>no price yet</span>
                 )}
                 {current.job.pctComplete != null ? <span style={chipStyle('#dbeafe', '#1d4ed8')}>{current.job.pctComplete}% done</span> : null}
               </div>

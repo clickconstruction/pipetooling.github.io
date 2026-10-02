@@ -86,7 +86,8 @@ function money(n: number): string {
 export function pickJobNextChip(input: JobNextLineInput): JobNextChip | null {
   const { view, money: bar, billSentAlert, quietDays, expectedPay, contractAsk, stage, bankReturned, lienRunway } = input
   if (view.mode === 'nobid') {
-    return { label: 'no bid value', tone: 'red', action: 'no-bid', title: 'No line items on the job — nothing to bill against. Tap to add them.' }
+    // v2.4390: the money cell's words ("No price yet · Add the price ›", v2.4351) — was "no bid value".
+    return { label: 'no price yet', tone: 'red', action: 'no-bid', title: 'No priced line items on the job, so nothing to bill against. Tap to add the price.' }
   }
   // v2.3806: money the job counts as paid that the bank took back — before every other fact, since the paid figure itself is wrong.
   if (bankReturned) {
