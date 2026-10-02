@@ -76,6 +76,8 @@ describe('AddPriceDoorButton', () => {
     expect(screen.getByRole('button').textContent).toBe('＋Add price')
     rerender(<AddPriceDoorButton cloning={false} onOpenDoor={() => {}} stacked />)
     expect(screen.getByRole('button').querySelector('br')).not.toBeNull()
+    // Beside the tall cards and at the solver line's end it keeps its full size.
+    expect(screen.getByRole('button').style.padding).toBe('0.42rem 0.85rem')
   })
 })
 
@@ -90,6 +92,15 @@ describe('PricingCardsRow — the solo band', () => {
     expect(screen.queryByRole('button', { name: '☆ Make base…' })).toBeNull()
     fireEvent.click(within(band).getByRole('button', { name: /Add\s*price/ }))
     expect(p.onOpenDoor).toHaveBeenCalledTimes(1)
+  })
+
+  it('the band is one short line: a slim Add price pill and thin padding (v2.4417)', () => {
+    render(<PricingCardsRow {...props({ mode: 'solo', scenarios: [BASE] })} />)
+    const band = screen.getByText('One GC · one price').parentElement as HTMLElement
+    const door = within(band).getByRole('button', { name: /Add\s*price/ })
+    expect(door.style.padding).toBe('0.14rem 0.6rem')
+    expect(door.style.borderRadius).toBe('999px')
+    expect(band.style.padding).toBe('0.25rem 0.9rem')
   })
 
   it('a price that is not the base offers ☆ Make base…, with its revenue', () => {

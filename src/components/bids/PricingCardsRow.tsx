@@ -16,19 +16,21 @@ import type { BidVersion, PriceBookVersion } from '../../lib/bids/bidPricingEngi
 /**
  * The ＋ Add price door (v2.2104): one creation door for both variant kinds. The tab also draws it at the solver line's end.
  * One line on a one-row strip (the solo band, the solver line), so the button never makes the strip taller;
+ * `slim` makes it a small pill on the solo band, which is then as short as its one line of text (v2.4417);
  * `stacked` breaks the label in two beside the tall price cards, where width is what runs out.
  */
-export function AddPriceDoorButton({ cloning, onOpenDoor, stacked = false }: { cloning: boolean; onOpenDoor: () => void; stacked?: boolean }) {
+export function AddPriceDoorButton({ cloning, onOpenDoor, stacked = false, slim = false }: { cloning: boolean; onOpenDoor: () => void; stacked?: boolean; slim?: boolean }) {
   return (
     <button
       type="button"
       onClick={onOpenDoor}
       disabled={cloning}
-      style={{ font: 'inherit', fontSize: '0.82rem', fontWeight: 600, padding: '0.42rem 0.85rem', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--bg-blue-tint)', color: 'var(--text-link)', cursor: cloning ? 'wait' : 'pointer', whiteSpace: 'nowrap' }}
+      // `slim` (v2.4417): a small pill on the solo band, so the button is never what sets the band's height.
+      style={{ font: 'inherit', fontSize: slim ? '0.76rem' : '0.82rem', fontWeight: 600, padding: slim ? '0.14rem 0.6rem' : '0.42rem 0.85rem', borderRadius: slim ? 999 : 7, border: '1px solid var(--border-strong)', background: 'var(--bg-blue-tint)', color: 'var(--text-link)', cursor: cloning ? 'wait' : 'pointer', whiteSpace: 'nowrap' }}
     >
       {cloning ? 'Duplicating…' : (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
-          <span aria-hidden style={{ fontSize: '1.05rem', lineHeight: 1 }}>＋</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: slim ? '0.3rem' : '0.4rem' }}>
+          <span aria-hidden style={{ fontSize: slim ? '0.85rem' : '1.05rem', lineHeight: 1 }}>＋</span>
           <span style={{ textAlign: 'left', lineHeight: 1.25 }}>{stacked ? <>Add<br />price</> : 'Add price'}</span>
         </span>
       )}
@@ -88,7 +90,7 @@ export function PricingCardsRow(props: PricingCardsRowProps) {
   } = props
   const fmtM = (n: number) => `$${formatCurrency(n)}`
   const cardBtnStyle: CSSProperties = { font: 'inherit', fontSize: '0.72rem', padding: '0.18rem 0.5rem', borderRadius: 5, border: '1px solid var(--border-strong)', background: 'var(--bg-muted)', color: 'var(--text-700)', cursor: 'pointer' }
-  const doorBtn = <AddPriceDoorButton cloning={cloning} onOpenDoor={onOpenDoor} />
+  const doorBtn = <AddPriceDoorButton cloning={cloning} onOpenDoor={onOpenDoor} slim />
   const doorOptStyle: CSSProperties = { display: 'flex', gap: '0.7rem', alignItems: 'flex-start', width: '100%', textAlign: 'left', font: 'inherit', border: '1px solid var(--border)', borderRadius: 10, padding: '0.7rem 0.8rem', background: 'var(--surface)', cursor: 'pointer', marginBottom: '0.55rem' }
   const doorModal = doorOpen ? (
     <div
@@ -245,7 +247,7 @@ export function PricingCardsRow(props: PricingCardsRowProps) {
       <>
         <div
           data-tour="workbench-scenarios"
-          style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', flexWrap: 'wrap', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.5rem 0.9rem', marginBottom: '0.9rem' }}
+          style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', flexWrap: 'wrap', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.25rem 0.9rem', marginBottom: '0.9rem' }}
         >
           <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>One GC · one price</span>
           {isCustomerFacing ? (
