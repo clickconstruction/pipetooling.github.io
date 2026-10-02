@@ -546,14 +546,16 @@ function KindsChip({ n, open, onToggle }: { n: number; open: boolean; onToggle?:
 }
 
 /** The date row: the search over the names, the 15ths with how many jobs come due on each, and today. */
-function DateRow({ axis, counts, query, onQuery }: { axis: LienCalendarAxis; counts: ReadonlyMap<string, LienNextDateCount>; query: string; onQuery: (q: string) => void }) {
+function DateRow({ axis, counts, query, onQuery, lens }: { axis: LienCalendarAxis; counts: ReadonlyMap<string, LienNextDateCount>; query: string; onQuery: (q: string) => void; lens?: ReactNode }) {
   return (
     <div style={{ ...GRID, alignItems: 'center', height: DATE_ROW_H, borderBottom: '1px solid var(--border)' }} data-testid="lien-cal-dates">
-      <div style={{ padding: '0 8px' }}>
-        <label className="lienCalSearch">
+      {/* The Houses owed lens sits beside the search (v2.4430): both narrow the jobs, and the pills above keep one line. */}
+      <div style={{ padding: '0 8px', display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+        <label className="lienCalSearch" style={{ flex: '1 1 auto', minWidth: 0 }}>
           <span aria-hidden style={{ color: 'var(--text-muted)' }}>⌕</span>
           <input type="search" value={query} onChange={(e) => onQuery(e.target.value)} placeholder="Job #, name, customer, GC, address" aria-label="Search the lien calendar" />
         </label>
+        {lens}
       </div>
       <div className="lienCalAxis" style={{ position: 'relative', height: DATE_ROW_H }}>
         {axis.columns.map((c) => {
@@ -779,10 +781,9 @@ export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, isMobil
           setHousesOnly((v) => !v)
           setPen(null)
         }}
-        style={{ '--pill-ink': 'var(--text-700)', '--pill-bg': lensOn ? 'var(--bg-blue-tint)' : 'var(--surface)', '--pill-border': lensOn ? 'var(--border-blue)' : 'var(--border)', marginLeft: isMobile ? undefined : 'auto' } as CSSProperties}
+        style={{ '--pill-ink': 'var(--text-700)', '--pill-bg': lensOn ? 'var(--bg-blue-tint)' : 'var(--surface)', '--pill-border': lensOn ? 'var(--border-blue)' : 'var(--border)', ...(isMobile ? null : { minHeight: 28, padding: '0 8px' }) } as CSSProperties}
       >
         <Store size={15} aria-hidden />
-        {isMobile ? null : <strong className="lienCalLensWord">Houses owed</strong>}
         <span className="lienCalPillCount">{houseRows.length}</span>
       </button>
     ) : null
@@ -802,7 +803,6 @@ export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, isMobil
           {isMobile ? housesLens : null}
           <Pills board={board} pick={pick} onPick={choose} phone={isMobile} />
           <KindsChip n={board.kindsUnset} open={kindsOpen} onToggle={penOn ? () => setKindsOpen((o) => !o) : undefined} />
-          {isMobile ? null : housesLens}
         </div>
       ) : null}
       {rows && isMobile && (searchOpen || query) ? (
@@ -827,7 +827,7 @@ export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, isMobil
         {rows && !isMobile && axis && (board.count > 0 || query.trim()) ? (
           <div style={{ position: 'relative' }}>
             <div style={{ position: 'sticky', top: 0, zIndex: 4, background: 'var(--surface)' }}>
-              <DateRow axis={axis} counts={counts} query={query} onQuery={setQuery} />
+              <DateRow axis={axis} counts={counts} query={query} onQuery={setQuery} lens={housesLens} />
             </div>
             {board.count === 0 ? <div style={{ ...ABOVE_LINES, padding: '1.5rem 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>No billed job matches that.</div> : null}
             {board.count > 0

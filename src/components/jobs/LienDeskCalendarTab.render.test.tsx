@@ -344,6 +344,8 @@ describe('the pen (v2.4153)', () => {
     it('the lens keeps the months and shows only those jobs; a second press brings the rest back', () => {
       mount({ supplierMarks: marks })
       const lens = screen.getByTestId('lien-cal-houses-lens')
+      // On a computer it sits in the date row beside the search, not among the pills (v2.4430).
+      expect(screen.getByTestId('lien-cal-dates').contains(lens)).toBe(true)
       expect(lens.getAttribute('aria-pressed')).toBe('false')
       expect(lens.textContent).toContain('2')
       fireEvent.click(lens)
@@ -366,7 +368,6 @@ describe('the pen (v2.4153)', () => {
       mount({ supplierMarks: marks, isMobile: true })
       const row = screen.getByRole('button', { name: /^890 PLUM/ })
       expect(row.querySelector('[data-lien-supplier-mark]')?.textContent).toContain('$1,670')
-      expect(screen.getByTestId('lien-cal-houses-lens').textContent).not.toContain('Houses owed')
     })
   })
 })
