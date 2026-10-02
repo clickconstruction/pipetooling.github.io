@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { COMPANY_EMAIL_FROM_LABEL } from '../../lib/customerEmailFrom'
 import { useAuth } from '../../hooks/useAuth'
+import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { APP_CALENDAR_TZ, todayYmdInAppTz } from '../../utils/dateUtils'
 import { billCheckClearsYmd } from '../../lib/jobs/checkClearing'
 import {
@@ -25,6 +26,7 @@ import { addDaysYmd, formatMinutes, parseHhMm } from '../../lib/emailSchedule/em
 import type { StageRow } from '../../lib/jobsStagesBoard'
 import { buildGcReviewRollup, type GcReviewGroup, type GcReviewGroupBy } from '../../lib/gcReviewRollup'
 import { billSettled, lienWaiverCellForBill } from '../../lib/jobs/lienWaiverCell'
+import { gcReviewBillCardWords } from '../../lib/jobs/gcReviewBillCard'
 import type { JobLienReleaseRow } from '../../lib/jobs/lienReleaseTracking'
 import {
   buildGcReviewShareAllEmailHtml,
@@ -369,6 +371,8 @@ export function JobsGcReviewModal({
   const [shareMenuGroupKey, setShareMenuGroupKey] = useState<string | null>(null)
   /** Scheduling (v2.1427, gc_statement stream Phase 3): Send now vs Schedule… per dialog. */
   const { user: authUser } = useAuth()
+  // A phone draws each bill as a short card instead of the six-column table (which ran wider than the screen).
+  const narrowViewport = useNarrowViewport640()
   const [emailWhen, setEmailWhen] = useState<'now' | 'schedule'>('now')
   const [emailSendDate, setEmailSendDate] = useState('')
   const [emailSendTime, setEmailSendTime] = useState('07:00')
@@ -1030,6 +1034,36 @@ export function JobsGcReviewModal({
       if (!next.delete(key)) next.add(key)
       return next
     })
+  /** A bill's two waiver chips (v2.4280; calm since v2.4317). None on a row with no bill of its own. */
+  const waiverChipsFor = (r: GcReviewGroup['rows'][number]) => {
+    if (r.billed == null || r.key === r.jobId) return null
+    // The two waivers a bill carries (v2.4280): they hold · we owe. A chip opens the job, where the Bill tab's door adds or sends the waiver.
+    // Calm like the Bill tab since v2.4317: grey until a waiver on the bill is under way, amber only when its next step is owed.
+    const cell = lienWaiverCellForBill(
+      waiverRows,
+      r.key,
+      billSettled({ id: r.key, amount: r.billed }, (r.billPayments ?? []).map((p) => ({ invoice_id: p.invoice_id, amount: Number(p.amount ?? 0) }))),
+      // v2.4330: a check still clearing on this bill holds the unconditional back.
+      billCheckClearsYmd(r.key, r.billPayments ?? [], todayYmdInAppTz()),
+    )
+    const tone = (t: 'green' | 'amber' | 'grey') =>
+      t === 'green' ? { background: 'var(--bg-green-tint)', color: 'var(--text-green-700)' } : t === 'amber' ? { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' } : { background: 'var(--bg-subtle)', color: 'var(--text-muted)', border: '1px solid var(--border)' }
+    return (
+      <span style={{ display: 'inline-flex', gap: '0.3rem', flexWrap: 'wrap' }}>
+        {cell.chips.map((c) => (
+          <button
+            key={c.half}
+            type="button"
+            onClick={() => onOpenJob?.(r.jobId)}
+            title={cell.next === 'add_conditional' ? 'No waiver has gone with this bill — open the job’s Bill tab to add one' : cell.next === 'add_unconditional' ? 'The check has cleared — open the job to add the unconditional' : cell.next === 'sign' ? 'A waiver waits for the leader’s signature' : cell.next === 'send' ? 'A signed waiver has not been sent — open the job to send it' : 'Open the job'}
+            style={{ font: 'inherit', display: 'inline-block', padding: '0.05rem 0.45rem', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, whiteSpace: 'nowrap', border: 'none', cursor: onOpenJob ? 'pointer' : 'default', ...tone(c.tone) }}
+          >
+            {c.text}
+          </button>
+        ))}
+      </span>
+    )
+  }
   /** The opened row: the statement's chips and its actions, then its bills. */
   const groupDetail = (g: GcReviewGroup) => (
     <>
@@ -1337,116 +1371,123 @@ export function JobsGcReviewModal({
           </button>
         )}
       </div>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
-        <thead>
-          <tr style={{ color: 'var(--text-muted)', textAlign: 'left' }}>
-            <th style={{ padding: '0.2rem 0.4rem', fontWeight: 500 }}>Customer</th>
-            <th style={{ padding: '0.2rem 0.4rem', fontWeight: 500 }}>Job</th>
-            <th style={{ padding: '0.2rem 0.4rem', fontWeight: 500 }}>Billed on</th>
-            <th style={{ padding: '0.2rem 0.4rem', fontWeight: 500, textAlign: 'right' }}>Days</th>
-            <th style={{ padding: '0.2rem 0.4rem', fontWeight: 500, textAlign: 'right' }}>Remaining</th>
-            {!g.isNoGc ? <th style={{ padding: '0.2rem 0.4rem', fontWeight: 500 }}>Lien waivers</th> : null}
-          </tr>
-        </thead>
-        <tbody>
-          {g.rows.map((r) => (
-            <tr key={r.key} style={{ borderTop: '1px solid var(--border)' }}>
-              <td style={{ padding: '0.3rem 0.4rem' }}>
-                {r.customerName}
-                {r.inCollections ? (
-                  <span
-                    style={{
-                      marginLeft: 6,
-                      padding: '0.05rem 0.35rem',
-                      fontSize: '0.6875rem',
-                      fontWeight: 600,
-                      borderRadius: 4,
-                      background: 'var(--bg-red-tint)',
-                      color: 'var(--text-red-700)',
-                    }}
-                  >
-                    Collections
+      {narrowViewport ? (
+        // A phone: one short card per bill — the job and what is open, then where, when, and its waivers.
+        <div className="gcReviewBills" data-testid="gc-review-bills">
+          {g.rows.map((r) => {
+            const words = gcReviewBillCardWords(r)
+            const chips = g.isNoGc ? null : waiverChipsFor(r)
+            return (
+              <div key={r.key} className="gcReviewBill">
+                <span className="job">
+                  {onOpenJob ? (
+                    <button type="button" className="gcReviewBillJob" onClick={() => onOpenJob(r.jobId)} title="Open Edit Job — set the GC/Builder here">
+                      {words.job}
+                    </button>
+                  ) : (
+                    words.job
+                  )}
+                </span>
+                <span className="amt">
+                  ${formatCurrency(r.remaining)} <span className="mut">open</span>
+                </span>
+                {r.jobAddress ? <span className="addr">{r.jobAddress}</span> : null}
+                <span className="when">
+                  {words.when}
+                  {r.inCollections ? <span className="coll">Collections</span> : null}
+                </span>
+                {chips ? (
+                  <span className="waivers" data-testid="gc-review-waivers">
+                    {chips}
                   </span>
                 ) : null}
-              </td>
-              <td style={{ padding: '0.3rem 0.4rem', color: 'var(--text-muted)' }}>
-                {onOpenJob ? (
-                  <button
-                    type="button"
-                    onClick={() => onOpenJob(r.jobId)}
-                    title="Open Edit Job — set the GC/Builder here"
-                    style={{
-                      padding: 0,
-                      border: 'none',
-                      background: 'none',
-                      cursor: 'pointer',
-                      font: 'inherit',
-                      textAlign: 'left',
-                      color: 'var(--text-blue-700)',
-                      textDecoration: 'underline',
-                      textUnderlineOffset: '2px',
-                    }}
-                  >
-                    {r.hcp}
-                    {r.jobName ? ` · ${r.jobName}` : ''}
-                  </button>
-                ) : (
-                  <>
-                    {r.hcp}
-                    {r.jobName ? ` · ${r.jobName}` : ''}
-                  </>
-                )}
-                {r.jobAddress ? (
-                  <span style={{ display: 'block', fontSize: '0.6875rem', color: 'var(--text-faint)' }}>
-                    {r.jobAddress}
-                  </span>
-                ) : null}
-              </td>
-              <td style={{ padding: '0.3rem 0.4rem', whiteSpace: 'nowrap' }}>{r.referenceDateDisplay}</td>
-              <td style={{ padding: '0.3rem 0.4rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                {r.ageDays != null ? `${r.ageDays}d` : '—'}
-              </td>
-              <td style={{ padding: '0.3rem 0.4rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                ${formatCurrency(r.remaining)}
-              </td>
-              {!g.isNoGc ? (
-                <td style={{ padding: '0.3rem 0.4rem' }} data-testid="gc-review-waivers">
-                  {r.billed != null && r.key !== r.jobId
-                    ? (() => {
-                        // The two waivers a bill carries (v2.4280): they hold · we owe. A chip opens the job, where the Bill tab's door adds or sends the waiver.
-                        // Calm like the Bill tab since v2.4317: grey until a waiver on the bill is under way, amber only when its next step is owed.
-                        const cell = lienWaiverCellForBill(
-                          waiverRows,
-                          r.key,
-                          billSettled({ id: r.key, amount: r.billed }, (r.billPayments ?? []).map((p) => ({ invoice_id: p.invoice_id, amount: Number(p.amount ?? 0) }))),
-                          // v2.4330: a check still clearing on this bill holds the unconditional back.
-                          billCheckClearsYmd(r.key, r.billPayments ?? [], todayYmdInAppTz()),
-                        )
-                        const tone = (t: 'green' | 'amber' | 'grey') =>
-                          t === 'green' ? { background: 'var(--bg-green-tint)', color: 'var(--text-green-700)' } : t === 'amber' ? { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' } : { background: 'var(--bg-subtle)', color: 'var(--text-muted)', border: '1px solid var(--border)' }
-                        return (
-                          <span style={{ display: 'inline-flex', gap: '0.3rem', flexWrap: 'wrap' }}>
-                            {cell.chips.map((c) => (
-                              <button
-                                key={c.half}
-                                type="button"
-                                onClick={() => onOpenJob?.(r.jobId)}
-                                title={cell.next === 'add_conditional' ? 'No waiver has gone with this bill — open the job’s Bill tab to add one' : cell.next === 'add_unconditional' ? 'The check has cleared — open the job to add the unconditional' : cell.next === 'sign' ? 'A waiver waits for the leader’s signature' : cell.next === 'send' ? 'A signed waiver has not been sent — open the job to send it' : 'Open the job'}
-                                style={{ font: 'inherit', display: 'inline-block', padding: '0.05rem 0.45rem', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, whiteSpace: 'nowrap', border: 'none', cursor: onOpenJob ? 'pointer' : 'default', ...tone(c.tone) }}
-                              >
-                                {c.text}
-                              </button>
-                            ))}
-                          </span>
-                        )
-                      })()
-                    : null}
-                </td>
-              ) : null}
+              </div>
+            )
+          })}
+        </div>
+      ) : (
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+          <thead>
+            <tr style={{ color: 'var(--text-muted)', textAlign: 'left' }}>
+              <th style={{ padding: '0.2rem 0.4rem', fontWeight: 500 }}>Customer</th>
+              <th style={{ padding: '0.2rem 0.4rem', fontWeight: 500 }}>Job</th>
+              <th style={{ padding: '0.2rem 0.4rem', fontWeight: 500 }}>Billed on</th>
+              <th style={{ padding: '0.2rem 0.4rem', fontWeight: 500, textAlign: 'right' }}>Days</th>
+              <th style={{ padding: '0.2rem 0.4rem', fontWeight: 500, textAlign: 'right' }}>Remaining</th>
+              {!g.isNoGc ? <th style={{ padding: '0.2rem 0.4rem', fontWeight: 500 }}>Lien waivers</th> : null}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {g.rows.map((r) => (
+              <tr key={r.key} style={{ borderTop: '1px solid var(--border)' }}>
+                <td style={{ padding: '0.3rem 0.4rem' }}>
+                  {r.customerName}
+                  {r.inCollections ? (
+                    <span
+                      style={{
+                        marginLeft: 6,
+                        padding: '0.05rem 0.35rem',
+                        fontSize: '0.6875rem',
+                        fontWeight: 600,
+                        borderRadius: 4,
+                        background: 'var(--bg-red-tint)',
+                        color: 'var(--text-red-700)',
+                      }}
+                    >
+                      Collections
+                    </span>
+                  ) : null}
+                </td>
+                <td style={{ padding: '0.3rem 0.4rem', color: 'var(--text-muted)' }}>
+                  {onOpenJob ? (
+                    <button
+                      type="button"
+                      onClick={() => onOpenJob(r.jobId)}
+                      title="Open Edit Job — set the GC/Builder here"
+                      style={{
+                        padding: 0,
+                        border: 'none',
+                        background: 'none',
+                        cursor: 'pointer',
+                        font: 'inherit',
+                        textAlign: 'left',
+                        color: 'var(--text-blue-700)',
+                        textDecoration: 'underline',
+                        textUnderlineOffset: '2px',
+                      }}
+                    >
+                      {r.hcp}
+                      {r.jobName ? ` · ${r.jobName}` : ''}
+                    </button>
+                  ) : (
+                    <>
+                      {r.hcp}
+                      {r.jobName ? ` · ${r.jobName}` : ''}
+                    </>
+                  )}
+                  {r.jobAddress ? (
+                    <span style={{ display: 'block', fontSize: '0.6875rem', color: 'var(--text-faint)' }}>
+                      {r.jobAddress}
+                    </span>
+                  ) : null}
+                </td>
+                <td style={{ padding: '0.3rem 0.4rem', whiteSpace: 'nowrap' }}>{r.referenceDateDisplay}</td>
+                <td style={{ padding: '0.3rem 0.4rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                  {r.ageDays != null ? `${r.ageDays}d` : '—'}
+                </td>
+                <td style={{ padding: '0.3rem 0.4rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                  ${formatCurrency(r.remaining)}
+                </td>
+                {!g.isNoGc ? (
+                  <td style={{ padding: '0.3rem 0.4rem' }} data-testid="gc-review-waivers">
+                    {waiverChipsFor(r)}
+                  </td>
+                ) : null}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </>
   )
   return (
