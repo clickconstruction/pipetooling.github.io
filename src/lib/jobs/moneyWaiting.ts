@@ -16,6 +16,7 @@
  */
 import type { StageRow } from '../jobsStagesBoard'
 import { effectiveInvoiceEstBillDate, stageRowBilledRemainingAmount } from './invoiceBilling'
+import { listPayer } from './billToParty'
 import {
   PAY_SPEED_MIN_SAMPLES,
   billedReferenceYmd,
@@ -81,7 +82,9 @@ export function buildMoneyWaiting(rows: StageRow[], paySpeeds: PaySpeedData | nu
     if (r.kind === 'job') continue
     const open = stageRowBilledRemainingAmount(r)
     if (open <= 0) continue
-    const customerId = r.job.customer_id
+    // v2.4367: filed under whoever the bill went to (the builder on a GC-billed bill).
+    const payer = listPayer(r.job, r.inv)
+    const customerId = payer.id
     if (!customerId) continue
     const refYmd = billedReferenceYmd({
       billedAtIso: r.inv.billed_at,
@@ -90,7 +93,7 @@ export function buildMoneyWaiting(rows: StageRow[], paySpeeds: PaySpeedData | nu
     const rawWait = refYmd ? daysBetweenYmd(refYmd, todayYmd) : null
     const waitDays = rawWait != null && rawWait >= 0 ? rawWait : null
     const acc = byCustomer.get(customerId) ?? {
-      name: (r.job.customer_name ?? '').trim() || '—',
+      name: payer.name || '—',
       open: 0,
       bills: [],
     }
@@ -153,7 +156,7 @@ export function openBillsForCustomers(rows: StageRow[], paySpeeds: PaySpeedData 
     if (r.kind === 'job') continue
     const open = stageRowBilledRemainingAmount(r)
     if (open <= 0) continue
-    const customerId = r.job.customer_id
+    const customerId = listPayer(r.job, r.inv).id
     if (!customerId) continue
     const own = paySpeeds?.customers[customerId]
     const hasOwn = own != null && own.samples >= PAY_SPEED_MIN_SAMPLES

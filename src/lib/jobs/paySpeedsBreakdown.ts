@@ -13,6 +13,7 @@
  */
 import type { StageRow } from '../jobsStagesBoard'
 import { stageRowBilledRemainingAmount } from './invoiceBilling'
+import { listPayer } from './billToParty'
 import { PAY_SPEED_MIN_SAMPLES, type CustomerSegment, type PayReceipt, type PaySpeedData } from './billedExpectedPay'
 
 export type PaySpeedCustomerRow = {
@@ -41,7 +42,9 @@ export function buildPaySpeedsBreakdown(rows: StageRow[], paySpeeds: PaySpeedDat
     if (r.kind === 'job') continue
     const open = stageRowBilledRemainingAmount(r)
     if (open <= 0) continue
-    const customerId = r.job.customer_id
+    // v2.4367: filed under whoever the bill went to (the builder on a GC-billed bill).
+    const payer = listPayer(r.job, r.inv)
+    const customerId = payer.id
     if (!customerId) continue
     const existing = byCustomer.get(customerId)
     if (existing) {
@@ -52,7 +55,7 @@ export function buildPaySpeedsBreakdown(rows: StageRow[], paySpeeds: PaySpeedDat
     const hasOwnMedian = own != null && own.samples >= PAY_SPEED_MIN_SAMPLES
     byCustomer.set(customerId, {
       customerId,
-      name: (r.job.customer_name ?? '').trim() || '—',
+      name: payer.name || '—',
       segment: paySpeeds?.customerTypes[customerId] ?? null,
       medianDays: hasOwnMedian ? own.medianDays : null,
       samples: own?.samples ?? 0,

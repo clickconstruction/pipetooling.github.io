@@ -535,3 +535,20 @@ describe('buildArBuckets edge cases', () => {
     expect(collections.total).toBeCloseTo(300)
   })
 })
+
+describe('AR items name the payer (v2.4367)', () => {
+  it('a GC-billed bill is the GC’s, a GC job’s bill is the GC’s, a homeowner’s own bill stays theirs', () => {
+    const gcBilled = job({ id: 'j273', customer_id: 'cust-umar', customer_name: 'Umar Khan', gc_customer_id: 'gc-dudley', bill_to_party: 'gc', gcCustomer: { name: 'RMC- Dudley Mason' } })
+    const gcOnly = job({ id: 'j789', customer_id: null, customer_name: null, gc_customer_id: 'gc-knight', gcCustomer: { name: 'Knight Contracting' } })
+    const own = job({ id: 'j1060', customer_id: 'cust-cano', customer_name: 'John Cano' })
+    const { ar } = buildArBuckets(
+      [gcBilled, gcOnly, own],
+      [invoice({ id: 'i273', job_id: 'j273' }), invoice({ id: 'i789', job_id: 'j789' }), invoice({ id: 'i1060', job_id: 'j1060' })],
+      [],
+    )
+    const byJob = new Map(ar.items.map((i) => [i.jobId, i]))
+    expect(byJob.get('j273')).toMatchObject({ customerId: 'gc-dudley', customerName: 'RMC- Dudley Mason' })
+    expect(byJob.get('j789')).toMatchObject({ customerId: 'gc-knight', customerName: 'Knight Contracting' })
+    expect(byJob.get('j1060')).toMatchObject({ customerId: 'cust-cano', customerName: 'John Cano' })
+  })
+})

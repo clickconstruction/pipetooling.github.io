@@ -11,6 +11,7 @@
  * (journey J4-1 (b): Quickfill used to say 58 where the board said 59).
  */
 import { jobPartyName } from './jobPartyExclusive'
+import { listPayer } from './billToParty'
 import type { StageRow } from '../jobsStagesBoard'
 import { stageRowBilledAgeDays, stageRowBilledAgeReference, stageRowBilledRemainingAmount } from './invoiceBilling'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
@@ -104,10 +105,12 @@ export function buildBilledByCustomerBreakdown(
     const amount = stageRowBilledRemainingAmount(row)
     const settled = isSettledRemainder(amount)
     const job = row.job
-    // A GC job (v2.3403) groups under the GC standing alone.
-    const name = jobPartyName(job) ?? 'No customer'
-    const key = (job.customer_id ?? '').trim() || (job.gc_customer_id ?? '').trim() || `name:${name.toLowerCase()}`
     const inv = row.kind === 'job' ? null : row.inv
+    // v2.4367: grouped under whoever the bill went to (the builder on a GC-billed bill);
+    // a GC job (v2.3403) already grouped under the GC standing alone.
+    const payer = listPayer(job, inv)
+    const name = payer.name ?? jobPartyName(job) ?? 'No customer'
+    const key = payer.id ?? `name:${name.toLowerCase()}`
     const bill: BilledBreakdownBill = {
       invoiceId: inv?.id ?? null,
       jobId: job.id,
@@ -119,7 +122,7 @@ export function buildBilledByCustomerBreakdown(
       lineItems: billLineItems(row),
       ageDays: settled ? null : stageRowBilledAgeDays(row, now),
       ageHandSet: settled ? false : (stageRowBilledAgeReference(row)?.handSet ?? false),
-      customerId: (job.customer_id ?? '').trim() || null,
+      customerId: payer.id,
       customerEmail: (job.customer_email ?? '').trim() || null,
       stripeInvoiceId: (inv?.stripe_invoice_id ?? '').trim() || null,
       stripePaid: inv?.stripe_invoice_status === 'paid',
