@@ -103,12 +103,16 @@ export async function procurementItemsFrom(supabase: Client, items: ReadonlyArra
     const { data } = await supabase.from('supply_houses').select('id, name').in('id', houseIds)
     for (const h of data ?? []) names.set(h.id, h.name)
   }
-  // How many fixtures the takeoff counted, for the parts' quantities.
-  const countRowIds = [...new Set(items.filter((i) => parts.some((p) => p.item_id === (i as ItemLike & { id?: string }).id)).map((i) => i.source_count_row_id).filter((x): x is string => !!x))]
+  // How many fixtures the takeoff counted, for the parts' quantities and each tag's heading (2026-10-02).
+  const countRowIds = [...new Set(items.map((i) => i.source_count_row_id).filter((x): x is string => !!x))]
   const counts = new Map<string, number>()
+  const fixtures = new Map<string, string>()
   if (countRowIds.length > 0) {
-    const { data } = await supabase.from('bids_count_rows').select('id, count').in('id', countRowIds)
-    for (const c of (data ?? []) as Array<{ id: string; count: number }>) counts.set(c.id, Number(c.count) || 0)
+    const { data } = await supabase.from('bids_count_rows').select('id, count, fixture').in('id', countRowIds)
+    for (const c of (data ?? []) as Array<{ id: string; count: number; fixture: string | null }>) {
+      counts.set(c.id, Number(c.count) || 0)
+      if (c.fixture) fixtures.set(c.id, c.fixture)
+    }
   }
   const out: ProcurementItemSource[] = []
   for (const i of items) {
@@ -118,13 +122,14 @@ export async function procurementItemsFrom(supabase: Client, items: ReadonlyArra
     const d = asDecision(i.review_decision)
     const rowDecision = d ? { kind: d, at: i.reviewed_at } : null
     const itemId = (i as ItemLike & { id?: string }).id
-    const base = { tag: i.tag.trim(), shared, sourceCountRowId: i.source_count_row_id ?? null, itemId: itemId ?? null }
+    const counted = i.source_count_row_id ?? null
+    const base = { tag: i.tag.trim(), shared, sourceCountRowId: counted, itemId: itemId ?? null, fixture: counted ? fixtures.get(counted) ?? null : null, fixtureCount: counted ? counts.get(counted) ?? null : null }
     const rowParts = itemId ? parts.filter((p) => p.item_id === itemId).sort((a, b) => a.sequence_order - b.sequence_order) : []
     if (rowParts.length === 0) {
       out.push({ ...base, product: submitted || specified || '(no product)', supplyHouse: i.supply_house_id ? names.get(i.supply_house_id) ?? null : null, leadTimeDays: i.lead_time_days, decision: rowDecision })
       continue
     }
-    const fixtures = i.source_count_row_id ? counts.get(i.source_count_row_id) ?? null : null
+    const fixtureCount = i.source_count_row_id ? counts.get(i.source_count_row_id) ?? null : null
     for (const p of rowParts) {
       const own = asDecision(p.review_decision)
       out.push({
@@ -136,7 +141,8 @@ export async function procurementItemsFrom(supabase: Client, items: ReadonlyArra
         partKey: p.procure_key,
         partOrder: p.sequence_order,
         orderOnly: !p.on_submittal,
-        quantity: fixtures != null ? fixtures * Number(p.quantity) : null,
+        quantity: fixtureCount != null ? fixtureCount * Number(p.quantity) : null,
+        pricedLabel: p.priced_label ?? null,
         // A carrier with no stage of its own is needed at Rough In (2026-10-02).
         stage: asPartStage(p.stage) ?? (isCarrier(p.label) ? 'rough_in' : null),
       })

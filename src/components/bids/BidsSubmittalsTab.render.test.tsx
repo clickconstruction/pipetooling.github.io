@@ -401,8 +401,10 @@ describe('BidsSubmittalsTab', () => {
     state.items = [item({ id: 'it-1', tag: 'WC-1', sequence_order: 1, specified_manufacturer: 'TOTO', specified_model: 'CT708UVG', submitted_label: 'TOTO CT708UVG#01', status: 'as_specified' })]
     mount()
     expect(await screen.findByTestId('status-legend-toggle')).toBeTruthy()
-    expect(screen.getByRole('columnheader', { name: /^Status/ }).getAttribute('title')).toBe('How your product compares to what the plans asked for.')
-    expect(screen.getByRole('columnheader', { name: /^Sheet/ }).getAttribute('title')).toMatch(/maker’s page/)
+    // The rows table's headers (the procurement log has a Status column of its own since 2026-10-02).
+    const rowsTable = screen.getAllByTestId('submittal-row')[0]!.closest('table')!
+    expect(within(rowsTable).getByRole('columnheader', { name: /^Status/ }).getAttribute('title')).toBe('How your product compares to what the plans asked for.')
+    expect(within(rowsTable).getByRole('columnheader', { name: /^Sheet/ }).getAttribute('title')).toMatch(/maker’s page/)
     expect(screen.queryByTestId('status-legend')).toBeNull()
     fireEvent.click(screen.getByTestId('status-legend-toggle'))
     const legend = screen.getByTestId('status-legend')
@@ -838,7 +840,7 @@ describe('BidsSubmittalsTab', () => {
       mount()
       const door = await waitFor(() => {
         // The part's own line, once the parts are read (before that the row reads as one line).
-        const d = screen.getAllByTestId('procurement-open-row').find((b) => b.textContent?.startsWith('WATTS LFN36M1') || (b.textContent?.includes('WATTS LFN36M1 0556031') && b.getAttribute('title')?.includes('this part')))
+        const d = screen.getAllByTestId('procurement-open-row').find((b) => b.textContent?.includes('WATTS LFN36M1') && b.getAttribute('title')?.includes('this part'))
         if (!d) throw new Error('no line yet')
         return d
       })

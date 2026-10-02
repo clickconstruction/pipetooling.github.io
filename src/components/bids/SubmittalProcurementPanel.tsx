@@ -8,6 +8,7 @@ import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { procurementLogCsv, procurementLogFileName, procurementLogTsv } from '../../lib/submittals/procurementLogExport'
 import { loadProcurementSheetAssets, type ProcurementSheetAssets } from '../../lib/submittals/procurementSheetAssets'
 import { describeLeadTime, parseLeadTime } from '../../lib/submittals/leadTime'
+import { splitPartLabel } from '../../lib/submittals/itemParts'
 import { isPlausibleDate, readDateBoxEntry } from '../../lib/dateBoxEntry'
 import {
   buildProcurementLog,
@@ -20,7 +21,9 @@ import {
   procurementCounts,
   procurementHeadline,
   procurementUpdateText,
+  lineStatus,
   logDateRead,
+  logIsDraft,
   readTypedLogDate,
   shortDate,
   daysAgoWords,
@@ -28,6 +31,7 @@ import {
 
   submittalWord,
   toIsoDate,
+  type LineStatus,
   type ProcurementItemSource,
   type ProcurementLens,
   type ProcurementRecord,
@@ -70,7 +74,12 @@ const thCenter: CSSProperties = { ...th, textAlign: 'center' }
 const tdCenter: CSSProperties = { ...td, whiteSpace: 'nowrap', textAlign: 'center' }
 // The Item cell: the tag in bold, then the product on the same line, so a long name wraps across one wide cell.
 // On a phone the item and its tick fit the screen; the dates scroll beside them.
-const itemTd: CSSProperties = { ...td, width: 'min(19rem, 52vw)', minWidth: 'min(19rem, 52vw)', lineHeight: 1.35, overflowWrap: 'anywhere' }
+const itemTd: CSSProperties = { ...td, minWidth: 'min(14rem, 46vw)', lineHeight: 1.35, overflowWrap: 'anywhere' }
+// 2026-10-02 · the line's dates open under it: each box with its name over it.
+const editorField: CSSProperties = { display: 'flex', flexDirection: 'column', gap: '0.2rem', alignItems: 'flex-start' }
+const editorLabel: CSSProperties = { fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)' }
+const COLS = 8
+const STATUS_COLOR: Record<LineStatus['tone'], string> = { done: 'var(--text-green-700)', late: 'var(--text-red-700)', ordered: 'var(--text-strong)', act: 'var(--text-blue-700)', back: 'var(--text-amber-700)', waiting: 'var(--text-muted)', none: 'var(--text-muted)' }
 const itemTag: CSSProperties = { fontWeight: 700, color: 'var(--text-strong)', marginRight: '0.45rem' }
 const btn: CSSProperties = { padding: '0.35rem 0.75rem', background: 'var(--surface)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem', fontWeight: 500 }
 const btnPrimary: CSSProperties = { ...btn, background: '#2563eb', borderColor: '#2563eb', color: 'white', fontWeight: 600 }
@@ -125,6 +134,8 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
     }
   }
   const [ticked, setTicked] = useState<Set<string>>(() => new Set())
+  // 2026-10-02 · lines whose dates are open under them.
+  const [openLines, setOpenLines] = useState<Set<string>>(() => new Set())
   const [bulkOrdered, setBulkOrdered] = useState('')
   const [bulkPo, setBulkPo] = useState('')
 
@@ -488,83 +499,132 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
 
   /** One line of the log; `underTag` drops the tag on a part line drawn under its tag's heading. */
   function renderRow(r: ProcurementRow, underTag: boolean) {
-    const late = r.late
     const changed = changes.some((c) => c.key === r.key)
+    const open = openLines.has(r.key)
+    const status = lineStatus(r)
+    const name = r.tag ?? r.product
+    const { head, words } = splitPartLabel(r.product)
+    const toggle = () => setOpenLines((cur) => { const next = new Set(cur); if (next.has(r.key)) next.delete(r.key); else next.add(r.key); return next })
+    const part = (
+      <>
+        <span style={{ display: 'flex', gap: '0.4rem', alignItems: 'baseline', minWidth: 0 }}>
+          {underTag && r.partKey ? null : <b style={{ ...itemTag, flexShrink: 0, maxWidth: '45%' }}>{r.tag}</b>}
+          <b className="procure-item-name" style={{ fontWeight: 600, color: 'var(--text-strong)', flexShrink: 0, maxWidth: '100%' }}>{head}</b>
+          {words ? <span style={{ ...smallMuted, fontSize: '0.78rem', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden', overflowWrap: 'anywhere', minWidth: 0 }}>{words}</span> : null}
+        </span>
+        {r.pricedLabel || r.countedWith.length > 0 || (r.orderOnly && !underTag) ? (
+          <span style={{ ...smallMuted, display: 'block' }}>
+            {r.pricedLabel ? <span style={{ color: 'var(--text-blue-700)', fontWeight: 600 }} data-testid="procurement-priced">in place of the priced {splitPartLabel(r.pricedLabel).head}</span> : null}
+            {r.orderOnly && !underTag ? <span data-testid="procurement-order-only">{r.pricedLabel ? ' · ' : ''}order only, not on the GC’s copy</span> : null}
+            {r.countedWith.length > 0 ? <span data-testid="procurement-counted-with">{r.pricedLabel || (r.orderOnly && !underTag) ? ' · ' : ''}counted with {r.countedWith.join(', ')} on the takeoff</span> : null}
+          </span>
+        ) : null}
+      </>
+    )
     return (
-      <tr key={r.key} data-testid="procurement-row" data-part={r.partKey ? 'true' : undefined} style={{ background: ticked.has(r.key) ? 'var(--bg-blue-tint)' : changed ? 'var(--bg-amber-100)' : undefined }}>
-        <td style={{ ...td, width: 28, textAlign: 'center' }}>
-          <input type="checkbox" aria-label={`Pick ${r.tag ?? r.product}${r.partKey ? ` ${r.product}` : ''}`} checked={ticked.has(r.key)} onChange={(e) => setTicked((cur) => { const next = new Set(cur); if (e.target.checked) next.add(r.key); else next.delete(r.key); return next })} data-testid="procurement-tick" />
-        </td>
-        <td style={{ ...itemTd, ...(underTag && r.partKey ? { paddingLeft: '1.2rem' } : null) }} data-testid="procurement-item">
-          {r.isHand ? (
-            <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-              <input type="text" aria-label="Item" placeholder="What it is (no cut sheet)" value={draftOf(r.key, 'label', r.product)} onChange={(e) => setDraft(r.key, 'label', e.target.value)} onBlur={() => void commitText(r, 'label')} maxLength={200} style={{ ...inp, flex: 1, minWidth: 0 }} />
-              {r.stage ? <span style={{ ...smallMuted, whiteSpace: 'nowrap' }}>{PROCUREMENT_STAGE_LABELS[r.stage]}</span> : (
-                <select aria-label="Stage" value="" onChange={(e) => void write(r, { stage: (e.target.value || null) as ProcurementStage | null })} style={inp}>
-                  <option value="">stage…</option>
-                  {(['rough_in', 'top_out', 'trim_set'] as const).map((s) => <option key={s} value={s}>{PROCUREMENT_STAGE_LABELS[s]}</option>)}
-                </select>
-              )}
-            </div>
-          ) : (
-            (() => {
-              const body = (
-                <>
-                  <div>{underTag && r.partKey ? null : <b style={itemTag}>{r.tag}</b>}<span className="procure-item-name">{r.product}</span></div>
-                  <div style={smallMuted}>
-                    {r.supplyHouse ? `${r.supplyHouse} · ` : r.partKey ? 'no house yet · ' : ''}
-                    {r.stage ? PROCUREMENT_STAGE_LABELS[r.stage] : 'no stage on the takeoff'}
-                    {r.orderOnly ? <span data-testid="procurement-order-only"> · order only, not on the GC’s copy</span> : null}
-                    {r.countedWith.length > 0 ? <span data-testid="procurement-counted-with"> · counted with {r.countedWith.join(', ')} on the takeoff</span> : null}
-                    {onOpenItem && r.itemId ? <span className="procure-item-edit" aria-hidden="true"> · Edit</span> : null}
-                  </div>
-                </>
-              )
-              // The line opens its row's Edit window: the house, lead time and stage are changed there.
+      <Fragment key={r.key}>
+        <tr data-testid="procurement-row" data-part={r.partKey ? 'true' : undefined} data-order-only={r.orderOnly ? 'true' : undefined} style={{ background: ticked.has(r.key) ? 'var(--bg-blue-tint)' : changed ? 'var(--bg-amber-100)' : undefined, opacity: r.orderOnly ? 0.72 : undefined }}>
+          <td style={{ ...td, width: 28, textAlign: 'center' }}>
+            <input type="checkbox" aria-label={`Pick ${r.tag ?? r.product}${r.partKey ? ` ${r.product}` : ''}`} checked={ticked.has(r.key)} onChange={(e) => setTicked((cur) => { const next = new Set(cur); if (e.target.checked) next.add(r.key); else next.delete(r.key); return next })} data-testid="procurement-tick" />
+          </td>
+          <td style={{ ...itemTd, ...(underTag && r.partKey ? { paddingLeft: '1.2rem' } : null) }} data-testid="procurement-item" title={r.product}>
+            {r.isHand ? (
+              <input type="text" aria-label="Item" placeholder="What it is (no cut sheet)" value={draftOf(r.key, 'label', r.product)} onChange={(e) => setDraft(r.key, 'label', e.target.value)} onBlur={() => void commitText(r, 'label')} maxLength={200} style={{ ...inp, width: '100%' }} />
+            ) : onOpenItem && r.itemId ? (
+              // The line opens its row's Edit window: the house, lead time and stage are changed there (v2.4354).
+              <button type="button" className="procure-item-open" onClick={() => onOpenItem({ itemId: r.itemId!, partKey: r.partKey ?? null })} title={`Open ${r.tag ?? 'the row'} to change ${r.partKey ? 'this part’s' : 'its'} house, lead time or stage`} data-testid="procurement-open-row">
+                {part}
+              </button>
+            ) : (
+              part
+            )}
+          </td>
+          <td style={{ ...tdCenter, fontWeight: 600 }} data-testid="procurement-qty">{r.quantity != null ? r.quantity : <span style={smallMuted}>—</span>}</td>
+          <td style={{ ...td, whiteSpace: 'nowrap' }} data-testid="procurement-house">
+            {(() => {
+              const house = r.supplyHouse ? <span className="procure-house-name">{r.supplyHouse}</span> : r.isHand ? <span style={smallMuted}>—</span> : <span className="procure-house-name" style={{ color: 'var(--text-amber-700)', fontSize: '0.78rem' }}>no house</span>
+              // The house opens the row's Edit window on this part, its house box ready (Grace, 2026-10-02: swap a house).
               return onOpenItem && r.itemId ? (
-                <button
-                  type="button"
-                  className="procure-item-open"
-                  onClick={() => onOpenItem({ itemId: r.itemId!, partKey: r.partKey ?? null })}
-                  title={`Open ${r.tag ?? 'the row'} to change ${r.partKey ? 'this part’s' : 'its'} house, lead time or stage`}
-                  data-testid="procurement-open-row"
-                >
-                  {body}
+                <button type="button" className="procure-item-open" onClick={() => onOpenItem({ itemId: r.itemId!, partKey: r.partKey ?? null })} title={`Change the house for ${r.partKey ? head : name}`} aria-label={`Change the house for ${name}${r.partKey ? ` ${head}` : ''}`} data-testid="procurement-house-open">
+                  {house}
                 </button>
               ) : (
-                body
+                house
               )
-            })()
-          )}
-        </td>
-        <td style={{ ...tdCenter, fontWeight: 600 }} data-testid="procurement-qty">{r.quantity != null ? r.quantity : <span style={smallMuted}>—</span>}</td>
-        <td style={{ ...td, whiteSpace: 'nowrap' }}><span style={{ color: r.submittal === 'approved' ? 'var(--text-green-700)' : r.submittal === 'revise' || r.submittal === 'rejected' ? 'var(--text-amber-700)' : 'var(--text-muted)' }}>{submittalWord(r)}</span></td>
-        <td style={{ ...tdCenter }}>{r.releasedOn ? shortDate(r.releasedOn) : <span style={smallMuted}>—</span>}</td>
-        <td style={{ ...tdCenter }}>{dateCell(r, 'ordered_on', r.orderedOn, { label: `${r.tag ?? r.product} ordered on`, disabled: busy })}</td>
-        <td style={td}><input type="text" aria-label={`${r.tag ?? r.product} PO`} placeholder="PO" value={draftOf(r.key, 'po', r.poRef)} onChange={(e) => setDraft(r.key, 'po', e.target.value)} onBlur={() => void commitText(r, 'po')} maxLength={60} style={{ ...inp, width: '5.2rem' }} /></td>
-        <td style={{ ...tdCenter }}>
-          {r.isHand ? (
-            <input type="text" aria-label="Lead time" placeholder="2 wk" value={draftOf(r.key, 'lead', describeLeadTime(r.leadTimeDays) ?? '')} onChange={(e) => setDraft(r.key, 'lead', e.target.value)} onBlur={() => void commitText(r, 'lead')} style={{ ...inp, width: '4.6rem' }} />
-          ) : (
-            describeLeadTime(r.leadTimeDays) ?? <span style={smallMuted}>—</span>
-          )}
-        </td>
-        <td style={{ ...tdCenter }}>
-          {dateCell(r, 'expected_on', r.expectedOn, {
-            label: `${r.tag ?? r.product} expected on`,
-            title: r.expectedSource === 'derived' ? `${shortDate(r.orderedOn)} + ${describeLeadTime(r.leadTimeDays)}; type the house's own date to override` : r.expectedSource === 'house' ? "The house's date; clear it to go back to ordered + lead time" : 'Order date + lead time, or the house’s own date',
-            disabled: busy || !!r.deliveredOn,
-            background: r.expectedSource === 'house' ? 'var(--bg-amber-100)' : r.expectedSource === 'derived' ? 'var(--bg-muted)' : 'var(--surface)',
-            under: r.expectedSource === 'house' ? 'house said' : null,
-            empty: r.deliveredOn ? '—' : undefined,
-          })}
-        </td>
-        <td style={{ ...tdCenter }}>{r.requiredOn ? shortDate(r.requiredOn) : <span style={smallMuted}>—</span>}</td>
-        <td style={{ ...tdCenter, fontWeight: late ? 700 : 500, color: late ? 'var(--text-red-700)' : r.deliveredOn ? 'var(--text-green-700)' : r.floatDays != null ? 'var(--text-green-700)' : 'var(--text-muted)' }} data-testid="procurement-float">{floatText(r)}</td>
-        <td style={{ ...tdCenter }}>{dateCell(r, 'delivered_on', r.deliveredOn, { label: `${r.tag ?? r.product} delivered on`, disabled: busy })}</td>
-        <td style={{ ...td, minWidth: 160 }}><input type="text" aria-label={`${r.tag ?? r.product} note`} placeholder="note for the GC" value={draftOf(r.key, 'note', r.note)} onChange={(e) => setDraft(r.key, 'note', e.target.value)} onBlur={() => void commitText(r, 'note')} maxLength={500} style={{ ...inp, width: '100%' }} /></td>
-        <td style={{ ...td, whiteSpace: 'nowrap' }}>{r.isHand ? <button type="button" onClick={() => void removeHandRow(r)} disabled={disabled} title="Remove this item" aria-label={`Remove ${r.product || 'item'}`} style={{ ...link, color: 'var(--text-red-600)', textDecoration: 'none', fontSize: '0.95rem' }}>×</button> : null}</td>
-    </tr>
+            })()}
+          </td>
+          <td style={{ ...td, whiteSpace: 'nowrap' }} data-testid="procurement-stage">
+            {r.isHand && !r.stage ? (
+              <select aria-label="Stage" value="" onChange={(e) => void write(r, { stage: (e.target.value || null) as ProcurementStage | null })} style={inp}>
+                <option value="">stage…</option>
+                {(['rough_in', 'top_out', 'trim_set'] as const).map((st) => <option key={st} value={st}>{PROCUREMENT_STAGE_LABELS[st]}</option>)}
+              </select>
+            ) : r.stage ? PROCUREMENT_STAGE_LABELS[r.stage] : <span style={smallMuted}>—</span>}
+          </td>
+          <td style={{ ...td, whiteSpace: 'nowrap' }}>
+            {r.isHand ? (
+              <input type="text" aria-label="Lead time" placeholder="2 wk" value={draftOf(r.key, 'lead', describeLeadTime(r.leadTimeDays) ?? '')} onChange={(e) => setDraft(r.key, 'lead', e.target.value)} onBlur={() => void commitText(r, 'lead')} style={{ ...inp, width: '4.6rem' }} />
+            ) : (
+              describeLeadTime(r.leadTimeDays) ?? <span style={smallMuted}>—</span>
+            )}
+          </td>
+          <td style={{ ...td, minWidth: '12.5rem', width: '13.5rem' }}>
+            {/* One status where seven date columns were (2026-10-02); a tap opens the line's dates. */}
+            <button type="button" className="procure-status" aria-expanded={open} aria-label={`${name}${r.partKey ? ` ${head}` : ''} dates`} onClick={toggle} data-testid="procurement-status" data-tone={status.tone}>
+              {status.text ? (
+                <span style={{ display: 'block', fontWeight: 600, color: STATUS_COLOR[status.tone] }}>{status.text}</span>
+              ) : (
+                <span style={{ display: 'block', color: 'var(--text-faint)' }}>{open ? 'Close' : 'Dates…'}</span>
+              )}
+              {status.sub ? <span style={{ ...smallMuted, display: 'block' }}>{status.sub}</span> : null}
+            </button>
+          </td>
+          <td style={{ ...td, whiteSpace: 'nowrap' }}>{r.isHand ? <button type="button" onClick={() => void removeHandRow(r)} disabled={disabled} title="Remove this item" aria-label={`Remove ${r.product || 'item'}`} style={{ ...link, color: 'var(--text-red-600)', textDecoration: 'none', fontSize: '0.95rem' }}>×</button> : null}</td>
+        </tr>
+        {open ? (
+          <tr data-testid="procurement-editor">
+            <td colSpan={COLS} style={{ ...td, background: 'var(--bg-blue-tint)', padding: '0.5rem 0.6rem 0.6rem 2.2rem' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem 1.1rem', alignItems: 'flex-start' }}>
+                <div style={editorField}>
+                  <span style={editorLabel}>Ordered</span>
+                  {dateCell(r, 'ordered_on', r.orderedOn, { label: `${name} ordered on`, disabled: busy })}
+                </div>
+                <label style={editorField}>
+                  <span style={editorLabel}>PO</span>
+                  <input type="text" aria-label={`${name} PO`} placeholder="PO" value={draftOf(r.key, 'po', r.poRef)} onChange={(e) => setDraft(r.key, 'po', e.target.value)} onBlur={() => void commitText(r, 'po')} maxLength={60} style={{ ...inp, width: '8rem' }} />
+                </label>
+                <div style={editorField}>
+                  <span style={editorLabel}>Expected</span>
+                  {dateCell(r, 'expected_on', r.expectedOn, {
+                    label: `${name} expected on`,
+                    title: r.expectedSource === 'derived' ? `${shortDate(r.orderedOn)} + ${describeLeadTime(r.leadTimeDays)}; type the house's own date to override` : r.expectedSource === 'house' ? "The house's date; clear it to go back to ordered + lead time" : 'Order date + lead time, or the house’s own date',
+                    disabled: busy || !!r.deliveredOn,
+                    background: r.expectedSource === 'house' ? 'var(--bg-amber-100)' : r.expectedSource === 'derived' ? 'var(--bg-muted)' : 'var(--surface)',
+                    under: r.expectedSource === 'house' ? 'house said' : null,
+                    empty: r.deliveredOn ? '—' : undefined,
+                  })}
+                </div>
+                <div style={editorField}>
+                  <span style={editorLabel}>Delivered</span>
+                  {dateCell(r, 'delivered_on', r.deliveredOn, { label: `${name} delivered on`, disabled: busy })}
+                </div>
+                <label style={{ ...editorField, flex: '1 1 14rem' }}>
+                  <span style={editorLabel}>Note for the GC</span>
+                  <input type="text" aria-label={`${name} note`} placeholder="note for the GC" value={draftOf(r.key, 'note', r.note)} onChange={(e) => setDraft(r.key, 'note', e.target.value)} onBlur={() => void commitText(r, 'note')} maxLength={500} style={{ ...inp, width: '100%' }} />
+                </label>
+                <div style={{ ...editorField, gap: '0.15rem' }}>
+                  <span style={editorLabel}>The GC and the job</span>
+                  <span style={{ fontSize: '0.78rem' }}>{submittalWord(r)}{r.releasedOn ? ` · released ${shortDate(r.releasedOn)}` : ''}</span>
+                  <span style={{ fontSize: '0.78rem' }}>
+                    {r.requiredOn ? `Needed ${shortDate(r.requiredOn)} · ` : 'No required date · '}
+                    <span data-testid="procurement-float" style={{ fontWeight: r.late ? 700 : 500, color: r.late ? 'var(--text-red-700)' : r.deliveredOn || r.floatDays != null ? 'var(--text-green-700)' : 'var(--text-muted)' }}>{floatText(r) || 'no float yet'}</span>
+                  </span>
+                </div>
+              </div>
+            </td>
+          </tr>
+        ) : null}
+      </Fragment>
     )
   }
 
@@ -593,6 +653,13 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
         {lens === 'to_order' && loaded ? <span style={{ fontSize: '0.8125rem', color: 'var(--text-strong)' }} data-testid="procurement-next">{toOrderLine(sections)}</span> : null}
       </div>
 
+      {loaded && logIsDraft(rows) ? (
+        // 2026-10-02 · said once, not "Not shared" on every line.
+        <div style={{ fontSize: '0.8125rem', color: 'var(--text-strong)', background: 'var(--bg-muted)', borderRadius: 6, padding: '0.4rem 0.6rem' }} data-testid="procurement-draft">
+          This version is a draft, so nothing is released yet. The GC releases each part when they approve it.
+        </div>
+      ) : null}
+
       {ticked.size > 0 ? (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem 0.75rem', alignItems: 'center', padding: '0.5rem 0.7rem', border: '1px solid #2563eb', background: 'var(--bg-blue-tint)', borderRadius: 6 }} data-testid="procurement-bulk">
           <b style={{ fontSize: '0.8125rem', color: 'var(--text-blue-700)' }}>{ticked.size} line{ticked.size === 1 ? '' : 's'} ticked</b>
@@ -613,29 +680,23 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
       ) : null}
 
       <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1140, fontVariantNumeric: 'tabular-nums' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 760, fontVariantNumeric: 'tabular-nums' }}>
           <thead>
             <tr>
               <th style={{ ...th, width: 28 }} aria-label="Pick" />
-              <th style={th}>Item</th>
+              <th style={th}>Part</th>
               <th style={thCenter}>Qty</th>
-              <th style={th}>Submittal</th>
-              <th style={thCenter}>Released</th>
-              <th style={thCenter}>Ordered</th>
-              <th style={th}>PO</th>
-              <th style={thCenter}>Lead</th>
-              <th style={thCenter}>Expected</th>
-              <th style={thCenter}>Required</th>
-              <th style={thCenter}>Float</th>
-              <th style={thCenter}>Delivered</th>
-              <th style={th}>Note</th>
+              <th style={th}>House</th>
+              <th style={th}>Stage</th>
+              <th style={th}>Lead</th>
+              <th style={th}>Status</th>
               <th style={th} />
             </tr>
           </thead>
           <tbody data-testid="procurement-rows">
             {rows.length === 0 ? (
               <tr>
-                <td style={td} colSpan={14}>
+                <td style={td} colSpan={COLS}>
                   <span style={smallMuted}>No rows yet. The submittal's rows appear here once a revision is shared; + Add item for a long-lead item with no cut sheet.</span>
                 </td>
               </tr>
@@ -649,16 +710,28 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
                 <Fragment key={sec.key}>
                   {heading ? (
                     <tr data-testid="procurement-section">
-                      <td colSpan={14} style={{ ...td, background: 'var(--bg-subtle)', padding: '0.4rem 0.4rem' }}>
-                        <label style={{ display: 'inline-flex', gap: '0.5rem', alignItems: 'center', cursor: 'pointer' }}>
+                      <td colSpan={COLS} style={{ ...td, background: 'var(--bg-subtle)', padding: '0.4rem 0.4rem' }}>
+                        <label style={{ display: 'inline-flex', gap: '0.5rem', alignItems: 'center', cursor: 'pointer', flexWrap: 'wrap' }}>
                           <input type="checkbox" aria-label={`Pick every line under ${sec.title}`} checked={allOn} onChange={(e) => setTicked((cur) => { const next = new Set(cur); for (const k of keys) { if (e.target.checked) next.add(k); else next.delete(k) } return next })} />
                           <b style={{ color: 'var(--text-strong)' }}>{sec.title}</b>
                           <span style={smallMuted}>{sec.note}</span>
+                          {sec.warn ? <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-amber-700)', background: 'var(--bg-amber-100)', borderRadius: 999, padding: '0.05rem 0.5rem' }} data-testid="procurement-section-warn">{sec.warn}</span> : null}
                         </label>
                       </td>
                     </tr>
                   ) : null}
-                  {sec.rows.map((r) => renderRow(r, lens === 'by_tag' && heading))}
+                  {sec.rows.map((r, i) => (
+                    <Fragment key={r.key}>
+                      {sec.orderOnlyFrom != null && i === sec.orderOnlyFrom ? (
+                        <tr data-testid="procurement-order-only-divider">
+                          <td colSpan={COLS} style={{ ...td, padding: '0.25rem 0.4rem 0.25rem 2.2rem', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+                            Ordered, not on the GC’s copy · {sec.rows.length - sec.orderOnlyFrom} part{sec.rows.length - sec.orderOnlyFrom === 1 ? '' : 's'}
+                          </td>
+                        </tr>
+                      ) : null}
+                      {renderRow(r, lens === 'by_tag' && heading)}
+                    </Fragment>
+                  ))}
                 </Fragment>
               )
             })}
@@ -666,7 +739,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
         </table>
       </div>
       <div style={smallMuted}>
-        Released = the room's approval. Expected = ordered + lead time until the house says otherwise (amber). Required = the stage's window on the job. <b>Order by</b> = required − lead time for a released row not yet ordered. Amber rows have changed since the last update.
+        Tap a status to type its dates. Released = the room's approval. Expected = ordered + lead time until the house says otherwise (amber). Needed = the stage's window on the job. <b>Order by</b> = needed − lead time for a released part not yet ordered. Amber rows have changed since the last update.
       </div>
 
       <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
