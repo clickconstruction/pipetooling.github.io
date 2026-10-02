@@ -1,5 +1,11 @@
 import { useEffect } from 'react'
-import { acquireBodyScrollLock } from '../lib/bodyScrollLock'
+import {
+  acquireBodyScrollLock,
+  bodyStyleFreezesPage,
+  healStrayScrollLock,
+  isBodyScrollLockHeld,
+  SCROLL_LOCK_CLASS,
+} from '../lib/bodyScrollLock'
 import { findBlockingOverlays } from '../lib/blockingOverlay'
 import { createFrameFallbackScheduler } from '../lib/frameFallbackScheduler'
 
@@ -20,6 +26,11 @@ import { createFrameFallbackScheduler } from '../lib/frameFallbackScheduler'
  * are suspended while the document is hidden, and an rAF-only recompute left
  * the lock applied forever when a modal unmounted without a frame ever firing
  * (bid preview → "Open in Bids" quick link in a hidden/embedded tab).
+ *
+ * Nothing open, nothing frozen: when no overlay is on screen and no lock is
+ * held, the recompute also clears a freeze left on the page by anything else
+ * (`healStrayScrollLock`) — a body `overflow: hidden` a library wrote and never
+ * took back. A scroll attempt on such a page triggers the same check.
  */
 /** While the lock is held, re-verify this often even with no DOM mutations (v2.NEXT). */
 export const SCROLL_LOCK_WATCHDOG_MS = 3000
@@ -34,7 +45,7 @@ export default function BodyScrollLockSentinel() {
       const blocking = findBlockingOverlays(document, window).length > 0
       if (blocking && !release) {
         const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth
-        release = acquireBodyScrollLock(document.body, window, scrollbarWidth)
+        release = acquireBodyScrollLock(document.documentElement, window, scrollbarWidth)
         // Watchdog (v2.NEXT): a leaked lock froze the Bids/Followup pages until a
         // refresh — an overlay left the DOM without any mutation the observer saw
         // (or the frame never fired). While locked, re-verify on a slow interval
@@ -48,12 +59,23 @@ export default function BodyScrollLockSentinel() {
           watchdog = null
         }
       }
+      if (!blocking && !release && !isBodyScrollLockHeld()) {
+        if (healStrayScrollLock(document.documentElement, document.body.style)) {
+          console.warn('[scroll-lock] the page was frozen with no window open; cleared it')
+        }
+      }
     }
     // The instant heal: a scroll attempt (wheel, touch drag, PageDown/space/arrows)
     // while the lock is held re-checks immediately — if the overlay is really gone,
     // the very gesture that hit the freeze releases it.
     const onScrollIntent = () => {
       if (release) schedule()
+      else if (
+        !isBodyScrollLockHeld() &&
+        (bodyStyleFreezesPage(document.body.style) || document.documentElement.classList.contains(SCROLL_LOCK_CLASS))
+      ) {
+        schedule()
+      }
     }
     const { schedule, cancel } = createFrameFallbackScheduler(
       {

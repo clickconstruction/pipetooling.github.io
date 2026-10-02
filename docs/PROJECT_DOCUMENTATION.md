@@ -2472,12 +2472,12 @@ async function myFunction() {
 
 ### 10. Modal scroll lock — automatic, opt-out (v2.2186)
 
-The page behind any modal, sheet, or dialog is frozen **app-wide without per-modal code**. [`BodyScrollLockSentinel`](../src/components/BodyScrollLockSentinel.tsx) (mounted once in `Layout`) watches the DOM and, while [`findBlockingOverlays`](../src/lib/blockingOverlay.ts) finds a `position: fixed` layer covering ≥ 90% of the viewport, holds the reference-counted iOS-safe lock in [`bodyScrollLock.ts`](../src/lib/bodyScrollLock.ts) (`body { position: fixed; top: -scrollY }`, scrollbar-width compensation, exact scroll restore on the last release). Stacked modals just work.
+The page behind any modal, sheet, or dialog is frozen **app-wide without per-modal code**. [`BodyScrollLockSentinel`](../src/components/BodyScrollLockSentinel.tsx) (mounted once in `Layout`) watches the DOM and, while [`findBlockingOverlays`](../src/lib/blockingOverlay.ts) finds a `position: fixed` layer covering ≥ 90% of the viewport, holds the reference-counted iOS-safe lock in [`bodyScrollLock.ts`](../src/lib/bodyScrollLock.ts) (the class `scroll-locked` on `<html>`, whose rule in `index.css` pins `body { position: fixed; top: -scrollY }`; scrollbar-width compensation, exact scroll restore on the last release). With nothing open and no lock held, the sentinel clears any freeze left on the page. Stacked modals just work.
 
 - **Writing a modal:** nothing to do — a fixed, viewport-covering backdrop is detected. Give the panel `role="dialog"` (+ `aria-modal="true"`) anyway: it's the explicit signal and the a11y-correct one.
 - **Opting a modal out** (let the page scroll behind it): `data-page-scroll="allow"` on the overlay (or any ancestor of the dialog).
 - **Freezing without an overlay** (e.g. the roadmap's CSS fullscreen): `useBodyScrollLock(true)` — refcounted with the sentinel, so both coexist.
-- Don't hand-roll `document.body.style.overflow = 'hidden'` — it doesn't hold on iOS Safari; the three historical copies were retired in v2.2186.
+- Don't hand-roll `document.body.style.overflow = 'hidden'` — it doesn't hold on iOS Safari, and lint fails on it (`no-restricted-syntax` in `eslint.config.js`).
 
 
 ---

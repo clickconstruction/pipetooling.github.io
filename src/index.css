@@ -15,6 +15,18 @@ body {
   overscroll-behavior-y: none;
 }
 
+/* The page behind an open window (lib/bodyScrollLock.ts puts the class on <html>). The body is
+   pinned at the scroll offset it had: overflow alone does not hold on an iPhone. !important so a
+   style written straight onto the body cannot undo the lock, or outlive it. */
+html.scroll-locked body {
+  position: fixed !important;
+  overflow: hidden !important;
+  top: var(--scroll-lock-top, 0px) !important;
+  left: 0 !important;
+  right: 0 !important;
+  padding-right: var(--scroll-lock-pad, 0px);
+}
+
 body {
   margin: 0;
   min-height: 100vh;

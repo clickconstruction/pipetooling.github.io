@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react'
 import { CARD, COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER, PAPER_GREEN } from '../../lib/portal/portalTheme'
 import { subPortalGuide } from '../../lib/subPortal/subPortalGuideStrings'
 import { subPortalT, type SubPortalLang } from '../../lib/subPortal/subPortalI18n'
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 
 const BLUE = '#1d4e89'
 const BLUE_TINT = '#e7effa'
@@ -70,13 +71,9 @@ export function SubPortalGuideSheet({ lang, open, onClose, phone }: { lang: SubP
       if (e.key === 'Escape') onClose()
     }
     window.addEventListener('keydown', onKey)
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      window.removeEventListener('keydown', onKey)
-      document.body.style.overflow = prev
-    }
+    return () => window.removeEventListener('keydown', onKey)
   }, [open, onClose])
+  useBodyScrollLock(open)
 
   if (!open) return null
   const railLabels = [t('railWork'), t('railWalk'), t('railCustomer'), t('railPaid')]

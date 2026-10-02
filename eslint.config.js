@@ -44,6 +44,17 @@ export default tseslint.config(
       'prefer-const': 'warn',
       // TS already enforces this via noUnusedLocals / noUnusedParameters.
       '@typescript-eslint/no-unused-vars': 'off',
+      // The page is held still only by lib/bodyScrollLock.ts (useBodyScrollLock): a window that
+      // saves and restores the body's own overflow fights that lock and leaves the page frozen.
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "AssignmentExpression[left.type='MemberExpression'][left.property.name=/^(overflow|overflowY|position)$/][left.object.type='MemberExpression'][left.object.property.name='style'][left.object.object.type='MemberExpression'][left.object.object.object.name='document'][left.object.object.property.name=/^(body|documentElement)$/]",
+          message:
+            'Do not write overflow or position on document.body: call useBodyScrollLock(open) from hooks/useBodyScrollLock instead.',
+        },
+      ],
     },
   },
   prettier,

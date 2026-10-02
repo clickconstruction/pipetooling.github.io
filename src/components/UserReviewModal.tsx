@@ -14,6 +14,7 @@ import { UserMercuryWindowSection } from './userReview/UserMercuryWindowSection'
 import { UserReviewSwitchUserModal } from './userReview/UserReviewSwitchUserModal'
 import { useUserReviewRoster } from '../hooks/useUserReviewRoster'
 import { buildSwitchUserOptions } from '../lib/userReviewSwitchOptions'
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 
 const MODAL_Z = 1200
 const TITLE_ID = 'user-review-modal-title'
@@ -167,15 +168,7 @@ export default function UserReviewModal() {
     return () => window.removeEventListener('keydown', onKey)
   }, [isOpen, handleClose])
 
-  useEffect(() => {
-    if (isOpen) {
-      const prev = document.body.style.overflow
-      document.body.style.overflow = 'hidden'
-      return () => {
-        document.body.style.overflow = prev
-      }
-    }
-  }, [isOpen])
+  useBodyScrollLock(isOpen)
 
   // Inject the print stylesheet once.
   useEffect(() => {
