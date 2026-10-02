@@ -13,8 +13,12 @@ import { cardFigures, cardOwnedByVersion, type CardsRowMode } from '../../lib/bi
 import type { AlternateVersionCardData } from '../../hooks/usePricingCardsData'
 import type { BidVersion, PriceBookVersion } from '../../lib/bids/bidPricingEngineTypes'
 
-/** The ＋ Add price door (v2.2104): one creation door for both variant kinds. The tab also draws it at the solver line's end. */
-export function AddPriceDoorButton({ cloning, onOpenDoor }: { cloning: boolean; onOpenDoor: () => void }) {
+/**
+ * The ＋ Add price door (v2.2104): one creation door for both variant kinds. The tab also draws it at the solver line's end.
+ * One line on a one-row strip (the solo band, the solver line), so the button never makes the strip taller;
+ * `stacked` breaks the label in two beside the tall price cards, where width is what runs out.
+ */
+export function AddPriceDoorButton({ cloning, onOpenDoor, stacked = false }: { cloning: boolean; onOpenDoor: () => void; stacked?: boolean }) {
   return (
     <button
       type="button"
@@ -25,7 +29,7 @@ export function AddPriceDoorButton({ cloning, onOpenDoor }: { cloning: boolean; 
       {cloning ? 'Duplicating…' : (
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
           <span aria-hidden style={{ fontSize: '1.05rem', lineHeight: 1 }}>＋</span>
-          <span style={{ textAlign: 'left', lineHeight: 1.25 }}>Add<br />price</span>
+          <span style={{ textAlign: 'left', lineHeight: 1.25 }}>{stacked ? <>Add<br />price</> : 'Add price'}</span>
         </span>
       )}
     </button>
@@ -467,7 +471,7 @@ export function PricingCardsRow(props: PricingCardsRowProps) {
             </div>
           )
         })}
-        <div style={{ flex: '0 0 auto', alignSelf: 'center' }}>{doorBtn}</div>
+        <div style={{ flex: '0 0 auto', alignSelf: 'center' }}><AddPriceDoorButton cloning={cloning} onOpenDoor={onOpenDoor} stacked /></div>
       </div>
       {doorModal}
       {ownTakeoffModal}
