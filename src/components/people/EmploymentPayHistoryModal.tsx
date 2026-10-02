@@ -4,6 +4,7 @@ import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatCurrency } from '../../lib/format'
 import type { PayStubRow } from './PeoplePayStubsTab'
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 
 /** Below People.tsx's Z_PEOPLE_PAY_MODAL (1100) so the pay-report view stacks above this modal. */
 const MODAL_Z = 1090
@@ -109,13 +110,7 @@ export function EmploymentPayHistoryModal({ personName, onClose, onOpenPayReport
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  useEffect(() => {
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = prev
-    }
-  }, [])
+  useBodyScrollLock(true)
 
   const total = Math.round(rows.reduce((s, r) => s + r.amount, 0) * 100) / 100
 

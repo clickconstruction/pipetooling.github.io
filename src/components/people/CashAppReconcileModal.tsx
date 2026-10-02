@@ -24,6 +24,7 @@ import {
   type StubForInputs,
 } from '../../lib/cashapp/cashAppReconcileInputs'
 import { advanceOffsetInsert, cashAppPaymentMemo, clampRecordAmount, suggestReportForSend, type OpenReportForSend } from '../../lib/cashapp/cashAppDecisions'
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 
 type TxRow = Database['public']['Tables']['cashapp_transactions']['Row']
 type TxInsert = Database['public']['Tables']['cashapp_transactions']['Insert']
@@ -125,13 +126,7 @@ export function CashAppReconcileModal({ stubs, openReports, paymentsByStubId, us
     void load().catch((e) => showToast(e instanceof Error ? e.message : 'Failed to load Cash App data', 'error'))
   }, [load, showToast])
 
-  useEffect(() => {
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = prev
-    }
-  }, [])
+  useBodyScrollLock(true)
 
   // Which uploaded rows are new (by Cash App id)?
   const existingIds = useMemo(() => new Set((existing ?? []).map((t) => t.id)), [existing])

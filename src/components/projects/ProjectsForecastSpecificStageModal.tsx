@@ -60,6 +60,7 @@ import {
 import type { ResolvedStageBar } from '../../lib/projectsForecastStageResolver'
 import { ProjectsForecastStageLineItemsSection } from './ProjectsForecastStageLineItemsSection'
 import { parsePercentCompleteInput } from '../../lib/parsePercentCompleteInput'
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 
 type Props = {
   /** The clicked stage's bar data — used for the modal header (color swatch, name, seq,
@@ -269,15 +270,7 @@ export function ProjectsForecastSpecificStageModal({ stage, projectId, myRole, o
     return () => document.removeEventListener('keydown', handler)
   }, [onClose, saving])
 
-  // Body scroll lock while the modal is open.
-  useEffect(() => {
-    if (typeof document === 'undefined') return
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = prev
-    }
-  }, [])
+  useBodyScrollLock(true)
 
   const lengthNum = lengthVal.trim() === '' ? null : Number(lengthVal)
   const lengthInvalid = lengthVal.trim() !== '' && (!Number.isFinite(lengthNum ?? NaN) || (lengthNum != null && lengthNum < 0))

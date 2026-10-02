@@ -18,6 +18,7 @@ import EstimateOptionsPicker from './EstimateOptionsPicker'
 import type { EstimateOption } from '@/lib/estimates/estimateOptions'
 import { estimateAcceptSelectionView } from '@/lib/estimates/estimateAcceptSelection'
 import { formatValidUntilCompact } from '../../lib/formatEstimateValidUntilDisplay'
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 
 function formatOptionMoney(cents: number): string {
   return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(cents / 100)
@@ -222,14 +223,7 @@ export default function EstimateAcceptBody(props: EstimateAcceptBodyProps) {
     }
   }, [acceptModalOpen, readOnly, acceptMode])
 
-  useEffect(() => {
-    if (!acceptModalOpen) return
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = prev
-    }
-  }, [acceptModalOpen])
+  useBodyScrollLock(acceptModalOpen)
 
   useEffect(() => {
     if (prevOpenRef.current && !acceptModalOpen) {

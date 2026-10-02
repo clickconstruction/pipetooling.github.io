@@ -37,6 +37,7 @@ import {
   type AlignStageInput,
   type AlignmentRow,
 } from '../../lib/projectsForecastAlignStages'
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 
 type Props = {
   /** Display label for the header banner (e.g. `JP740 · Mission Hills`). */
@@ -176,15 +177,7 @@ export function ProjectsForecastAlignStagesModal({
     return () => document.removeEventListener('keydown', handler)
   }, [onClose, applying])
 
-  // Body scroll lock.
-  useEffect(() => {
-    if (typeof document === 'undefined') return
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = prev
-    }
-  }, [])
+  useBodyScrollLock(true)
 
   const onBackdropClick = useCallback(() => {
     if (applying) return

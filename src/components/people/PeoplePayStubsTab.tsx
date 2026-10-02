@@ -56,6 +56,7 @@ import { PayStubAdditionalModal } from '../pay/PayStubAdditionalModal'
 import { PayStubLessModal } from '../pay/PayStubLessModal'
 import { PayStubDeleteIcon } from '../pay/PayStubDeleteIcon'
 import { PayStubPaidNoteIcon } from '../pay/PayStubPaidNoteIcon'
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 
 /** Compact "7/2" (local month/day, no year) for the ledger's Created / Last Paid cells; full date stays in the title tooltip. */
 function shortMonthDay(timestamp: string): string {
@@ -279,16 +280,7 @@ export default function PeoplePayStubsTab({
   /** Bumped after an approve/reject inside the week drilldown so the upcoming data refetches. */
   const [upcomingLocalTick, setUpcomingLocalTick] = useState(0)
 
-  // Lock body scroll while the Upcoming payroll modal is open (same idiom as UserReviewModal).
-  useEffect(() => {
-    if (upcomingModalOpen) {
-      const prev = document.body.style.overflow
-      document.body.style.overflow = 'hidden'
-      return () => {
-        document.body.style.overflow = prev
-      }
-    }
-  }, [upcomingModalOpen])
+  useBodyScrollLock(upcomingModalOpen)
 
   // Roster mapping + per-person stub inputs for the upcoming summary (payroll is person_name-keyed,
   // clock_sessions is user_id-keyed — same trimmed-name match used elsewhere).

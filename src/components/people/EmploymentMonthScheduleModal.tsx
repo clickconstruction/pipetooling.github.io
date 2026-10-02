@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { UserMonthScheduleSection } from '../userReview/UserMonthScheduleSection'
 import { PERSON_MONTH_SCHEDULE_WINDOW_DAYS } from '../../hooks/usePersonMonthScheduleData'
 import { denverCalendarDayKey, ymdAddDays } from '../../utils/dateUtils'
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 
 const MODAL_Z = 1200
 const TITLE_ID = 'employment-month-schedule-title'
@@ -34,13 +35,7 @@ export function EmploymentMonthScheduleModal({ userId, displayName, onClose }: E
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  useEffect(() => {
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = prev
-    }
-  }, [])
+  useBodyScrollLock(true)
 
   return (
     <div

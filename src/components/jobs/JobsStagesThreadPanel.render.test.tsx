@@ -17,7 +17,7 @@ vi.mock('../../lib/supabase', async () => {
 
 import { JobsStagesThreadPanel } from './JobsStagesThreadPanel'
 import type { JobThreadActivityItem } from '../JobThreadNotesPanel'
-import { resetBodyScrollLockForTests } from '../../lib/bodyScrollLock'
+import { resetBodyScrollLockForTests, SCROLL_LOCK_CLASS } from '../../lib/bodyScrollLock'
 import { makeJob, renderWithProviders, settle } from '../../test/renderSmokeMocks'
 
 const note = (id: string, at: string, body: string, author = 'Roxi') =>
@@ -187,9 +187,9 @@ describe('JobsStagesThreadPanel', () => {
       </>
     )
     const { rerender } = renderWithProviders(both(true))
-    expect(document.body.style.overflow).toBe('hidden')
+    expect(document.documentElement.classList.contains(SCROLL_LOCK_CLASS)).toBe(true)
     rerender(both(false))
-    expect(document.body.style.overflow).toBe('')
+    expect(document.documentElement.classList.contains(SCROLL_LOCK_CLASS)).toBe(false)
   })
 
   it('shows the loading placeholder while the thread loads', async () => {
