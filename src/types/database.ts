@@ -669,6 +669,48 @@ export type Database = {
           },
         ]
       }
+      bid_followup_reminders: {
+        Row: {
+          bid_id: string
+          created_at: string
+          due_on: string
+          id: string
+          push_sent: number
+          recipient_user_id: string | null
+        }
+        Insert: {
+          bid_id: string
+          created_at?: string
+          due_on: string
+          id?: string
+          push_sent?: number
+          recipient_user_id?: string | null
+        }
+        Update: {
+          bid_id?: string
+          created_at?: string
+          due_on?: string
+          id?: string
+          push_sent?: number
+          recipient_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_followup_reminders_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_followup_reminders_recipient_user_id_fkey"
+            columns: ["recipient_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_gc_recipients: {
         Row: {
           added_at: string
