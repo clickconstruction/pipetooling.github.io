@@ -29,7 +29,7 @@ import { PlugInScheduleModal } from './PlugInScheduleModal'
 import { SubmittalTakeoffPicker } from './SubmittalTakeoffPicker'
 import { loadTakeoffCandidates, saveTakeoffChoices, type TakeoffCandidatesLoad } from '../../lib/submittals/takeoffCandidatesIo'
 import { candidateToItemInserts, rowSplitTags, splitExplanation, type TakeoffCandidate } from '../../lib/submittals/takeoffCandidates'
-import { carryPartInsert, copyPartInsert, formatPartQty, partCallsLine, partsByItem, partsFromPieces, rollUpFromParts, submittedParts, type PartDraft, type SubmittalPartInsert, type SubmittalPartRow } from '../../lib/submittals/itemParts'
+import { carryPartInsert, copyPartInsert, formatPartQty, leftOutPieceKeys, partCallsLine, partsByItem, partsFromPieces, rollUpFromParts, submittedParts, type PartDraft, type SubmittalPartInsert, type SubmittalPartRow } from '../../lib/submittals/itemParts'
 import { applyPartWrites, clearEnteredCallsOnParts, enterCallOnParts, insertItemParts, loadItemParts, moveProcurementLines, saveItemParts, writeRowCallFromParts } from '../../lib/submittals/itemPartsIo'
 import { foldSuggestions, foldWrites, planTakeoffRefresh, takeoffRefreshWrites } from '../../lib/submittals/refreshFromTakeoff'
 import { SplitRuleModal } from './SplitRuleModal'
@@ -70,7 +70,7 @@ import { replyToRoom } from '../../lib/submittals/replyToRoom'
 import type { RoomMessage } from '../../../supabase/functions/_shared/submittalRoomPayload'
 import { APP_CALENDAR_TZ as ROOM_TZ, todayYmdInAppTz } from '../../utils/dateUtils'
 import { boughtWords, gcRows, isOrderOnlyRow, orderOnlyInsert, orderOnlyRows } from '../../lib/submittals/orderOnly'
-import { loadBidOrderFacts, loadRowOrderFacts, writeRowOrderOnly } from '../../lib/submittals/orderOnlyIo'
+import { loadBidOrderFacts, loadPartOrderWords, loadRowOrderFacts, rememberLeftOutLines, writeRowOrderOnly } from '../../lib/submittals/orderOnlyIo'
 import { planRowsAdded, planSummary, type TakeoffPlan } from '../../lib/submittals/takeoffPicks'
 import { SubmittalOrderOnlyRows } from './SubmittalOrderOnlyRows'
 import { SubmittalTakeOffDialog } from './SubmittalTakeOffDialog'
@@ -240,6 +240,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   useEffect(() => {
     if (!editing) setEditFocus(null)
   }, [editing])
+  /** 2026-10-02 · by part id, what the log holds for the parts of the row in the Edit window: an ordered part cannot be left out. */
+  const [editBought, setEditBought] = useState<Map<string, string>>(() => new Map())
   const [approvingAll, setApprovingAll] = useState(false)
   /** 2026-10-02 · the row whose answer window is open: what the reviewer said, part by part. */
   const [answering, setAnswering] = useState<SubmittalItemRow | null>(null)
@@ -528,6 +530,28 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     }
   }, [items])
   const partsOf = useMemo(() => partsByItem(parts), [parts])
+  // 2026-10-02 · the Edit window on a draft row: which of its parts the log already holds an order for.
+  useEffect(() => {
+    setEditBought(new Map())
+    if (!editing || !bidId || editing.id === NEW_ROW_ID || !selectedRev || asRevisionStatus(selectedRev.status) !== 'draft') return
+    let cancelled = false
+    const rowParts = partsOf.get(editing.id) ?? []
+    if (rowParts.length === 0) return
+    void loadPartOrderWords(supabase, bidId, editing.tag, boughtWords)
+      .then((byKey) => {
+        if (cancelled) return
+        setEditBought(new Map(rowParts.filter((p) => byKey.has(p.procure_key)).map((p) => [p.id, byKey.get(p.procure_key)!])))
+      })
+      .catch(() => {
+        // The log could not be read: every part is treated as bought, so no order is dropped unseen.
+        if (!cancelled) setEditBought(new Map(rowParts.map((p) => [p.id, 'The procurement log could not be read'])))
+      })
+    return () => {
+      cancelled = true
+    }
+    // The window's row decides; its parts are read as they stood when it opened.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing?.id, bidId, selectedRev?.id, selectedRev?.status])
   const decisions = useMemo(() => summarizeDecisions(gcItems), [gcItems])
   // Rows one "they approved all of it" entry would cover: no call yet, and a product to approve.
   const approvableRows = useMemo(() => rowsToApproveAll(gcItems), [gcItems])
@@ -1796,7 +1820,15 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   /** The row's parts as the editor left them, saved; the row's own label, house and lead time read from them (2026-10-01). */
   async function savePartsOf(itemId: string, drafts: PartDraft[] | undefined): Promise<Record<string, unknown>> {
     if (!drafts || !bidId) return {}
-    const r = await saveItemParts(db, itemId, bidId, partsOf.get(itemId) ?? [], drafts)
+    const before = partsOf.get(itemId) ?? []
+    const r = await saveItemParts(db, itemId, bidId, before, drafts)
+    // 2026-10-02 · a takeoff part left out is remembered on the bid, so a refresh from the takeoff does not bring it back.
+    const countRowId = items.find((it) => it.id === itemId)?.source_count_row_id ?? null
+    const leftOut = leftOutPieceKeys(before, drafts)
+    if (countRowId && leftOut.length > 0) {
+      await rememberLeftOutLines(supabase, bidId, countRowId, leftOut)
+      setTakeoff(await loadTakeoffCandidates(db, bidId, { selectedVersionId: bidsRef.current.find((b) => b.id === bidId)?.selected_bid_version_id ?? null }))
+    }
     return { submitted_label: r.submitted_label, supply_house_id: r.supply_house_id, lead_time_days: r.lead_time_days }
   }
 
@@ -2756,7 +2788,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
           onClose={() => setHouseFile(null)}
         />
       ) : null}
-      {editing ? <SubmittalItemEditDialog item={editing} sourceFiles={sourceFiles} houses={houses} parts={partsOf.get(editing.id) ?? []} canEnterDecision={editing.id !== NEW_ROW_ID} canEditProduct={isDraft} orderOnly={isOrderOnlyRow(editing)} focusPartId={editFocus?.itemId === editing.id ? editFocus.partId : null} focusHouse={editFocus?.itemId === editing.id && editFocus.house && editFocus.partId == null} onSave={(p) => void saveItem(p)} onClose={() => setEditing(null)} /> : null}
+      {editing ? <SubmittalItemEditDialog item={editing} sourceFiles={sourceFiles} houses={houses} parts={partsOf.get(editing.id) ?? []} canEnterDecision={editing.id !== NEW_ROW_ID} canEditProduct={isDraft} orderOnly={isOrderOnlyRow(editing)} boughtParts={editBought} focusPartId={editFocus?.itemId === editing.id ? editFocus.partId : null} focusHouse={editFocus?.itemId === editing.id && editFocus.house && editFocus.partId == null} onSave={(p) => void saveItem(p)} onClose={() => setEditing(null)} /> : null}
       {answering && selectedRev ? (
         <SubmittalAnswerDialog item={answering} parts={partsOf.get(answering.id) ?? []} people={people} sources={reviewerSources} revLabel={`Rev ${selectedRev.rev_number}`} busy={busy} onSave={(a) => void saveAnswer(a)} onClose={() => setAnswering(null)} />
       ) : null}
