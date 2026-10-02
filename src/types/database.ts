@@ -2548,7 +2548,7 @@ export type Database = {
         Insert: {
           closed_at?: string | null
           created_at?: string
-          email: string | null
+          email?: string | null
           first_seen_at?: string | null
           how?: string
           id?: string
