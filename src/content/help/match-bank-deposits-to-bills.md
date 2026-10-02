@@ -28,6 +28,7 @@ The deposit's bank name, note and memo are checked against your customers and GC
 :::example Booked as Income on its own
 Applying a deposit also gives it the **Income** label in Banking, so the P&L counts it without anyone opening Banking (an org-wide switch a dev or leader turns on under Banking → Accounting). A label a rule or a person already set is never changed: if the deposit was already labelled something else, a small amber line under the header reads *Labelled Taxes and Licenses in Banking, not Income. Apply leaves that alone.* Remove the payment later and the label the rule set goes with it.
 :::
+- **A bill paid, but booked as an expense?** A rule can label money coming in the same as money going out. Then a deposit that paid a bill reads *Banking books it as Taxes and Licenses.* Press {{button:dark|Book it as Income}} to put it right. The line names the rule that labelled it. In Banking, that rule can be limited to money going out. If the payment comes off later, the old label goes back.
 - Initials work. A check deposited as "DRF" finds **Done Right Foundation**. Check services often put the real customer in the deposit memo. That is read too, and the header says so. It reads *Memo mentions…*.
 - No clear match? You still get the **Matches deposit amount** row. That lists any bill equal to the deposit, whoever it belongs to. The full searchable picker is there too.
 
