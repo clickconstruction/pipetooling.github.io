@@ -142,6 +142,21 @@ describe('StagesProgressPaymentCell with the pass-4 money bar (v2.4351)', () => 
   })
 })
 
+describe('this row\'s bill on the bar (v2.4353)', () => {
+  it('a bracket under the bar where the bill sits; a stage bill bolds its stage in place of the crew\'s', () => {
+    const { unmount } = render(<StagesProgressPaymentCell model={heron.model} pctComplete={40} view={heron.view} billMark={{ kind: 'bracket', leftPct: 33.5, widthPct: 29.5, title: "This row's bill: $11,770" }} />)
+    const bracket = document.querySelector('[data-bill-bracket]') as HTMLElement
+    expect(bracket.style.left).toBe('33.5%')
+    expect(bracket.style.width).toBe('29.5%')
+    unmount()
+    render(<StagesProgressPaymentCell model={heron.model} pctComplete={40} view={heron.view} billMark={{ kind: 'stage', key: 's', title: "This row's bill: $9,740" }} />)
+    expect(document.querySelector('[data-bill-bracket]')).toBeNull()
+    const names = within(screen.getByRole('list', { name: 'Stages' })).getAllByRole('listitem')
+    expect(names.map((n) => n.style.fontWeight)).toEqual(['400', '400', '700'])
+    expect(names[2]!.getAttribute('title')).toBe("Stage 3 · Trim · This row's bill: $9,740")
+  })
+})
+
 describe('stageNameLabel', () => {
   it('keeps the name when it fits its block, else the number; a done stage keeps its check', () => {
     const n = { key: 'a', widthPct: 20, number: '3', name: 'Trim', done: false, bold: false }

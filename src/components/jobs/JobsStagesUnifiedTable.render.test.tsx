@@ -227,6 +227,32 @@ describe('JobsStagesUnifiedTable render smoke', () => {
     expect(draftRow.textContent).toMatch(/\$250 draft/)
   })
 
+  it('each bill row of a job with two bills marks its own bill on the bar (table + cards, v2.4353)', async () => {
+    const job = makeJob({ job_name: 'Bracket Job', status: 'billed', revenue: 40000, payments_made: 24593.78, pct_complete: 100 })
+    const bills = [
+      makeInvoice({ job_id: job.id, amount: 13412, status: 'paid', sequence_order: 0 }),
+      makeInvoice({ job_id: job.id, amount: 11770.3, status: 'billed', sequence_order: 1 }),
+      makeInvoice({ job_id: job.id, amount: 3635.92, status: 'billed', sequence_order: 2 }),
+    ]
+    ;(job as unknown as { invoices: unknown[]; fixtures: unknown[] }).invoices = bills
+    ;(job as unknown as { invoices: unknown[]; fixtures: unknown[] }).fixtures = [{ id: 'fx-1', name: 'Electrical according to spec', count: 1, line_unit_price: 40000, sequence_order: 0, invoice_id: null }]
+    const rows: StageRow[] = [
+      { kind: 'invoice', inv: bills[1]!, job },
+      { kind: 'invoice', inv: bills[2]!, job },
+    ]
+    for (const View of [JobsStagesUnifiedTable, JobsStagesUnifiedCardList]) {
+      document.body.innerHTML = ''
+      renderWithProviders(<View {...makeProps({ rows })} />)
+      await settle()
+      const lefts = [bills[1]!, bills[2]!].map((b) => {
+        const row = document.querySelector(`[data-stages-invoice-id="${b.id}"]`) as HTMLElement
+        return parseFloat((row.querySelector('[data-bill-bracket]') as HTMLElement).style.left)
+      })
+      expect(lefts[0]).toBeCloseTo(33.5, 0)
+      expect(lefts[1]).toBeCloseTo(63, 0)
+    }
+  })
+
   it('mobile unified cards: the standalone invoice card carries the green accent', () => {
     const floaterJob = makeJob({ job_name: 'Card Floater', status: 'working' })
     const floaterInvoice = makeInvoice({ job_id: floaterJob.id, amount: 250, status: 'billed' })
