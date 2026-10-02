@@ -47,4 +47,25 @@ describe('SubmittalApproveAllDialog', () => {
     renderWithProviders(<SubmittalApproveAllDialog revLabel="Rev 2" rows={0} alreadyDecided={4} missing={0} people={people} onSave={onSave} onClose={() => {}} />)
     expect((screen.getByTestId('approve-all-save') as HTMLButtonElement).disabled).toBe(true)
   })
+
+  it('the title and the buttons hold still; the fields between them are what scrolls, never the backdrop', () => {
+    renderWithProviders(<SubmittalApproveAllDialog revLabel="Rev 1" rows={14} alreadyDecided={0} missing={0} people={people} onSave={() => {}} onClose={() => {}} />)
+    const dialog = screen.getByRole('dialog')
+    const body = screen.getByTestId('approve-all-body')
+    // The window is held to the screen, so its top can never sit above the top edge.
+    expect(dialog.style.maxHeight).toBe('100%')
+    expect(dialog.style.minHeight).toBe('0')
+    expect(dialog.parentElement!.style.overflowY).toBe('')
+    expect(body.style.overflowY).toBe('auto')
+    expect(body.style.minHeight).toBe('0')
+    // Outside the scrolling body: the title and the buttons.
+    expect(body.contains(screen.getByRole('heading'))).toBe(false)
+    expect(body.contains(screen.getByTestId('approve-all-scope'))).toBe(false)
+    expect(body.contains(screen.getByRole('button', { name: 'Cancel' }))).toBe(false)
+    expect(body.contains(screen.getByTestId('approve-all-save'))).toBe(false)
+    // Inside it: every field.
+    expect(body.contains(screen.getByLabelText('Whose call'))).toBe(true)
+    expect(body.contains(screen.getByLabelText('Approved on'))).toBe(true)
+    expect(body.contains(screen.getByLabelText('Their note'))).toBe(true)
+  })
 })

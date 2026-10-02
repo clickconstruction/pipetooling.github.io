@@ -25,7 +25,8 @@ type View = { kind: 'list' } | { kind: 'person'; person: EmailReportPerson | nul
  * (whose reports), Edit opens both settings for that person, *+ Add person* starts a row. The
  * schedules themselves — name, days, time — are a line under the table (names open the
  * schedule editor; New… makes one); the preview / test-send sandbox folds under it. The
- * Dashboard's Recent Reports mail button opens the same list.
+ * Dashboard's Recent Reports mail button opens the same list. The window is held to the
+ * screen's height: the title and Close are pinned and the body under them scrolls.
  */
 export function EmailReportsModal({
   open,
@@ -47,7 +48,7 @@ export function EmailReportsModal({
   if (!open) return null
   return (
     <div
-      style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, overflowY: 'auto' }}
+      style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px))' }}
       role="presentation"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
@@ -57,19 +58,22 @@ export function EmailReportsModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="email-reports-heading"
-        style={{ background: 'var(--surface)', borderRadius: 10, maxWidth: 900, width: '100%', maxHeight: '92vh', overflow: 'auto', padding: '1.25rem 1.5rem', boxShadow: '0 22px 50px rgba(0,0,0,.2)' }}
+        style={{ background: 'var(--surface)', borderRadius: 10, maxWidth: 900, width: '100%', maxHeight: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', padding: '1.25rem 1.5rem', boxShadow: '0 22px 50px rgba(0,0,0,.2)' }}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexShrink: 0 }}>
           <h2 id="email-reports-heading" style={{ margin: 0, fontSize: '1.25rem' }}>Email reports</h2>
           <button type="button" onClick={onClose} style={{ flexShrink: 0, background: 'var(--bg-muted)', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer', padding: '0.35rem 0.6rem' }}>
             Close
           </button>
         </div>
+        {/* The list and the editors scroll; the title and Close above hold still. */}
+        <div data-testid="email-reports-body" style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', margin: '0 -1.5rem', padding: '0 1.5rem' }}>
         <p style={{ margin: '0.5rem 0 0.9rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
           One row per person. A <strong>digest</strong> bundles a window of job activity on a schedule; <strong>every report</strong> sends each report the moment it&rsquo;s filed. Edit a row to change either.
         </p>
         <EmailReportsBody view={view} setView={setView} authUserId={authUserId} authRole={authRole} scopeMasterChoices={scopeMasterChoices} />
+        </div>
       </div>
     </div>
   )

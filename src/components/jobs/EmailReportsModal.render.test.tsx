@@ -89,4 +89,25 @@ describe('EmailReportsModal (one list by person)', () => {
     await settle()
     expect(screen.queryByRole('dialog')).toBeNull()
   })
+
+  it('the title and Close hold still; the list and the editors under them are what scrolls, never the backdrop', async () => {
+    render(<EmailReportsModal {...props()} />)
+    await settle()
+    const dialog = screen.getByRole('dialog')
+    const body = screen.getByTestId('email-reports-body')
+    // The window is held to the screen, so its top can never sit above the top edge.
+    expect(dialog.style.maxHeight).toBe('100%')
+    expect(dialog.style.minHeight).toBe('0')
+    expect(dialog.style.overflow).toBe('')
+    expect(dialog.parentElement!.style.overflowY).toBe('')
+    expect(body.style.overflowY).toBe('auto')
+    expect(body.style.minHeight).toBe('0')
+    // Outside the scrolling body: the title and Close.
+    expect(body.contains(screen.getByRole('heading', { name: 'Email reports' }))).toBe(false)
+    expect(body.contains(screen.getByRole('button', { name: 'Close' }))).toBe(false)
+    // Inside it: the list, and an editor once one is open.
+    expect(body.contains(screen.getByTestId('email-reports-list'))).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Robert' }))
+    expect(body.contains(screen.getByTestId('person-editor'))).toBe(true)
+  })
 })
