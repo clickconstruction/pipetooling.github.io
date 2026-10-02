@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { lienDateWords, lienMoveWords, lienWindowSpan, type LienTimeline, type LienTimelineMove, type LienTimelineStep } from '../../lib/jobs/lienTimeline'
+import { LIEN_KIND_UNKNOWN_WORDS, lienDateWords, lienMoveWords, lienWindowSpan, type LienTimeline, type LienTimelineMove, type LienTimelineStep } from '../../lib/jobs/lienTimeline'
 import { daysBetweenYmd } from '../../lib/jobs/billedExpectedPay'
 import { setLienTimelineView, useLienTimelineView, type LienTimelineView } from '../../hooks/useLienTimelineView'
 
@@ -257,7 +257,7 @@ export default function LienTimelineStrip({ timeline, layout: layoutProp = 'auto
       <strong style={{ color: nextColor(next.tone) }}>{next.words}</strong>
       {next.aside ? <span style={{ color: 'var(--text-muted)' }}>{next.aside}</span> : null}
       {view === 'windows' && timeline.windowsAside ? <span data-lien-timeline-windows-aside style={{ color: 'var(--text-muted)' }}>{timeline.windowsAside}</span> : null}
-      {kindUnknown ? <span style={{ color: 'var(--text-amber-800)' }}>Commercial dates shown — a residential property is a month earlier.</span> : null}
+      {kindUnknown ? <span style={{ color: 'var(--text-amber-800)' }}>{LIEN_KIND_UNKNOWN_WORDS}</span> : null}
     </div>
   ) : null
 

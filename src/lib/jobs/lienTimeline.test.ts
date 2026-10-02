@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildLienTimeline, lienDateWords, lienNoticeOpensOn, lienOpensWords, lienWindowSpan, suitDeadlineFor, type LienTimelineInput } from './lienTimeline'
+import { buildLienTimeline, LIEN_KIND_UNKNOWN_WORDS, lienDateWords, lienTimelineFoldSummary, lienNoticeOpensOn, lienOpensWords, lienWindowSpan, suitDeadlineFor, type LienTimelineInput } from './lienTimeline'
 
 const TODAY = '2026-09-23'
 
@@ -395,5 +395,40 @@ describe('the strip folds consecutive closed months into one node (v2.4111)', ()
     const fold = t.steps.find((s) => s.fold)!
     expect(fold.words).toBe('window closed')
     expect(fold.fold).toMatchObject({ count: 2, unknown: 2 })
+  })
+})
+
+describe('the Lien window’s folded strip on a phone (v2.4398)', () => {
+  const closed = (key: string, deadline: string, at = '2026-09-21T15:00:00Z') => ({ key, deadline, fromCreation: false, outcome: 'missed' as const, at })
+  const open = (key: string, deadline: string) => ({ key, deadline, fromCreation: false, outcome: 'open' as const, at: '' })
+  it('one closed month and an open one: the Next sentence whole, who we wait on, and the closed window', () => {
+    const t = buildLienTimeline(base({ lastMonth: '2026-09', months: [closed('2026-06', '2026-09-15'), open('2026-07', '2026-10-15')], noticeState: 'to_draft' }))
+    const f = lienTimelineFoldSummary(t)
+    expect(f.next).toBe(t.next.words)
+    expect(f.tone).toBe(t.next.tone)
+    expect(f.waitingOn).toBe('waiting on us')
+    expect(f.closed).toBe('1 window closed')
+  })
+  it('a folded node counts every month it holds', () => {
+    const t = buildLienTimeline(base({ lastMonth: '2026-09', months: [closed('2026-05', '2026-08-17'), closed('2026-06', '2026-09-15'), closed('2026-07', '2026-09-15'), open('2026-09', '2026-10-15')] }))
+    expect(t.steps.some((s) => s.fold)).toBe(true)
+    expect(lienTimelineFoldSummary(t).closed).toBe('3 windows closed')
+  })
+  it('nothing closed and nobody waited on: both are empty, never a zero', () => {
+    const t = buildLienTimeline(base({ lastMonth: '2026-09', months: [open('2026-09', '2026-12-15')] }))
+    const f = lienTimelineFoldSummary({ ...t, waitingOn: null })
+    expect(f.closed).toBe('')
+    expect(f.waitingOn).toBe('')
+  })
+  it('a month skipped on purpose is not a closed window', () => {
+    const t = buildLienTimeline(base({ lastMonth: '2026-09', months: [{ key: '2026-08', deadline: '2026-09-15', fromCreation: false, outcome: 'skipped', at: '2026-09-01T15:00:00Z' }, open('2026-09', '2026-10-15')] }))
+    expect(lienTimelineFoldSummary(t).closed).toBe('')
+  })
+  it('carries the aside and the unknown-kind warning as notes', () => {
+    const gone = buildLienTimeline(base({ lastMonth: '2026-06', months: [closed('2026-06', '2026-09-15', '')], noticeState: 'to_draft' }))
+    expect(lienTimelineFoldSummary(gone).notes).toEqual([gone.next.aside])
+    const unknown = buildLienTimeline(base({ propertyKind: '', lastMonth: '2026-09', months: [open('2026-09', '2026-10-15')] }))
+    expect(unknown.kindUnknown).toBe(true)
+    expect(lienTimelineFoldSummary(unknown).notes).toContain(LIEN_KIND_UNKNOWN_WORDS)
   })
 })

@@ -682,6 +682,34 @@ export function lienTimelineNextLine(t: LienTimeline): string {
   return t.next.words
 }
 
+/** The warning the Next line carries when the property kind is not set (the strip and the Lien window's folded strip both print it). */
+export const LIEN_KIND_UNKNOWN_WORDS = 'Commercial dates shown — a residential property is a month earlier.'
+
+/** What the Lien window's folded strip says on a phone (v2.4398): the next step, and beside it the facts a fold must never hide. */
+export interface LienTimelineFoldSummary {
+  /** The Next sentence, whole — `Draft the Jul + Aug + Sep notice — 13 days.` */
+  next: string
+  tone: LienTimelineNext['tone']
+  /** `waiting on us`; '' when the path waits on nobody. */
+  waitingOn: string
+  /** `1 window closed`, `3 windows closed`; '' when none closed. */
+  closed: string
+  /** The lines the strip prints beside the sentence: the aside and the unknown-kind warning. */
+  notes: string[]
+}
+
+/** The folded strip's words: the same sentence the strip prints, who we wait on, and every § 53.056 window that closed (a folded node counts its months), so folding the steps hides no bad news. */
+export function lienTimelineFoldSummary(t: LienTimeline): LienTimelineFoldSummary {
+  const closed = t.steps.reduce((n, s) => n + (s.fold ? s.fold.count : isClosedNoticeStep(s) ? 1 : 0), 0)
+  return {
+    next: t.next.words,
+    tone: t.next.tone,
+    waitingOn: t.waitingOn ? `waiting on ${lienMoveWords(t.waitingOn.who)}` : '',
+    closed: closed === 0 ? '' : `${closed} ${closed === 1 ? 'window' : 'windows'} closed`,
+    notes: [t.next.aside, t.kindUnknown ? LIEN_KIND_UNKNOWN_WORDS : ''].filter(Boolean),
+  }
+}
+
 /** A closed § 53.056 month as the builder writes it — `window closed`, `window closed · noted`, `window closed · not noted` (+ ` · dated from creation`); a month skipped on purpose is not one. */
 function isClosedNoticeStep(s: LienTimelineStep): boolean {
   return s.kind === 'notice' && s.state === 'missed' && Boolean(s.monthKey) && s.words.startsWith('window closed')

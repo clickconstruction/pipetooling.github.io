@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import {
@@ -38,6 +38,8 @@ import { parsePaymentPromisesRpc } from '../../lib/jobs/paymentPromises'
 import { computeJobLienClock, type JobLienFilingRow } from '../../lib/jobs/lienDeadlines'
 import { buildLienTimelineFromWindow } from '../../lib/jobs/lienTimelineDesk'
 import LienTimelineStrip from './LienTimelineStrip'
+import LienWindowFoldedSteps from './LienWindowFoldedSteps'
+import { useIsMobile } from '../../hooks/useIsMobile'
 import { useForecastWorkMonths } from '../../hooks/useForecastWorkMonths'
 import { type CustomerAddressRow, type JobPropertyOwnerLike } from '../../lib/jobs/lienProperty'
 import LienFilingTabs from './LienFilingTabs'
@@ -584,6 +586,20 @@ export default function LienInstrumentsModal({
   // The header's timeline (v2.3781): the job's work months (approved sessions) plus its filings, through the same kernel the desk draws — the creation month when there are no hours.
   const forecastJobs = useMemo(() => (job ? [{ id: job.id, gc_customer_id: job.gc_customer_id ?? null, customer_address_id: job.customer_address_id ?? null }] : null), [job])
   const { byJob: windowWorkMonths } = useForecastWorkMonths(open ? forecastJobs : null, todayYmdLocal())
+  // On a phone (v2.4398) the steps fold to one strip and the papers are one bar; the bar says when a paper is past its right edge.
+  const isMobile = useIsMobile()
+  const tabBarRef = useRef<HTMLDivElement | null>(null)
+  const [tabBarMore, setTabBarMore] = useState(false)
+  const readTabBar = useCallback(() => {
+    const el = tabBarRef.current
+    setTabBarMore(el ? el.scrollWidth - el.clientWidth - el.scrollLeft > 4 : false)
+  }, [])
+  // Read after every render: the bar's width changes with the tabs it holds and with the window (the same value is no update).
+  useEffect(() => {
+    readTabBar()
+    window.addEventListener('resize', readTabBar)
+    return () => window.removeEventListener('resize', readTabBar)
+  })
   const timeline = useMemo(
     () =>
       job
@@ -801,6 +817,23 @@ export default function LienInstrumentsModal({
     </label>
   )
 
+  const paperTabs = [
+    ['demand', 'Demand letter'],
+    ['notice', '§ 53.056 notice'],
+    ['affidavit', "Mechanic's lien"],
+    ...(hasFiledAffidavit ? ([['release_record', 'Release of record']] as const) : []),
+  ] as const
+  const rulesWhere = activeTab === 'demand' ? 'window_demand' : activeTab === 'notice' ? 'window_notice' : activeTab === 'affidavit' ? 'window_affidavit' : 'window_release'
+  const externalPrefillDoor = (
+    <button
+      type="button"
+      onClick={onOpenExternalPrefill}
+      style={{ padding: '0.4rem 0.75rem', fontSize: '0.8125rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer' }}
+    >
+      lientooling.com ↗
+    </button>
+  )
+
   return (
     <div
       role="dialog"
@@ -830,31 +863,65 @@ export default function LienInstrumentsModal({
           boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
         }}
         onClick={(e) => e.stopPropagation()}
+        data-lien-window-card
       >
-        <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)' }}>
-          <h2 id="lien-instruments-title" style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600 }}>
-            Lien instruments
-          </h2>
-          <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+        {/* The title bar. On a phone (v2.4398) the title, § The rules and × share one line and the steps fold to a strip, so the paper below gets the window; a computer keeps the steps as a row and gains the ×. */}
+        <div style={{ position: 'relative', padding: isMobile ? '0.35rem 1rem 0.65rem' : '1rem 1.25rem', borderBottom: '1px solid var(--border)' }}>
+          {isMobile ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minHeight: 44 }}>
+              <h2 id="lien-instruments-title" style={{ margin: 0, fontSize: '1.0625rem', fontWeight: 600, flex: 1, minWidth: 0 }}>
+                Lien instruments
+              </h2>
+              <LienRulesDoor where={rulesWhere} style={{ minHeight: 34, padding: '0 0.65rem' }} />
+              <button type="button" onClick={onClose} aria-label="Close" style={{ flexShrink: 0, width: 44, height: 44, marginRight: '-0.6rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.4rem', lineHeight: 1, color: 'var(--text-muted)' }}>×</button>
+            </div>
+          ) : (
+            <>
+              <h2 id="lien-instruments-title" style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, paddingRight: '2rem' }}>
+                Lien instruments
+              </h2>
+              <button type="button" onClick={onClose} aria-label="Close" style={{ position: 'absolute', right: '0.8rem', top: '0.7rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}>×</button>
+            </>
+          )}
+          <p style={{ margin: isMobile ? 0 : '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
             {(job.job_name ?? '').trim() || 'Job'} · {jobNumber} · {demandMoney(fields.outstanding)} open
             {propertyKind ? ` · ${propertyKind === 'residential' ? 'residential' : 'commercial'}` : ''}
           </p>
           {timeline ? (
-            <div data-lien-window-timeline style={{ marginTop: '0.6rem', border: '1px solid var(--border)', borderRadius: 9, padding: '0.55rem 0.8rem 0.5rem', background: 'var(--surface)' }}>
-              <LienTimelineStrip timeline={timeline} />
-            </div>
+            isMobile ? (
+              <LienWindowFoldedSteps timeline={timeline} foot={<>
+                <span style={{ marginRight: 'auto', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Fill it in on the lien site</span>
+                {externalPrefillDoor}
+              </>} />
+            ) : (
+              <div data-lien-window-timeline style={{ marginTop: '0.6rem', border: '1px solid var(--border)', borderRadius: 9, padding: '0.55rem 0.8rem 0.5rem', background: 'var(--surface)' }}>
+                <LienTimelineStrip timeline={timeline} />
+              </div>
+            )
           ) : null}
         </div>
 
+        {isMobile ? (
+          // The papers as one bar (v2.4398): three fill the width; a fourth (Release of record) makes the bar scroll, its cut edge faded until the end is in view.
+          <div style={{ padding: '0.5rem 1rem', borderBottom: '1px solid var(--border)' }}>
+            <div
+              ref={tabBarRef}
+              role="tablist"
+              aria-label="Paper"
+              data-lien-window-papers
+              onScroll={readTabBar}
+              style={{ display: 'grid', gridAutoFlow: 'column', gridAutoColumns: 'minmax(max-content, 1fr)', minHeight: 40, border: '1px solid var(--border-strong)', borderRadius: 8, overflowX: 'auto', overflowY: 'hidden', ...(tabBarMore ? { WebkitMaskImage: 'linear-gradient(to right, #000 calc(100% - 28px), transparent)', maskImage: 'linear-gradient(to right, #000 calc(100% - 28px), transparent)' } : {}) }}
+            >
+              {paperTabs.map(([value, label]) => (
+                <button key={value} type="button" role="tab" aria-selected={activeTab === value} onClick={() => setActiveTab(value)} style={{ border: 'none', background: activeTab === value ? '#2563eb' : 'var(--surface)', color: activeTab === value ? '#fff' : 'var(--text-700)', font: 'inherit', fontSize: '0.75rem', fontWeight: 600, padding: '0 0.5rem', whiteSpace: 'nowrap', cursor: 'pointer' }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
         <div style={{ padding: '0.7rem 1.25rem', borderBottom: '1px solid var(--border)', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
-          {(
-            [
-              ['demand', 'Demand letter'],
-              ['notice', '§ 53.056 notice'],
-              ['affidavit', "Mechanic's lien"],
-              ...(hasFiledAffidavit ? ([['release_record', 'Release of record']] as const) : []),
-            ] as const
-          ).map(([value, label]) => (
+          {paperTabs.map(([value, label]) => (
             <button
               key={value}
               type="button"
@@ -872,15 +939,10 @@ export default function LienInstrumentsModal({
               {label}
             </button>
           ))}
-          <LienRulesDoor where={activeTab === 'demand' ? 'window_demand' : activeTab === 'notice' ? 'window_notice' : activeTab === 'affidavit' ? 'window_affidavit' : 'window_release'} style={{ marginLeft: 'auto', padding: '0.35rem 0.75rem', fontSize: '0.8125rem' }} />
-          <button
-            type="button"
-            onClick={onOpenExternalPrefill}
-            style={{ marginLeft: 'auto', padding: '0.4rem 0.75rem', fontSize: '0.8125rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer' }}
-          >
-            lientooling.com ↗
-          </button>
+          <LienRulesDoor where={rulesWhere} style={{ marginLeft: 'auto', padding: '0.35rem 0.75rem', fontSize: '0.8125rem' }} />
+          <span style={{ marginLeft: 'auto', display: 'inline-flex' }}>{externalPrefillDoor}</span>
         </div>
+        )}
 
         {activeTab === 'demand' ? (
           <>
