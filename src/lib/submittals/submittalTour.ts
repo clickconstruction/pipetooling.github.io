@@ -1,5 +1,5 @@
 /**
- * Bids → Submittals: the walkthrough's stops (v2.4067; the Procure stop v2.4088; reworded for the road, the takeoff and the row controls v2.4120; written in plain words v2.4123; the robot's stop only where its offer is on the page v2.4134) and the first-open offer.
+ * Bids → Submittals: the walkthrough's stops (v2.4067; the Procure stop v2.4088; reworded for the road, the takeoff and the row controls v2.4120; written in plain words v2.4123; the robot's stop only where its offer is on the page v2.4134; parts, the catch-up box, Read its parts and the per-part log v2.4366) and the first-open offer.
  *
  * The words follow the plain-words rules in `submittalTour.test.ts`: one idea per sentence,
  * you + a verb, the button's exact name, a trade word explained beside itself the first
@@ -50,13 +50,19 @@ export const SUBMITTAL_TOUR_STEPS: SpotlightTourStep[] = [
   {
     anchor: 'submittals-rows',
     title: 'Step 3. Fix the rows',
-    body: 'Check each row. Is it the product the plans asked for? If not, say why. Add its cut sheet, the maker’s page for the product. Tap Edit on a row to fill it in. The Status column explains its words under the table.',
+    body: 'Check each row. Is it the product the plans asked for? If not, say why. A row lists its parts, one per line. Add its cut sheet, the maker’s page for the product. Tap Edit on a row to fill it in. Each part gets its own house, lead time and stage there.',
     missingBody: 'The rows appear after you build Rev 1.',
+  },
+  {
+    // Only when the blue box is on the page: no missingBody, so the tour skips it otherwise.
+    anchor: 'submittals-catch-up',
+    title: 'Step 3. Catch a draft up',
+    body: 'This blue box shows when the takeoff changed after you built the rows. Tap Refresh from the takeoff to bring in the new parts. A row typed by hand for a fixture, like a carrier, can join that fixture. Tap Make it a part.',
   },
   {
     anchor: 'submittals-drop',
     title: 'Step 3. Add the cut sheets',
-    body: 'Tap Drop a vendor PDF. Give it the supply house’s whole PDF. Open the file’s pages with the arrow. Then tap a page, and tap the row it belongs to. Repeat until every row has its page.',
+    body: 'Tap Drop a vendor PDF. Give it the supply house’s whole PDF. If the file lists parts under each tag, tap Read its parts. Each row takes the file’s parts and pages. If not, open its pages, tap a page, then tap its row.',
     missingBody: 'This button appears after you build Rev 1.',
   },
   {
@@ -74,20 +80,20 @@ export const SUBMITTAL_TOUR_STEPS: SpotlightTourStep[] = [
   {
     anchor: 'submittals-room',
     title: 'Step 6. Their answer',
-    body: 'The GC or the architect looks at each row. They tap Approve, Revise or Reject. Their answers show up here, on your rows. Any question they ask lands in your inbox.',
+    body: 'The GC or the architect looks at each row. They tap Approve, Revise or Reject. On a row with parts, they answer each part. Their answers show up here, on your rows. Any question they ask lands in your inbox.',
     missingBody: 'This appears after you share.',
   },
   {
     anchor: 'submittals-resubmit',
     title: 'Step 7. Resubmit',
-    body: 'Some rows may come back marked Revise or Reject. Tap the green button. It starts a new version with only those rows. Fix them, then share again. The GC’s link shows the new version.',
+    body: 'Some rows may come back marked Revise or Reject. Tap the green button. It starts a new version with only those rows. Parts they already approved stay approved. Fix the rest, then share again. The GC’s link shows the new version.',
     missingBody: 'The green button appears when rows come back.',
   },
   {
     anchor: 'submittals-procure',
     title: 'Step 8. Procure',
-    body: 'This is the order log the GC asks for. One row per product. Released means the GC approved it. Required is the day the job needs it. You type the order date and the PO number. Red means it will arrive late. Tap Send update to send the GC the changes.',
-    missingBody: 'The log appears after you build Rev 1. It fills in as the GC approves rows.',
+    body: 'This is the order log the GC asks for. Each part gets its own line. To order shows what to buy now. Tick the lines on one order, then mark them ordered. Tap a line to change its house. Red means it will arrive late. Tap Send update to send the GC the changes.',
+    missingBody: 'The log appears after you build Rev 1. It fills in as the GC approves each part.',
   },
 ]
 
@@ -137,18 +143,18 @@ export function rememberOpenEveryStage(on: boolean, storage: Pick<Storage, 'setI
 export const SUBMITTAL_STAGE_ABOUT: Record<number, string> = {
   1: 'Pick where the rows come from. Each row is one product you will install.',
   2: 'Rev 1 is the first version of your submittal. A Rev 2 happens only when the GC sends rows back, or a product changes after you share.',
-  3: 'Check each row. Is it the product the plans asked for? If not, say why. Add its cut sheet, the maker’s page for the product.',
+  3: 'Check each row and its parts. Is it the product the plans asked for? If not, say why. Add its cut sheet, the maker’s page for the product.',
   4: 'One PDF for the GC: the cover table and every cut sheet.',
   5: 'Get a link and paste it into your email to the GC.',
   6: 'The GC or the architect answers each row: Approve, Revise or Reject.',
   7: 'Rows the GC sent back come here. Start Rev 2 with only those rows, or with every row when a product changed.',
-  8: 'The order log the GC asks for: order dates, PO numbers and what is running late.',
+  8: 'The order log the GC asks for, one line per part: order dates, PO numbers and what is running late.',
 }
 
 const STAGE_STOP_ANCHORS: Record<number, string[]> = {
   1: ['submittals-schedule', 'submittals-source'],
   2: ['submittals-build'],
-  3: ['submittals-rows'],
+  3: ['submittals-rows', 'submittals-catch-up'],
   4: ['submittals-package'],
   5: ['submittals-share'],
   6: ['submittals-room'],

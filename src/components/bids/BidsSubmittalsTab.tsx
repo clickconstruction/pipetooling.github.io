@@ -2204,7 +2204,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                 })() : null}
                 {isDraft && (refreshPlan.rows.length > 0 || foldHints.length > 0) ? (
                   // 2026-10-01 · what this draft could catch up on, said where the rows are.
-                  <div style={{ marginTop: '0.5rem', padding: '0.5rem 0.7rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-blue-tint)', display: 'flex', flexDirection: 'column', gap: '0.35rem' }} data-testid="draft-catch-up">
+                  <div style={{ marginTop: '0.5rem', padding: '0.5rem 0.7rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-blue-tint)', display: 'flex', flexDirection: 'column', gap: '0.35rem' }} data-testid="draft-catch-up" data-tour="submittals-catch-up">
                     {refreshPlan.rows.length > 0 ? (
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem 0.6rem', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-base)' }}>
                         <span style={{ flex: '1 1 16rem', minWidth: 0 }}>
