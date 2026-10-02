@@ -1914,10 +1914,11 @@ export default function LienDeskModal({
         style={{ background: 'var(--surface)', borderRadius: fullScreen ? 0 : 10, width: fullScreen ? '100vw' : 'min(1140px, calc(100vw - 2rem))', height: fullScreen ? 'calc(100dvh - var(--app-bottom-chrome, 0px))' : undefined, maxHeight: fullScreen ? 'calc(100dvh - var(--app-bottom-chrome, 0px))' : 'calc(100dvh - 2rem - var(--app-bottom-chrome, 0px))', display: 'grid', gridTemplateRows: 'auto 1fr auto', gridTemplateColumns: 'minmax(0, 1fr)', overflow: 'hidden' }}
         data-lien-desk-panel
       >
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem 0.5rem', padding: `0.7rem ${isMobile ? '1rem' : showToggle ? '6.2rem' : '2.6rem'} 0.6rem 1.25rem`, borderBottom: '1px solid var(--border)' }}>
+        {/* v2.4355: the spacing between the title, the tabs and the doors is the class's column gap (no margins), so a desk narrower than 1,100 px can close it up. */}
+        <div className="lienDeskTitleBar" style={{ position: 'relative', display: 'flex', alignItems: 'center', flexWrap: 'wrap', padding: `0.7rem ${isMobile ? '1rem' : showToggle ? '6.2rem' : '2.6rem'} 0.6rem 1.25rem`, borderBottom: '1px solid var(--border)' }}>
           <h2
             // On a phone the title has its line to itself, its right end kept clear for Share and × (v2.4311); the rows under it get the card's width.
-            style={{ margin: '0 0.4rem 0 0', fontSize: '1.125rem', cursor: 'help', ...(isMobile ? { flexBasis: '100%', paddingRight: '5.2rem', boxSizing: 'border-box' } : {}) }}
+            style={{ margin: 0, fontSize: '1.125rem', cursor: 'help', ...(isMobile ? { flexBasis: '100%', paddingRight: '5.2rem', boxSizing: 'border-box' } : {}) }}
             title="Every unpaid work month on a job with a GC needs its own § 53.056 notice — the office readies and drafts, the leader approves once per GC or per notice, the run goes out and is recorded. The help guide “send lien notices from the Lien desk” has the whole flow."
           >
             ⏱ Lien desk
@@ -1925,15 +1926,15 @@ export default function LienDeskModal({
           {showToggle ? <ModalFullScreenButton fullScreen={fullScreen} onToggle={toggleFullScreen} style={{ position: 'absolute', right: '3.1rem', top: '0.55rem' }} /> : null}
           <button type="button" onClick={onClose} aria-label="Close" style={{ position: 'absolute', right: '0.8rem', top: '0.5rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}>×</button>
           {/* v2.4311: the tab row is 375 px of labels — on a phone it scrolls sideways inside the card instead of pushing the title bar (and ×, and Share) off the screen. */}
-          <div role="tablist" aria-label="Kind" style={{ display: 'inline-flex', maxWidth: '100%', minWidth: 0, border: '1px solid var(--border-strong)', borderRadius: 7, overflowX: 'auto', overflowY: 'hidden', marginRight: '0.4rem' }}>
+          <div role="tablist" aria-label="Kind" style={{ display: 'inline-flex', maxWidth: '100%', minWidth: 0, border: '1px solid var(--border-strong)', borderRadius: 7, overflowX: 'auto', overflowY: 'hidden' }}>
             {(['calendar', 'notice', 'affidavit', 'retainage', 'timeline'] as const).map((k) => (
-              <button key={k} type="button" role="tab" aria-selected={kind === k} onClick={() => setKind(k)} style={{ flexShrink: 0, whiteSpace: 'nowrap', padding: '2px 10px', border: 'none', background: kind === k ? FILL.primary : 'var(--surface)', color: kind === k ? '#fff' : 'var(--text-700)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }} title={k === 'retainage' ? 'The § 53.057 notice of claim for unpaid retainage — one per job, 30 days after our contract on it ends' : k === 'timeline' ? 'Every billed job with money open and a lien month — the whole path, sorted by the next date; Print the grid for counsel' : undefined}>
+              <button key={k} type="button" role="tab" aria-selected={kind === k} onClick={() => setKind(k)} className="lienDeskKindTab" style={{ flexShrink: 0, whiteSpace: 'nowrap', border: 'none', background: kind === k ? FILL.primary : 'var(--surface)', color: kind === k ? '#fff' : 'var(--text-700)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }} title={k === 'retainage' ? 'The § 53.057 notice of claim for unpaid retainage — one per job, 30 days after our contract on it ends' : k === 'timeline' ? 'Every billed job with money open and a lien month — the whole path, sorted by the next date; Print the grid for counsel' : undefined}>
                 {k === 'calendar' ? 'Calendar' : k === 'notice' ? `Notices${counts ? ` · ${entries.filter((e) => e.pile !== 'sent').length}` : ''}` : k === 'affidavit' ? `Affidavits${data ? ` · ${affCount}` : ''}` : k === 'retainage' ? `Retainage${data ? ` · ${retCount}` : ''}` : `Timeline${book ? ` · ${book.counts.due}` : ''}`}
               </button>
             ))}
           </div>
-          <LienRulesDoor where={kind === 'affidavit' ? 'desk_affidavit' : 'desk_notice'} style={{ marginRight: '0.4rem' }} />
-          {office ? <LienCallerDoor input={callerInput} onPick={(h) => setCallerJobId(h.jobId)} onOpenJob={openDeskJob} onPractice={() => setPracticeCallOpen(true)} style={{ marginRight: '0.4rem' }} /> : null}
+          <LienRulesDoor where={kind === 'affidavit' ? 'desk_affidavit' : 'desk_notice'} />
+          {office ? <LienCallerDoor input={callerInput} onPick={(h) => setCallerJobId(h.jobId)} onOpenJob={openDeskJob} onPractice={() => setPracticeCallOpen(true)} /> : null}
           {/* Share where the liens stand (v2.4311): the same place on every tab — the end of the title line; beside × on a phone. The title bar's right padding keeps every line clear of the full-screen toggle and × (before v2.4311 it cleared × alone, and § The rules ran under the toggle at 768 px). */}
           <span style={isMobile ? { position: 'absolute', right: '2.9rem', top: '0.35rem' } : { position: 'relative', display: 'inline-flex', marginLeft: 'auto' }}>
             <button
@@ -1956,7 +1957,8 @@ export default function LienDeskModal({
               }}
             >
               <Share size={isMobile ? 19 : 15} aria-hidden />
-              {isMobile ? null : 'Share'}
+              {/* A desk narrower than 1,100 px shows the icon alone; the word stays the button's name. */}
+              {isMobile ? null : <span className="lienDeskShareWord">Share</span>}
             </button>
             {shareOpen && data ? (
               <LienDeskShare isMobile={isMobile} data={data} calendarRows={calendarRows} todayYmd={todayYmd} me={{ id: authUserId, name: authName }} onClose={() => setShareOpen(false)} />
