@@ -25,6 +25,8 @@ The first must be mailed by Oct 15, in 14 days.
 
 For one GC, the message lists each job with its months, its money and where it stands. A job with no property kind set gets a line of its own. Its dates could come a month sooner.
 
+The menu also offers **Jobs where a supply house is also owed** when there are any. That message lists each job that still owes a supply house. Each line says what is owed to us and what is owed to the houses. It names the house whose own notice comes first. Read more in [see which supply houses are owed on a lien job](/help/see-which-supply-houses-are-owed-on-a-lien-job).
+
 ## Send it as a text
 
 Press {{button:blue|Send…}} and the share sheet opens. Pick Messages, Mail or any app, then pick the person. The message goes from your own phone or your own inbox.

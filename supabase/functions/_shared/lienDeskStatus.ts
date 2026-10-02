@@ -49,6 +49,26 @@ export type LienStatusLien = {
   needs: LienStatusNeed[]
 }
 
+/** A lien job where a supply house is also owed (v2.4407): the job, the two debts, and the house whose own notice comes first. */
+export type LienStatusHouseJob = {
+  number: string
+  name: string
+  /** The GC's name; '' when we contracted with the owner. */
+  gc: string
+  /** What is owed to us on the job. */
+  owed: number
+  /** What supply houses are still owed on it. */
+  housesOwed: number
+  /** How many houses are owed. */
+  houses: number
+  /** The house whose own notice comes first; else the one owed most. */
+  house: string
+  /** That house's own § 53.056 notice date, 'YYYY-MM-DD', our estimate; '' when none is open. */
+  byYmd: string
+  /** A house that is owed holds a job account for the job. */
+  jobAccount: boolean
+}
+
 export type LienStatusPayload = {
   v: 1
   /** When the numbers were read: an ISO instant. */
@@ -69,6 +89,12 @@ export type LienStatusPayload = {
   pastWindow: { jobs: number; owed: number }
   /** § 53.057 retainage notices still to send: the jobs, the retainage they hold, the first deadline. */
   retainage: { jobs: number; held: number; firstYmd: string }
+  /**
+   * Present (v2.4407) = the message is the list of lien jobs where a supply house is also
+   * owed, and every rendering says that list instead of the notices. Absent on every other
+   * message, so a payload from before it reads as it always did.
+   */
+  houses?: LienStatusHouseJob[]
 }
 
 /** How far ahead the notice desk lists a notice (the desk's LIEN_DESK_LEAD_DAYS). */
@@ -201,11 +227,73 @@ export function lienStatusLinkLabel(p: Pick<LienStatusPayload, 'gc' | 'jobs'>): 
 }
 
 export function lienStatusSubject(p: LienStatusPayload): string {
+  if (p.houses) return `Supply houses also owed, ${lienStatusMonthDay(p.todayYmd)}: ${count(p.houses.length, 'lien job', 'lien jobs')}, ${money(housesFacts(p.houses).housesOwed)} to houses`
   const today = lienStatusMonthDay(p.todayYmd)
   const lead = p.gc ? `${p.gc} liens, ${today}` : `Liens, ${today}`
   if (p.jobs.length === 0) return `${lead}: no notice due in the next ${LIEN_STATUS_LEAD_DAYS} days`
   const f = lienStatusFacts(p)
   return `${lead}: ${count(p.jobs.length, 'notice', 'notices')} due, ${money(f.owed)}${f.firstYmd ? `, first by ${lienStatusMonthDay(f.firstYmd)}` : ''}`
+}
+
+/** The house list, the soonest house notice first, then the most owed to houses. */
+export function lienStatusHouseJobs(houses: ReadonlyArray<LienStatusHouseJob>): LienStatusHouseJob[] {
+  return [...houses].sort((a, b) => byYmdOrder({ byYmd: a.byYmd, owed: a.housesOwed }, { byYmd: b.byYmd, owed: b.housesOwed }))
+}
+
+function housesFacts(houses: ReadonlyArray<LienStatusHouseJob>) {
+  return {
+    owed: houses.reduce((s, h) => s + h.owed, 0),
+    housesOwed: houses.reduce((s, h) => s + h.housesOwed, 0),
+    firstYmd: houses.map((h) => h.byYmd).filter(Boolean).sort()[0] ?? '',
+  }
+}
+
+function housesHeadline(houses: ReadonlyArray<LienStatusHouseJob>): string[] {
+  const n = houses.length
+  if (n === 0) return ['No lien job owes a supply house right now.']
+  const f = housesFacts(houses)
+  return [
+    n === 1 ? '1 lien job still owes a supply house.' : `${n} lien jobs still owe a supply house.`,
+    `${money(f.owed)} is owed to us on ${n === 1 ? 'it' : 'them'}.`,
+    `${money(f.housesOwed)} is owed to the houses.`,
+  ]
+}
+
+/** What the houses are owed on one job, and whose notice comes first. Two short sentences. */
+function houseJobWords(h: LienStatusHouseJob): string {
+  const acct = h.jobAccount ? ' on a job account' : ''
+  const day = h.byYmd ? lienStatusMonthDay(h.byYmd) : ''
+  if (h.houses === 1) return `${h.house} ${money(h.housesOwed)}${acct}.${day ? ` Its notice by ${day}.` : ''}`
+  return `${h.houses} houses ${money(h.housesOwed)}${acct}.${day ? ` ${h.house}’s notice by ${day}.` : ''}`
+}
+
+/** "712 Cedar Park Dental, Alder Contracting": the job and its GC, said once when they share a name, with no full stop of their own. */
+function houseJobName(h: LienStatusHouseJob): string {
+  const name = `${h.number} ${h.name}`.trim().replace(/\.+$/, '')
+  const gc = h.gc.trim().replace(/\.+$/, '')
+  return gc && gc.toLowerCase() !== h.name.trim().replace(/\.+$/, '').toLowerCase() ? `${name}, ${gc}` : name
+}
+
+function houseJobLine(h: LienStatusHouseJob): string {
+  return `• ${houseJobName(h)}. Us ${money(h.owed)}. ${houseJobWords(h)}`
+}
+
+const HOUSES_WHY = 'A supply house can send its own notice on the same property. Each date is our estimate.'
+/** The share text names this many jobs; the email names them all. */
+const HOUSES_TEXT_MAX = 12
+
+function housesText(p: LienStatusPayload, houses: ReadonlyArray<LienStatusHouseJob>): string {
+  const L: string[] = [`Lien jobs where a supply house is also owed, ${lienStatusAsOfWords(p.asOf)}`, '', ...housesHeadline(houses)]
+  const sorted = lienStatusHouseJobs(houses)
+  if (sorted.length) {
+    L.push('')
+    for (const h of sorted.slice(0, HOUSES_TEXT_MAX)) L.push(houseJobLine(h))
+    const rest = sorted.slice(HOUSES_TEXT_MAX)
+    if (rest.length) L.push(`• ${count(rest.length, 'more job', 'more jobs')}, ${money(rest.reduce((s, h) => s + h.housesOwed, 0))} to houses`)
+    L.push('', HOUSES_WHY)
+  }
+  L.push('', lienStatusLinkLabel({ gc: null, jobs: [] }))
+  return L.join('\n')
 }
 
 /** The headline sentences: what we are about to do, the money, and the first date. */
@@ -294,6 +382,7 @@ function pastWindowSentence(p: LienStatusPayload, gcScope: boolean): string {
 
 /** The text the share sheet sends (the link rides beside it as the share's url). */
 export function lienStatusText(p: LienStatusPayload): string {
+  if (p.houses) return housesText(p, p.houses)
   const L: string[] = [`${p.gc ? `${p.gc} liens` : 'Liens'}, ${lienStatusAsOfWords(p.asOf)}`, '']
   L.push(...headline(p))
   const f = lienStatusFacts(p)
@@ -360,6 +449,13 @@ export function lienStatusEmailText(p: LienStatusPayload, o: LienStatusEmailOpti
   const L: string[] = []
   const note = (o.note ?? '').trim()
   if (note) L.push(`${o.senderName} wrote: ${note}`, '')
+  if (p.houses) {
+    L.push(`Lien desk, as of ${lienStatusAsOfWords(p.asOf)}`, '', ...housesHeadline(p.houses))
+    const sorted = lienStatusHouseJobs(p.houses)
+    if (sorted.length) L.push('', ...sorted.map(houseJobLine), '', HOUSES_WHY)
+    L.push('', `Open the Lien desk: ${deskUrl(p, o.appUrl)}`, '', `${o.senderName} sent this from the Lien desk in ClickTooling. Reply to write back to ${o.senderName}. These numbers are from ${lienStatusAsOfWords(p.asOf)}. The desk always has today’s.`)
+    return L.join('\n')
+  }
   L.push(`${p.gc ?? 'Lien desk'}, as of ${lienStatusAsOfWords(p.asOf)}`, '', ...headline(p))
   if (f.waiting.length) {
     L.push('', o.readerIsLeader ? 'Waiting for your approval:' : 'Waiting for approval:')
@@ -462,7 +558,36 @@ ${f.waiting.length ? tile(`${f.waiting.length} · ${money(f.waiting.reduce((s, j
   const toDo = todo.length ? `${sectionTitle('Still to do')}${todo.map((s) => `<div style="font-size:13px;line-height:1.6;color:#44403c;">&bull; ${esc(s)}</div>`).join('')}` : ''
   const pastText = pastWindowSentence(p, Boolean(p.gc))
   const past = pastText ? `${sectionTitle('Past the window')}<p style="margin:0;font-size:13.5px;line-height:1.5;color:#44403c;">${esc(pastText)}</p>` : ''
-  const lines = headline(p)
+  const hf = p.houses ? housesFacts(p.houses) : null
+  const houseDays = hf?.firstYmd ? daysFrom(p.todayYmd, hf.firstYmd) : null
+  const houseTiles =
+    p.houses && hf && p.houses.length
+      ? `<div style="margin:14px 0 0;font-size:0;line-height:1.3;">${tile(money(hf.housesOwed), 'owed to supply houses', 'amber')}
+        ${tile(money(hf.owed), p.houses.length === 1 ? 'owed to us on that job' : 'owed to us on those jobs', 'plain')}
+        ${hf.firstYmd && houseDays != null ? tile(lienStatusMonthDay(hf.firstYmd), `first house notice, ${inDaysWords(houseDays)}`, 'amber') : tile('—', 'no house notice date open', 'plain')}</div>`
+      : ''
+  const houseRows =
+    p.houses && p.houses.length
+      ? `${sectionTitle('The jobs')}
+      <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;border:1px solid ${RULE};">
+        <tr>
+          <td style="padding:6px 10px;background:#fafaf9;font-size:11px;font-weight:bold;color:${MUTED};">JOB</td>
+          <td style="padding:6px 10px;background:#fafaf9;font-size:11px;font-weight:bold;color:${MUTED};text-align:right;white-space:nowrap;">OWED TO US</td>
+          <td style="padding:6px 10px;background:#fafaf9;font-size:11px;font-weight:bold;color:${MUTED};text-align:right;white-space:nowrap;">TO HOUSES</td>
+        </tr>
+        ${lienStatusHouseJobs(p.houses)
+          .map(
+            (h) => `<tr>
+          <td style="padding:8px 10px;border-top:1px solid ${RULE};font-size:13px;color:${INK};"><b>${esc(h.number)} ${esc(h.name)}</b><div style="font-size:12px;color:${MUTED};">${esc([h.gc, houseJobWords(h)].filter(Boolean).join(' · '))}</div></td>
+          <td style="padding:8px 10px;border-top:1px solid ${RULE};font-size:13px;text-align:right;white-space:nowrap;color:${MUTED};">${money(h.owed)}</td>
+          <td style="padding:8px 10px;border-top:1px solid ${RULE};font-size:13px;text-align:right;font-weight:bold;white-space:nowrap;color:${INK};">${money(h.housesOwed)}</td>
+        </tr>`,
+          )
+          .join('')}
+      </table>`
+      : ''
+  const lines = p.houses ? housesHeadline(p.houses) : headline(p)
+  const why = p.houses ? HOUSES_WHY : 'A notice keeps our right to a lien on a month of work. It goes to the owner of record and the GC.'
   return `
   <style>@media (max-width: 520px) { .lsTile { width: 100% !important; min-width: 0 !important; margin-right: 0 !important; } }</style>
   <div style="background:#f5f5f4;padding:16px;">
@@ -471,15 +596,15 @@ ${f.waiting.length ? tile(`${f.waiting.length} · ${money(f.waiting.reduce((s, j
       <div style="font-size:10.5px;font-weight:bold;letter-spacing:0.08em;color:${MUTED};text-transform:uppercase;">${esc(p.gc ?? 'Lien desk')} &middot; as of ${esc(lienStatusAsOfWords(p.asOf))}</div>
       <h1 style="margin:6px 0 4px;font-size:22px;line-height:1.25;color:${INK};">${esc(lines[0])}</h1>
       ${lines.length > 1 ? `<p style="margin:0;font-size:14px;line-height:1.5;color:#44403c;">${esc(lines.slice(1).join(' '))}</p>` : ''}
-      <p style="margin:6px 0 0;font-size:13px;line-height:1.5;color:${MUTED};">A notice keeps our right to a lien on a month of work. It goes to the owner of record and the GC.</p>
-      ${tiles}
-      ${waiting}
+      <p style="margin:6px 0 0;font-size:13px;line-height:1.5;color:${MUTED};">${esc(why)}</p>
+      ${p.houses ? houseTiles : tiles}
+      ${p.houses ? '' : waiting}
       <p style="margin:16px 0 0;"><a href="${url}" style="display:inline-block;background:#2563eb;color:#ffffff;border-radius:6px;padding:10px 18px;font-weight:bold;text-decoration:none;font-size:14px;">Open the Lien desk</a></p>
-      ${byGc}
+      ${p.houses ? houseRows : `${byGc}
       ${liens}
       ${retainage}
       ${toDo}
-      ${past}
+      ${past}`}
       <p style="margin:22px 0 0;padding-top:12px;border-top:1px solid ${RULE};font-size:11.5px;line-height:1.5;color:${FAINT};">${esc(o.senderName)} sent this from the Lien desk in ClickTooling. Reply to write back to ${esc(o.senderName)}. These numbers are from ${esc(lienStatusAsOfWords(p.asOf))}. The desk always has today’s.</p>
     </div>
   </div>`
@@ -558,5 +683,24 @@ export function parseLienStatusPayload(raw: unknown): LienStatusPayload | null {
   const retHeld = rt ? amount(rt.held) : null
   const retFirst = rt ? ymdOrBlank(rt.firstYmd) : null
   if (kindsUnset === null || trackingOwed === null || pastJobs === null || pastOwed === null || retJobs === null || retHeld === null || retFirst === null) return null
-  return { v: 1, asOf, todayYmd, gc, jobs, liens, kindsUnset, trackingOwed, pastWindow: { jobs: pastJobs, owed: pastOwed }, retainage: { jobs: retJobs, held: retHeld, firstYmd: retFirst } }
+  let houses: LienStatusHouseJob[] | undefined
+  if (r.houses !== undefined) {
+    if (!Array.isArray(r.houses) || r.houses.length > 500) return null
+    houses = []
+    for (const x of r.houses) {
+      if (!x || typeof x !== 'object') return null
+      const h = x as Record<string, unknown>
+      const number = str(h.number, 40)
+      const name = str(h.name, 160)
+      const gcName = str(h.gc, 160)
+      const owed = amount(h.owed)
+      const housesOwed = amount(h.housesOwed)
+      const n = whole(h.houses)
+      const house = str(h.house, 160)
+      const byYmd = ymdOrBlank(h.byYmd)
+      if (number === null || name === null || gcName === null || owed === null || housesOwed === null || n === null || n < 1 || !house || byYmd === null || typeof h.jobAccount !== 'boolean') return null
+      houses.push({ number, name, gc: gcName, owed, housesOwed, houses: n, house, byYmd, jobAccount: h.jobAccount })
+    }
+  }
+  return { v: 1, asOf, todayYmd, gc, jobs, liens, kindsUnset, trackingOwed, pastWindow: { jobs: pastJobs, owed: pastOwed }, retainage: { jobs: retJobs, held: retHeld, firstYmd: retFirst }, ...(houses ? { houses } : {}) }
 }

@@ -18,6 +18,12 @@ A teal storefront means a house has a job account open for that job. A job with 
 
 The mark shows on the Calendar. It also shows on the Notices, Affidavits and Retainage lists.
 
+## See only those jobs
+
+On the Calendar, press the storefront button beside the pills. It shows a count of the jobs that still owe a house. The Calendar then shows only those jobs, still sorted by month. Press it again to see every job.
+
+On a computer with a wide window, the button reads {{button:outline|Houses owed}}.
+
 ## Read the card
 
 Press a job on the Notices tab. The card **Supply houses on this job** sits under the four checks. Each house has one row.
@@ -41,6 +47,12 @@ A row that says *window closed* means that date has passed by our count.
 Press {{button:blue|Copy for an email}}. The desk copies a short paragraph. Paste it into your email and change what you like.
 
 The paragraph names each house and what it is owed. It says the house's notice is its own claim. It says that claim is not part of the money owed to us.
+
+## Send the whole list
+
+Press {{button:outline|Share}} at the end of the desk's title line. Open **What to send** and pick **Jobs where a supply house is also owed**. The message lists every such job. Each line says what is owed to us and what is owed to the houses. It names the house whose notice comes first.
+
+Send it as a text or email it to a teammate. The steps are in [share where our liens stand](/help/share-where-our-liens-stand).
 
 ## Open the same job in Materials
 

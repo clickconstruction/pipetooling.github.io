@@ -28,6 +28,7 @@ import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import PropertyKindSwitch from './PropertyKindSwitch'
+import { Store } from 'lucide-react'
 import { LienSupplierMarkLine } from './LienJobSuppliers'
 import type { LienSupplierMark } from '../../lib/jobs/lienJobSuppliers'
 
@@ -728,7 +729,11 @@ export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, isMobil
   const [folded, setFolded] = useState<ReadonlySet<string>>(() => new Set(['overdue']))
   const [keyGlyph, setKeyGlyph] = useState<LienCalendarKeyGlyph | null>(null)
   const [searchOpen, setSearchOpen] = useState(false)
-  const board = useMemo(() => buildLienCalendarBoard(rows ?? [], query, todayYmd), [rows, query, todayYmd])
+  // Houses owed (v2.4407): a lens, not a bucket. It keeps the months and shows only the jobs that still owe a supply house.
+  const [housesOnly, setHousesOnly] = useState(false)
+  const houseRows = useMemo(() => (rows && supplierMarks ? rows.filter((r) => r.runway.state !== 'none' && supplierMarks.has(r.jobId)) : []), [rows, supplierMarks])
+  const lensOn = housesOnly && houseRows.length > 0
+  const board = useMemo(() => buildLienCalendarBoard(lensOn ? houseRows : (rows ?? []), query, todayYmd), [rows, houseRows, lensOn, query, todayYmd])
   const axis = useMemo(() => (rows && rows.length ? lienCalendarAxis(rows.filter((r) => r.runway.state !== 'none'), todayYmd) : null), [rows, todayYmd])
   // All shows every bucket that holds a job; a picked pill shows its bucket even when it is empty.
   const shown = useMemo(() => (pick === 'all' ? board.buckets.filter((b) => b.jobs.length > 0) : board.buckets.filter((b) => b.key === pick)), [board, pick])
@@ -761,6 +766,26 @@ export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, isMobil
   }
   const picked = pick === 'all' ? null : board.buckets.find((b) => b.key === pick) ?? null
   const band = picked && axis ? { from: picked.span.fromYmd ? axis.pct(picked.span.fromYmd) : 0, to: picked.span.toYmd ? axis.pct(picked.span.toYmd) : 100, color: BUCKET_TONE[picked.key].band } : null
+  const housesLens =
+    houseRows.length > 0 ? (
+      <button
+        type="button"
+        className={`lienCalPill${isMobile ? ' lienCalPillPhone' : ''}`}
+        aria-pressed={lensOn}
+        aria-label={`Show only jobs where a supply house is still owed · ${jobsWord(houseRows.length)}`}
+        title="Show only the jobs where a supply house is still owed"
+        data-testid="lien-cal-houses-lens"
+        onClick={() => {
+          setHousesOnly((v) => !v)
+          setPen(null)
+        }}
+        style={{ '--pill-ink': 'var(--text-700)', '--pill-bg': lensOn ? 'var(--bg-blue-tint)' : 'var(--surface)', '--pill-border': lensOn ? 'var(--border-blue)' : 'var(--border)', marginLeft: isMobile ? undefined : 'auto' } as CSSProperties}
+      >
+        <Store size={15} aria-hidden />
+        {isMobile ? null : <strong className="lienCalLensWord">Houses owed</strong>}
+        <span className="lienCalPillCount">{houseRows.length}</span>
+      </button>
+    ) : null
   const doors = new Set<NonNullable<LienCalendarKeyEntry['door']>>()
   if (penOn) doors.add('kinds')
   if (firstDraft && onDraft) doors.add('draft')
@@ -774,8 +799,10 @@ export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, isMobil
               ⌕
             </button>
           ) : null}
+          {isMobile ? housesLens : null}
           <Pills board={board} pick={pick} onPick={choose} phone={isMobile} />
           <KindsChip n={board.kindsUnset} open={kindsOpen} onToggle={penOn ? () => setKindsOpen((o) => !o) : undefined} />
+          {isMobile ? null : housesLens}
         </div>
       ) : null}
       {rows && isMobile && (searchOpen || query) ? (

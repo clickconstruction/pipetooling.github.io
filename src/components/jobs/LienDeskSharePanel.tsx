@@ -14,7 +14,7 @@ const linkBtn: CSSProperties = { border: 'none', background: 'none', color: 'var
 
 function scopeSub(o: LienShareScopeOption): string {
   const bits = [`${o.jobs} ${o.jobs === 1 ? 'job' : 'jobs'}`]
-  if (o.firstYmd) bits.push(`first by ${formatYmdMonthDay(o.firstYmd)}`)
+  if (o.firstYmd) bits.push(o.toHouses ? `first house notice by ${formatYmdMonthDay(o.firstYmd)}` : `first by ${formatYmdMonthDay(o.firstYmd)}`)
   if (o.waiting) bits.push(`${o.waiting} waiting for approval`)
   if (o.needOwner) bits.push(o.needOwner === 1 ? 'needs the owner' : `${o.needOwner} need the owner`)
   return bits.join(' · ')

@@ -8,6 +8,7 @@ import {
   lienStatusSubject,
   lienStatusText,
   parseLienStatusPayload,
+  type LienStatusHouseJob,
   type LienStatusJob,
   type LienStatusPayload,
 } from '../../../supabase/functions/_shared/lienDeskStatus'
@@ -261,5 +262,82 @@ describe('parseLienStatusPayload — what the server accepts', () => {
     const long = 'x'.repeat(400)
     const p = parseLienStatusPayload({ ...JSON.parse(JSON.stringify(OCT1)), gc: ` ${long} ` })!
     expect(p.gc).toHaveLength(160)
+  })
+})
+
+describe('the houses list — lien jobs where a supply house is also owed (v2.4407)', () => {
+  const HOUSES: LienStatusHouseJob[] = [
+    { number: '891', name: 'Take 5- Liberty Hill', gc: 'Burd & Assoc.', owed: 27199, housesOwed: 6258, houses: 1, house: 'Reece', byYmd: OCT, jobAccount: false },
+    { number: '650', name: 'ATI Schertz', gc: 'Loberg Contracting', owed: 15722, housesOwed: 15007, houses: 3, house: 'Reece', byYmd: OCT, jobAccount: false },
+    { number: '251', name: 'Michael Palmer', gc: 'Michael Palmer', owed: 4720, housesOwed: 4958, houses: 3, house: 'Reece', byYmd: NOV, jobAccount: true },
+    { number: '881', name: 'Dudley Mason', gc: '', owed: 1050, housesOwed: 61, houses: 1, house: 'Moore Supply', byYmd: '', jobAccount: false },
+  ]
+  const P: LienStatusPayload = { v: 1, asOf: '2026-10-01T19:14:00.000Z', todayYmd: '2026-10-01', gc: null, jobs: [], liens: [], kindsUnset: 0, trackingOwed: 0, pastWindow: { jobs: 0, owed: 0 }, retainage: { jobs: 0, held: 0, firstYmd: '' }, houses: HOUSES }
+
+  it('says the list in the text: the soonest house notice first, then the most owed', () => {
+    expect(lienStatusText(P)).toBe(
+      [
+        'Lien jobs where a supply house is also owed, Thu Oct 1, 2:14 PM',
+        '',
+        '4 lien jobs still owe a supply house.',
+        '$48,691 is owed to us on them.',
+        '$26,284 is owed to the houses.',
+        '',
+        '• 650 ATI Schertz, Loberg Contracting. Us $15,722. 3 houses $15,007. Reece’s notice by Oct 15.',
+        // A GC's own full stop is not doubled.
+        '• 891 Take 5- Liberty Hill, Burd & Assoc. Us $27,199. Reece $6,258. Its notice by Oct 15.',
+        // A job named for its GC says the name once.
+        '• 251 Michael Palmer. Us $4,720. 3 houses $4,958 on a job account. Reece’s notice by Nov 16.',
+        // No open window: the money only.
+        '• 881 Dudley Mason. Us $1,050. Moore Supply $61.',
+        '',
+        'A supply house can send its own notice on the same property. Each date is our estimate.',
+        '',
+        'Open the Lien desk:',
+      ].join('\n'),
+    )
+  })
+
+  it('folds past twelve jobs in the text and names them all in the email', () => {
+    const many = Array.from({ length: 14 }, (_, i) => ({ ...HOUSES[0]!, number: String(100 + i), housesOwed: 100 }))
+    const text = lienStatusText({ ...P, houses: many })
+    expect(text.split('\n').filter((l) => l.startsWith('• '))).toHaveLength(13)
+    expect(text).toContain('• 2 more jobs, $200 to houses')
+    const email = lienStatusEmailText({ ...P, houses: many }, { appUrl: 'https://clicktooling.com', senderName: 'Grace' })
+    expect(email.split('\n').filter((l) => l.startsWith('• '))).toHaveLength(14)
+  })
+
+  it('gives the subject, the email text and the email its own words', () => {
+    expect(lienStatusSubject(P)).toBe('Supply houses also owed, Oct 1: 4 lien jobs, $26,284 to houses')
+    const text = lienStatusEmailText(P, { appUrl: 'https://clicktooling.com', senderName: 'Grace', note: 'For Friday.' })
+    expect(text).toContain('Grace wrote: For Friday.')
+    expect(text).toContain('4 lien jobs still owe a supply house.')
+    expect(text).toContain('Open the Lien desk: https://clicktooling.com/jobs?tab=stages&liendesk=1')
+    expect(text).not.toContain('about to send')
+    const html = lienStatusEmailHtml(P, { appUrl: 'https://clicktooling.com', senderName: 'Grace' })
+    expect(html).toContain('4 lien jobs still owe a supply house.')
+    expect(html).toContain('owed to supply houses')
+    expect(html).toContain('first house notice, in 14 days')
+    expect(html).toContain('<b>650 ATI Schertz</b>')
+    expect(html).toContain('TO HOUSES')
+    expect(html).not.toContain('By GC')
+    expect(html).not.toContain('A notice keeps our right')
+  })
+
+  it('says so when no job owes a house', () => {
+    expect(lienStatusText({ ...P, houses: [] })).toContain('No lien job owes a supply house right now.')
+  })
+
+  it('the server takes the list as drawn and refuses one off its shape', () => {
+    expect(parseLienStatusPayload(JSON.parse(JSON.stringify(P)))).toEqual(P)
+    // A payload from before the list reads as it always did.
+    expect(parseLienStatusPayload(JSON.parse(JSON.stringify(OCT1)))).not.toHaveProperty('houses')
+    const bad = (h: Record<string, unknown>) => parseLienStatusPayload({ ...JSON.parse(JSON.stringify(P)), houses: [{ ...HOUSES[0], ...h }] })
+    expect(bad({ housesOwed: -1 })).toBeNull()
+    expect(bad({ houses: 0 })).toBeNull()
+    expect(bad({ house: '' })).toBeNull()
+    expect(bad({ byYmd: 'Oct 15' })).toBeNull()
+    expect(bad({ jobAccount: 'yes' })).toBeNull()
+    expect(parseLienStatusPayload({ ...JSON.parse(JSON.stringify(P)), houses: 'all' })).toBeNull()
   })
 })

@@ -37,6 +37,7 @@ afterEach(() => {
 })
 import { buildLienPayRunway } from '../../lib/jobs/lienPayRunway'
 import type { LienCalendarJob } from '../../lib/jobs/lienCalendar'
+import type { LienSupplierMark } from '../../lib/jobs/lienJobSuppliers'
 
 const TODAY = '2026-09-28'
 const base = { todayYmd: TODAY, openBalance: 1000, propertyKind: 'residential', expectedPayYmd: null, filedYmd: null, releasedYmd: null }
@@ -326,5 +327,46 @@ describe('the pen (v2.4153)', () => {
     fireEvent.click(within(within(sheet).getByTestId('lien-cal-kind-b')).getByRole('button', { name: /residential/i }))
     await waitFor(() => expect(kindWrites).toEqual([['addr-b', 'residential']]))
     await waitFor(() => expect(onChanged).toHaveBeenCalledWith('kind'))
+  })
+  describe('supply houses (v2.4404 the mark, v2.4407 the lens)', () => {
+    const marks = new Map<string, LienSupplierMark>([
+      ['a', { words: '2 houses owed $1,670', short: '$1,670', title: 'Still owed to supply houses on this job: Reece $1,670.', jobAccount: false, owed: 1670 }],
+      ['d', { words: '1 house owed $97 · job account', short: '$97', title: 'Still owed to supply houses on this job: Reece $97. A job account is open.', jobAccount: true, owed: 97 }],
+    ])
+
+    it('marks only the rows where a house is owed, teal on a job account', () => {
+      mount({ supplierMarks: marks })
+      expect(rowOf('890 PLUM').querySelector('[data-lien-supplier-mark="owed"]')?.textContent).toContain('$1,670')
+      expect(rowOf('473 PLUM').querySelector('[data-lien-supplier-mark="job-account"]')?.textContent).toContain('$97')
+      expect(rowOf('881 PLUM').querySelector('[data-lien-supplier-mark]')).toBeNull()
+    })
+
+    it('the lens keeps the months and shows only those jobs; a second press brings the rest back', () => {
+      mount({ supplierMarks: marks })
+      const lens = screen.getByTestId('lien-cal-houses-lens')
+      expect(lens.getAttribute('aria-pressed')).toBe('false')
+      expect(lens.textContent).toContain('2')
+      fireEvent.click(lens)
+      expect(lens.getAttribute('aria-pressed')).toBe('true')
+      expect(within(screen.getByTestId('lien-cal-pills')).getByRole('button', { name: /^All · 2 jobs/ })).toBeTruthy()
+      expect(screen.queryByRole('button', { name: /^881 PLUM/ })).toBeNull()
+      expect(screen.getByRole('button', { name: /^890 PLUM/ })).toBeTruthy()
+      fireEvent.click(lens)
+      expect(screen.getByRole('button', { name: /^881 PLUM/ })).toBeTruthy()
+    })
+
+    it('draws no lens when no job on the board owes a house', () => {
+      mount()
+      expect(screen.queryByTestId('lien-cal-houses-lens')).toBeNull()
+      mount({ supplierMarks: new Map([['zzz', marks.get('a')!]]) })
+      expect(screen.queryByTestId('lien-cal-houses-lens')).toBeNull()
+    })
+
+    it('a phone row carries the money at the right of its dates', () => {
+      mount({ supplierMarks: marks, isMobile: true })
+      const row = screen.getByRole('button', { name: /^890 PLUM/ })
+      expect(row.querySelector('[data-lien-supplier-mark]')?.textContent).toContain('$1,670')
+      expect(screen.getByTestId('lien-cal-houses-lens').textContent).not.toContain('Houses owed')
+    })
   })
 })

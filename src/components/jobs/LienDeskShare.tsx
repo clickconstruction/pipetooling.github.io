@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useToastContext } from '../../contexts/ToastContext'
 import type { LienDeskData } from '../../hooks/useLienDeskData'
 import type { LienCalendarJob } from '../../lib/jobs/lienCalendar'
-import { buildLienStatusPayload, lienShareScopeOptions, type LienShareScope } from '../../lib/jobs/lienDeskShare'
+import { buildLienStatusPayload, lienShareHouseJobs, lienShareScopeOptions, type LienShareScope } from '../../lib/jobs/lienDeskShare'
+import type { LienSupplierJob } from '../../lib/jobs/lienJobSuppliers'
 import { fetchFirmPortalUrl } from '../../lib/jobs/lienDeskShareIo'
 import { runJobShare } from '../../lib/jobShare'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
@@ -27,6 +28,7 @@ export default function LienDeskShare({
   isMobile,
   data,
   calendarRows,
+  suppliers,
   todayYmd,
   me,
   onClose,
@@ -34,6 +36,8 @@ export default function LienDeskShare({
   isMobile: boolean
   data: LienDeskData
   calendarRows?: ReadonlyArray<LienCalendarJob> | null
+  /** The desk's supply-house read (v2.4407): the jobs where a house is also owed are one more thing to send. */
+  suppliers?: ReadonlyMap<string, LienSupplierJob>
   todayYmd: string
   me: { id: string | null; name: string }
   onClose: () => void
@@ -55,10 +59,11 @@ export default function LienDeskShare({
     }
   }, [])
 
-  const options = useMemo(() => lienShareScopeOptions(data), [data])
+  const houses = useMemo(() => (suppliers ? lienShareHouseJobs({ data, calendarRows, suppliers, todayYmd }) : []), [data, calendarRows, suppliers, todayYmd])
+  const options = useMemo(() => lienShareScopeOptions(data, houses), [data, houses])
   // A GC that left the desk since it was picked falls back to the whole desk.
   const current: LienShareScope = options.some((o) => o.key === scope) ? scope : 'all'
-  const payload = useMemo(() => buildLienStatusPayload({ data, calendarRows, todayYmd, nowIso: asOf, scope: current }), [data, calendarRows, todayYmd, asOf, current])
+  const payload = useMemo(() => buildLienStatusPayload({ data, calendarRows, todayYmd, nowIso: asOf, scope: current, houses }), [data, calendarRows, todayYmd, asOf, current, houses])
   const text = useMemo(() => lienStatusText(payload), [payload])
   const url = `${window.location.origin}${lienStatusDeskPath(payload)}`
   const asOfWords = new Date(asOf).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: APP_CALENDAR_TZ })
