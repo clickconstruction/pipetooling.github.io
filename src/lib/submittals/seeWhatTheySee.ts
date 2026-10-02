@@ -37,6 +37,7 @@ export function toRoomItemSource(item: RoomItemSource): RoomItemSource {
     reviewed_by_name: item.reviewed_by_name ?? null,
     reviewed_by_person_id: item.reviewed_by_person_id ?? null,
     reviewed_at: item.reviewed_at ?? null,
+    order_only: item.order_only === true,
   }
 }
 

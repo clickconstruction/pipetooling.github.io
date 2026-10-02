@@ -2304,6 +2304,7 @@ export type Database = {
           decision_source: string
           id: string
           lead_time_days: number | null
+          order_only: boolean
           reason_kind: string | null
           reason_note: string | null
           review_decision: string | null
@@ -2338,6 +2339,7 @@ export type Database = {
           decision_source?: string
           id?: string
           lead_time_days?: number | null
+          order_only?: boolean
           reason_kind?: string | null
           reason_note?: string | null
           review_decision?: string | null
@@ -2372,6 +2374,7 @@ export type Database = {
           decision_source?: string
           id?: string
           lead_time_days?: number | null
+          order_only?: boolean
           reason_kind?: string | null
           reason_note?: string | null
           review_decision?: string | null
@@ -2658,6 +2661,8 @@ export type Database = {
         Row: {
           bid_id: string
           count_row_id: string
+          left_out_line_ids: string[] | null
+          order_only: boolean
           product_line_ids: string[] | null
           split: boolean
           ticked: boolean
@@ -2666,6 +2671,8 @@ export type Database = {
         Insert: {
           bid_id: string
           count_row_id: string
+          left_out_line_ids?: string[] | null
+          order_only?: boolean
           product_line_ids?: string[] | null
           split?: boolean
           ticked?: boolean
@@ -2674,6 +2681,8 @@ export type Database = {
         Update: {
           bid_id?: string
           count_row_id?: string
+          left_out_line_ids?: string[] | null
+          order_only?: boolean
           product_line_ids?: string[] | null
           split?: boolean
           ticked?: boolean

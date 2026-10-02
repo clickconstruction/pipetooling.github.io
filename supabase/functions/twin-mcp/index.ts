@@ -1107,8 +1107,8 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       }
       let rowsOnRevision: Array<{ tag: string; submitted: string | null; owes_sheet: boolean }> = []
       if (task.submittal_id) {
-        const { data: items } = await admin.from('bid_submittal_items').select('tag, submitted_label, submitted_model, sheet_pages, status').eq('submittal_id', task.submittal_id).order('sequence_order')
-        rowsOnRevision = ((items ?? []) as Array<{ tag: string; submitted_label: string | null; submitted_model: string | null; sheet_pages: number[] | null; status: string }>).filter((i) => i.status !== 'missing').map((i) => ({ tag: i.tag, submitted: i.submitted_label ?? i.submitted_model ?? null, owes_sheet: !(i.sheet_pages ?? []).length }))
+        const { data: items } = await admin.from('bid_submittal_items').select('tag, submitted_label, submitted_model, sheet_pages, status, order_only').eq('submittal_id', task.submittal_id).order('sequence_order')
+        rowsOnRevision = ((items ?? []) as Array<{ tag: string; submitted_label: string | null; submitted_model: string | null; sheet_pages: number[] | null; status: string; order_only?: boolean | null }>).filter((i) => i.status !== 'missing' && i.order_only !== true).map((i) => ({ tag: i.tag, submitted: i.submitted_label ?? i.submitted_model ?? null, owes_sheet: !(i.sheet_pages ?? []).length }))
       }
       return textContent(JSON.stringify({
         task: task.id,

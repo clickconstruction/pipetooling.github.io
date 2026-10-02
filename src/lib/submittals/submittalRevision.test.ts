@@ -25,7 +25,7 @@ const item = (o: Partial<SubmittalItemRow>): SubmittalItemRow => ({
   sheet_file: null,
   sheet_pages: [],
   sheet_source: null,
-  carried_from_item_id: null, decision_source: 'room', decision_entered_by: null, decision_entered_by_name: null,
+  carried_from_item_id: null, decision_source: 'room', decision_entered_by: null, decision_entered_by_name: null, order_only: false,
   review_decision: null,
   review_note: null,
   reviewed_by_name: null, reviewed_by_person_id: null,
@@ -67,7 +67,7 @@ describe('source files', () => {
 describe('row ↔ item', () => {
   it('itemToPrevious carries what the next revision needs', () => {
     const prev = itemToPrevious(item({ reason_kind: 'lead_time', lead_time_days: 14, sheet_file: 0, sheet_pages: [3, 4], review_decision: 'revise', review_note: 'hold 1.0 gpf' }))
-    expect(prev).toEqual({ id: 'i1', tag: 'WC-1', submittedModel: 'CT728CUVG', submittedLabel: 'TOTO CT728CUVG#01', status: 'alternate', reasonKind: 'lead_time', reasonNote: null, leadTimeDays: 14, sheetFile: 0, sheetPages: [3, 4], reviewDecision: 'revise', reviewNote: 'hold 1.0 gpf', supplyHouseId: 'h1', sourceQuoteLineId: 'q1' })
+    expect(prev).toEqual({ id: 'i1', tag: 'WC-1', submittedModel: 'CT728CUVG', submittedLabel: 'TOTO CT728CUVG#01', status: 'alternate', reasonKind: 'lead_time', reasonNote: null, leadTimeDays: 14, sheetFile: 0, sheetPages: [3, 4], reviewDecision: 'revise', reviewNote: 'hold 1.0 gpf', supplyHouseId: 'h1', sourceQuoteLineId: 'q1', orderOnly: false })
   })
 
   it('draftToItemInsert writes every column the kernel decided, and stamps the sheet source when pages carried', () => {
@@ -157,5 +157,20 @@ describe('a new revision carries the rows the picks do not rebuild (2026-10-01)'
     const ins = carriedRowInsert(fromTakeoff, 's2', 4)
     expect(ins).toMatchObject({ submittal_id: 's2', tag: 'LAV-1', sequence_order: 4, source_count_row_id: 'cr-lav1', status: 'proposed', sheet_file: 0, sheet_pages: [30, 31], carried_from_item_id: 'lav1' })
     expect('review_decision' in ins).toBe(false)
+  })
+})
+
+describe('an order-only row keeps its state from revision to revision (2026-10-02)', () => {
+  it('a carried row names the column only when it is true', () => {
+    expect(carriedRowInsert(item({ order_only: true, source_quote_line_id: null, source_count_row_id: 'c1' }), 's2', 1).order_only).toBe(true)
+    expect('order_only' in carriedRowInsert(item({ order_only: false, source_quote_line_id: null, source_count_row_id: 'c1' }), 's2', 1)).toBe(false)
+  })
+
+  it('a row the picks rebuild takes it from the row before', () => {
+    expect(itemToPrevious(item({ order_only: true })).orderOnly).toBe(true)
+    expect(itemToPrevious(item({})).orderOnly).toBe(false)
+    const draft = { tag: 'WC-1', sequenceOrder: 1, specifiedManufacturer: null, specifiedModel: null, specifiedDescription: null, submittedManufacturer: null, submittedModel: null, submittedLabel: 'x', supplyHouseId: null, houseName: null, sourceQuoteLineId: null, status: 'as_specified', near: false, reasonKind: null, reasonNote: null, leadTimeDays: null, sheetFile: null, sheetPages: [], carriedFromItemId: 'i1', changed: false, changeNote: null } satisfies SubmittalRowDraft
+    expect(draftToItemInsert({ ...draft, orderOnly: true }, 's2').order_only).toBe(true)
+    expect('order_only' in draftToItemInsert(draft, 's2')).toBe(false)
   })
 })
