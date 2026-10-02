@@ -1888,6 +1888,8 @@ export default function Bids() {
           onError={setError}
           onReloadBids={() => { void loadBids() }}
           onOpenBuilderCard={applyBuilderReviewDeepLinkFromBid}
+          contactPersons={customerContactPersons}
+          onReloadContactPersons={() => { void loadCustomerContactPersons() }}
         />
       )}
       {activeTab === 'why-we-lost' && (
