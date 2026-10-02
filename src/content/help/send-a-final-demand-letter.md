@@ -1,62 +1,114 @@
 ---
 title: send a final demand letter
 category: Billing & Money
-keywords: demand letter, final demand, collections, certified mail, tracking number, deadline, escalate, lien instruments, theft of services, chapter 53
+keywords: demand letter, final demand, collections, certified mail, tracking number, deadline, escalate, lien instruments, lien window, theft of services, chapter 53, attorney's fees, exhibits, statement of account, delivery record
 roles: dev, master_technician, assistant, controller
 ---
-When calls and re-sends have not shaken a payment loose, the next step is a **final demand letter** — a formal, dated deadline with legal follow-through named in writing. The app now writes it from the job's real history and holds you to the deadline you set.
+A final demand letter gives a late payer one last dated deadline in writing. The app writes it from the job's own bills and history. Then it watches the deadline for you.
+
+Send one when calls and re-sent bills have not brought the money in.
 
 ## Open Lien instruments
 
-On a **Billed Awaiting Payment** or **Collections** row, the orange lien icon now opens **Lien instruments**. The demand letter is the first tab (the § 53.056 notice and mechanic's lien tabs arrive with the next phase; the {{button:outline-blue|lientooling.com ↗}} button still opens the old external forms).
+Find the job's row under **Billed Awaiting Payment** or **Collections** on the Jobs Pipeline. Press the orange lien icon on the row. The **Lien instruments** window opens on its **Demand letter** tab.
 
-The window's header is the job's **timeline** — every deadline in order, whose move each one is, and, once your letter is out, the letter itself as a square step with its reply-by day and a **Waiting on** line naming the GC or the owner (see *send lien notices from the Lien desk* → *Where a job stands*). The icon's tooltip says so, and on a phone card the menu item reads **Lien window · timeline**.
+On a phone, open the job card's menu and press *Lien window · timeline*.
+
+The window has one tab for each paper.
+
+- **Demand letter** is this guide.
+- **§ 53.056 notice** is the monthly lien notice. It is covered in [send lien notices from the Lien desk](/help/send-lien-notices-from-the-lien-desk).
+- **Mechanic's lien** is the lien affidavit. It is covered in [file a lien and never miss its deadlines](/help/file-a-lien-and-never-miss-its-deadlines).
+- **Release of record** shows only once a lien affidavit is filed on the job.
+
+{{button:outline|§ The rules}} sits beside the tabs. It opens [read the Texas lien rules the app follows](/help/texas-lien-rules-the-app-follows) in a new tab, at attorney's fees.
+
+## The job's timeline
+
+The window shows the job's timeline under the job's name. It lists every lien deadline in order. It says whose move each one is.
+
+Once your letter is out, the letter is a square step at its reply by day. **Waiting on** names the GC or the owner. The steps are explained in [send lien notices from the Lien desk](/help/send-lien-notices-from-the-lien-desk), under Where a job stands.
+
+On a phone, the timeline folds to one strip, so the letter gets the room.
+
+- **Next** on the strip names the step to do now.
+- The strip also says who you wait on. A red chip names any notice window that closed.
+- Press **Steps** to drop the steps down over the letter. Press **Hide** to put them away.
+- The tabs become one bar under the strip. With four papers, slide the bar sideways to reach the last one.
 
 ## What fills itself in
 
-- **Who owes it** — read from the bill, never typed. A bill addressed to the GC is demanded of the GC; a bill to the customer, of the customer; a bill with a typed payer, of that payer. On a job with a GC the block says so and points you to the **§ 53.056 notice** tab — that is the paper the statute sends the property owner, not a demand. The mailing address fills from the payer's record and stays editable; a red {{chip:red|needs a mailing address}} means there is none on file.
-- **The letterhead** — the company name on the left; on the right the return address as typed in Settings → Invoice issuer, line for line (street, city / state / ZIP, phone, email). The name of whoever sends the letter is not up there — it signs at the bottom.
-- **The debt** — a **statement of account**, one block per bill you select: the invoice number the customer saw (for a Stripe-hosted bill, the number Stripe printed), when it was sent and due, each line as billed, payments and credits, and the balance. It is read-only on purpose: a sworn-account claim wants the name, date and charge of each item with credits allowed, and a demand that does not match the bill costs you attorney's fees. Something wrong? Fix it on the bill and the letter re-reads it.
-- **One letter per payer** — the bill chips show who each bill went to when a job's bills go to different payers; picking a bill for another payer starts a letter for that payer.
-- **The notice history** — this is the part no form site can write. The letter lists, with dates, every invoice send, every Stripe re-send, and every collection call recorded in call mode: *"July 15 — Invoice sent · August 5 — Invoice re-sent by email · August 26 — Collection call."* A debtor reading a dated list knows you keep records.
-- **The two dates** — the pay-by date defaults to 10 business days out (one click resets it). Under it the app shows the date **attorney's fees become recoverable**: 30 days after the letter, because the letter is the "presentment" Texas requires before fees can be claimed. The letter says both.
+- *Demand covers bill(s)* lists every billed line with money still open. Press a chip to add or drop that bill. The window starts with the bill you opened it from, or with every unpaid bill.
+- **One letter per payer.** When a job's bills went to different payers, each chip names its payer. Pick a bill for another payer, and the letter starts over for that payer.
+- **Who owes it** is read from the bill and is never typed. A bill addressed to the GC is demanded of the GC. A bill to the customer is demanded of the customer. A bill with a typed payer is demanded of that payer.
+- **A bill that went to the GC** adds a note under the block. The note points to the **§ 53.056 notice** tab. That notice is the paper the statute sends the property owner. It is not a demand.
+- **Mailing address** fills from the payer's record, and you can change it. {{chip:red|needs a mailing address}} means none is on file.
+- **The letterhead** shows the company name on the left. The return address sits on the right, line for line as typed in Settings. It comes from the **Physical invoice** block under Jobs & billing. The sender's name is not in the letterhead. It signs at the bottom.
+- **What the letter claims** is a statement of account, with one block per bill. Each block shows the invoice number the customer saw. For a Stripe bill, that is the number Stripe printed. The block also shows when the bill was sent and due. Then come each line as billed, the payments and the balance.
+- **The statement is read only on purpose.** A demand that does not match the bill costs you attorney's fees. Fix a wrong line on the bill, and the letter reads it again.
+- **Notice history the letter cites** lists every dated contact. That means each invoice send, each Stripe re-send, each payment promise and each collection call. It reads like *July 15, 2026 — Invoice sent · August 5, 2026 — Invoice re-sent by email*. A payer who reads a dated list knows you keep records.
+- **Payment deadline** starts 10 business days out. Press *+10 business days* to set it back to that.
+- **The fee date** sits under the deadline. It is the day attorney's fees become recoverable, 30 days after the letter. Texas wants a claim presented before fees can be claimed, and the letter is that step. The letter says both dates.
+- *Payment method line (optional)* adds one line on how to pay, like who a check is made out to.
 
-**What counts as paid.** The claim subtracts every payment recorded against the bill it covers. A payment recorded on the job without a bill attached pays the **oldest bill first**: it fills the earliest bill the customer received up to what that bill still needs, then the next, and whatever is left over sits on the job as a surplus, on no bill. The letter, its enclosed invoice, the Bill tab and the customer's portal all read that same rule, so they cannot disagree about a balance. If a payment was meant for a particular bill, link it to that bill and every reader follows.
+**What counts as paid.** The claim subtracts every payment recorded against the bills it covers. A payment recorded on the job with no bill attached pays the oldest bill first. It fills the earliest bill up to what that bill still needs, then the next one. Anything left over sits on the job as a surplus, on no bill.
+
+The letter, its enclosed invoice, the Bill tab and the customer's portal all read that same rule. So they cannot disagree about a balance. If a payment was meant for one bill, link it to that bill. Every reader then follows.
 
 ## What the letter may say
 
-Every line the letter threatens has to be one you can actually do, and every charge it names has to rest on a statute or the agreement — the Texas Debt Collection Act applies to you when the debtor is a homeowner. So each switch shows its basis, and a line that is not available is greyed with the reason:
+Every line the letter threatens must be one you can really do. Every charge it names must rest on a statute or the agreement. The Texas Debt Collection Act applies to you when the payer is a homeowner.
 
-- **Suit in justice court** — offered while the balance is within the $20,000 limit; above it the line reads county or district court.
-- **Mechanic's lien under Chapter 53** — offered only while the filing window is open and the property is not a homestead, with the window's last day on the letter. When it cannot be filed the switch says why: {{chip:red|not offered — the filing window closed …}}.
-- **Interest** — {{chip:gray|1.5 % a month}} under the Prompt Payment chapter from the 36th day after the bill went out (the bill is the written payment request), or {{chip:gray|6 % a year}} at the legal rate when the bill was never sent. No date to run from, no interest line.
-- **Theft of services (§ 31.04)** stays **off** until the attorney package signs off on it, and it is {{chip:gray|not applicable}} the moment anything has been paid on the job — on any bill, or recorded on the job with no bill — because a partial payment defeats it.
+So each switch under **What the letter may say** shows its basis. A line that is not available is greyed, with the reason.
+
+- **Suit in justice court** is offered while the balance is within the $20,000 limit. Above it, the switch reads **Suit in county or district court**.
+- **Mechanic's lien under Chapter 53** is offered only while the filing window is open. The switch names the window's last day, and so does the letter. When a lien cannot be filed, the switch says why, like {{chip:red|not offered — the filing window closed …}}. A homestead turns it off. So does a job with no approved work month.
+- **Interest at 1.5 % a month** is offered when the bill went out. The bill is the written payment request under the Prompt Payment chapter. The interest runs from the 36th day after the bill was sent.
+- **Interest at 6 % a year** is the legal rate, for a bill that was never sent. It runs from the 30th day after the bill was due. With no sent date and no due date, there is no interest line.
+- *Theft-of-services report (Penal Code § 31.04)* starts off. Leave it off until the attorney signs off on it. It reads {{chip:gray|not applicable}} once anything has been paid on the job. That counts a payment on any bill, or one recorded on the job with no bill. A partial payment defeats it.
+- *Notarial block (certified mail only)* adds a notary's block at the end of the letter. It starts off.
 
 :::example The lawyer's date
-A letter sent September 14 names September 28 as the pay-by and October 14 as the day fees become recoverable. The Legal desk shows the same October date on the account's Paper tab, so a matter referred after it arrives with the presentment already done.
+A letter sent September 14 names September 28 as the pay-by day. It names October 14 as the day fees become recoverable. The Legal desk lists the letter on the account's Paper tab, under Final demand letters. Its Fees & steps tab shows the same October date, as *fees from 2026-10-14*. So a matter referred after that day arrives with the presentment already done.
 :::
 
 ## What goes out with it
 
-The letter never goes alone. Under **Enclosed**:
+The letter never goes alone. The **Enclosed** box lists its exhibits.
 
-- **Exhibit A — the invoice**, always: the bill as the customer received it, one per bill the demand covers, stamped on every page.
-- **Exhibit B — the signed agreement**, when the job has one on file (untick it to leave it out).
-- **Exhibit C — the delivery record**: the dated sends, re-sends, calls and promises the letter cites, on one page the debtor can check against their own inbox.
+- **Exhibit A** is the invoice, and it always goes. It is the bill as the customer received it. There is one per bill the demand covers.
+- **Exhibit B** is the signed agreement, when the job has one on file. Untick it to leave it out. With none on file, the row reads {{chip:gray|no contract}}.
+- **Exhibit C** is the delivery record. It puts the dated sends, re-sends, calls and promises the letter cites on one page. The payer can check it against their own inbox. Untick it to leave it out.
 
-The letter names them under the statement and in an *Enclosures* line at the foot. The preview shows each exhibit as the page it will be. {{button:outline-blue|Print packet}} opens one PDF — the letter, then every exhibit — and {{button:outline-blue|Download PDF}} saves the same file.
+Every exhibit page is stamped with its letter. The letter names the exhibits under the statement, and again in an *Enclosures* line at the foot. The preview on the right shows the letter, then each exhibit as the page it will be.
+
+{{button:outline-blue|Print packet}} opens one PDF in a new tab. It holds the letter, then every exhibit. {{button:outline-blue|Download PDF}} saves the same file. That button also counts the documents in the file.
 
 ## Email it too
 
-{{button:outline-blue|Email with the PDF…}} sends the letter and every exhibit as one attachment to the payer's email (prefilled from the bill) and records the send on the job with the message id as its tracking. It is a second channel, not a replacement: certified mail with a return receipt is what proves delivery, and it is what the § 31.04 presumption and a chapter 53 notice require.
+{{button:outline-blue|Email with the PDF…}} opens a strip at the foot of the window. The **To** box is filled with the payer's email from the bill. The send button counts the documents, like {{button:blue|Send · 3 documents}}. Press it, and the letter and every exhibit go as one attachment.
+
+The send is recorded on the job, with the email's id as its tracking. The deadline watch starts at once.
+
+Email is a second channel, not a replacement. Certified mail with a return receipt is what proves delivery. The § 31.04 presumption and a chapter 53 notice both require it.
 
 ## Record the send
 
-{{button:blue|Save & record send…}} asks how it physically went out — **certified mail**, traceable courier, email, or hand-delivered — plus the tracking number and the mailing date (a notice is effective the day it's mailed). That creates the record; nothing sends from the app, so the legal path stays physical and provable.
+Mail the printed packet yourself. Then press {{button:amber|Save & record send…}} and say how it went out.
+
+1. Pick the method. The choices are **Certified mail**, **Traceable courier**, **Email** and **Hand-delivered**.
+2. Type the number in **Tracking / receipt number**.
+3. Set the mailing day in *Sent on (effective on mailing)*. A notice counts from the day it is mailed.
+4. Press {{button:amber|Record}}.
+
+Recording creates the record and starts the deadline watch. Nothing is mailed from the app. The legal path stays on paper, where it can be proven.
 
 ## The deadline watch
 
-Once recorded:
+Once a letter is recorded, the app keeps it in sight.
 
-- The job's lien icon wears an **amber ring** while the letter is out, and the modal lists every sent letter with **View** (the exact document again) and **Void** (withdrawn or recorded in error).
-- If the deadline passes with the covered lines still unpaid, a **red Needs-you card** appears: *"A demand-letter deadline passed unpaid"* — because the fastest way to make demand letters worthless is to not do the thing they promised. It clears itself when payment lands or the letter is voided.
+- The job's lien icon sits in an amber box while the letter is out.
+- **Sent on this job** lists every sent letter, at the top of the Demand letter tab. **View** opens the exact letter again. **Void** is for a letter that was withdrawn or recorded in error. Press **Confirm void** to finish.
+- The timeline counts the days left on the letter's step. Past the deadline, it counts the days overdue.
+- A red card appears on the Dashboard, under Needs you, when the deadline passes with the covered bills unpaid. It reads *A demand-letter deadline passed unpaid*. A demand letter is worth nothing if you do not do what it promised.
+- The card clears itself when payment lands or the letter is voided.
