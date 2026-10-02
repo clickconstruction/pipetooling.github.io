@@ -1182,7 +1182,7 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId, s
     if (outcome === 'passed') {
       const ok = await confirmDialog({
         title: `Pass on ${candidate.name}?`,
-        message: `The try-out ends and the card moves to Passed with its notes. Their login stays until someone archives it in Settings → Active accounts.`,
+        message: `The try-out ends and the card moves to Passed with its notes. Their login stays until someone archives it from their desk.`,
         confirmLabel: 'Pass',
       })
       if (!ok) return
@@ -1198,7 +1198,7 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId, s
       showToast(`${candidate.name} is hired — a regular helper now`, 'success')
       setStage('hire')
     } else {
-      showToast(`${candidate.name} passed — archive their login in Settings → Active accounts`, 'success')
+      showToast(`${candidate.name} passed — archive their login from their desk`, 'success')
     }
     await load()
   }

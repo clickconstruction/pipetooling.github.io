@@ -18,6 +18,7 @@ Go to People → Users → {{button:blue|+ Hire}}. Anyone who can add to the ros
 - **Name**: the name they will be called everywhere. Pay is keyed by this name. So a second person with the exact same name is refused. Use a distinguishing form.
 - **Kind**: Helper, Subcontractor, Assistant, Leader and so on. It decides the login's role.
 - **Email** and **Send the invite**: with an invite, the login is created. The emailed link lets them set a password. **Start in training mode** keeps every write blocked until you switch it off. Without an email, the person is a roster row only.
+- **How they sign in**: a dev picks **Email them a link** or **Set a password now**. With a password, no email goes out. You type it twice and hand it over yourself.
 - **Starts**: the employment start date, written on the roster row.
 - **Pay**: the hourly wage, always. Tick **Salaried** for a flat 8-hour weekday day priced at that wage. Then pick the workday's start time. A pay row with no wage cannot be saved. That is exactly how a test account once put 40 phantom hours a week into every payroll total.
 - **Paperwork packet**: optional. The documents appear as unsent. You send each one from Contracts.

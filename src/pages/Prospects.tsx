@@ -1994,7 +1994,7 @@ export default function Prospects() {
     return (
       <div style={{ padding: '2rem', textAlign: 'center' }}>
         <p style={{ color: 'var(--text-muted)' }}>
-          You don’t have access to Prospects. A dev can enable &quot;Can access Prospects&quot; for your account in Settings → Active accounts.
+          You don’t have access to Prospects. Ask a dev to open your desk in People and tick Prospects under Extra access.
         </p>
       </div>
     )

@@ -1423,8 +1423,6 @@ export default function Settings() {
           toggleEstimatorGroupMember={toggleEstimatorGroupMember}
           togglePayApproved={togglePayApproved}
           users={users}
-        
-          onActiveAccountsDataChanged={() => { void loadData() }}
         />
       )}
 

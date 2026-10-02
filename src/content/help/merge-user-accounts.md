@@ -13,8 +13,6 @@ Two accounts come from a re-invite, a typo'd email, or an old archived login. **
 
 Open the desk of the person to **keep**. Under Access & account, press {{button:outline|Merge a duplicate…}} on the Status row. The person whose desk it is is always the one kept.
 
-The same merge is also under **Manage accounts…** → {{button:red|Merge users}}, at Settings → People & teams. There you pick both accounts yourself.
-
 ## The rules
 
 1. Both accounts must have the **same role**.

@@ -13,9 +13,9 @@ It works for **any role**, not just assistants. Use it for a new hire finding th
 
 ## Start them in training mode when you invite them
 
-The easiest moment is before they exist. You open People → Users and press {{button:blue|+ Hire}}. The dialog has a ***Start in training mode (read-only)*** checkbox beside the invite. {{button:blue|Invite via email}} and {{button:outline|Manually add user}} on **Manage accounts…** have the same checkbox. You tick it and the account is flagged before their first sign-in. There is nothing to remember afterwards. The invite email names the role in plain words, such as *as a Helper*, never a database label. The role itself is a choice you make on the same dialog. There is no default. See [invite someone to sign in](?g=invite-someone-to-sign-in).
+The easiest moment is before they exist. You open People → Users and press {{button:blue|+ Hire}}. The dialog has a ***Start in training mode (read-only)*** checkbox beside the invite. **Set a password now** on the same form keeps the checkbox. You tick it and the account is flagged before their first sign-in. There is nothing to remember afterwards. The invite email names the role in plain words, such as *as a Helper*, never a database label. The role itself is a choice you make on the same dialog. There is no default. See [invite someone to sign in](?g=invite-someone-to-sign-in).
 
-If the invite link expires before they use it, you run **Invite via email** again for the same address. That replaces the pending account and its link with a fresh one. It is a fresh start. So you **tick Start in training mode again** on the re-invite. The second dialog is what the account will carry, not the first.
+If the invite link expires before they use it, you open their desk and press {{button:outline|Send sign-in email}}. The account keeps its training mode. Nothing has to be ticked again.
 
 ## Turn it on for an existing account
 

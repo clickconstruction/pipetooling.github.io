@@ -1,6 +1,6 @@
-/** Settings → People & accounts tab (dev content): active accounts (via
- * ActiveAccountsPanel — shared with the app-level Active Accounts modal),
- * group memberships, non-user people, and the page-access reference table.
+/** Settings → People & accounts tab (dev content): a pointer to where accounts live
+ * (People → Users → Account and each person's desk, since the Active Accounts window retired
+ * in Account on the desk PR D2), group memberships, non-user people, and the page-access table.
  * Presentational; remaining state/handlers live in the parent (Settings.tsx). */
 import { type Dispatch, type FormEvent, type SetStateAction } from 'react'
 import type { PersonRow, UserRow } from '../../types/settingsRows'
@@ -10,7 +10,6 @@ import QuickAddSettingsBlock from './QuickAddSettingsBlock'
 import TypedHoursSwitchBlock from './TypedHoursSwitchBlock'
 import BulkHoursAlertSettingsBlock from './BulkHoursAlertSettingsBlock'
 import { Link } from 'react-router-dom'
-import { useActiveAccountsModal } from '../../contexts/ActiveAccountsModalContext'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { telHrefFor } from '../../lib/phoneContact'
 
@@ -69,7 +68,6 @@ type SettingsPeopleTabProps = {
   mergeDuplicates: Array<{ personName: string; userDisplayName: string; email: string }>
   mergingPersonName: string | null
   handleMergeDuplicate: (dup: { personName: string; userDisplayName: string; email: string }) => void
-  onActiveAccountsDataChanged: () => void
   payApprovedError: string | null
   payApprovedMasterIds: Set<string>
   payApprovedMasters: UserRow[]
@@ -124,7 +122,6 @@ export default function SettingsPeopleTab({
   mergeDuplicates,
   mergingPersonName,
   handleMergeDuplicate,
-  onActiveAccountsDataChanged,
   payApprovedError,
   payApprovedMasterIds,
   payApprovedMasters,
@@ -149,8 +146,6 @@ export default function SettingsPeopleTab({
   togglePayApproved,
   users,
 }: SettingsPeopleTabProps) {
-  const accountsModal = useActiveAccountsModal()
-
   return (
     <>
           {/* v2.3705 (People spine PR 6): accounts live on the roster — the same pattern Team feedback took (v2.2835). */}
@@ -161,12 +156,9 @@ export default function SettingsPeopleTab({
               <Link to="/people?tab=users&lens=account" style={{ color: 'var(--text-link)', fontWeight: 600 }}>
                 People → Users → Account
               </Link>
-              : roles, sign-ins, training mode and supervision on every row; <Link to="/people?tab=users" style={{ color: 'var(--text-link)' }}>+ Hire</Link> makes a login with the roster row; password, name and merge sit on a person&rsquo;s desk.
+: roles, sign-ins, training mode and supervision on every row. <Link to="/people?tab=users" style={{ color: 'var(--text-link)' }}>+ Hire</Link> makes a login with the roster row. Name, email, password, merge and archive sit on a person&rsquo;s desk, and archived logins under Archived.
             </span>
             <span style={{ display: 'inline-flex', gap: '0.4rem', marginLeft: 'auto' }}>
-              <button type="button" className="activeAccountsCard__btnSecondary" onClick={() => accountsModal?.openActiveAccounts({ onDataChanged: onActiveAccountsDataChanged })} title="The full accounts table — password, name, email, merge, archived accounts">
-                Manage accounts…
-              </button>
               <button type="button" className="activeAccountsCard__btnSecondary" onClick={openFindDuplicatesModal} title="A roster row and an account that are the same person">
                 Find duplicates…
               </button>

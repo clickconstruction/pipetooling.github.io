@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
-import { useActiveAccountsModal } from '../../contexts/ActiveAccountsModalContext'
+import { useOptionalPersonDesk } from '../../contexts/PersonDeskContext'
 import { createMissingSampleAccounts } from '../../lib/sampleAccounts'
 import { missingSampleRoles } from '../../lib/viewAs'
 import { humanRoleLabel } from '../../lib/roleLabels'
@@ -13,11 +13,12 @@ type SampleRow = { id: string; name: string | null; email: string; role: string;
  * Settings → System → Digital twins & samples → Sample accounts (People spine PR 6, v2.3705).
  * The View-as fixtures live beside the twins, not in the people roster: one login per imitable
  * role, hidden everywhere else. Make the missing ones here; set a sample's switches (training,
- * Hiring grants) through Manage accounts…, the same rows a person's account has.
+ * Hiring grants, password) on its desk (Account on the desk, PR D2), the same rows a person's
+ * account has. Samples are hidden from People → Users, so this card is their door.
  */
 export default function SampleAccountsCard() {
   const { showToast } = useToastContext()
-  const accountsModal = useActiveAccountsModal()
+  const personDesk = useOptionalPersonDesk()
   const [rows, setRows] = useState<SampleRow[] | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -67,6 +68,11 @@ export default function SampleAccountsCard() {
               <span style={{ ...MUTED, fontFamily: 'ui-monospace, Menlo, monospace', fontSize: '0.75rem' }}>{r.email}</span>
               {r.read_only ? <span style={{ fontSize: '0.7rem', borderRadius: 999, padding: '0 0.4rem', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }}>training</span> : null}
               {r.archived_at ? <span style={{ fontSize: '0.7rem', borderRadius: 999, padding: '0 0.4rem', background: 'var(--bg-muted)', color: 'var(--text-700)' }}>archived</span> : null}
+              {personDesk?.canOpen ? (
+                <button type="button" style={{ ...BTN, marginLeft: 'auto', padding: '0.1rem 0.5rem', fontSize: '0.75rem' }} onClick={() => personDesk.open({ userId: r.id, displayName: r.name ?? r.email, section: 'access' })} title="Training mode, Hiring board, password: the same rows a person's account has">
+                  Desk
+                </button>
+              ) : null}
             </li>
           ))}
         </ul>
@@ -75,11 +81,6 @@ export default function SampleAccountsCard() {
         {missing.length > 0 ? (
           <button type="button" style={BTN} disabled={busy} onClick={() => void makeMissing()}>
             {busy ? 'Creating…' : `Create the missing samples (${missing.length})`}
-          </button>
-        ) : null}
-        {accountsModal ? (
-          <button type="button" style={BTN} onClick={() => accountsModal.openActiveAccounts({ onDataChanged: () => void load() })} title="Training mode, Hiring grants, password — the same row a person's account has">
-            Manage accounts…
           </button>
         ) : null}
       </div>

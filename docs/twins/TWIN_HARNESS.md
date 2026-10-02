@@ -126,9 +126,8 @@ long-run scorecard, since twins are excluded from human metrics but not from the
 
 ## Operator runbook (owner side)
 
-- **Mint a twin**: Active Accounts → Manually add user (role estimator,
-  `twin-<role>-<n>@twins.pipetooling.local`), then flag it:
-  `update users set is_digital_twin = true, read_only = true where email = '…'` (dev).
+- **Mint a twin**: Settings → System → Digital twins → ① mint a twin (`create-user`, role estimator,
+  `twin-<role>-<n>@twins.pipetooling.local`), which flags it `is_digital_twin` and `read_only`.
 - **Issue a per-twin token**: Settings → System → Digital twins → **Issue key** on the
   twin's card (dev role). The key is shown once; only its sha256 lands in
   `twin_credentials`. Label it per partner — revocation is per-key.

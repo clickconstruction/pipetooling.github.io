@@ -72,7 +72,7 @@ now binds it). ZZ naming applies.
 > your contact from today.
 
 **Verification (scorer):** the bid exists with `created_by` = the twin's user id
-(Active Accounts → the twin's id; or the board's Estimator column); its due date is
+(Settings → System → Digital twins lists each twin; or the board's Estimator column); its due date is
 +7 days; a `bids_submission_entries` row with method Phone and the note exists and the
 board's Last Contact shows today (+0). **Fence checks ride along**: the twin must NOT
 have been able to modify any bid it didn't create (spot-probe: as the twin, an edit to a

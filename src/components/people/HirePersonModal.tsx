@@ -11,6 +11,7 @@ import {
   findNameCollision,
   hirePlan,
   inviteHire,
+  createHireLogin,
   saveSalaryTemplate,
   upsertPayConfigRow,
   type HireInput,
@@ -48,6 +49,9 @@ export function HirePersonModal({
     kind: 'helper',
     email: '',
     invite: isDev,
+    signInBy: 'email',
+    password: '',
+    passwordAgain: '',
     startInTraining: false,
     startDate: denverWorkDateToday(),
     hourlyWage: null,
@@ -90,14 +94,17 @@ export function HirePersonModal({
     const name = input.name.trim()
     switch (step.id) {
       case 'account': {
-        const r = await inviteHire(supabase, {
-          email: input.email,
-          kind: input.kind,
-          name,
-          startInTraining: input.startInTraining,
-          startDate: input.startDate,
-          redirectTo: new URL('accept-invite', window.location.href).href,
-        })
+        const r =
+          input.signInBy === 'password'
+            ? await createHireLogin(supabase, { email: input.email, kind: input.kind, name, password: input.password ?? '', startInTraining: input.startInTraining, startDate: input.startDate })
+            : await inviteHire(supabase, {
+                email: input.email,
+                kind: input.kind,
+                name,
+                startInTraining: input.startInTraining,
+                startDate: input.startDate,
+                redirectTo: new URL('accept-invite', window.location.href).href,
+              })
         let personId = r.personId
         // A function deployed before v2.3701 answers without the roster row: make it here, linked.
         if (!personId) personId = await createRosterRow(supabase, { masterUserId: authUserId, kind: input.kind, name, email: input.email, accountUserId: r.userId, startDate: input.startDate })
@@ -218,6 +225,32 @@ export function HirePersonModal({
                     </label>
                   ) : null}
                 </div>
+              ) : null}
+              {isDev && input.invite ? (
+                <fieldset style={{ margin: 0, border: 'none', padding: 0, display: 'grid', gap: '0.35rem' }}>
+                  <legend style={{ padding: 0, color: 'var(--text-muted)' }}>How they sign in</legend>
+                  <span style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                      <input type="radio" name="hire-sign-in" checked={input.signInBy !== 'password'} onChange={() => set('signInBy', 'email')} /> Email them a link
+                    </label>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                      <input type="radio" name="hire-sign-in" checked={input.signInBy === 'password'} onChange={() => set('signInBy', 'password')} /> Set a password now
+                    </label>
+                  </span>
+                  {input.signInBy === 'password' ? (
+                    <span style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '0.5rem' }}>
+                      <label style={{ display: 'grid', gap: '0.2rem' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Password</span>
+                        <input type="password" autoComplete="new-password" value={input.password ?? ''} onChange={(e) => set('password', e.target.value)} style={{ fontSize: '0.875rem', padding: '0.3rem 0.5rem' }} aria-label="Password" />
+                      </label>
+                      <label style={{ display: 'grid', gap: '0.2rem' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Type it again</span>
+                        <input type="password" autoComplete="new-password" value={input.passwordAgain ?? ''} onChange={(e) => set('passwordAgain', e.target.value)} style={{ fontSize: '0.875rem', padding: '0.3rem 0.5rem' }} aria-label="Type the password again" />
+                      </label>
+                      <span style={{ gridColumn: '1 / -1', color: 'var(--text-muted)', fontSize: '0.75rem' }}>No email goes out. Give them the password in person or by phone.</span>
+                    </span>
+                  ) : null}
+                </fieldset>
               ) : null}
 
               {canAccessPay ? (

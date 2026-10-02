@@ -90,7 +90,7 @@ Access gates:
 6. **Logic duplicated with other surfaces** (collapse or cross-link; do not "fix" during a move):
    - The prospects-staff audience predicate exists 4× on the client: `canAccessProspectPipeline` (`lib/prospects/prospectConversion.ts`), `hasProspectsStaffAccess` (`lib/hiring/columnShares.ts`, the twin of DB `user_has_prospects_staff_access()`), and the PostgREST string `.or('role.in.(dev,master_technician,assistant,controller),and(role.eq.estimator,estimator_prospects_access.eq.true)')` in both `loadWeekReport` (1112) and `lib/prospectTeamActivity.ts` (34).
    - "Called" (`CALL_INTERACTION_TYPES`) is loaded twice by unbounded full scans of call comments: `loadFollowUpProspects` 514 and `loadProspectListProspects` 652–656. `loadWeekReport` hard-codes `['didnt_answer', 'answered', 'converted']` (1116).
-   - `team_prospect_role_shares` is read 3×: TPT `load()`, `useMyHiringShares` (this page's gate) and `useHiringColumnShares` (`ActiveAccountsPanel` in the app-level Active accounts modal, opened by "Manage accounts…"). `team_prospect_roles` is read by TPT `load()` and `useHiringColumnShares`.
+   - `team_prospect_role_shares` is read 3×: TPT `load()`, `useMyHiringShares` (this page's gate) and `useHiringColumnShares` (the person desk's Access & account section, the *Hiring columns shared with them* line; v2.4348, it was the retired Active Accounts window). `team_prospect_roles` is read by TPT `load()` and `useHiringColumnShares`.
    - Quickfill's [`prospectWarmthCounts.ts`](../src/lib/prospectWarmthCounts.ts) still buckets by warmth and counts `converted` as active. Its doc comment says it matches the Prospect List, but the list regrouped by pipeline stage in v2.2453, so the two have drifted apart.
 
 ## Per-tab dossiers
