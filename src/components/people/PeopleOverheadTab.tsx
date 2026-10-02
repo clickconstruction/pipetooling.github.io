@@ -1898,7 +1898,7 @@ export default function PeopleOverheadTab({
             justifyContent: 'center',
             padding: '1rem',
           }}
-          onMouseDown={(e) => {
+          onClick={(e) => {
             if (e.target === e.currentTarget) setOverheadBreakdownModal(null)
           }}
         >
@@ -2285,7 +2285,7 @@ export default function PeopleOverheadTab({
             justifyContent: 'center',
             padding: '1rem',
           }}
-          onMouseDown={(e) => {
+          onClick={(e) => {
             if (e.target === e.currentTarget) setOverheadOfficeJobModalOpen(false)
           }}
         >
@@ -2450,7 +2450,7 @@ export default function PeopleOverheadTab({
             justifyContent: 'center',
             padding: '1rem',
           }}
-          onMouseDown={(e) => {
+          onClick={(e) => {
             if (e.target === e.currentTarget) setOverheadJobPickerOpen(false)
           }}
         >

@@ -131,5 +131,13 @@ describe('LienReleaseModal — our waiver to the GC (v2.4274)', () => {
     expect(within(pad).queryByRole('textbox')).toBeNull()
     expect(within(pad).getByTestId('lien-waiver-sign-foot').textContent).toContain('Malachi Reyes, Click')
     expect(within(pad).getByRole('button', { name: 'Sign it' })).toBeTruthy()
+    // v2.4339: the checkbox sentence is short enough for one line, the row is centred under the page,
+    // and the box sits level with the words.
+    const agree = within(pad).getByTestId('lien-waiver-agree-row')
+    expect(agree.textContent).toBe('I, Malachi Reyes, have read this release and agree to sign it.')
+    expect(agree.style.justifyContent).toBe('center')
+    expect(agree.style.alignItems).toBe('center')
+    // …and Sign it / Not now sit centred under it, so the tick and the button line up.
+    expect(within(pad).getByTestId('lien-waiver-sign-actions').style.justifyContent).toBe('center')
   })
 })

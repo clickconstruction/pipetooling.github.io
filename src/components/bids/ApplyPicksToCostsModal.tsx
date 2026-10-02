@@ -219,7 +219,7 @@ export function ApplyPicksToCostsModal({
   const mono: CSSProperties = { fontFamily: 'ui-monospace, Menlo, monospace', fontVariantNumeric: 'tabular-nums' }
 
   return createPortal(
-    <div style={{ position: 'fixed', inset: 0, zIndex: MODAL_Z, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '1.5rem 1rem', overflowY: 'auto' }} role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: MODAL_Z, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '1.5rem 1rem', overflowY: 'auto' }} role="presentation" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
       <div role="dialog" aria-modal="true" aria-label="Apply picks to costs" style={{ background: 'var(--surface)', borderRadius: 8, maxWidth: 780, width: '100%', boxShadow: '0 10px 40px rgba(0,0,0,0.2)', padding: '1.1rem 1.25rem 0.9rem', display: 'flex', flexDirection: 'column', gap: '0.7rem' }} onMouseDown={(e) => e.stopPropagation()}>
         <div>
           <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, color: 'var(--text-strong)' }}>Apply picks to costs</h2>

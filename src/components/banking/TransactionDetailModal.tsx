@@ -446,7 +446,7 @@ export function TransactionDetailModal({
     <>
     <div
       role="presentation"
-      onMouseDown={(e) => {
+      onClick={(e) => {
         if (e.target === e.currentTarget && !savingSplits && !savingLabel && !savingNote) onClose()
       }}
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex, padding: '1rem', boxSizing: 'border-box' }}

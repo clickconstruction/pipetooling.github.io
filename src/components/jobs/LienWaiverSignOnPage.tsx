@@ -212,16 +212,18 @@ export function LienWaiverSignAgree({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }} data-testid="lien-waiver-sign-agree">
       <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>{disclosure}</p>
-      <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', fontSize: '0.875rem', cursor: 'pointer' }}>
-        <input type="checkbox" checked={agreed} onChange={(e) => onAgreedChange(e.target.checked)} disabled={submitting} style={{ marginTop: 3 }} />
+      {/* v2.4339: one short line, centred under the page, with the box level with the words (Grace, job 650). */}
+      <label data-testid="lien-waiver-agree-row" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'center', fontSize: '0.875rem', cursor: 'pointer' }}>
+        <input type="checkbox" checked={agreed} onChange={(e) => onAgreedChange(e.target.checked)} disabled={submitting} style={{ margin: 0, flex: '0 0 auto' }} />
         <span>{agreeLabel}</span>
       </label>
       {error ? (
-        <p role="alert" style={{ margin: 0, color: 'var(--text-red-700)', fontSize: '0.85rem' }}>
+        <p role="alert" style={{ margin: 0, color: 'var(--text-red-700)', fontSize: '0.85rem', textAlign: 'center' }}>
           {error}
         </p>
       ) : null}
-      <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+      {/* v2.4339: the buttons sit centred under the centred checkbox, so the tick and Sign it line up. */}
+      <div data-testid="lien-waiver-sign-actions" style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
         <button
           type="button"
           onClick={onSubmit}

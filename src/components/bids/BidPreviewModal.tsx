@@ -342,7 +342,7 @@ export function BidPreviewModal({
       className={paneMode ? undefined : 'bid-preview-overlay'}
       style={paneMode ? undefined : overlayStyle}
       role={paneMode ? undefined : 'presentation'}
-      onMouseDown={
+      onClick={
         paneMode
           ? undefined
           : (e) => {

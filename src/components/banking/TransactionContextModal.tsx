@@ -210,7 +210,7 @@ export function TransactionContextModal({ open, onClose, anchor, nicknameByAccou
   return (
     <div
       role="presentation"
-      onMouseDown={(e) => {
+      onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex, padding: '1rem', boxSizing: 'border-box' }}

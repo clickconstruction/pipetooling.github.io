@@ -421,7 +421,7 @@ export function PersonDeskPaySection({
       )}
 
       {scheduleOpen && userId && payName ? (
-        <div role="dialog" aria-modal="true" aria-label="Workday schedule" style={{ position: 'fixed', inset: 0, zIndex: DESK_EDITOR_Z, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onMouseDown={(e) => e.target === e.currentTarget && setScheduleOpen(false)}>
+        <div role="dialog" aria-modal="true" aria-label="Workday schedule" style={{ position: 'fixed', inset: 0, zIndex: DESK_EDITOR_Z, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={(e) => e.target === e.currentTarget && setScheduleOpen(false)}>
           <div style={{ background: 'var(--surface)', borderRadius: 8, width: 'min(720px, 96vw)', maxHeight: '90vh', overflow: 'auto', padding: '1rem 1.1rem', boxShadow: '0 16px 40px rgba(0,0,0,0.25)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
               <h2 style={{ margin: 0, fontSize: '1.05rem' }}>{personKey.displayName} · workday schedule</h2>

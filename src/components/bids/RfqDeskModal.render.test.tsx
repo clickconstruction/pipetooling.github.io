@@ -321,7 +321,7 @@ describe('RfqDeskModal', () => {
     expect(d.onClose).toHaveBeenCalledTimes(3)
     const backdrop = screen.getByRole('dialog', { name: 'Price requests' }).parentElement
     if (!backdrop) throw new Error('the desk has no backdrop')
-    fireEvent.mouseDown(backdrop)
+    fireEvent.click(backdrop)
     expect(d.onClose).toHaveBeenCalledTimes(4)
 
     // Looking and leaving writes nothing.

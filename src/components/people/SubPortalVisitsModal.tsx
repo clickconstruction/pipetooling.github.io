@@ -112,8 +112,10 @@ export function SubPortalVisitsModal({ personId, personName, onClose }: SubPorta
   )
   const btn = (primary: boolean) => ({ padding: '0.35rem 0.8rem', background: primary ? '#2563eb' : 'var(--surface)', color: primary ? 'white' : 'var(--text-700)', border: primary ? 'none' : '1px solid var(--border-strong)', borderRadius: 6, cursor: busy ? 'wait' : 'pointer', fontSize: '0.8125rem', fontWeight: 600 }) as const
 
+  // The sheet story draws this inside its own backdrop: a click outside closes the visits only,
+  // not the story behind them (v2.4352).
   return (
-    <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 70, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12 }}>
+    <div role="presentation" onClick={(e) => { e.stopPropagation(); onClose() }} style={{ position: 'fixed', inset: 0, zIndex: 70, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12 }}>
       <div role="dialog" aria-modal="true" aria-label={`${personName}'s portal visits`} onClick={(e) => e.stopPropagation()} style={{ width: 'min(540px, 100%)', maxHeight: '90vh', display: 'flex', flexDirection: 'column', background: 'var(--surface)', color: 'inherit', border: '1px solid var(--border-strong)', borderRadius: 12, boxShadow: '0 20px 50px rgba(0,0,0,0.35)', overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, padding: '0.85rem 1rem 0.6rem', borderBottom: '1px solid var(--border)' }}>
           <b style={{ fontSize: '0.95rem' }}>{personName}'s portal · visits</b>

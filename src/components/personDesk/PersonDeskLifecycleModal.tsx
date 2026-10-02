@@ -314,7 +314,7 @@ export function PersonDeskLifecycleModal({
       : `${summary.open} open · ${summary.done} done${summary.leftOpen ? ` · ${summary.leftOpen} left open` : ''} — the button unlocks when every row is green, not applicable, or left open on purpose`
 
   return (
-    <div role="dialog" aria-modal="true" aria-label={title} style={{ position: 'fixed', inset: 0, zIndex: DESK_EDITOR_Z, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div role="dialog" aria-modal="true" aria-label={title} style={{ position: 'fixed', inset: 0, zIndex: DESK_EDITOR_Z, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div style={{ background: 'var(--surface)', borderRadius: 8, width: 'min(680px, 96vw)', maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 16px 40px rgba(0,0,0,0.25)', overflow: 'hidden' }}>
         <div style={{ padding: '0.85rem 1rem 0.55rem', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>

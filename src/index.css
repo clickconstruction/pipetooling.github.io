@@ -4677,6 +4677,14 @@ div.bid-mark-board-row[data-marked='true'] { box-shadow: inset 3px 0 0 var(--bid
   }
 }
 
+/* Procurement log (2026-10-02): a line's item opens its submittal row's Edit window — the house,
+   lead time and stage are changed there, without scrolling up to the rows. */
+.procure-item-open { display: block; width: 100%; margin: -0.2rem -0.3rem; padding: 0.2rem 0.3rem; border: none; border-radius: 6px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.procure-item-open:hover { background: var(--bg-blue-tint); }
+.procure-item-open:hover .procure-item-name { text-decoration: underline; text-underline-offset: 2px; }
+.procure-item-open:focus-visible { outline: 2px solid var(--text-link); outline-offset: 0; }
+.procure-item-edit { color: var(--text-blue-700); font-weight: 600; }
+
 /* Release of Lien, click to look (v2.4337): a folded step is a button that opens it read-only in
    place; the number on the rail does the same; the page marks what the opened step filled in. */
 .lienStep-dot[data-click='true'] { cursor: pointer; }

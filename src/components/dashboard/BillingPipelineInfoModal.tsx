@@ -100,7 +100,7 @@ export function BillingPipelineInfoModal({ open, onClose }: { open: boolean; onC
         padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
         boxSizing: 'border-box',
       }}
-      onMouseDown={(e) => {
+      onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
     >

@@ -49,7 +49,7 @@ export function EmailReportsModal({
     <div
       style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, overflowY: 'auto' }}
       role="presentation"
-      onMouseDown={(e) => {
+      onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
     >

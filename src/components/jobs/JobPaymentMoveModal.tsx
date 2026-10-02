@@ -139,7 +139,7 @@ export function JobPaymentMoveModal({
   const amount = `$${formatCurrency(Number(payment.amount ?? 0))}`
 
   return (
-    <div role="presentation" style={overlay} onMouseDown={(e) => { if (e.target === e.currentTarget && !busy) onClose() }}>
+    <div role="presentation" style={overlay} onClick={(e) => { if (e.target === e.currentTarget && !busy) onClose() }}>
       <div role="dialog" aria-modal="true" aria-label="Move this payment" style={card} onMouseDown={(e) => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
           <h3 style={{ margin: 0, fontSize: '1.05rem' }}>Move this payment</h3>

@@ -93,6 +93,7 @@ describe('PersonDeskAccessSection', () => {
     expect(screen.getByLabelText('Can run a job on their own')).toBeTruthy()
     expect(screen.getByText('Plumbing')).toBeTruthy()
     expect(screen.queryByText(/Manage account/)).toBeNull()
+    expect(screen.getByRole('button', { name: 'Merge a duplicate…' })).toBeTruthy()
     // A helper has no Hiring board or CountTooling row.
     expect(screen.queryByText('Extra access')).toBeNull()
     expect(screen.queryByText('CountTooling')).toBeNull()
@@ -174,6 +175,7 @@ describe('PersonDeskAccessSection', () => {
     expect(screen.queryByRole('button', { name: 'Set password…' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Trades…' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Change…' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Merge a duplicate…' })).toBeNull()
     expect(screen.getAllByText('dev only').length).toBeGreaterThan(0)
     expect((screen.getByLabelText('Can run a job on their own') as HTMLInputElement).disabled).toBe(false)
     expect(screen.getByRole('button', { name: 'Archive…' })).toBeTruthy()

@@ -111,7 +111,12 @@ export function UserReviewSwitchUserModal({
         boxSizing: 'border-box',
       }}
       role="presentation"
-      onClick={onClose}
+      onClick={(e) => {
+        // Drawn inside the user review window's backdrop: a click outside closes this window
+        // only, not the review behind it (v2.4352).
+        e.stopPropagation()
+        onClose()
+      }}
       onKeyDown={handleKeyDown}
     >
       <div

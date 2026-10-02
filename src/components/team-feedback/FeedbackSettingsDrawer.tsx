@@ -22,7 +22,7 @@ export default function FeedbackSettingsDrawer({ row, onSaved, onClose, narrow }
   }, [onClose])
   if (typeof document === 'undefined') return null
   return createPortal(
-    <div role="presentation" onMouseDown={(e) => e.target === e.currentTarget && onClose()} style={backdrop}>
+    <div role="presentation" onClick={(e) => e.target === e.currentTarget && onClose()} style={backdrop}>
       <div role="dialog" aria-modal="true" aria-labelledby="feedback-settings-title" onMouseDown={(e) => e.stopPropagation()} style={{ ...panel, width: narrow ? '100%' : 'min(640px, 100%)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.85rem 1rem', borderBottom: '1px solid var(--border)' }}>
           <h2 id="feedback-settings-title" style={{ margin: 0, fontSize: '1.05rem', color: 'var(--text-strong)' }}>

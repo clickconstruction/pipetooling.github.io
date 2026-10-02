@@ -159,6 +159,12 @@ Never raise `max_rows` instead — it moves the cliff and hides it again.
 
 **Adding a new code family**: extend `ACCESS_DENIED_CODES` / `BROKEN_LINK_CODES` / `TRANSIENT_SERVER_CODES` in `errorHandling.ts` and add the case to `src/utils/errorHandling.test.ts`. Never add a message-text token for a server error.
 
+## "AbortError: Lock was stolen by another request"
+
+**Symptoms**: a read fails at app start with *Lock was stolen by another request* (Safari) or *Lock broken by another request with the 'steal' option* (Chrome), most often after a laptop wakes, on a slow signal, or with several app tabs open.
+
+**Cause**: supabase-js reads the login under a browser lock (`lock:sb-<ref>-auth-token`) before every request. When renewing the login holds it past 5 s, the next request steals it and the one waiting is rejected before it is sent. Since v2.4350 `isAuthLockStolenError` makes `isRetryableError` retry it (every other `AbortError` is still the user cancelling), and both formatters show *The app was busy renewing your sign-in, so this did not load.* A screen still showing it has run out of retries; a reload clears it.
+
 ## RPC returns 404 (e.g. approve_clock_sessions)
 
 **Symptoms**: RPC call returns 404 even though the function exists in the database.

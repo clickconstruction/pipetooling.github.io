@@ -136,6 +136,30 @@ describe('SubmittalItemEditDialog · parts, each bought on its own (2026-10-01)'
     expect('supply_house_id' in saved).toBe(false)
   })
 
+  it('2026-10-02 · opened from a Procure line: the part tapped is ringed with its house box ready; Save leaves a tag nobody changed as it was', () => {
+    const onSave = vi.fn<(p: SubmittalItemPatch) => void>()
+    renderWithProviders(<SubmittalItemEditDialog item={item({ tag: 'Kitchen sinks', status: 'proposed' })} parts={parts} houses={houses} sourceFiles={[]} canEditProduct focusPartId="faucet" onSave={onSave} onClose={() => {}} />)
+    const ringed = screen.getAllByTestId('part-editor-row').filter((r) => r.getAttribute('data-focused') === 'true')
+    expect(ringed).toHaveLength(1)
+    expect((ringed[0]!.querySelector('input[aria-label="Part 2"]') as HTMLInputElement).value).toBe('TOTO T25S51E#CP')
+    expect(document.activeElement).toBe(screen.getByLabelText('House for part 2'))
+    fireEvent.change(screen.getByLabelText('House for part 2'), { target: { value: 'h-moore' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    const saved = onSave.mock.calls[0]![0]
+    expect(saved.parts![1]).toMatchObject({ id: 'faucet', supply_house_id: 'h-moore' })
+    // Opening a row to change a house never renames it (a tag line on the log is keyed by the tag).
+    expect('tag' in saved).toBe(false)
+  })
+
+  it('2026-10-02 · a tag typed in Edit is still saved, in capitals', () => {
+    const onSave = vi.fn<(p: SubmittalItemPatch) => void>()
+    renderWithProviders(<SubmittalItemEditDialog item={item({ tag: 'LAV-1', status: 'proposed' })} parts={parts} houses={houses} sourceFiles={[]} canEditProduct onSave={onSave} onClose={() => {}} />)
+    expect(screen.getAllByTestId('part-editor-row').some((r) => r.getAttribute('data-focused') === 'true')).toBe(false)
+    fireEvent.change(screen.getByLabelText('Tag'), { target: { value: 'lav-1a' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    expect(onSave.mock.calls[0]![0].tag).toBe('LAV-1A')
+  })
+
   it('a lead time that does not read holds Save; on a shared revision a part’s name and switch are fixed', () => {
     renderWithProviders(<SubmittalItemEditDialog item={item({ tag: 'LAV-1' })} parts={parts} houses={houses} sourceFiles={[]} onSave={() => {}} onClose={() => {}} />)
     expect(screen.queryByLabelText('Part 1')).toBeNull()

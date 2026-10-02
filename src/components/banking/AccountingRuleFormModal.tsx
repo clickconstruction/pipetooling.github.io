@@ -415,7 +415,7 @@ export function AccountingRuleFormModal({
         padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
         boxSizing: 'border-box',
       }}
-      onMouseDown={(e) => {
+      onClick={(e) => {
         if (e.target === e.currentTarget && !controlsDisabled) onClose()
       }}
     >
@@ -791,7 +791,7 @@ export function AccountingRuleFormModal({
             padding: '1rem',
             boxSizing: 'border-box',
           }}
-          onMouseDown={(e) => {
+          onClick={(e) => {
             if (deleting) return
             if (e.target === e.currentTarget) setDeleteConfirmOpen(false)
           }}

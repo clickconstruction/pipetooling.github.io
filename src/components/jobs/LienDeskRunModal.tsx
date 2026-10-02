@@ -176,7 +176,12 @@ export default function LienDeskRunModal({
       aria-modal="true"
       aria-label="Send the run"
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 90 }}
-      onClick={onClose}
+      onClick={(e) => {
+        // The Lien desk and Put a GC on notice draw the run inside their own backdrop: a click
+        // outside closes the run only, not the window behind it (v2.4352).
+        e.stopPropagation()
+        onClose()
+      }}
     >
       <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 10, width: 'min(960px, calc(100vw - 2rem))', maxHeight: '90vh', display: 'grid', gridTemplateRows: 'auto 1fr auto', overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', padding: '1rem 1.25rem 0.6rem', borderBottom: '1px solid var(--border)' }}>

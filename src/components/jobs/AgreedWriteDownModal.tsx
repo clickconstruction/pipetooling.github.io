@@ -206,6 +206,10 @@ export default function AgreedWriteDownModal({
         zIndex: overlayZIndex,
         padding: '1rem',
       }}
+      // A click outside does not close this window, and no click in it reaches the window behind:
+      // the Legal desk draws it inside the desk's backdrop, and the desk closed on the first click
+      // anywhere in here (v2.4352).
+      onClick={(e) => e.stopPropagation()}
       role="dialog"
       aria-modal="true"
       aria-labelledby="agreed-discount-title"

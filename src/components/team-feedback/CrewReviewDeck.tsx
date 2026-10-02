@@ -234,7 +234,7 @@ export default function CrewReviewDeck({ open, onClose, userId, source, skipIntr
   const draftHasContent = crewDraftHasContent(draft)
 
   return (
-    <div role="presentation" style={overlayStyle} onMouseDown={(e) => e.target === e.currentTarget && step === 'intro' ? void dismissAsSkip('button') : undefined}>
+    <div role="presentation" style={overlayStyle} onClick={(e) => e.target === e.currentTarget && step === 'intro' ? void dismissAsSkip('button') : undefined}>
       <div role="dialog" aria-modal="true" aria-labelledby="crew-deck-title" style={dialogStyle} onMouseDown={(e) => e.stopPropagation()}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1rem', borderBottom: '1px solid var(--border)' }}>
           <span style={{ fontSize: '0.75rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>

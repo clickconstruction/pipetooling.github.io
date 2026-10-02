@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { OFFLINE_ERROR_MESSAGE } from '../lib/networkErrorMessage'
 import {
+  AUTH_LOCK_ERROR_MESSAGE,
   classifyResultError,
   DatabaseError,
   databaseErrorFromResult,
@@ -10,6 +11,7 @@ import {
   formatErrorMessage,
   formatPostgrestOrUnknownError,
   humanizeOperationName,
+  isAuthLockStolenError,
   isRetryableError,
   operationSubject,
   OperationTimeoutError,
@@ -258,6 +260,49 @@ describe('isRetryableError — transient vs permanent', () => {
     expect(isRetryableError(new Error('too many connections'))).toBe(true)
     expect(isRetryableError(new Error('deadlock detected'))).toBe(true)
     expect(isRetryableError(new DatabaseError('Persist did not return an id for this segment.'))).toBe(false)
+  })
+})
+
+/** What supabase-js returns when its sign-in lock was stolen before the request went out (Safari's words). */
+const LOCK_STOLEN_RESULT: SupabaseClientResult<never> = {
+  data: null,
+  error: { message: 'AbortError: Lock was stolen by another request', details: 'AbortError: Lock was stolen by another request\n    at …', hint: '', code: '' },
+  status: 0,
+}
+
+describe('a stolen sign-in lock (v2.4350: "Failed to clock sessions open for user: AbortError: Lock was stolen…")', () => {
+  it('is retried, and the next try loads', async () => {
+    let calls = 0
+    const op = vi.fn(async (): Promise<SupabaseClientResult<string[]>> => (++calls === 1 ? LOCK_STOLEN_RESULT : { data: ['open session'], error: null, status: 200 }))
+    await expect(withSupabaseRetry(op, 'clock_sessions open for user', FAST)).resolves.toEqual(['open session'])
+    expect(op).toHaveBeenCalledTimes(2)
+  })
+
+  it('reads in plain words when every try lost the lock', async () => {
+    const op = vi.fn(async () => LOCK_STOLEN_RESULT)
+    let caught: unknown
+    try {
+      await withSupabaseRetry(op, 'clock_sessions open for user', { ...FAST, maxRetries: 1 })
+    } catch (e) {
+      caught = e
+    }
+    expect(op).toHaveBeenCalledTimes(2)
+    expect(isAuthLockStolenError(caught)).toBe(true)
+    expect(formatErrorMessage(caught)).toBe(AUTH_LOCK_ERROR_MESSAGE)
+    expect(formatPostgrestOrUnknownError(caught, 'fallback')).toBe(AUTH_LOCK_ERROR_MESSAGE)
+  })
+
+  it("Chrome's words and a raw AbortError count too", () => {
+    const chrome = Object.assign(new Error("Lock broken by another request with the 'steal' option."), { name: 'AbortError' })
+    expect(isAuthLockStolenError(chrome)).toBe(true)
+    expect(isRetryableError(chrome)).toBe(true)
+  })
+
+  it('any other abort is still the user cancelling, and is not retried', () => {
+    const cancel = Object.assign(new Error('The user aborted a request.'), { name: 'AbortError' })
+    expect(isAuthLockStolenError(cancel)).toBe(false)
+    expect(isRetryableError(cancel)).toBe(false)
+    expect(isRetryableError(databaseErrorFromResult({ message: 'AbortError: signal is aborted without reason', code: '' }, 'load jobs'))).toBe(false)
   })
 })
 

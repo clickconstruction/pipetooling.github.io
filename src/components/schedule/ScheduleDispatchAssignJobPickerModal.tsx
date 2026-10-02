@@ -204,7 +204,12 @@ export function ScheduleDispatchAssignJobPickerModal({
         justifyContent: 'center',
         zIndex: 1003,
       }}
-      onClick={onClose}
+      onClick={(e) => {
+        // Quick assign draws the picker inside its own backdrop: a click outside closes the picker
+        // only, not the sheet behind it (v2.4352).
+        e.stopPropagation()
+        onClose()
+      }}
       role="presentation"
     >
       <div

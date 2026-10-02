@@ -229,10 +229,10 @@ describe('PlugInScheduleModal', () => {
     expect((screen.getByRole('button', { name: 'Match to tags' }) as HTMLButtonElement).disabled).toBe(false)
   })
 
-  it('Close, Cancel and a press on the backdrop each report onClose; a press inside the window does not', async () => {
+  it('Close, Cancel and a click on the backdrop each report onClose; a click inside the window does not, nor a press on the backdrop alone', async () => {
     const { onClose, onSaved } = await openModal()
     const dialog = screen.getByRole('dialog', { name: 'Plug in the fixture schedule' })
-    fireEvent.mouseDown(dialog)
+    fireEvent.click(dialog)
     expect(onClose).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'Close' }))
     expect(onClose).toHaveBeenCalledTimes(1)
@@ -241,6 +241,8 @@ describe('PlugInScheduleModal', () => {
     const backdrop = dialog.parentElement
     if (!backdrop) throw new Error('the window has no backdrop')
     fireEvent.mouseDown(backdrop)
+    expect(onClose).toHaveBeenCalledTimes(2)
+    fireEvent.click(backdrop)
     expect(onClose).toHaveBeenCalledTimes(3)
     expect(onSaved).not.toHaveBeenCalled()
     expect(state.upserts).toHaveLength(0)

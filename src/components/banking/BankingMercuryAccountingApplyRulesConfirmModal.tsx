@@ -42,7 +42,7 @@ export function BankingMercuryAccountingApplyRulesConfirmModal({
   return (
     <div
       role="presentation"
-      onMouseDown={handleBackdropMouseDown}
+      onClick={handleBackdropMouseDown}
       style={{
         position: 'fixed',
         inset: 0,

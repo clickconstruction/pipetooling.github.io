@@ -220,7 +220,7 @@ export function PlugInScheduleModal({
   const unmatched = drafts.filter((d) => d.tag && !d.fixture).length
 
   return createPortal(
-    <div style={overlay} role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
+    <div style={overlay} role="presentation" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
       <div role="dialog" aria-modal="true" aria-label="Plug in the fixture schedule" style={panel} onMouseDown={(e) => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
           <div>

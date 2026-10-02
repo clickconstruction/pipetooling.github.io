@@ -29,7 +29,7 @@ Sign-in banned · hidden from active lists and assignment pickers · taken off o
 
 ## Restore
 
-Open the **Archived users** section at the bottom of the panel. Click **Restore**. The account is un-archived and can sign in again.
+Open People → Users and press {{button:outline|Archived}}. The **Logins** list shows every archived account. Click **Restore** beside one. The account is un-archived and can sign in again. The **Archived users** section at the bottom of Manage accounts… does the same. So does {{button:outline|Restore}} on the person's desk.
 
 Restoring also puts them back on their old roadmap tasks. That covers only the ones still open that nobody else has picked up in the meantime. A task with a new person keeps its new person.
 
