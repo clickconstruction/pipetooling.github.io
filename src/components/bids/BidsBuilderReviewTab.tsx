@@ -1,4 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { bidFollowupColumns, bidIsParked, followupChip } from '../../lib/bids/bidNextFollowup'
 import { BID_FLOW_LANDING_CLASS } from '../../lib/bids/bidFlowLanding'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
@@ -689,6 +691,8 @@ export function BidsBuilderReviewTab({
                           const stale =
                             isOpenSection &&
                             staleThresholdDays !== null &&
+                            // v2.4421: parked on a call-again day still ahead is not stale.
+                            !bidIsParked(bid, bid.last_contact ?? null, todayYmdInAppTz()) &&
                             isSubmissionBidStaleForThreshold(bid, lastContactFromEntries, customerContacts, staleThresholdDays)
                           const lostCategory = key === 'lost' && isBidLossCategoryKey(bid.loss_category) ? bid.loss_category : null
                           const lostCategoryChip = key === 'lost' ? BID_LOSS_CATEGORIES.find((c) => c.key === lostCategory) ?? null : null
@@ -787,6 +791,17 @@ export function BidsBuilderReviewTab({
                                 {lastNoteIso ? formatTimeSinceLastContact(lastNoteIso) : 'no update'}
                               </span>
                             )}
+                            {key === 'pending'
+                              ? (() => {
+                                  const personId = bidFollowupColumns(bid).personId
+                                  const chip = followupChip({ bid, sentIso: bid.bid_date_sent ?? null, lastContactIso: bid.last_contact ?? null, todayYmd: todayYmdInAppTz(), nowIso: new Date().toISOString(), personName: personId ? customerContactPersons.find((p) => p.id === personId)?.name ?? null : null })
+                                  return chip ? (
+                                    <span title={chip.title} style={{ fontSize: '0.7rem', fontWeight: 600, whiteSpace: 'nowrap', color: chip.tone === 'red' ? 'var(--text-red-700)' : chip.tone === 'amber' ? 'var(--text-amber-700)' : 'var(--text-blue-700)' }}>
+                                      {'☎'} {chip.label}
+                                    </span>
+                                  ) : null
+                                })()
+                              : null}
                           </li>
                           {quickLostBidId === bid.id ? (
                             <li style={{ listStyle: 'none' }}>

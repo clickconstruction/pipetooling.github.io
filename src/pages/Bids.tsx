@@ -330,6 +330,12 @@ export default function Bids() {
     jobAccountsMissingCount,
     linkJobToBidFromBoard,
   } = useBidBoardScope({ bids, twinUserIds, selectedServiceTypeId, serviceTypes, gcPacketsByBid, myRole, showToast })
+  // Who a bid's call-again day asks for (v2.4421): the board prints the name beside the day.
+  const contactPersonNameById = useMemo(() => {
+    const out: Record<string, string> = {}
+    for (const p of customerContactPersons) out[p.id] = p.name
+    return out
+  }, [customerContactPersons])
   // v2.3201: a bid was just marked reviewed → reload the rows so every flow strip reads the stamp.
   useEffect(() => {
     const reload = () => {
@@ -1799,6 +1805,7 @@ export default function Bids() {
       ) : null}
       {activeTab === 'bid-board' && (
         <BidsBidBoardTab
+          contactPersonNameById={contactPersonNameById}
           jobAccountStrips={jobAccountStrips}
           onOpenJobAccountsLens={() => selectBidsTab('job-accounts')}
           bids={peopleBids}

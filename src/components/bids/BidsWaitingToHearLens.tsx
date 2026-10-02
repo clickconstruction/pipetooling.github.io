@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { bidIsParked } from '../../lib/bids/bidNextFollowup'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { type BidRoomStateSummary } from '../../lib/bids/bidRoomState'
 import { BidRoomStateChip } from './BidRoomStateChip'
 import { BidWonJobActions } from './BidWonJobActions'
@@ -200,6 +202,8 @@ export function BidsWaitingToHearLens({
           value: row.value,
           sentIso: row.sentOn ?? b.bid_date_sent ?? '',
           lastContactIso,
+          // v2.4421: a bid parked on a call-again day still ahead reads as caught up until that day.
+          parked: bidIsParked(b, lastContactIso, todayYmdInAppTz(new Date(nowIso))),
           label: bidLensLabel(b, ledgerPrefixMap),
           project: (b.project_name ?? '').trim() || '—',
           address: (b.address ?? '').trim() || null,
@@ -208,7 +212,7 @@ export function BidsWaitingToHearLens({
           raw: b,
         }))
     })
-  }, [bids, gcPacketsByBid, lastContactFromEntries, ledgerPrefixMap, localTouches, localResolved])
+  }, [bids, gcPacketsByBid, lastContactFromEntries, ledgerPrefixMap, localTouches, localResolved, nowIso])
 
   // Search narrows the queue (sidebar + bids), never the rollup headline —
   // "N to chase" stays a status of the whole queue, not of the query.

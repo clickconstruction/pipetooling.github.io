@@ -3,6 +3,7 @@ import {
   EMPTY_FOLLOWUP_PICK,
   applyFollowupToEntry,
   bidFollowupColumns,
+  bidIsParked,
   buildFollowupChangeEntry,
   builderFollowupYmd,
   followupChangeNote,
@@ -11,6 +12,7 @@ import {
   followupDayStands,
   followupEntryColumns,
   followupNeedsCall,
+  followupChip,
   followupNoteSentence,
   followupQuickPickYmd,
   followupTag,
@@ -251,5 +253,34 @@ describe('reading a bid row', () => {
     expect(bidFollowupColumns(null)).toEqual(none)
     expect(bidFollowupColumns({ next_followup_on: 'soon', next_followup_contact_person_id: 'p1' })).toEqual(none)
     expect(bidFollowupColumns({ next_followup_on: '2027-01-05', next_followup_reason: 'vacation' })).toEqual({ nextYmd: '2027-01-05', personId: null, reason: null, entryId: null })
+  })
+})
+
+describe('the day on other screens', () => {
+  const row = { next_followup_on: '2027-01-05', next_followup_contact_person_id: 'p1', next_followup_reason: 'budget' }
+  const chip = (over: Partial<Parameters<typeof followupChip>[0]>) => followupChip({ bid: row, sentIso: SENT, lastContactIso: null, todayYmd: TODAY, nowIso: NOW, ...over })
+
+  it('a parked bid wears a blue chip with the day and who to ask for', () => {
+    expect(chip({ personName: 'J. Rayburn' })).toEqual({ label: 'call again Tue, Jan 5, 2027 · J. Rayburn', short: 'Jan 5', tone: 'blue', title: 'Call again Tue, Jan 5, 2027 · ask for J. Rayburn · waiting on their budget' })
+    expect(chip({})?.label).toBe('call again Tue, Jan 5, 2027')
+  })
+
+  it('amber on the day, red after it', () => {
+    expect(chip({ todayYmd: '2027-01-05', nowIso: '2027-01-05T09:00:00-06:00' })).toMatchObject({ label: 'call today', short: 'today', tone: 'amber' })
+    expect(chip({ todayYmd: '2027-01-08', nowIso: '2027-01-08T09:00:00-06:00', personName: 'J. Rayburn' })).toMatchObject({ label: 'call was due Tue, Jan 5 · J. Rayburn', short: 'was Jan 5', tone: 'red' })
+  })
+
+  it('no chip with no day, a spent day, or a bid not sent', () => {
+    expect(chip({ bid: {} })).toBeNull()
+    expect(chip({ lastContactIso: '2027-01-06T10:00:00-06:00', todayYmd: '2027-01-07', nowIso: '2027-01-07T09:00:00-06:00' })).toBeNull()
+    expect(chip({ sentIso: null })).toBeNull()
+  })
+
+  it('parked means a day of its own still ahead', () => {
+    expect(bidIsParked(row, null, TODAY)).toBe(true)
+    expect(bidIsParked(row, '2026-11-10T10:00:00-06:00', '2026-11-20')).toBe(true)
+    expect(bidIsParked(row, null, '2027-01-05')).toBe(false) // due today: not parked
+    expect(bidIsParked(row, '2027-01-05T10:00:00-06:00', '2027-01-06')).toBe(false) // spent
+    expect(bidIsParked({}, null, TODAY)).toBe(false)
   })
 })
