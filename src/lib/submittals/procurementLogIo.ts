@@ -126,7 +126,7 @@ export async function procurementItemsFrom(supabase: Client, items: ReadonlyArra
     const base = { tag: i.tag.trim(), shared, sourceCountRowId: counted, itemId: itemId ?? null, fixture: counted ? fixtures.get(counted) ?? null : null, fixtureCount: counted ? counts.get(counted) ?? null : null }
     const rowParts = itemId ? parts.filter((p) => p.item_id === itemId).sort((a, b) => a.sequence_order - b.sequence_order) : []
     if (rowParts.length === 0) {
-      out.push({ ...base, product: submitted || specified || '(no product)', supplyHouse: i.supply_house_id ? names.get(i.supply_house_id) ?? null : null, leadTimeDays: i.lead_time_days, decision: rowDecision })
+      out.push({ ...base, product: submitted || specified || '(no product)', supplyHouse: i.supply_house_id ? names.get(i.supply_house_id) ?? null : null, leadTimeDays: i.lead_time_days, decision: rowDecision, ...(submitted ? {} : { noProduct: true }) })
       continue
     }
     const fixtureCount = i.source_count_row_id ? counts.get(i.source_count_row_id) ?? null : null

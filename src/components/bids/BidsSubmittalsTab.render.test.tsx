@@ -836,6 +836,8 @@ describe('BidsSubmittalsTab', () => {
       { id: 'pt-watts', item_id: 'dwh', bid_id: 'b398', sequence_order: 2, label: 'WATTS LFN36M1 0556031 VACUUM RELIEF VALVE', quantity: 1, on_submittal: true, source: 'takeoff', sheet_pages: [], procure_key: 'k-watts', decision_source: 'room', supply_house_id: null },
     ]
     state.writes = []
+    // By tag lists every line (To order folds the waiting ones by house since 2026-10-02).
+    localStorage.setItem('submittals_procure_lens', 'by_tag')
     try {
       mount()
       const door = await waitFor(() => {
@@ -863,6 +865,7 @@ describe('BidsSubmittalsTab', () => {
       expect(within(again).getAllByTestId('part-editor-row').some((r) => r.getAttribute('data-focused') === 'true')).toBe(false)
     } finally {
       state.parts = []
+      localStorage.removeItem('submittals_procure_lens')
     }
   })
 

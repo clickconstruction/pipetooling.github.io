@@ -282,7 +282,13 @@ describe('SubmittalProcurementPanel', () => {
     renderWithProviders(<SubmittalProcurementPanel bidId="b1" bidLabel="B375" companyName="Click" items={partItems} reviewerNames={[]} currentUser={{ id: 'u', name: 'Wendi' }} />)
     await waitFor(() => expect(screen.getAllByTestId('procurement-section').map((r) => r.textContent)).toEqual(['Order now · National Wholesale1 line', 'Order now · no house yet1 line · set a house to order', 'Waiting on the GC1 line · not ordered until they approve it']))
     expect(screen.getByTestId('procurement-next').textContent).toBe('2 lines are approved and not ordered.')
+    // 2026-10-02 · the waiting lines fold to one line per house; opening it shows them.
+    expect(screen.getAllByTestId('procurement-qty').map((c) => c.textContent)).toEqual(['10', '10'])
+    const fold = screen.getByTestId('procurement-house-fold')
+    expect(fold.textContent).toBe('National Wholesale1 partShow')
+    fireEvent.click(within(fold).getByRole('button', { expanded: false }))
     expect(screen.getAllByTestId('procurement-qty').map((c) => c.textContent)).toEqual(['10', '10', '10'])
+    expect(within(screen.getByTestId('procurement-house-fold')).getByRole('button', { expanded: true }).textContent).toContain('Hide')
     expect(screen.getByTestId('procurement-order-only').textContent).toContain('order only')
     fireEvent.click(screen.getByRole('button', { name: 'By house' }))
     expect(screen.getAllByTestId('procurement-section').map((r) => r.textContent)).toEqual(['National Wholesale2 lines', 'No house yet1 line'])
@@ -438,5 +444,31 @@ describe('SubmittalProcurementPanel', () => {
     expect(screen.queryByTestId('procurement-bulk')).toBeNull()
     await waitFor(() => expect(screen.getByText('National Wholesale, 3 wk set on 2 lines.')).toBeTruthy())
     localStorage.removeItem('submittals_procure_lens')
+  })
+
+  it('2026-10-02 · on a phone each part is a short card: no table, the qty, house and stage on one line, its dates open under it', async () => {
+    localStorage.setItem('submittals_procure_lens', 'by_tag')
+    state.records = []
+    const real = window.matchMedia
+    window.matchMedia = ((q: string) => ({ matches: q.includes('640'), media: q, addEventListener: () => {}, removeEventListener: () => {} })) as unknown as typeof window.matchMedia
+    try {
+      const lines: ProcurementItemSource[] = [
+        { tag: 'WC-1, WC-2', product: 'TOTO CT728CUVG#01 TORNADO FLUSH TOILET', supplyHouse: 'Moore Supply', leadTimeDays: 14, decision: null, shared: false, partKey: 'k-bowl', partOrder: 1, quantity: 10, stage: 'trim_set', itemId: 'row-wc', fixture: 'WC 1&2', fixtureCount: 10 },
+        { tag: 'WC-1, WC-2', product: 'JOSAM 12694 closet carrier', supplyHouse: null, leadTimeDays: null, decision: null, shared: false, partKey: 'k-josam', partOrder: 2, quantity: 10, stage: 'rough_in', itemId: 'row-wc', fixture: 'WC 1&2', fixtureCount: 10 },
+      ]
+      renderWithProviders(<SubmittalProcurementPanel bidId="b1" bidLabel="B375" companyName="Click" items={lines} reviewerNames={[]} currentUser={{ id: 'u', name: 'Wendi' }} onOpenItem={() => {}} />)
+      const cards = await screen.findAllByTestId('procurement-row')
+      expect(cards.map((c) => c.tagName)).toEqual(['DIV', 'DIV'])
+      expect(document.querySelector('table')).toBeNull()
+      expect(cards[0]!.textContent).toContain('10·Moore Supply·Trim Set·2 wk')
+      expect(cards[1]!.textContent).toContain('10·no house·Rough In·no lead time')
+      expect(screen.getByTestId('procurement-section').textContent).toBe('WC-1, WC-2WC 1&2 × 10 · 2 parts')
+      openDates('WC-1, WC-2 JOSAM 12694')
+      expect(screen.getByTestId('procurement-editor').tagName).toBe('DIV')
+      expect(screen.getByLabelText('WC-1, WC-2 ordered on')).toBeTruthy()
+    } finally {
+      window.matchMedia = real
+      localStorage.removeItem('submittals_procure_lens')
+    }
   })
 })

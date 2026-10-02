@@ -1,4 +1,5 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
@@ -9,8 +10,8 @@ import { procurementLogCsv, procurementLogFileName, procurementLogTsv } from '..
 import { loadProcurementSheetAssets, type ProcurementSheetAssets } from '../../lib/submittals/procurementSheetAssets'
 import { describeLeadTime, parseLeadTime } from '../../lib/submittals/leadTime'
 import { splitPartLabel } from '../../lib/submittals/itemParts'
-import { tagBlock, type TagGuide } from '../../lib/submittals/procurementTagBlocks'
 import { setLineFacts } from '../../lib/submittals/itemPartsIo'
+import { tagBlock, type TagGuide } from '../../lib/submittals/procurementTagBlocks'
 import { isPlausibleDate, readDateBoxEntry } from '../../lib/dateBoxEntry'
 import {
   buildProcurementLog,
@@ -25,6 +26,8 @@ import {
   procurementUpdateText,
   lineStatus,
   logDateRead,
+  foldByHouse,
+  houseFoldNote,
   logIsDraft,
   orderBlockers,
   readTypedLogDate,
@@ -86,6 +89,8 @@ const itemTd: CSSProperties = { ...td, minWidth: 'min(14rem, 46vw)', lineHeight:
 const editorField: CSSProperties = { display: 'flex', flexDirection: 'column', gap: '0.2rem', alignItems: 'flex-start' }
 const editorLabel: CSSProperties = { fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 const COLS = 8
+// The table's least width; a log narrower than this draws a card per line instead.
+const TABLE_MIN_WIDTH = 760
 const blockerLine: CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', padding: '0.3rem 0', borderTop: '1px solid var(--border-amber)' }
 const STATUS_COLOR: Record<LineStatus['tone'], string> = { done: 'var(--text-green-700)', late: 'var(--text-red-700)', ordered: 'var(--text-strong)', act: 'var(--text-blue-700)', back: 'var(--text-amber-700)', waiting: 'var(--text-muted)', none: 'var(--text-muted)' }
 const itemTag: CSSProperties = { fontWeight: 700, color: 'var(--text-strong)', marginRight: '0.45rem' }
@@ -163,8 +168,27 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
     }
   }
   const [ticked, setTicked] = useState<Set<string>>(() => new Set())
-  // 2026-10-02 · lines whose dates are open under them.
+  // 2026-10-02 · lines whose dates are open under them; houses opened in To order's fold; a card per part on a phone.
   const [openLines, setOpenLines] = useState<Set<string>>(() => new Set())
+  const [openHouses, setOpenHouses] = useState<Set<string>>(() => new Set())
+  const narrowScreen = useNarrowViewport640()
+  // Cards whenever the log itself is narrower than its table needs: a phone, a tablet, a side pane.
+  const [rootWidth, setRootWidth] = useState<number | null>(null)
+  const observer = useRef<ResizeObserver | null>(null)
+  // A callback ref: the log's box may appear after the first render.
+  const rootRef = useCallback((el: HTMLDivElement | null) => {
+    observer.current?.disconnect()
+    observer.current = null
+    if (!el) return
+    // Measured at once (a hidden tab never runs the observer), then whenever the box changes.
+    const inner = (box: HTMLElement) => box.clientWidth - parseFloat(getComputedStyle(box).paddingLeft || '0') - parseFloat(getComputedStyle(box).paddingRight || '0')
+    if (el.clientWidth > 0) setRootWidth(inner(el))
+    if (typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(() => setRootWidth(inner(el)))
+    ro.observe(el)
+    observer.current = ro
+  }, [])
+  const narrow = narrowScreen || (rootWidth != null && rootWidth < TABLE_MIN_WIDTH)
   const [bulkOrdered, setBulkOrdered] = useState('')
   const [bulkPo, setBulkPo] = useState('')
   // 2026-10-02 · the office's facts for every ticked line: house, lead time, stage.
@@ -580,9 +604,9 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
     const toggle = () => setOpenLines((cur) => { const next = new Set(cur); if (next.has(r.key)) next.delete(r.key); else next.add(r.key); return next })
     const part = (
       <>
-        <span style={{ display: 'flex', gap: '0.4rem', alignItems: 'baseline', minWidth: 0 }}>
-          {underTag && r.partKey ? null : <b style={{ ...itemTag, flexShrink: 0, maxWidth: '45%' }}>{r.tag}</b>}
-          <b className="procure-item-name" style={{ fontWeight: 600, color: 'var(--text-strong)', flexShrink: 0, maxWidth: '100%' }}>{head}</b>
+        <span style={{ display: 'flex', gap: '0 0.4rem', alignItems: 'baseline', minWidth: 0, flexWrap: narrow ? 'wrap' : undefined }}>
+          {underTag && r.partKey ? null : <b style={{ ...itemTag, flexShrink: 0, maxWidth: narrow ? '100%' : '45%' }}>{r.tag}</b>}
+          <b className="procure-item-name" style={{ fontWeight: 600, color: 'var(--text-strong)', flexShrink: 0, maxWidth: '100%', overflowWrap: narrow ? 'anywhere' : undefined }}>{head}</b>
           {words ? <span style={{ ...smallMuted, fontSize: '0.78rem', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden', overflowWrap: 'anywhere', minWidth: 0 }}>{words}</span> : null}
         </span>
         {(() => {
@@ -602,72 +626,51 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
         })()}
       </>
     )
-    return (
-      <Fragment key={r.key}>
-        <tr data-testid="procurement-row" data-part={r.partKey ? 'true' : undefined} data-order-only={r.orderOnly ? 'true' : undefined} style={{ background: ticked.has(r.key) ? 'var(--bg-blue-tint)' : changed ? 'var(--bg-amber-100)' : undefined, opacity: r.orderOnly ? 0.72 : undefined }}>
-          <td style={{ ...td, width: 28, textAlign: 'center' }}>
-            <input type="checkbox" aria-label={`Pick ${r.tag ?? r.product}${r.partKey ? ` ${r.product}` : ''}`} checked={ticked.has(r.key)} onChange={(e) => setTicked((cur) => { const next = new Set(cur); if (e.target.checked) next.add(r.key); else next.delete(r.key); return next })} data-testid="procurement-tick" />
-          </td>
-          <td style={{ ...itemTd, ...(guides && guides.length > 0 ? { position: 'relative', paddingLeft: indentPad(guides) } : underTag && r.partKey ? { paddingLeft: '1.2rem' } : null) }} data-testid="procurement-item" data-level={guides?.length ?? undefined} title={r.product}>
-            {guides && guides.length > 0 ? <Rails guides={guides} /> : null}
-            {r.isHand ? (
-              <input type="text" aria-label="Item" placeholder="What it is (no cut sheet)" value={draftOf(r.key, 'label', r.product)} onChange={(e) => setDraft(r.key, 'label', e.target.value)} onBlur={() => void commitText(r, 'label')} maxLength={200} style={{ ...inp, width: '100%' }} />
-            ) : onOpenItem && r.itemId ? (
-              // The line opens its row's Edit window: the house, lead time and stage are changed there (v2.4354).
-              <button type="button" className="procure-item-open" onClick={() => onOpenItem({ itemId: r.itemId!, partKey: r.partKey ?? null })} title={`Open ${r.tag ?? 'the row'} to change ${r.partKey ? 'this part’s' : 'its'} house, lead time or stage`} data-testid="procurement-open-row">
-                {part}
-              </button>
-            ) : (
-              part
-            )}
-          </td>
-          <td style={{ ...tdCenter, fontWeight: 600 }} data-testid="procurement-qty">{r.quantity != null ? r.quantity : <span style={smallMuted}>—</span>}</td>
-          <td style={{ ...td, whiteSpace: 'nowrap' }} data-testid="procurement-house">
-            {(() => {
-              const house = r.supplyHouse ? <span className="procure-house-name">{r.supplyHouse}</span> : r.isHand ? <span style={smallMuted}>—</span> : <span className="procure-house-name" style={{ color: 'var(--text-amber-700)', fontSize: '0.78rem' }}>no house</span>
-              // The house opens the row's Edit window on this part, its house box ready (Grace, 2026-10-02: swap a house).
-              return onOpenItem && r.itemId ? (
-                <button type="button" className="procure-item-open" onClick={() => onOpenItem({ itemId: r.itemId!, partKey: r.partKey ?? null })} title={`Change the house for ${r.partKey ? head : name}`} aria-label={`Change the house for ${name}${r.partKey ? ` ${head}` : ''}`} data-testid="procurement-house-open">
-                  {house}
-                </button>
-              ) : (
-                house
-              )
-            })()}
-          </td>
-          <td style={{ ...td, whiteSpace: 'nowrap' }} data-testid="procurement-stage">
-            {r.isHand && !r.stage ? (
-              <select aria-label="Stage" value="" onChange={(e) => void write(r, { stage: (e.target.value || null) as ProcurementStage | null })} style={inp}>
-                <option value="">stage…</option>
-                {(['rough_in', 'top_out', 'trim_set'] as const).map((st) => <option key={st} value={st}>{PROCUREMENT_STAGE_LABELS[st]}</option>)}
-              </select>
-            ) : r.stage ? PROCUREMENT_STAGE_LABELS[r.stage] : <span style={smallMuted}>—</span>}
-          </td>
-          <td style={{ ...td, whiteSpace: 'nowrap' }}>
-            {r.isHand ? (
-              <input type="text" aria-label="Lead time" placeholder="2 wk" value={draftOf(r.key, 'lead', describeLeadTime(r.leadTimeDays) ?? '')} onChange={(e) => setDraft(r.key, 'lead', e.target.value)} onBlur={() => void commitText(r, 'lead')} style={{ ...inp, width: '4.6rem' }} />
-            ) : (
-              describeLeadTime(r.leadTimeDays) ?? <span style={smallMuted}>—</span>
-            )}
-          </td>
-          <td style={{ ...td, minWidth: '12.5rem', width: '13.5rem' }}>
-            {/* One status where seven date columns were (2026-10-02); a tap opens the line's dates. */}
-            <button type="button" className="procure-status" aria-expanded={open} aria-label={`${name}${r.partKey ? ` ${head}` : ''} dates`} onClick={toggle} data-testid="procurement-status" data-tone={status.tone}>
-              {status.text ? (
-                <span style={{ display: 'block', fontWeight: 600, color: STATUS_COLOR[status.tone] }}>{status.text}</span>
-              ) : (
-                <span style={{ display: 'block', color: 'var(--text-faint)' }}>{open ? 'Close' : 'Dates…'}</span>
-              )}
-              {status.sub ? <span style={{ ...smallMuted, display: 'block' }}>{status.sub}</span> : null}
-            </button>
-          </td>
-          <td style={{ ...td, whiteSpace: 'nowrap' }}>{r.isHand ? <button type="button" onClick={() => void removeHandRow(r)} disabled={disabled} title="Remove this item" aria-label={`Remove ${r.product || 'item'}`} style={{ ...link, color: 'var(--text-red-600)', textDecoration: 'none', fontSize: '0.95rem' }}>×</button> : null}</td>
-        </tr>
-        {open ? (
-          <tr data-testid="procurement-editor">
-            {guides && guides.length > 0 ? <td style={{ ...td, width: 28, background: 'var(--bg-blue-tint)' }} /> : null}
-            <td colSpan={guides && guides.length > 0 ? COLS - 1 : COLS} style={{ ...td, background: 'var(--bg-blue-tint)', padding: '0.5rem 0.6rem 0.6rem 2.2rem', ...(guides && guides.length > 0 ? { position: 'relative', paddingLeft: indentPad(guides) } : null) }}>
-              {guides && guides.length > 0 ? <Rails guides={guides} through /> : null}
+    const tick = <input type="checkbox" aria-label={`Pick ${r.tag ?? r.product}${r.partKey ? ` ${r.product}` : ''}`} checked={ticked.has(r.key)} onChange={(e) => setTicked((cur) => { const next = new Set(cur); if (e.target.checked) next.add(r.key); else next.delete(r.key); return next })} data-testid="procurement-tick" />
+    const item = r.isHand ? (
+      <input type="text" aria-label="Item" placeholder="What it is (no cut sheet)" value={draftOf(r.key, 'label', r.product)} onChange={(e) => setDraft(r.key, 'label', e.target.value)} onBlur={() => void commitText(r, 'label')} maxLength={200} style={{ ...inp, width: '100%' }} />
+    ) : onOpenItem && r.itemId ? (
+      // The line opens its row's Edit window: the house, lead time and stage are changed there (v2.4354).
+      <button type="button" className="procure-item-open" onClick={() => onOpenItem({ itemId: r.itemId!, partKey: r.partKey ?? null })} title={`Open ${r.tag ?? 'the row'} to change ${r.partKey ? 'this part’s' : 'its'} house, lead time or stage`} data-testid="procurement-open-row">
+        {part}
+      </button>
+    ) : (
+      part
+    )
+    const qty = r.quantity != null ? r.quantity : <span style={smallMuted}>—</span>
+    const houseText = r.supplyHouse ? <span className="procure-house-name">{r.supplyHouse}</span> : r.isHand ? <span style={smallMuted}>—</span> : <span className="procure-house-name" style={{ color: 'var(--text-amber-700)', fontSize: '0.78rem' }}>no house</span>
+    // The house opens the row's Edit window on this part, its house box ready (Grace, 2026-10-02: swap a house).
+    const house = onOpenItem && r.itemId ? (
+      <button type="button" className="procure-item-open" onClick={() => onOpenItem({ itemId: r.itemId!, partKey: r.partKey ?? null })} title={`Change the house for ${r.partKey ? head : name}`} aria-label={`Change the house for ${name}${r.partKey ? ` ${head}` : ''}`} data-testid="procurement-house-open" style={narrow ? { display: 'inline', width: 'auto', margin: 0, padding: 0 } : undefined}>
+        {houseText}
+      </button>
+    ) : (
+      houseText
+    )
+    const stage = r.isHand && !r.stage ? (
+      <select aria-label="Stage" value="" onChange={(e) => void write(r, { stage: (e.target.value || null) as ProcurementStage | null })} style={inp}>
+        <option value="">stage…</option>
+        {(['rough_in', 'top_out', 'trim_set'] as const).map((st) => <option key={st} value={st}>{PROCUREMENT_STAGE_LABELS[st]}</option>)}
+      </select>
+    ) : r.stage ? PROCUREMENT_STAGE_LABELS[r.stage] : <span style={smallMuted}>{narrow ? 'no stage' : '—'}</span>
+    const lead = r.isHand ? (
+      <input type="text" aria-label="Lead time" placeholder="2 wk" value={draftOf(r.key, 'lead', describeLeadTime(r.leadTimeDays) ?? '')} onChange={(e) => setDraft(r.key, 'lead', e.target.value)} onBlur={() => void commitText(r, 'lead')} style={{ ...inp, width: '4.6rem' }} />
+    ) : (
+      describeLeadTime(r.leadTimeDays) ?? <span style={smallMuted}>{narrow ? 'no lead time' : '—'}</span>
+    )
+    // One status where seven date columns were (2026-10-02); a tap opens the line's dates.
+    const statusButton = (
+      <button type="button" className="procure-status" aria-expanded={open} aria-label={`${name}${r.partKey ? ` ${head}` : ''} dates`} onClick={toggle} data-testid="procurement-status" data-tone={status.tone}>
+        {status.text ? (
+          <span style={{ display: 'block', fontWeight: 600, color: STATUS_COLOR[status.tone] }}>{status.text}</span>
+        ) : (
+          <span style={{ display: 'block', color: 'var(--text-faint)' }}>{open ? 'Close' : 'Dates…'}</span>
+        )}
+        {status.sub ? <span style={{ ...smallMuted, display: 'block' }}>{status.sub}</span> : null}
+      </button>
+    )
+    const remove = r.isHand ? <button type="button" onClick={() => void removeHandRow(r)} disabled={disabled} title="Remove this item" aria-label={`Remove ${r.product || 'item'}`} style={{ ...link, color: 'var(--text-red-600)', textDecoration: 'none', fontSize: '0.95rem' }}>×</button> : null
+    const editor = (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem 1.1rem', alignItems: 'flex-start' }}>
                 <div style={editorField}>
                   <span style={editorLabel}>Ordered</span>
@@ -705,6 +708,59 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
                   </span>
                 </div>
               </div>
+    )
+    const lineBackground = ticked.has(r.key) ? 'var(--bg-blue-tint)' : changed ? 'var(--bg-amber-100)' : undefined
+    if (narrow) {
+      // 2026-10-02 · on a phone each part is a short card: nothing scrolls sideways.
+      return (
+        <Fragment key={r.key}>
+          <div data-testid="procurement-row" data-part={r.partKey ? 'true' : undefined} data-order-only={r.orderOnly ? 'true' : undefined} style={{ display: 'grid', gridTemplateColumns: '28px minmax(0, 1fr)', gap: '0.15rem 0.5rem', alignItems: 'start', padding: '0.55rem 0.35rem', borderBottom: '1px solid var(--bg-muted)', background: lineBackground, opacity: r.orderOnly ? 0.72 : undefined }}>
+            <span style={{ paddingTop: '0.15rem' }}>{tick}</span>
+            {/* On a card the tree is the indent alone: a part a step in under its fixture or assembly. */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', minWidth: 0, paddingLeft: guides && guides.length > 0 ? `${(guides.length - 1) * 0.9 + 0.6}rem` : undefined, borderLeft: guides && guides.length > 0 ? '2px solid var(--border)' : undefined }}>
+              <div data-testid="procurement-item" data-level={guides?.length ?? undefined} title={r.product} style={{ lineHeight: 1.35, minWidth: 0 }}>{item}</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.1rem 0.45rem', alignItems: 'center', fontSize: '0.8rem' }}>
+                <b data-testid="procurement-qty">{qty}</b>
+                <span aria-hidden="true" style={smallMuted}>·</span>
+                <span data-testid="procurement-house">{house}</span>
+                <span aria-hidden="true" style={smallMuted}>·</span>
+                <span data-testid="procurement-stage">{stage}</span>
+                <span aria-hidden="true" style={smallMuted}>·</span>
+                <span>{lead}</span>
+                {remove}
+              </div>
+              {statusButton}
+            </div>
+          </div>
+          {open ? (
+            <div data-testid="procurement-editor" style={{ background: 'var(--bg-blue-tint)', padding: '0.55rem 0.6rem 0.65rem', borderBottom: '1px solid var(--bg-muted)' }}>
+              {editor}
+            </div>
+          ) : null}
+        </Fragment>
+      )
+    }
+    return (
+      <Fragment key={r.key}>
+        <tr data-testid="procurement-row" data-part={r.partKey ? 'true' : undefined} data-order-only={r.orderOnly ? 'true' : undefined} style={{ background: lineBackground, opacity: r.orderOnly ? 0.72 : undefined }}>
+          <td style={{ ...td, width: 28, textAlign: 'center' }}>{tick}</td>
+          <td style={{ ...itemTd, ...(guides && guides.length > 0 ? { position: 'relative', paddingLeft: indentPad(guides) } : underTag && r.partKey ? { paddingLeft: '1.2rem' } : null) }} data-testid="procurement-item" data-level={guides?.length ?? undefined} title={r.product}>
+            {guides && guides.length > 0 ? <Rails guides={guides} /> : null}
+            {item}
+          </td>
+          <td style={{ ...tdCenter, fontWeight: 600 }} data-testid="procurement-qty">{qty}</td>
+          <td style={{ ...td, whiteSpace: 'nowrap' }} data-testid="procurement-house">{house}</td>
+          <td style={{ ...td, whiteSpace: 'nowrap' }} data-testid="procurement-stage">{stage}</td>
+          <td style={{ ...td, whiteSpace: 'nowrap' }}>{lead}</td>
+          <td style={{ ...td, minWidth: '12.5rem', width: '13.5rem' }}>{statusButton}</td>
+          <td style={{ ...td, whiteSpace: 'nowrap' }}>{remove}</td>
+        </tr>
+        {open ? (
+          <tr data-testid="procurement-editor">
+            {guides && guides.length > 0 ? <td style={{ ...td, width: 28, background: 'var(--bg-blue-tint)' }} /> : null}
+            <td colSpan={guides && guides.length > 0 ? COLS - 1 : COLS} style={{ ...td, background: 'var(--bg-blue-tint)', padding: '0.5rem 0.6rem 0.6rem 2.2rem', ...(guides && guides.length > 0 ? { position: 'relative', paddingLeft: indentPad(guides) } : null) }}>
+              {guides && guides.length > 0 ? <Rails guides={guides} through /> : null}
+              {editor}
             </td>
           </tr>
         ) : null}
@@ -714,7 +770,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
 
 
   return (
-    <div data-testid="submittal-procurement" data-tour="submittals-procure" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.75rem', background: 'var(--surface)' }}>
+    <div ref={rootRef} data-testid="submittal-procurement" data-tour="submittals-procure" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.75rem', background: 'var(--surface)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
         <div>
           <b style={{ fontSize: '0.9rem' }}>Procurement log</b>
@@ -808,101 +864,125 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
         </div>
       ) : null}
 
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 760, fontVariantNumeric: 'tabular-nums' }}>
-          <thead>
-            <tr>
-              <th style={{ ...th, width: 28 }} aria-label="Pick" />
-              <th style={th}>Part</th>
-              <th style={thCenter}>Qty</th>
-              <th style={th}>House</th>
-              <th style={th}>Stage</th>
-              <th style={th}>Lead</th>
-              <th style={th}>Status</th>
-              <th style={th} />
+      {(() => {
+        // A heading, a divider or a house's fold: a table row on a wide screen, a block on a phone.
+        const block = (key: string, testid: string, style: CSSProperties, content: ReactNode) =>
+          narrow ? (
+            <div key={key} data-testid={testid} style={{ padding: '0.4rem 0.35rem', borderBottom: '1px solid var(--bg-muted)', ...style }}>{content}</div>
+          ) : (
+            <tr key={key} data-testid={testid}><td colSpan={COLS} style={{ ...td, padding: '0.4rem 0.4rem', ...style }}>{content}</td></tr>
+          )
+        // A row inside a By tag tree (an assembly's name, a block's divider): it starts at the Part column so the connectors line up.
+        const treeRow = (key: string, testid: string, guides: ReadonlyArray<TagGuide>, through: boolean, style: CSSProperties, content: ReactNode, first: ReactNode = null) =>
+          narrow ? (
+            <div key={key} data-testid={testid} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', padding: '0.35rem 0.35rem', paddingLeft: `calc(0.35rem + ${first ? 0 : 28}px + ${guides.length > 0 ? (guides.length - 1) * 0.9 + 0.6 : 0}rem)`, borderBottom: '1px solid var(--bg-muted)', ...style }}>{first}{content}</div>
+          ) : (
+            <tr key={key} data-testid={testid}>
+              <td style={{ ...td, width: 28, textAlign: 'center', padding: style.padding ?? td.padding }}>{first}</td>
+              <td colSpan={COLS - 1} style={{ ...td, position: 'relative', ...style, paddingLeft: indentPad(guides) }}>
+                <Rails guides={guides} through={through} />
+                {content}
+              </td>
             </tr>
-          </thead>
-          <tbody data-testid="procurement-rows">
-            {rows.length === 0 ? (
-              <tr>
-                <td style={td} colSpan={COLS}>
-                  <span style={smallMuted}>No rows yet. The submittal's rows appear here once a revision is shared; + Add item for a long-lead item with no cut sheet.</span>
-                </td>
-              </tr>
-            ) : null}
+          )
+        const tickAll = (keys: string[], label: string) => (
+          <input type="checkbox" aria-label={label} checked={keys.length > 0 && keys.every((k) => ticked.has(k))} onChange={(e) => setTicked((cur) => { const next = new Set(cur); for (const k of keys) { if (e.target.checked) next.add(k); else next.delete(k) } return next })} />
+        )
+        const body = (
+          <>
+            {rows.length === 0 ? block('empty', 'procurement-empty', {}, <span style={smallMuted}>No rows yet. The submittal's rows appear here once a revision is shared; + Add item for a long-lead item with no cut sheet.</span>) : null}
             {sections.map((sec) => {
               // By tag, a tag with one line needs no heading of its own.
               const heading = lens !== 'by_tag' || sec.rows.length > 1 || (sec.rows[0]?.isHand ?? false)
               const keys = sec.rows.map((r) => r.key)
-              const allOn = keys.length > 0 && keys.every((k) => ticked.has(k))
-              // By tag, a fixture's lines as a tree: its parts one step in, an assembly's own step only when it mixes (2026-10-02).
-              const block = lens === 'by_tag' ? tagBlock(sec.rows) : null
+              // 2026-10-02 · To order folds the lines waiting on the GC to one line per house.
+              const folds = lens === 'to_order' && sec.key === 'waiting' ? foldByHouse(sec.rows) : null
+              // By tag, a fixture's lines as a tree: its parts one step in, an assembly's own step only when it mixes (v2.4384).
+              const tree = lens === 'by_tag' && heading ? tagBlock(sec.rows) : null
               return (
                 <Fragment key={sec.key}>
-                  {heading ? (
-                    <tr data-testid="procurement-section">
-                      <td colSpan={COLS} style={{ ...td, background: 'var(--bg-subtle)', padding: '0.4rem 0.4rem' }}>
+                  {heading
+                    ? block(`${sec.key}:head`, 'procurement-section', { background: 'var(--bg-subtle)' }, (
                         <label style={{ display: 'inline-flex', gap: '0.5rem', alignItems: 'center', cursor: 'pointer', flexWrap: 'wrap' }}>
-                          <input type="checkbox" aria-label={`Pick every line under ${sec.title}`} checked={allOn} onChange={(e) => setTicked((cur) => { const next = new Set(cur); for (const k of keys) { if (e.target.checked) next.add(k); else next.delete(k) } return next })} />
+                          {tickAll(keys, `Pick every line under ${sec.title}`)}
                           <b style={{ color: 'var(--text-strong)' }}>{sec.title}</b>
                           <span style={smallMuted}>{sec.note}</span>
-                          {block?.from && !block.single ? <span style={{ ...smallMuted, color: 'var(--text-base)' }} data-testid="procurement-section-from">from {block.from}</span> : null}
+                          {tree?.from && !tree.single ? <span style={{ ...smallMuted, color: 'var(--text-base)' }} data-testid="procurement-section-from">from {tree.from}</span> : null}
                           {sec.warn ? <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-amber-700)', background: 'var(--bg-amber-100)', borderRadius: 999, padding: '0.05rem 0.5rem' }} data-testid="procurement-section-warn">{sec.warn}</span> : null}
                         </label>
-                      </td>
-                    </tr>
-                  ) : null}
-                  {block && heading ? (
-                    block.lines.map((l) => {
-                      if (l.kind === 'assembly') {
-                        const on = l.keys.length > 0 && l.keys.every((k) => ticked.has(k))
+                      ))
+                    : null}
+                  {tree
+                    ? tree.lines.map((l) => {
+                        if (l.kind === 'assembly') {
+                          return treeRow(l.key, 'procurement-assembly', l.guides, false, { fontSize: '0.8rem' }, (
+                            <span><b style={{ color: 'var(--text-strong)' }}>{l.name}</b> <span style={smallMuted}>· {l.keys.length} part{l.keys.length === 1 ? '' : 's'}</span></span>
+                          ), tickAll(l.keys, `Pick every part of ${l.name}`))
+                        }
                         return (
-                          <tr key={l.key} data-testid="procurement-assembly">
-                            <td style={{ ...td, width: 28, textAlign: 'center' }}>
-                              <input type="checkbox" aria-label={`Pick every part of ${l.name}`} checked={on} onChange={(e) => setTicked((cur) => { const next = new Set(cur); for (const k of l.keys) { if (e.target.checked) next.add(k); else next.delete(k) } return next })} />
-                            </td>
-                            <td colSpan={COLS - 1} style={{ ...td, position: 'relative', paddingLeft: indentPad(l.guides), fontSize: '0.8rem' }}>
-                              <Rails guides={l.guides} />
-                              <b style={{ color: 'var(--text-strong)' }}>{l.name}</b> <span style={smallMuted}>· {l.keys.length} part{l.keys.length === 1 ? '' : 's'}</span>
-                            </td>
-                          </tr>
+                          <Fragment key={l.row.key}>
+                            {l.orderOnlyStarts
+                              ? treeRow(`${l.row.key}:oo`, 'procurement-order-only-divider', l.guides, true, { padding: '0.25rem 0.4rem', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)' }, <>Ordered, not on the GC’s copy · {l.orderOnlyCount} part{l.orderOnlyCount === 1 ? '' : 's'}</>)
+                              : null}
+                            {renderRow(l.row, true, l.guides)}
+                          </Fragment>
                         )
-                      }
-                      return (
-                        <Fragment key={l.row.key}>
-                          {l.orderOnlyStarts ? (
-                            <tr data-testid="procurement-order-only-divider">
-                              <td style={{ ...td, width: 28, padding: '0.25rem 0.4rem' }} />
-                              <td colSpan={COLS - 1} style={{ ...td, position: 'relative', padding: '0.25rem 0.4rem', paddingLeft: indentPad(l.guides), fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
-                                <Rails guides={l.guides} through />
-                                Ordered, not on the GC’s copy · {l.orderOnlyCount} part{l.orderOnlyCount === 1 ? '' : 's'}
-                              </td>
-                            </tr>
-                          ) : null}
-                          {renderRow(l.row, true, l.guides)}
+                      })
+                    : folds
+                    ? folds.map((f) => {
+                        const fopen = openHouses.has(f.key)
+                        const fkeys = f.rows.map((r) => r.key)
+                        return (
+                          <Fragment key={f.key}>
+                            {block(f.key, 'procurement-house-fold', {}, (
+                              <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', paddingLeft: narrow ? 0 : '1.2rem' }}>
+                                {tickAll(fkeys, `Pick every line at ${f.house ?? 'no house yet'}`)}
+                                <button type="button" className="procure-fold" aria-expanded={fopen} onClick={() => setOpenHouses((cur) => { const next = new Set(cur); if (next.has(f.key)) next.delete(f.key); else next.add(f.key); return next })}>
+                                  <b style={{ color: f.house ? 'var(--text-strong)' : 'var(--text-amber-700)' }}>{f.house ?? 'No house yet'}</b>
+                                  <span style={smallMuted}>{houseFoldNote(f)}</span>
+                                  <span aria-hidden="true" style={{ ...smallMuted, marginLeft: 'auto' }}>{fopen ? 'Hide' : 'Show'}</span>
+                                </button>
+                              </span>
+                            ))}
+                            {fopen ? f.rows.map((r) => renderRow(r, false)) : null}
+                          </Fragment>
+                        )
+                      })
+                    : sec.rows.map((r, i) => (
+                        <Fragment key={r.key}>
+                          {sec.orderOnlyFrom != null && i === sec.orderOnlyFrom
+                            ? block(`${sec.key}:oo`, 'procurement-order-only-divider', { padding: narrow ? '0.3rem 0.35rem' : '0.25rem 0.4rem 0.25rem 2.2rem', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)' }, <>Ordered, not on the GC’s copy · {sec.rows.length - sec.orderOnlyFrom} part{sec.rows.length - sec.orderOnlyFrom === 1 ? '' : 's'}</>)
+                            : null}
+                          {renderRow(r, lens === 'by_tag' && heading)}
                         </Fragment>
-                      )
-                    })
-                  ) : (
-                    sec.rows.map((r, i) => (
-                      <Fragment key={r.key}>
-                        {sec.orderOnlyFrom != null && i === sec.orderOnlyFrom ? (
-                          <tr data-testid="procurement-order-only-divider">
-                            <td colSpan={COLS} style={{ ...td, padding: '0.25rem 0.4rem 0.25rem 2.2rem', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
-                              Ordered, not on the GC’s copy · {sec.rows.length - sec.orderOnlyFrom} part{sec.rows.length - sec.orderOnlyFrom === 1 ? '' : 's'}
-                            </td>
-                          </tr>
-                        ) : null}
-                        {renderRow(r, lens === 'by_tag' && heading)}
-                      </Fragment>
-                    ))
-                  )}
+                      ))}
                 </Fragment>
               )
             })}
-          </tbody>
-        </table>
-      </div>
+          </>
+        )
+        return narrow ? (
+          <div data-testid="procurement-rows" style={{ borderTop: '1px solid var(--border)' }}>{body}</div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: TABLE_MIN_WIDTH, fontVariantNumeric: 'tabular-nums' }}>
+              <thead>
+                <tr>
+                  <th style={{ ...th, width: 28 }} aria-label="Pick" />
+                  <th style={th}>Part</th>
+                  <th style={thCenter}>Qty</th>
+                  <th style={th}>House</th>
+                  <th style={th}>Stage</th>
+                  <th style={th}>Lead</th>
+                  <th style={th}>Status</th>
+                  <th style={th} />
+                </tr>
+              </thead>
+              <tbody data-testid="procurement-rows">{body}</tbody>
+            </table>
+          </div>
+        )
+      })()}
       <div style={smallMuted}>
         Tap a status to type its dates. Released = the room's approval. Expected = ordered + lead time until the house says otherwise (amber). Needed = the stage's window on the job. <b>Order by</b> = needed − lead time for a released part not yet ordered. Amber rows have changed since the last update.
       </div>

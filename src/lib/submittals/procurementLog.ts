@@ -164,6 +164,8 @@ export type ProcurementItemSource = {
   assembly?: string | null
   /** A part added to its row by hand (a folded carrier), not from the takeoff. */
   addedByHand?: boolean
+  /** A row with no product yet (a Missing row): the line reads the plans' words (2026-10-02). */
+  noProduct?: boolean
 }
 
 /** A `bid_procurement_items` row. */
@@ -235,6 +237,7 @@ export type ProcurementRow = {
   pricedLabel?: string | null
   assembly?: string | null
   addedByHand?: boolean
+  noProduct?: boolean
 }
 
 export type ProcurementLogInput = {
@@ -288,6 +291,7 @@ function rowFrom(source: ProcurementItemSource | null, rec: ProcurementRecord, s
     pricedLabel: source?.pricedLabel ?? null,
     assembly: source?.assembly ?? null,
     addedByHand: source?.addedByHand ?? false,
+    noProduct: source?.noProduct ?? false,
     orderOnly: source?.orderOnly ?? false,
     quantity: source?.quantity ?? null,
     isHand,
@@ -454,7 +458,7 @@ export function orderBlockers(rows: ReadonlyArray<ProcurementRow>): OrderBlocker
   const out: OrderBlockers = { noLead: [], noHouse: [], noStage: [], noProduct: [] }
   for (const r of rows) {
     if (r.isHand || r.orderedOn || r.deliveredOn) continue
-    if (!r.partKey && r.product === '(no product)') {
+    if (!r.partKey && (r.noProduct || r.product === '(no product)')) {
       out.noProduct.push({ key: r.key, tag: r.tag ?? '', itemId: r.itemId ?? null })
       continue
     }
@@ -463,6 +467,25 @@ export function orderBlockers(rows: ReadonlyArray<ProcurementRow>): OrderBlocker
     if (!r.stage) out.noStage.push(r.key)
   }
   return out
+}
+
+export type HouseFold = { key: string; house: string | null; rows: ProcurementRow[]; parts: number; orderOnly: number }
+
+/**
+ * Lines folded one per house (2026-10-02, To order's *Waiting on the GC*: BP375's 44 waiting
+ * lines became four): the named houses A–Z, then the lines with no house yet.
+ */
+export function foldByHouse(rows: ReadonlyArray<ProcurementRow>): HouseFold[] {
+  const by = new Map<string, ProcurementRow[]>()
+  for (const r of rows) by.set(r.supplyHouse ?? '', [...(by.get(r.supplyHouse ?? '') ?? []), r])
+  return [...by.entries()]
+    .sort(([a], [b]) => (a === '' ? 1 : b === '' ? -1 : a.localeCompare(b)))
+    .map(([k, list]) => ({ key: `fold:${k}`, house: k || null, rows: list, parts: list.length, orderOnly: list.filter((r) => r.orderOnly).length }))
+}
+
+/** "22 parts · 4 order only" · "18 parts · 10 order only · pick a house to order" */
+export function houseFoldNote(f: HouseFold): string {
+  return [`${f.parts} part${f.parts === 1 ? '' : 's'}`, f.orderOnly > 0 ? `${f.orderOnly} order only` : '', f.house ? '' : 'pick a house to order'].filter(Boolean).join(' · ')
 }
 
 /** No line has gone to the GC yet: the log says so once instead of on every line. */
