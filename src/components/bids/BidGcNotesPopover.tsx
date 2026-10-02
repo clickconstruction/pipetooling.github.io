@@ -142,7 +142,12 @@ export function BidGcNotesPopover({
 
   return (
     <div
-      onClick={onClose}
+      onClick={(e) => {
+        // The Bid Board draws this inside a row that opens on a click: a click outside closes
+        // the notes only, not the row behind them too (v2.4356).
+        e.stopPropagation()
+        onClose()
+      }}
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 80, padding: '1rem' }}
     >
       <div

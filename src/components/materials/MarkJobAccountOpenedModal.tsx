@@ -116,7 +116,12 @@ export function MarkJobAccountOpenedModal({
   return (
     <div
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: '1rem' }}
-      onClick={(e) => e.target === e.currentTarget && onClose()}
+      onClick={(e) => {
+        // Opened from many places, some inside a row or another window (the Bid Board's account
+        // chips, Edit Bid's job block): a click outside closes this sheet only (v2.4356).
+        e.stopPropagation()
+        if (e.target === e.currentTarget) onClose()
+      }}
     >
       <div
         role="dialog"

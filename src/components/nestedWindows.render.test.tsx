@@ -12,6 +12,11 @@
  * story, the Apply Schedule % confirm in Hours align. The Legal desk's sheets and its Apply
  * discount window are tested in the real desk (`legal/LegalDeskModal.render.test.tsx`).
  * `scripts/check-nested-windows.mjs` finds new ones.
+ *
+ * The same click reached rows that open on a click (v2.4356): outside the GC notes it also
+ * opened or shut the Bid Board row, and outside Cost this task it toggled the Checklist row's
+ * activity. Those windows are here too, with Mark account opened, which rows and other windows
+ * draw; the stand-in plays the row. `check-nested-windows.mjs --rows` finds new ones.
  */
 import type { ReactElement } from 'react'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
@@ -26,6 +31,9 @@ import LienOwnerCallDialog from './jobs/LienOwnerCallDialog'
 import { SubPortalVisitsModal } from './people/SubPortalVisitsModal'
 import { WorkOrderAssemblerModal } from './jobs/WorkOrderAssemblerModal'
 import { ApplyScheduleApprovedConfirmModal } from './clock-sessions/ApplyScheduleApprovedConfirmModal'
+import { BidGcNotesPopover } from './bids/BidGcNotesPopover'
+import ChecklistCostModal from './checklist/ChecklistCostModal'
+import { MarkJobAccountOpenedModal } from './materials/MarkJobAccountOpenedModal'
 import { practiceCallFacts } from '../lib/jobs/lienCallerMatch'
 
 vi.mock('../hooks/useAuth', async () => {
@@ -98,10 +106,27 @@ const CASES: { name: string; render: (onClose: () => void) => ReactElement; back
     render: (onClose) => <ApplyScheduleApprovedConfirmModal open busy={false} onCancel={onClose} onConfirm={() => {}} />,
     backdrop: backdropOfDialog(),
   },
+  {
+    name: 'GC notes (Bid Board row)',
+    render: (onClose) => <BidGcNotesPopover bidId="b-385" bidLabel="Galloway Park" gcId={null} gcName="HCS, Inc." sentOn="9/22" outcome={null} onClose={onClose} onChanged={() => {}} />,
+    backdrop: backdropOfDialog(),
+  },
+  {
+    name: 'Cost this task (Checklist row)',
+    render: (onClose) => <ChecklistCostModal open costKey="item-1" taskTitle="Clear back half of floor" onClose={onClose} />,
+    backdrop: backdropOfDialog(),
+  },
+  {
+    name: 'Mark account opened (a job account chip)',
+    render: (onClose) => (
+      <MarkJobAccountOpenedModal jobId="j-258" jobLabel="258 · Dudley Mason" house={{ id: 'h-1', name: 'Ferguson' }} existing={null} reps={[]} onClose={onClose} onSaved={() => {}} />
+    ),
+    backdrop: backdropOfDialog(),
+  },
 ]
 
-describe('a window drawn inside another window', () => {
-  it.each(CASES)('$name: a click outside closes it only, not the window behind', async ({ render, backdrop }) => {
+describe('a window drawn inside another window or a row', () => {
+  it.each(CASES)('$name: a click outside closes it only, not what is behind it', async ({ render, backdrop }) => {
     const onClose = vi.fn()
     const windowBehind = vi.fn()
     renderWithProviders(<div onClick={windowBehind}>{render(onClose)}</div>)
