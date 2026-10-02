@@ -66,6 +66,7 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 
 | Where | What it does |
 |---|---|
+| **New here?** (top right) | An 11-stop spotlight walkthrough of the three stages on the Project Board: each stage's question, what you do in it, how it ends, then where to try it. Stops in `src/lib/gcMode/gcTour.ts`, on the app's `SpotlightTour`. |
 | **Project Board** | Projects in three sections: Bidding to the owner, Buying out, Building. Each row leads with the days left before our bid (red inside a week, amber inside two), then the name, the owner and architect (each a link), chips, the Bid Board's folder and plans icons, and the price. |
 | Plans icon on a row | A plans window over the board: newest set first, the sheet list by discipline, what the last addendum changed, arrow keys flip sheets. Drawings are stand-ins. |
 | Owner or architect name | One company window, shaped by what the company is to us: an owner gets money, how they buy and pay, projects we build for them; an architect gets addenda and questions waiting on them. One call log either way. |
@@ -103,6 +104,10 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 - **A new set of plans emails the right people**: every company bidding while we bid; once the
   job is ours, only the company on each trade.
 - **Communication is tracked per ask**, and a promised quote date is watched.
+- **Click does the GC work itself** (answered 2026-10-02, was open question 1): "It's for Click
+  doing GC work ourselves, but the entire app is designed in a way where a later company could
+  put their company in this app." Build for one company; name nothing Click-only, so a later
+  company could be added the way the rest of the app allows.
 
 ## My defaults the owner has not confirmed
 
@@ -124,8 +129,8 @@ Each is a constant or a rule in `gcModel.ts`. Change them freely.
 
 ## Open questions (the owner's to answer)
 
-1. Is this for Click taking GC work itself, or a product other GCs use? The second means
-   separate companies' data, which the app does not have.
+1. ~~Is this for Click taking GC work itself, or a product other GCs use?~~ Answered: Click
+   itself, built so a later company could be added (see *Decided by the owner*).
 2. Does the first real version need the price-to-the-owner side, or does it start at buyout?
 3. Are trade partners mostly known companies, or do strangers get invited and need vetting?
 4. Draws by stage (rough, top out, trim) or by percent with retainage, as drawn?

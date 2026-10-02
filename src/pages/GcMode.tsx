@@ -1,4 +1,5 @@
 import { useReducer, useState } from 'react'
+import { SpotlightTour } from '../components/SpotlightTour'
 import { BidsModeToggle } from '../components/gc/BidsModeToggle'
 import {
   GcContractsTab,
@@ -16,6 +17,7 @@ import { GcStartTab } from '../components/gc/GcStart'
 import { GcTradeMap } from '../components/gc/GcTradeMap'
 import { GcTradePortal } from '../components/gc/GcTradePortal'
 import { GC_ICON_PATHS } from '../components/gc/gcIcons'
+import { GcProgressRing } from '../components/gc/GcProgressRing'
 import { Btn, Card, Chip, Stat, type Tone } from '../components/gc/gcUi'
 import { useMatchMedia } from '../hooks/useMatchMedia'
 import {
@@ -27,13 +29,17 @@ import {
   initialGcState,
   money,
   planLabel,
+  RING_COLORS,
   plansReach,
   proposalTotals,
   shortDate,
+  stageProgress,
   weekdayDate,
+  type StageProgress,
   type GcProject,
   type GcStage,
 } from '../lib/gcMode/gcModel'
+import { GC_TOUR_STEPS } from '../lib/gcMode/gcTour'
 
 /**
  * GC mode — design spike (2026-10-02). Bids, mirrored: we are the general contractor, the plans
@@ -84,6 +90,7 @@ export default function GcMode() {
   const [customerId, setCustomerId] = useState<string | null>(null)
   const [mapFor, setMapFor] = useState<{ projectId: string; packageId: string } | null>(null)
   const [levelPackageId, setLevelPackageId] = useState<string | null>(null)
+  const [tourOpen, setTourOpen] = useState(false)
   const wide = useMatchMedia('(min-width: 1560px)')
   const project = state.projects.find((p) => p.id === projectId) ?? null
   const plansFor = state.projects.find((p) => p.id === plansForId) ?? null
@@ -113,7 +120,25 @@ export default function GcMode() {
         </div>
         <Chip tone="violet" title="Runs on made-up data. Nothing is saved.">Prototype</Chip>
         <Btn kind="quiet" onClick={() => { dispatch({ type: 'reset' }); setProjectId(null) }}>Start over</Btn>
+        <span data-tour="gc-new-here">
+          <Btn
+            kind="primary"
+            title="A walk through the three stages a project moves through"
+            onClick={() => {
+              setBoardTab('projects')
+              setProjectId(null)
+              setCustomerId(null)
+              setPlansForId(null)
+              setMapFor(null)
+              setTourOpen(true)
+            }}
+          >
+            New here?
+          </Btn>
+        </span>
       </div>
+
+      {tourOpen && <SpotlightTour steps={GC_TOUR_STEPS} onClose={() => setTourOpen(false)} />}
 
       {customer && !plansFor && (
         <GcCustomerWindow
@@ -184,13 +209,13 @@ export default function GcMode() {
       )}
 
       {boardTab === 'projects' && !project && (
-        <div style={{ display: 'grid', gap: '1.1rem' }}>
+        <div style={{ display: 'grid', gap: '1.1rem' }} data-tour="gc-board">
           {STAGES.map((stage) => {
             const rows = state.projects
               .filter((p) => p.stage === stage.key)
               .sort((a, b) => (a.bidDue ?? '9999').localeCompare(b.bidDue ?? '9999'))
             return (
-              <section key={stage.key}>
+              <section key={stage.key} data-tour={`gc-stage-${stage.key}`}>
                 <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', marginBottom: '0.4rem' }}>
                   <h3 style={{ margin: 0, fontSize: '1rem' }}>{stage.label} ({rows.length})</h3>
                   <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{stage.blurb}</span>
@@ -199,10 +224,11 @@ export default function GcMode() {
                   <Card style={{ color: 'var(--text-muted)' }}>None right now.</Card>
                 ) : (
                   <div style={{ display: 'grid', gap: '0.5rem' }}>
-                    {rows.map((p) => (
+                    {rows.map((p, i) => (
+                      <div key={p.id} data-tour={i === 0 ? `gc-row-${stage.key}` : undefined}>
                       <ProjectRow
-                        key={p.id}
                         project={p}
+                        progress={stageProgress(state, p)}
                         today={state.today}
                         onOpen={() => { setProjectId(p.id); setTab('packages') }}
                         onPlans={() => setPlansForId(p.id)}
@@ -211,6 +237,7 @@ export default function GcMode() {
                         chase={toChase.filter((f) => f.project.id === p.id).length}
                         onChase={() => setBoardTab('followup')}
                       />
+                      </div>
                     ))}
                   </div>
                 )}
@@ -360,6 +387,7 @@ const customerLink = {
   textDecoration: 'underline',
   textDecorationColor: 'var(--border-blue)',
   textUnderlineOffset: 3,
+  textAlign: 'left',
 } as const
 
 /**
@@ -417,6 +445,7 @@ function DueBlock({ project, today }: { project: GcProject; today: string }) {
 
 function ProjectRow({
   project,
+  progress,
   today,
   onOpen,
   onPlans,
@@ -426,6 +455,8 @@ function ProjectRow({
   onChase,
 }: {
   project: GcProject
+  /** How far through its stage the project is: the ring at the head of the row. */
+  progress: StageProgress
   today: string
   onOpen: () => void
   onPlans: () => void
@@ -440,6 +471,9 @@ function ProjectRow({
   const subs = project.packages.filter((p) => !p.selfPerform).length
   const reach = plansReach(project)
   const newest = planLabel(project, currentRev(project))
+  // A phone or a narrow pane: the ring, the days and the name on top, the rest on the lines under.
+  const narrow = useMatchMedia('(max-width: 760px)')
+  const under = narrow ? ({ gridColumn: '1 / -1' } as const) : undefined
   return (
     <div
       onClick={onOpen}
@@ -451,11 +485,12 @@ function ProjectRow({
         cursor: 'pointer',
         color: 'var(--text-base)',
         display: 'grid',
-        gridTemplateColumns: '6.5rem minmax(0, 2fr) minmax(0, 2fr) auto auto',
-        gap: '1rem',
+        gridTemplateColumns: narrow ? '3.5rem 5.5rem minmax(0, 1fr)' : '3.5rem 6.5rem minmax(0, 2fr) minmax(0, 2fr) auto auto',
+        gap: narrow ? '0.6rem 0.75rem' : '1rem',
         alignItems: 'center',
       }}
     >
+      <GcProgressRing progress={progress} color={RING_COLORS[project.stage]} stageLabel={STAGES.find((st) => st.key === project.stage)?.label ?? ''} />
       <DueBlock project={project} today={today} />
       <span>
         <button
@@ -487,7 +522,7 @@ function ProjectRow({
           · {project.sizeNote}
         </span>
       </span>
-      <span style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+      <span style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', ...under }}>
         <Chip tone={totals.holes.length > 0 ? 'red' : 'green'}>{coverageWords(project)}</Chip>
         {chase > 0 && (
           <button
@@ -504,7 +539,7 @@ function ProjectRow({
           plans: {newest}{reach.have === reach.of ? '' : ` · ${reach.of - reach.have} have not opened it`}
         </Chip>
       </span>
-      <span style={{ display: 'inline-flex', gap: '0.2rem', alignItems: 'center' }} aria-label="Links">
+      <span style={{ display: 'inline-flex', gap: '0.2rem', alignItems: 'center', ...(narrow ? { gridColumn: '1 / 3' } : null) }} aria-label="Links">
         <button
           type="button"
           style={linkIcon}
@@ -524,7 +559,7 @@ function ProjectRow({
           <GcIcon d={GC_ICON_PATHS.plans} />
         </button>
       </span>
-      <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', fontSize: '1.05rem', textAlign: 'right' }}>
+      <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', fontSize: '1.05rem', textAlign: 'right', ...(narrow ? { gridColumn: '3 / -1' } : null) }}>
         {money(totals.price)}
         {totals.holes.length > 0 && (
           <span style={{ display: 'block', fontWeight: 400, fontSize: '0.75rem', color: 'var(--text-red-700)' }}>so far, with holes</span>
