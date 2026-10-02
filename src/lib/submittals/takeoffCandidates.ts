@@ -68,6 +68,10 @@ export type TakeoffCandidate = {
   storedOrderOnly?: boolean
   /** 2026-10-02 · the lines left off the fixture: not in `pieces`, so no row, refresh or count reads them; kept here to bring one back. */
   leftOutPieces?: ProductPiece[]
+  /** Every line under the fixture in takeoff order, the left-off ones included; absent = `pieces`. */
+  allPieces?: ProductPiece[]
+  /** 2026-10-02 · on the draft: the row's takeoff parts by their takeoff key and whether the GC sees each; null when the row has none or the house's file set them. */
+  onParts?: ReadonlyArray<{ key: string; onSubmittal: boolean }> | null
   /** The name spells out more than one tag (WC 1&2 → WC-1, WC-2), so the row may split (v2.4118). */
   canSplit: boolean
   /** The estimator's stored split, when there is one. */
@@ -330,7 +334,7 @@ export function takeoffCandidates(input: TakeoffCandidatesInput): TakeoffCandida
       ticked: storedTick ?? defaultTicked,
       alreadyOn: input.alreadyOn?.has(row.id) ?? false,
       storedOrderOnly: input.orderOnly?.get(row.id) ?? false,
-      ...(leftOutPieces.length > 0 ? { leftOutPieces } : {}),
+      ...(leftOutPieces.length > 0 ? { leftOutPieces, allPieces: everyPiece } : {}),
       canSplit,
       storedSplit,
       split: canSplit && (storedSplit ?? false),

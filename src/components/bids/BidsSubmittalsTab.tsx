@@ -29,7 +29,7 @@ import { PlugInScheduleModal } from './PlugInScheduleModal'
 import { SubmittalTakeoffPicker } from './SubmittalTakeoffPicker'
 import { loadTakeoffCandidates, saveTakeoffChoices, type TakeoffCandidatesLoad } from '../../lib/submittals/takeoffCandidatesIo'
 import { candidateToItemInserts, rowSplitTags, splitExplanation, type TakeoffCandidate } from '../../lib/submittals/takeoffCandidates'
-import { carryPartInsert, copyPartInsert, formatPartQty, leftOutPieceKeys, partCallsLine, partsByItem, partsFromPieces, rollUpFromParts, submittedParts, type PartDraft, type SubmittalPartInsert, type SubmittalPartRow } from '../../lib/submittals/itemParts'
+import { carryPartInsert, copyPartInsert, formatPartQty, leftOutPieceKeys, partCallsLine, partPieceKey, partsByItem, partsFromPieces, rollUpFromParts, submittedParts, type PartDraft, type SubmittalPartInsert, type SubmittalPartRow } from '../../lib/submittals/itemParts'
 import { applyPartWrites, clearEnteredCallsOnParts, enterCallOnParts, insertItemParts, loadItemParts, moveProcurementLines, saveItemParts, writeRowCallFromParts } from '../../lib/submittals/itemPartsIo'
 import { foldSuggestions, foldWrites, planTakeoffRefresh, takeoffRefreshWrites } from '../../lib/submittals/refreshFromTakeoff'
 import { SplitRuleModal } from './SplitRuleModal'
@@ -222,6 +222,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   const [takeoffPicker, setTakeoffPicker] = useState<'build' | 'add' | null>(null)
   /** 2026-10-02 · by count row, what the log holds for its rows on the draft ("Ordered 09/23"): such a fixture cannot be left out. */
   const [takeoffBought, setTakeoffBought] = useState<Map<string, string>>(() => new Map())
+  /** By count row, then by a part's takeoff key: the same for each part of a row on the draft. */
+  const [takeoffBoughtParts, setTakeoffBoughtParts] = useState<Map<string, Map<string, string>>>(() => new Map())
   // v2.4118 · "When a row can split", opened from the rows' footer.
   const [splitRuleOpen, setSplitRuleOpen] = useState(false)
   /** 2026-10-01 · a draft catching up: the takeoff's parts on its rows, a hand row folded into a fixture. */
@@ -630,8 +632,17 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     // How each fixture sits on the draft: a row the GC sees, an order-only row, or not on it.
     const on = new Map<string, 'gc' | 'order'>()
     for (const it of items) if (it.source_count_row_id && on.get(it.source_count_row_id) !== 'gc') on.set(it.source_count_row_id, isOrderOnlyRow(it) ? 'order' : 'gc')
-    return takeoff.candidates.map((c) => ({ ...c, alreadyOn: on.has(c.countRowId), onAs: on.get(c.countRowId) ?? null }))
-  }, [takeoff, items])
+    // The row's takeoff parts by their place on the takeoff, so the window shows each as it sits on the draft.
+    // A row with no parts, or with parts from the house's file, has its parts set in Edit.
+    const onParts = new Map<string, Array<{ key: string; onSubmittal: boolean }> | null>()
+    for (const it of items) {
+      if (!it.source_count_row_id || onParts.has(it.source_count_row_id)) continue
+      const rowParts = partsOf.get(it.id) ?? []
+      const fromTakeoff = rowParts.filter((p) => p.source === 'takeoff' && partPieceKey(p))
+      onParts.set(it.source_count_row_id, rowParts.length === 0 || rowParts.some((p) => p.source === 'file') || fromTakeoff.length === 0 ? null : fromTakeoff.map((p) => ({ key: partPieceKey(p)!, onSubmittal: p.on_submittal })))
+    }
+    return takeoff.candidates.map((c) => ({ ...c, alreadyOn: on.has(c.countRowId), onAs: on.get(c.countRowId) ?? null, onParts: onParts.get(c.countRowId) ?? null }))
+  }, [takeoff, items, partsOf])
   /** The takeoff's fixtures that are not on the draft: what the Left out line under the rows counts. */
   const takeoffLeftOut = takeoffCandidatesForPicker.filter((c) => !c.onAs).length
   function openTakeoffPicker() {
@@ -643,18 +654,25 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     }
     else showToast('Rows from the takeoff land on a draft — start a new revision first.', 'info')
   }
-  /** What the log holds for the fixtures on the draft, so the window can hold Left out on one somebody ordered. */
+  /** What the log holds for the fixtures on the draft and for each of their parts, so the window can hold Left out on what somebody ordered. */
   async function readTakeoffBought() {
     if (!bidId) return
     try {
       const facts = await loadBidOrderFacts(supabase, bidId)
-      const out = new Map<string, string>()
+      const rows = new Map<string, string>()
+      const partsBought = new Map<string, Map<string, string>>()
       for (const it of items) {
         if (!it.source_count_row_id) continue
-        const words = boughtWords(facts.get(it.tag) ?? [])
-        if (words) out.set(it.source_count_row_id, words)
+        const words = boughtWords(facts.byTag.get(it.tag) ?? [])
+        if (words) rows.set(it.source_count_row_id, words)
+        for (const p of partsOf.get(it.id) ?? []) {
+          const key = partPieceKey(p)
+          const w = key ? boughtWords(facts.byPartKey.get(p.procure_key) ?? []) : ''
+          if (key && w) partsBought.set(it.source_count_row_id, new Map(partsBought.get(it.source_count_row_id) ?? []).set(key, w))
+        }
       }
-      setTakeoffBought(out)
+      setTakeoffBought(rows)
+      setTakeoffBoughtParts(partsBought)
     } catch {
       // The log could not be read: every fixture on the draft is treated as bought.
       setTakeoffBought(new Map(items.filter((it) => it.source_count_row_id).map((it) => [it.source_count_row_id!, 'The procurement log could not be read'])))
@@ -662,7 +680,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   }
 
   /** 2026-10-02 · the window's picks: rows come on (the GC's or order only), rows on the draft move or come off, the bid remembers every pick. */
-  async function confirmTakeoff(plan: TakeoffPlan, splits?: ReadonlyMap<string, boolean>, productKeys?: ReadonlyMap<string, ReadonlyArray<string>>) {
+  async function confirmTakeoff(plan: TakeoffPlan, splits?: ReadonlyMap<string, boolean>) {
     if (!bidId || !takeoffPicker) return
     setBusy(true)
     try {
@@ -715,7 +733,14 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         const { error } = await db.from('bid_submittal_items').delete().eq('id', it.id)
         if (error) throw error
       }
-      await saveTakeoffChoices(db, bidId, plan.ticks, splits, productKeys, plan.orderOnly)
+      // Rows staying on the draft whose parts were picked differently: each takes the fixture's parts as picked.
+      // A part it keeps holds its house, lead time, stage and call; one left out comes off; one brought back comes on.
+      const removed = new Set(plan.remove)
+      for (const pc of plan.parts) {
+        if (removed.has(pc.countRowId)) continue
+        for (const it of rowsOf(pc.countRowId)) await applyPartWrites(db, it.id, takeoffRefreshWrites(partsOf.get(it.id) ?? [], pc.candidate, it.id, bidId))
+      }
+      await saveTakeoffChoices(db, bidId, plan.ticks, splits, plan.productKeys, plan.orderOnly, plan.leftOut)
       setTakeoffPicker(null)
       const proposed = inserts.filter((r) => r.status === 'proposed').length
       const toType = inserts.length - proposed
@@ -2821,7 +2846,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       ) : null}
       {splitRuleOpen ? <SplitRuleModal examples={splitExplanation(takeoffCandidatesForPicker)} onClose={() => setSplitRuleOpen(false)} /> : null}
       {takeoffPicker && takeoff ? (
-        <SubmittalTakeoffPicker mode={takeoffPicker} revLabel={takeoffPicker === 'build' ? 'Rev 1' : `Rev ${selectedRev?.rev_number ?? newestRev?.rev_number ?? 1}`} candidates={takeoffCandidatesForPicker} bought={takeoffPicker === 'add' ? takeoffBought : undefined} busy={busy} onConfirm={(plan, splits, productKeys) => void confirmTakeoff(plan, splits, productKeys)} onClose={() => setTakeoffPicker(null)} />
+        <SubmittalTakeoffPicker mode={takeoffPicker} revLabel={takeoffPicker === 'build' ? 'Rev 1' : `Rev ${selectedRev?.rev_number ?? newestRev?.rev_number ?? 1}`} candidates={takeoffCandidatesForPicker} bought={takeoffPicker === 'add' ? takeoffBought : undefined} boughtParts={takeoffPicker === 'add' ? takeoffBoughtParts : undefined} busy={busy} onConfirm={(plan, splits) => void confirmTakeoff(plan, splits)} onClose={() => setTakeoffPicker(null)} />
       ) : null}
       {plugInOpen && bidId && selectedBid ? <PlugInScheduleModal open onClose={() => setPlugInOpen(false)} onSaved={() => { setPlugInOpen(false); void load(bidId) }} bidId={bidId} bidLabel={bidDisplayName(selectedBid) || 'Bid'} rows={[]} /> : null}
       {sharing && selectedRev && bidId ? (
