@@ -105,6 +105,37 @@ describe('SubmittalItemEditDialog · supply house', () => {
   })
 })
 
+describe('SubmittalItemEditDialog · the window fits the screen (2026-10-02)', () => {
+  const houses = [{ id: 'h-moore', name: 'Moore Supply' }, { id: 'h-national', name: 'National Wholesale' }]
+
+  it('the title and the Save row hold still; the fields between them are what scrolls, never the backdrop', () => {
+    renderWithProviders(<SubmittalItemEditDialog item={item()} sourceFiles={[]} people={people} houses={houses} canEnterDecision onSave={() => {}} onClose={() => {}} />)
+    const dialog = screen.getByRole('dialog')
+    const body = screen.getByTestId('edit-row-body')
+    // The window is held to the screen, so its top can never sit above the top edge.
+    expect(dialog.style.maxHeight).toBe('100%')
+    expect(dialog.parentElement!.style.overflowY).toBe('')
+    expect(body.style.overflowY).toBe('auto')
+    expect(body.style.minHeight).toBe('0')
+    // Outside the scrolling body: the title and the buttons.
+    expect(body.contains(screen.getByRole('heading'))).toBe(false)
+    expect(body.contains(screen.getByRole('button', { name: 'Save' }))).toBe(false)
+    expect(body.contains(screen.getByRole('button', { name: 'Cancel' }))).toBe(false)
+    // Inside it: every field.
+    expect(body.contains(screen.getByLabelText('Supply house'))).toBe(true)
+    expect(body.contains(screen.getByLabelText('Note'))).toBe(true)
+    expect(body.contains(screen.getByTestId('entered-call'))).toBe(true)
+  })
+
+  it('opened from a Procure line on a row with no parts: the house box is ready; opened from the row, nothing is', () => {
+    const { unmount } = renderWithProviders(<SubmittalItemEditDialog item={item()} sourceFiles={[]} houses={houses} focusHouse onSave={() => {}} onClose={() => {}} />)
+    expect(document.activeElement).toBe(screen.getByLabelText('Supply house'))
+    unmount()
+    renderWithProviders(<SubmittalItemEditDialog item={item()} sourceFiles={[]} houses={houses} onSave={() => {}} onClose={() => {}} />)
+    expect(document.activeElement).not.toBe(screen.getByLabelText('Supply house'))
+  })
+})
+
 describe('SubmittalItemEditDialog · parts, each bought on its own (2026-10-01)', () => {
   const part = (id: string, label: string, seq: number, extra: Partial<SubmittalPartRow> = {}): SubmittalPartRow => ({ id, item_id: 'i1', bid_id: 'b1', sequence_order: seq, label, manufacturer: null, model: null, description: null, quantity: 1, on_submittal: true, source: 'takeoff', part_id: null, source_line_id: null, source_template_item_id: null, assembly: 'LAV 1 assembly SPACEX', priced_label: null, reason_note: null, supply_house_id: null, lead_time_days: null, stage: null, sheet_file: null, sheet_pages: [], review_decision: null, review_note: null, reviewed_at: null, reviewed_by_name: null, reviewed_by_email: null, reviewed_by_person_id: null, decision_source: 'room', decision_entered_by: null, decision_entered_by_name: null, procure_key: `k-${id}`, carried_from_part_id: null, created_at: '', updated_at: '', ...extra })
   const parts = [part('tsl', 'TSL.MON.B.38.2.PS1.BK MONOLITH B SERIES', 1), part('faucet', 'TOTO T25S51E#CP', 2), part('stop', 'BRASSCRA PLB113XP ANG', 3, { on_submittal: false })]
@@ -143,6 +174,8 @@ describe('SubmittalItemEditDialog · parts, each bought on its own (2026-10-01)'
     expect(ringed).toHaveLength(1)
     expect((ringed[0]!.querySelector('input[aria-label="Part 2"]') as HTMLInputElement).value).toBe('TOTO T25S51E#CP')
     expect(document.activeElement).toBe(screen.getByLabelText('House for part 2'))
+    // The parts are in the body that scrolls, so the part tapped can always be brought into view.
+    expect(screen.getByTestId('edit-row-body').contains(ringed[0]!)).toBe(true)
     fireEvent.change(screen.getByLabelText('House for part 2'), { target: { value: 'h-moore' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
     const saved = onSave.mock.calls[0]![0]

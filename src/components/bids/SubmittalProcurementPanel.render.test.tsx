@@ -307,7 +307,7 @@ describe('SubmittalProcurementPanel', () => {
 
   it('2026-10-02 · a line with a row behind it opens that row: the tap hands back the row and the part; a hand line and a panel with no door stay text', async () => {
     state.records = []
-    const onOpenItem = vi.fn<(line: { itemId: string; partKey: string | null }) => void>()
+    const onOpenItem = vi.fn<(line: { itemId: string; partKey: string | null; house?: boolean }) => void>()
     const rowItems: ProcurementItemSource[] = [
       { tag: 'DWH-1', product: 'WATTS LFN36M1 0556031 VACUUM RELIEF VALVE', supplyHouse: 'Moore Supply', leadTimeDays: 14, decision: null, shared: false, partKey: 'k-watts', partOrder: 2, itemId: 'row-dwh', stage: 'trim_set' },
       { tag: 'HB-3', product: 'WOODFORD B74C', supplyHouse: 'Moore Supply', leadTimeDays: null, decision: null, shared: false, itemId: 'row-hb' },
@@ -318,7 +318,8 @@ describe('SubmittalProcurementPanel', () => {
     // The house opens the same window: the house is what is usually changed (2026-10-02).
     expect(screen.getAllByTestId('procurement-house-open').map((d) => d.textContent)).toEqual(['Moore Supply', 'Moore Supply'])
     fireEvent.click(screen.getByRole('button', { name: 'Change the house for DWH-1 WATTS LFN36M1' }))
-    expect(onOpenItem).toHaveBeenLastCalledWith({ itemId: 'row-dwh', partKey: 'k-watts' })
+    // The house cell says so, and the window puts the house box under the cursor.
+    expect(onOpenItem).toHaveBeenLastCalledWith({ itemId: 'row-dwh', partKey: 'k-watts', house: true })
     expect(doors[0]!.getAttribute('title')).toBe('Open DWH-1 to change this part’s house, lead time or stage')
     fireEvent.click(doors[0]!)
     expect(onOpenItem).toHaveBeenLastCalledWith({ itemId: 'row-dwh', partKey: 'k-watts' })

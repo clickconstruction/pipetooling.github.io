@@ -69,7 +69,7 @@ type Props = {
   /** The strip's Procure pill reads these. */
   onCounts?: (c: { released: number; ordered: number; delivered: number; late: number }) => void
   /** A tap on a line's item opens its row's Edit window, on that part (2026-10-02, Grace: no scrolling back and forth). */
-  onOpenItem?: (line: { itemId: string; partKey: string | null }) => void
+  onOpenItem?: (line: { itemId: string; partKey: string | null; /** the house cell was what was tapped */ house?: boolean }) => void
   /** The supply houses the tick bar can set on many lines at once (2026-10-02). */
   houses?: ReadonlyArray<{ id: string; name: string }>
   /** The rows' parts changed from the log (house, lead time, stage): the caller reads them again. */
@@ -641,7 +641,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
     const houseText = r.supplyHouse ? <span className="procure-house-name">{r.supplyHouse}</span> : r.isHand ? <span style={smallMuted}>—</span> : <span className="procure-house-name" style={{ color: 'var(--text-amber-700)', fontSize: '0.78rem' }}>no house</span>
     // The house opens the row's Edit window on this part, its house box ready (Grace, 2026-10-02: swap a house).
     const house = onOpenItem && r.itemId ? (
-      <button type="button" className="procure-item-open" onClick={() => onOpenItem({ itemId: r.itemId!, partKey: r.partKey ?? null })} title={`Change the house for ${r.partKey ? head : name}`} aria-label={`Change the house for ${name}${r.partKey ? ` ${head}` : ''}`} data-testid="procurement-house-open" style={narrow ? { display: 'inline', width: 'auto', margin: 0, padding: 0 } : undefined}>
+      <button type="button" className="procure-item-open" onClick={() => onOpenItem({ itemId: r.itemId!, partKey: r.partKey ?? null, house: true })} title={`Change the house for ${r.partKey ? head : name}`} aria-label={`Change the house for ${name}${r.partKey ? ` ${head}` : ''}`} data-testid="procurement-house-open" style={narrow ? { display: 'inline', width: 'auto', margin: 0, padding: 0 } : undefined}>
         {houseText}
       </button>
     ) : (

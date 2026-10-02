@@ -10,8 +10,11 @@
  *
  * A row with parts (2026-10-01) is edited part by part: each part's house, lead time and stage
  * live on the part, and the row's own house and lead time are read from them.
+ *
+ * The window is never taller than the screen: the title and the Save row hold still and the
+ * fields between them scroll. A centred window taller than the screen cannot be scrolled to its top.
  */
-import { useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 
 import { needsReason, REASON_LABELS, STATUS_LABELS, type ProductStatus, type ReasonKind } from '../../lib/submittals/productStatus'
 import { describeLeadTime, LEAD_TIME_PRESETS, parseLeadTime } from '../../lib/submittals/leadTime'
@@ -85,7 +88,7 @@ const chipButton = (on: boolean): CSSProperties => ({
 const fieldLabel: CSSProperties = { fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 const inputStyle: CSSProperties = { padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, font: 'inherit', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-strong)' }
 
-export function SubmittalItemEditDialog({ item, sourceFiles, people = [], houses = [], parts = [], canEnterDecision = false, canEditProduct = false, focusPartId = null, onSave, onClose }: { item: SubmittalItemRow; sourceFiles: SourceFile[]; /** the part a Procure line opened the window on (2026-10-02) */ focusPartId?: string | null; /** the row's parts (2026-10-01) */ parts?: ReadonlyArray<SubmittalPartRow>; /** the supply houses to pick from; none hides the picker */ houses?: ReadonlyArray<{ id: string; name: string }>; /** the room's people, for the on-behalf-of picker (5b) */ people?: SubmittalPersonRow[]; /** the revision was shared, so a reviewer's call makes sense */ canEnterDecision?: boolean; /** a draft: the tag and the product can be typed (v2.4090) */ canEditProduct?: boolean; onSave: (patch: SubmittalItemPatch) => void; onClose: () => void }) {
+export function SubmittalItemEditDialog({ item, sourceFiles, people = [], houses = [], parts = [], canEnterDecision = false, canEditProduct = false, focusPartId = null, focusHouse = false, onSave, onClose }: { item: SubmittalItemRow; sourceFiles: SourceFile[]; /** the part a Procure line opened the window on (2026-10-02) */ focusPartId?: string | null; /** a Procure line opened the window on a row with no parts: its house box is scrolled to and ready */ focusHouse?: boolean; /** the row's parts (2026-10-01) */ parts?: ReadonlyArray<SubmittalPartRow>; /** the supply houses to pick from; none hides the picker */ houses?: ReadonlyArray<{ id: string; name: string }>; /** the room's people, for the on-behalf-of picker (5b) */ people?: SubmittalPersonRow[]; /** the revision was shared, so a reviewer's call makes sense */ canEnterDecision?: boolean; /** a draft: the tag and the product can be typed (v2.4090) */ canEditProduct?: boolean; onSave: (patch: SubmittalItemPatch) => void; onClose: () => void }) {
   const [tagText, setTagText] = useState(item.tag)
   const [submittedText, setSubmittedText] = useState(item.submitted_label ?? [item.submitted_manufacturer, item.submitted_model].filter(Boolean).join(' '))
   const [houseId, setHouseId] = useState<string | null>(item.supply_house_id ?? null)
@@ -128,10 +131,19 @@ export function SubmittalItemEditDialog({ item, sourceFiles, people = [], houses
   const askWhy = needsReason(status)
   const title = item.tag.trim() ? `${item.tag} · ${[item.specified_manufacturer, item.specified_model].filter(Boolean).join(' ') || item.specified_description || ''}` : `Accessory · ${item.submitted_label ?? ''}`
   const smallMuted: CSSProperties = { fontSize: '0.75rem', color: 'var(--text-muted)' }
+  const houseRef = useRef<HTMLSelectElement | null>(null)
+  // Read once, on open: the window keeps its own place after that.
+  const focusHouseOnOpen = useRef(focusHouse)
+  useEffect(() => {
+    const el = focusHouseOnOpen.current ? houseRef.current : null
+    if (!el) return
+    el.scrollIntoView?.({ block: 'center' })
+    el.focus({ preventScroll: true })
+  }, [])
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: Z, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', overflowY: 'auto' }} role="presentation" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
-      <div role="dialog" aria-modal="true" aria-label={`Edit ${item.tag.trim() || 'accessory'}`} style={{ background: 'var(--surface)', borderRadius: 8, maxWidth: partDrafts != null ? 760 : 600, width: '100%', boxShadow: '0 10px 40px rgba(0,0,0,0.2)', padding: '1.1rem 1.25rem 0.9rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }} onMouseDown={(e) => e.stopPropagation()}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: Z, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))' }} role="presentation" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
+      <div role="dialog" aria-modal="true" aria-label={`Edit ${item.tag.trim() || 'accessory'}`} style={{ background: 'var(--surface)', borderRadius: 8, maxWidth: partDrafts != null ? 760 : 600, width: '100%', maxHeight: '100%', minHeight: 0, boxShadow: '0 10px 40px rgba(0,0,0,0.2)', padding: '1.1rem 1.25rem 0.9rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }} onMouseDown={(e) => e.stopPropagation()}>
         <div>
           <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'var(--text-strong)' }}>{title}</h3>
           {canEditProduct ? (
@@ -156,6 +168,8 @@ export function SubmittalItemEditDialog({ item, sourceFiles, people = [], houses
           ) : null}
         </div>
 
+        {/* The fields scroll; the title above and the Save row below hold still. */}
+        <div data-testid="edit-row-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', flex: '1 1 auto', minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', margin: '0 -1.25rem', padding: '0.15rem 1.25rem' }}>
         {partDrafts != null ? (
           <SubmittalPartsEditor drafts={partDrafts} onChange={setPartDrafts} leadTexts={partLeadTexts} onLeadTexts={setPartLeadTexts} houses={houses} canEditProduct={canEditProduct} assembly={assemblyLine(parts)} focusId={focusPartId} />
         ) : null}
@@ -188,7 +202,7 @@ export function SubmittalItemEditDialog({ item, sourceFiles, people = [], houses
           <label style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
             <span style={fieldLabel}>Supply house · office only</span>
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-              <select aria-label="Supply house" value={houseId ?? ''} onChange={(e) => setHouseId(e.target.value || null)} style={{ ...inputStyle, minWidth: '12rem' }}>
+              <select ref={houseRef} aria-label="Supply house" value={houseId ?? ''} onChange={(e) => setHouseId(e.target.value || null)} style={{ ...inputStyle, minWidth: '12rem' }}>
                 <option value="">No house</option>
                 {/* A house the list no longer carries still reads, so opening the row never drops it. */}
                 {houseId && !houses.some((h) => h.id === houseId) ? <option value={houseId}>The house on this row</option> : null}
@@ -314,8 +328,9 @@ export function SubmittalItemEditDialog({ item, sourceFiles, people = [], houses
             )}
           </div>
         ) : null}
+        </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', borderTop: '1px solid var(--border)', paddingTop: '0.6rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', borderTop: '1px solid var(--border)', paddingTop: '0.6rem', flexShrink: 0 }}>
           <ProductStatusChip status={status} size="md" />
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <button type="button" onClick={onClose} style={{ padding: '0.45rem 0.85rem', background: 'var(--bg-muted)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', font: 'inherit' }}>
