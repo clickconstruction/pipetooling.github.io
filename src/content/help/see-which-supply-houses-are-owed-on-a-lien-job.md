@@ -60,6 +60,8 @@ The copied paragraph uses the house's words too. Press **Change what they told u
 
 Only office users see **They told us…**. The Lien window shows what was written and does not change it.
 
+You can ask one house about all its jobs at once. See [ask a supply house what it shows owed on my jobs](/help/ask-a-supply-house-what-it-shows-owed).
+
 ## Copy it into an email
 
 Press {{button:blue|Copy for an email}}. The desk copies a short paragraph. Paste it into your email and change what you like.

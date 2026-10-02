@@ -46,3 +46,27 @@ describe('2026-10-02 · a part’s line reads its own call, not its neighbour’
     expect(out.map((l) => l.decision)).toEqual([{ kind: 'approved', at }, { kind: 'approved', at: '2026-09-23T09:00:00Z' }])
   })
 })
+
+describe('2026-10-02 · an order-only fixture waits for no call', () => {
+  it('every line of it is the office’s: no call read, off the GC’s copy, ready to order, on a draft too', async () => {
+    const parts = [part('bowl', 'TOTO CT728CUVG#01', 1), part('stop', 'BRASSCRA PLB113XP ANG', 2, { on_submittal: false })]
+    const out = await procurementItemsFrom(noDb, [row({ order_only: true })] as unknown as Items, false, parts)
+    // Its parts keep their own picks underneath; the fixture's flag rules while it is set.
+    expect(out.map((l) => [l.partKey, l.orderOnly, l.noGc, l.decision])).toEqual([['k-bowl', true, true, null], ['k-stop', true, true, null]])
+    const log = buildProcurementLog({ items: out, records: [], tagStage: {}, stageDates: {} })
+    expect(log.map((l) => [l.status, l.releasedOn])).toEqual([['released', null], ['released', null]])
+  })
+
+  it('a row with no parts gets the same; a call left on it from before is not read', async () => {
+    const out = await procurementItemsFrom(noDb, [row({ order_only: true, review_decision: 'rejected', reviewed_at: '2026-10-01T00:00:00Z' })] as unknown as Items, true, [])
+    expect(out).toHaveLength(1)
+    expect(out[0]).toMatchObject({ orderOnly: true, noGc: true, decision: null })
+  })
+
+  it('a row the GC sees is untouched', async () => {
+    const out = await procurementItemsFrom(noDb, [row({ order_only: false })] as unknown as Items, false, [part('bowl', 'TOTO CT728CUVG#01', 1)])
+    expect(out[0]!.noGc).toBeUndefined()
+    expect(out[0]!.orderOnly).toBe(false)
+    expect(buildProcurementLog({ items: out, records: [], tagStage: {}, stageDates: {} })[0]!.status).toBe('not_submitted')
+  })
+})

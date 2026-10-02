@@ -172,6 +172,8 @@ export type ProcurementItemSource = {
   partOrder?: number
   /** Bought, not on the GC's submittal (trim): released with its fixture, off the GC's copies. */
   orderOnly?: boolean
+  /** 2026-10-02 · the whole fixture is order only: no GC call is waited for, so the line is ready to order as it stands. */
+  noGc?: boolean
   /** How many to order: the fixtures counted × how many go on one. */
   quantity?: number | null
   /** The part's own stage, when it differs from the fixture's. */
@@ -251,6 +253,8 @@ export type ProcurementRow = {
   partKey?: string | null
   /** Bought, not on the GC's submittal: kept off the GC's copies. */
   orderOnly?: boolean
+  /** Its fixture is order only: ready to order with no GC call (`releasedOn` stays null — nobody released it). */
+  noGc?: boolean
   /** How many to order, when the takeoff says. */
   quantity?: number | null
   /** The submittal row behind the line; null on a hand row. */
@@ -297,7 +301,7 @@ function rowFrom(source: ProcurementItemSource | null, rec: ProcurementRecord, s
     ? 'delivered'
     : rec.orderedOn
       ? 'ordered'
-      : submittal === 'approved'
+      : submittal === 'approved' || source?.noGc
         ? 'released'
         : submittal === 'revise' || submittal === 'rejected'
           ? 'sent_back'
@@ -316,6 +320,7 @@ function rowFrom(source: ProcurementItemSource | null, rec: ProcurementRecord, s
     addedByHand: source?.addedByHand ?? false,
     noProduct: source?.noProduct ?? false,
     orderOnly: source?.orderOnly ?? false,
+    noGc: source?.noGc ?? false,
     quantity: source?.quantity ?? null,
     isHand,
     recordId: rec.id,
@@ -405,7 +410,7 @@ export function procurementSections(rows: ReadonlyArray<ProcurementRow>, lens: P
       const gc = list.filter((r) => !r.orderOnly)
       const orderOnly = list.filter((r) => r.orderOnly)
       const carriers = gc.filter((r) => r.partKey && isCarrier(r.product)).length
-      return { key: `tag:${k}`, title: k, note: tagRollUp(list), rows: [...gc, ...orderOnly], ...(carriers > 1 ? { warn: 'Two carriers' } : {}), ...(gc.length > 0 && orderOnly.length > 0 ? { orderOnlyFrom: gc.length } : {}) }
+      return { key: `tag:${k}`, title: k, note: `${tagRollUp(list)}${list.length > 0 && list.every((r) => r.noGc) ? `${tagRollUp(list) ? ' · ' : ''}order only, no GC approval` : ''}`, rows: [...gc, ...orderOnly], ...(carriers > 1 ? { warn: 'Two carriers' } : {}), ...(gc.length > 0 && orderOnly.length > 0 ? { orderOnlyFrom: gc.length } : {}) }
     })
   }
   if (lens === 'by_house') {
@@ -463,7 +468,7 @@ export function lineStatus(r: ProcurementRow): LineStatus {
     if (r.late && r.expectedOn && r.floatDays != null) return { tone: 'late', text: `Arrives ${shortDate(r.expectedOn)}, ${-r.floatDays} d late`, sub: extra([`ordered ${shortDate(r.orderedOn)}`, r.requiredOn && `needed ${shortDate(r.requiredOn)}`, po]) }
     return { tone: 'ordered', text: r.expectedOn ? `Ordered · arrives ${shortDate(r.expectedOn)}` : `Ordered ${shortDate(r.orderedOn)}`, sub: extra([r.expectedOn && `ordered ${shortDate(r.orderedOn)}`, po]) }
   }
-  if (r.status === 'released') return { tone: 'act', text: r.orderBy ? `Order by ${shortDate(r.orderBy)}` : 'Released, not ordered', sub: extra([r.releasedOn && `released ${shortDate(r.releasedOn)}`, r.requiredOn && `needed ${shortDate(r.requiredOn)}`]) }
+  if (r.status === 'released') return { tone: 'act', text: r.orderBy ? `Order by ${shortDate(r.orderBy)}` : r.noGc ? 'Ready to order' : 'Released, not ordered', sub: extra([r.noGc ? 'no GC approval needed' : r.releasedOn && `released ${shortDate(r.releasedOn)}`, r.requiredOn && `needed ${shortDate(r.requiredOn)}`]) }
   if (r.status === 'sent_back') return { tone: 'back', text: r.submittal === 'rejected' ? 'Rejected by the GC' : 'Sent back by the GC', sub: extra([]) }
   if (r.status === 'awaiting') return { tone: 'waiting', text: 'Waiting on the GC', sub: extra([]) }
   return { tone: 'none', text: '', sub: extra([]) }
@@ -535,7 +540,8 @@ export function houseFoldNote(f: HouseFold): string {
 
 /** No line has gone to the GC yet: the log says so once instead of on every line. */
 export function logIsDraft(rows: ReadonlyArray<ProcurementRow>): boolean {
-  const sent = rows.filter((r) => !r.isHand)
+  // An order-only fixture's lines never go to the GC, so they say nothing about the draft (2026-10-02).
+  const sent = rows.filter((r) => !r.isHand && !r.noGc)
   return sent.length > 0 && sent.every((r) => r.submittal === 'none')
 }
 

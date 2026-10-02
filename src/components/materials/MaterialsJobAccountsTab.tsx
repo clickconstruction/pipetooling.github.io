@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { supabase } from '../../lib/supabase'
@@ -15,6 +15,14 @@ import {
 } from '../../lib/materials/jobAccountsFlow'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { buildHeldLienLines, type HeldLienAffidavitRow, type HeldLienLine, type HeldLienNoticeRow } from '../../lib/materials/heldLienLine'
+import { heldNoticeRisk, type HeldNoticeRisk } from '../../lib/materials/heldHouseNotice'
+import { buildHouseAsks, unpaidInvoiceNumbers } from '../../lib/materials/houseAsk'
+import { SupplyHouseAskSheet } from './SupplyHouseAskSheet'
+import { buildLienSupplierCard, buildLienSupplierJobs, type LienSupplierCardRow, type LienSupplierInvoiceInput, type LienSupplierJob, type LienSupplierWord } from '../../lib/jobs/lienJobSuppliers'
+import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
+import { LienSupplierWordForm } from '../jobs/LienJobSuppliers'
+import { useIsMobile } from '../../hooks/useIsMobile'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 /** Same bar segment palette as the Supply Houses phone aging bars (v2.2191). */
 const OWED_SEGMENT_COLORS: Record<AgingBucketKey, string> = {
@@ -75,8 +83,8 @@ const STATUS_CHIP: Record<JobAccountsStatus, { label: string; background: string
 
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'estimator' | 'primary' | 'superintendent'
 
-type FilterKey = 'all' | 'owe_suppliers' | 'awaiting' | 'settled' | 'job_account' | 'no_account' | 'needs_flag' | 'no_packet'
-const FILTER_KEYS: readonly FilterKey[] = ['all', 'owe_suppliers', 'awaiting', 'settled', 'job_account', 'no_account', 'needs_flag', 'no_packet']
+type FilterKey = 'all' | 'owe_suppliers' | 'awaiting' | 'settled' | 'job_account' | 'no_account' | 'needs_flag' | 'no_packet' | 'notice_risk'
+const FILTER_KEYS: readonly FilterKey[] = ['all', 'owe_suppliers', 'awaiting', 'settled', 'job_account', 'no_account', 'needs_flag', 'no_packet', 'notice_risk']
 
 /** `?filter=` deep link (the Dashboard's job-account cards land here); unknown values read as All. */
 function filterFromParam(value: string | null): FilterKey {
@@ -89,10 +97,51 @@ export type MaterialsJobAccountsTabProps = {
   myRole: UserRole | null
   /** Opens the Supply Houses tab; with a house id, opens that house's detail (Make Payment lives there). */
   onOpenSupplyHouse: (houseId: string | null) => void
+  /** The signed-in person's name: kept beside what a house told us (v2.4440). */
+  authName?: string
 }
 
-function matchesFilter(row: JobAccountsRow, filter: FilterKey): boolean {
+/** What the houses' own notices are worked out from (v2.4440): kept so a saved word re-reads only the words. */
+type HouseFactsRaw = {
+  invoices: LienSupplierInvoiceInput[]
+  allocations: Array<{ invoice_id: string; job_id: string; pct: number | null }>
+  houses: Array<{ id: string; name: string }>
+}
+type WordRow = { job_id: string; supply_house_id: string; their_balance: number | null; notice_on: string | null; said_by: string | null; note: string | null; noted_by_name: string | null; noted_at: string | null }
+
+function wordsByJobFrom(rows: WordRow[]): Map<string, Array<LienSupplierWord & { houseId: string }>> {
+  const out = new Map<string, Array<LienSupplierWord & { houseId: string }>>()
+  for (const w of rows) {
+    const list = out.get(w.job_id) ?? []
+    list.push({
+      houseId: w.supply_house_id,
+      balance: w.their_balance == null ? null : Number(w.their_balance),
+      noticeYmd: w.notice_on ? w.notice_on.slice(0, 10) : null,
+      saidBy: (w.said_by ?? '').trim(),
+      note: (w.note ?? '').trim(),
+      notedByName: (w.noted_by_name ?? '').trim(),
+      notedYmd: w.noted_at ? calendarYmdInAppTzFromIso(w.noted_at) : '',
+    })
+    out.set(w.job_id, list)
+  }
+  return out
+}
+
+/** A house's own notice in the statement's words: the day it gave, else our estimate. */
+function houseNoticeWords(r: LienSupplierCardRow): { text: string; sub: string; tone: 'amber' | 'plain' | 'muted' } | null {
+  if (r.notice.kind === 'said') {
+    const past = r.notice.daysLeft < 0
+    return { text: `its notice ${past ? 'went' : 'goes'} out ${formatYmdMonthDay(r.notice.ymd)}`, sub: r.saidWords, tone: past ? 'muted' : r.notice.soon ? 'amber' : 'plain' }
+  }
+  if (r.notice.kind === 'open') return { text: `its own notice by ${formatYmdMonthDay(r.notice.ymd)}`, sub: `our estimate · ${r.notice.daysLeft} ${r.notice.daysLeft === 1 ? 'day' : 'days'}`, tone: r.notice.soon ? 'amber' : 'plain' }
+  if (r.notice.kind === 'closed') return { text: `notice window closed ${formatYmdMonthDay(r.notice.ymd)}`, sub: 'our estimate', tone: 'muted' }
+  return null
+}
+const NOTICE_INK = { amber: 'var(--text-amber-800)', plain: 'var(--text-700)', muted: 'var(--text-muted)' } as const
+
+function matchesFilter(row: JobAccountsRow, filter: FilterKey, risk: ReadonlyMap<string, HeldNoticeRisk>): boolean {
   if (filter === 'all') return true
+  if (filter === 'notice_risk') return risk.has(row.jobId)
   if (filter === 'owe_suppliers') return row.status === 'owe_suppliers'
   if (filter === 'awaiting') return row.status === 'floating' || row.status === 'awaiting_customer'
   if (filter === 'job_account') return row.owedOnJobAccount > 0.005
@@ -120,7 +169,7 @@ function dueChipText(group: { oldestUnpaidDueYmd: string | null }, todayYmd: str
  * Self-contained: loads on first activation, all math in
  * lib/materials/jobAccountsFlow.ts.
  */
-export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: MaterialsJobAccountsTabProps) {
+export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse, authName = '' }: MaterialsJobAccountsTabProps) {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const jobFormModal = useJobFormModal()
@@ -130,6 +179,54 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
   const [todayYmd, setTodayYmd] = useState('')
   // The way back to the Lien desk (v2.4412): jobs on our own lien clock, by the desk's own RPCs.
   const [lienLines, setLienLines] = useState<ReadonlyMap<string, HeldLienLine>>(new Map())
+  // The houses' own notices (v2.4440): what each house is owed by month, what it told us, and each job's property kind.
+  const isMobile = useIsMobile()
+  const houseRawRef = useRef<HouseFactsRaw | null>(null)
+  const [suppliers, setSuppliers] = useState<ReadonlyMap<string, LienSupplierJob>>(new Map())
+  const [kindByJob, setKindByJob] = useState<ReadonlyMap<string, string>>(new Map())
+  const [wordHouse, setWordHouse] = useState<string | null>(null)
+  // Ask a house (v2.4443): what a house files a job under, and the sheet.
+  const [addressByJob, setAddressByJob] = useState<ReadonlyMap<string, string>>(new Map())
+  const [invoiceNumbers, setInvoiceNumbers] = useState<ReadonlyMap<string, string[]>>(new Map())
+  const [askOpen, setAskOpen] = useState(false)
+  const asks = useMemo(
+    () => (view && todayYmd ? buildHouseAsks({ jobs: view.rows, suppliers, kindByJob, addressByJob, invoiceNumbers, todayYmd }) : []),
+    [view, suppliers, kindByJob, addressByJob, invoiceNumbers, todayYmd],
+  )
+  const riskByJob = useMemo(() => {
+    const out = new Map<string, HeldNoticeRisk>()
+    if (!view || !todayYmd) return out
+    for (const r of view.rows) {
+      const risk = heldNoticeRisk(r, suppliers.get(r.jobId), kindByJob.get(r.jobId) ?? '', todayYmd)
+      if (risk) out.set(r.jobId, risk)
+    }
+    return out
+  }, [view, suppliers, kindByJob, todayYmd])
+
+  /** What the houses told us, read fresh; a missing table (before the push) or a refused read is no words. */
+  async function readWords(): Promise<WordRow[]> {
+    try {
+      return await fetchAllRows<WordRow>(
+        async (from, to) => ({
+          data: await withSupabaseRetry(
+            () => supabase.from('job_supply_house_words').select('job_id, supply_house_id, their_balance, notice_on, said_by, note, noted_by_name, noted_at').order('job_id').order('supply_house_id').range(from, to),
+            'load what the houses told us',
+          ),
+          error: null,
+        }),
+        'load what the houses told us',
+      )
+    } catch {
+      return []
+    }
+  }
+  /** After a word is saved or cleared: the words again, and the houses' notices rebuilt from what is already loaded. */
+  async function reloadWords() {
+    const raw = houseRawRef.current
+    if (!raw) return
+    const words = await readWords()
+    setSuppliers(buildLienSupplierJobs({ ...raw, wordsByJob: wordsByJobFrom(words) }))
+  }
   const [filter, setFilter] = useState<FilterKey>(() => filterFromParam(searchParams.get('filter')))
   useEffect(() => {
     const param = searchParams.get('filter')
@@ -162,7 +259,7 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
                 () =>
                   supabase
                     .from('supply_house_invoices')
-                    .select('id, supply_house_id, amount, is_paid, due_date, on_job_account')
+                    .select('id, supply_house_id, amount, is_paid, due_date, invoice_date, invoice_number, on_job_account')
                     .order('id')
                     .range(from, to),
                 'load supply house invoices',
@@ -180,7 +277,7 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
                 () =>
                   supabase
                     .from('supply_house_invoices')
-                    .select('id, supply_house_id, amount, is_paid, due_date')
+                    .select('id, supply_house_id, amount, is_paid, due_date, invoice_date, invoice_number')
                     .order('id')
                     .range(from, to),
                 'load supply house invoices',
@@ -264,7 +361,7 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
             () =>
               supabase
                 .from('jobs_ledger')
-                .select('id, hcp_number, click_number, job_name, revenue, payments_made')
+                .select('id, hcp_number, click_number, job_name, job_address, revenue, payments_made, customer_address_id')
                 .in('id', chunk)
                 .order('id')
                 .range(from, to),
@@ -276,6 +373,37 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
       )
       const today = todayYmdInAppTz()
       setTodayYmd(today)
+      // The houses' own notices (v2.4440). Not awaited, like the lien clock below: the statement draws first.
+      const raw: HouseFactsRaw = {
+        invoices: invoices.map((i) => ({ id: i.id, supply_house_id: i.supply_house_id, amount: i.amount, is_paid: i.is_paid, invoice_date: i.invoice_date ?? null, paidYmd: null, on_job_account: Boolean(i.on_job_account) })),
+        allocations,
+        houses: houses ?? [],
+      }
+      houseRawRef.current = raw
+      setSuppliers(buildLienSupplierJobs(raw))
+      setAddressByJob(new Map(jobs.map((j) => [j.id, (j.job_address ?? '').trim()])))
+      setInvoiceNumbers(unpaidInvoiceNumbers(invoices, allocations))
+      void (async () => {
+        try {
+          const addressIds = [...new Set(jobs.map((j) => j.customer_address_id).filter((id): id is string => Boolean(id)))]
+          const [words, addresses] = await Promise.all([
+            readWords(),
+            fetchAllRowsChunkedIn(
+              addressIds,
+              async (chunk, from, to) => ({
+                data: await withSupabaseRetry(() => supabase.from('customer_addresses').select('id, property_kind').in('id', chunk).order('id').range(from, to), 'load property kinds'),
+                error: null,
+              }),
+              'load property kinds',
+            ).catch(() => [] as Array<{ id: string; property_kind: string | null }>),
+          ])
+          const kindByAddress = new Map(addresses.map((a) => [a.id, a.property_kind ?? '']))
+          setKindByJob(new Map(jobs.map((j) => [j.id, j.customer_address_id ? (kindByAddress.get(j.customer_address_id) ?? '') : ''])))
+          setSuppliers(buildLienSupplierJobs({ ...raw, wordsByJob: wordsByJobFrom(words) }))
+        } catch {
+          // The statement stands without the houses' notices.
+        }
+      })()
       // Not awaited: the statement does not wait on the lien clock, and a failed read draws no line.
       void (async () => {
         try {
@@ -317,8 +445,19 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
   if (!active) return null
   if (!(myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole))) return null
 
-  const rows = view?.rows.filter((r) => matchesFilter(r, filter)) ?? []
+  const rows = (view?.rows.filter((r) => matchesFilter(r, filter, riskByJob)) ?? []).sort((a, b) =>
+    // The risk filter reads soonest first; every other view keeps the kernel's order.
+    filter === 'notice_risk' ? (riskByJob.get(a.jobId)?.ymd ?? '').localeCompare(riskByJob.get(b.jobId)?.ymd ?? '') : 0,
+  )
   const awaitingCount = (view?.floatingJobs ?? 0) + (view?.awaitingJobs ?? 0)
+
+  /** The Lien desk card's rows for a job's houses: each house's own notice and what it told us. */
+  function houseRowsFor(row: JobAccountsRow): Map<string, LienSupplierCardRow> {
+    const job = suppliers.get(row.jobId)
+    if (!job || !todayYmd) return new Map()
+    const card = buildLienSupplierCard(job, { propertyKind: kindByJob.get(row.jobId) ?? '', todayYmd, openBalance: Math.max(0, row.billed - row.paidIn), payerName: '' })
+    return new Map(card.rows.map((r) => [r.houseId, r]))
+  }
 
   /** Job window (Job / Edit / Bill tabs) in place; falls back to the Jobs page if the provider is absent. */
   function openJobWindow(jobId: string) {
@@ -339,6 +478,8 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
           </button>
         </div>
       )}
+
+      {askOpen && asks.length > 0 ? <SupplyHouseAskSheet asks={asks} authName={authName} isMobile={isMobile} onClose={() => setAskOpen(false)} onSaved={() => void reloadWords()} /> : null}
 
       {loading || !view ? (
         <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
@@ -445,6 +586,9 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
                 ...(view.noPacketJobs > 0 || filter === 'no_packet'
                   ? [{ key: 'no_packet' as FilterKey, label: 'Flagged, no packet', count: view.noPacketJobs }]
                   : []),
+                ...(riskByJob.size > 0 || filter === 'notice_risk'
+                  ? [{ key: 'notice_risk' as FilterKey, label: 'Paid, house can still notice', count: riskByJob.size }]
+                  : []),
               ]
             ).map((chip) => (
               <button
@@ -465,7 +609,12 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
               </button>
             ))}
             <div style={{ flex: 1 }} />
-            <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Sorted by $ held, largest first</span>
+            <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{filter === 'notice_risk' ? 'Sorted by the house’s date, soonest first' : 'Sorted by $ held, largest first'}</span>
+            {asks.length > 0 ? (
+              <button type="button" onClick={() => setAskOpen(true)} data-held-ask-door title="One house at a time: the jobs with a balance there, the message that asks, and its answers">
+                Ask a house…
+              </button>
+            ) : null}
             <button type="button" onClick={() => void load()} disabled={loading}>
               Refresh
             </button>
@@ -682,6 +831,11 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
                               <path d="M5 8.2l2 2 4-4.4" stroke="var(--text-green-700)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                             </svg>
                           )}
+                          {riskByJob.get(row.jobId) ? (
+                            <span data-held-notice-risk title={`${riskByJob.get(row.jobId)!.words}. The customer has paid; a notice from the house would go to them.`} style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--text-red-700)', whiteSpace: 'nowrap' }}>
+                              {riskByJob.get(row.jobId)!.house} notice by {formatYmdMonthDay(riskByJob.get(row.jobId)!.ymd)}
+                            </span>
+                          ) : null}
                           {row.owedOnJobAccount > 0.005 && (
                             <span
                               title="On the house's job account — if this goes unpaid, the house bills the property owner, not you."
@@ -763,6 +917,12 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
                             )
                           })()}
 
+                          {riskByJob.get(row.jobId) ? (
+                            <div data-held-risk-line style={{ padding: '0.45rem 0.75rem', marginBottom: '0.6rem', borderRadius: 8, border: '1px solid var(--border-red)', background: 'var(--bg-red-tint)', fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>
+                              <strong>{riskByJob.get(row.jobId)!.words}.</strong> The customer has paid us, so a notice from the house would land on them. Pay the house, or call it and write down what it says.
+                            </div>
+                          ) : null}
+
                           <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 90px 190px 110px 110px 130px', gap: '0.75rem', padding: '0.5rem 0.875rem', borderBottom: '1px solid var(--border)', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
                               <div>Supply house</div>
@@ -772,14 +932,39 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
                               <div style={{ textAlign: 'right' }}>Owed</div>
                               <div />
                             </div>
-                            {row.houses.map((group, gi) => (
+                            {row.houses.map((group, gi) => {
+                              // The house's own notice and what it told us (v2.4440): the Lien desk card's row for this house.
+                              const hr = houseRowsFor(row).get(group.supplyHouseId)
+                              const nw = hr && group.owed > 0.005 ? houseNoticeWords(hr) : null
+                              const wordKey = `${row.jobId}:${group.supplyHouseId}`
+                              return (
+                              <div key={group.supplyHouseId} style={{ borderBottom: gi === row.houses.length - 1 ? 'none' : '1px solid var(--border)' }}>
                               <div
-                                key={group.supplyHouseId}
-                                style={{ display: 'grid', gridTemplateColumns: '1fr 90px 190px 110px 110px 130px', gap: '0.75rem', padding: '0.625rem 0.875rem', borderBottom: gi === row.houses.length - 1 ? 'none' : '1px solid var(--border)', fontSize: '0.8125rem', alignItems: 'center' }}
+                                style={{ display: 'grid', gridTemplateColumns: '1fr 90px 190px 110px 110px 130px', gap: '0.75rem', padding: '0.625rem 0.875rem', fontSize: '0.8125rem', alignItems: 'center' }}
                               >
+                                <div style={{ minWidth: 0 }}>
                                 <div style={{ fontWeight: 500, overflowWrap: 'anywhere', display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
                                   {group.name}
                                   {group.owedOnJobAccount > 0.005 && <JobAccountChip amount={group.owedOnJobAccount} />}
+                                </div>
+                                {nw ? (
+                                  <div data-held-house-notice={hr!.notice.kind} style={{ fontSize: '0.75rem', marginTop: 2 }}>
+                                    <span style={{ color: NOTICE_INK[nw.tone], fontWeight: nw.tone === 'amber' ? 600 : undefined }}>{nw.text}</span>
+                                    {nw.sub ? <span style={{ color: 'var(--text-muted)' }}> · {nw.sub}</span> : null}
+                                  </div>
+                                ) : null}
+                                {hr?.word?.note ? <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>“{hr.word.note}”</div> : null}
+                                {hr && group.owed > 0.005 ? (
+                                  <button
+                                    type="button"
+                                    data-held-word-door={group.name}
+                                    aria-expanded={wordHouse === wordKey}
+                                    onClick={() => setWordHouse(wordHouse === wordKey ? null : wordKey)}
+                                    style={{ border: 'none', background: 'none', padding: 0, marginTop: 2, color: 'var(--text-link)', cursor: 'pointer', font: 'inherit', fontSize: '0.75rem' }}
+                                  >
+                                    {hr.word ? 'Change what they told us…' : 'They told us…'}
+                                  </button>
+                                ) : null}
                                 </div>
                                 <div style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{group.invoiceCount}</div>
                                 <div>
@@ -792,8 +977,9 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
                                   )}
                                 </div>
                                 <div style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text-600)' }}>${formatCurrency(group.paid)}</div>
-                                <div style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: group.owed > 0.005 ? 'var(--text-amber-800)' : 'var(--text-600)' }}>
-                                  ${formatCurrency(group.owed)}
+                                <div style={{ textAlign: 'right' }}>
+                                  <div style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: group.owed > 0.005 ? 'var(--text-amber-800)' : 'var(--text-600)' }}>${formatCurrency(group.owed)}</div>
+                                  {hr?.theirBalanceWords ? <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>{hr.theirBalanceWords}</div> : null}
                                 </div>
                                 <div style={{ textAlign: 'right' }}>
                                   <button
@@ -805,7 +991,22 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
                                   </button>
                                 </div>
                               </div>
-                            ))}
+                              {hr && wordHouse === wordKey ? (
+                                <LienSupplierWordForm
+                                  row={hr}
+                                  jobId={row.jobId}
+                                  authName={authName}
+                                  isMobile={isMobile}
+                                  onCancel={() => setWordHouse(null)}
+                                  onDone={() => {
+                                    setWordHouse(null)
+                                    void reloadWords()
+                                  }}
+                                />
+                              ) : null}
+                              </div>
+                              )
+                            })}
                           </div>
                           {row.hasJobAccountShare && row.suppliersOwed - row.owedOnJobAccount > 0.005 && (
                             <div style={{ fontSize: '0.75rem', color: JOB_ACCOUNT_TEAL.text }}>

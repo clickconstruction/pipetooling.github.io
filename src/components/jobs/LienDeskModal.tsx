@@ -68,6 +68,7 @@ import { DEFAULT_CLAIMANT_NAME } from '../../lib/jobs/lienNoticeDraft'
 import LienDeskRunModal from './LienDeskRunModal'
 import LienDeskShare from './LienDeskShare'
 import { Share } from 'lucide-react'
+import { useScrollEdgeFade } from '../../hooks/useScrollEdgeFade'
 import { LienJobSuppliersCard, LienSupplierMarkLine } from './LienJobSuppliers'
 import { lienSupplierMark, type LienSupplierMark } from '../../lib/jobs/lienJobSuppliers'
 import LienDeskAffidavitPane, { affidavitDeadlineWords } from './LienDeskAffidavitPane'
@@ -310,6 +311,23 @@ export default function LienDeskModal({
   }, [open])
   // The kind (v2.3412): notices per month, or the one affidavit per job.
   const [kind, setKind] = useState<'notice' | 'affidavit' | 'retainage' | 'timeline' | 'calendar'>(initialKind ?? 'notice')
+  // The tab row scrolls sideways on a phone (v2.4311); its cut end fades and the picked tab is scrolled into view (v2.4441) — a door can open the desk on Timeline, the last tab.
+  const kindTabs = useScrollEdgeFade<HTMLDivElement>()
+  const kindShownRef = useRef('')
+  // Every render, but it acts only when the picked tab or the row's width changed (a count loading widens a label), so it never fights a hand on the row.
+  useEffect(() => {
+    const row = kindTabs.ref.current
+    if (!open || !row) {
+      kindShownRef.current = ''
+      return
+    }
+    const key = `${kind}:${row.scrollWidth}`
+    if (key === kindShownRef.current) return
+    kindShownRef.current = key
+    const picked = row.querySelector<HTMLElement>('[aria-selected="true"]')
+    if (picked && typeof picked.scrollIntoView === 'function') picked.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+    kindTabs.onScroll()
+  })
   // The Timeline tab (v2.3768): the book is read the first time the tab opens and kept for the modal's life.
   const [bookOpened, setBookOpened] = useState(initialKind === 'timeline')
   // The desk stays mounted between opens, so a door's kind (the Dashboard's filing-window card, `?kind=timeline`) lands on each open, not only the first (v2.3781).
@@ -1602,6 +1620,9 @@ export default function LienDeskModal({
           setByHandOpen(false)
           onChanged()
         }}
+        // On a phone (v2.4446) the step is a sheet over the desk's card, as in the Lien window: in the footer its 120 px fields cut off their own values.
+        layout={isMobile ? 'sheet' : 'box'}
+        onCloseWindow={onClose}
       />
     ) : null
 
@@ -1942,7 +1963,7 @@ export default function LienDeskModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{ background: 'var(--surface)', borderRadius: fullScreen ? 0 : 10, width: fullScreen ? '100vw' : 'min(1140px, calc(100vw - 2rem))', height: fullScreen ? 'calc(100dvh - var(--app-top-chrome, 0px) - var(--app-bottom-chrome, 0px))' : undefined, maxHeight: fullScreen ? 'calc(100dvh - var(--app-top-chrome, 0px) - var(--app-bottom-chrome, 0px))' : 'calc(100dvh - 2rem - var(--app-top-chrome, 0px) - var(--app-bottom-chrome, 0px))', display: 'grid', gridTemplateRows: 'auto 1fr auto', gridTemplateColumns: 'minmax(0, 1fr)', overflow: 'hidden' }}
+        style={{ position: 'relative', background: 'var(--surface)', borderRadius: fullScreen ? 0 : 10, width: fullScreen ? '100vw' : 'min(1140px, calc(100vw - 2rem))', height: fullScreen ? 'calc(100dvh - var(--app-top-chrome, 0px) - var(--app-bottom-chrome, 0px))' : undefined, maxHeight: fullScreen ? 'calc(100dvh - var(--app-top-chrome, 0px) - var(--app-bottom-chrome, 0px))' : 'calc(100dvh - 2rem - var(--app-top-chrome, 0px) - var(--app-bottom-chrome, 0px))', display: 'grid', gridTemplateRows: 'auto 1fr auto', gridTemplateColumns: 'minmax(0, 1fr)', overflow: 'hidden' }}
         data-lien-desk-panel
       >
         {/* v2.4355: the spacing between the title, the tabs and the doors is the class's column gap (no margins), so a desk narrower than 1,100 px can close it up. */}
@@ -1956,8 +1977,8 @@ export default function LienDeskModal({
           </h2>
           {showToggle ? <ModalFullScreenButton fullScreen={fullScreen} onToggle={toggleFullScreen} style={{ position: 'absolute', right: '3.1rem', top: '0.55rem' }} /> : null}
           <button type="button" onClick={onClose} aria-label="Close" style={{ position: 'absolute', right: '0.8rem', top: '0.5rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}>×</button>
-          {/* v2.4311: the tab row is 375 px of labels — on a phone it scrolls sideways inside the card instead of pushing the title bar (and ×, and Share) off the screen. */}
-          <div role="tablist" aria-label="Kind" style={{ display: 'inline-flex', maxWidth: '100%', minWidth: 0, border: '1px solid var(--border-strong)', borderRadius: 7, overflowX: 'auto', overflowY: 'hidden' }}>
+          {/* v2.4311: the tab row is 375 px of labels — on a phone it scrolls sideways inside the card instead of pushing the title bar (and ×, and Share) off the screen. v2.4441: a cut end fades, so Timeline past the edge is not a secret, and the picked tab is brought into view. */}
+          <div ref={kindTabs.ref} onScroll={kindTabs.onScroll} role="tablist" aria-label="Kind" data-lien-desk-kinds style={{ display: 'inline-flex', maxWidth: '100%', minWidth: 0, border: '1px solid var(--border-strong)', borderRadius: 7, overflowX: 'auto', overflowY: 'hidden', ...kindTabs.style }}>
             {(['calendar', 'notice', 'affidavit', 'retainage', 'timeline'] as const).map((k) => (
               <button key={k} type="button" role="tab" aria-selected={kind === k} onClick={() => setKind(k)} className="lienDeskKindTab" style={{ flexShrink: 0, whiteSpace: 'nowrap', border: 'none', background: kind === k ? FILL.primary : 'var(--surface)', color: kind === k ? '#fff' : 'var(--text-700)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }} title={k === 'retainage' ? 'The § 53.057 notice of claim for unpaid retainage — one per job, 30 days after our contract on it ends' : k === 'timeline' ? 'Every billed job with money open and a lien month — the whole path, sorted by the next date; Print the grid for counsel' : undefined}>
                 {k === 'calendar' ? 'Calendar' : k === 'notice' ? `Notices${counts ? ` · ${entries.filter((e) => e.pile !== 'sent').length}` : ''}` : k === 'affidavit' ? `Affidavits${data ? ` · ${affCount}` : ''}` : k === 'retainage' ? `Retainage${data ? ` · ${retCount}` : ''}` : `Timeline${book ? ` · ${book.counts.due}` : ''}`}

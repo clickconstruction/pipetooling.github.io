@@ -2,33 +2,87 @@
 title: see which paid jobs still owe my supply houses
 category: Billing & Money
 roles: assistant, controller, master_technician
-keywords: held for suppliers, job accounts, supply house, invoices, owed, held, paid, materials, payables, float, allocate, make payment, on job account, owner, lien, secured
+keywords: held for suppliers, job accounts, supply house, invoices, owed, held, paid, materials, payables, float, allocate, make payment, on job account, owner, lien, notice, paid in full, they told us
 ---
-**Materials → Held for suppliers** (called *Job Accounts* until September 2026 — a *job account* now means only the account a supply house opens for a job) lines up every job's money in both directions: what the customer has paid you, and what you've paid (or still owe) your supply houses for that job's materials. Jobs where the customer's money already arrived but a house is still owed sort to the top — that's money you're holding that belongs onward.
+Held for suppliers lines up each job's money in both directions. It shows what the customer has paid you. It shows what you have paid your supply houses, and what you still owe them.
 
-## Read the top row of tiles
+## Open it
 
-- {{chip:yellow|Holding for suppliers}} — unpaid supplier balances on jobs the customer has paid, counted only up to what actually came in. This is the number to drive to zero.
-- {{chip:blue|Floating out of pocket}} — the reverse: you already paid houses on jobs the customer hasn't paid yet.
-- {{chip:green|Settled}} — paid both ways, nothing held.
-- {{chip:gray|Unallocated invoices}} — unpaid invoices not tied to any job or bid. They're missing from every job's numbers, so allocate them: each invoice's **Jobs** field lives on the Supply Houses tab.
-- **On job accounts** (teal, appears once any invoice is flagged) — owed dollars riding on a house's **job account**: if they go unpaid, the house bills the property owner, not you. The Holding tile also splits into *Your account* vs *Job accounts* so you can see how much of what you're holding is really your exposure. Flag invoices when you enter them — see [mark an invoice as on a job account](?g=mark-an-invoice-on-a-job-account). Three more chips appear only when there's something to fix: {{chip:yellow|Bought, no account}} (the job bought from a house that expects a job account — an invoice landed or a PO code was minted in the last 180 days — and no account is on record there; the same jobs the Dashboard's *jobs bought parts at a house with no job account* card counts), {{chip:gray|Packet on file, unflagged}} (a job-account packet went out for the job, but it still has unpaid invoices that aren't flagged) and {{chip:gray|Flagged, no packet}} (invoices flagged on a job account for a job never shared from the app). Expanded rows name the houses missing an account in amber, show a teal **Job account packet on file** chip when one went out, and a one-line hint about what to do. Mark accounts opened from the house's roster on **Supply houses** — see [find a supply house and its rep](?g=find-a-supply-house-and-its-rep).
+Open [Materials, Held for suppliers](/materials?tab=job-accounts). Jobs where the customer paid you and a house is still owed sit at the top. That is money you are holding for someone else.
+
+## Read the tiles at the top
+
+- {{chip:yellow|Holding for suppliers}} is what you owe houses on jobs the customer has paid. It counts only up to what came in. This is the number to drive to zero.
+- {{chip:blue|Floating out of pocket}} is the reverse. You paid houses on jobs the customer has not paid yet.
+- {{chip:green|Settled}} counts jobs paid both ways.
+- {{chip:gray|Unallocated invoices}} are unpaid invoices tied to no job and no bid. They are missing from every job's numbers. Set each one's **Jobs** field on the Supply Houses tab.
+- **On job accounts** shows once an invoice is flagged. It is owed money on a house's job account. If it goes unpaid, the house bills the property owner.
+
+The Holding tile also splits into *Your account* and *Job accounts*. That shows how much of the holding is truly yours.
 
 ## Read a job row
 
-Every row has two bars on the same scale:
+Every row has two bars on the same scale.
 
-- **In** — the blue fill is what the customer has paid, against the full bar of what you billed.
-- **Out** — gray is what you've already paid houses; the colored part is what's still owed, shaded from green (not due yet) through amber and red (past due), matching the aging table on Supply Houses. A **teal-striped** slice is owed money on a job account — it stays out of the past-due colors because collecting it is the house's problem, not yours. Rows with any show a teal "$X on job acct" note, and the expanded statement badges each house's share.
+- **In** is what the customer has paid, against what you billed.
+- **Out** is what you paid houses, then what you still owe them. The owed part runs from green to red as it ages. A teal striped part is owed on a job account.
 
-The chip tells you where the job stands: {{chip:yellow|Owe suppliers}}, {{chip:blue|Floating}}, {{chip:gray|Awaiting customer}}, or {{chip:green|Settled}}. Use the filter chips above the list to see one group at a time.
+The chip says where the job stands. It reads {{chip:yellow|Owe suppliers}}, {{chip:blue|Floating}}, {{chip:gray|Awaiting customer}} or {{chip:green|Settled}}.
 
 :::example Reading a row
 **J804 · Summit GC — Auto Zone** shows In $23,472 / $32,600 and Out $8,921.73 owed — the customer is 72% paid, and $8,921.73 of supplier invoices are waiting. It sorts near the top under {{chip:yellow|Owe suppliers}}.
 :::
 
+## Pick one group
+
+Press a chip above the list to see one group. The first four match the row chips. More chips show only when there is something to fix.
+
+- {{chip:gray|On job account}} lists jobs with owed money on a job account.
+- {{chip:yellow|Bought, no account}} lists jobs that bought from a house that expects a job account. No account is on record there.
+- {{chip:gray|Packet on file, unflagged}} lists jobs with a packet sent and unpaid invoices not flagged.
+- {{chip:gray|Flagged, no packet}} lists jobs with flagged invoices and no packet sent from the app.
+- {{chip:red|Paid, house can still notice}} lists the jobs to act on first. It is explained below.
+
+## Catch a paid job a house can still notice
+
+A supply house can send its own lien notice on a job. It can do that even after the customer paid you in full. The notice then lands on a customer who owes nothing.
+
+Press {{chip:red|Paid, house can still notice}}. The list shows each paid job where a house is still owed and can still act. The soonest date comes first. Each row names the house and the date in red.
+
+Open a row. A red line at the top says which house and by when. Pay that house, or call it.
+
+## Read each house's own notice date
+
+Open a job's row to see its houses. Under each house that is owed, one line gives its notice date.
+
+- *its own notice by Oct 15* is our estimate. The app counts it from the house's unpaid invoice dates.
+- *notice window closed Sep 15* means that date has passed by our count.
+- *its notice goes out Oct 14* is the day the house itself gave.
+
+The house keeps its own calendar. Call the house to be sure.
+
+## Write down what the house told you
+
+Press **They told us…** under the house. Type the balance they gave and pick the day their notice goes out. Type who said it. Press {{button:blue|Save}}.
+
+The row then shows the house's day and who said it. If their balance is not yours, both show. The Lien desk shows the same words on that job.
+
+## Ask a house about all its jobs
+
+Press **Ask a house…** above the list. One sheet lists every job with a balance at one house. It writes the message that asks, and you type the answers down the list. The steps are in [ask a supply house what it shows owed on my jobs](/help/ask-a-supply-house-what-it-shows-owed).
+
 ## Pay a house from here
 
-1. Click a job row to expand its statement — each supply house with its invoice count, oldest due date, and paid vs. owed totals.
-2. Click {{button:outline|Open house}} on the house you want to pay. That jumps to the **Supply Houses** tab with the house already open — its invoices and {{button:green|Make Payment}} are right there.
-3. If the customer side is the problem, click the **job's name** on any row (or **Open job** on the expanded statement) — the full job window opens right there with its **Job**, **Edit**, and **Bill** tabs, and the numbers refresh when you save.
+1. Press a job row to open its statement.
+2. Press {{button:outline|Open house}} on the house you want to pay. The Supply Houses tab opens on that house. Its invoices and {{button:green|Make Payment}} are there.
+3. If the customer side is the problem, press the job's name on the row. The job window opens with its **Job**, **Edit** and **Bill** tabs.
+
+## See the lien clock
+
+A job on our own lien clock shows one more line on its open statement. It says when our notice or our lien is due. Press **Open the desk ›** to go to that job on the Lien desk.
+
+## Good to know
+
+- Flag an invoice as on a job account when you enter it. See [mark an invoice as on a job account](/help/mark-an-invoice-on-a-job-account).
+- Mark an account opened from the house's list. See [find a supply house and its rep](/help/find-a-supply-house-and-its-rep).
+- The Lien desk side is in [see which supply houses are owed on a lien job](/help/see-which-supply-houses-are-owed-on-a-lien-job).

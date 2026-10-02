@@ -74,7 +74,7 @@ const chipButton = (on: boolean): CSSProperties => ({
 const fieldLabel: CSSProperties = { fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 const inputStyle: CSSProperties = { padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, font: 'inherit', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-strong)' }
 
-export function SubmittalItemEditDialog({ item, sourceFiles, houses = [], parts = [], canEnterDecision = false, canEditProduct = false, focusPartId = null, focusHouse = false, onSave, onClose }: { item: SubmittalItemRow; sourceFiles: SourceFile[]; /** the part a Procure line opened the window on (2026-10-02) */ focusPartId?: string | null; /** a Procure line opened the window on a row with no parts: its house box is scrolled to and ready */ focusHouse?: boolean; /** the row's parts (2026-10-01) */ parts?: ReadonlyArray<SubmittalPartRow>; /** the supply houses to pick from; none hides the picker */ houses?: ReadonlyArray<{ id: string; name: string }>; /** the row exists, so their answer can be recorded on it */ canEnterDecision?: boolean; /** a draft: the tag and the product can be typed (v2.4090) */ canEditProduct?: boolean; onSave: (patch: SubmittalItemPatch) => void; onClose: () => void }) {
+export function SubmittalItemEditDialog({ item, sourceFiles, houses = [], parts = [], canEnterDecision = false, canEditProduct = false, orderOnly = false, focusPartId = null, focusHouse = false, onSave, onClose }: { /** 2026-10-02 · the row is order only: the GC never sees it, so no status, reason, note, cut sheet or call is asked */ orderOnly?: boolean; item: SubmittalItemRow; sourceFiles: SourceFile[]; /** the part a Procure line opened the window on (2026-10-02) */ focusPartId?: string | null; /** a Procure line opened the window on a row with no parts: its house box is scrolled to and ready */ focusHouse?: boolean; /** the row's parts (2026-10-01) */ parts?: ReadonlyArray<SubmittalPartRow>; /** the supply houses to pick from; none hides the picker */ houses?: ReadonlyArray<{ id: string; name: string }>; /** the row exists, so their answer can be recorded on it */ canEnterDecision?: boolean; /** a draft: the tag and the product can be typed (v2.4090) */ canEditProduct?: boolean; onSave: (patch: SubmittalItemPatch) => void; onClose: () => void }) {
   const [tagText, setTagText] = useState(item.tag)
   const [submittedText, setSubmittedText] = useState(item.submitted_label ?? [item.submitted_manufacturer, item.submitted_model].filter(Boolean).join(' '))
   const [houseId, setHouseId] = useState<string | null>(item.supply_house_id ?? null)
@@ -157,9 +157,10 @@ export function SubmittalItemEditDialog({ item, sourceFiles, houses = [], parts 
         {/* The fields scroll; the title above and the Save row below hold still. */}
         <div data-testid="edit-row-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', flex: '1 1 auto', minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', margin: '0 -1.25rem', padding: '0.15rem 1.25rem' }}>
         {partDrafts != null ? (
-          <SubmittalPartsEditor drafts={partDrafts} onChange={setPartDrafts} leadTexts={partLeadTexts} onLeadTexts={setPartLeadTexts} houses={houses} canEditProduct={canEditProduct} assembly={assemblyLine(parts)} focusId={focusPartId} />
+          <SubmittalPartsEditor drafts={partDrafts} onChange={setPartDrafts} leadTexts={partLeadTexts} onLeadTexts={setPartLeadTexts} houses={houses} canEditProduct={canEditProduct} assembly={assemblyLine(parts)} focusId={focusPartId} fixtureOrderOnly={orderOnly} />
         ) : null}
 
+        {orderOnly ? null : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
           <span style={fieldLabel}>Status</span>
           <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
@@ -170,8 +171,9 @@ export function SubmittalItemEditDialog({ item, sourceFiles, houses = [], parts 
             ))}
           </div>
         </div>
+        )}
 
-        {askWhy ? (
+        {askWhy && !orderOnly ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
             <span style={fieldLabel}>Why this product</span>
             <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
@@ -201,12 +203,14 @@ export function SubmittalItemEditDialog({ item, sourceFiles, houses = [], parts 
           </label>
         ) : null}
 
+        {orderOnly ? null : (
         <label style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
           <span style={fieldLabel}>Note · what the GC will read</span>
           <textarea aria-label="Note" value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="CT708 discontinued; CT728 is the current replacement…" style={{ ...inputStyle, resize: 'vertical' }} />
         </label>
+        )}
 
-        {partDrafts != null ? (
+        {orderOnly && partDrafts != null ? null : partDrafts != null ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }} data-testid="parts-roll-up">
             <span style={fieldLabel}>Lead time</span>
             <span style={smallMuted}>{partsRollUp?.lead_time_days != null ? `${describeLeadTime(partsRollUp.lead_time_days)}, the longest among the parts the GC sees.` : 'Set on each part above. The row reads the longest.'}</span>
@@ -228,6 +232,7 @@ export function SubmittalItemEditDialog({ item, sourceFiles, houses = [], parts 
         </div>
         )}
 
+        {orderOnly ? null : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
           <span style={fieldLabel}>Cut sheet</span>
           {sourceFiles.length === 0 ? (
@@ -247,8 +252,9 @@ export function SubmittalItemEditDialog({ item, sourceFiles, houses = [], parts 
             </div>
           )}
         </div>
+        )}
 
-        {canEnterDecision ? (
+        {canEnterDecision && !orderOnly ? (
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', borderTop: '1px solid var(--border)', paddingTop: '0.6rem' }} data-testid="their-answer-line">
             <span style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', minWidth: 0 }}>
               <span style={fieldLabel}>Their answer</span>
@@ -271,7 +277,7 @@ export function SubmittalItemEditDialog({ item, sourceFiles, houses = [], parts 
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', borderTop: '1px solid var(--border)', paddingTop: '0.6rem', flexShrink: 0 }}>
-          <ProductStatusChip status={status} size="md" />
+          {orderOnly ? <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text-amber-700)' }} data-testid="edit-order-only">Order only · the GC does not see it</span> : <ProductStatusChip status={status} size="md" />}
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <button type="button" onClick={onClose} style={{ padding: '0.45rem 0.85rem', background: 'var(--bg-muted)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', font: 'inherit' }}>
               Cancel

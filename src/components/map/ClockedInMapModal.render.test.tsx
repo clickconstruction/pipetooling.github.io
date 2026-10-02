@@ -145,6 +145,8 @@ describe('ClockedInMapModal', () => {
     mount([vecchio('a', 'Abraham'), echols, vecchio('p', 'Paige', '2026-09-22T12:18:00Z'), office, isiah])
     const dialog = screen.getByRole('dialog', { name: 'Where everyone is' })
     expect(dialog).toBeTruthy()
+    // a computer's window keeps its 1rem and adds an iPad's status bar (v2.4444)
+    expect(dialog.style.padding).toBe('calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem')
     const rows = screen.getAllByRole('button', { pressed: false }).filter((b) => /Vecchio|Echols/.test(b.textContent ?? ''))
     expect(rows.map((r) => r.textContent?.slice(0, 22))).toEqual(['2J1021 · Vecchio Pinpo', '1J1039 · Echols1 Echol'])
     expect(rows[0]?.textContent).toContain('Paige 4h 27m · Abraham 3h 45m')
@@ -196,6 +198,8 @@ describe('ClockedInMapModal', () => {
   it('on a phone: the summary line, the selected stop as a bar under the map with two big buttons, the rest listed beneath', async () => {
     mobile = true
     mount([vecchio('a', 'Abraham'), echols, isiah])
+    // a phone's sheet is the full height: it starts below the status bar (v2.4444)
+    expect(screen.getByRole('dialog', { name: 'Where everyone is' }).style.padding).toBe('var(--app-top-chrome, 0px) 0 0')
     expect(screen.getByText('3 in · 2 stops · 1 not on a job')).toBeTruthy()
     fireEvent.click(await screen.findByRole('button', { name: 'pin J1021 · Vecchio Pinpoint · 1' }))
     const openJob = screen.getByRole('button', { name: 'Open job' })

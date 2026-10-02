@@ -35,7 +35,7 @@ import {
   tagMatchesFixture,
   type ProcurementDecision,
   type ProcurementItemSource,
-  type ProcurementRecord, foldByHouse, gcProcurementRows, houseFoldNote, lineStatus, logIsDraft, orderBlockers, procurementSections, tagRollUp } from './procurementLog'
+  type ProcurementRecord, foldByHouse, gcProcurementRows, houseFoldNote, lineStatus, logIsDraft, orderBlockers, procurementSections, procurementCounts, tagRollUp } from './procurementLog'
 
 const item = (p: Partial<ProcurementItemSource> & { tag: string; product: string }): ProcurementItemSource => ({ supplyHouse: null, leadTimeDays: null, decision: null, shared: true, ...p })
 const rec = (p: Partial<ProcurementRecord> & { tag: string | null }): ProcurementRecord => ({ id: 'r-' + (p.tag ?? p.label ?? 'x'), label: '', leadTimeDays: null, stage: null, orderedOn: null, poRef: '', expectedOn: null, deliveredOn: null, note: '', sortOrder: 0, ...p })
@@ -604,5 +604,38 @@ describe('2026-10-02 · lines folded one per house', () => {
       ['Reece', 1, '1 part'],
       [null, 1, '1 part · 1 order only · pick a house to order'],
     ])
+  })
+})
+
+describe('2026-10-02 · an order-only fixture on the log', () => {
+  const fco = item({ tag: 'FCO', product: 'ZURN ZN1400-2NL', supplyHouse: 'Moore Supply', shared: false, orderOnly: true, noGc: true })
+  const wc = item({ tag: 'WC-1', product: 'TOTO CT728', supplyHouse: 'Moore Supply', shared: false })
+
+  it('sits under Order now, not under Waiting on the GC, and says why', () => {
+    const rows = buildProcurementLog({ items: [fco, wc], records: [], tagStage: {}, stageDates: {} })
+    const secs = procurementSections(rows, 'to_order')
+    expect(secs.map((s) => [s.key, s.rows.map((r) => r.tag)])).toEqual([['buy:Moore Supply', ['FCO']], ['waiting', ['WC-1']]])
+    expect(lineStatus(rows.find((r) => r.tag === 'FCO')!)).toMatchObject({ tone: 'act', text: 'Ready to order', sub: 'no GC approval needed' })
+    // With a stage date and a lead time it reads the order-by date like any released line.
+    const dated = buildProcurementLog({ items: [{ ...fco, leadTimeDays: 14 }], records: [], tagStage: { FCO: 'rough_in' }, stageDates })
+    expect(lineStatus(dated[0]!).text).toBe('Order by 09/22')
+  })
+
+  it('never reaches the GC’s copies, is not counted as released by the GC, and does not make a draft read as sent', () => {
+    const rows = buildProcurementLog({ items: [fco, wc], records: [], tagStage: {}, stageDates: {} })
+    expect(gcProcurementRows(rows).map((r) => r.tag)).toEqual(['WC-1'])
+    expect(procurementCounts(rows).released).toBe(0)
+    expect(logIsDraft(rows)).toBe(true)
+    expect(logIsDraft(buildProcurementLog({ items: [fco], records: [], tagStage: {}, stageDates: {} }))).toBe(false)
+  })
+
+  it('By tag says so in the fixture’s heading', () => {
+    const rows = buildProcurementLog({ items: [fco, wc], records: [], tagStage: {}, stageDates: {} })
+    expect(procurementSections(rows, 'by_tag').map((s) => [s.title, s.note])).toEqual([['FCO', 'order only, no GC approval'], ['WC-1', '']])
+  })
+
+  it('once ordered it reads as any ordered line', () => {
+    const rows = buildProcurementLog({ items: [fco], records: [rec({ tag: 'FCO', orderedOn: '2026-10-01' })], tagStage: {}, stageDates: {} })
+    expect(rows[0]!.status).toBe('ordered')
   })
 })

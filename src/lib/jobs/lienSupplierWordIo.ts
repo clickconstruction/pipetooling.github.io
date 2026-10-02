@@ -36,3 +36,19 @@ export async function clearSupplierWord(jobId: string, houseId: string): Promise
   const { error } = await supabase.from('job_supply_house_words').delete().eq('job_id', jobId).eq('supply_house_id', houseId)
   if (error) throw error
 }
+
+/** Several houses' or jobs' words in one write (v2.4443): the Ask a house sheet saves a call's answers together. */
+export async function saveSupplierWords(inputs: ReadonlyArray<SupplierWordInput>): Promise<void> {
+  if (inputs.length === 0) return
+  const rows = inputs.map((input) => ({
+    job_id: input.jobId,
+    supply_house_id: input.houseId,
+    their_balance: input.balance,
+    notice_on: input.noticeYmd,
+    said_by: input.saidBy.trim(),
+    note: input.note.trim(),
+    noted_by_name: input.notedByName.trim(),
+  }))
+  const { error } = await supabase.from('job_supply_house_words').upsert(rows, { onConflict: 'job_id,supply_house_id' })
+  if (error) throw error
+}

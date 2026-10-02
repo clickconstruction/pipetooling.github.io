@@ -19,5 +19,7 @@ describe('PersonDeskDrawer', () => {
     const desk = screen.getByRole('dialog', { name: 'Person Desk: Kai Moss' })
     expect(desk.style.top).toBe('0px')
     expect(desk.style.bottom).toBe('var(--app-bottom-chrome, 0px)')
+    // and starts below an iPhone's status bar (v2.4444): the backdrop still covers it, the panel does not
+    expect(desk.style.paddingTop).toBe('var(--app-top-chrome, 0px)')
   })
 })

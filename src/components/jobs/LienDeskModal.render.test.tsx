@@ -171,6 +171,10 @@ describe('LienDeskModal', () => {
     expect(screen.getByRole('dialog', { name: 'Lien desk' })).toBeTruthy()
     // the backdrop leaves room for an iPhone's status bar, so the title bar is never under the clock (v2.4397)
     expect(screen.getByRole('dialog', { name: 'Lien desk' }).style.paddingTop).toBe('var(--app-top-chrome, 0px)')
+    // the tab row is the sideways scroller that fades a cut end (v2.4441); a row that fits carries no fade
+    const kinds = document.querySelector('[data-lien-desk-kinds]') as HTMLElement
+    expect(kinds.getAttribute('role')).toBe('tablist')
+    expect(kinds.style.maskImage ?? '').toBe('')
     expect(screen.getByRole('button', { name: /Needs the owner/ }).textContent).toContain('1')
     expect(screen.getAllByText(/650 · ATI Schertz/).length).toBeGreaterThan(0)
     // The job's lien timeline (v2.3761) sits under the title: the path, today marked, one next step.
@@ -837,6 +841,31 @@ describe('LienDeskModal · a notice that already went out (#35 PR 2)', () => {
     expect((screen.getByLabelText('Months as printed') as HTMLInputElement).value).not.toBe('')
     fireEvent.click(screen.getByRole('button', { name: 'Back' }))
     expect(screen.queryByTestId('lien-notice-by-hand')).toBeNull()
+  })
+
+  it('on a phone the by-hand step is a sheet over the desk’s card (v2.4446): the same fields, Back to the notice, × closes the desk', async () => {
+    const before = window.matchMedia
+    window.matchMedia = ((query: string) => ({ matches: query.includes('max-width: 640px'), media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
+    try {
+      const onClose = vi.fn()
+      renderWithProviders(<LienDeskModal {...baseProps} onClose={onClose} authRole="assistant" initialJobId="j650" data={data(J650.map((r) => ({ ...r, has_owner: true })), [], true)} />)
+      const door = document.querySelector('[data-lien-desk-by-hand]') as HTMLButtonElement | null
+      expect(door).toBeTruthy()
+      fireEvent.click(door!)
+      await screen.findByTestId('lien-notice-by-hand')
+      const sheet = document.querySelector('[data-lien-record-sheet="notice_by_hand"]') as HTMLElement
+      expect(sheet).toBeTruthy()
+      // the sheet is positioned against the desk's card, not the backdrop that pads for the status bar
+      const card = sheet.closest('[data-lien-desk-panel]') as HTMLElement
+      expect(card.style.position).toBe('relative')
+      expect((screen.getByLabelText('Months as printed') as HTMLInputElement).style.fontSize).toBe('1rem')
+      fireEvent.click(sheet.querySelector('[aria-label="Close"]')!)
+      expect(onClose).toHaveBeenCalledTimes(1)
+      fireEvent.click(screen.getByRole('button', { name: 'Back' }))
+      expect(document.querySelector('[data-lien-record-sheet]')).toBeNull()
+    } finally {
+      window.matchMedia = before
+    }
   })
 })
 
