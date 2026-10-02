@@ -1276,8 +1276,6 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
                 onPctCommit={canEditJobPctComplete ? (n) => updateJobPctComplete(j.id, n, j.pct_complete ?? null) : undefined}
                 onNoBidValueClick={() => openEdit(j, { fixturesSectionHighlight: true })}
                 onStageClick={() => openEdit(j, { fixturesSectionHighlight: true })}
-                wordsOverride={billLine?.words ?? null}
-                hideWords={billLine?.hideWords}
               />
               {/* v2.4349: a sent bill's card says what is paid and left on it, where a
                   desktop bill row does — on its own bill rows, and on a job's card when

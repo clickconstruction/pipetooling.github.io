@@ -574,6 +574,10 @@ export function renderStagesFieldAndBillingLines(
     whiteSpace: 'nowrap',
   } as const
   const when = stagesWhenForJob(ctx, job)
+  // v2.4351: a sub's sheet lists the job and nobody has clocked in on it — said here now
+  // that the words under the money bar are gone.
+  const crew = ctx.crewByJobId.get(job.id)
+  const onSubSheet = !!crew?.sheet && !crew.lastWorkYmd
   const openCal = (e: { stopPropagation: () => void }) => {
     e.stopPropagation()
     openJobCalendar(job)
@@ -588,11 +592,11 @@ export function renderStagesFieldAndBillingLines(
             {whenLine('Ends', 'isEnds', stripEndsParts(when, todayYmd), openCal, 'Last day on the calendar — open the job calendar')}
           </>
         ) : when.kind === 'done' ? (
-          whenLine('Done', 'isMuted isReached', stripDoneParts(when.lastYmd, when.lastKind, todayYmd), openCal, 'Nothing on the calendar — open the job calendar')
+          whenLine('Done', 'isMuted isReached', stripDoneParts(when.lastYmd, when.lastKind, todayYmd, { onSubSheet }), openCal, 'Nothing on the calendar — open the job calendar')
         ) : (
           <>
             <span className={`stagesWhenFlag${when.tone === 'amber' ? ' isAmber' : ''}`}>Not scheduled</span>
-            {whenLine('Activity', 'isMuted isReached', stripLastParts(when.lastYmd, when.lastKind, todayYmd), openCal, 'Latest field activity — open the job calendar')}
+            {whenLine('Activity', 'isMuted isReached', stripLastParts(when.lastYmd, when.lastKind, todayYmd, { onSubSheet }), openCal, 'Latest field activity — open the job calendar')}
             {ctx.canOpenJobScheduleModal ? (
               <button
                 type="button"

@@ -1108,7 +1108,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           jobLabel: label,
           initialYmd: promise?.promisedYmd ?? null,
         })
-      if (!shell && !bankRet) return { words: null, hideWords: true, extras: null }
+      if (!shell && !bankRet) return { extras: null }
       const extras = (
         <>
           {bankRet ? (
@@ -1152,7 +1152,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           ) : null}
         </>
       )
-      return { words: null, hideWords: true, extras }
+      return { extras }
     },
     [promisedPayDates, canMarkPromisedPay, bankReturnedByJobId, openPaymentsReceived],
   )
