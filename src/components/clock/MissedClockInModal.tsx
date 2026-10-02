@@ -208,7 +208,7 @@ export function MissedClockInModal({ userId, onClose, onSaved }: Props) {
       role="dialog"
       aria-modal="true"
       aria-label="It did not clock me in"
-      style={{ position: 'fixed', inset: 0, zIndex: 1300, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.75rem' }}
+      style={{ position: 'fixed', inset: 0, zIndex: 1300, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(0.75rem + var(--app-top-chrome, 0px)) 0.75rem 0.75rem' }}
       onClick={(e) => {
         if (e.target === e.currentTarget && !saving) onClose()
       }}
@@ -216,7 +216,8 @@ export function MissedClockInModal({ userId, onClose, onSaved }: Props) {
       <div
         style={{
           width: 'min(420px, 100%)',
-          maxHeight: 'calc(100vh - 1.5rem - var(--app-bottom-chrome, 0px))',
+          // v2.4444: the card stops short of an iPhone's status bar too (--app-top-chrome); a tall one reached 12 px from the top of the screen.
+          maxHeight: 'calc(100vh - 1.5rem - var(--app-top-chrome, 0px) - var(--app-bottom-chrome, 0px))',
           overflowY: 'auto',
           background: 'var(--surface)',
           borderRadius: 12,

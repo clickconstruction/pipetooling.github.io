@@ -2054,7 +2054,8 @@ export default function BankPaymentsModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 770,
-        padding: fullScreen ? 0 : 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
+        // v2.4444: full screen still starts below an iPad's status bar (--app-top-chrome); the card is the full height.
+        padding: fullScreen ? 'var(--app-top-chrome, 0px) 0 0' : 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
         boxSizing: 'border-box',
       }}
       role="dialog"
