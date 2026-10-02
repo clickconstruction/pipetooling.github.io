@@ -9,7 +9,9 @@
  * is owed, and an open credit memo (a negative amount) never joins an owed
  * figure. The house's notice date is OUR ESTIMATE: the desk's own rule
  * (`noticeDeadlineForMonth`) run on the months of the house's unpaid invoices.
- * The house keeps its own calendar.
+ * The house keeps its own calendar, so what the house told us (v2.4411,
+ * `job_supply_house_words`: its own balance, the day its notice goes out) is
+ * shown over the estimate wherever it is on record.
  */
 
 import { formatCurrency } from '../format'
@@ -47,6 +49,20 @@ export interface LienSupplierAccountInput {
   rep: { name: string; phone: string | null } | null
 }
 
+/** What the house told us about a job (v2.4411): the latest word on record. */
+export interface LienSupplierWord {
+  /** The house's own figure for what it is still owed on the job; null when it gave none. */
+  balance: number | null
+  /** The day the house says its own notice goes out; null when it gave none. */
+  noticeYmd: string | null
+  /** Who at the house said it; '' when not written. */
+  saidBy: string
+  note: string
+  notedByName: string
+  /** The day it was written down. */
+  notedYmd: string
+}
+
 export interface LienSupplierHouse {
   houseId: string
   name: string
@@ -62,6 +78,7 @@ export interface LienSupplierHouse {
   account: LienSupplierAccountInput['state']
   accountRef: string
   rep: { name: string; phone: string | null } | null
+  word: LienSupplierWord | null
 }
 
 export interface LienSupplierJob {
@@ -85,6 +102,8 @@ export function buildLienSupplierJobs(input: {
   houses: ReadonlyArray<{ id: string; name: string }>
   accountsByJob?: ReadonlyMap<string, ReadonlyArray<LienSupplierAccountInput>>
   firstCustomerPaidByJob?: ReadonlyMap<string, string>
+  /** What each house told us, per job (v2.4411). */
+  wordsByJob?: ReadonlyMap<string, ReadonlyArray<LienSupplierWord & { houseId: string }>>
 }): Map<string, LienSupplierJob> {
   const invoiceById = new Map(input.invoices.map((inv) => [inv.id, inv]))
   const houseName = new Map(input.houses.map((h) => [h.id, h.name]))
@@ -115,6 +134,7 @@ export function buildLienSupplierJobs(input: {
         account: account?.state ?? 'none',
         accountRef: account?.accountRef ?? '',
         rep: account?.rep ?? null,
+        word: wordOf(input.wordsByJob?.get(alloc.job_id), inv.supply_house_id),
       }
       housesOfJob.set(inv.supply_house_id, house)
     }
@@ -150,6 +170,12 @@ export function buildLienSupplierJobs(input: {
     })
   }
   return out
+}
+
+function wordOf(words: ReadonlyArray<LienSupplierWord & { houseId: string }> | undefined, houseId: string): LienSupplierWord | null {
+  const w = words?.find((x) => x.houseId === houseId)
+  if (!w) return null
+  return { balance: w.balance, noticeYmd: w.noticeYmd, saidBy: w.saidBy, note: w.note, notedByName: w.notedByName, notedYmd: w.notedYmd }
 }
 
 function housesWord(n: number): string {
@@ -191,7 +217,9 @@ export function lienSupplierMark(job: LienSupplierJob | null | undefined): LienS
 // ---------- the card on a job ----------
 
 export type LienSupplierNotice =
-  /** The house's next open window. */
+  /** The day the house itself told us its notice goes out (v2.4411). `daysLeft` is negative once that day has passed. */
+  | { kind: 'said'; ymd: string; daysLeft: number; soon: boolean }
+  /** The house's next open window, by our estimate. */
   | { kind: 'open'; ymd: string; daysLeft: number; soon: boolean }
   /** Every unpaid month's window has closed; `ymd` is the last one to close. */
   | { kind: 'closed'; ymd: string }
@@ -214,6 +242,12 @@ export interface LienSupplierCardRow {
   paid: number
   owed: number
   owedOnJobAccount: number
+  /** What the house told us; null when nothing is on record. */
+  word: LienSupplierWord | null
+  /** "Reece says $8,950.00" when the house's own balance is on record and is not ours; else ''. */
+  theirBalanceWords: string
+  /** "Dana said so · noted Oct 2 by Grace" under a date the house gave; else ''. */
+  saidWords: string
 }
 
 export interface LienSupplierCard {
@@ -255,6 +289,32 @@ export function lienSupplierNotice(unpaidMonths: ReadonlyArray<string>, property
   return { kind: 'open', ymd: open, daysLeft, soon: daysLeft <= LIEN_DESK_LEAD_DAYS }
 }
 
+/** The house's notice as the card shows it: the day the house gave, else our estimate. */
+export function lienSupplierHouseNotice(h: Pick<LienSupplierHouse, 'unpaidMonths' | 'word'>, propertyKind: string, todayYmd: string): LienSupplierNotice {
+  const said = h.word?.noticeYmd
+  if (said && /^\d{4}-\d{2}-\d{2}$/.test(said)) {
+    const daysLeft = daysBetweenYmd(todayYmd, said) ?? 0
+    return { kind: 'said', ymd: said, daysLeft, soon: daysLeft >= 0 && daysLeft <= LIEN_DESK_LEAD_DAYS }
+  }
+  return lienSupplierNotice(h.unpaidMonths, propertyKind, todayYmd)
+}
+
+/** "Dana said so · noted Oct 2 by Grace": whose word a date or a balance is, and who wrote it down. */
+export function lienSupplierSaidWords(houseName: string, w: LienSupplierWord): string {
+  const who = w.saidBy.trim() || houseName
+  const noted = w.notedYmd ? `noted ${formatYmdMonthDay(w.notedYmd)}${w.notedByName.trim() ? ` by ${w.notedByName.trim()}` : ''}` : ''
+  return [`${who} said so`, noted].filter(Boolean).join(' · ')
+}
+
+/** The typed balance: '' is no balance, "$8,950.00" is 8950, anything else is refused. */
+export function parseSupplierWordBalance(text: string): { ok: true; value: number | null } | { ok: false } {
+  const t = text.trim()
+  if (!t) return { ok: true, value: null }
+  const n = Number(t.replace(/[$,\s]/g, ''))
+  if (!/^\$?\s*[\d,]*\.?\d*$/.test(t) || !Number.isFinite(n) || n < 0 || n >= 1e10) return { ok: false }
+  return { ok: true, value: Math.round(n * 100) / 100 }
+}
+
 function accountWords(h: LienSupplierHouse): string {
   if (h.account === 'open') return `job account open${h.accountRef ? ` · ${h.accountRef}` : ''}`
   if (h.account === 'requested') return 'job account requested'
@@ -285,10 +345,13 @@ export function buildLienSupplierCard(
       h.unpaidCount > 0
         ? `${h.unpaidCount} unpaid of ${h.invoiceCount} ${h.invoiceCount === 1 ? 'invoice' : 'invoices'}`
         : `${h.invoiceCount} ${h.invoiceCount === 1 ? 'invoice' : 'invoices'}, all paid`,
-    notice: h.owed > EPSILON ? lienSupplierNotice(h.unpaidMonths, ctx.propertyKind, ctx.todayYmd) : { kind: 'none' },
+    notice: h.owed > EPSILON ? lienSupplierHouseNotice(h, ctx.propertyKind, ctx.todayYmd) : { kind: 'none' },
     paid: h.paid,
     owed: h.owed,
     owedOnJobAccount: h.owedOnJobAccount,
+    word: h.word,
+    theirBalanceWords: h.word?.balance != null && Math.abs(h.word.balance - h.owed) > EPSILON ? `${h.name} says ${usd(h.word.balance)}` : '',
+    saidWords: h.word ? lienSupplierSaidWords(h.name, h.word) : '',
   }))
 
   let verdict: string | null = null
@@ -345,7 +408,11 @@ export function lienSupplierEmailText(
   if (owedRows.length) lines.push('')
   for (const r of owedRows) {
     const s = [`${r.name} is owed ${usd(r.owed)}${r.owedOnJobAccount > EPSILON ? ' on a job account' : ''}.`]
-    if (r.notice.kind === 'open') {
+    // The house's own words beat our books and our estimate, and are said as the house's.
+    if (r.theirBalanceWords && r.word?.balance != null) s.push(`${r.name} says its balance is ${usd(r.word.balance)}.`)
+    if (r.notice.kind === 'said') {
+      s.push(`${r.name} says its own notice ${r.notice.daysLeft < 0 ? 'went' : 'goes'} out on ${longDay(r.notice.ymd)}.`)
+    } else if (r.notice.kind === 'open') {
       if (r.unpaidSince) s.push(`Its oldest unpaid materials are from ${r.unpaidSince.replace(/ materials$/, '')}.`)
       s.push(`We expect its own notice by ${longDay(r.notice.ymd)}.`)
     }

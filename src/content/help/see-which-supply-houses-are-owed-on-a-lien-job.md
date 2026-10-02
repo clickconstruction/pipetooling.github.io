@@ -42,6 +42,24 @@ The date under **Its own notice** is our estimate. The desk counts it from the h
 
 A row that says *window closed* means that date has passed by our count.
 
+## Write down what the house told you
+
+Call the house and ask two things. Ask what they show as owed on the job. Ask when their notice goes out.
+
+Then press **They told us…** on that house's row. Type their balance and pick the day their notice goes out. Type who said it, and add a note if you like. Press {{button:blue|Save}}.
+
+The row now shows the day the house gave, in place of our estimate. It says who said so and who wrote it down. If their balance is not ours, the row shows both.
+
+:::example a row after the house called back
+notice goes out Oct 14
+Dana said so · noted Oct 2 by Grace
+Reece says $8,950.00
+:::
+
+The copied paragraph uses the house's words too. Press **Change what they told us…** to fix it. Press **Clear** in that form to take it off.
+
+Only office users see **They told us…**. The Lien window shows what was written and does not change it.
+
 ## Copy it into an email
 
 Press {{button:blue|Copy for an email}}. The desk copies a short paragraph. Paste it into your email and change what you like.

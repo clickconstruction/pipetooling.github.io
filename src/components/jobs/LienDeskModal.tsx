@@ -1257,7 +1257,7 @@ export default function LienDeskModal({
 
       {/* Supply houses on this job (v2.4404): a second claim can ride the same property. Not drawn when the job bought nothing. */}
       {supplierJob ? (
-        <LienJobSuppliersCard job={supplierJob} propertyKind={property.propertyKind ?? ''} todayYmd={todayYmd} openBalance={openBalance} payerName={gc?.name ?? ''} jobLabel={jobLabel(job, selected.jobId)} isMobile={isMobile} />
+        <LienJobSuppliersCard job={supplierJob} propertyKind={property.propertyKind ?? ''} todayYmd={todayYmd} openBalance={openBalance} payerName={gc?.name ?? ''} jobLabel={jobLabel(job, selected.jobId)} isMobile={isMobile} word={office ? { authName, onChanged: suppliers.reload } : undefined} />
       ) : null}
 
       {/* A carried correction nobody has looked at since the last notice (v2.3682): the paper says so and asks before it goes. */}

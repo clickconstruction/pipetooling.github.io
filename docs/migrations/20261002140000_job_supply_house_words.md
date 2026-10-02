@@ -1,0 +1,9 @@
+# 20261002140000_job_supply_house_words.sql (2026-10-02, v2.4411)
+
+`job_supply_house_words` — what a supply house told us about a job: its own balance on the job (`their_balance`), the day it says its own lien notice goes out (`notice_on`), who at the house said it (`said_by`), a `note`, and who wrote it down (`noted_by`, `noted_by_name`, `noted_at`). One row per `(job_id, supply_house_id)` (unique): the latest word, written by upsert and cleared by delete. A check refuses a row that says nothing (no balance, no day, an empty note). `noted_by` / `noted_at` are set by a BEFORE INSERT OR UPDATE trigger (`job_supply_house_words_stamp`, `search_path = ''`, EXECUTE revoked from PUBLIC, anon and authenticated) from `auth.uid()` / `now()`, whatever the client sends.
+
+RLS: select / insert / update / delete for the Lien desk's office set — `is_dev() OR is_assistant() OR role = 'master_technician'`, the rule `job_lien_desk_items` uses (delete is open to the office here because clearing a word is deleting it). Ends with `apply_read_only_write_blocks()`, `apply_read_only_stmt_blocks()` and `apply_digital_twin_write_blocks()`.
+
+Apply order: **client first**. `useLienJobSuppliers` reads the table with the rest of the card's rows and treats a failed read as no words, so the card draws its estimate until the push; a save before the push fails with a toast. Push once the v2.4411 deploy is live, then regenerate `src/types/database.ts` (the hook and `lienSupplierWordIo.ts` cast `'job_supply_house_words' as never` until then).
+
+Test: `npm run test:pg:supply-house-words` builds a throwaway copy of the whole schema and runs `supabase/tests/supply_house_words/20_scenario.sql` through RLS — the office writes and replaces a word, the stamp ignores what the client sent, an empty word is refused, the master reads, a subcontractor and anon read nothing, a read-only account is refused, the office clears.
