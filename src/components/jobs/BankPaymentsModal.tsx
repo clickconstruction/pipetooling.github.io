@@ -2755,7 +2755,8 @@ export default function BankPaymentsModal({
                         </button>
                       ) : null}
                     </div>
-                  ) : bankLabelNote ? (
+                  ) : bankLabelNote && !closedRow ? (
+                    // v2.4374: a closed-out deposit names its label in the record above; Apply is not offered.
                     <div
                       data-testid="ar-bank-label-note"
                       style={{ marginBottom: '0.75rem', fontSize: '0.8125rem', color: 'var(--text-amber-700)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}
