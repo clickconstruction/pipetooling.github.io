@@ -223,7 +223,14 @@ export function JobFormInvoiceList({
     document.addEventListener('mousedown', onDown)
     return () => document.removeEventListener('mousedown', onDown)
   }, [menuFor])
-  const expectedFor = useJobBilledExpectedPay({ id: editing.id, customer_id: editing.customer_id })
+  const expectedFor = useJobBilledExpectedPay({
+    id: editing.id,
+    customer_id: editing.customer_id,
+    gc_customer_id: editing.gc_customer_id ?? null,
+    bill_to_party: (editing as { bill_to_party?: string | null }).bill_to_party ?? null,
+    customer_name: editing.customer_name ?? null,
+    gcCustomer: editing.gcCustomer ?? null,
+  })
   if (!invoices.some((i) => i.status === 'ready_to_bill' || i.status === 'billed' || i.status === 'paid')) return null
 
   /**

@@ -38,9 +38,20 @@ export type PayloadRow = {
   job_name: string | null
   customer_id: string | null
   customer_name: string | null
+  /**
+   * v2.4362: whoever the bill went to (the GC on a GC-billed bill) — the key the pay speeds
+   * are counted under. Null = someone else. Absent on a payload from before the migration.
+   */
+  payer_id?: string | null
+  payer_name?: string | null
   billed_at: string | null
   est_bill_ymd: string | null
   remaining: number
+}
+
+/** The pay-speed key for a row (v2.4365): the payer once the payload carries it, else the job's customer. */
+export function rowPaySpeedKey(row: Pick<PayloadRow, 'payer_id' | 'customer_id'>): string | null {
+  return row.payer_id !== undefined ? row.payer_id : row.customer_id
 }
 
 export type ForecastEmailPayload = {
@@ -121,7 +132,8 @@ export function expectedPayModel(
   if (!speeds) return null
   const refYmd = billedReferenceYmd(row)
   if (!refYmd) return null
-  const own = row.customer_id ? speeds.customers[row.customer_id] : undefined
+  const key = rowPaySpeedKey(row)
+  const own = key ? speeds.customers[key] : undefined
   const useOwn = own != null && own.samples >= PAY_SPEED_MIN_SAMPLES
   const stat = useOwn ? own : speeds.company
   if (!stat) return null
@@ -212,12 +224,13 @@ export function buildForecastFromPayload(p: ForecastEmailPayload): PaymentForeca
     const name = (r.job_name ?? '').trim()
     const promise = p.promises[r.job_id] ?? null
     const model = expectedPayModel(r, p.pay_speeds, p.today, promise)
+    const key = rowPaySpeedKey(r)
     const row: ForecastRow = {
       invoiceId: r.invoice_id,
       jobId: r.job_id,
       label: name ? `${number} · ${name}` : number,
-      customerName: (r.customer_name ?? '').trim() || null,
-      segment: (r.customer_id && p.pay_speeds?.customerTypes[r.customer_id]) || null,
+      customerName: (r.payer_name ?? '').trim() || (r.customer_name ?? '').trim() || null,
+      segment: (key && p.pay_speeds?.customerTypes[key]) || null,
       open,
       model,
       promisedBy: promise?.markedByName ?? null,

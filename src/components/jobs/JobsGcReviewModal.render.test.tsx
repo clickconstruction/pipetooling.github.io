@@ -143,6 +143,38 @@ describe('JobsGcReviewModal', () => {
     expect(screen.queryByRole('table')).toBeNull()
   })
 
+  it('on a phone an opened GC lists its bills as cards, not the wide table: the job and what is open, when, the waivers', async () => {
+    const wide = window.matchMedia
+    window.matchMedia = ((query: string) => ({
+      matches: query === '(max-width: 640px)',
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    })) as typeof window.matchMedia
+    try {
+      const onOpenJob = vi.fn()
+      await open({ onOpenJob })
+      fireEvent.click(within(rowFor('Knight Contracting')).getByRole('button', { name: 'Show Knight Contracting’s bills' }))
+      const knight = within(rowFor('Knight Contracting'))
+      expect(knight.queryByRole('table')).toBeNull()
+      const card = knight.getByTestId('gc-review-bills')
+      fireEvent.click(within(card).getByRole('button', { name: '651 · Palomino Trail' }))
+      expect(onOpenJob).toHaveBeenCalledWith('j-knight')
+      expect(card.textContent).toContain('$26,000.00 open')
+      // "Cust" is not in the job's name, so the line under the address leads with it.
+      expect(card.querySelector('.when')?.textContent).toMatch(/^Cust · billed \w{3} \d{1,2}, 2026 · \d+ d$/)
+      const waivers = within(card).getByTestId('gc-review-waivers')
+      expect(waivers.textContent).toContain('Conditional · not added')
+      expect(waivers.textContent).toContain('Unconditional · when paid')
+    } finally {
+      window.matchMedia = wide
+    }
+  })
+
   it('a stage narrows the list to the GCs waiting there, and closing the window clears it', async () => {
     const view = await open()
     fireEvent.click(screen.getByRole('button', { name: /^Send:/ }))

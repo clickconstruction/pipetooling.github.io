@@ -16,6 +16,11 @@
  * own stopper), or a portal. Parsed with the TypeScript compiler, not grepped: v2.4338's grep for
  * press-closers found 3 of 92.
  *
+ * CI runs it (ci.yml and deploy.yml, v2.4360). It reads every return of a component, so a window a
+ * component draws only in another mode (an early return on a prop) still counts. When a finding is
+ * meant — the window behind should close too — say so in a comment on the line above the outer
+ * backdrop or the inner window, or inside its opening tag: `nested-windows: allow — <why>`.
+ *
  * Usage: node scripts/check-nested-windows.mjs [--rows]
  *   Exits 1 when a backdrop holds a window that lets the click through.
  *   --rows also lists clickable containers that are not backdrops (a table row whose onClick
@@ -45,11 +50,12 @@ const sourceFiles = execSync("git ls-files 'src/*.ts' 'src/**/*.ts' 'src/*.tsx' 
 // ---- Class names whose CSS (a .css file, or CSS inside a TSX <style> / template) is position: fixed
 const FIXED_CLASSES = new Set()
 for (const f of sourceFiles) {
-  const text = readFileSync(path.join(ROOT, f), 'utf8')
-  if (!/position\s*:\s*fixed/.test(text)) continue
+  const raw = readFileSync(path.join(ROOT, f), 'utf8')
+  if (!/position\s*:\s*fixed/.test(raw)) continue
+  const text = raw.replace(/\/\*[\s\S]*?\*\//g, '')
   const re = /([^{}`'"]+)\{([^{}]*)\}/g
   let m
-  while ((m = re.exec(text.replace(/\/\*[\s\S]*?\*\//g, '')))) {
+  while ((m = re.exec(text))) {
     if (!/position\s*:\s*fixed/.test(m[2])) continue
     for (const part of m[1].split(',')) {
       const last = part.trim().split(/\s+|>|\+|~/).filter(Boolean).pop() ?? ''
@@ -62,7 +68,9 @@ for (const f of sourceFiles) {
 const files = sourceFiles.filter((f) => /\.tsx?$/.test(f) && !/\.test\.tsx?$/.test(f) && !f.startsWith('src/test/'))
 const cfg = ts.readConfigFile(path.join(ROOT, 'tsconfig.json'), ts.sys.readFile)
 const options = ts.parseJsonConfigFileContent(cfg.config, ts.sys, ROOT).options
-const program = ts.createProgram({ rootNames: files.map((f) => path.join(ROOT, f)), options: { ...options, noEmit: true } })
+// Only the app's own symbols are resolved, so no lib and no global @types: a quarter of the time and
+// under 1.5 GB of heap, with the same findings.
+const program = ts.createProgram({ rootNames: files.map((f) => path.join(ROOT, f)), options: { ...options, noEmit: true, types: [], noLib: true } })
 const checker = program.getTypeChecker()
 const SRC = path.join(ROOT, 'src')
 
@@ -368,7 +376,16 @@ function outermostFn(n) {
   for (let p = n.parent; p; p = p.parent) if (ts.isFunctionDeclaration(p) || isFn(p) || ts.isMethodDeclaration(p)) best = p
   return best
 }
+/** A `nested-windows: allow — <why>` comment up to two lines above the element or inside its opening tag. */
+function allowed(node) {
+  const sf = node.getSourceFile()
+  const line = sf.getLineAndCharacterOfPosition(node.getStart()).line
+  const end = ts.isJsxElement(node) ? node.openingElement.getEnd() : node.getEnd()
+  return /nested-windows:[ \t]*allow\b[ \t—–:-]*\w/.test(sf.text.slice(sf.getPositionOfLineAndCharacter(Math.max(0, line - 2), 0), end))
+}
+
 const found = { backdrop: [], row: [] }
+const allowedHits = []
 let backdrops = 0
 for (const f of files) {
   if (!f.endsWith('.tsx')) continue
@@ -383,7 +400,8 @@ for (const f of files) {
         if (h.targetCheck || !ts.isJsxElement(n)) continue
         const fn = outermostFn(n)
         const hits = []
-        for (const c of n.children) walk(c, ev, fn, (kind, node, what) => hits.push(kind === 'prop' ? `${where(node)} renders its prop ${what} here` : `${where(node)} ${what}`))
+        const outerAllowed = allowed(n)
+        for (const c of n.children) walk(c, ev, fn, (kind, node, what) => (outerAllowed || allowed(node) ? allowedHits.push(`${where(n)} ← ${where(node)}`) : hits.push(kind === 'prop' ? `${where(node)} renders its prop ${what} here` : `${where(node)} ${what}`)))
         // A row's own props are its caller's business; a backdrop's props are reported.
         const shown = fixed ? hits : hits.filter((x) => !x.includes(' renders its prop '))
         if (shown.length) found[fixed ? 'backdrop' : 'row'].push({ at: where(n), handler: `${h.attrName}={${short(h.text, 80)}}`, hits: shown })
@@ -402,7 +420,21 @@ const print = (list) => {
 }
 console.log(`check-nested-windows: ${backdrops} backdrops; ${found.backdrop.length} hold a window that lets a click through to them.`)
 print(found.backdrop)
-if (found.backdrop.length) console.log('\nFix: the inner backdrop calls e.stopPropagation() before it closes (or the outer closes only when e.target === e.currentTarget). See docs/AI_CONTEXT.md → Windows (modals).')
+if (found.backdrop.length) {
+  console.log('\nFix: the inner backdrop calls e.stopPropagation() before it closes (or the outer closes only when e.target === e.currentTarget). See docs/AI_CONTEXT.md → Windows (modals).')
+  console.log('If the window behind should close too, say so: a `nested-windows: allow — <why>` comment on the line above the inner window.')
+}
+if (allowedHits.length) console.log(`\n${allowedHits.length} allowed by a nested-windows: allow note: ${allowedHits.join(', ')}`)
+// In GitHub Actions each finding also lands on the PR's diff as an error annotation.
+if (process.env.GITHUB_ACTIONS === 'true') {
+  const esc = (s) => s.replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A')
+  for (const o of found.backdrop) {
+    for (const h of o.hits) {
+      const [, file, line] = /^(\S+?):(\d+) /.exec(h) ?? []
+      if (file) console.log(`::error file=${file},line=${line},title=Window inside a window::${esc(`A click on this window's backdrop also reaches the backdrop at ${o.at} and closes that window too. Stop the click in this window's backdrop (e.stopPropagation()) before it closes. ${h}`)}`)
+    }
+  }
+}
 if (ROWS) {
   console.log(`\n--rows: ${found.row.length} clickable containers hold a window that lets a click through to them.`)
   print(found.row)

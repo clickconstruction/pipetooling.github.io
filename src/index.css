@@ -4366,6 +4366,26 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 .gcReviewRowMeta { display: block; font-size: 0.75rem; color: var(--text-muted); }
 .gcReviewRowAction { display: flex; justify-content: flex-end; align-items: center; }
 .gcReviewRowDone { font-size: 0.75rem; font-weight: 700; color: var(--text-green-800); white-space: nowrap; }
+/* An opened GC on a phone: one short card per bill instead of the six-column table, which ran
+   wider than the screen (a job's name broke a word a line and its waivers sat off to the right). */
+.gcReviewBills { display: flex; flex-direction: column; }
+.gcReviewBill { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 0.75rem; row-gap: 0.15rem; align-items: start; padding: 0.6rem 0.15rem; border-top: 1px solid var(--border); font-size: 0.8125rem; }
+.gcReviewBill .job { min-width: 0; }
+.gcReviewBillJob { padding: 0; border: none; background: none; cursor: pointer; font: inherit; font-weight: 600; text-align: left; color: var(--text-blue-700); text-decoration: underline; text-underline-offset: 2px; }
+.gcReviewBill .amt { font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; color: var(--text-strong); }
+.gcReviewBill .amt .mut { font-weight: 400; color: var(--text-muted); }
+.gcReviewBill .addr { grid-column: 1 / -1; font-size: 0.6875rem; color: var(--text-faint); }
+.gcReviewBill .when { grid-column: 1 / -1; color: var(--text-muted); }
+.gcReviewBill .coll { margin-left: 6px; padding: 0.05rem 0.35rem; font-size: 0.6875rem; font-weight: 600; border-radius: 4px; background: var(--bg-red-tint); color: var(--text-red-700); }
+.gcReviewBill .waivers { grid-column: 1 / -1; margin-top: 0.3rem; }
+@media (pointer: coarse) {
+  /* A thumb: the job link and the waiver chips (each opens the same job) reach 44 px tall through
+     an invisible ring, so nothing on the card moves; the card's padding keeps the rings inside it. */
+  .gcReviewBill { padding-top: 0.85rem; padding-bottom: 0.85rem; }
+  .gcReviewBillJob, .gcReviewBill .waivers button { position: relative; }
+  .gcReviewBillJob::after { content: ''; position: absolute; inset: -12px -6px; }
+  .gcReviewBill .waivers button::after { content: ''; position: absolute; inset: -13px -4px; }
+}
 .gcReviewRowQuiet { font-size: 0.72rem; color: var(--text-muted); white-space: nowrap; }
 .gcReviewRowDetail { grid-column: 2 / -1; min-width: 0; padding: 0.15rem 0 0.35rem; cursor: default; }
 .gcReviewRowLinks { display: flex; align-items: center; gap: 0.2rem 0.9rem; flex-wrap: wrap; margin-bottom: 0.4rem; font-size: 0.75rem; color: var(--text-muted); }
@@ -4692,3 +4712,27 @@ div.bid-mark-board-row[data-marked='true'] { box-shadow: inset 3px 0 0 var(--bid
 .procure-item-open:hover .procure-item-name { text-decoration: underline; text-underline-offset: 2px; }
 .procure-item-open:focus-visible { outline: 2px solid var(--text-link); outline-offset: 0; }
 .procure-item-edit { color: var(--text-blue-700); font-weight: 600; }
+
+/* Release of Lien, click to look (v2.4337): a folded step is a button that opens it read-only in
+   place; the number on the rail does the same; the page marks what the opened step filled in. */
+.lienStep-dot[data-click='true'] { cursor: pointer; }
+.lienStep-card[data-openable='true'] { position: relative; }
+.lienStep-card[data-openable='true']:hover { border-color: var(--border-strong); background: var(--bg-subtle); }
+.lienStep-foldBtn { background: none; border: none; padding: 0; margin: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.lienStep-foldBtn::after { content: ''; position: absolute; inset: 0; border-radius: 12px; }
+.lienStep-foldBtn:focus-visible { outline: none; }
+.lienStep-foldBtn:focus-visible::after { outline: 2px solid #2563eb; outline-offset: 2px; }
+.lienStep-look { margin-left: auto; font-size: 0.75rem; font-weight: 600; color: var(--text-muted); white-space: nowrap; }
+.lienStep-card[data-openable='true']:hover .lienStep-look { color: var(--text-blue-700); }
+.lienStep-foldClose { background: none; border: 1px solid var(--border-strong); border-radius: 6px; padding: 0.1rem 0.55rem; font: inherit; font-size: 0.75rem; font-weight: 600; color: var(--text-700); cursor: pointer; }
+.lienStep-foldClose:hover, .lienStep-foldClose:focus-visible { color: var(--text-blue-700); border-color: #93c5fd; }
+.lienStep-card[data-looking='true'] { border-style: dashed; }
+.lienStep-lookNote { color: var(--text-muted); font-style: italic; }
+.lienRelease-pageTitle { border-radius: 4px; }
+.lienRelease-preview[data-look-part='title'] .lienRelease-pageTitle { background: var(--bg-blue-tint); box-shadow: 0 0 0 3px var(--bg-blue-tint); outline: 2px dashed #2563eb; outline-offset: 3px; }
+.lienRelease-preview[data-look-part='signature'] [data-testid='lien-waiver-foot'] { position: relative; outline: 2px dashed #2563eb; outline-offset: 6px; border-radius: 6px; }
+.lienRelease-preview[data-look-part='signature'] [data-testid='lien-waiver-foot']::before { content: '5 · Signed here'; position: absolute; top: -1.7em; left: 0; background: #2563eb; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 0.72rem; font-weight: 700; border-radius: 999px; padding: 0.1em 0.65em; }
+/* While an earlier step is being looked at, the page marks only that step's part: the current step's
+   "He signs here" tag steps aside (its outline is inline, so the override needs !important). */
+.lienRelease-preview[data-look-part]:not([data-look-part='signature']) [data-testid='lien-waiver-foot'][data-highlight='true'] { border-color: transparent !important; background: transparent !important; }
+.lienRelease-preview[data-look-part]:not([data-look-part='signature']) [data-testid='lien-waiver-foot'][data-highlight='true'] > span:first-child { display: none !important; }

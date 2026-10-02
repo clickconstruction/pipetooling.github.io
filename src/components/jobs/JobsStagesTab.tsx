@@ -1,4 +1,4 @@
-import { stageRowPayerCustomerId } from '../../lib/jobs/billToParty'
+import { paySpeedPayer, stageRowPayerCustomerId } from '../../lib/jobs/billToParty'
 import { lienSignerNameFor, lienSignerPhoneFor } from '../../lib/jobs/lienSigner'
 import { billedListRows as billedListRowsFor, stagesSectionHeader, stagesSectionLoadingSuffix, type StagesSectionKey } from '../../lib/jobs/stagesSectionHeader'
 import { lienFocusEditJobOptions } from '../../lib/jobs/lienFocusEditJobOptions'
@@ -987,9 +987,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       const clock = billedLienClocks?.[job.id]
       if (!clock) return null
       const todayYmd = calendarYmdInAppTzFromIso(new Date().toISOString())
-      const model = inv
+      // v2.4365: the bill's payer's pace (the GC on a GC-billed bill), the history pay_speed_samples keys on.
+      const payer = inv ? paySpeedPayer(job, inv) : null
+      const model = inv && payer
         ? billedExpectedPayModel(
-            { billedAtIso: inv.billed_at, estBillYmd: effectiveInvoiceEstBillDate(inv), customerId: job.customer_id },
+            { billedAtIso: inv.billed_at, estBillYmd: effectiveInvoiceEstBillDate(inv), customerId: payer.id, payerName: payer.name },
             billedPaySpeeds,
             todayYmd,
             promisedPayDates?.[job.id] ?? null,
@@ -1024,9 +1026,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       const runway = lienRunwayFor(row.job, inv)
       const todayYmd = calendarYmdInAppTzFromIso(new Date().toISOString())
       const promise = promisedPayDates?.[row.job.id] ?? null
+      const payer = inv ? paySpeedPayer(row.job, inv) : null
       const ledger = buildBilledDatesLedger({
         todayYmd,
-        row: inv ? { billedAtIso: inv.billed_at, estBillYmd: effectiveInvoiceEstBillDate(inv), customerId: row.job.customer_id } : null,
+        row: inv && payer ? { billedAtIso: inv.billed_at, estBillYmd: effectiveInvoiceEstBillDate(inv), customerId: payer.id, payerName: payer.name } : null,
         data: billedPaySpeeds,
         promise,
         runway,
@@ -1038,7 +1041,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       const evidence = inv ? (
         <BilledReliabilityLine
           line={buildReliabilityLine(
-            row.job.customer_id ? billedPaySpeeds?.receipts[row.job.customer_id] : null,
+            payer?.id ? billedPaySpeeds?.receipts[payer.id] : null,
             canMarkPromisedPay ? promiseRecordsByCustomer?.get(stageRowPayerCustomerId(row) ?? '') ?? null : null,
             canMarkPromisedPay ? payerReturnsWords(returnsByPayer?.get(stageRowPayerCustomerId(row) ?? ''), todayYmdInAppTz()) : null,
           )}
@@ -2411,10 +2414,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     const crew = crewByJobId.get(job.id) ?? null
     const { model, view } = progressPaymentForJob(job, crew)
     const inv = row && row.kind !== 'job' ? row.inv : null
+    const payer = inv ? paySpeedPayer(job, inv) : null
     const expectedPay =
-      (stage === 'billed' || stage === 'collections') && inv
+      (stage === 'billed' || stage === 'collections') && inv && payer
         ? billedExpectedPayModel(
-            { billedAtIso: inv.billed_at, estBillYmd: effectiveInvoiceEstBillDate(inv), customerId: job.customer_id },
+            { billedAtIso: inv.billed_at, estBillYmd: effectiveInvoiceEstBillDate(inv), customerId: payer.id, payerName: payer.name },
             billedPaySpeeds,
             phoneTodayYmd,
             promisedPayDates?.[job.id] ?? null,

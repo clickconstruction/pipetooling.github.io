@@ -23,7 +23,7 @@
     "check:migration-drift": "node scripts/check-migration-drift.mjs",
     "check:todos": "vite-node scripts/check-todos.ts",
     "check:plain-words": "vite-node scripts/check-plain-words.ts",
-    "check:nested-windows": "node scripts/check-nested-windows.mjs",
+    "check:nested-windows": "node --max-old-space-size=3072 scripts/check-nested-windows.mjs",
     "map": "node scripts/map-surface.mjs",
     "claim": "vite-node scripts/claim-version.ts",
     "brand:pipe-wordmark": "vite-node scripts/pipe-wordmark-assets.ts",
