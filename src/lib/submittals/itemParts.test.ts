@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { assemblyLine, carryPartInsert, copyPartInsert, partCallsLine, diffPartDrafts, formatPartQty, orderOnlyLine, partHouseIds, partsByItem, partsFromPieces, partToDraft, rollUpFromParts, splitPartLabel, submittedParts, trimWord, type SubmittalPartRow } from './itemParts'
+import { assemblyLine, doubledKinds, isCarrier, carryPartInsert, copyPartInsert, partCallsLine, diffPartDrafts, formatPartQty, orderOnlyLine, partHouseIds, partsByItem, partsFromPieces, partToDraft, rollUpFromParts, splitPartLabel, submittedParts, trimWord, type SubmittalPartRow } from './itemParts'
 import type { ProductPiece } from './takeoffCandidates'
 
 const part = (p: Partial<SubmittalPartRow> & { id: string; label: string }): SubmittalPartRow => ({
@@ -152,5 +152,23 @@ describe('calls on parts (2026-10-01)', () => {
   it('counts the calls over the parts the GC sees', () => {
     expect(partCallsLine([part({ id: 'a', label: 'A', review_decision: 'approved' }), part({ id: 'b', label: 'B', review_decision: 'revise' }), part({ id: 'c', label: 'C' }), part({ id: 'd', label: 'D', on_submittal: false, review_decision: 'approved' })])).toBe('1 approved · 1 revise · 1 to go')
     expect(partCallsLine([part({ id: 'a', label: 'A' })])).toBe('')
+  })
+})
+
+describe('carriers (2026-10-02)', () => {
+  it('reads a carrier from its catalog name', () => {
+    expect(isCarrier('JOSAM 12694 4" NH double adjustable horizontal closet carrier')).toBe(true)
+    expect(isCarrier('ZURN Z1201-NR4-CL12-RYK17 NH DURA-COAT CI ADJ HORIZONTAL SIPHON JET EZCARRY W/RT HAND INLET')).toBe(true)
+    expect(isCarrier('JOSAM 17560-UR floor mount urinal carrier')).toBe(true)
+    expect(isCarrier('TOTO CT728CUVG#01 TORNADO FLUSH COMMERCIAL FLUSHOMETER WALL- MOUNTED TOILET')).toBe(false)
+    expect(isCarrier('BRASSCRAFT PLS1-20DW F 3/8X20 COMP SS SUPPLY')).toBe(false)
+    expect(isCarrier(null)).toBe(false)
+  })
+
+  it('two carriers the GC sees on one fixture is one too many; an order-only one does not count', () => {
+    const wc = [part({ id: 'a', label: 'ZURN Z1201 EZCARRY' }), part({ id: 'b', label: 'JOSAM 12694 closet carrier' })]
+    expect(doubledKinds(wc)).toEqual(['carrier'])
+    expect(doubledKinds([wc[0]!])).toEqual([])
+    expect(doubledKinds([wc[0]!, { ...wc[1]!, on_submittal: false }])).toEqual([])
   })
 })

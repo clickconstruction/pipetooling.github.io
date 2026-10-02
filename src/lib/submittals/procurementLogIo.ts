@@ -9,7 +9,7 @@ import type { Database } from '../../types/database'
 import { loadStageSplitsForBid } from '../bids/materialsByStageIo'
 import { asDecision } from './submittalRevision'
 import type { SubmittalPartRow } from './itemParts'
-import { asPartStage } from './itemParts'
+import { asPartStage, isCarrier } from './itemParts'
 import {
   stageDatesFromJob,
   tagStagesFrom,
@@ -137,7 +137,8 @@ export async function procurementItemsFrom(supabase: Client, items: ReadonlyArra
         partOrder: p.sequence_order,
         orderOnly: !p.on_submittal,
         quantity: fixtures != null ? fixtures * Number(p.quantity) : null,
-        stage: asPartStage(p.stage),
+        // A carrier with no stage of its own is needed at Rough In (2026-10-02).
+        stage: asPartStage(p.stage) ?? (isCarrier(p.label) ? 'rough_in' : null),
       })
     }
   }

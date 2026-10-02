@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { foldSuggestions, foldWrites, planTakeoffRefresh, takeoffRefreshWrites } from './refreshFromTakeoff'
+import { foldReplaceSuggestion, foldSuggestions, foldWrites, planTakeoffRefresh, takeoffRefreshWrites } from './refreshFromTakeoff'
 import type { SubmittalPartRow } from './itemParts'
 import type { SubmittalItemRow } from './submittalRevision'
 import type { ProductPiece, TakeoffCandidate } from './takeoffCandidates'
@@ -212,5 +212,36 @@ describe('foldWrites', () => {
     expect(plan.inserts.map((p) => [p.label, p.sequence_order])).toEqual([['JOSAM 17820 CARRIER', 3]])
     expect(plan.moveLines).toEqual([{ tag: 'CAR-2', partKey: 'minted-1' }])
     expect(plan.after).toBe('SLOAN WEUS-1000 + JOSAM 17820')
+  })
+
+  it('a carrier goes in at Rough In', () => {
+    n = 0
+    expect(foldWrites(carWc, wc, [], 'bid-1', mint).inserts[1]!.stage).toBe('rough_in')
+    // The fixture's own product is not a carrier: no stage is guessed for it.
+    expect(foldWrites(carWc, wc, [], 'bid-1', mint).inserts[0]!.stage).toBeUndefined()
+  })
+
+  // 2026-10-02 · BP375: WC-1, WC-2 listed the takeoff's Zurn carrier and Wendi's Josam.
+  const bowl = part({ id: 'wc-bowl', item_id: 'wc', label: 'TOTO CT728CUVG#01 TORNADO FLUSH TOILET', sequence_order: 1 })
+  const zurn = part({ id: 'wc-zurn', item_id: 'wc', label: 'ZURN Z1201-NR4-CL12-RYK17 NH DURA-COAT CI ADJ HORIZONTAL SIPHON JET EZCARRY W/RT HAND INLET', sequence_order: 4 })
+  const seat = part({ id: 'wc-seat', item_id: 'wc', label: 'MAINLINE ML1055SSC000 WHT ELONG', sequence_order: 3 })
+  const josam = row({ id: 'car-josam', tag: 'WC CARRIER', submitted_label: 'JOSAM 12694 4" NH double adjustable horizontal closet carrier', reason_note: 'Carrier for WC-1 and WC-2.', supply_house_id: 'h-nws' })
+
+  it('in place of: the carrier takes the Zurn’s place and its name as what was priced; the Zurn comes off', () => {
+    n = 0
+    const plan = foldWrites(josam, wc, [bowl, seat, zurn], 'bid-1', mint, { replaceId: 'wc-zurn' })
+    expect(plan.deletes).toEqual(['wc-zurn'])
+    expect(plan.inserts).toHaveLength(1)
+    expect(plan.inserts[0]).toMatchObject({ label: 'JOSAM 12694 4" NH double adjustable horizontal closet carrier', sequence_order: 4, priced_label: zurn.label, on_submittal: true, stage: 'rough_in', supply_house_id: 'h-nws' })
+    expect(plan.after).toBe('TOTO CT728CUVG#01 + MAINLINE ML1055SSC000 + JOSAM 12694')
+    expect(plan.moveLines).toEqual([{ tag: 'WC CARRIER', partKey: 'minted-1' }])
+  })
+
+  it('suggests the row’s own carrier for a carrier, and nothing for anything else', () => {
+    expect(foldReplaceSuggestion(josam, [bowl, seat, zurn])).toBe('wc-zurn')
+    expect(foldReplaceSuggestion(josam, [bowl, seat])).toBeNull()
+    // Two carriers already: no guess.
+    expect(foldReplaceSuggestion(josam, [bowl, zurn, part({ id: 'wc-zurn2', item_id: 'wc', label: 'ZURN Z1203 CARRIER', sequence_order: 5 })])).toBeNull()
+    expect(foldReplaceSuggestion(row({ id: 'x', tag: 'GB-1', submitted_label: 'BOBRICK B-6806 GRAB BAR' }), [bowl, seat, zurn])).toBeNull()
   })
 })

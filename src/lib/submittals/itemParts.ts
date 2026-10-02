@@ -132,6 +132,24 @@ export function orderOnlyLine(parts: ReadonlyArray<Pick<SubmittalPartRow, 'label
 
 type RollUpPart = Pick<SubmittalPartRow, 'label' | 'on_submittal' | 'supply_house_id' | 'lead_time_days' | 'sequence_order'>
 
+/**
+ * A part that holds a fixture up off the floor or the wall: a carrier (2026-10-02). Read from
+ * the catalog name — "JOSAM 12694 … closet carrier", "ZURN Z1201 … EZCARRY". Carriers go in at
+ * Rough In, so a carrier with no stage of its own is needed then, and a fixture needs one.
+ */
+export function isCarrier(label: string | null | undefined): boolean {
+  return /\bcarriers?\b|\bez ?carry\b/i.test(label ?? '')
+}
+
+/**
+ * Kinds a fixture needs one of, listed twice among the parts the GC sees (2026-10-02, BP375's
+ * WC-1, WC-2 listed the takeoff's Zurn carrier and Wendi's Josam). Only carriers for now: a
+ * fixture can rightly list two supplies or two stops.
+ */
+export function doubledKinds(parts: ReadonlyArray<Pick<SubmittalPartRow, 'label' | 'on_submittal'>>): Array<'carrier'> {
+  return parts.filter((p) => p.on_submittal && isCarrier(p.label)).length > 1 ? ['carrier'] : []
+}
+
 /** The parts the GC sees, in order. */
 export function submittedParts<T extends Pick<SubmittalPartRow, 'on_submittal' | 'sequence_order'>>(parts: ReadonlyArray<T>): T[] {
   return [...parts].filter((p) => p.on_submittal).sort((a, b) => a.sequence_order - b.sequence_order)
