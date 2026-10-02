@@ -4,8 +4,11 @@ import {
   buildLienSupplierCard,
   buildLienSupplierJobs,
   lienSupplierEmailText,
+  lienSupplierHouseNotice,
   lienSupplierMark,
   lienSupplierNotice,
+  lienSupplierSaidWords,
+  parseSupplierWordBalance,
   type LienSupplierAccountInput,
   type LienSupplierInvoiceInput,
 } from './lienJobSuppliers'
@@ -212,5 +215,53 @@ describe('lienSupplierEmailText', () => {
     expect(text).not.toContain('We have paid')
     expect(text).not.toContain('is what lets us pay')
     expect(text).not.toContain('We paid a supply house')
+  })
+})
+
+describe('what the house told us (v2.4411)', () => {
+  const WORD = { houseId: 'reece', balance: 8950, noticeYmd: '2026-10-14', saidBy: 'Dana', note: 'on their notice list Oct 3', notedByName: 'Grace', notedYmd: '2026-10-02' }
+  const withWord = () => buildLienSupplierJobs({ invoices: INVOICES, allocations: ALLOCATIONS, houses: HOUSES, accountsByJob: ACCOUNTS, firstCustomerPaidByJob: new Map([['job', '2026-09-02']]), wordsByJob: new Map([['job', [WORD]]]) })
+  const ctx = { propertyKind: 'non_residential', todayYmd: TODAY, openBalance: 18400, payerName: 'Alder' }
+
+  it('rides on its house and nowhere else', () => {
+    const job = withWord().get('job')!
+    expect(job.houses.find((h) => h.houseId === 'reece')!.word).toMatchObject({ balance: 8950, noticeYmd: '2026-10-14', saidBy: 'Dana' })
+    expect(job.houses.find((h) => h.houseId === 'ferg')!.word).toBeNull()
+    expect(jobs().get('job')!.houses.every((h) => h.word === null)).toBe(true)
+  })
+
+  it('the day the house gave beats our estimate, and a past day reads as past', () => {
+    expect(lienSupplierHouseNotice({ unpaidMonths: ['2026-07'], word: { ...WORD } }, 'non_residential', TODAY)).toEqual({ kind: 'said', ymd: '2026-10-14', daysLeft: 12, soon: true })
+    expect(lienSupplierHouseNotice({ unpaidMonths: ['2026-07'], word: { ...WORD, noticeYmd: '2026-09-30' } }, 'non_residential', TODAY)).toEqual({ kind: 'said', ymd: '2026-09-30', daysLeft: -2, soon: false })
+    // A word with a balance and no day leaves the estimate standing.
+    expect(lienSupplierHouseNotice({ unpaidMonths: ['2026-07'], word: { ...WORD, noticeYmd: null } }, 'non_residential', TODAY)).toMatchObject({ kind: 'open', ymd: '2026-10-15' })
+  })
+
+  it('the card says whose word it is and keeps our figure in the Owed column', () => {
+    const row = buildLienSupplierCard(withWord().get('job')!, ctx).rows[0]!
+    expect(row.notice).toMatchObject({ kind: 'said', ymd: '2026-10-14' })
+    expect(row.owed).toBeCloseTo(9612.4)
+    expect(row.theirBalanceWords).toBe('Reece says $8,950.00')
+    expect(row.saidWords).toBe('Dana said so · noted Oct 2 by Grace')
+    expect(lienSupplierSaidWords('Reece', { ...WORD, saidBy: '', notedByName: '' })).toBe('Reece said so · noted Oct 2')
+    // The same balance as ours is not said twice.
+    const same = buildLienSupplierJobs({ invoices: INVOICES, allocations: ALLOCATIONS, houses: HOUSES, wordsByJob: new Map([['job', [{ ...WORD, balance: 9612.4 }]]]) })
+    expect(buildLienSupplierCard(same.get('job')!, ctx).rows[0]!.theirBalanceWords).toBe('')
+  })
+
+  it('the paragraph says the house’s words as the house’s', () => {
+    const job = withWord().get('job')!
+    const text = lienSupplierEmailText(buildLienSupplierCard(job, ctx), { jobLabel: '712 · Cedar Park Dental', todayYmd: TODAY, openBalance: 18400, firstHousePaidYmd: null, firstCustomerPaidYmd: null })
+    expect(text).toContain('Reece is owed $9,612.40. Reece says its balance is $8,950.00. Reece says its own notice goes out on October 14.')
+    const past = buildLienSupplierJobs({ invoices: INVOICES, allocations: ALLOCATIONS, houses: HOUSES, wordsByJob: new Map([['job', [{ ...WORD, balance: null, noticeYmd: '2026-09-30' }]]]) })
+    expect(lienSupplierEmailText(buildLienSupplierCard(past.get('job')!, ctx), { jobLabel: 'x', todayYmd: TODAY, openBalance: 18400, firstHousePaidYmd: null, firstCustomerPaidYmd: null })).toContain('Reece is owed $9,612.40. Reece says its own notice went out on September 30.')
+  })
+
+  it('reads a typed balance, and refuses what is not one', () => {
+    expect(parseSupplierWordBalance('')).toEqual({ ok: true, value: null })
+    expect(parseSupplierWordBalance(' $8,950.00 ')).toEqual({ ok: true, value: 8950 })
+    expect(parseSupplierWordBalance('7393.333')).toEqual({ ok: true, value: 7393.33 })
+    expect(parseSupplierWordBalance('about 9k')).toEqual({ ok: false })
+    expect(parseSupplierWordBalance('-5')).toEqual({ ok: false })
   })
 })

@@ -14,6 +14,7 @@ import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import LienDeskModal from './LienDeskModal'
+import { LienJobSuppliersCard } from './LienJobSuppliers'
 import { buildLienDeskQueue, summarizeLienDeskForNeedsYou, type LienDeskItemRow, type LienNoticeMonthRow } from '../../lib/jobs/lienDesk'
 import type { LienDeskData } from '../../hooks/useLienDeskData'
 import { buildLienAffidavitQueue, type LienAffidavitRow } from '../../lib/jobs/lienDeskAffidavits'
@@ -48,7 +49,12 @@ const payPageState: { rows: Array<{ invoiceId: string; label: string; descriptio
 vi.mock('../../hooks/useNoticePayPage', () => ({ useNoticePayPage: () => payPageState }))
 // Supply houses on the desk's jobs (v2.4404): the read is a seam; the kernel has its own tests.
 const supplierState: { byJob: Map<string, LienSupplierJob> } = { byJob: new Map() }
-vi.mock('../../hooks/useLienJobSuppliers', () => ({ useLienJobSuppliers: () => ({ byJob: supplierState.byJob, loaded: true }) }))
+const supplierReload = vi.fn()
+vi.mock('../../hooks/useLienJobSuppliers', () => ({ useLienJobSuppliers: () => ({ byJob: supplierState.byJob, loaded: true, reload: supplierReload }) }))
+// What the house told us (v2.4411): the two writes are seams.
+const saveWordMock = vi.fn()
+const clearWordMock = vi.fn()
+vi.mock('../../lib/jobs/lienSupplierWordIo', () => ({ saveSupplierWord: (input: unknown) => saveWordMock(input), clearSupplierWord: (...args: unknown[]) => clearWordMock(...args) }))
 vi.mock('../../lib/jobs/propertyKindWrite', () => ({
   savePropertyKind: (...args: unknown[]) => savePropertyKindMock(...args),
   savePropertyHomestead: vi.fn(),
@@ -69,6 +75,11 @@ afterEach(cleanup)
 beforeEach(() => {
   resetPropertyLookupCache()
   supplierState.byJob = new Map()
+  supplierReload.mockReset()
+  saveWordMock.mockReset()
+  saveWordMock.mockResolvedValue(undefined)
+  clearWordMock.mockReset()
+  clearWordMock.mockResolvedValue(undefined)
   lookupMock.mockReset()
   lookupMock.mockResolvedValue({ ok: false, error: 'not_found' })
   confirmMock.mockReset()
@@ -1086,5 +1097,59 @@ describe('LienDeskModal the owner’s call and the piles (v2.3767)', () => {
     await settle()
     expect(document.querySelector('[data-lien-suppliers-card]')).toBeNull()
     expect(document.querySelector('[data-lien-supplier-mark]')).toBeNull()
+  })
+  describe('what the house told us (v2.4411)', () => {
+    const reece = (word?: Parameters<typeof buildLienSupplierJobs>[0]['wordsByJob']) =>
+      buildLienSupplierJobs({
+        invoices: [{ id: 'r2', supply_house_id: 'reece', amount: 9612.4, is_paid: false, invoice_date: '2026-07-18', paidYmd: null, on_job_account: false }],
+        allocations: [{ invoice_id: 'r2', job_id: 'j650', pct: 100 }],
+        houses: [{ id: 'reece', name: 'Reece' }],
+        wordsByJob: word,
+      })
+
+    it('the office records the house’s balance and its notice day, and the card re-reads', async () => {
+      supplierState.byJob = reece()
+      renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} />)
+      await settle()
+      const card = document.querySelector<HTMLElement>('[data-lien-suppliers-card="owed"]')!
+      fireEvent.click(within(card).getByRole('button', { name: 'They told us…' }))
+      const form = card.querySelector<HTMLElement>('[data-lien-supplier-word-form="Reece"]')!
+      // Nothing typed says nothing: Save waits.
+      expect((within(form).getByRole('button', { name: 'Save' }) as HTMLButtonElement).disabled).toBe(true)
+      fireEvent.change(within(form).getByLabelText('Their balance on this job'), { target: { value: 'about 9k' } })
+      expect(within(form).getByText('Type the balance as a number, like 8,950.00.')).toBeTruthy()
+      fireEvent.change(within(form).getByLabelText('Their balance on this job'), { target: { value: '$8,950.00' } })
+      fireEvent.change(within(form).getByLabelText('Their notice goes out'), { target: { value: '2026-10-14' } })
+      fireEvent.change(within(form).getByLabelText('Who said it'), { target: { value: 'Dana' } })
+      fireEvent.click(within(form).getByRole('button', { name: 'Save' }))
+      await waitFor(() => expect(saveWordMock).toHaveBeenCalledTimes(1))
+      expect(saveWordMock.mock.calls[0]![0]).toEqual({ jobId: 'j650', houseId: 'reece', balance: 8950, noticeYmd: '2026-10-14', saidBy: 'Dana', note: '', notedByName: 'Taunya' })
+      await waitFor(() => expect(supplierReload).toHaveBeenCalledTimes(1))
+      expect(card.querySelector('[data-lien-supplier-word-form]')).toBeNull()
+    })
+
+    it('a recorded word shows over the estimate, and Clear takes it off', async () => {
+      supplierState.byJob = reece(new Map([['j650', [{ houseId: 'reece', balance: 8950, noticeYmd: '2026-10-14', saidBy: 'Dana', note: '', notedByName: 'Grace', notedYmd: '2026-09-12' }]]]))
+      renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} />)
+      await settle()
+      const card = document.querySelector<HTMLElement>('[data-lien-suppliers-card="owed"]')!
+      expect(within(card).getByText('notice goes out Oct 14')).toBeTruthy()
+      expect(within(card).getByText('Dana said so · noted Sep 12 by Grace')).toBeTruthy()
+      expect(within(card).getByText('Reece says $8,950.00')).toBeTruthy()
+      fireEvent.click(within(card).getByRole('button', { name: 'Change what they told us…' }))
+      fireEvent.click(within(card).getByRole('button', { name: 'Clear' }))
+      await waitFor(() => expect(clearWordMock).toHaveBeenCalledWith('j650', 'reece'))
+      await waitFor(() => expect(supplierReload).toHaveBeenCalledTimes(1))
+    })
+
+    it('the card without the office’s door (the Lien window) shows the word and offers no change', async () => {
+      const job = reece(new Map([['j650', [{ houseId: 'reece', balance: null, noticeYmd: '2026-10-14', saidBy: '', note: 'on their list', notedByName: 'Grace', notedYmd: '2026-09-12' }]]])).get('j650')!
+      renderWithProviders(<LienJobSuppliersCard job={job} propertyKind="" todayYmd={TODAY} openBalance={33_500} payerName="Loberg Contracting" jobLabel="650 · ATI Schertz" isMobile={false} />)
+      await settle()
+      expect(screen.getByText('notice goes out Oct 14')).toBeTruthy()
+      expect(screen.getByText('Reece said so · noted Sep 12 by Grace')).toBeTruthy()
+      expect(screen.getByText('“on their list”')).toBeTruthy()
+      expect(screen.queryByRole('button', { name: /told us/ })).toBeNull()
+    })
   })
 })

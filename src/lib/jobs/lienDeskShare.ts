@@ -5,7 +5,7 @@ import type { LienAffidavitPile } from './lienDeskAffidavits'
 import type { LienRetainagePile } from './lienDeskRetainage'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 import { formatUsdNoCents } from './jobFormatting'
-import { lienSupplierMark, lienSupplierNotice, type LienSupplierJob } from './lienJobSuppliers'
+import { lienSupplierHouseNotice, lienSupplierMark, type LienSupplierJob } from './lienJobSuppliers'
 import type { LienStatusHouseJob, LienStatusJob, LienStatusLien, LienStatusNeed, LienStatusPayload, LienStatusWhere } from '../../../supabase/functions/_shared/lienDeskStatus'
 
 /**
@@ -132,8 +132,9 @@ export function lienShareHouseJobs(input: {
     const owedHouses = job.houses.filter((h) => h.owed > 0.005)
     let first: { name: string; ymd: string } | null = null
     for (const h of owedHouses) {
-      const n = lienSupplierNotice(h.unpaidMonths, kind, todayYmd)
-      if (n.kind === 'open' && (!first || n.ymd < first.ymd)) first = { name: h.name, ymd: n.ymd }
+      // The day the house gave (v2.4411) beats the estimate; a day already past is no longer ahead of us.
+      const n = lienSupplierHouseNotice(h, kind, todayYmd)
+      if ((n.kind === 'open' || (n.kind === 'said' && n.daysLeft >= 0)) && (!first || n.ymd < first.ymd)) first = { name: h.name, ymd: n.ymd }
     }
     out.push({
       number: j.number,
