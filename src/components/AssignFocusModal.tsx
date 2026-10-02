@@ -93,7 +93,12 @@ export function AssignFocusModal({ sessionIds, label, onSaved, onClose, overlayZ
         justifyContent: 'center',
         zIndex: overlayZIndex,
       }}
-      onClick={onClose}
+      onClick={(e) => {
+        // Review Hours draws this inside its own backdrop: a click outside closes this window
+        // only, not the one behind it (v2.4352).
+        e.stopPropagation()
+        onClose()
+      }}
     >
       <div role="dialog" aria-modal="true"
         style={{
