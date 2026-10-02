@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Windows below the status bar: every window's panel starts below an iPhone's status bar.
+ * Windows below the status bar (v2.4447): every window's panel starts below an iPhone's status bar.
  *
  * The page is `viewport-fit=cover`, so on an iPhone with the app on its Home Screen the layout runs
  * under the clock, the signal bars and the battery, and `env(safe-area-inset-top)` says how tall
