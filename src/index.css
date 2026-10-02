@@ -3937,6 +3937,8 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 .lienCalBand { mix-blend-mode: multiply; }
 :root[data-theme='dark'] .lienCalBand { mix-blend-mode: screen; opacity: 0.4; }
 @container lien-cal-toolbar (max-width: 1060px) { .lienCalPillDate { display: none; } }
+/* Houses owed (v2.4407): the lens keeps its icon and its count when the toolbar is tight, so the pills stay on one line. */
+@container lien-cal-toolbar (max-width: 1180px) { .lienCalLensWord { display: none; } }
 @container lien-cal-toolbar (max-width: 900px) { .lienCalPillMoney { display: none; } }
 .lienCalAxis { container: lien-cal-axis / inline-size; }
 .lienCalDateShort { display: none; }

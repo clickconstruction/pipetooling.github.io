@@ -5,7 +5,8 @@ import type { LienAffidavitPile } from './lienDeskAffidavits'
 import type { LienRetainagePile } from './lienDeskRetainage'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 import { formatUsdNoCents } from './jobFormatting'
-import type { LienStatusJob, LienStatusLien, LienStatusNeed, LienStatusPayload, LienStatusWhere } from '../../../supabase/functions/_shared/lienDeskStatus'
+import { lienSupplierMark, lienSupplierNotice, type LienSupplierJob } from './lienJobSuppliers'
+import type { LienStatusHouseJob, LienStatusJob, LienStatusLien, LienStatusNeed, LienStatusPayload, LienStatusWhere } from '../../../supabase/functions/_shared/lienDeskStatus'
 
 /**
  * Share where the liens stand (v2.4311): the Lien desk's data folded into the payload the
@@ -16,8 +17,10 @@ import type { LienStatusJob, LienStatusLien, LienStatusNeed, LienStatusPayload, 
  * window already gone). Pure.
  */
 
-/** 'all' = the whole desk; else the GC's customer id. */
-export type LienShareScope = 'all' | string
+/** 'all' = the whole desk; 'houses' = the lien jobs where a supply house is also owed (v2.4407); else the GC's customer id. */
+export type LienShareScope = 'all' | 'houses' | string
+
+export const LIEN_SHARE_HOUSES: LienShareScope = 'houses'
 
 /** The notice piles a notice sits in before it is mailed, and how the message names each. */
 const WHERE_BY_PILE: Partial<Record<LienDeskPile, LienStatusWhere>> = {
@@ -84,6 +87,8 @@ export type LienShareScopeOption = {
   firstYmd: string
   waiting: number
   needOwner: number
+  /** The houses choice: `owed` is what the supply houses are owed, and `firstYmd` the first house notice. */
+  toHouses?: boolean
 }
 
 function optionFor(key: LienShareScope, name: string, jobs: ReadonlyArray<LienStatusJob>): LienShareScopeOption {
@@ -98,8 +103,55 @@ function optionFor(key: LienShareScope, name: string, jobs: ReadonlyArray<LienSt
   }
 }
 
-/** The What to send menu: the whole desk first, then every GC with a notice to send, most money first. */
-export function lienShareScopeOptions(data: LienDeskData | null): LienShareScopeOption[] {
+/**
+ * The lien jobs where a supply house is also owed (v2.4407): every job the desk holds (the
+ * Calendar's billed jobs, the notice queue, the affidavits) whose houses are not all paid,
+ * with the house whose own notice comes first. The house's date is the desk's estimate
+ * (`lienSupplierNotice`) for the kind on the job's property record.
+ */
+export function lienShareHouseJobs(input: {
+  data: LienDeskData
+  calendarRows?: ReadonlyArray<LienCalendarJob> | null
+  suppliers: ReadonlyMap<string, LienSupplierJob>
+  todayYmd: string
+}): LienStatusHouseJob[] {
+  const { data, suppliers, todayYmd } = input
+  const seen = new Map<string, { number: string; name: string; gc: string; owed: number }>()
+  for (const r of input.calendarRows ?? []) seen.set(r.jobId, { number: r.number, name: lienShareJobName(r.number, r.name), gc: (r.gcName ?? '').trim(), owed: r.openBalance })
+  for (const e of [...data.queue.entries, ...data.affidavits.entries]) {
+    if (seen.has(e.jobId)) continue
+    seen.set(e.jobId, { ...jobWords(data, e.jobId), gc: gcName(data, e.gcCustomerId), owed: e.openBalance })
+  }
+  const out: LienStatusHouseJob[] = []
+  for (const [jobId, j] of seen) {
+    const job = suppliers.get(jobId)
+    const mark = lienSupplierMark(job)
+    if (!job || !mark) continue
+    const addressId = data.jobsById[jobId]?.customer_address_id
+    const kind = (addressId ? data.addressesById[addressId]?.property_kind : '') ?? ''
+    const owedHouses = job.houses.filter((h) => h.owed > 0.005)
+    let first: { name: string; ymd: string } | null = null
+    for (const h of owedHouses) {
+      const n = lienSupplierNotice(h.unpaidMonths, kind, todayYmd)
+      if (n.kind === 'open' && (!first || n.ymd < first.ymd)) first = { name: h.name, ymd: n.ymd }
+    }
+    out.push({
+      number: j.number,
+      name: j.name,
+      gc: j.gc,
+      owed: Math.round(j.owed * 100) / 100,
+      housesOwed: Math.round(job.owed * 100) / 100,
+      houses: owedHouses.length,
+      house: first?.name ?? owedHouses[0]!.name,
+      byYmd: first?.ymd ?? '',
+      jobAccount: mark.jobAccount,
+    })
+  }
+  return out
+}
+
+/** The What to send menu: the whole desk first, the jobs that also owe a supply house when there are any, then every GC with a notice to send, most money first. */
+export function lienShareScopeOptions(data: LienDeskData | null, houses: ReadonlyArray<LienStatusHouseJob> = []): LienShareScopeOption[] {
   if (!data) return [optionFor('all', 'Everything on the desk', [])]
   const byGc = new Map<string, LienStatusJob[]>()
   const all: LienStatusJob[] = []
@@ -113,7 +165,21 @@ export function lienShareScopeOptions(data: LienDeskData | null): LienShareScope
     else byGc.set(e.gcCustomerId, [j])
   }
   const gcs = [...byGc.entries()].map(([id, jobs]) => optionFor(id, gcName(data, id), jobs)).sort((a, b) => b.owed - a.owed || a.name.localeCompare(b.name))
-  return [optionFor('all', 'Everything on the desk', all), ...gcs]
+  const housesOption: LienShareScopeOption[] = houses.length
+    ? [
+        {
+          key: LIEN_SHARE_HOUSES,
+          name: 'Jobs where a supply house is also owed',
+          jobs: houses.length,
+          owed: houses.reduce((s, h) => s + h.housesOwed, 0),
+          firstYmd: houses.map((h) => h.byYmd).filter(Boolean).sort()[0] ?? '',
+          waiting: 0,
+          needOwner: 0,
+          toHouses: true,
+        },
+      ]
+    : []
+  return [optionFor('all', 'Everything on the desk', all), ...housesOption, ...gcs]
 }
 
 const NEED_BY_GATE: Record<string, LienStatusNeed> = { owner: 'owner', legal: 'legal', notice: 'notice', homestead: 'homestead' }
@@ -125,8 +191,14 @@ export function buildLienStatusPayload(input: {
   todayYmd: string
   nowIso: string
   scope: LienShareScope
+  /** `lienShareHouseJobs`: what the houses choice sends. */
+  houses?: ReadonlyArray<LienStatusHouseJob>
 }): LienStatusPayload {
   const { data, todayYmd, nowIso } = input
+  // The houses choice says its own list and nothing of the notices.
+  if (input.scope === LIEN_SHARE_HOUSES) {
+    return { v: 1, asOf: nowIso, todayYmd, gc: null, jobs: [], liens: [], kindsUnset: 0, trackingOwed: 0, pastWindow: { jobs: 0, owed: 0 }, retainage: { jobs: 0, held: 0, firstYmd: '' }, houses: [...(input.houses ?? [])] }
+  }
   const gcId = input.scope === 'all' ? null : input.scope
   const inScope = (id: string | null) => gcId == null || id === gcId
 
@@ -175,9 +247,9 @@ export function buildLienStatusPayload(input: {
   }
 }
 
-/** "23 jobs · $173,597": what a What to send choice holds. */
-export function lienShareScopeFacts(o: Pick<LienShareScopeOption, 'jobs' | 'owed'>): string {
-  return `${o.jobs} ${o.jobs === 1 ? 'job' : 'jobs'} · ${formatUsdNoCents(o.owed)}`
+/** "23 jobs · $173,597": what a What to send choice holds. The houses choice says whose money it is. */
+export function lienShareScopeFacts(o: Pick<LienShareScopeOption, 'jobs' | 'owed' | 'toHouses'>): string {
+  return `${o.jobs} ${o.jobs === 1 ? 'job' : 'jobs'} · ${formatUsdNoCents(o.owed)}${o.toHouses ? ' to houses' : ''}`
 }
 
 /** The most people one email goes to (`send-lien-desk-summary` refuses more). */

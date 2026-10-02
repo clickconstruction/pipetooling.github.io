@@ -4,7 +4,8 @@ import type { LienCalendarJob } from './lienCalendar'
 import { buildLienDeskQueue, summarizeLienDeskForNeedsYou, type LienDeskItemRow, type LienNoticeMonthRow } from './lienDesk'
 import { buildLienAffidavitQueue, type LienAffidavitRow } from './lienDeskAffidavits'
 import { EMPTY_LIEN_RETAINAGE_QUEUE } from './lienDeskRetainage'
-import { buildLienStatusPayload, lienShareJobName, lienShareScopeOptions } from './lienDeskShare'
+import { buildLienStatusPayload, lienShareHouseJobs, lienShareJobName, lienShareScopeFacts, lienShareScopeOptions } from './lienDeskShare'
+import { buildLienSupplierJobs } from './lienJobSuppliers'
 import { lienStatusText } from '../../../supabase/functions/_shared/lienDeskStatus'
 
 const TODAY = '2026-10-01'
@@ -175,5 +176,55 @@ describe('lienShareJobName', () => {
     expect(lienShareJobName('922', 'Michael Palmer (Ivan Kopecky)')).toBe('Michael Palmer (Ivan Kopecky)')
     expect(lienShareJobName('1046 PLUM', 'Pretest (#1046 PLUM)')).toBe('Pretest')
     expect(lienShareJobName('', ' Dudley Mason ')).toBe('Dudley Mason')
+  })
+})
+
+describe('the houses choice — lien jobs where a supply house is also owed (v2.4407)', () => {
+  // 650: Reece owed on July (open, Oct 15) and Winn on June (closed). 878: paid up. 977 is on the Calendar only.
+  const suppliers = buildLienSupplierJobs({
+    invoices: [
+      { id: 'a', supply_house_id: 'reece', amount: 9000, is_paid: false, invoice_date: '2026-07-10', paidYmd: null, on_job_account: false },
+      { id: 'b', supply_house_id: 'winn', amount: 1500, is_paid: false, invoice_date: '2026-06-10', paidYmd: null, on_job_account: false },
+      { id: 'c', supply_house_id: 'reece', amount: 400, is_paid: true, invoice_date: '2026-06-10', paidYmd: '2026-07-01', on_job_account: false },
+      { id: 'd', supply_house_id: 'winn', amount: 700, is_paid: false, invoice_date: '2026-08-10', paidYmd: null, on_job_account: true },
+    ],
+    allocations: [
+      { invoice_id: 'a', job_id: id(650), pct: 100 },
+      { invoice_id: 'b', job_id: id(650), pct: 100 },
+      { invoice_id: 'c', job_id: id(878), pct: 100 },
+      { invoice_id: 'd', job_id: id(977), pct: 100 },
+    ],
+    houses: [
+      { id: 'reece', name: 'Reece' },
+      { id: 'winn', name: 'Winn Supply' },
+    ],
+  })
+  const houses = lienShareHouseJobs({ data, calendarRows, suppliers, todayYmd: TODAY })
+
+  it('lists every desk job with a house still owed, and no paid-up one', () => {
+    expect(houses.map((h) => h.number).sort()).toEqual(['650', '977'])
+    const j650 = houses.find((h) => h.number === '650')!
+    // Two houses owed; Reece's July window is the one still open.
+    expect(j650).toMatchObject({ name: 'ATI Schertz', gc: 'Loberg Contracting', owed: 15722, housesOwed: 10500, houses: 2, house: 'Reece', byYmd: '2026-10-15', jobAccount: false })
+    // A Calendar-only job takes its words from its row.
+    expect(houses.find((h) => h.number === '977')).toMatchObject({ owed: 15406, housesOwed: 700, houses: 1, house: 'Winn Supply', byYmd: '2026-11-16', jobAccount: true })
+  })
+
+  it('is the second thing to send, and only when there is one', () => {
+    const options = lienShareScopeOptions(data, houses)
+    expect(options.map((o) => o.key).slice(0, 2)).toEqual(['all', 'houses'])
+    expect(options[1]).toMatchObject({ name: 'Jobs where a supply house is also owed', jobs: 2, owed: 11200, firstYmd: '2026-10-15', toHouses: true })
+    expect(lienShareScopeFacts(options[1]!)).toBe('2 jobs · $11,200 to houses')
+    expect(lienShareScopeOptions(data).some((o) => o.key === 'houses')).toBe(false)
+  })
+
+  it('sends its own list and nothing of the notices', () => {
+    const p = buildLienStatusPayload({ data, calendarRows, todayYmd: TODAY, nowIso: NOW, scope: 'houses', houses })
+    expect(p.jobs).toEqual([])
+    expect(p.liens).toEqual([])
+    expect(p.houses).toHaveLength(2)
+    expect(lienStatusText(p)).toContain('2 lien jobs still owe a supply house.')
+    // Every other choice leaves the list out.
+    expect(buildLienStatusPayload({ data, calendarRows, todayYmd: TODAY, nowIso: NOW, scope: 'all', houses })).not.toHaveProperty('houses')
   })
 })

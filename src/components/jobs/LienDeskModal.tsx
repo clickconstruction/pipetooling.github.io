@@ -1992,7 +1992,7 @@ export default function LienDeskModal({
               {isMobile ? null : <span className="lienDeskShareWord">Share</span>}
             </button>
             {shareOpen && data ? (
-              <LienDeskShare isMobile={isMobile} data={data} calendarRows={calendarRows} todayYmd={todayYmd} me={{ id: authUserId, name: authName }} onClose={() => setShareOpen(false)} />
+              <LienDeskShare isMobile={isMobile} data={data} calendarRows={calendarRows} suppliers={suppliers.byJob} todayYmd={todayYmd} me={{ id: authUserId, name: authName }} onClose={() => setShareOpen(false)} />
             ) : null}
           </span>
           {/* The second line (v2.3817): the piles on the left, Put a GC on notice and the run on the right. */}
