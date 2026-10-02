@@ -98,7 +98,7 @@ export function MergeDuplicateDialog({ survivor, onClose, onMerged }: { survivor
   const accountLabel = (a: Account) => `${a.name || a.email}${a.email && a.name ? ` (${a.email})` : ''} · ${a.archived_at ? 'archived' : 'never signed in'}`
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: DESK_EDITOR_Z, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onMouseDown={(e) => e.target === e.currentTarget && !busy && onClose()}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: DESK_EDITOR_Z, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(e) => e.target === e.currentTarget && !busy && onClose()}>
       <div role="dialog" aria-modal="true" aria-label={`Merge a duplicate into ${name}`} style={{ background: 'var(--surface)', borderRadius: 8, width: 'min(480px, 100%)', maxHeight: '90vh', overflow: 'auto', padding: '1rem 1.1rem', boxShadow: '0 16px 40px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', gap: '0.7rem', fontSize: '0.8125rem' }}>
         <h2 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-strong)' }}>Merge a duplicate into {name}</h2>
         <p style={{ margin: 0, color: 'var(--text-700)' }}>{name} is kept. Everything the duplicate owns moves onto them, and the duplicate stays archived.</p>
