@@ -198,6 +198,8 @@ Business logic is extracted into pure `.ts` modules in `src/lib/` with colocated
 ### Windows (modals)
 A window is a full-screen `position: fixed` backdrop that closes on `onClick` (not `onMouseDown`), holding a panel that stops the click (`onClick={(e) => e.stopPropagation()}`). [`modalBackdropGuard.ts`](../src/lib/modalBackdropGuard.ts), installed once in `main.tsx`, stops a backdrop click unless the press and the release were both on the backdrop, so a drag out of a window never closes it — no window needs its own drag guard (a backdrop under three quarters of the screen is not covered). A window drawn inside another window's backdrop but outside its panel, or inside a row that opens on a click, stops its own backdrop click before closing, or a click outside it also closes the window behind or toggles the row; `npm run check:nested-windows` lists any that do not and CI fails on a backdrop one — a `nested-windows: allow — <why>` comment above the inner window lets a meant one through (`-- --rows` lists rows, report only).
 
+A row that acts on a press held still (the Bid Board's hold to mark, a whole-row drag) ignores a press that starts inside a window drawn in it: [`windowInsideRow.ts`](../src/lib/windowInsideRow.ts), `startedInWindowInside(e)` in the row's own handlers, `ignoreWindowsInside(listeners)` around dnd-kit's. Windows do not stop presses — a stopped press never reaches the document listeners that close menus.
+
 ### State Management
 - **Global**: React Context (Toast, ForceReload, modal openers, caches)
 - **Page-level**: `useState` / `useEffect`

@@ -52,6 +52,7 @@ import { missedTileCaption, outstandingTileCaption, reviewTileTone, signOffTileC
 import { collapseMissedInstances, type MissedGroup } from '../lib/checklistMissedGroups'
 import { useToastContext } from '../contexts/ToastContext'
 import { ChecklistCostButton } from '../components/checklist/ChecklistCostButton'
+import { ignoreWindowsInside } from '../lib/windowInsideRow'
 import { useChecklistCostEstimates } from '../hooks/useChecklistCostEstimates'
 import { ACCURACY_MIN_COUNT, canSeeTaskCosts, estimateAccuracy, estimateAccuracyByPerson, formatMultiplier, formatWholeDollars, sumEstimateDollars } from '../lib/checklistCostEstimate'
 import { localCalendarDayKey, todayYmdInAppTz } from '../utils/dateUtils'
@@ -1628,7 +1629,8 @@ function OutstandingByPersonSortableRow({
     <li
       ref={setNodeRef}
       style={style}
-      {...(canManageChecklists ? listeners : {})}
+      // A press inside a window drawn in the row (Cost this task) does not lift it (v2.4361).
+      {...(canManageChecklists ? ignoreWindowsInside(listeners) : {})}
       onPointerDownCapture={() => {
         wasDraggedRef.current = false
       }}
@@ -1847,7 +1849,8 @@ function OutstandingByPersonSortableRow({
   )
 }
 
-function OutstandingByPersonSortableList({
+/** Exported for its render test (`windowInsideRow.render.test.tsx`). */
+export function OutstandingByPersonSortableList({
   userId,
   instances,
   reorderingUserId,
