@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { asRoomRole, rollUpPartDecisions, roomCounts, roomHeadline, roomKindOf, roomPartsFrom, roomRowFrom, roomRowsFrom, roomSubline, splitPartLabel, whySentence, type RoomItemSource, type RoomPartSource } from '../../../supabase/functions/_shared/submittalRoomPayload'
+import { asRoomRole, gcRoomItems, officeOnlyTags, rollUpPartDecisions, roomCounts, roomHeadline, roomKindOf, roomPartsFrom, roomRowFrom, roomRowsFrom, roomSubline, splitPartLabel, whySentence, type RoomItemSource, type RoomPartSource } from '../../../supabase/functions/_shared/submittalRoomPayload'
 
 const item = (o: Partial<RoomItemSource>): RoomItemSource => ({
   id: 'i', tag: 'X-1', sequence_order: 1, specified_manufacturer: null, specified_model: null, specified_description: null, submitted_manufacturer: null, submitted_model: null, submitted_label: null,
@@ -94,5 +94,33 @@ describe('the GC calls each part (2026-10-01)', () => {
     const all = rollUpPartDecisions([call(bowl, 'approved', '2026-10-08T15:00:00Z'), call(valve, 'approved', '2026-10-08T15:00:00Z'), call(carrier, 'approved', '2026-10-09T15:00:00Z', { decision_source: 'entered', decision_entered_by: 'u1', decision_entered_by_name: 'Wendi' }), stop])
     expect(all).toMatchObject({ review_decision: 'approved', review_note: null, reviewed_at: '2026-10-09T15:00:00Z', decision_source: 'entered', decision_entered_by_name: 'Wendi' })
     expect(rollUpPartDecisions([stop]).review_decision).toBeNull()
+  })
+})
+
+describe('an order-only row is the office\'s alone (2026-10-02)', () => {
+  const rows = [
+    item({ id: 'wc', tag: 'WC-1', sequence_order: 1, status: 'alternate', submitted_label: 'TOTO CT728' }),
+    item({ id: 'fco', tag: 'FCO', sequence_order: 2, status: 'proposed', submitted_label: 'ZURN ZN1400-2NL', order_only: true }),
+    item({ id: 'hb', tag: 'HB-3', sequence_order: 3, order_only: false }),
+  ]
+
+  it('never reaches the room: not as a row, and not in a count or the headline', () => {
+    const room = roomRowsFrom(rows)
+    expect(room.map((r) => r.tag)).toEqual(['WC-1', 'HB-3'])
+    expect(JSON.stringify(room)).not.toContain('ZURN')
+    expect(roomCounts(room).total).toBe(2)
+    // A row read before the column's push has no flag and stays.
+    expect(roomRowsFrom([item({ id: 'old', tag: 'OLD-1' })]).map((r) => r.tag)).toEqual(['OLD-1'])
+  })
+
+  it('cannot be called by a reviewer, and its log lines stay in the office', () => {
+    expect(gcRoomItems(rows).map((r) => r.id)).toEqual(['wc', 'hb'])
+    const stored = [
+      { tag: 'FCO', submittal_id: 'rev2', order_only: true },
+      { tag: 'WC-1', submittal_id: 'rev2', order_only: false },
+      { tag: 'FD', submittal_id: 'rev1', order_only: true }, // an older revision's row
+    ]
+    expect([...officeOnlyTags(stored, 'rev2')]).toEqual(['FCO'])
+    expect(officeOnlyTags(stored, null).size).toBe(0)
   })
 })

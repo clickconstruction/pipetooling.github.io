@@ -23,7 +23,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { askTitle, decideVerdict, decisionCounts, decisionEntryBody, IDENTIFY_PER_HOUR, messageVerdict, parseDecideBody, parseIdentifyBody, parseMessageBody, planDecideWrites, resolveIdentify } from '../_shared/submittalReviewActions.ts'
-import { asRoomRole, rollUpPartDecisions, ROOM_ROLE_LABELS, type RoomPartSource } from '../_shared/submittalRoomPayload.ts'
+import { asRoomRole, rollUpPartDecisions, ROOM_ROLE_LABELS, type RoomPartSource, gcRoomItems } from '../_shared/submittalRoomPayload.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -133,8 +133,9 @@ serve(async (req) => {
       })
       if (!verdict.ok) return json({ error: verdict.error, code: verdict.code }, verdict.status)
       const ids = v.decisions.map((d) => d.itemId)
-      const { data: rows } = await admin.from('bid_submittal_items').select('id').eq('submittal_id', v.submittalId).in('id', ids)
-      const onRevision = new Set(((rows ?? []) as Array<{ id: string }>).map((r) => r.id))
+      // An order-only row (2026-10-02) is not the reviewer's to call: it reads as not on the revision.
+      const { data: rows } = await admin.from('bid_submittal_items').select('id, order_only').eq('submittal_id', v.submittalId).in('id', ids)
+      const onRevision = new Set(gcRoomItems((rows ?? []) as Array<{ id: string; order_only?: boolean | null }>).map((r) => r.id))
       const applied = v.decisions.filter((d) => onRevision.has(d.itemId))
       if (applied.length === 0) return json({ error: 'Those rows are not on this revision.', code: 'not_found' }, 404)
       const now = new Date().toISOString()

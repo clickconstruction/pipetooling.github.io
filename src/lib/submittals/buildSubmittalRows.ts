@@ -48,6 +48,8 @@ export type PreviousItem = {
   /** The row's house and the pick it was built from — what `houseForRow` reads to keep a house set by hand. */
   supplyHouseId?: string | null
   sourceQuoteLineId?: string | null
+  /** 2026-10-02 · the row was order only: a rebuild keeps it so. */
+  orderOnly?: boolean
 }
 
 export type ChangeNote = 'new row' | 'product changed' | 'status changed' | 'reason added' | 'now missing'
@@ -76,6 +78,8 @@ export type SubmittalRowDraft = {
   sheetFile: number | null
   sheetPages: number[]
   carriedFromItemId: string | null
+  /** 2026-10-02 · carried from the previous row: bought, never shown to the GC. */
+  orderOnly?: boolean
   changed: boolean
   changeNote: ChangeNote | null
 }
@@ -224,6 +228,7 @@ export function buildSubmittalRows(args: {
       sheetFile,
       sheetPages,
       carriedFromItemId: prev?.id ?? null,
+      ...(prev?.orderOnly ? { orderOnly: true } : {}),
       changed: changeNote !== null,
       changeNote,
     })
@@ -262,6 +267,7 @@ export function buildSubmittalRows(args: {
       sheetFile: prev?.sheetFile ?? null,
       sheetPages: prev ? [...prev.sheetPages] : [],
       carriedFromItemId: prev?.id ?? null,
+      ...(prev?.orderOnly ? { orderOnly: true } : {}),
       changed: changeNote !== null,
       changeNote,
     })

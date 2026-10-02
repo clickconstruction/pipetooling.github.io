@@ -15,7 +15,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { DEFAULT_TEST_REPORT_SETTINGS, parseTestReportSettings } from '../_shared/testReport.ts'
 import { asRoomRole, roomCounts, roomRowsFrom, type RoomItemSource, type RoomMessage, type RoomPartSource,
-  type RoomProcurement, type RoomRevision, type SubmittalRoomPayload } from '../_shared/submittalRoomPayload.ts'
+  type RoomProcurement, type RoomRevision, type SubmittalRoomPayload, gcRoomItems, officeOnlyTags } from '../_shared/submittalRoomPayload.ts'
 import { stageDatesFromJob } from '../_shared/procurementStageDates.ts'
 import { sampleStateFromToken } from '../_shared/customerSample.ts'
 import { sampleSubmittalRoomResponse } from '../_shared/customerSampleFixtures.ts'
@@ -97,12 +97,16 @@ serve(async (req) => {
     const ids = revRows.map((r) => r.id)
     const { data: items } = await admin
       .from('bid_submittal_items')
-      .select('id, submittal_id, tag, sequence_order, specified_manufacturer, specified_model, specified_description, submitted_manufacturer, submitted_model, submitted_label, status, reason_kind, reason_note, lead_time_days, sheet_pages, review_decision, review_note, reviewed_by_name, reviewed_by_person_id, reviewed_at')
+      .select('id, submittal_id, tag, sequence_order, specified_manufacturer, specified_model, specified_description, submitted_manufacturer, submitted_model, submitted_label, status, reason_kind, reason_note, lead_time_days, sheet_pages, review_decision, review_note, reviewed_by_name, reviewed_by_person_id, reviewed_at, order_only')
       .in('submittal_id', ids)
+    // 2026-10-02 · an order-only row is the office's alone: it never leaves this function, and neither do its parts or its log lines.
+    const allItems = (items ?? []) as Array<RoomItemSource & { submittal_id: string }>
+    const gcItems = gcRoomItems(allItems)
+    const hiddenTags = officeOnlyTags(allItems, ids[0])
     const byRev = new Map<string, RoomItemSource[]>()
-    for (const it of (items ?? []) as Array<RoomItemSource & { submittal_id: string }>) byRev.set(it.submittal_id, [...(byRev.get(it.submittal_id) ?? []), it])
+    for (const it of gcItems) byRev.set(it.submittal_id, [...(byRev.get(it.submittal_id) ?? []), it])
     // The rows' parts the GC sees, each with its own call (2026-10-01); a missing table reads as none.
-    const itemIds = ((items ?? []) as Array<{ id: string }>).map((it) => it.id)
+    const itemIds = gcItems.map((it) => it.id)
     const partsByItem = new Map<string, RoomPartSource[]>()
     for (let i = 0; i < itemIds.length; i += 200) {
       const { data: partRows, error: partErr } = await admin
@@ -186,7 +190,7 @@ serve(async (req) => {
         stageDates = stageDatesFromJob((fixtures ?? []) as Array<{ id: string; name: string; stage_kind: string | null }>, (windows ?? []) as Array<{ fixture_id: string; window_start: string | null }>) as Record<string, string>
       }
       // Never the PO or the house: the card carries status and dates. A part's line keeps its key (2026-10-01).
-      const records = ((recs.data ?? []) as Array<Record<string, unknown>>).map((r) => ({
+      const records = ((recs.data ?? []) as Array<Record<string, unknown>>).filter((r) => !(typeof r.tag === 'string' && hiddenTags.has(r.tag))).map((r) => ({
         tag: (r.tag as string | null) ?? null,
         partKey: (r.part_key as string | null | undefined) ?? null,
         label: String(r.label ?? ''),

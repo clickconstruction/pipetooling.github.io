@@ -7,6 +7,7 @@
 import type { Database } from '../../types/database'
 import type { PreviousItem, SubmittalRowDraft } from './buildSubmittalRows'
 import type { ProductStatus, ReasonKind } from './productStatus'
+import { isOrderOnlyRow, orderOnlyInsert } from './orderOnly'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 
 export type SubmittalRevisionRow = Database['public']['Tables']['bid_submittals']['Row']
@@ -97,6 +98,7 @@ export function itemToPrevious(item: SubmittalItemRow): PreviousItem {
     reviewNote: item.review_note,
     supplyHouseId: item.supply_house_id,
     sourceQuoteLineId: item.source_quote_line_id,
+    orderOnly: isOrderOnlyRow(item),
   }
 }
 
@@ -122,6 +124,7 @@ export function draftToItemInsert(draft: SubmittalRowDraft, submittalId: string)
     sheet_pages: draft.sheetPages,
     sheet_source: draft.sheetPages.length > 0 ? 'estimator' : null,
     carried_from_item_id: draft.carriedFromItemId,
+    ...(draft.orderOnly ? { order_only: true } : {}),
   }
 }
 
@@ -159,6 +162,7 @@ export function carriedRowInsert(it: SubmittalItemRow, submittalId: string, sequ
     sheet_pages: [...(it.sheet_pages ?? [])],
     sheet_source: it.sheet_source,
     carried_from_item_id: it.id,
+    ...orderOnlyInsert(it),
   }
 }
 
@@ -350,6 +354,7 @@ export function blankSubmittalItem(submittalId: string, sequenceOrder: number): 
     decision_source: 'room',
     decision_entered_by: null,
     decision_entered_by_name: null,
+    order_only: false,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   }

@@ -40,6 +40,8 @@ export type RoomItemSource = {
   reviewed_by_name: string | null
   reviewed_by_person_id: string | null
   reviewed_at: string | null
+  /** 2026-10-02 · the office buys it and the GC never sees it: the row never reaches the room. */
+  order_only?: boolean | null
 }
 
 /**
@@ -283,9 +285,23 @@ export function roomCounts(rows: ReadonlyArray<RoomRow>): RoomRevision['counts']
   return c
 }
 
-/** Differing rows first (in tag order), then added, then not quoted; the matching rows keep their order for the fold. */
+/** The rows that leave the office (2026-10-02): every row but the order-only ones, which the GC never sees or calls. */
+export function gcRoomItems<T extends { order_only?: boolean | null }>(items: ReadonlyArray<T>): T[] {
+  return items.filter((it) => it.order_only !== true)
+}
+
+/**
+ * The tags whose procurement lines stay in the office: the order-only rows of the newest shared
+ * revision. The log's lines carry their row's tag, a part's line too, so the tag is the filter.
+ */
+export function officeOnlyTags(items: ReadonlyArray<{ tag: string; submittal_id: string; order_only?: boolean | null }>, newestSubmittalId: string | null | undefined): Set<string> {
+  return new Set(items.filter((it) => it.order_only === true && it.submittal_id === newestSubmittalId).map((it) => it.tag))
+}
+
+/** Differing rows first (in tag order), then added, then not quoted; the matching rows keep their order for the fold. Order-only rows are left out. */
 export function roomRowsFrom(items: ReadonlyArray<RoomItemSource>, partsByItem: ReadonlyMap<string, ReadonlyArray<RoomPartSource>> = new Map()): RoomRow[] {
-  const sorted = [...items].sort((a, b) => a.sequence_order - b.sequence_order)
+  // An order-only row is the office's alone (2026-10-02): no room, no preview and no count reads it.
+  const sorted = gcRoomItems(items).sort((a, b) => a.sequence_order - b.sequence_order)
   const rows = sorted.map((it) => roomRowFrom(it, partsByItem.get(it.id) ?? []))
   const order: Record<RoomRowKind, number> = { differs: 0, proposed: 1, added: 2, not_quoted: 3, matches: 4 }
   return rows.map((r, i) => ({ r, i })).sort((a, b) => order[a.r.kind] - order[b.r.kind] || a.i - b.i).map((x) => x.r)

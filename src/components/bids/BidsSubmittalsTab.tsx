@@ -68,6 +68,7 @@ import { anonymousOpens, asPersonHow, describeHow, describeRoomLine, describeTra
 import { replyToRoom } from '../../lib/submittals/replyToRoom'
 import type { RoomMessage } from '../../../supabase/functions/_shared/submittalRoomPayload'
 import { APP_CALENDAR_TZ as ROOM_TZ, todayYmdInAppTz } from '../../utils/dateUtils'
+import { gcRows, orderOnlyInsert } from '../../lib/submittals/orderOnly'
 import { DECISION_LABELS, decisionsAsText, describeDecisions, itemsSentBack, summarizeDecisions } from '../../lib/submittals/reviewDecisions'
 import { describeEnteredCount, describeReviewerFile, parseReviewerFiles, reviewerFileKind, reviewerFilePath, serializeReviewerFiles, type ReviewerFile } from '../../lib/submittals/reviewerFiles'
 import { CLEAR_DECISION_PATCH, enteredDecisionAt, enteredDecisionPatch, enteredEntryBody, enteredSuffix, rowsToApproveAll } from '../../lib/submittals/enteredDecisions'
@@ -476,7 +477,9 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     return g ? guessByPage(g) : undefined
   }, [assignFile, sourceFiles, tasks])
   const reviewerFiles: ReviewerFile[] = useMemo(() => parseReviewerFiles((selectedRev as { reviewer_files?: unknown } | null)?.reviewer_files ?? null), [selectedRev])
-  const tiles = useMemo(() => revisionTiles(items), [items])
+  // 2026-10-02 · the rows the GC sees: an order-only row is bought, never counted, packaged or called.
+  const gcItems = useMemo(() => gcRows(items), [items])
+  const tiles = useMemo(() => revisionTiles(gcItems), [gcItems])
   // The parts reload whenever the rows do (every write reloads the rows).
   useEffect(() => {
     let cancelled = false
@@ -493,9 +496,9 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     }
   }, [items])
   const partsOf = useMemo(() => partsByItem(parts), [parts])
-  const decisions = useMemo(() => summarizeDecisions(items), [items])
+  const decisions = useMemo(() => summarizeDecisions(gcItems), [gcItems])
   // Rows one "they approved all of it" entry would cover: no call yet, and a product to approve.
-  const approvableRows = useMemo(() => rowsToApproveAll(items), [items])
+  const approvableRows = useMemo(() => rowsToApproveAll(gcItems), [gcItems])
   useEffect(() => {
     let cancelled = false
     if (!selectedRev || newestRev?.id !== selectedRev.id) {
@@ -682,6 +685,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         supply_house_id: it.supply_house_id, source_quote_line_id: it.source_quote_line_id, source_count_row_id: it.source_count_row_id,
         status: it.status, reason_kind: it.reason_kind, reason_note: it.reason_note, lead_time_days: it.lead_time_days,
         sheet_file: it.sheet_file, sheet_pages: it.sheet_pages, sheet_source: it.sheet_source,
+        ...orderOnlyInsert(it),
       }))).select('id, sequence_order')
       if (error) throw error
       // Each tag's row gets the fixture's parts; each is bought on its own, so only the first keeps the procurement line.
@@ -894,7 +898,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     try {
       const texts: string[] = []
       for (let p = 1; p <= pdf.numPages; p++) texts.push(await pdf.pageText(p).catch(() => ''))
-      const reads = readPages(texts, walkRowsFrom(items))
+      const reads = readPages(texts, walkRowsFrom(gcItems))
       const header = commonHeader(texts)
       return { namesRows: Object.values(reads).filter((r) => r.itemId !== null).length, sectioned: header ? fileSectionTags(texts, header).length > 0 : false }
     } finally {
@@ -1053,7 +1057,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     if (!t || !g) return
     setBusy(true)
     try {
-      const byTag = new Map(items.map((it) => [it.tag.trim().toUpperCase(), it]))
+      const byTag = new Map(gcItems.map((it) => [it.tag.trim().toUpperCase(), it]))
       const pagesByItem = new Map<string, number[]>()
       for (const guess of g.sure) {
         const it = byTag.get(guess.tag)
@@ -1096,7 +1100,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         theRoom = data as SubmittalRoomRow
       }
       const now = new Date().toISOString()
-      const byTag = new Map(items.map((it) => [it.tag.trim().toUpperCase(), it]))
+      const byTag = new Map(gcItems.map((it) => [it.tag.trim().toUpperCase(), it]))
       const counts = { approved: 0, revise: 0, rejected: 0 }
       const marks = useUnsure ? [...r.sure, ...r.unsure] : r.sure
       for (const a of marks) {
@@ -1153,7 +1157,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     setBusy(true)
     try {
       const settings = await fetchTestReportSettings()
-      const rowsIn: PackageRowInput[] = items.map((it) => {
+      const rowsIn: PackageRowInput[] = gcItems.map((it) => {
         const reason = asReason(it.reason_kind)
         // 2026-10-01 · a row with parts lists the parts the GC sees, one per line.
         const gcParts = submittedParts(partsOf.get(it.id) ?? [])
@@ -1582,7 +1586,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
    */
   async function approveAll(choice: ApproveAllChoice) {
     if (!selectedRev || !bidId) return
-    const rows = rowsToApproveAll(items)
+    const rows = rowsToApproveAll(gcItems)
     if (rows.length === 0) return
     setBusy(true)
     try {
@@ -2249,7 +2253,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                 {sourceFiles.length > 0 ? (
                   <SubmittalSheetStrip
                     files={sourceFiles}
-                    items={items}
+                    items={gcItems}
                     thumbnails={thumbs}
                     busy={busy}
                     onNeedThumbnails={(i) => void showPages(i)}
@@ -2559,7 +2563,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         <SubmittalAssignPagesModal
           file={sourceFiles[assignFile]!}
           fileIndex={assignFile}
-          items={items}
+          items={gcItems}
           loadBytes={assignLoadBytes}
           guesses={assignGuesses}
           busy={busy}
