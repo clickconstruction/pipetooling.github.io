@@ -7,6 +7,9 @@ import { demandDate, demandMoney } from '../../lib/jobsDocuments/demandLetter'
 import { serveDueForFiling, liveFilings, type JobLienClock, type JobLienFilingRow } from '../../lib/jobs/lienDeadlines'
 import { documentLinkWords, filingDocumentPayload, normalizeDocumentUrl, type LienFilingDocument } from '../../lib/jobs/lienFilingDocumentLink'
 import LienNoticeByHandPane from './LienNoticeByHandPane'
+import LienRecordSheet from './LienRecordSheet'
+import { recordSheetField, recordSheetLabel } from './lienRecordSheetStyles'
+import { useIsMobile } from '../../hooks/useIsMobile'
 import {
   customerAddressLienGaps,
   lienPropertyOwnerDisplayName,
@@ -50,6 +53,9 @@ const SEND_METHOD_LABELS: Record<string, string> = {
 
 type SendDraft = { method: string; tracking: string; sentOn: string }
 
+/** One empty list for a caller that passes no bills: a fresh `[]` each render re-ran the pay-page effect, whose `setPayAssets({})` rendered again, without end. */
+const NO_INVOICE_DOCS: NoticeInvoiceDoc[] = []
+
 function todayYmd(): string {
   return todayYmdInAppTz()
 }
@@ -74,7 +80,8 @@ export default function LienFilingTabs({
   originalContractorEmail,
   onChanged,
   noticeMonths,
-  invoiceDocs = [],
+  invoiceDocs = NO_INVOICE_DOCS,
+  onClose,
 }: {
   job: JobWithDetails
   jobNumber: string
@@ -96,7 +103,11 @@ export default function LienFilingTabs({
   noticeMonths?: string[] | null
   /** The unpaid bills as documents (v2.3437) — enclosed behind the § 53.056 notice (§ 53.056(a-3)). */
   invoiceDocs?: NoticeInvoiceDoc[]
+  /** Closes the Lien window: the × on a phone's record sheet (v2.4422). */
+  onClose?: () => void
 }) {
+  // On a phone the record steps are sheets over the window's card (v2.4422); a computer keeps the boxes in the tab.
+  const isMobile = useIsMobile()
   const { user: authUser } = useAuth()
   const { showToast } = useToastContext()
   const [pdfBusy, setPdfBusy] = useState(false)
@@ -630,8 +641,106 @@ export default function LienFilingTabs({
 
   // ---------- tab bodies ----------
 
+  // ---------- a phone's record sheets (v2.4422) ----------
+  // The same state and the same writes as the boxes a computer draws; only the layout differs.
+  const jobLine = `${(job.job_name ?? '').trim() || 'Job'} · ${jobNumber}`
+  const sheetSend = (label: string, draft: SendDraft, set: (d: SendDraft) => void, knownEmail?: string) => (
+    <fieldset style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem 0.75rem', margin: 0, minWidth: 0, display: 'grid', gap: '0.6rem' }}>
+      <legend style={{ fontSize: '0.8125rem', fontWeight: 700, padding: '0 0.3rem' }}>{label}</legend>
+      <label style={{ display: 'block' }}>
+        <span style={recordSheetLabel}>How it went</span>
+        <select value={draft.method} onChange={(e) => set({ ...draft, method: e.target.value })} aria-label={`${label} send method`} style={recordSheetField}>
+          {SEND_METHODS.map((m) => (
+            <option key={m} value={m}>
+              {m.replace(/_/g, ' ')}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label style={{ display: 'block' }}>
+        <span style={recordSheetLabel}>Tracking number</span>
+        <input type="text" value={draft.tracking} onChange={(e) => set({ ...draft, tracking: e.target.value })} placeholder="tracking #" aria-label={`${label} tracking number`} autoComplete="off" style={recordSheetField} />
+      </label>
+      <label style={{ display: 'block' }}>
+        <span style={recordSheetLabel}>Sent on</span>
+        <input type="date" value={draft.sentOn} onChange={(e) => set({ ...draft, sentOn: e.target.value })} aria-label={`${label} sent on`} style={recordSheetField} />
+      </label>
+      {draft.method === 'email' ? (
+        <span style={{ fontSize: '0.75rem', color: knownEmail ? 'var(--text-muted)' : 'var(--text-red-700)' }}>
+          {knownEmail ? `sends the notice PDF to ${knownEmail} on Record` : 'no email on file for this recipient'}
+        </span>
+      ) : null}
+    </fieldset>
+  )
+  const sheetSavedCopy = (
+    <div data-testid="filing-saved-copy" style={{ display: 'grid', gap: '0.5rem' }}>
+      <span style={{ ...recordSheetLabel, marginBottom: 0 }}>
+        Saved copy <span style={{ fontWeight: 400, fontSize: '0.75rem', color: 'var(--text-muted)' }}>where the paper lives, once you saved it</span>
+      </span>
+      <input type="text" value={docUrl} onChange={(e) => setDocUrl(e.target.value)} placeholder="Drive link (optional)" aria-label="Saved copy — link" autoComplete="off" style={recordSheetField} />
+      <input type="text" value={docNote} onChange={(e) => setDocNote(e.target.value)} placeholder="note (optional)" aria-label="Saved copy — note" autoComplete="off" style={recordSheetField} />
+    </div>
+  )
+  const recordSheet = !isMobile ? null : activeTab === 'notice' && isSub && recordStep === 'notice_sends' ? (
+    <LienRecordSheet
+      kind="notice_sends"
+      title="Record the sends"
+      headline={`§ 53.056 notice · ${demandMoney(String(openBalance))}`}
+      lines={[jobLine, 'The statute names both recipients.']}
+      action={{ label: 'Record both sends', busyLabel: 'Saving…', busy, onClick: () => void recordNoticeSends(), fill: '#b45309' }}
+      onBack={() => setRecordStep(null)}
+      onClose={onClose}
+    >
+      {sheetSend('Owner', ownerSend, setOwnerSend, ownerEmail)}
+      {sheetSend('Original contractor', ocSend, setOcSend, originalContractorEmail)}
+      {sheetSavedCopy}
+    </LienRecordSheet>
+  ) : activeTab === 'affidavit' && affidavitReady && recordStep === 'affidavit_filing' ? (
+    <LienRecordSheet
+      kind="affidavit_filing"
+      title="Record the filing"
+      headline={`Lien affidavit · ${demandMoney(affidavitFields.unpaidAmount)} unpaid`}
+      lines={[jobLine, 'Record it after the County Clerk stamps it.']}
+      note="Serve-by stamps automatically: 5th calendar day after filing (§ 53.055), weekend-rolled."
+      action={{ label: 'Record filing', busyLabel: 'Saving…', busy, onClick: () => void recordAffidavitFiling(), fill: '#8C1D2F' }}
+      onBack={() => setRecordStep(null)}
+      onClose={onClose}
+    >
+      <label style={{ display: 'block' }}>
+        <span style={recordSheetLabel}>County</span>
+        <input type="text" value={filingCounty} onChange={(e) => setFilingCounty(e.target.value)} style={recordSheetField} />
+      </label>
+      <label style={{ display: 'block' }}>
+        <span style={recordSheetLabel}>Recording #</span>
+        <input type="text" value={filingNumber} onChange={(e) => setFilingNumber(e.target.value)} placeholder="2026-…" autoComplete="off" style={recordSheetField} />
+      </label>
+      <label style={{ display: 'block' }}>
+        <span style={recordSheetLabel}>Filed on</span>
+        <input type="date" value={filingDate} onChange={(e) => setFilingDate(e.target.value)} style={recordSheetField} />
+      </label>
+      {sheetSavedCopy}
+    </LienRecordSheet>
+  ) : activeTab === 'affidavit' && affidavitReady && recordStep === 'affidavit_service' && filedAffidavit ? (
+    <LienRecordSheet
+      kind="affidavit_service"
+      title="Record service"
+      headline="Lien affidavit · the filed copy"
+      lines={[jobLine, `Service is due ${demandDate(filedAffidavit.serve_due ?? '')}.`]}
+      action={{ label: 'Record service', busyLabel: 'Saving…', busy, onClick: () => void recordService(), fill: '#8C1D2F' }}
+      onBack={() => setRecordStep(null)}
+      onClose={onClose}
+    >
+      <label style={{ display: 'block' }}>
+        <span style={recordSheetLabel}>Served on</span>
+        <input type="date" value={serviceDate} onChange={(e) => setServiceDate(e.target.value)} style={recordSheetField} />
+      </label>
+    </LienRecordSheet>
+  ) : null
+
   if (activeTab === 'notice') {
     return (
+      <>
+      {recordSheet}
       <div style={{ display: 'flex', flexWrap: 'wrap', overflowY: 'auto', flex: 1 }}>
         <div style={{ flex: '1 1 20rem', minWidth: '18rem', padding: '1rem 1.25rem' }}>
           {historyBox}
@@ -663,8 +772,8 @@ export default function LienFilingTabs({
                   </span>
                 </label>
               ) : null}
-              {recordStep === 'notice_sends' ? (
-                <div style={{ border: '1px solid var(--border-strong)', borderRadius: 8, padding: '0.6rem 0.7rem', background: 'var(--bg-amber-tint)' }}>
+              {recordStep === 'notice_sends' && !isMobile ? (
+                <div data-lien-record-box="notice_sends" style={{ border: '1px solid var(--border-strong)', borderRadius: 8, padding: '0.6rem 0.7rem', background: 'var(--bg-amber-tint)' }}>
                   <div style={{ fontSize: '0.78rem', fontWeight: 700, marginBottom: '0.45rem' }}>Record the sends — the statute names both recipients</div>
                   {sendRow('Owner', ownerSend, setOwnerSend, ownerEmail)}
                   {sendRow('Original contractor', ocSend, setOcSend, originalContractorEmail)}
@@ -714,11 +823,14 @@ export default function LienFilingTabs({
         </div>
         {isSub ? preview : null}
       </div>
+      </>
     )
   }
 
   if (activeTab === 'affidavit') {
     return (
+      <>
+      {recordSheet}
       <div style={{ display: 'flex', flexWrap: 'wrap', overflowY: 'auto', flex: 1 }}>
         <div style={{ flex: '1 1 20rem', minWidth: '18rem', padding: '1rem 1.25rem' }}>
           {historyBox}
@@ -737,8 +849,8 @@ export default function LienFilingTabs({
               <div style={{ fontSize: '0.8125rem', marginBottom: '0.6rem' }}>
                 <b>Sworn amounts (¶8):</b> contract {demandMoney(affidavitFields.contractAmount)} · paid {demandMoney(affidavitFields.paidAmount)} · <b>unpaid {demandMoney(affidavitFields.unpaidAmount)}</b>
               </div>
-              {recordStep === 'affidavit_filing' ? (
-                <div style={{ border: '1px solid var(--border-strong)', borderRadius: 8, padding: '0.6rem 0.7rem', background: 'var(--bg-amber-tint)' }}>
+              {recordStep === 'affidavit_filing' && !isMobile ? (
+                <div data-lien-record-box="affidavit_filing" style={{ border: '1px solid var(--border-strong)', borderRadius: 8, padding: '0.6rem 0.7rem', background: 'var(--bg-amber-tint)' }}>
                   <div style={{ fontSize: '0.78rem', fontWeight: 700, marginBottom: '0.45rem' }}>Record the filing (after the County Clerk stamps it)</div>
                   {savedCopyRow}
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'flex-end' }}>
@@ -765,8 +877,8 @@ export default function LienFilingTabs({
                     Serve-by stamps automatically: 5th calendar day after filing (§ 53.055), weekend-rolled.
                   </div>
                 </div>
-              ) : recordStep === 'affidavit_service' && filedAffidavit ? (
-                <div style={{ border: '1px solid var(--border-strong)', borderRadius: 8, padding: '0.6rem 0.7rem', background: 'var(--bg-amber-tint)' }}>
+              ) : recordStep === 'affidavit_service' && filedAffidavit && !isMobile ? (
+                <div data-lien-record-box="affidavit_service" style={{ border: '1px solid var(--border-strong)', borderRadius: 8, padding: '0.6rem 0.7rem', background: 'var(--bg-amber-tint)' }}>
                   <div style={{ fontSize: '0.78rem', fontWeight: 700, marginBottom: '0.45rem' }}>
                     Record service of the filed copy (due {demandDate(filedAffidavit.serve_due ?? '')})
                   </div>
@@ -812,6 +924,7 @@ export default function LienFilingTabs({
         </div>
         {affidavitReady ? preview : null}
       </div>
+      </>
     )
   }
 

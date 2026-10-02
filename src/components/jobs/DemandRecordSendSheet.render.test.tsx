@@ -41,7 +41,7 @@ function setup(over: Partial<DemandRecordSendSheetProps> = {}) {
 describe('DemandRecordSendSheet', () => {
   it('says what is being recorded, since the letter is under it', () => {
     setup()
-    const summary = document.querySelector('[data-demand-record-summary]')!
+    const summary = document.querySelector('[data-lien-record-summary]')!
     expect(summary.textContent).toContain('Demand letter · $15,722.49')
     expect(summary.textContent).toContain('ATI Schertz — As per plans · 650')
     expect(summary.textContent).toContain('Pay by October 16, 2026')

@@ -90,7 +90,7 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     // and Save & record send… stays a panel at the foot, never the phone's sheet (v2.4414)
     fireEvent.click(screen.getByRole('button', { name: 'Save & record send…' }))
     expect(document.querySelector('[data-demand-record-panel]')).toBeTruthy()
-    expect(document.querySelector('[data-demand-record-sheet]')).toBeNull()
+    expect(document.querySelector('[data-lien-record-sheet="demand"]')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Close' }))
     expect(onClose).toHaveBeenCalledTimes(1)
   })
@@ -131,15 +131,15 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
       expect(foot()).toBeTruthy()
       // Save & record send… is a sheet over the whole card (v2.4414): no panel at the foot, the job named on it, Back to the letter
       fireEvent.click(screen.getByRole('button', { name: 'Save & record send…' }))
-      const sheet = document.querySelector('[data-demand-record-sheet]') as HTMLElement
+      const sheet = document.querySelector('[data-lien-record-sheet="demand"]') as HTMLElement
       expect(sheet).toBeTruthy()
       expect(document.querySelector('[data-demand-record-panel]')).toBeNull()
       expect(foot()).toBeNull()
-      expect(sheet.querySelector('[data-demand-record-summary]')!.textContent).toMatch(/^Demand letter · \$/)
-      expect(sheet.querySelector('[data-demand-record-summary]')!.textContent).toContain('Service Visit — 628 Terrell Rd (HCP 867)')
+      expect(sheet.querySelector('[data-lien-record-summary]')!.textContent).toMatch(/^Demand letter · \$/)
+      expect(sheet.querySelector('[data-lien-record-summary]')!.textContent).toContain('Service Visit — 628 Terrell Rd (HCP 867)')
       expect(sheet.querySelectorAll('[aria-pressed]').length).toBe(4)
       fireEvent.click(screen.getByRole('button', { name: 'Back' }))
-      expect(document.querySelector('[data-demand-record-sheet]')).toBeNull()
+      expect(document.querySelector('[data-lien-record-sheet="demand"]')).toBeNull()
       expect(foot()).toBeTruthy()
       fireEvent.click(screen.getByRole('button', { name: 'Close' }))
       expect(onClose).toHaveBeenCalledTimes(1)
