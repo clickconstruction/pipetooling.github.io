@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bid follow-up dates: today and proposed</title>
+<style>
+  :root { color-scheme: light; --page:#eef0f4; --surface:#fff; --border:#d5d9e0; --strong:#b6bcc8; --text:#111827; --muted:#6b7280; --faint:#9ca3af; --blue:#3b82f6; --blue-tint:#eff6ff; --green:#15803d; --green-tint:#ecfdf5; --red:#b91c1c; --red-tint:#fef2f2; --amber:#b45309; --amber-tint:#fffbeb; --teal:#0f766e; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--text); font: 14px/1.45 Inter, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 980px; margin: 0 auto; padding: 20px 16px 60px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 17px; margin: 34px 0 4px; }
+  p.lead { margin: 0 0 6px; color: var(--muted); max-width: 70ch; }
+  .names { font-size: 12px; color: var(--faint); margin: 0 0 8px; }
+  .tag { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 2px 9px; border-radius: 999px; margin: 14px 0 6px; }
+  .tag.now { background: #e5e7eb; color: #374151; }
+  .tag.new { background: var(--blue); color: #fff; }
+  .say { font-size: 13px; color: var(--muted); margin: 6px 2px 0; max-width: 78ch; }
+  .say b { color: var(--text); }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+  .card + .card { margin-top: 8px; }
+  .head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .head b { font-size: 15px; }
+  .tel { color: #2563eb; font-size: 13px; }
+  .stats { font-size: 12px; color: var(--muted); }
+  .call { margin-left: auto; background: var(--blue); color: #fff; border: 0; border-radius: 7px; padding: 6px 12px; font: inherit; font-weight: 600; font-size: 13px; }
+  table.rows { border-collapse: collapse; width: min(100%, 640px); margin-top: 8px; font-size: 13px; }
+  table.rows th { text-align: left; font-size: 10.5px; letter-spacing: .07em; color: var(--muted); padding: 2px 8px 4px 0; border-bottom: 1px solid var(--strong); }
+  table.rows td { padding: 6px 8px 6px 0; border-bottom: 1px solid var(--border); }
+  table.rows td.k { font-size: 11px; letter-spacing: .06em; color: var(--muted); width: 120px; }
+  .exp { margin: 2px 0 6px 3px; border-left: 2px solid var(--strong); background: var(--page); border-radius: 0 8px 8px 0; padding: 8px 12px 10px; max-width: 700px; }
+  .bidline { font-size: 13.5px; font-weight: 600; }
+  .bidline span { font-weight: 400; font-size: 12px; color: var(--muted); }
+  .chips { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 6px; align-items: center; }
+  .chip { font-size: 12px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--strong); background: var(--surface); color: #374151; white-space: nowrap; }
+  .chip.won { background: var(--green-tint); color: #065f46; }
+  .chip.lost { background: var(--red-tint); color: #991b1b; }
+  .chip.on { background: var(--blue); border-color: var(--blue); color: #fff; font-weight: 600; }
+  .chip.dash { border-style: dashed; color: var(--muted); }
+  .note { margin-top: 8px; width: min(100%, 470px); border: 1px solid var(--strong); border-radius: 4px; padding: 5px 8px; font-size: 12.5px; color: var(--faint); background: var(--surface); }
+  .note.filled { color: var(--text); }
+  .ask { margin-top: 10px; border-top: 1px dashed var(--strong); padding-top: 8px; }
+  .ask .q { display: grid; grid-template-columns: 96px 1fr; gap: 6px 10px; align-items: center; margin-top: 5px; }
+  .ask .q > span:first-child { font-size: 12px; font-weight: 600; color: #374151; }
+  .ask .chips { margin-top: 0; }
+  .save { background: var(--blue); color: #fff; border: 0; border-radius: 6px; padding: 5px 14px; font: inherit; font-weight: 600; font-size: 12.5px; }
+  .hint { font-size: 12px; color: var(--muted); }
+  .bar { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; font-size: 13px; }
+  .pill { border: 1px solid var(--strong); background: var(--surface); border-radius: 999px; padding: 4px 12px; font-size: 13px; }
+  .pill small { color: var(--muted); font-size: 11px; margin-left: 3px; }
+  .pill.on { border-color: var(--blue); color: #1d4ed8; background: var(--blue-tint); font-weight: 600; }
+  .pill.red small { color: var(--red); }
+  .due { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--amber-tint); color: var(--amber); border: 1px solid #fcd34d; }
+  .due.late { background: var(--red-tint); color: var(--red); border-color: #fca5a5; }
+  .last { margin-top: 8px; font-size: 12.5px; color: #374151; background: var(--page); border-radius: 6px; padding: 6px 10px; max-width: 640px; }
+  .last i { color: var(--muted); font-style: normal; }
+  .later { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); margin-top: 8px; }
+  .later h3 { margin: 0; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 9px 14px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; }
+  .lrow { display: grid; grid-template-columns: 92px 1.5fr 1.2fr auto; gap: 10px; align-items: center; padding: 8px 14px; font-size: 13px; border-bottom: 1px solid var(--border); }
+  .lrow:last-child { border-bottom: 0; }
+  .lrow .d { font-weight: 700; }
+  .lrow .w { color: var(--muted); font-size: 12px; }
+  .lrow a { color: #2563eb; font-size: 12px; text-decoration: underline; white-space: nowrap; }
+  .lrow.hl { background: var(--blue-tint); }
+  .empty { border: 1px dashed var(--strong); border-radius: 10px; padding: 18px 14px; color: var(--muted); font-size: 13px; text-align: center; background: transparent; }
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px; }
+  .mini h4 { margin: 0 0 8px; font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+  .needs { display: flex; gap: 10px; align-items: flex-start; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--amber); margin-top: 5px; flex: 0 0 auto; }
+  .needs b { display: block; font-size: 13.5px; }
+  .needs span { font-size: 12px; color: var(--muted); }
+  .needs a { font-size: 12px; color: #2563eb; text-decoration: underline; }
+  .cal { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; font-size: 11px; }
+  .cal div { border: 1px solid var(--border); border-radius: 6px; min-height: 62px; padding: 4px 5px; color: var(--muted); }
+  .cal .ev { display: block; margin-top: 4px; background: var(--blue-tint); color: #1d4ed8; border-radius: 4px; padding: 2px 4px; font-size: 10.5px; line-height: 1.25; }
+  .push { background: #1f2937; color: #f9fafb; border-radius: 14px; padding: 10px 12px; font-size: 12.5px; }
+  .push small { display: block; color: #9ca3af; font-size: 11px; margin-bottom: 2px; }
+  .brow { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 13px; }
+  .brow .n { color: #2563eb; font-weight: 700; }
+  .fu { font-size: 11.5px; padding: 2px 9px; border-radius: 999px; background: var(--blue-tint); color: #1d4ed8; border: 1px solid #bfdbfe; white-space: nowrap; }
+  .field { display: grid; grid-template-columns: 110px 1fr; gap: 6px 10px; align-items: center; font-size: 13px; }
+  .inp { border: 1px solid var(--strong); border-radius: 5px; padding: 4px 8px; background: var(--surface); font-size: 12.5px; display: inline-block; }
+  .review { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 4px 16px 10px; }
+  .review table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  .review th { text-align: left; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 10px 10px 6px 0; border-bottom: 1px solid var(--strong); }
+  .review td { vertical-align: top; padding: 8px 10px 8px 0; border-bottom: 1px solid var(--border); }
+  .review tr:last-child td { border-bottom: 0; }
+  .review td:first-child { color: var(--muted); width: 38%; }
+  @media (max-width: 620px) { .lrow { grid-template-columns: 78px 1fr; } .lrow .w, .lrow a { grid-column: 2; } .ask .q { grid-template-columns: 1fr; } .call { margin-left: 0; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Follow-up dates on bids</h1>
+  <p class="lead">Four moments, each drawn twice: the app as it is today, then the same screen with a follow-up date. The worked case is a city re-pipe whose council says “next budget year, call us in January”.</p>
+  <p class="names">Names are changed. City of Riverton stands for your city bid B82. J. Rayburn stands for the councilman.</p>
+
+  <!-- ============ 1 ============ -->
+  <h2>1 · The call: you write down what they said</h2>
+  <p class="lead">Bids → Followup → Call queue, the city’s card with its Chase row open.</p>
+
+  <span class="tag now">Today</span>
+  <div class="card">
+    <div class="head"><b>City of Riverton</b><span class="tel">☎ (830) 555-0100</span><span class="stats">0 won · 0 lost · 1 pending · pending $27,000.00</span><button class="call">📞 Start call</button></div>
+    <table class="rows"><tr><th></th><th>TO DO</th><th>DONE</th></tr>
+      <tr><td class="k">▾ CHASE</td><td><b>1 pending</b> — quiet 233d</td><td>0 of 1 fresh</td></tr></table>
+    <div class="exp">
+      <div class="bidline">BP82 · City re-pipe, 886 ft <span>$27,000.00 · sent 2/11 · quiet 233d</span></div>
+      <div class="chips"><span class="chip">Left message</span><span class="chip">Still pending</span><span class="chip">Bid tab received</span><span class="chip">Rebid / RFQ</span><span class="chip won">Won</span><span class="chip lost">Lost…</span></div>
+      <div class="note">what they said (optional — saved with the next tap)</div>
+    </div>
+  </div>
+  <p class="say">You type the note and tap <b>Still pending</b>. The note is saved, and that is all. There is nowhere to say <b>when</b> to call again or <b>who</b> to ask for.</p>
+
+  <span class="tag new">Proposed</span>
+  <div class="card">
+    <div class="head"><b>City of Riverton</b><span class="tel">☎ (830) 555-0100</span><span class="stats">0 won · 0 lost · 1 pending · pending $27,000.00</span><button class="call">📞 Start call</button></div>
+    <table class="rows"><tr><th></th><th>TO DO</th><th>DONE</th></tr>
+      <tr><td class="k">▾ CHASE</td><td><b>1 pending</b> — quiet 233d</td><td>0 of 1 fresh</td></tr></table>
+    <div class="exp">
+      <div class="bidline">BP82 · City re-pipe, 886 ft <span>$27,000.00 · sent 2/11 · quiet 233d</span></div>
+      <div class="chips"><span class="chip">Left message</span><span class="chip on">Still pending</span><span class="chip">Bid tab received</span><span class="chip">Rebid / RFQ</span><span class="chip won">Won</span><span class="chip lost">Lost…</span></div>
+      <div class="note filled">Holding for the next budget year. Council votes in January.</div>
+      <div class="ask">
+        <div class="q"><span>Call again</span><div class="chips"><span class="chip">Next week</span><span class="chip">2 weeks</span><span class="chip">Next month</span><span class="chip">3 months</span><span class="chip on">Tue Jan 5, 2027</span><span class="chip dash">pick a date</span></div></div>
+        <div class="q"><span>Ask for</span><div class="chips"><span class="chip">Main line</span><span class="chip on">J. Rayburn · Councilman</span><span class="chip dash">+ person</span></div></div>
+        <div class="q"><span>Waiting on</span><div class="chips"><span class="chip on">Their budget</span><span class="chip">Owner deciding</span><span class="chip">Not awarded yet</span><span class="chip">Other</span></div></div>
+        <div class="q"><span></span><div class="chips"><button class="save">Save</button><span class="hint">Skip this and it saves as Next week, which is what happens today.</span></div></div>
+      </div>
+    </div>
+  </div>
+  <p class="say">The same tap, with one more line under it. <b>Call again</b> is the only thing you must look at. <b>Ask for</b> lists the people already on the customer, and <b>+ person</b> adds one to the customer for good. <b>Left message</b> gets the same line.</p>
+
+  <!-- ============ 2 ============ -->
+  <h2>2 · The queue the next morning</h2>
+  <p class="lead">The same Call queue, one day later.</p>
+
+  <span class="tag now">Today</span>
+  <div class="bar"><b>88 builders worth a call</b><span class="hint">· 90 bids · whoever has waited longest first</span></div>
+  <div class="bar"><span class="pill on">All calls</span><span class="pill">To chase <small>90</small></span><span class="pill">Need a reason <small>56</small></span><span class="pill">Tab gettable <small>219</small></span></div>
+  <div class="card"><div class="head"><b>Lone Oak Construction</b><span class="stats">1 pending · pending $34,500.00</span><button class="call">📞 Start call</button></div>
+    <table class="rows"><tr><td class="k">▸ CHASE</td><td><b>1 pending</b> — quiet 364d</td><td>0 of 1 fresh</td></tr></table></div>
+  <div class="card"><div class="head"><b>Hilltop Builders</b><span class="stats">3 pending · pending $48,900.00</span><button class="call">📞 Start call</button></div>
+    <table class="rows"><tr><td class="k">▸ CHASE</td><td><b>3 pending</b> — quiet 240d</td><td>0 of 3 fresh</td></tr></table></div>
+  <p class="say">One long list, oldest silence on top. A bid nobody has answered for a year outranks the call you promised for this week. The city drops out for seven days, then <b>comes back every week until January</b>.</p>
+
+  <span class="tag new">Proposed</span>
+  <div class="bar"><span class="pill on">Due <small>4</small></span><span class="pill red">Overdue <small>9</small></span><span class="pill">No date yet <small>61</small></span><span class="pill">Later <small>14</small></span><span class="hint">· then the filters you have now</span></div>
+  <div class="card"><div class="head"><b>Hilltop Builders</b><span class="due">Due today</span><span class="stats">3 pending · pending $48,900.00</span><button class="call">📞 Start call</button></div>
+    <div class="last">Last time, Thu Sep 25: <b>“Award is next Friday, call then.”</b> <i>— Wendi</i></div></div>
+  <div class="later">
+    <h3><span>Later · 14 bids waiting on a date</span><span>$412,300 pending</span></h3>
+    <div class="lrow"><span class="d">Mon Oct 12</span><span><b>Summit GC</b> · BP455 clinic fit-out · $88,400</span><span class="w">Not awarded yet · ask for Dana</span><a>change date</a></div>
+    <div class="lrow"><span class="d">Mon Nov 2</span><span><b>Achilles</b> · BP431 winery · $212,000</span><span class="w">Owner deciding · main line</span><a>change date</a></div>
+    <div class="lrow hl"><span class="d">Tue Jan 5</span><span><b>City of Riverton</b> · BP82 re-pipe · $27,000</span><span class="w">Their budget · ask for J. Rayburn</span><a>change date</a></div>
+  </div>
+  <p class="say">The queue becomes a <b>today list</b>. A bid with a date stays out of the way until that date, and <b>Later</b> shows it is parked, not lost. The old backlog sits under <b>No date yet</b> and shrinks one call at a time.</p>
+
+  <!-- ============ 3 ============ -->
+  <h2>3 · January 5: the date arrives</h2>
+  <p class="lead">Three months later. Whoever took the call may not remember it.</p>
+
+  <span class="tag now">Today</span>
+  <div class="empty">Nothing happens. No Dashboard item, no Calendar entry, no notification. The city is one of 88 cards in the queue, sorted by how long it has been quiet.</div>
+
+  <span class="tag new">Proposed</span>
+  <div class="grid2">
+    <div class="card mini"><h4>Dashboard · Needs You</h4>
+      <div class="needs"><span class="dot"></span><div><b>2 bid follow-ups due today</b><span>City of Riverton · Hilltop Builders — $75,900 pending</span><br><a>Open the call queue →</a></div></div></div>
+    <div class="card mini"><h4>Phone, 8:00 AM, to the bid’s account manager</h4>
+      <div class="push"><small>ClickTooling · now</small>Follow up today: City of Riverton, BP82 re-pipe. Ask for J. Rayburn.</div></div>
+  </div>
+  <div class="card mini" style="margin-top:10px"><h4>Calendar · week of Jan 4</h4>
+    <div class="cal"><div>Mon 4</div><div>Tue 5<span class="ev">☎ Follow up · BP82 City re-pipe</span><span class="ev">☎ Follow up · Hilltop</span></div><div>Wed 6</div><div>Thu 7</div><div>Fri 8</div></div></div>
+  <div class="card" style="margin-top:10px">
+    <div class="head"><b>City of Riverton</b><span class="due">Due today</span><span class="stats">1 pending · pending $27,000.00</span><button class="call">📞 Call J. Rayburn</button></div>
+    <div class="last">Ask for <b>J. Rayburn, Councilman</b> · <span class="tel">☎ (830) 555-0142</span><br>Last time, Fri Oct 2: <b>“Holding for the next budget year. Council votes in January.”</b> <i>— Robert</i></div>
+    <div class="exp" style="margin-top:8px">
+      <div class="bidline">BP82 · City re-pipe, 886 ft <span>$27,000.00 · sent 2/11 · waiting on their budget</span></div>
+      <div class="chips"><span class="chip">Left message</span><span class="chip">Still pending</span><span class="chip">Bid tab received</span><span class="chip">Rebid / RFQ</span><span class="chip won">Won</span><span class="chip lost">Lost…</span></div>
+    </div>
+  </div>
+  <p class="say">The card tells a stranger everything: who to ask for, their number, and what they said last time. Whatever you tap next asks <b>Call again</b> once more, so a bid always has a next date until it is won or lost. Miss the day and the tag turns red: <span class="due late">3 d overdue</span></p>
+
+  <!-- ============ 4 ============ -->
+  <h2>4 · The rest of the app</h2>
+  <p class="lead">The same date, shown wherever the bid already appears. These two are simplified sketches, not full redraws.</p>
+
+  <span class="tag now">Today</span>
+  <div class="card"><div class="brow"><span class="n">BP82</span><b>City re-pipe, 886 ft</b><span class="stats">City of Riverton · $27,000 · sent 2/11 · last contact 2/11</span></div></div>
+  <p class="say">The Bid Board row shows when you last spoke. It cannot say when you speak next. The Edit Bid window has <b>Log contact</b> and no next date.</p>
+
+  <span class="tag new">Proposed</span>
+  <div class="card"><div class="brow"><span class="n">BP82</span><b>City re-pipe, 886 ft</b><span class="stats">City of Riverton · $27,000 · sent 2/11 · last contact 10/2</span><span class="fu">☎ follow up Jan 5 · J. Rayburn</span></div></div>
+  <div class="card mini"><h4>Edit Bid · beside Log contact</h4>
+    <div class="field"><span>Next follow-up</span><span><span class="inp">Tue Jan 5, 2027</span> <span class="inp">J. Rayburn · Councilman</span> <span class="inp">Their budget</span></span></div></div>
+  <p class="say">The chip also rides the customer’s page and the old By builder view, which already keeps a next date per builder. The Call queue starts obeying that date too, so there is <b>one next date</b>, not two that disagree.</p>
+
+  <!-- ============ review ============ -->
+  <h2>What changed when I asked “is this the best we can do?”</h2>
+  <p class="lead">My first idea was a separate “Follow up on” record with its own button. Looking at the real screens changed five things.</p>
+  <div class="review"><table>
+    <tr><th>First idea</th><th>Refined</th></tr>
+    <tr><td>A new “Follow up on” button on the bid.</td><td>No new button. The date is asked in the tap you already make after a call. One extra line, and skipping it behaves like today.</td></tr>
+    <tr><td>A new kind of record with its own history.</td><td>The date rides the contact log entry. The log already says who called and what was said, so the history is free.</td></tr>
+    <tr><td>“On hold” as a special state beside the 7-day rule.</td><td>One idea: every open bid has a next date. Seven days is only the default when nobody picks one.</td></tr>
+    <tr><td>Queue still sorted by longest silence.</td><td>Queue sorted by what is due. A year-old silence is the least urgent call, not the most.</td></tr>
+    <tr><td>A date per bid only.</td><td>The call window already saves a next date per builder, and the queue ignores it. Both now feed one queue: the builder’s date by default, a bid’s own date when it differs.</td></tr>
+  </table></div>
+</main>
+</body>
+</html>
