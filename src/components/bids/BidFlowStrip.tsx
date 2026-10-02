@@ -168,11 +168,13 @@ export function BidFlowStrip({ flow, variant, onOpenDoor, canOpenDoor, bidLabel,
       role="group"
       aria-label={ariaLabel}
       style={{
-        border: bare ? '1px dashed var(--border)' : '1px solid var(--border)',
+        // Unfolded above a workflow tab's title the steps sit straight on the bid's card: no box of
+        // their own (the card already frames them), so the top of the tab stays short.
+        border: bare ? 0 : '1px solid var(--border)',
         borderRadius: 8,
-        background: bare ? 'var(--bg-subtle)' : 'var(--surface)',
-        padding: '0.6rem 0.9rem 0.75rem',
-        marginBottom: bare ? '0.75rem' : '1rem',
+        background: bare ? 'transparent' : 'var(--surface)',
+        padding: bare ? '0 0 0.2rem' : '0.6rem 0.9rem 0.75rem',
+        marginBottom: bare ? '0.6rem' : '1rem',
         overflowX: 'auto',
       }}
     >
