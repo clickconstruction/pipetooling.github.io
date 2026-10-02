@@ -25,6 +25,7 @@
     "check:plain-words": "vite-node scripts/check-plain-words.ts",
     "check:nested-windows": "node --max-old-space-size=3072 scripts/check-nested-windows.mjs",
     "check:backdrop-click": "node scripts/codemods/backdrop-click-sweep.mjs --check",
+    "check:dialog-role": "node scripts/codemods/dialog-role-sweep.mjs --check",
     "map": "node scripts/map-surface.mjs",
     "claim": "vite-node scripts/claim-version.ts",
     "brand:pipe-wordmark": "vite-node scripts/pipe-wordmark-assets.ts",

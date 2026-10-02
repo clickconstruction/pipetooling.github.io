@@ -1303,7 +1303,7 @@ export default function PeoplePayStubsTab({
           style={{ position: 'fixed', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1001 }}
           onClick={() => setPayStubCalendarPerson(null)}
         >
-          <div
+          <div role="dialog" aria-modal="true"
             style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, maxWidth: '95vw', maxHeight: 'min(90vh, 100%)', overflow: 'auto' }}
             onClick={(e) => e.stopPropagation()}
           >

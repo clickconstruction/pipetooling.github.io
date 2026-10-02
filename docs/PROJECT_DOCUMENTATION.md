@@ -2474,7 +2474,7 @@ async function myFunction() {
 
 The page behind any modal, sheet, or dialog is frozen **app-wide without per-modal code**. [`BodyScrollLockSentinel`](../src/components/BodyScrollLockSentinel.tsx) (mounted once in `Layout`) watches the DOM and, while [`findBlockingOverlays`](../src/lib/blockingOverlay.ts) finds a `position: fixed` layer covering ≥ 90% of the viewport, holds the reference-counted iOS-safe lock in [`bodyScrollLock.ts`](../src/lib/bodyScrollLock.ts) (`body { position: fixed; top: -scrollY }`, scrollbar-width compensation, exact scroll restore on the last release). Stacked modals just work.
 
-- **Writing a modal:** nothing to do — a fixed, viewport-covering backdrop is detected. Give the panel `role="dialog"` (+ `aria-modal="true"`) anyway: it's the explicit signal and the a11y-correct one.
+- **Writing a modal:** give the panel `role="dialog"` + `aria-modal="true"`: it's the explicit signal and the a11y-correct one, and CI fails a dim `inset: 0` backdrop with no declared panel (`npm run check:dialog-role`; `node scripts/codemods/dialog-role-sweep.mjs` tags it). A fixed, viewport-covering backdrop is detected either way.
 - **Opting a modal out** (let the page scroll behind it): `data-page-scroll="allow"` on the overlay (or any ancestor of the dialog).
 - **Freezing without an overlay** (e.g. the roadmap's CSS fullscreen): `useBodyScrollLock(true)` — refcounted with the sentinel, so both coexist.
 - Don't hand-roll `document.body.style.overflow = 'hidden'` — it doesn't hold on iOS Safari; the three historical copies were retired in v2.2186.

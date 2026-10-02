@@ -1792,7 +1792,7 @@ export function BidsTakeoffTab({
                 if (!roughAddAssemblyExpanding) closeRoughAddAssemblyModal()
               }}
             >
-              <div
+              <div role="dialog" aria-modal="true"
                 style={{
                   background: 'var(--surface)',
                   padding: '1.5rem',

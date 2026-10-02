@@ -77,7 +77,7 @@ function DeleteLineItemConfirm({
 }) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-      <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+      <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
         <h3 style={{ marginTop: 0 }}>Delete line item?</h3>
         <p style={{ marginBottom: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
           {pending.item.memo}
@@ -145,7 +145,7 @@ function EditLineItemWindow({
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-      <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 360 }}>
+      <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 360 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '1rem' }}>
           <h3 style={{ margin: 0, flex: 1 }}>{editing.item ? 'Edit' : 'Add'} Line Item</h3>
           {!editing.item && (
@@ -259,7 +259,7 @@ function AddPurchaseOrderPicker({
 }) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-      <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: '90%', maxHeight: '90vh', overflow: 'auto' }}>
+      <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: '90%', maxHeight: '90vh', overflow: 'auto' }}>
         <h3 style={{ marginTop: 0 }}>Add Purchase Order to Step</h3>
         {availablePOs.length === 0 ? (
           <p style={{ color: 'var(--text-muted)' }}>No finalized purchase orders available. Go to Materials page to create and finalize purchase orders.</p>
@@ -314,7 +314,7 @@ function AddInvoicePicker({
   const [searchText, setSearchText] = useState('')
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-      <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: '90%', maxHeight: '90vh', overflow: 'auto' }}>
+      <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: '90%', maxHeight: '90vh', overflow: 'auto' }}>
         <h3 style={{ marginTop: 0 }}>Add Supply House Invoice to Step</h3>
         {availableInvoices.length === 0 ? (
           <p style={{ color: 'var(--text-muted)' }}>No supply house invoices available. Add invoices in Materials → Supply Houses.</p>
@@ -381,7 +381,7 @@ function AddInvoicePicker({
 function PurchaseOrderDetailWindow({ po, onClose }: { po: PODetail; onClose: () => void }) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-      <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: 8, maxWidth: '800px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
+      <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '2rem', borderRadius: 8, maxWidth: '800px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
         <h2 style={{ marginBottom: '1rem' }}>{po.name}</h2>
         <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden', marginBottom: '1rem' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -432,7 +432,7 @@ function PurchaseOrderDetailWindow({ po, onClose }: { po: PODetail; onClose: () 
 function InvoiceDetailWindow({ invoice, onClose }: { invoice: InvoiceDetail; onClose: () => void }) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-      <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: 8, minWidth: 320, maxWidth: '90%' }}>
+      <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '2rem', borderRadius: 8, minWidth: 320, maxWidth: '90%' }}>
         <h2 style={{ marginBottom: '1rem' }}>Invoice #{invoice.invoice_number}</h2>
         <div style={{ marginBottom: '1rem', fontSize: '0.9375rem' }}>
           <div style={{ marginBottom: '0.5rem' }}><strong>Supply House:</strong> {invoice.supply_house_name}</div>

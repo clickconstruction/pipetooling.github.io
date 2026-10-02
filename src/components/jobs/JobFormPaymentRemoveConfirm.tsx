@@ -37,7 +37,7 @@ export function JobFormPaymentRemoveConfirm({ open, preview, confirmsPersistedRp
           if (!busy) onCancel()
         }}
       >
-        <div
+        <div role="dialog" aria-modal="true"
           style={{
             background: 'var(--surface)',
             padding: '1.5rem',

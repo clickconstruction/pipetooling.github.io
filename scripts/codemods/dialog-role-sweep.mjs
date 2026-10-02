@@ -1,26 +1,46 @@
 #!/usr/bin/env node
 /**
- * Dialog-role sweep (v2.2188, PR 2 of the modal scroll-lock plan).
+ * Dialog-role sweep (v2.2188; per backdrop and CI-checked since v2.4401).
  *
- * Adds `role="dialog" aria-modal="true"` to modal panels that never got one, so
- * the app-wide scroll lock (v2.2186) detects them explicitly — and so assistive
- * tech announces them as dialogs. Mechanical and re-runnable (rebase rule: re-run
- * this, never hand-resolve its diff).
+ * Adds `role="dialog" aria-modal="true"` to modal panels that never got one. The
+ * app-wide scroll lock holds the page still behind a panel that declares itself
+ * modal, at any size (`lib/blockingOverlay.ts`), and assistive tech announces it
+ * as a dialog. Mechanical and re-runnable (rebase rule: re-run this, never
+ * hand-resolve its diff).
  *
- * Per file with a fixed `inset: 0` backdrop and no role="dialog":
- *  - if an element already has aria-modal="true" → add role="dialog" to it
- *  - else, for each dark backdrop (position: 'fixed' + inset: 0 + rgba(0,0,0,…)
- *    in one style literal): tag the first plain element inside it (div/form/
- *    section/article) as the panel; if the first child isn't a plain element,
- *    tag the backdrop itself
- *  - files listed in SKIP (click-catchers, timelines, swipe surfaces) are left alone
+ * A backdrop is an element whose inline style literal has `position: 'fixed'`,
+ * `inset: 0` and an `rgba(…)` background (a dim layer; an invisible click-catcher
+ * has none). Parsed with the TypeScript compiler, one backdrop at a time: the
+ * first version skipped a whole file once any `role="dialog"` was in it, so a
+ * file with one marked window hid every unmarked one beside it.
  *
- * Usage: node scripts/codemods/dialog-role-sweep.mjs [--dry]
+ * A backdrop is declared when it, or anything drawn inside it in the same file,
+ * carries `aria-modal`, `role="dialog"` / `"alertdialog"`, or the opt-out
+ * `data-page-scroll`. Otherwise its panel is the first element inside it that is
+ * not a `<style>`:
+ *  - a plain element (div/form/section/article) → tagged
+ *  - a component (`<SomePanel />`) → left alone and not reported: the panel is
+ *    drawn in another file, where this script reads it if it has a backdrop
+ *  - nothing, or a fragment → the backdrop itself is tagged
+ * Files in SKIP (click-catchers, timelines, swipe surfaces) are left alone.
+ *
+ * CI runs it with --check (ci.yml and deploy.yml): a window merged after the
+ * sweep with no declared panel fails the build with the command that fixes it.
+ *
+ * Usage: node scripts/codemods/dialog-role-sweep.mjs [--dry | --check]
+ *   --dry    lists what it would tag, writes nothing
+ *   --check  the same, and exits 1 when anything is left to tag (`npm run check:dialog-role`)
  */
 import { readFileSync, writeFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
+import path from 'node:path'
 import { globSync } from 'glob'
 
-const DRY = process.argv.includes('--dry')
+const require = createRequire(path.join(process.cwd(), 'package.json'))
+const ts = require('typescript')
+
+const CHECK = process.argv.includes('--check')
+const DRY = CHECK || process.argv.includes('--dry')
 const SKIP = new Set([
   'src/components/JobReportsModal.tsx',
   'src/components/schedule/DispatchAddBlockTimeRange.tsx',
@@ -32,75 +52,114 @@ const SKIP = new Set([
   'src/components/checklist/ChecklistTechTreeTab.tsx',
   'src/components/Toast.tsx',
 ])
+const PLAIN = /^(div|form|section|article)$/
+const TAG = ' role="dialog" aria-modal="true"'
+
+const attrsOf = (opening) => opening.attributes.properties.filter((p) => ts.isJsxAttribute(p))
+const attrName = (a) => a.name.getText()
+const attr = (opening, name) => attrsOf(opening).find((a) => attrName(a) === name)
+const attrText = (a) => (a?.initializer && ts.isStringLiteral(a.initializer) ? a.initializer.text : null)
+
+/** The inline `style={{ … }}` literal's own properties, as source text by name. */
+function styleProps(opening) {
+  const style = attr(opening, 'style')
+  const expr = style?.initializer && ts.isJsxExpression(style.initializer) ? style.initializer.expression : null
+  if (!expr || !ts.isObjectLiteralExpression(expr)) return null
+  const out = {}
+  for (const p of expr.properties) {
+    if (ts.isPropertyAssignment(p)) out[p.name.getText()] = p.initializer.getText()
+  }
+  return out
+}
+
+function isBackdrop(opening) {
+  const s = styleProps(opening)
+  if (!s) return false
+  if (!/^['"`]fixed['"`]$/.test(s.position ?? '')) return false
+  if (!/^(0|['"`]0(px)?['"`])$/.test(s.inset ?? '')) return false
+  return /rgba\(/.test(s.background ?? s.backgroundColor ?? '')
+}
+
+function declares(opening) {
+  if (attr(opening, 'aria-modal') || attr(opening, 'data-page-scroll')) return true
+  const role = attr(opening, 'role')
+  if (!role) return false
+  const text = attrText(role)
+  // A role given by an expression may be a dialog; a literal one must say so.
+  return text == null || text === 'dialog' || text === 'alertdialog'
+}
+
+/** True when the backdrop or anything drawn inside it (in this file) declares a modal. */
+function subtreeDeclares(node) {
+  let found = false
+  const visit = (n) => {
+    if (found) return
+    if ((ts.isJsxOpeningElement(n) || ts.isJsxSelfClosingElement(n)) && declares(n)) {
+      found = true
+      return
+    }
+    ts.forEachChild(n, visit)
+  }
+  visit(node)
+  return found
+}
+
+/** The first element drawn inside the backdrop, in source order, that is not a <style>. */
+function firstPanel(element) {
+  let hit = null
+  const visit = (n) => {
+    if (hit) return
+    if (n !== element && (ts.isJsxElement(n) || ts.isJsxSelfClosingElement(n))) {
+      const opening = ts.isJsxElement(n) ? n.openingElement : n
+      if (opening.tagName.getText() !== 'style') {
+        hit = opening
+        return
+      }
+      return
+    }
+    ts.forEachChild(n, visit)
+  }
+  ts.forEachChild(element, visit)
+  return hit
+}
 
 const files = globSync('src/**/*.tsx', { ignore: ['**/*.test.tsx'] }).sort()
-let touched = 0
 let panels = 0
 let backdrops = 0
-let ariaOnly = 0
 const report = []
 
 for (const f of files) {
   if (SKIP.has(f)) continue
-  let s = readFileSync(f, 'utf8')
-  if (!s.includes('inset: 0') || s.includes('role="dialog"')) continue
-  const before = s
-
-  if (s.includes('aria-modal="true"')) {
-    // role missing on the element that already declares aria-modal — but only
-    // when that element's own opening tag carries no role (alertdialog counts)
-    s = s.replace(/aria-modal="true"/g, (match, offset, str) => {
-      const tagStart = str.lastIndexOf('<', offset)
-      const openSoFar = str.slice(tagStart, offset)
-      if (/\brole=/.test(openSoFar)) return match
-      const tagEnd = str.indexOf('>', offset)
-      if (/\brole=/.test(str.slice(offset, tagEnd))) return match
-      ariaOnly += 1
-      return 'role="dialog" aria-modal="true"'
-    })
-  } else {
-    // walk each opening <div … style={{ … position: 'fixed' … inset: 0 … rgba(0,0,0 … }} …>
-    const tagRe = /<div\b(?:(?!<\/div>)[\s\S]){0,1400}?>/g
-    let m
-    const edits = []
-    while ((m = tagRe.exec(s))) {
-      const tag = m[0]
-      // the opening tag must close before any child; crude but effective: stop at first ">" that ends the tag
-      const tagEnd = tag.indexOf('>')
-      const open = tag.slice(0, tagEnd + 1)
-      if (!/position: '?fixed'?/.test(open) || !/inset: 0/.test(open) || !/rgba\(0, ?0, ?0/.test(open)) continue
-      if (/\brole=/.test(open)) continue
-      // find the first child element after the backdrop's opening tag
-      const after = s.slice(m.index + open.length)
-      const child = /^[\s\S]*?<([A-Za-z][\w.]*)\b/.exec(after)
-      const childTag = child ? child[1] : null
-      const isPlain = childTag && /^(div|form|section|article|dialog)$/.test(childTag)
-      if (isPlain) {
-        // tag the panel: insert after "<div" (etc.) of that child, unless it already has a role
-        const childStart = m.index + open.length + child[0].length - child[1].length - 1
-        const childOpenEnd = s.indexOf('>', childStart)
-        const childOpen = s.slice(childStart, childOpenEnd + 1)
-        if (/\brole=/.test(childOpen)) continue
-        edits.push({ at: childStart + 1 + childTag.length, kind: 'panel' })
-      } else {
-        edits.push({ at: m.index + 4, kind: 'backdrop' })
-      }
+  const text = readFileSync(f, 'utf8')
+  if (!text.includes('fixed') || !text.includes('inset')) continue
+  const sf = ts.createSourceFile(f, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+  const edits = []
+  const visit = (n) => {
+    if (ts.isJsxElement(n) && isBackdrop(n.openingElement) && !subtreeDeclares(n)) {
+      const panel = firstPanel(n)
+      const name = panel?.tagName.getText() ?? null
+      if (name && PLAIN.test(name)) edits.push({ at: panel.tagName.getEnd(), kind: 'panel', line: sf.getLineAndCharacterOfPosition(panel.getStart()).line + 1 })
+      else if (!name) edits.push({ at: n.openingElement.tagName.getEnd(), kind: 'backdrop', line: sf.getLineAndCharacterOfPosition(n.getStart()).line + 1 })
+      // else: a component draws the panel — its own file is read on its own.
     }
-    // apply from the end so offsets stay valid
-    edits.sort((a, b) => b.at - a.at)
-    for (const e of edits) {
-      s = s.slice(0, e.at) + ' role="dialog" aria-modal="true"' + s.slice(e.at)
-      if (e.kind === 'panel') panels += 1
-      else backdrops += 1
-    }
+    ts.forEachChild(n, visit)
   }
-
-  if (s !== before) {
-    touched += 1
-    report.push(f)
-    if (!DRY) writeFileSync(f, s)
+  visit(sf)
+  if (!edits.length) continue
+  let s = text
+  for (const e of edits.sort((a, b) => b.at - a.at)) {
+    s = s.slice(0, e.at) + TAG + s.slice(e.at)
+    if (e.kind === 'panel') panels += 1
+    else backdrops += 1
   }
+  report.push(`${f}  (line ${edits.map((e) => e.line).sort((a, b) => a - b).join(', ')})`)
+  if (!DRY) writeFileSync(f, s)
 }
 
-console.log(`${DRY ? '[dry] ' : ''}files touched: ${touched} · panels tagged: ${panels} · backdrops tagged (fallback): ${backdrops} · aria-modal-only fixed: ${ariaOnly}`)
-console.log(report.join('\n'))
+console.log(`${DRY ? '[dry] ' : ''}files: ${report.length} · panels tagged: ${panels} · backdrops tagged (no panel element): ${backdrops}`)
+if (report.length) console.log(report.join('\n'))
+if (CHECK && report.length) {
+  console.error('\nThese windows have a dim full-screen backdrop and no panel that says it is a modal.')
+  console.error('Run `node scripts/codemods/dialog-role-sweep.mjs` and commit the result (or add role="dialog" aria-modal="true" to the panel by hand).')
+  process.exit(1)
+}

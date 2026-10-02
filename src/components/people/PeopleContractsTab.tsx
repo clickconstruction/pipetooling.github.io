@@ -2452,7 +2452,7 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
 
       {contractsAssignModalOpen && selectedContractsPersonName && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 'min(92vw, 520px)', width: '100%', maxHeight: '85vh', overflow: 'auto' }}>
+          <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 'min(92vw, 520px)', width: '100%', maxHeight: '85vh', overflow: 'auto' }}>
             <h3 style={{ margin: '0 0 1rem', fontSize: '1.125rem' }}>Assign packets — {selectedContractsPersonName}</h3>
             {contractsError && <p style={{ color: 'var(--text-red-700)', marginBottom: '0.75rem', fontSize: '0.875rem' }}>{contractsError}</p>}
             {contractTemplates.length === 0 ? (
@@ -2699,7 +2699,7 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
 
       {contractDocumentModalOpen && (
         <div style={{ position: 'fixed', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 'min(92vw, 520px)', maxHeight: 'min(90vh, 100%)', overflow: 'auto' }}>
+          <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 'min(92vw, 520px)', maxHeight: 'min(90vh, 100%)', overflow: 'auto' }}>
             <h3 style={{ margin: '0 0 1rem', fontSize: '1.125rem' }}>
               {editingContractDocument
                 ? 'Edit document'
@@ -3535,7 +3535,7 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
 
       {contractSendModalOpen && (contractSendDocId || contractSendQuickSend) && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 14 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, width: 'min(640px, 92vw)', maxHeight: '92vh', overflow: 'auto', boxSizing: 'border-box' }}>
+          <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, width: 'min(640px, 92vw)', maxHeight: '92vh', overflow: 'auto', boxSizing: 'border-box' }}>
             <h3 style={{ margin: '0 0 0.75rem', fontSize: '1.125rem' }}>Send for signature</h3>
             {contractsError ? <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>{contractsError}</p> : null}
             <label style={{ display: 'block', marginTop: '0.75rem', fontSize: '0.8125rem' }}>

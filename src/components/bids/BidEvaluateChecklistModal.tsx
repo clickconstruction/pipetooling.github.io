@@ -74,7 +74,7 @@ export function BidEvaluateChecklistModal({ onClose }: { onClose: () => void }) 
         zIndex: 1000,
       }}
     >
-      <div
+      <div role="dialog" aria-modal="true"
         style={{
           background: 'var(--surface)',
           padding: '1.5rem',

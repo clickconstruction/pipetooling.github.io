@@ -5105,7 +5105,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
             zIndex: 1001,
           }}
         >
-          <div
+          <div role="dialog" aria-modal="true"
             style={{
               background: 'var(--surface)',
               padding: '1rem 2rem 2rem',
