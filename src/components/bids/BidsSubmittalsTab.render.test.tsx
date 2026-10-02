@@ -687,6 +687,63 @@ describe('BidsSubmittalsTab', () => {
     state.noRoom = false
   })
 
+  it('2026-10-02 · Their answer on a row: one window, an answer per part, one Save; the reviewer is a name with no email and nothing is sent', async () => {
+    state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [], shared_at: null, created_at: '2026-09-15T00:00:00Z' }]
+    state.items = [
+      item({ id: 'p-wc', tag: 'WC-1', sequence_order: 1, submitted_label: 'TOTO CT728CUVG#01 + TOTO TET2UB31#SS', status: 'proposed' }),
+      item({ id: 'a-dwh', tag: 'DWH-1', sequence_order: 2, submitted_label: 'BRADFORD WHITE RE2HP50', status: 'proposed' }),
+    ]
+    state.parts = [
+      { id: 'pt-bowl', item_id: 'p-wc', bid_id: 'b398', sequence_order: 1, label: 'TOTO CT728CUVG#01 TOILET', quantity: 1, on_submittal: true, sheet_pages: [], review_decision: null, decision_source: 'room' },
+      { id: 'pt-valve', item_id: 'p-wc', bid_id: 'b398', sequence_order: 2, label: 'TOTO TET2UB31#SS', quantity: 1, on_submittal: true, sheet_pages: [], review_decision: null, decision_source: 'room' },
+      { id: 'pt-stop', item_id: 'p-wc', bid_id: 'b398', sequence_order: 3, label: 'BRASSCRA PLB113XP ANG', quantity: 1, on_submittal: false, sheet_pages: [], review_decision: null, decision_source: 'room' },
+    ]
+    state.writes = []
+    state.noRoom = true
+    try {
+      mount()
+      await screen.findAllByTestId('submittal-row')
+      // Every row has the door, on a draft too; the row editor no longer asks who or what.
+      fireEvent.click(await screen.findByRole('button', { name: 'Their answer on WC-1' }))
+      const dialog = await screen.findByRole('dialog', { name: 'Their answer on WC-1' })
+      await waitFor(() => expect(within(dialog).getAllByTestId('answer-line')).toHaveLength(2))
+      fireEvent.click(within(within(dialog).getByRole('group', { name: 'Their answer on TOTO TET2UB31#SS' })).getByRole('button', { name: 'Rejected' }))
+      fireEvent.change(within(dialog).getByLabelText('Their note on TOTO TET2UB31#SS'), { target: { value: 'They want TET2UA31#SS' } })
+      fireEvent.click(within(dialog).getByTestId('answer-all-approved'))
+      fireEvent.change(within(dialog).getByLabelText('Who answered'), { target: { value: 'new' } })
+      fireEvent.change(within(dialog).getByLabelText('Reviewer name'), { target: { value: 'Structura' } })
+      expect(within(dialog).getByTestId('answer-save').textContent).toBe('Record 2 answers')
+      fireEvent.click(within(dialog).getByTestId('answer-save'))
+      await waitFor(() => expect(state.writes.some((w) => w.table === 'bid_submittal_events')).toBe(true))
+      // The reviewer joins the room by name alone.
+      expect(state.writes.find((w) => w.table === 'bid_submittal_people')!.payload).toMatchObject({ room_id: 'room-1', name: 'Structura', email: null, how: 'named' })
+      // Each answer is its own write on the parts it covers, in one save.
+      const partWrites = state.writes.filter((w) => w.table === 'bid_submittal_item_parts' && w.op === 'update')
+      expect(partWrites.map((w) => [w.filters.find((f) => f[0] === 'id:in')?.[1], (w.payload as Record<string, unknown>).review_decision, (w.payload as Record<string, unknown>).review_note])).toEqual([
+        [['pt-bowl'], 'approved', null],
+        [['pt-valve'], 'rejected', 'They want TET2UA31#SS'],
+      ])
+      expect(partWrites[1]!.payload).toMatchObject({ reviewed_by_name: 'Structura', reviewed_by_email: null, reviewed_by_person_id: 'person-new', decision_source: 'entered', decision_entered_by_name: 'Wendi' })
+      // One line on the thread and one event for the whole save.
+      expect(state.writes.filter((w) => w.table === 'bid_submittal_messages')).toHaveLength(1)
+      expect(state.writes.find((w) => w.table === 'bid_submittal_messages')!.payload).toMatchObject({ tags: ['WC-1'], metadata: { counts: { approved: 1, revise: 0, rejected: 1 } } })
+      expect(state.writes.filter((w) => w.table === 'bid_submittal_events')).toHaveLength(1)
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+      expect(state.parts.find((p) => p.id === 'pt-valve')).toMatchObject({ review_decision: 'rejected' })
+      expect(state.parts.find((p) => p.id === 'pt-stop')!.review_decision).toBeNull()
+      // The row editor reads the answer in one line and holds the door to the same window.
+      fireEvent.click(screen.getByRole('button', { name: 'Edit WC-1' }))
+      const edit = await screen.findByRole('dialog', { name: 'Edit WC-1' })
+      expect(within(edit).getByTestId('their-answer-line').textContent).toContain('1 approved · 1 rejected')
+      fireEvent.click(within(edit).getByTestId('their-answer-open'))
+      expect(await screen.findByRole('dialog', { name: 'Their answer on WC-1' })).toBeTruthy()
+      expect(screen.queryByRole('dialog', { name: 'Edit WC-1' })).toBeNull()
+    } finally {
+      state.parts = []
+      state.noRoom = false
+    }
+  })
+
   it('2026-10-01 · approved whole: a row with parts takes the approval on every part the GC sees with no call, and reads the roll-up; a row without parts as before', async () => {
     state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'shared', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [], shared_at: '2026-09-20T00:00:00Z', created_at: '2026-09-15T00:00:00Z' }]
     state.items = [

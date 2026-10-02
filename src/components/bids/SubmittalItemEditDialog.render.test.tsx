@@ -1,87 +1,51 @@
 // @vitest-environment jsdom
 /**
- * Render smoke for the row editor's on-behalf-of section (Submittals stage 5b): on a shared
- * revision the office can enter a reviewer's call from their file — an existing person on the
- * room or a new one (name + email required) — and Save carries it; a draft asks nothing.
+ * Render smoke for the row editor: the supply house, the window's layout, the parts, and the
+ * one line that reads the reviewer's answer and opens the window where it is recorded
+ * (`SubmittalAnswerDialog`; the answer itself is no longer entered here).
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { SubmittalItemEditDialog, type SubmittalItemPatch } from './SubmittalItemEditDialog'
 import type { SubmittalItemRow } from '../../lib/submittals/submittalRevision'
-import type { SubmittalPersonRow } from '../../lib/submittals/submittalRoom'
 import type { SubmittalPartRow } from '../../lib/submittals/itemParts'
 
 const item = (o: Partial<SubmittalItemRow> = {}): SubmittalItemRow => ({ id: 'i1', submittal_id: 'r2', tag: 'WC-1', sequence_order: 1, status: 'alternate', specified_manufacturer: 'TOTO', specified_model: 'CT708UVG#01', specified_description: 'WATER CLOSET', submitted_manufacturer: 'TOTO', submitted_model: 'CT728', submitted_label: 'TOTO CT728 kit', supply_house_id: null, source_quote_line_id: null, source_count_row_id: null, reason_kind: 'lead_time', reason_note: null, lead_time_days: 14, sheet_file: null, sheet_pages: [], sheet_source: null, review_decision: null, review_note: null, reviewed_at: null, reviewed_by_name: null, reviewed_by_email: null, reviewed_by_person_id: null, carried_from_item_id: null, decision_source: 'room', decision_entered_by: null, decision_entered_by_name: null, order_only: false, created_at: '', updated_at: '', ...o })
-const people = [{ id: 'p1', room_id: 'room', name: 'Dana Whitfield', email: 'dana@arch.test', role: 'architect', may_decide: true, token: 't', how: 'named', invited_by: null, first_seen_at: null, last_seen_at: null, open_count: 0, closed_at: null, created_at: '', updated_at: '' }] as unknown as SubmittalPersonRow[]
 
-describe('SubmittalItemEditDialog · entered call (5b)', () => {
-  it('a draft shows no on-behalf section', () => {
-    renderWithProviders(<SubmittalItemEditDialog item={item()} sourceFiles={[]} people={people} onSave={() => {}} onClose={() => {}} />)
-    expect(screen.queryByTestId('entered-call')).toBeNull()
+describe('SubmittalItemEditDialog · their answer, read here and entered in its own window (2026-10-02)', () => {
+  it('a row that does not exist yet shows no answer line', () => {
+    renderWithProviders(<SubmittalItemEditDialog item={item()} sourceFiles={[]} onSave={() => {}} onClose={() => {}} />)
+    expect(screen.queryByTestId('their-answer-line')).toBeNull()
   })
 
-  it('enters Revise on behalf of a person on the room and Save carries it', () => {
+  it('reads the answer the row carries, and who entered it', () => {
+    const { unmount } = renderWithProviders(<SubmittalItemEditDialog item={item()} sourceFiles={[]} canEnterDecision onSave={() => {}} onClose={() => {}} />)
+    expect(screen.getByTestId('their-answer-line').textContent).toContain('None yet.')
+    unmount()
+    renderWithProviders(<SubmittalItemEditDialog item={item({ review_decision: 'approved', reviewed_by_name: 'Dana Whitfield', decision_source: 'entered', decision_entered_by_name: 'Wendi' })} sourceFiles={[]} canEnterDecision onSave={() => {}} onClose={() => {}} />)
+    expect(screen.getByTestId('their-answer-line').textContent).toContain('Approved · Dana Whitfield · entered by Wendi')
+    // Nothing about the answer is typed here any more.
+    expect(screen.queryByLabelText('Who answered')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Revise' })).toBeNull()
+  })
+
+  it('Save and enter their answer… saves the row as Save would, and says to open the answer window; plain Save does not', () => {
     const onSave = vi.fn<(p: SubmittalItemPatch) => void>()
-    renderWithProviders(<SubmittalItemEditDialog item={item()} sourceFiles={[]} people={people} canEnterDecision onSave={onSave} onClose={() => {}} />)
-    fireEvent.click(screen.getByTestId('enter-call-open'))
-    expect((screen.getByLabelText('Whose call') as HTMLSelectElement).value).toBe('p1')
-    fireEvent.click(screen.getByRole('button', { name: 'Revise' }))
-    fireEvent.change(screen.getByLabelText('Their note'), { target: { value: 'elongated bowl' } })
+    renderWithProviders(<SubmittalItemEditDialog item={item()} sourceFiles={[]} canEnterDecision onSave={onSave} onClose={() => {}} />)
+    fireEvent.change(screen.getByLabelText('Note'), { target: { value: 'elongated bowl' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-    expect(onSave).toHaveBeenCalledTimes(1)
-    expect(onSave.mock.calls[0]![0].entered).toEqual({ decision: 'revise', note: 'elongated bowl', person: { id: 'p1' } })
-    expect(onSave.mock.calls[0]![0].clearDecision).toBe(false)
+    expect(onSave.mock.calls[0]![0].reason_note).toBe('elongated bowl')
+    expect('thenAnswer' in onSave.mock.calls[0]![0]).toBe(false)
+    fireEvent.click(screen.getByTestId('their-answer-open'))
+    expect(onSave.mock.calls[1]![0]).toMatchObject({ reason_note: 'elongated bowl', thenAnswer: true })
   })
 
-  it('2026-10-02 · it says nothing is sent: before the section opens, for a person on the room, and where a new email is typed', () => {
-    renderWithProviders(<SubmittalItemEditDialog item={item()} sourceFiles={[]} people={people} canEnterDecision onSave={() => {}} onClose={() => {}} />)
-    expect(screen.getByTestId('entered-call').textContent).toContain('This only records their call. Nobody is emailed.')
-    fireEvent.click(screen.getByTestId('enter-call-open'))
-    // Dana is on the room: no email is asked for, and the line says nobody is contacted.
-    expect(screen.getByTestId('reviewer-no-contact').textContent).toBe('Only for the record. Nobody is emailed or contacted.')
-    fireEvent.change(screen.getByLabelText('Whose call'), { target: { value: 'new' } })
-    expect(screen.getByTestId('reviewer-no-contact').textContent).toBe('Only for the record. Nobody is emailed or contacted. The email stays in the office. It tells the room who they are if they open it later.')
-    expect((screen.getByLabelText('Reviewer email') as HTMLInputElement).placeholder).toBe('their email')
-  })
-
-  it('a reviewer not on the room needs a name and an email before Save; then the new person rides along', () => {
-    const onSave = vi.fn<(p: SubmittalItemPatch) => void>()
-    renderWithProviders(<SubmittalItemEditDialog item={item()} sourceFiles={[]} people={people} canEnterDecision onSave={onSave} onClose={() => {}} />)
-    fireEvent.click(screen.getByTestId('enter-call-open'))
-    fireEvent.change(screen.getByLabelText('Whose call'), { target: { value: 'new' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Approved' }))
+  it('a lead time that does not read holds the door, as it holds Save', () => {
+    renderWithProviders(<SubmittalItemEditDialog item={item()} sourceFiles={[]} canEnterDecision onSave={() => {}} onClose={() => {}} />)
+    fireEvent.change(screen.getByLabelText('Lead time, typed'), { target: { value: 'soonish' } })
+    expect((screen.getByTestId('their-answer-open') as HTMLButtonElement).disabled).toBe(true)
     expect((screen.getByRole('button', { name: 'Save' }) as HTMLButtonElement).disabled).toBe(true)
-    fireEvent.change(screen.getByLabelText('Reviewer name'), { target: { value: 'Tom Reyes' } })
-    fireEvent.change(screen.getByLabelText('Reviewer email'), { target: { value: 'tom@owner.test' } })
-    fireEvent.change(screen.getByLabelText('Reviewer role'), { target: { value: 'owners_rep' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-    expect(onSave.mock.calls[0]![0].entered).toEqual({ decision: 'approved', note: '', person: { name: 'Tom Reyes', email: 'tom@owner.test', role: 'owners_rep' } })
-  })
-
-  it('a call carries the day they made it: an earlier day rides along, today adds nothing, a later day holds Save', () => {
-    const onSave = vi.fn<(p: SubmittalItemPatch) => void>()
-    renderWithProviders(<SubmittalItemEditDialog item={item()} sourceFiles={[]} people={people} canEnterDecision onSave={onSave} onClose={() => {}} />)
-    fireEvent.click(screen.getByTestId('enter-call-open'))
-    fireEvent.click(screen.getByRole('button', { name: 'Approved' }))
-    const day = screen.getByLabelText('The day of their call') as HTMLInputElement
-    expect(day.value).toMatch(/^\d{4}-\d{2}-\d{2}$/)
-    expect(day.max).toBe(day.value)
-    fireEvent.change(day, { target: { value: '2099-01-01' } })
-    expect(screen.getByText('Their call cannot be dated after today.')).toBeTruthy()
-    expect((screen.getByRole('button', { name: 'Save' }) as HTMLButtonElement).disabled).toBe(true)
-    fireEvent.change(day, { target: { value: '2026-09-12' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-    expect(onSave.mock.calls[0]![0].entered).toEqual({ decision: 'approved', note: '', person: { id: 'p1' }, on: '2026-09-12' })
-  })
-
-  it('an entered call reads who typed it and can be cleared', () => {
-    const onSave = vi.fn<(p: SubmittalItemPatch) => void>()
-    renderWithProviders(<SubmittalItemEditDialog item={item({ review_decision: 'revise', reviewed_by_name: 'Dana Whitfield', decision_source: 'entered', decision_entered_by_name: 'Wendi' })} sourceFiles={[]} people={people} canEnterDecision onSave={onSave} onClose={() => {}} />)
-    expect(screen.getByTestId('entered-call').textContent).toContain('Revise · Dana Whitfield · entered by Wendi')
-    fireEvent.click(screen.getByRole('button', { name: 'clear it' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-    expect(onSave.mock.calls[0]![0]).toMatchObject({ entered: null, clearDecision: true })
   })
 })
 
@@ -106,7 +70,7 @@ describe('SubmittalItemEditDialog · supply house', () => {
   })
 
   it('is there on a shared revision too, keeps a house the list does not carry, and hides with no houses', () => {
-    const { unmount } = renderWithProviders(<SubmittalItemEditDialog item={item({ supply_house_id: 'h-gone' })} sourceFiles={[]} people={people} houses={houses} canEnterDecision onSave={() => {}} onClose={() => {}} />)
+    const { unmount } = renderWithProviders(<SubmittalItemEditDialog item={item({ supply_house_id: 'h-gone' })} sourceFiles={[]} houses={houses} canEnterDecision onSave={() => {}} onClose={() => {}} />)
     const picker = screen.getByLabelText('Supply house') as HTMLSelectElement
     expect(picker.value).toBe('h-gone')
     expect(screen.getByRole('option', { name: 'The house on this row' })).toBeTruthy()
@@ -120,7 +84,7 @@ describe('SubmittalItemEditDialog · the window fits the screen (2026-10-02)', (
   const houses = [{ id: 'h-moore', name: 'Moore Supply' }, { id: 'h-national', name: 'National Wholesale' }]
 
   it('the title and the Save row hold still; the fields between them are what scrolls, never the backdrop', () => {
-    renderWithProviders(<SubmittalItemEditDialog item={item()} sourceFiles={[]} people={people} houses={houses} canEnterDecision onSave={() => {}} onClose={() => {}} />)
+    renderWithProviders(<SubmittalItemEditDialog item={item()} sourceFiles={[]} houses={houses} canEnterDecision onSave={() => {}} onClose={() => {}} />)
     const dialog = screen.getByRole('dialog')
     const body = screen.getByTestId('edit-row-body')
     // The window is held to the screen, so its top can never sit above the top edge.
@@ -135,7 +99,7 @@ describe('SubmittalItemEditDialog · the window fits the screen (2026-10-02)', (
     // Inside it: every field.
     expect(body.contains(screen.getByLabelText('Supply house'))).toBe(true)
     expect(body.contains(screen.getByLabelText('Note'))).toBe(true)
-    expect(body.contains(screen.getByTestId('entered-call'))).toBe(true)
+    expect(body.contains(screen.getByTestId('their-answer-line'))).toBe(true)
   })
 
   it('opened from a Procure line on a row with no parts: the house box is ready; opened from the row, nothing is', () => {
@@ -211,23 +175,6 @@ describe('SubmittalItemEditDialog · parts, each bought on its own (2026-10-01)'
     expect(screen.queryByTestId('add-part')).toBeNull()
     fireEvent.change(screen.getByLabelText('Lead time for part 2'), { target: { value: 'soonish' } })
     expect((screen.getByRole('button', { name: 'Save' }) as HTMLButtonElement).disabled).toBe(true)
-  })
-
-  it('a call entered on a row with parts covers the parts ticked; all the GC sees to start, none holds Save', () => {
-    const onSave = vi.fn<(p: SubmittalItemPatch) => void>()
-    renderWithProviders(<SubmittalItemEditDialog item={item({ tag: 'LAV-1' })} parts={parts} houses={houses} people={people} sourceFiles={[]} canEnterDecision onSave={onSave} onClose={() => {}} />)
-    fireEvent.click(screen.getByTestId('enter-call-open'))
-    fireEvent.click(screen.getByRole('button', { name: 'Revise' }))
-    const box = screen.getByTestId('entered-call-parts')
-    expect(box.textContent).toContain('TSL.MON.B.38.2.PS1.BK')
-    expect(box.textContent).not.toContain('BRASSCRA')
-    fireEvent.click(screen.getByRole('checkbox', { name: /TSL\.MON/ }))
-    fireEvent.click(screen.getByRole('checkbox', { name: /TOTO T25S51E#CP/ }))
-    expect(screen.getByText('Tick at least one part.')).toBeTruthy()
-    expect((screen.getByRole('button', { name: 'Save' }) as HTMLButtonElement).disabled).toBe(true)
-    fireEvent.click(screen.getByRole('checkbox', { name: /TOTO T25S51E#CP/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-    expect(onSave.mock.calls[0]![0].entered).toMatchObject({ decision: 'revise', person: { id: 'p1' }, partIds: ['faucet'] })
   })
 
   it('a row with no parts can be listed as parts on a draft, starting from its product', () => {

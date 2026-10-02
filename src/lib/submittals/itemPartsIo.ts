@@ -115,9 +115,12 @@ export async function enterCallOnParts(db: SupabaseClient, itemId: string, patch
   return target.length
 }
 
-/** Take the entered and robot calls back off a row's parts, then write the row's roll-up. */
-export async function clearEnteredCallsOnParts(db: SupabaseClient, itemId: string, clear: CallPatch): Promise<void> {
-  const { error } = await db.from('bid_submittal_item_parts').update({ ...clear, updated_at: new Date().toISOString() }).eq('item_id', itemId).in('decision_source', ['entered', 'robot'])
+/** Take the entered and robot calls back off a row's parts (every one, or the parts named), then write the row's roll-up. */
+export async function clearEnteredCallsOnParts(db: SupabaseClient, itemId: string, clear: CallPatch, partIds?: ReadonlyArray<string>): Promise<void> {
+  if (partIds && partIds.length === 0) return
+  let q = db.from('bid_submittal_item_parts').update({ ...clear, updated_at: new Date().toISOString() }).eq('item_id', itemId).in('decision_source', ['entered', 'robot'])
+  if (partIds) q = q.in('id', [...partIds])
+  const { error } = await q
   if (error) throw error
   await writeRowCallFromParts(db, itemId)
 }
