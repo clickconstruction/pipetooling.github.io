@@ -29,6 +29,7 @@ type LineRow = {
   row: { n: number | string | null } | null
   bid: { outcome: string | null; adopted_into_bid_id: string | null; estimator_id: string | null; created_by: string | null } | null
   price: {
+    id: string
     part_id: string
     supply_house_id: string
     price: number | string
@@ -48,7 +49,7 @@ type HistoryRow = {
 }
 
 export const BASKET_LINE_SELECT =
-  'id, quantity, unit_price, bid_id, row:bids_count_rows(n:count), bid:bids(outcome, adopted_into_bid_id, estimator_id, created_by), price:material_part_prices(part_id, supply_house_id, price, updated_at, part:material_parts(name, service_type_id, is_robot), house:supply_houses(name))'
+  'id, quantity, unit_price, bid_id, row:bids_count_rows(n:count), bid:bids(outcome, adopted_into_bid_id, estimator_id, created_by), price:material_part_prices(id, part_id, supply_house_id, price, updated_at, part:material_parts(name, service_type_id, is_robot), house:supply_houses(name))'
 
 /** The twins' user ids, to leave a robot's bids out; empty when the reader may not see them. */
 async function loadTwinUserIds(db: SupabaseClient): Promise<ReadonlySet<string>> {
@@ -77,6 +78,7 @@ export function basketFromLines(rows: ReadonlyArray<LineRow>, opts: { serviceTyp
     let pair = pairs.get(key)
     if (!pair) {
       pair = {
+        priceId: price.id,
         partId: price.part_id,
         houseId: price.supply_house_id,
         partName: price.part.name ?? 'Part',

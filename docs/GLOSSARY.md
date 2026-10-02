@@ -1146,6 +1146,8 @@ Assistant verification of a price before ordering. Tracked per PO item.
 
 **Purpose**: Ensure prices are current before placing orders
 
+**Check 20 prices** (v2.4392, Materials → Parts Book card) confirms book prices the same way at the price row: **Same** sets `material_part_prices.effective_date` to today, so `track_price_history` logs a same-price row; a typed price sets price and date together ([`priceCheckIo.ts`](../src/lib/materials/priceCheckIo.ts))
+
 ### Service Type
 Trade category (Plumbing, Electrical, HVAC) used to organize materials and bids by specialty. Each part, template, purchase order, and bid must be assigned a service type.
 

@@ -9,10 +9,12 @@ import {
   monthEndDay,
   monthName,
   monthsBetween,
+  parsePriceInput,
   verdictText,
 } from './materialPriceIndex'
 
 const pair = (partId: string, over: Partial<BasketPair> = {}): BasketPair => ({
+  priceId: `price-${partId}-${over.houseId ?? 'reece'}`,
   partId,
   houseId: 'reece',
   partName: partId.toUpperCase(),
@@ -226,5 +228,54 @@ describe('words', () => {
     expect(verdictText({ sinceBase: -0.025, baseMonth: '2026-02' })).toBe('Down 2.5% since February')
     expect(changeText(0.031)).toBe('up 3.1%')
     expect(changeText(0)).toBe('about the same')
+  })
+})
+
+describe('Check 20 prices', () => {
+  it('lists the 20 parts you spend most on, oldest check first, with their share of spend', () => {
+    const basket = Array.from({ length: 25 }, (_, i) => pair(`p${i}`, { spend: 100 + i, priceUpdatedDay: `2026-09-${String(10 + (i % 15)).padStart(2, '0')}` }))
+    const out = computeMaterialPriceIndex({ events: [], basket, today: '2026-10-02' })!
+    expect(out.checks.items).toHaveLength(20)
+    // The five cheapest (p0–p4) are left off.
+    expect(out.checks.items.some((i) => ['p0', 'p1', 'p2', 'p3', 'p4'].includes(i.partId))).toBe(false)
+    const days = out.checks.items.map((i) => i.lastCheckedDay)
+    expect(days).toEqual([...days].sort())
+    const total = basket.reduce((s, p) => s + p.spend, 0)
+    expect(out.checks.spendShare).toBeCloseTo(basket.slice(5).reduce((s, p) => s + p.spend, 0) / total, 10)
+    expect(out.checks.items[0]!.priceId).toMatch(/^price-p/)
+  })
+
+  it('reminds you once the oldest of them is more than 30 days old', () => {
+    const fresh = computeMaterialPriceIndex({ events: [], basket: [pair('a', { priceUpdatedDay: '2026-09-02' })], today: '2026-10-02' })!
+    expect(fresh.checks).toMatchObject({ due: false, oldestDay: '2026-09-02' })
+    const due = computeMaterialPriceIndex({ events: [], basket: [pair('a', { priceUpdatedDay: '2026-09-01' })], today: '2026-10-02' })!
+    expect(due.checks.due).toBe(true)
+  })
+
+  it('a check today makes the part fresh, and a price with no date sorts first and is due', () => {
+    const out = computeMaterialPriceIndex({
+      events: [ev('a', '2026-10-02', 10, 10)],
+      basket: [pair('a', { priceUpdatedDay: '2026-04-14' }), pair('b', { priceUpdatedDay: null })],
+      today: '2026-10-02',
+    })!
+    expect(out.checks.items.map((i) => [i.partId, i.lastCheckedDay])).toEqual([['b', null], ['a', '2026-10-02']])
+    expect(out.checks.due).toBe(true)
+  })
+})
+
+describe('parsePriceInput', () => {
+  it('reads a typed price with or without a dollar sign and commas', () => {
+    expect(parsePriceInput('12.5')).toBe(12.5)
+    expect(parsePriceInput(' $1,234.567 ')).toBe(1234.57)
+    expect(parsePriceInput('.75')).toBe(0.75)
+  })
+
+  it('refuses nothing, zero, words and the stand-in', () => {
+    expect(parsePriceInput('')).toBeNull()
+    expect(parsePriceInput('0')).toBeNull()
+    expect(parsePriceInput('abc')).toBeNull()
+    expect(parsePriceInput('1.2.3')).toBeNull()
+    expect(parsePriceInput('-5')).toBeNull()
+    expect(parsePriceInput('999999')).toBeNull()
   })
 })

@@ -2,7 +2,7 @@
 title: track what your materials cost
 category: Office
 roles: dev, master_technician, assistant, estimator
-keywords: material prices, inflation, price creep, price history, price index, parts book, supply house prices, stale prices, fresh prices, copper, pvc, what your materials cost
+keywords: material prices, inflation, price creep, price history, price index, parts book, supply house prices, stale prices, fresh prices, copper, pvc, what your materials cost, check 20 prices, confirm a price, same price
 order: 83
 ---
 Materials → Parts Book opens with a card called What your materials cost. It compares what the parts you bid with cost today against February. It also says how fresh those prices are.
@@ -22,6 +22,18 @@ Materials → Parts Book opens with a card called What your materials cost. It c
 - The bar splits your bid dollars three ways. Dark green was checked in the last 30 days. Light green was checked 31 to 90 days ago. Amber is older than that.
 - The card holds the number back when too few prices are fresh. That happens when less than half of your bid dollars sit on a price checked in the last 90 days. The card then says *Not enough fresh prices to say*.
 - A flat number on old prices only means nobody looked. Keep the prices you bid with most up to date.
+
+## Check 20 prices
+
+- Press {{button:blue|Check 20 prices}} on the card. A window lists the 20 parts you spend the most on. The oldest price comes first.
+- Type today's price and press {{button:blue|Save}}. If the price has not changed, press {{button:outline|Same}}.
+- Same records that you checked the price today. It changes nothing else.
+- A new price changes the book from today. A bid keeps the prices it already has.
+- The window warns you when a new price is a big change from the old one. Check the size and the pack before you save.
+- Each check also shows in that part's Price History.
+- Pick one person to check the prices on the first Monday of each month. It takes about ten minutes.
+- The card reminds you when the oldest of the 20 was checked more than 30 days ago.
+- Under the button, the card says how much of what you bid those parts cover.
 
 ## What it leaves out
 
