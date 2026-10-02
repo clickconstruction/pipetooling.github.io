@@ -5,6 +5,9 @@
  * presets or typed), and the cut sheet as a file + page range typed from the
  * vendor PDF (stage 3 makes the pages a tap). Save writes the item row.
  *
+ * The window is about the product we submit. What the reviewer answered is recorded in a window
+ * of its own (`SubmittalAnswerDialog`); this one reads the answer in one line and offers the door.
+ *
  * The supply house is the office's own fact — who the part is bought from — so
  * it can be set on any revision, shared or not; the GC's room never shows it.
  *
@@ -18,27 +21,12 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react'
 
 import { needsReason, REASON_LABELS, STATUS_LABELS, type ProductStatus, type ReasonKind } from '../../lib/submittals/productStatus'
 import { describeLeadTime, LEAD_TIME_PRESETS, parseLeadTime } from '../../lib/submittals/leadTime'
-import { asDecision, asReason, asStatus, formatPages, parsePageRange, type ReviewDecision, type SourceFile, type SubmittalItemRow } from '../../lib/submittals/submittalRevision'
+import { asDecision, asReason, asStatus, formatPages, parsePageRange, type SourceFile, type SubmittalItemRow } from '../../lib/submittals/submittalRevision'
 import { DECISION_LABELS } from '../../lib/submittals/reviewDecisions'
-import { ENTERED_ON_MIN, enteredOnProblem, enteredSuffix } from '../../lib/submittals/enteredDecisions'
-import { initialReviewerPick, reviewerChoiceFrom, reviewerPickBad, type ReviewerChoice, type ReviewerPick } from '../../lib/submittals/reviewerPick'
-import type { SubmittalPersonRow } from '../../lib/submittals/submittalRoom'
-import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { enteredSuffix } from '../../lib/submittals/enteredDecisions'
 import { ProductStatusChip } from './ProductStatusChip'
 import { SubmittalPartsEditor } from './SubmittalPartsEditor'
-import { assemblyLine, partLeadTextsBad, partToDraft, rollUpFromParts, splitPartLabel, type PartDraft, type PartLeadTexts, type SubmittalPartRow } from '../../lib/submittals/itemParts'
-import { SubmittalReviewerPicker } from './SubmittalReviewerPicker'
-
-/** A decision the office enters on a reviewer's behalf (stage 5b): an existing person on the room, or one not on it yet. */
-export type EnteredChoice = {
-  decision: ReviewDecision
-  note: string
-  person: ReviewerChoice
-  /** The day of their call (YYYY-MM-DD) when it is not today: an approval that came by email last week. */
-  on?: string
-  /** On a row with parts (2026-10-01): the parts the call covers; absent = every part the GC sees. */
-  partIds?: string[]
-}
+import { assemblyLine, partCallsLine, partLeadTextsBad, partToDraft, rollUpFromParts, type PartDraft, type PartLeadTexts, type SubmittalPartRow } from '../../lib/submittals/itemParts'
 
 const Z = 10060
 
@@ -55,10 +43,8 @@ export type SubmittalItemPatch = {
   submitted_label?: string | null
   /** The house the part is bought from — on the patch only when the picker was changed. */
   supply_house_id?: string | null
-  /** 5b: a call entered from the reviewer's file, on their behalf. */
-  entered?: EnteredChoice | null
-  /** 5b: take the entered call back off the row. */
-  clearDecision?: boolean
+  /** Once the row is saved, open the window that records what the reviewer answered. */
+  thenAnswer?: boolean
   /** The row's parts as the editor left them (2026-10-01); absent when the row has none. */
   parts?: PartDraft[]
 }
@@ -88,7 +74,7 @@ const chipButton = (on: boolean): CSSProperties => ({
 const fieldLabel: CSSProperties = { fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 const inputStyle: CSSProperties = { padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, font: 'inherit', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-strong)' }
 
-export function SubmittalItemEditDialog({ item, sourceFiles, people = [], houses = [], parts = [], canEnterDecision = false, canEditProduct = false, orderOnly = false, focusPartId = null, focusHouse = false, onSave, onClose }: { /** 2026-10-02 · the row is order only: the GC never sees it, so no status, reason, note, cut sheet or call is asked */ orderOnly?: boolean; item: SubmittalItemRow; sourceFiles: SourceFile[]; /** the part a Procure line opened the window on (2026-10-02) */ focusPartId?: string | null; /** a Procure line opened the window on a row with no parts: its house box is scrolled to and ready */ focusHouse?: boolean; /** the row's parts (2026-10-01) */ parts?: ReadonlyArray<SubmittalPartRow>; /** the supply houses to pick from; none hides the picker */ houses?: ReadonlyArray<{ id: string; name: string }>; /** the room's people, for the on-behalf-of picker (5b) */ people?: SubmittalPersonRow[]; /** the revision was shared, so a reviewer's call makes sense */ canEnterDecision?: boolean; /** a draft: the tag and the product can be typed (v2.4090) */ canEditProduct?: boolean; onSave: (patch: SubmittalItemPatch) => void; onClose: () => void }) {
+export function SubmittalItemEditDialog({ item, sourceFiles, houses = [], parts = [], canEnterDecision = false, canEditProduct = false, orderOnly = false, focusPartId = null, focusHouse = false, onSave, onClose }: { /** 2026-10-02 · the row is order only: the GC never sees it, so no status, reason, note, cut sheet or call is asked */ orderOnly?: boolean; item: SubmittalItemRow; sourceFiles: SourceFile[]; /** the part a Procure line opened the window on (2026-10-02) */ focusPartId?: string | null; /** a Procure line opened the window on a row with no parts: its house box is scrolled to and ready */ focusHouse?: boolean; /** the row's parts (2026-10-01) */ parts?: ReadonlyArray<SubmittalPartRow>; /** the supply houses to pick from; none hides the picker */ houses?: ReadonlyArray<{ id: string; name: string }>; /** the row exists, so their answer can be recorded on it */ canEnterDecision?: boolean; /** a draft: the tag and the product can be typed (v2.4090) */ canEditProduct?: boolean; onSave: (patch: SubmittalItemPatch) => void; onClose: () => void }) {
   const [tagText, setTagText] = useState(item.tag)
   const [submittedText, setSubmittedText] = useState(item.submitted_label ?? [item.submitted_manufacturer, item.submitted_model].filter(Boolean).join(' '))
   const [houseId, setHouseId] = useState<string | null>(item.supply_house_id ?? null)
@@ -98,24 +84,9 @@ export function SubmittalItemEditDialog({ item, sourceFiles, people = [], houses
   const partsBad = partDrafts != null && partLeadTextsBad(partLeadTexts, partDrafts.length)
   const partsRollUp = partDrafts ? rollUpFromParts(partDrafts.filter((d) => d.label.trim()).map((d, i) => ({ ...d, label: d.label.trim(), sequence_order: i + 1 }))) : null
   const houseChanged = houseId !== (item.supply_house_id ?? null)
-  // 5b · a call entered on a reviewer's behalf
+  // What the reviewer answered is read here and entered in its own window.
   const currentDecision = asDecision(item.review_decision)
-  const [enterOpen, setEnterOpen] = useState(false)
-  const [enterPick, setEnterPick] = useState<ReviewerPick>(() => initialReviewerPick(people))
-  const [enterDecision, setEnterDecision] = useState<ReviewDecision | null>(null)
-  const [enterNote, setEnterNote] = useState('')
-  const today = todayYmdInAppTz()
-  const [enterOn, setEnterOn] = useState(today)
-  const [clearDecision, setClearDecision] = useState(false)
-  // 2026-10-01 · a call entered on a row with parts covers the parts ticked here; all the GC sees to start.
-  const gcParts = parts.filter((p) => p.on_submittal)
-  const [enterParts, setEnterParts] = useState<Set<string>>(() => new Set(gcParts.map((p) => p.id)))
-  const enterPartsNone = gcParts.length > 0 && enterParts.size === 0
-  const enterNewBad = reviewerPickBad(enterPick)
-  const enterOnProblem = enteredOnProblem(enterOn, today)
-  const enterBad = enterOpen && enterDecision != null && (enterNewBad || enterOnProblem != null || enterPartsNone)
-  const partsChosen = gcParts.length > 0 && enterParts.size < gcParts.length ? { partIds: gcParts.filter((p) => enterParts.has(p.id)).map((p) => p.id) } : {}
-  const entered: EnteredChoice | null = enterOpen && enterDecision && !enterNewBad && !enterOnProblem && !enterPartsNone ? { decision: enterDecision, note: enterNote, person: reviewerChoiceFrom(enterPick), ...(enterOn && enterOn !== today ? { on: enterOn } : {}), ...partsChosen } : null
+  const partCalls = partCallsLine(parts)
   const [status, setStatus] = useState<ProductStatus>(asStatus(item.status))
   const [reasonKind, setReasonKind] = useState<ReasonKind | null>(asReason(item.reason_kind))
   const [note, setNote] = useState(item.reason_note ?? '')
@@ -131,6 +102,21 @@ export function SubmittalItemEditDialog({ item, sourceFiles, people = [], houses
   const askWhy = needsReason(status)
   const title = item.tag.trim() ? `${item.tag} · ${[item.specified_manufacturer, item.specified_model].filter(Boolean).join(' ') || item.specified_description || ''}` : `Accessory · ${item.submitted_label ?? ''}`
   const smallMuted: CSSProperties = { fontSize: '0.75rem', color: 'var(--text-muted)' }
+  const saveBad = leadTextBad || pagesBad || partsBad
+  const save = (thenAnswer: boolean) =>
+    onSave({
+      status,
+      reason_kind: askWhy ? reasonKind : null,
+      reason_note: note.trim() || null,
+      lead_time_days: leadText.trim() === '' ? leadDays : parseLeadTime(leadText),
+      sheet_file: file && pages.length > 0 ? sheetFile : null,
+      sheet_pages: file ? pages : [],
+      sheet_source: file && pages.length > 0 ? 'estimator' : null,
+      ...(canEditProduct ? { ...(tagText.trim() !== item.tag.trim() ? { tag: tagText.trim().toUpperCase() } : {}), ...(partDrafts == null ? { submitted_label: submittedText.trim() || null } : {}) } : {}),
+      ...(houseChanged && partDrafts == null ? { supply_house_id: houseId } : {}),
+      ...(partDrafts != null ? { parts: partDrafts } : {}),
+      ...(thenAnswer ? { thenAnswer: true } : {}),
+    })
   const houseRef = useRef<HTMLSelectElement | null>(null)
   // Read once, on open: the window keeps its own place after that.
   const focusHouseOnOpen = useRef(focusHouse)
@@ -269,69 +255,23 @@ export function SubmittalItemEditDialog({ item, sourceFiles, people = [], houses
         )}
 
         {canEnterDecision && !orderOnly ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', borderTop: '1px solid var(--border)', paddingTop: '0.6rem' }} data-testid="entered-call">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
-              <span style={fieldLabel}>Their call · on behalf of a reviewer</span>
-              {currentDecision ? (
-                <span style={smallMuted}>
-                  now: <b style={{ color: 'var(--text-strong)' }}>{DECISION_LABELS[currentDecision]}</b>{item.reviewed_by_name ? ` · ${item.reviewed_by_name}` : ''}{enteredSuffix(item) ? ` · ${enteredSuffix(item)}` : ''}
-                  {item.decision_source === 'entered' || item.decision_source === 'robot' ? (
-                    <>
-                      {' · '}
-                      <button type="button" aria-pressed={clearDecision} onClick={() => setClearDecision((v) => !v)} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.75rem', color: clearDecision ? 'var(--text-red-700)' : 'var(--text-link)', cursor: 'pointer', textDecoration: 'underline dotted' }}>
-                        {clearDecision ? 'will be cleared on Save' : 'clear it'}
-                      </button>
-                    </>
-                  ) : null}
-                </span>
-              ) : null}
-            </div>
-            {!enterOpen ? (
-              <div>
-                <button type="button" onClick={() => setEnterOpen(true)} style={{ background: 'none', border: '1px dashed var(--border-strong)', borderRadius: 4, padding: '0.3rem 0.6rem', font: 'inherit', fontSize: '0.8125rem', color: 'var(--text-base)', cursor: 'pointer' }} data-testid="enter-call-open">
-                  Enter a call from their PDF or email
-                </button>
-                <span style={{ ...smallMuted, marginLeft: '0.5rem' }}>This only records their call. Nobody is emailed. The record reads “entered by you”. The room never shows the file.</span>
-              </div>
-            ) : (
-              <>
-                <SubmittalReviewerPicker people={people} value={enterPick} onChange={setEnterPick} />
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                  <div style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden' }} role="group" aria-label="The call">
-                    {(['approved', 'revise', 'rejected'] as const).map((d) => {
-                      const on = enterDecision === d
-                      return (
-                        <button key={d} type="button" aria-pressed={on} onClick={() => setEnterDecision(on ? null : d)} style={{ padding: '0.35rem 0.75rem', border: 'none', font: 'inherit', fontSize: '0.8125rem', fontWeight: on ? 700 : 500, cursor: 'pointer', background: on ? (d === 'approved' ? '#1f7a3a' : d === 'revise' ? '#b0662f' : '#b42318') : 'var(--surface)', color: on ? 'white' : 'var(--text-muted)' }}>
-                          {DECISION_LABELS[d]}
-                        </button>
-                      )
-                    })}
-                  </div>
-                  <label style={{ display: 'inline-flex', gap: '0.35rem', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                    on
-                    <input type="date" aria-label="The day of their call" title="The day they made the call. It dates the row and the procurement log's Released." value={enterOn} min={ENTERED_ON_MIN} max={today} onChange={(e) => setEnterOn(e.target.value)} style={{ ...inputStyle, borderColor: enterOnProblem ? '#dc2626' : 'var(--border-strong)' }} />
-                  </label>
-                  <input aria-label="Their note" placeholder={enterDecision === 'approved' ? 'their note, if any' : 'what they need instead'} value={enterNote} onChange={(e) => setEnterNote(e.target.value)} style={{ padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, font: 'inherit', fontSize: '0.8125rem', flex: 1, minWidth: 180, background: 'var(--surface)', color: 'var(--text-strong)' }} />
-                </div>
-                {gcParts.length > 1 ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }} data-testid="entered-call-parts">
-                    <span style={smallMuted}>The parts this call covers</span>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.75rem' }}>
-                      {gcParts.map((p) => (
-                        <label key={p.id} style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-base)' }}>
-                          <input type="checkbox" checked={enterParts.has(p.id)} onChange={(e) => setEnterParts((cur) => { const next = new Set(cur); if (e.target.checked) next.add(p.id); else next.delete(p.id); return next })} />
-                          {splitPartLabel(p.label).head}
-                          {p.review_decision ? <span style={smallMuted}> · now {DECISION_LABELS[p.review_decision as ReviewDecision] ?? p.review_decision}</span> : null}
-                        </label>
-                      ))}
-                    </div>
-                    {enterPartsNone ? <span style={{ ...smallMuted, color: 'var(--text-amber-700)' }}>Tick at least one part.</span> : null}
-                  </div>
-                ) : null}
-                {enterDecision && enterNewBad ? <span style={{ ...smallMuted, color: 'var(--text-amber-700)' }}>A name and an email, so the record says whose call it is.</span> : null}
-                {enterOnProblem ? <span style={{ ...smallMuted, color: 'var(--text-amber-700)' }}>{enterOnProblem}</span> : null}
-              </>
-            )}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', borderTop: '1px solid var(--border)', paddingTop: '0.6rem' }} data-testid="their-answer-line">
+            <span style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', minWidth: 0 }}>
+              <span style={fieldLabel}>Their answer</span>
+              <span style={smallMuted}>
+                {currentDecision ? (
+                  <>
+                    <b style={{ color: 'var(--text-strong)' }}>{DECISION_LABELS[currentDecision]}</b>
+                    {partCalls ? ` · ${partCalls}` : ''}{item.reviewed_by_name ? ` · ${item.reviewed_by_name}` : ''}{enteredSuffix(item) ? ` · ${enteredSuffix(item)}` : ''}
+                  </>
+                ) : (
+                  partCalls || 'None yet.'
+                )}
+              </span>
+            </span>
+            <button type="button" disabled={saveBad} onClick={() => save(true)} title="Saves this window, then opens the one where you record what they said. Nobody is emailed." style={{ background: 'none', border: '1px dashed var(--border-strong)', borderRadius: 4, padding: '0.3rem 0.6rem', font: 'inherit', fontSize: '0.8125rem', color: saveBad ? 'var(--text-faint)' : 'var(--text-base)', cursor: saveBad ? 'not-allowed' : 'pointer' }} data-testid="their-answer-open">
+              Save and enter their answer…
+            </button>
           </div>
         ) : null}
         </div>
@@ -342,27 +282,7 @@ export function SubmittalItemEditDialog({ item, sourceFiles, people = [], houses
             <button type="button" onClick={onClose} style={{ padding: '0.45rem 0.85rem', background: 'var(--bg-muted)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', font: 'inherit' }}>
               Cancel
             </button>
-            <button
-              type="button"
-              disabled={leadTextBad || pagesBad || enterBad || partsBad}
-              onClick={() =>
-                onSave({
-                  status,
-                  reason_kind: askWhy ? reasonKind : null,
-                  reason_note: note.trim() || null,
-                  lead_time_days: leadText.trim() === '' ? leadDays : parseLeadTime(leadText),
-                  sheet_file: file && pages.length > 0 ? sheetFile : null,
-                  sheet_pages: file ? pages : [],
-                  sheet_source: file && pages.length > 0 ? 'estimator' : null,
-                  ...(canEditProduct ? { ...(tagText.trim() !== item.tag.trim() ? { tag: tagText.trim().toUpperCase() } : {}), ...(partDrafts == null ? { submitted_label: submittedText.trim() || null } : {}) } : {}),
-                  ...(houseChanged && partDrafts == null ? { supply_house_id: houseId } : {}),
-                  ...(partDrafts != null ? { parts: partDrafts } : {}),
-                  entered,
-                  clearDecision: clearDecision && !entered,
-                })
-              }
-              style={{ padding: '0.45rem 0.9rem', background: leadTextBad || pagesBad || enterBad || partsBad ? 'var(--bg-200)' : '#16a34a', color: leadTextBad || pagesBad || enterBad || partsBad ? 'var(--text-faint)' : 'white', border: 'none', borderRadius: 4, cursor: leadTextBad || pagesBad || enterBad || partsBad ? 'not-allowed' : 'pointer', font: 'inherit', fontWeight: 600 }}
-            >
+            <button type="button" disabled={saveBad} onClick={() => save(false)} style={{ padding: '0.45rem 0.9rem', background: saveBad ? 'var(--bg-200)' : '#16a34a', color: saveBad ? 'var(--text-faint)' : 'white', border: 'none', borderRadius: 4, cursor: saveBad ? 'not-allowed' : 'pointer', font: 'inherit', fontWeight: 600 }}>
               Save
             </button>
           </div>

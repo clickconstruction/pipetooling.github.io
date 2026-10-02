@@ -55,7 +55,7 @@ serve(async (req) => {
     const a = ask as { id: string; body: string; person_id: string | null } | null
     if (!a?.person_id) return json({ error: 'The question has no person to answer.' }, 400)
     const { data: person } = await admin.from('bid_submittal_people').select('id, name, email, token, closed_at').eq('id', a.person_id).maybeSingle()
-    const p = person as { id: string; name: string; email: string; token: string | null; closed_at: string | null } | null
+    const p = person as { id: string; name: string; email: string | null; token: string | null; closed_at: string | null } | null
     if (!p || !p.email) return json({ error: 'No address on file for that person.' }, 400)
     let token = p.token
     if (!token) {

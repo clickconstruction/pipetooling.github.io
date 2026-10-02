@@ -27,3 +27,15 @@ export async function loadRowOrderFacts(db: Client, bidId: string, tag: string):
   if (error) throw error
   return ((data ?? []) as Array<{ ordered_on: string | null; delivered_on: string | null; po_ref: string | null }>).map((r) => ({ orderedOn: r.ordered_on, deliveredOn: r.delivered_on, poRef: r.po_ref }))
 }
+
+/** Every tag on the bid's log with what it holds, read once when the takeoff window opens. */
+export async function loadBidOrderFacts(db: Client, bidId: string): Promise<Map<string, LogOrderFact[]>> {
+  const { data, error } = await db.from('bid_procurement_items').select('tag, ordered_on, delivered_on, po_ref').eq('bid_id', bidId)
+  if (error) throw error
+  const out = new Map<string, LogOrderFact[]>()
+  for (const r of (data ?? []) as Array<{ tag: string | null; ordered_on: string | null; delivered_on: string | null; po_ref: string | null }>) {
+    if (!r.tag) continue
+    out.set(r.tag, [...(out.get(r.tag) ?? []), { orderedOn: r.ordered_on, deliveredOn: r.delivered_on, poRef: r.po_ref }])
+  }
+  return out
+}

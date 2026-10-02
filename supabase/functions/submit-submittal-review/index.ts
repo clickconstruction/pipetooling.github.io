@@ -43,7 +43,7 @@ function newToken(): string {
 }
 
 type RoomRow = { id: string; bid_id: string; status: string; closed_at: string | null }
-type PersonRow = { id: string; room_id: string; name: string; email: string; role: string; may_decide: boolean; token: string | null; closed_at: string | null; first_seen_at: string | null }
+type PersonRow = { id: string; room_id: string; name: string; email: string | null; role: string; may_decide: boolean; token: string | null; closed_at: string | null; first_seen_at: string | null }
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
@@ -89,7 +89,7 @@ serve(async (req) => {
         const { data: cur } = await admin.from('bid_submittal_people').select('token, first_seen_at, name').eq('id', personId).maybeSingle()
         const c = cur as { token: string | null; first_seen_at: string | null; name: string } | null
         token = c?.token ?? newToken()
-        await admin.from('bid_submittal_people').update({ token, first_seen_at: c?.first_seen_at ?? now, last_seen_at: now, ...(c?.name?.trim() ? {} : { name: v.name }) }).eq('id', personId)
+        await admin.from('bid_submittal_people').update({ token, first_seen_at: c?.first_seen_at ?? now, last_seen_at: now, ...(c?.name?.trim() ? {} : { name: v.name }), ...(res.claimEmail ? { email: v.email } : {}) }).eq('id', personId)
       } else {
         token = newToken()
         const { data: ins, error } = await admin

@@ -9,7 +9,7 @@
 import { useState, type CSSProperties } from 'react'
 
 import { ENTERED_ON_MIN, enteredOnProblem } from '../../lib/submittals/enteredDecisions'
-import { initialReviewerPick, reviewerChoiceFrom, reviewerPickBad, type ReviewerChoice, type ReviewerPick } from '../../lib/submittals/reviewerPick'
+import { initialReviewerPick, NO_REVIEWER_SOURCES, reviewerChoiceFrom, reviewerPickBad, type ReviewerChoice, type ReviewerPick, type ReviewerSources } from '../../lib/submittals/reviewerPick'
 import type { SubmittalPersonRow } from '../../lib/submittals/submittalRoom'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { SubmittalReviewerPicker } from './SubmittalReviewerPicker'
@@ -26,7 +26,7 @@ const fieldLabel: CSSProperties = { fontSize: '0.7rem', fontWeight: 700, letterS
 const inputStyle: CSSProperties = { padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, font: 'inherit', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-strong)' }
 const smallMuted: CSSProperties = { fontSize: '0.75rem', color: 'var(--text-muted)' }
 
-export function SubmittalApproveAllDialog({ revLabel, rows, alreadyDecided, missing, people = [], busy = false, onSave, onClose }: {
+export function SubmittalApproveAllDialog({ revLabel, rows, alreadyDecided, missing, people = [], sources = NO_REVIEWER_SOURCES, busy = false, onSave, onClose }: {
   /** "Rev 1" */
   revLabel: string
   /** Rows the entry will mark Approved (`rowsToApproveAll`). */
@@ -36,12 +36,14 @@ export function SubmittalApproveAllDialog({ revLabel, rows, alreadyDecided, miss
   /** Rows with no product, left out. */
   missing: number
   people?: ReadonlyArray<SubmittalPersonRow>
+  /** the bid's GC and its contacts on file */
+  sources?: ReviewerSources
   busy?: boolean
   onSave: (choice: ApproveAllChoice) => void
   onClose: () => void
 }) {
   const today = todayYmdInAppTz()
-  const [pick, setPick] = useState<ReviewerPick>(() => initialReviewerPick(people))
+  const [pick, setPick] = useState<ReviewerPick>(() => initialReviewerPick(people, sources))
   const [on, setOn] = useState(today)
   const [note, setNote] = useState('')
   const pickBad = reviewerPickBad(pick)
@@ -63,8 +65,8 @@ export function SubmittalApproveAllDialog({ revLabel, rows, alreadyDecided, miss
         <div data-testid="approve-all-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', flex: '1 1 auto', minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', margin: '0 -1.25rem', padding: '0.15rem 1.25rem' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
           <span style={fieldLabel}>Who approved it</span>
-          <SubmittalReviewerPicker people={people} value={pick} onChange={setPick} />
-          {pickBad ? <span style={{ ...smallMuted, color: 'var(--text-amber-700)' }}>A name and an email, so the record says whose call it is.</span> : null}
+          <SubmittalReviewerPicker people={people} value={pick} onChange={setPick} sources={sources} />
+          {pickBad ? <span style={{ ...smallMuted, color: 'var(--text-amber-700)' }}>{pick.name.trim() ? 'That email does not read as an email. Fix it or leave it out.' : 'Type their name, so the record says who approved it.'}</span> : null}
         </div>
 
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
@@ -89,7 +91,7 @@ export function SubmittalApproveAllDialog({ revLabel, rows, alreadyDecided, miss
             type="button"
             disabled={bad || busy}
             data-testid="approve-all-save"
-            onClick={() => onSave({ person: reviewerChoiceFrom(pick), note, ...(on && on !== today ? { on } : {}) })}
+            onClick={() => onSave({ person: reviewerChoiceFrom(pick, sources), note, ...(on && on !== today ? { on } : {}) })}
             style={{ padding: '0.45rem 0.9rem', background: bad || busy ? 'var(--bg-200)' : '#16a34a', color: bad || busy ? 'var(--text-faint)' : 'white', border: 'none', borderRadius: 4, cursor: bad || busy ? 'not-allowed' : 'pointer', font: 'inherit', fontWeight: 600 }}
           >
             Approve {rows} {rows === 1 ? 'row' : 'rows'}

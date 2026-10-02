@@ -688,6 +688,63 @@ describe('BidsSubmittalsTab', () => {
     state.noRoom = false
   })
 
+  it('2026-10-02 · Their answer on a row: one window, an answer per part, one Save; the reviewer is a name with no email and nothing is sent', async () => {
+    state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [], shared_at: null, created_at: '2026-09-15T00:00:00Z' }]
+    state.items = [
+      item({ id: 'p-wc', tag: 'WC-1', sequence_order: 1, submitted_label: 'TOTO CT728CUVG#01 + TOTO TET2UB31#SS', status: 'proposed' }),
+      item({ id: 'a-dwh', tag: 'DWH-1', sequence_order: 2, submitted_label: 'BRADFORD WHITE RE2HP50', status: 'proposed' }),
+    ]
+    state.parts = [
+      { id: 'pt-bowl', item_id: 'p-wc', bid_id: 'b398', sequence_order: 1, label: 'TOTO CT728CUVG#01 TOILET', quantity: 1, on_submittal: true, sheet_pages: [], review_decision: null, decision_source: 'room' },
+      { id: 'pt-valve', item_id: 'p-wc', bid_id: 'b398', sequence_order: 2, label: 'TOTO TET2UB31#SS', quantity: 1, on_submittal: true, sheet_pages: [], review_decision: null, decision_source: 'room' },
+      { id: 'pt-stop', item_id: 'p-wc', bid_id: 'b398', sequence_order: 3, label: 'BRASSCRA PLB113XP ANG', quantity: 1, on_submittal: false, sheet_pages: [], review_decision: null, decision_source: 'room' },
+    ]
+    state.writes = []
+    state.noRoom = true
+    try {
+      mount()
+      await screen.findAllByTestId('submittal-row')
+      // Every row has the door, on a draft too; the row editor no longer asks who or what.
+      fireEvent.click(await screen.findByRole('button', { name: 'Their answer on WC-1' }))
+      const dialog = await screen.findByRole('dialog', { name: 'Their answer on WC-1' })
+      await waitFor(() => expect(within(dialog).getAllByTestId('answer-line')).toHaveLength(2))
+      fireEvent.click(within(within(dialog).getByRole('group', { name: 'Their answer on TOTO TET2UB31#SS' })).getByRole('button', { name: 'Rejected' }))
+      fireEvent.change(within(dialog).getByLabelText('Their note on TOTO TET2UB31#SS'), { target: { value: 'They want TET2UA31#SS' } })
+      fireEvent.click(within(dialog).getByTestId('answer-all-approved'))
+      fireEvent.change(within(dialog).getByLabelText('Who answered'), { target: { value: 'new' } })
+      fireEvent.change(within(dialog).getByLabelText('Reviewer name'), { target: { value: 'Structura' } })
+      expect(within(dialog).getByTestId('answer-save').textContent).toBe('Record 2 answers')
+      fireEvent.click(within(dialog).getByTestId('answer-save'))
+      await waitFor(() => expect(state.writes.some((w) => w.table === 'bid_submittal_events')).toBe(true))
+      // The reviewer joins the room by name alone.
+      expect(state.writes.find((w) => w.table === 'bid_submittal_people')!.payload).toMatchObject({ room_id: 'room-1', name: 'Structura', email: null, how: 'named' })
+      // Each answer is its own write on the parts it covers, in one save.
+      const partWrites = state.writes.filter((w) => w.table === 'bid_submittal_item_parts' && w.op === 'update')
+      expect(partWrites.map((w) => [w.filters.find((f) => f[0] === 'id:in')?.[1], (w.payload as Record<string, unknown>).review_decision, (w.payload as Record<string, unknown>).review_note])).toEqual([
+        [['pt-bowl'], 'approved', null],
+        [['pt-valve'], 'rejected', 'They want TET2UA31#SS'],
+      ])
+      expect(partWrites[1]!.payload).toMatchObject({ reviewed_by_name: 'Structura', reviewed_by_email: null, reviewed_by_person_id: 'person-new', decision_source: 'entered', decision_entered_by_name: 'Wendi' })
+      // One line on the thread and one event for the whole save.
+      expect(state.writes.filter((w) => w.table === 'bid_submittal_messages')).toHaveLength(1)
+      expect(state.writes.find((w) => w.table === 'bid_submittal_messages')!.payload).toMatchObject({ tags: ['WC-1'], metadata: { counts: { approved: 1, revise: 0, rejected: 1 } } })
+      expect(state.writes.filter((w) => w.table === 'bid_submittal_events')).toHaveLength(1)
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+      expect(state.parts.find((p) => p.id === 'pt-valve')).toMatchObject({ review_decision: 'rejected' })
+      expect(state.parts.find((p) => p.id === 'pt-stop')!.review_decision).toBeNull()
+      // The row editor reads the answer in one line and holds the door to the same window.
+      fireEvent.click(screen.getByRole('button', { name: 'Edit WC-1' }))
+      const edit = await screen.findByRole('dialog', { name: 'Edit WC-1' })
+      expect(within(edit).getByTestId('their-answer-line').textContent).toContain('1 approved · 1 rejected')
+      fireEvent.click(within(edit).getByTestId('their-answer-open'))
+      expect(await screen.findByRole('dialog', { name: 'Their answer on WC-1' })).toBeTruthy()
+      expect(screen.queryByRole('dialog', { name: 'Edit WC-1' })).toBeNull()
+    } finally {
+      state.parts = []
+      state.noRoom = false
+    }
+  })
+
   it('2026-10-01 · approved whole: a row with parts takes the approval on every part the GC sees with no call, and reads the roll-up; a row without parts as before', async () => {
     state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'shared', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [], shared_at: '2026-09-20T00:00:00Z', created_at: '2026-09-15T00:00:00Z' }]
     state.items = [
@@ -970,7 +1027,7 @@ describe('BidsSubmittalsTab', () => {
       mount()
       expect(await screen.findByText('No submittal on this bid yet')).toBeTruthy()
       expect(document.querySelector('[data-tour="submittals-source"]')?.textContent).toContain('4 fixtures on the takeoff · no schedule yet · choose from the takeoff')
-      expect(screen.getByTestId('journey-next').textContent).toBe('Next: The takeoff has 4 fixtures. 3 of them have a part. Tick the ones to submit, then build Rev 1 from them. You can type the plans’ schedule later. Then each row is checked against it.Choose from the takeoff')
+      expect(screen.getByTestId('journey-next').textContent).toBe('Next: The takeoff has 4 fixtures. 3 of them have a part. Pick what the GC sees, then build Rev 1 from them. You can type the plans’ schedule later. Then each row is checked against it.Choose from the takeoff')
       expect(screen.getByTestId('source-takeoff').textContent).toContain('The takeoff · 4 fixtures, 3 with a part')
       expect(screen.getByTestId('choose-from-takeoff').textContent).toBe('Choose from the takeoff')
       // v2.4109 · no picks → no picks card; the robot's offer is a line in the schedule card.
@@ -980,10 +1037,10 @@ describe('BidsSubmittalsTab', () => {
       fireEvent.click(screen.getByTestId('build-from-takeoff'))
       const picker = await screen.findByRole('dialog', { name: 'Choose from the takeoff' })
       // Fixtures and equipment ticked; the unpriced sink and the pipe not.
-      expect(within(picker).getByTestId('takeoff-bar').textContent).toBe('2 rows will go on Rev 1 · 2 with a product · 2 left out')
+      expect(within(picker).getByTestId('takeoff-bar').textContent).toBe('2 rows go on Rev 1')
       expect(within(picker).getByTestId('takeoff-group-fixtures').textContent).toContain('Reece')
-      fireEvent.click(within(picker).getByLabelText('UTILITY SINK'))
-      expect(within(picker).getByTestId('takeoff-bar').textContent).toBe('3 rows will go on Rev 1 · 2 with a product, 1 to type · 1 left out')
+      fireEvent.click(within(within(picker).getByRole('group', { name: 'UTILITY SINK' })).getByRole('button', { name: 'GC sees it' }))
+      expect(within(picker).getByTestId('takeoff-bar').textContent).toBe('3 rows go on Rev 1 (1 to type with Edit)')
       fireEvent.click(within(picker).getByTestId('takeoff-confirm'))
       await waitFor(() => expect(state.writes.some((w) => w.op === 'upsert' && w.table === 'bid_submittal_takeoff_choices')).toBe(true))
       expect(state.writes.find((w) => w.table === 'bid_submittals')!.payload).toMatchObject({ bid_id: 'b398', rev_number: 1, status: 'draft' })
@@ -1007,7 +1064,7 @@ describe('BidsSubmittalsTab', () => {
       expect(screen.getAllByTestId('submittal-row')).toHaveLength(3)
       await waitFor(() => expect(screen.getAllByTestId('row-part').map((p) => p.textContent)).toEqual(['A.O. Smith BTH-199WATER HEATER', 'TOTO CT708UVG#01WALL HUNG BOWL']))
       expect(screen.queryByRole('dialog', { name: 'Choose from the takeoff' })).toBeNull()
-      expect(screen.getByTestId('add-from-takeoff').textContent).toBe('+ Add from the takeoff…')
+      expect(screen.getByTestId('add-from-takeoff').textContent).toBe('Choose what the GC sees…')
       // × on the sink: off the draft, and unticked on the takeoff list.
       state.writes = []
       fireEvent.click(screen.getByRole('button', { name: 'Remove UTILITY SINK' }))
@@ -1099,6 +1156,46 @@ describe('BidsSubmittalsTab', () => {
       fireEvent.click(within(takeOff).getByRole('button', { name: 'Cancel' }))
       expect(state.writes).toEqual([])
     } finally {
+      state.procRecords = []
+    }
+  })
+
+  it('2026-10-02 · Choose what the GC sees… on a draft: the rows already on it are not locked, one moves to order only, one comes off, and the bid remembers every pick', async () => {
+    state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [], shared_at: null, created_at: '2026-09-15T00:00:00Z' }]
+    state.items = [
+      item({ id: 'it-1', tag: 'DWH-1', sequence_order: 1, submitted_label: 'A.O. Smith BTH-199', status: 'proposed', source_count_row_id: 'c-wh' }),
+      item({ id: 'it-2', tag: 'WC-1', sequence_order: 2, submitted_label: 'TOTO CT708UVG#01', status: 'proposed', source_count_row_id: 'c-wc' }),
+    ]
+    state.writes = []
+    state.tasks = []
+    state.parts = []
+    state.procRecords = []
+    state.takeoff = true
+    try {
+      mount()
+      await waitFor(() => expect(screen.getAllByTestId('submittal-row')).toHaveLength(2))
+      // What is not on the draft is named under the rows, with a door to bring it back.
+      await waitFor(() => expect(screen.getByTestId('left-out-line').textContent).toContain('Left out · 2 from the takeoff · not submitted, not ordered'))
+      fireEvent.click(screen.getByTestId('add-from-takeoff'))
+      const picker = await screen.findByRole('dialog', { name: 'Choose from the takeoff' })
+      const group = (name: string) => within(within(picker).getByRole('group', { name }))
+      expect(group('DWH-1').getByRole('button', { name: 'GC sees it' }).getAttribute('aria-pressed')).toBe('true')
+      expect(within(picker).getByTestId('takeoff-bar').textContent).toBe('Nothing changes yet.')
+      fireEvent.click(group('DWH-1').getByRole('button', { name: 'Order only' }))
+      fireEvent.click(group('WC-1, WC-2').getByRole('button', { name: 'Left out' }))
+      expect(within(picker).getByTestId('takeoff-bar').textContent).toBe('1 fixture moves to order only · 1 comes off Rev 1')
+      fireEvent.click(within(picker).getByTestId('takeoff-confirm'))
+      await waitFor(() => expect(state.writes.some((w) => w.op === 'upsert' && w.table === 'bid_submittal_takeoff_choices')).toBe(true))
+      expect(state.writes.find((w) => w.op === 'update' && w.table === 'bid_submittal_items')).toMatchObject({ payload: { order_only: true }, filters: [['id', 'it-1']] })
+      expect(state.writes.find((w) => w.op === 'delete' && w.table === 'bid_submittal_items')!.filters).toEqual([['id', 'it-2']])
+      const remembered = (state.writes.find((w) => w.op === 'upsert')!.payload as Array<Record<string, unknown>>).map((r) => [r.count_row_id, r.ticked, r.order_only])
+      expect(remembered).toEqual(expect.arrayContaining([['c-wh', true, true], ['c-wc', false, false], ['c-us', false, false], ['c-pipe', false, false]]))
+      // The draft now: no row for the GC, DWH-1 in the Order only group, three fixtures left out.
+      await waitFor(() => expect(screen.getAllByTestId('order-only-row')).toHaveLength(1))
+      expect(screen.queryAllByTestId('submittal-row')).toHaveLength(0)
+      expect(screen.queryByRole('dialog', { name: 'Choose from the takeoff' })).toBeNull()
+    } finally {
+      state.takeoff = false
       state.procRecords = []
     }
   })

@@ -20,6 +20,9 @@ describe('identify', () => {
     expect(resolveIdentify({ existingByEmail: null, viaPerson: { id: 'p1', email: 'Dana@x.com' }, email: 'dana@x.com' })).toEqual({ kind: 'existing', personId: 'p1' })
     expect(resolveIdentify({ existingByEmail: null, viaPerson: { id: 'p1', email: 'dana@x.com' }, email: 'tom@x.com' })).toEqual({ kind: 'new', how: 'forwarded' })
     expect(resolveIdentify({ existingByEmail: null, viaPerson: null, email: 'tom@x.com' })).toEqual({ kind: 'new', how: 'identified' })
+    // 2026-10-02 · a person the office named without an email is the visitor who arrives on that person's own link.
+    expect(resolveIdentify({ existingByEmail: null, viaPerson: { id: 'named', email: null }, email: 'pm@gc.com' })).toEqual({ kind: 'existing', personId: 'named', claimEmail: true })
+    expect(resolveIdentify({ existingByEmail: { id: 'other' }, viaPerson: { id: 'named', email: null }, email: 'pm@gc.com' })).toEqual({ kind: 'existing', personId: 'other' })
   })
 })
 

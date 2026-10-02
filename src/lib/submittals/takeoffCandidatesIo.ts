@@ -54,7 +54,7 @@ export async function loadTakeoffCandidates(supabase: Client, bidId: string, opt
   const [rowsRes, linesRes, choicesRes, onRes] = await Promise.all([
     supabase.from('bids_count_rows').select('id, fixture, count, bid_version_id, sequence_order').eq('bid_id', bidId).order('sequence_order'),
     supabase.from('bids_takeoff_rough_part_lines').select('id, count_row_id, sequence_order, part_id, source_template_id, quantity, unit_price, source_material_part_price_id, bid_version_id').eq('bid_id', bidId).order('sequence_order'),
-    supabase.from('bid_submittal_takeoff_choices').select('count_row_id, ticked, split, product_line_ids').eq('bid_id', bidId),
+    supabase.from('bid_submittal_takeoff_choices').select('count_row_id, ticked, split, product_line_ids, order_only').eq('bid_id', bidId),
     opts.revisionId ? supabase.from('bid_submittal_items').select('source_count_row_id').eq('submittal_id', opts.revisionId) : Promise.resolve({ data: [] as Array<{ source_count_row_id: string | null }> }),
   ])
   const sel = opts.selectedVersionId ?? null
@@ -101,15 +101,17 @@ export async function loadTakeoffCandidates(supabase: Client, bidId: string, opt
   const choices = new Map<string, boolean>()
   const splits = new Map<string, boolean>()
   const productKeys = new Map<string, string[]>()
-  for (const c of (choicesRes.data ?? []) as Array<{ count_row_id: string; ticked: boolean; split?: boolean | null; product_line_ids?: string[] | null }>) {
+  const orderOnly = new Map<string, boolean>()
+  for (const c of (choicesRes.data ?? []) as Array<{ count_row_id: string; ticked: boolean; split?: boolean | null; product_line_ids?: string[] | null; order_only?: boolean | null }>) {
     choices.set(c.count_row_id, c.ticked)
     if (c.split != null) splits.set(c.count_row_id, !!c.split)
     if (Array.isArray(c.product_line_ids)) productKeys.set(c.count_row_id, c.product_line_ids)
+    if (c.order_only === true) orderOnly.set(c.count_row_id, true)
   }
   const alreadyOn = new Set<string>()
   for (const it of (onRes.data ?? []) as Array<{ source_count_row_id: string | null }>) if (it.source_count_row_id) alreadyOn.add(it.source_count_row_id)
 
-  const candidates = takeoffCandidates({ countRows, lines, parts, templates, assemblies, houses, choices, splits, productKeys, alreadyOn })
+  const candidates = takeoffCandidates({ countRows, lines, parts, templates, assemblies, houses, choices, splits, productKeys, alreadyOn, orderOnly })
   return { candidates, fixtures: candidates.length, withProduct: candidates.filter((c) => c.product).length }
 }
 

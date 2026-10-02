@@ -114,7 +114,7 @@ export function submittalJourney(input: SubmittalJourneyInput): SubmittalJourney
     if (input.picks === 0 && takeoffFixtures > 0) {
       status.picks = 'current'
       const withProduct = input.takeoff?.withProduct ?? 0
-      return finish({ kind: 'next', text: `The takeoff has ${plural(takeoffFixtures, 'fixture')}. ${withProduct} of them have a part. Tick the ones to submit, then build Rev 1 from them.${input.scheduleTags === 0 ? ' You can type the plans’ schedule later. Then each row is checked against it.' : ''}`, action: 'choose_from_takeoff', actionLabel: 'Choose from the takeoff' })
+      return finish({ kind: 'next', text: `The takeoff has ${plural(takeoffFixtures, 'fixture')}. ${withProduct} of them have a part. Pick what the GC sees, then build Rev 1 from them.${input.scheduleTags === 0 ? ' You can type the plans’ schedule later. Then each row is checked against it.' : ''}`, action: 'choose_from_takeoff', actionLabel: 'Choose from the takeoff' })
     }
     if (input.scheduleTags > 0) {
       return finish({ kind: 'next', text: `${plural(input.scheduleTags, 'tag')} on the schedule. Nothing picked yet. Pick a house for each part on Pricing. Or build Rev 1 now and type each product with Edit.`, action: 'build_rev1', actionLabel: 'Build Rev 1 and type the products' })

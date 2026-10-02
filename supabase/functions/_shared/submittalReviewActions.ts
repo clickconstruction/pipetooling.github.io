@@ -99,11 +99,16 @@ export function decideVerdict(c: DecideContext): DecideVerdict {
   return { ok: true }
 }
 
-/** How a self-identified person relates to the room: a pre-named row by email, the same person again, or new. */
-export type IdentifyResolution = { kind: 'existing'; personId: string } | { kind: 'new'; how: 'identified' | 'forwarded' }
-export function resolveIdentify(args: { existingByEmail: { id: string } | null; viaPerson: { id: string; email: string } | null; email: string }): IdentifyResolution {
+/**
+ * How a self-identified person relates to the room: a pre-named row by email, the same person
+ * again, or new. A person the office named without an email (2026-10-02) is the visitor who
+ * arrives on that person's own link: `claimEmail` says to write the address they gave.
+ */
+export type IdentifyResolution = { kind: 'existing'; personId: string; claimEmail?: true } | { kind: 'new'; how: 'identified' | 'forwarded' }
+export function resolveIdentify(args: { existingByEmail: { id: string } | null; viaPerson: { id: string; email: string | null } | null; email: string }): IdentifyResolution {
   if (args.existingByEmail) return { kind: 'existing', personId: args.existingByEmail.id }
-  if (args.viaPerson && args.viaPerson.email.toLowerCase() === args.email) return { kind: 'existing', personId: args.viaPerson.id }
+  if (args.viaPerson && !args.viaPerson.email?.trim()) return { kind: 'existing', personId: args.viaPerson.id, claimEmail: true }
+  if (args.viaPerson && (args.viaPerson.email ?? '').toLowerCase() === args.email) return { kind: 'existing', personId: args.viaPerson.id }
   return { kind: 'new', how: args.viaPerson ? 'forwarded' : 'identified' }
 }
 

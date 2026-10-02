@@ -60,6 +60,7 @@ import { SubmittalHouseFileModal } from './SubmittalHouseFileModal'
 import { SubmittalFoldModal, SubmittalTakeoffRefreshModal } from './SubmittalRefreshModals'
 import { matchFileToRows, pairParts, defaultFileChoice, planFileApply, readHouseFile, type FileTagChoice, type FileTagMatch, type HouseFileRead } from '../../lib/submittals/houseFileParts'
 import { SubmittalApproveAllDialog, type ApproveAllChoice } from './SubmittalApproveAllDialog'
+import { SubmittalAnswerDialog, type AnswerSave } from './SubmittalAnswerDialog'
 import { SubmittalSheetStrip, type ThumbState } from './SubmittalSheetStrip'
 import { SubmittalAssignPagesModal } from './SubmittalAssignPagesModal'
 import type { ItemWrite } from '../../lib/submittals/assignPagesWalk'
@@ -69,13 +70,14 @@ import { replyToRoom } from '../../lib/submittals/replyToRoom'
 import type { RoomMessage } from '../../../supabase/functions/_shared/submittalRoomPayload'
 import { APP_CALENDAR_TZ as ROOM_TZ, todayYmdInAppTz } from '../../utils/dateUtils'
 import { boughtWords, gcRows, isOrderOnlyRow, orderOnlyInsert, orderOnlyRows } from '../../lib/submittals/orderOnly'
-import { loadRowOrderFacts, writeRowOrderOnly } from '../../lib/submittals/orderOnlyIo'
+import { loadBidOrderFacts, loadRowOrderFacts, writeRowOrderOnly } from '../../lib/submittals/orderOnlyIo'
+import { planRowsAdded, planSummary, type TakeoffPlan } from '../../lib/submittals/takeoffPicks'
 import { SubmittalOrderOnlyRows } from './SubmittalOrderOnlyRows'
 import { SubmittalTakeOffDialog } from './SubmittalTakeOffDialog'
 import { DECISION_LABELS, decisionsAsText, describeDecisions, itemsSentBack, summarizeDecisions } from '../../lib/submittals/reviewDecisions'
 import { describeEnteredCount, describeReviewerFile, parseReviewerFiles, reviewerFileKind, reviewerFilePath, serializeReviewerFiles, type ReviewerFile } from '../../lib/submittals/reviewerFiles'
 import { CLEAR_DECISION_PATCH, enteredDecisionAt, enteredDecisionPatch, enteredEntryBody, enteredSuffix, rowsToApproveAll } from '../../lib/submittals/enteredDecisions'
-import type { ReviewerChoice } from '../../lib/submittals/reviewerPick'
+import { matchRoomPerson, type ReviewerChoice, type ReviewerSources } from '../../lib/submittals/reviewerPick'
 import { newRoomToken } from '../../lib/submittals/submittalRoom'
 import { confirmLabel, guessByPage, liveTask, redlinesToConfirm, scheduleToConfirm, sheetGuessesToConfirm, taskInput, taskStatus, type SubmittalTaskRow } from '../../lib/submittals/robotTasks'
 import { describeTask, type SubmittalTaskKind } from '../../../supabase/functions/_shared/submittalRobot'
@@ -218,6 +220,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   // From the takeoff (v2.4107): the takeoff's fixtures as candidates, and the picker (build = Rev 1 from them, add = onto the draft).
   const [takeoff, setTakeoff] = useState<TakeoffCandidatesLoad | null>(null)
   const [takeoffPicker, setTakeoffPicker] = useState<'build' | 'add' | null>(null)
+  /** 2026-10-02 · by count row, what the log holds for its rows on the draft ("Ordered 09/23"): such a fixture cannot be left out. */
+  const [takeoffBought, setTakeoffBought] = useState<Map<string, string>>(() => new Map())
   // v2.4118 · "When a row can split", opened from the rows' footer.
   const [splitRuleOpen, setSplitRuleOpen] = useState(false)
   /** 2026-10-01 · a draft catching up: the takeoff's parts on its rows, a hand row folded into a fixture. */
@@ -237,6 +241,28 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     if (!editing) setEditFocus(null)
   }, [editing])
   const [approvingAll, setApprovingAll] = useState(false)
+  /** 2026-10-02 · the row whose answer window is open: what the reviewer said, part by part. */
+  const [answering, setAnswering] = useState<SubmittalItemRow | null>(null)
+  /** The GC's contacts the app already holds, offered as who answered. */
+  const [gcContacts, setGcContacts] = useState<ReviewerSources['contacts']>([])
+  const gcCustomerId = selectedBid?.customer_id ?? null
+  useEffect(() => {
+    setGcContacts([])
+    if (!gcCustomerId) return
+    let alive = true
+    void (async () => {
+      try {
+        const data = await withSupabaseRetry(() => db.from('customer_contact_persons').select('id, name, email').eq('customer_id', gcCustomerId).order('name'), 'load the GC contacts')
+        if (alive) setGcContacts(((data ?? []) as Array<{ id: string; name: string | null; email: string | null }>).filter((c) => c.name?.trim()).map((c) => ({ id: c.id, name: c.name!.trim(), email: c.email })))
+      } catch {
+        // The picker still offers the GC by name and a typed person.
+      }
+    })()
+    return () => {
+      alive = false
+    }
+  }, [gcCustomerId])
+  const reviewerSources: ReviewerSources = useMemo(() => ({ gcName: selectedBid?.customers?.name ?? selectedBid?.bids_gc_builders?.name ?? null, contacts: gcContacts }), [selectedBid, gcContacts])
   /** 2026-10-02 · the × on a draft row: the row, and what the log already holds for it ("Ordered 09/23"; '' = nothing bought). */
   const [takeOff, setTakeOff] = useState<{ item: SubmittalItemRow; bought: string } | null>(null)
   const fileInput = useRef<HTMLInputElement | null>(null)
@@ -577,16 +603,42 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   const takeoffFixtures = takeoff?.fixtures ?? 0
   const takeoffCandidatesForPicker = useMemo<TakeoffCandidate[]>(() => {
     if (!takeoff) return []
-    const on = new Set(items.map((it) => it.source_count_row_id).filter((x): x is string => !!x))
-    return takeoff.candidates.map((c) => ({ ...c, alreadyOn: on.has(c.countRowId) }))
+    // How each fixture sits on the draft: a row the GC sees, an order-only row, or not on it.
+    const on = new Map<string, 'gc' | 'order'>()
+    for (const it of items) if (it.source_count_row_id && on.get(it.source_count_row_id) !== 'gc') on.set(it.source_count_row_id, isOrderOnlyRow(it) ? 'order' : 'gc')
+    return takeoff.candidates.map((c) => ({ ...c, alreadyOn: on.has(c.countRowId), onAs: on.get(c.countRowId) ?? null }))
   }, [takeoff, items])
+  /** The takeoff's fixtures that are not on the draft: what the Left out line under the rows counts. */
+  const takeoffLeftOut = takeoffCandidatesForPicker.filter((c) => !c.onAs).length
   function openTakeoffPicker() {
     if (takeoffFixtures === 0) return
     if (revisions.length === 0) setTakeoffPicker('build')
-    else if (selectedRev && asRevisionStatus(selectedRev.status) === 'draft') setTakeoffPicker('add')
+    else if (selectedRev && asRevisionStatus(selectedRev.status) === 'draft') {
+      setTakeoffPicker('add')
+      void readTakeoffBought()
+    }
     else showToast('Rows from the takeoff land on a draft — start a new revision first.', 'info')
   }
-  async function confirmTakeoff(rows: ReadonlyArray<TakeoffCandidate>, ticks: ReadonlyMap<string, boolean>, splits?: ReadonlyMap<string, boolean>, productKeys?: ReadonlyMap<string, ReadonlyArray<string>>) {
+  /** What the log holds for the fixtures on the draft, so the window can hold Left out on one somebody ordered. */
+  async function readTakeoffBought() {
+    if (!bidId) return
+    try {
+      const facts = await loadBidOrderFacts(supabase, bidId)
+      const out = new Map<string, string>()
+      for (const it of items) {
+        if (!it.source_count_row_id) continue
+        const words = boughtWords(facts.get(it.tag) ?? [])
+        if (words) out.set(it.source_count_row_id, words)
+      }
+      setTakeoffBought(out)
+    } catch {
+      // The log could not be read: every fixture on the draft is treated as bought.
+      setTakeoffBought(new Map(items.filter((it) => it.source_count_row_id).map((it) => [it.source_count_row_id!, 'The procurement log could not be read'])))
+    }
+  }
+
+  /** 2026-10-02 · the window's picks: rows come on (the GC's or order only), rows on the draft move or come off, the bid remembers every pick. */
+  async function confirmTakeoff(plan: TakeoffPlan, splits?: ReadonlyMap<string, boolean>, productKeys?: ReadonlyMap<string, ReadonlyArray<string>>) {
     if (!bidId || !takeoffPicker) return
     setBusy(true)
     try {
@@ -602,12 +654,12 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         seq = items.reduce((m, it) => Math.max(m, it.sequence_order), 0)
       }
       // v2.4118 · a split candidate becomes one row per tag; the sequence runs on through them.
-      const inserts: ReturnType<typeof candidateToItemInserts> = []
+      const inserts: Array<ReturnType<typeof candidateToItemInserts>[number] & { order_only?: true }> = []
       const fromCandidate: TakeoffCandidate[] = []
-      for (const c of rows) {
-        const made = candidateToItemInserts(c, revId, seq + inserts.length + 1)
-        inserts.push(...made)
-        for (let k = 0; k < made.length; k++) fromCandidate.push(c)
+      for (const a of plan.add) {
+        const made = candidateToItemInserts(a.candidate, revId, seq + inserts.length + 1)
+        inserts.push(...made.map((m) => (a.orderOnly ? { ...m, order_only: true as const } : m)))
+        for (let k = 0; k < made.length; k++) fromCandidate.push(a.candidate)
       }
       let partsNote = ''
       if (inserts.length > 0) {
@@ -627,19 +679,31 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
           partsNote = ` The parts under each row did not save (${formatErrorMessage(e, 'unknown')}); the rows read as before.`
         }
       }
-      await saveTakeoffChoices(db, bidId, ticks, splits, productKeys)
+      // Rows already on the draft: to order only, back to the GC, or off. A split fixture's rows move together.
+      const rowsOf = (countRowId: string) => items.filter((it) => it.source_count_row_id === countRowId)
+      for (const [ids, on] of [[plan.toOrderOnly, true], [plan.toGc, false]] as const) {
+        for (const it of ids.flatMap(rowsOf)) {
+          const { error } = await db.from('bid_submittal_items').update({ order_only: on }).eq('id', it.id)
+          if (error) throw error
+        }
+      }
+      for (const it of plan.remove.flatMap(rowsOf)) {
+        const { error } = await db.from('bid_submittal_items').delete().eq('id', it.id)
+        if (error) throw error
+      }
+      await saveTakeoffChoices(db, bidId, plan.ticks, splits, productKeys, plan.orderOnly)
       setTakeoffPicker(null)
       const proposed = inserts.filter((r) => r.status === 'proposed').length
       const toType = inserts.length - proposed
-      const tail = `${inserts.length} row${inserts.length === 1 ? '' : 's'} from the takeoff · ${proposed} proposed${toType > 0 ? `, ${toType} to type with Edit` : ''}`
       if (takeoffPicker === 'build') {
         setSelectedRevId(revId)
         await load(bidId)
+        const tail = `${inserts.length} row${inserts.length === 1 ? '' : 's'} from the takeoff · ${proposed} proposed${toType > 0 ? `, ${toType} to type with Edit` : ''}`
         showToast(`Rev 1 built · ${tail}.${partsNote}`, partsNote ? 'info' : 'success')
       } else {
         setItems(await loadItems(revId))
         setTakeoff(await loadTakeoffCandidates(db, bidId, { selectedVersionId: bidsRef.current.find((b) => b.id === bidId)?.selected_bid_version_id ?? null }))
-        showToast(`Added · ${tail}.${partsNote}`, partsNote ? 'info' : 'success')
+        showToast(`${planRowsAdded(plan) > 0 && plan.toOrderOnly.length + plan.toGc.length + plan.remove.length === 0 ? 'Added' : 'Updated'} · ${planSummary(plan, `Rev ${selectedRev?.rev_number ?? 1}`)}.${partsNote}`, partsNote ? 'info' : 'success')
       }
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not build from the takeoff'), 'error')
@@ -647,7 +711,6 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       setBusy(false)
     }
   }
-  /** v2.4107 · a draft row leaves; a row that came from the takeoff is unticked there too, so the choice holds. */
   /** What the procurement log already holds for a row: "Ordered 09/23, on site 09/29", or '' when nothing is bought. */
   async function boughtOnLog(it: SubmittalItemRow): Promise<string> {
     if (!bidId) return ''
@@ -689,7 +752,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       showToast(`${it.tag.trim() || 'The row'} cannot be left out. ${bought}.`, 'error')
       return
     }
-    const ok = await confirm({ title: `Leave ${it.tag.trim() || 'this row'} out`, message: it.source_count_row_id ? 'It leaves this draft and the procurement log. The fixture is unticked on the takeoff list so it stays out next time.' : 'It leaves this draft and the procurement log.', confirmLabel: 'Leave out', danger: true })
+    const ok = await confirm({ title: `Leave ${it.tag.trim() || 'this row'} out`, message: it.source_count_row_id ? 'It leaves this draft and the procurement log. The takeoff list remembers it as left out, so it stays out next time.' : 'It leaves this draft and the procurement log.', confirmLabel: 'Leave out', danger: true })
     if (!ok) return
     await removeRow(it)
   }
@@ -1610,8 +1673,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
 
   /**
    * The room and the reviewer an entered call is recorded under. The person is on the room, or
-   * joins it now (how = named); the room itself is minted if the bid has none yet — nothing is
-   * shared by that.
+   * joins it now (how = named, with an email only when the office has one); the room itself is
+   * minted if the bid has none yet — nothing is shared by that, and nothing is sent.
    */
   async function roomAndReviewerFor(choice: ReviewerChoice): Promise<{ theRoom: SubmittalRoomRow; person: { id: string; name: string; email: string | null } }> {
     if (!bidId) throw new Error('Pick a bid first.')
@@ -1626,9 +1689,12 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       if (!p) throw new Error('That person is no longer on the room.')
       return { theRoom, person: { id: p.id, name: p.name, email: p.email } }
     }
-    const { data: existing } = await db.from('bid_submittal_people').select('id, name, email').eq('room_id', theRoom.id).ilike('email', choice.email.trim()).maybeSingle()
-    if (existing) return { theRoom, person: existing as { id: string; name: string; email: string | null } }
-    const { data, error } = await db.from('bid_submittal_people').insert({ room_id: theRoom.id, name: choice.name, email: choice.email.trim().toLowerCase(), role: choice.role, may_decide: true, token: newRoomToken(), how: 'named', invited_by: user?.id ?? null }).select('id, name, email').single()
+    // Read fresh: the person may have joined since the tab loaded. With an email they are matched by it; without one, by name among the people who have none.
+    const { data: onRoom, error: readErr } = await db.from('bid_submittal_people').select('id, name, email').eq('room_id', theRoom.id).is('closed_at', null)
+    if (readErr) throw readErr
+    const existing = matchRoomPerson((onRoom ?? []) as Array<{ id: string; name: string; email: string | null }>, choice)
+    if (existing) return { theRoom, person: existing }
+    const { data, error } = await db.from('bid_submittal_people').insert({ room_id: theRoom.id, name: choice.name, email: choice.email?.trim().toLowerCase() || null, role: choice.role, may_decide: true, token: newRoomToken(), how: 'named', invited_by: user?.id ?? null }).select('id, name, email').single()
     if (error) throw error
     return { theRoom, person: data as { id: string; name: string; email: string | null } }
   }
@@ -1679,6 +1745,54 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     }
   }
 
+  /**
+   * Their answer on one row, part by part (2026-10-02): each group of lines that share an answer
+   * and a note is one write in the reviewer's name, on the day they answered; lines taken back
+   * are emptied. One thread line and one event for the whole save. Nothing is sent.
+   */
+  async function saveAnswer(save: AnswerSave) {
+    if (!answering || !selectedRev || !bidId) return
+    const row = answering
+    const { writes } = save
+    if (writes.changed === 0) return
+    setBusy(true)
+    try {
+      let who: { id: string; name: string } | null = null
+      if (writes.sets.length > 0 && save.person) {
+        const { theRoom, person } = await roomAndReviewerFor(save.person)
+        who = person
+        const at = enteredDecisionAt(save.on, new Date(), todayYmdInAppTz())
+        for (const set of writes.sets) {
+          const callPatch = enteredDecisionPatch({ decision: set.decision, note: set.note, person, byUserId: user?.id ?? null, byName: profileName, now: at })
+          if (set.row) {
+            const { error } = await db.from('bid_submittal_items').update(callPatch).eq('id', row.id)
+            if (error) throw error
+          } else await enterCallOnParts(db, row.id, callPatch, { partIds: set.partIds })
+        }
+        const counts = writes.counts
+        await db.from('bid_submittal_messages').insert({ room_id: theRoom.id, submittal_id: selectedRev.id, person_id: null, author_kind: 'system', body: enteredEntryBody(person.name, counts, 'entered', save.on ?? null), kind: 'decision', tags: row.tag.trim() ? [row.tag.trim()] : [], metadata: { entered_by: user?.id ?? null, rev_number: selectedRev.rev_number, counts, person_id: person.id, ...(save.on ? { decided_on: save.on } : {}) } })
+        await db.from('bid_submittal_events').insert({ room_id: theRoom.id, submittal_id: selectedRev.id, person_id: person.id, event_type: 'decided', metadata: { ...counts, rev_number: selectedRev.rev_number, entered: true, by: user?.id ?? null, ...(save.on ? { decided_on: save.on } : {}) } })
+      }
+      if (writes.clearPartIds.length > 0) await clearEnteredCallsOnParts(db, row.id, { ...CLEAR_DECISION_PATCH }, writes.clearPartIds)
+      if (writes.clearRow) {
+        const { error } = await db.from('bid_submittal_items').update({ ...CLEAR_DECISION_PATCH }).eq('id', row.id)
+        if (error) throw error
+      }
+      setAnswering(null)
+      const fresh = await loadItems(selectedRev.id)
+      setItems(fresh)
+      setParts(await loadItemParts(db, fresh.map((x) => x.id)))
+      if (who) await loadRoom(bidId)
+      const said = [writes.counts.approved ? `${writes.counts.approved} approved` : '', writes.counts.revise ? `${writes.counts.revise} revise` : '', writes.counts.rejected ? `${writes.counts.rejected} rejected` : ''].filter(Boolean).join(' · ')
+      const tag = row.tag.trim() || 'the accessory'
+      showToast(who ? `${said} on ${tag} · ${who.name} · entered by ${profileName ?? 'you'}. Nobody was emailed.` : `Taken back on ${tag}.`, 'success')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not record their answer'), 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   /** The row's parts as the editor left them, saved; the row's own label, house and lead time read from them (2026-10-01). */
   async function savePartsOf(itemId: string, drafts: PartDraft[] | undefined): Promise<Record<string, unknown>> {
     if (!drafts || !bidId) return {}
@@ -1688,9 +1802,9 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
 
   async function saveItem(patch: SubmittalItemPatch) {
     if (!editing || !selectedRev || !bidId) return
-    const { entered, clearDecision, parts: partDrafts, ...rowPatch } = patch
+    const { thenAnswer, parts: partDrafts, ...rowPatch } = patch
     if (editing.id === NEW_ROW_ID) {
-      // v2.4105 · the row by hand lands now, with what the editor holds; a call on it is entered with Edit once it exists.
+      // v2.4105 · the row by hand lands now, with what the editor holds; their answer goes on it once it exists.
       const { data: made, error } = await db.from('bid_submittal_items').insert({ submittal_id: selectedRev.id, sequence_order: editing.sequence_order, ...rowPatch, tag: rowPatch.tag ?? '', sheet_pages: rowPatch.sheet_pages ?? [] }).select('id').single()
       if (error) {
         showToast(formatErrorMessage(error, 'Could not add the row'), 'error')
@@ -1706,39 +1820,20 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       }
       setEditing(null)
       setItems(await loadItems(selectedRev.id))
-      if (entered) showToast('The row is in. Their call goes on it with Edit.', 'info')
       return
     }
     try {
-      let write: Record<string, unknown> = { ...rowPatch, ...(await savePartsOf(editing.id, partDrafts)) }
-      let enteredFor: { id: string; name: string } | null = null
-      if (entered) {
-        // 5b · the reviewer's call, typed from their file, on the day they made it.
-        const { theRoom, person } = await roomAndReviewerFor(entered.person)
-        enteredFor = person
-        const callPatch = enteredDecisionPatch({ decision: entered.decision, note: entered.note, person, byUserId: user?.id ?? null, byName: profileName, now: enteredDecisionAt(entered.on, new Date(), todayYmdInAppTz()) })
-        // A row with parts: the call lands on the parts picked (all the GC sees by default); the row reads the roll-up.
-        const onParts = await enterCallOnParts(db, editing.id, callPatch, { partIds: entered.partIds ?? null })
-        if (onParts === 0) write = { ...write, ...callPatch }
-        const n = Math.max(1, onParts)
-        const counts = { approved: entered.decision === 'approved' ? n : 0, revise: entered.decision === 'revise' ? n : 0, rejected: entered.decision === 'rejected' ? n : 0 }
-        const { error } = await db.from('bid_submittal_items').update(write).eq('id', editing.id)
-        if (error) throw error
-        await db.from('bid_submittal_messages').insert({ room_id: theRoom.id, submittal_id: selectedRev.id, person_id: null, author_kind: 'system', body: enteredEntryBody(person.name, counts, 'entered', entered.on ?? null), kind: 'decision', tags: editing.tag.trim() ? [editing.tag.trim()] : [], metadata: { entered_by: user?.id ?? null, rev_number: selectedRev.rev_number, counts, person_id: person.id, ...(entered.on ? { decided_on: entered.on } : {}) } })
-        await db.from('bid_submittal_events').insert({ room_id: theRoom.id, submittal_id: selectedRev.id, person_id: person.id, event_type: 'decided', metadata: { ...counts, rev_number: selectedRev.rev_number, entered: true, by: user?.id ?? null, ...(entered.on ? { decided_on: entered.on } : {}) } })
-      } else {
-        if (clearDecision) {
-          if ((partsOf.get(editing.id) ?? []).some((p) => p.on_submittal)) await clearEnteredCallsOnParts(db, editing.id, { ...CLEAR_DECISION_PATCH })
-          else write = { ...write, ...CLEAR_DECISION_PATCH }
-        }
-        const { error } = await db.from('bid_submittal_items').update(write).eq('id', editing.id)
-        if (error) throw error
-      }
+      const write: Record<string, unknown> = { ...rowPatch, ...(await savePartsOf(editing.id, partDrafts)) }
+      const { error } = await db.from('bid_submittal_items').update(write).eq('id', editing.id)
+      if (error) throw error
+      const rowId = editing.id
       setEditing(null)
-      setItems(await loadItems(selectedRev.id))
-      if (enteredFor) {
-        await loadRoom(bidId)
-        showToast(`${DECISION_LABELS[entered!.decision]} on ${editing.tag.trim() || 'the accessory'} · ${enteredFor.name} · entered by ${profileName ?? 'you'}.`, 'success')
+      const fresh = await loadItems(selectedRev.id)
+      setItems(fresh)
+      // "Save and enter their answer…": the row is saved, so the answer window opens on it as it now reads.
+      if (thenAnswer) {
+        setParts(await loadItemParts(db, fresh.map((x) => x.id)))
+        setAnswering(fresh.find((x) => x.id === rowId) ?? null)
       }
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Could not save the row.', 'error')
@@ -2214,6 +2309,11 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                               <button type="button" aria-label={`Edit ${it.tag.trim() || 'accessory'}`} onClick={() => setEditing(it)} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem' }}>
                                 Edit
                               </button>
+                              {isOrderOnlyRow(it) ? null : (
+                                <button type="button" aria-label={`Their answer on ${it.tag.trim() || 'accessory'}`} disabled={busy} onClick={() => setAnswering(it)} title="Record what the reviewer said about this row, part by part. Nobody is emailed." style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem', marginLeft: '0.3rem' }} data-testid="their-answer-row">
+                                  Their answer
+                                </button>
+                              )}
                               {isDraft && rowSplitTags(it.tag).length > 1 ? (
                                 <button type="button" aria-label={`Split ${it.tag.trim()}`} disabled={busy} onClick={() => void splitRow(it)} title={`One row per tag: ${rowSplitTags(it.tag).join(', ')}`} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem', marginLeft: '0.3rem', borderColor: '#2563eb', color: 'var(--text-blue-700)' }} data-testid="split-row">
                                   Split
@@ -2247,6 +2347,12 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                     </tbody>
                   </table>
                 </div>
+                {isDraft && takeoffLeftOut > 0 ? (
+                  <div style={{ marginTop: '0.4rem', fontSize: '0.8125rem', display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }} data-testid="left-out-line">
+                    <span><b style={{ color: 'var(--text-base)' }}>Left out</b><span style={{ color: 'var(--text-muted)' }}> · {takeoffLeftOut} from the takeoff · not submitted, not ordered</span></span>
+                    <button type="button" disabled={busy} onClick={openTakeoffPicker} style={{ ...btnQuiet, color: 'var(--text-link)', textDecoration: 'underline' }}>Show them</button>
+                  </div>
+                ) : null}
                 {/* v2.4140 · the statuses explained where they are read: a quiet link under the table opens the legend. */}
                 <div style={{ marginTop: '0.35rem', fontSize: '0.78rem' }}>
                   <button type="button" onClick={() => setStatusLegendOpen((v) => !v)} aria-expanded={statusLegendOpen} style={{ ...btnQuiet, textDecoration: 'underline', fontSize: 'inherit' }} data-testid="status-legend-toggle">
@@ -2301,8 +2407,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                   </button>
                   <span style={smallMuted}>A cut sheet is the maker’s page for a product. Drop the house’s whole PDF here, then put each page on its row.</span>
                   {isDraft && takeoffFixtures > 0 ? (
-                    <button type="button" disabled={busy} onClick={openTakeoffPicker} style={{ ...btn, marginLeft: 'auto' }} title="Tick more fixtures from the takeoff onto this draft" data-testid="add-from-takeoff">
-                      + Add from the takeoff…
+                    <button type="button" disabled={busy} onClick={openTakeoffPicker} style={{ ...btn, marginLeft: 'auto', borderColor: '#2563eb', color: 'var(--text-blue-700)', fontWeight: 600 }} title="Every fixture on the takeoff: the GC sees it, order only, or left out" data-testid="add-from-takeoff">
+                      Choose what the GC sees…
                     </button>
                   ) : null}
                   {isDraft ? (
@@ -2463,17 +2569,17 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                 ) : null}
                 {asRevisionStatus(selectedRev.status) !== 'draft' || reviewerFiles.length > 0 ? (
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', margin: '0.5rem 0' }}>
-                    <button type="button" disabled={busy} onClick={() => reviewerInput.current?.click()} style={btn} title="The architect marked up the PDF or answered by email. Keep their file here and type their answers onto the rows">
+                    <button type="button" disabled={busy} onClick={() => reviewerInput.current?.click()} style={btn} title="The architect marked up the PDF or answered by email. Keep their file here and type their answers with Their answer on each row">
                       Drop a reviewer's file
                     </button>
-                    <span style={smallMuted}>A marked-up PDF or an email instead of the room; type their calls onto the rows with Edit.</span>
+                    <span style={smallMuted}>A marked-up PDF or an email instead of the room. Type what they said with Their answer on each row.</span>
                   </div>
                 ) : null}
                 {reviewerFiles.length > 0 ? (
                   <div style={{ border: '1px solid var(--border-blue)', background: 'var(--bg-blue-tint)', borderRadius: 6, padding: '0.6rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }} data-testid="reviewer-files">
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
                       <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>The reviewer's own files</span>
-                      <span style={smallMuted}>{describeEnteredCount(decisions.entered) || 'type their calls onto the rows with Edit — the record reads entered by you'}</span>
+                      <span style={smallMuted}>{describeEnteredCount(decisions.entered) || 'type what they said with Their answer on each row — the record reads entered by you'}</span>
                     </div>
                     {reviewerFiles.map((f, i) => {
                       const t = liveTask(tasks, 'read_redlines', (inp) => inp.reviewer_index === i && (!inp.path || inp.path === f.path))
@@ -2650,7 +2756,10 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
           onClose={() => setHouseFile(null)}
         />
       ) : null}
-      {editing ? <SubmittalItemEditDialog item={editing} sourceFiles={sourceFiles} people={people} houses={houses} parts={partsOf.get(editing.id) ?? []} canEnterDecision canEditProduct={isDraft} orderOnly={isOrderOnlyRow(editing)} focusPartId={editFocus?.itemId === editing.id ? editFocus.partId : null} focusHouse={editFocus?.itemId === editing.id && editFocus.house && editFocus.partId == null} onSave={(p) => void saveItem(p)} onClose={() => setEditing(null)} /> : null}
+      {editing ? <SubmittalItemEditDialog item={editing} sourceFiles={sourceFiles} houses={houses} parts={partsOf.get(editing.id) ?? []} canEnterDecision={editing.id !== NEW_ROW_ID} canEditProduct={isDraft} orderOnly={isOrderOnlyRow(editing)} focusPartId={editFocus?.itemId === editing.id ? editFocus.partId : null} focusHouse={editFocus?.itemId === editing.id && editFocus.house && editFocus.partId == null} onSave={(p) => void saveItem(p)} onClose={() => setEditing(null)} /> : null}
+      {answering && selectedRev ? (
+        <SubmittalAnswerDialog item={answering} parts={partsOf.get(answering.id) ?? []} people={people} sources={reviewerSources} revLabel={`Rev ${selectedRev.rev_number}`} busy={busy} onSave={(a) => void saveAnswer(a)} onClose={() => setAnswering(null)} />
+      ) : null}
       {takeOff ? (
         <SubmittalTakeOffDialog
           tag={takeOff.item.tag}
@@ -2668,6 +2777,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
           alreadyDecided={decisions.decided}
           missing={items.filter((it) => !asDecision(it.review_decision) && asStatus(it.status) === 'missing').length}
           people={people}
+          sources={reviewerSources}
           busy={busy}
           onSave={(c) => void approveAll(c)}
           onClose={() => setApprovingAll(false)}
@@ -2679,7 +2789,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       ) : null}
       {splitRuleOpen ? <SplitRuleModal examples={splitExplanation(takeoffCandidatesForPicker)} onClose={() => setSplitRuleOpen(false)} /> : null}
       {takeoffPicker && takeoff ? (
-        <SubmittalTakeoffPicker mode={takeoffPicker} revLabel={takeoffPicker === 'build' ? 'Rev 1' : `Rev ${selectedRev?.rev_number ?? newestRev?.rev_number ?? 1}`} candidates={takeoffCandidatesForPicker} busy={busy} onConfirm={(rows, ticks, splits, productKeys) => void confirmTakeoff(rows, ticks, splits, productKeys)} onClose={() => setTakeoffPicker(null)} />
+        <SubmittalTakeoffPicker mode={takeoffPicker} revLabel={takeoffPicker === 'build' ? 'Rev 1' : `Rev ${selectedRev?.rev_number ?? newestRev?.rev_number ?? 1}`} candidates={takeoffCandidatesForPicker} bought={takeoffPicker === 'add' ? takeoffBought : undefined} busy={busy} onConfirm={(plan, splits, productKeys) => void confirmTakeoff(plan, splits, productKeys)} onClose={() => setTakeoffPicker(null)} />
       ) : null}
       {plugInOpen && bidId && selectedBid ? <PlugInScheduleModal open onClose={() => setPlugInOpen(false)} onSaved={() => { setPlugInOpen(false); void load(bidId) }} bidId={bidId} bidLabel={bidDisplayName(selectedBid) || 'Bid'} rows={[]} /> : null}
       {sharing && selectedRev && bidId ? (
