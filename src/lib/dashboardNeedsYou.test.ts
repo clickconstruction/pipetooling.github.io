@@ -962,6 +962,34 @@ describe('statement round (v2.2771)', () => {
   })
 })
 
+describe('bid follow-ups (v2.4426, punch list #80)', () => {
+  it('no item when no promised call is due', () => {
+    expect(buildNeedsYouItems(inputs({})).some((i) => i.key === 'bid-followups')).toBe(false)
+    expect(buildNeedsYouItems(inputs({ bidFollowupsDue: null })).some((i) => i.key === 'bid-followups')).toBe(false)
+  })
+
+  it('a call due today is amber and names the builders and the dollars', () => {
+    const item = buildNeedsYouItems(inputs({ bidFollowupsDue: { count: 2, overdueCount: 0, value: 75_900, names: ['City of Riverton', 'Hilltop Builders'] } })).find((i) => i.key === 'bid-followups')
+    expect(item).toMatchObject({ severity: 'amber', kicker: 'Calls you promised', title: '2 bid follow-ups are due', figure: '2', actionLabel: 'Open the call queue' })
+    expect(item?.detail).toMatch(/^City of Riverton · Hilltop Builders — \$[\d.,k]+ pending\.$/i)
+  })
+
+  it('a missed day is red and says so', () => {
+    const one = buildNeedsYouItems(inputs({ bidFollowupsDue: { count: 1, overdueCount: 1, value: 0, names: ['City of Riverton'] } })).find((i) => i.key === 'bid-followups')
+    expect(one).toMatchObject({ severity: 'red', title: 'One bid follow-up is due', detail: 'City of Riverton. The day has passed.' })
+    const some = buildNeedsYouItems(inputs({ bidFollowupsDue: { count: 3, overdueCount: 1, value: 0, names: ['A', 'B', 'C'] } })).find((i) => i.key === 'bid-followups')
+    expect(some?.detail).toBe('A · B · C. 1 is past the day.')
+    const all = buildNeedsYouItems(inputs({ bidFollowupsDue: { count: 2, overdueCount: 2, value: 0, names: ['A', 'B'] } })).find((i) => i.key === 'bid-followups')
+    expect(all?.detail).toBe('A · B. Every day has passed.')
+  })
+
+  it('ranks with the revenue chase: above the lost-bids hygiene card', () => {
+    const items = buildNeedsYouItems(inputs({ lostBidNudge: { count: 9, value: 1000 }, lostBidNudgeLoading: false, bidFollowupsDue: { count: 1, overdueCount: 0, value: 0, names: ['A'] } }))
+    const keys = items.map((i) => i.key)
+    expect(keys.indexOf('bid-followups')).toBeLessThan(keys.indexOf('lost-bids'))
+  })
+})
+
 describe('lost-bids card ↔ Why we lost lens scope gloss (J14-F6)', () => {
   it('the card names its all-trade scope and says the lens opens on one trade, so 60 → 59 reads as scope, not drift', () => {
     const items = buildNeedsYouItems(inputs({ role: 'estimator', lostBidNudge: { count: 60, value: 1_250_000 }, lostBidNudgeLoading: false }))

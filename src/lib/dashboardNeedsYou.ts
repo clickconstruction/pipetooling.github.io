@@ -39,6 +39,7 @@ import { LIEN_SUIT_COUNSEL_LEAD_DAYS } from './jobs/lienDeadlines'
 import type { CapacityUnderStreak } from './jobs/jobSummaryCapacity'
 import { daysBetweenYmd } from './jobs/billedExpectedPay'
 import { todayYmdInAppTz } from '../utils/dateUtils'
+import { followupNamesLine, type BidFollowupsDue } from './bids/bidFollowupsDue'
 
 /** Whole days from today (the company calendar) to a 'YYYY-MM-DD' — the Lien desk cards' urgency. */
 function daysUntilYmd(ymd: string): number | null {
@@ -71,6 +72,7 @@ export type NeedsYouItem = {
     | 'tally-self'
     | 'tally-team'
     | 'lost-bids'
+    | 'bid-followups'
     | 'team-reviews'
     | 'statement-round'
     | 'roadmap-needs-person'
@@ -163,6 +165,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'tally-self': 30,
   'tally-team': 30,
   'job-followups': 40,
+  // Revenue chasing tier: a call somebody promised a GC for a day, due or missed.
+  'bid-followups': 40,
   'demand-deadline': 40,
   'lien-serve-copy': 10,
   'lien-tracking-owed': 10,
@@ -271,6 +275,8 @@ export type NeedsYouInputs = {
   tallyMinAgeDays: number
   lostBidNudge: LostBidNudge | null
   lostBidNudgeLoading: boolean
+  /** Promised bid calls due today or missed (v2.4426, `bidFollowupsDue`); null/absent = none. */
+  bidFollowupsDue?: BidFollowupsDue | null
   /**
    * Team reviews overdue for the signed-in reviewer (v2.2488). The hook
    * self-gates (empty without Team access), so no enabled flag here.
@@ -957,6 +963,21 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
         'work them one GC call at a time on the Why we lost lens (it opens on one trade).',
       figure: count > 99 ? '99+' : String(count),
       actionLabel: 'Start call mode',
+    })
+  }
+
+  if (inputs.bidFollowupsDue != null && inputs.bidFollowupsDue.count > 0) {
+    const { count, overdueCount, value, names } = inputs.bidFollowupsDue
+    const late = overdueCount === 0 ? '' : overdueCount === count ? (count === 1 ? ' The day has passed.' : ' Every day has passed.') : ` ${overdueCount} ${overdueCount === 1 ? 'is' : 'are'} past the day.`
+    items.push({
+      key: 'bid-followups',
+      // A missed promise is louder than one due today.
+      severity: overdueCount > 0 ? 'red' : 'amber',
+      kicker: 'Calls you promised',
+      title: count === 1 ? 'One bid follow-up is due' : `${count} bid follow-ups are due`,
+      detail: `${followupNamesLine(names)}${value > 0 ? ` — ${formatLostBidNudgeValue(value)} pending.` : '.'}${late}`,
+      figure: count > 99 ? '99+' : String(count),
+      actionLabel: 'Open the call queue',
     })
   }
 

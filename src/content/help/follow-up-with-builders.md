@@ -48,7 +48,7 @@ Four pills over the list count your open bids by when they are due. You tap a pi
 - {{chip:gray|No date yet}} is a bid with no day and no contact in over a week.
 - {{chip:blue|Later}} is a bid parked on a day still ahead.
 
-On its day the card comes back to the top with a **Due today** tag. You open **Chase** and the bid says who to ask for, with their number. It also says what the GC told you last time, and who took that call. Miss the day and the tag turns red and counts the days.
+On its day the Dashboard's **Needs You** card says a bid follow-up is due. The **Calendar** shows the call on that day. The card comes back to the top of the queue with a **Due today** tag. You open **Chase** and the bid says who to ask for, with their number. It also says what the GC told you last time, and who took that call. Miss the day and the tag turns red and counts the days.
 
 The **Later** line over the cards unfolds the parked bids, the soonest day first. **change date** on a row opens the same three questions. {{button:blue|Save the date}} moves the day. **No date** removes it and the bid goes back in the queue. A changed date is a note in the bid's log. It is not a contact, so the Last Contact clock does not move.
 

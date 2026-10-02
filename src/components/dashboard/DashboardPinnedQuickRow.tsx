@@ -24,6 +24,7 @@ import { GcReviewWeekDoneNotice } from '../DashboardGcReviewWeeklyBanner'
 import { useGcReviewWeekNudge } from '../../hooks/useGcReviewWeekNudge'
 import { gcReviewNudgeState, gcReviewWeekdayIndex } from '../../lib/jobs/gcReviewCertification'
 import { useLostBidNudge } from '../../hooks/useLostBidNudge'
+import { useBidFollowupsDue } from '../../hooks/useBidFollowupsDue'
 import { useBulkDeleteNudge } from '../../hooks/useBulkDeleteNudge'
 import { useBulkHoursNudge } from '../../hooks/useBulkHoursNudge'
 import { useBidAuditsPendingCount } from '../../hooks/useBidAuditsPendingCount'
@@ -369,6 +370,8 @@ export function DashboardPinnedQuickRow({
     Boolean(authUserId) &&
     (role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'estimator' || role === 'primary')
   const { nudge: lostBidNudge, loading: lostBidNudgeLoading } = useLostBidNudge(lostBidNudgeEnabled)
+  // Promised bid calls due or missed (v2.4426): the Call queue's audience (a primary is not on Followup).
+  const { due: bidFollowupsDue } = useBidFollowupsDue(Boolean(authUserId) && (role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'estimator'))
   const {
     peopleCount: tallyStaffStalePeopleCount,
     transactionCount: tallyStaffStaleTxCount,
@@ -523,6 +526,7 @@ export function DashboardPinnedQuickRow({
     tallyMinAgeDays: TALLY_STALE_MIN_AGE_DAYS,
     lostBidNudge,
     lostBidNudgeLoading,
+    bidFollowupsDue,
     teamReviewsOverdue,
     teamReviewCadenceDays,
     roadmapNudges,
@@ -718,6 +722,8 @@ export function DashboardPinnedQuickRow({
               setTallyStaffFollowUpModalOpen(true)
             } else if (item.key === 'lost-bids') {
               navigate('/bids?tab=why-we-lost')
+            } else if (item.key === 'bid-followups') {
+              navigate('/bids?tab=call-queue')
             } else if (item.key === 'job-followups') {
               navigate('/jobs?tab=stages&followups=1')
             } else if (item.key === 'contract-missing') {

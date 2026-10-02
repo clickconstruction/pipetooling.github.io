@@ -4,6 +4,8 @@ import './Calendar.css'
 import { supabase } from '../lib/supabase'
 import { fetchTwinUserIds } from '../lib/fetchTwinUserIds'
 import { partitionBidsByScope } from '../lib/bidBoardScope'
+import { bidFollowupCalendarItems, type BidFollowupCalendarItem } from '../lib/bids/bidFollowupsDue'
+import { loadBidFollowupRows } from '../hooks/useBidFollowupsDue'
 import { useAuth } from '../hooks/useAuth'
 import { useMatchMedia } from '../hooks/useMatchMedia'
 import type { Database } from '../types/database'
@@ -89,6 +91,7 @@ type UpcomingListItem =
   | { dateKey: string; type: 'step'; step: CalendarStep }
   | { dateKey: string; type: 'bid'; bid: CalendarBid }
   | { dateKey: string; type: 'callback'; callback: CalendarProspectCallback }
+  | { dateKey: string; type: 'bid_followup'; followup: BidFollowupCalendarItem }
   | { dateKey: string; type: 'time_off'; timeOff: UserTimeOffRow }
   | { dateKey: string; type: 'salary_override'; workDate: string }
 
@@ -243,6 +246,8 @@ export default function Calendar() {
   const [steps, setSteps] = useState<CalendarStep[]>([])
   const [bids, setBids] = useState<CalendarBid[]>([])
   const [prospectCallbacks, setProspectCallbacks] = useState<CalendarProspectCallback[]>([])
+  // Bid call-again days (v2.4426): a promised call sits on its day.
+  const [bidFollowups, setBidFollowups] = useState<BidFollowupCalendarItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedDayForModal, setSelectedDayForModal] = useState<Date | null>(null)
@@ -424,6 +429,7 @@ export default function Calendar() {
       await loadAssignedSteps(user?.name ?? null)
       await loadBids(user?.role ?? null, user?.estimator_service_type_ids ?? null)
       await loadProspectCallbacks(user?.role ?? null)
+      await loadBidFollowups(user?.role ?? null)
       setLoading(false)
     })()
   }, [authUser?.id])
@@ -635,6 +641,24 @@ export default function Calendar() {
     setProspectCallbacks((data ?? []) as CalendarProspectCallback[])
   }
 
+  /** Promised bid calls, for the people who work the Call queue. Fail-soft: the calendar still draws without them. */
+  async function loadBidFollowups(userRole: UserRole | null) {
+    if (userRole !== 'dev' && userRole !== 'master_technician' && !isAssistantLike(userRole) && userRole !== 'estimator') {
+      setBidFollowups([])
+      return
+    }
+    try {
+      setBidFollowups(bidFollowupCalendarItems(await loadBidFollowupRows()))
+    } catch {
+      setBidFollowups([])
+    }
+  }
+
+  function getBidFollowupsForDate(date: Date): BidFollowupCalendarItem[] {
+    const dateKey = formatDateKey(date)
+    return bidFollowups.filter((f) => f.dateKey === dateKey)
+  }
+
   function getStepsForDate(date: Date): CalendarStep[] {
     const dateKey = formatDateKey(date)
     return steps.filter((s) => {
@@ -704,6 +728,9 @@ export default function Calendar() {
     prospectCallbacks.forEach((cb) => {
       const key = getCentralDateFromUTC(cb.callback_date)
       if (key && key >= todayKey) items.push({ dateKey: key, type: 'callback', callback: cb })
+    })
+    bidFollowups.forEach((f) => {
+      if (f.dateKey >= todayKey) items.push({ dateKey: f.dateKey, type: 'bid_followup', followup: f })
     })
     if (isSalaryLayerEligible) {
       timeOffRows.forEach((r) => {
@@ -1034,6 +1061,7 @@ export default function Calendar() {
               const daySteps = getStepsForDate(day)
               const dayBids = getBidsForDate(day)
               const dayCallbacks = getCallbacksForDate(day)
+              const dayBidFollowups = getBidFollowupsForDate(day)
               const isToday = formatDateKey(day) === todayKey && isCurrentMonth
               const isCurrentMonthDay = day.getMonth() === currentMonth.getMonth()
               return (
@@ -1191,6 +1219,30 @@ export default function Calendar() {
                           {cb.title ?? 'Call back'}
                         </div>
                         <div style={{ fontSize: '0.6875rem', color: '#4f46e5' }}>Prospect</div>
+                      </Link>
+                    ))}
+                    {dayBidFollowups.map((f) => (
+                      <Link
+                        key={`bf-${f.bidId}`}
+                        to="/bids?tab=call-queue"
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                          fontSize: '0.75rem',
+                          padding: '2px 4px',
+                          background: 'var(--bg-blue-tint)',
+                          color: 'var(--text-blue-800)',
+                          textDecoration: 'none',
+                          borderRadius: 3,
+                          overflow: 'hidden',
+                          display: 'flex',
+                          flexDirection: 'column',
+                        }}
+                        title={`Call again: ${f.title}`}
+                      >
+                        <div style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {'☎'} {f.title}
+                        </div>
+                        <div style={{ fontSize: '0.6875rem', color: 'var(--text-blue-700)' }}>Bid follow-up</div>
                       </Link>
                     ))}
                     </div>
@@ -1501,6 +1553,7 @@ export default function Calendar() {
             const modalSteps = getStepsForDate(selectedDayForModal)
             const modalBids = getBidsForDate(selectedDayForModal)
             const modalCallbacks = getCallbacksForDate(selectedDayForModal)
+            const modalBidFollowups = getBidFollowupsForDate(selectedDayForModal)
             const modalWorkday = showMyWorkday && isSalaryLayerEligible ? getWorkdayResolutionForDate(selectedDayForModal) : { kind: 'none' as const }
             const modalDateStr = formatUpcomingDate(formatDateKey(selectedDayForModal))
             const modalDayKey = formatDateKey(selectedDayForModal)
@@ -1518,6 +1571,7 @@ export default function Calendar() {
               modalSteps.length > 0 ||
               modalBids.length > 0 ||
               modalCallbacks.length > 0 ||
+              modalBidFollowups.length > 0 ||
               modalHasVisibleSalarySection ||
               modalNcns != null ||
               (showRecordedTime && modalRecordedVisible) ||
@@ -1816,6 +1870,26 @@ export default function Calendar() {
                           </Link>
                         </li>
                       ))}
+                      {modalBidFollowups.map((f) => (
+                        <li key={`bf-${f.bidId}`} style={{ marginBottom: '0.5rem' }}>
+                          <Link
+                            to="/bids?tab=call-queue"
+                            onClick={() => setSelectedDayForModal(null)}
+                            style={{
+                              display: 'block',
+                              padding: '0.5rem 0.75rem',
+                              background: 'var(--bg-blue-tint)',
+                              color: 'var(--text-blue-800)',
+                              textDecoration: 'none',
+                              borderRadius: 4,
+                              border: '1px solid var(--border-blue)',
+                            }}
+                          >
+                            <div style={{ fontWeight: 500 }}>{'☎'} {f.title}</div>
+                            <div style={{ fontSize: '0.875rem', color: 'var(--text-blue-700)' }}>Bid follow-up — the day you said you would call</div>
+                          </Link>
+                        </li>
+                      ))}
                     </ul>
                   )}
                 </div>
@@ -1840,6 +1914,8 @@ export default function Calendar() {
                           ? `b-${item.bid.id}`
                           : item.type === 'callback'
                             ? `c-${item.callback.id}`
+                            : item.type === 'bid_followup'
+                              ? `bf-${item.followup.bidId}`
                             : item.type === 'time_off'
                               ? `timeoff-${item.timeOff.id}`
                               : `ov-${item.workDate}`
@@ -1913,6 +1989,27 @@ export default function Calendar() {
                         </span>
                         <span style={{ fontWeight: 500 }}>{item.callback.title ?? 'Prospect callback'}</span>
                         <span style={{ fontSize: '0.875rem', color: '#4f46e5' }}>— Follow Up</span>
+                      </Link>
+                    ) : item.type === 'bid_followup' ? (
+                      <Link
+                        to="/bids?tab=call-queue"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '1rem',
+                          padding: '0.5rem 0.75rem',
+                          background: 'var(--bg-blue-tint)',
+                          color: 'var(--text-blue-800)',
+                          textDecoration: 'none',
+                          borderRadius: 4,
+                          border: '1px solid var(--border-blue)',
+                        }}
+                      >
+                        <span style={{ fontSize: '0.875rem', color: 'var(--text-blue-700)', minWidth: 120 }}>
+                          {formatUpcomingDate(item.dateKey)}
+                        </span>
+                        <span style={{ fontWeight: 500 }}>{'☎'} {item.followup.title}</span>
+                        <span style={{ fontSize: '0.875rem', color: 'var(--text-blue-700)' }}>— Bid follow-up</span>
                       </Link>
                     ) : item.type === 'time_off' ? (
                       // Opens the Personal Time Off modal in place, like the grid chip (v2.3840) —
