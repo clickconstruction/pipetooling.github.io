@@ -13971,6 +13971,72 @@ export type Database = {
           },
         ]
       }
+      mercury_transaction_ar_close_labels: {
+        Row: {
+          label_id: string
+          labelled_at: string
+          labelled_by: string | null
+          mercury_transaction_id: string
+          previous_label_id: string | null
+          source: string
+          suggestion_id: string | null
+        }
+        Insert: {
+          label_id: string
+          labelled_at?: string
+          labelled_by?: string | null
+          mercury_transaction_id: string
+          previous_label_id?: string | null
+          source: string
+          suggestion_id?: string | null
+        }
+        Update: {
+          label_id?: string
+          labelled_at?: string
+          labelled_by?: string | null
+          mercury_transaction_id?: string
+          previous_label_id?: string | null
+          source?: string
+          suggestion_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mercury_transaction_ar_close_labels_label_id_fkey"
+            columns: ["label_id"]
+            isOneToOne: false
+            referencedRelation: "mercury_drag_sort_labels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mercury_transaction_ar_close_labels_labelled_by_fkey"
+            columns: ["labelled_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mercury_transaction_ar_close_labels_mercury_transaction_id_fkey"
+            columns: ["mercury_transaction_id"]
+            isOneToOne: true
+            referencedRelation: "mercury_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mercury_transaction_ar_close_labels_previous_label_id_fkey"
+            columns: ["previous_label_id"]
+            isOneToOne: false
+            referencedRelation: "mercury_drag_sort_labels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mercury_transaction_ar_close_labels_suggestion_id_fkey"
+            columns: ["suggestion_id"]
+            isOneToOne: false
+            referencedRelation: "mercury_accounting_label_suggestions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mercury_transaction_ar_closed: {
         Row: {
           closed_at: string
@@ -22949,6 +23015,10 @@ export type Database = {
       }
     }
     Functions: {
+      _ar_close_label_undo: {
+        Args: { p_mercury_transaction_id: string }
+        Returns: string
+      }
       _ar_payer_key: { Args: { p: string }; Returns: string }
       _ar_try_timestamptz: { Args: { p: string }; Returns: string }
       _mercury_raw_debit_card_id_lower: {
@@ -23097,6 +23167,10 @@ export type Database = {
           p_job_id: string
           p_jobs_ledger_invoice_id: string
         }
+        Returns: Json
+      }
+      ar_deposit_booking: {
+        Args: { p_mercury_transaction_id: string }
         Returns: Json
       }
       ar_label_deposit_income: {
@@ -23359,6 +23433,15 @@ export type Database = {
           p_note?: string
           p_reason: string
           p_replaced_by?: string
+        }
+        Returns: Json
+      }
+      close_out_ar_deposit: {
+        Args: {
+          p_label_id?: string
+          p_mercury_transaction_id: string
+          p_note?: string
+          p_reason: string
         }
         Returns: Json
       }
@@ -24042,6 +24125,16 @@ export type Database = {
             }
             Returns: string
           }
+      invoice_bill_payer_customer_id: {
+        Args: {
+          p_customer_id: string
+          p_gc_customer_id: string
+          p_invoice_bill_to_email: string
+          p_invoice_bill_to_party: string
+          p_job_bill_to_party: string
+        }
+        Returns: string
+      }
       is_assistant: { Args: never; Returns: boolean }
       is_banking_attributor: { Args: never; Returns: boolean }
       is_banking_staff: { Args: never; Returns: boolean }
@@ -25487,6 +25580,19 @@ export type Database = {
       pay_send_total: {
         Args: { p_source_id: string; p_source_kind: string }
         Returns: number
+      }
+      pay_speed_samples: {
+        Args: never
+        Returns: {
+          billed_on: string
+          gap_days: number
+          job_address: string
+          job_id: string
+          job_name: string
+          paid_on: string
+          payer_id: string
+          payment_id: string
+        }[]
       }
       pay_staff_bulk_insert_user_time_off: {
         Args: {
