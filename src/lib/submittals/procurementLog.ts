@@ -160,6 +160,10 @@ export type ProcurementItemSource = {
   fixtureCount?: number | null
   /** What the takeoff priced in this part's place, when it differs. */
   pricedLabel?: string | null
+  /** The price-book assembly the part came out of, so By tag can set its parts in under it (2026-10-02). */
+  assembly?: string | null
+  /** A part added to its row by hand (a folded carrier), not from the takeoff. */
+  addedByHand?: boolean
 }
 
 /** A `bid_procurement_items` row. */
@@ -229,6 +233,8 @@ export type ProcurementRow = {
   fixture?: string | null
   fixtureCount?: number | null
   pricedLabel?: string | null
+  assembly?: string | null
+  addedByHand?: boolean
 }
 
 export type ProcurementLogInput = {
@@ -280,6 +286,8 @@ function rowFrom(source: ProcurementItemSource | null, rec: ProcurementRecord, s
     fixture: source?.fixture ?? null,
     fixtureCount: source?.fixtureCount ?? null,
     pricedLabel: source?.pricedLabel ?? null,
+    assembly: source?.assembly ?? null,
+    addedByHand: source?.addedByHand ?? false,
     orderOnly: source?.orderOnly ?? false,
     quantity: source?.quantity ?? null,
     isHand,

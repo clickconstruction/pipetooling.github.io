@@ -143,6 +143,8 @@ export async function procurementItemsFrom(supabase: Client, items: ReadonlyArra
         orderOnly: !p.on_submittal,
         quantity: fixtureCount != null ? fixtureCount * Number(p.quantity) : null,
         pricedLabel: p.priced_label ?? null,
+        assembly: p.assembly ?? null,
+        addedByHand: p.source === 'hand',
         // A carrier with no stage of its own is needed at Rough In (2026-10-02).
         stage: asPartStage(p.stage) ?? (isCarrier(p.label) ? 'rough_in' : null),
       })

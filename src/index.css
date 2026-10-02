@@ -4743,3 +4743,11 @@ div.bid-mark-board-row[data-marked='true'] { box-shadow: inset 3px 0 0 var(--bid
 .procure-status[aria-expanded='true'] { background: var(--bg-blue-tint); }
 .procure-house-name { text-decoration: underline dotted; text-underline-offset: 3px; text-decoration-color: var(--border-strong); }
 .procure-item-open:hover .procure-house-name { text-decoration: underline solid; text-decoration-color: currentColor; }
+
+/* Procurement log By tag (2026-10-02): a fixture's parts as a tree. Each indent column draws one
+   connector: ├ (tee, a sibling follows), └ (end, the last of its block), │ (pass, an outer block
+   carries on). The cell is position: relative; Rails sets each span's left. */
+.procure-rail { position: absolute; top: -1px; width: 0.7rem; pointer-events: none; border-color: var(--border-strong); border-style: solid; border-width: 0; }
+.procure-rail--pass, .procure-rail--tee { bottom: 0; border-left-width: 2px; }
+.procure-rail--tee::after { content: ''; position: absolute; left: 0; top: 50%; width: 0.7rem; border-top: 2px solid var(--border-strong); }
+.procure-rail--end { height: 50%; border-left-width: 2px; border-bottom-width: 2px; border-bottom-left-radius: 5px; }

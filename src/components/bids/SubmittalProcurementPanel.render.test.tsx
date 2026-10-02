@@ -356,4 +356,50 @@ describe('SubmittalProcurementPanel', () => {
     expect(screen.queryByText('Not shared')).toBeNull()
     localStorage.removeItem('submittals_procure_lens')
   })
+
+  it('2026-10-02 · By tag reads as a tree: parts one step in under their fixture; an assembly gets its own step only when the fixture mixes it with other parts; a one-part fixture is one line', async () => {
+    localStorage.setItem('submittals_procure_lens', 'by_tag')
+    state.records = []
+    const base = { leadTimeDays: null, decision: null, shared: false }
+    const lines: ProcurementItemSource[] = [
+      // EWC-1: the EWC1 assembly and Wendi's carrier added by hand.
+      { ...base, tag: 'EWC-1', product: 'ELKAY LZSTL8WSLK WATER COOLER', supplyHouse: null, partKey: 'k-elkay', partOrder: 1, quantity: 2, fixture: 'EWC1', fixtureCount: 2, itemId: 'row-ewc', assembly: 'EWC1 assembly' },
+      { ...base, tag: 'EWC-1', product: 'ELKAY APRON', supplyHouse: null, partKey: 'k-apron', partOrder: 2, quantity: 2, fixture: 'EWC1', fixtureCount: 2, itemId: 'row-ewc', assembly: 'EWC1 assembly' },
+      { ...base, tag: 'EWC-1', product: 'MAINLINE MLZ8700 P-TRAP', supplyHouse: null, partKey: 'k-trap', partOrder: 3, quantity: 2, orderOnly: true, fixture: 'EWC1', fixtureCount: 2, itemId: 'row-ewc', assembly: 'EWC1 assembly' },
+      { ...base, tag: 'EWC-1', product: 'JOSAM 17560-WCBL carrier', supplyHouse: 'National Wholesale', partKey: 'k-josam', partOrder: 7, quantity: 2, fixture: 'EWC1', fixtureCount: 2, itemId: 'row-ewc', stage: 'rough_in', addedByHand: true },
+      // FCO: one part.
+      { ...base, tag: 'FCO', product: 'ZURN ZN1400-2NL FLOOR CLEAN OUT', supplyHouse: 'Moore Supply', partKey: 'k-fco', partOrder: 1, quantity: 2, fixture: 'FCO', fixtureCount: 2, itemId: 'row-fco' },
+      // LAV-1: one assembly and nothing else.
+      { ...base, tag: 'LAV-1', product: 'TSL.MON.B.38.2.PS1.BK MONOLITH B SERIES', supplyHouse: null, partKey: 'k-tsl', partOrder: 1, quantity: 2, fixture: 'LAV 1', fixtureCount: 2, itemId: 'row-lav', assembly: 'LAV 1 assembly SPACEX' },
+      { ...base, tag: 'LAV-1', product: 'TOTO T25S51E#CP', supplyHouse: null, partKey: 'k-toto', partOrder: 2, quantity: 2, fixture: 'LAV 1', fixtureCount: 2, itemId: 'row-lav', assembly: 'LAV 1 assembly SPACEX' },
+      { ...base, tag: 'LAV-1', product: 'HYDRAPRO H20008 GRID DRAIN', supplyHouse: null, partKey: 'k-drain', partOrder: 3, quantity: 2, orderOnly: true, fixture: 'LAV 1', fixtureCount: 2, itemId: 'row-lav', assembly: 'LAV 1 assembly SPACEX' },
+    ]
+    renderWithProviders(<SubmittalProcurementPanel bidId="b1" bidLabel="B375" companyName="Click" items={lines} reviewerNames={[]} currentUser={{ id: 'u', name: 'Wendi' }} onOpenItem={() => {}} />)
+    await waitFor(() => expect(screen.getAllByTestId('procurement-section')).toHaveLength(2))
+    // EWC-1 mixes: no "from" on its heading, its assembly a row of its own; LAV-1 is one assembly: named on its heading.
+    expect(screen.getAllByTestId('procurement-section-from').map((f) => f.textContent)).toEqual(['from LAV 1 assembly SPACEX'])
+    expect(screen.getAllByTestId('procurement-assembly').map((a) => a.textContent)).toEqual(['EWC1 assembly · 3 parts'])
+    const level = (product: string) => screen.getAllByTestId('procurement-row').find((r) => r.textContent!.includes(product))!.querySelector('[data-testid="procurement-item"]')!.getAttribute('data-level')
+    expect(level('ELKAY APRON')).toBe('2')
+    expect(level('MAINLINE MLZ8700')).toBe('2')
+    expect(level('JOSAM 17560-WCBL')).toBe('1')
+    expect(level('TOTO T25S51E#CP')).toBe('1')
+    // FCO is a fixture with one part: one line at the edge, no heading, no connector.
+    expect(level('ZURN ZN1400-2NL')).toBeNull()
+    // The connectors: inside EWC1 assembly the outer column carries on down to the carrier, which closes it.
+    const rails = (product: string) => [...screen.getAllByTestId('procurement-row').find((r) => r.textContent!.includes(product))!.querySelectorAll('[data-testid="procurement-rail"]')].map((x) => x.getAttribute('data-rail'))
+    expect(rails('ELKAY APRON')).toEqual(['pass', 'tee'])
+    expect(rails('JOSAM 17560-WCBL')).toEqual(['end'])
+    expect(rails('HYDRAPRO H20008')).toEqual(['end'])
+    expect(screen.getByTestId('procurement-added-by-hand').textContent).toBe('added by hand')
+    // Each block says where its own order-only parts start.
+    expect(screen.getAllByTestId('procurement-order-only-divider').map((d) => d.textContent)).toEqual(['Ordered, not on the GC’s copy · 1 part', 'Ordered, not on the GC’s copy · 1 part'])
+    // Ticking the assembly ticks its parts.
+    fireEvent.click(screen.getByLabelText('Pick every part of EWC1 assembly'))
+    expect(screen.getByTestId('procurement-bulk').textContent).toContain('3 lines ticked')
+    // Away from its fixture, a part names its assembly.
+    fireEvent.click(screen.getByRole('button', { name: 'By house' }))
+    expect(screen.getAllByTestId('procurement-in-assembly').map((x) => x.textContent)).toContain('in EWC1 assembly')
+    localStorage.removeItem('submittals_procure_lens')
+  })
 })
