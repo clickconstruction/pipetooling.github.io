@@ -34,6 +34,7 @@
     "test:pg:pay-sources": "bash scripts/pgtest-pay-sources.sh",
     "test:pg:typed-hours": "bash scripts/pgtest-typed-hours.sh",
     "test:pg:payment-activity": "bash scripts/pgtest-payment-activity.sh",
+    "test:pg:combined-copies": "bash scripts/pgtest-combined-copies.sh",
     "forms:inspect": "vite-node scripts/forms/inspect.ts",
     "forms:draft": "vite-node scripts/forms/draft.ts",
     "forms:preview": "vite-node scripts/forms/preview.ts",
