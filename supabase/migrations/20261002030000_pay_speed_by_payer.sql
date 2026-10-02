@@ -87,7 +87,7 @@ AS $$
     AND p.paid_on >= b.billed_on
     -- A job with a customer or a GC: someone was billed (was `customer_id IS NOT NULL`, which dropped GC jobs).
     AND (j.customer_id IS NOT NULL OR j.gc_customer_id IS NOT NULL)
-    AND p.paid_on >= (CURRENT_DATE - INTERVAL '12 months')::date
+    AND p.paid_on >= (public.app_today() - INTERVAL '12 months')::date
     AND p.paid_on >= (SELECT COALESCE((SELECT NULLIF(value_text, '')::date FROM public.app_settings WHERE key = 'pay_speed_no_count_date_v1'), DATE '0001-01-01'))
     AND NOT EXISTS (SELECT 1 FROM public.pay_speed_exclusions x WHERE x.payment_id = p.id)
     -- The HCP same-day quarantine. COALESCE (v2.4362): a blank payment_type made the
@@ -138,7 +138,7 @@ quarantined AS (
     AND p.paid_on IS NOT NULL
     AND COALESCE((i.billed_at AT TIME ZONE 'America/Chicago')::date, i.estimated_bill_date) IS NOT NULL
     AND (j.customer_id IS NOT NULL OR j.gc_customer_id IS NOT NULL)
-    AND p.paid_on >= (CURRENT_DATE - INTERVAL '12 months')::date
+    AND p.paid_on >= (public.app_today() - INTERVAL '12 months')::date
     AND p.paid_on >= (SELECT COALESCE((SELECT NULLIF(value_text, '')::date FROM public.app_settings WHERE key = 'pay_speed_no_count_date_v1'), DATE '0001-01-01'))
     AND NOT EXISTS (SELECT 1 FROM public.pay_speed_exclusions x WHERE x.payment_id = p.id)
     AND (
@@ -152,13 +152,13 @@ quality AS (
   SELECT
     (SELECT count(*)::int FROM public.jobs_ledger_payments p
       WHERE p.paid_on IS NOT NULL
-        AND p.paid_on >= (CURRENT_DATE - INTERVAL '12 months')::date
+        AND p.paid_on >= (public.app_today() - INTERVAL '12 months')::date
     AND p.paid_on >= (SELECT COALESCE((SELECT NULLIF(value_text, '')::date FROM public.app_settings WHERE key = 'pay_speed_no_count_date_v1'), DATE '0001-01-01'))) AS payments_12mo,
     (SELECT count(*)::int FROM samples) AS measurable,
     (SELECT count(*)::int FROM public.jobs_ledger_payments p
       WHERE p.invoice_id IS NULL
         AND p.paid_on IS NOT NULL
-        AND p.paid_on >= (CURRENT_DATE - INTERVAL '12 months')::date
+        AND p.paid_on >= (public.app_today() - INTERVAL '12 months')::date
     AND p.paid_on >= (SELECT COALESCE((SELECT NULLIF(value_text, '')::date FROM public.app_settings WHERE key = 'pay_speed_no_count_date_v1'), DATE '0001-01-01'))
         AND NOT EXISTS (SELECT 1 FROM public.pay_speed_exclusions x WHERE x.payment_id = p.id)) AS unlinked,
     (SELECT count(*)::int FROM public.jobs_ledger_invoices i
@@ -169,7 +169,7 @@ quality AS (
     (SELECT count(*)::int FROM public.jobs_ledger_payments p
       JOIN public.pay_speed_exclusions x ON x.payment_id = p.id
       WHERE p.paid_on IS NOT NULL
-        AND p.paid_on >= (CURRENT_DATE - INTERVAL '12 months')::date
+        AND p.paid_on >= (public.app_today() - INTERVAL '12 months')::date
     AND p.paid_on >= (SELECT COALESCE((SELECT NULLIF(value_text, '')::date FROM public.app_settings WHERE key = 'pay_speed_no_count_date_v1'), DATE '0001-01-01'))) AS excluded
 ),
 per_customer AS (
@@ -350,7 +350,7 @@ pmts AS (
     ELSE public.job_bill_payer_customer_id(j.bill_to_party, j.customer_id, j.gc_customer_id)
   END
   WHERE p.paid_on IS NOT NULL
-    AND p.paid_on >= (CURRENT_DATE - INTERVAL '12 months')::date
+    AND p.paid_on >= (public.app_today() - INTERVAL '12 months')::date
     AND p.paid_on >= (SELECT COALESCE((SELECT NULLIF(value_text, '')::date FROM public.app_settings WHERE key = 'pay_speed_no_count_date_v1'), DATE '0001-01-01'))
 )
 SELECT CASE WHEN NOT (SELECT ok FROM gate) THEN NULL ELSE
