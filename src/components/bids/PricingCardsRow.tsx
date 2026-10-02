@@ -9,7 +9,7 @@
 import type { CSSProperties } from 'react'
 import { formatCurrency } from '../../lib/format'
 import { alternateCardNumbers } from '../../lib/bids/ownTakeoffAlternates'
-import { cardFigures, type CardsRowMode } from '../../lib/bids/pricingCardsRow'
+import { cardFigures, cardOwnedByVersion, type CardsRowMode } from '../../lib/bids/pricingCardsRow'
 import type { AlternateVersionCardData } from '../../hooks/usePricingCardsData'
 import type { BidVersion, PriceBookVersion } from '../../lib/bids/bidPricingEngineTypes'
 
@@ -38,6 +38,8 @@ export type PricingCardsRowProps = {
   /** Same-GC alternate versions with their own takeoff. */
   altVersions: BidVersion[]
   selectedPricingVersionId: string | null
+  /** The version on screen: only its own prices offer ☆ make base and offer as alternate (v2.4377). */
+  selectedBidVersionId: string | null
   customerFacingPricingId: string | null
   revenueOf: (id: string) => number | null
   totalCost: number
@@ -75,7 +77,7 @@ export type PricingCardsRowProps = {
 
 export function PricingCardsRow(props: PricingCardsRowProps) {
   const {
-    mode, scenarios, altVersions, selectedPricingVersionId, customerFacingPricingId, revenueOf, totalCost, baseMaterials, altVersionData, marginColor, copySource,
+    mode, scenarios, altVersions, selectedPricingVersionId, selectedBidVersionId, customerFacingPricingId, revenueOf, totalCost, baseMaterials, altVersionData, marginColor, copySource,
     cloning, copyingPrices, doorOpen, doorGcLabel, onOpenDoor, onCloseDoor, onAnotherPrice, onOwnTakeoff, onAdopt,
     ownTakeoff, creatingOwnTakeoff, ownTakeoffGcLabel, onOwnTakeoffName, onCancelOwnTakeoff, onCreateOwnTakeoff,
     onView, onEdit, onMakeBase, onSetOffered, onCopyPrices, onOpenAlternate, onOpenAlternateTakeoff,
@@ -261,7 +263,7 @@ export function PricingCardsRow(props: PricingCardsRowProps) {
               </span>
             </>
           )}
-          {!isCustomerFacing && !unpriced ? (
+          {!isCustomerFacing && !unpriced && cardOwnedByVersion(v, selectedBidVersionId) ? (
             <button type="button" onClick={() => onMakeBase(v, rev)} style={cardBtnStyle}>
               ☆ Make base…
             </button>
@@ -352,6 +354,13 @@ export function PricingCardsRow(props: PricingCardsRowProps) {
                   return (
                     <div style={{ ...footBase, background: 'var(--bg-green-100)', color: 'var(--text-emerald-800)', fontWeight: 700 }}>
                       ★ The price on their letter
+                    </div>
+                  )
+                }
+                if (!cardOwnedByVersion(v, selectedBidVersionId)) {
+                  return (
+                    <div style={{ ...footBase, background: 'var(--bg-subtle)', color: 'var(--text-muted)' }}>
+                      Another version's price
                     </div>
                   )
                 }

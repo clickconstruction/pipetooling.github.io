@@ -24,6 +24,15 @@ export function cardsRowScenarios<V extends ScenarioLike>(args: {
   return args.selectedPricingVersionId ? [{ id: args.selectedPricingVersionId, name: 'Standard prices', sort_order: 0 } as V] : []
 }
 
+/**
+ * Whether a card's price belongs to the version on screen (an unsplit bid's own prices carry no
+ * version). Only an own price can become its ★ or be offered on its letter; the fallback row above
+ * can show another version's prices, and those stay view-only (v2.4377).
+ */
+export function cardOwnedByVersion(card: { bid_version_id?: string | null }, selectedBidVersionId: string | null): boolean {
+  return (card.bid_version_id ?? null) === selectedBidVersionId
+}
+
 /** A card's revenue: the open price reads the Workbench's live total; the others their loaded card revenue, null while it loads. */
 export function cardRevenue(id: string, args: { selectedPricingVersionId: string | null; effRevenue: number; scenarioRevenue: Readonly<Record<string, number>> }): number | null {
   return id === args.selectedPricingVersionId ? args.effRevenue : (args.scenarioRevenue[id] ?? null)

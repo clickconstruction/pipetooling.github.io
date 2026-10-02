@@ -32,6 +32,7 @@ import {
 export function useStarAwareShare({
   inputs,
   selectedBidVersionId,
+  starPricingId,
   pricingPackageSource,
   setError,
 }: {
@@ -39,6 +40,12 @@ export function useStarAwareShare({
   inputs: PricingShareInputs | null
   /** The bid version whose count rows are on screen — a ★ on another version prices its own rows. */
   selectedBidVersionId: string | null
+  /**
+   * The ★ of the bid on screen, read the letter's way (`resolvedStarPricingId`, v2.4377) — not
+   * `bids.selected_price_book_version_id`, which still names the last version starred after a
+   * switch, or another version's price on a stray ★.
+   */
+  starPricingId: string | null
   /** The viewed scenario's package, from `useBidPricingRows`. */
   pricingPackageSource: { rows: PackageRowInput[]; totalRevenue: number } | null
   setError: (message: string | null) => void
@@ -86,7 +93,7 @@ export function useStarAwareShare({
 
   /** Share / Print / CSV entry point: ask which price when the viewed scenario isn't the ★. */
   function requestWithStarCheck(action: StarAwareAction) {
-    const starId = bid?.selected_price_book_version_id ?? null
+    const starId = bid ? starPricingId : null
     if (starChooserNeeded(starId, selectedPricingVersionId)) {
       setStarChoice('star')
       setStarChooser(action)
@@ -98,7 +105,7 @@ export function useStarAwareShare({
   /** `choice`: the ★ price, the viewed one, or (share only) both — ★ first, the viewed one under it. */
   async function runStarAwareAction(action: StarAwareAction, choice: StarChoice) {
     if (!bid || !inputs) return
-    const starId = bid.selected_price_book_version_id ?? null
+    const starId = starPricingId
     if (!starId || starActionReadsViewed(choice, starId, selectedPricingVersionId)) {
       setStarChooser(null)
       if (action === 'share') {

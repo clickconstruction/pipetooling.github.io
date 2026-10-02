@@ -21,6 +21,7 @@ function props(over: Partial<PricingCardsRowProps> = {}): PricingCardsRowProps {
     scenarios: [BASE, ALT1],
     altVersions: [],
     selectedPricingVersionId: 'pA',
+    selectedBidVersionId: 'v1',
     customerFacingPricingId: 'pA',
     revenueOf: (id) => REVENUE[id] ?? null,
     totalCost: 600,
@@ -90,6 +91,11 @@ describe('PricingCardsRow — the solo band', () => {
     expect(p.onMakeBase).toHaveBeenCalledWith(ALT1, 1200)
   })
 
+  it("another version's price on the band offers no ☆ Make base… (v2.4377)", () => {
+    render(<PricingCardsRow {...props({ mode: 'solo', scenarios: [pricing('pX', 'Value Engineered', { bid_version_id: 'v2' })], customerFacingPricingId: null })} />)
+    expect(screen.queryByRole('button', { name: '☆ Make base…' })).toBeNull()
+  })
+
   it('an unpriced solo bid draws no band — only the windows, and nothing while they are closed', () => {
     const { container, rerender } = render(<PricingCardsRow {...props({ mode: 'soloUnpriced', scenarios: [EMPTY] })} />)
     expect(container.textContent).toBe('')
@@ -147,6 +153,19 @@ describe('PricingCardsRow — the tray of cards', () => {
     expect(reloads).toHaveBeenCalledTimes(3)
     expect(p.onView).not.toHaveBeenCalled()
     window.removeEventListener('bid-version-picker-reload', reloads)
+  })
+
+  it("another version's price stays view-only: no make base, no offer, and says whose it is (v2.4377)", () => {
+    // The fallback row: the version on screen owns no price, so the bid's other prices show.
+    const foreign = pricing('pX', 'Value Engineered', { bid_version_id: 'v2', include_in_submission: true })
+    const p = props({ scenarios: [foreign], selectedPricingVersionId: 'pX', customerFacingPricingId: null, revenueOf: () => 1500 })
+    render(<PricingCardsRow {...p} />)
+    const card = cardOf('Value Engineered')
+    expect(card.textContent).toContain("Another version's price")
+    expect(card.textContent).not.toContain('On their letter')
+    expect(within(card).queryByRole('button', { name: '☆ make base' })).toBeNull()
+    expect(within(card).queryByRole('button', { name: 'offer as alternate' })).toBeNull()
+    expect(within(card).queryByRole('button', { name: 'stop offering' })).toBeNull()
   })
 
   it('the open price, when unpriced, offers to copy prices from the copy source', () => {

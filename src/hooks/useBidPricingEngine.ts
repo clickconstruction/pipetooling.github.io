@@ -12,6 +12,7 @@ import { loadTeamLaborDataForBids, type TeamLaborBidRow } from '../utils/teamLab
 import { loadBidAssignedCosts } from '../lib/bids/loadBidAssignedCosts'
 import type { BidAssignedCosts } from '../lib/bids/bidAssignedCosts'
 import { pickActiveVersion, deriveActivePricingId, coverLetterPricingTarget, resolveTaggedVersion, versionSwitchStillActive } from '../lib/bids/pickActiveVersion'
+import { STAR_NOT_OWN_PRICE_MESSAGE, starWriteAllowed } from '../lib/bids/versionStar'
 import { IDLE_PRICING_RESOLVE, beginPricingResolve, settlePricingResolve, type PricingResolveState } from '../lib/bids/pricingResolve'
 import { shouldMintCostEstimateOnLoad } from '../lib/bids/laborTabLoadGate'
 import { pickDefaultPriceBookTemplateId } from '../lib/bids/pickDefaultPriceBookTemplateId'
@@ -1226,7 +1227,23 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     }
   }
 
-  async function saveBidSelectedPriceBookVersion(bidId: string, versionId: string | null) {
+  /** Save the ★. Resolves false when nothing was saved (the reason is in `error`). */
+  async function saveBidSelectedPriceBookVersion(bidId: string, versionId: string | null): Promise<boolean> {
+    // The version the save is for, read once: a switch mid-save must not stamp the next version.
+    const activeVersionId = resolveTaggedVersion(selectedBidVersionIdRef.current, bidId)
+    // v2.4377: a version's ★ is one of its own prices. Ask the database who owns the price —
+    // a caller's list can predate the price it just made.
+    if (activeVersionId && versionId) {
+      const { data: owner, error: ownerErr } = await supabase.from('price_book_versions').select('bid_version_id').eq('id', versionId).maybeSingle()
+      if (ownerErr) {
+        setError(`Failed to save version: ${ownerErr.message}`)
+        return false
+      }
+      if (!starWriteAllowed({ activeVersionId, pricingId: versionId, pricingBidVersionId: owner ? owner.bid_version_id : undefined })) {
+        setError(STAR_NOT_OWN_PRICE_MESSAGE)
+        return false
+      }
+    }
     const { data: rows, error: err } = await supabase
       .from('bids')
       .update({ selected_price_book_version_id: versionId })
@@ -1234,20 +1251,24 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
       .select('id')
     if (err) {
       setError(`Failed to save version: ${err.message}`)
-      return
+      return false
     }
     if (bidUpdateRefused(rows)) {
       setError(BID_UPDATE_NOT_APPLIED_MESSAGE)
-      return
+      return false
     }
     // v2.2117: the ★ is per version. Stamp the active version's own star so switching
     // versions no longer loses it (the bid-level column stays = the active version's ★).
-    const activeVersionId = resolveTaggedVersion(selectedBidVersionIdRef.current, bidId)
     if (activeVersionId) {
-      await supabase.from('bid_versions').update({ starred_price_book_version_id: versionId }).eq('id', activeVersionId)
+      const { error: starErr } = await supabase.from('bid_versions').update({ starred_price_book_version_id: versionId }).eq('id', activeVersionId)
+      if (starErr) {
+        setError(`Failed to save version: ${starErr.message}`)
+        return false
+      }
       await loadBidVersions(bidId)
     }
     await loadBids()
+    return true
   }
 
   /** Persist the bid's active Version (the variant the user is currently on). */

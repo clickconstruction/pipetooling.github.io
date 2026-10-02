@@ -28,8 +28,9 @@ import { AddPriceDoorButton, PricingCardsRow } from './PricingCardsRow'
 import { cardRevenue, cardsRowMode, cardsRowScenarios, copySourceFor } from '../../lib/bids/pricingCardsRow'
 import { gcNameForVersion as gcNameForVersionOf } from '../../lib/bids/pricingCardsData'
 import { sameGcAlternateVersions } from '../../lib/bids/ownTakeoffAlternates'
-import { nextSortOrder, pickActivePricing } from '../../lib/bids/pickActivePricing'
+import { nextSortOrder } from '../../lib/bids/pickActivePricing'
 import { versionStarringScenario } from '../../lib/bids/starredScenarioGuard'
+import { afterOpenPriceDeleted, resolvedStarPricingId } from '../../lib/bids/versionStar'
 import { useMarginBrush } from '../../hooks/useMarginBrush'
 import { resolveCurrentPriceBookTemplateId, resolvePriceBookTemplateRoot } from '../../lib/bids/resolveCurrentPriceBookTemplateId'
 import { planBookEditBidOffer, planSiblingCarry, type BookEditBidOffer, type BookEntryPrices } from '../../lib/bids/bookEditBidOffer'
@@ -165,7 +166,8 @@ type BidsPricingTabProps = {
   resolvePanel: 'skeleton' | 'error' | 'content'
   /** Re-run a failed resolve (the error panel's Retry). */
   onRetryResolve: () => void
-  saveBidSelectedPriceBookVersion: (bidId: string, versionId: string | null) => Promise<void>
+  /** Resolves false when nothing was saved — e.g. a price that is not the active version's own (v2.4377). */
+  saveBidSelectedPriceBookVersion: (bidId: string, versionId: string | null) => Promise<boolean>
   // Shared pricing-rows calc (from useBidPricingRows)
   pricingRowsForGrid: ComputeBidPricingRowsResult | null
   pricingPackageSource: { rows: PackageAndSendPricingRowInput[]; totalRevenue: number } | null
@@ -1018,6 +1020,12 @@ export function BidsPricingTab({
       setDeletePricingVersionError(`${gcNameForVersion(starredBy.id)}'s letter is built on this price — star another price for that packet first.`)
       return
     }
+    // The ★ the letter reads can be a version's first price when its saved ★ is another
+    // version's (v2.4377) — no trigger guards that one, so this does.
+    if (selectedBidVersionId && pricingVersionToDelete.id === customerFacingPricingId) {
+      setDeletePricingVersionError("The GC's letter is built on this price — make another price the base first.")
+      return
+    }
 
     const { error: err } = await supabase
       .from('price_book_versions')
@@ -1034,13 +1042,20 @@ export function BidsPricingTab({
       setTemplateEntries([])
     }
     if (selectedPricingVersionId === pricingVersionToDelete.id) {
-      // Re-activate another of the bid's Pricings (if any), else clear.
+      // Open the ★ instead. This used to re-pick the lowest sort_order price on the WHOLE bid
+      // and save it as the active version's ★ — another version's price, as on BP385 and
+      // BP384 (v2.4377). Deleting a price never moves a version's ★ now.
       const remaining = (selectedBidForPricing ? await loadBidPricings(selectedBidForPricing.id) : []) ?? []
-      const nextId = pickActivePricing({ savedVersionId: null, bidPricings: remaining })
-      setSelectedPricingVersionId(nextId)
-      if (!nextId) setPriceBookEntries([])
-      if (selectedBidForPricing) {
-        await saveBidSelectedPriceBookVersion(selectedBidForPricing.id, nextId)
+      const next = afterOpenPriceDeleted({
+        deletedId: pricingVersionToDelete.id,
+        activeVersion: selectedBidVersionId ? (bidVersions.find((v) => v.id === selectedBidVersionId) ?? { id: selectedBidVersionId }) : null,
+        remaining,
+        bidSavedPricingId: selectedBidForPricing?.selected_price_book_version_id ?? null,
+      })
+      setSelectedPricingVersionId(next.viewId)
+      if (!next.viewId) setPriceBookEntries([])
+      if (selectedBidForPricing && next.saveStarId !== undefined) {
+        await saveBidSelectedPriceBookVersion(selectedBidForPricing.id, next.saveStarId)
         await loadBids()
       }
     }
@@ -1436,11 +1451,15 @@ export function BidsPricingTab({
    * Workbench view/★ split (v2.2013): the bid's saved `selected_price_book_version_id` is the
    * ★ customer-facing scenario (Cover Letter, Share, bid value); `selectedPricingVersionId` is
    * merely the scenario open on the Workbench. Card clicks only view; the star action persists.
+   * Read the letter's way (v2.4377): a version's ★ is one of its own prices, so a saved ★ that
+   * belongs to another version — or a stale bid-level one after a switch — never wins here.
    */
-  const customerFacingPricingId =
-    (selectedBidVersionId ? bidVersions.find((v) => v.id === selectedBidVersionId)?.starred_price_book_version_id ?? null : null)
-    ?? selectedBidForPricing?.selected_price_book_version_id
-    ?? null
+  const customerFacingPricingId = resolvedStarPricingId({
+    activeVersionId: selectedBidVersionId,
+    bidVersions,
+    bidPricings: priceBookVersions,
+    bidSavedPricingId: selectedBidForPricing?.selected_price_book_version_id ?? null,
+  })
 
   /** View a scenario without touching what the customer sees. The outgoing scenario's preview stays stashed under its own id. */
   function viewWorkbenchScenario(versionId: string) {
@@ -1465,7 +1484,7 @@ export function BidsPricingTab({
     })
     if (!ok) return
     if (v.id !== selectedPricingVersionId) viewWorkbenchScenario(v.id)
-    await saveBidSelectedPriceBookVersion(bid.id, v.id)
+    if (!(await saveBidSelectedPriceBookVersion(bid.id, v.id))) return
     // The base is never also an "offered alternate".
     await supabase.from('price_book_versions').update({ include_in_submission: false }).eq('id', v.id)
     await loadBidPricings(bid.id)
@@ -2011,6 +2030,7 @@ export function BidsPricingTab({
         }
       : null,
     selectedBidVersionId,
+    starPricingId: customerFacingPricingId,
     pricingPackageSource,
     setError,
   })
@@ -2502,6 +2522,7 @@ export function BidsPricingTab({
                         scenarios={cardScenarios}
                         altVersions={cardAltVersions}
                         selectedPricingVersionId={selectedPricingVersionId}
+                        selectedBidVersionId={selectedBidVersionId}
                         customerFacingPricingId={customerFacingPricingId}
                         revenueOf={cardRevenueOf}
                         totalCost={totalCost}
@@ -3623,7 +3644,7 @@ export function BidsPricingTab({
           action={starChooser}
           choice={starChoice}
           busy={starBusy}
-          starName={pricingNameOf(priceBookVersions, selectedBidForPricing.selected_price_book_version_id ?? null)}
+          starName={pricingNameOf(priceBookVersions, customerFacingPricingId)}
           viewedName={pricingNameOf(priceBookVersions, selectedPricingVersionId)}
           onChoose={setStarChoice}
           onCancel={() => setStarChooser(null)}

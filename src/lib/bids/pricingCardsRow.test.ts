@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { cardFigures, cardRevenue, cardsRowMode, cardsRowScenarios, copySourceFor } from './pricingCardsRow'
+import { cardFigures, cardOwnedByVersion, cardRevenue, cardsRowMode, cardsRowScenarios, copySourceFor } from './pricingCardsRow'
 
 const s = (id: string, sort_order: number, bid_version_id: string | null) => ({ id, name: id.toUpperCase(), sort_order, bid_version_id })
 
@@ -29,6 +29,19 @@ describe('cardsRowScenarios', () => {
     const versions = [s('b', 2, 'v1'), s('a', 1, 'v1')]
     cardsRowScenarios({ priceBookVersions: versions, selectedBidVersionId: 'v1', selectedPricingVersionId: null })
     expect(versions.map((v) => v.id)).toEqual(['b', 'a'])
+  })
+})
+
+describe('cardOwnedByVersion', () => {
+  it("a split bid owns only its version's prices; the fallback row's others are not its own", () => {
+    expect(cardOwnedByVersion(s('a', 0, 'v1'), 'v1')).toBe(true)
+    expect(cardOwnedByVersion(s('x', 0, 'v2'), 'v1')).toBe(false)
+    expect(cardOwnedByVersion(s('legacy', 0, null), 'v1')).toBe(false)
+  })
+
+  it('an unsplit bid owns its unversioned prices and the shared book standing in as Standard prices', () => {
+    expect(cardOwnedByVersion(s('a', 0, null), null)).toBe(true)
+    expect(cardOwnedByVersion({ id: 'tmpl' } as { id: string; bid_version_id?: string | null }, null)).toBe(true)
   })
 })
 
