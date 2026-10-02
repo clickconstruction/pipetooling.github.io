@@ -105,28 +105,34 @@ describe('SubmittalTakeoffPicker', () => {
     expect([...splits.entries()]).toEqual([['c-wc', true]])
   })
 
-  it('v2.4292 · each part is a chip; trim starts order only, a tap switches a part, the product line follows, and Confirm hands back the parts the GC sees', () => {
+  it('2026-10-02 · each part has the same three buttons: trim starts order only, a part can be left out, the product line follows, and Confirm hands back the parts as picked', () => {
     const piece = (key: string, label: string, trim = false) => ({ key, label, partId: key, partTypeName: null, trim, houseId: 'h-m', houseName: 'Moore Supply', quantity: 1, lineId: key, templateItemId: null, assembly: null, manufacturer: null })
     const lav = cand({ countRowId: 'c-lav2', fixture: 'LAV2', tagText: 'LAV-2', tags: ['LAV-2'], group: 'fixtures', count: 6, supplyHouseName: 'Moore Supply',
       pieces: [piece('l1', '2215-0 LADENA WHITE'), piece('l2', 'T25S51E#CP'), piece('l3', 'BRASSCRA PLB113XP 1/2 NOM COMPX3/8 OD COMP W/LOOSEKEY ANG', true)],
       productKeys: ['l1', 'l2'], product: '2215-0 LADENA WHITE + T25S51E#CP' })
     const onConfirm = vi.fn()
     render(<SubmittalTakeoffPicker mode="build" revLabel="Rev 1" candidates={[lav]} onConfirm={onConfirm} onClose={() => {}} />)
-    const chips = screen.getAllByTestId('takeoff-piece')
-    expect(chips.map((c) => [c.textContent, c.getAttribute('aria-pressed')])).toEqual([['2215-0 LADENA WHITE', 'true'], ['T25S51E#CP', 'true'], ['BRASSCRA PLB113XP 1/2 NOM COMPX3/… · order only', 'false']])
-    expect(screen.getByTestId('takeoff-part-count').textContent).toBe('3 parts · the GC sees 2 · 1 order only')
+    // Folded to start: one line says how the parts stand.
+    expect(screen.queryByTestId('takeoff-pieces')).toBeNull()
+    expect(screen.getByTestId('takeoff-part-count').textContent).toBe('2 the GC sees · 1 order only')
+    fireEvent.click(screen.getByTestId('takeoff-parts-toggle'))
+    expect(screen.getAllByTestId('takeoff-piece').map((c) => c.getAttribute('data-pick'))).toEqual(['gc', 'gc', 'order'])
     expect(screen.queryByTestId('takeoff-piece-run')).toBeNull()
     expect(screen.getByTestId('takeoff-product').textContent).toBe('2215-0 LADENA WHITE + T25S51E#CP')
-    fireEvent.click(screen.getByRole('button', { name: 'T25S51E#CP' }))
+    fireEvent.click(pick('T25S51E#CP', 'Order only'))
     expect(screen.getByTestId('takeoff-product').textContent).toBe('2215-0 LADENA WHITE')
-    fireEvent.click(screen.getByRole('button', { name: '2215-0 LADENA WHITE' }))
+    fireEvent.click(pick('2215-0 LADENA WHITE', 'Left out'))
     expect(screen.getByTestId('takeoff-product').textContent).toBe('every part order only — the row comes in to type with Edit')
+    expect(screen.getByTestId('takeoff-part-count').textContent).toBe('2 order only · 1 left out')
     expect(screen.getByTestId('takeoff-bar').textContent).toBe('1 row goes on Rev 1 (1 to type with Edit)')
-    fireEvent.click(screen.getByRole('button', { name: 'T25S51E#CP, order only' }))
+    fireEvent.click(pick('T25S51E#CP', 'GC sees it'))
     fireEvent.click(screen.getByTestId('takeoff-confirm'))
-    const [plan, , keys] = onConfirm.mock.calls[0] as [TakeoffPlan, unknown, Map<string, string[]>]
+    const [plan] = onConfirm.mock.calls[0] as [TakeoffPlan]
     expect(plan.add[0]!.candidate).toMatchObject({ product: 'T25S51E#CP', productKeys: ['l2'], supplyHouseName: 'Moore Supply' })
-    expect([...keys.entries()]).toEqual([['c-lav2', ['l2']]])
+    // The part left out is not one of the pieces the row is built from; the bid remembers both lists.
+    expect(plan.add[0]!.candidate.pieces.map((p) => p.key)).toEqual(['l2', 'l3'])
+    expect([...plan.productKeys.entries()]).toEqual([['c-lav2', ['l2']]])
+    expect([...plan.leftOut.entries()]).toEqual([['c-lav2', ['l1']]])
   })
 
   it('parts, not assemblies · an assembly’s parts sit under its name, the loose lines under On the takeoff, with how many on a fixture', () => {
@@ -135,8 +141,39 @@ describe('SubmittalTakeoffPicker', () => {
       pieces: [piece('i-heater', 'RHEEM PROPH40-T2-RH400-SO', 'DWH1 & ET assembly SPACEX'), piece('i-tank', 'AMTROL ST-5', 'DWH1 & ET assembly SPACEX', 2), piece('l-pump', 'B&G 60B0B1001', null)],
       productKeys: ['i-heater', 'i-tank', 'l-pump'], product: 'RHEEM PROPH40-T2-RH400-SO + AMTROL ST-5 + B&G 60B0B1001' })
     render(<SubmittalTakeoffPicker mode="build" revLabel="Rev 1" candidates={[dwh]} onConfirm={() => {}} onClose={() => {}} />)
+    fireEvent.click(screen.getByTestId('takeoff-parts-toggle'))
     expect(screen.getAllByTestId('takeoff-piece-run').map((r) => r.textContent)).toEqual(['Inside DWH1 & ET assembly SPACEX', 'On the takeoff'])
-    expect(screen.getAllByTestId('takeoff-piece').map((c) => c.textContent)).toEqual(['RHEEM PROPH40-T2-RH400-SO', 'AMTROL ST-5 × 2', 'B&G 60B0B1001'])
+    expect(screen.getAllByTestId('takeoff-piece').map((c) => c.textContent!.replace('GC sees itOrder onlyLeft out', ''))).toEqual(['RHEEM PROPH40-T2-RH400-SO', 'AMTROL ST-5 × 2', 'B&G 60B0B1001'])
+  })
+
+  it('2026-10-02 · a fixture on the draft shows its parts as the row holds them; a change is handed back for the row, an ordered part cannot be left out, and the fixture’s own button rules its parts', () => {
+    const piece = (key: string, label: string, trim = false) => ({ key, label, partId: key, partTypeName: null, trim, houseId: null, houseName: null, quantity: 1, lineId: key, templateItemId: null, assembly: null, manufacturer: null })
+    const ewc = cand({ countRowId: 'c-ewc', fixture: 'EWC1', tagText: 'EWC-1', tags: ['EWC-1'], group: 'fixtures', count: 2, alreadyOn: true, onAs: 'gc',
+      pieces: [piece('cooler', 'ELKAY LZSTL8WSLK'), piece('trap', 'MAINLINE MLZ8700 P-TRAP', true), piece('carrier', 'JOSAM 17560-WCBL')], productKeys: ['cooler', 'carrier'], product: 'ELKAY LZSTL8WSLK + JOSAM 17560-WCBL',
+      // The row holds the cooler for the GC and the carrier as order only; it has no trap.
+      onParts: [{ key: 'cooler', onSubmittal: true }, { key: 'carrier', onSubmittal: false }] })
+    const onConfirm = vi.fn()
+    render(<SubmittalTakeoffPicker mode="add" revLabel="Rev 1" candidates={[ewc]} boughtParts={new Map([['c-ewc', new Map([['carrier', 'Ordered 09/23, on site 09/29']])]])} onConfirm={onConfirm} onClose={() => {}} />)
+    expect(screen.getByTestId('takeoff-part-count').textContent).toBe('1 the GC sees · 1 order only · 1 left out')
+    fireEvent.click(screen.getByTestId('takeoff-parts-toggle'))
+    expect(screen.getAllByTestId('takeoff-piece').map((c) => c.getAttribute('data-pick'))).toEqual(['gc', 'out', 'order'])
+    expect((pick('JOSAM 17560-WCBL', 'Left out') as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByTestId('takeoff-piece-bought').textContent).toBe('Ordered 09/23, on site 09/29. It cannot be left out.')
+    expect(screen.getByTestId('takeoff-bar').textContent).toBe('Nothing changes yet.')
+    // Bring the trap on as order only.
+    fireEvent.click(pick('MAINLINE MLZ8700 P-TRAP', 'Order only'))
+    expect(screen.getByTestId('takeoff-bar').textContent).toBe('parts change on 1 fixture')
+    // The fixture's own button rules the parts without erasing them.
+    fireEvent.click(pick('EWC-1', 'Order only'))
+    expect(screen.getByTestId('takeoff-pieces-ruled').textContent).toContain('The whole fixture is order only.')
+    expect((pick('ELKAY LZSTL8WSLK', 'Left out') as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(pick('EWC-1', 'GC sees it'))
+    expect(screen.getAllByTestId('takeoff-piece').map((c) => c.getAttribute('data-pick'))).toEqual(['gc', 'order', 'order'])
+    fireEvent.click(screen.getByTestId('takeoff-confirm'))
+    const [plan] = onConfirm.mock.calls[0] as [TakeoffPlan]
+    expect(plan.parts.map((x) => [x.countRowId, x.candidate.pieces.map((p) => p.key), x.candidate.productKeys])).toEqual([['c-ewc', ['cooler', 'trap', 'carrier'], ['cooler']]])
+    expect([...plan.leftOut.entries()]).toEqual([['c-ewc', []]])
+    expect([plan.add.length, plan.remove.length]).toEqual([0, 0])
   })
 
   it('v2.4338 · a click outside When a row can split closes that window only, not the picker behind it', () => {

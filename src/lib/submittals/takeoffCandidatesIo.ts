@@ -121,7 +121,7 @@ export async function loadTakeoffCandidates(supabase: Client, bidId: string, opt
  * The estimator's ticks (and splits, v2.4118; the pieces switched in the product, v2.4292; order only,
  * 2026-10-02), one upsert per fixture shown; a split, pieces or an order-only pick not given are left as stored.
  */
-export async function saveTakeoffChoices(supabase: Client, bidId: string, ticks: ReadonlyMap<string, boolean>, splits?: ReadonlyMap<string, boolean>, productKeys?: ReadonlyMap<string, ReadonlyArray<string>>, orderOnly?: ReadonlyMap<string, boolean>): Promise<void> {
+export async function saveTakeoffChoices(supabase: Client, bidId: string, ticks: ReadonlyMap<string, boolean>, splits?: ReadonlyMap<string, boolean>, productKeys?: ReadonlyMap<string, ReadonlyArray<string>>, orderOnly?: ReadonlyMap<string, boolean>, leftOut?: ReadonlyMap<string, ReadonlyArray<string>>): Promise<void> {
   const rows = [...ticks.entries()].map(([count_row_id, ticked]) => ({
     bid_id: bidId,
     count_row_id,
@@ -130,6 +130,8 @@ export async function saveTakeoffChoices(supabase: Client, bidId: string, ticks:
     ...(productKeys?.has(count_row_id) ? { product_line_ids: [...productKeys.get(count_row_id)!] } : {}),
     // 2026-10-02 · the fixture comes on as an order-only row; not given, it is left as stored.
     ...(orderOnly?.has(count_row_id) ? { order_only: !!orderOnly.get(count_row_id) } : {}),
+    // The lines left off the fixture, as the window left them: the whole list, so one brought back is forgotten.
+    ...(leftOut?.has(count_row_id) ? { left_out_line_ids: [...leftOut.get(count_row_id)!] } : {}),
   }))
   if (rows.length === 0) return
   const { error } = await supabase.from('bid_submittal_takeoff_choices').upsert(rows, { onConflict: 'bid_id,count_row_id' })

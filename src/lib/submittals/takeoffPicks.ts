@@ -4,7 +4,7 @@
  * holds one pick per fixture, the fixtures already on the draft included; this kernel says where a
  * fixture starts, what a set of picks changes on the revision, and how to say it.
  */
-import type { TakeoffCandidate } from './takeoffCandidates'
+import { withProductKeys, type ProductPiece, type TakeoffCandidate } from './takeoffCandidates'
 
 export type FixturePick = 'gc' | 'order' | 'out'
 
@@ -20,6 +20,58 @@ export function pickOf(c: TakeoffCandidate, picks: ReadonlyMap<string, FixturePi
   return picks.get(c.countRowId) ?? startingPick(c)
 }
 
+/** The same three for one part of a fixture. */
+export type PiecePick = FixturePick
+
+/** Every line under the fixture, in takeoff order: its pieces and the ones left off. */
+export function allPiecesOf(c: Pick<TakeoffCandidate, 'pieces' | 'allPieces'>): ProductPiece[] {
+  return [...(c.allPieces ?? c.pieces)]
+}
+
+/**
+ * Where each part starts. On the draft, as the row holds it: a part the row has is the GC's or
+ * order only; a line the row does not have is left out. Off the draft, as the takeoff's rule and
+ * the bid's memory say: the product's pieces are the GC's, the lines left off are left out, the
+ * rest (trim) are order only.
+ */
+export function startingPiecePicks(c: TakeoffCandidate): Map<string, PiecePick> {
+  const out = new Map<string, PiecePick>()
+  const on = c.onAs && c.onParts ? new Map(c.onParts.map((p) => [p.key, p.onSubmittal] as const)) : null
+  const off = new Set((c.leftOutPieces ?? []).map((p) => p.key))
+  for (const p of allPiecesOf(c)) {
+    if (on) out.set(p.key, on.has(p.key) ? (on.get(p.key) ? 'gc' : 'order') : 'out')
+    else out.set(p.key, off.has(p.key) ? 'out' : c.productKeys.includes(p.key) ? 'gc' : 'order')
+  }
+  return out
+}
+
+/** The picks for one fixture's parts: what was clicked over where each started. */
+export function piecePicksOf(c: TakeoffCandidate, clicked: ReadonlyMap<string, PiecePick> | undefined): Map<string, PiecePick> {
+  const out = startingPiecePicks(c)
+  if (clicked) for (const [k, v] of clicked) if (out.has(k)) out.set(k, v)
+  return out
+}
+
+/** The fixture as its parts are picked: the lines kept are its pieces, the GC's are its product, the rest are set aside. */
+export function withPiecePicks(c: TakeoffCandidate, picks: ReadonlyMap<string, PiecePick>): TakeoffCandidate {
+  const all = allPiecesOf(c)
+  const pieces = all.filter((p) => picks.get(p.key) !== 'out')
+  const leftOutPieces = all.filter((p) => picks.get(p.key) === 'out')
+  return { ...withProductKeys({ ...c, pieces }, pieces.filter((p) => picks.get(p.key) === 'gc').map((p) => p.key)), leftOutPieces, allPieces: all }
+}
+
+function samePicks(a: ReadonlyMap<string, PiecePick>, b: ReadonlyMap<string, PiecePick>): boolean {
+  if (a.size !== b.size) return false
+  for (const [k, v] of a) if (b.get(k) !== v) return false
+  return true
+}
+
+/** "3 the GC sees · 3 order only · 1 left out" over a fixture's parts. */
+export function piecePicksLine(picks: ReadonlyMap<string, PiecePick>): string {
+  const n = (v: PiecePick) => [...picks.values()].filter((x) => x === v).length
+  return [n('gc') > 0 ? `${n('gc')} the GC sees` : '', n('order') > 0 ? `${n('order')} order only` : '', n('out') > 0 ? `${n('out')} left out` : ''].filter(Boolean).join(' · ')
+}
+
 export type TakeoffPlan = {
   /** Fixtures coming onto the revision: a row the GC sees, or an order-only row. */
   add: Array<{ candidate: TakeoffCandidate; orderOnly: boolean }>
@@ -32,13 +84,29 @@ export type TakeoffPlan = {
   /** What the bid remembers for every fixture shown: on a revision or not, and order only or not. */
   ticks: Map<string, boolean>
   orderOnly: Map<string, boolean>
+  /** Fixtures on the draft whose parts were picked differently: each as it should now read, for the row's parts to follow. */
+  parts: Array<{ countRowId: string; candidate: TakeoffCandidate }>
+  /** For every fixture whose parts were touched: the lines the GC sees and the lines left off, to remember. */
+  productKeys: Map<string, string[]>
+  leftOut: Map<string, string[]>
 }
 
 /** What the picks change. A fixture left where it stands changes nothing but is still remembered. */
-export function planTakeoffPicks(cands: ReadonlyArray<TakeoffCandidate>, picks: ReadonlyMap<string, FixturePick>, splits?: ReadonlyMap<string, boolean>): TakeoffPlan {
-  const plan: TakeoffPlan = { add: [], toOrderOnly: [], toGc: [], remove: [], ticks: new Map(), orderOnly: new Map() }
-  for (const c of cands) {
-    const now = pickOf(c, picks)
+export function planTakeoffPicks(cands: ReadonlyArray<TakeoffCandidate>, picks: ReadonlyMap<string, FixturePick>, splits?: ReadonlyMap<string, boolean>, piecePicks?: ReadonlyMap<string, ReadonlyMap<string, PiecePick>>): TakeoffPlan {
+  const plan: TakeoffPlan = { add: [], toOrderOnly: [], toGc: [], remove: [], ticks: new Map(), orderOnly: new Map(), parts: [], productKeys: new Map(), leftOut: new Map() }
+  for (const given of cands) {
+    const now = pickOf(given, picks)
+    // The parts as picked: a fixture nobody opened reads as it stood.
+    const clicked = piecePicks?.get(given.countRowId)
+    const pp = clicked ? piecePicksOf(given, clicked) : null
+    const moved = pp != null && !samePicks(pp, startingPiecePicks(given))
+    const c = moved ? withPiecePicks(given, pp!) : given
+    if (moved) {
+      plan.productKeys.set(c.countRowId, [...c.productKeys])
+      plan.leftOut.set(c.countRowId, (c.leftOutPieces ?? []).map((p) => p.key))
+      // A row staying on the draft takes its parts as picked; one coming on is built from them; one coming off needs none.
+      if (given.onAs && now !== 'out') plan.parts.push({ countRowId: c.countRowId, candidate: c })
+    }
     plan.ticks.set(c.countRowId, now !== 'out')
     plan.orderOnly.set(c.countRowId, now === 'order')
     const on = c.onAs ?? null
@@ -56,7 +124,7 @@ export function planRowsAdded(plan: TakeoffPlan): number {
 }
 
 export function planIsEmpty(plan: TakeoffPlan): boolean {
-  return plan.add.length === 0 && plan.toOrderOnly.length === 0 && plan.toGc.length === 0 && plan.remove.length === 0
+  return plan.add.length === 0 && plan.toOrderOnly.length === 0 && plan.toGc.length === 0 && plan.remove.length === 0 && plan.parts.length === 0 && plan.leftOut.size === 0
 }
 
 export type PickCounts = { gc: number; order: number; out: number }
@@ -82,6 +150,7 @@ export function planSummary(plan: TakeoffPlan, revLabel: string): string {
     plan.toOrderOnly.length > 0 ? `${many(plan.toOrderOnly.length, 'fixture moves', 'fixtures move')} to order only` : '',
     plan.toGc.length > 0 ? `${many(plan.toGc.length, 'fixture goes', 'fixtures go')} back to the GC` : '',
     plan.remove.length > 0 ? `${many(plan.remove.length, 'comes', 'come')} off ${revLabel}` : '',
+    plan.parts.length > 0 ? `parts change on ${many(plan.parts.length, 'fixture', 'fixtures')}` : '',
   ].filter(Boolean).join(' · ')
 }
 

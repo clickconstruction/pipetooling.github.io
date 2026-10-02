@@ -28,16 +28,18 @@ export async function loadRowOrderFacts(db: Client, bidId: string, tag: string):
   return ((data ?? []) as Array<{ ordered_on: string | null; delivered_on: string | null; po_ref: string | null }>).map((r) => ({ orderedOn: r.ordered_on, deliveredOn: r.delivered_on, poRef: r.po_ref }))
 }
 
-/** Every tag on the bid's log with what it holds, read once when the takeoff window opens. */
-export async function loadBidOrderFacts(db: Client, bidId: string): Promise<Map<string, LogOrderFact[]>> {
-  const { data, error } = await db.from('bid_procurement_items').select('tag, ordered_on, delivered_on, po_ref').eq('bid_id', bidId)
+/** The bid's whole log, read once when the takeoff window opens: what each tag holds, and what each part's own line holds. */
+export async function loadBidOrderFacts(db: Client, bidId: string): Promise<{ byTag: Map<string, LogOrderFact[]>; byPartKey: Map<string, LogOrderFact[]> }> {
+  const { data, error } = await db.from('bid_procurement_items').select('tag, part_key, ordered_on, delivered_on, po_ref').eq('bid_id', bidId)
   if (error) throw error
-  const out = new Map<string, LogOrderFact[]>()
-  for (const r of (data ?? []) as Array<{ tag: string | null; ordered_on: string | null; delivered_on: string | null; po_ref: string | null }>) {
-    if (!r.tag) continue
-    out.set(r.tag, [...(out.get(r.tag) ?? []), { orderedOn: r.ordered_on, deliveredOn: r.delivered_on, poRef: r.po_ref }])
+  const byTag = new Map<string, LogOrderFact[]>()
+  const byPartKey = new Map<string, LogOrderFact[]>()
+  for (const r of (data ?? []) as Array<{ tag: string | null; part_key?: string | null; ordered_on: string | null; delivered_on: string | null; po_ref: string | null }>) {
+    const fact = { orderedOn: r.ordered_on, deliveredOn: r.delivered_on, poRef: r.po_ref }
+    if (r.tag) byTag.set(r.tag, [...(byTag.get(r.tag) ?? []), fact])
+    if (r.part_key) byPartKey.set(r.part_key, [...(byPartKey.get(r.part_key) ?? []), fact])
   }
-  return out
+  return { byTag, byPartKey }
 }
 
 /** By procure key, what the log holds for each of a row's parts ("Ordered 09/23"); only the parts somebody bought. */
