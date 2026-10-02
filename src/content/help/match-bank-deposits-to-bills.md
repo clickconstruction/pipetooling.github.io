@@ -2,7 +2,7 @@
 title: match bank deposits to the bills they pay
 category: Billing & Money
 roles: dev, master_technician, assistant, controller, primary
-keywords: accounts receivable, bank deposits, mercury, allocate, apply payment, counterparty, check, match, tip, overpaid, paid too much, leftover, close out, bank interest, vendor refund, owner deposit, not a customer, reopen, bounced check, returned check, insufficient funds, stop payment, nsf, came back, new check, rejected check, never reached the bank, take it off, stop payment case
+keywords: accounts receivable, bank deposits, mercury, allocate, apply payment, counterparty, check, match, tip, overpaid, paid too much, leftover, close out, bank interest, vendor refund, owner deposit, not a customer, banking label, rule match, reopen, bounced check, returned check, insufficient funds, stop payment, nsf, came back, new check, rejected check, never reached the bank, take it off, stop payment case
 ---
 Money that lands in the bank is not done yet. Each deposit still has to be applied to the bill it pays. Then the job shows paid and nobody chases the money. You do that in **Accounts Receivable**. Open it from Jobs → Pipeline, from the Dashboard's {{button:blue|Match deposits}} nudge, or at `/accounts-receivable`.
 
@@ -109,19 +109,32 @@ The checks were deposited, you marked J989 paid, and the bank deposit shows up a
 
 ## If it isn't a customer's payment at all
 
-Some money that lands in the bank was never a customer paying a bill. Interest the bank paid. A supply house refunding a return. The owner putting money in. There is no bill for it and no job, so it would sit in the pile forever. On a deposit nobody has matched yet, a strip above the allocation rows asks:
+Some money that lands in the bank was never a customer paying a bill. Interest the bank paid. A vendor refunding a return. The owner putting money in. There is no bill for it and no job. On a deposit nobody has matched yet, a strip above the allocation rows asks what it is.
 
 :::example the close-out strip
 **Not a customer's payment?**
-Bank interest, a vendor refund or an owner deposit has no job to land on. Name the reason and the deposit leaves To match; Banking's label still books the money.
-{{chip:gray|Vendor refund}} {{button:outline|Close out $312.48}}
+{{button:outline|Vendor refund}} {{button:outline|Bank interest}} {{button:outline|Owner deposit}} {{button:outline|Something else}}
+Banking books it as **Insurance**. Your rule TEXAS MUTUAL labelled it on Aug 16.
+{{button:dark|Close out $119.56}}
 :::
 
-Pick the reason: **Bank interest**, **Vendor refund**, **Owner deposit**, or **Something else** with a note saying what it is. Then press the button. When the bank's own memo says *refund* or *interest*, the reason is already picked for you. A confirm step follows. Then the deposit leaves To match for everyone, with the reason on the record. Nothing is written to any job, and no payment is created.
+Press the reason. It is **Vendor refund**, **Bank interest**, **Owner deposit**, or **Something else** with a note saying what it is. When the bank's memo says *refund* or *interest*, the reason is already pressed. When the same payer's last deposit was closed out, its reason is pressed instead. A line under the buttons says so.
 
-- **It is not gone.** Under *To match · All* the row wears a {{chip:gray|closed out}} chip. The header reads *Closed out · Vendor refund · Sep 16, 2026* with a **Reopen** link that puts it back in the pile.
+### What Banking does with it
+
+Under the reasons, a box says how Banking books the money. It reads one of three ways.
+
+- **A rule or a person labelled it.** It reads *Banking books it as Insurance* and says who did it. Close out keeps that label.
+- **A rule matched and nobody approved it yet.** It reads *Your rule TEXAS MUTUAL says Insurance*. Close out approves it, the same as **Approve** in Banking.
+- **Nothing labels it.** It reads **Book it as** with a list. For a vendor refund the list starts on the label the payer's own payments carry. Bank interest starts on **Income**. An owner deposit starts on **Owners Equity**. Pick **Leave it for Banking** to close it out with no label.
+
+Press **Change** to pick another label. A vendor refund goes under the expense it pays back. So a refund from your insurer stays under **Insurance**. A label of the wrong kind turns the box amber. When the label is **Cost of Goods Sold** or **Job Materials & Parts**, the box points to **Supply houses**. Record the credit there too, so the job's cost drops.
+
+Then press the button. A confirm step follows, and it says what happens to the books. The deposit leaves To match for everyone, with the reason on the record. Nothing is written to any job, and no payment is created.
+
+- **It is not gone.** Under *To match · All* the row wears a {{chip:gray|closed out}} chip. The header reads *Closed out · Vendor refund · Insurance · Oct 1, 2026* with a **Reopen** link that puts it back in the pile. Reopen takes off a label Close out put on and puts back the one it replaced. A rule's label and a later change stay.
+- **The row tells you first.** A deposit in To match that Banking books as an expense says so under its name. It may read *Banking books it as Insurance*. That is often the sign it is not a customer's payment.
 - **It is the opposite of the tip strip.** The close-out only appears while nothing from the deposit is applied to a job. Once a bill is paid from it, the money is a customer's. Any leftover is a tip, see above. The app refuses to close out a deposit that already paid a bill.
-- **Banking is separate.** Closing out says *this is not receivables*. It does not label the deposit. Label it in Banking → Accounting as you would any other bank transaction, so the P&L reads right.
 - Marked returned? Unmark it first if it did not actually bounce. A returned deposit cannot be closed out.
 
 ## When a check comes back

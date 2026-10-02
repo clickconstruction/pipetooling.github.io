@@ -319,6 +319,10 @@ A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the
 - **Where**: **Edit Job** → **Billing** → **Payments received** — **Mercury** **Unlink and remove**, and removing persisted **non-Mercury** rows tied to **non-Stripe** **`jobs_ledger_invoices`** (after confirm).
 - **Stripe-hosted invoices**: RPC **rejects** when the payment’s **`invoice_id`** points at an invoice with non-empty **`stripe_invoice_id`**; UI hides **Unlink** in that case. Use Stripe / out-of-band reversal flows for hosted invoice payments.
 
+### Accounts Receivable close-out books the label (`close_out_ar_deposit`, v2.4363)
+- **Who**: the AR roles of `set_mercury_transaction_ar_closed` — office staff (`is_office_staff()`) and **`primary`**; `ar_deposit_booking` (the read) the same. Both SECURITY DEFINER.
+- **What it widens**: for the one deposit being closed out, it writes the Banking label and may **approve that deposit's own waiting rule match** — an assistant cannot Approve on Banking → Accounting (`bulk_approve_accounting_label_suggestions` is dev · master · controller). Labels otherwise stay office-staff writes; Reopen takes off only a label the close-out chose (`mercury_transaction_ar_close_labels`).
+
 ---
 
 ## User Roles

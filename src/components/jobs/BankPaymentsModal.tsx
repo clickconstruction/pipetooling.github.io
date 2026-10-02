@@ -90,7 +90,17 @@ import {
 import { useToastContext } from '../../contexts/ToastContext'
 import { ArTipOffer } from './ar/ArTipOffer'
 import { ArCloseOut } from './ar/ArCloseOut'
-import { buildArCloseOutOffer, describeArCloseOut, type ArClosedRow } from '../../lib/jobs/arCloseOut'
+import { AR_CLOSE_OUT_EPS, buildArCloseOutOffer, describeArCloseOut, isArCloseReason, type ArClosedRow } from '../../lib/jobs/arCloseOut'
+import {
+  arCloseBookingView,
+  arCloseOutToast,
+  arReopenToast,
+  arRowBookedLine,
+  parseArDepositBooking,
+  rememberedCloseLine,
+  rememberedCloseReason,
+  type ArDepositBooking,
+} from '../../lib/jobs/arCloseBooking'
 import { isMissingRpcError } from '../../lib/customers/customersListBundle'
 import { arSearchFallThrough } from '../../lib/jobs/arDepositSearch'
 import { orderArAllByLastAction } from '../../lib/jobs/arAllByLastAction'
@@ -285,6 +295,21 @@ export default function BankPaymentsModal({
   const [closeBusy, setCloseBusy] = useState(false)
   const [closeError, setCloseError] = useState<string | null>(null)
   const [reopenBusy, setReopenBusy] = useState(false)
+  /**
+   * Close out books it (v2.4363): how Banking books the selected deposit (`ar_deposit_booking`),
+   * the label picked in the strip's picker, and whether Change opened it. A failed read leaves
+   * the strip as it was before: it closes out and says nothing about Banking.
+   */
+  const [closeBooking, setCloseBooking] = useState<ArDepositBooking | null>(null)
+  const [closeBookingStatus, setCloseBookingStatus] = useState<'idle' | 'loading' | 'ready' | 'failed'>('idle')
+  const [closeBookingSeq, setCloseBookingSeq] = useState(0)
+  const [closeLabelId, setCloseLabelId] = useState<string | null>(null)
+  const [closeChanging, setCloseChanging] = useState(false)
+  /** The person pressed a reason: the payee's last close-out no longer re-picks it. */
+  const closeReasonTouchedRef = useRef(false)
+  /** v2.4363: the Banking label of each untouched row on screen, for "Banking books it as Insurance". */
+  const [rowLabelsById, setRowLabelsById] = useState<Map<string, { name: string; accountType: string | null }>>(() => new Map())
+  const rowLabelsFetchedRef = useRef<Set<string>>(new Set())
 
   const targets = useMemo(() => bankPaymentTargetsFromStageRows(billedRows), [billedRows])
   const targetByKey = useMemo(() => new Map(targets.map((t) => [t.key, t] as const)), [targets])
@@ -920,6 +945,53 @@ export default function BankPaymentsModal({
     }
   }, [open, candidates, hiddenCandidates, trailsById])
 
+  /**
+   * v2.4363: the Banking label of each untouched row on the list, so a deposit Banking books as
+   * an expense says so before anyone opens it ("Banking books it as Insurance"). Office staff read
+   * the label tables; another role reads nothing and the line simply does not show. Not
+   * cancelled on a list refresh: a label that lands late is still right.
+   */
+  useEffect(() => {
+    if (!open) {
+      rowLabelsFetchedRef.current = new Set()
+      setRowLabelsById(new Map())
+      return
+    }
+    const ids = candidates
+      .filter((c) => (Number(c.consumed) || 0) <= AR_CLOSE_OUT_EPS && !rowLabelsFetchedRef.current.has(c.mercury_transaction_id))
+      .map((c) => c.mercury_transaction_id)
+    if (!ids.length) return
+    for (const id of ids) rowLabelsFetchedRef.current.add(id)
+    void (async () => {
+      const found = new Map<string, { name: string; accountType: string | null }>()
+      try {
+        for (let i = 0; i < ids.length; i += 150) {
+          const { data, error } = await supabase
+            .from('mercury_transaction_drag_sort_assignments')
+            .select('mercury_transaction_id, mercury_drag_sort_labels(name, account_type)')
+            .in('mercury_transaction_id', ids.slice(i, i + 150))
+          if (error || !Array.isArray(data)) return
+          for (const r of data as unknown as Array<{
+            mercury_transaction_id: string
+            mercury_drag_sort_labels: { name: string; account_type: string | null } | null
+          }>) {
+            if (r?.mercury_drag_sort_labels?.name) {
+              found.set(r.mercury_transaction_id, { name: r.mercury_drag_sort_labels.name, accountType: r.mercury_drag_sort_labels.account_type ?? null })
+            }
+          }
+        }
+      } catch {
+        return
+      }
+      if (!found.size) return
+      setRowLabelsById((prev) => {
+        const next = new Map(prev)
+        for (const [k, v] of found) next.set(k, v)
+        return next
+      })
+    })()
+  }, [open, candidates])
+
   const toggleMercuryReturned = useCallback(
     async (mercuryTransactionId: string, nextReturned: boolean) => {
       if (!canRoleApplyBankPayments(authRole)) return
@@ -1240,15 +1312,81 @@ export default function BankPaymentsModal({
     setCloseError(null)
     setCloseNote('')
     setCloseReason(closeOutOffer?.suggestedReason ?? null)
+    setCloseLabelId(null)
+    setCloseChanging(false)
+    closeReasonTouchedRef.current = false
   }, [selected?.mercury_transaction_id, closeOutOffer?.suggestedReason])
+
+  // v2.4363: how Banking books the deposit, read while the strip or the closed record shows.
+  // The payee's last close-out picks the reason, unless the person already pressed one.
+  const wantCloseBooking = closeOutOffer != null || closedRow != null
+  useEffect(() => {
+    const txId = selected?.mercury_transaction_id
+    setCloseBooking(null)
+    if (!open || !txId || !wantCloseBooking) {
+      setCloseBookingStatus('idle')
+      return
+    }
+    setCloseBookingStatus('loading')
+    let cancelled = false
+    void (async () => {
+      try {
+        const { data, error } = await supabase.rpc('ar_deposit_booking' as never, { p_mercury_transaction_id: txId } as never)
+        if (cancelled) return
+        if (error) {
+          setCloseBookingStatus('failed')
+          return
+        }
+        const parsed = parseArDepositBooking(data)
+        setCloseBooking(parsed)
+        setCloseBookingStatus(parsed ? 'ready' : 'failed')
+        const remembered = rememberedCloseReason(parsed)
+        if (remembered && !closeReasonTouchedRef.current) setCloseReason(remembered)
+      } catch {
+        if (!cancelled) setCloseBookingStatus('failed')
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, selected?.mercury_transaction_id, wantCloseBooking, closeBookingSeq])
+
+  /** The books line and the button's words for the picked reason (`arCloseBooking`). */
+  const closeBookingView = useMemo(
+    () =>
+      closeOutOffer && isArCloseReason(closeReason) && closeBookingStatus !== 'loading'
+        ? arCloseBookingView({
+            reason: closeReason,
+            booking: closeBookingStatus === 'ready' ? closeBooking : null,
+            chosenLabelId: closeLabelId,
+            changing: closeChanging,
+            amount: closeOutOffer.amount,
+            counterpartyName: selected?.counterparty_name,
+          })
+        : null,
+    [closeOutOffer, closeReason, closeBooking, closeBookingStatus, closeLabelId, closeChanging, selected?.counterparty_name],
+  )
+
+  /** Forget a row's Banking label so the next list read fetches it again. */
+  const forgetRowLabel = useCallback((txId: string) => {
+    rowLabelsFetchedRef.current.delete(txId)
+    setRowLabelsById((prev) => {
+      if (!prev.has(txId)) return prev
+      const next = new Map(prev)
+      next.delete(txId)
+      return next
+    })
+  }, [])
 
   const closeOutDeposit = useCallback(async () => {
     const txId = selected?.mercury_transaction_id
-    if (!txId || !closeOutOffer || !closeReason) return
+    const view = closeBookingView
+    if (!txId || !closeOutOffer || !closeReason || !view) return
     setCloseBusy(true)
     setCloseError(null)
-    try {
-      const data = await withSupabaseRetry(
+    type CloseOutPayload = { error?: string; ok?: boolean; booked?: string | null; label_name?: string | null } | null
+    const closeWithoutLabel = async (): Promise<CloseOutPayload> =>
+      (await withSupabaseRetry(
         async () =>
           supabase.rpc('set_mercury_transaction_ar_closed', {
             p_mercury_transaction_id: txId,
@@ -1256,16 +1394,41 @@ export default function BankPaymentsModal({
             p_note: closeNote.trim() || undefined,
           }),
         'set_mercury_transaction_ar_closed',
-      )
-      const payload = data as { error?: string; ok?: boolean } | null
+      )) as CloseOutPayload
+    try {
+      let payload: CloseOutPayload
+      if (view.state === 'unread') {
+        payload = await closeWithoutLabel()
+      } else {
+        try {
+          payload = (await withSupabaseRetry(
+            async () =>
+              supabase.rpc('close_out_ar_deposit' as never, {
+                p_mercury_transaction_id: txId,
+                p_reason: closeReason,
+                p_note: closeNote.trim() || undefined,
+                p_label_id: view.sendLabelId ?? undefined,
+              } as never),
+            'close_out_ar_deposit',
+          )) as CloseOutPayload
+        } catch (e: unknown) {
+          // Not pushed yet: close it out the old way, Banking untouched.
+          if (!isMissingRpcError(e instanceof Error ? e.message : '')) throw e
+          payload = await closeWithoutLabel()
+        }
+      }
       if (payload && typeof payload === 'object' && typeof payload.error === 'string') {
         throw new Error(payload.error)
       }
       setCloseConfirming(false)
-      showToast('Closed out — it has left To match.', 'success')
+      showToast(arCloseOutToast(payload?.booked, payload?.label_name), 'success')
+      forgetRowLabel(txId)
+      setCloseBookingSeq((n) => n + 1)
       await refreshList()
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Could not close out the deposit'
+      // The database's own words ("That Banking label no longer exists…"), not the wrapper's.
+      const server = e && typeof e === 'object' && 'serverMessage' in e ? (e as { serverMessage?: string }).serverMessage : undefined
+      const msg = server || (e instanceof Error ? e.message : 'Could not close out the deposit')
       setCloseError(
         isMissingRpcError(msg)
           ? 'This is not live in the database yet — the change still has to be pushed.'
@@ -1274,14 +1437,14 @@ export default function BankPaymentsModal({
     } finally {
       setCloseBusy(false)
     }
-  }, [selected?.mercury_transaction_id, closeOutOffer, closeReason, closeNote, showToast, refreshList])
+  }, [selected?.mercury_transaction_id, closeOutOffer, closeReason, closeNote, closeBookingView, showToast, refreshList, forgetRowLabel])
 
   const reopenDeposit = useCallback(async () => {
     const txId = selected?.mercury_transaction_id
     if (!txId) return
     setReopenBusy(true)
     try {
-      await withSupabaseRetry(
+      const data = await withSupabaseRetry(
         async () =>
           supabase.rpc('set_mercury_transaction_ar_closed', {
             p_mercury_transaction_id: txId,
@@ -1289,14 +1452,17 @@ export default function BankPaymentsModal({
           }),
         'set_mercury_transaction_ar_closed',
       )
-      showToast('Reopened — it is back in To match.', 'success')
+      const undone = data && typeof data === 'object' ? (data as { label_undone?: string | null }).label_undone : null
+      showToast(arReopenToast(undone), 'success')
+      forgetRowLabel(txId)
+      setCloseBookingSeq((n) => n + 1)
       await refreshList()
     } catch (e: unknown) {
       showToast(e instanceof Error ? e.message : 'Could not reopen the deposit', 'error')
     } finally {
       setReopenBusy(false)
     }
-  }, [selected?.mercury_transaction_id, showToast, refreshList])
+  }, [selected?.mercury_transaction_id, showToast, refreshList, forgetRowLabel])
 
   /** Keep selection on the filtered bank list (or a row found in All); when the filter hides the current row, select the first visible row. */
   useEffect(() => {
@@ -2398,6 +2564,11 @@ export default function BankPaymentsModal({
                       trail={trailsById.get(c.mercury_transaction_id) ?? null}
                       cameBackNote={arDepositCameBack(c) ? null : arPayerCameBackNote(c.counterparty_name, returnCases.allCases, todayYmd, c.mercury_transaction_id)}
                       clearsNote={arDepositClearsNote(c, todayYmd)}
+                      bookedNote={
+                        (Number(c.consumed) || 0) <= AR_CLOSE_OUT_EPS && !c.returned && c.bankReturn == null
+                          ? arRowBookedLine(rowLabelsById.get(c.mercury_transaction_id))
+                          : null
+                      }
                       kindBadges={kindBadges}
                       markMode={arBankReturnedMarkMode}
                       canApply={canApply}
@@ -2489,8 +2660,10 @@ export default function BankPaymentsModal({
                     returnedLabel={selected.bankReturn ? bankReturnedChipWords(selected.bankReturn) : null}
                     closedLabel={
                       closedRow
-                        ? describeArCloseOut(closedRow, (iso) =>
-                            new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: APP_CALENDAR_TZ }),
+                        ? describeArCloseOut(
+                            closedRow,
+                            (iso) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: APP_CALENDAR_TZ }),
+                            closeBooking?.label?.name ?? null,
                           )
                         : null
                     }
@@ -2685,7 +2858,19 @@ export default function BankPaymentsModal({
                             busy={closeBusy}
                             confirming={closeConfirming}
                             error={closeError}
-                            onChangeReason={(r) => setCloseReason(r || null)}
+                            booking={closeBookingView}
+                            loading={closeBookingStatus === 'loading'}
+                            labels={closeBooking?.labels ?? []}
+                            chosenLabelId={closeLabelId}
+                            rememberLine={rememberedCloseLine(closeBooking, selected.counterparty_name)}
+                            onChangeReason={(r) => {
+                              closeReasonTouchedRef.current = true
+                              setCloseReason(r || null)
+                              setCloseLabelId(null)
+                              setCloseChanging(false)
+                            }}
+                            onChooseLabel={(id) => setCloseLabelId(id)}
+                            onOpenPicker={() => setCloseChanging(true)}
                             onChangeNote={setCloseNote}
                             onRequest={() => {
                               setCloseError(null)

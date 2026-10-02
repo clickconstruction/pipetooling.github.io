@@ -113,19 +113,23 @@ export function buildArCloseOutOffer(input: ArCloseOutInput): ArCloseOutOffer | 
   return {
     amount,
     headline: 'Not a customer’s payment?',
-    sentence:
-      'Bank interest, a vendor refund or an owner deposit has no job to land on. Name the reason and the deposit leaves To match; Banking’s label still books the money.',
+    // v2.4363: the books line under the reasons now says what Banking does with it.
+    sentence: 'Pick what it is. It leaves To match with that on the record.',
     buttonLabel: `Close out ${money(amount)}`,
     suggestedReason: suggestArCloseReason(input),
   }
 }
 
-/** "Vendor refund · Sep 16, 2026" — the header's record of a closed deposit. */
-export function describeArCloseOut(row: ArClosedRow, formatDate: (iso: string) => string): string {
+/**
+ * "Vendor refund · Sep 16, 2026" — the header's record of a closed deposit. v2.4363: with its
+ * Banking label when known, "Vendor refund · Insurance · Oct 1, 2026".
+ */
+export function describeArCloseOut(row: ArClosedRow, formatDate: (iso: string) => string, labelName?: string | null): string {
   const when = row.closed_at ? formatDate(row.closed_at) : ''
   const base = arCloseReasonLabel(row.reason)
   const note = (row.note ?? '').trim()
-  const head = note && row.reason === 'other' ? `${base} — ${note}` : base
+  const label = (labelName ?? '').trim()
+  const head = [note && row.reason === 'other' ? `${base} — ${note}` : base, label].filter(Boolean).join(' · ')
   return when ? `${head} · ${when}` : head
 }
 

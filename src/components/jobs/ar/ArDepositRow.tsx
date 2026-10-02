@@ -113,6 +113,7 @@ export function ArDepositRow({
   trail = null,
   cameBackNote = null,
   clearsNote = null,
+  bookedNote = null,
   kindBadges,
   markMode,
   canApply,
@@ -129,6 +130,8 @@ export function ArDepositRow({
   cameBackNote?: string | null
   /** v2.4333: "clears about Oct 8" — an applied check that can still come back. */
   clearsNote?: string | null
+  /** v2.4363: "Banking books it as Insurance" — an untouched deposit whose Banking label is an expense. */
+  bookedNote?: string | null
   kindBadges: Record<string, MercuryKindBadge>
   markMode: boolean
   canApply: boolean
@@ -184,6 +187,11 @@ export function ArDepositRow({
         {clearsNote ? (
           <div data-testid="ar-deposit-clears-note" style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 3 }}>
             {clearsNote}
+          </div>
+        ) : null}
+        {bookedNote ? (
+          <div data-testid="ar-deposit-booked-note" style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 3 }}>
+            {bookedNote}
           </div>
         ) : null}
       </div>
