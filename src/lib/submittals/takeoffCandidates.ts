@@ -62,6 +62,10 @@ export type TakeoffCandidate = {
   ticked: boolean
   /** Already a row on the revision being built onto. */
   alreadyOn: boolean
+  /** 2026-10-02 · how it sits on the draft now: a row the GC sees, an order-only row, or not on it (null / absent). */
+  onAs?: 'gc' | 'order' | null
+  /** 2026-10-02 · the bid remembers the fixture as order only: it comes on as a row the GC never sees. */
+  storedOrderOnly?: boolean
   /** The name spells out more than one tag (WC 1&2 → WC-1, WC-2), so the row may split (v2.4118). */
   canSplit: boolean
   /** The estimator's stored split, when there is one. */
@@ -87,6 +91,8 @@ export type TakeoffCandidatesInput = {
   productKeys?: ReadonlyMap<string, ReadonlyArray<string>> | null
   /** Count rows already on the revision (their `source_count_row_id`). */
   alreadyOn?: ReadonlySet<string> | null
+  /** The estimator's stored order-only picks by count row id (2026-10-02). */
+  orderOnly?: ReadonlyMap<string, boolean> | null
 }
 
 const PIPE_NAME = /\bft\s+of\b|\bpipe\b|\btubing\b|\bconduit\b/i
@@ -315,6 +321,7 @@ export function takeoffCandidates(input: TakeoffCandidatesInput): TakeoffCandida
       storedTick,
       ticked: storedTick ?? defaultTicked,
       alreadyOn: input.alreadyOn?.has(row.id) ?? false,
+      storedOrderOnly: input.orderOnly?.get(row.id) ?? false,
       canSplit,
       storedSplit,
       split: canSplit && (storedSplit ?? false),
