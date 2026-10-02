@@ -99,7 +99,7 @@ Money can go out as a **dollar-amount bill**, from **Bill part of it** or a part
 
 Nothing bills out of order. An in-order stage can pass while the stage above it is still unbilled. Then it waits. Its block hatches and its row says which stage it waits on. Bill the earlier one first. The later one turns ready on its own.
 
-The rule guides you, but it does not lock the door. You can tick several lines on the money card. Then press {{button:blue|Bill the 2 picked · $6,000}}. Or open **Bill part of it** under **Make a bill** for a plain dollar amount.
+The rule guides you, but it does not lock the door. You can tick several lines on the money card. Then press {{button:blue|Bill the 2 picked · $6,000}}. Or open **Bill part of it** under **Make a bill** for a plain dollar amount. A tick never fills that box. So each button bills what it says.
 
 ## Good to know
 

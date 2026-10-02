@@ -667,24 +667,11 @@ export default function JobFormModal({
     const next = new Set(selectedSegmentIds)
     if (next.has(fixtureRowId)) next.delete(fixtureRowId)
     else next.add(fixtureRowId)
+    // A tick picks lines for Bill the N picked and nothing else (v2.4379). It used to fill
+    // Bill part of it with the same amount too (v2.1152), so two buttons offered one sum: the
+    // picked one ties the bill to its lines, the part one does not, and a stage billed by the
+    // part button still reads unbilled on the Pipeline and in Capable of Being Billed.
     setSelectedSegmentIds(next)
-    // Selecting segments MOVES the Make Invoice bar to the selection total
-    // but never locks it (v2.1152) — the user can still drag the slider or
-    // edit the amount afterward and use New Invoice instead of the
-    // segment-linked create. Deselecting everything restores the prefill.
-    // Net of coverage: the bar mirrors what the segment create will bill.
-    const { netDollars, count } = segmentSelectionNetSummary(fixtures, next, segmentCoverage)
-    // Clamp to the unallocated remainder — the net can still exceed it when
-    // dollar coverage landed on unselected rows, and the bar clamps anyway.
-    const syncDollars = Math.min(netDollars, breakOff.breakOffRemaining)
-    setNewInvoiceAmount(
-      count > 0 && syncDollars > 0
-        ? syncDollars.toFixed(2)
-        : editing
-          ? breakOffPrefillAmountStringFromJob(editing)
-          : '',
-    )
-    setNewInvoiceAmountInputFocused(false)
   }
 
   // Who pays (v2.3353): a GC that "pays as GC by default" flips a fresh job to GC
