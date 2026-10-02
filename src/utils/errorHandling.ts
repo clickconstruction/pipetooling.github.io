@@ -216,12 +216,32 @@ function readMessage(v: unknown): string {
 }
 
 /**
+ * The sign-in lock taken from a request (v2.4350). supabase-js reads the login under a browser
+ * lock before each request; when renewing the login holds it past 5 s (a laptop waking, a slow
+ * signal, several tabs), the next request steals it and the one waiting is rejected with an
+ * AbortError — "Lock was stolen by another request" in Safari, "Lock broken by another request
+ * with the 'steal' option" in Chrome. The request was never sent, so it is safe to send again;
+ * it is a timing clash, not the user cancelling.
+ */
+export function isAuthLockStolenError(error: unknown): boolean {
+  if (!error) return false
+  const msgs = [readMessage(error), error instanceof DatabaseError ? error.serverMessage ?? '' : '']
+  return msgs.some((m) => /\block (?:was )?(?:stolen|broken) by another request\b/i.test(m) || /\block\b.*'steal' option/i.test(m))
+}
+
+/** What a reader sees when the sign-in lock was taken and the retries ran out. */
+export const AUTH_LOCK_ERROR_MESSAGE = 'The app was busy renewing your sign-in, so this did not load. Try again.'
+
+/**
  * Checks if an error is retryable: the network failed to reach the server, or
  * the server answered with a transient code / 5xx / 429. Permanent server
- * answers (`22P02`, `42501`, `PGRST116`, any other 4xx) are never retried.
+ * answers (`22P02`, `42501`, `PGRST116`, any other 4xx) are never retried. A
+ * request whose sign-in lock was stolen is retried, though it reads as an abort.
  */
 export function isRetryableError(error: unknown): boolean {
   if (!error) return false
+
+  if (isAuthLockStolenError(error)) return true
 
   // AbortError (user navigated away, request cancelled) - never retry
   const isAbort =
@@ -489,6 +509,8 @@ function reportShown(kind: DatabaseErrorKind, code: string | undefined, operatio
  * @returns User-friendly error message
  */
 export function formatErrorMessage(error: unknown, fallbackMessage = 'An unexpected error occurred'): string {
+  if (isAuthLockStolenError(error)) return AUTH_LOCK_ERROR_MESSAGE
+
   // A phone with no signal fails at the fetch layer — swap the per-engine
   // TypeError text ("Load failed", "Failed to fetch", …) for plain language
   // instead of showing techs the wrapped internals (v2.1026). Decided by
@@ -572,6 +594,7 @@ export function appendToastRefreshHint(message: string): string {
  * Includes `code`, `details`, and `hint` when present. Safe for multi-line display (`white-space: pre-wrap`).
  */
 export function formatPostgrestOrUnknownError(error: unknown, fallbackMessage: string): string {
+  if (isAuthLockStolenError(error)) return AUTH_LOCK_ERROR_MESSAGE
   // Same class-based mapping as formatErrorMessage: only a network-kind
   // failure reads as "no connection"; a server answer never does, whatever
   // its message says.

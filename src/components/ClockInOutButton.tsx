@@ -206,6 +206,8 @@ export default function ClockInOutButton({
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /** v2.4350 · the last load of your clock state failed: say so plainly, offer Try again, and load again when the app comes back on screen. */
+  const [loadFailed, setLoadFailed] = useState(false)
   const [clockInModalOpen, setClockInModalOpen] = useState(false)
   /** Clock In: show orange summary. Update Focus / clock out: gray chip. Only after unified search tap. */
   const [associationChipFromSearch, setAssociationChipFromSearch] = useState(false)
@@ -399,7 +401,9 @@ export default function ClockInOutButton({
     if (!todayResult.ok) {
       errParts.push(formatErrorMessage(todayResult.error, 'Could not load today clock sessions'))
     }
-    setError(errParts.length > 0 ? errParts.join(' ') : null)
+    // The two reads usually fail together and for the same reason: say it once.
+    setError(errParts.length > 0 ? [...new Set(errParts)].join(' ') : null)
+    setLoadFailed(errParts.length > 0)
 
     if (openResult.ok) {
       const open = openResult.row
@@ -461,6 +465,21 @@ export default function ClockInOutButton({
     setLoading(true)
     void fetchSessions().finally(() => setLoading(false))
   }, [userId, fetchSessions])
+
+  // v2.4350 · a load that failed (the sign-in lock taken while the laptop woke, a dropped signal)
+  // tries again when the app is back on screen, so the button never sits on a wrong "not clocked in".
+  useEffect(() => {
+    if (!loadFailed) return
+    const again = () => {
+      if (document.visibilityState === 'visible') void fetchSessions()
+    }
+    document.addEventListener('visibilitychange', again)
+    window.addEventListener('focus', again)
+    return () => {
+      document.removeEventListener('visibilitychange', again)
+      window.removeEventListener('focus', again)
+    }
+  }, [loadFailed, fetchSessions])
 
   useEffect(() => {
     if (!openSession && todaySessions.length === 0) return
@@ -1880,7 +1899,24 @@ export default function ClockInOutButton({
     </div>
     ) : null}
       {error && (
-        <span style={{ color: 'var(--text-red-600)', fontSize: '0.875rem' }}>{error}</span>
+        <span style={{ color: 'var(--text-red-600)', fontSize: '0.875rem' }} data-testid="clock-load-error">
+          {/* The button says it, so the sentence does not. */}
+          {loadFailed ? error.replace(/\s*Try again\.$/, '') : error}
+          {loadFailed ? (
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => {
+                setLoading(true)
+                void fetchSessions().finally(() => setLoading(false))
+              }}
+              style={{ marginLeft: '0.5rem', padding: '0.15rem 0.6rem', minHeight: 32, border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', fontSize: '0.8125rem', cursor: 'pointer' }}
+              data-testid="clock-load-retry"
+            >
+              {loading ? 'Loading…' : 'Try again'}
+            </button>
+          ) : null}
+        </span>
       )}
       {clockInModalOpen && (
         <div
