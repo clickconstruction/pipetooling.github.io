@@ -82,7 +82,7 @@ describe('buildCallQueue', () => {
     expect(knight.tabs.recordedCount).toBe(1)
     const structura = builders[1]!
     expect(structura.hasWork).toBe(false)
-    expect(totals).toEqual({ buildersWithWork: 1, chaseCount: 1, chasePacketRows: 1, reasonsCount: 1, reasonsPacketRows: 1, reasonsDollars: 300_000, tabsCount: 2 })
+    expect(totals).toEqual({ buildersWithWork: 1, chaseCount: 1, chasePacketRows: 1, reasonsCount: 1, reasonsPacketRows: 1, reasonsDollars: 300_000, tabsCount: 2, dueCount: 0, overdueCount: 0, noDateCount: 1, laterCount: 0, laterValue: 0 })
   })
 
   it('drops builders with nothing decided or in flight; sorts quiet-longest first', () => {
@@ -143,5 +143,91 @@ describe('queue order (J14-F4)', () => {
       NOW,
     )
     expect(builders.map((b) => b.builderName)).toEqual(['Never GC', 'Called GC'])
+  })
+})
+
+/**
+ * Call-again days (v2.4420, punch list #80). NOW is Sat Aug 22, 2026, 1 PM in Chicago, so
+ * today is 2026-08-22.
+ */
+describe('a promised day orders the queue', () => {
+  it('a bid parked on a day ahead leaves the chase list, and its tab is not asked for', () => {
+    const parked = bid({ builderKey: 'city', builderName: 'City', sentIso: '2026-02-11', lastContactIso: '2026-03-01T16:00:00Z', nextFollowupYmd: '2027-01-05', value: 27_000 })
+    const { builders, totals, followupByBid } = buildCallQueue([parked], NOW)
+    const city = builders[0]!
+    expect(city.chase.todo).toEqual([])
+    expect(city.chase.later).toEqual([parked])
+    expect(city.chase.freshCount).toBe(0)
+    expect(city.tabs.todo).toEqual([]) // sent six months ago: gettable, were it not parked
+    expect(city.hasWork).toBe(false)
+    expect(city.due).toBeNull()
+    expect(followupByBid.get(parked)).toMatchObject({ state: 'later', dueYmd: '2027-01-05', source: 'bid' })
+    expect(totals).toMatchObject({ chaseCount: 0, laterCount: 1, laterValue: 27_000, noDateCount: 0, tabsCount: 0 })
+  })
+
+  it('on its day the bid is back on top, ahead of builders who have been quiet far longer', () => {
+    const rows = [
+      bid({ builderKey: 'quiet', builderName: 'A Year Quiet', sentIso: '2025-08-01', lastContactIso: null }),
+      bid({ builderKey: 'due', builderName: 'Promised Today', sentIso: '2026-08-10', lastContactIso: '2026-08-15T16:00:00Z', nextFollowupYmd: '2026-08-22' }),
+      bid({ builderKey: 'late', builderName: 'Promised Tuesday', sentIso: '2026-08-10', lastContactIso: '2026-08-12T16:00:00Z', nextFollowupYmd: '2026-08-18' }),
+      bid({ builderKey: 'later', builderName: 'Promised Earlier Still', sentIso: '2026-07-01', lastContactIso: '2026-08-01T16:00:00Z', nextFollowupYmd: '2026-08-10' }),
+    ]
+    const { builders, totals } = buildCallQueue(rows, NOW)
+    // Overdue first, the longest overdue on top; then today's; then the ones nobody promised.
+    expect(builders.map((b) => b.builderName)).toEqual(['Promised Earlier Still', 'Promised Tuesday', 'Promised Today', 'A Year Quiet'])
+    expect(builders.map((b) => b.due)).toEqual([
+      { state: 'overdue', earliestYmd: '2026-08-10' },
+      { state: 'overdue', earliestYmd: '2026-08-18' },
+      { state: 'due', earliestYmd: '2026-08-22' },
+      { state: 'none', earliestYmd: null },
+    ])
+    expect(totals).toMatchObject({ chaseCount: 4, overdueCount: 2, dueCount: 1, noDateCount: 1, laterCount: 0 })
+  })
+
+  it('a promise for today shows even when the builder was called yesterday', () => {
+    const b = bid({ sentIso: '2026-08-01', lastContactIso: '2026-08-21T16:00:00Z', nextFollowupYmd: '2026-08-22' })
+    const { builders } = buildCallQueue([b], NOW)
+    expect(builders[0]!.chase.todo).toEqual([b])
+    expect(builders[0]!.chase.freshCount).toBe(0)
+  })
+
+  it('inside one card: overdue, then due, then the quiet ones; "quiet" counts only bids with no day', () => {
+    const quiet = bid({ sentIso: '2026-06-01', lastContactIso: null })
+    const due = bid({ sentIso: '2026-08-01', lastContactIso: '2026-08-10T16:00:00Z', nextFollowupYmd: '2026-08-22' })
+    const late = bid({ sentIso: '2026-05-01', lastContactIso: '2026-08-10T16:00:00Z', nextFollowupYmd: '2026-08-20' })
+    const later = bid({ sentIso: '2026-01-01', lastContactIso: null, nextFollowupYmd: '2026-12-01' })
+    const fresh = bid({ sentIso: '2026-08-10', lastContactIso: '2026-08-21T16:00:00Z' })
+    const { builders } = buildCallQueue([quiet, due, late, later, fresh], NOW)
+    const knight = builders[0]!
+    expect(knight.chase.todo).toEqual([late, due, quiet])
+    expect(knight.chase.later).toEqual([later])
+    expect(knight.chase.freshCount).toBe(1)
+    expect(knight.chase.oldestQuietDays).toBe(82) // the quiet bid sent Jun 1, not the parked one from January
+    expect(knight.due).toEqual({ state: 'overdue', earliestYmd: '2026-08-20' })
+  })
+
+  it('a bid with no day of its own takes its builder\'s', () => {
+    const a = bid({ builderKey: 'gc-a', builderName: 'A', sentIso: '2026-06-01', lastContactIso: null })
+    const own = bid({ builderKey: 'gc-a', builderName: 'A', sentIso: '2026-06-01', lastContactIso: null, nextFollowupYmd: '2026-08-22' })
+    const { builders, followupByBid } = buildCallQueue([a, own], NOW, { builderNextYmdByKey: { 'gc-a': '2026-09-15' } })
+    expect(followupByBid.get(a)).toMatchObject({ state: 'later', dueYmd: '2026-09-15', source: 'builder' })
+    expect(followupByBid.get(own)).toMatchObject({ state: 'due', source: 'bid' })
+    expect(builders[0]!.chase.todo).toEqual([own])
+    expect(builders[0]!.chase.later).toEqual([a])
+  })
+
+  it('a bid sent to two GCs is one parked bid in the totals', () => {
+    const one = bid({ id: 'same', builderKey: 'gc-a', builderName: 'A', nextFollowupYmd: '2026-12-01', value: 50_000 })
+    const two = bid({ id: 'same', builderKey: 'gc-b', builderName: 'B', nextFollowupYmd: '2026-12-01', value: 52_000 })
+    const { totals } = buildCallQueue([one, two], NOW)
+    expect(totals).toMatchObject({ laterCount: 1, laterValue: 52_000 })
+  })
+
+  it('today can be passed in: the queue does not guess the day from UTC', () => {
+    const b = bid({ sentIso: '2026-08-01', lastContactIso: '2026-08-10T16:00:00Z', nextFollowupYmd: '2026-08-23' })
+    expect(buildCallQueue([b], NOW).builders[0]!.chase.later).toEqual([b])
+    expect(buildCallQueue([b], NOW, { todayYmd: '2026-08-23' }).builders[0]!.chase.todo).toEqual([b])
+    // 2026-08-23T03:00Z is still Aug 22 in Chicago.
+    expect(buildCallQueue([b], '2026-08-23T03:00:00.000Z').builders[0]!.chase.later).toEqual([b])
   })
 })
