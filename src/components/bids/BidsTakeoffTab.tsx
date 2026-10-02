@@ -552,7 +552,9 @@ export function BidsTakeoffTab({
       <span title="In an alternate group — priced with and without" style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.06em', padding: '0 0.3rem', borderRadius: 3, border: '1px solid var(--text-amber-700)', color: 'var(--text-amber-700)', marginLeft: '0.35rem', verticalAlign: '1px' }}>ALT</span>
     ) : null
 
-  // Materials by stage (v2.3672): load the splits + the factor with the bid.
+  // Materials by stage (v2.3672): load the splits + the factor with the bid, and again when the
+  // version changes (v2.4393): a version made a moment ago brought its boxes with it (v2.4388),
+  // and the list read when the bid opened does not hold them.
   const stageBidId = takeoffIsRough ? (selectedBidForTakeoff?.id ?? null) : null
   const stageBidFactorRaw = selectedBidForTakeoff?.sov_material_factor ?? null
   useEffect(() => {
@@ -576,7 +578,7 @@ export function BidsTakeoffTab({
     return () => {
       cancelled = true
     }
-  }, [stageBidId, stageBidFactorRaw, showToast])
+  }, [stageBidId, selectedBidVersionId, stageBidFactorRaw, showToast])
   const stageLookup = useMemo(() => indexStageSplits(stageSplits), [stageSplits])
   // PR 4: the assemblies' memory for the bundles on this bid (keyed like the bundle-parts cache).
   const stageBundleTemplateIdsKey = useMemo(

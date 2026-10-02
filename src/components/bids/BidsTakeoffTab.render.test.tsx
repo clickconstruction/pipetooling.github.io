@@ -22,6 +22,12 @@ vi.mock('../../hooks/useAuth', async () => {
   return useAuthModuleMock()
 })
 
+const loadStageSplits = vi.fn(async (_supabase: unknown, _bidId: string) => [])
+vi.mock('../../lib/bids/materialsByStageIo', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../lib/bids/materialsByStageIo')>()),
+  loadStageSplitsForBid: (supabase: unknown, bidId: string) => loadStageSplits(supabase, bidId),
+}))
+
 import { BidsTakeoffTab } from './BidsTakeoffTab'
 import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 
@@ -258,5 +264,22 @@ describe('BidsTakeoffTab render smoke', () => {
       <BidsTakeoffTab {...makeProps({ selectedBidForTakeoff: makeBid({ materials_model: null }) })} />,
     )
     expect(await screen.findByTestId('takeoff-focus-view')).toBeTruthy()
+  })
+
+  it('reads the stage boxes again when the version changes, so a version made a moment ago shows the boxes it brought (v2.4393)', async () => {
+    window.localStorage.setItem('bids_takeoff_view_v1', 'new2')
+    try {
+      loadStageSplits.mockClear()
+      const bid = makeBid({ materials_model: 'rough' })
+      const { rerender } = renderWithProviders(<BidsTakeoffTab {...makeProps({ selectedBidForTakeoff: bid, selectedBidVersionId: 'v-1' })} />)
+      await settle()
+      expect(loadStageSplits).toHaveBeenCalledTimes(1)
+      rerender(<BidsTakeoffTab {...makeProps({ selectedBidForTakeoff: bid, selectedBidVersionId: 'v-2' })} />)
+      await settle()
+      expect(loadStageSplits).toHaveBeenCalledTimes(2)
+      expect(loadStageSplits.mock.calls.map((c) => c[1])).toEqual(['bid-1', 'bid-1'])
+    } finally {
+      window.localStorage.removeItem('bids_takeoff_view_v1')
+    }
   })
 })
