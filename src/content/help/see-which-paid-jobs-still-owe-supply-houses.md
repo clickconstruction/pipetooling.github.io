@@ -67,6 +67,10 @@ Press **They told us…** under the house. Type the balance they gave and pick t
 
 The row then shows the house's day and who said it. If their balance is not yours, both show. The Lien desk shows the same words on that job.
 
+## Ask a house about all its jobs
+
+Press **Ask a house…** above the list. One sheet lists every job with a balance at one house. It writes the message that asks, and you type the answers down the list. The steps are in [ask a supply house what it shows owed on my jobs](/help/ask-a-supply-house-what-it-shows-owed).
+
 ## Pay a house from here
 
 1. Press a job row to open its statement.

@@ -16,6 +16,8 @@ import {
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { buildHeldLienLines, type HeldLienAffidavitRow, type HeldLienLine, type HeldLienNoticeRow } from '../../lib/materials/heldLienLine'
 import { heldNoticeRisk, type HeldNoticeRisk } from '../../lib/materials/heldHouseNotice'
+import { buildHouseAsks, unpaidInvoiceNumbers } from '../../lib/materials/houseAsk'
+import { SupplyHouseAskSheet } from './SupplyHouseAskSheet'
 import { buildLienSupplierCard, buildLienSupplierJobs, type LienSupplierCardRow, type LienSupplierInvoiceInput, type LienSupplierJob, type LienSupplierWord } from '../../lib/jobs/lienJobSuppliers'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { LienSupplierWordForm } from '../jobs/LienJobSuppliers'
@@ -183,6 +185,14 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse, aut
   const [suppliers, setSuppliers] = useState<ReadonlyMap<string, LienSupplierJob>>(new Map())
   const [kindByJob, setKindByJob] = useState<ReadonlyMap<string, string>>(new Map())
   const [wordHouse, setWordHouse] = useState<string | null>(null)
+  // Ask a house (v2.4443): what a house files a job under, and the sheet.
+  const [addressByJob, setAddressByJob] = useState<ReadonlyMap<string, string>>(new Map())
+  const [invoiceNumbers, setInvoiceNumbers] = useState<ReadonlyMap<string, string[]>>(new Map())
+  const [askOpen, setAskOpen] = useState(false)
+  const asks = useMemo(
+    () => (view && todayYmd ? buildHouseAsks({ jobs: view.rows, suppliers, kindByJob, addressByJob, invoiceNumbers, todayYmd }) : []),
+    [view, suppliers, kindByJob, addressByJob, invoiceNumbers, todayYmd],
+  )
   const riskByJob = useMemo(() => {
     const out = new Map<string, HeldNoticeRisk>()
     if (!view || !todayYmd) return out
@@ -249,7 +259,7 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse, aut
                 () =>
                   supabase
                     .from('supply_house_invoices')
-                    .select('id, supply_house_id, amount, is_paid, due_date, invoice_date, on_job_account')
+                    .select('id, supply_house_id, amount, is_paid, due_date, invoice_date, invoice_number, on_job_account')
                     .order('id')
                     .range(from, to),
                 'load supply house invoices',
@@ -267,7 +277,7 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse, aut
                 () =>
                   supabase
                     .from('supply_house_invoices')
-                    .select('id, supply_house_id, amount, is_paid, due_date, invoice_date')
+                    .select('id, supply_house_id, amount, is_paid, due_date, invoice_date, invoice_number')
                     .order('id')
                     .range(from, to),
                 'load supply house invoices',
@@ -351,7 +361,7 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse, aut
             () =>
               supabase
                 .from('jobs_ledger')
-                .select('id, hcp_number, click_number, job_name, revenue, payments_made, customer_address_id')
+                .select('id, hcp_number, click_number, job_name, job_address, revenue, payments_made, customer_address_id')
                 .in('id', chunk)
                 .order('id')
                 .range(from, to),
@@ -371,6 +381,8 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse, aut
       }
       houseRawRef.current = raw
       setSuppliers(buildLienSupplierJobs(raw))
+      setAddressByJob(new Map(jobs.map((j) => [j.id, (j.job_address ?? '').trim()])))
+      setInvoiceNumbers(unpaidInvoiceNumbers(invoices, allocations))
       void (async () => {
         try {
           const addressIds = [...new Set(jobs.map((j) => j.customer_address_id).filter((id): id is string => Boolean(id)))]
@@ -466,6 +478,8 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse, aut
           </button>
         </div>
       )}
+
+      {askOpen && asks.length > 0 ? <SupplyHouseAskSheet asks={asks} authName={authName} isMobile={isMobile} onClose={() => setAskOpen(false)} onSaved={() => void reloadWords()} /> : null}
 
       {loading || !view ? (
         <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
@@ -596,6 +610,11 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse, aut
             ))}
             <div style={{ flex: 1 }} />
             <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{filter === 'notice_risk' ? 'Sorted by the house’s date, soonest first' : 'Sorted by $ held, largest first'}</span>
+            {asks.length > 0 ? (
+              <button type="button" onClick={() => setAskOpen(true)} data-held-ask-door title="One house at a time: the jobs with a balance there, the message that asks, and its answers">
+                Ask a house…
+              </button>
+            ) : null}
             <button type="button" onClick={() => void load()} disabled={loading}>
               Refresh
             </button>
