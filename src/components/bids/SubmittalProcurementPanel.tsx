@@ -30,6 +30,8 @@ import {
   houseFoldNote,
   logIsDraft,
   orderBlockers,
+  rowsForBlocker,
+  BLOCKER_WORDS,
   readTypedLogDate,
   shortDate,
   daysAgoWords,
@@ -37,6 +39,7 @@ import {
 
   submittalWord,
   toIsoDate,
+  type BlockerKind,
   type LineStatus,
   type ProcurementItemSource,
   type ProcurementLens,
@@ -91,6 +94,8 @@ const editorLabel: CSSProperties = { fontSize: '0.68rem', fontWeight: 700, lette
 const COLS = 8
 // The table's least width; a log narrower than this draws a card per line instead.
 const TABLE_MIN_WIDTH = 760
+// The count in a blocker's sentence is a link to its lines (Wendi, 2026-10-02).
+const blockerLink: CSSProperties = { background: 'none', border: 'none', padding: 0, margin: 0, font: 'inherit', fontWeight: 700, color: 'var(--text-blue-700)', textDecoration: 'underline', textUnderlineOffset: '2px', cursor: 'pointer' }
 const blockerLine: CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', padding: '0.3rem 0', borderTop: '1px solid var(--border-amber)' }
 const STATUS_COLOR: Record<LineStatus['tone'], string> = { done: 'var(--text-green-700)', late: 'var(--text-red-700)', ordered: 'var(--text-strong)', act: 'var(--text-blue-700)', back: 'var(--text-amber-700)', waiting: 'var(--text-muted)', none: 'var(--text-muted)' }
 const itemTag: CSSProperties = { fontWeight: 700, color: 'var(--text-strong)', marginRight: '0.45rem' }
@@ -196,6 +201,9 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
   const [bulkLead, setBulkLead] = useState('')
   const [bulkStage, setBulkStage] = useState('')
   const bulkRef = useRef<HTMLDivElement | null>(null)
+  // 2026-10-02 · the blocker whose lines are the only ones showing; none = the whole log.
+  const [onlyPicked, setOnlyPicked] = useState<BlockerKind | null>(null)
+  const onlyRef = useRef<HTMLDivElement | null>(null)
 
   const tagsKey = items.map((i) => i.tag).join('|')
 
@@ -253,8 +261,11 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
   const rows = useMemo(() => buildProcurementLog({ items, records, tagStage, stageDates }), [items, records, tagStage, stageDates])
   // What the GC's copies carry: every line but the parts bought as order only.
   const gcRows = useMemo(() => gcProcurementRows(rows), [rows])
-  const sections = useMemo(() => procurementSections(rows, lens), [rows, lens])
   const blockers = useMemo(() => orderBlockers(rows), [rows])
+  // The lines on screen: every line, or the ones a picked blocker names. Counts, the update and the print read every line.
+  const shown = useMemo(() => rowsForBlocker(rows, blockers, onlyPicked), [rows, blockers, onlyPicked])
+  const only = shown.only
+  const sections = useMemo(() => procurementSections(shown.rows, lens), [shown, lens])
   const lastUpdate = updates[0] ?? null
   const changes = useMemo(() => diffProcurementLog(lastUpdate ? lastUpdate.rows : null, gcRows), [lastUpdate, gcRows])
   const hasStageDates = Object.keys(stageDates).length > 0
@@ -478,6 +489,17 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
     } finally {
       setSaving(false)
     }
+  }
+
+  // The last line a picked blocker named was fixed: nothing is picked any more.
+  useEffect(() => {
+    if (onlyPicked && !only) setOnlyPicked(null)
+  }, [onlyPicked, only])
+
+  /** Show only the lines a blocker names (its count is the link), or every line again. */
+  function showOnly(kind: BlockerKind | null) {
+    setOnlyPicked(kind)
+    if (kind) window.setTimeout(() => onlyRef.current?.scrollIntoView?.({ block: 'center', behavior: 'smooth' }), 0)
   }
 
   /** Tick the lines a blocker names, and bring the tick bar into view. */
@@ -790,7 +812,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
             </button>
           ))}
         </div>
-        {lens === 'to_order' && loaded ? <span style={{ fontSize: '0.8125rem', color: 'var(--text-strong)' }} data-testid="procurement-next">{toOrderLine(sections)}</span> : null}
+        {lens === 'to_order' && loaded ? <span style={{ fontSize: '0.8125rem', color: 'var(--text-strong)' }} data-testid="procurement-next">{toOrderLine(only ? procurementSections(rows, lens) : sections)}</span> : null}
       </div>
 
       {loaded && logIsDraft(rows) ? (
@@ -805,15 +827,24 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
         <div style={{ background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', borderRadius: 8, padding: '0.5rem 0.75rem', display: 'flex', flexDirection: 'column' }} data-testid="procurement-blockers">
           <b style={{ fontSize: '0.85rem', color: 'var(--text-strong)', paddingBottom: '0.3rem' }}>Before you can order</b>
           {([
-            ['lead', blockers.noLead, (n: number) => <><b>{n} part{n === 1 ? '' : 's'}</b> {n === 1 ? 'has' : 'have'} no lead time, so no order-by date can be worked out.</>],
-            ['house', blockers.noHouse, (n: number) => <><b>{n} part{n === 1 ? '' : 's'}</b> {n === 1 ? 'has' : 'have'} no house.</>],
-            ['stage', blockers.noStage, (n: number) => <><b>{n} part{n === 1 ? '' : 's'}</b> {n === 1 ? 'has' : 'have'} no stage.</>],
-          ] as const).filter(([, keys]) => keys.length > 0).map(([k, keys, words]) => (
-            <div key={k} style={blockerLine} data-testid={`procurement-blocker-${k}`}>
-              <span style={{ fontSize: '0.8125rem' }}>{words(keys.length)}</span>
-              <button type="button" onClick={() => tickLines(keys)} style={{ ...btn, color: 'var(--text-blue-700)', fontWeight: 600, flexShrink: 0 }}>Tick the {keys.length}</button>
-            </div>
-          ))}
+            ['lead', blockers.noLead, 'no lead time, so no order-by date can be worked out.'],
+            ['house', blockers.noHouse, 'no house.'],
+            ['stage', blockers.noStage, 'no stage.'],
+          ] as const).filter(([, keys]) => keys.length > 0).map(([k, keys, tail]) => {
+            const n = keys.length
+            const on = only === k
+            return (
+              <div key={k} style={blockerLine} data-testid={`procurement-blocker-${k}`}>
+                <span style={{ fontSize: '0.8125rem' }}>
+                  {/* The count is the link: it shows which parts these are. */}
+                  <button type="button" aria-pressed={on} aria-label={on ? 'Show every line' : `Show the ${n === 1 ? 'part' : `${n} parts`} with ${BLOCKER_WORDS[k]}`} title={on ? 'Show every line again' : `See which ${n === 1 ? 'part this is' : `${n} parts these are`}`} onClick={() => showOnly(on ? null : k)} style={blockerLink} data-testid={`procurement-blocker-show-${k}`}>{n} part{n === 1 ? '' : 's'}</button>
+                  {' '}{n === 1 ? 'has' : 'have'} {tail}
+                  {on ? <span style={smallMuted}> Shown below.</span> : null}
+                </span>
+                <button type="button" onClick={() => tickLines(keys)} style={{ ...btn, color: 'var(--text-blue-700)', fontWeight: 600, flexShrink: 0 }}>Tick the {n}</button>
+              </div>
+            )
+          })}
           {blockers.noProduct.map((p) => (
             <div key={p.key} style={blockerLine} data-testid="procurement-blocker-product">
               <span style={{ fontSize: '0.8125rem' }}><b>{p.tag}</b> has no product yet.</span>
@@ -864,6 +895,14 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
         </div>
       ) : null}
 
+      {only ? (
+        // 2026-10-02 · the log is showing one blocker's lines only; this says so, and brings the rest back.
+        <div ref={onlyRef} role="status" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem 0.75rem', flexWrap: 'wrap', padding: '0.4rem 0.7rem', border: '1px solid var(--border-amber)', background: 'var(--bg-amber-tint)', borderRadius: 6, fontSize: '0.8125rem', color: 'var(--text-strong)' }} data-testid="procurement-only">
+          <span><b>{shown.rows.length} part{shown.rows.length === 1 ? '' : 's'} with {BLOCKER_WORDS[only]}.</b> The other lines are hidden.</span>
+          <button type="button" onClick={() => showOnly(null)} style={{ ...btn, flexShrink: 0 }}>Show every line</button>
+        </div>
+      ) : null}
+
       {(() => {
         // A heading, a divider or a house's fold: a table row on a wide screen, a block on a phone.
         const block = (key: string, testid: string, style: CSSProperties, content: ReactNode) =>
@@ -895,8 +934,8 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
               // By tag, a tag with one line needs no heading of its own.
               const heading = lens !== 'by_tag' || sec.rows.length > 1 || (sec.rows[0]?.isHand ?? false)
               const keys = sec.rows.map((r) => r.key)
-              // 2026-10-02 · To order folds the lines waiting on the GC to one line per house.
-              const folds = lens === 'to_order' && sec.key === 'waiting' ? foldByHouse(sec.rows) : null
+              // 2026-10-02 · To order folds the lines waiting on the GC to one line per house; a blocker's short list is never folded.
+              const folds = lens === 'to_order' && sec.key === 'waiting' && !only ? foldByHouse(sec.rows) : null
               // By tag, a fixture's lines as a tree: its parts one step in, an assembly's own step only when it mixes (v2.4384).
               const tree = lens === 'by_tag' && heading ? tagBlock(sec.rows) : null
               return (

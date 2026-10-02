@@ -469,6 +469,28 @@ export function orderBlockers(rows: ReadonlyArray<ProcurementRow>): OrderBlocker
   return out
 }
 
+/** One of the three facts a line can be missing before it can be ordered. */
+export type BlockerKind = 'lead' | 'house' | 'stage'
+export const BLOCKER_KINDS: ReadonlyArray<BlockerKind> = ['lead', 'house', 'stage']
+/** "5 parts with **no stage**": the words after the count. */
+export const BLOCKER_WORDS: Record<BlockerKind, string> = { lead: 'no lead time', house: 'no house', stage: 'no stage' }
+
+/** The line keys a blocker names. */
+export function blockerKeys(b: OrderBlockers, kind: BlockerKind): string[] {
+  return kind === 'lead' ? b.noLead : kind === 'house' ? b.noHouse : b.noStage
+}
+
+/**
+ * The log narrowed to the lines one blocker names (Wendi, 2026-10-02: "5 parts have no stage but
+ * doesnt say what parts they are"). No blocker picked, or one that names nothing any more, is the
+ * whole log: a fixed line leaves the short list, and the last one fixed brings every line back.
+ */
+export function rowsForBlocker(rows: ReadonlyArray<ProcurementRow>, b: OrderBlockers, kind: BlockerKind | null): { rows: ProcurementRow[]; only: BlockerKind | null } {
+  const keys = kind ? new Set(blockerKeys(b, kind)) : null
+  if (!kind || !keys || keys.size === 0) return { rows: [...rows], only: null }
+  return { rows: rows.filter((r) => keys.has(r.key)), only: kind }
+}
+
 export type HouseFold = { key: string; house: string | null; rows: ProcurementRow[]; parts: number; orderOnly: number }
 
 /**
