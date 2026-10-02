@@ -17,7 +17,7 @@ function pillStyle(on: boolean): CSSProperties {
 }
 
 /**
- * One at a time / Sheet pills beside the bid title on a Combined bid's Takeoffs (v2.2768; labels v2.2990; Old retired v2.3588).
+ * One at a time / Sheet pills at the right end of the title row, beside Print, on Takeoffs (v2.2768; labels v2.2990; Old retired v2.3588).
  * Presentational: the tab owns the state and the per-device persistence.
  */
 export function TakeoffViewPills({ view, onChange }: { view: TakeoffView; onChange: (next: TakeoffView) => void }) {

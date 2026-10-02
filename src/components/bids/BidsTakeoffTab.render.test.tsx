@@ -124,6 +124,19 @@ describe('BidsTakeoffTab render smoke', () => {
     expect(screen.getByRole('tablist', { name: 'Takeoffs view' })).toBeTruthy()
   })
 
+  it('puts the view pills at the right end of the title row, in the group that holds Print (v2.4416)', async () => {
+    renderWithProviders(
+      <BidsTakeoffTab {...makeProps({ selectedBidForTakeoff: makeBid({ materials_model: 'rough' }) })} />,
+    )
+    await screen.findByTestId('takeoff-focus-view')
+    const pills = screen.getByRole('tablist', { name: 'Takeoffs view' })
+    const print = screen.getByRole('button', { name: 'Print' })
+    expect(pills.parentElement).toBe(print.parentElement)
+    expect(pills.compareDocumentPosition(print) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    const header = document.getElementById('takeoff-header') as HTMLElement
+    expect(header.lastElementChild).toBe(pills.parentElement)
+  })
+
   // The two Combined views (v2.2778 / v2.2781) — pinned through Old's retirement (v2.3588).
   it('mounts One at a time (new1) on a Combined bid', async () => {
     window.localStorage.setItem('bids_takeoff_view_v1', 'new1')
