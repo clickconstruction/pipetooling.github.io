@@ -26,8 +26,14 @@ vi.mock('../../lib/supabase', async () => {
     }
     if (table !== 'job_lien_releases') return realFrom(table)
     const builder: Record<string, unknown> = {}
-    for (const m of ['select', 'eq', 'order', 'in', 'is', 'limit', 'insert', 'update']) builder[m] = () => builder
-    builder.single = () => Promise.resolve({ data: null, error: null })
+    // An update answers with the row as saved (the first release, changed), like the database does.
+    let wrote: Record<string, unknown> | null = null
+    for (const m of ['select', 'eq', 'order', 'in', 'is', 'limit', 'insert']) builder[m] = () => builder
+    builder.update = (payload: Record<string, unknown>) => {
+      wrote = payload
+      return builder
+    }
+    builder.single = () => Promise.resolve({ data: wrote && db.releases[0] ? { ...db.releases[0], ...wrote } : null, error: null })
     builder.maybeSingle = () => Promise.resolve({ data: null, error: null })
     builder.then = (ok: (v: unknown) => unknown) => Promise.resolve({ data: db.releases, error: null }).then(ok)
     return builder
@@ -167,6 +173,66 @@ describe('LienReleaseModal — six steps (v2.4314)', () => {
     expect(within(step(5)).getByRole('button', { name: 'Cancel request' })).toBeTruthy()
     expect(within(step(5)).queryByRole('button', { name: 'Send it to his desk' })).toBeNull()
     expect(within(step(5)).getByRole('button', { name: '✍ He is here, he signs now' })).toBeTruthy()
+  })
+
+  it('click to look (v2.4337): a folded step opens read-only, says how to change it, marks its part of the page, and folds again', async () => {
+    db.releases = [AWAITING]
+    await open650()
+    await waitFor(() => expect(step(5).textContent).toContain('Waiting for Malachi Whites to sign'))
+    // Step 3 folded: open it from its card.
+    fireEvent.click(within(step(3)).getByRole('button', { name: '3 · Check the amount' }))
+    await waitFor(() => expect(within(step(3)).getByTestId('lien-waiver-math')).toBeTruthy())
+    expect(step(3).textContent).toContain('Read only while it waits for his signature. To change it, click Cancel request in step 5 first.')
+    expect((within(step(3)).getByLabelText('Amount ($)') as HTMLInputElement).disabled).toBe(true)
+    // The page marks the amount that step filled in.
+    expect(document.querySelector('.lienRelease-preview')?.getAttribute('data-look-part')).toBe('amount')
+    expect(screen.getAllByTestId('lien-waiver-amount-mark')[0]?.textContent).toBe('$17,777.51')
+    // Step 4 from its number on the rail: the details list, and the page marks the project line.
+    fireEvent.click(step(4).querySelector('.lienStep-dot')!)
+    await waitFor(() => expect(within(step(4)).getByTestId('lien-waiver-details')).toBeTruthy())
+    expect(document.querySelector('.lienRelease-preview')?.getAttribute('data-look-part')).toBe('project')
+    expect(screen.getAllByTestId('lien-waiver-amount-mark')[0]?.textContent).toBe('ATI Schertz')
+    // Nothing in a looked-at step can change the waiver.
+    expect(within(step(4)).queryByRole('button', { name: 'Change a detail' })).toBeNull()
+    // Fold step 4: the mark goes back to step 3, still open.
+    fireEvent.click(within(step(4)).getByRole('button', { name: 'Fold' }))
+    await waitFor(() => expect(within(step(4)).getByRole('button', { name: '4 · Check the details' }).getAttribute('aria-expanded')).toBe('false'))
+    expect(document.querySelector('.lienRelease-preview')?.getAttribute('data-look-part')).toBe('amount')
+    fireEvent.click(within(step(3)).getByRole('button', { name: 'Fold' }))
+    await waitFor(() => expect(document.querySelector('.lienRelease-preview')?.getAttribute('data-look-part')).toBeNull())
+    expect(screen.queryAllByTestId('lien-waiver-amount-mark')).toHaveLength(0)
+  })
+
+  it('click to look keeps the keyboard on the step: opening lands on Fold, folding lands back on the step', async () => {
+    db.releases = [AWAITING]
+    await open650()
+    await waitFor(() => expect(step(5).textContent).toContain('Waiting for Malachi Whites to sign'))
+    const open2 = within(step(2)).getByRole('button', { name: '2 · Check the form' })
+    open2.focus()
+    fireEvent.click(open2)
+    await waitFor(() => expect(document.activeElement?.textContent).toBe('Fold'))
+    expect(document.activeElement?.closest('[data-testid="lien-step-2"]')).toBeTruthy()
+    fireEvent.click(document.activeElement as HTMLElement)
+    await waitFor(() => expect(document.activeElement?.textContent).toBe('2 · Check the form'))
+    expect(document.activeElement?.getAttribute('aria-expanded')).toBe('false')
+  })
+
+  it('click to look: Cancel request unfolds everything for editing and clears what was opened', async () => {
+    db.releases = [AWAITING]
+    await open650()
+    await waitFor(() => expect(step(5).textContent).toContain('Waiting for Malachi Whites to sign'))
+    fireEvent.click(within(step(2)).getByRole('button', { name: '2 · Check the form' }))
+    await waitFor(() => expect(within(step(2)).getByRole('button', { name: 'Fold' })).toBeTruthy())
+    fireEvent.click(within(step(5)).getByRole('button', { name: 'Cancel request' }))
+    await waitFor(() => expect(within(step(2)).queryByRole('button', { name: 'Fold' })).toBeNull())
+  })
+
+  it('a draft folds nothing, so there is nothing to open; the numbers still bring a step into view', async () => {
+    await open650()
+    expect(screen.queryByText('Look ›')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Fold' })).toBeNull()
+    fireEvent.click(step(2).querySelector('.lienStep-dot')!)
+    expect(document.querySelector('.lienRelease-preview')?.getAttribute('data-look-part')).toBeNull()
   })
 
   it('the waiver being worked on can still be voided: the footer asks twice, then voids and closes', async () => {

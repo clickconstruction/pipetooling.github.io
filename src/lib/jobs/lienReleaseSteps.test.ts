@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { lienReleaseSteps, type ReleaseStepsInput } from './lienReleaseSteps'
+import { lienReleaseSteps, releaseStepLookNote, releaseStepPagePart, type ReleaseStepsInput } from './lienReleaseSteps'
 
 // Job 650's draft as Grace had it on Oct 1: both bills, unconditional progress, $17,777.51, every detail filled.
 const DRAFT: ReleaseStepsInput = { billCount: 2, billsPicked: 2, covered: false, amount: 17777.51, tooEarly: false, detailsMissing: 0, rowStatus: 'draft', sent: false }
@@ -71,5 +71,18 @@ describe('lienReleaseSteps', () => {
     const r = lienReleaseSteps({ ...DRAFT, rowStatus: 'signed', sent: true })
     expect(r.steps.every((s) => s.state === 'done')).toBe(true)
     expect(r.current).toBeNull()
+  })
+})
+
+describe('click to look (v2.4337)', () => {
+  it('each step marks the part of the page it filled in; step 6 fills nothing', () => {
+    expect([1, 2, 3, 4, 5, 6].map(releaseStepPagePart)).toEqual(['amount', 'title', 'amount', 'project', 'signature', null])
+  })
+  it('an opened step says why it is read only and how to change it', () => {
+    expect(releaseStepLookNote('awaiting_signature', false)).toContain('click Cancel request in step 5 first')
+    expect(releaseStepLookNote('signed', false)).toContain('click Void this waiver at the bottom and make a new one. He signs it again.')
+    expect(releaseStepLookNote('signed', true)).toContain('signed and sent')
+    expect(releaseStepLookNote('draft', false)).toBeNull()
+    expect(releaseStepLookNote(null, false)).toBeNull()
   })
 })

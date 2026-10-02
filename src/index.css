@@ -4712,3 +4712,27 @@ div.bid-mark-board-row[data-marked='true'] { box-shadow: inset 3px 0 0 var(--bid
 .procure-item-open:hover .procure-item-name { text-decoration: underline; text-underline-offset: 2px; }
 .procure-item-open:focus-visible { outline: 2px solid var(--text-link); outline-offset: 0; }
 .procure-item-edit { color: var(--text-blue-700); font-weight: 600; }
+
+/* Release of Lien, click to look (v2.4337): a folded step is a button that opens it read-only in
+   place; the number on the rail does the same; the page marks what the opened step filled in. */
+.lienStep-dot[data-click='true'] { cursor: pointer; }
+.lienStep-card[data-openable='true'] { position: relative; }
+.lienStep-card[data-openable='true']:hover { border-color: var(--border-strong); background: var(--bg-subtle); }
+.lienStep-foldBtn { background: none; border: none; padding: 0; margin: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.lienStep-foldBtn::after { content: ''; position: absolute; inset: 0; border-radius: 12px; }
+.lienStep-foldBtn:focus-visible { outline: none; }
+.lienStep-foldBtn:focus-visible::after { outline: 2px solid #2563eb; outline-offset: 2px; }
+.lienStep-look { margin-left: auto; font-size: 0.75rem; font-weight: 600; color: var(--text-muted); white-space: nowrap; }
+.lienStep-card[data-openable='true']:hover .lienStep-look { color: var(--text-blue-700); }
+.lienStep-foldClose { background: none; border: 1px solid var(--border-strong); border-radius: 6px; padding: 0.1rem 0.55rem; font: inherit; font-size: 0.75rem; font-weight: 600; color: var(--text-700); cursor: pointer; }
+.lienStep-foldClose:hover, .lienStep-foldClose:focus-visible { color: var(--text-blue-700); border-color: #93c5fd; }
+.lienStep-card[data-looking='true'] { border-style: dashed; }
+.lienStep-lookNote { color: var(--text-muted); font-style: italic; }
+.lienRelease-pageTitle { border-radius: 4px; }
+.lienRelease-preview[data-look-part='title'] .lienRelease-pageTitle { background: var(--bg-blue-tint); box-shadow: 0 0 0 3px var(--bg-blue-tint); outline: 2px dashed #2563eb; outline-offset: 3px; }
+.lienRelease-preview[data-look-part='signature'] [data-testid='lien-waiver-foot'] { position: relative; outline: 2px dashed #2563eb; outline-offset: 6px; border-radius: 6px; }
+.lienRelease-preview[data-look-part='signature'] [data-testid='lien-waiver-foot']::before { content: '5 · Signed here'; position: absolute; top: -1.7em; left: 0; background: #2563eb; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 0.72rem; font-weight: 700; border-radius: 999px; padding: 0.1em 0.65em; }
+/* While an earlier step is being looked at, the page marks only that step's part: the current step's
+   "He signs here" tag steps aside (its outline is inline, so the override needs !important). */
+.lienRelease-preview[data-look-part]:not([data-look-part='signature']) [data-testid='lien-waiver-foot'][data-highlight='true'] { border-color: transparent !important; background: transparent !important; }
+.lienRelease-preview[data-look-part]:not([data-look-part='signature']) [data-testid='lien-waiver-foot'][data-highlight='true'] > span:first-child { display: none !important; }

@@ -49,9 +49,9 @@ import { LIEN_RELEASE_DOCUMENTS_BUCKET, lienReleaseMintedPdfPath } from '../../l
 import LienReleaseSignModal from './LienReleaseSignModal'
 import { LienWaiverFootPreview } from './LienWaiverFootPreview'
 import { MarkedWaiverAmount, WaiverCoveredNote, WaiverMathBox, WaiverPaidNote } from './LienWaiverAmountMath'
-import { LienReleaseStepRow } from './LienReleaseStepRow'
+import { LienReleaseStepRow, LienWaiverSignedLook } from './LienReleaseStepRow'
 import { MoneyTypingInput } from '../MoneyTypingInput'
-import { lienReleaseSteps } from '../../lib/jobs/lienReleaseSteps'
+import { lienReleaseSteps, releaseStepLookNote, releaseStepPagePart } from '../../lib/jobs/lienReleaseSteps'
 import { lienWaiverAlreadyCovered, lienWaiverAmountMath, lienWaiverPaidUnwaived } from '../../lib/jobs/lienWaiverAmountMath'
 import {
   customerAddressLienGaps,
@@ -928,12 +928,43 @@ export default function LienReleaseModal({
   const [overrides, setOverrides] = useState<ReadonlySet<'covered' | 'early'>>(() => new Set())
   const [editDetails, setEditDetails] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
+  // v2.4337 — click to look: the folded steps opened again (read-only), and the one opened last, which the page marks.
+  const [looking, setLooking] = useState<ReadonlySet<number>>(() => new Set())
+  const [lookAt, setLookAt] = useState<number | null>(null)
   useEffect(() => {
     if (!open) return
     setOverrides(new Set())
     setEditDetails(false)
     setHistoryOpen(false)
   }, [open, job?.id])
+  // A new state (asked, signed, a new waiver) folds a different set of steps: start from all folded.
+  useEffect(() => {
+    setLooking(new Set())
+    setLookAt(null)
+  }, [open, job?.id, rowStatus])
+  // After an open or a fold the card is redrawn: once it is on the page, bring it into view and keep
+  // the keyboard on that step (its Fold button once open, its own button once folded).
+  const [stepToShow, setStepToShow] = useState<{ n: number; focus: 'fold' | 'open' | null; at: number } | null>(null)
+  useEffect(() => {
+    if (!stepToShow) return
+    const el = document.querySelector(`[data-testid="lien-step-${stepToShow.n}"]`)
+    el?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' })
+    if (stepToShow.focus) (el?.querySelector(stepToShow.focus === 'fold' ? '.lienStep-foldClose' : '.lienStep-foldBtn') as HTMLElement | null)?.focus({ preventScroll: true })
+  }, [stepToShow])
+  const showStep = (n: number, focus: 'fold' | 'open' | null = null) => setStepToShow({ n, focus, at: Date.now() })
+  const toggleLook = (n: number) => {
+    const next = new Set(looking)
+    if (next.has(n)) {
+      next.delete(n)
+      setLookAt(lookAt === n ? ([...next].pop() ?? null) : lookAt)
+      showStep(n, 'open')
+    } else {
+      next.add(n)
+      setLookAt(n)
+      showStep(n, 'fold')
+    }
+    setLooking(next)
+  }
   const detailKeys = useMemo(() => FIELD_ORDER.filter((k) => k !== 'amount' && lienWaiverUsesField(formType, k)), [formType])
   const amountNum = fields ? Number((fields.amount ?? '').replace(/[$,\s]/g, '')) : 0
   // A blank detail the page prints holds signing; a year still being typed does not (the footer and the issue check cover it).
@@ -961,6 +992,18 @@ export default function LienReleaseModal({
   const foot = buildLienWaiverFoot(fields, signedFoot)
   const cur = steps.current
   const stepAt = (n: number) => steps.steps[n - 1]!
+  // v2.4337 — click to look: a folded step's card and its number open it read-only; an open step's number brings it into view.
+  const lookNote = releaseStepLookNote(rowStatus, Boolean(releaseRow?.sent_to_customer_at))
+  const lookProps = (n: number) => {
+    const folded = stepAt(n).folded
+    return {
+      open: folded && looking.has(n),
+      onToggle: folded ? () => toggleLook(n) : undefined,
+      onDot: () => (folded ? toggleLook(n) : showStep(n)),
+      lookNote: folded ? lookNote : null,
+    }
+  }
+  const lookPart = lookAt != null && looking.has(lookAt) ? releaseStepPagePart(lookAt) : null
   const leadsInto = (n: number) => cur?.n === n + 1
   const usd = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   const STEP_TITLES = ['Pick the bills', 'Check the form', 'Check the amount', 'Check the details', 'Get it signed', `Send it to ${sendToName}`]
@@ -1083,7 +1126,7 @@ export default function LienReleaseModal({
               </div>
             ) : null}
 
-            <LienReleaseStepRow step={stepAt(1)} title={STEP_TITLES[0]!} say={invoices.length > 0 ? 'Pick the bill or bills this waiver is for.' : 'This job has no bills yet, so the waiver covers the whole job.'} nextIsCurrent={leadsInto(1)} summary={pickedNumbers.length > 0 ? pickedNumbers.map((n) => `#${n}`).join(' and ') : 'the whole job'}>
+            <LienReleaseStepRow step={stepAt(1)} {...lookProps(1)} title={STEP_TITLES[0]!} say={invoices.length > 0 ? 'Pick the bill or bills this waiver is for.' : 'This job has no bills yet, so the waiver covers the whole job.'} nextIsCurrent={leadsInto(1)} summary={pickedNumbers.length > 0 ? pickedNumbers.map((n) => `#${n}`).join(' and ') : 'the whole job'}>
               {invoices.length > 0 ? (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem' }}>
                   {invoices.map((i, idx) => {
@@ -1140,7 +1183,7 @@ export default function LienReleaseModal({
               ) : null}
             </LienReleaseStepRow>
 
-            <LienReleaseStepRow step={stepAt(2)} title={STEP_TITLES[1]!} say="The app picks the form from the bills. Change it only if the bills have it wrong." nextIsCurrent={leadsInto(2)} summary={`${lienReleaseFormLabel(formType)} · ${LIEN_WAIVER_FORM_CITES[formType]}`}>
+            <LienReleaseStepRow step={stepAt(2)} {...lookProps(2)} title={STEP_TITLES[1]!} say="The app picks the form from the bills. Change it only if the bills have it wrong." nextIsCurrent={leadsInto(2)} summary={`${lienReleaseFormLabel(formType)} · ${LIEN_WAIVER_FORM_CITES[formType]}`}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 0.75rem', alignItems: 'center' }} data-testid="lien-waiver-form">
                 {(() => {
                   const t = lienWaiverToggles(formType)
@@ -1183,7 +1226,7 @@ export default function LienReleaseModal({
               {paidUnwaived != null && editable && !coveredBlocks ? <WaiverPaidNote paidUnwaived={paidUnwaived} onWaivePaid={waivePaid} /> : null}
             </LienReleaseStepRow>
 
-            <LienReleaseStepRow step={stepAt(3)} title={STEP_TITLES[2]!} say="The amount comes from the bills. The box shows how." nextIsCurrent={leadsInto(3)} summary={`${usd(Number.isFinite(amountNum) ? amountNum : 0)}${amountMath ? ` · ${amountMath.totalLabel.toLowerCase()}` : ''}`}>
+            <LienReleaseStepRow step={stepAt(3)} {...lookProps(3)} title={STEP_TITLES[2]!} say="The amount comes from the bills. The box shows how." nextIsCurrent={leadsInto(3)} summary={`${usd(Number.isFinite(amountNum) ? amountNum : 0)}${amountMath ? ` · ${amountMath.totalLabel.toLowerCase()}` : ''}`}>
               <label style={{ display: 'block', fontSize: '0.875rem', maxWidth: '14rem' }}>
                 <span style={{ display: 'block', fontWeight: 600, marginBottom: '0.2rem' }}>{FIELD_LABELS.amount}</span>
                 {/* v2.4334: commas while typing; the value kept stays plain ("17777.51"). */}
@@ -1197,7 +1240,7 @@ export default function LienReleaseModal({
               <WaiverMathBox math={amountMath} typedAmount={fields.amount} editable={editable} onUseAmount={(n) => setField('amount', n.toFixed(2))} onHover={setAmountHot} onGoOn={() => setOverrides((prev) => new Set([...prev, 'early']))} />
             </LienReleaseStepRow>
 
-            <LienReleaseStepRow step={stepAt(4)} title={STEP_TITLES[3]!} say={detailsMissing > 0 ? 'Fill in the blank ones below. The page prints them.' : 'These come from the job. Change one only if it is wrong.'} nextIsCurrent={leadsInto(4)} summary="from the job">
+            <LienReleaseStepRow step={stepAt(4)} {...lookProps(4)} title={STEP_TITLES[3]!} say={detailsMissing > 0 ? 'Fill in the blank ones below. The page prints them.' : 'These come from the job. Change one only if it is wrong.'} nextIsCurrent={leadsInto(4)} summary="from the job">
               {showDetailInputs ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
                   {detailKeys.map((key) => (
@@ -1276,6 +1319,7 @@ export default function LienReleaseModal({
 
             <LienReleaseStepRow
               step={stepAt(5)}
+              {...lookProps(5)}
               title={STEP_TITLES[4]!}
               say={asked ? undefined : iAmTheSigner ? 'You are the leader on this job. Sign here and it is done.' : 'The leader signs for the company. Pick how he signs.'}
               nextIsCurrent={leadsInto(5)}
@@ -1288,6 +1332,14 @@ export default function LienReleaseModal({
                   : 'signed'
               }
             >
+              {rowStatus === 'signed' && releaseRow ? (
+                <LienWaiverSignedLook
+                  name={releaseRow.signer_printed_name ?? fields.signerName}
+                  title={fields.signerTitle}
+                  company={fields.companyName}
+                  auditLine={lienReleaseSignatureAuditLine(releaseRow, deviceNameFor(releaseRow))}
+                />
+              ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }} data-testid="lien-waiver-signer">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', flexWrap: 'wrap', fontSize: '0.8125rem' }}>
                   <span style={{ color: 'var(--text-muted)' }}>Signs</span>
@@ -1388,9 +1440,10 @@ export default function LienReleaseModal({
                   </div>
                 ) : null}
               </div>
+              )}
             </LienReleaseStepRow>
 
-            <LienReleaseStepRow step={stepAt(6)} title={STEP_TITLES[5]!} last waitLabel="Opens once he signs" say={`Email the signed PDF to ${sendToName}. You can also download or print it.`}>
+            <LienReleaseStepRow step={stepAt(6)} {...lookProps(6)} title={STEP_TITLES[5]!} last waitLabel="Opens once he signs" say={`Email the signed PDF to ${sendToName}. You can also download or print it.`}>
               {rowStatus === 'signed' && releaseRow && !releaseRow.voided_at ? (
                 <>
                   <dl style={{ display: 'grid', gridTemplateColumns: '5.5rem minmax(0, 1fr)', rowGap: '0.3rem', columnGap: '0.9rem', margin: 0, fontSize: '0.8125rem' }}>
@@ -1448,7 +1501,7 @@ export default function LienReleaseModal({
           </div>
 
           {/* The page — pinned light like the printed document, kept in view while the steps scroll. */}
-          <div className="lienRelease-preview" data-theme="light">
+          <div className="lienRelease-preview" data-theme="light" data-look-part={lookPart ?? undefined}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.75rem', marginBottom: '0.6rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
               <span>
                 <strong style={{ color: 'var(--text-base)' }}>The page</strong> · {rowStatus === 'signed' ? 'signed' : 'it changes as you work'}
@@ -1473,10 +1526,10 @@ export default function LienReleaseModal({
                 opacity: cur?.n === 1 && cur.state === 'warn' ? 0.55 : 1,
               }}
             >
-              <p style={{ textAlign: 'center', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 0 0.9em' }}>{lienWaiverTitle(formType)}</p>
+              <p className="lienRelease-pageTitle" style={{ textAlign: 'center', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 0 0.9em' }}>{lienWaiverTitle(formType)}</p>
               {paragraphs.map((p, i) => (
                 <p key={i} style={{ margin: '0 0 0.7em' }}>
-                  <MarkedWaiverAmount text={p} amountLabel={lienWaiverMoney(fields.amount)} on={amountHot} />
+                  <MarkedWaiverAmount text={p} amountLabel={lookPart === 'project' ? fields.projectDescription.trim() : lienWaiverMoney(fields.amount)} on={amountHot || lookPart === 'amount' || lookPart === 'project'} />
                 </p>
               ))}
               <LienWaiverFootPreview foot={foot} inkUrl={rowStatus === 'signed' ? inkUrl : null} highlight={cur?.n === 5 ? (iAmTheSigner ? '5 · You sign here' : '5 · He signs here') : null} />
