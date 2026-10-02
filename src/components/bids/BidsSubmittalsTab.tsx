@@ -227,8 +227,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   const companyName = reportSettings.companyName
   const [prevItems, setPrevItems] = useState<SubmittalItemRow[]>([])
   const [editing, setEditing] = useState<SubmittalItemRow | null>(null)
-  /** 2026-10-02 · the part a Procure line opened the Edit window on; gone when the window closes. */
-  const [editFocus, setEditFocus] = useState<{ itemId: string; partId: string | null } | null>(null)
+  /** 2026-10-02 · the part a Procure line opened the Edit window on, or its house cell on a row with no parts; gone when the window closes. */
+  const [editFocus, setEditFocus] = useState<{ itemId: string; partId: string | null; house: boolean } | null>(null)
   useEffect(() => {
     if (!editing) setEditFocus(null)
   }, [editing])
@@ -2541,12 +2541,12 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                     // House, lead time or stage set from the log's tick bar: the rows and their parts read again.
                     if (selectedRev) void loadItems(selectedRev.id).then(setItems)
                   }}
-                  onOpenItem={({ itemId, partKey }) => {
+                  onOpenItem={({ itemId, partKey, house }) => {
                     // The row's Edit window over the log, on the part tapped: no scrolling up to the rows.
                     const it = items.find((x) => x.id === itemId)
                     if (!it) return
                     const part = partKey ? (partsOf.get(itemId) ?? []).find((p) => p.procure_key === partKey) : undefined
-                    setEditFocus({ itemId, partId: part?.id ?? null })
+                    setEditFocus({ itemId, partId: part?.id ?? null, house: house === true })
                     setEditing(it)
                   }}
                 />
@@ -2582,7 +2582,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
           onClose={() => setHouseFile(null)}
         />
       ) : null}
-      {editing ? <SubmittalItemEditDialog item={editing} sourceFiles={sourceFiles} people={people} houses={houses} parts={partsOf.get(editing.id) ?? []} canEnterDecision canEditProduct={isDraft} focusPartId={editFocus?.itemId === editing.id ? editFocus.partId : null} onSave={(p) => void saveItem(p)} onClose={() => setEditing(null)} /> : null}
+      {editing ? <SubmittalItemEditDialog item={editing} sourceFiles={sourceFiles} people={people} houses={houses} parts={partsOf.get(editing.id) ?? []} canEnterDecision canEditProduct={isDraft} focusPartId={editFocus?.itemId === editing.id ? editFocus.partId : null} focusHouse={editFocus?.itemId === editing.id && editFocus.house && editFocus.partId == null} onSave={(p) => void saveItem(p)} onClose={() => setEditing(null)} /> : null}
       {approvingAll && selectedRev ? (
         <SubmittalApproveAllDialog
           revLabel={`Rev ${selectedRev.rev_number}`}
