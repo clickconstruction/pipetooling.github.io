@@ -69,12 +69,12 @@ export function useLienJobSuppliers(
             jobList,
             (chunk, from, to) =>
               supabase
-                .from('job_supply_house_words' as never)
+                .from('job_supply_house_words')
                 .select('job_id, supply_house_id, their_balance, notice_on, said_by, note, noted_by_name, noted_at')
                 .in('job_id', chunk)
                 .order('job_id')
                 .order('supply_house_id')
-                .range(from, to) as never,
+                .range(from, to),
             'load what the houses told us',
           ).catch(() => [] as WordRow[]),
         ])
