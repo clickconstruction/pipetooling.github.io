@@ -61,19 +61,22 @@ vi.mock('../loadJsPDF', () => ({ loadJsPDF: async () => FakeJsPDF }))
 
 /** Recording Supabase: every builder call is logged; the thenable resolves through `route(table, steps)`. */
 type Step = { method: string; args: unknown[] }
-const queries: Array<{ table: string; steps: Step[] }> = []
+/** `sent`: the query was awaited — a builder made and never awaited sends nothing. */
+const queries: Array<{ table: string; steps: Step[]; sent: boolean }> = []
 let route: (table: string, steps: Step[]) => unknown = () => []
 vi.mock('../supabase', () => ({
   supabase: {
     from: (table: string) => {
       const steps: Step[] = []
-      queries.push({ table, steps })
+      const query = { table, steps, sent: false }
+      queries.push(query)
       const p: unknown = new Proxy(
         {},
         {
           get(_t, prop) {
             if (prop === 'then') {
               return (resolve: (v: { data: unknown; error: null }) => void) => {
+                query.sent = true
                 let data = route(table, steps)
                 if (steps.some((s) => s.method === 'maybeSingle')) data = Array.isArray(data) ? (data[0] ?? null) : data
                 resolve({ data, error: null })
@@ -94,6 +97,18 @@ vi.mock('../supabase', () => ({
 import { downloadApprovalPdf, type ApprovalPdfContext } from './approvalPdf'
 
 const eqArg = (steps: Step[], col: string) => steps.find((s) => s.method === 'eq' && s.args[0] === col)?.args[1]
+
+/** The rows a query's eq / is / in filters keep; a column a row does not carry never filters it. */
+const filtered = (rows: Array<Record<string, unknown>>, steps: Step[]) =>
+  rows.filter((r) =>
+    steps.every((s) => {
+      const [col, val] = s.args as [string, unknown]
+      if (!['eq', 'is', 'in'].includes(s.method) || !(col in r)) return true
+      if (s.method === 'eq') return r[col] === val
+      if (s.method === 'is') return r[col] == null && val == null
+      return (val as unknown[]).includes(r[col])
+    }),
+  )
 
 const bidBase = {
   id: 'bid1',
@@ -119,7 +134,6 @@ const bidBase = {
 
 const ctxBase = (bid: Record<string, unknown>): ApprovalPdfContext => ({
   bid: bid as unknown as ApprovalPdfContext['bid'],
-  priceBookVersions: [{ id: 'pb1', name: 'Standard 2026' }] as unknown as ApprovalPdfContext['priceBookVersions'],
   serviceTypes: [{ id: 'st1', name: 'Plumbing' }],
   coverLetter: {
     useCustomAmount: false,
@@ -130,12 +144,14 @@ const ctxBase = (bid: Record<string, unknown>): ApprovalPdfContext => ({
     includeDesignDrawingPlanDate: true,
     includeFixturesPerPlan: true,
     includeSignature: true,
+    altsLayout: 'same-page',
   },
 })
 
 /** Scenario A: split bid on version v1 with a GC override, priced, costed, schedule of values on. */
 const fullData: Record<string, unknown> = {
-  bid_versions: [{ id: 'v1', sort_order: 1, customer_id: 'c2', customers: { id: 'c2', name: 'Override GC', address: '2 Over St, Buda TX' } }],
+  bid_versions: [{ id: 'v1', name: 'Base', sort_order: 1, include_in_submission: false, is_alternate: false, starred_price_book_version_id: 'pb1', customer_id: 'c2', customers: { id: 'c2', name: 'Override GC', address: '2 Over St, Buda TX' } }],
+  price_book_versions: [{ id: 'pb1', name: 'Standard 2026', bid_version_id: 'v1', sort_order: 0, created_at: '2026-09-01T00:00:00Z', include_in_submission: false }],
   bids_count_rows: [
     { id: 'r1', fixture: 'Lavatory', count: 4, sequence_order: 1 },
     { id: 'r2', fixture: 'Water Closet', count: 2, sequence_order: 2 },
@@ -184,7 +200,7 @@ describe('downloadApprovalPdf — a priced, costed, split bid', () => {
   })
 
   it('fetches the count rows of the active version and the pricing of the selected price book', () => {
-    const countQueries = queries.filter((q) => q.table === 'bids_count_rows')
+    const countQueries = queries.filter((q) => q.table === 'bids_count_rows' && q.sent)
     expect(countQueries.length).toBeGreaterThan(0)
     for (const q of countQueries) {
       expect(eqArg(q.steps, 'bid_id')).toBe('bid1')
@@ -313,6 +329,106 @@ describe('downloadApprovalPdf — a Combined bid (materials from the takeoff’s
   })
 })
 
+describe('downloadApprovalPdf — a split bid whose saved price belongs to its other version (BP385, v2.4373)', () => {
+  /**
+   * Two versions, each with its own count rows and price: Written to Plan (active, the base) and
+   * Value Engineered (an alternate), both in the letter. The bid's saved price is Value Engineered's,
+   * and so is Written to Plan's ★ (not its own), so the Pricing tab shows Written to Plan's first
+   * price. The PDF used the bid's saved price on Written to Plan's rows: "Price book: —", $0.00.
+   * Base: 10 lavs × $1,000 + 8 WCs × $1,500 = $22,000. Value Engineered: 10 × $900 + 8 × $1,250 = $19,000.
+   */
+  const splitData: Record<string, unknown> = {
+    ...fullData,
+    bid_versions: [
+      { id: 'v-ve', name: 'Value Engineered', sort_order: 0, include_in_submission: true, is_alternate: true, starred_price_book_version_id: 'pb-ve', customer_id: null, customers: null },
+      { id: 'v-base', name: 'Written to Plan', sort_order: 1, include_in_submission: true, is_alternate: false, starred_price_book_version_id: 'pb-ve', customer_id: null, customers: null },
+    ],
+    price_book_versions: [
+      { id: 'pb-ve', name: 'Value Engineered', bid_version_id: 'v-ve', sort_order: 0, created_at: '2026-09-02T00:00:00Z', include_in_submission: true },
+      { id: 'pb-base', name: 'Written to Plan', bid_version_id: 'v-base', sort_order: 0, created_at: '2026-09-01T00:00:00Z', include_in_submission: true },
+    ],
+    bids_count_rows: [
+      { id: 'b1', bid_version_id: 'v-base', fixture: 'Lavatory', count: 10, sequence_order: 1, group_tag: null },
+      { id: 'b2', bid_version_id: 'v-base', fixture: 'Water Closet', count: 8, sequence_order: 2, group_tag: null },
+      { id: 'e1', bid_version_id: 'v-ve', fixture: 'Lavatory', count: 10, sequence_order: 1, group_tag: null },
+      { id: 'e2', bid_version_id: 'v-ve', fixture: 'Water Closet', count: 8, sequence_order: 2, group_tag: null },
+    ],
+    price_book_entries: [],
+    bid_pricing_assignments: [],
+    bid_count_row_custom_prices: [
+      { count_row_id: 'b1', price_book_version_id: 'pb-base', unit_price: 1000 },
+      { count_row_id: 'b2', price_book_version_id: 'pb-base', unit_price: 1500 },
+      { count_row_id: 'e1', price_book_version_id: 'pb-ve', unit_price: 900 },
+      { count_row_id: 'e2', price_book_version_id: 'pb-ve', unit_price: 1250 },
+    ],
+    bid_count_row_submission_hides: [],
+  }
+  const splitBid = { ...bidBase, selected_bid_version_id: 'v-base', selected_price_book_version_id: 'pb-ve' }
+  const download = async (altsLayout: 'same-page' | 'separate' = 'same-page') => {
+    route = (table, steps) => filtered((splitData[table] as Array<Record<string, unknown>>) ?? [], steps)
+    const ctx = ctxBase(splitBid)
+    ctx.coverLetter = { ...ctx.coverLetter, altsLayout }
+    await downloadApprovalPdf(ctx)
+  }
+
+  it('prices page 2 with the active version’s own price, on its own rows', async () => {
+    await download()
+    const p2 = textsOn(2)
+    expect(p2).toContain('Price book: Written to Plan')
+    expect(p2).toEqual(expect.arrayContaining(['Lavatory', '10', '$1,000', '$10,000', 'Water Closet', '8', '$1,500', '$12,000']))
+    expect(call('Total Revenue: $22,000.00')).toMatchObject({ page: 2, font: 'bold' })
+  })
+
+  it('lists the margins of the active version’s prices only', async () => {
+    await download()
+    const p1 = textsOn(1)
+    expect(p1).toContain('Price Book: Written to Plan | Revenue: $22,000.00 | Margin: 94.8%') // (22,000 − 1,136) ÷ 22,000
+    expect(p1.some((t) => t.startsWith('Price Book: Value Engineered'))).toBe(false)
+  })
+
+  it('says what the letter says: the base bid’s amount, with the alternate on its own rows under it', async () => {
+    await download()
+    const p4 = textsOn(4)
+    expect(p4[1]).toBe('Acme Builders')
+    expect(p4.some((t) => t.includes('TWENTY TWO THOUSAND 00/100 DOLLARS ($22,000.00)'))).toBe(true)
+    expect(call('Alternates:')).toMatchObject({ page: 4, font: 'bold' })
+    expect(p4).toContain('     • Alternate 1 — Value Engineered: Deduct $3,000 ($19,000.00)')
+    expect(p4.some((t) => t.includes('• [10] Lavatory'))).toBe(true)
+    expect(p4.some((t) => t.includes('NINETEEN THOUSAND'))).toBe(false)
+  })
+
+  it('prints a letter per section, each on its own page, when this device keeps alternates on separate pages', async () => {
+    await download('separate')
+    const base = call('Bid: Written to Plan')
+    const alternate = call('Alternate: Value Engineered — in lieu of Written to Plan')
+    expect(base).toMatchObject({ page: 4, font: 'bold' })
+    expect(alternate).toMatchObject({ font: 'bold' })
+    expect(alternate!.page).toBeGreaterThan(base!.page)
+    expect(alternate!.y).toBe(20) // the top of a fresh page
+    const texts = FakeJsPDF.last!.calls.map((c) => c.text)
+    expect(texts.some((t) => t.includes('TWENTY TWO THOUSAND 00/100 DOLLARS ($22,000.00)'))).toBe(true)
+    expect(texts.some((t) => t.includes('NINETEEN THOUSAND 00/100 DOLLARS ($19,000.00)'))).toBe(true)
+    expect(texts).not.toContain('Alternates:')
+  })
+})
+
+describe('downloadApprovalPdf — an unsplit bid priced on a shared template (no price of its own)', () => {
+  it('prices with the saved template and names it on pages 1 and 2', async () => {
+    const data: Record<string, unknown> = {
+      bids: [{ include_payment_schedule: false }],
+      price_book_versions: [{ id: 'tpl1', name: 'Default 2026', bid_id: null, bid_version_id: null, sort_order: 0 }],
+      bids_count_rows: [{ id: 'r1', bid_version_id: null, fixture: 'Lavatory', count: 4, sequence_order: 1, group_tag: null }],
+      price_book_entries: [{ id: 'te1', version_id: 'tpl1', total_price: 300, fixture_types: { name: 'Lavatory' } }],
+    }
+    route = (table, steps) => filtered((data[table] as Array<Record<string, unknown>>) ?? [], steps)
+    await downloadApprovalPdf(ctxBase({ ...bidBase, selected_bid_version_id: null, selected_price_book_version_id: 'tpl1' }))
+    expect(textsOn(1)).toContain('Price Book: Default 2026 | Revenue: $1,200.00 | Margin: Incomplete') // no cost estimate
+    expect(textsOn(2)).toContain('Price book: Default 2026')
+    expect(call('Total Revenue: $1,200.00')).toMatchObject({ page: 2 })
+    expect(textsOn(4).some((t) => t.includes('ONE THOUSAND TWO HUNDRED 00/100 DOLLARS ($1,200.00)'))).toBe(true)
+  })
+})
+
 describe('downloadApprovalPdf — an unpriced, uncosted, unsplit bid with a GC from the builder table', () => {
   it('says so on each page, uses the typed custom amount, and falls back to "Bid" in the title and filename', async () => {
     route = (table) => (table === 'bids' ? [{ include_payment_schedule: false }] : [])
@@ -330,8 +446,7 @@ describe('downloadApprovalPdf — an unpriced, uncosted, unsplit bid with a GC f
       bids_gc_builders: { name: 'Legacy Builder', address: '5 Old Rd', contact_number: '210-555-0199', email: 'legacy@x.test' },
     }
     const ctx = ctxBase(bid)
-    ctx.priceBookVersions = []
-    ctx.coverLetter = { ...ctx.coverLetter, useCustomAmount: true, customAmount: '12,500', includeSignature: false }
+    ctx.coverLetter ={ ...ctx.coverLetter, useCustomAmount: true, customAmount: '12,500', includeSignature: false }
     await downloadApprovalPdf(ctx)
 
     const pdf = FakeJsPDF.last!
@@ -358,7 +473,7 @@ describe('downloadApprovalPdf — an unpriced, uncosted, unsplit bid with a GC f
     expect(pdf.saved).toBe('Approval_Bid.pdf')
 
     // Unsplit: count rows are the bid's null-version rows.
-    const countQueries = queries.filter((q) => q.table === 'bids_count_rows')
+    const countQueries = queries.filter((q) => q.table === 'bids_count_rows' && q.sent)
     expect(countQueries.length).toBeGreaterThan(0)
     for (const q of countQueries) {
       expect(q.steps.some((s) => s.method === 'is' && s.args[0] === 'bid_version_id' && s.args[1] === null)).toBe(true)

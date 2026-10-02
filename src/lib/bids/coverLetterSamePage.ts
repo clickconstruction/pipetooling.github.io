@@ -33,6 +33,21 @@ export type CoverLetterAltTexts = {
 
 export const COVER_LETTER_ALTS_HEADING_DEFAULT = 'Alternates:'
 
+/** The studio's alternates layout: one letter with a line per alternate, or the pre-2370 letter per section. */
+export type CoverLetterAltsLayout = 'same-page' | 'separate'
+
+/** Per device: the studio's Same page / Separate pages switch remembers it here. */
+export const COVER_LETTER_ALTS_LAYOUT_KEY = 'bids_cover_letter_alts_layout_v1'
+
+/** This device's layout — same-page unless it chose separate pages, or storage cannot be read. */
+export function readCoverLetterAltsLayout(): CoverLetterAltsLayout {
+  try {
+    return globalThis.localStorage?.getItem(COVER_LETTER_ALTS_LAYOUT_KEY) === 'separate' ? 'separate' : 'same-page'
+  } catch {
+    return 'same-page'
+  }
+}
+
 export function parseCoverLetterAltTexts(raw: unknown): CoverLetterAltTexts {
   if (raw == null || typeof raw !== 'object' || Array.isArray(raw)) return {}
   const obj = raw as Record<string, unknown>

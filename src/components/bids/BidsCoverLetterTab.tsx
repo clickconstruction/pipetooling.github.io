@@ -39,9 +39,7 @@ import {
   DEFAULT_EXCLUSIONS,
 } from '../../lib/bidDocuments/coverLetter'
 import { effectiveCoverLetterWording } from '../../lib/bidDocuments/coverLetterWording'
-import { computeBidPricingRows, coverLetterTotalsFromPricingRows } from '../../lib/bidPricingRowCalculations'
-import { submissionHiddenIdsForVersion } from '../../lib/bids/submissionHides'
-import { defaultGcPacketForActiveVersion, groupSectionsByEffectiveGc, resolveSingleLetterGc, letterGcDiffersFromBid, versionGcOverrideMap, type BidVersionGcRow, type GcPacketCustomer } from '../../lib/bids/coverLetterGcPackets'
+import { resolveSingleLetterGc, letterGcDiffersFromBid, versionGcOverrideMap, type BidVersionGcRow, type GcPacketCustomer } from '../../lib/bids/coverLetterGcPackets'
 import {
   DEFAULT_PAYMENT_SCHEDULE_ROWS,
   PAYMENT_SCHEDULE_TIMINGS,
@@ -67,9 +65,10 @@ import type {
   BidPaymentScheduleRow,
   BidVersion,
 } from '../../lib/bids/bidPricingEngineTypes'
-import { bundleSummary, letterTotal, planLetterSections, planUnsplitLetterSections, sectionLabel, starredPricingIdForVersion } from '../../lib/bids/coverLetterVersionBundle'
-import { COVER_LETTER_ALTS_HEADING_DEFAULT, altSectionKey, buildAlternatesBlock, parseCoverLetterAltTexts, planSamePageLetter, type CoverLetterAltTexts } from '../../lib/bids/coverLetterSamePage'
-import { alternateIsPriced, buildAddAlternatesBlock, offeredAddAlternates, splitLetterTotalsByAlternate, stampAddAlternateAmounts, type LetterTotalsByAlternate } from '../../lib/bids/coverLetterAddAlternates'
+import { bundleSummary, letterTotal, sectionLabel, starredPricingIdForVersion } from '../../lib/bids/coverLetterVersionBundle'
+import { COVER_LETTER_ALTS_HEADING_DEFAULT, COVER_LETTER_ALTS_LAYOUT_KEY, altSectionKey, buildAlternatesBlock, parseCoverLetterAltTexts, readCoverLetterAltsLayout, type CoverLetterAltTexts, type CoverLetterAltsLayout } from '../../lib/bids/coverLetterSamePage'
+import { alternateIsPriced, buildAddAlternatesBlock, offeredAddAlternates, stampAddAlternateAmounts, type LetterTotalsByAlternate } from '../../lib/bids/coverLetterAddAlternates'
+import { letterDocument, letterRowsFor, letterSectionPlans, letterTotalsWithoutOffered, priceLetterSections, type LetterSection } from '../../lib/bids/coverLetterDocument'
 import { copyRichHtmlToClipboard } from '../../lib/copyRichHtmlToClipboard'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
@@ -88,10 +87,7 @@ const COVER_LETTER_INCLUSIONS_PLACEHOLDER = 'Permits'
 
 /** bid_versions row (the v2.2117 letter columns are in the generated types since the F5 regen). */
 type BidVersionLetter = BidVersion
-type BundleSection = { name: string; bidVersionId: string | null; revenueSum: number; fixtureRows: { fixture: string; count: number }[]; isAlternate: boolean; offeredPricingId?: string }
-// Same-page alternates (v2.2370): alternates as one line each under the proposed amount, vs. the
-// pre-2370 one-full-letter-per-alternate document. Per-device.
-const COVER_LETTER_ALTS_LAYOUT_KEY = 'bids_cover_letter_alts_layout_v1'
+type BundleSection = LetterSection
 
 type BidsCoverLetterTabProps = {
   /** v2.3216: open a step's door from the strip — Edit window or another tab — and land on its field. The page owns it. */
@@ -226,15 +222,9 @@ export function BidsCoverLetterTab({
   // vv2.2716: the Bid Room panel is controlled per GC so "Setup bid room" can sit beside Mark sent.
   const [roomOpenByKey, setRoomOpenByKey] = useState<Record<string, boolean>>({})
   const [roomPresenceByKey, setRoomPresenceByKey] = useState<Record<string, boolean>>({})
-  // Same-page alternates (v2.2370): default same-page; "Separate pages" is the pre-2370 document.
-  const [altsLayout, setAltsLayout] = useState<'same-page' | 'separate'>(() => {
-    try {
-      return window.localStorage.getItem(COVER_LETTER_ALTS_LAYOUT_KEY) === 'separate' ? 'separate' : 'same-page'
-    } catch {
-      return 'same-page'
-    }
-  })
-  const switchAltsLayout = (next: 'same-page' | 'separate') => {
+  // Same-page alternates (v2.2370): default same-page; "Separate pages" is the pre-2370 document. Per device.
+  const [altsLayout, setAltsLayout] = useState<CoverLetterAltsLayout>(readCoverLetterAltsLayout)
+  const switchAltsLayout = (next: CoverLetterAltsLayout) => {
     setAltsLayout(next)
     try {
       window.localStorage.setItem(COVER_LETTER_ALTS_LAYOUT_KEY, next)
@@ -794,17 +784,11 @@ export function BidsCoverLetterTab({
   }, [selectedBidForPricing?.id])
   useEffect(() => {
     const bid = selectedBidForPricing
-    // What goes in the document, by view:
-    //  • New (v2.2117): the bid's VERSIONS flagged in-letter, base first then alternates, each at
-    //    its ★ scenario. A split bid bundles even a single included version (the letter follows
-    //    what's checked, not what's active); an unsplit bid has no versions → single letter.
-    const plans: Array<{ name: string; bidVersionId: string | null; pricingId: string | null; isAlternate: boolean; offeredPricingId?: string }> =
-      bidVersions.length > 0
-        ? planLetterSections(bidVersions as BidVersionLetter[], bidPricings).map((p) => ({ name: p.name, bidVersionId: p.versionId, pricingId: p.pricingId, isAlternate: p.isAlternate, offeredPricingId: p.offeredPricingId }))
-            // v2.2392 (Wendi): a version-less bid still honors OFFERED price options (G1) —
-            // ★ base + each offered non-★ pricing as an alternate, exactly what the Pricing
-            // tab's "On their letter · alternate" promises. Empty when nothing is offered.
-        : planUnsplitLetterSections(bidPricings, bid?.selected_price_book_version_id ?? null).map((p) => ({ name: p.name, bidVersionId: null, pricingId: p.pricingId as string | null, isAlternate: p.isAlternate, offeredPricingId: p.offeredPricingId }))
+    // What goes in the document (`letterSectionPlans`): a split bid's VERSIONS flagged in-letter,
+    // base first, each at its ★ — even a single included version that isn't the active one
+    // (v2.2117); a version-less bid's ★ plus each OFFERED pricing as an alternate (v2.2392, Wendi),
+    // nothing when none is offered (the single letter).
+    const plans = letterSectionPlans(bidVersions as BidVersionLetter[], bidPricings, bid?.selected_price_book_version_id ?? null)
     if (!bid || plans.length === 0 || pricingCountRows.length === 0) {
       setBundlePricings([])
       return
@@ -812,15 +796,9 @@ export function BidsCoverLetterTab({
     let cancelled = false
     const versionIds = plans.map((p) => p.pricingId).filter((id): id is string => !!id)
     void (async () => {
-      // v2.2132: counts are per version — fetch the bid's rows once and group by version so each
-      // section is priced on ITS bid's counts (the engine's pricingCountRows are only the active one's).
+      // v2.2132: counts are per version — fetch the bid's rows once so each section is priced on
+      // ITS version's counts (the engine's pricingCountRows are only the active one's).
       const { data: allCountRows } = await supabase.from('bids_count_rows').select('*').eq('bid_id', bid.id).order('sequence_order', { ascending: true })
-      const rowsByVersion = new Map<string | null, BidCountRow[]>()
-      for (const r of ((allCountRows ?? []) as BidCountRow[])) {
-        const k = (r as BidCountRow & { bid_version_id?: string | null }).bid_version_id ?? null
-        rowsByVersion.set(k, [...(rowsByVersion.get(k) ?? []), r])
-      }
-      const rowsFor = (versionId: string | null) => rowsByVersion.get(versionId) ?? (versionId == null ? pricingCountRows : rowsByVersion.get(null) ?? pricingCountRows)
       const [entriesRes, assignRes, customRes, hidesRes] = versionIds.length > 0
         ? await Promise.all([
             supabase.from('price_book_entries').select('*, fixture_types(name)').in('version_id', versionIds),
@@ -830,44 +808,18 @@ export function BidsCoverLetterTab({
           ])
         : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }]
       if (cancelled) return
-      const allEntries = (entriesRes.data as PriceBookEntryWithFixture[]) ?? []
-      const allAssign = (assignRes.data as BidPricingAssignment[]) ?? []
-      const allCustom = (customRes.data as BidCountRowCustomPrice[]) ?? []
-      const allHides = (hidesRes.data as BidCountRowSubmissionHide[]) ?? []
-      const sections: BundleSection[] = plans.map((p) => {
-        if (!p.pricingId) return { name: p.name, bidVersionId: p.bidVersionId, revenueSum: 0, fixtureRows: [], isAlternate: p.isAlternate, offeredPricingId: p.offeredPricingId }
-        const pid = p.pricingId
-        const entries = allEntries.filter((e) => e.version_id === pid)
-        const customMap = new Map<string, number>()
-        for (const c of allCustom) if (c.price_book_version_id === pid) customMap.set(c.count_row_id, Number(c.unit_price))
-        const result = computeBidPricingRows({
-          countRows: rowsFor(p.bidVersionId),
-          assignments: allAssign
-            .filter((a) => a.price_book_version_id === pid)
-            .map((a) => ({ count_row_id: a.count_row_id, price_book_entry_id: a.price_book_entry_id, is_fixed_price: a.is_fixed_price ?? false, unit_price_override: a.unit_price_override })),
-          entries,
-          customUnitPriceByCountRowId: customMap,
-          laborRows: [],
-          totalMaterials: 0,
-          laborRate: 0,
-          taxPercent: 0,
-          materialsFromTakeoffByCountRowId: {},
-          hiddenSubmissionCountRowIds: submissionHiddenIdsForVersion(allHides, pid),
-        })
-        const allTotals = coverLetterTotalsFromPricingRows(result.rows)
-        // v2.4195: an offered with-and-without alternate leaves the section (it prints as an add-on);
-        // one the estimator unticked stays priced into it.
-        const split = splitLetterTotalsByAlternate(result.rows, rowsFor(p.bidVersionId), bid.alternate_group_tags ?? [])
-        const offeredHere = offeredAddAlternates(split, altTexts)
-        const totals = split && offeredHere.length > 0
-          ? (() => {
-              const kept = split.alternates.filter((g) => !offeredHere.includes(g))
-              return { revenueSum: split.base.revenueSum + kept.reduce((sum, g) => sum + g.revenueSum, 0), fixtureRows: [...split.base.fixtureRows, ...kept.flatMap((g) => g.fixtureRows)] }
-            })()
-          : allTotals
-        return { name: p.name, bidVersionId: p.bidVersionId, revenueSum: totals.revenueSum, fixtureRows: totals.fixtureRows, isAlternate: p.isAlternate, offeredPricingId: p.offeredPricingId }
-      })
-      setBundlePricings(sections)
+      // Prices only, each section on its version's rows; an offered with-and-without alternate
+      // leaves its section (v2.4195). The Approval PDF prices its letter through the same kernel.
+      setBundlePricings(priceLetterSections({
+        plans,
+        rowsFor: letterRowsFor((allCountRows ?? []) as BidCountRow[], pricingCountRows),
+        entries: (entriesRes.data as PriceBookEntryWithFixture[]) ?? [],
+        assignments: (assignRes.data as BidPricingAssignment[]) ?? [],
+        customPrices: (customRes.data as BidCountRowCustomPrice[]) ?? [],
+        hides: (hidesRes.data as BidCountRowSubmissionHide[]) ?? [],
+        alternateGroupTags: bid.alternate_group_tags ?? [],
+        altTexts,
+      }))
     })()
     return () => { cancelled = true }
   }, [selectedBidForPricing?.id, bidPricings, bidVersions, pricingCountRows, altTexts])
@@ -1154,21 +1106,13 @@ export function BidsCoverLetterTab({
         const customerAddress = customer?.address ?? '—'
         const projectNameVal = bid.project_name ?? '—'
         const projectAddressVal = bid.address ?? '—'
-        let coverLetterRevenue = 0
-        let fixtureRows: { fixture: string; count: number }[] = []
-        if (coverLetterPricingRows) {
-          coverLetterRevenue = coverLetterPricingRows.revenueSum
-          fixtureRows = coverLetterPricingRows.fixtureRows
-        }
         // v2.4195: with-and-without alternates — the proposed amount is the BASE, each offered
         // alternate prints as an addition under it; an unticked one stays priced into the amount.
         const addAltSplit = coverLetterPricingRows?.byAlternate ?? null
         const offeredAdd = offeredAddAlternates(addAltSplit, altTexts)
-        if (addAltSplit && offeredAdd.length > 0) {
-          const kept = addAltSplit.alternates.filter((g) => !offeredAdd.includes(g))
-          coverLetterRevenue = addAltSplit.base.revenueSum + kept.reduce((sum, g) => sum + g.revenueSum, 0)
-          fixtureRows = [...addAltSplit.base.fixtureRows, ...kept.flatMap((g) => g.fixtureRows)]
-        }
+        const { revenueSum: coverLetterRevenue, fixtureRows } = coverLetterPricingRows
+          ? letterTotalsWithoutOffered(coverLetterPricingRows, addAltSplit, altTexts)
+          : { revenueSum: 0, fixtureRows: [] }
         addAltRef.current = { split: addAltSplit, texts: altTexts }
         const useCustomAmount = coverLetterUseCustomAmountByBid[bid.id] === true
         const customAmountStr = (coverLetterCustomAmountByBid[bid.id] ?? '').replace(/,/g, '').trim()
@@ -1226,9 +1170,29 @@ export function BidsCoverLetterTab({
         // New view on a split bid: the headline is the LETTER TOTAL (sum of base bids at their ★),
         // not the active scenario's revenue — the number Mark sent stamps as the bid's value.
         const newBundleActive = bidVersions.length > 0 && bundlePricings.length > 0
-        // v2.2213 (owner): a $0 section never reaches the letter — unpriced bids are listed in the
-        // studio (grayed) and rejoin the letter the moment they're priced.
-        const pricedBundle = bundlePricings.filter((sec) => sec.revenueSum > 0)
+        const bidGcPacketCustomer: GcPacketCustomer = {
+          id: (bid as { customer_id?: string | null }).customer_id ?? null,
+          name: customerName,
+          address: customerAddress,
+        }
+        // The document (`letterDocument` — the Approval PDF plans its letter with it too):
+        //  • v2.2213 (owner): a $0 section never reaches the letter — unpriced bids are listed in
+        //    the studio (grayed) and rejoin the letter the moment they're priced.
+        //  • Multi-GC (v2.1159): the rest group by effective GC (version override ?? bid GC), and
+        //    the preview / Print / Copy act on ONE packet — the GC tab picked, else the ACTIVE
+        //    Version's (v2.1762) — so a document mixing GCs can never exist.
+        //  • Same-page alternates (v2.2370): a packet with alternates is ONE letter — the bases sum
+        //    to the proposed amount (fixture lists merged), each alternate is one line under it,
+        //    and with no base at all the first alternate leads. "Separate pages" keeps the pre-2370
+        //    one-full-letter-per-section document.
+        const { priced: pricedBundle, packets: gcPackets, packet: selectedGcPacket, samePage: samePagePlan } = letterDocument({
+          sections: bundlePricings,
+          versionGcById,
+          bidGc: bidGcPacketCustomer,
+          activeBidVersionId,
+          pickedPacketKey: selectedGcPacketKey,
+          layout: altsLayout,
+        })
         const unpricedLeftOff = bundlePricings.length - pricedBundle.length
         const newLetterTotal = letterTotal(pricedBundle)
         const headlineAmount = useCustomAmount && !isNaN(customAmountNum) && customAmountNum >= 0 ? customAmountNum : newBundleActive ? (boardValueForRule(boardValueRule, bundleSectionsForBoard(bundlePricings), coverLetterRevenue) ?? newLetterTotal) : coverLetterRevenue
@@ -1285,32 +1249,12 @@ export function BidsCoverLetterTab({
         const sovSplitPreview = scheduleOfValuesPreview && sovSplitInput ? splitStageValues(scheduleOfValuesPreview, sovSplitInput) : null
         const sovSplitPreviewTotals = sovSplitPreview ? sovSplitTotals(sovSplitPreview) : null
         const sovSeeds: SovLineSeed[] | null = scheduleOfValuesPreview ? seedLinesFromStages(scheduleOfValuesPreview, sovSplitPreview) : null
-        // Multi-GC (v2.1159): group bundled sections by effective GC (version
-        // override ?? bid GC). The preview / Print / Copy operate on ONE
-        // packet at a time, so a document mixing GCs can never exist.
-        const bidGcPacketCustomer: GcPacketCustomer = {
-          id: (bid as { customer_id?: string | null }).customer_id ?? null,
-          name: customerName,
-          address: customerAddress,
-        }
-        // Any included version makes a bundle (a split bid's letter follows what's checked,
-        // even when that's one version that isn't the active one).
-        const gcPackets = pricedBundle.length > 0
-          ? groupSectionsByEffectiveGc(pricedBundle, versionGcById, bidGcPacketCustomer)
-          : []
         const baseSectionNames = pricedBundle.filter((sec) => !sec.isAlternate).map((sec) => sec.name)
         // Edited wording (v2.2370) follows the section into BOTH layouts: the same-page line and
         // the separate-pages section heading.
         const sectionDisplayName = (sec: BundleSection) => altTexts.sections?.[altSectionKey(sec)]?.label?.trim() || sec.name
         const bundleLabel = (sec: BundleSection) =>
           sectionLabel({ name: sectionDisplayName(sec), isAlternate: sec.isAlternate }, baseSectionNames)
-        // Default packet follows the ACTIVE Version (v2.1762) — falling back to
-        // gcPackets[0] addressed every letter to the first section's GC (the bid
-        // default) no matter which Version chip was selected.
-        const selectedGcPacket = gcPackets.length > 0
-          ? gcPackets.find((pk) => pk.key === selectedGcPacketKey) ??
-            defaultGcPacketForActiveVersion(gcPackets, activeBidVersionId)
-          : null
         // Single-letter path: the letter follows the ACTIVE Version — its GC
         // override when set, else the bid GC — so the letterhead always matches
         // the amount and fixtures below it (which come from the active Pricing).
@@ -1331,13 +1275,6 @@ export function BidsCoverLetterTab({
           buildCoverLetterHtml(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(s.revenueSum).toUpperCase(), `$${formatCurrency(s.revenueSum)}`, s.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: s.revenueSum } : null, orgCoverLetterDefaults.closing, null, bidBasisForLetter, materialsByStageForLetter, scheduleOfValuesForLetter(s.revenueSum))
         const packetSectionText = (s: { name: string; revenueSum: number; fixtureRows: { fixture: string; count: number }[] }) =>
           buildCoverLetterText(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(s.revenueSum).toUpperCase(), `$${formatCurrency(s.revenueSum)}`, s.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: s.revenueSum } : null, orgCoverLetterDefaults.closing, null, bidBasisForLetter, materialsByStageForLetter, scheduleOfValuesForLetter(s.revenueSum))
-        // Same-page alternates (v2.2370): in the New view, a packet with alternates is ONE letter —
-        // the bases sum to the proposed amount (fixture lists merged), each alternate is one line
-        // under it, and with no base at all the first alternate leads. "Separate pages" keeps the
-        // pre-2370 one-full-letter-per-section document.
-        const samePagePlan = altsLayout === 'same-page' && selectedGcPacket
-          ? planSamePageLetter(selectedGcPacket.sections)
-          : null
         // The layout toggle follows the packet the LETTER shows (selectedGcPacket), not the studio's
         // GC tab — they can differ when the active version's GC has nothing priced yet.
         const showAltsLayoutToggle = selectedGcPacket != null && selectedGcPacket.sections.length > 1 && selectedGcPacket.sections.some((s) => s.isAlternate)
