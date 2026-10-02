@@ -30,7 +30,6 @@ export const LEGACY_PLAIN_WORDS_GUIDES: ReadonlySet<string> = new Set([
   'send-a-bid-pricing-package',
   'send-a-bill-to-more-than-one-person',
   'send-a-customer-account-to-your-attorney',
-  'send-a-final-demand-letter',
   'send-a-lien-waiver',
   'send-a-sub-a-work-order-from-a-sheet',
   'send-a-supply-house-a-quote-link',
