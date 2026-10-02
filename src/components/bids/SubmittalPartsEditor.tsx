@@ -24,6 +24,7 @@ export function SubmittalPartsEditor({
   canEditProduct,
   assembly,
   focusId = null,
+  fixtureOrderOnly = false,
 }: {
   drafts: PartDraft[]
   onChange: (next: PartDraft[]) => void
@@ -36,6 +37,8 @@ export function SubmittalPartsEditor({
   assembly?: string
   /** The part a Procure line opened the editor on (2026-10-02): ringed, scrolled to, its house box focused. */
   focusId?: string | null
+  /** 2026-10-02 · the whole fixture is order only: every part is bought and none is the GC's, whatever its own pick. */
+  fixtureOrderOnly?: boolean
 }) {
   const focusRef = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
@@ -77,7 +80,7 @@ export function SubmittalPartsEditor({
           Parts · each one is bought on its own
         </span>
         <span style={small}>
-          {gcCount} the GC sees{orderOnly > 0 ? ` · ${orderOnly} order only` : ''}
+          {fixtureOrderOnly ? 'every part is order only, with its fixture' : `${gcCount} the GC sees${orderOnly > 0 ? ` · ${orderOnly} order only` : ''}`}
           {assembly ? ` · ${assembly}` : ''}
         </span>
       </div>
@@ -114,11 +117,15 @@ export function SubmittalPartsEditor({
               </div>
             ) : null}
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              {fixtureOrderOnly ? (
+                <span style={small} data-testid="part-order-only-with-fixture">order only</span>
+              ) : (
               <label style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center', fontSize: '0.8125rem', color: d.on_submittal ? 'var(--text-strong)' : 'var(--text-muted)', cursor: canEditProduct ? 'pointer' : 'default' }} title="Off: order only. It is bought, and it shows on the procurement log, but not on the GC's submittal.">
                 <input type="checkbox" aria-label={`The GC sees part ${i + 1}`} checked={d.on_submittal} disabled={!canEditProduct} onChange={(e) => set(i, { on_submittal: e.target.checked })} />
                 GC sees it
                 {d.on_submittal ? null : <span style={small}>· no, order only</span>}
               </label>
+              )}
               <label style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center', ...small }}>
                 each fixture
                 <input type="number" aria-label={`How many of part ${i + 1} on one fixture`} min={0} step="any" value={Number.isFinite(d.quantity) ? d.quantity : ''} onChange={(e) => set(i, { quantity: e.target.value === '' ? 0 : Number(e.target.value) })} style={{ ...inputStyle, width: '4rem' }} />

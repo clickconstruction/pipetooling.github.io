@@ -8,6 +8,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '../../types/database'
 import { loadStageSplitsForBid } from '../bids/materialsByStageIo'
 import { asDecision } from './submittalRevision'
+import { isOrderOnlyRow } from './orderOnly'
 import type { SubmittalPartRow } from './itemParts'
 import { asPartStage, isCarrier } from './itemParts'
 import {
@@ -89,13 +90,15 @@ export async function loadStageDatesForBid(supabase: Client, bidId: string): Pro
   return { jobId: job.id, stageDates: stageDatesFromJob(fixtures ?? [], windows ?? []) }
 }
 
-type ItemLike = { id?: string; tag: string; submitted_manufacturer: string | null; submitted_model: string | null; submitted_label: string | null; specified_manufacturer: string | null; specified_model: string | null; specified_description: string | null; lead_time_days: number | null; review_decision: string | null; reviewed_at: string | null; supply_house_id: string | null; source_count_row_id?: string | null }
+type ItemLike = { id?: string; tag: string; submitted_manufacturer: string | null; submitted_model: string | null; submitted_label: string | null; specified_manufacturer: string | null; specified_model: string | null; specified_description: string | null; lead_time_days: number | null; review_decision: string | null; reviewed_at: string | null; supply_house_id: string | null; source_count_row_id?: string | null; order_only?: boolean | null }
 
 /**
  * The newest revision's rows as the log reads them; the house names come from one read. A row
  * with parts (2026-10-01) gives one line per part: the part's name, house, lead time and stage,
  * the fixtures counted × how many go on one, and its call (`partLineDecision`: its own; the
- * row's when the row was called whole; an order-only part is released with its fixture).
+ * row's when the row was called whole; an order-only part is released with its fixture). An
+ * order-only row (2026-10-02) waits for no call: every line of it is ready to order and stays
+ * off the GC's copies.
  */
 export async function procurementItemsFrom(supabase: Client, items: ReadonlyArray<ItemLike>, shared: boolean, parts: ReadonlyArray<SubmittalPartRow> = []): Promise<ProcurementItemSource[]> {
   const houseIds = [...new Set([...items.map((i) => i.supply_house_id), ...parts.map((p) => p.supply_house_id)].filter((x): x is string => !!x))]
@@ -121,13 +124,15 @@ export async function procurementItemsFrom(supabase: Client, items: ReadonlyArra
     const submitted = [i.submitted_manufacturer, i.submitted_model].filter(Boolean).join(' ') || i.submitted_label || ''
     const specified = [i.specified_manufacturer, i.specified_model].filter(Boolean).join(' ') || i.specified_description || ''
     const d = asDecision(i.review_decision)
-    const rowDecision = d ? { kind: d, at: i.reviewed_at } : null
+    // The whole fixture is the office's: no call is read, and no line of it reaches the GC.
+    const noGc = isOrderOnlyRow(i)
+    const rowDecision = d && !noGc ? { kind: d, at: i.reviewed_at } : null
     const itemId = (i as ItemLike & { id?: string }).id
     const counted = i.source_count_row_id ?? null
     const base = { tag: i.tag.trim(), shared, sourceCountRowId: counted, itemId: itemId ?? null, fixture: counted ? fixtures.get(counted) ?? null : null, fixtureCount: counted ? counts.get(counted) ?? null : null }
     const rowParts = itemId ? parts.filter((p) => p.item_id === itemId).sort((a, b) => a.sequence_order - b.sequence_order) : []
     if (rowParts.length === 0) {
-      out.push({ ...base, product: submitted || specified || '(no product)', supplyHouse: i.supply_house_id ? names.get(i.supply_house_id) ?? null : null, leadTimeDays: i.lead_time_days, decision: rowDecision, ...(submitted ? {} : { noProduct: true }) })
+      out.push({ ...base, product: submitted || specified || '(no product)', supplyHouse: i.supply_house_id ? names.get(i.supply_house_id) ?? null : null, leadTimeDays: i.lead_time_days, decision: rowDecision, ...(submitted ? {} : { noProduct: true }), ...(noGc ? { orderOnly: true, noGc: true } : {}) })
       continue
     }
     const fixtureCount = i.source_count_row_id ? counts.get(i.source_count_row_id) ?? null : null
@@ -139,10 +144,11 @@ export async function procurementItemsFrom(supabase: Client, items: ReadonlyArra
         product: p.label.trim(),
         supplyHouse: p.supply_house_id ? names.get(p.supply_house_id) ?? null : null,
         leadTimeDays: p.lead_time_days ?? i.lead_time_days,
-        decision: partLineDecision({ onSubmittal: p.on_submittal, own: own ? { kind: own, at: p.reviewed_at } : null, row: rowDecision, rowCalledByPart }),
+        decision: noGc ? null : partLineDecision({ onSubmittal: p.on_submittal, own: own ? { kind: own, at: p.reviewed_at } : null, row: rowDecision, rowCalledByPart }),
         partKey: p.procure_key,
         partOrder: p.sequence_order,
-        orderOnly: !p.on_submittal,
+        orderOnly: noGc || !p.on_submittal,
+        ...(noGc ? { noGc: true } : {}),
         quantity: fixtureCount != null ? fixtureCount * Number(p.quantity) : null,
         pricedLabel: p.priced_label ?? null,
         assembly: p.assembly ?? null,
