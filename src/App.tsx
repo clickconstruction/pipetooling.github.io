@@ -35,6 +35,7 @@ const Bridge = lazy(() => import('./pages/Bridge'))
 const Moneyfill = lazy(() => import('./pages/Moneyfill'))
 const Partnerships = lazy(() => import('./pages/Partnerships'))
 const Bids = lazy(() => import('./pages/Bids'))
+const GcMode = lazy(() => import('./pages/GcMode'))
 const Prospects = lazy(() => import('./pages/Prospects'))
 const Duplicates = lazy(() => import('./pages/Duplicates'))
 const Checklist = lazy(() => import('./pages/Checklist'))
@@ -340,6 +341,7 @@ function AppContent() {
           <Route path="documents" element={<Documents />} />
           <Route path="duplicates" element={<Duplicates />} />
           <Route path="bids" element={<Bids />} />
+          <Route path="bids/gc" element={<GcMode />} />
           <Route path="prospects" element={<Prospects />} />
           <Route path="checklist" element={<Checklist />} />
           <Route path="roadmap" element={<Roadmap />} />
