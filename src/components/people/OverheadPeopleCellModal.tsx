@@ -179,7 +179,7 @@ export function OverheadPeopleCellModal({ table, person, unattributed, column, l
       aria-modal="true"
       aria-labelledby="overhead-people-cell-title"
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
-      onMouseDown={(e) => {
+      onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
     >

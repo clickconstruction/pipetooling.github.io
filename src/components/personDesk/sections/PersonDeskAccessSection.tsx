@@ -522,7 +522,7 @@ function SetPasswordDialog({ userId, name, onClose }: { userId: string; name: st
   const input: React.CSSProperties = { fontSize: '0.875rem', padding: '0.4rem 0.55rem', border: '1px solid var(--border-strong)', borderRadius: 5, fontFamily: 'inherit', fontWeight: 400, background: 'var(--surface)', color: 'var(--text-base)' }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: DESK_EDITOR_Z, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onMouseDown={(e) => e.target === e.currentTarget && !saving && onClose()}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: DESK_EDITOR_Z, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(e) => e.target === e.currentTarget && !saving && onClose()}>
       <form role="dialog" aria-modal="true" aria-label={`Set a password for ${name}`} onSubmit={(e) => void submit(e)} style={{ background: 'var(--surface)', borderRadius: 8, width: 'min(420px, 100%)', padding: '1rem 1.1rem', boxShadow: '0 16px 40px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
         <h2 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-strong)' }}>Set a password for {name}</h2>
         <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-700)' }}>They can sign in with it right away. Give it to them in person or by phone.</p>
@@ -591,7 +591,7 @@ function ChangeEmailDialog({ userId, name, current, onClose, onChanged }: { user
   const input: React.CSSProperties = { fontSize: '0.875rem', padding: '0.4rem 0.55rem', border: '1px solid var(--border-strong)', borderRadius: 5, fontFamily: 'inherit', fontWeight: 400, background: 'var(--surface)', color: 'var(--text-base)' }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: DESK_EDITOR_Z, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onMouseDown={(e) => e.target === e.currentTarget && !saving && onClose()}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: DESK_EDITOR_Z, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(e) => e.target === e.currentTarget && !saving && onClose()}>
       <form role="dialog" aria-modal="true" aria-label={`Change ${name}'s sign-in email`} noValidate onSubmit={(e) => void submit(e)} style={{ background: 'var(--surface)', borderRadius: 8, width: 'min(420px, 100%)', padding: '1rem 1.1rem', boxShadow: '0 16px 40px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
         <h2 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-strong)' }}>Change {name}'s sign-in email</h2>
         <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-700)', overflowWrap: 'anywhere' }}>Now: {current ?? 'no email'}</p>

@@ -83,7 +83,7 @@ export function CategoryDetailModal({ open, label, onClose, onSaved }: CategoryD
   return (
     <div
       role="presentation"
-      onMouseDown={(e) => {
+      onClick={(e) => {
         if (e.target === e.currentTarget && !saving) onClose()
       }}
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1280, padding: '1rem', boxSizing: 'border-box' }}

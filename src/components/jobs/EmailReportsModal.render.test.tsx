@@ -82,7 +82,7 @@ describe('EmailReportsModal (one list by person)', () => {
     await settle()
     fireEvent.click(screen.getByText('Close'))
     expect(p.onClose).toHaveBeenCalledTimes(1)
-    fireEvent.mouseDown(screen.getByRole('presentation'))
+    fireEvent.click(screen.getByRole('presentation'))
     expect(p.onClose).toHaveBeenCalledTimes(2)
     r.unmount()
     render(<EmailReportsModal {...props({ open: false })} />)

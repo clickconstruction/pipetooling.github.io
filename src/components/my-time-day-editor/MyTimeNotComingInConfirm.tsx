@@ -58,7 +58,7 @@ export function MyTimeNotComingInConfirm({ open, busy, onCancel, onConfirm, zInd
         justifyContent: 'center',
         padding: '1rem',
       }}
-      onMouseDown={(e) => {
+      onClick={(e) => {
         if (e.target !== e.currentTarget || busy) return
         onCancel()
       }}

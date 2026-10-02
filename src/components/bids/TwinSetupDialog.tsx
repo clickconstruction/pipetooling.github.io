@@ -171,7 +171,7 @@ export function TwinSetupDialog({ open, onClose, target }: TwinSetupDialogProps)
   const isPricer = ('twinEmail' in target ? target.kind : target.kind) === 'pricer'
 
   return createPortal(
-    <div style={overlay} onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
+    <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
       <div role="dialog" aria-modal="true" aria-labelledby="twin-setup-title" style={panel}>
         <div>
           <div style={eyebrow}>Claude on this Mac · one-time setup</div>

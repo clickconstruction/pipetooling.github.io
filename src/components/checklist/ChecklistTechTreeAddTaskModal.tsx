@@ -131,7 +131,7 @@ export function ChecklistTechTreeAddTaskModal({
         justifyContent: 'center',
         padding: 'calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px))',
       }}
-      onMouseDown={(e) => {
+      onClick={(e) => {
         if (e.target === e.currentTarget && !saving) onClose()
       }}
     >

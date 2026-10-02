@@ -118,7 +118,7 @@ export function ManualAccountsModal({ open, onClose, onChanged }: ManualAccounts
   return (
     <div
       role="presentation"
-      onMouseDown={(e) => {
+      onClick={(e) => {
         if (e.target === e.currentTarget && !busyId) onClose()
       }}
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1260, padding: '1rem', boxSizing: 'border-box' }}

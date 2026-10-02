@@ -176,13 +176,13 @@ describe('SpecSectionAuditModal', () => {
     expect(screen.getByRole('button', { name: 'Show 2 coded names' })).toBeTruthy()
   })
 
-  it('the × button, the Escape key and a press on the backdrop each report onClose; a press inside the panel does not', async () => {
+  it('the × button, the Escape key and a click on the backdrop each report onClose; a click inside the panel does not', async () => {
     const onClose = vi.fn()
     await mountLoaded(onClose)
     const dialog = screen.getByRole('dialog', { name: 'Division 22 codes' })
 
-    fireEvent.mouseDown(dialog)
-    fireEvent.mouseDown(screen.getByText('Fixture name'))
+    fireEvent.click(dialog)
+    fireEvent.click(screen.getByText('Fixture name'))
     expect(onClose).not.toHaveBeenCalled()
 
     fireEvent.click(screen.getByRole('button', { name: 'Close' }))
@@ -193,7 +193,7 @@ describe('SpecSectionAuditModal', () => {
 
     const backdrop = dialog.parentElement
     if (!backdrop) throw new Error('the dialog has no backdrop')
-    fireEvent.mouseDown(backdrop)
+    fireEvent.click(backdrop)
     expect(onClose).toHaveBeenCalledTimes(3)
   })
 

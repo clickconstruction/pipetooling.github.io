@@ -220,7 +220,7 @@ describe('PrepareFixtureCopyModal', () => {
     expect(state.inserted).toEqual([])
   })
 
-  it('Close, Cancel, Escape and a press on the backdrop each report onClose', async () => {
+  it('Close, Cancel, Escape and a click on the backdrop each report onClose', async () => {
     const { onClose } = await mountLoaded()
     fireEvent.click(screen.getByRole('button', { name: 'Close' }))
     expect(onClose).toHaveBeenCalledTimes(1)
@@ -230,7 +230,7 @@ describe('PrepareFixtureCopyModal', () => {
     expect(onClose).toHaveBeenCalledTimes(3)
     const backdrop = screen.getByRole('dialog', { name: 'Supply house list' }).parentElement
     expect(backdrop).not.toBeNull()
-    if (backdrop) fireEvent.mouseDown(backdrop)
+    if (backdrop) fireEvent.click(backdrop)
     expect(onClose).toHaveBeenCalledTimes(4)
     expect(writeText).not.toHaveBeenCalled()
   })

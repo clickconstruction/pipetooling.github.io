@@ -49,7 +49,7 @@ export function SubmittalApproveAllDialog({ revLabel, rows, alreadyDecided, miss
   const kept = [alreadyDecided > 0 ? `${alreadyDecided} ${alreadyDecided === 1 ? 'row already has a call and keeps it' : 'rows already have a call and keep it'}` : '', missing > 0 ? `${missing} ${missing === 1 ? 'row has no product and is left out' : 'rows have no product and are left out'}` : ''].filter(Boolean)
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: Z, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', overflowY: 'auto' }} role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: Z, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', overflowY: 'auto' }} role="presentation" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
       <div role="dialog" aria-modal="true" aria-label={`They approved ${revLabel}`} style={{ background: 'var(--surface)', borderRadius: 8, maxWidth: 560, width: '100%', boxShadow: '0 10px 40px rgba(0,0,0,0.2)', padding: '1.1rem 1.25rem 0.9rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }} onMouseDown={(e) => e.stopPropagation()}>
         <div>
           <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'var(--text-strong)' }}>They approved {revLabel}</h3>

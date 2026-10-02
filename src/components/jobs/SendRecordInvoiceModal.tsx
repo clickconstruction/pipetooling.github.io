@@ -3811,7 +3811,7 @@ export default function SendRecordInvoiceModal({
           padding: '1rem',
         }}
         role="presentation"
-        onMouseDown={(e) => {
+        onClick={(e) => {
           if (e.target === e.currentTarget) setEditDueDateOpen(false)
         }}
       >

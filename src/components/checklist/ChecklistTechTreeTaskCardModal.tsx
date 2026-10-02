@@ -327,7 +327,7 @@ export function ChecklistTechTreeTaskCardModal({
   return createPortal(
     <div
       className="roadmap-task-overlay"
-      onMouseDown={(e) => {
+      onClick={(e) => {
         if (e.target === e.currentTarget && !posting && !busyUserId && !titleSaving) onClose()
       }}
     >

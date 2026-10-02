@@ -411,7 +411,7 @@ export function PackageAndSendBidPricingModal({
     <div
       style={overlay}
       role="presentation"
-      onMouseDown={(e) => {
+      onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
     >

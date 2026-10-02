@@ -54,7 +54,7 @@ export function SubmittalHouseFileModal({
   const using = choices.filter((c, i) => c.use && (matches[i]!.itemIds.length > 0 || c.addRow)).length
 
   return (
-    <div role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget && !busy) onClose() }} style={{ position: 'fixed', inset: 0, zIndex: 10060, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '1rem 0.6rem', overflowY: 'auto' }}>
+    <div role="presentation" onClick={(e) => { if (e.target === e.currentTarget && !busy) onClose() }} style={{ position: 'fixed', inset: 0, zIndex: 10060, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '1rem 0.6rem', overflowY: 'auto' }}>
       <div role="dialog" aria-modal="true" aria-label={`What ${fileName} says`} style={{ background: 'var(--surface)', borderRadius: 10, width: '100%', maxWidth: 880, boxShadow: '0 10px 40px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 2rem)' }} onMouseDown={(e) => e.stopPropagation()}>
         <div style={{ padding: '1rem 1.1rem 0.6rem', display: 'flex', flexDirection: 'column', gap: '0.45rem', borderBottom: '1px solid var(--border)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'flex-start' }}>

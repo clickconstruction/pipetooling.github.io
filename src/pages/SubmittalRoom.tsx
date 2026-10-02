@@ -474,7 +474,7 @@ export default function SubmittalRoom() {
       </div>
 
       {identifyOpen ? (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '1rem' }} role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) setIdentifyOpen(false) }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '1rem' }} role="presentation" onClick={(e) => { if (e.target === e.currentTarget) setIdentifyOpen(false) }}>
           <form role="dialog" aria-modal="true" aria-label={identifyFor === 'ask' ? 'Before you ask' : 'Before you decide'} style={{ ...card, maxWidth: 520, width: '100%', boxShadow: '0 10px 40px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', gap: 8 }} onMouseDown={(e) => e.stopPropagation()} onSubmit={(e) => { e.preventDefault(); void identify() }}>
             <div style={{ ...label, color: COPPER }}>{identifyFor === 'ask' ? 'Before you ask' : 'Before you decide'}</div>
             <p style={{ margin: 0, fontSize: '0.9rem' }}>{identifyFor === 'ask' ? 'Tell us who you are, so the answer reaches you. Asked once.' : 'Tell us who you are, so the record says so. Asked once.'}</p>

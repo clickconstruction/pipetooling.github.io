@@ -901,7 +901,7 @@ export function QuickEstimateWizard({
   return (
     <div
       style={zIndex == null ? overlayStyle : { ...overlayStyle, zIndex }}
-      onMouseDown={(e) => {
+      onClick={(e) => {
         if (e.target === e.currentTarget) closeAndKeep()
       }}
     >

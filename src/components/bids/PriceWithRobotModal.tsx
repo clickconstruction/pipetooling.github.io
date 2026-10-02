@@ -228,7 +228,7 @@ export function PriceWithRobotModal({ open, onClose, bidId, bidVersionId, bidLab
     const r = activeRequest
     const summary = summarizeResult(r.result)
     return createPortal(
-      <div style={overlay} role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
+      <div style={overlay} role="presentation" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
         <div role="dialog" aria-modal="true" aria-label="Robot pricing status" style={panel} onMouseDown={(e) => e.stopPropagation()}>
           {header}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
@@ -279,7 +279,7 @@ export function PriceWithRobotModal({ open, onClose, bidId, bidVersionId, bidLab
   const nothingReadable = loaded && sources.readable.length === 0
 
   return createPortal(
-    <div style={overlay} role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
+    <div style={overlay} role="presentation" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
       <div role="dialog" aria-modal="true" aria-label="Ask the robot to price this bid" style={panel} onMouseDown={(e) => e.stopPropagation()}>
         {header}
 

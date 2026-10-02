@@ -562,7 +562,7 @@ export default function EditProjectForm({
             zIndex: DELETE_CONFIRM_Z_INDEX,
             padding: '1rem',
           }}
-          onMouseDown={(e) => {
+          onClick={(e) => {
             if (e.target === e.currentTarget && !deleting) closeDelete()
           }}
         >
