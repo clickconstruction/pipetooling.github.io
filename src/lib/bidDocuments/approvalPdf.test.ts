@@ -497,3 +497,44 @@ describe('downloadApprovalPdf — bid basis (v2.3226)', () => {
     expect(FakeJsPDF.last!.calls.some((c) => typeof c.text === 'string' && c.text.startsWith('Bid basis:'))).toBe(false)
   })
 })
+
+describe('downloadApprovalPdf — the org’s cover-letter wording (v2.4375)', () => {
+  const orgWording = [
+    { key: 'bid_cover_letter_exclusions_default_v1', value_text: 'Concrete cutting is excluded.\nThis proposal excludes water service and sewer line to street.' },
+    { key: 'bid_cover_letter_closing_v1', value_text: 'Work starts once the permit is issued.' },
+  ]
+  const download = async (typed: { exclusions?: string; terms?: string }) => {
+    route = (table, steps) => filtered(((table === 'app_settings' ? orgWording : fullData[table]) as Array<Record<string, unknown>>) ?? [], steps)
+    const ctx = ctxBase(bidBase)
+    ctx.coverLetter = { ...ctx.coverLetter, exclusions: typed.exclusions, terms: typed.terms }
+    await downloadApprovalPdf(ctx)
+  }
+  /** The letter from its first line on, its wrapped lines joined back together. */
+  const letter = () => {
+    const calls = FakeJsPDF.last!.calls
+    const start = calls.findIndex((c) => c.text.endsWith('— Cover Letter'))
+    return calls.slice(start + 1).map((c) => c.text).join(' ').replace(/\s+/g, ' ')
+  }
+
+  it('prints the org’s exclusions and closing, and the built-in terms as one paragraph, when nobody typed for the bid', async () => {
+    await download({})
+    const text = letter()
+    expect(text).toContain('• This proposal excludes water service and sewer line to street.')
+    expect(text).not.toContain('This proposal excludes all impact fees.') // the built-in exclusions
+    expect(text).toContain('Work starts once the permit is issued.')
+    expect(text).not.toContain('No work shall commence until') // the built-in closing
+    expect(text).toContain('All work to be completed in a workmanlike manner')
+    expect(text).not.toContain('• All work to be completed')
+    const read = queries.find((q) => q.table === 'app_settings')
+    expect(read?.steps.find((s) => s.method === 'in')?.args[1]).toEqual(['bid_cover_letter_terms_default_v1', 'bid_cover_letter_exclusions_default_v1', 'bid_cover_letter_closing_v1'])
+  })
+
+  it('prints what was typed for the bid over the org’s wording', async () => {
+    await download({ exclusions: 'Typed exclusion.', terms: 'Net 30' })
+    const text = letter()
+    expect(text).toContain('• Typed exclusion.')
+    expect(text).not.toContain('water service and sewer line')
+    expect(text).toContain('• Net 30')
+    expect(text).toContain('Work starts once the permit is issued.') // the closing has no per-bid box
+  })
+})

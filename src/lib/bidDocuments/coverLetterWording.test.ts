@@ -5,7 +5,7 @@ import {
   buildCoverLetterHtml,
   buildCoverLetterText,
 } from './coverLetter'
-import { effectiveCoverLetterWording } from './coverLetterWording'
+import { coverLetterOrgDefaultsFrom, effectiveCoverLetterWording, letterWording } from './coverLetterWording'
 
 const BUILT_IN = 'Built-in wording.'
 
@@ -68,9 +68,9 @@ describe('effectiveCoverLetterWording agrees with the printed letter', () => {
 
   for (const c of cases) {
     it(c.name, () => {
-      // What the tab hands the letter builders today.
-      const rawExclusions = c.perBidExclusions ?? c.orgExclusions ?? ''
-      const rawTerms = c.perBidTerms ?? c.orgTerms ?? ''
+      // What the tab and the Approval PDF hand the letter builders.
+      const rawExclusions = letterWording(c.perBidExclusions, c.orgExclusions)
+      const rawTerms = letterWording(c.perBidTerms, c.orgTerms)
       const args: Parameters<typeof buildCoverLetterText> = ['Acme GC', '1 Main St', 'Elm St Clinic', '1 Elm St', 'ONE THOUSAND 00/100 DOLLARS', '$1,000.00', [], '', rawExclusions, rawTerms, null, 'Plumbing']
       const text = buildCoverLetterText(...args)
       const html = buildCoverLetterHtml(...(args as Parameters<typeof buildCoverLetterHtml>))
@@ -92,4 +92,35 @@ describe('effectiveCoverLetterWording agrees with the printed letter', () => {
       }
     })
   }
+})
+
+describe('letterWording', () => {
+  it('hands the builder the bid’s entry, else the org default, else nothing', () => {
+    expect(letterWording('Bid wording.', 'Org wording.')).toBe('Bid wording.')
+    expect(letterWording('', 'Org wording.')).toBe('') // an emptied box: the builder prints the built-in
+    expect(letterWording(undefined, 'Org wording.')).toBe('Org wording.')
+    expect(letterWording(undefined, null)).toBe('')
+  })
+
+  it('never hands the builder the built-in text: built-in Terms print as one paragraph, handed Terms get a bullet', () => {
+    const args = (terms: string): Parameters<typeof buildCoverLetterText> => ['Acme GC', '1 Main St', 'Elm St Clinic', '1 Elm St', 'ONE THOUSAND 00/100 DOLLARS', '$1,000.00', [], '', '', terms, null, 'Plumbing']
+    expect(buildCoverLetterText(...args(letterWording(undefined, null))).split('\n')).toContain(DEFAULT_TERMS_AND_WARRANTY)
+    expect(buildCoverLetterText(...args(DEFAULT_TERMS_AND_WARRANTY)).split('\n')).toContain('• ' + DEFAULT_TERMS_AND_WARRANTY)
+  })
+})
+
+describe('coverLetterOrgDefaultsFrom', () => {
+  it('reads the three keys, trimmed, a blank value as none saved, and ignores other keys', () => {
+    expect(coverLetterOrgDefaultsFrom([
+      { key: 'bid_cover_letter_exclusions_default_v1', value_text: '  Org exclusion one.\nOrg exclusion two.\n' },
+      { key: 'bid_cover_letter_terms_default_v1', value_text: ' \n ' },
+      { key: 'bid_cover_letter_closing_v1', value_text: 'Org closing.' },
+      { key: 'bid_board_value_rule_v1', value_text: 'active_star' },
+    ])).toEqual({ exclusions: 'Org exclusion one.\nOrg exclusion two.', terms: null, closing: 'Org closing.' })
+  })
+
+  it('reads none saved from no rows or null values', () => {
+    expect(coverLetterOrgDefaultsFrom([])).toEqual({ terms: null, exclusions: null, closing: null })
+    expect(coverLetterOrgDefaultsFrom([{ key: 'bid_cover_letter_closing_v1', value_text: null }])).toEqual({ terms: null, exclusions: null, closing: null })
+  })
 })

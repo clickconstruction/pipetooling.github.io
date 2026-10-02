@@ -93,10 +93,6 @@ import { BidsJobAccountsLens } from '../components/bids/BidsJobAccountsLens'
 import { useBidGcPackets } from '../hooks/useBidGcPackets'
 import { BidChangeOrderTab } from '../components/bids/BidChangeOrderTab'
 import { BidLienReleaseTab } from '../components/bids/BidLienReleaseTab'
-import {
-  DEFAULT_TERMS_AND_WARRANTY,
-  DEFAULT_EXCLUSIONS,
-} from '../lib/bidDocuments/coverLetter'
 import { archiveFromBoardBlockedReason, bidEligibleForWorkingBoardArchive, canUserArchiveBidOnWorkingBoard, type ArchiveReasonNames } from '../lib/workingBoardArchiveEligibility'
 import {
   bidDisplayName,
@@ -857,8 +853,9 @@ export default function Bids() {
         useCustomAmount: coverLetterUseCustomAmountByBid[b.id] === true,
         customAmount: coverLetterCustomAmountByBid[b.id] ?? '',
         inclusions: coverLetterInclusionsByBid[b.id] ?? '',
-        exclusions: coverLetterExclusionsByBid[b.id] ?? DEFAULT_EXCLUSIONS,
-        terms: coverLetterTermsByBid[b.id] ?? DEFAULT_TERMS_AND_WARRANTY,
+        // The bid's own entries; the PDF falls back to the org's wording, then the built-in, as the letter does.
+        exclusions: coverLetterExclusionsByBid[b.id],
+        terms: coverLetterTermsByBid[b.id],
         includeDesignDrawingPlanDate: coverLetterIncludeDesignDrawingPlanDateByBid[b.id] !== false,
         includeFixturesPerPlan: coverLetterIncludeFixturesPerPlanByBid[b.id] !== false,
         includeSignature: coverLetterIncludeSignatureByBid[b.id] === true,

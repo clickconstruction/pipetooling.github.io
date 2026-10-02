@@ -15,12 +15,7 @@ import { BidPickerStandardList } from './BidPickerStandardList'
 import { OpenRfiChip } from './OpenRfiChip'
 import { BidPickerSearchRow } from './BidPickerSearchRow'
 import { bidNumberMatchesQuery, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
-import {
-  APP_SETTINGS_KEY_BID_COVER_LETTER_CLOSING,
-  APP_SETTINGS_KEY_BID_COVER_LETTER_EXCLUSIONS_DEFAULT,
-  APP_SETTINGS_KEY_BID_COVER_LETTER_TERMS_DEFAULT,
-  APP_SETTINGS_KEY_BID_BOARD_VALUE_RULE,
-} from '../../lib/appSettingsKeys'
+import { APP_SETTINGS_KEY_BID_BOARD_VALUE_RULE } from '../../lib/appSettingsKeys'
 import { boardValueForRule, bundleSectionsForBoard, formatSendBadge, latestSendByVersion, parseBoardValueRule, type BoardValueRule, type VersionSendRow } from '../../lib/bids/versionSends'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { printHtmlInNewWindow } from '../../lib/bidDocuments/htmlDoc'
@@ -38,7 +33,7 @@ import {
   DEFAULT_TERMS_AND_WARRANTY,
   DEFAULT_EXCLUSIONS,
 } from '../../lib/bidDocuments/coverLetter'
-import { effectiveCoverLetterWording } from '../../lib/bidDocuments/coverLetterWording'
+import { COVER_LETTER_ORG_DEFAULT_KEYS, coverLetterOrgDefaultsFrom, effectiveCoverLetterWording, letterWording, type CoverLetterOrgDefaults } from '../../lib/bidDocuments/coverLetterWording'
 import { resolveSingleLetterGc, letterGcDiffersFromBid, versionGcOverrideMap, type BidVersionGcRow, type GcPacketCustomer } from '../../lib/bids/coverLetterGcPackets'
 import {
   DEFAULT_PAYMENT_SCHEDULE_ROWS,
@@ -330,36 +325,19 @@ export function BidsCoverLetterTab({
   const [sovLines, setSovLines] = useState<SovLine[]>([])
   // Org-editable cover letter text (Settings → Templates & testing → Bid Cover Letter
   // Defaults); null = use the built-in constants.
-  const [orgCoverLetterDefaults, setOrgCoverLetterDefaults] = useState<{
-    terms: string | null
-    exclusions: string | null
-    closing: string | null
-  }>({ terms: null, exclusions: null, closing: null })
+  const [orgCoverLetterDefaults, setOrgCoverLetterDefaults] = useState<CoverLetterOrgDefaults>({ terms: null, exclusions: null, closing: null })
 
   useEffect(() => {
     let cancelled = false
     void supabase
       .from('app_settings')
       .select('key, value_text')
-      .in('key', [
-        APP_SETTINGS_KEY_BID_COVER_LETTER_TERMS_DEFAULT,
-        APP_SETTINGS_KEY_BID_COVER_LETTER_EXCLUSIONS_DEFAULT,
-        APP_SETTINGS_KEY_BID_COVER_LETTER_CLOSING,
-        APP_SETTINGS_KEY_BID_BOARD_VALUE_RULE,
-      ])
+      .in('key', [...COVER_LETTER_ORG_DEFAULT_KEYS, APP_SETTINGS_KEY_BID_BOARD_VALUE_RULE])
       .then(({ data }) => {
         if (cancelled) return
-        const byKey = new Map((data ?? []).map((r) => [r.key, r.value_text]))
-        const pick = (key: string) => {
-          const v = (byKey.get(key) ?? '')?.trim()
-          return v ? v : null
-        }
-        setOrgCoverLetterDefaults({
-          terms: pick(APP_SETTINGS_KEY_BID_COVER_LETTER_TERMS_DEFAULT),
-          exclusions: pick(APP_SETTINGS_KEY_BID_COVER_LETTER_EXCLUSIONS_DEFAULT),
-          closing: pick(APP_SETTINGS_KEY_BID_COVER_LETTER_CLOSING),
-        })
-        setBoardValueRule(parseBoardValueRule(byKey.get(APP_SETTINGS_KEY_BID_BOARD_VALUE_RULE) ?? null))
+        // The Approval PDF reads the same three keys through the same parser.
+        setOrgCoverLetterDefaults(coverLetterOrgDefaultsFrom(data ?? []))
+        setBoardValueRule(parseBoardValueRule((data ?? []).find((r) => r.key === APP_SETTINGS_KEY_BID_BOARD_VALUE_RULE)?.value_text ?? null))
       })
     return () => {
       cancelled = true
@@ -1209,9 +1187,9 @@ export function BidsCoverLetterTab({
         const revenueNumber = `$${formatCurrency(effectiveRevenue)}`
         const inclusions = coverLetterInclusionsByBid[bid.id] ?? ''
         const inclusionsDisplay = coverLetterInclusionsByBid[bid.id] ?? ''
-        const exclusions = coverLetterExclusionsByBid[bid.id] ?? orgCoverLetterDefaults.exclusions ?? ''
+        const exclusions = letterWording(coverLetterExclusionsByBid[bid.id], orgCoverLetterDefaults.exclusions)
         const exclusionsDisplay = coverLetterExclusionsByBid[bid.id] ?? orgCoverLetterDefaults.exclusions ?? DEFAULT_EXCLUSIONS
-        const terms = coverLetterTermsByBid[bid.id] ?? orgCoverLetterDefaults.terms ?? ''
+        const terms = letterWording(coverLetterTermsByBid[bid.id], orgCoverLetterDefaults.terms)
         const termsDisplay = coverLetterTermsByBid[bid.id] ?? orgCoverLetterDefaults.terms ?? DEFAULT_TERMS_AND_WARRANTY
         // The bid room hides an empty block where the letter prints the built-in wording, so the
         // room is handed the wording the letter resolves to, never the raw text.
