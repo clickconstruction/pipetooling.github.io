@@ -15,6 +15,7 @@
 import type { StageRow } from '../jobsStagesBoard'
 import { effectiveInvoiceEstBillDate, stageRowBilledRemainingAmount } from './invoiceBilling'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
+import { listPayer, paySpeedPayer } from './billToParty'
 import {
   billedExpectedPayModel,
   daysBetweenYmd,
@@ -182,13 +183,18 @@ export function buildPaymentChaseQueue(
     const open = stageRowBilledRemainingAmount(r)
     if (open <= 0) continue
     const job = r.job
-    const customerId = job.customer_id
+    // v2.4367: the call goes to whoever the bill went to (the builder on a GC-billed bill),
+    // judged late against that payer's own pace (v2.4365).
+    const payer = listPayer(job, r.inv)
+    const customerId = payer.id
     if (!customerId) continue
+    const pace = paySpeedPayer(job, r.inv)
     const model = billedExpectedPayModel(
       {
         billedAtIso: r.inv.billed_at,
         estBillYmd: effectiveInvoiceEstBillDate(r.inv),
-        customerId,
+        customerId: pace.id,
+        payerName: pace.name,
       },
       paySpeeds,
       todayYmd,
@@ -220,7 +226,7 @@ export function buildPaymentChaseQueue(
     if (!bucket) {
       bucket = {
         customerId,
-        name: (job.customer_name ?? '').trim() || '—',
+        name: payer.name || '—',
         segment: paySpeeds?.customerTypes[customerId] ?? null,
         bills: [],
         notLate: [],
@@ -252,7 +258,13 @@ export function buildPaymentChaseQueue(
   const waiting: ChaseCustomer[] = []
   for (const b of byCustomer.values()) {
     if (b.bills.length === 0) continue
-    const custTouches = touchesByCustomer.get(b.customerId) ?? []
+    // A touch logged under this payer, plus one logged on any of their jobs under another id
+    // (a GC-billed job's calls were filed under the homeowner before v2.4367).
+    const bucketJobIds = new Set([...b.bills, ...b.notLate, ...b.disputed].map((x) => x.jobId))
+    const custTouches = [
+      ...(touchesByCustomer.get(b.customerId) ?? []),
+      ...(touches ?? []).filter((t) => t.customerId !== b.customerId && t.jobId != null && bucketJobIds.has(t.jobId)),
+    ]
     let waitReason: ChaseWaitReason | null = null
     // Newest first (the RPC orders DESC; keep it defensive).
     const sorted = custTouches.slice().sort((x, y) => (x.createdAt < y.createdAt ? 1 : -1))
@@ -295,17 +307,19 @@ export function buildPaymentChaseQueue(
 
   const billByJob = new Map<string, ChaseBill>()
   const nameByCustomer = new Map<string, string>()
+  const nameByJob = new Map<string, string>()
   for (const b of byCustomer.values()) {
     nameByCustomer.set(b.customerId, b.name)
     for (const bill of [...b.disputed, ...b.bills, ...b.notLate]) {
       if (!billByJob.has(bill.jobId)) billByJob.set(bill.jobId, bill)
+      if (!nameByJob.has(bill.jobId)) nameByJob.set(bill.jobId, b.name)
     }
   }
   const disputes: ChaseDispute[] = openDisputes
     .filter((t) => t.jobId && billByJob.has(t.jobId)) // paid disputes drop silently
     .map((t) => ({
       touch: t,
-      customerName: nameByCustomer.get(t.customerId) ?? '—',
+      customerName: (t.jobId ? nameByJob.get(t.jobId) : undefined) ?? nameByCustomer.get(t.customerId) ?? '—',
       bill: t.jobId ? (billByJob.get(t.jobId) ?? null) : null,
     }))
 

@@ -3405,6 +3405,8 @@ interface SendPhysicalInvoiceEmailBody {
 
 ### money-waiting-email-dispatch
 
+> **v2.4367 — filed by payer**: [`_shared/moneyWaitingCore.ts`](../supabase/functions/_shared/moneyWaitingCore.ts) groups each row under `payer_id` / `payer_name` (whoever the bill went to; the payload carries them since migration `20261002030000`), falling back to `customer_id` for a bill typed to someone else or an older payload (`moneyWaitingRowPayer`, the app's `listPayer`). Redeploy after the push.
+
 > **v2.4161 — the renderer is a kernel**: `render.ts` is a binding over [`_shared/moneyWaitingEmail.ts`](../supabase/functions/_shared/moneyWaitingEmail.ts) (moved verbatim; the app origin is an argument), so Settings → What the team sees renders the digest on sample data (punch list #60, lift 1 of 14). Redeploy after merge.
 
 **Purpose** (v2.2565): Share the Pay speeds **Money waiting** list by email — the `money_waiting` stream. Renders the list top-to-bottom: color legend, every off-pace customer slowest-first with their open-bills bar, then EVERY open bill beneath them (tone dot, job · full address with city, dollars, wait), long lists folded behind "+ N more jobs". Numbers come from the service-role RPC **`get_money_waiting_email_payload()`** (migration `20260901120000` — the forecast payload rows + `job_address`, pay-speed mirror upgraded to the v10 samples rules), rebuilt **at send time**; the grouping runs in-function via [`_shared/moneyWaitingCore.ts`](../supabase/functions/_shared/moneyWaitingCore.ts), a Deno port of `src/lib/jobs/moneyWaiting.ts` (**source of truth; keep in sync**). Jobs deep-link to `?jobDetail=`; the CTA opens `?tab=stages&forecast=1`. An all-on-pace week still sends a one-liner and weekly chains advance either way.

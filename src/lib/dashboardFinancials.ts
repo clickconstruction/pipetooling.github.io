@@ -19,6 +19,7 @@
  *          customer invoice yet. Mirrors the Stages gross/alloc basis (jobsStagesBoard.ts).
  */
 
+import { listPayer } from './jobs/billToParty'
 import type { UpcomingPayrollLine } from './upcomingPayrollSummary'
 import { effectivePctComplete } from './jobs/effectivePctComplete'
 import { computeBillTruth, type BillTruth, type BillTruthOpenRow } from './billing/billTruth'
@@ -75,6 +76,10 @@ export type FinancialJobRow = {
   /** Customer identity for the AR modal's Customers view (v2.2571). */
   customer_id?: string | null
   customer_name?: string | null
+  /** Who pays (v2.4367): the Customers view files a bill under its payer, the builder on a GC-billed bill. */
+  gc_customer_id?: string | null
+  bill_to_party?: string | null
+  gcCustomer?: { name: string | null } | null
 }
 
 export type FinancialInvoiceRow = {
@@ -83,6 +88,9 @@ export type FinancialInvoiceRow = {
   amount: number | null
   status: string | null
   billed_at: string | null
+  /** The invoice's own payer pick and typed recipient (v2.4367, `listPayer`). */
+  bill_to_party?: string | null
+  bill_to_email?: string | null
 }
 
 export type FinancialInvoicePaymentRow = { invoice_id: string | null; amount: number | null }
@@ -148,6 +156,7 @@ function arItemFromRow(
 ): FinancialItem {
   const inv = row.invoiceId ? invoiceById.get(row.invoiceId) : undefined
   const shell = row.kind === 'shell'
+  const payer = job ? listPayer(job, inv ?? null) : null
   return {
     key: shell ? `job:${row.jobId}` : `inv:${row.invoiceId}`,
     label: job ? financialJobLabel(job) : '—',
@@ -162,8 +171,9 @@ function arItemFromRow(
     jobId: row.jobId,
     address: (job?.job_address ?? '').trim() || null,
     pctComplete: job ? effectivePctComplete(job.pct_complete, job.status) : null,
-    customerId: job?.customer_id ?? null,
-    customerName: (job?.customer_name ?? '').trim() || null,
+    // v2.4367: filed under whoever the bill went to (the builder on a GC-billed bill).
+    customerId: payer?.id ?? null,
+    customerName: payer?.name ?? null,
   }
 }
 

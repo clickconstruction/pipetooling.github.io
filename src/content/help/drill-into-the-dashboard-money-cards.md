@@ -25,7 +25,7 @@ Accounts Receivable rows also carry the **job address** right after the name. Th
 
 ## Accounts Receivable groups by customer
 
-The Accounts Receivable drill-down opens on a **Customers** view. That is one row per customer. A collections call is about everything they owe, not one invoice. The {{button:blue|Customers}} and {{button:outline|Bills}} buttons switch between this view and the classic flat list.
+The Accounts Receivable drill-down opens on a **Customers** view. That is one row per customer, and each bill sits under whoever it went to. A job billed to a GC puts its bills on the GC's row. A collections call is about everything they owe, not one invoice. The {{button:blue|Customers}} and {{button:outline|Bills}} buttons switch between this view and the classic flat list.
 
 Each customer row shows their open bills as a small **bar**. Each segment is one bill, sized by dollars. The row also shows how long they've kept you waiting **against their own pay speed**. That is the same 12-month median the Payment forecast uses. The median is the middle value of their past pay times.
 

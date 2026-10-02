@@ -116,7 +116,7 @@ export function useDashboardFinancials(
             async () =>
               await supabase
                 .from('jobs_ledger')
-                .select('id, hcp_number, click_number, job_name, job_address, status, revenue, payments_made, last_work_date, collections_at, pct_complete, customer_id, customer_name')
+                .select('id, hcp_number, click_number, job_name, job_address, status, revenue, payments_made, last_work_date, collections_at, pct_complete, customer_id, customer_name, gc_customer_id, bill_to_party, gcCustomer:customers!jobs_ledger_gc_customer_id_fkey(name)')
                 // The bill-truth spine's cohort (waiting / working / RTB / billed + NULL): a billed
                 // invoice on a waiting job is owed like one on a working job; paid jobs never ship,
                 // so their leftover bills read as excluded (see buildArBuckets).
@@ -127,7 +127,7 @@ export function useDashboardFinancials(
             async () =>
               await supabase
                 .from('jobs_ledger_invoices')
-                .select('id, job_id, amount, status, billed_at')
+                .select('id, job_id, amount, status, billed_at, bill_to_party, bill_to_email')
                 .in('status', ['ready_to_bill', 'billed']),
             'dashboard financials invoices',
           ),

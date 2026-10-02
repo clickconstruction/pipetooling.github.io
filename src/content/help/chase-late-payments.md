@@ -6,7 +6,7 @@ keywords: payment follow-up, chase, call mode, promised date, can't reach, broke
 ---
 Every open bill past its expected payment date owes us a phone call. The Pipeline keeps that queue for you.
 
-The **📞 Ask N customers when they'll pay** card sits in Today's Money Opportunities. It counts who owes a call and the dollars riding on the answers. {{button:outline-blue|Start call mode →}} works the list one customer at a time.
+The **📞 Ask N customers when they'll pay** card sits in Today's Money Opportunities. It counts who owes a call and the dollars riding on the answers. {{button:outline-blue|Start call mode →}} works the list one customer at a time. A bill sits under whoever it went to. A builder gets one call about all their bills, on their own number. That holds even when each job names a different homeowner.
 
 ## Where the chase lives
 

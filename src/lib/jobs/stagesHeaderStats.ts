@@ -123,9 +123,9 @@ export function computeStagesHeaderStats(jobs: JobWithDetails[], now = new Date(
  * sort comparator dereferences them).
  */
 export const LEAN_STATS_JOB_COLUMNS =
-  'id, status, revenue, payments_made, pct_complete, collections_at, hcp_number, click_number, customer_id, gc_customer_id'
+  'id, status, revenue, payments_made, pct_complete, collections_at, hcp_number, click_number, customer_id, gc_customer_id, bill_to_party'
 export const LEAN_STATS_INVOICE_COLUMNS =
-  'id, job_id, amount, status, sequence_order, is_primary_rtb_bundle, estimated_bill_date, billed_at'
+  'id, job_id, amount, status, sequence_order, is_primary_rtb_bundle, estimated_bill_date, billed_at, bill_to_party, bill_to_email'
 export const LEAN_STATS_PAYMENT_COLUMNS = 'job_id, invoice_id, amount, paid_on'
 
 export type LeanStatsJobRow = {
@@ -141,6 +141,8 @@ export type LeanStatsJobRow = {
   customer_id: string | null
   /** Statement-round grouping key (v2.2072) — header math never reads it either. */
   gc_customer_id: string | null
+  /** Who pays (v2.4367): the chase queue files a bill under its payer (`listPayer`). */
+  bill_to_party?: string | null
 }
 export type LeanStatsInvoiceRow = {
   id: string
@@ -151,6 +153,9 @@ export type LeanStatsInvoiceRow = {
   is_primary_rtb_bundle: boolean | null
   estimated_bill_date: string | null
   billed_at: string | null
+  /** The invoice's payer pick and typed recipient (v2.4367, `listPayer`). */
+  bill_to_party?: string | null
+  bill_to_email?: string | null
 }
 export type LeanStatsPaymentRow = {
   job_id: string

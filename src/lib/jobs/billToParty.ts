@@ -142,6 +142,19 @@ export function paySpeedPayer(job: PayerNamedJob, inv: InvoicePartyFields | null
 }
 
 /**
+ * Who a "who owes us" list files a bill under (v2.4367): the bill's payer (`paySpeedPayer`), so a
+ * builder's bills sit under the builder, in Call mode, Money waiting, the Pay speeds breakdown,
+ * Dashboard AR and Billed by customer alike. A bill typed to someone else keeps the job's customer,
+ * as before, so nothing leaves the lists. Null id only when the job names nobody.
+ */
+export function listPayer(job: PayerNamedJob, inv: InvoicePartyFields | null | undefined): { id: string | null; name: string | null } {
+  const payer = paySpeedPayer(job, inv)
+  if (payer.id) return payer
+  const id = (job.customer_id ?? '').trim() || null
+  return { id, name: id ? (job.customer_name ?? '').trim() || null : null }
+}
+
+/**
  * A standing rule on the GC (v2.3353): when the customer picked as a job's GC
  * carries `gc_pays_by_default`, a job that still sits on the default rule
  * flips to GC pays — once, when the GC is picked, never over a deliberate

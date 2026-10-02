@@ -21,9 +21,22 @@ export type MoneyWaitingPayloadRow = {
   job_address: string | null
   customer_id: string | null
   customer_name: string | null
+  /** v2.4362: whoever the bill went to (the GC on a GC-billed bill); null = someone else. Absent on an older payload. */
+  payer_id?: string | null
+  payer_name?: string | null
   billed_at: string | null
   est_bill_ymd: string | null
   remaining: number
+}
+
+/**
+ * Who the list files a row under (v2.4367, the app's `listPayer`): the payer once the payload
+ * carries it, else (a bill typed to someone else, or an older payload) the job's customer.
+ */
+export function moneyWaitingRowPayer(r: Pick<MoneyWaitingPayloadRow, 'payer_id' | 'payer_name' | 'customer_id' | 'customer_name'>): { id: string | null; name: string | null } {
+  if (r.payer_id) return { id: r.payer_id, name: (r.payer_name ?? '').trim() || null }
+  const id = (r.customer_id ?? '').trim() || null
+  return { id, name: id ? (r.customer_name ?? '').trim() || null : null }
 }
 
 export type MoneyWaitingEmailPayload = {
@@ -83,13 +96,14 @@ export function buildMoneyWaitingFromPayload(p: MoneyWaitingEmailPayload): Money
   for (const r of p.rows) {
     const open = Number(r.remaining) || 0
     if (open <= 0) continue
-    const customerId = r.customer_id
+    const payer = moneyWaitingRowPayer(r)
+    const customerId = payer.id
     if (!customerId) continue
     const refYmd = billedReferenceYmd({ billed_at: r.billed_at, est_bill_ymd: r.est_bill_ymd })
     const rawWait = refYmd ? daysBetweenYmd(refYmd, p.today) : null
     const waitDays = rawWait != null && rawWait >= 0 ? rawWait : null
     const acc = byCustomer.get(customerId) ?? {
-      name: (r.customer_name ?? '').trim() || '—',
+      name: payer.name || '—',
       open: 0,
       bills: [],
     }
