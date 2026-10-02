@@ -3233,6 +3233,10 @@ export type Database = {
           loss_category: string | null
           loss_reason: string | null
           materials_model: string
+          next_followup_contact_person_id: string | null
+          next_followup_entry_id: string | null
+          next_followup_on: string | null
+          next_followup_reason: string | null
           notes: string | null
           outcome: string | null
           outcome_at: string | null
@@ -3320,6 +3324,10 @@ export type Database = {
           loss_category?: string | null
           loss_reason?: string | null
           materials_model?: string
+          next_followup_contact_person_id?: string | null
+          next_followup_entry_id?: string | null
+          next_followup_on?: string | null
+          next_followup_reason?: string | null
           notes?: string | null
           outcome?: string | null
           outcome_at?: string | null
@@ -3407,6 +3415,10 @@ export type Database = {
           loss_category?: string | null
           loss_reason?: string | null
           materials_model?: string
+          next_followup_contact_person_id?: string | null
+          next_followup_entry_id?: string | null
+          next_followup_on?: string | null
+          next_followup_reason?: string | null
           notes?: string | null
           outcome?: string | null
           outcome_at?: string | null
@@ -3510,6 +3522,20 @@ export type Database = {
             columns: ["gc_builder_id"]
             isOneToOne: false
             referencedRelation: "bids_gc_builders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bids_next_followup_entry_fkey"
+            columns: ["next_followup_entry_id"]
+            isOneToOne: false
+            referencedRelation: "bids_submission_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bids_next_followup_person_fkey"
+            columns: ["next_followup_contact_person_id"]
+            isOneToOne: false
+            referencedRelation: "customer_contact_persons"
             referencedColumns: ["id"]
           },
           {
@@ -3849,6 +3875,10 @@ export type Database = {
           created_by: string | null
           gc_customer_id: string | null
           id: string
+          next_followup_cleared: boolean
+          next_followup_contact_person_id: string | null
+          next_followup_on: string | null
+          next_followup_reason: string | null
           notes: string | null
           occurred_at: string
         }
@@ -3859,6 +3889,10 @@ export type Database = {
           created_by?: string | null
           gc_customer_id?: string | null
           id?: string
+          next_followup_cleared?: boolean
+          next_followup_contact_person_id?: string | null
+          next_followup_on?: string | null
+          next_followup_reason?: string | null
           notes?: string | null
           occurred_at?: string
         }
@@ -3869,6 +3903,10 @@ export type Database = {
           created_by?: string | null
           gc_customer_id?: string | null
           id?: string
+          next_followup_cleared?: boolean
+          next_followup_contact_person_id?: string | null
+          next_followup_on?: string | null
+          next_followup_reason?: string | null
           notes?: string | null
           occurred_at?: string
         }
@@ -3892,6 +3930,13 @@ export type Database = {
             columns: ["gc_customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bids_submission_entries_next_followup_person_fkey"
+            columns: ["next_followup_contact_person_id"]
+            isOneToOne: false
+            referencedRelation: "customer_contact_persons"
             referencedColumns: ["id"]
           },
         ]
