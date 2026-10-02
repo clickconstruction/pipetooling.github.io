@@ -29,4 +29,4 @@ The external row disappears from the roster, and the person's pay history, crew 
 
 ## Avoiding the duplicate in the first place
 
-Someone may need an account but will not click an email invite. Use **Manage accounts… → Manual add**. You find it under Settings → People & teams. It creates the account immediately with a password you set and hand to them. No email confirmation is needed. Then link it to their roster row. Or just use the same email, and the rows fold together on their own.
+Someone may need an account but will not click an email invite. Use People → Users → {{button:blue|+ Hire}} and pick **Set a password now**. It creates the account immediately with a password you set and hand to them. No email confirmation is needed. Then link it to their roster row. Or just use the same email, and the rows fold together on their own.

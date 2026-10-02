@@ -36,14 +36,15 @@ describe('SubmittalJourneyStrip', () => {
     expect(screen.queryByTestId('see-gc')).toBeNull()
   })
 
-  it('v2.4189 · See what the GC sees opens the pane, and reads Hide while it is open', () => {
+  it('v2.4189 · See what the GC sees opens the window; the button says so and keeps its name (2026-10-02)', () => {
     const onSeeGc = vi.fn()
     const journey = submittalJourney({ scheduleTags: 12, picks: 14, rev: { number: 1, status: 'draft', isNewest: true, rows: 14, owesReason: 0, sheetsNeeded: 0, packageBuilt: false }, room: null, decisions: null })
-    const { rerender } = render(<SubmittalJourneyStrip journey={journey} busy={false} onAction={() => {}} onGoToStage={() => {}} onWalkThrough={() => {}} offerWalkThrough={false} onDismissOffer={() => {}} onSeeGc={onSeeGc} />)
-    fireEvent.click(screen.getByTestId('see-gc'))
+    render(<SubmittalJourneyStrip journey={journey} busy={false} onAction={() => {}} onGoToStage={() => {}} onWalkThrough={() => {}} offerWalkThrough={false} onDismissOffer={() => {}} onSeeGc={onSeeGc} />)
+    const see = screen.getByTestId('see-gc')
+    expect(see.textContent).toBe('See what the GC sees')
+    expect(see.getAttribute('aria-haspopup')).toBe('dialog')
+    fireEvent.click(see)
     expect(onSeeGc).toHaveBeenCalledTimes(1)
-    rerender(<SubmittalJourneyStrip journey={journey} busy={false} onAction={() => {}} onGoToStage={() => {}} onWalkThrough={() => {}} offerWalkThrough={false} onDismissOffer={() => {}} onSeeGc={onSeeGc} seeGcOpen />)
-    expect(screen.getByTestId('see-gc').textContent).toBe('Hide what the GC sees')
   })
 
   it('a waiting stage reads amber, its button is quiet, and a done journey has no button', () => {

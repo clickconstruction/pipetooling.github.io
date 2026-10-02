@@ -1,7 +1,7 @@
 /**
  * View as (v2.3606): the sample accounts — one real user per role a dev may imitate, hidden
- * from every human surface like a digital twin, listed under Settings → Active accounts →
- * Sample accounts. A dev imitates one to see a page as that role. The names and emails are a
+ * from every human surface like a digital twin, listed under Settings → System → Digital
+ * twins & samples. A dev imitates one to see a page as that role. The names and emails are a
  * convention so "Create the missing samples" is idempotent and the accounts are easy to find.
  */
 import { ROLES } from './userRoles'

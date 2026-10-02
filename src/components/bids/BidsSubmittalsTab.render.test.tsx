@@ -454,7 +454,7 @@ describe('BidsSubmittalsTab', () => {
     expect(screen.queryByTestId('their-call-band')).toBeNull()
   })
 
-  it('v2.4189 · See what the GC sees opens the reviewer’s page beside the road, from the rows as they stand (#62 Layer 2)', async () => {
+  it('v2.4189 · See what the GC sees opens the reviewer’s page in a window over the road, from the rows as they stand (#62 Layer 2; a window since 2026-10-02)', async () => {
     state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [], created_at: '2026-09-15T00:00:00Z', shared_at: null }]
     state.items = [
       item({ id: 'it-1', tag: 'WC-1', sequence_order: 1, specified_manufacturer: 'TOTO', specified_model: 'CT708UVG', submitted_label: 'TOTO CT708UVG#01', submitted_model: 'CT708UVG', status: 'as_specified' }),
@@ -464,14 +464,15 @@ describe('BidsSubmittalsTab', () => {
     await screen.findAllByTestId('submittal-row')
     expect(screen.queryByTestId('see-gc-pane')).toBeNull()
     fireEvent.click(screen.getByTestId('see-gc'))
-    const pane = screen.getByTestId('see-gc-pane')
+    const dialog = screen.getByRole('dialog', { name: 'What the GC sees' })
+    const pane = within(dialog).getByTestId('see-gc-pane')
     expect(pane.textContent).toContain('Product review · Rev 1')
     expect(screen.getByTestId('room-headline').textContent).toContain('1 row needs a call')
     expect(screen.getAllByTestId('room-row')).toHaveLength(1)
     expect(screen.queryByRole('group', { name: /Your call on/ })).toBeNull()
-    expect(screen.getByTestId('see-gc').textContent).toBe('Hide what the GC sees')
-    fireEvent.click(screen.getByRole('button', { name: 'Close what the GC sees' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }))
     expect(screen.queryByTestId('see-gc-pane')).toBeNull()
+    expect(screen.getByTestId('see-gc').textContent).toBe('See what the GC sees')
   })
 
   it('v2.4174 · under the rows, the reviewer’s own headline for the draft as it stands (#62 Layer 1)', async () => {

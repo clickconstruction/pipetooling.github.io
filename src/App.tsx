@@ -89,7 +89,6 @@ import { CustomerProfileModalProvider } from './contexts/CustomerProfileModalCon
 import { JobHoursStoryModalProvider } from './contexts/JobHoursStoryModalContext'
 import { UpdateFocusOpenerBridgeProvider } from './contexts/UpdateFocusOpenerBridgeContext'
 import { UserReviewModalProvider } from './contexts/UserReviewModalContext'
-import { ActiveAccountsModalProvider } from './contexts/ActiveAccountsModalContext'
 import { PersonDeskProvider } from './contexts/PersonDeskContext'
 
 // Easter egg:
@@ -273,11 +272,9 @@ function AppContent() {
                                               <CustomerProfileModalProvider>
                                               <JobHoursStoryModalProvider>
                                               <UserReviewModalProvider>
-                                                <ActiveAccountsModalProvider>
-                                                  <PersonDeskProvider>
-                                                    <Layout />
-                                                  </PersonDeskProvider>
-                                                </ActiveAccountsModalProvider>
+                                                <PersonDeskProvider>
+                                                  <Layout />
+                                                </PersonDeskProvider>
                                               </UserReviewModalProvider>
                                               </JobHoursStoryModalProvider>
                                               </CustomerProfileModalProvider>

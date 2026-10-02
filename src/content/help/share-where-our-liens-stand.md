@@ -8,7 +8,7 @@ The Lien desk can tell someone where our liens stand in two taps. The message sa
 
 ## Open Share
 
-Open the [Lien desk](/jobs?tab=stages&liendesk=1). Press {{button:outline|Share}} at the end of its title line. It sits in the same place on every tab. On a phone it is the square with an arrow, next to the ×.
+Open the [Lien desk](/jobs?tab=stages&liendesk=1). Press {{button:outline|Share}} at the end of its title line. It sits in the same place on every tab. On a phone or a narrow screen, it shows only its square with an arrow.
 
 ## Pick what to send
 

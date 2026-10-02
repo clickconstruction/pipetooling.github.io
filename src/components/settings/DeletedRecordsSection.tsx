@@ -3,7 +3,7 @@
  *
  * Self-contained (calls its own hook) rather than props-only like the rest of SettingsDataTab: this
  * section is single-surface, and threading its ~10 state values through Settings.tsx (5k+ lines) buys
- * nothing. Mirrors ActiveAccountsPanel, which does the same for the same reason.
+ * nothing. The retired Active Accounts window (removed in v2.4348) did the same for the same reason.
  *
  * Preview gates Restore, exactly like the merge-users dialog: you cannot commit a restore you have not
  * previewed, and the preview is a real (rolled-back) execution, so its counts are true. */

@@ -85,7 +85,7 @@ export function ViewAsPanel({ onClose }: { onClose: () => void }) {
                   </button>
                 )
               })}
-              {loaded && sampleByRole.size === 0 ? <p style={{ ...muted, marginTop: '0.5rem' }}>No sample accounts yet — Settings → Active accounts → Sample accounts → Create the missing samples.</p> : null}
+              {loaded && sampleByRole.size === 0 ? <p style={{ ...muted, marginTop: '0.5rem' }}>No sample accounts yet. Make them at Settings → System → Digital twins &amp; samples → Create the missing samples.</p> : null}
             </div>
           </section>
           <section>

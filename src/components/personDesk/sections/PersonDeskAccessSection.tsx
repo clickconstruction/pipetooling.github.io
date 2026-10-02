@@ -22,6 +22,8 @@ import {
 } from '../../../lib/people/accountWrites'
 import type { PersonDeskUserRow } from '../../../hooks/usePersonDesk'
 import { MergeDuplicateDialog } from './MergeDuplicateDialog'
+import { useHiringColumnShares } from '../../../hooks/useHiringColumnShares'
+import { sharedColumnsLine } from '../../../lib/hiring/columnShares'
 import { BTN, BTN_BLUE, BTN_QUIET, BTN_RED, Chip, DESK_EDITOR_Z, DeskEmpty, DeskRow, DeskSection, LockTag, deskBtn } from '../personDeskShared'
 import type { UserRole } from '../../../hooks/useAuth'
 import { humanRoleLabel } from '../../../lib/roleLabels'
@@ -77,6 +79,8 @@ export function PersonDeskAccessSection({
   const [passwordOpen, setPasswordOpen] = useState(false)
   const [emailOpen, setEmailOpen] = useState(false)
   const [mergeOpen, setMergeOpen] = useState(false)
+  // PR D2: the Hiring columns shared with them, the line the Active Accounts window's Edit showed (dev reads).
+  const { shares: hiringShares, roles: hiringColumns } = useHiringColumnShares(viewer.isDev)
 
   if (!user) {
     return (
@@ -372,6 +376,14 @@ export function PersonDeskAccessSection({
               {x.label}
             </label>
           ))}
+          {(() => {
+            const line = extraAccess.some((x) => x.field === 'team_prospects_access') ? sharedColumnsLine(u.id, hiringShares, hiringColumns, () => null) : null
+            return line ? (
+              <span style={HINT} data-testid="hiring-columns-shared">
+                Hiring columns shared with them: <strong style={{ fontWeight: 600, color: 'var(--text-base)' }}>{line}</strong>. Unshare on the column's ⋯ menu.
+              </span>
+            ) : null
+          })()}
         </DeskRow>
       ) : null}
 

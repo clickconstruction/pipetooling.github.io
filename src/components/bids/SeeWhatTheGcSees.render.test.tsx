@@ -16,10 +16,14 @@ const items = [
 const props = { items, revNumber: 1, shared: false, hasPackage: false, company: { name: 'Click Plumbing', tagline: 'Plumbing', phone: '(512) 555-0100' }, bid: { label: 'B398', projectName: 'ZZ Test', address: '5501 Balcones Dr' }, onClose: () => {} }
 
 describe('SeeWhatTheGcSees (v2.4189, #62 Layer 2)', () => {
-  it('a desktop pane: the reviewer’s header, headline and rows from the draft, read-only, and the why line', () => {
+  if (typeof window.matchMedia !== 'function') window.matchMedia = (() => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {} })) as unknown as typeof window.matchMedia
+
+  it('a window at every width (2026-10-02): the reviewer’s header, headline and rows from the draft, read-only, and the why line; × closes it', () => {
     const onClose = vi.fn()
-    render(<SeeWhatTheGcSees {...props} narrow={false} onClose={onClose} />)
+    render(<SeeWhatTheGcSees {...props} onClose={onClose} />)
+    const dialog = screen.getByRole('dialog', { name: 'What the GC sees' })
     const pane = screen.getByTestId('see-gc-pane')
+    expect(dialog.contains(pane)).toBe(true)
     expect(pane.textContent).toContain('CLICK PLUMBING')
     expect(pane.textContent).toContain('Product review · Rev 1')
     expect(pane.textContent).toContain('ZZ Test')
@@ -28,14 +32,15 @@ describe('SeeWhatTheGcSees (v2.4189, #62 Layer 2)', () => {
     expect(screen.getAllByTestId('room-row')[0]!.textContent).toContain('DWH-1')
     expect(screen.queryByRole('group', { name: /Your call on/ })).toBeNull()
     expect(screen.getByTestId('see-gc-why').textContent).toContain('The GC sees nothing until you share.')
-    fireEvent.click(screen.getByRole('button', { name: 'Close what the GC sees' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
-  it('a phone: the same body in a sheet; a shared revision says the link shows this now', () => {
-    if (typeof window.matchMedia !== 'function') window.matchMedia = (() => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {} })) as unknown as typeof window.matchMedia
-    render(<SeeWhatTheGcSees {...props} narrow shared />)
-    expect(screen.getByRole('dialog', { name: 'What the GC sees' })).toBeTruthy()
+  it('Escape closes it; a shared revision says the link shows this now', () => {
+    const onClose = vi.fn()
+    render(<SeeWhatTheGcSees {...props} shared onClose={onClose} />)
     expect(screen.getByTestId('see-gc-why').textContent).toContain('This is what the link shows now.')
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(onClose).toHaveBeenCalledTimes(1)
   })
 })

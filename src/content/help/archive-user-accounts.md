@@ -11,15 +11,9 @@ Their jobs, clock time, reports, and history stay attached to the account. It ju
 
 ## How to archive
 
-Everything happens in one dialog, **Manage accounts…**. You find it at Settings → People & teams, beside the pointer to People → Users → Account. Use the search bar at the top to jump straight to the account. It matches name, email, or role. It filters the archived list too. Two ways in, same dialog:
+Open the person's desk. Under *Access & account*, press {{button:red|Archive…}} on the **Status** row.
 
-1. **From the top**: click {{button:red|Archive user}} and pick the account from the dropdown.
-2. **From a row**: click {{button:outline|Edit}} on the account. Then click the red {{button:red|Archive}} button at the end of the actions. The dialog opens with that account already selected.
-
-The confirmation explains exactly what will happen before you commit. If the account owns customers, the same dialog asks what should happen to them:
-
-- **Keep them assigned to the archived account**. This is the default.
-- **File them under the company owner account**. There is no leader to pick, since there is one company. The button becomes {{button:red|Reassign & archive}} so both happen in one step.
+For a dev, a controller or a pay-approved leader, that opens **End employment**. It is one checklist. It finishes the final pay report and clears a salary schedule. It asks what happens to customers on their name. You keep them on the archived account, or file them under the company owner account. Then it archives the account and the roster row together. See *open a person's desk*.
 
 :::example What archiving does
 Sign-in banned · hidden from active lists and assignment pickers · taken off open roadmap tasks · nothing deleted · restorable anytime
@@ -29,12 +23,11 @@ Sign-in banned · hidden from active lists and assignment pickers · taken off o
 
 ## Restore
 
-Open People → Users and press {{button:outline|Archived}}. The **Logins** list shows every archived account. Click **Restore** beside one. The account is un-archived and can sign in again. The **Archived users** section at the bottom of Manage accounts… does the same. So does {{button:outline|Restore}} on the person's desk.
+Open People → Users and press {{button:outline|Archived}}. The **Logins** list shows every archived account. Click **Restore** beside one. The account is un-archived and can sign in again. {{button:outline|Restore}} on the person's desk does the same.
 
 Restoring also puts them back on their old roadmap tasks. That covers only the ones still open that nobody else has picked up in the meantime. A task with a new person keeps its new person.
 
 ## Related
 
 - The roster **Archive** button on People → Users hides a roster person. That's separate from their login account.
-- When someone is actually leaving, use their desk instead. **Archive…** on the desk's Access & account row opens **End employment**. It generates the final pay report. It clears a salary schedule. It moves their customers. It archives the account and the roster row in one go. See *open a person's desk*.
 - To fold a duplicate account into another, see *merge two user accounts into one*.

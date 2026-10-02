@@ -60,7 +60,6 @@ export const LEGACY_PLAIN_WORDS_GUIDES: ReadonlySet<string> = new Set([
   'sub-labor-outstanding',
   'supervise-a-crew',
   'tally-payroll-marking',
-  'team-prospects',
   'tell-if-a-customer-opened-an-estimate-and-record-a-no',
   'texas-lien-rules-the-app-follows',
   'text-a-bids-basics-to-someone',
