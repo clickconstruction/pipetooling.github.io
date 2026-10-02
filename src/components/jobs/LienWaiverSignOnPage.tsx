@@ -218,11 +218,12 @@ export function LienWaiverSignAgree({
         <span>{agreeLabel}</span>
       </label>
       {error ? (
-        <p role="alert" style={{ margin: 0, color: 'var(--text-red-700)', fontSize: '0.85rem' }}>
+        <p role="alert" style={{ margin: 0, color: 'var(--text-red-700)', fontSize: '0.85rem', textAlign: 'center' }}>
           {error}
         </p>
       ) : null}
-      <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+      {/* v2.4339: the buttons sit centred under the centred checkbox, so the tick and Sign it line up. */}
+      <div data-testid="lien-waiver-sign-actions" style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
         <button
           type="button"
           onClick={onSubmit}
