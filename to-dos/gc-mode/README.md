@@ -2,7 +2,7 @@
 name: "GC mode: Bids, mirrored. We are the general contractor and the trades bid to us"
 number: 81
 group: gated
-status: explored 2026-10-02 as a design spike · a playable prototype on made-up data lives on branch `spike/gc-mode` (page `/bids/gc`, dev only) · nothing is on main, nothing touches the database · the owner is still shaping it screen by screen
+status: explored 2026-10-02 as a design spike · a playable prototype on made-up data lives on branch `spike/gc-mode` (page `/bids/gc`, dev only) · nothing is on main, nothing touches the database · the owner is still shaping it screen by screen · four lanes build it at once since 2026-10-02 (Board, Portal, Building, New Project: see Working in parallel)
 summary: >
   The owner's idea (2026-10-02): Bids manages our bid as a trade to a GC. Offer a second mode
   where we are the GC: a set of plans comes in once, each trade is offered to several trade
@@ -50,9 +50,9 @@ He called it "totally new and exploratory" and asked for a prototype to play wit
 3. The **Trades | GC** switch also shows on `/bids`, for a dev only.
 4. **Start over** (top right) resets the made-up data. Nothing is saved anywhere.
 
-Everything runs on one fixture through one reducer in
-[`src/lib/gcMode/gcModel.ts`](../../src/lib/gcMode/gcModel.ts). No table, RPC, edge function or
-email is involved. The office is on the left; **See what the trade sees** shows one trade
+Everything runs on one fixture through one reducer, in the files under
+[`src/lib/gcMode/`](../../src/lib/gcMode/) (import them through the barrel `gcModel.ts`). No
+table, RPC, edge function or email is involved. The office is on the left; **See what the trade sees** shows one trade
 partner's portal on the right, and a press on either side shows on the other.
 
 ## The model, in one paragraph
@@ -116,7 +116,7 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 
 ## My defaults the owner has not confirmed
 
-Each is a constant or a rule in `gcModel.ts`. Change them freely.
+Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change them freely.
 
 - No statement of work goes out and no draw is approved without the master agreement, current
   insurance and a W-9.
@@ -185,7 +185,14 @@ imitates it.
 
 | File | Holds |
 |---|---|
-| `src/lib/gcMode/gcModel.ts` | Types, the reducer, every selector, the fixture. The types are drawn the way the tables would be: read it as the first schema sketch. |
+| `src/lib/gcMode/gcModel.ts` | The barrel: re-exports the model files below, so every import of `./gcModel` works. Add code to the file for its area, never here. |
+| `gcTypes.ts` · `gcWords.ts` | The record shapes, every action and the state (drawn the way the tables would be: the first schema sketch) · money and date words. Neither imports anything. |
+| `gcLookups.ts` | `planLabel`, `currentRev`, `partnerById`: the small lookups many areas read. |
+| `gcPlans.ts` · `gcStart.ts` · `gcProgress.ts` | Plans, sheets and who hears about a new set · the Get started checklist · the ring and its hover card. |
+| `gcBids.ts` · `gcCustomers.ts` · `gcMap.ts` | Compare all in, what we carry, our price, bid tabs, statement-of-work money · the company window's summaries · towns, the drive and the map's list. |
+| `gcFollowUp.ts` · `gcBench.ts` | Promised days, word records, who to call first · the bench by trade and Actions for assistants. |
+| `gcReducer.ts` · `gcReducerHelpers.ts` · `gcFixture.ts` | Every action applied to the state · its small helpers (not in the barrel) · the made-up data (`initialGcState`). |
+| `gcModel.test.ts` | The golden test (see *Working in parallel*). |
 | `GcOfficeTabs.tsx` | Trades (with Compare bids), Plans, Our number, Contracts, Draws, the flat company list |
 | `GcTradePortal.tsx` | The trade partner's side |
 | `GcTradeBench.tsx` | Trade partners by trade, Actions for assistants |
@@ -201,9 +208,55 @@ imitates it.
 Two existing files are touched: `src/App.tsx` (the `bids/gc` route) and `src/pages/Bids.tsx`
 (the switch, for a dev only).
 
-State of the branch: `npm run typecheck` and the theme check pass. Lint has four fast-refresh
-warnings in `gcUi.tsx` (it exports style objects beside components). There are no tests. The
-kernel is pure and testable; the UI was checked by hand in the browser after every change.
+State of the branch: `npm run typecheck`, the theme check and the golden test pass. Lint has
+four fast-refresh warnings in `gcUi.tsx` (it exports style objects beside components). The UI is
+checked by hand in the browser after every change; the model is pinned by the golden test.
+
+## Working in parallel
+
+Since 2026-10-02 several sessions build the prototype at once, one area each. Each lane is a
+branch and a dev-server port of its own; `spike/gc-mode` is where the lanes meet.
+
+| Lane | Branch | Port | Area | Files it owns |
+|---|---|---|---|---|
+| Board | `spike/gc-mode` (works on it directly) | 5237 | The Project Board and a project's office tabs: the row, the ring and its card, New here?, Trades and Compare bids, Our number, Bid tabs, Contracts, Get started, Follow up, Trade partners, the map, the company window | `src/pages/GcMode.tsx`; `src/components/gc/`: `GcOfficeTabs.tsx` (all but `GcDrawsTab`), `GcProgressRing.tsx`, `GcStart.tsx`, `GcBidTabs.tsx`, `GcAskThread.tsx`, `GcTradeBench.tsx`, `GcTradeMap.tsx`, `GcCustomerWindow.tsx`, `BidsModeToggle.tsx`, `gcUi.tsx`, `gcIcons.ts`; `src/lib/gcMode/`: `gcProgress.ts` (all but `buildingProgress`), `gcStart.ts`, `gcBids.ts`, `gcFollowUp.ts`, `gcBench.ts`, `gcMap.ts`, `gcCustomers.ts`, `gcTour.ts` |
+| Portal | `spike/gc-mode-portal` | 5241 | The trade partner's portal: everything a company sees and presses | `src/components/gc/GcTradePortal.tsx`; new files `src/components/gc/GcPortal*.tsx`, `src/lib/gcMode/gcPortal.ts` |
+| Building | `spike/gc-mode-building` | 5242 | Building and Closeout: reports, draws, retainage release, final waivers | `GcDrawsTab` inside `src/components/gc/GcOfficeTabs.tsx` (that function only); `buildingProgress` in `src/lib/gcMode/gcProgress.ts` (that function only); new files `src/components/gc/GcBuilding*.tsx` / `GcCloseout*.tsx`, `src/lib/gcMode/gcBuilding.ts` |
+| New Project | `spike/gc-mode-new-project` | 5243 | New Project with the plans coming in, splitting the plans into trades, writing each scope; the plan sets that follow | `src/components/gc/GcNewPlans.tsx`, `GcPlansQuickLook.tsx`; `src/lib/gcMode/gcPlans.ts`; new files `src/components/gc/GcNewProject*.tsx`, `src/lib/gcMode/gcNewProject.ts` |
+
+**Shared files** — every lane may *add* to them; nobody renames, reorders or rewords what is there:
+`src/lib/gcMode/gcTypes.ts` (new record shapes and fields, new actions at the end of `GcAction`),
+`gcReducer.ts` (new `case`s at the end of the switch), `gcReducerHelpers.ts`, `gcFixture.ts`
+(new made-up records), `gcLookups.ts`, `gcWords.ts`, the barrel `gcModel.ts` (one
+`export * from './<your file>'` line for a new model file), and `gcModel.test.ts` (new steps at the
+end of `STEPS`, new action types in its list). A lane that needs a way in from the board or a
+project adds one entry point to `src/pages/GcMode.tsx` (a button, a tab) and nothing else there.
+New calculations go in a new file for the lane's area, never in another lane's file.
+
+**The golden test** (`src/lib/gcMode/gcModel.test.ts`) plays a scripted walk through every action
+and pins what the main calculations say after each step. It must pass without `-u`. A changed
+snapshot is a behavior change: only with the owner's OK, and the commit says which snapshots
+moved and why. Adding made-up data moves *before any step*, *the whole state at the end* and any
+step whose board-wide lists (Follow up, the bench, Actions for assistants) include the new
+records: that is expected, and still asked for and named. A new action gets a step at the end of
+the walk (new snapshots are written; existing ones must not move).
+
+**The integration rule**
+
+- `origin/spike/gc-mode` is where lanes meet. Never force-push it.
+- Start each change with `git fetch origin && git merge origin/spike/gc-mode`.
+- To share: commit on your lane, fetch and merge `origin/spike/gc-mode`, run `npm run typecheck`
+  and `npx vitest run src/lib/gcMode`, then `git push origin HEAD:spike/gc-mode` (fast-forward
+  only; if it is rejected, fetch, merge, retry). Push your lane branch too.
+- The Board lane shares with `git pull` then `git push`.
+- A changed golden snapshot is a behavior change: only with the owner's OK, and say which.
+- Each lane keeps a session card in the main checkout's `.claude/sessions/active/`
+  (`spike-gc-mode*.md`).
+
+**Ports.** `.claude/launch.json` is gitignored, so it does not ride the branches: the four
+configs (`dev-5237`, `dev-5241`, `dev-5242`, `dev-5243`) live in the main checkout's copy. A lane
+whose worktree has none copies it from `/Users/todd/Documents/GitHub/pipetooling.github.io/.claude/launch.json`.
+Never start another lane's port.
 
 ## The plan, when the shape is settled
 
@@ -239,4 +292,5 @@ follow the plain-words rules; the prototype's own words were written to them as 
 2026-10-02: one session, the owner steering. He said "I think this has great potential" and has
 been changing it screen by screen since. The last things built were the new-plans flow and Get
 started. The prototype is a branch, not a PR: it should not merge as it is (fixture data inside
-the client, no tests, one 2,400-line model file).
+the client, one golden test and no kernel tests). Since the evening of 2026-10-02 several
+sessions build it at once (*Working in parallel*).
