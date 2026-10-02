@@ -78,6 +78,9 @@ jobs:
       - name: Every dim full-screen backdrop holds a panel marked as a modal
         run: npm run check:dialog-role
 
+      - name: Every window's panel starts below an iPhone's status bar
+        run: npm run check:status-bar
+
       - name: Test
         run: npm test
         env:

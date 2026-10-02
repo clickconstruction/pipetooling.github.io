@@ -56,6 +56,7 @@ export function PricingEntryFormModal(props: PricingEntryFormProps) {
         // Above the book drawer (770): its ✎/Add entry open this form, and on narrow
         // screens a lower z put the form behind the drawer (v2.2445).
         zIndex: 780,
+        paddingTop: 'var(--app-top-chrome, 0px)',
       }}
       onClick={props.onClose}
     >

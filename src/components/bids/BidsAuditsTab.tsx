@@ -1490,7 +1490,7 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
             return twoPanes ? (
               <div style={{ position: 'sticky', top: '0.5rem', maxHeight: 'calc(100vh - 1rem)', overflowY: 'auto' }}>{renderCard(audit)}</div>
             ) : (
-              <div role="dialog" aria-modal aria-label={jobNameFromShell(audit.bids?.project_name)} style={{ position: 'fixed', inset: 0, background: 'var(--surface)', zIndex: 1004, overflowY: 'auto' }}>{renderCard(audit)}</div>
+              <div role="dialog" aria-modal aria-label={jobNameFromShell(audit.bids?.project_name)} style={{ position: 'fixed', inset: 0, background: 'var(--surface)', zIndex: 1004, overflowY: 'auto', paddingTop: 'var(--app-top-chrome, 0px)' }}>{renderCard(audit)}</div>
             )
           })()}
         </div>

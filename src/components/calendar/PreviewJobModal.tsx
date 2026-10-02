@@ -142,6 +142,7 @@ export function PreviewJobModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1003,
+        paddingTop: 'var(--app-top-chrome, 0px)',
       }}
       onClick={onClose}
       role="presentation"
@@ -155,7 +156,7 @@ export function PreviewJobModal({
           padding: '1.25rem',
           maxWidth: 520,
           width: '92%',
-          maxHeight: '88vh',
+          maxHeight: 'min(88vh, 100%)',
           overflow: 'auto',
           boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
         }}

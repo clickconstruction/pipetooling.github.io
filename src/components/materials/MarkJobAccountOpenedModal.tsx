@@ -115,7 +115,7 @@ export function MarkJobAccountOpenedModal({
 
   return (
     <div
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: '1rem' }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }}
       onClick={(e) => {
         // Opened from many places, some inside a row or another window (the Bid Board's account
         // chips, Edit Bid's job block): a click outside closes this sheet only (v2.4356).

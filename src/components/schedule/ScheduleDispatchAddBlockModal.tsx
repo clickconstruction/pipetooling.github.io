@@ -221,6 +221,7 @@ export function ScheduleDispatchAddBlockModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1002,
+        paddingTop: 'var(--app-top-chrome, 0px)',
       }}
       onClick={onClose}
       role="presentation"

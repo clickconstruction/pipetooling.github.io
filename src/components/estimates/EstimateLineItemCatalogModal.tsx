@@ -101,7 +101,7 @@ export function EstimateLineItemCatalogModal({ open, onClose, catalogLineItems, 
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          padding: '1rem',
+          padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
         }}
         onClick={() => onClose()}
       >
@@ -112,7 +112,7 @@ export function EstimateLineItemCatalogModal({ open, onClose, catalogLineItems, 
             border: '1px solid var(--border)',
             maxWidth: 560,
             width: '100%',
-            maxHeight: 'min(85vh, 640px)',
+            maxHeight: 'min(85vh, 640px, 100%)',
             display: 'flex',
             flexDirection: 'column',
             boxShadow: '0 1px 3px rgba(0,0,0,0.08), 0 10px 40px rgba(0,0,0,0.12)',

@@ -1211,12 +1211,12 @@ export default function PeoplePayStubsTab({
           onClick={(e) => {
             if (e.target === e.currentTarget) closePayStubNoteDetail()
           }}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: Z_PEOPLE_PAY_MODAL }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: Z_PEOPLE_PAY_MODAL, paddingTop: 'var(--app-top-chrome, 0px)' }}
         >
           <div
             role="dialog"
             aria-labelledby="pay-stub-note-detail-title"
-            style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 520, width: '100%', maxHeight: '85vh', overflow: 'auto' }}
+            style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 520, width: '100%', maxHeight: 'min(85vh, 100%)', overflow: 'auto' }}
             onClick={(e) => e.stopPropagation()}
           >
             <h2 id="pay-stub-note-detail-title" style={{ margin: '0 0 0.5rem', fontSize: '1.25rem' }}>

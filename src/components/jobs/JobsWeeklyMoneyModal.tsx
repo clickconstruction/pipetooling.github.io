@@ -274,12 +274,12 @@ export function JobsWeeklyMoneyModal({ open, initialMondayYmd, onClose, showToas
       role="dialog"
       aria-modal="true"
       aria-label="Weekly money movement — money out and in per job"
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 760 }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 760, paddingTop: 'var(--app-top-chrome, 0px)' }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      <div style={{ background: 'var(--surface)', padding: '1.25rem 1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 760, width: 'calc(100vw - 2rem)', maxHeight: '85vh', overflow: 'auto' }}>
+      <div style={{ background: 'var(--surface)', padding: '1.25rem 1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 760, width: 'calc(100vw - 2rem)', maxHeight: 'min(85vh, 100%)', overflow: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: 2 }}>
           <h2 style={{ margin: 0, fontSize: '1.25rem', flex: 1, minWidth: 0 }}>Weekly money movement</h2>
           <button type="button" onClick={onClose} aria-label="Close" style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: 'var(--text-muted)' }}>

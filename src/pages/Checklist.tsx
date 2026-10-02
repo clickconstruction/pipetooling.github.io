@@ -1012,7 +1012,7 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 750,
-            padding: '1rem',
+            padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
           }}
           onClick={(e) => e.target === e.currentTarget && setFwdInstance(null)}
         >
@@ -2910,7 +2910,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 755,
-            padding: '1rem',
+            padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
           }}
           onClick={() => {
             if (deletingInstanceId) return
@@ -2991,7 +2991,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 750,
-            padding: '1rem',
+            padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
           }}
           onClick={(e) => e.target === e.currentTarget && setFwdInstance(null)}
         >
@@ -3673,7 +3673,7 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId, onOpenR
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 750,
-            padding: '1rem',
+            padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
           }}
           onClick={() => {
             if (!manageDeleteSubmitting) setManageDeletePending(null)

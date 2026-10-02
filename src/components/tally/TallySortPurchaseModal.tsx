@@ -208,6 +208,7 @@ export function TallySortPurchaseModal({
         alignItems: 'flex-end',
         justifyContent: 'center',
         zIndex: 1160,
+        paddingTop: 'var(--app-top-chrome, 0px)',
       }}
       onClick={() => {
         if (!saving && !undoBusy) onClose()
@@ -223,7 +224,7 @@ export function TallySortPurchaseModal({
           borderRadius: '14px 14px 0 0',
           width: '100%',
           maxWidth: 480,
-          maxHeight: '92vh',
+          maxHeight: 'min(92vh, 100%)',
           overflowY: 'auto',
           padding: '0.85rem 0.85rem calc(1rem + env(safe-area-inset-bottom))',
           display: 'flex',

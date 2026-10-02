@@ -47,7 +47,7 @@ export type LienWaiverSendTarget = {
 type BookEntry = { id: string; document_name: string; form_template_id: string | null }
 type PriorWaiver = { id: string; document_name: string; status: string; sent_at: string | null; signed_at: string | null }
 
-const overlay: CSSProperties = { position: 'fixed', inset: 0, background: 'rgba(17,24,39,0.45)', zIndex: 1200, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '4vh 1rem', overflowY: 'auto' }
+const overlay: CSSProperties = { position: 'fixed', inset: 0, background: 'rgba(17,24,39,0.45)', zIndex: 1200, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 'calc(4vh + var(--app-top-chrome, 0px)) 1rem 4vh', overflowY: 'auto' }
 const panel: CSSProperties = { width: 'min(640px, 100%)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: '0 18px 48px rgba(17,24,39,0.25)', color: 'var(--text-base)' }
 const section: CSSProperties = { padding: '0.9rem 1.25rem', borderTop: '1px solid var(--border)' }
 const eyebrow: CSSProperties = { fontSize: '0.6875rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }

@@ -480,11 +480,11 @@ function VisualsDrilldownModal({
       aria-label={`Transactions: ${title}`}
       onClick={onClose}
       // z 1080: below the tx detail modal (1100) and the shared splits modal (1150).
-      style={{ position: 'fixed', inset: 0, zIndex: 1080, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+      style={{ position: 'fixed', inset: 0, zIndex: 1080, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{ background: 'var(--surface)', borderRadius: 10, border: '1px solid var(--border)', width: 'min(720px, 100%)', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}
+        style={{ background: 'var(--surface)', borderRadius: 10, border: '1px solid var(--border)', width: 'min(720px, 100%)', maxHeight: 'min(80vh, 100%)', display: 'flex', flexDirection: 'column' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.8rem 1rem', borderBottom: '1px solid var(--border)' }}>
           <div style={{ minWidth: 0 }}>

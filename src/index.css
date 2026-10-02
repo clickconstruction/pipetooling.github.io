@@ -2095,6 +2095,8 @@ body.my-time-boundary-dragging {
 .respModalOverlay {
   position: fixed;
   inset: 0;
+  /* Below an iPhone's status bar: the dim covers it, the panel (a phone's full-height sheet, its sticky title bar) starts under it. */
+  padding-top: var(--app-top-chrome, 0px);
   background: rgba(0, 0, 0, 0.4);
   display: flex;
   align-items: center;
@@ -2110,8 +2112,8 @@ body.my-time-boundary-dragging {
 /* v2.4045: the title-bar toggle's full-screen state — the same edge-to-edge
    sheet phones get, on a desktop, by choice. The shell sets the width inline. */
 .respModalPanel.respModalPanelFull {
-  height: 100vh;
-  height: 100dvh;
+  height: calc(100vh - var(--app-top-chrome, 0px));
+  height: calc(100dvh - var(--app-top-chrome, 0px));
   max-height: none;
   border-radius: 0;
 }
@@ -2132,8 +2134,8 @@ body.my-time-boundary-dragging {
   }
   .respModalPanel {
     width: 100vw;
-    height: 100vh;
-    height: 100dvh;
+    height: calc(100vh - var(--app-top-chrome, 0px));
+    height: calc(100dvh - var(--app-top-chrome, 0px));
     max-height: none;
     border-radius: 0;
   }
@@ -3957,7 +3959,7 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 .lienMonthDot b { font-weight: 600; color: var(--text-green-800); }
 .lienMonthDot[data-outcome='skipped'] b { color: var(--text-amber-800); }
 .lienMonthDot[data-outcome='missed'] b { color: var(--text-red-700); }
-.lienMonthDialogScrim { position: fixed; inset: 0; z-index: 790; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.45); padding: 1rem; }
+.lienMonthDialogScrim { position: fixed; inset: 0; z-index: 790; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.45); padding: calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem; }
 .lienMonthDialog { width: min(26rem, 100%); background: var(--surface); color: var(--text-base); border: 1px solid var(--border-strong); border-radius: 10px; padding: 0.9rem 1rem 1rem; box-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.6); }
 .lienMonthDialogHead { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem; }
 .lienMonthDialogHead strong { font-size: 1rem; }

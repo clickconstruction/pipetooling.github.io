@@ -132,7 +132,7 @@ export function StageCalendarModal(props: StageCalendarModalProps) {
   const sibPicks = siblings.filter((s) => !s.current && s.pick).map((s) => s.pick!)
   const gcName = gc.gcName?.trim() || 'the GC'
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 756, overflowY: 'auto', padding: '2rem 1rem' }} onClick={onClose}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 756, overflowY: 'auto', padding: 'calc(2rem + var(--app-top-chrome, 0px)) 1rem 2rem' }} onClick={onClose}>
       <div role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()} style={{ width: 'min(920px, 100%)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: '0 20px 60px rgba(0,0,0,.25)', overflow: 'hidden', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 300px' }} className="stage-calendar-modal">
         <div style={{ padding: '16px 18px 18px', borderRight: '1px solid var(--border)', minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>

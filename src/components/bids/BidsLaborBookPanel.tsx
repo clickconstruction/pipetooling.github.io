@@ -202,6 +202,7 @@ export function BidsLaborBookPanel({ book, entryForm }: { book: LaborBookPanelBo
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 750,
+        paddingTop: 'var(--app-top-chrome, 0px)',
       }}
       onClick={entryForm.onClose}
     >

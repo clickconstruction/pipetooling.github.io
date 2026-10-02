@@ -1900,6 +1900,7 @@ export default function JobTally() {
                   flexDirection: 'column',
                   alignItems: 'stretch',
                   justifyContent: 'flex-end',
+                  paddingTop: 'var(--app-top-chrome, 0px)',
                 }}
                 onClick={() => setJobPickerOpen(false)}
               >
@@ -1908,7 +1909,7 @@ export default function JobTally() {
                     background: 'var(--surface)',
                     borderTopLeftRadius: 16,
                     borderTopRightRadius: 16,
-                    maxHeight: '70vh',
+                    maxHeight: 'min(70vh, 100%)',
                     overflow: 'auto',
                     padding: '1rem',
                   }}

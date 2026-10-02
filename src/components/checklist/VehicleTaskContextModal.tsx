@@ -119,7 +119,7 @@ export default function VehicleTaskContextModal({
         aria-modal="true"
         aria-label="About this vehicle"
         onClick={(e) => e.stopPropagation()}
-        style={{ background: 'var(--surface)', borderRadius: 14, width: 'min(30rem, 100%)', maxHeight: '88vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', border: '1px solid var(--border)' }}
+        style={{ background: 'var(--surface)', borderRadius: 14, width: 'min(30rem, 100%)', maxHeight: 'min(88vh, 100%)', display: 'flex', flexDirection: 'column', overflow: 'hidden', border: '1px solid var(--border)' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.9rem 1.15rem 0.75rem', borderBottom: '1px solid var(--border)' }}>
           <span aria-hidden="true" style={{ fontSize: '1.15rem' }}>🛻</span>

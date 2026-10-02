@@ -131,7 +131,7 @@ export function AddDisjointSessionModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex,
-        padding: '1rem',
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
         boxSizing: 'border-box',
       }}
     >

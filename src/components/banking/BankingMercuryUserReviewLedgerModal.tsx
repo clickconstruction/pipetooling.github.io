@@ -263,7 +263,7 @@ export function BankingMercuryUserReviewLedgerModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex,
-        padding: '1rem',
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
         boxSizing: 'border-box',
       }}
       onClick={(e) => {
@@ -280,7 +280,7 @@ export function BankingMercuryUserReviewLedgerModal({
           borderRadius: 8,
           maxWidth: 980,
           width: '100%',
-          maxHeight: 'min(86vh, 48rem)',
+          maxHeight: 'min(86vh, 48rem, 100%)',
           display: 'flex',
           flexDirection: 'column',
           padding: '1.25rem',

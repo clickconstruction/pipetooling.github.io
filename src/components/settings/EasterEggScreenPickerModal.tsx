@@ -91,7 +91,7 @@ export default function EasterEggScreenPickerModal({
     >
       <div role="dialog" aria-modal="true"
         onClick={(e) => e.stopPropagation()}
-        style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, width: 'min(30rem, 100%)', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+        style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, width: 'min(30rem, 100%)', maxHeight: 'min(85vh, 100%)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
       >
         <div style={{ padding: '0.9rem 1.1rem 0.7rem', borderBottom: '1px solid var(--border)' }}>
           <h4 style={{ margin: 0, fontSize: '0.95rem' }}>Where can {eggLabel} appear?</h4>

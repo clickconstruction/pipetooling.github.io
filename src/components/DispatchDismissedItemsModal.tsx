@@ -91,7 +91,7 @@ export function DispatchDismissedItemsModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex,
-        padding: '1rem',
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
         boxSizing: 'border-box',
       }}
     >
@@ -109,7 +109,7 @@ export function DispatchDismissedItemsModal({
           padding: '1.25rem',
           maxWidth: 560,
           width: '100%',
-          maxHeight: 'min(85vh, 720px)',
+          maxHeight: 'min(85vh, 720px, 100%)',
           boxSizing: 'border-box',
           display: 'flex',
           flexDirection: 'column',

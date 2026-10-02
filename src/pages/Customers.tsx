@@ -1248,6 +1248,7 @@ export default function Customers() {
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 750,
+            paddingTop: 'var(--app-top-chrome, 0px)',
           }}
           onClick={() => setViewingBidsForCustomer(null)}
         >
@@ -1258,7 +1259,7 @@ export default function Customers() {
               padding: '1.5rem',
               maxWidth: '800px',
               width: '90%',
-              maxHeight: '80vh',
+              maxHeight: 'min(80vh, 100%)',
               overflow: 'auto',
             }}
             onClick={(e) => e.stopPropagation()}

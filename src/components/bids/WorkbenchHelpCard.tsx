@@ -36,7 +36,7 @@ export function WorkbenchHelpCard({
     </div>
   )
   return (
-    <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.45)', zIndex: 760, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '4rem 1rem 1rem' }}>
+    <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.45)', zIndex: 760, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 'calc(4rem + var(--app-top-chrome, 0px)) 1rem 1rem' }}>
       <div role="dialog" aria-label="How this page works" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 10, maxWidth: '30rem', width: '100%', boxShadow: '0 10px 32px rgba(15, 23, 42, 0.2)', overflow: 'hidden' }}>
         <div style={{ padding: '0.55rem 0.95rem', borderBottom: '1px solid var(--border)', fontSize: '0.66rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>
           How this page works

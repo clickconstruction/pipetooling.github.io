@@ -46,6 +46,7 @@ export function RemoveScheduleBlockConfirmModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1004,
+        paddingTop: 'var(--app-top-chrome, 0px)',
       }}
       onClick={() => {
         if (!busy) onCancel()

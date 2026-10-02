@@ -103,7 +103,7 @@ export function ChecklistTechTreeGroupModal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 16,
+        padding: 'calc(16px + var(--app-top-chrome, 0px)) 16px 16px',
       }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()

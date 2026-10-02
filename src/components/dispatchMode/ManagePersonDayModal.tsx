@@ -288,7 +288,7 @@ export default function ManagePersonDayModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1006,
-        padding: '1rem',
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
       }}
       onClick={(e) => {
         e.stopPropagation()
@@ -305,7 +305,7 @@ export default function ManagePersonDayModal({
           borderRadius: 12,
           width: '96%',
           maxWidth: 480,
-          maxHeight: '84vh',
+          maxHeight: 'min(84vh, 100%)',
           overflowY: 'auto',
           padding: '0.85rem',
           display: 'flex',

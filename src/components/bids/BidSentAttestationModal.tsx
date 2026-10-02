@@ -31,6 +31,7 @@ export function BidSentAttestationModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1001,
+        paddingTop: 'var(--app-top-chrome, 0px)',
       }}
     >
       <div
@@ -43,7 +44,7 @@ export function BidSentAttestationModal({
           borderRadius: 8,
           maxWidth: '520px',
           width: '90%',
-          maxHeight: '90vh',
+          maxHeight: 'min(90vh, 100%)',
           overflow: 'auto',
           boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
         }}

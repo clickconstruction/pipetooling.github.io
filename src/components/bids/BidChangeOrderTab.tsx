@@ -391,11 +391,11 @@ export function BidChangeOrderTab({ bids, onlyMyBids, setOnlyMyBids, isMyBid, au
             aria-modal="true"
             aria-labelledby="co-bridge-sheet-title"
             onClick={close}
-            style={{ position: 'fixed', inset: 0, zIndex: 1300, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', boxSizing: 'border-box' }}
+            style={{ position: 'fixed', inset: 0, zIndex: 1300, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem', boxSizing: 'border-box' }}
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              style={{ background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: 8, width: 'min(560px, 100%)', maxHeight: '92vh', overflow: 'auto', padding: '1.25rem 1.5rem', boxSizing: 'border-box', boxShadow: '0 10px 40px rgba(0,0,0,0.25)' }}
+              style={{ background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: 8, width: 'min(560px, 100%)', maxHeight: 'min(92vh, 100%)', overflow: 'auto', padding: '1.25rem 1.5rem', boxSizing: 'border-box', boxShadow: '0 10px 40px rgba(0,0,0,0.25)' }}
             >
               <h3 id="co-bridge-sheet-title" style={{ margin: '0 0 0.35rem', fontSize: '1.0625rem' }}>Create a change order draft in Estimates?</h3>
               <p style={{ margin: '0 0 0.85rem', fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>

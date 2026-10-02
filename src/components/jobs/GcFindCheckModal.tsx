@@ -93,11 +93,11 @@ export default function GcFindCheckModal({ gcId, gcName, onClose }: Props) {
           onClose()
         }
       }}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 764 }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 764, paddingTop: 'var(--app-top-chrome, 0px)' }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{ background: 'var(--surface)', borderRadius: 10, width: 'min(680px, 94vw)', maxHeight: '88vh', display: 'flex', flexDirection: 'column', boxShadow: '0 12px 40px rgba(0,0,0,0.3)' }}
+        style={{ background: 'var(--surface)', borderRadius: 10, width: 'min(680px, 94vw)', maxHeight: 'min(88vh, 100%)', display: 'flex', flexDirection: 'column', boxShadow: '0 12px 40px rgba(0,0,0,0.3)' }}
       >
         <div style={{ padding: '0.85rem 1.1rem 0.7rem', borderBottom: '1px solid var(--border)' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>

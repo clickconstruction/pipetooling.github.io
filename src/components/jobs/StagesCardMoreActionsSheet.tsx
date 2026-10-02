@@ -70,6 +70,7 @@ export function StagesCardMoreActionsSheet({
         alignItems: 'flex-end',
         justifyContent: 'center',
         zIndex: 1200,
+        paddingTop: 'var(--app-top-chrome, 0px)',
       }}
       onClick={onClose}
     >
@@ -82,7 +83,7 @@ export function StagesCardMoreActionsSheet({
           borderRadius: '14px 14px 0 0',
           width: '100%',
           maxWidth: 480,
-          maxHeight: '80vh',
+          maxHeight: 'min(80vh, 100%)',
           overflowY: 'auto',
           paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))',
         }}

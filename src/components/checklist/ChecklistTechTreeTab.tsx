@@ -1942,6 +1942,7 @@ export function ChecklistTechTreeTab({
                   minHeight: '100dvh',
                   flex: 'none' as const,
                   // CSS fallback (no DOM Fullscreen API): cover the viewport ourselves.
+                  // status-bar: allow — the canvas runs under the status bar; its toolbar pads itself below it
                   ...(cssFullscreen
                     ? {
                         position: 'fixed' as const,

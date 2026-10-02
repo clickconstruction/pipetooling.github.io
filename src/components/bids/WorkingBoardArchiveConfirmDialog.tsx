@@ -20,7 +20,7 @@ export function WorkingBoardArchiveConfirmDialog({ bidId, label, onCancel, onCon
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1005,
-        padding: '1rem',
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
       }}
       onClick={onCancel}
     >

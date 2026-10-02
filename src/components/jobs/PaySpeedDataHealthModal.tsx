@@ -268,7 +268,7 @@ export default function PaySpeedDataHealthModal({
       role="dialog"
       aria-modal="true"
       aria-label="Data health transactions"
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 780 }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 780, paddingTop: 'var(--app-top-chrome, 0px)' }}
       onClick={onClose}
     >
       <div
@@ -278,7 +278,7 @@ export default function PaySpeedDataHealthModal({
           borderRadius: 12,
           border: '1px solid var(--border)',
           width: 'min(680px, calc(100vw - 1rem))',
-          maxHeight: 'min(88vh, 900px)',
+          maxHeight: 'min(88vh, 900px, 100%)',
           overflowY: 'auto',
           padding: '1rem 1.1rem 1.1rem',
         }}

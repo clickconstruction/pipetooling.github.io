@@ -35,7 +35,7 @@ export function NcnsDetailModal({ open, row, onClose }: Props) {
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1100,
-        padding: '1rem',
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
       }}
       onClick={onClose}
     >

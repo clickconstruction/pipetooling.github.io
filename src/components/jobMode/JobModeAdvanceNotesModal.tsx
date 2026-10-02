@@ -37,12 +37,12 @@ const backdropStyle: CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  padding: '1rem',
+  padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
 }
 
 const dialogStyle: CSSProperties = {
   width: 'min(92vw, 460px)',
-  maxHeight: '88vh',
+  maxHeight: 'min(88vh, 100%)',
   overflowY: 'auto',
   background: 'var(--surface)',
   borderRadius: 12,

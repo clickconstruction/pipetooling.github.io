@@ -217,6 +217,7 @@ export default function BankingMercuryDragSortFocusModal({
           display: 'flex',
           flexDirection: 'column',
           boxSizing: 'border-box',
+          paddingTop: 'var(--app-top-chrome, 0px)',
         }}
       >
         <div

@@ -2464,11 +2464,11 @@ export default function PeopleReviewTab({
             return (
               <div
                 onClick={() => setReviewLaborBreakdownContext(null)}
-                style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 800 }}
+                style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 800, paddingTop: 'var(--app-top-chrome, 0px)' }}
               >
                 <div role="dialog" aria-modal="true"
                   onClick={(e) => e.stopPropagation()}
-                  style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 480, maxWidth: '92vw', maxHeight: '85vh', overflow: 'auto' }}
+                  style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 480, maxWidth: '92vw', maxHeight: 'min(85vh, 100%)', overflow: 'auto' }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', marginBottom: '0.75rem' }}>
                     <div>

@@ -590,7 +590,7 @@ export function ProjectsForecastSpecificStageModal({ stage, projectId, myRole, o
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1005,
-        padding: '1rem',
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
       }}
     >
       <div
@@ -601,7 +601,7 @@ export function ProjectsForecastSpecificStageModal({ stage, projectId, myRole, o
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
           width: '100%',
           maxWidth: 640,
-          maxHeight: 'calc(100vh - 2rem)',
+          maxHeight: 'min(calc(100vh - 2rem), 100%)',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',

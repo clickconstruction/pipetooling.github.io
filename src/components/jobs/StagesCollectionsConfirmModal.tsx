@@ -30,7 +30,7 @@ export function StagesCollectionsConfirmModal({
   onConfirm: () => void | Promise<void>
 }) {
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 780 }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 780, paddingTop: 'var(--app-top-chrome, 0px)' }}>
       <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 420 }}>
         <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>
           {confirm.direction === 'to' ? 'Move to Collections?' : 'Send back to Billed?'}

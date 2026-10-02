@@ -97,6 +97,7 @@ export function PeopleHoursDueSummaries({
               alignItems: 'center',
               justifyContent: 'center',
               zIndex: 1000,
+              paddingTop: 'var(--app-top-chrome, 0px)',
             }}
             onClick={() => setTeamLedgerModalTeam(null)}
           >
@@ -106,7 +107,7 @@ export function PeopleHoursDueSummaries({
                 borderRadius: 8,
                 padding: '1rem 1.25rem',
                 maxWidth: '90vw',
-                maxHeight: '85vh',
+                maxHeight: 'min(85vh, 100%)',
                 overflow: 'auto',
                 boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
               }}

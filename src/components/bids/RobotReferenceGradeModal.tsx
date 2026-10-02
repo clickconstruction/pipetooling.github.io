@@ -70,12 +70,12 @@ export function RobotReferenceGradeModal({ bid, presence, onClose, onEditBid }: 
       role="dialog"
       aria-modal
       aria-labelledby="robot-reference-grade-title"
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1005, padding: '1rem' }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1005, padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }}
       onClick={onClose}
     >
       <div
         role="document"
-        style={{ background: 'var(--surface)', borderRadius: 8, maxWidth: 560, width: '100%', padding: '1.25rem', boxShadow: '0 10px 40px rgba(0,0,0,0.15)', maxHeight: '85vh', overflowY: 'auto' }}
+        style={{ background: 'var(--surface)', borderRadius: 8, maxWidth: 560, width: '100%', padding: '1.25rem', boxShadow: '0 10px 40px rgba(0,0,0,0.15)', maxHeight: 'min(85vh, 100%)', overflowY: 'auto' }}
         onClick={(e) => e.stopPropagation()}
       >
         <h2 id="robot-reference-grade-title" style={{ margin: '0 0 0.75rem', fontSize: '1.125rem', fontWeight: 600 }}>

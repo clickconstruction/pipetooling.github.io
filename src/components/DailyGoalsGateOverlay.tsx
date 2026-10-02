@@ -47,7 +47,7 @@ export default function DailyGoalsGateOverlay() {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'flex-start',
-        padding: '1.5rem',
+        padding: 'calc(1.5rem + var(--app-top-chrome, 0px)) 1.5rem 1.5rem',
         overflow: 'auto',
         boxSizing: 'border-box',
       }}

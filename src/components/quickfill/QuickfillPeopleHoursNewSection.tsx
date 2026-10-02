@@ -300,7 +300,7 @@ export function QuickfillPeopleHoursNewSection() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: '1rem',
+            padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
           }}
           onClick={() => setPendingBreakdownOpen(false)}
         >
@@ -313,7 +313,7 @@ export function QuickfillPeopleHoursNewSection() {
               borderRadius: 10,
               maxWidth: 420,
               width: '100%',
-              maxHeight: 'min(70vh, 520px)',
+              maxHeight: 'min(70vh, 520px, 100%)',
               overflow: 'auto',
               boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
               border: '1px solid var(--border)',

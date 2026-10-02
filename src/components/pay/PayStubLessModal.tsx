@@ -251,7 +251,7 @@ export function PayStubLessModal({
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1110 }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1110, paddingTop: 'var(--app-top-chrome, 0px)' }}
     >
       <div
         role="dialog"
@@ -263,7 +263,7 @@ export function PayStubLessModal({
           minWidth: 320,
           maxWidth: 520,
           width: '100%',
-          maxHeight: '88vh',
+          maxHeight: 'min(88vh, 100%)',
           overflow: 'auto',
           margin: '1rem',
           boxShadow: '0 10px 40px rgba(0,0,0,0.15)',

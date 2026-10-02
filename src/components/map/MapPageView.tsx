@@ -811,6 +811,7 @@ export function MapPageView() {
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 2000,
+            paddingTop: 'var(--app-top-chrome, 0px)',
           }}
           role="dialog"
           aria-modal
@@ -823,7 +824,7 @@ export function MapPageView() {
               borderRadius: 8,
               minWidth: 280,
               maxWidth: 'min(96vw, 420px)',
-              maxHeight: 'min(80vh, 400px)',
+              maxHeight: 'min(80vh, 400px, 100%)',
               overflow: 'auto',
               boxShadow: '0 4px 24px rgba(0,0,0,0.12)',
             }}

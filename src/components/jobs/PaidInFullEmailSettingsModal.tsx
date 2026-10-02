@@ -458,6 +458,7 @@ export default function PaidInFullEmailSettingsModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 760,
+        paddingTop: 'var(--app-top-chrome, 0px)',
       }}
       onClick={onClose}
     >
@@ -468,7 +469,7 @@ export default function PaidInFullEmailSettingsModal({
           padding: '1.5rem',
           borderRadius: 8,
           width: 'min(560px, calc(100vw - 2rem))',
-          maxHeight: '85vh',
+          maxHeight: 'min(85vh, 100%)',
           overflow: 'auto',
         }}
       >

@@ -2482,7 +2482,7 @@ function JobsSubLaborFormModalInner(
       )}
 
       {showAddSubcontractorModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: SHEET_FORM_INNER_Z }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: SHEET_FORM_INNER_Z, paddingTop: 'var(--app-top-chrome, 0px)' }}>
           <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
             <h3 style={{ marginTop: 0 }}>Add Sub</h3>
             {addSubcontractorError && (
@@ -2557,7 +2557,7 @@ function JobsSubLaborFormModalInner(
       )}
 
       {laborEntryFormOpen && laborBookEntriesVersionId && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: SHEET_FORM_Z }} onClick={closeLaborEntryForm}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: SHEET_FORM_Z, paddingTop: 'var(--app-top-chrome, 0px)' }} onClick={closeLaborEntryForm}>
           <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.5rem', minWidth: 360, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }} onClick={(e) => e.stopPropagation()}>
             <h3 style={{ margin: '0 0 1rem' }}>{editingLaborEntry ? 'Edit entry' : 'New entry'}</h3>
             {error && (

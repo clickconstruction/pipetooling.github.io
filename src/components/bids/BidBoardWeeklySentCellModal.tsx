@@ -92,7 +92,7 @@ export function BidBoardWeeklySentCellModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: Z_INDEX,
-        padding: '1rem',
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
       }}
       onClick={(e) => e.target === e.currentTarget && onClose()}
       role="presentation"
@@ -107,7 +107,7 @@ export function BidBoardWeeklySentCellModal({
           padding: '1.25rem',
           maxWidth: 520,
           width: '100%',
-          maxHeight: 'min(85vh, 560px)',
+          maxHeight: 'min(85vh, 560px, 100%)',
           display: 'flex',
           flexDirection: 'column',
           gap: '0.75rem',

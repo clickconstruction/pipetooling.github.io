@@ -38,8 +38,8 @@ export function PickWinningGcModal({
 }) {
   const sorted = [...options].sort((a, b) => (a.sentOn && !b.sentOn ? -1 : !a.sentOn && b.sentOn ? 1 : 0))
   return (
-    <div role="dialog" aria-modal="true" aria-label="Which GC gave you this job?" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1400, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-      <div style={{ background: 'var(--surface)', borderRadius: 10, padding: '1.1rem 1.25rem', width: 'min(30rem, 94vw)', maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 18px 50px rgba(0,0,0,0.35)' }}>
+    <div role="dialog" aria-modal="true" aria-label="Which GC gave you this job?" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1400, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 10, padding: '1.1rem 1.25rem', width: 'min(30rem, 94vw)', maxHeight: 'min(80vh, 100%)', overflowY: 'auto', boxShadow: '0 18px 50px rgba(0,0,0,0.35)' }}>
         <h3 style={{ margin: '0 0 0.25rem', fontSize: '1rem' }}>Which GC gave you this job?</h3>
         <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           {bidName} went to {options.length} GCs.{' '}

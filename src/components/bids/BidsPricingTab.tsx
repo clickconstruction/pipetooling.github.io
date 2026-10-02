@@ -3552,7 +3552,7 @@ export function BidsPricingTab({
             : "The GC's letter is built on this price — make another price the base first."
           const close = () => setPricingEdit(null)
           return (
-            <div role="presentation" onClick={close} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 750 }}>
+            <div role="presentation" onClick={close} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 750, paddingTop: 'var(--app-top-chrome, 0px)' }}>
               <div role="dialog" aria-label="Price" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); close() } }} style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.25rem 1.4rem', minWidth: 360, maxWidth: '90vw', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
                 <h3 style={{ margin: '0 0 1rem' }}>Price</h3>
                 <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500, fontSize: '0.875rem' }} htmlFor="pricing-edit-name">Name</label>
@@ -3634,7 +3634,7 @@ export function BidsPricingTab({
         const mine = priceBookVersions.filter((p) => (selectedBidVersionId ? p.bid_version_id === selectedBidVersionId : p.bid_version_id == null))
         const defaultName = `Alternate ${Math.max(1, mine.length)}`
         return (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }} onClick={() => !wbCloning && setAddPriceOpen(null)}>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, paddingTop: 'var(--app-top-chrome, 0px)' }} onClick={() => !wbCloning && setAddPriceOpen(null)}>
             <div role="dialog" aria-label={`Another price for ${gc}`} style={{ background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 12, padding: '1rem 1.1rem', maxWidth: 460, width: '92%', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }} onClick={(e) => e.stopPropagation()}>
               <h3 style={{ margin: '0 0 0.2rem', fontSize: '1.02rem' }}>Another price for {gc}</h3>
               <p style={{ margin: '0 0 0.7rem', fontSize: '0.82rem', color: 'var(--text-muted)' }}>Same counts, same takeoff — a second price this GC can pick. Different materials? use “+ version” in the picker instead.</p>

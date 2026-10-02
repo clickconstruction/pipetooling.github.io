@@ -22,8 +22,8 @@ const db = supabase as unknown as SupabaseClient
 type Candidate = { id: string; hcp_number: string | null; click_number?: string | null; job_name: string | null; job_address: string | null }
 type Destination = Candidate & { revenueUsd: number; paidUsd: number; status: string | null }
 
-const overlay: CSSProperties = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 1300, overflowY: 'auto' }
-const card: CSSProperties = { background: 'var(--surface)', color: 'var(--text-base)', borderRadius: 10, width: 'min(560px, 100%)', maxHeight: '92vh', overflow: 'auto', boxShadow: '0 22px 50px rgba(0,0,0,.25)', padding: '1.1rem 1.25rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.8rem' }
+const overlay: CSSProperties = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(16px + var(--app-top-chrome, 0px)) 16px 16px', zIndex: 1300, overflowY: 'auto' }
+const card: CSSProperties = { background: 'var(--surface)', color: 'var(--text-base)', borderRadius: 10, width: 'min(560px, 100%)', maxHeight: 'min(92vh, 100%)', overflow: 'auto', boxShadow: '0 22px 50px rgba(0,0,0,.25)', padding: '1.1rem 1.25rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.8rem' }
 const label: CSSProperties = { fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 const input: CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '0.5rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 6, font: 'inherit', background: 'var(--surface)', color: 'var(--text-base)' }
 const ghost: CSSProperties = { font: 'inherit', padding: '0.45rem 0.9rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--bg-muted)', color: 'var(--text-strong)', cursor: 'pointer' }

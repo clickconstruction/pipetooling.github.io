@@ -107,7 +107,7 @@ export function PersonQuickSheet() {
   }
 
   return (
-    <div role="dialog" aria-modal="true" aria-label="Find a person" style={{ position: 'fixed', inset: 0, zIndex: DESK_Z + 1, background: 'rgba(17,24,39,0.32)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '10vh' }} onClick={(e) => e.target === e.currentTarget && setOpen(false)}>
+    <div role="dialog" aria-modal="true" aria-label="Find a person" style={{ position: 'fixed', inset: 0, zIndex: DESK_Z + 1, background: 'rgba(17,24,39,0.32)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: 'calc(10vh + var(--app-top-chrome, 0px))' }} onClick={(e) => e.target === e.currentTarget && setOpen(false)}>
       <div style={{ width: 'min(560px, 94vw)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 16px 40px rgba(0,0,0,0.22)', overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.55rem 0.8rem', borderBottom: '1px solid var(--border)' }}>
           <span aria-hidden style={{ fontFamily: 'ui-monospace, monospace', border: '1px solid var(--border)', borderRadius: 4, padding: '0 0.35rem', color: 'var(--text-muted)', fontSize: '0.6875rem' }}>/</span>

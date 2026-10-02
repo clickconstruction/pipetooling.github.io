@@ -752,7 +752,7 @@ export function HoursUnassignedModal({
 
   if (loading) {
     return (
-      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1001 }}>
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1001, paddingTop: 'var(--app-top-chrome, 0px)' }}>
         <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: phoneSafeMinWidth(400), boxSizing: 'border-box' }}>
           <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
         </div>

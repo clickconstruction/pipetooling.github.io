@@ -539,7 +539,7 @@ export default function PaymentChaseModal({
       role="dialog"
       aria-modal="true"
       aria-label="Payment follow-up call mode"
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 770 }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 770, paddingTop: 'var(--app-top-chrome, 0px)' }}
       onClick={onClose}
     >
       <div
@@ -549,7 +549,7 @@ export default function PaymentChaseModal({
           borderRadius: 12,
           border: '1px solid var(--border)',
           width: 'min(860px, calc(100vw - 2rem))',
-          maxHeight: 'min(88vh, 940px)',
+          maxHeight: 'min(88vh, 940px, 100%)',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',

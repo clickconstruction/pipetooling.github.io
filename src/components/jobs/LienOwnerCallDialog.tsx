@@ -78,7 +78,7 @@ export default function LienOwnerCallDialog({ facts, existing, takerName, onSave
   // click outside closes the call only, not the desk behind it (v2.4352).
   return createPortal(
     <div className="lienMonthDialogScrim" onClick={(e) => { e.stopPropagation(); onClose() }}>
-      <div role="dialog" aria-modal="true" aria-label={`${practice ? 'Practice call' : 'The owner called'} · ${facts.jobLabel}`} className="lienMonthDialog" style={{ maxWidth: 640, width: 'calc(100vw - 2rem)', maxHeight: 'calc(100vh - 2rem)', overflowY: 'auto', padding: 0 }} onClick={(e) => e.stopPropagation()} data-lien-owner-call-dialog data-lien-owner-call-practice={practice ? 'yes' : undefined} data-lien-owner-call-step={state.step}>
+      <div role="dialog" aria-modal="true" aria-label={`${practice ? 'Practice call' : 'The owner called'} · ${facts.jobLabel}`} className="lienMonthDialog" style={{ maxWidth: 640, width: 'calc(100vw - 2rem)', maxHeight: 'min(calc(100vh - 2rem), 100%)', overflowY: 'auto', padding: 0 }} onClick={(e) => e.stopPropagation()} data-lien-owner-call-dialog data-lien-owner-call-practice={practice ? 'yes' : undefined} data-lien-owner-call-step={state.step}>
         <div className="lienMonthDialogHead" style={{ margin: 0, padding: '0.7rem 1rem 0.5rem', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, background: 'var(--surface)', zIndex: 1 }}>
           <strong style={{ fontSize: '0.9rem' }}>{practice ? 'Practice call' : 'The owner called'} · {facts.jobLabel}</strong>
           <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginLeft: 8 }}>{card.title}</span>

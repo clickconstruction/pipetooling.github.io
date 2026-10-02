@@ -195,6 +195,7 @@ export function PhoneDockMoreSheet(props: PhoneDockMoreSheetProps) {
         alignItems: 'flex-end',
         justifyContent: 'center',
         zIndex: 1004,
+        paddingTop: 'var(--app-top-chrome, 0px)',
       }}
     >
       <div
@@ -208,7 +209,7 @@ export function PhoneDockMoreSheet(props: PhoneDockMoreSheetProps) {
           borderRadius: '14px 14px 0 0',
           width: '100%',
           maxWidth: 640,
-          maxHeight: '88vh',
+          maxHeight: 'min(88vh, 100%)',
           overflowY: 'auto',
           WebkitOverflowScrolling: 'touch',
           padding: '0.6rem 0.85rem calc(0.85rem + env(safe-area-inset-bottom))',

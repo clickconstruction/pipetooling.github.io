@@ -1584,6 +1584,7 @@ export function BidFormModal(props: BidFormModalProps) {
                 alignItems: 'center',
                 justifyContent: 'center',
                 zIndex: 1002,
+                paddingTop: 'var(--app-top-chrome, 0px)',
               }}
               onClick={(e) => {
                 if (e.target === e.currentTarget) setServiceTypeSwitchOpen(false)
@@ -1599,7 +1600,7 @@ export function BidFormModal(props: BidFormModalProps) {
                   borderRadius: 8,
                   maxWidth: '420px',
                   width: '90%',
-                  maxHeight: '85vh',
+                  maxHeight: 'min(85vh, 100%)',
                   overflow: 'auto',
                   boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
                 }}

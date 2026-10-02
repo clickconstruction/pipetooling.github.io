@@ -125,7 +125,7 @@ function ApBillModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1110,
-        padding: '1rem',
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
         boxSizing: 'border-box',
       }}
     >
@@ -141,7 +141,7 @@ function ApBillModal({
           background: 'var(--surface)',
           borderRadius: 8,
           width: expanded ? 'min(1100px, 96vw)' : 'min(520px, 96vw)',
-          maxHeight: '92vh',
+          maxHeight: 'min(92vh, 100%)',
           display: 'flex',
           flexDirection: 'column',
           boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
@@ -325,7 +325,7 @@ function SendToDispatchModal({ item, onClose }: { item: FinancialItem; onClose: 
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1110,
-        padding: '1rem',
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
         boxSizing: 'border-box',
       }}
     >
@@ -872,7 +872,7 @@ function ItemsModal({
         onClick={(e) => {
           if (e.target === e.currentTarget) onClose()
         }}
-        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-end', zIndex: 1100 }}
+        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-end', zIndex: 1100, paddingTop: 'var(--app-top-chrome, 0px)' }}
       >
         <div
           role="dialog"
@@ -886,7 +886,7 @@ function ItemsModal({
             background: 'var(--surface)',
             borderRadius: '14px 14px 0 0',
             width: '100%',
-            height: '92dvh',
+            height: 'min(92dvh, 100%)',
             display: 'flex',
             flexDirection: 'column',
             boxShadow: '0 -10px 40px rgba(0,0,0,0.3)',
@@ -1206,7 +1206,7 @@ function ItemsModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1100,
-        padding: '1rem',
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
         boxSizing: 'border-box',
       }}
     >
@@ -1223,7 +1223,7 @@ function ItemsModal({
           borderRadius: 8,
           maxWidth: 'min(880px, 94vw)',
           width: '100%',
-          maxHeight: '85vh',
+          maxHeight: 'min(85vh, 100%)',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',

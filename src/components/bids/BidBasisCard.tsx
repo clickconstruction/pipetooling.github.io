@@ -96,7 +96,7 @@ const codeStyle: CSSProperties = {
   wordBreak: 'break-all',
   lineHeight: 1.4,
 }
-const dialogBackdrop: CSSProperties = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }
+const dialogBackdrop: CSSProperties = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, paddingTop: 'var(--app-top-chrome, 0px)' }
 const dialogCard: CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 12, padding: '1rem 1.1rem 1.1rem', maxWidth: 560, width: '94%', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', gap: '0.85rem' }
 
 function useCopyFilename() {

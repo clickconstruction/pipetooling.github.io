@@ -43,11 +43,11 @@ export default function GcStatementSendHistoryModal({
       aria-modal="true"
       aria-label={`What went out to ${gcName}`}
       onClick={onClose}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 764 }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 764, paddingTop: 'var(--app-top-chrome, 0px)' }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{ background: 'var(--surface)', borderRadius: 10, padding: '1rem 1.2rem', width: 'min(680px, 92vw)', maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 12px 40px rgba(0,0,0,0.3)' }}
+        style={{ background: 'var(--surface)', borderRadius: 10, padding: '1rem 1.2rem', width: 'min(680px, 92vw)', maxHeight: 'min(80vh, 100%)', overflowY: 'auto', boxShadow: '0 12px 40px rgba(0,0,0,0.3)' }}
       >
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginBottom: '0.25rem' }}>
           <span style={{ fontSize: '1rem', fontWeight: 700, flex: 1, minWidth: 0 }}>{gcName}</span>

@@ -153,7 +153,7 @@ export function DashboardLienReleaseQueueModal({
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: QUEUE_OVERLAY_Z_INDEX,
-          padding: '1rem',
+          padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
           boxSizing: 'border-box',
         }}
       >
@@ -166,7 +166,7 @@ export function DashboardLienReleaseQueueModal({
             background: 'var(--surface)',
             borderRadius: 8,
             width: 'min(880px, calc(100vw - 2rem))',
-            maxHeight: 'min(90vh, 860px)',
+            maxHeight: 'min(90vh, 860px, 100%)',
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',

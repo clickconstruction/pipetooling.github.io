@@ -140,7 +140,7 @@ export function JobAccountsStrip({
   )
 }
 
-const overlay: CSSProperties = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 1200, padding: '0.75rem' }
+const overlay: CSSProperties = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 1200, padding: 'calc(0.75rem + var(--app-top-chrome, 0px)) 0.75rem 0.75rem' }
 const sheetBox: CSSProperties = { background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: 14, width: 'min(440px, 100%)', boxShadow: '0 20px 50px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', gap: '0.7rem', padding: '0.9rem 1rem 1rem', marginBottom: 'env(safe-area-inset-bottom, 0px)' }
 const grab: CSSProperties = { width: 36, height: 4, borderRadius: 2, background: 'var(--border-strong)', alignSelf: 'center' }
 const kv: CSSProperties = { display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0.2rem 0.75rem', fontSize: '0.8125rem' }

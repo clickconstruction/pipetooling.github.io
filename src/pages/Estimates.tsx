@@ -5103,6 +5103,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 1001,
+            paddingTop: 'var(--app-top-chrome, 0px)',
           }}
         >
           <div role="dialog" aria-modal="true"
@@ -5112,7 +5113,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
               borderRadius: 8,
               maxWidth: '500px',
               width: '90%',
-              maxHeight: '90vh',
+              maxHeight: 'min(90vh, 100%)',
               overflow: 'auto',
             }}
           >
@@ -5146,6 +5147,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 1002,
+            paddingTop: 'var(--app-top-chrome, 0px)',
           }}
         >
           <div
