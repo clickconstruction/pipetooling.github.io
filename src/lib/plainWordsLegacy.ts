@@ -34,7 +34,6 @@ export const LEGACY_PLAIN_WORDS_GUIDES: ReadonlySet<string> = new Set([
   'send-a-lien-waiver',
   'send-a-sub-a-work-order-from-a-sheet',
   'send-a-supply-house-a-quote-link',
-  'send-lien-notices-from-the-lien-desk',
   'settings-basics',
   'share-a-customer-their-portal',
   'share-a-help-guide',
