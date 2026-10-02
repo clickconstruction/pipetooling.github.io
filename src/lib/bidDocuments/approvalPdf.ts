@@ -3,9 +3,9 @@
  *
  * `downloadApprovalPdf` fetches its own data from Supabase, builds a 4-page jsPDF
  * document (Submission + Margins, Pricing, Labor, Cover Letter), and triggers a download.
- * The caller (Bids.tsx) builds the `ApprovalPdfContext` (the selected bid, the price-book
- * versions and service types from the pricing engine, and the cover-letter options resolved
- * for the bid) and invokes this; everything else is self-contained here.
+ * The caller (Bids.tsx) builds the `ApprovalPdfContext` (the selected bid, the service types,
+ * and the cover-letter options resolved for the bid) and invokes this; everything else —
+ * the bid's versions and price scenarios included — is read here.
  */
 
 import { loadJsPDF } from '../loadJsPDF'
@@ -15,12 +15,7 @@ import { PAYMENT_SCHEDULE_HEADING } from './paymentSchedule'
 import { loadSovLaborShareDefault, loadSovLines, loadSovSplitInputsForBid } from '../bids/sovLaborMaterialIo'
 import { bidBasisClause, currentBidBasisExport, shortSheetLabels, type BidBasisExportRowLike } from '../bids/bidBasis'
 import { supabase } from '../supabase'
-import {
-  computeBidPricingRows,
-  coverLetterTotalsFromPricingRows,
-  type ComputeBidPricingRowsResult,
-} from '../bidPricingRowCalculations'
-import { submissionHiddenIdsForVersion } from '../bids/submissionHides'
+import { coverLetterTotalsFromPricingRows, type ComputeBidPricingRowsResult } from '../bidPricingRowCalculations'
 import { laborRowHours } from '../bids/laborRowHours'
 import { computeBidCostBreakdown, type DirectCostRowLike } from '../bids/bidTotalCostBreakdown'
 import { materialsLines } from '../bids/bidMaterials'
@@ -28,29 +23,27 @@ import { loadBidMaterials } from '../bids/bidMaterialsIo'
 import { bidDisplayName, formatCompactCurrency, formatDesignDrawingPlanDate } from '../bids/bidFormatting'
 import { formatCurrency } from '../format'
 import { extractContactInfo } from '../bids/bidContactInfo'
-import { pickActiveVersion } from '../bids/pickActiveVersion'
+import { deriveActivePricingId, pickActiveVersion } from '../bids/pickActiveVersion'
+import { cardsRowScenarios } from '../bids/pricingCardsRow'
+import { loadScenarioInputs, scenarioBidVersionIdOf, type ScenarioInputs } from '../bids/loadScenarioInputs'
+import { scenarioCustomPriceMap, scenarioPricingRows } from '../bids/scenarioPricingRows'
 import {
   resolveSingleLetterGc,
   versionGcOverrideMap,
   type BidVersionGcRow,
   type GcPacketCustomer,
 } from '../bids/coverLetterGcPackets'
-import { buildCoverLetterText, numberToWords, type CoverLetterScheduleOfValues } from './coverLetter'
+import { letterDocument, letterRowsFor, letterSectionPlans, letterTotalsWithoutOffered, priceLetterSections, type LetterSection } from '../bids/coverLetterDocument'
+import { COVER_LETTER_ALTS_HEADING_DEFAULT, altSectionKey, buildAlternatesBlock, parseCoverLetterAltTexts, type CoverLetterAltsLayout } from '../bids/coverLetterSamePage'
+import { COVER_LETTER_ADD_ALTS_HEADING_DEFAULT, buildAddAlternatesBlock, offeredAddAlternates, splitLetterTotalsByAlternate } from '../bids/coverLetterAddAlternates'
+import { sectionLabel, type BundlePricing, type BundleVersion } from '../bids/coverLetterVersionBundle'
+import { buildCombinedCoverLetterText, buildCoverLetterText, numberToWords, type CoverLetterAlternatesBlock, type CoverLetterScheduleOfValues } from './coverLetter'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import type { BidCountRow } from '../../types/bids'
-import type {
-  PriceBookVersion,
-  PriceBookEntryWithFixture,
-  BidPricingAssignment,
-  BidCountRowCustomPrice,
-  BidCountRowSubmissionHide,
-  CostEstimate,
-  CostEstimateLaborRow,
-} from '../bids/bidPricingEngineTypes'
+import type { CostEstimate, CostEstimateLaborRow } from '../bids/bidPricingEngineTypes'
 
 export type ApprovalPdfContext = {
   bid: BidWithBuilder
-  priceBookVersions: PriceBookVersion[]
   serviceTypes: { id: string; name: string }[]
   coverLetter: {
     useCustomAmount: boolean
@@ -61,20 +54,64 @@ export type ApprovalPdfContext = {
     includeDesignDrawingPlanDate: boolean
     includeFixturesPerPlan: boolean
     includeSignature: boolean
+    /** This device's Same page / Separate pages choice in the Cover Letter studio. */
+    altsLayout: CoverLetterAltsLayout
   }
 }
 
+/** A bid version as the PDF reads it: the active-version pick, the letter's bundle and its GC override. */
+type ApprovalVersionRow = BundleVersion & BidVersionGcRow
+/** A bid's own price scenario. */
+type ApprovalPricingRow = BundlePricing & { name: string }
+
+const byFixtureName = (a: { fixture_types?: { name: string } | null }, b: { fixture_types?: { name: string } | null }) =>
+  (a.fixture_types?.name ?? '').localeCompare(b.fixture_types?.name ?? '', undefined, { numeric: true })
+
 export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void> {
   const b = ctx.bid
+  const bidId = b.id
+  // The bid's own versions and price scenarios, read here rather than taken from the Pricing tab,
+  // which may hold another bid. The versions also carry the letter's flags and GC overrides.
+  const [versionsRes, pricingsRes] = await Promise.all([
+    supabase.from('bid_versions').select('id, name, sort_order, include_in_submission, is_alternate, starred_price_book_version_id, customer_id, customers(id, name, address)').eq('bid_id', bidId),
+    supabase.from('price_book_versions').select('id, name, bid_version_id, sort_order, created_at, include_in_submission').eq('bid_id', bidId).order('sort_order', { ascending: true }),
+  ])
+  const versionRows = (versionsRes.data ?? []) as unknown as ApprovalVersionRow[]
+  const bidPricings = (pricingsRes.data ?? []) as ApprovalPricingRow[]
   // v2.2132: count rows belong to the bid's active version (null = unsplit bid).
-  const { data: versionsForCounts } = await supabase.from('bid_versions').select('id, sort_order').eq('bid_id', b.id)
-  const countsVersionId = pickActiveVersion({ savedVersionId: b.selected_bid_version_id ?? null, bidVersions: (versionsForCounts ?? []) as Array<{ id: string; sort_order: number }> })
+  const countsVersionId = pickActiveVersion({ savedVersionId: b.selected_bid_version_id ?? null, bidVersions: versionRows })
+  // v2.4373: the active version's price, picked as the Pricing tab picks it — the version's own ★,
+  // else the bid's saved price when it is this version's, else the version's first. The bid's saved
+  // price alone belongs to whichever version was active when it was saved: on a split bid it priced
+  // these rows with another version's prices and read $0.00.
+  const pricingId = deriveActivePricingId({
+    activeVersionId: countsVersionId,
+    bidPricings,
+    legacyFallbackPricingId: b.selected_price_book_version_id ?? null,
+    versionStarredPricingId: versionRows.find((v) => v.id === countsVersionId)?.starred_price_book_version_id ?? null,
+  })
+  // Its name: one of the bid's own, else the shared template an unsplit bid prices on, read by id.
+  const pricingName = pricingId == null
+    ? null
+    : bidPricings.find((p) => p.id === pricingId)?.name ??
+      ((await supabase.from('price_book_versions').select('name').eq('id', pricingId).maybeSingle()).data as { name?: string } | null)?.name ??
+      null
   const countRowsQuery = () => {
-    const base = supabase.from('bids_count_rows').select('*').eq('bid_id', b.id)
+    const base = supabase.from('bids_count_rows').select('*').eq('bid_id', bidId)
     return countsVersionId ? base.eq('bid_version_id', countsVersionId) : base.is('bid_version_id', null)
   }
-  const priceBookVersions = ctx.priceBookVersions
-  const bidId = b.id
+  // A scenario's entries and overlay rows, read once whichever page asks for them. `countRows` is set
+  // when the scenario lives on another version: it prices on that version's rows, as the cards do.
+  const inputsById = new Map<string, Promise<ScenarioInputs>>()
+  const scenarioInputs = (id: string): Promise<ScenarioInputs> => {
+    let inputs = inputsById.get(id)
+    if (!inputs) {
+      inputs = loadScenarioInputs(supabase, { bidId, pricingId: id, scenarioBidVersionId: scenarioBidVersionIdOf(bidPricings, id), selectedBidVersionId: countsVersionId })
+        .then((loaded) => ({ ...loaded, entries: [...loaded.entries].sort(byFixtureName) }))
+      inputsById.set(id, inputs)
+    }
+    return inputs
+  }
   const margin = 20
   const lineHeight = 6
   const JsPDF = await loadJsPDF()
@@ -167,8 +204,6 @@ export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void
   let reviewGroupCostEstimateAmount: number | null = null
   let reviewGroupHasCostEstimate = false
   const reviewGroupPricingByVersion: Array<{ versionName: string; revenue: number; margin: number | null; complete: boolean }> = []
-  let reviewPdfLaborRows: CostEstimateLaborRow[] = []
-  let reviewPdfLaborRate = 0
   const { data: countDataReview } = await countRowsQuery().order('sequence_order', { ascending: true })
   const countRowsReview = (countDataReview as BidCountRow[]) ?? []
   const { data: estForReview } = await supabase.from('cost_estimates').select('*').eq('bid_id', bidId).maybeSingle()
@@ -190,8 +225,6 @@ export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void
     ])
     const laborRowsR = (laborResR.data as CostEstimateLaborRow[]) ?? []
     const rateR = estForReviewData.labor_rate != null ? Number(estForReviewData.labor_rate) : 0
-    reviewPdfLaborRows = laborRowsR
-    reviewPdfLaborRate = rateR
     // One total (v2.3292): the same breakdown the Workbench, the Pricing CSV and the Labor page read — travel and the direct-cost tables included.
     reviewGroupCostEstimateAmount = computeBidCostBreakdown({
       materialTotalRoughIn: bidMaterials.roughIn,
@@ -205,43 +238,20 @@ export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void
       directCostRows: (directR.data as DirectCostRowLike[] | null) ?? [],
     }).totalCost
   }
-  const [customPdfRes, hidesPdfRes] = await Promise.all([
-    supabase.from('bid_count_row_custom_prices').select('*').eq('bid_id', bidId),
-    supabase.from('bid_count_row_submission_hides').select('*').eq('bid_id', bidId),
-  ])
-  const allBidCustomPricesPdf = (customPdfRes.data as BidCountRowCustomPrice[]) ?? []
-  const allBidSubmissionHidesPdf = (hidesPdfRes.data as BidCountRowSubmissionHide[]) ?? []
-  for (const v of priceBookVersions) {
-    const [entriesResR, assignResR] = await Promise.all([
-      supabase.from('price_book_entries').select('*, fixture_types(name)').eq('version_id', v.id),
-      supabase.from('bid_pricing_assignments').select('*').eq('bid_id', bidId).eq('price_book_version_id', v.id),
-    ])
-    const entriesR = (entriesResR.data as PriceBookEntryWithFixture[]) ?? []
-    entriesR.sort((a, b) => (a.fixture_types?.name ?? '').localeCompare(b.fixture_types?.name ?? '', undefined, { numeric: true }))
-    const assignmentsR = (assignResR.data as BidPricingAssignment[]) ?? []
-    const customMapR = new Map(
-      (allBidCustomPricesPdf ?? [])
-        .filter((c) => c.price_book_version_id === v.id)
-        .map((c) => [c.count_row_id, Number(c.unit_price)]),
-    )
-    const hiddenR = submissionHiddenIdsForVersion(allBidSubmissionHidesPdf, v.id)
-    const computedR = computeBidPricingRows({
-      countRows: countRowsReview,
-      assignments: assignmentsR.map((a) => ({
-        count_row_id: a.count_row_id,
-        price_book_entry_id: a.price_book_entry_id,
-        is_fixed_price: a.is_fixed_price ?? false,
-        unit_price_override: a.unit_price_override,
-      })),
-      entries: entriesR,
-      customUnitPriceByCountRowId: customMapR,
-      laborRows: reviewPdfLaborRows,
-      totalMaterials: bidMaterials.total,
-      laborRate: reviewPdfLaborRate,
-      taxPercent: 8.25,
-      materialsFromTakeoffByCountRowId: bidMaterials.byCountRowId,
-      hiddenSubmissionCountRowIds: hiddenR,
+  // The margins list the price cards the Pricing tab draws for the active version, each priced
+  // on its own version's count rows (v2.4373: every price book on the bid was priced on these
+  // rows, so another version's read $0.00 or Incomplete). Revenue needs no costs.
+  for (const v of cardsRowScenarios({ priceBookVersions: bidPricings, selectedBidVersionId: countsVersionId, selectedPricingVersionId: pricingId })) {
+    const inputs = await scenarioInputs(v.id)
+    const computedR = scenarioPricingRows({
+      scenarioId: v.id,
+      countRows: inputs.countRows ?? countRowsReview,
+      entries: inputs.entries,
+      assignments: inputs.assignments,
+      customPrices: inputs.customPrices,
+      hides: inputs.hides,
     })
+    const customMapR = scenarioCustomPriceMap(inputs.customPrices, v.id)
     const totalRevenueR = computedR.totalRevenue
     const completeR = computedR.rows.every(
       (pr) =>
@@ -251,7 +261,8 @@ export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void
     const marginR = completeR && totalRevenueR > 0 && reviewGroupCostEstimateAmount != null
       ? (totalRevenueR - reviewGroupCostEstimateAmount) / totalRevenueR * 100
       : null
-    reviewGroupPricingByVersion.push({ versionName: v.name, revenue: totalRevenueR, margin: marginR, complete: completeR })
+    // A shared template on a legacy bid is a card called "Standard prices"; the page names it.
+    reviewGroupPricingByVersion.push({ versionName: v.id === pricingId && pricingName ? pricingName : v.name, revenue: totalRevenueR, margin: marginR, complete: completeR })
   }
 
   // Page 1: Submission and followup (same as downloadSubmissionSummaryPdf)
@@ -302,64 +313,31 @@ export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void
   y += lineHeight * 2
   doc.setFontSize(11)
 
+  // The active version's price on its count rows (prices only — the page prints no cost); the
+  // single letter on page 4 reads the same rows.
   let approvalPricingForCover: ComputeBidPricingRowsResult | null = null
-  const versionId = b.selected_price_book_version_id ?? null
   const { data: countData } = await countRowsQuery().order('sequence_order', { ascending: true })
   const countRows = (countData as BidCountRow[]) ?? []
   const pricingContent = 'No price book selected or no count rows.'
-  if (versionId && countRows.length > 0) {
-    const [entriesRes, assignRes, customRes, hidesRes] = await Promise.all([
-      supabase.from('price_book_entries').select('*, fixture_types(name)').eq('version_id', versionId),
-      supabase.from('bid_pricing_assignments').select('*').eq('bid_id', bidId).eq('price_book_version_id', versionId),
-      supabase.from('bid_count_row_custom_prices').select('*').eq('bid_id', bidId).eq('price_book_version_id', versionId),
-      supabase.from('bid_count_row_submission_hides').select('*').eq('bid_id', bidId).eq('price_book_version_id', versionId),
-    ])
-    const entries = (entriesRes.data as PriceBookEntryWithFixture[]) ?? []
-    entries.sort((a, b) => (a.fixture_types?.name ?? '').localeCompare(b.fixture_types?.name ?? '', undefined, { numeric: true }))
-    const assignments = (assignRes.data as BidPricingAssignment[]) ?? []
-    const customPricesP2 = (customRes.data as BidCountRowCustomPrice[]) ?? []
-    const submissionHidesP2 = (hidesRes.data as BidCountRowSubmissionHide[]) ?? []
-    const hiddenP2 = submissionHiddenIdsForVersion(submissionHidesP2, versionId)
-    const customMapP2 = new Map(customPricesP2.map((c) => [c.count_row_id, Number(c.unit_price)]))
-
-    let laborRowsP2: CostEstimateLaborRow[] = []
-    let totalMatP2 = 0
-    let rateP2 = 0
-    const estQuickData = ((await supabase.from('cost_estimates').select('*').eq('bid_id', bidId).maybeSingle()).data) as CostEstimate | null
-    if (estQuickData) {
-      const lrP2 = await supabase.from('cost_estimate_labor_rows').select('*').eq('cost_estimate_id', estQuickData.id).order('sequence_order', { ascending: true })
-      laborRowsP2 = (lrP2.data as CostEstimateLaborRow[]) ?? []
-      totalMatP2 = bidMaterials.total
-      rateP2 = estQuickData.labor_rate != null ? Number(estQuickData.labor_rate) : 0
-    }
-
-    approvalPricingForCover = computeBidPricingRows({
+  if (pricingId && countRows.length > 0) {
+    const inputs = await scenarioInputs(pricingId)
+    approvalPricingForCover = scenarioPricingRows({
+      scenarioId: pricingId,
       countRows,
-      assignments: assignments.map((a) => ({
-        count_row_id: a.count_row_id,
-        price_book_entry_id: a.price_book_entry_id,
-        is_fixed_price: a.is_fixed_price ?? false,
-        unit_price_override: a.unit_price_override,
-      })),
-      entries,
-      customUnitPriceByCountRowId: customMapP2,
-      laborRows: laborRowsP2,
-      totalMaterials: totalMatP2,
-      laborRate: rateP2,
-      taxPercent: 8.25,
-      materialsFromTakeoffByCountRowId: bidMaterials.byCountRowId,
-      hiddenSubmissionCountRowIds: hiddenP2,
+      entries: inputs.entries,
+      assignments: inputs.assignments,
+      customPrices: inputs.customPrices,
+      hides: inputs.hides,
     })
     const totalRevenue = approvalPricingForCover.totalRevenue
 
-    const versionName = priceBookVersions.find((v) => v.id === versionId)?.name ?? '—'
-    push(`Price book: ${versionName}`)
+    push(`Price book: ${pricingName ?? '—'}`)
     y += lineHeight
     const pricingColWidths = [48, 18, 48, 40, 48]
     const pricingRows: string[][] = []
     for (const pr of approvalPricingForCover.rows) {
       if (pr.omitFromSubmissionDocuments) continue
-      const entry = pr.entry as PriceBookEntryWithFixture | undefined
+      const entry = pr.entry
       pricingRows.push([
         pr.countRow.fixture ?? '',
         String(pr.count),
@@ -481,42 +459,60 @@ export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void
   y += lineHeight * 2
   doc.setFontSize(11)
 
-  // The letter follows the ACTIVE Version's GC override (bid_versions.customer_id)
-  // when set, else the bid-level GC — same resolution as the Cover Letter tab
-  // (v2.1172). Fetched fresh here, like the Schedule of Values below, so an
-  // override saved moments ago is reflected without threading tab state through.
-  const { data: versionRowsData } = await supabase
-    .from('bid_versions')
-    .select('id, sort_order, customer_id, customers(id, name, address)')
-    .eq('bid_id', bidId)
-  const versionRows = (versionRowsData ?? []) as unknown as Array<BidVersionGcRow & { sort_order: number }>
-  const activeBidVersionId = pickActiveVersion({
-    savedVersionId: b.selected_bid_version_id ?? null,
-    bidVersions: versionRows,
-  })
+  // The letter is the one the Cover Letter tab shows (v2.4373), planned through the same kernel: a
+  // split bid's in-letter versions at their ★ (a version-less bid's offered prices), a $0 one left
+  // off, the active version's GC packet, and this device's layout — so this page says what Print
+  // and Copy say. The tab's flags and wording, the versions' GC overrides (v2.1172) and the schedule
+  // flags are all read fresh, so a change made there moments ago shows without threading its state.
+  const [schedFlagRes, schedRowsRes] = await Promise.all([
+    supabase.from('bids').select('include_payment_schedule, include_materials_by_stage, include_schedule_of_values, sov_material_factor, sov_split_labor_material, sov_letter_total_only, sov_shape, cover_letter_alt_texts, alternate_group_tags').eq('id', bidId).maybeSingle(),
+    supabase.from('bid_payment_schedule_rows').select('*').eq('bid_id', bidId).order('sort_order').order('created_at'),
+  ])
+  const letterFlags = (schedFlagRes.data ?? null) as { cover_letter_alt_texts?: unknown; alternate_group_tags?: string[] | null } | null
+  const altTexts = parseCoverLetterAltTexts(letterFlags?.cover_letter_alt_texts)
+  const alternateGroupTags = letterFlags?.alternate_group_tags ?? b.alternate_group_tags ?? []
+  const plans = letterSectionPlans(versionRows, bidPricings, b.selected_price_book_version_id ?? null)
+  let sections: LetterSection[] = []
+  if (plans.length > 0 && countRows.length > 0) {
+    const ids = [...new Set(plans.flatMap((p) => (p.pricingId ? [p.pricingId] : [])))]
+    // Each section on its version's count rows: the bid's rows, read once on a split bid.
+    const readAllRows = async () => ((await supabase.from('bids_count_rows').select('*').eq('bid_id', bidId).order('sequence_order', { ascending: true })).data as BidCountRow[] | null) ?? []
+    const [inputs, allRows] = await Promise.all([Promise.all(ids.map(scenarioInputs)), versionRows.length > 0 ? readAllRows() : countRows])
+    sections = priceLetterSections({
+      plans,
+      rowsFor: letterRowsFor(allRows, countRows),
+      entries: inputs.flatMap((i) => i.entries),
+      assignments: inputs.flatMap((i) => i.assignments),
+      customPrices: inputs.flatMap((i) => i.customPrices),
+      hides: inputs.flatMap((i) => i.hides),
+      alternateGroupTags,
+      altTexts,
+    })
+  }
+  const versionGcById = versionGcOverrideMap(versionRows)
   const bidGc: GcPacketCustomer = {
     id: b.customer_id ?? null,
     name: b.customers?.name ?? b.bids_gc_builders?.name ?? '—',
     address: b.customers?.address ?? b.bids_gc_builders?.address ?? '—',
   }
-  const letterGc = resolveSingleLetterGc(activeBidVersionId, versionGcOverrideMap(versionRows), bidGc)
+  const letter = letterDocument({ sections, versionGcById, bidGc, activeBidVersionId: countsVersionId, layout: ctx.coverLetter.altsLayout })
+  // A packet goes to its GC; the single letter follows the active version's GC override, else the bid's.
+  const letterGc = letter.packet ? letter.packet.customer : resolveSingleLetterGc(countsVersionId, versionGcById, bidGc)
   const customerName = letterGc.name
   const customerAddress = letterGc.address
   const projectNameVal = b.project_name ?? '—'
   const projectAddressVal = b.address ?? '—'
-  let coverLetterRevenue = 0
-  const fixtureRows: { fixture: string; count: number }[] = []
-  if (approvalPricingForCover) {
-    const totals = coverLetterTotalsFromPricingRows(approvalPricingForCover.rows)
-    coverLetterRevenue = totals.revenueSum
-    fixtureRows.push(...totals.fixtureRows)
-  }
+  // The single letter reads the active price's rows. An offered with-and-without alternate (v2.4195)
+  // leaves the amount and prints as an add-on under it, on the same-page letter too.
+  const activeSplit = approvalPricingForCover ? splitLetterTotalsByAlternate(approvalPricingForCover.rows, countRows, alternateGroupTags) : null
+  const offeredAdd = offeredAddAlternates(activeSplit, altTexts)
+  const singleLetter = approvalPricingForCover
+    ? letterTotalsWithoutOffered(coverLetterTotalsFromPricingRows(approvalPricingForCover.rows), activeSplit, altTexts)
+    : { revenueSum: 0, fixtureRows: [] }
   const useCustomAmount = ctx.coverLetter.useCustomAmount
   const customAmountStr = ctx.coverLetter.customAmount.replace(/,/g, '').trim()
   const customAmountNum = customAmountStr ? parseFloat(customAmountStr) : NaN
-  const effectiveRevenue = useCustomAmount && !isNaN(customAmountNum) && customAmountNum >= 0 ? customAmountNum : coverLetterRevenue
-  const revenueWords = numberToWords(effectiveRevenue).toUpperCase()
-  const revenueNumber = `$${formatCurrency(effectiveRevenue)}`
+  const effectiveRevenue = useCustomAmount && !isNaN(customAmountNum) && customAmountNum >= 0 ? customAmountNum : singleLetter.revenueSum
   const inclusions = ctx.coverLetter.inclusions
   const exclusions = ctx.coverLetter.exclusions
   const terms = ctx.coverLetter.terms
@@ -524,22 +520,17 @@ export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void
   const effectiveIncludeFixtures = !designDrawingPlanDateFormatted || ctx.coverLetter.includeFixturesPerPlan
   const bidServiceType = ctx.serviceTypes.find((st) => st.id === b.service_type_id)
   const serviceTypeName = bidServiceType?.name ?? 'Plumbing'
-  // Schedule of Values: fetch fresh (flag + rows) so a toggle made moments ago in the
-  // Cover Letter tab is reflected without threading state through the Submission tab.
-  const [schedFlagRes, schedRowsRes] = await Promise.all([
-    supabase.from('bids').select('include_payment_schedule, include_materials_by_stage, include_schedule_of_values, sov_material_factor, sov_split_labor_material, sov_letter_total_only, sov_shape').eq('id', bidId).maybeSingle(),
-    supabase.from('bid_payment_schedule_rows').select('*').eq('bid_id', bidId).order('sort_order').order('created_at'),
-  ])
+  // Each letter spreads its own amount over the payment schedule and the schedule of values.
   const paymentScheduleRowsData = (schedRowsRes.data ?? []) as { timing: string; percent: number }[]
-  const paymentSchedule = schedFlagRes.data?.include_payment_schedule === true && paymentScheduleRowsData.length > 0
-    ? { rows: paymentScheduleRowsData.map((r) => ({ timing: r.timing, percent: Number(r.percent) })), amountDollars: effectiveRevenue }
+  const paymentScheduleFor = (amountDollars: number) => schedFlagRes.data?.include_payment_schedule === true && paymentScheduleRowsData.length > 0
+    ? { rows: paymentScheduleRowsData.map((r) => ({ timing: r.timing, percent: Number(r.percent) })), amountDollars }
     : null
   // Materials by stage (v2.3673): the same fresh read; the figures come through the one door the
   // Takeoffs rail and the printed schedule use, so the PDF says what they say.
   const stageFlags = (schedFlagRes.data ?? null) as { include_materials_by_stage?: boolean | null; include_schedule_of_values?: boolean | null; sov_material_factor?: number | null; sov_split_labor_material?: boolean | null; sov_letter_total_only?: boolean | null; sov_shape?: string | null } | null
   // One read serves both stage sections (the schedule of values, v2.4066, spreads the letter's amount by the same shares).
   const stageDoc = stageFlags?.include_materials_by_stage === true || stageFlags?.include_schedule_of_values === true
-    ? await loadMaterialsByStageForBid(supabase, { bidId, bidVersionId: activeBidVersionId ?? null, bidFactorOverride: stageFlags.sov_material_factor ?? null }).catch(() => null)
+    ? await loadMaterialsByStageForBid(supabase, { bidId, bidVersionId: countsVersionId, bidFactorOverride: stageFlags.sov_material_factor ?? null }).catch(() => null)
     : null
   const materialsByStage = stageFlags?.include_materials_by_stage === true && stageDoc ? { rows: materialsByStageLetterRows(stageDoc.summary) } : null
   // The split (v2.4075) reads the Labor tab, the subs, the company rule and the typed figures through the same door as the tab.
@@ -550,10 +541,10 @@ export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void
   const sovLines = stageFlags?.include_schedule_of_values === true && stageFlags.sov_shape === 'lines'
     ? await Promise.all([loadSovLines(supabase, bidId), splitInputs ? Promise.resolve(splitInputs.ruleLaborPct) : loadSovLaborShareDefault(supabase)]).then(([lines, ruleLaborPct]) => ({ lines, ruleLaborPct })).catch(() => null)
     : null
-  const scheduleOfValues: CoverLetterScheduleOfValues | null = stageFlags?.include_schedule_of_values === true && (stageDoc || sovLines)
+  const scheduleOfValuesFor = (amountDollars: number): CoverLetterScheduleOfValues | null => stageFlags?.include_schedule_of_values === true && (stageDoc || sovLines)
     ? {
         summary: stageDoc?.summary ?? { byStage: { rough_in: 0, top_out: 0, trim_set: 0 }, assignedRaw: 0 },
-        amountDollars: effectiveRevenue,
+        amountDollars,
         split: splitInputs && stageDoc ? { costs: { labor: splitInputs.costs.labor, material: stageDoc.summary.scaled }, ruleLaborPct: splitInputs.ruleLaborPct, overrides: splitInputs.overrides } : null,
         totalOnly: stageFlags.sov_letter_total_only === true,
         lines: sovLines ? { ...sovLines, split: stageFlags.sov_split_labor_material === true } : null,
@@ -569,15 +560,42 @@ export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void
   const bidBasis = basisFlagRes.data?.bid_to_marked_plans === true && basisCurrent
     ? { clause: bidBasisClause({ planDateFormatted: designDrawingPlanDateFormatted, sheets: shortSheetLabels(basisCurrent.sheet_labels ?? [], basisCurrent.ct_project_name ?? null) }) }
     : null
-  const coverLetterText = buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, ctx.coverLetter.includeSignature, effectiveIncludeFixtures, paymentSchedule, null, null, bidBasis, materialsByStage, scheduleOfValues)
+  const letterText = (amount: number, fixtureRows: { fixture: string; count: number }[], alternates: CoverLetterAlternatesBlock | null, addAlternates: CoverLetterAlternatesBlock | null) =>
+    buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, numberToWords(amount).toUpperCase(), `$${formatCurrency(amount)}`, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, ctx.coverLetter.includeSignature, effectiveIncludeFixtures, paymentScheduleFor(amount), null, alternates, bidBasis, materialsByStage, scheduleOfValuesFor(amount), addAlternates)
+  const addAlternatesBlock = (baseRevenue: number) => buildAddAlternatesBlock(offeredAdd, baseRevenue, altTexts, formatCurrency)
+  const baseSectionNames = letter.priced.filter((s) => !s.isAlternate).map((s) => s.name)
+  const sectionHeading = (s: LetterSection) =>
+    sectionLabel({ name: altTexts.sections?.[altSectionKey(s)]?.label?.trim() || s.name, isAlternate: s.isAlternate }, baseSectionNames)
+  // No packet: the single letter. Same page: the base bids are the amount and each alternate a line
+  // under it. Separate pages: a full letter per section (one section is just its letter).
+  const coverLetterText = !letter.packet
+    ? letterText(effectiveRevenue, singleLetter.fixtureRows, null, addAlternatesBlock(effectiveRevenue))
+    : letter.samePage
+      ? letterText(
+          letter.samePage.headlineRevenue,
+          letter.samePage.fixtureRows,
+          buildAlternatesBlock(letter.samePage, altTexts, formatCurrency, false, { gcName: customerName, projectName: projectNameVal }),
+          addAlternatesBlock(letter.samePage.headlineRevenue),
+        )
+      : buildCombinedCoverLetterText(letter.packet.sections.map((s) => ({ label: sectionHeading(s), text: letterText(s.revenueSum, s.fixtureRows, null, null) })))
+  const alternatesHeadings = new Set([altTexts.heading?.trim() || COVER_LETTER_ALTS_HEADING_DEFAULT, COVER_LETTER_ADD_ALTS_HEADING_DEFAULT])
   const coverLines = coverLetterText.split('\n')
+  let sectionsStarted = 0
   for (const line of coverLines) {
     if (y > pageH - margin) { doc.addPage(); y = margin }
+
+    // Separate pages: each section's letter starts a page under its heading, as the printed document does.
+    const sectionStart = /^===== (.+) =====$/.exec(line)
+    if (sectionStart) {
+      if (sectionsStarted++ > 0) { doc.addPage(); y = margin }
+      push(sectionStart[1]!, true)
+      continue
+    }
 
     const isInclusionsHeading = line === 'Inclusions:'
     const isExclusionsHeading = line === 'Exclusions and Scope:'
     const isScheduleHeading = line === PAYMENT_SCHEDULE_HEADING || line === MATERIALS_BY_STAGE_HEADING || line === SCHEDULE_OF_VALUES_HEADING
-    const makeBold = isInclusionsHeading || isExclusionsHeading || isScheduleHeading
+    const makeBold = isInclusionsHeading || isExclusionsHeading || isScheduleHeading || alternatesHeadings.has(line)
 
     if (makeBold) {
       doc.setFont('helvetica', 'bold')

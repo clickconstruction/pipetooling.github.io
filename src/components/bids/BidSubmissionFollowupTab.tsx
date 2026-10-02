@@ -85,7 +85,7 @@ type BidSubmissionFollowupTabProps = {
   onShowSentBidScript: () => void
   onShowBidQuestionScript: () => void
   // Kept in the parent because downloadApprovalPdf depends on parent-only state
-  // (loadPOTotal, priceBookVersions, serviceTypes, coverLetter*ByBid maps).
+  // (serviceTypes, the coverLetter*ByBid maps).
   onDownloadApprovalPdf: () => void
   // Shared with the parent's submission-followup deep-link handler
   // (applySubmissionFollowupDeepLinkToBid), so they stay owned by the parent.

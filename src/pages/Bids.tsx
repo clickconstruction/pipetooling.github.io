@@ -83,6 +83,7 @@ import { BidsPricingCalculator } from '../components/bids/BidsPricingCalculator'
 import { BidPackageMapModal } from '../components/bids/BidPackageMapModal'
 import { computeSharedBidCost } from '../lib/bids/bidPackageMap'
 import { downloadApprovalPdf as downloadApprovalPdfDoc } from '../lib/bidDocuments/approvalPdf'
+import { readCoverLetterAltsLayout } from '../lib/bids/coverLetterSamePage'
 import { WorkingBoardArchiveConfirmDialog } from '../components/bids/WorkingBoardArchiveConfirmDialog'
 import { BidsBuilderReviewTab } from '../components/bids/BidsBuilderReviewTab'
 import { BidsWhyWeLostLens } from '../components/bids/BidsWhyWeLostLens'
@@ -851,7 +852,6 @@ export default function Bids() {
     if (!b) return
     await downloadApprovalPdfDoc({
       bid: b,
-      priceBookVersions,
       serviceTypes,
       coverLetter: {
         useCustomAmount: coverLetterUseCustomAmountByBid[b.id] === true,
@@ -862,6 +862,7 @@ export default function Bids() {
         includeDesignDrawingPlanDate: coverLetterIncludeDesignDrawingPlanDateByBid[b.id] !== false,
         includeFixturesPerPlan: coverLetterIncludeFixturesPerPlanByBid[b.id] !== false,
         includeSignature: coverLetterIncludeSignatureByBid[b.id] === true,
+        altsLayout: readCoverLetterAltsLayout(),
       },
     })
   }
