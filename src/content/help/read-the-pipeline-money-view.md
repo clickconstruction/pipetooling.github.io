@@ -33,6 +33,10 @@ The lien row shows the **residential** date — a month earlier than commercial 
 
 On a phone the row's one chip carries the verdict. It reads {{chip:red|file first}}, {{chip:red|lien gone}}, {{chip:yellow|notice in 17 d}}, {{chip:yellow|lien in 17 d}} or {{chip:green|12 d of room}}. It shows once the flag is inside three weeks or the money is due after it. A tap opens the Lien window.
 
+### A job with more than one bill out
+
+A job with two or more bills out shows one row for each bill. The money legend on each row is the whole job's. The dates block is that bill's own. Just above the dates, a line says what is paid and what is left on that bill. It reads like *This bill · $11,182 paid · $589 left*, or *This bill · nothing paid · $3,636 left*. A payment counts against a bill once it is linked to it. {{button:green|Mark Paid}} on a bill's row links the payment for you. A bill still waiting in Ready to Bill reads like *$250 draft*.
+
 ## Today's Money Opportunities
 
 Below the cards, the system writes your to-do list from the live numbers. Each row says what and why. Each has a button that jumps to the right spot:

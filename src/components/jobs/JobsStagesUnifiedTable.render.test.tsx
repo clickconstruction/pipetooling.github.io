@@ -186,6 +186,47 @@ describe('JobsStagesUnifiedTable render smoke', () => {
     expect(row.style.backgroundColor).toBe('var(--bg-amber-100)')
   })
 
+  it('a job with two sent bills: each bill row says what is paid and left on its own bill; a draft keeps its draft note (table + cards, v2.4349)', async () => {
+    // Springtown's shape: bill 2 part-paid by a linked payment, bill 3 nothing paid.
+    const job = makeJob({ job_name: 'Two Bills Job', status: 'billed', revenue: 40000, payments_made: 11181.78 })
+    const bill2 = makeInvoice({ job_id: job.id, amount: 11770.3, status: 'billed', sequence_order: 1, billed_at: '2026-09-01T15:00:00Z' })
+    const bill3 = makeInvoice({ job_id: job.id, amount: 3635.92, status: 'billed', sequence_order: 2, billed_at: '2026-09-23T15:00:00Z' })
+    ;(job as unknown as { invoices: unknown[]; payments: unknown[] }).invoices = [bill2, bill3]
+    ;(job as unknown as { invoices: unknown[]; payments: unknown[] }).payments = [{ id: 'pay-1', job_id: job.id, invoice_id: bill2.id, amount: 11181.78 }]
+    const draftJob = makeJob({ job_name: 'Draft Bill Job', status: 'ready_to_bill' })
+    const draft = makeInvoice({ job_id: draftJob.id, amount: 250, status: 'ready_to_bill' })
+    const rows: StageRow[] = [
+      { kind: 'invoice', inv: bill2, job },
+      { kind: 'invoice', inv: bill3, job },
+      { kind: 'invoice', inv: draft, job: draftJob },
+    ]
+    for (const View of [JobsStagesUnifiedTable, JobsStagesUnifiedCardList]) {
+      document.body.innerHTML = ''
+      renderWithProviders(<View {...makeProps({ rows })} />)
+      await settle()
+      const lines = screen.getAllByTestId('stages-bill-row-line')
+      expect(lines).toHaveLength(2)
+      expect(lines[0]!.textContent).toBe('This bill · $11,182 paid$589 left')
+      expect(lines[0]!.getAttribute('title')).toBe("This row's bill: $11,770 sent Sep 1. $11,182 is paid on it, and $589 is left.")
+      expect(lines[1]!.textContent).toBe('This bill · nothing paid$3,636 left')
+      const sentRows = [bill2, bill3].map((b) => document.querySelector(`[data-stages-invoice-id="${b.id}"]`) as HTMLElement)
+      for (const r of sentRows) {
+        // A sent bill is never called a draft, and the job-level "unallocated" note is gone from it.
+        expect(r.textContent).not.toMatch(/draft/)
+        expect(r.textContent).not.toMatch(/unallocated/)
+        expect(r.textContent).not.toMatch(/Invoice \$/)
+      }
+      const draftRow = document.querySelector(`[data-stages-invoice-id="${draft.id}"]`) as HTMLElement
+      expect(within(draftRow).queryByTestId('stages-bill-row-line')).toBeNull()
+    }
+    // The table's Ready to Bill draft still reads as a draft.
+    document.body.innerHTML = ''
+    renderWithProviders(<JobsStagesUnifiedTable {...makeProps({ rows })} />)
+    await settle()
+    const draftRow = document.querySelector(`tr[data-stages-invoice-id="${draft.id}"]`) as HTMLElement
+    expect(draftRow.textContent).toMatch(/\$250 draft/)
+  })
+
   it('mobile unified cards: the standalone invoice card carries the green accent', () => {
     const floaterJob = makeJob({ job_name: 'Card Floater', status: 'working' })
     const floaterInvoice = makeInvoice({ job_id: floaterJob.id, amount: 250, status: 'billed' })

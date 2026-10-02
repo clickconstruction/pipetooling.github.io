@@ -13,9 +13,12 @@ import { formatEstimatedCompletionDisplay, formatTimeSince, formatUsdNoCents } f
 import {
   invoiceOpenRemainingOnJob,
   jobStagesInvoiceJumpChipTargets,
+  sumInvoiceAppliedFromJobPayments,
 } from '../../lib/jobs/invoiceBilling'
 import { jobBillingUnallocatedDollars, jobPartialInvoiceRemainingDollars } from '../../lib/jobsStagesBoard'
 import type { InvoiceWithJob } from '../../lib/jobsStagesBoard'
+import { stagesBillRowLine } from '../../lib/jobs/stagesBillRowLine'
+import { StagesBillRowLine } from './StagesBillRowLine'
 import { progressPaymentForJob } from '../../lib/jobs/progressPaymentForJob'
 import { stagesBillSentPctAlert } from '../../lib/jobs/stagesBillSentPctAlert'
 import {
@@ -1247,7 +1250,7 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
               {/* Invoice context only when the Billed/Left legend can't carry it:
                   a standalone #N row, a multi-invoice job, or unbilled remainder.
                   The single-invoice/zero-remaining case was pure repetition. */}
-              {inv && (row.kind === 'invoice' || (j.invoices?.length ?? 0) > 1 || (showRemaining && jobBillingUnallocatedDollars(j) > 0)) ? (
+              {inv && inv.status !== 'billed' && (row.kind === 'invoice' || (j.invoices?.length ?? 0) > 1 || (showRemaining && jobBillingUnallocatedDollars(j) > 0)) ? (
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-700)' }}>
                   <strong style={{ fontVariantNumeric: 'tabular-nums' }}>
                     Invoice {formatUsdNoCents(Number(inv.amount ?? 0))}
@@ -1276,6 +1279,15 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
                 wordsOverride={billLine?.words ?? null}
                 hideWords={billLine?.hideWords}
               />
+              {/* v2.4349: a sent bill's card says what is paid and left on it, where a
+                  desktop bill row does — on its own bill rows, and on a job's card when
+                  the job carries other bills too. */}
+              {inv && inv.status === 'billed' && (row.kind === 'invoice' || (j.invoices?.length ?? 0) > 1) ? (
+                <StagesBillRowLine
+                  compact
+                  line={stagesBillRowLine({ amount: inv.amount, applied: sumInvoiceAppliedFromJobPayments(j, inv.id), billedYmd: inv.billed_at ? inv.billed_at.slice(0, 10) : null })}
+                />
+              ) : null}
               {billLine?.extras}
               {props.billedLienRunway?.(row)}
               {inv ? cardStripeEmailedHint(ctx, j, inv) : null}

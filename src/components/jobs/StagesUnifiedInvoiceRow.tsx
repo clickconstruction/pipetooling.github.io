@@ -14,7 +14,9 @@ import { ShareJobButton } from './ShareJobButton'
 import { StagesAiaG702Button, StagesLienInstrumentsButton, StagesLienReleaseButton, StagesRowIcons, StagesTestReportButton } from './StagesRowActionButtons'
 import { StagesCrewLine } from './StagesCrewLine'
 import { StagesExpandedThreadRow } from './StagesExpandedThreadRow'
-import { effectiveInvoiceEstBillDate } from '../../lib/jobs/invoiceBilling'
+import { effectiveInvoiceEstBillDate, sumInvoiceAppliedFromJobPayments } from '../../lib/jobs/invoiceBilling'
+import { stagesBillRowLine } from '../../lib/jobs/stagesBillRowLine'
+import { StagesBillRowLine } from './StagesBillRowLine'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { formatEstimatedCompletionDisplay, formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { jobBillingUnallocatedDollars, type InvoiceWithJob } from '../../lib/jobsStagesBoard'
@@ -73,6 +75,11 @@ export function StagesUnifiedInvoiceRow({ row, t }: { row: StagesUnifiedInvoiceR
   } = t
   const { inv, job } = row
   const invWithJob: InvoiceWithJob = { ...inv, job }
+  // v2.4349: a sent bill's row says what is paid and left on that bill.
+  const sentBillLine =
+    inv.status === 'billed'
+      ? stagesBillRowLine({ amount: inv.amount, applied: sumInvoiceAppliedFromJobPayments(job, inv.id), billedYmd: inv.billed_at ? inv.billed_at.slice(0, 10) : null })
+      : null
   const stagesInvoiceHcpTrimmed = (job.hcp_number ?? '').trim()
   const stagesInvoiceRowHcpLabel = stagesInvoiceHcpTrimmed
     ? `Invoice: ${stagesInvoiceHcpTrimmed}`
@@ -240,7 +247,9 @@ export function StagesUnifiedInvoiceRow({ row, t }: { row: StagesUnifiedInvoiceR
             onStageClick={() => openEdit(job, { fixturesSectionHighlight: true })}
             wordsOverride={billLine?.words ?? null}
             hideWords={billLine?.hideWords}
-            footnote={(() => {
+            footnote={sentBillLine ? null : (() => {
+              // A draft (Ready to Bill) still reads as a draft; a sent bill says
+              // what is paid and left on it instead (v2.4349, below the cell).
               const u = showRemaining ? jobBillingUnallocatedDollars(job) : 0
               return (
                 <span>
@@ -252,6 +261,7 @@ export function StagesUnifiedInvoiceRow({ row, t }: { row: StagesUnifiedInvoiceR
               )
             })()}
           />
+          {sentBillLine ? <StagesBillRowLine line={sentBillLine} /> : null}
           {t.billedLienRunway?.(row)}
           {billLine?.extras}
           {renderJobNoteLine(job)}
