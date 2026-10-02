@@ -38,6 +38,7 @@ import { COVER_LETTER_ALTS_HEADING_DEFAULT, altSectionKey, buildAlternatesBlock,
 import { COVER_LETTER_ADD_ALTS_HEADING_DEFAULT, buildAddAlternatesBlock, offeredAddAlternates, splitLetterTotalsByAlternate } from '../bids/coverLetterAddAlternates'
 import { sectionLabel, type BundlePricing, type BundleVersion } from '../bids/coverLetterVersionBundle'
 import { buildCombinedCoverLetterText, buildCoverLetterText, numberToWords, type CoverLetterAlternatesBlock, type CoverLetterScheduleOfValues } from './coverLetter'
+import { COVER_LETTER_ORG_DEFAULT_KEYS, coverLetterOrgDefaultsFrom, letterWording } from './coverLetterWording'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import type { BidCountRow } from '../../types/bids'
 import type { CostEstimate, CostEstimateLaborRow } from '../bids/bidPricingEngineTypes'
@@ -49,8 +50,10 @@ export type ApprovalPdfContext = {
     useCustomAmount: boolean
     customAmount: string
     inclusions: string
-    exclusions: string
-    terms: string
+    /** The bid's own entry; undefined when nobody typed in the box (the org default applies, else the built-in wording). */
+    exclusions: string | undefined
+    /** The bid's own entry; undefined when nobody typed in the box (the org default applies, else the built-in wording). */
+    terms: string | undefined
     includeDesignDrawingPlanDate: boolean
     includeFixturesPerPlan: boolean
     includeSignature: boolean
@@ -464,9 +467,10 @@ export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void
   // off, the active version's GC packet, and this device's layout — so this page says what Print
   // and Copy say. The tab's flags and wording, the versions' GC overrides (v2.1172) and the schedule
   // flags are all read fresh, so a change made there moments ago shows without threading its state.
-  const [schedFlagRes, schedRowsRes] = await Promise.all([
+  const [schedFlagRes, schedRowsRes, orgWordingRes] = await Promise.all([
     supabase.from('bids').select('include_payment_schedule, include_materials_by_stage, include_schedule_of_values, sov_material_factor, sov_split_labor_material, sov_letter_total_only, sov_shape, cover_letter_alt_texts, alternate_group_tags').eq('id', bidId).maybeSingle(),
     supabase.from('bid_payment_schedule_rows').select('*').eq('bid_id', bidId).order('sort_order').order('created_at'),
+    supabase.from('app_settings').select('key, value_text').in('key', [...COVER_LETTER_ORG_DEFAULT_KEYS]),
   ])
   const letterFlags = (schedFlagRes.data ?? null) as { cover_letter_alt_texts?: unknown; alternate_group_tags?: string[] | null } | null
   const altTexts = parseCoverLetterAltTexts(letterFlags?.cover_letter_alt_texts)
@@ -514,8 +518,12 @@ export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void
   const customAmountNum = customAmountStr ? parseFloat(customAmountStr) : NaN
   const effectiveRevenue = useCustomAmount && !isNaN(customAmountNum) && customAmountNum >= 0 ? customAmountNum : singleLetter.revenueSum
   const inclusions = ctx.coverLetter.inclusions
-  const exclusions = ctx.coverLetter.exclusions
-  const terms = ctx.coverLetter.terms
+  // v2.4375: the wording the tab's letter prints — the bid's own entry, else the org default
+  // (Settings → Bid Cover Letter Defaults), else '' for the builder's built-in wording; the
+  // org's closing too. The PDF printed the built-in wording over the org's until then.
+  const orgWording = coverLetterOrgDefaultsFrom((orgWordingRes.data ?? []) as Array<{ key: string; value_text: string | null }>)
+  const exclusions = letterWording(ctx.coverLetter.exclusions, orgWording.exclusions)
+  const terms = letterWording(ctx.coverLetter.terms, orgWording.terms)
   const designDrawingPlanDateFormatted = (ctx.coverLetter.includeDesignDrawingPlanDate && b.design_drawing_plan_date) ? formatDesignDrawingPlanDate(b.design_drawing_plan_date) : null
   const effectiveIncludeFixtures = !designDrawingPlanDateFormatted || ctx.coverLetter.includeFixturesPerPlan
   const bidServiceType = ctx.serviceTypes.find((st) => st.id === b.service_type_id)
@@ -561,7 +569,7 @@ export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void
     ? { clause: bidBasisClause({ planDateFormatted: designDrawingPlanDateFormatted, sheets: shortSheetLabels(basisCurrent.sheet_labels ?? [], basisCurrent.ct_project_name ?? null) }) }
     : null
   const letterText = (amount: number, fixtureRows: { fixture: string; count: number }[], alternates: CoverLetterAlternatesBlock | null, addAlternates: CoverLetterAlternatesBlock | null) =>
-    buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, numberToWords(amount).toUpperCase(), `$${formatCurrency(amount)}`, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, ctx.coverLetter.includeSignature, effectiveIncludeFixtures, paymentScheduleFor(amount), null, alternates, bidBasis, materialsByStage, scheduleOfValuesFor(amount), addAlternates)
+    buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, numberToWords(amount).toUpperCase(), `$${formatCurrency(amount)}`, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, ctx.coverLetter.includeSignature, effectiveIncludeFixtures, paymentScheduleFor(amount), orgWording.closing, alternates, bidBasis, materialsByStage, scheduleOfValuesFor(amount), addAlternates)
   const addAlternatesBlock = (baseRevenue: number) => buildAddAlternatesBlock(offeredAdd, baseRevenue, altTexts, formatCurrency)
   const baseSectionNames = letter.priced.filter((s) => !s.isAlternate).map((s) => s.name)
   const sectionHeading = (s: LetterSection) =>
