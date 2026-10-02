@@ -3,7 +3,7 @@ import { deskSectionDomId, type PersonDeskSectionId } from '../../lib/people/per
 
 /** Shared chrome for Person Desk sections (v2.2701): one row grammar so every section reads the same. */
 
-export const DESK_Z = 60
+export const DESK_Z = 760
 /** Editors opened from the Desk sit one rung above the drawer; confirms (1300) and popovers (1250) keep their rungs. */
 export const DESK_EDITOR_Z = 1100
 

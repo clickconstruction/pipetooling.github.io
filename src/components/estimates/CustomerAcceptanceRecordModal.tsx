@@ -31,7 +31,7 @@ export default function CustomerAcceptanceRecordModal({ open, onClose, estimateI
   return (
     <div
       role="presentation"
-      style={{ position: 'fixed', inset: 0, zIndex: 80, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', boxSizing: 'border-box' }}
+      style={{ position: 'fixed', inset: 0, zIndex: 780, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', boxSizing: 'border-box' }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}

@@ -144,7 +144,7 @@ export default function EstimateAcceptedNotifySettingsModal({ onClose }: { onClo
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 60,
+        zIndex: 760,
       }}
       onClick={onClose}
     >

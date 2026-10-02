@@ -136,7 +136,7 @@ export function BidsEstimatorsExtraUsersModal({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 60,
+    zIndex: 760,
     padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
   }
 

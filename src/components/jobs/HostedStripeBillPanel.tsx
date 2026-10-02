@@ -182,7 +182,7 @@ export function HostedStripeBillPanel({
   onAfterStripeDetailsLoaded,
   onAfterOobUnwindSuccess,
   onAfterVoidStripeInvoiceSuccess,
-  voidConfirmOverlayZIndex = 120,
+  voidConfirmOverlayZIndex = 820,
   viewBillOnClose,
 }: {
   invoice: InvoiceWithJobForBillView

@@ -164,7 +164,7 @@ type Props = {
   zIndex?: number
 }
 
-export default function ReportViewModal({ open, report, onClose, viewerRole, zIndex = 60 }: Props) {
+export default function ReportViewModal({ open, report, onClose, viewerRole, zIndex = 760 }: Props) {
   // Freeze the page behind the modal — dragging inside it used to scroll the
   // list underneath on a phone, and closing then landed somewhere else.
   useBodyScrollLock(open)

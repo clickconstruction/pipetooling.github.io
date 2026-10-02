@@ -1156,7 +1156,7 @@ export function DashboardMyInboxCard({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 50,
+            zIndex: 750,
             padding: '1rem',
           }}
           onClick={(e) => e.target === e.currentTarget && setFwdInstance(null)}

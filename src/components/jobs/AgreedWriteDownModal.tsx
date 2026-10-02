@@ -58,7 +58,7 @@ export default function AgreedWriteDownModal({
   paidOnInvoice,
   isStripeHosted,
   onSuccess,
-  overlayZIndex = 80,
+  overlayZIndex = 780,
 }: AgreedWriteDownModalProps) {
   const { role: authRole } = useAuth()
   const [discountInput, setDiscountInput] = useState('')

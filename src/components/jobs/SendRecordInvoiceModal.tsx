@@ -415,7 +415,7 @@ export default function SendRecordInvoiceModal({
   onDiscountApplied,
   jobUpdating,
   invoiceUpdating,
-  overlayZIndex = 60,
+  overlayZIndex = 760,
 }: {
   payload: SendRecordInvoicePayload | null
   onClose: () => void

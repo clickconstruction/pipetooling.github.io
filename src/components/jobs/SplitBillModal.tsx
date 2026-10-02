@@ -48,7 +48,7 @@ export function SplitBillModal({
   open,
   invoice,
   stripeDetail,
-  overlayZIndex = 121,
+  overlayZIndex = 821,
   onClose,
   onDone,
 }: {

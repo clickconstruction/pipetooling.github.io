@@ -220,7 +220,7 @@ export default function BilledReportShareModal({
       role="dialog"
       aria-modal="true"
       aria-label="Share billed awaiting payment report"
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 760 }}
       onClick={onClose}
     >
       <div

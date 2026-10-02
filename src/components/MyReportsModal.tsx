@@ -109,7 +109,7 @@ export default function MyReportsModal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 50,
+        zIndex: 750,
       }}
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >

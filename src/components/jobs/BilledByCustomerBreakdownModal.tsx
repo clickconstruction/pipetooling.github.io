@@ -90,7 +90,7 @@ export default function BilledByCustomerBreakdownModal({
       role="dialog"
       aria-modal="true"
       aria-label="Waiting on Customers — Who owes what"
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 760 }}
     >
       <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, width: 'min(720px, calc(100vw - 2rem))', maxWidth: 720, maxHeight: '80vh', overflow: 'auto' }}>
         <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem' }}>Waiting on Customers — Who owes what</h2>

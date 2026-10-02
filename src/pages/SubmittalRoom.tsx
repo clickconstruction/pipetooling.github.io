@@ -474,6 +474,7 @@ export default function SubmittalRoom() {
       </div>
 
       {identifyOpen ? (
+        // window-z: allow — the submittal room is a public page with no dock and nothing else stacked on it.
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '1rem' }} role="presentation" onClick={(e) => { if (e.target === e.currentTarget) setIdentifyOpen(false) }}>
           <form role="dialog" aria-modal="true" aria-label={identifyFor === 'ask' ? 'Before you ask' : 'Before you decide'} style={{ ...card, maxWidth: 520, width: '100%', boxShadow: '0 10px 40px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', gap: 8 }} onMouseDown={(e) => e.stopPropagation()} onSubmit={(e) => { e.preventDefault(); void identify() }}>
             <div style={{ ...label, color: COPPER }}>{identifyFor === 'ask' ? 'Before you ask' : 'Before you decide'}</div>

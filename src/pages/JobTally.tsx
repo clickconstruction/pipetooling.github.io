@@ -1894,7 +1894,7 @@ export default function JobTally() {
                 style={{
                   position: 'fixed',
                   inset: 0,
-                  zIndex: 100,
+                  zIndex: 800,
                   background: 'rgba(0,0,0,0.4)',
                   display: 'flex',
                   flexDirection: 'column',

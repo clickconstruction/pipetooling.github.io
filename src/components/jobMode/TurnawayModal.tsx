@@ -183,7 +183,7 @@ export default function TurnawayModal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 65,
+        zIndex: 765,
       }}
     >
       <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 480, maxHeight: 'min(90vh, 100%)', overflow: 'auto' }}>

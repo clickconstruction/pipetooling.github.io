@@ -105,7 +105,7 @@ export default function DocumentsAddDriveLinkModal({
       style={{
         position: 'fixed',
         inset: 0,
-        zIndex: 85,
+        zIndex: 785,
         background: 'rgba(0,0,0,0.45)',
         display: 'flex',
         alignItems: 'center',

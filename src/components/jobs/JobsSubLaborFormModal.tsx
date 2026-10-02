@@ -78,7 +78,7 @@ import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 /**
  * The sheet form's overlay stands where the app's modal shell stands (1100), above the phone
- * dock (`DISPATCH_MODE_FOOTER_Z_INDEX`, 1000): at 50 the dock drew over the form's last 60 px on a
+ * dock (`DISPATCH_MODE_FOOTER_Z_INDEX`): at 50 the dock, then at 1000, drew over the form's last 60 px on a
  * phone, and Save sits there (v2.4073, punch list #30 — Taunya's phone walk). The dialogs the form
  * opens on top of itself stand one step higher.
  */

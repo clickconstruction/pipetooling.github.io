@@ -70,7 +70,7 @@ export default function AdditionalReportModal({
   hcpNumber,
   jobName,
   jobAddress,
-  overlayZIndex = 65,
+  overlayZIndex = 765,
 }: Props) {
   const { profileName } = useAuth()
   const { showToast } = useToastContext()

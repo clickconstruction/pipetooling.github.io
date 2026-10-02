@@ -194,7 +194,7 @@ export function BidPackageMapModal({
   )
 
   return (
-    <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.45)', zIndex: 60, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '3.5rem 1rem 1rem', overflowY: 'auto' }}>
+    <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.45)', zIndex: 760, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '3.5rem 1rem 1rem', overflowY: 'auto' }}>
       <div
         role="dialog"
         aria-label="Package map"

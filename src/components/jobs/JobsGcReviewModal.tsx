@@ -1502,7 +1502,7 @@ export function JobsGcReviewModal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 60,
+        zIndex: 760,
       }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
@@ -1981,7 +1981,7 @@ export function JobsGcReviewModal({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 61,
+            zIndex: 761,
           }}
           onClick={(e) => {
             if (e.target === e.currentTarget && !emailSending) setEmailDialogGroup(null)
@@ -2183,7 +2183,7 @@ export function JobsGcReviewModal({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 61,
+            zIndex: 761,
           }}
           onClick={(e) => {
             if (e.target === e.currentTarget && !shareAllSending) setShareAllOpen(false)
@@ -2506,7 +2506,7 @@ export function JobsGcReviewModal({
           aria-modal="true"
           aria-label={`Mark ${markSentGroup.gcName} statement sent`}
           onClick={() => (roundBusy ? undefined : setMarkSentGroup(null))}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 64 }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 764 }}
         >
           <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 10, padding: '1rem 1.2rem', width: 'min(520px, 92vw)', maxHeight: '92vh', overflowY: 'auto', boxSizing: 'border-box', boxShadow: '0 12px 40px rgba(0,0,0,0.3)' }}>
             <div style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.15rem' }}>{markSentGroup.gcName}</div>

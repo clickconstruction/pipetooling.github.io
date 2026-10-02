@@ -139,7 +139,7 @@ const DASHBOARD_MODAL_OVERLAY_STYLE: CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  zIndex: 60,
+  zIndex: 760,
 }
 export default function Dashboard() {
   const jobDetailModal = useJobDetailModal()

@@ -112,7 +112,7 @@ export function BidsPriceBookDrawer({
     <div
       role="dialog"
       aria-label="Price book"
-      style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: 'min(430px, 92vw)', background: 'var(--surface)', borderLeft: '1px solid var(--border-strong)', boxShadow: '-14px 0 30px rgba(0,0,0,0.28)', zIndex: 70, padding: '1rem 1.1rem 1.2rem', overflowY: 'auto' }}
+      style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: 'min(430px, 92vw)', background: 'var(--surface)', borderLeft: '1px solid var(--border-strong)', boxShadow: '-14px 0 30px rgba(0,0,0,0.28)', zIndex: 770, padding: '1rem 1.1rem 1.2rem', overflowY: 'auto' }}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.6rem', marginBottom: '0.6rem' }}>
         <h3 style={{ margin: 0, fontSize: '0.95rem' }}>Price book — {drawerName}</h3>

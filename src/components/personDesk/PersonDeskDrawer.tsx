@@ -39,8 +39,8 @@ export function PersonDeskDrawer() {
       role="dialog"
       aria-modal="true"
       aria-label={`Person Desk: ${payload.displayName ?? 'person'}`}
-      // The Dispatch / Job mode footer is fixed at z 1000, over the desk (z 60): the desk ends above
-      // it (--app-bottom-chrome) so its last row — Merge a duplicate…, Archive — is never under the bar (v2.4380).
+      // The desk ends above the Dispatch / Job mode footer
+      // (--app-bottom-chrome) so its last row — Merge a duplicate…, Archive — is never under the bar (v2.4380).
       style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 'var(--app-bottom-chrome, 0px)', zIndex: DESK_Z, background: 'rgba(17,24,39,0.32)', display: 'flex', justifyContent: 'flex-end' }}
       onClick={(e) => {
         if (e.target === e.currentTarget) desk.close()

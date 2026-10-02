@@ -353,7 +353,7 @@ export default function BilledPaymentConfirmationModal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: zIndex ?? 60,
+        zIndex: zIndex ?? 760,
       }}
     >
       <div role="dialog" aria-modal="true"

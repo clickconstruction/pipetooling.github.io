@@ -32,7 +32,7 @@ export function EmailPreviewOverlay({ preview, onClose }: { preview: EmailPrevie
       style={{
         position: 'fixed',
         inset: 0,
-        zIndex: 66,
+        zIndex: 766,
         display: 'flex',
         flexDirection: 'column',
         background: 'var(--surface)',

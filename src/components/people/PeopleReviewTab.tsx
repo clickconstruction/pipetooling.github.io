@@ -2464,7 +2464,7 @@ export default function PeopleReviewTab({
             return (
               <div
                 onClick={() => setReviewLaborBreakdownContext(null)}
-                style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}
+                style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 800 }}
               >
                 <div role="dialog" aria-modal="true"
                   onClick={(e) => e.stopPropagation()}

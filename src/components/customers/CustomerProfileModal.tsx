@@ -156,7 +156,7 @@ export default function CustomerProfileModal({ customerId, onClose }: { customer
       role="dialog"
       aria-modal="true"
       aria-label="Customer profile"
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 70, padding: '1rem' }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 770, padding: '1rem' }}
       onClick={onClose}
     >
       <div

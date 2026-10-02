@@ -668,7 +668,7 @@ export default function SettingsPeopleTab({
                   </table>
                 </div>
             {editingNonUserPerson && (
-              <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+              <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 710 }}>
                 <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 400 }}>
                   <h2 style={{ marginTop: 0 }}>Edit person: {editingNonUserPerson.name}</h2>
                   {editPersonError && <p style={{ color: 'var(--text-red-700)', marginBottom: '0.75rem' }}>{editPersonError}</p>}

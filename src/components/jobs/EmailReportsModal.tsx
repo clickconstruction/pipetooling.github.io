@@ -48,7 +48,7 @@ export function EmailReportsModal({
   if (!open) return null
   return (
     <div
-      style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px))' }}
+      style={{ position: 'fixed', inset: 0, zIndex: 760, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px))' }}
       role="presentation"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()

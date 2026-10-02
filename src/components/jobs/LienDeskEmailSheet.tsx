@@ -129,7 +129,7 @@ export default function LienDeskEmailSheet(p: LienDeskEmailSheetProps) {
 
   return (
     <>
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 'var(--app-bottom-chrome, 0px)', paddingTop: 'var(--app-top-chrome, 0px)', zIndex: 40, background: 'rgba(17,24,39,0.42)', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'left', fontWeight: 400 }} onClick={p.onClose}>
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 'var(--app-bottom-chrome, 0px)', paddingTop: 'var(--app-top-chrome, 0px)', zIndex: 740, background: 'rgba(17,24,39,0.42)', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'left', fontWeight: 400 }} onClick={p.onClose}>
       <div role="dialog" aria-modal="true" aria-label="Email where the liens stand" data-lien-share-email-sheet onClick={(e) => e.stopPropagation()} style={{ ...card, display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr) auto', gridTemplateColumns: 'minmax(0, 1fr)', overflow: 'hidden', background: 'var(--surface)', color: 'var(--text-base)' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, padding: '12px 18px 10px', borderBottom: '1px solid var(--border)' }}>
           <button type="button" onClick={p.onBack} style={{ border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', font: 'inherit', fontSize: '0.8rem', fontWeight: 600, padding: 0, whiteSpace: 'nowrap' }}>

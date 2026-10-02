@@ -92,7 +92,7 @@ export function SubPortalGuideSheet({ lang, open, onClose, phone }: { lang: SubP
   )
 
   return (
-    <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(22,40,60,0.45)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }} data-screen-only>
+    <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 750, background: 'rgba(22,40,60,0.45)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }} data-screen-only>
       <style>{`
         .spg{background:${PAPER};color:${INK};width:100%;max-height:92vh;border-radius:22px 22px 0 0;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 -12px 40px rgba(0,0,0,0.25)}
         @media (min-width:760px){.spg-wrap{align-items:center !important;padding:20px}.spg{max-width:780px;border-radius:16px;max-height:90vh}}

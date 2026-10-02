@@ -43,7 +43,7 @@ function defaultOccurredDateYmd(): string {
 export function PersonOffsetFormModal({
   open,
   onClose,
-  zIndex = 10,
+  zIndex = 710,
   editingOffset,
   initialCreateDraft = null,
   personNameOptions,

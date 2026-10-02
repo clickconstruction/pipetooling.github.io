@@ -1247,7 +1247,7 @@ export default function Customers() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 50,
+            zIndex: 750,
           }}
           onClick={() => setViewingBidsForCustomer(null)}
         >

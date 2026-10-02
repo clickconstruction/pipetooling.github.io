@@ -79,7 +79,7 @@ export default function GcReviewCertifyModal({
       role="dialog"
       aria-modal="true"
       aria-label={`Certify ${group.gcName}`}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 70 }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 770 }}
       onClick={(e) => {
         if (e.target === e.currentTarget && !saving) onClose()
       }}
