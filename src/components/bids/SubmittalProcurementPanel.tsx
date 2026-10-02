@@ -9,6 +9,7 @@ import { procurementLogCsv, procurementLogFileName, procurementLogTsv } from '..
 import { loadProcurementSheetAssets, type ProcurementSheetAssets } from '../../lib/submittals/procurementSheetAssets'
 import { describeLeadTime, parseLeadTime } from '../../lib/submittals/leadTime'
 import { splitPartLabel } from '../../lib/submittals/itemParts'
+import { tagBlock, type TagGuide } from '../../lib/submittals/procurementTagBlocks'
 import { isPlausibleDate, readDateBoxEntry } from '../../lib/dateBoxEntry'
 import {
   buildProcurementLog,
@@ -81,6 +82,27 @@ const editorLabel: CSSProperties = { fontSize: '0.68rem', fontWeight: 700, lette
 const COLS = 8
 const STATUS_COLOR: Record<LineStatus['tone'], string> = { done: 'var(--text-green-700)', late: 'var(--text-red-700)', ordered: 'var(--text-strong)', act: 'var(--text-blue-700)', back: 'var(--text-amber-700)', waiting: 'var(--text-muted)', none: 'var(--text-muted)' }
 const itemTag: CSSProperties = { fontWeight: 700, color: 'var(--text-strong)', marginRight: '0.45rem' }
+
+/** One indent step on the By tag lens: a part 1.5rem in under its fixture, a part inside an assembly 3rem (2026-10-02). */
+const STEP_REM = 1.5
+const indentPad = (guides: ReadonlyArray<TagGuide> | undefined) => (guides && guides.length > 0 ? `calc(${guides.length * STEP_REM}rem + 0.5rem)` : undefined)
+
+/**
+ * The tree's connectors in a cell (the cell is `position: relative`): ├ └ │ by column, as a folder
+ * list draws them, so a part reads as belonging to the fixture or assembly above it. `through`
+ * draws only the verticals, for a row that sits between two lines of a block (a divider, the open
+ * dates of a line).
+ */
+function Rails({ guides, through = false }: { guides: ReadonlyArray<TagGuide>; through?: boolean }) {
+  return (
+    <>
+      {guides.map((g, k) => {
+        const kind = through ? (g === 'blank' ? null : g === 'end' && k === guides.length - 1 ? null : 'pass') : g === 'blank' ? null : g
+        return kind ? <span key={k} aria-hidden="true" className={`procure-rail procure-rail--${kind}`} style={{ left: `${0.75 + k * STEP_REM}rem` }} data-testid="procurement-rail" data-rail={kind} /> : null
+      })}
+    </>
+  )
+}
 const btn: CSSProperties = { padding: '0.35rem 0.75rem', background: 'var(--surface)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem', fontWeight: 500 }
 const btnPrimary: CSSProperties = { ...btn, background: '#2563eb', borderColor: '#2563eb', color: 'white', fontWeight: 600 }
 const link: CSSProperties = { background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: '0.75rem', color: 'var(--text-blue-700)', textDecoration: 'underline', textUnderlineOffset: 2 }
@@ -498,7 +520,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
   const disabled = busy || saving
 
   /** One line of the log; `underTag` drops the tag on a part line drawn under its tag's heading. */
-  function renderRow(r: ProcurementRow, underTag: boolean) {
+  function renderRow(r: ProcurementRow, underTag: boolean, guides?: ReadonlyArray<TagGuide>) {
     const changed = changes.some((c) => c.key === r.key)
     const open = openLines.has(r.key)
     const status = lineStatus(r)
@@ -512,13 +534,21 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
           <b className="procure-item-name" style={{ fontWeight: 600, color: 'var(--text-strong)', flexShrink: 0, maxWidth: '100%' }}>{head}</b>
           {words ? <span style={{ ...smallMuted, fontSize: '0.78rem', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden', overflowWrap: 'anywhere', minWidth: 0 }}>{words}</span> : null}
         </span>
-        {r.pricedLabel || r.countedWith.length > 0 || (r.orderOnly && !underTag) ? (
-          <span style={{ ...smallMuted, display: 'block' }}>
-            {r.pricedLabel ? <span style={{ color: 'var(--text-blue-700)', fontWeight: 600 }} data-testid="procurement-priced">in place of the priced {splitPartLabel(r.pricedLabel).head}</span> : null}
-            {r.orderOnly && !underTag ? <span data-testid="procurement-order-only">{r.pricedLabel ? ' · ' : ''}order only, not on the GC’s copy</span> : null}
-            {r.countedWith.length > 0 ? <span data-testid="procurement-counted-with">{r.pricedLabel || (r.orderOnly && !underTag) ? ' · ' : ''}counted with {r.countedWith.join(', ')} on the takeoff</span> : null}
-          </span>
-        ) : null}
+        {(() => {
+          // The quiet line under a part: what it replaced, where it came from, what else to know.
+          const bits: Array<{ key: string; node: JSX.Element }> = []
+          if (r.pricedLabel) bits.push({ key: 'priced', node: <span style={{ color: 'var(--text-blue-700)', fontWeight: 600 }} data-testid="procurement-priced">in place of the priced {splitPartLabel(r.pricedLabel).head}</span> })
+          else if (r.addedByHand) bits.push({ key: 'hand', node: <span data-testid="procurement-added-by-hand">added by hand</span> })
+          // Away from its fixture (To order, By house, a one-line fixture), a part names its assembly (2026-10-02).
+          if (r.assembly && !guides?.length) bits.push({ key: 'assembly', node: <span data-testid="procurement-in-assembly">in {r.assembly}</span> })
+          if (r.orderOnly && !underTag) bits.push({ key: 'oo', node: <span data-testid="procurement-order-only">order only, not on the GC’s copy</span> })
+          if (r.countedWith.length > 0) bits.push({ key: 'counted', node: <span data-testid="procurement-counted-with">counted with {r.countedWith.join(', ')} on the takeoff</span> })
+          return bits.length > 0 ? (
+            <span style={{ ...smallMuted, display: 'block' }}>
+              {bits.map((b, i) => <Fragment key={b.key}>{i > 0 ? ' · ' : ''}{b.node}</Fragment>)}
+            </span>
+          ) : null
+        })()}
       </>
     )
     return (
@@ -527,7 +557,8 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
           <td style={{ ...td, width: 28, textAlign: 'center' }}>
             <input type="checkbox" aria-label={`Pick ${r.tag ?? r.product}${r.partKey ? ` ${r.product}` : ''}`} checked={ticked.has(r.key)} onChange={(e) => setTicked((cur) => { const next = new Set(cur); if (e.target.checked) next.add(r.key); else next.delete(r.key); return next })} data-testid="procurement-tick" />
           </td>
-          <td style={{ ...itemTd, ...(underTag && r.partKey ? { paddingLeft: '1.2rem' } : null) }} data-testid="procurement-item" title={r.product}>
+          <td style={{ ...itemTd, ...(guides && guides.length > 0 ? { position: 'relative', paddingLeft: indentPad(guides) } : underTag && r.partKey ? { paddingLeft: '1.2rem' } : null) }} data-testid="procurement-item" data-level={guides?.length ?? undefined} title={r.product}>
+            {guides && guides.length > 0 ? <Rails guides={guides} /> : null}
             {r.isHand ? (
               <input type="text" aria-label="Item" placeholder="What it is (no cut sheet)" value={draftOf(r.key, 'label', r.product)} onChange={(e) => setDraft(r.key, 'label', e.target.value)} onBlur={() => void commitText(r, 'label')} maxLength={200} style={{ ...inp, width: '100%' }} />
             ) : onOpenItem && r.itemId ? (
@@ -583,7 +614,9 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
         </tr>
         {open ? (
           <tr data-testid="procurement-editor">
-            <td colSpan={COLS} style={{ ...td, background: 'var(--bg-blue-tint)', padding: '0.5rem 0.6rem 0.6rem 2.2rem' }}>
+            {guides && guides.length > 0 ? <td style={{ ...td, width: 28, background: 'var(--bg-blue-tint)' }} /> : null}
+            <td colSpan={guides && guides.length > 0 ? COLS - 1 : COLS} style={{ ...td, background: 'var(--bg-blue-tint)', padding: '0.5rem 0.6rem 0.6rem 2.2rem', ...(guides && guides.length > 0 ? { position: 'relative', paddingLeft: indentPad(guides) } : null) }}>
+              {guides && guides.length > 0 ? <Rails guides={guides} through /> : null}
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem 1.1rem', alignItems: 'flex-start' }}>
                 <div style={editorField}>
                   <span style={editorLabel}>Ordered</span>
@@ -706,6 +739,8 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
               const heading = lens !== 'by_tag' || sec.rows.length > 1 || (sec.rows[0]?.isHand ?? false)
               const keys = sec.rows.map((r) => r.key)
               const allOn = keys.length > 0 && keys.every((k) => ticked.has(k))
+              // By tag, a fixture's lines as a tree: its parts one step in, an assembly's own step only when it mixes (2026-10-02).
+              const block = lens === 'by_tag' ? tagBlock(sec.rows) : null
               return (
                 <Fragment key={sec.key}>
                   {heading ? (
@@ -715,23 +750,57 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
                           <input type="checkbox" aria-label={`Pick every line under ${sec.title}`} checked={allOn} onChange={(e) => setTicked((cur) => { const next = new Set(cur); for (const k of keys) { if (e.target.checked) next.add(k); else next.delete(k) } return next })} />
                           <b style={{ color: 'var(--text-strong)' }}>{sec.title}</b>
                           <span style={smallMuted}>{sec.note}</span>
+                          {block?.from && !block.single ? <span style={{ ...smallMuted, color: 'var(--text-base)' }} data-testid="procurement-section-from">from {block.from}</span> : null}
                           {sec.warn ? <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-amber-700)', background: 'var(--bg-amber-100)', borderRadius: 999, padding: '0.05rem 0.5rem' }} data-testid="procurement-section-warn">{sec.warn}</span> : null}
                         </label>
                       </td>
                     </tr>
                   ) : null}
-                  {sec.rows.map((r, i) => (
-                    <Fragment key={r.key}>
-                      {sec.orderOnlyFrom != null && i === sec.orderOnlyFrom ? (
-                        <tr data-testid="procurement-order-only-divider">
-                          <td colSpan={COLS} style={{ ...td, padding: '0.25rem 0.4rem 0.25rem 2.2rem', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
-                            Ordered, not on the GC’s copy · {sec.rows.length - sec.orderOnlyFrom} part{sec.rows.length - sec.orderOnlyFrom === 1 ? '' : 's'}
-                          </td>
-                        </tr>
-                      ) : null}
-                      {renderRow(r, lens === 'by_tag' && heading)}
-                    </Fragment>
-                  ))}
+                  {block && heading ? (
+                    block.lines.map((l) => {
+                      if (l.kind === 'assembly') {
+                        const on = l.keys.length > 0 && l.keys.every((k) => ticked.has(k))
+                        return (
+                          <tr key={l.key} data-testid="procurement-assembly">
+                            <td style={{ ...td, width: 28, textAlign: 'center' }}>
+                              <input type="checkbox" aria-label={`Pick every part of ${l.name}`} checked={on} onChange={(e) => setTicked((cur) => { const next = new Set(cur); for (const k of l.keys) { if (e.target.checked) next.add(k); else next.delete(k) } return next })} />
+                            </td>
+                            <td colSpan={COLS - 1} style={{ ...td, position: 'relative', paddingLeft: indentPad(l.guides), fontSize: '0.8rem' }}>
+                              <Rails guides={l.guides} />
+                              <b style={{ color: 'var(--text-strong)' }}>{l.name}</b> <span style={smallMuted}>· {l.keys.length} part{l.keys.length === 1 ? '' : 's'}</span>
+                            </td>
+                          </tr>
+                        )
+                      }
+                      return (
+                        <Fragment key={l.row.key}>
+                          {l.orderOnlyStarts ? (
+                            <tr data-testid="procurement-order-only-divider">
+                              <td style={{ ...td, width: 28, padding: '0.25rem 0.4rem' }} />
+                              <td colSpan={COLS - 1} style={{ ...td, position: 'relative', padding: '0.25rem 0.4rem', paddingLeft: indentPad(l.guides), fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+                                <Rails guides={l.guides} through />
+                                Ordered, not on the GC’s copy · {l.orderOnlyCount} part{l.orderOnlyCount === 1 ? '' : 's'}
+                              </td>
+                            </tr>
+                          ) : null}
+                          {renderRow(l.row, true, l.guides)}
+                        </Fragment>
+                      )
+                    })
+                  ) : (
+                    sec.rows.map((r, i) => (
+                      <Fragment key={r.key}>
+                        {sec.orderOnlyFrom != null && i === sec.orderOnlyFrom ? (
+                          <tr data-testid="procurement-order-only-divider">
+                            <td colSpan={COLS} style={{ ...td, padding: '0.25rem 0.4rem 0.25rem 2.2rem', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+                              Ordered, not on the GC’s copy · {sec.rows.length - sec.orderOnlyFrom} part{sec.rows.length - sec.orderOnlyFrom === 1 ? '' : 's'}
+                            </td>
+                          </tr>
+                        ) : null}
+                        {renderRow(r, lens === 'by_tag' && heading)}
+                      </Fragment>
+                    ))
+                  )}
                 </Fragment>
               )
             })}
