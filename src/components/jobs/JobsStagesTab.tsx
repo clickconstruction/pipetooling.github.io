@@ -164,7 +164,6 @@ import { StagesEstBillDateModal } from './StagesEstBillDateModal'
 import BilledPaymentConfirmationModal from './BilledPaymentConfirmationModal'
 import BilledBillViewModal from './BilledBillViewModal'
 import { findInvoiceWithJobFromJobs } from '../../lib/invoiceWithJobFromJobList'
-import LienToolingPrefillModal from './LienToolingPrefillModal'
 import LienInstrumentsModal from './LienInstrumentsModal'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 import LienDeskModal from './LienDeskModal'
@@ -821,11 +820,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   // Accounts Receivable + Print buttons.
   const isMobile = useIsMobile()
   const [viewBillInvoice, setViewBillInvoice] = useState<InvoiceWithJob | null>(null)
-  const [lienToolingPrefillModal, setLienToolingPrefillModal] = useState<{
-    job: JobWithDetails
-    invoice: JobsLedgerInvoice | null
-  } | null>(null)
-  /** Lien instruments (v2.2640): the orange lien icon's new home — in-app demand letter; external prefill kept as fallback. */
+  /** Lien instruments (v2.2640): the orange lien icon's home — every lien paper is made in this window. */
   const [lienInstrumentsModal, setLienInstrumentsModal] = useState<{
     job: JobWithDetails
     invoice: JobsLedgerInvoice | null
@@ -4568,14 +4563,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           const jobId = lienInstrumentsModal?.job.id
           if (jobId) void syncLienDeskAfterRecord(jobId).finally(() => refetchLienDesk())
         }}
-      />
-      <LienToolingPrefillModal
-        open={lienToolingPrefillModal != null}
-        onClose={() => setLienToolingPrefillModal(null)}
-        job={lienToolingPrefillModal?.job ?? null}
-        invoice={lienToolingPrefillModal?.invoice ?? null}
-        senderNameFallback={lienDeskSignerFor(lienToolingPrefillModal?.job?.master_user_id ?? null)}
-        authEmail={authUser?.email?.trim() ?? ''}
       />
       <LienReleaseModal
         open={lienReleaseModal != null}

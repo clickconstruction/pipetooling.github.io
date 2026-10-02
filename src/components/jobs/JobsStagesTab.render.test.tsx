@@ -41,8 +41,8 @@ vi.mock('../../lib/supabase', async () => {
   return { supabase: makeSupabaseStub() }
 })
 // Children in the always-rendered modal tail (ManageJobPeopleModal,
-// BilledBillViewModal, AiaG702G703Modal, LienToolingPrefillModal) call
-// useAuth() unconditionally; there is no AuthProvider in the smoke harness.
+// BilledBillViewModal, AiaG702G703Modal) call useAuth() unconditionally;
+// there is no AuthProvider in the smoke harness.
 vi.mock('../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
   return useAuthModuleMock()
