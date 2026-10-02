@@ -904,7 +904,7 @@ export function JobFormInvoiceList({
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: nestedOverlayZIndex,
-            padding: '1rem',
+            padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
           }}
           onClick={(e) => {
             if (e.target === e.currentTarget && !deletingDraft) setConfirmDeleteInvoice(null)
@@ -962,7 +962,7 @@ export function JobFormInvoiceList({
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: nestedOverlayZIndex,
-            padding: '1rem',
+            padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
           }}
           onClick={(e) => {
             if (e.target === e.currentTarget && !sendingBack) {

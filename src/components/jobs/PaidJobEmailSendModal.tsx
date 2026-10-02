@@ -192,7 +192,7 @@ export default function PaidJobEmailSendModal({
           maxWidth: 760,
           // Real height (not just a cap) so the flex-1 preview frame fills it —
           // the email is the point of this modal.
-          height: '90vh',
+          height: 'min(90vh, 100%)',
           maxHeight: 'min(90vh, 100%)',
           display: 'flex',
           flexDirection: 'column',

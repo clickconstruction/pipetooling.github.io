@@ -213,7 +213,7 @@ export default function ChecklistCostModal({
         // Above the fixed phone tab bar (z-index 1000) — the sheet's actions
         // sit at the exact bottom edge the bar occupies.
         zIndex: 1001,
-        padding: isNarrow ? 0 : '1rem',
+        padding: isNarrow ? 'var(--app-top-chrome, 0px) 0 0' : 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
       }}
       onClick={(e) => {
         // The Checklist draws this inside a row that shows its activity on a click: a click
@@ -232,7 +232,7 @@ export default function ChecklistCostModal({
           padding: isNarrow ? '1.1rem 1rem calc(0.9rem + env(safe-area-inset-bottom))' : '1.25rem',
           width: '100%',
           maxWidth: isNarrow ? 'none' : 420,
-          maxHeight: '90vh',
+          maxHeight: 'min(90vh, 100%)',
           overflowY: 'auto',
         }}
         onClick={(e) => e.stopPropagation()}

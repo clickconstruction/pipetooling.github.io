@@ -156,12 +156,12 @@ export default function CustomerProfileModal({ customerId, onClose }: { customer
       role="dialog"
       aria-modal="true"
       aria-label="Customer profile"
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 770, padding: '1rem' }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 770, padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }}
       onClick={onClose}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, width: 'min(660px, 100%)', maxHeight: '88vh', overflow: 'auto' }}
+        style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, width: 'min(660px, 100%)', maxHeight: 'min(88vh, 100%)', overflow: 'auto' }}
       >
         {error ? (
           <div style={{ padding: '1.25rem' }}>

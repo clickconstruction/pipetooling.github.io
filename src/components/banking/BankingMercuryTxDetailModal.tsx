@@ -385,11 +385,11 @@ export function BankingMercuryTxDetailModal({
       aria-modal="true"
       aria-label="Transaction detail"
       onClick={onClose}
-      style={{ position: 'fixed', inset: 0, zIndex: DETAIL_Z, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+      style={{ position: 'fixed', inset: 0, zIndex: DETAIL_Z, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{ background: 'var(--surface)', borderRadius: 12, border: '1px solid var(--border)', width: 'min(760px, 100%)', maxHeight: '86vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+        style={{ background: 'var(--surface)', borderRadius: 12, border: '1px solid var(--border)', width: 'min(760px, 100%)', maxHeight: 'min(86vh, 100%)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
       >
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', padding: '0.9rem 1.25rem 0.7rem', borderBottom: '1px solid var(--border)' }}>
           <div style={{ minWidth: 0 }}>

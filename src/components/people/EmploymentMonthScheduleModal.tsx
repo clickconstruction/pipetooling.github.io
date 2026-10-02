@@ -47,7 +47,7 @@ export function EmploymentMonthScheduleModal({ userId, displayName, onClose }: E
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '1rem',
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
         boxSizing: 'border-box',
       }}
       role="dialog"
@@ -60,7 +60,7 @@ export function EmploymentMonthScheduleModal({ userId, displayName, onClose }: E
           background: 'var(--surface)',
           borderRadius: 8,
           width: 'min(96vw, 1400px)',
-          height: 'min(94vh, 1100px)',
+          height: 'min(94vh, 1100px, 100%)',
           display: 'flex',
           flexDirection: 'column',
           boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',

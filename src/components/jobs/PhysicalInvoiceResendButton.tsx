@@ -65,7 +65,7 @@ export default function PhysicalInvoiceResendButton({
             role="dialog"
             aria-modal="true"
             aria-label="Re-email invoice"
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: CONFIRM_MODAL_Z }}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: CONFIRM_MODAL_Z, paddingTop: 'var(--app-top-chrome, 0px)' }}
             onClick={() => !sending && setConfirmOpen(false)}
           >
             <div

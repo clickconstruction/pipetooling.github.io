@@ -89,7 +89,7 @@ export function BankingMercuryAccountingLedgerFilterModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1260,
-        padding: '1rem',
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
         boxSizing: 'border-box',
       }}
       onClick={(e) => {
@@ -104,7 +104,7 @@ export function BankingMercuryAccountingLedgerFilterModal({
           borderRadius: 10,
           maxWidth: 420,
           width: '100%',
-          maxHeight: 'min(90vh, 640px)',
+          maxHeight: 'min(90vh, 640px, 100%)',
           overflow: 'auto',
           boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
           padding: '1.25rem',

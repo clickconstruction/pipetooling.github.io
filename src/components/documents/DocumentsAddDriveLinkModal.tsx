@@ -110,7 +110,7 @@ export default function DocumentsAddDriveLinkModal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '1rem',
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
         boxSizing: 'border-box',
       }}
       onClick={(e) => {
@@ -124,7 +124,7 @@ export default function DocumentsAddDriveLinkModal({
         style={{
           width: '100%',
           maxWidth: 440,
-          maxHeight: 'min(90vh, 640px)',
+          maxHeight: 'min(90vh, 640px, 100%)',
           overflow: 'auto',
           background: 'var(--surface)',
           borderRadius: 8,

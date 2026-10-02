@@ -68,6 +68,7 @@ export default function CallCustomerModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1100,
+        paddingTop: 'var(--app-top-chrome, 0px)',
       }}
       onClick={onClose}
     >

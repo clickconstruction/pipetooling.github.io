@@ -565,7 +565,7 @@ export function WorkOrderAssemblerModal({
   // The sheet story draws this inside its own backdrop: a click outside closes the work order
   // only, not the story behind it (v2.4352).
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 755, overflowY: 'auto', padding: '2rem 1rem' }} onClick={(e) => { e.stopPropagation(); onClose() }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 755, overflowY: 'auto', padding: 'calc(2rem + var(--app-top-chrome, 0px)) 1rem 2rem' }} onClick={(e) => { e.stopPropagation(); onClose() }}>
       <div role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 10, width: 'min(1180px, 100%)', padding: '1.25rem 1.5rem', boxShadow: '0 20px 60px rgba(0,0,0,.25)' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', flexWrap: 'wrap' }}>
           <h2 style={{ margin: 0, fontSize: '1.2rem' }}>{existing ? (readOnly ? `${existing.record_id ?? 'Work order'} · ${existing.display_name}` : `Edit work order${existing.record_id ? ` ${existing.record_id}` : ''}`) : 'New work order'}</h2>

@@ -2439,6 +2439,7 @@ export default function JobFormModal({
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: JOB_FORM_OVERLAY_Z_INDEX,
+          paddingTop: 'var(--app-top-chrome, 0px)',
         }}
       >
         <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.25rem 1.5rem', borderRadius: 8, fontSize: '0.9375rem' }}>Loading…</div>

@@ -1587,6 +1587,7 @@ export default function Calendar() {
                   alignItems: 'center',
                   justifyContent: 'center',
                   zIndex: 750,
+                  paddingTop: 'var(--app-top-chrome, 0px)',
                 }}
                 onClick={() => setSelectedDayForModal(null)}
               >
@@ -1597,7 +1598,7 @@ export default function Calendar() {
                     padding: '1.5rem',
                     maxWidth: 480,
                     width: '90%',
-                    maxHeight: '80vh',
+                    maxHeight: 'min(80vh, 100%)',
                     overflow: 'auto',
                     boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)',
                   }}

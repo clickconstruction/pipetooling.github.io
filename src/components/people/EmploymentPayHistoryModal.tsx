@@ -124,7 +124,7 @@ export function EmploymentPayHistoryModal({ personName, onClose, onOpenPayReport
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '1rem',
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
         boxSizing: 'border-box',
       }}
       role="dialog"
@@ -137,7 +137,7 @@ export function EmploymentPayHistoryModal({ personName, onClose, onOpenPayReport
           background: 'var(--surface)',
           borderRadius: 8,
           width: 'min(94vw, 720px)',
-          maxHeight: 'min(85vh, 900px)',
+          maxHeight: 'min(85vh, 900px, 100%)',
           display: 'flex',
           flexDirection: 'column',
           boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',

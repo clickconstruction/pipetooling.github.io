@@ -509,6 +509,7 @@ export default function QuickAssignSheet({
         alignItems: 'flex-end',
         justifyContent: 'center',
         zIndex: 1004,
+        paddingTop: 'var(--app-top-chrome, 0px)',
       }}
       onClick={() => {
         if (!saving) onClose()
@@ -524,7 +525,7 @@ export default function QuickAssignSheet({
           borderRadius: '14px 14px 0 0',
           width: '100%',
           maxWidth: 640,
-          maxHeight: '92vh',
+          maxHeight: 'min(92vh, 100%)',
           display: 'flex',
           flexDirection: 'column',
           gap: '0.6rem',
@@ -1143,7 +1144,7 @@ export default function QuickAssignSheet({
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 1006,
-            padding: '1rem',
+            padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
           }}
           onClick={(e) => {
             e.stopPropagation()
@@ -1160,7 +1161,7 @@ export default function QuickAssignSheet({
               borderRadius: 12,
               width: '96%',
               maxWidth: 480,
-              maxHeight: '80vh',
+              maxHeight: 'min(80vh, 100%)',
               overflowY: 'auto',
               padding: '0.85rem',
               display: 'flex',

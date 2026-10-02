@@ -201,7 +201,7 @@ export function MapGeocodeReviewModal({
         alignItems: 'center',
         justifyContent: 'center',
         background: 'rgba(0,0,0,0.45)',
-        padding: '1rem',
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
       }}
       role="presentation"
       onClick={(e) => {
@@ -217,7 +217,7 @@ export function MapGeocodeReviewModal({
           color: 'var(--text-strong)',
           maxWidth: 640,
           width: '100%',
-          maxHeight: 'min(90vh, 640px)',
+          maxHeight: 'min(90vh, 640px, 100%)',
           display: 'flex',
           flexDirection: 'column',
           borderRadius: 8,

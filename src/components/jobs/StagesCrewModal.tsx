@@ -54,7 +54,7 @@ export function StagesCrewModal({ job, onClose }: { job: JobWithDetails; onClose
     <div
       role="presentation"
       onClick={onClose}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', zIndex: 900, padding: isMobile ? 0 : '1rem' }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', zIndex: 900, padding: isMobile ? 'var(--app-top-chrome, 0px) 0 0' : 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }}
     >
       <div
         role="dialog"
@@ -68,7 +68,7 @@ export function StagesCrewModal({ job, onClose }: { job: JobWithDetails; onClose
           borderRadius: isMobile ? '14px 14px 0 0' : 10,
           width: '100%',
           maxWidth: isMobile ? undefined : 680,
-          maxHeight: isMobile ? '88vh' : '85vh',
+          maxHeight: isMobile ? 'min(88vh, 100%)' : 'min(85vh, 100%)',
           display: 'flex',
           flexDirection: 'column',
           boxShadow: '0 12px 40px rgba(0,0,0,0.25)',

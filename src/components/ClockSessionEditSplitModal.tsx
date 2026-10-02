@@ -119,6 +119,7 @@ function ClockSessionCreateModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex,
+        paddingTop: 'var(--app-top-chrome, 0px)',
       }}
       onClick={handleBackdropClose}
       role="presentation"
@@ -383,6 +384,7 @@ function ClockSessionEditSplitModalEdit({ session, onClose, onSaved, showToast, 
         alignItems: 'center',
         justifyContent: 'center',
         zIndex,
+        paddingTop: 'var(--app-top-chrome, 0px)',
       }}
       onClick={handleBackdropClose}
       role="presentation"

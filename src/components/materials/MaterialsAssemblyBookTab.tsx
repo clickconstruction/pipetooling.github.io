@@ -722,7 +722,7 @@ export function MaterialsAssemblyBookTab(props: MaterialsAssemblyBookTabProps) {
       {/* Add Item to Assembly Modal */}
       {addItemModalOpen && selectedTemplate && (
         <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, paddingTop: 'var(--app-top-chrome, 0px)' }}
           onClick={(e) => e.target === e.currentTarget && closeAddItemModal()}
         >
           <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '2rem', borderRadius: 8, maxWidth: '450px', width: '90%' }} onClick={(e) => e.stopPropagation()}>

@@ -175,8 +175,8 @@ export function HirePersonModal({
   const kindOptions: PersonKind[] = KINDS
 
   return (
-    <div role="dialog" aria-modal="true" aria-label="Hire someone" style={{ position: 'fixed', inset: 0, zIndex: DESK_EDITOR_Z, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={(e) => e.target === e.currentTarget && !running && onClose()}>
-      <div style={{ background: 'var(--surface)', borderRadius: 8, width: 'min(640px, 96vw)', maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 16px 40px rgba(0,0,0,0.25)', overflow: 'hidden' }}>
+    <div role="dialog" aria-modal="true" aria-label="Hire someone" style={{ position: 'fixed', inset: 0, zIndex: DESK_EDITOR_Z, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 'var(--app-top-chrome, 0px)' }} onClick={(e) => e.target === e.currentTarget && !running && onClose()}>
+      <div style={{ background: 'var(--surface)', borderRadius: 8, width: 'min(640px, 96vw)', maxHeight: 'min(92vh, 100%)', display: 'flex', flexDirection: 'column', boxShadow: '0 16px 40px rgba(0,0,0,0.25)', overflow: 'hidden' }}>
         <div style={{ padding: '0.85rem 1rem 0.55rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <h2 style={{ margin: 0, fontSize: '1.05rem', color: 'var(--text-strong)' }}>Hire someone</h2>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>one form, every row a new person needs</span>

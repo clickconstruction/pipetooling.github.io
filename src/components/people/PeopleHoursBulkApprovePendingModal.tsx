@@ -85,6 +85,7 @@ export function PeopleHoursBulkApprovePendingModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 760,
+        paddingTop: 'var(--app-top-chrome, 0px)',
       }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
@@ -96,7 +97,7 @@ export function PeopleHoursBulkApprovePendingModal({
           borderRadius: 8,
           padding: '1rem 1.1rem',
           width: 'min(560px, 92vw)',
-          maxHeight: '85vh',
+          maxHeight: 'min(85vh, 100%)',
           display: 'flex',
           flexDirection: 'column',
           boxShadow: '0 16px 40px rgba(0,0,0,0.25)',

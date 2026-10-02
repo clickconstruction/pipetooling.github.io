@@ -148,7 +148,7 @@ export function DashboardMyDayEditorModal({
         display: 'flex',
         alignItems: 'flex-start',
         justifyContent: 'center',
-        padding: '2rem 0.75rem',
+        padding: 'calc(2rem + var(--app-top-chrome, 0px)) 0.75rem 2rem',
         overflowY: 'auto',
       }}
     >

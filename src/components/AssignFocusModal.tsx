@@ -92,6 +92,7 @@ export function AssignFocusModal({ sessionIds, label, onSaved, onClose, overlayZ
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: overlayZIndex,
+        paddingTop: 'var(--app-top-chrome, 0px)',
       }}
       onClick={(e) => {
         // Review Hours draws this inside its own backdrop: a click outside closes this window
@@ -106,7 +107,7 @@ export function AssignFocusModal({ sessionIds, label, onSaved, onClose, overlayZ
           borderRadius: 8,
           padding: '1rem 1.25rem',
           maxWidth: 400,
-          maxHeight: '85vh',
+          maxHeight: 'min(85vh, 100%)',
           overflow: 'auto',
           boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
         }}

@@ -40,7 +40,7 @@ export function MyTimeRejectSessionDialog({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '1rem',
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
       }}
       onClick={onCancel}
     >

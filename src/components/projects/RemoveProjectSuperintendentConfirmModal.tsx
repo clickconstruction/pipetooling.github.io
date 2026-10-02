@@ -40,6 +40,7 @@ export function RemoveProjectSuperintendentConfirmModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1005,
+        paddingTop: 'var(--app-top-chrome, 0px)',
       }}
       onClick={() => {
         if (!busy) onCancel()

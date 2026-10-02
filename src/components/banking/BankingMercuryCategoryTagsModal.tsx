@@ -222,9 +222,9 @@ export function BankingMercuryCategoryTagsModal({
       onClick={(e) => {
         if (e.target === e.currentTarget && !busy) onClose()
       }}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem', zIndex }}
     >
-      <div style={{ background: 'var(--surface)', color: 'var(--text-base)', borderRadius: 12, width: 'min(1040px, 100%)', maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 18px 50px rgba(15, 23, 42, 0.25)' }}>
+      <div style={{ background: 'var(--surface)', color: 'var(--text-base)', borderRadius: 12, width: 'min(1040px, 100%)', maxHeight: 'min(92vh, 100%)', display: 'flex', flexDirection: 'column', boxShadow: '0 18px 50px rgba(15, 23, 42, 0.25)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '1rem 1.25rem 0.5rem' }}>
           <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700 }}>Tags ({tags.length})</h3>
           <button type="button" onClick={onClose} disabled={busy} style={btn}>Close</button>

@@ -2451,8 +2451,8 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
         </div>
 
       {contractsAssignModalOpen && selectedContractsPersonName && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 710 }}>
-          <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 'min(92vw, 520px)', width: '100%', maxHeight: '85vh', overflow: 'auto' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 710, paddingTop: 'var(--app-top-chrome, 0px)' }}>
+          <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 'min(92vw, 520px)', width: '100%', maxHeight: 'min(85vh, 100%)', overflow: 'auto' }}>
             <h3 style={{ margin: '0 0 1rem', fontSize: '1.125rem' }}>Assign packets — {selectedContractsPersonName}</h3>
             {contractsError && <p style={{ color: 'var(--text-red-700)', marginBottom: '0.75rem', fontSize: '0.875rem' }}>{contractsError}</p>}
             {contractTemplates.length === 0 ? (
@@ -3387,6 +3387,7 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
               alignItems: 'center',
               justifyContent: 'center',
               zIndex: 712,
+              paddingTop: 'var(--app-top-chrome, 0px)',
             }}
             onClick={() => {
               if (!contractDocumentDeleting) {
@@ -3534,8 +3535,8 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
       )}
 
       {contractSendModalOpen && (contractSendDocId || contractSendQuickSend) && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 714 }}>
-          <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, width: 'min(640px, 92vw)', maxHeight: '92vh', overflow: 'auto', boxSizing: 'border-box' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 714, paddingTop: 'var(--app-top-chrome, 0px)' }}>
+          <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, width: 'min(640px, 92vw)', maxHeight: 'min(92vh, 100%)', overflow: 'auto', boxSizing: 'border-box' }}>
             <h3 style={{ margin: '0 0 0.75rem', fontSize: '1.125rem' }}>Send for signature</h3>
             {contractsError ? <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>{contractsError}</p> : null}
             <label style={{ display: 'block', marginTop: '0.75rem', fontSize: '0.8125rem' }}>

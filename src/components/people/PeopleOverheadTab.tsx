@@ -1896,7 +1896,7 @@ export default function PeopleOverheadTab({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: '1rem',
+            padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
           }}
           onClick={(e) => {
             if (e.target === e.currentTarget) setOverheadBreakdownModal(null)
@@ -1908,7 +1908,7 @@ export default function PeopleOverheadTab({
               borderRadius: 8,
               maxWidth: 560,
               width: '100%',
-              maxHeight: '85vh',
+              maxHeight: 'min(85vh, 100%)',
               overflow: 'hidden',
               display: 'flex',
               flexDirection: 'column',
@@ -2283,7 +2283,7 @@ export default function PeopleOverheadTab({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: '1rem',
+            padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
           }}
           onClick={(e) => {
             if (e.target === e.currentTarget) setOverheadOfficeJobModalOpen(false)
@@ -2295,7 +2295,7 @@ export default function PeopleOverheadTab({
               borderRadius: 8,
               maxWidth: 560,
               width: '100%',
-              maxHeight: '85vh',
+              maxHeight: 'min(85vh, 100%)',
               overflow: 'hidden',
               display: 'flex',
               flexDirection: 'column',
@@ -2448,7 +2448,7 @@ export default function PeopleOverheadTab({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: '1rem',
+            padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
           }}
           onClick={(e) => {
             if (e.target === e.currentTarget) setOverheadJobPickerOpen(false)
@@ -2460,7 +2460,7 @@ export default function PeopleOverheadTab({
               borderRadius: 8,
               maxWidth: 480,
               width: '100%',
-              maxHeight: '85vh',
+              maxHeight: 'min(85vh, 100%)',
               overflow: 'hidden',
               display: 'flex',
               flexDirection: 'column',

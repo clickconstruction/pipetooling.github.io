@@ -335,7 +335,7 @@ export function DashboardStaleTallyStaffFollowUpModal({
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 1140,
-          padding: '1rem',
+          padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
           boxSizing: 'border-box',
         }}
       >
@@ -348,7 +348,7 @@ export function DashboardStaleTallyStaffFollowUpModal({
             background: 'var(--surface)',
             borderRadius: 8,
             width: 'min(920px, calc(100vw - 2rem))',
-            maxHeight: 'min(90vh, 900px)',
+            maxHeight: 'min(90vh, 900px, 100%)',
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',

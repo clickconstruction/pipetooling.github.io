@@ -172,6 +172,7 @@ export function JobsWeeklyMovementModal({ open, onClose, users, showToast, canSc
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 760,
+        paddingTop: 'var(--app-top-chrome, 0px)',
       }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
@@ -185,7 +186,7 @@ export function JobsWeeklyMovementModal({ open, onClose, users, showToast, canSc
           minWidth: 360,
           maxWidth: 640,
           width: 'calc(100vw - 2rem)',
-          maxHeight: '85vh',
+          maxHeight: 'min(85vh, 100%)',
           overflow: 'auto',
         }}
       >

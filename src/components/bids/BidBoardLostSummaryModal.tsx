@@ -306,7 +306,7 @@ export function BidBoardLostSummaryModal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 16,
+        padding: 'calc(16px + var(--app-top-chrome, 0px)) 16px 16px',
       }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
@@ -322,7 +322,7 @@ export function BidBoardLostSummaryModal({
           padding: '1rem 1.25rem',
           maxWidth: 1100,
           width: '100%',
-          maxHeight: '92vh',
+          maxHeight: 'min(92vh, 100%)',
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',

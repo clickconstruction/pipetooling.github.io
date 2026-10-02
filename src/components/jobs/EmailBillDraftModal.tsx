@@ -55,7 +55,7 @@ export function EmailBillDraftModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: overlayZIndex,
-        padding: '1rem',
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
       }}
       onClick={onClose}
     >
@@ -69,7 +69,7 @@ export function EmailBillDraftModal({
           minWidth: 280,
           maxWidth: 520,
           width: '100%',
-          maxHeight: 'min(85vh, 560px)',
+          maxHeight: 'min(85vh, 560px, 100%)',
           display: 'flex',
           flexDirection: 'column',
           boxShadow: '0 10px 40px rgba(0,0,0,0.15)',

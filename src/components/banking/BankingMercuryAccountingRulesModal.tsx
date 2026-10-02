@@ -115,7 +115,7 @@ export function BankingMercuryAccountingRulesModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex,
-        padding: '1rem',
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
         boxSizing: 'border-box',
       }}
       onClick={(e) => {
@@ -133,7 +133,7 @@ export function BankingMercuryAccountingRulesModal({
           borderRadius: 8,
           maxWidth: 760,
           width: '100%',
-          maxHeight: 'min(88vh, 44rem)',
+          maxHeight: 'min(88vh, 44rem, 100%)',
           display: 'flex',
           flexDirection: 'column',
           padding: '1.25rem',

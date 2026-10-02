@@ -80,8 +80,8 @@ export function SubmittalTakeoffPicker({ mode, revLabel, candidates: given, busy
   const confirm = () => onConfirm(candidates.filter(isOn).map((c) => ({ ...c, split: isSplit(c) })), ticks, splits, pieceKeys)
 
   return (
-    <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 10060, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-      <div role="dialog" aria-modal="true" aria-label="Choose from the takeoff" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 8, maxWidth: 820, width: '100%', maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
+    <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 10060, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }}>
+      <div role="dialog" aria-modal="true" aria-label="Choose from the takeoff" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 8, maxWidth: 820, width: '100%', maxHeight: 'min(90vh, 100%)', display: 'flex', flexDirection: 'column', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
         <div style={{ padding: '1rem 1.25rem 0.5rem', display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'flex-start' }}>
           <div style={{ flex: '1 1 auto', minWidth: 0 }}>
             <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'var(--text-strong)' }}>Choose from the takeoff</h3>

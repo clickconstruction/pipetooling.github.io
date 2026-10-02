@@ -164,8 +164,8 @@ export function ContractFormPaperEntryModal({ personName, personId, forms, onClo
   }
 
   return (
-    <div role="dialog" aria-modal="true" aria-label="Enter from paper" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 716, padding: '1rem' }} onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: 10, padding: '1rem 1.15rem 0.9rem', width: 'min(96vw, 1000px)', maxHeight: '94vh', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+    <div role="dialog" aria-modal="true" aria-label="Enter from paper" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 716, padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: 10, padding: '1rem 1.15rem 0.9rem', width: 'min(96vw, 1000px)', maxHeight: 'min(94vh, 100%)', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
           <h3 style={{ margin: 0, fontSize: '1.125rem' }}>Enter from paper{choice ? ` — ${choice.documentName}` : ''}</h3>
           <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>for {personName}</span>

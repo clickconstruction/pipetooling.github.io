@@ -43,6 +43,7 @@ export function PricingVersionFormModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 750,
+        paddingTop: 'var(--app-top-chrome, 0px)',
       }}
       onClick={onClose}
     >

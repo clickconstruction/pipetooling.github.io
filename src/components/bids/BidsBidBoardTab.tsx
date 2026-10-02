@@ -2104,6 +2104,7 @@ export function BidsBidBoardTab({
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 1000,
+            paddingTop: 'var(--app-top-chrome, 0px)',
           }}
         >
           <div

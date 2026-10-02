@@ -289,7 +289,7 @@ export function SubmittalAssignPagesModal({ file, fileIndex, items, loadBytes, g
       : { background: 'var(--bg-muted)', border: '1px solid var(--border)' }
 
   return (
-    <div role="dialog" aria-modal="true" aria-label={`Assign pages — ${file.name}`} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'var(--surface)', color: 'var(--text-base)', display: 'flex', flexDirection: 'column' }} data-testid="assign-pages">
+    <div role="dialog" aria-modal="true" aria-label={`Assign pages — ${file.name}`} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'var(--surface)', color: 'var(--text-base)', display: 'flex', flexDirection: 'column', paddingTop: 'var(--app-top-chrome, 0px)' }} data-testid="assign-pages">
       <div ref={rootRef} tabIndex={-1} onKeyDown={onKey} style={{ outline: 'none', display: 'flex', flexDirection: 'column', height: '100%' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', padding: '0.6rem 1rem', borderBottom: '1px solid var(--border)', flexWrap: 'wrap' }}>
           <div>

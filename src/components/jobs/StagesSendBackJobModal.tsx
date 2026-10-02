@@ -51,7 +51,7 @@ export function StagesSendBackJobModal({
   onConfirm: () => void | Promise<void>
 }) {
   return (
-      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 760 }}>
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 760, paddingTop: 'var(--app-top-chrome, 0px)' }}>
         <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, width: 'min(480px, calc(100vw - 2rem))', maxWidth: 480 }}>
           <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>{target.toStatus === 'working' ? 'Send Job Back' : 'Send back'}</h2>
           <p style={{ margin: '0 0 1rem', fontSize: '0.875rem' }}>

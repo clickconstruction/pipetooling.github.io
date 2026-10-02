@@ -193,12 +193,12 @@ export function OverheadPoolDayModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="overhead-pool-day-title"
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      <div onMouseDown={stop} style={{ width: 'min(760px, 100%)', maxHeight: '90vh', overflow: 'auto', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 10, boxShadow: '0 20px 50px rgba(0,0,0,0.35)' }}>
+      <div onMouseDown={stop} style={{ width: 'min(760px, 100%)', maxHeight: 'min(90vh, 100%)', overflow: 'auto', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 10, boxShadow: '0 20px 50px rgba(0,0,0,0.35)' }}>
         <div style={{ padding: '0.75rem 0.9rem 0.6rem', borderBottom: '1px solid var(--border)', display: 'flex', gap: '0.6rem', alignItems: 'flex-start' }}>
           <div style={{ minWidth: 0 }}>
             <div id="overhead-pool-day-title" style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-strong)' }}>

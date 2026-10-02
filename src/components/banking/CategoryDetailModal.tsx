@@ -86,14 +86,14 @@ export function CategoryDetailModal({ open, label, onClose, onSaved }: CategoryD
       onClick={(e) => {
         if (e.target === e.currentTarget && !saving) onClose()
       }}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1280, padding: '1rem', boxSizing: 'border-box' }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1280, padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem', boxSizing: 'border-box' }}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="category-detail-modal-title"
         onMouseDown={(e) => e.stopPropagation()}
-        style={{ background: 'var(--surface)', borderRadius: 10, maxWidth: 480, width: '100%', maxHeight: 'min(90vh, 640px)', overflow: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.15)', padding: '1.25rem', boxSizing: 'border-box' }}
+        style={{ background: 'var(--surface)', borderRadius: 10, maxWidth: 480, width: '100%', maxHeight: 'min(90vh, 640px, 100%)', overflow: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.15)', padding: '1.25rem', boxSizing: 'border-box' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.75rem' }}>
           <h2 id="category-detail-modal-title" style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>

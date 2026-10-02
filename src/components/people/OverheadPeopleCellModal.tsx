@@ -178,12 +178,12 @@ export function OverheadPeopleCellModal({ table, person, unattributed, column, l
       role="dialog"
       aria-modal="true"
       aria-labelledby="overhead-people-cell-title"
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      <div onMouseDown={stop} style={{ background: 'var(--surface)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 10, width: 'min(900px, 100%)', maxHeight: 'calc(100vh - 2rem)', display: 'flex', flexDirection: 'column', boxShadow: '0 18px 50px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
+      <div onMouseDown={stop} style={{ background: 'var(--surface)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 10, width: 'min(900px, 100%)', maxHeight: 'min(calc(100vh - 2rem), 100%)', display: 'flex', flexDirection: 'column', boxShadow: '0 18px 50px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
         <div style={{ padding: '0.75rem 1rem 0.6rem', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
             <h2 id="overhead-people-cell-title" style={{ margin: 0, fontSize: '1.05rem' }}>{title}</h2>

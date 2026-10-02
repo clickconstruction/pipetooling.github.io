@@ -2742,7 +2742,7 @@ export function BankingMercuryAccountingTab({
           role="dialog"
           aria-modal="true"
           aria-label="Tag prior transactions"
-          style={{ position: 'fixed', inset: 0, zIndex: 1300, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+          style={{ position: 'fixed', inset: 0, zIndex: 1300, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }}
         >
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, width: 'min(460px, 100%)', padding: '1.1rem 1.3rem' }}>
             <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.05rem' }}>Tag prior transactions?</h3>
@@ -2818,7 +2818,7 @@ export function BankingMercuryAccountingTab({
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 1250,
-            padding: '1rem',
+            padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
             boxSizing: 'border-box',
           }}
           onClick={(e) => {
@@ -2835,7 +2835,7 @@ export function BankingMercuryAccountingTab({
               maxWidth: 640,
               width: '100%',
               padding: '1.25rem',
-              maxHeight: '85vh',
+              maxHeight: 'min(85vh, 100%)',
               overflowY: 'auto',
               border: '1px solid var(--border)',
             }}

@@ -394,6 +394,7 @@ export function TakeoffBookAdminSection({
                 alignItems: 'center',
                 justifyContent: 'center',
                 zIndex: 750,
+                paddingTop: 'var(--app-top-chrome, 0px)',
               }}
               onClick={closeTakeoffBookVersionForm}
             >
@@ -429,6 +430,7 @@ export function TakeoffBookAdminSection({
                 alignItems: 'center',
                 justifyContent: 'center',
                 zIndex: 750,
+                paddingTop: 'var(--app-top-chrome, 0px)',
               }}
               onClick={closeTakeoffBookEntryForm}
             >

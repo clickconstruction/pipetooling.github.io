@@ -170,6 +170,7 @@ export function PersonOffsetFormModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex,
+        paddingTop: 'var(--app-top-chrome, 0px)',
       }}
       onClick={(e) => {
         if (e.target === e.currentTarget) handleClose()

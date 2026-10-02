@@ -310,6 +310,7 @@ export function DraftPayrollModal({
           alignItems: 'center',
           justifyContent: 'center',
           zIndex,
+          paddingTop: 'var(--app-top-chrome, 0px)',
         }}
       >
         <div role="dialog" aria-modal="true"
@@ -318,7 +319,7 @@ export function DraftPayrollModal({
             padding: '1.5rem',
             borderRadius: 8,
             maxWidth: 600,
-            maxHeight: '85vh',
+            maxHeight: 'min(85vh, 100%)',
             overflow: 'auto',
           }}
         >
@@ -826,6 +827,7 @@ export function DraftPayrollModal({
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: reviewZ,
+            paddingTop: 'var(--app-top-chrome, 0px)',
           }}
           onClick={() => setReviewDaysDetail(null)}
         >
@@ -835,7 +837,7 @@ export function DraftPayrollModal({
               padding: '1.25rem',
               borderRadius: 8,
               maxWidth: 420,
-              maxHeight: '80vh',
+              maxHeight: 'min(80vh, 100%)',
               overflow: 'auto',
               margin: '1rem',
               boxShadow: '0 10px 40px rgba(0,0,0,0.15)',

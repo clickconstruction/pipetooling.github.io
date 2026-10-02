@@ -16,8 +16,8 @@ const select: CSSProperties = { padding: '0.4rem 0.5rem', minHeight: 36, border:
 
 function Shell({ label, busy, onClose, children, footer, maxWidth }: { label: string; busy: boolean; onClose: () => void; children: ReactNode; footer: ReactNode; maxWidth: number }) {
   return (
-    <div role="presentation" onClick={(e) => { if (e.target === e.currentTarget && !busy) onClose() }} style={{ position: 'fixed', inset: 0, zIndex: 10060, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '1rem 0.6rem', overflowY: 'auto' }}>
-      <div role="dialog" aria-modal="true" aria-label={label} style={{ background: 'var(--surface)', borderRadius: 10, width: '100%', maxWidth, boxShadow: '0 10px 40px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 2rem)' }} onMouseDown={(e) => e.stopPropagation()}>
+    <div role="presentation" onClick={(e) => { if (e.target === e.currentTarget && !busy) onClose() }} style={{ position: 'fixed', inset: 0, zIndex: 10060, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 0.6rem 1rem', overflowY: 'auto' }}>
+      <div role="dialog" aria-modal="true" aria-label={label} style={{ background: 'var(--surface)', borderRadius: 10, width: '100%', maxWidth, boxShadow: '0 10px 40px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', maxHeight: 'min(calc(100vh - 2rem), 100%)' }} onMouseDown={(e) => e.stopPropagation()}>
         <div style={{ padding: '1rem 1.1rem 0.6rem', display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'flex-start', borderBottom: '1px solid var(--border)' }}>
           <h3 style={{ margin: 0, fontSize: '1.05rem', color: 'var(--text-strong)', overflowWrap: 'anywhere' }}>{label}</h3>
           <button type="button" aria-label="Close" disabled={busy} onClick={onClose} style={{ ...btn, minHeight: 32, padding: '0.2rem 0.6rem' }}>×</button>

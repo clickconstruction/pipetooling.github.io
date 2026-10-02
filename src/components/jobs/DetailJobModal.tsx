@@ -2530,7 +2530,7 @@ export default function DetailJobModal({
 
       {addLinkTarget ? (
         <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 1006 }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem', zIndex: 1006 }}
           role="presentation"
           onClick={(e) => {
             e.stopPropagation()
@@ -2633,7 +2633,7 @@ export default function DetailJobModal({
       ) : null}
       {stackedAddFilesOpen ? (
         <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 1007 }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem', zIndex: 1007 }}
           role="presentation"
           onClick={(e) => {
             e.stopPropagation()

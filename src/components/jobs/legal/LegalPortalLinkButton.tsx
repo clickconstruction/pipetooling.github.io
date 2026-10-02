@@ -89,7 +89,7 @@ export default function LegalPortalLinkButton({ firmId, firmName }: { firmId: st
     <>
       <button type="button" onClick={() => setOpen(true)} style={btn} title="The firm’s no-login portal link">🌐 Firm’s link</button>
       {open ? (
-        <div role="presentation" onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 775, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 14 }}>
+        <div role="presentation" onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 775, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(14px + var(--app-top-chrome, 0px)) 14px 14px' }}>
           <div role="dialog" aria-modal="true" aria-label="The firm’s portal link" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 10, padding: 18, maxWidth: 560, width: '100%', boxShadow: '0 12px 40px rgba(0,0,0,0.28)' }}>
             <h3 style={{ margin: '0 0 6px', fontSize: '1rem' }}>🌐 {firmName}’s portal link</h3>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', margin: '0 0 10px' }}>One private link, no sign-in. It opens every account a dev has marked attorney-ready and nothing else. Turning it off is the kill switch; rotating mints a new one.</p>

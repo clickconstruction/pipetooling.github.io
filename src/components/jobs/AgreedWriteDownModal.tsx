@@ -204,7 +204,7 @@ export default function AgreedWriteDownModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: overlayZIndex,
-        padding: '1rem',
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
       }}
       // A click outside does not close this window, and no click in it reaches the window behind:
       // the Legal desk draws it inside the desk's backdrop, and the desk closed on the first click

@@ -1543,7 +1543,7 @@ export function BidsTakeoffTab({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              padding: '1rem',
+              padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
             }}
             onClick={closeTakeoffRemoveConfirm}
           >
@@ -1788,6 +1788,7 @@ export function BidsTakeoffTab({
                 alignItems: 'center',
                 justifyContent: 'center',
                 zIndex: 1110,
+                paddingTop: 'var(--app-top-chrome, 0px)',
               }}
               onClick={() => {
                 if (!roughAddAssemblyExpanding) closeRoughAddAssemblyModal()
@@ -1800,7 +1801,7 @@ export function BidsTakeoffTab({
                   borderRadius: 8,
                   maxWidth: 440,
                   width: '90%',
-                  maxHeight: '85vh',
+                  maxHeight: 'min(85vh, 100%)',
                   overflowY: 'auto',
                 }}
                 onClick={(e) => e.stopPropagation()}

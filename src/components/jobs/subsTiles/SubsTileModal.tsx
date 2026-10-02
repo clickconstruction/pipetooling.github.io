@@ -31,7 +31,7 @@ export function SubsTileModal({ ariaLabel, title, subtitle, big, queue, rule, fo
   }, [onClose])
   const pct = queue.total > 0 ? Math.round((queue.done / queue.total) * 100) : 0
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 754, overflowY: 'auto', padding: '2rem 1rem' }} onClick={onClose}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 754, overflowY: 'auto', padding: 'calc(2rem + var(--app-top-chrome, 0px)) 1rem 2rem' }} onClick={onClose}>
       <div role="dialog" aria-modal="true" aria-label={ariaLabel} onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 12, width: 'min(960px, 100%)', boxShadow: '0 20px 60px rgba(0,0,0,.25)', border: '1px solid var(--border)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '1rem 1.1rem 0.7rem' }}>
           <div style={{ minWidth: 0 }}>

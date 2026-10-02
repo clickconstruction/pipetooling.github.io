@@ -449,14 +449,14 @@ export function TransactionDetailModal({
       onClick={(e) => {
         if (e.target === e.currentTarget && !savingSplits && !savingLabel && !savingNote) onClose()
       }}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex, padding: '1rem', boxSizing: 'border-box' }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex, padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem', boxSizing: 'border-box' }}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Transaction detail"
         onMouseDown={(e) => e.stopPropagation()}
-        style={{ background: 'var(--surface)', borderRadius: 8, width: 'min(680px, 100%)', maxHeight: 'min(90vh, 52rem)', overflowY: 'auto', padding: '1.25rem', boxSizing: 'border-box', boxShadow: '0 24px 48px rgba(0,0,0,0.18)' }}
+        style={{ background: 'var(--surface)', borderRadius: 8, width: 'min(680px, 100%)', maxHeight: 'min(90vh, 52rem, 100%)', overflowY: 'auto', padding: '1.25rem', boxSizing: 'border-box', boxShadow: '0 24px 48px rgba(0,0,0,0.18)' }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
           <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, color: 'var(--text-strong)' }}>Transaction detail</h2>

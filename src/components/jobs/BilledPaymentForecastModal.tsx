@@ -177,12 +177,12 @@ export default function BilledPaymentForecastModal({
       role="dialog"
       aria-modal="true"
       aria-label="Billed Awaiting Payment payment forecast"
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 760 }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 760, paddingTop: 'var(--app-top-chrome, 0px)' }}
       onClick={onClose}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{ background: 'var(--surface)', padding: '1.25rem 1.5rem', borderRadius: 8, width: 'min(880px, calc(100vw - 2rem))', maxHeight: '92vh', overflow: 'auto' }}
+        style={{ background: 'var(--surface)', padding: '1.25rem 1.5rem', borderRadius: 8, width: 'min(880px, calc(100vw - 2rem))', maxHeight: 'min(92vh, 100%)', overflow: 'auto' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
           <h2 style={{ margin: 0, fontSize: '1.125rem' }}>Payment forecast</h2>
