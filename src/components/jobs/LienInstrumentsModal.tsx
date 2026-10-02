@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import {
@@ -41,6 +41,7 @@ import LienTimelineStrip from './LienTimelineStrip'
 import LienWindowFoldedSteps from './LienWindowFoldedSteps'
 import DemandRecordSendSheet from './DemandRecordSendSheet'
 import { useIsMobile } from '../../hooks/useIsMobile'
+import { useScrollEdgeFade } from '../../hooks/useScrollEdgeFade'
 import { useLienJobSuppliers } from '../../hooks/useLienJobSuppliers'
 import { LienJobSuppliersCard } from './LienJobSuppliers'
 import { useForecastWorkMonths } from '../../hooks/useForecastWorkMonths'
@@ -591,18 +592,7 @@ export default function LienInstrumentsModal({
   const supplierJobIds = useMemo(() => (job ? [job.id] : []), [job])
   const suppliers = useLienJobSuppliers(supplierJobIds, open && job != null)
   const supplierJob = job ? suppliers.byJob.get(job.id) : undefined
-  const tabBarRef = useRef<HTMLDivElement | null>(null)
-  const [tabBarMore, setTabBarMore] = useState(false)
-  const readTabBar = useCallback(() => {
-    const el = tabBarRef.current
-    setTabBarMore(el ? el.scrollWidth - el.clientWidth - el.scrollLeft > 4 : false)
-  }, [])
-  // Read after every render: the bar's width changes with the tabs it holds and with the window (the same value is no update).
-  useEffect(() => {
-    readTabBar()
-    window.addEventListener('resize', readTabBar)
-    return () => window.removeEventListener('resize', readTabBar)
-  })
+  const papersBar = useScrollEdgeFade<HTMLDivElement>()
   const timeline = useMemo(
     () =>
       job
@@ -935,12 +925,12 @@ export default function LienInstrumentsModal({
           // The papers as one bar (v2.4398): three fill the width; a fourth (Release of record) makes the bar scroll, its cut edge faded until the end is in view.
           <div style={{ padding: '0.5rem 1rem', borderBottom: '1px solid var(--border)' }}>
             <div
-              ref={tabBarRef}
+              ref={papersBar.ref}
               role="tablist"
               aria-label="Paper"
               data-lien-window-papers
-              onScroll={readTabBar}
-              style={{ display: 'grid', gridAutoFlow: 'column', gridAutoColumns: 'minmax(max-content, 1fr)', minHeight: 40, border: '1px solid var(--border-strong)', borderRadius: 8, overflowX: 'auto', overflowY: 'hidden', ...(tabBarMore ? { WebkitMaskImage: 'linear-gradient(to right, #000 calc(100% - 28px), transparent)', maskImage: 'linear-gradient(to right, #000 calc(100% - 28px), transparent)' } : {}) }}
+              onScroll={papersBar.onScroll}
+              style={{ display: 'grid', gridAutoFlow: 'column', gridAutoColumns: 'minmax(max-content, 1fr)', minHeight: 40, border: '1px solid var(--border-strong)', borderRadius: 8, overflowX: 'auto', overflowY: 'hidden', ...papersBar.style }}
             >
               {paperTabs.map(([value, label]) => (
                 <button key={value} type="button" role="tab" aria-selected={activeTab === value} onClick={() => setActiveTab(value)} style={{ border: 'none', background: activeTab === value ? '#2563eb' : 'var(--surface)', color: activeTab === value ? '#fff' : 'var(--text-700)', font: 'inherit', fontSize: '0.75rem', fontWeight: 600, padding: '0 0.5rem', whiteSpace: 'nowrap', cursor: 'pointer' }}>

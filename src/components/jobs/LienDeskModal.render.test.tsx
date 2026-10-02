@@ -171,6 +171,10 @@ describe('LienDeskModal', () => {
     expect(screen.getByRole('dialog', { name: 'Lien desk' })).toBeTruthy()
     // the backdrop leaves room for an iPhone's status bar, so the title bar is never under the clock (v2.4397)
     expect(screen.getByRole('dialog', { name: 'Lien desk' }).style.paddingTop).toBe('var(--app-top-chrome, 0px)')
+    // the tab row is the sideways scroller that fades a cut end (v2.4441); a row that fits carries no fade
+    const kinds = document.querySelector('[data-lien-desk-kinds]') as HTMLElement
+    expect(kinds.getAttribute('role')).toBe('tablist')
+    expect(kinds.style.maskImage ?? '').toBe('')
     expect(screen.getByRole('button', { name: /Needs the owner/ }).textContent).toContain('1')
     expect(screen.getAllByText(/650 · ATI Schertz/).length).toBeGreaterThan(0)
     // The job's lien timeline (v2.3761) sits under the title: the path, today marked, one next step.
