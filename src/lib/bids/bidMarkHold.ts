@@ -12,8 +12,13 @@
  * Phases: idle → (primary press) holding → (timer) fired → (the click that follows) idle.
  * In `fired` a pointer-up or leave changes nothing: the click is what ends it, and on a touch
  * screen that click may never come, so the next press resets the row anyway.
+ *
+ * A press inside a window the row draws (a GC's notes, Mark account opened) is not a press on
+ * the row: it starts no hold, its click is never swallowed and its long-press menu stays
+ * (v2.4361, `windowInsideRow.ts`).
  */
 import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from 'react'
+import { startedInWindowInside } from '../windowInsideRow'
 
 export const BID_MARK_HOLD_MS = 500
 /** A finger that moves further than this is scrolling, not holding. */
@@ -130,6 +135,7 @@ export function bidMarkHoldHandlers(key: string, onFire: () => void, holdMs: num
   }
   return {
     onPointerDown: (e) => {
+      if (startedInWindowInside(e)) return
       const primary = e.isPrimary && (e.pointerType !== 'mouse' || e.button === 0)
       step({ type: 'down', x: e.clientX, y: e.clientY, primary }, e.currentTarget)
     },
@@ -146,6 +152,7 @@ export function bidMarkHoldHandlers(key: string, onFire: () => void, holdMs: num
       step({ type: 'cancel' }, e.currentTarget)
     },
     onClickCapture: (e) => {
+      if (startedInWindowInside(e)) return
       const entry = entryFor(key)
       const r = holdStep(entry.state, { type: 'click' })
       entry.state = r.state
@@ -155,6 +162,7 @@ export function bidMarkHoldHandlers(key: string, onFire: () => void, holdMs: num
       }
     },
     onContextMenu: (e) => {
+      if (startedInWindowInside(e)) return
       // A touch long-press would open the system menu over the hold; a mouse right-click keeps it.
       const entry = entries.get(key)
       const touchOrHolding = ('pointerType' in e.nativeEvent && (e.nativeEvent as PointerEvent).pointerType === 'touch') || entry?.state.phase !== 'idle'
