@@ -236,6 +236,11 @@ describe('JobsStagesUnifiedTable render smoke', () => {
     ]
     ;(job as unknown as { invoices: unknown[]; fixtures: unknown[] }).invoices = bills
     ;(job as unknown as { invoices: unknown[]; fixtures: unknown[] }).fixtures = [{ id: 'fx-1', name: 'Electrical according to spec', count: 1, line_unit_price: 40000, sequence_order: 0, invoice_id: null }]
+    // Springtown: $11,181.78 paid on the second bill — it sits across the green and the blue (v2.4387).
+    ;(job as unknown as { payments: unknown[] }).payments = [
+      { id: 'pay-1', invoice_id: bills[0]!.id, amount: 13412, paid_on: '2026-08-01' },
+      { id: 'pay-2', invoice_id: bills[1]!.id, amount: 11181.78, paid_on: '2026-09-20' },
+    ]
     const rows: StageRow[] = [
       { kind: 'invoice', inv: bills[1]!, job },
       { kind: 'invoice', inv: bills[2]!, job },

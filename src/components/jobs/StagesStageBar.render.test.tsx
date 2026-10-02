@@ -57,8 +57,12 @@ describe('StagesProgressPaymentCell with the pass-4 money bar (v2.4351)', () => 
     expect(names.map((n) => n.textContent)).toEqual(['1 Rough ✓', '2 Top Out', '3 Trim'])
     expect(names[1]!.style.fontWeight).toBe('700')
     const date = document.querySelector('[data-pct-date]') as HTMLElement
-    expect(date.textContent).toBe(' · Aug 7')
+    expect(date.textContent).toBe('· Aug 7')
     expect(date.getAttribute('data-pct-date')).toBe('stale')
+    // v2.4387: its own item in the top row, so a long date drops a line or ends in … inside the cell.
+    expect(date.parentElement).toBe(document.querySelector('.stagesMoney')!.firstElementChild)
+    expect(date.style.textOverflow).toBe('ellipsis')
+    expect(screen.getByLabelText('Percent complete').classList.contains('no-spinner')).toBe(true)
     // No words under the bar: the crew and the day are in Crew & Dates.
     expect(document.querySelector('[data-progress-words]')).toBeNull()
     expect(screen.queryByText(/Worked Sep 12/)).toBeNull()
@@ -84,6 +88,31 @@ describe('StagesProgressPaymentCell with the pass-4 money bar (v2.4351)', () => 
     expect(screen.queryByText(/% Billed/)).toBeNull() // $0 row left out
     expect(screen.getByText(/8% Done, not billed/)).toBeTruthy()
     expect(screen.getByText(/25% Not done/)).toBeTruthy()
+  })
+
+  it('billing ahead of the % (1007): Not done prints the grey part, so the rows add up to the bid (v2.4387)', () => {
+    const { model, view } = progressPaymentForJob(
+      { id: 'mh', revenue: 249_716, payments_made: 0, pct_complete: 12, status: 'billed', fixtures: [line('p', 'Plumbing', 249_716, 0)], invoices: [{ id: 'b', status: 'billed', amount: 103_386 }], payments: [] },
+      null,
+      today,
+    )
+    const { container } = render(<StagesProgressPaymentCell model={model} pctComplete={12} view={view} />)
+    expect(screen.getByText(/41% Billed/)).toBeTruthy()
+    expect(screen.getByText(/59% Not done/)).toBeTruthy()
+    // Was $219,750 — the work not done, more than the grey it sits beside.
+    expect(container.querySelector('[data-not-done]')?.textContent).toBe('$146,330')
+  })
+
+  it('paid and billed past the % (273): no "0% Not done" row with dollars beside it (v2.4387)', () => {
+    const { model, view } = progressPaymentForJob(
+      { id: 'dd', revenue: 56_365, payments_made: 38_780, pct_complete: 80, status: 'billed', fixtures: [line('j', 'Job total', 56_365, 0)], invoices: [{ id: 'b', status: 'billed', amount: 17_585 }], payments: [] },
+      null,
+      today,
+    )
+    render(<StagesProgressPaymentCell model={model} pctComplete={80} view={view} />)
+    expect(screen.getByText(/69% Paid/)).toBeTruthy()
+    expect(screen.getByText(/31% Billed/)).toBeTruthy()
+    expect(screen.queryByText(/Not done/)).toBeNull()
   })
 
   it('a billed one-line job (1009): blue fills the bar, only Billed and Left on Job print', () => {

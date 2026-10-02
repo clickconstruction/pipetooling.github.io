@@ -58,7 +58,7 @@ export type MoneyBarName = {
 }
 
 export type MoneyBarDate = {
-  /** "Aug 7" beside a typed %, "30% on a report, Aug 7" when the box is empty. */
+  /** "Aug 7" beside a typed %, "30% reported Aug 7" when the box is empty. */
   text: string
   /** Older than the last day worked: amber. */
   stale: boolean
@@ -149,7 +149,8 @@ function dateOf(view: ProgressPaymentView, pctComplete: number | null): MoneyBar
   const source = p.source === 'report' ? 'reported' : p.source === 'seed' ? 'set' : 'typed'
   const staleWords = view.stale ? ' The crew has worked since, so the % may be behind.' : ''
   if (pctComplete == null) {
-    return { text: `${p.pct}% on a report, ${day}`, stale: view.stale, title: `${p.pct}% reported ${day}.${staleWords}` }
+    // v2.4387: "reported" (was "on a report,") — the longer words ran out of the 232 px cell.
+    return { text: `${p.pct}% reported ${day}`, stale: view.stale, title: `${p.pct}% reported ${day}.${staleWords}` }
   }
   return { text: day, stale: view.stale, title: `${p.pct}% ${source} ${day}.${staleWords}` }
 }
@@ -178,9 +179,15 @@ export function stageNameLabel(n: MoneyBarName, blockPx: number | null): string 
  * Which part of the bar a bill row's own bill is (v2.4353, pass 4) — only on a job with two
  * or more bills out or paid, where every bill row draws the same bar. A stage job whose
  * bill names one stage bolds that stage's name; any other job gets a bracket under the
- * bar from where the bill starts to where it ends. A bill that names line items spans
- * those blocks; a bill made by amount sits where the bills before it, in billing order,
- * leave off — the order the money is poured in.
+ * bar from where the bill starts to where it ends. A bill that names line items and covers
+ * them spans those blocks.
+ *
+ * Any other bill sits where its money is drawn (v2.4387). The bar pours the paid money
+ * first and the billed money after it, so an open bill sits on the blue, its own linked
+ * payments just before it on the green. The old placement went by billing order alone, so
+ * an unpaid first bill was bracketed on the green while its row read *nothing paid*
+ * (273 Dudley), and a $6,700 bill that named the job's only $33,500 line spanned the
+ * whole bar (650 ATI Schertz).
  */
 export type MoneyBarBillMark =
   | { kind: 'bracket'; leftPct: number; widthPct: number; title: string }
@@ -190,7 +197,11 @@ export type MoneyBarBillInput = {
   billId: string
   fixtures: ReadonlyArray<{ id: string; invoice_id?: string | null }>
   invoices: ReadonlyArray<{ id: string; status: string; amount?: number | string | null; sequence_order?: number | null; billed_at?: string | null }>
+  /** The job's payments; one linked to a bill (`invoice_id`) is paid on that bill. */
+  payments?: ReadonlyArray<{ invoice_id?: string | null; amount?: number | string | null }>
 }
+
+const usd = (v: number | string | null | undefined) => Math.max(0, Number(v ?? 0) || 0)
 
 export function billMarkFor(view: ProgressPaymentView, input: MoneyBarBillInput): MoneyBarBillMark | null {
   if (view.mode === 'nobid' || view.segments.length === 0) return null
@@ -198,29 +209,63 @@ export function billMarkFor(view: ProgressPaymentView, input: MoneyBarBillInput)
   if (bills.length < 2) return null
   const bill = bills.find((b) => b.id === input.billId)
   if (!bill) return null
-  const amount = Math.max(0, Number(bill.amount ?? 0) || 0)
+  const amount = usd(bill.amount)
   const title = `This row's bill: ${formatUsdNoCents(amount)}`
-  const named = new Set(input.fixtures.filter((f) => f.invoice_id === input.billId).map((f) => f.id))
+  const segAmount = new Map(view.segments.map((s) => [s.key, s.amount]))
+  const namedBy = (billId: string) => input.fixtures.filter((f) => f.invoice_id === billId && segAmount.has(f.id)).map((f) => f.id)
+  // A bill covers the lines it names when they come to no more than the bill (a dollar of rounding).
+  const covers = (b: (typeof bills)[number]) => {
+    const keys = namedBy(b.id)
+    return keys.length > 0 && keys.reduce((s, k) => s + Math.max(0, segAmount.get(k) ?? 0), 0) <= usd(b.amount) + 1
+  }
+  const named = new Set(namedBy(input.billId))
   const namedIdx = view.segments.map((s, i) => (named.has(s.key) ? i : -1)).filter((i) => i >= 0)
   if (view.mode === 'stages' && namedIdx.length === 1) return { kind: 'stage', key: view.segments[namedIdx[0]!]!.key, title }
   let left: number
   let right: number
-  if (namedIdx.length > 0) {
+  if (covers(bill)) {
     const first = namedIdx[0]!
     const last = namedIdx[namedIdx.length - 1]!
     left = view.segments.slice(0, first).reduce((s, x) => s + x.widthPct, 0)
     right = view.segments.slice(0, last + 1).reduce((s, x) => s + x.widthPct, 0)
   } else {
-    const total = view.segments.reduce((s, x) => s + Math.max(0, x.amount), 0)
-    if (total <= 0) return null
-    const ordered = [...bills].sort((a, b) => (a.sequence_order ?? 0) - (b.sequence_order ?? 0) || String(a.billed_at ?? '').localeCompare(String(b.billed_at ?? '')))
+    // The blocks no covering bill claims, and the money drawn on them: paid, then billed.
+    const claimed = new Set(bills.filter((b) => b.id !== input.billId && covers(b)).flatMap((b) => namedBy(b.id)))
+    const free = (s: ProgressPaymentSegment) => !claimed.has(s.key) && s.amount > 0
+    const restPaid = view.segments.filter(free).reduce((s, x) => s + x.money.paidFrac * x.amount, 0)
+    const restTotal = view.segments.filter(free).reduce((s, x) => s + x.amount, 0)
+    if (restTotal <= 0) return null
+    const appliedTo = (id: string, cap: number) => Math.min(cap, (input.payments ?? []).filter((p) => p.invoice_id === id).reduce((s, p) => s + usd(p.amount), 0))
+    // The open bills drawn on those blocks, in billing order; each one's open part follows the last's.
+    const open = bills
+      .filter((b) => b.status === 'billed' && !covers(b))
+      .sort((a, b) => (a.sequence_order ?? 0) - (b.sequence_order ?? 0) || String(a.billed_at ?? '').localeCompare(String(b.billed_at ?? '')))
     let before = 0
-    for (const b of ordered) {
+    for (const b of open) {
       if (b.id === input.billId) break
-      before += Math.max(0, Number(b.amount ?? 0) || 0)
+      before += usd(b.amount) - appliedTo(b.id, usd(b.amount))
     }
-    left = tickLeftPct(view.segments, (before / total) * 100)
-    right = tickLeftPct(view.segments, Math.min(100, ((before + amount) / total) * 100))
+    const applied = bill.status === 'paid' ? amount : appliedTo(bill.id, amount)
+    const lo = Math.min(restTotal, Math.max(0, restPaid + before - applied))
+    const hi = Math.min(restTotal, Math.max(0, restPaid + before + amount - applied))
+    // Money on the free blocks → a place on the drawn bar (a block's money spreads over its width).
+    const toBar = (x: number, side: 'lo' | 'hi') => {
+      let cum = 0
+      let at = 0
+      let end = 0
+      for (const s of view.segments) {
+        if (free(s)) {
+          const top = cum + s.amount
+          if (side === 'lo' ? x < top - EPS : x <= top + EPS) return at + ((x - cum) / s.amount) * s.widthPct
+          cum = top
+          end = at + s.widthPct
+        }
+        at += s.widthPct
+      }
+      return end
+    }
+    left = toBar(lo, 'lo')
+    right = toBar(hi, 'hi')
   }
   if (!(right > left)) return null
   return { kind: 'bracket', leftPct: left, widthPct: Math.max(1.5, right - left), title }
