@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
@@ -14,6 +14,7 @@ import {
   type JobAccountsView,
 } from '../../lib/materials/jobAccountsFlow'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { buildHeldLienLines, type HeldLienAffidavitRow, type HeldLienLine, type HeldLienNoticeRow } from '../../lib/materials/heldLienLine'
 
 /** Same bar segment palette as the Supply Houses phone aging bars (v2.2191). */
 const OWED_SEGMENT_COLORS: Record<AgingBucketKey, string> = {
@@ -127,6 +128,8 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
   const [error, setError] = useState<string | null>(null)
   const [view, setView] = useState<JobAccountsView | null>(null)
   const [todayYmd, setTodayYmd] = useState('')
+  // The way back to the Lien desk (v2.4412): jobs on our own lien clock, by the desk's own RPCs.
+  const [lienLines, setLienLines] = useState<ReadonlyMap<string, HeldLienLine>>(new Map())
   const [filter, setFilter] = useState<FilterKey>(() => filterFromParam(searchParams.get('filter')))
   useEffect(() => {
     const param = searchParams.get('filter')
@@ -273,6 +276,18 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
       )
       const today = todayYmdInAppTz()
       setTodayYmd(today)
+      // Not awaited: the statement does not wait on the lien clock, and a failed read draws no line.
+      void (async () => {
+        try {
+          const [notices, affidavits] = await Promise.all([
+            supabase.rpc('list_lien_notice_months', { p_within_days: 400 } as never),
+            supabase.rpc('list_lien_affidavit_windows', { p_within_days: 400 } as never),
+          ])
+          setLienLines(buildHeldLienLines(((notices.data ?? []) as unknown) as HeldLienNoticeRow[], ((affidavits.data ?? []) as unknown) as HeldLienAffidavitRow[], today))
+        } catch {
+          setLienLines(new Map())
+        }
+      })()
       setView(
         buildJobAccountsView(
           jobs,
@@ -733,6 +748,20 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
                               Open job
                             </button>
                           </div>
+
+                          {(() => {
+                            const lien = lienLines.get(row.jobId)
+                            if (!lien) return null
+                            const red = lien.urgent
+                            return (
+                              <div data-held-lien-line={lien.kind} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.25rem 0.75rem', padding: '0.45rem 0.75rem', marginBottom: '0.6rem', borderRadius: 8, border: `1px solid ${red ? 'var(--border-red)' : 'var(--border-amber)'}`, background: red ? 'var(--bg-red-tint)' : 'var(--bg-amber-tint)', fontSize: '0.8125rem' }}>
+                                <strong style={{ color: red ? 'var(--text-red-700)' : 'var(--text-amber-800)', flex: '1 1 16rem', minWidth: 0 }}>{lien.words}</strong>
+                                <Link to={lien.href} style={{ color: 'var(--text-link)', textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                                  Open the desk ›
+                                </Link>
+                              </div>
+                            )
+                          })()}
 
                           <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 90px 190px 110px 110px 130px', gap: '0.75rem', padding: '0.5rem 0.875rem', borderBottom: '1px solid var(--border)', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>

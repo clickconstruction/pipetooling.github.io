@@ -76,6 +76,16 @@ Send it as a text or email it to a teammate. The steps are in [share where our l
 
 Press **Open in Held for suppliers ›** on the card. Materials opens on that job with its houses listed. You pay a house from there.
 
+## Come back from Materials
+
+Open a job's row on [Held for suppliers](/materials?tab=job-accounts). A job on a lien clock shows one line above its houses. The line says when our notice or our lien is due.
+
+:::example the line on a job's row
+On the Lien desk · our notice is due by Oct 15 · $15,722 unpaid
+:::
+
+Press **Open the desk ›** on that line. The Lien desk opens on that job.
+
 ## In the Lien window
 
 Press a job on the Calendar to open its Lien window. The same card sits near the top as one line. Press **Show** to open it.
