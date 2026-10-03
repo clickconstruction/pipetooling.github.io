@@ -224,6 +224,23 @@ export function newPayAppDraft(sow: Sow, partner: Partner): PayAppInput {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Our own crew: a trade we do ourselves, built on the Pipeline
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * Our own crew's work on a trade we do ourselves: one percent for the whole trade, the same
+ * number Bill the owner bills from (`selfPerform.pctDone`, set by `selfReport`). The real build
+ * reads it from the trade's Pipeline job. No draws, no retainage, no waivers: we pay our own crew
+ * through payroll. Null for a trade we hire out.
+ */
+export function ownCrewWork(pkg: TradePackage): { pct: number; worth: number; done: number; ref: string } | null {
+  const self = pkg.selfPerform
+  if (!self) return null
+  const pct = self.pctDone ?? 0
+  return { pct, worth: self.value, done: (self.value * pct) / 100, ref: self.ref }
+}
+
+// ---------------------------------------------------------------------------------------------
 // The office sends a pay application back
 // ---------------------------------------------------------------------------------------------
 

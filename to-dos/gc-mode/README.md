@@ -67,7 +67,7 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 | Where | What it does |
 |---|---|
 | **New here?** (top right) | An 11-stop spotlight walkthrough of the three stages on the Project Board: each stage's question, what you do in it, how it ends, then where to try it. Stops in `src/lib/gcMode/gcTour.ts`, on the app's `SpotlightTour`. |
-| The ring on each row | How far the project is through its stage (`stageProgress` in the model; `GcProgressRing`). Hover it, tap it on a phone, or tab to it: a card lists what the ring counts by type, what is left in each spelled out, what is done in one line, and an *Also* list it does not count. Bidding: enough quotes (2 per hired trade), a number to carry, quotes on the newest plans, our bid sent. Buyout: the Get started checklist by kind of step (the owner side, awarded, master agreement, insurance, W-9, statement of work). Building: work reported per trade, weighted by its statement of work; draws and waivers waiting under *Also*. |
+| The ring on each row | How far the project is through its stage (`stageProgress` in the model; `GcProgressRing`). Hover it, tap it on a phone, or tab to it: a card lists what the ring counts by type, what is left in each spelled out, what is done in one line, and an *Also* list it does not count. Bidding: enough quotes (2 per hired trade), a number to carry, quotes on the newest plans, our bid sent. Buyout: the Get started checklist by kind of step (the owner side, awarded, master agreement, insurance, W-9, statement of work). Building: work reported per trade, weighted by its statement of work, and our own crew's percent weighted by our own number; draws and waivers waiting under *Also*. |
 | **Project Board** | Projects in three sections: Bidding to the owner, Buying out, Building. Each row leads with the days left before our bid (red inside a week, amber inside two), then the name, the owner and architect (each a link), chips, the Bid Board's folder and plans icons, and the price. |
 | **+ New project** (beside *Bidding to the owner*) | One window in four steps, each feeding the next. **The project**: name, address, town, owner and architect from the one customer list ("Someone new" makes a record), bid due, size. **The plans**: the set's name (Bid set, Pricing set, Permit set or typed), the day it came in, the sheet index pasted from the cover sheet and read as you paste (A-101, A101, A1.01, FP-101; capitals become sentence case; a line not read is listed). **The trades**: guessed from the sheets in build order, each with the sheets behind it; untick, add, mark **Ours**, a budget. **Each scope**: each trade's usual lines to change, each with the sheets it reads from (guessed from its words, × takes one off, **+ sheet** adds one; none means the trade's sheets as a whole); Enter starts the next line. **Create the project** puts it under Bidding to the owner and opens it on Trades. **Paste a made-up sheet index** tries it. |
 | Plans icon on a row | A plans window over the board: newest set first, the sheet list by discipline, what the last addendum changed, arrow keys flip sheets, and under each sheet the scope lines that read from it. Drawings are stand-ins. |
@@ -80,7 +80,7 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 | **Bid tabs** | After our bid is in, each trade's quotes go back to the companies that quoted, low to high, their own row marked, names hidden unless ticked. |
 | **Contracts** | Per trade: paperwork chips, award, the statement of work drafted from the bid, send, sign. |
 | **Get started** | The checklist before work starts: owner contract, permit, start date, and five steps per trade. Start stays shut until nothing is missing. |
-| **Draws** | Percent reported per line, a draw asked from the portal with its pay application (the 702 and 703) and a conditional waiver, approve, pay, unconditional waiver. **Pay application** on each draw opens the signed form read-only. **Send back** returns a waiting draw with a note and the percent we see on each line we doubt; the trade gets **Fix and resend** in its portal, our numbers filled in, and the fixed one comes back marked "revised". |
+| **Draws** | Percent reported per line, a draw asked from the portal with its pay application (the 702 and 703) and a conditional waiver, approve, pay, unconditional waiver. **Pay application** on each draw opens the signed form read-only. **Send back** returns a waiting draw with a note and the percent we see on each line we doubt; the trade gets **Fix and resend** in its portal, our numbers filled in, and the fixed one comes back marked "revised". A trade our own crew does shows as **Our own crew** with its percent and its Pipeline job: no draws there. |
 | **Bill the owner** | Our pay application to the owner, once a month: one line per trade with the work its company reported, then general conditions, contingency and fee, which follow the trades. Done so far, less what the owner holds, less what we asked for before, is this bill. **Send to** the owner keeps it as it went, and next month's starts from it. **So far with** the owner lists what went, with **Mark paid**. A trade our own crew does (plumbing) has a percent-done picker on its line. |
 | **Follow up** (board tab) | Everyone we are waiting on across every project, the ones to call first. Log a contact; record the day they promised a quote; a passed day returns them to the top. |
 | **Trade partners** (board tab) | By trade: the bench, who answers when asked, every project short of quotes, coverage (where they drive from, how far they go), one press to ask the companies not yet asked. **Actions for assistants** on top: each standard as the ideal, where we are, and what closes the gap. |
@@ -141,6 +141,10 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   final-payment waivers, once every line is billed, we accept the work and the warranty letter
   is in (`tradeCloseout` in `gcBuilding.ts`, `GcCloseout.tsx`). The retainage the owner holds on
   us stays Owner Billing's.
+- **Our own crew counts in Building** (approved as built, 2026-10-02, Building lane): a trade we
+  do ourselves weighs in the Building ring by our own number, from the one percent Bill the owner
+  bills from (`ownCrewWork`). Draws shows it with the same picker; it has no draws, retainage or
+  waivers, since we pay our own crew through payroll.
 - **We bill the owner once a month** (Owner Billing lane, 2026-10-02): one pay application a
   month covering every trade's work since the last one, not a bill each time a trade asks for a
   draw. The day of the month is a default (`OWNER_BILL_DAY` in `gcOwnerBilling.ts`).
@@ -231,6 +235,8 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
 19. Besides sending a draw back, should the office be able to approve less than was asked, the
     way an architect certifies a smaller amount on a 702? Should a draw sent back twice flag
     anything on the board?
+20. Our own crew reports one percent for the whole trade. Should it report by stage instead
+    (underground, rough in, top out, trim), the way the Pipeline runs a plumbing job?
 
 ## Workflow steps not built yet
 
@@ -301,6 +307,7 @@ imitates it.
 | `GcOwnerBillingTab.tsx` · `src/lib/gcMode/gcOwnerBilling.ts` | Bill the owner: the owner's lines, the draft pay application, the ones sent and paid · the lines and the 702 math, `ownerAccount` (tested in `gcOwnerBilling.test.ts`) |
 | `GcCloseout.tsx` | The Closeout tab |
 | `GcBuildingSendBack.tsx` | The Send back form under a waiting draw, and the list of what went back |
+| `GcBuildingCrew.tsx` | The Our own crew card on Draws |
 | `GcStart.tsx` | Get started |
 | `GcBidTabs.tsx` | Bid tabs |
 | `GcCustomerWindow.tsx` | The one company window |

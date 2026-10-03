@@ -9,7 +9,7 @@ import { plansReach } from './gcPlans'
 import { startChecklist } from './gcStart'
 import { BIDS_WANTED, bidIsStale, bidsIn, carriedAmount, isGuess } from './gcBids'
 import { followUps } from './gcFollowUp'
-import { sentBackOpen, tradeCloseout } from './gcBuilding'
+import { ownCrewWork, sentBackOpen, tradeCloseout } from './gcBuilding'
 
 /** The stage colors, saturated on purpose: the ring is a status mark, not a neutral surface. */
 export const RING_COLORS: Record<GcStage, string> = {
@@ -201,20 +201,25 @@ function buyoutProgress(state: GcState, project: GcProject): StageProgress {
 
 function buildingProgress(state: GcState, project: GcProject): StageProgress {
   const withSow = project.packages.filter((p) => p.sow)
-  const lines = withSow.flatMap((p) => p.sow?.sov ?? [])
-  const worth = lines.reduce((s, l) => s + l.amount, 0)
-  const doneWorth = lines.reduce((s, l) => s + (l.amount * l.pctReported) / 100, 0)
+  // Each trade on the job, in its order: one hired out weighs what its statement of work is worth,
+  // one our own crew does weighs our own number (`ownCrewWork`, the percent Bill the owner bills from).
+  const counted = project.packages.flatMap((pkg) => {
+    const crew = ownCrewWork(pkg)
+    if (crew) return [{ pkg, worth: crew.worth, done: crew.done, detail: `Our own crew, ${crew.pct}% done` }]
+    const sov = pkg.sow?.sov
+    if (!sov) return []
+    const total = sov.reduce((s, l) => s + l.amount, 0)
+    const done = sov.reduce((s, l) => s + (l.amount * l.pctReported) / 100, 0)
+    return [{ pkg, worth: total, done, detail: `${total === 0 ? 0 : Math.round((done / total) * 100)}% reported` }]
+  })
+  const worth = counted.reduce((s, c) => s + c.worth, 0)
+  const doneWorth = counted.reduce((s, c) => s + c.done, 0)
   const share = worth === 0 ? 0 : doneWorth / worth
   const work: ProgressGroup = {
     key: 'work',
     label: 'Work done',
-    why: 'What each trade has reported, out of its statement of work.',
-    items: withSow.map((pkg) => {
-      const sov = pkg.sow?.sov ?? []
-      const total = sov.reduce((s, l) => s + l.amount, 0)
-      const pct = total === 0 ? 0 : Math.round(sov.reduce((s, l) => s + l.amount * l.pctReported, 0) / total)
-      return { label: pkg.trade, detail: `${pct}% reported`, done: pct >= 100 }
-    }),
+    why: 'What each trade has reported, out of its statement of work. Our own crew counts too.',
+    items: counted.map((c) => ({ label: c.pkg.trade, detail: c.detail, done: c.worth > 0 && c.done >= c.worth })),
   }
   const also: string[] = []
   for (const pkg of withSow) {
@@ -248,7 +253,7 @@ function buildingProgress(state: GcState, project: GcProject): StageProgress {
   return {
     share,
     center: `${pct}%`,
-    headline: `${pct}% of the work is done, by what the trades have reported.`,
+    headline: `${pct}% of the work is done, by what the trades${counted.some((c) => c.pkg.selfPerform) ? ' and our own crew' : ''} have reported.`,
     groups: work.items.length > 0 ? [work] : [],
     also,
   }

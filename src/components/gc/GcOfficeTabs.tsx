@@ -34,6 +34,7 @@ import {
 import { AskThread } from './GcAskThread'
 import { GcBuildingPayAppWindow } from './GcBuildingPayApp'
 import { GcBuildingSendBackForm, GcBuildingSentBackList } from './GcBuildingSendBack'
+import { GcBuildingCrewCard } from './GcBuildingCrew'
 import { GcNewPlansWindow } from './GcNewPlans'
 import { Btn, Card, Chip, Stat, Why, input, num, td, th, type Tone } from './gcUi'
 
@@ -868,7 +869,7 @@ export function GcDrawsTab({ state, project, dispatch }: GcPaneProps) {
         Their conditional lien waiver comes with the ask. We approve, hold retainage and pay, or send it back to be
         fixed. The unconditional waiver follows the payment.
       </Why>
-      {signed.length === 0 && <Card>No signed statement of work on this project yet.</Card>}
+      {signed.length === 0 && <Card>No trade we hire has a signed statement of work on this project yet.</Card>}
       {signed.map((pkg) => {
         const sow = pkg.sow
         const inv = pkg.invites.find((i) => i.id === pkg.awardedInviteId)
@@ -979,6 +980,11 @@ export function GcDrawsTab({ state, project, dispatch }: GcPaneProps) {
           </Card>
         )
       })}
+      {project.packages
+        .filter((pkg) => pkg.selfPerform)
+        .map((pkg) => (
+          <GcBuildingCrewCard key={pkg.id} project={project} pkg={pkg} dispatch={dispatch} />
+        ))}
       {lookPkg && lookDraw && lookPartner && (
         <GcBuildingPayAppWindow project={project} pkg={lookPkg} partner={lookPartner} draw={lookDraw} viewer="office" onClose={() => setLooking(null)} />
       )}
