@@ -117,7 +117,13 @@ function Item({
 
       {verified && mark && (
         <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <Chip tone={counted ? 'green' : 'red'}>{t(counted ? 'checkedDone' : 'checkedNot', { gc: GC })}</Chip>
+          <Chip tone={counted ? 'green' : 'red'}>
+            {counted
+              ? t('checkedDone', { gc: GC })
+              : (mark.verifiedReason ?? mark.reason)
+                ? t('checkedNotWhy', { gc: GC, reason: t(REASON_WORDS[mark.verifiedReason ?? mark.reason ?? 'other']) })
+                : t('checkedNot', { gc: GC })}
+          </Chip>
           {mark.verifiedDone !== undefined && mark.verifiedDone !== mark.done && (
             <span style={{ fontSize: '0.8rem', opacity: 0.75 }}>{t('checkedDiffers', { mark: t(mark.done ? 'markWordDone' : 'markWordNot') })}</span>
           )}

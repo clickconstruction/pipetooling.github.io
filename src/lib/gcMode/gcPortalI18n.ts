@@ -295,6 +295,7 @@ const S = {
   youMarkedNot: { en: 'you marked it not done: {reason} · {gc} will check', es: 'lo marcó como no hecho: {reason} · {gc} lo revisará' },
   checkedDone: { en: '{gc} checked: done', es: '{gc} revisó: hecho' },
   checkedNot: { en: '{gc} checked: not done', es: '{gc} revisó: no hecho' },
+  checkedNotWhy: { en: '{gc} checked: not done, {reason}', es: '{gc} revisó: no hecho, {reason}' },
   checkedDiffers: { en: 'You had marked it {mark}.', es: 'Usted lo había marcado como {mark}.' },
   markWordDone: { en: 'done', es: 'hecho' },
   markWordNot: { en: 'not done', es: 'no hecho' },

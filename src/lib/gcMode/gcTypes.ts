@@ -464,6 +464,8 @@ export type GcAction =
   | { type: 'setScheduleActivity'; projectId: string; lineId: string; start: string; finish: string; after: string[] }
   | { type: 'setScheduleMilestone'; projectId: string; milestone: ScheduleMilestone }
   | { type: 'removeScheduleMilestone'; projectId: string; milestoneId: string }
+  | { type: 'verifyLookAhead'; projectId: string; weekOf: string; lineId: string; done: boolean; reason?: LookAheadReason }
+  | { type: 'crewMarkLookAhead'; projectId: string; weekOf: string; lineId: string; done: boolean; reason?: LookAheadReason }
   /** The trade marks one look-ahead activity done or not for a week, in its portal. A verified mark stays as verified. */
   | { type: 'tradeMarkLookAhead'; projectId: string; packageId: string; lineId: string; weekOf: string; done: boolean; reason?: LookAheadReason }
 
@@ -587,6 +589,8 @@ export interface LookAheadMark {
   verifiedOn: string | null
   /** The superintendent's mark, when it differs from the trade's. */
   verifiedDone?: boolean
+  /** Why not, in the superintendent's words, when they corrected a "done" to not done. */
+  verifiedReason?: LookAheadReason
 }
 
 export interface ProjectSchedule {
