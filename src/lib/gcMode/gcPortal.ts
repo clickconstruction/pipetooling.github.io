@@ -910,24 +910,6 @@ export function portalContacts(project: GcProject): { team: ProjectContact[]; bi
 // every company on the trade without who asked; questions close three days before the bid is due
 // ---------------------------------------------------------------------------------------------
 
-/**
- * The day questions close while we bid a job: three days before our bid is due (owner, 2026-10-03).
- * Null: they stay open (no due day, or the job is ours). A company can ask before that day, not on it.
- * The same rule as the New Project lane's questionsCloseOn in gcPlans.ts; once that lands, the
- * portal reads it and these two go (named apart so the barrel has one of each).
- */
-const PORTAL_QUESTIONS_CLOSE_DAYS = 3
-
-export function portalQuestionsCloseOn(project: GcProject): string | null {
-  if (project.stage !== 'pursuing' || !project.bidDue) return null
-  return addDays(project.bidDue, -PORTAL_QUESTIONS_CLOSE_DAYS)
-}
-
-export function portalQuestionsOpen(project: GcProject, today: string): boolean {
-  const close = portalQuestionsCloseOn(project)
-  return close === null || today < close
-}
-
 export interface PortalQuestion {
   q: PlanQuestion
   /** The company asked it. Another company's question never shows who asked. */

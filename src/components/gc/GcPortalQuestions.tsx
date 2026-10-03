@@ -5,8 +5,8 @@ import {
   planLabel,
   portalQuestions,
   pWeekday,
-  portalQuestionsCloseOn,
-  portalQuestionsOpen,
+  questionsCloseOn,
+  questionsOpen,
   type GcAction,
   type GcProject,
   type Partner,
@@ -48,8 +48,9 @@ export function GcPortalQuestions({
   const [text, setText] = useState('')
   const [sheets, setSheets] = useState('')
   const list = portalQuestions(project, pkg.id, partner.id)
-  const open = portalQuestionsOpen(project, today)
-  const closeOn = portalQuestionsCloseOn(project)
+  // The New Project lane's rule, so this box and its Questions window close on one day.
+  const open = questionsOpen(project, today)
+  const closeOn = questionsCloseOn(project)
 
   return (
     <PortalBlock title={t('questionsTitle', { trade: pkg.trade })}>

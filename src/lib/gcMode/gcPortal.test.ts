@@ -19,8 +19,8 @@ import {
   portalContacts,
   portalPay,
   portalQuestions,
-  portalQuestionsCloseOn,
-  portalQuestionsOpen,
+  questionsCloseOn,
+  questionsOpen,
   portalPlanNews,
   portalPromiseLine,
   portalTodos,
@@ -581,10 +581,10 @@ describe('questions about the plans', () => {
   }
 
   it('closes three days before the bid is due, only while we bid', () => {
-    expect(portalQuestionsCloseOn(boerne(state))).toBe('2026-10-05')
-    expect(portalQuestionsOpen(boerne(state), '2026-10-04')).toBe(true)
-    expect(portalQuestionsOpen(boerne(state), '2026-10-05')).toBe(false)
-    expect(portalQuestionsCloseOn(state.projects.find((p) => p.id === 'helotes') ?? boerne(state))).toBeNull()
+    expect(questionsCloseOn(boerne(state))).toBe('2026-10-05')
+    expect(questionsOpen(boerne(state), '2026-10-04')).toBe(true)
+    expect(questionsOpen(boerne(state), '2026-10-05')).toBe(false)
+    expect(questionsCloseOn(state.projects.find((p) => p.id === 'helotes') ?? boerne(state))).toBeNull()
   })
 
   it('shows a company its own question, and another company only the answered ones sent to it, without who asked', () => {
