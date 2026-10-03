@@ -75,7 +75,7 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 | **Trades** tab | One row per trade: who we asked with each bid in thousands, our budget, the lowest all in, what we carry. **Compare bids** opens the comparison. **On a map** opens the map. |
 | Compare bids | Sentences first ("Voltage Brothers bid $166,000 and left out fire alarm. Covering that adds $14,000, so they come to $180,000."), then the table behind them: is each piece of work in their price, a cost to cover what is not, the all-in total, who is lowest. |
 | On a map | The project in the middle, every company in the trade as a numbered pin (closest first), the same companies in a list beside it to work down. "Will not do it" / "Cannot do it" moves you to the next closest. |
-| **Plans** tab | **A new set of plans came in**: name the set (Addendum, Bulletin, Revised set, Permit set, Construction set, or typed; addenda and bulletins count apart), paste what changed, sheets are read out of the notes (A-401, A401, A1.01) and matched to the index, a sheet new to the set gets its title, trades guessed from the sheet letters and titles, a trade the job does not have yet can come with the set (its usual scope, a budget; nobody asked yet), the scope lines it touches per trade, the list of who is emailed, the email preview (it names the lines it touches). Then a table: told, opened, their number (needs confirming or good). |
+| **Plans** tab | **A new set of plans came in**: name the set (Addendum, Bulletin, Revised set, Permit set, Construction set, or typed; addenda and bulletins count apart), paste what changed, sheets are read out of the notes (A-401, A401, A1.01) and matched to the index, a sheet new to the set gets its title, trades guessed from the sheet letters and titles, a trade the job does not have yet can come with the set (its usual scope, a budget; nobody asked yet), the scope lines it touches per trade and **+ Add a line this set brings** for work the set adds to a trade, the list of who is emailed, the email preview (it names the lines it touches). Then a table: told, opened, their number (needs confirming or good). |
 | **Our number** | Carried trades + general conditions + contingency + fee = the price to the owner. **We sent our bid**, **We won this**. |
 | **Bid tabs** | After our bid is in, each trade's quotes go back to the companies that quoted, low to high, their own row marked, names hidden unless ticked. |
 | **Contracts** | Per trade: paperwork chips, award, the statement of work drafted from the bid, send, sign. |
@@ -135,6 +135,11 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   as touched whenever any of the trade's sheets changes (the owner's call, 2026-10-02:
   `lineReads`, `linesOnSheets`). Projects written before lines had sheets show the guess
   (`lineSheets`).
+- **A new set can add work to a trade already out to bid** (approved as built, 2026-10-02): the
+  line goes on the end of the trade's scope with the changed sheets it reads from, and the set
+  remembers it (`issuePlanSet.newLines`, `PlanSet.addedLines`). A quote already in never answered
+  it, so Compare bids reads it as not clear until a cost is set to cover it or the company
+  answers. The email says "It adds detention pond to your scope."
 - **Each draw comes with a 702 and 703** (2026-10-02, Building lane): the trade fills the pay
   application in its portal and watches the form fill, typing only what the app cannot know. Most
   of it comes from the job and from the work they reported (`gcBuilding.ts`, `GcBuildingPayApp.tsx`).
@@ -272,8 +277,8 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
 - New Project past its first form: a scope line tied to its spec section, exclusions, and a
   budget from the size (open question 11). A line's sheets show only in New Project, a new set
   and the plans window; the portal's bid form, Trades and Compare bids do not show them yet. A
-  later set cannot yet take a sheet out of the set, or add a scope line to a trade already out
-  to bid.
+  later set cannot yet take a sheet out of the set. The Trades table's "lowest, all in" counts
+  a line with no cost to cover it as $0 (Compare bids says the number is not known).
 - A trade asks a question about the plans, the architect answers, every bidder on the trade
   gets the answer. Three made-up questions show in the architect's window, read-only.
 - Change orders, both to the owner and to a trade (a statement of work amendment).
@@ -447,6 +452,9 @@ follow the plain-words rules; the prototype's own words were written to them as 
   change a scope line, **Create the project**. It opens on Trades and sits under Bidding to the
   owner with its days left. On Electrical, Lighting reads from E-101; add E-201 to Devices, then
   the plans window under E-201 lists Devices.
+- **Plans → A new set of plans came in** on Boerne: type "C-101: a detention pond is added",
+  press **+ Add a line this set brings** on Sitework, type Detention pond, issue. Compare bids on
+  Sitework now says each quote "is not clear about detention pond".
 
 ## Where it stands
 

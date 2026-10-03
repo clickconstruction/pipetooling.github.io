@@ -235,6 +235,22 @@ const STEPS: Step[] = [
       quoteFile: 'lonestar-pad-b.pdf',
     },
   },
+  // A new set that adds work to a trade already on the job.
+  {
+    label: 'Boerne: Bulletin 1 adds a detention pond to Sitework',
+    action: {
+      type: 'issuePlanSet',
+      projectId: 'boerne',
+      label: 'Bulletin 1',
+      note: 'A detention pond at the north end. C-101 changed.',
+      sheets: ['C-101'],
+      addedSheets: [],
+      touches: ['site'],
+      recipients: ['lonestar'],
+      newTrades: [],
+      newLines: [{ packageId: 'site', label: 'Detention pond', sheets: ['C-101'] }],
+    },
+  },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']

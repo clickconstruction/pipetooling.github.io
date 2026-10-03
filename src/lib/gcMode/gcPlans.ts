@@ -141,6 +141,7 @@ function andList(words: string[]): string {
 /**
  * The words a company reads when a new set goes out. Two versions: their trade changed, or it did
  * not. `lines`: the scope lines of their trade that read from a changed sheet, named in the email.
+ * `adds`: scope lines the set adds to their trade.
  */
 export function planEmail(
   project: GcProject,
@@ -149,13 +150,17 @@ export function planEmail(
   sheets: string[],
   r: PlanRecipient | null,
   lines: string[] = [],
+  adds: string[] = [],
 ): { subject: string; body: string[] } {
   const body = [`${label} for ${project.name} is out. Your portal now shows it.`, `What changed: ${note || 'see the sheets below.'}`]
   if (sheets.length > 0) body.push(`Sheets: ${sheets.join(', ')}.`)
   if (!r) return { subject: `${project.name}: ${label} is out`, body }
   const trade = r.pkg.trade.toLowerCase()
   const named = lines.map((l) => l.toLowerCase())
-  const touches = named.length === 0 ? '' : named.length === 1 ? ` The line it touches is ${named[0]}.` : ` The lines it touches are ${andList(named)}.`
+  const added = adds.map((l) => l.toLowerCase())
+  const touches =
+    (added.length === 0 ? '' : ` It adds ${andList(added)} to your scope.`) +
+    (named.length === 0 ? '' : named.length === 1 ? ` The line it touches is ${named[0]}.` : ` The lines it touches are ${andList(named)}.`)
   if (r.touched && project.stage === 'pursuing') {
     body.push(
       r.hasBid

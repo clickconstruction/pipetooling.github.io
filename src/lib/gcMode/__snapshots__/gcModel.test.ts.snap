@@ -6371,6 +6371,25 @@ exports[`GC mode golden walk > step 81: Pad B: Lonestar bids, good for 30 days, 
 }
 `;
 
+exports[`GC mode golden walk > step 82: Boerne: Bulletin 1 adds a detention pond to Sitework 1`] = `
+{
+  "changed": {
+    "customers.marshvale.addenda": 3,
+    "customers.marshvale.sets": 7,
+    "lastLog.id": 78,
+    "lastLog.text": "Issued Bulletin 1 on Boerne Retail Shell and emailed 1 company. 1 was told it changes their trade. It adds 1 scope line.",
+    "lastLog.who": "office",
+    "projects.boerne.trades.site.compareBids.complete": false,
+    "projects.boerne.trades.site.compareBids.conclusion": "Set a cost for the work that is missing to see who is really lowest.",
+    "projects.boerne.trades.site.compareBids.lines[0].complete": false,
+    "projects.boerne.trades.site.compareBids.lines[0].text": "Lonestar Earthworks bid $178,400 and left out striping and signs and is not clear about detention pond. No cost is set for detention pond yet, so their real number is not known. They priced an older set of plans, so ask them to confirm.",
+    "projects.boerne.trades.site.compareBids.lines[1].complete": false,
+    "projects.boerne.trades.site.compareBids.lines[1].text": "Tri-County Site bid $191,000 and is not clear about detention pond. No cost is set for detention pond yet, so their real number is not known. They priced an older set of plans, so ask them to confirm.",
+  },
+  "removed": [],
+}
+`;
+
 exports[`GC mode golden walk > the whole state at the end 1`] = `
 {
   "customers": [
@@ -6527,6 +6546,11 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
+      "id": 78,
+      "text": "Issued Bulletin 1 on Boerne Retail Shell and emailed 1 company. 1 was told it changes their trade. It adds 1 scope line.",
+      "who": "office",
+    },
+    {
       "id": 77,
       "text": "Lonestar Earthworks bid $92,500 on Sitework.",
       "who": "trade",
@@ -6670,11 +6694,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "id": 49,
       "text": "Issued Addendum 1 on Helotes Dental Office and emailed 4 companies. 1 were told it changes their trade.",
       "who": "office",
-    },
-    {
-      "id": 48,
-      "text": "Hill Country Interiors signed the unconditional waiver for draw 2.",
-      "who": "trade",
     },
   ],
   "partners": [
@@ -7223,6 +7242,13 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
             {
               "id": "site-4",
               "label": "Striping and signs",
+            },
+            {
+              "id": "site-r3-1",
+              "label": "Detention pond",
+              "sheets": [
+                "C-101",
+              ],
             },
           ],
           "selfPerform": null,
@@ -7893,6 +7919,31 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
           "touches": [
             "elec",
             "steel",
+            "site",
+          ],
+        },
+        {
+          "addedLines": [
+            {
+              "packageId": "site",
+              "scopeId": "site-r3-1",
+            },
+          ],
+          "changedSheets": [
+            "C-101",
+          ],
+          "issuedOn": "2026-10-02",
+          "label": "Bulletin 1",
+          "note": "A detention pond at the north end. C-101 changed.",
+          "rev": 3,
+          "sentTo": [
+            {
+              "on": "2026-10-02",
+              "partnerId": "lonestar",
+              "touched": true,
+            },
+          ],
+          "touches": [
             "site",
           ],
         },
