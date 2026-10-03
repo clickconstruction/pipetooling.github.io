@@ -1287,4 +1287,46 @@ describe('BidsSubmittalsTab', () => {
       state.takeoff = false
     }
   })
+
+  it('2026-10-02 · after Rev 2 from the rows sent back, the log keeps the row approved on Rev 1: its order stays in sight, and it says which revision it stands on', async () => {
+    state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'shared', title: 'Plumbing fixtures & equipment', note: null, package_path: 'b398/rev-1/package-rev1.pdf', source_files: [], shared_at: '2026-09-16T00:00:00Z', created_at: '2026-09-15T00:00:00Z' }]
+    state.items = [
+      item({ id: 'it-1', tag: 'WC-1', sequence_order: 1, submitted_label: 'TOTO CT708UVG#01 WALL HUNG', submitted_model: 'CT708UVG', status: 'proposed', review_decision: 'approved', reviewed_at: '2026-09-20T15:00:00Z', reviewed_by_name: 'Dana Whitfield' }),
+      item({ id: 'it-2', tag: 'DWH-1', sequence_order: 2, submitted_label: 'AO SMITH BTH-120', status: 'proposed', review_decision: 'rejected', review_note: 'hold the 199', reviewed_at: '2026-09-20T15:00:00Z', reviewed_by_name: 'Dana Whitfield' }),
+    ]
+    // The office ordered the water closet the day it was released.
+    state.procRecords = [{ id: 'pr-1', bid_id: 'b398', tag: 'WC-1', ordered_on: '2026-09-23', po_ref: 'PO 118', sort_order: 1, label: '' }]
+    state.writes = []
+    state.parts = []
+    state.tasks = []
+    state.noSources = true
+    localStorage.setItem('submittals_procure_lens', 'by_tag')
+    try {
+      mount()
+      // Rev 1 is the newest, so the log reads its two rows: one released and ordered, one sent back.
+      await waitFor(() => expect(screen.getAllByTestId('procurement-row')).toHaveLength(2))
+      fireEvent.click(screen.getAllByRole('button', { name: 'Rev 2 from the 1 row sent back' })[0]!)
+      const confirmDialog = await screen.findByRole('alertdialog')
+      expect(confirmDialog.textContent).toMatch(/The rest stand as approved on Rev 1/)
+      fireEvent.click(within(confirmDialog).getByRole('button', { name: 'Build Rev 2' }))
+      await waitFor(() => expect(screen.getAllByTestId('revision-chip')).toHaveLength(2))
+      // Rev 2 holds the one row sent back …
+      expect(state.items.filter((r) => r.submittal_id === 'rev-2').map((r) => r.tag)).toEqual(['DWH-1'])
+      // … and the log still lists the water closet: approved on Rev 1, ordered, with the PO typed on its line.
+      await waitFor(() => {
+        const tags = screen.getAllByTestId('procurement-row').map((r) => r.textContent ?? '')
+        expect(tags.some((t) => t.includes('DWH-1'))).toBe(true)
+        expect(tags.some((t) => t.includes('WC-1'))).toBe(true)
+      })
+      const wc = screen.getAllByTestId('procurement-row').find((r) => r.textContent?.includes('WC-1'))!
+      expect(within(wc).getByTestId('procurement-status').textContent).toMatch(/Ordered/)
+      expect(within(wc).getByTestId('procurement-stands-on').textContent).toBe('approved on Rev 1')
+      const dwh = screen.getAllByTestId('procurement-row').find((r) => r.textContent?.includes('DWH-1'))!
+      expect(within(dwh).queryByTestId('procurement-stands-on')).toBeNull()
+    } finally {
+      state.procRecords = []
+      state.noSources = false
+      localStorage.removeItem('submittals_procure_lens')
+    }
+  })
 })

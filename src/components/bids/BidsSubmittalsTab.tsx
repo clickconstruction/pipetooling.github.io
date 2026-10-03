@@ -70,6 +70,7 @@ import { replyToRoom } from '../../lib/submittals/replyToRoom'
 import type { RoomMessage } from '../../../supabase/functions/_shared/submittalRoomPayload'
 import { APP_CALENDAR_TZ as ROOM_TZ, todayYmdInAppTz } from '../../utils/dateUtils'
 import { boughtWords, gcRows, isOrderOnlyRow, orderOnlyInsert, orderOnlyRows } from '../../lib/submittals/orderOnly'
+import { revisionWasRead, rowsThatStand } from '../../lib/submittals/standingRows'
 import { loadBidOrderFacts, loadPartOrderWords, loadRowOrderFacts, rememberLeftOutLines, writeRowOrderOnly } from '../../lib/submittals/orderOnlyIo'
 import { planRowsAdded, planSummary, type TakeoffPlan } from '../../lib/submittals/takeoffPicks'
 import { SubmittalOrderOnlyRows } from './SubmittalOrderOnlyRows'
@@ -232,6 +233,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   const [sectionToggles, setSectionToggles] = useState<Partial<Record<JourneyStageKey, boolean>>>({})
   // Procure (v2.4083): the newest revision's rows as the log reads them, and the counts the strip's pill lights on.
   const [procItems, setProcItems] = useState<ProcurementItemSource[]>([])
+  /** 2026-10-02 · the rows approved on an earlier shared revision whose tag the newest no longer holds (`rowsThatStand`): on the log, with their parts; nowhere else. */
+  const [standing, setStanding] = useState<{ items: SubmittalItemRow[]; parts: SubmittalPartRow[]; revOf: Map<string, number> }>({ items: [], parts: [], revOf: new Map() })
   const [procCounts, setProcCounts] = useState<{ released: number; ordered: number; delivered: number; late: number } | null>(null)
   const [reportSettings, setReportSettings] = useState<TestReportSettings>(() => cachedTestReportSettings())
   const companyName = reportSettings.companyName
@@ -536,7 +539,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       cancelled = true
     }
   }, [items])
-  const partsOf = useMemo(() => partsByItem(parts), [parts])
+  // The standing rows' parts sit in the same map, so their Edit window and the bought-parts read work unchanged.
+  const partsOf = useMemo(() => partsByItem(standing.parts.length > 0 ? [...parts, ...standing.parts] : parts), [parts, standing.parts])
   // 2026-10-02 · the Edit window on a draft row: which of its parts the log already holds an order for.
   useEffect(() => {
     setEditBought(new Map())
@@ -562,6 +566,32 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   const decisions = useMemo(() => summarizeDecisions(gcItems), [gcItems])
   // Rows one "they approved all of it" entry would cover: no call yet, and a product to approve.
   const approvableRows = useMemo(() => rowsToApproveAll(gcItems), [gcItems])
+  // 2026-10-02 · "Rev N+1 from the rows sent back" leaves the approved rows on Rev N. They are released and
+  // still to order, so the log reads them from there: the newest revision that asked about a tag speaks for
+  // it, and a call entered by hand on a draft since superseded still counts (`rowsThatStand`). Read again
+  // whenever the newest rows do, so a house or a lead time set on a standing row shows.
+  useEffect(() => {
+    let cancelled = false
+    const earlier = selectedRev && newestRev?.id === selectedRev.id ? revisions.filter((r) => r.id !== newestRev.id) : []
+    if (earlier.length === 0) {
+      setStanding((cur) => (cur.items.length === 0 ? cur : { items: [], parts: [], revOf: new Map() }))
+      return
+    }
+    void (async () => {
+      const rows = await Promise.all(earlier.map((r) => loadItems(r.id)))
+      const earlierIds = rows.flat().map((it) => it.id)
+      const earlierParts = earlierIds.length > 0 ? await loadItemParts(db, earlierIds) : []
+      // Approved whole, or part by part: a part the GC approved is released whatever the rest of its row says.
+      const approvedParts = new Set(earlierParts.filter((p) => p.on_submittal && asDecision(p.review_decision) === 'approved').map((p) => p.item_id))
+      const stands = rowsThatStand([{ rev: newestRev!.rev_number, rows: items }, ...earlier.map((r, i) => ({ rev: r.rev_number, rows: rows[i] ?? [], asked: revisionWasRead(r.status) }))], (it) => asDecision(it.review_decision) === 'approved' || approvedParts.has(it.id))
+      if (cancelled) return
+      const standingIds = new Set(stands.map((s) => s.row.id))
+      setStanding({ items: stands.map((s) => s.row), parts: earlierParts.filter((p) => standingIds.has(p.item_id)), revOf: new Map(stands.map((s) => [s.row.id, s.rev])) })
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [items, revisions, selectedRev, newestRev, loadItems])
   useEffect(() => {
     let cancelled = false
     if (!selectedRev || newestRev?.id !== selectedRev.id) {
@@ -569,13 +599,16 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       setProcCounts(null)
       return
     }
-    void procurementItemsFrom(supabase, items, selectedRev.status !== 'draft', parts).then((rows) => {
-      if (!cancelled) setProcItems(rows)
+    void Promise.all([
+      procurementItemsFrom(supabase, items, selectedRev.status !== 'draft', parts),
+      standing.items.length > 0 ? procurementItemsFrom(supabase, standing.items, true, standing.parts) : Promise.resolve([] as ProcurementItemSource[]),
+    ]).then(([newest, stands]) => {
+      if (!cancelled) setProcItems([...newest, ...stands.map((src) => ({ ...src, standsOnRev: src.itemId ? standing.revOf.get(src.itemId) ?? null : null }))])
     })
     return () => {
       cancelled = true
     }
-  }, [items, parts, selectedRev, newestRev])
+  }, [items, parts, selectedRev, newestRev, standing])
   useEffect(() => {
     void fetchTestReportSettings().then(setReportSettings).catch(() => undefined)
   }, [])
@@ -976,7 +1009,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     const ok = await confirm({
       title: onlySentBack ? `Rev ${newestRev.rev_number + 1} from the ${sentBack.length} row${sentBack.length === 1 ? '' : 's'} sent back` : fromPicks ? `Rev ${newestRev.rev_number + 1} from today's picks` : `Rev ${newestRev.rev_number + 1} from Rev ${newestRev.rev_number}`,
       message: onlySentBack
-        ? `Only the rows the reviewer marked Revise or Reject on Rev ${newestRev.rev_number} carry into the new draft — ${total} row${total === 1 ? '' : 's'}. The rest stand as approved on Rev ${newestRev.rev_number}.`
+        ? `Only the rows the reviewer marked Revise or Reject on Rev ${newestRev.rev_number} carry into the new draft — ${total} row${total === 1 ? '' : 's'}. The rest stand as approved on Rev ${newestRev.rev_number} and stay on the procurement log.`
         : `${preview.length > 0 ? `${summarizeChanges(preview)} against Rev ${newestRev.rev_number}. ` : ''}${carried.length > 0 ? `${carried.length} row${carried.length === 1 ? '' : 's'} from the takeoff or typed by hand carry as ${carried.length === 1 ? 'it stands' : 'they stand'}, with ${carried.length === 1 ? 'its' : 'their'} parts. ` : ''}Sheets, reasons and lead times carry where the product is unchanged.${asRevisionStatus(newestRev.status) === 'draft' ? ` Rev ${newestRev.rev_number} was never shared and will read superseded.` : ''}`,
       confirmLabel: `Build Rev ${newestRev.rev_number + 1}`,
     })
@@ -2778,8 +2811,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                     if (selectedRev) void loadItems(selectedRev.id).then(setItems)
                   }}
                   onOpenItem={({ itemId, partKey, house }) => {
-                    // The row's Edit window over the log, on the part tapped: no scrolling up to the rows.
-                    const it = items.find((x) => x.id === itemId)
+                    // The row's Edit window over the log, on the part tapped: no scrolling up to the rows. A standing row opens too.
+                    const it = items.find((x) => x.id === itemId) ?? standing.items.find((x) => x.id === itemId)
                     if (!it) return
                     const part = partKey ? (partsOf.get(itemId) ?? []).find((p) => p.procure_key === partKey) : undefined
                     setEditFocus({ itemId, partId: part?.id ?? null, house: house === true })
@@ -2826,7 +2859,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
           onClose={() => setHouseFile(null)}
         />
       ) : null}
-      {editing ? <SubmittalItemEditDialog item={editing} sourceFiles={sourceFiles} houses={houses} parts={partsOf.get(editing.id) ?? []} canEnterDecision={editing.id !== NEW_ROW_ID} canEditProduct={isDraft} orderOnly={isOrderOnlyRow(editing)} boughtParts={editBought} focusPartId={editFocus?.itemId === editing.id ? editFocus.partId : null} focusHouse={editFocus?.itemId === editing.id && editFocus.house && editFocus.partId == null} onSave={(p) => void saveItem(p)} onClose={() => setEditing(null)} /> : null}
+      {editing ? <SubmittalItemEditDialog item={editing} sourceFiles={sourceFiles} houses={houses} parts={partsOf.get(editing.id) ?? []} canEnterDecision={editing.id !== NEW_ROW_ID} canEditProduct={isDraft && !standing.revOf.has(editing.id)} orderOnly={isOrderOnlyRow(editing)} boughtParts={editBought} focusPartId={editFocus?.itemId === editing.id ? editFocus.partId : null} focusHouse={editFocus?.itemId === editing.id && editFocus.house && editFocus.partId == null} onSave={(p) => void saveItem(p)} onClose={() => setEditing(null)} /> : null}
       {answering && selectedRev ? (
         <SubmittalAnswerDialog key={answering.id} item={answering} parts={partsOf.get(answering.id) ?? []} people={people} sources={reviewerSources} revLabel={`Rev ${selectedRev.rev_number}`} focusPartId={answerFocus?.itemId === answering.id ? answerFocus.partId : null} busy={busy} onSave={(a) => void saveAnswer(a)} onClose={() => setAnswering(null)} />
       ) : null}
