@@ -170,7 +170,26 @@ export function payAppDraftPcts(sow: Sow): Record<string, number> {
 
 /** A past draw's application, rebuilt from the draws: what the office opens from the Draws tab. */
 export function payApplicationForDraw(sow: Sow, draw: Draw): PayApplication {
-  return payApplication(sow, draw.number, Object.fromEntries(draw.lines.map((l) => [l.sovId, l.toPct])), draw.final === true)
+  // The form is what the trade sent: a draw approved for less keeps what they asked in `asked`.
+  const lines = draw.asked?.lines ?? draw.lines
+  return payApplication(sow, draw.number, Object.fromEntries(lines.map((l) => [l.sovId, l.toPct])), draw.final === true)
+}
+
+/**
+ * A draw approved for less (owner, 2026-10-02): the percent we approve on each line, never above
+ * what they asked nor below what was billed before. It pays now; the rest stays theirs to ask for.
+ */
+export function drawApprovedLess(sow: Sow, draw: Draw, weApprove: Record<string, number>): Pick<Draw, 'lines' | 'gross' | 'retainage' | 'net'> {
+  const toPct = Object.fromEntries(draw.lines.map((l) => [l.sovId, Math.min(l.toPct, weApprove[l.sovId] ?? l.toPct)]))
+  const app = payApplication(sow, draw.number, toPct)
+  const gross = app.totals.thisPeriod
+  const retainage = (gross * sow.retainagePct) / 100
+  return {
+    lines: app.lines.filter((l) => l.thisPeriod > 0).map((l) => ({ sovId: l.sovId, toPct: l.pct })),
+    gross,
+    retainage,
+    net: gross - retainage,
+  }
 }
 
 /** The final pay application a trade can send now: the next number, every line at 100%. */
@@ -233,11 +252,44 @@ export function newPayAppDraft(sow: Sow, partner: Partner): PayAppInput {
  * reads it from the trade's Pipeline job. No draws, no retainage, no waivers: we pay our own crew
  * through payroll. Null for a trade we hire out.
  */
-export function ownCrewWork(pkg: TradePackage): { pct: number; worth: number; done: number; ref: string } | null {
+export function ownCrewWork(pkg: TradePackage): OwnCrewWork | null {
   const self = pkg.selfPerform
   if (!self) return null
-  const pct = self.pctDone ?? 0
-  return { pct, worth: self.value, done: (self.value * pct) / 100, ref: self.ref }
+  const byLine = self.pctByLine
+  const stages = crewStages(pkg).map((st) => ({ ...st, pct: byLine?.[st.lineId] ?? 0 }))
+  // Reported by stage: the whole-trade percent follows from the stages. Otherwise the one number.
+  const exact = byLine ? crewPctFromStages(pkg, byLine) : (self.pctDone ?? 0)
+  return { pct: Math.round(exact), worth: self.value, done: (self.value * exact) / 100, ref: self.ref, stages, byStage: Boolean(byLine) }
+}
+
+export interface OwnCrewWork {
+  /** The whole trade, as a whole percent. */
+  pct: number
+  worth: number
+  done: number
+  /** The Pipeline job our crew runs it on. */
+  ref: string
+  /** Each stage, its share of the trade and its percent done. */
+  stages: { lineId: string; label: string; weight: number; pct: number }[]
+  /** True once our crew reports by stage. */
+  byStage: boolean
+}
+
+/**
+ * How much of a trade each stage is worth, by its name (my default, owner unconfirmed): rough in
+ * carries the most. A stage with another name gets an even share. The shares are scaled to 100.
+ */
+export const CREW_STAGE_WEIGHTS: Record<string, number> = { Underground: 20, 'Rough in': 35, 'Top out': 25, Trim: 20 }
+
+export function crewStages(pkg: TradePackage): { lineId: string; label: string; weight: number }[] {
+  const raw = pkg.scope.map((item) => ({ lineId: item.id, label: item.label, weight: CREW_STAGE_WEIGHTS[item.label] ?? 25 }))
+  const total = raw.reduce((s, r) => s + r.weight, 0)
+  return raw.map((r) => ({ ...r, weight: total === 0 ? 0 : (r.weight / total) * 100 }))
+}
+
+/** The whole-trade percent our crew's stages come to, weighed by each stage's share. */
+export function crewPctFromStages(pkg: TradePackage, byLine: Record<string, number>): number {
+  return crewStages(pkg).reduce((s, st) => s + (st.weight * (byLine[st.lineId] ?? 0)) / 100, 0)
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -299,7 +351,21 @@ export function workAllBilled(sow: Sow): boolean {
   return sow.sov.length > 0 && sow.sov.every((l) => l.pctBilled >= 100)
 }
 
-export type CloseoutKey = 'billed' | 'accepted' | 'warranty' | 'finalApp' | 'released' | 'finalWaiver'
+export type CloseoutKey = 'billed' | 'accepted' | 'ownerReleased' | 'finalApp' | 'released' | 'finalWaiver'
+
+/** A trade's retainage comes this many days after the owner releases ours (owner, 2026-10-02). */
+export const TRADE_RETAINAGE_WAIT_DAYS = 10
+
+/** The day after `days` days, as YYYY-MM-DD (UTC, so no time zone moves it). */
+export function addDays(iso: string, days: number): string {
+  const [y, m, d] = iso.split('-').map(Number)
+  return new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, (d ?? 1) + days)).toISOString().slice(0, 10)
+}
+
+/** The first day a trade may ask for its retainage: 10 days after the owner releases ours. Null: not released. */
+export function tradeRetainageOpensOn(project: GcProject): string | null {
+  return project.ownerRetainageReleasedOn ? addDays(project.ownerRetainageReleasedOn, TRADE_RETAINAGE_WAIT_DAYS) : null
+}
 
 export interface CloseoutStep {
   key: CloseoutKey
@@ -320,14 +386,17 @@ export interface TradeCloseout {
   finalDraw: Draw | null
   /** May the trade send its final pay application now? */
   canAskFinal: boolean
+  /** The first day they may ask, once the owner has released ours. Null: not yet released. */
+  opensOn: string | null
 }
 
 /**
  * A trade's closeout, in order: every line billed, we accept the work (the punch list is done),
- * their warranty letter, their final pay application with a conditional waiver on final payment,
- * we approve and pay the retainage, then their unconditional waiver on final payment.
+ * the owner releases our retainage and 10 days pass (owner, 2026-10-02), their final pay
+ * application with a conditional final release of lien (the one paper asked for), we approve
+ * and pay the retainage, then their unconditional final release of lien.
  */
-export function tradeCloseout(sow: Sow): TradeCloseout {
+export function tradeCloseout(sow: Sow, project?: GcProject, today?: string): TradeCloseout {
   const billed = workAllBilled(sow)
   const open = sow.draws.find((d) => !d.final && d.status === 'requested')
   const finalDraw = sow.draws.find((d) => d.final) ?? null
@@ -335,7 +404,11 @@ export function tradeCloseout(sow: Sow): TradeCloseout {
   const scheduled = sow.sov.reduce((s, l) => s + l.amount, 0)
   const billedPct = scheduled === 0 ? 0 : Math.round(sow.sov.reduce((s, l) => s + l.amount * l.pctBilled, 0) / scheduled)
   const accepted = Boolean(sow.acceptedOn)
-  const warranty = Boolean(sow.warrantyOn)
+  // Without the project and today (an older caller), the owner's release counts as not yet in.
+  const releasedOn = project?.ownerRetainageReleasedOn ?? null
+  const opensOn = project ? tradeRetainageOpensOn(project) : null
+  // A final application already in went past this step, whatever the dates say now.
+  const waited = finalDraw !== null || (opensOn !== null && today !== undefined && opensOn <= today)
   const steps: CloseoutStep[] = [
     {
       key: 'billed',
@@ -352,11 +425,15 @@ export function tradeCloseout(sow: Sow): TradeCloseout {
       detail: accepted ? `Accepted ${shortDate(sow.acceptedOn ?? null)}.` : 'Walk the work with them. When the punch list is done, accept it.',
     },
     {
-      key: 'warranty',
-      label: 'Warranty letter',
-      who: 'trade',
-      done: warranty,
-      detail: warranty ? `In ${shortDate(sow.warrantyOn ?? null)}.` : 'They send it from their portal.',
+      key: 'ownerReleased',
+      label: 'The owner releases ours',
+      who: 'office',
+      done: waited,
+      detail: waited
+        ? `The owner released ours ${shortDate(releasedOn)}.`
+        : releasedOn
+          ? `The owner released ours ${shortDate(releasedOn)}. Theirs can be asked for ${shortDate(opensOn)}.`
+          : `The owner still holds our retainage. Theirs comes ${TRADE_RETAINAGE_WAIT_DAYS} days after the owner releases ours.`,
     },
     {
       key: 'finalApp',
@@ -364,8 +441,8 @@ export function tradeCloseout(sow: Sow): TradeCloseout {
       who: 'trade',
       done: finalDraw !== null,
       detail: finalDraw
-        ? `Asked for ${money(finalDraw.net)} ${shortDate(finalDraw.requestedOn)}, with a conditional waiver on final payment.`
-        : `It asks for the ${money(held)} we hold.`,
+        ? `Asked for ${money(finalDraw.net)} ${shortDate(finalDraw.requestedOn)}, with a conditional final release of lien.`
+        : `It asks for the ${money(held)} we hold, with a conditional final release of lien.`,
     },
     {
       key: 'released',
@@ -383,13 +460,13 @@ export function tradeCloseout(sow: Sow): TradeCloseout {
     },
     {
       key: 'finalWaiver',
-      label: 'Final waiver',
+      label: 'Unconditional final release',
       who: 'trade',
       done: finalDraw?.status === 'paid' && finalDraw.waiver === 'unconditional',
       detail:
         finalDraw?.status === 'paid' && finalDraw.waiver === 'unconditional'
-          ? 'Their unconditional waiver on final payment is in.'
-          : 'They sign the unconditional waiver on final payment once paid.',
+          ? 'Their unconditional final release of lien is in.'
+          : 'They sign the unconditional final release of lien once paid.',
     },
   ]
   const next = steps.find((st) => !st.done) ?? null
@@ -399,7 +476,8 @@ export function tradeCloseout(sow: Sow): TradeCloseout {
     closed: next === null,
     held,
     finalDraw,
-    canAskFinal: billed && accepted && warranty && finalDraw === null && !open && held > 0,
+    canAskFinal: billed && accepted && waited && finalDraw === null && !open && held > 0,
+    opensOn,
   }
 }
 
@@ -415,7 +493,7 @@ export function projectCloseout(state: GcState, project: GcProject) {
     .filter((pkg) => pkg.sow?.status === 'signed')
     .map((pkg) => {
       const invite = pkg.invites.find((i) => i.id === pkg.awardedInviteId)
-      return { pkg, partner: invite ? partnerById(state, invite.partnerId) : undefined, closeout: tradeCloseout(pkg.sow as Sow) }
+      return { pkg, partner: invite ? partnerById(state, invite.partnerId) : undefined, closeout: tradeCloseout(pkg.sow as Sow, project, state.today) }
     })
   const released = rows.reduce((s, r) => s + (r.closeout.finalDraw?.status === 'paid' ? r.closeout.finalDraw.net : 0), 0)
   return {
@@ -427,4 +505,28 @@ export function projectCloseout(state: GcState, project: GcProject) {
     released,
     closed: rows.filter((r) => r.closeout.closed).length,
   }
+}
+
+/**
+ * Can we close the job? Every trade we hire is closed out, our own crew is done, and the owner
+ * has released our retainage. Says what is left, in words, until it can (owner, 2026-10-02: a
+ * closed job leaves Building for its own section on the board).
+ */
+export function jobCloseout(state: GcState, project: GcProject): { ready: boolean; left: string[]; closedOn: string | null } {
+  const left: string[] = []
+  for (const pkg of project.packages) {
+    const crew = ownCrewWork(pkg)
+    if (crew) {
+      if (crew.pct < 100) left.push(`${pkg.trade}: our own crew is ${crew.pct}% done.`)
+      continue
+    }
+    if (!pkg.sow || pkg.sow.status !== 'signed') {
+      left.push(`${pkg.trade}: no signed statement of work.`)
+      continue
+    }
+    const c = tradeCloseout(pkg.sow, project, state.today)
+    if (!c.closed) left.push(`${pkg.trade}: ${c.next?.label.toLowerCase() ?? 'not closed out'}.`)
+  }
+  if (!project.ownerRetainageReleasedOn) left.push('The owner has not released our retainage.')
+  return { ready: left.length === 0 && !project.closedOn, left, closedOn: project.closedOn ?? null }
 }

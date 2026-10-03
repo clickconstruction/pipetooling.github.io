@@ -273,7 +273,7 @@ function PackageBlock({
       {awardedElsewhere ? (
         <Block title={`${pkg.trade} · result`}>This one went to another company. Thank you for your number.</Block>
       ) : awardedToMe && pkg.sow ? (
-        <SowBlock project={project} pkg={pkg} partner={partner} dispatch={dispatch} />
+        <SowBlock project={project} pkg={pkg} partner={partner} today={state.today} dispatch={dispatch} />
       ) : invite.status === 'declined' ? (
         <Block title={`${pkg.trade} · invitation`}>You passed on this one.</Block>
       ) : (
@@ -527,11 +527,14 @@ function SowBlock({
   project,
   pkg,
   partner,
+  today,
   dispatch,
 }: {
   project: GcProject
   pkg: TradePackage
   partner: Partner
+  /** Building lane: closeout waits on dates (a trade's retainage comes 10 days after the owner's). */
+  today: string
   dispatch: Dispatch<GcAction>
 }) {
   const sow = pkg.sow
@@ -587,7 +590,7 @@ function SowBlock({
               </label>
             ))}
             {/* Building lane: a draw is asked for with its pay application (the 702 and 703). */}
-            <GcBuildingPayAppDoor project={project} pkg={pkg} partner={partner} dispatch={dispatch} />
+            <GcBuildingPayAppDoor project={project} pkg={pkg} partner={partner} today={today} dispatch={dispatch} />
             {sow.draws.map((d) => (
               <div key={d.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 <strong>Draw {d.number}</strong>

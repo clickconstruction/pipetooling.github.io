@@ -1,8 +1,19 @@
 import { useState } from 'react'
-import { money, ownCrewWork, partnerBlockers, projectCloseout, type CloseoutRow, type Draw } from '../../lib/gcMode/gcModel'
+import {
+  jobCloseout,
+  money,
+  ownCrewWork,
+  partnerBlockers,
+  projectCloseout,
+  shortDate,
+  TRADE_RETAINAGE_WAIT_DAYS,
+  tradeRetainageOpensOn,
+  type CloseoutRow,
+  type Draw,
+} from '../../lib/gcMode/gcModel'
 import { GcBuildingPayAppWindow } from './GcBuildingPayApp'
 import type { GcPaneProps } from './GcOfficeTabs'
-import { Btn, Card, Chip, Stat, Why } from './gcUi'
+import { Btn, Card, Chip, Stat, Why, input } from './gcUi'
 
 /**
  * GC mode design spike: Closeout. Each trade's last steps, in order: every line billed, we accept
@@ -12,16 +23,25 @@ import { Btn, Card, Chip, Stat, Why } from './gcUi'
  */
 export function GcCloseoutTab({ state, project, dispatch, onSeePortal }: GcPaneProps) {
   const c = projectCloseout(state, project)
+  const job = jobCloseout(state, project)
   const [looking, setLooking] = useState<{ row: CloseoutRow; draw: Draw } | null>(null)
 
   return (
     <div style={{ display: 'grid', gap: '0.9rem' }}>
       <Why>
         We hold back {c.rows[0]?.pkg.sow?.retainagePct ?? 10}% of every draw. That is retainage. A trade gets it back at the end, once
-        every line is billed, we accept the work and its warranty letter is in. It asks with a final pay application and a
-        conditional waiver on final payment. After we pay, it signs the unconditional waiver on final payment. Then the trade is
-        closed out.
+        every line is billed and we accept the work. Its retainage comes {TRADE_RETAINAGE_WAIT_DAYS} days after the owner releases
+        ours. It asks with a final pay application and a conditional final release of lien. After we pay, it signs the
+        unconditional final release of lien. Then the trade is closed out. Once every trade is, we close the job.
       </Why>
+
+      <OwnerRetainageCard
+        owner={project.owner}
+        releasedOn={project.ownerRetainageReleasedOn ?? null}
+        opensOn={tradeRetainageOpensOn(project)}
+        today={state.today}
+        onReleased={(on) => dispatch({ type: 'ownerReleasedRetainage', projectId: project.id, on })}
+      />
 
       <Card>
         <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
@@ -34,6 +54,8 @@ export function GcCloseoutTab({ state, project, dispatch, onSeePortal }: GcPaneP
           />
         </div>
       </Card>
+
+      <CloseJobCard job={job} onClose={() => dispatch({ type: 'closeJob', projectId: project.id })} />
 
       {c.rows.length === 0 && <Card>No trade has a signed statement of work yet. Closeout starts once one does.</Card>}
 
@@ -187,6 +209,81 @@ function TradeCloseoutCard({
           })}
         </ol>
       )}
+    </Card>
+  )
+}
+
+/**
+ * The owner's retainage on us, which a trade's waits on: 10 days after the owner releases ours
+ * (owner, 2026-10-02). The press is a stand-in until Bill the owner records the owner's last
+ * payment itself.
+ */
+function OwnerRetainageCard({
+  owner,
+  releasedOn,
+  opensOn,
+  today,
+  onReleased,
+}: {
+  owner: string
+  releasedOn: string | null
+  opensOn: string | null
+  today: string
+  onReleased: (on: string) => void
+}) {
+  const [on, setOn] = useState(today)
+  return (
+    <Card>
+      <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.9rem' }}>
+        <strong>The owner's retainage on us</strong>
+        {releasedOn ? (
+          <span>
+            {owner} released it {shortDate(releasedOn)}. A trade can ask for theirs {opensOn && opensOn > today ? `from ${shortDate(opensOn)}` : 'now'}.
+          </span>
+        ) : (
+          <>
+            <span>
+              {owner} still holds it. A trade's comes {TRADE_RETAINAGE_WAIT_DAYS} days after they release it.
+            </span>
+            <input type="date" value={on} max={today} onChange={(e) => setOn(e.target.value)} style={input} aria-label="The day the owner released our retainage" />
+            <Btn onClick={() => on && onReleased(on)}>The owner released it</Btn>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>A stand-in until Bill the owner records it.</span>
+          </>
+        )}
+      </div>
+    </Card>
+  )
+}
+
+/** Close the job once every trade is closed out (owner, 2026-10-02): it leaves Building on the board. */
+function CloseJobCard({ job, onClose }: { job: { ready: boolean; left: string[]; closedOn: string | null }; onClose: () => void }) {
+  if (job.closedOn) {
+    return (
+      <Card>
+        <Chip tone="green">job closed {shortDate(job.closedOn)}</Chip>
+      </Card>
+    )
+  }
+  return (
+    <Card>
+      <div style={{ display: 'grid', gap: '0.4rem', fontSize: '0.875rem' }}>
+        <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <strong>Close the job</strong>
+          <Btn kind="primary" disabled={!job.ready} title={job.ready ? undefined : 'Every trade closes out first.'} onClick={onClose}>
+            Close the job
+          </Btn>
+        </div>
+        {job.ready ? (
+          <span style={{ color: 'var(--text-muted)' }}>Every trade is closed out, our own crew is done and the owner released our retainage.</span>
+        ) : (
+          <div style={{ color: 'var(--text-muted)', display: 'grid', gap: '0.15rem' }}>
+            <span>Left before it can close:</span>
+            {job.left.map((l) => (
+              <span key={l}>· {l}</span>
+            ))}
+          </div>
+        )}
+      </div>
     </Card>
   )
 }

@@ -175,7 +175,8 @@ const STEPS: Step[] = [
   { label: 'Pay draw 3', action: { type: 'payDraw', projectId: 'helotes', packageId: 'dry', drawId: 'dry-draw-3' } },
   { label: 'Hill Country signs the unconditional waiver on draw 3', action: { type: 'tradeSignUnconditional', projectId: 'helotes', packageId: 'dry', drawId: 'dry-draw-3' } },
   { label: 'Accept the drywall work', action: { type: 'acceptWork', projectId: 'helotes', packageId: 'dry' } },
-  { label: 'Hill Country sends the warranty letter', action: { type: 'tradeSendWarranty', projectId: 'helotes', packageId: 'dry' } },
+  // The owner's answer (2026-10-02): a trade's retainage comes 10 days after the owner releases ours.
+  { label: 'Dr. Raman released our retainage Sep 20', action: { type: 'ownerReleasedRetainage', projectId: 'helotes', on: '2026-09-20' } },
   {
     label: 'Hill Country sends the final pay application',
     action: {
@@ -235,6 +236,24 @@ const STEPS: Step[] = [
       quoteFile: 'lonestar-pad-b.pdf',
     },
   },
+  // The owner's answers (2026-10-02): approve less than asked, our crew by stage, close a job.
+  {
+    label: 'Cedar & Pine sends pay application 2',
+    action: { type: 'tradeSendPayApp', projectId: 'helotes', packageId: 'mill', toPct: { 'mill-2': 100, 'mill-3': 50 }, ...CEDAR_TYPED },
+  },
+  {
+    label: 'Approve less: the cabinets at 80%',
+    action: {
+      type: 'approveDrawLess',
+      projectId: 'helotes',
+      packageId: 'mill',
+      drawId: 'mill-draw-2',
+      weApprove: { 'mill-2': 80 },
+      note: 'Two operatory cabinets are still on order.',
+    },
+  },
+  { label: 'Our crew reports underground done', action: { type: 'selfReportStage', projectId: 'helotes', packageId: 'dplumb', lineId: 'dplumb-1', pct: 100 } },
+  { label: 'Close Fair Oaks D with work still open (the screen would not offer it)', action: { type: 'closeJob', projectId: 'fairoaksd' } },
 ]
 
 const CUSTOMER_IDS = ['cibolo', 'raman']
@@ -360,9 +379,10 @@ describe('GC mode golden walk', () => {
       'tradeSendPayApp',
       'tradeUploadCoi', 'tradeSignW9',
       'sendOwnerPayApp', 'ownerPaid', 'issuePlanSet',
-      'acceptWork', 'tradeSendWarranty', 'tradeSendFinalPayApp', 'approveRetainage',
+      'acceptWork', 'tradeSendFinalPayApp', 'approveRetainage',
       'selfReport',
       'sendDrawBack',
+      'ownerReleasedRetainage', 'closeJob', 'approveDrawLess', 'selfReportStage',
       'tradeOpenPortal',
       'tradeAnswerLines',
     ]

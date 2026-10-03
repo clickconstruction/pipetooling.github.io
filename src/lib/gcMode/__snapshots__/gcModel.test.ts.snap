@@ -6039,6 +6039,16 @@ exports[`GC mode golden walk > step 67: Accept the drywall work 1`] = `
 }
 `;
 
+exports[`GC mode golden walk > step 68: Dr. Raman released our retainage Sep 20 1`] = `
+{
+  "changed": {
+    "lastLog.id": 64,
+    "lastLog.text": "Dr. Priya Raman released our retainage on Helotes Dental Office Sun Sep 20.",
+  },
+  "removed": [],
+}
+`;
+
 exports[`GC mode golden walk > step 68: Hill Country sends the warranty letter 1`] = `
 {
   "changed": {
@@ -6368,6 +6378,57 @@ exports[`GC mode golden walk > step 81: Pad B: Lonestar bids, good for 30 days, 
     "assistantRules[1].items[3].action.partnerIds[2]",
     "assistantRules[1].items[6].action.partnerIds[1]",
   ],
+}
+`;
+
+exports[`GC mode golden walk > step 82: Cedar & Pine sends pay application 2 1`] = `
+{
+  "changed": {
+    "lastLog.id": 78,
+    "lastLog.text": "Cedar & Pine Millwork sent pay application 2 on Millwork: $15,940, with a conditional waiver signed.",
+    "projects.helotes.stageProgress.also[1]": "Cedar & Pine Millwork asked for draw 2. Approve it.",
+    "projects.helotes.stageProgress.center": "47%",
+    "projects.helotes.stageProgress.groups[0].items[4].detail": "83% reported",
+    "projects.helotes.stageProgress.headline": "47% of the work is done, by what the trades and our own crew have reported.",
+    "projects.helotes.stageProgress.share": 0.47186234817813766,
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 83: Approve less: the cabinets at 80% 1`] = `
+{
+  "changed": {
+    "lastLog.id": 79,
+    "lastLog.text": "Approved $11,970 of draw 2 on Millwork, less than the $14,346 asked. Two operatory cabinets are still on order.",
+    "lastLog.who": "office",
+    "projects.helotes.stageProgress.also[1]": "Draw 2 for Cedar & Pine Millwork is approved. Pay it.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 84: Our crew reports underground done 1`] = `
+{
+  "changed": {
+    "lastLog.id": 80,
+    "lastLog.text": "Our own crew reported Underground on Plumbing at 100%. The whole trade is 20% done.",
+    "projects.helotes.stageProgress.center": "43%",
+    "projects.helotes.stageProgress.groups[0].items[3].detail": "Our own crew, 20% done",
+    "projects.helotes.stageProgress.headline": "43% of the work is done, by what the trades and our own crew have reported.",
+    "projects.helotes.stageProgress.share": 0.4251012145748988,
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 85: Close Fair Oaks D with work still open (the screen would not offer it) 1`] = `
+{
+  "changed": {
+    "lastLog.id": 81,
+    "lastLog.text": "Closed Fair Oaks Shops, Building D. 8 things were still open.",
+  },
+  "removed": [],
 }
 `;
 

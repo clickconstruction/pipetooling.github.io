@@ -14,6 +14,7 @@ import {
   sentBackOpen,
   shortDate,
   timesSentBack,
+  TRADE_RETAINAGE_WAIT_DAYS,
   tradeCloseout,
   workAllBilled,
   type Draw,
@@ -77,11 +78,14 @@ export function GcBuildingPayAppDoor({
   project,
   pkg,
   partner,
+  today,
   dispatch,
 }: {
   project: GcProject
   pkg: TradePackage
   partner: Partner
+  /** The prototype's today: closeout waits on dates. */
+  today: string
   dispatch: Dispatch<GcAction>
 }) {
   const [open, setOpen] = useState<'draft' | 'final' | Draw | null>(null)
@@ -109,12 +113,17 @@ export function GcBuildingPayAppDoor({
   const onDraft: Dispatch<SetStateAction<PayAppInput>> = (next) =>
     setHeld((h) => (h ? { ...h, input: typeof next === 'function' ? next(h.input) : next } : h))
   const label = (sovId: string) => sow.sov.find((l) => l.id === sovId)?.label ?? sovId
+  // The last draw approved for less than asked: say so, and that the rest is still theirs to ask for.
+  const last = sow.draws[sow.draws.length - 1]
+  const lessNote = last?.asked
+    ? `${GC_SHORT} approved ${money(last.net)} of the ${money(last.asked.net)} you asked for on pay application ${last.number}. ${last.asked.note} The rest is still yours to ask for.`
+    : null
 
   return (
     <>
       <div style={{ padding: '0.55rem 0.65rem', background: 'var(--bg-subtle)', borderRadius: 6, display: 'grid', gap: '0.4rem' }}>
         {closing ? (
-          <CloseoutForTrade project={project} pkg={pkg} dispatch={dispatch} onFinal={() => openWindow('final')} onSee={(d) => setOpen(d)} />
+          <CloseoutForTrade project={project} pkg={pkg} today={today} onFinal={() => openWindow('final')} onSee={(d) => setOpen(d)} />
         ) : waiting ? (
           <>
             <div>
@@ -148,6 +157,7 @@ export function GcBuildingPayAppDoor({
           </>
         ) : (
           <>
+            {lessNote && <div>{lessNote}</div>}
             <div>
               {ready > 0 ? (
                 <>
@@ -196,21 +206,20 @@ export function GcBuildingPayAppDoor({
 function CloseoutForTrade({
   project,
   pkg,
-  dispatch,
+  today,
   onFinal,
   onSee,
 }: {
   project: GcProject
   pkg: TradePackage
-  dispatch: Dispatch<GcAction>
+  today: string
   onFinal: () => void
   onSee: (draw: Draw) => void
 }) {
   const sow = pkg.sow
   if (!sow) return null
-  const c = tradeCloseout(sow)
+  const c = tradeCloseout(sow, project, today)
   const f = c.finalDraw
-  const ids = { projectId: project.id, packageId: pkg.id }
   if (c.closed) {
     return (
       <div>
@@ -219,7 +228,7 @@ function CloseoutForTrade({
     )
   }
   const accepted = Boolean(sow.acceptedOn)
-  const warranty = Boolean(sow.warrantyOn)
+  const waited = c.steps.find((st) => st.key === 'ownerReleased')?.done ?? false
   const back = sentBackOpen(sow)
   const item = (done: boolean, words: ReactNode, extra?: ReactNode) => (
     <div style={{ display: 'grid', gridTemplateColumns: '1rem minmax(0, 1fr)', gap: '0.4rem', alignItems: 'baseline' }}>
@@ -230,6 +239,11 @@ function CloseoutForTrade({
       </span>
     </div>
   )
+  const opensWhen = !accepted
+    ? `It opens once ${GC_SHORT} accepts your work.`
+    : c.opensOn
+      ? `It opens ${shortDate(c.opensOn)}.`
+      : `It opens ${TRADE_RETAINAGE_WAIT_DAYS} days after the owner pays ${GC_SHORT} its retainage.`
   return (
     <>
       <div>
@@ -245,9 +259,12 @@ function CloseoutForTrade({
       )}
       {item(accepted, accepted ? `${GC_SHORT} accepted your work ${shortDate(sow.acceptedOn ?? null)}.` : `${GC_SHORT} walks the work with you and checks the punch list.`)}
       {item(
-        warranty,
-        warranty ? 'Your warranty letter is in.' : 'Send your warranty letter.',
-        warranty ? null : <Btn onClick={() => dispatch({ type: 'tradeSendWarranty', ...ids })}>Send the warranty letter</Btn>,
+        waited,
+        waited
+          ? `The owner released ${GC_SHORT}'s retainage. Yours is ready to ask for.`
+          : c.opensOn
+            ? `The owner released ${GC_SHORT}'s retainage. You can ask for yours ${shortDate(c.opensOn)}.`
+            : `Your retainage comes ${TRADE_RETAINAGE_WAIT_DAYS} days after the owner pays ${GC_SHORT} its retainage.`,
       )}
       {item(
         f !== null,
@@ -260,18 +277,14 @@ function CloseoutForTrade({
           </Btn>
         ),
       )}
-      {!f && !c.canAskFinal && (
-        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', paddingLeft: '1.4rem' }}>
-          It opens once {GC_SHORT} accepts your work and has your warranty letter.
-        </div>
-      )}
+      {!f && !c.canAskFinal && <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', paddingLeft: '1.4rem' }}>{opensWhen}</div>}
       {item(
         f?.status === 'paid',
         f?.status === 'paid' ? `${GC_SHORT} paid your retainage.` : f?.status === 'approved' ? `${GC_SHORT} approved it. Payment is coming.` : `${GC_SHORT} pays your retainage.`,
       )}
       {item(
         false,
-        f?.status === 'paid' ? 'Sign the unconditional waiver on final payment below.' : 'Last, you sign the unconditional waiver on final payment.',
+        f?.status === 'paid' ? 'Sign the unconditional final release of lien below.' : 'Last, you sign the unconditional final release of lien.',
       )}
     </>
   )
@@ -374,7 +387,7 @@ export function GcBuildingPayAppWindow({
   }
   const net = app.summary.currentDue
   const title = `${final ? 'Final pay application' : 'Pay application'} ${app.number}${returnedAs ? ' · sent back' : revised ? ' · revised' : ''}`
-  const waiverWords = final ? 'conditional waiver on final payment' : 'conditional lien waiver'
+  const waiverWords = final ? 'conditional final release of lien' : 'conditional lien waiver'
   const titleId = 'gc-payapp-title'
 
   const paper = (
@@ -387,7 +400,7 @@ export function GcBuildingPayAppWindow({
       mark={mark}
       page={page}
       onPage={(p) => setPick({ page: p, at: mark })}
-      approved={draw ? draw.status !== 'requested' && !returnedAs : false}
+      certified={draw && draw.status !== 'requested' && !returnedAs ? draw.net : null}
       stamp={returnedAs ? 'sent back' : revised ? 'revised' : null}
     />
   )
@@ -454,6 +467,15 @@ export function GcBuildingPayAppWindow({
                 </>
               ) : (
                 <>This draw was asked for before pay applications. The form is rebuilt from the draw.</>
+              )}
+              {draw.asked && (
+                <>
+                  {' '}
+                  <strong style={{ color: 'var(--text-amber-800)' }}>
+                    {viewer === 'office' ? 'We' : GC_SHORT} approved {money(draw.net)} of the {money(draw.asked.net)} asked.
+                  </strong>{' '}
+                  {draw.asked.note}
+                </>
               )}
               {returnedAs && (
                 <>
@@ -734,7 +756,7 @@ function PayAppPaper({
   mark,
   page,
   onPage,
-  approved,
+  certified,
   stamp,
 }: {
   app: PayApplication
@@ -745,7 +767,8 @@ function PayAppPaper({
   mark: PayAppStepKey | null
   page: Page
   onPage: (p: Page) => void
-  approved: boolean
+  /** What we certified: the draw's net once approved, which is less than asked when we approved less. */
+  certified: number | null
   /** A word after the page line: "revised", "sent back". */
   stamp: string | null
 }) {
@@ -869,7 +892,7 @@ function PayAppPaper({
                 <p style={{ margin: '0 0 0.6em' }}>
                   The undersigned certifies that the work covered by this application is done as shown. Everyone owed for earlier
                   payments has been paid. The current payment shown is now due. A{' '}
-                  {app.final ? 'conditional waiver on final payment' : 'conditional lien waiver'} for {money(s.currentDue)} is signed with it.
+                  {app.final ? 'conditional final release of lien' : 'conditional lien waiver'} for {money(s.currentDue)} is signed with it.
                 </p>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(9rem, 1fr))', gap: '0.5rem', alignItems: 'end' }}>
                   <div style={{ borderBottom: '1px solid var(--text-base)', paddingBottom: '0.15rem', minHeight: '1.6em', fontStyle: typed.signedOn ? 'italic' : undefined, fontSize: typed.signedOn ? '1rem' : undefined }}>
@@ -894,10 +917,10 @@ function PayAppPaper({
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(9rem, 1fr))', gap: '0.5rem' }}>
                 <Box name="Amount certified">
-                  <Val>{approved ? money(s.currentDue) : ''}</Val>
+                  <Val>{certified === null ? '' : money(certified)}</Val>
                 </Box>
                 <Box name="By">
-                  <Val>{approved ? GC_COMPANY_NAME : ''}</Val>
+                  <Val>{certified === null ? '' : GC_COMPANY_NAME}</Val>
                 </Box>
               </div>
             </div>

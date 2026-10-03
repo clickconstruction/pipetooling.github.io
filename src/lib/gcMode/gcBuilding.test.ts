@@ -3,6 +3,7 @@ import {
   finalPayApplication,
   gcReducer,
   initialGcState,
+  jobCloseout,
   ownCrewWork,
   stageProgress,
   payApplication,
@@ -120,10 +121,16 @@ describe('tradeSendPayApp', () => {
   })
 })
 
-describe('closeout: retainage release and the final waivers', () => {
+describe('closeout: retainage release and the final releases of lien', () => {
   const ids = { projectId: 'helotes', packageId: 'dry' }
   const typed = { periodTo: '2026-10-02', address: filled.address, license: '', signedBy: 'Rosa Medina', signedTitle: 'Office manager' }
   const play = (actions: GcAction[], from: GcState = initialGcState()) => actions.reduce(gcReducer, from)
+  const helotes = (s: GcState) => {
+    const p = s.projects.find((x) => x.id === 'helotes')
+    if (!p) throw new Error('no Helotes')
+    return p
+  }
+  const closeout = (s: GcState) => tradeCloseout(drySow(s), helotes(s), s.today)
 
   /** Every line billed: draw 2 takes hang and tape and ceilings to 100%, and we approve it. */
   const allBilled = () =>
@@ -132,25 +139,34 @@ describe('closeout: retainage release and the final waivers', () => {
       { type: 'approveDraw', ...ids, drawId: 'dry-draw-2' },
       { type: 'payDraw', ...ids, drawId: 'dry-draw-2' },
     ])
+  /** Accepted, and the owner released ours on Sep 20: today (Oct 2) is past Sep 30. */
+  const ready = () => play([{ type: 'acceptWork', ...ids }, { type: 'ownerReleasedRetainage', projectId: 'helotes', on: '2026-09-20' }], allBilled())
 
   it('holds 10% of every draw until the release is paid', () => {
     expect(retainageHeldNow(drySow(allBilled()))).toBe(6_420)
   })
 
-  it('waits for our acceptance and their warranty letter before the final pay application', () => {
+  it('waits for our acceptance, then 10 days after the owner releases ours', () => {
     const billed = allBilled()
-    expect(tradeCloseout(drySow(billed)).next?.key).toBe('accepted')
+    expect(closeout(billed).next?.key).toBe('accepted')
     const early = { type: 'tradeSendFinalPayApp' as const, ...ids, ...typed }
     expect(gcReducer(billed, early)).toBe(billed)
     const accepted = play([{ type: 'acceptWork', ...ids }], billed)
+    expect(closeout(accepted).next?.key).toBe('ownerReleased')
     expect(gcReducer(accepted, early)).toBe(accepted)
-    const ready = play([{ type: 'tradeSendWarranty', ...ids }], accepted)
-    expect(tradeCloseout(drySow(ready)).canAskFinal).toBe(true)
+    // Released Sep 25: theirs opens Oct 5, after today.
+    const tooSoon = play([{ type: 'ownerReleasedRetainage', projectId: 'helotes', on: '2026-09-25' }], accepted)
+    expect(closeout(tooSoon)).toMatchObject({ canAskFinal: false, opensOn: '2026-10-05' })
+    expect(gcReducer(tooSoon, early)).toBe(tooSoon)
+    expect(closeout(ready()).canAskFinal).toBe(true)
+  })
+
+  it('an older caller without the project never opens the final pay application early', () => {
+    expect(tradeCloseout(drySow(ready())).canAskFinal).toBe(false)
   })
 
   it('the final 702 releases the retainage: nothing held, line 8 is what was held', () => {
-    const ready = play([{ type: 'acceptWork', ...ids }, { type: 'tradeSendWarranty', ...ids }], allBilled())
-    const app = finalPayApplication(drySow(ready))
+    const app = finalPayApplication(drySow(ready()))
     expect(app.final).toBe(true)
     expect(app.totals.thisPeriod).toBe(0)
     expect(app.summary).toMatchObject({
@@ -163,22 +179,50 @@ describe('closeout: retainage release and the final waivers', () => {
     })
   })
 
-  it('closes the trade once the release is paid and the unconditional final waiver is in', () => {
-    const asked = play(
-      [{ type: 'acceptWork', ...ids }, { type: 'tradeSendWarranty', ...ids }, { type: 'tradeSendFinalPayApp', ...ids, ...typed }],
-      allBilled(),
-    )
+  it('closes the trade once the release is paid and the unconditional final release is in', () => {
+    const asked = play([{ type: 'tradeSendFinalPayApp', ...ids, ...typed }], ready())
     const release = drySow(asked).draws.find((d) => d.final)
     expect(release).toMatchObject({ id: 'dry-draw-3', gross: 0, retainage: -6_420, net: 6_420, status: 'requested' })
-    expect(payApplicationForDraw(drySow(asked), release!).summary.currentDue).toBe(6_420)
+    expect(asked.log[0]?.text).toContain('with a conditional final release of lien')
+    if (!release) throw new Error('no release')
+    expect(payApplicationForDraw(drySow(asked), release).summary.currentDue).toBe(6_420)
 
     const approved = play([{ type: 'approveRetainage', ...ids, drawId: 'dry-draw-3' }], asked)
     expect(retainageHeldNow(drySow(approved))).toBe(6_420)
     const paid = play([{ type: 'payDraw', ...ids, drawId: 'dry-draw-3' }], approved)
     expect(retainageHeldNow(drySow(paid))).toBe(0)
-    expect(tradeCloseout(drySow(paid)).next?.key).toBe('finalWaiver')
+    expect(closeout(paid).next?.key).toBe('finalWaiver')
     const closed = play([{ type: 'tradeSignUnconditional', ...ids, drawId: 'dry-draw-3' }], paid)
-    expect(tradeCloseout(drySow(closed)).closed).toBe(true)
+    expect(closeout(closed).closed).toBe(true)
+  })
+
+  it('a job closes only once every trade is closed out, our crew is done and the owner released ours', () => {
+    const left = jobCloseout(ready(), helotes(ready()))
+    expect(left.ready).toBe(false)
+    expect(left.left).toContain('Plumbing: our own crew is 0% done.')
+    expect(left.left).toContain('Framing and drywall: final pay application.')
+    expect(left.left).not.toContain('The owner has not released our retainage.')
+  })
+})
+
+describe('approve less than asked', () => {
+  const ids = { projectId: 'helotes', packageId: 'dry' }
+  const typed = { periodTo: '2026-10-02', address: filled.address, license: '', signedBy: 'Rosa Medina', signedTitle: 'Office manager' }
+  const asked = gcReducer(initialGcState(), { type: 'tradeSendPayApp', ...ids, toPct: { 'dry-2': 60 }, ...typed })
+
+  it('pays the lines we doubt at our percent and keeps what they asked', () => {
+    const less = gcReducer(asked, { type: 'approveDrawLess', ...ids, drawId: 'dry-draw-2', weApprove: { 'dry-2': 40 }, note: 'The hall is not taped.' })
+    const draw = drySow(less).draws[1]
+    // 40% of $27,200 is $10,880; 10% held leaves $9,792. They asked for $14,688.
+    expect(draw).toMatchObject({ status: 'approved', gross: 10_880, net: 9_792, asked: { net: 14_688, note: 'The hall is not taped.' } })
+    expect(drySow(less).sov.find((l) => l.id === 'dry-2')).toMatchObject({ pctBilled: 40, pctReported: 60 })
+    // Their form still shows what they asked; we certified less.
+    if (!draw) throw new Error('no draw 2')
+    expect(payApplicationForDraw(drySow(less), draw).summary.currentDue).toBe(14_688)
+  })
+
+  it('does nothing when it would not be less', () => {
+    expect(gcReducer(asked, { type: 'approveDrawLess', ...ids, drawId: 'dry-draw-2', weApprove: { 'dry-2': 60 }, note: '' })).toBe(asked)
   })
 })
 
@@ -244,7 +288,7 @@ describe('our own crew in Building', () => {
 
   it('reads the one percent Bill the owner bills from, worth our own number', () => {
     const reported = gcReducer(initialGcState(), { type: 'selfReport', projectId: 'helotes', packageId: 'dplumb', pct: 50 })
-    expect(ownCrewWork(plumbing(initialGcState()))).toEqual({ pct: 0, worth: 38_500, done: 0, ref: 'J 1042' })
+    expect(ownCrewWork(plumbing(initialGcState()))).toMatchObject({ pct: 0, worth: 38_500, done: 0, ref: 'J 1042', byStage: false })
     expect(ownCrewWork(plumbing(reported))).toMatchObject({ pct: 50, done: 19_250 })
   })
 
@@ -260,5 +304,37 @@ describe('our own crew in Building', () => {
     expect(ring.groups[0]?.items.map((i) => [i.label, i.detail])).toContainEqual(['Plumbing', 'Our own crew, 0% done'])
     const after = building(gcReducer(initialGcState(), { type: 'selfReport', projectId: 'helotes', packageId: 'dplumb', pct: 100 }))
     expect(stageProgress(after, helotes(after)).share).toBeGreaterThan(ring.share)
+  })
+})
+
+describe('our own crew by stage', () => {
+  const report = (lineId: string, pct: number, from: GcState = initialGcState()) =>
+    gcReducer(from, { type: 'selfReportStage', projectId: 'helotes', packageId: 'dplumb', lineId, pct })
+  const plumbing = (state: GcState) => {
+    const pkg = state.projects.find((p) => p.id === 'helotes')?.packages.find((k) => k.id === 'dplumb')
+    if (!pkg) throw new Error('no plumbing on Helotes')
+    return pkg
+  }
+
+  it('weighs each stage by its share and keeps the one percent Bill the owner reads in step', () => {
+    // Underground 20, rough in 35, top out 25, trim 20 (my default weights).
+    const s = report('dplumb-2', 100, report('dplumb-1', 100))
+    expect(ownCrewWork(plumbing(s))).toMatchObject({ pct: 55, byStage: true })
+    expect(plumbing(s).selfPerform?.pctDone).toBe(55)
+    expect(s.log[0]?.text).toBe('Our own crew reported Rough in on Plumbing at 100%. The whole trade is 55% done.')
+  })
+})
+
+describe('a pay application sent back twice', () => {
+  it('flags it on the ring so someone calls them', () => {
+    const ids = { projectId: 'helotes', packageId: 'dry' }
+    const typed = { periodTo: '2026-10-02', address: filled.address, license: '', signedBy: 'Rosa Medina', signedTitle: 'Office manager' }
+    const send = { type: 'tradeSendPayApp' as const, ...ids, toPct: { 'dry-2': 60 }, ...typed }
+    const back = { type: 'sendDrawBack' as const, ...ids, drawId: 'dry-draw-2', note: 'Not yet.', weSee: { 'dry-2': 40 } }
+    const twice = [send, back, send, back].reduce(gcReducer, initialGcState())
+    const building: GcState = { ...twice, projects: twice.projects.map((p) => (p.id === 'helotes' ? { ...p, stage: 'building' as const } : p)) }
+    const helotes = building.projects.find((p) => p.id === 'helotes')
+    if (!helotes) throw new Error('no Helotes')
+    expect(stageProgress(building, helotes).also).toContain('Pay application 2 went back to Hill Country Interiors 2 times. Call them.')
   })
 })
