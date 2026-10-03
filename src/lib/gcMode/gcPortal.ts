@@ -98,8 +98,11 @@ export function aYearFrom(iso: string): string {
 // The company's home: everything one company has with us, on every project
 // ---------------------------------------------------------------------------------------------
 
-/** Where one ask stands for the company: still bidding, their job, gone to another company, or passed. */
-export type PortalAskKind = 'bidding' | 'job' | 'lost' | 'passed'
+/**
+ * Where one ask stands for the company: still bidding, their job, gone to another company, or
+ * passed. Closed: we lost the project itself (Board lane's markLost), so nothing is built through us.
+ */
+export type PortalAskKind = 'bidding' | 'job' | 'lost' | 'passed' | 'closed'
 
 export interface PortalAsk {
   project: GcProject
@@ -159,7 +162,15 @@ export function portalAsks(state: GcState, partnerId: string): PortalAsk[] {
       for (const invite of pkg.invites) {
         if (invite.partnerId !== partnerId) continue
         const kind: PortalAskKind =
-          pkg.awardedInviteId === invite.id ? 'job' : pkg.awardedInviteId !== null ? 'lost' : invite.status === 'declined' ? 'passed' : 'bidding'
+          project.lostOn && invite.status !== 'declined'
+            ? 'closed'
+            : pkg.awardedInviteId === invite.id
+              ? 'job'
+              : pkg.awardedInviteId !== null
+                ? 'lost'
+                : invite.status === 'declined'
+                  ? 'passed'
+                  : 'bidding'
         out.push({
           project,
           pkg,
@@ -174,6 +185,19 @@ export function portalAsks(state: GcState, partnerId: string): PortalAsk[] {
     }
   }
   return out
+}
+
+/**
+ * What a company reads once we lost the project (owner, 2026-10-03): why, in one line, then what it
+ * means for them. Never the price and never who won. A project that died says so; every other
+ * reason is the plain truth that we did not win it.
+ */
+export function portalClosedWords(project: GcProject, sentNumber: boolean, lang: PortalLang = 'en'): { why: string; next: string } {
+  const gc = GC_COMPANY.shortName
+  return {
+    why: pt(lang, project.lostWhy === 'project_died' ? 'closedDied' : 'closedLost', { gc }),
+    next: pt(lang, sentNumber ? 'closedThanksQuote' : 'closedNoNumber'),
+  }
 }
 
 export function portalJobMoney(pkg: TradePackage): PortalJobMoney | null {
@@ -241,6 +265,8 @@ export function portalTodos(state: GcState, partnerId: string, asks: PortalAsk[]
   if (!partner.w9) todos.push({ key: 'w9', projectId: null, text: pt(lang, 'todoW9'), tone: 'amber', by: null })
 
   for (const a of asks) {
+    // A project we lost asks nothing more of anyone.
+    if (a.kind === 'closed') continue
     const project = a.project.name
     const trade = a.pkg.trade
     const key = a.invite.id
@@ -364,7 +390,7 @@ export function portalHome(state: GcState, partnerId: string, lang: PortalLang =
   return {
     bidding: asks.filter((a) => a.kind === 'bidding'),
     jobs,
-    past: asks.filter((a) => a.kind === 'lost' || a.kind === 'passed'),
+    past: asks.filter((a) => a.kind === 'lost' || a.kind === 'passed' || a.kind === 'closed'),
     todos: portalTodos(state, partnerId, asks, lang),
     money:
       withMoney.length === 0
@@ -397,7 +423,7 @@ export function portalLink(partnerId: string): string {
 export interface PortalMessage {
   key: string
   on: string
-  kind: 'invite' | 'nudge' | 'plans' | 'bidTab' | 'msa' | 'sow' | 'start' | 'less' | 'change' | 'paid' | 'answer' | 'coi'
+  kind: 'invite' | 'nudge' | 'plans' | 'bidTab' | 'msa' | 'sow' | 'start' | 'less' | 'change' | 'paid' | 'answer' | 'coi' | 'closed'
   /** Null: about the company, not one project (the master agreement). */
   projectId: string | null
   subject: string
@@ -409,7 +435,7 @@ export interface PortalMessage {
   text?: string
 }
 
-const KIND_ORDER: Record<PortalMessage['kind'], number> = { coi: 0, answer: 1, paid: 2, change: 3, less: 4, start: 5, sow: 6, msa: 7, bidTab: 8, plans: 9, nudge: 10, invite: 11 }
+const KIND_ORDER: Record<PortalMessage['kind'], number> = { closed: -1, coi: 0, answer: 1, paid: 2, change: 3, less: 4, start: 5, sow: 6, msa: 7, bidTab: 8, plans: 9, nudge: 10, invite: 11 }
 
 function firstName(contact: string): string {
   return contact.split(' ')[0] ?? contact
@@ -467,6 +493,21 @@ export function portalMessages(state: GcState, partnerId: string, language?: Por
     const mine = project.packages.flatMap((pkg) => pkg.invites.filter((i) => i.partnerId === partnerId).map((invite) => ({ pkg, invite })))
     const won = mine.filter(({ pkg, invite }) => pkg.awardedInviteId === invite.id)
     const name = project.name
+
+    // We lost the project: one email the day it is marked, to a company still on a trade there.
+    const still = mine.filter(({ invite }) => invite.status !== 'declined')
+    if (project.lostOn && still.length > 0) {
+      const words = portalClosedWords(project, still.some(({ invite }) => Boolean(invite.bid)), lang)
+      const trades = still.map(({ pkg }) => pkg.trade).join(` ${and} `)
+      out.push({
+        key: `${project.id}:closed`,
+        on: project.lostOn,
+        kind: 'closed',
+        projectId: project.id,
+        subject: t('mClosedSubject', { project: name, gc: GC_COMPANY.shortName }),
+        lines: [hello, t('mClosedAbout', { trade: trades, project: name }), words.why, words.next],
+      })
+    }
 
     // A change order sent for the company to sign (Building lane's tradeChange): what changes and what it is worth.
     for (const { pkg } of won) {
