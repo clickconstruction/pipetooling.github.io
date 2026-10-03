@@ -32,6 +32,7 @@ import {
   stageOfStageName,
   stageOfWeights,
   statusText,
+  submittalWord,
   tagMatchesFixture,
   type ProcurementDecision,
   type ProcurementItemSource,
@@ -179,6 +180,53 @@ describe('the log', () => {
   it('has blank required dates and no float before the bid is a job', () => {
     const r = buildProcurementLog({ items: items.slice(0, 1), records: records.slice(0, 1), tagStage, stageDates: {} })[0]!
     expect(r).toMatchObject({ requiredOn: null, floatDays: null, orderBy: null, expectedOn: '2026-11-05' })
+  })
+})
+
+describe('2026-10-02 · a call reads as its day in the company’s zone', () => {
+  // 7:30 pm CDT on Oct 2 is 00:30 UTC on Oct 3: the UTC date of the call is the day after.
+  const calls = buildProcurementLog({
+    items: [
+      item({ tag: 'WC-1', product: 'TOTO CT728CUVG#01', decision: approved('2026-10-03T00:30:00Z') }),
+      // The shape the database hands back reviewed_at in.
+      item({ tag: 'L-1', product: 'Kohler K-2005 lav', decision: { kind: 'revise', at: '2026-10-03T00:30:00+00:00' } }),
+      // An answer the office entered for an earlier day is stamped noon UTC (`enteredDecisionAt`).
+      item({ tag: 'S-1', product: 'Elkay sink', decision: approved('2026-09-12T12:00:00.000Z') }),
+      // 6:30 pm CST on Dec 1 is 00:30 UTC on Dec 2.
+      item({ tag: 'WH-1', product: 'A.O. Smith BTH-199', decision: approved('2026-12-02T00:30:00Z') }),
+    ],
+    records: [],
+    tagStage: {},
+    stageDates: {},
+  })
+  const row = (tag: string) => calls.find((r) => r.tag === tag)!
+
+  it('an approval recorded at 7:30 pm Central is released that day, not the UTC day after', () => {
+    expect(row('WC-1')).toMatchObject({ status: 'released', releasedOn: '2026-10-02', submittalAt: '2026-10-02' })
+    expect(statusText(row('WC-1'))).toBe('Released 10/02')
+    expect(lineStatus(row('WC-1')).sub).toBe('released 10/02')
+    expect(submittalWord(row('WC-1'))).toBe('Approved 10/02')
+    expect(gcSubmittalWord(row('WC-1'))).toBe('Approved Oct 2')
+  })
+
+  it('a call sent back in the evening, and one in winter, read their own day', () => {
+    expect(row('L-1')).toMatchObject({ status: 'sent_back', releasedOn: null, submittalAt: '2026-10-02' })
+    expect(statusText(row('L-1'))).toBe('Sent back 10/02')
+    expect(row('WH-1')).toMatchObject({ releasedOn: '2026-12-01', submittalAt: '2026-12-01' })
+  })
+
+  it('an answer entered for an earlier day, at noon UTC, reads its own day', () => {
+    expect(row('S-1')).toMatchObject({ releasedOn: '2026-09-12', submittalAt: '2026-09-12' })
+  })
+
+  it('the GC’s copy, an update’s snapshot and changes, and the printed sheet carry the same day', () => {
+    expect(gcProcurementRows(calls).find((r) => r.tag === 'WC-1')?.releasedOn).toBe('2026-10-02')
+    expect(snapshotRows(calls).find((s) => s.tag === 'WC-1')?.releasedOn).toBe('2026-10-02')
+    expect(diffProcurementLog(null, calls).find((c) => c.tag === 'WC-1')?.text).toBe('released 10/02')
+    const html = buildProcurementUpdateHtml({ bidLabel: 'B1', companyName: 'Click', updateNumber: 1, sentOn: '2026-10-02', sinceOn: null, rows: calls, changes: [], line: '', stageDates: {} })
+    expect(html).toContain('Approved Oct 2<')
+    expect(html).toContain('Returned for revision Oct 2<')
+    expect(html).not.toContain('Oct 3')
   })
 })
 

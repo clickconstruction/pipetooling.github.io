@@ -13,6 +13,7 @@ import { splitPartLabel } from '../../lib/submittals/itemParts'
 import { setLineFacts } from '../../lib/submittals/itemPartsIo'
 import { tagBlock, type TagGuide } from '../../lib/submittals/procurementTagBlocks'
 import { isPlausibleDate, readDateBoxEntry } from '../../lib/dateBoxEntry'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import {
   ANSWER_DOOR_WORDS,
   answerDoor,
@@ -556,7 +557,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
   }
 
   function updateInput(sentOn: string, updateNumber: number) {
-    return { ...letter, kind: 'update' as const, updateNumber, sentOn, sinceOn: lastUpdate ? lastUpdate.sentAt.slice(0, 10) : null, rows: gcRows, changes, line: sendLine }
+    return { ...letter, kind: 'update' as const, updateNumber, sentOn, sinceOn: lastUpdate ? calendarYmdInAppTzFromIso(lastUpdate.sentAt) : null, rows: gcRows, changes, line: sendLine }
   }
 
   /** Print the log: the log as it stands — no update number, nothing marked. */
@@ -817,7 +818,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
         </div>
         <span style={smallMuted}>
           {hasStageDates ? `Required dates from the job's stage windows` : jobId ? 'No stage windows on the job yet — required dates blank' : 'Not a job yet — required dates blank'}
-          {lastUpdate ? ` · last update ${shortDate(lastUpdate.sentAt.slice(0, 10))}${lastUpdate.sentTo ? ` to ${lastUpdate.sentTo}` : ''}` : ' · no update sent yet'}
+          {lastUpdate ? ` · last update ${shortDate(calendarYmdInAppTzFromIso(lastUpdate.sentAt))}${lastUpdate.sentTo ? ` to ${lastUpdate.sentTo}` : ''}` : ' · no update sent yet'}
         </span>
       </div>
 
@@ -1055,7 +1056,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
       {sendOpen ? (
         <div style={{ border: '1px solid var(--border-amber)', background: 'var(--bg-amber-100)', borderRadius: 6, padding: '0.55rem 0.7rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }} data-testid="procurement-send-card">
           <b style={{ fontSize: '0.85rem' }}>Procurement log update {updates.length + 1} · {shortDate(toIsoDate(new Date()))}</b>
-          <div style={smallMuted}>{lastUpdate ? `Since ${shortDate(lastUpdate.sentAt.slice(0, 10))}: ${changes.length} ${changes.length === 1 ? 'row' : 'rows'} changed` : 'First update: every row goes.'}</div>
+          <div style={smallMuted}>{lastUpdate ? `Since ${shortDate(calendarYmdInAppTzFromIso(lastUpdate.sentAt))}: ${changes.length} ${changes.length === 1 ? 'row' : 'rows'} changed` : 'First update: every row goes.'}</div>
           {changes.length > 0 ? (
             <ul style={{ margin: 0, paddingLeft: '1.1rem', fontSize: '0.8125rem' }} data-testid="procurement-changes">
               {changes.map((c) => <li key={c.key}><b>{c.tag ?? c.product}</b>{c.tag ? ` ${c.product}` : ''}: {c.text}</li>)}
@@ -1079,12 +1080,12 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
           {updates.map((u, i) => (
             <div key={u.id} style={{ fontSize: '0.8125rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
               <b>Update {updates.length - i}</b>
-              <span>{shortDate(u.sentAt.slice(0, 10))}</span>
+              <span>{shortDate(calendarYmdInAppTzFromIso(u.sentAt))}</span>
               {u.sentTo ? <span style={smallMuted}>to {u.sentTo}</span> : null}
               {u.sentByName ? <span style={smallMuted}>by {u.sentByName}</span> : null}
               <span style={smallMuted}>{u.changes.length} {u.changes.length === 1 ? 'change' : 'changes'}</span>
               {u.line ? <span style={{ ...smallMuted, fontStyle: 'italic' }}>“{u.line}”</span> : null}
-              <button type="button" onClick={() => printHtmlInNewWindow(buildProcurementUpdateHtml({ ...letter, kind: 'update', updateNumber: updates.length - i, sentOn: u.sentAt.slice(0, 10), sinceOn: updates[i + 1] ? updates[i + 1]!.sentAt.slice(0, 10) : null, rows: rowsFromSnapshot(u.rows), changes: u.changes, line: u.line }))} style={link}>Open</button>
+              <button type="button" onClick={() => printHtmlInNewWindow(buildProcurementUpdateHtml({ ...letter, kind: 'update', updateNumber: updates.length - i, sentOn: calendarYmdInAppTzFromIso(u.sentAt), sinceOn: updates[i + 1] ? calendarYmdInAppTzFromIso(updates[i + 1]!.sentAt) : null, rows: rowsFromSnapshot(u.rows), changes: u.changes, line: u.line }))} style={link}>Open</button>
             </div>
           ))}
         </div>
