@@ -2,7 +2,7 @@
  * GC mode — design spike. The reducer: every action, applied to the state.
  * Split out of gcModel.ts verbatim; import from `./gcModel`, which re-exports every file.
  */
-import type { AskContact, Draw, GcAction, GcState, Invite, Partner, PlanSet, SubBid } from './gcTypes'
+import type { AskContact, Draw, DrawSentBack, GcAction, GcState, Invite, Partner, PlanSet, SubBid } from './gcTypes'
 import { money, shortDate, weekdayDate } from './gcWords'
 import { currentRev, partnerById, planLabel } from './gcLookups'
 import { planRecipients } from './gcPlans'
@@ -10,7 +10,7 @@ import { bidsIn } from './gcBids'
 import { awardedPartner, find, logged, mapInvite, mapPackage, mapProject, mapSow, sowFromBid } from './gcReducerHelpers'
 import { initialGcState } from './gcFixture'
 import { buildNewProject, packagesFromDrafts, withTradesInOrder } from './gcNewProject'
-import { finalPayApplication, payApplication, tradeCloseout, workAllBilled } from './gcBuilding'
+import { finalPayApplication, payApplication, timesSentBack, tradeCloseout, workAllBilled } from './gcBuilding'
 import { ownerPayApp, ownerPayAppHasWork, ownerPayAppToSend } from './gcOwnerBilling'
 
 export function gcReducer(state: GcState, action: GcAction): GcState {
@@ -526,7 +526,9 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
         mapPackage(p, pkg.id, (k) =>
           mapSow(k, (s) => ({
             ...s,
-            sov: s.sov.map((l) => ({ ...l, pctReported: Math.max(l.pctReported, claimed.get(l.id) ?? 0) })),
+            // What the pay application claims is their report for each line it names, even
+            // lower than they reported before (a resend after we sent it back).
+            sov: s.sov.map((l) => (l.id in action.toPct ? { ...l, pctReported: claimed.get(l.id) ?? l.pctReported } : l)),
             draws: [...s.draws, draw],
           })),
         ),
@@ -538,7 +540,8 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
           p.id === partner.id ? { ...p, ...(address ? { address } : {}), ...(license ? { license } : {}) } : p,
         ),
       }
-      return logged(kept, 'trade', `${partner.company} sent pay application ${number} on ${pkg.trade}: ${money(gross)}, with a conditional waiver signed.`)
+      const again = timesSentBack(sow, number) > 0 ? ' again, fixed' : ''
+      return logged(kept, 'trade', `${partner.company} sent pay application ${number} on ${pkg.trade}${again}: ${money(gross)}, with a conditional waiver signed.`)
     }
 
     case 'tradeUploadCoi': {
@@ -703,6 +706,29 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
         mapPackage(p, pkg.id, (k) => (k.selfPerform ? { ...k, selfPerform: { ...k.selfPerform, pctDone: pct } } : k)),
       )
       return logged(next, 'office', `Our own crew reported ${pkg.trade} at ${pct}%.`)
+    }
+
+    case 'sendDrawBack': {
+      // The office does not approve this pay application as sent. It goes back to the trade with
+      // a note and the percent we see on the lines we doubt; the trade fixes it and sends it again
+      // under the same number. Their report and what was billed are left as they were.
+      const { pkg } = find(state, action.projectId, action.packageId)
+      const partner = awardedPartner(state, pkg)
+      const sow = pkg?.sow
+      const draw = sow?.draws.find((d) => d.id === action.drawId)
+      if (!pkg || !partner || !sow || !draw || draw.status !== 'requested') return state
+      const asked = new Map(draw.lines.map((l) => [l.sovId, l.toPct]))
+      const lines = Object.entries(action.weSee)
+        .filter(([sovId, pct]) => pct < (asked.get(sovId) ?? 0))
+        .map(([sovId, weSee]) => ({ sovId, weSee }))
+      const note = action.note.trim()
+      const back: DrawSentBack = { draw, on: state.today, note, lines }
+      const next = mapProject(state, action.projectId, (p) =>
+        mapPackage(p, pkg.id, (k) =>
+          mapSow(k, (s) => ({ ...s, draws: s.draws.filter((d) => d.id !== draw.id), sentBack: [...(s.sentBack ?? []), back] })),
+        ),
+      )
+      return logged(next, 'office', `Sent pay application ${draw.number} on ${pkg.trade} back to ${partner.company}.${note ? ` ${note}` : ''}`)
     }
 
     case 'tradeOpenPortal': {

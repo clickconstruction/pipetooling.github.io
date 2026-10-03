@@ -7,7 +7,10 @@ import {
   payApplicationForDraw,
   payAppDraftPcts,
   payAppSteps,
+  resendPayAppDraft,
   retainageHeldNow,
+  sentBackOpen,
+  timesSentBack,
   tradeCloseout,
   type GcAction,
   type GcState,
@@ -174,5 +177,58 @@ describe('closeout: retainage release and the final waivers', () => {
     expect(tradeCloseout(drySow(paid)).next?.key).toBe('finalWaiver')
     const closed = play([{ type: 'tradeSignUnconditional', ...ids, drawId: 'dry-draw-3' }], paid)
     expect(tradeCloseout(drySow(closed)).closed).toBe(true)
+  })
+})
+
+describe('the office sends a pay application back', () => {
+  const ids = { projectId: 'helotes', packageId: 'dry' }
+  const typed = { periodTo: '2026-10-02', address: filled.address, license: '', signedBy: 'Rosa Medina', signedTitle: 'Office manager' }
+  const asked = gcReducer(initialGcState(), { type: 'tradeSendPayApp', ...ids, toPct: { 'dry-2': 60, 'dry-3': 40 }, ...typed })
+  const back = gcReducer(asked, {
+    type: 'sendDrawBack',
+    ...ids,
+    drawId: 'dry-draw-2',
+    note: 'The break room ceiling is not hung yet.',
+    weSee: { 'dry-2': 60, 'dry-3': 20 },
+  })
+  const hillCountry = () => {
+    const p = back.partners.find((x) => x.id === 'hillcountry')
+    if (!p) throw new Error('no Hill Country')
+    return p
+  }
+
+  it('takes the draw off the list and keeps it with the note and the lines we doubt', () => {
+    const sow = drySow(back)
+    expect(sow.draws.map((d) => d.number)).toEqual([1])
+    const open = sentBackOpen(sow)
+    expect(open?.note).toBe('The break room ceiling is not hung yet.')
+    // A line where we see what they asked is not flagged.
+    expect(open?.lines).toEqual([{ sovId: 'dry-3', weSee: 20 }])
+    // Their report and what was billed stay as they were.
+    expect(sow.sov.find((l) => l.id === 'dry-3')).toMatchObject({ pctReported: 40, pctBilled: 0 })
+  })
+
+  it('the resend starts from what they asked for, with our number on the lines we doubt', () => {
+    const sow = drySow(back)
+    const open = sentBackOpen(sow)
+    if (!open) throw new Error('nothing sent back')
+    const draft = resendPayAppDraft(sow, hillCountry(), open)
+    expect(draft.toPct).toEqual({ 'dry-1': 100, 'dry-2': 60, 'dry-3': 20 })
+    expect(draft).toMatchObject({ periodTo: '2026-10-02', signedTitle: 'Office manager', waiverSigned: false })
+  })
+
+  it('the fixed one takes the same number, and its percents become their report', () => {
+    const fixed = gcReducer(back, { type: 'tradeSendPayApp', ...ids, toPct: { 'dry-2': 60, 'dry-3': 20 }, ...typed })
+    const sow = drySow(fixed)
+    expect(sow.draws.map((d) => d.id)).toEqual(['dry-draw-1', 'dry-draw-2'])
+    expect(timesSentBack(sow, 2)).toBe(1)
+    expect(sentBackOpen(sow)).toBeNull()
+    expect(sow.sov.find((l) => l.id === 'dry-3')?.pctReported).toBe(20)
+    expect(fixed.log[0]?.text).toContain('on Framing and drywall again, fixed')
+  })
+
+  it('only a draw waiting on us can go back', () => {
+    const approved = gcReducer(asked, { type: 'approveDraw', ...ids, drawId: 'dry-draw-2' })
+    expect(gcReducer(approved, { type: 'sendDrawBack', ...ids, drawId: 'dry-draw-2', note: 'x', weSee: {} })).toBe(approved)
   })
 })

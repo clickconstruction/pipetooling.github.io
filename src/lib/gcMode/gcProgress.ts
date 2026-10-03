@@ -9,7 +9,7 @@ import { plansReach } from './gcPlans'
 import { startChecklist } from './gcStart'
 import { BIDS_WANTED, bidIsStale, bidsIn, carriedAmount, isGuess } from './gcBids'
 import { followUps } from './gcFollowUp'
-import { tradeCloseout } from './gcBuilding'
+import { sentBackOpen, tradeCloseout } from './gcBuilding'
 
 /** The stage colors, saturated on purpose: the ring is a status mark, not a neutral surface. */
 export const RING_COLORS: Record<GcStage, string> = {
@@ -233,6 +233,8 @@ function buildingProgress(state: GcState, project: GcProject): StageProgress {
       else if (d.waiver === 'conditional') also.push(`${company} owes the unconditional waiver on draw ${d.number}.`)
     }
     const sow = pkg.sow
+    const back = sow ? sentBackOpen(sow) : null
+    if (back) also.push(`Pay application ${back.draw.number} is back with ${company}. Waiting on a fixed one.`)
     if (sow && sow.status === 'signed' && tradeCloseout(sow).next?.key === 'accepted') {
       also.push(`${pkg.trade} is all billed. Walk it, then accept the work on Closeout.`)
     }

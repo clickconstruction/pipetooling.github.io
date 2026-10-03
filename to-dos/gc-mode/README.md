@@ -69,18 +69,18 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 | **New here?** (top right) | An 11-stop spotlight walkthrough of the three stages on the Project Board: each stage's question, what you do in it, how it ends, then where to try it. Stops in `src/lib/gcMode/gcTour.ts`, on the app's `SpotlightTour`. |
 | The ring on each row | How far the project is through its stage (`stageProgress` in the model; `GcProgressRing`). Hover it, tap it on a phone, or tab to it: a card lists what the ring counts by type, what is left in each spelled out, what is done in one line, and an *Also* list it does not count. Bidding: enough quotes (2 per hired trade), a number to carry, quotes on the newest plans, our bid sent. Buyout: the Get started checklist by kind of step (the owner side, awarded, master agreement, insurance, W-9, statement of work). Building: work reported per trade, weighted by its statement of work; draws and waivers waiting under *Also*. |
 | **Project Board** | Projects in three sections: Bidding to the owner, Buying out, Building. Each row leads with the days left before our bid (red inside a week, amber inside two), then the name, the owner and architect (each a link), chips, the Bid Board's folder and plans icons, and the price. |
-| **+ New project** (beside *Bidding to the owner*) | One window in four steps, each feeding the next. **The project**: name, address, town, owner and architect from the one customer list ("Someone new" makes a record), bid due, size. **The plans**: the set's name (Bid set, Pricing set, Permit set or typed), the day it came in, the sheet index pasted from the cover sheet and read as you paste (A-101, A101, A1.01, FP-101; capitals become sentence case; a line not read is listed). **The trades**: guessed from the sheets in build order, each with the sheets behind it; untick, add, mark **Ours**, a budget. **Each scope**: each trade's usual lines to change; Enter starts the next line. **Create the project** puts it under Bidding to the owner and opens it on Trades. **Paste a made-up sheet index** tries it. |
-| Plans icon on a row | A plans window over the board: newest set first, the sheet list by discipline, what the last addendum changed, arrow keys flip sheets. Drawings are stand-ins. |
+| **+ New project** (beside *Bidding to the owner*) | One window in four steps, each feeding the next. **The project**: name, address, town, owner and architect from the one customer list ("Someone new" makes a record), bid due, size. **The plans**: the set's name (Bid set, Pricing set, Permit set or typed), the day it came in, the sheet index pasted from the cover sheet and read as you paste (A-101, A101, A1.01, FP-101; capitals become sentence case; a line not read is listed). **The trades**: guessed from the sheets in build order, each with the sheets behind it; untick, add, mark **Ours**, a budget. **Each scope**: each trade's usual lines to change, each with the sheets it reads from (guessed from its words, × takes one off, **+ sheet** adds one; none means the trade's sheets as a whole); Enter starts the next line. **Create the project** puts it under Bidding to the owner and opens it on Trades. **Paste a made-up sheet index** tries it. |
+| Plans icon on a row | A plans window over the board: newest set first, the sheet list by discipline, what the last addendum changed, arrow keys flip sheets, and under each sheet the scope lines that read from it. Drawings are stand-ins. |
 | Owner or architect name | One company window, shaped by what the company is to us: an owner gets money, how they buy and pay, projects we build for them; an architect gets addenda and questions waiting on them. One call log either way. |
 | **Trades** tab | One row per trade: who we asked with each bid in thousands, our budget, the lowest all in, what we carry. **Compare bids** opens the comparison. **On a map** opens the map. |
 | Compare bids | Sentences first ("Voltage Brothers bid $166,000 and left out fire alarm. Covering that adds $14,000, so they come to $180,000."), then the table behind them: is each piece of work in their price, a cost to cover what is not, the all-in total, who is lowest. |
 | On a map | The project in the middle, every company in the trade as a numbered pin (closest first), the same companies in a list beside it to work down. "Will not do it" / "Cannot do it" moves you to the next closest. |
-| **Plans** tab | **A new set of plans came in**: name the set (Addendum, Bulletin, Revised set, Permit set, Construction set, or typed; addenda and bulletins count apart), paste what changed, sheets are read out of the notes (A-401, A401, A1.01) and matched to the index, a sheet new to the set gets its title, trades guessed from the sheet letters and titles, a trade the job does not have yet can come with the set (its usual scope, a budget; nobody asked yet), the list of who is emailed, the email preview. Then a table: told, opened, their number (needs confirming or good). |
+| **Plans** tab | **A new set of plans came in**: name the set (Addendum, Bulletin, Revised set, Permit set, Construction set, or typed; addenda and bulletins count apart), paste what changed, sheets are read out of the notes (A-401, A401, A1.01) and matched to the index, a sheet new to the set gets its title, trades guessed from the sheet letters and titles, a trade the job does not have yet can come with the set (its usual scope, a budget; nobody asked yet), the scope lines it touches per trade, the list of who is emailed, the email preview (it names the lines it touches). Then a table: told, opened, their number (needs confirming or good). |
 | **Our number** | Carried trades + general conditions + contingency + fee = the price to the owner. **We sent our bid**, **We won this**. |
 | **Bid tabs** | After our bid is in, each trade's quotes go back to the companies that quoted, low to high, their own row marked, names hidden unless ticked. |
 | **Contracts** | Per trade: paperwork chips, award, the statement of work drafted from the bid, send, sign. |
 | **Get started** | The checklist before work starts: owner contract, permit, start date, and five steps per trade. Start stays shut until nothing is missing. |
-| **Draws** | Percent reported per line, a draw asked from the portal with its pay application (the 702 and 703) and a conditional waiver, approve, pay, unconditional waiver. **Pay application** on each draw opens the signed form read-only. |
+| **Draws** | Percent reported per line, a draw asked from the portal with its pay application (the 702 and 703) and a conditional waiver, approve, pay, unconditional waiver. **Pay application** on each draw opens the signed form read-only. **Send back** returns a waiting draw with a note and the percent we see on each line we doubt; the trade gets **Fix and resend** in its portal, our numbers filled in, and the fixed one comes back marked "revised". |
 | **Bill the owner** | Our pay application to the owner, once a month: one line per trade with the work its company reported, then general conditions, contingency and fee, which follow the trades. Done so far, less what the owner holds, less what we asked for before, is this bill. **Send to** the owner keeps it as it went, and next month's starts from it. **So far with** the owner lists what went, with **Mark paid**. A trade our own crew does (plumbing) has a percent-done picker on its line. |
 | **Follow up** (board tab) | Everyone we are waiting on across every project, the ones to call first. Log a contact; record the day they promised a quote; a passed day returns them to the top. |
 | **Trade partners** (board tab) | By trade: the bench, who answers when asked, every project short of quotes, coverage (where they drive from, how far they go), one press to ask the companies not yet asked. **Actions for assistants** on top: each standard as the ideal, where we are, and what closes the gap. |
@@ -128,6 +128,11 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   permit or construction set), gives a sheet new to the index its title, and can bring a trade
   the job did not have, put in build order with its usual scope (`issuePlanSet`). The trade guess
   is the one New Project uses, so a title like "Roof plan" flags roofing.
+- **Each scope line names its sheets** (approved as built, 2026-10-02): a line carries the sheets
+  it reads from (`ScopeItem.sheets`), guessed from the words it shares with the trade's sheet
+  titles and changed by the office. A new set then says which lines it touches, and each
+  company's email names them. A line with no sheet stands for the trade as a whole. Projects
+  written before lines had sheets show the guess (`lineSheets`).
 - **Each draw comes with a 702 and 703** (2026-10-02, Building lane): the trade fills the pay
   application in its portal and watches the form fill, typing only what the app cannot know. Most
   of it comes from the job and from the work they reported (`gcBuilding.ts`, `GcBuildingPayApp.tsx`).
@@ -172,6 +177,9 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
 - Closeout: the release waits for nothing else (not the owner, not a number of days). Its
   approval is locked by the same paperwork rules as a draw. "Held" counts until the release is
   paid, not when it is approved (`retainageHeldNow`).
+- Sending a draw back: the note is required; a resend keeps the same application number; only a
+  draw waiting on us can go back (a retainage release too); nothing billed changes. The resend's
+  percents become the trade's report, even lower than it was.
 - Owner billing (`gcOwnerBilling.ts`): the pay application goes on the 25th. A trade's line on
   the owner's bill is the work its company reported, before we approve their draw. General
   conditions, contingency and fee follow the share of the trades' work done, so the bill totals
@@ -224,14 +232,19 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
     waivers from their own suppliers.
 18. Should a project whose trades are all closed out leave Building for a fourth section on
     the board? It stays under Building today. That is the Board lane's change.
-19. Should the office see which companies never opened their link (a chip on Trades and in
+19. Besides sending a draw back, should the office be able to approve less than was asked, the
+    way an architect certifies a smaller amount on a 702? Should a draw sent back twice flag
+    anything on the board?
+20. Should the office see which companies never opened their link (a chip on Trades and in
     Follow up)? The portal records the first visit (`portalOpenedOn`). That is the Board lane's change.
 
 ## Workflow steps not built yet
 
-- New Project past its first form: a scope line tied to the sheets or spec section it reads
-  from, exclusions, and a budget from the size (open question 11). A later set cannot yet take
-  a sheet out of the set, or add a scope line to a trade already out to bid.
+- New Project past its first form: a scope line tied to its spec section, exclusions, and a
+  budget from the size (open question 11). A line's sheets show only in New Project, a new set
+  and the plans window; the portal's bid form, Trades and Compare bids do not show them yet. A
+  later set cannot yet take a sheet out of the set, or add a scope line to a trade already out
+  to bid.
 - A trade asks a question about the plans, the architect answers, every bidder on the trade
   gets the answer. Three made-up questions show in the architect's window, read-only.
 - Change orders, both to the owner and to a trade (a statement of work amendment).
@@ -279,7 +292,7 @@ imitates it.
 | `gcPlans.ts` · `gcStart.ts` · `gcProgress.ts` | Plans, sheets, what a later set is called and who hears about it (tested in `gcPlans.test.ts`) · the Get started checklist · the ring and its hover card. |
 | `gcBids.ts` · `gcCustomers.ts` · `gcMap.ts` | Compare all in, what we carry, our price, bid tabs, statement-of-work money · the company window's summaries · towns, the drive and the map's list. |
 | `gcFollowUp.ts` · `gcBench.ts` | Promised days, word records, who to call first · the bench by trade and Actions for assistants. |
-| `gcNewProject.ts` · `gcNewProject.test.ts` | New Project: the sheet index read from a paste, the trades guessed from the sheets (a later set uses the same guess, `packagesForSheets`), each trade's usual scope, the project made from the draft (`createProject`), trades a later set brings · its kernel test. |
+| `gcNewProject.ts` · `gcNewProject.test.ts` | New Project: the sheet index read from a paste, the trades guessed from the sheets (a later set uses the same guess, `packagesForSheets`), each trade's usual scope and each line's sheets (`guessLineSheets`, `lineSheets`, `linesOnSheets`), the project made from the draft (`createProject`), trades a later set brings · its kernel test. |
 | `gcPortal.ts` · `gcPortal.test.ts` | What the portal tells one company: its home (every ask sorted into bidding, jobs and before, what needs it in order, its money), plan news for its trade, its promised day, its insurance, the lines the office could not read · its kernel test. |
 | `gcReducer.ts` · `gcReducerHelpers.ts` · `gcFixture.ts` | Every action applied to the state · its small helpers (not in the barrel) · the made-up data (`initialGcState`). |
 | `gcModel.test.ts` | The golden test (see *Working in parallel*). |
@@ -295,6 +308,7 @@ imitates it.
 | `GcBuildingPayApp.tsx` · `src/lib/gcMode/gcBuilding.ts` | The pay application window (progress and final), its door in the portal (which turns into the trade's closeout list) and its read-only view from Draws · the 702 and 703 numbers, the four steps, retainage held and each trade's closeout (tested in `gcBuilding.test.ts`) |
 | `GcOwnerBillingTab.tsx` · `src/lib/gcMode/gcOwnerBilling.ts` | Bill the owner: the owner's lines, the draft pay application, the ones sent and paid · the lines and the 702 math, `ownerAccount` (tested in `gcOwnerBilling.test.ts`) |
 | `GcCloseout.tsx` | The Closeout tab |
+| `GcBuildingSendBack.tsx` | The Send back form under a waiting draw, and the list of what went back |
 | `GcStart.tsx` | Get started |
 | `GcBidTabs.tsx` | Bid tabs |
 | `GcCustomerWindow.tsx` | The one company window |
@@ -393,7 +407,8 @@ follow the plain-words rules; the prototype's own words were written to them as 
   money paid and held). Tap the insurance line: the certificate form opens in place.
 - **+ New project**: pick an owner, **Paste a made-up sheet index**, see 21 sheets and 13 trades,
   change a scope line, **Create the project**. It opens on Trades and sits under Bidding to the
-  owner with its days left.
+  owner with its days left. On Electrical, Lighting reads from E-101; add E-201 to Devices, then
+  the plans window under E-201 lists Devices.
 
 ## Where it stands
 

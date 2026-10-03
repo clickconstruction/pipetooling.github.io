@@ -32,6 +32,11 @@ export interface PlanSheet {
 export interface ScopeItem {
   id: string
   label: string
+  /**
+   * The sheets this line reads from. Missing: not said, so a guess from the line's words is shown.
+   * Empty: the trade's sheets as a whole, no one sheet in particular.
+   */
+  sheets?: string[]
 }
 
 export interface SubBid {
@@ -112,6 +117,8 @@ export interface Sow {
   acceptedOn?: string | null
   /** Closeout: the day their warranty letter came in. Null or absent: not yet. */
   warrantyOn?: string | null
+  /** Pay applications the office sent back, oldest first. A resend takes the same number. */
+  sentBack?: DrawSentBack[]
 }
 
 /**
@@ -380,6 +387,16 @@ export type GcAction =
   | { type: 'approveRetainage'; projectId: string; packageId: string; drawId: string }
   /** Our own crew's percent done on a trade we do ourselves, reported in the office. */
   | { type: 'selfReport'; projectId: string; packageId: string; pct: number }
+  | {
+      type: 'sendDrawBack'
+      projectId: string
+      packageId: string
+      drawId: string
+      /** What is not right, in the office's words. The trade reads it in its portal. */
+      note: string
+      /** Lines where we see less done than they asked for: the percent we see. */
+      weSee: Record<string, number>
+    }
   /** The company presses Got it on its portal's first-visit welcome. */
   | { type: 'tradeOpenPortal'; partnerId: string }
 
@@ -392,6 +409,8 @@ export interface NewTradeDraft {
   ours: boolean
   /** The scope lines, each a piece of work a quote says yes or no to. */
   scope: string[]
+  /** The sheets each scope line reads from, in the order of `scope`. Missing: not said. */
+  scopeSheets?: string[][]
 }
 
 /** What the office fills in before a project exists. The reducer makes the project from it. */
@@ -442,4 +461,13 @@ export interface OwnerPayAppSent {
   due: number
   /** The day the owner paid it. Null until they do. */
   paidOn: string | null
+}
+
+/** A pay application the office sent back: the draw as the trade sent it, why, and what we see. */
+export interface DrawSentBack {
+  draw: Draw
+  on: string
+  note: string
+  /** Lines where we see less done than they asked for. */
+  lines: { sovId: string; weSee: number }[]
 }

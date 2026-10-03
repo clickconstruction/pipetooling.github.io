@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   currentRev,
+  lineSheets,
   planLabel,
   plansReach,
   sheetDiscipline,
@@ -58,6 +59,13 @@ export function GcPlansQuickLook({ project, onClose, onSeeWhoHasIt }: Props) {
     else groups.push({ discipline, rows: [s] })
   }
   const changedCount = sheets.filter((s) => s.changedInRev === rev).length
+  /** The scope lines that read from the sheet on screen, trade by trade. */
+  const onSheet = sheet
+    ? project.packages
+        .map((pkg) => ({ pkg, lines: pkg.scope.map((item) => ({ item, ...lineSheets(project, pkg, item) })).filter((l) => l.sheets.includes(sheet.id)) }))
+        .filter((t) => t.lines.length > 0)
+    : []
+  const guessedHere = onSheet.some((t) => t.lines.some((l) => l.guessed))
 
   return (
     <div
@@ -84,7 +92,7 @@ export function GcPlansQuickLook({ project, onClose, onSeeWhoHasIt }: Props) {
         <div style={{ padding: '0.7rem 1rem', borderBottom: '1px solid var(--border)', display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontWeight: 700, fontSize: '1.05rem' }}>{project.name} · plans</div>
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{project.architect} · {project.sizeNote}</div>
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{[project.architect, project.sizeNote].filter(Boolean).join(' · ')}</div>
           </div>
           <div role="group" aria-label="Plan set" style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginLeft: 'auto' }}>
             {sets.map((s) => {
@@ -191,6 +199,24 @@ export function GcPlansQuickLook({ project, onClose, onSeeWhoHasIt }: Props) {
               </span>
               <Btn disabled={index >= sheets.length - 1} onClick={() => setSheetId(sheets[index + 1]?.id ?? sheetId)}>Next →</Btn>
             </div>
+            {sheet && (
+              <div style={{ marginTop: '0.6rem', padding: '0.5rem 0.65rem', borderRadius: 6, background: 'var(--surface)', border: '1px solid var(--border)', fontSize: '0.85rem', display: 'grid', gap: '0.3rem' }}>
+                <strong>Scope that reads from {sheet.id}</strong>
+                {onSheet.length === 0 ? (
+                  <span style={{ color: 'var(--text-muted)' }}>No scope line names this sheet.</span>
+                ) : (
+                  onSheet.map((t) => (
+                    <div key={t.pkg.id} style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <span style={{ minWidth: '7rem' }}>{t.pkg.trade}</span>
+                      {t.lines.map((l) => (
+                        <Chip key={l.item.id} tone="grey">{l.item.label}</Chip>
+                      ))}
+                    </div>
+                  ))
+                )}
+                {guessedHere && <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>Some of these are guessed from the line's words. Set them when you write the scope.</span>}
+              </div>
+            )}
           </div>
         </div>
 

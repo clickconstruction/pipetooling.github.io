@@ -5265,10 +5265,68 @@ exports[`GC mode golden walk > step 73: Our crew reports plumbing at 50% 1`] = `
 }
 `;
 
-exports[`GC mode golden walk > step 74: AquaShield opens its portal for the first time 1`] = `
+exports[`GC mode golden walk > step 74: Cedar & Pine sends pay application 1 1`] = `
 {
   "changed": {
     "lastLog.id": 70,
+    "lastLog.text": "Cedar & Pine Millwork sent pay application 1 on Millwork: $19,800, with a conditional waiver signed.",
+    "lastLog.who": "trade",
+    "projects.helotes.stageProgress.also[0]": "Cedar & Pine Millwork asked for draw 1. Approve it.",
+    "projects.helotes.stageProgress.center": "40%",
+    "projects.helotes.stageProgress.groups[0].items[3].detail": "50% reported",
+    "projects.helotes.stageProgress.headline": "40% of the work is done, by what the trades have reported.",
+    "projects.helotes.stageProgress.share": 0.4028776978417266,
+  },
+  "removed": [
+    "projects.helotes.stageProgress.also",
+  ],
+}
+`;
+
+exports[`GC mode golden walk > step 75: Send it back: we see the cabinets at 30% 1`] = `
+{
+  "changed": {
+    "lastLog.id": 71,
+    "lastLog.text": "Sent pay application 1 on Millwork back to Cedar & Pine Millwork. Four of the twelve operatory cabinets are set, not half.",
+    "lastLog.who": "office",
+    "projects.helotes.stageProgress.also[0]": "Pay application 1 is back with Cedar & Pine Millwork. Waiting on a fixed one.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 76: Cedar & Pine sends pay application 1 again, fixed 1`] = `
+{
+  "changed": {
+    "lastLog.id": 72,
+    "lastLog.text": "Cedar & Pine Millwork sent pay application 1 on Millwork again, fixed: $17,160, with a conditional waiver signed.",
+    "lastLog.who": "trade",
+    "projects.helotes.stageProgress.also[0]": "Cedar & Pine Millwork asked for draw 1. Approve it.",
+    "projects.helotes.stageProgress.center": "39%",
+    "projects.helotes.stageProgress.groups[0].items[3].detail": "43% reported",
+    "projects.helotes.stageProgress.headline": "39% of the work is done, by what the trades have reported.",
+    "projects.helotes.stageProgress.share": 0.3902158273381295,
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 77: Approve the fixed pay application 1 1`] = `
+{
+  "changed": {
+    "lastLog.id": 73,
+    "lastLog.text": "Approved draw 1 on Millwork. $15,444 to pay, $1,716 held.",
+    "lastLog.who": "office",
+    "projects.helotes.stageProgress.also[0]": "Draw 1 for Cedar & Pine Millwork is approved. Pay it.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 78: AquaShield opens its portal for the first time 1`] = `
+{
+  "changed": {
+    "lastLog.id": 74,
     "lastLog.text": "AquaShield Sprinkler opened their portal for the first time.",
     "lastLog.who": "trade",
   },
@@ -5432,8 +5490,28 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
-      "id": 70,
+      "id": 74,
       "text": "AquaShield Sprinkler opened their portal for the first time.",
+      "who": "trade",
+    },
+    {
+      "id": 73,
+      "text": "Approved draw 1 on Millwork. $15,444 to pay, $1,716 held.",
+      "who": "office",
+    },
+    {
+      "id": 72,
+      "text": "Cedar & Pine Millwork sent pay application 1 on Millwork again, fixed: $17,160, with a conditional waiver signed.",
+      "who": "trade",
+    },
+    {
+      "id": 71,
+      "text": "Sent pay application 1 on Millwork back to Cedar & Pine Millwork. Four of the twelve operatory cabinets are set, not half.",
+      "who": "office",
+    },
+    {
+      "id": 70,
+      "text": "Cedar & Pine Millwork sent pay application 1 on Millwork: $19,800, with a conditional waiver signed.",
       "who": "trade",
     },
     {
@@ -5560,26 +5638,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "id": 45,
       "text": "Hill Country Interiors asked for draw 2 on Framing and drywall: $34,700, with a conditional waiver signed.",
       "who": "trade",
-    },
-    {
-      "id": 44,
-      "text": "Hill Country Interiors reported Ceilings at 50%.",
-      "who": "trade",
-    },
-    {
-      "id": 43,
-      "text": "Hill Country Interiors reported Hang and tape at 100%.",
-      "who": "trade",
-    },
-    {
-      "id": 42,
-      "text": "Helotes Dental Office is started. Work begins Mon Oct 12. Emailed the 4 companies on the job.",
-      "who": "office",
-    },
-    {
-      "id": 41,
-      "text": "The permit is marked done on Helotes Dental Office.",
-      "who": "office",
     },
   ],
   "partners": [
@@ -5928,6 +5986,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "won": 3,
     },
     {
+      "address": "77 Main St, Fredericksburg, TX 78624",
       "base": "Fredericksburg",
       "bids": 2,
       "coiExpires": "2027-01-08",
@@ -7557,24 +7616,93 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
           "selfPerform": null,
           "sow": {
             "basedOnRev": 0,
-            "draws": [],
+            "draws": [
+              {
+                "gross": 17160,
+                "id": "mill-draw-1",
+                "lines": [
+                  {
+                    "sovId": "mill-1",
+                    "toPct": 100,
+                  },
+                  {
+                    "sovId": "mill-2",
+                    "toPct": 30,
+                  },
+                ],
+                "net": 15444,
+                "number": 1,
+                "payApp": {
+                  "address": "77 Main St, Fredericksburg, TX 78624",
+                  "license": "",
+                  "periodTo": "2026-10-02",
+                  "signedBy": "Owen Blake",
+                  "signedOn": "2026-10-02",
+                  "signedTitle": "Owner",
+                },
+                "requestedOn": "2026-10-02",
+                "retainage": 1716,
+                "status": "approved",
+                "waiver": "conditional",
+              },
+            ],
             "price": 39800,
             "retainagePct": 10,
+            "sentBack": [
+              {
+                "draw": {
+                  "gross": 19800,
+                  "id": "mill-draw-1",
+                  "lines": [
+                    {
+                      "sovId": "mill-1",
+                      "toPct": 100,
+                    },
+                    {
+                      "sovId": "mill-2",
+                      "toPct": 50,
+                    },
+                  ],
+                  "net": 17820,
+                  "number": 1,
+                  "payApp": {
+                    "address": "77 Main St, Fredericksburg, TX 78624",
+                    "license": "",
+                    "periodTo": "2026-10-02",
+                    "signedBy": "Owen Blake",
+                    "signedOn": "2026-10-02",
+                    "signedTitle": "Owner",
+                  },
+                  "requestedOn": "2026-10-02",
+                  "retainage": 1980,
+                  "status": "requested",
+                  "waiver": "conditional",
+                },
+                "lines": [
+                  {
+                    "sovId": "mill-2",
+                    "weSee": 30,
+                  },
+                ],
+                "note": "Four of the twelve operatory cabinets are set, not half.",
+                "on": "2026-10-02",
+              },
+            ],
             "signedOn": "2026-10-02",
             "sov": [
               {
                 "amount": 13200,
                 "id": "mill-1",
                 "label": "Reception desk",
-                "pctBilled": 0,
-                "pctReported": 0,
+                "pctBilled": 100,
+                "pctReported": 100,
               },
               {
                 "amount": 13200,
                 "id": "mill-2",
                 "label": "Operatory cabinets",
-                "pctBilled": 0,
-                "pctReported": 0,
+                "pctBilled": 30,
+                "pctReported": 30,
               },
               {
                 "amount": 13400,

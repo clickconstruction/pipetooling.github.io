@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest'
 import {
   SAMPLE_SHEET_INDEX,
   buildNewProject,
+  guessLineSheets,
+  lineSheets,
+  linesOnSheets,
+  tradeSheets,
   gcReducer,
   initialGcState,
   newProjectId,
@@ -136,5 +140,52 @@ describe('createProject', () => {
     if (!project) return
     expect(proposalTotals(project).holes.map((p) => p.trade)).toEqual(['Sitework'])
     expect(stageProgress(next, project).center).toMatch(/\d+\/\d+/)
+  })
+})
+
+describe('scope lines and their sheets', () => {
+  const index = sheetIndexInText(SAMPLE_SHEET_INDEX).sheets
+  const civil = index.filter((x) => x.id.startsWith('C-'))
+  const elec = index.filter((x) => x.id.startsWith('E-'))
+
+  it('guesses a line\'s sheets from the words it shares with the trade\'s sheet titles', () => {
+    expect(guessLineSheets('Utilities to 5 ft of the building', civil)).toEqual(['C-301'])
+    expect(guessLineSheets('Clearing and grading', civil)).toEqual(['C-201'])
+    expect(guessLineSheets('Lighting', elec)).toEqual(['E-101'])
+    expect(guessLineSheets('Panels and feeders', elec)).toEqual(['E-301'])
+  })
+
+  it('gives a line that meets no title no sheet, which reads as the trade as a whole', () => {
+    expect(guessLineSheets('Devices', elec)).toEqual([])
+    expect(guessLineSheets('and the plan', elec)).toEqual([])
+  })
+
+  it('keeps the sheets the office tied to each line, and leaves the field off when it said nothing', () => {
+    const { project } = buildNewProject(
+      initialGcState(),
+      draft({
+        trades: [
+          { trade: 'Electrical', budget: 0, ours: false, scope: ['Lighting', '  ', 'Devices'], scopeSheets: [['E-101'], ['E-999'], []] },
+          { trade: 'Plumbing', budget: 0, ours: true, scope: ['Rough in'] },
+        ],
+      }),
+    )
+    const elecPkg = project.packages.find((p) => p.trade === 'Electrical')
+    expect(elecPkg?.scope).toEqual([
+      { id: 'leon-springs-urgent-care-electrical-1', label: 'Lighting', sheets: ['E-101'] },
+      { id: 'leon-springs-urgent-care-electrical-2', label: 'Devices', sheets: [] },
+    ])
+    expect(project.packages.find((p) => p.trade === 'Plumbing')?.scope[0]).toEqual({ id: 'leon-springs-urgent-care-plumbing-1', label: 'Rough in' })
+  })
+
+  it('reads a line\'s sheets as said, or guesses them on a project written before lines had sheets', () => {
+    const boerne = initialGcState().projects.find((p) => p.id === 'boerne')
+    const elecPkg = boerne?.packages.find((p) => p.id === 'elec')
+    if (!boerne || !elecPkg) throw new Error('no Boerne electrical')
+    expect(tradeSheets(boerne, 'Electrical').map((x) => x.id)).toEqual(['E-101', 'E-201', 'E-301'])
+    const lighting = elecPkg.scope.find((i) => i.label === 'Lighting')
+    expect(lighting ? lineSheets(boerne, elecPkg, lighting) : null).toEqual({ sheets: ['E-101'], guessed: true })
+    expect(linesOnSheets(boerne, elecPkg, ['E-101']).map((i) => i.label)).toEqual(['Lighting', 'Site lighting'])
+    expect(lighting ? lineSheets(boerne, elecPkg, { ...lighting, sheets: ['E-201'] }) : null).toEqual({ sheets: ['E-201'], guessed: false })
   })
 })
