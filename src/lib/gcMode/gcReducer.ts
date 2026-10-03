@@ -613,7 +613,8 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
 
     case 'issuePlanSet': {
       const project = state.projects.find((p) => p.id === action.projectId)
-      if (!project) return state
+      // A bid we lost sends nothing (the owner, 2026-10-03).
+      if (!project || project.lostOn) return state
       const rev = currentRev(project) + 1
       const brought = packagesFromDrafts(project.id, action.newTrades, project.packages.map((p) => p.id))
       const lined = withNewLines(project, rev, action.newLines ?? [])
@@ -643,6 +644,8 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
         ...(action.addedSheets.length > 0 ? { addedSheets: action.addedSheets } : {}),
         ...(lined.added.length > 0 ? { addedLines: lined.added } : {}),
         ...(push ? { pushed: Object.entries(pushes).map(([lineId, days]) => ({ lineId, days })) } : {}),
+        ...(action.specs && action.specs.length > 0 ? { changedSpecs: action.specs } : {}),
+        ...(action.addedSpecs && action.addedSpecs.length > 0 ? { addedSpecs: action.addedSpecs } : {}),
       }
       const next = mapProject(state, project.id, () => ({ ...withTrades, planSets: [...withTrades.planSets, set] }))
       const newLines = lined.added.length > 0 ? ` It adds ${lined.added.length} scope ${lined.added.length === 1 ? 'line' : 'lines'}.` : ''

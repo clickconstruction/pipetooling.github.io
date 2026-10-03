@@ -2,6 +2,14 @@ import { describe, expect, it } from 'vitest'
 import {
   activitiesTouched,
   answeredNotInSet,
+  changeOrderFromSet,
+  currentRev,
+  lineReadsSpec,
+  linesOnPlans,
+  linesOnSpecs,
+  packagesForSpecs,
+  specsAtRev,
+  specsInText,
   openQuestions,
   questionInNote,
   questionRecipients,
@@ -349,5 +357,112 @@ describe('questions close before the bid is due', () => {
     const next = gcReducer(late, { type: 'tradeAskQuestion', projectId: 'boerne', packageId: 'elec', partnerId: 'voltage', text: 'One more?', sheets: [] })
     expect(next).toBe(late)
     expect(next.projects.find((p) => p.id === 'boerne')?.questions.length).toBe(before)
+  })
+})
+
+describe('a bid we lost', () => {
+  const lost = gcReducer(state, { type: 'markLost', projectId: 'boerne', why: 'price', wonBy: null, note: '' })
+
+  it('takes no questions and sends no set (the owner, 2026-10-03)', () => {
+    const boerne = lost.projects.find((p) => p.id === 'boerne')
+    if (!boerne) throw new Error('no Boerne')
+    expect(boerne.lostOn).toBeTruthy()
+    expect(questionsOpen(boerne, '2026-10-01')).toBe(false)
+    expect(gcReducer(lost, { type: 'tradeAskQuestion', projectId: 'boerne', packageId: 'elec', partnerId: 'voltage', text: 'Still on?', sheets: [] })).toBe(lost)
+    expect(gcReducer(lost, { type: 'issuePlanSet', projectId: 'boerne', label: 'Addendum 3', note: 'E-101 revised.', sheets: ['E-101'], addedSheets: [], touches: ['elec'], recipients: [], newTrades: [] })).toBe(lost)
+  })
+
+  it('opens again once the bid is reopened', () => {
+    const back = gcReducer(lost, { type: 'reopenLost', projectId: 'boerne' })
+    const boerne = back.projects.find((p) => p.id === 'boerne')
+    expect(boerne && questionsOpen(boerne, '2026-10-01')).toBe(true)
+  })
+})
+
+describe('a set that revises the project manual', () => {
+  const manual = [
+    { id: '09 29 00', title: 'Gypsum board' },
+    { id: '09 91 23', title: 'Interior painting' },
+    { id: '26 51 00', title: 'Interior lighting' },
+  ]
+  const withManual: GcProject = {
+    ...project('boerne'),
+    specs: manual,
+    packages: project('boerne').packages.map((p) =>
+      p.id === 'elec' ? { ...p, scope: p.scope.map((item) => (item.label === 'Lighting' ? { ...item, specs: ['26 51 00'] } : item.label === 'Fire alarm' ? { ...item, specs: [] } : item)) } : p,
+    ),
+  }
+  const elec = withManual.packages.find((p) => p.id === 'elec')
+  if (!elec) throw new Error('no Boerne electrical')
+
+  it('reads section numbers out of the notes, each once, and not amounts or dates', () => {
+    expect(specsInText('Section 09 91 23: low-VOC paint. 22-40-00 fixtures changed, and 07.54.23 too. Paid $120000 on 2026-10-03. Section 099123 again. 48 12 34 is no division.')).toEqual([
+      '09 91 23',
+      '22 40 00',
+      '07 54 23',
+    ])
+  })
+
+  it('keeps the manual as it stands at each set, a section the set adds in number order', () => {
+    const issued = gcReducer({ ...state, projects: state.projects.map((p) => (p.id === 'boerne' ? withManual : p)) }, {
+      type: 'issuePlanSet',
+      projectId: 'boerne',
+      label: 'Addendum 3',
+      note: 'Section 09 91 23 revised. Section 09 30 13 added for the restroom tile.',
+      sheets: [],
+      addedSheets: [],
+      touches: [],
+      recipients: [],
+      newTrades: [],
+      specs: ['09 91 23', '09 30 13'],
+      addedSpecs: [{ id: '09 30 13', title: 'Ceramic tiling' }],
+    })
+    const after = issued.projects.find((p) => p.id === 'boerne')
+    if (!after) throw new Error('no Boerne')
+    const set = after.planSets[after.planSets.length - 1]
+    expect(set?.changedSpecs).toEqual(['09 91 23', '09 30 13'])
+    expect(set?.addedSpecs).toEqual([{ id: '09 30 13', title: 'Ceramic tiling' }])
+    const now = specsAtRev(after, currentRev(after))
+    expect(now.map((x) => x.id)).toEqual(['09 29 00', '09 30 13', '09 91 23', '26 51 00'])
+    expect(now.find((x) => x.id === '09 30 13')).toMatchObject({ title: 'Ceramic tiling', added: true, changedInRev: set?.rev })
+    expect(now.find((x) => x.id === '09 91 23')).toMatchObject({ title: 'Interior painting', added: false, changedInRev: set?.rev })
+    expect(specsAtRev(after, currentRev(after) - 1).map((x) => x.id)).toEqual(['09 29 00', '09 91 23', '26 51 00'])
+  })
+
+  it('finds the trades a section changes by its number', () => {
+    expect(packagesForSpecs(withManual, ['26 51 00', '01 10 00'])).toEqual(['elec'])
+  })
+
+  it('reaches the lines that name the section, and the lines that name none', () => {
+    // Lighting names 26 51 00. Fire alarm names no section, so it reads all of electrical.
+    expect(lineReadsSpec(withManual, elec, elec.scope.find((i) => i.label === 'Lighting') ?? elec.scope[0]!, '26 51 00')).toBe(true)
+    const hit = linesOnSpecs(withManual, elec, ['26 51 00']).map((l) => l.label)
+    expect(hit).toContain('Lighting')
+    expect(hit).toContain('Fire alarm')
+    expect(linesOnSpecs(withManual, elec, ['26 24 16']).map((l) => l.label)).not.toContain('Lighting')
+    expect(linesOnSpecs(withManual, elec, ['09 91 23'])).toEqual([])
+    // Through either the sheets or the sections, in the scope's order, each once.
+    const both = linesOnPlans(withManual, elec, ['E-101'], ['26 51 00']).map((l) => l.id)
+    expect(both).toEqual(elec.scope.map((l) => l.id).filter((id) => both.includes(id)))
+    expect(new Set(both).size).toBe(both.length)
+  })
+
+  it('names the sections in the email and in the change order', () => {
+    const voltage = planRecipients(state, withManual, ['elec']).find((r) => r.partner.id === 'voltage') ?? null
+    const email = planEmail(withManual, 'Addendum 3', 'New fixtures.', ['E-101'], voltage, { specs: [manual[2]!] })
+    expect(email.body).toContain('Spec sections: 26 51 00 Interior lighting.')
+    expect(changeOrderFromSet({ label: 'Bulletin 1', note: 'Section 09 91 23: low-VOC paint throughout.', sheets: ['A-101'], specs: ['09 91 23'] }, 'Painting', [], 0).description).toBe(
+      'Bulletin 1, Painting: low-VOC paint throughout, per A-101 and 09 91 23',
+    )
+  })
+
+  it('reaches scheduled activities through a section, on a job with no manual too', () => {
+    const drawn = gcReducer(state, { type: 'draftSchedule', projectId: 'helotes', start: '2026-10-12' })
+    const helotes = drawn.projects.find((x) => x.id === 'helotes')
+    if (!helotes) throw new Error('no Helotes')
+    const reached = activitiesTouched(helotes, [], ['26 51 00'])
+    expect(reached.length).toBeGreaterThan(0)
+    expect(reached.every((a) => helotes.packages.find((p) => p.id === a.packageId)?.trade === 'Electrical')).toBe(true)
+    expect(activitiesTouched(helotes, [], [])).toEqual([])
   })
 })
