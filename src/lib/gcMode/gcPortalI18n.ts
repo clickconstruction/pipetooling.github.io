@@ -350,6 +350,11 @@ const S = {
   mStartReport: { en: 'Report your work in your portal as it goes. That is how you ask for each draw.', es: 'Reporte su avance en su portal conforme avance. Así pide cada pago.' },
   mStartText: { en: '{gc}: work on {project} begins{when}. Your part is {trades}. Details: {link}', es: '{gc}: el trabajo en {project} comienza{when}. Su parte es {trades}. Detalles: {link}' },
   mWhen: { en: ' {date}', es: ' el {date}' },
+  mChangeSubject: { en: 'Change order {n} on {project}', es: 'Orden de cambio {n} de {project}' },
+  mChangeWhat: { en: 'We have a change to your {trade} work on {project}: {description}.', es: 'Tenemos un cambio en su trabajo de {trade} en {project}: {description}.' },
+  mChangeAdds: { en: 'It adds {amount} to your statement of work.', es: 'Suma {amount} a su orden de trabajo.' },
+  mChangeTakes: { en: 'It takes off {amount} from your statement of work.', es: 'Resta {amount} de su orden de trabajo.' },
+  mChangeOpen: { en: 'Open your portal to read it and sign it.', es: 'Abra su portal para leerla y firmarla.' },
   mLessSubject: { en: 'Pay application {n} on {project}: approved for less', es: 'Solicitud de pago {n} de {project}: aprobada por menos' },
   mLessApproved: {
     en: 'We approved {approved} of the {asked} you asked for on pay application {n} for {trade} on {project}.',
@@ -383,6 +388,8 @@ const S = {
   },
   todoFinalWaiver: { en: 'Your retainage on {project} is paid. Sign your unconditional final release of lien.', es: 'Su retención de {project} ya se pagó. Firme su liberación final de gravamen incondicional.' },
   todoDraw: { en: 'You can ask {gc} for {amount} on {project}.', es: 'Puede pedirle a {gc} {amount} de {project}.' },
+  todoChangeAdds: { en: 'Sign change order {n} on {project}. It adds {amount}.', es: 'Firme la orden de cambio {n} de {project}. Suma {amount}.' },
+  todoChangeTakes: { en: 'Sign change order {n} on {project}. It takes off {amount}.', es: 'Firme la orden de cambio {n} de {project}. Resta {amount}.' },
   todoLookWeek: { en: "Mark this week's work on {project}: {n} to mark.", es: 'Marque el trabajo de esta semana en {project}: {n} por marcar.' },
   todoLookLate: { en: "Mark last week's work on {project}: {n} still to mark.", es: 'Marque el trabajo de la semana pasada en {project}: faltan {n}.' },
   todoLess: {

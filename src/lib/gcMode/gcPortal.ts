@@ -13,7 +13,7 @@ import { bidIsStale, sowMoney } from './gcBids'
 import { GC_COMPANY } from './gcFixture'
 import { pDate, pt, pWeekday, type PortalLang } from './gcPortalI18n'
 import { lineReads, tradeSheets } from './gcNewProject'
-import { addDays, sentBackOpen, tradeCloseout, workAllBilled } from './gcBuilding'
+import { addDays, sentBackOpen, sowContractSum, tradeChangesFor, tradeCloseout, workAllBilled } from './gcBuilding'
 import { lookAheadWeeks, markState, mondayOf, scheduleRows, type LookAheadState, type ScheduleRow } from './gcBuildingSchedule'
 import { planLabel } from './gcLookups'
 
@@ -105,6 +105,7 @@ export interface PortalAsk {
 
 /** The money on one job, as the company sees it. */
 export interface PortalJobMoney {
+  /** The contract to date: the statement of work plus the change orders signed into it. */
   price: number
   /** How much of the work they reported done, weighted by each line's amount. 0 to 100. */
   donePct: number
@@ -170,7 +171,7 @@ export function portalJobMoney(pkg: TradePackage): PortalJobMoney | null {
   const done = sow.sov.reduce((s, l) => s + l.amount * l.pctReported, 0)
   const net = (status: 'approved' | 'requested') => sow.draws.filter((d) => d.status === status).reduce((s, d) => s + d.net, 0)
   return {
-    price: sow.price,
+    price: sowContractSum(sow),
     donePct: total > 0 ? Math.round(done / total) : 0,
     paid: m.paid,
     held: m.retainageHeld,
@@ -278,6 +279,17 @@ export function portalTodos(state: GcState, partnerId: string, asks: PortalAsk[]
           todos.push({ key: `${key}:waiver:${d.id}`, projectId, text: pt(lang, 'todoWaiver', { n: d.number, project }), tone: 'amber', by: null })
         }
       }
+      // A change order sent for their signature (Building lane): signed in the job page's pay application block.
+      for (const { co, state: where } of tradeChangesFor(a.project, a.pkg)) {
+        if (where !== 'sent' || !co.tradeChange) continue
+        todos.push({
+          key: `${co.id}:sign`,
+          projectId,
+          text: pt(lang, co.cost >= 0 ? 'todoChangeAdds' : 'todoChangeTakes', { n: co.number, project, amount: money(Math.abs(co.cost)) }),
+          tone: 'amber',
+          by: co.tradeChange.sentOn,
+        })
+      }
       // A pay application we sent back waits on them: the work they reported is not new money to ask for.
       const back = signed ? sentBackOpen(sow) : null
       if (back) {
@@ -350,7 +362,7 @@ export function portalLink(partnerId: string): string {
 export interface PortalMessage {
   key: string
   on: string
-  kind: 'invite' | 'nudge' | 'plans' | 'bidTab' | 'msa' | 'sow' | 'start' | 'less'
+  kind: 'invite' | 'nudge' | 'plans' | 'bidTab' | 'msa' | 'sow' | 'start' | 'less' | 'change'
   /** Null: about the company, not one project (the master agreement). */
   projectId: string | null
   subject: string
@@ -362,7 +374,7 @@ export interface PortalMessage {
   text?: string
 }
 
-const KIND_ORDER: Record<PortalMessage['kind'], number> = { less: 0, start: 1, sow: 2, msa: 3, bidTab: 4, plans: 5, nudge: 6, invite: 7 }
+const KIND_ORDER: Record<PortalMessage['kind'], number> = { change: 0, less: 1, start: 2, sow: 3, msa: 4, bidTab: 5, plans: 6, nudge: 7, invite: 8 }
 
 function firstName(contact: string): string {
   return contact.split(' ')[0] ?? contact
@@ -404,6 +416,27 @@ export function portalMessages(state: GcState, partnerId: string, language?: Por
     const mine = project.packages.flatMap((pkg) => pkg.invites.filter((i) => i.partnerId === partnerId).map((invite) => ({ pkg, invite })))
     const won = mine.filter(({ pkg, invite }) => pkg.awardedInviteId === invite.id)
     const name = project.name
+
+    // A change order sent for the company to sign (Building lane's tradeChange): what changes and what it is worth.
+    for (const { pkg } of won) {
+      for (const { co } of tradeChangesFor(project, pkg)) {
+        if (!co.tradeChange) continue
+        const amount = money(Math.abs(co.cost))
+        out.push({
+          key: `${co.id}:change`,
+          on: co.tradeChange.sentOn,
+          kind: 'change',
+          projectId: project.id,
+          subject: t('mChangeSubject', { n: co.number, project: name }),
+          lines: [
+            hello,
+            t('mChangeWhat', { trade: pkg.trade, project: name, description: co.description.replace(/\.$/, '') }),
+            t(co.cost >= 0 ? 'mChangeAdds' : 'mChangeTakes', { amount }),
+            t('mChangeOpen'),
+          ],
+        })
+      }
+    }
 
     // A draw we approved for less than asked: what we approved, what they asked, and why.
     for (const { pkg } of won) {

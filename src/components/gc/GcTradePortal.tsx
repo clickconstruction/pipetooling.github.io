@@ -18,6 +18,7 @@ import {
   portalLines,
   portalPlanNews,
   portalPromiseLine,
+  sowContractSum,
   sowMoney,
   unclearLines,
   type GcAction,
@@ -639,7 +640,7 @@ function SowBlock({
               </div>
             ))}
             <div style={{ fontSize: '0.8rem', opacity: 0.75 }}>
-              {t('sowTotals', { paid: money(m.paid), held: money(m.retainageHeld), left: money(sow.price - m.billed) })}
+              {t('sowTotals', { paid: money(m.paid), held: money(m.retainageHeld), left: money(sowContractSum(sow) - m.billed) })}
             </div>
           </div>
         </Block>
