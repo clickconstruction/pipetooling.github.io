@@ -4985,10 +4985,30 @@ exports[`GC mode golden walk > step 58: Hill Country sends pay application 3 (ce
 }
 `;
 
-exports[`GC mode golden walk > step 59: Approve draw 3 1`] = `
+exports[`GC mode golden walk > step 59: Hillside sends an insurance certificate 1`] = `
 {
   "changed": {
     "lastLog.id": 55,
+    "lastLog.text": "Hillside Excavation sent a new insurance certificate, good to Oct 2.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 60: Hillside signs a W-9 1`] = `
+{
+  "changed": {
+    "lastLog.id": 56,
+    "lastLog.text": "Hillside Excavation filled in and signed a W-9.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 61: Approve draw 3 1`] = `
+{
+  "changed": {
+    "lastLog.id": 57,
     "lastLog.text": "Approved draw 3 on Framing and drywall. $6,750 to pay, $750 held.",
     "lastLog.who": "office",
     "projects.helotes.stageProgress.also[0]": "Draw 3 for Hill Country Interiors is approved. Pay it.",
@@ -4998,10 +5018,10 @@ exports[`GC mode golden walk > step 59: Approve draw 3 1`] = `
 }
 `;
 
-exports[`GC mode golden walk > step 60: Pay draw 3 1`] = `
+exports[`GC mode golden walk > step 62: Pay draw 3 1`] = `
 {
   "changed": {
-    "lastLog.id": 56,
+    "lastLog.id": 58,
     "lastLog.text": "Paid draw 3 on Framing and drywall: $6,750.",
     "projects.helotes.stageProgress.also[0]": "Hill Country Interiors owes the unconditional waiver on draw 3.",
   },
@@ -5009,10 +5029,10 @@ exports[`GC mode golden walk > step 60: Pay draw 3 1`] = `
 }
 `;
 
-exports[`GC mode golden walk > step 61: Hill Country signs the unconditional waiver on draw 3 1`] = `
+exports[`GC mode golden walk > step 63: Hill Country signs the unconditional waiver on draw 3 1`] = `
 {
   "changed": {
-    "lastLog.id": 57,
+    "lastLog.id": 59,
     "lastLog.text": "Hill Country Interiors signed the unconditional waiver for draw 3.",
     "lastLog.who": "trade",
     "projects.helotes.stageProgress.also[0]": "Framing and drywall is all billed. Walk it, then accept the work on Closeout.",
@@ -5023,10 +5043,10 @@ exports[`GC mode golden walk > step 61: Hill Country signs the unconditional wai
 }
 `;
 
-exports[`GC mode golden walk > step 62: Accept the drywall work 1`] = `
+exports[`GC mode golden walk > step 64: Accept the drywall work 1`] = `
 {
   "changed": {
-    "lastLog.id": 58,
+    "lastLog.id": 60,
     "lastLog.text": "Accepted the Framing and drywall work from Hill Country Interiors. The punch list is done.",
     "lastLog.who": "office",
     "projects.helotes.stageProgress.also": "[]",
@@ -5037,10 +5057,10 @@ exports[`GC mode golden walk > step 62: Accept the drywall work 1`] = `
 }
 `;
 
-exports[`GC mode golden walk > step 63: Hill Country sends the warranty letter 1`] = `
+exports[`GC mode golden walk > step 65: Hill Country sends the warranty letter 1`] = `
 {
   "changed": {
-    "lastLog.id": 59,
+    "lastLog.id": 61,
     "lastLog.text": "Hill Country Interiors sent the warranty letter for Framing and drywall.",
     "lastLog.who": "trade",
   },
@@ -5048,10 +5068,10 @@ exports[`GC mode golden walk > step 63: Hill Country sends the warranty letter 1
 }
 `;
 
-exports[`GC mode golden walk > step 64: Hill Country sends the final pay application 1`] = `
+exports[`GC mode golden walk > step 66: Hill Country sends the final pay application 1`] = `
 {
   "changed": {
-    "lastLog.id": 60,
+    "lastLog.id": 62,
     "lastLog.text": "Hill Country Interiors sent the final pay application on Framing and drywall: $6,420 of retainage, with a conditional waiver on final payment.",
     "projects.helotes.stageProgress.also[0]": "Hill Country Interiors asked for its retainage back. Approve it on Closeout.",
   },
@@ -5061,10 +5081,10 @@ exports[`GC mode golden walk > step 64: Hill Country sends the final pay applica
 }
 `;
 
-exports[`GC mode golden walk > step 65: Approve the retainage release 1`] = `
+exports[`GC mode golden walk > step 67: Approve the retainage release 1`] = `
 {
   "changed": {
-    "lastLog.id": 61,
+    "lastLog.id": 63,
     "lastLog.text": "Approved the retainage release on Framing and drywall: $6,420 to pay.",
     "lastLog.who": "office",
     "projects.helotes.stageProgress.also[0]": "The retainage release for Hill Country Interiors is approved. Pay it.",
@@ -5073,10 +5093,10 @@ exports[`GC mode golden walk > step 65: Approve the retainage release 1`] = `
 }
 `;
 
-exports[`GC mode golden walk > step 66: Pay the retainage 1`] = `
+exports[`GC mode golden walk > step 68: Pay the retainage 1`] = `
 {
   "changed": {
-    "lastLog.id": 62,
+    "lastLog.id": 64,
     "lastLog.text": "Paid draw 4 on Framing and drywall: $6,420.",
     "projects.helotes.stageProgress.also[0]": "Hill Country Interiors owes the unconditional waiver on final payment.",
   },
@@ -5084,10 +5104,10 @@ exports[`GC mode golden walk > step 66: Pay the retainage 1`] = `
 }
 `;
 
-exports[`GC mode golden walk > step 67: Hill Country signs the unconditional waiver on final payment 1`] = `
+exports[`GC mode golden walk > step 69: Hill Country signs the unconditional waiver on final payment 1`] = `
 {
   "changed": {
-    "lastLog.id": 63,
+    "lastLog.id": 65,
     "lastLog.text": "Hill Country Interiors signed the unconditional waiver for draw 4.",
     "lastLog.who": "trade",
     "projects.helotes.stageProgress.also": "[]",
@@ -5254,49 +5274,59 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
-      "id": 63,
+      "id": 65,
       "text": "Hill Country Interiors signed the unconditional waiver for draw 4.",
       "who": "trade",
     },
     {
-      "id": 62,
+      "id": 64,
       "text": "Paid draw 4 on Framing and drywall: $6,420.",
       "who": "office",
     },
     {
-      "id": 61,
+      "id": 63,
       "text": "Approved the retainage release on Framing and drywall: $6,420 to pay.",
       "who": "office",
     },
     {
-      "id": 60,
+      "id": 62,
       "text": "Hill Country Interiors sent the final pay application on Framing and drywall: $6,420 of retainage, with a conditional waiver on final payment.",
       "who": "trade",
     },
     {
-      "id": 59,
+      "id": 61,
       "text": "Hill Country Interiors sent the warranty letter for Framing and drywall.",
       "who": "trade",
     },
     {
-      "id": 58,
+      "id": 60,
       "text": "Accepted the Framing and drywall work from Hill Country Interiors. The punch list is done.",
       "who": "office",
     },
     {
-      "id": 57,
+      "id": 59,
       "text": "Hill Country Interiors signed the unconditional waiver for draw 3.",
       "who": "trade",
     },
     {
-      "id": 56,
+      "id": 58,
       "text": "Paid draw 3 on Framing and drywall: $6,750.",
       "who": "office",
     },
     {
-      "id": 55,
+      "id": 57,
       "text": "Approved draw 3 on Framing and drywall. $6,750 to pay, $750 held.",
       "who": "office",
+    },
+    {
+      "id": 56,
+      "text": "Hillside Excavation filled in and signed a W-9.",
+      "who": "trade",
+    },
+    {
+      "id": 55,
+      "text": "Hillside Excavation sent a new insurance certificate, good to Oct 2.",
+      "who": "trade",
     },
     {
       "id": 54,
@@ -5393,16 +5423,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "text": "Sent the Millwork statement of work to Cedar & Pine Millwork.",
       "who": "office",
     },
-    {
-      "id": 35,
-      "text": "Cedar & Pine Millwork signed the master agreement.",
-      "who": "trade",
-    },
-    {
-      "id": 34,
-      "text": "Sent the master agreement to Cedar & Pine Millwork.",
-      "who": "office",
-    },
   ],
   "partners": [
     {
@@ -5446,7 +5466,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     {
       "base": "Boerne",
       "bids": 0,
-      "coiExpires": null,
+      "coiExpires": "2027-10-02",
       "company": "Hillside Excavation",
       "contact": "Greg Paulk",
       "id": "hillside",
@@ -5459,7 +5479,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "trades": [
         "Sitework",
       ],
-      "w9": false,
+      "w9": true,
       "won": 0,
     },
     {

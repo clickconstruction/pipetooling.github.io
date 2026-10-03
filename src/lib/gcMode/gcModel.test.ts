@@ -146,6 +146,9 @@ const STEPS: Step[] = [
       signedTitle: 'Office manager',
     },
   },
+  // The portal: a company does its own paperwork.
+  { label: 'Hillside sends an insurance certificate', action: { type: 'tradeUploadCoi', partnerId: 'hillside', expires: '2027-10-02' } },
+  { label: 'Hillside signs a W-9', action: { type: 'tradeSignW9', partnerId: 'hillside' } },
   // Helotes, closeout: the last of the work, then the retainage back with the final waivers.
   { label: 'Approve draw 3', action: { type: 'approveDraw', projectId: 'helotes', packageId: 'dry', drawId: 'dry-draw-3' } },
   { label: 'Pay draw 3', action: { type: 'payDraw', projectId: 'helotes', packageId: 'dry', drawId: 'dry-draw-3' } },
@@ -291,6 +294,7 @@ describe('GC mode golden walk', () => {
       'tradeSignUnconditional', 'setMarkup', 'logCustomerContact', 'addPartner', 'setCoverage', 'reset',
       'createProject',
       'tradeSendPayApp',
+      'tradeUploadCoi', 'tradeSignW9',
       'acceptWork', 'tradeSendWarranty', 'tradeSendFinalPayApp', 'approveRetainage',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])

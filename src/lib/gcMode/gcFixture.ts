@@ -585,3 +585,10 @@ export function initialGcState(): GcState {
     log: [],
   }
 }
+
+/**
+ * The general contractor the trade's portal speaks for. One made-up record, so the words never
+ * name a company: a later company is a new record, not new words. `shortName` is what a trade
+ * reads in a sentence ("Tell Click when your number will come").
+ */
+export const GC_COMPANY = { name: 'Click Construction', shortName: 'Click' }
