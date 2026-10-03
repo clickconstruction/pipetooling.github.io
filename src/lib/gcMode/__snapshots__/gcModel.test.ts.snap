@@ -7069,6 +7069,16 @@ exports[`GC mode golden walk > step 100: Fair Oaks D: Pecan Valley marks Lightin
 }
 `;
 
+exports[`GC mode golden walk > step 101: Hillside chooses Spanish for its portal and messages 1`] = `
+{
+  "changed": {
+    "lastLog.id": 97,
+    "lastLog.text": "Hillside Excavation chose Spanish for its portal and messages.",
+  },
+  "removed": [],
+}
+`;
+
 exports[`GC mode golden walk > the whole state at the end 1`] = `
 {
   "customers": [
@@ -7269,6 +7279,11 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
+      "id": 97,
+      "text": "Hillside Excavation chose Spanish for its portal and messages.",
+      "who": "trade",
+    },
+    {
       "id": 96,
       "text": "Pecan Valley Electric marked Lighting on Electrical not done for the week of Mon Sep 28: materials.",
       "who": "trade",
@@ -7413,11 +7428,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "text": "Hill Country Interiors signed the unconditional waiver for draw 4.",
       "who": "trade",
     },
-    {
-      "id": 67,
-      "text": "Paid draw 4 on Framing and drywall: $6,420.",
-      "who": "office",
-    },
   ],
   "partners": [
     {
@@ -7466,6 +7476,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "contact": "Greg Paulk",
       "id": "hillside",
       "invited": 2,
+      "lang": "es",
       "maxMiles": 60,
       "msa": "signed",
       "msaSentOn": "2026-10-02",

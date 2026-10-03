@@ -70,8 +70,8 @@ export function GcTradePortal({ state, project, partnerId, onPickPartner, dispat
   const [viewId, setViewId] = useState<string | null>(null)
   /** Their portal, or their inbox: what we sent them, each message carrying the link. */
   const [screen, setScreen] = useState<'portal' | 'messages'>('portal')
-  /** The company's language. The real build keeps it on the company, so emails go in it too. */
-  const [lang, setLang] = useState<PortalLang>('en')
+  /** The company's language, kept on its record (owner, 2026-10-03): its messages go out in it too. */
+  const lang: PortalLang = partner?.lang ?? 'en'
   const shown = viewId === null ? null : (state.projects.find((p) => p.id === viewId) ?? null)
   const top = useRef<HTMLDivElement | null>(null)
   const go = (id: string | null) => {
@@ -143,7 +143,7 @@ export function GcTradePortal({ state, project, partnerId, onPickPartner, dispat
           <button
             type="button"
             aria-pressed={lang === 'es'}
-            onClick={() => setLang(lang === 'es' ? 'en' : 'es')}
+            onClick={() => dispatch({ type: 'tradeSetLanguage', partnerId: partner.id, lang: lang === 'es' ? 'en' : 'es' })}
             style={{ padding: '0.15rem 0.6rem', borderRadius: 999, border: `1px solid ${INK}`, background: lang === 'es' ? INK : 'transparent', color: lang === 'es' ? PAPER : INK, fontWeight: 600, fontSize: '0.78rem', cursor: 'pointer' }}
           >
             {pt(lang, 'switchLang')}
