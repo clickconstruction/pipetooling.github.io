@@ -251,6 +251,9 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   typed into the portal's words.
 - **A company's link lands on its home** (2026-10-02), not on one project: everything the company
   has with us, what needs them first. A project's page is one tap away.
+- **A trade sees only the sheets the office set** (2026-10-03). A line whose sheet was only
+  guessed from its words shows no sheet number and counts as the whole trade, so any change to the
+  trade's sheets marks it (`portalLines` in `gcPortal.ts`). The made-up projects set none.
 - **A company's language is kept on its record** (2026-10-03): the portal opens in it, and the
   messages we send it go out in it. The company sets it in its portal; the office can set it too,
   on Trade partners.
@@ -317,10 +320,8 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
   scope lines; the text says the same in one sentence with the link. A company sees the welcome
   until it presses **Got it**; one that already bid, opened plans or signed the master agreement
   never sees it.
-- The bid form shows a sheet the office did not set (matched from the line's words, `lineSheets`)
-  with a dashed edge, beside the ones it did. Lines are marked against the company's number, or
-  against the set it last opened when it has no number; a company that never opened the plans
-  has nothing marked.
+- Lines are marked against the company's number, or against the set it last opened when it has
+  no number; a company that never opened the plans has nothing marked.
 - A number is good for 30 days unless the company picks 15, 60 or 90; past its last good day it
   shows as ran out and asks to be sent again. Alternates are the company's own (another way, at a
   different price); the office does not set alternates every bidder must price. Only the quote
@@ -376,8 +377,8 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
     the Follow up card; amber, red past `OPEN_WITHIN_DAYS` (`linkNeverOpened` in `gcPortal.ts`,
     `GcPortalLinkChip.tsx`). The Portal lane placed it in the Board lane's two files, with the owner's OK.
 21. ~~Should our own crew report by stage?~~ Answered: yes (*Decided by the owner*).
-22. Should a trade see sheets the office did not set (the dashed ones, matched from the line's
-    words), or only the sheets the office set when writing the scope?
+22. ~~Should a trade see sheets the office did not set, or only the ones it set?~~ Answered
+    2026-10-03: only the sheets the office set (see *Decided by the owner*).
 23. ~~The schedule: is a milestone hit only on its day, and how many weeks does the look-ahead
     show?~~ Answered 2026-10-02: within a few days, and three weeks.
 24. ~~The schedule: who marks a look-ahead activity done or not each week?~~ Answered
