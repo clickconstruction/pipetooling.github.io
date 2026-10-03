@@ -84,7 +84,7 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 | **Bill the owner** | Our pay application to the owner, once a month: one line per trade with the work its company reported, then general conditions, contingency and fee, which follow the trades. Done so far, less what the owner holds, less what we asked for before, is this bill. **Send to** the owner keeps it as it went, and next month's starts from it. **So far with** the owner lists what went, with **Mark paid**. |
 | **Follow up** (board tab) | Everyone we are waiting on across every project, the ones to call first. Log a contact; record the day they promised a quote; a passed day returns them to the top. |
 | **Trade partners** (board tab) | By trade: the bench, who answers when asked, every project short of quotes, coverage (where they drive from, how far they go), one press to ask the companies not yet asked. **Actions for assistants** on top: each standard as the ideal, where we are, and what closes the gap. |
-| The trade's portal | Paperwork done by the company itself (read and sign the master agreement, send an insurance certificate, fill in and sign a W-9), the plans window (sets, sheets, whether a set changes their trade), the invitation and the bid form, "tell Click when your number will come" (a passed day shows in red), answer a line the office could not read, confirm a number after an addendum, the bid tab, sign the statement of work, report work, ask for a draw with its pay application (next row). |
+| The trade's portal | One link per company. It opens on the company's **home**: what needs them across every project (late or blocking first), their money once a dollar moves, their jobs, what they are asked to bid, their paperwork, and what came before. A row opens that project's page, with **← Everything with Click** back. On a project page: paperwork done by the company itself (read and sign the master agreement, send an insurance certificate, fill in and sign a W-9), the plans window (sets, sheets, whether a set changes their trade), the invitation and the bid form, "tell Click when your number will come" (a passed day shows in red), answer a line the office could not read, confirm a number after an addendum, the bid tab, sign the statement of work, report work, ask for a draw with its pay application (next row). |
 | Pay application (from the portal) | **Fill out pay application N**: four steps on a rail like the Release of Lien window (Check your work, Fill in a few details, Sign it, Send it to Click) beside the 702 and 703, which fill in as the trade types and mark what each step fills. The app knows the job, the contract, the lines, what was billed and the retainage; the trade checks the percents, picks the period, types its address once, and signs. Closing the window keeps the draft. |
 | **Closeout** | Each trade's last six steps: every line billed, **Accept the work** (the punch list is done), their warranty letter, their final pay application for the retainage with a conditional waiver on final payment, **Approve the release** and **Mark paid**, their unconditional waiver on final payment. Totals for held, paid back and trades closed out. In the portal the same steps show as the trade's closeout list, ending "You are closed out on this job." |
 
@@ -142,6 +142,8 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 - **A trade sees "Click Construction"** (2026-10-02). The name comes from one record
   (`GC_COMPANY` in `gcFixture.ts`: the full name and the short "Click" used in sentences), never
   typed into the portal's words.
+- **A company's link lands on its home** (2026-10-02), not on one project: everything the company
+  has with us, what needs them first. A project's page is one tap away.
 
 ## My defaults the owner has not confirmed
 
@@ -269,11 +271,12 @@ imitates it.
 | `gcBids.ts` · `gcCustomers.ts` · `gcMap.ts` | Compare all in, what we carry, our price, bid tabs, statement-of-work money · the company window's summaries · towns, the drive and the map's list. |
 | `gcFollowUp.ts` · `gcBench.ts` | Promised days, word records, who to call first · the bench by trade and Actions for assistants. |
 | `gcNewProject.ts` · `gcNewProject.test.ts` | New Project: the sheet index read from a paste, the trades guessed from the sheets (a later set uses the same guess, `packagesForSheets`), each trade's usual scope, the project made from the draft (`createProject`), trades a later set brings · its kernel test. |
-| `gcPortal.ts` | What the portal tells one company: plan news for its trade, its promised day, its insurance, the lines the office could not read. |
+| `gcPortal.ts` · `gcPortal.test.ts` | What the portal tells one company: its home (every ask sorted into bidding, jobs and before, what needs it in order, its money), plan news for its trade, its promised day, its insurance, the lines the office could not read · its kernel test. |
 | `gcReducer.ts` · `gcReducerHelpers.ts` · `gcFixture.ts` | Every action applied to the state · its small helpers (not in the barrel) · the made-up data (`initialGcState`). |
 | `gcModel.test.ts` | The golden test (see *Working in parallel*). |
 | `GcOfficeTabs.tsx` | Trades (with Compare bids), Plans, Our number, Contracts, Draws, the flat company list |
 | `GcTradePortal.tsx` | The trade partner's side: the frame, each trade's plans, bid, bid tab, statement of work and draws |
+| `GcPortalHome.tsx` | The company's home in its portal, where the link lands |
 | `GcPortalPaperwork.tsx` · `GcPortalAgreement.tsx` · `GcPortalPlans.tsx` · `GcPortalUi.tsx` | The portal's paperwork block (insurance and W-9 forms) · the master agreement to read and sign · the plans window as a trade sees it · the portal's block, note and window |
 | `GcTradeBench.tsx` | Trade partners by trade, Actions for assistants |
 | `GcTradeMap.tsx` | The map window |
@@ -367,7 +370,8 @@ follow the plain-words rules; the prototype's own words were written to them as 
 - **Boerne Retail Shell**: Trades → Compare bids on Electrical; type a cost on Concrete's rebar
   and watch the conclusion flip. Structural steel → On a map → Cannot do it → ask the next.
 - **Plans → A new set of plans came in**: paste three lines with sheet numbers; issue; in the
-  portal as Alamo Concrete press **My number stands on the new plans**. Then type "S301 is a new
+  portal as Alamo Concrete tap the plans line under **Needs you** and press **My number stands on
+  the new plans**. Then type "S301 is a new
   canopy framing sheet. L-101 adds a landscape plan": give S-301 its title and watch Structural
   steel ticked, press **Add Landscaping**, issue **Addendum 2**. Landscaping sits after Sitework
   on Trades. On Helotes the next set opens as **Bulletin 1**.
@@ -375,6 +379,9 @@ follow the plain-words rules; the prototype's own words were written to them as 
 - **Helotes Dental Office → Get started**: from 14 of 24 steps to Start, signing as each
   company through **Sign it as them**. A new plan set after Start goes to four companies only.
 - **Follow up**: log a call with a new day on Hillside Excavation and watch the card move down.
+- **The portal's home**: see it as Voltage Brothers (a number on old plans, then the insurance that
+  ran out, both red), Brightline Electric (one job, one bid), Hill Country Interiors (Helotes:
+  money paid and held). Tap the insurance line: the certificate form opens in place.
 - **+ New project**: pick an owner, **Paste a made-up sheet index**, see 21 sheets and 13 trades,
   change a scope line, **Create the project**. It opens on Trades and sits under Bidding to the
   owner with its days left.
