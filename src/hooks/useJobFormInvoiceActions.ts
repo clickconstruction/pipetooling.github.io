@@ -27,6 +27,7 @@ import {
 import { planPayerCarves } from '../lib/jobs/splitByPayer'
 import type { FixtureRow, PaymentRow } from '../lib/jobs/jobFormTypes'
 import type { BillToEditorInvoice } from '../components/jobs/JobFormBillToEditor'
+import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 
 export type JobFormInvoiceActionsArgs = {
   editing: JobWithDetails | null
@@ -444,7 +445,7 @@ export function useJobFormInvoiceActions(args: JobFormInvoiceActionsArgs): JobFo
       // Same discipline as createInvoiceFromSelectedSegments: flush first so
       // the DB totals match the screen before the invoice math runs.
       await flushBillingAutosave()
-      const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(row.incident_at ?? ''))
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(calendarYmdInAppTzFromIso(String(row.incident_at ?? '')))
       const memo = m
         ? `Biohazard remediation fee — incident ${m[2]}/${m[3]}/${m[1]}`
         : 'Biohazard remediation fee'

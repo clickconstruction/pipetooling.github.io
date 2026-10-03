@@ -71,6 +71,7 @@ import {
   type InsuranceCostUnit,
 } from '../../lib/vehicleInsuranceCost'
 import { VehicleOdometerHistoryModal } from './VehicleOdometerHistoryModal'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 /**
  * People → Vehicles (v2.1644 fleet redesign): a card per vehicle answering
@@ -1765,7 +1766,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                                   {t.source_problem_report_id
                                     ? 'from problem report'
                                     : `added by ${(t.created_by ? userNameById.get(t.created_by) : null) ?? 'Office'}`}
-                                  {t.created_at ? ` · ${formatYmdShort(t.created_at.slice(0, 10))}` : ''}
+                                  {t.created_at ? ` · ${formatYmdShort(calendarYmdInAppTzFromIso(t.created_at))}` : ''}
                                 </div>
                               </div>
                               {assigneeName ? (

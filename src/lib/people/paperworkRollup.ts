@@ -3,6 +3,7 @@
  * person, newest version wins, with the chip state the Contracts tab implies
  * (unsent / sent / signed, plus expiry when a date is set).
  */
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 export type PaperworkDocInput = {
   id: string
@@ -52,7 +53,7 @@ export function buildPaperworkLines(docs: readonly PaperworkDocInput[], todayYmd
   const lines: PaperworkLine[] = []
   for (const d of latest.values()) {
     let state: PaperworkState = d.status === 'signed' ? 'signed' : d.status === 'sent' ? 'sent' : 'unsent'
-    let detail = state === 'signed' ? `signed ${d.signed_at ? d.signed_at.slice(0, 10) : ''}`.trim() : state === 'sent' ? `sent ${d.sent_at ? d.sent_at.slice(0, 10) : ''}`.trim() : 'not sent'
+    let detail = state === 'signed' ? `signed ${d.signed_at ? d.signed_at.slice(0, 10) : ''}`.trim() : state === 'sent' ? `sent ${d.sent_at ? calendarYmdInAppTzFromIso(d.sent_at) : ''}`.trim() : 'not sent'
     if (state === 'signed' && d.expires_at) {
       const days = daysBetween(todayYmd, d.expires_at)
       if (days < 0) {
