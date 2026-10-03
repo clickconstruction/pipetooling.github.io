@@ -1,4 +1,5 @@
 import { ageDays, compareOldestFirst } from '../ageState'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 /**
  * Pending-report display helpers (v2.2235). Pure so the wording of "when this
@@ -18,7 +19,7 @@ function shortDate(ymd: string): string {
 /** "happened Aug 24 · written by Malachi, Aug 24" (author/written omitted when unknown). */
 export function formatHrReportWhen(r: HrReportWhen): string {
   const happened = `happened ${shortDate(r.occurred_date)}`
-  const writtenDay = shortDate(r.created_at.slice(0, 10))
+  const writtenDay = shortDate(calendarYmdInAppTzFromIso(r.created_at))
   const who = r.author_name.trim()
   if (who === '') return `${happened} · written ${writtenDay}`
   return `${happened} · written by ${who}, ${writtenDay}`

@@ -134,3 +134,13 @@ describe('buildFeedbackRows', () => {
     expect(unreadWordsCount(submissions, iso(0))).toBe(0)
   })
 })
+
+describe('feedbackStats · words left on the last evening of a month (v2.4473)', () => {
+  it('count in that month on the company calendar', () => {
+    const words = (created_at: string): WordsSubmission => ({ id: created_at, reviewer_user_id: 'grace', created_at, open_fix_improve: 'Truck 4 has no snake', open_safety_tools: null, open_training: null, open_anything: null })
+    // 00:30 UTC on Oct 1 is 7:30 pm CDT on Sep 30.
+    expect(feedbackStats([], [], [words('2026-10-01T00:30:00Z')], '2026-09-01', true).wordsThisMonth).toBe(1)
+    expect(feedbackStats([], [], [words('2026-10-01T00:30:00Z')], '2026-10-01', true).wordsThisMonth).toBe(0)
+    expect(feedbackStats([], [], [words('2026-10-01T12:00:00Z')], '2026-10-01', true).wordsThisMonth).toBe(1)
+  })
+})

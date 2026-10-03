@@ -11,7 +11,7 @@ describe('formatHrReportWhen', () => {
       .toBe('happened Aug 1 · written Aug 1')
   })
   it('passes odd dates through rather than inventing one', () => {
-    expect(formatHrReportWhen({ occurred_date: 'unknown', created_at: '2026-12-31T00:00:00Z', author_name: 'R' }))
+    expect(formatHrReportWhen({ occurred_date: 'unknown', created_at: '2026-12-31T12:00:00Z', author_name: 'R' }))
       .toBe('happened unknown · written by R, Dec 31')
   })
 })
@@ -41,5 +41,13 @@ describe('summarizePendingReportAging', () => {
   })
   it('min age 0 is the plain "how old is the oldest" read used by the section header', () => {
     expect(summarizePendingReportAging([{ created_at: daysAgo(5) }, { created_at: null }], 0, NOW)).toEqual({ count: 1, total: 2, oldestAgeDays: 5 })
+  })
+})
+
+describe('formatHrReportWhen · a report written in the evening keeps its day (v2.4473)', () => {
+  it('reads the Central day it was written', () => {
+    // 00:30 UTC on Aug 25 is 7:30 pm CDT on Aug 24; 00:30 UTC on Dec 2 is 6:30 pm CST on Dec 1.
+    expect(formatHrReportWhen({ occurred_date: '2026-08-24', created_at: '2026-08-25T00:30:00Z', author_name: 'Malachi' })).toBe('happened Aug 24 · written by Malachi, Aug 24')
+    expect(formatHrReportWhen({ occurred_date: '2026-12-01', created_at: '2026-12-02T00:30:00+00:00', author_name: '' })).toBe('happened Dec 1 · written Dec 1')
   })
 })
