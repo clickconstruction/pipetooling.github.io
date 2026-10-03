@@ -1,4 +1,4 @@
-import { useRef, useState, type Dispatch } from 'react'
+import { useEffect, useRef, useState, type Dispatch } from 'react'
 import {
   alternateWords,
   bidGoodUntil,
@@ -81,6 +81,13 @@ export function GcTradePortal({ state, project, partnerId, onPickPartner, dispat
   const lang: PortalLang = partner?.lang ?? 'en'
   const shown = viewId === null ? null : (state.projects.find((p) => p.id === viewId) ?? null)
   const top = useRef<HTMLDivElement | null>(null)
+  /** A block to land on once the project page has drawn (a to-do's anchor). */
+  const landOn = useRef<string | null>(null)
+  useEffect(() => {
+    if (!landOn.current) return
+    top.current?.querySelector(`[data-portal-anchor="${landOn.current}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    landOn.current = null
+  }, [viewId])
   const go = (id: string | null) => {
     setViewId(id)
     setPayOpen(false)
@@ -176,7 +183,10 @@ export function GcTradePortal({ state, project, partnerId, onPickPartner, dispat
             state={state}
             partner={partner}
             dispatch={dispatch}
-            onOpenProject={(id) => go(id)}
+            onOpenProject={(id, anchor) => {
+              landOn.current = anchor ?? null
+              go(id)
+            }}
             onOpenPay={() => {
               go(null)
               setPayOpen(true)
@@ -641,51 +651,54 @@ function SowBlock({
       </Block>
 
       {sow.status === 'signed' && (
-        <Block title={t('reportTitle', { trade: pkg.trade })}>
-          <div style={{ display: 'grid', gap: '0.45rem', fontSize: '0.9rem' }}>
-            {sow.sov.map((l) => (
-              <label key={l.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.5rem', alignItems: 'center' }}>
-                <span>
-                  {l.label} <span style={{ opacity: 0.7 }}>· {money(l.amount)} · {t('paidThrough', { pct: l.pctBilled })}</span>
-                </span>
-                <select
-                  value={l.pctReported}
-                  onChange={(e) => dispatch({ type: 'tradeReport', ...ids, sovId: l.id, pct: Number(e.target.value) })}
-                  style={input}
-                  aria-label={t('percentAria', { line: l.label })}
-                >
-                  {[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
-                    .filter((p) => p >= l.pctBilled)
-                    .map((p) => (
-                      <option key={p} value={p}>{t('pctDone', { pct: p })}</option>
-                    ))}
-                </select>
-              </label>
-            ))}
-            {/* Building lane: a draw is asked for with its pay application (the 702 and 703). */}
-            <GcBuildingPayAppDoor project={project} pkg={pkg} partner={partner} today={today} dispatch={dispatch} />
-            {sow.draws.map((d) => (
-              <div key={d.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                <strong>{t('drawN', { n: d.number })}</strong>
-                <span>
-                  {money(d.net)}
-                  {d.asked && <span style={{ opacity: 0.75 }}> {t('drawOfAsked', { asked: money(d.asked.net) })}</span>}
-                </span>
-                <Chip tone={d.status === 'paid' ? 'green' : d.status === 'approved' ? 'blue' : 'amber'}>
-                  {d.status === 'requested' ? t('drawReviewing', { gc: GC }) : d.status === 'approved' ? t('drawApproved') : t('drawPaid')}
-                </Chip>
-                {d.status === 'paid' && d.waiver === 'conditional' && (
-                  <Btn kind="primary" onClick={() => dispatch({ type: 'tradeSignUnconditional', ...ids, drawId: d.id })}>
-                    {t('signUncond')}
-                  </Btn>
-                )}
+        // A to-do about this work (the punch list) lands here.
+        <div data-portal-anchor={`report:${pkg.id}`} style={{ scrollMarginTop: '0.5rem' }}>
+          <Block title={t('reportTitle', { trade: pkg.trade })}>
+            <div style={{ display: 'grid', gap: '0.45rem', fontSize: '0.9rem' }}>
+              {sow.sov.map((l) => (
+                <label key={l.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.5rem', alignItems: 'center' }}>
+                  <span>
+                    {l.label} <span style={{ opacity: 0.7 }}>· {money(l.amount)} · {t('paidThrough', { pct: l.pctBilled })}</span>
+                  </span>
+                  <select
+                    value={l.pctReported}
+                    onChange={(e) => dispatch({ type: 'tradeReport', ...ids, sovId: l.id, pct: Number(e.target.value) })}
+                    style={input}
+                    aria-label={t('percentAria', { line: l.label })}
+                  >
+                    {[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+                      .filter((p) => p >= l.pctBilled)
+                      .map((p) => (
+                        <option key={p} value={p}>{t('pctDone', { pct: p })}</option>
+                      ))}
+                  </select>
+                </label>
+              ))}
+              {/* Building lane: a draw is asked for with its pay application (the 702 and 703). */}
+              <GcBuildingPayAppDoor project={project} pkg={pkg} partner={partner} today={today} dispatch={dispatch} />
+              {sow.draws.map((d) => (
+                <div key={d.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <strong>{t('drawN', { n: d.number })}</strong>
+                  <span>
+                    {money(d.net)}
+                    {d.asked && <span style={{ opacity: 0.75 }}> {t('drawOfAsked', { asked: money(d.asked.net) })}</span>}
+                  </span>
+                  <Chip tone={d.status === 'paid' ? 'green' : d.status === 'approved' ? 'blue' : 'amber'}>
+                    {d.status === 'requested' ? t('drawReviewing', { gc: GC }) : d.status === 'approved' ? t('drawApproved') : t('drawPaid')}
+                  </Chip>
+                  {d.status === 'paid' && d.waiver === 'conditional' && (
+                    <Btn kind="primary" onClick={() => dispatch({ type: 'tradeSignUnconditional', ...ids, drawId: d.id })}>
+                      {t('signUncond')}
+                    </Btn>
+                  )}
+                </div>
+              ))}
+              <div style={{ fontSize: '0.8rem', opacity: 0.75 }}>
+                {t('sowTotals', { paid: money(m.paid), held: money(m.retainageHeld), left: money(sowContractSum(sow) - m.billed) })}
               </div>
-            ))}
-            <div style={{ fontSize: '0.8rem', opacity: 0.75 }}>
-              {t('sowTotals', { paid: money(m.paid), held: money(m.retainageHeld), left: money(sowContractSum(sow) - m.billed) })}
             </div>
-          </div>
-        </Block>
+          </Block>
+        </div>
       )}
     </>
   )

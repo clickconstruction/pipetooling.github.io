@@ -233,6 +233,9 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   portal, our superintendent checks it or sends it back with a note, and the work is accepted
   once every item is checked fixed. After acceptance nothing more goes on the list: that is
   warranty. Our own crew's closeout runs on the Pipeline (`gcBuildingPunch.ts`, `GcBuildingPunch.tsx`).
+  On the trade's home (owner, 2026-10-03, Portal lane): one Needs you line per trade, "2 punch
+  items to fix on Concrete for …", amber, and red once we sent one back. It opens the job page on
+  the block that holds the list (`portalTodos` in `gcPortal.ts`).
 - **A trade's retainage is paid 10 days after the owner pays ours** (answered 2026-10-02, was
   open question 16): the trade's final pay application can go in once we accept the work (our own
   final to the owner waits for every trade's); we approve and pay it 10 days after the owner pays
