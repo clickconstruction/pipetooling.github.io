@@ -75,7 +75,7 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 | **Trades** tab | One row per trade: who we asked with each bid in thousands, our budget, the lowest all in, what we carry. **Compare bids** opens the comparison. **On a map** opens the map. |
 | Compare bids | Sentences first ("Voltage Brothers bid $166,000 and left out fire alarm. Covering that adds $14,000, so they come to $180,000."), then the table behind them: is each piece of work in their price, a cost to cover what is not, the all-in total, who is lowest. |
 | On a map | The project in the middle, every company in the trade as a numbered pin (closest first), the same companies in a list beside it to work down. "Will not do it" / "Cannot do it" moves you to the next closest. |
-| **Plans** tab | **A new set of plans came in**: paste what changed, sheets are read out of the notes, trades guessed from the sheet letters, the list of who is emailed, the email preview. Then a table: told, opened, their number (needs confirming or good). |
+| **Plans** tab | **A new set of plans came in**: name the set (Addendum, Bulletin, Revised set, Permit set, Construction set, or typed; addenda and bulletins count apart), paste what changed, sheets are read out of the notes (A-401, A401, A1.01) and matched to the index, a sheet new to the set gets its title, trades guessed from the sheet letters and titles, a trade the job does not have yet can come with the set (its usual scope, a budget; nobody asked yet), the list of who is emailed, the email preview. Then a table: told, opened, their number (needs confirming or good). |
 | **Our number** | Carried trades + general conditions + contingency + fee = the price to the owner. **We sent our bid**, **We won this**. |
 | **Bid tabs** | After our bid is in, each trade's quotes go back to the companies that quoted, low to high, their own row marked, names hidden unless ticked. |
 | **Contracts** | Per trade: paperwork chips, award, the statement of work drafted from the bid, send, sign. |
@@ -123,6 +123,11 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
   like "roof" or "door", `TRADE_TEMPLATES` in `gcNewProject.ts`); each scope starts from the
   trade's usual lines. Nobody is asked until the office asks on Trades. The company's own trades
   (`OUR_TRADES`, plumbing) come in ticked as ours.
+- **A later set says what it is** (approved as built, 2026-10-02): **A new set of plans came in**
+  names the set (an addendum while we bid, a bulletin once the job is ours, or a whole revised,
+  permit or construction set), gives a sheet new to the index its title, and can bring a trade
+  the job did not have, put in build order with its usual scope (`issuePlanSet`). The trade guess
+  is the one New Project uses, so a title like "Roof plan" flags roofing.
 - **Each draw comes with a 702 and 703** (2026-10-02, Building lane): the trade fills the pay
   application in its portal and watches the form fill, typing only what the app cannot know. Most
   of it comes from the job and from the work they reported (`gcBuilding.ts`, `GcBuildingPayApp.tsx`).
@@ -155,6 +160,9 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
   came does not count against them.
 - Start is a hard stop: no "start anyway".
 - Red inside 7 days and amber inside 14 on the days-left block.
+- A new set starts as an addendum while we bid and a bulletin once the job is ours. In pasted
+  notes a sheet number without a dash needs three digits (A101, not R30), and a sheet the index
+  lacks is written the way the index writes its others (S301 reads S-301).
 - The pay application asks for the period date every time, the address and license once (kept on
   the company), and a typed name and title with the waiver tick as the signature. A line can be
   lowered to what was billed before, never below. The 702's "To" line reads Click Construction,
@@ -213,8 +221,8 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
 ## Workflow steps not built yet
 
 - New Project past its first form: a scope line tied to the sheets or spec section it reads
-  from, exclusions, and a budget from the size (open question 11). A later set cannot yet add a
-  trade, name itself anything but "Addendum N", or give an added sheet its real title.
+  from, exclusions, and a budget from the size (open question 11). A later set cannot yet take
+  a sheet out of the set, or add a scope line to a trade already out to bid.
 - A trade asks a question about the plans, the architect answers, every bidder on the trade
   gets the answer. Three made-up questions show in the architect's window, read-only.
 - Change orders, both to the owner and to a trade (a statement of work amendment).
@@ -257,10 +265,10 @@ imitates it.
 | `src/lib/gcMode/gcModel.ts` | The barrel: re-exports the model files below, so every import of `./gcModel` works. Add code to the file for its area, never here. |
 | `gcTypes.ts` · `gcWords.ts` | The record shapes, every action and the state (drawn the way the tables would be: the first schema sketch) · money and date words. Neither imports anything. |
 | `gcLookups.ts` | `planLabel`, `currentRev`, `partnerById`: the small lookups many areas read. |
-| `gcPlans.ts` · `gcStart.ts` · `gcProgress.ts` | Plans, sheets and who hears about a new set · the Get started checklist · the ring and its hover card. |
+| `gcPlans.ts` · `gcStart.ts` · `gcProgress.ts` | Plans, sheets, what a later set is called and who hears about it (tested in `gcPlans.test.ts`) · the Get started checklist · the ring and its hover card. |
 | `gcBids.ts` · `gcCustomers.ts` · `gcMap.ts` | Compare all in, what we carry, our price, bid tabs, statement-of-work money · the company window's summaries · towns, the drive and the map's list. |
 | `gcFollowUp.ts` · `gcBench.ts` | Promised days, word records, who to call first · the bench by trade and Actions for assistants. |
-| `gcNewProject.ts` · `gcNewProject.test.ts` | New Project: the sheet index read from a paste, the trades guessed from the sheets, each trade's usual scope, the project made from the draft (`createProject`) · its kernel test. |
+| `gcNewProject.ts` · `gcNewProject.test.ts` | New Project: the sheet index read from a paste, the trades guessed from the sheets (a later set uses the same guess, `packagesForSheets`), each trade's usual scope, the project made from the draft (`createProject`), trades a later set brings · its kernel test. |
 | `gcPortal.ts` | What the portal tells one company: plan news for its trade, its promised day, its insurance, the lines the office could not read. |
 | `gcReducer.ts` · `gcReducerHelpers.ts` · `gcFixture.ts` | Every action applied to the state · its small helpers (not in the barrel) · the made-up data (`initialGcState`). |
 | `gcModel.test.ts` | The golden test (see *Working in parallel*). |
@@ -270,7 +278,7 @@ imitates it.
 | `GcTradeBench.tsx` | Trade partners by trade, Actions for assistants |
 | `GcTradeMap.tsx` | The map window |
 | `GcAskThread.tsx` | The contact log, promises, the Follow up tab |
-| `GcNewPlans.tsx` | The new-set-of-plans window |
+| `GcNewPlans.tsx` | The new-set-of-plans window: its name, the sheets and their titles, a trade it brings, who hears, the email |
 | `GcNewProject.tsx` | The New project window and its **+ New project** button |
 | `GcBuildingPayApp.tsx` · `src/lib/gcMode/gcBuilding.ts` | The pay application window (progress and final), its door in the portal (which turns into the trade's closeout list) and its read-only view from Draws · the 702 and 703 numbers, the four steps, retainage held and each trade's closeout (tested in `gcBuilding.test.ts`) |
 | `GcOwnerBillingTab.tsx` · `src/lib/gcMode/gcOwnerBilling.ts` | Bill the owner: the owner's lines, the draft pay application, the ones sent and paid · the lines and the 702 math, `ownerAccount` (tested in `gcOwnerBilling.test.ts`) |
@@ -284,8 +292,8 @@ imitates it.
 Two existing files are touched: `src/App.tsx` (the `bids/gc` route) and `src/pages/Bids.tsx`
 (the switch, for a dev only).
 
-State of the branch: `npm run typecheck`, the theme check, the golden test and the New Project
-kernel test pass. Lint has
+State of the branch: `npm run typecheck`, the theme check, the golden test and each lane's
+kernel tests pass. Lint has
 four fast-refresh warnings in `gcUi.tsx` (it exports style objects beside components). The UI is
 checked by hand in the browser after every change; the model is pinned by the golden test.
 
@@ -359,7 +367,10 @@ follow the plain-words rules; the prototype's own words were written to them as 
 - **Boerne Retail Shell**: Trades → Compare bids on Electrical; type a cost on Concrete's rebar
   and watch the conclusion flip. Structural steel → On a map → Cannot do it → ask the next.
 - **Plans → A new set of plans came in**: paste three lines with sheet numbers; issue; in the
-  portal as Alamo Concrete press **My number stands on the new plans**.
+  portal as Alamo Concrete press **My number stands on the new plans**. Then type "S301 is a new
+  canopy framing sheet. L-101 adds a landscape plan": give S-301 its title and watch Structural
+  steel ticked, press **Add Landscaping**, issue **Addendum 2**. Landscaping sits after Sitework
+  on Trades. On Helotes the next set opens as **Bulletin 1**.
 - **Our number → We sent our bid**, then **Bid tabs** opens. **We won this** moves it to Buying out.
 - **Helotes Dental Office → Get started**: from 14 of 24 steps to Start, signing as each
   company through **Sign it as them**. A new plan set after Start goes to four companies only.
@@ -373,5 +384,5 @@ follow the plain-words rules; the prototype's own words were written to them as 
 2026-10-02: one session, the owner steering. He said "I think this has great potential" and has
 been changing it screen by screen since. The last things built were the new-plans flow and Get
 started. The prototype is a branch, not a PR: it should not merge as it is (fixture data inside
-the client, one golden test and one kernel test). Since the evening of 2026-10-02 several
+the client, one golden test and a few kernel tests). Since the evening of 2026-10-02 several
 sessions build it at once (*Working in parallel*).

@@ -9,7 +9,7 @@ import { planRecipients } from './gcPlans'
 import { bidsIn } from './gcBids'
 import { awardedPartner, find, logged, mapInvite, mapPackage, mapProject, mapSow, sowFromBid } from './gcReducerHelpers'
 import { initialGcState } from './gcFixture'
-import { buildNewProject } from './gcNewProject'
+import { buildNewProject, packagesFromDrafts, withTradesInOrder } from './gcNewProject'
 import { finalPayApplication, payApplication, tradeCloseout, workAllBilled } from './gcBuilding'
 import { ownerPayApp, ownerPayAppHasWork, ownerPayAppToSend } from './gcOwnerBilling'
 
@@ -594,6 +594,35 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
           : p,
       )
       return logged(next, 'office', `${project.owner} paid pay application ${app.number}: ${money(app.due)}.`)
+    }
+
+    case 'issuePlanSet': {
+      const project = state.projects.find((p) => p.id === action.projectId)
+      if (!project) return state
+      const rev = currentRev(project) + 1
+      const brought = packagesFromDrafts(project.id, action.newTrades, project.packages.map((p) => p.id))
+      const withTrades = { ...project, packages: withTradesInOrder(project.packages, brought) }
+      const touches = [...new Set([...action.touches, ...brought.map((p) => p.id)])]
+      const chosen = planRecipients(state, withTrades, touches).filter((r) => action.recipients.includes(r.partner.id))
+      const sentTo = [...new Map(chosen.map((r) => [r.partner.id, { partnerId: r.partner.id, on: state.today, touched: chosen.some((x) => x.partner.id === r.partner.id && x.touched) }])).values()]
+      const set: PlanSet = {
+        rev,
+        label: action.label,
+        issuedOn: state.today,
+        note: action.note,
+        changedSheets: action.sheets,
+        touches,
+        sentTo,
+        ...(action.addedSheets.length > 0 ? { addedSheets: action.addedSheets } : {}),
+      }
+      const next = mapProject(state, project.id, () => ({ ...withTrades, planSets: [...withTrades.planSets, set] }))
+      const adds = brought.length > 0 ? ` It adds ${brought.map((p) => p.trade.toLowerCase()).join(' and ')}. Nobody is asked yet.` : ''
+      const told = sentTo.filter((x) => x.touched).length
+      return logged(
+        next,
+        'office',
+        `Issued ${set.label} on ${project.name} and emailed ${sentTo.length} ${sentTo.length === 1 ? 'company' : 'companies'}. ${told} ${told === 1 ? 'was' : 'were'} told it changes their trade.${adds}`,
+      )
     }
 
     case 'acceptWork': {

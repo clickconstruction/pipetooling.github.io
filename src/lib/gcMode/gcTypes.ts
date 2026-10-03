@@ -19,6 +19,8 @@ export interface PlanSet {
   touches: string[]
   /** Who was emailed when the set went out, and whether it changed their trade. */
   sentTo?: { partnerId: string; on: string; touched: boolean }[]
+  /** Sheets this set adds to the index, with the titles the office gave them. */
+  addedSheets?: PlanSheet[]
 }
 
 /** One drawing in the set. The discipline is read from the number's letters (E-201 → Electrical). */
@@ -341,6 +343,20 @@ export type GcAction =
   | { type: 'tradeSignW9'; partnerId: string }
   | { type: 'sendOwnerPayApp'; projectId: string }
   | { type: 'ownerPaid'; projectId: string; number: number }
+  | {
+      type: 'issuePlanSet'
+      projectId: string
+      /** What the set is called: "Addendum 2", "Bulletin 1", "Permit set". */
+      label: string
+      note: string
+      sheets: string[]
+      /** The sheets in `sheets` that are new to the index, with their titles. */
+      addedSheets: PlanSheet[]
+      touches: string[]
+      recipients: string[]
+      /** Trades the job did not have that this set brings. Each gets a package; nobody is asked yet. */
+      newTrades: NewTradeDraft[]
+    }
   | { type: 'acceptWork'; projectId: string; packageId: string }
   | { type: 'tradeSendWarranty'; projectId: string; packageId: string }
   | {

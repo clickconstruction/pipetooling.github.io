@@ -5026,10 +5026,126 @@ exports[`GC mode golden walk > step 62: Dr. Raman pays pay application 1 1`] = `
 }
 `;
 
-exports[`GC mode golden walk > step 63: Approve draw 3 1`] = `
+exports[`GC mode golden walk > step 63: Helotes: Bulletin 1 adds a storefront and its trade 1`] = `
 {
   "changed": {
+    "customers.ocotillo.addenda": 2,
+    "customers.ocotillo.sets": 3,
     "lastLog.id": 59,
+    "lastLog.text": "Issued Bulletin 1 on Helotes Dental Office and emailed 1 company. 1 was told it changes their trade. It adds glass and storefront. Nobody is asked yet.",
+    "projects.helotes.proposalTotals.holes[0]": "«package helotes-glass-and-storefront»",
+    "projects.helotes.startChecklist.missing[1]": "Glass and storefront: Pick a company and award the trade.",
+    "projects.helotes.startChecklist.missing[2]": "Electrical: The plans changed after they signed. Send a new statement of work.",
+    "projects.helotes.startChecklist.missing[3]": "HVAC: The plans changed after they signed. Send a new statement of work.",
+    "projects.helotes.startChecklist.missing[4]": "Millwork: The plans changed after they signed. Send a new statement of work.",
+    "projects.helotes.startChecklist.total": 29,
+    "projects.helotes.startChecklist.trades[1].checks[0].detail": "no company picked",
+    "projects.helotes.startChecklist.trades[1].checks[0].done": false,
+    "projects.helotes.startChecklist.trades[1].checks[1].detail": "after the award",
+    "projects.helotes.startChecklist.trades[1].checks[1].done": false,
+    "projects.helotes.startChecklist.trades[1].checks[2].detail": "after the award",
+    "projects.helotes.startChecklist.trades[1].checks[2].done": false,
+    "projects.helotes.startChecklist.trades[1].checks[3].detail": "after the award",
+    "projects.helotes.startChecklist.trades[1].checks[3].done": false,
+    "projects.helotes.startChecklist.trades[1].checks[4].detail": "after the award",
+    "projects.helotes.startChecklist.trades[1].invite": null,
+    "projects.helotes.startChecklist.trades[1].next": "Pick a company and award the trade.",
+    "projects.helotes.startChecklist.trades[1].partner": null,
+    "projects.helotes.startChecklist.trades[1].pkg": "«package helotes-glass-and-storefront»",
+    "projects.helotes.startChecklist.trades[2].checks[0].detail": "Brightline Electric",
+    "projects.helotes.startChecklist.trades[2].checks[2].detail": "good to Mar 20",
+    "projects.helotes.startChecklist.trades[2].invite": "«invite delec-brightline»",
+    "projects.helotes.startChecklist.trades[2].partner": "«partner brightline»",
+    "projects.helotes.startChecklist.trades[2].pkg": "«package delec»",
+    "projects.helotes.startChecklist.trades[3].checks[0].detail": "Kendall Air",
+    "projects.helotes.startChecklist.trades[3].checks[0].key": "awarded",
+    "projects.helotes.startChecklist.trades[3].checks[0].label": "Awarded",
+    "projects.helotes.startChecklist.trades[3].checks[1].detail": "signed",
+    "projects.helotes.startChecklist.trades[3].checks[1].done": true,
+    "projects.helotes.startChecklist.trades[3].checks[1].key": "msa",
+    "projects.helotes.startChecklist.trades[3].checks[1].label": "Master agreement",
+    "projects.helotes.startChecklist.trades[3].checks[2].detail": "good to Feb 28",
+    "projects.helotes.startChecklist.trades[3].checks[2].done": true,
+    "projects.helotes.startChecklist.trades[3].checks[2].key": "coi",
+    "projects.helotes.startChecklist.trades[3].checks[2].label": "Insurance",
+    "projects.helotes.startChecklist.trades[3].checks[3].detail": "on file",
+    "projects.helotes.startChecklist.trades[3].checks[3].done": true,
+    "projects.helotes.startChecklist.trades[3].checks[3].key": "w9",
+    "projects.helotes.startChecklist.trades[3].checks[3].label": "W-9",
+    "projects.helotes.startChecklist.trades[3].checks[4].detail": "signed on Permit set, older than the plans",
+    "projects.helotes.startChecklist.trades[3].checks[4].done": false,
+    "projects.helotes.startChecklist.trades[3].checks[4].key": "sow",
+    "projects.helotes.startChecklist.trades[3].checks[4].label": "Statement of work",
+    "projects.helotes.startChecklist.trades[3].invite": "«invite dhvac-kendall»",
+    "projects.helotes.startChecklist.trades[3].next": "The plans changed after they signed. Send a new statement of work.",
+    "projects.helotes.startChecklist.trades[3].partner": "«partner kendall»",
+    "projects.helotes.startChecklist.trades[3].pkg": "«package dhvac»",
+    "projects.helotes.startChecklist.trades[3].ready": false,
+    "projects.helotes.startChecklist.trades[4].checks[0].detail": "our own crew, J 1042",
+    "projects.helotes.startChecklist.trades[4].checks[0].key": "self",
+    "projects.helotes.startChecklist.trades[4].checks[0].label": "Ours",
+    "projects.helotes.startChecklist.trades[4].invite": null,
+    "projects.helotes.startChecklist.trades[4].next": null,
+    "projects.helotes.startChecklist.trades[4].partner": null,
+    "projects.helotes.startChecklist.trades[4].pkg": "«package dplumb»",
+    "projects.helotes.startChecklist.trades[4].ready": true,
+    "projects.helotes.startChecklist.trades[5].checks[0].detail": "Cedar & Pine Millwork",
+    "projects.helotes.startChecklist.trades[5].checks[0].done": true,
+    "projects.helotes.startChecklist.trades[5].checks[0].key": "awarded",
+    "projects.helotes.startChecklist.trades[5].checks[0].label": "Awarded",
+    "projects.helotes.startChecklist.trades[5].checks[1].detail": "signed",
+    "projects.helotes.startChecklist.trades[5].checks[1].done": true,
+    "projects.helotes.startChecklist.trades[5].checks[1].key": "msa",
+    "projects.helotes.startChecklist.trades[5].checks[1].label": "Master agreement",
+    "projects.helotes.startChecklist.trades[5].checks[2].detail": "good to Jan 8",
+    "projects.helotes.startChecklist.trades[5].checks[2].done": true,
+    "projects.helotes.startChecklist.trades[5].checks[2].key": "coi",
+    "projects.helotes.startChecklist.trades[5].checks[2].label": "Insurance",
+    "projects.helotes.startChecklist.trades[5].checks[3].detail": "on file",
+    "projects.helotes.startChecklist.trades[5].checks[3].done": true,
+    "projects.helotes.startChecklist.trades[5].checks[3].key": "w9",
+    "projects.helotes.startChecklist.trades[5].checks[3].label": "W-9",
+    "projects.helotes.startChecklist.trades[5].checks[4].detail": "signed on Permit set, older than the plans",
+    "projects.helotes.startChecklist.trades[5].checks[4].done": false,
+    "projects.helotes.startChecklist.trades[5].checks[4].key": "sow",
+    "projects.helotes.startChecklist.trades[5].checks[4].label": "Statement of work",
+    "projects.helotes.startChecklist.trades[5].invite": "«invite mill-cedar»",
+    "projects.helotes.startChecklist.trades[5].next": "The plans changed after they signed. Send a new statement of work.",
+    "projects.helotes.startChecklist.trades[5].partner": "«partner cedar»",
+    "projects.helotes.startChecklist.trades[5].pkg": "«package mill»",
+    "projects.helotes.startChecklist.trades[5].ready": false,
+    "projects.helotes.trades.helotes-glass-and-storefront.bidTabRows": "[]",
+    "projects.helotes.trades.helotes-glass-and-storefront.compareBids.complete": true,
+    "projects.helotes.trades.helotes-glass-and-storefront.compareBids.conclusion": "",
+    "projects.helotes.trades.helotes-glass-and-storefront.compareBids.lines": "[]",
+    "projects.helotes.trades.helotes-glass-and-storefront.tradeLineup": "[]",
+  },
+  "removed": [
+    "projects.helotes.proposalTotals.holes",
+    "projects.helotes.startChecklist.trades[4].checks[1].key",
+    "projects.helotes.startChecklist.trades[4].checks[1].label",
+    "projects.helotes.startChecklist.trades[4].checks[1].done",
+    "projects.helotes.startChecklist.trades[4].checks[1].detail",
+    "projects.helotes.startChecklist.trades[4].checks[2].key",
+    "projects.helotes.startChecklist.trades[4].checks[2].label",
+    "projects.helotes.startChecklist.trades[4].checks[2].done",
+    "projects.helotes.startChecklist.trades[4].checks[2].detail",
+    "projects.helotes.startChecklist.trades[4].checks[3].key",
+    "projects.helotes.startChecklist.trades[4].checks[3].label",
+    "projects.helotes.startChecklist.trades[4].checks[3].done",
+    "projects.helotes.startChecklist.trades[4].checks[3].detail",
+    "projects.helotes.startChecklist.trades[4].checks[4].key",
+    "projects.helotes.startChecklist.trades[4].checks[4].label",
+    "projects.helotes.startChecklist.trades[4].checks[4].done",
+    "projects.helotes.startChecklist.trades[4].checks[4].detail",
+  ],
+}
+`;
+
+exports[`GC mode golden walk > step 64: Approve draw 3 1`] = `
+{
+  "changed": {
+    "lastLog.id": 60,
     "lastLog.text": "Approved draw 3 on Framing and drywall. $6,750 to pay, $750 held.",
     "projects.helotes.stageProgress.also[0]": "Draw 3 for Hill Country Interiors is approved. Pay it.",
     "projects.helotes.stageProgress.also[1]": "Framing and drywall is all billed. Walk it, then accept the work on Closeout.",
@@ -5038,10 +5154,10 @@ exports[`GC mode golden walk > step 63: Approve draw 3 1`] = `
 }
 `;
 
-exports[`GC mode golden walk > step 64: Pay draw 3 1`] = `
+exports[`GC mode golden walk > step 65: Pay draw 3 1`] = `
 {
   "changed": {
-    "lastLog.id": 60,
+    "lastLog.id": 61,
     "lastLog.text": "Paid draw 3 on Framing and drywall: $6,750.",
     "projects.helotes.stageProgress.also[0]": "Hill Country Interiors owes the unconditional waiver on draw 3.",
   },
@@ -5049,10 +5165,10 @@ exports[`GC mode golden walk > step 64: Pay draw 3 1`] = `
 }
 `;
 
-exports[`GC mode golden walk > step 65: Hill Country signs the unconditional waiver on draw 3 1`] = `
+exports[`GC mode golden walk > step 66: Hill Country signs the unconditional waiver on draw 3 1`] = `
 {
   "changed": {
-    "lastLog.id": 61,
+    "lastLog.id": 62,
     "lastLog.text": "Hill Country Interiors signed the unconditional waiver for draw 3.",
     "lastLog.who": "trade",
     "projects.helotes.stageProgress.also[0]": "Framing and drywall is all billed. Walk it, then accept the work on Closeout.",
@@ -5063,10 +5179,10 @@ exports[`GC mode golden walk > step 65: Hill Country signs the unconditional wai
 }
 `;
 
-exports[`GC mode golden walk > step 66: Accept the drywall work 1`] = `
+exports[`GC mode golden walk > step 67: Accept the drywall work 1`] = `
 {
   "changed": {
-    "lastLog.id": 62,
+    "lastLog.id": 63,
     "lastLog.text": "Accepted the Framing and drywall work from Hill Country Interiors. The punch list is done.",
     "lastLog.who": "office",
     "projects.helotes.stageProgress.also": "[]",
@@ -5077,10 +5193,10 @@ exports[`GC mode golden walk > step 66: Accept the drywall work 1`] = `
 }
 `;
 
-exports[`GC mode golden walk > step 67: Hill Country sends the warranty letter 1`] = `
+exports[`GC mode golden walk > step 68: Hill Country sends the warranty letter 1`] = `
 {
   "changed": {
-    "lastLog.id": 63,
+    "lastLog.id": 64,
     "lastLog.text": "Hill Country Interiors sent the warranty letter for Framing and drywall.",
     "lastLog.who": "trade",
   },
@@ -5088,10 +5204,10 @@ exports[`GC mode golden walk > step 67: Hill Country sends the warranty letter 1
 }
 `;
 
-exports[`GC mode golden walk > step 68: Hill Country sends the final pay application 1`] = `
+exports[`GC mode golden walk > step 69: Hill Country sends the final pay application 1`] = `
 {
   "changed": {
-    "lastLog.id": 64,
+    "lastLog.id": 65,
     "lastLog.text": "Hill Country Interiors sent the final pay application on Framing and drywall: $6,420 of retainage, with a conditional waiver on final payment.",
     "projects.helotes.stageProgress.also[0]": "Hill Country Interiors asked for its retainage back. Approve it on Closeout.",
   },
@@ -5101,10 +5217,10 @@ exports[`GC mode golden walk > step 68: Hill Country sends the final pay applica
 }
 `;
 
-exports[`GC mode golden walk > step 69: Approve the retainage release 1`] = `
+exports[`GC mode golden walk > step 70: Approve the retainage release 1`] = `
 {
   "changed": {
-    "lastLog.id": 65,
+    "lastLog.id": 66,
     "lastLog.text": "Approved the retainage release on Framing and drywall: $6,420 to pay.",
     "lastLog.who": "office",
     "projects.helotes.stageProgress.also[0]": "The retainage release for Hill Country Interiors is approved. Pay it.",
@@ -5113,10 +5229,10 @@ exports[`GC mode golden walk > step 69: Approve the retainage release 1`] = `
 }
 `;
 
-exports[`GC mode golden walk > step 70: Pay the retainage 1`] = `
+exports[`GC mode golden walk > step 71: Pay the retainage 1`] = `
 {
   "changed": {
-    "lastLog.id": 66,
+    "lastLog.id": 67,
     "lastLog.text": "Paid draw 4 on Framing and drywall: $6,420.",
     "projects.helotes.stageProgress.also[0]": "Hill Country Interiors owes the unconditional waiver on final payment.",
   },
@@ -5124,10 +5240,10 @@ exports[`GC mode golden walk > step 70: Pay the retainage 1`] = `
 }
 `;
 
-exports[`GC mode golden walk > step 71: Hill Country signs the unconditional waiver on final payment 1`] = `
+exports[`GC mode golden walk > step 72: Hill Country signs the unconditional waiver on final payment 1`] = `
 {
   "changed": {
-    "lastLog.id": 67,
+    "lastLog.id": 68,
     "lastLog.text": "Hill Country Interiors signed the unconditional waiver for draw 4.",
     "lastLog.who": "trade",
     "projects.helotes.stageProgress.also": "[]",
@@ -5294,48 +5410,53 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
-      "id": 67,
+      "id": 68,
       "text": "Hill Country Interiors signed the unconditional waiver for draw 4.",
       "who": "trade",
     },
     {
-      "id": 66,
+      "id": 67,
       "text": "Paid draw 4 on Framing and drywall: $6,420.",
       "who": "office",
     },
     {
-      "id": 65,
+      "id": 66,
       "text": "Approved the retainage release on Framing and drywall: $6,420 to pay.",
       "who": "office",
     },
     {
-      "id": 64,
+      "id": 65,
       "text": "Hill Country Interiors sent the final pay application on Framing and drywall: $6,420 of retainage, with a conditional waiver on final payment.",
       "who": "trade",
     },
     {
-      "id": 63,
+      "id": 64,
       "text": "Hill Country Interiors sent the warranty letter for Framing and drywall.",
       "who": "trade",
     },
     {
-      "id": 62,
+      "id": 63,
       "text": "Accepted the Framing and drywall work from Hill Country Interiors. The punch list is done.",
       "who": "office",
     },
     {
-      "id": 61,
+      "id": 62,
       "text": "Hill Country Interiors signed the unconditional waiver for draw 3.",
       "who": "trade",
     },
     {
-      "id": 60,
+      "id": 61,
       "text": "Paid draw 3 on Framing and drywall: $6,750.",
       "who": "office",
     },
     {
-      "id": 59,
+      "id": 60,
       "text": "Approved draw 3 on Framing and drywall. $6,750 to pay, $750 held.",
+      "who": "office",
+    },
+    {
+      "id": 59,
+      "text": "Issued Bulletin 1 on Helotes Dental Office and emailed 1 company. 1 was told it changes their trade. It adds glass and storefront. Nobody is asked yet.",
       "who": "office",
     },
     {
@@ -5436,11 +5557,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     {
       "id": 39,
       "text": "The permit is marked done on Helotes Dental Office.",
-      "who": "office",
-    },
-    {
-      "id": 38,
-      "text": "Our contract with Dr. Priya Raman is marked done on Helotes Dental Office.",
       "who": "office",
     },
   ],
@@ -7119,6 +7235,27 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
           "trade": "Framing and drywall",
         },
         {
+          "awardedInviteId": null,
+          "bidTab": null,
+          "budget": 18000,
+          "carried": null,
+          "id": "helotes-glass-and-storefront",
+          "invites": [],
+          "scope": [
+            {
+              "id": "helotes-glass-and-storefront-1",
+              "label": "Storefront",
+            },
+            {
+              "id": "helotes-glass-and-storefront-2",
+              "label": "Glass",
+            },
+          ],
+          "selfPerform": null,
+          "sow": null,
+          "trade": "Glass and storefront",
+        },
+        {
           "awardedInviteId": "delec-brightline",
           "bidTab": null,
           "budget": 58000,
@@ -7470,6 +7607,33 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
           ],
           "touches": [
             "dry",
+          ],
+        },
+        {
+          "addedSheets": [
+            {
+              "id": "A-601",
+              "title": "Storefront elevations",
+            },
+          ],
+          "changedSheets": [
+            "A-201",
+            "A-601",
+          ],
+          "issuedOn": "2026-10-02",
+          "label": "Bulletin 1",
+          "note": "A new storefront at the entry. A-601 is new.",
+          "rev": 2,
+          "sentTo": [
+            {
+              "on": "2026-10-02",
+              "partnerId": "hillcountry",
+              "touched": true,
+            },
+          ],
+          "touches": [
+            "dry",
+            "helotes-glass-and-storefront",
           ],
         },
       ],
