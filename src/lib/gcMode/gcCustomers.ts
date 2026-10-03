@@ -26,11 +26,15 @@ export interface CustomerSummary {
  * any went (`ownerAccount`, the owner's ask 2026-10-03); before the first one, the record's
  * made-up `ownerBilling`. Null when neither: nothing billed yet.
  */
-export function ownerMoney(project: GcProject): { billed: number; paid: number; retainageHeld: number } | null {
+export function ownerMoney(project: GcProject): { billed: number; paid: number; retainageHeld: number; owed: number } | null {
+  // Owed is the account's own (asked less paid): once the architect certifies less than we asked,
+  // billed - held - paid would count the cut twice, since the cut comes back on the next bill.
   const account = ownerAccount(project)
-  if (account) return { billed: account.billed, paid: account.paid, retainageHeld: account.retainageHeld }
+  if (account) return { billed: account.billed, paid: account.paid, retainageHeld: account.retainageHeld, owed: account.owed }
   const record = project.ownerBilling
-  return record ? { billed: record.billed, paid: record.paid, retainageHeld: record.retainageHeld } : null
+  return record
+    ? { billed: record.billed, paid: record.paid, retainageHeld: record.retainageHeld, owed: record.billed - record.retainageHeld - record.paid }
+    : null
 }
 
 /** One customer across every project: what is live, what is owed, how often they pick us. */
@@ -59,9 +63,9 @@ export function customerSummary(state: GcState, customer: GcCustomer): CustomerS
       sum.billed += money.billed
       sum.paid += money.paid
       sum.retainageHeld += money.retainageHeld
+      sum.owed += money.owed
     }
   }
-  sum.owed = sum.billed - sum.retainageHeld - sum.paid
   return sum
 }
 
