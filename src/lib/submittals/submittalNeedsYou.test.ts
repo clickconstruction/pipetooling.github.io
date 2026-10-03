@@ -72,3 +72,21 @@ describe('summarizeSubmittalNudge', () => {
     expect(submittalNudgeIsEmpty(summarizeSubmittalNudge({ bids: [], revisions: [], rooms: [], views: [], people: [], items: [], windows: [] }, now))).toBe(true)
   })
 })
+
+describe('2026-10-02 · a lead time counts from today in the company’s zone', () => {
+  // The Dashboard passes no todayYmd, so "today" comes from `now`. WC-1's 28 days run past B375's Oct 2 window.
+  it('at 7:30 pm Central (00:30 UTC the day after) the lead time lands from that evening’s day', () => {
+    const n = summarizeSubmittalNudge(base(), new Date('2026-10-03T00:30:00Z'))
+    expect(n.leadTime.first).toMatchObject({ tag: 'WC-1', landsYmd: '2026-10-30', windowEndYmd: '2026-10-02', overrunDays: 28 })
+  })
+
+  it('at 6:30 pm in winter it is still that day', () => {
+    const n = summarizeSubmittalNudge(base(), new Date('2026-12-02T00:30:00Z'))
+    expect(n.leadTime.first).toMatchObject({ tag: 'WC-1', landsYmd: '2026-12-29', overrunDays: 88 })
+  })
+
+  it('at noon UTC the day is its own', () => {
+    const n = summarizeSubmittalNudge(base(), new Date('2026-10-02T12:00:00Z'))
+    expect(n.leadTime.first).toMatchObject({ tag: 'WC-1', landsYmd: '2026-10-30', overrunDays: 28 })
+  })
+})
