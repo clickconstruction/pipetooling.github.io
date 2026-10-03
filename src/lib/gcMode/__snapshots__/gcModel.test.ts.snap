@@ -7289,6 +7289,7 @@ exports[`GC mode golden walk > step 117: Send Dr. Raman pay application 2 1`] = 
 exports[`GC mode golden walk > step 118: Studio Ocotillo certifies pay application 2 for $2,000 less 1`] = `
 {
   "changed": {
+    "customers.raman.owed": 54302.000000000015,
     "lastLog.id": 114,
     "lastLog.text": "Studio Ocotillo certified pay application 2 for $54,302, $2,000 less than asked: Two operatory cabinets are not set yet.",
   },
@@ -7299,7 +7300,7 @@ exports[`GC mode golden walk > step 118: Studio Ocotillo certifies pay applicati
 exports[`GC mode golden walk > step 119: Dr. Raman pays pay application 2 1`] = `
 {
   "changed": {
-    "customers.raman.owed": 2000.4463157894497,
+    "customers.raman.owed": 0,
     "customers.raman.paid": 133548.7905263158,
     "lastLog.id": 115,
     "lastLog.text": "Dr. Priya Raman paid pay application 2: $54,302.",
