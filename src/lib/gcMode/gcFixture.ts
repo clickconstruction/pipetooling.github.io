@@ -1013,6 +1013,8 @@ export function initialGcState(): GcState {
           retainage: 95_632.79,
           due: 288_878.51,
           paidOn: null,
+          // Owner Billing lane: Cibolo's word on a call, and the day passed with no check.
+          promises: [{ by: '2026-09-30', madeOn: '2026-09-26', note: 'Their controller said checks go out Wednesday the 30th', who: 'office' }],
         },
       ],
     },

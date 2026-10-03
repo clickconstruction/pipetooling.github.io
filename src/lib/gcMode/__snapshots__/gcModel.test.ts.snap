@@ -7660,10 +7660,32 @@ exports[`GC mode golden walk > step 126: Pad B: the owner comes back to us 1`] =
 }
 `;
 
-exports[`GC mode golden walk > step 127: Fair Oaks D: one more punch item on the concrete 1`] = `
+exports[`GC mode golden walk > step 127: Cibolo says checks go out Oct 9 1`] = `
 {
   "changed": {
     "lastLog.id": 123,
+    "lastLog.text": "Cibolo Creek Partners said they will pay pay application 3 by Fri Oct 9.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 128: Cibolo pays $150,000 of pay application 3 1`] = `
+{
+  "changed": {
+    "customers.cibolo.owed": 138878.51,
+    "customers.cibolo.paid": 721816.61,
+    "lastLog.id": 124,
+    "lastLog.text": "Cibolo Creek Partners paid $150,000 on pay application 3. $138,879 is still open.",
+  },
+  "removed": [],
+}
+`;
+
+exports[`GC mode golden walk > step 129: Fair Oaks D: one more punch item on the concrete 1`] = `
+{
+  "changed": {
+    "lastLog.id": 125,
     "lastLog.text": "Punch list, Concrete: Grind the trip edge at the sidewalk joint, East entry. Guadalupe Flatwork fixes it in their portal.",
     "projects.fairoaksd.stageProgress.also[1]": "Guadalupe Flatwork has 2 punch items to fix on Concrete.",
   },
@@ -7671,10 +7693,10 @@ exports[`GC mode golden walk > step 127: Fair Oaks D: one more punch item on the
 }
 `;
 
-exports[`GC mode golden walk > step 128: Guadalupe fixes the spalled footing corner 1`] = `
+exports[`GC mode golden walk > step 130: Guadalupe fixes the spalled footing corner 1`] = `
 {
   "changed": {
-    "lastLog.id": 124,
+    "lastLog.id": 126,
     "lastLog.text": "Guadalupe Flatwork fixed a punch item on Concrete: Patch the spalled corner on the column footing.",
     "lastLog.who": "trade",
     "projects.fairoaksd.stageProgress.also[1]": "Guadalupe Flatwork has 1 punch item to fix on Concrete.",
@@ -7684,10 +7706,10 @@ exports[`GC mode golden walk > step 128: Guadalupe fixes the spalled footing cor
 }
 `;
 
-exports[`GC mode golden walk > step 129: Superintendent: the stockroom joints are not all sealed 1`] = `
+exports[`GC mode golden walk > step 131: Superintendent: the stockroom joints are not all sealed 1`] = `
 {
   "changed": {
-    "lastLog.id": 125,
+    "lastLog.id": 127,
     "lastLog.text": "Our superintendent sent a punch item back to Guadalupe Flatwork: Seal the control joints in the stockroom slab. Two joints in the back corner are still open.",
     "lastLog.who": "office",
     "projects.fairoaksd.stageProgress.also[1]": "Guadalupe Flatwork has 2 punch items to fix on Concrete.",
@@ -7697,10 +7719,10 @@ exports[`GC mode golden walk > step 129: Superintendent: the stockroom joints ar
 }
 `;
 
-exports[`GC mode golden walk > step 130: Guadalupe seals the last two joints 1`] = `
+exports[`GC mode golden walk > step 132: Guadalupe seals the last two joints 1`] = `
 {
   "changed": {
-    "lastLog.id": 126,
+    "lastLog.id": 128,
     "lastLog.text": "Guadalupe Flatwork fixed a punch item on Concrete: Seal the control joints in the stockroom slab.",
     "lastLog.who": "trade",
     "projects.fairoaksd.stageProgress.also[1]": "Guadalupe Flatwork has 1 punch item to fix on Concrete.",
@@ -7710,10 +7732,10 @@ exports[`GC mode golden walk > step 130: Guadalupe seals the last two joints 1`]
 }
 `;
 
-exports[`GC mode golden walk > step 131: Guadalupe grinds the trip edge 1`] = `
+exports[`GC mode golden walk > step 133: Guadalupe grinds the trip edge 1`] = `
 {
   "changed": {
-    "lastLog.id": 127,
+    "lastLog.id": 129,
     "lastLog.text": "Guadalupe Flatwork fixed a punch item on Concrete: Grind the trip edge at the sidewalk joint.",
     "projects.fairoaksd.stageProgress.also[1]": "3 punch items on Concrete are fixed. Check them on Closeout.",
     "projects.fairoaksd.stageProgress.also[2]": "Iron Horse Fabrication asked for draw 2. Approve it.",
@@ -7727,10 +7749,10 @@ exports[`GC mode golden walk > step 131: Guadalupe grinds the trip edge 1`] = `
 }
 `;
 
-exports[`GC mode golden walk > step 132: Superintendent checks the footing corner 1`] = `
+exports[`GC mode golden walk > step 134: Superintendent checks the footing corner 1`] = `
 {
   "changed": {
-    "lastLog.id": 128,
+    "lastLog.id": 130,
     "lastLog.text": "Our superintendent checked a punch item on Concrete: Patch the spalled corner on the column footing. It is fixed.",
     "lastLog.who": "office",
     "projects.fairoaksd.stageProgress.also[1]": "2 punch items on Concrete are fixed. Check them on Closeout.",
@@ -7739,10 +7761,10 @@ exports[`GC mode golden walk > step 132: Superintendent checks the footing corne
 }
 `;
 
-exports[`GC mode golden walk > step 133: Superintendent checks the stockroom joints 1`] = `
+exports[`GC mode golden walk > step 135: Superintendent checks the stockroom joints 1`] = `
 {
   "changed": {
-    "lastLog.id": 129,
+    "lastLog.id": 131,
     "lastLog.text": "Our superintendent checked a punch item on Concrete: Seal the control joints in the stockroom slab. It is fixed.",
     "projects.fairoaksd.stageProgress.also[1]": "1 punch item on Concrete is fixed. Check it on Closeout.",
   },
@@ -7750,10 +7772,10 @@ exports[`GC mode golden walk > step 133: Superintendent checks the stockroom joi
 }
 `;
 
-exports[`GC mode golden walk > step 134: Superintendent checks the trip edge 1`] = `
+exports[`GC mode golden walk > step 136: Superintendent checks the trip edge 1`] = `
 {
   "changed": {
-    "lastLog.id": 130,
+    "lastLog.id": 132,
     "lastLog.text": "Our superintendent checked a punch item on Concrete: Grind the trip edge at the sidewalk joint. It is fixed.",
     "projects.fairoaksd.stageProgress.also[1]": "The punch list on Concrete is done. Accept the work on Closeout.",
   },
@@ -7761,10 +7783,10 @@ exports[`GC mode golden walk > step 134: Superintendent checks the trip edge 1`]
 }
 `;
 
-exports[`GC mode golden walk > step 135: Accept the concrete work on Fair Oaks D 1`] = `
+exports[`GC mode golden walk > step 137: Accept the concrete work on Fair Oaks D 1`] = `
 {
   "changed": {
-    "lastLog.id": 131,
+    "lastLog.id": 133,
     "lastLog.text": "Accepted the Concrete work from Guadalupe Flatwork. The punch list is done.",
     "projects.fairoaksd.stageProgress.also[1]": "Iron Horse Fabrication asked for draw 2. Approve it.",
     "projects.fairoaksd.stageProgress.also[2]": "Pecan Valley Electric owes the unconditional waiver on draw 1.",
@@ -7977,48 +7999,58 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
   ],
   "log": [
     {
-      "id": 131,
+      "id": 133,
       "text": "Accepted the Concrete work from Guadalupe Flatwork. The punch list is done.",
       "who": "office",
     },
     {
-      "id": 130,
+      "id": 132,
       "text": "Our superintendent checked a punch item on Concrete: Grind the trip edge at the sidewalk joint. It is fixed.",
       "who": "office",
     },
     {
-      "id": 129,
+      "id": 131,
       "text": "Our superintendent checked a punch item on Concrete: Seal the control joints in the stockroom slab. It is fixed.",
       "who": "office",
     },
     {
-      "id": 128,
+      "id": 130,
       "text": "Our superintendent checked a punch item on Concrete: Patch the spalled corner on the column footing. It is fixed.",
       "who": "office",
     },
     {
-      "id": 127,
+      "id": 129,
       "text": "Guadalupe Flatwork fixed a punch item on Concrete: Grind the trip edge at the sidewalk joint.",
       "who": "trade",
     },
     {
-      "id": 126,
+      "id": 128,
       "text": "Guadalupe Flatwork fixed a punch item on Concrete: Seal the control joints in the stockroom slab.",
       "who": "trade",
     },
     {
-      "id": 125,
+      "id": 127,
       "text": "Our superintendent sent a punch item back to Guadalupe Flatwork: Seal the control joints in the stockroom slab. Two joints in the back corner are still open.",
       "who": "office",
     },
     {
-      "id": 124,
+      "id": 126,
       "text": "Guadalupe Flatwork fixed a punch item on Concrete: Patch the spalled corner on the column footing.",
       "who": "trade",
     },
     {
-      "id": 123,
+      "id": 125,
       "text": "Punch list, Concrete: Grind the trip edge at the sidewalk joint, East entry. Guadalupe Flatwork fixes it in their portal.",
+      "who": "office",
+    },
+    {
+      "id": 124,
+      "text": "Cibolo Creek Partners paid $150,000 on pay application 3. $138,879 is still open.",
+      "who": "office",
+    },
+    {
+      "id": 123,
+      "text": "Cibolo Creek Partners said they will pay pay application 3 by Fri Oct 9.",
       "who": "office",
     },
     {
@@ -8114,16 +8146,6 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
     {
       "id": 104,
       "text": "Dr. Priya Raman declined change order 2 in their portal.",
-      "who": "office",
-    },
-    {
-      "id": 103,
-      "text": "Sent change order 2 to Dr. Priya Raman for signature: $-1,320.",
-      "who": "office",
-    },
-    {
-      "id": 102,
-      "text": "Drafted change order 2 on Helotes Dental Office: Delete the break room sink, $-1,320.",
       "who": "office",
     },
   ],
@@ -9863,6 +9885,12 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
             "number": 1,
             "paidAmount": 79246.79052631579,
             "paidOn": "2026-10-02",
+            "payments": [
+              {
+                "amount": 79246.79052631579,
+                "on": "2026-10-02",
+              },
+            ],
             "periodTo": "2026-10-25",
             "retainage": 8805.19894736842,
             "retainagePct": 10,
@@ -9900,6 +9928,12 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
             "number": 2,
             "paidAmount": 54302,
             "paidOn": "2026-10-02",
+            "payments": [
+              {
+                "amount": 54302,
+                "on": "2026-10-02",
+              },
+            ],
             "periodTo": "2026-11-25",
             "retainage": 15061.026315789471,
             "retainagePct": 10,
@@ -11151,7 +11185,27 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
             "due": 288878.51,
             "number": 3,
             "paidOn": null,
+            "payments": [
+              {
+                "amount": 150000,
+                "on": "2026-10-02",
+              },
+            ],
             "periodTo": "2026-09-25",
+            "promises": [
+              {
+                "by": "2026-09-30",
+                "madeOn": "2026-09-26",
+                "note": "Their controller said checks go out Wednesday the 30th",
+                "who": "office",
+              },
+              {
+                "by": "2026-10-09",
+                "madeOn": "2026-10-02",
+                "note": "Their controller, on a call",
+                "who": "office",
+              },
+            ],
             "retainage": 95632.79,
             "retainagePct": 10,
             "sentOn": "2026-09-25",
@@ -12818,6 +12872,12 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
             "number": 4,
             "paidAmount": 18241.29999999999,
             "paidOn": "2026-10-02",
+            "payments": [
+              {
+                "amount": 18241.29999999999,
+                "on": "2026-10-02",
+              },
+            ],
             "periodTo": "2026-10-02",
             "retainage": 0,
             "retainagePct": 10,

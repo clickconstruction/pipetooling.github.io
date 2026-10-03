@@ -591,6 +591,10 @@ export type GcAction =
   | { type: 'markLost'; projectId: string; why: GcLostWhy; wonBy: string | null; note: string }
   /** A lost bid comes back: the owner returns to us, and it is in Bidding again. */
   | { type: 'reopenLost'; projectId: string }
+  /** The owner pays part of a certified pay application. The rest stays open. */
+  | { type: 'ownerPayPart'; projectId: string; number: number; amount: number }
+  /** The owner's word on when they will pay: taken by the office on a call, or given in their portal. */
+  | { type: 'ownerPromisePay'; projectId: string; number: number; by: string; note: string; who: 'office' | 'owner' }
   /** Our superintendent adds an item to a trade's punch list. */
   | { type: 'addPunchItem'; projectId: string; packageId: string; text: string; where?: string }
   /** The trade marks a punch item fixed in its portal. */
@@ -677,6 +681,10 @@ export interface OwnerPayAppSent {
   certifiedNote?: string
   /** What the owner paid, once paid: the certified amount. Absent: as asked. */
   paidAmount?: number
+  /** Each payment the owner made on it, oldest first. A part payment leaves the rest open. Absent: none, or the made-up history. */
+  payments?: { on: string; amount: number }[]
+  /** The owner's word on when they will pay, oldest first. The newest counts; a passed one stays on the record. */
+  promises?: { by: string; madeOn: string; note: string; who: 'office' | 'owner' }[]
 }
 
 /** A pay application the office sent back: the draw as the trade sent it, why, and what we see. */

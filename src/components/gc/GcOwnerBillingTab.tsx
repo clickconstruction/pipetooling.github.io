@@ -5,18 +5,19 @@ import { GcOwnerBillingChangeOrders } from './GcOwnerBillingChangeOrders'
 import { OwnerPayAppWindow } from './GcOwnerBillingPayApp'
 import { GcOwnerBillingArchitectPortal } from './GcOwnerBillingArchitect'
 import { GcOwnerBillingPortal } from './GcOwnerBillingPortal'
-import { Btn, Card, Chip, Stat, Why, num, td, th } from './gcUi'
+import { Btn, Card, Chip, Stat, Why, input, num, td, th } from './gcUi'
 import {
   appCertified,
+  appOpen,
   appPaid,
-  daysUntil,
   missingTradeWaivers,
   money,
   owedDrawWords,
   ownerCarriedForward,
   ownerCloseout,
   ownerAccount,
-  ownerExpectPaidOn,
+  ownerLateBills,
+  ownerPayDue,
   ownerPayApp,
   ownerPayAppHasWork,
   ownerPayAppsSent,
@@ -32,6 +33,7 @@ import {
   type OwnerCloseout,
   type OwnerLine,
   type OwnerPayAppSent,
+  type OwnerPayDue,
 } from '../../lib/gcMode/gcModel'
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
@@ -93,6 +95,7 @@ function OfficeSide({
 }) {
   const [formFor, setFormFor] = useState<number | 'draft' | null>(null)
   const app = ownerPayApp(state, project)
+  const late = ownerLateBills(state, project)
   const customer = state.customers.find((c) => c.id === project.customerId)
   const sent = ownerPayAppsSent(project)
   const account = ownerAccount(project)
@@ -132,6 +135,13 @@ function OfficeSide({
             <Stat label="Paid" value={money(account.paid)} />
             <Stat label="They owe us now" value={money(account.owed)} tone={Math.round(account.owed) > 0 ? 'red' : 'green'} />
           </div>
+          {late.length > 0 && (
+            <div style={{ color: 'var(--text-red-700)', fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: 600 }}>
+              {late.length === 1
+                ? `${money(late[0]?.open ?? 0)} is late: ${late[0]?.app.final ? 'the final pay application' : `pay application ${late[0]?.app.number}`}, ${late[0]?.due.daysLate === 1 ? '1 day' : `${late[0]?.due.daysLate} days`} past ${late[0]?.due.promised ? 'their promise' : 'the day we expected it'}.`
+                : `${money(late.reduce((t, b) => t + b.open, 0))} is late on ${late.length} bills.`}
+            </div>
+          )}
           {Math.round(account.waitingOnArchitect) > 0 && (
             <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
               Of that, {money(account.waitingOnArchitect)} waits on {project.architect} to certify. They pay once it is certified.
@@ -142,9 +152,10 @@ function OfficeSide({
               <SentRow
                 key={a.number}
                 app={a}
-                expectOn={ownerExpectPaidOn(state, project, a)}
-                today={state.today}
+                due={ownerPayDue(state, project, a)}
                 onPaid={() => dispatch({ type: 'ownerPaid', projectId: project.id, number: a.number })}
+                onPayPart={(amount) => dispatch({ type: 'ownerPayPart', projectId: project.id, number: a.number, amount })}
+                onPromise={(by, note) => dispatch({ type: 'ownerPromisePay', projectId: project.id, number: a.number, by, note, who: 'office' })}
                 onForm={() => setFormFor(a.number)}
                 architect={project.architect}
                 onSeeArchitect={onSeeArchitect}
@@ -332,26 +343,39 @@ function LineRow({
 
 function SentRow({
   app,
-  expectOn,
-  today,
+  due,
   onPaid,
+  onPayPart,
+  onPromise,
   onForm,
   architect,
   onSeeArchitect,
 }: {
   app: OwnerPayAppSent
-  expectOn: string | null
-  today: string
+  /** When it is due: their newest promise, or the day we expected it, and how late. */
+  due: OwnerPayDue
   onPaid: () => void
+  onPayPart: (amount: number) => void
+  onPromise: (by: string, note: string) => void
   /** Opens it as the form: the G702 and G703 as it went. */
   onForm: () => void
   architect: string
   /** Opens the architect's portal, where they certify it. */
   onSeeArchitect: () => void
 }) {
+  const [open, setOpen] = useState<'part' | 'when' | null>(null)
+  const [part, setPart] = useState('')
+  const [by, setBy] = useState('')
+  const [note, setNote] = useState('')
   const month = MONTH_NAMES[Number(app.periodTo.slice(5, 7)) - 1] ?? ''
-  const late = app.paidOn === null && expectOn !== null && daysUntil(expectOn, today) < 0
   const certified = appCertified(app)
+  const paidSoFar = appPaid(app)
+  const left = appOpen(app)
+  const partNum = Number(part)
+  const label = { display: 'grid', gap: '0.2rem', fontSize: '0.8rem', color: 'var(--text-muted)' } as const
+  const dueWords = due.on === null ? 'waiting' : due.daysLate > 0
+    ? `late · ${due.promised ? 'promised' : 'expected'} ${shortDate(due.on)}, ${due.daysLate === 1 ? '1 day' : `${due.daysLate} days`} ago`
+    : `${due.promised ? 'promised' : 'expected'} ${shortDate(due.on)}`
   return (
     <div style={{ borderTop: '1px solid var(--border)', paddingTop: '0.4rem', display: 'grid', gap: '0.35rem', fontSize: '0.875rem' }}>
       <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -365,7 +389,7 @@ function SentRow({
         </Btn>
         {app.paidOn !== null ? (
           <>
-            <Chip tone="green">{`paid ${money(appPaid(app))} ${shortDate(app.paidOn)}`}</Chip>
+            <Chip tone="green">{`paid ${money(paidSoFar)} ${shortDate(app.paidOn)}`}</Chip>
             <Chip tone="green">our unconditional waiver{app.final ? ' on final payment' : ''} signed</Chip>
           </>
         ) : certified === null ? (
@@ -382,11 +406,16 @@ function SentRow({
         ) : (
           <>
             <Chip tone="blue">{`certified ${money(certified)}${app.certifiedOn ? ` ${shortDate(app.certifiedOn)}` : ''}`}</Chip>
-            <Chip tone={late ? 'red' : 'amber'}>
-              {late ? `late · expected ${shortDate(expectOn)}` : expectOn ? `waiting · expected ${shortDate(expectOn)}` : 'waiting'}
-            </Chip>
-            <Btn kind="primary" onClick={onPaid} title="Marks it paid and signs our unconditional waiver for this amount.">
-              {`Mark paid ${money(certified)}`}
+            {paidSoFar > 0.005 && <Chip tone="green">{`paid ${money(paidSoFar)} of ${money(certified)}`}</Chip>}
+            <Chip tone={due.daysLate > 0 ? 'red' : due.promised ? 'green' : 'amber'}>{dueWords}</Chip>
+            <Btn kind="primary" onClick={onPaid} title="Marks the rest paid and signs our unconditional waiver for it.">
+              {`Mark paid ${money(left)}`}
+            </Btn>
+            <Btn kind="quiet" onClick={() => setOpen(open === 'part' ? null : 'part')}>
+              They paid part…
+            </Btn>
+            <Btn kind="quiet" onClick={() => setOpen(open === 'when' ? null : 'when')}>
+              They said when…
             </Btn>
           </>
         )}
@@ -395,6 +424,60 @@ function SentRow({
         <div style={{ color: 'var(--text-amber-800)' }}>
           {architect} certified {money(app.due - certified)} less than we asked
           {app.certifiedNote ? `: ${app.certifiedNote.replace(/[.\s]+$/, '')}` : ''}. It comes back on the next bill.
+        </div>
+      )}
+      {app.paidOn === null && (app.promises ?? []).length > 0 && (
+        <div style={{ color: due.daysLate > 0 ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
+          {(() => {
+            const p = (app.promises ?? [])[(app.promises ?? []).length - 1]
+            if (!p) return null
+            return `${p.who === 'owner' ? 'In their portal' : `On a call ${shortDate(p.madeOn)}`}, they said ${weekdayDate(p.by)}${p.note ? `: ${p.note.replace(/[.\s]+$/, '')}` : ''}.`
+          })()}
+          {due.missed > 0 ? ` They missed ${due.missed === 1 ? 'an earlier day' : `${due.missed} earlier days`} before that.` : ''}
+        </div>
+      )}
+      {open === 'part' && app.paidOn === null && certified !== null && (
+        <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-end', flexWrap: 'wrap', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.6rem' }}>
+          <label style={label}>
+            What they paid
+            <input style={{ ...input, width: '9rem' }} type="number" min={0} value={part} onChange={(e) => setPart(e.target.value)} />
+          </label>
+          <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{money(left)} is open.</span>
+          <Btn
+            kind="primary"
+            disabled={!(partNum > 0)}
+            onClick={() => {
+              onPayPart(partNum)
+              setOpen(null)
+              setPart('')
+            }}
+          >
+            Record it
+          </Btn>
+        </div>
+      )}
+      {open === 'when' && app.paidOn === null && certified !== null && (
+        <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-end', flexWrap: 'wrap', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.6rem' }}>
+          <label style={label}>
+            They will pay by
+            <input style={input} type="date" value={by} onChange={(e) => setBy(e.target.value)} />
+          </label>
+          <label style={{ ...label, flex: '1 1 12rem' }}>
+            What they said
+            <input style={input} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Who said it, and how" />
+          </label>
+          <Btn
+            kind="primary"
+            disabled={by === ''}
+            onClick={() => {
+              onPromise(by, note)
+              setOpen(null)
+              setBy('')
+              setNote('')
+            }}
+          >
+            Record it
+          </Btn>
         </div>
       )}
     </div>
