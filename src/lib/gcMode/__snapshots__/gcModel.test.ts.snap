@@ -7275,6 +7275,9 @@ exports[`GC mode golden walk > step 116: Cedar & Pine reports the coffee bar hal
 exports[`GC mode golden walk > step 117: Send Dr. Raman pay application 2 1`] = `
 {
   "changed": {
+    "customers.raman.billed": 150610.26315789472,
+    "customers.raman.owed": 56302.446315789464,
+    "customers.raman.retainageHeld": 15061.026315789471,
     "lastLog.id": 113,
     "lastLog.text": "Sent pay application 2 to Dr. Priya Raman: $56,302 to pay, $15,061 held.",
     "lastLog.who": "office",
@@ -7296,6 +7299,8 @@ exports[`GC mode golden walk > step 118: Studio Ocotillo certifies pay applicati
 exports[`GC mode golden walk > step 119: Dr. Raman pays pay application 2 1`] = `
 {
   "changed": {
+    "customers.raman.owed": 2000.4463157894497,
+    "customers.raman.paid": 133548.7905263158,
     "lastLog.id": 115,
     "lastLog.text": "Dr. Priya Raman paid pay application 2: $54,302.",
   },
