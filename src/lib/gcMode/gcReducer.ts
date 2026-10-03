@@ -2,10 +2,10 @@
  * GC mode — design spike. The reducer: every action, applied to the state.
  * Split out of gcModel.ts verbatim; import from `./gcModel`, which re-exports every file.
  */
-import type { AskContact, Draw, DrawSentBack, GcAction, GcState, SovLine, Invite, LookAheadMark, Partner, PlanSet, SubBid } from './gcTypes'
+import type { AskContact, Draw, DrawSentBack, GcAction, GcState, SovLine, Invite, LookAheadMark, Partner, PlanQuestion, PlanSet, SubBid } from './gcTypes'
 import { money, shortDate, weekdayDate, daysUntil } from './gcWords'
 import { currentRev, partnerById, planLabel } from './gcLookups'
-import { planRecipients } from './gcPlans'
+import { planRecipients, questionRecipients } from './gcPlans'
 import { bidsIn } from './gcBids'
 import { awardedPartner, find, logged, mapInvite, mapPackage, mapProject, mapSow, sowFromBid } from './gcReducerHelpers'
 import { initialGcState } from './gcFixture'
@@ -613,10 +613,14 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
       const pushes = Object.fromEntries(Object.entries(action.schedulePushes ?? {}).filter(([, d]) => d > 0).map(([id, d]) => [id, Math.round(d)]))
       const kept = project.schedule && Object.keys(pushes).length > 0 ? withBaselineKept(project, project.schedule) : null
       const push = kept ? pushSchedule(kept.activities, pushes) : null
+      const carried = new Set(action.questionIds ?? [])
       const withTrades = {
         ...lined.project,
         packages: withTradesInOrder(lined.project.packages, brought),
         ...(kept && push ? { schedule: { ...kept, activities: push.activities } } : {}),
+        ...(carried.size > 0
+          ? { questions: lined.project.questions.map((q) => (carried.has(q.id) && q.answer !== null && q.inSetRev === undefined ? { ...q, inSetRev: rev } : q)) }
+          : {}),
       }
       const touches = [...new Set([...action.touches, ...lined.added.map((l) => l.packageId), ...brought.map((p) => p.id)])]
       const chosen = planRecipients(state, withTrades, touches).filter((r) => action.recipients.includes(r.partner.id))
@@ -1181,6 +1185,57 @@ export function gcReducer(state: GcState, action: GcAction): GcState {
         'office',
         `The ${inspection.label.toLowerCase()} passed on ${project.name}.${met ? ` The ${met.label} milestone is met.` : ''}`,
       )
+    }
+
+    case 'tradeAskQuestion': {
+      const { project, pkg } = find(state, action.projectId, action.packageId)
+      const partner = partnerById(state, action.partnerId)
+      const text = action.text.trim()
+      // Only a company asked to quote the trade can ask about it.
+      const onTrade = pkg?.invites.some((i) => i.partnerId === action.partnerId && i.status !== 'declined')
+      if (!project || !pkg || !partner || !onTrade || text === '') return state
+      const used = new Set(project.questions.map((q) => q.id))
+      let n = project.questions.length + 1
+      while (used.has(`${project.id}-q-${n}`)) n += 1
+      const sheets = [...new Set(action.sheets.map((x) => x.trim().toUpperCase()).filter(Boolean))]
+      const q: PlanQuestion = {
+        id: `${project.id}-q-${n}`,
+        packageId: pkg.id,
+        partnerId: partner.id,
+        text,
+        askedOn: state.today,
+        answeredOn: null,
+        answer: null,
+        ...(sheets.length > 0 ? { sheets } : {}),
+      }
+      const next = mapProject(state, project.id, (p) => ({ ...p, questions: [...p.questions, q] }))
+      return logged(next, 'trade', `${partner.company} asked about ${sheets.length > 0 ? sheets.join(', ') : `the ${pkg.trade.toLowerCase()} plans`}: ${text}`)
+    }
+
+    case 'sendQuestionToArchitect': {
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const q = project?.questions.find((x) => x.id === action.questionId)
+      if (!project || !q || q.answer !== null || q.sentToArchitectOn) return state
+      const asker = partnerById(state, q.partnerId)?.company ?? 'A trade'
+      const next = mapProject(state, project.id, (p) => ({ ...p, questions: p.questions.map((x) => (x.id === q.id ? { ...x, sentToArchitectOn: state.today } : x)) }))
+      return logged(next, 'office', `Sent ${asker}'s question to ${project.architect}.`)
+    }
+
+    case 'answerQuestion': {
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const q = project?.questions.find((x) => x.id === action.questionId)
+      const answer = action.answer.trim()
+      if (!project || !q || q.answer !== null || answer === '') return state
+      const allowed = new Set(questionRecipients(state, project, q).map((r) => r.partner.id))
+      const to = [...new Set(action.recipients)].filter((id) => allowed.has(id))
+      const next = mapProject(state, project.id, (p) => ({
+        ...p,
+        questions: p.questions.map((x) =>
+          x.id === q.id ? { ...x, answer, answeredOn: state.today, answerSentTo: to.map((partnerId) => ({ partnerId, on: state.today })) } : x,
+        ),
+      }))
+      const trade = project.packages.find((k) => k.id === q.packageId)?.trade.toLowerCase() ?? 'the trade'
+      return logged(next, 'office', `Answered a ${trade} question on ${project.name} and sent it to ${to.length} ${to.length === 1 ? 'company' : 'companies'}.`)
     }
   }
 }
