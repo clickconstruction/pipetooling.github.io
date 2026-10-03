@@ -18,6 +18,18 @@ const events: TimelineEventInputs = {
 }
 
 describe('buildPartnerTimeline', () => {
+  it('a decline or a job confirmed in a Central evening reads that day, not the UTC date', () => {
+    // 7:30 pm CDT on Oct 2 (PostgREST's +00:00 shape); 6:30 pm CST on Dec 1; noon UTC reads its own day.
+    const rows = buildPartnerTimeline([], {
+      pendingCharges: [],
+      ncns: [],
+      statements: [],
+      declines: [{ declined_at: '2026-10-03T00:30:00+00:00', decline_reason: null, amount: null }],
+      confirmedJobs: [{ label: '900', confirmed_at: '2026-12-02T00:30:00Z' }, { label: '901', confirmed_at: '2026-10-03T12:00:00Z' }],
+    })
+    expect(rows.find((r) => r.kind === 'decline')?.date).toBe('2026-10-02')
+    expect(rows.filter((r) => r.kind === 'job').map((r) => r.date)).toEqual(['2026-12-01', '2026-10-03'])
+  })
   it('merges journal and events newest-first with money-first same-date order', () => {
     const rows = buildPartnerTimeline(journal, events)
     // 8/19: money-first convention — the pending charge precedes the NCNS event

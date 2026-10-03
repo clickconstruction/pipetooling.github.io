@@ -52,6 +52,13 @@ describe('PartnerStatementPaper', () => {
     expect(screen.getByRole('button', { name: 'Costing ›' })).toBeTruthy()
   })
 
+  it('a card charge on a job\'s costing sheet reads the day it posted on the company calendar', () => {
+    // Posted 7:30 pm CDT on Oct 2, in the shape the costing RPC returns it.
+    const costing = { label: '813', revenue: null, as_of: '2026-10-03', hours: [], supply_invoices: [], card_charges: [{ counterparty: 'Home Depot', posted_at: '2026-10-03T00:30:00+00:00', allocated: 42.5 }], direct: [] }
+    render(<PartnerStatementPaper {...base} openJob="j1" costing={costing} />)
+    expect(screen.getByText('Home Depot · 2026-10-02')).toBeTruthy()
+  })
+
   it('letterhead says "draft since" while the deal is still draft (v2.2914)', () => {
     render(<PartnerStatementPaper {...base} summary={{ ...summary, status: 'draft' }} />)
     expect(screen.getByText('draft since Mar 22, 2026 · field $50 · estimating $35 / h')).toBeTruthy()

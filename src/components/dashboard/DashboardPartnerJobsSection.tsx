@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
 import { DashboardGroupCard } from './DashboardGroupCard'
 import { parsePartnerJobCosting, parsePartnerJobsPayload, type PartnerJobCosting, type PartnerJobRow } from '../../lib/partnerLedger/partnerJobsPayload'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 /**
  * "Your jobs" — the partner's §5 window (PARTNERSHIPS_PLAN.md PR 7).
@@ -137,7 +138,7 @@ export function DashboardPartnerJobsSection({ asPartnershipId }: { asPartnership
                       <>
                         {groupHead('Card charges (§5b)')}
                         {costing.card_charges.map((c, i) =>
-                          line(`${c.counterparty ?? 'Charge'}${c.posted_at ? ` · ${c.posted_at.slice(0, 10)}` : ''}`, money(c.allocated), i),
+                          line(`${c.counterparty ?? 'Charge'}${c.posted_at ? ` · ${calendarYmdInAppTzFromIso(c.posted_at)}` : ''}`, money(c.allocated), i),
                         )}
                       </>
                     ) : null}
