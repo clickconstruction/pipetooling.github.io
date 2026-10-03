@@ -1522,6 +1522,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ### get-job-contract
 
+> **v2.4474 — the sample agreement's wording date reads in the company zone**: on the What customers see sample, the Contract Book document's date is its `book_version_date`, else its `updated_at` read as `todayYmdInAppTz(new Date(iso))`, not as its UTC date — the Book's own rule (`effectiveBookVersionPlainDate` in `src/lib/contractBookVersionDate.ts`). Redeploy after merge.
+
 > **v2.4186 — a second signer**: the payload also carries the second frame — `co_signer_name`, `co_signed_at`, `co_signer_printed_name`, `co_signer_mode`, `co_signer_consented_at`, `co_signature_url` (a signed URL for the drawn mark) — all null on a one-frame row and on the sample tokens. The page (`JobContractSign.tsx`) builds its frames from them (`lib/jobs/jobContractSigners.ts`).
 
 **Purpose**: Payload for the customer's contract page `/contract/sign?t=<token>` (Contract Desk PR 2, v2.2681). The sample tokens (`sample`, `sample-done`, v2.3510) answer with the fixture agreement; since v2.4098 its terms are the office's own — the newest customer document in the Contract Book (`contract_template_documents`, `audience = 'customer'`, newest `book_version_date` then `updated_at`) — so Settings → Contracts & terms can read a card on this page and find its wording; the fixture's stand-in terms print only when the Book holds no customer document.
