@@ -339,8 +339,10 @@ Each is a constant or a rule in the model files under `src/lib/gcMode/`. Change 
 18. ~~Should a closed-out project leave Building for its own section?~~ Answered: yes. The
     section on the board is the Board lane's to build.
 19. ~~Approve less than asked? Flag a draw sent back twice?~~ Answered: yes and yes.
-20. Should the office see which companies never opened their link (a chip on Trades and in
-    Follow up)? The portal records the first visit (`portalOpenedOn`). That is the Board lane's change.
+20. ~~Should the office see which companies never opened their link?~~ Built (owner, 2026-10-03):
+    "never opened the link" in place of "not opened" on Trades and its list of who we asked, and on
+    the Follow up card; amber, red past `OPEN_WITHIN_DAYS` (`linkNeverOpened` in `gcPortal.ts`,
+    `GcPortalLinkChip.tsx`). The Portal lane placed it in the Board lane's two files, with the owner's OK.
 21. ~~Should our own crew report by stage?~~ Answered: yes (*Decided by the owner*).
 22. Should a trade see sheets the office did not set (the dashed ones, matched from the line's
     words), or only the sheets the office set when writing the scope?
@@ -457,6 +459,7 @@ imitates it.
 | `GcTradePortal.tsx` | The trade partner's side: the frame, each trade's plans, bid, bid tab, statement of work and draws |
 | `gcPortalLang.ts` | The portal's language, held by the frame and read by every portal screen (`usePortalLang`) |
 | `GcPortalBidExtras.tsx` | The bid form past the number: good for how many days, alternates, the company's own quote, answering the lines the office could not read |
+| `GcPortalLinkChip.tsx` | For the office: a company we asked that never opened its portal link (Trades, Follow up) |
 | `GcPortalLookAhead.tsx` | The weekly look-ahead in the trade's portal: three weeks, the company's done or not done with a reason |
 | `GcPortalLineSheets.tsx` | The sheet numbers beside each line of the bid form, and the lines a new set touches |
 | `GcPortalHome.tsx` · `GcPortalMessages.tsx` | The company's home in its portal, where the link lands, with the first-visit welcome · what we sent the company, each message carrying the link |

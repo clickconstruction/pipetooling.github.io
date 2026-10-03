@@ -16,6 +16,7 @@ import {
   type PromiseState,
   type TradePackage,
 } from '../../lib/gcMode/gcModel'
+import { LinkNeverOpenedChip } from './GcPortalLinkChip'
 import { Btn, Card, Chip, Why, input, type Tone } from './gcUi'
 
 /**
@@ -214,6 +215,8 @@ function FollowUpCard({
         <strong>{partner.company}</strong>
         <span style={{ color: 'var(--text-muted)' }}>{partner.contact}</span>
         <Chip tone="grey">{project.name} · {pkg.trade}</Chip>
+        {/* Portal lane: a company that never opened its link. */}
+        <LinkNeverOpenedChip state={state} partnerId={partner.id} />
         <span style={{ flex: 1 }} />
         {why !== 'waiting' && (
           <>
