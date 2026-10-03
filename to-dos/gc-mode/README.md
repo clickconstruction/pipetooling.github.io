@@ -131,8 +131,10 @@ bridge between the two modes and the reason it is a switch on Bids and not a sec
 - **Each scope line names its sheets** (approved as built, 2026-10-02): a line carries the sheets
   it reads from (`ScopeItem.sheets`), guessed from the words it shares with the trade's sheet
   titles and changed by the office. A new set then says which lines it touches, and each
-  company's email names them. A line with no sheet stands for the trade as a whole. Projects
-  written before lines had sheets show the guess (`lineSheets`).
+  company's email names them. A line with no sheet stands for the trade as a whole, so it counts
+  as touched whenever any of the trade's sheets changes (the owner's call, 2026-10-02:
+  `lineReads`, `linesOnSheets`). Projects written before lines had sheets show the guess
+  (`lineSheets`).
 - **Each draw comes with a 702 and 703** (2026-10-02, Building lane): the trade fills the pay
   application in its portal and watches the form fill, typing only what the app cannot know. Most
   of it comes from the job and from the work they reported (`gcBuilding.ts`, `GcBuildingPayApp.tsx`).
