@@ -35,7 +35,7 @@ import {
 import { groupStandingRulings, openCountByAudience, type TwinQuestionRow } from '../../lib/bids/standingRulings'
 import { buildRunThrough, questionLine, questionsHeaderLine, sizeTodaySentence, type RunThroughItem } from '../../lib/bids/rulingRunThrough'
 import { RulingRunThroughSheet } from './RulingRunThroughSheet'
-import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
 import { twinQuestionAudienceColumnPresent } from '../../../supabase/functions/_shared/twinQuestionAudience'
 import { useTwinQuestionBidRefs } from '../../hooks/useTwinQuestionBidRefs'
 import { orderPendingByStake, pickOpenAudit } from '../../lib/bids/auditTriage'
@@ -1163,7 +1163,7 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
                   <div key={n.id} style={{ marginBottom: '0.5rem', padding: '0.5rem 0.75rem', border: '1px solid var(--border)', borderRadius: 6 }}>
                     <div style={{ fontSize: '0.875rem' }}>{n.body}</div>
                     <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-                      {n.author?.name ?? 'staff'} · {n.created_at.slice(0, 10)}
+                      {n.author?.name ?? 'staff'} · {calendarYmdInAppTzFromIso(n.created_at)}
                     </div>
                     {receipt ? (
                       <div style={{ marginTop: '0.4rem', paddingLeft: '0.75rem', borderLeft: '2px solid var(--bg-green-tint, var(--border))', fontSize: '0.8125rem', color: 'var(--text-green-800)' }}>

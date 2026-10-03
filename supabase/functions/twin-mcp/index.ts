@@ -2318,7 +2318,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
           const v = amendRef.bid_value == null ? null : Number(amendRef.bid_value)
           const g = !String(amendRef.plans_link ?? '').trim() ? 'X' : v != null && (c1 ?? 0) > 0 && (c2 ?? 0) > 0 ? 'A' : v != null ? 'B' : (c1 ?? 0) > 0 ? 'C' : 'D'
           const lostA = amendRef.outcome === 'lost'
-          const flagsClearA = !((v != null && v > 0 && v % 100 === 0) || (lostA && ['no_bid', 'project_died'].includes(String(amendRef.loss_category ?? ''))) || (lostA && !amendRef.loss_category) || (() => { const w = String(amendRef.bid_date_sent ?? amendRef.created_at ?? '').slice(0, 10); const d = w ? Math.abs(Date.parse(`${todayYmdInAppTz()}T00:00:00Z`) - Date.parse(`${w}T00:00:00Z`)) / 86400000 : 0; return Number.isFinite(d) && d > 183 })())
+          const flagsClearA = !((v != null && v > 0 && v % 100 === 0) || (lostA && ['no_bid', 'project_died'].includes(String(amendRef.loss_category ?? ''))) || (lostA && !amendRef.loss_category) || (() => { const c = String(amendRef.created_at ?? ''); const w = amendRef.bid_date_sent ? String(amendRef.bid_date_sent).slice(0, 10) : c && !Number.isNaN(Date.parse(c)) ? todayYmdInAppTz(new Date(c)) : ''; const d = w ? Math.abs(Date.parse(`${todayYmdInAppTz()}T00:00:00Z`) - Date.parse(`${w}T00:00:00Z`)) / 86400000 : 0; return Number.isFinite(d) && d > 183 })())
           const finalVerdict = (patch.scope_verdict as string | undefined) ?? String(existingScore.scope_verdict ?? 'unknown')
           patch.gate_eligible = (g === 'A' || g === 'B') && flagsClearA && finalVerdict !== 'fail'
         }
@@ -2353,7 +2353,9 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       const lost = refBid.outcome === 'lost'
       const weakLoss = lost && ['no_bid', 'project_died'].includes(String(refBid.loss_category ?? ''))
       const lossUncategorized = lost && !refBid.loss_category
-      const whenYmd = String(refBid.bid_date_sent ?? refBid.created_at ?? '').slice(0, 10)
+      // bid_date_sent is a `date`; created_at is an instant, so its day is read in the company calendar.
+      const createdIso = String(refBid.created_at ?? '')
+      const whenYmd = refBid.bid_date_sent ? String(refBid.bid_date_sent).slice(0, 10) : createdIso && !Number.isNaN(Date.parse(createdIso)) ? todayYmdInAppTz(new Date(createdIso)) : ''
       const today = todayYmdInAppTz()
       const ageDays = whenYmd ? Math.abs(Date.parse(`${today}T00:00:00Z`) - Date.parse(`${whenYmd}T00:00:00Z`)) / 86400000 : 0
       const stale = Number.isFinite(ageDays) && ageDays > 183

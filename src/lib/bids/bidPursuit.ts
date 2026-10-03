@@ -17,6 +17,7 @@
 import type { BidWithBuilder, EstimatorUser } from '../../types/bidWithBuilder'
 import type { BidAssignedCosts } from './bidAssignedCosts'
 import { decimalHoursToHhMm } from '../format'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 /** Who opens the tab: the office roles. Dollars (wages) stay with dev, master and controller; the rest read hours. */
 export const canSeeBidCosts = (role: string | null | undefined): boolean =>
@@ -94,6 +95,7 @@ export function pursuitOutcomeOf(bid: Pick<PursuitBidInput, 'outcome' | 'bid_dat
 }
 
 const normalizeUser = (u: EstimatorUser | EstimatorUser[] | null | undefined): EstimatorUser | null => (u == null ? null : Array.isArray(u) ? (u[0] ?? null) : u)
+/** A `date` column's YYYY-MM-DD (`bid_date_sent`). Not for a `timestamptz`: its day is `calendarYmdInAppTzFromIso`. */
 const ymd = (iso: string | null | undefined): string | null => (iso ? iso.slice(0, 10) : null)
 
 export function buildPursuitRows(args: {
@@ -125,9 +127,9 @@ export function buildPursuitRows(args: {
       estimatorName: est ? (est.name?.trim() || est.email || null) : null,
       gcName: b.customers?.name?.trim() || b.bids_gc_builders?.name?.trim() || null,
       outcome,
-      dateYmd: ymd(b.bid_date_sent) ?? ymd(b.created_at),
+      dateYmd: ymd(b.bid_date_sent) ?? (calendarYmdInAppTzFromIso(b.created_at ?? '') || null),
       sentYmd: ymd(b.bid_date_sent),
-      outcomeAtYmd: ymd(b.outcome_at),
+      outcomeAtYmd: calendarYmdInAppTzFromIso(b.outcome_at ?? '') || null,
       robot: isRobotBidName(projectName),
       hours: labor ? num(labor.manHours) : 0,
       laborUsd,

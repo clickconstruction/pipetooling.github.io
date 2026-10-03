@@ -96,3 +96,13 @@ describe('perGcSentSummary', () => {
     expect(perGcSentSummary(undefined)).toBeNull()
   })
 })
+
+describe('groupVersionsByGc · a version made on the evening of the send keeps its day (v2.4470)', () => {
+  it('counts a version made at 8 pm Central on the sent day as there when it went out', () => {
+    // 01:00 UTC on Aug 1 is 8 pm CDT on Jul 31; 00:30 UTC on Dec 2 is 6:30 pm CST on Dec 1.
+    const opts = (bidDateSent: string) => ({ bidGcName: 'SPC', gcNames: {}, latestSends: {}, bidDateSent })
+    expect(groupVersionsByGc([v('spc', null, 0, { created_at: '2026-08-01T01:00:00Z' })], opts('2026-07-31'))[0]!.sentOn).toBe('2026-07-31')
+    expect(groupVersionsByGc([v('spc', null, 0, { created_at: '2026-12-02T00:30:00+00:00' })], opts('2026-12-01'))[0]!.sentOn).toBe('2026-12-01')
+    expect(groupVersionsByGc([v('spc', null, 0, { created_at: '2026-08-01T12:00:00Z' })], opts('2026-07-31'))[0]!.sentOn).toBeNull()
+  })
+})

@@ -133,3 +133,15 @@ describe('words + roles', () => {
     expect(['assistant', 'estimator'].some(canSeeBidCostDollars)).toBe(false)
   })
 })
+
+describe('buildPursuitRows · an evening stamp keeps its day (v2.4470)', () => {
+  it('dates an unsent bid by the Central day it was made, and a decision by the Central day it was marked', () => {
+    // 00:30 UTC on Sep 1 is 7:30 pm CDT on Aug 31; 00:30 UTC on Dec 2 is 6:30 pm CST on Dec 1.
+    const [unsent] = buildPursuitRows({ bids: [bid({ id: 'u', created_at: '2026-09-01T00:30:00Z' })], laborByBid: new Map(), assignedByBid: new Map() })
+    expect(unsent!.dateYmd).toBe('2026-08-31')
+    const [won] = buildPursuitRows({ bids: [bid({ id: 'w', outcome: 'won', bid_date_sent: '2026-11-20', outcome_at: '2026-12-02T00:30:00+00:00' })], laborByBid: new Map(), assignedByBid: new Map() })
+    expect(won).toMatchObject({ dateYmd: '2026-11-20', outcomeAtYmd: '2026-12-01' })
+    const [noon] = buildPursuitRows({ bids: [bid({ id: 'n', created_at: '2026-09-01T12:00:00Z', outcome: 'lost', outcome_at: '2026-12-02T12:00:00Z' })], laborByBid: new Map(), assignedByBid: new Map() })
+    expect(noon).toMatchObject({ dateYmd: '2026-09-01', outcomeAtYmd: '2026-12-02' })
+  })
+})

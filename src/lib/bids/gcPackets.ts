@@ -3,6 +3,7 @@
  * A version with no `customer_id` belongs to the bid's own GC. Pure — used by the version picker,
  * the Bid Board's per-GC rows and Followup.
  */
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import type { LatestSend } from './versionSends'
 import { gcDisplayName } from './gcDisplayName'
 
@@ -87,7 +88,7 @@ export function groupVersionsByGc<V extends GcVersionLike>(
     if (best) { g.sentOn = best.sentOn; g.sentValue = best.value }
     else if (!anySends && opts.bidDateSent) {
       // Pre-per-GC bids: the bid's sent date applies to versions that existed then, not to packets added later.
-      const existedThen = g.versions.some((v) => !v.created_at || String(v.created_at).slice(0, 10) <= opts.bidDateSent!)
+      const existedThen = g.versions.some((v) => !v.created_at || calendarYmdInAppTzFromIso(v.created_at) <= opts.bidDateSent!)
       if (existedThen) g.sentOn = opts.bidDateSent
     }
     g.outcome = g.versions.find((v) => v.outcome)?.outcome ?? null
