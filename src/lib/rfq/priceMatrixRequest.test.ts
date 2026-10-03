@@ -150,3 +150,19 @@ describe('buildPricerRequestPrompt', () => {
     expect(p).toContain("ask_question(kind: 'choice', audience: 'estimator')")
   })
 })
+
+describe('buildPriceMatrixSources · a request with no day of its own keeps its Central day (v2.4470)', () => {
+  it('dates it from the day its row was made, in the company calendar', () => {
+    // 00:30 UTC on Sep 10 is 7:30 pm CDT on Sep 9; 00:30 UTC on Dec 2 is 6:30 pm CST on Dec 1.
+    const { readable, waiting } = buildPriceMatrixSources(
+      [
+        { id: 'a', status: 'quoted', sent_via: 'app', supply_house_id: 'h-nws', sent_to: null, created_at: '2026-09-10T00:30:00Z', quote_url: 'https://drive.google.com/file/d/abc' },
+        { id: 'b', status: 'sent', sent_via: 'app', supply_house_id: 'h-ferg', sent_to: null, created_at: '2026-12-02T00:30:00+00:00', quote_url: null },
+        { id: 'c', status: 'sent', sent_via: 'app', supply_house_id: null, sent_to: 'Hajoca', created_at: '2026-09-10T12:00:00Z', quote_url: null },
+      ] as never,
+      new Map([['h-nws', 'National Wholesale Supply'], ['h-ferg', 'Ferguson']]),
+    )
+    expect(readable.map((s) => s.requested_on)).toEqual(['2026-09-09'])
+    expect(waiting.map((w) => [w.house_name, w.requested_on])).toEqual([['Ferguson', '2026-12-01'], ['Hajoca', '2026-09-10']])
+  })
+})

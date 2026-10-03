@@ -258,3 +258,20 @@ describe('BidsAuditsTab', () => {
     expect(screen.queryByTestId('audits-today')).toBeNull()
   })
 })
+
+describe('BidsAuditsTab · a note left in the evening keeps its day (v2.4470)', () => {
+  it('stamps the note with its Central day', async () => {
+    // 01:00 UTC on Aug 31 is 8 pm CDT on Aug 30.
+    const evening = { id: 'n2', audit_id: 'a1', bid_id: 'bid-405', section: 'footage', kind: 'note', body: 'Check the trap arms.', parent_id: null, created_at: '2026-08-31T01:00:00Z', author_id: null, digested_at: null, digest_outcome: null } as (typeof notes)[number]
+    notes.push(evening)
+    try {
+      renderWithProviders(<BidsAuditsTab authUser={null} myRole="dev" />)
+      await waitFor(() => expect(screen.getAllByTestId('audit-row').length).toBeGreaterThan(0))
+      fireEvent.click(screen.getAllByTestId('audit-row').find((r) => /MPH CASA LINDA/.test(r.textContent ?? ''))!)
+      await waitFor(() => expect(screen.getByText('Check the trap arms.')).toBeTruthy())
+      expect(screen.getByText('Check the trap arms.').parentElement!.textContent).toContain('staff · 2026-08-30')
+    } finally {
+      notes.splice(notes.indexOf(evening), 1)
+    }
+  })
+})

@@ -857,6 +857,8 @@ The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned 
 
 ### twin-mcp
 
+> **v2.4470 — a reference's age reads its day in the company zone**: `score_backtest`'s `stale` flag, on the first score and on an amend, dates the reference from `bid_date_sent` (a `date`), else its `created_at` read as `todayYmdInAppTz(new Date(iso))`, not as its UTC date, as the app's Reference grade window now does. Redeploy after merge.
+
 **Purpose**: The digital-twin **MCP server** (Model Context Protocol, streamable-HTTP) — lets any MCP-capable agent (Claude, Grok/xAI, GPT, …) hold a twin seat: `initialize` / `tools/list` / `tools/call` over stateless JSON-RPC POST (GET → 405, no SSE; spec-permitted). The live `tools/list` is the count (48 at v2.3544). The verbs by family — each is detailed in the paragraph below that introduced it, in version order:
 
 - *Session + bundled docs*: `mint_session` (pass-through to twin-login — guards/rate-limit/ledger stay single-sourced there), `get_brief`, `get_directory`, `get_harness_guide`, `get_ct_guide`, `get_tt_guide`, `get_placement_guide`, `get_mission`, `submit_report` (→ `twin_runs`, `mission = report:<id>`).

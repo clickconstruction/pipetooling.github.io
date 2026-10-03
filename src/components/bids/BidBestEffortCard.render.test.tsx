@@ -10,7 +10,7 @@ import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { BidBestEffortCard } from './BidBestEffortCard'
 
-const state: { record: Record<string, unknown> | null; runStatus: string | null; missingTable: boolean; inserted: Record<string, unknown>[] } = {
+const state: { record: Record<string, unknown> | null; runStatus: string | null; missingTable: boolean; inserted: Record<string, unknown>[]; lockedAt?: string } = {
   record: null,
   runStatus: 'locked',
   missingTable: false,
@@ -53,7 +53,7 @@ vi.mock('../../lib/supabase', () => ({
     rpc: () =>
       Promise.resolve({
         data: state.runStatus
-          ? [{ id: 'r1', status: state.runStatus, reference_bid_number: '431', shadow_bid_number: '482', locked_at: '2026-09-07T12:00:00Z' }]
+          ? [{ id: 'r1', status: state.runStatus, reference_bid_number: '431', shadow_bid_number: '482', locked_at: state.lockedAt ?? '2026-09-07T12:00:00Z' }]
           : [],
         error: null,
       }),
@@ -105,5 +105,21 @@ describe('BidBestEffortCard', () => {
     await new Promise((r) => setTimeout(r, 20))
     expect(screen.queryByTestId('best-effort-card')).toBeNull()
     state.missingTable = false
+  })
+})
+
+describe('BidBestEffortCard · a robot sealed in the evening keeps its day (v2.4470)', () => {
+  it('names the Central day the robot locked', async () => {
+    state.record = null
+    state.runStatus = 'locked'
+    // 00:30 UTC on Sep 8 is 7:30 pm CDT on Sep 7.
+    state.lockedAt = '2026-09-08T00:30:00Z'
+    try {
+      renderWithProviders(<BidBestEffortCard bid={bid} amount={148200} onRecorded={vi.fn()} onOpenEnvelope={vi.fn()} />)
+      await waitFor(() => expect(screen.getByTestId('best-effort-card')).toBeTruthy())
+      expect(screen.getByText(/The robot sealed its number on 09\/07/)).toBeTruthy()
+    } finally {
+      delete state.lockedAt
+    }
   })
 })

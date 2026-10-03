@@ -10,6 +10,7 @@
  * discipline as an RFQ's `scope`.
  */
 
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import type { DeskRfq, RfqChip } from './rfqDesk'
 import { deriveRfqChip } from './rfqDesk'
 
@@ -93,7 +94,7 @@ export function buildPriceMatrixSources(
   for (const r of rfqs) {
     if (r.status === 'closed' || r.status === 'draft') continue
     const houseName = (r.supply_house_id ? houseNameById.get(r.supply_house_id) : null) ?? r.sent_to?.trim() ?? 'Unknown house'
-    const requestedOn = r.requested_on ?? (r.created_at ? r.created_at.slice(0, 10) : null)
+    const requestedOn = r.requested_on ?? (r.created_at ? calendarYmdInAppTzFromIso(r.created_at) || null : null)
     const quote = r.quote_url?.trim() ?? ''
     const request = r.request_url?.trim() ?? ''
     const url = quote && HTTP_RE.test(quote) ? quote : request

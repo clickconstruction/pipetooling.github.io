@@ -1,6 +1,6 @@
 import type { Bid } from '../../types/bids'
 import { referenceGrade, referenceQualityFlags, type ReferenceGradeLetter } from '../../lib/bids/referenceGrade'
-import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
 
 export const GRADE_COLORS: Record<ReferenceGradeLetter, string> = {
   A: '#16a34a',
@@ -44,7 +44,7 @@ export function RobotReferenceGradeModal({ bid, presence, onClose, onEditBid }: 
       bid_value: bid.bid_value,
       outcome: bid.outcome,
       loss_category: bid.loss_category,
-      when: bid.bid_date_sent ?? bid.created_at,
+      when: bid.bid_date_sent ?? (calendarYmdInAppTzFromIso(bid.created_at ?? '') || null),
     },
     todayYmdInAppTz(),
   )

@@ -27,7 +27,7 @@ import { ModalShell } from './ModalShell'
 import { useAuth } from '../../hooks/useAuth'
 import { useNavigate } from 'react-router-dom'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
-import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
+import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { parsePaySpeedsRpc, type PaySpeedData } from '../../lib/jobs/billedExpectedPay'
 import { buildCustomerPromiseRecords, classifyPromises, formatKeptRecord, formatUsualSlip, parsePromiseRecordsRpc, type CustomerPromiseRecord } from '../../lib/jobs/paymentPromises'
 import { formatPaysIn, paySpeedSpread } from '../../lib/jobs/paymentReliability'
@@ -178,7 +178,7 @@ export function BidBoardCustomerReviewModal({ onClose }: { onClose: () => void }
             const gcId = jl?.gc_customer_id
             const reason = (r.fields as { batchReason?: unknown } | null)?.batchReason
             if (!gcId || typeof reason !== 'string' || !reason || !r.sent_at) continue
-            const since = r.sent_at.slice(0, 10)
+            const since = calendarYmdInAppTzFromIso(r.sent_at)
             const cur = notice[gcId]
             notice[gcId] = { since: cur && cur.since < since ? cur.since : since, notices: (cur?.notices ?? 0) + 1 }
           }

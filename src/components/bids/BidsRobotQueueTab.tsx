@@ -15,7 +15,7 @@ import {
 } from '../../lib/bids/backtestCandidates'
 import { buildAxisCards, type RunScoreRow } from '../../lib/bids/confidenceBoard'
 import type { ShadowRunRow } from '../../lib/bids/shadowStory'
-import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
 import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../../lib/bids/updateGuard'
 import { usePriceMatrixRequests, type PriceMatrixRequestWithBid } from '../../hooks/usePriceMatrixRequests'
 import { useUserDisplayNames } from '../../hooks/useUserDisplayNames'
@@ -433,7 +433,7 @@ export function BidsRobotQueueTab({ bids, twinBidBySourceId, referencePresence, 
                   </span>
                 ) : null}
                 <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
-                  {c.bid.bids_gc_builders?.name ?? c.bid.customers?.name ?? '—'} · decided {decidedMonth(c.bid.bid_date_sent ?? c.bid.created_at)}
+                  {c.bid.bids_gc_builders?.name ?? c.bid.customers?.name ?? '—'} · decided {decidedMonth(c.bid.bid_date_sent ?? (calendarYmdInAppTzFromIso(c.bid.created_at ?? '') || null))}
                 </span>
                 {group.axis == null ? (
                   <select

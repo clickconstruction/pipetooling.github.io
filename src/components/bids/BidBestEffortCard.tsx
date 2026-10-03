@@ -7,6 +7,7 @@ import { resolveActorDisplayName } from '../../lib/outcomeChangeBidNote'
 import { buildBidReviewPatch, BID_REVIEWED_EVENT } from '../../lib/bids/bidReview'
 import { bestEffortCardMode, bestEffortRecordNote, bestEffortStamp, type BestEffortRecord } from '../../lib/bids/bestEffort'
 import type { ShadowRunRow } from '../../lib/bids/shadowStory'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 // bid_best_efforts reaches the generated types with the post-push gen-types run (BidRfiQueue pattern).
 const db = supabase as unknown as SupabaseClient
@@ -122,7 +123,7 @@ export function BidBestEffortCard({ bid, amount, onRecorded, onOpenEnvelope }: B
   if (mode.kind === 'record') {
     const robotLine =
       mode.robot === 'sealed'
-        ? '🔒 The robot sealed its number' + (run?.locked_at ? ` on ${run.locked_at.slice(5, 10).replace('-', '/')}` : '') + ' — it opens the moment yours is on record.'
+        ? '🔒 The robot sealed its number' + (run?.locked_at ? ` on ${calendarYmdInAppTzFromIso(run.locked_at).slice(5, 10).replace('-', '/')}` : '') + ' — it opens the moment yours is on record.'
         : mode.robot === 'estimating'
           ? 'The robot is still estimating. Record now anyway; its envelope opens when it locks.'
           : 'No robot has run on this bid yet. Recording still puts your number on the record for the score.'

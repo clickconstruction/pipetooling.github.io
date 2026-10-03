@@ -74,6 +74,7 @@ import type { LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
 import type { BidWithBuilder, EstimatorUser } from '../../types/bidWithBuilder'
 import type { BidCountRow } from '../../types/bids'
 import type { TeamLaborBidRow } from '../../utils/teamLabor'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import type {
   CostEstimate,
   CostEstimateLaborRow,
@@ -3210,7 +3211,7 @@ export function BidsPricingTab({
                                     return (
                                       <button
                                         type="button"
-                                        title={`Materials from ${cc.house_name ?? 'a quote'} (${cc.applied_at.slice(5, 10)})${cc.lot_group_id ? ' — part of a package; reverting reverts the whole package' : ''} — click to revert to takeoff`}
+                                        title={`Materials from ${cc.house_name ?? 'a quote'} (${calendarYmdInAppTzFromIso(cc.applied_at).slice(5, 10)})${cc.lot_group_id ? ' — part of a package; reverting reverts the whole package' : ''} — click to revert to takeoff`}
                                         onClick={() => void revertCustomCost(cc)}
                                         style={{ display: 'block', marginLeft: 'auto', font: 'inherit', fontSize: '0.62rem', fontWeight: 700, color: '#15803d', background: 'none', border: '1px solid #16a34a', borderRadius: 999, padding: '0 0.4rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
                                       >
